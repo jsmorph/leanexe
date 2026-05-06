@@ -1,4 +1,5 @@
 import LeanExe.Core
+import LeanExe.Extract.Report
 import LeanExe.Examples.AsciiDigits
 import LeanExe.Wasm.Binary
 
@@ -10,6 +11,8 @@ def usage : String :=
     "  lean-wasm emit --out <path>",
     "  lean-wasm wat --out <path>",
     "  lean-wasm report --out <path>",
+    "  lean-wasm report --module <module> --entry <name>",
+    "  lean-wasm report --module <module> --entry <name> --out <path>",
     "  lean-wasm eval --hex <hex-bytes>",
     "",
     "This prototype supports LeanExe.Examples.AsciiDigits.validate only."
@@ -110,6 +113,12 @@ def main : List String → IO UInt32
       return 0
   | ["report", "--out", out] => do
       writeText out extractionReport
+      return 0
+  | ["report", "--module", moduleName, "--entry", entryName] => do
+      IO.println (← LeanExe.Extract.Report.makeReport moduleName entryName)
+      return 0
+  | ["report", "--module", moduleName, "--entry", entryName, "--out", out] => do
+      writeText out (← LeanExe.Extract.Report.makeReport moduleName entryName)
       return 0
   | ["eval", "--hex", hex] => do
       match parseHex hex with
