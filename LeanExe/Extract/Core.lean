@@ -20,6 +20,7 @@ structure Signature where
 
 inductive Binding where
   | slot (index : Nat)
+  | expr (value : IRExpr)
   | recursor
   deriving BEq, Repr
 
@@ -208,6 +209,7 @@ mutual
     | .bvar index =>
         match ← lookupBinding locals index with
         | .slot slot => .ok (.local slot, nextLocal)
+        | .expr value => .ok (value, nextLocal)
         | .recursor => .error "recursive handle used as a value"
     | .letE _ type value body _ =>
         match typeAtom? type with
@@ -321,6 +323,7 @@ mutual
     | .bvar index =>
         match ← lookupBinding locals index with
         | .slot slot => .ok (boolCond (.local slot), nextLocal)
+        | .expr value => .ok (boolCond value, nextLocal)
         | .recursor => .error "recursive handle used as a condition"
     | .letE _ _ _ _ _ =>
         let exprResult ← extractExprFrom ctx locals nextLocal expr
@@ -387,6 +390,14 @@ partial def collectLambdas (expr : Expr) : Nat → Option Expr
 def localBindingsForParams (paramCount : Nat) : List Binding :=
   (List.range paramCount).reverse.map Binding.slot
 
+def baseBindingsForParams (paramCount : Nat) : List Binding :=
+  .recursor :: (List.range (paramCount - 1)).reverse.map (fun index => Binding.slot (index + 1))
+
+def stepBindingsForParams (paramCount : Nat) : List Binding :=
+  let carried :=
+    (List.range (paramCount - 1)).reverse.map (fun index => Binding.slot (index + 1))
+  (.recursor :: carried) ++ [.expr (.u64Bin .sub (.local 0) (.u64 1))]
+
 partial def recCallArgs? (expected : Nat) (expr : Expr) : Option (List Expr) :=
   match appFnArgs expr with
   | (fn, args) =>
@@ -395,14 +406,20 @@ partial def recCallArgs? (expected : Nat) (expr : Expr) : Option (List Expr) :=
       else
         none
 
+structure RecSpec where
+  base : Expr
+  exitCond? : Option Expr
+  exitValue? : Option Expr
+  recArgs : List Expr
+
 def parseStepBody? (paramCount : Nat) (body : Expr) :
-    Except String (Option Expr × List Expr) := do
+    Except String (Option (Expr × Expr) × List Expr) := do
   let expectedArgs := paramCount - 1
   match appFnArgs body with
-  | (.const ``ite _, [ty, condExpr, _, _thenExpr, elseExpr]) =>
-      if isConst ``UInt64 ty then
+  | (.const ``ite _, [ty, condExpr, _, thenExpr, elseExpr]) =>
+      if typeAtom? ty |>.isSome then
         match recCallArgs? expectedArgs elseExpr with
-        | some args => .ok (some condExpr, args)
+        | some args => .ok (some (condExpr, thenExpr), args)
         | none => .error "recursive branch is not a tail call"
       else
         .error "recursive branch has unsupported if-result type"
@@ -411,39 +428,75 @@ def parseStepBody? (paramCount : Nat) (body : Expr) :
       | some args => .ok (none, args)
       | none => .error "recursive branch is not a supported tail call"
 
-def stepBodyFromLambda? (paramCount : Nat) (expr : Expr) : Option Expr :=
-  match collectLambdas expr (paramCount + 1) with
-  | some body =>
-      if recCallArgs? (paramCount - 1) body |>.isSome then
-        some body
+def isMatcherName (candidate : Name) : Bool :=
+  match candidate with
+  | .str _ component => component.startsWith "match_"
+  | _ => false
+
+def parseRecMatcher? (name : Name) (paramCount : Nat) (expr : Expr) :
+    Except String (Option RecSpec) := do
+  match appFnArgs expr with
+  | (.const candidate _, args) =>
+      if !isMatcherName candidate then
+        return none
+      let carriedCount := paramCount - 1
+      if args.length != paramCount + 4 then
+        .error s!"unsupported Nat recursion matcher arity: {name}"
       else
-        match appFnArgs body with
-        | (.const ``ite _, [ty, _, _, _, elseExpr]) =>
-            if isConst ``UInt64 ty && (recCallArgs? (paramCount - 1) elseExpr |>.isSome) then
-              some body
-            else
-              none
-        | _ => none
-  | none => none
+        match args.drop (carriedCount + 2) with
+        | baseArm :: succArm :: _below :: [] =>
+            let baseBody ←
+              match collectLambdas baseArm (carriedCount + 1) with
+              | some body => .ok body
+              | none => .error s!"unsupported Nat recursion base arm: {name}"
+            let stepBody ←
+              match collectLambdas succArm (carriedCount + 2) with
+              | some body => .ok body
+              | none => .error s!"unsupported Nat recursion successor arm: {name}"
+            let parsedStep ← parseStepBody? paramCount stepBody
+            let exitCond? := parsedStep.fst.map Prod.fst
+            let exitValue? := parsedStep.fst.map Prod.snd
+            .ok (some {
+              base := baseBody,
+              exitCond? := exitCond?,
+              exitValue? := exitValue?,
+              recArgs := parsedStep.snd
+            })
+        | _ => .error s!"unsupported Nat recursion matcher arguments: {name}"
+  | _ => return none
 
 mutual
-  partial def findStepBody? (paramCount : Nat) (expr : Expr) : Option Expr :=
-    match stepBodyFromLambda? paramCount expr with
-    | some body => some body
-    | none => findStepBodyInChildren? paramCount expr
+  partial def findRecSpec? (name : Name) (paramCount : Nat) (expr : Expr) :
+      Except String (Option RecSpec) := do
+    match ← parseRecMatcher? name paramCount expr with
+    | some spec => .ok (some spec)
+    | none => findRecSpecInChildren? name paramCount expr
 
-  partial def findStepBodyInChildren? (paramCount : Nat) (expr : Expr) : Option Expr :=
+  partial def findRecSpecInChildren? (name : Name) (paramCount : Nat) (expr : Expr) :
+      Except String (Option RecSpec) := do
     match expr.consumeMData with
-    | .app fn arg => findStepBody? paramCount fn <|> findStepBody? paramCount arg
-    | .lam _ type body _ => findStepBody? paramCount type <|> findStepBody? paramCount body
-    | .forallE _ type body _ => findStepBody? paramCount type <|> findStepBody? paramCount body
+    | .app fn arg =>
+        match ← findRecSpec? name paramCount fn with
+        | some spec => .ok (some spec)
+        | none => findRecSpec? name paramCount arg
+    | .lam _ type body _ =>
+        match ← findRecSpec? name paramCount type with
+        | some spec => .ok (some spec)
+        | none => findRecSpec? name paramCount body
+    | .forallE _ type body _ =>
+        match ← findRecSpec? name paramCount type with
+        | some spec => .ok (some spec)
+        | none => findRecSpec? name paramCount body
     | .letE _ type value body _ =>
-        findStepBody? paramCount type <|>
-          findStepBody? paramCount value <|>
-          findStepBody? paramCount body
-    | .mdata _ body => findStepBody? paramCount body
-    | .proj _ _ body => findStepBody? paramCount body
-    | _ => none
+        match ← findRecSpec? name paramCount type with
+        | some spec => .ok (some spec)
+        | none =>
+            match ← findRecSpec? name paramCount value with
+            | some spec => .ok (some spec)
+            | none => findRecSpec? name paramCount body
+    | .mdata _ body => findRecSpec? name paramCount body
+    | .proj _ _ body => findRecSpec? name paramCount body
+    | _ => .ok none
 end
 
 def enumerateAux {α : Type} : List α → Nat → List (Nat × α)
@@ -467,36 +520,45 @@ def extractNatRecFunc
     (value : Expr)
     (exportName : Option String) : Except String IRFunc := do
   let paramCount := params.length
-  let stepBody ←
-    match findStepBody? paramCount value with
-    | some body => .ok body
+  let spec ←
+    match ← findRecSpec? name paramCount value with
+    | some spec => .ok spec
     | none => .error s!"unsupported Nat recursion shape: {name}"
-  let stepLocals := .recursor :: localBindingsForParams paramCount
-  let parsed ← parseStepBody? paramCount stepBody
-  let exitCond? := parsed.fst
-  let recArgs := parsed.snd
+  let stepLocals := stepBindingsForParams paramCount
+  let baseLocals := baseBindingsForParams paramCount
   let fuelLive : IRCond := .not (.eqU64 (.local 0) (.u64 0))
   let condResult ←
-    match exitCond? with
+    match spec.exitCond? with
     | some condExpr =>
         let extracted ← extractCond ctx stepLocals paramCount condExpr
         .ok (.and fuelLive (.not extracted.fst), extracted.snd)
     | none => .ok (fuelLive, paramCount)
-  let recArgsResult ← extractExprListFrom ctx stepLocals condResult.snd recArgs
+  let exitResult? ←
+    match spec.exitValue? with
+    | some exitExpr =>
+        let extracted ← extractExpr ctx stepLocals condResult.snd exitExpr
+        .ok (some extracted.fst, extracted.snd)
+    | none => .ok (none, condResult.snd)
+  let recArgsResult ← extractExprListFrom ctx stepLocals exitResult?.snd spec.recArgs
+  let baseResult ← extractExpr ctx baseLocals recArgsResult.snd spec.base
   let loopCond := condResult.fst
   let recIRArgs := recArgsResult.fst
   let targets := (List.range (paramCount - 1)).map (fun index => index + 1)
-  let tempStart := recArgsResult.snd
+  let tempStart := baseResult.snd
   let updateArgs := assignMany targets recIRArgs tempStart
   let decFuel : IRStmt := .assign 0 (.u64Bin .sub (.local 0) (.u64 1))
   let loopBody : IRStmt := .seq updateArgs decFuel
+  let result :=
+    match exitResult?.fst with
+    | some exitValue => .ite fuelLive exitValue baseResult.fst
+    | none => baseResult.fst
   .ok {
     sourceName := name,
     exportName := exportName,
     params := paramCount,
     locals := tempStart + (paramCount - 1),
     body := .while loopCond loopBody,
-    result := .local (paramCount - 1)
+    result := result
   }
 
 def extractPlainFunc

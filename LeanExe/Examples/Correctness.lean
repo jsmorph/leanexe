@@ -36,12 +36,23 @@ def arrayUpdateRead : UInt64 :=
   c[0]! * (100 : UInt64) + c[1]! * (10 : UInt64) + a[0]!
 
 def recLetFuel : Nat → UInt64 → UInt64 → UInt64
-  | 0, _, right => right
+  | 0, left, right => combine left right
   | fuel + 1, left, right =>
       recLetFuel fuel (let next := left + 1; next) (let next := right + 2; next)
 
 def recLetDemo : UInt64 :=
   recLetFuel 4 1 10
+
+def recExitFuel : Nat → UInt64 → UInt64 → UInt64
+  | 0, left, right => combine left right
+  | fuel + 1, left, right =>
+      if left == 3 then
+        combine left right
+      else
+        recExitFuel fuel (left + 1) (right + 2)
+
+def recExitDemo : UInt64 :=
+  recExitFuel 10 1 10
 
 def rejectProductLet : UInt64 :=
   let pair := ((1 : UInt64), (2 : UInt64))

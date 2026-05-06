@@ -57,7 +57,7 @@ The current report imports compiled `.olean` modules through Lean’s module loa
 | Projections | Planned | Reported only |
 | Pattern matching | Planned | Lowered only for the demo range check path |
 | `if` expressions | Planned | Implemented for supported first-fragment result types |
-| Structural recursion | Planned with termination evidence from Lean | Implemented only for the current tail-recursion shape over a decreasing `Nat` fuel argument, where the loop result is the last carried parameter |
+| Structural recursion | Planned with termination evidence from Lean | Implemented for the current tail-recursion shape over a decreasing `Nat` fuel argument, with explicit base and early-exit result expressions |
 | Tail recursion over buffers or arrays | Planned | Implemented for array parameters carried through the supported fuel-recursion shape |
 | Higher-order arguments | Planned later with escape restrictions | Rejected for compilation |
 | General closures | Planned later | Rejected |
@@ -70,6 +70,8 @@ The first accepted term language should resemble a first-order functional IR rat
 Local `let` support allocates an explicit Wasm `i64` local for each binding and preserves Lean’s lexical de Bruijn scope.  Let-bound values may use nested lets, arrays, branches, and calls when their types remain inside the first fragment.  Product values, projections, structures, inductives, polymorphic values, proof-bearing executable values, and higher-order values remain unsupported in let-bound positions.
 
 Boolean conjunction and disjunction lower with Lean-compatible short-circuiting.  The emitted Wasm must not evaluate the right-hand side of `true || rhs` or `false && rhs`, because the skipped expression may contain a partial operation such as an out-of-bounds array access.  `UInt64` division and remainder also follow Lean’s checked behavior at zero divisors: `x / 0` returns `0`, and `x % 0` returns `x`.
+
+The supported recursive loop shape has one decreasing `Nat` fuel parameter followed by first-fragment carried values.  The base arm compiles to the result used when fuel reaches zero.  The successor arm may either tail-call the same recursive handle or use `if cond then exitValue else recursiveCall`; in the latter case, the emitted loop returns `exitValue` when `cond` holds before fuel reaches zero.  The extractor rejects non-tail recursion and successor arms whose recursive branch is not the `else` branch of that shape.
 
 ## Arrays
 

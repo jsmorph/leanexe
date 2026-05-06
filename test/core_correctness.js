@@ -18,7 +18,8 @@ const accepted = [
   { name: "nestedShadow", args: [3n], expected: 64n },
   { name: "callArgLets", args: [7n], expected: 809n },
   { name: "arrayUpdateRead", args: [], expected: 110n },
-  { name: "recLetDemo", args: [], expected: 18n },
+  { name: "recLetDemo", args: [], expected: 518n },
+  { name: "recExitDemo", args: [], expected: 314n },
 ];
 
 const rejected = [

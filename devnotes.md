@@ -183,13 +183,13 @@ Checks run:
 
 The corpus found three concrete issues.  CoreWasm condition lowering used Wasm `i32.and` and `i32.or`, which evaluated both operands and therefore trapped for `true || rhs` and `false && rhs` when `rhs` contained an out-of-bounds array access.  CoreWasm `UInt64` division and remainder used Wasm `i64.div_u` and `i64.rem_u` directly, but Lean returns `0` for `x / 0` and `x` for `x % 0`.  The signed LEB128 encoder for `i64.const` emitted invalid Wasm for `UInt64` constants above `Int64.max`; those constants now lower through the signed two’s-complement representation of the same 64-bit pattern.
 
-The corpus also exposed a limitation in the current `Nat.brecOn` tail-recursion extractor.  The lowering assumes that the loop result is the last carried parameter.  Existing examples follow that shape, and `spec.md` now states it.  A function whose base case computes a different expression needs a fuller recursion lowering, because the current loop form does not yet model distinct base and early-exit result expressions.
+The corpus also exposed a limitation in the first `Nat.brecOn` tail-recursion extractor.  The old lowering assumed that the loop result was the last carried parameter.  The extractor now parses the generated matcher, extracts the base arm, extracts an optional early-exit value from the successor arm, and emits a result expression that distinguishes fuel exhaustion from early exit.  The successor arm still must either tail-call the recursive handle or use `if cond then exitValue else recursiveCall`.
 
 Checks run:
 
 - [x] `lake build`
 - [x] `lake build LeanExe.Examples.Correctness`
-- [x] Lean evaluation for `shortOrSkipsTrap`, `shortAndSkipsTrap`, `divByZero`, `modByZero`, `overflow`, `underflow`, `nestedShadow 3`, `callArgLets 7`, `arrayUpdateRead`, and `recLetDemo` returned `1`, `0`, `0`, `5`, `0`, `18446744073709551615`, `64`, `809`, `110`, and `18`.
-- [x] `node test/core_correctness.js` returned `checked 10 accepted and 4 rejected cases`.
+- [x] Lean evaluation for `shortOrSkipsTrap`, `shortAndSkipsTrap`, `divByZero`, `modByZero`, `overflow`, `underflow`, `nestedShadow 3`, `callArgLets 7`, `arrayUpdateRead`, `recLetDemo`, and `recExitDemo` returned `1`, `0`, `0`, `5`, `0`, `18446744073709551615`, `64`, `809`, `110`, `518`, and `314`.
+- [x] `node test/core_correctness.js` returned `checked 11 accepted and 4 rejected cases`.
 - [x] `node test/fuzz_validate.js .lake/build/validate.wasm 200` returned `checked 206 cases`.
 - [x] Wasmtime regressions returned `2211` for array aliasing, `51200` for `IntMap.checksum`, `1009` for `Prime.next 1000`, and `111` for `Collatz.steps 27`.
