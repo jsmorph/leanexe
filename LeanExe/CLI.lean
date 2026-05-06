@@ -18,6 +18,7 @@ def usage : String :=
     "  lean-wasm collatz-emit --out <path>",
     "  lean-wasm collatz-wat --out <path>",
     "  lean-wasm collatz-eval --input <n>",
+    "  lean-wasm collatz-bench --input <n> --iters <n>",
     "",
     "This prototype supports LeanExe.Examples.AsciiDigits.validate only."
   ]
@@ -150,6 +151,18 @@ def main : List String → IO UInt32
           IO.println s!"{steps.toNat}"
           return 0
       | .error error =>
+          IO.eprintln error
+          return 2
+  | ["collatz-bench", "--input", input, "--iters", iters] => do
+      match parseNatArg input, parseNatArg iters with
+      | .ok n, .ok count =>
+          let result := LeanExe.Examples.Collatz.bench (UInt64.ofNat n) (UInt64.ofNat count)
+          IO.println s!"{result.toNat}"
+          return 0
+      | .error error, _ =>
+          IO.eprintln error
+          return 2
+      | _, .error error =>
           IO.eprintln error
           return 2
   | ["help"] => do
