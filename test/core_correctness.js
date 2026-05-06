@@ -17,6 +17,9 @@ const accepted = [
   { name: "underflow", args: [], expected: 18446744073709551615n },
   { name: "nestedShadow", args: [3n], expected: 64n },
   { name: "unusedScalarLetSkipsTrap", args: [], expected: 1n },
+  { name: "letUsedOnlyInUnusedProductField", args: [], expected: 7n },
+  { name: "ignoredCallArgSkipsTrap", args: [], expected: 1n },
+  { name: "callArgUsedOnlyInUnusedProductField", args: [], expected: 7n },
   { name: "callArgLets", args: [7n], expected: 809n },
   { name: "productLet", args: [], expected: 12n },
   { name: "nestedProduct", args: [], expected: 203n },
@@ -28,6 +31,12 @@ const accepted = [
   { name: "recLetDemo", args: [], expected: 518n },
   { name: "recExitDemo", args: [], expected: 314n },
   { name: "recProductDemo", args: [], expected: 10n },
+  { name: "optionSomeMatch", args: [], expected: 8n },
+  { name: "optionNoneMatchSkipsSomeArm", args: [], expected: 5n },
+  { name: "optionSomeMatchSkipsUnusedPayload", args: [], expected: 9n },
+  { name: "optionLet", args: [], expected: 18n },
+  { name: "optionBranch", args: [0n], expected: 11n },
+  { name: "optionBranch", args: [1n], expected: 34n },
 ];
 
 const rejected = [
@@ -38,6 +47,14 @@ const rejected = [
   {
     name: "rejectProductParam",
     message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectProductParam",
+  },
+  {
+    name: "rejectOptionReturn",
+    message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectOptionReturn",
+  },
+  {
+    name: "rejectOptionParam",
+    message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectOptionParam",
   },
   {
     name: "rejectNonzeroReplicate",
