@@ -1,6 +1,7 @@
 import LeanExe.Core
 import LeanExe.Extract.Report
 import LeanExe.Examples.AsciiDigits
+import LeanExe.Examples.Collatz
 import LeanExe.Wasm.Binary
 
 namespace LeanExe.CLI
@@ -14,6 +15,9 @@ def usage : String :=
     "  lean-wasm report --module <module> --entry <name>",
     "  lean-wasm report --module <module> --entry <name> --out <path>",
     "  lean-wasm eval --hex <hex-bytes>",
+    "  lean-wasm collatz-emit --out <path>",
+    "  lean-wasm collatz-wat --out <path>",
+    "  lean-wasm collatz-eval --input <n>",
     "",
     "This prototype supports LeanExe.Examples.AsciiDigits.validate only."
   ]
@@ -104,6 +108,11 @@ def boolCode (b : Bool) : String :=
 def emitAll (out : String) : IO Unit := do
   writeBytes out LeanExe.Wasm.Binary.moduleBytes
 
+def parseNatArg (text : String) : Except String Nat :=
+  match text.toNat? with
+  | some n => .ok n
+  | none => .error s!"invalid natural number: {text}"
+
 def main : List String → IO UInt32
   | ["emit", "--out", out] => do
       emitAll out
@@ -124,6 +133,21 @@ def main : List String → IO UInt32
       match parseHex hex with
       | .ok input =>
           IO.println (boolCode (LeanExe.Examples.AsciiDigits.validate input))
+          return 0
+      | .error error =>
+          IO.eprintln error
+          return 2
+  | ["collatz-emit", "--out", out] => do
+      writeBytes out LeanExe.Wasm.Binary.collatzModuleBytes
+      return 0
+  | ["collatz-wat", "--out", out] => do
+      writeText out LeanExe.Wasm.Binary.collatzWat
+      return 0
+  | ["collatz-eval", "--input", input] => do
+      match parseNatArg input with
+      | .ok n =>
+          let steps := LeanExe.Examples.Collatz.steps (UInt64.ofNat n)
+          IO.println s!"{steps.toNat}"
           return 0
       | .error error =>
           IO.eprintln error

@@ -38,3 +38,15 @@ Commands run:
 - [x] `lake build`
 - [x] `.lake/build/bin/lean-wasm report --module LeanExe.Examples.AsciiDigits --entry LeanExe.Examples.AsciiDigits.validate --out build/env-report.txt`
 - [x] `.lake/build/bin/lean-wasm report --module Main --entry main`
+
+## 2026-05-06: Collatz Demo
+
+`LeanExe.Examples.Collatz.steps : UInt64 -> UInt64` computes Collatz steps with a `10000`-step fuel bound.  The bound avoids `partial` recursion and avoids assuming the global Collatz conjecture.  The Wasm emitter has a second hand-written module path that exports `collatz_steps(n: i64) -> i64` and uses only scalar locals.
+
+Planned checks:
+
+- [x] `lake build`
+- [x] `.lake/build/bin/lean-wasm collatz-emit --out build/collatz.wasm`
+- [x] `.lake/build/bin/lean-wasm collatz-wat --out build/collatz.wat`
+- [x] `.lake/build/bin/lean-wasm collatz-eval --input 27`
+- [x] Run `build/collatz.wasm` with Wasmtime 36.0.9 from `/tmp`: `env XDG_CACHE_HOME=/tmp /tmp/wasmtime-runtime.GEHkKm/wasmtime-v36.0.9-aarch64-linux/wasmtime run --invoke collatz_steps build/collatz.wasm 27`.

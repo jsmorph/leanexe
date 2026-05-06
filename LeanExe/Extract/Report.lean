@@ -1,5 +1,6 @@
 import Lean
 import LeanExe.Core
+import LeanExe.Examples.Collatz
 
 open Lean
 
@@ -82,6 +83,12 @@ def typeIsByteArrayToBool (expr : Expr) : Bool :=
       isConstNamed domain ``ByteArray && isConstNamed body ``Bool
   | _ => false
 
+def typeIsUInt64ToUInt64 (expr : Expr) : Bool :=
+  match expr.consumeMData with
+  | .forallE _ domain body _ =>
+      isConstNamed domain ``UInt64 && isConstNamed body ``UInt64
+  | _ => false
+
 partial def hasFunctionDomain (expr : Expr) : Bool :=
   match expr.consumeMData with
   | .forallE _ domain body _ =>
@@ -112,7 +119,12 @@ def demoImplementedNames : List Name :=
     ``LeanExe.Examples.AsciiDigits.validate,
     ``LeanExe.Examples.AsciiDigits.WellFormed,
     ``LeanExe.Core.asciiDigits,
-    ``LeanExe.Core.lower
+    ``LeanExe.Core.lower,
+    ``LeanExe.Examples.Collatz.maxSteps,
+    ``LeanExe.Examples.Collatz.next,
+    ``LeanExe.Examples.Collatz.stepsFuel,
+    ``LeanExe.Examples.Collatz.steps,
+    ``LeanExe.Examples.Collatz.stepsFuel.match_1
   ]
 
 def knownExternal? (name : Name) : Option Classification :=
@@ -123,8 +135,14 @@ def knownExternal? (name : Name) : Option Classification :=
     some { status := "implemented", reason := "primitive type in the intended subset" }
   else if [``Nat, ``Option, ``Except, ``Array, ``String, ``List].contains name then
     some { status := "reported", reason := "planned type or library type" }
-  else if [``And, ``Or, ``True, ``False].contains name then
+  else if [``And, ``Or, ``True, ``False, ``Eq].contains name then
     some { status := "reported", reason := "logical connective in a decidable predicate" }
+  else if [``Bool.or, ``Bool.true, ``Bool.false].contains name then
+    some { status := "reported", reason := "boolean operation needs primitive lowering" }
+  else if [``BEq.beq, ``ite].contains name then
+    some { status := "reported", reason := "control or equality operation needs primitive lowering" }
+  else if [``HAdd.hAdd, ``HMul.hMul, ``HDiv.hDiv, ``HMod.hMod].contains name then
+    some { status := "reported", reason := "numeric operation needs typeclass specialization" }
   else if name == ``Decidable.decide then
     some { status := "reported", reason := "decidable proposition needs specialization to Bool code" }
   else if name == ``LE.le then
@@ -141,7 +159,9 @@ def knownExternal? (name : Name) : Option Classification :=
     none
 
 def classifyLocal (info : ConstantInfo) : Classification :=
-  if info.isUnsafe then
+  if demoImplementedNames.contains info.name then
+    { status := "implemented", reason := "accepted by the current demo compiler path" }
+  else if info.isUnsafe then
     { status := "rejected", reason := "unsafe declaration" }
   else if info.isPartial then
     { status := "rejected", reason := "partial declaration" }
@@ -154,10 +174,7 @@ def classifyLocal (info : ConstantInfo) : Classification :=
   else
     match info with
     | .defnInfo _ =>
-        if demoImplementedNames.contains info.name then
-          { status := "implemented", reason := "accepted by the current demo compiler path" }
-        else
-          { status := "reported", reason := "definition body traversed, generic compilation pending" }
+        { status := "reported", reason := "definition body traversed, generic compilation pending" }
     | .thmInfo _ =>
         { status := "implemented", reason := "proof declaration erased from runtime extraction" }
     | .opaqueInfo _ =>
@@ -229,6 +246,8 @@ def entryShape (env : Environment) (entryName : Name) : String :=
   | some info =>
       if typeIsByteArrayToBool info.type then
         "ByteArray -> Bool"
+      else if typeIsUInt64ToUInt64 info.type then
+        "UInt64 -> UInt64"
       else if infoUsesEffect info then
         "effectful or effect-dependent"
       else if hasFunctionDomain info.type then
@@ -239,6 +258,8 @@ def entryShape (env : Environment) (entryName : Name) : String :=
 def compileStatus (entryName : Name) : String :=
   if entryName == ``LeanExe.Examples.AsciiDigits.validate then
     "implemented by the current demo compiler path"
+  else if entryName == ``LeanExe.Examples.Collatz.steps then
+    "implemented by the current Collatz demo compiler path"
   else
     "reported only; generic compilation is pending"
 
