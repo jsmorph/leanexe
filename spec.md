@@ -15,7 +15,7 @@ The subset targets traditional pure programming first: validators, parsers, enco
 | Planned | The design admits the feature, but the implementation does not accept it. |
 | Rejected | The feature is outside the intended subset unless this document changes. |
 
-Current implementation is narrow.  It compiles `LeanExe.Examples.AsciiDigits.validate : ByteArray -> Bool` through a hand-written core IR path and emits a standalone Wasm validator.  It also has a generic checked-declaration compiler for a first scalar and array fragment: monomorphic first-order functions over `UInt64`, `Bool`, bounded `Nat`, and `Array UInt64` values; internal product values over first-fragment values; numeric literals; primitive `UInt64` arithmetic; boolean equality, short-circuiting conjunction and disjunction; `if`; local `let` expressions over first-fragment value types; direct calls; zero-argument declarations used as constants; zero-filled array allocation; array reads and writes; copy-on-write array update; and a restricted tail-recursion shape over a decreasing `Nat` fuel argument.  `LeanExe.Examples.Collatz`, `LeanExe.Examples.Arithmetic`, `LeanExe.Examples.IntMap`, `LeanExe.Examples.ArraySemantics`, `LeanExe.Examples.Correctness`, `LeanExe.Examples.Let`, and `LeanExe.Examples.Prime` compile through `lean-wasm compile --module <module> --entry <entry> --out <path>`.  The generic report imports arbitrary built modules through `lean-wasm report --module <module> --entry <name>`.
+Current implementation is narrow.  It compiles `LeanExe.Examples.AsciiDigits.validate : ByteArray -> Bool` through a hand-written core IR path and emits a standalone Wasm validator.  It also has a generic checked-declaration compiler for a first scalar and array fragment: monomorphic first-order functions over `UInt64`, `Bool`, bounded `Nat`, and `Array UInt64` values; internal product and `Option` values over first-fragment values; numeric literals; primitive `UInt64` arithmetic; boolean equality, short-circuiting conjunction and disjunction; `if`; local `let` expressions over first-fragment value types; lazy inlining for nonrecursive project-local helper calls; zero-argument declarations used as constants; zero-filled array allocation; array reads and writes; copy-on-write array update; and a restricted tail-recursion shape over a decreasing `Nat` fuel argument.  `LeanExe.Examples.Collatz`, `LeanExe.Examples.Arithmetic`, `LeanExe.Examples.IntMap`, `LeanExe.Examples.ArraySemantics`, `LeanExe.Examples.Correctness`, `LeanExe.Examples.Let`, and `LeanExe.Examples.Prime` compile through `lean-wasm compile --module <module> --entry <entry> --out <path>`.  The generic report imports arbitrary built modules through `lean-wasm report --module <module> --entry <name>`.
 
 ## Source Boundary
 
@@ -38,7 +38,7 @@ The current report imports compiled `.olean` modules through Lean’s module loa
 | Products | Planned as structured values | Implemented internally for products whose fields are first-fragment values; product entry parameters and product entry results are rejected |
 | Structures | Planned | Reported only |
 | Simple inductives | Planned | Reported only |
-| `Option` | Planned | Reported only |
+| `Option` | Planned | Implemented internally for first-fragment payload values; `Option` entry parameters and `Option` entry results are rejected |
 | `Except` | Planned | Reported only |
 | `Array` | Planned with explicit layout rules | Implemented only for `Array UInt64` in the generic fragment, with zero-filled allocation, length metadata, bounds traps, and copy-on-write update |
 | `String` | Planned only after byte-oriented APIs stabilize | Reported only |
@@ -52,11 +52,11 @@ The current report imports compiled `.olean` modules through Lean’s module loa
 
 | Lean term form | Intended support | Current implementation |
 | -------------- | ---------------- | ---------------------- |
-| Variables and local lets | Implemented for the first fragment | Variables and local `let` expressions compile for `Bool`, `UInt64`, bounded `Nat`, `Array UInt64`, and supported product values |
-| Named calls | Planned | Emitted for supported first-fragment functions; otherwise reported |
-| Constructors | Planned | Product construction is implemented internally; other constructors are reported only |
+| Variables and local lets | Implemented for the first fragment | Variables and local `let` expressions compile for `Bool`, `UInt64`, bounded `Nat`, `Array UInt64`, and supported product and `Option` values |
+| Named calls | Planned | Nonrecursive project-local helper calls are inlined lazily; remaining supported first-fragment calls are emitted when required |
+| Constructors | Planned | Product construction and `Option.none`/`Option.some` construction are implemented internally; other constructors are reported only |
 | Projections | Planned | Product `.1` and `.2` projections are implemented internally; other projections are reported only |
-| Pattern matching | Planned | Lowered only for the demo range check path |
+| Pattern matching | Planned | Implemented for `Option` values in the generic path and for the demo range check path |
 | `if` expressions | Planned | Implemented for supported first-fragment result types |
 | Structural recursion | Planned with termination evidence from Lean | Implemented for the current tail-recursion shape over a decreasing `Nat` fuel argument, with explicit base and early-exit result expressions |
 | Tail recursion over buffers or arrays | Planned | Implemented for array parameters carried through the supported fuel-recursion shape |
@@ -68,9 +68,13 @@ The current report imports compiled `.olean` modules through Lean’s module loa
 
 The first accepted term language should resemble a first-order functional IR rather than Lean’s full expression language.  It should contain variables, lets, calls, constructors, projections, case analysis, loops, and primitive byte and integer operations.  Each accepted Lean construct must translate to that IR without consulting Lean runtime objects at execution time.
 
-Local `let` support allocates an explicit Wasm `i64` local for each scalar binding and preserves Lean’s lexical de Bruijn scope.  Let-bound values may use nested lets, arrays, branches, calls, and products when their types remain inside the first fragment.  Product values exist only inside the extractor; product construction and projection lower by selecting scalar field expressions, and the Wasm ABI still exposes only `i64` scalar or pointer values.  Structures, inductives, polymorphic values, proof-bearing executable values, and higher-order values remain unsupported in let-bound positions.
+Local `let` support preserves Lean’s lexical de Bruijn scope with lazy extractor bindings.  A let-bound expression is extracted only when the body demands it, so `let x := bad; (x, y).2` returns `y` without evaluating `bad`, matching Lean evaluation.  Let-bound values may use nested lets, arrays, branches, calls, products, and `Option` values when their types remain inside the first fragment.  Product and `Option` values exist only inside the extractor; product projection and `Option` matching lower by selecting demanded scalar expressions, and the Wasm ABI still exposes only `i64` scalar or pointer values.
 
 Product construction follows Lean’s projection behavior: projecting one field does not force extraction or evaluation of the unused field.  This matters for partial terms such as `(bad, x).2`, where Lean returns `x` without evaluating `bad`.  Product-valued entry parameters and product-valued entry results are rejected until the Wasm ABI has a structured-value representation.
+
+`Option` construction uses an extractor-level tag and payload.  Matching an `Option` value lowers to a conditional over the tag, and only the selected branch contributes to the emitted scalar expression.  The payload of `some bad` is not evaluated when the `some` arm ignores it, and the `some` arm is not evaluated for `none`.  `Option` values cannot cross the current Wasm ABI.
+
+Nonrecursive project-local helper calls are inlined into the caller with lazy argument thunks.  Recursive helper calls that remain as Wasm calls still use Wasm's strict argument evaluation.  Current examples call those helpers with simple or demanded arguments; demand analysis or call-site loop inlining remains planned for trapping arguments that a recursive helper would not demand under Lean evaluation.
 
 Boolean conjunction and disjunction lower with Lean-compatible short-circuiting.  The emitted Wasm must not evaluate the right-hand side of `true || rhs` or `false && rhs`, because the skipped expression may contain a partial operation such as an out-of-bounds array access.  `UInt64` division and remainder also follow Lean’s checked behavior at zero divisors: `x / 0` returns `0`, and `x % 0` returns `x`.
 
@@ -89,7 +93,7 @@ The extractor rejects nonzero `Array.replicate` fills because the current IR has
 | Effect form | Intended support | Current implementation |
 | ----------- | ---------------- | ---------------------- |
 | Pure functions | Implemented in the demo path | Implemented for `ByteArray -> Bool` |
-| `Option` and `Except` | Planned as explicit result values | Reported only |
+| `Option` and `Except` | Planned as explicit result values | `Option` implemented internally for pure first-fragment code; `Except` reported only |
 | Panic or partial operations | Rejected unless eliminated or modeled | Array bounds failures are modeled as Wasm traps; general panic remains unsupported |
 | Lean `IO` | Planned later as an explicit capability subset | Reported only |
 | File access | Planned later under explicit host imports | Reported only |

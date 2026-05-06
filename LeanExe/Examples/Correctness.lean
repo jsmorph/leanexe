@@ -27,6 +27,22 @@ def unusedScalarLetSkipsTrap : UInt64 :=
   let _unused := (Array.replicate 1 (0 : UInt64))[5]!
   1
 
+def letUsedOnlyInUnusedProductField : UInt64 :=
+  (let x := (Array.replicate 1 (0 : UInt64))[5]!
+   (x, (7 : UInt64))).2
+
+def ignoreUInt64 (_x : UInt64) : UInt64 :=
+  1
+
+def ignoredCallArgSkipsTrap : UInt64 :=
+  ignoreUInt64 ((Array.replicate 1 (0 : UInt64))[5]!)
+
+def useOnlyUnusedProductField (x : UInt64) : UInt64 :=
+  (x, (7 : UInt64)).2
+
+def callArgUsedOnlyInUnusedProductField : UInt64 :=
+  useOnlyUnusedProductField ((Array.replicate 1 (0 : UInt64))[5]!)
+
 def combine (left right : UInt64) : UInt64 :=
   left * (100 : UInt64) + right
 
@@ -91,12 +107,51 @@ def recProductFuel : Nat → UInt64 → UInt64
 def recProductDemo : UInt64 :=
   recProductFuel 5 0
 
+def optionSomeMatch : UInt64 :=
+  match (some (7 : UInt64) : Option UInt64) with
+  | none => 0
+  | some value => value + 1
+
+def optionNoneMatchSkipsSomeArm : UInt64 :=
+  match (none : Option UInt64) with
+  | none => 5
+  | some _value => (Array.replicate 1 (0 : UInt64))[5]!
+
+def optionSomeMatchSkipsUnusedPayload : UInt64 :=
+  match (some ((Array.replicate 1 (0 : UInt64))[5]!) : Option UInt64) with
+  | none => 0
+  | some _value => 9
+
+def optionLet : UInt64 :=
+  let found : Option UInt64 := some 9
+  match found with
+  | none => 0
+  | some value => value * 2
+
+def optionBranch (flag : UInt64) : UInt64 :=
+  let found : Option UInt64 :=
+    if flag == 0 then
+      none
+    else
+      some 33
+  match found with
+  | none => 11
+  | some value => value + 1
+
 def rejectProductReturn : UInt64 × UInt64 :=
   let pair := ((1 : UInt64), (2 : UInt64))
   pair
 
 def rejectProductParam (pair : UInt64 × UInt64) : UInt64 :=
   pair.1
+
+def rejectOptionReturn : Option UInt64 :=
+  some 1
+
+def rejectOptionParam (value : Option UInt64) : UInt64 :=
+  match value with
+  | none => 0
+  | some item => item
 
 def rejectNonzeroReplicate : Array UInt64 :=
   Array.replicate 2 (7 : UInt64)
