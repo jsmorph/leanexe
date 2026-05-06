@@ -13,6 +13,11 @@ abbrev IRStmt := LeanExe.IR.Stmt
 abbrev IRFunc := LeanExe.IR.Func
 abbrev IRModule := LeanExe.IR.Module
 
+structure Signature where
+  params : List Ty
+  result : Ty
+  deriving BEq, Repr
+
 inductive Binding where
   | slot (index : Nat)
   | recursor
@@ -73,7 +78,7 @@ def constNatValue? (env : Environment) (name : Name) : Option Nat :=
       | none => none
       | some value => ofNat? ``Nat value
 
-def typeAtom? (expr : Expr) : Option Ty :=
+partial def typeAtom? (expr : Expr) : Option Ty :=
   if isConst ``UInt64 expr then
     some .u64
   else if isConst ``Nat expr then
@@ -87,7 +92,9 @@ def typeAtom? (expr : Expr) : Option Ty :=
   else if isConst ``ByteArray expr then
     some .byteArray
   else
-    none
+    match appFnArgs expr with
+    | (.const ``Array _, [item]) => typeAtom? item |>.map .array
+    | _ => none
 
 partial def peelForall (expr : Expr) : List Expr × Expr :=
   match expr.consumeMData with
@@ -96,21 +103,21 @@ partial def peelForall (expr : Expr) : List Expr × Expr :=
       (domain :: rest.fst, rest.snd)
   | other => ([], other)
 
-def functionType? (type : Expr) : Option (List Ty) :=
+def functionType? (type : Expr) : Option Signature :=
   let parts := peelForall type
   match typeAtom? parts.snd with
-  | some .u64 =>
+  | some result =>
       let params? := parts.fst.mapM typeAtom?
       match params? with
       | some params =>
-          if params.all (fun ty => ty == .u64 || ty == .nat) then
-            some params
+          if params.all (fun ty => ty == .u64 || ty == .nat || ty == .array .u64) then
+            some { params := params, result := result }
           else
             none
       | none => none
-  | _ => none
+  | none => none
 
-def supportedFunction? (info : ConstantInfo) : Option (List Ty) :=
+def supportedFunction? (info : ConstantInfo) : Option Signature :=
   if info.isUnsafe || info.isPartial then
     none
   else
@@ -141,9 +148,9 @@ partial def collectReachable
     match env.find? entry with
     | some info => .ok info
     | none => .error s!"entry not found: {entry}"
-  let params ←
+  let sig ←
     match supportedFunction? info with
-    | some params => .ok params
+    | some sig => .ok sig
     | none => .error s!"unsupported function type or declaration: {entry}"
   let mut nextSeen := pushName seen entry
   let mut nextNames := names
@@ -156,7 +163,7 @@ partial def collectReachable
             nextSeen := result.fst
             nextNames := result.snd
       | none => pure ()
-  let _ := params
+  let _ := sig
   return (nextSeen, pushName nextNames entry)
 
 def functionIndex? (ctx : Context) (name : Name) : Option Nat :=
@@ -177,6 +184,9 @@ def primitiveArgPair? (args : List Expr) : Option (Expr × Expr) :=
   | right :: left :: _ => some (left, right)
   | _ => none
 
+def boolExpr (cond : IRCond) : IRExpr :=
+  .ite cond (.u64 1) (.u64 0)
+
 mutual
   partial def extractExpr (ctx : Context) (locals : List Binding) (expr : Expr) :
       Except String IRExpr := do
@@ -188,19 +198,48 @@ mutual
     | .const name _ =>
         match constNatValue? ctx.env name with
         | some value => .ok (.u64 value)
-        | none => .error s!"unsupported constant in expression: {name}"
+        | none =>
+            match functionIndex? ctx name with
+            | some index => .ok (.call index [])
+            | none => .error s!"unsupported constant in expression: {name}"
     | _ =>
         match ofNat? ``UInt64 expr <|> ofNat? ``Nat expr with
         | some value => .ok (.u64 value)
         | none =>
             match appFnArgs expr with
             | (.const ``ite _, [ty, condExpr, _, thenExpr, elseExpr]) =>
-                if isConst ``UInt64 ty then
+                if typeAtom? ty |>.isSome then
                   .ok (.ite (← extractCond ctx locals condExpr)
                     (← extractExpr ctx locals thenExpr)
                     (← extractExpr ctx locals elseExpr))
                 else
                   .error "unsupported if-result type"
+            | (.const ``Bool.or _, _) =>
+                .ok (boolExpr (← extractCond ctx locals expr))
+            | (.const ``Bool.and _, _) =>
+                .ok (boolExpr (← extractCond ctx locals expr))
+            | (.const ``Array.replicate _, args) =>
+                match args.reverse with
+                | value :: cells :: _ =>
+                    match ← extractExpr ctx locals value with
+                    | .u64 0 => .ok (.arrayAlloc (← extractExpr ctx locals cells))
+                    | _ => .error "Array.replicate currently supports only zero-filled UInt64 arrays"
+                | _ => .error "unsupported Array.replicate application"
+            | (.const ``Array.get!Internal _, args) =>
+                match args.reverse with
+                | index :: array :: _ =>
+                    .ok (.arrayGet
+                      (← extractExpr ctx locals array)
+                      (← extractExpr ctx locals index))
+                | _ => .error "unsupported Array.get!Internal application"
+            | (.const ``Array.set! _, args) =>
+                match args.reverse with
+                | value :: index :: array :: _ =>
+                    .ok (.arraySet
+                      (← extractExpr ctx locals array)
+                      (← extractExpr ctx locals index)
+                      (← extractExpr ctx locals value))
+                | _ => .error "unsupported Array.set! application"
             | (.const ``UInt64.toNat _, [arg]) =>
                 extractExpr ctx locals arg
             | (.const primitive _, args) =>
@@ -224,6 +263,8 @@ mutual
                           .ok (.u64Bin .modU leftIR rightIR)
                         else if primitive == ``UInt64.land then
                           .ok (.u64Bin .bitAnd leftIR rightIR)
+                        else if primitive == ``BEq.beq then
+                          .ok (boolExpr (.eqU64 leftIR rightIR))
                         else
                           .error s!"unsupported primitive expression: {primitive}"
                     | none => .error s!"unsupported application: {primitive}"
@@ -250,6 +291,13 @@ mutual
             .ok (.or (← extractCond ctx locals left) (← extractCond ctx locals right))
         | (.const ``Bool.and _, [left, right]) =>
             .ok (.and (← extractCond ctx locals left) (← extractCond ctx locals right))
+        | (.const name _, args) =>
+            match functionIndex? ctx name with
+            | some index =>
+                .ok (.not (.eqU64
+                  (.call index (← args.mapM (extractExpr ctx locals)))
+                  (.u64 0)))
+            | none => .error s!"unsupported condition: {expr}"
         | _ => .error s!"unsupported condition: {expr}"
 end
 
@@ -404,19 +452,19 @@ def extractFunction
     (ctx : Context)
     (entry name : Name)
     (info : ConstantInfo)
-    (params : List Ty) : Except String IRFunc := do
+    (sig : Signature) : Except String IRFunc := do
   let value ←
     match info.value? with
     | some value => .ok value
     | none => .error s!"declaration has no executable value: {name}"
   let exportName := if name == entry then some (shortExportName name) else none
-  match params with
+  match sig.params with
   | .nat :: _ =>
       if containsConstant ``Nat.brecOn info then
-        extractNatRecFunc ctx name params value exportName
+        extractNatRecFunc ctx name sig.params value exportName
       else
-        extractPlainFunc ctx name params value exportName
-  | _ => extractPlainFunc ctx name params value exportName
+        extractPlainFunc ctx name sig.params value exportName
+  | _ => extractPlainFunc ctx name sig.params value exportName
 
 def compileEnvironment (env : Environment) (moduleName entry : Name) : Except String IRModule := do
   let (_, namesList) ← collectReachable env moduleName.getRoot entry [] []
@@ -428,11 +476,11 @@ def compileEnvironment (env : Environment) (moduleName entry : Name) : Except St
       match env.find? name with
       | some info => .ok info
       | none => .error s!"declaration disappeared during extraction: {name}"
-    let params ←
+    let sig ←
       match supportedFunction? info with
-      | some params => .ok params
+      | some sig => .ok sig
       | none => .error s!"unsupported function type or declaration: {name}"
-    funcs := funcs.push (← extractFunction ctx entry name info params)
+    funcs := funcs.push (← extractFunction ctx entry name info sig)
   .ok { funcs := funcs }
 
 def compile (moduleText entryText : String) : IO IRModule := do

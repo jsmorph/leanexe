@@ -21,7 +21,7 @@ def usage : String :=
     "  lean-wasm collatz-eval --input <n>",
     "  lean-wasm collatz-bench --input <n> --iters <n>",
     "",
-    "This prototype supports the validator demo and the first UInt64 fragment of the generic compiler."
+    "This prototype supports the validator demo and the first scalar/array fragment of the generic compiler."
   ]
 
 def ensureParent (path : System.FilePath) : IO Unit := do
