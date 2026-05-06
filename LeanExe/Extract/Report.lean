@@ -1,5 +1,6 @@
 import Lean
 import LeanExe.Core
+import LeanExe.Extract.Core
 import LeanExe.Examples.Collatz
 
 open Lean
@@ -113,18 +114,13 @@ def infoUsesEffect (info : ConstantInfo) : Bool :=
     | some value => exprUsesEffect value
     | none => false
 
-def demoImplementedNames : List Name :=
+def validatorImplementedNames : List Name :=
   [
     ``LeanExe.Examples.AsciiDigits.isAsciiDigit,
     ``LeanExe.Examples.AsciiDigits.validate,
     ``LeanExe.Examples.AsciiDigits.WellFormed,
     ``LeanExe.Core.asciiDigits,
-    ``LeanExe.Core.lower,
-    ``LeanExe.Examples.Collatz.maxSteps,
-    ``LeanExe.Examples.Collatz.next,
-    ``LeanExe.Examples.Collatz.stepsFuel,
-    ``LeanExe.Examples.Collatz.steps,
-    ``LeanExe.Examples.Collatz.stepsFuel.match_1
+    ``LeanExe.Core.lower
   ]
 
 def knownExternal? (name : Name) : Option Classification :=
@@ -159,8 +155,18 @@ def knownExternal? (name : Name) : Option Classification :=
     none
 
 def classifyLocal (info : ConstantInfo) : Classification :=
-  if demoImplementedNames.contains info.name then
-    { status := "implemented", reason := "accepted by the current demo compiler path" }
+  if validatorImplementedNames.contains info.name then
+    { status := "implemented", reason := "accepted by the validator demo compiler path" }
+  else if LeanExe.Extract.Core.supportedFunction? info |>.isSome then
+    {
+      status := "reported",
+      reason := "function type is in the first generic compiler fragment; body support is checked by compile"
+    }
+  else if (displayName info.name).contains ".match_" then
+    {
+      status := "reported",
+      reason := "generated match helper; supported recursion patterns consume it during extraction"
+    }
   else if info.isUnsafe then
     { status := "rejected", reason := "unsafe declaration" }
   else if info.isPartial then
@@ -255,13 +261,13 @@ def entryShape (env : Environment) (entryName : Name) : String :=
       else
         "unsupported or unclassified"
 
-def compileStatus (entryName : Name) : String :=
+def compileStatus (env : Environment) (moduleName entryName : Name) : String :=
   if entryName == ``LeanExe.Examples.AsciiDigits.validate then
-    "implemented by the current demo compiler path"
-  else if entryName == ``LeanExe.Examples.Collatz.steps then
-    "implemented by the current Collatz demo compiler path"
+    "implemented by the validator demo compiler path"
   else
-    "reported only; generic compilation is pending"
+    match LeanExe.Extract.Core.compileEnvironment env moduleName entryName with
+    | .ok _ => "implemented by the first generic UInt64 compiler fragment"
+    | .error error => s!"reported only; generic compile rejects this entry: {error}"
 
 def renderNode (node : DeclReport) : List String :=
   [
@@ -280,7 +286,7 @@ def renderSection (title : String) (items : Array DeclReport) : List String :=
 
 def renderReport
     (moduleText entryText : String)
-    (_moduleName entryName : Name)
+    (moduleName entryName : Name)
     (env : Environment)
     (state : GraphState) : String :=
   String.intercalate "\n" <|
@@ -290,7 +296,7 @@ def renderReport
       s!"module: {moduleText}",
       s!"entry: {entryText}",
       s!"entry shape: {entryShape env entryName}",
-      s!"compile status: {compileStatus entryName}",
+      s!"compile status: {compileStatus env moduleName entryName}",
       s!"expanded declarations: {state.nodes.size}",
       s!"external frontier: {state.frontier.size}",
       ""
@@ -302,7 +308,7 @@ def renderReport
       "",
       "The report expands declarations whose root namespace matches the imported module root.",
       "External dependencies are classified at the frontier and are not recursively expanded.",
-      "The current generic report does not emit Wasm for entries outside the demo compiler path.",
+      "Use `lean-wasm compile --module <module> --entry <name> --out <path>` for supported Wasm emission.",
       ""
     ]
 
