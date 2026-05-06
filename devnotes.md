@@ -41,7 +41,7 @@ Commands run:
 
 ## 2026-05-06: Collatz Demo
 
-`LeanExe.Examples.Collatz.steps : UInt64 -> UInt64` computes Collatz steps with a `10000`-step fuel bound.  The bound avoids `partial` recursion and avoids assuming the global Collatz conjecture.  The Wasm emitter has a second hand-written module path that exports `collatz_steps(n: i64) -> i64` and uses only scalar locals.
+`LeanExe.Examples.Collatz.steps : UInt64 -> UInt64` computes Collatz steps with a `10000`-step fuel bound.  The bound avoids `partial` recursion and avoids assuming the global Collatz conjecture.  The Wasm emitter has a second hand-written module path that exports `collatz_steps(n: i64) -> i64` and `collatz_bench(n: i64, iters: i64) -> i64` and uses only scalar locals.
 
 Planned checks:
 
@@ -50,3 +50,20 @@ Planned checks:
 - [x] `.lake/build/bin/lean-wasm collatz-wat --out build/collatz.wat`
 - [x] `.lake/build/bin/lean-wasm collatz-eval --input 27`
 - [x] Run `build/collatz.wasm` with Wasmtime 36.0.9 from `/tmp`: `env XDG_CACHE_HOME=/tmp /tmp/wasmtime-runtime.GEHkKm/wasmtime-v36.0.9-aarch64-linux/wasmtime run --invoke collatz_steps build/collatz.wasm 27`.
+
+## 2026-05-06: Collatz Timing
+
+OEIS A284668 lists `989345275647` as the smallest number below `10^12` with the largest total stopping time in that range.  A local arbitrary-precision check gives `1348` steps and a maximum trajectory value of `1219624271099764`, which fits in `UInt64`.
+
+The timing comparison uses `collatz_bench(n, iters)`, which repeats the computation inside the Lean executable or inside the Wasm module and returns the sum of all step counts.  This avoids measuring one process start per Collatz sequence.  The Wasm runs used Wasmtime 36.0.9 with `XDG_CACHE_HOME=/tmp`.
+
+Commands run:
+
+- [x] `lake build`
+- [x] `.lake/build/bin/lean-wasm collatz-emit --out build/collatz.wasm`
+- [x] `.lake/build/bin/lean-wasm collatz-bench --input 27 --iters 10000000`
+- [x] `env XDG_CACHE_HOME=/tmp /tmp/wasmtime-runtime.GEHkKm/wasmtime-v36.0.9-aarch64-linux/wasmtime run --invoke collatz_bench build/collatz.wasm 27 10000000`
+- [x] `.lake/build/bin/lean-wasm collatz-bench --input 63728127 --iters 1000000`
+- [x] `env XDG_CACHE_HOME=/tmp /tmp/wasmtime-runtime.GEHkKm/wasmtime-v36.0.9-aarch64-linux/wasmtime run --invoke collatz_bench build/collatz.wasm 63728127 1000000`
+- [x] `.lake/build/bin/lean-wasm collatz-bench --input 989345275647 --iters 1000000`
+- [x] `env XDG_CACHE_HOME=/tmp /tmp/wasmtime-runtime.GEHkKm/wasmtime-v36.0.9-aarch64-linux/wasmtime run --invoke collatz_bench build/collatz.wasm 989345275647 1000000`

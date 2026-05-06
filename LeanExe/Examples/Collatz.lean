@@ -20,6 +20,14 @@ def stepsFuel : Nat → UInt64 → UInt64 → UInt64
 def steps (n : UInt64) : UInt64 :=
   stepsFuel maxSteps n 0
 
+def benchFuel : Nat → UInt64 → UInt64 → UInt64
+  | 0, _, acc => acc
+  | fuel + 1, n, acc =>
+      benchFuel fuel n (acc + steps n)
+
+def bench (n iters : UInt64) : UInt64 :=
+  benchFuel iters.toNat n 0
+
 theorem stepsFuel_one (fuel : Nat) (steps : UInt64) :
     stepsFuel fuel 1 steps = steps := by
   cases fuel <;> simp [stepsFuel]

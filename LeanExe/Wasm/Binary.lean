@@ -166,15 +166,17 @@ def i64Const (n : Nat) : List UInt8 :=
 
 def collatzTypeSection : List UInt8 :=
   wasmSection 1 <| vec [
-    funcType [i64] [i64]
+    funcType [i64] [i64],
+    funcType [i64, i64] [i64]
   ]
 
 def collatzFunctionSection : List UInt8 :=
-  wasmSection 3 <| byteVec (ofNats [0])
+  wasmSection 3 <| byteVec (ofNats [0, 1])
 
 def collatzExportSection : List UInt8 :=
   wasmSection 7 <| vec [
-    exportEntry "collatz_steps" 0 0
+    exportEntry "collatz_steps" 0 0,
+    exportEntry "collatz_bench" 0 1
   ]
 
 def collatzBody : List UInt8 :=
@@ -224,9 +226,38 @@ def collatzBody : List UInt8 :=
       32, 1
     ])
 
+def collatzBenchBody : List UInt8 :=
+  body
+    (ofNats [1, 2, 126])
+    (i64Const 0 ++ ofNats [
+      33, 2
+    ] ++ i64Const 0 ++ ofNats [
+      33, 3,
+      2, 64,
+      3, 64,
+      32, 3,
+      32, 1,
+      90,
+      13, 1,
+      32, 2,
+      32, 0,
+      16, 0,
+      124,
+      33, 2,
+      32, 3
+    ] ++ i64Const 1 ++ ofNats [
+      124,
+      33, 3,
+      12, 0,
+      11,
+      11,
+      32, 2
+    ])
+
 def collatzCodeSection : List UInt8 :=
   wasmSection 10 <| vec [
-    collatzBody
+    collatzBody,
+    collatzBenchBody
   ]
 
 def collatzModuleBytes : ByteArray :=
@@ -292,8 +323,38 @@ def wat
     ""
   ]
 
+def collatzBenchWat : List String :=
+  [
+    "  (func (export \"collatz_bench\") (param $n i64) (param $iters i64) (result i64)",
+    "    (local $sum i64)",
+    "    (local $i i64)",
+    "    i64.const 0",
+    "    local.set $sum",
+    "    i64.const 0",
+    "    local.set $i",
+    "    block $done",
+    "      loop $loop",
+    "        local.get $i",
+    "        local.get $iters",
+    "        i64.ge_u",
+    "        br_if $done",
+    "        local.get $sum",
+    "        local.get $n",
+    "        call 0",
+    "        i64.add",
+    "        local.set $sum",
+    "        local.get $i",
+    "        i64.const 1",
+    "        i64.add",
+    "        local.set $i",
+    "        br $loop",
+    "      end",
+    "    end",
+    "    local.get $sum)"
+  ]
+
 def collatzWat : String :=
-  String.intercalate "\n" [
+  String.intercalate "\n" <| [
     "(module",
     "  (func (export \"collatz_steps\") (param $n i64) (result i64)",
     "    (local $steps i64)",
@@ -339,7 +400,8 @@ def collatzWat : String :=
     "        br $loop",
     "      end",
     "    end",
-    "    local.get $steps)",
+    "    local.get $steps)"
+  ] ++ collatzBenchWat ++ [
     ")",
     ""
   ]
