@@ -16,16 +16,28 @@ const accepted = [
   { name: "overflow", args: [], expected: 0n },
   { name: "underflow", args: [], expected: 18446744073709551615n },
   { name: "nestedShadow", args: [3n], expected: 64n },
+  { name: "unusedScalarLetSkipsTrap", args: [], expected: 1n },
   { name: "callArgLets", args: [7n], expected: 809n },
+  { name: "productLet", args: [], expected: 12n },
+  { name: "nestedProduct", args: [], expected: 203n },
+  { name: "productSkipsUnusedField", args: [], expected: 7n },
+  { name: "productBranch", args: [0n], expected: 12n },
+  { name: "productBranch", args: [1n], expected: 34n },
   { name: "arrayUpdateRead", args: [], expected: 110n },
+  { name: "productArrayAlias", args: [], expected: 2211n },
   { name: "recLetDemo", args: [], expected: 518n },
   { name: "recExitDemo", args: [], expected: 314n },
+  { name: "recProductDemo", args: [], expected: 10n },
 ];
 
 const rejected = [
   {
-    name: "rejectProductLet",
-    message: "unsupported let-bound type: Prod",
+    name: "rejectProductReturn",
+    message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectProductReturn",
+  },
+  {
+    name: "rejectProductParam",
+    message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectProductParam",
   },
   {
     name: "rejectNonzeroReplicate",

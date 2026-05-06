@@ -41,7 +41,7 @@ def bumpDemo : UInt64 :=
   let a := bumpAt a 2
   a[2]!
 
-def unsupportedLetPair : UInt64 :=
+def productLetPair : UInt64 :=
   let p := ((1 : UInt64), (2 : UInt64))
   p.1
 
