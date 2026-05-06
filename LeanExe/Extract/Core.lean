@@ -232,6 +232,13 @@ mutual
                       (← extractExpr ctx locals array)
                       (← extractExpr ctx locals index))
                 | _ => .error "unsupported Array.get!Internal application"
+            | (.const ``GetElem?.getElem! _, args) =>
+                match args.reverse with
+                | index :: array :: _ =>
+                    .ok (.arrayGet
+                      (← extractExpr ctx locals array)
+                      (← extractExpr ctx locals index))
+                | _ => .error "unsupported GetElem?.getElem! application"
             | (.const ``Array.set! _, args) =>
                 match args.reverse with
                 | value :: index :: array :: _ =>

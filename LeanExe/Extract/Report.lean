@@ -139,8 +139,10 @@ def knownExternal? (name : Name) : Option Classification :=
     some { status := "implemented", reason := "boolean primitive in the generic compiler fragment" }
   else if [``BEq.beq, ``ite].contains name then
     some { status := "implemented", reason := "control or equality primitive in the generic compiler fragment" }
-  else if [``Array.replicate, ``Array.get!Internal, ``Array.set!].contains name then
+  else if [``Array.replicate, ``Array.get!Internal, ``Array.set!, ``GetElem?.getElem!].contains name then
     some { status := "implemented", reason := "Array UInt64 primitive in the generic compiler fragment" }
+  else if [``Array.size, ``LT.lt].contains name then
+    some { status := "reported", reason := "indexing validity predicate erased by array primitive lowering" }
   else if name == ``UInt64.toNat then
     some { status := "implemented", reason := "representation-preserving conversion for bounded Nat use" }
   else if [``HAdd.hAdd, ``HMul.hMul, ``HDiv.hDiv, ``HMod.hMod].contains name then
@@ -260,6 +262,8 @@ def entryShape (env : Environment) (entryName : Name) : String :=
         "ByteArray -> Bool"
       else if typeIsUInt64ToUInt64 info.type then
         "UInt64 -> UInt64"
+      else if isConstNamed info.type ``UInt64 then
+        "UInt64"
       else if infoUsesEffect info then
         "effectful or effect-dependent"
       else if hasFunctionDomain info.type then

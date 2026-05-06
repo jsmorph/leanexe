@@ -15,7 +15,7 @@ The subset targets traditional pure programming first: validators, parsers, enco
 | Planned | The design admits the feature, but the implementation does not accept it. |
 | Rejected | The feature is outside the intended subset unless this document changes. |
 
-Current implementation is narrow.  It compiles `LeanExe.Examples.AsciiDigits.validate : ByteArray -> Bool` through a hand-written core IR path and emits a standalone Wasm validator.  It also has a generic checked-declaration compiler for a first scalar and array fragment: monomorphic first-order functions over `UInt64`, `Bool`, bounded `Nat`, and `Array UInt64` values; numeric literals; primitive `UInt64` arithmetic; boolean equality, conjunction, and disjunction; `if`; direct calls; zero-argument declarations used as constants; zero-filled array allocation; array reads and writes; and tail recursion over a decreasing `Nat` fuel argument.  `LeanExe.Examples.Collatz`, `LeanExe.Examples.Arithmetic`, `LeanExe.Examples.IntMap`, and `LeanExe.Examples.Prime` compile through `lean-wasm compile --module <module> --entry <entry> --out <path>`.  The generic report imports arbitrary built modules through `lean-wasm report --module <module> --entry <name>`.
+Current implementation is narrow.  It compiles `LeanExe.Examples.AsciiDigits.validate : ByteArray -> Bool` through a hand-written core IR path and emits a standalone Wasm validator.  It also has a generic checked-declaration compiler for a first scalar and array fragment: monomorphic first-order functions over `UInt64`, `Bool`, bounded `Nat`, and `Array UInt64` values; numeric literals; primitive `UInt64` arithmetic; boolean equality, conjunction, and disjunction; `if`; direct calls; zero-argument declarations used as constants; zero-filled array allocation; array reads and writes; copy-on-write array update; and tail recursion over a decreasing `Nat` fuel argument.  `LeanExe.Examples.Collatz`, `LeanExe.Examples.Arithmetic`, `LeanExe.Examples.IntMap`, `LeanExe.Examples.ArraySemantics`, and `LeanExe.Examples.Prime` compile through `lean-wasm compile --module <module> --entry <entry> --out <path>`.  The generic report imports arbitrary built modules through `lean-wasm report --module <module> --entry <name>`.
 
 ## Source Boundary
 
@@ -39,7 +39,7 @@ The current report imports compiled `.olean` modules through Lean’s module loa
 | Simple inductives | Planned | Reported only |
 | `Option` | Planned | Reported only |
 | `Except` | Planned | Reported only |
-| `Array` | Planned with explicit layout rules | Implemented only for `Array UInt64` in the generic fragment, with zero-filled allocation and linear in-place update assumptions |
+| `Array` | Planned with explicit layout rules | Implemented only for `Array UInt64` in the generic fragment, with zero-filled allocation, length metadata, bounds traps, and copy-on-write update |
 | `String` | Planned only after byte-oriented APIs stabilize | Reported only |
 | Propositions and proofs | Intended for erasure | Proofs are used in Lean and omitted from Wasm emission |
 | Type parameters | Planned through monomorphization | Reported only |
@@ -69,11 +69,11 @@ The first accepted term language should resemble a first-order functional IR rat
 
 ## Arrays
 
-The current generic fragment represents `Array UInt64` as an `i64` byte offset into Wasm linear memory.  `Array.replicate n 0` allocates `n` eight-byte cells from a module-global bump pointer and relies on Wasm’s zero-initialized memory.  `Array.get!Internal` lowers to `i64.load`, and `Array.set!` lowers to `i64.store` followed by the same array pointer.
+The current generic fragment represents `Array UInt64` as an `i64` byte offset into Wasm linear memory.  The pointer addresses an array header.  Offset `0` stores the length as `i64`, and element `i` is stored at byte offset `8 * (i + 1)`.  `Array.replicate n 0` allocates the header and `n` eight-byte cells from a module-global bump pointer and relies on Wasm’s zero-initialized memory for the cells.
 
-This array support is sufficient for the current naive integer map example, but it does not implement Lean’s full persistent array semantics.  The compiler assumes linear use of arrays across updates, and it does not yet check alias safety.  Indices must be in bounds by source construction, because the current layout stores no array length and emits no dynamic bounds checks.
+`Array.get!Internal` and `GetElem?.getElem!` lower to a bounds check followed by `i64.load`.  If the index is out of bounds, the emitted Wasm executes `unreachable`, matching the panic behavior of ordinary Lean execution for `a[i]!`.  `Array.set!` evaluates its array, index, and value arguments, checks the index, allocates a fresh array, copies every cell, writes the replacement element, and returns the new pointer.  Existing aliases therefore continue to observe the old array.
 
-The extractor rejects nonzero `Array.replicate` fills because the current IR has no initialization loop.  `Array.push`, `Array.pop`, slicing, append, resizing, polymorphic arrays, nested arrays, and arrays of structures or inductives are unsupported.  A production array fragment needs length metadata, bounds semantics, and either persistent-copy lowering or a checked uniqueness discipline.
+The extractor rejects nonzero `Array.replicate` fills because the current IR has no initialization loop.  `Array.push`, `Array.pop`, slicing, append, resizing, polymorphic arrays, nested arrays, and arrays of structures or inductives are unsupported.  The copy-on-write lowering is semantically conservative and slow.  A future linear array optimization must have a checker that rejects aliasing patterns before using in-place update.
 
 ## Effects
 
@@ -81,7 +81,7 @@ The extractor rejects nonzero `Array.replicate` fills because the current IR has
 | ----------- | ---------------- | ---------------------- |
 | Pure functions | Implemented in the demo path | Implemented for `ByteArray -> Bool` |
 | `Option` and `Except` | Planned as explicit result values | Reported only |
-| Panic or partial operations | Rejected unless eliminated or modeled | Rejected for compilation |
+| Panic or partial operations | Rejected unless eliminated or modeled | Array bounds failures are modeled as Wasm traps; general panic remains unsupported |
 | Lean `IO` | Planned later as an explicit capability subset | Reported only |
 | File access | Planned later under explicit host imports | Reported only |
 | Environment variables | Planned later under explicit host imports | Reported only |
@@ -101,7 +101,7 @@ The current report implements module loading, entry lookup, root-namespace depen
 
 ## Current Wasm ABI
 
-The current validator module exports one linear memory, `alloc`, `reset`, and `validate`.  The host writes input bytes into memory, calls `validate(ptr, len)`, and receives `0` or `1`.  The arena begins at byte offset `4096` and resets per call.  Generic CoreWasm modules export one linear memory and the requested entry function; scalar values, booleans, bounded `Nat` values, and array pointers all cross the ABI as `i64`.
+The current validator module exports one linear memory, `alloc`, `reset`, and `validate`.  The host writes input bytes into memory, calls `validate(ptr, len)`, and receives `0` or `1`.  The arena begins at byte offset `4096` and resets per call.  Generic CoreWasm modules export one 16-page linear memory and the requested entry function; scalar values, booleans, bounded `Nat` values, and array pointers all cross the ABI as `i64`.
 
 Structured outputs are planned after `Except` and simple inductive values enter the core IR.  Pointer-length pairs should encode byte output, while arena-allocated tagged layouts should encode small inductives and parser results.  Host imports must remain explicit in the Wasm module.
 
