@@ -18,9 +18,20 @@ structure Signature where
   result : Ty
   deriving BEq, Repr
 
+inductive ExtractedValue where
+  | scalar (expr : IRExpr)
+  | product (left right : ExtractedValue)
+  deriving BEq, Repr
+
+partial def ExtractedValue.mapScalar
+    (f : IRExpr → IRExpr) :
+    ExtractedValue → ExtractedValue
+  | .scalar expr => .scalar (f expr)
+  | .product left right => .product (left.mapScalar f) (right.mapScalar f)
+
 inductive Binding where
   | slot (index : Nat)
-  | expr (value : IRExpr)
+  | value (value : ExtractedValue)
   | recursor
   deriving BEq, Repr
 
@@ -95,7 +106,18 @@ partial def typeAtom? (expr : Expr) : Option Ty :=
   else
     match appFnArgs expr with
     | (.const ``Array _, [item]) => typeAtom? item |>.map .array
+    | (.const ``Prod _, [left, right]) =>
+        match typeAtom? left, typeAtom? right with
+        | some leftTy, some rightTy => some (.product leftTy rightTy)
+        | _, _ => none
     | _ => none
+
+def supportedAbiType : Ty → Bool
+  | .bool => true
+  | .u64 => true
+  | .nat => true
+  | .array .u64 => true
+  | _ => false
 
 partial def peelForall (expr : Expr) : List Expr × Expr :=
   match expr.consumeMData with
@@ -111,7 +133,7 @@ def functionType? (type : Expr) : Option Signature :=
       let params? := parts.fst.mapM typeAtom?
       match params? with
       | some params =>
-          if params.all (fun ty => ty == .u64 || ty == .nat || ty == .array .u64) then
+          if supportedAbiType result && params.all supportedAbiType then
             some { params := params, result := result }
           else
             none
@@ -129,7 +151,11 @@ def supportedLocalType : Ty → Bool
   | .u64 => true
   | .nat => true
   | .array .u64 => true
+  | .product left right => supportedLocalType left && supportedLocalType right
   | _ => false
+
+def supportedScalarLocalType (ty : Ty) : Bool :=
+  supportedAbiType ty
 
 def pushName (names : List Name) (name : Name) : List Name :=
   if names.contains name then names else names ++ [name]
@@ -198,7 +224,103 @@ def boolExpr (cond : IRCond) : IRExpr :=
 def boolCond (expr : IRExpr) : IRCond :=
   .not (.eqU64 expr (.u64 0))
 
+def scalarValue (value : ExtractedValue) : Except String IRExpr :=
+  match value with
+  | .scalar expr => .ok expr
+  | .product _ _ => .error "product value used where scalar value is required"
+
+def productField (index : Nat) (value : ExtractedValue) : Except String ExtractedValue :=
+  match value with
+  | .product left right =>
+      if index == 0 then
+        .ok left
+      else if index == 1 then
+        .ok right
+      else
+        .error s!"unsupported product projection index: {index}"
+  | .scalar _ => .error "scalar value used where product value is required"
+
+partial def valueIte
+    (cond : IRCond)
+    (thenValue elseValue : ExtractedValue) :
+    Except String ExtractedValue :=
+  match thenValue, elseValue with
+  | .scalar thenExpr, .scalar elseExpr => .ok (.scalar (.ite cond thenExpr elseExpr))
+  | .product thenLeft thenRight, .product elseLeft elseRight => do
+      .ok (.product
+        (← valueIte cond thenLeft elseLeft)
+        (← valueIte cond thenRight elseRight))
+  | _, _ => .error "if branches have incompatible product shapes"
+
 mutual
+  partial def extractValueFrom
+      (ctx : Context)
+      (locals : List Binding)
+      (nextLocal : Nat)
+      (expr : Expr) :
+      Except String (ExtractedValue × Nat) := do
+    match expr.consumeMData with
+    | .bvar index =>
+        match ← lookupBinding locals index with
+        | .slot slot => .ok (.scalar (.local slot), nextLocal)
+        | .value value => .ok (value, nextLocal)
+        | .recursor => .error "recursive handle used as a value"
+    | .letE _ type value body _ =>
+        match typeAtom? type with
+        | some ty =>
+            if !containsBVar 0 body then
+              extractValueFrom ctx (.recursor :: locals) nextLocal body
+            else if supportedScalarLocalType ty then
+              let slot := nextLocal
+              let valueResult ← extractExprFrom ctx locals (nextLocal + 1) value
+              let bodyResult ← extractValueFrom ctx (.slot slot :: locals) valueResult.snd body
+              .ok (bodyResult.fst.mapScalar (fun bodyExpr => .letE slot valueResult.fst bodyExpr),
+                bodyResult.snd)
+            else if supportedLocalType ty then
+              let valueResult ← extractValueFrom ctx locals nextLocal value
+              extractValueFrom ctx (.value valueResult.fst :: locals) valueResult.snd body
+            else
+              .error s!"unsupported let-bound type: {type}"
+        | none => .error s!"unsupported let-bound type: {type}"
+    | .proj ``Prod index body =>
+        let valueResult ← extractValueFrom ctx locals nextLocal body
+        .ok (← productField index valueResult.fst, valueResult.snd)
+    | .proj typeName _ _ => .error s!"unsupported projection: {typeName}"
+    | _ =>
+        match appFnArgs expr with
+        | (.const ``Prod.mk _, args) =>
+            match args.reverse with
+            | right :: left :: _ =>
+                let leftResult ← extractValueFrom ctx locals nextLocal left
+                let rightResult ← extractValueFrom ctx locals leftResult.snd right
+                .ok (.product leftResult.fst rightResult.fst, rightResult.snd)
+            | _ => .error "unsupported product constructor"
+        | (.const ``Prod.fst _, args) =>
+            match args.reverse with
+            | product :: _ =>
+                let valueResult ← extractValueFrom ctx locals nextLocal product
+                .ok (← productField 0 valueResult.fst, valueResult.snd)
+            | _ => .error "unsupported Prod.fst application"
+        | (.const ``Prod.snd _, args) =>
+            match args.reverse with
+            | product :: _ =>
+                let valueResult ← extractValueFrom ctx locals nextLocal product
+                .ok (← productField 1 valueResult.fst, valueResult.snd)
+            | _ => .error "unsupported Prod.snd application"
+        | (.const ``ite _, [ty, condExpr, _, thenExpr, elseExpr]) =>
+            match typeAtom? ty with
+            | some (.product _ _) =>
+                let condResult ← extractCondFrom ctx locals nextLocal condExpr
+                let thenResult ← extractValueFrom ctx locals condResult.snd thenExpr
+                let elseResult ← extractValueFrom ctx locals thenResult.snd elseExpr
+                .ok (← valueIte condResult.fst thenResult.fst elseResult.fst, elseResult.snd)
+            | _ =>
+                let exprResult ← extractExprFrom ctx locals nextLocal expr
+                .ok (.scalar exprResult.fst, exprResult.snd)
+        | _ =>
+            let exprResult ← extractExprFrom ctx locals nextLocal expr
+            .ok (.scalar exprResult.fst, exprResult.snd)
+
   partial def extractExprFrom
       (ctx : Context)
       (locals : List Binding)
@@ -209,19 +331,28 @@ mutual
     | .bvar index =>
         match ← lookupBinding locals index with
         | .slot slot => .ok (.local slot, nextLocal)
-        | .expr value => .ok (value, nextLocal)
+        | .value value => .ok (← scalarValue value, nextLocal)
         | .recursor => .error "recursive handle used as a value"
     | .letE _ type value body _ =>
         match typeAtom? type with
         | some ty =>
-            if supportedLocalType ty then
+            if !containsBVar 0 body then
+              extractExprFrom ctx (.recursor :: locals) nextLocal body
+            else if supportedScalarLocalType ty then
               let slot := nextLocal
               let valueResult ← extractExprFrom ctx locals (nextLocal + 1) value
               let bodyResult ← extractExprFrom ctx (.slot slot :: locals) valueResult.snd body
               .ok (.letE slot valueResult.fst bodyResult.fst, bodyResult.snd)
+            else if supportedLocalType ty then
+              let valueResult ← extractValueFrom ctx locals nextLocal value
+              extractExprFrom ctx (.value valueResult.fst :: locals) valueResult.snd body
             else
               .error s!"unsupported let-bound type: {type}"
         | none => .error s!"unsupported let-bound type: {type}"
+    | .proj ``Prod index body =>
+        let valueResult ← extractValueFrom ctx locals nextLocal body
+        .ok (← scalarValue (← productField index valueResult.fst), valueResult.snd)
+    | .proj typeName _ _ => .error s!"unsupported projection: {typeName}"
     | .const name _ =>
         match constNatValue? ctx.env name with
         | some value => .ok (.u64 value, nextLocal)
@@ -282,6 +413,20 @@ mutual
                 | _ => .error "unsupported Array.set! application"
             | (.const ``UInt64.toNat _, [arg]) =>
                 extractExprFrom ctx locals nextLocal arg
+            | (.const ``Prod.fst _, args) =>
+                match args.reverse with
+                | product :: _ =>
+                    let valueResult ← extractValueFrom ctx locals nextLocal product
+                    .ok (← scalarValue (← productField 0 valueResult.fst), valueResult.snd)
+                | _ => .error "unsupported Prod.fst application"
+            | (.const ``Prod.snd _, args) =>
+                match args.reverse with
+                | product :: _ =>
+                    let valueResult ← extractValueFrom ctx locals nextLocal product
+                    .ok (← scalarValue (← productField 1 valueResult.fst), valueResult.snd)
+                | _ => .error "unsupported Prod.snd application"
+            | (.const ``Prod.mk _, _) =>
+                .error "product value used where scalar value is required"
             | (.const primitive _, args) =>
                 match functionIndex? ctx primitive with
                 | some index =>
@@ -323,7 +468,7 @@ mutual
     | .bvar index =>
         match ← lookupBinding locals index with
         | .slot slot => .ok (boolCond (.local slot), nextLocal)
-        | .expr value => .ok (boolCond value, nextLocal)
+        | .value value => .ok (boolCond (← scalarValue value), nextLocal)
         | .recursor => .error "recursive handle used as a condition"
     | .letE _ _ _ _ _ =>
         let exprResult ← extractExprFrom ctx locals nextLocal expr
@@ -396,7 +541,7 @@ def baseBindingsForParams (paramCount : Nat) : List Binding :=
 def stepBindingsForParams (paramCount : Nat) : List Binding :=
   let carried :=
     (List.range (paramCount - 1)).reverse.map (fun index => Binding.slot (index + 1))
-  (.recursor :: carried) ++ [.expr (.u64Bin .sub (.local 0) (.u64 1))]
+  (.recursor :: carried) ++ [.value (.scalar (.u64Bin .sub (.local 0) (.u64 1)))]
 
 partial def recCallArgs? (expected : Nat) (expr : Expr) : Option (List Expr) :=
   match appFnArgs expr with
