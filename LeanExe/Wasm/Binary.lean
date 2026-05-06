@@ -2,6 +2,9 @@ import LeanExe.Core
 
 namespace LeanExe.Wasm.Binary
 
+def collatzMaxSteps : Nat :=
+  10000
+
 def byte (n : Nat) : UInt8 :=
   UInt8.ofNat n
 
@@ -15,6 +18,14 @@ partial def u32leb (n : Nat) : List UInt8 :=
     [byte low]
   else
     byte (low + 128) :: u32leb rest
+
+partial def s64lebNat (n : Nat) : List UInt8 :=
+  let low := n % 128
+  let rest := n / 128
+  if rest = 0 ∧ low < 64 then
+    [byte low]
+  else
+    byte (low + 128) :: s64lebNat rest
 
 def byteVec (bytes : List UInt8) : List UInt8 :=
   u32leb bytes.length ++ bytes
@@ -37,6 +48,9 @@ def funcType (params results : List UInt8) : List UInt8 :=
 
 def i32 : UInt8 :=
   byte 127
+
+def i64 : UInt8 :=
+  byte 126
 
 def typeSection : List UInt8 :=
   wasmSection 1 <| vec [
@@ -147,6 +161,81 @@ def moduleBytes
     ++ exportSection
     ++ codeSection validator).toArray
 
+def i64Const (n : Nat) : List UInt8 :=
+  byte 66 :: s64lebNat n
+
+def collatzTypeSection : List UInt8 :=
+  wasmSection 1 <| vec [
+    funcType [i64] [i64]
+  ]
+
+def collatzFunctionSection : List UInt8 :=
+  wasmSection 3 <| byteVec (ofNats [0])
+
+def collatzExportSection : List UInt8 :=
+  wasmSection 7 <| vec [
+    exportEntry "collatz_steps" 0 0
+  ]
+
+def collatzBody : List UInt8 :=
+  body
+    (ofNats [1, 2, 126])
+    (i64Const 0 ++ ofNats [
+      33, 1
+    ] ++ i64Const collatzMaxSteps ++ ofNats [
+      33, 2,
+      2, 64,
+      3, 64,
+      32, 2,
+      80,
+      13, 1,
+      32, 0
+    ] ++ i64Const 1 ++ ofNats [
+      88,
+      13, 1,
+      32, 0
+    ] ++ i64Const 1 ++ ofNats [
+      131,
+      80,
+      4, 64,
+      32, 0
+    ] ++ i64Const 2 ++ ofNats [
+      128,
+      33, 0,
+      5,
+      32, 0
+    ] ++ i64Const 3 ++ ofNats [
+      126
+    ] ++ i64Const 1 ++ ofNats [
+      124,
+      33, 0,
+      11,
+      32, 1
+    ] ++ i64Const 1 ++ ofNats [
+      124,
+      33, 1,
+      32, 2
+    ] ++ i64Const 1 ++ ofNats [
+      125,
+      33, 2,
+      12, 0,
+      11,
+      11,
+      32, 1
+    ])
+
+def collatzCodeSection : List UInt8 :=
+  wasmSection 10 <| vec [
+    collatzBody
+  ]
+
+def collatzModuleBytes : ByteArray :=
+  ByteArray.mk <| (ofNats [0, 97, 115, 109, 1, 0, 0, 0]
+    ++ collatzTypeSection
+    ++ collatzFunctionSection
+    ++ collatzExportSection
+    ++ collatzCodeSection).toArray
+
 def wat
     (validator : LeanExe.Core.LoweredValidator :=
       LeanExe.Core.lower LeanExe.Core.asciiDigits) : String :=
@@ -199,6 +288,58 @@ def wat
     "      return",
     "    end",
     "    i32.const 0)",
+    ")",
+    ""
+  ]
+
+def collatzWat : String :=
+  String.intercalate "\n" [
+    "(module",
+    "  (func (export \"collatz_steps\") (param $n i64) (result i64)",
+    "    (local $steps i64)",
+    "    (local $fuel i64)",
+    "    i64.const 0",
+    "    local.set $steps",
+    s!"    i64.const {collatzMaxSteps}",
+    "    local.set $fuel",
+    "    block $done",
+    "      loop $loop",
+    "        local.get $fuel",
+    "        i64.eqz",
+    "        br_if $done",
+    "        local.get $n",
+    "        i64.const 1",
+    "        i64.le_u",
+    "        br_if $done",
+    "        local.get $n",
+    "        i64.const 1",
+    "        i64.and",
+    "        i64.eqz",
+    "        if",
+    "          local.get $n",
+    "          i64.const 2",
+    "          i64.div_u",
+    "          local.set $n",
+    "        else",
+    "          local.get $n",
+    "          i64.const 3",
+    "          i64.mul",
+    "          i64.const 1",
+    "          i64.add",
+    "          local.set $n",
+    "        end",
+    "        local.get $steps",
+    "        i64.const 1",
+    "        i64.add",
+    "        local.set $steps",
+    "        local.get $fuel",
+    "        i64.const 1",
+    "        i64.sub",
+    "        local.set $fuel",
+    "        br $loop",
+    "      end",
+    "    end",
+    "    local.get $steps)",
     ")",
     ""
   ]

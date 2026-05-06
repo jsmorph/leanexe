@@ -15,7 +15,7 @@ The subset targets traditional pure programming first: validators, parsers, enco
 | Planned | The design admits the feature, but the implementation does not accept it. |
 | Rejected | The feature is outside the intended subset unless this document changes. |
 
-Current implementation is narrow.  It compiles `LeanExe.Examples.AsciiDigits.validate : ByteArray -> Bool` through a hand-written core IR path and emits a standalone Wasm validator.  It also implements a checked-environment report for arbitrary built modules through `lean-wasm report --module <module> --entry <name>`.
+Current implementation is narrow.  It compiles `LeanExe.Examples.AsciiDigits.validate : ByteArray -> Bool` through a hand-written core IR path and emits a standalone Wasm validator.  It also compiles `LeanExe.Examples.Collatz.steps : UInt64 -> UInt64` through a hand-written Wasm path with a `10000`-step fuel bound.  The generic report imports arbitrary built modules through `lean-wasm report --module <module> --entry <name>`.
 
 ## Source Boundary
 
@@ -32,7 +32,7 @@ The current report imports compiled `.olean` modules through Lean’s module loa
 | `Unit` | Planned | Reported only |
 | `Bool` | Implemented | Implemented for the demo validator |
 | `UInt8` | Implemented | Implemented for the demo validator |
-| `UInt32` and `UInt64` | Planned | Reported only |
+| `UInt32` and `UInt64` | Planned | `UInt64` implemented for the Collatz demo path and otherwise reported only |
 | `Nat` | Planned for bounded static use | Reported only |
 | `ByteArray` | Implemented | Implemented for `ByteArray -> Bool` entry shape |
 | Structures | Planned | Reported only |
@@ -52,7 +52,7 @@ The current report imports compiled `.olean` modules through Lean’s module loa
 | Lean term form | Intended support | Current implementation |
 | -------------- | ---------------- | ---------------------- |
 | Variables and local lets | Planned | Reported only |
-| Named calls | Planned | Reported in the dependency graph and hard-coded for the demo path |
+| Named calls | Planned | Reported in the dependency graph and hard-coded for the demo paths |
 | Constructors | Planned | Reported only |
 | Projections | Planned | Reported only |
 | Pattern matching | Planned | Lowered only for the demo range check path |
@@ -93,7 +93,7 @@ The current report implements module loading, entry lookup, root-namespace depen
 
 ## Current Wasm ABI
 
-The current emitted module exports one linear memory, `alloc`, `reset`, and `validate`.  The host writes input bytes into memory, calls `validate(ptr, len)`, and receives `0` or `1`.  The arena begins at byte offset `4096` and resets per call.
+The current validator module exports one linear memory, `alloc`, `reset`, and `validate`.  The host writes input bytes into memory, calls `validate(ptr, len)`, and receives `0` or `1`.  The arena begins at byte offset `4096` and resets per call.  The current Collatz module exports `collatz_steps(n: i64) -> i64` and uses no linear memory.
 
 Structured outputs are planned after `Except` and simple inductive values enter the core IR.  Pointer-length pairs should encode byte output, while arena-allocated tagged layouts should encode small inductives and parser results.  Host imports must remain explicit in the Wasm module.
 
