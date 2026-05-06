@@ -17,13 +17,14 @@ partial def u32leb (n : Nat) : List UInt8 :=
   else
     byte (low + 128) :: u32leb rest
 
-partial def s64lebNat (n : Nat) : List UInt8 :=
-  let low := n % 128
-  let rest := n / 128
-  if rest = 0 ∧ low < 64 then
+partial def s64lebInt (n : Int) : List UInt8 :=
+  let lowInt := n % 128
+  let low := lowInt.toNat
+  let rest := (n - lowInt) / 128
+  if (rest == 0 && low < 64) || (rest == -1 && 64 <= low) then
     [byte low]
   else
-    byte (low + 128) :: s64lebNat rest
+    byte (low + 128) :: s64lebInt rest
 
 def byteVec (bytes : List UInt8) : List UInt8 :=
   u32leb bytes.length ++ bytes
@@ -163,7 +164,13 @@ def moduleBytes
     ++ codeSection validator).toArray
 
 def i64Const (n : Nat) : List UInt8 :=
-  byte 66 :: s64lebNat n
+  let bits := n % (2 ^ 64)
+  let signed :=
+    if bits < 2 ^ 63 then
+      Int.ofNat bits
+    else
+      Int.ofNat bits - Int.ofNat (2 ^ 64)
+  byte 66 :: s64lebInt signed
 
 def localGet (index : Nat) : List UInt8 :=
   ofNats [32] ++ u32leb index
@@ -232,6 +239,8 @@ mutual
   partial def exprScratch : Expr → Nat
     | .local _ => 0
     | .u64 _ => 0
+    | .u64Bin .divU left right => 2 + max (exprScratch left) (exprScratch right)
+    | .u64Bin .modU left right => 2 + max (exprScratch left) (exprScratch right)
     | .u64Bin _ left right => max (exprScratch left) (exprScratch right)
     | .ite cond thenValue elseValue =>
         max (condScratch cond) (max (exprScratch thenValue) (exprScratch elseValue))
@@ -320,9 +329,32 @@ mutual
         ofNats [0] ++
       ofNats [11]
 
+  partial def emitCheckedDivMod
+      (scratch : Nat)
+      (op : LeanExe.IR.U64Op)
+      (left right : Expr) : List UInt8 :=
+    let leftLocal := scratch
+    let rightLocal := scratch + 1
+    let childScratch := scratch + 2
+    let zeroValue :=
+      match op with
+      | .divU => i64Const 0
+      | .modU => localGet leftLocal
+      | _ => i64Const 0
+    emitExpr childScratch left ++ localSet leftLocal ++
+      emitExpr childScratch right ++ localSet rightLocal ++
+      localGet rightLocal ++ i64Const 0 ++ ofNats [81] ++
+      ofNats [4, 126] ++
+        zeroValue ++
+      ofNats [5] ++
+        localGet leftLocal ++ localGet rightLocal ++ emitU64Op op ++
+      ofNats [11]
+
   partial def emitExpr (scratch : Nat) : Expr → List UInt8
     | .local index => localGet index
     | .u64 value => i64Const value
+    | .u64Bin .divU left right => emitCheckedDivMod scratch .divU left right
+    | .u64Bin .modU left right => emitCheckedDivMod scratch .modU left right
     | .u64Bin op left right => emitExpr scratch left ++ emitExpr scratch right ++ emitU64Op op
     | .ite cond thenValue elseValue =>
         emitCond scratch cond ++ ofNats [4, 126] ++ emitExpr scratch thenValue ++ ofNats [5] ++
@@ -338,8 +370,14 @@ mutual
     | .false => ofNats [65, 0]
     | .eqU64 left right => emitExpr scratch left ++ emitExpr scratch right ++ ofNats [81]
     | .not cond => emitCond scratch cond ++ ofNats [69]
-    | .and left right => emitCond scratch left ++ emitCond scratch right ++ ofNats [113]
-    | .or left right => emitCond scratch left ++ emitCond scratch right ++ ofNats [114]
+    | .and left right =>
+        emitCond scratch left ++ ofNats [4, 127] ++
+          emitCond scratch right ++
+        ofNats [5, 65, 0, 11]
+    | .or left right =>
+        emitCond scratch left ++ ofNats [4, 127, 65, 1, 5] ++
+          emitCond scratch right ++
+        ofNats [11]
 end
 
 partial def emitStmt (scratch : Nat) : Stmt → List UInt8
@@ -460,14 +498,37 @@ mutual
         [s!"local.get {valueLocal}", "i64.store align=8", s!"local.get {newLocal}"]) ++
       ["else", "  unreachable", "end"]
 
+  partial def checkedDivModWatLines
+      (scratch : Nat)
+      (op : LeanExe.IR.U64Op)
+      (left right : Expr) : List String :=
+    let leftLocal := scratch
+    let rightLocal := scratch + 1
+    let childScratch := scratch + 2
+    let zeroLines :=
+      match op with
+      | .divU => ["i64.const 0"]
+      | .modU => [s!"local.get {leftLocal}"]
+      | _ => ["i64.const 0"]
+    let opLine :=
+      match op with
+      | .divU => "i64.div_u"
+      | .modU => "i64.rem_u"
+      | _ => "i64.add"
+    exprWatLines childScratch left ++ [s!"local.set {leftLocal}"] ++
+      exprWatLines childScratch right ++ [s!"local.set {rightLocal}",
+        s!"local.get {rightLocal}", "i64.const 0", "i64.eq", "if (result i64)"] ++
+      indent 2 zeroLines ++
+      ["else", s!"  local.get {leftLocal}", s!"  local.get {rightLocal}", s!"  {opLine}", "end"]
+
   partial def exprWatLines (scratch : Nat) : Expr → List String
     | .local index => [s!"local.get {index}"]
     | .u64 value => [s!"i64.const {value}"]
     | .u64Bin .add left right => exprWatLines scratch left ++ exprWatLines scratch right ++ ["i64.add"]
     | .u64Bin .sub left right => exprWatLines scratch left ++ exprWatLines scratch right ++ ["i64.sub"]
     | .u64Bin .mul left right => exprWatLines scratch left ++ exprWatLines scratch right ++ ["i64.mul"]
-    | .u64Bin .divU left right => exprWatLines scratch left ++ exprWatLines scratch right ++ ["i64.div_u"]
-    | .u64Bin .modU left right => exprWatLines scratch left ++ exprWatLines scratch right ++ ["i64.rem_u"]
+    | .u64Bin .divU left right => checkedDivModWatLines scratch .divU left right
+    | .u64Bin .modU left right => checkedDivModWatLines scratch .modU left right
     | .u64Bin .bitAnd left right => exprWatLines scratch left ++ exprWatLines scratch right ++ ["i64.and"]
     | .ite cond thenValue elseValue =>
         condWatLines scratch cond ++
@@ -488,8 +549,16 @@ mutual
     | .false => ["i32.const 0"]
     | .eqU64 left right => exprWatLines scratch left ++ exprWatLines scratch right ++ ["i64.eq"]
     | .not cond => condWatLines scratch cond ++ ["i32.eqz"]
-    | .and left right => condWatLines scratch left ++ condWatLines scratch right ++ ["i32.and"]
-    | .or left right => condWatLines scratch left ++ condWatLines scratch right ++ ["i32.or"]
+    | .and left right =>
+        condWatLines scratch left ++
+          ["if (result i32)"] ++
+          indent 2 (condWatLines scratch right) ++
+          ["else", "  i32.const 0", "end"]
+    | .or left right =>
+        condWatLines scratch left ++
+          ["if (result i32)", "  i32.const 1", "else"] ++
+          indent 2 (condWatLines scratch right) ++
+          ["end"]
 end
 
 partial def stmtWatLines (scratch : Nat) : Stmt → List String

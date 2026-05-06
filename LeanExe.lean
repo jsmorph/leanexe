@@ -5,6 +5,7 @@ import LeanExe.Examples.ArraySemantics
 import LeanExe.Examples.AsciiDigits
 import LeanExe.Examples.Arithmetic
 import LeanExe.Examples.Collatz
+import LeanExe.Examples.Correctness
 import LeanExe.Examples.IntMap
 import LeanExe.Examples.Let
 import LeanExe.Examples.Prime

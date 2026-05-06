@@ -15,7 +15,7 @@ The subset targets traditional pure programming first: validators, parsers, enco
 | Planned | The design admits the feature, but the implementation does not accept it. |
 | Rejected | The feature is outside the intended subset unless this document changes. |
 
-Current implementation is narrow.  It compiles `LeanExe.Examples.AsciiDigits.validate : ByteArray -> Bool` through a hand-written core IR path and emits a standalone Wasm validator.  It also has a generic checked-declaration compiler for a first scalar and array fragment: monomorphic first-order functions over `UInt64`, `Bool`, bounded `Nat`, and `Array UInt64` values; numeric literals; primitive `UInt64` arithmetic; boolean equality, conjunction, and disjunction; `if`; local `let` expressions over first-fragment value types; direct calls; zero-argument declarations used as constants; zero-filled array allocation; array reads and writes; copy-on-write array update; and tail recursion over a decreasing `Nat` fuel argument.  `LeanExe.Examples.Collatz`, `LeanExe.Examples.Arithmetic`, `LeanExe.Examples.IntMap`, `LeanExe.Examples.ArraySemantics`, `LeanExe.Examples.Let`, and `LeanExe.Examples.Prime` compile through `lean-wasm compile --module <module> --entry <entry> --out <path>`.  The generic report imports arbitrary built modules through `lean-wasm report --module <module> --entry <name>`.
+Current implementation is narrow.  It compiles `LeanExe.Examples.AsciiDigits.validate : ByteArray -> Bool` through a hand-written core IR path and emits a standalone Wasm validator.  It also has a generic checked-declaration compiler for a first scalar and array fragment: monomorphic first-order functions over `UInt64`, `Bool`, bounded `Nat`, and `Array UInt64` values; numeric literals; primitive `UInt64` arithmetic; boolean equality, short-circuiting conjunction and disjunction; `if`; local `let` expressions over first-fragment value types; direct calls; zero-argument declarations used as constants; zero-filled array allocation; array reads and writes; copy-on-write array update; and a restricted tail-recursion shape over a decreasing `Nat` fuel argument.  `LeanExe.Examples.Collatz`, `LeanExe.Examples.Arithmetic`, `LeanExe.Examples.IntMap`, `LeanExe.Examples.ArraySemantics`, `LeanExe.Examples.Correctness`, `LeanExe.Examples.Let`, and `LeanExe.Examples.Prime` compile through `lean-wasm compile --module <module> --entry <entry> --out <path>`.  The generic report imports arbitrary built modules through `lean-wasm report --module <module> --entry <name>`.
 
 ## Source Boundary
 
@@ -32,7 +32,7 @@ The current report imports compiled `.olean` modules through Lean’s module loa
 | `Unit` | Planned | Reported only |
 | `Bool` | Implemented | Implemented for the demo validator and represented as `0` or `1` in the generic Wasm fragment |
 | `UInt8` | Implemented | Implemented for the demo validator |
-| `UInt32` and `UInt64` | Planned | `UInt64` implemented for the first generic compiler fragment; `UInt32` reported only |
+| `UInt32` and `UInt64` | Planned | `UInt64` implemented for the first generic compiler fragment, including wrapping arithmetic and Lean-compatible division and remainder at zero divisors; `UInt32` reported only |
 | `Nat` | Planned for bounded static use | Implemented for fuel arguments, array sizes, and array indices represented as Wasm `i64`; general unbounded runtime arithmetic is unsupported |
 | `ByteArray` | Implemented | Implemented for `ByteArray -> Bool` entry shape |
 | Structures | Planned | Reported only |
@@ -57,7 +57,7 @@ The current report imports compiled `.olean` modules through Lean’s module loa
 | Projections | Planned | Reported only |
 | Pattern matching | Planned | Lowered only for the demo range check path |
 | `if` expressions | Planned | Implemented for supported first-fragment result types |
-| Structural recursion | Planned with termination evidence from Lean | Implemented for tail recursion over a decreasing `Nat` fuel argument in the first generic compiler fragment |
+| Structural recursion | Planned with termination evidence from Lean | Implemented only for the current tail-recursion shape over a decreasing `Nat` fuel argument, where the loop result is the last carried parameter |
 | Tail recursion over buffers or arrays | Planned | Implemented for array parameters carried through the supported fuel-recursion shape |
 | Higher-order arguments | Planned later with escape restrictions | Rejected for compilation |
 | General closures | Planned later | Rejected |
@@ -68,6 +68,8 @@ The current report imports compiled `.olean` modules through Lean’s module loa
 The first accepted term language should resemble a first-order functional IR rather than Lean’s full expression language.  It should contain variables, lets, calls, constructors, projections, case analysis, loops, and primitive byte and integer operations.  Each accepted Lean construct must translate to that IR without consulting Lean runtime objects at execution time.
 
 Local `let` support allocates an explicit Wasm `i64` local for each binding and preserves Lean’s lexical de Bruijn scope.  Let-bound values may use nested lets, arrays, branches, and calls when their types remain inside the first fragment.  Product values, projections, structures, inductives, polymorphic values, proof-bearing executable values, and higher-order values remain unsupported in let-bound positions.
+
+Boolean conjunction and disjunction lower with Lean-compatible short-circuiting.  The emitted Wasm must not evaluate the right-hand side of `true || rhs` or `false && rhs`, because the skipped expression may contain a partial operation such as an out-of-bounds array access.  `UInt64` division and remainder also follow Lean’s checked behavior at zero divisors: `x / 0` returns `0`, and `x % 0` returns `x`.
 
 ## Arrays
 
