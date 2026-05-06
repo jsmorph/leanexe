@@ -123,6 +123,13 @@ def supportedFunction? (info : ConstantInfo) : Option Signature :=
   else
     functionType? info.type
 
+def supportedLocalType : Ty → Bool
+  | .bool => true
+  | .u64 => true
+  | .nat => true
+  | .array .u64 => true
+  | _ => false
+
 def pushName (names : List Name) (name : Name) : List Name :=
   if names.contains name then names else names ++ [name]
 
@@ -187,126 +194,188 @@ def primitiveArgPair? (args : List Expr) : Option (Expr × Expr) :=
 def boolExpr (cond : IRCond) : IRExpr :=
   .ite cond (.u64 1) (.u64 0)
 
+def boolCond (expr : IRExpr) : IRCond :=
+  .not (.eqU64 expr (.u64 0))
+
 mutual
-  partial def extractExpr (ctx : Context) (locals : List Binding) (expr : Expr) :
-      Except String IRExpr := do
+  partial def extractExprFrom
+      (ctx : Context)
+      (locals : List Binding)
+      (nextLocal : Nat)
+      (expr : Expr) :
+      Except String (IRExpr × Nat) := do
     match expr.consumeMData with
     | .bvar index =>
         match ← lookupBinding locals index with
-        | .slot slot => .ok (.local slot)
+        | .slot slot => .ok (.local slot, nextLocal)
         | .recursor => .error "recursive handle used as a value"
+    | .letE _ type value body _ =>
+        match typeAtom? type with
+        | some ty =>
+            if supportedLocalType ty then
+              let slot := nextLocal
+              let valueResult ← extractExprFrom ctx locals (nextLocal + 1) value
+              let bodyResult ← extractExprFrom ctx (.slot slot :: locals) valueResult.snd body
+              .ok (.letE slot valueResult.fst bodyResult.fst, bodyResult.snd)
+            else
+              .error s!"unsupported let-bound type: {type}"
+        | none => .error s!"unsupported let-bound type: {type}"
     | .const name _ =>
         match constNatValue? ctx.env name with
-        | some value => .ok (.u64 value)
+        | some value => .ok (.u64 value, nextLocal)
         | none =>
             match functionIndex? ctx name with
-            | some index => .ok (.call index [])
+            | some index => .ok (.call index [], nextLocal)
             | none => .error s!"unsupported constant in expression: {name}"
     | _ =>
         match ofNat? ``UInt64 expr <|> ofNat? ``Nat expr with
-        | some value => .ok (.u64 value)
+        | some value => .ok (.u64 value, nextLocal)
         | none =>
             match appFnArgs expr with
             | (.const ``ite _, [ty, condExpr, _, thenExpr, elseExpr]) =>
                 if typeAtom? ty |>.isSome then
-                  .ok (.ite (← extractCond ctx locals condExpr)
-                    (← extractExpr ctx locals thenExpr)
-                    (← extractExpr ctx locals elseExpr))
+                  let condResult ← extractCondFrom ctx locals nextLocal condExpr
+                  let thenResult ← extractExprFrom ctx locals condResult.snd thenExpr
+                  let elseResult ← extractExprFrom ctx locals thenResult.snd elseExpr
+                  .ok (.ite condResult.fst thenResult.fst elseResult.fst, elseResult.snd)
                 else
                   .error "unsupported if-result type"
             | (.const ``Bool.or _, _) =>
-                .ok (boolExpr (← extractCond ctx locals expr))
+                let condResult ← extractCondFrom ctx locals nextLocal expr
+                .ok (boolExpr condResult.fst, condResult.snd)
             | (.const ``Bool.and _, _) =>
-                .ok (boolExpr (← extractCond ctx locals expr))
+                let condResult ← extractCondFrom ctx locals nextLocal expr
+                .ok (boolExpr condResult.fst, condResult.snd)
             | (.const ``Array.replicate _, args) =>
                 match args.reverse with
                 | value :: cells :: _ =>
-                    match ← extractExpr ctx locals value with
-                    | .u64 0 => .ok (.arrayAlloc (← extractExpr ctx locals cells))
+                    let valueResult ← extractExprFrom ctx locals nextLocal value
+                    match valueResult.fst with
+                    | .u64 0 =>
+                        let cellsResult ← extractExprFrom ctx locals valueResult.snd cells
+                        .ok (.arrayAlloc cellsResult.fst, cellsResult.snd)
                     | _ => .error "Array.replicate currently supports only zero-filled UInt64 arrays"
                 | _ => .error "unsupported Array.replicate application"
             | (.const ``Array.get!Internal _, args) =>
                 match args.reverse with
                 | index :: array :: _ =>
-                    .ok (.arrayGet
-                      (← extractExpr ctx locals array)
-                      (← extractExpr ctx locals index))
+                    let arrayResult ← extractExprFrom ctx locals nextLocal array
+                    let indexResult ← extractExprFrom ctx locals arrayResult.snd index
+                    .ok (.arrayGet arrayResult.fst indexResult.fst, indexResult.snd)
                 | _ => .error "unsupported Array.get!Internal application"
             | (.const ``GetElem?.getElem! _, args) =>
                 match args.reverse with
                 | index :: array :: _ =>
-                    .ok (.arrayGet
-                      (← extractExpr ctx locals array)
-                      (← extractExpr ctx locals index))
+                    let arrayResult ← extractExprFrom ctx locals nextLocal array
+                    let indexResult ← extractExprFrom ctx locals arrayResult.snd index
+                    .ok (.arrayGet arrayResult.fst indexResult.fst, indexResult.snd)
                 | _ => .error "unsupported GetElem?.getElem! application"
             | (.const ``Array.set! _, args) =>
                 match args.reverse with
                 | value :: index :: array :: _ =>
-                    .ok (.arraySet
-                      (← extractExpr ctx locals array)
-                      (← extractExpr ctx locals index)
-                      (← extractExpr ctx locals value))
+                    let arrayResult ← extractExprFrom ctx locals nextLocal array
+                    let indexResult ← extractExprFrom ctx locals arrayResult.snd index
+                    let valueResult ← extractExprFrom ctx locals indexResult.snd value
+                    .ok (.arraySet arrayResult.fst indexResult.fst valueResult.fst, valueResult.snd)
                 | _ => .error "unsupported Array.set! application"
             | (.const ``UInt64.toNat _, [arg]) =>
-                extractExpr ctx locals arg
+                extractExprFrom ctx locals nextLocal arg
             | (.const primitive _, args) =>
                 match functionIndex? ctx primitive with
                 | some index =>
-                    .ok (.call index (← args.mapM (extractExpr ctx locals)))
+                    let argsResult ← extractExprListFrom ctx locals nextLocal args
+                    .ok (.call index argsResult.fst, argsResult.snd)
                 | none =>
                     match primitiveArgPair? args with
                     | some (left, right) =>
-                        let leftIR ← extractExpr ctx locals left
-                        let rightIR ← extractExpr ctx locals right
+                        let leftResult ← extractExprFrom ctx locals nextLocal left
+                        let rightResult ← extractExprFrom ctx locals leftResult.snd right
+                        let leftIR := leftResult.fst
+                        let rightIR := rightResult.fst
                         if primitive == ``HAdd.hAdd then
-                          .ok (.u64Bin .add leftIR rightIR)
+                          .ok (.u64Bin .add leftIR rightIR, rightResult.snd)
                         else if primitive == ``HSub.hSub then
-                          .ok (.u64Bin .sub leftIR rightIR)
+                          .ok (.u64Bin .sub leftIR rightIR, rightResult.snd)
                         else if primitive == ``HMul.hMul then
-                          .ok (.u64Bin .mul leftIR rightIR)
+                          .ok (.u64Bin .mul leftIR rightIR, rightResult.snd)
                         else if primitive == ``HDiv.hDiv then
-                          .ok (.u64Bin .divU leftIR rightIR)
+                          .ok (.u64Bin .divU leftIR rightIR, rightResult.snd)
                         else if primitive == ``HMod.hMod then
-                          .ok (.u64Bin .modU leftIR rightIR)
+                          .ok (.u64Bin .modU leftIR rightIR, rightResult.snd)
                         else if primitive == ``UInt64.land then
-                          .ok (.u64Bin .bitAnd leftIR rightIR)
+                          .ok (.u64Bin .bitAnd leftIR rightIR, rightResult.snd)
                         else if primitive == ``BEq.beq then
-                          .ok (boolExpr (.eqU64 leftIR rightIR))
+                          .ok (boolExpr (.eqU64 leftIR rightIR), rightResult.snd)
                         else
                           .error s!"unsupported primitive expression: {primitive}"
                     | none => .error s!"unsupported application: {primitive}"
             | (fn, _) => .error s!"unsupported expression: {fn}"
 
-  partial def extractCond (ctx : Context) (locals : List Binding) (expr : Expr) :
-      Except String IRCond := do
+  partial def extractCondFrom
+      (ctx : Context)
+      (locals : List Binding)
+      (nextLocal : Nat)
+      (expr : Expr) :
+      Except String (IRCond × Nat) := do
     match expr.consumeMData with
-    | .const ``Bool.true _ => .ok .true
-    | .const ``Bool.false _ => .ok .false
+    | .bvar index =>
+        match ← lookupBinding locals index with
+        | .slot slot => .ok (boolCond (.local slot), nextLocal)
+        | .recursor => .error "recursive handle used as a condition"
+    | .letE _ _ _ _ _ =>
+        let exprResult ← extractExprFrom ctx locals nextLocal expr
+        .ok (boolCond exprResult.fst, exprResult.snd)
+    | .const ``Bool.true _ => .ok (.true, nextLocal)
+    | .const ``Bool.false _ => .ok (.false, nextLocal)
     | _ =>
         match appFnArgs expr with
         | (.const ``Eq _, [ty, value, truth]) =>
             if isConst ``Bool ty && isConst ``Bool.true truth then
-              extractCond ctx locals value
+              extractCondFrom ctx locals nextLocal value
             else
               .error "unsupported equality proposition in condition"
         | (.const ``BEq.beq _, args) =>
             match primitiveArgPair? args with
             | some (left, right) =>
-                .ok (.eqU64 (← extractExpr ctx locals left) (← extractExpr ctx locals right))
+                let leftResult ← extractExprFrom ctx locals nextLocal left
+                let rightResult ← extractExprFrom ctx locals leftResult.snd right
+                .ok (.eqU64 leftResult.fst rightResult.fst, rightResult.snd)
             | none => .error "unsupported BEq application"
         | (.const ``Bool.or _, [left, right]) =>
-            .ok (.or (← extractCond ctx locals left) (← extractCond ctx locals right))
+            let leftResult ← extractCondFrom ctx locals nextLocal left
+            let rightResult ← extractCondFrom ctx locals leftResult.snd right
+            .ok (.or leftResult.fst rightResult.fst, rightResult.snd)
         | (.const ``Bool.and _, [left, right]) =>
-            .ok (.and (← extractCond ctx locals left) (← extractCond ctx locals right))
+            let leftResult ← extractCondFrom ctx locals nextLocal left
+            let rightResult ← extractCondFrom ctx locals leftResult.snd right
+            .ok (.and leftResult.fst rightResult.fst, rightResult.snd)
         | (.const name _, args) =>
             match functionIndex? ctx name with
             | some index =>
-                .ok (.not (.eqU64
-                  (.call index (← args.mapM (extractExpr ctx locals)))
-                  (.u64 0)))
+                let argsResult ← extractExprListFrom ctx locals nextLocal args
+                .ok (boolCond (.call index argsResult.fst), argsResult.snd)
             | none => .error s!"unsupported condition: {expr}"
         | _ => .error s!"unsupported condition: {expr}"
+
+  partial def extractExprListFrom
+      (ctx : Context)
+      (locals : List Binding)
+      (nextLocal : Nat) :
+      List Expr → Except String (List IRExpr × Nat)
+    | [] => .ok ([], nextLocal)
+    | expr :: rest => do
+        let headResult ← extractExprFrom ctx locals nextLocal expr
+        let restResult ← extractExprListFrom ctx locals headResult.snd rest
+        .ok (headResult.fst :: restResult.fst, restResult.snd)
 end
+
+def extractExpr (ctx : Context) (locals : List Binding) (nextLocal : Nat) (expr : Expr) :
+    Except String (IRExpr × Nat) :=
+  extractExprFrom ctx locals nextLocal expr
+
+def extractCond (ctx : Context) (locals : List Binding) (nextLocal : Nat) (expr : Expr) :
+    Except String (IRCond × Nat) :=
+  extractCondFrom ctx locals nextLocal expr
 
 partial def collectLambdas (expr : Expr) : Nat → Option Expr
   | 0 => some expr
@@ -406,15 +475,18 @@ def extractNatRecFunc
   let parsed ← parseStepBody? paramCount stepBody
   let exitCond? := parsed.fst
   let recArgs := parsed.snd
-  let recIRArgs ← recArgs.mapM (extractExpr ctx stepLocals)
   let fuelLive : IRCond := .not (.eqU64 (.local 0) (.u64 0))
-  let loopCond ←
+  let condResult ←
     match exitCond? with
     | some condExpr =>
-        .ok (.and fuelLive (.not (← extractCond ctx stepLocals condExpr)))
-    | none => .ok fuelLive
+        let extracted ← extractCond ctx stepLocals paramCount condExpr
+        .ok (.and fuelLive (.not extracted.fst), extracted.snd)
+    | none => .ok (fuelLive, paramCount)
+  let recArgsResult ← extractExprListFrom ctx stepLocals condResult.snd recArgs
+  let loopCond := condResult.fst
+  let recIRArgs := recArgsResult.fst
   let targets := (List.range (paramCount - 1)).map (fun index => index + 1)
-  let tempStart := paramCount
+  let tempStart := recArgsResult.snd
   let updateArgs := assignMany targets recIRArgs tempStart
   let decFuel : IRStmt := .assign 0 (.u64Bin .sub (.local 0) (.u64 1))
   let loopBody : IRStmt := .seq updateArgs decFuel
@@ -422,7 +494,7 @@ def extractNatRecFunc
     sourceName := name,
     exportName := exportName,
     params := paramCount,
-    locals := paramCount + (paramCount - 1),
+    locals := tempStart + (paramCount - 1),
     body := .while loopCond loopBody,
     result := .local (paramCount - 1)
   }
@@ -438,13 +510,14 @@ def extractPlainFunc
     match collectLambdas value paramCount with
     | some body => .ok body
     | none => .error s!"definition body does not match function arity: {name}"
+  let result ← extractExpr ctx (localBindingsForParams paramCount) paramCount body
   .ok {
     sourceName := name,
     exportName := exportName,
     params := paramCount,
-    locals := paramCount,
+    locals := result.snd,
     body := .skip,
-    result := ← extractExpr ctx (localBindingsForParams paramCount) body
+    result := result.fst
   }
 
 def containsConstant (name : Name) (info : ConstantInfo) : Bool :=

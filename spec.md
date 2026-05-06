@@ -15,7 +15,7 @@ The subset targets traditional pure programming first: validators, parsers, enco
 | Planned | The design admits the feature, but the implementation does not accept it. |
 | Rejected | The feature is outside the intended subset unless this document changes. |
 
-Current implementation is narrow.  It compiles `LeanExe.Examples.AsciiDigits.validate : ByteArray -> Bool` through a hand-written core IR path and emits a standalone Wasm validator.  It also has a generic checked-declaration compiler for a first scalar and array fragment: monomorphic first-order functions over `UInt64`, `Bool`, bounded `Nat`, and `Array UInt64` values; numeric literals; primitive `UInt64` arithmetic; boolean equality, conjunction, and disjunction; `if`; direct calls; zero-argument declarations used as constants; zero-filled array allocation; array reads and writes; copy-on-write array update; and tail recursion over a decreasing `Nat` fuel argument.  `LeanExe.Examples.Collatz`, `LeanExe.Examples.Arithmetic`, `LeanExe.Examples.IntMap`, `LeanExe.Examples.ArraySemantics`, and `LeanExe.Examples.Prime` compile through `lean-wasm compile --module <module> --entry <entry> --out <path>`.  The generic report imports arbitrary built modules through `lean-wasm report --module <module> --entry <name>`.
+Current implementation is narrow.  It compiles `LeanExe.Examples.AsciiDigits.validate : ByteArray -> Bool` through a hand-written core IR path and emits a standalone Wasm validator.  It also has a generic checked-declaration compiler for a first scalar and array fragment: monomorphic first-order functions over `UInt64`, `Bool`, bounded `Nat`, and `Array UInt64` values; numeric literals; primitive `UInt64` arithmetic; boolean equality, conjunction, and disjunction; `if`; local `let` expressions over first-fragment value types; direct calls; zero-argument declarations used as constants; zero-filled array allocation; array reads and writes; copy-on-write array update; and tail recursion over a decreasing `Nat` fuel argument.  `LeanExe.Examples.Collatz`, `LeanExe.Examples.Arithmetic`, `LeanExe.Examples.IntMap`, `LeanExe.Examples.ArraySemantics`, `LeanExe.Examples.Let`, and `LeanExe.Examples.Prime` compile through `lean-wasm compile --module <module> --entry <entry> --out <path>`.  The generic report imports arbitrary built modules through `lean-wasm report --module <module> --entry <name>`.
 
 ## Source Boundary
 
@@ -51,7 +51,7 @@ The current report imports compiled `.olean` modules through Lean’s module loa
 
 | Lean term form | Intended support | Current implementation |
 | -------------- | ---------------- | ---------------------- |
-| Variables and local lets | Planned | Variables implemented in the generic fragment; local `let` expressions are unsupported |
+| Variables and local lets | Implemented for the first fragment | Variables and local `let` expressions compile for `Bool`, `UInt64`, bounded `Nat`, and `Array UInt64` values |
 | Named calls | Planned | Emitted for supported first-fragment functions; otherwise reported |
 | Constructors | Planned | Reported only |
 | Projections | Planned | Reported only |
@@ -66,6 +66,8 @@ The current report imports compiled `.olean` modules through Lean’s module loa
 | Opaque executable constants | Rejected unless implemented as primitives | Rejected |
 
 The first accepted term language should resemble a first-order functional IR rather than Lean’s full expression language.  It should contain variables, lets, calls, constructors, projections, case analysis, loops, and primitive byte and integer operations.  Each accepted Lean construct must translate to that IR without consulting Lean runtime objects at execution time.
+
+Local `let` support allocates an explicit Wasm `i64` local for each binding and preserves Lean’s lexical de Bruijn scope.  Let-bound values may use nested lets, arrays, branches, and calls when their types remain inside the first fragment.  Product values, projections, structures, inductives, polymorphic values, proof-bearing executable values, and higher-order values remain unsupported in let-bound positions.
 
 ## Arrays
 
