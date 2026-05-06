@@ -235,6 +235,7 @@ mutual
     | .u64Bin _ left right => max (exprScratch left) (exprScratch right)
     | .ite cond thenValue elseValue =>
         max (condScratch cond) (max (exprScratch thenValue) (exprScratch elseValue))
+    | .letE _ value body => max (exprScratch value) (exprScratch body)
     | .arrayAlloc cells => 2 + exprScratch cells
     | .arrayGet array index => 2 + max (exprScratch array) (exprScratch index)
     | .arraySet array index value =>
@@ -326,6 +327,7 @@ mutual
     | .ite cond thenValue elseValue =>
         emitCond scratch cond ++ ofNats [4, 126] ++ emitExpr scratch thenValue ++ ofNats [5] ++
           emitExpr scratch elseValue ++ ofNats [11]
+    | .letE slot value body => emitExpr scratch value ++ localSet slot ++ emitExpr scratch body
     | .arrayAlloc cells => emitArrayAlloc scratch cells
     | .arrayGet array index => emitArrayGet scratch array index
     | .arraySet array index value => emitArraySet scratch array index value
@@ -474,6 +476,8 @@ mutual
           ["else"] ++
           indent 2 (exprWatLines scratch elseValue) ++
           ["end"]
+    | .letE slot value body =>
+        exprWatLines scratch value ++ [s!"local.set {slot}"] ++ exprWatLines scratch body
     | .arrayAlloc cells => arrayAllocWatLines scratch cells
     | .arrayGet array index => arrayGetWatLines scratch array index
     | .arraySet array index value => arraySetWatLines scratch array index value
