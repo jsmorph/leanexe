@@ -10,6 +10,7 @@ inductive Ty where
   | u64
   | nat
   | byteArray
+  | array (item : Ty)
   | product (left right : Ty)
   | sum (left right : Ty)
   deriving BEq, Repr
@@ -37,6 +38,9 @@ mutual
     | u64 (value : Nat)
     | u64Bin (op : U64Op) (left right : Expr)
     | ite (cond : Cond) (thenValue elseValue : Expr)
+    | arrayAlloc (cells : Expr)
+    | arrayGet (array index : Expr)
+    | arraySet (array index value : Expr)
     | call (index : Nat) (args : List Expr)
     deriving BEq, Repr
 
@@ -98,6 +102,9 @@ mutual
           thenValue.eval module_ store
         else
           elseValue.eval module_ store
+    | .arrayAlloc _ => 0
+    | .arrayGet _ _ => 0
+    | .arraySet array _ _ => array.eval module_ store
     | .call index args =>
         match module_.getFunc? index with
         | some func => func.eval module_ (args.map (fun arg => arg.eval module_ store))

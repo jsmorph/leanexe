@@ -129,14 +129,20 @@ def knownExternal? (name : Name) : Option Classification :=
     some { status := "rejected", reason := "unsupported effect dependency" }
   else if [``Bool, ``UInt8, ``UInt32, ``UInt64, ``ByteArray, ``Unit].contains name then
     some { status := "implemented", reason := "primitive type in the intended subset" }
-  else if [``Nat, ``Option, ``Except, ``Array, ``String, ``List].contains name then
+  else if name == ``Array then
+    some { status := "implemented", reason := "implemented for Array UInt64 in the generic compiler fragment" }
+  else if [``Nat, ``Option, ``Except, ``String, ``List].contains name then
     some { status := "reported", reason := "planned type or library type" }
   else if [``And, ``Or, ``True, ``False, ``Eq].contains name then
     some { status := "reported", reason := "logical connective in a decidable predicate" }
-  else if [``Bool.or, ``Bool.true, ``Bool.false].contains name then
-    some { status := "reported", reason := "boolean operation needs primitive lowering" }
+  else if [``Bool.and, ``Bool.or, ``Bool.true, ``Bool.false].contains name then
+    some { status := "implemented", reason := "boolean primitive in the generic compiler fragment" }
   else if [``BEq.beq, ``ite].contains name then
-    some { status := "reported", reason := "control or equality operation needs primitive lowering" }
+    some { status := "implemented", reason := "control or equality primitive in the generic compiler fragment" }
+  else if [``Array.replicate, ``Array.get!Internal, ``Array.set!].contains name then
+    some { status := "implemented", reason := "Array UInt64 primitive in the generic compiler fragment" }
+  else if name == ``UInt64.toNat then
+    some { status := "implemented", reason := "representation-preserving conversion for bounded Nat use" }
   else if [``HAdd.hAdd, ``HMul.hMul, ``HDiv.hDiv, ``HMod.hMod].contains name then
     some { status := "reported", reason := "numeric operation needs typeclass specialization" }
   else if name == ``Decidable.decide then
@@ -266,7 +272,7 @@ def compileStatus (env : Environment) (moduleName entryName : Name) : String :=
     "implemented by the validator demo compiler path"
   else
     match LeanExe.Extract.Core.compileEnvironment env moduleName entryName with
-    | .ok _ => "implemented by the first generic UInt64 compiler fragment"
+    | .ok _ => "implemented by the first generic scalar/array compiler fragment"
     | .error error => s!"reported only; generic compile rejects this entry: {error}"
 
 def renderNode (node : DeclReport) : List String :=

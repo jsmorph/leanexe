@@ -171,8 +171,17 @@ def localGet (index : Nat) : List UInt8 :=
 def localSet (index : Nat) : List UInt8 :=
   ofNats [33] ++ u32leb index
 
+def localTee (index : Nat) : List UInt8 :=
+  ofNats [34] ++ u32leb index
+
 def call (index : Nat) : List UInt8 :=
   ofNats [16] ++ u32leb index
+
+def globalGet (index : Nat) : List UInt8 :=
+  ofNats [35] ++ u32leb index
+
+def globalSet (index : Nat) : List UInt8 :=
+  ofNats [36] ++ u32leb index
 
 namespace CoreWasm
 
@@ -190,44 +199,64 @@ def emitU64Op : LeanExe.IR.U64Op → List UInt8
   | .modU => ofNats [130]
   | .bitAnd => ofNats [131]
 
+def coreGlobalSection : List UInt8 :=
+  wasmSection 6 <| vec [
+    ofNats [126, 1] ++ i64Const 0 ++ ofNats [11]
+  ]
+
+def i64Address (base index : List UInt8) : List UInt8 :=
+  base ++ index ++ i64Const 8 ++ ofNats [126, 124, 167]
+
 mutual
-  partial def emitExpr : Expr → List UInt8
+  partial def emitExpr (scratch : Nat) : Expr → List UInt8
     | .local index => localGet index
     | .u64 value => i64Const value
-    | .u64Bin op left right => emitExpr left ++ emitExpr right ++ emitU64Op op
+    | .u64Bin op left right => emitExpr scratch left ++ emitExpr scratch right ++ emitU64Op op
     | .ite cond thenValue elseValue =>
-        emitCond cond ++ ofNats [4, 126] ++ emitExpr thenValue ++ ofNats [5] ++
-          emitExpr elseValue ++ ofNats [11]
-    | .call index args => args.flatMap emitExpr ++ call index
+        emitCond scratch cond ++ ofNats [4, 126] ++ emitExpr scratch thenValue ++ ofNats [5] ++
+          emitExpr scratch elseValue ++ ofNats [11]
+    | .arrayAlloc cells =>
+        globalGet 0 ++ globalGet 0 ++
+          emitExpr scratch cells ++ i64Const 8 ++ ofNats [126, 124] ++
+          globalSet 0
+    | .arrayGet array index =>
+        i64Address (emitExpr scratch array) (emitExpr scratch index) ++ ofNats [41, 3, 0]
+    | .arraySet array index value =>
+        emitExpr scratch array ++ localTee scratch ++
+          emitExpr scratch index ++ i64Const 8 ++ ofNats [126, 124, 167] ++
+          emitExpr scratch value ++ ofNats [55, 3, 0] ++
+          localGet scratch
+    | .call index args => args.flatMap (emitExpr scratch) ++ call index
 
-  partial def emitCond : Cond → List UInt8
+  partial def emitCond (scratch : Nat) : Cond → List UInt8
     | .true => ofNats [65, 1]
     | .false => ofNats [65, 0]
-    | .eqU64 left right => emitExpr left ++ emitExpr right ++ ofNats [81]
-    | .not cond => emitCond cond ++ ofNats [69]
-    | .and left right => emitCond left ++ emitCond right ++ ofNats [113]
-    | .or left right => emitCond left ++ emitCond right ++ ofNats [114]
+    | .eqU64 left right => emitExpr scratch left ++ emitExpr scratch right ++ ofNats [81]
+    | .not cond => emitCond scratch cond ++ ofNats [69]
+    | .and left right => emitCond scratch left ++ emitCond scratch right ++ ofNats [113]
+    | .or left right => emitCond scratch left ++ emitCond scratch right ++ ofNats [114]
 end
 
-partial def emitStmt : Stmt → List UInt8
+partial def emitStmt (scratch : Nat) : Stmt → List UInt8
   | .skip => []
-  | .assign index value => emitExpr value ++ localSet index
-  | .seq first second => emitStmt first ++ emitStmt second
+  | .assign index value => emitExpr scratch value ++ localSet index
+  | .seq first second => emitStmt scratch first ++ emitStmt scratch second
   | .while cond loopBody =>
       ofNats [2, 64, 3, 64] ++
-      emitCond cond ++ ofNats [69, 13, 1] ++
-      emitStmt loopBody ++
+      emitCond scratch cond ++ ofNats [69, 13, 1] ++
+      emitStmt scratch loopBody ++
       ofNats [12, 0, 11, 11]
 
 def localDecls (func : Func) : List UInt8 :=
-  let extra := func.locals - func.params
+  let extra := func.locals - func.params + 1
   if extra == 0 then
     ofNats [0]
   else
     u32leb 1 ++ u32leb extra ++ ofNats [126]
 
 def emitFuncBody (func : Func) : List UInt8 :=
-  body (localDecls func) (emitStmt func.body ++ emitExpr func.result)
+  let scratch := func.locals
+  body (localDecls func) (emitStmt scratch func.body ++ emitExpr scratch func.result)
 
 def typeForFunc (func : Func) : List UInt8 :=
   funcType (List.replicate func.params i64) [i64]
@@ -247,8 +276,9 @@ def enumerate {α : Type} (items : List α) : List (Nat × α) :=
 
 def exportSection (module_ : Module) : List UInt8 :=
   wasmSection 7 <| vec <|
-    (enumerate module_.funcs.toList |>.filterMap fun item =>
-      item.snd.exportName.map (fun exportName => exportEntry exportName 0 item.fst))
+    [exportEntry "memory" 2 0] ++
+      (enumerate module_.funcs.toList |>.filterMap fun item =>
+        item.snd.exportName.map (fun exportName => exportEntry exportName 0 item.fst))
 
 def codeSection (module_ : Module) : List UInt8 :=
   wasmSection 10 <| vec (module_.funcs.toList.map emitFuncBody)
@@ -257,6 +287,8 @@ def moduleBytes (module_ : Module) : ByteArray :=
   ByteArray.mk <| (ofNats [0, 97, 115, 109, 1, 0, 0, 0]
     ++ typeSection module_
     ++ functionSection module_
+    ++ memorySection
+    ++ coreGlobalSection
     ++ exportSection module_
     ++ codeSection module_).toArray
 
@@ -265,41 +297,56 @@ def indent (spaces : Nat) (lines : List String) : List String :=
   lines.map (fun line => pad ++ line)
 
 mutual
-  partial def exprWatLines : Expr → List String
+  partial def exprWatLines (scratch : Nat) : Expr → List String
     | .local index => [s!"local.get {index}"]
     | .u64 value => [s!"i64.const {value}"]
-    | .u64Bin .add left right => exprWatLines left ++ exprWatLines right ++ ["i64.add"]
-    | .u64Bin .sub left right => exprWatLines left ++ exprWatLines right ++ ["i64.sub"]
-    | .u64Bin .mul left right => exprWatLines left ++ exprWatLines right ++ ["i64.mul"]
-    | .u64Bin .divU left right => exprWatLines left ++ exprWatLines right ++ ["i64.div_u"]
-    | .u64Bin .modU left right => exprWatLines left ++ exprWatLines right ++ ["i64.rem_u"]
-    | .u64Bin .bitAnd left right => exprWatLines left ++ exprWatLines right ++ ["i64.and"]
+    | .u64Bin .add left right => exprWatLines scratch left ++ exprWatLines scratch right ++ ["i64.add"]
+    | .u64Bin .sub left right => exprWatLines scratch left ++ exprWatLines scratch right ++ ["i64.sub"]
+    | .u64Bin .mul left right => exprWatLines scratch left ++ exprWatLines scratch right ++ ["i64.mul"]
+    | .u64Bin .divU left right => exprWatLines scratch left ++ exprWatLines scratch right ++ ["i64.div_u"]
+    | .u64Bin .modU left right => exprWatLines scratch left ++ exprWatLines scratch right ++ ["i64.rem_u"]
+    | .u64Bin .bitAnd left right => exprWatLines scratch left ++ exprWatLines scratch right ++ ["i64.and"]
     | .ite cond thenValue elseValue =>
-        condWatLines cond ++
+        condWatLines scratch cond ++
           ["if (result i64)"] ++
-          indent 2 (exprWatLines thenValue) ++
+          indent 2 (exprWatLines scratch thenValue) ++
           ["else"] ++
-          indent 2 (exprWatLines elseValue) ++
+          indent 2 (exprWatLines scratch elseValue) ++
           ["end"]
-    | .call index args => args.flatMap exprWatLines ++ [s!"call {index}"]
+    | .arrayAlloc cells =>
+        ["global.get 0", "global.get 0"] ++
+          exprWatLines scratch cells ++
+          ["i64.const 8", "i64.mul", "i64.add", "global.set 0"]
+    | .arrayGet array index =>
+        exprWatLines scratch array ++
+          exprWatLines scratch index ++
+          ["i64.const 8", "i64.mul", "i64.add", "i32.wrap_i64", "i64.load align=8"]
+    | .arraySet array index value =>
+        exprWatLines scratch array ++
+          [s!"local.tee {scratch}"] ++
+          exprWatLines scratch index ++
+          ["i64.const 8", "i64.mul", "i64.add", "i32.wrap_i64"] ++
+          exprWatLines scratch value ++
+          ["i64.store align=8", s!"local.get {scratch}"]
+    | .call index args => args.flatMap (exprWatLines scratch) ++ [s!"call {index}"]
 
-  partial def condWatLines : Cond → List String
+  partial def condWatLines (scratch : Nat) : Cond → List String
     | .true => ["i32.const 1"]
     | .false => ["i32.const 0"]
-    | .eqU64 left right => exprWatLines left ++ exprWatLines right ++ ["i64.eq"]
-    | .not cond => condWatLines cond ++ ["i32.eqz"]
-    | .and left right => condWatLines left ++ condWatLines right ++ ["i32.and"]
-    | .or left right => condWatLines left ++ condWatLines right ++ ["i32.or"]
+    | .eqU64 left right => exprWatLines scratch left ++ exprWatLines scratch right ++ ["i64.eq"]
+    | .not cond => condWatLines scratch cond ++ ["i32.eqz"]
+    | .and left right => condWatLines scratch left ++ condWatLines scratch right ++ ["i32.and"]
+    | .or left right => condWatLines scratch left ++ condWatLines scratch right ++ ["i32.or"]
 end
 
-partial def stmtWatLines : Stmt → List String
+partial def stmtWatLines (scratch : Nat) : Stmt → List String
   | .skip => []
-  | .assign index value => exprWatLines value ++ [s!"local.set {index}"]
-  | .seq first second => stmtWatLines first ++ stmtWatLines second
+  | .assign index value => exprWatLines scratch value ++ [s!"local.set {index}"]
+  | .seq first second => stmtWatLines scratch first ++ stmtWatLines scratch second
   | .while cond loopBody =>
       ["block", "  loop"] ++
-        indent 4 (condWatLines cond ++ ["i32.eqz", "br_if 1"] ++
-          stmtWatLines loopBody ++ ["br 0"]) ++
+        indent 4 (condWatLines scratch cond ++ ["i32.eqz", "br_if 1"] ++
+          stmtWatLines scratch loopBody ++ ["br 0"]) ++
         ["  end", "end"]
 
 def paramWat (count : Nat) : String :=
@@ -315,18 +362,19 @@ def localWat (count : Nat) : List String :=
     ["(local " ++ String.intercalate " " (List.replicate count "i64") ++ ")"]
 
 def funcWatLines (func : Func) : List String :=
-  let extra := func.locals - func.params
+  let extra := func.locals - func.params + 1
+  let scratch := func.locals
   let exportText :=
     match func.exportName with
     | some exportName => s!" (export \"{exportName}\")"
     | none => ""
   [s!"(func{exportText}{paramWat func.params} (result i64)"] ++
-    indent 2 (localWat extra ++ stmtWatLines func.body ++ exprWatLines func.result) ++
+    indent 2 (localWat extra ++ stmtWatLines scratch func.body ++ exprWatLines scratch func.result) ++
     [")"]
 
 def moduleWat (module_ : Module) : String :=
   String.intercalate "\n" <|
-    ["(module"] ++
+    ["(module", "  (memory (export \"memory\") 1)", "  (global (mut i64) (i64.const 0))"] ++
       (module_.funcs.toList.flatMap (fun func => indent 2 (funcWatLines func))) ++
       [")", ""]
 
