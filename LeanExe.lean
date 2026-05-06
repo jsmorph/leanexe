@@ -5,4 +5,5 @@ import LeanExe.Examples.AsciiDigits
 import LeanExe.Examples.Arithmetic
 import LeanExe.Examples.Collatz
 import LeanExe.Examples.IntMap
+import LeanExe.Examples.Prime
 import LeanExe.Wasm.Binary
