@@ -204,10 +204,121 @@ def coreGlobalSection : List UInt8 :=
     ofNats [126, 1] ++ i64Const 0 ++ ofNats [11]
   ]
 
-def i64Address (base index : List UInt8) : List UInt8 :=
-  base ++ index ++ i64Const 8 ++ ofNats [126, 124, 167]
+def coreMemorySection : List UInt8 :=
+  wasmSection 5 <| vec [
+    ofNats [0] ++ u32leb 16
+  ]
+
+def i32WrapI64 : List UInt8 :=
+  ofNats [167]
+
+def i64Load : List UInt8 :=
+  ofNats [41, 3, 0]
+
+def i64Store : List UInt8 :=
+  ofNats [55, 3, 0]
+
+def i64LtU : List UInt8 :=
+  ofNats [84]
+
+def i64GeU : List UInt8 :=
+  ofNats [90]
+
+def arrayCellAddress (base index : List UInt8) : List UInt8 :=
+  base ++ index ++ i64Const 1 ++ ofNats [124] ++ i64Const 8 ++ ofNats [126, 124] ++
+    i32WrapI64
 
 mutual
+  partial def exprScratch : Expr → Nat
+    | .local _ => 0
+    | .u64 _ => 0
+    | .u64Bin _ left right => max (exprScratch left) (exprScratch right)
+    | .ite cond thenValue elseValue =>
+        max (condScratch cond) (max (exprScratch thenValue) (exprScratch elseValue))
+    | .arrayAlloc cells => 2 + exprScratch cells
+    | .arrayGet array index => 2 + max (exprScratch array) (exprScratch index)
+    | .arraySet array index value =>
+        6 + max (exprScratch array) (max (exprScratch index) (exprScratch value))
+    | .call _ args => args.foldl (fun count arg => max count (exprScratch arg)) 0
+
+  partial def condScratch : Cond → Nat
+    | .true => 0
+    | .false => 0
+    | .eqU64 left right => max (exprScratch left) (exprScratch right)
+    | .not cond => condScratch cond
+    | .and left right => max (condScratch left) (condScratch right)
+    | .or left right => max (condScratch left) (condScratch right)
+end
+
+partial def stmtScratch : Stmt → Nat
+  | .skip => 0
+  | .assign _ value => exprScratch value
+  | .seq first second => max (stmtScratch first) (stmtScratch second)
+  | .while cond body => max (condScratch cond) (stmtScratch body)
+
+def funcScratch (func : Func) : Nat :=
+  max (stmtScratch func.body) (exprScratch func.result)
+
+def emitCopyLoop (arrayLocal newLocal lenLocal loopLocal : Nat) : List UInt8 :=
+  i64Const 0 ++ localSet loopLocal ++
+    ofNats [2, 64, 3, 64] ++
+      localGet loopLocal ++ localGet lenLocal ++ i64GeU ++ ofNats [13] ++ u32leb 1 ++
+      arrayCellAddress (localGet newLocal) (localGet loopLocal) ++
+      arrayCellAddress (localGet arrayLocal) (localGet loopLocal) ++ i64Load ++ i64Store ++
+      localGet loopLocal ++ i64Const 1 ++ ofNats [124] ++ localSet loopLocal ++
+      ofNats [12] ++ u32leb 0 ++
+    ofNats [11, 11]
+
+mutual
+  partial def emitArrayAlloc (scratch : Nat) (cells : Expr) : List UInt8 :=
+    let len := scratch
+    let ptr := scratch + 1
+    emitExpr (scratch + 2) cells ++ localSet len ++
+      globalGet 0 ++ localSet ptr ++
+      localGet ptr ++ i32WrapI64 ++ localGet len ++ i64Store ++
+      globalGet 0 ++ i64Const 8 ++ localGet len ++ i64Const 8 ++
+        ofNats [126, 124, 124] ++ globalSet 0 ++
+      localGet ptr
+
+  partial def emitArrayGet (scratch : Nat) (array index : Expr) : List UInt8 :=
+    let arrayLocal := scratch
+    let indexLocal := scratch + 1
+    let childScratch := scratch + 2
+    emitExpr childScratch array ++ localSet arrayLocal ++
+      emitExpr childScratch index ++ localSet indexLocal ++
+      localGet indexLocal ++ localGet arrayLocal ++ i32WrapI64 ++ i64Load ++ i64LtU ++
+      ofNats [4, 126] ++
+        arrayCellAddress (localGet arrayLocal) (localGet indexLocal) ++ i64Load ++
+      ofNats [5] ++
+        ofNats [0] ++
+      ofNats [11]
+
+  partial def emitArraySet (scratch : Nat) (array index value : Expr) : List UInt8 :=
+    let arrayLocal := scratch
+    let indexLocal := scratch + 1
+    let valueLocal := scratch + 2
+    let lenLocal := scratch + 3
+    let newLocal := scratch + 4
+    let loopLocal := scratch + 5
+    let childScratch := scratch + 6
+    emitExpr childScratch array ++ localSet arrayLocal ++
+      emitExpr childScratch index ++ localSet indexLocal ++
+      emitExpr childScratch value ++ localSet valueLocal ++
+      localGet arrayLocal ++ i32WrapI64 ++ i64Load ++ localSet lenLocal ++
+      localGet indexLocal ++ localGet lenLocal ++ i64LtU ++
+      ofNats [4, 126] ++
+        globalGet 0 ++ localSet newLocal ++
+        localGet newLocal ++ i32WrapI64 ++ localGet lenLocal ++ i64Store ++
+        globalGet 0 ++ i64Const 8 ++ localGet lenLocal ++ i64Const 8 ++
+          ofNats [126, 124, 124] ++ globalSet 0 ++
+        emitCopyLoop arrayLocal newLocal lenLocal loopLocal ++
+        arrayCellAddress (localGet newLocal) (localGet indexLocal) ++
+          localGet valueLocal ++ i64Store ++
+        localGet newLocal ++
+      ofNats [5] ++
+        ofNats [0] ++
+      ofNats [11]
+
   partial def emitExpr (scratch : Nat) : Expr → List UInt8
     | .local index => localGet index
     | .u64 value => i64Const value
@@ -215,17 +326,9 @@ mutual
     | .ite cond thenValue elseValue =>
         emitCond scratch cond ++ ofNats [4, 126] ++ emitExpr scratch thenValue ++ ofNats [5] ++
           emitExpr scratch elseValue ++ ofNats [11]
-    | .arrayAlloc cells =>
-        globalGet 0 ++ globalGet 0 ++
-          emitExpr scratch cells ++ i64Const 8 ++ ofNats [126, 124] ++
-          globalSet 0
-    | .arrayGet array index =>
-        i64Address (emitExpr scratch array) (emitExpr scratch index) ++ ofNats [41, 3, 0]
-    | .arraySet array index value =>
-        emitExpr scratch array ++ localTee scratch ++
-          emitExpr scratch index ++ i64Const 8 ++ ofNats [126, 124, 167] ++
-          emitExpr scratch value ++ ofNats [55, 3, 0] ++
-          localGet scratch
+    | .arrayAlloc cells => emitArrayAlloc scratch cells
+    | .arrayGet array index => emitArrayGet scratch array index
+    | .arraySet array index value => emitArraySet scratch array index value
     | .call index args => args.flatMap (emitExpr scratch) ++ call index
 
   partial def emitCond (scratch : Nat) : Cond → List UInt8
@@ -248,7 +351,7 @@ partial def emitStmt (scratch : Nat) : Stmt → List UInt8
       ofNats [12, 0, 11, 11]
 
 def localDecls (func : Func) : List UInt8 :=
-  let extra := func.locals - func.params + 1
+  let extra := func.locals - func.params + funcScratch func
   if extra == 0 then
     ofNats [0]
   else
@@ -287,7 +390,7 @@ def moduleBytes (module_ : Module) : ByteArray :=
   ByteArray.mk <| (ofNats [0, 97, 115, 109, 1, 0, 0, 0]
     ++ typeSection module_
     ++ functionSection module_
-    ++ memorySection
+    ++ coreMemorySection
     ++ coreGlobalSection
     ++ exportSection module_
     ++ codeSection module_).toArray
@@ -296,7 +399,65 @@ def indent (spaces : Nat) (lines : List String) : List String :=
   let pad := String.ofList (List.replicate spaces ' ')
   lines.map (fun line => pad ++ line)
 
+def arrayCellAddressWat (base index : List String) : List String :=
+  base ++ index ++ ["i64.const 1", "i64.add", "i64.const 8", "i64.mul", "i64.add", "i32.wrap_i64"]
+
+def copyLoopWat (arrayLocal newLocal lenLocal loopLocal : Nat) : List String :=
+  [s!"i64.const 0", s!"local.set {loopLocal}", "block", "  loop"] ++
+    indent 4 (
+      [s!"local.get {loopLocal}", s!"local.get {lenLocal}", "i64.ge_u", "br_if 1"] ++
+      arrayCellAddressWat [s!"local.get {newLocal}"] [s!"local.get {loopLocal}"] ++
+      arrayCellAddressWat [s!"local.get {arrayLocal}"] [s!"local.get {loopLocal}"] ++
+      ["i64.load align=8", "i64.store align=8",
+        s!"local.get {loopLocal}", "i64.const 1", "i64.add", s!"local.set {loopLocal}",
+        "br 0"]) ++
+    ["  end", "end"]
+
 mutual
+  partial def arrayAllocWatLines (scratch : Nat) (cells : Expr) : List String :=
+    let len := scratch
+    let ptr := scratch + 1
+    exprWatLines (scratch + 2) cells ++
+      [s!"local.set {len}", "global.get 0", s!"local.set {ptr}",
+        s!"local.get {ptr}", "i32.wrap_i64", s!"local.get {len}", "i64.store align=8",
+        "global.get 0", "i64.const 8", s!"local.get {len}", "i64.const 8", "i64.mul",
+        "i64.add", "i64.add", "global.set 0", s!"local.get {ptr}"]
+
+  partial def arrayGetWatLines (scratch : Nat) (array index : Expr) : List String :=
+    let arrayLocal := scratch
+    let indexLocal := scratch + 1
+    let childScratch := scratch + 2
+    exprWatLines childScratch array ++ [s!"local.set {arrayLocal}"] ++
+      exprWatLines childScratch index ++ [s!"local.set {indexLocal}",
+        s!"local.get {indexLocal}", s!"local.get {arrayLocal}", "i32.wrap_i64",
+        "i64.load align=8", "i64.lt_u", "if (result i64)"] ++
+      indent 2 (arrayCellAddressWat [s!"local.get {arrayLocal}"] [s!"local.get {indexLocal}"] ++
+        ["i64.load align=8"]) ++
+      ["else", "  unreachable", "end"]
+
+  partial def arraySetWatLines (scratch : Nat) (array index value : Expr) : List String :=
+    let arrayLocal := scratch
+    let indexLocal := scratch + 1
+    let valueLocal := scratch + 2
+    let lenLocal := scratch + 3
+    let newLocal := scratch + 4
+    let loopLocal := scratch + 5
+    let childScratch := scratch + 6
+    exprWatLines childScratch array ++ [s!"local.set {arrayLocal}"] ++
+      exprWatLines childScratch index ++ [s!"local.set {indexLocal}"] ++
+      exprWatLines childScratch value ++ [s!"local.set {valueLocal}",
+        s!"local.get {arrayLocal}", "i32.wrap_i64", "i64.load align=8", s!"local.set {lenLocal}",
+        s!"local.get {indexLocal}", s!"local.get {lenLocal}", "i64.lt_u", "if (result i64)"] ++
+      indent 2 (
+        ["global.get 0", s!"local.set {newLocal}",
+          s!"local.get {newLocal}", "i32.wrap_i64", s!"local.get {lenLocal}", "i64.store align=8",
+          "global.get 0", "i64.const 8", s!"local.get {lenLocal}", "i64.const 8",
+          "i64.mul", "i64.add", "i64.add", "global.set 0"] ++
+        copyLoopWat arrayLocal newLocal lenLocal loopLocal ++
+        arrayCellAddressWat [s!"local.get {newLocal}"] [s!"local.get {indexLocal}"] ++
+        [s!"local.get {valueLocal}", "i64.store align=8", s!"local.get {newLocal}"]) ++
+      ["else", "  unreachable", "end"]
+
   partial def exprWatLines (scratch : Nat) : Expr → List String
     | .local index => [s!"local.get {index}"]
     | .u64 value => [s!"i64.const {value}"]
@@ -313,21 +474,9 @@ mutual
           ["else"] ++
           indent 2 (exprWatLines scratch elseValue) ++
           ["end"]
-    | .arrayAlloc cells =>
-        ["global.get 0", "global.get 0"] ++
-          exprWatLines scratch cells ++
-          ["i64.const 8", "i64.mul", "i64.add", "global.set 0"]
-    | .arrayGet array index =>
-        exprWatLines scratch array ++
-          exprWatLines scratch index ++
-          ["i64.const 8", "i64.mul", "i64.add", "i32.wrap_i64", "i64.load align=8"]
-    | .arraySet array index value =>
-        exprWatLines scratch array ++
-          [s!"local.tee {scratch}"] ++
-          exprWatLines scratch index ++
-          ["i64.const 8", "i64.mul", "i64.add", "i32.wrap_i64"] ++
-          exprWatLines scratch value ++
-          ["i64.store align=8", s!"local.get {scratch}"]
+    | .arrayAlloc cells => arrayAllocWatLines scratch cells
+    | .arrayGet array index => arrayGetWatLines scratch array index
+    | .arraySet array index value => arraySetWatLines scratch array index value
     | .call index args => args.flatMap (exprWatLines scratch) ++ [s!"call {index}"]
 
   partial def condWatLines (scratch : Nat) : Cond → List String
@@ -362,7 +511,7 @@ def localWat (count : Nat) : List String :=
     ["(local " ++ String.intercalate " " (List.replicate count "i64") ++ ")"]
 
 def funcWatLines (func : Func) : List String :=
-  let extra := func.locals - func.params + 1
+  let extra := func.locals - func.params + funcScratch func
   let scratch := func.locals
   let exportText :=
     match func.exportName with
@@ -374,7 +523,7 @@ def funcWatLines (func : Func) : List String :=
 
 def moduleWat (module_ : Module) : String :=
   String.intercalate "\n" <|
-    ["(module", "  (memory (export \"memory\") 1)", "  (global (mut i64) (i64.const 0))"] ++
+    ["(module", "  (memory (export \"memory\") 16)", "  (global (mut i64) (i64.const 0))"] ++
       (module_.funcs.toList.flatMap (fun func => indent 2 (funcWatLines func))) ++
       [")", ""]
 
