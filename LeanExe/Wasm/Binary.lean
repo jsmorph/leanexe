@@ -1,9 +1,7 @@
 import LeanExe.Core
+import LeanExe.IR.Core
 
 namespace LeanExe.Wasm.Binary
-
-def collatzMaxSteps : Nat :=
-  10000
 
 def byte (n : Nat) : UInt8 :=
   UInt8.ofNat n
@@ -33,6 +31,9 @@ def byteVec (bytes : List UInt8) : List UInt8 :=
 def concatBytes : List (List UInt8) → List UInt8
   | [] => []
   | item :: rest => item ++ concatBytes rest
+
+def u32Vec (values : List Nat) : List UInt8 :=
+  u32leb values.length ++ concatBytes (values.map u32leb)
 
 def vec (items : List (List UInt8)) : List UInt8 :=
   u32leb items.length ++ concatBytes items
@@ -164,108 +165,172 @@ def moduleBytes
 def i64Const (n : Nat) : List UInt8 :=
   byte 66 :: s64lebNat n
 
-def collatzTypeSection : List UInt8 :=
-  wasmSection 1 <| vec [
-    funcType [i64] [i64],
-    funcType [i64, i64] [i64]
-  ]
+def localGet (index : Nat) : List UInt8 :=
+  ofNats [32] ++ u32leb index
 
-def collatzFunctionSection : List UInt8 :=
-  wasmSection 3 <| byteVec (ofNats [0, 1])
+def localSet (index : Nat) : List UInt8 :=
+  ofNats [33] ++ u32leb index
 
-def collatzExportSection : List UInt8 :=
-  wasmSection 7 <| vec [
-    exportEntry "collatz_steps" 0 0,
-    exportEntry "collatz_bench" 0 1
-  ]
+def call (index : Nat) : List UInt8 :=
+  ofNats [16] ++ u32leb index
 
-def collatzBody : List UInt8 :=
-  body
-    (ofNats [1, 2, 126])
-    (i64Const 0 ++ ofNats [
-      33, 1
-    ] ++ i64Const collatzMaxSteps ++ ofNats [
-      33, 2,
-      2, 64,
-      3, 64,
-      32, 2,
-      80,
-      13, 1,
-      32, 0
-    ] ++ i64Const 1 ++ ofNats [
-      88,
-      13, 1,
-      32, 0
-    ] ++ i64Const 1 ++ ofNats [
-      131,
-      80,
-      4, 64,
-      32, 0
-    ] ++ i64Const 2 ++ ofNats [
-      128,
-      33, 0,
-      5,
-      32, 0
-    ] ++ i64Const 3 ++ ofNats [
-      126
-    ] ++ i64Const 1 ++ ofNats [
-      124,
-      33, 0,
-      11,
-      32, 1
-    ] ++ i64Const 1 ++ ofNats [
-      124,
-      33, 1,
-      32, 2
-    ] ++ i64Const 1 ++ ofNats [
-      125,
-      33, 2,
-      12, 0,
-      11,
-      11,
-      32, 1
-    ])
+namespace CoreWasm
 
-def collatzBenchBody : List UInt8 :=
-  body
-    (ofNats [1, 2, 126])
-    (i64Const 0 ++ ofNats [
-      33, 2
-    ] ++ i64Const 0 ++ ofNats [
-      33, 3,
-      2, 64,
-      3, 64,
-      32, 3,
-      32, 1,
-      90,
-      13, 1,
-      32, 2,
-      32, 0,
-      16, 0,
-      124,
-      33, 2,
-      32, 3
-    ] ++ i64Const 1 ++ ofNats [
-      124,
-      33, 3,
-      12, 0,
-      11,
-      11,
-      32, 2
-    ])
+abbrev Expr := LeanExe.IR.Expr
+abbrev Cond := LeanExe.IR.Cond
+abbrev Stmt := LeanExe.IR.Stmt
+abbrev Func := LeanExe.IR.Func
+abbrev Module := LeanExe.IR.Module
 
-def collatzCodeSection : List UInt8 :=
-  wasmSection 10 <| vec [
-    collatzBody,
-    collatzBenchBody
-  ]
+def emitU64Op : LeanExe.IR.U64Op → List UInt8
+  | .add => ofNats [124]
+  | .sub => ofNats [125]
+  | .mul => ofNats [126]
+  | .divU => ofNats [128]
+  | .modU => ofNats [130]
+  | .bitAnd => ofNats [131]
 
-def collatzModuleBytes : ByteArray :=
+mutual
+  partial def emitExpr : Expr → List UInt8
+    | .local index => localGet index
+    | .u64 value => i64Const value
+    | .u64Bin op left right => emitExpr left ++ emitExpr right ++ emitU64Op op
+    | .ite cond thenValue elseValue =>
+        emitCond cond ++ ofNats [4, 126] ++ emitExpr thenValue ++ ofNats [5] ++
+          emitExpr elseValue ++ ofNats [11]
+    | .call index args => args.flatMap emitExpr ++ call index
+
+  partial def emitCond : Cond → List UInt8
+    | .true => ofNats [65, 1]
+    | .false => ofNats [65, 0]
+    | .eqU64 left right => emitExpr left ++ emitExpr right ++ ofNats [81]
+    | .not cond => emitCond cond ++ ofNats [69]
+    | .and left right => emitCond left ++ emitCond right ++ ofNats [113]
+    | .or left right => emitCond left ++ emitCond right ++ ofNats [114]
+end
+
+partial def emitStmt : Stmt → List UInt8
+  | .skip => []
+  | .assign index value => emitExpr value ++ localSet index
+  | .seq first second => emitStmt first ++ emitStmt second
+  | .while cond loopBody =>
+      ofNats [2, 64, 3, 64] ++
+      emitCond cond ++ ofNats [69, 13, 1] ++
+      emitStmt loopBody ++
+      ofNats [12, 0, 11, 11]
+
+def localDecls (func : Func) : List UInt8 :=
+  let extra := func.locals - func.params
+  if extra == 0 then
+    ofNats [0]
+  else
+    u32leb 1 ++ u32leb extra ++ ofNats [126]
+
+def emitFuncBody (func : Func) : List UInt8 :=
+  body (localDecls func) (emitStmt func.body ++ emitExpr func.result)
+
+def typeForFunc (func : Func) : List UInt8 :=
+  funcType (List.replicate func.params i64) [i64]
+
+def typeSection (module_ : Module) : List UInt8 :=
+  wasmSection 1 <| vec (module_.funcs.toList.map typeForFunc)
+
+def functionSection (module_ : Module) : List UInt8 :=
+  wasmSection 3 <| u32Vec (List.range module_.funcs.size)
+
+def enumerateAux {α : Type} : List α → Nat → List (Nat × α)
+  | [], _ => []
+  | item :: rest, index => (index, item) :: enumerateAux rest (index + 1)
+
+def enumerate {α : Type} (items : List α) : List (Nat × α) :=
+  enumerateAux items 0
+
+def exportSection (module_ : Module) : List UInt8 :=
+  wasmSection 7 <| vec <|
+    (enumerate module_.funcs.toList |>.filterMap fun item =>
+      item.snd.exportName.map (fun exportName => exportEntry exportName 0 item.fst))
+
+def codeSection (module_ : Module) : List UInt8 :=
+  wasmSection 10 <| vec (module_.funcs.toList.map emitFuncBody)
+
+def moduleBytes (module_ : Module) : ByteArray :=
   ByteArray.mk <| (ofNats [0, 97, 115, 109, 1, 0, 0, 0]
-    ++ collatzTypeSection
-    ++ collatzFunctionSection
-    ++ collatzExportSection
-    ++ collatzCodeSection).toArray
+    ++ typeSection module_
+    ++ functionSection module_
+    ++ exportSection module_
+    ++ codeSection module_).toArray
+
+def indent (spaces : Nat) (lines : List String) : List String :=
+  let pad := String.ofList (List.replicate spaces ' ')
+  lines.map (fun line => pad ++ line)
+
+mutual
+  partial def exprWatLines : Expr → List String
+    | .local index => [s!"local.get {index}"]
+    | .u64 value => [s!"i64.const {value}"]
+    | .u64Bin .add left right => exprWatLines left ++ exprWatLines right ++ ["i64.add"]
+    | .u64Bin .sub left right => exprWatLines left ++ exprWatLines right ++ ["i64.sub"]
+    | .u64Bin .mul left right => exprWatLines left ++ exprWatLines right ++ ["i64.mul"]
+    | .u64Bin .divU left right => exprWatLines left ++ exprWatLines right ++ ["i64.div_u"]
+    | .u64Bin .modU left right => exprWatLines left ++ exprWatLines right ++ ["i64.rem_u"]
+    | .u64Bin .bitAnd left right => exprWatLines left ++ exprWatLines right ++ ["i64.and"]
+    | .ite cond thenValue elseValue =>
+        condWatLines cond ++
+          ["if (result i64)"] ++
+          indent 2 (exprWatLines thenValue) ++
+          ["else"] ++
+          indent 2 (exprWatLines elseValue) ++
+          ["end"]
+    | .call index args => args.flatMap exprWatLines ++ [s!"call {index}"]
+
+  partial def condWatLines : Cond → List String
+    | .true => ["i32.const 1"]
+    | .false => ["i32.const 0"]
+    | .eqU64 left right => exprWatLines left ++ exprWatLines right ++ ["i64.eq"]
+    | .not cond => condWatLines cond ++ ["i32.eqz"]
+    | .and left right => condWatLines left ++ condWatLines right ++ ["i32.and"]
+    | .or left right => condWatLines left ++ condWatLines right ++ ["i32.or"]
+end
+
+partial def stmtWatLines : Stmt → List String
+  | .skip => []
+  | .assign index value => exprWatLines value ++ [s!"local.set {index}"]
+  | .seq first second => stmtWatLines first ++ stmtWatLines second
+  | .while cond loopBody =>
+      ["block", "  loop"] ++
+        indent 4 (condWatLines cond ++ ["i32.eqz", "br_if 1"] ++
+          stmtWatLines loopBody ++ ["br 0"]) ++
+        ["  end", "end"]
+
+def paramWat (count : Nat) : String :=
+  if count == 0 then
+    ""
+  else
+    " (param " ++ String.intercalate " " (List.replicate count "i64") ++ ")"
+
+def localWat (count : Nat) : List String :=
+  if count == 0 then
+    []
+  else
+    ["(local " ++ String.intercalate " " (List.replicate count "i64") ++ ")"]
+
+def funcWatLines (func : Func) : List String :=
+  let extra := func.locals - func.params
+  let exportText :=
+    match func.exportName with
+    | some exportName => s!" (export \"{exportName}\")"
+    | none => ""
+  [s!"(func{exportText}{paramWat func.params} (result i64)"] ++
+    indent 2 (localWat extra ++ stmtWatLines func.body ++ exprWatLines func.result) ++
+    [")"]
+
+def moduleWat (module_ : Module) : String :=
+  String.intercalate "\n" <|
+    ["(module"] ++
+      (module_.funcs.toList.flatMap (fun func => indent 2 (funcWatLines func))) ++
+      [")", ""]
+
+end CoreWasm
 
 def wat
     (validator : LeanExe.Core.LoweredValidator :=
@@ -319,89 +384,6 @@ def wat
     "      return",
     "    end",
     "    i32.const 0)",
-    ")",
-    ""
-  ]
-
-def collatzBenchWat : List String :=
-  [
-    "  (func (export \"collatz_bench\") (param $n i64) (param $iters i64) (result i64)",
-    "    (local $sum i64)",
-    "    (local $i i64)",
-    "    i64.const 0",
-    "    local.set $sum",
-    "    i64.const 0",
-    "    local.set $i",
-    "    block $done",
-    "      loop $loop",
-    "        local.get $i",
-    "        local.get $iters",
-    "        i64.ge_u",
-    "        br_if $done",
-    "        local.get $sum",
-    "        local.get $n",
-    "        call 0",
-    "        i64.add",
-    "        local.set $sum",
-    "        local.get $i",
-    "        i64.const 1",
-    "        i64.add",
-    "        local.set $i",
-    "        br $loop",
-    "      end",
-    "    end",
-    "    local.get $sum)"
-  ]
-
-def collatzWat : String :=
-  String.intercalate "\n" <| [
-    "(module",
-    "  (func (export \"collatz_steps\") (param $n i64) (result i64)",
-    "    (local $steps i64)",
-    "    (local $fuel i64)",
-    "    i64.const 0",
-    "    local.set $steps",
-    s!"    i64.const {collatzMaxSteps}",
-    "    local.set $fuel",
-    "    block $done",
-    "      loop $loop",
-    "        local.get $fuel",
-    "        i64.eqz",
-    "        br_if $done",
-    "        local.get $n",
-    "        i64.const 1",
-    "        i64.le_u",
-    "        br_if $done",
-    "        local.get $n",
-    "        i64.const 1",
-    "        i64.and",
-    "        i64.eqz",
-    "        if",
-    "          local.get $n",
-    "          i64.const 2",
-    "          i64.div_u",
-    "          local.set $n",
-    "        else",
-    "          local.get $n",
-    "          i64.const 3",
-    "          i64.mul",
-    "          i64.const 1",
-    "          i64.add",
-    "          local.set $n",
-    "        end",
-    "        local.get $steps",
-    "        i64.const 1",
-    "        i64.add",
-    "        local.set $steps",
-    "        local.get $fuel",
-    "        i64.const 1",
-    "        i64.sub",
-    "        local.set $fuel",
-    "        br $loop",
-    "      end",
-    "    end",
-    "    local.get $steps)"
-  ] ++ collatzBenchWat ++ [
     ")",
     ""
   ]

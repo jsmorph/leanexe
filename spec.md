@@ -15,7 +15,7 @@ The subset targets traditional pure programming first: validators, parsers, enco
 | Planned | The design admits the feature, but the implementation does not accept it. |
 | Rejected | The feature is outside the intended subset unless this document changes. |
 
-Current implementation is narrow.  It compiles `LeanExe.Examples.AsciiDigits.validate : ByteArray -> Bool` through a hand-written core IR path and emits a standalone Wasm validator.  It also compiles `LeanExe.Examples.Collatz.steps : UInt64 -> UInt64` through a hand-written Wasm path with a `10000`-step fuel bound.  The generic report imports arbitrary built modules through `lean-wasm report --module <module> --entry <name>`.
+Current implementation is narrow.  It compiles `LeanExe.Examples.AsciiDigits.validate : ByteArray -> Bool` through a hand-written core IR path and emits a standalone Wasm validator.  It also has a generic checked-declaration compiler for a first `UInt64` fragment: monomorphic first-order functions returning `UInt64`, `UInt64` and bounded `Nat` parameters represented as Wasm `i64`, numeric literals, primitive `UInt64` arithmetic, boolean equality and disjunction, `if`, direct calls, and tail recursion over a decreasing `Nat` fuel argument.  `LeanExe.Examples.Collatz.steps` and `LeanExe.Examples.Collatz.bench` compile through `lean-wasm compile --module LeanExe.Examples.Collatz --entry <entry> --out <path>`.  The generic report imports arbitrary built modules through `lean-wasm report --module <module> --entry <name>`.
 
 ## Source Boundary
 
@@ -32,7 +32,7 @@ The current report imports compiled `.olean` modules through Lean’s module loa
 | `Unit` | Planned | Reported only |
 | `Bool` | Implemented | Implemented for the demo validator |
 | `UInt8` | Implemented | Implemented for the demo validator |
-| `UInt32` and `UInt64` | Planned | `UInt64` implemented for the Collatz demo path and otherwise reported only |
+| `UInt32` and `UInt64` | Planned | `UInt64` implemented for the first generic compiler fragment; `UInt32` reported only |
 | `Nat` | Planned for bounded static use | Reported only |
 | `ByteArray` | Implemented | Implemented for `ByteArray -> Bool` entry shape |
 | Structures | Planned | Reported only |
@@ -52,12 +52,12 @@ The current report imports compiled `.olean` modules through Lean’s module loa
 | Lean term form | Intended support | Current implementation |
 | -------------- | ---------------- | ---------------------- |
 | Variables and local lets | Planned | Reported only |
-| Named calls | Planned | Reported in the dependency graph and hard-coded for the demo paths |
+| Named calls | Planned | Emitted for supported first-fragment functions; otherwise reported |
 | Constructors | Planned | Reported only |
 | Projections | Planned | Reported only |
 | Pattern matching | Planned | Lowered only for the demo range check path |
-| `if` expressions | Planned | Reported only |
-| Structural recursion | Planned with termination evidence from Lean | Reported only |
+| `if` expressions | Planned | Implemented for `UInt64` results in the first generic compiler fragment |
+| Structural recursion | Planned with termination evidence from Lean | Implemented for tail recursion over a decreasing `Nat` fuel argument in the first generic compiler fragment |
 | Tail recursion over buffers or arrays | Planned | Reported only |
 | Higher-order arguments | Planned later with escape restrictions | Rejected for compilation |
 | General closures | Planned later | Rejected |
@@ -99,6 +99,6 @@ Structured outputs are planned after `Except` and simple inductive values enter 
 
 ## Correctness Obligations
 
-The compiler should maintain separate correctness claims for extraction, proof erasure, specialization, lowering, and Wasm emission.  The current repository proves a small source-to-core equality for the demo validator and a lowering lemma for the byte-range validator.  It also tests the emitted Wasm against Lean evaluation through a differential harness.
+The compiler should maintain separate correctness claims for extraction, proof erasure, specialization, lowering, and Wasm emission.  The current repository proves a small source-to-core equality for the demo validator and a lowering lemma for the byte-range validator.  The first generic compiler fragment does not yet prove source-to-IR equivalence.  The repository tests the emitted Wasm against Lean evaluation through direct Wasmtime runs and the validator differential harness.
 
 Future proofs should compose toward `compile_correct`, relating the modeled Wasm execution to the checked Lean function for accepted entry points.  The final theorem should state the trusted base: Lean’s kernel and admitted axioms, the formal semantics of the modeled Wasm subset, the emitter if unverified, the host ABI, the Wasm runtime, and the underlying platform.  Browser, Wasmtime, or Wasmer execution should not be described as formally verified unless the proof includes that runtime.

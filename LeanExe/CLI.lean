@@ -1,4 +1,5 @@
 import LeanExe.Core
+import LeanExe.Extract.Core
 import LeanExe.Extract.Report
 import LeanExe.Examples.AsciiDigits
 import LeanExe.Examples.Collatz
@@ -15,12 +16,12 @@ def usage : String :=
     "  lean-wasm report --module <module> --entry <name>",
     "  lean-wasm report --module <module> --entry <name> --out <path>",
     "  lean-wasm eval --hex <hex-bytes>",
-    "  lean-wasm collatz-emit --out <path>",
-    "  lean-wasm collatz-wat --out <path>",
+    "  lean-wasm compile --module <module> --entry <name> --out <path>",
+    "  lean-wasm compile-wat --module <module> --entry <name> --out <path>",
     "  lean-wasm collatz-eval --input <n>",
     "  lean-wasm collatz-bench --input <n> --iters <n>",
     "",
-    "This prototype supports LeanExe.Examples.AsciiDigits.validate only."
+    "This prototype supports the validator demo and the first UInt64 fragment of the generic compiler."
   ]
 
 def ensureParent (path : System.FilePath) : IO Unit := do
@@ -138,11 +139,13 @@ def main : List String → IO UInt32
       | .error error =>
           IO.eprintln error
           return 2
-  | ["collatz-emit", "--out", out] => do
-      writeBytes out LeanExe.Wasm.Binary.collatzModuleBytes
+  | ["compile", "--module", moduleName, "--entry", entryName, "--out", out] => do
+      writeBytes out (LeanExe.Wasm.Binary.CoreWasm.moduleBytes
+        (← LeanExe.Extract.Core.compile moduleName entryName))
       return 0
-  | ["collatz-wat", "--out", out] => do
-      writeText out LeanExe.Wasm.Binary.collatzWat
+  | ["compile-wat", "--module", moduleName, "--entry", entryName, "--out", out] => do
+      writeText out (LeanExe.Wasm.Binary.CoreWasm.moduleWat
+        (← LeanExe.Extract.Core.compile moduleName entryName))
       return 0
   | ["collatz-eval", "--input", input] => do
       match parseNatArg input with
