@@ -123,9 +123,15 @@ def supportedAbiType : Ty → Bool
   | .bool => true
   | .u64 => true
   | .nat => true
-  | .byteArray => true
   | .array .u64 => true
   | _ => false
+
+def supportedParamAbiType : Ty → Bool
+  | .byteArray => true
+  | ty => supportedAbiType ty
+
+def supportedResultAbiType : Ty → Bool :=
+  supportedAbiType
 
 def abiSlots : Ty → Nat
   | .byteArray => 2
@@ -148,7 +154,7 @@ def functionType? (type : Expr) : Option Signature :=
       let params? := parts.fst.mapM typeAtom?
       match params? with
       | some params =>
-          if supportedAbiType result && params.all supportedAbiType then
+          if supportedResultAbiType result && params.all supportedParamAbiType then
             some { params := params, result := result }
           else
             none
