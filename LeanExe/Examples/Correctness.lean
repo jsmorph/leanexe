@@ -55,6 +55,18 @@ def wrappedUInt8Literal : Nat :=
 def uint8OfNatValue (n : Nat) : Nat :=
   (UInt8.ofNat (n + 1)).toNat
 
+def uint8AddWrap : Nat :=
+  (((255 : UInt8) + 1).toNat)
+
+def uint8SubWrap : Nat :=
+  (((0 : UInt8) - 1).toNat)
+
+def uint8MulWrap : Nat :=
+  (((16 : UInt8) * 17).toNat)
+
+def uint8DivModZero : Nat :=
+  (((7 : UInt8) / 0).toNat) * 10 + (((7 : UInt8) % 0).toNat)
+
 def nestedShadow (x : UInt64) : UInt64 :=
   let x := x + 1
   let y := (let x := x + 2; x * 10)

@@ -300,6 +300,9 @@ def boolExpr (cond : IRCond) : IRExpr :=
 def boolCond (expr : IRExpr) : IRCond :=
   .not (.eqU64 expr (.u64 0))
 
+def u8WrapExpr (expr : IRExpr) : IRExpr :=
+  .u64Bin .bitAnd expr (.u64 255)
+
 def scalarValue (value : ExtractedValue) : Except String IRExpr :=
   match value with
   | .scalar expr => .ok expr
@@ -1089,16 +1092,22 @@ mutual
                               match primitiveResultType? args with
                               | some .nat =>
                                   .ok (.u64Bin .natAdd leftIR rightIR, rightResult.snd)
+                              | some .u8 =>
+                                  .ok (u8WrapExpr (.u64Bin .add leftIR rightIR), rightResult.snd)
                               | _ => .ok (.u64Bin .add leftIR rightIR, rightResult.snd)
                             else if primitive == ``HSub.hSub then
                               match primitiveResultType? args with
                               | some .nat =>
                                   .ok (.u64Bin .natSub leftIR rightIR, rightResult.snd)
+                              | some .u8 =>
+                                  .ok (u8WrapExpr (.u64Bin .sub leftIR rightIR), rightResult.snd)
                               | _ => .ok (.u64Bin .sub leftIR rightIR, rightResult.snd)
                             else if primitive == ``HMul.hMul then
                               match primitiveResultType? args with
                               | some .nat =>
                                   .ok (.u64Bin .natMul leftIR rightIR, rightResult.snd)
+                              | some .u8 =>
+                                  .ok (u8WrapExpr (.u64Bin .mul leftIR rightIR), rightResult.snd)
                               | _ => .ok (.u64Bin .mul leftIR rightIR, rightResult.snd)
                             else if primitive == ``HDiv.hDiv then
                               .ok (.u64Bin .divU leftIR rightIR, rightResult.snd)
