@@ -24,6 +24,18 @@ def natSubSaturates : Nat :=
 def natSubNormal : Nat :=
   (5 : Nat) - 3
 
+def natAddNormal : Nat :=
+  (5 : Nat) + 3
+
+def natMulNormal : Nat :=
+  (7 : Nat) * 6
+
+def natAddOverflow : Nat :=
+  (18446744073709551615 : Nat) + 1
+
+def natMulOverflow : Nat :=
+  (9223372036854775808 : Nat) * 2
+
 def bitwiseOrXor : UInt64 :=
   UInt64.xor (UInt64.lor (10 : UInt64) (12 : UInt64)) (UInt64.land (10 : UInt64) (12 : UInt64))
 

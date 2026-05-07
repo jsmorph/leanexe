@@ -17,9 +17,11 @@ inductive Ty where
 
 inductive U64Op where
   | add
+  | natAdd
   | sub
   | natSub
   | mul
+  | natMul
   | divU
   | modU
   | bitAnd
@@ -105,9 +107,11 @@ mutual
         let rightValue := right.eval module_ store
         match op with
         | .add => leftValue + rightValue
+        | .natAdd => leftValue + rightValue
         | .sub => leftValue - rightValue
         | .natSub => if leftValue < rightValue then 0 else leftValue - rightValue
         | .mul => leftValue * rightValue
+        | .natMul => leftValue * rightValue
         | .divU => leftValue / rightValue
         | .modU => leftValue % rightValue
         | .bitAnd => UInt64.land leftValue rightValue
