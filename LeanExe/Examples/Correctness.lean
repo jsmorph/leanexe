@@ -56,6 +56,15 @@ def shiftNotation : UInt64 :=
   ((1 : UInt64) <<< (65 : UInt64)) +
     (((8 : UInt64) >>> (65 : UInt64)) * (10 : UInt64))
 
+def uint8ShiftNotation : Nat :=
+  (((1 : UInt8) <<< (8 : UInt8)).toNat) * 100 +
+    (((1 : UInt8) <<< (9 : UInt8)).toNat) * 10 +
+    (((128 : UInt8) >>> (1 : UInt8)).toNat)
+
+def uint8DirectShift : Nat :=
+  (UInt8.shiftLeft (129 : UInt8) (1 : UInt8)).toNat * 1000 +
+    (UInt8.shiftRight (255 : UInt8) (8 : UInt8)).toNat
+
 def uint64OfNatValue (n : Nat) : UInt64 :=
   UInt64.ofNat (n + 1)
 
