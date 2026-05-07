@@ -883,6 +883,14 @@ partial def demandExpr
                     .empty
                     (demandOptionSomeArm ctx visiting mapFn)
               | _ => .empty
+          | (.const ``Option.filter _, args) =>
+              match args.reverse with
+              | optionValue :: predicate :: _ =>
+                  Demand.branch
+                    (demandExpr ctx visiting optionValue)
+                    .empty
+                    (demandOptionSomeCondArm ctx visiting predicate)
+              | _ => .empty
           | (.const ``Option.bind _, args) =>
               match args.reverse with
               | bindFn :: optionValue :: _ =>
@@ -1186,6 +1194,14 @@ partial def demandNatSuccCondArm
   | some body => decDemand (demandCond ctx visiting body)
   | none => .empty
 
+partial def demandOptionSomeCondArm
+    (ctx : Context)
+    (visiting : List Name)
+    (someArm : Expr) : Demand :=
+  match collectLambdas someArm 1 with
+  | some body => decDemand (demandCond ctx visiting body)
+  | none => .empty
+
 partial def demandSummary
     (ctx : Context)
     (visiting : List Name)
@@ -1349,6 +1365,29 @@ mutual
                       (← valueIte (.eqU64 tag (.u64 0)) nonePayload mapResult.fst)),
                     mapResult.snd)
             | _, _ => .error "unsupported Option.map application"
+        | (.const ``Option.filter _, args) =>
+            match args.reverse, optionConstructorType? args with
+            | optionValue :: predicate :: _, some payloadTy =>
+                let optionResult ← extractValueFrom ctx locals nextLocal optionValue
+                let parts ← optionPartsWithLets optionResult.fst
+                let lets := parts.fst
+                let tag := parts.snd.fst
+                let payload := parts.snd.snd
+                let predicateBody ←
+                  match collectLambdas predicate 1 with
+                  | some body => .ok body
+                  | none => .error "unsupported Option.filter predicate"
+                let predicateResult ←
+                  extractCondFrom ctx (.value payload :: locals) optionResult.snd predicateBody
+                let nonePayload ← defaultValue payloadTy
+                let keep :=
+                  .and (.not (.eqU64 tag (.u64 0))) predicateResult.fst
+                .ok
+                  (wrapValueLets lets
+                    (.option (.ite keep (.u64 1) (.u64 0))
+                      (← valueIte keep payload nonePayload)),
+                    predicateResult.snd)
+            | _, _ => .error "unsupported Option.filter application"
         | (.const ``Option.bind _, args) =>
             match args.reverse, optionMapResultType? args with
             | bindFn :: optionValue :: _, some resultTy =>

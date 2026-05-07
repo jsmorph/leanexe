@@ -548,6 +548,30 @@ def optionMapProduct : UInt64 :=
   | none => 0
   | some pair => pair.1 * (10 : UInt64) + pair.2
 
+def optionFilterSomeKeep : UInt64 :=
+  match Option.filter (fun value : UInt64 => value > 3) (some 5) with
+  | some value => value
+  | none => 0
+
+def optionFilterSomeDrop : UInt64 :=
+  if (Option.filter (fun value : UInt64 => value > 3) (some 2)).isNone then
+    1
+  else
+    0
+
+def optionFilterNoneSkipsPredicateTrap : UInt64 :=
+  match Option.filter (fun _value : UInt64 => (Array.replicate 0 (0 : UInt64)).back! == 0)
+      (none : Option UInt64) with
+  | some value => value
+  | none => 7
+
+def optionFilterIgnoresPayloadTrap : UInt64 :=
+  if (Option.filter (fun _value : UInt64 => false)
+      (some ((Array.replicate 0 (0 : UInt64)).back!))).isNone then
+    1
+  else
+    0
+
 def optionBindSome : UInt64 :=
   match Option.bind (some (5 : UInt64)) (fun value => some (value + 1)) with
   | none => 0
