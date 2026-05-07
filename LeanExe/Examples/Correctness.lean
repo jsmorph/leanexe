@@ -196,6 +196,24 @@ def arrayAppendEmptySides : UInt64 :=
   else
     0
 
+def arrayExtractRead : UInt64 :=
+  let a := ((((Array.replicate 4 (0 : UInt64)).set! 0 10).set! 1 20).set! 2 30).set! 3 40
+  let b := a.extract 1 3
+  if a.size == 4 && b.size == 2 then
+    b[0]! * (10 : UInt64) + b[1]!
+  else
+    0
+
+def arrayExtractClamps : UInt64 :=
+  let a := ((((Array.replicate 4 (0 : UInt64)).set! 0 10).set! 1 20).set! 2 30).set! 3 40
+  let b := a.extract 2 10
+  let c := a.extract 5 10
+  let d := a.extract 3 1
+  if b.size == 2 && c.isEmpty && d.isEmpty then
+    b[0]! * (10 : UInt64) + b[1]!
+  else
+    0
+
 def arrayIsEmptyValues : UInt64 :=
   let empty := Array.replicate 0 (0 : UInt64)
   let filled := Array.replicate 1 (0 : UInt64)
