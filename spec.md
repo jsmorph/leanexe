@@ -32,7 +32,7 @@ The current report imports compiled `.olean` modules through Lean’s module loa
 | `Unit` | Planned | Reported only |
 | `Bool` | Implemented | Implemented for the demo validator and represented as `0` or `1` in the generic Wasm fragment |
 | `UInt8` | Implemented | Implemented for the demo validator and as an internal generic scalar for `ByteArray.get!`, `UInt8` literals, `UInt8.ofNat`, `UInt8.toNat`, local lets, project-local helper parameters and results, comparisons, and wrapping addition, subtraction, and multiplication; `UInt8` entry parameters and results are rejected |
-| `UInt32` and `UInt64` | Planned | `UInt64` implemented for the first generic compiler fragment, including wrapping arithmetic, `land`, `lor`, `xor`, `shiftLeft`, `shiftRight`, `UInt64.ofNat`, `UInt64.toNat`, unsigned comparisons, and Lean-compatible division and remainder at zero divisors; `UInt32` reported only |
+| `UInt32` and `UInt64` | Planned | `UInt64` implemented for the first generic compiler fragment, including wrapping arithmetic, `min`, `max`, `land`, `lor`, `xor`, `shiftLeft`, `shiftRight`, `UInt64.ofNat`, `UInt64.toNat`, unsigned comparisons, and Lean-compatible division and remainder at zero divisors; `UInt32` reported only |
 | `Nat` | Planned for bounded static use | Implemented for fuel arguments, array sizes, and array indices represented as Wasm `i64`; general unbounded runtime arithmetic is unsupported |
 | `ByteArray` | Implemented | Implemented in the hand-written validator path and as a read-only generic entry parameter represented by pointer and length ABI slots; construction, mutation, append, slices, and byte-array results are rejected at the generic function type boundary |
 | Products | Planned as structured values | Implemented internally for products whose fields are first-fragment values; product entry parameters and product entry results are rejected |
@@ -48,7 +48,7 @@ The current report imports compiled `.olean` modules through Lean’s module loa
 
 `Nat` needs careful treatment because Lean’s `Nat` is unbounded, while the first Wasm target uses fixed-width machine integers and explicit memory.  The subset may admit `Nat` in proofs, sizes, indices, and compile-time constants before it admits general unbounded runtime arithmetic.  Any accepted runtime `Nat` operation must state its representation and overflow behavior.
 
-Runtime `Nat` values in the current fragment use the same `i64` representation as other scalar values.  Runtime `Nat` literals must be below `2^64`; larger literals are rejected rather than truncated.  `Nat` subtraction follows Lean’s saturating semantics: `a - b` returns `0` when `a < b`.  `Nat` addition and multiplication trap when the result exceeds the bounded representation.  Programs that rely on arbitrary-precision runtime `Nat` results are outside the current subset.
+Runtime `Nat` values in the current fragment use the same `i64` representation as other scalar values.  Runtime `Nat` literals must be below `2^64`; larger literals are rejected rather than truncated.  `Nat` subtraction follows Lean’s saturating semantics: `a - b` returns `0` when `a < b`.  `Nat` addition and multiplication trap when the result exceeds the bounded representation.  `Nat.min` and `Nat.max` lower through unsigned comparisons over the bounded representation.  Programs that rely on arbitrary-precision runtime `Nat` results are outside the current subset.
 
 ## Terms
 
