@@ -46,6 +46,12 @@ def byteAtQuestionOrZero (input : ByteArray) (index : Nat) : Nat :=
   | some byte => byte.toNat
   | none => 0
 
+def byteAtProofOrZero (input : ByteArray) : Nat :=
+  if _h : 0 < input.size then
+    input[0].toNat
+  else
+    0
+
 def sliceSecondPlusSize (input : ByteArray) : Nat :=
   let slice := input.extract 1 3
   if slice.isEmpty then

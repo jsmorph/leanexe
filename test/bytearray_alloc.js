@@ -166,6 +166,19 @@ async function main() {
     }
   }
 
+  const byteAtProofOrZero = await instantiate("byteAtProofOrZero");
+  const byteAtProofOrZeroCases = [
+    { input: new Uint8Array([42]), expected: 42n },
+    { input: new Uint8Array([]), expected: 0n },
+  ];
+
+  for (const testCase of byteAtProofOrZeroCases) {
+    const actual = callByteArray(byteAtProofOrZero, testCase.input);
+    if (actual !== testCase.expected) {
+      throw new Error(`byteAtProofOrZero: expected ${testCase.expected}, got ${actual}`);
+    }
+  }
+
   const sliceSecondPlusSize = await instantiate("sliceSecondPlusSize");
   const sliceSecondPlusSizeCases = [
     { input: new Uint8Array([10, 20, 30, 40]), expected: 22n },
@@ -254,6 +267,7 @@ async function main() {
     firstByteBangIndexCases.length +
     byteAtOrZeroCases.length +
     byteAtQuestionOrZeroCases.length +
+    byteAtProofOrZeroCases.length +
     sliceSecondPlusSizeCases.length +
     sliceClampSizeCases.length +
     sliceStopBeforeStartCases.length +
