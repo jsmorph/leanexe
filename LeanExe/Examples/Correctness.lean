@@ -177,6 +177,12 @@ def arrayBackRead : UInt64 :=
 def arrayBackEmptyTrap : UInt64 :=
   (Array.replicate 0 (4 : UInt64)).back!
 
+def arrayGetDRead (i : Nat) : UInt64 :=
+  (Array.replicate 2 (7 : UInt64)).getD i 99
+
+def arrayGetDSkipsDefaultTrap : UInt64 :=
+  (Array.replicate 1 (5 : UInt64)).getD 0 ((Array.replicate 0 (0 : UInt64)).back!)
+
 def productArrayAlias : UInt64 :=
   let a := (Array.replicate 2 (0 : UInt64)).set! 0 11
   let pair := (a, a.set! 0 22)

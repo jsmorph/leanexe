@@ -620,6 +620,14 @@ partial def demandExpr
           | (.const ``Array.get!Internal _, _) => .trap
           | (.const ``GetElem?.getElem! _, _) => .trap
           | (.const ``Array.back! _, _) => .trap
+          | (.const ``Array.getD _, args) =>
+              match args.reverse with
+              | defaultValue :: index :: array :: _ =>
+                  let arrayDemand := demandExpr ctx visiting array
+                  let indexDemand := demandExpr ctx visiting index
+                  let defaultDemand := demandExpr ctx visiting defaultValue
+                  Demand.branch (Demand.always arrayDemand indexDemand) .empty defaultDemand
+              | _ => .empty
           | (.const ``Array.set! _, _) => .trap
           | (.const primitive _, args) =>
               match boolMatcherArgs? ctx.env (.const primitive []) args with
@@ -1157,6 +1165,22 @@ mutual
                       .arrayGet (.local slot) (.u64Bin .sub (.arraySize (.local slot)) (.u64 1))
                     .ok (.letE slot arrayResult.fst value, slot + 1)
                 | _ => .error "unsupported Array.back! application"
+            | (.const ``Array.getD _, args) =>
+                match args.reverse with
+                | defaultValue :: index :: array :: _ =>
+                    let arrayResult ← extractExprFrom ctx locals nextLocal array
+                    let indexResult ← extractExprFrom ctx locals arrayResult.snd index
+                    let arraySlot := indexResult.snd
+                    let indexSlot := arraySlot + 1
+                    let defaultResult ← extractExprFrom ctx locals (indexSlot + 1) defaultValue
+                    let value :=
+                      .ite
+                        (.ltU64 (.local indexSlot) (.arraySize (.local arraySlot)))
+                        (.arrayGet (.local arraySlot) (.local indexSlot))
+                        defaultResult.fst
+                    .ok (.letE arraySlot arrayResult.fst (.letE indexSlot indexResult.fst value),
+                      defaultResult.snd)
+                | _ => .error "unsupported Array.getD application"
             | (.const ``Array.set! _, args) =>
                 match args.reverse with
                 | value :: index :: array :: _ =>
