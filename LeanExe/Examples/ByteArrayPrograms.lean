@@ -41,6 +41,12 @@ def byteAtOrZero (input : ByteArray) (index : Nat) : Nat :=
   else
     0
 
+def prefixPlusFirstByte (base : UInt64) (input : ByteArray) : UInt64 :=
+  if input.isEmpty then
+    base
+  else
+    base + UInt64.ofNat input[0]!.toNat
+
 def emptyViaIsEmpty (input : ByteArray) : Bool :=
   input.isEmpty
 
