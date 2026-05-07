@@ -546,8 +546,31 @@ def optionMatcherArgs? (env : Environment) (fn : Expr) (args : List Expr) :
         | _ => none
   | _ => none
 
+partial def boolArmTarget? (expr : Expr) : Option Bool :=
+  match expr.consumeMData with
+  | .forallE _ _ body _ => boolArmTarget? body
+  | .app _ value =>
+      if isConst ``Bool.false value then
+        some false
+      else if isConst ``Bool.true value then
+        some true
+      else
+        none
+  | _ => none
+
 def boolMatcherArgs? (env : Environment) (fn : Expr) (args : List Expr) :
     Option (Expr × Expr × Expr) :=
+  let generatedBoolArgs? (name : Name) : Option (Expr × Expr × Expr) :=
+    match env.find? name, args with
+    | some info, [_motive, scrutinee, firstArm, secondArm] =>
+        match (peelForall info.type).fst with
+        | _motiveTy :: _scrutineeTy :: firstArmTy :: secondArmTy :: _ =>
+            match boolArmTarget? firstArmTy, boolArmTarget? secondArmTy with
+            | some false, some true => some (scrutinee, firstArm, secondArm)
+            | some true, some false => some (scrutinee, secondArm, firstArm)
+            | _, _ => none
+        | _ => none
+    | _, _ => none
   match fn.consumeMData with
   | .const name _ =>
       if name == ``Bool.casesOn then
@@ -555,9 +578,7 @@ def boolMatcherArgs? (env : Environment) (fn : Expr) (args : List Expr) :
         | [_motive, scrutinee, falseArm, trueArm] => some (scrutinee, falseArm, trueArm)
         | _ => none
       else if generatedMatcherScrutineeType? env name == some .bool then
-        match args with
-        | [_motive, scrutinee, falseArm, trueArm] => some (scrutinee, falseArm, trueArm)
-        | _ => none
+        generatedBoolArgs? name
       else
         none
   | _ => none
