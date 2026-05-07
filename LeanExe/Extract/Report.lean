@@ -159,6 +159,8 @@ def knownExternal? (name : Name) : Option Classification :=
     some { status := "implemented", reason := "numeric primitive in the generic compiler fragment" }
   else if name == ``Decidable.decide then
     some { status := "implemented", reason := "implemented for supported decidable comparisons in the generic compiler fragment" }
+  else if name == ``Nat.casesOn then
+    some { status := "implemented", reason := "implemented for nonrecursive zero/successor Nat matches in the generic compiler fragment" }
   else if name == ``OfNat.ofNat then
     some { status := "reported", reason := "numeric literal needs target-type resolution" }
   else if (displayName name).contains "inst" then
@@ -181,7 +183,7 @@ def classifyLocal (info : ConstantInfo) : Classification :=
   else if (displayName info.name).contains ".match_" then
     {
       status := "reported",
-      reason := "generated match helper; supported recursion patterns consume it during extraction"
+      reason := "generated match helper; supported matcher and recursion patterns consume it during extraction"
     }
   else if info.isUnsafe then
     { status := "rejected", reason := "unsafe declaration" }
