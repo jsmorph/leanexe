@@ -329,6 +329,22 @@ def optionElimProduct : UInt64 :=
     (fun value => (value, value + 1))
   pair.1 * (10 : UInt64) + pair.2
 
+def optionMapSome : UInt64 :=
+  match Option.map (fun value : UInt64 => value + 1) (some (5 : UInt64)) with
+  | none => 0
+  | some value => value
+
+def optionMapNoneSkipsFunctionTrap : UInt64 :=
+  match Option.map (fun _value : UInt64 => (Array.replicate 0 (0 : UInt64)).back!)
+      (none : Option UInt64) with
+  | none => 7
+  | some value => value
+
+def optionMapProduct : UInt64 :=
+  match Option.map (fun value : UInt64 => (value, value + 1)) (some (1 : UInt64)) with
+  | none => 0
+  | some pair => pair.1 * (10 : UInt64) + pair.2
+
 def natComparisons (x : Nat) : UInt64 :=
   if x < 3 then
     10

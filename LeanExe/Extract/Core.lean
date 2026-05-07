@@ -420,6 +420,11 @@ def optionConstructorType? (args : List Expr) : Option Ty :=
   | ty :: _ => typeAtom? ty
   | [] => none
 
+def optionMapResultType? (args : List Expr) : Option Ty :=
+  match args with
+  | _sourceTy :: resultTy :: _ => typeAtom? resultTy
+  | _ => none
+
 def isMatcherName (candidate : Name) : Bool :=
   match candidate with
   | .str _ component => component.startsWith "match_"
@@ -649,6 +654,14 @@ partial def demandExpr
                     (demandExpr ctx visiting optionValue)
                     (demandExpr ctx visiting defaultValue)
                     (demandOptionSomeArm ctx visiting someArm)
+              | _ => .empty
+          | (.const ``Option.map _, args) =>
+              match args.reverse with
+              | optionValue :: mapFn :: _ =>
+                  Demand.branch
+                    (demandExpr ctx visiting optionValue)
+                    .empty
+                    (demandOptionSomeArm ctx visiting mapFn)
               | _ => .empty
           | (.const ``Array.set! _, _) => .trap
           | (.const primitive _, args) =>
@@ -978,6 +991,22 @@ mutual
                 .ok (← valueIte (.eqU64 parts.fst (.u64 0)) defaultResult.fst someResult.fst,
                   someResult.snd)
             | _ => .error "unsupported Option.elim application"
+        | (.const ``Option.map _, args) =>
+            match args.reverse, optionMapResultType? args with
+            | optionValue :: mapFn :: _, some resultTy =>
+                let optionResult ← extractValueFrom ctx locals nextLocal optionValue
+                let parts ← optionParts optionResult.fst
+                let mapBody ←
+                  match collectLambdas mapFn 1 with
+                  | some body => .ok body
+                  | none => .error "unsupported Option.map function"
+                let mapResult ←
+                  extractValueFrom ctx (.value parts.snd :: locals) optionResult.snd mapBody
+                let nonePayload ← defaultValue resultTy
+                .ok (.option parts.fst
+                  (← valueIte (.eqU64 parts.fst (.u64 0)) nonePayload mapResult.fst),
+                  mapResult.snd)
+            | _, _ => .error "unsupported Option.map application"
         | (.const ``Bool.casesOn _, args) =>
             match boolMatcherArgs? ctx.env (.const ``Bool.casesOn []) args with
             | some (scrutinee, falseArm, trueArm) =>
