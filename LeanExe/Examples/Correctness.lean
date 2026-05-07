@@ -588,6 +588,27 @@ def exceptBindProduct : UInt64 :=
   | Except.error code => code
   | Except.ok pair => pair.1 * (10 : UInt64) + pair.2
 
+def exceptIncrementHelper (x : UInt64) : Except UInt64 UInt64 :=
+  if x == 0 then Except.error 9 else Except.ok (x + 1)
+
+def exceptHelperResult : UInt64 :=
+  match exceptIncrementHelper 5 with
+  | Except.error code => code
+  | Except.ok value => value
+
+def exceptHelperError : UInt64 :=
+  match exceptIncrementHelper 0 with
+  | Except.error code => code
+  | Except.ok value => value
+
+def exceptParamHelper (value : Except UInt64 UInt64) : UInt64 :=
+  match value with
+  | Except.error code => code
+  | Except.ok item => item + 1
+
+def exceptHelperParam : UInt64 :=
+  exceptParamHelper (Except.ok 3)
+
 def optionGetDNone : UInt64 :=
   (none : Option UInt64).getD 7
 
