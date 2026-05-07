@@ -154,6 +154,22 @@ def optionBranch (flag : UInt64) : UInt64 :=
   | none => 11
   | some value => value + 1
 
+def natComparisons (x : Nat) : UInt64 :=
+  if x < 3 then
+    10
+  else if x <= 5 then
+    20
+  else
+    30
+
+def u64Comparisons (x : UInt64) : UInt64 :=
+  if x < 3 then
+    10
+  else if x <= 5 then
+    20
+  else
+    30
+
 def rejectProductReturn : UInt64 × UInt64 :=
   let pair := ((1 : UInt64), (2 : UInt64))
   pair

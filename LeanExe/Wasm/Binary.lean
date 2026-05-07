@@ -234,6 +234,9 @@ def i64ExtendI32U : List UInt8 :=
 def i64LtU : List UInt8 :=
   ofNats [84]
 
+def i64LeU : List UInt8 :=
+  ofNats [88]
+
 def i64GeU : List UInt8 :=
   ofNats [90]
 
@@ -263,6 +266,8 @@ mutual
     | .true => 0
     | .false => 0
     | .eqU64 left right => max (exprScratch left) (exprScratch right)
+    | .ltU64 left right => max (exprScratch left) (exprScratch right)
+    | .leU64 left right => max (exprScratch left) (exprScratch right)
     | .not cond => condScratch cond
     | .and left right => max (condScratch left) (condScratch right)
     | .or left right => max (condScratch left) (condScratch right)
@@ -394,6 +399,8 @@ mutual
     | .true => ofNats [65, 1]
     | .false => ofNats [65, 0]
     | .eqU64 left right => emitExpr scratch left ++ emitExpr scratch right ++ ofNats [81]
+    | .ltU64 left right => emitExpr scratch left ++ emitExpr scratch right ++ i64LtU
+    | .leU64 left right => emitExpr scratch left ++ emitExpr scratch right ++ i64LeU
     | .not cond => emitCond scratch cond ++ ofNats [69]
     | .and left right =>
         emitCond scratch left ++ ofNats [4, 127] ++
@@ -588,6 +595,8 @@ mutual
     | .true => ["i32.const 1"]
     | .false => ["i32.const 0"]
     | .eqU64 left right => exprWatLines scratch left ++ exprWatLines scratch right ++ ["i64.eq"]
+    | .ltU64 left right => exprWatLines scratch left ++ exprWatLines scratch right ++ ["i64.lt_u"]
+    | .leU64 left right => exprWatLines scratch left ++ exprWatLines scratch right ++ ["i64.le_u"]
     | .not cond => condWatLines scratch cond ++ ["i32.eqz"]
     | .and left right =>
         condWatLines scratch left ++

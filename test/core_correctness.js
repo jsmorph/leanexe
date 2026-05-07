@@ -38,6 +38,12 @@ const accepted = [
   { name: "optionLet", args: [], expected: 18n },
   { name: "optionBranch", args: [0n], expected: 11n },
   { name: "optionBranch", args: [1n], expected: 34n },
+  { name: "natComparisons", args: [2n], expected: 10n },
+  { name: "natComparisons", args: [3n], expected: 20n },
+  { name: "natComparisons", args: [6n], expected: 30n },
+  { name: "u64Comparisons", args: [2n], expected: 10n },
+  { name: "u64Comparisons", args: [3n], expected: 20n },
+  { name: "u64Comparisons", args: [6n], expected: 30n },
 ];
 
 const rejected = [
