@@ -561,6 +561,15 @@ def exceptMapTypes? (args : List Expr) : Option (Ty × Ty) :=
       | _, _ => none
   | _ => none
 
+def exceptPayloadType? (args : List Expr) : Option Ty :=
+  match args with
+  | errorTy :: okTy :: _ =>
+      match typeAtom? errorTy, typeAtom? okTy with
+      | some .unit, _ => none
+      | some _, some okTy => some okTy
+      | _, _ => none
+  | _ => none
+
 def optionMapResultType? (args : List Expr) : Option Ty :=
   match args with
   | _sourceTy :: resultTy :: _ => typeAtom? resultTy
@@ -1008,6 +1017,10 @@ partial def demandExpr
                     (demandExpr ctx visiting exceptValue)
                     .empty
                     (demandOptionSomeArm ctx visiting bindFn)
+              | _ => .empty
+          | (.const ``Except.toOption _, args) =>
+              match args.reverse with
+              | exceptValue :: _ => demandExpr ctx visiting exceptValue
               | _ => .empty
           | (.const ``Option.bind _, args) =>
               match args.reverse with
@@ -1496,6 +1509,16 @@ mutual
                       (← valueIte isError defaultOk bindOk)),
                     bindResult.snd)
             | _, _ => .error "unsupported Except.bind application"
+        | (.const ``Except.toOption _, args) =>
+            match args.reverse, exceptPayloadType? args with
+            | exceptValue :: _, some _payloadTy =>
+                let exceptResult ← extractValueFrom ctx locals nextLocal exceptValue
+                let parts ← sumPartsWithLets exceptResult.fst
+                .ok
+                  (wrapValueLets parts.fst
+                    (.option parts.snd.fst parts.snd.snd.snd),
+                    exceptResult.snd)
+            | _, _ => .error "unsupported Except.toOption application"
         | (.const ``Option.getD _, args) =>
             match args.reverse with
             | defaultValue :: optionValue :: _ =>
