@@ -30,6 +30,12 @@ def natAddNormal : Nat :=
 def natMulNormal : Nat :=
   (7 : Nat) * 6
 
+def natDivModNormal (x : Nat) : Nat :=
+  (x / 3) * 10 + (x % 3)
+
+def natDivModZero (x : Nat) : Nat :=
+  (x / 0) * 10 + (x % 0)
+
 def natAddOverflow : Nat :=
   (18446744073709551615 : Nat) + 1
 
