@@ -410,7 +410,18 @@ def isMatcherName (candidate : Name) : Bool :=
   | .str _ component => component.startsWith "match_"
   | _ => false
 
-def optionMatcherArgs? (fn : Expr) (args : List Expr) :
+def generatedMatcherScrutineeType? (env : Environment) (name : Name) : Option Ty :=
+  if !isMatcherName name then
+    none
+  else
+    match env.find? name with
+    | some info =>
+        match (peelForall info.type).fst with
+        | _motive :: scrutineeType :: _ => typeAtom? scrutineeType
+        | _ => none
+    | none => none
+
+def optionMatcherArgs? (env : Environment) (fn : Expr) (args : List Expr) :
     Option (Expr × Expr × Expr) :=
   match fn.consumeMData with
   | .const name _ =>
@@ -418,9 +429,26 @@ def optionMatcherArgs? (fn : Expr) (args : List Expr) :
         match args.reverse with
         | someArm :: noneArm :: scrutinee :: _ => some (scrutinee, noneArm, someArm)
         | _ => none
-      else if isMatcherName name then
+      else
+        match generatedMatcherScrutineeType? env name with
+        | some (.sum .unit _) =>
+            match args with
+            | [_motive, scrutinee, noneArm, someArm] => some (scrutinee, noneArm, someArm)
+            | _ => none
+        | _ => none
+  | _ => none
+
+def boolMatcherArgs? (env : Environment) (fn : Expr) (args : List Expr) :
+    Option (Expr × Expr × Expr) :=
+  match fn.consumeMData with
+  | .const name _ =>
+      if name == ``Bool.casesOn then
         match args with
-        | [_motive, scrutinee, noneArm, someArm] => some (scrutinee, noneArm, someArm)
+        | [_motive, scrutinee, falseArm, trueArm] => some (scrutinee, falseArm, trueArm)
+        | _ => none
+      else if generatedMatcherScrutineeType? env name == some .bool then
+        match args with
+        | [_motive, scrutinee, falseArm, trueArm] => some (scrutinee, falseArm, trueArm)
         | _ => none
       else
         none
@@ -575,23 +603,33 @@ partial def demandExpr
           | (.const ``GetElem?.getElem! _, _) => .trap
           | (.const ``Array.set! _, _) => .trap
           | (.const primitive _, args) =>
-              match optionMatcherArgs? (.const primitive []) args with
-              | some (scrutinee, noneArm, someArm) =>
+              match boolMatcherArgs? ctx.env (.const primitive []) args with
+              | some (scrutinee, falseArm, trueArm) =>
                   Demand.branch
-                    (demandExpr ctx visiting scrutinee)
-                    (demandOptionNoneArm ctx visiting noneArm)
-                    (demandOptionSomeArm ctx visiting someArm)
+                    (demandCond ctx visiting scrutinee)
+                    (demandUnitExprArm ctx visiting trueArm)
+                    (demandUnitExprArm ctx visiting falseArm)
               | none =>
-                  match functionIndex? ctx primitive with
-                  | some _ =>
-                      demandCall ctx visiting primitive args
+                  match optionMatcherArgs? ctx.env (.const primitive []) args with
+                  | some (scrutinee, noneArm, someArm) =>
+                      Demand.branch
+                        (demandExpr ctx visiting scrutinee)
+                        (demandOptionNoneArm ctx visiting noneArm)
+                        (demandOptionSomeArm ctx visiting someArm)
                   | none =>
-                      match primitiveArgPair? args with
-                      | some (left, right) =>
-                          Demand.always
-                            (demandExpr ctx visiting left)
-                            (demandExpr ctx visiting right)
-                      | none => args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
+                      match functionIndex? ctx primitive with
+                      | some _ =>
+                          demandCall ctx visiting primitive args
+                      | none =>
+                          match primitiveArgPair? args with
+                          | some (left, right) =>
+                              Demand.always
+                                (demandExpr ctx visiting left)
+                                (demandExpr ctx visiting right)
+                          | none =>
+                              args.foldl
+                                (fun acc arg => Demand.always acc (demandExpr ctx visiting arg))
+                                .empty
           | (fn, args) =>
               (fn :: args).foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
 
@@ -676,9 +714,16 @@ partial def demandCond
             mayTrap := leftDemand.mayTrap || rightDemand.mayTrap
           }
       | (.const name _, args) =>
-          match functionIndex? ctx name with
-          | some _ => demandCall ctx visiting name args
-          | none => args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
+          match boolMatcherArgs? ctx.env (.const name []) args with
+          | some (scrutinee, falseArm, trueArm) =>
+              Demand.branch
+                (demandCond ctx visiting scrutinee)
+                (demandUnitCondArm ctx visiting trueArm)
+                (demandUnitCondArm ctx visiting falseArm)
+          | none =>
+              match functionIndex? ctx name with
+              | some _ => demandCall ctx visiting name args
+              | none => args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
       | _ => demandExpr ctx visiting expr
 
 partial def demandCall
@@ -719,6 +764,22 @@ partial def demandOptionSomeArm
   match collectLambdas someArm 1 with
   | some body => decDemand (demandExpr ctx visiting body)
   | none => .empty
+
+partial def demandUnitExprArm
+    (ctx : Context)
+    (visiting : List Name)
+    (arm : Expr) : Demand :=
+  match collectLambdas arm 1 with
+  | some body => decDemand (demandExpr ctx visiting body)
+  | none => demandExpr ctx visiting arm
+
+partial def demandUnitCondArm
+    (ctx : Context)
+    (visiting : List Name)
+    (arm : Expr) : Demand :=
+  match collectLambdas arm 1 with
+  | some body => decDemand (demandCond ctx visiting body)
+  | none => demandCond ctx visiting arm
 
 partial def demandSummary
     (ctx : Context)
@@ -817,6 +878,14 @@ mutual
                 let valueResult ← extractValueFrom ctx locals nextLocal value
                 .ok (.option (.u64 1) valueResult.fst, valueResult.snd)
             | _, _ => .error "unsupported Option.some application"
+        | (.const ``Bool.casesOn _, args) =>
+            match boolMatcherArgs? ctx.env (.const ``Bool.casesOn []) args with
+            | some (scrutinee, falseArm, trueArm) =>
+                let condResult ← extractCondFrom ctx locals nextLocal scrutinee
+                let falseResult ← extractUnitArmValueFrom ctx locals condResult.snd falseArm
+                let trueResult ← extractUnitArmValueFrom ctx locals falseResult.snd trueArm
+                .ok (← valueIte condResult.fst trueResult.fst falseResult.fst, trueResult.snd)
+            | none => .error "unsupported Bool.casesOn application"
         | (.const ``ite _, [ty, condExpr, _, thenExpr, elseExpr]) =>
             match typeAtom? ty with
             | some .byteArray =>
@@ -838,12 +907,29 @@ mutual
                 let exprResult ← extractExprFrom ctx locals nextLocal expr
                 .ok (.scalar exprResult.fst, exprResult.snd)
         | (fn, args) =>
-            match optionMatcherArgs? fn args with
-            | some (scrutinee, noneArm, someArm) =>
-                extractOptionMatchValueFrom ctx locals nextLocal scrutinee noneArm someArm
+            match boolMatcherArgs? ctx.env fn args with
+            | some (scrutinee, falseArm, trueArm) =>
+                let condResult ← extractCondFrom ctx locals nextLocal scrutinee
+                let falseResult ← extractUnitArmValueFrom ctx locals condResult.snd falseArm
+                let trueResult ← extractUnitArmValueFrom ctx locals falseResult.snd trueArm
+                .ok (← valueIte condResult.fst trueResult.fst falseResult.fst, trueResult.snd)
             | none =>
-                let exprResult ← extractExprFrom ctx locals nextLocal expr
-                .ok (.scalar exprResult.fst, exprResult.snd)
+                match optionMatcherArgs? ctx.env fn args with
+                | some (scrutinee, noneArm, someArm) =>
+                    extractOptionMatchValueFrom ctx locals nextLocal scrutinee noneArm someArm
+                | none =>
+                    let exprResult ← extractExprFrom ctx locals nextLocal expr
+                    .ok (.scalar exprResult.fst, exprResult.snd)
+
+  partial def extractUnitArmValueFrom
+      (ctx : Context)
+      (locals : List Binding)
+      (nextLocal : Nat)
+      (arm : Expr) :
+      Except String (ExtractedValue × Nat) := do
+    match collectLambdas arm 1 with
+    | some body => extractValueFrom ctx (.value (.scalar (.u64 0)) :: locals) nextLocal body
+    | none => extractValueFrom ctx locals nextLocal arm
 
   partial def extractOptionMatchValueFrom
       (ctx : Context)
@@ -945,6 +1031,9 @@ mutual
         | some result => .ok (← result, nextLocal)
         | none =>
           match appFnArgs expr with
+            | (.const ``Bool.casesOn _, _) =>
+                let valueResult ← extractValueFrom ctx locals nextLocal expr
+                .ok (← scalarValue valueResult.fst, valueResult.snd)
             | (.const ``ite _, [ty, condExpr, _, thenExpr, elseExpr]) =>
                 if typeAtom? ty |>.isSome then
                   let condResult ← extractCondFrom ctx locals nextLocal condExpr
@@ -1060,82 +1149,89 @@ mutual
             | (.const ``Prod.mk _, _) =>
                 .error "product value used where scalar value is required"
             | (.const primitive _, args) =>
-                match optionMatcherArgs? (.const primitive []) args with
-                | some (scrutinee, noneArm, someArm) =>
-                    let valueResult ←
-                      extractOptionMatchValueFrom ctx locals nextLocal scrutinee noneArm someArm
-                    .ok (← scalarValue valueResult.fst, valueResult.snd)
+                match boolMatcherArgs? ctx.env (.const primitive []) args with
+                | some (scrutinee, falseArm, trueArm) =>
+                    let condResult ← extractCondFrom ctx locals nextLocal scrutinee
+                    let falseResult ← extractUnitArmValueFrom ctx locals condResult.snd falseArm
+                    let trueResult ← extractUnitArmValueFrom ctx locals falseResult.snd trueArm
+                    .ok (← scalarValue (← valueIte condResult.fst trueResult.fst falseResult.fst), trueResult.snd)
                 | none =>
-                  match ← extractInlineCallValueFrom ctx locals nextLocal primitive args with
-                  | some valueResult => .ok (← scalarValue valueResult.fst, valueResult.snd)
-                  | none =>
-                    match functionIndex? ctx primitive with
-                    | some index =>
-                        strictRecursiveCallCheck ctx primitive args
-                        let sig ←
-                          match ctx.env.find? primitive with
-                          | some info =>
-                              match supportedFunction? info with
-                              | some sig => .ok sig
-                              | none => .error s!"unsupported function type or declaration: {primitive}"
-                          | none => .error s!"declaration disappeared during extraction: {primitive}"
-                        let argsResult ← extractCallArgsFrom ctx locals nextLocal sig.params args
-                        .ok (.call index argsResult.fst, argsResult.snd)
+                    match optionMatcherArgs? ctx.env (.const primitive []) args with
+                    | some (scrutinee, noneArm, someArm) =>
+                        let valueResult ←
+                          extractOptionMatchValueFrom ctx locals nextLocal scrutinee noneArm someArm
+                        .ok (← scalarValue valueResult.fst, valueResult.snd)
                     | none =>
-                        match primitiveArgPair? args with
-                        | some (left, right) =>
-                            let leftResult ← extractExprFrom ctx locals nextLocal left
-                            let rightResult ← extractExprFrom ctx locals leftResult.snd right
-                            let leftIR := leftResult.fst
-                            let rightIR := rightResult.fst
-                            if primitive == ``HAdd.hAdd then
-                              match primitiveResultType? args with
-                              | some .nat =>
-                                  .ok (.u64Bin .natAdd leftIR rightIR, rightResult.snd)
-                              | some .u8 =>
-                                  .ok (u8WrapExpr (.u64Bin .add leftIR rightIR), rightResult.snd)
-                              | _ => .ok (.u64Bin .add leftIR rightIR, rightResult.snd)
-                            else if primitive == ``HSub.hSub then
-                              match primitiveResultType? args with
-                              | some .nat =>
-                                  .ok (.u64Bin .natSub leftIR rightIR, rightResult.snd)
-                              | some .u8 =>
-                                  .ok (u8WrapExpr (.u64Bin .sub leftIR rightIR), rightResult.snd)
-                              | _ => .ok (.u64Bin .sub leftIR rightIR, rightResult.snd)
-                            else if primitive == ``HMul.hMul then
-                              match primitiveResultType? args with
-                              | some .nat =>
-                                  .ok (.u64Bin .natMul leftIR rightIR, rightResult.snd)
-                              | some .u8 =>
-                                  .ok (u8WrapExpr (.u64Bin .mul leftIR rightIR), rightResult.snd)
-                              | _ => .ok (.u64Bin .mul leftIR rightIR, rightResult.snd)
-                            else if primitive == ``HDiv.hDiv then
-                              .ok (.u64Bin .divU leftIR rightIR, rightResult.snd)
-                            else if primitive == ``HMod.hMod then
-                              .ok (.u64Bin .modU leftIR rightIR, rightResult.snd)
-                            else if primitive == ``UInt64.land then
-                              .ok (.u64Bin .bitAnd leftIR rightIR, rightResult.snd)
-                            else if primitive == ``UInt64.lor then
-                              .ok (.u64Bin .bitOr leftIR rightIR, rightResult.snd)
-                            else if primitive == ``UInt64.xor then
-                              .ok (.u64Bin .bitXor leftIR rightIR, rightResult.snd)
-                            else if primitive == ``UInt64.shiftLeft then
-                              .ok (.u64Bin .shiftLeft leftIR rightIR, rightResult.snd)
-                            else if primitive == ``UInt64.shiftRight then
-                              .ok (.u64Bin .shiftRight leftIR rightIR, rightResult.snd)
-                            else if primitive == ``BEq.beq then
-                              .ok (boolExpr (.eqU64 leftIR rightIR), rightResult.snd)
-                            else if primitive == ``LT.lt then
-                              .ok (boolExpr (.ltU64 leftIR rightIR), rightResult.snd)
-                            else if primitive == ``LE.le then
-                              .ok (boolExpr (.leU64 leftIR rightIR), rightResult.snd)
-                            else if primitive == ``GT.gt then
-                              .ok (boolExpr (.ltU64 rightIR leftIR), rightResult.snd)
-                            else if primitive == ``GE.ge then
-                              .ok (boolExpr (.leU64 rightIR leftIR), rightResult.snd)
-                            else
-                              .error s!"unsupported primitive expression: {primitive}"
-                        | none => .error s!"unsupported application: {primitive}"
+                        match ← extractInlineCallValueFrom ctx locals nextLocal primitive args with
+                        | some valueResult => .ok (← scalarValue valueResult.fst, valueResult.snd)
+                        | none =>
+                            match functionIndex? ctx primitive with
+                            | some index =>
+                                strictRecursiveCallCheck ctx primitive args
+                                let sig ←
+                                  match ctx.env.find? primitive with
+                                  | some info =>
+                                      match supportedFunction? info with
+                                      | some sig => .ok sig
+                                      | none => .error s!"unsupported function type or declaration: {primitive}"
+                                  | none => .error s!"declaration disappeared during extraction: {primitive}"
+                                let argsResult ← extractCallArgsFrom ctx locals nextLocal sig.params args
+                                .ok (.call index argsResult.fst, argsResult.snd)
+                            | none =>
+                                match primitiveArgPair? args with
+                                | some (left, right) =>
+                                    let leftResult ← extractExprFrom ctx locals nextLocal left
+                                    let rightResult ← extractExprFrom ctx locals leftResult.snd right
+                                    let leftIR := leftResult.fst
+                                    let rightIR := rightResult.fst
+                                    if primitive == ``HAdd.hAdd then
+                                      match primitiveResultType? args with
+                                      | some .nat =>
+                                          .ok (.u64Bin .natAdd leftIR rightIR, rightResult.snd)
+                                      | some .u8 =>
+                                          .ok (u8WrapExpr (.u64Bin .add leftIR rightIR), rightResult.snd)
+                                      | _ => .ok (.u64Bin .add leftIR rightIR, rightResult.snd)
+                                    else if primitive == ``HSub.hSub then
+                                      match primitiveResultType? args with
+                                      | some .nat =>
+                                          .ok (.u64Bin .natSub leftIR rightIR, rightResult.snd)
+                                      | some .u8 =>
+                                          .ok (u8WrapExpr (.u64Bin .sub leftIR rightIR), rightResult.snd)
+                                      | _ => .ok (.u64Bin .sub leftIR rightIR, rightResult.snd)
+                                    else if primitive == ``HMul.hMul then
+                                      match primitiveResultType? args with
+                                      | some .nat =>
+                                          .ok (.u64Bin .natMul leftIR rightIR, rightResult.snd)
+                                      | some .u8 =>
+                                          .ok (u8WrapExpr (.u64Bin .mul leftIR rightIR), rightResult.snd)
+                                      | _ => .ok (.u64Bin .mul leftIR rightIR, rightResult.snd)
+                                    else if primitive == ``HDiv.hDiv then
+                                      .ok (.u64Bin .divU leftIR rightIR, rightResult.snd)
+                                    else if primitive == ``HMod.hMod then
+                                      .ok (.u64Bin .modU leftIR rightIR, rightResult.snd)
+                                    else if primitive == ``UInt64.land then
+                                      .ok (.u64Bin .bitAnd leftIR rightIR, rightResult.snd)
+                                    else if primitive == ``UInt64.lor then
+                                      .ok (.u64Bin .bitOr leftIR rightIR, rightResult.snd)
+                                    else if primitive == ``UInt64.xor then
+                                      .ok (.u64Bin .bitXor leftIR rightIR, rightResult.snd)
+                                    else if primitive == ``UInt64.shiftLeft then
+                                      .ok (.u64Bin .shiftLeft leftIR rightIR, rightResult.snd)
+                                    else if primitive == ``UInt64.shiftRight then
+                                      .ok (.u64Bin .shiftRight leftIR rightIR, rightResult.snd)
+                                    else if primitive == ``BEq.beq then
+                                      .ok (boolExpr (.eqU64 leftIR rightIR), rightResult.snd)
+                                    else if primitive == ``LT.lt then
+                                      .ok (boolExpr (.ltU64 leftIR rightIR), rightResult.snd)
+                                    else if primitive == ``LE.le then
+                                      .ok (boolExpr (.leU64 leftIR rightIR), rightResult.snd)
+                                    else if primitive == ``GT.gt then
+                                      .ok (boolExpr (.ltU64 rightIR leftIR), rightResult.snd)
+                                    else if primitive == ``GE.ge then
+                                      .ok (boolExpr (.leU64 rightIR leftIR), rightResult.snd)
+                                    else
+                                      .error s!"unsupported primitive expression: {primitive}"
+                                | none => .error s!"unsupported application: {primitive}"
             | (fn, _) => .error s!"unsupported expression: {fn}"
 
   partial def extractCondFrom
@@ -1165,6 +1261,9 @@ mutual
               extractCondFrom ctx locals nextLocal value
             else
               .error "unsupported equality proposition in condition"
+        | (.const ``Bool.casesOn _, _) =>
+            let exprResult ← extractExprFrom ctx locals nextLocal expr
+            .ok (boolCond exprResult.fst, exprResult.snd)
         | (.const ``BEq.beq _, args) =>
             match primitiveArgPair? args with
             | some (left, right) =>
@@ -1212,22 +1311,27 @@ mutual
             let rightResult ← extractCondFrom ctx locals leftResult.snd right
             .ok (.and leftResult.fst rightResult.fst, rightResult.snd)
         | (.const name _, args) =>
-            match ← extractInlineCallValueFrom ctx locals nextLocal name args with
-            | some valueResult => .ok (boolCond (← scalarValue valueResult.fst), valueResult.snd)
+            match boolMatcherArgs? ctx.env (.const name []) args with
+            | some _ =>
+                let exprResult ← extractExprFrom ctx locals nextLocal expr
+                .ok (boolCond exprResult.fst, exprResult.snd)
             | none =>
-                match functionIndex? ctx name with
-                | some index =>
-                    strictRecursiveCallCheck ctx name args
-                    let sig ←
-                      match ctx.env.find? name with
-                      | some info =>
-                          match supportedFunction? info with
-                          | some sig => .ok sig
-                          | none => .error s!"unsupported function type or declaration: {name}"
-                      | none => .error s!"declaration disappeared during extraction: {name}"
-                    let argsResult ← extractCallArgsFrom ctx locals nextLocal sig.params args
-                    .ok (boolCond (.call index argsResult.fst), argsResult.snd)
-                | none => .error s!"unsupported condition: {expr}"
+                match ← extractInlineCallValueFrom ctx locals nextLocal name args with
+                | some valueResult => .ok (boolCond (← scalarValue valueResult.fst), valueResult.snd)
+                | none =>
+                    match functionIndex? ctx name with
+                    | some index =>
+                        strictRecursiveCallCheck ctx name args
+                        let sig ←
+                          match ctx.env.find? name with
+                          | some info =>
+                              match supportedFunction? info with
+                              | some sig => .ok sig
+                              | none => .error s!"unsupported function type or declaration: {name}"
+                          | none => .error s!"declaration disappeared during extraction: {name}"
+                        let argsResult ← extractCallArgsFrom ctx locals nextLocal sig.params args
+                        .ok (boolCond (.call index argsResult.fst), argsResult.snd)
+                    | none => .error s!"unsupported condition: {expr}"
         | _ => .error s!"unsupported condition: {expr}"
 
   partial def extractExprListFrom

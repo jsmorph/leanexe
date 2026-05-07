@@ -135,7 +135,8 @@ def knownExternal? (name : Name) : Option Classification :=
     some { status := "reported", reason := "planned type or library type" }
   else if [``And, ``Or, ``True, ``False, ``Eq].contains name then
     some { status := "reported", reason := "logical connective in a decidable predicate" }
-  else if [``Bool.and, ``Bool.or, ``Bool.not, ``Bool.true, ``Bool.false].contains name then
+  else if [``Bool.and, ``Bool.or, ``Bool.not, ``Bool.true, ``Bool.false,
+      ``Bool.casesOn].contains name then
     some { status := "implemented", reason := "boolean primitive in the generic compiler fragment" }
   else if [``BEq.beq, ``LT.lt, ``LE.le, ``GT.gt, ``GE.ge, ``ite].contains name then
     some { status := "implemented", reason := "control, equality, or comparison primitive in the generic compiler fragment" }

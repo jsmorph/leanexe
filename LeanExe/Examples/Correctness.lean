@@ -256,6 +256,34 @@ def greaterComparisons (x : UInt64) : UInt64 :=
   else
     10
 
+def boolMatchScalar (flag : Bool) : UInt64 :=
+  match flag with
+  | false => 10
+  | true => 20
+
+def boolMatchSkipsTrap : UInt64 :=
+  match false with
+  | false => 7
+  | true => (Array.replicate 1 (0 : UInt64))[5]!
+
+def boolMatchCondition (flag : Bool) : UInt64 :=
+  if (
+    match flag with
+    | false => true
+    | true => false
+  )
+  then
+    1
+  else
+    2
+
+def boolMatchProduct (flag : Bool) : UInt64 :=
+  let pair :=
+    match flag with
+    | false => ((1 : UInt64), (2 : UInt64))
+    | true => ((3 : UInt64), (4 : UInt64))
+  pair.1 * (10 : UInt64) + pair.2
+
 def rejectProductReturn : UInt64 × UInt64 :=
   let pair := ((1 : UInt64), (2 : UInt64))
   pair
