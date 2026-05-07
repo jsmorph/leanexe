@@ -77,8 +77,20 @@ def uint64OfNatValue (n : Nat) : UInt64 :=
 def uint64OfHugeNat : UInt64 :=
   UInt64.ofNat 18446744073709551616
 
+def natToUInt64Value (n : Nat) : UInt64 :=
+  Nat.toUInt64 (n + 1)
+
+def natToUInt64Huge : UInt64 :=
+  Nat.toUInt64 18446744073709551616
+
 def wrappedUInt8Literal : Nat :=
   (300 : UInt8).toNat
+
+def uint64ToUInt8Wrap : Nat :=
+  (UInt64.toUInt8 (300 : UInt64)).toNat
+
+def uint8ToUInt64Value : UInt64 :=
+  UInt8.toUInt64 (255 : UInt8) + 1
 
 def uint8OfNatValue (n : Nat) : Nat :=
   (UInt8.ofNat (n + 1)).toNat
