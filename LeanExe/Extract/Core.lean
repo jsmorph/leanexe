@@ -552,6 +552,15 @@ def exceptConstructorTypes? (args : List Expr) : Option (Ty × Ty) :=
       | _, _ => none
   | _ => none
 
+def exceptMapTypes? (args : List Expr) : Option (Ty × Ty) :=
+  match args with
+  | errorTy :: _sourceTy :: resultTy :: _ =>
+      match typeAtom? errorTy, typeAtom? resultTy with
+      | some .unit, _ => none
+      | some errorTy, some resultTy => some (errorTy, resultTy)
+      | _, _ => none
+  | _ => none
+
 def optionMapResultType? (args : List Expr) : Option Ty :=
   match args with
   | _sourceTy :: resultTy :: _ => typeAtom? resultTy
@@ -983,6 +992,22 @@ partial def demandExpr
                     (demandExpr ctx visiting optionValue)
                     .empty
                     (demandOptionSomeCondArm ctx visiting predicate)
+              | _ => .empty
+          | (.const ``Except.map _, args) =>
+              match args.reverse with
+              | exceptValue :: mapFn :: _ =>
+                  Demand.branch
+                    (demandExpr ctx visiting exceptValue)
+                    .empty
+                    (demandOptionSomeArm ctx visiting mapFn)
+              | _ => .empty
+          | (.const ``Except.bind _, args) =>
+              match args.reverse with
+              | bindFn :: exceptValue :: _ =>
+                  Demand.branch
+                    (demandExpr ctx visiting exceptValue)
+                    .empty
+                    (demandOptionSomeArm ctx visiting bindFn)
               | _ => .empty
           | (.const ``Option.bind _, args) =>
               match args.reverse with
@@ -1419,6 +1444,58 @@ mutual
                 let valueResult ← extractValueFrom ctx locals nextLocal value
                 .ok (.sum (.u64 1) (← defaultValue errorTy) valueResult.fst, valueResult.snd)
             | _, _ => .error "unsupported Except.ok application"
+        | (.const ``Except.map _, args) =>
+            match args.reverse, exceptMapTypes? args with
+            | exceptValue :: mapFn :: _, some (_errorTy, resultTy) =>
+                let exceptResult ← extractValueFrom ctx locals nextLocal exceptValue
+                let parts ← sumPartsWithLets exceptResult.fst
+                let lets := parts.fst
+                let tag := parts.snd.fst
+                let errorPayload := parts.snd.snd.fst
+                let okPayload := parts.snd.snd.snd
+                let mapBody ←
+                  match collectLambdas mapFn 1 with
+                  | some body => .ok body
+                  | none => .error "unsupported Except.map function"
+                let mapResult ←
+                  extractValueFrom ctx (.value okPayload :: locals) exceptResult.snd mapBody
+                let defaultOk ← defaultValue resultTy
+                .ok
+                  (wrapValueLets lets
+                    (.sum tag errorPayload
+                      (← valueIte (.eqU64 tag (.u64 0)) defaultOk mapResult.fst)),
+                    mapResult.snd)
+            | _, _ => .error "unsupported Except.map application"
+        | (.const ``Except.bind _, args) =>
+            match args.reverse, exceptMapTypes? args with
+            | bindFn :: exceptValue :: _, some (_errorTy, resultTy) =>
+                let exceptResult ← extractValueFrom ctx locals nextLocal exceptValue
+                let parts ← sumPartsWithLets exceptResult.fst
+                let lets := parts.fst
+                let tag := parts.snd.fst
+                let errorPayload := parts.snd.snd.fst
+                let okPayload := parts.snd.snd.snd
+                let bindBody ←
+                  match collectLambdas bindFn 1 with
+                  | some body => .ok body
+                  | none => .error "unsupported Except.bind function"
+                let bindResult ←
+                  extractValueFrom ctx (.value okPayload :: locals) exceptResult.snd bindBody
+                let bindParts ← sumPartsWithLets bindResult.fst
+                let bindLets := bindParts.fst
+                let bindTag := wrapExprLets bindLets bindParts.snd.fst
+                let bindError := wrapValueLets bindLets bindParts.snd.snd.fst
+                let bindOk := wrapValueLets bindLets bindParts.snd.snd.snd
+                let defaultOk ← defaultValue resultTy
+                let isError := .eqU64 tag (.u64 0)
+                .ok
+                  (wrapValueLets lets
+                    (.sum
+                      (.ite isError (.u64 0) bindTag)
+                      (← valueIte isError errorPayload bindError)
+                      (← valueIte isError defaultOk bindOk)),
+                    bindResult.snd)
+            | _, _ => .error "unsupported Except.bind application"
         | (.const ``Option.getD _, args) =>
             match args.reverse with
             | defaultValue :: optionValue :: _ =>
