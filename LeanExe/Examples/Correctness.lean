@@ -284,6 +284,12 @@ def boolMatchProduct (flag : Bool) : UInt64 :=
     | true => ((3 : UInt64), (4 : UInt64))
   pair.1 * (10 : UInt64) + pair.2
 
+def decideNatLt (x : Nat) : UInt64 :=
+  if decide (x < 3) then 1 else 2
+
+def decideUInt64Ge (x : UInt64) : Bool :=
+  decide (x >= 3)
+
 def rejectProductReturn : UInt64 × UInt64 :=
   let pair := ((1 : UInt64), (2 : UInt64))
   pair

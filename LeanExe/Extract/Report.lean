@@ -152,7 +152,7 @@ def knownExternal? (name : Name) : Option Classification :=
       ``UInt64.shiftRight].contains name then
     some { status := "implemented", reason := "numeric primitive in the generic compiler fragment" }
   else if name == ``Decidable.decide then
-    some { status := "reported", reason := "decidable proposition needs specialization to Bool code" }
+    some { status := "implemented", reason := "implemented for supported decidable comparisons in the generic compiler fragment" }
   else if name == ``OfNat.ofNat then
     some { status := "reported", reason := "numeric literal needs target-type resolution" }
   else if (displayName name).contains "inst" then
