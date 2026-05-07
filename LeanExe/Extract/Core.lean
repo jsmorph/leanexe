@@ -1866,24 +1866,28 @@ partial def recCallArgs? (expected : Nat) (expr : Expr) : Option (List Expr) :=
 
 structure RecSpec where
   base : Expr
-  exitCond? : Option Expr
+  continueCond? : Option Expr
+  continueWhenTrue : Bool
   exitValue? : Option Expr
   recArgs : List Expr
 
 def parseStepBody? (paramCount : Nat) (body : Expr) :
-    Except String (Option (Expr × Expr) × List Expr) := do
+    Except String (Option (Expr × Bool) × Option Expr × List Expr) := do
   let expectedArgs := paramCount - 1
   match appFnArgs body with
   | (.const ``ite _, [ty, condExpr, _, thenExpr, elseExpr]) =>
       if typeAtom? ty |>.isSome then
-        match recCallArgs? expectedArgs elseExpr with
-        | some args => .ok (some (condExpr, thenExpr), args)
-        | none => .error "recursive branch is not a tail call"
+        match recCallArgs? expectedArgs thenExpr with
+        | some args => .ok (some (condExpr, true), some elseExpr, args)
+        | none =>
+            match recCallArgs? expectedArgs elseExpr with
+            | some args => .ok (some (condExpr, false), some thenExpr, args)
+            | none => .error "recursive branch is not a tail call"
       else
         .error "recursive branch has unsupported if-result type"
   | _ =>
       match recCallArgs? expectedArgs body with
-      | some args => .ok (none, args)
+      | some args => .ok (none, none, args)
       | none => .error "recursive branch is not a supported tail call"
 
 def parseRecMatcher? (name : Name) (paramCount : Nat) (expr : Expr) :
@@ -1907,13 +1911,14 @@ def parseRecMatcher? (name : Name) (paramCount : Nat) (expr : Expr) :
               | some body => .ok body
               | none => .error s!"unsupported Nat recursion successor arm: {name}"
             let parsedStep ← parseStepBody? paramCount stepBody
-            let exitCond? := parsedStep.fst.map Prod.fst
-            let exitValue? := parsedStep.fst.map Prod.snd
+            let continueCond? := parsedStep.fst.map Prod.fst
+            let continueWhenTrue := parsedStep.fst.map Prod.snd |>.getD true
             .ok (some {
               base := baseBody,
-              exitCond? := exitCond?,
-              exitValue? := exitValue?,
-              recArgs := parsedStep.snd
+              continueCond? := continueCond?,
+              continueWhenTrue := continueWhenTrue,
+              exitValue? := parsedStep.snd.fst,
+              recArgs := parsedStep.snd.snd
             })
         | _ => .error s!"unsupported Nat recursion matcher arguments: {name}"
   | _ => return none
@@ -1975,10 +1980,15 @@ def extractNatRecFunc
   let baseLocals := baseBindingsForParams params
   let fuelLive : IRCond := .not (.eqU64 (.local 0) (.u64 0))
   let condResult ←
-    match spec.exitCond? with
+    match spec.continueCond? with
     | some condExpr =>
         let extracted ← extractCond ctx stepLocals wasmParamCount condExpr
-        .ok (.and fuelLive (.not extracted.fst), extracted.snd)
+        let continueCond :=
+          if spec.continueWhenTrue then
+            extracted.fst
+          else
+            .not extracted.fst
+        .ok (.and fuelLive continueCond, extracted.snd)
     | none => .ok (fuelLive, wasmParamCount)
   let exitResult? ←
     match spec.exitValue? with
