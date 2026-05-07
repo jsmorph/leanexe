@@ -123,6 +123,12 @@ def uint32ToUInt64Value : UInt64 :=
 def uint64ToUInt32Wrap : Nat :=
   (UInt64.toUInt32 (4294967297 : UInt64)).toNat
 
+def uint8ToUInt32Value : Nat :=
+  (UInt8.toUInt32 (255 : UInt8) + (1 : UInt32)).toNat
+
+def uint32ToUInt8Wrap : Nat :=
+  (UInt32.toUInt8 (300 : UInt32)).toNat
+
 def uint8OfNatValue (n : Nat) : Nat :=
   (UInt8.ofNat (n + 1)).toNat
 
