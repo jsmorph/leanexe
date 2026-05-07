@@ -29,4 +29,7 @@ def firstByteLowNibble (input : ByteArray) : Nat :=
   else
     ((ByteArray.get! input 0) &&& (15 : UInt8)).toNat
 
+def emptyViaIsEmpty (input : ByteArray) : Bool :=
+  input.isEmpty
+
 end LeanExe.Examples.ByteArrayPrograms

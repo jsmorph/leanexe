@@ -107,11 +107,25 @@ async function main() {
     }
   }
 
+  const emptyViaIsEmpty = await instantiate("emptyViaIsEmpty");
+  const emptyViaIsEmptyCases = [
+    { input: new Uint8Array([]), expected: 1n },
+    { input: new Uint8Array([1]), expected: 0n },
+  ];
+
+  for (const testCase of emptyViaIsEmptyCases) {
+    const actual = callByteArray(emptyViaIsEmpty, testCase.input);
+    if (actual !== testCase.expected) {
+      throw new Error(`emptyViaIsEmpty: expected ${testCase.expected}, got ${actual}`);
+    }
+  }
+
   const total =
     firstBytePlusArrayCases.length +
     firstByteIsStarCases.length +
     firstByteNextIsZeroCases.length +
-    firstByteLowNibbleCases.length;
+    firstByteLowNibbleCases.length +
+    emptyViaIsEmptyCases.length;
   process.stdout.write(`checked ${total} bytearray allocation cases\n`);
 }
 

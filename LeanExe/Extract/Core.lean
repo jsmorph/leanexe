@@ -606,6 +606,8 @@ partial def demandExpr
               | _ => .empty
           | (.const ``ByteArray.size _, args) =>
               args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
+          | (.const ``ByteArray.isEmpty _, args) =>
+              args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
           | (.const ``ByteArray.get! _, _) => .trap
           | (.const ``Array.size _, args) =>
               args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
@@ -1152,6 +1154,13 @@ mutual
                     let parts ← byteArrayParts arrayResult.fst
                     .ok (parts.snd, arrayResult.snd)
                 | _ => .error "unsupported ByteArray.size application"
+            | (.const ``ByteArray.isEmpty _, args) =>
+                match args with
+                | [array] =>
+                    let arrayResult ← extractValueFrom ctx locals nextLocal array
+                    let parts ← byteArrayParts arrayResult.fst
+                    .ok (boolExpr (.eqU64 parts.snd (.u64 0)), arrayResult.snd)
+                | _ => .error "unsupported ByteArray.isEmpty application"
             | (.const ``ByteArray.get! _, args) =>
                 match args.reverse with
                 | index :: array :: _ =>
@@ -1441,6 +1450,13 @@ mutual
             let leftResult ← extractCondFrom ctx locals nextLocal left
             let rightResult ← extractCondFrom ctx locals leftResult.snd right
             .ok (.and leftResult.fst rightResult.fst, rightResult.snd)
+        | (.const ``ByteArray.isEmpty _, args) =>
+            match args with
+            | [array] =>
+                let arrayResult ← extractValueFrom ctx locals nextLocal array
+                let parts ← byteArrayParts arrayResult.fst
+                .ok (.eqU64 parts.snd (.u64 0), arrayResult.snd)
+            | _ => .error "unsupported ByteArray.isEmpty condition"
         | (.const name _, args) =>
             match boolMatcherArgs? ctx.env (.const name []) args with
             | some _ =>
