@@ -22,6 +22,8 @@ inductive U64Op where
   | divU
   | modU
   | bitAnd
+  | bitOr
+  | bitXor
   deriving BEq, Repr
 
 def Store := Nat → UInt64
@@ -105,6 +107,8 @@ mutual
         | .divU => leftValue / rightValue
         | .modU => leftValue % rightValue
         | .bitAnd => UInt64.land leftValue rightValue
+        | .bitOr => UInt64.lor leftValue rightValue
+        | .bitXor => UInt64.xor leftValue rightValue
     | .ite cond thenValue elseValue =>
         if cond.eval module_ store then
           thenValue.eval module_ store
