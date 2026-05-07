@@ -135,18 +135,20 @@ def knownExternal? (name : Name) : Option Classification :=
     some { status := "reported", reason := "planned type or library type" }
   else if [``And, ``Or, ``True, ``False, ``Eq].contains name then
     some { status := "reported", reason := "logical connective in a decidable predicate" }
-  else if [``Bool.and, ``Bool.or, ``Bool.true, ``Bool.false].contains name then
+  else if [``Bool.and, ``Bool.or, ``Bool.not, ``Bool.true, ``Bool.false].contains name then
     some { status := "implemented", reason := "boolean primitive in the generic compiler fragment" }
   else if [``BEq.beq, ``ite].contains name then
     some { status := "implemented", reason := "control or equality primitive in the generic compiler fragment" }
   else if [``Array.replicate, ``Array.get!Internal, ``Array.set!, ``GetElem?.getElem!].contains name then
     some { status := "implemented", reason := "Array UInt64 primitive in the generic compiler fragment" }
+  else if [``ByteArray.size, ``ByteArray.get!].contains name then
+    some { status := "implemented", reason := "read-only ByteArray primitive in the generic compiler fragment" }
   else if [``Array.size, ``LT.lt].contains name then
     some { status := "reported", reason := "indexing validity predicate erased by array primitive lowering" }
-  else if name == ``UInt64.toNat then
+  else if [``UInt64.toNat, ``UInt8.toNat].contains name then
     some { status := "implemented", reason := "representation-preserving conversion for bounded Nat use" }
-  else if [``HAdd.hAdd, ``HMul.hMul, ``HDiv.hDiv, ``HMod.hMod].contains name then
-    some { status := "reported", reason := "numeric operation needs typeclass specialization" }
+  else if [``HAdd.hAdd, ``HSub.hSub, ``HMul.hMul, ``HDiv.hDiv, ``HMod.hMod, ``UInt64.land].contains name then
+    some { status := "implemented", reason := "numeric primitive in the generic compiler fragment" }
   else if name == ``Decidable.decide then
     some { status := "reported", reason := "decidable proposition needs specialization to Bool code" }
   else if name == ``LE.le then
@@ -276,7 +278,7 @@ def compileStatus (env : Environment) (moduleName entryName : Name) : String :=
     "implemented by the validator demo compiler path"
   else
     match LeanExe.Extract.Core.compileEnvironment env moduleName entryName with
-    | .ok _ => "implemented by the first generic scalar/array compiler fragment"
+    | .ok _ => "implemented by the first generic scalar/array/bytearray compiler fragment"
     | .error error => s!"reported only; generic compile rejects this entry: {error}"
 
 def renderNode (node : DeclReport) : List String :=

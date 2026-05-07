@@ -225,6 +225,12 @@ def i64Load : List UInt8 :=
 def i64Store : List UInt8 :=
   ofNats [55, 3, 0]
 
+def i32Load8U : List UInt8 :=
+  ofNats [45, 0, 0]
+
+def i64ExtendI32U : List UInt8 :=
+  ofNats [173]
+
 def i64LtU : List UInt8 :=
   ofNats [84]
 
@@ -249,6 +255,8 @@ mutual
     | .arrayGet array index => 2 + max (exprScratch array) (exprScratch index)
     | .arraySet array index value =>
         6 + max (exprScratch array) (max (exprScratch index) (exprScratch value))
+    | .byteArrayGet ptr len index =>
+        3 + max (exprScratch ptr) (max (exprScratch len) (exprScratch index))
     | .call _ args => args.foldl (fun count arg => max count (exprScratch arg)) 0
 
   partial def condScratch : Cond → Nat
@@ -329,6 +337,22 @@ mutual
         ofNats [0] ++
       ofNats [11]
 
+  partial def emitByteArrayGet (scratch : Nat) (ptr len index : Expr) : List UInt8 :=
+    let ptrLocal := scratch
+    let lenLocal := scratch + 1
+    let indexLocal := scratch + 2
+    let childScratch := scratch + 3
+    emitExpr childScratch ptr ++ localSet ptrLocal ++
+      emitExpr childScratch len ++ localSet lenLocal ++
+      emitExpr childScratch index ++ localSet indexLocal ++
+      localGet indexLocal ++ localGet lenLocal ++ i64LtU ++
+      ofNats [4, 126] ++
+        localGet ptrLocal ++ localGet indexLocal ++ ofNats [124] ++ i32WrapI64 ++
+          i32Load8U ++ i64ExtendI32U ++
+      ofNats [5] ++
+        ofNats [0] ++
+      ofNats [11]
+
   partial def emitCheckedDivMod
       (scratch : Nat)
       (op : LeanExe.IR.U64Op)
@@ -363,6 +387,7 @@ mutual
     | .arrayAlloc cells => emitArrayAlloc scratch cells
     | .arrayGet array index => emitArrayGet scratch array index
     | .arraySet array index value => emitArraySet scratch array index value
+    | .byteArrayGet ptr len index => emitByteArrayGet scratch ptr len index
     | .call index args => args.flatMap (emitExpr scratch) ++ call index
 
   partial def emitCond (scratch : Nat) : Cond → List UInt8
@@ -498,6 +523,20 @@ mutual
         [s!"local.get {valueLocal}", "i64.store align=8", s!"local.get {newLocal}"]) ++
       ["else", "  unreachable", "end"]
 
+  partial def byteArrayGetWatLines (scratch : Nat) (ptr len index : Expr) : List String :=
+    let ptrLocal := scratch
+    let lenLocal := scratch + 1
+    let indexLocal := scratch + 2
+    let childScratch := scratch + 3
+    exprWatLines childScratch ptr ++ [s!"local.set {ptrLocal}"] ++
+      exprWatLines childScratch len ++ [s!"local.set {lenLocal}"] ++
+      exprWatLines childScratch index ++ [s!"local.set {indexLocal}",
+        s!"local.get {indexLocal}", s!"local.get {lenLocal}", "i64.lt_u",
+        "if (result i64)"] ++
+      indent 2 [s!"local.get {ptrLocal}", s!"local.get {indexLocal}", "i64.add",
+        "i32.wrap_i64", "i32.load8_u", "i64.extend_i32_u"] ++
+      ["else", "  unreachable", "end"]
+
   partial def checkedDivModWatLines
       (scratch : Nat)
       (op : LeanExe.IR.U64Op)
@@ -542,6 +581,7 @@ mutual
     | .arrayAlloc cells => arrayAllocWatLines scratch cells
     | .arrayGet array index => arrayGetWatLines scratch array index
     | .arraySet array index value => arraySetWatLines scratch array index value
+    | .byteArrayGet ptr len index => byteArrayGetWatLines scratch ptr len index
     | .call index args => args.flatMap (exprWatLines scratch) ++ [s!"call {index}"]
 
   partial def condWatLines (scratch : Nat) : Cond → List String
