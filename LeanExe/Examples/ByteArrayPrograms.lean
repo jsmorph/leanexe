@@ -7,4 +7,11 @@ def firstBytePlusArray (input : ByteArray) : Nat :=
   else
     (ByteArray.get! input 0).toNat + a[0]!.toNat
 
+def firstByteIsStar (input : ByteArray) : Bool :=
+  if input.size == 0 then
+    false
+  else
+    let b : UInt8 := ByteArray.get! input 0
+    b == (42 : UInt8)
+
 end LeanExe.Examples.ByteArrayPrograms
