@@ -51,6 +51,8 @@ const accepted = [
   { name: "arrayPushRead", args: [], expected: 507n },
   { name: "nonzeroReplicateRead", args: [], expected: 77n },
   { name: "arrayPopRead", args: [], expected: 44n },
+  { name: "arrayAppendRead", args: [], expected: 11223344n },
+  { name: "arrayAppendEmptySides", args: [], expected: 7878n },
   { name: "arrayIsEmptyValues", args: [], expected: 1n },
   { name: "arrayBackRead", args: [], expected: 9n },
   { name: "arrayGetDRead", args: [1n], expected: 7n },

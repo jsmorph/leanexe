@@ -53,6 +53,7 @@ mutual
     | arraySet (array index value : Expr)
     | arrayPush (array value : Expr)
     | arrayPop (array : Expr)
+    | arrayAppend (left right : Expr)
     | byteArrayGet (ptr len index : Expr)
     | call (index : Nat) (args : List Expr)
     deriving BEq, Repr
@@ -133,6 +134,7 @@ mutual
     | .arraySet array _ _ => array.eval module_ store
     | .arrayPush array _ => array.eval module_ store
     | .arrayPop array => array.eval module_ store
+    | .arrayAppend left _ => left.eval module_ store
     | .byteArrayGet _ _ _ => 0
     | .call index args =>
         match module_.getFunc? index with

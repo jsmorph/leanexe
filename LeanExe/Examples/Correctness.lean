@@ -175,6 +175,27 @@ def arrayPopRead : UInt64 :=
   else
     0
 
+def arrayAppendRead : UInt64 :=
+  let a := ((Array.replicate 2 (0 : UInt64)).set! 0 11).set! 1 22
+  let b := ((Array.replicate 2 (0 : UInt64)).set! 0 33).set! 1 44
+  let c := a.append b
+  if a.size == 2 && b.size == 2 && c.size == 4 then
+    c[0]! * (1000000 : UInt64) + c[1]! * (10000 : UInt64) +
+      c[2]! * (100 : UInt64) + c[3]!
+  else
+    0
+
+def arrayAppendEmptySides : UInt64 :=
+  let empty := Array.replicate 0 (99 : UInt64)
+  let values := ((Array.replicate 2 (0 : UInt64)).set! 0 7).set! 1 8
+  let leftEmpty := empty.append values
+  let rightEmpty := values.append empty
+  if leftEmpty.size == 2 && rightEmpty.size == 2 then
+    leftEmpty[0]! * (1000 : UInt64) + leftEmpty[1]! * (100 : UInt64) +
+      rightEmpty[0]! * (10 : UInt64) + rightEmpty[1]!
+  else
+    0
+
 def arrayIsEmptyValues : UInt64 :=
   let empty := Array.replicate 0 (0 : UInt64)
   let filled := Array.replicate 1 (0 : UInt64)
