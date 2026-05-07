@@ -208,6 +208,30 @@ def productBranch (flag : UInt64) : UInt64 :=
       ((3 : UInt64), (4 : UInt64))
   pair.1 * (10 : UInt64) + pair.2
 
+def productMatchDestructure : UInt64 :=
+  match ((1 : UInt64), (2 : UInt64)) with
+  | (left, right) => left * (10 : UInt64) + right
+
+def productMatchUsesFirstOnly : UInt64 :=
+  match ((7 : UInt64), (Array.replicate 0 (0 : UInt64)).back!) with
+  | (left, _right) => left
+
+def productMatchCondition : UInt64 :=
+  if (
+    match ((2 : Nat), (5 : Nat)) with
+    | (left, right) => left < right
+  )
+  then
+    1
+  else
+    0
+
+def productMatchNested : UInt64 :=
+  let pair :=
+    match (((1 : UInt64), (2 : UInt64)), ((3 : UInt64), (4 : UInt64))) with
+    | (left, right) => (left.2, right.1)
+  pair.1 * (10 : UInt64) + pair.2
+
 def unitArgHelper (_value : Unit) : UInt64 :=
   11
 

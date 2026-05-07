@@ -181,7 +181,7 @@ def knownExternal? (name : Name) : Option Classification :=
       ``Option.getD, ``Option.elim, ``Option.map, ``Option.bind,
       ``Option.isSome, ``Option.isNone].contains name then
     some { status := "implemented", reason := "internal Option primitive in the generic compiler fragment" }
-  else if [``Prod.mk, ``Prod.fst, ``Prod.snd].contains name then
+  else if [``Prod.mk, ``Prod.fst, ``Prod.snd, ``Prod.casesOn, ``Prod.rec].contains name then
     some { status := "implemented", reason := "internal product primitive in the generic compiler fragment" }
   else if [``UInt64.ofNat, ``UInt64.toNat, ``UInt64.toUInt8, ``UInt64.toUInt32,
       ``Nat.toUInt64, ``UInt8.ofNat, ``UInt8.toNat, ``UInt8.toUInt32, ``UInt8.toUInt64,
