@@ -92,6 +92,37 @@ def uint64ToUInt8Wrap : Nat :=
 def uint8ToUInt64Value : UInt64 :=
   UInt8.toUInt64 (255 : UInt8) + 1
 
+def wrappedUInt32Literal : Nat :=
+  (4294967296 : UInt32).toNat
+
+def uint32AddWrap : Nat :=
+  (((4294967295 : UInt32) + 1).toNat)
+
+def uint32BitwiseShift : Nat :=
+  (((1 : UInt32) <<< (33 : UInt32)).toNat) * 10 +
+    (((8 : UInt32) >>> (33 : UInt32)).toNat)
+
+def uint32Complement : Nat :=
+  (~~~(0 : UInt32)).toNat
+
+def uint32MinMax : Nat :=
+  (min (4000000000 : UInt32) (3 : UInt32)).toNat * 10 +
+    (max (4000000000 : UInt32) (3 : UInt32)).toNat
+
+def uint32Comparisons : UInt64 :=
+  if (4000000000 : UInt32) > (3 : UInt32) &&
+      (3 : UInt32) <= (3 : UInt32) &&
+      ((3 : UInt32) == (3 : UInt32)) then
+    1
+  else
+    0
+
+def uint32ToUInt64Value : UInt64 :=
+  UInt32.toUInt64 (4294967295 : UInt32) + 1
+
+def uint64ToUInt32Wrap : Nat :=
+  (UInt64.toUInt32 (4294967297 : UInt64)).toNat
+
 def uint8OfNatValue (n : Nat) : Nat :=
   (UInt8.ofNat (n + 1)).toNat
 
@@ -530,6 +561,12 @@ def rejectUInt8Param (b : UInt8) : Bool :=
   b == (0 : UInt8)
 
 def rejectUInt8Return : UInt8 :=
+  42
+
+def rejectUInt32Param (x : UInt32) : Nat :=
+  x.toNat
+
+def rejectUInt32Return : UInt32 :=
   42
 
 def alloc : UInt64 :=
