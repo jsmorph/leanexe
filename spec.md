@@ -92,7 +92,7 @@ The extractor rejects nonzero `Array.replicate` fills because the current IR has
 
 The generic fragment represents an entry `ByteArray` parameter as two Wasm `i64` parameters: a byte pointer and a byte length.  Inside the extractor, that pair remains one structured value, so a Lean function still has one `ByteArray` parameter and helper calls receive the same source-level value.  `ByteArray.size` returns the length slot, and `ByteArray.get! input index` lowers to a bounds check followed by `i32.load8_u` and zero extension to the fragment’s scalar `i64` representation.
 
-The current support is read-only.  Hosts must write input bytes into the exported memory before calling the entry function, and generic modules do not yet export allocator or reset functions for byte-buffer inputs.  `LeanExe.Examples.AsciiDigits.validateGeneric : ByteArray -> Bool` exercises this path through `lean-wasm compile`; the older `validate` declaration remains the proof-oriented source for the hand-written validator path.
+The current support is read-only.  Hosts write input bytes into exported memory before calling the entry function; generic modules export `alloc(len)` and `reset()` so the host can place byte inputs in the same bump arena used by compiled array allocation.  `LeanExe.Examples.AsciiDigits.validateGeneric : ByteArray -> Bool` exercises this path through `lean-wasm compile`; the older `validate` declaration remains the proof-oriented source for the hand-written validator path.
 
 ## Effects
 
@@ -120,7 +120,7 @@ The current report implements module loading, entry lookup, root-namespace depen
 
 ## Current Wasm ABI
 
-The current validator module exports one linear memory, `alloc`, `reset`, and `validate`.  The host writes input bytes into memory, calls `validate(ptr, len)`, and receives `0` or `1`.  The arena begins at byte offset `4096` and resets per call.  Generic CoreWasm modules export one 16-page linear memory and the requested entry function; scalar values, booleans, bounded `Nat` values, and array pointers cross the ABI as `i64`, while a `ByteArray` parameter crosses as two `i64` values, `ptr` and `len`.
+The current validator module exports one linear memory, `alloc`, `reset`, and `validate`.  The host writes input bytes into memory, calls `validate(ptr, len)`, and receives `0` or `1`.  The arena begins at byte offset `4096` and resets per call.  Generic CoreWasm modules export one 16-page linear memory, `alloc(len : i64) -> i64`, `reset()`, and the requested entry function.  Their arena also begins at byte offset `4096`.  Scalar values, booleans, bounded `Nat` values, and array pointers cross the ABI as `i64`, while a `ByteArray` parameter crosses as two `i64` values, `ptr` and `len`.
 
 Structured outputs are planned after `Except` and simple inductive values enter the core IR.  Pointer-length pairs should encode byte output, while arena-allocated tagged layouts should encode small inductives and parser results.  Host imports must remain explicit in the Wasm module.
 

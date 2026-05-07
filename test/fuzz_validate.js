@@ -55,7 +55,11 @@ async function main() {
 
   function runWasm(input) {
     if (typeof validateGeneric === "function") {
-      const ptr = 1024;
+      let ptr = 1024;
+      if (typeof alloc === "function" && typeof reset === "function") {
+        reset();
+        ptr = Number(alloc(BigInt(input.length)));
+      }
       new Uint8Array(memory.buffer, ptr, input.length).set(input);
       return Number(validateGeneric(BigInt(ptr), BigInt(input.length)));
     }
