@@ -315,6 +315,10 @@ const rejected = [
     name: "rejectIO",
     message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectIO",
   },
+  {
+    name: "rejectIdForLoop",
+    message: "unsupported expression: fun",
+  },
 ];
 
 const trapped = [
