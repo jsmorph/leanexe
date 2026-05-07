@@ -57,6 +57,11 @@ const rejected = [
     message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectOptionParam",
   },
   {
+    name: "rejectRecursiveIgnoredTrapArg",
+    message:
+      "strict call to recursive helper may evaluate a trapping argument: LeanExe.Examples.Correctness.recIgnoreTrapArgFuel",
+  },
+  {
     name: "rejectNonzeroReplicate",
     message: "Array.replicate currently supports only zero-filled UInt64 arrays",
   },
