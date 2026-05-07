@@ -40,11 +40,11 @@ async function instantiate(entry) {
   return { memory, alloc, reset, fn };
 }
 
-function callByteArray(exports, input) {
+function callByteArray(exports, input, args = []) {
   exports.reset();
   const ptr = Number(exports.alloc(BigInt(input.length)));
   writeInput(exports.memory, ptr, input);
-  return BigInt.asUintN(64, exports.fn(BigInt(ptr), BigInt(input.length)));
+  return BigInt.asUintN(64, exports.fn(BigInt(ptr), BigInt(input.length), ...args));
 }
 
 async function main() {
@@ -121,6 +121,20 @@ async function main() {
     }
   }
 
+  const byteAtOrZero = await instantiate("byteAtOrZero");
+  const byteAtOrZeroCases = [
+    { input: new Uint8Array([10, 20, 30]), args: [0n], expected: 10n },
+    { input: new Uint8Array([10, 20, 30]), args: [2n], expected: 30n },
+    { input: new Uint8Array([10, 20, 30]), args: [3n], expected: 0n },
+  ];
+
+  for (const testCase of byteAtOrZeroCases) {
+    const actual = callByteArray(byteAtOrZero, testCase.input, testCase.args);
+    if (actual !== testCase.expected) {
+      throw new Error(`byteAtOrZero: expected ${testCase.expected}, got ${actual}`);
+    }
+  }
+
   const emptyViaIsEmpty = await instantiate("emptyViaIsEmpty");
   const emptyViaIsEmptyCases = [
     { input: new Uint8Array([]), expected: 1n },
@@ -140,6 +154,7 @@ async function main() {
     firstByteNextIsZeroCases.length +
     firstByteLowNibbleCases.length +
     firstByteBangIndexCases.length +
+    byteAtOrZeroCases.length +
     emptyViaIsEmptyCases.length;
   process.stdout.write(`checked ${total} bytearray allocation cases\n`);
 }

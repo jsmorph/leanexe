@@ -35,6 +35,12 @@ def firstByteBangIndex (input : ByteArray) : Nat :=
   else
     input[0]!.toNat
 
+def byteAtOrZero (input : ByteArray) (index : Nat) : Nat :=
+  if index < input.size then
+    input[index]!.toNat
+  else
+    0
+
 def emptyViaIsEmpty (input : ByteArray) : Bool :=
   input.isEmpty
 

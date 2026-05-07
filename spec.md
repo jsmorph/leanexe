@@ -126,7 +126,7 @@ The current report implements module loading, entry lookup, root-namespace depen
 
 The current validator module exports one linear memory, `alloc`, `reset`, and `validate`.  The host writes input bytes into memory, calls `validate(ptr, len)`, and receives `0` or `1`.  The arena begins at byte offset `4096` and resets per call.  Generic CoreWasm modules export one 16-page linear memory, `alloc(len : i64) -> i64`, `reset()`, and the requested entry function.  Their arena also begins at byte offset `4096`.  Entry short names `memory`, `alloc`, and `reset` are reserved by the runtime ABI and are rejected.  Scalar values, booleans, bounded `Nat` values, and array pointers cross the ABI as `i64`, while a `ByteArray` parameter crosses as two `i64` values, `ptr` and `len`.
 
-Structured outputs are planned after `Except` and simple inductive values enter the core IR.  Pointer-length pairs should encode byte output, while arena-allocated tagged layouts should encode small inductives and parser results.  Host imports must remain explicit in the Wasm module.
+Flattened parameters keep source order: a `ByteArray` parameter contributes its `ptr` and `len` slots at its source position, and following scalar parameters follow those two slots.  Structured outputs are planned after `Except` and simple inductive values enter the core IR.  Pointer-length pairs should encode byte output, while arena-allocated tagged layouts should encode small inductives and parser results.  Host imports must remain explicit in the Wasm module.
 
 ## Correctness Obligations
 
