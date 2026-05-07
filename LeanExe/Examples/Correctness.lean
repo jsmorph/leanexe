@@ -292,6 +292,16 @@ def optionBranch (flag : UInt64) : UInt64 :=
   | none => 11
   | some value => value + 1
 
+def optionGetDNone : UInt64 :=
+  (none : Option UInt64).getD 7
+
+def optionGetDSomeSkipsDefaultTrap : UInt64 :=
+  (some (5 : UInt64)).getD ((Array.replicate 0 (0 : UInt64)).back!)
+
+def optionGetDProduct : UInt64 :=
+  let pair := (some ((1 : UInt64), (2 : UInt64))).getD ((3 : UInt64), (4 : UInt64))
+  pair.1 * (10 : UInt64) + pair.2
+
 def natComparisons (x : Nat) : UInt64 :=
   if x < 3 then
     10
