@@ -116,6 +116,12 @@ const accepted = [
   { name: "optionHelperResult", args: [], expected: 6n },
   { name: "optionHelperNone", args: [], expected: 9n },
   { name: "optionHelperParam", args: [], expected: 3n },
+  { name: "exceptOkMatch", args: [], expected: 8n },
+  { name: "exceptOkFirstMatch", args: [], expected: 8n },
+  { name: "exceptErrorMatch", args: [], expected: 14n },
+  { name: "exceptErrorSkipsUnusedPayloadTrap", args: [], expected: 7n },
+  { name: "exceptMatchCondition", args: [], expected: 1n },
+  { name: "exceptProductPayload", args: [], expected: 12n },
   { name: "optionGetDNone", args: [], expected: 7n },
   { name: "optionGetDSomeSkipsDefaultTrap", args: [], expected: 5n },
   { name: "optionGetDProduct", args: [], expected: 12n },
@@ -222,6 +228,14 @@ const rejected = [
   {
     name: "rejectOptionParam",
     message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectOptionParam",
+  },
+  {
+    name: "rejectExceptReturn",
+    message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectExceptReturn",
+  },
+  {
+    name: "rejectExceptParam",
+    message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectExceptParam",
   },
   {
     name: "rejectUnitReturn",
