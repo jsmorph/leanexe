@@ -166,6 +166,44 @@ async function main() {
     }
   }
 
+  const sliceSecondPlusSize = await instantiate("sliceSecondPlusSize");
+  const sliceSecondPlusSizeCases = [
+    { input: new Uint8Array([10, 20, 30, 40]), expected: 22n },
+    { input: new Uint8Array([10]), expected: 0n },
+  ];
+
+  for (const testCase of sliceSecondPlusSizeCases) {
+    const actual = callByteArray(sliceSecondPlusSize, testCase.input);
+    if (actual !== testCase.expected) {
+      throw new Error(`sliceSecondPlusSize: expected ${testCase.expected}, got ${actual}`);
+    }
+  }
+
+  const sliceClampSize = await instantiate("sliceClampSize");
+  const sliceClampSizeCases = [
+    { input: new Uint8Array([10, 20, 30, 40]), expected: 3n },
+    { input: new Uint8Array([]), expected: 0n },
+  ];
+
+  for (const testCase of sliceClampSizeCases) {
+    const actual = callByteArray(sliceClampSize, testCase.input);
+    if (actual !== testCase.expected) {
+      throw new Error(`sliceClampSize: expected ${testCase.expected}, got ${actual}`);
+    }
+  }
+
+  const sliceStopBeforeStart = await instantiate("sliceStopBeforeStart");
+  const sliceStopBeforeStartCases = [
+    { input: new Uint8Array([10, 20, 30, 40]), expected: 0n },
+  ];
+
+  for (const testCase of sliceStopBeforeStartCases) {
+    const actual = callByteArray(sliceStopBeforeStart, testCase.input);
+    if (actual !== testCase.expected) {
+      throw new Error(`sliceStopBeforeStart: expected ${testCase.expected}, got ${actual}`);
+    }
+  }
+
   const prefixPlusFirstByte = await instantiate("prefixPlusFirstByte");
   const prefixPlusFirstByteCases = [
     { prefix: 5n, input: new Uint8Array([]), expected: 5n },
@@ -216,6 +254,9 @@ async function main() {
     firstByteBangIndexCases.length +
     byteAtOrZeroCases.length +
     byteAtQuestionOrZeroCases.length +
+    sliceSecondPlusSizeCases.length +
+    sliceClampSizeCases.length +
+    sliceStopBeforeStartCases.length +
     prefixPlusFirstByteCases.length +
     fnv1a32Cases.length +
     emptyViaIsEmptyCases.length;
