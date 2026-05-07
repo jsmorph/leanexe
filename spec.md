@@ -92,7 +92,7 @@ Slicing, append, resizing, polymorphic arrays, nested arrays, and arrays of stru
 
 ## Byte Arrays
 
-The generic fragment represents an entry `ByteArray` parameter as two Wasm `i64` parameters: a byte pointer and a byte length.  Inside the extractor, that pair remains one structured value, so a Lean function still has one `ByteArray` parameter and helper calls receive the same source-level value.  `ByteArray.size` returns the length slot, `ByteArray.isEmpty` compares that length with zero, and `ByteArray.get! input index` lowers to a bounds check followed by `i32.load8_u` and zero extension to the fragment’s scalar `i64` representation.
+The generic fragment represents an entry `ByteArray` parameter as two Wasm `i64` parameters: a byte pointer and a byte length.  Inside the extractor, that pair remains one structured value, so a Lean function still has one `ByteArray` parameter and helper calls receive the same source-level value.  `ByteArray.size` returns the length slot, `ByteArray.isEmpty` compares that length with zero, and `ByteArray.get! input index` and `input[index]!` lower to a bounds check followed by `i32.load8_u` and zero extension to the fragment’s scalar `i64` representation.
 
 `ByteArray.get!` produces an internal `UInt8` value.  The generic fragment represents that value as an `i64` constrained to `0..255`.  `UInt8` literals and `UInt8.ofNat` lower modulo `256`, matching Lean’s checked semantics, and `UInt8.toNat` is representation-preserving inside the bounded `Nat` fragment.  `UInt8` addition, subtraction, and multiplication mask their result to eight bits.  `UInt8` division and remainder use the same zero-divisor behavior as Lean: `x / 0` returns `0`, and `x % 0` returns `x`.
 

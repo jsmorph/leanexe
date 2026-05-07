@@ -635,6 +635,19 @@ Checks run:
 - [x] `lake build LeanExe.Examples.ByteArrayPrograms`
 - [x] `node test/bytearray_alloc.js` returned `checked 14 bytearray allocation cases`.
 
+## 2026-05-06: ByteArray Bang Indexing
+
+`input[i]!` for `ByteArray` elaborates through `GetElem?.getElem!`, not `ByteArray.get!`.  The extractor now distinguishes the receiver type for `GetElem?.getElem!` and lowers `ByteArray` receivers to the byte-array bounds check and `i32.load8_u` path.  `Array UInt64` receivers continue to use the existing array load path.
+
+`LeanExe.Examples.ByteArrayPrograms.firstByteBangIndex` covers empty input and two byte values through the byte-array allocation harness.
+
+Checks run:
+
+- [x] `lake build`
+- [x] `lake build LeanExe.Examples.ByteArrayPrograms`
+- [x] `node test/bytearray_alloc.js` returned `checked 17 bytearray allocation cases`.
+- [x] `node test/core_correctness.js` returned `checked 95 accepted, 13 rejected, and 3 trapped cases`.
+
 ## 2026-05-06: Array.isEmpty
 
 The extractor now lowers `Array.isEmpty` for `Array UInt64` by reading the array header length and comparing it with zero.  This matches the existing memory layout and avoids requiring source programs to write `a.size == 0`.

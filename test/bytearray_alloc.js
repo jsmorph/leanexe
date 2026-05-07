@@ -107,6 +107,20 @@ async function main() {
     }
   }
 
+  const firstByteBangIndex = await instantiate("firstByteBangIndex");
+  const firstByteBangIndexCases = [
+    { input: new Uint8Array([]), expected: 0n },
+    { input: new Uint8Array([37]), expected: 37n },
+    { input: new Uint8Array([255]), expected: 255n },
+  ];
+
+  for (const testCase of firstByteBangIndexCases) {
+    const actual = callByteArray(firstByteBangIndex, testCase.input);
+    if (actual !== testCase.expected) {
+      throw new Error(`firstByteBangIndex: expected ${testCase.expected}, got ${actual}`);
+    }
+  }
+
   const emptyViaIsEmpty = await instantiate("emptyViaIsEmpty");
   const emptyViaIsEmptyCases = [
     { input: new Uint8Array([]), expected: 1n },
@@ -125,6 +139,7 @@ async function main() {
     firstByteIsStarCases.length +
     firstByteNextIsZeroCases.length +
     firstByteLowNibbleCases.length +
+    firstByteBangIndexCases.length +
     emptyViaIsEmptyCases.length;
   process.stdout.write(`checked ${total} bytearray allocation cases\n`);
 }

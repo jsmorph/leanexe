@@ -1152,9 +1152,16 @@ mutual
             | (.const ``GetElem?.getElem! _, args) =>
                 match args.reverse with
                 | index :: array :: _ =>
-                    let arrayResult ← extractExprFrom ctx locals nextLocal array
-                    let indexResult ← extractExprFrom ctx locals arrayResult.snd index
-                    .ok (.arrayGet arrayResult.fst indexResult.fst, indexResult.snd)
+                    match primitiveReceiverType? args with
+                    | some .byteArray =>
+                        let arrayResult ← extractValueFrom ctx locals nextLocal array
+                        let parts ← byteArrayParts arrayResult.fst
+                        let indexResult ← extractExprFrom ctx locals arrayResult.snd index
+                        .ok (.byteArrayGet parts.fst parts.snd indexResult.fst, indexResult.snd)
+                    | _ =>
+                        let arrayResult ← extractExprFrom ctx locals nextLocal array
+                        let indexResult ← extractExprFrom ctx locals arrayResult.snd index
+                        .ok (.arrayGet arrayResult.fst indexResult.fst, indexResult.snd)
                 | _ => .error "unsupported GetElem?.getElem! application"
             | (.const ``Array.back! _, args) =>
                 match args.reverse with

@@ -29,6 +29,12 @@ def firstByteLowNibble (input : ByteArray) : Nat :=
   else
     ((ByteArray.get! input 0) &&& (15 : UInt8)).toNat
 
+def firstByteBangIndex (input : ByteArray) : Nat :=
+  if input.isEmpty then
+    0
+  else
+    input[0]!.toNat
+
 def emptyViaIsEmpty (input : ByteArray) : Bool :=
   input.isEmpty
 
