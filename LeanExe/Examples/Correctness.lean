@@ -206,6 +206,14 @@ def u64Comparisons (x : UInt64) : UInt64 :=
   else
     30
 
+def greaterComparisons (x : UInt64) : UInt64 :=
+  if x > 5 then
+    30
+  else if x >= 3 then
+    20
+  else
+    10
+
 def rejectProductReturn : UInt64 × UInt64 :=
   let pair := ((1 : UInt64), (2 : UInt64))
   pair
