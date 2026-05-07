@@ -305,6 +305,21 @@ def arrayEmptyLiteral : UInt64 :=
   let a : Array UInt64 := #[]
   if a.isEmpty then 1 else 0
 
+def arrayEmptyConstructors : UInt64 :=
+  let a : Array UInt64 := Array.empty
+  let b : Array UInt64 := Array.mkEmpty 10
+  let c : Array UInt64 := Array.emptyWithCapacity 20
+  if a.isEmpty && b.isEmpty && c.isEmpty then 1 else 0
+
+def arrayEmptyCapacitySkipsTrap : UInt64 :=
+  let capacity := ((Array.replicate 0 (0 : UInt64)).back!).toNat
+  let a : Array UInt64 := Array.emptyWithCapacity capacity
+  if a.isEmpty then 1 else 0
+
+def arraySingletonRead : UInt64 :=
+  let a := Array.singleton (42 : UInt64)
+  if a.size == 1 then a[0]! else 0
+
 def arrayIsEmptyValues : UInt64 :=
   let empty := Array.replicate 0 (0 : UInt64)
   let filled := Array.replicate 1 (0 : UInt64)
