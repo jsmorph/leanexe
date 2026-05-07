@@ -488,6 +488,15 @@ def greaterComparisons (x : UInt64) : UInt64 :=
   else
     10
 
+def bneScalars (x : UInt64) : UInt64 :=
+  if x != (3 : UInt64) then 1 else 2
+
+def bneAsBool (x : Nat) : Bool :=
+  x != 3
+
+def bneBool : UInt64 :=
+  if true != false then 1 else 0
+
 def boolMatchScalar (flag : Bool) : UInt64 :=
   match flag with
   | false => 10

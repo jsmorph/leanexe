@@ -914,3 +914,16 @@ Checks run:
 - [x] `lake build LeanExe.Examples.ByteArrayPrograms`
 - [x] `node test/bytearray_alloc.js` returned `checked 26 bytearray allocation cases`.
 - [x] `node test/run_all.js` returned `checked 136 accepted, 15 rejected, and 4 trapped cases`, `checked 26 bytearray allocation cases`, and `checked 56 cases`.
+
+## 2026-05-07: Scalar Inequality
+
+The extractor now lowers Lean’s `!=` notation, which elaborates to `bne`.  The lowering is the negation of the same scalar equality path used for `BEq.beq`.  It works both as a `Bool` expression and directly as a condition.
+
+`LeanExe.Examples.Correctness.bneScalars` covers `UInt64` inequality in a branch.  `bneAsBool` covers a `Bool` entry result over bounded `Nat`.  `bneBool` covers inequality over `Bool` values.
+
+Checks run:
+
+- [x] `lake build`
+- [x] `lake build LeanExe.Examples.Correctness`
+- [x] `node test/core_correctness.js` returned `checked 141 accepted, 15 rejected, and 4 trapped cases`.
+- [x] `node test/run_all.js` returned `checked 141 accepted, 15 rejected, and 4 trapped cases`, `checked 26 bytearray allocation cases`, and `checked 56 cases`.
