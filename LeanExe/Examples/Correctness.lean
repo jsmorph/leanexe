@@ -488,6 +488,23 @@ def optionGetDProduct : UInt64 :=
   let pair := (some ((1 : UInt64), (2 : UInt64))).getD ((3 : UInt64), (4 : UInt64))
   pair.1 * (10 : UInt64) + pair.2
 
+def optionOrElseNone : UInt64 :=
+  match ((none : Option UInt64) <|> some 7) with
+  | some value => value
+  | none => 0
+
+def optionOrElseDirectSomeSkipsFallbackTrap : UInt64 :=
+  match Option.orElse (some (5 : UInt64))
+      (fun _ => some ((Array.replicate 0 (0 : UInt64)).back!)) with
+  | some value => value
+  | none => 0
+
+def optionOrElseProduct : UInt64 :=
+  match Option.orElse (none : Option (UInt64 × UInt64))
+      (fun _ => some ((1 : UInt64), (2 : UInt64))) with
+  | some pair => pair.1 * (10 : UInt64) + pair.2
+  | none => 0
+
 def optionIsSomeSkipsPayloadTrap : UInt64 :=
   if (some ((Array.replicate 0 (0 : UInt64)).back!) : Option UInt64).isSome then
     1

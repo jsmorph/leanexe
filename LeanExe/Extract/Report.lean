@@ -178,9 +178,11 @@ def knownExternal? (name : Name) : Option Classification :=
   else if [``ByteArray.size, ``ByteArray.isEmpty, ``ByteArray.get!, ``ByteArray.extract].contains name then
     some { status := "implemented", reason := "read-only ByteArray primitive in the generic compiler fragment" }
   else if [``Option.casesOn, ``Option.rec, ``Option.none, ``Option.some,
-      ``Option.getD, ``Option.elim, ``Option.map, ``Option.bind,
+      ``Option.getD, ``Option.orElse, ``Option.elim, ``Option.map, ``Option.bind,
       ``Option.isSome, ``Option.isNone].contains name then
     some { status := "implemented", reason := "internal Option primitive in the generic compiler fragment" }
+  else if name == ``HOrElse.hOrElse then
+    some { status := "implemented", reason := "implemented for Option fallback in the generic compiler fragment" }
   else if [``Prod.mk, ``Prod.fst, ``Prod.snd, ``Prod.casesOn, ``Prod.rec].contains name then
     some { status := "implemented", reason := "internal product primitive in the generic compiler fragment" }
   else if [``UInt64.ofNat, ``UInt64.toNat, ``UInt64.toUInt8, ``UInt64.toUInt32,
