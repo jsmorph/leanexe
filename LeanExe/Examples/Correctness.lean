@@ -1011,4 +1011,10 @@ def rejectHigherOrder (f : UInt64 → UInt64) : UInt64 :=
 def rejectIO : IO UInt64 :=
   pure 1
 
+def rejectIdForLoop : UInt64 := Id.run do
+  let mut acc := (0 : UInt64)
+  for _i in [0:3] do
+    acc := acc + 1
+  return acc
+
 end LeanExe.Examples.Correctness
