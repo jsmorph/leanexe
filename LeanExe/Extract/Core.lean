@@ -103,9 +103,12 @@ def scalarLiteralExpr? (expr : Expr) : Option (Except String IRExpr) :=
       match ofNat? ``UInt8 expr with
       | some value => some (.ok (.u64 (value % 256)))
       | none =>
-          match ofNat? ``Nat expr with
-          | some value => some (boundedNatExpr value)
-          | none => none
+          match ofNat? ``UInt32 expr with
+          | some value => some (.ok (.u64 (value % (2 ^ 32))))
+          | none =>
+              match ofNat? ``Nat expr with
+              | some value => some (boundedNatExpr value)
+              | none => none
 
 partial def typeAtom? (expr : Expr) : Option Ty :=
   if isConst ``UInt64 expr then
@@ -147,6 +150,7 @@ def supportedResultAbiType : Ty → Bool :=
 def supportedInternalValueType : Ty → Bool
   | .bool => true
   | .u8 => true
+  | .u32 => true
   | .u64 => true
   | .nat => true
   | .array .u64 => true
@@ -210,6 +214,7 @@ def supportedFunction? (info : ConstantInfo) : Option Signature :=
 def supportedLocalType : Ty → Bool
   | .bool => true
   | .u8 => true
+  | .u32 => true
   | .u64 => true
   | .nat => true
   | .byteArray => true
@@ -311,9 +316,16 @@ def u8WrapExpr (expr : IRExpr) : IRExpr :=
 def u8ShiftAmountExpr (expr : IRExpr) : IRExpr :=
   .u64Bin .bitAnd expr (.u64 7)
 
+def u32WrapExpr (expr : IRExpr) : IRExpr :=
+  .u64Bin .bitAnd expr (.u64 (2 ^ 32 - 1))
+
+def u32ShiftAmountExpr (expr : IRExpr) : IRExpr :=
+  .u64Bin .bitAnd expr (.u64 31)
+
 def supportedEqType : Ty → Bool
   | .bool => true
   | .u8 => true
+  | .u32 => true
   | .u64 => true
   | .nat => true
   | _ => false
@@ -355,6 +367,7 @@ def optionParts (value : ExtractedValue) : Except String (IRExpr × ExtractedVal
 partial def defaultValue : Ty → Except String ExtractedValue
   | .bool => .ok (.scalar (.u64 0))
   | .u8 => .ok (.scalar (.u64 0))
+  | .u32 => .ok (.scalar (.u64 0))
   | .u64 => .ok (.scalar (.u64 0))
   | .nat => .ok (.scalar (.u64 0))
   | .byteArray => .ok (.byteArray (.u64 0) (.u64 0))
@@ -387,6 +400,7 @@ def flattenAbiValue (ty : Ty) (value : ExtractedValue) : Except String (List IRE
   match ty with
   | .bool => scalarValue value |>.map (fun expr => [expr])
   | .u8 => scalarValue value |>.map (fun expr => [expr])
+  | .u32 => scalarValue value |>.map (fun expr => [expr])
   | .u64 => scalarValue value |>.map (fun expr => [expr])
   | .nat => scalarValue value |>.map (fun expr => [expr])
   | .array .u64 => scalarValue value |>.map (fun expr => [expr])
@@ -1402,10 +1416,23 @@ mutual
             | (.const ``UInt64.toUInt8 _, [arg]) =>
                 let argResult ← extractExprFrom ctx locals nextLocal arg
                 .ok (.u64Bin .bitAnd argResult.fst (.u64 255), argResult.snd)
+            | (.const ``UInt64.toUInt32 _, [arg]) =>
+                let argResult ← extractExprFrom ctx locals nextLocal arg
+                .ok (.u64Bin .bitAnd argResult.fst (.u64 (2 ^ 32 - 1)), argResult.snd)
             | (.const ``Nat.toUInt64 _, [arg]) =>
                 match ofNat? ``Nat arg with
                 | some value => .ok (.u64 value, nextLocal)
                 | none => extractExprFrom ctx locals nextLocal arg
+            | (.const ``UInt32.ofNat _, [arg]) =>
+                match ofNat? ``Nat arg with
+                | some value => .ok (.u64 (value % (2 ^ 32)), nextLocal)
+                | none =>
+                    let argResult ← extractExprFrom ctx locals nextLocal arg
+                    .ok (.u64Bin .bitAnd argResult.fst (.u64 (2 ^ 32 - 1)), argResult.snd)
+            | (.const ``UInt32.toNat _, [arg]) =>
+                extractExprFrom ctx locals nextLocal arg
+            | (.const ``UInt32.toUInt64 _, [arg]) =>
+                extractExprFrom ctx locals nextLocal arg
             | (.const ``UInt8.ofNat _, [arg]) =>
                 match ofNat? ``Nat arg with
                 | some value => .ok (.u64 (value % 256), nextLocal)
@@ -1481,6 +1508,9 @@ mutual
                   match primitiveReceiverType? args with
                   | some .u8 =>
                       .ok (.u64Bin .bitXor valueResult.fst (.u64 255), valueResult.snd)
+                  | some .u32 =>
+                      .ok (.u64Bin .bitXor valueResult.fst (.u64 (2 ^ 32 - 1)),
+                        valueResult.snd)
                   | some .u64 =>
                       .ok (.u64Bin .bitXor valueResult.fst (.u64 (runtimeNatLimit - 1)),
                         valueResult.snd)
@@ -1522,6 +1552,8 @@ mutual
           .ok (.u64Bin .natAdd leftIR rightIR, rightResult.snd)
       | some .u8 =>
           .ok (u8WrapExpr (.u64Bin .add leftIR rightIR), rightResult.snd)
+      | some .u32 =>
+          .ok (u32WrapExpr (.u64Bin .add leftIR rightIR), rightResult.snd)
       | _ => .ok (.u64Bin .add leftIR rightIR, rightResult.snd)
     else if primitive == ``HSub.hSub then
       match primitiveResultType? args with
@@ -1529,6 +1561,8 @@ mutual
           .ok (.u64Bin .natSub leftIR rightIR, rightResult.snd)
       | some .u8 =>
           .ok (u8WrapExpr (.u64Bin .sub leftIR rightIR), rightResult.snd)
+      | some .u32 =>
+          .ok (u32WrapExpr (.u64Bin .sub leftIR rightIR), rightResult.snd)
       | _ => .ok (.u64Bin .sub leftIR rightIR, rightResult.snd)
     else if primitive == ``HMul.hMul then
       match primitiveResultType? args with
@@ -1536,6 +1570,8 @@ mutual
           .ok (.u64Bin .natMul leftIR rightIR, rightResult.snd)
       | some .u8 =>
           .ok (u8WrapExpr (.u64Bin .mul leftIR rightIR), rightResult.snd)
+      | some .u32 =>
+          .ok (u32WrapExpr (.u64Bin .mul leftIR rightIR), rightResult.snd)
       | _ => .ok (.u64Bin .mul leftIR rightIR, rightResult.snd)
     else if primitive == ``HDiv.hDiv then
       .ok (.u64Bin .divU leftIR rightIR, rightResult.snd)
@@ -1543,17 +1579,17 @@ mutual
       .ok (.u64Bin .modU leftIR rightIR, rightResult.snd)
     else if primitive == ``HAnd.hAnd then
       match primitiveResultType? args with
-      | some .u8 | some .u64 =>
+      | some .u8 | some .u32 | some .u64 =>
           .ok (.u64Bin .bitAnd leftIR rightIR, rightResult.snd)
       | _ => .error s!"unsupported bitwise and expression: {primitive}"
     else if primitive == ``HOr.hOr then
       match primitiveResultType? args with
-      | some .u8 | some .u64 =>
+      | some .u8 | some .u32 | some .u64 =>
           .ok (.u64Bin .bitOr leftIR rightIR, rightResult.snd)
       | _ => .error s!"unsupported bitwise or expression: {primitive}"
     else if primitive == ``HXor.hXor then
       match primitiveResultType? args with
-      | some .u8 | some .u64 =>
+      | some .u8 | some .u32 | some .u64 =>
           .ok (.u64Bin .bitXor leftIR rightIR, rightResult.snd)
       | _ => .error s!"unsupported bitwise xor expression: {primitive}"
     else if primitive == ``HShiftLeft.hShiftLeft then
@@ -1563,6 +1599,9 @@ mutual
       | some .u8 =>
           .ok (u8WrapExpr (.u64Bin .shiftLeft leftIR (u8ShiftAmountExpr rightIR)),
             rightResult.snd)
+      | some .u32 =>
+          .ok (u32WrapExpr (.u64Bin .shiftLeft leftIR (u32ShiftAmountExpr rightIR)),
+            rightResult.snd)
       | _ => .error s!"unsupported shift-left expression: {primitive}"
     else if primitive == ``HShiftRight.hShiftRight then
       match primitiveReceiverType? args with
@@ -1570,6 +1609,8 @@ mutual
           .ok (.u64Bin .shiftRight leftIR rightIR, rightResult.snd)
       | some .u8 =>
           .ok (.u64Bin .shiftRight leftIR (u8ShiftAmountExpr rightIR), rightResult.snd)
+      | some .u32 =>
+          .ok (.u64Bin .shiftRight leftIR (u32ShiftAmountExpr rightIR), rightResult.snd)
       | _ => .error s!"unsupported shift-right expression: {primitive}"
     else if primitive == ``UInt64.land then
       .ok (.u64Bin .bitAnd leftIR rightIR, rightResult.snd)
@@ -1581,6 +1622,17 @@ mutual
       .ok (.u64Bin .shiftLeft leftIR rightIR, rightResult.snd)
     else if primitive == ``UInt64.shiftRight then
       .ok (.u64Bin .shiftRight leftIR rightIR, rightResult.snd)
+    else if primitive == ``UInt32.land then
+      .ok (.u64Bin .bitAnd leftIR rightIR, rightResult.snd)
+    else if primitive == ``UInt32.lor then
+      .ok (.u64Bin .bitOr leftIR rightIR, rightResult.snd)
+    else if primitive == ``UInt32.xor then
+      .ok (.u64Bin .bitXor leftIR rightIR, rightResult.snd)
+    else if primitive == ``UInt32.shiftLeft then
+      .ok (u32WrapExpr (.u64Bin .shiftLeft leftIR (u32ShiftAmountExpr rightIR)),
+        rightResult.snd)
+    else if primitive == ``UInt32.shiftRight then
+      .ok (.u64Bin .shiftRight leftIR (u32ShiftAmountExpr rightIR), rightResult.snd)
     else if primitive == ``UInt8.shiftLeft then
       .ok (u8WrapExpr (.u64Bin .shiftLeft leftIR (u8ShiftAmountExpr rightIR)),
         rightResult.snd)
@@ -1598,12 +1650,12 @@ mutual
       .ok (boolExpr (.leU64 rightIR leftIR), rightResult.snd)
     else if primitive == ``Min.min then
       match primitiveReceiverType? args with
-      | some .nat | some .u8 | some .u64 =>
+      | some .nat | some .u8 | some .u32 | some .u64 =>
           .ok (.ite (.leU64 leftIR rightIR) leftIR rightIR, rightResult.snd)
       | _ => .error s!"unsupported min expression: {primitive}"
     else if primitive == ``Max.max then
       match primitiveReceiverType? args with
-      | some .nat | some .u8 | some .u64 =>
+      | some .nat | some .u8 | some .u32 | some .u64 =>
           .ok (.ite (.leU64 leftIR rightIR) rightIR leftIR, rightResult.snd)
       | _ => .error s!"unsupported max expression: {primitive}"
     else

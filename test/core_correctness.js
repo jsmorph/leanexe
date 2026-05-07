@@ -36,6 +36,14 @@ const accepted = [
   { name: "wrappedUInt8Literal", args: [], expected: 44n },
   { name: "uint64ToUInt8Wrap", args: [], expected: 44n },
   { name: "uint8ToUInt64Value", args: [], expected: 256n },
+  { name: "wrappedUInt32Literal", args: [], expected: 0n },
+  { name: "uint32AddWrap", args: [], expected: 0n },
+  { name: "uint32BitwiseShift", args: [], expected: 24n },
+  { name: "uint32Complement", args: [], expected: 4294967295n },
+  { name: "uint32MinMax", args: [], expected: 4000000030n },
+  { name: "uint32Comparisons", args: [], expected: 1n },
+  { name: "uint32ToUInt64Value", args: [], expected: 4294967296n },
+  { name: "uint64ToUInt32Wrap", args: [], expected: 1n },
   { name: "uint8OfNatValue", args: [298n], expected: 43n },
   { name: "uint8AddWrap", args: [], expected: 0n },
   { name: "uint8SubWrap", args: [], expected: 255n },
@@ -163,6 +171,14 @@ const rejected = [
   {
     name: "rejectUInt8Return",
     message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectUInt8Return",
+  },
+  {
+    name: "rejectUInt32Param",
+    message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectUInt32Param",
+  },
+  {
+    name: "rejectUInt32Return",
+    message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectUInt32Return",
   },
   {
     name: "alloc",
