@@ -253,6 +253,10 @@ const rejected = [
     message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectExceptParam",
   },
   {
+    name: "rejectExceptUnitError",
+    message: "unsupported Except.ok application",
+  },
+  {
     name: "rejectUnitReturn",
     message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectUnitReturn",
   },
