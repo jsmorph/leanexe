@@ -622,3 +622,15 @@ Checks run:
 
 - [x] `lake build LeanExe.Examples.ByteArrayPrograms`
 - [x] `node test/bytearray_alloc.js` returned `checked 12 bytearray allocation cases`.
+
+## 2026-05-06: ByteArray.isEmpty
+
+The extractor now lowers `ByteArray.isEmpty` to a length comparison against zero.  This is the same value already available through the `ByteArray` parameter ABI, so it adds a source-level convenience without changing the memory representation.
+
+`LeanExe.Examples.ByteArrayPrograms.emptyViaIsEmpty` covers the new primitive in the byte-array allocation harness.
+
+Checks run:
+
+- [x] `lake build`
+- [x] `lake build LeanExe.Examples.ByteArrayPrograms`
+- [x] `node test/bytearray_alloc.js` returned `checked 14 bytearray allocation cases`.
