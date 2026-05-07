@@ -50,6 +50,7 @@ const accepted = [
   { name: "nonzeroReplicateRead", args: [], expected: 77n },
   { name: "arrayPopRead", args: [], expected: 44n },
   { name: "arrayIsEmptyValues", args: [], expected: 1n },
+  { name: "arrayBackRead", args: [], expected: 9n },
   { name: "productArrayAlias", args: [], expected: 2211n },
   { name: "recLetDemo", args: [], expected: 518n },
   { name: "recExitDemo", args: [], expected: 314n },
@@ -160,6 +161,7 @@ const rejected = [
 const trapped = [
   { name: "natAddOverflow", args: [] },
   { name: "natMulOverflow", args: [] },
+  { name: "arrayBackEmptyTrap", args: [] },
 ];
 
 function run(args) {
