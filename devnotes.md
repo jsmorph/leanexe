@@ -1058,3 +1058,15 @@ Checks run:
 - [x] `lake build LeanExe.Examples.ByteArrayPrograms`
 - [x] `node test/bytearray_alloc.js` returned `checked 34 bytearray allocation cases`.
 - [x] `node test/run_all.js` returned `checked 3 report classification cases`, `checked 176 accepted, 17 rejected, and 4 trapped cases`, `checked 34 bytearray allocation cases`, and `checked 56 cases`.
+
+## 2026-05-07: Nat Division Coverage
+
+The extractor already lowered `Nat` division and remainder through the checked unsigned operation path.  The specification now states that bounded `Nat` division and remainder use Lean’s zero-divisor behavior: `x / 0` returns `0`, and `x % 0` returns `x`.
+
+`LeanExe.Examples.Correctness.natDivModNormal` checks ordinary quotient and remainder results.  `natDivModZero` checks the zero-divisor case.
+
+Checks run:
+
+- [x] `lake build LeanExe.Examples.Correctness`
+- [x] `node test/core_correctness.js` returned `checked 179 accepted, 17 rejected, and 4 trapped cases`.
+- [x] `node test/run_all.js` returned `checked 3 report classification cases`, `checked 179 accepted, 17 rejected, and 4 trapped cases`, `checked 34 bytearray allocation cases`, and `checked 56 cases`.
