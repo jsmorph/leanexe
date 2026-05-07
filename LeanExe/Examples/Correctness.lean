@@ -621,6 +621,22 @@ def exceptToOptionErrorSkipsPayloadTrap : UInt64 :=
   else
     0
 
+def exceptOrElseError : UInt64 :=
+  match ((Except.error (7 : UInt64) : Except UInt64 UInt64) <|> Except.ok 5) with
+  | Except.error code => code
+  | Except.ok value => value
+
+def exceptOrElseOkSkipsFallbackTrap : UInt64 :=
+  match ((Except.ok (5 : UInt64) : Except UInt64 UInt64) <|>
+      Except.ok ((Array.replicate 0 (0 : UInt64)).back!)) with
+  | Except.error code => code
+  | Except.ok value => value
+
+def exceptOrElseFallbackError : UInt64 :=
+  match ((Except.error (7 : UInt64) : Except UInt64 UInt64) <|> Except.error 9) with
+  | Except.error code => code
+  | Except.ok value => value
+
 def optionGetDNone : UInt64 :=
   (none : Option UInt64).getD 7
 

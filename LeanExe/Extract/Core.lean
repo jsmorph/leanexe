@@ -590,6 +590,18 @@ def optionOrElseArgs? (fn : Expr) (args : List Expr) : Option (Expr × Expr) :=
         none
   | _ => none
 
+def exceptOrElseArgs? (fn : Expr) (args : List Expr) : Option (Expr × Expr) :=
+  match fn.consumeMData with
+  | .const name _ =>
+      if name == ``HOrElse.hOrElse then
+        match primitiveResultType? args, args.reverse with
+        | some (.sum .unit _), _ => none
+        | some (.sum _ _), fallback :: exceptValue :: _ => some (exceptValue, fallback)
+        | _, _ => none
+      else
+        none
+  | _ => none
+
 partial def listLiteralItems? (expr : Expr) : Option (Ty × List Expr) :=
   match appFnArgs expr with
   | (.const ``List.nil _, [itemTy]) =>
@@ -968,7 +980,14 @@ partial def demandExpr
                     (demandUnitExprArm ctx visiting fallback)
                     .empty
               | none =>
-                  args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
+                  match exceptOrElseArgs? (.const ``HOrElse.hOrElse []) args with
+                  | some (exceptValue, fallback) =>
+                      Demand.branch
+                        (demandExpr ctx visiting exceptValue)
+                        (demandUnitExprArm ctx visiting fallback)
+                        .empty
+                  | none =>
+                      args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
           | (.const ``Option.getD _, args) =>
               match args.reverse with
               | defaultValue :: optionValue :: _ =>
@@ -1542,7 +1561,11 @@ mutual
             match optionOrElseArgs? (.const ``HOrElse.hOrElse []) args with
             | some (optionValue, fallback) =>
                 extractOptionOrElseValueFrom ctx locals nextLocal optionValue fallback
-            | none => .error "unsupported HOrElse.hOrElse application"
+            | none =>
+                match exceptOrElseArgs? (.const ``HOrElse.hOrElse []) args with
+                | some (exceptValue, fallback) =>
+                    extractExceptOrElseValueFrom ctx locals nextLocal exceptValue fallback
+                | none => .error "unsupported HOrElse.hOrElse application"
         | (.const ``Option.elim _, args) =>
             match args.reverse with
             | someArm :: defaultValue :: optionValue :: _ =>
@@ -1839,6 +1862,38 @@ mutual
       (wrapValueLets lets
         (← valueIte (.eqU64 tag (.u64 0)) errorResult.fst okResult.fst),
         okResult.snd)
+
+  partial def extractExceptOrElseValueFrom
+      (ctx : Context)
+      (locals : List Binding)
+      (nextLocal : Nat)
+      (exceptValue fallback : Expr) :
+      Except String (ExtractedValue × Nat) := do
+    let exceptResult ← extractValueFrom ctx locals nextLocal exceptValue
+    let parts ← sumPartsWithLets exceptResult.fst
+    let lets := parts.fst
+    let tag := parts.snd.fst
+    let errorPayload := parts.snd.snd.fst
+    let okPayload := parts.snd.snd.snd
+    let fallbackBody ←
+      match collectLambdas fallback 1 with
+      | some body => .ok body
+      | none => .error "unsupported Except fallback"
+    let fallbackResult ←
+      extractValueFrom ctx (.value (.scalar (.u64 0)) :: locals) exceptResult.snd fallbackBody
+    let fallbackParts ← sumPartsWithLets fallbackResult.fst
+    let fallbackLets := fallbackParts.fst
+    let fallbackTag := wrapExprLets fallbackLets fallbackParts.snd.fst
+    let fallbackError := wrapValueLets fallbackLets fallbackParts.snd.snd.fst
+    let fallbackOk := wrapValueLets fallbackLets fallbackParts.snd.snd.snd
+    let isError := .eqU64 tag (.u64 0)
+    .ok
+      (wrapValueLets lets
+        (.sum
+          (.ite isError fallbackTag tag)
+          (← valueIte isError fallbackError errorPayload)
+          (← valueIte isError fallbackOk okPayload)),
+        fallbackResult.snd)
 
   partial def extractOptionOrElseValueFrom
       (ctx : Context)
