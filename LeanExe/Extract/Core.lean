@@ -1206,112 +1206,144 @@ mutual
                           extractOptionMatchValueFrom ctx locals nextLocal scrutinee noneArm someArm
                         .ok (← scalarValue valueResult.fst, valueResult.snd)
                     | none =>
-                        match ← extractInlineCallValueFrom ctx locals nextLocal primitive args with
-                        | some valueResult => .ok (← scalarValue valueResult.fst, valueResult.snd)
-                        | none =>
-                            match functionIndex? ctx primitive with
-                            | some index =>
-                                strictRecursiveCallCheck ctx primitive args
-                                let sig ←
-                                  match ctx.env.find? primitive with
-                                  | some info =>
-                                      match supportedFunction? info with
-                                      | some sig => .ok sig
-                                      | none => .error s!"unsupported function type or declaration: {primitive}"
-                                  | none => .error s!"declaration disappeared during extraction: {primitive}"
-                                let argsResult ← extractCallArgsFrom ctx locals nextLocal sig.params args
-                                .ok (.call index argsResult.fst, argsResult.snd)
-                            | none =>
-                                match primitiveArgPair? args with
-                                | some (left, right) =>
-                                    let leftResult ← extractExprFrom ctx locals nextLocal left
-                                    let rightResult ← extractExprFrom ctx locals leftResult.snd right
-                                    let leftIR := leftResult.fst
-                                    let rightIR := rightResult.fst
-                                    if primitive == ``HAdd.hAdd then
-                                      match primitiveResultType? args with
-                                      | some .nat =>
-                                          .ok (.u64Bin .natAdd leftIR rightIR, rightResult.snd)
-                                      | some .u8 =>
-                                          .ok (u8WrapExpr (.u64Bin .add leftIR rightIR), rightResult.snd)
-                                      | _ => .ok (.u64Bin .add leftIR rightIR, rightResult.snd)
-                                    else if primitive == ``HSub.hSub then
-                                      match primitiveResultType? args with
-                                      | some .nat =>
-                                          .ok (.u64Bin .natSub leftIR rightIR, rightResult.snd)
-                                      | some .u8 =>
-                                          .ok (u8WrapExpr (.u64Bin .sub leftIR rightIR), rightResult.snd)
-                                      | _ => .ok (.u64Bin .sub leftIR rightIR, rightResult.snd)
-                                    else if primitive == ``HMul.hMul then
-                                      match primitiveResultType? args with
-                                      | some .nat =>
-                                          .ok (.u64Bin .natMul leftIR rightIR, rightResult.snd)
-                                      | some .u8 =>
-                                          .ok (u8WrapExpr (.u64Bin .mul leftIR rightIR), rightResult.snd)
-                                      | _ => .ok (.u64Bin .mul leftIR rightIR, rightResult.snd)
-                                    else if primitive == ``HDiv.hDiv then
-                                      .ok (.u64Bin .divU leftIR rightIR, rightResult.snd)
-                                    else if primitive == ``HMod.hMod then
-                                      .ok (.u64Bin .modU leftIR rightIR, rightResult.snd)
-                                    else if primitive == ``HAnd.hAnd then
-                                      match primitiveResultType? args with
-                                      | some .u8 | some .u64 =>
-                                          .ok (.u64Bin .bitAnd leftIR rightIR, rightResult.snd)
-                                      | _ => .error s!"unsupported bitwise and expression: {primitive}"
-                                    else if primitive == ``HOr.hOr then
-                                      match primitiveResultType? args with
-                                      | some .u8 | some .u64 =>
-                                          .ok (.u64Bin .bitOr leftIR rightIR, rightResult.snd)
-                                      | _ => .error s!"unsupported bitwise or expression: {primitive}"
-                                    else if primitive == ``HXor.hXor then
-                                      match primitiveResultType? args with
-                                      | some .u8 | some .u64 =>
-                                          .ok (.u64Bin .bitXor leftIR rightIR, rightResult.snd)
-                                      | _ => .error s!"unsupported bitwise xor expression: {primitive}"
-                                    else if primitive == ``HShiftLeft.hShiftLeft then
-                                      match primitiveResultType? args with
-                                      | some .u64 =>
-                                          .ok (.u64Bin .shiftLeft leftIR rightIR, rightResult.snd)
-                                      | _ => .error s!"unsupported shift-left expression: {primitive}"
-                                    else if primitive == ``HShiftRight.hShiftRight then
-                                      match primitiveResultType? args with
-                                      | some .u64 =>
-                                          .ok (.u64Bin .shiftRight leftIR rightIR, rightResult.snd)
-                                      | _ => .error s!"unsupported shift-right expression: {primitive}"
-                                    else if primitive == ``UInt64.land then
-                                      .ok (.u64Bin .bitAnd leftIR rightIR, rightResult.snd)
-                                    else if primitive == ``UInt64.lor then
-                                      .ok (.u64Bin .bitOr leftIR rightIR, rightResult.snd)
-                                    else if primitive == ``UInt64.xor then
-                                      .ok (.u64Bin .bitXor leftIR rightIR, rightResult.snd)
-                                    else if primitive == ``UInt64.shiftLeft then
-                                      .ok (.u64Bin .shiftLeft leftIR rightIR, rightResult.snd)
-                                    else if primitive == ``UInt64.shiftRight then
-                                      .ok (.u64Bin .shiftRight leftIR rightIR, rightResult.snd)
-                                    else if primitive == ``BEq.beq then
-                                      .ok (boolExpr (.eqU64 leftIR rightIR), rightResult.snd)
-                                    else if primitive == ``LT.lt then
-                                      .ok (boolExpr (.ltU64 leftIR rightIR), rightResult.snd)
-                                    else if primitive == ``LE.le then
-                                      .ok (boolExpr (.leU64 leftIR rightIR), rightResult.snd)
-                                    else if primitive == ``GT.gt then
-                                      .ok (boolExpr (.ltU64 rightIR leftIR), rightResult.snd)
-                                    else if primitive == ``GE.ge then
-                                      .ok (boolExpr (.leU64 rightIR leftIR), rightResult.snd)
-                                    else if primitive == ``Min.min then
-                                      match primitiveReceiverType? args with
-                                      | some .nat | some .u8 | some .u64 =>
-                                          .ok (.ite (.leU64 leftIR rightIR) leftIR rightIR, rightResult.snd)
-                                      | _ => .error s!"unsupported min expression: {primitive}"
-                                    else if primitive == ``Max.max then
-                                      match primitiveReceiverType? args with
-                                      | some .nat | some .u8 | some .u64 =>
-                                          .ok (.ite (.leU64 leftIR rightIR) rightIR leftIR, rightResult.snd)
-                                      | _ => .error s!"unsupported max expression: {primitive}"
-                                    else
-                                      .error s!"unsupported primitive expression: {primitive}"
-                                | none => .error s!"unsupported application: {primitive}"
+                        extractPrimitiveApplicationFrom ctx locals nextLocal primitive args
             | (fn, _) => .error s!"unsupported expression: {fn}"
+
+  partial def extractPrimitiveApplicationFrom
+      (ctx : Context)
+      (locals : List Binding)
+      (nextLocal : Nat)
+      (primitive : Name)
+      (args : List Expr) :
+      Except String (IRExpr × Nat) := do
+    match ← extractInlineCallValueFrom ctx locals nextLocal primitive args with
+    | some valueResult => .ok (← scalarValue valueResult.fst, valueResult.snd)
+    | none =>
+        match functionIndex? ctx primitive with
+        | some index =>
+            strictRecursiveCallCheck ctx primitive args
+            let sig ←
+              match ctx.env.find? primitive with
+              | some info =>
+                  match supportedFunction? info with
+                  | some sig => .ok sig
+                  | none => .error s!"unsupported function type or declaration: {primitive}"
+              | none => .error s!"declaration disappeared during extraction: {primitive}"
+            let argsResult ← extractCallArgsFrom ctx locals nextLocal sig.params args
+            .ok (.call index argsResult.fst, argsResult.snd)
+        | none =>
+            if primitive == ``Complement.complement then
+              match args.reverse with
+              | value :: _ =>
+                  let valueResult ← extractExprFrom ctx locals nextLocal value
+                  match primitiveReceiverType? args with
+                  | some .u8 =>
+                      .ok (.u64Bin .bitXor valueResult.fst (.u64 255), valueResult.snd)
+                  | some .u64 =>
+                      .ok (.u64Bin .bitXor valueResult.fst (.u64 (runtimeNatLimit - 1)),
+                        valueResult.snd)
+                  | _ => .error s!"unsupported complement expression: {primitive}"
+              | _ => .error s!"unsupported complement expression: {primitive}"
+            else
+              match primitiveArgPair? args with
+              | some (left, right) =>
+                  extractPrimitivePairFrom ctx locals nextLocal primitive args left right
+              | none => .error s!"unsupported application: {primitive}"
+
+  partial def extractPrimitivePairFrom
+      (ctx : Context)
+      (locals : List Binding)
+      (nextLocal : Nat)
+      (primitive : Name)
+      (args : List Expr)
+      (left right : Expr) :
+      Except String (IRExpr × Nat) := do
+    let leftResult ← extractExprFrom ctx locals nextLocal left
+    let rightResult ← extractExprFrom ctx locals leftResult.snd right
+    let leftIR := leftResult.fst
+    let rightIR := rightResult.fst
+    if primitive == ``HAdd.hAdd then
+      match primitiveResultType? args with
+      | some .nat =>
+          .ok (.u64Bin .natAdd leftIR rightIR, rightResult.snd)
+      | some .u8 =>
+          .ok (u8WrapExpr (.u64Bin .add leftIR rightIR), rightResult.snd)
+      | _ => .ok (.u64Bin .add leftIR rightIR, rightResult.snd)
+    else if primitive == ``HSub.hSub then
+      match primitiveResultType? args with
+      | some .nat =>
+          .ok (.u64Bin .natSub leftIR rightIR, rightResult.snd)
+      | some .u8 =>
+          .ok (u8WrapExpr (.u64Bin .sub leftIR rightIR), rightResult.snd)
+      | _ => .ok (.u64Bin .sub leftIR rightIR, rightResult.snd)
+    else if primitive == ``HMul.hMul then
+      match primitiveResultType? args with
+      | some .nat =>
+          .ok (.u64Bin .natMul leftIR rightIR, rightResult.snd)
+      | some .u8 =>
+          .ok (u8WrapExpr (.u64Bin .mul leftIR rightIR), rightResult.snd)
+      | _ => .ok (.u64Bin .mul leftIR rightIR, rightResult.snd)
+    else if primitive == ``HDiv.hDiv then
+      .ok (.u64Bin .divU leftIR rightIR, rightResult.snd)
+    else if primitive == ``HMod.hMod then
+      .ok (.u64Bin .modU leftIR rightIR, rightResult.snd)
+    else if primitive == ``HAnd.hAnd then
+      match primitiveResultType? args with
+      | some .u8 | some .u64 =>
+          .ok (.u64Bin .bitAnd leftIR rightIR, rightResult.snd)
+      | _ => .error s!"unsupported bitwise and expression: {primitive}"
+    else if primitive == ``HOr.hOr then
+      match primitiveResultType? args with
+      | some .u8 | some .u64 =>
+          .ok (.u64Bin .bitOr leftIR rightIR, rightResult.snd)
+      | _ => .error s!"unsupported bitwise or expression: {primitive}"
+    else if primitive == ``HXor.hXor then
+      match primitiveResultType? args with
+      | some .u8 | some .u64 =>
+          .ok (.u64Bin .bitXor leftIR rightIR, rightResult.snd)
+      | _ => .error s!"unsupported bitwise xor expression: {primitive}"
+    else if primitive == ``HShiftLeft.hShiftLeft then
+      match primitiveResultType? args with
+      | some .u64 =>
+          .ok (.u64Bin .shiftLeft leftIR rightIR, rightResult.snd)
+      | _ => .error s!"unsupported shift-left expression: {primitive}"
+    else if primitive == ``HShiftRight.hShiftRight then
+      match primitiveResultType? args with
+      | some .u64 =>
+          .ok (.u64Bin .shiftRight leftIR rightIR, rightResult.snd)
+      | _ => .error s!"unsupported shift-right expression: {primitive}"
+    else if primitive == ``UInt64.land then
+      .ok (.u64Bin .bitAnd leftIR rightIR, rightResult.snd)
+    else if primitive == ``UInt64.lor then
+      .ok (.u64Bin .bitOr leftIR rightIR, rightResult.snd)
+    else if primitive == ``UInt64.xor then
+      .ok (.u64Bin .bitXor leftIR rightIR, rightResult.snd)
+    else if primitive == ``UInt64.shiftLeft then
+      .ok (.u64Bin .shiftLeft leftIR rightIR, rightResult.snd)
+    else if primitive == ``UInt64.shiftRight then
+      .ok (.u64Bin .shiftRight leftIR rightIR, rightResult.snd)
+    else if primitive == ``BEq.beq then
+      .ok (boolExpr (.eqU64 leftIR rightIR), rightResult.snd)
+    else if primitive == ``LT.lt then
+      .ok (boolExpr (.ltU64 leftIR rightIR), rightResult.snd)
+    else if primitive == ``LE.le then
+      .ok (boolExpr (.leU64 leftIR rightIR), rightResult.snd)
+    else if primitive == ``GT.gt then
+      .ok (boolExpr (.ltU64 rightIR leftIR), rightResult.snd)
+    else if primitive == ``GE.ge then
+      .ok (boolExpr (.leU64 rightIR leftIR), rightResult.snd)
+    else if primitive == ``Min.min then
+      match primitiveReceiverType? args with
+      | some .nat | some .u8 | some .u64 =>
+          .ok (.ite (.leU64 leftIR rightIR) leftIR rightIR, rightResult.snd)
+      | _ => .error s!"unsupported min expression: {primitive}"
+    else if primitive == ``Max.max then
+      match primitiveReceiverType? args with
+      | some .nat | some .u8 | some .u64 =>
+          .ok (.ite (.leU64 leftIR rightIR) rightIR leftIR, rightResult.snd)
+      | _ => .error s!"unsupported max expression: {primitive}"
+    else
+      .error s!"unsupported primitive expression: {primitive}"
 
   partial def extractCondFrom
       (ctx : Context)
