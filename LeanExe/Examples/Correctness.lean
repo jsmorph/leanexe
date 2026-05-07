@@ -262,6 +262,12 @@ def rejectOptionParam (value : Option UInt64) : UInt64 :=
 def rejectByteArrayReturn (input : ByteArray) : ByteArray :=
   input
 
+def rejectUInt8Param (b : UInt8) : Bool :=
+  b == (0 : UInt8)
+
+def rejectUInt8Return : UInt8 :=
+  42
+
 def alloc : UInt64 :=
   1
 

@@ -476,3 +476,17 @@ Checks run:
 - [x] `node test/bytearray_alloc.js` returned `checked 6 bytearray allocation cases`.
 - [x] `env XDG_CACHE_HOME=.lake/build/cache .lake/build/tools/wasmtime-v36.0.9-aarch64-linux/wasmtime --invoke wrappedUInt8Literal .lake/build/core-correctness/wrappedUInt8Literal.wasm` returned `44`.
 - [x] `env XDG_CACHE_HOME=.lake/build/cache .lake/build/tools/wasmtime-v36.0.9-aarch64-linux/wasmtime --invoke uint8OfNatValue .lake/build/core-correctness/uint8OfNatValue.wasm 298` returned `43`.
+
+## 2026-05-06: Internal UInt8 Helper Signatures
+
+The compiler now separates exported entry ABI support from project-local helper support.  Exported entries still reject `UInt8` parameters and results, because the public ABI has not assigned byte-sized scalar slots.  Internal helpers may use `UInt8` parameters and results, and the lowering represents those values as scalar `i64` slots constrained by the operations that produce them.
+
+`LeanExe.Examples.ByteArrayPrograms.nextByte` takes and returns `UInt8`.  `firstByteNextIsZero` calls it on a `ByteArray.get!` result and checks the modulo-256 wrap from `255` to `0`.  `LeanExe.Examples.Correctness.rejectUInt8Param` and `rejectUInt8Return` keep the entry boundary explicit.
+
+Checks run:
+
+- [x] `lake build`
+- [x] `lake build LeanExe.Examples.Correctness`
+- [x] `lake build LeanExe.Examples.ByteArrayPrograms`
+- [x] `node test/core_correctness.js` returned `checked 52 accepted, 13 rejected, and 2 trapped cases`.
+- [x] `node test/bytearray_alloc.js` returned `checked 9 bytearray allocation cases`.

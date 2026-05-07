@@ -79,7 +79,22 @@ async function main() {
     }
   }
 
-  const total = firstBytePlusArrayCases.length + firstByteIsStarCases.length;
+  const firstByteNextIsZero = await instantiate("firstByteNextIsZero");
+  const firstByteNextIsZeroCases = [
+    { input: new Uint8Array([]), expected: 0n },
+    { input: new Uint8Array([255]), expected: 1n },
+    { input: new Uint8Array([254]), expected: 0n },
+  ];
+
+  for (const testCase of firstByteNextIsZeroCases) {
+    const actual = callByteArray(firstByteNextIsZero, testCase.input);
+    if (actual !== testCase.expected) {
+      throw new Error(`firstByteNextIsZero: expected ${testCase.expected}, got ${actual}`);
+    }
+  }
+
+  const total =
+    firstBytePlusArrayCases.length + firstByteIsStarCases.length + firstByteNextIsZeroCases.length;
   process.stdout.write(`checked ${total} bytearray allocation cases\n`);
 }
 
