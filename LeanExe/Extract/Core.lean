@@ -777,6 +777,13 @@ partial def demandExpr
               args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
           | (.const ``Array.extract _, args) =>
               args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
+          | (.const ``Array.empty _, _) => .empty
+          | (.const ``Array.mkEmpty _, _) => .empty
+          | (.const ``Array.emptyWithCapacity _, _) => .empty
+          | (.const ``Array.singleton _, args) =>
+              match args.reverse with
+              | value :: _ => demandExpr ctx visiting value
+              | _ => .empty
           | (.const ``Array.get!Internal _, _) => .trap
           | (.const ``GetElem?.getElem! _, _) => .trap
           | (.const ``Array.back! _, _) => .trap
@@ -1602,6 +1609,41 @@ mutual
                     .ok (.arrayExtract arrayResult.fst startResult.fst stopResult.fst,
                       stopResult.snd)
                 | _ => .error "unsupported Array.extract application"
+            | (.const ``Array.empty _, args) =>
+                match args with
+                | [itemTy] =>
+                    match typeAtom? itemTy with
+                    | some .u64 => .ok (.arrayAlloc (.u64 0), nextLocal)
+                    | some other => .error s!"unsupported Array.empty item type: {reprStr other}"
+                    | none => .error "unsupported Array.empty item type"
+                | _ => .error "unsupported Array.empty application"
+            | (.const ``Array.mkEmpty _, args) =>
+                match args with
+                | [itemTy, _capacity] =>
+                    match typeAtom? itemTy with
+                    | some .u64 => .ok (.arrayAlloc (.u64 0), nextLocal)
+                    | some other => .error s!"unsupported Array.mkEmpty item type: {reprStr other}"
+                    | none => .error "unsupported Array.mkEmpty item type"
+                | _ => .error "unsupported Array.mkEmpty application"
+            | (.const ``Array.emptyWithCapacity _, args) =>
+                match args with
+                | [itemTy, _capacity] =>
+                    match typeAtom? itemTy with
+                    | some .u64 => .ok (.arrayAlloc (.u64 0), nextLocal)
+                    | some other =>
+                        .error s!"unsupported Array.emptyWithCapacity item type: {reprStr other}"
+                    | none => .error "unsupported Array.emptyWithCapacity item type"
+                | _ => .error "unsupported Array.emptyWithCapacity application"
+            | (.const ``Array.singleton _, args) =>
+                match args with
+                | [itemTy, value] =>
+                    match typeAtom? itemTy with
+                    | some .u64 =>
+                        let valueResult ← extractExprFrom ctx locals nextLocal value
+                        .ok (.arrayReplicate (.u64 1) valueResult.fst, valueResult.snd)
+                    | some other => .error s!"unsupported Array.singleton item type: {reprStr other}"
+                    | none => .error "unsupported Array.singleton item type"
+                | _ => .error "unsupported Array.singleton application"
             | (.const ``Array.get!Internal _, args) =>
                 match args.reverse with
                 | index :: array :: _ =>
