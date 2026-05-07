@@ -56,6 +56,9 @@ def isBVar (index : Nat) (expr : Expr) : Bool :=
   | .bvar candidate => candidate == index
   | _ => false
 
+def isIdType (expr : Expr) : Bool :=
+  isConst ``Id expr
+
 partial def containsBVar (index : Nat) (expr : Expr) : Bool :=
   if isBVar index expr then
     true
@@ -919,6 +922,15 @@ partial def demandExpr
                 (demandUnitExprArm ctx visiting elseArm)
           | (.const ``Decidable.decide _, [prop, _inst]) =>
               demandCond ctx visiting prop
+          | (.const ``Id.run _, args) =>
+              match args.reverse with
+              | value :: _ => demandExpr ctx visiting value
+              | _ => .empty
+          | (.const ``Pure.pure _, args) =>
+              match args, args.reverse with
+              | monadTy :: _, value :: _ =>
+                  if isIdType monadTy then demandExpr ctx visiting value else .empty
+              | _, _ => .empty
           | (.const ``Prod.fst _, args) =>
               match args.reverse with
               | product :: _ => demandProductField ctx visiting 0 product
@@ -1455,6 +1467,18 @@ mutual
                 let valueResult ← extractValueFrom ctx locals nextLocal product
                 .ok (← productField 1 valueResult.fst, valueResult.snd)
             | _ => .error "unsupported Prod.snd application"
+        | (.const ``Id.run _, args) =>
+            match args.reverse with
+            | value :: _ => extractValueFrom ctx locals nextLocal value
+            | _ => .error "unsupported Id.run application"
+        | (.const ``Pure.pure _, args) =>
+            match args, args.reverse with
+            | monadTy :: _, value :: _ =>
+                if isIdType monadTy then
+                  extractValueFrom ctx locals nextLocal value
+                else
+                  .error "unsupported Pure.pure application"
+            | _, _ => .error "unsupported Pure.pure application"
         | (.const ``Option.none _, args) =>
             match optionConstructorType? args with
             | some payloadTy =>
@@ -2067,6 +2091,12 @@ mutual
             | (.const ``Decidable.decide _, [prop, _inst]) =>
                 let condResult ← extractCondFrom ctx locals nextLocal prop
                 .ok (boolExpr condResult.fst, condResult.snd)
+            | (.const ``Id.run _, _) =>
+                let valueResult ← extractValueFrom ctx locals nextLocal expr
+                .ok (← scalarValue valueResult.fst, valueResult.snd)
+            | (.const ``Pure.pure _, _) =>
+                let valueResult ← extractValueFrom ctx locals nextLocal expr
+                .ok (← scalarValue valueResult.fst, valueResult.snd)
             | (.const ``ite _, [ty, condExpr, _, thenExpr, elseExpr]) =>
                 if typeAtom? ty |>.isSome then
                   let condResult ← extractCondFrom ctx locals nextLocal condExpr
@@ -2612,6 +2642,12 @@ mutual
             | none => .error "unsupported equality proposition in condition"
         | (.const ``Decidable.decide _, [prop, _inst]) =>
             extractCondFrom ctx locals nextLocal prop
+        | (.const ``Id.run _, _) =>
+            let valueResult ← extractValueFrom ctx locals nextLocal expr
+            .ok (boolCond (← scalarValue valueResult.fst), valueResult.snd)
+        | (.const ``Pure.pure _, _) =>
+            let valueResult ← extractValueFrom ctx locals nextLocal expr
+            .ok (boolCond (← scalarValue valueResult.fst), valueResult.snd)
         | (.const ``dite _, _) =>
             let valueResult ← extractValueFrom ctx locals nextLocal expr
             .ok (boolCond (← scalarValue valueResult.fst), valueResult.snd)

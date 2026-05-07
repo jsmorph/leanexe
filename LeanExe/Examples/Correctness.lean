@@ -263,6 +263,17 @@ def unitResultIgnored : UInt64 :=
   let pair := (value, (12 : UInt64))
   pair.2
 
+def idRunLet : UInt64 := Id.run do
+  let x := (1 : UInt64)
+  return x + 1
+
+def idRunSkipsUnusedLetTrap : UInt64 := Id.run do
+  let _x := (Array.replicate 0 (0 : UInt64)).back!
+  return 7
+
+def idRunCondition : UInt64 :=
+  if Id.run do return true then 1 else 0
+
 def arrayUpdateRead : UInt64 :=
   let a := Array.replicate 2 (0 : UInt64)
   let b := a.set! 0 1
