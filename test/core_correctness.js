@@ -79,6 +79,10 @@ const rejected = [
     message: "entry export name is reserved by the runtime ABI: alloc",
   },
   {
+    name: "rejectHugeNatLiteral",
+    message: "Nat literal exceeds bounded runtime representation: 18446744073709551616",
+  },
+  {
     name: "rejectRecursiveIgnoredTrapArg",
     message: "strict call may evaluate an argument not demanded by callee: LeanExe.Examples.Correctness.recIgnoreTrapArgFuel",
   },

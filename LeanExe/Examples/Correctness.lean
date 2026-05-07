@@ -238,6 +238,9 @@ def rejectOptionParam (value : Option UInt64) : UInt64 :=
 def alloc : UInt64 :=
   1
 
+def rejectHugeNatLiteral : Nat :=
+  18446744073709551616
+
 def rejectHigherOrder (f : UInt64 → UInt64) : UInt64 :=
   f 1
 

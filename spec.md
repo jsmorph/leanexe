@@ -48,7 +48,7 @@ The current report imports compiled `.olean` modules through Lean’s module loa
 
 `Nat` needs careful treatment because Lean’s `Nat` is unbounded, while the first Wasm target uses fixed-width machine integers and explicit memory.  The subset may admit `Nat` in proofs, sizes, indices, and compile-time constants before it admits general unbounded runtime arithmetic.  Any accepted runtime `Nat` operation must state its representation and overflow behavior.
 
-Runtime `Nat` values in the current fragment use the same `i64` representation as other scalar values.  `Nat` subtraction follows Lean’s saturating semantics: `a - b` returns `0` when `a < b`.  Addition and multiplication remain bounded-fragment operations; programs that rely on arbitrary-precision `Nat` overflow behavior are outside the current subset.
+Runtime `Nat` values in the current fragment use the same `i64` representation as other scalar values.  Runtime `Nat` literals must be below `2^64`; larger literals are rejected rather than truncated.  `Nat` subtraction follows Lean’s saturating semantics: `a - b` returns `0` when `a < b`.  Addition and multiplication remain bounded-fragment operations; programs that rely on arbitrary-precision `Nat` overflow behavior are outside the current subset.
 
 ## Terms
 
