@@ -111,8 +111,17 @@ def recIgnoreTrapArgFuel : Nat → UInt64 → UInt64
   | 0, _value => 7
   | fuel + 1, value => recIgnoreTrapArgFuel fuel value
 
+def recursiveDemandedFuelGet : UInt64 :=
+  recIgnoreTrapArgFuel ((Array.replicate 1 (0 : UInt64))[0]!).toNat 99
+
 def rejectRecursiveIgnoredTrapArg : UInt64 :=
   recIgnoreTrapArgFuel 0 ((Array.replicate 1 (0 : UInt64))[5]!)
+
+def hiddenTrap : UInt64 :=
+  (Array.replicate 1 (0 : UInt64))[5]!
+
+def rejectRecursiveIgnoredHiddenTrapArg : UInt64 :=
+  recIgnoreTrapArgFuel 0 hiddenTrap
 
 def optionSomeMatch : UInt64 :=
   match (some (7 : UInt64) : Option UInt64) with

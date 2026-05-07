@@ -306,38 +306,297 @@ def optionMatcherArgs? (fn : Expr) (args : List Expr) :
         none
   | _ => none
 
-def isPartialArrayPrimitive (name : Name) : Bool :=
-  name == ``Array.get!Internal ||
-    name == ``GetElem?.getElem! ||
-    name == ``Array.set!
+def insertNat (value : Nat) (items : List Nat) : List Nat :=
+  if items.contains value then items else value :: items
 
-partial def mayTrapExpr (expr : Expr) : Bool :=
+def unionNat (left right : List Nat) : List Nat :=
+  right.foldl (fun acc value => insertNat value acc) left
+
+def intersectNat (left right : List Nat) : List Nat :=
+  left.filter (fun value => right.contains value)
+
+def decPositive (items : List Nat) : List Nat :=
+  items.foldr
+    (fun value acc =>
+      match value with
+      | 0 => acc
+      | next + 1 => insertNat next acc)
+    []
+
+structure Demand where
+  may : List Nat
+  must : List Nat
+  mayTrap : Bool
+  deriving BEq, Repr, Inhabited
+
+def Demand.empty : Demand :=
+  { may := [], must := [], mayTrap := false }
+
+def Demand.trap : Demand :=
+  { may := [], must := [], mayTrap := true }
+
+def Demand.bvar (index : Nat) : Demand :=
+  { may := [index], must := [index], mayTrap := false }
+
+def Demand.always (left right : Demand) : Demand :=
+  {
+    may := unionNat left.may right.may,
+    must := unionNat left.must right.must,
+    mayTrap := left.mayTrap || right.mayTrap
+  }
+
+def Demand.branch (cond thenDemand elseDemand : Demand) : Demand :=
+  {
+    may := unionNat cond.may (unionNat thenDemand.may elseDemand.may),
+    must := unionNat cond.must (intersectNat thenDemand.must elseDemand.must),
+    mayTrap := cond.mayTrap || thenDemand.mayTrap || elseDemand.mayTrap
+  }
+
+def Demand.letE (value body : Demand) : Demand :=
+  let boundMay := body.may.contains 0
+  let boundMust := body.must.contains 0
+  {
+    may :=
+      unionNat (decPositive body.may)
+        (if boundMay then value.may else []),
+    must :=
+      unionNat (decPositive body.must)
+        (if boundMust then value.must else []),
+    mayTrap := body.mayTrap || (boundMay && value.mayTrap)
+  }
+
+structure DemandSummary where
+  mayDemand : List Bool
+  mustDemand : List Bool
+  selfMayTrap : Bool
+  deriving BEq, Repr, Inhabited
+
+def boolAt (items : List Bool) (index : Nat) : Bool :=
+  match items[index]? with
+  | some value => value
+  | none => false
+
+def bvarForParam (paramCount paramIndex : Nat) : Nat :=
+  paramCount - paramIndex - 1
+
+def DemandSummary.recursive (paramCount : Nat) : DemandSummary :=
+  {
+    mayDemand := List.replicate paramCount true,
+    mustDemand := (List.range paramCount).map (fun index => index == 0),
+    selfMayTrap := false
+  }
+
+def DemandSummary.fromDemand (paramCount : Nat) (demand : Demand) : DemandSummary :=
+  {
+    mayDemand :=
+      (List.range paramCount).map
+        (fun index => demand.may.contains (bvarForParam paramCount index)),
+    mustDemand :=
+      (List.range paramCount).map
+        (fun index => demand.must.contains (bvarForParam paramCount index)),
+    selfMayTrap := demand.mayTrap
+  }
+
+def decDemand (demand : Demand) : Demand :=
+  {
+    may := decPositive demand.may,
+    must := decPositive demand.must,
+    mayTrap := demand.mayTrap
+  }
+
+def enumerateAux {α : Type} : List α → Nat → List (Nat × α)
+  | [], _ => []
+  | item :: rest, index => (index, item) :: enumerateAux rest (index + 1)
+
+def enumerate {α : Type} (items : List α) : List (Nat × α) :=
+  enumerateAux items 0
+
+mutual
+partial def demandExpr
+    (ctx : Context)
+    (visiting : List Name)
+    (expr : Expr) : Demand :=
   match expr.consumeMData with
-  | .app fn arg =>
+  | .bvar index => .bvar index
+  | .letE _ _ value body _ => Demand.letE (demandExpr ctx visiting value) (demandExpr ctx visiting body)
+  | .mdata _ body => demandExpr ctx visiting body
+  | .proj ``Prod index body => demandProductField ctx visiting index body
+  | .proj _ _ body => demandExpr ctx visiting body
+  | .lam _ _ _ _ => .empty
+  | .forallE _ _ _ _ => .empty
+  | _ =>
+      match ofNat? ``UInt64 expr <|> ofNat? ``Nat expr with
+      | some _ => .empty
+      | none =>
+          match appFnArgs expr with
+          | (.const ``ite _, [_ty, condExpr, _, thenExpr, elseExpr]) =>
+              Demand.branch
+                (demandCond ctx visiting condExpr)
+                (demandExpr ctx visiting thenExpr)
+                (demandExpr ctx visiting elseExpr)
+          | (.const ``Prod.fst _, args) =>
+              match args.reverse with
+              | product :: _ => demandProductField ctx visiting 0 product
+              | _ => .empty
+          | (.const ``Prod.snd _, args) =>
+              match args.reverse with
+              | product :: _ => demandProductField ctx visiting 1 product
+              | _ => .empty
+          | (.const ``Array.get!Internal _, _) => .trap
+          | (.const ``GetElem?.getElem! _, _) => .trap
+          | (.const ``Array.set! _, _) => .trap
+          | (.const primitive _, args) =>
+              match optionMatcherArgs? (.const primitive []) args with
+              | some (scrutinee, noneArm, someArm) =>
+                  Demand.branch
+                    (demandExpr ctx visiting scrutinee)
+                    (demandOptionNoneArm ctx visiting noneArm)
+                    (demandOptionSomeArm ctx visiting someArm)
+              | none =>
+                  match functionIndex? ctx primitive with
+                  | some _ =>
+                      demandCall ctx visiting primitive args
+                  | none =>
+                      match primitiveArgPair? args with
+                      | some (left, right) =>
+                          Demand.always
+                            (demandExpr ctx visiting left)
+                            (demandExpr ctx visiting right)
+                      | none => args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
+          | (fn, args) =>
+              (fn :: args).foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
+
+partial def demandProductField
+    (ctx : Context)
+    (visiting : List Name)
+    (index : Nat)
+    (expr : Expr) : Demand :=
+  match appFnArgs expr with
+  | (.const ``Prod.mk _, args) =>
+      match args.reverse with
+      | right :: left :: _ =>
+          if index == 0 then demandExpr ctx visiting left
+          else if index == 1 then demandExpr ctx visiting right
+          else .empty
+      | _ => .empty
+  | _ => demandExpr ctx visiting expr
+
+partial def demandCond
+    (ctx : Context)
+    (visiting : List Name)
+    (expr : Expr) : Demand :=
+  match expr.consumeMData with
+  | .bvar index => .bvar index
+  | .letE _ _ value body _ => Demand.letE (demandExpr ctx visiting value) (demandCond ctx visiting body)
+  | .mdata _ body => demandCond ctx visiting body
+  | .const ``Bool.true _ => .empty
+  | .const ``Bool.false _ => .empty
+  | _ =>
       match appFnArgs expr with
-      | (.const name _, _) =>
-          isPartialArrayPrimitive name || mayTrapExpr fn || mayTrapExpr arg
-      | _ => mayTrapExpr fn || mayTrapExpr arg
-  | .lam _ type body _ => mayTrapExpr type || mayTrapExpr body
-  | .forallE _ type body _ => mayTrapExpr type || mayTrapExpr body
-  | .letE _ type value body _ =>
-      mayTrapExpr type || mayTrapExpr value || mayTrapExpr body
-  | .mdata _ body => mayTrapExpr body
-  | .proj _ _ body => mayTrapExpr body
-  | _ => false
+      | (.const ``Eq _, [_ty, value, _truth]) => demandCond ctx visiting value
+      | (.const ``BEq.beq _, args) =>
+          match primitiveArgPair? args with
+          | some (left, right) =>
+              Demand.always
+                (demandExpr ctx visiting left)
+                (demandExpr ctx visiting right)
+          | none => .empty
+      | (.const ``Bool.or _, [left, right]) =>
+          let leftDemand := demandCond ctx visiting left
+          let rightDemand := demandCond ctx visiting right
+          {
+            may := unionNat leftDemand.may rightDemand.may,
+            must := leftDemand.must,
+            mayTrap := leftDemand.mayTrap || rightDemand.mayTrap
+          }
+      | (.const ``Bool.and _, [left, right]) =>
+          let leftDemand := demandCond ctx visiting left
+          let rightDemand := demandCond ctx visiting right
+          {
+            may := unionNat leftDemand.may rightDemand.may,
+            must := leftDemand.must,
+            mayTrap := leftDemand.mayTrap || rightDemand.mayTrap
+          }
+      | (.const name _, args) =>
+          match functionIndex? ctx name with
+          | some _ => demandCall ctx visiting name args
+          | none => args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
+      | _ => demandExpr ctx visiting expr
+
+partial def demandCall
+    (ctx : Context)
+    (visiting : List Name)
+    (name : Name)
+    (args : List Expr) : Demand :=
+  let summary := demandSummary ctx visiting name
+  let indexed := enumerate args
+  indexed.foldl
+    (fun acc item =>
+      let argDemand := demandExpr ctx visiting item.snd
+      {
+        may :=
+          unionNat acc.may
+            (if boolAt summary.mayDemand item.fst then argDemand.may else []),
+        must :=
+          unionNat acc.must
+            (if boolAt summary.mustDemand item.fst then argDemand.must else []),
+        mayTrap :=
+          acc.mayTrap ||
+            (boolAt summary.mayDemand item.fst && argDemand.mayTrap)
+      })
+    { may := [], must := [], mayTrap := summary.selfMayTrap }
+
+partial def demandOptionNoneArm
+    (ctx : Context)
+    (visiting : List Name)
+    (noneArm : Expr) : Demand :=
+  match collectLambdas noneArm 1 with
+  | some body => decDemand (demandExpr ctx visiting body)
+  | none => demandExpr ctx visiting noneArm
+
+partial def demandOptionSomeArm
+    (ctx : Context)
+    (visiting : List Name)
+    (someArm : Expr) : Demand :=
+  match collectLambdas someArm 1 with
+  | some body => decDemand (demandExpr ctx visiting body)
+  | none => .empty
+
+partial def demandSummary
+    (ctx : Context)
+    (visiting : List Name)
+    (name : Name) : DemandSummary :=
+  match ctx.env.find? name with
+  | none => { mayDemand := [], mustDemand := [], selfMayTrap := true }
+  | some info =>
+      match supportedFunction? info with
+      | none => { mayDemand := [], mustDemand := [], selfMayTrap := true }
+      | some sig =>
+          if containsConstant ``Nat.brecOn info || containsConstant name info then
+            DemandSummary.recursive sig.params.length
+          else if visiting.contains name then
+            DemandSummary.recursive sig.params.length
+          else
+            match info.value? with
+            | none => { mayDemand := List.replicate sig.params.length true, mustDemand := [], selfMayTrap := true }
+            | some value =>
+                match collectLambdas value sig.params.length with
+                | none => { mayDemand := List.replicate sig.params.length true, mustDemand := [], selfMayTrap := true }
+                | some body =>
+                    DemandSummary.fromDemand sig.params.length (demandExpr ctx (name :: visiting) body)
+end
+
+def mayTrapExpr (ctx : Context) (expr : Expr) : Bool :=
+  (demandExpr ctx [] expr).mayTrap
 
 def strictRecursiveCallCheck (ctx : Context) (name : Name) (args : List Expr) :
     Except String Unit := do
-  match ctx.env.find? name with
-  | none => .error s!"declaration disappeared during extraction: {name}"
-  | some info =>
-      if containsConstant ``Nat.brecOn info || containsConstant name info then
-        if args.any mayTrapExpr then
-          .error s!"strict call to recursive helper may evaluate a trapping argument: {name}"
-        else
-          .ok ()
-      else
-        .ok ()
+  let summary := demandSummary ctx [] name
+  let indexed := enumerate args
+  for item in indexed do
+    if mayTrapExpr ctx item.snd && !boolAt summary.mustDemand item.fst then
+      .error s!"strict call may evaluate an argument not demanded by callee: {name}"
+  .ok ()
 
 mutual
   partial def extractValueFrom
@@ -808,13 +1067,6 @@ mutual
     | .proj _ _ body => findRecSpec? name paramCount body
     | _ => .ok none
 end
-
-def enumerateAux {α : Type} : List α → Nat → List (Nat × α)
-  | [], _ => []
-  | item :: rest, index => (index, item) :: enumerateAux rest (index + 1)
-
-def enumerate {α : Type} (items : List α) : List (Nat × α) :=
-  enumerateAux items 0
 
 def assignMany (targets : List Nat) (values : List IRExpr) (tempStart : Nat) : IRStmt :=
   let tempAssignments :=

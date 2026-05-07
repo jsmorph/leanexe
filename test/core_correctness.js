@@ -31,6 +31,7 @@ const accepted = [
   { name: "recLetDemo", args: [], expected: 518n },
   { name: "recExitDemo", args: [], expected: 314n },
   { name: "recProductDemo", args: [], expected: 10n },
+  { name: "recursiveDemandedFuelGet", args: [], expected: 7n },
   { name: "optionSomeMatch", args: [], expected: 8n },
   { name: "optionNoneMatchSkipsSomeArm", args: [], expected: 5n },
   { name: "optionSomeMatchSkipsUnusedPayload", args: [], expected: 9n },
@@ -58,8 +59,11 @@ const rejected = [
   },
   {
     name: "rejectRecursiveIgnoredTrapArg",
-    message:
-      "strict call to recursive helper may evaluate a trapping argument: LeanExe.Examples.Correctness.recIgnoreTrapArgFuel",
+    message: "strict call may evaluate an argument not demanded by callee: LeanExe.Examples.Correctness.recIgnoreTrapArgFuel",
+  },
+  {
+    name: "rejectRecursiveIgnoredHiddenTrapArg",
+    message: "strict call may evaluate an argument not demanded by callee: LeanExe.Examples.Correctness.recIgnoreTrapArgFuel",
   },
   {
     name: "rejectNonzeroReplicate",
