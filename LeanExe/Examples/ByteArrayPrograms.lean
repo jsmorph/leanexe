@@ -47,6 +47,20 @@ def prefixPlusFirstByte (base : UInt64) (input : ByteArray) : UInt64 :=
   else
     base + UInt64.ofNat input[0]!.toNat
 
+def fnv1aStep (hash : UInt32) (byte : UInt8) : UInt32 :=
+  (hash ^^^ byte.toUInt32) * (16777619 : UInt32)
+
+def fnv1aFuel : Nat → ByteArray → Nat → UInt32 → UInt32
+  | 0, _input, _index, hash => hash
+  | fuel + 1, input, index, hash =>
+      if index == input.size then
+        hash
+      else
+        fnv1aFuel fuel input (index + 1) (fnv1aStep hash input[index]!)
+
+def fnv1a32 (input : ByteArray) : UInt64 :=
+  (fnv1aFuel (input.size + 1) input 0 (2166136261 : UInt32)).toUInt64
+
 def emptyViaIsEmpty (input : ByteArray) : Bool :=
   input.isEmpty
 
