@@ -633,6 +633,15 @@ partial def demandExpr
                   let defaultDemand := demandExpr ctx visiting defaultValue
                   Demand.branch (Demand.always arrayDemand indexDemand) .empty defaultDemand
               | _ => .empty
+          | (.const ``Option.getD _, args) =>
+              match args.reverse with
+              | defaultValue :: optionValue :: _ =>
+                  let defaultDemand := demandExpr ctx visiting defaultValue
+                  Demand.branch
+                    (demandExpr ctx visiting optionValue)
+                    defaultDemand
+                    .empty
+              | _ => .empty
           | (.const ``Array.set! _, _) => .trap
           | (.const primitive _, args) =>
               match boolMatcherArgs? ctx.env (.const primitive []) args with
@@ -937,6 +946,15 @@ mutual
                 let valueResult ← extractValueFrom ctx locals nextLocal value
                 .ok (.option (.u64 1) valueResult.fst, valueResult.snd)
             | _, _ => .error "unsupported Option.some application"
+        | (.const ``Option.getD _, args) =>
+            match args.reverse with
+            | defaultValue :: optionValue :: _ =>
+                let optionResult ← extractValueFrom ctx locals nextLocal optionValue
+                let parts ← optionParts optionResult.fst
+                let defaultResult ← extractValueFrom ctx locals optionResult.snd defaultValue
+                .ok (← valueIte (.eqU64 parts.fst (.u64 0)) defaultResult.fst parts.snd,
+                  defaultResult.snd)
+            | _ => .error "unsupported Option.getD application"
         | (.const ``Bool.casesOn _, args) =>
             match boolMatcherArgs? ctx.env (.const ``Bool.casesOn []) args with
             | some (scrutinee, falseArm, trueArm) =>
@@ -1091,6 +1109,9 @@ mutual
         | none =>
           match appFnArgs expr with
             | (.const ``Bool.casesOn _, _) =>
+                let valueResult ← extractValueFrom ctx locals nextLocal expr
+                .ok (← scalarValue valueResult.fst, valueResult.snd)
+            | (.const ``Option.getD _, _) =>
                 let valueResult ← extractValueFrom ctx locals nextLocal expr
                 .ok (← scalarValue valueResult.fst, valueResult.snd)
             | (.const ``Decidable.decide _, [prop, _inst]) =>
