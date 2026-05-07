@@ -149,6 +149,8 @@ def knownExternal? (name : Name) : Option Classification :=
     some { status := "rejected", reason := "unsupported effect dependency" }
   else if [``Bool, ``UInt8, ``UInt32, ``UInt64, ``ByteArray, ``Unit].contains name then
     some { status := "implemented", reason := "primitive type in the intended subset" }
+  else if name == ``Id then
+    some { status := "implemented", reason := "pure Id wrapper erased by the generic compiler fragment" }
   else if name == ``Unit.unit then
     some { status := "implemented", reason := "erased Unit value used by supported generated matchers" }
   else if name == ``Array then
@@ -172,6 +174,8 @@ def knownExternal? (name : Name) : Option Classification :=
     some { status := "implemented", reason := "boolean primitive in the generic compiler fragment" }
   else if [``BEq.beq, ``LT.lt, ``LE.le, ``GT.gt, ``GE.ge, ``ite, ``dite].contains name then
     some { status := "implemented", reason := "control, equality, or comparison primitive in the generic compiler fragment" }
+  else if [``Id.run, ``Pure.pure, ``Applicative.toPure, ``Monad.toApplicative].contains name then
+    some { status := "implemented", reason := "pure Id do-notation plumbing erased by the generic compiler fragment" }
   else if [``Array.empty, ``Array.mkEmpty, ``Array.emptyWithCapacity, ``Array.singleton,
       ``Array.replicate, ``Array.size, ``Array.isEmpty, ``Array.push, ``Array.pop,
       ``Array.append, ``Array.extract, ``Array.get!Internal, ``Array.back!, ``Array.getD, ``Array.set!,
