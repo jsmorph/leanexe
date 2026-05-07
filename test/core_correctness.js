@@ -22,6 +22,7 @@ const accepted = [
   { name: "bitwiseOrXor", args: [], expected: 6n },
   { name: "bitwiseNotation", args: [], expected: 6n },
   { name: "shiftMasking", args: [], expected: 42n },
+  { name: "shiftNotation", args: [], expected: 42n },
   { name: "uint64OfNatValue", args: [41n], expected: 42n },
   { name: "uint64OfHugeNat", args: [], expected: 0n },
   { name: "wrappedUInt8Literal", args: [], expected: 44n },

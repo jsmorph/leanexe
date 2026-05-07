@@ -1268,6 +1268,16 @@ mutual
                                       | some .u8 | some .u64 =>
                                           .ok (.u64Bin .bitXor leftIR rightIR, rightResult.snd)
                                       | _ => .error s!"unsupported bitwise xor expression: {primitive}"
+                                    else if primitive == ``HShiftLeft.hShiftLeft then
+                                      match primitiveResultType? args with
+                                      | some .u64 =>
+                                          .ok (.u64Bin .shiftLeft leftIR rightIR, rightResult.snd)
+                                      | _ => .error s!"unsupported shift-left expression: {primitive}"
+                                    else if primitive == ``HShiftRight.hShiftRight then
+                                      match primitiveResultType? args with
+                                      | some .u64 =>
+                                          .ok (.u64Bin .shiftRight leftIR rightIR, rightResult.snd)
+                                      | _ => .error s!"unsupported shift-right expression: {primitive}"
                                     else if primitive == ``UInt64.land then
                                       .ok (.u64Bin .bitAnd leftIR rightIR, rightResult.snd)
                                     else if primitive == ``UInt64.lor then
