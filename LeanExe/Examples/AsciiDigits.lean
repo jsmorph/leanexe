@@ -10,8 +10,13 @@ def byteAsNat (input : ByteArray) (index : Nat) : Nat :=
   (ByteArray.get! input index).toNat
 
 def isAsciiDigitNat (n : Nat) : Bool :=
-  n == 48 || n == 49 || n == 50 || n == 51 || n == 52 ||
-    n == 53 || n == 54 || n == 55 || n == 56 || n == 57
+  if 48 <= n then
+    if n <= 57 then
+      true
+    else
+      false
+  else
+    false
 
 def validateFuel : Nat → ByteArray → Nat → Bool
   | 0, _input, _index => false

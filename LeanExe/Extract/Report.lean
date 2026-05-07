@@ -137,13 +137,13 @@ def knownExternal? (name : Name) : Option Classification :=
     some { status := "reported", reason := "logical connective in a decidable predicate" }
   else if [``Bool.and, ``Bool.or, ``Bool.not, ``Bool.true, ``Bool.false].contains name then
     some { status := "implemented", reason := "boolean primitive in the generic compiler fragment" }
-  else if [``BEq.beq, ``ite].contains name then
-    some { status := "implemented", reason := "control or equality primitive in the generic compiler fragment" }
+  else if [``BEq.beq, ``LT.lt, ``LE.le, ``ite].contains name then
+    some { status := "implemented", reason := "control, equality, or comparison primitive in the generic compiler fragment" }
   else if [``Array.replicate, ``Array.get!Internal, ``Array.set!, ``GetElem?.getElem!].contains name then
     some { status := "implemented", reason := "Array UInt64 primitive in the generic compiler fragment" }
   else if [``ByteArray.size, ``ByteArray.get!].contains name then
     some { status := "implemented", reason := "read-only ByteArray primitive in the generic compiler fragment" }
-  else if [``Array.size, ``LT.lt].contains name then
+  else if name == ``Array.size then
     some { status := "reported", reason := "indexing validity predicate erased by array primitive lowering" }
   else if [``UInt64.toNat, ``UInt8.toNat].contains name then
     some { status := "implemented", reason := "representation-preserving conversion for bounded Nat use" }
@@ -151,8 +151,6 @@ def knownExternal? (name : Name) : Option Classification :=
     some { status := "implemented", reason := "numeric primitive in the generic compiler fragment" }
   else if name == ``Decidable.decide then
     some { status := "reported", reason := "decidable proposition needs specialization to Bool code" }
-  else if name == ``LE.le then
-    some { status := "reported", reason := "comparison relation needs primitive lowering" }
   else if name == ``OfNat.ofNat then
     some { status := "reported", reason := "numeric literal needs target-type resolution" }
   else if (displayName name).contains "inst" then

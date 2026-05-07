@@ -50,6 +50,8 @@ mutual
     | true
     | false
     | eqU64 (left right : Expr)
+    | ltU64 (left right : Expr)
+    | leU64 (left right : Expr)
     | not (cond : Cond)
     | and (left right : Cond)
     | or (left right : Cond)
@@ -119,6 +121,8 @@ mutual
     | .true => true
     | .false => false
     | .eqU64 left right => left.eval module_ store == right.eval module_ store
+    | .ltU64 left right => left.eval module_ store < right.eval module_ store
+    | .leU64 left right => left.eval module_ store <= right.eval module_ store
     | .not cond => !cond.eval module_ store
     | .and left right => left.eval module_ store && right.eval module_ store
     | .or left right => left.eval module_ store || right.eval module_ store
