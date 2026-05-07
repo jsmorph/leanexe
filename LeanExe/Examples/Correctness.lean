@@ -546,6 +546,48 @@ def exceptProductPayload : UInt64 :=
   | Except.error code => code
   | Except.ok pair => pair.1 * (10 : UInt64) + pair.2
 
+def exceptMapOk : UInt64 :=
+  match Except.map (fun value : UInt64 => value + 1)
+      (Except.ok (5 : UInt64) : Except UInt64 UInt64) with
+  | Except.error code => code
+  | Except.ok value => value
+
+def exceptMapErrorSkipsFunctionTrap : UInt64 :=
+  match Except.map (fun _value : UInt64 => (Array.replicate 0 (0 : UInt64)).back!)
+      (Except.error (7 : UInt64) : Except UInt64 UInt64) with
+  | Except.error code => code
+  | Except.ok value => value
+
+def exceptMapProduct : UInt64 :=
+  match Except.map (fun value : UInt64 => (value, value + 1))
+      (Except.ok (1 : UInt64) : Except UInt64 UInt64) with
+  | Except.error code => code
+  | Except.ok pair => pair.1 * (10 : UInt64) + pair.2
+
+def exceptBindOk : UInt64 :=
+  match Except.bind (Except.ok (5 : UInt64) : Except UInt64 UInt64)
+      (fun value => Except.ok (value + 1)) with
+  | Except.error code => code
+  | Except.ok value => value
+
+def exceptBindErrorSkipsFunctionTrap : UInt64 :=
+  match Except.bind (Except.error (7 : UInt64) : Except UInt64 UInt64)
+      (fun _value => Except.ok ((Array.replicate 0 (0 : UInt64)).back!)) with
+  | Except.error code => code
+  | Except.ok value => value
+
+def exceptBindFunctionError : UInt64 :=
+  match Except.bind (Except.ok (5 : UInt64) : Except UInt64 UInt64)
+      (fun _value => Except.error (9 : UInt64)) with
+  | Except.error code => code
+  | Except.ok value => value
+
+def exceptBindProduct : UInt64 :=
+  match Except.bind (Except.ok (1 : UInt64) : Except UInt64 UInt64)
+      (fun value => Except.ok (value, value + 1)) with
+  | Except.error code => code
+  | Except.ok pair => pair.1 * (10 : UInt64) + pair.2
+
 def optionGetDNone : UInt64 :=
   (none : Option UInt64).getD 7
 
