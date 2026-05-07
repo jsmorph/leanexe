@@ -137,15 +137,15 @@ def knownExternal? (name : Name) : Option Classification :=
     some { status := "implemented", reason := "implemented for supported scalar equality propositions in the generic compiler fragment" }
   else if [``And, ``Or, ``Not, ``True, ``False].contains name then
     some { status := "implemented", reason := "implemented for supported proposition conditions in the generic compiler fragment" }
-  else if [``Bool.and, ``Bool.or, ``Bool.not, ``Bool.true, ``Bool.false,
+  else if [``Bool.and, ``Bool.or, ``Bool.not, ``Bool.xor, ``Bool.true, ``Bool.false,
       ``Bool.casesOn].contains name then
     some { status := "implemented", reason := "boolean primitive in the generic compiler fragment" }
   else if [``BEq.beq, ``LT.lt, ``LE.le, ``GT.gt, ``GE.ge, ``ite].contains name then
     some { status := "implemented", reason := "control, equality, or comparison primitive in the generic compiler fragment" }
   else if [``Array.replicate, ``Array.size, ``Array.isEmpty, ``Array.push, ``Array.pop,
       ``Array.get!Internal, ``Array.back!, ``Array.getD, ``Array.set!,
-      ``GetElem?.getElem!].contains name then
-    some { status := "implemented", reason := "Array UInt64 primitive in the generic compiler fragment" }
+      ``GetElem?.getElem!, ``GetElem?.getElem?].contains name then
+    some { status := "implemented", reason := "indexing primitive in the generic compiler fragment" }
   else if [``ByteArray.size, ``ByteArray.isEmpty, ``ByteArray.get!].contains name then
     some { status := "implemented", reason := "read-only ByteArray primitive in the generic compiler fragment" }
   else if [``UInt64.ofNat, ``UInt64.toNat, ``UInt8.ofNat, ``UInt8.toNat].contains name then
