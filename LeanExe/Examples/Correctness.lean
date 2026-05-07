@@ -195,6 +195,24 @@ def productBranch (flag : UInt64) : UInt64 :=
       ((3 : UInt64), (4 : UInt64))
   pair.1 * (10 : UInt64) + pair.2
 
+def unitArgHelper (_value : Unit) : UInt64 :=
+  11
+
+def unitResultHelper : Unit :=
+  ()
+
+def unitProductSecond : UInt64 :=
+  let pair := ((), (7 : UInt64))
+  pair.2
+
+def unitHelperCall : UInt64 :=
+  unitArgHelper ()
+
+def unitResultIgnored : UInt64 :=
+  let value := unitResultHelper
+  let pair := (value, (12 : UInt64))
+  pair.2
+
 def arrayUpdateRead : UInt64 :=
   let a := Array.replicate 2 (0 : UInt64)
   let b := a.set! 0 1
@@ -643,6 +661,12 @@ def rejectOptionParam (value : Option UInt64) : UInt64 :=
   match value with
   | none => 0
   | some item => item
+
+def rejectUnitReturn : Unit :=
+  ()
+
+def rejectUnitParam (_value : Unit) : UInt64 :=
+  1
 
 def rejectByteArrayReturn (input : ByteArray) : ByteArray :=
   input

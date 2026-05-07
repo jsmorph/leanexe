@@ -151,6 +151,7 @@ def supportedResultAbiType : Ty → Bool :=
   supportedAbiType
 
 def supportedInternalValueType : Ty → Bool
+  | .unit => true
   | .bool => true
   | .u8 => true
   | .u32 => true
@@ -215,6 +216,7 @@ def supportedFunction? (info : ConstantInfo) : Option Signature :=
     functionType? info.type
 
 def supportedLocalType : Ty → Bool
+  | .unit => true
   | .bool => true
   | .u8 => true
   | .u32 => true
@@ -389,6 +391,7 @@ partial def optionPartsWithLets (value : ExtractedValue) :
       .ok ((slot, value) :: parts.fst, parts.snd.fst, parts.snd.snd)
 
 partial def defaultValue : Ty → Except String ExtractedValue
+  | .unit => .ok (.scalar (.u64 0))
   | .bool => .ok (.scalar (.u64 0))
   | .u8 => .ok (.scalar (.u64 0))
   | .u32 => .ok (.scalar (.u64 0))
@@ -445,6 +448,7 @@ partial def valueIte
 
 def flattenAbiValue (ty : Ty) (value : ExtractedValue) : Except String (List IRExpr) :=
   match ty with
+  | .unit => scalarValue value |>.map (fun expr => [expr])
   | .bool => scalarValue value |>.map (fun expr => [expr])
   | .u8 => scalarValue value |>.map (fun expr => [expr])
   | .u32 => scalarValue value |>.map (fun expr => [expr])
@@ -1114,6 +1118,7 @@ mutual
         let valueResult ← extractValueFrom ctx locals nextLocal body
         .ok (← productField index valueResult.fst, valueResult.snd)
     | .proj typeName _ _ => .error s!"unsupported projection: {typeName}"
+    | .const ``Unit.unit _ => .ok (.scalar (.u64 0), nextLocal)
     | _ =>
         match appFnArgs expr with
         | (.const ``Prod.mk _, args) =>
@@ -1438,6 +1443,7 @@ mutual
         let valueResult ← extractValueFrom ctx locals nextLocal body
         .ok (← scalarValue (← productField index valueResult.fst), valueResult.snd)
     | .proj typeName _ _ => .error s!"unsupported projection: {typeName}"
+    | .const ``Unit.unit _ => .ok (.u64 0, nextLocal)
     | .const ``Bool.true _ => .ok (.u64 1, nextLocal)
     | .const ``Bool.false _ => .ok (.u64 0, nextLocal)
     | .const name _ =>

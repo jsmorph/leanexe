@@ -62,6 +62,9 @@ const accepted = [
   { name: "productSkipsUnusedField", args: [], expected: 7n },
   { name: "productBranch", args: [0n], expected: 12n },
   { name: "productBranch", args: [1n], expected: 34n },
+  { name: "unitProductSecond", args: [], expected: 7n },
+  { name: "unitHelperCall", args: [], expected: 11n },
+  { name: "unitResultIgnored", args: [], expected: 12n },
   { name: "arrayUpdateRead", args: [], expected: 110n },
   { name: "arraySizeAfterSet", args: [], expected: 3n },
   { name: "arrayPushRead", args: [], expected: 507n },
@@ -189,6 +192,14 @@ const rejected = [
   {
     name: "rejectOptionParam",
     message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectOptionParam",
+  },
+  {
+    name: "rejectUnitReturn",
+    message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectUnitReturn",
+  },
+  {
+    name: "rejectUnitParam",
+    message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectUnitParam",
   },
   {
     name: "rejectByteArrayReturn",
