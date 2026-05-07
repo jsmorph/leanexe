@@ -255,6 +255,7 @@ mutual
         max (condScratch cond) (max (exprScratch thenValue) (exprScratch elseValue))
     | .letE _ value body => max (exprScratch value) (exprScratch body)
     | .arrayAlloc cells => 2 + exprScratch cells
+    | .arraySize array => 1 + exprScratch array
     | .arrayGet array index => 2 + max (exprScratch array) (exprScratch index)
     | .arraySet array index value =>
         6 + max (exprScratch array) (max (exprScratch index) (exprScratch value))
@@ -315,6 +316,11 @@ mutual
       ofNats [5] ++
         ofNats [0] ++
       ofNats [11]
+
+  partial def emitArraySize (scratch : Nat) (array : Expr) : List UInt8 :=
+    let arrayLocal := scratch
+    emitExpr (scratch + 1) array ++ localSet arrayLocal ++
+      localGet arrayLocal ++ i32WrapI64 ++ i64Load
 
   partial def emitArraySet (scratch : Nat) (array index value : Expr) : List UInt8 :=
     let arrayLocal := scratch
@@ -390,6 +396,7 @@ mutual
           emitExpr scratch elseValue ++ ofNats [11]
     | .letE slot value body => emitExpr scratch value ++ localSet slot ++ emitExpr scratch body
     | .arrayAlloc cells => emitArrayAlloc scratch cells
+    | .arraySize array => emitArraySize scratch array
     | .arrayGet array index => emitArrayGet scratch array index
     | .arraySet array index value => emitArraySet scratch array index value
     | .byteArrayGet ptr len index => emitByteArrayGet scratch ptr len index
@@ -507,6 +514,11 @@ mutual
         ["i64.load align=8"]) ++
       ["else", "  unreachable", "end"]
 
+  partial def arraySizeWatLines (scratch : Nat) (array : Expr) : List String :=
+    let arrayLocal := scratch
+    exprWatLines (scratch + 1) array ++ [s!"local.set {arrayLocal}",
+      s!"local.get {arrayLocal}", "i32.wrap_i64", "i64.load align=8"]
+
   partial def arraySetWatLines (scratch : Nat) (array index value : Expr) : List String :=
     let arrayLocal := scratch
     let indexLocal := scratch + 1
@@ -586,6 +598,7 @@ mutual
     | .letE slot value body =>
         exprWatLines scratch value ++ [s!"local.set {slot}"] ++ exprWatLines scratch body
     | .arrayAlloc cells => arrayAllocWatLines scratch cells
+    | .arraySize array => arraySizeWatLines scratch array
     | .arrayGet array index => arrayGetWatLines scratch array index
     | .arraySet array index value => arraySetWatLines scratch array index value
     | .byteArrayGet ptr len index => byteArrayGetWatLines scratch ptr len index

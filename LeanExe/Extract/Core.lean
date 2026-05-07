@@ -499,6 +499,8 @@ partial def demandExpr
           | (.const ``ByteArray.size _, args) =>
               args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
           | (.const ``ByteArray.get! _, _) => .trap
+          | (.const ``Array.size _, args) =>
+              args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
           | (.const ``Array.get!Internal _, _) => .trap
           | (.const ``GetElem?.getElem! _, _) => .trap
           | (.const ``Array.set! _, _) => .trap
@@ -886,6 +888,12 @@ mutual
                         .ok (.arrayAlloc cellsResult.fst, cellsResult.snd)
                     | _ => .error "Array.replicate currently supports only zero-filled UInt64 arrays"
                 | _ => .error "unsupported Array.replicate application"
+            | (.const ``Array.size _, args) =>
+                match args.reverse with
+                | array :: _ =>
+                    let arrayResult ← extractExprFrom ctx locals nextLocal array
+                    .ok (.arraySize arrayResult.fst, arrayResult.snd)
+                | _ => .error "unsupported Array.size application"
             | (.const ``Array.get!Internal _, args) =>
                 match args.reverse with
                 | index :: array :: _ =>
