@@ -221,6 +221,11 @@ def classifyLocal (info : ConstantInfo) : Classification :=
       status := "reported",
       reason := "function type is in the first generic compiler fragment; body support is checked by compile"
     }
+  else if LeanExe.Extract.Core.supportedInlineFunction? info |>.isSome then
+    {
+      status := "reported",
+      reason := "function type is supported for nonrecursive local helper inlining; body support is checked by compile"
+    }
   else if (displayName info.name).contains ".match_" then
     {
       status := "reported",
