@@ -1114,6 +1114,20 @@ mutual
             | (.const ``Option.getD _, _) =>
                 let valueResult ← extractValueFrom ctx locals nextLocal expr
                 .ok (← scalarValue valueResult.fst, valueResult.snd)
+            | (.const ``Option.isSome _, args) =>
+                match args.reverse with
+                | optionValue :: _ =>
+                    let optionResult ← extractValueFrom ctx locals nextLocal optionValue
+                    let parts ← optionParts optionResult.fst
+                    .ok (boolExpr (.not (.eqU64 parts.fst (.u64 0))), optionResult.snd)
+                | _ => .error "unsupported Option.isSome application"
+            | (.const ``Option.isNone _, args) =>
+                match args.reverse with
+                | optionValue :: _ =>
+                    let optionResult ← extractValueFrom ctx locals nextLocal optionValue
+                    let parts ← optionParts optionResult.fst
+                    .ok (boolExpr (.eqU64 parts.fst (.u64 0)), optionResult.snd)
+                | _ => .error "unsupported Option.isNone application"
             | (.const ``Decidable.decide _, [prop, _inst]) =>
                 let condResult ← extractCondFrom ctx locals nextLocal prop
                 .ok (boolExpr condResult.fst, condResult.snd)
@@ -1534,6 +1548,20 @@ mutual
         | (.const ``Bool.not _, [arg]) =>
             let result ← extractCondFrom ctx locals nextLocal arg
             .ok (.not result.fst, result.snd)
+        | (.const ``Option.isSome _, args) =>
+            match args.reverse with
+            | optionValue :: _ =>
+                let optionResult ← extractValueFrom ctx locals nextLocal optionValue
+                let parts ← optionParts optionResult.fst
+                .ok (.not (.eqU64 parts.fst (.u64 0)), optionResult.snd)
+            | _ => .error "unsupported Option.isSome condition"
+        | (.const ``Option.isNone _, args) =>
+            match args.reverse with
+            | optionValue :: _ =>
+                let optionResult ← extractValueFrom ctx locals nextLocal optionValue
+                let parts ← optionParts optionResult.fst
+                .ok (.eqU64 parts.fst (.u64 0), optionResult.snd)
+            | _ => .error "unsupported Option.isNone condition"
         | (.const ``Bool.or _, [left, right]) =>
             let leftResult ← extractCondFrom ctx locals nextLocal left
             let rightResult ← extractCondFrom ctx locals leftResult.snd right

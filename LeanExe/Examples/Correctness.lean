@@ -302,6 +302,20 @@ def optionGetDProduct : UInt64 :=
   let pair := (some ((1 : UInt64), (2 : UInt64))).getD ((3 : UInt64), (4 : UInt64))
   pair.1 * (10 : UInt64) + pair.2
 
+def optionIsSomeSkipsPayloadTrap : UInt64 :=
+  if (some ((Array.replicate 0 (0 : UInt64)).back!) : Option UInt64).isSome then
+    1
+  else
+    0
+
+def optionIsNoneValues : UInt64 :=
+  let missing : Option UInt64 := none
+  let present : Option UInt64 := some 5
+  if missing.isNone && !present.isNone then
+    7
+  else
+    0
+
 def natComparisons (x : Nat) : UInt64 :=
   if x < 3 then
     10
