@@ -41,10 +41,18 @@ async function instantiate(entry) {
 }
 
 function callByteArray(exports, input, args = []) {
+  return withByteArray(exports, input, (ptr, len) => exports.fn(ptr, len, ...args));
+}
+
+function callScalarByteArray(exports, prefix, input) {
+  return withByteArray(exports, input, (ptr, len) => exports.fn(prefix, ptr, len));
+}
+
+function withByteArray(exports, input, call) {
   exports.reset();
   const ptr = Number(exports.alloc(BigInt(input.length)));
   writeInput(exports.memory, ptr, input);
-  return BigInt.asUintN(64, exports.fn(BigInt(ptr), BigInt(input.length), ...args));
+  return BigInt.asUintN(64, call(BigInt(ptr), BigInt(input.length)));
 }
 
 async function main() {
@@ -135,6 +143,20 @@ async function main() {
     }
   }
 
+  const prefixPlusFirstByte = await instantiate("prefixPlusFirstByte");
+  const prefixPlusFirstByteCases = [
+    { prefix: 5n, input: new Uint8Array([]), expected: 5n },
+    { prefix: 5n, input: new Uint8Array([37]), expected: 42n },
+    { prefix: 5n, input: new Uint8Array([255]), expected: 260n },
+  ];
+
+  for (const testCase of prefixPlusFirstByteCases) {
+    const actual = callScalarByteArray(prefixPlusFirstByte, testCase.prefix, testCase.input);
+    if (actual !== testCase.expected) {
+      throw new Error(`prefixPlusFirstByte: expected ${testCase.expected}, got ${actual}`);
+    }
+  }
+
   const emptyViaIsEmpty = await instantiate("emptyViaIsEmpty");
   const emptyViaIsEmptyCases = [
     { input: new Uint8Array([]), expected: 1n },
@@ -155,6 +177,7 @@ async function main() {
     firstByteLowNibbleCases.length +
     firstByteBangIndexCases.length +
     byteAtOrZeroCases.length +
+    prefixPlusFirstByteCases.length +
     emptyViaIsEmptyCases.length;
   process.stdout.write(`checked ${total} bytearray allocation cases\n`);
 }
