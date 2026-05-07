@@ -306,6 +306,39 @@ def optionMatcherArgs? (fn : Expr) (args : List Expr) :
         none
   | _ => none
 
+def isPartialArrayPrimitive (name : Name) : Bool :=
+  name == ``Array.get!Internal ||
+    name == ``GetElem?.getElem! ||
+    name == ``Array.set!
+
+partial def mayTrapExpr (expr : Expr) : Bool :=
+  match expr.consumeMData with
+  | .app fn arg =>
+      match appFnArgs expr with
+      | (.const name _, _) =>
+          isPartialArrayPrimitive name || mayTrapExpr fn || mayTrapExpr arg
+      | _ => mayTrapExpr fn || mayTrapExpr arg
+  | .lam _ type body _ => mayTrapExpr type || mayTrapExpr body
+  | .forallE _ type body _ => mayTrapExpr type || mayTrapExpr body
+  | .letE _ type value body _ =>
+      mayTrapExpr type || mayTrapExpr value || mayTrapExpr body
+  | .mdata _ body => mayTrapExpr body
+  | .proj _ _ body => mayTrapExpr body
+  | _ => false
+
+def strictRecursiveCallCheck (ctx : Context) (name : Name) (args : List Expr) :
+    Except String Unit := do
+  match ctx.env.find? name with
+  | none => .error s!"declaration disappeared during extraction: {name}"
+  | some info =>
+      if containsConstant ``Nat.brecOn info || containsConstant name info then
+        if args.any mayTrapExpr then
+          .error s!"strict call to recursive helper may evaluate a trapping argument: {name}"
+        else
+          .ok ()
+      else
+        .ok ()
+
 mutual
   partial def extractValueFrom
       (ctx : Context)
@@ -566,6 +599,7 @@ mutual
                   | none =>
                     match functionIndex? ctx primitive with
                     | some index =>
+                        strictRecursiveCallCheck ctx primitive args
                         let argsResult ← extractExprListFrom ctx locals nextLocal args
                         .ok (.call index argsResult.fst, argsResult.snd)
                     | none =>
@@ -642,6 +676,7 @@ mutual
             | none =>
                 match functionIndex? ctx name with
                 | some index =>
+                    strictRecursiveCallCheck ctx name args
                     let argsResult ← extractExprListFrom ctx locals nextLocal args
                     .ok (boolCond (.call index argsResult.fst), argsResult.snd)
                 | none => .error s!"unsupported condition: {expr}"

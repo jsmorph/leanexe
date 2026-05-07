@@ -107,6 +107,13 @@ def recProductFuel : Nat → UInt64 → UInt64
 def recProductDemo : UInt64 :=
   recProductFuel 5 0
 
+def recIgnoreTrapArgFuel : Nat → UInt64 → UInt64
+  | 0, _value => 7
+  | fuel + 1, value => recIgnoreTrapArgFuel fuel value
+
+def rejectRecursiveIgnoredTrapArg : UInt64 :=
+  recIgnoreTrapArgFuel 0 ((Array.replicate 1 (0 : UInt64))[5]!)
+
 def optionSomeMatch : UInt64 :=
   match (some (7 : UInt64) : Option UInt64) with
   | none => 0
