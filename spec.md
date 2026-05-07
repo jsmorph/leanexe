@@ -32,7 +32,7 @@ The current report imports compiled `.olean` modules through Lean’s module loa
 | `Unit` | Planned | Reported only |
 | `Bool` | Implemented | Implemented for the demo validator and represented as `0` or `1` in the generic Wasm fragment |
 | `UInt8` | Implemented | Implemented for the demo validator |
-| `UInt32` and `UInt64` | Planned | `UInt64` implemented for the first generic compiler fragment, including wrapping arithmetic, `land`, `lor`, `xor`, `shiftLeft`, `shiftRight`, unsigned comparisons, and Lean-compatible division and remainder at zero divisors; `UInt32` reported only |
+| `UInt32` and `UInt64` | Planned | `UInt64` implemented for the first generic compiler fragment, including wrapping arithmetic, `land`, `lor`, `xor`, `shiftLeft`, `shiftRight`, `UInt64.ofNat`, `UInt64.toNat`, unsigned comparisons, and Lean-compatible division and remainder at zero divisors; `UInt32` reported only |
 | `Nat` | Planned for bounded static use | Implemented for fuel arguments, array sizes, and array indices represented as Wasm `i64`; general unbounded runtime arithmetic is unsupported |
 | `ByteArray` | Implemented | Implemented in the hand-written validator path and as a read-only generic entry parameter represented by pointer and length ABI slots; construction, mutation, append, slices, and byte-array results are unsupported |
 | Products | Planned as structured values | Implemented internally for products whose fields are first-fragment values; product entry parameters and product entry results are rejected |

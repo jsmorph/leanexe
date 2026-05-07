@@ -144,7 +144,7 @@ def knownExternal? (name : Name) : Option Classification :=
     some { status := "implemented", reason := "Array UInt64 primitive in the generic compiler fragment" }
   else if [``ByteArray.size, ``ByteArray.get!].contains name then
     some { status := "implemented", reason := "read-only ByteArray primitive in the generic compiler fragment" }
-  else if [``UInt64.toNat, ``UInt8.toNat].contains name then
+  else if [``UInt64.ofNat, ``UInt64.toNat, ``UInt8.toNat].contains name then
     some { status := "implemented", reason := "representation-preserving conversion for bounded Nat use" }
   else if [``HAdd.hAdd, ``HSub.hSub, ``HMul.hMul, ``HDiv.hDiv, ``HMod.hMod,
       ``UInt64.land, ``UInt64.lor, ``UInt64.xor, ``UInt64.shiftLeft,

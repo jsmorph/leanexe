@@ -978,6 +978,10 @@ mutual
                     let indexResult ← extractExprFrom ctx locals arrayResult.snd index
                     .ok (.byteArrayGet parts.fst parts.snd indexResult.fst, indexResult.snd)
                 | _ => .error "unsupported ByteArray.get! application"
+            | (.const ``UInt64.ofNat _, [arg]) =>
+                match ofNat? ``Nat arg with
+                | some value => .ok (.u64 value, nextLocal)
+                | none => extractExprFrom ctx locals nextLocal arg
             | (.const ``UInt64.toNat _, [arg]) =>
                 extractExprFrom ctx locals nextLocal arg
             | (.const ``UInt8.toNat _, [arg]) =>

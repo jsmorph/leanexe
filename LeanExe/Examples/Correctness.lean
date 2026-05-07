@@ -43,6 +43,12 @@ def shiftMasking : UInt64 :=
   UInt64.shiftLeft (1 : UInt64) (65 : UInt64) +
     UInt64.shiftRight (8 : UInt64) (65 : UInt64) * (10 : UInt64)
 
+def uint64OfNatValue (n : Nat) : UInt64 :=
+  UInt64.ofNat (n + 1)
+
+def uint64OfHugeNat : UInt64 :=
+  UInt64.ofNat 18446744073709551616
+
 def nestedShadow (x : UInt64) : UInt64 :=
   let x := x + 1
   let y := (let x := x + 2; x * 10)
