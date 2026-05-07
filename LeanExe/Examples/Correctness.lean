@@ -497,6 +497,9 @@ def bneAsBool (x : Nat) : Bool :=
 def bneBool : UInt64 :=
   if true != false then 1 else 0
 
+def boolXorValues (left right : Bool) : Bool :=
+  Bool.xor left right
+
 def boolMatchScalar (flag : Bool) : UInt64 :=
   match flag with
   | false => 10

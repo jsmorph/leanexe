@@ -1259,6 +1259,9 @@ mutual
             | (.const ``Bool.not _, _) =>
                 let condResult ← extractCondFrom ctx locals nextLocal expr
                 .ok (boolExpr condResult.fst, condResult.snd)
+            | (.const ``Bool.xor _, _) =>
+                let condResult ← extractCondFrom ctx locals nextLocal expr
+                .ok (boolExpr condResult.fst, condResult.snd)
             | (.const ``List.toArray _, args) =>
                 match args with
                 | [_itemTy, listExpr] =>
@@ -1785,6 +1788,14 @@ mutual
             let leftResult ← extractCondFrom ctx locals nextLocal left
             let rightResult ← extractCondFrom ctx locals leftResult.snd right
             .ok (.and leftResult.fst rightResult.fst, rightResult.snd)
+        | (.const ``Bool.xor _, [left, right]) =>
+            let leftResult ← extractCondFrom ctx locals nextLocal left
+            let rightResult ← extractCondFrom ctx locals leftResult.snd right
+            .ok
+              (.or
+                (.and leftResult.fst (.not rightResult.fst))
+                (.and (.not leftResult.fst) rightResult.fst),
+                rightResult.snd)
         | (.const ``Array.isEmpty _, args) =>
             match args.reverse with
             | array :: _ =>
