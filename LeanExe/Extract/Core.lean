@@ -578,6 +578,20 @@ partial def demandCond
                 (demandExpr ctx visiting left)
                 (demandExpr ctx visiting right)
           | none => .empty
+      | (.const ``GT.gt _, args) =>
+          match primitiveArgPair? args with
+          | some (left, right) =>
+              Demand.always
+                (demandExpr ctx visiting left)
+                (demandExpr ctx visiting right)
+          | none => .empty
+      | (.const ``GE.ge _, args) =>
+          match primitiveArgPair? args with
+          | some (left, right) =>
+              Demand.always
+                (demandExpr ctx visiting left)
+                (demandExpr ctx visiting right)
+          | none => .empty
       | (.const ``Bool.not _, [arg]) => demandCond ctx visiting arg
       | (.const ``Bool.or _, [left, right]) =>
           let leftDemand := demandCond ctx visiting left
@@ -1024,6 +1038,10 @@ mutual
                               .ok (boolExpr (.ltU64 leftIR rightIR), rightResult.snd)
                             else if primitive == ``LE.le then
                               .ok (boolExpr (.leU64 leftIR rightIR), rightResult.snd)
+                            else if primitive == ``GT.gt then
+                              .ok (boolExpr (.ltU64 rightIR leftIR), rightResult.snd)
+                            else if primitive == ``GE.ge then
+                              .ok (boolExpr (.leU64 rightIR leftIR), rightResult.snd)
                             else
                               .error s!"unsupported primitive expression: {primitive}"
                         | none => .error s!"unsupported application: {primitive}"
@@ -1077,6 +1095,20 @@ mutual
                 let rightResult ← extractExprFrom ctx locals leftResult.snd right
                 .ok (.leU64 leftResult.fst rightResult.fst, rightResult.snd)
             | none => .error "unsupported LE.le application"
+        | (.const ``GT.gt _, args) =>
+            match primitiveArgPair? args with
+            | some (left, right) =>
+                let leftResult ← extractExprFrom ctx locals nextLocal left
+                let rightResult ← extractExprFrom ctx locals leftResult.snd right
+                .ok (.ltU64 rightResult.fst leftResult.fst, rightResult.snd)
+            | none => .error "unsupported GT.gt application"
+        | (.const ``GE.ge _, args) =>
+            match primitiveArgPair? args with
+            | some (left, right) =>
+                let leftResult ← extractExprFrom ctx locals nextLocal left
+                let rightResult ← extractExprFrom ctx locals leftResult.snd right
+                .ok (.leU64 rightResult.fst leftResult.fst, rightResult.snd)
+            | none => .error "unsupported GE.ge application"
         | (.const ``Bool.not _, [arg]) =>
             let result ← extractCondFrom ctx locals nextLocal arg
             .ok (.not result.fst, result.snd)

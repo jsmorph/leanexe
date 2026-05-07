@@ -50,6 +50,9 @@ const accepted = [
   { name: "u64Comparisons", args: [2n], expected: 10n },
   { name: "u64Comparisons", args: [3n], expected: 20n },
   { name: "u64Comparisons", args: [6n], expected: 30n },
+  { name: "greaterComparisons", args: [2n], expected: 10n },
+  { name: "greaterComparisons", args: [3n], expected: 20n },
+  { name: "greaterComparisons", args: [6n], expected: 30n },
 ];
 
 const rejected = [
