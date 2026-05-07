@@ -302,6 +302,21 @@ def propEqBoolSkipsTrap : UInt64 :=
   else
     0
 
+def propAndNat (x : Nat) : UInt64 :=
+  if x > 1 ∧ x < 5 then 1 else 2
+
+def propOrNat (x : Nat) : UInt64 :=
+  if x < 2 ∨ x > 5 then 1 else 2
+
+def propNotNat (x : Nat) : UInt64 :=
+  if ¬ x < 3 then 1 else 2
+
+def propOrSkipsTrap : UInt64 :=
+  if True ∨ ((Array.replicate 1 (0 : UInt64))[5]! = 0) then 1 else 0
+
+def propAndSkipsTrap : UInt64 :=
+  if False ∧ ((Array.replicate 1 (0 : UInt64))[5]! = 0) then 1 else 0
+
 def rejectProductReturn : UInt64 × UInt64 :=
   let pair := ((1 : UInt64), (2 : UInt64))
   pair
