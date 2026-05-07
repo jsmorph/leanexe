@@ -253,6 +253,9 @@ def rejectOptionParam (value : Option UInt64) : UInt64 :=
   | none => 0
   | some item => item
 
+def rejectByteArrayReturn (input : ByteArray) : ByteArray :=
+  input
+
 def alloc : UInt64 :=
   1
 
