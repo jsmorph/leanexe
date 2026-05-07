@@ -80,6 +80,14 @@ def arraySizeAfterSet : Nat :=
   let b := a.set! 1 9
   b.size
 
+def arrayPushRead : UInt64 :=
+  let a := (Array.replicate 2 (0 : UInt64)).set! 0 5
+  let b := a.push 7
+  if b.size == 3 && a.size == 2 then
+    b[0]! * (100 : UInt64) + b[2]!
+  else
+    0
+
 def productArrayAlias : UInt64 :=
   let a := (Array.replicate 2 (0 : UInt64)).set! 0 11
   let pair := (a, a.set! 0 22)
