@@ -1363,6 +1363,13 @@ mutual
                 | none => extractExprFrom ctx locals nextLocal arg
             | (.const ``UInt64.toNat _, [arg]) =>
                 extractExprFrom ctx locals nextLocal arg
+            | (.const ``UInt64.toUInt8 _, [arg]) =>
+                let argResult ← extractExprFrom ctx locals nextLocal arg
+                .ok (.u64Bin .bitAnd argResult.fst (.u64 255), argResult.snd)
+            | (.const ``Nat.toUInt64 _, [arg]) =>
+                match ofNat? ``Nat arg with
+                | some value => .ok (.u64 value, nextLocal)
+                | none => extractExprFrom ctx locals nextLocal arg
             | (.const ``UInt8.ofNat _, [arg]) =>
                 match ofNat? ``Nat arg with
                 | some value => .ok (.u64 (value % 256), nextLocal)
@@ -1370,6 +1377,8 @@ mutual
                     let argResult ← extractExprFrom ctx locals nextLocal arg
                     .ok (.u64Bin .bitAnd argResult.fst (.u64 255), argResult.snd)
             | (.const ``UInt8.toNat _, [arg]) =>
+                extractExprFrom ctx locals nextLocal arg
+            | (.const ``UInt8.toUInt64 _, [arg]) =>
                 extractExprFrom ctx locals nextLocal arg
             | (.const ``Prod.fst _, args) =>
                 match args.reverse with
