@@ -46,6 +46,19 @@ def byteAtQuestionOrZero (input : ByteArray) (index : Nat) : Nat :=
   | some byte => byte.toNat
   | none => 0
 
+def sliceSecondPlusSize (input : ByteArray) : Nat :=
+  let slice := input.extract 1 3
+  if slice.isEmpty then
+    0
+  else
+    slice.size + slice[0]!.toNat
+
+def sliceClampSize (input : ByteArray) : Nat :=
+  (input.extract 1 10).size
+
+def sliceStopBeforeStart (input : ByteArray) : Nat :=
+  (input.extract 3 1).size
+
 def prefixPlusFirstByte (base : UInt64) (input : ByteArray) : UInt64 :=
   if input.isEmpty then
     base

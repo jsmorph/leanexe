@@ -354,6 +354,17 @@ def byteArrayParts (value : ExtractedValue) : Except String (IRExpr × IRExpr) :
       let parts ← byteArrayParts body
       .ok (.letE slot value parts.fst, .letE slot value parts.snd)
 
+partial def byteArrayPartsWithLets (value : ExtractedValue) :
+    Except String (List (Nat × IRExpr) × IRExpr × IRExpr) :=
+  match value with
+  | .byteArray ptr len => .ok ([], ptr, len)
+  | .scalar _ => .error "scalar value used where ByteArray value is required"
+  | .product _ _ => .error "product value used where ByteArray value is required"
+  | .option _ _ => .error "option value used where ByteArray value is required"
+  | .letE slot value body => do
+      let parts ← byteArrayPartsWithLets body
+      .ok ((slot, value) :: parts.fst, parts.snd.fst, parts.snd.snd)
+
 def productField (index : Nat) (value : ExtractedValue) : Except String ExtractedValue :=
   match value with
   | .product left right =>
@@ -763,6 +774,8 @@ partial def demandExpr
           | (.const ``ByteArray.size _, args) =>
               args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
           | (.const ``ByteArray.isEmpty _, args) =>
+              args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
+          | (.const ``ByteArray.extract _, args) =>
               args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
           | (.const ``ByteArray.get! _, _) => .trap
           | (.const ``Array.size _, args) =>
@@ -1269,7 +1282,7 @@ mutual
                         indexSlot + 1)
                 | some .byteArray =>
                     let arrayResult ← extractValueFrom ctx locals nextLocal array
-                    let parts ← byteArrayParts arrayResult.fst
+                    let parts ← byteArrayPartsWithLets arrayResult.fst
                     let indexResult ← extractExprFrom ctx locals arrayResult.snd index
                     let ptrSlot := indexResult.snd
                     let lenSlot := ptrSlot + 1
@@ -1279,15 +1292,48 @@ mutual
                       .scalar
                         (.byteArrayGet (.local ptrSlot) (.local lenSlot) (.local indexSlot))
                     .ok
-                      (.letE ptrSlot parts.fst
-                        (.letE lenSlot parts.snd
-                          (.letE indexSlot indexResult.fst
-                            (.option tag payload))),
+                      (wrapValueLets parts.fst
+                        (.letE ptrSlot parts.snd.fst
+                          (.letE lenSlot parts.snd.snd
+                            (.letE indexSlot indexResult.fst
+                              (.option tag payload)))),
                         indexSlot + 1)
                 | some other =>
                     .error s!"unsupported GetElem?.getElem? receiver type: {reprStr other}"
                 | none => .error "unsupported GetElem?.getElem? receiver type"
             | _ => .error "unsupported GetElem?.getElem? application"
+        | (.const ``ByteArray.extract _, args) =>
+            match args with
+            | [array, start, stop] =>
+                let arrayResult ← extractValueFrom ctx locals nextLocal array
+                let parts ← byteArrayPartsWithLets arrayResult.fst
+                let startResult ← extractExprFrom ctx locals arrayResult.snd start
+                let stopResult ← extractExprFrom ctx locals startResult.snd stop
+                let ptrSlot := stopResult.snd
+                let lenSlot := ptrSlot + 1
+                let startSlot := ptrSlot + 2
+                let stopSlot := ptrSlot + 3
+                let effectiveStop :=
+                  .ite
+                    (.ltU64 (.local stopSlot) (.local lenSlot))
+                    (.local stopSlot)
+                    (.local lenSlot)
+                let nonempty :=
+                  .and
+                    (.ltU64 (.local startSlot) (.local lenSlot))
+                    (.ltU64 (.local startSlot) effectiveStop)
+                let slicePtr := .u64Bin .add (.local ptrSlot) (.local startSlot)
+                let sliceLen :=
+                  .ite nonempty (.u64Bin .sub effectiveStop (.local startSlot)) (.u64 0)
+                .ok
+                  (wrapValueLets parts.fst
+                    (.letE ptrSlot parts.snd.fst
+                      (.letE lenSlot parts.snd.snd
+                        (.letE startSlot startResult.fst
+                          (.letE stopSlot stopResult.fst
+                            (.byteArray slicePtr sliceLen))))),
+                    stopSlot + 1)
+            | _ => .error "unsupported ByteArray.extract application"
         | (.const ``Bool.casesOn _, args) =>
             match boolMatcherArgs? ctx.env (.const ``Bool.casesOn []) args with
             | some (scrutinee, falseArm, trueArm) =>
@@ -1657,9 +1703,12 @@ mutual
                     match primitiveReceiverType? args with
                     | some .byteArray =>
                         let arrayResult ← extractValueFrom ctx locals nextLocal array
-                        let parts ← byteArrayParts arrayResult.fst
+                        let parts ← byteArrayPartsWithLets arrayResult.fst
                         let indexResult ← extractExprFrom ctx locals arrayResult.snd index
-                        .ok (.byteArrayGet parts.fst parts.snd indexResult.fst, indexResult.snd)
+                        .ok
+                          (wrapExprLets parts.fst
+                            (.byteArrayGet parts.snd.fst parts.snd.snd indexResult.fst),
+                            indexResult.snd)
                     | _ =>
                         let arrayResult ← extractExprFrom ctx locals nextLocal array
                         let indexResult ← extractExprFrom ctx locals arrayResult.snd index
@@ -1702,23 +1751,27 @@ mutual
                 match args with
                 | [array] =>
                     let arrayResult ← extractValueFrom ctx locals nextLocal array
-                    let parts ← byteArrayParts arrayResult.fst
-                    .ok (parts.snd, arrayResult.snd)
+                    let parts ← byteArrayPartsWithLets arrayResult.fst
+                    .ok (wrapExprLets parts.fst parts.snd.snd, arrayResult.snd)
                 | _ => .error "unsupported ByteArray.size application"
             | (.const ``ByteArray.isEmpty _, args) =>
                 match args with
                 | [array] =>
                     let arrayResult ← extractValueFrom ctx locals nextLocal array
-                    let parts ← byteArrayParts arrayResult.fst
-                    .ok (boolExpr (.eqU64 parts.snd (.u64 0)), arrayResult.snd)
+                    let parts ← byteArrayPartsWithLets arrayResult.fst
+                    let len := wrapExprLets parts.fst parts.snd.snd
+                    .ok (boolExpr (.eqU64 len (.u64 0)), arrayResult.snd)
                 | _ => .error "unsupported ByteArray.isEmpty application"
             | (.const ``ByteArray.get! _, args) =>
                 match args.reverse with
                 | index :: array :: _ =>
                     let arrayResult ← extractValueFrom ctx locals nextLocal array
-                    let parts ← byteArrayParts arrayResult.fst
+                    let parts ← byteArrayPartsWithLets arrayResult.fst
                     let indexResult ← extractExprFrom ctx locals arrayResult.snd index
-                    .ok (.byteArrayGet parts.fst parts.snd indexResult.fst, indexResult.snd)
+                    .ok
+                      (wrapExprLets parts.fst
+                        (.byteArrayGet parts.snd.fst parts.snd.snd indexResult.fst),
+                        indexResult.snd)
                 | _ => .error "unsupported ByteArray.get! application"
             | (.const ``UInt64.ofNat _, [arg]) =>
                 match ofNat? ``Nat arg with
@@ -2127,8 +2180,9 @@ mutual
             match args with
             | [array] =>
                 let arrayResult ← extractValueFrom ctx locals nextLocal array
-                let parts ← byteArrayParts arrayResult.fst
-                .ok (.eqU64 parts.snd (.u64 0), arrayResult.snd)
+                let parts ← byteArrayPartsWithLets arrayResult.fst
+                let len := wrapExprLets parts.fst parts.snd.snd
+                .ok (.eqU64 len (.u64 0), arrayResult.snd)
             | _ => .error "unsupported ByteArray.isEmpty condition"
         | (.const name _, args) =>
             match boolMatcherArgs? ctx.env (.const name []) args with
