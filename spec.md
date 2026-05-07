@@ -38,9 +38,9 @@ The current report imports compiled `.olean` modules through Lean’s module loa
 | Products | Planned as structured values | Implemented internally for products whose fields are first-fragment values; product entry parameters and product entry results are rejected |
 | Structures | Planned | Reported only |
 | Simple inductives | Planned | Reported only |
-| `Option` | Planned | Implemented internally for first-fragment payload values; `Option` entry parameters and `Option` entry results are rejected |
+| `Option` | Planned | Implemented internally for first-fragment payload values, including construction, matching, `getD`, `elim`, `map`, `bind`, `isSome`, and `isNone`; `Option` entry parameters and `Option` entry results are rejected |
 | `Except` | Planned | Reported only |
-| `Array` | Planned with explicit layout rules | Implemented only for `Array UInt64` in the generic fragment, with `Array.replicate`, `Array.size`, `Array.push`, `Array.pop`, length metadata, bounds traps, and copy-on-write update |
+| `Array` | Planned with explicit layout rules | Implemented only for `Array UInt64` in the generic fragment, with literals from literal `List.toArray`, `Array.replicate`, `Array.size`, `Array.isEmpty`, indexed reads, `back!`, `getD`, `set!`, `push`, `pop`, `append`, `extract`, length metadata, bounds traps, and copy-on-write update |
 | `String` | Planned only after byte-oriented APIs stabilize | Reported only |
 | Propositions and proofs | Intended for erasure | Proofs are used in Lean and omitted from Wasm emission |
 | Type parameters | Planned through monomorphization | Reported only |
