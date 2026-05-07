@@ -65,6 +65,13 @@ const accepted = [
   { name: "greaterComparisons", args: [2n], expected: 10n },
   { name: "greaterComparisons", args: [3n], expected: 20n },
   { name: "greaterComparisons", args: [6n], expected: 30n },
+  { name: "boolMatchScalar", args: [0n], expected: 10n },
+  { name: "boolMatchScalar", args: [1n], expected: 20n },
+  { name: "boolMatchSkipsTrap", args: [], expected: 7n },
+  { name: "boolMatchCondition", args: [0n], expected: 1n },
+  { name: "boolMatchCondition", args: [1n], expected: 2n },
+  { name: "boolMatchProduct", args: [0n], expected: 12n },
+  { name: "boolMatchProduct", args: [1n], expected: 34n },
 ];
 
 const rejected = [

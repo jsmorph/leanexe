@@ -58,7 +58,7 @@ Runtime `Nat` values in the current fragment use the same `i64` representation a
 | Named calls | Planned | Nonrecursive project-local helper calls are inlined lazily; remaining supported first-fragment calls are emitted when required |
 | Constructors | Planned | Product construction and `Option.none`/`Option.some` construction are implemented internally; other constructors are reported only |
 | Projections | Planned | Product `.1` and `.2` projections are implemented internally; other projections are reported only |
-| Pattern matching | Planned | Implemented for `Option` values in the generic path and for the demo range check path |
+| Pattern matching | Planned | Implemented for `Bool` and `Option` values in the generic path and for the demo range check path |
 | `if` expressions | Planned | Implemented for supported first-fragment result types |
 | Structural recursion | Planned with termination evidence from Lean | Implemented for the current tail-recursion shape over a decreasing `Nat` fuel argument, with explicit base and early-exit result expressions |
 | Tail recursion over buffers or arrays | Planned | Implemented for `ByteArray` and array parameters carried through the supported fuel-recursion shape |
