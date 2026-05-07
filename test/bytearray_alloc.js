@@ -55,6 +55,15 @@ function withByteArray(exports, input, call) {
   return BigInt.asUintN(64, call(BigInt(ptr), BigInt(input.length)));
 }
 
+function fnv1a32(input) {
+  let hash = 2166136261;
+  for (const byte of input) {
+    hash ^= byte;
+    hash = Math.imul(hash, 16777619) >>> 0;
+  }
+  return BigInt(hash);
+}
+
 async function main() {
   run(["lake", "build", moduleName]);
   fs.mkdirSync(outDir, { recursive: true });
@@ -157,6 +166,21 @@ async function main() {
     }
   }
 
+  const fnv1a32Program = await instantiate("fnv1a32");
+  const fnv1a32Cases = [
+    { input: new Uint8Array([]) },
+    { input: new Uint8Array([97]) },
+    { input: new Uint8Array([104, 101, 108, 108, 111]) },
+  ];
+
+  for (const testCase of fnv1a32Cases) {
+    const expected = fnv1a32(testCase.input);
+    const actual = callByteArray(fnv1a32Program, testCase.input);
+    if (actual !== expected) {
+      throw new Error(`fnv1a32: expected ${expected}, got ${actual}`);
+    }
+  }
+
   const emptyViaIsEmpty = await instantiate("emptyViaIsEmpty");
   const emptyViaIsEmptyCases = [
     { input: new Uint8Array([]), expected: 1n },
@@ -178,6 +202,7 @@ async function main() {
     firstByteBangIndexCases.length +
     byteAtOrZeroCases.length +
     prefixPlusFirstByteCases.length +
+    fnv1a32Cases.length +
     emptyViaIsEmptyCases.length;
   process.stdout.write(`checked ${total} bytearray allocation cases\n`);
 }
