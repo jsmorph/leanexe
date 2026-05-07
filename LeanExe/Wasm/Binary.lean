@@ -200,9 +200,11 @@ abbrev Module := LeanExe.IR.Module
 
 def emitU64Op : LeanExe.IR.U64Op → List UInt8
   | .add => ofNats [124]
+  | .natAdd => ofNats [124]
   | .sub => ofNats [125]
   | .natSub => ofNats [125]
   | .mul => ofNats [126]
+  | .natMul => ofNats [126]
   | .divU => ofNats [128]
   | .modU => ofNats [130]
   | .bitAnd => ofNats [131]
@@ -253,7 +255,9 @@ mutual
   partial def exprScratch : Expr → Nat
     | .local _ => 0
     | .u64 _ => 0
+    | .u64Bin .natAdd left right => 3 + max (exprScratch left) (exprScratch right)
     | .u64Bin .natSub left right => 2 + max (exprScratch left) (exprScratch right)
+    | .u64Bin .natMul left right => 2 + max (exprScratch left) (exprScratch right)
     | .u64Bin .divU left right => 2 + max (exprScratch left) (exprScratch right)
     | .u64Bin .modU left right => 2 + max (exprScratch left) (exprScratch right)
     | .u64Bin _ left right => max (exprScratch left) (exprScratch right)
@@ -459,6 +463,44 @@ mutual
         localGet leftLocal ++ localGet rightLocal ++ emitU64Op op ++
       ofNats [11]
 
+  partial def emitNatAdd
+      (scratch : Nat)
+      (left right : Expr) : List UInt8 :=
+    let leftLocal := scratch
+    let rightLocal := scratch + 1
+    let resultLocal := scratch + 2
+    let childScratch := scratch + 3
+    emitExpr childScratch left ++ localSet leftLocal ++
+      emitExpr childScratch right ++ localSet rightLocal ++
+      localGet leftLocal ++ localGet rightLocal ++ ofNats [124] ++ localTee resultLocal ++
+      localGet leftLocal ++ i64LtU ++
+      ofNats [4, 126] ++
+        ofNats [0] ++
+      ofNats [5] ++
+        localGet resultLocal ++
+      ofNats [11]
+
+  partial def emitNatMul
+      (scratch : Nat)
+      (left right : Expr) : List UInt8 :=
+    let leftLocal := scratch
+    let rightLocal := scratch + 1
+    let childScratch := scratch + 2
+    emitExpr childScratch left ++ localSet leftLocal ++
+      emitExpr childScratch right ++ localSet rightLocal ++
+      localGet rightLocal ++ i64Const 0 ++ ofNats [81] ++
+      ofNats [4, 126] ++
+        i64Const 0 ++
+      ofNats [5] ++
+        i64Const (2 ^ 64 - 1) ++ localGet rightLocal ++ ofNats [128] ++
+          localGet leftLocal ++ i64LtU ++
+        ofNats [4, 126] ++
+          ofNats [0] ++
+        ofNats [5] ++
+          localGet leftLocal ++ localGet rightLocal ++ ofNats [126] ++
+        ofNats [11] ++
+      ofNats [11]
+
   partial def emitNatSub
       (scratch : Nat)
       (left right : Expr) : List UInt8 :=
@@ -477,7 +519,9 @@ mutual
   partial def emitExpr (scratch : Nat) : Expr → List UInt8
     | .local index => localGet index
     | .u64 value => i64Const value
+    | .u64Bin .natAdd left right => emitNatAdd scratch left right
     | .u64Bin .natSub left right => emitNatSub scratch left right
+    | .u64Bin .natMul left right => emitNatMul scratch left right
     | .u64Bin .divU left right => emitCheckedDivMod scratch .divU left right
     | .u64Bin .modU left right => emitCheckedDivMod scratch .modU left right
     | .u64Bin op left right => emitExpr scratch left ++ emitExpr scratch right ++ emitU64Op op
@@ -753,6 +797,31 @@ mutual
       indent 2 zeroLines ++
       ["else", s!"  local.get {leftLocal}", s!"  local.get {rightLocal}", s!"  {opLine}", "end"]
 
+  partial def natAddWatLines (scratch : Nat) (left right : Expr) : List String :=
+    let leftLocal := scratch
+    let rightLocal := scratch + 1
+    let resultLocal := scratch + 2
+    let childScratch := scratch + 3
+    exprWatLines childScratch left ++ [s!"local.set {leftLocal}"] ++
+      exprWatLines childScratch right ++ [s!"local.set {rightLocal}",
+        s!"local.get {leftLocal}", s!"local.get {rightLocal}", "i64.add",
+        s!"local.tee {resultLocal}", s!"local.get {leftLocal}", "i64.lt_u",
+        "if (result i64)", "  unreachable", "else", s!"  local.get {resultLocal}", "end"]
+
+  partial def natMulWatLines (scratch : Nat) (left right : Expr) : List String :=
+    let leftLocal := scratch
+    let rightLocal := scratch + 1
+    let childScratch := scratch + 2
+    exprWatLines childScratch left ++ [s!"local.set {leftLocal}"] ++
+      exprWatLines childScratch right ++ [s!"local.set {rightLocal}",
+        s!"local.get {rightLocal}", "i64.const 0", "i64.eq", "if (result i64)",
+        "  i64.const 0", "else",
+        "  i64.const 18446744073709551615",
+        s!"  local.get {rightLocal}", "i64.div_u", s!"  local.get {leftLocal}", "i64.lt_u",
+        "  if (result i64)", "    unreachable", "  else",
+        s!"    local.get {leftLocal}", s!"    local.get {rightLocal}", "    i64.mul",
+        "  end", "end"]
+
   partial def natSubWatLines (scratch : Nat) (left right : Expr) : List String :=
     let leftLocal := scratch
     let rightLocal := scratch + 1
@@ -767,9 +836,11 @@ mutual
     | .local index => [s!"local.get {index}"]
     | .u64 value => [s!"i64.const {value}"]
     | .u64Bin .add left right => exprWatLines scratch left ++ exprWatLines scratch right ++ ["i64.add"]
+    | .u64Bin .natAdd left right => natAddWatLines scratch left right
     | .u64Bin .sub left right => exprWatLines scratch left ++ exprWatLines scratch right ++ ["i64.sub"]
     | .u64Bin .natSub left right => natSubWatLines scratch left right
     | .u64Bin .mul left right => exprWatLines scratch left ++ exprWatLines scratch right ++ ["i64.mul"]
+    | .u64Bin .natMul left right => natMulWatLines scratch left right
     | .u64Bin .divU left right => checkedDivModWatLines scratch .divU left right
     | .u64Bin .modU left right => checkedDivModWatLines scratch .modU left right
     | .u64Bin .bitAnd left right => exprWatLines scratch left ++ exprWatLines scratch right ++ ["i64.and"]

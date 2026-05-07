@@ -1030,14 +1030,20 @@ mutual
                             let leftIR := leftResult.fst
                             let rightIR := rightResult.fst
                             if primitive == ``HAdd.hAdd then
-                              .ok (.u64Bin .add leftIR rightIR, rightResult.snd)
+                              match primitiveResultType? args with
+                              | some .nat =>
+                                  .ok (.u64Bin .natAdd leftIR rightIR, rightResult.snd)
+                              | _ => .ok (.u64Bin .add leftIR rightIR, rightResult.snd)
                             else if primitive == ``HSub.hSub then
                               match primitiveResultType? args with
                               | some .nat =>
                                   .ok (.u64Bin .natSub leftIR rightIR, rightResult.snd)
                               | _ => .ok (.u64Bin .sub leftIR rightIR, rightResult.snd)
                             else if primitive == ``HMul.hMul then
-                              .ok (.u64Bin .mul leftIR rightIR, rightResult.snd)
+                              match primitiveResultType? args with
+                              | some .nat =>
+                                  .ok (.u64Bin .natMul leftIR rightIR, rightResult.snd)
+                              | _ => .ok (.u64Bin .mul leftIR rightIR, rightResult.snd)
                             else if primitive == ``HDiv.hDiv then
                               .ok (.u64Bin .divU leftIR rightIR, rightResult.snd)
                             else if primitive == ``HMod.hMod then

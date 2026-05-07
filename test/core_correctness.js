@@ -17,6 +17,8 @@ const accepted = [
   { name: "underflow", args: [], expected: 18446744073709551615n },
   { name: "natSubSaturates", args: [], expected: 0n },
   { name: "natSubNormal", args: [], expected: 2n },
+  { name: "natAddNormal", args: [], expected: 8n },
+  { name: "natMulNormal", args: [], expected: 42n },
   { name: "bitwiseOrXor", args: [], expected: 6n },
   { name: "shiftMasking", args: [], expected: 42n },
   { name: "nestedShadow", args: [3n], expected: 64n },
@@ -100,6 +102,11 @@ const rejected = [
   },
 ];
 
+const trapped = [
+  { name: "natAddOverflow", args: [] },
+  { name: "natMulOverflow", args: [] },
+];
+
 function run(args) {
   return spawnSync(args[0], args.slice(1), { encoding: "utf8" });
 }
@@ -131,7 +138,12 @@ async function runAccepted(testCase) {
     throw new Error(`${testCase.name} was not exported`);
   }
 
-  const result = fn(...testCase.args);
+  let result;
+  try {
+    result = fn(...testCase.args);
+  } catch (error) {
+    throw new Error(`${testCase.name}: unexpected trap: ${error.message}`);
+  }
   const actual = BigInt.asUintN(64, result);
   if (actual !== testCase.expected) {
     throw new Error(`${testCase.name}: expected ${testCase.expected}, got ${actual}`);
@@ -151,6 +163,31 @@ function runRejected(testCase) {
   }
 }
 
+async function runTrapped(testCase) {
+  const out = path.join(outDir, `${testCase.name}.wasm`);
+  const compiled = compile(testCase.name, out);
+  if (compiled.status !== 0) {
+    throw new Error(`${testCase.name} failed to compile: ${compiled.stderr.trim()}`);
+  }
+
+  const wasm = fs.readFileSync(out);
+  const { instance } = await WebAssembly.instantiate(wasm, {});
+  const fn = instance.exports[testCase.name];
+  if (typeof fn !== "function") {
+    throw new Error(`${testCase.name} was not exported`);
+  }
+
+  let trapped = false;
+  try {
+    fn(...testCase.args);
+  } catch (_error) {
+    trapped = true;
+  }
+  if (!trapped) {
+    throw new Error(`${testCase.name}: expected Wasm trap`);
+  }
+}
+
 async function main() {
   fs.mkdirSync(outDir, { recursive: true });
 
@@ -162,7 +199,13 @@ async function main() {
     runRejected(testCase);
   }
 
-  process.stdout.write(`checked ${accepted.length} accepted and ${rejected.length} rejected cases\n`);
+  for (const testCase of trapped) {
+    await runTrapped(testCase);
+  }
+
+  process.stdout.write(
+    `checked ${accepted.length} accepted, ${rejected.length} rejected, and ${trapped.length} trapped cases\n`
+  );
 }
 
 main().catch((error) => {
