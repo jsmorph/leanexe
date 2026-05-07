@@ -81,6 +81,8 @@ const accepted = [
   { name: "productArrayAlias", args: [], expected: 2211n },
   { name: "recLetDemo", args: [], expected: 518n },
   { name: "recExitDemo", args: [], expected: 314n },
+  { name: "recThenBranchExitDemo", args: [], expected: 13n },
+  { name: "recThenBranchFuelDemo", args: [], expected: 2n },
   { name: "recProductDemo", args: [], expected: 10n },
   { name: "recursiveDemandedFuelGet", args: [], expected: 7n },
   { name: "optionSomeMatch", args: [], expected: 8n },

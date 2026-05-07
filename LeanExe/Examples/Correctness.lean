@@ -321,6 +321,20 @@ def recExitFuel : Nat → UInt64 → UInt64 → UInt64
 def recExitDemo : UInt64 :=
   recExitFuel 10 1 10
 
+def recThenBranchFuel : Nat → UInt64 → UInt64
+  | 0, acc => acc
+  | fuel + 1, acc =>
+      if acc < (3 : UInt64) then
+        recThenBranchFuel fuel (acc + 1)
+      else
+        acc + 10
+
+def recThenBranchExitDemo : UInt64 :=
+  recThenBranchFuel 10 0
+
+def recThenBranchFuelDemo : UInt64 :=
+  recThenBranchFuel 2 0
+
 def recProductFuel : Nat → UInt64 → UInt64
   | 0, acc => acc
   | fuel + 1, acc =>
