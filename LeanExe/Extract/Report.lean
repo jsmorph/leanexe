@@ -152,6 +152,7 @@ def knownExternal? (name : Name) : Option Classification :=
   else if [``HAdd.hAdd, ``HSub.hSub, ``HMul.hMul, ``HDiv.hDiv, ``HMod.hMod,
       ``HAnd.hAnd, ``HOr.hOr, ``HXor.hXor, ``Min.min, ``Max.max,
       ``HShiftLeft.hShiftLeft, ``HShiftRight.hShiftRight,
+      ``Complement.complement,
       ``UInt64.land, ``UInt64.lor, ``UInt64.xor, ``UInt64.shiftLeft,
       ``UInt64.shiftRight].contains name then
     some { status := "implemented", reason := "numeric primitive in the generic compiler fragment" }

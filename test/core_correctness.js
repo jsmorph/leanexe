@@ -21,6 +21,8 @@ const accepted = [
   { name: "natMulNormal", args: [], expected: 42n },
   { name: "bitwiseOrXor", args: [], expected: 6n },
   { name: "bitwiseNotation", args: [], expected: 6n },
+  { name: "complementNotation", args: [], expected: 255n },
+  { name: "u8Complement", args: [], expected: 255n },
   { name: "shiftMasking", args: [], expected: 42n },
   { name: "shiftNotation", args: [], expected: 42n },
   { name: "uint64OfNatValue", args: [41n], expected: 42n },
