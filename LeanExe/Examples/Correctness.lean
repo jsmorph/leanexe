@@ -117,6 +117,13 @@ def uint32Comparisons : UInt64 :=
   else
     0
 
+def uint32DivMod : Nat :=
+  (((4000000000 : UInt32) / (3 : UInt32)).toNat) * 10 +
+    (((4000000000 : UInt32) % (3 : UInt32)).toNat)
+
+def uint32DivModZero : Nat :=
+  (((7 : UInt32) / 0).toNat) * 10 + (((7 : UInt32) % 0).toNat)
+
 def uint32ToUInt64Value : UInt64 :=
   UInt32.toUInt64 (4294967295 : UInt32) + 1
 
