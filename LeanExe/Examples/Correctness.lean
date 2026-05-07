@@ -316,6 +316,19 @@ def optionIsNoneValues : UInt64 :=
   else
     0
 
+def optionElimSomeSkipsDefaultTrap : UInt64 :=
+  Option.elim (some (5 : UInt64)) ((Array.replicate 0 (0 : UInt64)).back!)
+    (fun value => value + 1)
+
+def optionElimNoneSkipsSomeArmTrap : UInt64 :=
+  Option.elim (none : Option UInt64) (7 : UInt64)
+    (fun _value => (Array.replicate 0 (0 : UInt64)).back!)
+
+def optionElimProduct : UInt64 :=
+  let pair := Option.elim (some (1 : UInt64)) ((3 : UInt64), (4 : UInt64))
+    (fun value => (value, value + 1))
+  pair.1 * (10 : UInt64) + pair.2
+
 def natComparisons (x : Nat) : UInt64 :=
   if x < 3 then
     10
