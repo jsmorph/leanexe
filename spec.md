@@ -56,11 +56,11 @@ Runtime `Nat` values in the current fragment use the same `i64` representation a
 
 | Lean term form | Intended support | Current implementation |
 | -------------- | ---------------- | ---------------------- |
-| Variables and local lets | Implemented for the first fragment | Variables and local `let` expressions compile for `Unit`, `Bool`, `UInt8`, `UInt32`, `UInt64`, bounded `Nat`, `ByteArray`, `Array UInt64`, and supported product and `Option` values |
+| Variables and local lets | Implemented for the first fragment | Variables and local `let` expressions compile for `Unit`, `Bool`, `UInt8`, `UInt32`, `UInt64`, bounded `Nat`, `ByteArray`, `Array UInt64`, and supported product, `Option`, and restricted `Except` values |
 | Named calls | Planned | Nonrecursive project-local helper calls are inlined lazily; remaining supported first-fragment calls are emitted when required |
-| Constructors | Planned | Product construction and `Option.none`/`Option.some` construction are implemented internally; other constructors are reported only |
+| Constructors | Planned | Product construction, `Option.none`/`Option.some`, and restricted `Except.error`/`Except.ok` construction are implemented internally; other constructors are reported only |
 | Projections | Planned | Product `.1` and `.2` projections are implemented internally; other projections are reported only |
-| Pattern matching | Planned | Implemented for `Bool`, product, `Option`, and nonrecursive zero/successor `Nat` matches in the generic path and for the demo range check path |
+| Pattern matching | Planned | Implemented for `Bool`, product, `Option`, restricted `Except`, and nonrecursive zero/successor `Nat` matches in the generic path and for the demo range check path |
 | `if` expressions | Planned | Implemented for supported first-fragment result types; dependent `if h : p then ... else ...` erases proof binders and lowers through the same condition path |
 | Structural recursion | Planned with termination evidence from Lean | Implemented for the current tail-recursion shape over a decreasing `Nat` fuel argument, with explicit base and early-exit result expressions |
 | Tail recursion over buffers or arrays | Planned | Implemented for `ByteArray` and array parameters carried through the supported fuel-recursion shape |
@@ -124,7 +124,7 @@ The extractor classifies each reachable declaration from the entry point.  Runti
 
 The report must name every rejected declaration and the first unsupported construct found in it.  Useful rejection reasons include opaque constant, unsupported primitive, unsupported type, higher-order value escape, unspecialized polymorphism, typeclass argument that cannot be specialized, unsupported recursor, unsupported effect, `unsafe` declaration, and runtime environment dependency.  A rejection reason is part of the user-facing API and should remain stable enough for tests.
 
-The current report implements module loading, entry lookup, root-namespace dependency expansion, external frontier classification, entry-shape classification from the generic compiler signature checker, and effect detection for `IO`, `EIO`, `BaseIO`, and `Task`.  It classifies the implemented scalar, product, `Option`, array, byte-array, pattern-matching, and conversion primitives used by the current compiler fragment.  It still reports polymorphic declarations, typeclass instance dependencies, target-dependent numeric literals, and unimplemented library operations as pending extraction work.  It rejects `unsafe`, `partial`, opaque executable constants, axioms in executable dependency graphs, quotients, higher-order arguments, unsupported effects, and external constants without a LeanExe primitive.
+The current report implements module loading, entry lookup, root-namespace dependency expansion, external frontier classification, entry-shape classification from the generic compiler signature checker, and effect detection for `IO`, `EIO`, `BaseIO`, and `Task`.  It classifies the implemented scalar, product, `Option`, restricted `Except`, array, byte-array, pattern-matching, and conversion primitives used by the current compiler fragment.  It still reports polymorphic declarations, typeclass instance dependencies, target-dependent numeric literals, and unimplemented library operations as pending extraction work.  It rejects `unsafe`, `partial`, opaque executable constants, axioms in executable dependency graphs, quotients, higher-order arguments, unsupported effects, and external constants without a LeanExe primitive.
 
 ## Current Wasm ABI
 
