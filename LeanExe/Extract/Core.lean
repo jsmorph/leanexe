@@ -294,6 +294,11 @@ def primitiveResultType? (args : List Expr) : Option Ty :=
   | _leftType :: _rightType :: resultType :: _ => typeAtom? resultType
   | _ => none
 
+def primitiveReceiverType? (args : List Expr) : Option Ty :=
+  match args with
+  | ty :: _ => typeAtom? ty
+  | _ => none
+
 def boolExpr (cond : IRCond) : IRExpr :=
   .ite cond (.u64 1) (.u64 0)
 
@@ -1268,6 +1273,16 @@ mutual
                                       .ok (boolExpr (.ltU64 rightIR leftIR), rightResult.snd)
                                     else if primitive == ``GE.ge then
                                       .ok (boolExpr (.leU64 rightIR leftIR), rightResult.snd)
+                                    else if primitive == ``Min.min then
+                                      match primitiveReceiverType? args with
+                                      | some .nat | some .u8 | some .u64 =>
+                                          .ok (.ite (.leU64 leftIR rightIR) leftIR rightIR, rightResult.snd)
+                                      | _ => .error s!"unsupported min expression: {primitive}"
+                                    else if primitive == ``Max.max then
+                                      match primitiveReceiverType? args with
+                                      | some .nat | some .u8 | some .u64 =>
+                                          .ok (.ite (.leU64 leftIR rightIR) rightIR leftIR, rightResult.snd)
+                                      | _ => .error s!"unsupported max expression: {primitive}"
                                     else
                                       .error s!"unsupported primitive expression: {primitive}"
                                 | none => .error s!"unsupported application: {primitive}"

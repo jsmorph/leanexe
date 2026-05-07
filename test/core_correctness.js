@@ -90,6 +90,11 @@ const accepted = [
   { name: "propNotNat", args: [3n], expected: 1n },
   { name: "propOrSkipsTrap", args: [], expected: 1n },
   { name: "propAndSkipsTrap", args: [], expected: 0n },
+  { name: "natMinMax", args: [7n, 3n], expected: 37n },
+  { name: "natMinMax", args: [2n, 9n], expected: 29n },
+  { name: "u64MinMax", args: [7n, 3n], expected: 37n },
+  { name: "u64MinMax", args: [2n, 9n], expected: 29n },
+  { name: "u8MinMax", args: [], expected: 280n },
 ];
 
 const rejected = [

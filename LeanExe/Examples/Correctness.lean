@@ -317,6 +317,16 @@ def propOrSkipsTrap : UInt64 :=
 def propAndSkipsTrap : UInt64 :=
   if False ∧ ((Array.replicate 1 (0 : UInt64))[5]! = 0) then 1 else 0
 
+def natMinMax (x y : Nat) : Nat :=
+  min x y * 10 + max x y
+
+def u64MinMax (x y : UInt64) : UInt64 :=
+  min x y * (10 : UInt64) + max x y
+
+def u8MinMax : Nat :=
+  (min (250 : UInt8) (3 : UInt8)).toNat * 10 +
+    (max (250 : UInt8) (3 : UInt8)).toNat
+
 def rejectProductReturn : UInt64 × UInt64 :=
   let pair := ((1 : UInt64), (2 : UInt64))
   pair
