@@ -81,6 +81,15 @@ const accepted = [
   { name: "decideEqUInt64", args: [3n], expected: 1n },
   { name: "decideEqUInt64", args: [4n], expected: 0n },
   { name: "propEqBoolSkipsTrap", args: [], expected: 1n },
+  { name: "propAndNat", args: [3n], expected: 1n },
+  { name: "propAndNat", args: [1n], expected: 2n },
+  { name: "propOrNat", args: [1n], expected: 1n },
+  { name: "propOrNat", args: [3n], expected: 2n },
+  { name: "propOrNat", args: [6n], expected: 1n },
+  { name: "propNotNat", args: [2n], expected: 2n },
+  { name: "propNotNat", args: [3n], expected: 1n },
+  { name: "propOrSkipsTrap", args: [], expected: 1n },
+  { name: "propAndSkipsTrap", args: [], expected: 0n },
 ];
 
 const rejected = [

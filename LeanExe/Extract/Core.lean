@@ -667,6 +667,8 @@ partial def demandCond
   | .mdata _ body => demandCond ctx visiting body
   | .const ``Bool.true _ => .empty
   | .const ``Bool.false _ => .empty
+  | .const ``True _ => .empty
+  | .const ``False _ => .empty
   | _ =>
       match appFnArgs expr with
       | (.const ``Eq _, [ty, left, right]) =>
@@ -678,6 +680,23 @@ partial def demandCond
                 .empty
           | none => .empty
       | (.const ``Decidable.decide _, [prop, _inst]) => demandCond ctx visiting prop
+      | (.const ``And _, [left, right]) =>
+          let leftDemand := demandCond ctx visiting left
+          let rightDemand := demandCond ctx visiting right
+          {
+            may := unionNat leftDemand.may rightDemand.may,
+            must := leftDemand.must,
+            mayTrap := leftDemand.mayTrap || rightDemand.mayTrap
+          }
+      | (.const ``Or _, [left, right]) =>
+          let leftDemand := demandCond ctx visiting left
+          let rightDemand := demandCond ctx visiting right
+          {
+            may := unionNat leftDemand.may rightDemand.may,
+            must := leftDemand.must,
+            mayTrap := leftDemand.mayTrap || rightDemand.mayTrap
+          }
+      | (.const ``Not _, [arg]) => demandCond ctx visiting arg
       | (.const ``BEq.beq _, args) =>
           match primitiveArgPair? args with
           | some (left, right) =>
@@ -1274,6 +1293,8 @@ mutual
         .ok (boolCond exprResult.fst, exprResult.snd)
     | .const ``Bool.true _ => .ok (.true, nextLocal)
     | .const ``Bool.false _ => .ok (.false, nextLocal)
+    | .const ``True _ => .ok (.true, nextLocal)
+    | .const ``False _ => .ok (.false, nextLocal)
     | _ =>
         match appFnArgs expr with
         | (.const ``Eq _, [ty, left, right]) =>
@@ -1288,6 +1309,17 @@ mutual
             | none => .error "unsupported equality proposition in condition"
         | (.const ``Decidable.decide _, [prop, _inst]) =>
             extractCondFrom ctx locals nextLocal prop
+        | (.const ``And _, [left, right]) =>
+            let leftResult ← extractCondFrom ctx locals nextLocal left
+            let rightResult ← extractCondFrom ctx locals leftResult.snd right
+            .ok (.and leftResult.fst rightResult.fst, rightResult.snd)
+        | (.const ``Or _, [left, right]) =>
+            let leftResult ← extractCondFrom ctx locals nextLocal left
+            let rightResult ← extractCondFrom ctx locals leftResult.snd right
+            .ok (.or leftResult.fst rightResult.fst, rightResult.snd)
+        | (.const ``Not _, [arg]) =>
+            let result ← extractCondFrom ctx locals nextLocal arg
+            .ok (.not result.fst, result.snd)
         | (.const ``Bool.casesOn _, _) =>
             let exprResult ← extractExprFrom ctx locals nextLocal expr
             .ok (boolCond exprResult.fst, exprResult.snd)
