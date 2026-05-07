@@ -582,6 +582,8 @@ partial def demandExpr
                 (demandCond ctx visiting condExpr)
                 (demandExpr ctx visiting thenExpr)
                 (demandExpr ctx visiting elseExpr)
+          | (.const ``Decidable.decide _, [prop, _inst]) =>
+              demandCond ctx visiting prop
           | (.const ``Prod.fst _, args) =>
               match args.reverse with
               | product :: _ => demandProductField ctx visiting 0 product
@@ -661,6 +663,7 @@ partial def demandCond
   | _ =>
       match appFnArgs expr with
       | (.const ``Eq _, [_ty, value, _truth]) => demandCond ctx visiting value
+      | (.const ``Decidable.decide _, [prop, _inst]) => demandCond ctx visiting prop
       | (.const ``BEq.beq _, args) =>
           match primitiveArgPair? args with
           | some (left, right) =>
@@ -1034,6 +1037,9 @@ mutual
             | (.const ``Bool.casesOn _, _) =>
                 let valueResult ← extractValueFrom ctx locals nextLocal expr
                 .ok (← scalarValue valueResult.fst, valueResult.snd)
+            | (.const ``Decidable.decide _, [prop, _inst]) =>
+                let condResult ← extractCondFrom ctx locals nextLocal prop
+                .ok (boolExpr condResult.fst, condResult.snd)
             | (.const ``ite _, [ty, condExpr, _, thenExpr, elseExpr]) =>
                 if typeAtom? ty |>.isSome then
                   let condResult ← extractCondFrom ctx locals nextLocal condExpr
@@ -1261,6 +1267,8 @@ mutual
               extractCondFrom ctx locals nextLocal value
             else
               .error "unsupported equality proposition in condition"
+        | (.const ``Decidable.decide _, [prop, _inst]) =>
+            extractCondFrom ctx locals nextLocal prop
         | (.const ``Bool.casesOn _, _) =>
             let exprResult ← extractExprFrom ctx locals nextLocal expr
             .ok (boolCond exprResult.fst, exprResult.snd)

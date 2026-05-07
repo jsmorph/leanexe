@@ -72,6 +72,10 @@ const accepted = [
   { name: "boolMatchCondition", args: [1n], expected: 2n },
   { name: "boolMatchProduct", args: [0n], expected: 12n },
   { name: "boolMatchProduct", args: [1n], expected: 34n },
+  { name: "decideNatLt", args: [2n], expected: 1n },
+  { name: "decideNatLt", args: [3n], expected: 2n },
+  { name: "decideUInt64Ge", args: [2n], expected: 0n },
+  { name: "decideUInt64Ge", args: [3n], expected: 1n },
 ];
 
 const rejected = [
