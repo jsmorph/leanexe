@@ -174,7 +174,8 @@ def knownExternal? (name : Name) : Option Classification :=
     some { status := "implemented", reason := "boolean primitive in the generic compiler fragment" }
   else if [``BEq.beq, ``LT.lt, ``LE.le, ``GT.gt, ``GE.ge, ``ite, ``dite].contains name then
     some { status := "implemented", reason := "control, equality, or comparison primitive in the generic compiler fragment" }
-  else if [``Id.run, ``Pure.pure, ``Applicative.toPure, ``Monad.toApplicative].contains name then
+  else if [``Id.run, ``Pure.pure, ``Bind.bind, ``Applicative.toPure, ``Monad.toApplicative,
+      ``Monad.toBind].contains name then
     some { status := "implemented", reason := "pure Id do-notation plumbing erased by the generic compiler fragment" }
   else if [``Array.empty, ``Array.mkEmpty, ``Array.emptyWithCapacity, ``Array.singleton,
       ``Array.replicate, ``Array.size, ``Array.isEmpty, ``Array.push, ``Array.pop,

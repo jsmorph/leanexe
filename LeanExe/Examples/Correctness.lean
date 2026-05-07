@@ -274,6 +274,14 @@ def idRunSkipsUnusedLetTrap : UInt64 := Id.run do
 def idRunCondition : UInt64 :=
   if Id.run do return true then 1 else 0
 
+def idRunBind : UInt64 := Id.run do
+  let x ← pure (1 : UInt64)
+  return x + 1
+
+def idRunBindSkipsUnusedTrap : UInt64 := Id.run do
+  let _x ← pure ((Array.replicate 0 (0 : UInt64)).back!)
+  return 7
+
 def arrayUpdateRead : UInt64 :=
   let a := Array.replicate 2 (0 : UInt64)
   let b := a.set! 0 1
