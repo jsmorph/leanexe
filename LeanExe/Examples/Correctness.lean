@@ -523,6 +523,16 @@ def boolMatchScalar (flag : Bool) : UInt64 :=
   | false => 10
   | true => 20
 
+def boolMatchTrueFirstScalar (flag : Bool) : UInt64 :=
+  match flag with
+  | true => 20
+  | false => 10
+
+def boolMatchTrueFirstSkipsFalseTrap : UInt64 :=
+  match true with
+  | true => 7
+  | false => (Array.replicate 0 (0 : UInt64)).back!
+
 def boolMatchSkipsTrap : UInt64 :=
   match false with
   | false => 7
