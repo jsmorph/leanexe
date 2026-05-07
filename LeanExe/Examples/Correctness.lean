@@ -232,6 +232,19 @@ def productMatchNested : UInt64 :=
     | (left, right) => (left.2, right.1)
   pair.1 * (10 : UInt64) + pair.2
 
+def makePairHelper (x : UInt64) : UInt64 × UInt64 :=
+  (x, x + 1)
+
+def productHelperResult : UInt64 :=
+  let pair := makePairHelper 4
+  pair.1 * (10 : UInt64) + pair.2
+
+def productFirstHelper (pair : UInt64 × UInt64) : UInt64 :=
+  pair.1
+
+def productHelperParamSkipsTrap : UInt64 :=
+  productFirstHelper ((7 : UInt64), (Array.replicate 0 (0 : UInt64)).back!)
+
 def unitArgHelper (_value : Unit) : UInt64 :=
   11
 
@@ -477,6 +490,25 @@ def optionBranch (flag : UInt64) : UInt64 :=
   match found with
   | none => 11
   | some value => value + 1
+
+def optionIncrementHelper (x : UInt64) : Option UInt64 :=
+  if x == 0 then none else some (x + 1)
+
+def optionHelperResult : UInt64 :=
+  match optionIncrementHelper 5 with
+  | some value => value
+  | none => 0
+
+def optionHelperNone : UInt64 :=
+  match optionIncrementHelper 0 with
+  | some value => value
+  | none => 9
+
+def optionParamGetDHelper (value : Option UInt64) : UInt64 :=
+  value.getD 9
+
+def optionHelperParam : UInt64 :=
+  optionParamGetDHelper (some 3)
 
 def optionGetDNone : UInt64 :=
   (none : Option UInt64).getD 7

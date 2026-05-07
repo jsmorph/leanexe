@@ -35,7 +35,9 @@ inductive Binding where
 
 structure Context where
   env : Environment
+  root : Name
   names : Array Name
+  inlineStack : List Name
 
 partial def appFnArgsAux (expr : Expr) (args : List Expr) : Expr × List Expr :=
   match expr.consumeMData with
@@ -228,6 +230,12 @@ def supportedLocalType : Ty → Bool
   | .sum .unit payload => supportedLocalType payload
   | _ => false
 
+def supportedInlineFunction? (info : ConstantInfo) : Option Signature :=
+  if info.isUnsafe || info.isPartial then
+    none
+  else
+    functionTypeWith? supportedLocalType supportedLocalType info.type
+
 def pushName (names : List Name) (name : Name) : List Name :=
   if names.contains name then names else names ++ [name]
 
@@ -288,6 +296,12 @@ def functionIndex? (ctx : Context) (name : Name) : Option Nat :=
     else
       none
   loop 0
+
+def localInlineFunction? (ctx : Context) (name : Name) : Bool :=
+  name.getRoot == ctx.root &&
+    match ctx.env.find? name with
+    | some info => (supportedInlineFunction? info).isSome
+    | none => false
 
 def lookupBinding (locals : List Binding) (index : Nat) : Except String Binding :=
   match locals[index]? with
@@ -926,10 +940,9 @@ partial def demandExpr
                           | some (scrutinee, arm) =>
                               demandProductExprArm ctx visiting scrutinee arm
                           | none =>
-                              match functionIndex? ctx primitive with
-                              | some _ =>
+                              if (functionIndex? ctx primitive).isSome || localInlineFunction? ctx primitive then
                                   demandCall ctx visiting primitive args
-                              | none =>
+                              else
                                   match primitiveArgPair? args with
                                   | some (left, right) =>
                                       Demand.always
@@ -1073,9 +1086,10 @@ partial def demandCond
                   | some (scrutinee, arm) =>
                       demandProductCondArm ctx visiting scrutinee arm
                   | none =>
-                      match functionIndex? ctx name with
-                      | some _ => demandCall ctx visiting name args
-                      | none => args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
+                      if (functionIndex? ctx name).isSome || localInlineFunction? ctx name then
+                        demandCall ctx visiting name args
+                      else
+                        args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
       | _ => demandExpr ctx visiting expr
 
 partial def demandProductArmFromBody
@@ -1209,7 +1223,7 @@ partial def demandSummary
   match ctx.env.find? name with
   | none => { mayDemand := [], mustDemand := [], selfMayTrap := true }
   | some info =>
-      match supportedFunction? info with
+      match supportedInlineFunction? info with
       | none => { mayDemand := [], mustDemand := [], selfMayTrap := true }
       | some sig =>
           if containsConstant ``Nat.brecOn info || containsConstant name info then
@@ -1545,8 +1559,16 @@ mutual
                         | some (scrutinee, arm) =>
                             extractProductMatchValueFrom ctx locals nextLocal scrutinee arm
                         | none =>
-                            let exprResult ← extractExprFrom ctx locals nextLocal expr
-                            .ok (.scalar exprResult.fst, exprResult.snd)
+                            match fn.consumeMData with
+                            | .const name _ =>
+                                match ← extractInlineCallValueFrom ctx locals nextLocal name args with
+                                | some valueResult => .ok valueResult
+                                | none =>
+                                    let exprResult ← extractExprFrom ctx locals nextLocal expr
+                                    .ok (.scalar exprResult.fst, exprResult.snd)
+                            | _ =>
+                                let exprResult ← extractExprFrom ctx locals nextLocal expr
+                                .ok (.scalar exprResult.fst, exprResult.snd)
 
   partial def extractUnitArmValueFrom
       (ctx : Context)
@@ -1653,7 +1675,9 @@ mutual
       (name : Name)
       (args : List Expr) :
       Except String (Option (ExtractedValue × Nat)) := do
-    if (functionIndex? ctx name).isNone then
+    if name.getRoot != ctx.root then
+      return none
+    if ctx.inlineStack.contains name then
       return none
     let info ←
       match ctx.env.find? name with
@@ -1662,7 +1686,7 @@ mutual
     if containsConstant ``Nat.brecOn info || containsConstant name info then
       return none
     let sig ←
-      match supportedFunction? info with
+      match supportedInlineFunction? info with
       | some sig => .ok sig
       | none => .error s!"unsupported function type or declaration: {name}"
     if args.length != sig.params.length then
@@ -1677,7 +1701,8 @@ mutual
         | some body => .ok body
         | none => .error s!"definition body does not match function arity: {name}"
       let argBindings := args.reverse.map (fun arg => Binding.thunk locals arg)
-      let result ← extractValueFrom ctx argBindings nextLocal body
+      let inlineCtx := { ctx with inlineStack := name :: ctx.inlineStack }
+      let result ← extractValueFrom inlineCtx argBindings nextLocal body
       .ok (some result)
 
   partial def extractExprFrom
@@ -2690,7 +2715,7 @@ def compileEnvironment (env : Environment) (moduleName entry : Name) : Except St
     | none => .error s!"unsupported function type or declaration: {entry}"
   let (_, namesList) ← collectReachable env moduleName.getRoot entry [] []
   let names := namesList.toArray
-  let ctx : Context := { env := env, names := names }
+  let ctx : Context := { env := env, root := moduleName.getRoot, names := names, inlineStack := [] }
   let mut funcs := #[]
   for name in names do
     let info ←
