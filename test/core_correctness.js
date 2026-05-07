@@ -86,6 +86,7 @@ const accepted = [
   { name: "arrayExtractRead", args: [], expected: 230n },
   { name: "arrayExtractClamps", args: [], expected: 340n },
   { name: "arrayLiteralRead", args: [], expected: 1030n },
+  { name: "arrayGetProof", args: [], expected: 10n },
   { name: "arrayEmptyLiteral", args: [], expected: 1n },
   { name: "arrayEmptyConstructors", args: [], expected: 1n },
   { name: "arrayEmptyCapacitySkipsTrap", args: [], expected: 1n },

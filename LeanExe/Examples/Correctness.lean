@@ -344,6 +344,10 @@ def arrayLiteralRead : UInt64 :=
   else
     0
 
+def arrayGetProof : UInt64 :=
+  let a : Array UInt64 := #[10, 20, 30]
+  a[0]
+
 def arrayEmptyLiteral : UInt64 :=
   let a : Array UInt64 := #[]
   if a.isEmpty then 1 else 0

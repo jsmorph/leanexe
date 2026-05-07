@@ -955,6 +955,8 @@ partial def demandExpr
               | _ => .empty
           | (.const ``Array.get!Internal _, _) => .trap
           | (.const ``GetElem?.getElem! _, _) => .trap
+          | (.const ``GetElem.getElem _, args) =>
+              args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
           | (.const ``Array.back! _, _) => .trap
           | (.const ``Array.getD _, args) =>
               match args.reverse with
@@ -2219,6 +2221,23 @@ mutual
                         let indexResult ← extractExprFrom ctx locals arrayResult.snd index
                         .ok (.arrayGet arrayResult.fst indexResult.fst, indexResult.snd)
                 | _ => .error "unsupported GetElem?.getElem! application"
+            | (.const ``GetElem.getElem _, args) =>
+                match args.reverse with
+                | _proof :: index :: array :: _ =>
+                    match primitiveReceiverType? args with
+                    | some .byteArray =>
+                        let arrayResult ← extractValueFrom ctx locals nextLocal array
+                        let parts ← byteArrayPartsWithLets arrayResult.fst
+                        let indexResult ← extractExprFrom ctx locals arrayResult.snd index
+                        .ok
+                          (wrapExprLets parts.fst
+                            (.byteArrayGet parts.snd.fst parts.snd.snd indexResult.fst),
+                            indexResult.snd)
+                    | _ =>
+                        let arrayResult ← extractExprFrom ctx locals nextLocal array
+                        let indexResult ← extractExprFrom ctx locals arrayResult.snd index
+                        .ok (.arrayGet arrayResult.fst indexResult.fst, indexResult.snd)
+                | _ => .error "unsupported GetElem.getElem application"
             | (.const ``Array.back! _, args) =>
                 match args.reverse with
                 | array :: _ =>
