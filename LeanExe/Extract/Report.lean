@@ -139,12 +139,10 @@ def knownExternal? (name : Name) : Option Classification :=
     some { status := "implemented", reason := "boolean primitive in the generic compiler fragment" }
   else if [``BEq.beq, ``LT.lt, ``LE.le, ``ite].contains name then
     some { status := "implemented", reason := "control, equality, or comparison primitive in the generic compiler fragment" }
-  else if [``Array.replicate, ``Array.get!Internal, ``Array.set!, ``GetElem?.getElem!].contains name then
+  else if [``Array.replicate, ``Array.size, ``Array.get!Internal, ``Array.set!, ``GetElem?.getElem!].contains name then
     some { status := "implemented", reason := "Array UInt64 primitive in the generic compiler fragment" }
   else if [``ByteArray.size, ``ByteArray.get!].contains name then
     some { status := "implemented", reason := "read-only ByteArray primitive in the generic compiler fragment" }
-  else if name == ``Array.size then
-    some { status := "reported", reason := "indexing validity predicate erased by array primitive lowering" }
   else if [``UInt64.toNat, ``UInt8.toNat].contains name then
     some { status := "implemented", reason := "representation-preserving conversion for bounded Nat use" }
   else if [``HAdd.hAdd, ``HSub.hSub, ``HMul.hMul, ``HDiv.hDiv, ``HMod.hMod, ``UInt64.land].contains name then

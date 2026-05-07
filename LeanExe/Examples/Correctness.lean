@@ -75,6 +75,11 @@ def arrayUpdateRead : UInt64 :=
   let c := b.set! 1 (b[0]! + a[0]!)
   c[0]! * (100 : UInt64) + c[1]! * (10 : UInt64) + a[0]!
 
+def arraySizeAfterSet : Nat :=
+  let a := Array.replicate 3 (0 : UInt64)
+  let b := a.set! 1 9
+  b.size
+
 def productArrayAlias : UInt64 :=
   let a := (Array.replicate 2 (0 : UInt64)).set! 0 11
   let pair := (a, a.set! 0 22)
