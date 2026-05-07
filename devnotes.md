@@ -634,3 +634,16 @@ Checks run:
 - [x] `lake build`
 - [x] `lake build LeanExe.Examples.ByteArrayPrograms`
 - [x] `node test/bytearray_alloc.js` returned `checked 14 bytearray allocation cases`.
+
+## 2026-05-06: Array.isEmpty
+
+The extractor now lowers `Array.isEmpty` for `Array UInt64` by reading the array header length and comparing it with zero.  This matches the existing memory layout and avoids requiring source programs to write `a.size == 0`.
+
+`LeanExe.Examples.Correctness.arrayIsEmptyValues` checks both empty and non-empty arrays.
+
+Checks run:
+
+- [x] `lake build`
+- [x] `lake build LeanExe.Examples.Correctness`
+- [x] `node test/core_correctness.js` returned `checked 91 accepted, 13 rejected, and 2 trapped cases`.
+- [x] `env XDG_CACHE_HOME=.lake/build/cache .lake/build/tools/wasmtime-v36.0.9-aarch64-linux/wasmtime --invoke arrayIsEmptyValues .lake/build/core-correctness/arrayIsEmptyValues.wasm` returned `1`.

@@ -611,6 +611,8 @@ partial def demandExpr
           | (.const ``ByteArray.get! _, _) => .trap
           | (.const ``Array.size _, args) =>
               args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
+          | (.const ``Array.isEmpty _, args) =>
+              args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
           | (.const ``Array.push _, args) =>
               args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
           | (.const ``Array.pop _, args) =>
@@ -1112,6 +1114,12 @@ mutual
                     let arrayResult ← extractExprFrom ctx locals nextLocal array
                     .ok (.arraySize arrayResult.fst, arrayResult.snd)
                 | _ => .error "unsupported Array.size application"
+            | (.const ``Array.isEmpty _, args) =>
+                match args.reverse with
+                | array :: _ =>
+                    let arrayResult ← extractExprFrom ctx locals nextLocal array
+                    .ok (boolExpr (.eqU64 (.arraySize arrayResult.fst) (.u64 0)), arrayResult.snd)
+                | _ => .error "unsupported Array.isEmpty application"
             | (.const ``Array.push _, args) =>
                 match args.reverse with
                 | value :: array :: _ =>
@@ -1450,6 +1458,12 @@ mutual
             let leftResult ← extractCondFrom ctx locals nextLocal left
             let rightResult ← extractCondFrom ctx locals leftResult.snd right
             .ok (.and leftResult.fst rightResult.fst, rightResult.snd)
+        | (.const ``Array.isEmpty _, args) =>
+            match args.reverse with
+            | array :: _ =>
+                let arrayResult ← extractExprFrom ctx locals nextLocal array
+                .ok (.eqU64 (.arraySize arrayResult.fst) (.u64 0), arrayResult.snd)
+            | _ => .error "unsupported Array.isEmpty condition"
         | (.const ``ByteArray.isEmpty _, args) =>
             match args with
             | [array] =>
