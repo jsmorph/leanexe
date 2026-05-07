@@ -42,6 +42,8 @@ const accepted = [
   { name: "uint32Complement", args: [], expected: 4294967295n },
   { name: "uint32MinMax", args: [], expected: 4000000030n },
   { name: "uint32Comparisons", args: [], expected: 1n },
+  { name: "uint32DivMod", args: [], expected: 13333333331n },
+  { name: "uint32DivModZero", args: [], expected: 7n },
   { name: "uint32ToUInt64Value", args: [], expected: 4294967296n },
   { name: "uint64ToUInt32Wrap", args: [], expected: 1n },
   { name: "uint8ToUInt32Value", args: [], expected: 256n },
