@@ -46,6 +46,10 @@ def shiftMasking : UInt64 :=
   UInt64.shiftLeft (1 : UInt64) (65 : UInt64) +
     UInt64.shiftRight (8 : UInt64) (65 : UInt64) * (10 : UInt64)
 
+def shiftNotation : UInt64 :=
+  ((1 : UInt64) <<< (65 : UInt64)) +
+    (((8 : UInt64) >>> (65 : UInt64)) * (10 : UInt64))
+
 def uint64OfNatValue (n : Nat) : UInt64 :=
   UInt64.ofNat (n + 1)
 
