@@ -7,6 +7,8 @@ open Lean
 
 namespace LeanExe.Extract.Report
 
+abbrev Ty := LeanExe.IR.Ty
+
 structure Classification where
   status : String
   reason : String
@@ -90,6 +92,24 @@ def typeIsUInt64ToUInt64 (expr : Expr) : Bool :=
       isConstNamed domain ``UInt64 && isConstNamed body ``UInt64
   | _ => false
 
+def tyText : Ty → String
+  | .unit => "Unit"
+  | .bool => "Bool"
+  | .u8 => "UInt8"
+  | .u32 => "UInt32"
+  | .u64 => "UInt64"
+  | .nat => "Nat"
+  | .byteArray => "ByteArray"
+  | .array item => s!"Array {tyText item}"
+  | .product left right => s!"({tyText left} × {tyText right})"
+  | .sum .unit payload => s!"Option {tyText payload}"
+  | .sum left right => s!"Sum {tyText left} {tyText right}"
+
+def signatureText (sig : LeanExe.Extract.Core.Signature) : String :=
+  match sig.params with
+  | [] => tyText sig.result
+  | params => String.intercalate " -> " ((params.map tyText) ++ [tyText sig.result])
+
 partial def hasFunctionDomain (expr : Expr) : Bool :=
   match expr.consumeMData with
   | .forallE _ domain body _ =>
@@ -129,9 +149,17 @@ def knownExternal? (name : Name) : Option Classification :=
     some { status := "rejected", reason := "unsupported effect dependency" }
   else if [``Bool, ``UInt8, ``UInt32, ``UInt64, ``ByteArray, ``Unit].contains name then
     some { status := "implemented", reason := "primitive type in the intended subset" }
+  else if name == ``Unit.unit then
+    some { status := "implemented", reason := "erased Unit value used by supported generated matchers" }
   else if name == ``Array then
     some { status := "implemented", reason := "implemented for Array UInt64 in the generic compiler fragment" }
-  else if [``Nat, ``Option, ``Except, ``String, ``List].contains name then
+  else if name == ``Nat then
+    some { status := "implemented", reason := "bounded Nat type in the generic compiler fragment" }
+  else if name == ``Option then
+    some { status := "implemented", reason := "internal Option values in the generic compiler fragment" }
+  else if name == ``Prod then
+    some { status := "implemented", reason := "internal product values in the generic compiler fragment" }
+  else if [``Except, ``String, ``List].contains name then
     some { status := "reported", reason := "planned type or library type" }
   else if name == ``Eq then
     some { status := "implemented", reason := "implemented for supported scalar equality propositions in the generic compiler fragment" }
@@ -143,12 +171,20 @@ def knownExternal? (name : Name) : Option Classification :=
   else if [``BEq.beq, ``LT.lt, ``LE.le, ``GT.gt, ``GE.ge, ``ite].contains name then
     some { status := "implemented", reason := "control, equality, or comparison primitive in the generic compiler fragment" }
   else if [``Array.replicate, ``Array.size, ``Array.isEmpty, ``Array.push, ``Array.pop,
-      ``Array.get!Internal, ``Array.back!, ``Array.getD, ``Array.set!,
+      ``Array.append, ``Array.extract, ``Array.get!Internal, ``Array.back!, ``Array.getD, ``Array.set!,
       ``GetElem?.getElem!, ``GetElem?.getElem?].contains name then
     some { status := "implemented", reason := "indexing primitive in the generic compiler fragment" }
   else if [``ByteArray.size, ``ByteArray.isEmpty, ``ByteArray.get!].contains name then
     some { status := "implemented", reason := "read-only ByteArray primitive in the generic compiler fragment" }
-  else if [``UInt64.ofNat, ``UInt64.toNat, ``UInt8.ofNat, ``UInt8.toNat].contains name then
+  else if [``Option.casesOn, ``Option.rec, ``Option.none, ``Option.some,
+      ``Option.getD, ``Option.elim, ``Option.map, ``Option.bind,
+      ``Option.isSome, ``Option.isNone].contains name then
+    some { status := "implemented", reason := "internal Option primitive in the generic compiler fragment" }
+  else if [``Prod.mk, ``Prod.fst, ``Prod.snd].contains name then
+    some { status := "implemented", reason := "internal product primitive in the generic compiler fragment" }
+  else if [``UInt64.ofNat, ``UInt64.toNat, ``UInt64.toUInt8, ``UInt64.toUInt32,
+      ``Nat.toUInt64, ``UInt8.ofNat, ``UInt8.toNat, ``UInt8.toUInt32, ``UInt8.toUInt64,
+      ``UInt32.ofNat, ``UInt32.toNat, ``UInt32.toUInt8, ``UInt32.toUInt64].contains name then
     some { status := "implemented", reason := "representation-preserving conversion for bounded Nat use" }
   else if [``HAdd.hAdd, ``HSub.hSub, ``HMul.hMul, ``HDiv.hDiv, ``HMod.hMod,
       ``HAnd.hAnd, ``HOr.hOr, ``HXor.hXor, ``Min.min, ``Max.max,
@@ -161,6 +197,8 @@ def knownExternal? (name : Name) : Option Classification :=
     some { status := "implemented", reason := "implemented for supported decidable comparisons in the generic compiler fragment" }
   else if name == ``Nat.casesOn then
     some { status := "implemented", reason := "implemented for nonrecursive zero/successor Nat matches in the generic compiler fragment" }
+  else if [``Nat.succ, ``Nat.pred].contains name then
+    some { status := "implemented", reason := "bounded Nat primitive in the generic compiler fragment" }
   else if name == ``OfNat.ofNat then
     some { status := "reported", reason := "numeric literal needs target-type resolution" }
   else if (displayName name).contains "inst" then
@@ -268,18 +306,21 @@ def entryShape (env : Environment) (entryName : Name) : String :=
   match env.find? entryName with
   | none => "missing"
   | some info =>
-      if typeIsByteArrayToBool info.type then
-        "ByteArray -> Bool"
-      else if typeIsUInt64ToUInt64 info.type then
-        "UInt64 -> UInt64"
-      else if isConstNamed info.type ``UInt64 then
-        "UInt64"
-      else if infoUsesEffect info then
-        "effectful or effect-dependent"
-      else if hasFunctionDomain info.type then
-        "higher-order"
-      else
-        "unsupported or unclassified"
+      match LeanExe.Extract.Core.entryFunctionType? info.type with
+      | some sig => signatureText sig
+      | none =>
+          if typeIsByteArrayToBool info.type then
+            "ByteArray -> Bool"
+          else if typeIsUInt64ToUInt64 info.type then
+            "UInt64 -> UInt64"
+          else if isConstNamed info.type ``UInt64 then
+            "UInt64"
+          else if infoUsesEffect info then
+            "effectful or effect-dependent"
+          else if hasFunctionDomain info.type then
+            "higher-order"
+          else
+            "unsupported or unclassified"
 
 def compileStatus (env : Environment) (moduleName entryName : Name) : String :=
   if entryName == ``LeanExe.Examples.AsciiDigits.validate then
