@@ -628,6 +628,24 @@ def natMatcherArgs? (env : Environment) (fn : Expr) (args : List Expr) :
         none
   | _ => none
 
+def productMatcherArgs? (env : Environment) (fn : Expr) (args : List Expr) :
+    Option (Expr × Expr) :=
+  match fn.consumeMData with
+  | .const name _ =>
+      if name == ``Prod.casesOn then
+        match args.reverse with
+        | arm :: scrutinee :: _ => some (scrutinee, arm)
+        | _ => none
+      else if name == ``Prod.rec then
+        match args.reverse with
+        | scrutinee :: arm :: _ => some (scrutinee, arm)
+        | _ => none
+      else
+        match generatedMatcherScrutineeType? env name, args with
+        | some (.product _ _), [_motive, scrutinee, arm] => some (scrutinee, arm)
+        | _, _ => none
+  | _ => none
+
 def insertNat (value : Nat) (items : List Nat) : List Nat :=
   if items.contains value then items else value :: items
 
@@ -864,19 +882,23 @@ partial def demandExpr
                             (demandUnitExprArm ctx visiting zeroArm)
                             (demandNatSuccExprArm ctx visiting succArm)
                       | none =>
-                          match functionIndex? ctx primitive with
-                          | some _ =>
-                              demandCall ctx visiting primitive args
+                          match productMatcherArgs? ctx.env (.const primitive []) args with
+                          | some (scrutinee, arm) =>
+                              demandProductExprArm ctx visiting scrutinee arm
                           | none =>
-                              match primitiveArgPair? args with
-                              | some (left, right) =>
-                                  Demand.always
-                                    (demandExpr ctx visiting left)
-                                    (demandExpr ctx visiting right)
+                              match functionIndex? ctx primitive with
+                              | some _ =>
+                                  demandCall ctx visiting primitive args
                               | none =>
-                                  args.foldl
-                                    (fun acc arg => Demand.always acc (demandExpr ctx visiting arg))
-                                    .empty
+                                  match primitiveArgPair? args with
+                                  | some (left, right) =>
+                                      Demand.always
+                                        (demandExpr ctx visiting left)
+                                        (demandExpr ctx visiting right)
+                                  | none =>
+                                      args.foldl
+                                        (fun acc arg => Demand.always acc (demandExpr ctx visiting arg))
+                                        .empty
           | (fn, args) =>
               (fn :: args).foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
 
@@ -1007,10 +1029,59 @@ partial def demandCond
                     (demandUnitCondArm ctx visiting zeroArm)
                     (demandNatSuccCondArm ctx visiting succArm)
               | none =>
-                  match functionIndex? ctx name with
-                  | some _ => demandCall ctx visiting name args
-                  | none => args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
+                  match productMatcherArgs? ctx.env (.const name []) args with
+                  | some (scrutinee, arm) =>
+                      demandProductCondArm ctx visiting scrutinee arm
+                  | none =>
+                      match functionIndex? ctx name with
+                      | some _ => demandCall ctx visiting name args
+                      | none => args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
       | _ => demandExpr ctx visiting expr
+
+partial def demandProductArmFromBody
+    (ctx : Context)
+    (visiting : List Name)
+    (scrutinee : Expr)
+    (bodyDemand : Demand) : Demand :=
+  let leftMay := bodyDemand.may.contains 1
+  let rightMay := bodyDemand.may.contains 0
+  let leftMust := bodyDemand.must.contains 1
+  let rightMust := bodyDemand.must.contains 0
+  let outer := decDemand (decDemand bodyDemand)
+  let leftDemand := demandProductField ctx visiting 0 scrutinee
+  let rightDemand := demandProductField ctx visiting 1 scrutinee
+  {
+    may :=
+      unionNat outer.may
+        (unionNat
+          (if leftMay then leftDemand.may else [])
+          (if rightMay then rightDemand.may else [])),
+    must :=
+      unionNat outer.must
+        (unionNat
+          (if leftMust then leftDemand.must else [])
+          (if rightMust then rightDemand.must else [])),
+    mayTrap :=
+      outer.mayTrap ||
+        (leftMay && leftDemand.mayTrap) ||
+        (rightMay && rightDemand.mayTrap)
+  }
+
+partial def demandProductExprArm
+    (ctx : Context)
+    (visiting : List Name)
+    (scrutinee arm : Expr) : Demand :=
+  match collectLambdas arm 2 with
+  | some body => demandProductArmFromBody ctx visiting scrutinee (demandExpr ctx visiting body)
+  | none => .empty
+
+partial def demandProductCondArm
+    (ctx : Context)
+    (visiting : List Name)
+    (scrutinee arm : Expr) : Demand :=
+  match collectLambdas arm 2 with
+  | some body => demandProductArmFromBody ctx visiting scrutinee (demandCond ctx visiting body)
+  | none => .empty
 
 partial def demandCall
     (ctx : Context)
@@ -1389,8 +1460,12 @@ mutual
                     | some (scrutinee, zeroArm, succArm) =>
                         extractNatMatchValueFrom ctx locals nextLocal scrutinee zeroArm succArm
                     | none =>
-                        let exprResult ← extractExprFrom ctx locals nextLocal expr
-                        .ok (.scalar exprResult.fst, exprResult.snd)
+                        match productMatcherArgs? ctx.env fn args with
+                        | some (scrutinee, arm) =>
+                            extractProductMatchValueFrom ctx locals nextLocal scrutinee arm
+                        | none =>
+                            let exprResult ← extractExprFrom ctx locals nextLocal expr
+                            .ok (.scalar exprResult.fst, exprResult.snd)
 
   partial def extractUnitArmValueFrom
       (ctx : Context)
@@ -1452,6 +1527,21 @@ mutual
       (.letE scrutineeSlot scrutineeResult.fst
         (← valueIte (.eqU64 (.local scrutineeSlot) (.u64 0)) zeroResult.fst succResult.fst),
         succResult.snd)
+
+  partial def extractProductMatchValueFrom
+      (ctx : Context)
+      (locals : List Binding)
+      (nextLocal : Nat)
+      (scrutinee arm : Expr) :
+      Except String (ExtractedValue × Nat) := do
+    let scrutineeResult ← extractValueFrom ctx locals nextLocal scrutinee
+    let leftValue ← productField 0 scrutineeResult.fst
+    let rightValue ← productField 1 scrutineeResult.fst
+    let body ←
+      match collectLambdas arm 2 with
+      | some body => .ok body
+      | none => .error "unsupported product matcher arm"
+    extractValueFrom ctx (.value rightValue :: .value leftValue :: locals) scrutineeResult.snd body
 
   partial def extractInlineCallValueFrom
       (ctx : Context)
@@ -1852,7 +1942,13 @@ mutual
                               extractNatMatchValueFrom ctx locals nextLocal scrutinee zeroArm succArm
                             .ok (← scalarValue valueResult.fst, valueResult.snd)
                         | none =>
-                            extractPrimitiveApplicationFrom ctx locals nextLocal primitive args
+                            match productMatcherArgs? ctx.env (.const primitive []) args with
+                            | some (scrutinee, arm) =>
+                                let valueResult ←
+                                  extractProductMatchValueFrom ctx locals nextLocal scrutinee arm
+                                .ok (← scalarValue valueResult.fst, valueResult.snd)
+                            | none =>
+                                extractPrimitiveApplicationFrom ctx locals nextLocal primitive args
             | (fn, _) => .error s!"unsupported expression: {fn}"
 
   partial def extractPrimitiveApplicationFrom
@@ -2195,22 +2291,27 @@ mutual
                     let exprResult ← extractExprFrom ctx locals nextLocal expr
                     .ok (boolCond exprResult.fst, exprResult.snd)
                 | none =>
-                    match ← extractInlineCallValueFrom ctx locals nextLocal name args with
-                    | some valueResult => .ok (boolCond (← scalarValue valueResult.fst), valueResult.snd)
+                    match productMatcherArgs? ctx.env (.const name []) args with
+                    | some _ =>
+                        let exprResult ← extractExprFrom ctx locals nextLocal expr
+                        .ok (boolCond exprResult.fst, exprResult.snd)
                     | none =>
-                        match functionIndex? ctx name with
-                        | some index =>
-                            strictRecursiveCallCheck ctx name args
-                            let sig ←
-                              match ctx.env.find? name with
-                              | some info =>
-                                  match supportedFunction? info with
-                                  | some sig => .ok sig
-                                  | none => .error s!"unsupported function type or declaration: {name}"
-                              | none => .error s!"declaration disappeared during extraction: {name}"
-                            let argsResult ← extractCallArgsFrom ctx locals nextLocal sig.params args
-                            .ok (boolCond (.call index argsResult.fst), argsResult.snd)
-                        | none => .error s!"unsupported condition: {expr}"
+                        match ← extractInlineCallValueFrom ctx locals nextLocal name args with
+                        | some valueResult => .ok (boolCond (← scalarValue valueResult.fst), valueResult.snd)
+                        | none =>
+                            match functionIndex? ctx name with
+                            | some index =>
+                                strictRecursiveCallCheck ctx name args
+                                let sig ←
+                                  match ctx.env.find? name with
+                                  | some info =>
+                                      match supportedFunction? info with
+                                      | some sig => .ok sig
+                                      | none => .error s!"unsupported function type or declaration: {name}"
+                                  | none => .error s!"declaration disappeared during extraction: {name}"
+                                let argsResult ← extractCallArgsFrom ctx locals nextLocal sig.params args
+                                .ok (boolCond (.call index argsResult.fst), argsResult.snd)
+                            | none => .error s!"unsupported condition: {expr}"
         | _ => .error s!"unsupported condition: {expr}"
 
   partial def extractExprListFrom
