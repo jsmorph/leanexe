@@ -207,6 +207,8 @@ def emitU64Op : LeanExe.IR.U64Op → List UInt8
   | .bitAnd => ofNats [131]
   | .bitOr => ofNats [132]
   | .bitXor => ofNats [133]
+  | .shiftLeft => ofNats [134]
+  | .shiftRight => ofNats [136]
 
 def coreGlobalSection : List UInt8 :=
   wasmSection 6 <| vec [
@@ -744,6 +746,8 @@ mutual
     | .u64Bin .bitAnd left right => exprWatLines scratch left ++ exprWatLines scratch right ++ ["i64.and"]
     | .u64Bin .bitOr left right => exprWatLines scratch left ++ exprWatLines scratch right ++ ["i64.or"]
     | .u64Bin .bitXor left right => exprWatLines scratch left ++ exprWatLines scratch right ++ ["i64.xor"]
+    | .u64Bin .shiftLeft left right => exprWatLines scratch left ++ exprWatLines scratch right ++ ["i64.shl"]
+    | .u64Bin .shiftRight left right => exprWatLines scratch left ++ exprWatLines scratch right ++ ["i64.shr_u"]
     | .ite cond thenValue elseValue =>
         condWatLines scratch cond ++
           ["if (result i64)"] ++
