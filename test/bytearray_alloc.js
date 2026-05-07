@@ -93,8 +93,25 @@ async function main() {
     }
   }
 
+  const firstByteLowNibble = await instantiate("firstByteLowNibble");
+  const firstByteLowNibbleCases = [
+    { input: new Uint8Array([]), expected: 0n },
+    { input: new Uint8Array([0xab]), expected: 11n },
+    { input: new Uint8Array([0xf0]), expected: 0n },
+  ];
+
+  for (const testCase of firstByteLowNibbleCases) {
+    const actual = callByteArray(firstByteLowNibble, testCase.input);
+    if (actual !== testCase.expected) {
+      throw new Error(`firstByteLowNibble: expected ${testCase.expected}, got ${actual}`);
+    }
+  }
+
   const total =
-    firstBytePlusArrayCases.length + firstByteIsStarCases.length + firstByteNextIsZeroCases.length;
+    firstBytePlusArrayCases.length +
+    firstByteIsStarCases.length +
+    firstByteNextIsZeroCases.length +
+    firstByteLowNibbleCases.length;
   process.stdout.write(`checked ${total} bytearray allocation cases\n`);
 }
 

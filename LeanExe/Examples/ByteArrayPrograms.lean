@@ -23,4 +23,10 @@ def firstByteNextIsZero (input : ByteArray) : Bool :=
   else
     nextByte (ByteArray.get! input 0) == (0 : UInt8)
 
+def firstByteLowNibble (input : ByteArray) : Nat :=
+  if input.size == 0 then
+    0
+  else
+    ((ByteArray.get! input 0) &&& (15 : UInt8)).toNat
+
 end LeanExe.Examples.ByteArrayPrograms
