@@ -28,6 +28,7 @@ const accepted = [
   { name: "productBranch", args: [1n], expected: 34n },
   { name: "arrayUpdateRead", args: [], expected: 110n },
   { name: "arraySizeAfterSet", args: [], expected: 3n },
+  { name: "arrayPushRead", args: [], expected: 507n },
   { name: "productArrayAlias", args: [], expected: 2211n },
   { name: "recLetDemo", args: [], expected: 518n },
   { name: "recExitDemo", args: [], expected: 314n },
