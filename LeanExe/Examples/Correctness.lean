@@ -18,6 +18,12 @@ def overflow : UInt64 :=
 def underflow : UInt64 :=
   (0 : UInt64) - 1
 
+def natSubSaturates : Nat :=
+  (0 : Nat) - 1
+
+def natSubNormal : Nat :=
+  (5 : Nat) - 3
+
 def bitwiseOrXor : UInt64 :=
   UInt64.xor (UInt64.lor (10 : UInt64) (12 : UInt64)) (UInt64.land (10 : UInt64) (12 : UInt64))
 

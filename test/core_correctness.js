@@ -15,6 +15,8 @@ const accepted = [
   { name: "modByZero", args: [], expected: 5n },
   { name: "overflow", args: [], expected: 0n },
   { name: "underflow", args: [], expected: 18446744073709551615n },
+  { name: "natSubSaturates", args: [], expected: 0n },
+  { name: "natSubNormal", args: [], expected: 2n },
   { name: "bitwiseOrXor", args: [], expected: 6n },
   { name: "shiftMasking", args: [], expected: 42n },
   { name: "nestedShadow", args: [3n], expected: 64n },
