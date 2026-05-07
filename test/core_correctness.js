@@ -20,6 +20,7 @@ const accepted = [
   { name: "natAddNormal", args: [], expected: 8n },
   { name: "natMulNormal", args: [], expected: 42n },
   { name: "bitwiseOrXor", args: [], expected: 6n },
+  { name: "bitwiseNotation", args: [], expected: 6n },
   { name: "shiftMasking", args: [], expected: 42n },
   { name: "uint64OfNatValue", args: [41n], expected: 42n },
   { name: "uint64OfHugeNat", args: [], expected: 0n },
