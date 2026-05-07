@@ -290,6 +290,18 @@ def decideNatLt (x : Nat) : UInt64 :=
 def decideUInt64Ge (x : UInt64) : Bool :=
   decide (x >= 3)
 
+def propEqNat (x : Nat) : UInt64 :=
+  if x = 3 then 1 else 2
+
+def decideEqUInt64 (x : UInt64) : Bool :=
+  decide (x = 3)
+
+def propEqBoolSkipsTrap : UInt64 :=
+  if (true || ((Array.replicate 1 (0 : UInt64))[5]! == 0)) = true then
+    1
+  else
+    0
+
 def rejectProductReturn : UInt64 × UInt64 :=
   let pair := ((1 : UInt64), (2 : UInt64))
   pair

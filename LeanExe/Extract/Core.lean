@@ -303,6 +303,13 @@ def boolCond (expr : IRExpr) : IRCond :=
 def u8WrapExpr (expr : IRExpr) : IRExpr :=
   .u64Bin .bitAnd expr (.u64 255)
 
+def supportedEqType : Ty → Bool
+  | .bool => true
+  | .u8 => true
+  | .u64 => true
+  | .nat => true
+  | _ => false
+
 def scalarValue (value : ExtractedValue) : Except String IRExpr :=
   match value with
   | .scalar expr => .ok expr
@@ -662,7 +669,14 @@ partial def demandCond
   | .const ``Bool.false _ => .empty
   | _ =>
       match appFnArgs expr with
-      | (.const ``Eq _, [_ty, value, _truth]) => demandCond ctx visiting value
+      | (.const ``Eq _, [ty, left, right]) =>
+          match typeAtom? ty with
+          | some eqTy =>
+              if supportedEqType eqTy then
+                Demand.always (demandExpr ctx visiting left) (demandExpr ctx visiting right)
+              else
+                .empty
+          | none => .empty
       | (.const ``Decidable.decide _, [prop, _inst]) => demandCond ctx visiting prop
       | (.const ``BEq.beq _, args) =>
           match primitiveArgPair? args with
@@ -1262,11 +1276,16 @@ mutual
     | .const ``Bool.false _ => .ok (.false, nextLocal)
     | _ =>
         match appFnArgs expr with
-        | (.const ``Eq _, [ty, value, truth]) =>
-            if isConst ``Bool ty && isConst ``Bool.true truth then
-              extractCondFrom ctx locals nextLocal value
-            else
-              .error "unsupported equality proposition in condition"
+        | (.const ``Eq _, [ty, left, right]) =>
+            match typeAtom? ty with
+            | some eqTy =>
+                if supportedEqType eqTy then
+                  let leftResult ← extractExprFrom ctx locals nextLocal left
+                  let rightResult ← extractExprFrom ctx locals leftResult.snd right
+                  .ok (.eqU64 leftResult.fst rightResult.fst, rightResult.snd)
+                else
+                  .error "unsupported equality proposition in condition"
+            | none => .error "unsupported equality proposition in condition"
         | (.const ``Decidable.decide _, [prop, _inst]) =>
             extractCondFrom ctx locals nextLocal prop
         | (.const ``Bool.casesOn _, _) =>
