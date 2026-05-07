@@ -501,6 +501,21 @@ def optionMapResultType? (args : List Expr) : Option Ty :=
   | _sourceTy :: resultTy :: _ => typeAtom? resultTy
   | _ => none
 
+def optionOrElseArgs? (fn : Expr) (args : List Expr) : Option (Expr × Expr) :=
+  match fn.consumeMData with
+  | .const name _ =>
+      if name == ``Option.orElse then
+        match args.reverse with
+        | fallback :: optionValue :: _ => some (optionValue, fallback)
+        | _ => none
+      else if name == ``HOrElse.hOrElse then
+        match primitiveResultType? args, args.reverse with
+        | some (.sum .unit _), fallback :: optionValue :: _ => some (optionValue, fallback)
+        | _, _ => none
+      else
+        none
+  | _ => none
+
 partial def listLiteralItems? (expr : Expr) : Option (Ty × List Expr) :=
   match appFnArgs expr with
   | (.const ``List.nil _, [itemTy]) =>
@@ -826,6 +841,23 @@ partial def demandExpr
                   let defaultDemand := demandExpr ctx visiting defaultValue
                   Demand.branch (Demand.always arrayDemand indexDemand) .empty defaultDemand
               | _ => .empty
+          | (.const ``Option.orElse _, args) =>
+              match optionOrElseArgs? (.const ``Option.orElse []) args with
+              | some (optionValue, fallback) =>
+                  Demand.branch
+                    (demandExpr ctx visiting optionValue)
+                    (demandUnitExprArm ctx visiting fallback)
+                    .empty
+              | none => .empty
+          | (.const ``HOrElse.hOrElse _, args) =>
+              match optionOrElseArgs? (.const ``HOrElse.hOrElse []) args with
+              | some (optionValue, fallback) =>
+                  Demand.branch
+                    (demandExpr ctx visiting optionValue)
+                    (demandUnitExprArm ctx visiting fallback)
+                    .empty
+              | none =>
+                  args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
           | (.const ``Option.getD _, args) =>
               match args.reverse with
               | defaultValue :: optionValue :: _ =>
@@ -1266,6 +1298,16 @@ mutual
                     (← valueIte (.eqU64 tag (.u64 0)) defaultResult.fst payload),
                     defaultResult.snd)
             | _ => .error "unsupported Option.getD application"
+        | (.const ``Option.orElse _, args) =>
+            match optionOrElseArgs? (.const ``Option.orElse []) args with
+            | some (optionValue, fallback) =>
+                extractOptionOrElseValueFrom ctx locals nextLocal optionValue fallback
+            | none => .error "unsupported Option.orElse application"
+        | (.const ``HOrElse.hOrElse _, args) =>
+            match optionOrElseArgs? (.const ``HOrElse.hOrElse []) args with
+            | some (optionValue, fallback) =>
+                extractOptionOrElseValueFrom ctx locals nextLocal optionValue fallback
+            | none => .error "unsupported HOrElse.hOrElse application"
         | (.const ``Option.elim _, args) =>
             match args.reverse with
             | someArm :: defaultValue :: optionValue :: _ =>
@@ -1504,6 +1546,28 @@ mutual
       (wrapValueLets lets
         (← valueIte (.eqU64 tag (.u64 0)) noneResult.fst someResult.fst),
         someResult.snd)
+
+  partial def extractOptionOrElseValueFrom
+      (ctx : Context)
+      (locals : List Binding)
+      (nextLocal : Nat)
+      (optionValue fallback : Expr) :
+      Except String (ExtractedValue × Nat) := do
+    let optionResult ← extractValueFrom ctx locals nextLocal optionValue
+    let parts ← optionPartsWithLets optionResult.fst
+    let lets := parts.fst
+    let tag := parts.snd.fst
+    let payload := parts.snd.snd
+    let fallbackBody ←
+      match collectLambdas fallback 1 with
+      | some body => .ok body
+      | none => .error "unsupported Option.orElse fallback"
+    let fallbackResult ←
+      extractValueFrom ctx (.value (.scalar (.u64 0)) :: locals) optionResult.snd fallbackBody
+    .ok
+      (wrapValueLets lets
+        (← valueIte (.eqU64 tag (.u64 0)) fallbackResult.fst (.option tag payload)),
+        fallbackResult.snd)
 
   partial def extractNatMatchValueFrom
       (ctx : Context)
