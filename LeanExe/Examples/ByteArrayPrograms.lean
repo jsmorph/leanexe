@@ -14,4 +14,13 @@ def firstByteIsStar (input : ByteArray) : Bool :=
     let b : UInt8 := ByteArray.get! input 0
     b == (42 : UInt8)
 
+def nextByte (b : UInt8) : UInt8 :=
+  UInt8.ofNat (b.toNat + 1)
+
+def firstByteNextIsZero (input : ByteArray) : Bool :=
+  if input.size == 0 then
+    false
+  else
+    nextByte (ByteArray.get! input 0) == (0 : UInt8)
+
 end LeanExe.Examples.ByteArrayPrograms

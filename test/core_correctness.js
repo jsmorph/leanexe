@@ -85,6 +85,14 @@ const rejected = [
     message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectByteArrayReturn",
   },
   {
+    name: "rejectUInt8Param",
+    message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectUInt8Param",
+  },
+  {
+    name: "rejectUInt8Return",
+    message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectUInt8Return",
+  },
+  {
     name: "alloc",
     message: "entry export name is reserved by the runtime ABI: alloc",
   },

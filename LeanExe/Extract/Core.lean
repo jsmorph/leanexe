@@ -144,6 +144,21 @@ def supportedParamAbiType : Ty → Bool
 def supportedResultAbiType : Ty → Bool :=
   supportedAbiType
 
+def supportedInternalValueType : Ty → Bool
+  | .bool => true
+  | .u8 => true
+  | .u64 => true
+  | .nat => true
+  | .array .u64 => true
+  | _ => false
+
+def supportedInternalParamType : Ty → Bool
+  | .byteArray => true
+  | ty => supportedInternalValueType ty
+
+def supportedInternalResultType : Ty → Bool :=
+  supportedInternalValueType
+
 def abiSlots : Ty → Nat
   | .byteArray => 2
   | _ => 1
@@ -158,19 +173,33 @@ partial def peelForall (expr : Expr) : List Expr × Expr :=
       (domain :: rest.fst, rest.snd)
   | other => ([], other)
 
-def functionType? (type : Expr) : Option Signature :=
+def functionTypeWith?
+    (paramSupported resultSupported : Ty → Bool)
+    (type : Expr) : Option Signature :=
   let parts := peelForall type
   match typeAtom? parts.snd with
   | some result =>
       let params? := parts.fst.mapM typeAtom?
       match params? with
       | some params =>
-          if supportedResultAbiType result && params.all supportedParamAbiType then
+          if resultSupported result && params.all paramSupported then
             some { params := params, result := result }
           else
             none
       | none => none
   | none => none
+
+def entryFunctionType? (type : Expr) : Option Signature :=
+  functionTypeWith? supportedParamAbiType supportedResultAbiType type
+
+def functionType? (type : Expr) : Option Signature :=
+  functionTypeWith? supportedInternalParamType supportedInternalResultType type
+
+def supportedEntryFunction? (info : ConstantInfo) : Option Signature :=
+  if info.isUnsafe || info.isPartial then
+    none
+  else
+    entryFunctionType? info.type
 
 def supportedFunction? (info : ConstantInfo) : Option Signature :=
   if info.isUnsafe || info.isPartial then
@@ -307,6 +336,7 @@ def optionParts (value : ExtractedValue) : Except String (IRExpr × ExtractedVal
 
 partial def defaultValue : Ty → Except String ExtractedValue
   | .bool => .ok (.scalar (.u64 0))
+  | .u8 => .ok (.scalar (.u64 0))
   | .u64 => .ok (.scalar (.u64 0))
   | .nat => .ok (.scalar (.u64 0))
   | .byteArray => .ok (.byteArray (.u64 0) (.u64 0))
@@ -338,6 +368,7 @@ partial def valueIte
 def flattenAbiValue (ty : Ty) (value : ExtractedValue) : Except String (List IRExpr) :=
   match ty with
   | .bool => scalarValue value |>.map (fun expr => [expr])
+  | .u8 => scalarValue value |>.map (fun expr => [expr])
   | .u64 => scalarValue value |>.map (fun expr => [expr])
   | .nat => scalarValue value |>.map (fun expr => [expr])
   | .array .u64 => scalarValue value |>.map (fun expr => [expr])
@@ -1443,6 +1474,14 @@ def extractFunction
   | _ => extractPlainFunc ctx name sig.params value exportName
 
 def compileEnvironment (env : Environment) (moduleName entry : Name) : Except String IRModule := do
+  let entryInfo ←
+    match env.find? entry with
+    | some info => .ok info
+    | none => .error s!"entry not found: {entry}"
+  let _entrySig ←
+    match supportedEntryFunction? entryInfo with
+    | some sig => .ok sig
+    | none => .error s!"unsupported function type or declaration: {entry}"
   let (_, namesList) ← collectReachable env moduleName.getRoot entry [] []
   let names := namesList.toArray
   let ctx : Context := { env := env, names := names }
@@ -1453,9 +1492,14 @@ def compileEnvironment (env : Environment) (moduleName entry : Name) : Except St
       | some info => .ok info
       | none => .error s!"declaration disappeared during extraction: {name}"
     let sig ←
-      match supportedFunction? info with
-      | some sig => .ok sig
-      | none => .error s!"unsupported function type or declaration: {name}"
+      if name == entry then
+        match supportedEntryFunction? info with
+        | some sig => .ok sig
+        | none => .error s!"unsupported function type or declaration: {name}"
+      else
+        match supportedFunction? info with
+        | some sig => .ok sig
+        | none => .error s!"unsupported function type or declaration: {name}"
     funcs := funcs.push (← extractFunction ctx entry name info sig)
   .ok { funcs := funcs }
 
