@@ -87,6 +87,15 @@ def constNatValue? (env : Environment) (name : Name) : Option Nat :=
       | none => none
       | some value => ofNat? ``Nat value
 
+def runtimeNatLimit : Nat :=
+  2 ^ 64
+
+def boundedNatExpr (value : Nat) : Except String IRExpr :=
+  if value < runtimeNatLimit then
+    .ok (.u64 value)
+  else
+    .error s!"Nat literal exceeds bounded runtime representation: {value}"
+
 partial def typeAtom? (expr : Expr) : Option Ty :=
   if isConst ``UInt64 expr then
     some .u64
@@ -874,15 +883,18 @@ mutual
     | .const ``Bool.false _ => .ok (.u64 0, nextLocal)
     | .const name _ =>
         match constNatValue? ctx.env name with
-        | some value => .ok (.u64 value, nextLocal)
+        | some value => .ok (← boundedNatExpr value, nextLocal)
         | none =>
             match functionIndex? ctx name with
             | some index => .ok (.call index [], nextLocal)
             | none => .error s!"unsupported constant in expression: {name}"
     | _ =>
-        match ofNat? ``UInt64 expr <|> ofNat? ``Nat expr with
+        match ofNat? ``UInt64 expr with
         | some value => .ok (.u64 value, nextLocal)
         | none =>
+          match ofNat? ``Nat expr with
+          | some value => .ok (← boundedNatExpr value, nextLocal)
+          | none =>
             match appFnArgs expr with
             | (.const ``ite _, [ty, condExpr, _, thenExpr, elseExpr]) =>
                 if typeAtom? ty |>.isSome then
