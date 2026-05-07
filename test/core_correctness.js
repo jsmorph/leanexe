@@ -15,6 +15,7 @@ const accepted = [
   { name: "modByZero", args: [], expected: 5n },
   { name: "overflow", args: [], expected: 0n },
   { name: "underflow", args: [], expected: 18446744073709551615n },
+  { name: "bitwiseOrXor", args: [], expected: 6n },
   { name: "nestedShadow", args: [3n], expected: 64n },
   { name: "unusedScalarLetSkipsTrap", args: [], expected: 1n },
   { name: "letUsedOnlyInUnusedProductField", args: [], expected: 7n },

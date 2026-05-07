@@ -1010,6 +1010,10 @@ mutual
                               .ok (.u64Bin .modU leftIR rightIR, rightResult.snd)
                             else if primitive == ``UInt64.land then
                               .ok (.u64Bin .bitAnd leftIR rightIR, rightResult.snd)
+                            else if primitive == ``UInt64.lor then
+                              .ok (.u64Bin .bitOr leftIR rightIR, rightResult.snd)
+                            else if primitive == ``UInt64.xor then
+                              .ok (.u64Bin .bitXor leftIR rightIR, rightResult.snd)
                             else if primitive == ``BEq.beq then
                               .ok (boolExpr (.eqU64 leftIR rightIR), rightResult.snd)
                             else if primitive == ``LT.lt then
