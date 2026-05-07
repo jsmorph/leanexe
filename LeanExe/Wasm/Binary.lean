@@ -208,7 +208,7 @@ def emitU64Op : LeanExe.IR.U64Op → List UInt8
 
 def coreGlobalSection : List UInt8 :=
   wasmSection 6 <| vec [
-    ofNats [126, 1] ++ i64Const 0 ++ ofNats [11]
+    ofNats [126, 1] ++ i64Const 4096 ++ ofNats [11]
   ]
 
 def coreMemorySection : List UInt8 :=
@@ -465,10 +465,12 @@ def typeForFunc (func : Func) : List UInt8 :=
   funcType (List.replicate func.params i64) [i64]
 
 def typeSection (module_ : Module) : List UInt8 :=
-  wasmSection 1 <| vec (module_.funcs.toList.map typeForFunc)
+  wasmSection 1 <| vec (
+    module_.funcs.toList.map typeForFunc ++
+      [funcType [i64] [i64], funcType [] []])
 
 def functionSection (module_ : Module) : List UInt8 :=
-  wasmSection 3 <| u32Vec (List.range module_.funcs.size)
+  wasmSection 3 <| u32Vec (List.range (module_.funcs.size + 2))
 
 def enumerateAux {α : Type} : List α → Nat → List (Nat × α)
   | [], _ => []
@@ -481,10 +483,22 @@ def exportSection (module_ : Module) : List UInt8 :=
   wasmSection 7 <| vec <|
     [exportEntry "memory" 2 0] ++
       (enumerate module_.funcs.toList |>.filterMap fun item =>
-        item.snd.exportName.map (fun exportName => exportEntry exportName 0 item.fst))
+        item.snd.exportName.map (fun exportName => exportEntry exportName 0 item.fst)) ++
+      [exportEntry "alloc" 0 module_.funcs.size,
+        exportEntry "reset" 0 (module_.funcs.size + 1)]
+
+def coreAllocBody : List UInt8 :=
+  body
+    (ofNats [0])
+    (globalGet 0 ++ globalGet 0 ++ localGet 0 ++ ofNats [124] ++ globalSet 0)
+
+def coreResetBody : List UInt8 :=
+  body
+    (ofNats [0])
+    (i64Const 4096 ++ globalSet 0)
 
 def codeSection (module_ : Module) : List UInt8 :=
-  wasmSection 10 <| vec (module_.funcs.toList.map emitFuncBody)
+  wasmSection 10 <| vec (module_.funcs.toList.map emitFuncBody ++ [coreAllocBody, coreResetBody])
 
 def moduleBytes (module_ : Module) : ByteArray :=
   ByteArray.mk <| (ofNats [0, 97, 115, 109, 1, 0, 0, 0]
@@ -699,8 +713,20 @@ def funcWatLines (func : Func) : List String :=
 
 def moduleWat (module_ : Module) : String :=
   String.intercalate "\n" <|
-    ["(module", "  (memory (export \"memory\") 16)", "  (global (mut i64) (i64.const 0))"] ++
+    ["(module", "  (memory (export \"memory\") 16)", "  (global (mut i64) (i64.const 4096))"] ++
       (module_.funcs.toList.flatMap (fun func => indent 2 (funcWatLines func))) ++
+      indent 2 [
+        "(func (export \"alloc\") (param i64) (result i64)",
+        "  global.get 0",
+        "  global.get 0",
+        "  local.get 0",
+        "  i64.add",
+        "  global.set 0",
+        ")",
+        "(func (export \"reset\")",
+        "  i64.const 4096",
+        "  global.set 0",
+        ")"] ++
       [")", ""]
 
 end CoreWasm
