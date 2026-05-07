@@ -73,6 +73,10 @@ const rejected = [
     message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectOptionParam",
   },
   {
+    name: "alloc",
+    message: "entry export name is reserved by the runtime ABI: alloc",
+  },
+  {
     name: "rejectRecursiveIgnoredTrapArg",
     message: "strict call may evaluate an argument not demanded by callee: LeanExe.Examples.Correctness.recIgnoreTrapArgFuel",
   },

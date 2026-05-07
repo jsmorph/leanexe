@@ -1362,6 +1362,9 @@ def shortExportName (name : Name) : String :=
   | part :: _ => part
   | [] => LeanExe.Extract.Env.displayName name
 
+def reservedExportNames : List String :=
+  ["memory", "alloc", "reset"]
+
 def extractFunction
     (ctx : Context)
     (entry name : Name)
@@ -1371,7 +1374,15 @@ def extractFunction
     match info.value? with
     | some value => .ok value
     | none => .error s!"declaration has no executable value: {name}"
-  let exportName := if name == entry then some (shortExportName name) else none
+  let exportName ←
+    if name == entry then
+      let candidate := shortExportName name
+      if reservedExportNames.contains candidate then
+        .error s!"entry export name is reserved by the runtime ABI: {candidate}"
+      else
+        .ok (some candidate)
+    else
+      .ok none
   match sig.params with
   | .nat :: _ =>
       if containsConstant ``Nat.brecOn info then

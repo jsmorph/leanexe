@@ -229,6 +229,9 @@ def rejectOptionParam (value : Option UInt64) : UInt64 :=
   | none => 0
   | some item => item
 
+def alloc : UInt64 :=
+  1
+
 def rejectHigherOrder (f : UInt64 → UInt64) : UInt64 :=
   f 1
 
