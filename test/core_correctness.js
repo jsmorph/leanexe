@@ -19,6 +19,8 @@ const accepted = [
   { name: "natSubNormal", args: [], expected: 2n },
   { name: "natAddNormal", args: [], expected: 8n },
   { name: "natMulNormal", args: [], expected: 42n },
+  { name: "natSuccPred", args: [5n], expected: 10n },
+  { name: "natSuccPred", args: [0n], expected: 1n },
   { name: "bitwiseOrXor", args: [], expected: 6n },
   { name: "bitwiseNotation", args: [], expected: 6n },
   { name: "complementNotation", args: [], expected: 255n },
@@ -185,6 +187,7 @@ const rejected = [
 const trapped = [
   { name: "natAddOverflow", args: [] },
   { name: "natMulOverflow", args: [] },
+  { name: "natSuccOverflow", args: [] },
   { name: "arrayBackEmptyTrap", args: [] },
 ];
 

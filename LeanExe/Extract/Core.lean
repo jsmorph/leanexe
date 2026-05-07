@@ -1441,6 +1441,18 @@ mutual
                         valueResult.snd)
                   | _ => .error s!"unsupported complement expression: {primitive}"
               | _ => .error s!"unsupported complement expression: {primitive}"
+            else if primitive == ``Nat.succ then
+              match args.reverse with
+              | value :: _ =>
+                  let valueResult ← extractExprFrom ctx locals nextLocal value
+                  .ok (.u64Bin .natAdd valueResult.fst (.u64 1), valueResult.snd)
+              | _ => .error "unsupported Nat.succ application"
+            else if primitive == ``Nat.pred then
+              match args.reverse with
+              | value :: _ =>
+                  let valueResult ← extractExprFrom ctx locals nextLocal value
+                  .ok (.u64Bin .natSub valueResult.fst (.u64 1), valueResult.snd)
+              | _ => .error "unsupported Nat.pred application"
             else
               match primitiveArgPair? args with
               | some (left, right) =>

@@ -36,6 +36,12 @@ def natAddOverflow : Nat :=
 def natMulOverflow : Nat :=
   (9223372036854775808 : Nat) * 2
 
+def natSuccPred (x : Nat) : Nat :=
+  Nat.succ x + Nat.pred x
+
+def natSuccOverflow : Nat :=
+  Nat.succ 18446744073709551615
+
 def bitwiseOrXor : UInt64 :=
   UInt64.xor (UInt64.lor (10 : UInt64) (12 : UInt64)) (UInt64.land (10 : UInt64) (12 : UInt64))
 
