@@ -40,6 +40,7 @@ mutual
     | ite (cond : Cond) (thenValue elseValue : Expr)
     | letE (slot : Nat) (value body : Expr)
     | arrayAlloc (cells : Expr)
+    | arrayReplicate (cells value : Expr)
     | arraySize (array : Expr)
     | arrayGet (array index : Expr)
     | arraySet (array index value : Expr)
@@ -111,6 +112,7 @@ mutual
     | .letE slot value body =>
         body.eval module_ (store.set slot (value.eval module_ store))
     | .arrayAlloc _ => 0
+    | .arrayReplicate _ _ => 0
     | .arraySize _ => 0
     | .arrayGet _ _ => 0
     | .arraySet array _ _ => array.eval module_ store
