@@ -81,6 +81,7 @@ const accepted = [
   { name: "idRunCondition", args: [], expected: 1n },
   { name: "idRunBind", args: [], expected: 2n },
   { name: "idRunBindSkipsUnusedTrap", args: [], expected: 7n },
+  { name: "idRunMut", args: [], expected: 2n },
   { name: "arrayUpdateRead", args: [], expected: 110n },
   { name: "arraySizeAfterSet", args: [], expected: 3n },
   { name: "arrayPushRead", args: [], expected: 507n },
