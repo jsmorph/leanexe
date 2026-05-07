@@ -166,6 +166,11 @@ def arrayPopRead : UInt64 :=
   else
     0
 
+def arrayIsEmptyValues : UInt64 :=
+  let empty := Array.replicate 0 (0 : UInt64)
+  let filled := Array.replicate 1 (0 : UInt64)
+  if empty.isEmpty && !filled.isEmpty then 1 else 0
+
 def productArrayAlias : UInt64 :=
   let a := (Array.replicate 2 (0 : UInt64)).set! 0 11
   let pair := (a, a.set! 0 22)
