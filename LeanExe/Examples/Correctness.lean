@@ -510,6 +510,42 @@ def optionParamGetDHelper (value : Option UInt64) : UInt64 :=
 def optionHelperParam : UInt64 :=
   optionParamGetDHelper (some 3)
 
+def exceptOkMatch : UInt64 :=
+  match (Except.ok (7 : UInt64) : Except UInt64 UInt64) with
+  | Except.error code => code
+  | Except.ok value => value + 1
+
+def exceptOkFirstMatch : UInt64 :=
+  match (Except.ok (7 : UInt64) : Except UInt64 UInt64) with
+  | Except.ok value => value + 1
+  | Except.error code => code
+
+def exceptErrorMatch : UInt64 :=
+  match (Except.error (4 : UInt64) : Except UInt64 UInt64) with
+  | Except.error code => code + 10
+  | Except.ok value => value
+
+def exceptErrorSkipsUnusedPayloadTrap : UInt64 :=
+  match (Except.error ((Array.replicate 0 (0 : UInt64)).back!) : Except UInt64 UInt64) with
+  | Except.error _code => 7
+  | Except.ok value => value
+
+def exceptMatchCondition : UInt64 :=
+  if (
+    match (Except.ok (5 : UInt64) : Except UInt64 UInt64) with
+    | Except.error _code => false
+    | Except.ok value => value > 3
+  )
+  then
+    1
+  else
+    0
+
+def exceptProductPayload : UInt64 :=
+  match (Except.ok ((1 : UInt64), (2 : UInt64)) : Except UInt64 (UInt64 × UInt64)) with
+  | Except.error code => code
+  | Except.ok pair => pair.1 * (10 : UInt64) + pair.2
+
 def optionGetDNone : UInt64 :=
   (none : Option UInt64).getD 7
 
@@ -809,6 +845,14 @@ def rejectOptionParam (value : Option UInt64) : UInt64 :=
   match value with
   | none => 0
   | some item => item
+
+def rejectExceptReturn : Except UInt64 UInt64 :=
+  Except.ok 1
+
+def rejectExceptParam (value : Except UInt64 UInt64) : UInt64 :=
+  match value with
+  | Except.error code => code
+  | Except.ok item => item
 
 def rejectUnitReturn : Unit :=
   ()

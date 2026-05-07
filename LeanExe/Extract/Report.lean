@@ -159,7 +159,9 @@ def knownExternal? (name : Name) : Option Classification :=
     some { status := "implemented", reason := "internal Option values in the generic compiler fragment" }
   else if name == ``Prod then
     some { status := "implemented", reason := "internal product values in the generic compiler fragment" }
-  else if [``Except, ``String, ``List].contains name then
+  else if name == ``Except then
+    some { status := "implemented", reason := "internal Except values in the generic compiler fragment" }
+  else if [``String, ``List].contains name then
     some { status := "reported", reason := "planned type or library type" }
   else if name == ``Eq then
     some { status := "implemented", reason := "implemented for supported scalar equality propositions in the generic compiler fragment" }
@@ -181,6 +183,8 @@ def knownExternal? (name : Name) : Option Classification :=
       ``Option.getD, ``Option.orElse, ``Option.elim, ``Option.map, ``Option.filter, ``Option.bind,
       ``Option.isSome, ``Option.isNone].contains name then
     some { status := "implemented", reason := "internal Option primitive in the generic compiler fragment" }
+  else if [``Except.casesOn, ``Except.rec, ``Except.error, ``Except.ok].contains name then
+    some { status := "implemented", reason := "internal Except primitive in the generic compiler fragment" }
   else if name == ``HOrElse.hOrElse then
     some { status := "implemented", reason := "implemented for Option fallback in the generic compiler fragment" }
   else if [``Prod.mk, ``Prod.fst, ``Prod.snd, ``Prod.casesOn, ``Prod.rec].contains name then
