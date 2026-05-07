@@ -345,6 +345,27 @@ def optionMapProduct : UInt64 :=
   | none => 0
   | some pair => pair.1 * (10 : UInt64) + pair.2
 
+def optionBindSome : UInt64 :=
+  match Option.bind (some (5 : UInt64)) (fun value => some (value + 1)) with
+  | none => 0
+  | some value => value
+
+def optionBindNoneSkipsFunctionTrap : UInt64 :=
+  match Option.bind (none : Option UInt64)
+      (fun _value => some ((Array.replicate 0 (0 : UInt64)).back!)) with
+  | none => 7
+  | some value => value
+
+def optionBindFunctionNone : UInt64 :=
+  match Option.bind (some (5 : UInt64)) (fun _value => (none : Option UInt64)) with
+  | none => 9
+  | some value => value
+
+def optionBindProduct : UInt64 :=
+  match Option.bind (some (1 : UInt64)) (fun value => some (value, value + 1)) with
+  | none => 0
+  | some pair => pair.1 * (10 : UInt64) + pair.2
+
 def natComparisons (x : Nat) : UInt64 :=
   if x < 3 then
     10

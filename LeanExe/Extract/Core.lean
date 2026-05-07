@@ -663,6 +663,14 @@ partial def demandExpr
                     .empty
                     (demandOptionSomeArm ctx visiting mapFn)
               | _ => .empty
+          | (.const ``Option.bind _, args) =>
+              match args.reverse with
+              | bindFn :: optionValue :: _ =>
+                  Demand.branch
+                    (demandExpr ctx visiting optionValue)
+                    .empty
+                    (demandOptionSomeArm ctx visiting bindFn)
+              | _ => .empty
           | (.const ``Array.set! _, _) => .trap
           | (.const primitive _, args) =>
               match boolMatcherArgs? ctx.env (.const primitive []) args with
@@ -1007,6 +1015,24 @@ mutual
                   (← valueIte (.eqU64 parts.fst (.u64 0)) nonePayload mapResult.fst),
                   mapResult.snd)
             | _, _ => .error "unsupported Option.map application"
+        | (.const ``Option.bind _, args) =>
+            match args.reverse, optionMapResultType? args with
+            | bindFn :: optionValue :: _, some resultTy =>
+                let optionResult ← extractValueFrom ctx locals nextLocal optionValue
+                let parts ← optionParts optionResult.fst
+                let bindBody ←
+                  match collectLambdas bindFn 1 with
+                  | some body => .ok body
+                  | none => .error "unsupported Option.bind function"
+                let bindResult ←
+                  extractValueFrom ctx (.value parts.snd :: locals) optionResult.snd bindBody
+                let bindParts ← optionParts bindResult.fst
+                let nonePayload ← defaultValue resultTy
+                .ok (.option
+                  (.ite (.eqU64 parts.fst (.u64 0)) (.u64 0) bindParts.fst)
+                  (← valueIte (.eqU64 parts.fst (.u64 0)) nonePayload bindParts.snd),
+                  bindResult.snd)
+            | _, _ => .error "unsupported Option.bind application"
         | (.const ``Bool.casesOn _, args) =>
             match boolMatcherArgs? ctx.env (.const ``Bool.casesOn []) args with
             | some (scrutinee, falseArm, trueArm) =>
