@@ -25,6 +25,8 @@ const accepted = [
   { name: "u8Complement", args: [], expected: 255n },
   { name: "shiftMasking", args: [], expected: 42n },
   { name: "shiftNotation", args: [], expected: 42n },
+  { name: "uint8ShiftNotation", args: [], expected: 184n },
+  { name: "uint8DirectShift", args: [], expected: 2255n },
   { name: "uint64OfNatValue", args: [41n], expected: 42n },
   { name: "uint64OfHugeNat", args: [], expected: 0n },
   { name: "wrappedUInt8Literal", args: [], expected: 44n },

@@ -308,6 +308,9 @@ def boolCond (expr : IRExpr) : IRCond :=
 def u8WrapExpr (expr : IRExpr) : IRExpr :=
   .u64Bin .bitAnd expr (.u64 255)
 
+def u8ShiftAmountExpr (expr : IRExpr) : IRExpr :=
+  .u64Bin .bitAnd expr (.u64 7)
+
 def supportedEqType : Ty → Bool
   | .bool => true
   | .u8 => true
@@ -1361,14 +1364,19 @@ mutual
           .ok (.u64Bin .bitXor leftIR rightIR, rightResult.snd)
       | _ => .error s!"unsupported bitwise xor expression: {primitive}"
     else if primitive == ``HShiftLeft.hShiftLeft then
-      match primitiveResultType? args with
+      match primitiveReceiverType? args with
       | some .u64 =>
           .ok (.u64Bin .shiftLeft leftIR rightIR, rightResult.snd)
+      | some .u8 =>
+          .ok (u8WrapExpr (.u64Bin .shiftLeft leftIR (u8ShiftAmountExpr rightIR)),
+            rightResult.snd)
       | _ => .error s!"unsupported shift-left expression: {primitive}"
     else if primitive == ``HShiftRight.hShiftRight then
-      match primitiveResultType? args with
+      match primitiveReceiverType? args with
       | some .u64 =>
           .ok (.u64Bin .shiftRight leftIR rightIR, rightResult.snd)
+      | some .u8 =>
+          .ok (.u64Bin .shiftRight leftIR (u8ShiftAmountExpr rightIR), rightResult.snd)
       | _ => .error s!"unsupported shift-right expression: {primitive}"
     else if primitive == ``UInt64.land then
       .ok (.u64Bin .bitAnd leftIR rightIR, rightResult.snd)
@@ -1380,6 +1388,11 @@ mutual
       .ok (.u64Bin .shiftLeft leftIR rightIR, rightResult.snd)
     else if primitive == ``UInt64.shiftRight then
       .ok (.u64Bin .shiftRight leftIR rightIR, rightResult.snd)
+    else if primitive == ``UInt8.shiftLeft then
+      .ok (u8WrapExpr (.u64Bin .shiftLeft leftIR (u8ShiftAmountExpr rightIR)),
+        rightResult.snd)
+    else if primitive == ``UInt8.shiftRight then
+      .ok (.u64Bin .shiftRight leftIR (u8ShiftAmountExpr rightIR), rightResult.snd)
     else if primitive == ``BEq.beq then
       .ok (boolExpr (.eqU64 leftIR rightIR), rightResult.snd)
     else if primitive == ``LT.lt then
