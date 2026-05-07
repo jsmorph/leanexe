@@ -132,6 +132,8 @@ const accepted = [
   { name: "exceptHelperResult", args: [], expected: 6n },
   { name: "exceptHelperError", args: [], expected: 9n },
   { name: "exceptHelperParam", args: [], expected: 4n },
+  { name: "exceptToOptionOk", args: [], expected: 6n },
+  { name: "exceptToOptionErrorSkipsPayloadTrap", args: [], expected: 1n },
   { name: "optionGetDNone", args: [], expected: 7n },
   { name: "optionGetDSomeSkipsDefaultTrap", args: [], expected: 5n },
   { name: "optionGetDProduct", args: [], expected: 12n },

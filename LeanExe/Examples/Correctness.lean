@@ -609,6 +609,18 @@ def exceptParamHelper (value : Except UInt64 UInt64) : UInt64 :=
 def exceptHelperParam : UInt64 :=
   exceptParamHelper (Except.ok 3)
 
+def exceptToOptionOk : UInt64 :=
+  match Except.toOption (Except.ok (5 : UInt64) : Except UInt64 UInt64) with
+  | some value => value + 1
+  | none => 0
+
+def exceptToOptionErrorSkipsPayloadTrap : UInt64 :=
+  if (Except.toOption
+      (Except.error ((Array.replicate 0 (0 : UInt64)).back!) : Except UInt64 UInt64)).isNone then
+    1
+  else
+    0
+
 def optionGetDNone : UInt64 :=
   (none : Option UInt64).getD 7
 
