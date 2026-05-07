@@ -745,6 +745,11 @@ partial def demandExpr
                 (demandCond ctx visiting condExpr)
                 (demandExpr ctx visiting thenExpr)
                 (demandExpr ctx visiting elseExpr)
+          | (.const ``dite _, [_ty, condExpr, _, thenArm, elseArm]) =>
+              Demand.branch
+                (demandCond ctx visiting condExpr)
+                (demandUnitExprArm ctx visiting thenArm)
+                (demandUnitExprArm ctx visiting elseArm)
           | (.const ``Decidable.decide _, [prop, _inst]) =>
               demandCond ctx visiting prop
           | (.const ``Prod.fst _, args) =>
@@ -893,6 +898,11 @@ partial def demandCond
                 .empty
           | none => .empty
       | (.const ``Decidable.decide _, [prop, _inst]) => demandCond ctx visiting prop
+      | (.const ``dite _, [_ty, condExpr, _, thenArm, elseArm]) =>
+          Demand.branch
+            (demandCond ctx visiting condExpr)
+            (demandUnitCondArm ctx visiting thenArm)
+            (demandUnitCondArm ctx visiting elseArm)
       | (.const ``And _, [left, right]) =>
           let leftDemand := demandCond ctx visiting left
           let rightDemand := demandCond ctx visiting right
@@ -1299,6 +1309,17 @@ mutual
             | _ =>
                 let exprResult ← extractExprFrom ctx locals nextLocal expr
                 .ok (.scalar exprResult.fst, exprResult.snd)
+        | (.const ``dite _, [ty, condExpr, _, thenArm, elseArm]) =>
+            match typeAtom? ty with
+            | some resultTy =>
+                if supportedLocalType resultTy then
+                  let condResult ← extractCondFrom ctx locals nextLocal condExpr
+                  let thenResult ← extractUnitArmValueFrom ctx locals condResult.snd thenArm
+                  let elseResult ← extractUnitArmValueFrom ctx locals thenResult.snd elseArm
+                  .ok (← valueIte condResult.fst thenResult.fst elseResult.fst, elseResult.snd)
+                else
+                  .error "unsupported dependent-if result type"
+            | none => .error "unsupported dependent-if result type"
         | (fn, args) =>
             match boolMatcherArgs? ctx.env fn args with
             | some (scrutinee, falseArm, trueArm) =>
@@ -1494,6 +1515,9 @@ mutual
                   .ok (.ite condResult.fst thenResult.fst elseResult.fst, elseResult.snd)
                 else
                   .error "unsupported if-result type"
+            | (.const ``dite _, _) =>
+                let valueResult ← extractValueFrom ctx locals nextLocal expr
+                .ok (← scalarValue valueResult.fst, valueResult.snd)
             | (.const ``Bool.or _, _) =>
                 let condResult ← extractCondFrom ctx locals nextLocal expr
                 .ok (boolExpr condResult.fst, condResult.snd)
@@ -1957,6 +1981,9 @@ mutual
             | none => .error "unsupported equality proposition in condition"
         | (.const ``Decidable.decide _, [prop, _inst]) =>
             extractCondFrom ctx locals nextLocal prop
+        | (.const ``dite _, _) =>
+            let valueResult ← extractValueFrom ctx locals nextLocal expr
+            .ok (boolCond (← scalarValue valueResult.fst), valueResult.snd)
         | (.const ``And _, [left, right]) =>
             let leftResult ← extractCondFrom ctx locals nextLocal left
             let rightResult ← extractCondFrom ctx locals leftResult.snd right

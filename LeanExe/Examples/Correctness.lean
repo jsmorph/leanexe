@@ -614,6 +614,29 @@ def propOrSkipsTrap : UInt64 :=
 def propAndSkipsTrap : UInt64 :=
   if False ∧ ((Array.replicate 1 (0 : UInt64))[5]! = 0) then 1 else 0
 
+def dependentIfNat (x : Nat) : UInt64 :=
+  if _h : x < 3 then 1 else 2
+
+def dependentIfSkipsElseTrap : UInt64 :=
+  if _h : (1 : Nat) < 3 then
+    7
+  else
+    (Array.replicate 0 (0 : UInt64)).back!
+
+def dependentIfSkipsThenTrap : UInt64 :=
+  if _h : (3 : Nat) < 1 then
+    (Array.replicate 0 (0 : UInt64)).back!
+  else
+    8
+
+def dependentIfProduct (x : Nat) : UInt64 :=
+  let pair :=
+    if _h : x < 3 then
+      ((1 : UInt64), (2 : UInt64))
+    else
+      ((3 : UInt64), (4 : UInt64))
+  pair.1 * (10 : UInt64) + pair.2
+
 def natMatchZero (x : Nat) : UInt64 :=
   match x with
   | 0 => 10
