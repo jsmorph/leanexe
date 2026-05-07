@@ -261,6 +261,7 @@ mutual
     | .arraySet array index value =>
         6 + max (exprScratch array) (max (exprScratch index) (exprScratch value))
     | .arrayPush array value => 5 + max (exprScratch array) (exprScratch value)
+    | .arrayPop array => 5 + exprScratch array
     | .byteArrayGet ptr len index =>
         3 + max (exprScratch ptr) (max (exprScratch len) (exprScratch index))
     | .call _ args => args.foldl (fun count arg => max count (exprScratch arg)) 0
@@ -393,6 +394,28 @@ mutual
       arrayCellAddress (localGet newLocal) (localGet lenLocal) ++ localGet valueLocal ++ i64Store ++
       localGet newLocal
 
+  partial def emitArrayPop (scratch : Nat) (array : Expr) : List UInt8 :=
+    let arrayLocal := scratch
+    let lenLocal := scratch + 1
+    let newLenLocal := scratch + 2
+    let newLocal := scratch + 3
+    let loopLocal := scratch + 4
+    let childScratch := scratch + 5
+    emitExpr childScratch array ++ localSet arrayLocal ++
+      localGet arrayLocal ++ i32WrapI64 ++ i64Load ++ localSet lenLocal ++
+      localGet lenLocal ++ i64Const 0 ++ ofNats [81] ++
+      ofNats [4, 126] ++
+        localGet arrayLocal ++
+      ofNats [5] ++
+        localGet lenLocal ++ i64Const 1 ++ ofNats [125] ++ localSet newLenLocal ++
+        globalGet 0 ++ localSet newLocal ++
+        localGet newLocal ++ i32WrapI64 ++ localGet newLenLocal ++ i64Store ++
+        globalGet 0 ++ i64Const 8 ++ localGet newLenLocal ++ i64Const 8 ++
+          ofNats [126, 124, 124] ++ globalSet 0 ++
+        emitCopyLoop arrayLocal newLocal newLenLocal loopLocal ++
+        localGet newLocal ++
+      ofNats [11]
+
   partial def emitByteArrayGet (scratch : Nat) (ptr len index : Expr) : List UInt8 :=
     let ptrLocal := scratch
     let lenLocal := scratch + 1
@@ -446,6 +469,7 @@ mutual
     | .arrayGet array index => emitArrayGet scratch array index
     | .arraySet array index value => emitArraySet scratch array index value
     | .arrayPush array value => emitArrayPush scratch array value
+    | .arrayPop array => emitArrayPop scratch array
     | .byteArrayGet ptr len index => emitByteArrayGet scratch ptr len index
     | .call index args => args.flatMap (emitExpr scratch) ++ call index
 
@@ -647,6 +671,29 @@ mutual
       arrayCellAddressWat [s!"local.get {newLocal}"] [s!"local.get {lenLocal}"] ++
       [s!"local.get {valueLocal}", "i64.store align=8", s!"local.get {newLocal}"]
 
+  partial def arrayPopWatLines (scratch : Nat) (array : Expr) : List String :=
+    let arrayLocal := scratch
+    let lenLocal := scratch + 1
+    let newLenLocal := scratch + 2
+    let newLocal := scratch + 3
+    let loopLocal := scratch + 4
+    let childScratch := scratch + 5
+    exprWatLines childScratch array ++ [s!"local.set {arrayLocal}",
+      s!"local.get {arrayLocal}", "i32.wrap_i64", "i64.load align=8", s!"local.set {lenLocal}",
+      s!"local.get {lenLocal}", "i64.const 0", "i64.eq", "if (result i64)"] ++
+      indent 2 [s!"local.get {arrayLocal}"] ++
+      ["else"] ++
+      indent 2 (
+        [s!"local.get {lenLocal}", "i64.const 1", "i64.sub", s!"local.set {newLenLocal}",
+          "global.get 0", s!"local.set {newLocal}",
+          s!"local.get {newLocal}", "i32.wrap_i64", s!"local.get {newLenLocal}",
+          "i64.store align=8",
+          "global.get 0", "i64.const 8", s!"local.get {newLenLocal}", "i64.const 8",
+          "i64.mul", "i64.add", "i64.add", "global.set 0"] ++
+        copyLoopWat arrayLocal newLocal newLenLocal loopLocal ++
+        [s!"local.get {newLocal}"]) ++
+      ["end"]
+
   partial def byteArrayGetWatLines (scratch : Nat) (ptr len index : Expr) : List String :=
     let ptrLocal := scratch
     let lenLocal := scratch + 1
@@ -708,6 +755,7 @@ mutual
     | .arrayGet array index => arrayGetWatLines scratch array index
     | .arraySet array index value => arraySetWatLines scratch array index value
     | .arrayPush array value => arrayPushWatLines scratch array value
+    | .arrayPop array => arrayPopWatLines scratch array
     | .byteArrayGet ptr len index => byteArrayGetWatLines scratch ptr len index
     | .call index args => args.flatMap (exprWatLines scratch) ++ [s!"call {index}"]
 
