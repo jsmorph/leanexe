@@ -589,6 +589,36 @@ def propOrSkipsTrap : UInt64 :=
 def propAndSkipsTrap : UInt64 :=
   if False ∧ ((Array.replicate 1 (0 : UInt64))[5]! = 0) then 1 else 0
 
+def natMatchZero (x : Nat) : UInt64 :=
+  match x with
+  | 0 => 10
+  | _ + 1 => 20
+
+def natMatchSuccFirst (x : Nat) : UInt64 :=
+  match x with
+  | n + 1 => UInt64.ofNat n + 30
+  | 0 => 10
+
+def natMatchZeroSkipsSuccTrap : UInt64 :=
+  match 0 with
+  | 0 => 7
+  | _ + 1 => (Array.replicate 0 (0 : UInt64)).back!
+
+def natMatchSuccSkipsZeroTrap : UInt64 :=
+  match 2 with
+  | 0 => (Array.replicate 0 (0 : UInt64)).back!
+  | n + 1 => UInt64.ofNat n
+
+def natMatchBoolCondition (x : Nat) : UInt64 :=
+  if (match x with | 0 => true | _ + 1 => false) then 1 else 2
+
+def natMatchProduct (x : Nat) : UInt64 :=
+  let pair :=
+    match x with
+    | 0 => ((1 : UInt64), (2 : UInt64))
+    | n + 1 => (UInt64.ofNat n, (9 : UInt64))
+  pair.1 * (10 : UInt64) + pair.2
+
 def natMinMax (x y : Nat) : Nat :=
   min x y * 10 + max x y
 
