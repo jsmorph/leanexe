@@ -1692,22 +1692,16 @@ mutual
             | none => .error "unsupported Bool.casesOn application"
         | (.const ``ite _, [ty, condExpr, _, thenExpr, elseExpr]) =>
             match typeAtom? ty with
-            | some .byteArray =>
-                let condResult ← extractCondFrom ctx locals nextLocal condExpr
-                let thenResult ← extractValueFrom ctx locals condResult.snd thenExpr
-                let elseResult ← extractValueFrom ctx locals thenResult.snd elseExpr
-                .ok (← valueIte condResult.fst thenResult.fst elseResult.fst, elseResult.snd)
-            | some (.product _ _) =>
-                let condResult ← extractCondFrom ctx locals nextLocal condExpr
-                let thenResult ← extractValueFrom ctx locals condResult.snd thenExpr
-                let elseResult ← extractValueFrom ctx locals thenResult.snd elseExpr
-                .ok (← valueIte condResult.fst thenResult.fst elseResult.fst, elseResult.snd)
-            | some (.sum .unit _) =>
-                let condResult ← extractCondFrom ctx locals nextLocal condExpr
-                let thenResult ← extractValueFrom ctx locals condResult.snd thenExpr
-                let elseResult ← extractValueFrom ctx locals thenResult.snd elseExpr
-                .ok (← valueIte condResult.fst thenResult.fst elseResult.fst, elseResult.snd)
-            | _ =>
+            | some resultTy =>
+                if supportedLocalType resultTy then
+                  let condResult ← extractCondFrom ctx locals nextLocal condExpr
+                  let thenResult ← extractValueFrom ctx locals condResult.snd thenExpr
+                  let elseResult ← extractValueFrom ctx locals thenResult.snd elseExpr
+                  .ok (← valueIte condResult.fst thenResult.fst elseResult.fst, elseResult.snd)
+                else
+                  let exprResult ← extractExprFrom ctx locals nextLocal expr
+                  .ok (.scalar exprResult.fst, exprResult.snd)
+            | none =>
                 let exprResult ← extractExprFrom ctx locals nextLocal expr
                 .ok (.scalar exprResult.fst, exprResult.snd)
         | (.const ``dite _, [ty, condExpr, _, thenArm, elseArm]) =>
