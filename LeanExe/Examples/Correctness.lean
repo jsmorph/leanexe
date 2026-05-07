@@ -88,6 +88,13 @@ def arrayPushRead : UInt64 :=
   else
     0
 
+def nonzeroReplicateRead : UInt64 :=
+  let a := Array.replicate 3 (7 : UInt64)
+  if a.size == 3 then
+    a[0]! * (10 : UInt64) + a[2]!
+  else
+    0
+
 def productArrayAlias : UInt64 :=
   let a := (Array.replicate 2 (0 : UInt64)).set! 0 11
   let pair := (a, a.set! 0 22)
@@ -197,9 +204,6 @@ def rejectOptionParam (value : Option UInt64) : UInt64 :=
   match value with
   | none => 0
   | some item => item
-
-def rejectNonzeroReplicate : Array UInt64 :=
-  Array.replicate 2 (7 : UInt64)
 
 def rejectHigherOrder (f : UInt64 → UInt64) : UInt64 :=
   f 1

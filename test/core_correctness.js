@@ -29,6 +29,7 @@ const accepted = [
   { name: "arrayUpdateRead", args: [], expected: 110n },
   { name: "arraySizeAfterSet", args: [], expected: 3n },
   { name: "arrayPushRead", args: [], expected: 507n },
+  { name: "nonzeroReplicateRead", args: [], expected: 77n },
   { name: "productArrayAlias", args: [], expected: 2211n },
   { name: "recLetDemo", args: [], expected: 518n },
   { name: "recExitDemo", args: [], expected: 314n },
@@ -72,10 +73,6 @@ const rejected = [
   {
     name: "rejectRecursiveIgnoredHiddenTrapArg",
     message: "strict call may evaluate an argument not demanded by callee: LeanExe.Examples.Correctness.recIgnoreTrapArgFuel",
-  },
-  {
-    name: "rejectNonzeroReplicate",
-    message: "Array.replicate currently supports only zero-filled UInt64 arrays",
   },
   {
     name: "rejectHigherOrder",

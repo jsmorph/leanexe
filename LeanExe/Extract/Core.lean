@@ -884,11 +884,10 @@ mutual
                 match args.reverse with
                 | value :: cells :: _ =>
                     let valueResult ← extractExprFrom ctx locals nextLocal value
+                    let cellsResult ← extractExprFrom ctx locals valueResult.snd cells
                     match valueResult.fst with
-                    | .u64 0 =>
-                        let cellsResult ← extractExprFrom ctx locals valueResult.snd cells
-                        .ok (.arrayAlloc cellsResult.fst, cellsResult.snd)
-                    | _ => .error "Array.replicate currently supports only zero-filled UInt64 arrays"
+                    | .u64 0 => .ok (.arrayAlloc cellsResult.fst, cellsResult.snd)
+                    | _ => .ok (.arrayReplicate cellsResult.fst valueResult.fst, cellsResult.snd)
                 | _ => .error "unsupported Array.replicate application"
             | (.const ``Array.size _, args) =>
                 match args.reverse with
