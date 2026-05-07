@@ -425,6 +425,20 @@ def optionMapResultType? (args : List Expr) : Option Ty :=
   | _sourceTy :: resultTy :: _ => typeAtom? resultTy
   | _ => none
 
+partial def listLiteralItems? (expr : Expr) : Option (Ty × List Expr) :=
+  match appFnArgs expr with
+  | (.const ``List.nil _, [itemTy]) =>
+      typeAtom? itemTy |>.map (fun ty => (ty, []))
+  | (.const ``List.cons _, [itemTy, head, tail]) =>
+      match typeAtom? itemTy, listLiteralItems? tail with
+      | some ty, some (tailTy, items) =>
+          if ty == tailTy then
+            some (ty, head :: items)
+          else
+            none
+      | _, _ => none
+  | _ => none
+
 def isMatcherName (candidate : Name) : Bool :=
   match candidate with
   | .str _ component => component.startsWith "match_"
@@ -1231,6 +1245,28 @@ mutual
             | (.const ``Bool.not _, _) =>
                 let condResult ← extractCondFrom ctx locals nextLocal expr
                 .ok (boolExpr condResult.fst, condResult.snd)
+            | (.const ``List.toArray _, args) =>
+                match args with
+                | [_itemTy, listExpr] =>
+                    match listLiteralItems? listExpr with
+                    | some (.u64, items) =>
+                        let rec build
+                            (index next : Nat)
+                            (arrayExpr : IRExpr)
+                            (remaining : List Expr) :
+                            Except String (IRExpr × Nat) := do
+                          match remaining with
+                          | [] => .ok (arrayExpr, next)
+                          | item :: rest =>
+                              let itemResult ← extractExprFrom ctx locals next item
+                              build (index + 1) itemResult.snd
+                                (.arraySet arrayExpr (.u64 index) itemResult.fst)
+                                rest
+                        build 0 nextLocal (.arrayAlloc (.u64 items.length)) items
+                    | some (other, _) =>
+                        .error s!"unsupported List.toArray item type: {reprStr other}"
+                    | none => .error "unsupported List.toArray argument"
+                | _ => .error "unsupported List.toArray application"
             | (.const ``Array.replicate _, args) =>
                 match args.reverse with
                 | value :: cells :: _ =>

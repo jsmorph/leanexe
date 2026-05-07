@@ -232,6 +232,17 @@ def arrayExtractClamps : UInt64 :=
   else
     0
 
+def arrayLiteralRead : UInt64 :=
+  let a : Array UInt64 := #[10, 20, 30]
+  if a.size == 3 then
+    a[0]! * (100 : UInt64) + a[2]!
+  else
+    0
+
+def arrayEmptyLiteral : UInt64 :=
+  let a : Array UInt64 := #[]
+  if a.isEmpty then 1 else 0
+
 def arrayIsEmptyValues : UInt64 :=
   let empty := Array.replicate 0 (0 : UInt64)
   let filled := Array.replicate 1 (0 : UInt64)
