@@ -72,6 +72,8 @@ const accepted = [
   { name: "optionGetDNone", args: [], expected: 7n },
   { name: "optionGetDSomeSkipsDefaultTrap", args: [], expected: 5n },
   { name: "optionGetDProduct", args: [], expected: 12n },
+  { name: "optionIsSomeSkipsPayloadTrap", args: [], expected: 1n },
+  { name: "optionIsNoneValues", args: [], expected: 7n },
   { name: "natComparisons", args: [2n], expected: 10n },
   { name: "natComparisons", args: [3n], expected: 20n },
   { name: "natComparisons", args: [6n], expected: 30n },
