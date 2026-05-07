@@ -1645,6 +1645,8 @@ mutual
       .ok (.u64Bin .shiftRight leftIR (u8ShiftAmountExpr rightIR), rightResult.snd)
     else if primitive == ``BEq.beq then
       .ok (boolExpr (.eqU64 leftIR rightIR), rightResult.snd)
+    else if primitive == ``bne then
+      .ok (boolExpr (.not (.eqU64 leftIR rightIR)), rightResult.snd)
     else if primitive == ``LT.lt then
       .ok (boolExpr (.ltU64 leftIR rightIR), rightResult.snd)
     else if primitive == ``LE.le then
@@ -1723,6 +1725,13 @@ mutual
                 let rightResult ← extractExprFrom ctx locals leftResult.snd right
                 .ok (.eqU64 leftResult.fst rightResult.fst, rightResult.snd)
             | none => .error "unsupported BEq application"
+        | (.const ``bne _, args) =>
+            match primitiveArgPair? args with
+            | some (left, right) =>
+                let leftResult ← extractExprFrom ctx locals nextLocal left
+                let rightResult ← extractExprFrom ctx locals leftResult.snd right
+                .ok (.not (.eqU64 leftResult.fst rightResult.fst), rightResult.snd)
+            | none => .error "unsupported bne application"
         | (.const ``LT.lt _, args) =>
             match primitiveArgPair? args with
             | some (left, right) =>
