@@ -32,7 +32,15 @@ async function main() {
   const leanExe = process.env.LEAN_WASM_EXE || path.join(".lake", "build", "bin", "lean-wasm");
 
   if (!fs.existsSync(wasmPath)) {
-    const emit = spawnSync(leanExe, ["emit", "--out", wasmPath], { encoding: "utf8" });
+    const emit = spawnSync(leanExe, [
+      "compile",
+      "--module",
+      "LeanExe.Examples.AsciiDigits",
+      "--entry",
+      "LeanExe.Examples.AsciiDigits.validateGeneric",
+      "--out",
+      wasmPath,
+    ], { encoding: "utf8" });
     if (emit.status !== 0) {
       throw new Error(emit.stderr.trim() || "Wasm emission failed");
     }
@@ -40,7 +48,27 @@ async function main() {
 
   const wasm = fs.readFileSync(wasmPath);
   const { instance } = await WebAssembly.instantiate(wasm, {});
-  const { memory, alloc, reset, validate } = instance.exports;
+  const { memory, alloc, reset, validate, validateGeneric } = instance.exports;
+  if (!memory) {
+    throw new Error("Wasm module does not export memory");
+  }
+
+  function runWasm(input) {
+    if (typeof validateGeneric === "function") {
+      const ptr = 1024;
+      new Uint8Array(memory.buffer, ptr, input.length).set(input);
+      return Number(validateGeneric(BigInt(ptr), BigInt(input.length)));
+    }
+
+    if (typeof validate === "function" && typeof alloc === "function" && typeof reset === "function") {
+      reset();
+      const ptr = alloc(input.length);
+      new Uint8Array(memory.buffer, ptr, input.length).set(input);
+      return Number(validate(ptr, input.length));
+    }
+
+    throw new Error("Wasm module does not export a supported validator ABI");
+  }
 
   const fixed = [
     new Uint8Array([]),
@@ -53,10 +81,7 @@ async function main() {
 
   for (const input of fixed) {
     const hex = toHex(input);
-    reset();
-    const ptr = alloc(input.length);
-    new Uint8Array(memory.buffer, ptr, input.length).set(input);
-    const wasmValue = validate(ptr, input.length);
+    const wasmValue = runWasm(input);
     const leanValue = leanEval(leanExe, hex);
     if (wasmValue !== leanValue) {
       throw new Error(`mismatch for ${hex}: Lean ${leanValue}, Wasm ${wasmValue}`);
@@ -66,10 +91,7 @@ async function main() {
   for (let i = 0; i < cases; i++) {
     const input = randomBytes(Math.floor(Math.random() * 128));
     const hex = toHex(input);
-    reset();
-    const ptr = alloc(input.length);
-    new Uint8Array(memory.buffer, ptr, input.length).set(input);
-    const wasmValue = validate(ptr, input.length);
+    const wasmValue = runWasm(input);
     const leanValue = leanEval(leanExe, hex);
     if (wasmValue !== leanValue) {
       throw new Error(`mismatch for ${hex}: Lean ${leanValue}, Wasm ${wasmValue}`);

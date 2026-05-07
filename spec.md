@@ -15,7 +15,7 @@ The subset targets traditional pure programming first: validators, parsers, enco
 | Planned | The design admits the feature, but the implementation does not accept it. |
 | Rejected | The feature is outside the intended subset unless this document changes. |
 
-Current implementation is narrow.  It compiles `LeanExe.Examples.AsciiDigits.validate : ByteArray -> Bool` through a hand-written core IR path and emits a standalone Wasm validator.  It also has a generic checked-declaration compiler for a first scalar and array fragment: monomorphic first-order functions over `UInt64`, `Bool`, bounded `Nat`, and `Array UInt64` values; internal product and `Option` values over first-fragment values; numeric literals; primitive `UInt64` arithmetic; boolean equality, short-circuiting conjunction and disjunction; `if`; local `let` expressions over first-fragment value types; lazy inlining for nonrecursive project-local helper calls; demand summaries for strict project-local calls; zero-argument declarations used as constants; zero-filled array allocation; array reads and writes; copy-on-write array update; and a restricted tail-recursion shape over a decreasing `Nat` fuel argument.  `LeanExe.Examples.Collatz`, `LeanExe.Examples.Arithmetic`, `LeanExe.Examples.IntMap`, `LeanExe.Examples.ArraySemantics`, `LeanExe.Examples.Correctness`, `LeanExe.Examples.Let`, and `LeanExe.Examples.Prime` compile through `lean-wasm compile --module <module> --entry <entry> --out <path>`.  The generic report imports arbitrary built modules through `lean-wasm report --module <module> --entry <name>`.
+Current implementation is narrow.  It compiles `LeanExe.Examples.AsciiDigits.validate : ByteArray -> Bool` through a hand-written core IR path and emits a standalone Wasm validator.  It also has a generic checked-declaration compiler for a first scalar, array, and read-only byte-buffer fragment: monomorphic first-order functions over `UInt64`, `Bool`, bounded `Nat`, `Array UInt64`, and `ByteArray` parameters; internal product and `Option` values over first-fragment values; numeric literals; primitive `UInt64` arithmetic; boolean equality, negation, short-circuiting conjunction and disjunction; `if`; local `let` expressions over first-fragment value types; lazy inlining for nonrecursive project-local helper calls; demand summaries for strict project-local calls; zero-argument declarations used as constants; zero-filled array allocation; array reads and writes; copy-on-write array update; `ByteArray.size`; `ByteArray.get!`; and a restricted tail-recursion shape over a decreasing `Nat` fuel argument.  `LeanExe.Examples.AsciiDigits.validateGeneric`, `LeanExe.Examples.Collatz`, `LeanExe.Examples.Arithmetic`, `LeanExe.Examples.IntMap`, `LeanExe.Examples.ArraySemantics`, `LeanExe.Examples.Correctness`, `LeanExe.Examples.Let`, and `LeanExe.Examples.Prime` compile through `lean-wasm compile --module <module> --entry <entry> --out <path>`.  The generic report imports arbitrary built modules through `lean-wasm report --module <module> --entry <name>`.
 
 ## Source Boundary
 
@@ -34,7 +34,7 @@ The current report imports compiled `.olean` modules through Lean’s module loa
 | `UInt8` | Implemented | Implemented for the demo validator |
 | `UInt32` and `UInt64` | Planned | `UInt64` implemented for the first generic compiler fragment, including wrapping arithmetic and Lean-compatible division and remainder at zero divisors; `UInt32` reported only |
 | `Nat` | Planned for bounded static use | Implemented for fuel arguments, array sizes, and array indices represented as Wasm `i64`; general unbounded runtime arithmetic is unsupported |
-| `ByteArray` | Implemented | Implemented for `ByteArray -> Bool` entry shape |
+| `ByteArray` | Implemented | Implemented in the hand-written validator path and as a read-only generic entry parameter represented by pointer and length ABI slots; construction, mutation, append, slices, and byte-array results are unsupported |
 | Products | Planned as structured values | Implemented internally for products whose fields are first-fragment values; product entry parameters and product entry results are rejected |
 | Structures | Planned | Reported only |
 | Simple inductives | Planned | Reported only |
@@ -52,14 +52,14 @@ The current report imports compiled `.olean` modules through Lean’s module loa
 
 | Lean term form | Intended support | Current implementation |
 | -------------- | ---------------- | ---------------------- |
-| Variables and local lets | Implemented for the first fragment | Variables and local `let` expressions compile for `Bool`, `UInt64`, bounded `Nat`, `Array UInt64`, and supported product and `Option` values |
+| Variables and local lets | Implemented for the first fragment | Variables and local `let` expressions compile for `Bool`, `UInt64`, bounded `Nat`, `ByteArray`, `Array UInt64`, and supported product and `Option` values |
 | Named calls | Planned | Nonrecursive project-local helper calls are inlined lazily; remaining supported first-fragment calls are emitted when required |
 | Constructors | Planned | Product construction and `Option.none`/`Option.some` construction are implemented internally; other constructors are reported only |
 | Projections | Planned | Product `.1` and `.2` projections are implemented internally; other projections are reported only |
 | Pattern matching | Planned | Implemented for `Option` values in the generic path and for the demo range check path |
 | `if` expressions | Planned | Implemented for supported first-fragment result types |
 | Structural recursion | Planned with termination evidence from Lean | Implemented for the current tail-recursion shape over a decreasing `Nat` fuel argument, with explicit base and early-exit result expressions |
-| Tail recursion over buffers or arrays | Planned | Implemented for array parameters carried through the supported fuel-recursion shape |
+| Tail recursion over buffers or arrays | Planned | Implemented for `ByteArray` and array parameters carried through the supported fuel-recursion shape |
 | Higher-order arguments | Planned later with escape restrictions | Rejected for compilation |
 | General closures | Planned later | Rejected |
 | Quotients and proof irrelevance dependencies | Rejected for executable content | Rejected |
@@ -88,11 +88,17 @@ The current generic fragment represents `Array UInt64` as an `i64` byte offset i
 
 The extractor rejects nonzero `Array.replicate` fills because the current IR has no initialization loop.  `Array.push`, `Array.pop`, slicing, append, resizing, polymorphic arrays, nested arrays, and arrays of structures or inductives are unsupported.  The copy-on-write lowering is semantically conservative and slow.  A future linear array optimization must have a checker that rejects aliasing patterns before using in-place update.
 
+## Byte Arrays
+
+The generic fragment represents an entry `ByteArray` parameter as two Wasm `i64` parameters: a byte pointer and a byte length.  Inside the extractor, that pair remains one structured value, so a Lean function still has one `ByteArray` parameter and helper calls receive the same source-level value.  `ByteArray.size` returns the length slot, and `ByteArray.get! input index` lowers to a bounds check followed by `i32.load8_u` and zero extension to the fragment’s scalar `i64` representation.
+
+The current support is read-only.  Hosts must write input bytes into the exported memory before calling the entry function, and generic modules do not yet export allocator or reset functions for byte-buffer inputs.  `LeanExe.Examples.AsciiDigits.validateGeneric : ByteArray -> Bool` exercises this path through `lean-wasm compile`; the older `validate` declaration remains the proof-oriented source for the hand-written validator path.
+
 ## Effects
 
 | Effect form | Intended support | Current implementation |
 | ----------- | ---------------- | ---------------------- |
-| Pure functions | Implemented in the demo path | Implemented for `ByteArray -> Bool` |
+| Pure functions | Implemented in the demo and generic paths | Implemented for scalar, array, product, `Option`, and read-only `ByteArray` fragments described above |
 | `Option` and `Except` | Planned as explicit result values | `Option` implemented internally for pure first-fragment code; `Except` reported only |
 | Panic or partial operations | Rejected unless eliminated or modeled | Array bounds failures are modeled as Wasm traps; general panic remains unsupported |
 | Lean `IO` | Planned later as an explicit capability subset | Reported only |
@@ -114,12 +120,12 @@ The current report implements module loading, entry lookup, root-namespace depen
 
 ## Current Wasm ABI
 
-The current validator module exports one linear memory, `alloc`, `reset`, and `validate`.  The host writes input bytes into memory, calls `validate(ptr, len)`, and receives `0` or `1`.  The arena begins at byte offset `4096` and resets per call.  Generic CoreWasm modules export one 16-page linear memory and the requested entry function; scalar values, booleans, bounded `Nat` values, and array pointers all cross the ABI as `i64`.
+The current validator module exports one linear memory, `alloc`, `reset`, and `validate`.  The host writes input bytes into memory, calls `validate(ptr, len)`, and receives `0` or `1`.  The arena begins at byte offset `4096` and resets per call.  Generic CoreWasm modules export one 16-page linear memory and the requested entry function; scalar values, booleans, bounded `Nat` values, and array pointers cross the ABI as `i64`, while a `ByteArray` parameter crosses as two `i64` values, `ptr` and `len`.
 
 Structured outputs are planned after `Except` and simple inductive values enter the core IR.  Pointer-length pairs should encode byte output, while arena-allocated tagged layouts should encode small inductives and parser results.  Host imports must remain explicit in the Wasm module.
 
 ## Correctness Obligations
 
-The compiler should maintain separate correctness claims for extraction, proof erasure, specialization, lowering, and Wasm emission.  The current repository proves a small source-to-core equality for the demo validator and a lowering lemma for the byte-range validator.  The first generic compiler fragment does not yet prove source-to-IR equivalence.  The repository tests the emitted Wasm against Lean evaluation through direct Wasmtime runs and the validator differential harness.
+The compiler should maintain separate correctness claims for extraction, proof erasure, specialization, lowering, and Wasm emission.  The current repository proves a small source-to-core equality for the demo validator and a lowering lemma for the byte-range validator.  The first generic compiler fragment does not yet prove source-to-IR equivalence.  The repository tests the emitted Wasm against Lean evaluation through direct Wasmtime runs, a generic ByteArray WAST check, and the validator differential harness.
 
 Future proofs should compose toward `compile_correct`, relating the modeled Wasm execution to the checked Lean function for accepted entry points.  The final theorem should state the trusted base: Lean’s kernel and admitted axioms, the formal semantics of the modeled Wasm subset, the emitter if unverified, the host ABI, the Wasm runtime, and the underlying platform.  Browser, Wasmtime, or Wasmer execution should not be described as formally verified unless the proof includes that runtime.

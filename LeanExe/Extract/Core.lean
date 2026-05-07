@@ -20,6 +20,7 @@ structure Signature where
 
 inductive ExtractedValue where
   | scalar (expr : IRExpr)
+  | byteArray (ptr len : IRExpr)
   | product (left right : ExtractedValue)
   | option (tag : IRExpr) (payload : ExtractedValue)
   deriving BEq, Repr
@@ -113,8 +114,16 @@ def supportedAbiType : Ty → Bool
   | .bool => true
   | .u64 => true
   | .nat => true
+  | .byteArray => true
   | .array .u64 => true
   | _ => false
+
+def abiSlots : Ty → Nat
+  | .byteArray => 2
+  | _ => 1
+
+def abiParamCount (params : List Ty) : Nat :=
+  params.foldl (fun total ty => total + abiSlots ty) 0
 
 partial def peelForall (expr : Expr) : List Expr × Expr :=
   match expr.consumeMData with
@@ -147,6 +156,7 @@ def supportedLocalType : Ty → Bool
   | .bool => true
   | .u64 => true
   | .nat => true
+  | .byteArray => true
   | .array .u64 => true
   | .product left right => supportedLocalType left && supportedLocalType right
   | .sum .unit payload => supportedLocalType payload
@@ -232,8 +242,16 @@ def boolCond (expr : IRExpr) : IRCond :=
 def scalarValue (value : ExtractedValue) : Except String IRExpr :=
   match value with
   | .scalar expr => .ok expr
+  | .byteArray _ _ => .error "ByteArray value used where scalar value is required"
   | .product _ _ => .error "product value used where scalar value is required"
   | .option _ _ => .error "option value used where scalar value is required"
+
+def byteArrayParts (value : ExtractedValue) : Except String (IRExpr × IRExpr) :=
+  match value with
+  | .byteArray ptr len => .ok (ptr, len)
+  | .scalar _ => .error "scalar value used where ByteArray value is required"
+  | .product _ _ => .error "product value used where ByteArray value is required"
+  | .option _ _ => .error "option value used where ByteArray value is required"
 
 def productField (index : Nat) (value : ExtractedValue) : Except String ExtractedValue :=
   match value with
@@ -245,18 +263,21 @@ def productField (index : Nat) (value : ExtractedValue) : Except String Extracte
       else
         .error s!"unsupported product projection index: {index}"
   | .scalar _ => .error "scalar value used where product value is required"
+  | .byteArray _ _ => .error "ByteArray value used where product value is required"
   | .option _ _ => .error "option value used where product value is required"
 
 def optionParts (value : ExtractedValue) : Except String (IRExpr × ExtractedValue) :=
   match value with
   | .option tag payload => .ok (tag, payload)
   | .scalar _ => .error "scalar value used where option value is required"
+  | .byteArray _ _ => .error "ByteArray value used where option value is required"
   | .product _ _ => .error "product value used where option value is required"
 
 partial def defaultValue : Ty → Except String ExtractedValue
   | .bool => .ok (.scalar (.u64 0))
   | .u64 => .ok (.scalar (.u64 0))
   | .nat => .ok (.scalar (.u64 0))
+  | .byteArray => .ok (.byteArray (.u64 0) (.u64 0))
   | .array .u64 => .ok (.scalar (.u64 0))
   | .product left right => do
       .ok (.product (← defaultValue left) (← defaultValue right))
@@ -270,6 +291,8 @@ partial def valueIte
     Except String ExtractedValue :=
   match thenValue, elseValue with
   | .scalar thenExpr, .scalar elseExpr => .ok (.scalar (.ite cond thenExpr elseExpr))
+  | .byteArray thenPtr thenLen, .byteArray elsePtr elseLen =>
+      .ok (.byteArray (.ite cond thenPtr elsePtr) (.ite cond thenLen elseLen))
   | .product thenLeft thenRight, .product elseLeft elseRight => do
       .ok (.product
         (← valueIte cond thenLeft elseLeft)
@@ -279,6 +302,37 @@ partial def valueIte
         (.ite cond thenTag elseTag)
         (← valueIte cond thenPayload elsePayload))
   | _, _ => .error "if branches have incompatible structured value shapes"
+
+def flattenAbiValue (ty : Ty) (value : ExtractedValue) : Except String (List IRExpr) :=
+  match ty with
+  | .bool => scalarValue value |>.map (fun expr => [expr])
+  | .u64 => scalarValue value |>.map (fun expr => [expr])
+  | .nat => scalarValue value |>.map (fun expr => [expr])
+  | .array .u64 => scalarValue value |>.map (fun expr => [expr])
+  | .byteArray => do
+      let parts ← byteArrayParts value
+      .ok [parts.fst, parts.snd]
+  | other => .error s!"unsupported ABI value type: {reprStr other}"
+
+def bindingForParam (slot : Nat) : Ty → Binding
+  | .byteArray => .value (.byteArray (.local slot) (.local (slot + 1)))
+  | _ => .slot slot
+
+partial def sourceParamBindingsFrom (slot : Nat) : List Ty → List Binding
+  | [] => []
+  | ty :: rest => bindingForParam slot ty :: sourceParamBindingsFrom (slot + abiSlots ty) rest
+
+def sourceParamBindings (params : List Ty) : List Binding :=
+  sourceParamBindingsFrom 0 params
+
+partial def abiTargetsFrom (slot : Nat) : List Ty → List (Ty × List Nat)
+  | [] => []
+  | ty :: rest =>
+      let slots := (List.range (abiSlots ty)).map (fun offset => slot + offset)
+      (ty, slots) :: abiTargetsFrom (slot + abiSlots ty) rest
+
+def abiTargets (params : List Ty) : List (Ty × List Nat) :=
+  abiTargetsFrom 0 params
 
 def optionConstructorType? (args : List Expr) : Option Ty :=
   match args with
@@ -442,6 +496,9 @@ partial def demandExpr
               match args.reverse with
               | product :: _ => demandProductField ctx visiting 1 product
               | _ => .empty
+          | (.const ``ByteArray.size _, args) =>
+              args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
+          | (.const ``ByteArray.get! _, _) => .trap
           | (.const ``Array.get!Internal _, _) => .trap
           | (.const ``GetElem?.getElem! _, _) => .trap
           | (.const ``Array.set! _, _) => .trap
@@ -501,6 +558,7 @@ partial def demandCond
                 (demandExpr ctx visiting left)
                 (demandExpr ctx visiting right)
           | none => .empty
+      | (.const ``Bool.not _, [arg]) => demandCond ctx visiting arg
       | (.const ``Bool.or _, [left, right]) =>
           let leftDemand := demandCond ctx visiting left
           let rightDemand := demandCond ctx visiting right
@@ -661,6 +719,11 @@ mutual
             | _, _ => .error "unsupported Option.some application"
         | (.const ``ite _, [ty, condExpr, _, thenExpr, elseExpr]) =>
             match typeAtom? ty with
+            | some .byteArray =>
+                let condResult ← extractCondFrom ctx locals nextLocal condExpr
+                let thenResult ← extractValueFrom ctx locals condResult.snd thenExpr
+                let elseResult ← extractValueFrom ctx locals thenResult.snd elseExpr
+                .ok (← valueIte condResult.fst thenResult.fst elseResult.fst, elseResult.snd)
             | some (.product _ _) =>
                 let condResult ← extractCondFrom ctx locals nextLocal condExpr
                 let thenResult ← extractValueFrom ctx locals condResult.snd thenExpr
@@ -768,6 +831,8 @@ mutual
         let valueResult ← extractValueFrom ctx locals nextLocal body
         .ok (← scalarValue (← productField index valueResult.fst), valueResult.snd)
     | .proj typeName _ _ => .error s!"unsupported projection: {typeName}"
+    | .const ``Bool.true _ => .ok (.u64 1, nextLocal)
+    | .const ``Bool.false _ => .ok (.u64 0, nextLocal)
     | .const name _ =>
         match constNatValue? ctx.env name with
         | some value => .ok (.u64 value, nextLocal)
@@ -792,6 +857,9 @@ mutual
                 let condResult ← extractCondFrom ctx locals nextLocal expr
                 .ok (boolExpr condResult.fst, condResult.snd)
             | (.const ``Bool.and _, _) =>
+                let condResult ← extractCondFrom ctx locals nextLocal expr
+                .ok (boolExpr condResult.fst, condResult.snd)
+            | (.const ``Bool.not _, _) =>
                 let condResult ← extractCondFrom ctx locals nextLocal expr
                 .ok (boolExpr condResult.fst, condResult.snd)
             | (.const ``Array.replicate _, args) =>
@@ -826,7 +894,24 @@ mutual
                     let valueResult ← extractExprFrom ctx locals indexResult.snd value
                     .ok (.arraySet arrayResult.fst indexResult.fst valueResult.fst, valueResult.snd)
                 | _ => .error "unsupported Array.set! application"
+            | (.const ``ByteArray.size _, args) =>
+                match args with
+                | [array] =>
+                    let arrayResult ← extractValueFrom ctx locals nextLocal array
+                    let parts ← byteArrayParts arrayResult.fst
+                    .ok (parts.snd, arrayResult.snd)
+                | _ => .error "unsupported ByteArray.size application"
+            | (.const ``ByteArray.get! _, args) =>
+                match args.reverse with
+                | index :: array :: _ =>
+                    let arrayResult ← extractValueFrom ctx locals nextLocal array
+                    let parts ← byteArrayParts arrayResult.fst
+                    let indexResult ← extractExprFrom ctx locals arrayResult.snd index
+                    .ok (.byteArrayGet parts.fst parts.snd indexResult.fst, indexResult.snd)
+                | _ => .error "unsupported ByteArray.get! application"
             | (.const ``UInt64.toNat _, [arg]) =>
+                extractExprFrom ctx locals nextLocal arg
+            | (.const ``UInt8.toNat _, [arg]) =>
                 extractExprFrom ctx locals nextLocal arg
             | (.const ``Prod.fst _, args) =>
                 match args.reverse with
@@ -859,7 +944,14 @@ mutual
                     match functionIndex? ctx primitive with
                     | some index =>
                         strictRecursiveCallCheck ctx primitive args
-                        let argsResult ← extractExprListFrom ctx locals nextLocal args
+                        let sig ←
+                          match ctx.env.find? primitive with
+                          | some info =>
+                              match supportedFunction? info with
+                              | some sig => .ok sig
+                              | none => .error s!"unsupported function type or declaration: {primitive}"
+                          | none => .error s!"declaration disappeared during extraction: {primitive}"
+                        let argsResult ← extractCallArgsFrom ctx locals nextLocal sig.params args
                         .ok (.call index argsResult.fst, argsResult.snd)
                     | none =>
                         match primitiveArgPair? args with
@@ -921,6 +1013,9 @@ mutual
                 let rightResult ← extractExprFrom ctx locals leftResult.snd right
                 .ok (.eqU64 leftResult.fst rightResult.fst, rightResult.snd)
             | none => .error "unsupported BEq application"
+        | (.const ``Bool.not _, [arg]) =>
+            let result ← extractCondFrom ctx locals nextLocal arg
+            .ok (.not result.fst, result.snd)
         | (.const ``Bool.or _, [left, right]) =>
             let leftResult ← extractCondFrom ctx locals nextLocal left
             let rightResult ← extractCondFrom ctx locals leftResult.snd right
@@ -936,7 +1031,14 @@ mutual
                 match functionIndex? ctx name with
                 | some index =>
                     strictRecursiveCallCheck ctx name args
-                    let argsResult ← extractExprListFrom ctx locals nextLocal args
+                    let sig ←
+                      match ctx.env.find? name with
+                      | some info =>
+                          match supportedFunction? info with
+                          | some sig => .ok sig
+                          | none => .error s!"unsupported function type or declaration: {name}"
+                      | none => .error s!"declaration disappeared during extraction: {name}"
+                    let argsResult ← extractCallArgsFrom ctx locals nextLocal sig.params args
                     .ok (boolCond (.call index argsResult.fst), argsResult.snd)
                 | none => .error s!"unsupported condition: {expr}"
         | _ => .error s!"unsupported condition: {expr}"
@@ -951,6 +1053,19 @@ mutual
         let headResult ← extractExprFrom ctx locals nextLocal expr
         let restResult ← extractExprListFrom ctx locals headResult.snd rest
         .ok (headResult.fst :: restResult.fst, restResult.snd)
+
+  partial def extractCallArgsFrom
+      (ctx : Context)
+      (locals : List Binding)
+      (nextLocal : Nat) :
+      List Ty → List Expr → Except String (List IRExpr × Nat)
+    | [], [] => .ok ([], nextLocal)
+    | ty :: restTys, expr :: restExprs => do
+        let valueResult ← extractValueFrom ctx locals nextLocal expr
+        let head ← flattenAbiValue ty valueResult.fst
+        let rest ← extractCallArgsFrom ctx locals valueResult.snd restTys restExprs
+        .ok (head ++ rest.fst, rest.snd)
+    | _, _ => .error "function call arity mismatch"
 end
 
 def extractExpr (ctx : Context) (locals : List Binding) (nextLocal : Nat) (expr : Expr) :
@@ -961,15 +1076,14 @@ def extractCond (ctx : Context) (locals : List Binding) (nextLocal : Nat) (expr 
     Except String (IRCond × Nat) :=
   extractCondFrom ctx locals nextLocal expr
 
-def localBindingsForParams (paramCount : Nat) : List Binding :=
-  (List.range paramCount).reverse.map Binding.slot
+def localBindingsForParams (params : List Ty) : List Binding :=
+  (sourceParamBindings params).reverse
 
-def baseBindingsForParams (paramCount : Nat) : List Binding :=
-  .recursor :: (List.range (paramCount - 1)).reverse.map (fun index => Binding.slot (index + 1))
+def baseBindingsForParams (params : List Ty) : List Binding :=
+  .recursor :: ((sourceParamBindings params).drop 1).reverse
 
-def stepBindingsForParams (paramCount : Nat) : List Binding :=
-  let carried :=
-    (List.range (paramCount - 1)).reverse.map (fun index => Binding.slot (index + 1))
+def stepBindingsForParams (params : List Ty) : List Binding :=
+  let carried := ((sourceParamBindings params).drop 1).reverse
   (.recursor :: carried) ++ [.value (.scalar (.u64Bin .sub (.local 0) (.u64 1)))]
 
 partial def recCallArgs? (expected : Nat) (expr : Expr) : Option (List Expr) :=
@@ -1081,31 +1195,33 @@ def extractNatRecFunc
     (params : List Ty)
     (value : Expr)
     (exportName : Option String) : Except String IRFunc := do
-  let paramCount := params.length
+  let sourceParamCount := params.length
+  let wasmParamCount := abiParamCount params
   let spec ←
-    match ← findRecSpec? name paramCount value with
+    match ← findRecSpec? name sourceParamCount value with
     | some spec => .ok spec
     | none => .error s!"unsupported Nat recursion shape: {name}"
-  let stepLocals := stepBindingsForParams paramCount
-  let baseLocals := baseBindingsForParams paramCount
+  let stepLocals := stepBindingsForParams params
+  let baseLocals := baseBindingsForParams params
   let fuelLive : IRCond := .not (.eqU64 (.local 0) (.u64 0))
   let condResult ←
     match spec.exitCond? with
     | some condExpr =>
-        let extracted ← extractCond ctx stepLocals paramCount condExpr
+        let extracted ← extractCond ctx stepLocals wasmParamCount condExpr
         .ok (.and fuelLive (.not extracted.fst), extracted.snd)
-    | none => .ok (fuelLive, paramCount)
+    | none => .ok (fuelLive, wasmParamCount)
   let exitResult? ←
     match spec.exitValue? with
     | some exitExpr =>
         let extracted ← extractExpr ctx stepLocals condResult.snd exitExpr
         .ok (some extracted.fst, extracted.snd)
     | none => .ok (none, condResult.snd)
-  let recArgsResult ← extractExprListFrom ctx stepLocals exitResult?.snd spec.recArgs
+  let carriedParams := params.drop 1
+  let recArgsResult ← extractCallArgsFrom ctx stepLocals exitResult?.snd carriedParams spec.recArgs
   let baseResult ← extractExpr ctx baseLocals recArgsResult.snd spec.base
   let loopCond := condResult.fst
   let recIRArgs := recArgsResult.fst
-  let targets := (List.range (paramCount - 1)).map (fun index => index + 1)
+  let targets := (abiTargets params |>.drop 1).flatMap Prod.snd
   let tempStart := baseResult.snd
   let updateArgs := assignMany targets recIRArgs tempStart
   let decFuel : IRStmt := .assign 0 (.u64Bin .sub (.local 0) (.u64 1))
@@ -1117,8 +1233,8 @@ def extractNatRecFunc
   .ok {
     sourceName := name,
     exportName := exportName,
-    params := paramCount,
-    locals := tempStart + (paramCount - 1),
+    params := wasmParamCount,
+    locals := tempStart + targets.length,
     body := .while loopCond loopBody,
     result := result
   }
@@ -1129,16 +1245,17 @@ def extractPlainFunc
     (params : List Ty)
     (value : Expr)
     (exportName : Option String) : Except String IRFunc := do
-  let paramCount := params.length
+  let sourceParamCount := params.length
+  let wasmParamCount := abiParamCount params
   let body ←
-    match collectLambdas value paramCount with
+    match collectLambdas value sourceParamCount with
     | some body => .ok body
     | none => .error s!"definition body does not match function arity: {name}"
-  let result ← extractExpr ctx (localBindingsForParams paramCount) paramCount body
+  let result ← extractExpr ctx (localBindingsForParams params) wasmParamCount body
   .ok {
     sourceName := name,
     exportName := exportName,
-    params := paramCount,
+    params := wasmParamCount,
     locals := result.snd,
     body := .skip,
     result := result.fst
