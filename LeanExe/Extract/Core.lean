@@ -605,6 +605,18 @@ def exceptOrElseArgs? (fn : Expr) (args : List Expr) : Option (Expr × Expr) :=
         none
   | _ => none
 
+def idBindArgs? (fn : Expr) (args : List Expr) : Option (Expr × Expr) :=
+  match fn.consumeMData with
+  | .const name _ =>
+      if name == ``Bind.bind then
+        match args, args.reverse with
+        | monadTy :: _, bindFn :: value :: _ =>
+            if isIdType monadTy then some (value, bindFn) else none
+        | _, _ => none
+      else
+        none
+  | _ => none
+
 partial def listLiteralItems? (expr : Expr) : Option (Ty × List Expr) :=
   match appFnArgs expr with
   | (.const ``List.nil _, [itemTy]) =>
@@ -931,6 +943,13 @@ partial def demandExpr
               | monadTy :: _, value :: _ =>
                   if isIdType monadTy then demandExpr ctx visiting value else .empty
               | _, _ => .empty
+          | (.const ``Bind.bind _, args) =>
+              match idBindArgs? (.const ``Bind.bind []) args with
+              | some (value, bindFn) =>
+                  match collectLambdas bindFn 1 with
+                  | some body => Demand.letE (demandExpr ctx visiting value) (demandExpr ctx visiting body)
+                  | none => .empty
+              | none => .empty
           | (.const ``Prod.fst _, args) =>
               match args.reverse with
               | product :: _ => demandProductField ctx visiting 0 product
@@ -1479,6 +1498,16 @@ mutual
                 else
                   .error "unsupported Pure.pure application"
             | _, _ => .error "unsupported Pure.pure application"
+        | (.const ``Bind.bind _, args) =>
+            match idBindArgs? (.const ``Bind.bind []) args with
+            | some (value, bindFn) =>
+                let valueResult ← extractValueFrom ctx locals nextLocal value
+                let body ←
+                  match collectLambdas bindFn 1 with
+                  | some body => .ok body
+                  | none => .error "unsupported Id bind function"
+                extractValueFrom ctx (.value valueResult.fst :: locals) valueResult.snd body
+            | none => .error "unsupported Bind.bind application"
         | (.const ``Option.none _, args) =>
             match optionConstructorType? args with
             | some payloadTy =>
@@ -2097,6 +2126,9 @@ mutual
             | (.const ``Pure.pure _, _) =>
                 let valueResult ← extractValueFrom ctx locals nextLocal expr
                 .ok (← scalarValue valueResult.fst, valueResult.snd)
+            | (.const ``Bind.bind _, _) =>
+                let valueResult ← extractValueFrom ctx locals nextLocal expr
+                .ok (← scalarValue valueResult.fst, valueResult.snd)
             | (.const ``ite _, [ty, condExpr, _, thenExpr, elseExpr]) =>
                 if typeAtom? ty |>.isSome then
                   let condResult ← extractCondFrom ctx locals nextLocal condExpr
@@ -2646,6 +2678,9 @@ mutual
             let valueResult ← extractValueFrom ctx locals nextLocal expr
             .ok (boolCond (← scalarValue valueResult.fst), valueResult.snd)
         | (.const ``Pure.pure _, _) =>
+            let valueResult ← extractValueFrom ctx locals nextLocal expr
+            .ok (boolCond (← scalarValue valueResult.fst), valueResult.snd)
+        | (.const ``Bind.bind _, _) =>
             let valueResult ← extractValueFrom ctx locals nextLocal expr
             .ok (boolCond (← scalarValue valueResult.fst), valueResult.snd)
         | (.const ``dite _, _) =>

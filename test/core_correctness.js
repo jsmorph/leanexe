@@ -79,6 +79,8 @@ const accepted = [
   { name: "idRunLet", args: [], expected: 2n },
   { name: "idRunSkipsUnusedLetTrap", args: [], expected: 7n },
   { name: "idRunCondition", args: [], expected: 1n },
+  { name: "idRunBind", args: [], expected: 2n },
+  { name: "idRunBindSkipsUnusedTrap", args: [], expected: 7n },
   { name: "arrayUpdateRead", args: [], expected: 110n },
   { name: "arraySizeAfterSet", args: [], expected: 3n },
   { name: "arrayPushRead", args: [], expected: 507n },
