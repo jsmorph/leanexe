@@ -233,6 +233,11 @@ def primitiveArgPair? (args : List Expr) : Option (Expr × Expr) :=
   | right :: left :: _ => some (left, right)
   | _ => none
 
+def primitiveResultType? (args : List Expr) : Option Ty :=
+  match args with
+  | _leftType :: _rightType :: resultType :: _ => typeAtom? resultType
+  | _ => none
+
 def boolExpr (cond : IRCond) : IRExpr :=
   .ite cond (.u64 1) (.u64 0)
 
@@ -1015,7 +1020,10 @@ mutual
                             if primitive == ``HAdd.hAdd then
                               .ok (.u64Bin .add leftIR rightIR, rightResult.snd)
                             else if primitive == ``HSub.hSub then
-                              .ok (.u64Bin .sub leftIR rightIR, rightResult.snd)
+                              match primitiveResultType? args with
+                              | some .nat =>
+                                  .ok (.u64Bin .natSub leftIR rightIR, rightResult.snd)
+                              | _ => .ok (.u64Bin .sub leftIR rightIR, rightResult.snd)
                             else if primitive == ``HMul.hMul then
                               .ok (.u64Bin .mul leftIR rightIR, rightResult.snd)
                             else if primitive == ``HDiv.hDiv then

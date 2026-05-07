@@ -18,6 +18,7 @@ inductive Ty where
 inductive U64Op where
   | add
   | sub
+  | natSub
   | mul
   | divU
   | modU
@@ -105,6 +106,7 @@ mutual
         match op with
         | .add => leftValue + rightValue
         | .sub => leftValue - rightValue
+        | .natSub => if leftValue < rightValue then 0 else leftValue - rightValue
         | .mul => leftValue * rightValue
         | .divU => leftValue / rightValue
         | .modU => leftValue % rightValue
