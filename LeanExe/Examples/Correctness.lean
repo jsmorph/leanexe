@@ -49,6 +49,12 @@ def uint64OfNatValue (n : Nat) : UInt64 :=
 def uint64OfHugeNat : UInt64 :=
   UInt64.ofNat 18446744073709551616
 
+def wrappedUInt8Literal : Nat :=
+  (300 : UInt8).toNat
+
+def uint8OfNatValue (n : Nat) : Nat :=
+  (UInt8.ofNat (n + 1)).toNat
+
 def nestedShadow (x : UInt64) : UInt64 :=
   let x := x + 1
   let y := (let x := x + 2; x * 10)

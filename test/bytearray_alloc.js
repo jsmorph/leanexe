@@ -5,9 +5,8 @@ const path = require("path");
 const { spawnSync } = require("child_process");
 
 const moduleName = "LeanExe.Examples.ByteArrayPrograms";
-const entryName = `${moduleName}.firstBytePlusArray`;
 const leanExe = process.env.LEAN_WASM_EXE || path.join(".lake", "build", "bin", "lean-wasm");
-const out = path.join(".lake", "build", "bytearray-first-plus-array.wasm");
+const outDir = path.join(".lake", "build", "bytearray-programs");
 
 function run(args) {
   const result = spawnSync(args[0], args.slice(1), { encoding: "utf8" });
@@ -21,37 +20,67 @@ function writeInput(memory, ptr, input) {
   new Uint8Array(memory.buffer, ptr, input.length).set(input);
 }
 
-async function main() {
-  run(["lake", "build", moduleName]);
-  run([leanExe, "compile", "--module", moduleName, "--entry", entryName, "--out", out]);
+function compile(entry, out) {
+  run([leanExe, "compile", "--module", moduleName, "--entry", `${moduleName}.${entry}`, "--out", out]);
+}
 
+async function instantiate(entry) {
+  const out = path.join(outDir, `${entry}.wasm`);
+  compile(entry, out);
   const wasm = fs.readFileSync(out);
   const { instance } = await WebAssembly.instantiate(wasm, {});
-  const { memory, alloc, reset, firstBytePlusArray } = instance.exports;
+  const fn = instance.exports[entry];
+  if (typeof fn !== "function") {
+    throw new Error(`compiled module does not export ${entry}`);
+  }
+  const { memory, alloc, reset } = instance.exports;
   if (!memory || typeof alloc !== "function" || typeof reset !== "function") {
     throw new Error("compiled module does not export memory, alloc, and reset");
   }
-  if (typeof firstBytePlusArray !== "function") {
-    throw new Error("compiled module does not export firstBytePlusArray");
-  }
+  return { memory, alloc, reset, fn };
+}
 
-  const cases = [
+function callByteArray(exports, input) {
+  exports.reset();
+  const ptr = Number(exports.alloc(BigInt(input.length)));
+  writeInput(exports.memory, ptr, input);
+  return BigInt.asUintN(64, exports.fn(BigInt(ptr), BigInt(input.length)));
+}
+
+async function main() {
+  run(["lake", "build", moduleName]);
+  fs.mkdirSync(outDir, { recursive: true });
+
+  const firstBytePlusArray = await instantiate("firstBytePlusArray");
+  const firstBytePlusArrayCases = [
     { input: new Uint8Array([]), expected: 5n },
     { input: new Uint8Array([37]), expected: 42n },
     { input: new Uint8Array([255]), expected: 260n },
   ];
 
-  for (const testCase of cases) {
-    reset();
-    const ptr = Number(alloc(BigInt(testCase.input.length)));
-    writeInput(memory, ptr, testCase.input);
-    const actual = BigInt.asUintN(64, firstBytePlusArray(BigInt(ptr), BigInt(testCase.input.length)));
+  for (const testCase of firstBytePlusArrayCases) {
+    const actual = callByteArray(firstBytePlusArray, testCase.input);
     if (actual !== testCase.expected) {
-      throw new Error(`expected ${testCase.expected}, got ${actual}`);
+      throw new Error(`firstBytePlusArray: expected ${testCase.expected}, got ${actual}`);
     }
   }
 
-  process.stdout.write(`checked ${cases.length} bytearray allocation cases\n`);
+  const firstByteIsStar = await instantiate("firstByteIsStar");
+  const firstByteIsStarCases = [
+    { input: new Uint8Array([]), expected: 0n },
+    { input: new Uint8Array([42]), expected: 1n },
+    { input: new Uint8Array([41]), expected: 0n },
+  ];
+
+  for (const testCase of firstByteIsStarCases) {
+    const actual = callByteArray(firstByteIsStar, testCase.input);
+    if (actual !== testCase.expected) {
+      throw new Error(`firstByteIsStar: expected ${testCase.expected}, got ${actual}`);
+    }
+  }
+
+  const total = firstBytePlusArrayCases.length + firstByteIsStarCases.length;
+  process.stdout.write(`checked ${total} bytearray allocation cases\n`);
 }
 
 main().catch((error) => {

@@ -96,6 +96,17 @@ def boundedNatExpr (value : Nat) : Except String IRExpr :=
   else
     .error s!"Nat literal exceeds bounded runtime representation: {value}"
 
+def scalarLiteralExpr? (expr : Expr) : Option (Except String IRExpr) :=
+  match ofNat? ``UInt64 expr with
+  | some value => some (.ok (.u64 value))
+  | none =>
+      match ofNat? ``UInt8 expr with
+      | some value => some (.ok (.u64 (value % 256)))
+      | none =>
+          match ofNat? ``Nat expr with
+          | some value => some (boundedNatExpr value)
+          | none => none
+
 partial def typeAtom? (expr : Expr) : Option Ty :=
   if isConst ``UInt64 expr then
     some .u64
@@ -169,6 +180,7 @@ def supportedFunction? (info : ConstantInfo) : Option Signature :=
 
 def supportedLocalType : Ty → Bool
   | .bool => true
+  | .u8 => true
   | .u64 => true
   | .nat => true
   | .byteArray => true
@@ -499,7 +511,7 @@ partial def demandExpr
   | .lam _ _ _ _ => .empty
   | .forallE _ _ _ _ => .empty
   | _ =>
-      match ofNat? ``UInt64 expr <|> ofNat? ``Nat expr with
+      match scalarLiteralExpr? expr with
       | some _ => .empty
       | none =>
           match appFnArgs expr with
@@ -895,13 +907,10 @@ mutual
             | some index => .ok (.call index [], nextLocal)
             | none => .error s!"unsupported constant in expression: {name}"
     | _ =>
-        match ofNat? ``UInt64 expr with
-        | some value => .ok (.u64 value, nextLocal)
+        match scalarLiteralExpr? expr with
+        | some result => .ok (← result, nextLocal)
         | none =>
-          match ofNat? ``Nat expr with
-          | some value => .ok (← boundedNatExpr value, nextLocal)
-          | none =>
-            match appFnArgs expr with
+          match appFnArgs expr with
             | (.const ``ite _, [ty, condExpr, _, thenExpr, elseExpr]) =>
                 if typeAtom? ty |>.isSome then
                   let condResult ← extractCondFrom ctx locals nextLocal condExpr
@@ -990,6 +999,12 @@ mutual
                 | none => extractExprFrom ctx locals nextLocal arg
             | (.const ``UInt64.toNat _, [arg]) =>
                 extractExprFrom ctx locals nextLocal arg
+            | (.const ``UInt8.ofNat _, [arg]) =>
+                match ofNat? ``Nat arg with
+                | some value => .ok (.u64 (value % 256), nextLocal)
+                | none =>
+                    let argResult ← extractExprFrom ctx locals nextLocal arg
+                    .ok (.u64Bin .bitAnd argResult.fst (.u64 255), argResult.snd)
             | (.const ``UInt8.toNat _, [arg]) =>
                 extractExprFrom ctx locals nextLocal arg
             | (.const ``Prod.fst _, args) =>

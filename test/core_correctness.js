@@ -23,6 +23,8 @@ const accepted = [
   { name: "shiftMasking", args: [], expected: 42n },
   { name: "uint64OfNatValue", args: [41n], expected: 42n },
   { name: "uint64OfHugeNat", args: [], expected: 0n },
+  { name: "wrappedUInt8Literal", args: [], expected: 44n },
+  { name: "uint8OfNatValue", args: [298n], expected: 43n },
   { name: "nestedShadow", args: [3n], expected: 64n },
   { name: "unusedScalarLetSkipsTrap", args: [], expected: 1n },
   { name: "letUsedOnlyInUnusedProductField", args: [], expected: 7n },
