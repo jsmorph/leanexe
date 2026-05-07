@@ -23,6 +23,7 @@ inductive ExtractedValue where
   | byteArray (ptr len : IRExpr)
   | product (left right : ExtractedValue)
   | option (tag : IRExpr) (payload : ExtractedValue)
+  | letE (slot : Nat) (value : IRExpr) (body : ExtractedValue)
   deriving BEq, Repr
 
 inductive Binding where
@@ -117,6 +118,8 @@ partial def typeAtom? (expr : Expr) : Option Ty :=
     some .nat
   else if isConst ``Bool expr then
     some .bool
+  else if isConst ``Unit expr then
+    some .unit
   else if isConst ``UInt8 expr then
     some .u8
   else if isConst ``UInt32 expr then
@@ -336,6 +339,8 @@ def scalarValue (value : ExtractedValue) : Except String IRExpr :=
   | .byteArray _ _ => .error "ByteArray value used where scalar value is required"
   | .product _ _ => .error "product value used where scalar value is required"
   | .option _ _ => .error "option value used where scalar value is required"
+  | .letE slot value body => do
+      .ok (.letE slot value (← scalarValue body))
 
 def byteArrayParts (value : ExtractedValue) : Except String (IRExpr × IRExpr) :=
   match value with
@@ -343,6 +348,9 @@ def byteArrayParts (value : ExtractedValue) : Except String (IRExpr × IRExpr) :
   | .scalar _ => .error "scalar value used where ByteArray value is required"
   | .product _ _ => .error "product value used where ByteArray value is required"
   | .option _ _ => .error "option value used where ByteArray value is required"
+  | .letE slot value body => do
+      let parts ← byteArrayParts body
+      .ok (.letE slot value parts.fst, .letE slot value parts.snd)
 
 def productField (index : Nat) (value : ExtractedValue) : Except String ExtractedValue :=
   match value with
@@ -356,6 +364,8 @@ def productField (index : Nat) (value : ExtractedValue) : Except String Extracte
   | .scalar _ => .error "scalar value used where product value is required"
   | .byteArray _ _ => .error "ByteArray value used where product value is required"
   | .option _ _ => .error "option value used where product value is required"
+  | .letE slot value body => do
+      .ok (.letE slot value (← productField index body))
 
 def optionParts (value : ExtractedValue) : Except String (IRExpr × ExtractedValue) :=
   match value with
@@ -363,6 +373,20 @@ def optionParts (value : ExtractedValue) : Except String (IRExpr × ExtractedVal
   | .scalar _ => .error "scalar value used where option value is required"
   | .byteArray _ _ => .error "ByteArray value used where option value is required"
   | .product _ _ => .error "product value used where option value is required"
+  | .letE slot value body => do
+      let parts ← optionParts body
+      .ok (.letE slot value parts.fst, .letE slot value parts.snd)
+
+partial def optionPartsWithLets (value : ExtractedValue) :
+    Except String (List (Nat × IRExpr) × IRExpr × ExtractedValue) :=
+  match value with
+  | .option tag payload => .ok ([], tag, payload)
+  | .scalar _ => .error "scalar value used where option value is required"
+  | .byteArray _ _ => .error "ByteArray value used where option value is required"
+  | .product _ _ => .error "product value used where option value is required"
+  | .letE slot value body => do
+      let parts ← optionPartsWithLets body
+      .ok ((slot, value) :: parts.fst, parts.snd.fst, parts.snd.snd)
 
 partial def defaultValue : Ty → Except String ExtractedValue
   | .bool => .ok (.scalar (.u64 0))
@@ -378,11 +402,34 @@ partial def defaultValue : Ty → Except String ExtractedValue
       .ok (.option (.u64 0) (← defaultValue payload))
   | other => .error s!"unsupported default value type: {reprStr other}"
 
+partial def wrapValueLets (lets : List (Nat × IRExpr)) (value : ExtractedValue) :
+    ExtractedValue :=
+  lets.foldr (fun item acc => .letE item.fst item.snd acc) value
+
+def wrapExprLets (lets : List (Nat × IRExpr)) (expr : IRExpr) : IRExpr :=
+  lets.foldr (fun item acc => .letE item.fst item.snd acc) expr
+
+partial def mapValueExprs (f : IRExpr → IRExpr) : ExtractedValue → ExtractedValue
+  | .scalar expr => .scalar (f expr)
+  | .byteArray ptr len => .byteArray (f ptr) (f len)
+  | .product left right => .product (mapValueExprs f left) (mapValueExprs f right)
+  | .option tag payload => .option (f tag) (mapValueExprs f payload)
+  | .letE slot value body => .letE slot value (mapValueExprs f body)
+
+partial def materializeValueLets : ExtractedValue → ExtractedValue
+  | .letE slot value body =>
+      mapValueExprs (fun expr => .letE slot value expr) (materializeValueLets body)
+  | .product left right => .product (materializeValueLets left) (materializeValueLets right)
+  | .option tag payload => .option tag (materializeValueLets payload)
+  | other => other
+
 partial def valueIte
     (cond : IRCond)
     (thenValue elseValue : ExtractedValue) :
     Except String ExtractedValue :=
   match thenValue, elseValue with
+  | .letE _ _ _, _ => valueIte cond (materializeValueLets thenValue) elseValue
+  | _, .letE _ _ _ => valueIte cond thenValue (materializeValueLets elseValue)
   | .scalar thenExpr, .scalar elseExpr => .ok (.scalar (.ite cond thenExpr elseExpr))
   | .byteArray thenPtr thenLen, .byteArray elsePtr elseLen =>
       .ok (.byteArray (.ite cond thenPtr elsePtr) (.ite cond thenLen elseLen))
@@ -471,6 +518,22 @@ def generatedMatcherScrutineeType? (env : Environment) (name : Name) : Option Ty
 
 def optionMatcherArgs? (env : Environment) (fn : Expr) (args : List Expr) :
     Option (Expr × Expr × Expr) :=
+  let optionArmKind? (payloadTy : Ty) (arm : Expr) : Option Bool :=
+    match arm.consumeMData with
+    | .lam _ domain _ _ =>
+        match typeAtom? domain with
+        | some .unit => some false
+        | some ty => if ty == payloadTy then some true else none
+        | none => none
+    | _ => none
+  let generatedOptionArgs? (payloadTy : Ty) : Option (Expr × Expr × Expr) :=
+    match args with
+    | [_motive, scrutinee, firstArm, secondArm] =>
+        match optionArmKind? payloadTy firstArm, optionArmKind? payloadTy secondArm with
+        | some false, some true => some (scrutinee, firstArm, secondArm)
+        | some true, some false => some (scrutinee, secondArm, firstArm)
+        | _, _ => none
+    | _ => none
   match fn.consumeMData with
   | .const name _ =>
       if name == ``Option.casesOn || name == ``Option.rec then
@@ -479,10 +542,7 @@ def optionMatcherArgs? (env : Environment) (fn : Expr) (args : List Expr) :
         | _ => none
       else
         match generatedMatcherScrutineeType? env name with
-        | some (.sum .unit _) =>
-            match args with
-            | [_motive, scrutinee, noneArm, someArm] => some (scrutinee, noneArm, someArm)
-            | _ => none
+        | some (.sum .unit payloadTy) => generatedOptionArgs? payloadTy
         | _ => none
   | _ => none
 
@@ -1009,60 +1069,122 @@ mutual
             match args.reverse with
             | defaultValue :: optionValue :: _ =>
                 let optionResult ← extractValueFrom ctx locals nextLocal optionValue
-                let parts ← optionParts optionResult.fst
+                let parts ← optionPartsWithLets optionResult.fst
+                let lets := parts.fst
+                let tag := parts.snd.fst
+                let payload := parts.snd.snd
                 let defaultResult ← extractValueFrom ctx locals optionResult.snd defaultValue
-                .ok (← valueIte (.eqU64 parts.fst (.u64 0)) defaultResult.fst parts.snd,
-                  defaultResult.snd)
+                .ok
+                  (wrapValueLets lets
+                    (← valueIte (.eqU64 tag (.u64 0)) defaultResult.fst payload),
+                    defaultResult.snd)
             | _ => .error "unsupported Option.getD application"
         | (.const ``Option.elim _, args) =>
             match args.reverse with
             | someArm :: defaultValue :: optionValue :: _ =>
                 let optionResult ← extractValueFrom ctx locals nextLocal optionValue
-                let parts ← optionParts optionResult.fst
+                let parts ← optionPartsWithLets optionResult.fst
+                let lets := parts.fst
+                let tag := parts.snd.fst
+                let payload := parts.snd.snd
                 let defaultResult ← extractValueFrom ctx locals optionResult.snd defaultValue
                 let someBody ←
                   match collectLambdas someArm 1 with
                   | some body => .ok body
                   | none => .error "unsupported Option.elim some arm"
                 let someResult ←
-                  extractValueFrom ctx (.value parts.snd :: locals) defaultResult.snd someBody
-                .ok (← valueIte (.eqU64 parts.fst (.u64 0)) defaultResult.fst someResult.fst,
-                  someResult.snd)
+                  extractValueFrom ctx (.value payload :: locals) defaultResult.snd someBody
+                .ok
+                  (wrapValueLets lets
+                    (← valueIte (.eqU64 tag (.u64 0)) defaultResult.fst someResult.fst),
+                    someResult.snd)
             | _ => .error "unsupported Option.elim application"
         | (.const ``Option.map _, args) =>
             match args.reverse, optionMapResultType? args with
             | optionValue :: mapFn :: _, some resultTy =>
                 let optionResult ← extractValueFrom ctx locals nextLocal optionValue
-                let parts ← optionParts optionResult.fst
+                let parts ← optionPartsWithLets optionResult.fst
+                let lets := parts.fst
+                let tag := parts.snd.fst
+                let payload := parts.snd.snd
                 let mapBody ←
                   match collectLambdas mapFn 1 with
                   | some body => .ok body
                   | none => .error "unsupported Option.map function"
                 let mapResult ←
-                  extractValueFrom ctx (.value parts.snd :: locals) optionResult.snd mapBody
+                  extractValueFrom ctx (.value payload :: locals) optionResult.snd mapBody
                 let nonePayload ← defaultValue resultTy
-                .ok (.option parts.fst
-                  (← valueIte (.eqU64 parts.fst (.u64 0)) nonePayload mapResult.fst),
-                  mapResult.snd)
+                .ok
+                  (wrapValueLets lets
+                    (.option tag
+                      (← valueIte (.eqU64 tag (.u64 0)) nonePayload mapResult.fst)),
+                    mapResult.snd)
             | _, _ => .error "unsupported Option.map application"
         | (.const ``Option.bind _, args) =>
             match args.reverse, optionMapResultType? args with
             | bindFn :: optionValue :: _, some resultTy =>
                 let optionResult ← extractValueFrom ctx locals nextLocal optionValue
-                let parts ← optionParts optionResult.fst
+                let parts ← optionPartsWithLets optionResult.fst
+                let lets := parts.fst
+                let tag := parts.snd.fst
+                let payload := parts.snd.snd
                 let bindBody ←
                   match collectLambdas bindFn 1 with
                   | some body => .ok body
                   | none => .error "unsupported Option.bind function"
                 let bindResult ←
-                  extractValueFrom ctx (.value parts.snd :: locals) optionResult.snd bindBody
-                let bindParts ← optionParts bindResult.fst
+                  extractValueFrom ctx (.value payload :: locals) optionResult.snd bindBody
+                let bindParts ← optionPartsWithLets bindResult.fst
+                let bindLets := bindParts.fst
+                let bindTag := wrapExprLets bindLets bindParts.snd.fst
+                let bindPayload := wrapValueLets bindLets bindParts.snd.snd
                 let nonePayload ← defaultValue resultTy
-                .ok (.option
-                  (.ite (.eqU64 parts.fst (.u64 0)) (.u64 0) bindParts.fst)
-                  (← valueIte (.eqU64 parts.fst (.u64 0)) nonePayload bindParts.snd),
-                  bindResult.snd)
+                .ok
+                  (wrapValueLets lets
+                    (.option
+                      (.ite (.eqU64 tag (.u64 0)) (.u64 0) bindTag)
+                      (← valueIte (.eqU64 tag (.u64 0)) nonePayload bindPayload)),
+                    bindResult.snd)
             | _, _ => .error "unsupported Option.bind application"
+        | (.const ``GetElem?.getElem? _, args) =>
+            match args.reverse with
+            | index :: array :: _ =>
+                match primitiveReceiverType? args with
+                | some (.array .u64) =>
+                    let arrayResult ← extractExprFrom ctx locals nextLocal array
+                    let indexResult ← extractExprFrom ctx locals arrayResult.snd index
+                    let arraySlot := indexResult.snd
+                    let indexSlot := arraySlot + 1
+                    let tag :=
+                      boolExpr (.ltU64 (.local indexSlot) (.arraySize (.local arraySlot)))
+                    let payload :=
+                      .scalar (.arrayGet (.local arraySlot) (.local indexSlot))
+                    .ok
+                      (.letE arraySlot arrayResult.fst
+                        (.letE indexSlot indexResult.fst
+                          (.option tag payload)),
+                        indexSlot + 1)
+                | some .byteArray =>
+                    let arrayResult ← extractValueFrom ctx locals nextLocal array
+                    let parts ← byteArrayParts arrayResult.fst
+                    let indexResult ← extractExprFrom ctx locals arrayResult.snd index
+                    let ptrSlot := indexResult.snd
+                    let lenSlot := ptrSlot + 1
+                    let indexSlot := ptrSlot + 2
+                    let tag := boolExpr (.ltU64 (.local indexSlot) (.local lenSlot))
+                    let payload :=
+                      .scalar
+                        (.byteArrayGet (.local ptrSlot) (.local lenSlot) (.local indexSlot))
+                    .ok
+                      (.letE ptrSlot parts.fst
+                        (.letE lenSlot parts.snd
+                          (.letE indexSlot indexResult.fst
+                            (.option tag payload))),
+                        indexSlot + 1)
+                | some other =>
+                    .error s!"unsupported GetElem?.getElem? receiver type: {reprStr other}"
+                | none => .error "unsupported GetElem?.getElem? receiver type"
+            | _ => .error "unsupported GetElem?.getElem? application"
         | (.const ``Bool.casesOn _, args) =>
             match boolMatcherArgs? ctx.env (.const ``Bool.casesOn []) args with
             | some (scrutinee, falseArm, trueArm) =>
@@ -1123,7 +1245,10 @@ mutual
       (scrutinee noneArm someArm : Expr) :
       Except String (ExtractedValue × Nat) := do
     let scrutineeResult ← extractValueFrom ctx locals nextLocal scrutinee
-    let parts ← optionParts scrutineeResult.fst
+    let parts ← optionPartsWithLets scrutineeResult.fst
+    let lets := parts.fst
+    let tag := parts.snd.fst
+    let payload := parts.snd.snd
     let noneArmResult ←
       match collectLambdas noneArm 1 with
       | some body => .ok (body, .value (.scalar (.u64 0)) :: locals)
@@ -1135,8 +1260,11 @@ mutual
       | some body => .ok body
       | none => .error "unsupported Option.some matcher arm"
     let someResult ←
-      extractValueFrom ctx (.value parts.snd :: locals) noneResult.snd someBody
-    .ok (← valueIte (.eqU64 parts.fst (.u64 0)) noneResult.fst someResult.fst, someResult.snd)
+      extractValueFrom ctx (.value payload :: locals) noneResult.snd someBody
+    .ok
+      (wrapValueLets lets
+        (← valueIte (.eqU64 tag (.u64 0)) noneResult.fst someResult.fst),
+        someResult.snd)
 
   partial def extractInlineCallValueFrom
       (ctx : Context)
@@ -1229,15 +1357,17 @@ mutual
                 match args.reverse with
                 | optionValue :: _ =>
                     let optionResult ← extractValueFrom ctx locals nextLocal optionValue
-                    let parts ← optionParts optionResult.fst
-                    .ok (boolExpr (.not (.eqU64 parts.fst (.u64 0))), optionResult.snd)
+                    let parts ← optionPartsWithLets optionResult.fst
+                    let tag := wrapExprLets parts.fst parts.snd.fst
+                    .ok (boolExpr (.not (.eqU64 tag (.u64 0))), optionResult.snd)
                 | _ => .error "unsupported Option.isSome application"
             | (.const ``Option.isNone _, args) =>
                 match args.reverse with
                 | optionValue :: _ =>
                     let optionResult ← extractValueFrom ctx locals nextLocal optionValue
-                    let parts ← optionParts optionResult.fst
-                    .ok (boolExpr (.eqU64 parts.fst (.u64 0)), optionResult.snd)
+                    let parts ← optionPartsWithLets optionResult.fst
+                    let tag := wrapExprLets parts.fst parts.snd.fst
+                    .ok (boolExpr (.eqU64 tag (.u64 0)), optionResult.snd)
                 | _ => .error "unsupported Option.isNone application"
             | (.const ``Decidable.decide _, [prop, _inst]) =>
                 let condResult ← extractCondFrom ctx locals nextLocal prop
@@ -1770,15 +1900,17 @@ mutual
             match args.reverse with
             | optionValue :: _ =>
                 let optionResult ← extractValueFrom ctx locals nextLocal optionValue
-                let parts ← optionParts optionResult.fst
-                .ok (.not (.eqU64 parts.fst (.u64 0)), optionResult.snd)
+                let parts ← optionPartsWithLets optionResult.fst
+                let tag := wrapExprLets parts.fst parts.snd.fst
+                .ok (.not (.eqU64 tag (.u64 0)), optionResult.snd)
             | _ => .error "unsupported Option.isSome condition"
         | (.const ``Option.isNone _, args) =>
             match args.reverse with
             | optionValue :: _ =>
                 let optionResult ← extractValueFrom ctx locals nextLocal optionValue
-                let parts ← optionParts optionResult.fst
-                .ok (.eqU64 parts.fst (.u64 0), optionResult.snd)
+                let parts ← optionPartsWithLets optionResult.fst
+                let tag := wrapExprLets parts.fst parts.snd.fst
+                .ok (.eqU64 tag (.u64 0), optionResult.snd)
             | _ => .error "unsupported Option.isNone condition"
         | (.const ``Bool.or _, [left, right]) =>
             let leftResult ← extractCondFrom ctx locals nextLocal left

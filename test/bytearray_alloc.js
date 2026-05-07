@@ -152,6 +152,20 @@ async function main() {
     }
   }
 
+  const byteAtQuestionOrZero = await instantiate("byteAtQuestionOrZero");
+  const byteAtQuestionOrZeroCases = [
+    { input: new Uint8Array([10, 20, 30]), args: [0n], expected: 10n },
+    { input: new Uint8Array([10, 20, 30]), args: [2n], expected: 30n },
+    { input: new Uint8Array([10, 20, 30]), args: [3n], expected: 0n },
+  ];
+
+  for (const testCase of byteAtQuestionOrZeroCases) {
+    const actual = callByteArray(byteAtQuestionOrZero, testCase.input, testCase.args);
+    if (actual !== testCase.expected) {
+      throw new Error(`byteAtQuestionOrZero: expected ${testCase.expected}, got ${actual}`);
+    }
+  }
+
   const prefixPlusFirstByte = await instantiate("prefixPlusFirstByte");
   const prefixPlusFirstByteCases = [
     { prefix: 5n, input: new Uint8Array([]), expected: 5n },
@@ -201,6 +215,7 @@ async function main() {
     firstByteLowNibbleCases.length +
     firstByteBangIndexCases.length +
     byteAtOrZeroCases.length +
+    byteAtQuestionOrZeroCases.length +
     prefixPlusFirstByteCases.length +
     fnv1a32Cases.length +
     emptyViaIsEmptyCases.length;

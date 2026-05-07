@@ -297,6 +297,19 @@ def arrayGetDRead (i : Nat) : UInt64 :=
 def arrayGetDSkipsDefaultTrap : UInt64 :=
   (Array.replicate 1 (5 : UInt64)).getD 0 ((Array.replicate 0 (0 : UInt64)).back!)
 
+def arrayGetQuestionRead (i : Nat) : UInt64 :=
+  match (Array.replicate 2 (7 : UInt64))[i]? with
+  | some value => value + 1
+  | none => 99
+
+def arrayGetQuestionGetDSkipsDefaultTrap : UInt64 :=
+  ((Array.replicate 1 (5 : UInt64))[0]?).getD ((Array.replicate 0 (0 : UInt64)).back!)
+
+def arrayGetQuestionNoneSkipsPayloadTrap : UInt64 :=
+  match (Array.replicate 0 (0 : UInt64))[0]? with
+  | some value => value
+  | none => 5
+
 def productArrayAlias : UInt64 :=
   let a := (Array.replicate 2 (0 : UInt64)).set! 0 11
   let pair := (a, a.set! 0 22)
@@ -363,6 +376,11 @@ def optionSomeMatch : UInt64 :=
   match (some (7 : UInt64) : Option UInt64) with
   | none => 0
   | some value => value + 1
+
+def optionSomeFirstMatch : UInt64 :=
+  match (some (7 : UInt64) : Option UInt64) with
+  | some value => value + 1
+  | none => 0
 
 def optionNoneMatchSkipsSomeArm : UInt64 :=
   match (none : Option UInt64) with
