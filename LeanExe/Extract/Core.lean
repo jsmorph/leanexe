@@ -503,6 +503,8 @@ partial def demandExpr
               args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
           | (.const ``Array.push _, args) =>
               args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
+          | (.const ``Array.pop _, args) =>
+              args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
           | (.const ``Array.get!Internal _, _) => .trap
           | (.const ``GetElem?.getElem! _, _) => .trap
           | (.const ``Array.set! _, _) => .trap
@@ -902,6 +904,12 @@ mutual
                     let valueResult ← extractExprFrom ctx locals arrayResult.snd value
                     .ok (.arrayPush arrayResult.fst valueResult.fst, valueResult.snd)
                 | _ => .error "unsupported Array.push application"
+            | (.const ``Array.pop _, args) =>
+                match args.reverse with
+                | array :: _ =>
+                    let arrayResult ← extractExprFrom ctx locals nextLocal array
+                    .ok (.arrayPop arrayResult.fst, arrayResult.snd)
+                | _ => .error "unsupported Array.pop application"
             | (.const ``Array.get!Internal _, args) =>
                 match args.reverse with
                 | index :: array :: _ =>

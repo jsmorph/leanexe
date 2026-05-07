@@ -95,6 +95,15 @@ def nonzeroReplicateRead : UInt64 :=
   else
     0
 
+def arrayPopRead : UInt64 :=
+  let a := (Array.replicate 2 (4 : UInt64)).push 9
+  let b := a.pop
+  let c := (Array.replicate 0 (7 : UInt64)).pop
+  if a.size == 3 && b.size == 2 && c.size == 0 then
+    b[0]! * (10 : UInt64) + b[1]!
+  else
+    0
+
 def productArrayAlias : UInt64 :=
   let a := (Array.replicate 2 (0 : UInt64)).set! 0 11
   let pair := (a, a.set! 0 22)
