@@ -147,7 +147,8 @@ def knownExternal? (name : Name) : Option Classification :=
   else if [``UInt64.toNat, ``UInt8.toNat].contains name then
     some { status := "implemented", reason := "representation-preserving conversion for bounded Nat use" }
   else if [``HAdd.hAdd, ``HSub.hSub, ``HMul.hMul, ``HDiv.hDiv, ``HMod.hMod,
-      ``UInt64.land, ``UInt64.lor, ``UInt64.xor].contains name then
+      ``UInt64.land, ``UInt64.lor, ``UInt64.xor, ``UInt64.shiftLeft,
+      ``UInt64.shiftRight].contains name then
     some { status := "implemented", reason := "numeric primitive in the generic compiler fragment" }
   else if name == ``Decidable.decide then
     some { status := "reported", reason := "decidable proposition needs specialization to Bool code" }

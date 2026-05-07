@@ -24,6 +24,8 @@ inductive U64Op where
   | bitAnd
   | bitOr
   | bitXor
+  | shiftLeft
+  | shiftRight
   deriving BEq, Repr
 
 def Store := Nat → UInt64
@@ -109,6 +111,8 @@ mutual
         | .bitAnd => UInt64.land leftValue rightValue
         | .bitOr => UInt64.lor leftValue rightValue
         | .bitXor => UInt64.xor leftValue rightValue
+        | .shiftLeft => UInt64.shiftLeft leftValue rightValue
+        | .shiftRight => UInt64.shiftRight leftValue rightValue
     | .ite cond thenValue elseValue =>
         if cond.eval module_ store then
           thenValue.eval module_ store
