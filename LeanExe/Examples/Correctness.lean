@@ -39,6 +39,9 @@ def natMulOverflow : Nat :=
 def bitwiseOrXor : UInt64 :=
   UInt64.xor (UInt64.lor (10 : UInt64) (12 : UInt64)) (UInt64.land (10 : UInt64) (12 : UInt64))
 
+def bitwiseNotation : UInt64 :=
+  ((10 : UInt64) ||| (12 : UInt64)) ^^^ ((10 : UInt64) &&& (12 : UInt64))
+
 def shiftMasking : UInt64 :=
   UInt64.shiftLeft (1 : UInt64) (65 : UInt64) +
     UInt64.shiftRight (8 : UInt64) (65 : UInt64) * (10 : UInt64)

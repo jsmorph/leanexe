@@ -1253,6 +1253,21 @@ mutual
                                       .ok (.u64Bin .divU leftIR rightIR, rightResult.snd)
                                     else if primitive == ``HMod.hMod then
                                       .ok (.u64Bin .modU leftIR rightIR, rightResult.snd)
+                                    else if primitive == ``HAnd.hAnd then
+                                      match primitiveResultType? args with
+                                      | some .u8 | some .u64 =>
+                                          .ok (.u64Bin .bitAnd leftIR rightIR, rightResult.snd)
+                                      | _ => .error s!"unsupported bitwise and expression: {primitive}"
+                                    else if primitive == ``HOr.hOr then
+                                      match primitiveResultType? args with
+                                      | some .u8 | some .u64 =>
+                                          .ok (.u64Bin .bitOr leftIR rightIR, rightResult.snd)
+                                      | _ => .error s!"unsupported bitwise or expression: {primitive}"
+                                    else if primitive == ``HXor.hXor then
+                                      match primitiveResultType? args with
+                                      | some .u8 | some .u64 =>
+                                          .ok (.u64Bin .bitXor leftIR rightIR, rightResult.snd)
+                                      | _ => .error s!"unsupported bitwise xor expression: {primitive}"
                                     else if primitive == ``UInt64.land then
                                       .ok (.u64Bin .bitAnd leftIR rightIR, rightResult.snd)
                                     else if primitive == ``UInt64.lor then
