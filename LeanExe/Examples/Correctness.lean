@@ -282,6 +282,11 @@ def idRunBindSkipsUnusedTrap : UInt64 := Id.run do
   let _x ← pure ((Array.replicate 0 (0 : UInt64)).back!)
   return 7
 
+def idRunMut : UInt64 := Id.run do
+  let mut x := (1 : UInt64)
+  x := x + 1
+  return x
+
 def arrayUpdateRead : UInt64 :=
   let a := Array.replicate 2 (0 : UInt64)
   let b := a.set! 0 1
