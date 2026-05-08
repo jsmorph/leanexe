@@ -105,7 +105,9 @@ const accepted = [
   { name: "arrayReverseRead", args: [], expected: 321n },
   { name: "arrayReverseSmall", args: [], expected: 7n },
   { name: "arrayProofInsertIdxRead", args: [], expected: 123n },
+  { name: "arrayInsertIdxBangRead", args: [], expected: 123n },
   { name: "arrayProofEraseIdxRead", args: [], expected: 13n },
+  { name: "arrayEraseIdxBangRead", args: [], expected: 13n },
   { name: "arrayProofSwapRead", args: [], expected: 321n },
   { name: "arrayPushRead", args: [], expected: 507n },
   { name: "nonzeroReplicateRead", args: [], expected: 77n },
@@ -378,6 +380,8 @@ const trapped = [
   { name: "natSuccOverflow", args: [] },
   { name: "optionGetBangNoneTrap", args: [] },
   { name: "arrayBackEmptyTrap", args: [] },
+  { name: "arrayInsertIdxBangTrap", args: [] },
+  { name: "arrayEraseIdxBangTrap", args: [] },
 ];
 
 function run(args) {
