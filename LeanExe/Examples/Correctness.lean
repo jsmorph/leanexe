@@ -310,6 +310,12 @@ def idRunMut : UInt64 := Id.run do
   x := x + 1
   return x
 
+def idFunctionUInt64 (x : UInt64) : UInt64 :=
+  id (x + 1)
+
+def idFunctionProductSecond : UInt64 :=
+  (id ((Array.replicate 0 (0 : UInt64)).back!, (7 : UInt64))).2
+
 def arrayUpdateRead : UInt64 :=
   let a := Array.replicate 2 (0 : UInt64)
   let b := a.set! 0 1
