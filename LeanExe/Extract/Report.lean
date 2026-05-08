@@ -214,7 +214,7 @@ def knownExternal? (name : Name) : Option Classification :=
     some { status := "implemented", reason := "implemented for supported decidable comparisons in the generic compiler fragment" }
   else if name == ``Nat.casesOn then
     some { status := "implemented", reason := "implemented for nonrecursive zero/successor Nat matches in the generic compiler fragment" }
-  else if [``Nat.succ, ``Nat.pred].contains name then
+  else if [``Nat.succ, ``Nat.pred, ``Nat.blt, ``Nat.ble].contains name then
     some { status := "implemented", reason := "bounded Nat primitive in the generic compiler fragment" }
   else if name == ``OfNat.ofNat then
     some { status := "reported", reason := "numeric literal needs target-type resolution" }

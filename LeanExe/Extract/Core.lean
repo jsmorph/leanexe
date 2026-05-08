@@ -2307,6 +2307,12 @@ mutual
             | (.const ``Option.all _, _) =>
                 let condResult ← extractOptionPredicateCondFrom ctx locals nextLocal expr true
                 .ok (boolExpr condResult.fst, condResult.snd)
+            | (.const ``Nat.blt _, _) =>
+                let condResult ← extractCondFrom ctx locals nextLocal expr
+                .ok (boolExpr condResult.fst, condResult.snd)
+            | (.const ``Nat.ble _, _) =>
+                let condResult ← extractCondFrom ctx locals nextLocal expr
+                .ok (boolExpr condResult.fst, condResult.snd)
             | (.const ``Except.isOk _, args) =>
                 match args.reverse, exceptPayloadType? args with
                 | exceptValue :: _, some _payloadTy =>
@@ -2988,6 +2994,20 @@ mutual
                 (.and leftResult.fst (.not rightResult.fst))
                 (.and (.not leftResult.fst) rightResult.fst),
                 rightResult.snd)
+        | (.const ``Nat.blt _, args) =>
+            match primitiveArgPair? args with
+            | some (left, right) =>
+                let leftResult ← extractExprFrom ctx locals nextLocal left
+                let rightResult ← extractExprFrom ctx locals leftResult.snd right
+                .ok (.ltU64 leftResult.fst rightResult.fst, rightResult.snd)
+            | none => .error "unsupported Nat.blt application"
+        | (.const ``Nat.ble _, args) =>
+            match primitiveArgPair? args with
+            | some (left, right) =>
+                let leftResult ← extractExprFrom ctx locals nextLocal left
+                let rightResult ← extractExprFrom ctx locals leftResult.snd right
+                .ok (.leU64 leftResult.fst rightResult.fst, rightResult.snd)
+            | none => .error "unsupported Nat.ble application"
         | (.const ``Array.isEmpty _, args) =>
             match args.reverse with
             | array :: _ =>
