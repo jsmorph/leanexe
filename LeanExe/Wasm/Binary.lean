@@ -306,7 +306,7 @@ partial def stmtScratch : Stmt → Nat
   | .while cond body => max (condScratch cond) (stmtScratch body)
 
 def funcScratch (func : Func) : Nat :=
-  max (stmtScratch func.body) (exprScratch func.result)
+  max (stmtScratch func.body) (func.results.foldl (fun acc result => max acc (exprScratch result)) 0)
 
 def emitCopyLoop (arrayLocal newLocal lenLocal loopLocal : Nat) : List UInt8 :=
   i64Const 0 ++ localSet loopLocal ++
@@ -869,10 +869,10 @@ def localDecls (func : Func) : List UInt8 :=
 
 def emitFuncBody (func : Func) : List UInt8 :=
   let scratch := func.locals
-  body (localDecls func) (emitStmt scratch func.body ++ emitExpr scratch func.result)
+  body (localDecls func) (emitStmt scratch func.body ++ func.results.flatMap (emitExpr scratch))
 
 def typeForFunc (func : Func) : List UInt8 :=
-  funcType (List.replicate func.params i64) [i64]
+  funcType (List.replicate func.params i64) (List.replicate func.results.length i64)
 
 def typeSection (module_ : Module) : List UInt8 :=
   wasmSection 1 <| vec (
@@ -1517,6 +1517,12 @@ def localWat (count : Nat) : List String :=
   else
     ["(local " ++ String.intercalate " " (List.replicate count "i64") ++ ")"]
 
+def resultWat (count : Nat) : String :=
+  if count == 0 then
+    ""
+  else
+    " (result " ++ String.intercalate " " (List.replicate count "i64") ++ ")"
+
 def funcWatLines (func : Func) : List String :=
   let extra := func.locals - func.params + funcScratch func
   let scratch := func.locals
@@ -1524,8 +1530,10 @@ def funcWatLines (func : Func) : List String :=
     match func.exportName with
     | some exportName => s!" (export \"{exportName}\")"
     | none => ""
-  [s!"(func{exportText}{paramWat func.params} (result i64)"] ++
-    indent 2 (localWat extra ++ stmtWatLines scratch func.body ++ exprWatLines scratch func.result) ++
+  [s!"(func{exportText}{paramWat func.params}{resultWat func.results.length}"] ++
+    indent 2
+      (localWat extra ++ stmtWatLines scratch func.body ++
+        func.results.flatMap (exprWatLines scratch)) ++
     [")"]
 
 def moduleWat (module_ : Module) : String :=

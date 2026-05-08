@@ -75,6 +75,19 @@ const accepted = [
   { name: "productMatchNested", args: [], expected: 23n },
   { name: "productHelperResult", args: [], expected: 45n },
   { name: "productHelperParamSkipsTrap", args: [], expected: 7n },
+  { name: "structureProjection", args: [], expected: 7n },
+  { name: "structureUpdateProjection", args: [], expected: 19n },
+  { name: "structureHelperResult", args: [], expected: 56n },
+  { name: "structureReturn", args: [4n], expected: [5n, 6n] },
+  { name: "structureBranchReturn", args: [0n], expected: [1n, 2n] },
+  { name: "structureBranchReturn", args: [1n], expected: [3n, 4n] },
+  { name: "nestedStructureReturn", args: [], expected: [1n, 2n, 3n] },
+  {
+    name: "structureArrayReturn",
+    args: [],
+    expected: [null, 2n],
+    memoryArrays: [{ resultIndex: 0, values: [4n, 5n] }],
+  },
   { name: "unitProductSecond", args: [], expected: 7n },
   { name: "unitHelperCall", args: [], expected: 11n },
   { name: "unitResultIgnored", args: [], expected: 12n },
@@ -306,6 +319,10 @@ const rejected = [
     message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectProductParam",
   },
   {
+    name: "rejectStructureParam",
+    message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectStructureParam",
+  },
+  {
     name: "rejectOptionReturn",
     message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectOptionReturn",
   },
@@ -430,9 +447,39 @@ async function runAccepted(testCase) {
   } catch (error) {
     throw new Error(`${testCase.name}: unexpected trap: ${error.message}`);
   }
-  const actual = BigInt.asUintN(64, result);
-  if (actual !== testCase.expected) {
-    throw new Error(`${testCase.name}: expected ${testCase.expected}, got ${actual}`);
+  if (Array.isArray(testCase.expected)) {
+    if (!Array.isArray(result)) {
+      throw new Error(`${testCase.name}: expected multi-value result, got ${result}`);
+    }
+    const actual = result.map((item) => BigInt.asUintN(64, item));
+    if (actual.length !== testCase.expected.length) {
+      throw new Error(`${testCase.name}: expected ${testCase.expected}, got ${actual}`);
+    }
+    for (let index = 0; index < actual.length; index += 1) {
+      const expected = testCase.expected[index];
+      if (expected !== null && actual[index] !== expected) {
+        throw new Error(`${testCase.name}: expected ${testCase.expected}, got ${actual}`);
+      }
+    }
+    for (const memoryArray of testCase.memoryArrays || []) {
+      const ptr = actual[memoryArray.resultIndex];
+      const view = new DataView(instance.exports.memory.buffer);
+      const len = view.getBigUint64(Number(ptr), true);
+      if (len !== BigInt(memoryArray.values.length)) {
+        throw new Error(`${testCase.name}: expected array length ${memoryArray.values.length}, got ${len}`);
+      }
+      for (let index = 0; index < memoryArray.values.length; index += 1) {
+        const cell = view.getBigUint64(Number(ptr + BigInt(8 * (index + 1))), true);
+        if (cell !== memoryArray.values[index]) {
+          throw new Error(`${testCase.name}: expected array[${index}] ${memoryArray.values[index]}, got ${cell}`);
+        }
+      }
+    }
+  } else {
+    const actual = BigInt.asUintN(64, result);
+    if (actual !== testCase.expected) {
+      throw new Error(`${testCase.name}: expected ${testCase.expected}, got ${actual}`);
+    }
   }
 }
 

@@ -1597,8 +1597,25 @@ The next implementation area is user-defined structures and returned structure v
 
 Planned implementation sequence:
 
-- [ ] Add a structure-aware type form that records the source structure name and ordered runtime fields.
-- [ ] Extract constructor applications, projections, structure update elaborations, and single-constructor structure matches through that field representation.
-- [ ] Replace the single-result function ABI with a shared flattening path for public returns and strict calls.
-- [ ] Emit Wasm function result vectors for flattened structure returns.
-- [ ] Add correctness cases for a returned scalar structure, nested structure fields, proof-field erasure, field projection laziness, and array fields in returned structures.
+- [x] Add a structure-aware type form that records the source structure name and ordered runtime fields.
+- [x] Extract constructor applications, projections, and structure update elaborations through that field representation.
+- [x] Replace the single-result function ABI with a shared flattening path for public returns.
+- [x] Emit Wasm function result vectors for flattened structure returns.
+- [x] Add correctness cases for a returned scalar structure, nested structure fields, field projection laziness, and array fields in returned structures.
+- [ ] Add proof-field erasure and single-constructor structure matcher extraction after the extractor has explicit rules for proposition fields and recursor argument layout.
+
+## 2026-05-08: User structures and multi-result returns
+
+The extractor now has source-identified structure values through `Ty.struct` and an extractor-level structure value that records the Lean structure name and ordered fields.  The implemented slice accepts monomorphic, nonrecursive structures with supported runtime fields, lowers constructor applications and projection functions through Lean metadata, preserves lazy projection behavior for unused fields, and flattens exported structure results to Wasm multi-value result vectors.  The implementation deliberately leaves proof-field erasure, polymorphic structures, recursive structures, inherited-field flattening, structure entry parameters, and structure recursor matching unsupported until those cases have explicit rules.
+
+The correctness examples now cover field projection laziness, structure update syntax, a nonrecursive helper returning a structure, direct structure returns, branch-selected structure returns, nested structure returns, and a returned structure that contains an `Array UInt64` field.  The JavaScript harness compares multi-value Wasm returns and validates array-field results by reading the returned array pointer in exported memory rather than asserting a specific allocation address.  A direct WAT check for `structureReturn` shows `(result i64 i64)`, and Wasmtime returns `5` and `6` for input `4`.
+
+Checks run:
+
+- [x] `lake build`
+- [x] `lake build LeanExe.Examples.Correctness`
+- [x] `node test/report_classification.js` returned `checked 28 report classification cases`.
+- [x] `node test/core_correctness.js` returned `checked 293 accepted, 22 rejected, and 7 trapped cases`.
+- [x] `.lake/build/bin/lean-wasm compile-wat --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.structureReturn --out .lake/build/core-correctness/structureReturn.wat`
+- [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/wasmtime-v44.0.0-aarch64-linux/wasmtime --invoke structureReturn .lake/build/core-correctness/structureReturn.wat 4` returned `5` and `6`.
+- [x] `node test/run_all.js` returned `checked 28 report classification cases`, `checked 293 accepted, 22 rejected, and 7 trapped cases`, `checked 36 bytearray allocation cases`, and `checked 56 cases`.
