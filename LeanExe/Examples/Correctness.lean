@@ -402,6 +402,22 @@ def arraySwapIfInBoundsOutOfBounds : UInt64 :=
   else
     0
 
+def arrayReverseRead : UInt64 :=
+  let a := (((Array.replicate 3 (0 : UInt64)).set! 0 1).set! 1 2).set! 2 3
+  let b := a.reverse
+  if a.size == 3 && b.size == 3 then
+    b[0]! * (100 : UInt64) + b[1]! * (10 : UInt64) + b[2]!
+  else
+    0
+
+def arrayReverseSmall : UInt64 :=
+  let empty := Array.replicate 0 (0 : UInt64)
+  let single := Array.replicate 1 (7 : UInt64)
+  if empty.reverse.isEmpty && single.reverse.size == 1 then
+    single.reverse[0]!
+  else
+    0
+
 def arrayPushRead : UInt64 :=
   let a := (Array.replicate 2 (0 : UInt64)).set! 0 5
   let b := a.push 7

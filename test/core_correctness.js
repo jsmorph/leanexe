@@ -100,6 +100,8 @@ const accepted = [
   { name: "arraySwapIfInBoundsEnds", args: [], expected: 4231n },
   { name: "arraySwapIfInBoundsSameIndex", args: [], expected: 56n },
   { name: "arraySwapIfInBoundsOutOfBounds", args: [], expected: 789n },
+  { name: "arrayReverseRead", args: [], expected: 321n },
+  { name: "arrayReverseSmall", args: [], expected: 7n },
   { name: "arrayPushRead", args: [], expected: 507n },
   { name: "nonzeroReplicateRead", args: [], expected: 77n },
   { name: "arrayPopRead", args: [], expected: 44n },

@@ -59,6 +59,7 @@ mutual
     | arrayInsertIfInBounds (array index value : Expr)
     | arrayEraseIfInBounds (array index : Expr)
     | arraySwapIfInBounds (array left right : Expr)
+    | arrayReverse (array : Expr)
     | byteArrayGet (ptr len index : Expr)
     | call (index : Nat) (args : List Expr)
     deriving BEq, Repr
@@ -145,6 +146,7 @@ mutual
     | .arrayInsertIfInBounds array _ _ => array.eval module_ store
     | .arrayEraseIfInBounds array _ => array.eval module_ store
     | .arraySwapIfInBounds array _ _ => array.eval module_ store
+    | .arrayReverse array => array.eval module_ store
     | .byteArrayGet _ _ _ => 0
     | .call index args =>
         match module_.getFunc? index with

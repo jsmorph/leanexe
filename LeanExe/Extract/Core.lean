@@ -1012,6 +1012,8 @@ partial def demandExpr
                     (Demand.always (demandExpr ctx visiting array) (demandExpr ctx visiting left))
                     (demandExpr ctx visiting right)
               | _ => .empty
+          | (.const ``Array.reverse _, args) =>
+              args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
           | (.const ``Array.append _, args) =>
               args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
           | (.const ``HAppend.hAppend _, args) =>
@@ -2491,6 +2493,17 @@ mutual
                         .error s!"unsupported Array.swapIfInBounds item type: {reprStr other}"
                     | none => .error "unsupported Array.swapIfInBounds item type"
                 | _, _ => .error "unsupported Array.swapIfInBounds application"
+            | (.const ``Array.reverse _, args) =>
+                match args, args.reverse with
+                | itemTy :: _, array :: _ =>
+                    match typeAtom? itemTy with
+                    | some .u64 =>
+                        let arrayResult ← extractExprFrom ctx locals nextLocal array
+                        .ok (.arrayReverse arrayResult.fst, arrayResult.snd)
+                    | some other =>
+                        .error s!"unsupported Array.reverse item type: {reprStr other}"
+                    | none => .error "unsupported Array.reverse item type"
+                | _, _ => .error "unsupported Array.reverse application"
             | (.const ``Array.append _, args) =>
                 match args.reverse with
                 | right :: left :: _ =>
