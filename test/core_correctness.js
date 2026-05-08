@@ -105,6 +105,8 @@ const accepted = [
   { name: "arraySingletonRead", args: [], expected: 42n },
   { name: "arrayIsEmptyValues", args: [], expected: 1n },
   { name: "arrayBackRead", args: [], expected: 9n },
+  { name: "arrayBackQuestionRead", args: [], expected: 9n },
+  { name: "arrayBackQuestionEmpty", args: [], expected: 7n },
   { name: "arrayGetDRead", args: [1n], expected: 7n },
   { name: "arrayGetDRead", args: [2n], expected: 99n },
   { name: "arrayGetDSkipsDefaultTrap", args: [], expected: 5n },

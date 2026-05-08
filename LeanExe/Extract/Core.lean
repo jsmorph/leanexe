@@ -1026,6 +1026,8 @@ partial def demandExpr
                   let defaultDemand := demandExpr ctx visiting defaultValue
                   Demand.branch (Demand.always arrayDemand indexDemand) .empty defaultDemand
               | _ => .empty
+          | (.const ``Array.back? _, args) =>
+              args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
           | (.const ``Option.orElse _, args) =>
               match optionOrElseArgs? (.const ``Option.orElse []) args with
               | some (optionValue, fallback) =>
@@ -1891,6 +1893,22 @@ mutual
                     .error s!"unsupported GetElem?.getElem? receiver type: {reprStr other}"
                 | none => .error "unsupported GetElem?.getElem? receiver type"
             | _ => .error "unsupported GetElem?.getElem? application"
+        | (.const ``Array.back? _, args) =>
+            match args, args.reverse with
+            | itemTy :: _, array :: _ =>
+                match typeAtom? itemTy with
+                | some .u64 =>
+                  let arrayResult ← extractExprFrom ctx locals nextLocal array
+                  let arraySlot := arrayResult.snd
+                  let tag := boolExpr (.not (.eqU64 (.arraySize (.local arraySlot)) (.u64 0)))
+                  let index := .u64Bin .sub (.arraySize (.local arraySlot)) (.u64 1)
+                  .ok
+                    (.letE arraySlot arrayResult.fst
+                      (.option tag (.scalar (.arrayGet (.local arraySlot) index))),
+                      arraySlot + 1)
+                | some other => .error s!"unsupported Array.back? item type: {reprStr other}"
+                | none => .error "unsupported Array.back? item type"
+            | _, _ => .error "unsupported Array.back? application"
         | (.const ``ByteArray.extract _, args) =>
             match args with
             | [array, start, stop] =>
