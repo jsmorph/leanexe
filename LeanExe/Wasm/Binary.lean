@@ -276,6 +276,8 @@ mutual
     | .arrayAppend left right => 7 + max (exprScratch left) (exprScratch right)
     | .arrayExtract array start stop =>
         8 + max (exprScratch array) (max (exprScratch start) (exprScratch stop))
+    | .arrayInsertIfInBounds array index value =>
+        7 + max (exprScratch array) (max (exprScratch index) (exprScratch value))
     | .byteArrayGet ptr len index =>
         3 + max (exprScratch ptr) (max (exprScratch len) (exprScratch index))
     | .call _ args => args.foldl (fun count arg => max count (exprScratch arg)) 0
@@ -333,6 +335,30 @@ def emitExtractCopyLoop
         (localGet arrayLocal)
         (localGet startLocal ++ localGet loopLocal ++ ofNats [124]) ++
       i64Load ++ i64Store ++
+      localGet loopLocal ++ i64Const 1 ++ ofNats [124] ++ localSet loopLocal ++
+      ofNats [12] ++ u32leb 0 ++
+    ofNats [11, 11]
+
+def emitInsertPrefixLoop
+    (arrayLocal newLocal indexLocal loopLocal : Nat) : List UInt8 :=
+  i64Const 0 ++ localSet loopLocal ++
+    ofNats [2, 64, 3, 64] ++
+      localGet loopLocal ++ localGet indexLocal ++ i64GeU ++ ofNats [13] ++ u32leb 1 ++
+      arrayCellAddress (localGet newLocal) (localGet loopLocal) ++
+      arrayCellAddress (localGet arrayLocal) (localGet loopLocal) ++ i64Load ++ i64Store ++
+      localGet loopLocal ++ i64Const 1 ++ ofNats [124] ++ localSet loopLocal ++
+      ofNats [12] ++ u32leb 0 ++
+    ofNats [11, 11]
+
+def emitInsertSuffixLoop
+    (arrayLocal newLocal indexLocal lenLocal loopLocal : Nat) : List UInt8 :=
+  localGet indexLocal ++ localSet loopLocal ++
+    ofNats [2, 64, 3, 64] ++
+      localGet loopLocal ++ localGet lenLocal ++ i64GeU ++ ofNats [13] ++ u32leb 1 ++
+      arrayCellAddress
+        (localGet newLocal)
+        (localGet loopLocal ++ i64Const 1 ++ ofNats [124]) ++
+      arrayCellAddress (localGet arrayLocal) (localGet loopLocal) ++ i64Load ++ i64Store ++
       localGet loopLocal ++ i64Const 1 ++ ofNats [124] ++ localSet loopLocal ++
       ofNats [12] ++ u32leb 0 ++
     ofNats [11, 11]
@@ -513,6 +539,35 @@ mutual
       emitExtractCopyLoop arrayLocal newLocal startLocal newLenLocal loopLocal ++
       localGet newLocal
 
+  partial def emitArrayInsertIfInBounds (scratch : Nat) (array index value : Expr) : List UInt8 :=
+    let arrayLocal := scratch
+    let indexLocal := scratch + 1
+    let lenLocal := scratch + 2
+    let valueLocal := scratch + 3
+    let newLenLocal := scratch + 4
+    let newLocal := scratch + 5
+    let loopLocal := scratch + 6
+    let childScratch := scratch + 7
+    emitExpr childScratch array ++ localSet arrayLocal ++
+      emitExpr childScratch index ++ localSet indexLocal ++
+      localGet arrayLocal ++ i32WrapI64 ++ i64Load ++ localSet lenLocal ++
+      localGet indexLocal ++ localGet lenLocal ++ i64LeU ++
+      ofNats [4, 126] ++
+        emitExpr childScratch value ++ localSet valueLocal ++
+        localGet lenLocal ++ i64Const 1 ++ ofNats [124] ++ localSet newLenLocal ++
+        globalGet 0 ++ localSet newLocal ++
+        localGet newLocal ++ i32WrapI64 ++ localGet newLenLocal ++ i64Store ++
+        globalGet 0 ++ i64Const 8 ++ localGet newLenLocal ++ i64Const 8 ++
+          ofNats [126, 124, 124] ++ globalSet 0 ++
+        emitInsertPrefixLoop arrayLocal newLocal indexLocal loopLocal ++
+        arrayCellAddress (localGet newLocal) (localGet indexLocal) ++
+          localGet valueLocal ++ i64Store ++
+        emitInsertSuffixLoop arrayLocal newLocal indexLocal lenLocal loopLocal ++
+        localGet newLocal ++
+      ofNats [5] ++
+        localGet arrayLocal ++
+      ofNats [11]
+
   partial def emitByteArrayGet (scratch : Nat) (ptr len index : Expr) : List UInt8 :=
     let ptrLocal := scratch
     let lenLocal := scratch + 1
@@ -626,6 +681,8 @@ mutual
     | .arrayPop array => emitArrayPop scratch array
     | .arrayAppend left right => emitArrayAppend scratch left right
     | .arrayExtract array start stop => emitArrayExtract scratch array start stop
+    | .arrayInsertIfInBounds array index value =>
+        emitArrayInsertIfInBounds scratch array index value
     | .byteArrayGet ptr len index => emitByteArrayGet scratch ptr len index
     | .call index args => args.flatMap (emitExpr scratch) ++ call index
 
@@ -756,6 +813,32 @@ def extractCopyLoopWat
       arrayCellAddressWat
         [s!"local.get {arrayLocal}"]
         [s!"local.get {startLocal}", s!"local.get {loopLocal}", "i64.add"] ++
+      ["i64.load align=8", "i64.store align=8",
+        s!"local.get {loopLocal}", "i64.const 1", "i64.add", s!"local.set {loopLocal}",
+        "br 0"]) ++
+    ["  end", "end"]
+
+def insertPrefixLoopWat
+    (arrayLocal newLocal indexLocal loopLocal : Nat) : List String :=
+  [s!"i64.const 0", s!"local.set {loopLocal}", "block", "  loop"] ++
+    indent 4 (
+      [s!"local.get {loopLocal}", s!"local.get {indexLocal}", "i64.ge_u", "br_if 1"] ++
+      arrayCellAddressWat [s!"local.get {newLocal}"] [s!"local.get {loopLocal}"] ++
+      arrayCellAddressWat [s!"local.get {arrayLocal}"] [s!"local.get {loopLocal}"] ++
+      ["i64.load align=8", "i64.store align=8",
+        s!"local.get {loopLocal}", "i64.const 1", "i64.add", s!"local.set {loopLocal}",
+        "br 0"]) ++
+    ["  end", "end"]
+
+def insertSuffixLoopWat
+    (arrayLocal newLocal indexLocal lenLocal loopLocal : Nat) : List String :=
+  [s!"local.get {indexLocal}", s!"local.set {loopLocal}", "block", "  loop"] ++
+    indent 4 (
+      [s!"local.get {loopLocal}", s!"local.get {lenLocal}", "i64.ge_u", "br_if 1"] ++
+      arrayCellAddressWat
+        [s!"local.get {newLocal}"]
+        [s!"local.get {loopLocal}", "i64.const 1", "i64.add"] ++
+      arrayCellAddressWat [s!"local.get {arrayLocal}"] [s!"local.get {loopLocal}"] ++
       ["i64.load align=8", "i64.store align=8",
         s!"local.get {loopLocal}", "i64.const 1", "i64.add", s!"local.set {loopLocal}",
         "br 0"]) ++
@@ -941,6 +1024,40 @@ mutual
       extractCopyLoopWat arrayLocal newLocal startLocal newLenLocal loopLocal ++
       [s!"local.get {newLocal}"]
 
+  partial def arrayInsertIfInBoundsWatLines
+      (scratch : Nat)
+      (array index value : Expr) : List String :=
+    let arrayLocal := scratch
+    let indexLocal := scratch + 1
+    let lenLocal := scratch + 2
+    let valueLocal := scratch + 3
+    let newLenLocal := scratch + 4
+    let newLocal := scratch + 5
+    let loopLocal := scratch + 6
+    let childScratch := scratch + 7
+    exprWatLines childScratch array ++ [s!"local.set {arrayLocal}"] ++
+      exprWatLines childScratch index ++ [s!"local.set {indexLocal}",
+        s!"local.get {arrayLocal}", "i32.wrap_i64", "i64.load align=8",
+        s!"local.set {lenLocal}",
+        s!"local.get {indexLocal}", s!"local.get {lenLocal}", "i64.le_u",
+        "if (result i64)"] ++
+      indent 2 (
+        exprWatLines childScratch value ++ [s!"local.set {valueLocal}",
+          s!"local.get {lenLocal}", "i64.const 1", "i64.add", s!"local.set {newLenLocal}",
+          "global.get 0", s!"local.set {newLocal}",
+          s!"local.get {newLocal}", "i32.wrap_i64", s!"local.get {newLenLocal}",
+          "i64.store align=8",
+          "global.get 0", "i64.const 8", s!"local.get {newLenLocal}", "i64.const 8",
+          "i64.mul", "i64.add", "i64.add", "global.set 0"] ++
+        insertPrefixLoopWat arrayLocal newLocal indexLocal loopLocal ++
+        arrayCellAddressWat [s!"local.get {newLocal}"] [s!"local.get {indexLocal}"] ++
+        [s!"local.get {valueLocal}", "i64.store align=8"] ++
+        insertSuffixLoopWat arrayLocal newLocal indexLocal lenLocal loopLocal ++
+        [s!"local.get {newLocal}"]) ++
+      ["else"] ++
+      indent 2 [s!"local.get {arrayLocal}"] ++
+      ["end"]
+
   partial def byteArrayGetWatLines (scratch : Nat) (ptr len index : Expr) : List String :=
     let ptrLocal := scratch
     let lenLocal := scratch + 1
@@ -1048,6 +1165,8 @@ mutual
     | .arrayPop array => arrayPopWatLines scratch array
     | .arrayAppend left right => arrayAppendWatLines scratch left right
     | .arrayExtract array start stop => arrayExtractWatLines scratch array start stop
+    | .arrayInsertIfInBounds array index value =>
+        arrayInsertIfInBoundsWatLines scratch array index value
     | .byteArrayGet ptr len index => byteArrayGetWatLines scratch ptr len index
     | .call index args => args.flatMap (exprWatLines scratch) ++ [s!"call {index}"]
 

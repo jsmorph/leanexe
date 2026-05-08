@@ -1004,6 +1004,14 @@ partial def demandExpr
               args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
           | (.const ``HAppend.hAppend _, args) =>
               args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
+          | (.const ``Array.insertIdxIfInBounds _, args) =>
+              match args.reverse with
+              | value :: index :: array :: _ =>
+                  Demand.branch
+                    (Demand.always (demandExpr ctx visiting array) (demandExpr ctx visiting index))
+                    (demandExpr ctx visiting value)
+                    .empty
+              | _ => .empty
           | (.const ``Array.modify _, args) =>
               match args.reverse with
               | modifyFn :: index :: array :: _ =>
@@ -2448,6 +2456,24 @@ mutual
                     let rightResult ← extractExprFrom ctx locals leftResult.snd right
                     .ok (.arrayAppend leftResult.fst rightResult.fst, rightResult.snd)
                 | _ => .error "unsupported Array.append application"
+            | (.const ``Array.insertIdxIfInBounds _, args) =>
+                match args, args.reverse with
+                | itemTy :: _, value :: index :: array :: _ =>
+                    match typeAtom? itemTy with
+                    | some .u64 =>
+                        let arrayResult ← extractExprFrom ctx locals nextLocal array
+                        let indexResult ← extractExprFrom ctx locals arrayResult.snd index
+                        let valueResult ← extractExprFrom ctx locals indexResult.snd value
+                        .ok
+                          (.arrayInsertIfInBounds
+                            arrayResult.fst
+                            indexResult.fst
+                            valueResult.fst,
+                            valueResult.snd)
+                    | some other =>
+                        .error s!"unsupported Array.insertIdxIfInBounds item type: {reprStr other}"
+                    | none => .error "unsupported Array.insertIdxIfInBounds item type"
+                | _, _ => .error "unsupported Array.insertIdxIfInBounds application"
             | (.const ``HAppend.hAppend _, args) =>
                 match args.reverse, primitiveResultType? args with
                 | right :: left :: _, some (.array .u64) =>

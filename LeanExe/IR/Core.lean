@@ -56,6 +56,7 @@ mutual
     | arrayPop (array : Expr)
     | arrayAppend (left right : Expr)
     | arrayExtract (array start stop : Expr)
+    | arrayInsertIfInBounds (array index value : Expr)
     | byteArrayGet (ptr len index : Expr)
     | call (index : Nat) (args : List Expr)
     deriving BEq, Repr
@@ -139,6 +140,7 @@ mutual
     | .arrayPop array => array.eval module_ store
     | .arrayAppend left _ => left.eval module_ store
     | .arrayExtract array _ _ => array.eval module_ store
+    | .arrayInsertIfInBounds array _ _ => array.eval module_ store
     | .byteArrayGet _ _ _ => 0
     | .call index args =>
         match module_.getFunc? index with
