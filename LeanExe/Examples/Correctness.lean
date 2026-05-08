@@ -556,6 +556,9 @@ def arrayIsEmptyValues : UInt64 :=
 def arrayBackRead : UInt64 :=
   ((Array.replicate 2 (4 : UInt64)).push 9).back!
 
+def arrayProofBackRead : UInt64 :=
+  (#[4, 9] : Array UInt64).back
+
 def arrayBackQuestionRead : UInt64 :=
   match ((Array.replicate 2 (4 : UInt64)).push 9).back? with
   | some value => value

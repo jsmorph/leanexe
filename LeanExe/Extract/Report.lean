@@ -186,7 +186,7 @@ def knownExternal? (name : Name) : Option Classification :=
       ``Array.eraseIdx, ``Array.eraseIdxIfInBounds, ``Array.swap, ``Array.swapIfInBounds,
       ``Array.append, ``Array.insertIdx, ``Array.insertIdxIfInBounds, ``Array.modify,
       ``Array.reverse, ``Array.extract,
-      ``Array.get!Internal, ``Array.back!,
+      ``Array.get!Internal, ``Array.back!, ``Array.back,
       ``Array.getD, ``Array.set!, ``Array.back?, ``GetElem?.getElem!, ``GetElem?.getElem?,
       ``GetElem.getElem].contains name then
     some { status := "implemented", reason := "indexing primitive in the generic compiler fragment" }

@@ -1518,3 +1518,17 @@ Checks run:
 - [x] `.lake/build/bin/lean-wasm compile-wat --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.idFunctionUInt64 --out .lake/build/core-correctness/idFunctionUInt64.wat`
 - [x] `env XDG_CACHE_HOME=.lake/build/cache .lake/build/tools/wasmtime-v36.0.9-aarch64-linux/wasmtime --invoke idFunctionUInt64 .lake/build/core-correctness/idFunctionUInt64.wat 4` returned `5`.
 - [x] `node test/run_all.js` returned `checked 22 report classification cases`, `checked 273 accepted, 21 rejected, and 5 trapped cases`, `checked 36 bytearray allocation cases`, and `checked 56 cases`.
+
+## 2026-05-07: Proof-indexed Array back
+
+The extractor now lowers proof-indexed `Array.back` for `Array UInt64`.  It erases the nonempty proof and emits the same last-element read used by `Array.back!`; unlike `back!`, the demand analysis treats the proof-indexed form as nontrapping because Lean has checked the nonempty proof.
+
+Checks run:
+
+- [x] `lake build`
+- [x] `lake build LeanExe.Examples.Correctness`
+- [x] `node test/report_classification.js` returned `checked 23 report classification cases`.
+- [x] `node test/core_correctness.js` returned `checked 274 accepted, 21 rejected, and 5 trapped cases`.
+- [x] `.lake/build/bin/lean-wasm compile-wat --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.arrayProofBackRead --out .lake/build/core-correctness/arrayProofBackRead.wat`
+- [x] `env XDG_CACHE_HOME=.lake/build/cache .lake/build/tools/wasmtime-v36.0.9-aarch64-linux/wasmtime --invoke arrayProofBackRead .lake/build/core-correctness/arrayProofBackRead.wat` returned `9`.
+- [x] `node test/run_all.js` returned `checked 23 report classification cases`, `checked 274 accepted, 21 rejected, and 5 trapped cases`, `checked 36 bytearray allocation cases`, and `checked 56 cases`.

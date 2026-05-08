@@ -100,6 +100,11 @@ const cases = [
   },
   {
     moduleName: "LeanExe.Examples.Correctness",
+    entryName: "LeanExe.Examples.Correctness.arrayProofBackRead",
+    shape: "entry shape: UInt64",
+  },
+  {
+    moduleName: "LeanExe.Examples.Correctness",
     entryName: "LeanExe.Examples.Correctness.arrayModifyInBounds",
     shape: "entry shape: UInt64",
   },

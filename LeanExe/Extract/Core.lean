@@ -1073,6 +1073,10 @@ partial def demandExpr
           | (.const ``GetElem.getElem _, args) =>
               args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
           | (.const ``Array.back! _, _) => .trap
+          | (.const ``Array.back _, args) =>
+              match args.reverse with
+              | _proof :: array :: _ => demandExpr ctx visiting array
+              | _ => .empty
           | (.const ``Array.getD _, args) =>
               match args.reverse with
               | defaultValue :: index :: array :: _ =>
@@ -2734,6 +2738,15 @@ mutual
                       .arrayGet (.local slot) (.u64Bin .sub (.arraySize (.local slot)) (.u64 1))
                     .ok (.letE slot arrayResult.fst value, slot + 1)
                 | _ => .error "unsupported Array.back! application"
+            | (.const ``Array.back _, args) =>
+                match args.reverse with
+                | _proof :: array :: _ =>
+                    let arrayResult ← extractExprFrom ctx locals nextLocal array
+                    let slot := arrayResult.snd
+                    let value :=
+                      .arrayGet (.local slot) (.u64Bin .sub (.arraySize (.local slot)) (.u64 1))
+                    .ok (.letE slot arrayResult.fst value, slot + 1)
+                | _ => .error "unsupported Array.back application"
             | (.const ``Array.getD _, args) =>
                 match args.reverse with
                 | defaultValue :: index :: array :: _ =>
