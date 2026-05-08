@@ -50,6 +50,11 @@ const cases = [
   },
   {
     moduleName: "LeanExe.Examples.Correctness",
+    entryName: "LeanExe.Examples.Correctness.idFunctionUInt64",
+    shape: "entry shape: UInt64 -> UInt64",
+  },
+  {
+    moduleName: "LeanExe.Examples.Correctness",
     entryName: "LeanExe.Examples.Correctness.exceptIsOkAsBool",
     shape: "entry shape: Bool",
   },

@@ -1504,3 +1504,17 @@ Checks run:
 - [x] `.lake/build/bin/lean-wasm compile-wat --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.arrayProofInsertIdxRead --out .lake/build/core-correctness/arrayProofInsertIdxRead.wat`
 - [x] `env XDG_CACHE_HOME=.lake/build/cache .lake/build/tools/wasmtime-v36.0.9-aarch64-linux/wasmtime --invoke arrayProofInsertIdxRead .lake/build/core-correctness/arrayProofInsertIdxRead.wat` returned `123`.
 - [x] `node test/run_all.js` returned `checked 21 report classification cases`, `checked 271 accepted, 21 rejected, and 5 trapped cases`, `checked 36 bytearray allocation cases`, and `checked 56 cases`.
+
+## 2026-05-07: Identity function
+
+The extractor now erases `id` for supported first-fragment values.  The scalar path covers ordinary identity applications, and the structured-value path preserves product laziness, so projecting one field of `id (bad, value)` does not force the unused field.
+
+Checks run:
+
+- [x] `lake build`
+- [x] `lake build LeanExe.Examples.Correctness`
+- [x] `node test/report_classification.js` returned `checked 22 report classification cases`.
+- [x] `node test/core_correctness.js` returned `checked 273 accepted, 21 rejected, and 5 trapped cases`.
+- [x] `.lake/build/bin/lean-wasm compile-wat --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.idFunctionUInt64 --out .lake/build/core-correctness/idFunctionUInt64.wat`
+- [x] `env XDG_CACHE_HOME=.lake/build/cache .lake/build/tools/wasmtime-v36.0.9-aarch64-linux/wasmtime --invoke idFunctionUInt64 .lake/build/core-correctness/idFunctionUInt64.wat 4` returned `5`.
+- [x] `node test/run_all.js` returned `checked 22 report classification cases`, `checked 273 accepted, 21 rejected, and 5 trapped cases`, `checked 36 bytearray allocation cases`, and `checked 56 cases`.

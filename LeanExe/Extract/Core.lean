@@ -985,6 +985,10 @@ partial def demandExpr
               match args.reverse with
               | product :: _ => demandProductField ctx visiting 1 product
               | _ => .empty
+          | (.const ``id _, args) =>
+              match args.reverse with
+              | value :: _ => demandExpr ctx visiting value
+              | _ => .empty
           | (.const ``ByteArray.size _, args) =>
               args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
           | (.const ``ByteArray.isEmpty _, args) =>
@@ -1637,6 +1641,10 @@ mutual
                 let valueResult ← extractValueFrom ctx locals nextLocal product
                 .ok (← productField 1 valueResult.fst, valueResult.snd)
             | _ => .error "unsupported Prod.snd application"
+        | (.const ``id _, args) =>
+            match args.reverse with
+            | value :: _ => extractValueFrom ctx locals nextLocal value
+            | _ => .error "unsupported id application"
         | (.const ``Id.run _, args) =>
             match args.reverse with
             | value :: _ => extractValueFrom ctx locals nextLocal value
@@ -2378,6 +2386,12 @@ mutual
             | (.const ``Option.all _, _) =>
                 let condResult ← extractOptionPredicateCondFrom ctx locals nextLocal expr true
                 .ok (boolExpr condResult.fst, condResult.snd)
+            | (.const ``id _, args) =>
+                match args.reverse with
+                | value :: _ =>
+                    let valueResult ← extractValueFrom ctx locals nextLocal value
+                    .ok (← scalarValue valueResult.fst, valueResult.snd)
+                | _ => .error "unsupported id application"
             | (.const ``Nat.blt _, _) =>
                 let condResult ← extractCondFrom ctx locals nextLocal expr
                 .ok (boolExpr condResult.fst, condResult.snd)

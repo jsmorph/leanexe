@@ -87,6 +87,8 @@ const accepted = [
   { name: "idRunBindOption", args: [], expected: 5n },
   { name: "idRunBindExcept", args: [], expected: 6n },
   { name: "idRunMut", args: [], expected: 2n },
+  { name: "idFunctionUInt64", args: [4n], expected: 5n },
+  { name: "idFunctionProductSecond", args: [], expected: 7n },
   { name: "arrayUpdateRead", args: [], expected: 110n },
   { name: "arraySizeAfterSet", args: [], expected: 3n },
   { name: "arrayModifyInBounds", args: [], expected: 507n },

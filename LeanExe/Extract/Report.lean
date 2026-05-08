@@ -151,6 +151,8 @@ def knownExternal? (name : Name) : Option Classification :=
     some { status := "implemented", reason := "primitive type in the intended subset" }
   else if name == ``Id then
     some { status := "implemented", reason := "pure Id wrapper erased by the generic compiler fragment" }
+  else if name == ``id then
+    some { status := "implemented", reason := "identity function erased by the generic compiler fragment" }
   else if name == ``Unit.unit then
     some { status := "implemented", reason := "erased Unit value used by supported generated matchers" }
   else if name == ``Array then
