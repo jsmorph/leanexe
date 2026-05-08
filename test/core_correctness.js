@@ -201,6 +201,8 @@ const accepted = [
   { name: "boolXorValues", args: [0n, 0n], expected: 0n },
   { name: "boolXorValues", args: [0n, 1n], expected: 1n },
   { name: "boolXorValues", args: [1n, 1n], expected: 0n },
+  { name: "boolToNatValue", args: [0n], expected: 1n },
+  { name: "boolToNatValue", args: [1n], expected: 2n },
   { name: "boolMatchScalar", args: [0n], expected: 10n },
   { name: "boolMatchScalar", args: [1n], expected: 20n },
   { name: "boolMatchTrueFirstScalar", args: [0n], expected: 10n },

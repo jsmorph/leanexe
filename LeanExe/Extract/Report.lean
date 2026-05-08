@@ -169,7 +169,7 @@ def knownExternal? (name : Name) : Option Classification :=
     some { status := "implemented", reason := "implemented for supported scalar equality propositions in the generic compiler fragment" }
   else if [``And, ``Or, ``Not, ``True, ``False].contains name then
     some { status := "implemented", reason := "implemented for supported proposition conditions in the generic compiler fragment" }
-  else if [``Bool.and, ``Bool.or, ``Bool.not, ``Bool.xor, ``Bool.true, ``Bool.false,
+  else if [``Bool.and, ``Bool.or, ``Bool.not, ``Bool.xor, ``Bool.toNat, ``Bool.true, ``Bool.false,
       ``Bool.casesOn].contains name then
     some { status := "implemented", reason := "boolean primitive in the generic compiler fragment" }
   else if [``BEq.beq, ``LT.lt, ``LE.le, ``GT.gt, ``GE.ge, ``ite, ``dite].contains name then
