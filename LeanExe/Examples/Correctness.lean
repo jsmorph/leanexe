@@ -89,6 +89,12 @@ def natToUInt64Value (n : Nat) : UInt64 :=
 def natToUInt64Huge : UInt64 :=
   Nat.toUInt64 18446744073709551616
 
+def uint64ToNatValue (x : UInt64) : Nat :=
+  UInt64.toNat (x + 1)
+
+def uint64ToNatMethodMax : Nat :=
+  (18446744073709551615 : UInt64).toNat
+
 def wrappedUInt8Literal : Nat :=
   (300 : UInt8).toNat
 
