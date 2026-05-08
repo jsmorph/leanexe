@@ -1004,6 +1004,14 @@ partial def demandExpr
               args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
           | (.const ``HAppend.hAppend _, args) =>
               args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
+          | (.const ``Array.modify _, args) =>
+              match args.reverse with
+              | modifyFn :: index :: array :: _ =>
+                  Demand.branch
+                    (Demand.always (demandExpr ctx visiting array) (demandExpr ctx visiting index))
+                    (demandOptionSomeArm ctx visiting modifyFn)
+                    .empty
+              | _ => .empty
           | (.const ``Array.extract _, args) =>
               args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
           | (.const ``Array.empty _, _) => .empty
@@ -2447,6 +2455,30 @@ mutual
                     let rightResult ← extractExprFrom ctx locals leftResult.snd right
                     .ok (.arrayAppend leftResult.fst rightResult.fst, rightResult.snd)
                 | _, _ => .error "unsupported HAppend.hAppend application"
+            | (.const ``Array.modify _, args) =>
+                match args.reverse with
+                | modifyFn :: index :: array :: _ =>
+                    let arrayResult ← extractExprFrom ctx locals nextLocal array
+                    let indexResult ← extractExprFrom ctx locals arrayResult.snd index
+                    let arraySlot := indexResult.snd
+                    let indexSlot := arraySlot + 1
+                    let oldValue :=
+                      .scalar (.arrayGet (.local arraySlot) (.local indexSlot))
+                    let modifyBody ←
+                      match collectLambdas modifyFn 1 with
+                      | some body => .ok body
+                      | none => .error "unsupported Array.modify function"
+                    let modifiedResult ←
+                      extractExprFrom ctx (.value oldValue :: locals) (indexSlot + 1) modifyBody
+                    let inBounds := .ltU64 (.local indexSlot) (.arraySize (.local arraySlot))
+                    let modifiedArray :=
+                      .arraySet (.local arraySlot) (.local indexSlot) modifiedResult.fst
+                    .ok
+                      (.letE arraySlot arrayResult.fst
+                        (.letE indexSlot indexResult.fst
+                          (.ite inBounds modifiedArray (.local arraySlot))),
+                        modifiedResult.snd)
+                | _ => .error "unsupported Array.modify application"
             | (.const ``Array.extract _, args) =>
                 match args.reverse with
                 | stop :: start :: array :: _ =>

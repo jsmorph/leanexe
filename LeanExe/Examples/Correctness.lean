@@ -321,6 +321,16 @@ def arraySizeAfterSet : Nat :=
   let b := a.set! 1 9
   b.size
 
+def arrayModifyInBounds : UInt64 :=
+  let a := ((Array.replicate 2 (0 : UInt64)).set! 0 4).set! 1 7
+  let b := a.modify 1 (fun value => value + 3)
+  b[0]! * (100 : UInt64) + b[1]! * (10 : UInt64) + a[1]!
+
+def arrayModifyOutOfBoundsSkipsFunctionTrap : UInt64 :=
+  let a := (Array.replicate 1 (7 : UInt64))
+  let b := a.modify 5 (fun _value => (Array.replicate 0 (0 : UInt64)).back!)
+  b[0]!
+
 def arrayPushRead : UInt64 :=
   let a := (Array.replicate 2 (0 : UInt64)).set! 0 5
   let b := a.push 7
