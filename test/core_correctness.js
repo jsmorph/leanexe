@@ -158,6 +158,9 @@ const accepted = [
   { name: "optionGetDNone", args: [], expected: 7n },
   { name: "optionGetDSomeSkipsDefaultTrap", args: [], expected: 5n },
   { name: "optionGetDProduct", args: [], expected: 12n },
+  { name: "optionGetBangSome", args: [], expected: 6n },
+  { name: "optionGetBangProduct", args: [], expected: 12n },
+  { name: "optionGetBangCondition", args: [], expected: 1n },
   { name: "optionOrElseNone", args: [], expected: 7n },
   { name: "optionOrElseDirectSomeSkipsFallbackTrap", args: [], expected: 5n },
   { name: "optionOrElseProduct", args: [], expected: 12n },
@@ -336,6 +339,7 @@ const trapped = [
   { name: "natAddOverflow", args: [] },
   { name: "natMulOverflow", args: [] },
   { name: "natSuccOverflow", args: [] },
+  { name: "optionGetBangNoneTrap", args: [] },
   { name: "arrayBackEmptyTrap", args: [] },
 ];
 

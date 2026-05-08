@@ -42,6 +42,7 @@ def Store.set (store : Store) (index : Nat) (value : UInt64) : Store :=
 mutual
   inductive Expr where
     | local (index : Nat)
+    | trap
     | u64 (value : Nat)
     | u64Bin (op : U64Op) (left right : Expr)
     | ite (cond : Cond) (thenValue elseValue : Expr)
@@ -103,6 +104,7 @@ def seqList : List Stmt → Stmt
 mutual
   partial def Expr.eval (module_ : Module) (store : Store) : Expr → UInt64
     | .local index => store index
+    | .trap => 0
     | .u64 value => UInt64.ofNat value
     | .u64Bin op left right =>
         let leftValue := left.eval module_ store
