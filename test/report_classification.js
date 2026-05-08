@@ -98,6 +98,11 @@ const cases = [
     entryName: "LeanExe.Examples.Correctness.arrayModifyInBounds",
     shape: "entry shape: UInt64",
   },
+  {
+    moduleName: "LeanExe.Examples.Correctness",
+    entryName: "LeanExe.Examples.Correctness.arrayInsertIdxIfInBoundsMiddle",
+    shape: "entry shape: UInt64",
+  },
 ];
 
 for (const testCase of cases) {
