@@ -352,6 +352,30 @@ def arrayInsertIdxIfInBoundsSkipsValueTrap : UInt64 :=
   let b := a.insertIdxIfInBounds 5 ((Array.replicate 0 (0 : UInt64)).back!)
   b[0]!
 
+def arrayEraseIdxIfInBoundsMiddle : UInt64 :=
+  let a := (((Array.replicate 3 (0 : UInt64)).set! 0 1).set! 1 2).set! 2 3
+  let b := a.eraseIdxIfInBounds 1
+  if a.size == 3 && b.size == 2 then
+    b[0]! * (100 : UInt64) + b[1]! * (10 : UInt64) + a[1]!
+  else
+    0
+
+def arrayEraseIdxIfInBoundsLast : UInt64 :=
+  let a := (((Array.replicate 3 (0 : UInt64)).set! 0 4).set! 1 5).set! 2 6
+  let b := a.eraseIdxIfInBounds 2
+  if a.size == 3 && b.size == 2 then
+    b[0]! * (10 : UInt64) + b[1]!
+  else
+    0
+
+def arrayEraseIdxIfInBoundsOutOfBounds : UInt64 :=
+  let a := ((Array.replicate 2 (0 : UInt64)).set! 0 7).set! 1 8
+  let b := a.eraseIdxIfInBounds 5
+  if b.size == 2 then
+    b[0]! * (10 : UInt64) + b[1]!
+  else
+    0
+
 def arrayPushRead : UInt64 :=
   let a := (Array.replicate 2 (0 : UInt64)).set! 0 5
   let b := a.push 7

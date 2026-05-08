@@ -1000,6 +1000,11 @@ partial def demandExpr
               args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
           | (.const ``Array.pop _, args) =>
               args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
+          | (.const ``Array.eraseIdxIfInBounds _, args) =>
+              match args.reverse with
+              | index :: array :: _ =>
+                  Demand.always (demandExpr ctx visiting array) (demandExpr ctx visiting index)
+              | _ => .empty
           | (.const ``Array.append _, args) =>
               args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
           | (.const ``HAppend.hAppend _, args) =>
@@ -2449,6 +2454,18 @@ mutual
                     let arrayResult ← extractExprFrom ctx locals nextLocal array
                     .ok (.arrayPop arrayResult.fst, arrayResult.snd)
                 | _ => .error "unsupported Array.pop application"
+            | (.const ``Array.eraseIdxIfInBounds _, args) =>
+                match args, args.reverse with
+                | itemTy :: _, index :: array :: _ =>
+                    match typeAtom? itemTy with
+                    | some .u64 =>
+                        let arrayResult ← extractExprFrom ctx locals nextLocal array
+                        let indexResult ← extractExprFrom ctx locals arrayResult.snd index
+                        .ok (.arrayEraseIfInBounds arrayResult.fst indexResult.fst, indexResult.snd)
+                    | some other =>
+                        .error s!"unsupported Array.eraseIdxIfInBounds item type: {reprStr other}"
+                    | none => .error "unsupported Array.eraseIdxIfInBounds item type"
+                | _, _ => .error "unsupported Array.eraseIdxIfInBounds application"
             | (.const ``Array.append _, args) =>
                 match args.reverse with
                 | right :: left :: _ =>
