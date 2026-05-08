@@ -480,6 +480,17 @@ def arrayProofSwapRead : UInt64 :=
   else
     0
 
+def arraySwapAtRead : UInt64 :=
+  let pair := (#[1, 2] : Array UInt64).swapAt 1 (9 : UInt64)
+  pair.1 * (100 : UInt64) + pair.2[1]!
+
+def arraySwapAtFirstSkipsValueTrap : UInt64 :=
+  ((#[1, 2] : Array UInt64).swapAt 1 ((Array.replicate 0 (0 : UInt64)).back!)).1
+
+def arraySwapAtLetFirstSkipsValueTrap : UInt64 :=
+  let pair := (#[1, 2] : Array UInt64).swapAt 1 ((Array.replicate 0 (0 : UInt64)).back!)
+  pair.1
+
 def arrayPushRead : UInt64 :=
   let a := (Array.replicate 2 (0 : UInt64)).set! 0 5
   let b := a.push 7

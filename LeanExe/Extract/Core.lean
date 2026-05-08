@@ -1102,6 +1102,15 @@ partial def demandExpr
                     (demandExpr ctx visiting value)
                     .empty
               | _ => .empty
+          | (.const ``Array.swapAt _, args) =>
+              match args.reverse with
+              | _proof :: value :: index :: array :: _ =>
+                  Demand.always
+                    (Demand.always
+                      (demandExpr ctx visiting array)
+                      (demandExpr ctx visiting index))
+                    (demandExpr ctx visiting value)
+              | _ => .empty
           | (.const ``Array.getD _, args) =>
               match args.reverse with
               | defaultValue :: index :: array :: _ =>
@@ -1291,6 +1300,18 @@ partial def demandProductField
           if index == 0 then demandExpr ctx visiting left
           else if index == 1 then demandExpr ctx visiting right
           else .empty
+      | _ => .empty
+  | (.const ``Array.swapAt _, args) =>
+      match args.reverse with
+      | _proof :: value :: arrayIndex :: array :: _ =>
+          let arrayDemand := demandExpr ctx visiting array
+          let indexDemand := demandExpr ctx visiting arrayIndex
+          if index == 0 then
+            Demand.always arrayDemand indexDemand
+          else if index == 1 then
+            Demand.always (Demand.always arrayDemand indexDemand) (demandExpr ctx visiting value)
+          else
+            .empty
       | _ => .empty
   | _ => demandExpr ctx visiting expr
 
@@ -1671,6 +1692,27 @@ mutual
                 let valueResult ← extractValueFrom ctx locals nextLocal product
                 .ok (← productField 1 valueResult.fst, valueResult.snd)
             | _ => .error "unsupported Prod.snd application"
+        | (.const ``Array.swapAt _, args) =>
+            match args, args.reverse with
+            | itemTy :: _, _proof :: value :: index :: array :: _ =>
+                match typeAtom? itemTy with
+                | some .u64 =>
+                    let arrayResult ← extractExprFrom ctx locals nextLocal array
+                    let indexResult ← extractExprFrom ctx locals arrayResult.snd index
+                    let arraySlot := indexResult.snd
+                    let indexSlot := arraySlot + 1
+                    let valueResult ← extractExprFrom ctx locals (indexSlot + 1) value
+                    let oldValue := .scalar (.arrayGet (.local arraySlot) (.local indexSlot))
+                    let updatedArray :=
+                      .scalar (.arraySet (.local arraySlot) (.local indexSlot) valueResult.fst)
+                    .ok
+                      (.letE arraySlot arrayResult.fst
+                        (.letE indexSlot indexResult.fst
+                          (.product oldValue updatedArray)),
+                        valueResult.snd)
+                | some other => .error s!"unsupported Array.swapAt item type: {reprStr other}"
+                | none => .error "unsupported Array.swapAt item type"
+            | _, _ => .error "unsupported Array.swapAt application"
         | (.const ``id _, args) =>
             match args.reverse with
             | value :: _ => extractValueFrom ctx locals nextLocal value

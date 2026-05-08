@@ -140,6 +140,11 @@ const cases = [
   },
   {
     moduleName: "LeanExe.Examples.Correctness",
+    entryName: "LeanExe.Examples.Correctness.arraySwapAtRead",
+    shape: "entry shape: UInt64",
+  },
+  {
+    moduleName: "LeanExe.Examples.Correctness",
     entryName: "LeanExe.Examples.Correctness.arrayInsertIdxBangRead",
     shape: "entry shape: UInt64",
   },
