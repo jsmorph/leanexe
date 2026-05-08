@@ -282,6 +282,20 @@ def idRunBindSkipsUnusedTrap : UInt64 := Id.run do
   let _x ← pure ((Array.replicate 0 (0 : UInt64)).back!)
   return 7
 
+def idRunBindProduct : UInt64 := Id.run do
+  let pair ← pure (((1 : UInt64), (2 : UInt64)) : UInt64 × UInt64)
+  return pair.1 * (10 : UInt64) + pair.2
+
+def idRunBindOption : UInt64 := Id.run do
+  let value ← pure (some (5 : UInt64))
+  return value.getD 0
+
+def idRunBindExcept : UInt64 := Id.run do
+  let value ← pure (Except.ok (5 : UInt64) : Except UInt64 UInt64)
+  return match value with
+  | Except.error code => code
+  | Except.ok item => item + 1
+
 def idRunMut : UInt64 := Id.run do
   let mut x := (1 : UInt64)
   x := x + 1

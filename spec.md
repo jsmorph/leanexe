@@ -62,7 +62,7 @@ Runtime `Nat` values in the current fragment use the same `i64` representation a
 | Projections | Planned | Product `.1` and `.2` projections are implemented internally; other projections are reported only |
 | Pattern matching | Planned | Implemented for `Bool`, product, `Option`, restricted `Except`, and nonrecursive zero/successor `Nat` matches in the generic path and for the demo range check path |
 | `if` expressions | Planned | Implemented for supported first-fragment result types; dependent `if h : p then ... else ...` erases proof binders and lowers through the same condition path |
-| Pure `do` notation | Planned | `Id.run`, `Pure.pure`, and `Bind.bind` are erased for simple pure `Id` `do` blocks; simple `let mut` works when Lean elaborates it to ordinary shadowing lets; loops and effectful `do` blocks remain unsupported |
+| Pure `do` notation | Planned | `Id.run`, `Pure.pure`, and `Bind.bind` are erased for simple pure `Id` `do` blocks over supported local value types, including product, `Option`, and restricted `Except` values; simple `let mut` works when Lean elaborates it to ordinary shadowing lets; loops and effectful `do` blocks remain unsupported |
 | Structural recursion | Planned with termination evidence from Lean | Implemented for the current tail-recursion shape over a decreasing `Nat` fuel argument, with explicit base and early-exit result expressions |
 | Tail recursion over buffers or arrays | Planned | Implemented for `ByteArray` and array parameters carried through the supported fuel-recursion shape |
 | Higher-order arguments | Planned later with escape restrictions | Rejected for compilation |
