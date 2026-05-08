@@ -418,6 +418,27 @@ def arrayReverseSmall : UInt64 :=
   else
     0
 
+def arrayProofInsertIdxRead : UInt64 :=
+  let b := (#[1, 3] : Array UInt64).insertIdx 1 (2 : UInt64)
+  if b.size == 3 then
+    b[0]! * (100 : UInt64) + b[1]! * (10 : UInt64) + b[2]!
+  else
+    0
+
+def arrayProofEraseIdxRead : UInt64 :=
+  let b := (#[1, 2, 3] : Array UInt64).eraseIdx 1
+  if b.size == 2 then
+    b[0]! * (10 : UInt64) + b[1]!
+  else
+    0
+
+def arrayProofSwapRead : UInt64 :=
+  let b := (#[1, 2, 3] : Array UInt64).swap 0 2
+  if b.size == 3 then
+    b[0]! * (100 : UInt64) + b[1]! * (10 : UInt64) + b[2]!
+  else
+    0
+
 def arrayPushRead : UInt64 :=
   let a := (Array.replicate 2 (0 : UInt64)).set! 0 5
   let b := a.push 7
