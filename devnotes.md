@@ -1590,3 +1590,15 @@ Checks run:
 - [x] `.lake/build/bin/lean-wasm compile-wat --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.arrayMapEmptySkipsFunctionTrap --out .lake/build/core-correctness/arrayMapEmptySkipsFunctionTrap.wat`
 - [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/wasmtime-v44.0.0-aarch64-linux/wasmtime --invoke arrayMapEmptySkipsFunctionTrap .lake/build/core-correctness/arrayMapEmptySkipsFunctionTrap.wat` returned `0`.
 - [x] `node test/run_all.js` returned `checked 27 report classification cases`, `checked 285 accepted, 21 rejected, and 7 trapped cases`, `checked 36 bytearray allocation cases`, and `checked 56 cases`.
+
+## 2026-05-08: Structure result ABI design
+
+The next implementation area is user-defined structures and returned structure values.  Lean 4.29 exposes the structure metadata needed for this through `Lean/Structure.lean`: `StructureInfo`, `getStructureInfo?`, `getStructureFieldsFlattened`, projection-function metadata, and `isStructureLike`.  The design in `spec.md` now fixes the direction before implementation: preserve source structure identity in the extractor, use Lean's flattened field order for layout, and flatten supported public fields to Wasm multi-value results at the ABI boundary.
+
+Planned implementation sequence:
+
+- [ ] Add a structure-aware type form that records the source structure name and ordered runtime fields.
+- [ ] Extract constructor applications, projections, structure update elaborations, and single-constructor structure matches through that field representation.
+- [ ] Replace the single-result function ABI with a shared flattening path for public returns and strict calls.
+- [ ] Emit Wasm function result vectors for flattened structure returns.
+- [ ] Add correctness cases for a returned scalar structure, nested structure fields, proof-field erasure, field projection laziness, and array fields in returned structures.
