@@ -89,6 +89,8 @@ const accepted = [
   { name: "idRunMut", args: [], expected: 2n },
   { name: "arrayUpdateRead", args: [], expected: 110n },
   { name: "arraySizeAfterSet", args: [], expected: 3n },
+  { name: "arrayModifyInBounds", args: [], expected: 507n },
+  { name: "arrayModifyOutOfBoundsSkipsFunctionTrap", args: [], expected: 7n },
   { name: "arrayPushRead", args: [], expected: 507n },
   { name: "nonzeroReplicateRead", args: [], expected: 77n },
   { name: "arrayPopRead", args: [], expected: 44n },

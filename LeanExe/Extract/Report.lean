@@ -181,8 +181,9 @@ def knownExternal? (name : Name) : Option Classification :=
     some { status := "implemented", reason := "pure Id do-notation plumbing erased by the generic compiler fragment" }
   else if [``Array.empty, ``Array.mkEmpty, ``Array.emptyWithCapacity, ``Array.singleton,
       ``Array.replicate, ``Array.size, ``Array.isEmpty, ``Array.push, ``Array.pop,
-      ``Array.append, ``Array.extract, ``Array.get!Internal, ``Array.back!, ``Array.getD, ``Array.set!,
-      ``Array.back?, ``GetElem?.getElem!, ``GetElem?.getElem?, ``GetElem.getElem].contains name then
+      ``Array.append, ``Array.modify, ``Array.extract, ``Array.get!Internal, ``Array.back!,
+      ``Array.getD, ``Array.set!, ``Array.back?, ``GetElem?.getElem!, ``GetElem?.getElem?,
+      ``GetElem.getElem].contains name then
     some { status := "implemented", reason := "indexing primitive in the generic compiler fragment" }
   else if [``ByteArray.size, ``ByteArray.isEmpty, ``ByteArray.get!, ``ByteArray.extract].contains name then
     some { status := "implemented", reason := "read-only ByteArray primitive in the generic compiler fragment" }
