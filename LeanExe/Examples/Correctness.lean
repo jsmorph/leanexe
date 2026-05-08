@@ -48,6 +48,9 @@ def natSuccPred (x : Nat) : Nat :=
 def natSuccOverflow : Nat :=
   Nat.succ 18446744073709551615
 
+def optionGetBangNoneTrap : UInt64 :=
+  (none : Option UInt64).get!
+
 def bitwiseOrXor : UInt64 :=
   UInt64.xor (UInt64.lor (10 : UInt64) (12 : UInt64)) (UInt64.land (10 : UInt64) (12 : UInt64))
 
@@ -728,6 +731,16 @@ def optionGetDSomeSkipsDefaultTrap : UInt64 :=
 def optionGetDProduct : UInt64 :=
   let pair := (some ((1 : UInt64), (2 : UInt64))).getD ((3 : UInt64), (4 : UInt64))
   pair.1 * (10 : UInt64) + pair.2
+
+def optionGetBangSome : UInt64 :=
+  (some (5 : UInt64)).get! + 1
+
+def optionGetBangProduct : UInt64 :=
+  let pair := (some ((1 : UInt64), (2 : UInt64))).get!
+  pair.1 * (10 : UInt64) + pair.2
+
+def optionGetBangCondition : UInt64 :=
+  if (some true).get! then 1 else 0
 
 def optionOrElseNone : UInt64 :=
   match ((none : Option UInt64) <|> some 7) with

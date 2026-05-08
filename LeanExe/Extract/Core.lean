@@ -459,6 +459,23 @@ partial def defaultValue : Ty → Except String ExtractedValue
       .ok (.sum (.u64 0) (← defaultValue left) (← defaultValue right))
   | other => .error s!"unsupported default value type: {reprStr other}"
 
+partial def trapValue : Ty → Except String ExtractedValue
+  | .unit => .ok (.scalar .trap)
+  | .bool => .ok (.scalar .trap)
+  | .u8 => .ok (.scalar .trap)
+  | .u32 => .ok (.scalar .trap)
+  | .u64 => .ok (.scalar .trap)
+  | .nat => .ok (.scalar .trap)
+  | .byteArray => .ok (.byteArray .trap .trap)
+  | .array .u64 => .ok (.scalar .trap)
+  | .product left right => do
+      .ok (.product (← trapValue left) (← trapValue right))
+  | .sum .unit payload => do
+      .ok (.option .trap (← trapValue payload))
+  | .sum left right => do
+      .ok (.sum .trap (← trapValue left) (← trapValue right))
+  | other => .error s!"unsupported trap value type: {reprStr other}"
+
 partial def wrapValueLets (lets : List (Nat × IRExpr)) (value : ExtractedValue) :
     ExtractedValue :=
   lets.foldr (fun item acc => .letE item.fst item.snd acc) value
@@ -1040,6 +1057,10 @@ partial def demandExpr
                     defaultDemand
                     .empty
               | _ => .empty
+          | (.const ``Option.get! _, args) =>
+              match args.reverse with
+              | optionValue :: _ => demandOptionGet ctx visiting optionValue
+              | _ => .empty
           | (.const ``Option.elim _, args) =>
               match args.reverse with
               | someArm :: defaultValue :: optionValue :: _ =>
@@ -1167,6 +1188,25 @@ partial def demandProductField
           else .empty
       | _ => .empty
   | _ => demandExpr ctx visiting expr
+
+partial def demandOptionGet
+    (ctx : Context)
+    (visiting : List Name)
+    (expr : Expr) : Demand :=
+  match expr.consumeMData with
+  | .bvar index => { may := [index], must := [index], mayTrap := true }
+  | .letE _ _ value body _ => Demand.letE (demandExpr ctx visiting value) (demandOptionGet ctx visiting body)
+  | .mdata _ body => demandOptionGet ctx visiting body
+  | _ =>
+      match appFnArgs expr with
+      | (.const ``Option.none _, _) => .trap
+      | (.const ``Option.some _, args) =>
+          match args.reverse with
+          | value :: _ => demandExpr ctx visiting value
+          | _ => .empty
+      | _ =>
+          let demand := demandExpr ctx visiting expr
+          { demand with mayTrap := true }
 
 partial def demandExceptTag
     (ctx : Context)
@@ -1676,6 +1716,19 @@ mutual
                     (← valueIte (.eqU64 tag (.u64 0)) defaultResult.fst payload),
                     defaultResult.snd)
             | _ => .error "unsupported Option.getD application"
+        | (.const ``Option.get! _, args) =>
+            match args.reverse, optionConstructorType? args with
+            | optionValue :: _, some payloadTy =>
+                let optionResult ← extractValueFrom ctx locals nextLocal optionValue
+                let parts ← optionPartsWithLets optionResult.fst
+                let lets := parts.fst
+                let tag := parts.snd.fst
+                let payload := parts.snd.snd
+                .ok
+                  (wrapValueLets lets
+                    (← valueIte (.eqU64 tag (.u64 0)) (← trapValue payloadTy) payload),
+                    optionResult.snd)
+            | _, _ => .error "unsupported Option.get! application"
         | (.const ``Option.orElse _, args) =>
             match optionOrElseArgs? (.const ``Option.orElse []) args with
             | some (optionValue, fallback) =>
@@ -2175,6 +2228,9 @@ mutual
                 let valueResult ← extractValueFrom ctx locals nextLocal expr
                 .ok (← scalarValue valueResult.fst, valueResult.snd)
             | (.const ``Option.getD _, _) =>
+                let valueResult ← extractValueFrom ctx locals nextLocal expr
+                .ok (← scalarValue valueResult.fst, valueResult.snd)
+            | (.const ``Option.get! _, _) =>
                 let valueResult ← extractValueFrom ctx locals nextLocal expr
                 .ok (← scalarValue valueResult.fst, valueResult.snd)
             | (.const ``Option.elim _, _) =>
@@ -2830,6 +2886,9 @@ mutual
         | (.const ``Bool.not _, [arg]) =>
             let result ← extractCondFrom ctx locals nextLocal arg
             .ok (.not result.fst, result.snd)
+        | (.const ``Option.get! _, _) =>
+            let valueResult ← extractValueFrom ctx locals nextLocal expr
+            .ok (boolCond (← scalarValue valueResult.fst), valueResult.snd)
         | (.const ``Option.isSome _, args) =>
             match args.reverse with
             | optionValue :: _ =>

@@ -254,6 +254,7 @@ def arrayCellAddress (base index : List UInt8) : List UInt8 :=
 mutual
   partial def exprScratch : Expr → Nat
     | .local _ => 0
+    | .trap => 0
     | .u64 _ => 0
     | .u64Bin .natAdd left right => 3 + max (exprScratch left) (exprScratch right)
     | .u64Bin .natSub left right => 2 + max (exprScratch left) (exprScratch right)
@@ -604,6 +605,7 @@ mutual
 
   partial def emitExpr (scratch : Nat) : Expr → List UInt8
     | .local index => localGet index
+    | .trap => ofNats [0]
     | .u64 value => i64Const value
     | .u64Bin .natAdd left right => emitNatAdd scratch left right
     | .u64Bin .natSub left right => emitNatSub scratch left right
@@ -1013,6 +1015,7 @@ mutual
 
   partial def exprWatLines (scratch : Nat) : Expr → List String
     | .local index => [s!"local.get {index}"]
+    | .trap => ["unreachable"]
     | .u64 value => [s!"i64.const {value}"]
     | .u64Bin .add left right => exprWatLines scratch left ++ exprWatLines scratch right ++ ["i64.add"]
     | .u64Bin .natAdd left right => natAddWatLines scratch left right
