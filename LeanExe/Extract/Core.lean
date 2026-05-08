@@ -564,6 +564,16 @@ def exceptMapTypes? (args : List Expr) : Option (Ty × Ty) :=
       | _, _ => none
   | _ => none
 
+def exceptMapErrorTypes? (args : List Expr) : Option (Ty × Ty) :=
+  match args with
+  | sourceErrorTy :: resultErrorTy :: _okTy :: _ =>
+      match typeAtom? sourceErrorTy, typeAtom? resultErrorTy with
+      | some .unit, _ => none
+      | _, some .unit => none
+      | some sourceErrorTy, some resultErrorTy => some (sourceErrorTy, resultErrorTy)
+      | _, _ => none
+  | _ => none
+
 def exceptPayloadType? (args : List Expr) : Option Ty :=
   match args with
   | errorTy :: okTy :: _ =>
@@ -1061,6 +1071,14 @@ partial def demandExpr
                     (demandExpr ctx visiting exceptValue)
                     .empty
                     (demandOptionSomeArm ctx visiting mapFn)
+              | _ => .empty
+          | (.const ``Except.mapError _, args) =>
+              match args.reverse with
+              | exceptValue :: mapFn :: _ =>
+                  Demand.branch
+                    (demandExpr ctx visiting exceptValue)
+                    (demandOptionSomeArm ctx visiting mapFn)
+                    .empty
               | _ => .empty
           | (.const ``Except.bind _, args) =>
               match args.reverse with
@@ -1575,6 +1593,29 @@ mutual
                       (← valueIte (.eqU64 tag (.u64 0)) defaultOk mapResult.fst)),
                     mapResult.snd)
             | _, _ => .error "unsupported Except.map application"
+        | (.const ``Except.mapError _, args) =>
+            match args.reverse, exceptMapErrorTypes? args with
+            | exceptValue :: mapFn :: _, some (_sourceErrorTy, resultErrorTy) =>
+                let exceptResult ← extractValueFrom ctx locals nextLocal exceptValue
+                let parts ← sumPartsWithLets exceptResult.fst
+                let lets := parts.fst
+                let tag := parts.snd.fst
+                let errorPayload := parts.snd.snd.fst
+                let okPayload := parts.snd.snd.snd
+                let mapBody ←
+                  match collectLambdas mapFn 1 with
+                  | some body => .ok body
+                  | none => .error "unsupported Except.mapError function"
+                let mapResult ←
+                  extractValueFrom ctx (.value errorPayload :: locals) exceptResult.snd mapBody
+                let defaultError ← defaultValue resultErrorTy
+                .ok
+                  (wrapValueLets lets
+                    (.sum tag
+                      (← valueIte (.eqU64 tag (.u64 0)) mapResult.fst defaultError)
+                      okPayload),
+                    mapResult.snd)
+            | _, _ => .error "unsupported Except.mapError application"
         | (.const ``Except.bind _, args) =>
             match args.reverse, exceptMapTypes? args with
             | bindFn :: exceptValue :: _, some (_errorTy, resultTy) =>
