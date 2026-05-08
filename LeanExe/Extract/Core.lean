@@ -1002,6 +1002,8 @@ partial def demandExpr
               args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
           | (.const ``Array.append _, args) =>
               args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
+          | (.const ``HAppend.hAppend _, args) =>
+              args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
           | (.const ``Array.extract _, args) =>
               args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
           | (.const ``Array.empty _, _) => .empty
@@ -2420,6 +2422,13 @@ mutual
                     let rightResult ← extractExprFrom ctx locals leftResult.snd right
                     .ok (.arrayAppend leftResult.fst rightResult.fst, rightResult.snd)
                 | _ => .error "unsupported Array.append application"
+            | (.const ``HAppend.hAppend _, args) =>
+                match args.reverse, primitiveResultType? args with
+                | right :: left :: _, some (.array .u64) =>
+                    let leftResult ← extractExprFrom ctx locals nextLocal left
+                    let rightResult ← extractExprFrom ctx locals leftResult.snd right
+                    .ok (.arrayAppend leftResult.fst rightResult.fst, rightResult.snd)
+                | _, _ => .error "unsupported HAppend.hAppend application"
             | (.const ``Array.extract _, args) =>
                 match args.reverse with
                 | stop :: start :: array :: _ =>
