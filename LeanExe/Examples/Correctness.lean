@@ -432,6 +432,16 @@ def arrayIsEmptyValues : UInt64 :=
 def arrayBackRead : UInt64 :=
   ((Array.replicate 2 (4 : UInt64)).push 9).back!
 
+def arrayBackQuestionRead : UInt64 :=
+  match ((Array.replicate 2 (4 : UInt64)).push 9).back? with
+  | some value => value
+  | none => 0
+
+def arrayBackQuestionEmpty : UInt64 :=
+  match (Array.replicate 0 (4 : UInt64)).back? with
+  | some value => value
+  | none => 7
+
 def arrayBackEmptyTrap : UInt64 :=
   (Array.replicate 0 (4 : UInt64)).back!
 

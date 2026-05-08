@@ -88,6 +88,11 @@ const cases = [
     entryName: "LeanExe.Examples.Correctness.arrayAppendNotationRead",
     shape: "entry shape: UInt64",
   },
+  {
+    moduleName: "LeanExe.Examples.Correctness",
+    entryName: "LeanExe.Examples.Correctness.arrayBackQuestionRead",
+    shape: "entry shape: UInt64",
+  },
 ];
 
 for (const testCase of cases) {
