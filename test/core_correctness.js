@@ -36,6 +36,8 @@ const accepted = [
   { name: "uint64OfHugeNat", args: [], expected: 0n },
   { name: "natToUInt64Value", args: [41n], expected: 42n },
   { name: "natToUInt64Huge", args: [], expected: 0n },
+  { name: "uint64ToNatValue", args: [41n], expected: 42n },
+  { name: "uint64ToNatMethodMax", args: [], expected: 18446744073709551615n },
   { name: "wrappedUInt8Literal", args: [], expected: 44n },
   { name: "uint64ToUInt8Wrap", args: [], expected: 44n },
   { name: "uint8ToUInt64Value", args: [], expected: 256n },
