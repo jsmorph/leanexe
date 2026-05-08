@@ -148,6 +148,43 @@ def structureCtorInfo? (env : Environment) (structName : Name) : Option Construc
       | _ => none
   | none => none
 
+partial def isProofType? (env : Environment) (expr : Expr) : Bool :=
+  match expr.consumeMData with
+  | .sort .zero => true
+  | .forallE _ _ body _ => isProofType? env body
+  | .mdata _ body => isProofType? env body
+  | _ =>
+      match appFnArgs expr with
+      | (fn, args) =>
+          match fn.consumeMData with
+          | .const name _ =>
+              match env.find? name with
+              | some info =>
+                  let parts := peelForall info.type
+                  if args.length >= parts.fst.length then
+                    parts.snd.consumeMData.isProp
+                  else
+                    false
+              | none => false
+          | _ => false
+
+def runtimeFieldIndexFromKinds (sourceIndex : Nat) (kinds : List (Option Ty)) :
+    Option (Option Nat) :=
+  let rec loop : Nat → Nat → List (Option Ty) → Option (Option Nat)
+    | _, _, [] => none
+    | currentSource, currentRuntime, kind :: rest =>
+        if currentSource == sourceIndex then
+          match kind with
+          | some _ => some (some currentRuntime)
+          | none => some none
+        else
+          let nextRuntime :=
+            match kind with
+            | some _ => currentRuntime + 1
+            | none => currentRuntime
+          loop (currentSource + 1) nextRuntime rest
+  loop 0 0 kinds
+
 mutual
   partial def typeAtom? (env : Environment) (expr : Expr) : Option Ty :=
     if isConst ``UInt64 expr then
@@ -184,7 +221,8 @@ mutual
             none
       | _ => none
 
-  partial def structureFieldTypes? (env : Environment) (structName : Name) : Option (List Ty) :=
+  partial def structureFieldKinds? (env : Environment) (structName : Name) :
+      Option (List (Option Ty)) :=
     if !isStructureLike env structName then
       none
     else
@@ -194,29 +232,42 @@ mutual
           let flatFieldNames :=
             (getStructureFieldsFlattened env structName (includeSubobjectFields := false)).toList
           if fields.length == ctorInfo.numFields && fields.length == flatFieldNames.length then
-            fields.mapM (typeAtom? env)
+            fields.mapM fun field =>
+              if isProofType? env field then
+                some none
+              else
+                typeAtom? env field |>.map some
           else
             none
       | none => none
+
+  partial def structureFieldTypes? (env : Environment) (structName : Name) : Option (List Ty) :=
+    structureFieldKinds? env structName |>.map (fun fields => fields.filterMap id)
 end
 
-def structureConstructor? (env : Environment) (ctorName : Name) : Option (Name × List Ty) :=
+def structureConstructor? (env : Environment) (ctorName : Name) :
+    Option (Name × List (Option Ty)) :=
   match env.find? ctorName with
   | some (.ctorInfo ctorInfo) =>
       if ctorInfo.numParams == 0 && ctorInfo.cidx == 0 && isStructureLike env ctorInfo.induct then
-        structureFieldTypes? env ctorInfo.induct |>.map (fun fields => (ctorInfo.induct, fields))
+        structureFieldKinds? env ctorInfo.induct |>.map (fun fields => (ctorInfo.induct, fields))
       else
         none
   | _ => none
 
-def structureProjection? (env : Environment) (projName : Name) : Option (Name × Nat) :=
+def structureProjection? (env : Environment) (projName : Name) :
+    Option (Name × Option Nat) :=
   match env.getProjectionFnInfo? projName with
   | some projInfo =>
       if projInfo.numParams == 0 then
         match env.find? projInfo.ctorName with
         | some (.ctorInfo ctorInfo) =>
             if ctorInfo.numParams == 0 && isStructureLike env ctorInfo.induct then
-              some (ctorInfo.induct, projInfo.i)
+              match structureFieldKinds? env ctorInfo.induct with
+              | some kinds =>
+                  runtimeFieldIndexFromKinds projInfo.i kinds |>.map (fun index? =>
+                    (ctorInfo.induct, index?))
+              | none => none
             else
               none
         | _ => none
@@ -962,6 +1013,40 @@ def productMatcherArgs? (env : Environment) (fn : Expr) (args : List Expr) :
         match generatedMatcherScrutineeType? env name, args with
         | some (.product _ _), [_motive, scrutinee, arm] => some (scrutinee, arm)
         | _, _ => none
+  | _ => none
+
+def structureMatcherArgs? (env : Environment) (fn : Expr) (args : List Expr) :
+    Option (Name × Expr × Expr) :=
+  let directMatcher? (name : Name) : Option (Name × Expr × Expr) :=
+    match env.find? name with
+    | some (.recInfo recInfo) =>
+        match recInfo.all with
+        | structName :: [] =>
+            if (structureFieldKinds? env structName).isSome then
+              if name == .str structName "casesOn" || name == .str structName "recOn" then
+                match args.reverse with
+                | arm :: scrutinee :: _ => some (structName, scrutinee, arm)
+                | _ => none
+              else if name == .str structName "rec" then
+                match args.reverse with
+                | scrutinee :: arm :: _ => some (structName, scrutinee, arm)
+                | _ => none
+              else
+                none
+            else
+              none
+        | _ => none
+    | _ => none
+  let generatedMatcher? (name : Name) : Option (Name × Expr × Expr) :=
+    match generatedMatcherScrutineeType? env name, args with
+    | some (.struct structName _), [_motive, scrutinee, arm] =>
+        some (structName, scrutinee, arm)
+    | _, _ => none
+  match fn.consumeMData with
+  | .const name _ =>
+      match directMatcher? name with
+      | some result => some result
+      | none => generatedMatcher? name
   | _ => none
 
 def insertNat (value : Nat) (items : List Nat) : List Nat :=
@@ -1814,10 +1899,14 @@ mutual
         let valueResult ← extractValueFrom ctx locals nextLocal body
         .ok (← productField index valueResult.fst, valueResult.snd)
     | .proj typeName index body =>
-        match structureFieldTypes? ctx.env typeName with
-        | some _ =>
-            let valueResult ← extractValueFrom ctx locals nextLocal body
-            .ok (← structField typeName index valueResult.fst, valueResult.snd)
+        match structureFieldKinds? ctx.env typeName with
+        | some kinds =>
+            match runtimeFieldIndexFromKinds index kinds with
+            | some (some runtimeIndex) =>
+                let valueResult ← extractValueFrom ctx locals nextLocal body
+                .ok (← structField typeName runtimeIndex valueResult.fst, valueResult.snd)
+            | some none => .ok (.scalar (.u64 0), nextLocal)
+            | none => .error s!"unsupported structure projection index: {typeName}.{index}"
         | none => .error s!"unsupported projection: {typeName}"
     | .const ``Unit.unit _ => .ok (.scalar (.u64 0), nextLocal)
     | _ =>
@@ -2258,23 +2347,30 @@ mutual
             match fn.consumeMData with
             | .const name _ =>
                 match structureConstructor? ctx.env name with
-                | some (structName, fieldTypes) =>
-                    if args.length == fieldTypes.length then
-                      let rec loop : List Expr → Nat → Except String (List ExtractedValue × Nat)
-                        | [], next => .ok ([], next)
-                        | arg :: rest, next => do
+                | some (structName, fieldKinds) =>
+                    if args.length == fieldKinds.length then
+                      let rec loop :
+                          List Expr → List (Option Ty) → Nat →
+                            Except String (List ExtractedValue × Nat)
+                        | [], [], next => .ok ([], next)
+                        | arg :: restArgs, some _ :: restKinds, next => do
                             let fieldResult ← extractValueFrom ctx locals next arg
-                            let restResult ← loop rest fieldResult.snd
+                            let restResult ← loop restArgs restKinds fieldResult.snd
                             .ok (fieldResult.fst :: restResult.fst, restResult.snd)
-                      let result ← loop args nextLocal
+                        | _arg :: restArgs, none :: restKinds, next =>
+                            loop restArgs restKinds next
+                        | _, _, _ => .error s!"structure constructor arity mismatch: {name}"
+                      let result ← loop args fieldKinds nextLocal
                       .ok (.struct structName result.fst, result.snd)
                     else
                       .error s!"structure constructor arity mismatch: {name}"
                 | none =>
                     match structureProjection? ctx.env name, args with
-                    | some (structName, index), target :: [] =>
+                    | some (structName, some index), target :: [] =>
                         let valueResult ← extractValueFrom ctx locals nextLocal target
                         .ok (← structField structName index valueResult.fst, valueResult.snd)
+                    | some (_structName, none), _target :: [] =>
+                        .ok (.scalar (.u64 0), nextLocal)
                     | _, _ =>
                         extractNonStructureValueFrom ctx locals nextLocal expr fn args
             | _ => extractNonStructureValueFrom ctx locals nextLocal expr fn args
@@ -2305,20 +2401,24 @@ mutual
                 | some (scrutinee, zeroArm, succArm) =>
                     extractNatMatchValueFrom ctx locals nextLocal scrutinee zeroArm succArm
                 | none =>
-                    match productMatcherArgs? ctx.env fn args with
-                    | some (scrutinee, arm) =>
-                        extractProductMatchValueFrom ctx locals nextLocal scrutinee arm
-                    | none =>
-                        match fn.consumeMData with
-                        | .const name _ =>
-                            match ← extractInlineCallValueFrom ctx locals nextLocal name args with
-                            | some valueResult => .ok valueResult
+                            match productMatcherArgs? ctx.env fn args with
+                            | some (scrutinee, arm) =>
+                                extractProductMatchValueFrom ctx locals nextLocal scrutinee arm
                             | none =>
-                                let exprResult ← extractExprFrom ctx locals nextLocal expr
-                                .ok (.scalar exprResult.fst, exprResult.snd)
-                        | _ =>
-                            let exprResult ← extractExprFrom ctx locals nextLocal expr
-                            .ok (.scalar exprResult.fst, exprResult.snd)
+                                match structureMatcherArgs? ctx.env fn args with
+                                | some (structName, scrutinee, arm) =>
+                                    extractStructureMatchValueFrom ctx locals nextLocal structName scrutinee arm
+                                | none =>
+                                    match fn.consumeMData with
+                                    | .const name _ =>
+                                        match ← extractInlineCallValueFrom ctx locals nextLocal name args with
+                                        | some valueResult => .ok valueResult
+                                        | none =>
+                                            let exprResult ← extractExprFrom ctx locals nextLocal expr
+                                            .ok (.scalar exprResult.fst, exprResult.snd)
+                                    | _ =>
+                                        let exprResult ← extractExprFrom ctx locals nextLocal expr
+                                        .ok (.scalar exprResult.fst, exprResult.snd)
 
   partial def extractUnitArmValueFrom
       (ctx : Context)
@@ -2522,6 +2622,36 @@ mutual
       | none => .error "unsupported product matcher arm"
     extractValueFrom ctx (.value rightValue :: .value leftValue :: locals) scrutineeResult.snd body
 
+  partial def extractStructureMatchValueFrom
+      (ctx : Context)
+      (locals : List Binding)
+      (nextLocal : Nat)
+      (structName : Name)
+      (scrutinee arm : Expr) :
+      Except String (ExtractedValue × Nat) := do
+    let fieldKinds ←
+      match structureFieldKinds? ctx.env structName with
+      | some fields => .ok fields
+      | none => .error s!"unsupported structure matcher type: {structName}"
+    let scrutineeResult ← extractValueFrom ctx locals nextLocal scrutinee
+    let rec fieldsFromKinds :
+        Nat → List (Option Ty) → Except String (List ExtractedValue)
+      | _, [] => .ok []
+      | runtimeIndex, some _ :: rest => do
+          let field ← structField structName runtimeIndex scrutineeResult.fst
+          let restFields ← fieldsFromKinds (runtimeIndex + 1) rest
+          .ok (field :: restFields)
+      | runtimeIndex, none :: rest => do
+          let restFields ← fieldsFromKinds runtimeIndex rest
+          .ok (.scalar (.u64 0) :: restFields)
+    let fieldValues ← fieldsFromKinds 0 fieldKinds
+    let body ←
+      match collectLambdas arm fieldKinds.length with
+      | some body => .ok body
+      | none => .error s!"unsupported structure matcher arm: {structName}"
+    let fieldBindings := fieldValues.reverse.map Binding.value
+    extractValueFrom ctx (fieldBindings ++ locals) scrutineeResult.snd body
+
   partial def extractInlineCallValueFrom
       (ctx : Context)
       (locals : List Binding)
@@ -2589,10 +2719,15 @@ mutual
         let valueResult ← extractValueFrom ctx locals nextLocal body
         .ok (← scalarValue (← productField index valueResult.fst), valueResult.snd)
     | .proj typeName index body =>
-        match structureFieldTypes? ctx.env typeName with
-        | some _ =>
-            let valueResult ← extractValueFrom ctx locals nextLocal body
-            .ok (← scalarValue (← structField typeName index valueResult.fst), valueResult.snd)
+        match structureFieldKinds? ctx.env typeName with
+        | some kinds =>
+            match runtimeFieldIndexFromKinds index kinds with
+            | some (some runtimeIndex) =>
+                let valueResult ← extractValueFrom ctx locals nextLocal body
+                .ok (← scalarValue (← structField typeName runtimeIndex valueResult.fst),
+                  valueResult.snd)
+            | some none => .ok (.u64 0, nextLocal)
+            | none => .error s!"unsupported structure projection index: {typeName}.{index}"
         | none => .error s!"unsupported projection: {typeName}"
     | .const ``Unit.unit _ => .ok (.u64 0, nextLocal)
     | .const ``Bool.true _ => .ok (.u64 1, nextLocal)
@@ -3209,9 +3344,11 @@ mutual
                 .error "product value used where scalar value is required"
             | (.const primitive _, args) =>
                 match structureProjection? ctx.env primitive, args with
-                | some (structName, index), target :: [] =>
+                | some (structName, some index), target :: [] =>
                     let valueResult ← extractValueFrom ctx locals nextLocal target
                     .ok (← scalarValue (← structField structName index valueResult.fst), valueResult.snd)
+                | some (_structName, none), _target :: [] =>
+                    .ok (.u64 0, nextLocal)
                 | _, _ =>
                     match boolMatcherArgs? ctx.env (.const primitive []) args with
                     | some (scrutinee, falseArm, trueArm) =>
@@ -3244,7 +3381,15 @@ mutual
                                           extractProductMatchValueFrom ctx locals nextLocal scrutinee arm
                                         .ok (← scalarValue valueResult.fst, valueResult.snd)
                                     | none =>
-                                        extractPrimitiveApplicationFrom ctx locals nextLocal primitive args
+                                        match structureMatcherArgs? ctx.env (.const primitive []) args with
+                                        | some (structName, scrutinee, arm) =>
+                                            let valueResult ←
+                                              extractStructureMatchValueFrom ctx locals nextLocal
+                                                structName scrutinee arm
+                                            .ok (← scalarValue valueResult.fst, valueResult.snd)
+                                        | none =>
+                                            extractPrimitiveApplicationFrom ctx locals nextLocal
+                                              primitive args
             | (fn, _) => .error s!"unsupported expression: {fn}"
 
   partial def extractPrimitiveApplicationFrom
@@ -3640,22 +3785,31 @@ mutual
                             let exprResult ← extractExprFrom ctx locals nextLocal expr
                             .ok (boolCond exprResult.fst, exprResult.snd)
                         | none =>
-                            match ← extractInlineCallValueFrom ctx locals nextLocal name args with
-                            | some valueResult => .ok (boolCond (← scalarValue valueResult.fst), valueResult.snd)
+                            match structureMatcherArgs? ctx.env (.const name []) args with
+                            | some _ =>
+                                let exprResult ← extractExprFrom ctx locals nextLocal expr
+                                .ok (boolCond exprResult.fst, exprResult.snd)
                             | none =>
-                                match functionIndex? ctx name with
-                                | some index =>
-                                    strictRecursiveCallCheck ctx name args
-                                    let sig ←
-                                      match ctx.env.find? name with
-                                      | some info =>
-                                          match supportedFunction? ctx.env info with
-                                          | some sig => .ok sig
-                                          | none => .error s!"unsupported function type or declaration: {name}"
-                                      | none => .error s!"declaration disappeared during extraction: {name}"
-                                    let argsResult ← extractCallArgsFrom ctx locals nextLocal sig.params args
-                                    .ok (boolCond (.call index argsResult.fst), argsResult.snd)
-                                | none => .error s!"unsupported condition: {expr}"
+                                match ← extractInlineCallValueFrom ctx locals nextLocal name args with
+                                | some valueResult =>
+                                    .ok (boolCond (← scalarValue valueResult.fst), valueResult.snd)
+                                | none =>
+                                    match functionIndex? ctx name with
+                                    | some index =>
+                                        strictRecursiveCallCheck ctx name args
+                                        let sig ←
+                                          match ctx.env.find? name with
+                                          | some info =>
+                                              match supportedFunction? ctx.env info with
+                                              | some sig => .ok sig
+                                              | none =>
+                                                  .error
+                                                    s!"unsupported function type or declaration: {name}"
+                                          | none =>
+                                              .error s!"declaration disappeared during extraction: {name}"
+                                        let argsResult ← extractCallArgsFrom ctx locals nextLocal sig.params args
+                                        .ok (boolCond (.call index argsResult.fst), argsResult.snd)
+                                    | none => .error s!"unsupported condition: {expr}"
         | _ => .error s!"unsupported condition: {expr}"
 
   partial def extractExprListFrom
