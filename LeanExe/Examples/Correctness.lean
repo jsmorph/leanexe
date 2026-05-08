@@ -266,6 +266,10 @@ structure ArrayBox where
   values : Array UInt64
   count : UInt64
 
+structure CheckedPoint where
+  value : UInt64
+  ok : value = value
+
 def structureProjection : UInt64 :=
   let point : Point := { x := (Array.replicate 0 (0 : UInt64)).back!, y := 7 }
   point.y
@@ -296,6 +300,35 @@ def nestedStructureReturn : TaggedPoint :=
 
 def structureArrayReturn : ArrayBox :=
   { values := #[4, 5], count := 2 }
+
+def structureMatchDestructure : UInt64 :=
+  match ({ x := 1, y := 2 } : Point) with
+  | { x, y } => x * (10 : UInt64) + y
+
+def structureMatchUsesFirstOnly : UInt64 :=
+  match ({ x := 7, y := (Array.replicate 0 (0 : UInt64)).back! } : Point) with
+  | { x, y := _ } => x
+
+def structureMatchCondition : UInt64 :=
+  if (
+    match ({ x := 2, y := 5 } : Point) with
+    | { x, y } => x < y
+  )
+  then
+    1
+  else
+    0
+
+def proofStructureProjection : UInt64 :=
+  let point : CheckedPoint := { value := 9, ok := rfl }
+  point.value + 1
+
+def proofStructureReturn : CheckedPoint :=
+  { value := 9, ok := rfl }
+
+def proofStructureMatch : UInt64 :=
+  match ({ value := 8, ok := rfl } : CheckedPoint) with
+  | { value, ok := _ } => value
 
 def rejectStructureParam (point : Point) : UInt64 :=
   point.x

@@ -1602,7 +1602,7 @@ Planned implementation sequence:
 - [x] Replace the single-result function ABI with a shared flattening path for public returns.
 - [x] Emit Wasm function result vectors for flattened structure returns.
 - [x] Add correctness cases for a returned scalar structure, nested structure fields, field projection laziness, and array fields in returned structures.
-- [ ] Add proof-field erasure and single-constructor structure matcher extraction after the extractor has explicit rules for proposition fields and recursor argument layout.
+- [x] Add proof-field erasure and single-constructor structure matcher extraction after the extractor has explicit rules for proposition fields and recursor argument layout.
 
 ## 2026-05-08: User structures and multi-result returns
 
@@ -1619,3 +1619,17 @@ Checks run:
 - [x] `.lake/build/bin/lean-wasm compile-wat --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.structureReturn --out .lake/build/core-correctness/structureReturn.wat`
 - [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/wasmtime-v44.0.0-aarch64-linux/wasmtime --invoke structureReturn .lake/build/core-correctness/structureReturn.wat 4` returned `5` and `6`.
 - [x] `node test/run_all.js` returned `checked 28 report classification cases`, `checked 293 accepted, 22 rejected, and 7 trapped cases`, `checked 36 bytearray allocation cases`, and `checked 56 cases`.
+
+## 2026-05-08: Structure matchers and proof fields
+
+The structure extractor now classifies each constructor field as either a runtime field or an erased proof field.  The proof test handles direct `Prop` fields and fully applied constants whose declared result is `Prop`, which covers ordinary equality proofs such as `ok : value = value` without requiring runtime representation.  Runtime field indices now map from Lean source field indices to compact runtime indices, so projections and matcher binders skip erased fields while preserving source field order for the fields that remain.
+
+Single-constructor structure matching now lowers through the same field representation as projections.  Direct structure recursors and generated matchers bind every source field in the arm; proof binders receive an erased placeholder, while runtime binders receive lazy field values.  This keeps `match ({ x := good, y := bad } : Point) with | { x, y := _ } => x` from emitting the unused `y` expression.
+
+Checks run:
+
+- [x] `lake build`
+- [x] `lake build LeanExe.Examples.Correctness`
+- [x] `node test/report_classification.js` returned `checked 29 report classification cases`.
+- [x] `node test/core_correctness.js` returned `checked 299 accepted, 22 rejected, and 7 trapped cases`.
+- [x] `node test/run_all.js` returned `checked 29 report classification cases`, `checked 299 accepted, 22 rejected, and 7 trapped cases`, `checked 36 bytearray allocation cases`, and `checked 56 cases`.

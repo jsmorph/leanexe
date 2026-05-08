@@ -45,6 +45,11 @@ const cases = [
   },
   {
     moduleName: "LeanExe.Examples.Correctness",
+    entryName: "LeanExe.Examples.Correctness.proofStructureReturn",
+    shape: "entry shape: LeanExe.Examples.Correctness.CheckedPoint",
+  },
+  {
+    moduleName: "LeanExe.Examples.Correctness",
     entryName: "LeanExe.Examples.Correctness.exceptBindProduct",
     shape: "entry shape: UInt64",
   },
