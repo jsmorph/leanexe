@@ -174,6 +174,8 @@ def knownExternal? (name : Name) : Option Classification :=
     some { status := "implemented", reason := "boolean primitive in the generic compiler fragment" }
   else if [``BEq.beq, ``LT.lt, ``LE.le, ``GT.gt, ``GE.ge, ``ite, ``dite].contains name then
     some { status := "implemented", reason := "control, equality, or comparison primitive in the generic compiler fragment" }
+  else if [``UInt64.decLt].contains name then
+    some { status := "implemented", reason := "decidable comparison instance used by supported UInt64 comparisons" }
   else if [``Id.run, ``Pure.pure, ``Bind.bind, ``Applicative.toPure, ``Monad.toApplicative,
       ``Monad.toBind].contains name then
     some { status := "implemented", reason := "pure Id do-notation plumbing erased by the generic compiler fragment" }
@@ -186,7 +188,8 @@ def knownExternal? (name : Name) : Option Classification :=
     some { status := "implemented", reason := "read-only ByteArray primitive in the generic compiler fragment" }
   else if [``Option.casesOn, ``Option.rec, ``Option.none, ``Option.some,
       ``Option.getD, ``Option.get!, ``Option.orElse, ``Option.elim, ``Option.map,
-      ``Option.filter, ``Option.bind, ``Option.isSome, ``Option.isNone].contains name then
+      ``Option.filter, ``Option.any, ``Option.all, ``Option.bind, ``Option.isSome,
+      ``Option.isNone].contains name then
     some { status := "implemented", reason := "internal Option primitive in the generic compiler fragment" }
   else if [``Except.casesOn, ``Except.rec, ``Except.error, ``Except.ok,
       ``Except.map, ``Except.mapError, ``Except.bind, ``Except.toOption,
