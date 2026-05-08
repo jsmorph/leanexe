@@ -1005,6 +1005,13 @@ partial def demandExpr
               | index :: array :: _ =>
                   Demand.always (demandExpr ctx visiting array) (demandExpr ctx visiting index)
               | _ => .empty
+          | (.const ``Array.swapIfInBounds _, args) =>
+              match args.reverse with
+              | right :: left :: array :: _ =>
+                  Demand.always
+                    (Demand.always (demandExpr ctx visiting array) (demandExpr ctx visiting left))
+                    (demandExpr ctx visiting right)
+              | _ => .empty
           | (.const ``Array.append _, args) =>
               args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
           | (.const ``HAppend.hAppend _, args) =>
@@ -2466,6 +2473,24 @@ mutual
                         .error s!"unsupported Array.eraseIdxIfInBounds item type: {reprStr other}"
                     | none => .error "unsupported Array.eraseIdxIfInBounds item type"
                 | _, _ => .error "unsupported Array.eraseIdxIfInBounds application"
+            | (.const ``Array.swapIfInBounds _, args) =>
+                match args, args.reverse with
+                | itemTy :: _, right :: left :: array :: _ =>
+                    match typeAtom? itemTy with
+                    | some .u64 =>
+                        let arrayResult ← extractExprFrom ctx locals nextLocal array
+                        let leftResult ← extractExprFrom ctx locals arrayResult.snd left
+                        let rightResult ← extractExprFrom ctx locals leftResult.snd right
+                        .ok
+                          (.arraySwapIfInBounds
+                            arrayResult.fst
+                            leftResult.fst
+                            rightResult.fst,
+                            rightResult.snd)
+                    | some other =>
+                        .error s!"unsupported Array.swapIfInBounds item type: {reprStr other}"
+                    | none => .error "unsupported Array.swapIfInBounds item type"
+                | _, _ => .error "unsupported Array.swapIfInBounds application"
             | (.const ``Array.append _, args) =>
                 match args.reverse with
                 | right :: left :: _ =>

@@ -108,6 +108,11 @@ const cases = [
     entryName: "LeanExe.Examples.Correctness.arrayEraseIdxIfInBoundsMiddle",
     shape: "entry shape: UInt64",
   },
+  {
+    moduleName: "LeanExe.Examples.Correctness",
+    entryName: "LeanExe.Examples.Correctness.arraySwapIfInBoundsEnds",
+    shape: "entry shape: UInt64",
+  },
 ];
 
 for (const testCase of cases) {

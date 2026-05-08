@@ -280,6 +280,8 @@ mutual
         7 + max (exprScratch array) (max (exprScratch index) (exprScratch value))
     | .arrayEraseIfInBounds array index =>
         6 + max (exprScratch array) (exprScratch index)
+    | .arraySwapIfInBounds array left right =>
+        6 + max (exprScratch array) (max (exprScratch left) (exprScratch right))
     | .byteArrayGet ptr len index =>
         3 + max (exprScratch ptr) (max (exprScratch len) (exprScratch index))
     | .call _ args => args.foldl (fun count arg => max count (exprScratch arg)) 0
@@ -609,6 +611,41 @@ mutual
         localGet arrayLocal ++
       ofNats [11]
 
+  partial def emitArraySwapIfInBounds (scratch : Nat) (array left right : Expr) : List UInt8 :=
+    let arrayLocal := scratch
+    let leftLocal := scratch + 1
+    let rightLocal := scratch + 2
+    let lenLocal := scratch + 3
+    let newLocal := scratch + 4
+    let loopLocal := scratch + 5
+    let childScratch := scratch + 6
+    let swapBody :=
+      globalGet 0 ++ localSet newLocal ++
+        localGet newLocal ++ i32WrapI64 ++ localGet lenLocal ++ i64Store ++
+        globalGet 0 ++ i64Const 8 ++ localGet lenLocal ++ i64Const 8 ++
+          ofNats [126, 124, 124] ++ globalSet 0 ++
+        emitCopyLoop arrayLocal newLocal lenLocal loopLocal ++
+        arrayCellAddress (localGet newLocal) (localGet leftLocal) ++
+          arrayCellAddress (localGet arrayLocal) (localGet rightLocal) ++ i64Load ++ i64Store ++
+        arrayCellAddress (localGet newLocal) (localGet rightLocal) ++
+          arrayCellAddress (localGet arrayLocal) (localGet leftLocal) ++ i64Load ++ i64Store ++
+        localGet newLocal
+    emitExpr childScratch array ++ localSet arrayLocal ++
+      emitExpr childScratch left ++ localSet leftLocal ++
+      emitExpr childScratch right ++ localSet rightLocal ++
+      localGet arrayLocal ++ i32WrapI64 ++ i64Load ++ localSet lenLocal ++
+      localGet leftLocal ++ localGet lenLocal ++ i64LtU ++
+      ofNats [4, 126] ++
+        localGet rightLocal ++ localGet lenLocal ++ i64LtU ++
+        ofNats [4, 126] ++
+          swapBody ++
+        ofNats [5] ++
+          localGet arrayLocal ++
+        ofNats [11] ++
+      ofNats [5] ++
+        localGet arrayLocal ++
+      ofNats [11]
+
   partial def emitByteArrayGet (scratch : Nat) (ptr len index : Expr) : List UInt8 :=
     let ptrLocal := scratch
     let lenLocal := scratch + 1
@@ -725,6 +762,8 @@ mutual
     | .arrayInsertIfInBounds array index value =>
         emitArrayInsertIfInBounds scratch array index value
     | .arrayEraseIfInBounds array index => emitArrayEraseIfInBounds scratch array index
+    | .arraySwapIfInBounds array left right =>
+        emitArraySwapIfInBounds scratch array left right
     | .byteArrayGet ptr len index => emitByteArrayGet scratch ptr len index
     | .call index args => args.flatMap (emitExpr scratch) ++ call index
 
@@ -1144,6 +1183,47 @@ mutual
       indent 2 [s!"local.get {arrayLocal}"] ++
       ["end"]
 
+  partial def arraySwapIfInBoundsWatLines
+      (scratch : Nat)
+      (array left right : Expr) : List String :=
+    let arrayLocal := scratch
+    let leftLocal := scratch + 1
+    let rightLocal := scratch + 2
+    let lenLocal := scratch + 3
+    let newLocal := scratch + 4
+    let loopLocal := scratch + 5
+    let childScratch := scratch + 6
+    let swapBody :=
+      ["global.get 0", s!"local.set {newLocal}",
+        s!"local.get {newLocal}", "i32.wrap_i64", s!"local.get {lenLocal}",
+        "i64.store align=8",
+        "global.get 0", "i64.const 8", s!"local.get {lenLocal}", "i64.const 8",
+        "i64.mul", "i64.add", "i64.add", "global.set 0"] ++
+      copyLoopWat arrayLocal newLocal lenLocal loopLocal ++
+      arrayCellAddressWat [s!"local.get {newLocal}"] [s!"local.get {leftLocal}"] ++
+      arrayCellAddressWat [s!"local.get {arrayLocal}"] [s!"local.get {rightLocal}"] ++
+      ["i64.load align=8", "i64.store align=8"] ++
+      arrayCellAddressWat [s!"local.get {newLocal}"] [s!"local.get {rightLocal}"] ++
+      arrayCellAddressWat [s!"local.get {arrayLocal}"] [s!"local.get {leftLocal}"] ++
+      ["i64.load align=8", "i64.store align=8", s!"local.get {newLocal}"]
+    exprWatLines childScratch array ++ [s!"local.set {arrayLocal}"] ++
+      exprWatLines childScratch left ++ [s!"local.set {leftLocal}"] ++
+      exprWatLines childScratch right ++ [s!"local.set {rightLocal}",
+        s!"local.get {arrayLocal}", "i32.wrap_i64", "i64.load align=8",
+        s!"local.set {lenLocal}",
+        s!"local.get {leftLocal}", s!"local.get {lenLocal}", "i64.lt_u",
+        "if (result i64)"] ++
+      indent 2 (
+        [s!"local.get {rightLocal}", s!"local.get {lenLocal}", "i64.lt_u",
+          "if (result i64)"] ++
+        indent 2 swapBody ++
+        ["else"] ++
+        indent 2 [s!"local.get {arrayLocal}"] ++
+        ["end"]) ++
+      ["else"] ++
+      indent 2 [s!"local.get {arrayLocal}"] ++
+      ["end"]
+
   partial def byteArrayGetWatLines (scratch : Nat) (ptr len index : Expr) : List String :=
     let ptrLocal := scratch
     let lenLocal := scratch + 1
@@ -1254,6 +1334,8 @@ mutual
     | .arrayInsertIfInBounds array index value =>
         arrayInsertIfInBoundsWatLines scratch array index value
     | .arrayEraseIfInBounds array index => arrayEraseIfInBoundsWatLines scratch array index
+    | .arraySwapIfInBounds array left right =>
+        arraySwapIfInBoundsWatLines scratch array left right
     | .byteArrayGet ptr len index => byteArrayGetWatLines scratch ptr len index
     | .call index args => args.flatMap (exprWatLines scratch) ++ [s!"call {index}"]
 

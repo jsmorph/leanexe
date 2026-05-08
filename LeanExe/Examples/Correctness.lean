@@ -376,6 +376,32 @@ def arrayEraseIdxIfInBoundsOutOfBounds : UInt64 :=
   else
     0
 
+def arraySwapIfInBoundsEnds : UInt64 :=
+  let a :=
+    ((((Array.replicate 4 (0 : UInt64)).set! 0 1).set! 1 2).set! 2 3).set! 3 4
+  let b := a.swapIfInBounds 0 3
+  if a.size == 4 && b.size == 4 then
+    b[0]! * (1000 : UInt64) + b[1]! * (100 : UInt64) +
+      b[2]! * (10 : UInt64) + b[3]!
+  else
+    0
+
+def arraySwapIfInBoundsSameIndex : UInt64 :=
+  let a := ((Array.replicate 2 (0 : UInt64)).set! 0 5).set! 1 6
+  let b := a.swapIfInBounds 1 1
+  if b.size == 2 then
+    b[0]! * (10 : UInt64) + b[1]!
+  else
+    0
+
+def arraySwapIfInBoundsOutOfBounds : UInt64 :=
+  let a := (((Array.replicate 3 (0 : UInt64)).set! 0 7).set! 1 8).set! 2 9
+  let b := a.swapIfInBounds 0 3
+  if b.size == 3 then
+    b[0]! * (100 : UInt64) + b[1]! * (10 : UInt64) + b[2]!
+  else
+    0
+
 def arrayPushRead : UInt64 :=
   let a := (Array.replicate 2 (0 : UInt64)).set! 0 5
   let b := a.push 7
