@@ -254,6 +254,52 @@ def productFirstHelper (pair : UInt64 × UInt64) : UInt64 :=
 def productHelperParamSkipsTrap : UInt64 :=
   productFirstHelper ((7 : UInt64), (Array.replicate 0 (0 : UInt64)).back!)
 
+structure Point where
+  x : UInt64
+  y : UInt64
+
+structure TaggedPoint where
+  point : Point
+  tag : UInt64
+
+structure ArrayBox where
+  values : Array UInt64
+  count : UInt64
+
+def structureProjection : UInt64 :=
+  let point : Point := { x := (Array.replicate 0 (0 : UInt64)).back!, y := 7 }
+  point.y
+
+def structureUpdateProjection : UInt64 :=
+  let point : Point := { x := 1, y := 2 }
+  let updated := { point with y := 9 }
+  updated.x * (10 : UInt64) + updated.y
+
+def makePointHelper (x : UInt64) : Point :=
+  { x := x + 1, y := x + 2 }
+
+def structureHelperResult : UInt64 :=
+  let point := makePointHelper 4
+  point.x * (10 : UInt64) + point.y
+
+def structureReturn (x : UInt64) : Point :=
+  { x := x + 1, y := x + 2 }
+
+def structureBranchReturn (flag : UInt64) : Point :=
+  if flag == 0 then
+    { x := 1, y := 2 }
+  else
+    { x := 3, y := 4 }
+
+def nestedStructureReturn : TaggedPoint :=
+  { point := { x := 1, y := 2 }, tag := 3 }
+
+def structureArrayReturn : ArrayBox :=
+  { values := #[4, 5], count := 2 }
+
+def rejectStructureParam (point : Point) : UInt64 :=
+  point.x
+
 def unitArgHelper (_value : Unit) : UInt64 :=
   11
 

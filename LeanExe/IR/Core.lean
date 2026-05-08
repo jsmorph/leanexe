@@ -13,6 +13,7 @@ inductive Ty where
   | array (item : Ty)
   | product (left right : Ty)
   | sum (left right : Ty)
+  | struct (name : Lean.Name) (fields : List Ty)
   deriving BEq, Repr
 
 inductive U64Op where
@@ -91,7 +92,7 @@ mutual
     params : Nat
     locals : Nat
     body : Stmt
-    result : Expr
+    results : List Expr
     deriving BEq, Repr
 
   structure Module where
@@ -186,7 +187,10 @@ mutual
           let index := state.fst
           (index + 1, state.snd.set index arg))
         (0, Store.empty)
-    func.result.eval module_ (func.body.eval module_ store.snd)
+    let store := func.body.eval module_ store.snd
+    match func.results with
+    | result :: _ => result.eval module_ store
+    | [] => 0
 end
 
 def Module.evalFunc (module_ : Module) (index : Nat) (args : List UInt64) : UInt64 :=

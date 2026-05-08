@@ -104,6 +104,7 @@ def tyText : Ty → String
   | .product left right => s!"({tyText left} × {tyText right})"
   | .sum .unit payload => s!"Option {tyText payload}"
   | .sum left right => s!"Sum {tyText left} {tyText right}"
+  | .struct name _ => displayName name
 
 def signatureText (sig : LeanExe.Extract.Core.Signature) : String :=
   match sig.params with
@@ -237,15 +238,15 @@ def knownExternal? (name : Name) : Option Classification :=
   else
     none
 
-def classifyLocal (info : ConstantInfo) : Classification :=
+def classifyLocal (env : Environment) (info : ConstantInfo) : Classification :=
   if validatorImplementedNames.contains info.name then
     { status := "implemented", reason := "accepted by the validator demo compiler path" }
-  else if LeanExe.Extract.Core.supportedFunction? info |>.isSome then
+  else if LeanExe.Extract.Core.supportedFunction? env info |>.isSome then
     {
       status := "reported",
       reason := "function type is in the first generic compiler fragment; body support is checked by compile"
     }
-  else if LeanExe.Extract.Core.supportedInlineFunction? info |>.isSome then
+  else if LeanExe.Extract.Core.supportedInlineFunction? env info |>.isSome then
     {
       status := "reported",
       reason := "function type is supported for nonrecursive local helper inlining; body support is checked by compile"
@@ -324,7 +325,7 @@ partial def visit (env : Environment) (moduleName entryName name : Name) :
             nodes := state.nodes.push {
               name := name,
               kind := declarationKind info,
-              classification := classifyLocal info,
+              classification := classifyLocal env info,
               deps := deps
             }
           }
@@ -343,7 +344,7 @@ def entryShape (env : Environment) (entryName : Name) : String :=
   match env.find? entryName with
   | none => "missing"
   | some info =>
-      match LeanExe.Extract.Core.entryFunctionType? info.type with
+      match LeanExe.Extract.Core.entryFunctionType? env info.type with
       | some sig => signatureText sig
       | none =>
           if typeIsByteArrayToBool info.type then
@@ -364,7 +365,7 @@ def compileStatus (env : Environment) (moduleName entryName : Name) : String :=
     "implemented by the validator demo compiler path"
   else
     match LeanExe.Extract.Core.compileEnvironment env moduleName entryName with
-    | .ok _ => "implemented by the first generic scalar/array/bytearray compiler fragment"
+    | .ok _ => "implemented by the first generic scalar/array/bytearray/structure compiler fragment"
     | .error error => s!"reported only; generic compile rejects this entry: {error}"
 
 def renderNode (node : DeclReport) : List String :=
