@@ -53,6 +53,11 @@ const cases = [
     entryName: "LeanExe.Examples.Correctness.exceptIsOkAsBool",
     shape: "entry shape: Bool",
   },
+  {
+    moduleName: "LeanExe.Examples.Correctness",
+    entryName: "LeanExe.Examples.Correctness.exceptMapErrorProduct",
+    shape: "entry shape: UInt64",
+  },
 ];
 
 for (const testCase of cases) {

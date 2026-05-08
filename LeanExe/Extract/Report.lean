@@ -189,7 +189,8 @@ def knownExternal? (name : Name) : Option Classification :=
       ``Option.isSome, ``Option.isNone].contains name then
     some { status := "implemented", reason := "internal Option primitive in the generic compiler fragment" }
   else if [``Except.casesOn, ``Except.rec, ``Except.error, ``Except.ok,
-      ``Except.map, ``Except.bind, ``Except.toOption, ``Except.isOk].contains name then
+      ``Except.map, ``Except.mapError, ``Except.bind, ``Except.toOption,
+      ``Except.isOk].contains name then
     some { status := "implemented", reason := "internal Except primitive in the generic compiler fragment" }
   else if name == ``HOrElse.hOrElse then
     some { status := "implemented", reason := "implemented for Option and restricted Except fallback in the generic compiler fragment" }
