@@ -48,6 +48,11 @@ const cases = [
     entryName: "LeanExe.Examples.Correctness.idRunBind",
     shape: "entry shape: UInt64",
   },
+  {
+    moduleName: "LeanExe.Examples.Correctness",
+    entryName: "LeanExe.Examples.Correctness.exceptIsOkAsBool",
+    shape: "entry shape: Bool",
+  },
 ];
 
 for (const testCase of cases) {

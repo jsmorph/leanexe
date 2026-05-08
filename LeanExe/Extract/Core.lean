@@ -1074,6 +1074,10 @@ partial def demandExpr
               match args.reverse with
               | exceptValue :: _ => demandExpr ctx visiting exceptValue
               | _ => .empty
+          | (.const ``Except.isOk _, args) =>
+              match args.reverse with
+              | exceptValue :: _ => demandExceptTag ctx visiting exceptValue
+              | _ => .empty
           | (.const ``Option.bind _, args) =>
               match args.reverse with
               | bindFn :: optionValue :: _ =>
@@ -1145,6 +1149,20 @@ partial def demandProductField
           else .empty
       | _ => .empty
   | _ => demandExpr ctx visiting expr
+
+partial def demandExceptTag
+    (ctx : Context)
+    (visiting : List Name)
+    (expr : Expr) : Demand :=
+  match expr.consumeMData with
+  | .bvar index => .bvar index
+  | .letE _ _ value body _ => Demand.letE (demandExpr ctx visiting value) (demandExceptTag ctx visiting body)
+  | .mdata _ body => demandExceptTag ctx visiting body
+  | _ =>
+      match appFnArgs expr with
+      | (.const ``Except.error _, _) => .empty
+      | (.const ``Except.ok _, _) => .empty
+      | _ => demandExpr ctx visiting expr
 
 partial def demandCond
     (ctx : Context)
@@ -1227,6 +1245,10 @@ partial def demandCond
                 (demandExpr ctx visiting right)
           | none => .empty
       | (.const ``Bool.not _, [arg]) => demandCond ctx visiting arg
+      | (.const ``Except.isOk _, args) =>
+          match args.reverse with
+          | exceptValue :: _ => demandExceptTag ctx visiting exceptValue
+          | _ => .empty
       | (.const ``Bool.or _, [left, right]) =>
           let leftDemand := demandCond ctx visiting left
           let rightDemand := demandCond ctx visiting right
@@ -1593,6 +1615,12 @@ mutual
                     (.option parts.snd.fst parts.snd.snd.snd),
                     exceptResult.snd)
             | _, _ => .error "unsupported Except.toOption application"
+        | (.const ``Except.isOk _, args) =>
+            match args.reverse, exceptPayloadType? args with
+            | exceptValue :: _, some _payloadTy =>
+                let tagResult ← extractExceptTagExprFrom ctx locals nextLocal exceptValue
+                .ok (.scalar (boolExpr (.not (.eqU64 tagResult.fst (.u64 0)))), tagResult.snd)
+            | _, _ => .error "unsupported Except.isOk application"
         | (.const ``Option.getD _, args) =>
             match args.reverse with
             | defaultValue :: optionValue :: _ =>
@@ -1950,6 +1978,16 @@ mutual
           (← valueIte isError fallbackOk okPayload)),
         fallbackResult.snd)
 
+  partial def extractExceptTagExprFrom
+      (ctx : Context)
+      (locals : List Binding)
+      (nextLocal : Nat)
+      (exceptValue : Expr) :
+      Except String (IRExpr × Nat) := do
+    let exceptResult ← extractValueFrom ctx locals nextLocal exceptValue
+    let parts ← sumPartsWithLets exceptResult.fst
+    .ok (wrapExprLets parts.fst parts.snd.fst, exceptResult.snd)
+
   partial def extractOptionOrElseValueFrom
       (ctx : Context)
       (locals : List Binding)
@@ -2117,6 +2155,12 @@ mutual
                     let tag := wrapExprLets parts.fst parts.snd.fst
                     .ok (boolExpr (.eqU64 tag (.u64 0)), optionResult.snd)
                 | _ => .error "unsupported Option.isNone application"
+            | (.const ``Except.isOk _, args) =>
+                match args.reverse, exceptPayloadType? args with
+                | exceptValue :: _, some _payloadTy =>
+                    let tagResult ← extractExceptTagExprFrom ctx locals nextLocal exceptValue
+                    .ok (boolExpr (.not (.eqU64 tagResult.fst (.u64 0))), tagResult.snd)
+                | _, _ => .error "unsupported Except.isOk application"
             | (.const ``Decidable.decide _, [prop, _inst]) =>
                 let condResult ← extractCondFrom ctx locals nextLocal prop
                 .ok (boolExpr condResult.fst, condResult.snd)
@@ -2761,6 +2805,12 @@ mutual
                 let tag := wrapExprLets parts.fst parts.snd.fst
                 .ok (.eqU64 tag (.u64 0), optionResult.snd)
             | _ => .error "unsupported Option.isNone condition"
+        | (.const ``Except.isOk _, args) =>
+            match args.reverse, exceptPayloadType? args with
+            | exceptValue :: _, some _payloadTy =>
+                let tagResult ← extractExceptTagExprFrom ctx locals nextLocal exceptValue
+                .ok (.not (.eqU64 tagResult.fst (.u64 0)), tagResult.snd)
+            | _, _ => .error "unsupported Except.isOk condition"
         | (.const ``Bool.or _, [left, right]) =>
             let leftResult ← extractCondFrom ctx locals nextLocal left
             let rightResult ← extractCondFrom ctx locals leftResult.snd right
