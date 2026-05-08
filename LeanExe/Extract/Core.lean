@@ -1051,6 +1051,14 @@ partial def demandExpr
                     (demandExpr ctx visiting value)
                     .empty
               | _ => .empty
+          | (.const ``Array.insertIdx! _, args) =>
+              match args.reverse with
+              | value :: index :: array :: _ =>
+                  Demand.branch
+                    (Demand.always (demandExpr ctx visiting array) (demandExpr ctx visiting index))
+                    (demandExpr ctx visiting value)
+                    .trap
+              | _ => .empty
           | (.const ``Array.modify _, args) =>
               match args.reverse with
               | modifyFn :: index :: array :: _ =>
@@ -1205,6 +1213,7 @@ partial def demandExpr
                     (demandOptionSomeArm ctx visiting bindFn)
               | _ => .empty
           | (.const ``Array.set! _, _) => .trap
+          | (.const ``Array.eraseIdx! _, _) => .trap
           | (.const primitive _, args) =>
               match boolMatcherArgs? ctx.env (.const primitive []) args with
               | some (scrutinee, falseArm, trueArm) =>
@@ -2588,6 +2597,30 @@ mutual
                     | some other => .error s!"unsupported Array.insertIdx item type: {reprStr other}"
                     | none => .error "unsupported Array.insertIdx item type"
                 | _, _ => .error "unsupported Array.insertIdx application"
+            | (.const ``Array.insertIdx! _, args) =>
+                match args, args.reverse with
+                | itemTy :: _, value :: index :: array :: _ =>
+                    match typeAtom? itemTy with
+                    | some .u64 =>
+                        let arrayResult ← extractExprFrom ctx locals nextLocal array
+                        let indexResult ← extractExprFrom ctx locals arrayResult.snd index
+                        let arraySlot := indexResult.snd
+                        let indexSlot := arraySlot + 1
+                        let valueResult ← extractExprFrom ctx locals (indexSlot + 1) value
+                        let inserted :=
+                          .arrayInsertIfInBounds
+                            (.local arraySlot)
+                            (.local indexSlot)
+                            valueResult.fst
+                        let inBounds := .leU64 (.local indexSlot) (.arraySize (.local arraySlot))
+                        .ok
+                          (.letE arraySlot arrayResult.fst
+                            (.letE indexSlot indexResult.fst
+                              (.ite inBounds inserted .trap)),
+                            valueResult.snd)
+                    | some other => .error s!"unsupported Array.insertIdx! item type: {reprStr other}"
+                    | none => .error "unsupported Array.insertIdx! item type"
+                | _, _ => .error "unsupported Array.insertIdx! application"
             | (.const ``Array.append _, args) =>
                 match args.reverse with
                 | right :: left :: _ =>
@@ -2771,6 +2804,26 @@ mutual
                     let valueResult ← extractExprFrom ctx locals indexResult.snd value
                     .ok (.arraySet arrayResult.fst indexResult.fst valueResult.fst, valueResult.snd)
                 | _ => .error "unsupported Array.set! application"
+            | (.const ``Array.eraseIdx! _, args) =>
+                match args, args.reverse with
+                | itemTy :: _, index :: array :: _ =>
+                    match typeAtom? itemTy with
+                    | some .u64 =>
+                        let arrayResult ← extractExprFrom ctx locals nextLocal array
+                        let indexResult ← extractExprFrom ctx locals arrayResult.snd index
+                        let arraySlot := indexResult.snd
+                        let indexSlot := arraySlot + 1
+                        let erased :=
+                          .arrayEraseIfInBounds (.local arraySlot) (.local indexSlot)
+                        let inBounds := .ltU64 (.local indexSlot) (.arraySize (.local arraySlot))
+                        .ok
+                          (.letE arraySlot arrayResult.fst
+                            (.letE indexSlot indexResult.fst
+                              (.ite inBounds erased .trap)),
+                            indexSlot + 1)
+                    | some other => .error s!"unsupported Array.eraseIdx! item type: {reprStr other}"
+                    | none => .error "unsupported Array.eraseIdx! item type"
+                | _, _ => .error "unsupported Array.eraseIdx! application"
             | (.const ``ByteArray.size _, args) =>
                 match args with
                 | [array] =>

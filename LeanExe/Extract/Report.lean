@@ -183,8 +183,9 @@ def knownExternal? (name : Name) : Option Classification :=
     some { status := "implemented", reason := "pure Id do-notation plumbing erased by the generic compiler fragment" }
   else if [``Array.empty, ``Array.mkEmpty, ``Array.emptyWithCapacity, ``Array.singleton,
       ``Array.replicate, ``Array.size, ``Array.isEmpty, ``Array.push, ``Array.pop,
-      ``Array.eraseIdx, ``Array.eraseIdxIfInBounds, ``Array.swap, ``Array.swapIfInBounds,
-      ``Array.append, ``Array.insertIdx, ``Array.insertIdxIfInBounds, ``Array.modify,
+      ``Array.eraseIdx, ``Array.eraseIdx!, ``Array.eraseIdxIfInBounds,
+      ``Array.swap, ``Array.swapIfInBounds,
+      ``Array.append, ``Array.insertIdx, ``Array.insertIdx!, ``Array.insertIdxIfInBounds, ``Array.modify,
       ``Array.reverse, ``Array.extract,
       ``Array.get!Internal, ``Array.back!, ``Array.back,
       ``Array.getD, ``Array.set!, ``Array.back?, ``GetElem?.getElem!, ``GetElem?.getElem?,

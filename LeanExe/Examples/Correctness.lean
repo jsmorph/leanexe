@@ -431,12 +431,34 @@ def arrayProofInsertIdxRead : UInt64 :=
   else
     0
 
+def arrayInsertIdxBangRead : UInt64 :=
+  let b := (#[1, 3] : Array UInt64).insertIdx! 1 (2 : UInt64)
+  if b.size == 3 then
+    b[0]! * (100 : UInt64) + b[1]! * (10 : UInt64) + b[2]!
+  else
+    0
+
+def arrayInsertIdxBangTrap : UInt64 :=
+  let b := (#[1] : Array UInt64).insertIdx! 2 (9 : UInt64)
+  b[0]!
+
 def arrayProofEraseIdxRead : UInt64 :=
   let b := (#[1, 2, 3] : Array UInt64).eraseIdx 1
   if b.size == 2 then
     b[0]! * (10 : UInt64) + b[1]!
   else
     0
+
+def arrayEraseIdxBangRead : UInt64 :=
+  let b := (#[1, 2, 3] : Array UInt64).eraseIdx! 1
+  if b.size == 2 then
+    b[0]! * (10 : UInt64) + b[1]!
+  else
+    0
+
+def arrayEraseIdxBangTrap : UInt64 :=
+  let b := (#[1] : Array UInt64).eraseIdx! 5
+  b[0]!
 
 def arrayProofSwapRead : UInt64 :=
   let b := (#[1, 2, 3] : Array UInt64).swap 0 2
