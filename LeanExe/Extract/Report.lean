@@ -184,7 +184,7 @@ def knownExternal? (name : Name) : Option Classification :=
   else if [``Array.empty, ``Array.mkEmpty, ``Array.emptyWithCapacity, ``Array.singleton,
       ``Array.replicate, ``Array.size, ``Array.isEmpty, ``Array.push, ``Array.pop,
       ``Array.eraseIdx, ``Array.eraseIdx!, ``Array.eraseIdxIfInBounds,
-      ``Array.swap, ``Array.swapIfInBounds,
+      ``Array.swap, ``Array.swapAt, ``Array.swapIfInBounds,
       ``Array.append, ``Array.insertIdx, ``Array.insertIdx!, ``Array.insertIdxIfInBounds, ``Array.modify,
       ``Array.reverse, ``Array.extract,
       ``Array.get!Internal, ``Array.back!, ``Array.back,
