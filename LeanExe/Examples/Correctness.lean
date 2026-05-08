@@ -826,6 +826,24 @@ def optionFilterIgnoresPayloadTrap : UInt64 :=
   else
     0
 
+def optionAnySome : UInt64 :=
+  if (some (5 : UInt64)).any (fun value => value > 3) then 1 else 0
+
+def optionAnyNoneSkipsPredicateTrap : UInt64 :=
+  if (none : Option UInt64).any (fun _value => (Array.replicate 0 (0 : UInt64)).back! == 0) then
+    0
+  else
+    7
+
+def optionAllSomeFalse : UInt64 :=
+  if (some (2 : UInt64)).all (fun value => value > 3) then 0 else 7
+
+def optionAllNoneSkipsPredicateTrap : UInt64 :=
+  if (none : Option UInt64).all (fun _value => (Array.replicate 0 (0 : UInt64)).back! == 0) then
+    7
+  else
+    0
+
 def optionBindSome : UInt64 :=
   match Option.bind (some (5 : UInt64)) (fun value => some (value + 1)) with
   | none => 0

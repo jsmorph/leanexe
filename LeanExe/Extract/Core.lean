@@ -1085,6 +1085,22 @@ partial def demandExpr
                     .empty
                     (demandOptionSomeCondArm ctx visiting predicate)
               | _ => .empty
+          | (.const ``Option.any _, args) =>
+              match args.reverse with
+              | optionValue :: predicate :: _ =>
+                  Demand.branch
+                    (demandExpr ctx visiting optionValue)
+                    .empty
+                    (demandOptionSomeCondArm ctx visiting predicate)
+              | _ => .empty
+          | (.const ``Option.all _, args) =>
+              match args.reverse with
+              | optionValue :: predicate :: _ =>
+                  Demand.branch
+                    (demandExpr ctx visiting optionValue)
+                    .empty
+                    (demandOptionSomeCondArm ctx visiting predicate)
+              | _ => .empty
           | (.const ``Except.map _, args) =>
               match args.reverse with
               | exceptValue :: mapFn :: _ =>
@@ -2104,6 +2120,39 @@ mutual
         (← valueIte (.eqU64 tag (.u64 0)) fallbackResult.fst (.option tag payload)),
         fallbackResult.snd)
 
+  partial def extractOptionPredicateCondFrom
+      (ctx : Context)
+      (locals : List Binding)
+      (nextLocal : Nat)
+      (expr : Expr)
+      (noneValue : Bool) :
+      Except String (IRCond × Nat) := do
+    match appFnArgs expr with
+    | (.const name _, args) =>
+        if name == ``Option.any || name == ``Option.all then
+          match args.reverse with
+          | optionValue :: predicate :: _ =>
+              let optionResult ← extractValueFrom ctx locals nextLocal optionValue
+              let parts ← optionPartsWithLets optionResult.fst
+              let tag := parts.snd.fst
+              let payload := parts.snd.snd
+              let predicateBody ←
+                match collectLambdas predicate 1 with
+                | some body => .ok body
+                | none => .error s!"unsupported {name} predicate"
+              let predicateResult ←
+                extractCondFrom ctx (.value payload :: locals) optionResult.snd predicateBody
+              let cond :=
+                if noneValue then
+                  .or (.eqU64 tag (.u64 0)) predicateResult.fst
+                else
+                  .and (.not (.eqU64 tag (.u64 0))) predicateResult.fst
+              .ok (boolCond (wrapExprLets parts.fst (boolExpr cond)), predicateResult.snd)
+          | _ => .error s!"unsupported {name} application"
+        else
+          .error s!"unsupported option predicate application: {expr}"
+    | _ => .error s!"unsupported option predicate application: {expr}"
+
   partial def extractNatMatchValueFrom
       (ctx : Context)
       (locals : List Binding)
@@ -2252,6 +2301,12 @@ mutual
                     let tag := wrapExprLets parts.fst parts.snd.fst
                     .ok (boolExpr (.eqU64 tag (.u64 0)), optionResult.snd)
                 | _ => .error "unsupported Option.isNone application"
+            | (.const ``Option.any _, _) =>
+                let condResult ← extractOptionPredicateCondFrom ctx locals nextLocal expr false
+                .ok (boolExpr condResult.fst, condResult.snd)
+            | (.const ``Option.all _, _) =>
+                let condResult ← extractOptionPredicateCondFrom ctx locals nextLocal expr true
+                .ok (boolExpr condResult.fst, condResult.snd)
             | (.const ``Except.isOk _, args) =>
                 match args.reverse, exceptPayloadType? args with
                 | exceptValue :: _, some _payloadTy =>
@@ -2905,6 +2960,10 @@ mutual
                 let tag := wrapExprLets parts.fst parts.snd.fst
                 .ok (.eqU64 tag (.u64 0), optionResult.snd)
             | _ => .error "unsupported Option.isNone condition"
+        | (.const ``Option.any _, _) =>
+            extractOptionPredicateCondFrom ctx locals nextLocal expr false
+        | (.const ``Option.all _, _) =>
+            extractOptionPredicateCondFrom ctx locals nextLocal expr true
         | (.const ``Except.isOk _, args) =>
             match args.reverse, exceptPayloadType? args with
             | exceptValue :: _, some _payloadTy =>
