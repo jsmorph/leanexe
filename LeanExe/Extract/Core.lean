@@ -2555,6 +2555,8 @@ mutual
                         (.byteArrayGet parts.snd.fst parts.snd.snd indexResult.fst),
                         indexResult.snd)
                 | _ => .error "unsupported ByteArray.get! application"
+            | (.const ``Bool.toNat _, [arg]) =>
+                extractExprFrom ctx locals nextLocal arg
             | (.const ``UInt64.ofNat _, [arg]) =>
                 match ofNat? ``Nat arg with
                 | some value => .ok (.u64 value, nextLocal)
