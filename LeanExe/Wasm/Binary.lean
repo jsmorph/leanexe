@@ -276,6 +276,7 @@ mutual
     | .arrayAppend left right => 7 + max (exprScratch left) (exprScratch right)
     | .arrayExtract array start stop =>
         8 + max (exprScratch array) (max (exprScratch start) (exprScratch stop))
+    | .arrayMap array _ body => 4 + max (exprScratch array) (exprScratch body)
     | .arrayInsertIfInBounds array index value =>
         7 + max (exprScratch array) (max (exprScratch index) (exprScratch value))
     | .arrayEraseIfInBounds array index =>
@@ -572,6 +573,34 @@ mutual
       emitExtractCopyLoop arrayLocal newLocal startLocal newLenLocal loopLocal ++
       localGet newLocal
 
+  partial def emitArrayMap
+      (scratch : Nat)
+      (array : Expr)
+      (itemSlot : Nat)
+      (body : Expr) : List UInt8 :=
+    let arrayLocal := scratch
+    let lenLocal := scratch + 1
+    let newLocal := scratch + 2
+    let loopLocal := scratch + 3
+    let childScratch := scratch + 4
+    emitExpr childScratch array ++ localSet arrayLocal ++
+      localGet arrayLocal ++ i32WrapI64 ++ i64Load ++ localSet lenLocal ++
+      globalGet 0 ++ localSet newLocal ++
+      localGet newLocal ++ i32WrapI64 ++ localGet lenLocal ++ i64Store ++
+      globalGet 0 ++ i64Const 8 ++ localGet lenLocal ++ i64Const 8 ++
+        ofNats [126, 124, 124] ++ globalSet 0 ++
+      i64Const 0 ++ localSet loopLocal ++
+      ofNats [2, 64, 3, 64] ++
+        localGet loopLocal ++ localGet lenLocal ++ i64GeU ++ ofNats [13] ++ u32leb 1 ++
+        arrayCellAddress (localGet arrayLocal) (localGet loopLocal) ++ i64Load ++
+          localSet itemSlot ++
+        arrayCellAddress (localGet newLocal) (localGet loopLocal) ++
+          emitExpr childScratch body ++ i64Store ++
+        localGet loopLocal ++ i64Const 1 ++ ofNats [124] ++ localSet loopLocal ++
+        ofNats [12] ++ u32leb 0 ++
+      ofNats [11, 11] ++
+      localGet newLocal
+
   partial def emitArrayInsertIfInBounds (scratch : Nat) (array index value : Expr) : List UInt8 :=
     let arrayLocal := scratch
     let indexLocal := scratch + 1
@@ -794,6 +823,7 @@ mutual
     | .arrayPop array => emitArrayPop scratch array
     | .arrayAppend left right => emitArrayAppend scratch left right
     | .arrayExtract array start stop => emitArrayExtract scratch array start stop
+    | .arrayMap array itemSlot body => emitArrayMap scratch array itemSlot body
     | .arrayInsertIfInBounds array index value =>
         emitArrayInsertIfInBounds scratch array index value
     | .arrayEraseIfInBounds array index => emitArrayEraseIfInBounds scratch array index
@@ -1169,6 +1199,38 @@ mutual
       extractCopyLoopWat arrayLocal newLocal startLocal newLenLocal loopLocal ++
       [s!"local.get {newLocal}"]
 
+  partial def arrayMapWatLines
+      (scratch : Nat)
+      (array : Expr)
+      (itemSlot : Nat)
+      (body : Expr) : List String :=
+    let arrayLocal := scratch
+    let lenLocal := scratch + 1
+    let newLocal := scratch + 2
+    let loopLocal := scratch + 3
+    let childScratch := scratch + 4
+    exprWatLines childScratch array ++ [s!"local.set {arrayLocal}",
+      s!"local.get {arrayLocal}", "i32.wrap_i64", "i64.load align=8",
+      s!"local.set {lenLocal}",
+      "global.get 0", s!"local.set {newLocal}",
+      s!"local.get {newLocal}", "i32.wrap_i64", s!"local.get {lenLocal}",
+      "i64.store align=8",
+      "global.get 0", "i64.const 8", s!"local.get {lenLocal}", "i64.const 8",
+      "i64.mul", "i64.add", "i64.add", "global.set 0",
+      "i64.const 0", s!"local.set {loopLocal}",
+      "block", "  loop",
+      s!"    local.get {loopLocal}", s!"    local.get {lenLocal}", "    i64.ge_u",
+      "    br_if 1"] ++
+      indent 4 (
+        arrayCellAddressWat [s!"local.get {arrayLocal}"] [s!"local.get {loopLocal}"] ++
+        ["i64.load align=8", s!"local.set {itemSlot}"] ++
+        arrayCellAddressWat [s!"local.get {newLocal}"] [s!"local.get {loopLocal}"] ++
+        exprWatLines childScratch body ++
+        ["i64.store align=8",
+          s!"local.get {loopLocal}", "i64.const 1", "i64.add", s!"local.set {loopLocal}",
+          "br 0"]) ++
+      ["  end", "end", s!"local.get {newLocal}"]
+
   partial def arrayInsertIfInBoundsWatLines
       (scratch : Nat)
       (array index value : Expr) : List String :=
@@ -1404,6 +1466,7 @@ mutual
     | .arrayPop array => arrayPopWatLines scratch array
     | .arrayAppend left right => arrayAppendWatLines scratch left right
     | .arrayExtract array start stop => arrayExtractWatLines scratch array start stop
+    | .arrayMap array itemSlot body => arrayMapWatLines scratch array itemSlot body
     | .arrayInsertIfInBounds array index value =>
         arrayInsertIfInBoundsWatLines scratch array index value
     | .arrayEraseIfInBounds array index => arrayEraseIfInBoundsWatLines scratch array index

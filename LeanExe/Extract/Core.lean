@@ -1043,6 +1043,12 @@ partial def demandExpr
               args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
           | (.const ``HAppend.hAppend _, args) =>
               args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
+          | (.const ``Array.map _, args) =>
+              match args.reverse with
+              | array :: mapFn :: _ =>
+                  Demand.always (demandExpr ctx visiting array)
+                    (demandOptionSomeArm ctx visiting mapFn)
+              | _ => .empty
           | (.const ``Array.insertIdxIfInBounds _, args) =>
               match args.reverse with
               | value :: index :: array :: _ =>
@@ -2745,6 +2751,24 @@ mutual
                     .ok (.arrayExtract arrayResult.fst startResult.fst stopResult.fst,
                       stopResult.snd)
                 | _ => .error "unsupported Array.extract application"
+            | (.const ``Array.map _, args) =>
+                match args, args.reverse with
+                | sourceTy :: resultTy :: _, array :: mapFn :: _ =>
+                    match typeAtom? sourceTy, typeAtom? resultTy with
+                    | some .u64, some .u64 =>
+                        let arrayResult ← extractExprFrom ctx locals nextLocal array
+                        let itemSlot := arrayResult.snd
+                        let mapBody ←
+                          match collectLambdas mapFn 1 with
+                          | some body => .ok body
+                          | none => .error "unsupported Array.map function"
+                        let bodyResult ←
+                          extractExprFrom ctx (.slot itemSlot :: locals) (itemSlot + 1) mapBody
+                        .ok (.arrayMap arrayResult.fst itemSlot bodyResult.fst, bodyResult.snd)
+                    | some source, some result =>
+                        .error s!"unsupported Array.map item types: {reprStr source}, {reprStr result}"
+                    | _, _ => .error "unsupported Array.map item types"
+                | _, _ => .error "unsupported Array.map application"
             | (.const ``Array.empty _, args) =>
                 match args with
                 | [itemTy] =>

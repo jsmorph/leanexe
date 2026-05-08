@@ -56,6 +56,7 @@ mutual
     | arrayPop (array : Expr)
     | arrayAppend (left right : Expr)
     | arrayExtract (array start stop : Expr)
+    | arrayMap (array : Expr) (itemSlot : Nat) (body : Expr)
     | arrayInsertIfInBounds (array index value : Expr)
     | arrayEraseIfInBounds (array index : Expr)
     | arraySwapIfInBounds (array left right : Expr)
@@ -143,6 +144,7 @@ mutual
     | .arrayPop array => array.eval module_ store
     | .arrayAppend left _ => left.eval module_ store
     | .arrayExtract array _ _ => array.eval module_ store
+    | .arrayMap array _ _ => array.eval module_ store
     | .arrayInsertIfInBounds array _ _ => array.eval module_ store
     | .arrayEraseIfInBounds array _ => array.eval module_ store
     | .arraySwapIfInBounds array _ _ => array.eval module_ store
