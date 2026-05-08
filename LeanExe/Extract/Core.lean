@@ -1085,6 +1085,23 @@ partial def demandExpr
               match args.reverse with
               | _proof :: array :: _ => demandExpr ctx visiting array
               | _ => .empty
+          | (.const ``Array.set _, args) =>
+              match args.reverse with
+              | _proof :: value :: index :: array :: _ =>
+                  Demand.always
+                    (Demand.always
+                      (demandExpr ctx visiting array)
+                      (demandExpr ctx visiting index))
+                    (demandExpr ctx visiting value)
+              | _ => .empty
+          | (.const ``Array.setIfInBounds _, args) =>
+              match args.reverse with
+              | value :: index :: array :: _ =>
+                  Demand.branch
+                    (Demand.always (demandExpr ctx visiting array) (demandExpr ctx visiting index))
+                    (demandExpr ctx visiting value)
+                    .empty
+              | _ => .empty
           | (.const ``Array.getD _, args) =>
               match args.reverse with
               | defaultValue :: index :: array :: _ =>
@@ -2796,6 +2813,40 @@ mutual
                     .ok (.letE arraySlot arrayResult.fst (.letE indexSlot indexResult.fst value),
                       defaultResult.snd)
                 | _ => .error "unsupported Array.getD application"
+            | (.const ``Array.set _, args) =>
+                match args, args.reverse with
+                | itemTy :: _, _proof :: value :: index :: array :: _ =>
+                    match typeAtom? itemTy with
+                    | some .u64 =>
+                        let arrayResult ← extractExprFrom ctx locals nextLocal array
+                        let indexResult ← extractExprFrom ctx locals arrayResult.snd index
+                        let valueResult ← extractExprFrom ctx locals indexResult.snd value
+                        .ok (.arraySet arrayResult.fst indexResult.fst valueResult.fst, valueResult.snd)
+                    | some other => .error s!"unsupported Array.set item type: {reprStr other}"
+                    | none => .error "unsupported Array.set item type"
+                | _, _ => .error "unsupported Array.set application"
+            | (.const ``Array.setIfInBounds _, args) =>
+                match args, args.reverse with
+                | itemTy :: _, value :: index :: array :: _ =>
+                    match typeAtom? itemTy with
+                    | some .u64 =>
+                        let arrayResult ← extractExprFrom ctx locals nextLocal array
+                        let indexResult ← extractExprFrom ctx locals arrayResult.snd index
+                        let arraySlot := indexResult.snd
+                        let indexSlot := arraySlot + 1
+                        let valueResult ← extractExprFrom ctx locals (indexSlot + 1) value
+                        let updated :=
+                          .arraySet (.local arraySlot) (.local indexSlot) valueResult.fst
+                        let inBounds := .ltU64 (.local indexSlot) (.arraySize (.local arraySlot))
+                        .ok
+                          (.letE arraySlot arrayResult.fst
+                            (.letE indexSlot indexResult.fst
+                              (.ite inBounds updated (.local arraySlot))),
+                            valueResult.snd)
+                    | some other =>
+                        .error s!"unsupported Array.setIfInBounds item type: {reprStr other}"
+                    | none => .error "unsupported Array.setIfInBounds item type"
+                | _, _ => .error "unsupported Array.setIfInBounds application"
             | (.const ``Array.set! _, args) =>
                 match args.reverse with
                 | value :: index :: array :: _ =>

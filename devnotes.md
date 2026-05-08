@@ -1546,3 +1546,17 @@ Checks run:
 - [x] `.lake/build/bin/lean-wasm compile-wat --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.arrayInsertIdxBangRead --out .lake/build/core-correctness/arrayInsertIdxBangRead.wat`
 - [x] `env XDG_CACHE_HOME=.lake/build/cache .lake/build/tools/wasmtime-v36.0.9-aarch64-linux/wasmtime --invoke arrayInsertIdxBangRead .lake/build/core-correctness/arrayInsertIdxBangRead.wat` returned `123`.
 - [x] `node test/run_all.js` returned `checked 24 report classification cases`, `checked 276 accepted, 21 rejected, and 7 trapped cases`, `checked 36 bytearray allocation cases`, and `checked 56 cases`.
+
+## 2026-05-07: Array set variants
+
+The extractor now lowers proof-indexed `Array.set` and total `Array.setIfInBounds` for `Array UInt64`.  `Array.set` erases the proof and uses the existing copy-on-write replacement path.  `Array.setIfInBounds` binds the array and index once, returns the original array when the index is out of bounds, and evaluates the replacement value only when the index is in bounds.
+
+Checks run:
+
+- [x] `lake build`
+- [x] `lake build LeanExe.Examples.Correctness`
+- [x] `node test/report_classification.js` returned `checked 25 report classification cases`.
+- [x] `node test/core_correctness.js` returned `checked 279 accepted, 21 rejected, and 7 trapped cases`.
+- [x] `.lake/build/bin/lean-wasm compile-wat --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.arraySetIfInBoundsSkipsValueTrap --out .lake/build/core-correctness/arraySetIfInBoundsSkipsValueTrap.wat`
+- [x] `env XDG_CACHE_HOME=.lake/build/cache .lake/build/tools/wasmtime-v36.0.9-aarch64-linux/wasmtime --invoke arraySetIfInBoundsSkipsValueTrap .lake/build/core-correctness/arraySetIfInBoundsSkipsValueTrap.wat` returned `7`.
+- [x] `node test/run_all.js` returned `checked 25 report classification cases`, `checked 279 accepted, 21 rejected, and 7 trapped cases`, `checked 36 bytearray allocation cases`, and `checked 56 cases`.
