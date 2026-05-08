@@ -663,6 +663,22 @@ def exceptToOptionErrorSkipsPayloadTrap : UInt64 :=
   else
     0
 
+def exceptIsOkOkSkipsPayloadTrap : UInt64 :=
+  if Except.isOk
+      (Except.ok ((Array.replicate 0 (0 : UInt64)).back!) : Except UInt64 UInt64) then
+    1
+  else
+    0
+
+def exceptIsOkError : UInt64 :=
+  if Except.isOk (Except.error (7 : UInt64) : Except UInt64 UInt64) then
+    0
+  else
+    1
+
+def exceptIsOkAsBool : Bool :=
+  Except.isOk (Except.ok (5 : UInt64) : Except UInt64 UInt64)
+
 def exceptOrElseError : UInt64 :=
   match ((Except.error (7 : UInt64) : Except UInt64 UInt64) <|> Except.ok 5) with
   | Except.error code => code
