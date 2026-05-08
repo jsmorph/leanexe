@@ -282,6 +282,7 @@ mutual
         6 + max (exprScratch array) (exprScratch index)
     | .arraySwapIfInBounds array left right =>
         6 + max (exprScratch array) (max (exprScratch left) (exprScratch right))
+    | .arrayReverse array => 4 + exprScratch array
     | .byteArrayGet ptr len index =>
         3 + max (exprScratch ptr) (max (exprScratch len) (exprScratch index))
     | .call _ args => args.foldl (fun count arg => max count (exprScratch arg)) 0
@@ -376,6 +377,20 @@ def emitEraseSuffixLoop
       arrayCellAddress
         (localGet arrayLocal)
         (localGet loopLocal ++ i64Const 1 ++ ofNats [124]) ++
+      i64Load ++ i64Store ++
+      localGet loopLocal ++ i64Const 1 ++ ofNats [124] ++ localSet loopLocal ++
+      ofNats [12] ++ u32leb 0 ++
+    ofNats [11, 11]
+
+def emitReverseCopyLoop (arrayLocal newLocal lenLocal loopLocal : Nat) : List UInt8 :=
+  i64Const 0 ++ localSet loopLocal ++
+    ofNats [2, 64, 3, 64] ++
+      localGet loopLocal ++ localGet lenLocal ++ i64GeU ++ ofNats [13] ++ u32leb 1 ++
+      arrayCellAddress (localGet newLocal) (localGet loopLocal) ++
+      arrayCellAddress
+        (localGet arrayLocal)
+        (localGet lenLocal ++ localGet loopLocal ++ ofNats [125] ++ i64Const 1 ++
+          ofNats [125]) ++
       i64Load ++ i64Store ++
       localGet loopLocal ++ i64Const 1 ++ ofNats [124] ++ localSet loopLocal ++
       ofNats [12] ++ u32leb 0 ++
@@ -646,6 +661,26 @@ mutual
         localGet arrayLocal ++
       ofNats [11]
 
+  partial def emitArrayReverse (scratch : Nat) (array : Expr) : List UInt8 :=
+    let arrayLocal := scratch
+    let lenLocal := scratch + 1
+    let newLocal := scratch + 2
+    let loopLocal := scratch + 3
+    let childScratch := scratch + 4
+    emitExpr childScratch array ++ localSet arrayLocal ++
+      localGet arrayLocal ++ i32WrapI64 ++ i64Load ++ localSet lenLocal ++
+      localGet lenLocal ++ i64Const 1 ++ i64LeU ++
+      ofNats [4, 126] ++
+        localGet arrayLocal ++
+      ofNats [5] ++
+        globalGet 0 ++ localSet newLocal ++
+        localGet newLocal ++ i32WrapI64 ++ localGet lenLocal ++ i64Store ++
+        globalGet 0 ++ i64Const 8 ++ localGet lenLocal ++ i64Const 8 ++
+          ofNats [126, 124, 124] ++ globalSet 0 ++
+        emitReverseCopyLoop arrayLocal newLocal lenLocal loopLocal ++
+        localGet newLocal ++
+      ofNats [11]
+
   partial def emitByteArrayGet (scratch : Nat) (ptr len index : Expr) : List UInt8 :=
     let ptrLocal := scratch
     let lenLocal := scratch + 1
@@ -764,6 +799,7 @@ mutual
     | .arrayEraseIfInBounds array index => emitArrayEraseIfInBounds scratch array index
     | .arraySwapIfInBounds array left right =>
         emitArraySwapIfInBounds scratch array left right
+    | .arrayReverse array => emitArrayReverse scratch array
     | .byteArrayGet ptr len index => emitByteArrayGet scratch ptr len index
     | .call index args => args.flatMap (emitExpr scratch) ++ call index
 
@@ -934,6 +970,20 @@ def eraseSuffixLoopWat
       arrayCellAddressWat
         [s!"local.get {arrayLocal}"]
         [s!"local.get {loopLocal}", "i64.const 1", "i64.add"] ++
+      ["i64.load align=8", "i64.store align=8",
+        s!"local.get {loopLocal}", "i64.const 1", "i64.add", s!"local.set {loopLocal}",
+        "br 0"]) ++
+    ["  end", "end"]
+
+def reverseCopyLoopWat (arrayLocal newLocal lenLocal loopLocal : Nat) : List String :=
+  [s!"i64.const 0", s!"local.set {loopLocal}", "block", "  loop"] ++
+    indent 4 (
+      [s!"local.get {loopLocal}", s!"local.get {lenLocal}", "i64.ge_u", "br_if 1"] ++
+      arrayCellAddressWat [s!"local.get {newLocal}"] [s!"local.get {loopLocal}"] ++
+      arrayCellAddressWat
+        [s!"local.get {arrayLocal}"]
+        [s!"local.get {lenLocal}", s!"local.get {loopLocal}", "i64.sub",
+          "i64.const 1", "i64.sub"] ++
       ["i64.load align=8", "i64.store align=8",
         s!"local.get {loopLocal}", "i64.const 1", "i64.add", s!"local.set {loopLocal}",
         "br 0"]) ++
@@ -1224,6 +1274,29 @@ mutual
       indent 2 [s!"local.get {arrayLocal}"] ++
       ["end"]
 
+  partial def arrayReverseWatLines (scratch : Nat) (array : Expr) : List String :=
+    let arrayLocal := scratch
+    let lenLocal := scratch + 1
+    let newLocal := scratch + 2
+    let loopLocal := scratch + 3
+    let childScratch := scratch + 4
+    exprWatLines childScratch array ++ [s!"local.set {arrayLocal}",
+      s!"local.get {arrayLocal}", "i32.wrap_i64", "i64.load align=8",
+      s!"local.set {lenLocal}",
+      s!"local.get {lenLocal}", "i64.const 1", "i64.le_u",
+      "if (result i64)"] ++
+      indent 2 [s!"local.get {arrayLocal}"] ++
+      ["else"] ++
+      indent 2 (
+        ["global.get 0", s!"local.set {newLocal}",
+          s!"local.get {newLocal}", "i32.wrap_i64", s!"local.get {lenLocal}",
+          "i64.store align=8",
+          "global.get 0", "i64.const 8", s!"local.get {lenLocal}", "i64.const 8",
+          "i64.mul", "i64.add", "i64.add", "global.set 0"] ++
+        reverseCopyLoopWat arrayLocal newLocal lenLocal loopLocal ++
+        [s!"local.get {newLocal}"]) ++
+      ["end"]
+
   partial def byteArrayGetWatLines (scratch : Nat) (ptr len index : Expr) : List String :=
     let ptrLocal := scratch
     let lenLocal := scratch + 1
@@ -1336,6 +1409,7 @@ mutual
     | .arrayEraseIfInBounds array index => arrayEraseIfInBoundsWatLines scratch array index
     | .arraySwapIfInBounds array left right =>
         arraySwapIfInBoundsWatLines scratch array left right
+    | .arrayReverse array => arrayReverseWatLines scratch array
     | .byteArrayGet ptr len index => byteArrayGetWatLines scratch ptr len index
     | .call index args => args.flatMap (exprWatLines scratch) ++ [s!"call {index}"]
 
