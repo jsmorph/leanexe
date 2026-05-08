@@ -1005,6 +1005,11 @@ partial def demandExpr
               | index :: array :: _ =>
                   Demand.always (demandExpr ctx visiting array) (demandExpr ctx visiting index)
               | _ => .empty
+          | (.const ``Array.eraseIdx _, args) =>
+              match args.reverse with
+              | _proof :: index :: array :: _ =>
+                  Demand.always (demandExpr ctx visiting array) (demandExpr ctx visiting index)
+              | _ => .empty
           | (.const ``Array.swapIfInBounds _, args) =>
               match args.reverse with
               | right :: left :: array :: _ =>
@@ -1012,8 +1017,24 @@ partial def demandExpr
                     (Demand.always (demandExpr ctx visiting array) (demandExpr ctx visiting left))
                     (demandExpr ctx visiting right)
               | _ => .empty
+          | (.const ``Array.swap _, args) =>
+              match args.reverse with
+              | _rightProof :: _leftProof :: right :: left :: array :: _ =>
+                  Demand.always
+                    (Demand.always (demandExpr ctx visiting array) (demandExpr ctx visiting left))
+                    (demandExpr ctx visiting right)
+              | _ => .empty
           | (.const ``Array.reverse _, args) =>
               args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
+          | (.const ``Array.insertIdx _, args) =>
+              match args.reverse with
+              | _proof :: value :: index :: array :: _ =>
+                Demand.always
+                  (Demand.always
+                    (demandExpr ctx visiting array)
+                    (demandExpr ctx visiting index))
+                  (demandExpr ctx visiting value)
+              | _ => .empty
           | (.const ``Array.append _, args) =>
               args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
           | (.const ``HAppend.hAppend _, args) =>
@@ -2475,6 +2496,17 @@ mutual
                         .error s!"unsupported Array.eraseIdxIfInBounds item type: {reprStr other}"
                     | none => .error "unsupported Array.eraseIdxIfInBounds item type"
                 | _, _ => .error "unsupported Array.eraseIdxIfInBounds application"
+            | (.const ``Array.eraseIdx _, args) =>
+                match args, args.reverse with
+                | itemTy :: _, _proof :: index :: array :: _ =>
+                    match typeAtom? itemTy with
+                    | some .u64 =>
+                        let arrayResult ← extractExprFrom ctx locals nextLocal array
+                        let indexResult ← extractExprFrom ctx locals arrayResult.snd index
+                        .ok (.arrayEraseIfInBounds arrayResult.fst indexResult.fst, indexResult.snd)
+                    | some other => .error s!"unsupported Array.eraseIdx item type: {reprStr other}"
+                    | none => .error "unsupported Array.eraseIdx item type"
+                | _, _ => .error "unsupported Array.eraseIdx application"
             | (.const ``Array.swapIfInBounds _, args) =>
                 match args, args.reverse with
                 | itemTy :: _, right :: left :: array :: _ =>
@@ -2493,6 +2525,23 @@ mutual
                         .error s!"unsupported Array.swapIfInBounds item type: {reprStr other}"
                     | none => .error "unsupported Array.swapIfInBounds item type"
                 | _, _ => .error "unsupported Array.swapIfInBounds application"
+            | (.const ``Array.swap _, args) =>
+                match args, args.reverse with
+                | itemTy :: _, _rightProof :: _leftProof :: right :: left :: array :: _ =>
+                    match typeAtom? itemTy with
+                    | some .u64 =>
+                        let arrayResult ← extractExprFrom ctx locals nextLocal array
+                        let leftResult ← extractExprFrom ctx locals arrayResult.snd left
+                        let rightResult ← extractExprFrom ctx locals leftResult.snd right
+                        .ok
+                          (.arraySwapIfInBounds
+                            arrayResult.fst
+                            leftResult.fst
+                            rightResult.fst,
+                            rightResult.snd)
+                    | some other => .error s!"unsupported Array.swap item type: {reprStr other}"
+                    | none => .error "unsupported Array.swap item type"
+                | _, _ => .error "unsupported Array.swap application"
             | (.const ``Array.reverse _, args) =>
                 match args, args.reverse with
                 | itemTy :: _, array :: _ =>
@@ -2504,6 +2553,23 @@ mutual
                         .error s!"unsupported Array.reverse item type: {reprStr other}"
                     | none => .error "unsupported Array.reverse item type"
                 | _, _ => .error "unsupported Array.reverse application"
+            | (.const ``Array.insertIdx _, args) =>
+                match args, args.reverse with
+                | itemTy :: _, _proof :: value :: index :: array :: _ =>
+                    match typeAtom? itemTy with
+                    | some .u64 =>
+                        let arrayResult ← extractExprFrom ctx locals nextLocal array
+                        let indexResult ← extractExprFrom ctx locals arrayResult.snd index
+                        let valueResult ← extractExprFrom ctx locals indexResult.snd value
+                        .ok
+                          (.arrayInsertIfInBounds
+                            arrayResult.fst
+                            indexResult.fst
+                            valueResult.fst,
+                            valueResult.snd)
+                    | some other => .error s!"unsupported Array.insertIdx item type: {reprStr other}"
+                    | none => .error "unsupported Array.insertIdx item type"
+                | _, _ => .error "unsupported Array.insertIdx application"
             | (.const ``Array.append _, args) =>
                 match args.reverse with
                 | right :: left :: _ =>

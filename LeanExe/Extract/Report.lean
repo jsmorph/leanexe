@@ -181,8 +181,9 @@ def knownExternal? (name : Name) : Option Classification :=
     some { status := "implemented", reason := "pure Id do-notation plumbing erased by the generic compiler fragment" }
   else if [``Array.empty, ``Array.mkEmpty, ``Array.emptyWithCapacity, ``Array.singleton,
       ``Array.replicate, ``Array.size, ``Array.isEmpty, ``Array.push, ``Array.pop,
-      ``Array.eraseIdxIfInBounds, ``Array.swapIfInBounds, ``Array.append,
-      ``Array.insertIdxIfInBounds, ``Array.modify, ``Array.reverse, ``Array.extract,
+      ``Array.eraseIdx, ``Array.eraseIdxIfInBounds, ``Array.swap, ``Array.swapIfInBounds,
+      ``Array.append, ``Array.insertIdx, ``Array.insertIdxIfInBounds, ``Array.modify,
+      ``Array.reverse, ``Array.extract,
       ``Array.get!Internal, ``Array.back!,
       ``Array.getD, ``Array.set!, ``Array.back?, ``GetElem?.getElem!, ``GetElem?.getElem?,
       ``GetElem.getElem].contains name then
@@ -286,6 +287,11 @@ def classifyExternal (name : Name) : Classification :=
 def shouldExpand (moduleName entryName name : Name) : Bool :=
   name == entryName || rootName name == rootName moduleName
 
+def runtimeDepsOf (info : ConstantInfo) : Array Name :=
+  match info with
+  | .thmInfo _ => #[]
+  | _ => usedConstantsOf info
+
 def addFrontier (name : Name) (classification : Classification) : StateM GraphState Unit := do
   modify fun state =>
     { state with
@@ -308,7 +314,7 @@ partial def visit (env : Environment) (moduleName entryName name : Name) :
       addFrontier name { status := "rejected", reason := "constant not found in imported environment" }
   | some info =>
       if shouldExpand moduleName entryName name then
-        let deps := usedConstantsOf info |>.filter (fun dep => dep != name)
+        let deps := runtimeDepsOf info |>.filter (fun dep => dep != name)
         modify fun state =>
           { state with
             nodes := state.nodes.push {
