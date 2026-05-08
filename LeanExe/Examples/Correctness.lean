@@ -884,6 +884,12 @@ def natBoolComparisons (x : Nat) : UInt64 :=
 def natBltAsBool (x : Nat) : Bool :=
   Nat.blt x 3
 
+def natBeqAsBool (x : Nat) : Bool :=
+  Nat.beq x 3
+
+def natBeqCondition (x : Nat) : UInt64 :=
+  if Nat.beq x 3 then 1 else 2
+
 def u64Comparisons (x : UInt64) : UInt64 :=
   if x < 3 then
     10

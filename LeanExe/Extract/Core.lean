@@ -2313,6 +2313,9 @@ mutual
             | (.const ``Nat.ble _, _) =>
                 let condResult ← extractCondFrom ctx locals nextLocal expr
                 .ok (boolExpr condResult.fst, condResult.snd)
+            | (.const ``Nat.beq _, _) =>
+                let condResult ← extractCondFrom ctx locals nextLocal expr
+                .ok (boolExpr condResult.fst, condResult.snd)
             | (.const ``Except.isOk _, args) =>
                 match args.reverse, exceptPayloadType? args with
                 | exceptValue :: _, some _payloadTy =>
@@ -3008,6 +3011,13 @@ mutual
                 let rightResult ← extractExprFrom ctx locals leftResult.snd right
                 .ok (.leU64 leftResult.fst rightResult.fst, rightResult.snd)
             | none => .error "unsupported Nat.ble application"
+        | (.const ``Nat.beq _, args) =>
+            match primitiveArgPair? args with
+            | some (left, right) =>
+                let leftResult ← extractExprFrom ctx locals nextLocal left
+                let rightResult ← extractExprFrom ctx locals leftResult.snd right
+                .ok (.eqU64 leftResult.fst rightResult.fst, rightResult.snd)
+            | none => .error "unsupported Nat.beq application"
         | (.const ``Array.isEmpty _, args) =>
             match args.reverse with
             | array :: _ =>

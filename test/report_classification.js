@@ -78,6 +78,11 @@ const cases = [
     entryName: "LeanExe.Examples.Correctness.natBoolComparisons",
     shape: "entry shape: Nat -> UInt64",
   },
+  {
+    moduleName: "LeanExe.Examples.Correctness",
+    entryName: "LeanExe.Examples.Correctness.natBeqAsBool",
+    shape: "entry shape: Nat -> Bool",
+  },
 ];
 
 for (const testCase of cases) {
