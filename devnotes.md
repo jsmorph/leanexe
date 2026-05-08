@@ -1576,3 +1576,17 @@ Checks run:
 - [x] `.lake/build/bin/lean-wasm compile-wat --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.arraySwapAtLetFirstSkipsValueTrap --out .lake/build/core-correctness/arraySwapAtLetFirstSkipsValueTrap.wat`
 - [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/wasmtime-v44.0.0-aarch64-linux/wasmtime --invoke arraySwapAtLetFirstSkipsValueTrap .lake/build/core-correctness/arraySwapAtLetFirstSkipsValueTrap.wat` returned `2`.
 - [x] `node test/run_all.js` returned `checked 26 report classification cases`, `checked 282 accepted, 21 rejected, and 7 trapped cases`, `checked 36 bytearray allocation cases`, and `checked 56 cases`.
+
+## 2026-05-08: Array map
+
+The extractor now lowers `Array.map` for `Array UInt64` when the mapping function is a one-argument lambda returning `UInt64`.  The IR keeps a dedicated array-map expression with an explicit item slot for the mapped element.  CoreWasm evaluates the source array once, allocates a fresh result array with the same length, loads each source cell in index order, evaluates the mapper body with that cell bound to the item slot, and stores the mapped value into the result.  Empty arrays return an empty result without evaluating the mapper body.
+
+Checks run:
+
+- [x] `lake build`
+- [x] `lake build LeanExe.Examples.Correctness`
+- [x] `node test/core_correctness.js` returned `checked 285 accepted, 21 rejected, and 7 trapped cases`.
+- [x] `node test/report_classification.js` returned `checked 27 report classification cases`.
+- [x] `.lake/build/bin/lean-wasm compile-wat --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.arrayMapEmptySkipsFunctionTrap --out .lake/build/core-correctness/arrayMapEmptySkipsFunctionTrap.wat`
+- [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/wasmtime-v44.0.0-aarch64-linux/wasmtime --invoke arrayMapEmptySkipsFunctionTrap .lake/build/core-correctness/arrayMapEmptySkipsFunctionTrap.wat` returned `0`.
+- [x] `node test/run_all.js` returned `checked 27 report classification cases`, `checked 285 accepted, 21 rejected, and 7 trapped cases`, `checked 36 bytearray allocation cases`, and `checked 56 cases`.

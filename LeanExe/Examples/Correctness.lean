@@ -564,6 +564,18 @@ def arrayExtractClamps : UInt64 :=
   else
     0
 
+def arrayMapRead : UInt64 :=
+  let a := (#[1, 2, 3] : Array UInt64).map (fun x => x * (2 : UInt64))
+  a[0]! * (100 : UInt64) + a[1]! * (10 : UInt64) + a[2]!
+
+def arrayMapAliasRead : UInt64 :=
+  let a := (#[1, 2] : Array UInt64)
+  let b := a.map (fun x => x + (10 : UInt64))
+  a[0]! * (100 : UInt64) + b[0]!
+
+def arrayMapEmptySkipsFunctionTrap : Nat :=
+  ((#[] : Array UInt64).map (fun _ => (Array.replicate 0 (0 : UInt64)).back!)).size
+
 def arrayLiteralRead : UInt64 :=
   let a : Array UInt64 := #[10, 20, 30]
   if a.size == 3 then
