@@ -366,6 +366,16 @@ def arrayAppendEmptySides : UInt64 :=
   else
     0
 
+def arrayAppendNotationRead : UInt64 :=
+  let left := ((Array.replicate 2 (0 : UInt64)).set! 0 1).set! 1 2
+  let right := ((Array.replicate 2 (0 : UInt64)).set! 0 3).set! 1 4
+  let both := left ++ right
+  if both.size == 4 then
+    both[0]! * (1000 : UInt64) + both[1]! * (100 : UInt64) +
+      both[2]! * (10 : UInt64) + both[3]!
+  else
+    0
+
 def arrayExtractRead : UInt64 :=
   let a := ((((Array.replicate 4 (0 : UInt64)).set! 0 10).set! 1 20).set! 2 30).set! 3 40
   let b := a.extract 1 3

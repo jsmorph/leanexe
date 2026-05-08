@@ -94,6 +94,7 @@ const accepted = [
   { name: "arrayPopRead", args: [], expected: 44n },
   { name: "arrayAppendRead", args: [], expected: 11223344n },
   { name: "arrayAppendEmptySides", args: [], expected: 7878n },
+  { name: "arrayAppendNotationRead", args: [], expected: 1234n },
   { name: "arrayExtractRead", args: [], expected: 230n },
   { name: "arrayExtractClamps", args: [], expected: 340n },
   { name: "arrayLiteralRead", args: [], expected: 1030n },
