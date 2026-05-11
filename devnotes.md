@@ -2102,3 +2102,18 @@ Checks run:
 - [x] `node test/report_classification.js` returned `checked 79 report classification cases`.
 - [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/current/wasmtime wast .lake/build/core-correctness/arrayFindStatus.wat` accepted the generated module.
 - [x] `node test/run_all.js` returned `checked 79 report classification cases`, `checked 416 accepted, 16 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, and `checked 56 cases`.
+
+## 2026-05-11: Array filter
+
+The generic compiler now lowers `Array.filter` for fixed-width array element layouts and direct one-argument predicates returning `Bool`.  The emitted code clamps `stop` to the source size, scans the selected range from left to right, copies matching element slots into a new arena array, and writes the matched count into the result header.  The arena reservation uses the source length as capacity, so the allocated region can exceed the observable result length.
+
+`LeanExe.Examples.Correctness.arrayFilterScalarsRead`, `arrayFilterWindowRead`, and `arrayFilterNoneSize` cover scalar arrays, explicit ranges, and empty results.  `arrayFilterStructureRead` covers filtered structure elements, and `arrayFilterStatusRead` covers filtered tagged elements.  `arrayFilterEmptySkipsPredicateTrap` checks skipped predicate evaluation for an empty source.
+
+Checks run:
+
+- [x] `lake build`
+- [x] `lake build LeanExe.Examples.Correctness`
+- [x] `node test/core_correctness.js` returned `checked 422 accepted, 16 rejected, and 13 trapped cases`.
+- [x] `node test/report_classification.js` returned `checked 80 report classification cases`.
+- [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/current/wasmtime wast .lake/build/core-correctness/arrayFilterStructureRead.wat` accepted the generated module.
+- [x] `node test/run_all.js` returned `checked 80 report classification cases`, `checked 422 accepted, 16 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, and `checked 56 cases`.

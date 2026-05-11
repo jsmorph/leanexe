@@ -77,6 +77,8 @@ mutual
         (predicate : Expr) (slot : Nat)
     | arrayAnySlots (sourceWidth : Nat) (array start stop : Expr) (itemStart : Nat)
         (predicate : Expr) (forAll : Bool)
+    | arrayFilterSlots (sourceWidth : Nat) (array start stop : Expr) (itemStart : Nat)
+        (predicate : Expr)
     | arrayInsertIfInBounds (array index value : Expr)
     | arrayInsertIfInBoundsSlots (width : Nat) (array index : Expr) (values : List Expr)
     | arrayEraseIfInBounds (array index : Expr)
@@ -191,6 +193,7 @@ mutual
     | .arrayFindIdxSlots _ _ _ _ _ => 0
     | .arrayFindSlot _ _ _ _ _ => 0
     | .arrayAnySlots _ _ _ _ _ _ forAll => if forAll then 1 else 0
+    | .arrayFilterSlots _ array _ _ _ _ => array.eval module_ store
     | .arrayInsertIfInBounds array _ _ => array.eval module_ store
     | .arrayInsertIfInBoundsSlots _ array _ _ => array.eval module_ store
     | .arrayEraseIfInBounds array _ => array.eval module_ store
