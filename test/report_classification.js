@@ -30,6 +30,11 @@ const cases = [
   },
   {
     moduleName: "LeanExe.Examples.ByteArrayPrograms",
+    entryName: "LeanExe.Examples.ByteArrayPrograms.foldSum",
+    shape: "entry shape: ByteArray -> Nat",
+  },
+  {
+    moduleName: "LeanExe.Examples.ByteArrayPrograms",
     entryName: "LeanExe.Examples.ByteArrayPrograms.appendBang",
     shape: "entry shape: ByteArray -> ByteArray",
   },

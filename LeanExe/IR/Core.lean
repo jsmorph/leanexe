@@ -82,6 +82,7 @@ mutual
     | byteArrayAppendPtr (leftPtr leftLen rightPtr rightLen : Expr)
     | byteArraySetPtr (ptr len index value : Expr)
     | byteArrayFromArrayPtr (array : Expr)
+    | byteArrayFold (ptr len start stop init : Expr) (accSlot byteSlot : Nat) (body : Expr)
     | call (index : Nat) (args : List Expr)
     deriving BEq, Repr
 
@@ -187,6 +188,7 @@ mutual
     | .byteArrayAppendPtr leftPtr _ _ _ => leftPtr.eval module_ store
     | .byteArraySetPtr ptr _ _ _ => ptr.eval module_ store
     | .byteArrayFromArrayPtr array => array.eval module_ store
+    | .byteArrayFold _ _ _ _ init _ _ _ => init.eval module_ store
     | .call index args =>
         match module_.getFunc? index with
         | some func => func.eval module_ (args.map (fun arg => arg.eval module_ store))

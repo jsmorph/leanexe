@@ -339,6 +339,11 @@ mutual
           (max (exprScratch ptr) (exprScratch len))
           (max (exprScratch index) (exprScratch value))
     | .byteArrayFromArrayPtr array => 4 + exprScratch array
+    | .byteArrayFold ptr len start stop init _ _ body =>
+        7 + max
+          (max (exprScratch ptr) (exprScratch len))
+          (max (max (exprScratch start) (exprScratch stop))
+            (max (exprScratch init) (exprScratch body)))
     | .call _ args => args.foldl (fun count arg => max count (exprScratch arg)) 0
 
   partial def condScratch : Cond → Nat
@@ -1362,6 +1367,39 @@ mutual
       copyLoop ++
       localGet newPtrLocal
 
+  partial def emitByteArrayFold
+      (scratch : Nat)
+      (ptr len start stop init : Expr)
+      (accSlot byteSlot : Nat)
+      (foldBody : Expr) : List UInt8 :=
+    let ptrLocal := scratch
+    let lenLocal := scratch + 1
+    let indexLocal := scratch + 2
+    let stopLocal := scratch + 3
+    let effectiveStopLocal := scratch + 4
+    let childScratch := scratch + 5
+    emitExpr childScratch ptr ++ localSet ptrLocal ++
+      emitExpr childScratch len ++ localSet lenLocal ++
+      emitExpr childScratch start ++ localSet indexLocal ++
+      emitExpr childScratch stop ++ localSet stopLocal ++
+      emitExpr childScratch init ++ localSet accSlot ++
+      localGet stopLocal ++ localGet lenLocal ++ i64LtU ++
+      ofNats [4, 126] ++
+        localGet stopLocal ++
+      ofNats [5] ++
+        localGet lenLocal ++
+      ofNats [11] ++ localSet effectiveStopLocal ++
+      ofNats [2, 64, 3, 64] ++
+        localGet indexLocal ++ localGet effectiveStopLocal ++ i64GeU ++
+          ofNats [13] ++ u32leb 1 ++
+        localGet ptrLocal ++ localGet indexLocal ++ ofNats [124] ++ i32WrapI64 ++
+          i32Load8U ++ i64ExtendI32U ++ localSet byteSlot ++
+        emitExpr childScratch foldBody ++ localSet accSlot ++
+        localGet indexLocal ++ i64Const 1 ++ ofNats [124] ++ localSet indexLocal ++
+        ofNats [12] ++ u32leb 0 ++
+      ofNats [11, 11] ++
+      localGet accSlot
+
   partial def emitCheckedDivMod
       (scratch : Nat)
       (op : LeanExe.IR.U64Op)
@@ -1493,6 +1531,8 @@ mutual
     | .byteArraySetPtr ptr len index value =>
         emitByteArraySetPtr scratch ptr len index value
     | .byteArrayFromArrayPtr array => emitByteArrayFromArrayPtr scratch array
+    | .byteArrayFold ptr len start stop init accSlot byteSlot body =>
+        emitByteArrayFold scratch ptr len start stop init accSlot byteSlot body
     | .call index args => args.flatMap (emitExpr scratch) ++ call index
 
   partial def emitCond (scratch : Nat) : Cond → List UInt8
@@ -2647,6 +2687,35 @@ mutual
       copyLoop ++
       [s!"local.get {newPtrLocal}"]
 
+  partial def byteArrayFoldWatLines
+      (scratch : Nat)
+      (ptr len start stop init : Expr)
+      (accSlot byteSlot : Nat)
+      (foldBody : Expr) : List String :=
+    let ptrLocal := scratch
+    let lenLocal := scratch + 1
+    let indexLocal := scratch + 2
+    let stopLocal := scratch + 3
+    let effectiveStopLocal := scratch + 4
+    let childScratch := scratch + 5
+    exprWatLines childScratch ptr ++ [s!"local.set {ptrLocal}"] ++
+      exprWatLines childScratch len ++ [s!"local.set {lenLocal}"] ++
+      exprWatLines childScratch start ++ [s!"local.set {indexLocal}"] ++
+      exprWatLines childScratch stop ++ [s!"local.set {stopLocal}"] ++
+      exprWatLines childScratch init ++ [s!"local.set {accSlot}",
+        s!"local.get {stopLocal}", s!"local.get {lenLocal}", "i64.lt_u",
+        "if (result i64)", s!"  local.get {stopLocal}", "else",
+        s!"  local.get {lenLocal}", "end", s!"local.set {effectiveStopLocal}",
+        "block", "loop",
+        s!"local.get {indexLocal}", s!"local.get {effectiveStopLocal}", "i64.ge_u",
+        "br_if 1",
+        s!"local.get {ptrLocal}", s!"local.get {indexLocal}", "i64.add", "i32.wrap_i64",
+        "i32.load8_u", "i64.extend_i32_u", s!"local.set {byteSlot}"] ++
+      exprWatLines childScratch foldBody ++
+      [s!"local.set {accSlot}",
+        s!"local.get {indexLocal}", "i64.const 1", "i64.add", s!"local.set {indexLocal}",
+        "br 0", "end", "end", s!"local.get {accSlot}"]
+
   partial def checkedDivModWatLines
       (scratch : Nat)
       (op : LeanExe.IR.U64Op)
@@ -2774,6 +2843,8 @@ mutual
         byteArrayAppendPtrWatLines scratch leftPtr leftLen rightPtr rightLen
     | .byteArraySetPtr ptr len index value => byteArraySetPtrWatLines scratch ptr len index value
     | .byteArrayFromArrayPtr array => byteArrayFromArrayPtrWatLines scratch array
+    | .byteArrayFold ptr len start stop init accSlot byteSlot body =>
+        byteArrayFoldWatLines scratch ptr len start stop init accSlot byteSlot body
     | .call index args => args.flatMap (exprWatLines scratch) ++ [s!"call {index}"]
 
   partial def condWatLines (scratch : Nat) : Cond → List String

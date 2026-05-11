@@ -85,6 +85,12 @@ def fnv1aFuel : Nat → ByteArray → Nat → UInt32 → UInt32
 def fnv1a32 (input : ByteArray) : UInt64 :=
   (fnv1aFuel (input.size + 1) input 0 (2166136261 : UInt32)).toUInt64
 
+def foldSum (input : ByteArray) : Nat :=
+  input.foldl (fun acc byte => acc + byte.toNat) 0
+
+def foldWindowDecimal (input : ByteArray) : Nat :=
+  input.foldl (fun acc byte => acc * 10 + byte.toNat) 0 1 3
+
 def emptyViaIsEmpty (input : ByteArray) : Bool :=
   input.isEmpty
 

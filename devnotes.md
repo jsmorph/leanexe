@@ -1947,3 +1947,19 @@ Checks run:
 - [x] `node test/report_classification.js` returned `checked 69 report classification cases`.
 - [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/current/wasmtime --invoke mkABC .lake/build/bytearray-programs/mkABC.wasm` returned pointer `4224` and length `3`.
 - [x] `node test/run_all.js` returned `checked 69 report classification cases`, `checked 380 accepted, 16 rejected, and 11 trapped cases`, `checked 50 bytearray allocation cases`, and `checked 56 cases`.
+
+## 2026-05-11: ByteArray foldl
+
+The generic compiler now lowers `ByteArray.foldl` for one-slot scalar accumulators.  The emitted code evaluates the buffer, start, stop, and initial accumulator, clamps stop to the buffer size, skips the body when the range is empty, and otherwise loops over bytes from left to right.  Each iteration loads one `UInt8`, evaluates the fold function body against the current accumulator and byte, stores the new accumulator, and advances the index.
+
+`LeanExe.Examples.ByteArrayPrograms.foldSum` covers a full-buffer fold, and `foldWindowDecimal` covers an explicit start and stop range.  `LeanExe.Examples.Correctness.byteArrayFoldEmptySkipsFunctionTrap` checks that an empty range does not evaluate the fold body.  This adds a loop-like source form for byte processing without relying on the restricted Nat-fuel recursion pattern.
+
+Checks run:
+
+- [x] `lake build`
+- [x] `lake build LeanExe.Examples.Correctness LeanExe.Examples.ByteArrayPrograms`
+- [x] `node test/bytearray_alloc.js` returned `checked 56 bytearray allocation cases`.
+- [x] `node test/core_correctness.js` returned `checked 383 accepted, 16 rejected, and 11 trapped cases`.
+- [x] `node test/report_classification.js` returned `checked 70 report classification cases`.
+- [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/current/wasmtime wast .lake/build/bytearray-programs/foldWindowDecimal.wat` accepted the generated module.
+- [x] `node test/run_all.js` returned `checked 70 report classification cases`, `checked 383 accepted, 16 rejected, and 11 trapped cases`, `checked 56 bytearray allocation cases`, and `checked 56 cases`.

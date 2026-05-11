@@ -1698,6 +1698,8 @@ partial def demandExpr
               args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
           | (.const ``ByteArray.mk _, args) =>
               args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
+          | (.const ``ByteArray.foldl _, args) =>
+              args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
           | (.const ``ByteArray.get! _, _) => .trap
           | (.const ``Array.size _, args) =>
               args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
@@ -4066,6 +4068,55 @@ mutual
                             indexSlot + 1)
                     | none => .error "unsupported Array.eraseIdx! item type"
                 | _, _ => .error "unsupported Array.eraseIdx! application"
+            | (.const ``ByteArray.foldl _, args) =>
+                match args with
+                | resultTyExpr :: foldFn :: init :: array :: rest =>
+                    match typeAtom? ctx.env resultTyExpr with
+                    | some resultTy =>
+                        if supportedLocalType resultTy then
+                          let arrayResult ← extractValueFrom ctx locals nextLocal array
+                          let parts ← byteArrayPartsWithLets arrayResult.fst
+                          let ptr := wrapExprLets parts.fst parts.snd.fst
+                          let len := wrapExprLets parts.fst parts.snd.snd
+                          let initResult ← extractExprFrom ctx locals arrayResult.snd init
+                          let startStop ←
+                            match rest with
+                            | [] => .ok ((.u64 0, len), initResult.snd)
+                            | [start] =>
+                                let startResult ← extractExprFrom ctx locals initResult.snd start
+                                .ok ((startResult.fst, len), startResult.snd)
+                            | [start, stop] =>
+                                let startResult ← extractExprFrom ctx locals initResult.snd start
+                                let stopResult ← extractExprFrom ctx locals startResult.snd stop
+                                .ok ((startResult.fst, stopResult.fst), stopResult.snd)
+                            | _ => .error "unsupported ByteArray.foldl application"
+                          let accSlot := startStop.snd
+                          let byteSlot := accSlot + 1
+                          let body ←
+                            match collectLambdas foldFn 2 with
+                            | some body => .ok body
+                            | none => .error "unsupported ByteArray.foldl function"
+                          let bodyResult ←
+                            extractExprFrom ctx
+                              (.value (.scalar (.local byteSlot)) ::
+                                .value (.scalar (.local accSlot)) :: locals)
+                              (byteSlot + 1)
+                              body
+                          .ok
+                            (.byteArrayFold
+                              ptr
+                              len
+                              startStop.fst.fst
+                              startStop.fst.snd
+                              initResult.fst
+                              accSlot
+                              byteSlot
+                              bodyResult.fst,
+                              bodyResult.snd)
+                        else
+                          .error s!"unsupported ByteArray.foldl result type: {reprStr resultTy}"
+                    | none => .error "unsupported ByteArray.foldl result type"
+                | _ => .error "unsupported ByteArray.foldl application"
             | (.const ``ByteArray.size _, args) =>
                 match args with
                 | [array] =>
