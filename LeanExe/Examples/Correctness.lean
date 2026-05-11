@@ -1429,16 +1429,34 @@ def rejectProductReturn : UInt64 × UInt64 :=
 def rejectProductParam (pair : UInt64 × UInt64) : UInt64 :=
   pair.1
 
-def rejectOptionReturn : Option UInt64 :=
-  some 1
+def optionReturn (flag : UInt64) : Option UInt64 :=
+  if flag == 0 then
+    none
+  else
+    some (flag + 4)
+
+def optionPointReturn (flag : UInt64) : Option Point :=
+  if flag == 0 then
+    none
+  else
+    some { x := flag, y := flag + 1 }
 
 def rejectOptionParam (value : Option UInt64) : UInt64 :=
   match value with
   | none => 0
   | some item => item
 
-def rejectExceptReturn : Except UInt64 UInt64 :=
-  Except.ok 1
+def exceptReturn (flag : UInt64) : Except UInt64 UInt64 :=
+  if flag == 0 then
+    Except.error 7
+  else
+    Except.ok (flag + 4)
+
+def exceptPointReturn (flag : UInt64) : Except UInt64 Point :=
+  if flag == 0 then
+    Except.error 7
+  else
+    Except.ok { x := flag, y := flag + 1 }
 
 def rejectExceptParam (value : Except UInt64 UInt64) : UInt64 :=
   match value with

@@ -107,6 +107,14 @@ const accepted = [
   { name: "modeReturn", args: [1n], expected: 2n },
   { name: "checkedStatusMatch", args: [], expected: 8n },
   { name: "checkedStatusReturn", args: [], expected: [0n, 9n, 0n] },
+  { name: "optionReturn", args: [0n], expected: [0n, 0n] },
+  { name: "optionReturn", args: [3n], expected: [1n, 7n] },
+  { name: "optionPointReturn", args: [0n], expected: [0n, 0n, 0n] },
+  { name: "optionPointReturn", args: [5n], expected: [1n, 5n, 6n] },
+  { name: "exceptReturn", args: [0n], expected: [0n, 7n, 0n] },
+  { name: "exceptReturn", args: [3n], expected: [1n, 0n, 7n] },
+  { name: "exceptPointReturn", args: [0n], expected: [0n, 7n, 0n, 0n] },
+  { name: "exceptPointReturn", args: [5n], expected: [1n, 0n, 5n, 6n] },
   { name: "unitProductSecond", args: [], expected: 7n },
   { name: "unitHelperCall", args: [], expected: 11n },
   { name: "unitResultIgnored", args: [], expected: 12n },
@@ -349,16 +357,8 @@ const rejected = [
     message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectInductiveParam",
   },
   {
-    name: "rejectOptionReturn",
-    message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectOptionReturn",
-  },
-  {
     name: "rejectOptionParam",
     message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectOptionParam",
-  },
-  {
-    name: "rejectExceptReturn",
-    message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectExceptReturn",
   },
   {
     name: "rejectExceptParam",

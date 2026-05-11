@@ -1676,3 +1676,23 @@ Checks run:
 - [x] `node test/report_classification.js` returned `checked 31 report classification cases`.
 - [x] `node test/core_correctness.js` returned `checked 315 accepted, 22 rejected, and 7 trapped cases`.
 - [x] `node test/run_all.js` returned `checked 31 report classification cases`, `checked 315 accepted, 22 rejected, and 7 trapped cases`, `checked 36 bytearray allocation cases`, and `checked 56 cases`.
+
+## 2026-05-11: Option and Except result ABI
+
+Exported `Option` and `Except` results now use the same tagged multi-value ABI as source-defined inductive results.  `Option α` returns the tag followed by flattened payload slots for the `some` constructor.  `Except ε α` returns the tag, flattened error payload slots, and flattened success payload slots.  Inactive payload slots use the default values already used by source-defined inductive results.
+
+The implementation keeps `Option` and `Except` entry parameters rejected.  Result support only relies on the existing output flattener; input support still needs source-order decoding rules for tagged parameter slots.
+
+Checks run:
+
+- [x] `lake build`
+- [x] `lake build LeanExe.Examples.Correctness`
+- [x] `.lake/build/bin/lean-wasm compile-wat --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.optionReturn --out .lake/build/core-correctness/optionReturn.wat`
+- [x] `.lake/build/bin/lean-wasm compile-wat --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.exceptPointReturn --out .lake/build/core-correctness/exceptPointReturn.wat`
+- [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/wasmtime-v44.0.0-aarch64-linux/wasmtime --invoke optionReturn .lake/build/core-correctness/optionReturn.wat 0` returned `0` and `0`.
+- [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/wasmtime-v44.0.0-aarch64-linux/wasmtime --invoke optionReturn .lake/build/core-correctness/optionReturn.wat 3` returned `1` and `7`.
+- [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/wasmtime-v44.0.0-aarch64-linux/wasmtime --invoke exceptPointReturn .lake/build/core-correctness/exceptPointReturn.wat 0` returned `0`, `7`, `0`, and `0`.
+- [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/wasmtime-v44.0.0-aarch64-linux/wasmtime --invoke exceptPointReturn .lake/build/core-correctness/exceptPointReturn.wat 5` returned `1`, `0`, `5`, and `6`.
+- [x] `node test/report_classification.js` returned `checked 33 report classification cases`.
+- [x] `node test/core_correctness.js` returned `checked 323 accepted, 20 rejected, and 7 trapped cases`.
+- [x] `node test/run_all.js` returned `checked 33 report classification cases`, `checked 323 accepted, 20 rejected, and 7 trapped cases`, `checked 36 bytearray allocation cases`, and `checked 56 cases`.

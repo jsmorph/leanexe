@@ -60,6 +60,16 @@ const cases = [
   },
   {
     moduleName: "LeanExe.Examples.Correctness",
+    entryName: "LeanExe.Examples.Correctness.optionReturn",
+    shape: "entry shape: UInt64 -> Option UInt64",
+  },
+  {
+    moduleName: "LeanExe.Examples.Correctness",
+    entryName: "LeanExe.Examples.Correctness.exceptReturn",
+    shape: "entry shape: UInt64 -> Except UInt64 UInt64",
+  },
+  {
+    moduleName: "LeanExe.Examples.Correctness",
     entryName: "LeanExe.Examples.Correctness.exceptBindProduct",
     shape: "entry shape: UInt64",
   },

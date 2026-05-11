@@ -365,10 +365,7 @@ def supportedParamAbiType : Ty → Bool
 
 partial def supportedResultAbiType : Ty → Bool
   | .struct _ fields => fields.all supportedResultAbiType
-  | .variant name ctors =>
-      name != ``Option &&
-        name != ``Except &&
-        ctors.all (fun fields => fields.all supportedResultAbiType)
+  | .variant _ ctors => ctors.all (fun fields => fields.all supportedResultAbiType)
   | ty => supportedAbiType ty
 
 partial def supportedInternalValueType : Ty → Bool
