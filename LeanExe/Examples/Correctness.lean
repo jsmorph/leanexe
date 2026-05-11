@@ -333,6 +333,89 @@ def proofStructureMatch : UInt64 :=
 def rejectStructureParam (point : Point) : UInt64 :=
   point.x
 
+inductive Status where
+  | ok : UInt64 -> Status
+  | error : UInt64 -> Status
+
+inductive Mode where
+  | idle : Mode
+  | busy : Mode
+  | done : Mode
+
+inductive CheckedStatus where
+  | checked : (value : UInt64) -> value = value -> CheckedStatus
+  | failed : UInt64 -> CheckedStatus
+
+def statusOkMatch : UInt64 :=
+  match Status.ok 8 with
+  | .ok value => value
+  | .error code => code + 100
+
+def statusErrorMatch : UInt64 :=
+  match Status.error 9 with
+  | .ok value => value + 100
+  | .error code => code
+
+def statusSourceOrderIndependentMatch : UInt64 :=
+  match Status.error 11 with
+  | .error code => code
+  | .ok value => value + 100
+
+def statusSkipsUnusedPayloadTrap : UInt64 :=
+  match Status.ok ((Array.replicate 0 (0 : UInt64)).back!) with
+  | .ok _ => 7
+  | .error _ => 8
+
+def statusMatchCondition : UInt64 :=
+  if (
+    match Status.ok 2 with
+    | .ok value => value == 2
+    | .error _ => false
+  )
+  then
+    1
+  else
+    0
+
+def makeStatusHelper (x : UInt64) : Status :=
+  Status.ok (x + 1)
+
+def statusHelperResult : UInt64 :=
+  match makeStatusHelper 4 with
+  | .ok value => value
+  | .error code => code
+
+def statusBranchReturn (flag : UInt64) : Status :=
+  if flag == 0 then
+    Status.ok 5
+  else
+    Status.error 9
+
+def modeMatch : UInt64 :=
+  match Mode.busy with
+  | .idle => 1
+  | .busy => 2
+  | .done => 3
+
+def modeReturn (flag : UInt64) : Mode :=
+  if flag == 0 then
+    Mode.idle
+  else
+    Mode.done
+
+def checkedStatusMatch : UInt64 :=
+  match CheckedStatus.checked 8 rfl with
+  | .checked value _ => value
+  | .failed code => code
+
+def checkedStatusReturn : CheckedStatus :=
+  CheckedStatus.checked 9 rfl
+
+def rejectInductiveParam (status : Status) : UInt64 :=
+  match status with
+  | .ok value => value
+  | .error code => code
+
 def unitArgHelper (_value : Unit) : UInt64 :=
   11
 

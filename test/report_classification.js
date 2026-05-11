@@ -50,6 +50,16 @@ const cases = [
   },
   {
     moduleName: "LeanExe.Examples.Correctness",
+    entryName: "LeanExe.Examples.Correctness.statusBranchReturn",
+    shape: "entry shape: UInt64 -> LeanExe.Examples.Correctness.Status",
+  },
+  {
+    moduleName: "LeanExe.Examples.Correctness",
+    entryName: "LeanExe.Examples.Correctness.checkedStatusReturn",
+    shape: "entry shape: LeanExe.Examples.Correctness.CheckedStatus",
+  },
+  {
+    moduleName: "LeanExe.Examples.Correctness",
     entryName: "LeanExe.Examples.Correctness.exceptBindProduct",
     shape: "entry shape: UInt64",
   },
@@ -170,7 +180,7 @@ for (const testCase of cases) {
   if (!report.includes(testCase.shape)) {
     throw new Error(`${testCase.entryName}: missing ${testCase.shape}`);
   }
-  if (!report.includes("compile status: implemented by the first generic scalar/array/bytearray/structure compiler fragment")) {
+  if (!report.includes("compile status: implemented by the first generic scalar/array/bytearray/structure/inductive compiler fragment")) {
     throw new Error(`${testCase.entryName}: report does not show implemented compile status`);
   }
   if (report.includes("status: rejected")) {

@@ -105,6 +105,7 @@ def tyText : Ty → String
   | .sum .unit payload => s!"Option {tyText payload}"
   | .sum left right => s!"Sum {tyText left} {tyText right}"
   | .struct name _ => displayName name
+  | .variant name _ => displayName name
 
 def signatureText (sig : LeanExe.Extract.Core.Signature) : String :=
   match sig.params with
@@ -256,6 +257,21 @@ def classifyLocal (env : Environment) (info : ConstantInfo) : Classification :=
       status := "reported",
       reason := "generated match helper; supported matcher and recursion patterns consume it during extraction"
     }
+  else if LeanExe.Extract.Core.variantLayout? env info.name |>.isSome then
+    { status := "implemented", reason := "source-identified user inductive in the generic compiler fragment" }
+  else if
+      match info with
+      | .ctorInfo _ => LeanExe.Extract.Core.variantConstructor? env info.name |>.isSome
+      | _ => false then
+    { status := "implemented", reason := "source-identified user inductive constructor" }
+  else if
+      match info with
+      | .recInfo recInfo =>
+          match recInfo.all with
+          | typeName :: [] => LeanExe.Extract.Core.variantLayout? env typeName |>.isSome
+          | _ => false
+      | _ => false then
+    { status := "implemented", reason := "source-identified user inductive recursor" }
   else if info.isUnsafe then
     { status := "rejected", reason := "unsafe declaration" }
   else if info.isPartial then
@@ -365,7 +381,8 @@ def compileStatus (env : Environment) (moduleName entryName : Name) : String :=
     "implemented by the validator demo compiler path"
   else
     match LeanExe.Extract.Core.compileEnvironment env moduleName entryName with
-    | .ok _ => "implemented by the first generic scalar/array/bytearray/structure compiler fragment"
+    | .ok _ =>
+        "implemented by the first generic scalar/array/bytearray/structure/inductive compiler fragment"
     | .error error => s!"reported only; generic compile rejects this entry: {error}"
 
 def renderNode (node : DeclReport) : List String :=
