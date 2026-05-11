@@ -54,6 +54,45 @@ Start with a deliberately narrow subset.
 
 Unsupported declarations must fail with exact diagnostics.  The compiler should say which declaration blocks extraction and why: opaque constant, unsupported primitive, unspecialized polymorphism, higher-order value escape, unsupported recursor, unsupported effect, or runtime environment dependency.
 
+## Near-term language support agenda
+
+The next work should broaden ordinary programming support while keeping extraction correctness explicit.  The first target is monomorphic, nonrecursive user-defined inductives, because they generalize the current special handling for `Option` and restricted `Except`.  This gives source-defined result types, error types, tokens, states, and small enums a principled representation in the extractor.
+
+| Order | Work | Purpose | Completion criteria |
+| ----- | ---- | ------- | ------------------- |
+| 1 | Monomorphic, nonrecursive user inductives | Add source-identified sum types with constructors, proof-erased constructor fields, and generated matcher support | Constructors, pattern matches, ignored-payload laziness, proof-field erasure, and returned tagged values pass Lean-versus-Wasmtime tests |
+| 2 | Unified sum representation | Replace special-case `Option` and `Except` handling with the same source-identified inductive path | `Option`, `Except`, and user-defined sums no longer share anonymous runtime shapes, and `Except Unit α` works when payload types are supported |
+| 3 | Tagged result ABI | Let exported functions return supported inductives rather than forcing traps or ad hoc scalar encodings | The Wasm ABI documents tags, payload layout, multi-value flattening, and host decoding for supported sums |
+| 4 | Structured parameters | Accept supported structures and small inductives as entry parameters | The ABI flattens input records and tagged sums in source order, with exact rejection reasons for unsupported fields |
+| 5 | Arrays with richer elements | Extend `Array` beyond `Array UInt64` to supported scalar, structure, and small-inductive element types | Element layout, copying, indexing, updating, and returned-array behavior are specified and tested |
+| 6 | Broader recursion shapes | Expand beyond the current fuel-tail-recursion form to structural recursion over arrays and simple inductives | Accepted recursion shapes have exact syntactic and semantic checks, with tests for non-tail rejection and Lean-equivalent execution |
+| 7 | Owned byte output and strings | Add owned `ByteArray` results before admitting `String` | Output ownership, allocation, pointer-length returns, and UTF-8 policy are specified before string extraction |
+| 8 | Restricted `IO` | Add explicit host imports for small byte-oriented effects after pure output is stable | The IR represents each effect explicitly, the Wasm module declares its imports, and hidden runtime access remains rejected |
+
+Correctness remains the gate for each expansion.  Each feature must update `spec.md`, add accepted and rejected examples, compare Lean execution with Wasmtime for representative programs, and keep rejection reasons exact.  Features that require unresolved ABI or memory-layout decisions should stay planned until those decisions are written down.
+
+## Go-level expressiveness milestone
+
+A useful milestone is the ability to write deterministic, first-order programs in Lean with roughly the same everyday programming tools that Go programmers use for parsers, validators, encoders, protocol logic, and command-line transforms.  This does not mean copying Go's runtime model.  The milestone should cover records, sum types, loops, mutable local state patterns, arrays, slices, bytes, explicit errors, and small libraries, while excluding goroutines, channels, reflection, unsafe pointers, arbitrary FFI, and ambient runtime services.
+
+| Area | Current gap | Milestone criterion |
+| ---- | ----------- | ------------------ |
+| Control flow | The extractor accepts a restricted tail-recursion shape over `Nat` fuel, but ordinary Go-style loops, early returns, breaks, and structural recursion over data are absent. | Lean programs can express common loops over counters, byte buffers, arrays, and simple inductives in accepted source forms, with exact rejection for unsupported recursion. |
+| Mutable local state | The supported source style remains expression-oriented, with pure array updates and local shadowing.  Go-style code often uses counters, cursors, accumulators, and state variables as the normal form. | The subset accepts Lean encodings of local mutable state that elaborate to checked, first-order terms with predictable extraction and no hidden Lean runtime dependency. |
+| Data types | Structures are useful for local values and returned values, but structure parameters are missing.  User-defined inductives are not compiled, and `Option` and `Except` still use special internal paths that cannot cross the public ABI. | Supported structures, small inductives, `Option`, and `Except` can appear in local values, parameters, and results according to one documented representation. |
+| Memory model | The current memory model has arena allocation and copy-on-write `Array UInt64`.  It lacks richer arrays, slices, arrays of structures, arrays of small tagged values, owned byte outputs, and aliasing rules for faster updates. | The compiler has explicit layouts for supported arrays and slices, a documented ownership model for returned buffers, and correctness tests for reads, writes, copies, aliases, and returned memory. |
+| Strings and bytes | The compiler supports read-only `ByteArray` input and byte slices, but it does not support owned `ByteArray` results, string values, string parsing, string construction, or a UTF-8 policy. | Byte output works before strings, and string support enters only after allocation, ownership, encoding, and validation rules are specified. |
+| Maps | The subset has no built-in or compiled generic map type.  A hand-written map becomes practical only after arrays, structures, inductives, loops, and result types are stronger. | A simple standard map implementation, such as an integer hash table or ordered table, compiles from ordinary subset code and passes Lean-versus-Wasmtime tests. |
+| Errors | Go programs rely on explicit error returns.  The nearest Lean form is `Except`, but current support is internal, restricted, and unavailable at the ABI boundary. | Exported functions can return tagged success or error values with source-defined error types and host-decodable result layout. |
+| Functions | Higher-order arguments and closures are rejected.  This blocks callbacks, visitors, and adapters, although many first-order programs can proceed without them. | The first Go-level milestone can remain first-order, but the plan should keep a later escape-restricted function-value design open. |
+| Polymorphism | Type parameters and typeclass instance dependencies are reported rather than compiled.  This blocks generic library code, although monomorphic programs can still be useful. | Monomorphic library instances compile today, and later monomorphization and typeclass specialization have specified acceptance and rejection rules. |
+| Packages and dependencies | The report can inspect dependencies, but there is no broad accepted library subset across multi-file programs. | Multi-module Lean programs compile when every runtime dependency is inside the subset, and diagnostics name the first unsupported declaration and construct. |
+| `IO` | No Lean `IO` compiles.  Go-level command-line usefulness eventually needs explicit access to input, output, files, arguments, environment variables, and exit status. | Restricted `IO` is represented in the IR through declared host imports, after pure byte output and tagged error results are stable. |
+| Concurrency | Goroutines, channels, timers, and scheduling are absent. | Concurrency stays outside the first Go-level milestone, because it requires a larger runtime and proof model. |
+| Reflection and unsafe features | Runtime reflection, unsafe pointers, and arbitrary FFI are rejected. | These features remain outside the milestone unless the project later defines a separate unsafe or unverifiable mode. |
+
+The shortest path to this milestone is the same path as the near-term agenda: user-defined inductives, unified sums, tagged results, structured parameters, richer arrays and slices, owned byte output, broader recursion, and restricted `IO`.  That sequence supports useful deterministic programs before the compiler takes on runtime services.  Each step should leave behind a small source program that looks like normal application code rather than a compiler test case.
+
 ## Architecture
 
 ### 1. Lean frontend integration
