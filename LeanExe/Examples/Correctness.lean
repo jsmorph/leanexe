@@ -1821,13 +1821,22 @@ def exceptUnitErrorBind : UInt64 :=
   | Except.error _ => 0
   | Except.ok item => item
 
+def byteArrayReturnABC : ByteArray :=
+  ((ByteArray.empty.push (65 : UInt8)).push (66 : UInt8)).push (67 : UInt8)
+
+def byteArrayPushSize : Nat :=
+  byteArrayReturnABC.size
+
+def byteArrayPushSizeForcesValueTrap : Nat :=
+  (ByteArray.empty.push ((Array.replicate 0 (0 : UInt8))[0]!)).size
+
 def rejectUnitReturn : Unit :=
   ()
 
 def rejectUnitParam (_value : Unit) : UInt64 :=
   1
 
-def rejectByteArrayReturn (input : ByteArray) : ByteArray :=
+def byteArrayIdentityReturn (input : ByteArray) : ByteArray :=
   input
 
 def rejectNestedArrayReturn : Array (Array UInt64) :=

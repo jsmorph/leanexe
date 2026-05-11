@@ -235,6 +235,9 @@ def i64Store : List UInt8 :=
 def i32Load8U : List UInt8 :=
   ofNats [45, 0, 0]
 
+def i32Store8 : List UInt8 :=
+  ofNats [58, 0, 0]
+
 def i64ExtendI32U : List UInt8 :=
   ofNats [173]
 
@@ -325,6 +328,8 @@ mutual
     | .arrayReverseSlots _ array => 4 + exprScratch array
     | .byteArrayGet ptr len index =>
         3 + max (exprScratch ptr) (max (exprScratch len) (exprScratch index))
+    | .byteArrayPushPtr ptr len value =>
+        6 + max (exprScratch ptr) (max (exprScratch len) (exprScratch value))
     | .call _ args => args.foldl (fun count arg => max count (exprScratch arg)) 0
 
   partial def condScratch : Cond → Nat
@@ -1215,6 +1220,35 @@ mutual
         ofNats [0] ++
       ofNats [11]
 
+  partial def emitByteArrayPushPtr (scratch : Nat) (ptr len value : Expr) : List UInt8 :=
+    let ptrLocal := scratch
+    let lenLocal := scratch + 1
+    let valueLocal := scratch + 2
+    let newPtrLocal := scratch + 3
+    let newLenLocal := scratch + 4
+    let loopLocal := scratch + 5
+    let childScratch := scratch + 6
+    let copyLoop :=
+      i64Const 0 ++ localSet loopLocal ++
+        ofNats [2, 64, 3, 64] ++
+          localGet loopLocal ++ localGet lenLocal ++ i64GeU ++ ofNats [13] ++ u32leb 1 ++
+          localGet newPtrLocal ++ localGet loopLocal ++ ofNats [124] ++ i32WrapI64 ++
+            localGet ptrLocal ++ localGet loopLocal ++ ofNats [124] ++ i32WrapI64 ++
+            i32Load8U ++ i32Store8 ++
+          localGet loopLocal ++ i64Const 1 ++ ofNats [124] ++ localSet loopLocal ++
+          ofNats [12] ++ u32leb 0 ++
+        ofNats [11, 11]
+    emitExpr childScratch ptr ++ localSet ptrLocal ++
+      emitExpr childScratch len ++ localSet lenLocal ++
+      emitExpr childScratch value ++ localSet valueLocal ++
+      localGet lenLocal ++ i64Const 1 ++ ofNats [124] ++ localSet newLenLocal ++
+      globalGet 0 ++ localSet newPtrLocal ++
+      globalGet 0 ++ localGet newLenLocal ++ ofNats [124] ++ globalSet 0 ++
+      copyLoop ++
+      localGet newPtrLocal ++ localGet lenLocal ++ ofNats [124] ++ i32WrapI64 ++
+        localGet valueLocal ++ i32WrapI64 ++ i32Store8 ++
+      localGet newPtrLocal
+
   partial def emitCheckedDivMod
       (scratch : Nat)
       (op : LeanExe.IR.U64Op)
@@ -1340,6 +1374,7 @@ mutual
     | .arrayReverse array => emitArrayReverse scratch array
     | .arrayReverseSlots width array => emitArrayReverseSlots scratch width array
     | .byteArrayGet ptr len index => emitByteArrayGet scratch ptr len index
+    | .byteArrayPushPtr ptr len value => emitByteArrayPushPtr scratch ptr len value
     | .call index args => args.flatMap (emitExpr scratch) ++ call index
 
   partial def emitCond (scratch : Nat) : Cond → List UInt8
@@ -2373,6 +2408,33 @@ mutual
         "i32.wrap_i64", "i32.load8_u", "i64.extend_i32_u"] ++
       ["else", "  unreachable", "end"]
 
+  partial def byteArrayPushPtrWatLines (scratch : Nat) (ptr len value : Expr) : List String :=
+    let ptrLocal := scratch
+    let lenLocal := scratch + 1
+    let valueLocal := scratch + 2
+    let newPtrLocal := scratch + 3
+    let newLenLocal := scratch + 4
+    let loopLocal := scratch + 5
+    let childScratch := scratch + 6
+    let copyLoop :=
+      [s!"i64.const 0", s!"local.set {loopLocal}", "block", "loop",
+        s!"local.get {loopLocal}", s!"local.get {lenLocal}", "i64.ge_u", "br_if 1",
+        s!"local.get {newPtrLocal}", s!"local.get {loopLocal}", "i64.add", "i32.wrap_i64",
+        s!"local.get {ptrLocal}", s!"local.get {loopLocal}", "i64.add", "i32.wrap_i64",
+        "i32.load8_u", "i32.store8",
+        s!"local.get {loopLocal}", "i64.const 1", "i64.add", s!"local.set {loopLocal}",
+        "br 0", "end", "end"]
+    exprWatLines childScratch ptr ++ [s!"local.set {ptrLocal}"] ++
+      exprWatLines childScratch len ++ [s!"local.set {lenLocal}"] ++
+      exprWatLines childScratch value ++ [s!"local.set {valueLocal}",
+        s!"local.get {lenLocal}", "i64.const 1", "i64.add", s!"local.set {newLenLocal}",
+        "global.get 0", s!"local.set {newPtrLocal}",
+        "global.get 0", s!"local.get {newLenLocal}", "i64.add", "global.set 0"] ++
+      copyLoop ++
+      [s!"local.get {newPtrLocal}", s!"local.get {lenLocal}", "i64.add", "i32.wrap_i64",
+        s!"local.get {valueLocal}", "i32.wrap_i64", "i32.store8",
+        s!"local.get {newPtrLocal}"]
+
   partial def checkedDivModWatLines
       (scratch : Nat)
       (op : LeanExe.IR.U64Op)
@@ -2495,6 +2557,7 @@ mutual
     | .arrayReverse array => arrayReverseWatLines scratch array
     | .arrayReverseSlots width array => arrayReverseSlotsWatLines scratch width array
     | .byteArrayGet ptr len index => byteArrayGetWatLines scratch ptr len index
+    | .byteArrayPushPtr ptr len value => byteArrayPushPtrWatLines scratch ptr len value
     | .call index args => args.flatMap (exprWatLines scratch) ++ [s!"call {index}"]
 
   partial def condWatLines (scratch : Nat) : Cond → List String

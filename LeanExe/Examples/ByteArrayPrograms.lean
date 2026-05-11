@@ -88,4 +88,13 @@ def fnv1a32 (input : ByteArray) : UInt64 :=
 def emptyViaIsEmpty (input : ByteArray) : Bool :=
   input.isEmpty
 
+def bytesABC : ByteArray :=
+  ((ByteArray.empty.push (65 : UInt8)).push (66 : UInt8)).push (67 : UInt8)
+
+def appendBang (input : ByteArray) : ByteArray :=
+  input.push (33 : UInt8)
+
+def tailSlice (input : ByteArray) : ByteArray :=
+  input.extract 1 input.size
+
 end LeanExe.Examples.ByteArrayPrograms

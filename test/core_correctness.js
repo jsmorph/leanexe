@@ -131,6 +131,13 @@ const accepted = [
   { name: "exceptPointReturn", args: [5n], expected: [1n, 0n, 5n, 6n] },
   { name: "exceptParam", args: [0n, 7n, 0n], expected: 7n },
   { name: "exceptParam", args: [1n, 0n, 5n], expected: 5n },
+  {
+    name: "byteArrayReturnABC",
+    args: [],
+    expected: [null, 3n],
+    memoryBytes: [{ resultIndex: 0, lengthIndex: 1, values: [65, 66, 67] }],
+  },
+  { name: "byteArrayPushSize", args: [], expected: 3n },
   { name: "unitProductSecond", args: [], expected: 7n },
   { name: "unitHelperCall", args: [], expected: 11n },
   { name: "unitResultIgnored", args: [], expected: 12n },
@@ -411,10 +418,6 @@ const rejected = [
     message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectUnitParam",
   },
   {
-    name: "rejectByteArrayReturn",
-    message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectByteArrayReturn",
-  },
-  {
     name: "rejectNestedArrayReturn",
     message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectNestedArrayReturn",
   },
@@ -472,6 +475,7 @@ const trapped = [
   { name: "arrayBackEmptyTrap", args: [] },
   { name: "arrayInsertIdxBangTrap", args: [] },
   { name: "arrayEraseIdxBangTrap", args: [] },
+  { name: "byteArrayPushSizeForcesValueTrap", args: [] },
 ];
 
 function run(args) {
@@ -537,6 +541,20 @@ async function runAccepted(testCase) {
         const cell = view.getBigUint64(Number(ptr + BigInt(8 * (index + 1))), true);
         if (cell !== memoryArray.values[index]) {
           throw new Error(`${testCase.name}: expected array[${index}] ${memoryArray.values[index]}, got ${cell}`);
+        }
+      }
+    }
+    for (const memoryBytes of testCase.memoryBytes || []) {
+      const ptr = actual[memoryBytes.resultIndex];
+      const len = actual[memoryBytes.lengthIndex];
+      const expectedLength = BigInt(memoryBytes.values.length);
+      if (len !== expectedLength) {
+        throw new Error(`${testCase.name}: expected byte length ${expectedLength}, got ${len}`);
+      }
+      const bytes = new Uint8Array(instance.exports.memory.buffer, Number(ptr), Number(len));
+      for (let index = 0; index < memoryBytes.values.length; index += 1) {
+        if (bytes[index] !== memoryBytes.values[index]) {
+          throw new Error(`${testCase.name}: expected byte[${index}] ${memoryBytes.values[index]}, got ${bytes[index]}`);
         }
       }
     }
