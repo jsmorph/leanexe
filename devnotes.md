@@ -1633,3 +1633,20 @@ Checks run:
 - [x] `node test/report_classification.js` returned `checked 29 report classification cases`.
 - [x] `node test/core_correctness.js` returned `checked 299 accepted, 22 rejected, and 7 trapped cases`.
 - [x] `node test/run_all.js` returned `checked 29 report classification cases`, `checked 299 accepted, 22 rejected, and 7 trapped cases`, `checked 36 bytearray allocation cases`, and `checked 56 cases`.
+
+## 2026-05-11: User inductive values
+
+The extractor now accepts monomorphic, nonrecursive user-defined inductives that are not structures and have no indices or type parameters.  `Ty.variant` records the source inductive name and constructor payload types, and the extracted value records the source name, tag expression, and payload values for every constructor.  Constructor applications erase proof fields and fill inactive constructor payloads with default values.  Generated matchers and direct recursors bind source fields in constructor order; erased proof fields receive the existing zero placeholder, while runtime fields remain lazy payload values.
+
+Exported user-inductive results now use a fixed tagged ABI: tag first, followed by flattened payload slots for each constructor in declaration order.  A nullary enum returns one `i64` tag.  A two-constructor status type with one `UInt64` payload in each constructor returns three `i64` values: tag, first-constructor payload, and second-constructor payload.  Entry parameters for user inductives remain rejected until the public input ABI has structured tagged input rules.
+
+Checks run:
+
+- [x] `lake build`
+- [x] `lake build LeanExe.Examples.Correctness`
+- [x] `.lake/build/bin/lean-wasm compile-wat --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.statusBranchReturn --out .lake/build/core-correctness/statusBranchReturn.wat`
+- [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/wasmtime-v44.0.0-aarch64-linux/wasmtime --invoke statusBranchReturn .lake/build/core-correctness/statusBranchReturn.wat 0` returned `0`, `5`, and `0`.
+- [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/wasmtime-v44.0.0-aarch64-linux/wasmtime --invoke statusBranchReturn .lake/build/core-correctness/statusBranchReturn.wat 1` returned `1`, `0`, and `9`.
+- [x] `node test/report_classification.js` returned `checked 31 report classification cases`.
+- [x] `node test/core_correctness.js` returned `checked 312 accepted, 23 rejected, and 7 trapped cases`.
+- [x] `node test/run_all.js` returned `checked 31 report classification cases`, `checked 312 accepted, 23 rejected, and 7 trapped cases`, `checked 36 bytearray allocation cases`, and `checked 56 cases`.

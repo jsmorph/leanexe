@@ -25,6 +25,7 @@ inductive ExtractedValue where
   | option (tag : IRExpr) (payload : ExtractedValue)
   | sum (tag : IRExpr) (left right : ExtractedValue)
   | struct (name : Name) (fields : List ExtractedValue)
+  | variant (name : Name) (tag : IRExpr) (ctors : List (List ExtractedValue))
   | letE (slot : Nat) (value : IRExpr) (body : ExtractedValue)
   deriving BEq, Repr
 
@@ -43,6 +44,16 @@ structure Context where
   root : Name
   names : Array Name
   inlineStack : List Name
+
+structure VariantCtorLayout where
+  name : Name
+  fields : List (Option Ty)
+  deriving BEq, Repr
+
+structure VariantLayout where
+  name : Name
+  ctors : List VariantCtorLayout
+  deriving BEq, Repr
 
 partial def appFnArgsAux (expr : Expr) (args : List Expr) : Expr × List Expr :=
   match expr.consumeMData with
@@ -148,6 +159,34 @@ def structureCtorInfo? (env : Environment) (structName : Name) : Option Construc
       | _ => none
   | none => none
 
+def builtinInductiveNames : List Name :=
+  [``Bool, ``Nat, ``Unit, ``Option, ``Except, ``Prod]
+
+def userInductiveInfo? (env : Environment) (typeName : Name) : Option InductiveVal :=
+  if builtinInductiveNames.contains typeName || isStructureLike env typeName then
+    none
+  else
+    match env.find? typeName with
+    | some (.inductInfo info) =>
+        if info.numParams == 0 && info.numIndices == 0 && !info.isRec && !info.ctors.isEmpty then
+          some info
+        else
+          none
+    | _ => none
+
+def runtimeTypesFromKinds (kinds : List (Option Ty)) : List Ty :=
+  kinds.filterMap id
+
+def ctorIndex? (ctorName : Name) (ctors : List VariantCtorLayout) : Option Nat :=
+  let rec loop : Nat → List VariantCtorLayout → Option Nat
+    | _, [] => none
+    | index, ctor :: rest =>
+        if ctor.name == ctorName then
+          some index
+        else
+          loop (index + 1) rest
+  loop 0 ctors
+
 partial def isProofType? (env : Environment) (expr : Expr) : Bool :=
   match expr.consumeMData with
   | .sort .zero => true
@@ -218,7 +257,8 @@ mutual
           if isStructureLike env name then
             structureFieldTypes? env name |>.map (fun fields => .struct name fields)
           else
-            none
+            variantLayout? env name |>.map fun layout =>
+              .variant name (layout.ctors.map (fun ctor => runtimeTypesFromKinds ctor.fields))
       | _ => none
 
   partial def structureFieldKinds? (env : Environment) (structName : Name) :
@@ -243,6 +283,29 @@ mutual
 
   partial def structureFieldTypes? (env : Environment) (structName : Name) : Option (List Ty) :=
     structureFieldKinds? env structName |>.map (fun fields => fields.filterMap id)
+
+  partial def variantLayout? (env : Environment) (typeName : Name) : Option VariantLayout :=
+    match userInductiveInfo? env typeName with
+    | some info =>
+        let ctorLayouts? := info.ctors.mapM fun ctorName =>
+          match env.find? ctorName with
+          | some (.ctorInfo ctorInfo) =>
+              if ctorInfo.numParams == 0 && ctorInfo.induct == typeName then
+                let fields := (peelForall ctorInfo.type).fst.drop ctorInfo.numParams
+                if fields.length == ctorInfo.numFields then
+                  fields.mapM (fun field =>
+                    if isProofType? env field then
+                      some none
+                    else
+                      typeAtom? env field |>.map some) |>.map fun fieldKinds =>
+                        ({ name := ctorName, fields := fieldKinds } : VariantCtorLayout)
+                else
+                  none
+              else
+                none
+          | _ => none
+        ctorLayouts? |>.map fun ctors => ({ name := typeName, ctors := ctors } : VariantLayout)
+    | none => none
 end
 
 def structureConstructor? (env : Environment) (ctorName : Name) :
@@ -253,6 +316,21 @@ def structureConstructor? (env : Environment) (ctorName : Name) :
         structureFieldKinds? env ctorInfo.induct |>.map (fun fields => (ctorInfo.induct, fields))
       else
         none
+  | _ => none
+
+def variantConstructor? (env : Environment) (ctorName : Name) :
+    Option (VariantLayout × Nat × VariantCtorLayout) :=
+  match env.find? ctorName with
+  | some (.ctorInfo ctorInfo) =>
+      match variantLayout? env ctorInfo.induct with
+      | some layout =>
+          match ctorIndex? ctorName layout.ctors with
+          | some index =>
+              match layout.ctors[index]? with
+              | some ctor => some (layout, index, ctor)
+              | none => none
+          | none => none
+      | none => none
   | _ => none
 
 def structureProjection? (env : Environment) (projName : Name) :
@@ -288,6 +366,7 @@ def supportedParamAbiType : Ty → Bool
 
 partial def supportedResultAbiType : Ty → Bool
   | .struct _ fields => fields.all supportedResultAbiType
+  | .variant _ ctors => ctors.all (fun fields => fields.all supportedResultAbiType)
   | ty => supportedAbiType ty
 
 partial def supportedInternalValueType : Ty → Bool
@@ -299,6 +378,7 @@ partial def supportedInternalValueType : Ty → Bool
   | .nat => true
   | .array .u64 => true
   | .struct _ fields => fields.all supportedInternalValueType
+  | .variant _ ctors => ctors.all (fun fields => fields.all supportedInternalValueType)
   | _ => false
 
 def supportedInternalParamType : Ty → Bool
@@ -308,9 +388,13 @@ def supportedInternalParamType : Ty → Bool
 def supportedInternalResultType : Ty → Bool :=
   supportedInternalValueType
 
-def abiSlots : Ty → Nat
+partial def abiSlots : Ty → Nat
   | .byteArray => 2
   | .struct _ fields => fields.foldl (fun total field => total + abiSlots field) 0
+  | .variant _ ctors =>
+      1 + ctors.foldl
+        (fun total fields => total + fields.foldl (fun acc field => acc + abiSlots field) 0)
+        0
   | _ => 1
 
 def abiParamCount (params : List Ty) : Nat :=
@@ -363,6 +447,7 @@ partial def supportedLocalType : Ty → Bool
   | .product left right => supportedLocalType left && supportedLocalType right
   | .sum left right => supportedLocalType left && supportedLocalType right
   | .struct _ fields => fields.all supportedLocalType
+  | .variant _ ctors => ctors.all (fun fields => fields.all supportedLocalType)
   | _ => false
 
 def supportedInlineFunction? (env : Environment) (info : ConstantInfo) : Option Signature :=
@@ -492,6 +577,7 @@ def scalarValue (value : ExtractedValue) : Except String IRExpr :=
   | .option _ _ => .error "option value used where scalar value is required"
   | .sum _ _ _ => .error "sum value used where scalar value is required"
   | .struct name _ => .error s!"structure value used where scalar value is required: {name}"
+  | .variant name _ _ => .error s!"inductive value used where scalar value is required: {name}"
   | .letE slot value body => do
       .ok (.letE slot value (← scalarValue body))
 
@@ -503,6 +589,7 @@ def byteArrayParts (value : ExtractedValue) : Except String (IRExpr × IRExpr) :
   | .option _ _ => .error "option value used where ByteArray value is required"
   | .sum _ _ _ => .error "sum value used where ByteArray value is required"
   | .struct name _ => .error s!"structure value used where ByteArray value is required: {name}"
+  | .variant name _ _ => .error s!"inductive value used where ByteArray value is required: {name}"
   | .letE slot value body => do
       let parts ← byteArrayParts body
       .ok (.letE slot value parts.fst, .letE slot value parts.snd)
@@ -516,6 +603,7 @@ partial def byteArrayPartsWithLets (value : ExtractedValue) :
   | .option _ _ => .error "option value used where ByteArray value is required"
   | .sum _ _ _ => .error "sum value used where ByteArray value is required"
   | .struct name _ => .error s!"structure value used where ByteArray value is required: {name}"
+  | .variant name _ _ => .error s!"inductive value used where ByteArray value is required: {name}"
   | .letE slot value body => do
       let parts ← byteArrayPartsWithLets body
       .ok ((slot, value) :: parts.fst, parts.snd.fst, parts.snd.snd)
@@ -534,6 +622,7 @@ def productField (index : Nat) (value : ExtractedValue) : Except String Extracte
   | .option _ _ => .error "option value used where product value is required"
   | .sum _ _ _ => .error "sum value used where product value is required"
   | .struct name _ => .error s!"structure value used where product value is required: {name}"
+  | .variant name _ _ => .error s!"inductive value used where product value is required: {name}"
   | .letE slot value body => do
       .ok (.letE slot value (← productField index body))
 
@@ -551,6 +640,8 @@ def structField (name : Name) (index : Nat) (value : ExtractedValue) : Except St
   | .product _ _ => .error s!"product value used where structure value is required: {name}"
   | .option _ _ => .error s!"option value used where structure value is required: {name}"
   | .sum _ _ _ => .error s!"sum value used where structure value is required: {name}"
+  | .variant actual _ _ =>
+      .error s!"inductive value used where structure value is required: {name}; got {actual}"
   | .letE slot value body => do
       .ok (.letE slot value (← structField name index body))
 
@@ -562,6 +653,7 @@ def optionParts (value : ExtractedValue) : Except String (IRExpr × ExtractedVal
   | .product _ _ => .error "product value used where option value is required"
   | .sum _ _ _ => .error "sum value used where option value is required"
   | .struct name _ => .error s!"structure value used where option value is required: {name}"
+  | .variant name _ _ => .error s!"inductive value used where option value is required: {name}"
   | .letE slot value body => do
       let parts ← optionParts body
       .ok (.letE slot value parts.fst, .letE slot value parts.snd)
@@ -575,6 +667,7 @@ partial def optionPartsWithLets (value : ExtractedValue) :
   | .product _ _ => .error "product value used where option value is required"
   | .sum _ _ _ => .error "sum value used where option value is required"
   | .struct name _ => .error s!"structure value used where option value is required: {name}"
+  | .variant name _ _ => .error s!"inductive value used where option value is required: {name}"
   | .letE slot value body => do
       let parts ← optionPartsWithLets body
       .ok ((slot, value) :: parts.fst, parts.snd.fst, parts.snd.snd)
@@ -588,9 +681,30 @@ partial def sumPartsWithLets (value : ExtractedValue) :
   | .product _ _ => .error "product value used where sum value is required"
   | .option _ _ => .error "option value used where sum value is required"
   | .struct name _ => .error s!"structure value used where sum value is required: {name}"
+  | .variant name _ _ => .error s!"inductive value used where sum value is required: {name}"
   | .letE slot value body => do
       let parts ← sumPartsWithLets body
       .ok ((slot, value) :: parts.fst, parts.snd.fst, parts.snd.snd.fst, parts.snd.snd.snd)
+
+partial def variantPartsWithLets (expectedName : Name) (value : ExtractedValue) :
+    Except String (List (Nat × IRExpr) × IRExpr × List (List ExtractedValue)) :=
+  match value with
+  | .variant name tag ctors =>
+      if name == expectedName then
+        .ok ([], tag, ctors)
+      else
+        .error s!"inductive value type mismatch: expected {expectedName}, got {name}"
+  | .scalar _ => .error s!"scalar value used where inductive value is required: {expectedName}"
+  | .byteArray _ _ =>
+      .error s!"ByteArray value used where inductive value is required: {expectedName}"
+  | .product _ _ => .error s!"product value used where inductive value is required: {expectedName}"
+  | .option _ _ => .error s!"option value used where inductive value is required: {expectedName}"
+  | .sum _ _ _ => .error s!"sum value used where inductive value is required: {expectedName}"
+  | .struct name _ =>
+      .error s!"structure value used where inductive value is required: {expectedName}; got {name}"
+  | .letE slot value body => do
+      let parts ← variantPartsWithLets expectedName body
+      .ok ((slot, value) :: parts.fst, parts.snd.fst, parts.snd.snd)
 
 partial def defaultValue : Ty → Except String ExtractedValue
   | .unit => .ok (.scalar (.u64 0))
@@ -605,6 +719,8 @@ partial def defaultValue : Ty → Except String ExtractedValue
       .ok (.product (← defaultValue left) (← defaultValue right))
   | .struct name fields => do
       .ok (.struct name (← fields.mapM defaultValue))
+  | .variant name ctors => do
+      .ok (.variant name (.u64 0) (← ctors.mapM (fun fields => fields.mapM defaultValue)))
   | .sum .unit payload => do
       .ok (.option (.u64 0) (← defaultValue payload))
   | .sum left right => do
@@ -624,6 +740,8 @@ partial def trapValue : Ty → Except String ExtractedValue
       .ok (.product (← trapValue left) (← trapValue right))
   | .struct name fields => do
       .ok (.struct name (← fields.mapM trapValue))
+  | .variant name ctors => do
+      .ok (.variant name .trap (← ctors.mapM (fun fields => fields.mapM trapValue)))
   | .sum .unit payload => do
       .ok (.option .trap (← trapValue payload))
   | .sum left right => do
@@ -644,6 +762,8 @@ partial def mapValueExprs (f : IRExpr → IRExpr) : ExtractedValue → Extracted
   | .option tag payload => .option (f tag) (mapValueExprs f payload)
   | .sum tag left right => .sum (f tag) (mapValueExprs f left) (mapValueExprs f right)
   | .struct name fields => .struct name (fields.map (mapValueExprs f))
+  | .variant name tag ctors =>
+      .variant name (f tag) (ctors.map (fun fields => fields.map (mapValueExprs f)))
   | .letE slot value body => .letE slot value (mapValueExprs f body)
 
 partial def materializeValueLets : ExtractedValue → ExtractedValue
@@ -653,6 +773,8 @@ partial def materializeValueLets : ExtractedValue → ExtractedValue
   | .option tag payload => .option tag (materializeValueLets payload)
   | .sum tag left right => .sum tag (materializeValueLets left) (materializeValueLets right)
   | .struct name fields => .struct name (fields.map materializeValueLets)
+  | .variant name tag ctors =>
+      .variant name tag (ctors.map (fun fields => fields.map materializeValueLets))
   | other => other
 
 partial def valueIte
@@ -685,6 +807,17 @@ partial def valueIte
         .ok (.struct thenName fields)
       else
         .error "if branches have incompatible structure value shapes"
+  | .variant thenName thenTag thenCtors, .variant elseName elseTag elseCtors =>
+      if thenName == elseName && thenCtors.length == elseCtors.length then do
+        let ctors ← (thenCtors.zip elseCtors).mapM fun ctorPair =>
+          if ctorPair.fst.length == ctorPair.snd.length then
+            ctorPair.fst.zip ctorPair.snd |>.mapM fun fieldPair =>
+              valueIte cond fieldPair.fst fieldPair.snd
+          else
+            .error "if branches have incompatible inductive constructor payload shapes"
+        .ok (.variant thenName (.ite cond thenTag elseTag) ctors)
+      else
+        .error "if branches have incompatible inductive value shapes"
   | _, _ => .error "if branches have incompatible structured value shapes"
 
 partial def flattenAbiValue (ty : Ty) (value : ExtractedValue) : Except String (List IRExpr) :=
@@ -712,23 +845,54 @@ partial def flattenAbiValue (ty : Ty) (value : ExtractedValue) : Except String (
           let flattened ← flattenAbiValue ty body
           .ok (flattened.map (fun expr => .letE slot value expr))
       | _ => .error s!"non-structure value used where structure ABI value is required: {name}"
+  | .variant name ctors => do
+      match value with
+      | .variant actual tag values =>
+          if actual == name && values.length == ctors.length then do
+            let flattened ← (ctors.zip values).mapM fun ctorPair =>
+              if ctorPair.fst.length == ctorPair.snd.length then do
+                let fields ← ctorPair.fst.zip ctorPair.snd |>.mapM fun fieldPair =>
+                  flattenAbiValue fieldPair.fst fieldPair.snd
+                .ok fields.flatten
+              else
+                .error s!"inductive ABI constructor payload shape mismatch: {name}"
+            .ok (tag :: flattened.flatten)
+          else
+            .error s!"inductive ABI value shape mismatch: {name}"
+      | .letE slot value body => do
+          let flattened ← flattenAbiValue ty body
+          .ok (flattened.map (fun expr => .letE slot value expr))
+      | _ => .error s!"non-inductive value used where inductive ABI value is required: {name}"
   | other => .error s!"unsupported ABI value type: {reprStr other}"
 
 mutual
   partial def extractedValueForParam (slot : Nat) : Ty → ExtractedValue
     | .byteArray => .byteArray (.local slot) (.local (slot + 1))
     | .struct name fields => .struct name (extractedStructFieldsForParam slot fields)
+    | .variant name ctors =>
+        .variant name (.local slot) (extractedVariantCtorsForParam (slot + 1) ctors)
     | _ => .scalar (.local slot)
 
   partial def extractedStructFieldsForParam (slot : Nat) : List Ty → List ExtractedValue
     | [] => []
     | ty :: rest =>
         extractedValueForParam slot ty :: extractedStructFieldsForParam (slot + abiSlots ty) rest
+
+  partial def extractedVariantCtorsForParam (slot : Nat) :
+      List (List Ty) → List (List ExtractedValue)
+    | [] => []
+    | fields :: rest =>
+        extractedStructFieldsForParam slot fields ::
+          extractedVariantCtorsForParam
+            (slot + fields.foldl (fun total field => total + abiSlots field) 0)
+            rest
 end
 
 def bindingForParam (slot : Nat) : Ty → Binding
   | .byteArray => .value (.byteArray (.local slot) (.local (slot + 1)))
   | .struct name fields => .value (.struct name (extractedStructFieldsForParam slot fields))
+  | .variant name ctors =>
+      .value (.variant name (.local slot) (extractedVariantCtorsForParam (slot + 1) ctors))
   | _ => .slot slot
 
 partial def sourceParamBindingsFrom (slot : Nat) : List Ty → List Binding
@@ -746,6 +910,35 @@ partial def abiTargetsFrom (slot : Nat) : List Ty → List (Ty × List Nat)
 
 def abiTargets (params : List Ty) : List (Ty × List Nat) :=
   abiTargetsFrom 0 params
+
+def sourceFieldBindingsFromKinds
+    (typeName : Name)
+    (fieldKinds : List (Option Ty))
+    (runtimeFields : List ExtractedValue) :
+    Except String (List Binding) := do
+  let rec loop :
+      List (Option Ty) → List ExtractedValue → List Binding →
+        Except String (List Binding)
+    | [], [], acc => .ok acc.reverse
+    | [], _ :: _, _ => .error s!"too many runtime fields for {typeName}"
+    | some _ :: restKinds, field :: restFields, acc =>
+        loop restKinds restFields (.value field :: acc)
+    | some _ :: _, [], _ => .error s!"too few runtime fields for {typeName}"
+    | none :: restKinds, fields, acc =>
+        loop restKinds fields (.value (.scalar (.u64 0)) :: acc)
+  loop fieldKinds runtimeFields []
+
+partial def defaultCtorValues (ctors : List VariantCtorLayout) :
+    Except String (List (List ExtractedValue)) :=
+  ctors.mapM fun ctor => runtimeTypesFromKinds ctor.fields |>.mapM defaultValue
+
+def replaceAt? {α : Type} (index : Nat) (value : α) : List α → Option (List α)
+  | [] => none
+  | head :: rest =>
+      if index == 0 then
+        some (value :: rest)
+      else
+        replaceAt? (index - 1) value rest |>.map fun updated => head :: updated
 
 def optionConstructorType? (env : Environment) (args : List Expr) : Option Ty :=
   match args with
@@ -1042,6 +1235,94 @@ def structureMatcherArgs? (env : Environment) (fn : Expr) (args : List Expr) :
     | some (.struct structName _), [_motive, scrutinee, arm] =>
         some (structName, scrutinee, arm)
     | _, _ => none
+  match fn.consumeMData with
+  | .const name _ =>
+      match directMatcher? name with
+      | some result => some result
+      | none => generatedMatcher? name
+  | _ => none
+
+partial def variantArmCtorName? (env : Environment) (expr : Expr) : Option Name :=
+  match expr.consumeMData with
+  | .forallE _ _ body _ => variantArmCtorName? env body
+  | .mdata _ body => variantArmCtorName? env body
+  | .app _ value =>
+      match appFnArgs value with
+      | (.const ctorName _, _) =>
+          match variantConstructor? env ctorName with
+          | some _ => some ctorName
+          | none => none
+      | _ => none
+  | _ => none
+
+def reorderVariantArms?
+    (ctorNames : List Name)
+    (typedArms : List (Name × Expr)) :
+    Option (List Expr) :=
+  ctorNames.mapM fun ctorName =>
+    typedArms.find? (fun item => item.fst == ctorName) |>.map Prod.snd
+
+def variantMatcherArgs? (env : Environment) (fn : Expr) (args : List Expr) :
+    Option (VariantLayout × Expr × List Expr) :=
+  let directMatcher? (name : Name) : Option (VariantLayout × Expr × List Expr) :=
+    match env.find? name with
+    | some (.recInfo recInfo) =>
+        match recInfo.all with
+        | typeName :: [] =>
+            match variantLayout? env typeName with
+            | some layout =>
+                let ctorCount := layout.ctors.length
+                if name == .str typeName "casesOn" || name == .str typeName "recOn" then
+                  match args with
+                  | _motive :: scrutinee :: rest =>
+                      if rest.length == ctorCount then
+                        some (layout, scrutinee, rest)
+                      else
+                        none
+                  | _ => none
+                else if name == .str typeName "rec" then
+                  match args with
+                  | _motive :: rest =>
+                      let arms := rest.take ctorCount
+                      match rest.drop ctorCount with
+                      | scrutinee :: [] =>
+                          if arms.length == ctorCount then
+                            some (layout, scrutinee, arms)
+                          else
+                            none
+                      | _ => none
+                  | _ => none
+                else
+                  none
+            | none => none
+        | _ => none
+    | _ => none
+  let generatedMatcher? (name : Name) : Option (VariantLayout × Expr × List Expr) :=
+    match generatedMatcherScrutineeType? env name, env.find? name, args with
+    | some (.variant typeName _), some info, _motive :: scrutinee :: arms =>
+        match variantLayout? env typeName with
+        | some layout =>
+            let ctorCount := layout.ctors.length
+            if arms.length == ctorCount then
+              match (peelForall info.type).fst.drop 2 with
+              | armTypes =>
+                  let armTypes := armTypes.take ctorCount
+                  if armTypes.length == ctorCount then
+                    let typedArms? :=
+                      (armTypes.zip arms).mapM fun item =>
+                        variantArmCtorName? env item.fst |>.map fun ctorName =>
+                          (ctorName, item.snd)
+                    match typedArms? with
+                    | some typedArms =>
+                        reorderVariantArms? (layout.ctors.map (fun ctor => ctor.name)) typedArms
+                          |>.map fun orderedArms => (layout, scrutinee, orderedArms)
+                    | none => none
+                  else
+                    none
+            else
+              none
+        | none => none
+    | _, _, _ => none
   match fn.consumeMData with
   | .const name _ =>
       match directMatcher? name with
@@ -2365,14 +2646,38 @@ mutual
                     else
                       .error s!"structure constructor arity mismatch: {name}"
                 | none =>
-                    match structureProjection? ctx.env name, args with
-                    | some (structName, some index), target :: [] =>
-                        let valueResult ← extractValueFrom ctx locals nextLocal target
-                        .ok (← structField structName index valueResult.fst, valueResult.snd)
-                    | some (_structName, none), _target :: [] =>
-                        .ok (.scalar (.u64 0), nextLocal)
-                    | _, _ =>
-                        extractNonStructureValueFrom ctx locals nextLocal expr fn args
+                    match variantConstructor? ctx.env name with
+                    | some (layout, ctorIndex, ctor) =>
+                        if args.length == ctor.fields.length then
+                          let rec variantCtorLoop :
+                              List Expr → List (Option Ty) → Nat →
+                                Except String (List ExtractedValue × Nat)
+                            | [], [], next => .ok ([], next)
+                            | arg :: restArgs, some _ :: restKinds, next => do
+                                let fieldResult ← extractValueFrom ctx locals next arg
+                                let restResult ← variantCtorLoop restArgs restKinds fieldResult.snd
+                                .ok (fieldResult.fst :: restResult.fst, restResult.snd)
+                            | _arg :: restArgs, none :: restKinds, next =>
+                                variantCtorLoop restArgs restKinds next
+                            | _, _, _ => .error s!"inductive constructor arity mismatch: {name}"
+                          let runtimeFields ← variantCtorLoop args ctor.fields nextLocal
+                          let defaults ← defaultCtorValues layout.ctors
+                          let ctors ←
+                            match replaceAt? ctorIndex runtimeFields.fst defaults with
+                            | some ctors => .ok ctors
+                            | none => .error s!"inductive constructor index mismatch: {name}"
+                          .ok (.variant layout.name (.u64 ctorIndex) ctors, runtimeFields.snd)
+                        else
+                          .error s!"inductive constructor arity mismatch: {name}"
+                    | none =>
+                        match structureProjection? ctx.env name, args with
+                        | some (structName, some index), target :: [] =>
+                            let valueResult ← extractValueFrom ctx locals nextLocal target
+                            .ok (← structField structName index valueResult.fst, valueResult.snd)
+                        | some (_structName, none), _target :: [] =>
+                            .ok (.scalar (.u64 0), nextLocal)
+                        | _, _ =>
+                            extractNonStructureValueFrom ctx locals nextLocal expr fn args
             | _ => extractNonStructureValueFrom ctx locals nextLocal expr fn args
 
   partial def extractNonStructureValueFrom
@@ -2409,16 +2714,20 @@ mutual
                                 | some (structName, scrutinee, arm) =>
                                     extractStructureMatchValueFrom ctx locals nextLocal structName scrutinee arm
                                 | none =>
-                                    match fn.consumeMData with
-                                    | .const name _ =>
-                                        match ← extractInlineCallValueFrom ctx locals nextLocal name args with
-                                        | some valueResult => .ok valueResult
-                                        | none =>
+                                    match variantMatcherArgs? ctx.env fn args with
+                                    | some (layout, scrutinee, arms) =>
+                                        extractVariantMatchValueFrom ctx locals nextLocal layout scrutinee arms
+                                    | none =>
+                                        match fn.consumeMData with
+                                        | .const name _ =>
+                                            match ← extractInlineCallValueFrom ctx locals nextLocal name args with
+                                            | some valueResult => .ok valueResult
+                                            | none =>
+                                                let exprResult ← extractExprFrom ctx locals nextLocal expr
+                                                .ok (.scalar exprResult.fst, exprResult.snd)
+                                        | _ =>
                                             let exprResult ← extractExprFrom ctx locals nextLocal expr
                                             .ok (.scalar exprResult.fst, exprResult.snd)
-                                    | _ =>
-                                        let exprResult ← extractExprFrom ctx locals nextLocal expr
-                                        .ok (.scalar exprResult.fst, exprResult.snd)
 
   partial def extractUnitArmValueFrom
       (ctx : Context)
@@ -2651,6 +2960,52 @@ mutual
       | none => .error s!"unsupported structure matcher arm: {structName}"
     let fieldBindings := fieldValues.reverse.map Binding.value
     extractValueFrom ctx (fieldBindings ++ locals) scrutineeResult.snd body
+
+  partial def extractVariantMatchValueFrom
+      (ctx : Context)
+      (locals : List Binding)
+      (nextLocal : Nat)
+      (layout : VariantLayout)
+      (scrutinee : Expr)
+      (arms : List Expr) :
+      Except String (ExtractedValue × Nat) := do
+    if arms.length != layout.ctors.length then
+      .error s!"inductive matcher arity mismatch: {layout.name}"
+    else
+      let scrutineeResult ← extractValueFrom ctx locals nextLocal scrutinee
+      let parts ← variantPartsWithLets layout.name scrutineeResult.fst
+      let lets := parts.fst
+      let tag := parts.snd.fst
+      let ctorValues := parts.snd.snd
+      if ctorValues.length != layout.ctors.length then
+        .error s!"inductive matcher value shape mismatch: {layout.name}"
+      else
+        let rec extractArms :
+            List VariantCtorLayout → List (List ExtractedValue) → List Expr → Nat →
+              Except String (List ExtractedValue × Nat)
+          | [], [], [], next => .ok ([], next)
+          | ctor :: restCtors, fields :: restFields, arm :: restArms, next => do
+              let sourceBindings ← sourceFieldBindingsFromKinds layout.name ctor.fields fields
+              let armResult ←
+                if ctor.fields.isEmpty then
+                  extractUnitArmValueFrom ctx locals next arm
+                else
+                  let body ←
+                    match collectLambdas arm ctor.fields.length with
+                    | some body => .ok body
+                    | none => .error s!"unsupported inductive matcher arm: {ctor.name}"
+                  extractValueFrom ctx (sourceBindings.reverse ++ locals) next body
+              let restResult ← extractArms restCtors restFields restArms armResult.snd
+              .ok (armResult.fst :: restResult.fst, restResult.snd)
+          | _, _, _, _ => .error s!"inductive matcher arity mismatch: {layout.name}"
+        let armResults ← extractArms layout.ctors ctorValues arms scrutineeResult.snd
+        let rec combine : List (Nat × ExtractedValue) → Except String ExtractedValue
+          | [] => .error s!"inductive matcher has no arms: {layout.name}"
+          | [(_index, value)] => .ok value
+          | (index, value) :: rest => do
+              let elseValue ← combine rest
+              valueIte (.eqU64 tag (.u64 index)) value elseValue
+        .ok (wrapValueLets lets (← combine (enumerate armResults.fst)), armResults.snd)
 
   partial def extractInlineCallValueFrom
       (ctx : Context)
@@ -3388,8 +3743,15 @@ mutual
                                                 structName scrutinee arm
                                             .ok (← scalarValue valueResult.fst, valueResult.snd)
                                         | none =>
-                                            extractPrimitiveApplicationFrom ctx locals nextLocal
-                                              primitive args
+                                            match variantMatcherArgs? ctx.env (.const primitive []) args with
+                                            | some (layout, scrutinee, arms) =>
+                                                let valueResult ←
+                                                  extractVariantMatchValueFrom ctx locals nextLocal
+                                                    layout scrutinee arms
+                                                .ok (← scalarValue valueResult.fst, valueResult.snd)
+                                            | none =>
+                                                extractPrimitiveApplicationFrom ctx locals nextLocal
+                                                  primitive args
             | (fn, _) => .error s!"unsupported expression: {fn}"
 
   partial def extractPrimitiveApplicationFrom
@@ -3790,26 +4152,31 @@ mutual
                                 let exprResult ← extractExprFrom ctx locals nextLocal expr
                                 .ok (boolCond exprResult.fst, exprResult.snd)
                             | none =>
-                                match ← extractInlineCallValueFrom ctx locals nextLocal name args with
-                                | some valueResult =>
-                                    .ok (boolCond (← scalarValue valueResult.fst), valueResult.snd)
+                                match variantMatcherArgs? ctx.env (.const name []) args with
+                                | some _ =>
+                                    let exprResult ← extractExprFrom ctx locals nextLocal expr
+                                    .ok (boolCond exprResult.fst, exprResult.snd)
                                 | none =>
-                                    match functionIndex? ctx name with
-                                    | some index =>
-                                        strictRecursiveCallCheck ctx name args
-                                        let sig ←
-                                          match ctx.env.find? name with
-                                          | some info =>
-                                              match supportedFunction? ctx.env info with
-                                              | some sig => .ok sig
+                                    match ← extractInlineCallValueFrom ctx locals nextLocal name args with
+                                    | some valueResult =>
+                                        .ok (boolCond (← scalarValue valueResult.fst), valueResult.snd)
+                                    | none =>
+                                        match functionIndex? ctx name with
+                                        | some index =>
+                                            strictRecursiveCallCheck ctx name args
+                                            let sig ←
+                                              match ctx.env.find? name with
+                                              | some info =>
+                                                  match supportedFunction? ctx.env info with
+                                                  | some sig => .ok sig
+                                                  | none =>
+                                                      .error
+                                                        s!"unsupported function type or declaration: {name}"
                                               | none =>
-                                                  .error
-                                                    s!"unsupported function type or declaration: {name}"
-                                          | none =>
-                                              .error s!"declaration disappeared during extraction: {name}"
-                                        let argsResult ← extractCallArgsFrom ctx locals nextLocal sig.params args
-                                        .ok (boolCond (.call index argsResult.fst), argsResult.snd)
-                                    | none => .error s!"unsupported condition: {expr}"
+                                                  .error s!"declaration disappeared during extraction: {name}"
+                                            let argsResult ← extractCallArgsFrom ctx locals nextLocal sig.params args
+                                            .ok (boolCond (.call index argsResult.fst), argsResult.snd)
+                                        | none => .error s!"unsupported condition: {expr}"
         | _ => .error s!"unsupported condition: {expr}"
 
   partial def extractExprListFrom
