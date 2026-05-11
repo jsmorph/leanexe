@@ -1979,3 +1979,18 @@ Checks run:
 - [x] `node test/report_classification.js` returned `checked 71 report classification cases`.
 - [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/current/wasmtime wast .lake/build/bytearray-programs/copyInputPastDest.wat` accepted the generated module.
 - [x] `node test/run_all.js` returned `checked 71 report classification cases`, `checked 387 accepted, 16 rejected, and 11 trapped cases`, `checked 63 bytearray allocation cases`, and `checked 56 cases`.
+
+## 2026-05-11: Array foldl
+
+The generic compiler now lowers `Array.foldl` for fixed-width arrays and one-slot accumulators.  This covers scalar arrays and arrays whose elements flatten to a fixed number of scalar slots, including monomorphic nonrecursive structures and small tagged values.  The emitted code evaluates the array, start, stop, and initial accumulator, clamps stop to the array size, loads each element into local slots, evaluates the fold body against the accumulator and current element, and stores the new accumulator.
+
+`LeanExe.Examples.Correctness.arrayFoldSum` and `arrayFoldWindow` cover scalar arrays, including an explicit start and stop range.  `arrayFoldEmptySkipsFunctionTrap` checks that an empty range does not evaluate the fold body.  `arrayStructureFoldRead` covers a structured element loaded from a multi-slot array layout.
+
+Checks run:
+
+- [x] `lake build`
+- [x] `lake build LeanExe.Examples.Correctness`
+- [x] `node test/core_correctness.js` returned `checked 391 accepted, 16 rejected, and 11 trapped cases`.
+- [x] `node test/report_classification.js` returned `checked 72 report classification cases`.
+- [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/current/wasmtime wast .lake/build/core-correctness/arrayStructureFoldRead.wat` accepted the generated module.
+- [x] `node test/run_all.js` returned `checked 72 report classification cases`, `checked 391 accepted, 16 rejected, and 11 trapped cases`, `checked 63 bytearray allocation cases`, and `checked 56 cases`.

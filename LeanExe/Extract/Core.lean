@@ -491,6 +491,16 @@ partial def supportedLocalType : Ty → Bool
   | .struct _ fields => fields.all supportedLocalType
   | .variant _ ctors => ctors.all (fun fields => fields.all supportedLocalType)
 
+def supportedOneSlotExprType : Ty → Bool
+  | .unit => true
+  | .bool => true
+  | .u8 => true
+  | .u32 => true
+  | .u64 => true
+  | .nat => true
+  | .array item => supportedArrayElementType item
+  | _ => false
+
 def supportedInlineFunction? (env : Environment) (info : ConstantInfo) : Option Signature :=
   if info.isUnsafe || info.isPartial || info.value?.isNone then
     none
@@ -1782,6 +1792,8 @@ partial def demandExpr
                   Demand.always (demandExpr ctx visiting array)
                     (demandOptionSomeArm ctx visiting mapFn)
               | _ => .empty
+          | (.const ``Array.foldl _, args) =>
+              args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
           | (.const ``Array.insertIdxIfInBounds _, args) =>
               match args.reverse with
               | value :: index :: array :: _ =>
@@ -3977,6 +3989,55 @@ mutual
                         .error s!"unsupported Array.map item types: {reprStr source}, {reprStr result}"
                     | _, _ => .error "unsupported Array.map item types"
                 | _, _ => .error "unsupported Array.map application"
+            | (.const ``Array.foldl _, args) =>
+                match args with
+                | sourceTyExpr :: resultTyExpr :: foldFn :: init :: array :: rest =>
+                    match typeAtom? ctx.env sourceTyExpr, typeAtom? ctx.env resultTyExpr with
+                    | some sourceTy, some resultTy =>
+                      match arrayElementSlots? sourceTy with
+                      | some sourceWidth =>
+                        if supportedOneSlotExprType resultTy then
+                          let arrayResult ← extractExprFrom ctx locals nextLocal array
+                          let initResult ← extractExprFrom ctx locals arrayResult.snd init
+                          let startStop ←
+                            match rest with
+                            | [] => .ok ((.u64 0, .arraySize arrayResult.fst), initResult.snd)
+                            | [start] =>
+                                let startResult ← extractExprFrom ctx locals initResult.snd start
+                                .ok ((startResult.fst, .arraySize arrayResult.fst), startResult.snd)
+                            | [start, stop] =>
+                                let startResult ← extractExprFrom ctx locals initResult.snd start
+                                let stopResult ← extractExprFrom ctx locals startResult.snd stop
+                                .ok ((startResult.fst, stopResult.fst), stopResult.snd)
+                            | _ => .error "unsupported Array.foldl application"
+                          let accSlot := startStop.snd
+                          let itemStart := accSlot + 1
+                          let foldBody ←
+                            match collectLambdas foldFn 2 with
+                            | some body => .ok body
+                            | none => .error "unsupported Array.foldl function"
+                          let itemValue ← arrayLocalValue sourceTy itemStart
+                          let bodyResult ←
+                            extractExprFrom ctx
+                              (.value itemValue :: .value (.scalar (.local accSlot)) :: locals)
+                              (itemStart + sourceWidth)
+                              foldBody
+                          .ok
+                            (.arrayFoldSlots
+                              sourceWidth
+                              arrayResult.fst
+                              startStop.fst.fst
+                              startStop.fst.snd
+                              initResult.fst
+                              accSlot
+                              itemStart
+                              bodyResult.fst,
+                              bodyResult.snd)
+                        else
+                          .error s!"unsupported Array.foldl result type: {reprStr resultTy}"
+                      | none => .error s!"unsupported Array.foldl item type: {reprStr sourceTy}"
+                    | _, _ => .error "unsupported Array.foldl item types"
+                | _ => .error "unsupported Array.foldl application"
             | (.const ``Array.empty _, args) =>
                 match args with
                 | [itemTy] =>
@@ -4161,7 +4222,7 @@ mutual
                 | resultTyExpr :: foldFn :: init :: array :: rest =>
                     match typeAtom? ctx.env resultTyExpr with
                     | some resultTy =>
-                        if supportedLocalType resultTy then
+                        if supportedOneSlotExprType resultTy then
                           let arrayResult ← extractValueFrom ctx locals nextLocal array
                           let parts ← byteArrayPartsWithLets arrayResult.fst
                           let ptr := wrapExprLets parts.fst parts.snd.fst

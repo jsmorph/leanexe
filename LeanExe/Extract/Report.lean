@@ -195,7 +195,7 @@ def knownExternal? (name : Name) : Option Classification :=
       ``Array.replicate, ``Array.size, ``Array.isEmpty, ``Array.push, ``Array.pop,
       ``Array.eraseIdx, ``Array.eraseIdx!, ``Array.eraseIdxIfInBounds,
       ``Array.swap, ``Array.swapAt, ``Array.swapIfInBounds,
-      ``Array.append, ``Array.map, ``Array.insertIdx, ``Array.insertIdx!, ``Array.insertIdxIfInBounds, ``Array.modify,
+      ``Array.append, ``Array.map, ``Array.foldl, ``Array.insertIdx, ``Array.insertIdx!, ``Array.insertIdxIfInBounds, ``Array.modify,
       ``Array.reverse, ``Array.extract,
       ``Array.get!Internal, ``Array.back!, ``Array.back,
       ``Array.getD, ``Array.set, ``Array.set!, ``Array.setIfInBounds,
