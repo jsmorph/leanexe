@@ -299,6 +299,12 @@ async function main() {
     throw new Error(`bytesABC: expected 65,66,67, got ${Array.from(bytesABCActual)}`);
   }
 
+  const mkABC = await instantiate("mkABC");
+  const mkABCActual = callNoInputByteArrayOutput(mkABC);
+  if (!sameBytes(mkABCActual, new Uint8Array([65, 66, 67]))) {
+    throw new Error(`mkABC: expected 65,66,67, got ${Array.from(mkABCActual)}`);
+  }
+
   const appendBang = await instantiate("appendBang");
   const appendBangCases = [
     { input: new Uint8Array([]), expected: new Uint8Array([33]) },
@@ -380,6 +386,7 @@ async function main() {
     prefixPlusFirstByteCases.length +
     fnv1a32Cases.length +
     emptyViaIsEmptyCases.length +
+    1 +
     1 +
     appendBangCases.length +
     1 +

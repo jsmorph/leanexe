@@ -1859,6 +1859,15 @@ def byteArraySetSizeForcesValueTrap : Nat :=
   else
     0
 
+def byteArrayMkReturn : ByteArray :=
+  ByteArray.mk #[(65 : UInt8), (66 : UInt8), (67 : UInt8)]
+
+def byteArrayMkSize : Nat :=
+  byteArrayMkReturn.size
+
+def byteArrayMkSizeForcesArrayTrap : Nat :=
+  (ByteArray.mk #[(Array.replicate 0 (0 : UInt8))[0]!]).size
+
 def rejectUnitReturn : Unit :=
   ()
 

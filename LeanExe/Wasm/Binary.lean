@@ -338,6 +338,7 @@ mutual
         6 + max
           (max (exprScratch ptr) (exprScratch len))
           (max (exprScratch index) (exprScratch value))
+    | .byteArrayFromArrayPtr array => 4 + exprScratch array
     | .call _ args => args.foldl (fun count arg => max count (exprScratch arg)) 0
 
   partial def condScratch : Cond → Nat
@@ -1338,6 +1339,29 @@ mutual
         ofNats [0] ++
       ofNats [11]
 
+  partial def emitByteArrayFromArrayPtr (scratch : Nat) (array : Expr) : List UInt8 :=
+    let arrayLocal := scratch
+    let lenLocal := scratch + 1
+    let newPtrLocal := scratch + 2
+    let loopLocal := scratch + 3
+    let childScratch := scratch + 4
+    let copyLoop :=
+      i64Const 0 ++ localSet loopLocal ++
+        ofNats [2, 64, 3, 64] ++
+          localGet loopLocal ++ localGet lenLocal ++ i64GeU ++ ofNats [13] ++ u32leb 1 ++
+          localGet newPtrLocal ++ localGet loopLocal ++ ofNats [124] ++ i32WrapI64 ++
+            arrayCellAddress (localGet arrayLocal) (localGet loopLocal) ++ i64Load ++
+            i32WrapI64 ++ i32Store8 ++
+          localGet loopLocal ++ i64Const 1 ++ ofNats [124] ++ localSet loopLocal ++
+          ofNats [12] ++ u32leb 0 ++
+        ofNats [11, 11]
+    emitExpr childScratch array ++ localSet arrayLocal ++
+      localGet arrayLocal ++ i32WrapI64 ++ i64Load ++ localSet lenLocal ++
+      globalGet 0 ++ localSet newPtrLocal ++
+      globalGet 0 ++ localGet lenLocal ++ ofNats [124] ++ globalSet 0 ++
+      copyLoop ++
+      localGet newPtrLocal
+
   partial def emitCheckedDivMod
       (scratch : Nat)
       (op : LeanExe.IR.U64Op)
@@ -1468,6 +1492,7 @@ mutual
         emitByteArrayAppendPtr scratch leftPtr leftLen rightPtr rightLen
     | .byteArraySetPtr ptr len index value =>
         emitByteArraySetPtr scratch ptr len index value
+    | .byteArrayFromArrayPtr array => emitByteArrayFromArrayPtr scratch array
     | .call index args => args.flatMap (emitExpr scratch) ++ call index
 
   partial def emitCond (scratch : Nat) : Cond → List UInt8
@@ -2601,6 +2626,27 @@ mutual
           s!"local.get {newPtrLocal}"]) ++
       ["else", "  unreachable", "end"]
 
+  partial def byteArrayFromArrayPtrWatLines (scratch : Nat) (array : Expr) : List String :=
+    let arrayLocal := scratch
+    let lenLocal := scratch + 1
+    let newPtrLocal := scratch + 2
+    let loopLocal := scratch + 3
+    let childScratch := scratch + 4
+    let copyLoop :=
+      ["i64.const 0", s!"local.set {loopLocal}", "block", "loop",
+        s!"local.get {loopLocal}", s!"local.get {lenLocal}", "i64.ge_u", "br_if 1",
+        s!"local.get {newPtrLocal}", s!"local.get {loopLocal}", "i64.add", "i32.wrap_i64"] ++
+      arrayCellAddressWat [s!"local.get {arrayLocal}"] [s!"local.get {loopLocal}"] ++
+      ["i64.load align=8", "i32.wrap_i64", "i32.store8",
+        s!"local.get {loopLocal}", "i64.const 1", "i64.add", s!"local.set {loopLocal}",
+        "br 0", "end", "end"]
+    exprWatLines childScratch array ++ [s!"local.set {arrayLocal}",
+      s!"local.get {arrayLocal}", "i32.wrap_i64", "i64.load align=8", s!"local.set {lenLocal}",
+      "global.get 0", s!"local.set {newPtrLocal}",
+      "global.get 0", s!"local.get {lenLocal}", "i64.add", "global.set 0"] ++
+      copyLoop ++
+      [s!"local.get {newPtrLocal}"]
+
   partial def checkedDivModWatLines
       (scratch : Nat)
       (op : LeanExe.IR.U64Op)
@@ -2727,6 +2773,7 @@ mutual
     | .byteArrayAppendPtr leftPtr leftLen rightPtr rightLen =>
         byteArrayAppendPtrWatLines scratch leftPtr leftLen rightPtr rightLen
     | .byteArraySetPtr ptr len index value => byteArraySetPtrWatLines scratch ptr len index value
+    | .byteArrayFromArrayPtr array => byteArrayFromArrayPtrWatLines scratch array
     | .call index args => args.flatMap (exprWatLines scratch) ++ [s!"call {index}"]
 
   partial def condWatLines (scratch : Nat) : Cond → List String

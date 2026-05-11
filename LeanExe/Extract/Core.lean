@@ -1696,6 +1696,8 @@ partial def demandExpr
               args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
           | (.const ``ByteArray.set _, args) =>
               args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
+          | (.const ``ByteArray.mk _, args) =>
+              args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
           | (.const ``ByteArray.get! _, _) => .trap
           | (.const ``Array.size _, args) =>
               args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
@@ -2981,6 +2983,18 @@ mutual
                       (.byteArray setPtr sourceLen)),
                     lenSlot + 1)
             | _ => .error "unsupported ByteArray.set application"
+        | (.const ``ByteArray.mk _, args) =>
+            match args with
+            | [array] =>
+                let arrayResult ← extractExprFrom ctx locals nextLocal array
+                let arraySlot := arrayResult.snd
+                .ok
+                  (.letE arraySlot arrayResult.fst
+                    (.byteArray
+                      (.byteArrayFromArrayPtr (.local arraySlot))
+                      (.arraySize (.local arraySlot))),
+                    arraySlot + 1)
+            | _ => .error "unsupported ByteArray.mk application"
         | (.const ``Bool.casesOn _, args) =>
             match boolMatcherArgs? ctx.env (.const ``Bool.casesOn []) args with
             | some (scrutinee, falseArm, trueArm) =>

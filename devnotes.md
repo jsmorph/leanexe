@@ -1931,3 +1931,19 @@ Checks run:
 - [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/current/wasmtime --invoke setABC .lake/build/bytearray-programs/setABC.wasm` returned pointer `4102` and length `3`.
 - [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/current/wasmtime wast .lake/build/bytearray-programs/setFirstBang.wat` accepted the generated module.
 - [x] `node test/run_all.js` returned `checked 68 report classification cases`, `checked 378 accepted, 16 rejected, and 10 trapped cases`, `checked 49 bytearray allocation cases`, and `checked 56 cases`.
+
+## 2026-05-11: ByteArray mk
+
+The generic compiler now lowers `ByteArray.mk` for `Array UInt8`.  The emitted code evaluates the source array, reads its length header, allocates that many bytes, copies each `UInt8` cell into one byte of the new buffer, and returns the result pointer.  This gives byte literals a direct source form through `ByteArray.mk #[(65 : UInt8), ...]` rather than requiring a chain of `push` calls.
+
+`LeanExe.Examples.ByteArrayPrograms.mkABC` covers the source form used by ordinary byte literals.  `LeanExe.Examples.Correctness.byteArrayMkSizeForcesArrayTrap` checks that asking for the size of the constructed byte array still evaluates the source array element.  The current support is monomorphic: the source array must be `Array UInt8`.
+
+Checks run:
+
+- [x] `lake build`
+- [x] `lake build LeanExe.Examples.Correctness LeanExe.Examples.ByteArrayPrograms`
+- [x] `node test/bytearray_alloc.js` returned `checked 50 bytearray allocation cases`.
+- [x] `node test/core_correctness.js` returned `checked 380 accepted, 16 rejected, and 11 trapped cases`.
+- [x] `node test/report_classification.js` returned `checked 69 report classification cases`.
+- [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/current/wasmtime --invoke mkABC .lake/build/bytearray-programs/mkABC.wasm` returned pointer `4224` and length `3`.
+- [x] `node test/run_all.js` returned `checked 69 report classification cases`, `checked 380 accepted, 16 rejected, and 11 trapped cases`, `checked 50 bytearray allocation cases`, and `checked 56 cases`.
