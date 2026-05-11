@@ -120,6 +120,8 @@ mutual
   inductive Stmt where
     | skip
     | assign (index : Nat) (value : Expr)
+    | call (slots : List Nat) (index : Nat) (args : List Expr)
+    | ite (cond : Cond) (thenStmt elseStmt : Stmt)
     | seq (first second : Stmt)
     | while (cond : Cond) (body : Stmt)
     deriving BEq, Repr
@@ -244,6 +246,17 @@ mutual
   partial def Stmt.eval (module_ : Module) : Stmt → Store → Store
     | .skip, store => store
     | .assign index value, store => store.set index (value.eval module_ store)
+    | .call slots index args, store =>
+        let results :=
+          match module_.getFunc? index with
+          | some func => func.evalResults module_ (args.map (fun arg => arg.eval module_ store))
+          | none => []
+        (slots.zip results).foldl (fun current item => current.set item.fst item.snd) store
+    | .ite cond thenStmt elseStmt, store =>
+        if cond.eval module_ store then
+          thenStmt.eval module_ store
+        else
+          elseStmt.eval module_ store
     | .seq first second, store => second.eval module_ (first.eval module_ store)
     | .while cond body, store =>
         let rec loop : Nat → Store → Store

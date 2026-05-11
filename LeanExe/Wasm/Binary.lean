@@ -397,6 +397,9 @@ end
 partial def stmtScratch : Stmt → Nat
   | .skip => 0
   | .assign _ value => exprScratch value
+  | .call _ _ args => args.foldl (fun count arg => max count (exprScratch arg)) 0
+  | .ite cond thenStmt elseStmt =>
+      max (condScratch cond) (max (stmtScratch thenStmt) (stmtScratch elseStmt))
   | .seq first second => max (stmtScratch first) (stmtScratch second)
   | .while cond body => max (condScratch cond) (stmtScratch body)
 
@@ -1970,6 +1973,13 @@ end
 partial def emitStmt (scratch : Nat) : Stmt → List UInt8
   | .skip => []
   | .assign index value => emitExpr scratch value ++ localSet index
+  | .call slots index args => args.flatMap (emitExpr scratch) ++ call index ++ slots.reverse.flatMap localSet
+  | .ite cond thenStmt elseStmt =>
+      emitCond scratch cond ++ ofNats [4, 64] ++
+        emitStmt scratch thenStmt ++
+        ofNats [5] ++
+        emitStmt scratch elseStmt ++
+        ofNats [11]
   | .seq first second => emitStmt scratch first ++ emitStmt scratch second
   | .while cond loopBody =>
       ofNats [2, 64, 3, 64] ++
@@ -3648,6 +3658,15 @@ end
 partial def stmtWatLines (scratch : Nat) : Stmt → List String
   | .skip => []
   | .assign index value => exprWatLines scratch value ++ [s!"local.set {index}"]
+  | .call slots index args =>
+      args.flatMap (exprWatLines scratch) ++ [s!"call {index}"] ++
+        slots.reverse.map (fun slot => s!"local.set {slot}")
+  | .ite cond thenStmt elseStmt =>
+      condWatLines scratch cond ++ ["if"] ++
+        indent 2 (stmtWatLines scratch thenStmt) ++
+        ["else"] ++
+        indent 2 (stmtWatLines scratch elseStmt) ++
+        ["end"]
   | .seq first second => stmtWatLines scratch first ++ stmtWatLines scratch second
   | .while cond loopBody =>
       ["block", "  loop"] ++
