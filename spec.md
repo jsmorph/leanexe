@@ -59,7 +59,7 @@ Arrays cross the ABI as arena pointers.  Array elements must have a fixed slot w
 
 Entry parameters support `Bool`, `UInt64`, bounded `Nat`, `ByteArray`, fixed-width `Array`, supported structures, supported nonrecursive inductives, `Option`, and `Except`.  Entry results support the same set.  `UInt8`, `UInt32`, `Unit`, products, and recursive inductives are internal-only types even though helpers may use them.
 
-An array element type is fixed-width when LeanExe can assign a constant number of `i64` slots to each element.  The accepted element types are `Bool`, `UInt8`, `UInt32`, `UInt64`, bounded `Nat`, supported structures, supported nonrecursive inductives, `Option`, and `Except`.  Nested arrays and arrays of recursive inductive values are unsupported.
+An array element type is fixed-width when LeanExe can assign a constant number of `i64` slots to each element.  The accepted public element types are `Bool`, `UInt8`, `UInt32`, `UInt64`, bounded `Nat`, supported structures, supported nonrecursive inductives, `Option`, and `Except`, provided their layouts do not contain recursive values.  Internal arrays may also store recursive inductive values as one-slot heap pointers.  Nested arrays remain unsupported.
 
 ## Numeric Semantics
 
@@ -93,15 +93,15 @@ A supported structure has no type parameters, no indices, one constructor, no re
 
 A supported nonrecursive user inductive has no type parameters, no indices, at least one constructor, and runtime constructor fields whose types are supported.  Constructors, generated matcher extraction, nullary enum matches, branch-selected values, entry parameters, local values, helper values, arrays of tagged values, and exported results are accepted.  The ABI tag is the constructor index in Lean constructor order.
 
-A supported recursive user inductive is monomorphic, self-recursive, and non-mutual.  Constructor fields may contain the inductive itself or other supported nonrecursive field types.  Recursive values may be constructed, matched, stored in locals, passed to helpers, returned from helpers, selected by branches, and carried through accepted fuel-recursive loops.
+A supported recursive user inductive is monomorphic, self-recursive, and non-mutual.  Constructor fields may contain the inductive itself, `Array` values whose elements have supported fixed-width internal layouts, or other supported nonrecursive field types.  Recursive values may be constructed, matched, stored in locals, passed to helpers, returned from helpers, selected by branches, stored in internal arrays, and carried through accepted fuel-recursive loops.
 
-Recursive inductive values do not have a public entry ABI yet.  They cannot appear as entry parameters, entry results, array elements, structure fields exposed through entry values, or nonrecursive inductive payloads exposed through entry values.  Indexed inductives, mutual inductives, polymorphic inductives, recursive structures, inherited-field structure flattening, and unsupported runtime fields are rejected.
+Recursive inductive values do not have a public entry ABI yet.  They cannot appear as entry parameters, entry results, public array elements, structure fields exposed through entry values, or nonrecursive inductive payloads exposed through entry values.  Indexed inductives, mutual inductives, polymorphic inductives, recursive structures, inherited-field structure flattening, and unsupported runtime fields are rejected.
 
 ## Arrays
 
 `Array α` values use a copy-on-write arena layout.  The first `i64` cell stores the length, and element cells follow immediately.  A one-slot element at index `i` lives at byte offset `8 * (i + 1)`, while a width-`w` element uses slots `8 * (1 + i * w + s)` for slot `s`.
 
-Accepted scalar element types are `Bool`, `UInt8`, `UInt32`, `UInt64`, and bounded `Nat`.  Supported structures flatten by field order, and supported tagged values store the tag followed by payload slots for every constructor.  Fixed-width array operations preserve old arrays by allocating a new array for updates.
+Accepted scalar element types are `Bool`, `UInt8`, `UInt32`, `UInt64`, and bounded `Nat`.  Supported structures flatten by field order, supported tagged values store the tag followed by payload slots for every constructor, and recursive inductive values store one heap pointer slot in internal arrays.  Fixed-width array operations preserve old arrays by allocating a new array for updates.
 
 Array literals compile when Lean elaborates them as `List.toArray` over a literal list whose item type has a fixed-width layout.  The supported constructors are `Array.empty`, `Array.mkEmpty`, `Array.emptyWithCapacity`, `Array.singleton`, and `Array.replicate`.  Capacity arguments are not observable in the accepted language.
 
@@ -111,7 +111,7 @@ The supported update and sequence operations are `Array.set`, `Array.set!`, `Arr
 
 The supported iteration and search operations are `Array.map`, `Array.foldl`, `Array.find?`, `Array.findIdx?`, `Array.any`, `Array.all`, and `Array.filter`.  Mappers, folders, and predicates must be direct lambdas that LeanExe can extract without closure allocation.  `Array.foldl` supports a one-slot accumulator such as `Bool`, `UInt8`, `UInt32`, `UInt64`, bounded `Nat`, or a supported array pointer.
 
-Nested arrays, arrays of recursive types, polymorphic array code, array capacity behavior, and effectful callbacks are unsupported.  The implementation favors Lean value semantics over in-place mutation.  Programs should assume copy-on-write behavior for every accepted update.
+Nested arrays, public arrays of recursive values, polymorphic array code, array capacity behavior, and effectful callbacks are unsupported.  The implementation favors Lean value semantics over in-place mutation.  Programs should assume copy-on-write behavior for every accepted update.
 
 ## Byte Arrays
 
@@ -157,7 +157,7 @@ Products are supported as internal values.  `Prod.mk`, `.1`, `.2`, `Prod.casesOn
 
 ## Unsupported Features
 
-Unsupported runtime features include polymorphic executable code, type classes that require runtime specialization, higher-order functions, closures, general structural recursion, mutual recursion, arbitrary Lean or Std library calls, `unsafe`, `partial`, opaque executable constants, executable axioms, quotients, `IO`, `EIO`, `BaseIO`, `Task`, file access, environment access, time, randomness, concurrency, reflection, and FFI.  Unsupported data features include runtime `String`, `List` as a runtime value, nested arrays, arrays of recursive values, exported recursive data structures, recursive structures, indexed inductives, mutual inductives, and polymorphic structures or inductives.  Unsupported numeric features include signed integers, floating-point arithmetic, and arbitrary-precision runtime `Nat`.
+Unsupported runtime features include polymorphic executable code, type classes that require runtime specialization, higher-order functions, closures, general structural recursion, mutual recursion, arbitrary Lean or Std library calls, `unsafe`, `partial`, opaque executable constants, executable axioms, quotients, `IO`, `EIO`, `BaseIO`, `Task`, file access, environment access, time, randomness, concurrency, reflection, and FFI.  Unsupported data features include runtime `String`, `List` as a runtime value, nested arrays, public arrays of recursive values, exported recursive data structures, recursive structures, indexed inductives, mutual inductives, and polymorphic structures or inductives.  Unsupported numeric features include signed integers, floating-point arithmetic, and arbitrary-precision runtime `Nat`.
 
 Unsupported features should produce a rejection during `report` or `compile`.  They should not be emulated through hidden Lean runtime calls.  A missing rejection is a compiler bug, because accepted WASM must be explainable through this specification.
 

@@ -345,6 +345,11 @@ const accepted = [
   { name: "u64ListSumShortFuel", args: [], expected: 3n },
   { name: "u64ListBranch", args: [0n], expected: 0n },
   { name: "u64ListBranch", args: [1n], expected: 9n },
+  { name: "u64ListArrayLiteralHeadSum", args: [], expected: 10n },
+  { name: "u64ListArrayPushSetSum", args: [], expected: 6n },
+  { name: "u64ListArrayMapTailHead", args: [], expected: 2n },
+  { name: "u64ListArrayFoldHeads", args: [], expected: 10n },
+  { name: "u64TreeArrayFieldDemo", args: [], expected: 7n },
   { name: "optionSomeMatch", args: [], expected: 8n },
   { name: "optionSomeFirstMatch", args: [], expected: 8n },
   { name: "optionNoneMatchSkipsSomeArm", args: [], expected: 5n },
@@ -557,6 +562,14 @@ const rejected = [
   {
     name: "rejectRecursiveInductiveReturn",
     message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectRecursiveInductiveReturn",
+  },
+  {
+    name: "rejectRecursiveArrayParam",
+    message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectRecursiveArrayParam",
+  },
+  {
+    name: "rejectRecursiveArrayReturn",
+    message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectRecursiveArrayReturn",
   },
   {
     name: "rejectHigherOrder",

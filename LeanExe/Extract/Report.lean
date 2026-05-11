@@ -158,16 +158,16 @@ def knownExternal? (name : Name) : Option Classification :=
   let root := rootString name
   if effectRoots.contains root then
     some { status := "rejected", reason := "unsupported effect dependency" }
-  else if [``Bool, ``UInt8, ``UInt32, ``UInt64, ``ByteArray, ``Unit].contains name then
-    some { status := "implemented", reason := "primitive type in the intended subset" }
+  else if [``Bool, ``UInt8, ``UInt32, ``UInt64, ``ByteArray, ``Unit, ``PUnit].contains name then
+    some { status := "implemented", reason := "primitive or erased unit type in the intended subset" }
   else if name == ``Id then
     some { status := "implemented", reason := "pure Id wrapper erased by the generic compiler fragment" }
   else if name == ``id then
     some { status := "implemented", reason := "identity function erased by the generic compiler fragment" }
   else if name == ``String.toUTF8 then
     some { status := "implemented", reason := "implemented for compile-time ASCII string literals" }
-  else if name == ``Unit.unit then
-    some { status := "implemented", reason := "erased Unit value used by supported generated matchers" }
+  else if [``Unit.unit, ``PUnit.unit].contains name then
+    some { status := "implemented", reason := "erased Unit value used by supported generated matchers and recursors" }
   else if name == ``Array then
     some { status := "implemented", reason := "implemented for supported fixed-width arrays in the generic compiler fragment" }
   else if name == ``Nat then
@@ -196,7 +196,7 @@ def knownExternal? (name : Name) : Option Classification :=
   else if [``Id.run, ``Pure.pure, ``Bind.bind, ``Applicative.toPure, ``Monad.toApplicative,
       ``Monad.toBind].contains name then
     some { status := "implemented", reason := "pure Id do-notation plumbing erased by the generic compiler fragment" }
-  else if [``Array.empty, ``Array.mkEmpty, ``Array.emptyWithCapacity, ``Array.singleton,
+  else if [``Array.mk, ``Array.empty, ``Array.mkEmpty, ``Array.emptyWithCapacity, ``Array.singleton,
       ``Array.replicate, ``Array.size, ``Array.isEmpty, ``Array.push, ``Array.pop,
       ``Array.eraseIdx, ``Array.eraseIdx!, ``Array.eraseIdxIfInBounds,
       ``Array.swap, ``Array.swapAt, ``Array.swapIfInBounds,
@@ -206,7 +206,7 @@ def knownExternal? (name : Name) : Option Classification :=
       ``Array.getD, ``Array.set, ``Array.set!, ``Array.setIfInBounds,
       ``Array.back?, ``GetElem?.getElem!, ``GetElem?.getElem?,
       ``GetElem.getElem].contains name then
-    some { status := "implemented", reason := "indexing primitive in the generic compiler fragment" }
+    some { status := "implemented", reason := "array primitive in the generic compiler fragment" }
   else if [``ByteArray.empty, ``ByteArray.mk, ``ByteArray.size, ``ByteArray.isEmpty, ``ByteArray.get!,
       ``ByteArray.extract, ``ByteArray.push, ``ByteArray.append, ``ByteArray.set!, ``ByteArray.set,
       ``ByteArray.copySlice, ``ByteArray.findIdx?, ``ByteArray.foldl, ``ByteArray.toUInt64LE!,
