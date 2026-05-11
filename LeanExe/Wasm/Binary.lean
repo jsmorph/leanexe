@@ -339,6 +339,12 @@ mutual
           (max (exprScratch ptr) (exprScratch len))
           (max (exprScratch index) (exprScratch value))
     | .byteArrayFromArrayPtr array => 4 + exprScratch array
+    | .byteArrayCopySlicePtr srcPtr srcLen srcOff destPtr destLen destOff copyLen =>
+        15 + max
+          (max (exprScratch srcPtr) (max (exprScratch srcLen) (exprScratch srcOff)))
+          (max
+            (max (exprScratch destPtr) (max (exprScratch destLen) (exprScratch destOff)))
+            (exprScratch copyLen))
     | .byteArrayFold ptr len start stop init _ _ body =>
         7 + max
           (max (exprScratch ptr) (exprScratch len))
@@ -455,6 +461,22 @@ def emitRangeCopyLoop
         (localGet arrayLocal)
         (sourceOffset ++ localGet loopLocal ++ ofNats [124]) ++
       i64Load ++ i64Store ++
+      localGet loopLocal ++ i64Const 1 ++ ofNats [124] ++ localSet loopLocal ++
+      ofNats [12] ++ u32leb 0 ++
+    ofNats [11, 11]
+
+def emitByteRangeCopyLoop
+    (sourcePtrLocal destPtrLocal : Nat)
+    (sourceOffset destOffset len : List UInt8)
+    (loopLocal : Nat) : List UInt8 :=
+  i64Const 0 ++ localSet loopLocal ++
+    ofNats [2, 64, 3, 64] ++
+      localGet loopLocal ++ len ++ i64GeU ++ ofNats [13] ++ u32leb 1 ++
+      localGet destPtrLocal ++ destOffset ++ ofNats [124] ++
+        localGet loopLocal ++ ofNats [124] ++ i32WrapI64 ++
+      localGet sourcePtrLocal ++ sourceOffset ++ ofNats [124] ++
+        localGet loopLocal ++ ofNats [124] ++ i32WrapI64 ++
+      i32Load8U ++ i32Store8 ++
       localGet loopLocal ++ i64Const 1 ++ ofNats [124] ++ localSet loopLocal ++
       ofNats [12] ++ u32leb 0 ++
     ofNats [11, 11]
@@ -1367,6 +1389,84 @@ mutual
       copyLoop ++
       localGet newPtrLocal
 
+  partial def emitByteArrayCopySlicePtr
+      (scratch : Nat)
+      (srcPtr srcLen srcOff destPtr destLen destOff copyLen : Expr) : List UInt8 :=
+    let srcPtrLocal := scratch
+    let srcLenLocal := scratch + 1
+    let srcOffLocal := scratch + 2
+    let destPtrLocal := scratch + 3
+    let destLenLocal := scratch + 4
+    let destOffLocal := scratch + 5
+    let requestedLenLocal := scratch + 6
+    let availableLocal := scratch + 7
+    let copiedLenLocal := scratch + 8
+    let prefixLenLocal := scratch + 9
+    let suffixStartLocal := scratch + 10
+    let suffixLenLocal := scratch + 11
+    let newLenLocal := scratch + 12
+    let newPtrLocal := scratch + 13
+    let loopLocal := scratch + 14
+    let childScratch := scratch + 15
+    emitExpr childScratch srcPtr ++ localSet srcPtrLocal ++
+      emitExpr childScratch srcLen ++ localSet srcLenLocal ++
+      emitExpr childScratch srcOff ++ localSet srcOffLocal ++
+      emitExpr childScratch destPtr ++ localSet destPtrLocal ++
+      emitExpr childScratch destLen ++ localSet destLenLocal ++
+      emitExpr childScratch destOff ++ localSet destOffLocal ++
+      emitExpr childScratch copyLen ++ localSet requestedLenLocal ++
+      localGet srcOffLocal ++ localGet srcLenLocal ++ i64LtU ++
+      ofNats [4, 126] ++
+        localGet srcLenLocal ++ localGet srcOffLocal ++ ofNats [125] ++
+      ofNats [5] ++
+        i64Const 0 ++
+      ofNats [11] ++ localSet availableLocal ++
+      localGet requestedLenLocal ++ localGet availableLocal ++ i64LtU ++
+      ofNats [4, 126] ++
+        localGet requestedLenLocal ++
+      ofNats [5] ++
+        localGet availableLocal ++
+      ofNats [11] ++ localSet copiedLenLocal ++
+      localGet destOffLocal ++ localGet destLenLocal ++ i64LtU ++
+      ofNats [4, 126] ++
+        localGet destOffLocal ++
+      ofNats [5] ++
+        localGet destLenLocal ++
+      ofNats [11] ++ localSet prefixLenLocal ++
+      localGet destOffLocal ++ localGet copiedLenLocal ++ ofNats [124] ++ localSet suffixStartLocal ++
+      localGet suffixStartLocal ++ localGet destLenLocal ++ i64LtU ++
+      ofNats [4, 126] ++
+        localGet destLenLocal ++ localGet suffixStartLocal ++ ofNats [125] ++
+      ofNats [5] ++
+        i64Const 0 ++
+      ofNats [11] ++ localSet suffixLenLocal ++
+      localGet prefixLenLocal ++ localGet copiedLenLocal ++ ofNats [124] ++
+        localGet suffixLenLocal ++ ofNats [124] ++ localSet newLenLocal ++
+      globalGet 0 ++ localSet newPtrLocal ++
+      globalGet 0 ++ localGet newLenLocal ++ ofNats [124] ++ globalSet 0 ++
+      emitByteRangeCopyLoop
+        destPtrLocal
+        newPtrLocal
+        (i64Const 0)
+        (i64Const 0)
+        (localGet prefixLenLocal)
+        loopLocal ++
+      emitByteRangeCopyLoop
+        srcPtrLocal
+        newPtrLocal
+        (localGet srcOffLocal)
+        (localGet prefixLenLocal)
+        (localGet copiedLenLocal)
+        loopLocal ++
+      emitByteRangeCopyLoop
+        destPtrLocal
+        newPtrLocal
+        (localGet suffixStartLocal)
+        (localGet prefixLenLocal ++ localGet copiedLenLocal ++ ofNats [124])
+        (localGet suffixLenLocal)
+        loopLocal ++
+      localGet newPtrLocal
+
   partial def emitByteArrayFold
       (scratch : Nat)
       (ptr len start stop init : Expr)
@@ -1531,6 +1631,8 @@ mutual
     | .byteArraySetPtr ptr len index value =>
         emitByteArraySetPtr scratch ptr len index value
     | .byteArrayFromArrayPtr array => emitByteArrayFromArrayPtr scratch array
+    | .byteArrayCopySlicePtr srcPtr srcLen srcOff destPtr destLen destOff copyLen =>
+        emitByteArrayCopySlicePtr scratch srcPtr srcLen srcOff destPtr destLen destOff copyLen
     | .byteArrayFold ptr len start stop init accSlot byteSlot body =>
         emitByteArrayFold scratch ptr len start stop init accSlot byteSlot body
     | .call index args => args.flatMap (emitExpr scratch) ++ call index
@@ -1718,6 +1820,22 @@ def rangeCopyLoopWat
         [s!"local.get {arrayLocal}"]
         (sourceOffset ++ [s!"local.get {loopLocal}", "i64.add"]) ++
       ["i64.load align=8", "i64.store align=8",
+        s!"local.get {loopLocal}", "i64.const 1", "i64.add", s!"local.set {loopLocal}",
+        "br 0"]) ++
+    ["  end", "end"]
+
+def byteRangeCopyLoopWat
+    (sourcePtrLocal destPtrLocal : Nat)
+    (sourceOffset destOffset len : List String)
+    (loopLocal : Nat) : List String :=
+  [s!"i64.const 0", s!"local.set {loopLocal}", "block", "  loop"] ++
+    indent 4 (
+      [s!"local.get {loopLocal}"] ++ len ++ ["i64.ge_u", "br_if 1",
+        s!"local.get {destPtrLocal}"] ++ destOffset ++ ["i64.add",
+        s!"local.get {loopLocal}", "i64.add", "i32.wrap_i64",
+        s!"local.get {sourcePtrLocal}"] ++ sourceOffset ++ ["i64.add",
+        s!"local.get {loopLocal}", "i64.add", "i32.wrap_i64",
+        "i32.load8_u", "i32.store8",
         s!"local.get {loopLocal}", "i64.const 1", "i64.add", s!"local.set {loopLocal}",
         "br 0"]) ++
     ["  end", "end"]
@@ -2687,6 +2805,73 @@ mutual
       copyLoop ++
       [s!"local.get {newPtrLocal}"]
 
+  partial def byteArrayCopySlicePtrWatLines
+      (scratch : Nat)
+      (srcPtr srcLen srcOff destPtr destLen destOff copyLen : Expr) : List String :=
+    let srcPtrLocal := scratch
+    let srcLenLocal := scratch + 1
+    let srcOffLocal := scratch + 2
+    let destPtrLocal := scratch + 3
+    let destLenLocal := scratch + 4
+    let destOffLocal := scratch + 5
+    let requestedLenLocal := scratch + 6
+    let availableLocal := scratch + 7
+    let copiedLenLocal := scratch + 8
+    let prefixLenLocal := scratch + 9
+    let suffixStartLocal := scratch + 10
+    let suffixLenLocal := scratch + 11
+    let newLenLocal := scratch + 12
+    let newPtrLocal := scratch + 13
+    let loopLocal := scratch + 14
+    let childScratch := scratch + 15
+    exprWatLines childScratch srcPtr ++ [s!"local.set {srcPtrLocal}"] ++
+      exprWatLines childScratch srcLen ++ [s!"local.set {srcLenLocal}"] ++
+      exprWatLines childScratch srcOff ++ [s!"local.set {srcOffLocal}"] ++
+      exprWatLines childScratch destPtr ++ [s!"local.set {destPtrLocal}"] ++
+      exprWatLines childScratch destLen ++ [s!"local.set {destLenLocal}"] ++
+      exprWatLines childScratch destOff ++ [s!"local.set {destOffLocal}"] ++
+      exprWatLines childScratch copyLen ++ [s!"local.set {requestedLenLocal}",
+        s!"local.get {srcOffLocal}", s!"local.get {srcLenLocal}", "i64.lt_u",
+        "if (result i64)", s!"  local.get {srcLenLocal}", s!"  local.get {srcOffLocal}",
+        "  i64.sub", "else", "  i64.const 0", "end", s!"local.set {availableLocal}",
+        s!"local.get {requestedLenLocal}", s!"local.get {availableLocal}", "i64.lt_u",
+        "if (result i64)", s!"  local.get {requestedLenLocal}", "else",
+        s!"  local.get {availableLocal}", "end", s!"local.set {copiedLenLocal}",
+        s!"local.get {destOffLocal}", s!"local.get {destLenLocal}", "i64.lt_u",
+        "if (result i64)", s!"  local.get {destOffLocal}", "else",
+        s!"  local.get {destLenLocal}", "end", s!"local.set {prefixLenLocal}",
+        s!"local.get {destOffLocal}", s!"local.get {copiedLenLocal}", "i64.add",
+        s!"local.set {suffixStartLocal}",
+        s!"local.get {suffixStartLocal}", s!"local.get {destLenLocal}", "i64.lt_u",
+        "if (result i64)", s!"  local.get {destLenLocal}", s!"  local.get {suffixStartLocal}",
+        "  i64.sub", "else", "  i64.const 0", "end", s!"local.set {suffixLenLocal}",
+        s!"local.get {prefixLenLocal}", s!"local.get {copiedLenLocal}", "i64.add",
+        s!"local.get {suffixLenLocal}", "i64.add", s!"local.set {newLenLocal}",
+        "global.get 0", s!"local.set {newPtrLocal}",
+        "global.get 0", s!"local.get {newLenLocal}", "i64.add", "global.set 0"] ++
+      byteRangeCopyLoopWat
+        destPtrLocal
+        newPtrLocal
+        ["i64.const 0"]
+        ["i64.const 0"]
+        [s!"local.get {prefixLenLocal}"]
+        loopLocal ++
+      byteRangeCopyLoopWat
+        srcPtrLocal
+        newPtrLocal
+        [s!"local.get {srcOffLocal}"]
+        [s!"local.get {prefixLenLocal}"]
+        [s!"local.get {copiedLenLocal}"]
+        loopLocal ++
+      byteRangeCopyLoopWat
+        destPtrLocal
+        newPtrLocal
+        [s!"local.get {suffixStartLocal}"]
+        [s!"local.get {prefixLenLocal}", s!"local.get {copiedLenLocal}", "i64.add"]
+        [s!"local.get {suffixLenLocal}"]
+        loopLocal ++
+      [s!"local.get {newPtrLocal}"]
+
   partial def byteArrayFoldWatLines
       (scratch : Nat)
       (ptr len start stop init : Expr)
@@ -2843,6 +3028,8 @@ mutual
         byteArrayAppendPtrWatLines scratch leftPtr leftLen rightPtr rightLen
     | .byteArraySetPtr ptr len index value => byteArraySetPtrWatLines scratch ptr len index value
     | .byteArrayFromArrayPtr array => byteArrayFromArrayPtrWatLines scratch array
+    | .byteArrayCopySlicePtr srcPtr srcLen srcOff destPtr destLen destOff copyLen =>
+        byteArrayCopySlicePtrWatLines scratch srcPtr srcLen srcOff destPtr destLen destOff copyLen
     | .byteArrayFold ptr len start stop init accSlot byteSlot body =>
         byteArrayFoldWatLines scratch ptr len start stop init accSlot byteSlot body
     | .call index args => args.flatMap (exprWatLines scratch) ++ [s!"call {index}"]

@@ -122,6 +122,15 @@ def setFirstBang (input : ByteArray) : ByteArray :=
   else
     input
 
+def copyInputMiddle (input : ByteArray) : ByteArray :=
+  input.copySlice 1 bytesABC 1 2
+
+def copyInputPastDest (input : ByteArray) : ByteArray :=
+  input.copySlice 0 bytesABC 10 2 false
+
+def copyShortSource : ByteArray :=
+  (ByteArray.empty.push (88 : UInt8)).copySlice 0 bytesABC 1 3
+
 def tailSlice (input : ByteArray) : ByteArray :=
   input.extract 1 input.size
 
