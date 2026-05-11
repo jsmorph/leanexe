@@ -52,6 +52,7 @@ mutual
     | arrayAlloc (cells : Expr)
     | arrayAllocSlots (width : Nat) (cells : Expr)
     | arrayReplicate (cells value : Expr)
+    | arrayReplicateSlots (width : Nat) (cells : Expr) (values : List Expr)
     | arraySize (array : Expr)
     | arrayGet (array index : Expr)
     | arrayGetSlot (width slot : Nat) (array index : Expr)
@@ -151,6 +152,7 @@ mutual
     | .arrayAlloc _ => 0
     | .arrayAllocSlots _ _ => 0
     | .arrayReplicate _ _ => 0
+    | .arrayReplicateSlots _ _ _ => 0
     | .arraySize _ => 0
     | .arrayGet _ _ => 0
     | .arrayGetSlot _ _ _ _ => 0

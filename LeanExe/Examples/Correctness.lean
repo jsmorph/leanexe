@@ -956,6 +956,20 @@ def arrayStructureModifyOutOfBoundsSkipsFunctionTrap : UInt64 :=
   | none => 0
   | some point => point.x * (10 : UInt64) + point.y
 
+def arrayStructureReplicateRead : UInt64 :=
+  let a := Array.replicate 3 ({ x := 1, y := 2 } : Point)
+  if a.size == 3 then
+    match a[0]? with
+    | none => 0
+    | some first =>
+        match a[2]? with
+        | none => 0
+        | some last =>
+            first.x * (1000 : UInt64) + first.y * (100 : UInt64) +
+              last.x * (10 : UInt64) + last.y
+  else
+    0
+
 def arrayStructureSafeGet : UInt64 :=
   match (#[({ x := 4, y := 5 } : Point)] : Array Point)[0]? with
   | none => 99
@@ -989,6 +1003,12 @@ def arrayStatusModifyMatch : UInt64 :=
       | Status.ok value => Status.error (value + 2)
       | Status.error code => Status.ok code)
   Option.elim b[0]? 0 (fun status => statusLeftScore status)
+
+def arrayStatusReplicateMatch : UInt64 :=
+  let a := Array.replicate 2 (Status.error 7)
+  let left := Option.elim a[0]? 0 (fun status => statusLeftScore status)
+  let right := Option.elim a[1]? 0 (fun status => statusRightScore status)
+  left * (10 : UInt64) + right
 
 def arrayOptionLiteralMatch : UInt64 :=
   let a : Array (Option UInt64) := #[some 5, none]
