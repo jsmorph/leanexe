@@ -220,6 +220,16 @@ const cases = [
   },
   {
     moduleName: "LeanExe.Examples.Correctness",
+    entryName: "LeanExe.Examples.Correctness.recPointCarryFuel",
+    shape: "entry shape: Nat -> LeanExe.Examples.Correctness.Point -> LeanExe.Examples.Correctness.Point",
+  },
+  {
+    moduleName: "LeanExe.Examples.Correctness",
+    entryName: "LeanExe.Examples.Correctness.recStatusCarryFuel",
+    shape: "entry shape: Nat -> LeanExe.Examples.Correctness.Status -> UInt64",
+  },
+  {
+    moduleName: "LeanExe.Examples.Correctness",
     entryName: "LeanExe.Examples.Correctness.arrayUInt8Read",
     shape: "entry shape: Nat",
   },

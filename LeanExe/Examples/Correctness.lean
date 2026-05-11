@@ -1180,6 +1180,20 @@ def recStatusExitFuel : Nat → UInt64 → Status
       else
         recStatusExitFuel fuel (value + 1)
 
+def recPointCarryFuel : Nat → Point → Point
+  | 0, point => point
+  | fuel + 1, point =>
+      recPointCarryFuel fuel { x := point.x + 1, y := point.y + 2 }
+
+def bumpStatus (status : Status) : Status :=
+  match status with
+  | Status.ok value => Status.ok (value + 1)
+  | Status.error code => Status.error (code + 1)
+
+def recStatusCarryFuel : Nat → Status → UInt64
+  | 0, status => statusLeftScore status
+  | fuel + 1, status => recStatusCarryFuel fuel (bumpStatus status)
+
 def recIgnoreTrapArgFuel : Nat → UInt64 → UInt64
   | 0, _value => 7
   | fuel + 1, value => recIgnoreTrapArgFuel fuel value
