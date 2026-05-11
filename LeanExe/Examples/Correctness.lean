@@ -798,6 +798,27 @@ def arrayFindIdxEmptySkipsPredicateTrap : Option Nat :=
   (#[] : Array UInt64).findIdx?
     (fun _value => (Array.replicate 0 false)[0]!)
 
+def arrayFindSome : Option UInt64 :=
+  (#[1, 2, 3] : Array UInt64).find? (fun value => value == 2)
+
+def arrayFindNone : Option UInt64 :=
+  (#[1, 2, 3] : Array UInt64).find? (fun value => value == 9)
+
+def arrayFindStructure : Option Point :=
+  (#[{ x := 1, y := 2 }, { x := 3, y := 4 }] : Array Point).find?
+    (fun point => point.y == 4)
+
+def arrayFindStatus : Option Status :=
+  (#[Status.error 5, Status.ok 7] : Array Status).find?
+    (fun status =>
+      match status with
+      | Status.ok value => value == 7
+      | Status.error _ => false)
+
+def arrayFindEmptySkipsPredicateTrap : Option UInt64 :=
+  (#[] : Array UInt64).find?
+    (fun _value => (Array.replicate 0 false)[0]!)
+
 def arrayAnySome : Bool :=
   (#[1, 2, 3] : Array UInt64).any (fun value => value == 2)
 

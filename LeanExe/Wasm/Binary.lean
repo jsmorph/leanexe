@@ -320,6 +320,8 @@ mutual
             (max (exprScratch init) (exprScratch body))
     | .arrayFindIdxSlots sourceWidth array _ predicate _ =>
         4 + sourceWidth + max (exprScratch array) (exprScratch predicate)
+    | .arrayFindSlot sourceWidth array _ predicate _ =>
+        4 + sourceWidth + max (exprScratch array) (exprScratch predicate)
     | .arrayAnySlots sourceWidth array start stop _ predicate _ =>
         6 + sourceWidth +
           max
@@ -1042,6 +1044,40 @@ mutual
         emitExpr childScratch predicate ++ i64Const 0 ++ i64Ne ++
         ofNats [4, 64] ++
           foundValue ++ localSet resultLocal ++
+          ofNats [12] ++ u32leb 2 ++
+        ofNats [11] ++
+        localGet indexLocal ++ i64Const 1 ++ ofNats [124] ++ localSet indexLocal ++
+        ofNats [12] ++ u32leb 0 ++
+      ofNats [11, 11] ++
+      localGet resultLocal
+
+  partial def emitArrayFindSlot
+      (scratch sourceWidth : Nat)
+      (array : Expr)
+      (itemStart : Nat)
+      (predicate : Expr)
+      (slot : Nat) : List UInt8 :=
+    let arrayLocal := scratch
+    let lenLocal := scratch + 1
+    let indexLocal := scratch + 2
+    let resultLocal := scratch + 3
+    let childScratch := scratch + 4
+    let rec emitSourceLoads : List Nat → List UInt8
+      | [] => []
+      | offset :: rest =>
+          arraySlotAddress sourceWidth offset (localGet arrayLocal) (localGet indexLocal) ++
+            i64Load ++ localSet (itemStart + offset) ++ emitSourceLoads rest
+    emitExpr childScratch array ++ localSet arrayLocal ++
+      localGet arrayLocal ++ i32WrapI64 ++ i64Load ++ localSet lenLocal ++
+      i64Const 0 ++ localSet indexLocal ++
+      i64Const 0 ++ localSet resultLocal ++
+      ofNats [2, 64, 3, 64] ++
+        localGet indexLocal ++ localGet lenLocal ++ i64GeU ++
+          ofNats [13] ++ u32leb 1 ++
+        emitSourceLoads (List.range sourceWidth) ++
+        emitExpr childScratch predicate ++ i64Const 0 ++ i64Ne ++
+        ofNats [4, 64] ++
+          localGet (itemStart + slot) ++ localSet resultLocal ++
           ofNats [12] ++ u32leb 2 ++
         ofNats [11] ++
         localGet indexLocal ++ i64Const 1 ++ ofNats [124] ++ localSet indexLocal ++
@@ -1787,6 +1823,8 @@ mutual
         emitArrayFoldSlots scratch sourceWidth array start stop init accSlot itemStart body
     | .arrayFindIdxSlots sourceWidth array itemStart predicate returnPayload =>
         emitArrayFindIdxSlots scratch sourceWidth array itemStart predicate returnPayload
+    | .arrayFindSlot sourceWidth array itemStart predicate slot =>
+        emitArrayFindSlot scratch sourceWidth array itemStart predicate slot
     | .arrayAnySlots sourceWidth array start stop itemStart predicate forAll =>
         emitArrayAnySlots scratch sourceWidth array start stop itemStart predicate forAll
     | .arrayInsertIfInBounds array index value =>
@@ -2604,6 +2642,39 @@ mutual
           "br 0"]) ++
       ["  end", "end", s!"local.get {resultLocal}"]
 
+  partial def arrayFindSlotWatLines
+      (scratch sourceWidth : Nat)
+      (array : Expr)
+      (itemStart : Nat)
+      (predicate : Expr)
+      (slot : Nat) : List String :=
+    let arrayLocal := scratch
+    let lenLocal := scratch + 1
+    let indexLocal := scratch + 2
+    let resultLocal := scratch + 3
+    let childScratch := scratch + 4
+    let rec sourceLoads : List Nat → List String
+      | [] => []
+      | offset :: rest =>
+          arraySlotAddressWat sourceWidth offset [s!"local.get {arrayLocal}"] [s!"local.get {indexLocal}"] ++
+            ["i64.load align=8", s!"local.set {itemStart + offset}"] ++ sourceLoads rest
+    exprWatLines childScratch array ++ [s!"local.set {arrayLocal}",
+      s!"local.get {arrayLocal}", "i32.wrap_i64", "i64.load align=8",
+      s!"local.set {lenLocal}",
+      "i64.const 0", s!"local.set {indexLocal}",
+      "i64.const 0", s!"local.set {resultLocal}",
+      "block", "  loop",
+      s!"    local.get {indexLocal}", s!"    local.get {lenLocal}", "    i64.ge_u",
+      "    br_if 1"] ++
+      indent 4 (
+        sourceLoads (List.range sourceWidth) ++
+        exprWatLines childScratch predicate ++ ["i64.const 0", "i64.ne", "if"] ++
+        indent 2 ([s!"local.get {itemStart + slot}", s!"local.set {resultLocal}", "br 2"]) ++
+        ["end",
+          s!"local.get {indexLocal}", "i64.const 1", "i64.add", s!"local.set {indexLocal}",
+          "br 0"]) ++
+      ["  end", "end", s!"local.get {resultLocal}"]
+
   partial def arrayAnySlotsWatLines
       (scratch sourceWidth : Nat)
       (array start stop : Expr)
@@ -3339,6 +3410,8 @@ mutual
         arrayFoldSlotsWatLines scratch sourceWidth array start stop init accSlot itemStart body
     | .arrayFindIdxSlots sourceWidth array itemStart predicate returnPayload =>
         arrayFindIdxSlotsWatLines scratch sourceWidth array itemStart predicate returnPayload
+    | .arrayFindSlot sourceWidth array itemStart predicate slot =>
+        arrayFindSlotWatLines scratch sourceWidth array itemStart predicate slot
     | .arrayAnySlots sourceWidth array start stop itemStart predicate forAll =>
         arrayAnySlotsWatLines scratch sourceWidth array start stop itemStart predicate forAll
     | .arrayInsertIfInBounds array index value =>
