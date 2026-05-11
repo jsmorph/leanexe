@@ -2057,3 +2057,18 @@ Checks run:
 - [x] `node test/bytearray_alloc.js` returned `checked 70 bytearray allocation cases`.
 - [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/current/wasmtime wast .lake/build/core-correctness/byteArrayFindIdxStart.wat` accepted the generated module.
 - [x] `node test/run_all.js` returned `checked 76 report classification cases`, `checked 398 accepted, 16 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, and `checked 56 cases`.
+
+## 2026-05-11: Array findIdx?
+
+The generic compiler now lowers `Array.findIdx?` for fixed-width array element layouts and direct one-argument predicates returning `Bool`.  The emitted search loads each element into the same local slot representation used by `Array.map` and `Array.foldl`, checks the predicate, returns `some index` at the first true result, and returns `none` at the end of the array.  Empty arrays do not evaluate the predicate.
+
+`LeanExe.Examples.Correctness.arrayFindIdxSome` and `arrayFindIdxNone` cover scalar arrays.  `arrayFindIdxStructure` covers a structure-array element, and `arrayFindIdxStatus` covers a tagged element with a predicate that matches on the source-defined inductive.  `arrayFindIdxEmptySkipsPredicateTrap` checks skipped predicate evaluation.  The current support requires a direct lambda predicate and does not compile escaped predicate values.
+
+Checks run:
+
+- [x] `lake build`
+- [x] `lake build LeanExe.Examples.Correctness`
+- [x] `node test/core_correctness.js` returned `checked 403 accepted, 16 rejected, and 13 trapped cases`.
+- [x] `node test/report_classification.js` returned `checked 77 report classification cases`.
+- [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/current/wasmtime wast .lake/build/core-correctness/arrayFindIdxStatus.wat` accepted the generated module.
+- [x] `node test/run_all.js` returned `checked 77 report classification cases`, `checked 403 accepted, 16 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, and `checked 56 cases`.
