@@ -3052,6 +3052,12 @@ end
 def mayTrapExpr (ctx : Context) (expr : Expr) : Bool :=
   (demandExpr ctx [] expr).mayTrap
 
+def strictCallSafe (ctx : Context) (name : Name) (args : List Expr) : Bool :=
+  let summary := demandSummary ctx [] name
+  let indexed := enumerate args
+  indexed.all fun item =>
+    !mayTrapExpr ctx item.snd || boolAt summary.mustDemand item.fst
+
 def strictRecursiveCallCheck (ctx : Context) (name : Name) (args : List Expr) :
     Except String Unit := do
   let summary := demandSummary ctx [] name
@@ -4463,6 +4469,10 @@ mutual
     if args.length != sig.params.length then
       .error s!"inline call arity mismatch: {name}"
     else
+      if (functionIndex? ctx name).isSome &&
+          supportedOneSlotExprType sig.result &&
+          strictCallSafe ctx name args then
+        return none
       let value ←
         match info.value? with
         | some value => .ok value

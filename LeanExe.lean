@@ -1,4 +1,7 @@
 import LeanExe.AsciiString
+import LeanExe.Ascii.Basic
+import LeanExe.Ascii.Decimal
+import LeanExe.Ascii.Json
 import LeanExe.Core
 import LeanExe.CLI
 import LeanExe.Extract.Report
@@ -9,6 +12,7 @@ import LeanExe.Examples.Arithmetic
 import LeanExe.Examples.Collatz
 import LeanExe.Examples.Correctness
 import LeanExe.Examples.IntMap
+import LeanExe.Examples.JsonAdd
 import LeanExe.Examples.JsonDouble
 import LeanExe.Examples.Let
 import LeanExe.Examples.Prime
