@@ -73,6 +73,8 @@ mutual
         (accSlot itemStart : Nat) (body : Expr)
     | arrayFindIdxSlots (sourceWidth : Nat) (array : Expr) (itemStart : Nat)
         (predicate : Expr) (returnPayload : Bool)
+    | arrayAnySlots (sourceWidth : Nat) (array start stop : Expr) (itemStart : Nat)
+        (predicate : Expr) (forAll : Bool)
     | arrayInsertIfInBounds (array index value : Expr)
     | arrayInsertIfInBoundsSlots (width : Nat) (array index : Expr) (values : List Expr)
     | arrayEraseIfInBounds (array index : Expr)
@@ -185,6 +187,7 @@ mutual
     | .arrayMapSlots _ _ array _ _ => array.eval module_ store
     | .arrayFoldSlots _ _ _ _ init _ _ _ => init.eval module_ store
     | .arrayFindIdxSlots _ _ _ _ _ => 0
+    | .arrayAnySlots _ _ _ _ _ _ forAll => if forAll then 1 else 0
     | .arrayInsertIfInBounds array _ _ => array.eval module_ store
     | .arrayInsertIfInBoundsSlots _ array _ _ => array.eval module_ store
     | .arrayEraseIfInBounds array _ => array.eval module_ store

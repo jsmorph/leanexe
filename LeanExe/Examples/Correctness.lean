@@ -798,6 +798,37 @@ def arrayFindIdxEmptySkipsPredicateTrap : Option Nat :=
   (#[] : Array UInt64).findIdx?
     (fun _value => (Array.replicate 0 false)[0]!)
 
+def arrayAnySome : Bool :=
+  (#[1, 2, 3] : Array UInt64).any (fun value => value == 2)
+
+def arrayAnyWindowFalse : Bool :=
+  (#[1, 2, 3] : Array UInt64).any (fun value => value == 1) 1 3
+
+def arrayAnyEmptySkipsPredicateTrap : Bool :=
+  (#[] : Array UInt64).any
+    (fun _value => (Array.replicate 0 false)[0]!)
+
+def arrayAllScalars : Bool :=
+  (#[2, 4, 6] : Array UInt64).all (fun value => value % 2 == 0)
+
+def arrayAllWindowTrue : Bool :=
+  (#[1, 2, 4] : Array UInt64).all (fun value => value % 2 == 0) 1 3
+
+def arrayAllStructure : Bool :=
+  (#[{ x := 1, y := 2 }, { x := 3, y := 4 }] : Array Point).all
+    (fun point => point.x < point.y)
+
+def arrayAnyStatus : Bool :=
+  (#[Status.error 5, Status.ok 7] : Array Status).any
+    (fun status =>
+      match status with
+      | Status.ok value => value == 7
+      | Status.error _ => false)
+
+def arrayAllEmptySkipsPredicateTrap : Bool :=
+  (#[] : Array UInt64).all
+    (fun _value => (Array.replicate 0 false)[0]!)
+
 def arrayUInt8Read : Nat :=
   let a : Array UInt8 := #[(1 : UInt8), (300 : UInt8)]
   a[0]!.toNat * 1000 + a[1]!.toNat
