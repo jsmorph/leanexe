@@ -1868,6 +1868,27 @@ def byteArrayMkSize : Nat :=
 def byteArrayMkSizeForcesArrayTrap : Nat :=
   (ByteArray.mk #[(Array.replicate 0 (0 : UInt8))[0]!]).size
 
+def byteArrayCopySliceReturn : ByteArray :=
+  (ByteArray.mk #[(88 : UInt8), (89 : UInt8), (90 : UInt8)]).copySlice
+    1
+    byteArrayReturnABC
+    1
+    2
+
+def byteArrayCopySliceSize : Nat :=
+  byteArrayCopySliceReturn.size
+
+def byteArrayCopySliceShortSource : ByteArray :=
+  (ByteArray.mk #[(88 : UInt8)]).copySlice
+    0
+    byteArrayReturnABC
+    1
+    3
+
+def byteArrayCopySliceExactSkipsTrap : Nat :=
+  let exact := (Array.replicate 0 false)[0]!
+  (ByteArray.empty.copySlice 0 byteArrayReturnABC 1 0 exact).size
+
 def byteArrayFoldSum : Nat :=
   (ByteArray.mk #[(1 : UInt8), (2 : UInt8), (3 : UInt8)]).foldl
     (fun acc byte => acc + byte.toNat)

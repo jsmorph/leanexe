@@ -811,6 +811,27 @@ partial def wrapValueLets (lets : List (Nat × IRExpr)) (value : ExtractedValue)
 def wrapExprLets (lets : List (Nat × IRExpr)) (expr : IRExpr) : IRExpr :=
   lets.foldr (fun item acc => .letE item.fst item.snd acc) expr
 
+def byteArrayCopySliceCopiedLen
+    (srcLen srcOff copyLen : IRExpr) : IRExpr :=
+  let available :=
+    .ite
+      (.ltU64 srcOff srcLen)
+      (.u64Bin .sub srcLen srcOff)
+      (.u64 0)
+  .ite (.ltU64 copyLen available) copyLen available
+
+def byteArrayCopySliceResultLen
+    (srcLen srcOff destLen destOff copyLen : IRExpr) : IRExpr :=
+  let copiedLen := byteArrayCopySliceCopiedLen srcLen srcOff copyLen
+  let prefixLen := .ite (.ltU64 destOff destLen) destOff destLen
+  let suffixStart := .u64Bin .add destOff copiedLen
+  let suffixLen :=
+    .ite
+      (.ltU64 suffixStart destLen)
+      (.u64Bin .sub destLen suffixStart)
+      (.u64 0)
+  .u64Bin .add (.u64Bin .add prefixLen copiedLen) suffixLen
+
 partial def mapValueExprs (f : IRExpr → IRExpr) : ExtractedValue → ExtractedValue
   | .scalar expr => .scalar (f expr)
   | .byteArray ptr len => .byteArray (f ptr) (f len)
@@ -1698,6 +1719,13 @@ partial def demandExpr
               args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
           | (.const ``ByteArray.mk _, args) =>
               args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
+          | (.const ``ByteArray.copySlice _, args) =>
+              match args.reverse with
+              | _exact :: copyLen :: destOff :: dest :: srcOff :: src :: _ =>
+                  [src, srcOff, dest, destOff, copyLen].foldl
+                    (fun acc arg => Demand.always acc (demandExpr ctx visiting arg))
+                    .empty
+              | _ => .empty
           | (.const ``ByteArray.foldl _, args) =>
               args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
           | (.const ``ByteArray.get! _, _) => .trap
@@ -2985,6 +3013,66 @@ mutual
                       (.byteArray setPtr sourceLen)),
                     lenSlot + 1)
             | _ => .error "unsupported ByteArray.set application"
+        | (.const ``ByteArray.copySlice _, args) =>
+            let copyArgs? :=
+              match args.reverse with
+              | _exact :: copyLen :: destOff :: dest :: srcOff :: src :: _ =>
+                  some (src, srcOff, dest, destOff, copyLen)
+              | copyLen :: destOff :: dest :: srcOff :: src :: [] =>
+                  some (src, srcOff, dest, destOff, copyLen)
+              | _ => none
+            match copyArgs? with
+            | some (src, srcOff, dest, destOff, copyLen) =>
+                let srcResult ← extractValueFrom ctx locals nextLocal src
+                let srcParts ← byteArrayPartsWithLets srcResult.fst
+                let srcOffResult ← extractExprFrom ctx locals srcResult.snd srcOff
+                let destResult ← extractValueFrom ctx locals srcOffResult.snd dest
+                let destParts ← byteArrayPartsWithLets destResult.fst
+                let destOffResult ← extractExprFrom ctx locals destResult.snd destOff
+                let copyLenResult ← extractExprFrom ctx locals destOffResult.snd copyLen
+                let srcPtrSlot := copyLenResult.snd
+                let srcLenSlot := srcPtrSlot + 1
+                let srcOffSlot := srcPtrSlot + 2
+                let destPtrSlot := srcPtrSlot + 3
+                let destLenSlot := srcPtrSlot + 4
+                let destOffSlot := srcPtrSlot + 5
+                let copyLenSlot := srcPtrSlot + 6
+                let srcPtr := wrapExprLets srcParts.fst srcParts.snd.fst
+                let srcLen := wrapExprLets srcParts.fst srcParts.snd.snd
+                let destPtr := wrapExprLets destParts.fst destParts.snd.fst
+                let destLen := wrapExprLets destParts.fst destParts.snd.snd
+                let resultLen :=
+                  .letE srcPtrSlot srcPtr
+                    (.letE srcLenSlot srcLen
+                      (.letE srcOffSlot srcOffResult.fst
+                        (.letE destPtrSlot destPtr
+                          (.letE destLenSlot destLen
+                            (.letE destOffSlot destOffResult.fst
+                              (.letE copyLenSlot copyLenResult.fst
+                                (byteArrayCopySliceResultLen
+                                  (.local srcLenSlot)
+                                  (.local srcOffSlot)
+                                  (.local destLenSlot)
+                                  (.local destOffSlot)
+                                  (.local copyLenSlot))))))))
+                let resultPtr :=
+                  .letE srcPtrSlot srcPtr
+                    (.letE srcLenSlot srcLen
+                      (.letE srcOffSlot srcOffResult.fst
+                        (.letE destPtrSlot destPtr
+                          (.letE destLenSlot destLen
+                            (.letE destOffSlot destOffResult.fst
+                              (.letE copyLenSlot copyLenResult.fst
+                                (.byteArrayCopySlicePtr
+                                  (.local srcPtrSlot)
+                                  (.local srcLenSlot)
+                                  (.local srcOffSlot)
+                                  (.local destPtrSlot)
+                                  (.local destLenSlot)
+                                  (.local destOffSlot)
+                                  (.local copyLenSlot))))))))
+                .ok (.byteArray resultPtr resultLen, copyLenSlot + 1)
+            | none => .error "unsupported ByteArray.copySlice application"
         | (.const ``ByteArray.mk _, args) =>
             match args with
             | [array] =>

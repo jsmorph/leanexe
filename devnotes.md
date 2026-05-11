@@ -1963,3 +1963,19 @@ Checks run:
 - [x] `node test/report_classification.js` returned `checked 70 report classification cases`.
 - [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/current/wasmtime wast .lake/build/bytearray-programs/foldWindowDecimal.wat` accepted the generated module.
 - [x] `node test/run_all.js` returned `checked 70 report classification cases`, `checked 383 accepted, 16 rejected, and 11 trapped cases`, `checked 56 bytearray allocation cases`, and `checked 56 cases`.
+
+## 2026-05-11: ByteArray copySlice
+
+The generic compiler now lowers value-level `ByteArray.copySlice`.  The implementation follows the Lean 4.29.1 definition in `Init/Data/ByteArray/Basic.lean`: it copies the destination prefix, a bounded source slice, and the destination suffix beginning after the bytes actually copied.  The `exact` argument affects capacity behavior in the runtime primitive, but the pure Lean definition does not use it to determine the resulting bytes, so extraction does not evaluate it.
+
+`LeanExe.Examples.ByteArrayPrograms.copyInputMiddle` covers replacement inside an existing destination.  `copyInputPastDest` covers the case where `destOff` is beyond the destination size; the result appends the available source bytes without inserting padding.  `copyShortSource` checks that the suffix starts after the bytes copied, not after the requested length.
+
+Checks run:
+
+- [x] `lake build`
+- [x] `lake build LeanExe.Examples.Correctness LeanExe.Examples.ByteArrayPrograms`
+- [x] `node test/bytearray_alloc.js` returned `checked 63 bytearray allocation cases`.
+- [x] `node test/core_correctness.js` returned `checked 387 accepted, 16 rejected, and 11 trapped cases`.
+- [x] `node test/report_classification.js` returned `checked 71 report classification cases`.
+- [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/current/wasmtime wast .lake/build/bytearray-programs/copyInputPastDest.wat` accepted the generated module.
+- [x] `node test/run_all.js` returned `checked 71 report classification cases`, `checked 387 accepted, 16 rejected, and 11 trapped cases`, `checked 63 bytearray allocation cases`, and `checked 56 cases`.

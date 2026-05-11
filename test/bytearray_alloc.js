@@ -385,6 +385,40 @@ async function main() {
     }
   }
 
+  const copyInputMiddle = await instantiate("copyInputMiddle");
+  const copyInputMiddleCases = [
+    { input: new Uint8Array([]), expected: new Uint8Array([65, 66, 67]) },
+    { input: new Uint8Array([88]), expected: new Uint8Array([65, 66, 67]) },
+    { input: new Uint8Array([88, 89, 90, 91]), expected: new Uint8Array([65, 89, 90]) },
+  ];
+
+  for (const testCase of copyInputMiddleCases) {
+    const actual = readByteArrayResult(copyInputMiddle, callByteArrayOutput(copyInputMiddle, testCase.input));
+    if (!sameBytes(actual, testCase.expected)) {
+      throw new Error(`copyInputMiddle: expected ${Array.from(testCase.expected)}, got ${Array.from(actual)}`);
+    }
+  }
+
+  const copyInputPastDest = await instantiate("copyInputPastDest");
+  const copyInputPastDestCases = [
+    { input: new Uint8Array([]), expected: new Uint8Array([65, 66, 67]) },
+    { input: new Uint8Array([88]), expected: new Uint8Array([65, 66, 67, 88]) },
+    { input: new Uint8Array([88, 89, 90]), expected: new Uint8Array([65, 66, 67, 88, 89]) },
+  ];
+
+  for (const testCase of copyInputPastDestCases) {
+    const actual = readByteArrayResult(copyInputPastDest, callByteArrayOutput(copyInputPastDest, testCase.input));
+    if (!sameBytes(actual, testCase.expected)) {
+      throw new Error(`copyInputPastDest: expected ${Array.from(testCase.expected)}, got ${Array.from(actual)}`);
+    }
+  }
+
+  const copyShortSource = await instantiate("copyShortSource");
+  const copyShortSourceActual = callNoInputByteArrayOutput(copyShortSource);
+  if (!sameBytes(copyShortSourceActual, new Uint8Array([65, 88, 67]))) {
+    throw new Error(`copyShortSource: expected 65,88,67, got ${Array.from(copyShortSourceActual)}`);
+  }
+
   const tailSlice = await instantiate("tailSlice");
   const tailSliceCases = [
     { input: new Uint8Array([]), expected: new Uint8Array([]) },
@@ -423,6 +457,9 @@ async function main() {
     appendInputABCCases.length +
     1 +
     setFirstBangCases.length +
+    copyInputMiddleCases.length +
+    copyInputPastDestCases.length +
+    1 +
     tailSliceCases.length;
   process.stdout.write(`checked ${total} bytearray allocation cases\n`);
 }
