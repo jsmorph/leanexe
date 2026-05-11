@@ -3475,22 +3475,25 @@ mutual
                     .ok (boolExpr (.eqU64 (.arraySize arrayResult.fst) (.u64 0)), arrayResult.snd)
                 | _ => .error "unsupported Array.isEmpty application"
             | (.const ``Array.push _, args) =>
-                match args.reverse with
-                | value :: array :: _ =>
-                    let arrayResult ← extractExprFrom ctx locals nextLocal array
-                    let valueResult ← extractExprFrom ctx locals arrayResult.snd value
-                    .ok (.arrayPush arrayResult.fst valueResult.fst, valueResult.snd)
-                | _ => .error "unsupported Array.push application"
+                match args, args.reverse with
+                | itemTy :: _, value :: array :: _ =>
+                    match typeAtom? ctx.env itemTy with
+                    | some itemTy =>
+                        let width ← arrayElementWidth "Array.push" itemTy
+                        let arrayResult ← extractExprFrom ctx locals nextLocal array
+                        let valueResult ← extractValueFrom ctx locals arrayResult.snd value
+                        let slots ← flattenArrayElementValue itemTy valueResult.fst
+                        .ok (.arrayPushSlots width arrayResult.fst slots, valueResult.snd)
+                    | none => .error "unsupported Array.push item type"
+                | _, _ => .error "unsupported Array.push application"
             | (.const ``Array.pop _, args) =>
                 match args, args.reverse with
                 | itemTy :: _, array :: _ =>
                     match typeAtom? ctx.env itemTy with
                     | some itemTy =>
-                        if supportedArrayCellType itemTy then
-                          let arrayResult ← extractExprFrom ctx locals nextLocal array
-                          .ok (.arrayPop arrayResult.fst, arrayResult.snd)
-                        else
-                          .error s!"unsupported Array.pop item type: {reprStr itemTy}"
+                        let width ← arrayElementWidth "Array.pop" itemTy
+                        let arrayResult ← extractExprFrom ctx locals nextLocal array
+                        .ok (.arrayPopSlots width arrayResult.fst, arrayResult.snd)
                     | none => .error "unsupported Array.pop item type"
                 | _, _ => .error "unsupported Array.pop application"
             | (.const ``Array.eraseIdxIfInBounds _, args) =>
@@ -3619,12 +3622,10 @@ mutual
                 | itemTy :: _, right :: left :: _ =>
                     match typeAtom? ctx.env itemTy with
                     | some itemTy =>
-                        if supportedArrayCellType itemTy then
-                          let leftResult ← extractExprFrom ctx locals nextLocal left
-                          let rightResult ← extractExprFrom ctx locals leftResult.snd right
-                          .ok (.arrayAppend leftResult.fst rightResult.fst, rightResult.snd)
-                        else
-                          .error s!"unsupported Array.append item type: {reprStr itemTy}"
+                        let width ← arrayElementWidth "Array.append" itemTy
+                        let leftResult ← extractExprFrom ctx locals nextLocal left
+                        let rightResult ← extractExprFrom ctx locals leftResult.snd right
+                        .ok (.arrayAppendSlots width leftResult.fst rightResult.fst, rightResult.snd)
                     | none => .error "unsupported Array.append item type"
                 | _, _ => .error "unsupported Array.append application"
             | (.const ``Array.insertIdxIfInBounds _, args) =>
@@ -3649,12 +3650,10 @@ mutual
             | (.const ``HAppend.hAppend _, args) =>
                 match args.reverse, primitiveResultType? ctx.env args with
                 | right :: left :: _, some (.array itemTy) =>
-                    if supportedArrayCellType itemTy then
-                      let leftResult ← extractExprFrom ctx locals nextLocal left
-                      let rightResult ← extractExprFrom ctx locals leftResult.snd right
-                      .ok (.arrayAppend leftResult.fst rightResult.fst, rightResult.snd)
-                    else
-                      .error "unsupported HAppend.hAppend application"
+                    let width ← arrayElementWidth "HAppend.hAppend" itemTy
+                    let leftResult ← extractExprFrom ctx locals nextLocal left
+                    let rightResult ← extractExprFrom ctx locals leftResult.snd right
+                    .ok (.arrayAppendSlots width leftResult.fst rightResult.fst, rightResult.snd)
                 | _, _ => .error "unsupported HAppend.hAppend application"
             | (.const ``Array.modify _, args) =>
                 match args.reverse with
@@ -3685,14 +3684,12 @@ mutual
                 | itemTy :: _, stop :: start :: array :: _ =>
                     match typeAtom? ctx.env itemTy with
                     | some itemTy =>
-                        if supportedArrayCellType itemTy then
-                          let arrayResult ← extractExprFrom ctx locals nextLocal array
-                          let startResult ← extractExprFrom ctx locals arrayResult.snd start
-                          let stopResult ← extractExprFrom ctx locals startResult.snd stop
-                          .ok (.arrayExtract arrayResult.fst startResult.fst stopResult.fst,
-                            stopResult.snd)
-                        else
-                          .error s!"unsupported Array.extract item type: {reprStr itemTy}"
+                        let width ← arrayElementWidth "Array.extract" itemTy
+                        let arrayResult ← extractExprFrom ctx locals nextLocal array
+                        let startResult ← extractExprFrom ctx locals arrayResult.snd start
+                        let stopResult ← extractExprFrom ctx locals startResult.snd stop
+                        .ok (.arrayExtractSlots width arrayResult.fst startResult.fst stopResult.fst,
+                          stopResult.snd)
                     | none => .error "unsupported Array.extract item type"
                 | _, _ => .error "unsupported Array.extract application"
             | (.const ``Array.map _, args) =>
