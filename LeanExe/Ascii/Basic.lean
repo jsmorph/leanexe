@@ -5,13 +5,18 @@ namespace Ascii
 
 def byteLBrace : UInt8 := 123
 def byteRBrace : UInt8 := 125
+def byteLBracket : UInt8 := 91
+def byteRBracket : UInt8 := 93
 def byteQuote : UInt8 := 34
+def byteBackslash : UInt8 := 92
 def byteColon : UInt8 := 58
 def byteComma : UInt8 := 44
 def byteDigitZero : UInt8 := 48
 def byteA : UInt8 := 97
 def byteB : UInt8 := 98
+def byteF : UInt8 := 102
 def byteN : UInt8 := 110
+def byteT : UInt8 := 116
 
 def isWs (byte : UInt8) : Bool :=
   byte == (32 : UInt8) ||
