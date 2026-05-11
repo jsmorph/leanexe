@@ -79,6 +79,7 @@ mutual
     | arrayReverseSlots (width : Nat) (array : Expr)
     | byteArrayGet (ptr len index : Expr)
     | byteArrayPushPtr (ptr len value : Expr)
+    | byteArrayAppendPtr (leftPtr leftLen rightPtr rightLen : Expr)
     | call (index : Nat) (args : List Expr)
     deriving BEq, Repr
 
@@ -181,6 +182,7 @@ mutual
     | .arrayReverseSlots _ array => array.eval module_ store
     | .byteArrayGet _ _ _ => 0
     | .byteArrayPushPtr ptr _ _ => ptr.eval module_ store
+    | .byteArrayAppendPtr leftPtr _ _ _ => leftPtr.eval module_ store
     | .call index args =>
         match module_.getFunc? index with
         | some func => func.eval module_ (args.map (fun arg => arg.eval module_ store))
