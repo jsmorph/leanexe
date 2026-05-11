@@ -777,6 +777,27 @@ def arrayFoldEmptySkipsFunctionTrap : Nat :=
     (fun acc _value => acc + ((Array.replicate 0 (0 : UInt64))[0]!).toNat)
     7
 
+def arrayFindIdxSome : Option Nat :=
+  (#[1, 2, 3] : Array UInt64).findIdx? (fun value => value == 2)
+
+def arrayFindIdxNone : Option Nat :=
+  (#[1, 2, 3] : Array UInt64).findIdx? (fun value => value == 9)
+
+def arrayFindIdxStructure : Option Nat :=
+  (#[{ x := 1, y := 2 }, { x := 3, y := 4 }] : Array Point).findIdx?
+    (fun point => point.y == 4)
+
+def arrayFindIdxStatus : Option Nat :=
+  (#[Status.error 5, Status.ok 7] : Array Status).findIdx?
+    (fun status =>
+      match status with
+      | Status.ok value => value == 7
+      | Status.error _ => false)
+
+def arrayFindIdxEmptySkipsPredicateTrap : Option Nat :=
+  (#[] : Array UInt64).findIdx?
+    (fun _value => (Array.replicate 0 false)[0]!)
+
 def arrayUInt8Read : Nat :=
   let a : Array UInt8 := #[(1 : UInt8), (300 : UInt8)]
   a[0]!.toNat * 1000 + a[1]!.toNat

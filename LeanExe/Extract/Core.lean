@@ -1814,6 +1814,8 @@ partial def demandExpr
                   Demand.always (demandExpr ctx visiting array)
                     (demandOptionSomeArm ctx visiting mapFn)
               | _ => .empty
+          | (.const ``Array.findIdx? _, args) =>
+              args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
           | (.const ``Array.foldl _, args) =>
               args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
           | (.const ``Array.insertIdxIfInBounds _, args) =>
@@ -2815,6 +2817,35 @@ mutual
                     .error s!"unsupported GetElem?.getElem? receiver type: {reprStr other}"
                 | none => .error "unsupported GetElem?.getElem? receiver type"
             | _ => .error "unsupported GetElem?.getElem? application"
+        | (.const ``Array.findIdx? _, args) =>
+            match args, args.reverse with
+            | itemTyExpr :: _, array :: predicate :: _ =>
+                match typeAtom? ctx.env itemTyExpr with
+                | some itemTy =>
+                  match arrayElementSlots? itemTy with
+                  | some sourceWidth =>
+                    let arrayResult ← extractExprFrom ctx locals nextLocal array
+                    let itemStart := arrayResult.snd
+                    let predicateBody ←
+                      match collectLambdas predicate 1 with
+                      | some body => .ok body
+                      | none => .error "unsupported Array.findIdx? predicate"
+                    let itemValue ← arrayLocalValue itemTy itemStart
+                    let predicateResult ←
+                      extractExprFrom ctx
+                        (.value itemValue :: locals)
+                        (itemStart + sourceWidth)
+                        predicateBody
+                    let tag :=
+                      .arrayFindIdxSlots
+                        sourceWidth arrayResult.fst itemStart predicateResult.fst false
+                    let payload :=
+                      .arrayFindIdxSlots
+                        sourceWidth arrayResult.fst itemStart predicateResult.fst true
+                    .ok (mkOptionValue tag (.scalar payload), predicateResult.snd)
+                  | none => .error s!"unsupported Array.findIdx? item type: {reprStr itemTy}"
+                | none => .error "unsupported Array.findIdx? item type"
+            | _, _ => .error "unsupported Array.findIdx? application"
         | (.const ``Array.get!Internal _, args) =>
             match args, args.reverse with
             | itemTy :: _, index :: array :: _ =>
