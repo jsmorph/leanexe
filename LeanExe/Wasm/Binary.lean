@@ -304,6 +304,9 @@ mutual
     | .arrayExtractSlots _ array start stop =>
         10 + max (exprScratch array) (max (exprScratch start) (exprScratch stop))
     | .arrayMap array _ body => 4 + max (exprScratch array) (exprScratch body)
+    | .arrayMapSlots _ _ array _ bodyValues =>
+        4 + max (exprScratch array)
+          (bodyValues.foldl (fun n value => max n (exprScratch value)) 0)
     | .arrayInsertIfInBounds array index value =>
         7 + max (exprScratch array) (max (exprScratch index) (exprScratch value))
     | .arrayInsertIfInBoundsSlots _ array index values =>
@@ -878,6 +881,42 @@ mutual
       ofNats [11, 11] ++
       localGet newLocal
 
+  partial def emitArrayMapSlots
+      (scratch sourceWidth resultWidth : Nat)
+      (array : Expr)
+      (itemStart : Nat)
+      (bodyValues : List Expr) : List UInt8 :=
+    let arrayLocal := scratch
+    let lenLocal := scratch + 1
+    let newLocal := scratch + 2
+    let loopLocal := scratch + 3
+    let childScratch := scratch + 4
+    let rec emitSourceLoads : List Nat → List UInt8
+      | [] => []
+      | offset :: rest =>
+          arraySlotAddress sourceWidth offset (localGet arrayLocal) (localGet loopLocal) ++
+            i64Load ++ localSet (itemStart + offset) ++ emitSourceLoads rest
+    let rec emitResultStores : List (Nat × Expr) → List UInt8
+      | [] => []
+      | (offset, value) :: rest =>
+          arraySlotAddress resultWidth offset (localGet newLocal) (localGet loopLocal) ++
+            emitExpr childScratch value ++ i64Store ++ emitResultStores rest
+    emitExpr childScratch array ++ localSet arrayLocal ++
+      localGet arrayLocal ++ i32WrapI64 ++ i64Load ++ localSet lenLocal ++
+      globalGet 0 ++ localSet newLocal ++
+      localGet newLocal ++ i32WrapI64 ++ localGet lenLocal ++ i64Store ++
+      globalGet 0 ++ i64Const 8 ++ localGet lenLocal ++ i64Const resultWidth ++
+        ofNats [126] ++ i64Const 8 ++ ofNats [126, 124, 124] ++ globalSet 0 ++
+      i64Const 0 ++ localSet loopLocal ++
+      ofNats [2, 64, 3, 64] ++
+        localGet loopLocal ++ localGet lenLocal ++ i64GeU ++ ofNats [13] ++ u32leb 1 ++
+        emitSourceLoads (List.range sourceWidth) ++
+        emitResultStores (enumerate bodyValues) ++
+        localGet loopLocal ++ i64Const 1 ++ ofNats [124] ++ localSet loopLocal ++
+        ofNats [12] ++ u32leb 0 ++
+      ofNats [11, 11] ++
+      localGet newLocal
+
   partial def emitArrayInsertIfInBounds (scratch : Nat) (array index value : Expr) : List UInt8 :=
     let arrayLocal := scratch
     let indexLocal := scratch + 1
@@ -1285,6 +1324,8 @@ mutual
     | .arrayExtractSlots width array start stop =>
         emitArrayExtractSlots scratch width array start stop
     | .arrayMap array itemSlot body => emitArrayMap scratch array itemSlot body
+    | .arrayMapSlots sourceWidth resultWidth array itemStart bodyValues =>
+        emitArrayMapSlots scratch sourceWidth resultWidth array itemStart bodyValues
     | .arrayInsertIfInBounds array index value =>
         emitArrayInsertIfInBounds scratch array index value
     | .arrayInsertIfInBoundsSlots width array index values =>
@@ -1963,6 +2004,45 @@ mutual
           "br 0"]) ++
       ["  end", "end", s!"local.get {newLocal}"]
 
+  partial def arrayMapSlotsWatLines
+      (scratch sourceWidth resultWidth : Nat)
+      (array : Expr)
+      (itemStart : Nat)
+      (bodyValues : List Expr) : List String :=
+    let arrayLocal := scratch
+    let lenLocal := scratch + 1
+    let newLocal := scratch + 2
+    let loopLocal := scratch + 3
+    let childScratch := scratch + 4
+    let rec sourceLoads : List Nat → List String
+      | [] => []
+      | offset :: rest =>
+          arraySlotAddressWat sourceWidth offset [s!"local.get {arrayLocal}"] [s!"local.get {loopLocal}"] ++
+            ["i64.load align=8", s!"local.set {itemStart + offset}"] ++ sourceLoads rest
+    let rec resultStores : List (Nat × Expr) → List String
+      | [] => []
+      | (offset, value) :: rest =>
+          arraySlotAddressWat resultWidth offset [s!"local.get {newLocal}"] [s!"local.get {loopLocal}"] ++
+            exprWatLines childScratch value ++ ["i64.store align=8"] ++ resultStores rest
+    exprWatLines childScratch array ++ [s!"local.set {arrayLocal}",
+      s!"local.get {arrayLocal}", "i32.wrap_i64", "i64.load align=8",
+      s!"local.set {lenLocal}",
+      "global.get 0", s!"local.set {newLocal}",
+      s!"local.get {newLocal}", "i32.wrap_i64", s!"local.get {lenLocal}",
+      "i64.store align=8",
+      "global.get 0", "i64.const 8", s!"local.get {lenLocal}", s!"i64.const {resultWidth}",
+      "i64.mul", "i64.const 8", "i64.mul", "i64.add", "i64.add", "global.set 0",
+      "i64.const 0", s!"local.set {loopLocal}",
+      "block", "  loop",
+      s!"    local.get {loopLocal}", s!"    local.get {lenLocal}", "    i64.ge_u",
+      "    br_if 1"] ++
+      indent 4 (
+        sourceLoads (List.range sourceWidth) ++
+        resultStores (enumerate bodyValues) ++
+        [s!"local.get {loopLocal}", "i64.const 1", "i64.add", s!"local.set {loopLocal}",
+          "br 0"]) ++
+      ["  end", "end", s!"local.get {newLocal}"]
+
   partial def arrayInsertIfInBoundsWatLines
       (scratch : Nat)
       (array index value : Expr) : List String :=
@@ -2399,6 +2479,8 @@ mutual
     | .arrayExtractSlots width array start stop =>
         arrayExtractSlotsWatLines scratch width array start stop
     | .arrayMap array itemSlot body => arrayMapWatLines scratch array itemSlot body
+    | .arrayMapSlots sourceWidth resultWidth array itemStart bodyValues =>
+        arrayMapSlotsWatLines scratch sourceWidth resultWidth array itemStart bodyValues
     | .arrayInsertIfInBounds array index value =>
         arrayInsertIfInBoundsWatLines scratch array index value
     | .arrayInsertIfInBoundsSlots width array index values =>
