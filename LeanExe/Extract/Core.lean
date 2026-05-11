@@ -1060,6 +1060,62 @@ def arrayLoadValue
   .ok loaded.fst
 
 mutual
+  partial def arrayFindValueAt
+      (width : Nat)
+      (array : IRExpr)
+      (itemStart : Nat)
+      (predicate : IRExpr) :
+      Ty → Nat → Except String (ExtractedValue × Nat)
+    | .bool, slot => .ok (.scalar (.arrayFindSlot width array itemStart predicate slot), slot + 1)
+    | .u8, slot => .ok (.scalar (.arrayFindSlot width array itemStart predicate slot), slot + 1)
+    | .u32, slot => .ok (.scalar (.arrayFindSlot width array itemStart predicate slot), slot + 1)
+    | .u64, slot => .ok (.scalar (.arrayFindSlot width array itemStart predicate slot), slot + 1)
+    | .nat, slot => .ok (.scalar (.arrayFindSlot width array itemStart predicate slot), slot + 1)
+    | .struct name fields, slot => do
+        let result ← arrayFindFieldsAt width array itemStart predicate fields slot
+        .ok (.struct name result.fst, result.snd)
+    | .variant name ctors, slot => do
+        let tag := .arrayFindSlot width array itemStart predicate slot
+        let result ← arrayFindCtorsAt width array itemStart predicate ctors (slot + 1)
+        .ok (.variant name tag result.fst, result.snd)
+    | other, _ => .error s!"unsupported array find element type: {reprStr other}"
+
+  partial def arrayFindFieldsAt
+      (width : Nat)
+      (array : IRExpr)
+      (itemStart : Nat)
+      (predicate : IRExpr) :
+      List Ty → Nat → Except String (List ExtractedValue × Nat)
+    | [], slot => .ok ([], slot)
+    | field :: rest, slot => do
+        let head ← arrayFindValueAt width array itemStart predicate field slot
+        let tail ← arrayFindFieldsAt width array itemStart predicate rest head.snd
+        .ok (head.fst :: tail.fst, tail.snd)
+
+  partial def arrayFindCtorsAt
+      (width : Nat)
+      (array : IRExpr)
+      (itemStart : Nat)
+      (predicate : IRExpr) :
+      List (List Ty) → Nat → Except String (List (List ExtractedValue) × Nat)
+    | [], slot => .ok ([], slot)
+    | fields :: rest, slot => do
+        let head ← arrayFindFieldsAt width array itemStart predicate fields slot
+        let tail ← arrayFindCtorsAt width array itemStart predicate rest head.snd
+        .ok (head.fst :: tail.fst, tail.snd)
+end
+
+def arrayFindValue
+    (itemTy : Ty)
+    (width : Nat)
+    (array : IRExpr)
+    (itemStart : Nat)
+    (predicate : IRExpr) :
+    Except String ExtractedValue := do
+  let loaded ← arrayFindValueAt width array itemStart predicate itemTy 0
+  .ok loaded.fst
+
+mutual
   partial def arrayLocalValueAt (start : Nat) :
       Ty → Nat → Except String (ExtractedValue × Nat)
     | .bool, slot => .ok (.scalar (.local (start + slot)), slot + 1)
@@ -1815,6 +1871,8 @@ partial def demandExpr
                     (demandOptionSomeArm ctx visiting mapFn)
               | _ => .empty
           | (.const ``Array.findIdx? _, args) =>
+              args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
+          | (.const ``Array.find? _, args) =>
               args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
           | (.const ``Array.any _, args) =>
               args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
@@ -2850,6 +2908,39 @@ mutual
                   | none => .error s!"unsupported Array.findIdx? item type: {reprStr itemTy}"
                 | none => .error "unsupported Array.findIdx? item type"
             | _, _ => .error "unsupported Array.findIdx? application"
+        | (.const ``Array.find? _, args) =>
+            match args, args.reverse with
+            | itemTyExpr :: _, array :: predicate :: _ =>
+                match typeAtom? ctx.env itemTyExpr with
+                | some itemTy =>
+                  match arrayElementSlots? itemTy with
+                  | some sourceWidth =>
+                    let arrayResult ← extractExprFrom ctx locals nextLocal array
+                    let itemStart := arrayResult.snd
+                    let predicateBody ←
+                      match collectLambdas predicate 1 with
+                      | some body => .ok body
+                      | none => .error "unsupported Array.find? predicate"
+                    let itemValue ← arrayLocalValue itemTy itemStart
+                    let predicateResult ←
+                      extractExprFrom ctx
+                        (.value itemValue :: locals)
+                        (itemStart + sourceWidth)
+                        predicateBody
+                    let tag :=
+                      .arrayFindIdxSlots
+                        sourceWidth arrayResult.fst itemStart predicateResult.fst false
+                    let payload ←
+                      arrayFindValue
+                        itemTy
+                        sourceWidth
+                        arrayResult.fst
+                        itemStart
+                        predicateResult.fst
+                    .ok (mkOptionValue tag payload, predicateResult.snd)
+                  | none => .error s!"unsupported Array.find? item type: {reprStr itemTy}"
+                | none => .error "unsupported Array.find? item type"
+            | _, _ => .error "unsupported Array.find? application"
         | (.const ``Array.get!Internal _, args) =>
             match args, args.reverse with
             | itemTy :: _, index :: array :: _ =>

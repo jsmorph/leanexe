@@ -285,6 +285,11 @@ const cases = [
   },
   {
     moduleName: "LeanExe.Examples.Correctness",
+    entryName: "LeanExe.Examples.Correctness.arrayFindStructure",
+    shape: "entry shape: Option LeanExe.Examples.Correctness.Point",
+  },
+  {
+    moduleName: "LeanExe.Examples.Correctness",
     entryName: "LeanExe.Examples.Correctness.arrayAllStructure",
     shape: "entry shape: Bool",
   },

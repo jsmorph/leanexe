@@ -2087,3 +2087,18 @@ Checks run:
 - [x] `node test/report_classification.js` returned `checked 78 report classification cases`.
 - [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/current/wasmtime wast .lake/build/core-correctness/arrayAllStructure.wat` accepted the generated module.
 - [x] `node test/run_all.js` returned `checked 78 report classification cases`, `checked 411 accepted, 16 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, and `checked 56 cases`.
+
+## 2026-05-11: Array find?
+
+The generic compiler now lowers `Array.find?` for fixed-width array element layouts and direct one-argument predicates returning `Bool`.  The operation returns a source-shaped `Option` payload, so scalar, structure, and tagged elements all use the existing `Option` ABI and internal representation.  The current lowering emits one search for the tag and one search for each demanded payload slot; this preserves pure results but should be replaced by a shared loop result before treating `find?` as a performance primitive.
+
+`LeanExe.Examples.Correctness.arrayFindSome` and `arrayFindNone` cover scalar payloads.  `arrayFindStructure` covers a returned structure payload, and `arrayFindStatus` covers a returned tagged payload.  `arrayFindEmptySkipsPredicateTrap` checks skipped predicate evaluation on an empty array.
+
+Checks run:
+
+- [x] `lake build`
+- [x] `lake build LeanExe.Examples.Correctness`
+- [x] `node test/core_correctness.js` returned `checked 416 accepted, 16 rejected, and 13 trapped cases`.
+- [x] `node test/report_classification.js` returned `checked 79 report classification cases`.
+- [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/current/wasmtime wast .lake/build/core-correctness/arrayFindStatus.wat` accepted the generated module.
+- [x] `node test/run_all.js` returned `checked 79 report classification cases`, `checked 416 accepted, 16 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, and `checked 56 cases`.
