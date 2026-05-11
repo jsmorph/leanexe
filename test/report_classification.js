@@ -295,6 +295,11 @@ const cases = [
   },
   {
     moduleName: "LeanExe.Examples.Correctness",
+    entryName: "LeanExe.Examples.Correctness.arrayFilterStructureRead",
+    shape: "entry shape: UInt64",
+  },
+  {
+    moduleName: "LeanExe.Examples.Correctness",
     entryName: "LeanExe.Examples.Correctness.recPointFuel",
     shape: "entry shape: Nat -> UInt64 -> LeanExe.Examples.Correctness.Point",
   },

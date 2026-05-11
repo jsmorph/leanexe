@@ -850,6 +850,60 @@ def arrayAllEmptySkipsPredicateTrap : Bool :=
   (#[] : Array UInt64).all
     (fun _value => (Array.replicate 0 false)[0]!)
 
+def arrayFilterScalarsRead : UInt64 :=
+  let b := (#[1, 5, 7, 2, 7] : Array UInt64).filter (fun value => value > 2)
+  if b.size == 3 then
+    b[0]! * (100 : UInt64) + b[1]! * (10 : UInt64) + b[2]!
+  else
+    0
+
+def arrayFilterWindowRead : UInt64 :=
+  let b := (#[1, 2, 5, 7] : Array UInt64).filter (fun _value => true) 1 3
+  if b.size == 2 then
+    b[0]! * (10 : UInt64) + b[1]!
+  else
+    0
+
+def arrayFilterNoneSize : Nat :=
+  ((#[1, 2, 3] : Array UInt64).filter (fun value => value == 9)).size
+
+def arrayFilterStructureRead : UInt64 :=
+  let b :=
+    (#[{ x := 1, y := 2 }, { x := 3, y := 4 }, { x := 5, y := 6 }] : Array Point).filter
+      (fun point => point.y > 2)
+  if b.size == 2 then
+    match b[0]? with
+    | none => 0
+    | some first =>
+        match b[1]? with
+        | none => 0
+        | some second =>
+            first.x * (1000 : UInt64) + first.y * (100 : UInt64) +
+              second.x * (10 : UInt64) + second.y
+  else
+    0
+
+def arrayFilterStatusRead : UInt64 :=
+  let b :=
+    (#[Status.error 5, Status.ok 7, Status.ok 2] : Array Status).filter
+      (fun status =>
+        match status with
+        | Status.ok _ => true
+        | Status.error _ => false)
+  if b.size == 2 then
+    match b[0]? with
+    | none => 0
+    | some first =>
+        match b[1]? with
+        | none => 0
+        | some second => statusLeftScore first * (10 : UInt64) + statusLeftScore second
+  else
+    0
+
+def arrayFilterEmptySkipsPredicateTrap : Nat :=
+  ((#[] : Array UInt64).filter
+    (fun _value => (Array.replicate 0 false)[0]!)).size
+
 def arrayUInt8Read : Nat :=
   let a : Array UInt8 := #[(1 : UInt8), (300 : UInt8)]
   a[0]!.toNat * 1000 + a[1]!.toNat

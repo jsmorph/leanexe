@@ -1878,6 +1878,8 @@ partial def demandExpr
               args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
           | (.const ``Array.all _, args) =>
               args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
+          | (.const ``Array.filter _, args) =>
+              args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
           | (.const ``Array.foldl _, args) =>
               args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
           | (.const ``Array.insertIdxIfInBounds _, args) =>
@@ -4312,6 +4314,48 @@ mutual
                       | none => .error s!"unsupported Array.all item type: {reprStr itemTy}"
                     | none => .error "unsupported Array.all item type"
                 | _ => .error "unsupported Array.all application"
+            | (.const ``Array.filter _, args) =>
+                match args with
+                | itemTyExpr :: predicate :: array :: rest =>
+                    match typeAtom? ctx.env itemTyExpr with
+                    | some itemTy =>
+                      match arrayElementSlots? itemTy with
+                      | some sourceWidth =>
+                        let arrayResult ← extractExprFrom ctx locals nextLocal array
+                        let startStop ←
+                          match rest with
+                          | [] => .ok ((.u64 0, .arraySize arrayResult.fst), arrayResult.snd)
+                          | [start] =>
+                              let startResult ← extractExprFrom ctx locals arrayResult.snd start
+                              .ok ((startResult.fst, .arraySize arrayResult.fst), startResult.snd)
+                          | [start, stop] =>
+                              let startResult ← extractExprFrom ctx locals arrayResult.snd start
+                              let stopResult ← extractExprFrom ctx locals startResult.snd stop
+                              .ok ((startResult.fst, stopResult.fst), stopResult.snd)
+                          | _ => .error "unsupported Array.filter application"
+                        let itemStart := startStop.snd
+                        let predicateBody ←
+                          match collectLambdas predicate 1 with
+                          | some body => .ok body
+                          | none => .error "unsupported Array.filter predicate"
+                        let itemValue ← arrayLocalValue itemTy itemStart
+                        let predicateResult ←
+                          extractExprFrom ctx
+                            (.value itemValue :: locals)
+                            (itemStart + sourceWidth)
+                            predicateBody
+                        .ok
+                          (.arrayFilterSlots
+                            sourceWidth
+                            arrayResult.fst
+                            startStop.fst.fst
+                            startStop.fst.snd
+                            itemStart
+                            predicateResult.fst,
+                            predicateResult.snd)
+                      | none => .error s!"unsupported Array.filter item type: {reprStr itemTy}"
+                    | none => .error "unsupported Array.filter item type"
+                | _ => .error "unsupported Array.filter application"
             | (.const ``Array.foldl _, args) =>
                 match args with
                 | sourceTyExpr :: resultTyExpr :: foldFn :: init :: array :: rest =>
