@@ -1718,3 +1718,23 @@ Checks run:
 - [x] `node test/report_classification.js` returned `checked 38 report classification cases`.
 - [x] `node test/core_correctness.js` returned `checked 333 accepted, 16 rejected, and 7 trapped cases`.
 - [x] `node test/run_all.js` returned `checked 38 report classification cases`, `checked 333 accepted, 16 rejected, and 7 trapped cases`, `checked 36 bytearray allocation cases`, and `checked 56 cases`.
+
+## 2026-05-11: Scalar array element types
+
+The array representation now admits every element type that fits the existing one-cell array layout: `Bool`, `UInt8`, `UInt32`, `UInt64`, and bounded `Nat`.  Each element still occupies one eight-byte cell in linear memory.  `UInt8` and `UInt32` keep their constrained scalar representations inside that cell, `Bool` uses `0` or `1`, and `Nat` uses the bounded runtime representation.  This preserves the existing copy-on-write array operations without changing indexing, copying, or returned-pointer behavior.
+
+Arrays of structures and tagged values remain planned.  They need a multi-slot element layout before implementation: element width, copy loops, field access, inactive payload slots, and host decoding must be specified together.
+
+Checks run:
+
+- [x] `lake build LeanExe.Examples.Correctness`
+- [x] `lake build`
+- [x] `node test/report_classification.js` returned `checked 42 report classification cases`.
+- [x] `node test/core_correctness.js` returned `checked 339 accepted, 17 rejected, and 7 trapped cases`.
+- [x] `.lake/build/bin/lean-wasm compile-wat --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.arrayUInt8Read --out .lake/build/core-correctness/arrayUInt8Read.wat`
+- [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/wasmtime-v44.0.0-aarch64-linux/wasmtime --invoke arrayUInt8Read .lake/build/core-correctness/arrayUInt8Read.wat` returned `1044`.
+- [x] `.lake/build/bin/lean-wasm compile-wat --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.arrayUInt32MapRead --out .lake/build/core-correctness/arrayUInt32MapRead.wat`
+- [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/wasmtime-v44.0.0-aarch64-linux/wasmtime --invoke arrayUInt32MapRead .lake/build/core-correctness/arrayUInt32MapRead.wat` returned `3`.
+- [x] `.lake/build/bin/lean-wasm compile-wat --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.arrayBoolRead --out .lake/build/core-correctness/arrayBoolRead.wat`
+- [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/wasmtime-v44.0.0-aarch64-linux/wasmtime --invoke arrayBoolRead .lake/build/core-correctness/arrayBoolRead.wat` returned `1`.
+- [x] `node test/run_all.js` returned `checked 42 report classification cases`, `checked 339 accepted, 17 rejected, and 7 trapped cases`, `checked 36 bytearray allocation cases`, and `checked 56 cases`.

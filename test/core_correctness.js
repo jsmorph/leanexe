@@ -176,6 +176,12 @@ const accepted = [
   { name: "arrayMapRead", args: [], expected: 246n },
   { name: "arrayMapAliasRead", args: [], expected: 111n },
   { name: "arrayMapEmptySkipsFunctionTrap", args: [], expected: 0n },
+  { name: "arrayUInt8Read", args: [], expected: 1044n },
+  { name: "arrayUInt8SetRead", args: [], expected: 44n },
+  { name: "arrayUInt8GetQuestion", args: [], expected: 5n },
+  { name: "arrayUInt32MapRead", args: [], expected: 3n },
+  { name: "arrayBoolRead", args: [], expected: 1n },
+  { name: "arrayNatRead", args: [], expected: 103n },
   { name: "arrayLiteralRead", args: [], expected: 1030n },
   { name: "arrayGetProof", args: [], expected: 10n },
   { name: "arrayEmptyLiteral", args: [], expected: 1n },
@@ -369,6 +375,10 @@ const rejected = [
   {
     name: "rejectByteArrayReturn",
     message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectByteArrayReturn",
+  },
+  {
+    name: "rejectStructureArrayReturn",
+    message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectStructureArrayReturn",
   },
   {
     name: "rejectUInt8Param",

@@ -741,6 +741,36 @@ def arrayMapAliasRead : UInt64 :=
 def arrayMapEmptySkipsFunctionTrap : Nat :=
   ((#[] : Array UInt64).map (fun _ => (Array.replicate 0 (0 : UInt64)).back!)).size
 
+def arrayUInt8Read : Nat :=
+  let a : Array UInt8 := #[(1 : UInt8), (300 : UInt8)]
+  a[0]!.toNat * 1000 + a[1]!.toNat
+
+def arrayUInt8SetRead : Nat :=
+  let a : Array UInt8 := #[(1 : UInt8)]
+  let b := a.set! 0 (300 : UInt8)
+  b[0]!.toNat
+
+def arrayUInt8GetQuestion : Nat :=
+  match (#[(5 : UInt8)] : Array UInt8)[0]? with
+  | none => 99
+  | some value => value.toNat
+
+def arrayUInt32MapRead : Nat :=
+  let a : Array UInt32 := #[(4294967295 : UInt32), (2 : UInt32)]
+  let b := a.map (fun value => value + 1)
+  b[0]!.toNat + b[1]!.toNat
+
+def arrayBoolRead : UInt64 :=
+  let a : Array Bool := #[true, false]
+  if a[0]! && !a[1]! then
+    1
+  else
+    0
+
+def arrayNatRead : Nat :=
+  let a : Array Nat := (#[1, 2] : Array Nat).push 3
+  a[0]! * 100 + a[2]!
+
 def arrayLiteralRead : UInt64 :=
   let a : Array UInt64 := #[10, 20, 30]
   if a.size == 3 then
@@ -1495,6 +1525,9 @@ def rejectUnitParam (_value : Unit) : UInt64 :=
 
 def rejectByteArrayReturn (input : ByteArray) : ByteArray :=
   input
+
+def rejectStructureArrayReturn : Array Point :=
+  #[({ x := 1, y := 2 } : Point)]
 
 def rejectUInt8Param (b : UInt8) : Bool :=
   b == (0 : UInt8)
