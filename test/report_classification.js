@@ -94,6 +94,31 @@ const cases = [
     shape: "entry shape: ByteArray -> ByteArray",
   },
   {
+    moduleName: "LeanExe.Examples.AsciiStringPrograms",
+    entryName: "LeanExe.Examples.AsciiStringPrograms.validAscii",
+    shape: "entry shape: ByteArray -> Bool",
+  },
+  {
+    moduleName: "LeanExe.Examples.AsciiStringPrograms",
+    entryName: "LeanExe.Examples.AsciiStringPrograms.identityTrusted",
+    shape: "entry shape: LeanExe.AsciiString -> LeanExe.AsciiString",
+  },
+  {
+    moduleName: "LeanExe.Examples.AsciiStringPrograms",
+    entryName: "LeanExe.Examples.AsciiStringPrograms.appendBangOrQuestion",
+    shape: "entry shape: ByteArray -> ByteArray",
+  },
+  {
+    moduleName: "LeanExe.Examples.AsciiStringPrograms",
+    entryName: "LeanExe.Examples.AsciiStringPrograms.pushIfAscii",
+    shape: "entry shape: ByteArray -> UInt64 -> ByteArray",
+  },
+  {
+    moduleName: "LeanExe.Examples.AsciiStringPrograms",
+    entryName: "LeanExe.Examples.AsciiStringPrograms.appendSelfTrusted",
+    shape: "entry shape: ByteArray -> ByteArray",
+  },
+  {
     moduleName: "LeanExe.Examples.Correctness",
     entryName: "LeanExe.Examples.Correctness.optionBindProduct",
     shape: "entry shape: UInt64",

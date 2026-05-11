@@ -46,6 +46,7 @@ Arrays cross the ABI as arena pointers.  Array elements must have a fixed slot w
 | `UInt64` | Yes | Yes | Yes | Main scalar integer type for public entries. |
 | `Nat` | Yes | Yes | Yes | Runtime values must fit in the bounded `i64` representation. |
 | `ByteArray` | Yes | Yes | Yes | ABI is pointer and length. |
+| `LeanExe.AsciiString` | Yes | Yes | Yes | One-field structure over `ByteArray`; validation is explicit. |
 | `Array α` | Yes | Yes | Yes | `α` must have a fixed-width array layout. |
 | `Prod α β` | No | No | Yes | Products are internal values with lazy projection behavior. |
 | Structure | Yes | Yes | Yes | Monomorphic, nonrecursive structures with supported runtime fields. |
@@ -121,6 +122,14 @@ Supported construction and update operations include `ByteArray.empty`, `ByteArr
 Supported binary and loop operations include `ByteArray.toUInt64LE!`, `ByteArray.toUInt64BE!`, `ByteArray.foldl`, and `ByteArray.findIdx?`.  The fixed-width decoding operations require exactly eight bytes and trap otherwise.  `ByteArray.foldl` supports a one-slot accumulator such as `Bool`, `UInt8`, `UInt32`, `UInt64`, bounded `Nat`, or a supported array pointer, and byte-array folders and predicates must be direct lambdas.
 
 Unsupported byte-array features include `ByteArray.foldlM`, `USize` indexing APIs, `ByteArray.uset`, string conversion, UTF-8 decoding, effectful callbacks, and closure-valued callbacks.  Hosts interact with byte arrays through `alloc`, `memory`, and the pointer-length ABI.  Wasmtime's scalar `--invoke` interface is convenient for scalar examples, but byte-array entries need a host program that writes and reads module memory.
+
+## ASCII Strings
+
+`LeanExe.AsciiString` is a source-level structure whose runtime representation is one `ByteArray` field.  The type is intended for byte-oriented text that must remain in the ASCII range, which covers JSON punctuation, decimal digits, unescaped field names, simple error messages, and generated protocol text.  It avoids Lean `String` and `Char` semantics, so indexing remains byte indexing and the compiler does not need UTF-8 decoding.
+
+The library provides `empty`, `ofTrustedByteArray`, `toByteArray`, `size`, `isEmpty`, `get!`, `get?`, `getD`, `isAsciiByte`, `pushTrustedByte`, `pushByte?`, `append`, `extract`, `isAscii`, `ofByteArray?`, `singletonTrusted`, and `singleton?`.  Trusted constructors do not inspect bytes and therefore rely on the caller to preserve the ASCII invariant.  Checked constructors and checked pushes return `Option AsciiString`, using `none` when input bytes are outside `0..127`.
+
+The compiler treats `AsciiString` as an ordinary supported monomorphic structure over `ByteArray`.  An `AsciiString` entry parameter or result flattens like that structure, so the public ABI is the same pointer-length pair used by the underlying `ByteArray` field.  The recommended public boundary remains `ByteArray -> ByteArray` with explicit `AsciiString.ofByteArray?` validation inside the program, because that makes malformed host input part of the source-level behavior.
 
 ## Option, Except, and Products
 

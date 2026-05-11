@@ -2130,3 +2130,16 @@ Checks run:
 - [x] `lake build LeanExe.Examples.Correctness`
 - [x] `node test/core_correctness.js` returned `checked 429 accepted, 18 rejected, and 13 trapped cases`.
 - [x] `node test/run_all.js` returned `checked 80 report classification cases`, `checked 429 accepted, 18 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, and `checked 56 cases`.
+
+## 2026-05-11: ASCII string library
+
+`LeanExe.AsciiString` is a one-field structure over `ByteArray`, with explicit checked and trusted constructors.  The checked path uses a fuel-recursive byte scan and returns `Option AsciiString`; the trusted path wraps a byte buffer without validation.  The representation keeps the WASM ABI unchanged, because an ASCII string flattens to the pointer-length pair of its `ByteArray` field.
+
+`LeanExe.Examples.AsciiStringPrograms` covers ASCII validation, checked conversion, checked byte push, trusted append, extraction, and returned byte output.  The test harness compiles those examples through the generic compiler and compares WASM results with expected bytes.  The current library intentionally avoids Lean `String` and Unicode semantics; it is byte-oriented text for parsers and generators that need ASCII syntax.
+
+Checks run:
+
+- [x] `lake build LeanExe.Examples.AsciiStringPrograms`
+- [x] `node test/asciistring.js` returned `checked 14 asciistring cases`.
+- [x] `node test/report_classification.js` returned `checked 85 report classification cases`.
+- [x] `node test/run_all.js` returned `checked 85 report classification cases`, `checked 429 accepted, 18 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 14 asciistring cases`, and `checked 56 cases`.
