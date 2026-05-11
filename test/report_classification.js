@@ -70,6 +70,11 @@ const cases = [
   },
   {
     moduleName: "LeanExe.Examples.ByteArrayPrograms",
+    entryName: "LeanExe.Examples.ByteArrayPrograms.setBangFirstQuestion",
+    shape: "entry shape: ByteArray -> ByteArray",
+  },
+  {
+    moduleName: "LeanExe.Examples.ByteArrayPrograms",
     entryName: "LeanExe.Examples.ByteArrayPrograms.copyInputMiddle",
     shape: "entry shape: ByteArray -> ByteArray",
   },

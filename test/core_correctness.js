@@ -153,6 +153,12 @@ const accepted = [
   },
   { name: "byteArraySetSize", args: [], expected: 3n },
   {
+    name: "byteArraySetBangReturn",
+    args: [],
+    expected: [null, 3n],
+    memoryBytes: [{ resultIndex: 0, lengthIndex: 1, values: [65, 66, 90] }],
+  },
+  {
     name: "byteArrayMkReturn",
     args: [],
     expected: [null, 3n],
@@ -520,6 +526,7 @@ const trapped = [
   { name: "byteArrayPushSizeForcesValueTrap", args: [] },
   { name: "byteArrayAppendSizeForcesRightTrap", args: [] },
   { name: "byteArraySetSizeForcesValueTrap", args: [] },
+  { name: "byteArraySetBangTrap", args: [] },
   { name: "byteArrayMkSizeForcesArrayTrap", args: [] },
 ];
 

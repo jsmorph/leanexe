@@ -1725,6 +1725,8 @@ partial def demandExpr
               args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
           | (.const ``ByteArray.append _, args) =>
               args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
+          | (.const ``ByteArray.set! _, args) =>
+              args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
           | (.const ``ByteArray.set _, args) =>
               args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
           | (.const ``ByteArray.mk _, args) =>
@@ -3028,6 +3030,33 @@ mutual
             | _, _ =>
                 let scalarResult ← extractExprFrom ctx locals nextLocal expr
                 .ok (.scalar scalarResult.fst, scalarResult.snd)
+        | (.const ``ByteArray.set! _, args) =>
+            match args.reverse with
+            | value :: index :: array :: _ =>
+                let arrayResult ← extractValueFrom ctx locals nextLocal array
+                let parts ← byteArrayPartsWithLets arrayResult.fst
+                let indexResult ← extractExprFrom ctx locals arrayResult.snd index
+                let valueResult ← extractExprFrom ctx locals indexResult.snd value
+                let indexSlot := valueResult.snd
+                let valueSlot := indexSlot + 1
+                let ptrSlot := indexSlot + 2
+                let lenSlot := indexSlot + 3
+                let sourcePtr := wrapExprLets parts.fst parts.snd.fst
+                let sourceLen := wrapExprLets parts.fst parts.snd.snd
+                let setPtr :=
+                  .letE ptrSlot sourcePtr
+                    (.letE lenSlot sourceLen
+                      (.byteArraySetPtr
+                        (.local ptrSlot)
+                        (.local lenSlot)
+                        (.local indexSlot)
+                        (.local valueSlot)))
+                .ok
+                  (.letE indexSlot indexResult.fst
+                    (.letE valueSlot valueResult.fst
+                      (.byteArray setPtr sourceLen)),
+                    lenSlot + 1)
+            | _ => .error "unsupported ByteArray.set! application"
         | (.const ``ByteArray.set _, args) =>
             match args.reverse with
             | _proof :: value :: index :: array :: _ =>

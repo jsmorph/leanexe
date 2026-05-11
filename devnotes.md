@@ -2009,3 +2009,19 @@ Checks run:
 - [x] `node test/report_classification.js` returned `checked 73 report classification cases`.
 - [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/current/wasmtime wast .lake/build/bytearray-programs/appendNotationABCXYZ.wat` accepted the generated module.
 - [x] `node test/run_all.js` returned `checked 73 report classification cases`, `checked 391 accepted, 16 rejected, and 11 trapped cases`, `checked 64 bytearray allocation cases`, and `checked 56 cases`.
+
+## 2026-05-11: ByteArray set!
+
+The generic compiler now lowers trapping `ByteArray.set!`.  The operation uses the existing copy-on-write byte update lowering: it evaluates the source, index, and replacement byte, checks the index, allocates a fresh buffer with the original length, copies the source bytes, writes the replacement byte, and traps when the index is out of bounds.  This gives source code the ordinary non-proof update form while keeping alias behavior conservative.
+
+`LeanExe.Examples.ByteArrayPrograms.setBangABC` covers a compiler-constructed buffer, and `setBangFirstQuestion` covers a host-provided buffer guarded by an empty check.  `LeanExe.Examples.Correctness.byteArraySetBangTrap` checks the out-of-bounds trap path.  The implementation does not add `USize` indexing or `ByteArray.uset`.
+
+Checks run:
+
+- [x] `lake build`
+- [x] `lake build LeanExe.Examples.Correctness LeanExe.Examples.ByteArrayPrograms`
+- [x] `node test/bytearray_alloc.js` returned `checked 68 bytearray allocation cases`.
+- [x] `node test/core_correctness.js` returned `checked 392 accepted, 16 rejected, and 12 trapped cases`.
+- [x] `node test/report_classification.js` returned `checked 74 report classification cases`.
+- [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/current/wasmtime wast .lake/build/bytearray-programs/setBangFirstQuestion.wat` accepted the generated module.
+- [x] `node test/run_all.js` returned `checked 74 report classification cases`, `checked 392 accepted, 16 rejected, and 12 trapped cases`, `checked 68 bytearray allocation cases`, and `checked 56 cases`.

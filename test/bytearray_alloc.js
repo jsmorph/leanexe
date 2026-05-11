@@ -393,6 +393,26 @@ async function main() {
     }
   }
 
+  const setBangABC = await instantiate("setBangABC");
+  const setBangABCActual = callNoInputByteArrayOutput(setBangABC);
+  if (!sameBytes(setBangABCActual, new Uint8Array([65, 66, 90]))) {
+    throw new Error(`setBangABC: expected 65,66,90, got ${Array.from(setBangABCActual)}`);
+  }
+
+  const setBangFirstQuestion = await instantiate("setBangFirstQuestion");
+  const setBangFirstQuestionCases = [
+    { input: new Uint8Array([]), expected: new Uint8Array([]) },
+    { input: new Uint8Array([65]), expected: new Uint8Array([63]) },
+    { input: new Uint8Array([65, 66]), expected: new Uint8Array([63, 66]) },
+  ];
+
+  for (const testCase of setBangFirstQuestionCases) {
+    const actual = readByteArrayResult(setBangFirstQuestion, callByteArrayOutput(setBangFirstQuestion, testCase.input));
+    if (!sameBytes(actual, testCase.expected)) {
+      throw new Error(`setBangFirstQuestion: expected ${Array.from(testCase.expected)}, got ${Array.from(actual)}`);
+    }
+  }
+
   const copyInputMiddle = await instantiate("copyInputMiddle");
   const copyInputMiddleCases = [
     { input: new Uint8Array([]), expected: new Uint8Array([65, 66, 67]) },
@@ -466,6 +486,8 @@ async function main() {
     1 +
     1 +
     setFirstBangCases.length +
+    1 +
+    setBangFirstQuestionCases.length +
     copyInputMiddleCases.length +
     copyInputPastDestCases.length +
     1 +
