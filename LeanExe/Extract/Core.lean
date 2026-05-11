@@ -1,4 +1,5 @@
 import Lean
+import Init.Data.ByteArray.Extra
 import LeanExe.Extract.Env
 import LeanExe.IR.Core
 
@@ -841,6 +842,19 @@ def byteArrayCopySliceResultLen
       (.u64Bin .sub destLen suffixStart)
       (.u64 0)
   .u64Bin .add (.u64Bin .add prefixLen copiedLen) suffixLen
+
+def byteArrayLoadUInt64 (ptr len : IRExpr) (items : List (Nat × Nat)) : IRExpr :=
+  items.foldl
+    (fun acc item =>
+      .u64Bin .bitOr acc
+        (.u64Bin .shiftLeft (.byteArrayGet ptr len (.u64 item.fst)) (.u64 item.snd)))
+    (.u64 0)
+
+def byteArrayLoadUInt64Checked (ptr len : IRExpr) (items : List (Nat × Nat)) : IRExpr :=
+  .ite
+    (.eqU64 len (.u64 8))
+    (byteArrayLoadUInt64 ptr len items)
+    .trap
 
 partial def mapValueExprs (f : IRExpr → IRExpr) : ExtractedValue → ExtractedValue
   | .scalar expr => .scalar (f expr)
@@ -1739,6 +1753,10 @@ partial def demandExpr
                     .empty
               | _ => .empty
           | (.const ``ByteArray.foldl _, args) =>
+              args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
+          | (.const ``ByteArray.toUInt64LE! _, args) =>
+              args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
+          | (.const ``ByteArray.toUInt64BE! _, args) =>
               args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
           | (.const ``ByteArray.get! _, _) => .trap
           | (.const ``Array.size _, args) =>
@@ -4340,6 +4358,44 @@ mutual
                     let len := wrapExprLets parts.fst parts.snd.snd
                     .ok (boolExpr (.eqU64 len (.u64 0)), arrayResult.snd)
                 | _ => .error "unsupported ByteArray.isEmpty application"
+            | (.const ``ByteArray.toUInt64LE! _, args) =>
+                match args with
+                | [array] =>
+                    let arrayResult ← extractValueFrom ctx locals nextLocal array
+                    let parts ← byteArrayPartsWithLets arrayResult.fst
+                    let ptrSlot := arrayResult.snd
+                    let lenSlot := ptrSlot + 1
+                    let ptr := wrapExprLets parts.fst parts.snd.fst
+                    let len := wrapExprLets parts.fst parts.snd.snd
+                    .ok
+                      (.letE ptrSlot ptr
+                        (.letE lenSlot len
+                          (byteArrayLoadUInt64Checked
+                            (.local ptrSlot)
+                            (.local lenSlot)
+                            [(0, 0), (1, 8), (2, 16), (3, 24),
+                              (4, 32), (5, 40), (6, 48), (7, 56)])),
+                        lenSlot + 1)
+                | _ => .error "unsupported ByteArray.toUInt64LE! application"
+            | (.const ``ByteArray.toUInt64BE! _, args) =>
+                match args with
+                | [array] =>
+                    let arrayResult ← extractValueFrom ctx locals nextLocal array
+                    let parts ← byteArrayPartsWithLets arrayResult.fst
+                    let ptrSlot := arrayResult.snd
+                    let lenSlot := ptrSlot + 1
+                    let ptr := wrapExprLets parts.fst parts.snd.fst
+                    let len := wrapExprLets parts.fst parts.snd.snd
+                    .ok
+                      (.letE ptrSlot ptr
+                        (.letE lenSlot len
+                          (byteArrayLoadUInt64Checked
+                            (.local ptrSlot)
+                            (.local lenSlot)
+                            [(7, 0), (6, 8), (5, 16), (4, 24),
+                              (3, 32), (2, 40), (1, 48), (0, 56)])),
+                        lenSlot + 1)
+                | _ => .error "unsupported ByteArray.toUInt64BE! application"
             | (.const ``ByteArray.get! _, args) =>
                 match args.reverse with
                 | index :: array :: _ =>

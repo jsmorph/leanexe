@@ -1,3 +1,5 @@
+import Init.Data.ByteArray.Extra
+
 namespace LeanExe.Examples.Correctness
 
 def shortOrSkipsTrap : UInt64 :=
@@ -1887,6 +1889,17 @@ def byteArraySetBangReturn : ByteArray :=
 
 def byteArraySetBangTrap : ByteArray :=
   byteArrayReturnABC.set! 5 (90 : UInt8)
+
+def byteArrayToUInt64LE : UInt64 :=
+  (ByteArray.mk #[(1 : UInt8), (2 : UInt8), (3 : UInt8), (4 : UInt8),
+    (5 : UInt8), (6 : UInt8), (7 : UInt8), (8 : UInt8)]).toUInt64LE!
+
+def byteArrayToUInt64BE : UInt64 :=
+  (ByteArray.mk #[(1 : UInt8), (2 : UInt8), (3 : UInt8), (4 : UInt8),
+    (5 : UInt8), (6 : UInt8), (7 : UInt8), (8 : UInt8)]).toUInt64BE!
+
+def byteArrayToUInt64Trap : UInt64 :=
+  byteArrayReturnABC.toUInt64LE!
 
 def byteArrayMkReturn : ByteArray :=
   ByteArray.mk #[(65 : UInt8), (66 : UInt8), (67 : UInt8)]
