@@ -2161,3 +2161,16 @@ Checks run:
 - [x] `node test/core_correctness.js` returned `checked 430 accepted, 18 rejected, and 13 trapped cases`.
 - [x] `node test/run_all.js` returned `checked 87 report classification cases`, `checked 430 accepted, 18 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 14 asciistring cases`, `checked 12 json double cases`, and `checked 56 cases`.
 - [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/current/wasmtime wast .lake/build/json-double/transform.wat` accepted the generated module.
+
+## 2026-05-11: Reusable ASCII JSON helpers
+
+The JSON examples now share small helper modules instead of carrying local byte parsers in each example.  `LeanExe.Ascii.Basic` contains byte constants, whitespace scanning, and byte expectations; `LeanExe.Ascii.Decimal` contains checked unsigned decimal parsing and rendering for `UInt64`; `LeanExe.Ascii.Json` contains one-byte field-name parsing and the shared `{"error":1}` result.  `JsonDouble` now uses those helpers, and `JsonAdd` demonstrates a fixed two-field object that returns a checked `UInt64` sum.
+
+The compiler now emits a direct WASM call for a nonrecursive helper with a one-slot scalar result when demand analysis proves that strict argument evaluation preserves Lean behavior.  The first version allowed structured direct calls without enough proof, which forced inactive `Option` payloads across the flattened result ABI and made `AsciiString.getD` trap on out-of-bounds input.  Structured helper returns still work, but nonrecursive structured helpers remain inlined unless the current recursive call machinery or an accepted call shape requires flattened result slots.
+
+Checks run:
+
+- [x] `lake build`
+- [x] `node test/json_double.js` returned `checked 22 json program cases`.
+- [x] `node test/report_classification.js` returned `checked 88 report classification cases`.
+- [x] `node test/run_all.js` returned `checked 88 report classification cases`, `checked 430 accepted, 18 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 14 asciistring cases`, `checked 22 json program cases`, and `checked 56 cases`.

@@ -4,11 +4,8 @@ const fs = require("fs");
 const path = require("path");
 const { spawnSync } = require("child_process");
 
-const moduleName = "LeanExe.Examples.JsonDouble";
-const entryName = `${moduleName}.transform`;
 const leanExe = process.env.LEAN_WASM_EXE || path.join(".lake", "build", "bin", "lean-wasm");
-const outDir = path.join(".lake", "build", "json-double");
-const out = path.join(outDir, "transform.wasm");
+const outDir = path.join(".lake", "build", "json-programs");
 
 function run(args) {
   const result = spawnSync(args[0], args.slice(1), { encoding: "utf8" });
@@ -18,8 +15,11 @@ function run(args) {
   return result;
 }
 
-async function instantiate() {
+async function instantiate(moduleName) {
   fs.mkdirSync(outDir, { recursive: true });
+  const parts = moduleName.split(".");
+  const out = path.join(outDir, `${parts[parts.length - 1]}.wasm`);
+  const entryName = `${moduleName}.transform`;
   run([leanExe, "compile", "--module", moduleName, "--entry", entryName, "--out", out]);
   const wasm = fs.readFileSync(out);
   const { instance } = await WebAssembly.instantiate(wasm, {});
@@ -77,10 +77,14 @@ function callTransform(exports, input) {
 }
 
 async function main() {
-  run(["lake", "build", moduleName]);
-  const exports = await instantiate();
+  const doubleModule = "LeanExe.Examples.JsonDouble";
+  const addModule = "LeanExe.Examples.JsonAdd";
+  run(["lake", "build", doubleModule]);
+  run(["lake", "build", addModule]);
+  const doubleExports = await instantiate(doubleModule);
+  const addExports = await instantiate(addModule);
   const error = bytes('{"error":1}');
-  const cases = [
+  const doubleCases = [
     ["zero", bytes('{"n":0}'), bytes('{"result":0}')],
     ["simple", bytes('{"n":21}'), bytes('{"result":42}')],
     ["whitespace", bytes(' { "n" : 7 } '), bytes('{"result":14}')],
@@ -98,12 +102,31 @@ async function main() {
     ["trailing junk", bytes('{"n":1}x'), error],
     ["non-ascii", new Uint8Array([123, 34, 110, 34, 58, 49, 200, 125]), error],
   ];
+  const addCases = [
+    ["add zero", bytes('{"a":0,"b":0}'), bytes('{"sum":0}')],
+    ["add simple", bytes('{"a":19,"b":23}'), bytes('{"sum":42}')],
+    ["add whitespace", bytes(' { "a" : 7 , "b" : 35 } '), bytes('{"sum":42}')],
+    [
+      "add max",
+      bytes('{"a":18446744073709551615,"b":0}'),
+      bytes('{"sum":18446744073709551615}'),
+    ],
+    ["add overflow", bytes('{"a":18446744073709551615,"b":1}'), error],
+    ["add parse overflow", bytes('{"a":18446744073709551616,"b":0}'), error],
+    ["add wrong order", bytes('{"b":1,"a":2}'), error],
+    ["add missing comma", bytes('{"a":1 "b":2}'), error],
+    ["add trailing junk", bytes('{"a":1,"b":2}x'), error],
+    ["add non-ascii", new Uint8Array([123, 34, 97, 34, 58, 49, 44, 34, 98, 34, 58, 50, 200, 125]), error],
+  ];
 
-  for (const testCase of cases) {
-    expectBytes(testCase[0], callTransform(exports, testCase[1]), testCase[2]);
+  for (const testCase of doubleCases) {
+    expectBytes(testCase[0], callTransform(doubleExports, testCase[1]), testCase[2]);
+  }
+  for (const testCase of addCases) {
+    expectBytes(testCase[0], callTransform(addExports, testCase[1]), testCase[2]);
   }
 
-  process.stdout.write(`checked ${cases.length} json double cases\n`);
+  process.stdout.write(`checked ${doubleCases.length + addCases.length} json program cases\n`);
 }
 
 main().catch((error) => {
