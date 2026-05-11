@@ -2216,3 +2216,18 @@ Checks run:
 - [x] `node test/core_correctness.js` returned `checked 437 accepted, 21 rejected, and 13 trapped cases`.
 - [x] `node test/report_classification.js` returned `checked 90 report classification cases`.
 - [x] `node test/run_all.js` returned `checked 90 report classification cases`, `checked 437 accepted, 21 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 14 asciistring cases`, `checked 31 json program cases`, and `checked 56 cases`.
+
+## 2026-05-11: Limited JSON field tools
+
+`LeanExe.Ascii.Json` now has reusable ASCII-only field lookup and object generation helpers.  `findFieldRange` scans a top-level object for a named field, and the typed getters read `UInt64`, restricted unescaped ASCII strings, booleans, null, nested object slices, nested array slices, or raw value slices from that range.  The value skipper handles unknown nested object and array values by tracking nesting depth and restricted strings, which supports practical field lookup without claiming full JSON grammar validation.
+
+The generator side now has quoted-string helpers, field-prefix helpers, typed field appenders, and one-field object constructors for `UInt64`, `Bool`, and restricted ASCII strings.  The string grammar remains intentionally small: bytes must be ASCII, at least `32`, and neither quote nor backslash.  `appendRawField?` accepts a raw value only when the same limited value skipper consumes the whole slice after whitespace.
+
+`LeanExe.Examples.JsonTools.transform` demonstrates byte-output generation through a direct one-field parse, and `LeanExe.Examples.JsonTools.lookup` demonstrates generic lookup across a skipped nested object as a scalar entry.  The split records a compiler limitation found during this work: a `ByteArray`-returning function that demands an `Option UInt64` payload found after a skipped field can trap in WASM even though the scalar lookup itself is correct.  That points at structured-value lowering around `Option` matches feeding byte-array output, not at the source JSON helper.
+
+Checks run:
+
+- [x] `lake build`
+- [x] `node test/json_double.js` returned `checked 45 json program cases`.
+- [x] `node test/report_classification.js` returned `checked 92 report classification cases`.
+- [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 437 accepted, 21 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 14 asciistring cases`, `checked 45 json program cases`, and `checked 56 cases`.

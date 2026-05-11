@@ -354,6 +354,16 @@ const cases = [
     shape: "entry shape: ByteArray -> ByteArray",
   },
   {
+    moduleName: "LeanExe.Examples.JsonTools",
+    entryName: "LeanExe.Examples.JsonTools.transform",
+    shape: "entry shape: ByteArray -> ByteArray",
+  },
+  {
+    moduleName: "LeanExe.Examples.JsonTools",
+    entryName: "LeanExe.Examples.JsonTools.lookup",
+    shape: "entry shape: ByteArray -> UInt64",
+  },
+  {
     moduleName: "LeanExe.Examples.Correctness",
     entryName: "LeanExe.Examples.Correctness.recPointCarryFuel",
     shape: "entry shape: Nat -> LeanExe.Examples.Correctness.Point -> LeanExe.Examples.Correctness.Point",
