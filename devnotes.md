@@ -1662,3 +1662,17 @@ Checks run:
 - [x] `node test/report_classification.js` returned `checked 31 report classification cases`.
 - [x] `node test/core_correctness.js` returned `checked 315 accepted, 22 rejected, and 7 trapped cases`.
 - [x] `node test/run_all.js` returned `checked 31 report classification cases`, `checked 315 accepted, 22 rejected, and 7 trapped cases`, `checked 36 bytearray allocation cases`, and `checked 56 cases`.
+
+## 2026-05-11: Source-identified Option
+
+`Option` now uses the same `Ty.variant` and `ExtractedValue.variant` path as user-defined inductives and `Except`.  The extractor removed the dedicated `ExtractedValue.option` case.  `none` is represented by tag `0` with no constructor fields, and `some` is represented by tag `1` with one payload field.  Public `Option` parameters and results remain rejected until the public tagged ABI admits them.
+
+This completes the internal representation part of the unified sum work for built-in `Option` and `Except`.  Remaining ABI work must decide how hosts pass and receive tagged values, including inactive payload slots and flattening order, before those values can cross exported function boundaries.
+
+Checks run:
+
+- [x] `lake build`
+- [x] `lake build LeanExe.Examples.Correctness`
+- [x] `node test/report_classification.js` returned `checked 31 report classification cases`.
+- [x] `node test/core_correctness.js` returned `checked 315 accepted, 22 rejected, and 7 trapped cases`.
+- [x] `node test/run_all.js` returned `checked 31 report classification cases`, `checked 315 accepted, 22 rejected, and 7 trapped cases`, `checked 36 bytearray allocation cases`, and `checked 56 cases`.
