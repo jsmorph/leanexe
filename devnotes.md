@@ -2143,3 +2143,21 @@ Checks run:
 - [x] `node test/asciistring.js` returned `checked 14 asciistring cases`.
 - [x] `node test/report_classification.js` returned `checked 85 report classification cases`.
 - [x] `node test/run_all.js` returned `checked 85 report classification cases`, `checked 429 accepted, 18 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 14 asciistring cases`, and `checked 56 cases`.
+
+## 2026-05-11: Schema-specific JSON over ASCII
+
+`LeanExe.Examples.JsonDouble.transform` is the first JSON-shaped example.  It accepts a `ByteArray`, validates it as `AsciiString`, parses the exact object shape `{ "n" : digits }`, doubles the parsed `UInt64` when the result fits, and returns generated JSON bytes.  It returns `{"error":1}` for malformed input, non-ASCII input, parse overflow, and doubled-value overflow.
+
+The compiler change adds a value-level call binding for helper calls that return structured values.  A direct call now stores all flattened result slots in locals and reconstructs the source value shape, so callers can match an `Option` result or project a structure returned by a bounded recursive helper.  `recPointFuelCallRead` covers this path independently of the JSON example, and the JSON parser exercises an `Option ParsedNumber` result from a recursive decimal parser.
+
+The JSON support remains deliberately schema-specific.  It has no general JSON AST, no string escape parser, no arrays, no object field search, and no Unicode handling.  Those belong in later library work once the accepted subset has enough text and recursive data support to make a general parser useful.
+
+Checks run:
+
+- [x] `lake build LeanExe.Examples.JsonDouble`
+- [x] `lake build LeanExe.Examples.Correctness`
+- [x] `node test/json_double.js` returned `checked 12 json double cases`.
+- [x] `node test/report_classification.js` returned `checked 87 report classification cases`.
+- [x] `node test/core_correctness.js` returned `checked 430 accepted, 18 rejected, and 13 trapped cases`.
+- [x] `node test/run_all.js` returned `checked 87 report classification cases`, `checked 430 accepted, 18 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 14 asciistring cases`, `checked 12 json double cases`, and `checked 56 cases`.
+- [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/current/wasmtime wast .lake/build/json-double/transform.wat` accepted the generated module.

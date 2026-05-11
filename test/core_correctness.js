@@ -324,6 +324,7 @@ const accepted = [
   { name: "recThenBranchFuelDemo", args: [], expected: 2n },
   { name: "recProductDemo", args: [], expected: 10n },
   { name: "recPointFuel", args: [2n, 5n], expected: [7n, 8n] },
+  { name: "recPointFuelCallRead", args: [2n, 5n], expected: 78n },
   { name: "recStatusExitFuel", args: [10n, 1n], expected: [1n, 0n, 3n] },
   { name: "recStatusExitFuel", args: [1n, 1n], expected: [0n, 2n, 0n] },
   { name: "recPointCarryFuel", args: [3n, 1n, 10n], expected: [4n, 16n] },

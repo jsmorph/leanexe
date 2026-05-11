@@ -50,6 +50,7 @@ mutual
     | u64Bin (op : U64Op) (left right : Expr)
     | ite (cond : Cond) (thenValue elseValue : Expr)
     | letE (slot : Nat) (value body : Expr)
+    | letCall (slots : List Nat) (index : Nat) (args : List Expr) (body : Expr)
     | arrayAlloc (cells : Expr)
     | arrayAllocSlots (width : Nat) (cells : Expr)
     | heapAllocSlots (values : List Expr)
@@ -173,6 +174,16 @@ mutual
           elseValue.eval module_ store
     | .letE slot value body =>
         body.eval module_ (store.set slot (value.eval module_ store))
+    | .letCall slots index args body =>
+        let results :=
+          match module_.getFunc? index with
+          | some func => func.evalResults module_ (args.map (fun arg => arg.eval module_ store))
+          | none => []
+        let callStore :=
+          slots.zip results |>.foldl
+            (fun current item => current.set item.fst item.snd)
+            store
+        body.eval module_ callStore
     | .arrayAlloc _ => 0
     | .arrayAllocSlots _ _ => 0
     | .heapAllocSlots _ => 0
@@ -244,7 +255,8 @@ mutual
                 current
         loop 1000000 store
 
-  partial def Func.eval (func : Func) (module_ : Module) (args : List UInt64) : UInt64 :=
+  partial def Func.evalResults (func : Func) (module_ : Module) (args : List UInt64) :
+      List UInt64 :=
     let store :=
       args.foldl
         (fun (state : Nat × Store) arg =>
@@ -252,8 +264,12 @@ mutual
           (index + 1, state.snd.set index arg))
         (0, Store.empty)
     let store := func.body.eval module_ store.snd
-    match func.results with
-    | result :: _ => result.eval module_ store
+    func.results.map (fun result => result.eval module_ store)
+
+  partial def Func.eval (func : Func) (module_ : Module) (args : List UInt64) : UInt64 :=
+    let results := func.evalResults module_ args
+    match results with
+    | result :: _ => result
     | [] => 0
 end
 

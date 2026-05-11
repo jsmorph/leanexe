@@ -1,0 +1,112 @@
+#!/usr/bin/env node
+
+const fs = require("fs");
+const path = require("path");
+const { spawnSync } = require("child_process");
+
+const moduleName = "LeanExe.Examples.JsonDouble";
+const entryName = `${moduleName}.transform`;
+const leanExe = process.env.LEAN_WASM_EXE || path.join(".lake", "build", "bin", "lean-wasm");
+const outDir = path.join(".lake", "build", "json-double");
+const out = path.join(outDir, "transform.wasm");
+
+function run(args) {
+  const result = spawnSync(args[0], args.slice(1), { encoding: "utf8" });
+  if (result.status !== 0) {
+    throw new Error(result.stderr.trim() || result.stdout.trim() || `${args[0]} failed`);
+  }
+  return result;
+}
+
+async function instantiate() {
+  fs.mkdirSync(outDir, { recursive: true });
+  run([leanExe, "compile", "--module", moduleName, "--entry", entryName, "--out", out]);
+  const wasm = fs.readFileSync(out);
+  const { instance } = await WebAssembly.instantiate(wasm, {});
+  const { memory, alloc, reset, transform } = instance.exports;
+  if (!memory || typeof alloc !== "function" || typeof reset !== "function") {
+    throw new Error("compiled module does not export memory, alloc, and reset");
+  }
+  if (typeof transform !== "function") {
+    throw new Error("compiled module does not export transform");
+  }
+  return { memory, alloc, reset, transform };
+}
+
+function bytes(text) {
+  return new TextEncoder().encode(text);
+}
+
+function writeInput(exports, input) {
+  exports.reset();
+  const ptr = Number(exports.alloc(BigInt(input.length)));
+  new Uint8Array(exports.memory.buffer, ptr, input.length).set(input);
+  return [BigInt(ptr), BigInt(input.length)];
+}
+
+function readByteArrayResult(exports, result) {
+  if (!Array.isArray(result) || result.length !== 2) {
+    throw new Error(`expected ByteArray result, got ${result}`);
+  }
+  const ptr = Number(BigInt.asUintN(64, result[0]));
+  const len = Number(BigInt.asUintN(64, result[1]));
+  return Uint8Array.from(new Uint8Array(exports.memory.buffer, ptr, len));
+}
+
+function sameBytes(left, right) {
+  if (left.length !== right.length) {
+    return false;
+  }
+  for (let index = 0; index < left.length; index += 1) {
+    if (left[index] !== right[index]) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function expectBytes(name, actual, expected) {
+  if (!sameBytes(actual, expected)) {
+    throw new Error(`${name}: expected ${Array.from(expected)}, got ${Array.from(actual)}`);
+  }
+}
+
+function callTransform(exports, input) {
+  const args = writeInput(exports, input);
+  return readByteArrayResult(exports, exports.transform(...args));
+}
+
+async function main() {
+  run(["lake", "build", moduleName]);
+  const exports = await instantiate();
+  const error = bytes('{"error":1}');
+  const cases = [
+    ["zero", bytes('{"n":0}'), bytes('{"result":0}')],
+    ["simple", bytes('{"n":21}'), bytes('{"result":42}')],
+    ["whitespace", bytes(' { "n" : 7 } '), bytes('{"result":14}')],
+    ["leading zeros", bytes('{"n":00012}'), bytes('{"result":24}')],
+    [
+      "largest double",
+      bytes('{"n":9223372036854775807}'),
+      bytes('{"result":18446744073709551614}'),
+    ],
+    ["double overflow", bytes('{"n":9223372036854775808}'), error],
+    ["parse overflow", bytes('{"n":18446744073709551616}'), error],
+    ["wrong key", bytes('{"m":1}'), error],
+    ["missing digits", bytes('{"n":}'), error],
+    ["negative", bytes('{"n":-1}'), error],
+    ["trailing junk", bytes('{"n":1}x'), error],
+    ["non-ascii", new Uint8Array([123, 34, 110, 34, 58, 49, 200, 125]), error],
+  ];
+
+  for (const testCase of cases) {
+    expectBytes(testCase[0], callTransform(exports, testCase[1]), testCase[2]);
+  }
+
+  process.stdout.write(`checked ${cases.length} json double cases\n`);
+}
+
+main().catch((error) => {
+  process.stderr.write(`${error.message}\n`);
+  process.exit(1);
+});

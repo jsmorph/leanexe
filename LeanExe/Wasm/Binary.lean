@@ -380,6 +380,8 @@ mutual
           (max (max (exprScratch start) (exprScratch stop))
             (max (exprScratch init) (exprScratch body)))
     | .call _ args => args.foldl (fun count arg => max count (exprScratch arg)) 0
+    | .letCall _ _ args body =>
+        max (args.foldl (fun count arg => max count (exprScratch arg)) 0) (exprScratch body)
 
   partial def condScratch : Cond → Nat
     | .true => 0
@@ -1944,6 +1946,9 @@ mutual
     | .byteArrayFold ptr len start stop init accSlot byteSlot body =>
         emitByteArrayFold scratch ptr len start stop init accSlot byteSlot body
     | .call index args => args.flatMap (emitExpr scratch) ++ call index
+    | .letCall slots index args body =>
+        args.flatMap (emitExpr scratch) ++ call index ++
+          slots.reverse.flatMap localSet ++ emitExpr scratch body
 
   partial def emitCond (scratch : Nat) : Cond → List UInt8
     | .true => ofNats [65, 1]
@@ -3617,6 +3622,9 @@ mutual
     | .byteArrayFold ptr len start stop init accSlot byteSlot body =>
         byteArrayFoldWatLines scratch ptr len start stop init accSlot byteSlot body
     | .call index args => args.flatMap (exprWatLines scratch) ++ [s!"call {index}"]
+    | .letCall slots index args body =>
+        args.flatMap (exprWatLines scratch) ++ [s!"call {index}"] ++
+          slots.reverse.map (fun slot => s!"local.set {slot}") ++ exprWatLines scratch body
 
   partial def condWatLines (scratch : Nat) : Cond → List String
     | .true => ["i32.const 1"]

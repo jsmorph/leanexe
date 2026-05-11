@@ -208,6 +208,7 @@ The examples directory contains small programs that exercise the user-facing sub
 | `LeanExe.Examples.IntMap` | `checksum`, `query` | Uses a small integer map written in the subset. |
 | `LeanExe.Examples.ByteArrayPrograms` | Several entries | Validates and transforms `ByteArray` inputs. |
 | `LeanExe.Examples.AsciiStringPrograms` | Several entries | Validates and transforms ASCII byte strings. |
+| `LeanExe.Examples.JsonDouble` | `transform` | Parses a small ASCII JSON request and returns JSON bytes. |
 | `LeanExe.Examples.Correctness` | Many entries | Exercises structures, inductives, arrays, recursion, and edge cases. |
 
 Use the examples as templates for new programs.  Start with a scalar entry when possible, then add memory values once the scalar logic compiles and tests pass.  Keep helper functions concrete and first-order so the dependency classifier can prove that the whole call graph belongs to the accepted subset.
