@@ -105,6 +105,10 @@ def tyText : Ty → String
   | .sum .unit payload => s!"Option {tyText payload}"
   | .sum left right => s!"Sum {tyText left} {tyText right}"
   | .struct name _ => displayName name
+  | .variant name [[], [payload]] =>
+      if name == ``Option then s!"Option {tyText payload}" else displayName name
+  | .variant name [[error], [ok]] =>
+      if name == ``Except then s!"Except {tyText error} {tyText ok}" else displayName name
   | .variant name _ => displayName name
 
 def signatureText (sig : LeanExe.Extract.Core.Signature) : String :=
