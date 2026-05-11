@@ -2072,3 +2072,18 @@ Checks run:
 - [x] `node test/report_classification.js` returned `checked 77 report classification cases`.
 - [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/current/wasmtime wast .lake/build/core-correctness/arrayFindIdxStatus.wat` accepted the generated module.
 - [x] `node test/run_all.js` returned `checked 77 report classification cases`, `checked 403 accepted, 16 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, and `checked 56 cases`.
+
+## 2026-05-11: Array any and all
+
+The generic compiler now lowers `Array.any` and `Array.all` for fixed-width array element layouts and direct one-argument predicates returning `Bool`.  The lowering clamps `stop` to the array size, starts at `start`, and short-circuits on the first decisive result.  Empty ranges return `false` for `any` and `true` for `all` without evaluating the predicate.
+
+`LeanExe.Examples.Correctness.arrayAnySome`, `arrayAnyWindowFalse`, `arrayAllScalars`, and `arrayAllWindowTrue` cover scalar arrays and explicit ranges.  `arrayAllStructure` covers structure elements, and `arrayAnyStatus` covers tagged elements with a predicate that matches on a source-defined inductive.  `arrayAnyEmptySkipsPredicateTrap` and `arrayAllEmptySkipsPredicateTrap` check skipped predicate evaluation.
+
+Checks run:
+
+- [x] `lake build`
+- [x] `lake build LeanExe.Examples.Correctness`
+- [x] `node test/core_correctness.js` returned `checked 411 accepted, 16 rejected, and 13 trapped cases`.
+- [x] `node test/report_classification.js` returned `checked 78 report classification cases`.
+- [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/current/wasmtime wast .lake/build/core-correctness/arrayAllStructure.wat` accepted the generated module.
+- [x] `node test/run_all.js` returned `checked 78 report classification cases`, `checked 411 accepted, 16 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, and `checked 56 cases`.
