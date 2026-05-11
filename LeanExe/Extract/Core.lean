@@ -22,7 +22,6 @@ inductive ExtractedValue where
   | scalar (expr : IRExpr)
   | byteArray (ptr len : IRExpr)
   | product (left right : ExtractedValue)
-  | option (tag : IRExpr) (payload : ExtractedValue)
   | sum (tag : IRExpr) (left right : ExtractedValue)
   | struct (name : Name) (fields : List ExtractedValue)
   | variant (name : Name) (tag : IRExpr) (ctors : List (List ExtractedValue))
@@ -247,7 +246,8 @@ mutual
           match typeAtom? env left, typeAtom? env right with
           | some leftTy, some rightTy => some (.product leftTy rightTy)
           | _, _ => none
-      | (.const ``Option _, [item]) => typeAtom? env item |>.map (fun itemTy => .sum .unit itemTy)
+      | (.const ``Option _, [item]) =>
+          typeAtom? env item |>.map (fun itemTy => .variant ``Option [[], [itemTy]])
       | (.const ``Except _, [error, ok]) =>
           match typeAtom? env error, typeAtom? env ok with
           | some errorTy, some okTy => some (.variant ``Except [[errorTy], [okTy]])
@@ -366,7 +366,9 @@ def supportedParamAbiType : Ty → Bool
 partial def supportedResultAbiType : Ty → Bool
   | .struct _ fields => fields.all supportedResultAbiType
   | .variant name ctors =>
-      name != ``Except && ctors.all (fun fields => fields.all supportedResultAbiType)
+      name != ``Option &&
+        name != ``Except &&
+        ctors.all (fun fields => fields.all supportedResultAbiType)
   | ty => supportedAbiType ty
 
 partial def supportedInternalValueType : Ty → Bool
@@ -574,7 +576,6 @@ def scalarValue (value : ExtractedValue) : Except String IRExpr :=
   | .scalar expr => .ok expr
   | .byteArray _ _ => .error "ByteArray value used where scalar value is required"
   | .product _ _ => .error "product value used where scalar value is required"
-  | .option _ _ => .error "option value used where scalar value is required"
   | .sum _ _ _ => .error "sum value used where scalar value is required"
   | .struct name _ => .error s!"structure value used where scalar value is required: {name}"
   | .variant name _ _ => .error s!"inductive value used where scalar value is required: {name}"
@@ -586,7 +587,6 @@ def byteArrayParts (value : ExtractedValue) : Except String (IRExpr × IRExpr) :
   | .byteArray ptr len => .ok (ptr, len)
   | .scalar _ => .error "scalar value used where ByteArray value is required"
   | .product _ _ => .error "product value used where ByteArray value is required"
-  | .option _ _ => .error "option value used where ByteArray value is required"
   | .sum _ _ _ => .error "sum value used where ByteArray value is required"
   | .struct name _ => .error s!"structure value used where ByteArray value is required: {name}"
   | .variant name _ _ => .error s!"inductive value used where ByteArray value is required: {name}"
@@ -600,7 +600,6 @@ partial def byteArrayPartsWithLets (value : ExtractedValue) :
   | .byteArray ptr len => .ok ([], ptr, len)
   | .scalar _ => .error "scalar value used where ByteArray value is required"
   | .product _ _ => .error "product value used where ByteArray value is required"
-  | .option _ _ => .error "option value used where ByteArray value is required"
   | .sum _ _ _ => .error "sum value used where ByteArray value is required"
   | .struct name _ => .error s!"structure value used where ByteArray value is required: {name}"
   | .variant name _ _ => .error s!"inductive value used where ByteArray value is required: {name}"
@@ -619,7 +618,6 @@ def productField (index : Nat) (value : ExtractedValue) : Except String Extracte
         .error s!"unsupported product projection index: {index}"
   | .scalar _ => .error "scalar value used where product value is required"
   | .byteArray _ _ => .error "ByteArray value used where product value is required"
-  | .option _ _ => .error "option value used where product value is required"
   | .sum _ _ _ => .error "sum value used where product value is required"
   | .struct name _ => .error s!"structure value used where product value is required: {name}"
   | .variant name _ _ => .error s!"inductive value used where product value is required: {name}"
@@ -638,36 +636,33 @@ def structField (name : Name) (index : Nat) (value : ExtractedValue) : Except St
   | .scalar _ => .error s!"scalar value used where structure value is required: {name}"
   | .byteArray _ _ => .error s!"ByteArray value used where structure value is required: {name}"
   | .product _ _ => .error s!"product value used where structure value is required: {name}"
-  | .option _ _ => .error s!"option value used where structure value is required: {name}"
   | .sum _ _ _ => .error s!"sum value used where structure value is required: {name}"
   | .variant actual _ _ =>
       .error s!"inductive value used where structure value is required: {name}; got {actual}"
   | .letE slot value body => do
       .ok (.letE slot value (← structField name index body))
 
-def optionParts (value : ExtractedValue) : Except String (IRExpr × ExtractedValue) :=
-  match value with
-  | .option tag payload => .ok (tag, payload)
-  | .scalar _ => .error "scalar value used where option value is required"
-  | .byteArray _ _ => .error "ByteArray value used where option value is required"
-  | .product _ _ => .error "product value used where option value is required"
-  | .sum _ _ _ => .error "sum value used where option value is required"
-  | .struct name _ => .error s!"structure value used where option value is required: {name}"
-  | .variant name _ _ => .error s!"inductive value used where option value is required: {name}"
-  | .letE slot value body => do
-      let parts ← optionParts body
-      .ok (.letE slot value parts.fst, .letE slot value parts.snd)
+def mkOptionValue (tag : IRExpr) (payload : ExtractedValue) : ExtractedValue :=
+  .variant ``Option tag [[], [payload]]
+
+def optionPayloadType? : Ty → Option Ty
+  | .variant name [[], [payloadTy]] => if name == ``Option then some payloadTy else none
+  | _ => none
 
 partial def optionPartsWithLets (value : ExtractedValue) :
     Except String (List (Nat × IRExpr) × IRExpr × ExtractedValue) :=
   match value with
-  | .option tag payload => .ok ([], tag, payload)
+  | .variant name tag [[], [payload]] =>
+      if name == ``Option then
+        .ok ([], tag, payload)
+      else
+        .error s!"inductive value used where Option value is required: {name}"
   | .scalar _ => .error "scalar value used where option value is required"
   | .byteArray _ _ => .error "ByteArray value used where option value is required"
   | .product _ _ => .error "product value used where option value is required"
   | .sum _ _ _ => .error "sum value used where option value is required"
   | .struct name _ => .error s!"structure value used where option value is required: {name}"
-  | .variant name _ _ => .error s!"inductive value used where option value is required: {name}"
+  | .variant name _ _ => .error s!"inductive value used where Option value is required: {name}"
   | .letE slot value body => do
       let parts ← optionPartsWithLets body
       .ok ((slot, value) :: parts.fst, parts.snd.fst, parts.snd.snd)
@@ -679,7 +674,6 @@ partial def sumPartsWithLets (value : ExtractedValue) :
   | .scalar _ => .error "scalar value used where sum value is required"
   | .byteArray _ _ => .error "ByteArray value used where sum value is required"
   | .product _ _ => .error "product value used where sum value is required"
-  | .option _ _ => .error "option value used where sum value is required"
   | .struct name _ => .error s!"structure value used where sum value is required: {name}"
   | .variant name _ _ => .error s!"inductive value used where sum value is required: {name}"
   | .letE slot value body => do
@@ -698,7 +692,6 @@ partial def variantPartsWithLets (expectedName : Name) (value : ExtractedValue) 
   | .byteArray _ _ =>
       .error s!"ByteArray value used where inductive value is required: {expectedName}"
   | .product _ _ => .error s!"product value used where inductive value is required: {expectedName}"
-  | .option _ _ => .error s!"option value used where inductive value is required: {expectedName}"
   | .sum _ _ _ => .error s!"sum value used where inductive value is required: {expectedName}"
   | .struct name _ =>
       .error s!"structure value used where inductive value is required: {expectedName}; got {name}"
@@ -717,11 +710,10 @@ partial def exceptPartsWithLets (value : ExtractedValue) :
         .ok ([], tag, errorPayload, okPayload)
       else
         .error s!"inductive value used where Except value is required: {name}"
-  | .sum tag errorPayload okPayload => .ok ([], tag, errorPayload, okPayload)
   | .scalar _ => .error "scalar value used where Except value is required"
   | .byteArray _ _ => .error "ByteArray value used where Except value is required"
   | .product _ _ => .error "product value used where Except value is required"
-  | .option _ _ => .error "option value used where Except value is required"
+  | .sum _ _ _ => .error "sum value used where Except value is required"
   | .struct name _ => .error s!"structure value used where Except value is required: {name}"
   | .variant name _ _ =>
       .error s!"inductive value used where Except value is required: {name}"
@@ -744,8 +736,6 @@ partial def defaultValue : Ty → Except String ExtractedValue
       .ok (.struct name (← fields.mapM defaultValue))
   | .variant name ctors => do
       .ok (.variant name (.u64 0) (← ctors.mapM (fun fields => fields.mapM defaultValue)))
-  | .sum .unit payload => do
-      .ok (.option (.u64 0) (← defaultValue payload))
   | .sum left right => do
       .ok (.sum (.u64 0) (← defaultValue left) (← defaultValue right))
   | other => .error s!"unsupported default value type: {reprStr other}"
@@ -765,8 +755,6 @@ partial def trapValue : Ty → Except String ExtractedValue
       .ok (.struct name (← fields.mapM trapValue))
   | .variant name ctors => do
       .ok (.variant name .trap (← ctors.mapM (fun fields => fields.mapM trapValue)))
-  | .sum .unit payload => do
-      .ok (.option .trap (← trapValue payload))
   | .sum left right => do
       .ok (.sum .trap (← trapValue left) (← trapValue right))
   | other => .error s!"unsupported trap value type: {reprStr other}"
@@ -782,7 +770,6 @@ partial def mapValueExprs (f : IRExpr → IRExpr) : ExtractedValue → Extracted
   | .scalar expr => .scalar (f expr)
   | .byteArray ptr len => .byteArray (f ptr) (f len)
   | .product left right => .product (mapValueExprs f left) (mapValueExprs f right)
-  | .option tag payload => .option (f tag) (mapValueExprs f payload)
   | .sum tag left right => .sum (f tag) (mapValueExprs f left) (mapValueExprs f right)
   | .struct name fields => .struct name (fields.map (mapValueExprs f))
   | .variant name tag ctors =>
@@ -793,7 +780,6 @@ partial def materializeValueLets : ExtractedValue → ExtractedValue
   | .letE slot value body =>
       mapValueExprs (fun expr => .letE slot value expr) (materializeValueLets body)
   | .product left right => .product (materializeValueLets left) (materializeValueLets right)
-  | .option tag payload => .option tag (materializeValueLets payload)
   | .sum tag left right => .sum tag (materializeValueLets left) (materializeValueLets right)
   | .struct name fields => .struct name (fields.map materializeValueLets)
   | .variant name tag ctors =>
@@ -814,10 +800,6 @@ partial def valueIte
       .ok (.product
         (← valueIte cond thenLeft elseLeft)
         (← valueIte cond thenRight elseRight))
-  | .option thenTag thenPayload, .option elseTag elsePayload => do
-      .ok (.option
-        (.ite cond thenTag elseTag)
-        (← valueIte cond thenPayload elsePayload))
   | .sum thenTag thenLeft thenRight, .sum elseTag elseLeft elseRight => do
       .ok (.sum
         (.ite cond thenTag elseTag)
@@ -1014,7 +996,8 @@ def optionOrElseArgs? (env : Environment) (fn : Expr) (args : List Expr) : Optio
         | _ => none
       else if name == ``HOrElse.hOrElse then
         match primitiveResultType? env args, args.reverse with
-        | some (.sum .unit _), fallback :: optionValue :: _ => some (optionValue, fallback)
+        | some resultTy, fallback :: optionValue :: _ =>
+            optionPayloadType? resultTy |>.map (fun _ => (optionValue, fallback))
         | _, _ => none
       else
         none
@@ -1025,8 +1008,6 @@ def exceptOrElseArgs? (env : Environment) (fn : Expr) (args : List Expr) : Optio
   | .const name _ =>
       if name == ``HOrElse.hOrElse then
         match primitiveResultType? env args, args.reverse with
-        | some (.sum .unit _), _ => none
-        | some (.sum _ _), fallback :: exceptValue :: _ => some (exceptValue, fallback)
         | some (.variant typeName _), fallback :: exceptValue :: _ =>
             if typeName == ``Except then some (exceptValue, fallback) else none
         | _, _ => none
@@ -1102,7 +1083,10 @@ def optionMatcherArgs? (env : Environment) (fn : Expr) (args : List Expr) :
         | _ => none
       else
         match generatedMatcherScrutineeType? env name with
-        | some (.sum .unit payloadTy) => generatedOptionArgs? payloadTy
+        | some resultTy =>
+            match optionPayloadType? resultTy with
+            | some payloadTy => generatedOptionArgs? payloadTy
+            | none => none
         | _ => none
   | _ => none
 
@@ -2281,13 +2265,13 @@ mutual
         | (.const ``Option.none _, args) =>
             match optionConstructorType? ctx.env args with
             | some payloadTy =>
-                .ok (.option (.u64 0) (← defaultValue payloadTy), nextLocal)
+                .ok (mkOptionValue (.u64 0) (← defaultValue payloadTy), nextLocal)
             | none => .error "unsupported Option.none application"
         | (.const ``Option.some _, args) =>
             match args.reverse, optionConstructorType? ctx.env args with
             | value :: _, some _ =>
                 let valueResult ← extractValueFrom ctx locals nextLocal value
-                .ok (.option (.u64 1) valueResult.fst, valueResult.snd)
+                .ok (mkOptionValue (.u64 1) valueResult.fst, valueResult.snd)
             | _, _ => .error "unsupported Option.some application"
         | (.const ``Except.error _, args) =>
             match args.reverse, exceptConstructorTypes? ctx.env args with
@@ -2385,7 +2369,7 @@ mutual
                 let parts ← exceptPartsWithLets exceptResult.fst
                 .ok
                   (wrapValueLets parts.fst
-                    (.option parts.snd.fst parts.snd.snd.snd),
+                    (mkOptionValue parts.snd.fst parts.snd.snd.snd),
                     exceptResult.snd)
             | _, _ => .error "unsupported Except.toOption application"
         | (.const ``Except.isOk _, args) =>
@@ -2472,7 +2456,7 @@ mutual
                 let nonePayload ← defaultValue resultTy
                 .ok
                   (wrapValueLets lets
-                    (.option tag
+                    (mkOptionValue tag
                       (← valueIte (.eqU64 tag (.u64 0)) nonePayload mapResult.fst)),
                     mapResult.snd)
             | _, _ => .error "unsupported Option.map application"
@@ -2495,7 +2479,7 @@ mutual
                   .and (.not (.eqU64 tag (.u64 0))) predicateResult.fst
                 .ok
                   (wrapValueLets lets
-                    (.option (.ite keep (.u64 1) (.u64 0))
+                    (mkOptionValue (.ite keep (.u64 1) (.u64 0))
                       (← valueIte keep payload nonePayload)),
                     predicateResult.snd)
             | _, _ => .error "unsupported Option.filter application"
@@ -2520,7 +2504,7 @@ mutual
                 let nonePayload ← defaultValue resultTy
                 .ok
                   (wrapValueLets lets
-                    (.option
+                    (mkOptionValue
                       (.ite (.eqU64 tag (.u64 0)) (.u64 0) bindTag)
                       (← valueIte (.eqU64 tag (.u64 0)) nonePayload bindPayload)),
                     bindResult.snd)
@@ -2541,7 +2525,7 @@ mutual
                     .ok
                       (.letE arraySlot arrayResult.fst
                         (.letE indexSlot indexResult.fst
-                          (.option tag payload)),
+                          (mkOptionValue tag payload)),
                         indexSlot + 1)
                 | some .byteArray =>
                     let arrayResult ← extractValueFrom ctx locals nextLocal array
@@ -2559,7 +2543,7 @@ mutual
                         (.letE ptrSlot parts.snd.fst
                           (.letE lenSlot parts.snd.snd
                             (.letE indexSlot indexResult.fst
-                              (.option tag payload)))),
+                              (mkOptionValue tag payload)))),
                         indexSlot + 1)
                 | some other =>
                     .error s!"unsupported GetElem?.getElem? receiver type: {reprStr other}"
@@ -2576,7 +2560,7 @@ mutual
                   let index := .u64Bin .sub (.arraySize (.local arraySlot)) (.u64 1)
                   .ok
                     (.letE arraySlot arrayResult.fst
-                      (.option tag (.scalar (.arrayGet (.local arraySlot) index))),
+                      (mkOptionValue tag (.scalar (.arrayGet (.local arraySlot) index))),
                       arraySlot + 1)
                 | some other => .error s!"unsupported Array.back? item type: {reprStr other}"
                 | none => .error "unsupported Array.back? item type"
@@ -2879,7 +2863,7 @@ mutual
       extractValueFrom ctx (.value (.scalar (.u64 0)) :: locals) optionResult.snd fallbackBody
     .ok
       (wrapValueLets lets
-        (← valueIte (.eqU64 tag (.u64 0)) fallbackResult.fst (.option tag payload)),
+        (← valueIte (.eqU64 tag (.u64 0)) fallbackResult.fst (mkOptionValue tag payload)),
         fallbackResult.snd)
 
   partial def extractOptionPredicateCondFrom
