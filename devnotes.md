@@ -1994,3 +1994,18 @@ Checks run:
 - [x] `node test/report_classification.js` returned `checked 72 report classification cases`.
 - [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/current/wasmtime wast .lake/build/core-correctness/arrayStructureFoldRead.wat` accepted the generated module.
 - [x] `node test/run_all.js` returned `checked 72 report classification cases`, `checked 391 accepted, 16 rejected, and 11 trapped cases`, `checked 63 bytearray allocation cases`, and `checked 56 cases`.
+
+## 2026-05-11: ByteArray append notation
+
+The extractor now lowers `HAppend.hAppend` when the checked result type is `ByteArray`.  The lowering reuses the same allocation and copy operation as `ByteArray.append`: it evaluates the left and right operands, allocates the combined byte length, copies the left bytes first, and copies the right bytes after them.  Non-`ByteArray` `HAppend.hAppend` applications still pass through the existing scalar extraction path, which preserves the prior array append-notation support.
+
+`LeanExe.Examples.ByteArrayPrograms.appendNotationABCXYZ` covers ordinary `++` source syntax over byte arrays.  The report now classifies `HAppend.hAppend` as implemented for supported array and byte-array append notation.  The generated WAT for the new example validates under the local Wasmtime tool.
+
+Checks run:
+
+- [x] `lake build`
+- [x] `node test/bytearray_alloc.js` returned `checked 64 bytearray allocation cases`.
+- [x] `node test/core_correctness.js` returned `checked 391 accepted, 16 rejected, and 11 trapped cases`.
+- [x] `node test/report_classification.js` returned `checked 73 report classification cases`.
+- [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/current/wasmtime wast .lake/build/bytearray-programs/appendNotationABCXYZ.wat` accepted the generated module.
+- [x] `node test/run_all.js` returned `checked 73 report classification cases`, `checked 391 accepted, 16 rejected, and 11 trapped cases`, `checked 64 bytearray allocation cases`, and `checked 56 cases`.

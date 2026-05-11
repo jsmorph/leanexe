@@ -365,6 +365,14 @@ async function main() {
     }
   }
 
+  const appendNotationABCXYZ = await instantiate("appendNotationABCXYZ");
+  const appendNotationABCXYZActual = callNoInputByteArrayOutput(appendNotationABCXYZ);
+  if (!sameBytes(appendNotationABCXYZActual, new Uint8Array([65, 66, 67, 88, 89, 90]))) {
+    throw new Error(
+      `appendNotationABCXYZ: expected 65,66,67,88,89,90, got ${Array.from(appendNotationABCXYZActual)}`,
+    );
+  }
+
   const setABC = await instantiate("setABC");
   const setABCActual = callNoInputByteArrayOutput(setABC);
   if (!sameBytes(setABCActual, new Uint8Array([65, 90, 67]))) {
@@ -455,6 +463,7 @@ async function main() {
     appendBangCases.length +
     1 +
     appendInputABCCases.length +
+    1 +
     1 +
     setFirstBangCases.length +
     copyInputMiddleCases.length +

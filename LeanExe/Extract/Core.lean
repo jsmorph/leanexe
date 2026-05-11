@@ -2998,6 +2998,36 @@ mutual
                 let appendedLen := .u64Bin .add leftLen rightLen
                 .ok (.byteArray appendedPtr appendedLen, rightLenSlot + 1)
             | _ => .error "unsupported ByteArray.append application"
+        | (.const ``HAppend.hAppend _, args) =>
+            match args.reverse, primitiveResultType? ctx.env args with
+            | right :: left :: _, some .byteArray =>
+                let leftResult ← extractValueFrom ctx locals nextLocal left
+                let leftParts ← byteArrayPartsWithLets leftResult.fst
+                let rightResult ← extractValueFrom ctx locals leftResult.snd right
+                let rightParts ← byteArrayPartsWithLets rightResult.fst
+                let leftPtrSlot := rightResult.snd
+                let leftLenSlot := leftPtrSlot + 1
+                let rightPtrSlot := leftPtrSlot + 2
+                let rightLenSlot := leftPtrSlot + 3
+                let leftPtr := wrapExprLets leftParts.fst leftParts.snd.fst
+                let leftLen := wrapExprLets leftParts.fst leftParts.snd.snd
+                let rightPtr := wrapExprLets rightParts.fst rightParts.snd.fst
+                let rightLen := wrapExprLets rightParts.fst rightParts.snd.snd
+                let appendedPtr :=
+                  .letE leftPtrSlot leftPtr
+                    (.letE leftLenSlot leftLen
+                      (.letE rightPtrSlot rightPtr
+                        (.letE rightLenSlot rightLen
+                          (.byteArrayAppendPtr
+                            (.local leftPtrSlot)
+                            (.local leftLenSlot)
+                            (.local rightPtrSlot)
+                            (.local rightLenSlot)))))
+                let appendedLen := .u64Bin .add leftLen rightLen
+                .ok (.byteArray appendedPtr appendedLen, rightLenSlot + 1)
+            | _, _ =>
+                let scalarResult ← extractExprFrom ctx locals nextLocal expr
+                .ok (.scalar scalarResult.fst, scalarResult.snd)
         | (.const ``ByteArray.set _, args) =>
             match args.reverse with
             | _proof :: value :: index :: array :: _ =>
