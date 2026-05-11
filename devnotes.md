@@ -1794,3 +1794,21 @@ Checks run:
 - [x] `.lake/build/bin/lean-wasm compile-wat --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.arrayStatusReverseMatch --out .lake/build/core-correctness/arrayStatusReverseMatch.wat`
 - [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/wasmtime-v44.0.0-aarch64-linux/wasmtime --invoke arrayStatusReverseMatch .lake/build/core-correctness/arrayStatusReverseMatch.wat` returned `1175`.
 - [x] `node test/run_all.js` returned `checked 51 report classification cases`, `checked 356 accepted, 17 rejected, and 7 trapped cases`, `checked 36 bytearray allocation cases`, and `checked 56 cases`.
+
+## 2026-05-11: Multi-slot array getD and modify
+
+Fixed-width arrays now lower `Array.getD` and `Array.modify` for structure and tagged elements.  `Array.getD` is handled in the structured-value extractor, so the default value is selected field-by-field only when the index is out of bounds.  `Array.modify` loads the old element as a structured value, passes it to the source lambda, flattens the returned value, and lowers the update through the fixed-width copy-on-write replacement operation.
+
+The remaining fixed-width array gaps are `Array.replicate` and `Array.map`.  Both need explicit value-evaluation rules in addition to slot copying: replication should evaluate the source value once and copy its flattened slots into each element, while mapping must define the result element layout and bind a structured source element in each loop iteration.
+
+Checks run:
+
+- [x] `lake build LeanExe.Examples.Correctness`
+- [x] `lake build`
+- [x] `node test/report_classification.js` returned `checked 54 report classification cases`.
+- [x] `node test/core_correctness.js` returned `checked 361 accepted, 17 rejected, and 7 trapped cases`.
+- [x] `.lake/build/bin/lean-wasm compile-wat --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.arrayStructureGetDSkipsDefaultTrap --out .lake/build/core-correctness/arrayStructureGetDSkipsDefaultTrap.wat`
+- [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/wasmtime-v44.0.0-aarch64-linux/wasmtime --invoke arrayStructureGetDSkipsDefaultTrap .lake/build/core-correctness/arrayStructureGetDSkipsDefaultTrap.wat` returned `12`.
+- [x] `.lake/build/bin/lean-wasm compile-wat --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.arrayStatusModifyMatch --out .lake/build/core-correctness/arrayStatusModifyMatch.wat`
+- [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/wasmtime-v44.0.0-aarch64-linux/wasmtime --invoke arrayStatusModifyMatch .lake/build/core-correctness/arrayStatusModifyMatch.wat` returned `107`.
+- [x] `node test/run_all.js` returned `checked 54 report classification cases`, `checked 361 accepted, 17 rejected, and 7 trapped cases`, `checked 36 bytearray allocation cases`, and `checked 56 cases`.

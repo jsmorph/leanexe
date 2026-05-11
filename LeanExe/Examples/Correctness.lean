@@ -930,6 +930,32 @@ def arrayStructureReverseRead : UInt64 :=
   else
     0
 
+def arrayStructureGetDRead : UInt64 :=
+  let a : Array Point := #[({ x := 1, y := 2 } : Point)]
+  let point := a.getD 5 ({ x := 7, y := 8 } : Point)
+  point.x * (10 : UInt64) + point.y
+
+def arrayStructureGetDSkipsDefaultTrap : UInt64 :=
+  let a : Array Point := #[({ x := 1, y := 2 } : Point)]
+  let point := a.getD 0 ({ x := (Array.replicate 0 (0 : UInt64)).back!, y := 9 } : Point)
+  point.x * (10 : UInt64) + point.y
+
+def arrayStructureModifyRead : UInt64 :=
+  let a : Array Point := #[({ x := 1, y := 2 } : Point), ({ x := 3, y := 4 } : Point)]
+  let b := a.modify 1 (fun point => ({ x := point.x + 1, y := point.y + 1 } : Point))
+  match b[1]? with
+  | none => 0
+  | some point => point.x * (10 : UInt64) + point.y
+
+def arrayStructureModifyOutOfBoundsSkipsFunctionTrap : UInt64 :=
+  let a : Array Point := #[({ x := 1, y := 2 } : Point)]
+  let b :=
+    a.modify 5
+      (fun _point => ({ x := (Array.replicate 0 (0 : UInt64)).back!, y := 9 } : Point))
+  match b[0]? with
+  | none => 0
+  | some point => point.x * (10 : UInt64) + point.y
+
 def arrayStructureSafeGet : UInt64 :=
   match (#[({ x := 4, y := 5 } : Point)] : Array Point)[0]? with
   | none => 99
@@ -954,6 +980,15 @@ def arrayStatusReverseMatch : UInt64 :=
   let left := Option.elim b[0]? 0 (fun status => statusLeftScore status)
   let right := Option.elim b[1]? 0 (fun status => statusRightScore status)
   left * (10 : UInt64) + right
+
+def arrayStatusModifyMatch : UInt64 :=
+  let a : Array Status := #[Status.ok 5]
+  let b :=
+    a.modify 0 (fun status =>
+      match status with
+      | Status.ok value => Status.error (value + 2)
+      | Status.error code => Status.ok code)
+  Option.elim b[0]? 0 (fun status => statusLeftScore status)
 
 def arrayOptionLiteralMatch : UInt64 :=
   let a : Array (Option UInt64) := #[some 5, none]
