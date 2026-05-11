@@ -177,7 +177,7 @@ Fixed-width arrays use the compiler's arena layout.  Structure values flatten fi
 
 The supported subset is practical but restricted.  Programs should use concrete, first-order definitions with no type parameters or type-class resolution at the entry boundary.  Helper definitions may be separate Lean declarations as long as the compiler can classify every reachable dependency.
 
-Supported internal values include `Unit`, `Bool`, `UInt8`, `UInt32`, `UInt64`, bounded `Nat`, `ByteArray`, `Array`, products, user-defined structures, user-defined inductives, `Option`, `Except`, and monomorphic self-recursive inductives.  Supported control flow includes `let`, direct calls, `if`, pattern matching, pure `do` notation, and a bounded tail-recursive form over an explicit `Nat` fuel argument.  Proof arguments and proof-only declarations are erased when they have no runtime content.
+Supported internal values include `Unit`, `Bool`, `UInt8`, `UInt32`, `UInt64`, bounded `Nat`, `ByteArray`, `LeanExe.AsciiString`, `Array`, products, user-defined structures, user-defined inductives, `Option`, `Except`, and monomorphic self-recursive inductives.  `LeanExe.AsciiString` is a one-field structure over `ByteArray` with explicit validation helpers for the ASCII invariant.  Supported control flow includes `let`, direct calls, `if`, pattern matching, pure `do` notation, and a bounded tail-recursive form over an explicit `Nat` fuel argument.
 
 Unsupported features include polymorphic runtime code, type classes, higher-order functions, closures, full `IO`, `String`, arbitrary Lean and Std library functions, `unsafe`, `partial`, unbounded natural-number arithmetic, general structural recursion, exported recursive data structures, nested arrays, and arrays of recursive values.  These features remain outside the accepted language even when Lean accepts the source file.  The compiler should reject them instead of silently changing program behavior.
 
@@ -207,6 +207,7 @@ The examples directory contains small programs that exercise the user-facing sub
 | `LeanExe.Examples.Prime` | `next` | Computes the smallest prime greater than a `UInt64` input. |
 | `LeanExe.Examples.IntMap` | `checksum`, `query` | Uses a small integer map written in the subset. |
 | `LeanExe.Examples.ByteArrayPrograms` | Several entries | Validates and transforms `ByteArray` inputs. |
+| `LeanExe.Examples.AsciiStringPrograms` | Several entries | Validates and transforms ASCII byte strings. |
 | `LeanExe.Examples.Correctness` | Many entries | Exercises structures, inductives, arrays, recursion, and edge cases. |
 
 Use the examples as templates for new programs.  Start with a scalar entry when possible, then add memory values once the scalar logic compiles and tests pass.  Keep helper functions concrete and first-order so the dependency classifier can prove that the whole call graph belongs to the accepted subset.

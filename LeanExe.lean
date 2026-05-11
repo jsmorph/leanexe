@@ -1,8 +1,10 @@
+import LeanExe.AsciiString
 import LeanExe.Core
 import LeanExe.CLI
 import LeanExe.Extract.Report
 import LeanExe.Examples.ArraySemantics
 import LeanExe.Examples.AsciiDigits
+import LeanExe.Examples.AsciiStringPrograms
 import LeanExe.Examples.Arithmetic
 import LeanExe.Examples.Collatz
 import LeanExe.Examples.Correctness
