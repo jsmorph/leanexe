@@ -202,7 +202,7 @@ def knownExternal? (name : Name) : Option Classification :=
       ``Array.back?, ``GetElem?.getElem!, ``GetElem?.getElem?,
       ``GetElem.getElem].contains name then
     some { status := "implemented", reason := "indexing primitive in the generic compiler fragment" }
-  else if [``ByteArray.empty, ``ByteArray.size, ``ByteArray.isEmpty, ``ByteArray.get!,
+  else if [``ByteArray.empty, ``ByteArray.mk, ``ByteArray.size, ``ByteArray.isEmpty, ``ByteArray.get!,
       ``ByteArray.extract, ``ByteArray.push, ``ByteArray.append, ``ByteArray.set].contains name then
     some { status := "implemented", reason := "ByteArray primitive in the generic compiler fragment" }
   else if [``Option.casesOn, ``Option.rec, ``Option.none, ``Option.some,
