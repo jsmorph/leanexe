@@ -110,6 +110,9 @@ def appendABCXYZ : ByteArray :=
 def appendInputABC (input : ByteArray) : ByteArray :=
   input.append bytesABC
 
+def appendNotationABCXYZ : ByteArray :=
+  bytesABC ++ ByteArray.mk #[(88 : UInt8), (89 : UInt8), (90 : UInt8)]
+
 def setABC : ByteArray :=
   if h : 1 < bytesABC.size then
     bytesABC.set 1 (90 : UInt8) h

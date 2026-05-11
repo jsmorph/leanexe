@@ -218,7 +218,7 @@ def knownExternal? (name : Name) : Option Classification :=
   else if name == ``HOrElse.hOrElse then
     some { status := "implemented", reason := "implemented for Option and restricted Except fallback in the generic compiler fragment" }
   else if name == ``HAppend.hAppend then
-    some { status := "implemented", reason := "implemented for Array UInt64 append notation in the generic compiler fragment" }
+    some { status := "implemented", reason := "implemented for supported Array and ByteArray append notation in the generic compiler fragment" }
   else if [``Prod.mk, ``Prod.fst, ``Prod.snd, ``Prod.casesOn, ``Prod.rec].contains name then
     some { status := "implemented", reason := "internal product primitive in the generic compiler fragment" }
   else if [``UInt64.ofNat, ``UInt64.toNat, ``UInt64.toUInt8, ``UInt64.toUInt32,

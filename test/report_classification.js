@@ -55,6 +55,11 @@ const cases = [
   },
   {
     moduleName: "LeanExe.Examples.ByteArrayPrograms",
+    entryName: "LeanExe.Examples.ByteArrayPrograms.appendNotationABCXYZ",
+    shape: "entry shape: ByteArray",
+  },
+  {
+    moduleName: "LeanExe.Examples.ByteArrayPrograms",
     entryName: "LeanExe.Examples.ByteArrayPrograms.setABC",
     shape: "entry shape: ByteArray",
   },
