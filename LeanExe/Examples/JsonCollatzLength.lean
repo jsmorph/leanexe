@@ -5,22 +5,12 @@ namespace LeanExe
 namespace Examples.JsonCollatzLength
 
 def fieldName : ByteArray :=
-  let b0 := ByteArray.empty.push (99 : UInt8)
-  let b1 := b0.push (111 : UInt8)
-  let b2 := b1.push (108 : UInt8)
-  let b3 := b2.push (108 : UInt8)
-  let b4 := b3.push (97 : UInt8)
-  let b5 := b4.push (116 : UInt8)
-  let b6 := b5.push (122 : UInt8)
-  let b7 := b6.push (76 : UInt8)
-  let b8 := b7.push (101 : UInt8)
-  let b9 := b8.push (110 : UInt8)
-  let b10 := b9.push (103 : UInt8)
-  let b11 := b10.push (116 : UInt8)
-  let b12 := b11.push (104 : UInt8)
-  let b13 := b12.push (70 : UInt8)
-  let b14 := b13.push (111 : UInt8)
-  b14.push (114 : UInt8)
+  ByteArray.mk #[
+    (99 : UInt8), (111 : UInt8), (108 : UInt8), (108 : UInt8),
+    (97 : UInt8), (116 : UInt8), (122 : UInt8), (76 : UInt8),
+    (101 : UInt8), (110 : UInt8), (103 : UInt8), (116 : UInt8),
+    (104 : UInt8), (70 : UInt8), (111 : UInt8), (114 : UInt8)
+  ]
 
 def parseObject (text : AsciiString) : Option UInt64 :=
   match Ascii.expectWsByte text 0 Ascii.byteLBrace with
@@ -41,9 +31,11 @@ def parseObject (text : AsciiString) : Option UInt64 :=
                     none
 
 def lengthPrefix : ByteArray :=
-  (((((((((ByteArray.empty.push Ascii.byteLBrace).push Ascii.byteQuote).push (108 : UInt8)).push
-    (101 : UInt8)).push (110 : UInt8)).push (103 : UInt8)).push (116 : UInt8)).push
-    (104 : UInt8)).push Ascii.byteQuote).push Ascii.byteColon
+  ByteArray.mk #[
+    Ascii.byteLBrace, Ascii.byteQuote, (108 : UInt8), (101 : UInt8),
+    (110 : UInt8), (103 : UInt8), (116 : UInt8), (104 : UInt8),
+    Ascii.byteQuote, Ascii.byteColon
+  ]
 
 def resultJson (n : UInt64) : ByteArray :=
   (Ascii.appendUInt64Decimal lengthPrefix n).push Ascii.byteRBrace
