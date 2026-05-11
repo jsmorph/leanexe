@@ -846,6 +846,90 @@ def arrayStructureExtractRead : UInt64 :=
           first.x * (1000 : UInt64) + first.y * (100 : UInt64) +
             second.x * (10 : UInt64) + second.y
 
+def arrayStructureInsertRead : UInt64 :=
+  let a : Array Point := #[({ x := 1, y := 2 } : Point), ({ x := 5, y := 6 } : Point)]
+  let b := a.insertIdxIfInBounds 1 ({ x := 3, y := 4 } : Point)
+  if a.size == 2 && b.size == 3 then
+    match b[0]? with
+    | none => 0
+    | some first =>
+        match b[1]? with
+        | none => 0
+        | some second =>
+            match b[2]? with
+            | none => 0
+            | some third =>
+                first.x * (100000 : UInt64) + first.y * (10000 : UInt64) +
+                  second.x * (1000 : UInt64) + second.y * (100 : UInt64) +
+                  third.x * (10 : UInt64) + third.y
+  else
+    0
+
+def arrayStructureInsertSkipsValueTrap : UInt64 :=
+  let a : Array Point := #[({ x := 1, y := 2 } : Point)]
+  let b :=
+    a.insertIdxIfInBounds 5
+      ({ x := (Array.replicate 0 (0 : UInt64)).back!, y := 9 } : Point)
+  match b[0]? with
+  | none => 0
+  | some point => point.x * (10 : UInt64) + point.y
+
+def arrayStructureEraseRead : UInt64 :=
+  let a : Array Point :=
+    #[({ x := 1, y := 2 } : Point), ({ x := 3, y := 4 } : Point), ({ x := 5, y := 6 } : Point)]
+  let b := a.eraseIdxIfInBounds 1
+  if a.size == 3 && b.size == 2 then
+    match b[0]? with
+    | none => 0
+    | some first =>
+        match b[1]? with
+        | none => 0
+        | some second =>
+            first.x * (1000 : UInt64) + first.y * (100 : UInt64) +
+              second.x * (10 : UInt64) + second.y
+  else
+    0
+
+def arrayStructureSwapRead : UInt64 :=
+  let a : Array Point :=
+    #[({ x := 1, y := 2 } : Point), ({ x := 3, y := 4 } : Point), ({ x := 5, y := 6 } : Point)]
+  let b := a.swapIfInBounds 0 2
+  if b.size == 3 then
+    match b[0]? with
+    | none => 0
+    | some first =>
+        match b[1]? with
+        | none => 0
+        | some second =>
+            match b[2]? with
+            | none => 0
+            | some third =>
+                first.x * (100000 : UInt64) + first.y * (10000 : UInt64) +
+                  second.x * (1000 : UInt64) + second.y * (100 : UInt64) +
+                  third.x * (10 : UInt64) + third.y
+  else
+    0
+
+def arrayStructureReverseRead : UInt64 :=
+  let a : Array Point :=
+    #[({ x := 1, y := 2 } : Point), ({ x := 3, y := 4 } : Point), ({ x := 5, y := 6 } : Point)]
+  let b := a.reverse
+  if b.size == 3 then
+    match b[0]? with
+    | none => 0
+    | some first =>
+        match b[1]? with
+        | none => 0
+        | some second =>
+            match b[2]? with
+            | none => 0
+            | some third =>
+                first.x * (100000 : UInt64) + first.y * (10000 : UInt64) +
+                  second.x * (1000 : UInt64) + second.y * (100 : UInt64) +
+                  third.x * (10 : UInt64) + third.y
+  else
+    0
+
 def arrayStructureSafeGet : UInt64 :=
   match (#[({ x := 4, y := 5 } : Point)] : Array Point)[0]? with
   | none => 99
@@ -855,6 +939,20 @@ def arrayStatusLiteralMatch : UInt64 :=
   let a : Array Status := #[Status.ok 5, Status.error 7]
   let left := Option.elim a[0]? 0 (fun status => statusLeftScore status)
   let right := Option.elim a[1]? 0 (fun status => statusRightScore status)
+  left * (10 : UInt64) + right
+
+def arrayStatusSwapMatch : UInt64 :=
+  let a : Array Status := #[Status.ok 5, Status.error 7]
+  let b := a.swapIfInBounds 0 1
+  let left := Option.elim b[0]? 0 (fun status => statusLeftScore status)
+  let right := Option.elim b[1]? 0 (fun status => statusRightScore status)
+  left * (10 : UInt64) + right
+
+def arrayStatusReverseMatch : UInt64 :=
+  let a : Array Status := #[Status.ok 5, Status.error 7]
+  let b := a.reverse
+  let left := Option.elim b[0]? 0 (fun status => statusLeftScore status)
+  let right := Option.elim b[1]? 0 (fun status => statusRightScore status)
   left * (10 : UInt64) + right
 
 def arrayOptionLiteralMatch : UInt64 :=

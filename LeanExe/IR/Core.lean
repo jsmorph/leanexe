@@ -67,9 +67,13 @@ mutual
     | arrayExtractSlots (width : Nat) (array start stop : Expr)
     | arrayMap (array : Expr) (itemSlot : Nat) (body : Expr)
     | arrayInsertIfInBounds (array index value : Expr)
+    | arrayInsertIfInBoundsSlots (width : Nat) (array index : Expr) (values : List Expr)
     | arrayEraseIfInBounds (array index : Expr)
+    | arrayEraseIfInBoundsSlots (width : Nat) (array index : Expr)
     | arraySwapIfInBounds (array left right : Expr)
+    | arraySwapIfInBoundsSlots (width : Nat) (array left right : Expr)
     | arrayReverse (array : Expr)
+    | arrayReverseSlots (width : Nat) (array : Expr)
     | byteArrayGet (ptr len index : Expr)
     | call (index : Nat) (args : List Expr)
     deriving BEq, Repr
@@ -162,9 +166,13 @@ mutual
     | .arrayExtractSlots _ array _ _ => array.eval module_ store
     | .arrayMap array _ _ => array.eval module_ store
     | .arrayInsertIfInBounds array _ _ => array.eval module_ store
+    | .arrayInsertIfInBoundsSlots _ array _ _ => array.eval module_ store
     | .arrayEraseIfInBounds array _ => array.eval module_ store
+    | .arrayEraseIfInBoundsSlots _ array _ => array.eval module_ store
     | .arraySwapIfInBounds array _ _ => array.eval module_ store
+    | .arraySwapIfInBoundsSlots _ array _ _ => array.eval module_ store
     | .arrayReverse array => array.eval module_ store
+    | .arrayReverseSlots _ array => array.eval module_ store
     | .byteArrayGet _ _ _ => 0
     | .call index args =>
         match module_.getFunc? index with
