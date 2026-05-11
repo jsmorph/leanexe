@@ -279,6 +279,9 @@ mutual
     | .arrayAlloc cells => 2 + exprScratch cells
     | .arrayAllocSlots _ cells => 2 + exprScratch cells
     | .arrayReplicate cells value => 4 + max (exprScratch cells) (exprScratch value)
+    | .arrayReplicateSlots _ cells values =>
+        3 + values.length +
+          max (exprScratch cells) (values.foldl (fun n value => max n (exprScratch value)) 0)
     | .arraySize array => 1 + exprScratch array
     | .arrayGet array index => 2 + max (exprScratch array) (exprScratch index)
     | .arrayGetSlot _ _ array index => 2 + max (exprScratch array) (exprScratch index)
@@ -491,6 +494,41 @@ mutual
       globalGet 0 ++ i64Const 8 ++ localGet lenLocal ++ i64Const 8 ++
         ofNats [126, 124, 124] ++ globalSet 0 ++
       emitFillLoop ptrLocal lenLocal valueLocal loopLocal ++
+      localGet ptrLocal
+
+  partial def emitArrayReplicateSlots
+      (scratch width : Nat)
+      (cells : Expr)
+      (values : List Expr) : List UInt8 :=
+    let lenLocal := scratch
+    let ptrLocal := scratch + 1
+    let loopLocal := scratch + 2
+    let valueStart := scratch + 3
+    let childScratch := scratch + 3 + values.length
+    let rec emitValueStores : List (Nat × Expr) → List UInt8
+      | [] => []
+      | (offset, value) :: rest =>
+          emitExpr childScratch value ++ localSet (valueStart + offset) ++ emitValueStores rest
+    let rec emitSlotStores : List (Nat × Expr) → List UInt8
+      | [] => []
+      | (offset, _) :: rest =>
+          arraySlotAddress width offset (localGet ptrLocal) (localGet loopLocal) ++
+            localGet (valueStart + offset) ++ i64Store ++ emitSlotStores rest
+    let fillLoop :=
+      i64Const 0 ++ localSet loopLocal ++
+        ofNats [2, 64, 3, 64] ++
+          localGet loopLocal ++ localGet lenLocal ++ i64GeU ++ ofNats [13] ++ u32leb 1 ++
+          emitSlotStores (enumerate values) ++
+          localGet loopLocal ++ i64Const 1 ++ ofNats [124] ++ localSet loopLocal ++
+          ofNats [12] ++ u32leb 0 ++
+        ofNats [11, 11]
+    emitExpr childScratch cells ++ localSet lenLocal ++
+      emitValueStores (enumerate values) ++
+      globalGet 0 ++ localSet ptrLocal ++
+      localGet ptrLocal ++ i32WrapI64 ++ localGet lenLocal ++ i64Store ++
+      globalGet 0 ++ i64Const 8 ++ localGet lenLocal ++ i64Const width ++
+        ofNats [126] ++ i64Const 8 ++ ofNats [126, 124, 124] ++ globalSet 0 ++
+      fillLoop ++
       localGet ptrLocal
 
   partial def emitArrayGet (scratch : Nat) (array index : Expr) : List UInt8 :=
@@ -1229,6 +1267,8 @@ mutual
     | .arrayAlloc cells => emitArrayAlloc scratch cells
     | .arrayAllocSlots width cells => emitArrayAllocSlots scratch width cells
     | .arrayReplicate cells value => emitArrayReplicate scratch cells value
+    | .arrayReplicateSlots width cells values =>
+        emitArrayReplicateSlots scratch width cells values
     | .arraySize array => emitArraySize scratch array
     | .arrayGet array index => emitArrayGet scratch array index
     | .arrayGetSlot width slot array index => emitArrayGetSlot scratch width slot array index
@@ -1505,6 +1545,43 @@ mutual
         "global.get 0", "i64.const 8", s!"local.get {lenLocal}", "i64.const 8", "i64.mul",
         "i64.add", "i64.add", "global.set 0"] ++
       fillLoopWat ptrLocal lenLocal valueLocal loopLocal ++
+      [s!"local.get {ptrLocal}"]
+
+  partial def arrayReplicateSlotsWatLines
+      (scratch width : Nat)
+      (cells : Expr)
+      (values : List Expr) : List String :=
+    let lenLocal := scratch
+    let ptrLocal := scratch + 1
+    let loopLocal := scratch + 2
+    let valueStart := scratch + 3
+    let childScratch := scratch + 3 + values.length
+    let rec valueStores : List (Nat × Expr) → List String
+      | [] => []
+      | (offset, value) :: rest =>
+          exprWatLines childScratch value ++ [s!"local.set {valueStart + offset}"] ++
+            valueStores rest
+    let rec slotStores : List (Nat × Expr) → List String
+      | [] => []
+      | (offset, _) :: rest =>
+          arraySlotAddressWat width offset [s!"local.get {ptrLocal}"] [s!"local.get {loopLocal}"] ++
+            [s!"local.get {valueStart + offset}", "i64.store align=8"] ++
+            slotStores rest
+    let fillLoop :=
+      [s!"i64.const 0", s!"local.set {loopLocal}", "block", "  loop"] ++
+        indent 4 (
+          [s!"local.get {loopLocal}", s!"local.get {lenLocal}", "i64.ge_u", "br_if 1"] ++
+          slotStores (enumerate values) ++
+          [s!"local.get {loopLocal}", "i64.const 1", "i64.add", s!"local.set {loopLocal}",
+            "br 0"]) ++
+        ["  end", "end"]
+    exprWatLines childScratch cells ++ [s!"local.set {lenLocal}"] ++
+      valueStores (enumerate values) ++
+      ["global.get 0", s!"local.set {ptrLocal}",
+        s!"local.get {ptrLocal}", "i32.wrap_i64", s!"local.get {lenLocal}", "i64.store align=8",
+        "global.get 0", "i64.const 8", s!"local.get {lenLocal}", s!"i64.const {width}",
+        "i64.mul", "i64.const 8", "i64.mul", "i64.add", "i64.add", "global.set 0"] ++
+      fillLoop ++
       [s!"local.get {ptrLocal}"]
 
   partial def arrayGetWatLines (scratch : Nat) (array index : Expr) : List String :=
@@ -2303,6 +2380,8 @@ mutual
     | .arrayAlloc cells => arrayAllocWatLines scratch cells
     | .arrayAllocSlots width cells => arrayAllocSlotsWatLines scratch width cells
     | .arrayReplicate cells value => arrayReplicateWatLines scratch cells value
+    | .arrayReplicateSlots width cells values =>
+        arrayReplicateSlotsWatLines scratch width cells values
     | .arraySize array => arraySizeWatLines scratch array
     | .arrayGet array index => arrayGetWatLines scratch array index
     | .arrayGetSlot width slot array index =>

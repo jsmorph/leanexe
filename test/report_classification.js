@@ -265,6 +265,11 @@ const cases = [
   },
   {
     moduleName: "LeanExe.Examples.Correctness",
+    entryName: "LeanExe.Examples.Correctness.arrayStructureReplicateRead",
+    shape: "entry shape: UInt64",
+  },
+  {
+    moduleName: "LeanExe.Examples.Correctness",
     entryName: "LeanExe.Examples.Correctness.arrayStatusLiteralMatch",
     shape: "entry shape: UInt64",
   },
@@ -276,6 +281,11 @@ const cases = [
   {
     moduleName: "LeanExe.Examples.Correctness",
     entryName: "LeanExe.Examples.Correctness.arrayStatusModifyMatch",
+    shape: "entry shape: UInt64",
+  },
+  {
+    moduleName: "LeanExe.Examples.Correctness",
+    entryName: "LeanExe.Examples.Correctness.arrayStatusReplicateMatch",
     shape: "entry shape: UInt64",
   },
   {

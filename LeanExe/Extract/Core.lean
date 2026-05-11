@@ -3479,14 +3479,17 @@ mutual
                     | none => .error "unsupported List.toArray argument"
                 | _ => .error "unsupported List.toArray application"
             | (.const ``Array.replicate _, args) =>
-                match args.reverse with
-                | value :: cells :: _ =>
-                    let valueResult ← extractExprFrom ctx locals nextLocal value
-                    let cellsResult ← extractExprFrom ctx locals valueResult.snd cells
-                    match valueResult.fst with
-                    | .u64 0 => .ok (.arrayAlloc cellsResult.fst, cellsResult.snd)
-                    | _ => .ok (.arrayReplicate cellsResult.fst valueResult.fst, cellsResult.snd)
-                | _ => .error "unsupported Array.replicate application"
+                match args, args.reverse with
+                | itemTy :: _, value :: cells :: _ =>
+                    match typeAtom? ctx.env itemTy with
+                    | some itemTy =>
+                        let width ← arrayElementWidth "Array.replicate" itemTy
+                        let cellsResult ← extractExprFrom ctx locals nextLocal cells
+                        let valueResult ← extractValueFrom ctx locals cellsResult.snd value
+                        let slots ← flattenArrayElementValue itemTy valueResult.fst
+                        .ok (.arrayReplicateSlots width cellsResult.fst slots, valueResult.snd)
+                    | none => .error "unsupported Array.replicate item type"
+                | _, _ => .error "unsupported Array.replicate application"
             | (.const ``Array.size _, args) =>
                 match args.reverse with
                 | array :: _ =>

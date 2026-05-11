@@ -1812,3 +1812,21 @@ Checks run:
 - [x] `.lake/build/bin/lean-wasm compile-wat --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.arrayStatusModifyMatch --out .lake/build/core-correctness/arrayStatusModifyMatch.wat`
 - [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/wasmtime-v44.0.0-aarch64-linux/wasmtime --invoke arrayStatusModifyMatch .lake/build/core-correctness/arrayStatusModifyMatch.wat` returned `107`.
 - [x] `node test/run_all.js` returned `checked 54 report classification cases`, `checked 361 accepted, 17 rejected, and 7 trapped cases`, `checked 36 bytearray allocation cases`, and `checked 56 cases`.
+
+## 2026-05-11: Multi-slot array replicate
+
+Fixed-width arrays now lower `Array.replicate` for structure and tagged elements.  The lowering evaluates the length and element value once, stores the flattened element slots in locals, allocates `length * width` payload cells, and writes the stored slots into each element position.  This keeps replication aligned with the fixed-width memory layout used by literals and copy-on-write updates.
+
+The remaining fixed-width array gap is `Array.map`.  It needs the mapper body to receive a structured source element inside the loop and the result array to use the mapped element type's width, which is a distinct lowering from scalar `Array.map`.
+
+Checks run:
+
+- [x] `lake build LeanExe.Examples.Correctness`
+- [x] `lake build`
+- [x] `node test/report_classification.js` returned `checked 56 report classification cases`.
+- [x] `node test/core_correctness.js` returned `checked 363 accepted, 17 rejected, and 7 trapped cases`.
+- [x] `.lake/build/bin/lean-wasm compile-wat --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.arrayStructureReplicateRead --out .lake/build/core-correctness/arrayStructureReplicateRead.wat`
+- [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/wasmtime-v44.0.0-aarch64-linux/wasmtime --invoke arrayStructureReplicateRead .lake/build/core-correctness/arrayStructureReplicateRead.wat` returned `1212`.
+- [x] `.lake/build/bin/lean-wasm compile-wat --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.arrayStatusReplicateMatch --out .lake/build/core-correctness/arrayStatusReplicateMatch.wat`
+- [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/wasmtime-v44.0.0-aarch64-linux/wasmtime --invoke arrayStatusReplicateMatch .lake/build/core-correctness/arrayStatusReplicateMatch.wat` returned `1077`.
+- [x] `node test/run_all.js` returned `checked 56 report classification cases`, `checked 363 accepted, 17 rejected, and 7 trapped cases`, `checked 36 bytearray allocation cases`, and `checked 56 cases`.
