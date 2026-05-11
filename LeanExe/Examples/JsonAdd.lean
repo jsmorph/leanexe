@@ -35,8 +35,7 @@ def parseObject (text : AsciiString) : Option UInt64 :=
                                 none
 
 def sumPrefix : ByteArray :=
-  (((((((ByteArray.empty.push Ascii.byteLBrace).push Ascii.byteQuote).push (115 : UInt8)).push
-    (117 : UInt8)).push (109 : UInt8)).push Ascii.byteQuote).push Ascii.byteColon)
+  "{\"sum\":".toUTF8
 
 def resultJson (n : UInt64) : ByteArray :=
   (Ascii.appendUInt64Decimal sumPrefix n).push Ascii.byteRBrace

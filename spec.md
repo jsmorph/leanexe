@@ -55,7 +55,7 @@ Arrays cross the ABI as arena pointers.  Array elements must have a fixed slot w
 | `Option α` | Yes | Yes | Yes | Treated as a supported tagged value when `α` is supported. |
 | `Except ε α` | Yes | Yes | Yes | Treated as a supported tagged value when both payload types are supported. |
 | Propositions | Erased | Erased | Erased | Proofs may justify Lean source but have no WASM value. |
-| `String` | No | No | No | Use `ByteArray` for byte input and output. |
+| `String` | No | No | Literal-only | Runtime strings are unsupported; ASCII literals may be converted with `String.toUTF8`. |
 
 Entry parameters support `Bool`, `UInt64`, bounded `Nat`, `ByteArray`, fixed-width `Array`, supported structures, supported nonrecursive inductives, `Option`, and `Except`.  Entry results support the same set.  `UInt8`, `UInt32`, `Unit`, products, and recursive inductives are internal-only types even though helpers may use them.
 
@@ -119,15 +119,17 @@ Nested arrays, arrays of recursive types, polymorphic array code, array capacity
 
 Supported read operations include `ByteArray.size`, `ByteArray.isEmpty`, `ByteArray.get!`, proof-indexed indexing, bang indexing, safe indexing, and `ByteArray.extract`.  Out-of-bounds trapping reads emit WASM `unreachable`.  Safe indexing returns `Option UInt8`, and extract clamps the stop index to the source length.
 
-Supported construction and update operations include `ByteArray.empty`, `ByteArray.mk` from `Array UInt8`, `ByteArray.push`, `ByteArray.append`, append notation through `++`, proof-indexed `ByteArray.set`, trapping `ByteArray.set!`, and value-level `ByteArray.copySlice`.  Update operations allocate new byte buffers and preserve aliases to the old input.  `ByteArray.copySlice` follows Lean's pure value behavior rather than capacity behavior.
+Supported construction and update operations include `ByteArray.empty`, `ByteArray.mk` from `Array UInt8`, `String.toUTF8` on compile-time ASCII string literals, `ByteArray.push`, `ByteArray.append`, append notation through `++`, proof-indexed `ByteArray.set`, trapping `ByteArray.set!`, and value-level `ByteArray.copySlice`.  Update operations allocate new byte buffers and preserve aliases to the old input.  `ByteArray.copySlice` follows Lean's pure value behavior rather than capacity behavior.
 
 Supported binary and loop operations include `ByteArray.toUInt64LE!`, `ByteArray.toUInt64BE!`, `ByteArray.foldl`, and `ByteArray.findIdx?`.  The fixed-width decoding operations require exactly eight bytes and trap otherwise.  `ByteArray.foldl` supports a one-slot accumulator such as `Bool`, `UInt8`, `UInt32`, `UInt64`, bounded `Nat`, or a supported array pointer, and byte-array folders and predicates must be direct lambdas.
 
-Unsupported byte-array features include `ByteArray.foldlM`, `USize` indexing APIs, `ByteArray.uset`, string conversion, UTF-8 decoding, effectful callbacks, and closure-valued callbacks.  Hosts interact with byte arrays through `alloc`, `memory`, and the pointer-length ABI.  Wasmtime's scalar `--invoke` interface is convenient for scalar examples, but byte-array entries need a host program that writes and reads module memory.
+Unsupported byte-array features include `ByteArray.foldlM`, `USize` indexing APIs, `ByteArray.uset`, runtime string conversion, UTF-8 decoding, effectful callbacks, and closure-valued callbacks.  Hosts interact with byte arrays through `alloc`, `memory`, and the pointer-length ABI.  Wasmtime's scalar `--invoke` interface is convenient for scalar examples, but byte-array entries need a host program that writes and reads module memory.
 
 ## ASCII Strings
 
-`LeanExe.AsciiString` is a source-level structure whose runtime representation is one `ByteArray` field.  The type is intended for byte-oriented text that must remain in the ASCII range, which covers JSON punctuation, decimal digits, unescaped field names, simple error messages, and generated protocol text.  It avoids Lean `String` and `Char` semantics, so indexing remains byte indexing and the compiler does not need UTF-8 decoding.
+`LeanExe.AsciiString` is a source-level structure whose runtime representation is one `ByteArray` field.  The type is intended for byte-oriented text that must remain in the ASCII range, which covers JSON punctuation, decimal digits, unescaped field names, simple error messages, and generated protocol text.  It avoids runtime Lean `String` and `Char` semantics, so indexing remains byte indexing and the compiler does not need UTF-8 decoding.
+
+ASCII string literals may be written with standard Lean syntax when the literal is converted directly to bytes: `"fieldName".toUTF8`.  The compiler accepts this form only when the receiver is a compile-time string literal and every UTF-8 byte is below `128`.  Nonliteral `String` values, non-ASCII literals, `String` parameters, `String` results, `String` indexing, and UTF-8 decoding remain outside the accepted language.
 
 The library provides `empty`, `ofTrustedByteArray`, `toByteArray`, `size`, `isEmpty`, `get!`, `get?`, `getD`, `isAsciiByte`, `pushTrustedByte`, `pushByte?`, `append`, `extract`, `isAscii`, `ofByteArray?`, `singletonTrusted`, and `singleton?`.  Trusted constructors do not inspect bytes and therefore rely on the caller to preserve the ASCII invariant.  Checked constructors and checked pushes return `Option AsciiString`, using `none` when input bytes are outside `0..127`.
 
@@ -155,7 +157,7 @@ Products are supported as internal values.  `Prod.mk`, `.1`, `.2`, `Prod.casesOn
 
 ## Unsupported Features
 
-Unsupported runtime features include polymorphic executable code, type classes that require runtime specialization, higher-order functions, closures, general structural recursion, mutual recursion, arbitrary Lean or Std library calls, `unsafe`, `partial`, opaque executable constants, executable axioms, quotients, `IO`, `EIO`, `BaseIO`, `Task`, file access, environment access, time, randomness, concurrency, reflection, and FFI.  Unsupported data features include `String`, `List` as a runtime value, nested arrays, arrays of recursive values, exported recursive data structures, recursive structures, indexed inductives, mutual inductives, and polymorphic structures or inductives.  Unsupported numeric features include signed integers, floating-point arithmetic, and arbitrary-precision runtime `Nat`.
+Unsupported runtime features include polymorphic executable code, type classes that require runtime specialization, higher-order functions, closures, general structural recursion, mutual recursion, arbitrary Lean or Std library calls, `unsafe`, `partial`, opaque executable constants, executable axioms, quotients, `IO`, `EIO`, `BaseIO`, `Task`, file access, environment access, time, randomness, concurrency, reflection, and FFI.  Unsupported data features include runtime `String`, `List` as a runtime value, nested arrays, arrays of recursive values, exported recursive data structures, recursive structures, indexed inductives, mutual inductives, and polymorphic structures or inductives.  Unsupported numeric features include signed integers, floating-point arithmetic, and arbitrary-precision runtime `Nat`.
 
 Unsupported features should produce a rejection during `report` or `compile`.  They should not be emulated through hidden Lean runtime calls.  A missing rejection is a compiler bug, because accepted WASM must be explainable through this specification.
 

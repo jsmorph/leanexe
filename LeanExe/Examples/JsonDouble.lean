@@ -22,9 +22,7 @@ def parseObject (text : AsciiString) : Option UInt64 :=
                     none
 
 def resultPrefix : ByteArray :=
-  (((((((((ByteArray.empty.push Ascii.byteLBrace).push Ascii.byteQuote).push (114 : UInt8)).push
-    (101 : UInt8)).push (115 : UInt8)).push (117 : UInt8)).push (108 : UInt8)).push
-    (116 : UInt8)).push Ascii.byteQuote).push Ascii.byteColon
+  "{\"result\":".toUTF8
 
 def resultJson (n : UInt64) : ByteArray :=
   (Ascii.appendUInt64Decimal resultPrefix n).push Ascii.byteRBrace

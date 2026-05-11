@@ -2104,6 +2104,12 @@ def byteArrayMkReturn : ByteArray :=
 def byteArrayMkSize : Nat :=
   byteArrayMkReturn.size
 
+def byteArrayStringLiteralReturn : ByteArray :=
+  "ABC".toUTF8
+
+def byteArrayStringLiteralSize : Nat :=
+  "ABC".toUTF8.size
+
 def byteArrayMkSizeForcesArrayTrap : Nat :=
   (ByteArray.mk #[(Array.replicate 0 (0 : UInt8))[0]!]).size
 
@@ -2185,6 +2191,9 @@ def rejectUInt32Param (x : UInt32) : Nat :=
 
 def rejectUInt32Return : UInt32 :=
   42
+
+def rejectRuntimeStringToUTF8 (flag : Bool) : ByteArray :=
+  (if flag then "A" else "B").toUTF8
 
 def alloc : UInt64 :=
   1

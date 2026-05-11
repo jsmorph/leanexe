@@ -5,12 +5,7 @@ namespace LeanExe
 namespace Examples.JsonCollatzLength
 
 def fieldName : ByteArray :=
-  ByteArray.mk #[
-    (99 : UInt8), (111 : UInt8), (108 : UInt8), (108 : UInt8),
-    (97 : UInt8), (116 : UInt8), (122 : UInt8), (76 : UInt8),
-    (101 : UInt8), (110 : UInt8), (103 : UInt8), (116 : UInt8),
-    (104 : UInt8), (70 : UInt8), (111 : UInt8), (114 : UInt8)
-  ]
+  "collatzLengthFor".toUTF8
 
 def parseObject (text : AsciiString) : Option UInt64 :=
   match Ascii.expectWsByte text 0 Ascii.byteLBrace with
@@ -31,11 +26,7 @@ def parseObject (text : AsciiString) : Option UInt64 :=
                     none
 
 def lengthPrefix : ByteArray :=
-  ByteArray.mk #[
-    Ascii.byteLBrace, Ascii.byteQuote, (108 : UInt8), (101 : UInt8),
-    (110 : UInt8), (103 : UInt8), (116 : UInt8), (104 : UInt8),
-    Ascii.byteQuote, Ascii.byteColon
-  ]
+  "{\"length\":".toUTF8
 
 def resultJson (n : UInt64) : ByteArray :=
   (Ascii.appendUInt64Decimal lengthPrefix n).push Ascii.byteRBrace

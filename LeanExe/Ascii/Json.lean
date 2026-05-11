@@ -41,9 +41,7 @@ def expectFieldName (text : AsciiString) (pos : Nat) (name : ByteArray) : Option
           | some pos3 => expectWsByte text pos3 byteColon
 
 def errorJson : ByteArray :=
-  ((((((((((ByteArray.empty.push byteLBrace).push byteQuote).push (101 : UInt8)).push
-    (114 : UInt8)).push (114 : UInt8)).push (111 : UInt8)).push (114 : UInt8)).push
-    byteQuote).push byteColon).push (49 : UInt8)).push byteRBrace
+  "{\"error\":1}".toUTF8
 
 end Json
 end Ascii
