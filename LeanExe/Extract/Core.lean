@@ -368,6 +368,21 @@ mutual
           match typeAtom? env expr with
           | some (.recVariant _) => none
           | other => other
+    | (.const ``Array _, [item]) =>
+        typeAtomRecursiveField? env selfName item |>.map .array
+    | (.const ``Prod _, [left, right]) =>
+        match typeAtomRecursiveField? env selfName left,
+            typeAtomRecursiveField? env selfName right with
+        | some leftTy, some rightTy => some (.product leftTy rightTy)
+        | _, _ => none
+    | (.const ``Option _, [item]) =>
+        typeAtomRecursiveField? env selfName item |>.map
+          (fun itemTy => .variant ``Option [[], [itemTy]])
+    | (.const ``Except _, [error, ok]) =>
+        match typeAtomRecursiveField? env selfName error,
+            typeAtomRecursiveField? env selfName ok with
+        | some errorTy, some okTy => some (.variant ``Except [[errorTy], [okTy]])
+        | _, _ => none
     | _ =>
         match typeAtom? env expr with
         | some (.recVariant _) => none
@@ -484,6 +499,7 @@ mutual
     | .u32 => some 1
     | .u64 => some 1
     | .nat => some 1
+    | .recVariant _ => some 1
     | .struct _ fields => arrayFieldSlots? fields
     | .variant _ ctors => do
         let payloadSlots ← arrayCtorSlots? ctors
@@ -508,11 +524,23 @@ end
 def supportedArrayElementType (ty : Ty) : Bool :=
   arrayElementSlots? ty |>.isSome
 
+partial def containsRecVariant : Ty → Bool
+  | .array item => containsRecVariant item
+  | .product left right => containsRecVariant left || containsRecVariant right
+  | .sum left right => containsRecVariant left || containsRecVariant right
+  | .struct _ fields => fields.any containsRecVariant
+  | .variant _ ctors => ctors.any (fun fields => fields.any containsRecVariant)
+  | .recVariant _ => true
+  | _ => false
+
+def supportedAbiArrayElementType (ty : Ty) : Bool :=
+  supportedArrayElementType ty && !containsRecVariant ty
+
 def supportedAbiType : Ty → Bool
   | .bool => true
   | .u64 => true
   | .nat => true
-  | .array item => supportedArrayElementType item
+  | .array item => supportedAbiArrayElementType item
   | _ => false
 
 partial def supportedParamAbiType : Ty → Bool
@@ -1362,7 +1390,7 @@ partial def flattenAbiValue (ty : Ty) (value : ExtractedValue) : Except String (
   | .u64 => scalarValue value |>.map (fun expr => [expr])
   | .nat => scalarValue value |>.map (fun expr => [expr])
   | .array item =>
-      if supportedArrayElementType item then
+      if supportedAbiArrayElementType item then
         scalarValue value |>.map (fun expr => [expr])
       else
         .error s!"unsupported ABI value type: {reprStr ((.array item : Ty))}"
@@ -1527,6 +1555,28 @@ partial def flattenArrayElementValue
   | .u32 => scalarValue value |>.map (fun expr => [expr])
   | .u64 => scalarValue value |>.map (fun expr => [expr])
   | .nat => scalarValue value |>.map (fun expr => [expr])
+  | .recVariant name =>
+      match value with
+      | .heapVariant actual ptr =>
+          if actual == name then
+            .ok [ptr]
+          else
+            .error s!"recursive inductive array element shape mismatch: {name}"
+      | .recursiveVariant actual tag ctors =>
+          if actual == name then do
+            let flattened ← ctors.mapM fun fields =>
+              fields.mapM (fun field => flattenInternalValue field.fst field.snd)
+            .ok [(.heapAllocSlots (tag :: flattened.flatten.flatten))]
+          else
+            .error s!"recursive inductive array element shape mismatch: {name}"
+      | .letE slot value body => do
+          let flattened ← flattenArrayElementValue ty body
+          .ok (flattened.map (fun expr => .letE slot value expr))
+      | .letCall slots index args body => do
+          let flattened ← flattenArrayElementValue ty body
+          .ok (flattened.map (fun expr => .letCall slots index args expr))
+      | _ =>
+          .error s!"non-recursive value used where recursive inductive array element is required: {name}"
   | .struct name fields =>
       match value with
       | .struct actual values =>
@@ -1577,6 +1627,8 @@ mutual
     | .u32, slot => .ok (.scalar (.arrayGetSlot width slot array index), slot + 1)
     | .u64, slot => .ok (.scalar (.arrayGetSlot width slot array index), slot + 1)
     | .nat, slot => .ok (.scalar (.arrayGetSlot width slot array index), slot + 1)
+    | .recVariant name, slot =>
+        .ok (.heapVariant name (.arrayGetSlot width slot array index), slot + 1)
     | .struct name fields, slot => do
         let result ← arrayLoadFieldsAt width array index fields slot
         .ok (.struct name result.fst, result.snd)
@@ -1630,6 +1682,8 @@ mutual
     | .u32, slot => .ok (.scalar (.arrayFindSlot width array itemStart predicate slot), slot + 1)
     | .u64, slot => .ok (.scalar (.arrayFindSlot width array itemStart predicate slot), slot + 1)
     | .nat, slot => .ok (.scalar (.arrayFindSlot width array itemStart predicate slot), slot + 1)
+    | .recVariant name, slot =>
+        .ok (.heapVariant name (.arrayFindSlot width array itemStart predicate slot), slot + 1)
     | .struct name fields, slot => do
         let result ← arrayFindFieldsAt width array itemStart predicate fields slot
         .ok (.struct name result.fst, result.snd)
@@ -1682,6 +1736,7 @@ mutual
     | .u32, slot => .ok (.scalar (.local (start + slot)), slot + 1)
     | .u64, slot => .ok (.scalar (.local (start + slot)), slot + 1)
     | .nat, slot => .ok (.scalar (.local (start + slot)), slot + 1)
+    | .recVariant name, slot => .ok (.heapVariant name (.local (start + slot)), slot + 1)
     | .struct name fields, slot => do
         let result ← arrayLocalFieldsAt start fields slot
         .ok (.struct name result.fst, result.snd)
@@ -6030,7 +6085,7 @@ mutual
     | [], [] => .ok ([], nextLocal)
     | ty :: restTys, expr :: restExprs => do
         let valueResult ← extractValueFrom ctx locals nextLocal expr
-        let head ← flattenAbiValue ty valueResult.fst
+        let head ← flattenInternalValue ty valueResult.fst
         let rest ← extractCallArgsFrom ctx locals valueResult.snd restTys restExprs
         .ok (head ++ rest.fst, rest.snd)
     | _, _ => .error "function call arity mismatch"
@@ -6209,7 +6264,10 @@ def extractNatRecFunc
     match exitResult?.fst with
     | some exitValue => valueIte fuelLive exitValue baseResult.fst
     | none => .ok baseResult.fst
-  let results ← flattenAbiValue resultTy resultValue
+  let results ←
+    match exportName with
+    | some _ => flattenAbiValue resultTy resultValue
+    | none => flattenInternalValue resultTy resultValue
   .ok {
     sourceName := name,
     exportName := exportName,
@@ -6233,7 +6291,10 @@ def extractPlainFunc
     | some body => .ok body
     | none => .error s!"definition body does not match function arity: {name}"
   let result ← extractValueFrom ctx (localBindingsForParams params) wasmParamCount body
-  let results ← flattenAbiValue resultTy result.fst
+  let results ←
+    match exportName with
+    | some _ => flattenAbiValue resultTy result.fst
+    | none => flattenInternalValue resultTy result.fst
   .ok {
     sourceName := name,
     exportName := exportName,

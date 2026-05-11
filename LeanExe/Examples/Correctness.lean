@@ -498,11 +498,60 @@ def u64ListBranch (flag : UInt64) : UInt64 :=
       U64List.cons 9 U64List.nil
   u64ListHeadOrZero xs
 
+def u64ListArrayHeadOrZero (xs : Array U64List) (index : Nat) : UInt64 :=
+  match xs[index]? with
+  | some item => u64ListHeadOrZero item
+  | none => 0
+
+def u64ListArrayLiteralHeadSum : UInt64 :=
+  let xs : Array U64List := #[U64List.nil, u64List123, U64List.cons 9 U64List.nil]
+  u64ListArrayHeadOrZero xs 0 + u64ListArrayHeadOrZero xs 1 + u64ListArrayHeadOrZero xs 2
+
+def u64ListArrayPushSetSum : UInt64 :=
+  let xs : Array U64List := #[U64List.nil]
+  let pushed := xs.push (U64List.cons 5 U64List.nil)
+  let updated := pushed.set! 0 u64List123
+  u64ListArrayHeadOrZero updated 0 + u64ListArrayHeadOrZero updated 1
+
+def u64ListArrayMapTailHead : UInt64 :=
+  let xs : Array U64List := #[u64List123, U64List.cons 9 U64List.nil]
+  let tails := xs.map (fun item => u64ListTail item)
+  u64ListArrayHeadOrZero tails 0 + u64ListArrayHeadOrZero tails 1
+
+def u64ListArrayFoldHeads : UInt64 :=
+  let xs : Array U64List := #[u64List123, U64List.cons 9 U64List.nil]
+  xs.foldl (fun acc item => acc + u64ListHeadOrZero item) 0
+
+inductive U64Tree where
+  | leaf : UInt64 → U64Tree
+  | node : Array U64Tree → U64Tree
+
+def u64TreeFirstChildHead (tree : U64Tree) : UInt64 :=
+  match tree with
+  | .leaf value => value
+  | .node children =>
+      match children[0]? with
+      | some child =>
+          match child with
+          | .leaf value => value
+          | .node _ => 99
+      | none => 0
+
+def u64TreeArrayFieldDemo : UInt64 :=
+  let tree := U64Tree.node #[U64Tree.leaf 7, U64Tree.node #[U64Tree.leaf 11]]
+  u64TreeFirstChildHead tree
+
 def rejectRecursiveInductiveParam (xs : U64List) : UInt64 :=
   u64ListHeadOrZero xs
 
 def rejectRecursiveInductiveReturn : U64List :=
   u64List123
+
+def rejectRecursiveArrayParam (xs : Array U64List) : Nat :=
+  xs.size
+
+def rejectRecursiveArrayReturn : Array U64List :=
+  #[u64List123]
 
 def unitArgHelper (_value : Unit) : UInt64 :=
   11

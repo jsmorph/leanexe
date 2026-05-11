@@ -2201,3 +2201,18 @@ Checks run:
 - [x] `node test/json_double.js` returned `checked 31 json program cases`.
 - [x] `node test/report_classification.js` returned `checked 89 report classification cases`.
 - [x] `node test/run_all.js` returned `checked 89 report classification cases`, `checked 432 accepted, 19 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 14 asciistring cases`, `checked 31 json program cases`, and `checked 56 cases`.
+
+## 2026-05-11: Internal arrays of recursive values
+
+The compiler now treats a recursive inductive value as a one-slot array element when the array stays inside compiled Lean code.  The slot holds the heap pointer used for materialized recursive values.  This admits internal values such as `Array U64List` and recursive constructors that contain `Array U64Tree`.  Entry parameters and entry results whose array element layout contains a recursive value remain rejected.
+
+The extractor changes stay narrow.  `arrayElementSlots?` now assigns one slot to `Ty.recVariant`, array element flattening materializes fresh recursive constructor values to heap pointers, and array load, find, and loop-local binding rebuild `ExtractedValue.heapVariant` from the stored pointer.  Recursive field type analysis now recognizes `Array self` structurally, avoiding recursive-layout rediscovery while checking constructors such as `U64Tree.node : Array U64Tree -> U64Tree`.  Direct helper calls now flatten arguments and non-exported results with the internal value flattener, so internal arrays of recursive values can pass through ordinary local helpers without becoming part of the public ABI.
+
+`LeanExe.Examples.Correctness` covers recursive arrays through literals, `push`, `set!`, `map`, `foldl`, safe indexing, and a recursive inductive constructor that stores `Array U64Tree`.  The accepted cases exercise both fresh constructor values and recursive pointers loaded back from array storage.  The rejected cases cover public ABI rejection for `Array U64List` parameters and results.
+
+Checks run:
+
+- [x] `lake build`
+- [x] `node test/core_correctness.js` returned `checked 437 accepted, 21 rejected, and 13 trapped cases`.
+- [x] `node test/report_classification.js` returned `checked 90 report classification cases`.
+- [x] `node test/run_all.js` returned `checked 90 report classification cases`, `checked 437 accepted, 21 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 14 asciistring cases`, `checked 31 json program cases`, and `checked 56 cases`.
