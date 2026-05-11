@@ -101,6 +101,18 @@ def appendABCXYZ : ByteArray :=
 def appendInputABC (input : ByteArray) : ByteArray :=
   input.append bytesABC
 
+def setABC : ByteArray :=
+  if h : 1 < bytesABC.size then
+    bytesABC.set 1 (90 : UInt8) h
+  else
+    bytesABC
+
+def setFirstBang (input : ByteArray) : ByteArray :=
+  if h : 0 < input.size then
+    input.set 0 (33 : UInt8) h
+  else
+    input
+
 def tailSlice (input : ByteArray) : ByteArray :=
   input.extract 1 input.size
 
