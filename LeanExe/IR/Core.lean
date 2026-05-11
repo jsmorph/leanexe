@@ -69,6 +69,8 @@ mutual
     | arrayMap (array : Expr) (itemSlot : Nat) (body : Expr)
     | arrayMapSlots (sourceWidth resultWidth : Nat) (array : Expr) (itemStart : Nat)
         (bodyValues : List Expr)
+    | arrayFoldSlots (sourceWidth : Nat) (array start stop init : Expr)
+        (accSlot itemStart : Nat) (body : Expr)
     | arrayInsertIfInBounds (array index value : Expr)
     | arrayInsertIfInBoundsSlots (width : Nat) (array index : Expr) (values : List Expr)
     | arrayEraseIfInBounds (array index : Expr)
@@ -177,6 +179,7 @@ mutual
     | .arrayExtractSlots _ array _ _ => array.eval module_ store
     | .arrayMap array _ _ => array.eval module_ store
     | .arrayMapSlots _ _ array _ _ => array.eval module_ store
+    | .arrayFoldSlots _ _ _ _ init _ _ _ => init.eval module_ store
     | .arrayInsertIfInBounds array _ _ => array.eval module_ store
     | .arrayInsertIfInBoundsSlots _ array _ _ => array.eval module_ store
     | .arrayEraseIfInBounds array _ => array.eval module_ store

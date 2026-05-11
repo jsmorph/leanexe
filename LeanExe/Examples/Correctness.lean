@@ -758,6 +758,23 @@ def arrayMapAliasRead : UInt64 :=
 def arrayMapEmptySkipsFunctionTrap : Nat :=
   ((#[] : Array UInt64).map (fun _ => (Array.replicate 0 (0 : UInt64)).back!)).size
 
+def arrayFoldSum : Nat :=
+  (#[1, 2, 3] : Array UInt64).foldl
+    (fun acc value => acc + value.toNat)
+    0
+
+def arrayFoldWindow : Nat :=
+  (#[1, 2, 3, 4] : Array UInt64).foldl
+    (fun acc value => acc * 10 + value.toNat)
+    0
+    1
+    3
+
+def arrayFoldEmptySkipsFunctionTrap : Nat :=
+  (#[] : Array UInt64).foldl
+    (fun acc _value => acc + ((Array.replicate 0 (0 : UInt64))[0]!).toNat)
+    7
+
 def arrayUInt8Read : Nat :=
   let a : Array UInt8 := #[(1 : UInt8), (300 : UInt8)]
   a[0]!.toNat * 1000 + a[1]!.toNat
@@ -985,6 +1002,12 @@ def arrayStructureMapRead : UInt64 :=
 def arrayStructureMapEmptySkipsFunctionTrap : Nat :=
   ((#[] : Array Point).map
     (fun _point => ({ x := (Array.replicate 0 (0 : UInt64)).back!, y := 9 } : Point))).size
+
+def arrayStructureFoldRead : UInt64 :=
+  let a : Array Point := #[({ x := 1, y := 2 } : Point), ({ x := 3, y := 4 } : Point)]
+  a.foldl
+    (fun acc point => acc * (100 : UInt64) + point.x * (10 : UInt64) + point.y)
+    0
 
 def arrayStructureSafeGet : UInt64 :=
   match (#[({ x := 4, y := 5 } : Point)] : Array Point)[0]? with

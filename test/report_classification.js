@@ -255,6 +255,11 @@ const cases = [
   },
   {
     moduleName: "LeanExe.Examples.Correctness",
+    entryName: "LeanExe.Examples.Correctness.arrayFoldSum",
+    shape: "entry shape: Nat",
+  },
+  {
+    moduleName: "LeanExe.Examples.Correctness",
     entryName: "LeanExe.Examples.Correctness.recPointFuel",
     shape: "entry shape: Nat -> UInt64 -> LeanExe.Examples.Correctness.Point",
   },
