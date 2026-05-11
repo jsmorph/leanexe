@@ -1848,3 +1848,21 @@ Checks run:
 - [x] `.lake/build/bin/lean-wasm compile-wat --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.arrayStatusMapMatch --out .lake/build/core-correctness/arrayStatusMapMatch.wat`
 - [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/wasmtime-v44.0.0-aarch64-linux/wasmtime --invoke arrayStatusMapMatch .lake/build/core-correctness/arrayStatusMapMatch.wat` returned `1168`.
 - [x] `node test/run_all.js` returned `checked 58 report classification cases`, `checked 366 accepted, 17 rejected, and 7 trapped cases`, `checked 36 bytearray allocation cases`, and `checked 56 cases`.
+
+## 2026-05-11: Structured Nat-fuel recursion results
+
+The Nat-fuel recursion extractor now handles supported structured result values.  Base and early-exit arms lower through `extractValueFrom`, the final loop result uses structured `valueIte` when the recursion has an early-exit arm, and the exported function result flattens through the normal ABI path.  This admits recursive functions returning structures, user-defined tagged values, `Option`, or `Except` when the result fields fit the current ABI.
+
+This does not broaden the accepted recursive call shape.  The successor arm still must tail-call the same recursive handle directly or place that tail call in one branch of the immediate `if`.
+
+Checks run:
+
+- [x] `lake build LeanExe.Examples.Correctness`
+- [x] `lake build`
+- [x] `node test/report_classification.js` returned `checked 60 report classification cases`.
+- [x] `node test/core_correctness.js` returned `checked 369 accepted, 17 rejected, and 7 trapped cases`.
+- [x] `.lake/build/bin/lean-wasm compile-wat --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.recPointFuel --out .lake/build/core-correctness/recPointFuel.wat`
+- [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/wasmtime-v44.0.0-aarch64-linux/wasmtime --invoke recPointFuel .lake/build/core-correctness/recPointFuel.wat 2 5` returned `7` and `8`.
+- [x] `.lake/build/bin/lean-wasm compile-wat --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.recStatusExitFuel --out .lake/build/core-correctness/recStatusExitFuel.wat`
+- [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/wasmtime-v44.0.0-aarch64-linux/wasmtime --invoke recStatusExitFuel .lake/build/core-correctness/recStatusExitFuel.wat 10 1` returned `1`, `0`, and `3`.
+- [x] `node test/run_all.js` returned `checked 60 report classification cases`, `checked 369 accepted, 17 rejected, and 7 trapped cases`, `checked 36 bytearray allocation cases`, and `checked 56 cases`.

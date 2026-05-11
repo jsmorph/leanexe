@@ -1168,6 +1168,18 @@ def recProductFuel : Nat → UInt64 → UInt64
 def recProductDemo : UInt64 :=
   recProductFuel 5 0
 
+def recPointFuel : Nat → UInt64 → Point
+  | 0, value => { x := value, y := value + 1 }
+  | fuel + 1, value => recPointFuel fuel (value + 1)
+
+def recStatusExitFuel : Nat → UInt64 → Status
+  | 0, value => Status.ok value
+  | fuel + 1, value =>
+      if value == 3 then
+        Status.error value
+      else
+        recStatusExitFuel fuel (value + 1)
+
 def recIgnoreTrapArgFuel : Nat → UInt64 → UInt64
   | 0, _value => 7
   | fuel + 1, value => recIgnoreTrapArgFuel fuel value
