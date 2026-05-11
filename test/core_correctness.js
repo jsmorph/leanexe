@@ -138,6 +138,13 @@ const accepted = [
     memoryBytes: [{ resultIndex: 0, lengthIndex: 1, values: [65, 66, 67] }],
   },
   { name: "byteArrayPushSize", args: [], expected: 3n },
+  {
+    name: "byteArrayAppendReturn",
+    args: [],
+    expected: [null, 3n],
+    memoryBytes: [{ resultIndex: 0, lengthIndex: 1, values: [65, 66, 67] }],
+  },
+  { name: "byteArrayAppendSize", args: [], expected: 3n },
   { name: "unitProductSecond", args: [], expected: 7n },
   { name: "unitHelperCall", args: [], expected: 11n },
   { name: "unitResultIgnored", args: [], expected: 12n },
@@ -476,6 +483,7 @@ const trapped = [
   { name: "arrayInsertIdxBangTrap", args: [] },
   { name: "arrayEraseIdxBangTrap", args: [] },
   { name: "byteArrayPushSizeForcesValueTrap", args: [] },
+  { name: "byteArrayAppendSizeForcesRightTrap", args: [] },
 ];
 
 function run(args) {

@@ -94,6 +94,13 @@ def bytesABC : ByteArray :=
 def appendBang (input : ByteArray) : ByteArray :=
   input.push (33 : UInt8)
 
+def appendABCXYZ : ByteArray :=
+  bytesABC.append
+    (((ByteArray.empty.push (88 : UInt8)).push (89 : UInt8)).push (90 : UInt8))
+
+def appendInputABC (input : ByteArray) : ByteArray :=
+  input.append bytesABC
+
 def tailSlice (input : ByteArray) : ByteArray :=
   input.extract 1 input.size
 

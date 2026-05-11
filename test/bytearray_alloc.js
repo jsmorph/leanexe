@@ -312,6 +312,25 @@ async function main() {
     }
   }
 
+  const appendABCXYZ = await instantiate("appendABCXYZ");
+  const appendABCXYZActual = callNoInputByteArrayOutput(appendABCXYZ);
+  if (!sameBytes(appendABCXYZActual, new Uint8Array([65, 66, 67, 88, 89, 90]))) {
+    throw new Error(`appendABCXYZ: expected 65,66,67,88,89,90, got ${Array.from(appendABCXYZActual)}`);
+  }
+
+  const appendInputABC = await instantiate("appendInputABC");
+  const appendInputABCCases = [
+    { input: new Uint8Array([]), expected: new Uint8Array([65, 66, 67]) },
+    { input: new Uint8Array([48, 49]), expected: new Uint8Array([48, 49, 65, 66, 67]) },
+  ];
+
+  for (const testCase of appendInputABCCases) {
+    const actual = readByteArrayResult(appendInputABC, callByteArrayOutput(appendInputABC, testCase.input));
+    if (!sameBytes(actual, testCase.expected)) {
+      throw new Error(`appendInputABC: expected ${Array.from(testCase.expected)}, got ${Array.from(actual)}`);
+    }
+  }
+
   const tailSlice = await instantiate("tailSlice");
   const tailSliceCases = [
     { input: new Uint8Array([]), expected: new Uint8Array([]) },
@@ -343,6 +362,8 @@ async function main() {
     emptyViaIsEmptyCases.length +
     1 +
     appendBangCases.length +
+    1 +
+    appendInputABCCases.length +
     tailSliceCases.length;
   process.stdout.write(`checked ${total} bytearray allocation cases\n`);
 }

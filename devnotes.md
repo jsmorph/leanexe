@@ -1897,3 +1897,20 @@ Checks run:
 - [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/current/wasmtime --invoke bytesABC .lake/build/bytearray-programs/bytesABC.wasm` returned pointer `4099` and length `3`.
 - [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/current/wasmtime wast .lake/build/bytearray-programs/appendBang.wat` accepted the generated module.
 - [x] `node test/run_all.js` returned `checked 64 report classification cases`, `checked 374 accepted, 16 rejected, and 8 trapped cases`, `checked 42 bytearray allocation cases`, and `checked 56 cases`.
+
+## 2026-05-11: ByteArray append
+
+The generic compiler now lowers `ByteArray.append` through a second byte-buffer allocation primitive.  The emitted code evaluates both inputs, allocates `left.size + right.size` bytes, copies the left bytes into the result, copies the right bytes after them, and returns the result pointer.  The length expression evaluates both operands, so a trap hidden in the construction of the right operand is still observed when source code asks only for the appended buffer's size.
+
+`LeanExe.Examples.ByteArrayPrograms.appendABCXYZ` covers appending two compiler-constructed buffers.  `appendInputABC` covers appending a compiler-constructed suffix to host-provided input.  The memory harness reads the returned pointer-length pair and compares the result bytes.
+
+Checks run:
+
+- [x] `lake build`
+- [x] `lake build LeanExe.Examples.Correctness LeanExe.Examples.ByteArrayPrograms`
+- [x] `node test/bytearray_alloc.js` returned `checked 45 bytearray allocation cases`.
+- [x] `node test/core_correctness.js` returned `checked 376 accepted, 16 rejected, and 9 trapped cases`.
+- [x] `node test/report_classification.js` returned `checked 66 report classification cases`.
+- [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/current/wasmtime --invoke appendABCXYZ .lake/build/bytearray-programs/appendABCXYZ.wasm` returned pointer `4108` and length `6`.
+- [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/current/wasmtime wast .lake/build/bytearray-programs/appendInputABC.wat` accepted the generated module.
+- [x] `node test/run_all.js` returned `checked 66 report classification cases`, `checked 376 accepted, 16 rejected, and 9 trapped cases`, `checked 45 bytearray allocation cases`, and `checked 56 cases`.

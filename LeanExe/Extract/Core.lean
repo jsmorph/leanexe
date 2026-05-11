@@ -1692,6 +1692,8 @@ partial def demandExpr
               args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
           | (.const ``ByteArray.push _, args) =>
               args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
+          | (.const ``ByteArray.append _, args) =>
+              args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
           | (.const ``ByteArray.get! _, _) => .trap
           | (.const ``Array.size _, args) =>
               args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
@@ -2922,6 +2924,34 @@ mutual
                   (.letE valueSlot valueResult.fst (.byteArray pushedPtr pushedLen),
                     lenSlot + 1)
             | _ => .error "unsupported ByteArray.push application"
+        | (.const ``ByteArray.append _, args) =>
+            match args with
+            | [left, right] =>
+                let leftResult ← extractValueFrom ctx locals nextLocal left
+                let leftParts ← byteArrayPartsWithLets leftResult.fst
+                let rightResult ← extractValueFrom ctx locals leftResult.snd right
+                let rightParts ← byteArrayPartsWithLets rightResult.fst
+                let leftPtrSlot := rightResult.snd
+                let leftLenSlot := leftPtrSlot + 1
+                let rightPtrSlot := leftPtrSlot + 2
+                let rightLenSlot := leftPtrSlot + 3
+                let leftPtr := wrapExprLets leftParts.fst leftParts.snd.fst
+                let leftLen := wrapExprLets leftParts.fst leftParts.snd.snd
+                let rightPtr := wrapExprLets rightParts.fst rightParts.snd.fst
+                let rightLen := wrapExprLets rightParts.fst rightParts.snd.snd
+                let appendedPtr :=
+                  .letE leftPtrSlot leftPtr
+                    (.letE leftLenSlot leftLen
+                      (.letE rightPtrSlot rightPtr
+                        (.letE rightLenSlot rightLen
+                          (.byteArrayAppendPtr
+                            (.local leftPtrSlot)
+                            (.local leftLenSlot)
+                            (.local rightPtrSlot)
+                            (.local rightLenSlot)))))
+                let appendedLen := .u64Bin .add leftLen rightLen
+                .ok (.byteArray appendedPtr appendedLen, rightLenSlot + 1)
+            | _ => .error "unsupported ByteArray.append application"
         | (.const ``Bool.casesOn _, args) =>
             match boolMatcherArgs? ctx.env (.const ``Bool.casesOn []) args with
             | some (scrutinee, falseArm, trueArm) =>

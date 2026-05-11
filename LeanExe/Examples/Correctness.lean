@@ -1830,6 +1830,18 @@ def byteArrayPushSize : Nat :=
 def byteArrayPushSizeForcesValueTrap : Nat :=
   (ByteArray.empty.push ((Array.replicate 0 (0 : UInt8))[0]!)).size
 
+def byteArrayAppendReturn : ByteArray :=
+  (ByteArray.empty.push (65 : UInt8)).append
+    ((ByteArray.empty.push (66 : UInt8)).push (67 : UInt8))
+
+def byteArrayAppendSize : Nat :=
+  byteArrayAppendReturn.size
+
+def byteArrayAppendSizeForcesRightTrap : Nat :=
+  ByteArray.empty.append
+    (ByteArray.empty.push ((Array.replicate 0 (0 : UInt8))[0]!))
+    |>.size
+
 def rejectUnitReturn : Unit :=
   ()
 
