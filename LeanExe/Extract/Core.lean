@@ -405,6 +405,7 @@ partial def supportedParamAbiType : Ty → Bool
   | ty => supportedAbiType ty
 
 partial def supportedResultAbiType : Ty → Bool
+  | .byteArray => true
   | .struct _ fields => fields.all supportedResultAbiType
   | .variant _ ctors => ctors.all (fun fields => fields.all supportedResultAbiType)
   | ty => supportedAbiType ty
@@ -416,6 +417,7 @@ partial def supportedInternalValueType : Ty → Bool
   | .u32 => true
   | .u64 => true
   | .nat => true
+  | .byteArray => true
   | .array item => supportedArrayElementType item
   | .struct _ fields => fields.all supportedInternalValueType
   | .variant _ ctors => ctors.all (fun fields => fields.all supportedInternalValueType)
@@ -1688,6 +1690,8 @@ partial def demandExpr
               args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
           | (.const ``ByteArray.extract _, args) =>
               args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
+          | (.const ``ByteArray.push _, args) =>
+              args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
           | (.const ``ByteArray.get! _, _) => .trap
           | (.const ``Array.size _, args) =>
               args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
@@ -2379,6 +2383,7 @@ mutual
             | none => .error s!"unsupported structure projection index: {typeName}.{index}"
         | none => .error s!"unsupported projection: {typeName}"
     | .const ``Unit.unit _ => .ok (.scalar (.u64 0), nextLocal)
+    | .const ``ByteArray.empty _ => .ok (.byteArray (.u64 0) (.u64 0), nextLocal)
     | _ =>
         match appFnArgs expr with
         | (.const ``Prod.mk _, args) =>
@@ -2894,6 +2899,29 @@ mutual
                             (.byteArray slicePtr sliceLen))))),
                     stopSlot + 1)
             | _ => .error "unsupported ByteArray.extract application"
+        | (.const ``ByteArray.push _, args) =>
+            match args.reverse with
+            | value :: array :: _ =>
+                let arrayResult ← extractValueFrom ctx locals nextLocal array
+                let parts ← byteArrayPartsWithLets arrayResult.fst
+                let valueResult ← extractExprFrom ctx locals arrayResult.snd value
+                let valueSlot := valueResult.snd
+                let ptrSlot := valueSlot + 1
+                let lenSlot := valueSlot + 2
+                let sourcePtr := wrapExprLets parts.fst parts.snd.fst
+                let sourceLen := wrapExprLets parts.fst parts.snd.snd
+                let pushedPtr :=
+                  .letE ptrSlot sourcePtr
+                    (.letE lenSlot sourceLen
+                      (.byteArrayPushPtr
+                        (.local ptrSlot)
+                        (.local lenSlot)
+                        (.local valueSlot)))
+                let pushedLen := .u64Bin .add sourceLen (.u64 1)
+                .ok
+                  (.letE valueSlot valueResult.fst (.byteArray pushedPtr pushedLen),
+                    lenSlot + 1)
+            | _ => .error "unsupported ByteArray.push application"
         | (.const ``Bool.casesOn _, args) =>
             match boolMatcherArgs? ctx.env (.const ``Bool.casesOn []) args with
             | some (scrutinee, falseArm, trueArm) =>

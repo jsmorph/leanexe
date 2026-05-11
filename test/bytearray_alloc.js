@@ -44,15 +44,49 @@ function callByteArray(exports, input, args = []) {
   return withByteArray(exports, input, (ptr, len) => exports.fn(ptr, len, ...args));
 }
 
+function callByteArrayOutput(exports, input) {
+  return withByteArrayRaw(exports, input, (ptr, len) => exports.fn(ptr, len));
+}
+
+function callNoInputByteArrayOutput(exports) {
+  exports.reset();
+  return readByteArrayResult(exports, exports.fn());
+}
+
 function callScalarByteArray(exports, prefix, input) {
   return withByteArray(exports, input, (ptr, len) => exports.fn(prefix, ptr, len));
 }
 
 function withByteArray(exports, input, call) {
+  return BigInt.asUintN(64, withByteArrayRaw(exports, input, call));
+}
+
+function withByteArrayRaw(exports, input, call) {
   exports.reset();
   const ptr = Number(exports.alloc(BigInt(input.length)));
   writeInput(exports.memory, ptr, input);
-  return BigInt.asUintN(64, call(BigInt(ptr), BigInt(input.length)));
+  return call(BigInt(ptr), BigInt(input.length));
+}
+
+function readByteArrayResult(exports, result) {
+  if (!Array.isArray(result) || result.length !== 2) {
+    throw new Error(`expected ByteArray result, got ${result}`);
+  }
+  const ptr = Number(BigInt.asUintN(64, result[0]));
+  const len = Number(BigInt.asUintN(64, result[1]));
+  return Uint8Array.from(new Uint8Array(exports.memory.buffer, ptr, len));
+}
+
+function sameBytes(left, right) {
+  if (left.length !== right.length) {
+    return false;
+  }
+  for (let index = 0; index < left.length; index += 1) {
+    if (left[index] !== right[index]) {
+      return false;
+    }
+  }
+  return true;
 }
 
 function fnv1a32(input) {
@@ -259,6 +293,39 @@ async function main() {
     }
   }
 
+  const bytesABC = await instantiate("bytesABC");
+  const bytesABCActual = callNoInputByteArrayOutput(bytesABC);
+  if (!sameBytes(bytesABCActual, new Uint8Array([65, 66, 67]))) {
+    throw new Error(`bytesABC: expected 65,66,67, got ${Array.from(bytesABCActual)}`);
+  }
+
+  const appendBang = await instantiate("appendBang");
+  const appendBangCases = [
+    { input: new Uint8Array([]), expected: new Uint8Array([33]) },
+    { input: new Uint8Array([65, 66]), expected: new Uint8Array([65, 66, 33]) },
+  ];
+
+  for (const testCase of appendBangCases) {
+    const actual = readByteArrayResult(appendBang, callByteArrayOutput(appendBang, testCase.input));
+    if (!sameBytes(actual, testCase.expected)) {
+      throw new Error(`appendBang: expected ${Array.from(testCase.expected)}, got ${Array.from(actual)}`);
+    }
+  }
+
+  const tailSlice = await instantiate("tailSlice");
+  const tailSliceCases = [
+    { input: new Uint8Array([]), expected: new Uint8Array([]) },
+    { input: new Uint8Array([65]), expected: new Uint8Array([]) },
+    { input: new Uint8Array([65, 66, 67]), expected: new Uint8Array([66, 67]) },
+  ];
+
+  for (const testCase of tailSliceCases) {
+    const actual = readByteArrayResult(tailSlice, callByteArrayOutput(tailSlice, testCase.input));
+    if (!sameBytes(actual, testCase.expected)) {
+      throw new Error(`tailSlice: expected ${Array.from(testCase.expected)}, got ${Array.from(actual)}`);
+    }
+  }
+
   const total =
     firstBytePlusArrayCases.length +
     firstByteIsStarCases.length +
@@ -273,7 +340,10 @@ async function main() {
     sliceStopBeforeStartCases.length +
     prefixPlusFirstByteCases.length +
     fnv1a32Cases.length +
-    emptyViaIsEmptyCases.length;
+    emptyViaIsEmptyCases.length +
+    1 +
+    appendBangCases.length +
+    tailSliceCases.length;
   process.stdout.write(`checked ${total} bytearray allocation cases\n`);
 }
 

@@ -166,7 +166,7 @@ def knownExternal? (name : Name) : Option Classification :=
   else if name == ``Unit.unit then
     some { status := "implemented", reason := "erased Unit value used by supported generated matchers" }
   else if name == ``Array then
-    some { status := "implemented", reason := "implemented for Array UInt64 in the generic compiler fragment" }
+    some { status := "implemented", reason := "implemented for supported fixed-width arrays in the generic compiler fragment" }
   else if name == ``Nat then
     some { status := "implemented", reason := "bounded Nat type in the generic compiler fragment" }
   else if name == ``Option then
@@ -202,8 +202,9 @@ def knownExternal? (name : Name) : Option Classification :=
       ``Array.back?, ``GetElem?.getElem!, ``GetElem?.getElem?,
       ``GetElem.getElem].contains name then
     some { status := "implemented", reason := "indexing primitive in the generic compiler fragment" }
-  else if [``ByteArray.size, ``ByteArray.isEmpty, ``ByteArray.get!, ``ByteArray.extract].contains name then
-    some { status := "implemented", reason := "read-only ByteArray primitive in the generic compiler fragment" }
+  else if [``ByteArray.empty, ``ByteArray.size, ``ByteArray.isEmpty, ``ByteArray.get!,
+      ``ByteArray.extract, ``ByteArray.push].contains name then
+    some { status := "implemented", reason := "ByteArray primitive in the generic compiler fragment" }
   else if [``Option.casesOn, ``Option.rec, ``Option.none, ``Option.some,
       ``Option.getD, ``Option.get!, ``Option.orElse, ``Option.elim, ``Option.map,
       ``Option.filter, ``Option.any, ``Option.all, ``Option.bind, ``Option.isSome,

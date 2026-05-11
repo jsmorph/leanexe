@@ -29,6 +29,16 @@ const cases = [
     shape: "entry shape: ByteArray -> Nat -> Nat",
   },
   {
+    moduleName: "LeanExe.Examples.ByteArrayPrograms",
+    entryName: "LeanExe.Examples.ByteArrayPrograms.appendBang",
+    shape: "entry shape: ByteArray -> ByteArray",
+  },
+  {
+    moduleName: "LeanExe.Examples.ByteArrayPrograms",
+    entryName: "LeanExe.Examples.ByteArrayPrograms.tailSlice",
+    shape: "entry shape: ByteArray -> ByteArray",
+  },
+  {
     moduleName: "LeanExe.Examples.Correctness",
     entryName: "LeanExe.Examples.Correctness.optionBindProduct",
     shape: "entry shape: UInt64",

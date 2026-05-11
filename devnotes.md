@@ -1880,3 +1880,20 @@ Checks run:
 - [x] `.lake/build/bin/lean-wasm compile-wat --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.recPointCarryFuel --out .lake/build/core-correctness/recPointCarryFuel.wat`
 - [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/wasmtime-v44.0.0-aarch64-linux/wasmtime --invoke recPointCarryFuel .lake/build/core-correctness/recPointCarryFuel.wat 3 1 10` returned `4` and `16`.
 - [x] `node test/run_all.js` returned `checked 62 report classification cases`, `checked 372 accepted, 17 rejected, and 7 trapped cases`, `checked 36 bytearray allocation cases`, and `checked 56 cases`.
+
+## 2026-05-11: ByteArray results and push
+
+The generic compiler now accepts `ByteArray` results through the same pointer-length ABI used for `ByteArray` parameters.  Returned buffers may alias input memory or slices, or they may point to arena memory allocated by compiled code.  Hosts must read returned bytes before calling `reset`, because the arena owns the allocation lifetime and the compiler does not free individual byte buffers.
+
+`ByteArray.empty` lowers to `(0, 0)`.  `ByteArray.push` evaluates the source and pushed byte, allocates `len + 1` bytes, copies the source bytes with byte loads and stores, and writes the appended byte.  The scalar length expression still forces the pushed value, so a trap in the byte expression is preserved even when source code asks only for the size of the pushed array.  `LeanExe.Examples.ByteArrayPrograms.tailSlice` covers a returned view into input memory rather than an owned arena allocation.
+
+Checks run:
+
+- [x] `lake build`
+- [x] `lake build LeanExe.Examples.Correctness LeanExe.Examples.ByteArrayPrograms`
+- [x] `node test/bytearray_alloc.js` returned `checked 42 bytearray allocation cases`.
+- [x] `node test/core_correctness.js` returned `checked 374 accepted, 16 rejected, and 8 trapped cases`.
+- [x] `.lake/build/bin/lean-wasm report --module LeanExe.Examples.ByteArrayPrograms --entry LeanExe.Examples.ByteArrayPrograms.appendBang` reported `entry shape: ByteArray -> ByteArray`.
+- [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/current/wasmtime --invoke bytesABC .lake/build/bytearray-programs/bytesABC.wasm` returned pointer `4099` and length `3`.
+- [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/current/wasmtime wast .lake/build/bytearray-programs/appendBang.wat` accepted the generated module.
+- [x] `node test/run_all.js` returned `checked 64 report classification cases`, `checked 374 accepted, 16 rejected, and 8 trapped cases`, `checked 42 bytearray allocation cases`, and `checked 56 cases`.
