@@ -1914,3 +1914,20 @@ Checks run:
 - [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/current/wasmtime --invoke appendABCXYZ .lake/build/bytearray-programs/appendABCXYZ.wasm` returned pointer `4108` and length `6`.
 - [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/current/wasmtime wast .lake/build/bytearray-programs/appendInputABC.wat` accepted the generated module.
 - [x] `node test/run_all.js` returned `checked 66 report classification cases`, `checked 376 accepted, 16 rejected, and 9 trapped cases`, `checked 45 bytearray allocation cases`, and `checked 56 cases`.
+
+## 2026-05-11: ByteArray set
+
+The generic compiler now lowers proof-indexed `ByteArray.set`.  The emitted code evaluates the source, index, and replacement byte, checks the index before writing, allocates a fresh buffer with the original length, copies the source bytes, writes the replacement byte at the requested index, and returns the result pointer.  The length expression forces the index and replacement byte, so traps in those demanded expressions are preserved when source code asks only for the updated buffer's size.
+
+`LeanExe.Examples.ByteArrayPrograms.setABC` covers a compiler-constructed buffer.  `setFirstBang` covers a host-provided input buffer and the empty-input branch where the proof-indexed update is not evaluated.  The operation remains proof-indexed; unchecked byte updates still need a separate source form and trap policy.
+
+Checks run:
+
+- [x] `lake build`
+- [x] `lake build LeanExe.Examples.Correctness LeanExe.Examples.ByteArrayPrograms`
+- [x] `node test/bytearray_alloc.js` returned `checked 49 bytearray allocation cases`.
+- [x] `node test/core_correctness.js` returned `checked 378 accepted, 16 rejected, and 10 trapped cases`.
+- [x] `node test/report_classification.js` returned `checked 68 report classification cases`.
+- [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/current/wasmtime --invoke setABC .lake/build/bytearray-programs/setABC.wasm` returned pointer `4102` and length `3`.
+- [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/current/wasmtime wast .lake/build/bytearray-programs/setFirstBang.wat` accepted the generated module.
+- [x] `node test/run_all.js` returned `checked 68 report classification cases`, `checked 378 accepted, 16 rejected, and 10 trapped cases`, `checked 49 bytearray allocation cases`, and `checked 56 cases`.

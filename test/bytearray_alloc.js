@@ -331,6 +331,26 @@ async function main() {
     }
   }
 
+  const setABC = await instantiate("setABC");
+  const setABCActual = callNoInputByteArrayOutput(setABC);
+  if (!sameBytes(setABCActual, new Uint8Array([65, 90, 67]))) {
+    throw new Error(`setABC: expected 65,90,67, got ${Array.from(setABCActual)}`);
+  }
+
+  const setFirstBang = await instantiate("setFirstBang");
+  const setFirstBangCases = [
+    { input: new Uint8Array([]), expected: new Uint8Array([]) },
+    { input: new Uint8Array([65]), expected: new Uint8Array([33]) },
+    { input: new Uint8Array([65, 66]), expected: new Uint8Array([33, 66]) },
+  ];
+
+  for (const testCase of setFirstBangCases) {
+    const actual = readByteArrayResult(setFirstBang, callByteArrayOutput(setFirstBang, testCase.input));
+    if (!sameBytes(actual, testCase.expected)) {
+      throw new Error(`setFirstBang: expected ${Array.from(testCase.expected)}, got ${Array.from(actual)}`);
+    }
+  }
+
   const tailSlice = await instantiate("tailSlice");
   const tailSliceCases = [
     { input: new Uint8Array([]), expected: new Uint8Array([]) },
@@ -364,6 +384,8 @@ async function main() {
     appendBangCases.length +
     1 +
     appendInputABCCases.length +
+    1 +
+    setFirstBangCases.length +
     tailSliceCases.length;
   process.stdout.write(`checked ${total} bytearray allocation cases\n`);
 }

@@ -80,6 +80,7 @@ mutual
     | byteArrayGet (ptr len index : Expr)
     | byteArrayPushPtr (ptr len value : Expr)
     | byteArrayAppendPtr (leftPtr leftLen rightPtr rightLen : Expr)
+    | byteArraySetPtr (ptr len index value : Expr)
     | call (index : Nat) (args : List Expr)
     deriving BEq, Repr
 
@@ -183,6 +184,7 @@ mutual
     | .byteArrayGet _ _ _ => 0
     | .byteArrayPushPtr ptr _ _ => ptr.eval module_ store
     | .byteArrayAppendPtr leftPtr _ _ _ => leftPtr.eval module_ store
+    | .byteArraySetPtr ptr _ _ _ => ptr.eval module_ store
     | .call index args =>
         match module_.getFunc? index with
         | some func => func.eval module_ (args.map (fun arg => arg.eval module_ store))

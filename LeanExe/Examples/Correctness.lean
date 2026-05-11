@@ -1842,6 +1842,23 @@ def byteArrayAppendSizeForcesRightTrap : Nat :=
     (ByteArray.empty.push ((Array.replicate 0 (0 : UInt8))[0]!))
     |>.size
 
+def byteArraySetReturn : ByteArray :=
+  let bytes := byteArrayReturnABC
+  if h : 1 < bytes.size then
+    bytes.set 1 (90 : UInt8) h
+  else
+    bytes
+
+def byteArraySetSize : Nat :=
+  byteArraySetReturn.size
+
+def byteArraySetSizeForcesValueTrap : Nat :=
+  let bytes := ByteArray.empty.push (1 : UInt8)
+  if h : 0 < bytes.size then
+    (bytes.set 0 ((Array.replicate 0 (0 : UInt8))[0]!) h).size
+  else
+    0
+
 def rejectUnitReturn : Unit :=
   ()
 
