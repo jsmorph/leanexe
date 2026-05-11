@@ -20,6 +20,30 @@ def stepsFuel : Nat → UInt64 → UInt64 → UInt64
 def steps (n : UInt64) : UInt64 :=
   stepsFuel maxSteps n 0
 
+def maxOddBeforeTripleAddOne : UInt64 :=
+  6148914691236517204
+
+def lengthFuel : Nat -> UInt64 -> UInt64 -> Option UInt64
+  | 0, n, len =>
+      if n == 1 then
+        some len
+      else
+        none
+  | fuel + 1, n, len =>
+      if n == 0 || n == 1 || (!(n % 2 == 0) && n > maxOddBeforeTripleAddOne) then
+        if n == 1 then
+          some len
+        else
+          none
+      else
+        lengthFuel fuel (if n % 2 == 0 then n / 2 else n * 3 + 1) (len + 1)
+
+def length? (n : UInt64) : Option UInt64 :=
+  if n == 0 then
+    none
+  else
+    lengthFuel maxSteps n 1
+
 def benchFuel : Nat → UInt64 → UInt64 → UInt64
   | 0, _, acc => acc
   | fuel + 1, n, acc =>

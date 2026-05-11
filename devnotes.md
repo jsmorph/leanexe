@@ -2174,3 +2174,16 @@ Checks run:
 - [x] `node test/json_double.js` returned `checked 22 json program cases`.
 - [x] `node test/report_classification.js` returned `checked 88 report classification cases`.
 - [x] `node test/run_all.js` returned `checked 88 report classification cases`, `checked 430 accepted, 18 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 14 asciistring cases`, `checked 22 json program cases`, and `checked 56 cases`.
+
+## 2026-05-11: JSON Collatz length example
+
+`LeanExe.Examples.JsonCollatzLength.transform` accepts a JSON-shaped `ByteArray` request of the form `{ "collatzLengthFor" : digits }` and returns `{"length":N}`.  The length counts terms, so `{"collatzLengthFor":41}` returns `{"length":110}`.  The program uses a checked Collatz length helper that rejects zero, decimal parse overflow, `3n+1` overflow under `UInt64`, and failure to reach `1` before the existing `maxSteps` fuel limit.
+
+The JSON helper layer now has `expectBytes` and `expectFieldName` for fixed byte-string field names.  `expectBytesFuel` had to follow the accepted single-branch tail-recursive shape; an earlier nested-`if` loop was valid Lean but outside the current recursion recognizer.
+
+Checks run:
+
+- [x] `lake build`
+- [x] `node test/json_double.js` returned `checked 31 json program cases`.
+- [x] `node test/report_classification.js` returned `checked 89 report classification cases`.
+- [x] `node test/run_all.js` returned `checked 89 report classification cases`, `checked 430 accepted, 18 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 14 asciistring cases`, `checked 31 json program cases`, and `checked 56 cases`.

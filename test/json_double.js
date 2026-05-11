@@ -79,10 +79,13 @@ function callTransform(exports, input) {
 async function main() {
   const doubleModule = "LeanExe.Examples.JsonDouble";
   const addModule = "LeanExe.Examples.JsonAdd";
+  const collatzModule = "LeanExe.Examples.JsonCollatzLength";
   run(["lake", "build", doubleModule]);
   run(["lake", "build", addModule]);
+  run(["lake", "build", collatzModule]);
   const doubleExports = await instantiate(doubleModule);
   const addExports = await instantiate(addModule);
+  const collatzExports = await instantiate(collatzModule);
   const error = bytes('{"error":1}');
   const doubleCases = [
     ["zero", bytes('{"n":0}'), bytes('{"result":0}')],
@@ -118,6 +121,17 @@ async function main() {
     ["add trailing junk", bytes('{"a":1,"b":2}x'), error],
     ["add non-ascii", new Uint8Array([123, 34, 97, 34, 58, 49, 44, 34, 98, 34, 58, 50, 200, 125]), error],
   ];
+  const collatzCases = [
+    ["collatz 41", bytes('{"collatzLengthFor":41}'), bytes('{"length":110}')],
+    ["collatz one", bytes('{"collatzLengthFor":1}'), bytes('{"length":1}')],
+    ["collatz whitespace", bytes(' { "collatzLengthFor" : 7 } '), bytes('{"length":17}')],
+    ["collatz zero", bytes('{"collatzLengthFor":0}'), error],
+    ["collatz parse overflow", bytes('{"collatzLengthFor":18446744073709551616}'), error],
+    ["collatz step overflow", bytes('{"collatzLengthFor":18446744073709551615}'), error],
+    ["collatz wrong key", bytes('{"n":41}'), error],
+    ["collatz trailing junk", bytes('{"collatzLengthFor":41}x'), error],
+    ["collatz non-ascii", new Uint8Array([123, 34, 99, 111, 108, 108, 97, 116, 122, 76, 101, 110, 103, 116, 104, 70, 111, 114, 34, 58, 52, 49, 200, 125]), error],
+  ];
 
   for (const testCase of doubleCases) {
     expectBytes(testCase[0], callTransform(doubleExports, testCase[1]), testCase[2]);
@@ -125,8 +139,11 @@ async function main() {
   for (const testCase of addCases) {
     expectBytes(testCase[0], callTransform(addExports, testCase[1]), testCase[2]);
   }
+  for (const testCase of collatzCases) {
+    expectBytes(testCase[0], callTransform(collatzExports, testCase[1]), testCase[2]);
+  }
 
-  process.stdout.write(`checked ${doubleCases.length + addCases.length} json program cases\n`);
+  process.stdout.write(`checked ${doubleCases.length + addCases.length + collatzCases.length} json program cases\n`);
 }
 
 main().catch((error) => {

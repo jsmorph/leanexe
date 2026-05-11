@@ -13,6 +13,7 @@ import LeanExe.Examples.Collatz
 import LeanExe.Examples.Correctness
 import LeanExe.Examples.IntMap
 import LeanExe.Examples.JsonAdd
+import LeanExe.Examples.JsonCollatzLength
 import LeanExe.Examples.JsonDouble
 import LeanExe.Examples.Let
 import LeanExe.Examples.Prime
