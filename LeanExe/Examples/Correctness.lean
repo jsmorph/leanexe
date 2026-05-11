@@ -1882,6 +1882,12 @@ def byteArraySetSizeForcesValueTrap : Nat :=
   else
     0
 
+def byteArraySetBangReturn : ByteArray :=
+  byteArrayReturnABC.set! 2 (90 : UInt8)
+
+def byteArraySetBangTrap : ByteArray :=
+  byteArrayReturnABC.set! 5 (90 : UInt8)
+
 def byteArrayMkReturn : ByteArray :=
   ByteArray.mk #[(65 : UInt8), (66 : UInt8), (67 : UInt8)]
 

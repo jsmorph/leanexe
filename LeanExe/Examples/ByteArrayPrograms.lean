@@ -125,6 +125,15 @@ def setFirstBang (input : ByteArray) : ByteArray :=
   else
     input
 
+def setBangABC : ByteArray :=
+  bytesABC.set! 2 (90 : UInt8)
+
+def setBangFirstQuestion (input : ByteArray) : ByteArray :=
+  if input.isEmpty then
+    input
+  else
+    input.set! 0 (63 : UInt8)
+
 def copyInputMiddle (input : ByteArray) : ByteArray :=
   input.copySlice 1 bytesABC 1 2
 
