@@ -1,8 +1,8 @@
 # LeanExe Language Specification
 
-LeanExe accepts a restricted executable subset of Lean 4 and emits a standalone WebAssembly module for one selected entry declaration.  Lean remains the parser, elaborator, type checker, and proof checker.  The compiler reads checked declarations from the Lean environment, rejects declarations outside this specification, and emits Wasm only for accepted programs.
+LeanExe accepts a restricted executable subset of Lean 4 and emits a standalone WebAssembly module for one selected entry declaration.  Lean remains the parser, elaborator, type checker, and proof checker.  The compiler reads checked declarations from the Lean environment, rejects declarations outside this specification, and emits WASM only for accepted programs.
 
-The language targets deterministic pure programs over machine integers, byte buffers, arrays, structures, and inductive values.  It supports enough Lean to write conventional first-order programs with bounded loops and recursive helper data structures.  Effects such as `IO`, file access, host calls, concurrency, randomness, and time are outside the accepted language until they have an explicit Wasm import model.
+The language targets deterministic pure programs over machine integers, byte buffers, arrays, structures, and inductive values.  It supports enough Lean to write conventional first-order programs with bounded loops and recursive helper data structures.  Effects such as `IO`, file access, host calls, concurrency, randomness, and time are outside the accepted language until they have an explicit WASM import model.
 
 ## Compilation Model
 
@@ -21,15 +21,15 @@ The command-line entry point for generic compilation is:
   --out build/entry.wasm
 ```
 
-`compile-wat` emits text-format Wasm for inspection.  `report --module Module.Name --entry Module.Name.entry` imports the same module and prints the entry shape, dependency frontier, and first rejection reasons.  A program that Lean accepts but LeanExe rejects lies outside this language.
+`compile-wat` emits text-format WASM for inspection.  `report --module Module.Name --entry Module.Name.entry` imports the same module and prints the entry shape, dependency frontier, and first rejection reasons.  A program that Lean accepts but LeanExe rejects lies outside this language.
 
-## Wasm Module ABI
+## WASM Module ABI
 
 A generated module exports one 16-page linear memory, `alloc(len : i64) : i64`, `reset()`, and the selected entry function.  The arena starts at byte offset `4096`, and `alloc` returns byte offsets in that memory.  The host may call `reset()` between runs to clear arena allocations; returned pointers remain valid only until `reset`.
 
 The entry export name is the last component of the Lean declaration name.  For example, `My.Module.answer` exports `answer`.  The entry name must not be `memory`, `alloc`, or `reset`, because those names belong to the runtime ABI.
 
-Every scalar ABI slot is a Wasm `i64`.  `Bool` uses `0` for false and `1` for true.  `UInt64` uses the full unsigned 64-bit representation, and `Nat` uses the bounded unsigned representation described below.
+Every scalar ABI slot is a WASM `i64`.  `Bool` uses `0` for false and `1` for true.  `UInt64` uses the full unsigned 64-bit representation, and `Nat` uses the bounded unsigned representation described below.
 
 `ByteArray` crosses the ABI as two slots: byte pointer and byte length.  Structure values flatten their runtime fields in Lean declaration order after proof-field erasure.  Nonrecursive inductive values flatten as a constructor tag followed by payload slots for every constructor in declaration order; inactive payload slots are ignored on input and may hold default values on output.
 
@@ -53,7 +53,7 @@ Arrays cross the ABI as arena pointers.  Array elements must have a fixed slot w
 | Recursive inductive | No | No | Yes | Monomorphic self-recursive inductives are allowed inside accepted code. |
 | `Option α` | Yes | Yes | Yes | Treated as a supported tagged value when `α` is supported. |
 | `Except ε α` | Yes | Yes | Yes | Treated as a supported tagged value when both payload types are supported. |
-| Propositions | Erased | Erased | Erased | Proofs may justify Lean source but have no Wasm value. |
+| Propositions | Erased | Erased | Erased | Proofs may justify Lean source but have no WASM value. |
 | `String` | No | No | No | Use `ByteArray` for byte input and output. |
 
 Entry parameters support `Bool`, `UInt64`, bounded `Nat`, `ByteArray`, fixed-width `Array`, supported structures, supported nonrecursive inductives, `Option`, and `Except`.  Entry results support the same set.  `UInt8`, `UInt32`, `Unit`, products, and recursive inductives are internal-only types even though helpers may use them.
@@ -102,7 +102,7 @@ Accepted scalar element types are `Bool`, `UInt8`, `UInt32`, `UInt64`, and bound
 
 Array literals compile when Lean elaborates them as `List.toArray` over a literal list whose item type has a fixed-width layout.  The supported constructors are `Array.empty`, `Array.mkEmpty`, `Array.emptyWithCapacity`, `Array.singleton`, and `Array.replicate`.  Capacity arguments are not observable in the accepted language.
 
-The supported read operations are `Array.size`, `Array.isEmpty`, proof-indexed `a[i]`, `a[i]!`, `a[i]?`, `Array.getD`, `Array.back`, `Array.back!`, and `Array.back?`.  Trapping reads emit Wasm `unreachable` on out-of-bounds access.  Safe reads return `Option` values without reading an element payload when the index is out of bounds.
+The supported read operations are `Array.size`, `Array.isEmpty`, proof-indexed `a[i]`, `a[i]!`, `a[i]?`, `Array.getD`, `Array.back`, `Array.back!`, and `Array.back?`.  Trapping reads emit WASM `unreachable` on out-of-bounds access.  Safe reads return `Option` values without reading an element payload when the index is out of bounds.
 
 The supported update and sequence operations are `Array.set`, `Array.set!`, `Array.setIfInBounds`, `Array.modify`, `Array.push`, `Array.pop`, `Array.append`, append notation through `++`, `Array.extract`, `Array.insertIdx`, `Array.insertIdx!`, `Array.insertIdxIfInBounds`, `Array.eraseIdx`, `Array.eraseIdx!`, `Array.eraseIdxIfInBounds`, `Array.swap`, `Array.swapAt`, `Array.swapIfInBounds`, and `Array.reverse`.  Bang operations trap on invalid indices.  In-bounds updates allocate fresh arrays and leave aliases to old arrays unchanged.
 
@@ -114,7 +114,7 @@ Nested arrays, arrays of recursive types, polymorphic array code, array capacity
 
 `ByteArray` values use a pointer-length representation.  Entry parameters come from host memory, and returned values may point to host-provided input memory, a slice of that memory, or arena memory allocated by compiled code.  The host must read returned bytes before calling `reset()`.
 
-Supported read operations include `ByteArray.size`, `ByteArray.isEmpty`, `ByteArray.get!`, proof-indexed indexing, bang indexing, safe indexing, and `ByteArray.extract`.  Out-of-bounds trapping reads emit Wasm `unreachable`.  Safe indexing returns `Option UInt8`, and extract clamps the stop index to the source length.
+Supported read operations include `ByteArray.size`, `ByteArray.isEmpty`, `ByteArray.get!`, proof-indexed indexing, bang indexing, safe indexing, and `ByteArray.extract`.  Out-of-bounds trapping reads emit WASM `unreachable`.  Safe indexing returns `Option UInt8`, and extract clamps the stop index to the source length.
 
 Supported construction and update operations include `ByteArray.empty`, `ByteArray.mk` from `Array UInt8`, `ByteArray.push`, `ByteArray.append`, append notation through `++`, proof-indexed `ByteArray.set`, trapping `ByteArray.set!`, and value-level `ByteArray.copySlice`.  Update operations allocate new byte buffers and preserve aliases to the old input.  `ByteArray.copySlice` follows Lean's pure value behavior rather than capacity behavior.
 
@@ -134,7 +134,7 @@ Products are supported as internal values.  `Prod.mk`, `.1`, `.2`, `Prod.casesOn
 
 Unsupported runtime features include polymorphic executable code, type classes that require runtime specialization, higher-order functions, closures, general structural recursion, mutual recursion, arbitrary Lean or Std library calls, `unsafe`, `partial`, opaque executable constants, executable axioms, quotients, `IO`, `EIO`, `BaseIO`, `Task`, file access, environment access, time, randomness, concurrency, reflection, and FFI.  Unsupported data features include `String`, `List` as a runtime value, nested arrays, arrays of recursive values, exported recursive data structures, recursive structures, indexed inductives, mutual inductives, and polymorphic structures or inductives.  Unsupported numeric features include signed integers, floating-point arithmetic, and arbitrary-precision runtime `Nat`.
 
-Unsupported features should produce a rejection during `report` or `compile`.  They should not be emulated through hidden Lean runtime calls.  A missing rejection is a compiler bug, because accepted Wasm must be explainable through this specification.
+Unsupported features should produce a rejection during `report` or `compile`.  They should not be emulated through hidden Lean runtime calls.  A missing rejection is a compiler bug, because accepted WASM must be explainable through this specification.
 
 ## Diagnostics and Correctness
 
@@ -144,6 +144,6 @@ The report command classifies the entry point and its reachable declarations.  I
 .lake/build/bin/lean-wasm report --module Module.Name --entry Module.Name.entry
 ```
 
-The compiler's user-facing correctness claim is semantic agreement for accepted pure programs under the bounded numeric and memory model stated here.  Tests compare generated Wasm behavior with Lean execution for the supported examples and correctness fixtures.  The generic compiler does not claim a complete mechanized proof of source-to-Wasm equivalence.
+The compiler's user-facing correctness claim is semantic agreement for accepted pure programs under the bounded numeric and memory model stated here.  Tests compare generated WASM behavior with Lean execution for the supported examples and correctness fixtures.  The generic compiler does not claim a complete mechanized proof of source-to-WASM equivalence.
 
 Traps are part of the modeled behavior for operations that Lean would panic on in ordinary execution, such as bang indexing out of bounds.  The compiler must preserve observable evaluation order for accepted pure code, including lazy field projection and short-circuiting boolean operations.  Host behavior outside the ABI, including reading stale pointers after `reset` or passing malformed flattened values, is outside the Lean source semantics.
