@@ -266,6 +266,10 @@ structure ArrayBox where
   values : Array UInt64
   count : UInt64
 
+structure PointArrayBox where
+  values : Array Point
+  count : UInt64
+
 structure CheckedPoint where
   value : UInt64
   ok : value = value
@@ -300,6 +304,9 @@ def nestedStructureReturn : TaggedPoint :=
 
 def structureArrayReturn : ArrayBox :=
   { values := #[4, 5], count := 2 }
+
+def structurePointArrayReturn : PointArrayBox :=
+  { values := #[({ x := 1, y := 2 } : Point), ({ x := 3, y := 4 } : Point)], count := 2 }
 
 def structureMatchDestructure : UInt64 :=
   match ({ x := 1, y := 2 } : Point) with
@@ -418,6 +425,16 @@ def statusParam (status : Status) : UInt64 :=
   match status with
   | .ok value => value + 10
   | .error code => code + 20
+
+def statusLeftScore (status : Status) : UInt64 :=
+  match status with
+  | .ok value => value
+  | .error code => code + 100
+
+def statusRightScore (status : Status) : UInt64 :=
+  match status with
+  | .ok value => value + 100
+  | .error code => code
 
 def unitArgHelper (_value : Unit) : UInt64 :=
   11
@@ -770,6 +787,47 @@ def arrayBoolRead : UInt64 :=
 def arrayNatRead : Nat :=
   let a : Array Nat := (#[1, 2] : Array Nat).push 3
   a[0]! * 100 + a[2]!
+
+def arrayStructureLiteralRead : UInt64 :=
+  let a : Array Point := #[({ x := 1, y := 2 } : Point), ({ x := 3, y := 4 } : Point)]
+  match a[0]? with
+  | none => 0
+  | some first =>
+      match a[1]? with
+      | none => 0
+      | some second =>
+          first.x * (1000 : UInt64) + first.y * (100 : UInt64) +
+            second.x * (10 : UInt64) + second.y
+
+def arrayStructureSetRead : UInt64 :=
+  let a : Array Point := #[({ x := 1, y := 2 } : Point)]
+  let b := a.set! 0 ({ x := 9, y := 8 } : Point)
+  match b[0]? with
+  | some point => point.x * (10 : UInt64) + point.y
+  | none => 0
+
+def arrayStructureSafeGet : UInt64 :=
+  match (#[({ x := 4, y := 5 } : Point)] : Array Point)[0]? with
+  | none => 99
+  | some point => point.x * (10 : UInt64) + point.y
+
+def arrayStatusLiteralMatch : UInt64 :=
+  let a : Array Status := #[Status.ok 5, Status.error 7]
+  let left := Option.elim a[0]? 0 (fun status => statusLeftScore status)
+  let right := Option.elim a[1]? 0 (fun status => statusRightScore status)
+  left * (10 : UInt64) + right
+
+def arrayOptionLiteralMatch : UInt64 :=
+  let a : Array (Option UInt64) := #[some 5, none]
+  let left :=
+    match a[0]! with
+    | some value => value
+    | none => 99
+  let right :=
+    match a[1]! with
+    | some value => value + 100
+    | none => 7
+  left * (10 : UInt64) + right
 
 def arrayLiteralRead : UInt64 :=
   let a : Array UInt64 := #[10, 20, 30]
@@ -1526,8 +1584,13 @@ def rejectUnitParam (_value : Unit) : UInt64 :=
 def rejectByteArrayReturn (input : ByteArray) : ByteArray :=
   input
 
-def rejectStructureArrayReturn : Array Point :=
-  #[({ x := 1, y := 2 } : Point)]
+def rejectNestedArrayReturn : Array (Array UInt64) :=
+  #[#[1, 2]]
+
+def rejectStructureArrayAppend : Nat :=
+  let left : Array Point := #[({ x := 1, y := 2 } : Point)]
+  let right : Array Point := #[({ x := 3, y := 4 } : Point)]
+  (left.append right).size
 
 def rejectUInt8Param (b : UInt8) : Bool :=
   b == (0 : UInt8)
