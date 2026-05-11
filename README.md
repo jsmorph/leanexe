@@ -1,18 +1,18 @@
 # LeanExe
 
-LeanExe compiles a restricted Lean 4 program to a standalone WebAssembly module.  Lean remains the type checker and source language; the compiler loads a checked declaration from a Lean module and emits Wasm for the executable subset described in [Language Specification](spec.md).  The supported subset covers first-order pure programs over scalar values, byte arrays, fixed-width arrays, structures, inductive values, bounded recursion, and internal recursive data structures.
+LeanExe compiles a restricted Lean 4 program to a standalone WebAssembly module.  Lean remains the type checker and source language; the compiler loads a checked declaration from a Lean module and emits WASM for the executable subset described in [Language Specification](spec.md).  The supported subset covers first-order pure programs over scalar values, byte arrays, fixed-width arrays, structures, inductive values, bounded recursion, and internal recursive data structures.
 
-The generated module exports a plain Wasm function for the selected Lean declaration.  Scalar programs can run directly with Wasmtime or another Wasm engine that can invoke exported functions.  Programs that pass or return byte arrays, structures, variants, or arrays use the ABI described below, so a host program must provide flattened values or memory values in the expected form.
+The generated module exports a plain WASM function for the selected Lean declaration.  Scalar programs can run directly with Wasmtime or another WASM engine that can invoke exported functions.  Programs that pass or return byte arrays, structures, variants, or arrays use the ABI described below, so a host program must provide flattened values or memory values in the expected form.
 
 ## Requirements
 
-This repository uses Lean through `elan` and Lake.  The pinned Lean version lives in `lean-toolchain`, and Lake builds the `lean-wasm` executable.  A standalone Wasm engine such as Wasmtime can run scalar examples from the command line, while a JavaScript, Go, Rust, or C host can instantiate modules that use memory values.
+This repository uses Lean through `elan` and Lake.  The pinned Lean version lives in `lean-toolchain`, and Lake builds the `lean-wasm` executable.  A standalone WASM engine such as Wasmtime can run scalar examples from the command line, while a JavaScript, Go, Rust, or C host can instantiate modules that use memory values.
 
 ```sh
 lake build
 ```
 
-The test suite uses Node for Wasm instantiation checks.  Wasmtime is useful for command-line runs, but it is not required for the compiler itself.  If Wasmtime is not on `PATH`, use the absolute path to the downloaded binary.
+The test suite uses Node for WASM instantiation checks.  Wasmtime is useful for command-line runs, but it is not required for the compiler itself.  If Wasmtime is not on `PATH`, use the absolute path to the downloaded binary.
 
 ```sh
 node test/run_all.js
@@ -23,10 +23,10 @@ node test/run_all.js
 | Path | Purpose |
 |------|---------|
 | `LeanExe/Extract` | Checked-declaration extraction, dependency reporting, ABI lowering, and IR generation. |
-| `LeanExe/IR` | The first-order core IR used before Wasm emission. |
-| `LeanExe/Wasm` | Wasm module model, binary encoder, WAT printer, and interpreter support used by tests. |
+| `LeanExe/IR` | The first-order core IR used before WASM emission. |
+| `LeanExe/Wasm` | WASM module model, binary encoder, WAT printer, and interpreter support used by tests. |
 | `LeanExe/Examples` | Example Lean programs that exercise the supported subset. |
-| `test` | Node and Lean tests that compare Lean execution with generated Wasm behavior. |
+| `test` | Node and Lean tests that compare Lean execution with generated WASM behavior. |
 | `spec.md` | The accepted Lean subset, ABI, semantics, and known unsupported features. |
 | `plan.md` | Development plan for expanding the compiler. |
 | `devnotes.md` | Development notes and references. |
@@ -35,7 +35,7 @@ node test/run_all.js
 
 Write ordinary Lean definitions inside a Lake module.  The selected entry declaration must be pure, monomorphic, first-order, and accepted by the subset in [Language Specification](spec.md).  Use concrete types such as `UInt64`, `Nat`, `Bool`, `ByteArray`, arrays, structures, and inductives; avoid type parameters, type classes, function values, `IO`, `unsafe`, and `partial`.
 
-This scalar example compiles to an exported Wasm function that Wasmtime can call directly:
+This scalar example compiles to an exported WASM function that Wasmtime can call directly:
 
 ```lean
 namespace LeanExe.Examples.ReadmeDemo
@@ -54,7 +54,7 @@ lake build LeanExe.Examples.ReadmeDemo
 
 The compiler input is the checked Lean declaration loaded from the built module.  The command names the module and the fully qualified entry declaration, and the compiler rejects declarations outside the supported subset.  A rejected program should be treated as outside the language accepted by LeanExe, even if Lean itself can evaluate it.
 
-Use explicit `Nat` fuel for loops and recursive algorithms.  The recursive helper should take fuel as its first argument, return a supported value, and make the recursive call in tail position.  This pattern compiles to a Wasm loop instead of relying on Lean's full recursion machinery.
+Use explicit `Nat` fuel for loops and recursive algorithms.  The recursive helper should take fuel as its first argument, return a supported value, and make the recursive call in tail position.  This pattern compiles to a WASM loop instead of relying on Lean's full recursion machinery.
 
 ```lean
 namespace LeanExe.Examples.ReadmeLoop
@@ -100,7 +100,7 @@ end LeanExe.Examples.ReadmeData
 
 ## Compile
 
-Use `compile` to write a Wasm binary.  The exported entry name is the final component of the Lean declaration name, so `LeanExe.Examples.ReadmeDemo.choose` exports `choose`.  The module also exports `memory`, `alloc`, and `reset` for host-side allocation and repeated execution.
+Use `compile` to write a WASM binary.  The exported entry name is the final component of the Lean declaration name, so `LeanExe.Examples.ReadmeDemo.choose` exports `choose`.  The module also exports `memory`, `alloc`, and `reset` for host-side allocation and repeated execution.
 
 ```sh
 .lake/build/bin/lean-wasm compile \
@@ -124,7 +124,7 @@ Use `compile-wat` to inspect the generated module as WAT.  Use `report` before c
 
 ## Run
 
-Scalar parameters and scalar results use Wasm `i64`.  `Bool` uses `0` for false and `1` for true.  `Nat` values must fit in the compiler's bounded `i64` representation.
+Scalar parameters and scalar results use WASM `i64`.  `Bool` uses `0` for false and `1` for true.  `Nat` values must fit in the compiler's bounded `i64` representation.
 
 ```sh
 wasmtime run --invoke choose build/choose.wasm 0 41 99
@@ -183,7 +183,7 @@ Unsupported features include polymorphic runtime code, type classes, higher-orde
 
 ## ABI Summary
 
-| Lean type | Wasm ABI |
+| Lean type | WASM ABI |
 |-----------|----------|
 | `Bool` | One `i64`, with `0` or `1`. |
 | `UInt64` | One `i64`, interpreted modulo `2^64`. |
