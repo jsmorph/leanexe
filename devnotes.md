@@ -2117,3 +2117,16 @@ Checks run:
 - [x] `node test/report_classification.js` returned `checked 80 report classification cases`.
 - [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/current/wasmtime wast .lake/build/core-correctness/arrayFilterStructureRead.wat` accepted the generated module.
 - [x] `node test/run_all.js` returned `checked 80 report classification cases`, `checked 422 accepted, 16 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, and `checked 56 cases`.
+
+## 2026-05-11: Internal recursive inductives
+
+The extractor now accepts monomorphic self-recursive user-defined inductives as internal values.  `Ty.recVariant` marks a recursive source type, and `ExtractedValue.recursiveVariant` keeps freshly constructed values lazy until a pointer is required.  When the value crosses a strict boundary, the extractor materializes it into the arena as a fixed-slot object: slot `0` stores the constructor tag, and later slots store flattened payloads for every constructor in declaration order.  Recursive fields store one pointer slot.  Matches over materialized values load the tag and demanded fields from the object, while matches over fresh constructor values use the existing lazy payload path.
+
+`LeanExe.Examples.Correctness.U64List` covers construction, nested matching, branch-selected recursive values, and a fuel-recursive traversal that carries the list pointer through the existing `Nat`-fuel loop form.  Public recursive values remain outside the Wasm ABI: `rejectRecursiveInductiveParam` and `rejectRecursiveInductiveReturn` check that entry parameters and results of recursive inductive type are rejected.  The implementation does not handle mutual recursion, polymorphic recursive types, arrays of recursive values, recursive structures, or a garbage collector.
+
+Checks run:
+
+- [x] `lake build`
+- [x] `lake build LeanExe.Examples.Correctness`
+- [x] `node test/core_correctness.js` returned `checked 429 accepted, 18 rejected, and 13 trapped cases`.
+- [x] `node test/run_all.js` returned `checked 80 report classification cases`, `checked 429 accepted, 18 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, and `checked 56 cases`.

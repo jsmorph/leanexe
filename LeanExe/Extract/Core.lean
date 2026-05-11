@@ -26,6 +26,8 @@ inductive ExtractedValue where
   | sum (tag : IRExpr) (left right : ExtractedValue)
   | struct (name : Name) (fields : List ExtractedValue)
   | variant (name : Name) (tag : IRExpr) (ctors : List (List ExtractedValue))
+  | recursiveVariant (name : Name) (tag : IRExpr) (ctors : List (List (Ty × ExtractedValue)))
+  | heapVariant (name : Name) (ptr : IRExpr)
   | letE (slot : Nat) (value : IRExpr) (body : ExtractedValue)
   deriving BEq, Repr
 
@@ -174,6 +176,18 @@ def userInductiveInfo? (env : Environment) (typeName : Name) : Option InductiveV
           none
     | _ => none
 
+def userRecursiveInductiveInfo? (env : Environment) (typeName : Name) : Option InductiveVal :=
+  if builtinInductiveNames.contains typeName || isStructureLike env typeName then
+    none
+  else
+    match env.find? typeName with
+    | some (.inductInfo info) =>
+        if info.numParams == 0 && info.numIndices == 0 && info.isRec && !info.ctors.isEmpty then
+          some info
+        else
+          none
+    | _ => none
+
 def runtimeTypesFromKinds (kinds : List (Option Ty)) : List Ty :=
   kinds.filterMap id
 
@@ -257,8 +271,11 @@ mutual
           if isStructureLike env name then
             structureFieldTypes? env name |>.map (fun fields => .struct name fields)
           else
-            variantLayout? env name |>.map fun layout =>
-              .variant name (layout.ctors.map (fun ctor => runtimeTypesFromKinds ctor.fields))
+            match variantLayout? env name with
+            | some layout =>
+                some (.variant name (layout.ctors.map (fun ctor => runtimeTypesFromKinds ctor.fields)))
+            | none =>
+                recursiveVariantLayout? env name |>.map fun _layout => .recVariant name
       | _ => none
 
   partial def structureFieldKinds? (env : Environment) (structName : Name) :
@@ -306,7 +323,51 @@ mutual
           | _ => none
         ctorLayouts? |>.map fun ctors => ({ name := typeName, ctors := ctors } : VariantLayout)
     | none => none
+
+  partial def typeAtomRecursiveField? (env : Environment) (selfName : Name) (expr : Expr) :
+      Option Ty :=
+    match appFnArgs expr with
+    | (.const name _, []) =>
+        if name == selfName then
+          some (.recVariant selfName)
+        else
+          match typeAtom? env expr with
+          | some (.recVariant _) => none
+          | other => other
+    | _ =>
+        match typeAtom? env expr with
+        | some (.recVariant _) => none
+        | other => other
+
+  partial def recursiveVariantLayout? (env : Environment) (typeName : Name) :
+      Option VariantLayout :=
+    match userRecursiveInductiveInfo? env typeName with
+    | some info =>
+        let ctorLayouts? := info.ctors.mapM fun ctorName =>
+          match env.find? ctorName with
+          | some (.ctorInfo ctorInfo) =>
+              if ctorInfo.numParams == 0 && ctorInfo.induct == typeName then
+                let fields := (peelForall ctorInfo.type).fst.drop ctorInfo.numParams
+                if fields.length == ctorInfo.numFields then
+                  fields.mapM (fun field =>
+                    if isProofType? env field then
+                      some none
+                    else
+                      typeAtomRecursiveField? env typeName field |>.map some) |>.map fun fieldKinds =>
+                        ({ name := ctorName, fields := fieldKinds } : VariantCtorLayout)
+                else
+                  none
+              else
+                none
+          | _ => none
+        ctorLayouts? |>.map fun ctors => ({ name := typeName, ctors := ctors } : VariantLayout)
+    | none => none
 end
+
+def anyVariantLayout? (env : Environment) (typeName : Name) : Option VariantLayout :=
+  match variantLayout? env typeName with
+  | some layout => some layout
+  | none => recursiveVariantLayout? env typeName
 
 def structureConstructor? (env : Environment) (ctorName : Name) :
     Option (Name × List (Option Ty)) :=
@@ -332,6 +393,27 @@ def variantConstructor? (env : Environment) (ctorName : Name) :
           | none => none
       | none => none
   | _ => none
+
+def recursiveVariantConstructor? (env : Environment) (ctorName : Name) :
+    Option (VariantLayout × Nat × VariantCtorLayout) :=
+  match env.find? ctorName with
+  | some (.ctorInfo ctorInfo) =>
+      match recursiveVariantLayout? env ctorInfo.induct with
+      | some layout =>
+          match ctorIndex? ctorName layout.ctors with
+          | some index =>
+              match layout.ctors[index]? with
+              | some ctor => some (layout, index, ctor)
+              | none => none
+          | none => none
+      | none => none
+  | _ => none
+
+def anyVariantConstructor? (env : Environment) (ctorName : Name) :
+    Option (VariantLayout × Nat × VariantCtorLayout) :=
+  match variantConstructor? env ctorName with
+  | some result => some result
+  | none => recursiveVariantConstructor? env ctorName
 
 def structureProjection? (env : Environment) (projName : Name) :
     Option (Name × Option Nat) :=
@@ -422,6 +504,7 @@ partial def supportedInternalValueType : Ty → Bool
   | .array item => supportedArrayElementType item
   | .struct _ fields => fields.all supportedInternalValueType
   | .variant _ ctors => ctors.all (fun fields => fields.all supportedInternalValueType)
+  | .recVariant _ => true
   | _ => false
 
 def supportedInternalParamType : Ty → Bool
@@ -438,6 +521,19 @@ partial def abiSlots : Ty → Nat
       1 + ctors.foldl
         (fun total fields => total + fields.foldl (fun acc field => acc + abiSlots field) 0)
         0
+  | .recVariant _ => 1
+  | _ => 1
+
+partial def internalSlots : Ty → Nat
+  | .byteArray => 2
+  | .product left right => internalSlots left + internalSlots right
+  | .sum left right => 1 + internalSlots left + internalSlots right
+  | .struct _ fields => fields.foldl (fun total field => total + internalSlots field) 0
+  | .variant _ ctors =>
+      1 + ctors.foldl
+        (fun total fields => total + fields.foldl (fun acc field => acc + internalSlots field) 0)
+        0
+  | .recVariant _ => 1
   | _ => 1
 
 def abiParamCount (params : List Ty) : Nat :=
@@ -491,6 +587,7 @@ partial def supportedLocalType : Ty → Bool
   | .sum left right => supportedLocalType left && supportedLocalType right
   | .struct _ fields => fields.all supportedLocalType
   | .variant _ ctors => ctors.all (fun fields => fields.all supportedLocalType)
+  | .recVariant _ => true
 
 def supportedOneSlotExprType : Ty → Bool
   | .unit => true
@@ -601,6 +698,10 @@ def boolExpr (cond : IRCond) : IRExpr :=
 def boolCond (expr : IRExpr) : IRCond :=
   .not (.eqU64 expr (.u64 0))
 
+def irConstNat? : IRExpr → Option Nat
+  | .u64 value => some value
+  | _ => none
+
 def u8WrapExpr (expr : IRExpr) : IRExpr :=
   .u64Bin .bitAnd expr (.u64 255)
 
@@ -629,6 +730,9 @@ def scalarValue (value : ExtractedValue) : Except String IRExpr :=
   | .sum _ _ _ => .error "sum value used where scalar value is required"
   | .struct name _ => .error s!"structure value used where scalar value is required: {name}"
   | .variant name _ _ => .error s!"inductive value used where scalar value is required: {name}"
+  | .recursiveVariant name _ _ =>
+      .error s!"recursive inductive value used where scalar value is required: {name}"
+  | .heapVariant name _ => .error s!"recursive inductive value used where scalar value is required: {name}"
   | .letE slot value body => do
       .ok (.letE slot value (← scalarValue body))
 
@@ -640,6 +744,10 @@ def byteArrayParts (value : ExtractedValue) : Except String (IRExpr × IRExpr) :
   | .sum _ _ _ => .error "sum value used where ByteArray value is required"
   | .struct name _ => .error s!"structure value used where ByteArray value is required: {name}"
   | .variant name _ _ => .error s!"inductive value used where ByteArray value is required: {name}"
+  | .recursiveVariant name _ _ =>
+      .error s!"recursive inductive value used where ByteArray value is required: {name}"
+  | .heapVariant name _ =>
+      .error s!"recursive inductive value used where ByteArray value is required: {name}"
   | .letE slot value body => do
       let parts ← byteArrayParts body
       .ok (.letE slot value parts.fst, .letE slot value parts.snd)
@@ -653,6 +761,10 @@ partial def byteArrayPartsWithLets (value : ExtractedValue) :
   | .sum _ _ _ => .error "sum value used where ByteArray value is required"
   | .struct name _ => .error s!"structure value used where ByteArray value is required: {name}"
   | .variant name _ _ => .error s!"inductive value used where ByteArray value is required: {name}"
+  | .recursiveVariant name _ _ =>
+      .error s!"recursive inductive value used where ByteArray value is required: {name}"
+  | .heapVariant name _ =>
+      .error s!"recursive inductive value used where ByteArray value is required: {name}"
   | .letE slot value body => do
       let parts ← byteArrayPartsWithLets body
       .ok ((slot, value) :: parts.fst, parts.snd.fst, parts.snd.snd)
@@ -671,6 +783,10 @@ def productField (index : Nat) (value : ExtractedValue) : Except String Extracte
   | .sum _ _ _ => .error "sum value used where product value is required"
   | .struct name _ => .error s!"structure value used where product value is required: {name}"
   | .variant name _ _ => .error s!"inductive value used where product value is required: {name}"
+  | .recursiveVariant name _ _ =>
+      .error s!"recursive inductive value used where product value is required: {name}"
+  | .heapVariant name _ =>
+      .error s!"recursive inductive value used where product value is required: {name}"
   | .letE slot value body => do
       .ok (.letE slot value (← productField index body))
 
@@ -689,6 +805,10 @@ def structField (name : Name) (index : Nat) (value : ExtractedValue) : Except St
   | .sum _ _ _ => .error s!"sum value used where structure value is required: {name}"
   | .variant actual _ _ =>
       .error s!"inductive value used where structure value is required: {name}; got {actual}"
+  | .recursiveVariant actual _ _ =>
+      .error s!"recursive inductive value used where structure value is required: {name}; got {actual}"
+  | .heapVariant actual _ =>
+      .error s!"recursive inductive value used where structure value is required: {name}; got {actual}"
   | .letE slot value body => do
       .ok (.letE slot value (← structField name index body))
 
@@ -713,6 +833,10 @@ partial def optionPartsWithLets (value : ExtractedValue) :
   | .sum _ _ _ => .error "sum value used where option value is required"
   | .struct name _ => .error s!"structure value used where option value is required: {name}"
   | .variant name _ _ => .error s!"inductive value used where Option value is required: {name}"
+  | .recursiveVariant name _ _ =>
+      .error s!"recursive inductive value used where Option value is required: {name}"
+  | .heapVariant name _ =>
+      .error s!"recursive inductive value used where Option value is required: {name}"
   | .letE slot value body => do
       let parts ← optionPartsWithLets body
       .ok ((slot, value) :: parts.fst, parts.snd.fst, parts.snd.snd)
@@ -726,6 +850,10 @@ partial def sumPartsWithLets (value : ExtractedValue) :
   | .product _ _ => .error "product value used where sum value is required"
   | .struct name _ => .error s!"structure value used where sum value is required: {name}"
   | .variant name _ _ => .error s!"inductive value used where sum value is required: {name}"
+  | .recursiveVariant name _ _ =>
+      .error s!"recursive inductive value used where sum value is required: {name}"
+  | .heapVariant name _ =>
+      .error s!"recursive inductive value used where sum value is required: {name}"
   | .letE slot value body => do
       let parts ← sumPartsWithLets body
       .ok ((slot, value) :: parts.fst, parts.snd.fst, parts.snd.snd.fst, parts.snd.snd.snd)
@@ -745,8 +873,74 @@ partial def variantPartsWithLets (expectedName : Name) (value : ExtractedValue) 
   | .sum _ _ _ => .error s!"sum value used where inductive value is required: {expectedName}"
   | .struct name _ =>
       .error s!"structure value used where inductive value is required: {expectedName}; got {name}"
+  | .recursiveVariant name _ _ =>
+      .error s!"recursive inductive value used where nonrecursive inductive value is required: {expectedName}; got {name}"
+  | .heapVariant name _ =>
+      .error s!"recursive inductive value used where nonrecursive inductive value is required: {expectedName}; got {name}"
   | .letE slot value body => do
       let parts ← variantPartsWithLets expectedName body
+      .ok ((slot, value) :: parts.fst, parts.snd.fst, parts.snd.snd)
+
+partial def heapVariantPtrWithLets (expectedName : Name) (value : ExtractedValue) :
+    Except String (List (Nat × IRExpr) × IRExpr) :=
+  match value with
+  | .heapVariant name ptr =>
+      if name == expectedName then
+        .ok ([], ptr)
+      else
+        .error s!"recursive inductive value type mismatch: expected {expectedName}, got {name}"
+  | .scalar _ =>
+      .error s!"scalar value used where recursive inductive value is required: {expectedName}"
+  | .byteArray _ _ =>
+      .error s!"ByteArray value used where recursive inductive value is required: {expectedName}"
+  | .product _ _ =>
+      .error s!"product value used where recursive inductive value is required: {expectedName}"
+  | .sum _ _ _ =>
+      .error s!"sum value used where recursive inductive value is required: {expectedName}"
+  | .struct name _ =>
+      .error s!"structure value used where recursive inductive value is required: {expectedName}; got {name}"
+  | .variant name _ _ =>
+      .error s!"nonrecursive inductive value used where recursive inductive value is required: {expectedName}; got {name}"
+  | .recursiveVariant name _ _ =>
+      .error s!"lazy recursive inductive value used where heap recursive value is required: {expectedName}; got {name}"
+  | .letE slot value body => do
+      let parts ← heapVariantPtrWithLets expectedName body
+      .ok ((slot, value) :: parts.fst, parts.snd)
+
+partial def heapVariantPtrWithLets? (expectedName : Name) (value : ExtractedValue) :
+    Option (List (Nat × IRExpr) × IRExpr) :=
+  match value with
+  | .heapVariant name ptr =>
+      if name == expectedName then some ([], ptr) else none
+  | .letE slot value body =>
+      heapVariantPtrWithLets? expectedName body |>.map fun parts =>
+        ((slot, value) :: parts.fst, parts.snd)
+  | _ => none
+
+partial def recursiveVariantPartsWithLets (expectedName : Name) (value : ExtractedValue) :
+    Except String (List (Nat × IRExpr) × IRExpr × List (List ExtractedValue)) :=
+  match value with
+  | .recursiveVariant name tag ctors =>
+      if name == expectedName then
+        .ok ([], tag, ctors.map (fun fields => fields.map Prod.snd))
+      else
+        .error s!"recursive inductive value type mismatch: expected {expectedName}, got {name}"
+  | .scalar _ =>
+      .error s!"scalar value used where recursive inductive value is required: {expectedName}"
+  | .byteArray _ _ =>
+      .error s!"ByteArray value used where recursive inductive value is required: {expectedName}"
+  | .product _ _ =>
+      .error s!"product value used where recursive inductive value is required: {expectedName}"
+  | .sum _ _ _ =>
+      .error s!"sum value used where recursive inductive value is required: {expectedName}"
+  | .struct name _ =>
+      .error s!"structure value used where recursive inductive value is required: {expectedName}; got {name}"
+  | .variant name _ _ =>
+      .error s!"nonrecursive inductive value used where recursive inductive value is required: {expectedName}; got {name}"
+  | .heapVariant name _ =>
+      .error s!"heap recursive inductive value used where lazy recursive value is required: {expectedName}; got {name}"
+  | .letE slot value body => do
+      let parts ← recursiveVariantPartsWithLets expectedName body
       .ok ((slot, value) :: parts.fst, parts.snd.fst, parts.snd.snd)
 
 def mkExceptValue (tag : IRExpr) (errorPayload okPayload : ExtractedValue) : ExtractedValue :=
@@ -767,6 +961,10 @@ partial def exceptPartsWithLets (value : ExtractedValue) :
   | .struct name _ => .error s!"structure value used where Except value is required: {name}"
   | .variant name _ _ =>
       .error s!"inductive value used where Except value is required: {name}"
+  | .recursiveVariant name _ _ =>
+      .error s!"recursive inductive value used where Except value is required: {name}"
+  | .heapVariant name _ =>
+      .error s!"recursive inductive value used where Except value is required: {name}"
   | .letE slot value body => do
       let parts ← exceptPartsWithLets body
       .ok ((slot, value) :: parts.fst, parts.snd.fst, parts.snd.snd.fst, parts.snd.snd.snd)
@@ -790,6 +988,7 @@ partial def defaultValue : Ty → Except String ExtractedValue
       .ok (.struct name (← fields.mapM defaultValue))
   | .variant name ctors => do
       .ok (.variant name (.u64 0) (← ctors.mapM (fun fields => fields.mapM defaultValue)))
+  | .recVariant name => .ok (.heapVariant name (.u64 0))
   | .sum left right => do
       .ok (.sum (.u64 0) (← defaultValue left) (← defaultValue right))
 
@@ -812,6 +1011,7 @@ partial def trapValue : Ty → Except String ExtractedValue
       .ok (.struct name (← fields.mapM trapValue))
   | .variant name ctors => do
       .ok (.variant name .trap (← ctors.mapM (fun fields => fields.mapM trapValue)))
+  | .recVariant name => .ok (.heapVariant name .trap)
   | .sum left right => do
       .ok (.sum .trap (← trapValue left) (← trapValue right))
 
@@ -864,6 +1064,10 @@ partial def mapValueExprs (f : IRExpr → IRExpr) : ExtractedValue → Extracted
   | .struct name fields => .struct name (fields.map (mapValueExprs f))
   | .variant name tag ctors =>
       .variant name (f tag) (ctors.map (fun fields => fields.map (mapValueExprs f)))
+  | .recursiveVariant name tag ctors =>
+      .recursiveVariant name (f tag)
+        (ctors.map (fun fields => fields.map (fun field => (field.fst, mapValueExprs f field.snd))))
+  | .heapVariant name ptr => .heapVariant name (f ptr)
   | .letE slot value body => .letE slot value (mapValueExprs f body)
 
 partial def materializeValueLets : ExtractedValue → ExtractedValue
@@ -874,6 +1078,11 @@ partial def materializeValueLets : ExtractedValue → ExtractedValue
   | .struct name fields => .struct name (fields.map materializeValueLets)
   | .variant name tag ctors =>
       .variant name tag (ctors.map (fun fields => fields.map materializeValueLets))
+  | .recursiveVariant name tag ctors =>
+      .recursiveVariant name tag
+        (ctors.map
+          (fun fields => fields.map (fun field => (field.fst, materializeValueLets field.snd))))
+  | .heapVariant name ptr => .heapVariant name ptr
   | other => other
 
 partial def valueIte
@@ -913,7 +1122,139 @@ partial def valueIte
         .ok (.variant thenName (.ite cond thenTag elseTag) ctors)
       else
         .error "if branches have incompatible inductive value shapes"
+  | .heapVariant thenName thenPtr, .heapVariant elseName elsePtr =>
+      if thenName == elseName then
+        .ok (.heapVariant thenName (.ite cond thenPtr elsePtr))
+      else
+        .error "if branches have incompatible recursive inductive value shapes"
+  | .recursiveVariant thenName thenTag thenCtors,
+      .recursiveVariant elseName elseTag elseCtors =>
+      if thenName == elseName && thenCtors.length == elseCtors.length then do
+        let combineFields (fields : List (Ty × ExtractedValue) × List (Ty × ExtractedValue)) :
+            Except String (List (Ty × ExtractedValue)) :=
+          if fields.fst.length == fields.snd.length then
+            fields.fst.zip fields.snd |>.mapM fun fieldPair =>
+              if fieldPair.fst.fst == fieldPair.snd.fst then do
+                let value ← valueIte cond fieldPair.fst.snd fieldPair.snd.snd
+                .ok (fieldPair.fst.fst, value)
+              else
+                .error "if branches have incompatible recursive inductive payload types"
+          else
+            .error "if branches have incompatible recursive inductive payload shapes"
+        let rec combineCtors :
+            Nat → List (List (Ty × ExtractedValue) × List (Ty × ExtractedValue)) →
+              Except String (List (List (Ty × ExtractedValue)))
+          | _, [] => .ok []
+          | index, fields :: rest => do
+              let head ←
+                match irConstNat? thenTag, irConstNat? elseTag with
+                | some thenIndex, some elseIndex =>
+                    if thenIndex != index then
+                      .ok fields.snd
+                    else if elseIndex != index then
+                      .ok fields.fst
+                    else
+                      combineFields fields
+                | some thenIndex, none =>
+                    if thenIndex == index then combineFields fields else .ok fields.snd
+                | none, some elseIndex =>
+                    if elseIndex == index then combineFields fields else .ok fields.fst
+                | _, _ => combineFields fields
+              let tail ← combineCtors (index + 1) rest
+              .ok (head :: tail)
+        let ctors ← combineCtors 0 (thenCtors.zip elseCtors)
+        .ok (.recursiveVariant thenName (.ite cond thenTag elseTag) ctors)
+      else
+        .error "if branches have incompatible recursive inductive value shapes"
   | _, _ => .error "if branches have incompatible structured value shapes"
+
+partial def flattenInternalValue (ty : Ty) (value : ExtractedValue) :
+    Except String (List IRExpr) :=
+  match ty with
+  | .unit => scalarValue value |>.map (fun expr => [expr])
+  | .bool => scalarValue value |>.map (fun expr => [expr])
+  | .u8 => scalarValue value |>.map (fun expr => [expr])
+  | .u32 => scalarValue value |>.map (fun expr => [expr])
+  | .u64 => scalarValue value |>.map (fun expr => [expr])
+  | .nat => scalarValue value |>.map (fun expr => [expr])
+  | .array item =>
+      if supportedArrayElementType item then
+        scalarValue value |>.map (fun expr => [expr])
+      else
+        .error s!"unsupported internal value type: {reprStr ((.array item : Ty))}"
+  | .byteArray => do
+      let parts ← byteArrayParts value
+      .ok [parts.fst, parts.snd]
+  | .product left right =>
+      match value with
+      | .product leftValue rightValue => do
+          let leftSlots ← flattenInternalValue left leftValue
+          let rightSlots ← flattenInternalValue right rightValue
+          .ok (leftSlots ++ rightSlots)
+      | .letE slot value body => do
+          let flattened ← flattenInternalValue ty body
+          .ok (flattened.map (fun expr => .letE slot value expr))
+      | _ => .error "non-product value used where product internal value is required"
+  | .sum left right =>
+      match value with
+      | .sum tag leftValue rightValue => do
+          let leftSlots ← flattenInternalValue left leftValue
+          let rightSlots ← flattenInternalValue right rightValue
+          .ok (tag :: leftSlots ++ rightSlots)
+      | .letE slot value body => do
+          let flattened ← flattenInternalValue ty body
+          .ok (flattened.map (fun expr => .letE slot value expr))
+      | _ => .error "non-sum value used where sum internal value is required"
+  | .struct name fields =>
+      match value with
+      | .struct actual values =>
+          if actual == name && values.length == fields.length then do
+            let flattened ← (fields.zip values).mapM fun item =>
+              flattenInternalValue item.fst item.snd
+            .ok flattened.flatten
+          else
+            .error s!"structure internal value shape mismatch: {name}"
+      | .letE slot value body => do
+          let flattened ← flattenInternalValue ty body
+          .ok (flattened.map (fun expr => .letE slot value expr))
+      | _ => .error s!"non-structure value used where structure internal value is required: {name}"
+  | .variant name ctors =>
+      match value with
+      | .variant actual tag values =>
+          if actual == name && values.length == ctors.length then do
+            let flattened ← (ctors.zip values).mapM fun ctorPair =>
+              if ctorPair.fst.length == ctorPair.snd.length then do
+                let fields ← ctorPair.fst.zip ctorPair.snd |>.mapM fun fieldPair =>
+                  flattenInternalValue fieldPair.fst fieldPair.snd
+                .ok fields.flatten
+              else
+                .error s!"inductive internal constructor payload shape mismatch: {name}"
+            .ok (tag :: flattened.flatten)
+          else
+            .error s!"inductive internal value shape mismatch: {name}"
+      | .letE slot value body => do
+          let flattened ← flattenInternalValue ty body
+          .ok (flattened.map (fun expr => .letE slot value expr))
+      | _ => .error s!"non-inductive value used where inductive internal value is required: {name}"
+  | .recVariant name =>
+      match value with
+      | .heapVariant actual ptr =>
+          if actual == name then
+            .ok [ptr]
+          else
+            .error s!"recursive inductive internal value shape mismatch: {name}"
+      | .recursiveVariant actual tag ctors =>
+          if actual == name then do
+            let flattened ← ctors.mapM fun fields =>
+              fields.mapM (fun field => flattenInternalValue field.fst field.snd)
+            .ok [(.heapAllocSlots (tag :: flattened.flatten.flatten))]
+          else
+            .error s!"recursive inductive internal value shape mismatch: {name}"
+      | .letE slot value body => do
+          let flattened ← flattenInternalValue ty body
+          .ok (flattened.map (fun expr => .letE slot value expr))
+      | _ =>
+          .error s!"non-recursive value used where recursive inductive internal value is required: {name}"
 
 partial def flattenAbiValue (ty : Ty) (value : ExtractedValue) : Except String (List IRExpr) :=
   match ty with
@@ -962,7 +1303,113 @@ partial def flattenAbiValue (ty : Ty) (value : ExtractedValue) : Except String (
           let flattened ← flattenAbiValue ty body
           .ok (flattened.map (fun expr => .letE slot value expr))
       | _ => .error s!"non-inductive value used where inductive ABI value is required: {name}"
+  | .recVariant name =>
+      match value with
+      | .heapVariant actual ptr =>
+          if actual == name then
+            .ok [ptr]
+          else
+            .error s!"recursive inductive ABI value shape mismatch: {name}"
+      | .recursiveVariant actual tag ctors =>
+          if actual == name then do
+            let flattened ← ctors.mapM fun fields =>
+              fields.mapM (fun field => flattenInternalValue field.fst field.snd)
+            .ok [(.heapAllocSlots (tag :: flattened.flatten.flatten))]
+          else
+            .error s!"recursive inductive ABI value shape mismatch: {name}"
+      | .letE slot value body => do
+          let flattened ← flattenAbiValue ty body
+          .ok (flattened.map (fun expr => .letE slot value expr))
+      | _ => .error s!"non-recursive value used where recursive inductive ABI value is required: {name}"
   | other => .error s!"unsupported ABI value type: {reprStr other}"
+
+mutual
+  partial def heapLoadValueAt (ptr : IRExpr) : Ty → Nat → Except String (ExtractedValue × Nat)
+    | .unit, slot => .ok (.scalar (.heapLoadSlot ptr slot), slot + 1)
+    | .bool, slot => .ok (.scalar (.heapLoadSlot ptr slot), slot + 1)
+    | .u8, slot => .ok (.scalar (.heapLoadSlot ptr slot), slot + 1)
+    | .u32, slot => .ok (.scalar (.heapLoadSlot ptr slot), slot + 1)
+    | .u64, slot => .ok (.scalar (.heapLoadSlot ptr slot), slot + 1)
+    | .nat, slot => .ok (.scalar (.heapLoadSlot ptr slot), slot + 1)
+    | .array item, slot =>
+        if supportedArrayElementType item then
+          .ok (.scalar (.heapLoadSlot ptr slot), slot + 1)
+        else
+          .error s!"unsupported heap field array type: {reprStr ((.array item : Ty))}"
+    | .byteArray, slot =>
+        .ok (.byteArray (.heapLoadSlot ptr slot) (.heapLoadSlot ptr (slot + 1)), slot + 2)
+    | .product left right, slot => do
+        let leftLoaded ← heapLoadValueAt ptr left slot
+        let rightLoaded ← heapLoadValueAt ptr right leftLoaded.snd
+        .ok (.product leftLoaded.fst rightLoaded.fst, rightLoaded.snd)
+    | .sum left right, slot => do
+        let leftLoaded ← heapLoadValueAt ptr left (slot + 1)
+        let rightLoaded ← heapLoadValueAt ptr right leftLoaded.snd
+        .ok (.sum (.heapLoadSlot ptr slot) leftLoaded.fst rightLoaded.fst, rightLoaded.snd)
+    | .struct name fields, slot => do
+        let loaded ← heapLoadFieldsAt ptr fields slot
+        .ok (.struct name loaded.fst, loaded.snd)
+    | .variant name ctors, slot => do
+        let loaded ← heapLoadCtorsAt ptr ctors (slot + 1)
+        .ok (.variant name (.heapLoadSlot ptr slot) loaded.fst, loaded.snd)
+    | .recVariant name, slot => .ok (.heapVariant name (.heapLoadSlot ptr slot), slot + 1)
+
+  partial def heapLoadFieldsAt (ptr : IRExpr) :
+      List Ty → Nat → Except String (List ExtractedValue × Nat)
+    | [], slot => .ok ([], slot)
+    | field :: rest, slot => do
+        let head ← heapLoadValueAt ptr field slot
+        let tail ← heapLoadFieldsAt ptr rest head.snd
+        .ok (head.fst :: tail.fst, tail.snd)
+
+  partial def heapLoadCtorsAt (ptr : IRExpr) :
+      List (List Ty) → Nat → Except String (List (List ExtractedValue) × Nat)
+    | [], slot => .ok ([], slot)
+    | fields :: rest, slot => do
+        let head ← heapLoadFieldsAt ptr fields slot
+        let tail ← heapLoadCtorsAt ptr rest head.snd
+        .ok (head.fst :: tail.fst, tail.snd)
+end
+
+partial def flattenFieldsFromKinds
+    (typeName : Name)
+    (fieldKinds : List (Option Ty))
+    (runtimeFields : List ExtractedValue) :
+    Except String (List IRExpr) := do
+  let rec loop :
+      List (Option Ty) → List ExtractedValue → List (List IRExpr) →
+        Except String (List IRExpr)
+    | [], [], acc => .ok acc.reverse.flatten
+    | [], _ :: _, _ => .error s!"too many runtime fields for {typeName}"
+    | some ty :: restKinds, field :: restFields, acc => do
+        let flattened ← flattenInternalValue ty field
+        loop restKinds restFields (flattened :: acc)
+    | some _ :: _, [], _ => .error s!"too few runtime fields for {typeName}"
+    | none :: restKinds, fields, acc =>
+        loop restKinds fields acc
+  loop fieldKinds runtimeFields []
+
+partial def defaultCtorSlotValues (ctors : List VariantCtorLayout) :
+    Except String (List (List IRExpr)) :=
+  ctors.mapM fun ctor => do
+    let defaults ← runtimeTypesFromKinds ctor.fields |>.mapM defaultValue
+    flattenFieldsFromKinds ctor.name ctor.fields defaults
+
+partial def heapRuntimeFieldsFromKinds
+    (ptr : IRExpr)
+    (fieldKinds : List (Option Ty))
+    (slot : Nat) :
+    Except String (List ExtractedValue × Nat) :=
+  let rec loop :
+      List (Option Ty) → Nat → List ExtractedValue →
+        Except String (List ExtractedValue × Nat)
+    | [], next, acc => .ok (acc.reverse, next)
+    | some ty :: rest, next, acc => do
+        let loaded ← heapLoadValueAt ptr ty next
+        loop rest loaded.snd (loaded.fst :: acc)
+    | none :: rest, next, acc =>
+        loop rest next acc
+  loop fieldKinds slot []
 
 partial def flattenArrayElementValue
     (ty : Ty)
@@ -1164,6 +1611,7 @@ mutual
     | .struct name fields => .struct name (extractedStructFieldsForParam slot fields)
     | .variant name ctors =>
         .variant name (.local slot) (extractedVariantCtorsForParam (slot + 1) ctors)
+    | .recVariant name => .heapVariant name (.local slot)
     | _ => .scalar (.local slot)
 
   partial def extractedStructFieldsForParam (slot : Nat) : List Ty → List ExtractedValue
@@ -1186,6 +1634,7 @@ def bindingForParam (slot : Nat) : Ty → Binding
   | .struct name fields => .value (.struct name (extractedStructFieldsForParam slot fields))
   | .variant name ctors =>
       .value (.variant name (.local slot) (extractedVariantCtorsForParam (slot + 1) ctors))
+  | .recVariant name => .value (.heapVariant name (.local slot))
   | _ => .slot slot
 
 partial def sourceParamBindingsFrom (slot : Nat) : List Ty → List Binding
@@ -1224,6 +1673,31 @@ def sourceFieldBindingsFromKinds
 partial def defaultCtorValues (ctors : List VariantCtorLayout) :
     Except String (List (List ExtractedValue)) :=
   ctors.mapM fun ctor => runtimeTypesFromKinds ctor.fields |>.mapM defaultValue
+
+def typedFieldsFromKinds
+    (typeName : Name)
+    (fieldKinds : List (Option Ty))
+    (runtimeFields : List ExtractedValue) :
+    Except String (List (Ty × ExtractedValue)) := do
+  let rec loop :
+      List (Option Ty) → List ExtractedValue → List (Ty × ExtractedValue) →
+        Except String (List (Ty × ExtractedValue))
+    | [], [], acc => .ok acc.reverse
+    | [], _ :: _, _ => .error s!"too many runtime fields for {typeName}"
+    | some ty :: restKinds, field :: restFields, acc =>
+        loop restKinds restFields ((ty, field) :: acc)
+    | some _ :: _, [], _ => .error s!"too few runtime fields for {typeName}"
+    | none :: restKinds, fields, acc =>
+        loop restKinds fields acc
+  loop fieldKinds runtimeFields []
+
+partial def defaultCtorTypedValues (ctors : List VariantCtorLayout) :
+    Except String (List (List (Ty × ExtractedValue))) :=
+  ctors.mapM fun ctor => do
+    let values ← runtimeTypesFromKinds ctor.fields |>.mapM fun ty => do
+      let value ← defaultValue ty
+      .ok (ty, value)
+    .ok values
 
 def replaceAt? {α : Type} (index : Nat) (value : α) : List α → Option (List α)
   | [] => none
@@ -1541,7 +2015,7 @@ partial def variantArmCtorName? (env : Environment) (expr : Expr) : Option Name 
   | .app _ value =>
       match appFnArgs value with
       | (.const ctorName _, _) =>
-          match variantConstructor? env ctorName with
+          match anyVariantConstructor? env ctorName with
           | some _ => some ctorName
           | none => none
       | _ => none
@@ -1561,7 +2035,7 @@ def variantMatcherArgs? (env : Environment) (fn : Expr) (args : List Expr) :
     | some (.recInfo recInfo) =>
         match recInfo.all with
         | typeName :: [] =>
-            match variantLayout? env typeName with
+            match anyVariantLayout? env typeName with
             | some layout =>
                 let ctorCount := layout.ctors.length
                 if name == .str typeName "casesOn" || name == .str typeName "recOn" then
@@ -1592,7 +2066,30 @@ def variantMatcherArgs? (env : Environment) (fn : Expr) (args : List Expr) :
   let generatedMatcher? (name : Name) : Option (VariantLayout × Expr × List Expr) :=
     match generatedMatcherScrutineeType? env name, env.find? name, args with
     | some (.variant typeName _), some info, _motive :: scrutinee :: arms =>
-        match variantLayout? env typeName with
+        match anyVariantLayout? env typeName with
+        | some layout =>
+            let ctorCount := layout.ctors.length
+            if arms.length == ctorCount then
+              match (peelForall info.type).fst.drop 2 with
+              | armTypes =>
+                  let armTypes := armTypes.take ctorCount
+                  if armTypes.length == ctorCount then
+                    let typedArms? :=
+                      (armTypes.zip arms).mapM fun item =>
+                        variantArmCtorName? env item.fst |>.map fun ctorName =>
+                          (ctorName, item.snd)
+                    match typedArms? with
+                    | some typedArms =>
+                        reorderVariantArms? (layout.ctors.map (fun ctor => ctor.name)) typedArms
+                          |>.map fun orderedArms => (layout, scrutinee, orderedArms)
+                    | none => none
+                  else
+                    none
+            else
+              none
+        | none => none
+    | some (.recVariant typeName), some info, _motive :: scrutinee :: arms =>
+        match recursiveVariantLayout? env typeName with
         | some layout =>
             let ctorCount := layout.ctors.length
             if arms.length == ctorCount then
@@ -3391,38 +3888,66 @@ mutual
                     else
                       .error s!"structure constructor arity mismatch: {name}"
                 | none =>
-                    match variantConstructor? ctx.env name with
+                    match recursiveVariantConstructor? ctx.env name with
                     | some (layout, ctorIndex, ctor) =>
                         if args.length == ctor.fields.length then
-                          let rec variantCtorLoop :
+                          let rec recursiveVariantCtorLoop :
                               List Expr → List (Option Ty) → Nat →
                                 Except String (List ExtractedValue × Nat)
                             | [], [], next => .ok ([], next)
                             | arg :: restArgs, some _ :: restKinds, next => do
                                 let fieldResult ← extractValueFrom ctx locals next arg
-                                let restResult ← variantCtorLoop restArgs restKinds fieldResult.snd
+                                let restResult ←
+                                  recursiveVariantCtorLoop restArgs restKinds fieldResult.snd
                                 .ok (fieldResult.fst :: restResult.fst, restResult.snd)
                             | _arg :: restArgs, none :: restKinds, next =>
-                                variantCtorLoop restArgs restKinds next
+                                recursiveVariantCtorLoop restArgs restKinds next
                             | _, _, _ => .error s!"inductive constructor arity mismatch: {name}"
-                          let runtimeFields ← variantCtorLoop args ctor.fields nextLocal
-                          let defaults ← defaultCtorValues layout.ctors
+                          let runtimeFields ← recursiveVariantCtorLoop args ctor.fields nextLocal
+                          let defaults ← defaultCtorTypedValues layout.ctors
+                          let activeFields ← typedFieldsFromKinds ctor.name ctor.fields runtimeFields.fst
                           let ctors ←
-                            match replaceAt? ctorIndex runtimeFields.fst defaults with
+                            match replaceAt? ctorIndex activeFields defaults with
                             | some ctors => .ok ctors
                             | none => .error s!"inductive constructor index mismatch: {name}"
-                          .ok (.variant layout.name (.u64 ctorIndex) ctors, runtimeFields.snd)
+                          .ok
+                            (.recursiveVariant layout.name (.u64 ctorIndex) ctors,
+                              runtimeFields.snd)
                         else
                           .error s!"inductive constructor arity mismatch: {name}"
                     | none =>
-                        match structureProjection? ctx.env name, args with
-                        | some (structName, some index), target :: [] =>
-                            let valueResult ← extractValueFrom ctx locals nextLocal target
-                            .ok (← structField structName index valueResult.fst, valueResult.snd)
-                        | some (_structName, none), _target :: [] =>
-                            .ok (.scalar (.u64 0), nextLocal)
-                        | _, _ =>
-                            extractNonStructureValueFrom ctx locals nextLocal expr fn args
+                        match variantConstructor? ctx.env name with
+                        | some (layout, ctorIndex, ctor) =>
+                            if args.length == ctor.fields.length then
+                              let rec variantCtorLoop :
+                                  List Expr → List (Option Ty) → Nat →
+                                    Except String (List ExtractedValue × Nat)
+                                | [], [], next => .ok ([], next)
+                                | arg :: restArgs, some _ :: restKinds, next => do
+                                    let fieldResult ← extractValueFrom ctx locals next arg
+                                    let restResult ← variantCtorLoop restArgs restKinds fieldResult.snd
+                                    .ok (fieldResult.fst :: restResult.fst, restResult.snd)
+                                | _arg :: restArgs, none :: restKinds, next =>
+                                    variantCtorLoop restArgs restKinds next
+                                | _, _, _ => .error s!"inductive constructor arity mismatch: {name}"
+                              let runtimeFields ← variantCtorLoop args ctor.fields nextLocal
+                              let defaults ← defaultCtorValues layout.ctors
+                              let ctors ←
+                                match replaceAt? ctorIndex runtimeFields.fst defaults with
+                                | some ctors => .ok ctors
+                                | none => .error s!"inductive constructor index mismatch: {name}"
+                              .ok (.variant layout.name (.u64 ctorIndex) ctors, runtimeFields.snd)
+                            else
+                              .error s!"inductive constructor arity mismatch: {name}"
+                        | none =>
+                            match structureProjection? ctx.env name, args with
+                            | some (structName, some index), target :: [] =>
+                                let valueResult ← extractValueFrom ctx locals nextLocal target
+                                .ok (← structField structName index valueResult.fst, valueResult.snd)
+                            | some (_structName, none), _target :: [] =>
+                                .ok (.scalar (.u64 0), nextLocal)
+                            | _, _ =>
+                                extractNonStructureValueFrom ctx locals nextLocal expr fn args
             | _ => extractNonStructureValueFrom ctx locals nextLocal expr fn args
 
   partial def extractNonStructureValueFrom
@@ -3718,39 +4243,114 @@ mutual
       .error s!"inductive matcher arity mismatch: {layout.name}"
     else
       let scrutineeResult ← extractValueFrom ctx locals nextLocal scrutinee
-      let parts ← variantPartsWithLets layout.name scrutineeResult.fst
-      let lets := parts.fst
-      let tag := parts.snd.fst
-      let ctorValues := parts.snd.snd
-      if ctorValues.length != layout.ctors.length then
-        .error s!"inductive matcher value shape mismatch: {layout.name}"
+      if (recursiveVariantLayout? ctx.env layout.name).isSome then
+        match heapVariantPtrWithLets? layout.name scrutineeResult.fst with
+        | some parts =>
+            let ptrSlot := scrutineeResult.snd
+            let ptrExpr := wrapExprLets parts.fst parts.snd
+            let ptrLocal : IRExpr := .local ptrSlot
+            let tag := .heapLoadSlot ptrLocal 0
+            let rec heapExtractArms :
+                List VariantCtorLayout → List Expr → Nat → Nat →
+                  Except String (List ExtractedValue × Nat)
+              | [], [], _, next => .ok ([], next)
+              | ctor :: restCtors, arm :: restArms, payloadSlot, next => do
+                  let runtimeFields ← heapRuntimeFieldsFromKinds ptrLocal ctor.fields payloadSlot
+                  let sourceBindings ←
+                    sourceFieldBindingsFromKinds layout.name ctor.fields runtimeFields.fst
+                  let armResult ←
+                    if ctor.fields.isEmpty then
+                      extractUnitArmValueFrom ctx locals next arm
+                    else
+                      let body ←
+                        match collectLambdas arm ctor.fields.length with
+                        | some body => .ok body
+                        | none => .error s!"unsupported inductive matcher arm: {ctor.name}"
+                      extractValueFrom ctx (sourceBindings.reverse ++ locals) next body
+                  let restResult ←
+                    heapExtractArms restCtors restArms runtimeFields.snd armResult.snd
+                  .ok (armResult.fst :: restResult.fst, restResult.snd)
+              | _, _, _, _ => .error s!"inductive matcher arity mismatch: {layout.name}"
+            let armResults ← heapExtractArms layout.ctors arms 1 (ptrSlot + 1)
+            let rec heapCombine : List (Nat × ExtractedValue) → Except String ExtractedValue
+              | [] => .error s!"inductive matcher has no arms: {layout.name}"
+              | [(_index, value)] => .ok value
+              | (index, value) :: rest => do
+                  let elseValue ← heapCombine rest
+                  valueIte (.eqU64 tag (.u64 index)) value elseValue
+            .ok (.letE ptrSlot ptrExpr (← heapCombine (enumerate armResults.fst)),
+              armResults.snd)
+        | none =>
+            let parts ← recursiveVariantPartsWithLets layout.name scrutineeResult.fst
+            let lets := parts.fst
+            let tag := parts.snd.fst
+            let ctorValues := parts.snd.snd
+            if ctorValues.length != layout.ctors.length then
+              .error s!"inductive matcher value shape mismatch: {layout.name}"
+            else
+              let rec recursiveExtractArms :
+                  List VariantCtorLayout → List (List ExtractedValue) → List Expr → Nat →
+                    Except String (List ExtractedValue × Nat)
+                | [], [], [], next => .ok ([], next)
+                | ctor :: restCtors, fields :: restFields, arm :: restArms, next => do
+                    let sourceBindings ← sourceFieldBindingsFromKinds layout.name ctor.fields fields
+                    let armResult ←
+                      if ctor.fields.isEmpty then
+                        extractUnitArmValueFrom ctx locals next arm
+                      else
+                        let body ←
+                          match collectLambdas arm ctor.fields.length with
+                          | some body => .ok body
+                          | none => .error s!"unsupported inductive matcher arm: {ctor.name}"
+                        extractValueFrom ctx (sourceBindings.reverse ++ locals) next body
+                    let restResult ←
+                      recursiveExtractArms restCtors restFields restArms armResult.snd
+                    .ok (armResult.fst :: restResult.fst, restResult.snd)
+                | _, _, _, _ => .error s!"inductive matcher arity mismatch: {layout.name}"
+              let armResults ←
+                recursiveExtractArms layout.ctors ctorValues arms scrutineeResult.snd
+              let rec recursiveCombine : List (Nat × ExtractedValue) → Except String ExtractedValue
+                | [] => .error s!"inductive matcher has no arms: {layout.name}"
+                | [(_index, value)] => .ok value
+                | (index, value) :: rest => do
+                    let elseValue ← recursiveCombine rest
+                    valueIte (.eqU64 tag (.u64 index)) value elseValue
+              .ok (wrapValueLets lets (← recursiveCombine (enumerate armResults.fst)),
+                armResults.snd)
       else
-        let rec extractArms :
-            List VariantCtorLayout → List (List ExtractedValue) → List Expr → Nat →
-              Except String (List ExtractedValue × Nat)
-          | [], [], [], next => .ok ([], next)
-          | ctor :: restCtors, fields :: restFields, arm :: restArms, next => do
-              let sourceBindings ← sourceFieldBindingsFromKinds layout.name ctor.fields fields
-              let armResult ←
-                if ctor.fields.isEmpty then
-                  extractUnitArmValueFrom ctx locals next arm
-                else
-                  let body ←
-                    match collectLambdas arm ctor.fields.length with
-                    | some body => .ok body
-                    | none => .error s!"unsupported inductive matcher arm: {ctor.name}"
-                  extractValueFrom ctx (sourceBindings.reverse ++ locals) next body
-              let restResult ← extractArms restCtors restFields restArms armResult.snd
-              .ok (armResult.fst :: restResult.fst, restResult.snd)
-          | _, _, _, _ => .error s!"inductive matcher arity mismatch: {layout.name}"
-        let armResults ← extractArms layout.ctors ctorValues arms scrutineeResult.snd
-        let rec combine : List (Nat × ExtractedValue) → Except String ExtractedValue
-          | [] => .error s!"inductive matcher has no arms: {layout.name}"
-          | [(_index, value)] => .ok value
-          | (index, value) :: rest => do
-              let elseValue ← combine rest
-              valueIte (.eqU64 tag (.u64 index)) value elseValue
-        .ok (wrapValueLets lets (← combine (enumerate armResults.fst)), armResults.snd)
+        let parts ← variantPartsWithLets layout.name scrutineeResult.fst
+        let lets := parts.fst
+        let tag := parts.snd.fst
+        let ctorValues := parts.snd.snd
+        if ctorValues.length != layout.ctors.length then
+          .error s!"inductive matcher value shape mismatch: {layout.name}"
+        else
+          let rec variantExtractArms :
+              List VariantCtorLayout → List (List ExtractedValue) → List Expr → Nat →
+                Except String (List ExtractedValue × Nat)
+            | [], [], [], next => .ok ([], next)
+            | ctor :: restCtors, fields :: restFields, arm :: restArms, next => do
+                let sourceBindings ← sourceFieldBindingsFromKinds layout.name ctor.fields fields
+                let armResult ←
+                  if ctor.fields.isEmpty then
+                    extractUnitArmValueFrom ctx locals next arm
+                  else
+                    let body ←
+                      match collectLambdas arm ctor.fields.length with
+                      | some body => .ok body
+                      | none => .error s!"unsupported inductive matcher arm: {ctor.name}"
+                    extractValueFrom ctx (sourceBindings.reverse ++ locals) next body
+                let restResult ← variantExtractArms restCtors restFields restArms armResult.snd
+                .ok (armResult.fst :: restResult.fst, restResult.snd)
+            | _, _, _, _ => .error s!"inductive matcher arity mismatch: {layout.name}"
+          let armResults ← variantExtractArms layout.ctors ctorValues arms scrutineeResult.snd
+          let rec variantCombine : List (Nat × ExtractedValue) → Except String ExtractedValue
+            | [] => .error s!"inductive matcher has no arms: {layout.name}"
+            | [(_index, value)] => .ok value
+            | (index, value) :: rest => do
+                let elseValue ← variantCombine rest
+                valueIte (.eqU64 tag (.u64 index)) value elseValue
+          .ok (wrapValueLets lets (← variantCombine (enumerate armResults.fst)), armResults.snd)
 
   partial def extractInlineCallValueFrom
       (ctx : Context)

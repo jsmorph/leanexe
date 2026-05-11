@@ -15,6 +15,7 @@ inductive Ty where
   | sum (left right : Ty)
   | struct (name : Lean.Name) (fields : List Ty)
   | variant (name : Lean.Name) (ctors : List (List Ty))
+  | recVariant (name : Lean.Name)
   deriving BEq, Repr
 
 inductive U64Op where
@@ -51,6 +52,8 @@ mutual
     | letE (slot : Nat) (value body : Expr)
     | arrayAlloc (cells : Expr)
     | arrayAllocSlots (width : Nat) (cells : Expr)
+    | heapAllocSlots (values : List Expr)
+    | heapLoadSlot (ptr : Expr) (slot : Nat)
     | arrayReplicate (cells value : Expr)
     | arrayReplicateSlots (width : Nat) (cells : Expr) (values : List Expr)
     | arraySize (array : Expr)
@@ -172,6 +175,8 @@ mutual
         body.eval module_ (store.set slot (value.eval module_ store))
     | .arrayAlloc _ => 0
     | .arrayAllocSlots _ _ => 0
+    | .heapAllocSlots _ => 0
+    | .heapLoadSlot _ _ => 0
     | .arrayReplicate _ _ => 0
     | .arrayReplicateSlots _ _ _ => 0
     | .arraySize _ => 0
