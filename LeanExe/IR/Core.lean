@@ -86,6 +86,8 @@ mutual
     | byteArrayFromArrayPtr (array : Expr)
     | byteArrayCopySlicePtr
         (srcPtr srcLen srcOff destPtr destLen destOff copyLen : Expr)
+    | byteArrayFindIdx (ptr len start : Expr) (byteSlot : Nat) (predicate : Expr)
+        (returnPayload : Bool)
     | byteArrayFold (ptr len start stop init : Expr) (accSlot byteSlot : Nat) (body : Expr)
     | call (index : Nat) (args : List Expr)
     deriving BEq, Repr
@@ -194,6 +196,7 @@ mutual
     | .byteArraySetPtr ptr _ _ _ => ptr.eval module_ store
     | .byteArrayFromArrayPtr array => array.eval module_ store
     | .byteArrayCopySlicePtr _ _ _ destPtr _ _ _ => destPtr.eval module_ store
+    | .byteArrayFindIdx _ _ _ _ _ _ => 0
     | .byteArrayFold _ _ _ _ init _ _ _ => init.eval module_ store
     | .call index args =>
         match module_.getFunc? index with

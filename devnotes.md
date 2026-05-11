@@ -2041,3 +2041,19 @@ Checks run:
 - [x] `node test/report_classification.js` returned `checked 75 report classification cases`.
 - [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/current/wasmtime wast .lake/build/bytearray-programs/readUInt64LE.wat` accepted the generated module.
 - [x] `node test/run_all.js` returned `checked 75 report classification cases`, `checked 394 accepted, 16 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, and `checked 56 cases`.
+
+## 2026-05-11: ByteArray findIdx?
+
+The generic compiler now lowers `ByteArray.findIdx?` for direct one-argument byte predicates returning `Bool`.  The emitted search scans bytes from left to right, returns `some index` at the first true predicate result, and returns `none` if the search reaches the end.  Empty search ranges do not evaluate the predicate.
+
+`LeanExe.Examples.ByteArrayPrograms.findQuestion` and `findQuestionAfterFirst` cover host-provided byte input.  `LeanExe.Examples.Correctness.byteArrayFindIdxSome`, `byteArrayFindIdxNone`, `byteArrayFindIdxStart`, and `byteArrayFindIdxEmptySkipsPredicateTrap` cover returned `Option Nat` values and skipped predicate evaluation.  The current support requires the predicate to remain a direct lambda after elaboration; general closure values remain outside the subset.
+
+Checks run:
+
+- [x] `lake build`
+- [x] `lake build LeanExe.Examples.Correctness LeanExe.Examples.ByteArrayPrograms`
+- [x] `node test/core_correctness.js` returned `checked 398 accepted, 16 rejected, and 13 trapped cases`.
+- [x] `node test/report_classification.js` returned `checked 76 report classification cases`.
+- [x] `node test/bytearray_alloc.js` returned `checked 70 bytearray allocation cases`.
+- [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/current/wasmtime wast .lake/build/core-correctness/byteArrayFindIdxStart.wat` accepted the generated module.
+- [x] `node test/run_all.js` returned `checked 76 report classification cases`, `checked 398 accepted, 16 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, and `checked 56 cases`.

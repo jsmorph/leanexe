@@ -1752,6 +1752,8 @@ partial def demandExpr
                     (fun acc arg => Demand.always acc (demandExpr ctx visiting arg))
                     .empty
               | _ => .empty
+          | (.const ``ByteArray.findIdx? _, args) =>
+              args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
           | (.const ``ByteArray.foldl _, args) =>
               args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
           | (.const ``ByteArray.toUInt64LE! _, args) =>
@@ -3162,6 +3164,38 @@ mutual
                                   (.local copyLenSlot))))))))
                 .ok (.byteArray resultPtr resultLen, copyLenSlot + 1)
             | none => .error "unsupported ByteArray.copySlice application"
+        | (.const ``ByteArray.findIdx? _, args) =>
+            let findArgs? :=
+              match args.reverse with
+              | start :: predicate :: array :: _ => some (array, predicate, some start)
+              | predicate :: array :: [] => some (array, predicate, none)
+              | _ => none
+            match findArgs? with
+            | some (array, predicate, start?) =>
+                let arrayResult ← extractValueFrom ctx locals nextLocal array
+                let parts ← byteArrayPartsWithLets arrayResult.fst
+                let startResult ←
+                  match start? with
+                  | some start => extractExprFrom ctx locals arrayResult.snd start
+                  | none => .ok (.u64 0, arrayResult.snd)
+                let byteSlot := startResult.snd
+                let predicateBody ←
+                  match collectLambdas predicate 1 with
+                  | some body => .ok body
+                  | none => .error "unsupported ByteArray.findIdx? predicate"
+                let predicateResult ←
+                  extractExprFrom ctx
+                    (.value (.scalar (.local byteSlot)) :: locals)
+                    (byteSlot + 1)
+                    predicateBody
+                let ptr := wrapExprLets parts.fst parts.snd.fst
+                let len := wrapExprLets parts.fst parts.snd.snd
+                let tag :=
+                  .byteArrayFindIdx ptr len startResult.fst byteSlot predicateResult.fst false
+                let payload :=
+                  .byteArrayFindIdx ptr len startResult.fst byteSlot predicateResult.fst true
+                .ok (mkOptionValue tag (.scalar payload), predicateResult.snd)
+            | none => .error "unsupported ByteArray.findIdx? application"
         | (.const ``ByteArray.mk _, args) =>
             match args with
             | [array] =>

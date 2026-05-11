@@ -99,6 +99,12 @@ def foldSum (input : ByteArray) : Nat :=
 def foldWindowDecimal (input : ByteArray) : Nat :=
   input.foldl (fun acc byte => acc * 10 + byte.toNat) 0 1 3
 
+def findQuestion (input : ByteArray) : Option Nat :=
+  input.findIdx? (fun byte => byte == (63 : UInt8))
+
+def findQuestionAfterFirst (input : ByteArray) : Option Nat :=
+  input.findIdx? (fun byte => byte == (63 : UInt8)) 1
+
 def emptyViaIsEmpty (input : ByteArray) : Bool :=
   input.isEmpty
 

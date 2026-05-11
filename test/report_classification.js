@@ -35,6 +35,11 @@ const cases = [
   },
   {
     moduleName: "LeanExe.Examples.ByteArrayPrograms",
+    entryName: "LeanExe.Examples.ByteArrayPrograms.findQuestion",
+    shape: "entry shape: ByteArray -> Option Nat",
+  },
+  {
+    moduleName: "LeanExe.Examples.ByteArrayPrograms",
     entryName: "LeanExe.Examples.ByteArrayPrograms.readUInt64LE",
     shape: "entry shape: ByteArray -> UInt64",
   },
