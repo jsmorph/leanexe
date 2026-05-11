@@ -3501,12 +3501,11 @@ mutual
                 | itemTy :: _, index :: array :: _ =>
                     match typeAtom? ctx.env itemTy with
                     | some itemTy =>
-                      if supportedArrayCellType itemTy then
+                        let width ← arrayElementWidth "Array.eraseIdxIfInBounds" itemTy
                         let arrayResult ← extractExprFrom ctx locals nextLocal array
                         let indexResult ← extractExprFrom ctx locals arrayResult.snd index
-                        .ok (.arrayEraseIfInBounds arrayResult.fst indexResult.fst, indexResult.snd)
-                      else
-                        .error s!"unsupported Array.eraseIdxIfInBounds item type: {reprStr itemTy}"
+                        .ok (.arrayEraseIfInBoundsSlots width arrayResult.fst indexResult.fst,
+                          indexResult.snd)
                     | none => .error "unsupported Array.eraseIdxIfInBounds item type"
                 | _, _ => .error "unsupported Array.eraseIdxIfInBounds application"
             | (.const ``Array.eraseIdx _, args) =>
@@ -3514,12 +3513,11 @@ mutual
                 | itemTy :: _, _proof :: index :: array :: _ =>
                     match typeAtom? ctx.env itemTy with
                     | some itemTy =>
-                      if supportedArrayCellType itemTy then
+                        let width ← arrayElementWidth "Array.eraseIdx" itemTy
                         let arrayResult ← extractExprFrom ctx locals nextLocal array
                         let indexResult ← extractExprFrom ctx locals arrayResult.snd index
-                        .ok (.arrayEraseIfInBounds arrayResult.fst indexResult.fst, indexResult.snd)
-                      else
-                        .error s!"unsupported Array.eraseIdx item type: {reprStr itemTy}"
+                        .ok (.arrayEraseIfInBoundsSlots width arrayResult.fst indexResult.fst,
+                          indexResult.snd)
                     | none => .error "unsupported Array.eraseIdx item type"
                 | _, _ => .error "unsupported Array.eraseIdx application"
             | (.const ``Array.swapIfInBounds _, args) =>
@@ -3527,18 +3525,17 @@ mutual
                 | itemTy :: _, right :: left :: array :: _ =>
                     match typeAtom? ctx.env itemTy with
                     | some itemTy =>
-                      if supportedArrayCellType itemTy then
+                        let width ← arrayElementWidth "Array.swapIfInBounds" itemTy
                         let arrayResult ← extractExprFrom ctx locals nextLocal array
                         let leftResult ← extractExprFrom ctx locals arrayResult.snd left
                         let rightResult ← extractExprFrom ctx locals leftResult.snd right
                         .ok
-                          (.arraySwapIfInBounds
+                          (.arraySwapIfInBoundsSlots
+                            width
                             arrayResult.fst
                             leftResult.fst
                             rightResult.fst,
                             rightResult.snd)
-                      else
-                        .error s!"unsupported Array.swapIfInBounds item type: {reprStr itemTy}"
                     | none => .error "unsupported Array.swapIfInBounds item type"
                 | _, _ => .error "unsupported Array.swapIfInBounds application"
             | (.const ``Array.swap _, args) =>
@@ -3546,18 +3543,17 @@ mutual
                 | itemTy :: _, _rightProof :: _leftProof :: right :: left :: array :: _ =>
                     match typeAtom? ctx.env itemTy with
                     | some itemTy =>
-                      if supportedArrayCellType itemTy then
+                        let width ← arrayElementWidth "Array.swap" itemTy
                         let arrayResult ← extractExprFrom ctx locals nextLocal array
                         let leftResult ← extractExprFrom ctx locals arrayResult.snd left
                         let rightResult ← extractExprFrom ctx locals leftResult.snd right
                         .ok
-                          (.arraySwapIfInBounds
+                          (.arraySwapIfInBoundsSlots
+                            width
                             arrayResult.fst
                             leftResult.fst
                             rightResult.fst,
                             rightResult.snd)
-                      else
-                        .error s!"unsupported Array.swap item type: {reprStr itemTy}"
                     | none => .error "unsupported Array.swap item type"
                 | _, _ => .error "unsupported Array.swap application"
             | (.const ``Array.reverse _, args) =>
@@ -3565,11 +3561,9 @@ mutual
                 | itemTy :: _, array :: _ =>
                     match typeAtom? ctx.env itemTy with
                     | some itemTy =>
-                      if supportedArrayCellType itemTy then
+                        let width ← arrayElementWidth "Array.reverse" itemTy
                         let arrayResult ← extractExprFrom ctx locals nextLocal array
-                        .ok (.arrayReverse arrayResult.fst, arrayResult.snd)
-                      else
-                        .error s!"unsupported Array.reverse item type: {reprStr itemTy}"
+                        .ok (.arrayReverseSlots width arrayResult.fst, arrayResult.snd)
                     | none => .error "unsupported Array.reverse item type"
                 | _, _ => .error "unsupported Array.reverse application"
             | (.const ``Array.insertIdx _, args) =>
@@ -3577,18 +3571,18 @@ mutual
                 | itemTy :: _, _proof :: value :: index :: array :: _ =>
                     match typeAtom? ctx.env itemTy with
                     | some itemTy =>
-                      if supportedArrayCellType itemTy then
+                        let width ← arrayElementWidth "Array.insertIdx" itemTy
                         let arrayResult ← extractExprFrom ctx locals nextLocal array
                         let indexResult ← extractExprFrom ctx locals arrayResult.snd index
-                        let valueResult ← extractExprFrom ctx locals indexResult.snd value
+                        let valueResult ← extractValueFrom ctx locals indexResult.snd value
+                        let slots ← flattenArrayElementValue itemTy valueResult.fst
                         .ok
-                          (.arrayInsertIfInBounds
+                          (.arrayInsertIfInBoundsSlots
+                            width
                             arrayResult.fst
                             indexResult.fst
-                            valueResult.fst,
+                            slots,
                             valueResult.snd)
-                      else
-                        .error s!"unsupported Array.insertIdx item type: {reprStr itemTy}"
                     | none => .error "unsupported Array.insertIdx item type"
                 | _, _ => .error "unsupported Array.insertIdx application"
             | (.const ``Array.insertIdx! _, args) =>
@@ -3596,25 +3590,25 @@ mutual
                 | itemTy :: _, value :: index :: array :: _ =>
                     match typeAtom? ctx.env itemTy with
                     | some itemTy =>
-                      if supportedArrayCellType itemTy then
+                        let width ← arrayElementWidth "Array.insertIdx!" itemTy
                         let arrayResult ← extractExprFrom ctx locals nextLocal array
                         let indexResult ← extractExprFrom ctx locals arrayResult.snd index
                         let arraySlot := indexResult.snd
                         let indexSlot := arraySlot + 1
-                        let valueResult ← extractExprFrom ctx locals (indexSlot + 1) value
+                        let valueResult ← extractValueFrom ctx locals (indexSlot + 1) value
+                        let slots ← flattenArrayElementValue itemTy valueResult.fst
                         let inserted :=
-                          .arrayInsertIfInBounds
+                          .arrayInsertIfInBoundsSlots
+                            width
                             (.local arraySlot)
                             (.local indexSlot)
-                            valueResult.fst
+                            slots
                         let inBounds := .leU64 (.local indexSlot) (.arraySize (.local arraySlot))
                         .ok
                           (.letE arraySlot arrayResult.fst
                             (.letE indexSlot indexResult.fst
                               (.ite inBounds inserted .trap)),
                             valueResult.snd)
-                      else
-                        .error s!"unsupported Array.insertIdx! item type: {reprStr itemTy}"
                     | none => .error "unsupported Array.insertIdx! item type"
                 | _, _ => .error "unsupported Array.insertIdx! application"
             | (.const ``Array.append _, args) =>
@@ -3633,18 +3627,18 @@ mutual
                 | itemTy :: _, value :: index :: array :: _ =>
                     match typeAtom? ctx.env itemTy with
                     | some itemTy =>
-                      if supportedArrayCellType itemTy then
+                        let width ← arrayElementWidth "Array.insertIdxIfInBounds" itemTy
                         let arrayResult ← extractExprFrom ctx locals nextLocal array
                         let indexResult ← extractExprFrom ctx locals arrayResult.snd index
-                        let valueResult ← extractExprFrom ctx locals indexResult.snd value
+                        let valueResult ← extractValueFrom ctx locals indexResult.snd value
+                        let slots ← flattenArrayElementValue itemTy valueResult.fst
                         .ok
-                          (.arrayInsertIfInBounds
+                          (.arrayInsertIfInBoundsSlots
+                            width
                             arrayResult.fst
                             indexResult.fst
-                            valueResult.fst,
+                            slots,
                             valueResult.snd)
-                      else
-                        .error s!"unsupported Array.insertIdxIfInBounds item type: {reprStr itemTy}"
                     | none => .error "unsupported Array.insertIdxIfInBounds item type"
                 | _, _ => .error "unsupported Array.insertIdxIfInBounds application"
             | (.const ``HAppend.hAppend _, args) =>
@@ -3887,21 +3881,19 @@ mutual
                 | itemTy :: _, index :: array :: _ =>
                     match typeAtom? ctx.env itemTy with
                     | some itemTy =>
-                      if supportedArrayCellType itemTy then
+                        let width ← arrayElementWidth "Array.eraseIdx!" itemTy
                         let arrayResult ← extractExprFrom ctx locals nextLocal array
                         let indexResult ← extractExprFrom ctx locals arrayResult.snd index
                         let arraySlot := indexResult.snd
                         let indexSlot := arraySlot + 1
                         let erased :=
-                          .arrayEraseIfInBounds (.local arraySlot) (.local indexSlot)
+                          .arrayEraseIfInBoundsSlots width (.local arraySlot) (.local indexSlot)
                         let inBounds := .ltU64 (.local indexSlot) (.arraySize (.local arraySlot))
                         .ok
                           (.letE arraySlot arrayResult.fst
                             (.letE indexSlot indexResult.fst
                               (.ite inBounds erased .trap)),
                             indexSlot + 1)
-                      else
-                        .error s!"unsupported Array.eraseIdx! item type: {reprStr itemTy}"
                     | none => .error "unsupported Array.eraseIdx! item type"
                 | _, _ => .error "unsupported Array.eraseIdx! application"
             | (.const ``ByteArray.size _, args) =>

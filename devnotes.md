@@ -1776,3 +1776,21 @@ Checks run:
 - [x] `.lake/build/bin/lean-wasm compile-wat --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.arrayStructureExtractRead --out .lake/build/core-correctness/arrayStructureExtractRead.wat`
 - [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/wasmtime-v44.0.0-aarch64-linux/wasmtime --invoke arrayStructureExtractRead .lake/build/core-correctness/arrayStructureExtractRead.wat` returned `3456`.
 - [x] `node test/run_all.js` returned `checked 48 report classification cases`, `checked 349 accepted, 17 rejected, and 7 trapped cases`, `checked 36 bytearray allocation cases`, and `checked 56 cases`.
+
+## 2026-05-11: Multi-slot array insertion, erasure, swap, and reverse
+
+Fixed-width arrays now lower bounded insertion, bounded erasure, bounded swaps, and reversal for structure and tagged elements.  The new IR nodes record element width, and the emitters copy by payload-cell offset.  Insertion copies the prefix, writes the flattened inserted value, and copies the suffix after the inserted element.  Erasure copies the prefix and shifts the suffix left by one element.  Swap copies the full payload and rewrites each selected element slot from the original array.  Reverse iterates by element index so slot order inside each element stays unchanged.
+
+This completes the straightforward fixed-width copy operations for structure and tagged arrays.  Multi-slot `replicate`, `getD`, `modify`, and `map` remain planned because each needs an additional value-evaluation rule rather than only a copy-loop generalization.
+
+Checks run:
+
+- [x] `lake build LeanExe.Examples.Correctness`
+- [x] `lake build`
+- [x] `node test/report_classification.js` returned `checked 51 report classification cases`.
+- [x] `node test/core_correctness.js` returned `checked 356 accepted, 17 rejected, and 7 trapped cases`.
+- [x] `.lake/build/bin/lean-wasm compile-wat --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.arrayStructureReverseRead --out .lake/build/core-correctness/arrayStructureReverseRead.wat`
+- [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/wasmtime-v44.0.0-aarch64-linux/wasmtime --invoke arrayStructureReverseRead .lake/build/core-correctness/arrayStructureReverseRead.wat` returned `563412`.
+- [x] `.lake/build/bin/lean-wasm compile-wat --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.arrayStatusReverseMatch --out .lake/build/core-correctness/arrayStatusReverseMatch.wat`
+- [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/wasmtime-v44.0.0-aarch64-linux/wasmtime --invoke arrayStatusReverseMatch .lake/build/core-correctness/arrayStatusReverseMatch.wat` returned `1175`.
+- [x] `node test/run_all.js` returned `checked 51 report classification cases`, `checked 356 accepted, 17 rejected, and 7 trapped cases`, `checked 36 bytearray allocation cases`, and `checked 56 cases`.
