@@ -28,6 +28,7 @@ inductive ExtractedValue where
   | variant (name : Name) (tag : IRExpr) (ctors : List (List ExtractedValue))
   | recursiveVariant (name : Name) (tag : IRExpr) (ctors : List (List (Ty × ExtractedValue)))
   | heapVariant (name : Name) (ptr : IRExpr)
+  | ite (cond : IRCond) (thenValue elseValue : ExtractedValue)
   | letE (slot : Nat) (value : IRExpr) (body : ExtractedValue)
   | letCall (slots : List Nat) (index : Nat) (args : List IRExpr) (body : ExtractedValue)
   deriving BEq, Repr
@@ -795,6 +796,8 @@ def scalarValue (value : ExtractedValue) : Except String IRExpr :=
   | .recursiveVariant name _ _ =>
       .error s!"recursive inductive value used where scalar value is required: {name}"
   | .heapVariant name _ => .error s!"recursive inductive value used where scalar value is required: {name}"
+  | .ite cond thenValue elseValue => do
+      .ok (.ite cond (← scalarValue thenValue) (← scalarValue elseValue))
   | .letE slot value body => do
       .ok (.letE slot value (← scalarValue body))
   | .letCall slots index args body => do
@@ -812,6 +815,10 @@ def byteArrayParts (value : ExtractedValue) : Except String (IRExpr × IRExpr) :
       .error s!"recursive inductive value used where ByteArray value is required: {name}"
   | .heapVariant name _ =>
       .error s!"recursive inductive value used where ByteArray value is required: {name}"
+  | .ite cond thenValue elseValue => do
+      let thenParts ← byteArrayParts thenValue
+      let elseParts ← byteArrayParts elseValue
+      .ok (.ite cond thenParts.fst elseParts.fst, .ite cond thenParts.snd elseParts.snd)
   | .letE slot value body => do
       let parts ← byteArrayParts body
       .ok (.letE slot value parts.fst, .letE slot value parts.snd)
@@ -832,6 +839,9 @@ partial def byteArrayPartsWithLets (value : ExtractedValue) :
       .error s!"recursive inductive value used where ByteArray value is required: {name}"
   | .heapVariant name _ =>
       .error s!"recursive inductive value used where ByteArray value is required: {name}"
+  | .ite cond thenValue elseValue => do
+      let parts ← byteArrayParts (.ite cond thenValue elseValue)
+      .ok ([], parts.fst, parts.snd)
   | .letE slot value body => do
       let parts ← byteArrayPartsWithLets body
       .ok (.expr slot value :: parts.fst, parts.snd.fst, parts.snd.snd)
@@ -857,6 +867,8 @@ def productField (index : Nat) (value : ExtractedValue) : Except String Extracte
       .error s!"recursive inductive value used where product value is required: {name}"
   | .heapVariant name _ =>
       .error s!"recursive inductive value used where product value is required: {name}"
+  | .ite cond thenValue elseValue => do
+      .ok (.ite cond (← productField index thenValue) (← productField index elseValue))
   | .letE slot value body => do
       .ok (.letE slot value (← productField index body))
   | .letCall slots callIndex args body => do
@@ -881,6 +893,8 @@ def structField (name : Name) (index : Nat) (value : ExtractedValue) : Except St
       .error s!"recursive inductive value used where structure value is required: {name}; got {actual}"
   | .heapVariant actual _ =>
       .error s!"recursive inductive value used where structure value is required: {name}; got {actual}"
+  | .ite cond thenValue elseValue => do
+      .ok (.ite cond (← structField name index thenValue) (← structField name index elseValue))
   | .letE slot value body => do
       .ok (.letE slot value (← structField name index body))
   | .letCall slots callIndex args body => do
@@ -892,6 +906,23 @@ def mkOptionValue (tag : IRExpr) (payload : ExtractedValue) : ExtractedValue :=
 def optionPayloadType? : Ty → Option Ty
   | .variant name [[], [payloadTy]] => if name == ``Option then some payloadTy else none
   | _ => none
+
+partial def wrapValueLets (lets : List ValueLet) (value : ExtractedValue) :
+    ExtractedValue :=
+  lets.foldr
+    (fun item acc =>
+      match item with
+      | .expr slot expr => .letE slot expr acc
+      | .call slots index args => .letCall slots index args acc)
+    value
+
+def wrapExprLets (lets : List ValueLet) (expr : IRExpr) : IRExpr :=
+  lets.foldr
+    (fun item acc =>
+      match item with
+      | .expr slot value => .letE slot value acc
+      | .call slots index args => .letCall slots index args acc)
+    expr
 
 partial def optionPartsWithLets (value : ExtractedValue) :
     Except String (List ValueLet × IRExpr × ExtractedValue) :=
@@ -911,6 +942,16 @@ partial def optionPartsWithLets (value : ExtractedValue) :
       .error s!"recursive inductive value used where Option value is required: {name}"
   | .heapVariant name _ =>
       .error s!"recursive inductive value used where Option value is required: {name}"
+  | .ite cond thenValue elseValue => do
+      let thenParts ← optionPartsWithLets thenValue
+      let elseParts ← optionPartsWithLets elseValue
+      let thenTag := wrapExprLets thenParts.fst thenParts.snd.fst
+      let elseTag := wrapExprLets elseParts.fst elseParts.snd.fst
+      let payload :=
+        .ite cond
+          (wrapValueLets thenParts.fst thenParts.snd.snd)
+          (wrapValueLets elseParts.fst elseParts.snd.snd)
+      .ok ([], .ite cond thenTag elseTag, payload)
   | .letE slot value body => do
       let parts ← optionPartsWithLets body
       .ok (.expr slot value :: parts.fst, parts.snd.fst, parts.snd.snd)
@@ -931,6 +972,20 @@ partial def sumPartsWithLets (value : ExtractedValue) :
       .error s!"recursive inductive value used where sum value is required: {name}"
   | .heapVariant name _ =>
       .error s!"recursive inductive value used where sum value is required: {name}"
+  | .ite cond thenValue elseValue => do
+      let thenParts ← sumPartsWithLets thenValue
+      let elseParts ← sumPartsWithLets elseValue
+      let thenTag := wrapExprLets thenParts.fst thenParts.snd.fst
+      let elseTag := wrapExprLets elseParts.fst elseParts.snd.fst
+      let left :=
+        .ite cond
+          (wrapValueLets thenParts.fst thenParts.snd.snd.fst)
+          (wrapValueLets elseParts.fst elseParts.snd.snd.fst)
+      let right :=
+        .ite cond
+          (wrapValueLets thenParts.fst thenParts.snd.snd.snd)
+          (wrapValueLets elseParts.fst elseParts.snd.snd.snd)
+      .ok ([], .ite cond thenTag elseTag, left, right)
   | .letE slot value body => do
       let parts ← sumPartsWithLets body
       .ok (.expr slot value :: parts.fst, parts.snd.fst, parts.snd.snd.fst, parts.snd.snd.snd)
@@ -957,6 +1012,23 @@ partial def variantPartsWithLets (expectedName : Name) (value : ExtractedValue) 
       .error s!"recursive inductive value used where nonrecursive inductive value is required: {expectedName}; got {name}"
   | .heapVariant name _ =>
       .error s!"recursive inductive value used where nonrecursive inductive value is required: {expectedName}; got {name}"
+  | .ite cond thenValue elseValue => do
+      let thenParts ← variantPartsWithLets expectedName thenValue
+      let elseParts ← variantPartsWithLets expectedName elseValue
+      if thenParts.snd.snd.length == elseParts.snd.snd.length then do
+        let thenTag := wrapExprLets thenParts.fst thenParts.snd.fst
+        let elseTag := wrapExprLets elseParts.fst elseParts.snd.fst
+        let ctors ← (thenParts.snd.snd.zip elseParts.snd.snd).mapM fun ctorPair =>
+          if ctorPair.fst.length == ctorPair.snd.length then
+            .ok <| ctorPair.fst.zip ctorPair.snd |>.map fun fieldPair =>
+              .ite cond
+                (wrapValueLets thenParts.fst fieldPair.fst)
+                (wrapValueLets elseParts.fst fieldPair.snd)
+          else
+            .error s!"conditional inductive constructor payload shape mismatch: {expectedName}"
+        .ok ([], .ite cond thenTag elseTag, ctors)
+      else
+        .error s!"conditional inductive value shape mismatch: {expectedName}"
   | .letE slot value body => do
       let parts ← variantPartsWithLets expectedName body
       .ok (.expr slot value :: parts.fst, parts.snd.fst, parts.snd.snd)
@@ -986,6 +1058,8 @@ partial def heapVariantPtrWithLets (expectedName : Name) (value : ExtractedValue
       .error s!"nonrecursive inductive value used where recursive inductive value is required: {expectedName}; got {name}"
   | .recursiveVariant name _ _ =>
       .error s!"lazy recursive inductive value used where heap recursive value is required: {expectedName}; got {name}"
+  | .ite _ _ _ =>
+      .error s!"conditional recursive heap value is unsupported: {expectedName}"
   | .letE slot value body => do
       let parts ← heapVariantPtrWithLets expectedName body
       .ok (.expr slot value :: parts.fst, parts.snd)
@@ -1028,6 +1102,8 @@ partial def recursiveVariantPartsWithLets (expectedName : Name) (value : Extract
       .error s!"nonrecursive inductive value used where recursive inductive value is required: {expectedName}; got {name}"
   | .heapVariant name _ =>
       .error s!"heap recursive inductive value used where lazy recursive value is required: {expectedName}; got {name}"
+  | .ite _ _ _ =>
+      .error s!"conditional recursive inductive value is unsupported: {expectedName}"
   | .letE slot value body => do
       let parts ← recursiveVariantPartsWithLets expectedName body
       .ok (.expr slot value :: parts.fst, parts.snd.fst, parts.snd.snd)
@@ -1057,6 +1133,20 @@ partial def exceptPartsWithLets (value : ExtractedValue) :
       .error s!"recursive inductive value used where Except value is required: {name}"
   | .heapVariant name _ =>
       .error s!"recursive inductive value used where Except value is required: {name}"
+  | .ite cond thenValue elseValue => do
+      let thenParts ← exceptPartsWithLets thenValue
+      let elseParts ← exceptPartsWithLets elseValue
+      let thenTag := wrapExprLets thenParts.fst thenParts.snd.fst
+      let elseTag := wrapExprLets elseParts.fst elseParts.snd.fst
+      let errorPayload :=
+        .ite cond
+          (wrapValueLets thenParts.fst thenParts.snd.snd.fst)
+          (wrapValueLets elseParts.fst elseParts.snd.snd.fst)
+      let okPayload :=
+        .ite cond
+          (wrapValueLets thenParts.fst thenParts.snd.snd.snd)
+          (wrapValueLets elseParts.fst elseParts.snd.snd.snd)
+      .ok ([], .ite cond thenTag elseTag, errorPayload, okPayload)
   | .letE slot value body => do
       let parts ← exceptPartsWithLets body
       .ok (.expr slot value :: parts.fst, parts.snd.fst, parts.snd.snd.fst, parts.snd.snd.snd)
@@ -1110,23 +1200,6 @@ partial def trapValue : Ty → Except String ExtractedValue
   | .sum left right => do
       .ok (.sum .trap (← trapValue left) (← trapValue right))
 
-partial def wrapValueLets (lets : List ValueLet) (value : ExtractedValue) :
-    ExtractedValue :=
-  lets.foldr
-    (fun item acc =>
-      match item with
-      | .expr slot expr => .letE slot expr acc
-      | .call slots index args => .letCall slots index args acc)
-    value
-
-def wrapExprLets (lets : List ValueLet) (expr : IRExpr) : IRExpr :=
-  lets.foldr
-    (fun item acc =>
-      match item with
-      | .expr slot value => .letE slot value acc
-      | .call slots index args => .letCall slots index args acc)
-    expr
-
 def byteArrayCopySliceCopiedLen
     (srcLen srcOff copyLen : IRExpr) : IRExpr :=
   let available :=
@@ -1161,47 +1234,17 @@ def byteArrayLoadUInt64Checked (ptr len : IRExpr) (items : List (Nat × Nat)) : 
     (byteArrayLoadUInt64 ptr len items)
     .trap
 
-partial def mapValueExprs (f : IRExpr → IRExpr) : ExtractedValue → ExtractedValue
-  | .scalar expr => .scalar (f expr)
-  | .byteArray ptr len => .byteArray (f ptr) (f len)
-  | .product left right => .product (mapValueExprs f left) (mapValueExprs f right)
-  | .sum tag left right => .sum (f tag) (mapValueExprs f left) (mapValueExprs f right)
-  | .struct name fields => .struct name (fields.map (mapValueExprs f))
-  | .variant name tag ctors =>
-      .variant name (f tag) (ctors.map (fun fields => fields.map (mapValueExprs f)))
-  | .recursiveVariant name tag ctors =>
-      .recursiveVariant name (f tag)
-        (ctors.map (fun fields => fields.map (fun field => (field.fst, mapValueExprs f field.snd))))
-  | .heapVariant name ptr => .heapVariant name (f ptr)
-  | .letE slot value body => .letE slot value (mapValueExprs f body)
-  | .letCall slots index args body => .letCall slots index args (mapValueExprs f body)
-
-partial def materializeValueLets : ExtractedValue → ExtractedValue
-  | .letE slot value body =>
-      mapValueExprs (fun expr => .letE slot value expr) (materializeValueLets body)
-  | .letCall slots index args body =>
-      mapValueExprs (fun expr => .letCall slots index args expr) (materializeValueLets body)
-  | .product left right => .product (materializeValueLets left) (materializeValueLets right)
-  | .sum tag left right => .sum tag (materializeValueLets left) (materializeValueLets right)
-  | .struct name fields => .struct name (fields.map materializeValueLets)
-  | .variant name tag ctors =>
-      .variant name tag (ctors.map (fun fields => fields.map materializeValueLets))
-  | .recursiveVariant name tag ctors =>
-      .recursiveVariant name tag
-        (ctors.map
-          (fun fields => fields.map (fun field => (field.fst, materializeValueLets field.snd))))
-  | .heapVariant name ptr => .heapVariant name ptr
-  | other => other
-
 partial def valueIte
     (cond : IRCond)
     (thenValue elseValue : ExtractedValue) :
     Except String ExtractedValue :=
   match thenValue, elseValue with
-  | .letE _ _ _, _ => valueIte cond (materializeValueLets thenValue) elseValue
-  | _, .letE _ _ _ => valueIte cond thenValue (materializeValueLets elseValue)
-  | .letCall _ _ _ _, _ => valueIte cond (materializeValueLets thenValue) elseValue
-  | _, .letCall _ _ _ _ => valueIte cond thenValue (materializeValueLets elseValue)
+  | .letE _ _ _, _ => .ok (.ite cond thenValue elseValue)
+  | _, .letE _ _ _ => .ok (.ite cond thenValue elseValue)
+  | .letCall _ _ _ _, _ => .ok (.ite cond thenValue elseValue)
+  | _, .letCall _ _ _ _ => .ok (.ite cond thenValue elseValue)
+  | .ite _ _ _, _ => .ok (.ite cond thenValue elseValue)
+  | _, .ite _ _ _ => .ok (.ite cond thenValue elseValue)
   | .scalar thenExpr, .scalar elseExpr => .ok (.scalar (.ite cond thenExpr elseExpr))
   | .byteArray thenPtr thenLen, .byteArray elsePtr elseLen =>
       .ok (.byteArray (.ite cond thenPtr elsePtr) (.ite cond thenLen elseLen))
@@ -1278,6 +1321,13 @@ partial def valueIte
         .error "if branches have incompatible recursive inductive value shapes"
   | _, _ => .error "if branches have incompatible structured value shapes"
 
+def combineIteSlots (cond : IRCond) (thenSlots elseSlots : List IRExpr) :
+    Except String (List IRExpr) :=
+  if thenSlots.length == elseSlots.length then
+    .ok <| thenSlots.zip elseSlots |>.map fun item => .ite cond item.fst item.snd
+  else
+    .error "conditional flattened value shape mismatch"
+
 partial def flattenInternalValue (ty : Ty) (value : ExtractedValue) :
     Except String (List IRExpr) :=
   match ty with
@@ -1307,6 +1357,8 @@ partial def flattenInternalValue (ty : Ty) (value : ExtractedValue) :
       | .letCall slots index args body => do
           let flattened ← flattenInternalValue ty body
           .ok (flattened.map (fun expr => .letCall slots index args expr))
+      | .ite cond thenValue elseValue => do
+          combineIteSlots cond (← flattenInternalValue ty thenValue) (← flattenInternalValue ty elseValue)
       | _ => .error "non-product value used where product internal value is required"
   | .sum left right =>
       match value with
@@ -1320,6 +1372,8 @@ partial def flattenInternalValue (ty : Ty) (value : ExtractedValue) :
       | .letCall slots index args body => do
           let flattened ← flattenInternalValue ty body
           .ok (flattened.map (fun expr => .letCall slots index args expr))
+      | .ite cond thenValue elseValue => do
+          combineIteSlots cond (← flattenInternalValue ty thenValue) (← flattenInternalValue ty elseValue)
       | _ => .error "non-sum value used where sum internal value is required"
   | .struct name fields =>
       match value with
@@ -1336,6 +1390,8 @@ partial def flattenInternalValue (ty : Ty) (value : ExtractedValue) :
       | .letCall slots index args body => do
           let flattened ← flattenInternalValue ty body
           .ok (flattened.map (fun expr => .letCall slots index args expr))
+      | .ite cond thenValue elseValue => do
+          combineIteSlots cond (← flattenInternalValue ty thenValue) (← flattenInternalValue ty elseValue)
       | _ => .error s!"non-structure value used where structure internal value is required: {name}"
   | .variant name ctors =>
       match value with
@@ -1357,6 +1413,8 @@ partial def flattenInternalValue (ty : Ty) (value : ExtractedValue) :
       | .letCall slots index args body => do
           let flattened ← flattenInternalValue ty body
           .ok (flattened.map (fun expr => .letCall slots index args expr))
+      | .ite cond thenValue elseValue => do
+          combineIteSlots cond (← flattenInternalValue ty thenValue) (← flattenInternalValue ty elseValue)
       | _ => .error s!"non-inductive value used where inductive internal value is required: {name}"
   | .recVariant name =>
       match value with
@@ -1378,6 +1436,8 @@ partial def flattenInternalValue (ty : Ty) (value : ExtractedValue) :
       | .letCall slots index args body => do
           let flattened ← flattenInternalValue ty body
           .ok (flattened.map (fun expr => .letCall slots index args expr))
+      | .ite cond thenValue elseValue => do
+          combineIteSlots cond (← flattenInternalValue ty thenValue) (← flattenInternalValue ty elseValue)
       | _ =>
           .error s!"non-recursive value used where recursive inductive internal value is required: {name}"
 
@@ -1412,6 +1472,8 @@ partial def flattenAbiValue (ty : Ty) (value : ExtractedValue) : Except String (
       | .letCall slots index args body => do
           let flattened ← flattenAbiValue ty body
           .ok (flattened.map (fun expr => .letCall slots index args expr))
+      | .ite cond thenValue elseValue => do
+          combineIteSlots cond (← flattenAbiValue ty thenValue) (← flattenAbiValue ty elseValue)
       | _ => .error s!"non-structure value used where structure ABI value is required: {name}"
   | .variant name ctors => do
       match value with
@@ -1433,6 +1495,8 @@ partial def flattenAbiValue (ty : Ty) (value : ExtractedValue) : Except String (
       | .letCall slots index args body => do
           let flattened ← flattenAbiValue ty body
           .ok (flattened.map (fun expr => .letCall slots index args expr))
+      | .ite cond thenValue elseValue => do
+          combineIteSlots cond (← flattenAbiValue ty thenValue) (← flattenAbiValue ty elseValue)
       | _ => .error s!"non-inductive value used where inductive ABI value is required: {name}"
   | .recVariant name =>
       match value with
@@ -1454,8 +1518,44 @@ partial def flattenAbiValue (ty : Ty) (value : ExtractedValue) : Except String (
       | .letCall slots index args body => do
           let flattened ← flattenAbiValue ty body
           .ok (flattened.map (fun expr => .letCall slots index args expr))
+      | .ite cond thenValue elseValue => do
+          combineIteSlots cond (← flattenAbiValue ty thenValue) (← flattenAbiValue ty elseValue)
       | _ => .error s!"non-recursive value used where recursive inductive ABI value is required: {name}"
   | other => .error s!"unsupported ABI value type: {reprStr other}"
+
+def resultSlotCount (useAbi : Bool) (ty : Ty) : Nat :=
+  if useAbi then abiSlots ty else internalSlots ty
+
+def flattenResultValue (useAbi : Bool) (ty : Ty) (value : ExtractedValue) :
+    Except String (List IRExpr) :=
+  if useAbi then flattenAbiValue ty value else flattenInternalValue ty value
+
+def assignResultSlots (targets : List Nat) (values : List IRExpr) : IRStmt :=
+  LeanExe.IR.seqList <|
+    (targets.zip values).map fun item =>
+      LeanExe.IR.Stmt.assign item.fst item.snd
+
+partial def materializeResultValue
+    (useAbi : Bool)
+    (ty : Ty)
+    (targets : List Nat)
+    (value : ExtractedValue) :
+    Except String IRStmt := do
+  match value with
+  | .letE slot expr body => do
+      .ok (.seq (.assign slot expr) (← materializeResultValue useAbi ty targets body))
+  | .letCall slots index args body => do
+      .ok (.seq (.call slots index args) (← materializeResultValue useAbi ty targets body))
+  | .ite cond thenValue elseValue => do
+      let thenStmt ← materializeResultValue useAbi ty targets thenValue
+      let elseStmt ← materializeResultValue useAbi ty targets elseValue
+      .ok (.ite cond thenStmt elseStmt)
+  | _ =>
+      let values ← flattenResultValue useAbi ty value
+      if targets.length == values.length then
+        .ok (assignResultSlots targets values)
+      else
+        .error "result slot count mismatch"
 
 mutual
   partial def heapLoadValueAt (ptr : IRExpr) : Ty → Nat → Except String (ExtractedValue × Nat)
@@ -3521,13 +3621,14 @@ mutual
                     let indexResult ← extractExprFrom ctx locals arrayResult.snd index
                     let arraySlot := indexResult.snd
                     let indexSlot := arraySlot + 1
-                    let tag :=
-                      boolExpr (.ltU64 (.local indexSlot) (.arraySize (.local arraySlot)))
+                    let inBounds := .ltU64 (.local indexSlot) (.arraySize (.local arraySlot))
+                    let tag := boolExpr inBounds
                     let payload ← arrayLoadValue itemTy (.local arraySlot) (.local indexSlot)
+                    let defaultPayload ← defaultValue itemTy
                     .ok
                       (.letE arraySlot arrayResult.fst
                         (.letE indexSlot indexResult.fst
-                          (mkOptionValue tag payload)),
+                          (mkOptionValue tag (← valueIte inBounds payload defaultPayload))),
                         indexSlot + 1)
                   | none =>
                     .error s!"unsupported GetElem?.getElem? receiver type: {reprStr ((.array itemTy : Ty))}"
@@ -3538,16 +3639,18 @@ mutual
                     let ptrSlot := indexResult.snd
                     let lenSlot := ptrSlot + 1
                     let indexSlot := ptrSlot + 2
-                    let tag := boolExpr (.ltU64 (.local indexSlot) (.local lenSlot))
+                    let inBounds := .ltU64 (.local indexSlot) (.local lenSlot)
+                    let tag := boolExpr inBounds
                     let payload :=
                       .scalar
                         (.byteArrayGet (.local ptrSlot) (.local lenSlot) (.local indexSlot))
+                    let defaultPayload ← defaultValue .u8
                     .ok
                       (wrapValueLets parts.fst
                         (.letE ptrSlot parts.snd.fst
                           (.letE lenSlot parts.snd.snd
                             (.letE indexSlot indexResult.fst
-                              (mkOptionValue tag payload)))),
+                              (mkOptionValue tag (← valueIte inBounds payload defaultPayload))))),
                         indexSlot + 1)
                 | some other =>
                     .error s!"unsupported GetElem?.getElem? receiver type: {reprStr other}"
@@ -3679,13 +3782,14 @@ mutual
                     | some _width =>
                       let arrayResult ← extractExprFrom ctx locals nextLocal array
                       let arraySlot := arrayResult.snd
-                      let tag :=
-                        boolExpr (.not (.eqU64 (.arraySize (.local arraySlot)) (.u64 0)))
+                      let hasItem := .not (.eqU64 (.arraySize (.local arraySlot)) (.u64 0))
+                      let tag := boolExpr hasItem
                       let index := .u64Bin .sub (.arraySize (.local arraySlot)) (.u64 1)
                       let payload ← arrayLoadValue itemTy (.local arraySlot) index
+                      let defaultPayload ← defaultValue itemTy
                       .ok
                         (.letE arraySlot arrayResult.fst
-                          (mkOptionValue tag payload),
+                          (mkOptionValue tag (← valueIte hasItem payload defaultPayload)),
                           arraySlot + 1)
                     | none => .error s!"unsupported Array.back? item type: {reprStr itemTy}"
                 | none => .error "unsupported Array.back? item type"
@@ -4564,9 +4668,7 @@ mutual
     if args.length != sig.params.length then
       .error s!"inline call arity mismatch: {name}"
     else
-      if (functionIndex? ctx name).isSome &&
-          supportedOneSlotExprType sig.result &&
-          strictCallSafe ctx name args then
+      if (functionIndex? ctx name).isSome && strictCallSafe ctx name args then
         return none
       let value ←
         match info.value? with
@@ -6264,17 +6366,18 @@ def extractNatRecFunc
     match exitResult?.fst with
     | some exitValue => valueIte fuelLive exitValue baseResult.fst
     | none => .ok baseResult.fst
-  let results ←
-    match exportName with
-    | some _ => flattenAbiValue resultTy resultValue
-    | none => flattenInternalValue resultTy resultValue
+  let useAbi := exportName.isSome
+  let resultStart := tempStart + targets.length
+  let resultCount := resultSlotCount useAbi resultTy
+  let resultTargets := (List.range resultCount).map (fun offset => resultStart + offset)
+  let resultBody ← materializeResultValue useAbi resultTy resultTargets resultValue
   .ok {
     sourceName := name,
     exportName := exportName,
     params := wasmParamCount,
-    locals := tempStart + targets.length,
-    body := .while loopCond loopBody,
-    results := results
+    locals := resultStart + resultCount,
+    body := LeanExe.IR.seqList [.while loopCond loopBody, resultBody],
+    results := resultTargets.map LeanExe.IR.Expr.local
   }
 
 def extractPlainFunc
@@ -6291,17 +6394,17 @@ def extractPlainFunc
     | some body => .ok body
     | none => .error s!"definition body does not match function arity: {name}"
   let result ← extractValueFrom ctx (localBindingsForParams params) wasmParamCount body
-  let results ←
-    match exportName with
-    | some _ => flattenAbiValue resultTy result.fst
-    | none => flattenInternalValue resultTy result.fst
+  let useAbi := exportName.isSome
+  let resultCount := resultSlotCount useAbi resultTy
+  let resultTargets := (List.range resultCount).map (fun offset => result.snd + offset)
+  let resultBody ← materializeResultValue useAbi resultTy resultTargets result.fst
   .ok {
     sourceName := name,
     exportName := exportName,
     params := wasmParamCount,
-    locals := result.snd,
-    body := .skip,
-    results := results
+    locals := result.snd + resultCount,
+    body := resultBody,
+    results := resultTargets.map LeanExe.IR.Expr.local
   }
 
 def shortExportName (name : Name) : String :=
