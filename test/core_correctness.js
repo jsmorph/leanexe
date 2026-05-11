@@ -158,6 +158,8 @@ const accepted = [
     expected: [null, 3n],
     memoryBytes: [{ resultIndex: 0, lengthIndex: 1, values: [65, 66, 90] }],
   },
+  { name: "byteArrayToUInt64LE", args: [], expected: 578437695752307201n },
+  { name: "byteArrayToUInt64BE", args: [], expected: 72623859790382856n },
   {
     name: "byteArrayMkReturn",
     args: [],
@@ -527,6 +529,7 @@ const trapped = [
   { name: "byteArrayAppendSizeForcesRightTrap", args: [] },
   { name: "byteArraySetSizeForcesValueTrap", args: [] },
   { name: "byteArraySetBangTrap", args: [] },
+  { name: "byteArrayToUInt64Trap", args: [] },
   { name: "byteArrayMkSizeForcesArrayTrap", args: [] },
 ];
 

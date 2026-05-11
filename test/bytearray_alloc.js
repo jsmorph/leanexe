@@ -280,6 +280,18 @@ async function main() {
     }
   }
 
+  const readUInt64LE = await instantiate("readUInt64LE");
+  const readUInt64BE = await instantiate("readUInt64BE");
+  const uint64Bytes = new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8]);
+  const uint64LE = callByteArray(readUInt64LE, uint64Bytes);
+  if (uint64LE !== 578437695752307201n) {
+    throw new Error(`readUInt64LE: expected 578437695752307201, got ${uint64LE}`);
+  }
+  const uint64BE = callByteArray(readUInt64BE, uint64Bytes);
+  if (uint64BE !== 72623859790382856n) {
+    throw new Error(`readUInt64BE: expected 72623859790382856, got ${uint64BE}`);
+  }
+
   const foldSum = await instantiate("foldSum");
   const foldSumCases = [
     { input: new Uint8Array([]), expected: 0n },
@@ -475,6 +487,7 @@ async function main() {
     sliceStopBeforeStartCases.length +
     prefixPlusFirstByteCases.length +
     fnv1a32Cases.length +
+    2 +
     foldSumCases.length +
     foldWindowDecimalCases.length +
     emptyViaIsEmptyCases.length +

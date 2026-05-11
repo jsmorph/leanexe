@@ -1,3 +1,5 @@
+import Init.Data.ByteArray.Extra
+
 namespace LeanExe.Examples.ByteArrayPrograms
 
 def firstBytePlusArray (input : ByteArray) : Nat :=
@@ -84,6 +86,12 @@ def fnv1aFuel : Nat → ByteArray → Nat → UInt32 → UInt32
 
 def fnv1a32 (input : ByteArray) : UInt64 :=
   (fnv1aFuel (input.size + 1) input 0 (2166136261 : UInt32)).toUInt64
+
+def readUInt64LE (input : ByteArray) : UInt64 :=
+  input.toUInt64LE!
+
+def readUInt64BE (input : ByteArray) : UInt64 :=
+  input.toUInt64BE!
 
 def foldSum (input : ByteArray) : Nat :=
   input.foldl (fun acc byte => acc + byte.toNat) 0

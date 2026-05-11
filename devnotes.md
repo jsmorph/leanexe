@@ -2025,3 +2025,19 @@ Checks run:
 - [x] `node test/report_classification.js` returned `checked 74 report classification cases`.
 - [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/current/wasmtime wast .lake/build/bytearray-programs/setBangFirstQuestion.wat` accepted the generated module.
 - [x] `node test/run_all.js` returned `checked 74 report classification cases`, `checked 392 accepted, 16 rejected, and 12 trapped cases`, `checked 68 bytearray allocation cases`, and `checked 56 cases`.
+
+## 2026-05-11: ByteArray UInt64 decoding
+
+The generic compiler now lowers `ByteArray.toUInt64LE!` and `ByteArray.toUInt64BE!` from Lean's `Init.Data.ByteArray.Extra` module.  The lowering checks that the byte-array length is exactly eight, then emits byte loads, left shifts, and bitwise-or operations to construct the `UInt64` result.  A wrong length traps in Wasm instead of calling Lean's panic runtime.
+
+`LeanExe.Examples.ByteArrayPrograms.readUInt64LE` and `readUInt64BE` cover host-provided byte input.  `LeanExe.Examples.Correctness.byteArrayToUInt64LE` and `byteArrayToUInt64BE` cover compiler-constructed byte arrays, while `byteArrayToUInt64Trap` covers the size-check failure.  This adds a common binary-parser primitive without adding string or `IO` support.
+
+Checks run:
+
+- [x] `lake build`
+- [x] `lake build LeanExe.Examples.Correctness LeanExe.Examples.ByteArrayPrograms`
+- [x] `node test/bytearray_alloc.js` returned `checked 70 bytearray allocation cases`.
+- [x] `node test/core_correctness.js` returned `checked 394 accepted, 16 rejected, and 13 trapped cases`.
+- [x] `node test/report_classification.js` returned `checked 75 report classification cases`.
+- [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/current/wasmtime wast .lake/build/bytearray-programs/readUInt64LE.wat` accepted the generated module.
+- [x] `node test/run_all.js` returned `checked 75 report classification cases`, `checked 394 accepted, 16 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, and `checked 56 cases`.
