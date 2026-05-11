@@ -9,6 +9,7 @@ import LeanExe.Examples.Arithmetic
 import LeanExe.Examples.Collatz
 import LeanExe.Examples.Correctness
 import LeanExe.Examples.IntMap
+import LeanExe.Examples.JsonDouble
 import LeanExe.Examples.Let
 import LeanExe.Examples.Prime
 import LeanExe.Wasm.Binary

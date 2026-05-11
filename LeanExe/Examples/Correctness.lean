@@ -1390,6 +1390,10 @@ def recPointFuel : Nat → UInt64 → Point
   | 0, value => { x := value, y := value + 1 }
   | fuel + 1, value => recPointFuel fuel (value + 1)
 
+def recPointFuelCallRead (fuel : Nat) (value : UInt64) : UInt64 :=
+  let point := recPointFuel fuel value
+  point.x * 10 + point.y
+
 def recStatusExitFuel : Nat → UInt64 → Status
   | 0, value => Status.ok value
   | fuel + 1, value =>

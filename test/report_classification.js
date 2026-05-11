@@ -330,8 +330,18 @@ const cases = [
   },
   {
     moduleName: "LeanExe.Examples.Correctness",
+    entryName: "LeanExe.Examples.Correctness.recPointFuelCallRead",
+    shape: "entry shape: Nat -> UInt64 -> UInt64",
+  },
+  {
+    moduleName: "LeanExe.Examples.Correctness",
     entryName: "LeanExe.Examples.Correctness.recStatusExitFuel",
     shape: "entry shape: Nat -> UInt64 -> LeanExe.Examples.Correctness.Status",
+  },
+  {
+    moduleName: "LeanExe.Examples.JsonDouble",
+    entryName: "LeanExe.Examples.JsonDouble.transform",
+    shape: "entry shape: ByteArray -> ByteArray",
   },
   {
     moduleName: "LeanExe.Examples.Correctness",

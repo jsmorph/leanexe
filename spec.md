@@ -79,7 +79,9 @@ The accepted term language is first-order.  It includes variables, local `let`, 
 
 Local `let` bindings preserve Lean evaluation behavior for lazy internal values.  A demanded field, branch, or projection extracts only the value needed by the result.  This matters for products, options, structures, and branch-selected values whose unused components may contain trapping expressions.
 
-Named helper calls are allowed when the helper has a supported internal type and lives under the same root namespace as the entry module.  Nonrecursive helpers are extracted directly or inlined as needed.  The identity function, `Id.run`, `Pure.pure`, `Bind.bind`, `Applicative.toPure`, `Monad.toApplicative`, and `Monad.toBind` are erased for pure `Id` code.
+Named helper calls are allowed when the helper has a supported internal type and lives under the same root namespace as the entry module.  Nonrecursive helpers are extracted directly or inlined as needed, and recursive helpers can be called directly when they match the accepted fuel-recursive shape.  The identity function, `Id.run`, `Pure.pure`, `Bind.bind`, `Applicative.toPure`, `Monad.toApplicative`, and `Monad.toBind` are erased for pure `Id` code.
+
+Helper calls may return supported structured values, including structures, byte arrays, arrays, `Option`, `Except`, and user-defined tagged values.  The call result uses the same flattened ABI slots as an entry result, then the extractor reconstructs the source-level value shape for projections and matches.  This rule matters for parser-style code, where a bounded recursive helper often returns a tagged parse result that later code matches before producing a public `ByteArray`.
 
 Pattern matching is supported for `Bool`, nonrecursive `Nat` zero/successor matches, products, structures, nonrecursive user inductives, recursive user inductives in internal positions, `Option`, and `Except`.  Branch results must have a common supported value shape.  Proposition-valued motives and dependent runtime result shapes are unsupported.
 
@@ -130,6 +132,14 @@ Unsupported byte-array features include `ByteArray.foldlM`, `USize` indexing API
 The library provides `empty`, `ofTrustedByteArray`, `toByteArray`, `size`, `isEmpty`, `get!`, `get?`, `getD`, `isAsciiByte`, `pushTrustedByte`, `pushByte?`, `append`, `extract`, `isAscii`, `ofByteArray?`, `singletonTrusted`, and `singleton?`.  Trusted constructors do not inspect bytes and therefore rely on the caller to preserve the ASCII invariant.  Checked constructors and checked pushes return `Option AsciiString`, using `none` when input bytes are outside `0..127`.
 
 The compiler treats `AsciiString` as an ordinary supported monomorphic structure over `ByteArray`.  An `AsciiString` entry parameter or result flattens like that structure, so the public ABI is the same pointer-length pair used by the underlying `ByteArray` field.  The recommended public boundary remains `ByteArray -> ByteArray` with explicit `AsciiString.ofByteArray?` validation inside the program, because that makes malformed host input part of the source-level behavior.
+
+## Limited JSON
+
+The current JSON support consists of schema-specific parsers and generators written in the accepted Lean subset.  `LeanExe.Examples.JsonDouble.transform : ByteArray -> ByteArray` is the reference example: it validates ASCII input, parses an object with one field named `n`, reads a decimal `UInt64`, doubles it when the doubled value fits in `UInt64`, and returns JSON bytes.  Success returns `{"result":<number>}`, while malformed input, non-ASCII input, parse overflow, and doubled-value overflow return `{"error":1}`.
+
+The accepted input shape for that example is `{ "n" : digits }` with optional ASCII whitespace around punctuation and at the end.  Decimal digits must be nonempty, unsigned, and within the `UInt64` range; leading zeroes are accepted.  The example does not implement a general JSON value type, object field lookup, arrays, string escape decoding, booleans, null, nested objects, Unicode, or multiple fields.
+
+Programs that need small protocol-shaped JSON can use the same pattern: accept `ByteArray`, convert through `AsciiString.ofByteArray?`, parse the exact expected byte grammar, and generate output with `ByteArray.push` and decimal rendering helpers.  A general JSON library needs an AST representation, object and array parsers, string escape handling, a bounded text representation beyond ASCII, and error reporting richer than the current one-byte error code.  Those features remain library work on top of the existing compiler primitives unless they expose a missing language feature.
 
 ## Option, Except, and Products
 
