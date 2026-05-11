@@ -280,6 +280,34 @@ async function main() {
     }
   }
 
+  const foldSum = await instantiate("foldSum");
+  const foldSumCases = [
+    { input: new Uint8Array([]), expected: 0n },
+    { input: new Uint8Array([1, 2, 3]), expected: 6n },
+    { input: new Uint8Array([255, 1]), expected: 256n },
+  ];
+
+  for (const testCase of foldSumCases) {
+    const actual = callByteArray(foldSum, testCase.input);
+    if (actual !== testCase.expected) {
+      throw new Error(`foldSum: expected ${testCase.expected}, got ${actual}`);
+    }
+  }
+
+  const foldWindowDecimal = await instantiate("foldWindowDecimal");
+  const foldWindowDecimalCases = [
+    { input: new Uint8Array([]), expected: 0n },
+    { input: new Uint8Array([9]), expected: 0n },
+    { input: new Uint8Array([9, 4, 5, 6]), expected: 45n },
+  ];
+
+  for (const testCase of foldWindowDecimalCases) {
+    const actual = callByteArray(foldWindowDecimal, testCase.input);
+    if (actual !== testCase.expected) {
+      throw new Error(`foldWindowDecimal: expected ${testCase.expected}, got ${actual}`);
+    }
+  }
+
   const emptyViaIsEmpty = await instantiate("emptyViaIsEmpty");
   const emptyViaIsEmptyCases = [
     { input: new Uint8Array([]), expected: 1n },
@@ -385,6 +413,8 @@ async function main() {
     sliceStopBeforeStartCases.length +
     prefixPlusFirstByteCases.length +
     fnv1a32Cases.length +
+    foldSumCases.length +
+    foldWindowDecimalCases.length +
     emptyViaIsEmptyCases.length +
     1 +
     1 +

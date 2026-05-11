@@ -1868,6 +1868,23 @@ def byteArrayMkSize : Nat :=
 def byteArrayMkSizeForcesArrayTrap : Nat :=
   (ByteArray.mk #[(Array.replicate 0 (0 : UInt8))[0]!]).size
 
+def byteArrayFoldSum : Nat :=
+  (ByteArray.mk #[(1 : UInt8), (2 : UInt8), (3 : UInt8)]).foldl
+    (fun acc byte => acc + byte.toNat)
+    0
+
+def byteArrayFoldWindow : Nat :=
+  (ByteArray.mk #[(1 : UInt8), (2 : UInt8), (3 : UInt8), (4 : UInt8)]).foldl
+    (fun acc byte => acc * 10 + byte.toNat)
+    0
+    1
+    3
+
+def byteArrayFoldEmptySkipsFunctionTrap : Nat :=
+  ByteArray.empty.foldl
+    (fun acc _byte => acc + ((Array.replicate 0 (0 : UInt64))[0]!).toNat)
+    7
+
 def rejectUnitReturn : Unit :=
   ()
 
