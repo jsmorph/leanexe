@@ -438,6 +438,72 @@ def statusRightScore (status : Status) : UInt64 :=
   | .ok value => value + 100
   | .error code => code
 
+inductive U64List where
+  | nil : U64List
+  | cons : UInt64 → U64List → U64List
+
+def u64List123 : U64List :=
+  U64List.cons 1 (U64List.cons 2 (U64List.cons 3 U64List.nil))
+
+def u64ListHeadOrZero (xs : U64List) : UInt64 :=
+  match xs with
+  | .nil => 0
+  | .cons head _tail => head
+
+def u64ListHeadDemo : UInt64 :=
+  u64ListHeadOrZero u64List123
+
+def u64ListTailHeadDemo : UInt64 :=
+  match u64List123 with
+  | .nil => 0
+  | .cons _head tail => u64ListHeadOrZero tail
+
+def u64ListNilDemo : UInt64 :=
+  u64ListHeadOrZero U64List.nil + 7
+
+def u64ListIsCons (xs : U64List) : Bool :=
+  match xs with
+  | .nil => false
+  | .cons _head _tail => true
+
+def u64ListTail (xs : U64List) : U64List :=
+  match xs with
+  | .nil => xs
+  | .cons _head tail => tail
+
+def u64ListAddHead (xs : U64List) (acc : UInt64) : UInt64 :=
+  match xs with
+  | .nil => acc
+  | .cons head _tail => acc + head
+
+def u64ListSumFuel : Nat → U64List → UInt64 → UInt64
+  | 0, _xs, acc => acc
+  | fuel + 1, xs, acc =>
+      if u64ListIsCons xs then
+        u64ListSumFuel fuel (u64ListTail xs) (u64ListAddHead xs acc)
+      else
+        acc
+
+def u64ListSumDemo : UInt64 :=
+  u64ListSumFuel 10 u64List123 0
+
+def u64ListSumShortFuel : UInt64 :=
+  u64ListSumFuel 2 u64List123 0
+
+def u64ListBranch (flag : UInt64) : UInt64 :=
+  let xs :=
+    if flag == 0 then
+      U64List.nil
+    else
+      U64List.cons 9 U64List.nil
+  u64ListHeadOrZero xs
+
+def rejectRecursiveInductiveParam (xs : U64List) : UInt64 :=
+  u64ListHeadOrZero xs
+
+def rejectRecursiveInductiveReturn : U64List :=
+  u64List123
+
 def unitArgHelper (_value : Unit) : UInt64 :=
   11
 

@@ -284,6 +284,9 @@ mutual
     | .letE _ value body => max (exprScratch value) (exprScratch body)
     | .arrayAlloc cells => 2 + exprScratch cells
     | .arrayAllocSlots _ cells => 2 + exprScratch cells
+    | .heapAllocSlots values =>
+        1 + values.length + values.foldl (fun n value => max n (exprScratch value)) 0
+    | .heapLoadSlot ptr _ => 1 + exprScratch ptr
     | .arrayReplicate cells value => 4 + max (exprScratch cells) (exprScratch value)
     | .arrayReplicateSlots _ cells values =>
         3 + values.length +
@@ -541,6 +544,30 @@ mutual
       globalGet 0 ++ i64Const 8 ++ localGet len ++ i64Const width ++ ofNats [126] ++
         i64Const 8 ++ ofNats [126, 124, 124] ++ globalSet 0 ++
       localGet ptr
+
+  partial def emitHeapAllocSlots (scratch : Nat) (values : List Expr) : List UInt8 :=
+    let ptrLocal := scratch
+    let valueStart := scratch + 1
+    let childScratch := scratch + 1 + values.length
+    let rec emitValueStores : List (Nat × Expr) → List UInt8
+      | [] => []
+      | (offset, value) :: rest =>
+          emitExpr childScratch value ++ localSet (valueStart + offset) ++ emitValueStores rest
+    let rec emitSlotStores : List (Nat × Expr) → List UInt8
+      | [] => []
+      | (offset, _) :: rest =>
+          localGet ptrLocal ++ i64Const (offset * 8) ++ ofNats [124] ++ i32WrapI64 ++
+            localGet (valueStart + offset) ++ i64Store ++ emitSlotStores rest
+    emitValueStores (enumerate values) ++
+      globalGet 0 ++ localSet ptrLocal ++
+      emitSlotStores (enumerate values) ++
+      globalGet 0 ++ i64Const (values.length * 8) ++ ofNats [124] ++ globalSet 0 ++
+      localGet ptrLocal
+
+  partial def emitHeapLoadSlot (scratch : Nat) (ptr : Expr) (slot : Nat) : List UInt8 :=
+    let ptrLocal := scratch
+    emitExpr (scratch + 1) ptr ++ localSet ptrLocal ++
+      localGet ptrLocal ++ i64Const (slot * 8) ++ ofNats [124] ++ i32WrapI64 ++ i64Load
 
   partial def emitFillLoop (newLocal lenLocal valueLocal loopLocal : Nat) : List UInt8 :=
     i64Const 0 ++ localSet loopLocal ++
@@ -1857,6 +1884,8 @@ mutual
     | .letE slot value body => emitExpr scratch value ++ localSet slot ++ emitExpr scratch body
     | .arrayAlloc cells => emitArrayAlloc scratch cells
     | .arrayAllocSlots width cells => emitArrayAllocSlots scratch width cells
+    | .heapAllocSlots values => emitHeapAllocSlots scratch values
+    | .heapLoadSlot ptr slot => emitHeapLoadSlot scratch ptr slot
     | .arrayReplicate cells value => emitArrayReplicate scratch cells value
     | .arrayReplicateSlots width cells values =>
         emitArrayReplicateSlots scratch width cells values
@@ -2152,6 +2181,33 @@ mutual
         "global.get 0", "i64.const 8", s!"local.get {len}", s!"i64.const {width}",
         "i64.mul", "i64.const 8", "i64.mul", "i64.add", "i64.add", "global.set 0",
         s!"local.get {ptr}"]
+
+  partial def heapAllocSlotsWatLines (scratch : Nat) (values : List Expr) : List String :=
+    let ptrLocal := scratch
+    let valueStart := scratch + 1
+    let childScratch := scratch + 1 + values.length
+    let rec valueStores : List (Nat × Expr) → List String
+      | [] => []
+      | (offset, value) :: rest =>
+          exprWatLines childScratch value ++ [s!"local.set {valueStart + offset}"] ++
+            valueStores rest
+    let rec slotStores : List (Nat × Expr) → List String
+      | [] => []
+      | (offset, _) :: rest =>
+          [s!"local.get {ptrLocal}", s!"i64.const {offset * 8}", "i64.add", "i32.wrap_i64",
+            s!"local.get {valueStart + offset}", "i64.store align=8"] ++
+            slotStores rest
+    valueStores (enumerate values) ++
+      ["global.get 0", s!"local.set {ptrLocal}"] ++
+      slotStores (enumerate values) ++
+      ["global.get 0", s!"i64.const {values.length * 8}", "i64.add", "global.set 0",
+        s!"local.get {ptrLocal}"]
+
+  partial def heapLoadSlotWatLines (scratch : Nat) (ptr : Expr) (slot : Nat) : List String :=
+    let ptrLocal := scratch
+    exprWatLines (scratch + 1) ptr ++ [s!"local.set {ptrLocal}",
+      s!"local.get {ptrLocal}", s!"i64.const {slot * 8}", "i64.add", "i32.wrap_i64",
+      "i64.load align=8"]
 
   partial def fillLoopWat (newLocal lenLocal valueLocal loopLocal : Nat) : List String :=
     [s!"i64.const 0", s!"local.set {loopLocal}", "block", "  loop"] ++
@@ -3501,6 +3557,8 @@ mutual
         exprWatLines scratch value ++ [s!"local.set {slot}"] ++ exprWatLines scratch body
     | .arrayAlloc cells => arrayAllocWatLines scratch cells
     | .arrayAllocSlots width cells => arrayAllocSlotsWatLines scratch width cells
+    | .heapAllocSlots values => heapAllocSlotsWatLines scratch values
+    | .heapLoadSlot ptr slot => heapLoadSlotWatLines scratch ptr slot
     | .arrayReplicate cells value => arrayReplicateWatLines scratch cells value
     | .arrayReplicateSlots width cells values =>
         arrayReplicateSlotsWatLines scratch width cells values

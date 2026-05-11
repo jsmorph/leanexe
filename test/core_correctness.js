@@ -330,6 +330,13 @@ const accepted = [
   { name: "recStatusCarryFuel", args: [2n, 0n, 5n, 0n], expected: 7n },
   { name: "recStatusCarryFuel", args: [2n, 1n, 0n, 5n], expected: 107n },
   { name: "recursiveDemandedFuelGet", args: [], expected: 7n },
+  { name: "u64ListHeadDemo", args: [], expected: 1n },
+  { name: "u64ListTailHeadDemo", args: [], expected: 2n },
+  { name: "u64ListNilDemo", args: [], expected: 7n },
+  { name: "u64ListSumDemo", args: [], expected: 6n },
+  { name: "u64ListSumShortFuel", args: [], expected: 3n },
+  { name: "u64ListBranch", args: [0n], expected: 0n },
+  { name: "u64ListBranch", args: [1n], expected: 9n },
   { name: "optionSomeMatch", args: [], expected: 8n },
   { name: "optionSomeFirstMatch", args: [], expected: 8n },
   { name: "optionNoneMatchSkipsSomeArm", args: [], expected: 5n },
@@ -530,6 +537,14 @@ const rejected = [
   {
     name: "rejectRecursiveIgnoredHiddenTrapArg",
     message: "strict call may evaluate an argument not demanded by callee: LeanExe.Examples.Correctness.recIgnoreTrapArgFuel",
+  },
+  {
+    name: "rejectRecursiveInductiveParam",
+    message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectRecursiveInductiveParam",
+  },
+  {
+    name: "rejectRecursiveInductiveReturn",
+    message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectRecursiveInductiveReturn",
   },
   {
     name: "rejectHigherOrder",

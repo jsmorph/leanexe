@@ -110,6 +110,7 @@ def tyText : Ty → String
   | .variant name [[error], [ok]] =>
       if name == ``Except then s!"Except {tyText error} {tyText ok}" else displayName name
   | .variant name _ => displayName name
+  | .recVariant name => displayName name
 
 def signatureText (sig : LeanExe.Extract.Core.Signature) : String :=
   match sig.params with
@@ -268,24 +269,24 @@ def classifyLocal (env : Environment) (info : ConstantInfo) : Classification :=
       status := "reported",
       reason := "generated match helper; supported matcher and recursion patterns consume it during extraction"
     }
-  else if LeanExe.Extract.Core.variantLayout? env info.name |>.isSome then
+  else if LeanExe.Extract.Core.anyVariantLayout? env info.name |>.isSome then
     { status := "implemented", reason := "source-identified user inductive in the generic compiler fragment" }
   else if
       match info with
-      | .ctorInfo _ => LeanExe.Extract.Core.variantConstructor? env info.name |>.isSome
+      | .ctorInfo _ => LeanExe.Extract.Core.anyVariantConstructor? env info.name |>.isSome
       | _ => false then
     { status := "implemented", reason := "source-identified user inductive constructor" }
   else if
       match info with
       | .recInfo recInfo =>
           match recInfo.all with
-          | typeName :: [] => LeanExe.Extract.Core.variantLayout? env typeName |>.isSome
+          | typeName :: [] => LeanExe.Extract.Core.anyVariantLayout? env typeName |>.isSome
           | _ => false
       | _ => false then
     { status := "implemented", reason := "source-identified user inductive recursor" }
   else if
       match localCasesOnTypeName? info.name with
-      | some typeName => LeanExe.Extract.Core.variantLayout? env typeName |>.isSome
+      | some typeName => LeanExe.Extract.Core.anyVariantLayout? env typeName |>.isSome
       | none => false then
     { status := "implemented", reason := "source-identified user inductive casesOn helper" }
   else if info.isUnsafe then
