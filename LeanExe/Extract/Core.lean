@@ -360,11 +360,42 @@ def supportedArrayCellType : Ty → Bool
   | .nat => true
   | _ => false
 
+mutual
+  partial def arrayElementSlots? : Ty → Option Nat
+    | .bool => some 1
+    | .u8 => some 1
+    | .u32 => some 1
+    | .u64 => some 1
+    | .nat => some 1
+    | .struct _ fields => arrayFieldSlots? fields
+    | .variant _ ctors => do
+        let payloadSlots ← arrayCtorSlots? ctors
+        some (payloadSlots + 1)
+    | _ => none
+
+  partial def arrayFieldSlots? : List Ty → Option Nat
+    | [] => some 0
+    | field :: rest => do
+        let head ← arrayElementSlots? field
+        let tail ← arrayFieldSlots? rest
+        some (head + tail)
+
+  partial def arrayCtorSlots? : List (List Ty) → Option Nat
+    | [] => some 0
+    | fields :: rest => do
+        let head ← arrayFieldSlots? fields
+        let tail ← arrayCtorSlots? rest
+        some (head + tail)
+end
+
+def supportedArrayElementType (ty : Ty) : Bool :=
+  arrayElementSlots? ty |>.isSome
+
 def supportedAbiType : Ty → Bool
   | .bool => true
   | .u64 => true
   | .nat => true
-  | .array item => supportedArrayCellType item
+  | .array item => supportedArrayElementType item
   | _ => false
 
 partial def supportedParamAbiType : Ty → Bool
@@ -385,7 +416,7 @@ partial def supportedInternalValueType : Ty → Bool
   | .u32 => true
   | .u64 => true
   | .nat => true
-  | .array item => supportedArrayCellType item
+  | .array item => supportedArrayElementType item
   | .struct _ fields => fields.all supportedInternalValueType
   | .variant _ ctors => ctors.all (fun fields => fields.all supportedInternalValueType)
   | _ => false
@@ -452,7 +483,7 @@ partial def supportedLocalType : Ty → Bool
   | .u64 => true
   | .nat => true
   | .byteArray => true
-  | .array item => supportedArrayCellType item
+  | .array item => supportedArrayElementType item
   | .product left right => supportedLocalType left && supportedLocalType right
   | .sum left right => supportedLocalType left && supportedLocalType right
   | .struct _ fields => fields.all supportedLocalType
@@ -736,7 +767,7 @@ partial def defaultValue : Ty → Except String ExtractedValue
   | .nat => .ok (.scalar (.u64 0))
   | .byteArray => .ok (.byteArray (.u64 0) (.u64 0))
   | .array item =>
-      if supportedArrayCellType item then
+      if supportedArrayElementType item then
         .ok (.scalar (.u64 0))
       else
         .error s!"unsupported default value type: {reprStr ((.array item : Ty))}"
@@ -758,7 +789,7 @@ partial def trapValue : Ty → Except String ExtractedValue
   | .nat => .ok (.scalar .trap)
   | .byteArray => .ok (.byteArray .trap .trap)
   | .array item =>
-      if supportedArrayCellType item then
+      if supportedArrayElementType item then
         .ok (.scalar .trap)
       else
         .error s!"unsupported trap value type: {reprStr ((.array item : Ty))}"
@@ -846,7 +877,7 @@ partial def flattenAbiValue (ty : Ty) (value : ExtractedValue) : Except String (
   | .u64 => scalarValue value |>.map (fun expr => [expr])
   | .nat => scalarValue value |>.map (fun expr => [expr])
   | .array item =>
-      if supportedArrayCellType item then
+      if supportedArrayElementType item then
         scalarValue value |>.map (fun expr => [expr])
       else
         .error s!"unsupported ABI value type: {reprStr ((.array item : Ty))}"
@@ -885,6 +916,106 @@ partial def flattenAbiValue (ty : Ty) (value : ExtractedValue) : Except String (
           .ok (flattened.map (fun expr => .letE slot value expr))
       | _ => .error s!"non-inductive value used where inductive ABI value is required: {name}"
   | other => .error s!"unsupported ABI value type: {reprStr other}"
+
+partial def flattenArrayElementValue
+    (ty : Ty)
+    (value : ExtractedValue) :
+    Except String (List IRExpr) :=
+  match ty with
+  | .bool => scalarValue value |>.map (fun expr => [expr])
+  | .u8 => scalarValue value |>.map (fun expr => [expr])
+  | .u32 => scalarValue value |>.map (fun expr => [expr])
+  | .u64 => scalarValue value |>.map (fun expr => [expr])
+  | .nat => scalarValue value |>.map (fun expr => [expr])
+  | .struct name fields =>
+      match value with
+      | .struct actual values =>
+          if actual == name && values.length == fields.length then do
+            let flattened ← (fields.zip values).mapM fun item =>
+              flattenArrayElementValue item.fst item.snd
+            .ok flattened.flatten
+          else
+            .error s!"structure array element shape mismatch: {name}"
+      | .letE slot value body => do
+          let flattened ← flattenArrayElementValue ty body
+          .ok (flattened.map (fun expr => .letE slot value expr))
+      | _ =>
+          .error s!"non-structure value used where structure array element is required: {name}"
+  | .variant name ctors =>
+      match value with
+      | .variant actual tag values =>
+          if actual == name && values.length == ctors.length then do
+            let flattened ← (ctors.zip values).mapM fun ctorPair =>
+              if ctorPair.fst.length == ctorPair.snd.length then do
+                let fields ← (ctorPair.fst.zip ctorPair.snd).mapM (fun item =>
+                  flattenArrayElementValue item.fst item.snd)
+                .ok fields.flatten
+              else
+                .error s!"inductive array element payload shape mismatch: {name}"
+            .ok (tag :: flattened.flatten)
+          else
+            .error s!"inductive array element shape mismatch: {name}"
+      | .letE slot value body => do
+          let flattened ← flattenArrayElementValue ty body
+          .ok (flattened.map (fun expr => .letE slot value expr))
+      | _ => .error s!"non-inductive value used where inductive array element is required: {name}"
+  | other => .error s!"unsupported array element value type: {reprStr other}"
+
+mutual
+  partial def arrayLoadValueAt
+      (width : Nat)
+      (array index : IRExpr) :
+      Ty → Nat → Except String (ExtractedValue × Nat)
+    | .bool, slot => .ok (.scalar (.arrayGetSlot width slot array index), slot + 1)
+    | .u8, slot => .ok (.scalar (.arrayGetSlot width slot array index), slot + 1)
+    | .u32, slot => .ok (.scalar (.arrayGetSlot width slot array index), slot + 1)
+    | .u64, slot => .ok (.scalar (.arrayGetSlot width slot array index), slot + 1)
+    | .nat, slot => .ok (.scalar (.arrayGetSlot width slot array index), slot + 1)
+    | .struct name fields, slot => do
+        let result ← arrayLoadFieldsAt width array index fields slot
+        .ok (.struct name result.fst, result.snd)
+    | .variant name ctors, slot => do
+        let tag := .arrayGetSlot width slot array index
+        let result ← arrayLoadCtorsAt width array index ctors (slot + 1)
+        .ok (.variant name tag result.fst, result.snd)
+    | other, _ => .error s!"unsupported array element load type: {reprStr other}"
+
+  partial def arrayLoadFieldsAt
+      (width : Nat)
+      (array index : IRExpr) :
+      List Ty → Nat → Except String (List ExtractedValue × Nat)
+    | [], slot => .ok ([], slot)
+    | field :: rest, slot => do
+        let head ← arrayLoadValueAt width array index field slot
+        let tail ← arrayLoadFieldsAt width array index rest head.snd
+        .ok (head.fst :: tail.fst, tail.snd)
+
+  partial def arrayLoadCtorsAt
+      (width : Nat)
+      (array index : IRExpr) :
+      List (List Ty) → Nat → Except String (List (List ExtractedValue) × Nat)
+    | [], slot => .ok ([], slot)
+    | fields :: rest, slot => do
+        let head ← arrayLoadFieldsAt width array index fields slot
+        let tail ← arrayLoadCtorsAt width array index rest head.snd
+        .ok (head.fst :: tail.fst, tail.snd)
+end
+
+def arrayLoadValue
+    (itemTy : Ty)
+    (array index : IRExpr) :
+    Except String ExtractedValue := do
+  let width ←
+    match arrayElementSlots? itemTy with
+    | some width => .ok width
+    | none => .error s!"unsupported array element type: {reprStr itemTy}"
+  let loaded ← arrayLoadValueAt width array index itemTy 0
+  .ok loaded.fst
+
+def arrayElementWidth (context : String) (itemTy : Ty) : Except String Nat :=
+  match arrayElementSlots? itemTy with
+  | some width => .ok width
+  | none => .error s!"unsupported {context} item type: {reprStr itemTy}"
 
 mutual
   partial def extractedValueForParam (slot : Nat) : Ty → ExtractedValue
@@ -2236,22 +2367,23 @@ mutual
             | itemTy :: _, _proof :: value :: index :: array :: _ =>
                 match typeAtom? ctx.env itemTy with
                 | some itemTy =>
-                  if supportedArrayCellType itemTy then
+                  match arrayElementSlots? itemTy with
+                  | some width =>
                     let arrayResult ← extractExprFrom ctx locals nextLocal array
                     let indexResult ← extractExprFrom ctx locals arrayResult.snd index
                     let arraySlot := indexResult.snd
                     let indexSlot := arraySlot + 1
-                    let valueResult ← extractExprFrom ctx locals (indexSlot + 1) value
-                    let oldValue := .scalar (.arrayGet (.local arraySlot) (.local indexSlot))
+                    let valueResult ← extractValueFrom ctx locals (indexSlot + 1) value
+                    let valueSlots ← flattenArrayElementValue itemTy valueResult.fst
+                    let oldValue ← arrayLoadValue itemTy (.local arraySlot) (.local indexSlot)
                     let updatedArray :=
-                      .scalar (.arraySet (.local arraySlot) (.local indexSlot) valueResult.fst)
+                      .scalar (.arraySetSlots width (.local arraySlot) (.local indexSlot) valueSlots)
                     .ok
                       (.letE arraySlot arrayResult.fst
                         (.letE indexSlot indexResult.fst
                           (.product oldValue updatedArray)),
                         valueResult.snd)
-                  else
-                    .error s!"unsupported Array.swapAt item type: {reprStr itemTy}"
+                  | none => .error s!"unsupported Array.swapAt item type: {reprStr itemTy}"
                 | none => .error "unsupported Array.swapAt item type"
             | _, _ => .error "unsupported Array.swapAt application"
         | (.const ``id _, args) =>
@@ -2532,21 +2664,21 @@ mutual
             | index :: array :: _ =>
                 match primitiveReceiverType? ctx.env args with
                 | some (.array itemTy) =>
-                  if supportedArrayCellType itemTy then
+                  match arrayElementSlots? itemTy with
+                  | some _width =>
                     let arrayResult ← extractExprFrom ctx locals nextLocal array
                     let indexResult ← extractExprFrom ctx locals arrayResult.snd index
                     let arraySlot := indexResult.snd
                     let indexSlot := arraySlot + 1
                     let tag :=
                       boolExpr (.ltU64 (.local indexSlot) (.arraySize (.local arraySlot)))
-                    let payload :=
-                      .scalar (.arrayGet (.local arraySlot) (.local indexSlot))
+                    let payload ← arrayLoadValue itemTy (.local arraySlot) (.local indexSlot)
                     .ok
                       (.letE arraySlot arrayResult.fst
                         (.letE indexSlot indexResult.fst
                           (mkOptionValue tag payload)),
                         indexSlot + 1)
-                  else
+                  | none =>
                     .error s!"unsupported GetElem?.getElem? receiver type: {reprStr ((.array itemTy : Ty))}"
                 | some .byteArray =>
                     let arrayResult ← extractValueFrom ctx locals nextLocal array
@@ -2570,25 +2702,103 @@ mutual
                     .error s!"unsupported GetElem?.getElem? receiver type: {reprStr other}"
                 | none => .error "unsupported GetElem?.getElem? receiver type"
             | _ => .error "unsupported GetElem?.getElem? application"
+        | (.const ``Array.get!Internal _, args) =>
+            match args, args.reverse with
+            | itemTy :: _, index :: array :: _ =>
+                match typeAtom? ctx.env itemTy with
+                | some itemTy =>
+                    let arrayResult ← extractExprFrom ctx locals nextLocal array
+                    let indexResult ← extractExprFrom ctx locals arrayResult.snd index
+                    let value ← arrayLoadValue itemTy arrayResult.fst indexResult.fst
+                    .ok (value, indexResult.snd)
+                | none => .error "unsupported Array.get!Internal item type"
+            | _, _ => .error "unsupported Array.get!Internal application"
+        | (.const ``GetElem?.getElem! _, args) =>
+            match args.reverse with
+            | index :: array :: _ =>
+                match primitiveReceiverType? ctx.env args with
+                | some (.array itemTy) =>
+                    let arrayResult ← extractExprFrom ctx locals nextLocal array
+                    let indexResult ← extractExprFrom ctx locals arrayResult.snd index
+                    let value ← arrayLoadValue itemTy arrayResult.fst indexResult.fst
+                    .ok (value, indexResult.snd)
+                | some .byteArray =>
+                    let arrayResult ← extractValueFrom ctx locals nextLocal array
+                    let parts ← byteArrayPartsWithLets arrayResult.fst
+                    let indexResult ← extractExprFrom ctx locals arrayResult.snd index
+                    .ok
+                      (.scalar
+                        (wrapExprLets parts.fst
+                          (.byteArrayGet parts.snd.fst parts.snd.snd indexResult.fst)),
+                        indexResult.snd)
+                | some other =>
+                    .error s!"unsupported GetElem?.getElem! receiver type: {reprStr other}"
+                | none => .error "unsupported GetElem?.getElem! receiver type"
+            | _ => .error "unsupported GetElem?.getElem! application"
+        | (.const ``GetElem.getElem _, args) =>
+            match args.reverse with
+            | _proof :: index :: array :: _ =>
+                match primitiveReceiverType? ctx.env args with
+                | some (.array itemTy) =>
+                    let arrayResult ← extractExprFrom ctx locals nextLocal array
+                    let indexResult ← extractExprFrom ctx locals arrayResult.snd index
+                    let value ← arrayLoadValue itemTy arrayResult.fst indexResult.fst
+                    .ok (value, indexResult.snd)
+                | some .byteArray =>
+                    let arrayResult ← extractValueFrom ctx locals nextLocal array
+                    let parts ← byteArrayPartsWithLets arrayResult.fst
+                    let indexResult ← extractExprFrom ctx locals arrayResult.snd index
+                    .ok
+                      (.scalar
+                        (wrapExprLets parts.fst
+                          (.byteArrayGet parts.snd.fst parts.snd.snd indexResult.fst)),
+                        indexResult.snd)
+                | some other =>
+                    .error s!"unsupported GetElem.getElem receiver type: {reprStr other}"
+                | none => .error "unsupported GetElem.getElem receiver type"
+            | _ => .error "unsupported GetElem.getElem application"
         | (.const ``Array.back? _, args) =>
             match args, args.reverse with
             | itemTy :: _, array :: _ =>
                 match typeAtom? ctx.env itemTy with
                 | some itemTy =>
-                    if supportedArrayCellType itemTy then
+                    match arrayElementSlots? itemTy with
+                    | some _width =>
                       let arrayResult ← extractExprFrom ctx locals nextLocal array
                       let arraySlot := arrayResult.snd
                       let tag :=
                         boolExpr (.not (.eqU64 (.arraySize (.local arraySlot)) (.u64 0)))
                       let index := .u64Bin .sub (.arraySize (.local arraySlot)) (.u64 1)
+                      let payload ← arrayLoadValue itemTy (.local arraySlot) index
                       .ok
                         (.letE arraySlot arrayResult.fst
-                          (mkOptionValue tag (.scalar (.arrayGet (.local arraySlot) index))),
+                          (mkOptionValue tag payload),
                           arraySlot + 1)
-                    else
-                      .error s!"unsupported Array.back? item type: {reprStr itemTy}"
+                    | none => .error s!"unsupported Array.back? item type: {reprStr itemTy}"
                 | none => .error "unsupported Array.back? item type"
             | _, _ => .error "unsupported Array.back? application"
+        | (.const ``Array.back! _, args) =>
+            match args, args.reverse with
+            | itemTy :: _, array :: _ =>
+                match typeAtom? ctx.env itemTy with
+                | some itemTy =>
+                    let arrayResult ← extractExprFrom ctx locals nextLocal array
+                    let index := .u64Bin .sub (.arraySize arrayResult.fst) (.u64 1)
+                    let value ← arrayLoadValue itemTy arrayResult.fst index
+                    .ok (value, arrayResult.snd)
+                | none => .error "unsupported Array.back! item type"
+            | _, _ => .error "unsupported Array.back! application"
+        | (.const ``Array.back _, args) =>
+            match args, args.reverse with
+            | itemTy :: _, _proof :: array :: _ =>
+                match typeAtom? ctx.env itemTy with
+                | some itemTy =>
+                    let arrayResult ← extractExprFrom ctx locals nextLocal array
+                    let index := .u64Bin .sub (.arraySize arrayResult.fst) (.u64 1)
+                    let value ← arrayLoadValue itemTy arrayResult.fst index
+                    .ok (value, arrayResult.snd)
+                | none => .error "unsupported Array.back item type"
+            | _, _ => .error "unsupported Array.back application"
         | (.const ``ByteArray.extract _, args) =>
             match args with
             | [array, start, stop] =>
@@ -3224,7 +3434,8 @@ mutual
                 | [_itemTy, listExpr] =>
                     match listLiteralItems? ctx.env listExpr with
                     | some (itemTy, items) =>
-                      if supportedArrayCellType itemTy then
+                      match arrayElementSlots? itemTy with
+                      | some width =>
                         let rec build
                             (index next : Nat)
                             (arrayExpr : IRExpr)
@@ -3233,13 +3444,13 @@ mutual
                           match remaining with
                           | [] => .ok (arrayExpr, next)
                           | item :: rest =>
-                              let itemResult ← extractExprFrom ctx locals next item
+                              let itemResult ← extractValueFrom ctx locals next item
+                              let slots ← flattenArrayElementValue itemTy itemResult.fst
                               build (index + 1) itemResult.snd
-                                (.arraySet arrayExpr (.u64 index) itemResult.fst)
+                                (.arraySetSlots width arrayExpr (.u64 index) slots)
                                 rest
-                        build 0 nextLocal (.arrayAlloc (.u64 items.length)) items
-                      else
-                        .error s!"unsupported List.toArray item type: {reprStr itemTy}"
+                        build 0 nextLocal (.arrayAllocSlots width (.u64 items.length)) items
+                      | none => .error s!"unsupported List.toArray item type: {reprStr itemTy}"
                     | none => .error "unsupported List.toArray argument"
                 | _ => .error "unsupported List.toArray application"
             | (.const ``Array.replicate _, args) =>
@@ -3271,11 +3482,17 @@ mutual
                     .ok (.arrayPush arrayResult.fst valueResult.fst, valueResult.snd)
                 | _ => .error "unsupported Array.push application"
             | (.const ``Array.pop _, args) =>
-                match args.reverse with
-                | array :: _ =>
-                    let arrayResult ← extractExprFrom ctx locals nextLocal array
-                    .ok (.arrayPop arrayResult.fst, arrayResult.snd)
-                | _ => .error "unsupported Array.pop application"
+                match args, args.reverse with
+                | itemTy :: _, array :: _ =>
+                    match typeAtom? ctx.env itemTy with
+                    | some itemTy =>
+                        if supportedArrayCellType itemTy then
+                          let arrayResult ← extractExprFrom ctx locals nextLocal array
+                          .ok (.arrayPop arrayResult.fst, arrayResult.snd)
+                        else
+                          .error s!"unsupported Array.pop item type: {reprStr itemTy}"
+                    | none => .error "unsupported Array.pop item type"
+                | _, _ => .error "unsupported Array.pop application"
             | (.const ``Array.eraseIdxIfInBounds _, args) =>
                 match args, args.reverse with
                 | itemTy :: _, index :: array :: _ =>
@@ -3398,12 +3615,18 @@ mutual
                     | none => .error "unsupported Array.insertIdx! item type"
                 | _, _ => .error "unsupported Array.insertIdx! application"
             | (.const ``Array.append _, args) =>
-                match args.reverse with
-                | right :: left :: _ =>
-                    let leftResult ← extractExprFrom ctx locals nextLocal left
-                    let rightResult ← extractExprFrom ctx locals leftResult.snd right
-                    .ok (.arrayAppend leftResult.fst rightResult.fst, rightResult.snd)
-                | _ => .error "unsupported Array.append application"
+                match args, args.reverse with
+                | itemTy :: _, right :: left :: _ =>
+                    match typeAtom? ctx.env itemTy with
+                    | some itemTy =>
+                        if supportedArrayCellType itemTy then
+                          let leftResult ← extractExprFrom ctx locals nextLocal left
+                          let rightResult ← extractExprFrom ctx locals leftResult.snd right
+                          .ok (.arrayAppend leftResult.fst rightResult.fst, rightResult.snd)
+                        else
+                          .error s!"unsupported Array.append item type: {reprStr itemTy}"
+                    | none => .error "unsupported Array.append item type"
+                | _, _ => .error "unsupported Array.append application"
             | (.const ``Array.insertIdxIfInBounds _, args) =>
                 match args, args.reverse with
                 | itemTy :: _, value :: index :: array :: _ =>
@@ -3458,14 +3681,20 @@ mutual
                         modifiedResult.snd)
                 | _ => .error "unsupported Array.modify application"
             | (.const ``Array.extract _, args) =>
-                match args.reverse with
-                | stop :: start :: array :: _ =>
-                    let arrayResult ← extractExprFrom ctx locals nextLocal array
-                    let startResult ← extractExprFrom ctx locals arrayResult.snd start
-                    let stopResult ← extractExprFrom ctx locals startResult.snd stop
-                    .ok (.arrayExtract arrayResult.fst startResult.fst stopResult.fst,
-                      stopResult.snd)
-                | _ => .error "unsupported Array.extract application"
+                match args, args.reverse with
+                | itemTy :: _, stop :: start :: array :: _ =>
+                    match typeAtom? ctx.env itemTy with
+                    | some itemTy =>
+                        if supportedArrayCellType itemTy then
+                          let arrayResult ← extractExprFrom ctx locals nextLocal array
+                          let startResult ← extractExprFrom ctx locals arrayResult.snd start
+                          let stopResult ← extractExprFrom ctx locals startResult.snd stop
+                          .ok (.arrayExtract arrayResult.fst startResult.fst stopResult.fst,
+                            stopResult.snd)
+                        else
+                          .error s!"unsupported Array.extract item type: {reprStr itemTy}"
+                    | none => .error "unsupported Array.extract item type"
+                | _, _ => .error "unsupported Array.extract application"
             | (.const ``Array.map _, args) =>
                 match args, args.reverse with
                 | sourceTy :: resultTy :: _, array :: mapFn :: _ =>
@@ -3490,10 +3719,8 @@ mutual
                 | [itemTy] =>
                     match typeAtom? ctx.env itemTy with
                     | some itemTy =>
-                        if supportedArrayCellType itemTy then
-                          .ok (.arrayAlloc (.u64 0), nextLocal)
-                        else
-                          .error s!"unsupported Array.empty item type: {reprStr itemTy}"
+                        let width ← arrayElementWidth "Array.empty" itemTy
+                        .ok (.arrayAllocSlots width (.u64 0), nextLocal)
                     | none => .error "unsupported Array.empty item type"
                 | _ => .error "unsupported Array.empty application"
             | (.const ``Array.mkEmpty _, args) =>
@@ -3501,10 +3728,8 @@ mutual
                 | [itemTy, _capacity] =>
                     match typeAtom? ctx.env itemTy with
                     | some itemTy =>
-                        if supportedArrayCellType itemTy then
-                          .ok (.arrayAlloc (.u64 0), nextLocal)
-                        else
-                          .error s!"unsupported Array.mkEmpty item type: {reprStr itemTy}"
+                        let width ← arrayElementWidth "Array.mkEmpty" itemTy
+                        .ok (.arrayAllocSlots width (.u64 0), nextLocal)
                     | none => .error "unsupported Array.mkEmpty item type"
                 | _ => .error "unsupported Array.mkEmpty application"
             | (.const ``Array.emptyWithCapacity _, args) =>
@@ -3512,10 +3737,8 @@ mutual
                 | [itemTy, _capacity] =>
                     match typeAtom? ctx.env itemTy with
                     | some itemTy =>
-                        if supportedArrayCellType itemTy then
-                          .ok (.arrayAlloc (.u64 0), nextLocal)
-                        else
-                          .error s!"unsupported Array.emptyWithCapacity item type: {reprStr itemTy}"
+                        let width ← arrayElementWidth "Array.emptyWithCapacity" itemTy
+                        .ok (.arrayAllocSlots width (.u64 0), nextLocal)
                     | none => .error "unsupported Array.emptyWithCapacity item type"
                 | _ => .error "unsupported Array.emptyWithCapacity application"
             | (.const ``Array.singleton _, args) =>
@@ -3523,11 +3746,12 @@ mutual
                 | [itemTy, value] =>
                     match typeAtom? ctx.env itemTy with
                     | some itemTy =>
-                      if supportedArrayCellType itemTy then
-                        let valueResult ← extractExprFrom ctx locals nextLocal value
-                        .ok (.arrayReplicate (.u64 1) valueResult.fst, valueResult.snd)
-                      else
-                        .error s!"unsupported Array.singleton item type: {reprStr itemTy}"
+                        let width ← arrayElementWidth "Array.singleton" itemTy
+                        let valueResult ← extractValueFrom ctx locals nextLocal value
+                        let slots ← flattenArrayElementValue itemTy valueResult.fst
+                        .ok
+                          (.arraySetSlots width (.arrayAllocSlots width (.u64 1)) (.u64 0) slots,
+                            valueResult.snd)
                     | none => .error "unsupported Array.singleton item type"
                 | _ => .error "unsupported Array.singleton application"
             | (.const ``Array.get!Internal _, args) =>
@@ -3610,13 +3834,16 @@ mutual
                 | itemTy :: _, _proof :: value :: index :: array :: _ =>
                     match typeAtom? ctx.env itemTy with
                     | some itemTy =>
-                      if supportedArrayCellType itemTy then
+                      match arrayElementSlots? itemTy with
+                      | some width =>
                         let arrayResult ← extractExprFrom ctx locals nextLocal array
                         let indexResult ← extractExprFrom ctx locals arrayResult.snd index
-                        let valueResult ← extractExprFrom ctx locals indexResult.snd value
-                        .ok (.arraySet arrayResult.fst indexResult.fst valueResult.fst, valueResult.snd)
-                      else
-                        .error s!"unsupported Array.set item type: {reprStr itemTy}"
+                        let valueResult ← extractValueFrom ctx locals indexResult.snd value
+                        let slots ← flattenArrayElementValue itemTy valueResult.fst
+                        .ok
+                          (.arraySetSlots width arrayResult.fst indexResult.fst slots,
+                            valueResult.snd)
+                      | none => .error s!"unsupported Array.set item type: {reprStr itemTy}"
                     | none => .error "unsupported Array.set item type"
                 | _, _ => .error "unsupported Array.set application"
             | (.const ``Array.setIfInBounds _, args) =>
@@ -3624,32 +3851,40 @@ mutual
                 | itemTy :: _, value :: index :: array :: _ =>
                     match typeAtom? ctx.env itemTy with
                     | some itemTy =>
-                      if supportedArrayCellType itemTy then
+                      match arrayElementSlots? itemTy with
+                      | some width =>
                         let arrayResult ← extractExprFrom ctx locals nextLocal array
                         let indexResult ← extractExprFrom ctx locals arrayResult.snd index
                         let arraySlot := indexResult.snd
                         let indexSlot := arraySlot + 1
-                        let valueResult ← extractExprFrom ctx locals (indexSlot + 1) value
+                        let valueResult ← extractValueFrom ctx locals (indexSlot + 1) value
+                        let slots ← flattenArrayElementValue itemTy valueResult.fst
                         let updated :=
-                          .arraySet (.local arraySlot) (.local indexSlot) valueResult.fst
+                          .arraySetSlots width (.local arraySlot) (.local indexSlot) slots
                         let inBounds := .ltU64 (.local indexSlot) (.arraySize (.local arraySlot))
                         .ok
                           (.letE arraySlot arrayResult.fst
                             (.letE indexSlot indexResult.fst
                               (.ite inBounds updated (.local arraySlot))),
                             valueResult.snd)
-                      else
-                        .error s!"unsupported Array.setIfInBounds item type: {reprStr itemTy}"
+                      | none => .error s!"unsupported Array.setIfInBounds item type: {reprStr itemTy}"
                     | none => .error "unsupported Array.setIfInBounds item type"
                 | _, _ => .error "unsupported Array.setIfInBounds application"
             | (.const ``Array.set! _, args) =>
-                match args.reverse with
-                | value :: index :: array :: _ =>
-                    let arrayResult ← extractExprFrom ctx locals nextLocal array
-                    let indexResult ← extractExprFrom ctx locals arrayResult.snd index
-                    let valueResult ← extractExprFrom ctx locals indexResult.snd value
-                    .ok (.arraySet arrayResult.fst indexResult.fst valueResult.fst, valueResult.snd)
-                | _ => .error "unsupported Array.set! application"
+                match args, args.reverse with
+                | itemTy :: _, value :: index :: array :: _ =>
+                    match typeAtom? ctx.env itemTy with
+                    | some itemTy =>
+                        let width ← arrayElementWidth "Array.set!" itemTy
+                        let arrayResult ← extractExprFrom ctx locals nextLocal array
+                        let indexResult ← extractExprFrom ctx locals arrayResult.snd index
+                        let valueResult ← extractValueFrom ctx locals indexResult.snd value
+                        let slots ← flattenArrayElementValue itemTy valueResult.fst
+                        .ok
+                          (.arraySetSlots width arrayResult.fst indexResult.fst slots,
+                            valueResult.snd)
+                    | none => .error "unsupported Array.set! item type"
+                | _, _ => .error "unsupported Array.set! application"
             | (.const ``Array.eraseIdx! _, args) =>
                 match args, args.reverse with
                 | itemTy :: _, index :: array :: _ =>

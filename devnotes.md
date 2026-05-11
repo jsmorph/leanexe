@@ -1738,3 +1738,23 @@ Checks run:
 - [x] `.lake/build/bin/lean-wasm compile-wat --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.arrayBoolRead --out .lake/build/core-correctness/arrayBoolRead.wat`
 - [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/wasmtime-v44.0.0-aarch64-linux/wasmtime --invoke arrayBoolRead .lake/build/core-correctness/arrayBoolRead.wat` returned `1`.
 - [x] `node test/run_all.js` returned `checked 42 report classification cases`, `checked 339 accepted, 17 rejected, and 7 trapped cases`, `checked 36 bytearray allocation cases`, and `checked 56 cases`.
+
+## 2026-05-11: Fixed-width structure and tagged arrays
+
+The IR and Wasm emitters now have explicit fixed-width array operations: allocation with an element width, slot-addressed reads, and slot-wise copy-on-write replacement.  The linear-memory layout keeps the length header at offset `0`.  Slot `s` of element `i` lives at cell index `1 + i * width + s`.  Scalar arrays are the width-one case.  Structure arrays flatten runtime fields in Lean field order after proof erasure.  Tagged arrays store the tag first, followed by every constructor payload slot in declaration order, matching the public tagged ABI.
+
+The extractor now accepts fixed-width structure and tagged array literals, empty constructors, singleton construction, indexed reads, safe indexed reads, `back`, `back!`, `back?`, `set`, `set!`, `setIfInBounds`, `swapAt`, and returned pointers.  The older scalar-only copy operations now reject multi-slot arrays instead of compiling through one-cell loops.  Multi-slot `replicate`, `push`, `pop`, `append`, `extract`, insertion, erasure, swapping, reversal, modification, and mapping remain planned.
+
+Checks run:
+
+- [x] `lake build LeanExe.Examples.Correctness`
+- [x] `lake build`
+- [x] `node test/report_classification.js` returned `checked 46 report classification cases`.
+- [x] `node test/core_correctness.js` returned `checked 345 accepted, 18 rejected, and 7 trapped cases`.
+- [x] `.lake/build/bin/lean-wasm compile-wat --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.arrayStructureLiteralRead --out .lake/build/core-correctness/arrayStructureLiteralRead.wat`
+- [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/wasmtime-v44.0.0-aarch64-linux/wasmtime --invoke arrayStructureLiteralRead .lake/build/core-correctness/arrayStructureLiteralRead.wat` returned `1234`.
+- [x] `.lake/build/bin/lean-wasm compile-wat --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.arrayStatusLiteralMatch --out .lake/build/core-correctness/arrayStatusLiteralMatch.wat`
+- [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/wasmtime-v44.0.0-aarch64-linux/wasmtime --invoke arrayStatusLiteralMatch .lake/build/core-correctness/arrayStatusLiteralMatch.wat` returned `57`.
+- [x] `.lake/build/bin/lean-wasm compile-wat --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.structurePointArrayReturn --out .lake/build/core-correctness/structurePointArrayReturn.wat`
+- [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/wasmtime-v44.0.0-aarch64-linux/wasmtime --invoke structurePointArrayReturn .lake/build/core-correctness/structurePointArrayReturn.wat` returned `4176` and `2`.
+- [x] `node test/run_all.js` returned `checked 46 report classification cases`, `checked 345 accepted, 18 rejected, and 7 trapped cases`, `checked 36 bytearray allocation cases`, and `checked 56 cases`.

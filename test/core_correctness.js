@@ -88,6 +88,12 @@ const accepted = [
     expected: [null, 2n],
     memoryArrays: [{ resultIndex: 0, values: [4n, 5n] }],
   },
+  {
+    name: "structurePointArrayReturn",
+    args: [],
+    expected: [null, 2n],
+    memoryArrays: [{ resultIndex: 0, length: 2, values: [1n, 2n, 3n, 4n] }],
+  },
   { name: "structureParam", args: [2n, 3n], expected: 23n },
   { name: "structureMatchDestructure", args: [], expected: 12n },
   { name: "structureMatchUsesFirstOnly", args: [], expected: 7n },
@@ -182,6 +188,11 @@ const accepted = [
   { name: "arrayUInt32MapRead", args: [], expected: 3n },
   { name: "arrayBoolRead", args: [], expected: 1n },
   { name: "arrayNatRead", args: [], expected: 103n },
+  { name: "arrayStructureLiteralRead", args: [], expected: 1234n },
+  { name: "arrayStructureSetRead", args: [], expected: 98n },
+  { name: "arrayStructureSafeGet", args: [], expected: 45n },
+  { name: "arrayStatusLiteralMatch", args: [], expected: 57n },
+  { name: "arrayOptionLiteralMatch", args: [], expected: 57n },
   { name: "arrayLiteralRead", args: [], expected: 1030n },
   { name: "arrayGetProof", args: [], expected: 10n },
   { name: "arrayEmptyLiteral", args: [], expected: 1n },
@@ -377,8 +388,12 @@ const rejected = [
     message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectByteArrayReturn",
   },
   {
-    name: "rejectStructureArrayReturn",
-    message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectStructureArrayReturn",
+    name: "rejectNestedArrayReturn",
+    message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectNestedArrayReturn",
+  },
+  {
+    name: "rejectStructureArrayAppend",
+    message: "unsupported Array.append item type: LeanExe.IR.Ty.struct",
   },
   {
     name: "rejectUInt8Param",
@@ -491,8 +506,9 @@ async function runAccepted(testCase) {
       const ptr = actual[memoryArray.resultIndex];
       const view = new DataView(instance.exports.memory.buffer);
       const len = view.getBigUint64(Number(ptr), true);
-      if (len !== BigInt(memoryArray.values.length)) {
-        throw new Error(`${testCase.name}: expected array length ${memoryArray.values.length}, got ${len}`);
+      const expectedLength = memoryArray.length ?? memoryArray.values.length;
+      if (len !== BigInt(expectedLength)) {
+        throw new Error(`${testCase.name}: expected array length ${expectedLength}, got ${len}`);
       }
       for (let index = 0; index < memoryArray.values.length; index += 1) {
         const cell = view.getBigUint64(Number(ptr + BigInt(8 * (index + 1))), true);

@@ -50,10 +50,13 @@ mutual
     | ite (cond : Cond) (thenValue elseValue : Expr)
     | letE (slot : Nat) (value body : Expr)
     | arrayAlloc (cells : Expr)
+    | arrayAllocSlots (width : Nat) (cells : Expr)
     | arrayReplicate (cells value : Expr)
     | arraySize (array : Expr)
     | arrayGet (array index : Expr)
+    | arrayGetSlot (width slot : Nat) (array index : Expr)
     | arraySet (array index value : Expr)
+    | arraySetSlots (width : Nat) (array index : Expr) (values : List Expr)
     | arrayPush (array value : Expr)
     | arrayPop (array : Expr)
     | arrayAppend (left right : Expr)
@@ -138,10 +141,13 @@ mutual
     | .letE slot value body =>
         body.eval module_ (store.set slot (value.eval module_ store))
     | .arrayAlloc _ => 0
+    | .arrayAllocSlots _ _ => 0
     | .arrayReplicate _ _ => 0
     | .arraySize _ => 0
     | .arrayGet _ _ => 0
+    | .arrayGetSlot _ _ _ _ => 0
     | .arraySet array _ _ => array.eval module_ store
+    | .arraySetSlots _ array _ _ => array.eval module_ store
     | .arrayPush array _ => array.eval module_ store
     | .arrayPop array => array.eval module_ store
     | .arrayAppend left _ => left.eval module_ store

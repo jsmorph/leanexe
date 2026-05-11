@@ -45,6 +45,11 @@ const cases = [
   },
   {
     moduleName: "LeanExe.Examples.Correctness",
+    entryName: "LeanExe.Examples.Correctness.structurePointArrayReturn",
+    shape: "entry shape: LeanExe.Examples.Correctness.PointArrayBox",
+  },
+  {
+    moduleName: "LeanExe.Examples.Correctness",
     entryName: "LeanExe.Examples.Correctness.structureParam",
     shape: "entry shape: LeanExe.Examples.Correctness.Point -> UInt64",
   },
@@ -222,6 +227,21 @@ const cases = [
     moduleName: "LeanExe.Examples.Correctness",
     entryName: "LeanExe.Examples.Correctness.arrayNatRead",
     shape: "entry shape: Nat",
+  },
+  {
+    moduleName: "LeanExe.Examples.Correctness",
+    entryName: "LeanExe.Examples.Correctness.arrayStructureLiteralRead",
+    shape: "entry shape: UInt64",
+  },
+  {
+    moduleName: "LeanExe.Examples.Correctness",
+    entryName: "LeanExe.Examples.Correctness.arrayStatusLiteralMatch",
+    shape: "entry shape: UInt64",
+  },
+  {
+    moduleName: "LeanExe.Examples.Correctness",
+    entryName: "LeanExe.Examples.Correctness.arrayOptionLiteralMatch",
+    shape: "entry shape: UInt64",
   },
   {
     moduleName: "LeanExe.Examples.Correctness",
