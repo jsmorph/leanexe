@@ -1445,8 +1445,19 @@ def rejectExceptParam (value : Except UInt64 UInt64) : UInt64 :=
   | Except.error code => code
   | Except.ok item => item
 
-def rejectExceptUnitError : UInt64 :=
+def exceptUnitErrorOk : UInt64 :=
   match (Except.ok (1 : UInt64) : Except Unit UInt64) with
+  | Except.error _ => 0
+  | Except.ok item => item
+
+def exceptUnitErrorError : UInt64 :=
+  match (Except.error () : Except Unit UInt64) with
+  | Except.error _ => 7
+  | Except.ok item => item
+
+def exceptUnitErrorBind : UInt64 :=
+  match Except.bind (Except.ok (4 : UInt64) : Except Unit UInt64)
+      (fun value => Except.ok (value + 1)) with
   | Except.error _ => 0
   | Except.ok item => item
 
