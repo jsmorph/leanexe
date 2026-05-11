@@ -103,6 +103,34 @@ def natLit? (expr : Expr) : Option Nat :=
   | .lit (.natVal value) => some value
   | _ => none
 
+def stringLit? (expr : Expr) : Option String :=
+  match expr.consumeMData with
+  | .lit (.strVal value) => some value
+  | _ => none
+
+def asciiStringBytes? (value : String) : Option (List UInt8) :=
+  let bytes := value.toUTF8.data.toList
+  if bytes.all (fun byte => byte.toNat < 128) then some bytes else none
+
+def byteArrayLiteralArrayExprAux (index : Nat) (array : IRExpr) : List UInt8 → IRExpr
+  | [] => array
+  | byte :: rest =>
+      byteArrayLiteralArrayExprAux
+        (index + 1)
+        (.arraySetSlots 1 array (.u64 index) [.u64 byte.toNat])
+        rest
+
+def byteArrayLiteralArrayExpr (bytes : List UInt8) : IRExpr :=
+  byteArrayLiteralArrayExprAux 0 (.arrayAllocSlots 1 (.u64 bytes.length)) bytes
+
+def byteArrayLiteralValue (slot : Nat) (bytes : List UInt8) : ExtractedValue × Nat :=
+  match bytes with
+  | [] => (.byteArray (.u64 0) (.u64 0), slot)
+  | _ =>
+      (.letE slot (byteArrayLiteralArrayExpr bytes)
+        (.byteArray (.byteArrayFromArrayPtr (.local slot)) (.arraySize (.local slot))),
+        slot + 1)
+
 def ofNat? (typeName : Name) (expr : Expr) : Option Nat :=
   match appFnArgs expr with
   | (.const ``OfNat.ofNat _, [ty, value, _]) =>
@@ -2382,6 +2410,8 @@ partial def demandExpr
               args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
           | (.const ``ByteArray.mk _, args) =>
               args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
+          | (.const ``String.toUTF8 _, _args) =>
+              .empty
           | (.const ``ByteArray.copySlice _, args) =>
               match args.reverse with
               | _exact :: copyLen :: destOff :: dest :: srcOff :: src :: _ =>
@@ -3923,6 +3953,16 @@ mutual
                       (.arraySize (.local arraySlot))),
                     arraySlot + 1)
             | _ => .error "unsupported ByteArray.mk application"
+        | (.const ``String.toUTF8 _, args) =>
+            match args with
+            | [value] =>
+                match stringLit? value with
+                | some stringValue =>
+                    match asciiStringBytes? stringValue with
+                    | some bytes => .ok (byteArrayLiteralValue nextLocal bytes)
+                    | none => .error "unsupported String.toUTF8 literal: expected ASCII"
+                | none => .error "unsupported String.toUTF8 argument: expected string literal"
+            | _ => .error "unsupported String.toUTF8 application"
         | (.const ``Bool.casesOn _, args) =>
             match boolMatcherArgs? ctx.env (.const ``Bool.casesOn []) args with
             | some (scrutinee, falseArm, trueArm) =>

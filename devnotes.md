@@ -2187,3 +2187,17 @@ Checks run:
 - [x] `node test/json_double.js` returned `checked 31 json program cases`.
 - [x] `node test/report_classification.js` returned `checked 89 report classification cases`.
 - [x] `node test/run_all.js` returned `checked 89 report classification cases`, `checked 430 accepted, 18 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 14 asciistring cases`, `checked 31 json program cases`, and `checked 56 cases`.
+
+## 2026-05-11: ASCII string literals for ByteArray
+
+The extractor now lowers `String.toUTF8` when the receiver is a compile-time ASCII string literal.  The accepted source form is standard Lean syntax such as `"collatzLengthFor".toUTF8`, and the lowered value uses the same byte-buffer representation as `ByteArray.mk`.  Runtime `String` values remain unsupported: `String` parameters, `String` results, nonliteral receivers, non-ASCII literals, indexing, decoding, and general string operations are rejected.
+
+The JSON examples now use string literals for fixed output prefixes and field names.  `LeanExe.Examples.Correctness.byteArrayStringLiteralReturn` and `byteArrayStringLiteralSize` cover accepted byte output and size queries, while `rejectRuntimeStringToUTF8` covers rejection of a nonliteral string receiver.
+
+Checks run:
+
+- [x] `lake build`
+- [x] `node test/core_correctness.js` returned `checked 432 accepted, 19 rejected, and 13 trapped cases`.
+- [x] `node test/json_double.js` returned `checked 31 json program cases`.
+- [x] `node test/report_classification.js` returned `checked 89 report classification cases`.
+- [x] `node test/run_all.js` returned `checked 89 report classification cases`, `checked 432 accepted, 19 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 14 asciistring cases`, `checked 31 json program cases`, and `checked 56 cases`.

@@ -164,6 +164,8 @@ def knownExternal? (name : Name) : Option Classification :=
     some { status := "implemented", reason := "pure Id wrapper erased by the generic compiler fragment" }
   else if name == ``id then
     some { status := "implemented", reason := "identity function erased by the generic compiler fragment" }
+  else if name == ``String.toUTF8 then
+    some { status := "implemented", reason := "implemented for compile-time ASCII string literals" }
   else if name == ``Unit.unit then
     some { status := "implemented", reason := "erased Unit value used by supported generated matchers" }
   else if name == ``Array then
@@ -176,7 +178,9 @@ def knownExternal? (name : Name) : Option Classification :=
     some { status := "implemented", reason := "internal product values in the generic compiler fragment" }
   else if name == ``Except then
     some { status := "implemented", reason := "internal Except values in the generic compiler fragment" }
-  else if [``String, ``List].contains name then
+  else if name == ``String then
+    some { status := "reported", reason := "runtime String values are unsupported; ASCII literals may use String.toUTF8" }
+  else if name == ``List then
     some { status := "reported", reason := "planned type or library type" }
   else if name == ``Eq then
     some { status := "implemented", reason := "implemented for supported scalar equality propositions in the generic compiler fragment" }

@@ -168,6 +168,13 @@ const accepted = [
   },
   { name: "byteArrayMkSize", args: [], expected: 3n },
   {
+    name: "byteArrayStringLiteralReturn",
+    args: [],
+    expected: [null, 3n],
+    memoryBytes: [{ resultIndex: 0, lengthIndex: 1, values: [65, 66, 67] }],
+  },
+  { name: "byteArrayStringLiteralSize", args: [], expected: 3n },
+  {
     name: "byteArrayCopySliceReturn",
     args: [],
     expected: [null, 3n],
@@ -522,6 +529,10 @@ const rejected = [
   {
     name: "rejectUInt32Return",
     message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectUInt32Return",
+  },
+  {
+    name: "rejectRuntimeStringToUTF8",
+    message: "unsupported String.toUTF8 argument: expected string literal",
   },
   {
     name: "alloc",
