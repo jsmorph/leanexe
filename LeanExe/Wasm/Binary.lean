@@ -244,6 +244,9 @@ def i64ExtendI32U : List UInt8 :=
 def i64LtU : List UInt8 :=
   ofNats [84]
 
+def i64Ne : List UInt8 :=
+  ofNats [82]
+
 def i64LeU : List UInt8 :=
   ofNats [88]
 
@@ -350,6 +353,10 @@ mutual
           (max
             (max (exprScratch destPtr) (max (exprScratch destLen) (exprScratch destOff)))
             (exprScratch copyLen))
+    | .byteArrayFindIdx ptr len start _ predicate _ =>
+        4 + max
+          (max (exprScratch ptr) (max (exprScratch len) (exprScratch start)))
+          (exprScratch predicate)
     | .byteArrayFold ptr len start stop init _ _ body =>
         7 + max
           (max (exprScratch ptr) (exprScratch len))
@@ -1509,6 +1516,37 @@ mutual
         loopLocal ++
       localGet newPtrLocal
 
+  partial def emitByteArrayFindIdx
+      (scratch : Nat)
+      (ptr len start : Expr)
+      (byteSlot : Nat)
+      (predicate : Expr)
+      (returnPayload : Bool) : List UInt8 :=
+    let ptrLocal := scratch
+    let lenLocal := scratch + 1
+    let indexLocal := scratch + 2
+    let resultLocal := scratch + 3
+    let childScratch := scratch + 4
+    let foundValue := if returnPayload then localGet indexLocal else i64Const 1
+    emitExpr childScratch ptr ++ localSet ptrLocal ++
+      emitExpr childScratch len ++ localSet lenLocal ++
+      emitExpr childScratch start ++ localSet indexLocal ++
+      i64Const 0 ++ localSet resultLocal ++
+      ofNats [2, 64, 3, 64] ++
+        localGet indexLocal ++ localGet lenLocal ++ i64GeU ++
+          ofNats [13] ++ u32leb 1 ++
+        localGet ptrLocal ++ localGet indexLocal ++ ofNats [124] ++ i32WrapI64 ++
+          i32Load8U ++ i64ExtendI32U ++ localSet byteSlot ++
+        emitExpr childScratch predicate ++ i64Const 0 ++ i64Ne ++
+        ofNats [4, 64] ++
+          foundValue ++ localSet resultLocal ++
+          ofNats [12] ++ u32leb 2 ++
+        ofNats [11] ++
+        localGet indexLocal ++ i64Const 1 ++ ofNats [124] ++ localSet indexLocal ++
+        ofNats [12] ++ u32leb 0 ++
+      ofNats [11, 11] ++
+      localGet resultLocal
+
   partial def emitByteArrayFold
       (scratch : Nat)
       (ptr len start stop init : Expr)
@@ -1677,6 +1715,8 @@ mutual
     | .byteArrayFromArrayPtr array => emitByteArrayFromArrayPtr scratch array
     | .byteArrayCopySlicePtr srcPtr srcLen srcOff destPtr destLen destOff copyLen =>
         emitByteArrayCopySlicePtr scratch srcPtr srcLen srcOff destPtr destLen destOff copyLen
+    | .byteArrayFindIdx ptr len start byteSlot predicate returnPayload =>
+        emitByteArrayFindIdx scratch ptr len start byteSlot predicate returnPayload
     | .byteArrayFold ptr len start stop init accSlot byteSlot body =>
         emitByteArrayFold scratch ptr len start stop init accSlot byteSlot body
     | .call index args => args.flatMap (emitExpr scratch) ++ call index
@@ -2952,6 +2992,36 @@ mutual
         loopLocal ++
       [s!"local.get {newPtrLocal}"]
 
+  partial def byteArrayFindIdxWatLines
+      (scratch : Nat)
+      (ptr len start : Expr)
+      (byteSlot : Nat)
+      (predicate : Expr)
+      (returnPayload : Bool) : List String :=
+    let ptrLocal := scratch
+    let lenLocal := scratch + 1
+    let indexLocal := scratch + 2
+    let resultLocal := scratch + 3
+    let childScratch := scratch + 4
+    let foundValue := if returnPayload then [s!"local.get {indexLocal}"] else ["i64.const 1"]
+    exprWatLines childScratch ptr ++ [s!"local.set {ptrLocal}"] ++
+      exprWatLines childScratch len ++ [s!"local.set {lenLocal}"] ++
+      exprWatLines childScratch start ++ [s!"local.set {indexLocal}",
+        "i64.const 0", s!"local.set {resultLocal}",
+        "block", "  loop",
+        s!"    local.get {indexLocal}", s!"    local.get {lenLocal}", "    i64.ge_u",
+        "    br_if 1",
+        s!"    local.get {ptrLocal}", s!"    local.get {indexLocal}", "    i64.add",
+        "    i32.wrap_i64", "    i32.load8_u", "    i64.extend_i32_u",
+        s!"    local.set {byteSlot}"] ++
+      indent 4 (
+        exprWatLines childScratch predicate ++ ["i64.const 0", "i64.ne", "if"] ++
+        indent 2 (foundValue ++ [s!"local.set {resultLocal}", "br 2"]) ++
+        ["end",
+          s!"local.get {indexLocal}", "i64.const 1", "i64.add", s!"local.set {indexLocal}",
+          "br 0"]) ++
+      ["  end", "end", s!"local.get {resultLocal}"]
+
   partial def byteArrayFoldWatLines
       (scratch : Nat)
       (ptr len start stop init : Expr)
@@ -3112,6 +3182,8 @@ mutual
     | .byteArrayFromArrayPtr array => byteArrayFromArrayPtrWatLines scratch array
     | .byteArrayCopySlicePtr srcPtr srcLen srcOff destPtr destLen destOff copyLen =>
         byteArrayCopySlicePtrWatLines scratch srcPtr srcLen srcOff destPtr destLen destOff copyLen
+    | .byteArrayFindIdx ptr len start byteSlot predicate returnPayload =>
+        byteArrayFindIdxWatLines scratch ptr len start byteSlot predicate returnPayload
     | .byteArrayFold ptr len start stop init accSlot byteSlot body =>
         byteArrayFoldWatLines scratch ptr len start stop init accSlot byteSlot body
     | .call index args => args.flatMap (exprWatLines scratch) ++ [s!"call {index}"]

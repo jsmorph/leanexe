@@ -1948,6 +1948,23 @@ def byteArrayFoldEmptySkipsFunctionTrap : Nat :=
     (fun acc _byte => acc + ((Array.replicate 0 (0 : UInt64))[0]!).toNat)
     7
 
+def byteArrayFindIdxSome : Option Nat :=
+  (ByteArray.mk #[(1 : UInt8), (42 : UInt8), (3 : UInt8)]).findIdx?
+    (fun byte => byte == (42 : UInt8))
+
+def byteArrayFindIdxNone : Option Nat :=
+  (ByteArray.mk #[(1 : UInt8), (2 : UInt8), (3 : UInt8)]).findIdx?
+    (fun byte => byte == (42 : UInt8))
+
+def byteArrayFindIdxStart : Option Nat :=
+  (ByteArray.mk #[(42 : UInt8), (1 : UInt8), (42 : UInt8)]).findIdx?
+    (fun byte => byte == (42 : UInt8))
+    1
+
+def byteArrayFindIdxEmptySkipsPredicateTrap : Option Nat :=
+  ByteArray.empty.findIdx?
+    (fun _byte => (Array.replicate 0 false)[0]!)
+
 def rejectUnitReturn : Unit :=
   ()
 
