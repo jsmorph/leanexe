@@ -217,6 +217,9 @@ const accepted = [
   { name: "exceptIsOkOkSkipsPayloadTrap", args: [], expected: 1n },
   { name: "exceptIsOkError", args: [], expected: 1n },
   { name: "exceptIsOkAsBool", args: [], expected: 1n },
+  { name: "exceptUnitErrorOk", args: [], expected: 1n },
+  { name: "exceptUnitErrorError", args: [], expected: 7n },
+  { name: "exceptUnitErrorBind", args: [], expected: 5n },
   { name: "exceptOrElseError", args: [], expected: 5n },
   { name: "exceptOrElseOkSkipsFallbackTrap", args: [], expected: 5n },
   { name: "exceptOrElseFallbackError", args: [], expected: 9n },
@@ -360,10 +363,6 @@ const rejected = [
   {
     name: "rejectExceptParam",
     message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectExceptParam",
-  },
-  {
-    name: "rejectExceptUnitError",
-    message: "unsupported Except.ok application",
   },
   {
     name: "rejectUnitReturn",

@@ -71,7 +71,7 @@ The next work should broaden ordinary programming support while keeping extracti
 
 Correctness remains the gate for each expansion.  Each feature must update `spec.md`, add accepted and rejected examples, compare Lean execution with Wasmtime for representative programs, and keep rejection reasons exact.  Features that require unresolved ABI or memory-layout decisions should stay planned until those decisions are written down.
 
-Current progress: the first implementation slice for monomorphic, nonrecursive user inductives now supports constructors, generated matcher extraction, proof-erased constructor fields, nullary enums, local helper values, branch-selected values, and exported tagged results.  The remaining work in that row is consolidation: unify `Option` and `Except` onto the source-identified sum representation, then admit structured inductive parameters through the public ABI.
+Current progress: the first implementation slice for monomorphic, nonrecursive user inductives now supports constructors, generated matcher extraction, proof-erased constructor fields, nullary enums, local helper values, branch-selected values, and exported tagged results.  `Except` now uses a source-identified internal representation, so `Except Unit α` works for supported payloads.  The remaining consolidation work is to migrate `Option` onto the same representation, then admit structured inductive parameters and public `Option`/`Except` results through the ABI.
 
 ## Go-level expressiveness milestone
 

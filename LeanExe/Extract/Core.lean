@@ -250,8 +250,7 @@ mutual
       | (.const ``Option _, [item]) => typeAtom? env item |>.map (fun itemTy => .sum .unit itemTy)
       | (.const ``Except _, [error, ok]) =>
           match typeAtom? env error, typeAtom? env ok with
-          | some .unit, _ => none
-          | some errorTy, some okTy => some (.sum errorTy okTy)
+          | some errorTy, some okTy => some (.variant ``Except [[errorTy], [okTy]])
           | _, _ => none
       | (.const name _, []) =>
           if isStructureLike env name then
@@ -366,7 +365,8 @@ def supportedParamAbiType : Ty → Bool
 
 partial def supportedResultAbiType : Ty → Bool
   | .struct _ fields => fields.all supportedResultAbiType
-  | .variant _ ctors => ctors.all (fun fields => fields.all supportedResultAbiType)
+  | .variant name ctors =>
+      name != ``Except && ctors.all (fun fields => fields.all supportedResultAbiType)
   | ty => supportedAbiType ty
 
 partial def supportedInternalValueType : Ty → Bool
@@ -706,6 +706,29 @@ partial def variantPartsWithLets (expectedName : Name) (value : ExtractedValue) 
       let parts ← variantPartsWithLets expectedName body
       .ok ((slot, value) :: parts.fst, parts.snd.fst, parts.snd.snd)
 
+def mkExceptValue (tag : IRExpr) (errorPayload okPayload : ExtractedValue) : ExtractedValue :=
+  .variant ``Except tag [[errorPayload], [okPayload]]
+
+partial def exceptPartsWithLets (value : ExtractedValue) :
+    Except String (List (Nat × IRExpr) × IRExpr × ExtractedValue × ExtractedValue) :=
+  match value with
+  | .variant name tag [[errorPayload], [okPayload]] =>
+      if name == ``Except then
+        .ok ([], tag, errorPayload, okPayload)
+      else
+        .error s!"inductive value used where Except value is required: {name}"
+  | .sum tag errorPayload okPayload => .ok ([], tag, errorPayload, okPayload)
+  | .scalar _ => .error "scalar value used where Except value is required"
+  | .byteArray _ _ => .error "ByteArray value used where Except value is required"
+  | .product _ _ => .error "product value used where Except value is required"
+  | .option _ _ => .error "option value used where Except value is required"
+  | .struct name _ => .error s!"structure value used where Except value is required: {name}"
+  | .variant name _ _ =>
+      .error s!"inductive value used where Except value is required: {name}"
+  | .letE slot value body => do
+      let parts ← exceptPartsWithLets body
+      .ok ((slot, value) :: parts.fst, parts.snd.fst, parts.snd.snd.fst, parts.snd.snd.snd)
+
 partial def defaultValue : Ty → Except String ExtractedValue
   | .unit => .ok (.scalar (.u64 0))
   | .bool => .ok (.scalar (.u64 0))
@@ -949,7 +972,6 @@ def exceptConstructorTypes? (env : Environment) (args : List Expr) : Option (Ty 
   match args with
   | errorTy :: okTy :: _ =>
       match typeAtom? env errorTy, typeAtom? env okTy with
-      | some .unit, _ => none
       | some errorTy, some okTy => some (errorTy, okTy)
       | _, _ => none
   | _ => none
@@ -958,7 +980,6 @@ def exceptMapTypes? (env : Environment) (args : List Expr) : Option (Ty × Ty) :
   match args with
   | errorTy :: _sourceTy :: resultTy :: _ =>
       match typeAtom? env errorTy, typeAtom? env resultTy with
-      | some .unit, _ => none
       | some errorTy, some resultTy => some (errorTy, resultTy)
       | _, _ => none
   | _ => none
@@ -967,8 +988,6 @@ def exceptMapErrorTypes? (env : Environment) (args : List Expr) : Option (Ty × 
   match args with
   | sourceErrorTy :: resultErrorTy :: _okTy :: _ =>
       match typeAtom? env sourceErrorTy, typeAtom? env resultErrorTy with
-      | some .unit, _ => none
-      | _, some .unit => none
       | some sourceErrorTy, some resultErrorTy => some (sourceErrorTy, resultErrorTy)
       | _, _ => none
   | _ => none
@@ -977,7 +996,6 @@ def exceptPayloadType? (env : Environment) (args : List Expr) : Option Ty :=
   match args with
   | errorTy :: okTy :: _ =>
       match typeAtom? env errorTy, typeAtom? env okTy with
-      | some .unit, _ => none
       | some _, some okTy => some okTy
       | _, _ => none
   | _ => none
@@ -1009,6 +1027,8 @@ def exceptOrElseArgs? (env : Environment) (fn : Expr) (args : List Expr) : Optio
         match primitiveResultType? env args, args.reverse with
         | some (.sum .unit _), _ => none
         | some (.sum _ _), fallback :: exceptValue :: _ => some (exceptValue, fallback)
+        | some (.variant typeName _), fallback :: exceptValue :: _ =>
+            if typeName == ``Except then some (exceptValue, fallback) else none
         | _, _ => none
       else
         none
@@ -2273,19 +2293,21 @@ mutual
             match args.reverse, exceptConstructorTypes? ctx.env args with
             | value :: _, some (_errorTy, okTy) =>
                 let valueResult ← extractValueFrom ctx locals nextLocal value
-                .ok (.sum (.u64 0) valueResult.fst (← defaultValue okTy), valueResult.snd)
+                .ok (mkExceptValue (.u64 0) valueResult.fst (← defaultValue okTy),
+                  valueResult.snd)
             | _, _ => .error "unsupported Except.error application"
         | (.const ``Except.ok _, args) =>
             match args.reverse, exceptConstructorTypes? ctx.env args with
             | value :: _, some (errorTy, _okTy) =>
                 let valueResult ← extractValueFrom ctx locals nextLocal value
-                .ok (.sum (.u64 1) (← defaultValue errorTy) valueResult.fst, valueResult.snd)
+                .ok (mkExceptValue (.u64 1) (← defaultValue errorTy) valueResult.fst,
+                  valueResult.snd)
             | _, _ => .error "unsupported Except.ok application"
         | (.const ``Except.map _, args) =>
             match args.reverse, exceptMapTypes? ctx.env args with
             | exceptValue :: mapFn :: _, some (_errorTy, resultTy) =>
                 let exceptResult ← extractValueFrom ctx locals nextLocal exceptValue
-                let parts ← sumPartsWithLets exceptResult.fst
+                let parts ← exceptPartsWithLets exceptResult.fst
                 let lets := parts.fst
                 let tag := parts.snd.fst
                 let errorPayload := parts.snd.snd.fst
@@ -2299,7 +2321,7 @@ mutual
                 let defaultOk ← defaultValue resultTy
                 .ok
                   (wrapValueLets lets
-                    (.sum tag errorPayload
+                    (mkExceptValue tag errorPayload
                       (← valueIte (.eqU64 tag (.u64 0)) defaultOk mapResult.fst)),
                     mapResult.snd)
             | _, _ => .error "unsupported Except.map application"
@@ -2307,7 +2329,7 @@ mutual
             match args.reverse, exceptMapErrorTypes? ctx.env args with
             | exceptValue :: mapFn :: _, some (_sourceErrorTy, resultErrorTy) =>
                 let exceptResult ← extractValueFrom ctx locals nextLocal exceptValue
-                let parts ← sumPartsWithLets exceptResult.fst
+                let parts ← exceptPartsWithLets exceptResult.fst
                 let lets := parts.fst
                 let tag := parts.snd.fst
                 let errorPayload := parts.snd.snd.fst
@@ -2321,7 +2343,7 @@ mutual
                 let defaultError ← defaultValue resultErrorTy
                 .ok
                   (wrapValueLets lets
-                    (.sum tag
+                    (mkExceptValue tag
                       (← valueIte (.eqU64 tag (.u64 0)) mapResult.fst defaultError)
                       okPayload),
                     mapResult.snd)
@@ -2330,7 +2352,7 @@ mutual
             match args.reverse, exceptMapTypes? ctx.env args with
             | bindFn :: exceptValue :: _, some (_errorTy, resultTy) =>
                 let exceptResult ← extractValueFrom ctx locals nextLocal exceptValue
-                let parts ← sumPartsWithLets exceptResult.fst
+                let parts ← exceptPartsWithLets exceptResult.fst
                 let lets := parts.fst
                 let tag := parts.snd.fst
                 let errorPayload := parts.snd.snd.fst
@@ -2341,7 +2363,7 @@ mutual
                   | none => .error "unsupported Except.bind function"
                 let bindResult ←
                   extractValueFrom ctx (.value okPayload :: locals) exceptResult.snd bindBody
-                let bindParts ← sumPartsWithLets bindResult.fst
+                let bindParts ← exceptPartsWithLets bindResult.fst
                 let bindLets := bindParts.fst
                 let bindTag := wrapExprLets bindLets bindParts.snd.fst
                 let bindError := wrapValueLets bindLets bindParts.snd.snd.fst
@@ -2350,7 +2372,7 @@ mutual
                 let isError := .eqU64 tag (.u64 0)
                 .ok
                   (wrapValueLets lets
-                    (.sum
+                    (mkExceptValue
                       (.ite isError (.u64 0) bindTag)
                       (← valueIte isError errorPayload bindError)
                       (← valueIte isError defaultOk bindOk)),
@@ -2360,7 +2382,7 @@ mutual
             match args.reverse, exceptPayloadType? ctx.env args with
             | exceptValue :: _, some _payloadTy =>
                 let exceptResult ← extractValueFrom ctx locals nextLocal exceptValue
-                let parts ← sumPartsWithLets exceptResult.fst
+                let parts ← exceptPartsWithLets exceptResult.fst
                 .ok
                   (wrapValueLets parts.fst
                     (.option parts.snd.fst parts.snd.snd.snd),
@@ -2774,7 +2796,7 @@ mutual
       (scrutinee errorArm okArm : Expr) :
       Except String (ExtractedValue × Nat) := do
     let scrutineeResult ← extractValueFrom ctx locals nextLocal scrutinee
-    let parts ← sumPartsWithLets scrutineeResult.fst
+    let parts ← exceptPartsWithLets scrutineeResult.fst
     let lets := parts.fst
     let tag := parts.snd.fst
     let errorPayload := parts.snd.snd.fst
@@ -2803,7 +2825,7 @@ mutual
       (exceptValue fallback : Expr) :
       Except String (ExtractedValue × Nat) := do
     let exceptResult ← extractValueFrom ctx locals nextLocal exceptValue
-    let parts ← sumPartsWithLets exceptResult.fst
+    let parts ← exceptPartsWithLets exceptResult.fst
     let lets := parts.fst
     let tag := parts.snd.fst
     let errorPayload := parts.snd.snd.fst
@@ -2814,7 +2836,7 @@ mutual
       | none => .error "unsupported Except fallback"
     let fallbackResult ←
       extractValueFrom ctx (.value (.scalar (.u64 0)) :: locals) exceptResult.snd fallbackBody
-    let fallbackParts ← sumPartsWithLets fallbackResult.fst
+    let fallbackParts ← exceptPartsWithLets fallbackResult.fst
     let fallbackLets := fallbackParts.fst
     let fallbackTag := wrapExprLets fallbackLets fallbackParts.snd.fst
     let fallbackError := wrapValueLets fallbackLets fallbackParts.snd.snd.fst
@@ -2822,7 +2844,7 @@ mutual
     let isError := .eqU64 tag (.u64 0)
     .ok
       (wrapValueLets lets
-        (.sum
+        (mkExceptValue
           (.ite isError fallbackTag tag)
           (← valueIte isError fallbackError errorPayload)
           (← valueIte isError fallbackOk okPayload)),
@@ -2835,7 +2857,7 @@ mutual
       (exceptValue : Expr) :
       Except String (IRExpr × Nat) := do
     let exceptResult ← extractValueFrom ctx locals nextLocal exceptValue
-    let parts ← sumPartsWithLets exceptResult.fst
+    let parts ← exceptPartsWithLets exceptResult.fst
     .ok (wrapExprLets parts.fst parts.snd.fst, exceptResult.snd)
 
   partial def extractOptionOrElseValueFrom

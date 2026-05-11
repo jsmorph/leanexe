@@ -1650,3 +1650,15 @@ Checks run:
 - [x] `node test/report_classification.js` returned `checked 31 report classification cases`.
 - [x] `node test/core_correctness.js` returned `checked 312 accepted, 23 rejected, and 7 trapped cases`.
 - [x] `node test/run_all.js` returned `checked 31 report classification cases`, `checked 312 accepted, 23 rejected, and 7 trapped cases`, `checked 36 bytearray allocation cases`, and `checked 56 cases`.
+
+## 2026-05-11: Source-identified Except
+
+`Except` now uses the `Ty.variant` path internally instead of the previous anonymous `sum` shape.  This separates `Except Unit α` from `Option α`, removing the old ambiguity where both types looked like `Unit ⊕ α` inside the extractor.  The public ABI still rejects `Except` parameters and results; this change only affects internal values, helper parameters, helper results, pattern matching, mapping, binding, conversion to `Option`, tag tests, and fallback.
+
+Checks run:
+
+- [x] `lake build`
+- [x] `lake build LeanExe.Examples.Correctness`
+- [x] `node test/report_classification.js` returned `checked 31 report classification cases`.
+- [x] `node test/core_correctness.js` returned `checked 315 accepted, 22 rejected, and 7 trapped cases`.
+- [x] `node test/run_all.js` returned `checked 31 report classification cases`, `checked 315 accepted, 22 rejected, and 7 trapped cases`, `checked 36 bytearray allocation cases`, and `checked 56 cases`.
