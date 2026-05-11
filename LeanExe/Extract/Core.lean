@@ -4701,8 +4701,6 @@ def extractNatRecFunc
     (resultTy : Ty)
     (value : Expr)
     (exportName : Option String) : Except String IRFunc := do
-  if abiSlots resultTy != 1 then
-    .error "structured results are not supported for recursive functions"
   let sourceParamCount := params.length
   let wasmParamCount := abiParamCount params
   let spec ←
@@ -4726,12 +4724,12 @@ def extractNatRecFunc
   let exitResult? ←
     match spec.exitValue? with
     | some exitExpr =>
-        let extracted ← extractExpr ctx stepLocals condResult.snd exitExpr
+        let extracted ← extractValueFrom ctx stepLocals condResult.snd exitExpr
         .ok (some extracted.fst, extracted.snd)
     | none => .ok (none, condResult.snd)
   let carriedParams := params.drop 1
   let recArgsResult ← extractCallArgsFrom ctx stepLocals exitResult?.snd carriedParams spec.recArgs
-  let baseResult ← extractExpr ctx baseLocals recArgsResult.snd spec.base
+  let baseResult ← extractValueFrom ctx baseLocals recArgsResult.snd spec.base
   let loopCond := condResult.fst
   let recIRArgs := recArgsResult.fst
   let targets := (abiTargets params |>.drop 1).flatMap Prod.snd
@@ -4739,17 +4737,18 @@ def extractNatRecFunc
   let updateArgs := assignMany targets recIRArgs tempStart
   let decFuel : IRStmt := .assign 0 (.u64Bin .sub (.local 0) (.u64 1))
   let loopBody : IRStmt := .seq updateArgs decFuel
-  let result :=
+  let resultValue ←
     match exitResult?.fst with
-    | some exitValue => .ite fuelLive exitValue baseResult.fst
-    | none => baseResult.fst
+    | some exitValue => valueIte fuelLive exitValue baseResult.fst
+    | none => .ok baseResult.fst
+  let results ← flattenAbiValue resultTy resultValue
   .ok {
     sourceName := name,
     exportName := exportName,
     params := wasmParamCount,
     locals := tempStart + targets.length,
     body := .while loopCond loopBody,
-    results := [result]
+    results := results
   }
 
 def extractPlainFunc
