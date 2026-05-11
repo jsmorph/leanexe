@@ -2799,6 +2799,31 @@ mutual
                     .ok (value, arrayResult.snd)
                 | none => .error "unsupported Array.back item type"
             | _, _ => .error "unsupported Array.back application"
+        | (.const ``Array.getD _, args) =>
+            match args, args.reverse with
+            | itemTy :: _, defaultValue :: index :: array :: _ =>
+                match typeAtom? ctx.env itemTy with
+                | some itemTy =>
+                    match arrayElementSlots? itemTy with
+                    | some _width =>
+                        let arrayResult ← extractExprFrom ctx locals nextLocal array
+                        let indexResult ← extractExprFrom ctx locals arrayResult.snd index
+                        let arraySlot := indexResult.snd
+                        let indexSlot := arraySlot + 1
+                        let defaultResult ← extractValueFrom ctx locals (indexSlot + 1) defaultValue
+                        let loaded ← arrayLoadValue itemTy (.local arraySlot) (.local indexSlot)
+                        let selected ←
+                          valueIte
+                            (.ltU64 (.local indexSlot) (.arraySize (.local arraySlot)))
+                            loaded
+                            defaultResult.fst
+                        .ok
+                          (.letE arraySlot arrayResult.fst
+                            (.letE indexSlot indexResult.fst selected),
+                            defaultResult.snd)
+                    | none => .error s!"unsupported Array.getD item type: {reprStr itemTy}"
+                | none => .error "unsupported Array.getD item type"
+            | _, _ => .error "unsupported Array.getD application"
         | (.const ``ByteArray.extract _, args) =>
             match args with
             | [array, start, stop] =>
@@ -3650,29 +3675,33 @@ mutual
                     .ok (.arrayAppendSlots width leftResult.fst rightResult.fst, rightResult.snd)
                 | _, _ => .error "unsupported HAppend.hAppend application"
             | (.const ``Array.modify _, args) =>
-                match args.reverse with
-                | modifyFn :: index :: array :: _ =>
-                    let arrayResult ← extractExprFrom ctx locals nextLocal array
-                    let indexResult ← extractExprFrom ctx locals arrayResult.snd index
-                    let arraySlot := indexResult.snd
-                    let indexSlot := arraySlot + 1
-                    let oldValue :=
-                      .scalar (.arrayGet (.local arraySlot) (.local indexSlot))
-                    let modifyBody ←
-                      match collectLambdas modifyFn 1 with
-                      | some body => .ok body
-                      | none => .error "unsupported Array.modify function"
-                    let modifiedResult ←
-                      extractExprFrom ctx (.value oldValue :: locals) (indexSlot + 1) modifyBody
-                    let inBounds := .ltU64 (.local indexSlot) (.arraySize (.local arraySlot))
-                    let modifiedArray :=
-                      .arraySet (.local arraySlot) (.local indexSlot) modifiedResult.fst
-                    .ok
-                      (.letE arraySlot arrayResult.fst
-                        (.letE indexSlot indexResult.fst
-                          (.ite inBounds modifiedArray (.local arraySlot))),
-                        modifiedResult.snd)
-                | _ => .error "unsupported Array.modify application"
+                match args, args.reverse with
+                | itemTy :: _, modifyFn :: index :: array :: _ =>
+                    match typeAtom? ctx.env itemTy with
+                    | some itemTy =>
+                        let width ← arrayElementWidth "Array.modify" itemTy
+                        let arrayResult ← extractExprFrom ctx locals nextLocal array
+                        let indexResult ← extractExprFrom ctx locals arrayResult.snd index
+                        let arraySlot := indexResult.snd
+                        let indexSlot := arraySlot + 1
+                        let oldValue ← arrayLoadValue itemTy (.local arraySlot) (.local indexSlot)
+                        let modifyBody ←
+                          match collectLambdas modifyFn 1 with
+                          | some body => .ok body
+                          | none => .error "unsupported Array.modify function"
+                        let modifiedResult ←
+                          extractValueFrom ctx (.value oldValue :: locals) (indexSlot + 1) modifyBody
+                        let slots ← flattenArrayElementValue itemTy modifiedResult.fst
+                        let inBounds := .ltU64 (.local indexSlot) (.arraySize (.local arraySlot))
+                        let modifiedArray :=
+                          .arraySetSlots width (.local arraySlot) (.local indexSlot) slots
+                        .ok
+                          (.letE arraySlot arrayResult.fst
+                            (.letE indexSlot indexResult.fst
+                              (.ite inBounds modifiedArray (.local arraySlot))),
+                            modifiedResult.snd)
+                    | none => .error "unsupported Array.modify item type"
+                | _, _ => .error "unsupported Array.modify application"
             | (.const ``Array.extract _, args) =>
                 match args, args.reverse with
                 | itemTy :: _, stop :: start :: array :: _ =>
@@ -3804,22 +3833,10 @@ mutual
                       .arrayGet (.local slot) (.u64Bin .sub (.arraySize (.local slot)) (.u64 1))
                     .ok (.letE slot arrayResult.fst value, slot + 1)
                 | _ => .error "unsupported Array.back application"
-            | (.const ``Array.getD _, args) =>
-                match args.reverse with
-                | defaultValue :: index :: array :: _ =>
-                    let arrayResult ← extractExprFrom ctx locals nextLocal array
-                    let indexResult ← extractExprFrom ctx locals arrayResult.snd index
-                    let arraySlot := indexResult.snd
-                    let indexSlot := arraySlot + 1
-                    let defaultResult ← extractExprFrom ctx locals (indexSlot + 1) defaultValue
-                    let value :=
-                      .ite
-                        (.ltU64 (.local indexSlot) (.arraySize (.local arraySlot)))
-                        (.arrayGet (.local arraySlot) (.local indexSlot))
-                        defaultResult.fst
-                    .ok (.letE arraySlot arrayResult.fst (.letE indexSlot indexResult.fst value),
-                      defaultResult.snd)
-                | _ => .error "unsupported Array.getD application"
+            | (.const ``Array.getD _, _) =>
+                let valueResult ← extractValueFrom ctx locals nextLocal expr
+                let scalar ← scalarValue valueResult.fst
+                .ok (scalar, valueResult.snd)
             | (.const ``Array.set _, args) =>
                 match args, args.reverse with
                 | itemTy :: _, _proof :: value :: index :: array :: _ =>
