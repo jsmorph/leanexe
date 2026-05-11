@@ -1012,6 +1012,44 @@ def arrayLoadValue
   let loaded ← arrayLoadValueAt width array index itemTy 0
   .ok loaded.fst
 
+mutual
+  partial def arrayLocalValueAt (start : Nat) :
+      Ty → Nat → Except String (ExtractedValue × Nat)
+    | .bool, slot => .ok (.scalar (.local (start + slot)), slot + 1)
+    | .u8, slot => .ok (.scalar (.local (start + slot)), slot + 1)
+    | .u32, slot => .ok (.scalar (.local (start + slot)), slot + 1)
+    | .u64, slot => .ok (.scalar (.local (start + slot)), slot + 1)
+    | .nat, slot => .ok (.scalar (.local (start + slot)), slot + 1)
+    | .struct name fields, slot => do
+        let result ← arrayLocalFieldsAt start fields slot
+        .ok (.struct name result.fst, result.snd)
+    | .variant name ctors, slot => do
+        let tag := .local (start + slot)
+        let result ← arrayLocalCtorsAt start ctors (slot + 1)
+        .ok (.variant name tag result.fst, result.snd)
+    | other, _ => .error s!"unsupported array local element type: {reprStr other}"
+
+  partial def arrayLocalFieldsAt (start : Nat) :
+      List Ty → Nat → Except String (List ExtractedValue × Nat)
+    | [], slot => .ok ([], slot)
+    | field :: rest, slot => do
+        let head ← arrayLocalValueAt start field slot
+        let tail ← arrayLocalFieldsAt start rest head.snd
+        .ok (head.fst :: tail.fst, tail.snd)
+
+  partial def arrayLocalCtorsAt (start : Nat) :
+      List (List Ty) → Nat → Except String (List (List ExtractedValue) × Nat)
+    | [], slot => .ok ([], slot)
+    | fields :: rest, slot => do
+        let head ← arrayLocalFieldsAt start fields slot
+        let tail ← arrayLocalCtorsAt start rest head.snd
+        .ok (head.fst :: tail.fst, tail.snd)
+end
+
+def arrayLocalValue (itemTy : Ty) (start : Nat) : Except String ExtractedValue := do
+  let loaded ← arrayLocalValueAt start itemTy 0
+  .ok loaded.fst
+
 def arrayElementWidth (context : String) (itemTy : Ty) : Except String Nat :=
   match arrayElementSlots? itemTy with
   | some width => .ok width
@@ -3723,17 +3761,28 @@ mutual
                 | sourceTy :: resultTy :: _, array :: mapFn :: _ =>
                     match typeAtom? ctx.env sourceTy, typeAtom? ctx.env resultTy with
                     | some source, some result =>
-                      if supportedArrayCellType source && supportedArrayCellType result then
+                      match arrayElementSlots? source, arrayElementSlots? result with
+                      | some sourceWidth, some resultWidth =>
                         let arrayResult ← extractExprFrom ctx locals nextLocal array
-                        let itemSlot := arrayResult.snd
+                        let itemStart := arrayResult.snd
                         let mapBody ←
                           match collectLambdas mapFn 1 with
                           | some body => .ok body
                           | none => .error "unsupported Array.map function"
+                        let itemValue ← arrayLocalValue source itemStart
                         let bodyResult ←
-                          extractExprFrom ctx (.slot itemSlot :: locals) (itemSlot + 1) mapBody
-                        .ok (.arrayMap arrayResult.fst itemSlot bodyResult.fst, bodyResult.snd)
-                      else
+                          extractValueFrom ctx (.value itemValue :: locals)
+                            (itemStart + sourceWidth) mapBody
+                        let bodySlots ← flattenArrayElementValue result bodyResult.fst
+                        .ok
+                          (.arrayMapSlots
+                            sourceWidth
+                            resultWidth
+                            arrayResult.fst
+                            itemStart
+                            bodySlots,
+                            bodyResult.snd)
+                      | _, _ =>
                         .error s!"unsupported Array.map item types: {reprStr source}, {reprStr result}"
                     | _, _ => .error "unsupported Array.map item types"
                 | _, _ => .error "unsupported Array.map application"

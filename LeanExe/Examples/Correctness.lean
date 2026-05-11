@@ -970,6 +970,22 @@ def arrayStructureReplicateRead : UInt64 :=
   else
     0
 
+def arrayStructureMapRead : UInt64 :=
+  let a : Array Point := #[({ x := 1, y := 2 } : Point), ({ x := 3, y := 4 } : Point)]
+  let b := a.map (fun point => ({ x := point.x + point.y, y := point.y + 1 } : Point))
+  match b[0]? with
+  | none => 0
+  | some first =>
+      match b[1]? with
+      | none => 0
+      | some second =>
+          first.x * (1000 : UInt64) + first.y * (100 : UInt64) +
+            second.x * (10 : UInt64) + second.y
+
+def arrayStructureMapEmptySkipsFunctionTrap : Nat :=
+  ((#[] : Array Point).map
+    (fun _point => ({ x := (Array.replicate 0 (0 : UInt64)).back!, y := 9 } : Point))).size
+
 def arrayStructureSafeGet : UInt64 :=
   match (#[({ x := 4, y := 5 } : Point)] : Array Point)[0]? with
   | none => 99
@@ -1008,6 +1024,17 @@ def arrayStatusReplicateMatch : UInt64 :=
   let a := Array.replicate 2 (Status.error 7)
   let left := Option.elim a[0]? 0 (fun status => statusLeftScore status)
   let right := Option.elim a[1]? 0 (fun status => statusRightScore status)
+  left * (10 : UInt64) + right
+
+def arrayStatusMapMatch : UInt64 :=
+  let a : Array Status := #[Status.ok 5, Status.error 7]
+  let b :=
+    a.map (fun status =>
+      match status with
+      | Status.ok value => Status.error (value + 1)
+      | Status.error code => Status.ok (code + 1))
+  let left := Option.elim b[0]? 0 (fun status => statusLeftScore status)
+  let right := Option.elim b[1]? 0 (fun status => statusRightScore status)
   left * (10 : UInt64) + right
 
 def arrayOptionLiteralMatch : UInt64 :=
