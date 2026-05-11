@@ -190,6 +190,10 @@ const accepted = [
   { name: "arrayNatRead", args: [], expected: 103n },
   { name: "arrayStructureLiteralRead", args: [], expected: 1234n },
   { name: "arrayStructureSetRead", args: [], expected: 98n },
+  { name: "arrayStructurePushRead", args: [], expected: 34n },
+  { name: "arrayStructurePopRead", args: [], expected: 12n },
+  { name: "arrayStructureAppendRead", args: [], expected: 1234n },
+  { name: "arrayStructureExtractRead", args: [], expected: 3456n },
   { name: "arrayStructureSafeGet", args: [], expected: 45n },
   { name: "arrayStatusLiteralMatch", args: [], expected: 57n },
   { name: "arrayOptionLiteralMatch", args: [], expected: 57n },
@@ -390,10 +394,6 @@ const rejected = [
   {
     name: "rejectNestedArrayReturn",
     message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectNestedArrayReturn",
-  },
-  {
-    name: "rejectStructureArrayAppend",
-    message: "unsupported Array.append item type: LeanExe.IR.Ty.struct",
   },
   {
     name: "rejectUInt8Param",

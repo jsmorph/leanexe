@@ -58,9 +58,13 @@ mutual
     | arraySet (array index value : Expr)
     | arraySetSlots (width : Nat) (array index : Expr) (values : List Expr)
     | arrayPush (array value : Expr)
+    | arrayPushSlots (width : Nat) (array : Expr) (values : List Expr)
     | arrayPop (array : Expr)
+    | arrayPopSlots (width : Nat) (array : Expr)
     | arrayAppend (left right : Expr)
+    | arrayAppendSlots (width : Nat) (left right : Expr)
     | arrayExtract (array start stop : Expr)
+    | arrayExtractSlots (width : Nat) (array start stop : Expr)
     | arrayMap (array : Expr) (itemSlot : Nat) (body : Expr)
     | arrayInsertIfInBounds (array index value : Expr)
     | arrayEraseIfInBounds (array index : Expr)
@@ -149,9 +153,13 @@ mutual
     | .arraySet array _ _ => array.eval module_ store
     | .arraySetSlots _ array _ _ => array.eval module_ store
     | .arrayPush array _ => array.eval module_ store
+    | .arrayPushSlots _ array _ => array.eval module_ store
     | .arrayPop array => array.eval module_ store
+    | .arrayPopSlots _ array => array.eval module_ store
     | .arrayAppend left _ => left.eval module_ store
+    | .arrayAppendSlots _ left _ => left.eval module_ store
     | .arrayExtract array _ _ => array.eval module_ store
+    | .arrayExtractSlots _ array _ _ => array.eval module_ store
     | .arrayMap array _ _ => array.eval module_ store
     | .arrayInsertIfInBounds array _ _ => array.eval module_ store
     | .arrayEraseIfInBounds array _ => array.eval module_ store

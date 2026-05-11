@@ -806,6 +806,46 @@ def arrayStructureSetRead : UInt64 :=
   | some point => point.x * (10 : UInt64) + point.y
   | none => 0
 
+def arrayStructurePushRead : UInt64 :=
+  let a : Array Point := #[({ x := 1, y := 2 } : Point)]
+  let b := a.push ({ x := 3, y := 4 } : Point)
+  match b[1]? with
+  | some point => point.x * (10 : UInt64) + point.y
+  | none => 0
+
+def arrayStructurePopRead : UInt64 :=
+  let a : Array Point := #[({ x := 1, y := 2 } : Point), ({ x := 3, y := 4 } : Point)]
+  let b := a.pop
+  match b[0]? with
+  | some point => point.x * (10 : UInt64) + point.y
+  | none => 0
+
+def arrayStructureAppendRead : UInt64 :=
+  let left : Array Point := #[({ x := 1, y := 2 } : Point)]
+  let right : Array Point := #[({ x := 3, y := 4 } : Point)]
+  let both := left.append right
+  match both[0]? with
+  | none => 0
+  | some first =>
+      match both[1]? with
+      | none => 0
+      | some second =>
+          first.x * (1000 : UInt64) + first.y * (100 : UInt64) +
+            second.x * (10 : UInt64) + second.y
+
+def arrayStructureExtractRead : UInt64 :=
+  let a : Array Point :=
+    #[({ x := 1, y := 2 } : Point), ({ x := 3, y := 4 } : Point), ({ x := 5, y := 6 } : Point)]
+  let b := a.extract 1 3
+  match b[0]? with
+  | none => 0
+  | some first =>
+      match b[1]? with
+      | none => 0
+      | some second =>
+          first.x * (1000 : UInt64) + first.y * (100 : UInt64) +
+            second.x * (10 : UInt64) + second.y
+
 def arrayStructureSafeGet : UInt64 :=
   match (#[({ x := 4, y := 5 } : Point)] : Array Point)[0]? with
   | none => 99
@@ -1586,11 +1626,6 @@ def rejectByteArrayReturn (input : ByteArray) : ByteArray :=
 
 def rejectNestedArrayReturn : Array (Array UInt64) :=
   #[#[1, 2]]
-
-def rejectStructureArrayAppend : Nat :=
-  let left : Array Point := #[({ x := 1, y := 2 } : Point)]
-  let right : Array Point := #[({ x := 3, y := 4 } : Point)]
-  (left.append right).size
 
 def rejectUInt8Param (b : UInt8) : Bool :=
   b == (0 : UInt8)
