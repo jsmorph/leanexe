@@ -25,11 +25,8 @@ def parseObject (text : AsciiString) : Option UInt64 :=
                   else
                     none
 
-def lengthPrefix : ByteArray :=
-  "{\"length\":".toUTF8
-
 def resultJson (n : UInt64) : ByteArray :=
-  (Ascii.appendUInt64Decimal lengthPrefix n).push Ascii.byteRBrace
+  Ascii.Json.object1UInt64 "length".toUTF8 n
 
 def transformAscii (text : AsciiString) : ByteArray :=
   match parseObject text with
