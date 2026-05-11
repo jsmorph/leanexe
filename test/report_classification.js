@@ -45,13 +45,28 @@ const cases = [
   },
   {
     moduleName: "LeanExe.Examples.Correctness",
+    entryName: "LeanExe.Examples.Correctness.structureParam",
+    shape: "entry shape: LeanExe.Examples.Correctness.Point -> UInt64",
+  },
+  {
+    moduleName: "LeanExe.Examples.Correctness",
     entryName: "LeanExe.Examples.Correctness.proofStructureReturn",
     shape: "entry shape: LeanExe.Examples.Correctness.CheckedPoint",
   },
   {
     moduleName: "LeanExe.Examples.Correctness",
+    entryName: "LeanExe.Examples.Correctness.proofStructureParam",
+    shape: "entry shape: LeanExe.Examples.Correctness.CheckedPoint -> UInt64",
+  },
+  {
+    moduleName: "LeanExe.Examples.Correctness",
     entryName: "LeanExe.Examples.Correctness.statusBranchReturn",
     shape: "entry shape: UInt64 -> LeanExe.Examples.Correctness.Status",
+  },
+  {
+    moduleName: "LeanExe.Examples.Correctness",
+    entryName: "LeanExe.Examples.Correctness.statusParam",
+    shape: "entry shape: LeanExe.Examples.Correctness.Status -> UInt64",
   },
   {
     moduleName: "LeanExe.Examples.Correctness",
@@ -65,8 +80,18 @@ const cases = [
   },
   {
     moduleName: "LeanExe.Examples.Correctness",
+    entryName: "LeanExe.Examples.Correctness.optionParam",
+    shape: "entry shape: Option UInt64 -> UInt64",
+  },
+  {
+    moduleName: "LeanExe.Examples.Correctness",
     entryName: "LeanExe.Examples.Correctness.exceptReturn",
     shape: "entry shape: UInt64 -> Except UInt64 UInt64",
+  },
+  {
+    moduleName: "LeanExe.Examples.Correctness",
+    entryName: "LeanExe.Examples.Correctness.exceptParam",
+    shape: "entry shape: Except UInt64 UInt64 -> UInt64",
   },
   {
     moduleName: "LeanExe.Examples.Correctness",

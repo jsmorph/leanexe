@@ -128,6 +128,10 @@ partial def hasFunctionDomain (expr : Expr) : Bool :=
   | .proj _ _ body => hasFunctionDomain body
   | _ => false
 
+def localCasesOnTypeName? : Name → Option Name
+  | .str typeName component => if component == "casesOn" then some typeName else none
+  | _ => none
+
 def effectRoots : List String :=
   ["IO", "EIO", "BaseIO", "Task"]
 
@@ -276,6 +280,11 @@ def classifyLocal (env : Environment) (info : ConstantInfo) : Classification :=
           | _ => false
       | _ => false then
     { status := "implemented", reason := "source-identified user inductive recursor" }
+  else if
+      match localCasesOnTypeName? info.name with
+      | some typeName => LeanExe.Extract.Core.variantLayout? env typeName |>.isSome
+      | none => false then
+    { status := "implemented", reason := "source-identified user inductive casesOn helper" }
   else if info.isUnsafe then
     { status := "rejected", reason := "unsafe declaration" }
   else if info.isPartial then

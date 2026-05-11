@@ -359,8 +359,10 @@ def supportedAbiType : Ty → Bool
   | .array .u64 => true
   | _ => false
 
-def supportedParamAbiType : Ty → Bool
+partial def supportedParamAbiType : Ty → Bool
   | .byteArray => true
+  | .struct _ fields => fields.all supportedParamAbiType
+  | .variant _ ctors => ctors.all (fun fields => fields.all supportedParamAbiType)
   | ty => supportedAbiType ty
 
 partial def supportedResultAbiType : Ty → Bool

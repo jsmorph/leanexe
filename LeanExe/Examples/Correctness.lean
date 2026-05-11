@@ -330,8 +330,11 @@ def proofStructureMatch : UInt64 :=
   match ({ value := 8, ok := rfl } : CheckedPoint) with
   | { value, ok := _ } => value
 
-def rejectStructureParam (point : Point) : UInt64 :=
-  point.x
+def structureParam (point : Point) : UInt64 :=
+  point.x * 10 + point.y
+
+def proofStructureParam (point : CheckedPoint) : UInt64 :=
+  point.value + 1
 
 inductive Status where
   | ok : UInt64 -> Status
@@ -411,10 +414,10 @@ def checkedStatusMatch : UInt64 :=
 def checkedStatusReturn : CheckedStatus :=
   CheckedStatus.checked 9 rfl
 
-def rejectInductiveParam (status : Status) : UInt64 :=
+def statusParam (status : Status) : UInt64 :=
   match status with
-  | .ok value => value
-  | .error code => code
+  | .ok value => value + 10
+  | .error code => code + 20
 
 def unitArgHelper (_value : Unit) : UInt64 :=
   11
@@ -1441,10 +1444,15 @@ def optionPointReturn (flag : UInt64) : Option Point :=
   else
     some { x := flag, y := flag + 1 }
 
-def rejectOptionParam (value : Option UInt64) : UInt64 :=
+def optionParam (value : Option UInt64) : UInt64 :=
   match value with
   | none => 0
   | some item => item
+
+def optionPointParam (value : Option Point) : UInt64 :=
+  match value with
+  | none => 0
+  | some point => point.x + point.y
 
 def exceptReturn (flag : UInt64) : Except UInt64 UInt64 :=
   if flag == 0 then
@@ -1458,7 +1466,7 @@ def exceptPointReturn (flag : UInt64) : Except UInt64 Point :=
   else
     Except.ok { x := flag, y := flag + 1 }
 
-def rejectExceptParam (value : Except UInt64 UInt64) : UInt64 :=
+def exceptParam (value : Except UInt64 UInt64) : UInt64 :=
   match value with
   | Except.error code => code
   | Except.ok item => item
