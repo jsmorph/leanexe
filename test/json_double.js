@@ -52,6 +52,18 @@ async function instantiateScalar(moduleName, entry) {
   return { memory, alloc, reset, fn };
 }
 
+function checkWatSize(moduleName, entry, maxBytes) {
+  fs.mkdirSync(outDir, { recursive: true });
+  const parts = moduleName.split(".");
+  const out = path.join(outDir, `${parts[parts.length - 1]}-${entry}.wat`);
+  const entryName = `${moduleName}.${entry}`;
+  run([leanExe, "compile-wat", "--module", moduleName, "--entry", entryName, "--out", out]);
+  const size = fs.statSync(out).size;
+  if (size > maxBytes) {
+    throw new Error(`${out} is ${size} bytes, expected at most ${maxBytes}`);
+  }
+}
+
 function bytes(text) {
   return new TextEncoder().encode(text);
 }
@@ -109,6 +121,7 @@ async function main() {
   run(["lake", "build", addModule]);
   run(["lake", "build", collatzModule]);
   run(["lake", "build", toolsModule]);
+  checkWatSize(collatzModule, "transform", 1_000_000);
   const doubleExports = await instantiate(doubleModule);
   const addExports = await instantiate(addModule);
   const collatzExports = await instantiate(collatzModule);
@@ -163,7 +176,8 @@ async function main() {
   const toolsCases = [
     ["tools simple", bytes('{"n":41}'), bytes('{"value":42}')],
     ["tools whitespace", bytes(' { "n" : 7 } '), bytes('{"value":8}')],
-    ["tools transform rejects skipped field", bytes('{"skip":0,"n":4}'), error],
+    ["tools transform skips field", bytes('{"skip":0,"n":4}'), bytes('{"value":5}')],
+    ["tools transform skips nested object", bytes('{"skip":{"x":[1,2]},"n":4}'), bytes('{"value":5}')],
     ["tools wrong type", bytes('{"n":"4"}'), error],
     ["tools missing key", bytes('{"m":4}'), error],
     ["tools parse overflow", bytes('{"n":18446744073709551616}'), error],

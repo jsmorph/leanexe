@@ -342,6 +342,9 @@ def proofStructureMatch : UInt64 :=
 def structureParam (point : Point) : UInt64 :=
   point.x * 10 + point.y
 
+def structureCallArgMaterialized : UInt64 :=
+  structureParam (makePointHelper 7)
+
 def proofStructureParam (point : CheckedPoint) : UInt64 :=
   point.value + 1
 
@@ -1074,6 +1077,12 @@ def arrayStructurePushRead : UInt64 :=
   | some point => point.x * (10 : UInt64) + point.y
   | none => 0
 
+def arrayStructurePushHelperRead : UInt64 :=
+  let a := (#[] : Array Point).push (makePointHelper 7)
+  match a[0]? with
+  | some point => structureParam point
+  | none => 0
+
 def arrayStructurePopRead : UInt64 :=
   let a : Array Point := #[({ x := 1, y := 2 } : Point), ({ x := 3, y := 4 } : Point)]
   let b := a.pop
@@ -1257,6 +1266,11 @@ def arrayStructureSafeGet : UInt64 :=
   match (#[({ x := 4, y := 5 } : Point)] : Array Point)[0]? with
   | none => 99
   | some point => point.x * (10 : UInt64) + point.y
+
+def arrayStructureSafeNoneSkipsPayloadTrap : UInt64 :=
+  match (#[] : Array Point)[0]? with
+  | none => 7
+  | some point => point.x + point.y
 
 def arrayStatusLiteralMatch : UInt64 :=
   let a : Array Status := #[Status.ok 5, Status.error 7]
@@ -2158,6 +2172,12 @@ def byteArrayStringLiteralReturn : ByteArray :=
 
 def byteArrayStringLiteralSize : Nat :=
   "ABC".toUTF8.size
+
+def byteArrayBranchHelperReturn (flag : UInt64) : ByteArray :=
+  if flag == 0 then
+    byteArrayReturnABC
+  else
+    "Z".toUTF8
 
 def byteArrayMkSizeForcesArrayTrap : Nat :=
   (ByteArray.mk #[(Array.replicate 0 (0 : UInt8))[0]!]).size

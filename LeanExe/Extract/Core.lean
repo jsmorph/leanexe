@@ -41,6 +41,18 @@ inductive ValueLet where
   | call (slots : List Nat) (index : Nat) (args : List IRExpr)
   deriving BEq, Repr
 
+structure MaterializedSlots where
+  lets : List ValueLet
+  slots : List IRExpr
+  nextLocal : Nat
+  deriving BEq, Repr
+
+structure MaterializedArgs where
+  lets : List ValueLet
+  args : List IRExpr
+  nextLocal : Nat
+  deriving BEq, Repr
+
 inductive Binding where
   | slot (index : Nat)
   | value (value : ExtractedValue)
@@ -924,6 +936,10 @@ def wrapExprLets (lets : List ValueLet) (expr : IRExpr) : IRExpr :=
       | .call slots index args => .letCall slots index args acc)
     expr
 
+def valueLetStmt : ValueLet → IRStmt
+  | .expr slot expr => .assign slot expr
+  | .call slots index args => .call slots index args
+
 partial def optionPartsWithLets (value : ExtractedValue) :
     Except String (List ValueLet × IRExpr × ExtractedValue) :=
   match value with
@@ -1675,6 +1691,10 @@ partial def flattenArrayElementValue
       | .letCall slots index args body => do
           let flattened ← flattenArrayElementValue ty body
           .ok (flattened.map (fun expr => .letCall slots index args expr))
+      | .ite cond thenValue elseValue => do
+          combineIteSlots cond
+            (← flattenArrayElementValue ty thenValue)
+            (← flattenArrayElementValue ty elseValue)
       | _ =>
           .error s!"non-recursive value used where recursive inductive array element is required: {name}"
   | .struct name fields =>
@@ -1692,6 +1712,10 @@ partial def flattenArrayElementValue
       | .letCall slots index args body => do
           let flattened ← flattenArrayElementValue ty body
           .ok (flattened.map (fun expr => .letCall slots index args expr))
+      | .ite cond thenValue elseValue => do
+          combineIteSlots cond
+            (← flattenArrayElementValue ty thenValue)
+            (← flattenArrayElementValue ty elseValue)
       | _ =>
           .error s!"non-structure value used where structure array element is required: {name}"
   | .variant name ctors =>
@@ -1714,8 +1738,41 @@ partial def flattenArrayElementValue
       | .letCall slots index args body => do
           let flattened ← flattenArrayElementValue ty body
           .ok (flattened.map (fun expr => .letCall slots index args expr))
+      | .ite cond thenValue elseValue => do
+          combineIteSlots cond
+            (← flattenArrayElementValue ty thenValue)
+            (← flattenArrayElementValue ty elseValue)
       | _ => .error s!"non-inductive value used where inductive array element is required: {name}"
   | other => .error s!"unsupported array element value type: {reprStr other}"
+
+partial def materializeSlotsWith
+    (flatten : ExtractedValue → Except String (List IRExpr))
+    (value : ExtractedValue)
+    (nextLocal : Nat) :
+    Except String MaterializedSlots := do
+  match value with
+  | .letE slot expr body => do
+      let result ← materializeSlotsWith flatten body nextLocal
+      .ok { result with lets := .expr slot expr :: result.lets }
+  | .letCall slots index args body => do
+      let result ← materializeSlotsWith flatten body nextLocal
+      .ok { result with lets := .call slots index args :: result.lets }
+  | _ =>
+      .ok { lets := [], slots := ← flatten value, nextLocal := nextLocal }
+
+def materializeInternalSlots
+    (ty : Ty)
+    (value : ExtractedValue)
+    (nextLocal : Nat) :
+    Except String MaterializedSlots :=
+  materializeSlotsWith (flattenInternalValue ty) value nextLocal
+
+def materializeArrayElementSlots
+    (ty : Ty)
+    (value : ExtractedValue)
+    (nextLocal : Nat) :
+    Except String MaterializedSlots :=
+  materializeSlotsWith (flattenArrayElementValue ty) value nextLocal
 
 mutual
   partial def arrayLoadValueAt
@@ -2490,6 +2547,14 @@ def enumerateAux {α : Type} : List α → Nat → List (Nat × α)
 
 def enumerate {α : Type} (items : List α) : List (Nat × α) :=
   enumerateAux items 0
+
+def bindSlotExprs (slots : List IRExpr) (nextLocal : Nat) : MaterializedSlots :=
+  let indexed := enumerate slots
+  {
+    lets := indexed.map fun item => .expr (nextLocal + item.fst) item.snd
+    slots := indexed.map fun item => .local (nextLocal + item.fst)
+    nextLocal := nextLocal + slots.length
+  }
 
 mutual
 partial def demandExpr
@@ -4703,10 +4768,13 @@ mutual
           | none => .error s!"declaration disappeared during extraction: {name}"
         let argsResult ← extractCallArgsFrom ctx locals nextLocal sig.params args
         let slotCount := abiSlots sig.result
-        let slotStart := argsResult.snd
+        let slotStart := argsResult.nextLocal
         let slots := (List.range slotCount).map (fun offset => slotStart + offset)
         let value := extractedValueForParam slotStart sig.result
-        .ok (some (.letCall slots index argsResult.fst value, slotStart + slotCount))
+        .ok
+          (some
+            (wrapValueLets argsResult.lets (.letCall slots index argsResult.args value),
+              slotStart + slotCount))
 
   partial def extractExprFrom
       (ctx : Context)
@@ -4869,9 +4937,17 @@ mutual
                           | [] => .ok (arrayExpr, next)
                           | item :: rest =>
                               let itemResult ← extractValueFrom ctx locals next item
-                              let slots ← flattenArrayElementValue itemTy itemResult.fst
-                              build (index + 1) itemResult.snd
-                                (.arraySetSlots width arrayExpr (.u64 index) slots)
+                              let itemSlots ←
+                                materializeArrayElementSlots itemTy itemResult.fst itemResult.snd
+                              let arraySlot := itemSlots.nextLocal
+                              build (index + 1) (arraySlot + 1)
+                                (.letE arraySlot arrayExpr
+                                  (wrapExprLets itemSlots.lets
+                                    (.arraySetSlots
+                                      width
+                                      (.local arraySlot)
+                                      (.u64 index)
+                                      itemSlots.slots)))
                                 rest
                         build 0 nextLocal (.arrayAllocSlots width (.u64 items.length)) items
                       | none => .error s!"unsupported List.toArray item type: {reprStr itemTy}"
@@ -4909,8 +4985,14 @@ mutual
                         let width ← arrayElementWidth "Array.push" itemTy
                         let arrayResult ← extractExprFrom ctx locals nextLocal array
                         let valueResult ← extractValueFrom ctx locals arrayResult.snd value
-                        let slots ← flattenArrayElementValue itemTy valueResult.fst
-                        .ok (.arrayPushSlots width arrayResult.fst slots, valueResult.snd)
+                        let slots ←
+                          materializeArrayElementSlots itemTy valueResult.fst valueResult.snd
+                        let arraySlot := slots.nextLocal
+                        .ok
+                          (.letE arraySlot arrayResult.fst
+                            (wrapExprLets slots.lets
+                              (.arrayPushSlots width (.local arraySlot) slots.slots)),
+                            arraySlot + 1)
                     | none => .error "unsupported Array.push item type"
                 | _, _ => .error "unsupported Array.push application"
             | (.const ``Array.pop _, args) =>
@@ -5002,14 +5084,20 @@ mutual
                         let arrayResult ← extractExprFrom ctx locals nextLocal array
                         let indexResult ← extractExprFrom ctx locals arrayResult.snd index
                         let valueResult ← extractValueFrom ctx locals indexResult.snd value
-                        let slots ← flattenArrayElementValue itemTy valueResult.fst
+                        let slots ←
+                          materializeArrayElementSlots itemTy valueResult.fst valueResult.snd
+                        let arraySlot := slots.nextLocal
+                        let indexSlot := arraySlot + 1
                         .ok
-                          (.arrayInsertIfInBoundsSlots
-                            width
-                            arrayResult.fst
-                            indexResult.fst
-                            slots,
-                            valueResult.snd)
+                          (.letE arraySlot arrayResult.fst
+                            (.letE indexSlot indexResult.fst
+                              (wrapExprLets slots.lets
+                                (.arrayInsertIfInBoundsSlots
+                                  width
+                                  (.local arraySlot)
+                                  (.local indexSlot)
+                                  slots.slots))),
+                            indexSlot + 1)
                     | none => .error "unsupported Array.insertIdx item type"
                 | _, _ => .error "unsupported Array.insertIdx application"
             | (.const ``Array.insertIdx! _, args) =>
@@ -5023,19 +5111,21 @@ mutual
                         let arraySlot := indexResult.snd
                         let indexSlot := arraySlot + 1
                         let valueResult ← extractValueFrom ctx locals (indexSlot + 1) value
-                        let slots ← flattenArrayElementValue itemTy valueResult.fst
+                        let slots ←
+                          materializeArrayElementSlots itemTy valueResult.fst valueResult.snd
                         let inserted :=
-                          .arrayInsertIfInBoundsSlots
-                            width
-                            (.local arraySlot)
-                            (.local indexSlot)
-                            slots
+                          wrapExprLets slots.lets
+                            (.arrayInsertIfInBoundsSlots
+                              width
+                              (.local arraySlot)
+                              (.local indexSlot)
+                              slots.slots)
                         let inBounds := .leU64 (.local indexSlot) (.arraySize (.local arraySlot))
                         .ok
                           (.letE arraySlot arrayResult.fst
                             (.letE indexSlot indexResult.fst
                               (.ite inBounds inserted .trap)),
-                            valueResult.snd)
+                            slots.nextLocal)
                     | none => .error "unsupported Array.insertIdx! item type"
                 | _, _ => .error "unsupported Array.insertIdx! application"
             | (.const ``Array.append _, args) =>
@@ -5358,10 +5448,16 @@ mutual
                     | some itemTy =>
                         let width ← arrayElementWidth "Array.singleton" itemTy
                         let valueResult ← extractValueFrom ctx locals nextLocal value
-                        let slots ← flattenArrayElementValue itemTy valueResult.fst
+                        let slots ←
+                          materializeArrayElementSlots itemTy valueResult.fst valueResult.snd
                         .ok
-                          (.arraySetSlots width (.arrayAllocSlots width (.u64 1)) (.u64 0) slots,
-                            valueResult.snd)
+                          (wrapExprLets slots.lets
+                            (.arraySetSlots
+                              width
+                              (.arrayAllocSlots width (.u64 1))
+                              (.u64 0)
+                              slots.slots),
+                            slots.nextLocal)
                     | none => .error "unsupported Array.singleton item type"
                 | _ => .error "unsupported Array.singleton application"
             | (.const ``Array.get!Internal _, args) =>
@@ -5437,10 +5533,20 @@ mutual
                         let arrayResult ← extractExprFrom ctx locals nextLocal array
                         let indexResult ← extractExprFrom ctx locals arrayResult.snd index
                         let valueResult ← extractValueFrom ctx locals indexResult.snd value
-                        let slots ← flattenArrayElementValue itemTy valueResult.fst
+                        let slots ←
+                          materializeArrayElementSlots itemTy valueResult.fst valueResult.snd
+                        let arraySlot := slots.nextLocal
+                        let indexSlot := arraySlot + 1
                         .ok
-                          (.arraySetSlots width arrayResult.fst indexResult.fst slots,
-                            valueResult.snd)
+                          (.letE arraySlot arrayResult.fst
+                            (.letE indexSlot indexResult.fst
+                              (wrapExprLets slots.lets
+                                (.arraySetSlots
+                                  width
+                                  (.local arraySlot)
+                                  (.local indexSlot)
+                                  slots.slots))),
+                            indexSlot + 1)
                       | none => .error s!"unsupported Array.set item type: {reprStr itemTy}"
                     | none => .error "unsupported Array.set item type"
                 | _, _ => .error "unsupported Array.set application"
@@ -5477,10 +5583,20 @@ mutual
                         let arrayResult ← extractExprFrom ctx locals nextLocal array
                         let indexResult ← extractExprFrom ctx locals arrayResult.snd index
                         let valueResult ← extractValueFrom ctx locals indexResult.snd value
-                        let slots ← flattenArrayElementValue itemTy valueResult.fst
+                        let slots ←
+                          materializeArrayElementSlots itemTy valueResult.fst valueResult.snd
+                        let arraySlot := slots.nextLocal
+                        let indexSlot := arraySlot + 1
                         .ok
-                          (.arraySetSlots width arrayResult.fst indexResult.fst slots,
-                            valueResult.snd)
+                          (.letE arraySlot arrayResult.fst
+                            (.letE indexSlot indexResult.fst
+                              (wrapExprLets slots.lets
+                                (.arraySetSlots
+                                  width
+                                  (.local arraySlot)
+                                  (.local indexSlot)
+                                  slots.slots))),
+                            indexSlot + 1)
                     | none => .error "unsupported Array.set! item type"
                 | _, _ => .error "unsupported Array.set! application"
             | (.const ``Array.eraseIdx! _, args) =>
@@ -5755,7 +5871,7 @@ mutual
                   | none => .error s!"unsupported function type or declaration: {primitive}"
               | none => .error s!"declaration disappeared during extraction: {primitive}"
             let argsResult ← extractCallArgsFrom ctx locals nextLocal sig.params args
-            .ok (.call index argsResult.fst, argsResult.snd)
+            .ok (wrapExprLets argsResult.lets (.call index argsResult.args), argsResult.nextLocal)
         | none =>
             if primitive == ``Complement.complement then
               match args.reverse with
@@ -6164,7 +6280,11 @@ mutual
                                               | none =>
                                                   .error s!"declaration disappeared during extraction: {name}"
                                             let argsResult ← extractCallArgsFrom ctx locals nextLocal sig.params args
-                                            .ok (boolCond (.call index argsResult.fst), argsResult.snd)
+                                            .ok
+                                              (boolCond
+                                                (wrapExprLets argsResult.lets
+                                                  (.call index argsResult.args)),
+                                                argsResult.nextLocal)
                                         | none => .error s!"unsupported condition: {expr}"
         | _ => .error s!"unsupported condition: {expr}"
 
@@ -6183,13 +6303,18 @@ mutual
       (ctx : Context)
       (locals : List Binding)
       (nextLocal : Nat) :
-      List Ty → List Expr → Except String (List IRExpr × Nat)
-    | [], [] => .ok ([], nextLocal)
+      List Ty → List Expr → Except String MaterializedArgs
+    | [], [] => .ok { lets := [], args := [], nextLocal := nextLocal }
     | ty :: restTys, expr :: restExprs => do
         let valueResult ← extractValueFrom ctx locals nextLocal expr
-        let head ← flattenInternalValue ty valueResult.fst
-        let rest ← extractCallArgsFrom ctx locals valueResult.snd restTys restExprs
-        .ok (head ++ rest.fst, rest.snd)
+        let head ← materializeInternalSlots ty valueResult.fst valueResult.snd
+        let bound := bindSlotExprs head.slots head.nextLocal
+        let rest ← extractCallArgsFrom ctx locals bound.nextLocal restTys restExprs
+        .ok {
+          lets := head.lets ++ bound.lets ++ rest.lets,
+          args := bound.slots ++ rest.args,
+          nextLocal := rest.nextLocal
+        }
     | _, _ => .error "function call arity mismatch"
 end
 
@@ -6354,12 +6479,14 @@ def extractNatRecFunc
     | none => .ok (none, condResult.snd)
   let carriedParams := params.drop 1
   let recArgsResult ← extractCallArgsFrom ctx stepLocals exitResult?.snd carriedParams spec.recArgs
-  let baseResult ← extractValueFrom ctx baseLocals recArgsResult.snd spec.base
+  let baseResult ← extractValueFrom ctx baseLocals recArgsResult.nextLocal spec.base
   let loopCond := condResult.fst
-  let recIRArgs := recArgsResult.fst
+  let recIRArgs := recArgsResult.args
   let targets := (abiTargets params |>.drop 1).flatMap Prod.snd
   let tempStart := baseResult.snd
-  let updateArgs := assignMany targets recIRArgs tempStart
+  let updateArgs :=
+    LeanExe.IR.seqList <|
+      recArgsResult.lets.map valueLetStmt ++ [assignMany targets recIRArgs tempStart]
   let decFuel : IRStmt := .assign 0 (.u64Bin .sub (.local 0) (.u64 1))
   let loopBody : IRStmt := .seq updateArgs decFuel
   let resultValue ←

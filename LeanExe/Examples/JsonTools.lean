@@ -8,22 +8,7 @@ def lookupFieldOrZero (text : AsciiString) : UInt64 :=
   | none => 0
 
 def parseSingleN (text : AsciiString) : Option UInt64 :=
-  match Ascii.expectWsByte text 0 Ascii.byteLBrace with
-  | some pos0 =>
-      match Ascii.Json.expectFieldName text pos0 "n".toUTF8 with
-      | some valuePos =>
-          match Ascii.parseUInt64 text (Ascii.skipWs text valuePos) with
-          | some parsed =>
-              match Ascii.expectWsByte text parsed.pos Ascii.byteRBrace with
-              | some endPos =>
-                  if Ascii.skipWs text endPos == text.size then
-                    some parsed.value
-                  else
-                    none
-              | none => none
-          | none => none
-      | none => none
-  | none => none
+  Ascii.Json.getUInt64Field text "n".toUTF8
 
 def transformAscii (text : AsciiString) : ByteArray :=
   match parseSingleN text with
