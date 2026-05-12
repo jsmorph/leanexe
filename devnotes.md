@@ -2359,3 +2359,16 @@ Checks run:
 - [x] `lake build LeanExe.Examples.Correctness`
 - [x] `node test/core_correctness.js` returned `checked 454 accepted, 22 rejected, and 13 trapped cases`.
 - [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 454 accepted, 22 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 22 asciistring cases`, `checked 4 intmap cases`, `checked 46 json program cases`, and `checked 56 cases`.
+
+## 2026-05-12: Monomorphic recursive instances
+
+The recursive-inductive type representation now records concrete runtime type parameters.  This lets the extractor treat `List UInt64` as a specialized recursive inductive instance rather than as an unsupported polymorphic value.  Constructor extraction splits constructor type parameters from runtime fields, instantiates constructor field domains with the concrete parameter types, and then reuses the existing heap-recursive constructor, matcher, and structural-recursion machinery.
+
+This is not a `List` primitive.  `LeanExe.Examples.Correctness.leanListHeadDemo`, `leanListTailHeadDemo`, and `leanListStructuralSumDemo` use ordinary Lean `List UInt64` literals, pattern matching, helper calls, and direct structural recursion.  Standard `List` library calls such as `map`, `filter`, `foldl`, `any`, `find?`, `concat`, and append still need higher-order specialization or first-order library extraction before they can compile.
+
+Checks run:
+
+- [x] `lake build`
+- [x] `lake build LeanExe.Examples.Correctness`
+- [x] `node test/core_correctness.js` returned `checked 457 accepted, 22 rejected, and 13 trapped cases`.
+- [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 457 accepted, 22 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 22 asciistring cases`, `checked 4 intmap cases`, `checked 46 json program cases`, and `checked 56 cases`.

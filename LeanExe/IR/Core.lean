@@ -15,7 +15,7 @@ inductive Ty where
   | sum (left right : Ty)
   | struct (name : Lean.Name) (fields : List Ty)
   | variant (name : Lean.Name) (ctors : List (List Ty))
-  | recVariant (name : Lean.Name)
+  | recVariant (name : Lean.Name) (params : List Ty)
   deriving BEq, Repr
 
 inductive U64Op where
