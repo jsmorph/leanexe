@@ -2452,3 +2452,16 @@ Checks run:
 - [x] `lake build LeanExe.Examples.Correctness`
 - [x] `node test/core_correctness.js` returned `checked 481 accepted, 27 rejected, and 13 trapped cases`.
 - [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 481 accepted, 27 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 46 json program cases`, and `checked 56 cases`.
+
+## 2026-05-12: Continue in pure for loops
+
+Source-level `continue` now compiles in accepted pure `Id.run` `for` loops.  Lean elaborates `continue` to `ForInStep.yield` with the current accumulator, so the existing `ForInStep` parser covers explicit `else` branches.  The no-`else` source form introduces a local joinpoint for the remaining statements in the loop body; the parser now beta-reduces direct lambda joinpoints before parsing the step so code such as `if cond then continue; acc := ...` and `if cond then break; acc := ...` compiles without a compiler-specific source rewrite.
+
+The correctness corpus covers `continue` over `ByteArray`, fixed-width `Array`, and `Std.Legacy.Range`, plus a structured range accumulator.  It also covers a no-`else` `break` before a later assignment, which uses the same joinpoint lowering.
+
+Checks run:
+
+- [x] `lake build`
+- [x] `lake build LeanExe.Examples.Correctness`
+- [x] `node test/core_correctness.js` returned `checked 486 accepted, 27 rejected, and 13 trapped cases`.
+- [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 486 accepted, 27 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 46 json program cases`, and `checked 56 cases`.

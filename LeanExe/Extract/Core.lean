@@ -2562,10 +2562,39 @@ def wrapForInStepLet
     value := .letE name type value step.value nondep
   }
 
+partial def betaReduceLocalExpr (fuel : Nat) (expr : Expr) : Expr :=
+  match fuel with
+  | 0 => expr
+  | fuel + 1 =>
+      let reduce := betaReduceLocalExpr fuel
+      match expr.consumeMData with
+      | .app _ _ =>
+          let (fn, args) := appFnArgs expr
+          let reducedFn := reduce fn
+          let reducedArgs := args.map reduce
+          let rec applyReduced (fn : Expr) : List Expr → Expr
+            | [] => fn
+            | arg :: rest =>
+                match fn.consumeMData with
+                | .lam _ _ body _ => applyReduced (reduce (body.instantiate1 arg)) rest
+                | _ => rebuildApp fn (arg :: rest)
+          applyReduced reducedFn reducedArgs
+      | .lam name type body bi => .lam name (reduce type) (reduce body) bi
+      | .forallE name type body bi => .forallE name (reduce type) (reduce body) bi
+      | .letE name type value body nondep =>
+          .letE name (reduce type) (reduce value) (reduce body) nondep
+      | .mdata data body => .mdata data (reduce body)
+      | .proj typeName index body => .proj typeName index (reduce body)
+      | other => other
+
 partial def forInStepBody? (resultTy : Ty) (expr : Expr) : Except String ForInStepBody := do
   match expr.consumeMData with
   | .letE name type value body nondep => do
-      .ok (wrapForInStepLet name type value nondep (← forInStepBody? resultTy body))
+      match value.consumeMData with
+      | .lam _ _ _ _ =>
+          forInStepBody? resultTy (betaReduceLocalExpr 32 (body.instantiateRev #[value]))
+      | _ =>
+          .ok (wrapForInStepLet name type value nondep (← forInStepBody? resultTy body))
   | expr =>
       match appFnArgs expr with
       | (.const ``ForInStep.yield _, args) =>
