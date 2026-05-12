@@ -2286,3 +2286,16 @@ Checks run:
 - [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/current/wasmtime wast .lake/build/json-programs/JsonCollatzLength-transform.wat`
 - [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/current/wasmtime wast .lake/build/json-programs/JsonTools-transform.wat`
 - [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/current/wasmtime wast .lake/build/core-correctness/arrayStructureReplicateHelperRead.wat`
+
+## 2026-05-11: Recursive step let bindings
+
+The Nat-fuel recursion recognizer now accepts local `let` bindings at the start of the successor branch before the tail call or before the immediate `if` that selects between an early exit and the tail call.  This supports ordinary state-staging code such as computing the next accumulator value once, naming it, and then passing it to the next iteration or testing it for early exit.  The recognizer tracks the shifted recursive handle under each Lean `.letE`, so a recursive call under one or more lets still points at the generated `Nat.brecOn` handle rather than at the newest local binding.
+
+Condition extraction now treats local `let` bindings as lazy condition-local bindings, matching value extraction and scalar expression extraction.  The prior path routed a let-bound proposition condition through scalar expression extraction, which rejected Lean's `Eq` proposition in a condition such as `let next := acc + 1; if next == 3 then ...`.  The corrected path preserves unused-let laziness: a step-local binding that would trap if evaluated remains skipped when the recursive step body does not demand it.
+
+Checks run:
+
+- [x] `lake build`
+- [x] `lake build LeanExe.Examples.Correctness`
+- [x] `node test/core_correctness.js` returned `checked 449 accepted, 21 rejected, and 13 trapped cases`.
+- [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 449 accepted, 21 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 14 asciistring cases`, `checked 46 json program cases`, and `checked 56 cases`.
