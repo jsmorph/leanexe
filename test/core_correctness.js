@@ -428,6 +428,7 @@ const accepted = [
   { name: "leanListAnyDemo", args: [], expected: 1n },
   { name: "leanListAnyMissingDemo", args: [], expected: 0n },
   { name: "u64TreeArrayFieldDemo", args: [], expected: 7n },
+  { name: "u64TreeSizeDemo", args: [], expected: 6n },
   { name: "optionSomeMatch", args: [], expected: 8n },
   { name: "optionSomeFirstMatch", args: [], expected: 8n },
   { name: "optionNoneMatchSkipsSomeArm", args: [], expected: 5n },

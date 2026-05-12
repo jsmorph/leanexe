@@ -668,6 +668,19 @@ def u64TreeArrayFieldDemo : UInt64 :=
   let tree := U64Tree.node #[U64Tree.leaf 7, U64Tree.node #[U64Tree.leaf 11]]
   u64TreeFirstChildHead tree
 
+def u64TreeSize : U64Tree → UInt64
+  | .leaf _value => 1
+  | .node children =>
+      children.foldl (fun acc child => acc + u64TreeSize child) 1
+
+def u64TreeSizeDemo : UInt64 :=
+  u64TreeSize
+    (U64Tree.node #[
+      U64Tree.leaf 1,
+      U64Tree.node #[U64Tree.leaf 2, U64Tree.leaf 3],
+      U64Tree.leaf 4
+    ])
+
 def u64BinaryStructuralSize : U64Binary → UInt64
   | .leaf _value => 1
   | .node left right => u64BinaryStructuralSize left + u64BinaryStructuralSize right

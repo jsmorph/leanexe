@@ -2465,3 +2465,18 @@ Checks run:
 - [x] `lake build LeanExe.Examples.Correctness`
 - [x] `node test/core_correctness.js` returned `checked 486 accepted, 27 rejected, and 13 trapped cases`.
 - [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 486 accepted, 27 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 46 json program cases`, and `checked 56 cases`.
+
+## 2026-05-12: Recursive array descent
+
+The extractor now preserves `WellFounded.fix` during local beta specialization, because Lean uses that generated form for recursive descent through an `Array` field.  The new lowering handles the checked shape produced by a recursive function over a tree whose constructor contains `Array self`: the matcher scrutinee is the original function parameter, constructor arms bind the generated well-founded recursive handle, and recursive calls through that handle lower to ordinary WASM self-calls.  `Array.foldl` now recognizes the generated `Array.attach` and `Array.map_unattach.match_1` wrapper, extracting the fold over the underlying array while erasing membership proofs and preserving the callback binder order.
+
+The feature is narrow and recognizes only Lean's generated array-child traversal shape.  The accepted source must be first-order and monomorphic.  Arbitrary `WellFounded.fix`, recursive public ABI values, mutual recursion, and branching direct recursive fields remain outside the accepted language.
+
+Checks run:
+
+- [x] `.lake/build/bin/lean-wasm compile --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.u64TreeSizeDemo --out /tmp/u64TreeSizeDemo.wasm`
+- [x] `build/tools/wasmtime/current/wasmtime --invoke u64TreeSizeDemo /tmp/u64TreeSizeDemo.wasm` returned `6`.
+- [x] `lake build`
+- [x] `lake build LeanExe.Examples.Correctness`
+- [x] `node test/core_correctness.js` returned `checked 487 accepted, 27 rejected, and 13 trapped cases`.
+- [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 487 accepted, 27 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 46 json program cases`, and `checked 56 cases`.

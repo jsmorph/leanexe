@@ -58,6 +58,7 @@ inductive Binding where
   | value (value : ExtractedValue)
   | thunk (locals : List Binding) (expr : Expr)
   | structuralRec (functionName : Name) (arg : ExtractedValue)
+  | wfRecursor (functionName : Name)
   | recursor
   deriving BEq, Repr
 
@@ -834,7 +835,7 @@ def dynamicStructuralExtraArgs (expected : List Ty) (extraArgs : List Expr) :
 
 def blocksTransparentSpecialization (name : Name) : Bool :=
   let root := name.getRoot
-  name == ``ite || name == ``dite ||
+  name == ``ite || name == ``dite || name == ``WellFounded.fix ||
     (match name with
     | .str _ component =>
         component.startsWith "match_" ||
@@ -2497,6 +2498,31 @@ def legacyRangeParts (value : ExtractedValue) : Except String (IRExpr × IRExpr 
   let step ← scalarValue (← structField ``Std.Legacy.Range 2 value)
   .ok (start, stop, step)
 
+def arrayAttachValue? (env : Environment) (expr : Expr) : Option (Ty × Expr) :=
+  match appFnArgs expr with
+  | (.const ``Array.attach _, args) =>
+      match args.reverse with
+      | array :: itemTyExpr :: _ =>
+          typeAtom? env itemTyExpr |>.map fun itemTy => (itemTy, array)
+      | _ => none
+  | _ => none
+
+def arrayAttachSize? (env : Environment) (expr : Expr) : Option Expr :=
+  match appFnArgs expr with
+  | (.const ``Array.size _, args) =>
+      match args.reverse with
+      | array :: _ => arrayAttachValue? env array |>.map Prod.snd
+      | _ => none
+  | _ => none
+
+def arrayMapUnattachBody? (expr : Expr) : Option Expr :=
+  match appFnArgs expr with
+  | (.const ``Array.map_unattach.match_1 _, args) =>
+      match args.reverse with
+      | arm :: _scrutinee :: _ => collectLambdas arm 2
+      | _ => none
+  | _ => none
+
 def idPureArg? (fn : Expr) (args : List Expr) : Option Expr :=
   match fn.consumeMData with
   | .const name _ =>
@@ -3961,6 +3987,19 @@ mutual
         (.letCall slots index (bound.slots ++ extraResult.args) value),
         slotStart + slotCount)
 
+  partial def extractWfRecursorCallValueFrom
+      (ctx : Context)
+      (locals : List Binding)
+      (nextLocal : Nat)
+      (functionName : Name)
+      (args : List Expr) :
+      Except String (ExtractedValue × Nat) := do
+    match args with
+    | arg :: _proof :: extraArgs =>
+        let argResult ← extractValueFrom ctx locals nextLocal arg
+        extractStructuralRecCallValueFrom ctx locals argResult.snd functionName argResult.fst extraArgs
+    | _ => .error s!"unsupported well-founded recursive call: {functionName}"
+
   partial def extractValueFrom
       (ctx : Context)
       (locals : List Binding)
@@ -3974,6 +4013,7 @@ mutual
         | .value value => .ok (value, nextLocal)
         | .thunk savedLocals value => extractValueFrom ctx savedLocals nextLocal value
         | .structuralRec _ _ => .error "structural recursion handle used as a value"
+        | .wfRecursor _ => .error "well-founded recursion handle used as a value"
         | .recursor => .error "recursive handle used as a value"
     | .letE _ type value body _ =>
         if !containsBVar 0 body then
@@ -4015,6 +4055,11 @@ mutual
     | .const ``ByteArray.empty _ => .ok (.byteArray (.u64 0) (.u64 0), nextLocal)
     | _ =>
         match appFnArgs expr with
+        | (.bvar index, args) =>
+            match ← lookupBinding locals index with
+            | .wfRecursor functionName =>
+                extractWfRecursorCallValueFrom ctx locals nextLocal functionName args
+            | _ => .error s!"unsupported expression: {expr}"
         | (.proj ``PProd 0 body, extraArgs) =>
             match body.consumeMData with
             | .bvar index =>
@@ -5612,11 +5657,15 @@ mutual
     | .bvar index =>
         match ← lookupBinding locals index with
         | .slot slot => .ok (.local slot, nextLocal)
-        | .value value => .ok (← scalarValue value, nextLocal)
+        | .value value =>
+            match scalarValue value with
+            | .ok expr => .ok (expr, nextLocal)
+            | .error message => .error s!"{message} while extracting bvar {index}"
         | .thunk savedLocals value =>
             let valueResult ← extractValueFrom ctx savedLocals nextLocal value
             .ok (← scalarValue valueResult.fst, valueResult.snd)
         | .structuralRec _ _ => .error "structural recursion handle used as a value"
+        | .wfRecursor _ => .error "well-founded recursion handle used as a value"
         | .recursor => .error "recursive handle used as a value"
     | .letE _ type value body _ =>
         if !containsBVar 0 body then
@@ -5665,6 +5714,13 @@ mutual
         | some result => .ok (← result, nextLocal)
         | none =>
           match appFnArgs expr with
+            | (.bvar index, args) =>
+                match ← lookupBinding locals index with
+                | .wfRecursor functionName =>
+                    let valueResult ←
+                      extractWfRecursorCallValueFrom ctx locals nextLocal functionName args
+                    .ok (← scalarValue valueResult.fst, valueResult.snd)
+                | _ => .error s!"unsupported expression: {expr}"
             | (.proj ``PProd 0 body, extraArgs) =>
                 match body.consumeMData with
                 | .bvar index =>
@@ -6237,12 +6293,21 @@ mutual
             | (.const ``Array.foldl _, args) =>
                 match args with
                 | sourceTyExpr :: resultTyExpr :: foldFn :: init :: array :: rest =>
-                    match typeAtom? ctx.env sourceTyExpr, typeAtom? ctx.env resultTyExpr with
+                    let attached? := arrayAttachValue? ctx.env array
+                    let sourceTy? :=
+                      match attached? with
+                      | some item => some item.fst
+                      | none => typeAtom? ctx.env sourceTyExpr
+                    match sourceTy?, typeAtom? ctx.env resultTyExpr with
                     | some sourceTy, some resultTy =>
                       match arrayElementSlots? sourceTy with
                       | some sourceWidth =>
                         if supportedOneSlotExprType resultTy then
-                          let arrayResult ← extractExprFrom ctx locals nextLocal array
+                          let arrayExpr :=
+                            match attached? with
+                            | some item => item.snd
+                            | none => array
+                          let arrayResult ← extractExprFrom ctx locals nextLocal arrayExpr
                           let initResult ← extractExprFrom ctx locals arrayResult.snd init
                           let startStop ←
                             match rest with
@@ -6252,8 +6317,12 @@ mutual
                                 .ok ((startResult.fst, .arraySize arrayResult.fst), startResult.snd)
                             | [start, stop] =>
                                 let startResult ← extractExprFrom ctx locals initResult.snd start
-                                let stopResult ← extractExprFrom ctx locals startResult.snd stop
-                                .ok ((startResult.fst, stopResult.fst), stopResult.snd)
+                                match attached?, arrayAttachSize? ctx.env stop with
+                                | some _, some _ =>
+                                    .ok ((startResult.fst, .arraySize arrayResult.fst), startResult.snd)
+                                | _, _ =>
+                                    let stopResult ← extractExprFrom ctx locals startResult.snd stop
+                                    .ok ((startResult.fst, stopResult.fst), stopResult.snd)
                             | _ => .error "unsupported Array.foldl application"
                           let accSlot := startStop.snd
                           let itemStart := accSlot + 1
@@ -6262,11 +6331,25 @@ mutual
                             | some body => .ok body
                             | none => .error "unsupported Array.foldl function"
                           let itemValue ← arrayLocalValue sourceTy itemStart
+                          let bodyExpr ←
+                            match attached? with
+                            | some _ =>
+                                match arrayMapUnattachBody? foldBody with
+                                | some body => .ok body
+                                | none => .error s!"unsupported Array.attach fold body: {foldBody}"
+                            | none => .ok foldBody
+                          let bodyLocals :=
+                            match attached? with
+                            | some _ =>
+                                .recursor :: .value itemValue :: .recursor ::
+                                  .value (.scalar (.local accSlot)) :: locals
+                            | none =>
+                                .value itemValue :: .value (.scalar (.local accSlot)) :: locals
                           let bodyResult ←
                             extractExprFrom ctx
-                              (.value itemValue :: .value (.scalar (.local accSlot)) :: locals)
+                              bodyLocals
                               (itemStart + sourceWidth)
-                              foldBody
+                              bodyExpr
                           .ok
                             (.arrayFoldSlots
                               sourceWidth
@@ -6945,6 +7028,7 @@ mutual
             let valueResult ← extractValueFrom ctx savedLocals nextLocal value
             .ok (boolCond (← scalarValue valueResult.fst), valueResult.snd)
         | .structuralRec _ _ => .error "structural recursion handle used as a condition"
+        | .wfRecursor _ => .error "well-founded recursion handle used as a condition"
         | .recursor => .error "recursive handle used as a condition"
     | .letE _ type value body _ =>
         if !containsBVar 0 body then
@@ -6965,6 +7049,13 @@ mutual
     | .const ``False _ => .ok (.false, nextLocal)
     | _ =>
         match appFnArgs expr with
+        | (.bvar index, args) =>
+            match ← lookupBinding locals index with
+            | .wfRecursor functionName =>
+                let valueResult ←
+                  extractWfRecursorCallValueFrom ctx locals nextLocal functionName args
+                .ok (boolCond (← scalarValue valueResult.fst), valueResult.snd)
+            | _ => .error s!"unsupported condition: {expr}"
         | (.proj ``PProd 0 body, extraArgs) =>
             match body.consumeMData with
             | .bvar index =>
@@ -7536,6 +7627,143 @@ def extractStructuralRecFunc
           results := resultTargets.map LeanExe.IR.Expr.local
         }
 
+def wellFoundedFixStep? (expr : Expr) : Option Expr :=
+  match appFnArgs expr with
+  | (.const ``WellFounded.fix _, args) =>
+      match args.reverse with
+      | step :: _wf :: _rel :: _motive :: _type :: _ => some step
+      | _ => none
+  | _ => none
+
+def wellFoundedMatcherInfo?
+    (env : Environment)
+    (fn : Expr)
+    (args : List Expr)
+    (typeName : Name)
+    (typeParams : List Ty) :
+    Option VariantMatch :=
+  match fn.consumeMData with
+  | .const name _ =>
+      match generatedMatcherVariantScrutineeArg? env name args (some typeName) with
+      | some (scrutineeIndex, .recVariant actual params) =>
+          if actual == typeName && params == typeParams then
+            match recursiveVariantLayout? env typeName typeParams, args[scrutineeIndex]? with
+            | some layout, some scrutinee =>
+                let ctorCount := layout.ctors.length
+                let afterScrutinee := args.drop (scrutineeIndex + 1)
+                if afterScrutinee.length == ctorCount + 1 then
+                  some {
+                    layout := layout,
+                    scrutinee := scrutinee,
+                    arms := afterScrutinee.take ctorCount,
+                    prePostArgCount := 0
+                  }
+                else
+                  none
+            | _, _ => none
+          else
+            none
+      | _ => none
+  | _ => none
+
+def extractWellFoundedRecFunc
+    (ctx : Context)
+    (name : Name)
+    (params : List Ty)
+    (typeName : Name)
+    (typeParams : List Ty)
+    (resultTy : Ty)
+    (value : Expr)
+    (exportName : Option String) : Except String IRFunc := do
+  if params.length != 1 then
+    .error s!"unsupported well-founded recursion arity: {name}"
+  else
+  let step ←
+    match wellFoundedFixStep? value with
+    | some step => .ok step
+    | none => .error s!"unsupported well-founded recursion shape: {name}"
+  let stepBody ←
+    match collectLambdas step 2 with
+    | some body => .ok body
+    | none => .error s!"unsupported well-founded recursion step: {name}"
+  let (matcherFn, matcherArgs) := appFnArgs stepBody
+  let info ←
+    match wellFoundedMatcherInfo? ctx.env matcherFn matcherArgs typeName typeParams with
+    | some info => .ok info
+    | none => .error s!"unsupported well-founded recursion matcher: {name}"
+  if !isBVar 1 info.scrutinee then
+    .error s!"unsupported well-founded recursion scrutinee: {name}"
+  else
+  let layout := info.layout
+  if layout.name != typeName then
+    .error s!"well-founded recursion matcher type mismatch: {name}"
+  else if info.arms.length != layout.ctors.length then
+    .error s!"inductive matcher arity mismatch: {layout.name}"
+  else
+  let wasmParamCount := abiParamCount params
+  let stepLocals := .wfRecursor name :: localBindingsForParams params
+  let scrutineeResult ←
+    match extractValueFrom ctx stepLocals wasmParamCount info.scrutinee with
+    | .ok result => .ok result
+    | .error error => .error s!"while extracting well-founded scrutinee for {name}: {error}"
+  let parts ← heapVariantPtrWithLets layout.name scrutineeResult.fst
+  let ptrSlot := scrutineeResult.snd
+  let ptrExpr := wrapExprLets parts.fst parts.snd
+  let ptrLocal : IRExpr := .local ptrSlot
+  let tag := .heapLoadSlot ptrLocal 0
+  let postBinders := [StructuralArmBinder.below (.wfRecursor name)]
+  let rec extractArms :
+      List VariantCtorLayout → List Expr → Nat → Nat →
+        Except String (List ExtractedValue × Nat)
+    | [], [], _, next => .ok ([], next)
+    | ctor :: restCtors, arm :: restArms, payloadSlot, next => do
+        let runtimeFields ← heapRuntimeFieldsFromKinds ptrLocal ctor.fields payloadSlot
+        let sourceBindings ←
+          sourceFieldBindingsFromKinds layout.name ctor.fields runtimeFields.fst
+        let fieldBinders :=
+          (ctor.fields.zip sourceBindings).map fun item =>
+            StructuralArmBinder.runtime item.fst item.snd
+        let armBinders :=
+          postBinders.take info.prePostArgCount ++
+            fieldBinders ++
+            postBinders.drop info.prePostArgCount
+        let parsedArm ←
+          if ctor.fields.isEmpty then
+            let unitBinder :=
+              StructuralArmBinder.runtime (some .unit) (.value (.scalar (.u64 0)))
+            match consumeStructuralArmBinders ctx layout.name (unitBinder :: armBinders) arm with
+            | .ok parsedArm => .ok parsedArm
+            | .error _ => consumeStructuralArmBinders ctx layout.name armBinders arm
+          else
+            consumeStructuralArmBinders ctx layout.name armBinders arm
+        let armResult ←
+          match extractValueFrom ctx (parsedArm.snd ++ stepLocals) next parsedArm.fst with
+          | .ok result => .ok result
+          | .error error => .error s!"while extracting well-founded arm {ctor.name} for {name}: {error}"
+        let restResult ← extractArms restCtors restArms runtimeFields.snd armResult.snd
+        .ok (armResult.fst :: restResult.fst, restResult.snd)
+    | _, _, _, _ => .error s!"inductive matcher arity mismatch: {layout.name}"
+  let armResults ← extractArms layout.ctors info.arms 1 (ptrSlot + 1)
+  let rec combine : List (Nat × ExtractedValue) → Except String ExtractedValue
+    | [] => .error s!"inductive matcher has no arms: {layout.name}"
+    | [(_index, value)] => .ok value
+    | (index, value) :: rest => do
+        let elseValue ← combine rest
+        valueIte (.eqU64 tag (.u64 index)) value elseValue
+  let resultValue := .letE ptrSlot ptrExpr (← combine (enumerate armResults.fst))
+  let useAbi := exportName.isSome
+  let resultCount := resultSlotCount useAbi resultTy
+  let resultTargets := (List.range resultCount).map (fun offset => armResults.snd + offset)
+  let resultBody ← materializeResultValue useAbi resultTy resultTargets resultValue
+  .ok {
+    sourceName := name,
+    exportName := exportName,
+    params := wasmParamCount,
+    locals := armResults.snd + resultCount,
+    body := resultBody,
+    results := resultTargets.map LeanExe.IR.Expr.local
+  }
+
 def recCallArgsAt? (recursorIndex expected : Nat) (expr : Expr) : Option (List Expr) :=
   match appFnArgs expr with
   | (fn, args) =>
@@ -7790,10 +8018,21 @@ def extractFunction
         extractPlainFunc ctx name sig.params sig.result value exportName
   | .recVariant typeName typeParams :: _ =>
       if containsConstantInExpr (brecOnName typeName) value then
-        extractStructuralRecFunc ctx name sig.params typeName typeParams sig.result value exportName
+        match extractStructuralRecFunc ctx name sig.params typeName typeParams sig.result value exportName with
+        | .ok func => .ok func
+        | .error error => .error s!"while extracting structural recursion: {error}"
+      else if containsConstantInExpr ``WellFounded.fix value then
+        match extractWellFoundedRecFunc ctx name sig.params typeName typeParams sig.result value exportName with
+        | .ok func => .ok func
+        | .error error => .error s!"while extracting well-founded recursion: {error}"
       else
-        extractPlainFunc ctx name sig.params sig.result value exportName
-  | _ => extractPlainFunc ctx name sig.params sig.result value exportName
+        match extractPlainFunc ctx name sig.params sig.result value exportName with
+        | .ok func => .ok func
+        | .error error => .error s!"while extracting plain function: {error}"
+  | _ =>
+      match extractPlainFunc ctx name sig.params sig.result value exportName with
+      | .ok func => .ok func
+      | .error error => .error s!"while extracting plain function: {error}"
 
 def compileEnvironment (env : Environment) (moduleName entry : Name) : Except String IRModule := do
   let entryInfo ←
@@ -7822,7 +8061,11 @@ def compileEnvironment (env : Environment) (moduleName entry : Name) : Except St
         match supportedFunction? ctx.env info with
         | some sig => .ok sig
         | none => .error s!"unsupported function type or declaration: {name}"
-    funcs := funcs.push (← extractFunction ctx entry name info sig)
+    let func ←
+      match extractFunction ctx entry name info sig with
+      | .ok func => .ok func
+      | .error error => .error s!"while extracting {name}: {error}"
+    funcs := funcs.push func
   .ok { funcs := funcs }
 
 def compile (moduleText entryText : String) : IO IRModule := do
