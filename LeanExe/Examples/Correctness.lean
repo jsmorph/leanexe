@@ -784,6 +784,24 @@ def idRunArrayForStatusScore : UInt64 :=
   | .ok sum => sum
   | .error code => code + 100
 
+def idRunRangeForCount : UInt64 := Id.run do
+  let mut acc := (0 : UInt64)
+  for _i in [0:3] do
+    acc := acc + 1
+  return acc
+
+def idRunRangeForStepSum : UInt64 := Id.run do
+  let mut acc := (0 : UInt64)
+  for i in [1:7:2] do
+    acc := acc + i.toUInt64
+  return acc
+
+def idRunRangeForState : DigitState := Id.run do
+  let mut state : DigitState := { pos := 0, sum := 0 }
+  for i in [2:5] do
+    state := { pos := state.pos + 1, sum := state.sum + i.toUInt64 }
+  return state
+
 def idFunctionUInt64 (x : UInt64) : UInt64 :=
   id (x + 1)
 
@@ -2552,17 +2570,17 @@ def rejectHigherOrder (f : UInt64 → UInt64) : UInt64 :=
 def rejectIO : IO UInt64 :=
   pure 1
 
-def rejectIdForLoop : UInt64 := Id.run do
-  let mut acc := (0 : UInt64)
-  for _i in [0:3] do
-    acc := acc + 1
-  return acc
-
 def rejectIdForByteArrayAccumulator : ByteArray := Id.run do
   let input := ByteArray.mk #[(1 : UInt8), (2 : UInt8)]
   let mut output := ByteArray.empty
   for byte in input do
     output := output.push byte
+  return output
+
+def rejectIdRangeForByteArrayAccumulator : ByteArray := Id.run do
+  let mut output := ByteArray.empty
+  for _i in [0:2] do
+    output := output.push (1 : UInt8)
   return output
 
 end LeanExe.Examples.Correctness

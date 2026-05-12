@@ -1842,10 +1842,33 @@ def byteArrayFoldMultiSlotAssign? (targets : List Nat) (values : List IRExpr) :
         none
   | _ => none
 
+def rangeFoldMultiSlotAssign? (targets : List Nat) (values : List IRExpr) :
+    Option IRStmt :=
+  match values with
+  | .rangeFoldMultiSlot resultWidth start stop step initValues accStart itemSlot
+      bodyValues _ :: _ =>
+      if values.length == resultWidth && targets.length == resultWidth then
+        let expected : List IRExpr :=
+          (List.range resultWidth).map fun offset =>
+            .rangeFoldMultiSlot resultWidth start stop step initValues accStart itemSlot bodyValues
+              offset
+        if values == expected then
+          some <|
+            .rangeFoldMultiSlotAssign resultWidth start stop step initValues accStart itemSlot
+              bodyValues targets
+        else
+          none
+      else
+        none
+  | _ => none
+
 def foldMultiSlotAssign? (targets : List Nat) (values : List IRExpr) : Option IRStmt :=
   match arrayFoldMultiSlotAssign? targets values with
   | some stmt => some stmt
-  | none => byteArrayFoldMultiSlotAssign? targets values
+  | none =>
+      match byteArrayFoldMultiSlotAssign? targets values with
+      | some stmt => some stmt
+      | none => rangeFoldMultiSlotAssign? targets values
 
 partial def materializeResultValue
     (useAbi : Bool)
@@ -2463,6 +2486,16 @@ structure ForInArgs where
   collection : Expr
   init : Expr
   body : Expr
+
+def isLegacyRangeType : Ty → Bool
+  | .struct name [.nat, .nat, .nat] => name == ``Std.Legacy.Range
+  | _ => false
+
+def legacyRangeParts (value : ExtractedValue) : Except String (IRExpr × IRExpr × IRExpr) := do
+  let start ← scalarValue (← structField ``Std.Legacy.Range 0 value)
+  let stop ← scalarValue (← structField ``Std.Legacy.Range 1 value)
+  let step ← scalarValue (← structField ``Std.Legacy.Range 2 value)
+  .ok (start, stop, step)
 
 def idPureArg? (fn : Expr) (args : List Expr) : Option Expr :=
   match fn.consumeMData with
@@ -4074,7 +4107,46 @@ mutual
                         | none => .error s!"unsupported Array for-in item type: {reprStr itemTy}"
                       else
                         .error "Array for-in item type mismatch"
-                  | _ => .error s!"unsupported for-in collection type: {reprStr forIn.collectionTy}"
+                  | rangeTy =>
+                      if isLegacyRangeType rangeTy && forIn.itemTy == .nat then
+                        let collectionResult ← extractValueFrom ctx locals nextLocal forIn.collection
+                        let rangeParts ← legacyRangeParts collectionResult.fst
+                        let initResult ← extractValueFrom ctx locals collectionResult.snd forIn.init
+                        let initSlots ← flattenInternalValue forIn.resultTy initResult.fst
+                        if initSlots.length != resultWidth then
+                          .error "for-in accumulator initial value shape mismatch"
+                        else
+                        let accStart := initResult.snd
+                        let itemSlot := accStart + resultWidth
+                        let accValue :=
+                          valueFromInternalSlots forIn.resultTy
+                            (fun offset => .local (accStart + offset))
+                        let bodyResult ←
+                          extractValueFrom ctx
+                            (.value accValue ::
+                              .value (.scalar (.local itemSlot)) :: locals)
+                            (itemSlot + 1)
+                            yieldExpr
+                        let bodySlots ← flattenInternalValue forIn.resultTy bodyResult.fst
+                        if bodySlots.length != resultWidth then
+                          .error "for-in accumulator body value shape mismatch"
+                        else
+                        let resultValue :=
+                          valueFromInternalSlots forIn.resultTy
+                            (fun offset =>
+                              .rangeFoldMultiSlot
+                                resultWidth
+                                rangeParts.fst
+                                rangeParts.snd.fst
+                                rangeParts.snd.snd
+                                initSlots
+                                accStart
+                                itemSlot
+                                bodySlots
+                                offset)
+                        .ok (resultValue, bodyResult.snd)
+                      else
+                        .error s!"unsupported for-in collection type: {reprStr forIn.collectionTy}"
             | none => .error "unsupported ForIn.forIn application"
         | (.const ``Id.run _, args) =>
             match args.reverse with

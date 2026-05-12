@@ -253,6 +253,9 @@ const accepted = [
   { name: "idRunByteArrayForState", args: [], expected: [3n, 6n] },
   { name: "idRunArrayForStatus", args: [], expected: [1n, 0n, 2n] },
   { name: "idRunArrayForStatusScore", args: [], expected: 102n },
+  { name: "idRunRangeForCount", args: [], expected: 3n },
+  { name: "idRunRangeForStepSum", args: [], expected: 9n },
+  { name: "idRunRangeForState", args: [], expected: [3n, 9n] },
   { name: "idFunctionUInt64", args: [4n], expected: 5n },
   { name: "idFunctionProductSecond", args: [], expected: 7n },
   { name: "arrayUpdateRead", args: [], expected: 110n },
@@ -667,12 +670,11 @@ const rejected = [
     message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectIO",
   },
   {
-    name: "rejectIdForLoop",
-    message:
-      "unsupported for-in collection type: LeanExe.IR.Ty.struct `Std.Legacy.Range [LeanExe.IR.Ty.nat, LeanExe.IR.Ty.nat, LeanExe.IR.Ty.nat]",
+    name: "rejectIdForByteArrayAccumulator",
+    message: "unsupported for-in accumulator type",
   },
   {
-    name: "rejectIdForByteArrayAccumulator",
+    name: "rejectIdRangeForByteArrayAccumulator",
     message: "unsupported for-in accumulator type",
   },
 ];
