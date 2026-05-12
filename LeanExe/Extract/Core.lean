@@ -7415,6 +7415,10 @@ def stepBindingsForParams (params : List Ty) : List Binding :=
 def brecOnName (typeName : Name) : Name :=
   .str typeName "brecOn"
 
+def brecOnTypeName? : Name → Option Name
+  | .str typeName "brecOn" => some typeName
+  | _ => none
+
 structure StructuralStep where
   layout : VariantLayout
   arms : List Expr
@@ -7560,6 +7564,35 @@ partial def consumeStructuralArmBinders
         | _ => .error s!"unsupported structural recursion arm: {typeName}"
   loop binders arm []
 
+def structuralCtorArmBinders
+    (prePostArgCount : Nat)
+    (postBinders fieldBinders : List StructuralArmBinder)
+    (belowBinding : Binding) :
+    List StructuralArmBinder :=
+  postBinders.take prePostArgCount ++
+    fieldBinders ++
+    postBinders.drop prePostArgCount ++
+    [StructuralArmBinder.below belowBinding]
+
+def consumeStructuralCtorArm
+    (ctx : Context)
+    (typeName : Name)
+    (prePostArgCount : Nat)
+    (postBinders fieldBinders : List StructuralArmBinder)
+    (ctor : VariantCtorLayout)
+    (belowBinding : Binding)
+    (arm : Expr) :
+    Except String (Expr × List Binding) := do
+  let armBinders := structuralCtorArmBinders prePostArgCount postBinders fieldBinders belowBinding
+  if ctor.fields.isEmpty then
+    let unitBinder :=
+      StructuralArmBinder.runtime (some .unit) (.value (.scalar (.u64 0)))
+    match consumeStructuralArmBinders ctx typeName (unitBinder :: armBinders) arm with
+    | .ok parsedArm => .ok parsedArm
+    | .error _ => consumeStructuralArmBinders ctx typeName armBinders arm
+  else
+    consumeStructuralArmBinders ctx typeName armBinders arm
+
 def extractStructuralRecFunc
     (ctx : Context)
     (name : Name)
@@ -7661,6 +7694,106 @@ def extractStructuralRecFunc
           body := resultBody,
           results := resultTargets.map LeanExe.IR.Expr.local
         }
+
+structure ClosedStructuralFoldShape where
+  typeName : Name
+  typeParams : List Ty
+  scrutinee : Expr
+  step : Expr
+  init : Expr
+
+structure ClosedFoldCtorInfo where
+  index : Nat
+  ctor : VariantCtorLayout
+  recursiveOffsets : List Nat
+
+def runtimeFieldSlotCount (fields : List (Option Ty)) : Nat :=
+  fields.foldl
+    (fun total field =>
+      match field with
+      | some ty => total + internalSlots ty
+      | none => total)
+    0
+
+def directRecursiveFieldOffsets
+    (typeName : Name)
+    (typeParams : List Ty)
+    (fields : List (Option Ty)) :
+    List Nat :=
+  let rec loop (offset : Nat) (fields : List (Option Ty)) (acc : List Nat) : List Nat :=
+    match fields with
+    | [] => acc.reverse
+    | none :: rest => loop offset rest acc
+    | some ty :: rest =>
+        let nextOffset := offset + internalSlots ty
+        match ty with
+        | .recVariant candidate params =>
+            if candidate == typeName && params == typeParams then
+              loop nextOffset rest (offset :: acc)
+            else
+              loop nextOffset rest acc
+        | _ => loop nextOffset rest acc
+  loop 0 fields []
+
+def localRuntimeFieldsFromKinds
+    (fields : List (Option Ty))
+    (fieldStart : Nat) :
+    List ExtractedValue :=
+  let rec loop
+      (offset : Nat)
+      (fields : List (Option Ty))
+      (acc : List ExtractedValue) :
+      List ExtractedValue :=
+    match fields with
+    | [] => acc.reverse
+    | none :: rest => loop offset rest acc
+    | some ty :: rest =>
+        let value := valueFromInternalSlots ty fun slotOffset =>
+          .local (fieldStart + offset + slotOffset)
+        loop (offset + internalSlots ty) rest (value :: acc)
+  loop 0 fields []
+
+def closedStructuralFoldShape? (env : Environment) (body : Expr) :
+    Option ClosedStructuralFoldShape :=
+  match appFnArgs body with
+  | (.const candidate _, args) => do
+      let typeName ← brecOnTypeName? candidate
+      let info ← userRecursiveInductiveInfo? env typeName
+      let typeArgExprs := args.take info.numParams
+      let typeParams ← typeArgExprs.mapM (typeAtom? env)
+      match args.drop info.numParams with
+      | _motive :: scrutinee :: step :: [init] =>
+          if isDirectLambda init then
+            none
+          else
+            some {
+              typeName := typeName,
+              typeParams := typeParams,
+              scrutinee := scrutinee,
+              step := step,
+              init := init
+            }
+      | _ => none
+  | _ => none
+
+def closedStructuralFoldCandidate? (env : Environment) (value : Expr) (paramCount : Nat) :
+    Bool :=
+  match collectLambdas value paramCount with
+  | some body => (closedStructuralFoldShape? env body).isSome
+  | none => false
+
+def structuralRecCallTarget?
+    (locals : List Binding)
+    (body : Expr) :
+    Except String (Option (Name × ExtractedValue × List Expr)) := do
+  match appFnArgs body with
+  | (fn, extraArgs) =>
+      match fn.consumeMData with
+      | .proj ``PProd _ _ =>
+          match ← structuralRecProjection? locals fn with
+          | some (functionName, arg) => .ok (some (functionName, arg, extraArgs))
+          | none => .ok none
+      | _ => .ok none
 
 def wellFoundedFixStep? (expr : Expr) : Option Expr :=
   match appFnArgs expr with
@@ -7929,6 +8062,182 @@ def assignMany (targets : List Nat) (values : List IRExpr) (tempStart : Nat) : I
     enumerate targets |>.map (fun item => LeanExe.IR.Stmt.assign item.snd (.local (tempStart + item.fst)))
   LeanExe.IR.seqList (tempAssignments ++ targetAssignments)
 
+def extractClosedStructuralFoldFunc
+    (ctx : Context)
+    (name : Name)
+    (params : List Ty)
+    (resultTy : Ty)
+    (value : Expr)
+    (exportName : Option String) : Except String IRFunc := do
+  if !supportedInternalResultType resultTy then
+    .error s!"unsupported closed structural fold result type: {reprStr resultTy}"
+  let wasmParamCount := abiParamCount params
+  let body ←
+    match collectLambdas value params.length with
+    | some body => .ok body
+    | none => .error s!"definition body does not match function arity: {name}"
+  let shape ←
+    match closedStructuralFoldShape? ctx.env body with
+    | some shape => .ok shape
+    | none => .error s!"unsupported closed structural fold shape: {name}"
+  let layout ←
+    match recursiveVariantLayout? ctx.env shape.typeName shape.typeParams with
+    | some layout => .ok layout
+    | none => .error s!"unsupported closed structural fold type: {shape.typeName}"
+  let stepInfo ←
+    structuralRecStepMatcher? ctx.env shape.typeName shape.typeParams 1 shape.step
+  if stepInfo.layout != layout then
+    .error s!"closed structural fold matcher type mismatch: {shape.typeName}"
+  else if stepInfo.arms.length != layout.ctors.length then
+    .error s!"inductive matcher arity mismatch: {layout.name}"
+  else if stepInfo.prePostArgCount > 1 then
+    .error s!"unsupported closed structural fold carried arguments: {name}"
+  else
+    let ctorInfos :=
+      enumerate layout.ctors |>.map fun item =>
+        ({
+          index := item.fst,
+          ctor := item.snd,
+          recursiveOffsets :=
+            directRecursiveFieldOffsets shape.typeName shape.typeParams item.snd.fields
+        } : ClosedFoldCtorInfo)
+    let continueInfos := ctorInfos.filter fun info => info.recursiveOffsets.length == 1
+    let terminalInfos := ctorInfos.filter fun info => info.recursiveOffsets.isEmpty
+    let continueInfo ←
+      match continueInfos with
+      | [info] => .ok info
+      | _ => .error s!"closed structural fold requires one recursive constructor: {name}"
+    if terminalInfos.length + 1 != ctorInfos.length then
+      .error s!"closed structural fold requires list-shaped recursive constructors: {name}"
+    else
+      let recursiveFieldOffset ←
+        match continueInfo.recursiveOffsets with
+        | [offset] => .ok offset
+        | _ => .error s!"closed structural fold requires one recursive field: {name}"
+      let resultWidth := internalSlots resultTy
+      let scrutineeResult ←
+        extractValueFrom ctx (localBindingsForParams params) wasmParamCount shape.scrutinee
+      let parts ← heapVariantPtrWithLets layout.name scrutineeResult.fst
+      let ptrSlot := scrutineeResult.snd
+      let ptrExpr := wrapExprLets parts.fst parts.snd
+      let initResult ←
+        extractValueFrom ctx (localBindingsForParams params) (ptrSlot + 1) shape.init
+      let initSlots ← flattenInternalValue resultTy initResult.fst
+      if initSlots.length != resultWidth then
+        .error s!"closed structural fold initializer shape mismatch: {name}"
+      else
+      let accStart := initResult.snd
+      let fieldSlotCount := runtimeFieldSlotCount continueInfo.ctor.fields
+      let fieldStart := accStart + resultWidth
+      let accValue :=
+        valueFromInternalSlots resultTy fun offset => .local (accStart + offset)
+      let postBinders :=
+        [StructuralArmBinder.runtime (some resultTy) (.value accValue)]
+      let rec parseTerminalArms : List ClosedFoldCtorInfo → Except String Unit
+        | [] => .ok ()
+        | info :: rest => do
+            let arm ←
+              match stepInfo.arms[info.index]? with
+              | some arm => .ok arm
+              | none => .error s!"inductive matcher arity mismatch: {layout.name}"
+            let runtimeFields ← runtimeTypesFromKinds info.ctor.fields |>.mapM defaultValue
+            let sourceBindings ←
+              sourceFieldBindingsFromKinds layout.name info.ctor.fields runtimeFields
+            let fieldBinders :=
+              (info.ctor.fields.zip sourceBindings).map fun item =>
+                StructuralArmBinder.runtime item.fst item.snd
+            let belowBinding ←
+              structuralBelowBinding name layout.name shape.typeParams info.ctor.name info.ctor.fields
+                runtimeFields
+            let parsedArm ←
+              consumeStructuralCtorArm ctx layout.name stepInfo.prePostArgCount postBinders fieldBinders
+                info.ctor belowBinding arm
+            let armResult ←
+              extractValueFrom ctx (parsedArm.snd ++ localBindingsForParams params)
+                fieldStart parsedArm.fst
+            let armSlots ← flattenInternalValue resultTy armResult.fst
+            let expected := (List.range resultWidth).map fun offset => .local (accStart + offset)
+            if armSlots == expected then
+              parseTerminalArms rest
+            else
+              .error s!"closed structural fold terminal arm must return the accumulator: {name}"
+      parseTerminalArms terminalInfos
+      let runtimeFields := localRuntimeFieldsFromKinds continueInfo.ctor.fields fieldStart
+      let sourceBindings ←
+        sourceFieldBindingsFromKinds layout.name continueInfo.ctor.fields runtimeFields
+      let fieldBinders :=
+        (continueInfo.ctor.fields.zip sourceBindings).map fun item =>
+          StructuralArmBinder.runtime item.fst item.snd
+      let belowBinding ←
+        structuralBelowBinding layout.name layout.name shape.typeParams
+          continueInfo.ctor.name continueInfo.ctor.fields runtimeFields
+      let continueArm ←
+        match stepInfo.arms[continueInfo.index]? with
+        | some arm => .ok arm
+        | none => .error s!"inductive matcher arity mismatch: {layout.name}"
+      let parsedContinue ←
+        consumeStructuralCtorArm ctx layout.name stepInfo.prePostArgCount postBinders fieldBinders
+          continueInfo.ctor belowBinding continueArm
+      let recCall ←
+        match ← structuralRecCallTarget? parsedContinue.snd parsedContinue.fst with
+        | some recCall => .ok recCall
+        | none => .error s!"closed structural fold step must tail-call the recursive field: {name}"
+      if recCall.fst != layout.name then
+        .error s!"closed structural fold recursive target mismatch: {name}"
+      else
+      let recursiveFieldValue := valueFromInternalSlots
+        (.recVariant shape.typeName shape.typeParams)
+        (fun _ => .local (fieldStart + recursiveFieldOffset))
+      if recCall.snd.fst != recursiveFieldValue then
+        .error s!"closed structural fold recursive field mismatch: {name}"
+      else
+      let nextAccExpr ←
+        match recCall.snd.snd with
+        | [arg] => .ok arg
+        | _ => .error s!"closed structural fold step must update one carried argument: {name}"
+      let nextAccResult ←
+        extractValueFrom ctx (parsedContinue.snd ++ localBindingsForParams params)
+          (fieldStart + fieldSlotCount) nextAccExpr
+      let nextAccSlots ← flattenInternalValue resultTy nextAccResult.fst
+      if nextAccSlots.length != resultWidth then
+        .error s!"closed structural fold step result shape mismatch: {name}"
+      else
+      let fieldLoads :=
+        (List.range fieldSlotCount).map fun offset =>
+          LeanExe.IR.Stmt.assign (fieldStart + offset)
+            (.heapLoadSlot (.local ptrSlot) (1 + offset))
+      let initStores :=
+        (enumerate initSlots).map fun item =>
+          LeanExe.IR.Stmt.assign (accStart + item.fst) item.snd
+      let accTargets := (List.range resultWidth).map fun offset => accStart + offset
+      let tempStart := nextAccResult.snd
+      let loopBody :=
+        LeanExe.IR.seqList
+          (fieldLoads ++
+            [assignMany accTargets nextAccSlots tempStart,
+              LeanExe.IR.Stmt.assign ptrSlot (.local (fieldStart + recursiveFieldOffset))])
+      let loopCond : IRCond :=
+        .eqU64 (.heapLoadSlot (.local ptrSlot) 0) (.u64 continueInfo.index)
+      let useAbi := exportName.isSome
+      let resultCount := resultSlotCount useAbi resultTy
+      let resultTargets :=
+        (List.range resultCount).map (fun offset => tempStart + resultWidth + offset)
+      let resultValue :=
+        valueFromInternalSlots resultTy fun offset => .local (accStart + offset)
+      let resultBody ← materializeResultValue useAbi resultTy resultTargets resultValue
+      .ok {
+        sourceName := name,
+        exportName := exportName,
+        params := wasmParamCount,
+        locals := tempStart + resultWidth + resultCount,
+        body :=
+          LeanExe.IR.seqList
+            ([LeanExe.IR.Stmt.assign ptrSlot ptrExpr] ++
+              initStores ++
+              [LeanExe.IR.Stmt.while loopCond loopBody, resultBody]),
+        results := resultTargets.map LeanExe.IR.Expr.local
+      }
+
 def extractNatRecFunc
     (ctx : Context)
     (name : Name)
@@ -8055,7 +8364,14 @@ def extractFunction
       if containsConstantInExpr (brecOnName typeName) value then
         match extractStructuralRecFunc ctx name sig.params typeName typeParams sig.result value exportName with
         | .ok func => .ok func
-        | .error error => .error s!"while extracting structural recursion: {error}"
+        | .error error =>
+            if closedStructuralFoldCandidate? ctx.env value sig.params.length then
+              match extractClosedStructuralFoldFunc ctx name sig.params sig.result value exportName with
+              | .ok func => .ok func
+              | .error closedError =>
+                  .error s!"while extracting closed structural fold: {closedError}"
+            else
+              .error s!"while extracting structural recursion: {error}"
       else if containsConstantInExpr ``WellFounded.fix value then
         match extractWellFoundedRecFunc ctx name sig.params typeName typeParams sig.result value exportName with
         | .ok func => .ok func
@@ -8065,9 +8381,14 @@ def extractFunction
         | .ok func => .ok func
         | .error error => .error s!"while extracting plain function: {error}"
   | _ =>
-      match extractPlainFunc ctx name sig.params sig.result value exportName with
-      | .ok func => .ok func
-      | .error error => .error s!"while extracting plain function: {error}"
+      if closedStructuralFoldCandidate? ctx.env value sig.params.length then
+        match extractClosedStructuralFoldFunc ctx name sig.params sig.result value exportName with
+        | .ok func => .ok func
+        | .error error => .error s!"while extracting closed structural fold: {error}"
+      else
+        match extractPlainFunc ctx name sig.params sig.result value exportName with
+        | .ok func => .ok func
+        | .error error => .error s!"while extracting plain function: {error}"
 
 def compileEnvironment (env : Environment) (moduleName entry : Name) : Except String IRModule := do
   let entryInfo ←
