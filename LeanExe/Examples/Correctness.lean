@@ -642,8 +642,30 @@ def leanListAnyMissingDemo : UInt64 :=
 def leanListFoldlClosedDemo : UInt64 :=
   leanList123.foldl (fun acc x => acc * 10 + x) 0
 
-def rejectLeanListAnyDirectDemo : UInt64 :=
+structure CountSum where
+  count : UInt64
+  sum : UInt64
+
+def leanListFoldlClosedStruct : CountSum :=
+  leanList123.foldl
+    (fun acc x => { count := acc.count + 1, sum := acc.sum + x })
+    { count := 0, sum := 0 }
+
+def leanListFoldlClosedStructDemo : UInt64 :=
+  let result := leanListFoldlClosedStruct
+  result.count * 10 + result.sum
+
+def leanListAnyDirectDemo : UInt64 :=
   if leanList123.any (fun x => x == 2) then 1 else 0
+
+def leanListAnyDirectMissingDemo : UInt64 :=
+  if leanList123.any (fun x => x == 9) then 1 else 0
+
+def leanListAllDirectDemo : UInt64 :=
+  if leanList123.all (fun x => x < 4) then 1 else 0
+
+def leanListAllDirectMissingDemo : UInt64 :=
+  if leanList123.all (fun x => x < 3) then 1 else 0
 
 inductive U64Tree where
   | leaf : UInt64 → U64Tree

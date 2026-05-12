@@ -404,6 +404,8 @@ mutual
           max
             (max (exprScratch start) (max (exprScratch stop) (exprScratch step)))
             (max (max initScratch bodyScratch) (max (bodyScratch + resultWidth + 1) 3))
+    | .heapLinearPredicate ptr _ _ _ _ predicate _ _ =>
+        2 + max (exprScratch ptr) (exprScratch predicate)
     | .call _ args => args.foldl (fun count arg => max count (exprScratch arg)) 0
     | .letCall _ _ args body =>
         max (args.foldl (fun count arg => max count (exprScratch arg)) 0) (exprScratch body)
@@ -2253,6 +2255,40 @@ mutual
       ofNats [11, 11] ++
       emitTargetCopies (enumerate targets)
 
+  partial def emitHeapLinearPredicate
+      (scratch : Nat)
+      (ptr : Expr)
+      (continueTag fieldSlotCount recursiveFieldOffset fieldStart : Nat)
+      (predicate : Expr)
+      (stopWhenTrue terminalValue : Bool) : List UInt8 :=
+    let ptrLocal := scratch
+    let resultLocal := scratch + 1
+    let childScratch := scratch + 2
+    let rec emitFieldLoads : List Nat → List UInt8
+      | [] => []
+      | offset :: rest =>
+          localGet ptrLocal ++ i64Const ((1 + offset) * 8) ++ ofNats [124] ++
+            i32WrapI64 ++ i64Load ++ localSet (fieldStart + offset) ++
+            emitFieldLoads rest
+    let stopCond :=
+      emitExpr childScratch predicate ++ i64Const 0 ++ i64Ne ++
+        (if stopWhenTrue then [] else ofNats [69])
+    let stopValue := if stopWhenTrue then 1 else 0
+    let terminal := if terminalValue then 1 else 0
+    emitExpr childScratch ptr ++ localSet ptrLocal ++
+      i64Const terminal ++ localSet resultLocal ++
+      ofNats [2, 64, 3, 64] ++
+        localGet ptrLocal ++ i64Const 0 ++ ofNats [124] ++ i32WrapI64 ++ i64Load ++
+          i64Const continueTag ++ i64Ne ++ ofNats [13] ++ u32leb 1 ++
+        emitFieldLoads (List.range fieldSlotCount) ++
+        stopCond ++ ofNats [4, 64] ++
+          i64Const stopValue ++ localSet resultLocal ++ ofNats [12] ++ u32leb 2 ++
+        ofNats [11] ++
+        localGet (fieldStart + recursiveFieldOffset) ++ localSet ptrLocal ++
+        ofNats [12] ++ u32leb 0 ++
+      ofNats [11, 11] ++
+      localGet resultLocal
+
   partial def emitExpr (scratch : Nat) : Expr → List UInt8
     | .local index => localGet index
     | .trap => ofNats [0]
@@ -2340,6 +2376,10 @@ mutual
         bodyDone resultSlot =>
         emitRangeFoldMultiSlot scratch resultWidth start stop step initValues accStart itemSlot
           bodyValues bodyDone resultSlot
+    | .heapLinearPredicate ptr continueTag fieldSlotCount recursiveFieldOffset fieldStart predicate
+        stopWhenTrue terminalValue =>
+        emitHeapLinearPredicate scratch ptr continueTag fieldSlotCount recursiveFieldOffset fieldStart
+          predicate stopWhenTrue terminalValue
     | .call index args => args.flatMap (emitExpr scratch) ++ call index
     | .letCall slots index args body =>
         args.flatMap (emitExpr scratch) ++ call index ++
@@ -4288,6 +4328,44 @@ mutual
       [s!"local.set {indexLocal}", "br 0", "end", "end"] ++
       targetCopies (enumerate targets)
 
+  partial def heapLinearPredicateWatLines
+      (scratch : Nat)
+      (ptr : Expr)
+      (continueTag fieldSlotCount recursiveFieldOffset fieldStart : Nat)
+      (predicate : Expr)
+      (stopWhenTrue terminalValue : Bool) : List String :=
+    let ptrLocal := scratch
+    let resultLocal := scratch + 1
+    let childScratch := scratch + 2
+    let rec fieldLoads : List Nat → List String
+      | [] => []
+      | offset :: rest =>
+          [s!"local.get {ptrLocal}", s!"i64.const {(1 + offset) * 8}", "i64.add",
+            "i32.wrap_i64", "i64.load align=8", s!"local.set {fieldStart + offset}"] ++
+            fieldLoads rest
+    let stopCond :=
+      exprWatLines childScratch predicate ++ ["i64.const 0", "i64.ne"] ++
+        (if stopWhenTrue then [] else ["i32.eqz"])
+    let stopValue := if stopWhenTrue then 1 else 0
+    let terminal := if terminalValue then 1 else 0
+    exprWatLines childScratch ptr ++
+      [s!"local.set {ptrLocal}", s!"i64.const {terminal}", s!"local.set {resultLocal}",
+        "block", "  loop"] ++
+      indent 4 (
+        [s!"local.get {ptrLocal}", "i64.const 0", "i64.add", "i32.wrap_i64",
+          "i64.load align=8", s!"i64.const {continueTag}", "i64.ne", "br_if 1"] ++
+        fieldLoads (List.range fieldSlotCount) ++
+        stopCond ++
+        ["if",
+          s!"  i64.const {stopValue}",
+          s!"  local.set {resultLocal}",
+          "  br 2",
+          "end",
+          s!"local.get {fieldStart + recursiveFieldOffset}",
+          s!"local.set {ptrLocal}",
+          "br 0"]) ++
+      ["  end", "end", s!"local.get {resultLocal}"]
+
   partial def exprWatLines (scratch : Nat) : Expr → List String
     | .local index => [s!"local.get {index}"]
     | .trap => ["unreachable"]
@@ -4387,6 +4465,10 @@ mutual
         bodyDone resultSlot =>
         rangeFoldMultiSlotWatLines scratch resultWidth start stop step initValues accStart itemSlot
           bodyValues bodyDone resultSlot
+    | .heapLinearPredicate ptr continueTag fieldSlotCount recursiveFieldOffset fieldStart predicate
+        stopWhenTrue terminalValue =>
+        heapLinearPredicateWatLines scratch ptr continueTag fieldSlotCount recursiveFieldOffset
+          fieldStart predicate stopWhenTrue terminalValue
     | .call index args => args.flatMap (exprWatLines scratch) ++ [s!"call {index}"]
     | .letCall slots index args body =>
         args.flatMap (exprWatLines scratch) ++ [s!"call {index}"] ++

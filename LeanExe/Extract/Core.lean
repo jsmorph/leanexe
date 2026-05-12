@@ -3988,6 +3988,281 @@ def strictRecursiveCallCheck (ctx : Context) (name : Name) (args : List Expr) :
       .error s!"strict call may evaluate an argument not demanded by callee: {name}"
   .ok ()
 
+def brecOnName (typeName : Name) : Name :=
+  .str typeName "brecOn"
+
+def brecOnTypeName? : Name → Option Name
+  | .str typeName "brecOn" => some typeName
+  | _ => none
+
+structure StructuralStep where
+  layout : VariantLayout
+  arms : List Expr
+  prePostArgCount : Nat
+
+def structuralRecStepMatcher?
+    (env : Environment)
+    (typeName : Name)
+    (_typeParams : List Ty)
+    (postArgCount : Nat)
+    (step : Expr) :
+    Except String StructuralStep := do
+  let stepBody ←
+    match collectLambdas step (2 + postArgCount) with
+    | some body => .ok body
+    | none => .error s!"unsupported structural recursion step: {typeName}"
+  match stepBody.consumeMData with
+  | .app matcherExpr belowArg =>
+      if !isBVar postArgCount belowArg then
+        .error s!"unsupported structural recursion below argument: {typeName}"
+      else
+        let (matcherFn, matcherArgs) := appFnArgs matcherExpr
+        match variantMatcherInfo? env matcherFn matcherArgs (some typeName) (some postArgCount) with
+        | some info =>
+            let layout := info.layout
+            let scrutinee := info.scrutinee
+            if layout.name == typeName then
+              if isBVar (postArgCount + 1) scrutinee then
+                .ok {
+                  layout := layout,
+                  arms := info.arms,
+                  prePostArgCount := info.prePostArgCount
+                }
+              else
+                .error s!"unsupported structural recursion matcher scrutinee: {typeName}"
+            else
+              .error s!"structural recursion matcher type mismatch: {typeName}"
+        | none => .error s!"unsupported structural recursion matcher: {typeName}"
+  | _ => .error s!"unsupported structural recursion step body: {typeName}"
+
+def structuralBelowForFields (functionName : Name) (fields : List ExtractedValue) :
+    StructuralBelow :=
+  let fieldBelow (value : ExtractedValue) : StructuralBelow :=
+    .pair (.call functionName value) .unit
+  let rec loop : List ExtractedValue → StructuralBelow
+    | [] => .unit
+    | [value] => fieldBelow value
+    | value :: rest => .pair (fieldBelow value) (loop rest)
+  loop fields
+
+def structuralBelowBinding
+    (functionName : Name)
+    (typeName : Name)
+    (typeParams : List Ty)
+    (ctor : Name)
+    (fieldKinds : List (Option Ty))
+    (runtimeFields : List ExtractedValue) :
+    Except String Binding := do
+  let typedFields ← typedFieldsFromKinds ctor fieldKinds runtimeFields
+  let recursiveFields :=
+    typedFields.filter fun item =>
+      match item.fst with
+      | .recVariant candidate params => candidate == typeName && params == typeParams
+      | _ => false
+  match recursiveFields with
+  | [] => .ok (.value (.scalar (.u64 0)))
+  | fields => .ok (.structuralBelow (structuralBelowForFields functionName (fields.map Prod.snd)))
+
+inductive StructuralPostArg where
+  | dynamic (ty : Ty) (binding : Binding)
+  | staticLambda (expr : Expr)
+
+def structuralPostArgs
+    (params : List Ty)
+    (postArgs : List Expr) :
+    Except String (List StructuralPostArg) := do
+  let dynamicParams := params.drop 1
+  let dynamicBindings := (sourceParamBindings params).drop 1
+  let rec loop :
+      Nat → List Expr → List (Ty × Binding) → List StructuralPostArg →
+        Except String (List StructuralPostArg)
+    | _, [], [], acc => .ok acc.reverse
+    | _, [], _ :: _, _ => .error "unsupported structural recursion carried arguments"
+    | index, arg :: restArgs, dynamics, acc =>
+        if isDirectLambda arg then
+          loop index restArgs dynamics (.staticLambda arg :: acc)
+        else
+          match dynamics with
+          | (ty, binding) :: restDynamics =>
+              let expectedParamIndex := params.length - 2 - index
+              if isBVar expectedParamIndex arg then
+                loop (index + 1) restArgs restDynamics (.dynamic ty binding :: acc)
+              else
+                .error "unsupported structural recursion carried argument initializer"
+          | [] => .error "unsupported structural recursion carried arguments"
+  loop 0 postArgs (dynamicParams.zip dynamicBindings) []
+
+inductive StructuralArmBinder where
+  | runtime (expected : Option Ty) (binding : Binding)
+  | staticLambda (expr : Expr)
+  | below (binding : Binding)
+
+def checkStructuralArmBinder
+    (env : Environment)
+    (typeName : Name)
+    (binder : StructuralArmBinder)
+    (domain : Expr) :
+    Except String Unit := do
+  match binder with
+  | .runtime (some expected) _ =>
+      match typeAtom? env domain with
+      | some actual =>
+          if actual == expected then
+            .ok ()
+          else
+            .error s!"structural recursion arm binder type mismatch: {typeName}"
+      | none => .error s!"unsupported structural recursion arm binder type: {typeName}"
+  | .runtime none _ =>
+      if isProofType? env domain then
+        .ok ()
+      else
+        .error s!"structural recursion arm proof binder mismatch: {typeName}"
+  | .staticLambda _ => .ok ()
+  | .below _ => .ok ()
+
+partial def consumeStructuralArmBinders
+    (ctx : Context)
+    (typeName : Name)
+    (binders : List StructuralArmBinder)
+    (arm : Expr) :
+    Except String (Expr × List Binding) := do
+  let rec loop :
+      List StructuralArmBinder → Expr → List Binding → Except String (Expr × List Binding)
+    | [], body, bindings => .ok (betaSpecializeExpr ctx.env ctx.root 16 body, bindings)
+    | binder :: rest, expr, bindings =>
+        match expr.consumeMData with
+        | .lam _ domain body _ => do
+            checkStructuralArmBinder ctx.env typeName binder domain
+            match binder with
+            | .runtime _ binding => loop rest body (binding :: bindings)
+            | .below binding => loop rest body (binding :: bindings)
+            | .staticLambda staticExpr => loop rest (body.instantiate1 staticExpr) bindings
+        | _ => .error s!"unsupported structural recursion arm: {typeName}"
+  loop binders arm []
+
+def structuralCtorArmBinders
+    (prePostArgCount : Nat)
+    (postBinders fieldBinders : List StructuralArmBinder)
+    (belowBinding : Binding) :
+    List StructuralArmBinder :=
+  postBinders.take prePostArgCount ++
+    fieldBinders ++
+    postBinders.drop prePostArgCount ++
+    [StructuralArmBinder.below belowBinding]
+
+def consumeStructuralCtorArm
+    (ctx : Context)
+    (typeName : Name)
+    (prePostArgCount : Nat)
+    (postBinders fieldBinders : List StructuralArmBinder)
+    (ctor : VariantCtorLayout)
+    (belowBinding : Binding)
+    (arm : Expr) :
+    Except String (Expr × List Binding) := do
+  let armBinders := structuralCtorArmBinders prePostArgCount postBinders fieldBinders belowBinding
+  if ctor.fields.isEmpty then
+    let unitBinder :=
+      StructuralArmBinder.runtime (some .unit) (.value (.scalar (.u64 0)))
+    match consumeStructuralArmBinders ctx typeName (unitBinder :: armBinders) arm with
+    | .ok parsedArm => .ok parsedArm
+    | .error _ => consumeStructuralArmBinders ctx typeName armBinders arm
+  else
+    consumeStructuralArmBinders ctx typeName armBinders arm
+
+structure ClosedFoldCtorInfo where
+  index : Nat
+  ctor : VariantCtorLayout
+  recursiveOffsets : List Nat
+
+def runtimeFieldSlotCount (fields : List (Option Ty)) : Nat :=
+  fields.foldl
+    (fun total field =>
+      match field with
+      | some ty => total + internalSlots ty
+      | none => total)
+    0
+
+def directRecursiveFieldOffsets
+    (typeName : Name)
+    (typeParams : List Ty)
+    (fields : List (Option Ty)) :
+    List Nat :=
+  let rec loop (offset : Nat) (fields : List (Option Ty)) (acc : List Nat) : List Nat :=
+    match fields with
+    | [] => acc.reverse
+    | none :: rest => loop offset rest acc
+    | some ty :: rest =>
+        let nextOffset := offset + internalSlots ty
+        match ty with
+        | .recVariant candidate params =>
+            if candidate == typeName && params == typeParams then
+              loop nextOffset rest (offset :: acc)
+            else
+              loop nextOffset rest acc
+        | _ => loop nextOffset rest acc
+  loop 0 fields []
+
+def localRuntimeFieldsFromKinds
+    (fields : List (Option Ty))
+    (fieldStart : Nat) :
+    List ExtractedValue :=
+  let rec loop
+      (offset : Nat)
+      (fields : List (Option Ty))
+      (acc : List ExtractedValue) :
+      List ExtractedValue :=
+    match fields with
+    | [] => acc.reverse
+    | none :: rest => loop offset rest acc
+    | some ty :: rest =>
+        let value := valueFromInternalSlots ty fun slotOffset =>
+          .local (fieldStart + offset + slotOffset)
+        loop (offset + internalSlots ty) rest (value :: acc)
+  loop 0 fields []
+
+def structuralRecCallTarget?
+    (locals : List Binding)
+    (body : Expr) :
+    Except String (Option (Name × ExtractedValue × List Expr)) := do
+  match appFnArgs body with
+  | (fn, extraArgs) =>
+      match fn.consumeMData with
+      | .proj ``PProd _ _ =>
+          match ← structuralRecProjection? locals fn with
+          | some (functionName, arg) => .ok (some (functionName, arg, extraArgs))
+          | none => .ok none
+      | _ => .ok none
+
+structure ClosedStructuralPredicateShape where
+  typeName : Name
+  typeParams : List Ty
+  scrutinee : Expr
+  step : Expr
+  predicate : Expr
+
+def closedStructuralPredicateShape? (env : Environment) (body : Expr) :
+    Option ClosedStructuralPredicateShape :=
+  match appFnArgs body with
+  | (.const candidate _, args) => do
+      let typeName ← brecOnTypeName? candidate
+      let info ← userRecursiveInductiveInfo? env typeName
+      let typeArgExprs := args.take info.numParams
+      let typeParams ← typeArgExprs.mapM (typeAtom? env)
+      match args.drop info.numParams with
+      | _motive :: scrutinee :: step :: [predicate] =>
+          if isDirectLambda predicate then
+            some {
+              typeName := typeName,
+              typeParams := typeParams,
+              scrutinee := scrutinee,
+              step := step,
+              predicate := predicate
+            }
+          else
+            none
+      | _ => none
+  | _ => none
+
 mutual
   partial def extractStructuralRecCallValueFrom
       (ctx : Context)
@@ -4038,6 +4313,132 @@ mutual
         let argResult ← extractValueFrom ctx locals nextLocal arg
         extractStructuralRecCallValueFrom ctx locals argResult.snd functionName argResult.fst extraArgs
     | _ => .error s!"unsupported well-founded recursive call: {functionName}"
+
+  partial def extractClosedStructuralPredicateExprFrom
+      (ctx : Context)
+      (locals : List Binding)
+      (nextLocal : Nat)
+      (expr : Expr) :
+      Except String (Option (IRExpr × Nat)) := do
+    match closedStructuralPredicateShape? ctx.env expr with
+    | none => .ok none
+    | some shape =>
+        let layout ←
+          match recursiveVariantLayout? ctx.env shape.typeName shape.typeParams with
+          | some layout => .ok layout
+          | none => .error s!"unsupported closed structural predicate type: {shape.typeName}"
+        let stepInfo ←
+          structuralRecStepMatcher? ctx.env shape.typeName shape.typeParams 1 shape.step
+        if stepInfo.layout != layout then
+          .error s!"closed structural predicate matcher type mismatch: {shape.typeName}"
+        else if stepInfo.arms.length != layout.ctors.length then
+          .error s!"inductive matcher arity mismatch: {layout.name}"
+        else if stepInfo.prePostArgCount > 1 then
+          .error s!"unsupported closed structural predicate arguments: {shape.typeName}"
+        else
+          let ctorInfos :=
+            enumerate layout.ctors |>.map fun item =>
+              ({
+                index := item.fst,
+                ctor := item.snd,
+                recursiveOffsets :=
+                  directRecursiveFieldOffsets shape.typeName shape.typeParams item.snd.fields
+              } : ClosedFoldCtorInfo)
+          let continueInfos := ctorInfos.filter fun info => info.recursiveOffsets.length == 1
+          let terminalInfos := ctorInfos.filter fun info => info.recursiveOffsets.isEmpty
+          let continueInfo ←
+            match continueInfos with
+            | [info] => .ok info
+            | _ => .error s!"closed structural predicate requires one recursive constructor: {shape.typeName}"
+          if terminalInfos.length + 1 != ctorInfos.length then
+            .error s!"closed structural predicate requires list-shaped recursive constructors: {shape.typeName}"
+          else
+            let recursiveFieldOffset ←
+              match continueInfo.recursiveOffsets with
+              | [offset] => .ok offset
+              | _ => .error s!"closed structural predicate requires one recursive field: {shape.typeName}"
+            let scrutineeResult ← extractValueFrom ctx locals nextLocal shape.scrutinee
+            let parts ← heapVariantPtrWithLets layout.name scrutineeResult.fst
+            let ptrExpr := wrapExprLets parts.fst parts.snd
+            let fieldSlotCount := runtimeFieldSlotCount continueInfo.ctor.fields
+            let fieldStart := scrutineeResult.snd
+            let runtimeFields := localRuntimeFieldsFromKinds continueInfo.ctor.fields fieldStart
+            let sourceBindings ←
+              sourceFieldBindingsFromKinds layout.name continueInfo.ctor.fields runtimeFields
+            let fieldBinders :=
+              (continueInfo.ctor.fields.zip sourceBindings).map fun item =>
+                StructuralArmBinder.runtime item.fst item.snd
+            let postBinders := [StructuralArmBinder.staticLambda shape.predicate]
+            let belowBinding ←
+              structuralBelowBinding layout.name layout.name shape.typeParams
+                continueInfo.ctor.name continueInfo.ctor.fields runtimeFields
+            let continueArm ←
+              match stepInfo.arms[continueInfo.index]? with
+              | some arm => .ok arm
+              | none => .error s!"inductive matcher arity mismatch: {layout.name}"
+            let parsedContinue ←
+              consumeStructuralCtorArm ctx layout.name stepInfo.prePostArgCount postBinders fieldBinders
+                continueInfo.ctor belowBinding continueArm
+            let (predicateExpr, recExpr, stopWhenTrue, terminalValue) ←
+              match appFnArgs parsedContinue.fst with
+              | (.const ``Bool.or _, [predicateExpr, recExpr]) =>
+                  .ok (predicateExpr, recExpr, true, false)
+              | (.const ``Bool.and _, [predicateExpr, recExpr]) =>
+                  .ok (predicateExpr, recExpr, false, true)
+              | _ =>
+                  .error s!"unsupported closed structural predicate step: {shape.typeName}"
+            let recCall ←
+              match ← structuralRecCallTarget? parsedContinue.snd recExpr with
+              | some recCall => .ok recCall
+              | none =>
+                  .error
+                    s!"closed structural predicate step must call the recursive field: {shape.typeName}"
+            if recCall.fst != layout.name then
+              .error s!"closed structural predicate recursive target mismatch: {shape.typeName}"
+            else
+              let recursiveFieldValue := valueFromInternalSlots
+                (.recVariant shape.typeName shape.typeParams)
+                (fun _ => .local (fieldStart + recursiveFieldOffset))
+              if recCall.snd.fst != recursiveFieldValue then
+                .error s!"closed structural predicate recursive field mismatch: {shape.typeName}"
+              else if !(recCall.snd.snd.all isDirectLambda) then
+                .error s!"closed structural predicate recursive argument mismatch: {shape.typeName}"
+              else
+                let predicateResult ←
+                  extractExprFrom ctx (parsedContinue.snd ++ locals)
+                    (fieldStart + fieldSlotCount) predicateExpr
+                let rec parseTerminalArms : List ClosedFoldCtorInfo → Except String Unit
+                  | [] => .ok ()
+                  | info :: rest => do
+                      let arm ←
+                        match stepInfo.arms[info.index]? with
+                        | some arm => .ok arm
+                        | none => .error s!"inductive matcher arity mismatch: {layout.name}"
+                      let runtimeFields ← runtimeTypesFromKinds info.ctor.fields |>.mapM defaultValue
+                      let sourceBindings ←
+                        sourceFieldBindingsFromKinds layout.name info.ctor.fields runtimeFields
+                      let fieldBinders :=
+                        (info.ctor.fields.zip sourceBindings).map fun item =>
+                          StructuralArmBinder.runtime item.fst item.snd
+                      let belowBinding ←
+                        structuralBelowBinding layout.name layout.name shape.typeParams
+                          info.ctor.name info.ctor.fields runtimeFields
+                      let parsedArm ←
+                        consumeStructuralCtorArm ctx layout.name stepInfo.prePostArgCount postBinders
+                          fieldBinders info.ctor belowBinding arm
+                      let armResult ←
+                        extractExprFrom ctx (parsedArm.snd ++ locals) predicateResult.snd parsedArm.fst
+                      let expected := if terminalValue then .u64 1 else .u64 0
+                      if armResult.fst == expected then
+                        parseTerminalArms rest
+                      else
+                        .error
+                          s!"closed structural predicate terminal arm mismatch: {shape.typeName}"
+                parseTerminalArms terminalInfos
+                .ok (some
+                  (.heapLinearPredicate ptrExpr continueInfo.index fieldSlotCount recursiveFieldOffset
+                    fieldStart predicateResult.fst stopWhenTrue terminalValue,
+                    predicateResult.snd))
 
   partial def extractValueFrom
       (ctx : Context)
@@ -6774,60 +7175,67 @@ mutual
             | (.const ``Prod.mk _, _) =>
                 .error "product value used where scalar value is required"
             | (.const primitive _, args) =>
-                match structureProjection? ctx.env primitive, args with
-                | some (structName, some index), target :: [] =>
-                    let valueResult ← extractValueFrom ctx locals nextLocal target
-                    .ok (← scalarValue (← structField structName index valueResult.fst), valueResult.snd)
-                | some (_structName, none), _target :: [] =>
-                    .ok (.u64 0, nextLocal)
-                | _, _ =>
-                    match boolMatcherArgs? ctx.env (.const primitive []) args with
-                    | some (scrutinee, falseArm, trueArm) =>
-                        let condResult ← extractCondFrom ctx locals nextLocal scrutinee
-                        let falseResult ← extractUnitArmValueFrom ctx locals condResult.snd falseArm
-                        let trueResult ← extractUnitArmValueFrom ctx locals falseResult.snd trueArm
-                        .ok (← scalarValue (← valueIte condResult.fst trueResult.fst falseResult.fst), trueResult.snd)
-                    | none =>
-                        match exceptMatcherArgs? ctx.env (.const primitive []) args with
-                        | some (scrutinee, errorArm, okArm) =>
-                            let valueResult ←
-                              extractExceptMatchValueFrom ctx locals nextLocal scrutinee errorArm okArm
-                            .ok (← scalarValue valueResult.fst, valueResult.snd)
+                match ← extractClosedStructuralPredicateExprFrom ctx locals nextLocal expr with
+                | some result => .ok result
+                | none =>
+                    match structureProjection? ctx.env primitive, args with
+                    | some (structName, some index), target :: [] =>
+                        let valueResult ← extractValueFrom ctx locals nextLocal target
+                        .ok (← scalarValue (← structField structName index valueResult.fst),
+                          valueResult.snd)
+                    | some (_structName, none), _target :: [] =>
+                        .ok (.u64 0, nextLocal)
+                    | _, _ =>
+                        match boolMatcherArgs? ctx.env (.const primitive []) args with
+                        | some (scrutinee, falseArm, trueArm) =>
+                            let condResult ← extractCondFrom ctx locals nextLocal scrutinee
+                            let falseResult ← extractUnitArmValueFrom ctx locals condResult.snd falseArm
+                            let trueResult ← extractUnitArmValueFrom ctx locals falseResult.snd trueArm
+                            .ok
+                              (← scalarValue
+                                (← valueIte condResult.fst trueResult.fst falseResult.fst),
+                                trueResult.snd)
                         | none =>
-                            match optionMatcherArgs? ctx.env (.const primitive []) args with
-                            | some (scrutinee, noneArm, someArm) =>
+                            match exceptMatcherArgs? ctx.env (.const primitive []) args with
+                            | some (scrutinee, errorArm, okArm) =>
                                 let valueResult ←
-                                  extractOptionMatchValueFrom ctx locals nextLocal scrutinee noneArm someArm
+                                  extractExceptMatchValueFrom ctx locals nextLocal scrutinee errorArm okArm
                                 .ok (← scalarValue valueResult.fst, valueResult.snd)
                             | none =>
-                                match natMatcherArgs? ctx.env (.const primitive []) args with
-                                | some (scrutinee, zeroArm, succArm) =>
+                                match optionMatcherArgs? ctx.env (.const primitive []) args with
+                                | some (scrutinee, noneArm, someArm) =>
                                     let valueResult ←
-                                      extractNatMatchValueFrom ctx locals nextLocal scrutinee zeroArm succArm
+                                      extractOptionMatchValueFrom ctx locals nextLocal scrutinee noneArm someArm
                                     .ok (← scalarValue valueResult.fst, valueResult.snd)
                                 | none =>
-                                    match productMatcherArgs? ctx.env (.const primitive []) args with
-                                    | some (scrutinee, arm) =>
+                                    match natMatcherArgs? ctx.env (.const primitive []) args with
+                                    | some (scrutinee, zeroArm, succArm) =>
                                         let valueResult ←
-                                          extractProductMatchValueFrom ctx locals nextLocal scrutinee arm
+                                          extractNatMatchValueFrom ctx locals nextLocal scrutinee zeroArm succArm
                                         .ok (← scalarValue valueResult.fst, valueResult.snd)
                                     | none =>
-                                        match structureMatcherArgs? ctx.env (.const primitive []) args with
-                                        | some (structName, scrutinee, arm) =>
+                                        match productMatcherArgs? ctx.env (.const primitive []) args with
+                                        | some (scrutinee, arm) =>
                                             let valueResult ←
-                                              extractStructureMatchValueFrom ctx locals nextLocal
-                                                structName scrutinee arm
+                                              extractProductMatchValueFrom ctx locals nextLocal scrutinee arm
                                             .ok (← scalarValue valueResult.fst, valueResult.snd)
                                         | none =>
-                                            match variantMatcherArgs? ctx.env (.const primitive []) args with
-                                            | some (layout, scrutinee, arms) =>
+                                            match structureMatcherArgs? ctx.env (.const primitive []) args with
+                                            | some (structName, scrutinee, arm) =>
                                                 let valueResult ←
-                                                  extractVariantMatchValueFrom ctx locals nextLocal
-                                                    layout scrutinee arms
+                                                  extractStructureMatchValueFrom ctx locals nextLocal
+                                                    structName scrutinee arm
                                                 .ok (← scalarValue valueResult.fst, valueResult.snd)
                                             | none =>
-                                                extractPrimitiveApplicationFrom ctx locals nextLocal
-                                                  primitive args
+                                                match variantMatcherArgs? ctx.env (.const primitive []) args with
+                                                | some (layout, scrutinee, arms) =>
+                                                    let valueResult ←
+                                                      extractVariantMatchValueFrom ctx locals nextLocal
+                                                        layout scrutinee arms
+                                                    .ok (← scalarValue valueResult.fst, valueResult.snd)
+                                                | none =>
+                                                    extractPrimitiveApplicationFrom ctx locals nextLocal
+                                                      primitive args
             | (fn, _) => .error s!"unsupported expression: {fn}"
 
   partial def extractPrimitiveApplicationFrom
@@ -7412,187 +7820,6 @@ def stepBindingsForParams (params : List Ty) : List Binding :=
   let carried := ((sourceParamBindings params).drop 1).reverse
   (.recursor :: carried) ++ [.value (.scalar (.u64Bin .sub (.local 0) (.u64 1)))]
 
-def brecOnName (typeName : Name) : Name :=
-  .str typeName "brecOn"
-
-def brecOnTypeName? : Name → Option Name
-  | .str typeName "brecOn" => some typeName
-  | _ => none
-
-structure StructuralStep where
-  layout : VariantLayout
-  arms : List Expr
-  prePostArgCount : Nat
-
-def structuralRecStepMatcher?
-    (env : Environment)
-    (typeName : Name)
-    (_typeParams : List Ty)
-    (postArgCount : Nat)
-    (step : Expr) :
-    Except String StructuralStep := do
-  let stepBody ←
-    match collectLambdas step (2 + postArgCount) with
-    | some body => .ok body
-    | none => .error s!"unsupported structural recursion step: {typeName}"
-  match stepBody.consumeMData with
-  | .app matcherExpr belowArg =>
-      if !isBVar postArgCount belowArg then
-        .error s!"unsupported structural recursion below argument: {typeName}"
-      else
-        let (matcherFn, matcherArgs) := appFnArgs matcherExpr
-        match variantMatcherInfo? env matcherFn matcherArgs (some typeName) (some postArgCount) with
-        | some info =>
-            let layout := info.layout
-            let scrutinee := info.scrutinee
-            if layout.name == typeName then
-              if isBVar (postArgCount + 1) scrutinee then
-                .ok {
-                  layout := layout,
-                  arms := info.arms,
-                  prePostArgCount := info.prePostArgCount
-                }
-              else
-                .error s!"unsupported structural recursion matcher scrutinee: {typeName}"
-            else
-              .error s!"structural recursion matcher type mismatch: {typeName}"
-        | none => .error s!"unsupported structural recursion matcher: {typeName}"
-  | _ => .error s!"unsupported structural recursion step body: {typeName}"
-
-def structuralBelowForFields (functionName : Name) (fields : List ExtractedValue) :
-    StructuralBelow :=
-  let fieldBelow (value : ExtractedValue) : StructuralBelow :=
-    .pair (.call functionName value) .unit
-  let rec loop : List ExtractedValue → StructuralBelow
-    | [] => .unit
-    | [value] => fieldBelow value
-    | value :: rest => .pair (fieldBelow value) (loop rest)
-  loop fields
-
-def structuralBelowBinding
-    (functionName : Name)
-    (typeName : Name)
-    (typeParams : List Ty)
-    (ctor : Name)
-    (fieldKinds : List (Option Ty))
-    (runtimeFields : List ExtractedValue) :
-    Except String Binding := do
-  let typedFields ← typedFieldsFromKinds ctor fieldKinds runtimeFields
-  let recursiveFields :=
-    typedFields.filter fun item =>
-      match item.fst with
-      | .recVariant candidate params => candidate == typeName && params == typeParams
-      | _ => false
-  match recursiveFields with
-  | [] => .ok (.value (.scalar (.u64 0)))
-  | fields => .ok (.structuralBelow (structuralBelowForFields functionName (fields.map Prod.snd)))
-
-inductive StructuralPostArg where
-  | dynamic (ty : Ty) (binding : Binding)
-  | staticLambda (expr : Expr)
-
-def structuralPostArgs
-    (params : List Ty)
-    (postArgs : List Expr) :
-    Except String (List StructuralPostArg) := do
-  let dynamicParams := params.drop 1
-  let dynamicBindings := (sourceParamBindings params).drop 1
-  let rec loop :
-      Nat → List Expr → List (Ty × Binding) → List StructuralPostArg →
-        Except String (List StructuralPostArg)
-    | _, [], [], acc => .ok acc.reverse
-    | _, [], _ :: _, _ => .error "unsupported structural recursion carried arguments"
-    | index, arg :: restArgs, dynamics, acc =>
-        if isDirectLambda arg then
-          loop index restArgs dynamics (.staticLambda arg :: acc)
-        else
-          match dynamics with
-          | (ty, binding) :: restDynamics =>
-              let expectedParamIndex := params.length - 2 - index
-              if isBVar expectedParamIndex arg then
-                loop (index + 1) restArgs restDynamics (.dynamic ty binding :: acc)
-              else
-                .error "unsupported structural recursion carried argument initializer"
-          | [] => .error "unsupported structural recursion carried arguments"
-  loop 0 postArgs (dynamicParams.zip dynamicBindings) []
-
-inductive StructuralArmBinder where
-  | runtime (expected : Option Ty) (binding : Binding)
-  | staticLambda (expr : Expr)
-  | below (binding : Binding)
-
-def checkStructuralArmBinder
-    (env : Environment)
-    (typeName : Name)
-    (binder : StructuralArmBinder)
-    (domain : Expr) :
-    Except String Unit := do
-  match binder with
-  | .runtime (some expected) _ =>
-      match typeAtom? env domain with
-      | some actual =>
-          if actual == expected then
-            .ok ()
-          else
-            .error s!"structural recursion arm binder type mismatch: {typeName}"
-      | none => .error s!"unsupported structural recursion arm binder type: {typeName}"
-  | .runtime none _ =>
-      if isProofType? env domain then
-        .ok ()
-      else
-        .error s!"structural recursion arm proof binder mismatch: {typeName}"
-  | .staticLambda _ => .ok ()
-  | .below _ => .ok ()
-
-partial def consumeStructuralArmBinders
-    (ctx : Context)
-    (typeName : Name)
-    (binders : List StructuralArmBinder)
-    (arm : Expr) :
-    Except String (Expr × List Binding) := do
-  let rec loop :
-      List StructuralArmBinder → Expr → List Binding → Except String (Expr × List Binding)
-    | [], body, bindings => .ok (betaSpecializeExpr ctx.env ctx.root 16 body, bindings)
-    | binder :: rest, expr, bindings =>
-        match expr.consumeMData with
-        | .lam _ domain body _ => do
-            checkStructuralArmBinder ctx.env typeName binder domain
-            match binder with
-            | .runtime _ binding => loop rest body (binding :: bindings)
-            | .below binding => loop rest body (binding :: bindings)
-            | .staticLambda staticExpr => loop rest (body.instantiate1 staticExpr) bindings
-        | _ => .error s!"unsupported structural recursion arm: {typeName}"
-  loop binders arm []
-
-def structuralCtorArmBinders
-    (prePostArgCount : Nat)
-    (postBinders fieldBinders : List StructuralArmBinder)
-    (belowBinding : Binding) :
-    List StructuralArmBinder :=
-  postBinders.take prePostArgCount ++
-    fieldBinders ++
-    postBinders.drop prePostArgCount ++
-    [StructuralArmBinder.below belowBinding]
-
-def consumeStructuralCtorArm
-    (ctx : Context)
-    (typeName : Name)
-    (prePostArgCount : Nat)
-    (postBinders fieldBinders : List StructuralArmBinder)
-    (ctor : VariantCtorLayout)
-    (belowBinding : Binding)
-    (arm : Expr) :
-    Except String (Expr × List Binding) := do
-  let armBinders := structuralCtorArmBinders prePostArgCount postBinders fieldBinders belowBinding
-  if ctor.fields.isEmpty then
-    let unitBinder :=
-      StructuralArmBinder.runtime (some .unit) (.value (.scalar (.u64 0)))
-    match consumeStructuralArmBinders ctx typeName (unitBinder :: armBinders) arm with
-    | .ok parsedArm => .ok parsedArm
-    | .error _ => consumeStructuralArmBinders ctx typeName armBinders arm
-  else
-    consumeStructuralArmBinders ctx typeName armBinders arm
-
 def extractStructuralRecFunc
     (ctx : Context)
     (name : Name)
@@ -7702,57 +7929,6 @@ structure ClosedStructuralFoldShape where
   step : Expr
   init : Expr
 
-structure ClosedFoldCtorInfo where
-  index : Nat
-  ctor : VariantCtorLayout
-  recursiveOffsets : List Nat
-
-def runtimeFieldSlotCount (fields : List (Option Ty)) : Nat :=
-  fields.foldl
-    (fun total field =>
-      match field with
-      | some ty => total + internalSlots ty
-      | none => total)
-    0
-
-def directRecursiveFieldOffsets
-    (typeName : Name)
-    (typeParams : List Ty)
-    (fields : List (Option Ty)) :
-    List Nat :=
-  let rec loop (offset : Nat) (fields : List (Option Ty)) (acc : List Nat) : List Nat :=
-    match fields with
-    | [] => acc.reverse
-    | none :: rest => loop offset rest acc
-    | some ty :: rest =>
-        let nextOffset := offset + internalSlots ty
-        match ty with
-        | .recVariant candidate params =>
-            if candidate == typeName && params == typeParams then
-              loop nextOffset rest (offset :: acc)
-            else
-              loop nextOffset rest acc
-        | _ => loop nextOffset rest acc
-  loop 0 fields []
-
-def localRuntimeFieldsFromKinds
-    (fields : List (Option Ty))
-    (fieldStart : Nat) :
-    List ExtractedValue :=
-  let rec loop
-      (offset : Nat)
-      (fields : List (Option Ty))
-      (acc : List ExtractedValue) :
-      List ExtractedValue :=
-    match fields with
-    | [] => acc.reverse
-    | none :: rest => loop offset rest acc
-    | some ty :: rest =>
-        let value := valueFromInternalSlots ty fun slotOffset =>
-          .local (fieldStart + offset + slotOffset)
-        loop (offset + internalSlots ty) rest (value :: acc)
-  loop 0 fields []
-
 def closedStructuralFoldShape? (env : Environment) (body : Expr) :
     Option ClosedStructuralFoldShape :=
   match appFnArgs body with
@@ -7781,19 +7957,6 @@ def closedStructuralFoldCandidate? (env : Environment) (value : Expr) (paramCoun
   match collectLambdas value paramCount with
   | some body => (closedStructuralFoldShape? env body).isSome
   | none => false
-
-def structuralRecCallTarget?
-    (locals : List Binding)
-    (body : Expr) :
-    Except String (Option (Name × ExtractedValue × List Expr)) := do
-  match appFnArgs body with
-  | (fn, extraArgs) =>
-      match fn.consumeMData with
-      | .proj ``PProd _ _ =>
-          match ← structuralRecProjection? locals fn with
-          | some (functionName, arg) => .ok (some (functionName, arg, extraArgs))
-          | none => .ok none
-      | _ => .ok none
 
 def wellFoundedFixStep? (expr : Expr) : Option Expr :=
   match appFnArgs expr with

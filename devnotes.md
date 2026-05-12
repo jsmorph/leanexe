@@ -2509,3 +2509,24 @@ Checks run:
 - [x] `build/tools/wasmtime/current/wasmtime --invoke leanListFoldlClosedDemo $TMPDIR/leanListFoldlClosedDemo.wasm` returned `123`.
 - [x] `node test/core_correctness.js` returned `checked 490 accepted, 25 rejected, and 13 trapped cases`.
 - [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 490 accepted, 25 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 46 json program cases`, and `checked 56 cases`.
+
+## 2026-05-12: Closed structural predicates
+
+The extractor now lowers closed structural predicate bodies over list-shaped recursive inductives.  The accepted shape is Lean's generated `brecOn` body with one direct-lambda predicate, one constructor with a single direct recursive field, and terminal constructors that return the predicate identity value.  The recursive constructor arm must combine the predicate result for the current fields with the generated recursive-field result through `Bool.or` for existential predicates or `Bool.and` for universal predicates.
+
+The IR gained `heapLinearPredicate`, which emits a heap-pointer loop with short-circuit behavior.  This remains a structural-recursion lowering rather than a `List` primitive: the extractor checks the recursive-inductive layout, generated matcher, terminal values, predicate lambda, and recursive-field projection before emitting the loop.  The current tests cover direct `List.any` and `List.all` over `List UInt64`, including both short-circuit and terminal cases.
+
+Checks run:
+
+- [x] `lake build`
+- [x] `lake build LeanExe.Examples.Correctness`
+- [x] `.lake/build/bin/lean-wasm compile --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.leanListAnyDirectDemo --out $TMPDIR/leanListAnyDirectDemo.wasm`
+- [x] `.lake/build/bin/lean-wasm compile --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.leanListAnyDirectMissingDemo --out $TMPDIR/leanListAnyDirectMissingDemo.wasm`
+- [x] `.lake/build/bin/lean-wasm compile --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.leanListAllDirectDemo --out $TMPDIR/leanListAllDirectDemo.wasm`
+- [x] `.lake/build/bin/lean-wasm compile --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.leanListAllDirectMissingDemo --out $TMPDIR/leanListAllDirectMissingDemo.wasm`
+- [x] `build/tools/wasmtime/current/wasmtime --invoke leanListAnyDirectDemo $TMPDIR/leanListAnyDirectDemo.wasm` returned `1`.
+- [x] `build/tools/wasmtime/current/wasmtime --invoke leanListAnyDirectMissingDemo $TMPDIR/leanListAnyDirectMissingDemo.wasm` returned `0`.
+- [x] `build/tools/wasmtime/current/wasmtime --invoke leanListAllDirectDemo $TMPDIR/leanListAllDirectDemo.wasm` returned `1`.
+- [x] `build/tools/wasmtime/current/wasmtime --invoke leanListAllDirectMissingDemo $TMPDIR/leanListAllDirectMissingDemo.wasm` returned `0`.
+- [x] `node test/core_correctness.js` returned `checked 495 accepted, 24 rejected, and 13 trapped cases`.
+- [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 495 accepted, 24 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 46 json program cases`, and `checked 56 cases`.
