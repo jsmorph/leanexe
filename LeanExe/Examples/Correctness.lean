@@ -669,6 +669,20 @@ def idRunMut : UInt64 := Id.run do
   x := x + 1
   return x
 
+def idRunByteArrayForSum : UInt64 := Id.run do
+  let input := ByteArray.mk #[(1 : UInt8), (2 : UInt8), (3 : UInt8)]
+  let mut acc := (0 : UInt64)
+  for byte in input do
+    acc := acc + byte.toUInt64
+  return acc
+
+def idRunArrayForSum : UInt64 := Id.run do
+  let values : Array UInt64 := #[1, 2, 3]
+  let mut acc := (0 : UInt64)
+  for value in values do
+    acc := acc + value
+  return acc
+
 def idFunctionUInt64 (x : UInt64) : UInt64 :=
   id (x + 1)
 
