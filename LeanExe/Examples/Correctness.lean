@@ -768,6 +768,15 @@ def idRunArrayForBreakSum : UInt64 := Id.run do
       acc := acc + value
   return acc
 
+def idRunArrayForContinueNoElse : UInt64 := Id.run do
+  let values : Array UInt64 := #[1, 2, 99, 3]
+  let mut acc := (0 : UInt64)
+  for value in values do
+    if value == (99 : UInt64) then
+      continue
+    acc := acc + value
+  return acc
+
 def idRunByteArrayForState : DigitState := Id.run do
   let input := ByteArray.mk #[(1 : UInt8), (2 : UInt8), (3 : UInt8)]
   let mut state : DigitState := { pos := 0, sum := 0 }
@@ -783,6 +792,15 @@ def idRunByteArrayForBreakSum : UInt64 := Id.run do
       break
     else
       acc := acc + byte.toUInt64
+  return acc
+
+def idRunByteArrayForContinueNoElse : UInt64 := Id.run do
+  let input := ByteArray.mk #[(1 : UInt8), (2 : UInt8), (99 : UInt8), (3 : UInt8)]
+  let mut acc := (0 : UInt64)
+  for byte in input do
+    if byte == (99 : UInt8) then
+      continue
+    acc := acc + byte.toUInt64
   return acc
 
 def idRunArrayForStatus : Status := Id.run do
@@ -831,6 +849,22 @@ def idRunRangeForBreakSum : UInt64 := Id.run do
       acc := acc + i.toUInt64
   return acc
 
+def idRunRangeForBreakNoElse : UInt64 := Id.run do
+  let mut acc := (0 : UInt64)
+  for i in [0:6] do
+    if i == (3 : Nat) then
+      break
+    acc := acc + i.toUInt64
+  return acc
+
+def idRunRangeForContinueNoElse : UInt64 := Id.run do
+  let mut acc := (0 : UInt64)
+  for i in [0:6] do
+    if i == (3 : Nat) then
+      continue
+    acc := acc + i.toUInt64
+  return acc
+
 def idRunRangeForBreakState : DigitState := Id.run do
   let mut state : DigitState := { pos := 0, sum := 0 }
   for i in [1:6] do
@@ -838,6 +872,14 @@ def idRunRangeForBreakState : DigitState := Id.run do
       break
     else
       state := { pos := state.pos + 1, sum := state.sum + i.toUInt64 }
+  return state
+
+def idRunRangeForContinueState : DigitState := Id.run do
+  let mut state : DigitState := { pos := 0, sum := 0 }
+  for i in [1:6] do
+    if i == (4 : Nat) then
+      continue
+    state := { pos := state.pos + 1, sum := state.sum + i.toUInt64 }
   return state
 
 def idFunctionUInt64 (x : UInt64) : UInt64 :=
