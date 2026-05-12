@@ -791,6 +791,78 @@ partial def collectLambdas (expr : Expr) : Nat → Option Expr
       | .lam _ _ body _ => collectLambdas body count
       | _ => none
 
+def isDirectLambda (expr : Expr) : Bool :=
+  match expr.consumeMData with
+  | .lam _ _ _ _ => true
+  | _ => false
+
+def hasDirectLambdaArg (args : List Expr) : Bool :=
+  args.any isDirectLambda
+
+def blocksTransparentSpecialization (name : Name) : Bool :=
+  let root := name.getRoot
+  name == ``ite || name == ``dite ||
+    (match name with
+    | .str _ component =>
+        component.startsWith "match_" ||
+          component == "brecOn" ||
+          component == "rec" ||
+          component == "recOn" ||
+          component == "casesOn"
+    | _ => false) ||
+    [``Array, ``ByteArray, ``Option, ``Except, ``ForIn, ``Bind, ``Pure, ``Id, ``Nat,
+      ``Decidable, ``GetElem, ``GetElem?, ``HOrElse, ``OrElse].contains root
+
+partial def rebuildApp (fn : Expr) : List Expr → Expr
+  | [] => fn
+  | arg :: rest => rebuildApp (.app fn arg) rest
+
+partial def betaSpecializeExpr
+    (env : Environment)
+    (root : Name)
+    (fuel : Nat)
+    (expr : Expr) : Expr :=
+  match fuel with
+  | 0 => expr
+  | fuel + 1 =>
+      let normalize := betaSpecializeExpr env root fuel
+      match expr.consumeMData with
+      | .app _ _ =>
+          let (fn, args) := appFnArgs expr
+          let normalizedFn := normalize fn
+          let normalizedArgs := args.map normalize
+          let rec applyNormalized (fn : Expr) : List Expr → Expr
+            | [] => fn
+            | arg :: rest =>
+                match fn.consumeMData with
+                | .lam _ _ body _ => applyNormalized (normalize (body.instantiate1 arg)) rest
+                | _ => rebuildApp fn (arg :: rest)
+          let applied := applyNormalized normalizedFn normalizedArgs
+          match appFnArgs applied with
+          | (.const name _, appliedArgs) =>
+              if name.getRoot != root &&
+                  !blocksTransparentSpecialization name &&
+                  hasDirectLambdaArg appliedArgs then
+                match env.find? name with
+                | some info =>
+                    match info.value? with
+                    | some value => normalize (rebuildApp value appliedArgs)
+                    | none => applied
+                | none => applied
+              else
+                applied
+          | _ => applied
+      | .lam name type body bi => .lam name (normalize type) (normalize body) bi
+      | .forallE name type body bi => .forallE name (normalize type) (normalize body) bi
+      | .letE name type value body nondep =>
+          .letE name (normalize type) (normalize value) (normalize body) nondep
+      | .mdata data body => .mdata data (normalize body)
+      | .proj typeName index body => .proj typeName index (normalize body)
+      | other => other
+
+def containsConstantInExpr (name : Name) (expr : Expr) : Bool :=
+  expr.getUsedConstants.contains name
+
 partial def collectReachable
     (env : Environment)
     (root entry : Name)
@@ -1384,43 +1456,10 @@ partial def valueIte
         .ok (.heapVariant thenName (.ite cond thenPtr elsePtr))
       else
         .error "if branches have incompatible recursive inductive value shapes"
-  | .recursiveVariant thenName thenTag thenCtors,
-      .recursiveVariant elseName elseTag elseCtors =>
-      if thenName == elseName && thenCtors.length == elseCtors.length then do
-        let combineFields (fields : List (Ty × ExtractedValue) × List (Ty × ExtractedValue)) :
-            Except String (List (Ty × ExtractedValue)) :=
-          if fields.fst.length == fields.snd.length then
-            fields.fst.zip fields.snd |>.mapM fun fieldPair =>
-              if fieldPair.fst.fst == fieldPair.snd.fst then do
-                let value ← valueIte cond fieldPair.fst.snd fieldPair.snd.snd
-                .ok (fieldPair.fst.fst, value)
-              else
-                .error "if branches have incompatible recursive inductive payload types"
-          else
-            .error "if branches have incompatible recursive inductive payload shapes"
-        let rec combineCtors :
-            Nat → List (List (Ty × ExtractedValue) × List (Ty × ExtractedValue)) →
-              Except String (List (List (Ty × ExtractedValue)))
-          | _, [] => .ok []
-          | index, fields :: rest => do
-              let head ←
-                match irConstNat? thenTag, irConstNat? elseTag with
-                | some thenIndex, some elseIndex =>
-                    if thenIndex != index then
-                      .ok fields.snd
-                    else if elseIndex != index then
-                      .ok fields.fst
-                    else
-                      combineFields fields
-                | some thenIndex, none =>
-                    if thenIndex == index then combineFields fields else .ok fields.snd
-                | none, some elseIndex =>
-                    if elseIndex == index then combineFields fields else .ok fields.fst
-                | _, _ => combineFields fields
-              let tail ← combineCtors (index + 1) rest
-              .ok (head :: tail)
-        let ctors ← combineCtors 0 (thenCtors.zip elseCtors)
-        .ok (.recursiveVariant thenName (.ite cond thenTag elseTag) ctors)
+  | .recursiveVariant thenName _thenTag thenCtors,
+      .recursiveVariant elseName _elseTag elseCtors =>
+      if thenName == elseName && thenCtors.length == elseCtors.length then
+        .ok (.ite cond thenValue elseValue)
       else
         .error "if branches have incompatible recursive inductive value shapes"
   | _, _ => .error "if branches have incompatible structured value shapes"
@@ -2308,15 +2347,22 @@ def isMatcherName (candidate : Name) : Bool :=
   | .str _ component => component.startsWith "match_"
   | _ => false
 
-def generatedMatcherScrutineeType? (env : Environment) (name : Name) : Option Ty :=
+def generatedMatcherScrutineeArg? (env : Environment) (name : Name) (args : List Expr) :
+    Option (Nat × Ty) :=
   if !isMatcherName name then
     none
   else
     match env.find? name with
     | some info =>
-        match (peelForall info.type).fst with
-        | _motive :: scrutineeType :: _ => typeAtom? env scrutineeType
-        | _ => none
+        let domains := (peelForall info.type).fst
+        let rec loop (index : Nat) : List Expr → Option (Nat × Ty)
+          | [] => none
+          | domain :: rest =>
+              let instantiated := domain.instantiateRev (args.take index).toArray
+              match typeAtom? env instantiated with
+              | some ty => some (index, ty)
+              | none => loop (index + 1) rest
+        loop 0 domains
     | none => none
 
 def optionMatcherArgs? (env : Environment) (fn : Expr) (args : List Expr) :
@@ -2329,14 +2375,6 @@ def optionMatcherArgs? (env : Environment) (fn : Expr) (args : List Expr) :
         | some ty => if ty == payloadTy then some true else none
         | none => none
     | _ => none
-  let generatedOptionArgs? (payloadTy : Ty) : Option (Expr × Expr × Expr) :=
-    match args with
-    | [_motive, scrutinee, firstArm, secondArm] =>
-        match optionArmKind? payloadTy firstArm, optionArmKind? payloadTy secondArm with
-        | some false, some true => some (scrutinee, firstArm, secondArm)
-        | some true, some false => some (scrutinee, secondArm, firstArm)
-        | _, _ => none
-    | _ => none
   match fn.consumeMData with
   | .const name _ =>
       if name == ``Option.casesOn || name == ``Option.rec then
@@ -2344,11 +2382,15 @@ def optionMatcherArgs? (env : Environment) (fn : Expr) (args : List Expr) :
         | someArm :: noneArm :: scrutinee :: _ => some (scrutinee, noneArm, someArm)
         | _ => none
       else
-        match generatedMatcherScrutineeType? env name with
-        | some resultTy =>
-            match optionPayloadType? resultTy with
-            | some payloadTy => generatedOptionArgs? payloadTy
-            | none => none
+        match generatedMatcherScrutineeArg? env name args with
+        | some (scrutineeIndex, resultTy) =>
+            match optionPayloadType? resultTy, args[scrutineeIndex]?, args.drop (scrutineeIndex + 1) with
+            | some payloadTy, some scrutinee, [firstArm, secondArm] =>
+                match optionArmKind? payloadTy firstArm, optionArmKind? payloadTy secondArm with
+                | some false, some true => some (scrutinee, firstArm, secondArm)
+                | some true, some false => some (scrutinee, secondArm, firstArm)
+                | _, _ => none
+            | _, _, _ => none
         | _ => none
   | _ => none
 
@@ -2403,27 +2445,26 @@ partial def boolArmTarget? (expr : Expr) : Option Bool :=
 
 def boolMatcherArgs? (env : Environment) (fn : Expr) (args : List Expr) :
     Option (Expr × Expr × Expr) :=
-  let generatedBoolArgs? (name : Name) : Option (Expr × Expr × Expr) :=
-    match env.find? name, args with
-    | some info, [_motive, scrutinee, firstArm, secondArm] =>
-        match (peelForall info.type).fst with
-        | _motiveTy :: _scrutineeTy :: firstArmTy :: secondArmTy :: _ =>
-            match boolArmTarget? firstArmTy, boolArmTarget? secondArmTy with
-            | some false, some true => some (scrutinee, firstArm, secondArm)
-            | some true, some false => some (scrutinee, secondArm, firstArm)
-            | _, _ => none
-        | _ => none
-    | _, _ => none
   match fn.consumeMData with
   | .const name _ =>
       if name == ``Bool.casesOn then
         match args with
         | [_motive, scrutinee, falseArm, trueArm] => some (scrutinee, falseArm, trueArm)
         | _ => none
-      else if generatedMatcherScrutineeType? env name == some .bool then
-        generatedBoolArgs? name
       else
-        none
+        match generatedMatcherScrutineeArg? env name args with
+        | some (scrutineeIndex, .bool) =>
+            match env.find? name, args[scrutineeIndex]?, args.drop (scrutineeIndex + 1) with
+            | some info, some scrutinee, [firstArm, secondArm] =>
+                match (peelForall info.type).fst.drop (scrutineeIndex + 1) with
+                | firstArmTy :: secondArmTy :: _ =>
+                    match boolArmTarget? firstArmTy, boolArmTarget? secondArmTy with
+                    | some false, some true => some (scrutinee, firstArm, secondArm)
+                    | some true, some false => some (scrutinee, secondArm, firstArm)
+                    | _, _ => none
+                | _ => none
+            | _, _, _ => none
+        | _ => none
   | _ => none
 
 def natMatcherArgs? (env : Environment) (fn : Expr) (args : List Expr) :
@@ -2436,24 +2477,23 @@ def natMatcherArgs? (env : Environment) (fn : Expr) (args : List Expr) :
         | some .nat => some true
         | _ => none
     | _ => none
-  let generatedNatArgs? : Option (Expr × Expr × Expr) :=
-    match args with
-    | [_motive, scrutinee, firstArm, secondArm] =>
-        match natArmKind? firstArm, natArmKind? secondArm with
-        | some false, some true => some (scrutinee, firstArm, secondArm)
-        | some true, some false => some (scrutinee, secondArm, firstArm)
-        | _, _ => none
-    | _ => none
   match fn.consumeMData with
   | .const name _ =>
       if name == ``Nat.casesOn then
         match args with
         | [_motive, scrutinee, zeroArm, succArm] => some (scrutinee, zeroArm, succArm)
         | _ => none
-      else if generatedMatcherScrutineeType? env name == some .nat then
-        generatedNatArgs?
       else
-        none
+        match generatedMatcherScrutineeArg? env name args with
+        | some (scrutineeIndex, .nat) =>
+            match args[scrutineeIndex]?, args.drop (scrutineeIndex + 1) with
+            | some scrutinee, [firstArm, secondArm] =>
+                match natArmKind? firstArm, natArmKind? secondArm with
+                | some false, some true => some (scrutinee, firstArm, secondArm)
+                | some true, some false => some (scrutinee, secondArm, firstArm)
+                | _, _ => none
+            | _, _ => none
+        | _ => none
   | _ => none
 
 def productMatcherArgs? (env : Environment) (fn : Expr) (args : List Expr) :
@@ -2469,9 +2509,12 @@ def productMatcherArgs? (env : Environment) (fn : Expr) (args : List Expr) :
         | scrutinee :: arm :: _ => some (scrutinee, arm)
         | _ => none
       else
-        match generatedMatcherScrutineeType? env name, args with
-        | some (.product _ _), [_motive, scrutinee, arm] => some (scrutinee, arm)
-        | _, _ => none
+        match generatedMatcherScrutineeArg? env name args with
+        | some (scrutineeIndex, .product _ _) =>
+            match args[scrutineeIndex]?, args.drop (scrutineeIndex + 1) with
+            | some scrutinee, [arm] => some (scrutinee, arm)
+            | _, _ => none
+        | _ => none
   | _ => none
 
 def structureMatcherArgs? (env : Environment) (fn : Expr) (args : List Expr) :
@@ -2497,10 +2540,12 @@ def structureMatcherArgs? (env : Environment) (fn : Expr) (args : List Expr) :
         | _ => none
     | _ => none
   let generatedMatcher? (name : Name) : Option (Name × Expr × Expr) :=
-    match generatedMatcherScrutineeType? env name, args with
-    | some (.struct structName _), [_motive, scrutinee, arm] =>
-        some (structName, scrutinee, arm)
-    | _, _ => none
+    match generatedMatcherScrutineeArg? env name args with
+    | some (scrutineeIndex, .struct structName _) =>
+        match args[scrutineeIndex]?, args.drop (scrutineeIndex + 1) with
+        | some scrutinee, [arm] => some (structName, scrutinee, arm)
+        | _, _ => none
+    | _ => none
   match fn.consumeMData with
   | .const name _ =>
       match directMatcher? name with
@@ -2567,54 +2612,37 @@ def variantMatcherArgs? (env : Environment) (fn : Expr) (args : List Expr) :
         | _ => none
     | _ => none
   let generatedMatcher? (name : Name) : Option (VariantLayout × Expr × List Expr) :=
-    match generatedMatcherScrutineeType? env name, env.find? name, args with
-    | some (.variant typeName _), some info, _motive :: scrutinee :: arms =>
-        match anyVariantLayout? env typeName with
-        | some layout =>
-            let ctorCount := layout.ctors.length
-            if arms.length == ctorCount then
-              match (peelForall info.type).fst.drop 2 with
-              | armTypes =>
-                  let armTypes := armTypes.take ctorCount
-                  if armTypes.length == ctorCount then
-                    let typedArms? :=
-                      (armTypes.zip arms).mapM fun item =>
-                        variantArmCtorName? env item.fst |>.map fun ctorName =>
-                          (ctorName, item.snd)
-                    match typedArms? with
-                    | some typedArms =>
-                        reorderVariantArms? (layout.ctors.map (fun ctor => ctor.name)) typedArms
-                          |>.map fun orderedArms => (layout, scrutinee, orderedArms)
-                    | none => none
-                  else
-                    none
-            else
-              none
-        | none => none
-    | some (.recVariant typeName typeParams), some info, _motive :: scrutinee :: arms =>
-        match recursiveVariantLayout? env typeName typeParams with
-        | some layout =>
-            let ctorCount := layout.ctors.length
-            if arms.length == ctorCount then
-              match (peelForall info.type).fst.drop 2 with
-              | armTypes =>
-                  let armTypes := armTypes.take ctorCount
-                  if armTypes.length == ctorCount then
-                    let typedArms? :=
-                      (armTypes.zip arms).mapM fun item =>
-                        variantArmCtorName? env item.fst |>.map fun ctorName =>
-                          (ctorName, item.snd)
-                    match typedArms? with
-                    | some typedArms =>
-                        reorderVariantArms? (layout.ctors.map (fun ctor => ctor.name)) typedArms
-                          |>.map fun orderedArms => (layout, scrutinee, orderedArms)
-                    | none => none
-                  else
-                    none
-            else
-              none
-        | none => none
-    | _, _, _ => none
+    let orderArms (info : ConstantInfo) (scrutineeIndex : Nat) (layout : VariantLayout)
+        (scrutinee : Expr) (arms : List Expr) : Option (VariantLayout × Expr × List Expr) :=
+      let ctorCount := layout.ctors.length
+      if arms.length == ctorCount then
+        let armTypes := ((peelForall info.type).fst.drop (scrutineeIndex + 1)).take ctorCount
+        if armTypes.length == ctorCount then
+          let typedArms? :=
+            (armTypes.zip arms).mapM fun item =>
+              variantArmCtorName? env item.fst |>.map fun ctorName =>
+                (ctorName, item.snd)
+          match typedArms? with
+          | some typedArms =>
+              reorderVariantArms? (layout.ctors.map (fun ctor => ctor.name)) typedArms
+                |>.map fun orderedArms => (layout, scrutinee, orderedArms)
+          | none => none
+        else
+          none
+      else
+        none
+    match generatedMatcherScrutineeArg? env name args, env.find? name with
+    | some (scrutineeIndex, .variant typeName _), some info =>
+        match anyVariantLayout? env typeName, args[scrutineeIndex]? with
+        | some layout, some scrutinee =>
+            orderArms info scrutineeIndex layout scrutinee (args.drop (scrutineeIndex + 1))
+        | _, _ => none
+    | some (scrutineeIndex, .recVariant typeName typeParams), some info =>
+        match recursiveVariantLayout? env typeName typeParams, args[scrutineeIndex]? with
+        | some layout, some scrutinee =>
+            orderArms info scrutineeIndex layout scrutinee (args.drop (scrutineeIndex + 1))
+        | _, _ => none
+    | _, _ => none
   match fn.consumeMData with
   | .const name _ =>
       match directMatcher? name with
@@ -2734,38 +2762,6 @@ def bindStrictSlots (slots : List IRExpr) (nextLocal : Nat) : StrictSlots :=
     slots := indexed.map fun item => .local (nextLocal + item.fst)
     nextLocal := nextLocal + slots.length
   }
-
-def structuralRecCallValueFrom
-    (ctx : Context)
-    (functionName : Name)
-    (arg : ExtractedValue)
-    (nextLocal : Nat) :
-    Except String (ExtractedValue × Nat) := do
-  let index ←
-    match functionIndex? ctx functionName with
-    | some index => .ok index
-    | none => .error s!"structural recursive function is not compiled: {functionName}"
-  let sig ←
-    match ctx.env.find? functionName with
-    | some info =>
-        match supportedFunction? ctx.env info with
-        | some sig => .ok sig
-        | none => .error s!"unsupported function type or declaration: {functionName}"
-    | none => .error s!"declaration disappeared during extraction: {functionName}"
-  let paramTy ←
-    match sig.params with
-    | [.recVariant typeName typeParams] => .ok (.recVariant typeName typeParams)
-    | _ => .error s!"unsupported structural recursion arity: {functionName}"
-  let argSlots ← materializeStrictInternalSlots paramTy arg nextLocal
-  let bound := bindStrictSlots argSlots.slots argSlots.nextLocal
-  let slotCount := abiSlots sig.result
-  let slotStart := bound.nextLocal
-  let slots := (List.range slotCount).map (fun offset => slotStart + offset)
-  let value := extractedValueForParam slotStart sig.result
-  .ok
-    (wrapValueLets (argSlots.lets ++ bound.lets)
-      (.letCall slots index bound.slots value),
-      slotStart + slotCount)
 
 mutual
 partial def demandExpr
@@ -3529,6 +3525,41 @@ def strictRecursiveCallCheck (ctx : Context) (name : Name) (args : List Expr) :
   .ok ()
 
 mutual
+  partial def extractStructuralRecCallValueFrom
+      (ctx : Context)
+      (locals : List Binding)
+      (nextLocal : Nat)
+      (functionName : Name)
+      (arg : ExtractedValue)
+      (extraArgs : List Expr) :
+      Except String (ExtractedValue × Nat) := do
+    let index ←
+      match functionIndex? ctx functionName with
+      | some index => .ok index
+      | none => .error s!"structural recursive function is not compiled: {functionName}"
+    let sig ←
+      match ctx.env.find? functionName with
+      | some info =>
+          match supportedFunction? ctx.env info with
+          | some sig => .ok sig
+          | none => .error s!"unsupported function type or declaration: {functionName}"
+      | none => .error s!"declaration disappeared during extraction: {functionName}"
+    let paramTy ←
+      match sig.params with
+      | .recVariant typeName typeParams :: _ => .ok (.recVariant typeName typeParams)
+      | _ => .error s!"unsupported structural recursion arity: {functionName}"
+    let argSlots ← materializeStrictInternalSlots paramTy arg nextLocal
+    let bound := bindStrictSlots argSlots.slots argSlots.nextLocal
+    let extraResult ← extractCallArgsFrom ctx locals bound.nextLocal (sig.params.drop 1) extraArgs
+    let slotCount := abiSlots sig.result
+    let slotStart := extraResult.nextLocal
+    let slots := (List.range slotCount).map (fun offset => slotStart + offset)
+    let value := extractedValueForParam slotStart sig.result
+    .ok
+      (wrapValueLets (argSlots.lets ++ bound.lets ++ extraResult.lets)
+        (.letCall slots index (bound.slots ++ extraResult.args) value),
+        slotStart + slotCount)
+
   partial def extractValueFrom
       (ctx : Context)
       (locals : List Binding)
@@ -3559,7 +3590,7 @@ mutual
         | .bvar index =>
             match ← lookupBinding locals index with
             | .structuralRec functionName arg =>
-                structuralRecCallValueFrom ctx functionName arg nextLocal
+                extractStructuralRecCallValueFrom ctx locals nextLocal functionName arg []
             | _ => .error "unsupported structural recursion projection"
         | _ => .error "unsupported structural recursion projection"
     | .proj ``PProd _ _ =>
@@ -5031,7 +5062,7 @@ mutual
         return none
       let value ←
         match info.value? with
-        | some value => .ok value
+        | some value => .ok (betaSpecializeExpr ctx.env ctx.root 32 value)
         | none => .error s!"declaration has no executable value: {name}"
       let body ←
         match collectLambdas value sig.params.length with
@@ -6704,28 +6735,30 @@ def structuralBelowBinding
 def extractStructuralRecFunc
     (ctx : Context)
     (name : Name)
+    (params : List Ty)
     (typeName : Name)
     (typeParams : List Ty)
     (resultTy : Ty)
     (value : Expr)
     (exportName : Option String) : Except String IRFunc := do
-  let params := [.recVariant typeName typeParams]
   let wasmParamCount := abiParamCount params
   let body ←
-    match collectLambdas value 1 with
+    match collectLambdas value params.length with
     | some body => .ok body
     | none => .error s!"definition body does not match function arity: {name}"
-  let (scrutinee, step) ←
+  let (scrutinee, step, postArgs) ←
     match appFnArgs body with
     | (.const candidate _, args) =>
         if candidate == brecOnName typeName then
           match args.drop typeParams.length with
-          | [_motive, scrutinee, step] => .ok (scrutinee, step)
+          | _motive :: scrutinee :: step :: postArgs => .ok (scrutinee, step, postArgs)
           | _ => .error s!"unsupported structural recursion shape: {name}"
         else
           .error s!"unsupported structural recursion shape: {name}"
     | _ => .error s!"unsupported structural recursion shape: {name}"
-  if !isBVar 0 scrutinee then
+  if !postArgs.isEmpty then
+    .error s!"unsupported structural recursion carried arguments: {name}"
+  else if !isBVar (params.length - 1) scrutinee then
     .error s!"unsupported structural recursion scrutinee: {name}"
   else
     let (layout, arms) ← structuralRecStepMatcher? ctx.env typeName typeParams step
@@ -7022,7 +7055,7 @@ def extractFunction
     (sig : Signature) : Except String IRFunc := do
   let value ←
     match info.value? with
-    | some value => .ok value
+    | some value => .ok (betaSpecializeExpr ctx.env ctx.root 32 value)
     | none => .error s!"declaration has no executable value: {name}"
   let exportName ←
     if name == entry then
@@ -7035,13 +7068,13 @@ def extractFunction
       .ok none
   match sig.params with
   | .nat :: _ =>
-      if containsConstant ``Nat.brecOn info then
+      if containsConstantInExpr ``Nat.brecOn value then
         extractNatRecFunc ctx name sig.params sig.result value exportName
       else
         extractPlainFunc ctx name sig.params sig.result value exportName
-  | [.recVariant typeName typeParams] =>
-      if containsConstant (brecOnName typeName) info then
-        extractStructuralRecFunc ctx name typeName typeParams sig.result value exportName
+  | .recVariant typeName typeParams :: _ =>
+      if containsConstantInExpr (brecOnName typeName) value then
+        extractStructuralRecFunc ctx name sig.params typeName typeParams sig.result value exportName
       else
         extractPlainFunc ctx name sig.params sig.result value exportName
   | _ => extractPlainFunc ctx name sig.params sig.result value exportName

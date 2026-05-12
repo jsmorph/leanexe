@@ -593,6 +593,40 @@ def leanListStructuralSum : List UInt64 → UInt64
 def leanListStructuralSumDemo : UInt64 :=
   leanListStructuralSum leanList123
 
+def leanListMapAddOne (xs : List UInt64) : List UInt64 :=
+  xs.map (fun x => x + 1)
+
+def leanListMapDemo : UInt64 :=
+  leanListHeadOrZero (leanListMapAddOne leanList123)
+
+def leanListFilterGtOne (xs : List UInt64) : List UInt64 :=
+  xs.filter (fun x => x > 1)
+
+def leanListFilterDemo : UInt64 :=
+  leanListHeadOrZero (leanListFilterGtOne leanList123)
+
+def leanListFindGtOne (xs : List UInt64) : Option UInt64 :=
+  xs.find? (fun x => x > 1)
+
+def leanListFindDemo : UInt64 :=
+  match leanListFindGtOne leanList123 with
+  | none => 0
+  | some value => value
+
+def leanListFindGtTen (xs : List UInt64) : Option UInt64 :=
+  xs.find? (fun x => x > 10)
+
+def leanListFindMissingDemo : UInt64 :=
+  match leanListFindGtTen leanList123 with
+  | none => 0
+  | some value => value
+
+def rejectLeanListFoldlDemo : UInt64 :=
+  leanList123.foldl (fun acc x => acc + x) 0
+
+def rejectLeanListAnyDemo : UInt64 :=
+  if leanList123.any (fun x => x == 2) then 1 else 0
+
 inductive U64Tree where
   | leaf : UInt64 → U64Tree
   | node : Array U64Tree → U64Tree
