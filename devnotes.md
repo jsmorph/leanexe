@@ -2250,3 +2250,20 @@ Checks run:
 - [x] `node test/json_double.js` returned `checked 45 json program cases`.
 - [x] `node test/report_classification.js` returned `checked 92 report classification cases`.
 - [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 437 accepted, 21 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 14 asciistring cases`, `checked 45 json program cases`, and `checked 56 cases`.
+
+## 2026-05-11: Strict structured materialization sites
+
+Strict helper-call arguments now materialize top-level `let` and direct-call values before flattening argument slots.  The implementation binds each flattened argument slot to locals in source argument order before the call, so later structured helper arguments cannot run before earlier scalar expressions.  A structured helper result passed to another helper is therefore evaluated once, and recursive loop argument updates run any required structured calls before assigning carried slots.  The change keeps strict-call demand analysis in charge of whether a call may be emitted.
+
+Eager fixed-width array element operations use the same materialization step for literal items, singleton values, pushed values, proof-indexed inserts and sets, and bang inserts and sets under their in-bounds branch.  For updates with array and index operands, the extractor binds those operands before running materialized element lets.  Guarded operations that define skipped-value behavior, including `setIfInBounds`, `insertIdxIfInBounds`, `modify`, `swapAt` projections, and `map` bodies, still keep value expressions inside the guarded or per-element expression.  Moving those expressions to an outer statement would force source expressions that Lean code can leave unevaluated.
+
+`LeanExe.Examples.JsonTools.transform` now reads `n` through `Ascii.Json.getUInt64Field`, matching the scalar lookup example and accepting unknown skipped values before the requested field.  The JSON harness includes a one-megabyte WAT size guard for `JsonCollatzLength.transform`; the current generated WAT is `257071` bytes.  The core correctness corpus adds cases for structured helper results as call arguments, structured helper results stored as array elements, inactive structured safe-index payloads, and branch-selected `ByteArray` helper results.
+
+Checks run:
+
+- [x] `lake build`
+- [x] `lake build LeanExe.Examples.Correctness`
+- [x] `node test/core_correctness.js` returned `checked 442 accepted, 21 rejected, and 13 trapped cases`.
+- [x] `node test/json_double.js` returned `checked 46 json program cases`.
+- [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 442 accepted, 21 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 14 asciistring cases`, `checked 46 json program cases`, and `checked 56 cases`.
+- [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/current/wasmtime wast .lake/build/json-programs/JsonCollatzLength-transform.wat`
