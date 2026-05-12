@@ -182,6 +182,28 @@ const accepted = [
   },
   { name: "byteArrayStringLiteralSize", args: [], expected: 3n },
   {
+    name: "byteArrayStringAppendReturn",
+    args: [],
+    expected: [null, 3n],
+    memoryBytes: [{ resultIndex: 0, lengthIndex: 1, values: [65, 66, 67] }],
+  },
+  {
+    name: "byteArrayStringLetReturn",
+    args: [],
+    expected: [null, 2n],
+    memoryBytes: [{ resultIndex: 0, lengthIndex: 1, values: [65, 90] }],
+  },
+  {
+    name: "byteArrayStringConstReturn",
+    args: [],
+    expected: [null, 3n],
+    memoryBytes: [{ resultIndex: 0, lengthIndex: 1, values: [88, 89, 90] }],
+  },
+  { name: "stringLengthAppend", args: [], expected: 4n },
+  { name: "stringIsEmptyLet", args: [], expected: 1n },
+  { name: "stringEqualityLet", args: [], expected: 1n },
+  { name: "stringInequalityLet", args: [], expected: 1n },
+  {
     name: "byteArrayBranchHelperReturn",
     args: [0n],
     expected: [null, 3n],
@@ -578,7 +600,15 @@ const rejected = [
   },
   {
     name: "rejectRuntimeStringToUTF8",
-    message: "unsupported String.toUTF8 argument: expected string literal",
+    message: "unsupported String.toUTF8 argument: expected compile-time string expression",
+  },
+  {
+    name: "rejectRuntimeStringLength",
+    message: "unsupported String.length argument: expected compile-time string expression",
+  },
+  {
+    name: "rejectStringParam",
+    message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectStringParam",
   },
   {
     name: "alloc",

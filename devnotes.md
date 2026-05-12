@@ -2402,3 +2402,17 @@ Checks run:
 - [x] `lake build LeanExe.Examples.Correctness`
 - [x] `node test/core_correctness.js` returned `checked 464 accepted, 24 rejected, and 13 trapped cases`.
 - [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 464 accepted, 24 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 22 asciistring cases`, `checked 4 intmap cases`, `checked 46 json program cases`, and `checked 56 cases`.
+
+## 2026-05-12: Compile-time ASCII String expressions
+
+The extractor now treats Lean `String` as a compile-time-only source convenience rather than a supported runtime structure.  `String` is explicitly excluded from the generic structure classifier, so `String` parameters, results, and helper-call ABI slots remain rejected.  Accepted string expressions are ASCII literals, local `String` lets, top-level `String` constants, `String.append`, and append notation through `++`, when the expression is consumed by `String.toUTF8`, `String.length`, `String.isEmpty`, `==`, or `!=`.
+
+This slice deliberately stopped short of an `AsciiString.ofString` helper.  A direct helper with a `String` parameter tempts the generic function path to treat source strings as runtime values, which is the wrong boundary for the current compiler.  Fixed protocol text should use `"field".toUTF8` for `ByteArray` values, and runtime text should enter as `ByteArray` followed by `AsciiString.ofByteArray?` validation.
+
+Checks run:
+
+- [x] `lake build lean-wasm LeanExe.Examples.Correctness LeanExe.Examples.AsciiStringPrograms LeanExe.Examples.JsonCollatzLength LeanExe.Examples.JsonTools`
+- [x] `node test/asciistring.js` returned `checked 23 asciistring cases`.
+- [x] `node test/core_correctness.js` returned `checked 471 accepted, 26 rejected, and 13 trapped cases`.
+- [x] `node test/json_double.js` returned `checked 46 json program cases`.
+- [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 471 accepted, 26 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 46 json program cases`, and `checked 56 cases`.

@@ -66,5 +66,9 @@ def containsColon (input : ByteArray) : Bool :=
   | some text => text.containsByte (58 : UInt8)
   | none => false
 
+def trustedStringLength : Nat :=
+  let text : String := "json"
+  text.length
+
 end Examples.AsciiStringPrograms
 end LeanExe
