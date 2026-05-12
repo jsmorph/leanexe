@@ -639,7 +639,7 @@ def leanListAnyMissing (xs : List UInt64) : Bool :=
 def leanListAnyMissingDemo : UInt64 :=
   if leanListAnyMissing leanList123 then 1 else 0
 
-def rejectLeanListFoldlClosedDemo : UInt64 :=
+def leanListFoldlClosedDemo : UInt64 :=
   leanList123.foldl (fun acc x => acc * 10 + x) 0
 
 def rejectLeanListAnyDirectDemo : UInt64 :=

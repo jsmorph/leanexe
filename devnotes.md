@@ -2494,3 +2494,18 @@ Checks run:
 - [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 489 accepted, 26 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 46 json program cases`, and `checked 56 cases`.
 - [x] `build/tools/wasmtime/current/wasmtime --invoke u64BinaryStructuralSizeDemo /tmp/u64BinaryStructuralSizeDemo.wasm` returned `3`.
 - [x] `build/tools/wasmtime/current/wasmtime --invoke u64ExprEvalDemo /tmp/u64ExprEvalDemo.wasm` returned `45`.
+
+## 2026-05-12: Closed structural folds
+
+The extractor now lowers a top-level closed structural fold over a list-shaped recursive inductive.  The accepted shape is Lean's generated `brecOn` body with one hidden first-order accumulator, one constructor with a single direct recursive field, and terminal constructors whose arms return the accumulator.  The recursive constructor arm must tail-call the generated below projection for that direct recursive field with the next accumulator value, which gives the compiler a loop over the heap pointer and accumulator slots instead of a synthesized helper function.
+
+This admits direct source such as `leanList123.foldl (fun acc x => acc * 10 + x) 0`.  The lowering is still shape-based rather than a `List` primitive: the code checks the recursive-inductive layout, the generated matcher, the terminal arms, and the recursive-field tail call.  Nested closed structural folds, closed `List.any`, general function-valued motives, and hidden carried arguments outside this one-accumulator fold form remain outside the accepted language.
+
+Checks run:
+
+- [x] `lake build`
+- [x] `lake build LeanExe.Examples.Correctness`
+- [x] `.lake/build/bin/lean-wasm compile --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.leanListFoldlClosedDemo --out /tmp/leanListFoldlClosedDemo.wasm`
+- [x] `build/tools/wasmtime/current/wasmtime --invoke leanListFoldlClosedDemo /tmp/leanListFoldlClosedDemo.wasm` returned `123`.
+- [x] `node test/core_correctness.js` returned `checked 490 accepted, 25 rejected, and 13 trapped cases`.
+- [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 490 accepted, 25 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 46 json program cases`, and `checked 56 cases`.
