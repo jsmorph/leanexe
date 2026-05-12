@@ -57,6 +57,7 @@ inductive Binding where
   | slot (index : Nat)
   | value (value : ExtractedValue)
   | thunk (locals : List Binding) (expr : Expr)
+  | structuralRec (functionName : Name) (arg : ExtractedValue)
   | recursor
   deriving BEq, Repr
 
@@ -2556,6 +2557,38 @@ def bindStrictSlots (slots : List IRExpr) (nextLocal : Nat) : StrictSlots :=
     nextLocal := nextLocal + slots.length
   }
 
+def structuralRecCallValueFrom
+    (ctx : Context)
+    (functionName : Name)
+    (arg : ExtractedValue)
+    (nextLocal : Nat) :
+    Except String (ExtractedValue × Nat) := do
+  let index ←
+    match functionIndex? ctx functionName with
+    | some index => .ok index
+    | none => .error s!"structural recursive function is not compiled: {functionName}"
+  let sig ←
+    match ctx.env.find? functionName with
+    | some info =>
+        match supportedFunction? ctx.env info with
+        | some sig => .ok sig
+        | none => .error s!"unsupported function type or declaration: {functionName}"
+    | none => .error s!"declaration disappeared during extraction: {functionName}"
+  let paramTy ←
+    match sig.params with
+    | [.recVariant typeName] => .ok (.recVariant typeName)
+    | _ => .error s!"unsupported structural recursion arity: {functionName}"
+  let argSlots ← materializeStrictInternalSlots paramTy arg nextLocal
+  let bound := bindStrictSlots argSlots.slots argSlots.nextLocal
+  let slotCount := abiSlots sig.result
+  let slotStart := bound.nextLocal
+  let slots := (List.range slotCount).map (fun offset => slotStart + offset)
+  let value := extractedValueForParam slotStart sig.result
+  .ok
+    (wrapValueLets (argSlots.lets ++ bound.lets)
+      (.letCall slots index bound.slots value),
+      slotStart + slotCount)
+
 mutual
 partial def demandExpr
     (ctx : Context)
@@ -3330,6 +3363,7 @@ mutual
         | .slot slot => .ok (.scalar (.local slot), nextLocal)
         | .value value => .ok (value, nextLocal)
         | .thunk savedLocals value => extractValueFrom ctx savedLocals nextLocal value
+        | .structuralRec _ _ => .error "structural recursion handle used as a value"
         | .recursor => .error "recursive handle used as a value"
     | .letE _ type value body _ =>
         if !containsBVar 0 body then
@@ -3342,6 +3376,16 @@ mutual
               else
                 .error s!"unsupported let-bound type: {type}"
           | none => .error s!"unsupported let-bound type: {type}"
+    | .proj ``PProd 0 body =>
+        match body.consumeMData with
+        | .bvar index =>
+            match ← lookupBinding locals index with
+            | .structuralRec functionName arg =>
+                structuralRecCallValueFrom ctx functionName arg nextLocal
+            | _ => .error "unsupported structural recursion projection"
+        | _ => .error "unsupported structural recursion projection"
+    | .proj ``PProd _ _ =>
+        .error "unsupported structural recursion below projection"
     | .proj ``Prod index body =>
         let valueResult ← extractValueFrom ctx locals nextLocal body
         .ok (← productField index valueResult.fst, valueResult.snd)
@@ -4790,6 +4834,7 @@ mutual
         | .thunk savedLocals value =>
             let valueResult ← extractValueFrom ctx savedLocals nextLocal value
             .ok (← scalarValue valueResult.fst, valueResult.snd)
+        | .structuralRec _ _ => .error "structural recursion handle used as a value"
         | .recursor => .error "recursive handle used as a value"
     | .letE _ type value body _ =>
         if !containsBVar 0 body then
@@ -4802,6 +4847,11 @@ mutual
               else
                 .error s!"unsupported let-bound type: {type}"
           | none => .error s!"unsupported let-bound type: {type}"
+    | .proj ``PProd 0 body =>
+        let valueResult ← extractValueFrom ctx locals nextLocal (.proj ``PProd 0 body)
+        .ok (← scalarValue valueResult.fst, valueResult.snd)
+    | .proj ``PProd _ _ =>
+        .error "unsupported structural recursion below projection"
     | .proj ``Prod index body =>
         let valueResult ← extractValueFrom ctx locals nextLocal body
         .ok (← scalarValue (← productField index valueResult.fst), valueResult.snd)
@@ -6055,6 +6105,7 @@ mutual
         | .thunk savedLocals value =>
             let valueResult ← extractValueFrom ctx savedLocals nextLocal value
             .ok (boolCond (← scalarValue valueResult.fst), valueResult.snd)
+        | .structuralRec _ _ => .error "structural recursion handle used as a condition"
         | .recursor => .error "recursive handle used as a condition"
     | .letE _ type value body _ =>
         if !containsBVar 0 body then
@@ -6350,6 +6401,137 @@ def stepBindingsForParams (params : List Ty) : List Binding :=
   let carried := ((sourceParamBindings params).drop 1).reverse
   (.recursor :: carried) ++ [.value (.scalar (.u64Bin .sub (.local 0) (.u64 1)))]
 
+def brecOnName (typeName : Name) : Name :=
+  .str typeName "brecOn"
+
+def structuralRecStepMatcher?
+    (env : Environment)
+    (typeName : Name)
+    (step : Expr) :
+    Except String (VariantLayout × List Expr) := do
+  let stepBody ←
+    match collectLambdas step 2 with
+    | some body => .ok body
+    | none => .error s!"unsupported structural recursion step: {typeName}"
+  match stepBody.consumeMData with
+  | .app matcherExpr belowArg =>
+      if !isBVar 0 belowArg then
+        .error s!"unsupported structural recursion below argument: {typeName}"
+      else
+        let (matcherFn, matcherArgs) := appFnArgs matcherExpr
+        match variantMatcherArgs? env matcherFn matcherArgs with
+        | some (layout, scrutinee, arms) =>
+            if layout.name == typeName then
+              if isBVar 1 scrutinee then
+                .ok (layout, arms)
+              else
+                .error s!"unsupported structural recursion matcher scrutinee: {typeName}"
+            else
+              .error s!"structural recursion matcher type mismatch: {typeName}"
+        | none => .error s!"unsupported structural recursion matcher: {typeName}"
+  | _ => .error s!"unsupported structural recursion step body: {typeName}"
+
+def structuralBelowBinding
+    (functionName : Name)
+    (typeName : Name)
+    (ctor : Name)
+    (fieldKinds : List (Option Ty))
+    (runtimeFields : List ExtractedValue) :
+    Except String Binding := do
+  let typedFields ← typedFieldsFromKinds ctor fieldKinds runtimeFields
+  let recursiveFields :=
+    typedFields.filter fun item =>
+      match item.fst with
+      | .recVariant candidate => candidate == typeName
+      | _ => false
+  match recursiveFields with
+  | [] => .ok (.value (.scalar (.u64 0)))
+  | [(_, value)] => .ok (.structuralRec functionName value)
+  | _ => .error s!"structural recursion over multiple recursive fields is unsupported: {ctor}"
+
+def extractStructuralRecFunc
+    (ctx : Context)
+    (name : Name)
+    (typeName : Name)
+    (resultTy : Ty)
+    (value : Expr)
+    (exportName : Option String) : Except String IRFunc := do
+  let params := [.recVariant typeName]
+  let wasmParamCount := abiParamCount params
+  let body ←
+    match collectLambdas value 1 with
+    | some body => .ok body
+    | none => .error s!"definition body does not match function arity: {name}"
+  let (scrutinee, step) ←
+    match appFnArgs body with
+    | (.const candidate _, [_motive, scrutinee, step]) =>
+        if candidate == brecOnName typeName then
+          .ok (scrutinee, step)
+        else
+          .error s!"unsupported structural recursion shape: {name}"
+    | _ => .error s!"unsupported structural recursion shape: {name}"
+  if !isBVar 0 scrutinee then
+    .error s!"unsupported structural recursion scrutinee: {name}"
+  else
+    let (layout, arms) ← structuralRecStepMatcher? ctx.env typeName step
+    if arms.length != layout.ctors.length then
+      .error s!"inductive matcher arity mismatch: {layout.name}"
+    else
+      let scrutineeResult ← extractValueFrom ctx (localBindingsForParams params) wasmParamCount scrutinee
+      let parts ← heapVariantPtrWithLets layout.name scrutineeResult.fst
+      let ptrSlot := scrutineeResult.snd
+      let ptrExpr := wrapExprLets parts.fst parts.snd
+      let ptrLocal : IRExpr := .local ptrSlot
+      let tag := .heapLoadSlot ptrLocal 0
+      let rec extractArms :
+          List VariantCtorLayout → List Expr → Nat → Nat →
+            Except String (List ExtractedValue × Nat)
+        | [], [], _, next => .ok ([], next)
+        | ctor :: restCtors, arm :: restArms, payloadSlot, next => do
+            let runtimeFields ← heapRuntimeFieldsFromKinds ptrLocal ctor.fields payloadSlot
+            let sourceBindings ←
+              sourceFieldBindingsFromKinds layout.name ctor.fields runtimeFields.fst
+            let belowBinding ←
+              structuralBelowBinding name layout.name ctor.name ctor.fields runtimeFields.fst
+            let body ←
+              if ctor.fields.isEmpty then
+                match collectLambdas arm 1 with
+                | some firstBody =>
+                    match collectLambdas firstBody 1 with
+                    | some body => .ok body
+                    | none => .ok firstBody
+                | none => .error s!"unsupported structural recursion arm: {ctor.name}"
+              else
+                match collectLambdas arm (ctor.fields.length + 1) with
+                | some body => .ok body
+                | none => .error s!"unsupported structural recursion arm: {ctor.name}"
+            let armResult ←
+              extractValueFrom ctx (belowBinding :: sourceBindings.reverse ++ localBindingsForParams params)
+                next body
+            let restResult ← extractArms restCtors restArms runtimeFields.snd armResult.snd
+            .ok (armResult.fst :: restResult.fst, restResult.snd)
+        | _, _, _, _ => .error s!"inductive matcher arity mismatch: {layout.name}"
+      let armResults ← extractArms layout.ctors arms 1 (ptrSlot + 1)
+      let rec combine : List (Nat × ExtractedValue) → Except String ExtractedValue
+        | [] => .error s!"inductive matcher has no arms: {layout.name}"
+        | [(_index, value)] => .ok value
+        | (index, value) :: rest => do
+            let elseValue ← combine rest
+            valueIte (.eqU64 tag (.u64 index)) value elseValue
+      let resultValue := .letE ptrSlot ptrExpr (← combine (enumerate armResults.fst))
+      let useAbi := exportName.isSome
+      let resultCount := resultSlotCount useAbi resultTy
+      let resultTargets := (List.range resultCount).map (fun offset => armResults.snd + offset)
+      let resultBody ← materializeResultValue useAbi resultTy resultTargets resultValue
+      .ok {
+        sourceName := name,
+        exportName := exportName,
+        params := wasmParamCount,
+        locals := armResults.snd + resultCount,
+        body := resultBody,
+        results := resultTargets.map LeanExe.IR.Expr.local
+      }
+
 def recCallArgsAt? (recursorIndex expected : Nat) (expr : Expr) : Option (List Expr) :=
   match appFnArgs expr with
   | (fn, args) =>
@@ -6600,6 +6782,11 @@ def extractFunction
   | .nat :: _ =>
       if containsConstant ``Nat.brecOn info then
         extractNatRecFunc ctx name sig.params sig.result value exportName
+      else
+        extractPlainFunc ctx name sig.params sig.result value exportName
+  | [.recVariant typeName] =>
+      if containsConstant (brecOnName typeName) info then
+        extractStructuralRecFunc ctx name typeName sig.result value exportName
       else
         extractPlainFunc ctx name sig.params sig.result value exportName
   | _ => extractPlainFunc ctx name sig.params sig.result value exportName
