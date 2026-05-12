@@ -2324,3 +2324,13 @@ Checks run:
 - [x] `lake build LeanExe.Examples.Correctness`
 - [x] `node test/core_correctness.js` returned `checked 452 accepted, 22 rejected, and 13 trapped cases`.
 - [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 452 accepted, 22 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 14 asciistring cases`, `checked 46 json program cases`, and `checked 56 cases`.
+
+## 2026-05-11: ASCII string comparison utilities
+
+`AsciiString` now includes `equals`, `startsWith`, and `containsByte`.  The implementations use the accepted Nat-fuel tail-recursive loop shape with explicit accumulator state rather than nested recursive branches, so they compile through the current recursion recognizer.  The example module exposes these utilities through byte-array entry points that validate ASCII input before constructing `AsciiString` values.
+
+Checks run:
+
+- [x] `lake build LeanExe.Examples.AsciiStringPrograms`
+- [x] `node test/asciistring.js` returned `checked 22 asciistring cases`.
+- [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 452 accepted, 22 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 22 asciistring cases`, `checked 46 json program cases`, and `checked 56 cases`.
