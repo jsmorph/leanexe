@@ -767,6 +767,23 @@ def supportedOneSlotExprType : Ty → Bool
   | .array item => supportedArrayElementType item
   | _ => false
 
+partial def supportedForInAccumulatorType : Ty → Bool
+  | .unit => true
+  | .bool => true
+  | .u8 => true
+  | .u32 => true
+  | .u64 => true
+  | .nat => true
+  | .array item => supportedArrayElementType item
+  | .product left right =>
+      supportedForInAccumulatorType left && supportedForInAccumulatorType right
+  | .sum left right =>
+      supportedForInAccumulatorType left && supportedForInAccumulatorType right
+  | .struct _ fields => fields.all supportedForInAccumulatorType
+  | .variant _ ctors => ctors.all (fun fields => fields.all supportedForInAccumulatorType)
+  | .recVariant _ _ => true
+  | _ => false
+
 def supportedInlineFunction? (env : Environment) (info : ConstantInfo) : Option Signature :=
   if info.isUnsafe || info.isPartial || info.value?.isNone then
     none
@@ -1785,6 +1802,51 @@ def assignResultSlots (targets : List Nat) (values : List IRExpr) : IRStmt :=
     (targets.zip values).map fun item =>
       LeanExe.IR.Stmt.assign item.fst item.snd
 
+def arrayFoldMultiSlotAssign? (targets : List Nat) (values : List IRExpr) :
+    Option IRStmt :=
+  match values with
+  | .arrayFoldMultiSlot sourceWidth resultWidth array start stop initValues accStart itemStart
+      bodyValues _ :: _ =>
+      if values.length == resultWidth && targets.length == resultWidth then
+        let expected : List IRExpr :=
+          (List.range resultWidth).map fun offset =>
+            .arrayFoldMultiSlot sourceWidth resultWidth array start stop initValues accStart
+              itemStart bodyValues offset
+        if values == expected then
+          some <|
+            .arrayFoldMultiSlotAssign sourceWidth resultWidth array start stop initValues accStart
+              itemStart bodyValues targets
+        else
+          none
+      else
+        none
+  | _ => none
+
+def byteArrayFoldMultiSlotAssign? (targets : List Nat) (values : List IRExpr) :
+    Option IRStmt :=
+  match values with
+  | .byteArrayFoldMultiSlot resultWidth ptr len start stop initValues accStart byteSlot
+      bodyValues _ :: _ =>
+      if values.length == resultWidth && targets.length == resultWidth then
+        let expected : List IRExpr :=
+          (List.range resultWidth).map fun offset =>
+            .byteArrayFoldMultiSlot resultWidth ptr len start stop initValues accStart
+              byteSlot bodyValues offset
+        if values == expected then
+          some <|
+            .byteArrayFoldMultiSlotAssign resultWidth ptr len start stop initValues accStart
+              byteSlot bodyValues targets
+        else
+          none
+      else
+        none
+  | _ => none
+
+def foldMultiSlotAssign? (targets : List Nat) (values : List IRExpr) : Option IRStmt :=
+  match arrayFoldMultiSlotAssign? targets values with
+  | some stmt => some stmt
+  | none => byteArrayFoldMultiSlotAssign? targets values
+
 partial def materializeResultValue
     (useAbi : Bool)
     (ty : Ty)
@@ -1802,10 +1864,13 @@ partial def materializeResultValue
       .ok (.ite cond thenStmt elseStmt)
   | _ =>
       let values ← flattenResultValue useAbi ty value
-      if targets.length == values.length then
-        .ok (assignResultSlots targets values)
-      else
-        .error "result slot count mismatch"
+      match foldMultiSlotAssign? targets values with
+      | some stmt => .ok stmt
+      | none =>
+          if targets.length == values.length then
+            .ok (assignResultSlots targets values)
+          else
+            .error "result slot count mismatch"
 
 mutual
   partial def heapLoadValueAt (ptr : IRExpr) : Ty → Nat → Except String (ExtractedValue × Nat)
@@ -2157,6 +2222,50 @@ end
 def arrayLocalValue (itemTy : Ty) (start : Nat) : Except String ExtractedValue := do
   let loaded ← arrayLocalValueAt start itemTy 0
   .ok loaded.fst
+
+mutual
+  partial def valueFromInternalSlotsAt (slotExpr : Nat → IRExpr) :
+      Ty → Nat → ExtractedValue × Nat
+    | .byteArray, slot =>
+        (.byteArray (slotExpr slot) (slotExpr (slot + 1)), slot + 2)
+    | .product left right, slot =>
+        let leftValue := valueFromInternalSlotsAt slotExpr left slot
+        let rightValue := valueFromInternalSlotsAt slotExpr right leftValue.snd
+        (.product leftValue.fst rightValue.fst, rightValue.snd)
+    | .sum left right, slot =>
+        let leftValue := valueFromInternalSlotsAt slotExpr left (slot + 1)
+        let rightValue := valueFromInternalSlotsAt slotExpr right leftValue.snd
+        (.sum (slotExpr slot) leftValue.fst rightValue.fst, rightValue.snd)
+    | .struct name fields, slot =>
+        let fieldsValue := valuesFromInternalSlotsAt slotExpr fields slot
+        (.struct name fieldsValue.fst, fieldsValue.snd)
+    | .variant name ctors, slot =>
+        let ctorsValue := ctorValuesFromInternalSlotsAt slotExpr ctors (slot + 1)
+        (.variant name (slotExpr slot) ctorsValue.fst, ctorsValue.snd)
+    | .recVariant name _, slot =>
+        (.heapVariant name (slotExpr slot), slot + 1)
+    | _, slot =>
+        (.scalar (slotExpr slot), slot + 1)
+
+  partial def valuesFromInternalSlotsAt (slotExpr : Nat → IRExpr) :
+      List Ty → Nat → List ExtractedValue × Nat
+    | [], slot => ([], slot)
+    | ty :: rest, slot =>
+        let head := valueFromInternalSlotsAt slotExpr ty slot
+        let tail := valuesFromInternalSlotsAt slotExpr rest head.snd
+        (head.fst :: tail.fst, tail.snd)
+
+  partial def ctorValuesFromInternalSlotsAt (slotExpr : Nat → IRExpr) :
+      List (List Ty) → Nat → List (List ExtractedValue) × Nat
+    | [], slot => ([], slot)
+    | fields :: rest, slot =>
+        let head := valuesFromInternalSlotsAt slotExpr fields slot
+        let tail := ctorValuesFromInternalSlotsAt slotExpr rest head.snd
+        (head.fst :: tail.fst, tail.snd)
+end
+
+def valueFromInternalSlots (ty : Ty) (slotExpr : Nat → IRExpr) : ExtractedValue :=
+  (valueFromInternalSlotsAt slotExpr ty 0).fst
 
 def arrayElementWidth (context : String) (itemTy : Ty) : Except String Nat :=
   match arrayElementSlots? itemTy with
@@ -3867,13 +3976,14 @@ mutual
         | (.const ``ForIn.forIn _, args) =>
             match idForInArgs? ctx.env (.const ``ForIn.forIn []) args with
             | some forIn =>
-                if !supportedOneSlotExprType forIn.resultTy then
+                if !supportedForInAccumulatorType forIn.resultTy then
                   .error s!"unsupported for-in accumulator type: {reprStr forIn.resultTy}"
                 else
                   let yieldExpr ←
                     match collectLambdas forIn.body 2 with
                     | some body => forInYieldExpr? body
                     | none => .error "unsupported for-in body"
+                  let resultWidth := internalSlots forIn.resultTy
                   match forIn.collectionTy with
                   | .byteArray =>
                       if forIn.itemTy == .u8 then
@@ -3881,27 +3991,42 @@ mutual
                         let parts ← byteArrayPartsWithLets collectionResult.fst
                         let ptr := wrapExprLets parts.fst parts.snd.fst
                         let len := wrapExprLets parts.fst parts.snd.snd
-                        let initResult ← extractExprFrom ctx locals collectionResult.snd forIn.init
-                        let accSlot := initResult.snd
-                        let byteSlot := accSlot + 1
+                        let initResult ← extractValueFrom ctx locals collectionResult.snd forIn.init
+                        let initSlots ← flattenInternalValue forIn.resultTy initResult.fst
+                        if initSlots.length != resultWidth then
+                          .error "for-in accumulator initial value shape mismatch"
+                        else
+                        let accStart := initResult.snd
+                        let byteSlot := accStart + resultWidth
+                        let accValue :=
+                          valueFromInternalSlots forIn.resultTy
+                            (fun offset => .local (accStart + offset))
                         let bodyResult ←
-                          extractExprFrom ctx
-                            (.value (.scalar (.local accSlot)) ::
+                          extractValueFrom ctx
+                            (.value accValue ::
                               .value (.scalar (.local byteSlot)) :: locals)
                             (byteSlot + 1)
                             yieldExpr
+                        let bodySlots ← flattenInternalValue forIn.resultTy bodyResult.fst
+                        if bodySlots.length != resultWidth then
+                          .error "for-in accumulator body value shape mismatch"
+                        else
+                        let resultValue :=
+                          valueFromInternalSlots forIn.resultTy
+                            (fun offset =>
+                              .byteArrayFoldMultiSlot
+                                resultWidth
+                                ptr
+                                len
+                                (.u64 0)
+                                len
+                                initSlots
+                                accStart
+                                byteSlot
+                                bodySlots
+                                offset)
                         .ok
-                          (.scalar
-                            (.byteArrayFold
-                              ptr
-                              len
-                              (.u64 0)
-                              len
-                              initResult.fst
-                              accSlot
-                              byteSlot
-                              bodyResult.fst),
-                            bodyResult.snd)
+                          (resultValue, bodyResult.snd)
                       else
                         .error s!"unsupported ByteArray for-in item type: {reprStr forIn.itemTy}"
                   | .array itemTy =>
@@ -3909,28 +4034,43 @@ mutual
                         match arrayElementSlots? itemTy with
                         | some width =>
                             let collectionResult ← extractExprFrom ctx locals nextLocal forIn.collection
-                            let initResult ← extractExprFrom ctx locals collectionResult.snd forIn.init
-                            let accSlot := initResult.snd
-                            let itemStart := accSlot + 1
+                            let initResult ← extractValueFrom ctx locals collectionResult.snd forIn.init
+                            let initSlots ← flattenInternalValue forIn.resultTy initResult.fst
+                            if initSlots.length != resultWidth then
+                              .error "for-in accumulator initial value shape mismatch"
+                            else
+                            let accStart := initResult.snd
+                            let itemStart := accStart + resultWidth
                             let itemValue ← arrayLocalValue itemTy itemStart
+                            let accValue :=
+                              valueFromInternalSlots forIn.resultTy
+                                (fun offset => .local (accStart + offset))
                             let bodyResult ←
-                              extractExprFrom ctx
-                                (.value (.scalar (.local accSlot)) ::
+                              extractValueFrom ctx
+                                (.value accValue ::
                                   .value itemValue :: locals)
                                 (itemStart + width)
                                 yieldExpr
+                            let bodySlots ← flattenInternalValue forIn.resultTy bodyResult.fst
+                            if bodySlots.length != resultWidth then
+                              .error "for-in accumulator body value shape mismatch"
+                            else
+                            let resultValue :=
+                              valueFromInternalSlots forIn.resultTy
+                                (fun offset =>
+                                  .arrayFoldMultiSlot
+                                    width
+                                    resultWidth
+                                    collectionResult.fst
+                                    (.u64 0)
+                                    (.arraySize collectionResult.fst)
+                                    initSlots
+                                    accStart
+                                    itemStart
+                                    bodySlots
+                                    offset)
                             .ok
-                              (.scalar
-                                (.arrayFoldSlots
-                                  width
-                                  collectionResult.fst
-                                  (.u64 0)
-                                  (.arraySize collectionResult.fst)
-                                  initResult.fst
-                                  accSlot
-                                  itemStart
-                                  bodyResult.fst),
-                                bodyResult.snd)
+                              (resultValue, bodyResult.snd)
                         | none => .error s!"unsupported Array for-in item type: {reprStr itemTy}"
                       else
                         .error "Array for-in item type mismatch"

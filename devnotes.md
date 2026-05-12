@@ -2416,3 +2416,14 @@ Checks run:
 - [x] `node test/core_correctness.js` returned `checked 471 accepted, 26 rejected, and 13 trapped cases`.
 - [x] `node test/json_double.js` returned `checked 46 json program cases`.
 - [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 471 accepted, 26 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 46 json program cases`, and `checked 56 cases`.
+
+## 2026-05-12: Multi-slot pure for-loop accumulators
+
+Pure `Id.run` `for` loops over `ByteArray` and fixed-width `Array` now carry accumulator values with the normal internal slot layout rather than the previous scalar-only shape.  The extractor reconstructs the accumulator from loop-local slots, extracts the yielded value as a structured value, flattens the body result, and uses multi-slot fold IR whose body stages all result slots before copying them back to the accumulator slots.  The accepted accumulator types include scalars, `Array` pointer values, products, structures, nonrecursive tagged values, and recursive-inductive pointer values, while accumulator shapes containing `ByteArray` remain rejected because pointer and length must be produced atomically.
+
+The binary and WAT emitters gained matching `arrayFoldMultiSlot` and `byteArrayFoldMultiSlot` expression forms for projected slots, plus statement forms that materialize a full structured loop result once into result locals.  Body slots are staged through temporary locals so updates do not observe earlier field writes from the same iteration.  The correctness corpus now covers a `ByteArray` scan carrying a `DigitState` structure, an array scan carrying a `Status` tagged value, and the explicit rejection of a `ByteArray` accumulator.
+
+Checks run:
+
+- [x] `lake build`
+- [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 474 accepted, 27 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 46 json program cases`, and `checked 56 cases`.

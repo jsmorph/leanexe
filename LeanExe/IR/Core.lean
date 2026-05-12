@@ -75,6 +75,9 @@ mutual
         (bodyValues : List Expr)
     | arrayFoldSlots (sourceWidth : Nat) (array start stop init : Expr)
         (accSlot itemStart : Nat) (body : Expr)
+    | arrayFoldMultiSlot (sourceWidth resultWidth : Nat) (array start stop : Expr)
+        (initValues : List Expr) (accStart itemStart : Nat) (bodyValues : List Expr)
+        (resultSlot : Nat)
     | arrayFindIdxSlots (sourceWidth : Nat) (array : Expr) (itemStart : Nat)
         (predicate : Expr) (returnPayload : Bool)
     | arrayFindSlot (sourceWidth : Nat) (array : Expr) (itemStart : Nat)
@@ -101,6 +104,9 @@ mutual
     | byteArrayFindIdx (ptr len start : Expr) (byteSlot : Nat) (predicate : Expr)
         (returnPayload : Bool)
     | byteArrayFold (ptr len start stop init : Expr) (accSlot byteSlot : Nat) (body : Expr)
+    | byteArrayFoldMultiSlot (resultWidth : Nat) (ptr len start stop : Expr)
+        (initValues : List Expr) (accStart byteSlot : Nat) (bodyValues : List Expr)
+        (resultSlot : Nat)
     | call (index : Nat) (args : List Expr)
     deriving BEq, Repr
 
@@ -121,6 +127,12 @@ mutual
     | skip
     | assign (index : Nat) (value : Expr)
     | call (slots : List Nat) (index : Nat) (args : List Expr)
+    | arrayFoldMultiSlotAssign (sourceWidth resultWidth : Nat) (array start stop : Expr)
+        (initValues : List Expr) (accStart itemStart : Nat) (bodyValues : List Expr)
+        (targets : List Nat)
+    | byteArrayFoldMultiSlotAssign (resultWidth : Nat) (ptr len start stop : Expr)
+        (initValues : List Expr) (accStart byteSlot : Nat) (bodyValues : List Expr)
+        (targets : List Nat)
     | ite (cond : Cond) (thenStmt elseStmt : Stmt)
     | seq (first second : Stmt)
     | while (cond : Cond) (body : Stmt)
@@ -208,6 +220,10 @@ mutual
     | .arrayMap array _ _ => array.eval module_ store
     | .arrayMapSlots _ _ array _ _ => array.eval module_ store
     | .arrayFoldSlots _ _ _ _ init _ _ _ => init.eval module_ store
+    | .arrayFoldMultiSlot _ _ _ _ _ initValues _ _ _ resultSlot =>
+        match initValues[resultSlot]? with
+        | some init => init.eval module_ store
+        | none => 0
     | .arrayFindIdxSlots _ _ _ _ _ => 0
     | .arrayFindSlot _ _ _ _ _ => 0
     | .arrayAnySlots _ _ _ _ _ _ forAll => if forAll then 1 else 0
@@ -228,6 +244,10 @@ mutual
     | .byteArrayCopySlicePtr _ _ _ destPtr _ _ _ => destPtr.eval module_ store
     | .byteArrayFindIdx _ _ _ _ _ _ => 0
     | .byteArrayFold _ _ _ _ init _ _ _ => init.eval module_ store
+    | .byteArrayFoldMultiSlot _ _ _ _ _ initValues _ _ _ resultSlot =>
+        match initValues[resultSlot]? with
+        | some init => init.eval module_ store
+        | none => 0
     | .call index args =>
         match module_.getFunc? index with
         | some func => func.eval module_ (args.map (fun arg => arg.eval module_ store))
@@ -252,6 +272,14 @@ mutual
           | some func => func.evalResults module_ (args.map (fun arg => arg.eval module_ store))
           | none => []
         (slots.zip results).foldl (fun current item => current.set item.fst item.snd) store
+    | .arrayFoldMultiSlotAssign _ _ _ _ _ initValues _ _ _ targets, store =>
+        (targets.zip (initValues.map (fun value => value.eval module_ store))).foldl
+          (fun current item => current.set item.fst item.snd)
+          store
+    | .byteArrayFoldMultiSlotAssign _ _ _ _ _ initValues _ _ _ targets, store =>
+        (targets.zip (initValues.map (fun value => value.eval module_ store))).foldl
+          (fun current item => current.set item.fst item.snd)
+          store
     | .ite cond thenStmt elseStmt, store =>
         if cond.eval module_ store then
           thenStmt.eval module_ store

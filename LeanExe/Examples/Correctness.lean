@@ -758,6 +758,32 @@ def idRunArrayForSum : UInt64 := Id.run do
     acc := acc + value
   return acc
 
+def idRunByteArrayForState : DigitState := Id.run do
+  let input := ByteArray.mk #[(1 : UInt8), (2 : UInt8), (3 : UInt8)]
+  let mut state : DigitState := { pos := 0, sum := 0 }
+  for byte in input do
+    state := { pos := state.pos + 1, sum := state.sum + byte.toUInt64 }
+  return state
+
+def idRunArrayForStatus : Status := Id.run do
+  let values : Array UInt64 := #[1, 2, 3]
+  let mut state : Status := .ok 0
+  for value in values do
+    state :=
+      match state with
+      | .ok sum =>
+          if value == (2 : UInt64) then
+            .error value
+          else
+            .ok (sum + value)
+      | .error code => .error code
+  return state
+
+def idRunArrayForStatusScore : UInt64 :=
+  match idRunArrayForStatus with
+  | .ok sum => sum
+  | .error code => code + 100
+
 def idFunctionUInt64 (x : UInt64) : UInt64 :=
   id (x + 1)
 
@@ -2531,5 +2557,12 @@ def rejectIdForLoop : UInt64 := Id.run do
   for _i in [0:3] do
     acc := acc + 1
   return acc
+
+def rejectIdForByteArrayAccumulator : ByteArray := Id.run do
+  let input := ByteArray.mk #[(1 : UInt8), (2 : UInt8)]
+  let mut output := ByteArray.empty
+  for byte in input do
+    output := output.push byte
+  return output
 
 end LeanExe.Examples.Correctness
