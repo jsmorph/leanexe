@@ -2346,3 +2346,16 @@ Checks run:
 - [x] `lake build LeanExe.Examples.IntMap`
 - [x] `node test/intmap.js` returned `checked 4 intmap cases`.
 - [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 452 accepted, 22 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 22 asciistring cases`, `checked 4 intmap cases`, `checked 46 json program cases`, and `checked 56 cases`.
+
+## 2026-05-12: Pure for loops over bytes and arrays
+
+The extractor now recognizes Lean's generated `ForIn.forIn` form when the monad is `Id`, the collection is `ByteArray` or a fixed-width `Array`, and the accumulator has a supported one-slot type.  The lowering extracts the yielded accumulator from a `ForInStep.yield` body and emits the existing byte-array or array fold IR.  It preserves the generated `PUnit` bind as a local let while parsing the yield expression, because the yielded value's de Bruijn indices refer through that binder.
+
+`LeanExe.Examples.Correctness.idRunByteArrayForSum` and `idRunArrayForSum` cover the accepted source form with `let mut` accumulator syntax.  `rejectIdForLoop` remains rejected for `Std.Legacy.Range`, now with a precise unsupported collection-type diagnostic.  `ForInStep.done`, `break`, effects, range loops, polymorphic iterators, and multi-slot accumulators remain outside this slice.
+
+Checks run:
+
+- [x] `lake build`
+- [x] `lake build LeanExe.Examples.Correctness`
+- [x] `node test/core_correctness.js` returned `checked 454 accepted, 22 rejected, and 13 trapped cases`.
+- [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 454 accepted, 22 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 22 asciistring cases`, `checked 4 intmap cases`, `checked 46 json program cases`, and `checked 56 cases`.

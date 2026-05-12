@@ -226,6 +226,8 @@ const accepted = [
   { name: "idRunBindOption", args: [], expected: 5n },
   { name: "idRunBindExcept", args: [], expected: 6n },
   { name: "idRunMut", args: [], expected: 2n },
+  { name: "idRunByteArrayForSum", args: [], expected: 6n },
+  { name: "idRunArrayForSum", args: [], expected: 6n },
   { name: "idFunctionUInt64", args: [4n], expected: 5n },
   { name: "idFunctionProductSecond", args: [], expected: 7n },
   { name: "arrayUpdateRead", args: [], expected: 110n },
@@ -615,7 +617,8 @@ const rejected = [
   },
   {
     name: "rejectIdForLoop",
-    message: "unsupported expression: fun",
+    message:
+      "unsupported for-in collection type: LeanExe.IR.Ty.struct `Std.Legacy.Range [LeanExe.IR.Ty.nat, LeanExe.IR.Ty.nat, LeanExe.IR.Ty.nat]",
   },
 ];
 

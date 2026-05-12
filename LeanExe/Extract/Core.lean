@@ -2114,6 +2114,94 @@ def idBindArgs? (fn : Expr) (args : List Expr) : Option (Expr × Expr) :=
         none
   | _ => none
 
+structure ForInArgs where
+  collectionTy : Ty
+  itemTy : Ty
+  resultTy : Ty
+  collection : Expr
+  init : Expr
+  body : Expr
+
+def idPureArg? (fn : Expr) (args : List Expr) : Option Expr :=
+  match fn.consumeMData with
+  | .const name _ =>
+      if name == ``Pure.pure then
+        match args, args.reverse with
+        | monadTy :: _, value :: _ =>
+            if isIdType monadTy then some value else none
+        | _, _ => none
+      else
+        none
+  | _ => none
+
+def isPUnitUnit (expr : Expr) : Bool :=
+  match expr.consumeMData with
+  | .const name _ => name == ``PUnit.unit
+  | _ => false
+
+def idForInArgs? (env : Environment) (fn : Expr) (args : List Expr) : Option ForInArgs :=
+  match fn.consumeMData, args with
+  | .const name _, [monadTy, collectionTyExpr, itemTyExpr, _inst, resultTyExpr, collection, init, body] =>
+      if name == ``ForIn.forIn && isIdType monadTy then
+        match typeAtom? env collectionTyExpr, typeAtom? env itemTyExpr, typeAtom? env resultTyExpr with
+        | some collectionTy, some itemTy, some resultTy =>
+            some {
+              collectionTy := collectionTy,
+              itemTy := itemTy,
+              resultTy := resultTy,
+              collection := collection,
+              init := init,
+              body := body
+            }
+        | _, _, _ => none
+      else
+        none
+  | _, _ => none
+
+def wrapForInYieldLet
+    (name : Name)
+    (type value : Expr)
+    (nondep : Bool)
+    (yield : Expr) :
+    Expr :=
+  .letE name type value yield nondep
+
+partial def forInYieldExpr? (expr : Expr) : Except String Expr := do
+  match expr.consumeMData with
+  | .letE name type value body nondep => do
+      .ok (wrapForInYieldLet name type value nondep (← forInYieldExpr? body))
+  | expr =>
+      match appFnArgs expr with
+      | (.const ``ForInStep.yield _, args) =>
+          match args.reverse with
+          | value :: _ => .ok value
+          | _ => .error "unsupported ForInStep.yield application"
+      | (.const ``ForInStep.done _, _) =>
+          .error "ForInStep.done is unsupported"
+      | (.const ``Pure.pure _, args) =>
+          match idPureArg? (.const ``Pure.pure []) args with
+          | some value => forInYieldExpr? value
+          | none => .error "unsupported for-in pure step"
+      | (.const ``Bind.bind _, args) =>
+          match idBindArgs? (.const ``Bind.bind []) args with
+          | some (value, bindFn) =>
+              let pureValue ←
+                match appFnArgs value with
+                | (.const ``Pure.pure _, pureArgs) =>
+                    match idPureArg? (.const ``Pure.pure []) pureArgs with
+                    | some pureValue => .ok pureValue
+                    | none => .error "unsupported for-in body bind"
+                | _ => .error "unsupported for-in body bind"
+              if !isPUnitUnit pureValue then
+                .error "unsupported for-in body bind"
+              else
+                match bindFn.consumeMData with
+                | .lam name type body _ =>
+                    forInYieldExpr? (.letE name type pureValue body true)
+                | _ => .error "unsupported for-in body bind function"
+          | none => .error "unsupported for-in body bind"
+      | _ => .error s!"unsupported for-in body: {expr}"
+
 partial def listLiteralItems? (env : Environment) (expr : Expr) : Option (Ty × List Expr) :=
   match appFnArgs expr with
   | (.const ``List.nil _, [itemTy]) =>
@@ -3450,6 +3538,78 @@ mutual
             match args.reverse with
             | value :: _ => extractValueFrom ctx locals nextLocal value
             | _ => .error "unsupported id application"
+        | (.const ``ForIn.forIn _, args) =>
+            match idForInArgs? ctx.env (.const ``ForIn.forIn []) args with
+            | some forIn =>
+                if !supportedOneSlotExprType forIn.resultTy then
+                  .error s!"unsupported for-in accumulator type: {reprStr forIn.resultTy}"
+                else
+                  let yieldExpr ←
+                    match collectLambdas forIn.body 2 with
+                    | some body => forInYieldExpr? body
+                    | none => .error "unsupported for-in body"
+                  match forIn.collectionTy with
+                  | .byteArray =>
+                      if forIn.itemTy == .u8 then
+                        let collectionResult ← extractValueFrom ctx locals nextLocal forIn.collection
+                        let parts ← byteArrayPartsWithLets collectionResult.fst
+                        let ptr := wrapExprLets parts.fst parts.snd.fst
+                        let len := wrapExprLets parts.fst parts.snd.snd
+                        let initResult ← extractExprFrom ctx locals collectionResult.snd forIn.init
+                        let accSlot := initResult.snd
+                        let byteSlot := accSlot + 1
+                        let bodyResult ←
+                          extractExprFrom ctx
+                            (.value (.scalar (.local accSlot)) ::
+                              .value (.scalar (.local byteSlot)) :: locals)
+                            (byteSlot + 1)
+                            yieldExpr
+                        .ok
+                          (.scalar
+                            (.byteArrayFold
+                              ptr
+                              len
+                              (.u64 0)
+                              len
+                              initResult.fst
+                              accSlot
+                              byteSlot
+                              bodyResult.fst),
+                            bodyResult.snd)
+                      else
+                        .error s!"unsupported ByteArray for-in item type: {reprStr forIn.itemTy}"
+                  | .array itemTy =>
+                      if itemTy == forIn.itemTy then
+                        match arrayElementSlots? itemTy with
+                        | some width =>
+                            let collectionResult ← extractExprFrom ctx locals nextLocal forIn.collection
+                            let initResult ← extractExprFrom ctx locals collectionResult.snd forIn.init
+                            let accSlot := initResult.snd
+                            let itemStart := accSlot + 1
+                            let itemValue ← arrayLocalValue itemTy itemStart
+                            let bodyResult ←
+                              extractExprFrom ctx
+                                (.value (.scalar (.local accSlot)) ::
+                                  .value itemValue :: locals)
+                                (itemStart + width)
+                                yieldExpr
+                            .ok
+                              (.scalar
+                                (.arrayFoldSlots
+                                  width
+                                  collectionResult.fst
+                                  (.u64 0)
+                                  (.arraySize collectionResult.fst)
+                                  initResult.fst
+                                  accSlot
+                                  itemStart
+                                  bodyResult.fst),
+                                bodyResult.snd)
+                        | none => .error s!"unsupported Array for-in item type: {reprStr itemTy}"
+                      else
+                        .error "Array for-in item type mismatch"
+                  | _ => .error s!"unsupported for-in collection type: {reprStr forIn.collectionTy}"
+            | none => .error "unsupported ForIn.forIn application"
         | (.const ``Id.run _, args) =>
             match args.reverse with
             | value :: _ => extractValueFrom ctx locals nextLocal value
