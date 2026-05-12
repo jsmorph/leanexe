@@ -387,6 +387,9 @@ const accepted = [
   { name: "leanListFilterDemo", args: [], expected: 2n },
   { name: "leanListFindDemo", args: [], expected: 2n },
   { name: "leanListFindMissingDemo", args: [], expected: 0n },
+  { name: "leanListFoldlDemo", args: [], expected: 123n },
+  { name: "leanListAnyDemo", args: [], expected: 1n },
+  { name: "leanListAnyMissingDemo", args: [], expected: 0n },
   { name: "u64TreeArrayFieldDemo", args: [], expected: 7n },
   { name: "optionSomeMatch", args: [], expected: 8n },
   { name: "optionSomeFirstMatch", args: [], expected: 8n },
@@ -615,11 +618,11 @@ const rejected = [
       "structural recursion over multiple recursive fields is unsupported: LeanExe.Examples.Correctness.U64Binary.node",
   },
   {
-    name: "rejectLeanListFoldlDemo",
+    name: "rejectLeanListFoldlClosedDemo",
     message: "unsupported expression: fun",
   },
   {
-    name: "rejectLeanListAnyDemo",
+    name: "rejectLeanListAnyDirectDemo",
     message: "unsupported expression: fun",
   },
   {

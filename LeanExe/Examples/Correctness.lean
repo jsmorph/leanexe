@@ -621,10 +621,28 @@ def leanListFindMissingDemo : UInt64 :=
   | none => 0
   | some value => value
 
-def rejectLeanListFoldlDemo : UInt64 :=
-  leanList123.foldl (fun acc x => acc + x) 0
+def leanListFoldlDecimal (xs : List UInt64) (acc : UInt64) : UInt64 :=
+  xs.foldl (fun acc x => acc * 10 + x) acc
 
-def rejectLeanListAnyDemo : UInt64 :=
+def leanListFoldlDemo : UInt64 :=
+  leanListFoldlDecimal leanList123 0
+
+def leanListAnyEqTwo (xs : List UInt64) : Bool :=
+  xs.any (fun x => x == 2)
+
+def leanListAnyDemo : UInt64 :=
+  if leanListAnyEqTwo leanList123 then 1 else 0
+
+def leanListAnyMissing (xs : List UInt64) : Bool :=
+  xs.any (fun x => x == 9)
+
+def leanListAnyMissingDemo : UInt64 :=
+  if leanListAnyMissing leanList123 then 1 else 0
+
+def rejectLeanListFoldlClosedDemo : UInt64 :=
+  leanList123.foldl (fun acc x => acc * 10 + x) 0
+
+def rejectLeanListAnyDirectDemo : UInt64 :=
   if leanList123.any (fun x => x == 2) then 1 else 0
 
 inductive U64Tree where

@@ -799,6 +799,17 @@ def isDirectLambda (expr : Expr) : Bool :=
 def hasDirectLambdaArg (args : List Expr) : Bool :=
   args.any isDirectLambda
 
+def keepDynamicArgs (args : List Expr) : List Expr :=
+  args.filter fun arg => !isDirectLambda arg
+
+def dynamicStructuralExtraArgs (expected : List Ty) (extraArgs : List Expr) :
+    Except String (List Expr) := do
+  let dynamicArgs := keepDynamicArgs extraArgs
+  if dynamicArgs.length == expected.length then
+    .ok dynamicArgs
+  else
+    .error "unsupported structural recursion carried arguments"
+
 def blocksTransparentSpecialization (name : Name) : Bool :=
   let root := name.getRoot
   name == ``ite || name == ``dite ||
@@ -2365,6 +2376,45 @@ def generatedMatcherScrutineeArg? (env : Environment) (name : Name) (args : List
         loop 0 domains
     | none => none
 
+def generatedMatcherVariantScrutineeArg?
+    (env : Environment)
+    (name : Name)
+    (args : List Expr)
+    (targetName? : Option Name) :
+    Option (Nat × Ty) :=
+  if !isMatcherName name then
+    none
+  else
+    match env.find? name with
+    | some info =>
+        let domains := (peelForall info.type).fst
+        let rec loop (index : Nat) : List Expr → Option (Nat × Ty)
+          | [] => none
+          | domain :: rest =>
+              let instantiated := domain.instantiateRev (args.take index).toArray
+              match typeAtom? env instantiated with
+              | some ty =>
+                  let matchesTarget :=
+                    match targetName?, ty with
+                    | some targetName, .variant typeName _ => targetName == typeName
+                    | some targetName, .recVariant typeName _ => targetName == typeName
+                    | none, .variant _ _ => true
+                    | none, .recVariant _ _ => true
+                    | _, _ => false
+                  if matchesTarget then
+                    some (index, ty)
+                  else
+                    loop (index + 1) rest
+              | none => loop (index + 1) rest
+        loop 0 domains
+    | none => none
+
+def takeLast? {α : Type} (count : Nat) (items : List α) : Option (List α) :=
+  if items.length < count then
+    none
+  else
+    some (items.drop (items.length - count))
+
 def optionMatcherArgs? (env : Environment) (fn : Expr) (args : List Expr) :
     Option (Expr × Expr × Expr) :=
   let optionArmKind? (payloadTy : Ty) (arm : Expr) : Option Bool :=
@@ -2555,10 +2605,17 @@ def structureMatcherArgs? (env : Environment) (fn : Expr) (args : List Expr) :
 
 partial def variantArmCtorName? (env : Environment) (expr : Expr) : Option Name :=
   match expr.consumeMData with
+  | .const ctorName _ =>
+      match anyVariantConstructor? env ctorName with
+      | some _ => some ctorName
+      | none =>
+          match env.find? ctorName with
+          | some (.ctorInfo _) => some ctorName
+          | _ => none
   | .forallE _ _ body _ => variantArmCtorName? env body
   | .mdata _ body => variantArmCtorName? env body
   | .app _ value =>
-      match appFnArgs value with
+      match appFnArgs expr with
       | (.const ctorName _, _) =>
           match anyVariantConstructor? env ctorName with
           | some _ => some ctorName
@@ -2566,7 +2623,13 @@ partial def variantArmCtorName? (env : Environment) (expr : Expr) : Option Name 
               match env.find? ctorName with
               | some (.ctorInfo _) => some ctorName
               | _ => none
-      | _ => none
+      | _ =>
+          match variantArmCtorName? env value with
+          | some ctorName => some ctorName
+          | none =>
+              match expr.consumeMData with
+              | .app fn _ => variantArmCtorName? env fn
+              | _ => none
   | _ => none
 
 def reorderVariantArms?
@@ -2576,62 +2639,92 @@ def reorderVariantArms?
   ctorNames.mapM fun ctorName =>
     typedArms.find? (fun item => item.fst == ctorName) |>.map Prod.snd
 
-def variantMatcherArgs? (env : Environment) (fn : Expr) (args : List Expr) :
-    Option (VariantLayout × Expr × List Expr) :=
-  let directMatcher? (name : Name) : Option (VariantLayout × Expr × List Expr) :=
+structure VariantMatch where
+  layout : VariantLayout
+  scrutinee : Expr
+  arms : List Expr
+  prePostArgCount : Nat := 0
+
+def variantMatcherInfo?
+    (env : Environment)
+    (fn : Expr)
+    (args : List Expr)
+    (targetName? : Option Name := none)
+    (postArgCount? : Option Nat := none) :
+    Option VariantMatch :=
+  let directMatcher? (name : Name) : Option VariantMatch :=
     match env.find? name with
     | some (.recInfo recInfo) =>
         match recInfo.all with
         | typeName :: [] =>
-            match anyVariantLayout? env typeName with
-            | some layout =>
-                let ctorCount := layout.ctors.length
-                if name == .str typeName "casesOn" || name == .str typeName "recOn" then
-                  match args with
-                  | _motive :: scrutinee :: rest =>
-                      if rest.length == ctorCount then
-                        some (layout, scrutinee, rest)
-                      else
-                        none
-                  | _ => none
-                else if name == .str typeName "rec" then
-                  match args with
-                  | _motive :: rest =>
-                      let arms := rest.take ctorCount
-                      match rest.drop ctorCount with
-                      | scrutinee :: [] =>
-                          if arms.length == ctorCount then
-                            some (layout, scrutinee, arms)
-                          else
-                            none
-                      | _ => none
-                  | _ => none
-                else
-                  none
-            | none => none
+            let targetMatches :=
+              match targetName? with
+              | some targetName => targetName == typeName
+              | none => true
+            if targetMatches then
+              match anyVariantLayout? env typeName with
+              | some layout =>
+                  let ctorCount := layout.ctors.length
+                  if name == .str typeName "casesOn" || name == .str typeName "recOn" then
+                    match args with
+                    | _motive :: scrutinee :: rest =>
+                        if rest.length == ctorCount then
+                          some { layout := layout, scrutinee := scrutinee, arms := rest }
+                        else
+                          none
+                    | _ => none
+                  else if name == .str typeName "rec" then
+                    match args with
+                    | _motive :: rest =>
+                        let arms := rest.take ctorCount
+                        match rest.drop ctorCount with
+                        | scrutinee :: [] =>
+                            if arms.length == ctorCount then
+                              some { layout := layout, scrutinee := scrutinee, arms := arms }
+                            else
+                              none
+                        | _ => none
+                    | _ => none
+                  else
+                    none
+              | none => none
+            else
+              none
         | _ => none
     | _ => none
-  let generatedMatcher? (name : Name) : Option (VariantLayout × Expr × List Expr) :=
+  let generatedMatcher? (name : Name) : Option VariantMatch :=
     let orderArms (info : ConstantInfo) (scrutineeIndex : Nat) (layout : VariantLayout)
-        (scrutinee : Expr) (arms : List Expr) : Option (VariantLayout × Expr × List Expr) :=
+        (scrutinee : Expr) (afterScrutinee : List Expr) : Option VariantMatch :=
       let ctorCount := layout.ctors.length
-      if arms.length == ctorCount then
-        let armTypes := ((peelForall info.type).fst.drop (scrutineeIndex + 1)).take ctorCount
-        if armTypes.length == ctorCount then
+      match takeLast? ctorCount afterScrutinee,
+          takeLast? ctorCount ((peelForall info.type).fst.drop (scrutineeIndex + 1)) with
+      | some arms, some armTypes =>
           let typedArms? :=
             (armTypes.zip arms).mapM fun item =>
               variantArmCtorName? env item.fst |>.map fun ctorName =>
                 (ctorName, item.snd)
           match typedArms? with
           | some typedArms =>
-              reorderVariantArms? (layout.ctors.map (fun ctor => ctor.name)) typedArms
-                |>.map fun orderedArms => (layout, scrutinee, orderedArms)
+              match reorderVariantArms? (layout.ctors.map (fun ctor => ctor.name)) typedArms with
+              | some orderedArms =>
+                  let postAfterCount := afterScrutinee.length - ctorCount
+                  match postArgCount? with
+                  | some postArgCount =>
+                      if postAfterCount <= postArgCount then
+                        some {
+                          layout := layout,
+                          scrutinee := scrutinee,
+                          arms := orderedArms,
+                          prePostArgCount := postArgCount - postAfterCount
+                        }
+                      else
+                        none
+                  | none =>
+                      some { layout := layout, scrutinee := scrutinee, arms := orderedArms }
+              | none => none
           | none => none
-        else
-          none
-      else
-        none
-    match generatedMatcherScrutineeArg? env name args, env.find? name with
+      | _, _ => none
+    match generatedMatcherVariantScrutineeArg? env name args targetName?, env.find? name with
     | some (scrutineeIndex, .variant typeName _), some info =>
         match anyVariantLayout? env typeName, args[scrutineeIndex]? with
         | some layout, some scrutinee =>
@@ -2649,6 +2742,10 @@ def variantMatcherArgs? (env : Environment) (fn : Expr) (args : List Expr) :
       | some result => some result
       | none => generatedMatcher? name
   | _ => none
+
+def variantMatcherArgs? (env : Environment) (fn : Expr) (args : List Expr) :
+    Option (VariantLayout × Expr × List Expr) :=
+  variantMatcherInfo? env fn args |>.map fun info => (info.layout, info.scrutinee, info.arms)
 
 def insertNat (value : Nat) (items : List Nat) : List Nat :=
   if items.contains value then items else value :: items
@@ -3550,7 +3647,9 @@ mutual
       | _ => .error s!"unsupported structural recursion arity: {functionName}"
     let argSlots ← materializeStrictInternalSlots paramTy arg nextLocal
     let bound := bindStrictSlots argSlots.slots argSlots.nextLocal
-    let extraResult ← extractCallArgsFrom ctx locals bound.nextLocal (sig.params.drop 1) extraArgs
+    let dynamicExtraArgs ← dynamicStructuralExtraArgs (sig.params.drop 1) extraArgs
+    let extraResult ← extractCallArgsFrom ctx locals bound.nextLocal
+      (sig.params.drop 1) dynamicExtraArgs
     let slotCount := abiSlots sig.result
     let slotStart := extraResult.nextLocal
     let slots := (List.range slotCount).map (fun offset => slotStart + offset)
@@ -3612,6 +3711,14 @@ mutual
     | .const ``ByteArray.empty _ => .ok (.byteArray (.u64 0) (.u64 0), nextLocal)
     | _ =>
         match appFnArgs expr with
+        | (.proj ``PProd 0 body, extraArgs) =>
+            match body.consumeMData with
+            | .bvar index =>
+                match ← lookupBinding locals index with
+                | .structuralRec functionName arg =>
+                    extractStructuralRecCallValueFrom ctx locals nextLocal functionName arg extraArgs
+                | _ => .error "unsupported structural recursion projection"
+            | _ => .error "unsupported structural recursion projection"
         | (.const ``Prod.mk _, args) =>
             match args.reverse with
             | right :: left :: _ =>
@@ -5162,6 +5269,17 @@ mutual
         | some result => .ok (← result, nextLocal)
         | none =>
           match appFnArgs expr with
+            | (.proj ``PProd 0 body, extraArgs) =>
+                match body.consumeMData with
+                | .bvar index =>
+                    match ← lookupBinding locals index with
+                    | .structuralRec functionName arg =>
+                        let valueResult ←
+                          extractStructuralRecCallValueFrom ctx locals nextLocal
+                            functionName arg extraArgs
+                        .ok (← scalarValue valueResult.fst, valueResult.snd)
+                    | _ => .error "unsupported structural recursion projection"
+                | _ => .error "unsupported structural recursion projection"
             | (.const ``Bool.casesOn _, _) =>
                 let valueResult ← extractValueFrom ctx locals nextLocal expr
                 .ok (← scalarValue valueResult.fst, valueResult.snd)
@@ -6405,6 +6523,17 @@ mutual
     | .const ``False _ => .ok (.false, nextLocal)
     | _ =>
         match appFnArgs expr with
+        | (.proj ``PProd 0 body, extraArgs) =>
+            match body.consumeMData with
+            | .bvar index =>
+                match ← lookupBinding locals index with
+                | .structuralRec functionName arg =>
+                    let valueResult ←
+                      extractStructuralRecCallValueFrom ctx locals nextLocal
+                        functionName arg extraArgs
+                    .ok (boolCond (← scalarValue valueResult.fst), valueResult.snd)
+                | _ => .error "unsupported structural recursion projection"
+            | _ => .error "unsupported structural recursion projection"
         | (.const ``Eq _, [ty, left, right]) =>
             match typeAtom? ctx.env ty with
             | some eqTy =>
@@ -6685,27 +6814,39 @@ def stepBindingsForParams (params : List Ty) : List Binding :=
 def brecOnName (typeName : Name) : Name :=
   .str typeName "brecOn"
 
+structure StructuralStep where
+  layout : VariantLayout
+  arms : List Expr
+  prePostArgCount : Nat
+
 def structuralRecStepMatcher?
     (env : Environment)
     (typeName : Name)
     (_typeParams : List Ty)
+    (postArgCount : Nat)
     (step : Expr) :
-    Except String (VariantLayout × List Expr) := do
+    Except String StructuralStep := do
   let stepBody ←
-    match collectLambdas step 2 with
+    match collectLambdas step (2 + postArgCount) with
     | some body => .ok body
     | none => .error s!"unsupported structural recursion step: {typeName}"
   match stepBody.consumeMData with
   | .app matcherExpr belowArg =>
-      if !isBVar 0 belowArg then
+      if !isBVar postArgCount belowArg then
         .error s!"unsupported structural recursion below argument: {typeName}"
       else
         let (matcherFn, matcherArgs) := appFnArgs matcherExpr
-        match variantMatcherArgs? env matcherFn matcherArgs with
-        | some (layout, scrutinee, arms) =>
+        match variantMatcherInfo? env matcherFn matcherArgs (some typeName) (some postArgCount) with
+        | some info =>
+            let layout := info.layout
+            let scrutinee := info.scrutinee
             if layout.name == typeName then
-              if isBVar 1 scrutinee then
-                .ok (layout, arms)
+              if isBVar (postArgCount + 1) scrutinee then
+                .ok {
+                  layout := layout,
+                  arms := info.arms,
+                  prePostArgCount := info.prePostArgCount
+                }
               else
                 .error s!"unsupported structural recursion matcher scrutinee: {typeName}"
             else
@@ -6732,6 +6873,83 @@ def structuralBelowBinding
   | [(_, value)] => .ok (.structuralRec functionName value)
   | _ => .error s!"structural recursion over multiple recursive fields is unsupported: {ctor}"
 
+inductive StructuralPostArg where
+  | dynamic (ty : Ty) (binding : Binding)
+  | staticLambda (expr : Expr)
+
+def structuralPostArgs
+    (params : List Ty)
+    (postArgs : List Expr) :
+    Except String (List StructuralPostArg) := do
+  let dynamicParams := params.drop 1
+  let dynamicBindings := (sourceParamBindings params).drop 1
+  let rec loop :
+      Nat → List Expr → List (Ty × Binding) → List StructuralPostArg →
+        Except String (List StructuralPostArg)
+    | _, [], [], acc => .ok acc.reverse
+    | _, [], _ :: _, _ => .error "unsupported structural recursion carried arguments"
+    | index, arg :: restArgs, dynamics, acc =>
+        if isDirectLambda arg then
+          loop index restArgs dynamics (.staticLambda arg :: acc)
+        else
+          match dynamics with
+          | (ty, binding) :: restDynamics =>
+              let expectedParamIndex := params.length - 2 - index
+              if isBVar expectedParamIndex arg then
+                loop (index + 1) restArgs restDynamics (.dynamic ty binding :: acc)
+              else
+                .error "unsupported structural recursion carried argument initializer"
+          | [] => .error "unsupported structural recursion carried arguments"
+  loop 0 postArgs (dynamicParams.zip dynamicBindings) []
+
+inductive StructuralArmBinder where
+  | runtime (expected : Option Ty) (binding : Binding)
+  | staticLambda (expr : Expr)
+  | below (binding : Binding)
+
+def checkStructuralArmBinder
+    (env : Environment)
+    (typeName : Name)
+    (binder : StructuralArmBinder)
+    (domain : Expr) :
+    Except String Unit := do
+  match binder with
+  | .runtime (some expected) _ =>
+      match typeAtom? env domain with
+      | some actual =>
+          if actual == expected then
+            .ok ()
+          else
+            .error s!"structural recursion arm binder type mismatch: {typeName}"
+      | none => .error s!"unsupported structural recursion arm binder type: {typeName}"
+  | .runtime none _ =>
+      if isProofType? env domain then
+        .ok ()
+      else
+        .error s!"structural recursion arm proof binder mismatch: {typeName}"
+  | .staticLambda _ => .ok ()
+  | .below _ => .ok ()
+
+partial def consumeStructuralArmBinders
+    (ctx : Context)
+    (typeName : Name)
+    (binders : List StructuralArmBinder)
+    (arm : Expr) :
+    Except String (Expr × List Binding) := do
+  let rec loop :
+      List StructuralArmBinder → Expr → List Binding → Except String (Expr × List Binding)
+    | [], body, bindings => .ok (betaSpecializeExpr ctx.env ctx.root 16 body, bindings)
+    | binder :: rest, expr, bindings =>
+        match expr.consumeMData with
+        | .lam _ domain body _ => do
+            checkStructuralArmBinder ctx.env typeName binder domain
+            match binder with
+            | .runtime _ binding => loop rest body (binding :: bindings)
+            | .below binding => loop rest body (binding :: bindings)
+            | .staticLambda staticExpr => loop rest (body.instantiate1 staticExpr) bindings
+        | _ => .error s!"unsupported structural recursion arm: {typeName}"
+  loop binders arm []
+
 def extractStructuralRecFunc
     (ctx : Context)
     (name : Name)
@@ -6756,69 +6974,83 @@ def extractStructuralRecFunc
         else
           .error s!"unsupported structural recursion shape: {name}"
     | _ => .error s!"unsupported structural recursion shape: {name}"
-  if !postArgs.isEmpty then
-    .error s!"unsupported structural recursion carried arguments: {name}"
-  else if !isBVar (params.length - 1) scrutinee then
+  let postPlans ← structuralPostArgs params postArgs
+  if !isBVar (params.length - 1) scrutinee then
     .error s!"unsupported structural recursion scrutinee: {name}"
   else
-    let (layout, arms) ← structuralRecStepMatcher? ctx.env typeName typeParams step
-    if arms.length != layout.ctors.length then
-      .error s!"inductive matcher arity mismatch: {layout.name}"
+    let stepInfo ← structuralRecStepMatcher? ctx.env typeName typeParams postArgs.length step
+    if stepInfo.prePostArgCount > postPlans.length then
+      .error s!"unsupported structural recursion carried arguments: {name}"
     else
-      let scrutineeResult ← extractValueFrom ctx (localBindingsForParams params) wasmParamCount scrutinee
-      let parts ← heapVariantPtrWithLets layout.name scrutineeResult.fst
-      let ptrSlot := scrutineeResult.snd
-      let ptrExpr := wrapExprLets parts.fst parts.snd
-      let ptrLocal : IRExpr := .local ptrSlot
-      let tag := .heapLoadSlot ptrLocal 0
-      let rec extractArms :
-          List VariantCtorLayout → List Expr → Nat → Nat →
-            Except String (List ExtractedValue × Nat)
-        | [], [], _, next => .ok ([], next)
-        | ctor :: restCtors, arm :: restArms, payloadSlot, next => do
-            let runtimeFields ← heapRuntimeFieldsFromKinds ptrLocal ctor.fields payloadSlot
-            let sourceBindings ←
-              sourceFieldBindingsFromKinds layout.name ctor.fields runtimeFields.fst
-            let belowBinding ←
-              structuralBelowBinding name layout.name typeParams ctor.name ctor.fields runtimeFields.fst
-            let body ←
-              if ctor.fields.isEmpty then
-                match collectLambdas arm 1 with
-                | some firstBody =>
-                    match collectLambdas firstBody 1 with
-                    | some body => .ok body
-                    | none => .ok firstBody
-                | none => .error s!"unsupported structural recursion arm: {ctor.name}"
-              else
-                match collectLambdas arm (ctor.fields.length + 1) with
-                | some body => .ok body
-                | none => .error s!"unsupported structural recursion arm: {ctor.name}"
-            let armResult ←
-              extractValueFrom ctx (belowBinding :: sourceBindings.reverse ++ localBindingsForParams params)
-                next body
-            let restResult ← extractArms restCtors restArms runtimeFields.snd armResult.snd
-            .ok (armResult.fst :: restResult.fst, restResult.snd)
-        | _, _, _, _ => .error s!"inductive matcher arity mismatch: {layout.name}"
-      let armResults ← extractArms layout.ctors arms 1 (ptrSlot + 1)
-      let rec combine : List (Nat × ExtractedValue) → Except String ExtractedValue
-        | [] => .error s!"inductive matcher has no arms: {layout.name}"
-        | [(_index, value)] => .ok value
-        | (index, value) :: rest => do
-            let elseValue ← combine rest
-            valueIte (.eqU64 tag (.u64 index)) value elseValue
-      let resultValue := .letE ptrSlot ptrExpr (← combine (enumerate armResults.fst))
-      let useAbi := exportName.isSome
-      let resultCount := resultSlotCount useAbi resultTy
-      let resultTargets := (List.range resultCount).map (fun offset => armResults.snd + offset)
-      let resultBody ← materializeResultValue useAbi resultTy resultTargets resultValue
-      .ok {
-        sourceName := name,
-        exportName := exportName,
-        params := wasmParamCount,
-        locals := armResults.snd + resultCount,
-        body := resultBody,
-        results := resultTargets.map LeanExe.IR.Expr.local
-      }
+      let layout := stepInfo.layout
+      let arms := stepInfo.arms
+      if arms.length != layout.ctors.length then
+        .error s!"inductive matcher arity mismatch: {layout.name}"
+      else
+        let scrutineeResult ← extractValueFrom ctx (localBindingsForParams params) wasmParamCount scrutinee
+        let parts ← heapVariantPtrWithLets layout.name scrutineeResult.fst
+        let ptrSlot := scrutineeResult.snd
+        let ptrExpr := wrapExprLets parts.fst parts.snd
+        let ptrLocal : IRExpr := .local ptrSlot
+        let tag := .heapLoadSlot ptrLocal 0
+        let rec extractArms :
+            List VariantCtorLayout → List Expr → Nat → Nat →
+              Except String (List ExtractedValue × Nat)
+          | [], [], _, next => .ok ([], next)
+          | ctor :: restCtors, arm :: restArms, payloadSlot, next => do
+              let runtimeFields ← heapRuntimeFieldsFromKinds ptrLocal ctor.fields payloadSlot
+              let sourceBindings ←
+                sourceFieldBindingsFromKinds layout.name ctor.fields runtimeFields.fst
+              let belowBinding ←
+                structuralBelowBinding name layout.name typeParams ctor.name ctor.fields runtimeFields.fst
+              let postBinders :=
+                postPlans.map fun plan =>
+                  match plan with
+                  | .dynamic ty binding => StructuralArmBinder.runtime (some ty) binding
+                  | .staticLambda expr => StructuralArmBinder.staticLambda expr
+              let fieldBinders :=
+                (ctor.fields.zip sourceBindings).map fun item =>
+                  StructuralArmBinder.runtime item.fst item.snd
+              let armBinders :=
+                postBinders.take stepInfo.prePostArgCount ++
+                  fieldBinders ++
+                  postBinders.drop stepInfo.prePostArgCount ++
+                  [StructuralArmBinder.below belowBinding]
+              let parsedArm ←
+                if ctor.fields.isEmpty then
+                  let unitBinder :=
+                    StructuralArmBinder.runtime (some .unit) (.value (.scalar (.u64 0)))
+                  match consumeStructuralArmBinders ctx layout.name (unitBinder :: armBinders) arm with
+                  | .ok parsedArm => .ok parsedArm
+                  | .error _ => consumeStructuralArmBinders ctx layout.name armBinders arm
+                else
+                  consumeStructuralArmBinders ctx layout.name armBinders arm
+              let armResult ←
+                extractValueFrom ctx (parsedArm.snd ++ localBindingsForParams params)
+                  next parsedArm.fst
+              let restResult ← extractArms restCtors restArms runtimeFields.snd armResult.snd
+              .ok (armResult.fst :: restResult.fst, restResult.snd)
+          | _, _, _, _ => .error s!"inductive matcher arity mismatch: {layout.name}"
+        let armResults ← extractArms layout.ctors arms 1 (ptrSlot + 1)
+        let rec combine : List (Nat × ExtractedValue) → Except String ExtractedValue
+          | [] => .error s!"inductive matcher has no arms: {layout.name}"
+          | [(_index, value)] => .ok value
+          | (index, value) :: rest => do
+              let elseValue ← combine rest
+              valueIte (.eqU64 tag (.u64 index)) value elseValue
+        let resultValue := .letE ptrSlot ptrExpr (← combine (enumerate armResults.fst))
+        let useAbi := exportName.isSome
+        let resultCount := resultSlotCount useAbi resultTy
+        let resultTargets := (List.range resultCount).map (fun offset => armResults.snd + offset)
+        let resultBody ← materializeResultValue useAbi resultTy resultTargets resultValue
+        .ok {
+          sourceName := name,
+          exportName := exportName,
+          params := wasmParamCount,
+          locals := armResults.snd + resultCount,
+          body := resultBody,
+          results := resultTargets.map LeanExe.IR.Expr.local
+        }
 
 def recCallArgsAt? (recursorIndex expected : Nat) (expr : Expr) : Option (List Expr) :=
   match appFnArgs expr with
