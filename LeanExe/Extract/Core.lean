@@ -6056,9 +6056,17 @@ mutual
             let valueResult ← extractValueFrom ctx savedLocals nextLocal value
             .ok (boolCond (← scalarValue valueResult.fst), valueResult.snd)
         | .recursor => .error "recursive handle used as a condition"
-    | .letE _ _ _ _ _ =>
-        let exprResult ← extractExprFrom ctx locals nextLocal expr
-        .ok (boolCond exprResult.fst, exprResult.snd)
+    | .letE _ type value body _ =>
+        if !containsBVar 0 body then
+          extractCondFrom ctx (.recursor :: locals) nextLocal body
+        else
+          match typeAtom? ctx.env type with
+          | some ty =>
+              if supportedLocalType ty then
+                extractCondFrom ctx (.thunk locals value :: locals) nextLocal body
+              else
+                .error s!"unsupported let-bound type: {type}"
+          | none => .error s!"unsupported let-bound type: {type}"
     | .const ``Bool.true _ => .ok (.true, nextLocal)
     | .const ``Bool.false _ => .ok (.false, nextLocal)
     | .const ``True _ => .ok (.true, nextLocal)
@@ -6342,10 +6350,10 @@ def stepBindingsForParams (params : List Ty) : List Binding :=
   let carried := ((sourceParamBindings params).drop 1).reverse
   (.recursor :: carried) ++ [.value (.scalar (.u64Bin .sub (.local 0) (.u64 1)))]
 
-partial def recCallArgs? (expected : Nat) (expr : Expr) : Option (List Expr) :=
+def recCallArgsAt? (recursorIndex expected : Nat) (expr : Expr) : Option (List Expr) :=
   match appFnArgs expr with
   | (fn, args) =>
-      if args.length == expected && containsBVar 0 fn then
+      if args.length == expected && containsBVar recursorIndex fn then
         some args
       else
         none
@@ -6357,24 +6365,46 @@ structure RecSpec where
   exitValue? : Option Expr
   recArgs : List Expr
 
-def parseStepBody? (env : Environment) (paramCount : Nat) (body : Expr) :
+def wrapRecStepLet
+    (name : Name)
+    (type value : Expr)
+    (nondep : Bool)
+    (parsed : Option (Expr × Bool) × Option Expr × List Expr) :
+    Option (Expr × Bool) × Option Expr × List Expr :=
+  let wrap (expr : Expr) := .letE name type value expr nondep
+  let cond? := parsed.fst.map fun item => (wrap item.fst, item.snd)
+  let exit? := parsed.snd.fst.map wrap
+  let recArgs := parsed.snd.snd.map wrap
+  (cond?, exit?, recArgs)
+
+partial def parseStepBodyAt? (env : Environment) (paramCount recursorIndex : Nat) (body : Expr) :
     Except String (Option (Expr × Bool) × Option Expr × List Expr) := do
-  let expectedArgs := paramCount - 1
-  match appFnArgs body with
-  | (.const ``ite _, [ty, condExpr, _, thenExpr, elseExpr]) =>
-      if typeAtom? env ty |>.isSome then
-        match recCallArgs? expectedArgs thenExpr with
-        | some args => .ok (some (condExpr, true), some elseExpr, args)
-        | none =>
-            match recCallArgs? expectedArgs elseExpr with
-            | some args => .ok (some (condExpr, false), some thenExpr, args)
-            | none => .error "recursive branch is not a tail call"
-      else
-        .error "recursive branch has unsupported if-result type"
-  | _ =>
-      match recCallArgs? expectedArgs body with
-      | some args => .ok (none, none, args)
-      | none => .error "recursive branch is not a supported tail call"
+  match body.consumeMData with
+  | .letE name type value letBody nondep => do
+      .ok
+        (wrapRecStepLet name type value nondep
+          (← parseStepBodyAt? env paramCount (recursorIndex + 1) letBody))
+  | body =>
+      let expectedArgs := paramCount - 1
+      match appFnArgs body with
+      | (.const ``ite _, [ty, condExpr, _, thenExpr, elseExpr]) =>
+          if typeAtom? env ty |>.isSome then
+            match recCallArgsAt? recursorIndex expectedArgs thenExpr with
+            | some args => .ok (some (condExpr, true), some elseExpr, args)
+            | none =>
+                match recCallArgsAt? recursorIndex expectedArgs elseExpr with
+                | some args => .ok (some (condExpr, false), some thenExpr, args)
+                | none => .error "recursive branch is not a tail call"
+          else
+            .error "recursive branch has unsupported if-result type"
+      | _ =>
+          match recCallArgsAt? recursorIndex expectedArgs body with
+          | some args => .ok (none, none, args)
+          | none => .error "recursive branch is not a supported tail call"
+
+def parseStepBody? (env : Environment) (paramCount : Nat) (body : Expr) :
+    Except String (Option (Expr × Bool) × Option Expr × List Expr) :=
+  parseStepBodyAt? env paramCount 0 body
 
 def parseRecMatcher? (env : Environment) (name : Name) (paramCount : Nat) (expr : Expr) :
     Except String (Option RecSpec) := do

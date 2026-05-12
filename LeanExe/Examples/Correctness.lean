@@ -1483,6 +1483,36 @@ def recProductFuel : Nat → UInt64 → UInt64
 def recProductDemo : UInt64 :=
   recProductFuel 5 0
 
+def recStepLetFuel : Nat → UInt64 → UInt64
+  | 0, acc => acc
+  | fuel + 1, acc =>
+      let next := acc + 1
+      recStepLetFuel fuel next
+
+def recStepLetDemo : UInt64 :=
+  recStepLetFuel 5 0
+
+def recStepLetExitFuel : Nat → UInt64 → UInt64
+  | 0, acc => acc
+  | fuel + 1, acc =>
+      let next := acc + 1
+      if next == 3 then
+        next + 10
+      else
+        recStepLetExitFuel fuel next
+
+def recStepLetExitDemo : UInt64 :=
+  recStepLetExitFuel 10 0
+
+def recStepUnusedLetSkipsTrapFuel : Nat → UInt64 → UInt64
+  | 0, acc => acc
+  | fuel + 1, acc =>
+      let _unused := (Array.replicate 0 (0 : UInt64)).back!
+      recStepUnusedLetSkipsTrapFuel fuel (acc + 1)
+
+def recStepUnusedLetSkipsTrap : UInt64 :=
+  recStepUnusedLetSkipsTrapFuel 3 0
+
 def recPointFuel : Nat → UInt64 → Point
   | 0, value => { x := value, y := value + 1 }
   | fuel + 1, value => recPointFuel fuel (value + 1)

@@ -85,7 +85,7 @@ Helper calls may return supported structured values, including structures, byte 
 
 Pattern matching is supported for `Bool`, nonrecursive `Nat` zero/successor matches, products, structures, nonrecursive user inductives, recursive user inductives in internal positions, `Option`, and `Except`.  Branch results must have a common supported value shape.  Proposition-valued motives and dependent runtime result shapes are unsupported.
 
-The accepted recursive function shape uses a first `Nat` fuel parameter that decreases on each recursive call.  The function may carry scalar values, byte arrays, arrays, structures, nonrecursive tagged values, and internal recursive inductive pointers through the loop.  The recursive branch must be a tail call or an `if` whose supported branch returns the tail call, and the base or early-exit value must have a supported result type.
+The accepted recursive function shape uses a first `Nat` fuel parameter that decreases on each recursive call.  The function may carry scalar values, byte arrays, arrays, structures, nonrecursive tagged values, and internal recursive inductive pointers through the loop.  The recursive branch may start with local `let` bindings before the tail call or before an immediate `if` whose supported branch returns the tail call.  Those bindings use the same lazy demand behavior as ordinary local lets, so an unused step binding does not evaluate.  The base or early-exit value must have a supported result type.
 
 ## Structures and Inductives
 
