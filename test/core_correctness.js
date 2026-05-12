@@ -107,6 +107,8 @@ const accepted = [
   { name: "proofStructureReturn", args: [], expected: 9n },
   { name: "proofStructureParam", args: [8n], expected: 9n },
   { name: "proofStructureMatch", args: [], expected: 8n },
+  { name: "digitStateParserAllDigitsDemo", args: [], expected: 603n },
+  { name: "digitStateParserStopsDemo", args: [], expected: 999n },
   { name: "statusOkMatch", args: [], expected: 8n },
   { name: "statusErrorMatch", args: [], expected: 9n },
   { name: "statusSourceOrderIndependentMatch", args: [], expected: 11n },

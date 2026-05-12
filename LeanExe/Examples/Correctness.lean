@@ -348,6 +348,44 @@ def structureCallArgMaterialized : UInt64 :=
 def proofStructureParam (point : CheckedPoint) : UInt64 :=
   point.value + 1
 
+structure DigitState where
+  pos : Nat
+  sum : UInt64
+
+def isAsciiDigitByte (byte : UInt8) : Bool :=
+  (48 : UInt8) <= byte && byte <= (57 : UInt8)
+
+def digitStateCanContinue (input : ByteArray) (state : DigitState) : Bool :=
+  if state.pos < input.size then
+    isAsciiDigitByte input[state.pos]!
+  else
+    false
+
+def digitStateStep (input : ByteArray) (state : DigitState) : DigitState :=
+  let byte := input[state.pos]!
+  { pos := state.pos + 1, sum := state.sum + (byte.toUInt64 - 48) }
+
+def digitStateParseFuel : Nat → ByteArray → DigitState → DigitState
+  | 0, _input, state => state
+  | fuel + 1, input, state =>
+      if digitStateCanContinue input state then
+        digitStateParseFuel fuel input (digitStateStep input state)
+      else
+        state
+
+def digitStateParseValue (input : ByteArray) : UInt64 :=
+  let state := digitStateParseFuel (input.size + 1) input { pos := 0, sum := 0 }
+  if state.pos == input.size then
+    state.sum * 100 + Nat.toUInt64 state.pos
+  else
+    999
+
+def digitStateParserAllDigitsDemo : UInt64 :=
+  digitStateParseValue (ByteArray.mk #[(49 : UInt8), (50 : UInt8), (51 : UInt8)])
+
+def digitStateParserStopsDemo : UInt64 :=
+  digitStateParseValue (ByteArray.mk #[(49 : UInt8), (50 : UInt8), (65 : UInt8)])
+
 inductive Status where
   | ok : UInt64 -> Status
   | error : UInt64 -> Status
