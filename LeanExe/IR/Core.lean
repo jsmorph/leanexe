@@ -107,6 +107,9 @@ mutual
     | byteArrayFoldMultiSlot (resultWidth : Nat) (ptr len start stop : Expr)
         (initValues : List Expr) (accStart byteSlot : Nat) (bodyValues : List Expr)
         (resultSlot : Nat)
+    | rangeFoldMultiSlot (resultWidth : Nat) (start stop step : Expr)
+        (initValues : List Expr) (accStart itemSlot : Nat) (bodyValues : List Expr)
+        (resultSlot : Nat)
     | call (index : Nat) (args : List Expr)
     deriving BEq, Repr
 
@@ -132,6 +135,9 @@ mutual
         (targets : List Nat)
     | byteArrayFoldMultiSlotAssign (resultWidth : Nat) (ptr len start stop : Expr)
         (initValues : List Expr) (accStart byteSlot : Nat) (bodyValues : List Expr)
+        (targets : List Nat)
+    | rangeFoldMultiSlotAssign (resultWidth : Nat) (start stop step : Expr)
+        (initValues : List Expr) (accStart itemSlot : Nat) (bodyValues : List Expr)
         (targets : List Nat)
     | ite (cond : Cond) (thenStmt elseStmt : Stmt)
     | seq (first second : Stmt)
@@ -248,6 +254,10 @@ mutual
         match initValues[resultSlot]? with
         | some init => init.eval module_ store
         | none => 0
+    | .rangeFoldMultiSlot _ _ _ _ initValues _ _ _ resultSlot =>
+        match initValues[resultSlot]? with
+        | some init => init.eval module_ store
+        | none => 0
     | .call index args =>
         match module_.getFunc? index with
         | some func => func.eval module_ (args.map (fun arg => arg.eval module_ store))
@@ -277,6 +287,10 @@ mutual
           (fun current item => current.set item.fst item.snd)
           store
     | .byteArrayFoldMultiSlotAssign _ _ _ _ _ initValues _ _ _ targets, store =>
+        (targets.zip (initValues.map (fun value => value.eval module_ store))).foldl
+          (fun current item => current.set item.fst item.snd)
+          store
+    | .rangeFoldMultiSlotAssign _ _ _ _ initValues _ _ _ targets, store =>
         (targets.zip (initValues.map (fun value => value.eval module_ store))).foldl
           (fun current item => current.set item.fst item.snd)
           store

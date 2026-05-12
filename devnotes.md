@@ -2427,3 +2427,15 @@ Checks run:
 
 - [x] `lake build`
 - [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 474 accepted, 27 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 46 json program cases`, and `checked 56 cases`.
+
+## 2026-05-12: Pure range for loops
+
+Pure `Id.run` `for` loops now accept `Std.Legacy.Range` collections in addition to `ByteArray` and fixed-width `Array`.  The extractor reads the checked range structure fields for start, stop, and step, binds the current index as a bounded `Nat`, and reuses the same multi-slot accumulator path used by byte and array loops.  The emitted loop uses exclusive-stop order and checked bounded-`Nat` addition for the index increment.
+
+The IR gained `rangeFoldMultiSlot` expression and statement forms.  The statement form materializes a full structured range-loop result once into result locals, while the expression form covers projected loop results.  The correctness corpus now covers a simple count loop, a stepped range sum, a structured `DigitState` range accumulator, and rejection of a `ByteArray` accumulator in a range loop.
+
+Checks run:
+
+- [x] `lake build`
+- [x] `node test/core_correctness.js` returned `checked 477 accepted, 27 rejected, and 13 trapped cases`.
+- [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 477 accepted, 27 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 46 json program cases`, and `checked 56 cases`.
