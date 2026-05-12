@@ -426,8 +426,13 @@ const accepted = [
   { name: "leanListFindMissingDemo", args: [], expected: 0n },
   { name: "leanListFoldlDemo", args: [], expected: 123n },
   { name: "leanListFoldlClosedDemo", args: [], expected: 123n },
+  { name: "leanListFoldlClosedStructDemo", args: [], expected: 36n },
   { name: "leanListAnyDemo", args: [], expected: 1n },
   { name: "leanListAnyMissingDemo", args: [], expected: 0n },
+  { name: "leanListAnyDirectDemo", args: [], expected: 1n },
+  { name: "leanListAnyDirectMissingDemo", args: [], expected: 0n },
+  { name: "leanListAllDirectDemo", args: [], expected: 1n },
+  { name: "leanListAllDirectMissingDemo", args: [], expected: 0n },
   { name: "u64TreeArrayFieldDemo", args: [], expected: 7n },
   { name: "u64TreeSizeDemo", args: [], expected: 6n },
   { name: "u64BinaryStructuralSizeDemo", args: [], expected: 3n },
@@ -660,10 +665,6 @@ const rejected = [
   {
     name: "rejectRecursiveArrayReturn",
     message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectRecursiveArrayReturn",
-  },
-  {
-    name: "rejectLeanListAnyDirectDemo",
-    message: "unsupported expression: fun",
   },
   {
     name: "rejectHigherOrder",

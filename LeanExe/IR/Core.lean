@@ -110,6 +110,9 @@ mutual
     | rangeFoldMultiSlot (resultWidth : Nat) (start stop step : Expr)
         (initValues : List Expr) (accStart itemSlot : Nat) (bodyValues : List Expr)
         (bodyDone : Expr) (resultSlot : Nat)
+    | heapLinearPredicate (ptr : Expr)
+        (continueTag fieldSlotCount recursiveFieldOffset fieldStart : Nat)
+        (predicate : Expr) (stopWhenTrue terminalValue : Bool)
     | call (index : Nat) (args : List Expr)
     deriving BEq, Repr
 
@@ -258,6 +261,7 @@ mutual
         match initValues[resultSlot]? with
         | some init => init.eval module_ store
         | none => 0
+    | .heapLinearPredicate _ _ _ _ _ _ _ terminalValue => if terminalValue then 1 else 0
     | .call index args =>
         match module_.getFunc? index with
         | some func => func.eval module_ (args.map (fun arg => arg.eval module_ store))
