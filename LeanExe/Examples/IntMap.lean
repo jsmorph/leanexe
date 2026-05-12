@@ -6,11 +6,19 @@ def capacityNat : Nat :=
 def capacity : UInt64 :=
   256
 
-def tableWords : Nat :=
-  512
+structure Slot where
+  key : UInt64
+  value : UInt64
+  deriving Inhabited
 
-def empty : Array UInt64 :=
-  Array.replicate tableWords 0
+structure Table where
+  slots : Array Slot
+
+def emptySlot : Slot :=
+  { key := 0, value := 0 }
+
+def empty : Table :=
+  { slots := Array.replicate capacityNat emptySlot }
 
 def hash (key : UInt64) : UInt64 :=
   key % capacity
@@ -18,28 +26,25 @@ def hash (key : UInt64) : UInt64 :=
 def probe (key attempt : UInt64) : UInt64 :=
   (hash key + attempt) % capacity
 
-def keyIndex (slot : UInt64) : UInt64 :=
-  slot * 2
+def getSlot (table : Table) (slot : UInt64) : Slot :=
+  table.slots[slot.toNat]!
 
-def valueIndex (slot : UInt64) : UInt64 :=
-  slot * 2 + 1
+def getKey (table : Table) (slot : UInt64) : UInt64 :=
+  (getSlot table slot).key
 
-def getKey (table : Array UInt64) (slot : UInt64) : UInt64 :=
-  table[(keyIndex slot).toNat]!
+def getValue (table : Table) (slot : UInt64) : UInt64 :=
+  (getSlot table slot).value
 
-def getValue (table : Array UInt64) (slot : UInt64) : UInt64 :=
-  table[(valueIndex slot).toNat]!
+def setSlot (table : Table) (slot key value : UInt64) : Table :=
+  { slots := table.slots.set! slot.toNat { key := key, value := value } }
 
-def setSlot (table : Array UInt64) (slot key value : UInt64) : Array UInt64 :=
-  (Array.set! table (keyIndex slot).toNat key).set! (valueIndex slot).toNat value
-
-def slotAvailable (table : Array UInt64) (key attempt : UInt64) : Bool :=
+def slotAvailable (table : Table) (key attempt : UInt64) : Bool :=
   getKey table (probe key attempt) == 0 || getKey table (probe key attempt) == key
 
-def shouldInsert (table : Array UInt64) (key attempt done : UInt64) : Bool :=
+def shouldInsert (table : Table) (key attempt done : UInt64) : Bool :=
   done == 0 && slotAvailable table key attempt
 
-def insertFuel : Nat → UInt64 → UInt64 → UInt64 → UInt64 → Array UInt64 → Array UInt64
+def insertFuel : Nat → UInt64 → UInt64 → UInt64 → UInt64 → Table → Table
   | 0, _, _, _, _, table => table
   | fuel + 1, key, value, attempt, done, table =>
       insertFuel fuel key value (attempt + 1)
@@ -49,13 +54,13 @@ def insertFuel : Nat → UInt64 → UInt64 → UInt64 → UInt64 → Array UInt6
         else
           table)
 
-def insert (key value : UInt64) (table : Array UInt64) : Array UInt64 :=
+def insert (key value : UInt64) (table : Table) : Table :=
   insertFuel capacityNat key value 0 0 table
 
-def slotMatches (table : Array UInt64) (key attempt found : UInt64) : Bool :=
+def slotMatches (table : Table) (key attempt found : UInt64) : Bool :=
   found == 0 && getKey table (probe key attempt) == key
 
-def lookupFuel : Nat → UInt64 → UInt64 → UInt64 → Array UInt64 → UInt64 → UInt64
+def lookupFuel : Nat → UInt64 → UInt64 → UInt64 → Table → UInt64 → UInt64
   | 0, _, _, _, _, result => result
   | fuel + 1, key, attempt, found, table, result =>
       lookupFuel fuel key (attempt + 1)
@@ -66,18 +71,18 @@ def lookupFuel : Nat → UInt64 → UInt64 → UInt64 → Array UInt64 → UInt6
         else
           result)
 
-def lookup (key : UInt64) (table : Array UInt64) : UInt64 :=
+def lookup (key : UInt64) (table : Table) : UInt64 :=
   lookupFuel capacityNat key 0 0 table 0
 
-def buildFuel : Nat → UInt64 → Array UInt64 → Array UInt64
+def buildFuel : Nat → UInt64 → Table → Table
   | 0, _, table => table
   | fuel + 1, key, table =>
       buildFuel fuel (key + 1) (insert key (key * 10 + 7) table)
 
-def build : Array UInt64 :=
+def build : Table :=
   buildFuel 100 1 empty
 
-def checksumFuel : Nat → UInt64 → Array UInt64 → UInt64 → UInt64
+def checksumFuel : Nat → UInt64 → Table → UInt64 → UInt64
   | 0, _, _, acc => acc
   | fuel + 1, key, table, acc =>
       checksumFuel fuel (key + 1) table (acc + lookup key table)

@@ -115,6 +115,8 @@ The supported iteration and search operations are `Array.map`, `Array.foldl`, `A
 
 Nested arrays, public arrays of recursive values, polymorphic array code, array capacity behavior, and effectful callbacks are unsupported.  The implementation favors Lean value semantics over in-place mutation.  Programs should assume copy-on-write behavior for every accepted update.
 
+Maps are not a primitive runtime type.  Programs may define simple table structures over supported arrays, as in an open-addressed `UInt64` map backed by `Array Slot`, when the operations stay inside the accepted first-order subset.
+
 ## Byte Arrays
 
 `ByteArray` values use a pointer-length representation.  Entry parameters come from host memory, and returned values may point to host-provided input memory, a slice of that memory, or arena memory allocated by compiled code.  The host must read returned bytes before calling `reset()`.

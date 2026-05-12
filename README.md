@@ -205,7 +205,7 @@ The examples directory contains small programs that exercise the user-facing sub
 |--------|-------|-------------|
 | `LeanExe.Examples.Collatz` | `steps` | Counts Collatz steps for a `UInt64` input. |
 | `LeanExe.Examples.Prime` | `next` | Computes the smallest prime greater than a `UInt64` input. |
-| `LeanExe.Examples.IntMap` | `checksum`, `query` | Uses a small integer map written in the subset. |
+| `LeanExe.Examples.IntMap` | `checksum`, `query` | Uses a small structure-backed integer map written in the subset. |
 | `LeanExe.Examples.ByteArrayPrograms` | Several entries | Validates and transforms `ByteArray` inputs. |
 | `LeanExe.Examples.AsciiStringPrograms` | Several entries | Validates and transforms ASCII byte strings. |
 | `LeanExe.Examples.JsonDouble` | `transform` | Parses a small ASCII JSON request and returns JSON bytes. |
