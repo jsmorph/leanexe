@@ -653,6 +653,11 @@ inductive U64Binary where
   | leaf : UInt64 → U64Binary
   | node : U64Binary → U64Binary → U64Binary
 
+inductive U64Expr where
+  | lit : UInt64 → U64Expr
+  | add : U64Expr → U64Expr → U64Expr
+  | mul : U64Expr → U64Expr → U64Expr
+
 def u64TreeFirstChildHead (tree : U64Tree) : UInt64 :=
   match tree with
   | .leaf value => value
@@ -685,9 +690,20 @@ def u64BinaryStructuralSize : U64Binary → UInt64
   | .leaf _value => 1
   | .node left right => u64BinaryStructuralSize left + u64BinaryStructuralSize right
 
-def rejectStructuralBinarySize : UInt64 :=
+def u64BinaryStructuralSizeDemo : UInt64 :=
   u64BinaryStructuralSize
     (U64Binary.node (U64Binary.leaf 1) (U64Binary.node (U64Binary.leaf 2) (U64Binary.leaf 3)))
+
+def u64ExprEval : U64Expr → UInt64
+  | .lit value => value
+  | .add left right => u64ExprEval left + u64ExprEval right
+  | .mul left right => u64ExprEval left * u64ExprEval right
+
+def u64ExprEvalDemo : UInt64 :=
+  u64ExprEval
+    (U64Expr.mul
+      (U64Expr.add (U64Expr.lit 2) (U64Expr.lit 3))
+      (U64Expr.add (U64Expr.lit 4) (U64Expr.lit 5)))
 
 def rejectRecursiveInductiveParam (xs : U64List) : UInt64 :=
   u64ListHeadOrZero xs
