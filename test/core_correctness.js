@@ -8,6 +8,10 @@ const moduleName = "LeanExe.Examples.Correctness";
 const leanExe = process.env.LEAN_WASM_EXE || path.join(".lake", "build", "bin", "lean-wasm");
 const outDir = path.join(".lake", "build", "core-correctness");
 
+const watSizeGuards = [
+  { name: "arrayStructureReplicateHelperRead", maxBytes: 500_000 },
+];
+
 const accepted = [
   { name: "shortOrSkipsTrap", args: [], expected: 1n },
   { name: "shortAndSkipsTrap", args: [], expected: 0n },
@@ -301,6 +305,7 @@ const accepted = [
   { name: "arrayStructureExtractRead", args: [], expected: 3456n },
   { name: "arrayStructureInsertRead", args: [], expected: 123456n },
   { name: "arrayStructureInsertSkipsValueTrap", args: [], expected: 12n },
+  { name: "arrayStructureInsertSkipsHelperValueTrap", args: [], expected: 12n },
   { name: "arrayStructureEraseRead", args: [], expected: 1256n },
   { name: "arrayStructureSwapRead", args: [], expected: 563412n },
   { name: "arrayStructureReverseRead", args: [], expected: 563412n },
@@ -308,9 +313,12 @@ const accepted = [
   { name: "arrayStructureGetDSkipsDefaultTrap", args: [], expected: 12n },
   { name: "arrayStructureModifyRead", args: [], expected: 45n },
   { name: "arrayStructureModifyOutOfBoundsSkipsFunctionTrap", args: [], expected: 12n },
+  { name: "arrayStructureSetIfInBoundsSkipsHelperValueTrap", args: [], expected: 12n },
   { name: "arrayStructureReplicateRead", args: [], expected: 1212n },
+  { name: "arrayStructureReplicateHelperRead", args: [], expected: 8989n },
   { name: "arrayStructureMapRead", args: [], expected: 3375n },
   { name: "arrayStructureMapEmptySkipsFunctionTrap", args: [], expected: 0n },
+  { name: "arrayStructureMapEmptySkipsHelperTrap", args: [], expected: 0n },
   { name: "arrayStructureFoldRead", args: [], expected: 1234n },
   { name: "arrayStructureSafeGet", args: [], expected: 45n },
   { name: "arrayStructureSafeNoneSkipsPayloadTrap", args: [], expected: 7n },
@@ -633,6 +641,31 @@ function compile(name, out) {
   ]);
 }
 
+function compileWat(name, out) {
+  return run([
+    leanExe,
+    "compile-wat",
+    "--module",
+    moduleName,
+    "--entry",
+    `${moduleName}.${name}`,
+    "--out",
+    out,
+  ]);
+}
+
+function checkWatSize(testCase) {
+  const out = path.join(outDir, `${testCase.name}.wat`);
+  const compiled = compileWat(testCase.name, out);
+  if (compiled.status !== 0) {
+    throw new Error(`${testCase.name} failed to compile WAT: ${compiled.stderr.trim()}`);
+  }
+  const size = fs.statSync(out).size;
+  if (size > testCase.maxBytes) {
+    throw new Error(`${testCase.name}: WAT is ${size} bytes, expected at most ${testCase.maxBytes}`);
+  }
+}
+
 async function runAccepted(testCase) {
   const out = path.join(outDir, `${testCase.name}.wasm`);
   const compiled = compile(testCase.name, out);
@@ -755,6 +788,10 @@ async function main() {
 
   for (const testCase of trapped) {
     await runTrapped(testCase);
+  }
+
+  for (const testCase of watSizeGuards) {
+    checkWatSize(testCase);
   }
 
   process.stdout.write(
