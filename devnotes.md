@@ -2439,3 +2439,16 @@ Checks run:
 - [x] `lake build`
 - [x] `node test/core_correctness.js` returned `checked 477 accepted, 27 rejected, and 13 trapped cases`.
 - [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 477 accepted, 27 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 46 json program cases`, and `checked 56 cases`.
+
+## 2026-05-12: Early-exit pure for loops
+
+Pure `Id.run` `for` loops now retain both parts of the elaborated `ForInStep`: the next accumulator value and the step-completion flag.  The extractor accepts `ForInStep.yield`, `ForInStep.done`, pure wrapping, the generated `PUnit` bind shape used by mutable assignments, and step-level `if` expressions whose branches both produce supported `ForInStep` values.  The correctness corpus covers ordinary `break` in accepted `ByteArray`, fixed-width-array, and range loops without adding a special source-level `break` case to the compiler.
+
+The multi-slot fold IR now carries a `bodyDone` expression.  The binary and WAT emitters evaluate the next accumulator slots into temporary locals, evaluate the done flag before copying those temporaries back to the accumulator slots, copy the accumulator, and branch out of the loop when the flag is true.  Evaluating the done flag before the copy preserves the source view of the old accumulator and current item while still returning the done value as the final accumulator.
+
+Checks run:
+
+- [x] `lake build`
+- [x] `lake build LeanExe.Examples.Correctness`
+- [x] `node test/core_correctness.js` returned `checked 481 accepted, 27 rejected, and 13 trapped cases`.
+- [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 481 accepted, 27 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 46 json program cases`, and `checked 56 cases`.

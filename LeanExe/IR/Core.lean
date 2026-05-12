@@ -77,7 +77,7 @@ mutual
         (accSlot itemStart : Nat) (body : Expr)
     | arrayFoldMultiSlot (sourceWidth resultWidth : Nat) (array start stop : Expr)
         (initValues : List Expr) (accStart itemStart : Nat) (bodyValues : List Expr)
-        (resultSlot : Nat)
+        (bodyDone : Expr) (resultSlot : Nat)
     | arrayFindIdxSlots (sourceWidth : Nat) (array : Expr) (itemStart : Nat)
         (predicate : Expr) (returnPayload : Bool)
     | arrayFindSlot (sourceWidth : Nat) (array : Expr) (itemStart : Nat)
@@ -106,10 +106,10 @@ mutual
     | byteArrayFold (ptr len start stop init : Expr) (accSlot byteSlot : Nat) (body : Expr)
     | byteArrayFoldMultiSlot (resultWidth : Nat) (ptr len start stop : Expr)
         (initValues : List Expr) (accStart byteSlot : Nat) (bodyValues : List Expr)
-        (resultSlot : Nat)
+        (bodyDone : Expr) (resultSlot : Nat)
     | rangeFoldMultiSlot (resultWidth : Nat) (start stop step : Expr)
         (initValues : List Expr) (accStart itemSlot : Nat) (bodyValues : List Expr)
-        (resultSlot : Nat)
+        (bodyDone : Expr) (resultSlot : Nat)
     | call (index : Nat) (args : List Expr)
     deriving BEq, Repr
 
@@ -132,13 +132,13 @@ mutual
     | call (slots : List Nat) (index : Nat) (args : List Expr)
     | arrayFoldMultiSlotAssign (sourceWidth resultWidth : Nat) (array start stop : Expr)
         (initValues : List Expr) (accStart itemStart : Nat) (bodyValues : List Expr)
-        (targets : List Nat)
+        (bodyDone : Expr) (targets : List Nat)
     | byteArrayFoldMultiSlotAssign (resultWidth : Nat) (ptr len start stop : Expr)
         (initValues : List Expr) (accStart byteSlot : Nat) (bodyValues : List Expr)
-        (targets : List Nat)
+        (bodyDone : Expr) (targets : List Nat)
     | rangeFoldMultiSlotAssign (resultWidth : Nat) (start stop step : Expr)
         (initValues : List Expr) (accStart itemSlot : Nat) (bodyValues : List Expr)
-        (targets : List Nat)
+        (bodyDone : Expr) (targets : List Nat)
     | ite (cond : Cond) (thenStmt elseStmt : Stmt)
     | seq (first second : Stmt)
     | while (cond : Cond) (body : Stmt)
@@ -226,7 +226,7 @@ mutual
     | .arrayMap array _ _ => array.eval module_ store
     | .arrayMapSlots _ _ array _ _ => array.eval module_ store
     | .arrayFoldSlots _ _ _ _ init _ _ _ => init.eval module_ store
-    | .arrayFoldMultiSlot _ _ _ _ _ initValues _ _ _ resultSlot =>
+    | .arrayFoldMultiSlot _ _ _ _ _ initValues _ _ _ _ resultSlot =>
         match initValues[resultSlot]? with
         | some init => init.eval module_ store
         | none => 0
@@ -250,11 +250,11 @@ mutual
     | .byteArrayCopySlicePtr _ _ _ destPtr _ _ _ => destPtr.eval module_ store
     | .byteArrayFindIdx _ _ _ _ _ _ => 0
     | .byteArrayFold _ _ _ _ init _ _ _ => init.eval module_ store
-    | .byteArrayFoldMultiSlot _ _ _ _ _ initValues _ _ _ resultSlot =>
+    | .byteArrayFoldMultiSlot _ _ _ _ _ initValues _ _ _ _ resultSlot =>
         match initValues[resultSlot]? with
         | some init => init.eval module_ store
         | none => 0
-    | .rangeFoldMultiSlot _ _ _ _ initValues _ _ _ resultSlot =>
+    | .rangeFoldMultiSlot _ _ _ _ initValues _ _ _ _ resultSlot =>
         match initValues[resultSlot]? with
         | some init => init.eval module_ store
         | none => 0
@@ -282,15 +282,15 @@ mutual
           | some func => func.evalResults module_ (args.map (fun arg => arg.eval module_ store))
           | none => []
         (slots.zip results).foldl (fun current item => current.set item.fst item.snd) store
-    | .arrayFoldMultiSlotAssign _ _ _ _ _ initValues _ _ _ targets, store =>
+    | .arrayFoldMultiSlotAssign _ _ _ _ _ initValues _ _ _ _ targets, store =>
         (targets.zip (initValues.map (fun value => value.eval module_ store))).foldl
           (fun current item => current.set item.fst item.snd)
           store
-    | .byteArrayFoldMultiSlotAssign _ _ _ _ _ initValues _ _ _ targets, store =>
+    | .byteArrayFoldMultiSlotAssign _ _ _ _ _ initValues _ _ _ _ targets, store =>
         (targets.zip (initValues.map (fun value => value.eval module_ store))).foldl
           (fun current item => current.set item.fst item.snd)
           store
-    | .rangeFoldMultiSlotAssign _ _ _ _ initValues _ _ _ targets, store =>
+    | .rangeFoldMultiSlotAssign _ _ _ _ initValues _ _ _ _ targets, store =>
         (targets.zip (initValues.map (fun value => value.eval module_ store))).foldl
           (fun current item => current.set item.fst item.snd)
           store
