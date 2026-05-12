@@ -2377,7 +2377,7 @@ Checks run:
 
 Transparent specialization now unfolds nonlocal transparent applications when the application contains a direct lambda argument and the callee is outside the primitive, recursor, and matcher families that the extractor already lowers explicitly.  The purpose is to reduce ordinary library code to the same first-order terms the compiler already accepts, without adding a `List` primitive or a hidden runtime path.  The matcher parser now locates the instantiated scrutinee argument in generated matcher types, which handles polymorphic matchers produced by specialized `List UInt64` library calls.
 
-This slice accepts `LeanExe.Examples.Correctness.leanListMapDemo`, `leanListFilterDemo`, `leanListFindDemo`, and `leanListFindMissingDemo`.  `List.map`, `List.filter`, and `List.find?` compile here because the direct lambdas specialize away and the resulting structural recursion returns first-order data.  `rejectLeanListFoldlDemo` and `rejectLeanListAnyDemo` remain rejected because their lowered definitions return function values from structural recursion; supporting them requires defunctionalizing those hidden post-arguments into first-order carried parameters.
+This slice accepts `LeanExe.Examples.Correctness.leanListMapDemo`, `leanListFilterDemo`, `leanListFindDemo`, and `leanListFindMissingDemo`.  `List.map`, `List.filter`, and `List.find?` compile here because the direct lambdas specialize away and the resulting structural recursion returns first-order data.  At this checkpoint, closed `List.foldl` and direct `List.any` examples still failed because their lowered definitions returned function values from structural recursion.
 
 `List.map` exposed a recursive-value laziness bug in structured branch selection.  `valueIte` previously combined recursive-variant payloads from both branches, which forced inactive recursive constructor payloads and could make a finite list traversal diverge.  Recursive variant branch values now stay behind an `ite` wrapper, so inactive constructor payloads are not evaluated during materialization.
 
@@ -2387,3 +2387,18 @@ Checks run:
 - [x] `lake build LeanExe.Examples.Correctness`
 - [x] `node test/core_correctness.js` returned `checked 461 accepted, 24 rejected, and 13 trapped cases`.
 - [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 461 accepted, 24 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 22 asciistring cases`, `checked 4 intmap cases`, `checked 46 json program cases`, and `checked 56 cases`.
+
+## 2026-05-12: Function-valued structural recursion
+
+The structural-recursion extractor now handles generated motives that return function values when those functions can be removed during extraction.  Direct-lambda post arguments are substituted into the generated branch body, and first-order carried post arguments are mapped to explicit helper parameters after the recursive-inductive parameter.  Recursive calls through the generated `PProd.fst` projection now accept the same post arguments, filtering out direct lambdas and passing only first-order carried values to the compiled helper.
+
+The generated matcher parser now chooses the recursive-inductive scrutinee instead of the first supported typed matcher argument, and it treats the final constructor-count arguments after the scrutinee as the branch arms.  This handles both `List.foldl.match_1`, where the accumulator argument precedes the scrutinee, and `List.any.match_1`, where the predicate argument follows the scrutinee.  Constructor detection in generated arm types now searches motive arguments, which covers arm types such as `motive [] p` and preserves the existing nullary-constructor `Unit` binder form.
+
+`LeanExe.Examples.Correctness.leanListFoldlDemo` uses ordinary `List.foldl` over `List UInt64` with a noncommutative decimal accumulator, so the test catches binder-order mistakes.  `leanListAnyDemo` and `leanListAnyMissingDemo` use ordinary `List.any` with direct-lambda predicates.  Direct closed `List.foldl` remains rejected in `rejectLeanListFoldlClosedDemo`, because its initial accumulator would require a hidden carried parameter that the current source-to-WASM function ABI does not synthesize.
+
+Checks run:
+
+- [x] `lake build`
+- [x] `lake build LeanExe.Examples.Correctness`
+- [x] `node test/core_correctness.js` returned `checked 464 accepted, 24 rejected, and 13 trapped cases`.
+- [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 464 accepted, 24 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 22 asciistring cases`, `checked 4 intmap cases`, `checked 46 json program cases`, and `checked 56 cases`.
