@@ -122,6 +122,7 @@ async function main() {
   run(["lake", "build", collatzModule]);
   run(["lake", "build", toolsModule]);
   checkWatSize(collatzModule, "transform", 1_000_000);
+  checkWatSize(toolsModule, "transform", 1_000_000);
   const doubleExports = await instantiate(doubleModule);
   const addExports = await instantiate(addModule);
   const collatzExports = await instantiate(collatzModule);

@@ -2267,3 +2267,22 @@ Checks run:
 - [x] `node test/json_double.js` returned `checked 46 json program cases`.
 - [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 442 accepted, 21 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 14 asciistring cases`, `checked 46 json program cases`, and `checked 56 cases`.
 - [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/current/wasmtime wast .lake/build/json-programs/JsonCollatzLength-transform.wat`
+
+## 2026-05-11: Strict materialization regressions and size guards
+
+The extractor now names the strict-boundary helpers as `StrictSlots`, `StrictArgs`, `materializeStrictInternalSlots`, and `materializeStrictArrayElementSlots`.  This keeps the statement-like path separate from lazy expression flattening.  `Array.replicate` now uses the strict array-element path too, binding the count expression before running materialized element lets.
+
+The correctness corpus adds guarded helper regressions for `insertIdxIfInBounds`, `setIfInBounds`, and empty `map` over structured arrays.  Each case passes a helper whose payload traps if evaluated, so moving a structured value out of a skipped branch would fail.  `arrayStructureReplicateHelperRead` covers the strict eager replicate path, and `core_correctness.js` adds a WAT size guard for that example.
+
+The JSON harness now guards `JsonTools.transform` as well as `JsonCollatzLength.transform`.  Current guarded WAT sizes are `257071` bytes for `JsonCollatzLength.transform`, `229962` bytes for `JsonTools.transform`, and `9468` bytes for `arrayStructureReplicateHelperRead`.
+
+Checks run:
+
+- [x] `lake build`
+- [x] `lake build LeanExe.Examples.Correctness`
+- [x] `node test/core_correctness.js` returned `checked 446 accepted, 21 rejected, and 13 trapped cases`.
+- [x] `node test/json_double.js` returned `checked 46 json program cases`.
+- [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 446 accepted, 21 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 14 asciistring cases`, `checked 46 json program cases`, and `checked 56 cases`.
+- [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/current/wasmtime wast .lake/build/json-programs/JsonCollatzLength-transform.wat`
+- [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/current/wasmtime wast .lake/build/json-programs/JsonTools-transform.wat`
+- [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/current/wasmtime wast .lake/build/core-correctness/arrayStructureReplicateHelperRead.wat`

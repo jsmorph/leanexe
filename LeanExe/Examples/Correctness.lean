@@ -1144,6 +1144,16 @@ def arrayStructureInsertSkipsValueTrap : UInt64 :=
   | none => 0
   | some point => point.x * (10 : UInt64) + point.y
 
+def trapPointHelper : Point :=
+  { x := (Array.replicate 0 (0 : UInt64)).back!, y := 9 }
+
+def arrayStructureInsertSkipsHelperValueTrap : UInt64 :=
+  let a : Array Point := #[({ x := 1, y := 2 } : Point)]
+  let b := a.insertIdxIfInBounds 5 trapPointHelper
+  match b[0]? with
+  | none => 0
+  | some point => point.x * (10 : UInt64) + point.y
+
 def arrayStructureEraseRead : UInt64 :=
   let a : Array Point :=
     #[({ x := 1, y := 2 } : Point), ({ x := 3, y := 4 } : Point), ({ x := 5, y := 6 } : Point)]
@@ -1226,6 +1236,13 @@ def arrayStructureModifyOutOfBoundsSkipsFunctionTrap : UInt64 :=
   | none => 0
   | some point => point.x * (10 : UInt64) + point.y
 
+def arrayStructureSetIfInBoundsSkipsHelperValueTrap : UInt64 :=
+  let a : Array Point := #[({ x := 1, y := 2 } : Point)]
+  let b := a.setIfInBounds 5 trapPointHelper
+  match b[0]? with
+  | none => 0
+  | some point => point.x * (10 : UInt64) + point.y
+
 def arrayStructureReplicateRead : UInt64 :=
   let a := Array.replicate 3 ({ x := 1, y := 2 } : Point)
   if a.size == 3 then
@@ -1233,6 +1250,20 @@ def arrayStructureReplicateRead : UInt64 :=
     | none => 0
     | some first =>
         match a[2]? with
+        | none => 0
+        | some last =>
+            first.x * (1000 : UInt64) + first.y * (100 : UInt64) +
+              last.x * (10 : UInt64) + last.y
+  else
+    0
+
+def arrayStructureReplicateHelperRead : UInt64 :=
+  let a := Array.replicate 2 (makePointHelper 7)
+  if a.size == 2 then
+    match a[0]? with
+    | none => 0
+    | some first =>
+        match a[1]? with
         | none => 0
         | some last =>
             first.x * (1000 : UInt64) + first.y * (100 : UInt64) +
@@ -1255,6 +1286,9 @@ def arrayStructureMapRead : UInt64 :=
 def arrayStructureMapEmptySkipsFunctionTrap : Nat :=
   ((#[] : Array Point).map
     (fun _point => ({ x := (Array.replicate 0 (0 : UInt64)).back!, y := 9 } : Point))).size
+
+def arrayStructureMapEmptySkipsHelperTrap : Nat :=
+  ((#[] : Array Point).map (fun _point => trapPointHelper)).size
 
 def arrayStructureFoldRead : UInt64 :=
   let a : Array Point := #[({ x := 1, y := 2 } : Point), ({ x := 3, y := 4 } : Point)]

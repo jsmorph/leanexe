@@ -41,13 +41,13 @@ inductive ValueLet where
   | call (slots : List Nat) (index : Nat) (args : List IRExpr)
   deriving BEq, Repr
 
-structure MaterializedSlots where
+structure StrictSlots where
   lets : List ValueLet
   slots : List IRExpr
   nextLocal : Nat
   deriving BEq, Repr
 
-structure MaterializedArgs where
+structure StrictArgs where
   lets : List ValueLet
   args : List IRExpr
   nextLocal : Nat
@@ -1745,34 +1745,34 @@ partial def flattenArrayElementValue
       | _ => .error s!"non-inductive value used where inductive array element is required: {name}"
   | other => .error s!"unsupported array element value type: {reprStr other}"
 
-partial def materializeSlotsWith
+partial def materializeStrictSlotsWith
     (flatten : ExtractedValue → Except String (List IRExpr))
     (value : ExtractedValue)
     (nextLocal : Nat) :
-    Except String MaterializedSlots := do
+    Except String StrictSlots := do
   match value with
   | .letE slot expr body => do
-      let result ← materializeSlotsWith flatten body nextLocal
+      let result ← materializeStrictSlotsWith flatten body nextLocal
       .ok { result with lets := .expr slot expr :: result.lets }
   | .letCall slots index args body => do
-      let result ← materializeSlotsWith flatten body nextLocal
+      let result ← materializeStrictSlotsWith flatten body nextLocal
       .ok { result with lets := .call slots index args :: result.lets }
   | _ =>
       .ok { lets := [], slots := ← flatten value, nextLocal := nextLocal }
 
-def materializeInternalSlots
+def materializeStrictInternalSlots
     (ty : Ty)
     (value : ExtractedValue)
     (nextLocal : Nat) :
-    Except String MaterializedSlots :=
-  materializeSlotsWith (flattenInternalValue ty) value nextLocal
+    Except String StrictSlots :=
+  materializeStrictSlotsWith (flattenInternalValue ty) value nextLocal
 
-def materializeArrayElementSlots
+def materializeStrictArrayElementSlots
     (ty : Ty)
     (value : ExtractedValue)
     (nextLocal : Nat) :
-    Except String MaterializedSlots :=
-  materializeSlotsWith (flattenArrayElementValue ty) value nextLocal
+    Except String StrictSlots :=
+  materializeStrictSlotsWith (flattenArrayElementValue ty) value nextLocal
 
 mutual
   partial def arrayLoadValueAt
@@ -2548,7 +2548,7 @@ def enumerateAux {α : Type} : List α → Nat → List (Nat × α)
 def enumerate {α : Type} (items : List α) : List (Nat × α) :=
   enumerateAux items 0
 
-def bindSlotExprs (slots : List IRExpr) (nextLocal : Nat) : MaterializedSlots :=
+def bindStrictSlots (slots : List IRExpr) (nextLocal : Nat) : StrictSlots :=
   let indexed := enumerate slots
   {
     lets := indexed.map fun item => .expr (nextLocal + item.fst) item.snd
@@ -4938,7 +4938,7 @@ mutual
                           | item :: rest =>
                               let itemResult ← extractValueFrom ctx locals next item
                               let itemSlots ←
-                                materializeArrayElementSlots itemTy itemResult.fst itemResult.snd
+                                materializeStrictArrayElementSlots itemTy itemResult.fst itemResult.snd
                               let arraySlot := itemSlots.nextLocal
                               build (index + 1) (arraySlot + 1)
                                 (.letE arraySlot arrayExpr
@@ -4961,8 +4961,14 @@ mutual
                         let width ← arrayElementWidth "Array.replicate" itemTy
                         let cellsResult ← extractExprFrom ctx locals nextLocal cells
                         let valueResult ← extractValueFrom ctx locals cellsResult.snd value
-                        let slots ← flattenArrayElementValue itemTy valueResult.fst
-                        .ok (.arrayReplicateSlots width cellsResult.fst slots, valueResult.snd)
+                        let slots ←
+                          materializeStrictArrayElementSlots itemTy valueResult.fst valueResult.snd
+                        let cellsSlot := slots.nextLocal
+                        .ok
+                          (.letE cellsSlot cellsResult.fst
+                            (wrapExprLets slots.lets
+                              (.arrayReplicateSlots width (.local cellsSlot) slots.slots)),
+                            cellsSlot + 1)
                     | none => .error "unsupported Array.replicate item type"
                 | _, _ => .error "unsupported Array.replicate application"
             | (.const ``Array.size _, args) =>
@@ -4986,7 +4992,7 @@ mutual
                         let arrayResult ← extractExprFrom ctx locals nextLocal array
                         let valueResult ← extractValueFrom ctx locals arrayResult.snd value
                         let slots ←
-                          materializeArrayElementSlots itemTy valueResult.fst valueResult.snd
+                          materializeStrictArrayElementSlots itemTy valueResult.fst valueResult.snd
                         let arraySlot := slots.nextLocal
                         .ok
                           (.letE arraySlot arrayResult.fst
@@ -5085,7 +5091,7 @@ mutual
                         let indexResult ← extractExprFrom ctx locals arrayResult.snd index
                         let valueResult ← extractValueFrom ctx locals indexResult.snd value
                         let slots ←
-                          materializeArrayElementSlots itemTy valueResult.fst valueResult.snd
+                          materializeStrictArrayElementSlots itemTy valueResult.fst valueResult.snd
                         let arraySlot := slots.nextLocal
                         let indexSlot := arraySlot + 1
                         .ok
@@ -5112,7 +5118,7 @@ mutual
                         let indexSlot := arraySlot + 1
                         let valueResult ← extractValueFrom ctx locals (indexSlot + 1) value
                         let slots ←
-                          materializeArrayElementSlots itemTy valueResult.fst valueResult.snd
+                          materializeStrictArrayElementSlots itemTy valueResult.fst valueResult.snd
                         let inserted :=
                           wrapExprLets slots.lets
                             (.arrayInsertIfInBoundsSlots
@@ -5449,7 +5455,7 @@ mutual
                         let width ← arrayElementWidth "Array.singleton" itemTy
                         let valueResult ← extractValueFrom ctx locals nextLocal value
                         let slots ←
-                          materializeArrayElementSlots itemTy valueResult.fst valueResult.snd
+                          materializeStrictArrayElementSlots itemTy valueResult.fst valueResult.snd
                         .ok
                           (wrapExprLets slots.lets
                             (.arraySetSlots
@@ -5534,7 +5540,7 @@ mutual
                         let indexResult ← extractExprFrom ctx locals arrayResult.snd index
                         let valueResult ← extractValueFrom ctx locals indexResult.snd value
                         let slots ←
-                          materializeArrayElementSlots itemTy valueResult.fst valueResult.snd
+                          materializeStrictArrayElementSlots itemTy valueResult.fst valueResult.snd
                         let arraySlot := slots.nextLocal
                         let indexSlot := arraySlot + 1
                         .ok
@@ -5584,7 +5590,7 @@ mutual
                         let indexResult ← extractExprFrom ctx locals arrayResult.snd index
                         let valueResult ← extractValueFrom ctx locals indexResult.snd value
                         let slots ←
-                          materializeArrayElementSlots itemTy valueResult.fst valueResult.snd
+                          materializeStrictArrayElementSlots itemTy valueResult.fst valueResult.snd
                         let arraySlot := slots.nextLocal
                         let indexSlot := arraySlot + 1
                         .ok
@@ -6303,12 +6309,12 @@ mutual
       (ctx : Context)
       (locals : List Binding)
       (nextLocal : Nat) :
-      List Ty → List Expr → Except String MaterializedArgs
+      List Ty → List Expr → Except String StrictArgs
     | [], [] => .ok { lets := [], args := [], nextLocal := nextLocal }
     | ty :: restTys, expr :: restExprs => do
         let valueResult ← extractValueFrom ctx locals nextLocal expr
-        let head ← materializeInternalSlots ty valueResult.fst valueResult.snd
-        let bound := bindSlotExprs head.slots head.nextLocal
+        let head ← materializeStrictInternalSlots ty valueResult.fst valueResult.snd
+        let bound := bindStrictSlots head.slots head.nextLocal
         let rest ← extractCallArgsFrom ctx locals bound.nextLocal restTys restExprs
         .ok {
           lets := head.lets ++ bound.lets ++ rest.lets,
