@@ -1806,16 +1806,16 @@ def arrayFoldMultiSlotAssign? (targets : List Nat) (values : List IRExpr) :
     Option IRStmt :=
   match values with
   | .arrayFoldMultiSlot sourceWidth resultWidth array start stop initValues accStart itemStart
-      bodyValues _ :: _ =>
+      bodyValues bodyDone _ :: _ =>
       if values.length == resultWidth && targets.length == resultWidth then
         let expected : List IRExpr :=
           (List.range resultWidth).map fun offset =>
             .arrayFoldMultiSlot sourceWidth resultWidth array start stop initValues accStart
-              itemStart bodyValues offset
+              itemStart bodyValues bodyDone offset
         if values == expected then
           some <|
             .arrayFoldMultiSlotAssign sourceWidth resultWidth array start stop initValues accStart
-              itemStart bodyValues targets
+              itemStart bodyValues bodyDone targets
         else
           none
       else
@@ -1826,16 +1826,16 @@ def byteArrayFoldMultiSlotAssign? (targets : List Nat) (values : List IRExpr) :
     Option IRStmt :=
   match values with
   | .byteArrayFoldMultiSlot resultWidth ptr len start stop initValues accStart byteSlot
-      bodyValues _ :: _ =>
+      bodyValues bodyDone _ :: _ =>
       if values.length == resultWidth && targets.length == resultWidth then
         let expected : List IRExpr :=
           (List.range resultWidth).map fun offset =>
             .byteArrayFoldMultiSlot resultWidth ptr len start stop initValues accStart
-              byteSlot bodyValues offset
+              byteSlot bodyValues bodyDone offset
         if values == expected then
           some <|
             .byteArrayFoldMultiSlotAssign resultWidth ptr len start stop initValues accStart
-              byteSlot bodyValues targets
+              byteSlot bodyValues bodyDone targets
         else
           none
       else
@@ -1846,16 +1846,16 @@ def rangeFoldMultiSlotAssign? (targets : List Nat) (values : List IRExpr) :
     Option IRStmt :=
   match values with
   | .rangeFoldMultiSlot resultWidth start stop step initValues accStart itemSlot
-      bodyValues _ :: _ =>
+      bodyValues bodyDone _ :: _ =>
       if values.length == resultWidth && targets.length == resultWidth then
         let expected : List IRExpr :=
           (List.range resultWidth).map fun offset =>
             .rangeFoldMultiSlot resultWidth start stop step initValues accStart itemSlot bodyValues
-              offset
+              bodyDone offset
         if values == expected then
           some <|
             .rangeFoldMultiSlotAssign resultWidth start stop step initValues accStart itemSlot
-              bodyValues targets
+              bodyValues bodyDone targets
         else
           none
       else
@@ -2533,29 +2533,52 @@ def idForInArgs? (env : Environment) (fn : Expr) (args : List Expr) : Option For
         none
   | _, _ => none
 
-def wrapForInYieldLet
+structure ForInStepBody where
+  done : Expr
+  value : Expr
+
+def boolLiteralExpr (value : Bool) : Expr :=
+  if value then .const ``Bool.true [] else .const ``Bool.false []
+
+def mkIteExpr (ty cond inst thenExpr elseExpr : Expr) : Expr :=
+  .app
+    (.app
+      (.app
+        (.app
+          (.app (.const ``ite []) ty)
+          cond)
+        inst)
+      thenExpr)
+    elseExpr
+
+def wrapForInStepLet
     (name : Name)
     (type value : Expr)
     (nondep : Bool)
-    (yield : Expr) :
-    Expr :=
-  .letE name type value yield nondep
+    (step : ForInStepBody) :
+    ForInStepBody :=
+  {
+    done := .letE name type value step.done nondep
+    value := .letE name type value step.value nondep
+  }
 
-partial def forInYieldExpr? (expr : Expr) : Except String Expr := do
+partial def forInStepBody? (resultTy : Ty) (expr : Expr) : Except String ForInStepBody := do
   match expr.consumeMData with
   | .letE name type value body nondep => do
-      .ok (wrapForInYieldLet name type value nondep (← forInYieldExpr? body))
+      .ok (wrapForInStepLet name type value nondep (← forInStepBody? resultTy body))
   | expr =>
       match appFnArgs expr with
       | (.const ``ForInStep.yield _, args) =>
           match args.reverse with
-          | value :: _ => .ok value
+          | value :: _ => .ok { done := boolLiteralExpr false, value := value }
           | _ => .error "unsupported ForInStep.yield application"
-      | (.const ``ForInStep.done _, _) =>
-          .error "ForInStep.done is unsupported"
+      | (.const ``ForInStep.done _, args) =>
+          match args.reverse with
+          | value :: _ => .ok { done := boolLiteralExpr true, value := value }
+          | _ => .error "unsupported ForInStep.done application"
       | (.const ``Pure.pure _, args) =>
           match idPureArg? (.const ``Pure.pure []) args with
-          | some value => forInYieldExpr? value
+          | some value => forInStepBody? resultTy value
           | none => .error "unsupported for-in pure step"
       | (.const ``Bind.bind _, args) =>
           match idBindArgs? (.const ``Bind.bind []) args with
@@ -2572,9 +2595,21 @@ partial def forInYieldExpr? (expr : Expr) : Except String Expr := do
               else
                 match bindFn.consumeMData with
                 | .lam name type body _ =>
-                    forInYieldExpr? (.letE name type pureValue body true)
+                    forInStepBody? resultTy (.letE name type pureValue body true)
                 | _ => .error "unsupported for-in body bind function"
           | none => .error "unsupported for-in body bind"
+      | (.const ``ite _, [_ty, condExpr, inst, thenExpr, elseExpr]) =>
+          match tyExpr? resultTy with
+          | some resultTyExpr => do
+              let thenStep ← forInStepBody? resultTy thenExpr
+              let elseStep ← forInStepBody? resultTy elseExpr
+              .ok {
+                done :=
+                  mkIteExpr (.const ``Bool []) condExpr inst thenStep.done elseStep.done
+                value :=
+                  mkIteExpr resultTyExpr condExpr inst thenStep.value elseStep.value
+              }
+          | none => .error s!"unsupported conditional for-in accumulator type: {reprStr resultTy}"
       | _ => .error s!"unsupported for-in body: {expr}"
 
 partial def listLiteralItems? (env : Environment) (expr : Expr) : Option (Ty × List Expr) :=
@@ -4012,9 +4047,9 @@ mutual
                 if !supportedForInAccumulatorType forIn.resultTy then
                   .error s!"unsupported for-in accumulator type: {reprStr forIn.resultTy}"
                 else
-                  let yieldExpr ←
+                  let stepBody ←
                     match collectLambdas forIn.body 2 with
-                    | some body => forInYieldExpr? body
+                    | some body => forInStepBody? forIn.resultTy body
                     | none => .error "unsupported for-in body"
                   let resultWidth := internalSlots forIn.resultTy
                   match forIn.collectionTy with
@@ -4039,7 +4074,13 @@ mutual
                             (.value accValue ::
                               .value (.scalar (.local byteSlot)) :: locals)
                             (byteSlot + 1)
-                            yieldExpr
+                            stepBody.value
+                        let doneResult ←
+                          extractExprFrom ctx
+                            (.value accValue ::
+                              .value (.scalar (.local byteSlot)) :: locals)
+                            bodyResult.snd
+                            stepBody.done
                         let bodySlots ← flattenInternalValue forIn.resultTy bodyResult.fst
                         if bodySlots.length != resultWidth then
                           .error "for-in accumulator body value shape mismatch"
@@ -4057,9 +4098,10 @@ mutual
                                 accStart
                                 byteSlot
                                 bodySlots
+                                doneResult.fst
                                 offset)
                         .ok
-                          (resultValue, bodyResult.snd)
+                          (resultValue, doneResult.snd)
                       else
                         .error s!"unsupported ByteArray for-in item type: {reprStr forIn.itemTy}"
                   | .array itemTy =>
@@ -4083,7 +4125,13 @@ mutual
                                 (.value accValue ::
                                   .value itemValue :: locals)
                                 (itemStart + width)
-                                yieldExpr
+                                stepBody.value
+                            let doneResult ←
+                              extractExprFrom ctx
+                                (.value accValue ::
+                                  .value itemValue :: locals)
+                                bodyResult.snd
+                                stepBody.done
                             let bodySlots ← flattenInternalValue forIn.resultTy bodyResult.fst
                             if bodySlots.length != resultWidth then
                               .error "for-in accumulator body value shape mismatch"
@@ -4101,9 +4149,10 @@ mutual
                                     accStart
                                     itemStart
                                     bodySlots
+                                    doneResult.fst
                                     offset)
                             .ok
-                              (resultValue, bodyResult.snd)
+                              (resultValue, doneResult.snd)
                         | none => .error s!"unsupported Array for-in item type: {reprStr itemTy}"
                       else
                         .error "Array for-in item type mismatch"
@@ -4126,7 +4175,13 @@ mutual
                             (.value accValue ::
                               .value (.scalar (.local itemSlot)) :: locals)
                             (itemSlot + 1)
-                            yieldExpr
+                            stepBody.value
+                        let doneResult ←
+                          extractExprFrom ctx
+                            (.value accValue ::
+                              .value (.scalar (.local itemSlot)) :: locals)
+                            bodyResult.snd
+                            stepBody.done
                         let bodySlots ← flattenInternalValue forIn.resultTy bodyResult.fst
                         if bodySlots.length != resultWidth then
                           .error "for-in accumulator body value shape mismatch"
@@ -4143,8 +4198,9 @@ mutual
                                 accStart
                                 itemSlot
                                 bodySlots
+                                doneResult.fst
                                 offset)
-                        .ok (resultValue, bodyResult.snd)
+                        .ok (resultValue, doneResult.snd)
                       else
                         .error s!"unsupported for-in collection type: {reprStr forIn.collectionTy}"
             | none => .error "unsupported ForIn.forIn application"

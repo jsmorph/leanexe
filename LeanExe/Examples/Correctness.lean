@@ -758,12 +758,32 @@ def idRunArrayForSum : UInt64 := Id.run do
     acc := acc + value
   return acc
 
+def idRunArrayForBreakSum : UInt64 := Id.run do
+  let values : Array UInt64 := #[1, 2, 99, 3]
+  let mut acc := (0 : UInt64)
+  for value in values do
+    if value == (99 : UInt64) then
+      break
+    else
+      acc := acc + value
+  return acc
+
 def idRunByteArrayForState : DigitState := Id.run do
   let input := ByteArray.mk #[(1 : UInt8), (2 : UInt8), (3 : UInt8)]
   let mut state : DigitState := { pos := 0, sum := 0 }
   for byte in input do
     state := { pos := state.pos + 1, sum := state.sum + byte.toUInt64 }
   return state
+
+def idRunByteArrayForBreakSum : UInt64 := Id.run do
+  let input := ByteArray.mk #[(1 : UInt8), (2 : UInt8), (99 : UInt8), (3 : UInt8)]
+  let mut acc := (0 : UInt64)
+  for byte in input do
+    if byte == (99 : UInt8) then
+      break
+    else
+      acc := acc + byte.toUInt64
+  return acc
 
 def idRunArrayForStatus : Status := Id.run do
   let values : Array UInt64 := #[1, 2, 3]
@@ -800,6 +820,24 @@ def idRunRangeForState : DigitState := Id.run do
   let mut state : DigitState := { pos := 0, sum := 0 }
   for i in [2:5] do
     state := { pos := state.pos + 1, sum := state.sum + i.toUInt64 }
+  return state
+
+def idRunRangeForBreakSum : UInt64 := Id.run do
+  let mut acc := (0 : UInt64)
+  for i in [0:10] do
+    if i == (4 : Nat) then
+      break
+    else
+      acc := acc + i.toUInt64
+  return acc
+
+def idRunRangeForBreakState : DigitState := Id.run do
+  let mut state : DigitState := { pos := 0, sum := 0 }
+  for i in [1:6] do
+    if i == (4 : Nat) then
+      break
+    else
+      state := { pos := state.pos + 1, sum := state.sum + i.toUInt64 }
   return state
 
 def idFunctionUInt64 (x : UInt64) : UInt64 :=
