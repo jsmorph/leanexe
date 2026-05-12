@@ -2312,3 +2312,15 @@ Checks run:
 - [x] `lake build LeanExe.Examples.Correctness`
 - [x] `node test/core_correctness.js` returned `checked 450 accepted, 22 rejected, and 13 trapped cases`.
 - [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 450 accepted, 22 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 14 asciistring cases`, `checked 46 json program cases`, and `checked 56 cases`.
+
+## 2026-05-11: Parser state fixture
+
+`LeanExe.Examples.Correctness.DigitState` is a small parser-state structure with a byte cursor and `UInt64` accumulator.  `digitStateParseFuel` carries that state through the accepted Nat-fuel loop shape, uses a helper to test whether the current byte is an ASCII digit, and uses a helper to advance the cursor and add the digit value.  The examples cover an all-digit input and an input that stops at a non-digit byte.
+
+This slice did not require a compiler change.  It records that the current subset already supports a common parser style: a `ByteArray` input, a cursor-state structure, helper calls for predicate and step logic, and a bounded state-passing loop.
+
+Checks run:
+
+- [x] `lake build LeanExe.Examples.Correctness`
+- [x] `node test/core_correctness.js` returned `checked 452 accepted, 22 rejected, and 13 trapped cases`.
+- [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 452 accepted, 22 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 14 asciistring cases`, `checked 46 json program cases`, and `checked 56 cases`.
