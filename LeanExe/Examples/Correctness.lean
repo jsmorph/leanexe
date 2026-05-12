@@ -493,6 +493,13 @@ def u64ListSumDemo : UInt64 :=
 def u64ListSumShortFuel : UInt64 :=
   u64ListSumFuel 2 u64List123 0
 
+def u64ListStructuralSum : U64List → UInt64
+  | .nil => 0
+  | .cons head tail => head + u64ListStructuralSum tail
+
+def u64ListStructuralSumDemo : UInt64 :=
+  u64ListStructuralSum u64List123
+
 def u64ListBranch (flag : UInt64) : UInt64 :=
   let xs :=
     if flag == 0 then
@@ -529,6 +536,10 @@ inductive U64Tree where
   | leaf : UInt64 → U64Tree
   | node : Array U64Tree → U64Tree
 
+inductive U64Binary where
+  | leaf : UInt64 → U64Binary
+  | node : U64Binary → U64Binary → U64Binary
+
 def u64TreeFirstChildHead (tree : U64Tree) : UInt64 :=
   match tree with
   | .leaf value => value
@@ -543,6 +554,14 @@ def u64TreeFirstChildHead (tree : U64Tree) : UInt64 :=
 def u64TreeArrayFieldDemo : UInt64 :=
   let tree := U64Tree.node #[U64Tree.leaf 7, U64Tree.node #[U64Tree.leaf 11]]
   u64TreeFirstChildHead tree
+
+def u64BinaryStructuralSize : U64Binary → UInt64
+  | .leaf _value => 1
+  | .node left right => u64BinaryStructuralSize left + u64BinaryStructuralSize right
+
+def rejectStructuralBinarySize : UInt64 :=
+  u64BinaryStructuralSize
+    (U64Binary.node (U64Binary.leaf 1) (U64Binary.node (U64Binary.leaf 2) (U64Binary.leaf 3)))
 
 def rejectRecursiveInductiveParam (xs : U64List) : UInt64 :=
   u64ListHeadOrZero xs

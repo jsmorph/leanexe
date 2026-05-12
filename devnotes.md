@@ -2299,3 +2299,16 @@ Checks run:
 - [x] `lake build LeanExe.Examples.Correctness`
 - [x] `node test/core_correctness.js` returned `checked 449 accepted, 21 rejected, and 13 trapped cases`.
 - [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 449 accepted, 21 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 14 asciistring cases`, `checked 46 json program cases`, and `checked 56 cases`.
+
+## 2026-05-11: List-shaped structural recursion
+
+The extractor now lowers a narrow structural-recursion shape for supported self-recursive inductives.  The accepted helper has one parameter of the recursive inductive type, and each constructor may expose at most one direct self-recursive field.  The lowering recognizes Lean's generated `brecOn` form, matches on the heap tag, binds constructor fields from the heap object, and turns the generated `PProd.fst` below projection into a direct recursive WASM call on the recursive field.
+
+This admits ordinary list traversals without an explicit fuel parameter.  `LeanExe.Examples.Correctness.u64ListStructuralSum` sums `U64List` through direct structural recursion and is called from the public zero-argument demo.  The boundary remains explicit: `rejectStructuralBinarySize` uses a binary recursive constructor with two direct recursive fields and is rejected with `structural recursion over multiple recursive fields is unsupported`.
+
+Checks run:
+
+- [x] `lake build`
+- [x] `lake build LeanExe.Examples.Correctness`
+- [x] `node test/core_correctness.js` returned `checked 450 accepted, 22 rejected, and 13 trapped cases`.
+- [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 450 accepted, 22 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 14 asciistring cases`, `checked 46 json program cases`, and `checked 56 cases`.

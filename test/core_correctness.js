@@ -369,6 +369,7 @@ const accepted = [
   { name: "u64ListNilDemo", args: [], expected: 7n },
   { name: "u64ListSumDemo", args: [], expected: 6n },
   { name: "u64ListSumShortFuel", args: [], expected: 3n },
+  { name: "u64ListStructuralSumDemo", args: [], expected: 6n },
   { name: "u64ListBranch", args: [0n], expected: 0n },
   { name: "u64ListBranch", args: [1n], expected: 9n },
   { name: "u64ListArrayLiteralHeadSum", args: [], expected: 10n },
@@ -596,6 +597,11 @@ const rejected = [
   {
     name: "rejectRecursiveArrayReturn",
     message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectRecursiveArrayReturn",
+  },
+  {
+    name: "rejectStructuralBinarySize",
+    message:
+      "structural recursion over multiple recursive fields is unsupported: LeanExe.Examples.Correctness.U64Binary.node",
   },
   {
     name: "rejectHigherOrder",
