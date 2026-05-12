@@ -36,6 +36,12 @@ inductive ExtractedValue where
 instance : Inhabited ExtractedValue :=
   ⟨.scalar .trap⟩
 
+inductive StructuralBelow where
+  | unit
+  | call (functionName : Name) (arg : ExtractedValue)
+  | pair (left right : StructuralBelow)
+  deriving BEq, Repr
+
 inductive ValueLet where
   | expr (slot : Nat) (value : IRExpr)
   | call (slots : List Nat) (index : Nat) (args : List IRExpr)
@@ -58,6 +64,7 @@ inductive Binding where
   | value (value : ExtractedValue)
   | thunk (locals : List Binding) (expr : Expr)
   | structuralRec (functionName : Name) (arg : ExtractedValue)
+  | structuralBelow (below : StructuralBelow)
   | wfRecursor (functionName : Name)
   | recursor
   deriving BEq, Repr
@@ -945,6 +952,38 @@ def lookupBinding (locals : List Binding) (index : Nat) : Except String Binding 
   match locals[index]? with
   | some binding => .ok binding
   | none => .error s!"unbound de Bruijn variable: {index}"
+
+def structuralBelowProjection (below : StructuralBelow) (index : Nat) :
+    Except String StructuralBelow :=
+  match below, index with
+  | .pair left _, 0 => .ok left
+  | .pair _ right, 1 => .ok right
+  | _, _ => .error "unsupported structural recursion below projection"
+
+partial def structuralBelowFromExpr?
+    (locals : List Binding)
+    (expr : Expr) :
+    Except String (Option StructuralBelow) := do
+  match expr.consumeMData with
+  | .bvar index =>
+      match ← lookupBinding locals index with
+      | .structuralRec functionName arg => .ok (some (.call functionName arg))
+      | .structuralBelow below => .ok (some below)
+      | _ => .ok none
+  | .proj ``PProd index body =>
+      match ← structuralBelowFromExpr? locals body with
+      | some below => .ok (some (← structuralBelowProjection below index))
+      | none => .ok none
+  | _ => .ok none
+
+def structuralRecProjection?
+    (locals : List Binding)
+    (expr : Expr) :
+    Except String (Option (Name × ExtractedValue)) := do
+  match ← structuralBelowFromExpr? locals expr with
+  | some (.call functionName arg) => .ok (some (functionName, arg))
+  | some _ => .error "unsupported structural recursion projection"
+  | none => .ok none
 
 def primitiveArgPair? (args : List Expr) : Option (Expr × Expr) :=
   match args.reverse with
@@ -4013,6 +4052,7 @@ mutual
         | .value value => .ok (value, nextLocal)
         | .thunk savedLocals value => extractValueFrom ctx savedLocals nextLocal value
         | .structuralRec _ _ => .error "structural recursion handle used as a value"
+        | .structuralBelow _ => .error "structural recursion below value used as a value"
         | .wfRecursor _ => .error "well-founded recursion handle used as a value"
         | .recursor => .error "recursive handle used as a value"
     | .letE _ type value body _ =>
@@ -4028,16 +4068,11 @@ mutual
               else
                 .error s!"unsupported let-bound type: {type}"
           | none => .error s!"unsupported let-bound type: {type}"
-    | .proj ``PProd 0 body =>
-        match body.consumeMData with
-        | .bvar index =>
-            match ← lookupBinding locals index with
-            | .structuralRec functionName arg =>
-                extractStructuralRecCallValueFrom ctx locals nextLocal functionName arg []
-            | _ => .error "unsupported structural recursion projection"
-        | _ => .error "unsupported structural recursion projection"
-    | .proj ``PProd _ _ =>
-        .error "unsupported structural recursion below projection"
+    | .proj ``PProd index body =>
+        match ← structuralRecProjection? locals (.proj ``PProd index body) with
+        | some (functionName, arg) =>
+            extractStructuralRecCallValueFrom ctx locals nextLocal functionName arg []
+        | none => .error "unsupported structural recursion projection"
     | .proj ``Prod index body =>
         let valueResult ← extractValueFrom ctx locals nextLocal body
         .ok (← productField index valueResult.fst, valueResult.snd)
@@ -4060,14 +4095,11 @@ mutual
             | .wfRecursor functionName =>
                 extractWfRecursorCallValueFrom ctx locals nextLocal functionName args
             | _ => .error s!"unsupported expression: {expr}"
-        | (.proj ``PProd 0 body, extraArgs) =>
-            match body.consumeMData with
-            | .bvar index =>
-                match ← lookupBinding locals index with
-                | .structuralRec functionName arg =>
-                    extractStructuralRecCallValueFrom ctx locals nextLocal functionName arg extraArgs
-                | _ => .error "unsupported structural recursion projection"
-            | _ => .error "unsupported structural recursion projection"
+        | (.proj ``PProd index body, extraArgs) =>
+            match ← structuralRecProjection? locals (.proj ``PProd index body) with
+            | some (functionName, arg) =>
+                extractStructuralRecCallValueFrom ctx locals nextLocal functionName arg extraArgs
+            | none => .error "unsupported structural recursion projection"
         | (.const ``Prod.mk _, args) =>
             match args.reverse with
             | right :: left :: _ =>
@@ -5665,6 +5697,7 @@ mutual
             let valueResult ← extractValueFrom ctx savedLocals nextLocal value
             .ok (← scalarValue valueResult.fst, valueResult.snd)
         | .structuralRec _ _ => .error "structural recursion handle used as a value"
+        | .structuralBelow _ => .error "structural recursion below value used as a value"
         | .wfRecursor _ => .error "well-founded recursion handle used as a value"
         | .recursor => .error "recursive handle used as a value"
     | .letE _ type value body _ =>
@@ -5680,11 +5713,9 @@ mutual
               else
                 .error s!"unsupported let-bound type: {type}"
           | none => .error s!"unsupported let-bound type: {type}"
-    | .proj ``PProd 0 body =>
-        let valueResult ← extractValueFrom ctx locals nextLocal (.proj ``PProd 0 body)
+    | .proj ``PProd index body =>
+        let valueResult ← extractValueFrom ctx locals nextLocal (.proj ``PProd index body)
         .ok (← scalarValue valueResult.fst, valueResult.snd)
-    | .proj ``PProd _ _ =>
-        .error "unsupported structural recursion below projection"
     | .proj ``Prod index body =>
         let valueResult ← extractValueFrom ctx locals nextLocal body
         .ok (← scalarValue (← productField index valueResult.fst), valueResult.snd)
@@ -5721,17 +5752,14 @@ mutual
                       extractWfRecursorCallValueFrom ctx locals nextLocal functionName args
                     .ok (← scalarValue valueResult.fst, valueResult.snd)
                 | _ => .error s!"unsupported expression: {expr}"
-            | (.proj ``PProd 0 body, extraArgs) =>
-                match body.consumeMData with
-                | .bvar index =>
-                    match ← lookupBinding locals index with
-                    | .structuralRec functionName arg =>
-                        let valueResult ←
-                          extractStructuralRecCallValueFrom ctx locals nextLocal
-                            functionName arg extraArgs
-                        .ok (← scalarValue valueResult.fst, valueResult.snd)
-                    | _ => .error "unsupported structural recursion projection"
-                | _ => .error "unsupported structural recursion projection"
+            | (.proj ``PProd index body, extraArgs) =>
+                match ← structuralRecProjection? locals (.proj ``PProd index body) with
+                | some (functionName, arg) =>
+                    let valueResult ←
+                      extractStructuralRecCallValueFrom ctx locals nextLocal
+                        functionName arg extraArgs
+                    .ok (← scalarValue valueResult.fst, valueResult.snd)
+                | none => .error "unsupported structural recursion projection"
             | (.const ``Bool.casesOn _, _) =>
                 let valueResult ← extractValueFrom ctx locals nextLocal expr
                 .ok (← scalarValue valueResult.fst, valueResult.snd)
@@ -7028,6 +7056,7 @@ mutual
             let valueResult ← extractValueFrom ctx savedLocals nextLocal value
             .ok (boolCond (← scalarValue valueResult.fst), valueResult.snd)
         | .structuralRec _ _ => .error "structural recursion handle used as a condition"
+        | .structuralBelow _ => .error "structural recursion below value used as a condition"
         | .wfRecursor _ => .error "well-founded recursion handle used as a condition"
         | .recursor => .error "recursive handle used as a condition"
     | .letE _ type value body _ =>
@@ -7056,17 +7085,14 @@ mutual
                   extractWfRecursorCallValueFrom ctx locals nextLocal functionName args
                 .ok (boolCond (← scalarValue valueResult.fst), valueResult.snd)
             | _ => .error s!"unsupported condition: {expr}"
-        | (.proj ``PProd 0 body, extraArgs) =>
-            match body.consumeMData with
-            | .bvar index =>
-                match ← lookupBinding locals index with
-                | .structuralRec functionName arg =>
-                    let valueResult ←
-                      extractStructuralRecCallValueFrom ctx locals nextLocal
-                        functionName arg extraArgs
-                    .ok (boolCond (← scalarValue valueResult.fst), valueResult.snd)
-                | _ => .error "unsupported structural recursion projection"
-            | _ => .error "unsupported structural recursion projection"
+        | (.proj ``PProd index body, extraArgs) =>
+            match ← structuralRecProjection? locals (.proj ``PProd index body) with
+            | some (functionName, arg) =>
+                let valueResult ←
+                  extractStructuralRecCallValueFrom ctx locals nextLocal
+                    functionName arg extraArgs
+                .ok (boolCond (← scalarValue valueResult.fst), valueResult.snd)
+            | none => .error "unsupported structural recursion projection"
         | (.const ``String.isEmpty _, args) =>
             match args with
             | [value] =>
@@ -7429,6 +7455,16 @@ def structuralRecStepMatcher?
         | none => .error s!"unsupported structural recursion matcher: {typeName}"
   | _ => .error s!"unsupported structural recursion step body: {typeName}"
 
+def structuralBelowForFields (functionName : Name) (fields : List ExtractedValue) :
+    StructuralBelow :=
+  let fieldBelow (value : ExtractedValue) : StructuralBelow :=
+    .pair (.call functionName value) .unit
+  let rec loop : List ExtractedValue → StructuralBelow
+    | [] => .unit
+    | [value] => fieldBelow value
+    | value :: rest => .pair (fieldBelow value) (loop rest)
+  loop fields
+
 def structuralBelowBinding
     (functionName : Name)
     (typeName : Name)
@@ -7445,8 +7481,7 @@ def structuralBelowBinding
       | _ => false
   match recursiveFields with
   | [] => .ok (.value (.scalar (.u64 0)))
-  | [(_, value)] => .ok (.structuralRec functionName value)
-  | _ => .error s!"structural recursion over multiple recursive fields is unsupported: {ctor}"
+  | fields => .ok (.structuralBelow (structuralBelowForFields functionName (fields.map Prod.snd)))
 
 inductive StructuralPostArg where
   | dynamic (ty : Ty) (binding : Binding)

@@ -429,6 +429,8 @@ const accepted = [
   { name: "leanListAnyMissingDemo", args: [], expected: 0n },
   { name: "u64TreeArrayFieldDemo", args: [], expected: 7n },
   { name: "u64TreeSizeDemo", args: [], expected: 6n },
+  { name: "u64BinaryStructuralSizeDemo", args: [], expected: 3n },
+  { name: "u64ExprEvalDemo", args: [], expected: 45n },
   { name: "optionSomeMatch", args: [], expected: 8n },
   { name: "optionSomeFirstMatch", args: [], expected: 8n },
   { name: "optionNoneMatchSkipsSomeArm", args: [], expected: 5n },
@@ -657,11 +659,6 @@ const rejected = [
   {
     name: "rejectRecursiveArrayReturn",
     message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectRecursiveArrayReturn",
-  },
-  {
-    name: "rejectStructuralBinarySize",
-    message:
-      "structural recursion over multiple recursive fields is unsupported: LeanExe.Examples.Correctness.U64Binary.node",
   },
   {
     name: "rejectLeanListFoldlClosedDemo",
