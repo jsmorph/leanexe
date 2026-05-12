@@ -55,6 +55,11 @@ function callByteArray(exports, input) {
   return readByteArrayResult(exports, withByteArray(exports, input, (ptr, len) => exports.fn(ptr, len)));
 }
 
+function callScalarNoArgs(exports) {
+  exports.reset();
+  return BigInt.asUintN(64, exports.fn());
+}
+
 function callByteArrayWithArgs(exports, input, args) {
   return readByteArrayResult(
     exports,
@@ -109,6 +114,7 @@ async function main() {
   const equalsABC = await instantiate("equalsABC");
   const startsWithAB = await instantiate("startsWithAB");
   const containsColon = await instantiate("containsColon");
+  const trustedStringLength = await instantiate("trustedStringLength");
 
   const ascii = bytes("AZ09");
   const invalid = new Uint8Array([65, 128, 66]);
@@ -155,7 +161,11 @@ async function main() {
     throw new Error("containsColon: unexpected result");
   }
 
-  process.stdout.write("checked 22 asciistring cases\n");
+  if (callScalarNoArgs(trustedStringLength) !== 4n) {
+    throw new Error("trustedStringLength: unexpected result");
+  }
+
+  process.stdout.write("checked 23 asciistring cases\n");
 }
 
 main().catch((error) => {

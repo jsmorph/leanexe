@@ -2383,6 +2383,40 @@ def byteArrayStringLiteralReturn : ByteArray :=
 def byteArrayStringLiteralSize : Nat :=
   "ABC".toUTF8.size
 
+def stringConstName : String :=
+  "XY" ++ "Z"
+
+def byteArrayStringAppendReturn : ByteArray :=
+  ("AB" ++ "C").toUTF8
+
+def byteArrayStringLetReturn : ByteArray :=
+  let text : String := "A" ++ "Z"
+  text.toUTF8
+
+def byteArrayStringConstReturn : ByteArray :=
+  stringConstName.toUTF8
+
+def stringLengthAppend : Nat :=
+  ("AB" ++ "CD").length
+
+def stringIsEmptyLet : Bool :=
+  let text : String := ""
+  text.isEmpty
+
+def stringEqualityLet : UInt64 :=
+  let text : String := "AB" ++ "C"
+  if text == "ABC" then
+    1
+  else
+    0
+
+def stringInequalityLet : UInt64 :=
+  let text : String := "AB" ++ "D"
+  if text != "ABC" then
+    1
+  else
+    0
+
 def byteArrayBranchHelperReturn (flag : UInt64) : ByteArray :=
   if flag == 0 then
     byteArrayReturnABC
@@ -2473,6 +2507,12 @@ def rejectUInt32Return : UInt32 :=
 
 def rejectRuntimeStringToUTF8 (flag : Bool) : ByteArray :=
   (if flag then "A" else "B").toUTF8
+
+def rejectRuntimeStringLength (flag : Bool) : Nat :=
+  (if flag then "A" else "B").length
+
+def rejectStringParam (text : String) : Nat :=
+  text.length
 
 def alloc : UInt64 :=
   1

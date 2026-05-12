@@ -56,7 +56,7 @@ Arrays cross the ABI as arena pointers.  Array elements must have a fixed slot w
 | `Option α` | Yes | Yes | Yes | Treated as a supported tagged value when `α` is supported. |
 | `Except ε α` | Yes | Yes | Yes | Treated as a supported tagged value when both payload types are supported. |
 | Propositions | Erased | Erased | Erased | Proofs may justify Lean source but have no WASM value. |
-| `String` | No | No | Literal-only | Runtime strings are unsupported; ASCII literals may be converted with `String.toUTF8`. |
+| `String` | No | No | Compile-time ASCII only | Runtime strings are unsupported; restricted compile-time ASCII expressions may feed `String.toUTF8`, `String.length`, `String.isEmpty`, and equality. |
 
 Entry parameters support `Bool`, `UInt64`, bounded `Nat`, `ByteArray`, fixed-width `Array`, supported structures, supported nonrecursive inductives, `Option`, and `Except`.  Entry results support the same set.  `UInt8`, `UInt32`, `Unit`, products, and recursive inductives are internal-only types even though helpers may use them.
 
@@ -128,7 +128,7 @@ Maps are not a primitive runtime type.  Programs may define simple table structu
 
 Supported read operations include `ByteArray.size`, `ByteArray.isEmpty`, `ByteArray.get!`, proof-indexed indexing, bang indexing, safe indexing, and `ByteArray.extract`.  Out-of-bounds trapping reads emit WASM `unreachable`.  Safe indexing returns `Option UInt8`, and extract clamps the stop index to the source length.
 
-Supported construction and update operations include `ByteArray.empty`, `ByteArray.mk` from `Array UInt8`, `String.toUTF8` on compile-time ASCII string literals, `ByteArray.push`, `ByteArray.append`, append notation through `++`, proof-indexed `ByteArray.set`, trapping `ByteArray.set!`, and value-level `ByteArray.copySlice`.  Update operations allocate new byte buffers and preserve aliases to the old input.  `ByteArray.copySlice` follows Lean's pure value behavior rather than capacity behavior.
+Supported construction and update operations include `ByteArray.empty`, `ByteArray.mk` from `Array UInt8`, `String.toUTF8` on compile-time ASCII string expressions, `ByteArray.push`, `ByteArray.append`, append notation through `++`, proof-indexed `ByteArray.set`, trapping `ByteArray.set!`, and value-level `ByteArray.copySlice`.  Update operations allocate new byte buffers and preserve aliases to the old input.  `ByteArray.copySlice` follows Lean's pure value behavior rather than capacity behavior.
 
 Supported binary and loop operations include `ByteArray.toUInt64LE!`, `ByteArray.toUInt64BE!`, `ByteArray.foldl`, and `ByteArray.findIdx?`.  The fixed-width decoding operations require exactly eight bytes and trap otherwise.  `ByteArray.foldl` supports a one-slot accumulator such as `Bool`, `UInt8`, `UInt32`, `UInt64`, bounded `Nat`, or a supported array pointer, and byte-array folders and predicates must be direct lambdas.
 
@@ -138,7 +138,9 @@ Unsupported byte-array features include `ByteArray.foldlM`, `USize` indexing API
 
 `LeanExe.AsciiString` is a source-level structure whose runtime representation is one `ByteArray` field.  The type is intended for byte-oriented text that must remain in the ASCII range, which covers JSON punctuation, decimal digits, unescaped field names, simple error messages, and generated protocol text.  It avoids runtime Lean `String` and `Char` semantics, so indexing remains byte indexing and the compiler does not need UTF-8 decoding.
 
-ASCII string literals may be written with standard Lean syntax when the literal is converted directly to bytes: `"fieldName".toUTF8`.  The compiler accepts this form only when the receiver is a compile-time string literal and every UTF-8 byte is below `128`.  Nonliteral `String` values, non-ASCII literals, `String` parameters, `String` results, `String` indexing, and UTF-8 decoding remain outside the accepted language.
+ASCII text may be written with standard Lean `String` syntax when the expression is consumed at compile time.  The accepted forms are ASCII literals, local `String` lets, top-level `String` constants, `String.append`, and string append notation through `++`.  The compiler lowers those expressions through `String.toUTF8`, `String.length`, `String.isEmpty`, `==`, and `!=`, rejecting any expression whose UTF-8 bytes are not all below `128`.
+
+Runtime `String` values remain outside the accepted language.  `String` parameters, `String` results, string values returned from helpers, runtime branch-selected strings, indexing, `Char`, UTF-8 decoding, and Unicode semantics are unsupported.  Programs that need text at the public boundary should accept `ByteArray`, validate it with `AsciiString.ofByteArray?`, and use `AsciiString` for byte-indexed ASCII processing.
 
 The library provides `empty`, `ofTrustedByteArray`, `toByteArray`, `size`, `isEmpty`, `get!`, `get?`, `getD`, `isAsciiByte`, `pushTrustedByte`, `pushByte?`, `append`, `extract`, `equals`, `startsWith`, `containsByte`, `isAscii`, `ofByteArray?`, `singletonTrusted`, and `singleton?`.  Trusted constructors do not inspect bytes and therefore rely on the caller to preserve the ASCII invariant.  Checked constructors and checked pushes return `Option AsciiString`, using `none` when input bytes are outside `0..127`.
 

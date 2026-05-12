@@ -97,6 +97,9 @@ def isBVar (index : Nat) (expr : Expr) : Bool :=
 def isIdType (expr : Expr) : Bool :=
   isConst ``Id expr
 
+def isStringType (expr : Expr) : Bool :=
+  isConst ``String expr
+
 partial def containsBVar (index : Nat) (expr : Expr) : Bool :=
   if isBVar index expr then
     true
@@ -211,7 +214,7 @@ def structureCtorInfo? (env : Environment) (structName : Name) : Option Construc
   | none => none
 
 def builtinInductiveNames : List Name :=
-  [``Bool, ``Nat, ``Unit, ``Option, ``Except, ``Prod]
+  [``Bool, ``Nat, ``Unit, ``Option, ``Except, ``Prod, ``String]
 
 def userInductiveInfo? (env : Environment) (typeName : Name) : Option InductiveVal :=
   if builtinInductiveNames.contains typeName || isStructureLike env typeName then
@@ -352,6 +355,8 @@ mutual
       some .u32
     else if isConst ``ByteArray expr then
       some .byteArray
+    else if isStringType expr then
+      none
     else
       match appFnArgs expr with
       | (.const ``Array _, [item]) => typeAtom? env item |>.map .array
@@ -937,6 +942,97 @@ def primitiveReceiverType? (env : Environment) (args : List Expr) : Option Ty :=
   match args with
   | ty :: _ => typeAtom? env ty
   | _ => none
+
+def primitiveStringReceiver? (args : List Expr) : Bool :=
+  match args with
+  | ty :: _ => isStringType ty
+  | _ => false
+
+def primitiveStringResult? (args : List Expr) : Bool :=
+  match args with
+  | _leftTy :: _rightTy :: resultTy :: _ => isStringType resultTy
+  | _ => false
+
+partial def compileTimeString?
+    (ctx : Context)
+    (locals : List Binding)
+    (fuel : Nat)
+    (expr : Expr) : Option String :=
+  match fuel with
+  | 0 => none
+  | fuel + 1 =>
+      match expr.consumeMData with
+      | .lit (.strVal value) => some value
+      | .bvar index =>
+          match lookupBinding locals index with
+          | .ok (.thunk savedLocals value) => compileTimeString? ctx savedLocals fuel value
+          | _ => none
+      | .letE _ type value body _ =>
+          if containsBVar 0 body then
+            if isStringType type then
+              compileTimeString? ctx (.thunk locals value :: locals) fuel body
+            else
+              none
+          else
+            compileTimeString? ctx (.recursor :: locals) fuel body
+      | .mdata _ body => compileTimeString? ctx locals fuel body
+      | .const name _ =>
+          match ctx.env.find? name with
+          | some info =>
+              if isStringType info.type then
+                match info.value? with
+                | some value => compileTimeString? ctx [] fuel value
+                | none => none
+              else
+                none
+          | none => none
+      | _ =>
+          match appFnArgs expr with
+          | (.const ``String.append _, [left, right]) =>
+              match compileTimeString? ctx locals fuel left,
+                  compileTimeString? ctx locals fuel right with
+              | some leftValue, some rightValue => some (leftValue ++ rightValue)
+              | _, _ => none
+          | (.const ``HAppend.hAppend _, args) =>
+              if primitiveStringResult? args then
+                match primitiveArgPair? args with
+                | some (left, right) =>
+                    match compileTimeString? ctx locals fuel left,
+                        compileTimeString? ctx locals fuel right with
+                    | some leftValue, some rightValue => some (leftValue ++ rightValue)
+                    | _, _ => none
+                | none => none
+              else
+                none
+          | (.const ``Append.append _, args) =>
+              if primitiveStringReceiver? args then
+                match primitiveArgPair? args with
+                | some (left, right) =>
+                    match compileTimeString? ctx locals fuel left,
+                        compileTimeString? ctx locals fuel right with
+                    | some leftValue, some rightValue => some (leftValue ++ rightValue)
+                    | _, _ => none
+                | none => none
+              else
+                none
+          | (.const ``id _, args) =>
+              match args.reverse with
+              | value :: _ => compileTimeString? ctx locals fuel value
+              | _ => none
+          | _ => none
+
+def asciiStringExprBytesFrom
+    (ctx : Context)
+    (locals : List Binding)
+    (expr : Expr)
+    (unsupportedMessage nonAsciiMessage : String) :
+    Except String (List UInt8) :=
+  match compileTimeString? ctx locals 256 expr with
+  | some value =>
+      match asciiStringBytes? value with
+      | some bytes => .ok bytes
+      | none => .error nonAsciiMessage
+  | none => .error unsupportedMessage
 
 def boolExpr (cond : IRCond) : IRExpr :=
   .ite cond (.u64 1) (.u64 0)
@@ -3676,6 +3772,8 @@ mutual
     | .letE _ type value body _ =>
         if !containsBVar 0 body then
           extractValueFrom ctx (.recursor :: locals) nextLocal body
+        else if isStringType type then
+          extractValueFrom ctx (.thunk locals value :: locals) nextLocal body
         else
           match typeAtom? ctx.env type with
           | some ty =>
@@ -4612,12 +4710,11 @@ mutual
         | (.const ``String.toUTF8 _, args) =>
             match args with
             | [value] =>
-                match stringLit? value with
-                | some stringValue =>
-                    match asciiStringBytes? stringValue with
-                    | some bytes => .ok (byteArrayLiteralValue nextLocal bytes)
-                    | none => .error "unsupported String.toUTF8 literal: expected ASCII"
-                | none => .error "unsupported String.toUTF8 argument: expected string literal"
+                let bytes ←
+                  asciiStringExprBytesFrom ctx locals value
+                    "unsupported String.toUTF8 argument: expected compile-time string expression"
+                    "unsupported String.toUTF8 string: expected ASCII"
+                .ok (byteArrayLiteralValue nextLocal bytes)
             | _ => .error "unsupported String.toUTF8 application"
         | (.const ``Bool.casesOn _, args) =>
             match boolMatcherArgs? ctx.env (.const ``Bool.casesOn []) args with
@@ -5227,6 +5324,8 @@ mutual
     | .letE _ type value body _ =>
         if !containsBVar 0 body then
           extractExprFrom ctx (.recursor :: locals) nextLocal body
+        else if isStringType type then
+          extractExprFrom ctx (.thunk locals value :: locals) nextLocal body
         else
           match typeAtom? ctx.env type with
           | some ty =>
@@ -5329,6 +5428,24 @@ mutual
             | (.const ``Nat.beq _, _) =>
                 let condResult ← extractCondFrom ctx locals nextLocal expr
                 .ok (boolExpr condResult.fst, condResult.snd)
+            | (.const ``String.length _, args) =>
+                match args with
+                | [value] =>
+                    let bytes ←
+                      asciiStringExprBytesFrom ctx locals value
+                        "unsupported String.length argument: expected compile-time string expression"
+                        "unsupported String.length string: expected ASCII"
+                    .ok (.u64 bytes.length, nextLocal)
+                | _ => .error "unsupported String.length application"
+            | (.const ``String.isEmpty _, args) =>
+                match args with
+                | [value] =>
+                    let bytes ←
+                      asciiStringExprBytesFrom ctx locals value
+                        "unsupported String.isEmpty argument: expected compile-time string expression"
+                        "unsupported String.isEmpty string: expected ASCII"
+                    .ok (boolExpr (if bytes.isEmpty then .true else .false), nextLocal)
+                | _ => .error "unsupported String.isEmpty application"
             | (.const ``Except.isOk _, args) =>
                 match args.reverse, exceptPayloadType? ctx.env args with
                 | exceptValue :: _, some _payloadTy =>
@@ -6328,7 +6445,33 @@ mutual
             let argsResult ← extractCallArgsFrom ctx locals nextLocal sig.params args
             .ok (wrapExprLets argsResult.lets (.call index argsResult.args), argsResult.nextLocal)
         | none =>
-            if primitive == ``Complement.complement then
+            if primitive == ``BEq.beq && primitiveStringReceiver? args then
+              match primitiveArgPair? args with
+              | some (left, right) =>
+                  let leftBytes ←
+                    asciiStringExprBytesFrom ctx locals left
+                      "unsupported String equality argument: expected compile-time string expression"
+                      "unsupported String equality string: expected ASCII"
+                  let rightBytes ←
+                    asciiStringExprBytesFrom ctx locals right
+                      "unsupported String equality argument: expected compile-time string expression"
+                      "unsupported String equality string: expected ASCII"
+                  .ok (boolExpr (if leftBytes == rightBytes then .true else .false), nextLocal)
+              | none => .error "unsupported String equality application"
+            else if primitive == ``bne && primitiveStringReceiver? args then
+              match primitiveArgPair? args with
+              | some (left, right) =>
+                  let leftBytes ←
+                    asciiStringExprBytesFrom ctx locals left
+                      "unsupported String inequality argument: expected compile-time string expression"
+                      "unsupported String inequality string: expected ASCII"
+                  let rightBytes ←
+                    asciiStringExprBytesFrom ctx locals right
+                      "unsupported String inequality argument: expected compile-time string expression"
+                      "unsupported String inequality string: expected ASCII"
+                  .ok (boolExpr (if leftBytes == rightBytes then .false else .true), nextLocal)
+              | none => .error "unsupported String inequality application"
+            else if primitive == ``Complement.complement then
               match args.reverse with
               | value :: _ =>
                   let valueResult ← extractExprFrom ctx locals nextLocal value
@@ -6509,6 +6652,8 @@ mutual
     | .letE _ type value body _ =>
         if !containsBVar 0 body then
           extractCondFrom ctx (.recursor :: locals) nextLocal body
+        else if isStringType type then
+          extractCondFrom ctx (.thunk locals value :: locals) nextLocal body
         else
           match typeAtom? ctx.env type with
           | some ty =>
@@ -6534,16 +6679,36 @@ mutual
                     .ok (boolCond (← scalarValue valueResult.fst), valueResult.snd)
                 | _ => .error "unsupported structural recursion projection"
             | _ => .error "unsupported structural recursion projection"
+        | (.const ``String.isEmpty _, args) =>
+            match args with
+            | [value] =>
+                let bytes ←
+                  asciiStringExprBytesFrom ctx locals value
+                    "unsupported String.isEmpty argument: expected compile-time string expression"
+                    "unsupported String.isEmpty string: expected ASCII"
+                .ok (if bytes.isEmpty then .true else .false, nextLocal)
+            | _ => .error "unsupported String.isEmpty application"
         | (.const ``Eq _, [ty, left, right]) =>
-            match typeAtom? ctx.env ty with
-            | some eqTy =>
-                if supportedEqType eqTy then
-                  let leftResult ← extractExprFrom ctx locals nextLocal left
-                  let rightResult ← extractExprFrom ctx locals leftResult.snd right
-                  .ok (.eqU64 leftResult.fst rightResult.fst, rightResult.snd)
-                else
-                  .error "unsupported equality proposition in condition"
-            | none => .error "unsupported equality proposition in condition"
+            if isStringType ty then
+              let leftBytes ←
+                asciiStringExprBytesFrom ctx locals left
+                  "unsupported String equality argument: expected compile-time string expression"
+                  "unsupported String equality string: expected ASCII"
+              let rightBytes ←
+                asciiStringExprBytesFrom ctx locals right
+                  "unsupported String equality argument: expected compile-time string expression"
+                  "unsupported String equality string: expected ASCII"
+              .ok (if leftBytes == rightBytes then .true else .false, nextLocal)
+            else
+              match typeAtom? ctx.env ty with
+              | some eqTy =>
+                  if supportedEqType eqTy then
+                    let leftResult ← extractExprFrom ctx locals nextLocal left
+                    let rightResult ← extractExprFrom ctx locals leftResult.snd right
+                    .ok (.eqU64 leftResult.fst rightResult.fst, rightResult.snd)
+                  else
+                    .error "unsupported equality proposition in condition"
+              | none => .error "unsupported equality proposition in condition"
         | (.const ``Decidable.decide _, [prop, _inst]) =>
             extractCondFrom ctx locals nextLocal prop
         | (.const ``Id.run _, _) =>
@@ -6575,16 +6740,38 @@ mutual
         | (.const ``BEq.beq _, args) =>
             match primitiveArgPair? args with
             | some (left, right) =>
-                let leftResult ← extractExprFrom ctx locals nextLocal left
-                let rightResult ← extractExprFrom ctx locals leftResult.snd right
-                .ok (.eqU64 leftResult.fst rightResult.fst, rightResult.snd)
+                if primitiveStringReceiver? args then
+                  let leftBytes ←
+                    asciiStringExprBytesFrom ctx locals left
+                      "unsupported String equality argument: expected compile-time string expression"
+                      "unsupported String equality string: expected ASCII"
+                  let rightBytes ←
+                    asciiStringExprBytesFrom ctx locals right
+                      "unsupported String equality argument: expected compile-time string expression"
+                      "unsupported String equality string: expected ASCII"
+                  .ok (if leftBytes == rightBytes then .true else .false, nextLocal)
+                else
+                  let leftResult ← extractExprFrom ctx locals nextLocal left
+                  let rightResult ← extractExprFrom ctx locals leftResult.snd right
+                  .ok (.eqU64 leftResult.fst rightResult.fst, rightResult.snd)
             | none => .error "unsupported BEq application"
         | (.const ``bne _, args) =>
             match primitiveArgPair? args with
             | some (left, right) =>
-                let leftResult ← extractExprFrom ctx locals nextLocal left
-                let rightResult ← extractExprFrom ctx locals leftResult.snd right
-                .ok (.not (.eqU64 leftResult.fst rightResult.fst), rightResult.snd)
+                if primitiveStringReceiver? args then
+                  let leftBytes ←
+                    asciiStringExprBytesFrom ctx locals left
+                      "unsupported String inequality argument: expected compile-time string expression"
+                      "unsupported String inequality string: expected ASCII"
+                  let rightBytes ←
+                    asciiStringExprBytesFrom ctx locals right
+                      "unsupported String inequality argument: expected compile-time string expression"
+                      "unsupported String inequality string: expected ASCII"
+                  .ok (if leftBytes == rightBytes then .false else .true, nextLocal)
+                else
+                  let leftResult ← extractExprFrom ctx locals nextLocal left
+                  let rightResult ← extractExprFrom ctx locals leftResult.snd right
+                  .ok (.not (.eqU64 leftResult.fst rightResult.fst), rightResult.snd)
             | none => .error "unsupported bne application"
         | (.const ``LT.lt _, args) =>
             match primitiveArgPair? args with
