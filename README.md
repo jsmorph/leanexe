@@ -75,7 +75,7 @@ def sumTo (n : UInt64) : UInt64 :=
 end LeanExe.Examples.ReadmeLoop
 ```
 
-User-defined structures and nonrecursive inductives are accepted when they are monomorphic and all runtime fields use supported types.  Structures flatten by field order at the ABI boundary, and inductives flatten to a constructor tag plus payload slots.  Recursive inductives can be used inside compiled programs, including inside internal arrays, but they cannot be entry parameters or entry results.
+User-defined structures and nonrecursive inductives are accepted when they are monomorphic and all runtime fields use supported types.  Structures flatten by field order at the ABI boundary, and inductives flatten to a constructor tag plus payload slots.  Recursive inductives can be used inside compiled programs, including inside internal arrays, but they cannot be entry parameters or entry results.  Monomorphic recursive instances such as `List UInt64` are also accepted internally for construction, matching, helper calls, and direct structural recursion.
 
 ```lean
 namespace LeanExe.Examples.ReadmeData
@@ -179,9 +179,9 @@ Fixed-width arrays use the compiler's arena layout.  Structure values flatten fi
 
 The supported subset is practical but restricted.  Programs should use concrete, first-order definitions with no type parameters or type-class resolution at the entry boundary.  Helper definitions may be separate Lean declarations as long as the compiler can classify every reachable dependency.
 
-Supported internal values include `Unit`, `Bool`, `UInt8`, `UInt32`, `UInt64`, bounded `Nat`, `ByteArray`, `LeanExe.AsciiString`, `Array`, products, user-defined structures, user-defined inductives, `Option`, `Except`, and monomorphic self-recursive inductives.  `LeanExe.AsciiString` is a one-field structure over `ByteArray` with explicit validation helpers for the ASCII invariant.  ASCII string literals may be converted to bytes with `"literal".toUTF8` when the literal contains only ASCII bytes.
+Supported internal values include `Unit`, `Bool`, `UInt8`, `UInt32`, `UInt64`, bounded `Nat`, `ByteArray`, `LeanExe.AsciiString`, `Array`, products, user-defined structures, user-defined inductives, `Option`, `Except`, monomorphic self-recursive inductives, and monomorphic recursive instances such as `List UInt64`.  `LeanExe.AsciiString` is a one-field structure over `ByteArray` with explicit validation helpers for the ASCII invariant.  ASCII string literals may be converted to bytes with `"literal".toUTF8` when the literal contains only ASCII bytes.
 
-Supported control flow includes `let`, direct calls, `if`, pattern matching, pure `do` notation, and a bounded tail-recursive form over an explicit `Nat` fuel argument.  Unsupported features include polymorphic runtime code, type classes, higher-order functions, closures, full `IO`, runtime `String`, arbitrary Lean and Std library functions, `unsafe`, `partial`, unbounded natural-number arithmetic, general structural recursion, exported recursive data structures, nested arrays, and public arrays of recursive values.  These features remain outside the accepted language even when Lean accepts the source file.
+Supported control flow includes `let`, direct calls, `if`, pattern matching, pure `do` notation, and a bounded tail-recursive form over an explicit `Nat` fuel argument.  Unsupported features include polymorphic runtime code, type classes, higher-order functions, closures, full `IO`, runtime `String`, arbitrary Lean and Std library functions, standard `List` library calls such as `map` and `foldl`, `unsafe`, `partial`, unbounded natural-number arithmetic, general structural recursion, exported recursive data structures, nested arrays, and public arrays of recursive values.  These features remain outside the accepted language even when Lean accepts the source file.
 
 ## ABI Summary
 

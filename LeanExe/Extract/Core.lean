@@ -74,6 +74,7 @@ structure VariantCtorLayout where
 
 structure VariantLayout where
   name : Name
+  params : List Ty := []
   ctors : List VariantCtorLayout
   deriving BEq, Repr
 
@@ -230,7 +231,7 @@ def userRecursiveInductiveInfo? (env : Environment) (typeName : Name) : Option I
   else
     match env.find? typeName with
     | some (.inductInfo info) =>
-        if info.numParams == 0 && info.numIndices == 0 && info.isRec && !info.ctors.isEmpty then
+        if info.numIndices == 0 && info.isRec && !info.ctors.isEmpty then
           some info
         else
           none
@@ -286,6 +287,55 @@ def runtimeFieldIndexFromKinds (sourceIndex : Nat) (kinds : List (Option Ty)) :
           loop (currentSource + 1) nextRuntime rest
   loop 0 0 kinds
 
+partial def tyExpr? : Ty → Option Expr
+  | .unit => some (.const ``Unit [])
+  | .bool => some (.const ``Bool [])
+  | .u8 => some (.const ``UInt8 [])
+  | .u32 => some (.const ``UInt32 [])
+  | .u64 => some (.const ``UInt64 [])
+  | .nat => some (.const ``Nat [])
+  | .byteArray => some (.const ``ByteArray [])
+  | .array item => tyExpr? item |>.map (fun itemExpr => .app (.const ``Array []) itemExpr)
+  | .product left right => do
+      let leftExpr ← tyExpr? left
+      let rightExpr ← tyExpr? right
+      some (.app (.app (.const ``Prod []) leftExpr) rightExpr)
+  | .struct name _ => some (.const name [])
+  | .variant name [[], [payload]] =>
+      if name == ``Option then
+        tyExpr? payload |>.map (fun payloadExpr => .app (.const ``Option []) payloadExpr)
+      else
+        some (.const name [])
+  | .variant name [[error], [ok]] =>
+      if name == ``Except then do
+        let errorExpr ← tyExpr? error
+        let okExpr ← tyExpr? ok
+        some (.app (.app (.const ``Except []) errorExpr) okExpr)
+      else
+        some (.const name [])
+  | .variant name _ => some (.const name [])
+  | .recVariant name params => do
+      let paramExprs ← params.mapM tyExpr?
+      some (paramExprs.foldl (fun acc param => .app acc param) (.const name []))
+  | .sum _ _ => none
+
+def ctorFieldDomainsWithParams? (ctorInfo : ConstructorVal) (params : List Ty) :
+    Option (List Expr) := do
+  if params.length != ctorInfo.numParams then
+    none
+  else
+    let paramExprs ← params.mapM tyExpr?
+    let fields := (peelForall ctorInfo.type).fst.drop ctorInfo.numParams
+    if fields.length == ctorInfo.numFields then
+      let paramArray := paramExprs.toArray
+      fields.zipIdx.mapM fun item =>
+        let previousFields :=
+          (List.range item.snd).toArray.map fun i =>
+            .bvar (item.snd - i - 1)
+        some (item.fst.instantiateRev (paramArray ++ previousFields))
+    else
+      none
+
 mutual
   partial def typeAtom? (env : Environment) (expr : Expr) : Option Ty :=
     if isConst ``UInt64 expr then
@@ -315,15 +365,21 @@ mutual
           match typeAtom? env error, typeAtom? env ok with
           | some errorTy, some okTy => some (.variant ``Except [[errorTy], [okTy]])
           | _, _ => none
-      | (.const name _, []) =>
-          if isStructureLike env name then
+      | (.const name _, args) =>
+          if args.isEmpty && isStructureLike env name then
             structureFieldTypes? env name |>.map (fun fields => .struct name fields)
-          else
+          else if args.isEmpty then
             match variantLayout? env name with
             | some layout =>
                 some (.variant name (layout.ctors.map (fun ctor => runtimeTypesFromKinds ctor.fields)))
             | none =>
-                recursiveVariantLayout? env name |>.map fun _layout => .recVariant name
+                recursiveVariantLayout? env name [] |>.map fun _layout => .recVariant name []
+          else
+            match args.mapM (typeAtom? env) with
+            | some params =>
+                recursiveVariantLayout? env name params |>.map fun _layout =>
+                  .recVariant name params
+            | none => none
       | _ => none
 
   partial def structureFieldKinds? (env : Environment) (structName : Name) :
@@ -369,61 +425,72 @@ mutual
               else
                 none
           | _ => none
-        ctorLayouts? |>.map fun ctors => ({ name := typeName, ctors := ctors } : VariantLayout)
+        ctorLayouts? |>.map fun ctors => ({ name := typeName, params := [], ctors := ctors } : VariantLayout)
     | none => none
 
-  partial def typeAtomRecursiveField? (env : Environment) (selfName : Name) (expr : Expr) :
+  partial def typeAtomRecursiveField?
+      (env : Environment)
+      (selfName : Name)
+      (selfParams : List Ty)
+      (expr : Expr) :
       Option Ty :=
     match appFnArgs expr with
-    | (.const name _, []) =>
-        if name == selfName then
-          some (.recVariant selfName)
-        else
-          match typeAtom? env expr with
-          | some (.recVariant _) => none
-          | other => other
     | (.const ``Array _, [item]) =>
-        typeAtomRecursiveField? env selfName item |>.map .array
+        typeAtomRecursiveField? env selfName selfParams item |>.map .array
     | (.const ``Prod _, [left, right]) =>
-        match typeAtomRecursiveField? env selfName left,
-            typeAtomRecursiveField? env selfName right with
+        match typeAtomRecursiveField? env selfName selfParams left,
+            typeAtomRecursiveField? env selfName selfParams right with
         | some leftTy, some rightTy => some (.product leftTy rightTy)
         | _, _ => none
     | (.const ``Option _, [item]) =>
-        typeAtomRecursiveField? env selfName item |>.map
+        typeAtomRecursiveField? env selfName selfParams item |>.map
           (fun itemTy => .variant ``Option [[], [itemTy]])
     | (.const ``Except _, [error, ok]) =>
-        match typeAtomRecursiveField? env selfName error,
-            typeAtomRecursiveField? env selfName ok with
+        match typeAtomRecursiveField? env selfName selfParams error,
+            typeAtomRecursiveField? env selfName selfParams ok with
         | some errorTy, some okTy => some (.variant ``Except [[errorTy], [okTy]])
         | _, _ => none
+    | (.const name _, args) =>
+        if name == selfName then
+          match args.mapM (typeAtom? env) with
+          | some params =>
+              if params == selfParams then some (.recVariant selfName selfParams) else none
+          | none => none
+        else
+          match typeAtom? env expr with
+          | some (.recVariant _ _) => none
+          | other => other
     | _ =>
         match typeAtom? env expr with
-        | some (.recVariant _) => none
+        | some (.recVariant _ _) => none
         | other => other
 
-  partial def recursiveVariantLayout? (env : Environment) (typeName : Name) :
+  partial def recursiveVariantLayout? (env : Environment) (typeName : Name) (params : List Ty := []) :
       Option VariantLayout :=
     match userRecursiveInductiveInfo? env typeName with
     | some info =>
-        let ctorLayouts? := info.ctors.mapM fun ctorName =>
-          match env.find? ctorName with
-          | some (.ctorInfo ctorInfo) =>
-              if ctorInfo.numParams == 0 && ctorInfo.induct == typeName then
-                let fields := (peelForall ctorInfo.type).fst.drop ctorInfo.numParams
-                if fields.length == ctorInfo.numFields then
-                  fields.mapM (fun field =>
-                    if isProofType? env field then
-                      some none
-                    else
-                      typeAtomRecursiveField? env typeName field |>.map some) |>.map fun fieldKinds =>
-                        ({ name := ctorName, fields := fieldKinds } : VariantCtorLayout)
+        if params.length != info.numParams then
+          none
+        else
+          let ctorLayouts? := info.ctors.mapM fun ctorName =>
+            match env.find? ctorName with
+            | some (.ctorInfo ctorInfo) =>
+                if ctorInfo.numParams == info.numParams && ctorInfo.induct == typeName then
+                  match ctorFieldDomainsWithParams? ctorInfo params with
+                  | some fields =>
+                      fields.mapM (fun field =>
+                        if isProofType? env field then
+                          some none
+                        else
+                          typeAtomRecursiveField? env typeName params field |>.map some)
+                        |>.map fun fieldKinds =>
+                          ({ name := ctorName, fields := fieldKinds } : VariantCtorLayout)
+                  | none => none
                 else
                   none
-              else
-                none
-          | _ => none
-        ctorLayouts? |>.map fun ctors => ({ name := typeName, ctors := ctors } : VariantLayout)
+            | _ => none
+          ctorLayouts? |>.map fun ctors =>
+            ({ name := typeName, params := params, ctors := ctors } : VariantLayout)
     | none => none
 end
 
@@ -461,12 +528,32 @@ def recursiveVariantConstructor? (env : Environment) (ctorName : Name) :
     Option (VariantLayout × Nat × VariantCtorLayout) :=
   match env.find? ctorName with
   | some (.ctorInfo ctorInfo) =>
-      match recursiveVariantLayout? env ctorInfo.induct with
+      match recursiveVariantLayout? env ctorInfo.induct [] with
       | some layout =>
           match ctorIndex? ctorName layout.ctors with
           | some index =>
               match layout.ctors[index]? with
               | some ctor => some (layout, index, ctor)
+              | none => none
+          | none => none
+      | none => none
+  | _ => none
+
+def recursiveVariantConstructorForArgs? (env : Environment) (ctorName : Name) (args : List Expr) :
+    Option (VariantLayout × Nat × VariantCtorLayout × List Expr) :=
+  match env.find? ctorName with
+  | some (.ctorInfo ctorInfo) =>
+      let paramArgs := args.take ctorInfo.numParams
+      let runtimeArgs := args.drop ctorInfo.numParams
+      match paramArgs.mapM (typeAtom? env) with
+      | some params =>
+          match recursiveVariantLayout? env ctorInfo.induct params with
+          | some layout =>
+              match ctorIndex? ctorName layout.ctors with
+              | some index =>
+                  match layout.ctors[index]? with
+                  | some ctor => some (layout, index, ctor, runtimeArgs)
+                  | none => none
               | none => none
           | none => none
       | none => none
@@ -513,7 +600,7 @@ mutual
     | .u32 => some 1
     | .u64 => some 1
     | .nat => some 1
-    | .recVariant _ => some 1
+    | .recVariant _ _ => some 1
     | .struct _ fields => arrayFieldSlots? fields
     | .variant _ ctors => do
         let payloadSlots ← arrayCtorSlots? ctors
@@ -544,7 +631,7 @@ partial def containsRecVariant : Ty → Bool
   | .sum left right => containsRecVariant left || containsRecVariant right
   | .struct _ fields => fields.any containsRecVariant
   | .variant _ ctors => ctors.any (fun fields => fields.any containsRecVariant)
-  | .recVariant _ => true
+  | .recVariant _ _ => true
   | _ => false
 
 def supportedAbiArrayElementType (ty : Ty) : Bool :=
@@ -580,7 +667,7 @@ partial def supportedInternalValueType : Ty → Bool
   | .array item => supportedArrayElementType item
   | .struct _ fields => fields.all supportedInternalValueType
   | .variant _ ctors => ctors.all (fun fields => fields.all supportedInternalValueType)
-  | .recVariant _ => true
+  | .recVariant _ _ => true
   | _ => false
 
 def supportedInternalParamType : Ty → Bool
@@ -597,7 +684,7 @@ partial def abiSlots : Ty → Nat
       1 + ctors.foldl
         (fun total fields => total + fields.foldl (fun acc field => acc + abiSlots field) 0)
         0
-  | .recVariant _ => 1
+  | .recVariant _ _ => 1
   | _ => 1
 
 partial def internalSlots : Ty → Nat
@@ -609,7 +696,7 @@ partial def internalSlots : Ty → Nat
       1 + ctors.foldl
         (fun total fields => total + fields.foldl (fun acc field => acc + internalSlots field) 0)
         0
-  | .recVariant _ => 1
+  | .recVariant _ _ => 1
   | _ => 1
 
 def abiParamCount (params : List Ty) : Nat :=
@@ -663,7 +750,7 @@ partial def supportedLocalType : Ty → Bool
   | .sum left right => supportedLocalType left && supportedLocalType right
   | .struct _ fields => fields.all supportedLocalType
   | .variant _ ctors => ctors.all (fun fields => fields.all supportedLocalType)
-  | .recVariant _ => true
+  | .recVariant _ _ => true
 
 def supportedOneSlotExprType : Ty → Bool
   | .unit => true
@@ -1190,7 +1277,7 @@ partial def defaultValue : Ty → Except String ExtractedValue
       .ok (.struct name (← fields.mapM defaultValue))
   | .variant name ctors => do
       .ok (.variant name (.u64 0) (← ctors.mapM (fun fields => fields.mapM defaultValue)))
-  | .recVariant name => .ok (.heapVariant name (.u64 0))
+  | .recVariant name _ => .ok (.heapVariant name (.u64 0))
   | .sum left right => do
       .ok (.sum (.u64 0) (← defaultValue left) (← defaultValue right))
 
@@ -1213,7 +1300,7 @@ partial def trapValue : Ty → Except String ExtractedValue
       .ok (.struct name (← fields.mapM trapValue))
   | .variant name ctors => do
       .ok (.variant name .trap (← ctors.mapM (fun fields => fields.mapM trapValue)))
-  | .recVariant name => .ok (.heapVariant name .trap)
+  | .recVariant name _ => .ok (.heapVariant name .trap)
   | .sum left right => do
       .ok (.sum .trap (← trapValue left) (← trapValue right))
 
@@ -1433,7 +1520,7 @@ partial def flattenInternalValue (ty : Ty) (value : ExtractedValue) :
       | .ite cond thenValue elseValue => do
           combineIteSlots cond (← flattenInternalValue ty thenValue) (← flattenInternalValue ty elseValue)
       | _ => .error s!"non-inductive value used where inductive internal value is required: {name}"
-  | .recVariant name =>
+  | .recVariant name _ =>
       match value with
       | .heapVariant actual ptr =>
           if actual == name then
@@ -1515,7 +1602,7 @@ partial def flattenAbiValue (ty : Ty) (value : ExtractedValue) : Except String (
       | .ite cond thenValue elseValue => do
           combineIteSlots cond (← flattenAbiValue ty thenValue) (← flattenAbiValue ty elseValue)
       | _ => .error s!"non-inductive value used where inductive ABI value is required: {name}"
-  | .recVariant name =>
+  | .recVariant name _ =>
       match value with
       | .heapVariant actual ptr =>
           if actual == name then
@@ -1603,7 +1690,7 @@ mutual
     | .variant name ctors, slot => do
         let loaded ← heapLoadCtorsAt ptr ctors (slot + 1)
         .ok (.variant name (.heapLoadSlot ptr slot) loaded.fst, loaded.snd)
-    | .recVariant name, slot => .ok (.heapVariant name (.heapLoadSlot ptr slot), slot + 1)
+    | .recVariant name _, slot => .ok (.heapVariant name (.heapLoadSlot ptr slot), slot + 1)
 
   partial def heapLoadFieldsAt (ptr : IRExpr) :
       List Ty → Nat → Except String (List ExtractedValue × Nat)
@@ -1672,7 +1759,7 @@ partial def flattenArrayElementValue
   | .u32 => scalarValue value |>.map (fun expr => [expr])
   | .u64 => scalarValue value |>.map (fun expr => [expr])
   | .nat => scalarValue value |>.map (fun expr => [expr])
-  | .recVariant name =>
+  | .recVariant name _ =>
       match value with
       | .heapVariant actual ptr =>
           if actual == name then
@@ -1785,7 +1872,7 @@ mutual
     | .u32, slot => .ok (.scalar (.arrayGetSlot width slot array index), slot + 1)
     | .u64, slot => .ok (.scalar (.arrayGetSlot width slot array index), slot + 1)
     | .nat, slot => .ok (.scalar (.arrayGetSlot width slot array index), slot + 1)
-    | .recVariant name, slot =>
+    | .recVariant name _, slot =>
         .ok (.heapVariant name (.arrayGetSlot width slot array index), slot + 1)
     | .struct name fields, slot => do
         let result ← arrayLoadFieldsAt width array index fields slot
@@ -1840,7 +1927,7 @@ mutual
     | .u32, slot => .ok (.scalar (.arrayFindSlot width array itemStart predicate slot), slot + 1)
     | .u64, slot => .ok (.scalar (.arrayFindSlot width array itemStart predicate slot), slot + 1)
     | .nat, slot => .ok (.scalar (.arrayFindSlot width array itemStart predicate slot), slot + 1)
-    | .recVariant name, slot =>
+    | .recVariant name _, slot =>
         .ok (.heapVariant name (.arrayFindSlot width array itemStart predicate slot), slot + 1)
     | .struct name fields, slot => do
         let result ← arrayFindFieldsAt width array itemStart predicate fields slot
@@ -1894,7 +1981,7 @@ mutual
     | .u32, slot => .ok (.scalar (.local (start + slot)), slot + 1)
     | .u64, slot => .ok (.scalar (.local (start + slot)), slot + 1)
     | .nat, slot => .ok (.scalar (.local (start + slot)), slot + 1)
-    | .recVariant name, slot => .ok (.heapVariant name (.local (start + slot)), slot + 1)
+    | .recVariant name _, slot => .ok (.heapVariant name (.local (start + slot)), slot + 1)
     | .struct name fields, slot => do
         let result ← arrayLocalFieldsAt start fields slot
         .ok (.struct name result.fst, result.snd)
@@ -1936,7 +2023,7 @@ mutual
     | .struct name fields => .struct name (extractedStructFieldsForParam slot fields)
     | .variant name ctors =>
         .variant name (.local slot) (extractedVariantCtorsForParam (slot + 1) ctors)
-    | .recVariant name => .heapVariant name (.local slot)
+    | .recVariant name _ => .heapVariant name (.local slot)
     | _ => .scalar (.local slot)
 
   partial def extractedStructFieldsForParam (slot : Nat) : List Ty → List ExtractedValue
@@ -1959,7 +2046,7 @@ def bindingForParam (slot : Nat) : Ty → Binding
   | .struct name fields => .value (.struct name (extractedStructFieldsForParam slot fields))
   | .variant name ctors =>
       .value (.variant name (.local slot) (extractedVariantCtorsForParam (slot + 1) ctors))
-  | .recVariant name => .value (.heapVariant name (.local slot))
+  | .recVariant name _ => .value (.heapVariant name (.local slot))
   | _ => .slot slot
 
 partial def sourceParamBindingsFrom (slot : Nat) : List Ty → List Binding
@@ -2430,7 +2517,10 @@ partial def variantArmCtorName? (env : Environment) (expr : Expr) : Option Name 
       | (.const ctorName _, _) =>
           match anyVariantConstructor? env ctorName with
           | some _ => some ctorName
-          | none => none
+          | none =>
+              match env.find? ctorName with
+              | some (.ctorInfo _) => some ctorName
+              | _ => none
       | _ => none
   | _ => none
 
@@ -2501,8 +2591,8 @@ def variantMatcherArgs? (env : Environment) (fn : Expr) (args : List Expr) :
             else
               none
         | none => none
-    | some (.recVariant typeName), some info, _motive :: scrutinee :: arms =>
-        match recursiveVariantLayout? env typeName with
+    | some (.recVariant typeName typeParams), some info, _motive :: scrutinee :: arms =>
+        match recursiveVariantLayout? env typeName typeParams with
         | some layout =>
             let ctorCount := layout.ctors.length
             if arms.length == ctorCount then
@@ -2664,7 +2754,7 @@ def structuralRecCallValueFrom
     | none => .error s!"declaration disappeared during extraction: {functionName}"
   let paramTy ←
     match sig.params with
-    | [.recVariant typeName] => .ok (.recVariant typeName)
+    | [.recVariant typeName typeParams] => .ok (.recVariant typeName typeParams)
     | _ => .error s!"unsupported structural recursion arity: {functionName}"
   let argSlots ← materializeStrictInternalSlots paramTy arg nextLocal
   let bound := bindStrictSlots argSlots.slots argSlots.nextLocal
@@ -4446,9 +4536,9 @@ mutual
                     else
                       .error s!"structure constructor arity mismatch: {name}"
                 | none =>
-                    match recursiveVariantConstructor? ctx.env name with
-                    | some (layout, ctorIndex, ctor) =>
-                        if args.length == ctor.fields.length then
+                    match recursiveVariantConstructorForArgs? ctx.env name args with
+                    | some (layout, ctorIndex, ctor, runtimeArgs) =>
+                        if runtimeArgs.length == ctor.fields.length then
                           let rec recursiveVariantCtorLoop :
                               List Expr → List (Option Ty) → Nat →
                                 Except String (List ExtractedValue × Nat)
@@ -4461,7 +4551,7 @@ mutual
                             | _arg :: restArgs, none :: restKinds, next =>
                                 recursiveVariantCtorLoop restArgs restKinds next
                             | _, _, _ => .error s!"inductive constructor arity mismatch: {name}"
-                          let runtimeFields ← recursiveVariantCtorLoop args ctor.fields nextLocal
+                          let runtimeFields ← recursiveVariantCtorLoop runtimeArgs ctor.fields nextLocal
                           let defaults ← defaultCtorTypedValues layout.ctors
                           let activeFields ← typedFieldsFromKinds ctor.name ctor.fields runtimeFields.fst
                           let ctors ←
@@ -4804,7 +4894,7 @@ mutual
       .error s!"inductive matcher arity mismatch: {layout.name}"
     else
       let scrutineeResult ← extractValueFrom ctx locals nextLocal scrutinee
-      if (recursiveVariantLayout? ctx.env layout.name).isSome then
+      if (recursiveVariantLayout? ctx.env layout.name layout.params).isSome then
         match heapVariantPtrWithLets? layout.name scrutineeResult.fst with
         | some parts =>
             let ptrSlot := scrutineeResult.snd
@@ -6567,6 +6657,7 @@ def brecOnName (typeName : Name) : Name :=
 def structuralRecStepMatcher?
     (env : Environment)
     (typeName : Name)
+    (_typeParams : List Ty)
     (step : Expr) :
     Except String (VariantLayout × List Expr) := do
   let stepBody ←
@@ -6594,6 +6685,7 @@ def structuralRecStepMatcher?
 def structuralBelowBinding
     (functionName : Name)
     (typeName : Name)
+    (typeParams : List Ty)
     (ctor : Name)
     (fieldKinds : List (Option Ty))
     (runtimeFields : List ExtractedValue) :
@@ -6602,7 +6694,7 @@ def structuralBelowBinding
   let recursiveFields :=
     typedFields.filter fun item =>
       match item.fst with
-      | .recVariant candidate => candidate == typeName
+      | .recVariant candidate params => candidate == typeName && params == typeParams
       | _ => false
   match recursiveFields with
   | [] => .ok (.value (.scalar (.u64 0)))
@@ -6613,10 +6705,11 @@ def extractStructuralRecFunc
     (ctx : Context)
     (name : Name)
     (typeName : Name)
+    (typeParams : List Ty)
     (resultTy : Ty)
     (value : Expr)
     (exportName : Option String) : Except String IRFunc := do
-  let params := [.recVariant typeName]
+  let params := [.recVariant typeName typeParams]
   let wasmParamCount := abiParamCount params
   let body ←
     match collectLambdas value 1 with
@@ -6624,16 +6717,18 @@ def extractStructuralRecFunc
     | none => .error s!"definition body does not match function arity: {name}"
   let (scrutinee, step) ←
     match appFnArgs body with
-    | (.const candidate _, [_motive, scrutinee, step]) =>
+    | (.const candidate _, args) =>
         if candidate == brecOnName typeName then
-          .ok (scrutinee, step)
+          match args.drop typeParams.length with
+          | [_motive, scrutinee, step] => .ok (scrutinee, step)
+          | _ => .error s!"unsupported structural recursion shape: {name}"
         else
           .error s!"unsupported structural recursion shape: {name}"
     | _ => .error s!"unsupported structural recursion shape: {name}"
   if !isBVar 0 scrutinee then
     .error s!"unsupported structural recursion scrutinee: {name}"
   else
-    let (layout, arms) ← structuralRecStepMatcher? ctx.env typeName step
+    let (layout, arms) ← structuralRecStepMatcher? ctx.env typeName typeParams step
     if arms.length != layout.ctors.length then
       .error s!"inductive matcher arity mismatch: {layout.name}"
     else
@@ -6652,7 +6747,7 @@ def extractStructuralRecFunc
             let sourceBindings ←
               sourceFieldBindingsFromKinds layout.name ctor.fields runtimeFields.fst
             let belowBinding ←
-              structuralBelowBinding name layout.name ctor.name ctor.fields runtimeFields.fst
+              structuralBelowBinding name layout.name typeParams ctor.name ctor.fields runtimeFields.fst
             let body ←
               if ctor.fields.isEmpty then
                 match collectLambdas arm 1 with
@@ -6944,9 +7039,9 @@ def extractFunction
         extractNatRecFunc ctx name sig.params sig.result value exportName
       else
         extractPlainFunc ctx name sig.params sig.result value exportName
-  | [.recVariant typeName] =>
+  | [.recVariant typeName typeParams] =>
       if containsConstant (brecOnName typeName) info then
-        extractStructuralRecFunc ctx name typeName sig.result value exportName
+        extractStructuralRecFunc ctx name typeName typeParams sig.result value exportName
       else
         extractPlainFunc ctx name sig.params sig.result value exportName
   | _ => extractPlainFunc ctx name sig.params sig.result value exportName

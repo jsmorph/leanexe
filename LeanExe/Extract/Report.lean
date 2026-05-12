@@ -110,7 +110,9 @@ def tyText : Ty → String
   | .variant name [[error], [ok]] =>
       if name == ``Except then s!"Except {tyText error} {tyText ok}" else displayName name
   | .variant name _ => displayName name
-  | .recVariant name => displayName name
+  | .recVariant name [] => displayName name
+  | .recVariant name params =>
+      s!"{displayName name} {String.intercalate " " (params.map tyText)}"
 
 def signatureText (sig : LeanExe.Extract.Core.Signature) : String :=
   match sig.params with

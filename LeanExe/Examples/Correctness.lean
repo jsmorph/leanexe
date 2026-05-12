@@ -570,6 +570,29 @@ def u64ListArrayFoldHeads : UInt64 :=
   let xs : Array U64List := #[u64List123, U64List.cons 9 U64List.nil]
   xs.foldl (fun acc item => acc + u64ListHeadOrZero item) 0
 
+def leanList123 : List UInt64 :=
+  [1, 2, 3]
+
+def leanListHeadOrZero (xs : List UInt64) : UInt64 :=
+  match xs with
+  | [] => 0
+  | head :: _tail => head
+
+def leanListHeadDemo : UInt64 :=
+  leanListHeadOrZero leanList123
+
+def leanListTailHeadDemo : UInt64 :=
+  match leanList123 with
+  | [] => 0
+  | _head :: tail => leanListHeadOrZero tail
+
+def leanListStructuralSum : List UInt64 → UInt64
+  | [] => 0
+  | head :: tail => head + leanListStructuralSum tail
+
+def leanListStructuralSumDemo : UInt64 :=
+  leanListStructuralSum leanList123
+
 inductive U64Tree where
   | leaf : UInt64 → U64Tree
   | node : Array U64Tree → U64Tree
