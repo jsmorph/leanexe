@@ -75,7 +75,7 @@ def sumTo (n : UInt64) : UInt64 :=
 end LeanExe.Examples.ReadmeLoop
 ```
 
-User-defined structures and nonrecursive inductives are accepted when they are monomorphic and all runtime fields use supported types.  Structures flatten by field order at the ABI boundary, and inductives flatten to a constructor tag plus payload slots.  Recursive inductives can be used inside compiled programs, including inside internal arrays, but they cannot be entry parameters or entry results.  Monomorphic recursive instances such as `List UInt64` are also accepted internally for construction, matching, helper calls, and direct structural recursion.
+User-defined structures and nonrecursive inductives are accepted when they are monomorphic and all runtime fields use supported types.  Structures flatten by field order at the ABI boundary, and inductives flatten to a constructor tag plus payload slots.  Recursive inductives can be used inside compiled programs, including inside internal arrays, but they cannot be entry parameters or entry results.  Monomorphic recursive instances such as `List UInt64` are also accepted internally for construction, matching, helper calls, and direct structural recursion.  Recursive tree traversals through an `Array` child field are accepted for the generated `WellFounded.fix` shape described in the specification.
 
 ```lean
 namespace LeanExe.Examples.ReadmeData
@@ -173,7 +173,7 @@ const ok = instance.exports.validateGeneric(BigInt(ptr), BigInt(input.length));
 console.log(ok === 1n ? "accepted" : "rejected");
 ```
 
-Fixed-width arrays use the compiler's arena layout.  Structure values flatten field-by-field at the ABI boundary, while nonrecursive inductive values flatten to a constructor tag followed by payload slots.  Recursive inductive values are supported as internal values, including monomorphic `List UInt64` construction, matching, direct traversal, and limited direct-lambda calls to `List.map`, `List.filter`, `List.find?`, `List.foldl`, and `List.any`, but entry parameters and entry results cannot expose recursive data through the host ABI.
+Fixed-width arrays use the compiler's arena layout.  Structure values flatten field-by-field at the ABI boundary, while nonrecursive inductive values flatten to a constructor tag followed by payload slots.  Recursive inductive values are supported as internal values, including monomorphic `List UInt64` construction, matching, direct traversal, generated array-child traversal, and limited direct-lambda calls to `List.map`, `List.filter`, `List.find?`, `List.foldl`, and `List.any`, but entry parameters and entry results cannot expose recursive data through the host ABI.
 
 ## Supported Lean
 
@@ -181,7 +181,7 @@ The supported subset is practical but restricted.  Programs should use concrete,
 
 Supported internal values include `Unit`, `Bool`, `UInt8`, `UInt32`, `UInt64`, bounded `Nat`, `ByteArray`, `LeanExe.AsciiString`, `Array`, products, user-defined structures, user-defined inductives, `Option`, `Except`, monomorphic self-recursive inductives, and monomorphic recursive instances such as `List UInt64`.  `LeanExe.AsciiString` is a one-field structure over `ByteArray` with explicit validation helpers for the ASCII invariant.  Restricted compile-time ASCII `String` expressions may be converted to bytes with `.toUTF8`, measured with `.length`, tested with `.isEmpty`, and compared with `==` or `!=`.
 
-Supported control flow includes `let`, direct calls, `if`, pattern matching, pure `do` notation, bounded tail recursion over an explicit `Nat` fuel argument, list-shaped structural recursion, and selected direct-lambda library calls that specialize to first-order code.  Unsupported features include polymorphic runtime code, type classes, higher-order functions, closures, full `IO`, runtime `String`, arbitrary Lean and Std library functions, hidden carried arguments in closed `List.foldl` calls, `unsafe`, `partial`, unbounded natural-number arithmetic, general structural recursion, exported recursive data structures, nested arrays, and public arrays of recursive values.  These features remain outside the accepted language even when Lean accepts the source file.
+Supported control flow includes `let`, direct calls, `if`, pattern matching, pure `do` notation, bounded tail recursion over an explicit `Nat` fuel argument, list-shaped structural recursion, generated `Array`-child recursion, and selected direct-lambda library calls that specialize to first-order code.  Unsupported features include polymorphic runtime code, type classes, higher-order functions, closures, full `IO`, runtime `String`, arbitrary Lean and Std library functions, hidden carried arguments in closed `List.foldl` calls, `unsafe`, `partial`, unbounded natural-number arithmetic, general structural recursion, exported recursive data structures, nested arrays, and public arrays of recursive values.  These features remain outside the accepted language even when Lean accepts the source file.
 
 ## ABI Summary
 
