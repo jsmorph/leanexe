@@ -51,5 +51,20 @@ def middle (input : ByteArray) : ByteArray :=
   | some text => AsciiString.toByteArray (text.extract 1 3)
   | none => ByteArray.empty
 
+def equalsABC (input : ByteArray) : Bool :=
+  match AsciiString.ofByteArray? input with
+  | some text => text.equals (AsciiString.ofTrustedByteArray "abc".toUTF8)
+  | none => false
+
+def startsWithAB (input : ByteArray) : Bool :=
+  match AsciiString.ofByteArray? input with
+  | some text => text.startsWith (AsciiString.ofTrustedByteArray "ab".toUTF8)
+  | none => false
+
+def containsColon (input : ByteArray) : Bool :=
+  match AsciiString.ofByteArray? input with
+  | some text => text.containsByte (58 : UInt8)
+  | none => false
+
 end Examples.AsciiStringPrograms
 end LeanExe

@@ -106,6 +106,9 @@ async function main() {
   const appendSelfTrusted = await instantiate("appendSelfTrusted");
   const prefixBangTrusted = await instantiate("prefixBangTrusted");
   const middle = await instantiate("middle");
+  const equalsABC = await instantiate("equalsABC");
+  const startsWithAB = await instantiate("startsWithAB");
+  const containsColon = await instantiate("containsColon");
 
   const ascii = bytes("AZ09");
   const invalid = new Uint8Array([65, 128, 66]);
@@ -132,7 +135,27 @@ async function main() {
   expectBytes("middle ascii", callByteArray(middle, bytes("abcd")), bytes("bc"));
   expectBytes("middle invalid", callByteArray(middle, invalid), new Uint8Array([]));
 
-  process.stdout.write("checked 14 asciistring cases\n");
+  if (
+    callScalar(equalsABC, bytes("abc")) !== 1n ||
+    callScalar(equalsABC, bytes("abd")) !== 0n ||
+    callScalar(equalsABC, bytes("abcd")) !== 0n
+  ) {
+    throw new Error("equalsABC: unexpected result");
+  }
+
+  if (
+    callScalar(startsWithAB, bytes("abc")) !== 1n ||
+    callScalar(startsWithAB, bytes("a")) !== 0n ||
+    callScalar(startsWithAB, invalid) !== 0n
+  ) {
+    throw new Error("startsWithAB: unexpected result");
+  }
+
+  if (callScalar(containsColon, bytes("a:b")) !== 1n || callScalar(containsColon, bytes("abc")) !== 0n) {
+    throw new Error("containsColon: unexpected result");
+  }
+
+  process.stdout.write("checked 22 asciistring cases\n");
 }
 
 main().catch((error) => {
