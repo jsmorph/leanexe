@@ -2334,3 +2334,15 @@ Checks run:
 - [x] `lake build LeanExe.Examples.AsciiStringPrograms`
 - [x] `node test/asciistring.js` returned `checked 22 asciistring cases`.
 - [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 452 accepted, 22 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 22 asciistring cases`, `checked 46 json program cases`, and `checked 56 cases`.
+
+## 2026-05-11: Structure-backed integer map
+
+`LeanExe.Examples.IntMap` now represents each hash-table cell as a `Slot` structure and the table as a `Table` structure over `Array Slot`.  The example still uses a fixed capacity of `256`, open addressing, key `0` as the empty marker, and keys `1` through `100` mapped to `k * 10 + 7`.  This updates the old raw adjacent-word array example to current subset style.
+
+The new `test/intmap.js` regression compiles `checksum` and `query` and runs them under the checked-in Wasmtime binary.  It checks the aggregate checksum and lookups for the first inserted key, last inserted key, and a missing key.
+
+Checks run:
+
+- [x] `lake build LeanExe.Examples.IntMap`
+- [x] `node test/intmap.js` returned `checked 4 intmap cases`.
+- [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 452 accepted, 22 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 22 asciistring cases`, `checked 4 intmap cases`, `checked 46 json program cases`, and `checked 56 cases`.
