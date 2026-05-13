@@ -451,6 +451,10 @@ const accepted = [
   { name: "u64TreeSizeDemo", args: [], expected: 6n },
   { name: "u64BinaryStructuralSizeDemo", args: [], expected: 3n },
   { name: "u64ExprEvalDemo", args: [], expected: 45n },
+  { name: "recursiveStructFieldDemo", args: [], expected: 21n },
+  { name: "recursiveStructArrayFoldDemo", args: [], expected: 24n },
+  { name: "recursiveTaggedPayloadDemo", args: [], expected: 17n },
+  { name: "recursiveTaggedArrayFindDemo", args: [], expected: 19n },
   { name: "optionSomeMatch", args: [], expected: 8n },
   { name: "optionSomeFirstMatch", args: [], expected: 8n },
   { name: "optionNoneMatchSkipsSomeArm", args: [], expected: 5n },
@@ -679,6 +683,14 @@ const rejected = [
   {
     name: "rejectRecursiveArrayReturn",
     message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectRecursiveArrayReturn",
+  },
+  {
+    name: "rejectRecursiveStructParam",
+    message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectRecursiveStructParam",
+  },
+  {
+    name: "rejectRecursiveTaggedParam",
+    message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectRecursiveTaggedParam",
   },
   {
     name: "rejectHigherOrder",

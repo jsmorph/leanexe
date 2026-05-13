@@ -2609,3 +2609,22 @@ Checks run:
 - [x] `lake build lean-wasm LeanExe.Examples.Correctness`
 - [x] `node test/core_correctness.js` returned `checked 509 accepted, 24 rejected, and 13 trapped cases`.
 - [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 509 accepted, 24 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 46 json program cases`, and `checked 56 cases`.
+
+## 2026-05-13: Recursive pointers in fixed-width values
+
+Internal fixed-width structures and nonrecursive tagged values can contain recursive-inductive fields because the existing layout machinery treats a recursive value as one heap-pointer slot at strict boundaries.  This is now covered by `ExprBox`, which stores a `U64Expr` inside a structure and exercises direct use plus `Array ExprBox` folding, and by `ExprSlot`, which stores a `U64Expr` inside a tagged payload and exercises direct matching plus `Array.find?`.  The public ABI still rejects those layouts when they appear as entry parameters or results, so the feature remains internal until recursive data has a documented host representation.
+
+Checks run:
+
+- [x] `lake build lean-wasm`
+- [x] `lake build LeanExe.Examples.Correctness`
+- [x] `.lake/build/bin/lean-wasm compile --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.recursiveStructFieldDemo --out /tmp/recursiveStructFieldDemo.wasm`
+- [x] `.lake/build/bin/lean-wasm compile --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.recursiveStructArrayFoldDemo --out /tmp/recursiveStructArrayFoldDemo.wasm`
+- [x] `.lake/build/bin/lean-wasm compile --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.recursiveTaggedPayloadDemo --out /tmp/recursiveTaggedPayloadDemo.wasm`
+- [x] `.lake/build/bin/lean-wasm compile --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.recursiveTaggedArrayFindDemo --out /tmp/recursiveTaggedArrayFindDemo.wasm`
+- [x] `build/tools/wasmtime/current/wasmtime --invoke recursiveStructFieldDemo /tmp/recursiveStructFieldDemo.wasm` returned `21`.
+- [x] `build/tools/wasmtime/current/wasmtime --invoke recursiveStructArrayFoldDemo /tmp/recursiveStructArrayFoldDemo.wasm` returned `24`.
+- [x] `build/tools/wasmtime/current/wasmtime --invoke recursiveTaggedPayloadDemo /tmp/recursiveTaggedPayloadDemo.wasm` returned `17`.
+- [x] `build/tools/wasmtime/current/wasmtime --invoke recursiveTaggedArrayFindDemo /tmp/recursiveTaggedArrayFindDemo.wasm` returned `19`.
+- [x] `node test/core_correctness.js` returned `checked 513 accepted, 26 rejected, and 13 trapped cases`.
+- [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 513 accepted, 26 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 46 json program cases`, and `checked 56 cases`.
