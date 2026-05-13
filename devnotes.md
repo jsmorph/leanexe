@@ -2628,3 +2628,25 @@ Checks run:
 - [x] `build/tools/wasmtime/current/wasmtime --invoke recursiveTaggedArrayFindDemo /tmp/recursiveTaggedArrayFindDemo.wasm` returned `19`.
 - [x] `node test/core_correctness.js` returned `checked 513 accepted, 26 rejected, and 13 trapped cases`.
 - [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 513 accepted, 26 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 46 json program cases`, and `checked 56 cases`.
+
+## 2026-05-13: Internal mutual recursive inductives
+
+Recursive-inductive layout classification now uses Lean's `InductiveVal.all` family list.  A field inside a recursive family may refer to any member of the same specialized family, so a `MutJson` constructor can store an `Array MutField`, and a `MutField` constructor can store a `MutJson`.  Each family member still lowers to the existing one-slot heap-pointer representation at strict boundaries.  Public entry parameters and results still reject recursive-family values, and mutual structural recursion and mutual recursive helper functions remain outside the accepted language.
+
+The correctness corpus now includes a `MutJson` and `MutField` pair, direct array construction over `MutJson`, object-like arrays over `MutField`, a structure wrapper around `MutField`, a tagged wrapper around `MutJson`, and public ABI rejection cases for both family members and arrays of family members.  Sparse constructor matches still lower to generated helpers outside the current matcher path, so the accepted examples use exhaustive matches.
+
+Checks run:
+
+- [x] `lake build LeanExe.Extract.Core`
+- [x] `lake build lean-wasm`
+- [x] `lake build LeanExe.Examples.Correctness`
+- [x] `.lake/build/bin/lean-wasm compile --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.mutualJsonArrayDemo --out /tmp/mutualJsonArrayDemo.wasm`
+- [x] `.lake/build/bin/lean-wasm compile --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.mutualJsonObjectDemo --out /tmp/mutualJsonObjectDemo.wasm`
+- [x] `.lake/build/bin/lean-wasm compile --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.mutualWrappedFieldArrayDemo --out /tmp/mutualWrappedFieldArrayDemo.wasm`
+- [x] `.lake/build/bin/lean-wasm compile --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.mutualTaggedArrayFindDemo --out /tmp/mutualTaggedArrayFindDemo.wasm`
+- [x] `build/tools/wasmtime/current/wasmtime --invoke mutualJsonArrayDemo /tmp/mutualJsonArrayDemo.wasm` returned `4`.
+- [x] `build/tools/wasmtime/current/wasmtime --invoke mutualJsonObjectDemo /tmp/mutualJsonObjectDemo.wasm` returned `60`.
+- [x] `build/tools/wasmtime/current/wasmtime --invoke mutualWrappedFieldArrayDemo /tmp/mutualWrappedFieldArrayDemo.wasm` returned `55`.
+- [x] `build/tools/wasmtime/current/wasmtime --invoke mutualTaggedArrayFindDemo /tmp/mutualTaggedArrayFindDemo.wasm` returned `102`.
+- [x] `node test/core_correctness.js` returned `checked 517 accepted, 30 rejected, and 13 trapped cases`.
+- [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 517 accepted, 30 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 46 json program cases`, and `checked 56 cases`.
