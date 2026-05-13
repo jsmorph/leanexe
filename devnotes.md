@@ -2755,3 +2755,20 @@ Checks run:
 - [x] `.lake/build/bin/lean-wasm compile --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.byteArrayFoldStatusAccumulator --out .lake/build/core-correctness/byteArrayFoldStatusAccumulator.wasmtime.wasm`
 - [x] `build/tools/wasmtime/current/wasmtime --invoke arrayFoldStructAccumulator .lake/build/core-correctness/arrayFoldStructAccumulator.wasmtime.wasm` returned `36`.
 - [x] `build/tools/wasmtime/current/wasmtime --invoke byteArrayFoldStatusAccumulator .lake/build/core-correctness/byteArrayFoldStatusAccumulator.wasmtime.wasm` returned `24`.
+
+## 2026-05-13: Unified direct fold lowering
+
+The scalar-only direct fold path has been removed.  `extractExprFrom` now handles scalar uses of `Array.foldl` and `ByteArray.foldl` by extracting the same value-level fold representation used for structured accumulators, then projecting the scalar result.  The IR and WASM emitters no longer contain the old one-slot `arrayFoldSlots` and `byteArrayFold` expression forms.
+
+The shared accumulator predicate is now named `supportedLoopAccumulatorType`, because pure `for` loops and direct folds use the same accumulator layout.  Existing scalar fold correctness cases now exercise the multi-slot fold IR with result width one, while the structured fold cases exercise the same code path at larger widths.
+
+Checks run:
+
+- [x] `lake build`
+- [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 558 accepted, 34 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 46 json program cases`, and `checked 56 cases`.
+- [x] `.lake/build/bin/lean-wasm compile --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.arrayFoldSum --out .lake/build/core-correctness/arrayFoldSum.unified.wasm`
+- [x] `.lake/build/bin/lean-wasm compile --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.byteArrayFoldSum --out .lake/build/core-correctness/byteArrayFoldSum.unified.wasm`
+- [x] `.lake/build/bin/lean-wasm compile-wat --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.arrayFoldSum --out .lake/build/core-correctness/arrayFoldSum.unified.wat`
+- [x] `build/tools/wasmtime/current/wasmtime --invoke arrayFoldSum .lake/build/core-correctness/arrayFoldSum.unified.wasm` returned `6`.
+- [x] `build/tools/wasmtime/current/wasmtime --invoke byteArrayFoldSum .lake/build/core-correctness/byteArrayFoldSum.unified.wasm` returned `6`.
+- [x] `wc -c .lake/build/core-correctness/arrayFoldSum.unified.wat` returned `11373`.
