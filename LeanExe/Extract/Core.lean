@@ -8626,6 +8626,61 @@ def extractWellFoundedNatMemberBranch
         valueIte (.eqU64 tag (.u64 index)) value elseValue
   .ok (.letE ptrSlot ptrExpr (← combine (enumerate armResults.fst)), armResults.snd)
 
+partial def extractWellFoundedNatSumTree
+    (ctx : Context)
+    (name : Name)
+    (params : List Ty)
+    (expectedTy : Ty)
+    (payload : ExtractedValue)
+    (nextLocal : Nat)
+    (body : Expr) :
+    Except String (ExtractedValue × Nat) := do
+  match expectedTy with
+  | .recVariant typeName typeParams =>
+      extractWellFoundedNatMemberBranch ctx name params typeName typeParams payload nextLocal body
+  | .sum expectedLeft expectedRight =>
+      let (matcherFn, stepArgs) := appFnArgs body
+      let (matcherArgs, recursorArg) ←
+        match stepArgs.reverse with
+        | recursorArg :: reversedMatcherArgs => .ok (reversedMatcherArgs.reverse, recursorArg)
+        | _ => .error s!"unsupported well-founded Nat recursion sum branch: {name}"
+      if !isBVar 0 recursorArg then
+        .error s!"unsupported well-founded Nat recursion recursor argument: {name}"
+      else
+      let (leftTy, rightTy, scrutinee, leftArm, rightArm) ←
+        match psumMatcherArgs? ctx.env matcherFn matcherArgs with
+        | some result => .ok result
+        | none => .error s!"unsupported well-founded Nat recursion PSum matcher: {name}"
+      if (.sum expectedLeft expectedRight : Ty) != (.sum leftTy rightTy : Ty) then
+        .error s!"well-founded Nat recursion sum type mismatch: {name}"
+      else if !isBVar 1 scrutinee then
+        .error s!"unsupported well-founded Nat recursion scrutinee: {name}"
+      else
+      let parts ← sumPartsWithLets payload
+      let lets := parts.fst
+      let tag := parts.snd.fst
+      let leftPayload := parts.snd.snd.fst
+      let rightPayload := parts.snd.snd.snd
+      let leftBody ←
+        match collectLambdas leftArm 2 with
+        | some body => .ok body
+        | none => .error s!"unsupported well-founded Nat recursion left sum arm: {name}"
+      let leftResult ←
+        match extractWellFoundedNatSumTree ctx name params leftTy leftPayload nextLocal leftBody with
+        | .ok result => .ok result
+        | .error error => .error s!"while extracting well-founded Nat left sum arm for {name}: {error}"
+      let rightBody ←
+        match collectLambdas rightArm 2 with
+        | some body => .ok body
+        | none => .error s!"unsupported well-founded Nat recursion right sum arm: {name}"
+      let rightResult ←
+        match extractWellFoundedNatSumTree ctx name params rightTy rightPayload leftResult.snd rightBody with
+        | .ok result => .ok result
+        | .error error => .error s!"while extracting well-founded Nat right sum arm for {name}: {error}"
+      let resultValue ← valueIte (.eqU64 tag (.u64 0)) leftResult.fst rightResult.fst
+      .ok (wrapValueLets lets resultValue, rightResult.snd)
+  | _ => .error s!"unsupported well-founded Nat recursion member type: {name}"
+
 def extractWellFoundedNatSumFunc
     (ctx : Context)
     (name : Name)
@@ -8635,7 +8690,10 @@ def extractWellFoundedNatSumFunc
     (exportName : Option String) : Except String IRFunc := do
   let sumTy ←
     match params with
-    | [.sum left right] => .ok ((.sum left right : Ty))
+    | [sumTy] =>
+        match sumTy with
+        | .sum _ _ => .ok sumTy
+        | _ => .error s!"unsupported well-founded Nat recursion parameter type: {name}"
     | _ => .error s!"unsupported well-founded Nat recursion arity: {name}"
   let wasmParamCount := abiParamCount params
   let step ←
@@ -8646,65 +8704,18 @@ def extractWellFoundedNatSumFunc
     match collectLambdas step 2 with
     | some body => .ok body
     | none => .error s!"unsupported well-founded Nat recursion step: {name}"
-  let (matcherFn, stepArgs) := appFnArgs stepBody
-  let (matcherArgs, recursorArg) ←
-    match stepArgs.reverse with
-    | recursorArg :: reversedMatcherArgs => .ok (reversedMatcherArgs.reverse, recursorArg)
-    | _ => .error s!"unsupported well-founded Nat recursion step body: {name}"
-  if !isBVar 0 recursorArg then
-    .error s!"unsupported well-founded Nat recursion recursor argument: {name}"
-  else
-  let (leftTy, rightTy, scrutinee, leftArm, rightArm) ←
-    match psumMatcherArgs? ctx.env matcherFn matcherArgs with
-    | some result => .ok result
-    | none => .error s!"unsupported well-founded Nat recursion PSum matcher: {name}"
-  if sumTy != (.sum leftTy rightTy : Ty) then
-    .error s!"well-founded Nat recursion sum type mismatch: {name}"
-  else if !isBVar 1 scrutinee then
-    .error s!"unsupported well-founded Nat recursion scrutinee: {name}"
-  else
   let scrutineeResult ← extractValueFrom ctx (localBindingsForParams params) wasmParamCount (.bvar 0)
-  let parts ← sumPartsWithLets scrutineeResult.fst
-  let lets := parts.fst
-  let tag := parts.snd.fst
-  let leftPayload := parts.snd.snd.fst
-  let rightPayload := parts.snd.snd.snd
-  let (leftName, leftParams) ←
-    match leftTy with
-    | .recVariant typeName typeParams => .ok (typeName, typeParams)
-    | _ => .error s!"unsupported well-founded Nat left member type: {name}"
-  let (rightName, rightParams) ←
-    match rightTy with
-    | .recVariant typeName typeParams => .ok (typeName, typeParams)
-    | _ => .error s!"unsupported well-founded Nat right member type: {name}"
-  let leftBody ←
-    match collectLambdas leftArm 2 with
-    | some body => .ok body
-    | none => .error s!"unsupported well-founded Nat recursion left arm: {name}"
-  let leftResult ←
-    match extractWellFoundedNatMemberBranch ctx name params leftName leftParams leftPayload
-        scrutineeResult.snd leftBody with
-    | .ok result => .ok result
-    | .error error => .error s!"while extracting well-founded Nat left arm for {name}: {error}"
-  let rightBody ←
-    match collectLambdas rightArm 2 with
-    | some body => .ok body
-    | none => .error s!"unsupported well-founded Nat recursion right arm: {name}"
-  let rightResult ←
-    match extractWellFoundedNatMemberBranch ctx name params rightName rightParams rightPayload
-        leftResult.snd rightBody with
-    | .ok result => .ok result
-    | .error error => .error s!"while extracting well-founded Nat right arm for {name}: {error}"
-  let resultValue := wrapValueLets lets (← valueIte (.eqU64 tag (.u64 0)) leftResult.fst rightResult.fst)
+  let result ←
+    extractWellFoundedNatSumTree ctx name params sumTy scrutineeResult.fst scrutineeResult.snd stepBody
   let useAbi := exportName.isSome
   let resultCount := resultSlotCount useAbi resultTy
-  let resultTargets := (List.range resultCount).map (fun offset => rightResult.snd + offset)
-  let resultBody ← materializeResultValue useAbi resultTy resultTargets resultValue
+  let resultTargets := (List.range resultCount).map (fun offset => result.snd + offset)
+  let resultBody ← materializeResultValue useAbi resultTy resultTargets result.fst
   .ok {
     sourceName := name,
     exportName := exportName,
     params := wasmParamCount,
-    locals := rightResult.snd + resultCount,
+    locals := result.snd + resultCount,
     body := resultBody,
     results := resultTargets.map LeanExe.IR.Expr.local
   }
