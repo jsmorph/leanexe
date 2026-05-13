@@ -113,6 +113,13 @@ def isBVar (index : Nat) (expr : Expr) : Bool :=
   | .bvar candidate => candidate == index
   | _ => false
 
+partial def collectLambdas (expr : Expr) : Nat → Option Expr
+  | 0 => some expr
+  | count + 1 =>
+      match expr.consumeMData with
+      | .lam _ _ body _ => collectLambdas body count
+      | _ => none
+
 def isIdType (expr : Expr) : Bool :=
   isConst ``Id expr
 
@@ -239,7 +246,7 @@ def structureCtorInfo? (env : Environment) (structName : Name) : Option Construc
   | none => none
 
 def builtinInductiveNames : List Name :=
-  [``Bool, ``Nat, ``Unit, ``Option, ``Except, ``Prod, ``String]
+  [``Bool, ``Nat, ``Unit, ``Option, ``Except, ``Prod, ``PSum, ``String]
 
 def userInductiveInfo? (env : Environment) (typeName : Name) : Option InductiveVal :=
   if builtinInductiveNames.contains typeName || isStructureLike env typeName then
@@ -361,7 +368,10 @@ partial def tyExpr? : Ty → Option Expr
   | .recVariant name params => do
       let paramExprs ← params.mapM tyExpr?
       some (paramExprs.foldl (fun acc param => .app acc param) (.const name []))
-  | .sum _ _ => none
+  | .sum left right => do
+      let leftExpr ← tyExpr? left
+      let rightExpr ← tyExpr? right
+      some (.app (.app (.const ``PSum []) leftExpr) rightExpr)
 
 def ctorFieldDomainsWithParams? (ctorInfo : ConstructorVal) (params : List Ty) :
     Option (List Expr) := do
@@ -404,6 +414,18 @@ mutual
       | (.const ``Prod _, [left, right]) =>
           match typeAtom? env left, typeAtom? env right with
           | some leftTy, some rightTy => some (.product leftTy rightTy)
+          | _, _ => none
+      | (.const ``PSum _, [left, right]) =>
+          match typeAtom? env left, typeAtom? env right with
+          | some leftTy, some rightTy => some (.sum leftTy rightTy)
+          | _, _ => none
+      | (.const ``PSum.casesOn _, [_left, _right, _motive, _scrutinee, leftArm, rightArm]) =>
+          match collectLambdas leftArm 1, collectLambdas rightArm 1 with
+          | some leftBody, some rightBody =>
+              match typeAtom? env leftBody, typeAtom? env rightBody with
+              | some leftTy, some rightTy =>
+                  if leftTy == rightTy then some leftTy else none
+              | _, _ => none
           | _, _ => none
       | (.const ``Option _, [item]) =>
           typeAtom? env item |>.map (fun itemTy => .variant ``Option [[], [itemTy]])
@@ -487,6 +509,11 @@ mutual
         match typeAtomRecursiveField? env familyNames familyParams left,
             typeAtomRecursiveField? env familyNames familyParams right with
         | some leftTy, some rightTy => some (.product leftTy rightTy)
+        | _, _ => none
+    | (.const ``PSum _, [left, right]) =>
+        match typeAtomRecursiveField? env familyNames familyParams left,
+            typeAtomRecursiveField? env familyNames familyParams right with
+        | some leftTy, some rightTy => some (.sum leftTy rightTy)
         | _, _ => none
     | (.const ``Option _, [item]) =>
         typeAtomRecursiveField? env familyNames familyParams item |>.map
@@ -711,6 +738,7 @@ partial def supportedInternalValueType : Ty → Bool
   | .nat => true
   | .byteArray => true
   | .array item => supportedArrayElementType item
+  | .sum left right => supportedInternalValueType left && supportedInternalValueType right
   | .struct _ fields => fields.all supportedInternalValueType
   | .variant _ ctors => ctors.all (fun fields => fields.all supportedInternalValueType)
   | .recVariant _ _ => true
@@ -725,6 +753,7 @@ def supportedInternalResultType : Ty → Bool :=
 
 partial def abiSlots : Ty → Nat
   | .byteArray => 2
+  | .sum left right => 1 + abiSlots left + abiSlots right
   | .struct _ fields => fields.foldl (fun total field => total + abiSlots field) 0
   | .variant _ ctors =>
       1 + ctors.foldl
@@ -847,13 +876,6 @@ def usedConstantsOf (info : ConstantInfo) : Array Name :=
 def containsConstant (name : Name) (info : ConstantInfo) : Bool :=
   info.value? |>.any (fun value => value.getUsedConstants.contains name)
 
-partial def collectLambdas (expr : Expr) : Nat → Option Expr
-  | 0 => some expr
-  | count + 1 =>
-      match expr.consumeMData with
-      | .lam _ _ body _ => collectLambdas body count
-      | _ => none
-
 def isDirectLambda (expr : Expr) : Bool :=
   match expr.consumeMData with
   | .lam _ _ _ _ => true
@@ -876,6 +898,7 @@ def dynamicStructuralExtraArgs (expected : List Ty) (extraArgs : List Expr) :
 def blocksTransparentSpecialization (name : Name) : Bool :=
   let root := name.getRoot
   name == ``ite || name == ``dite || name == ``WellFounded.fix ||
+    name == ``WellFounded.Nat.fix ||
     (match name with
     | .str _ component =>
         component.startsWith "match_" ||
@@ -2392,6 +2415,10 @@ def arrayElementWidth (context : String) (itemTy : Ty) : Except String Nat :=
 mutual
   partial def extractedValueForParam (slot : Nat) : Ty → ExtractedValue
     | .byteArray => .byteArray (.local slot) (.local (slot + 1))
+    | .sum left right =>
+        .sum (.local slot)
+          (extractedValueForParam (slot + 1) left)
+          (extractedValueForParam (slot + 1 + abiSlots left) right)
     | .struct name fields => .struct name (extractedStructFieldsForParam slot fields)
     | .variant name ctors =>
         .variant name (.local slot) (extractedVariantCtorsForParam (slot + 1) ctors)
@@ -2415,6 +2442,11 @@ end
 
 def bindingForParam (slot : Nat) : Ty → Binding
   | .byteArray => .value (.byteArray (.local slot) (.local (slot + 1)))
+  | .sum left right =>
+      .value
+        (.sum (.local slot)
+          (extractedValueForParam (slot + 1) left)
+          (extractedValueForParam (slot + 1 + abiSlots left) right))
   | .struct name fields => .value (.struct name (extractedStructFieldsForParam slot fields))
   | .variant name ctors =>
       .value (.variant name (.local slot) (extractedVariantCtorsForParam (slot + 1) ctors))
@@ -2986,6 +3018,21 @@ def productMatcherArgs? (env : Environment) (fn : Expr) (args : List Expr) :
             | some scrutinee, [arm] => some (scrutinee, arm)
             | _, _ => none
         | _ => none
+  | _ => none
+
+def psumMatcherArgs? (env : Environment) (fn : Expr) (args : List Expr) :
+    Option (Ty × Ty × Expr × Expr × Expr) :=
+  match fn.consumeMData with
+  | .const name _ =>
+      if name == ``PSum.casesOn then
+        match args with
+        | leftTyExpr :: rightTyExpr :: _motive :: scrutinee :: leftArm :: rightArm :: [] => do
+            let leftTy ← typeAtom? env leftTyExpr
+            let rightTy ← typeAtom? env rightTyExpr
+            some (leftTy, rightTy, scrutinee, leftArm, rightArm)
+        | _ => none
+      else
+        none
   | _ => none
 
 def structureMatcherArgs? (env : Environment) (fn : Expr) (args : List Expr) :
@@ -4010,7 +4057,9 @@ partial def demandSummary
       match supportedInlineFunction? ctx.env info with
       | none => { mayDemand := [], mustDemand := [], selfMayTrap := true }
       | some sig =>
-          if containsConstant ``Nat.brecOn info || containsConstant name info then
+          if containsConstant ``Nat.brecOn info ||
+              containsConstant ``WellFounded.Nat.fix info ||
+              containsConstant name info then
             DemandSummary.recursive sig.params.length
           else if visiting.contains name then
             DemandSummary.recursive sig.params.length
@@ -4617,7 +4666,7 @@ mutual
       | none => .error s!"unsupported function type or declaration: {functionName}"
     let paramTy ←
       match sig.params with
-      | .recVariant typeName typeParams :: _ => .ok (.recVariant typeName typeParams)
+      | paramTy :: _ => .ok paramTy
       | _ => .error s!"unsupported structural recursion arity: {functionName}"
     let argSlots ← materializeStrictInternalSlots paramTy arg nextLocal
     let bound := bindStrictSlots argSlots.slots argSlots.nextLocal
@@ -5868,6 +5917,29 @@ mutual
         | (fn, args) =>
             match fn.consumeMData with
             | .const name _ =>
+                if name == ``PSum.inl then
+                  match args with
+                  | [_leftTyExpr, rightTyExpr, payload] =>
+                      let rightTy ←
+                        match typeAtom? ctx.env rightTyExpr with
+                        | some ty => .ok ty
+                        | none => .error "unsupported PSum.inl right type"
+                      let payloadResult ← extractValueFrom ctx locals nextLocal payload
+                      let rightDefault ← defaultValue rightTy
+                      .ok (.sum (.u64 0) payloadResult.fst rightDefault, payloadResult.snd)
+                  | _ => .error "unsupported PSum.inl application"
+                else if name == ``PSum.inr then
+                  match args with
+                  | [leftTyExpr, _rightTyExpr, payload] =>
+                      let leftTy ←
+                        match typeAtom? ctx.env leftTyExpr with
+                        | some ty => .ok ty
+                        | none => .error "unsupported PSum.inr left type"
+                      let leftDefault ← defaultValue leftTy
+                      let payloadResult ← extractValueFrom ctx locals nextLocal payload
+                      .ok (.sum (.u64 1) leftDefault payloadResult.fst, payloadResult.snd)
+                  | _ => .error "unsupported PSum.inr application"
+                else
                 match structureConstructor? ctx.env name with
                 | some (structName, fieldKinds) =>
                     if args.length == fieldKinds.length then
@@ -5975,6 +6047,10 @@ mutual
                 | some (scrutinee, zeroArm, succArm) =>
                     extractNatMatchValueFrom ctx locals nextLocal scrutinee zeroArm succArm
                 | none =>
+                    match psumMatcherArgs? ctx.env fn args with
+                    | some (_leftTy, _rightTy, scrutinee, leftArm, rightArm) =>
+                        extractPsumMatchValueFrom ctx locals nextLocal scrutinee leftArm rightArm
+                    | none =>
                             match productMatcherArgs? ctx.env fn args with
                             | some (scrutinee, arm) =>
                                 extractProductMatchValueFrom ctx locals nextLocal scrutinee arm
@@ -6232,6 +6308,35 @@ mutual
       | none => .error s!"unsupported structure matcher arm: {structName}"
     let fieldBindings := fieldValues.reverse.map Binding.value
     extractValueFrom ctx (fieldBindings ++ locals) scrutineeResult.snd body
+
+  partial def extractPsumMatchValueFrom
+      (ctx : Context)
+      (locals : List Binding)
+      (nextLocal : Nat)
+      (scrutinee leftArm rightArm : Expr) :
+      Except String (ExtractedValue × Nat) := do
+    let scrutineeResult ← extractValueFrom ctx locals nextLocal scrutinee
+    let parts ← sumPartsWithLets scrutineeResult.fst
+    let lets := parts.fst
+    let tag := parts.snd.fst
+    let leftPayload := parts.snd.snd.fst
+    let rightPayload := parts.snd.snd.snd
+    let leftBody ←
+      match collectLambdas leftArm 1 with
+      | some body => .ok body
+      | none => .error "unsupported PSum.inl matcher arm"
+    let leftResult ←
+      extractValueFrom ctx (.value leftPayload :: locals) scrutineeResult.snd leftBody
+    let rightBody ←
+      match collectLambdas rightArm 1 with
+      | some body => .ok body
+      | none => .error "unsupported PSum.inr matcher arm"
+    let rightResult ←
+      extractValueFrom ctx (.value rightPayload :: locals) leftResult.snd rightBody
+    .ok
+      (wrapValueLets lets
+        (← valueIte (.eqU64 tag (.u64 0)) leftResult.fst rightResult.fst),
+        rightResult.snd)
 
   partial def extractVariantMatchValueFrom
       (ctx : Context)
@@ -8313,6 +8418,14 @@ def wellFoundedFixStep? (expr : Expr) : Option Expr :=
       | _ => none
   | _ => none
 
+def wellFoundedNatFixStep? (expr : Expr) : Option Expr :=
+  match appFnArgs expr with
+  | (.const ``WellFounded.Nat.fix _, args) =>
+      match args with
+      | [_type, _motive, _measure, step] => some step
+      | _ => none
+  | _ => none
+
 def wellFoundedMatcherInfo?
     (env : Environment)
     (fn : Expr)
@@ -8438,6 +8551,160 @@ def extractWellFoundedRecFunc
     exportName := exportName,
     params := wasmParamCount,
     locals := armResults.snd + resultCount,
+    body := resultBody,
+    results := resultTargets.map LeanExe.IR.Expr.local
+  }
+
+def extractWellFoundedNatMemberBranch
+    (ctx : Context)
+    (name : Name)
+    (params : List Ty)
+    (typeName : Name)
+    (typeParams : List Ty)
+    (payload : ExtractedValue)
+    (nextLocal : Nat)
+    (body : Expr) :
+    Except String (ExtractedValue × Nat) := do
+  let (matcherFn, matcherArgs) := appFnArgs body
+  let info ←
+    match wellFoundedMatcherInfo? ctx.env matcherFn matcherArgs typeName typeParams with
+    | some info => .ok info
+    | none => .error s!"unsupported well-founded Nat member matcher: {name}"
+  if !isBVar 1 info.scrutinee then
+    .error s!"unsupported well-founded Nat member scrutinee: {name}"
+  else
+  let layout := info.layout
+  if layout.name != typeName then
+    .error s!"well-founded Nat member matcher type mismatch: {name}"
+  else if info.arms.length != layout.ctors.length then
+    .error s!"inductive matcher arity mismatch: {layout.name}"
+  else
+  let parts ← heapVariantPtrWithLets layout.name payload
+  let ptrSlot := nextLocal
+  let ptrExpr := wrapExprLets parts.fst parts.snd
+  let ptrLocal : IRExpr := .local ptrSlot
+  let tag := .heapLoadSlot ptrLocal 0
+  let stepLocals := .wfRecursor name :: .value payload :: localBindingsForParams params
+  let postBinders := [StructuralArmBinder.below (.wfRecursor name)]
+  let rec extractArms :
+      List VariantCtorLayout → List Expr → Nat → Nat →
+        Except String (List ExtractedValue × Nat)
+    | [], [], _, next => .ok ([], next)
+    | ctor :: restCtors, arm :: restArms, payloadSlot, next => do
+        let runtimeFields ← heapRuntimeFieldsFromKinds ptrLocal ctor.fields payloadSlot
+        let sourceBindings ←
+          sourceFieldBindingsFromKinds layout.name ctor.fields runtimeFields.fst
+        let fieldBinders :=
+          (ctor.fields.zip sourceBindings).map fun item =>
+            StructuralArmBinder.runtime item.fst item.snd
+        let armBinders :=
+          postBinders.take info.prePostArgCount ++
+            fieldBinders ++
+            postBinders.drop info.prePostArgCount
+        let parsedArm ←
+          if ctor.fields.isEmpty then
+            let unitBinder :=
+              StructuralArmBinder.runtime (some .unit) (.value (.scalar (.u64 0)))
+            match consumeStructuralArmBinders ctx layout.name (unitBinder :: armBinders) arm with
+            | .ok parsedArm => .ok parsedArm
+            | .error _ => consumeStructuralArmBinders ctx layout.name armBinders arm
+          else
+            consumeStructuralArmBinders ctx layout.name armBinders arm
+        let armResult ←
+          match extractValueFrom ctx (parsedArm.snd ++ stepLocals) next parsedArm.fst with
+          | .ok result => .ok result
+          | .error error => .error s!"while extracting well-founded Nat member arm {ctor.name} for {name}: {error}"
+        let restResult ← extractArms restCtors restArms runtimeFields.snd armResult.snd
+        .ok (armResult.fst :: restResult.fst, restResult.snd)
+    | _, _, _, _ => .error s!"inductive matcher arity mismatch: {layout.name}"
+  let armResults ← extractArms layout.ctors info.arms 1 (ptrSlot + 1)
+  let rec combine : List (Nat × ExtractedValue) → Except String ExtractedValue
+    | [] => .error s!"inductive matcher has no arms: {layout.name}"
+    | [(_index, value)] => .ok value
+    | (index, value) :: rest => do
+        let elseValue ← combine rest
+        valueIte (.eqU64 tag (.u64 index)) value elseValue
+  .ok (.letE ptrSlot ptrExpr (← combine (enumerate armResults.fst)), armResults.snd)
+
+def extractWellFoundedNatSumFunc
+    (ctx : Context)
+    (name : Name)
+    (params : List Ty)
+    (resultTy : Ty)
+    (value : Expr)
+    (exportName : Option String) : Except String IRFunc := do
+  let sumTy ←
+    match params with
+    | [.sum left right] => .ok ((.sum left right : Ty))
+    | _ => .error s!"unsupported well-founded Nat recursion arity: {name}"
+  let wasmParamCount := abiParamCount params
+  let step ←
+    match wellFoundedNatFixStep? value with
+    | some step => .ok step
+    | none => .error s!"unsupported well-founded Nat recursion shape: {name}"
+  let stepBody ←
+    match collectLambdas step 2 with
+    | some body => .ok body
+    | none => .error s!"unsupported well-founded Nat recursion step: {name}"
+  let (matcherFn, stepArgs) := appFnArgs stepBody
+  let (matcherArgs, recursorArg) ←
+    match stepArgs.reverse with
+    | recursorArg :: reversedMatcherArgs => .ok (reversedMatcherArgs.reverse, recursorArg)
+    | _ => .error s!"unsupported well-founded Nat recursion step body: {name}"
+  if !isBVar 0 recursorArg then
+    .error s!"unsupported well-founded Nat recursion recursor argument: {name}"
+  else
+  let (leftTy, rightTy, scrutinee, leftArm, rightArm) ←
+    match psumMatcherArgs? ctx.env matcherFn matcherArgs with
+    | some result => .ok result
+    | none => .error s!"unsupported well-founded Nat recursion PSum matcher: {name}"
+  if sumTy != (.sum leftTy rightTy : Ty) then
+    .error s!"well-founded Nat recursion sum type mismatch: {name}"
+  else if !isBVar 1 scrutinee then
+    .error s!"unsupported well-founded Nat recursion scrutinee: {name}"
+  else
+  let scrutineeResult ← extractValueFrom ctx (localBindingsForParams params) wasmParamCount (.bvar 0)
+  let parts ← sumPartsWithLets scrutineeResult.fst
+  let lets := parts.fst
+  let tag := parts.snd.fst
+  let leftPayload := parts.snd.snd.fst
+  let rightPayload := parts.snd.snd.snd
+  let (leftName, leftParams) ←
+    match leftTy with
+    | .recVariant typeName typeParams => .ok (typeName, typeParams)
+    | _ => .error s!"unsupported well-founded Nat left member type: {name}"
+  let (rightName, rightParams) ←
+    match rightTy with
+    | .recVariant typeName typeParams => .ok (typeName, typeParams)
+    | _ => .error s!"unsupported well-founded Nat right member type: {name}"
+  let leftBody ←
+    match collectLambdas leftArm 2 with
+    | some body => .ok body
+    | none => .error s!"unsupported well-founded Nat recursion left arm: {name}"
+  let leftResult ←
+    match extractWellFoundedNatMemberBranch ctx name params leftName leftParams leftPayload
+        scrutineeResult.snd leftBody with
+    | .ok result => .ok result
+    | .error error => .error s!"while extracting well-founded Nat left arm for {name}: {error}"
+  let rightBody ←
+    match collectLambdas rightArm 2 with
+    | some body => .ok body
+    | none => .error s!"unsupported well-founded Nat recursion right arm: {name}"
+  let rightResult ←
+    match extractWellFoundedNatMemberBranch ctx name params rightName rightParams rightPayload
+        leftResult.snd rightBody with
+    | .ok result => .ok result
+    | .error error => .error s!"while extracting well-founded Nat right arm for {name}: {error}"
+  let resultValue := wrapValueLets lets (← valueIte (.eqU64 tag (.u64 0)) leftResult.fst rightResult.fst)
+  let useAbi := exportName.isSome
+  let resultCount := resultSlotCount useAbi resultTy
+  let resultTargets := (List.range resultCount).map (fun offset => rightResult.snd + offset)
+  let resultBody ← materializeResultValue useAbi resultTy resultTargets resultValue
+  .ok {
+    sourceName := name,
+    exportName := exportName,
+    params := wasmParamCount,
+    locals := rightResult.snd + resultCount,
     body := resultBody,
     results := resultTargets.map LeanExe.IR.Expr.local
   }
@@ -8870,6 +9137,15 @@ def extractFunction
         extractNatRecFunc ctx name sig.params sig.result value exportName
       else
         extractPlainFunc ctx name sig.params sig.result value exportName
+  | .sum _ _ :: _ =>
+      if containsConstantInExpr ``WellFounded.Nat.fix value then
+        match extractWellFoundedNatSumFunc ctx name sig.params sig.result value exportName with
+        | .ok func => .ok func
+        | .error error => .error s!"while extracting well-founded Nat recursion: {error}"
+      else
+        match extractPlainFunc ctx name sig.params sig.result value exportName with
+        | .ok func => .ok func
+        | .error error => .error s!"while extracting plain function: {error}"
   | .recVariant typeName typeParams :: _ =>
       if containsConstantInExpr (brecOnName typeName) value then
         match extractStructuralRecFunc ctx name sig.params typeName typeParams sig.result value exportName with

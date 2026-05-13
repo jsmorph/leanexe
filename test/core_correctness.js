@@ -459,6 +459,8 @@ const accepted = [
   { name: "mutualJsonObjectDemo", args: [], expected: 60n },
   { name: "mutualWrappedFieldArrayDemo", args: [], expected: 55n },
   { name: "mutualTaggedArrayFindDemo", args: [], expected: 102n },
+  { name: "mutualStructuralJsonSizeDemo", args: [], expected: 10n },
+  { name: "mutualStructuralFieldSizeDemo", args: [], expected: 11n },
   { name: "optionSomeMatch", args: [], expected: 8n },
   { name: "optionSomeFirstMatch", args: [], expected: 8n },
   { name: "optionNoneMatchSkipsSomeArm", args: [], expected: 5n },

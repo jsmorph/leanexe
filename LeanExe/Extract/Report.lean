@@ -102,8 +102,7 @@ def tyText : Ty → String
   | .byteArray => "ByteArray"
   | .array item => s!"Array {tyText item}"
   | .product left right => s!"({tyText left} × {tyText right})"
-  | .sum .unit payload => s!"Option {tyText payload}"
-  | .sum left right => s!"Sum {tyText left} {tyText right}"
+  | .sum left right => s!"PSum {tyText left} {tyText right}"
   | .struct name _ => displayName name
   | .variant name [[], [payload]] =>
       if name == ``Option then s!"Option {tyText payload}" else displayName name
