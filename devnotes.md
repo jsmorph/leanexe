@@ -2718,3 +2718,25 @@ Checks run:
 - [x] `lake build LeanExe.Examples.Correctness`
 - [x] `node test/core_correctness.js` returned `checked 543 accepted, 30 rejected, and 13 trapped cases`.
 - [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 543 accepted, 30 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 46 json program cases`, and `checked 56 cases`.
+
+## 2026-05-13: Layout-driven internal array elements
+
+The extractor now has an explicit `ValueLayout` model for scalar, fixed-width, and pointer-shaped runtime values.  Array element widths come from that layout instead of from a hand-written list of surface types.  Internal arrays can store nested arrays as one pointer slot, products as their flattened slot sequence, and structures or tagged values whose fields include array or recursive pointer slots.
+
+The public array ABI remains conservative.  Entry parameters and results still accept scalar, structure, and tagged fixed-width array elements only when their layouts contain no nested heap references.  The correctness corpus now includes public rejection cases for nested-array parameters, nested-array results, and arrays of structures that contain array fields.
+
+This work exposed an older internal-call layout bug.  Non-exported helper functions now use internal parameter and result layouts, so products and other internal-only multi-slot values can cross real WASM calls without being treated as public ABI values.  The inline decision also checks strict materialization safety for multi-slot arguments, preserving lazy projection behavior when an unused field contains a trapping expression.
+
+Checks run:
+
+- [x] `lake build LeanExe.Extract.Core`
+- [x] `lake build lean-wasm`
+- [x] `lake build LeanExe.Examples.Correctness`
+- [x] `node test/core_correctness.js` returned `checked 550 accepted, 32 rejected, and 13 trapped cases`.
+- [x] `.lake/build/bin/lean-wasm compile --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.nestedArrayMapPushRead --out /tmp/nestedArrayMapPushRead.wasm`
+- [x] `.lake/build/bin/lean-wasm compile --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.arrayBoxElementRead --out /tmp/arrayBoxElementRead.wasm`
+- [x] `.lake/build/bin/lean-wasm compile --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.arrayProductElementRead --out /tmp/arrayProductElementRead.wasm`
+- [x] `build/tools/wasmtime/current/wasmtime run --invoke nestedArrayMapPushRead /tmp/nestedArrayMapPushRead.wasm` returned `299`.
+- [x] `build/tools/wasmtime/current/wasmtime run --invoke arrayBoxElementRead /tmp/arrayBoxElementRead.wasm` returned `223`.
+- [x] `build/tools/wasmtime/current/wasmtime run --invoke arrayProductElementRead /tmp/arrayProductElementRead.wasm` returned `43`.
+- [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 550 accepted, 32 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 46 json program cases`, and `checked 56 cases`.

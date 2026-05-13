@@ -2159,6 +2159,58 @@ def productArrayAlias : UInt64 :=
   let pair := (a, a.set! 0 22)
   pair.2[0]! * (100 : UInt64) + pair.1[0]!
 
+def nestedArrayLiteralRead : UInt64 :=
+  let rows : Array (Array UInt64) := #[#[1, 2], #[3, 4, 5]]
+  let first := rows[0]!
+  let second := rows[1]!
+  first[1]! * (100 : UInt64) + second[2]! * (10 : UInt64) +
+    first.size.toUInt64 + second.size.toUInt64
+
+def nestedArraySetPushRead : UInt64 :=
+  let rows : Array (Array UInt64) := #[#[1], #[2, 3]]
+  let updated := rows.set! 0 ((rows[0]!).push 9)
+  let extended := updated.push #[4, 5, 6]
+  let first := extended[0]!
+  let third := extended[2]!
+  first[1]! * (100 : UInt64) + third.size.toUInt64 * (10 : UInt64) +
+    extended.size.toUInt64
+
+def nestedArrayFoldSizes : UInt64 :=
+  let rows : Array (Array UInt64) := #[#[1, 2], #[], #[3, 4, 5]]
+  rows.foldl (fun acc row => acc + row.size.toUInt64) 0
+
+def nestedArrayMapPushRead : UInt64 :=
+  let rows : Array (Array UInt64) := #[#[1], #[2, 3]]
+  let grown := rows.map (fun row => row.push 9)
+  let first := grown[0]!
+  let second := grown[1]!
+  first.size.toUInt64 * (100 : UInt64) + first[1]! * (10 : UInt64) + second[2]!
+
+def nestedArrayFindRead : UInt64 :=
+  let rows : Array (Array UInt64) := #[#[], #[4, 5], #[6]]
+  match rows.find? (fun row => row.size == 2) with
+  | some row => row[1]!
+  | none => 0
+
+def arrayBoxElementRead : UInt64 :=
+  let boxes : Array ArrayBox :=
+    #[{ values := #[1, 2], count := 2 }, { values := #[3], count := 1 }]
+  match boxes[0]? with
+  | none => 0
+  | some first =>
+      match boxes[1]? with
+      | none => 0
+      | some second =>
+          first.values[1]! * (100 : UInt64) + first.count * (10 : UInt64) +
+            second.values[0]!
+
+def arrayProductElementRead : UInt64 :=
+  let pairs : Array (UInt64 × UInt64) :=
+    #[((1 : UInt64), (2 : UInt64)), ((3 : UInt64), (4 : UInt64))]
+  let swapped := pairs.map (fun pair => (pair.2, pair.1))
+  let pair := swapped[1]!
+  pair.1 * (10 : UInt64) + pair.2
+
 def recLetFuel : Nat → UInt64 → UInt64 → UInt64
   | 0, left, right => combine left right
   | fuel + 1, left, right =>
@@ -3063,6 +3115,12 @@ def byteArrayIdentityReturn (input : ByteArray) : ByteArray :=
 
 def rejectNestedArrayReturn : Array (Array UInt64) :=
   #[#[1, 2]]
+
+def rejectNestedArrayParam (rows : Array (Array UInt64)) : UInt64 :=
+  rows.size.toUInt64
+
+def rejectArrayBoxArrayReturn : Array ArrayBox :=
+  #[{ values := #[1, 2], count := 2 }]
 
 def rejectUInt8Param (b : UInt8) : Bool :=
   b == (0 : UInt8)

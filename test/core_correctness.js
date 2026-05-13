@@ -410,6 +410,13 @@ const accepted = [
   { name: "arrayGetQuestionGetDSkipsDefaultTrap", args: [], expected: 5n },
   { name: "arrayGetQuestionNoneSkipsPayloadTrap", args: [], expected: 5n },
   { name: "productArrayAlias", args: [], expected: 2211n },
+  { name: "nestedArrayLiteralRead", args: [], expected: 255n },
+  { name: "nestedArraySetPushRead", args: [], expected: 933n },
+  { name: "nestedArrayFoldSizes", args: [], expected: 5n },
+  { name: "nestedArrayMapPushRead", args: [], expected: 299n },
+  { name: "nestedArrayFindRead", args: [], expected: 5n },
+  { name: "arrayBoxElementRead", args: [], expected: 223n },
+  { name: "arrayProductElementRead", args: [], expected: 43n },
   { name: "recLetDemo", args: [], expected: 518n },
   { name: "recExitDemo", args: [], expected: 314n },
   { name: "recThenBranchExitDemo", args: [], expected: 13n },
@@ -653,6 +660,14 @@ const rejected = [
   {
     name: "rejectNestedArrayReturn",
     message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectNestedArrayReturn",
+  },
+  {
+    name: "rejectNestedArrayParam",
+    message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectNestedArrayParam",
+  },
+  {
+    name: "rejectArrayBoxArrayReturn",
+    message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectArrayBoxArrayReturn",
   },
   {
     name: "rejectUInt8Param",
