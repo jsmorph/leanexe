@@ -56,7 +56,7 @@ The compiler input is the checked Lean declaration loaded from the built module.
 
 Use explicit `Nat` fuel for loops and recursive algorithms.  The recursive helper should take fuel as its first argument, return a supported value, and make the recursive call in tail position.  This pattern compiles to a WASM loop instead of relying on Lean's full recursion machinery.
 
-Pure `Id.run` `for` loops are also accepted for simple scans over `ByteArray`, fixed-width arrays, and ranges such as `[start:stop]` or `[start:stop:step]`.  The loop state may be a scalar, an array pointer, a product, a structure, a nonrecursive tagged value, or a recursive-inductive pointer value, provided the flattened accumulator contains no `ByteArray` field.  The loop body may update the accumulator, use `continue` to skip the rest of the current iteration, or use `break` to return the current loop state.
+Pure `Id.run` `for` loops are also accepted for simple scans over `ByteArray`, fixed-width arrays, and ranges such as `[start:stop]` or `[start:stop:step]`.  The loop state may be a scalar, an array pointer, a product, a structure, a nonrecursive tagged value, or a recursive-inductive pointer value, provided the flattened accumulator contains no `ByteArray` field.  The loop body may update the accumulator, use `continue` to skip the rest of the current iteration, or use `break` to return the current loop state.  Direct `Array.foldl` and `ByteArray.foldl` use the same accumulator layout for supported direct-lambda folders.
 
 ```lean
 namespace LeanExe.Examples.ReadmeLoop

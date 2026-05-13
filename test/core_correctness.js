@@ -253,6 +253,10 @@ const accepted = [
   { name: "byteArrayFoldSum", args: [], expected: 6n },
   { name: "byteArrayFoldWindow", args: [], expected: 23n },
   { name: "byteArrayFoldEmptySkipsFunctionTrap", args: [], expected: 7n },
+  { name: "byteArrayFoldStructAccumulator", args: [], expected: 36n },
+  { name: "byteArrayFoldProductAccumulator", args: [], expected: 211n },
+  { name: "byteArrayFoldStatusAccumulator", args: [], expected: 24n },
+  { name: "byteArrayFoldArrayAccumulator", args: [], expected: 12n },
   { name: "byteArrayFindIdxSome", args: [], expected: [1n, 1n] },
   { name: "byteArrayFindIdxNone", args: [], expected: [0n, 0n] },
   { name: "byteArrayFindIdxStart", args: [], expected: [1n, 2n] },
@@ -328,6 +332,10 @@ const accepted = [
   { name: "arrayFoldSum", args: [], expected: 6n },
   { name: "arrayFoldWindow", args: [], expected: 23n },
   { name: "arrayFoldEmptySkipsFunctionTrap", args: [], expected: 7n },
+  { name: "arrayFoldStructAccumulator", args: [], expected: 36n },
+  { name: "arrayFoldProductAccumulator", args: [], expected: 39n },
+  { name: "arrayFoldStatusAccumulator", args: [], expected: 6n },
+  { name: "arrayFoldArrayAccumulator", args: [], expected: 1113n },
   { name: "arrayFindIdxSome", args: [], expected: [1n, 1n] },
   { name: "arrayFindIdxNone", args: [], expected: [0n, 0n] },
   { name: "arrayFindIdxStructure", args: [], expected: [1n, 1n] },
@@ -768,6 +776,14 @@ const rejected = [
   {
     name: "rejectIdRangeForByteArrayAccumulator",
     message: "unsupported for-in accumulator type",
+  },
+  {
+    name: "rejectArrayFoldByteArrayAccumulator",
+    message: "unsupported Array.foldl accumulator type",
+  },
+  {
+    name: "rejectByteArrayFoldByteArrayAccumulator",
+    message: "unsupported ByteArray.foldl accumulator type",
   },
 ];
 

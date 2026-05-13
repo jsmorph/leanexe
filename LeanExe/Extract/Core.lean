@@ -5497,6 +5497,165 @@ mutual
                       else
                         .error s!"unsupported for-in collection type: {reprStr forIn.collectionTy}"
             | none => .error "unsupported ForIn.forIn application"
+        | (.const ``Array.foldl _, args) =>
+            match args with
+            | sourceTyExpr :: resultTyExpr :: foldFn :: init :: array :: rest =>
+                let attached? := arrayAttachValue? ctx.env array
+                let sourceTy? :=
+                  match attached? with
+                  | some item => some item.fst
+                  | none => typeAtom? ctx.env sourceTyExpr
+                match sourceTy?, typeAtom? ctx.env resultTyExpr with
+                | some sourceTy, some resultTy =>
+                    if !supportedForInAccumulatorType resultTy then
+                      .error s!"unsupported Array.foldl accumulator type: {reprStr resultTy}"
+                    else
+                      match arrayElementSlots? sourceTy with
+                      | some sourceWidth =>
+                          let arrayExpr :=
+                            match attached? with
+                            | some item => item.snd
+                            | none => array
+                          let arrayResult ← extractExprFrom ctx locals nextLocal arrayExpr
+                          let initResult ← extractValueFrom ctx locals arrayResult.snd init
+                          let startStop ←
+                            match rest with
+                            | [] => .ok ((.u64 0, .arraySize arrayResult.fst), initResult.snd)
+                            | [start] =>
+                                let startResult ← extractExprFrom ctx locals initResult.snd start
+                                .ok ((startResult.fst, .arraySize arrayResult.fst), startResult.snd)
+                            | [start, stop] =>
+                                let startResult ← extractExprFrom ctx locals initResult.snd start
+                                match attached?, arrayAttachSize? ctx.env stop with
+                                | some _, some _ =>
+                                    .ok ((startResult.fst, .arraySize arrayResult.fst), startResult.snd)
+                                | _, _ =>
+                                    let stopResult ← extractExprFrom ctx locals startResult.snd stop
+                                    .ok ((startResult.fst, stopResult.fst), stopResult.snd)
+                            | _ => .error "unsupported Array.foldl application"
+                          let resultWidth := internalSlots resultTy
+                          let initSlots ← flattenInternalValue resultTy initResult.fst
+                          if initSlots.length != resultWidth then
+                            .error "Array.foldl accumulator initial value shape mismatch"
+                          else
+                          let accStart := startStop.snd
+                          let itemStart := accStart + resultWidth
+                          let foldBody ←
+                            match collectLambdas foldFn 2 with
+                            | some body => .ok body
+                            | none => .error "unsupported Array.foldl function"
+                          let itemValue ← arrayLocalValue sourceTy itemStart
+                          let accValue :=
+                            valueFromInternalSlots resultTy
+                              (fun offset => .local (accStart + offset))
+                          let bodyExpr ←
+                            match attached? with
+                            | some _ =>
+                                match arrayMapUnattachBody? foldBody with
+                                | some body => .ok body
+                                | none => .error "unsupported Array.attach fold body"
+                            | none => .ok foldBody
+                          let bodyLocals :=
+                            match attached? with
+                            | some _ =>
+                                .recursor :: .value itemValue :: .recursor ::
+                                  .value accValue :: locals
+                            | none =>
+                                .value itemValue :: .value accValue :: locals
+                          let bodyResult ←
+                            extractValueFrom ctx
+                              bodyLocals
+                              (itemStart + sourceWidth)
+                              bodyExpr
+                          let bodySlots ← flattenInternalValue resultTy bodyResult.fst
+                          if bodySlots.length != resultWidth then
+                            .error "Array.foldl accumulator body value shape mismatch"
+                          else
+                          let resultValue :=
+                            valueFromInternalSlots resultTy
+                              (fun offset =>
+                                .arrayFoldMultiSlot
+                                  sourceWidth
+                                  resultWidth
+                                  arrayResult.fst
+                                  startStop.fst.fst
+                                  startStop.fst.snd
+                                  initSlots
+                                  accStart
+                                  itemStart
+                                  bodySlots
+                                  (.u64 0)
+                                  offset)
+                          .ok (resultValue, bodyResult.snd)
+                      | none => .error s!"unsupported Array.foldl item type: {reprStr sourceTy}"
+                | _, _ => .error "unsupported Array.foldl application"
+            | _ => .error "unsupported Array.foldl application"
+        | (.const ``ByteArray.foldl _, args) =>
+            match args with
+            | resultTyExpr :: foldFn :: init :: array :: rest =>
+                match typeAtom? ctx.env resultTyExpr with
+                | some resultTy =>
+                    if !supportedForInAccumulatorType resultTy then
+                      .error s!"unsupported ByteArray.foldl accumulator type: {reprStr resultTy}"
+                    else
+                      let arrayResult ← extractValueFrom ctx locals nextLocal array
+                      let parts ← byteArrayPartsWithLets arrayResult.fst
+                      let ptr := wrapExprLets parts.fst parts.snd.fst
+                      let len := wrapExprLets parts.fst parts.snd.snd
+                      let initResult ← extractValueFrom ctx locals arrayResult.snd init
+                      let startStop ←
+                        match rest with
+                        | [] => .ok ((.u64 0, len), initResult.snd)
+                        | [start] =>
+                            let startResult ← extractExprFrom ctx locals initResult.snd start
+                            .ok ((startResult.fst, len), startResult.snd)
+                        | [start, stop] =>
+                            let startResult ← extractExprFrom ctx locals initResult.snd start
+                            let stopResult ← extractExprFrom ctx locals startResult.snd stop
+                            .ok ((startResult.fst, stopResult.fst), stopResult.snd)
+                        | _ => .error "unsupported ByteArray.foldl application"
+                      let resultWidth := internalSlots resultTy
+                      let initSlots ← flattenInternalValue resultTy initResult.fst
+                      if initSlots.length != resultWidth then
+                        .error "ByteArray.foldl accumulator initial value shape mismatch"
+                      else
+                      let accStart := startStop.snd
+                      let byteSlot := accStart + resultWidth
+                      let body ←
+                        match collectLambdas foldFn 2 with
+                        | some body => .ok body
+                        | none => .error "unsupported ByteArray.foldl function"
+                      let accValue :=
+                        valueFromInternalSlots resultTy
+                          (fun offset => .local (accStart + offset))
+                      let bodyResult ←
+                        extractValueFrom ctx
+                          (.value (.scalar (.local byteSlot)) ::
+                            .value accValue :: locals)
+                          (byteSlot + 1)
+                          body
+                      let bodySlots ← flattenInternalValue resultTy bodyResult.fst
+                      if bodySlots.length != resultWidth then
+                        .error "ByteArray.foldl accumulator body value shape mismatch"
+                      else
+                      let resultValue :=
+                        valueFromInternalSlots resultTy
+                          (fun offset =>
+                            .byteArrayFoldMultiSlot
+                              resultWidth
+                              ptr
+                              len
+                              startStop.fst.fst
+                              startStop.fst.snd
+                              initSlots
+                              accStart
+                              byteSlot
+                              bodySlots
+                              (.u64 0)
+                              offset)
+                      .ok (resultValue, bodyResult.snd)
+                | none => .error "unsupported ByteArray.foldl result type"
+            | _ => .error "unsupported ByteArray.foldl application"
         | (.const ``Id.run _, args) =>
             match args.reverse with
             | value :: _ => extractValueFrom ctx locals nextLocal value
