@@ -1,6 +1,6 @@
-## Plan: Verified Lean-to-Wasm Extraction Compiler
+## Plan: Verified Lean-to-WASM Extraction Compiler
 
-Build a compiler that takes **checked Lean definitions** from a restricted executable subset and emits **portable WebAssembly**.  The goal is not to replace Lean’s general compiler.  The goal is to compile selected Lean programs, especially parsers, validators, serializers, protocol checkers, and finite decision procedures, into small Wasm modules with a clear correctness story.
+Build a compiler that takes **checked Lean definitions** from a restricted executable subset and emits **portable WebAssembly**.  The goal is not to replace Lean’s general compiler.  The goal is to compile selected Lean programs, especially parsers, validators, serializers, protocol checkers, and finite decision procedures, into small WASM modules with a clear correctness story.
 
 The central claim should be:
 
@@ -10,7 +10,7 @@ theorem compile_correct :
     WasmModel.run (compile f) input = f input
 ```
 
-This theorem may initially target an internal Wasm-like IR rather than raw Wasm, but the architecture should preserve the path toward direct Wasm validation.
+This theorem may initially target an internal WASM-like IR rather than raw WASM, but the architecture should preserve the path toward direct WASM validation.
 
 ## Scope
 
@@ -62,17 +62,17 @@ The next work should broaden ordinary programming support while keeping extracti
 | ----- | ---- | ------- | ------------------- |
 | 1 | Monomorphic, nonrecursive user inductives | Add source-identified sum types with constructors, proof-erased constructor fields, and generated matcher support | Constructors, pattern matches, ignored-payload laziness, proof-field erasure, and returned tagged values pass Lean-versus-Wasmtime tests |
 | 2 | Unified sum representation | Replace special-case `Option` and `Except` handling with the same source-identified inductive path | `Option`, `Except`, and user-defined sums no longer share anonymous runtime shapes, and `Except Unit α` works when payload types are supported |
-| 3 | Tagged result ABI | Let exported functions return supported inductives rather than forcing traps or ad hoc scalar encodings | The Wasm ABI documents tags, payload layout, multi-value flattening, and host decoding for supported sums |
+| 3 | Tagged result ABI | Let exported functions return supported inductives rather than forcing traps or ad hoc scalar encodings | The WASM ABI documents tags, payload layout, multi-value flattening, and host decoding for supported sums |
 | 4 | Structured parameters | Accept supported structures and small inductives as entry parameters | The ABI flattens input records and tagged sums in source order, with exact rejection reasons for unsupported fields |
 | 5 | Arrays with richer elements | Extend `Array` beyond `Array UInt64` to supported scalar, structure, and small-inductive element types | One-cell scalar arrays are specified and tested; structure and small-inductive arrays have fixed-width literal, replication, read, safe-read, default-read, write, modification, mapping, push, pop, append, extract, insertion, erasure, swapping, reversal, and returned-pointer support |
-| 6 | Internal recursive inductives | Add self-recursive data values and monomorphic recursive instances with arena pointers at strict boundaries | Constructors, matches, branch values, helper values, a fuel-recursive list traversal, direct structural traversal over one or more direct recursive fields, generated `Array`-child traversal, ordinary `List UInt64` construction and traversal, explicit and top-level closed `List.foldl`, closed structural predicates such as direct `List.any` and `List.all`, and limited direct-lambda `List` library calls pass WASM tests; public recursive ABI, mutual recursion, arbitrary well-founded recursion, broader hidden carried arguments, broader `List` APIs, and GC remain planned |
+| 6 | Internal recursive inductives | Add self-recursive data values and monomorphic recursive instances with arena pointers at strict boundaries | Constructors, matches, branch values, helper values, a fuel-recursive list traversal, direct structural traversal over one or more direct recursive fields, source-defined list helpers that return recursive values, generated `Array`-child traversal, ordinary `List UInt64` construction and traversal, explicit and top-level closed `List.foldl`, closed structural predicates such as direct `List.any` and `List.all`, and limited direct-lambda `List` library calls pass WASM tests; public recursive ABI, mutual recursion, arbitrary well-founded recursion, broader hidden carried arguments, broader expression-position `List` APIs, and GC remain planned |
 | 7 | Broader recursion shapes | Expand beyond the current fuel-tail-recursion form to structural recursion over arrays and simple inductives | Accepted recursion shapes have exact syntactic and semantic checks, with tests for non-tail rejection and Lean-equivalent execution |
 | 8 | Owned byte output and strings | Add owned `ByteArray` results before admitting runtime `String` | First byte-output slices are implemented for `ByteArray.empty`, `ByteArray.mk` from `Array UInt8`, `ByteArray.push`, `ByteArray.append`, proof-indexed `ByteArray.set`, trapping `ByteArray.set!`, `ByteArray.copySlice`, `ByteArray.toUInt64LE!`, `ByteArray.toUInt64BE!`, scalar-accumulator `ByteArray.foldl`, `ByteArray.findIdx?`, byte-array slices, pointer-length results, and restricted compile-time ASCII `String` expressions consumed by `toUTF8`, `length`, `isEmpty`, and equality.  Runtime `String`, UTF-8 decoding, and broader byte-array operations remain planned. |
-| 9 | Restricted `IO` | Add explicit host imports for small byte-oriented effects after pure output is stable | The IR represents each effect explicitly, the Wasm module declares its imports, and hidden runtime access remains rejected |
+| 9 | Restricted `IO` | Add explicit host imports for small byte-oriented effects after pure output is stable | The IR represents each effect explicitly, the WASM module declares its imports, and hidden runtime access remains rejected |
 
 Correctness remains the gate for each expansion.  Each feature must update `spec.md`, add accepted and rejected examples, compare Lean execution with Wasmtime for representative programs, and keep rejection reasons exact.  Features that require unresolved ABI or memory-layout decisions should stay planned until those decisions are written down.
 
-Current progress: the first implementation slice for monomorphic, nonrecursive user inductives now supports constructors, generated matcher extraction, proof-erased constructor fields, nullary enums, local helper values, branch-selected values, exported tagged results, and flattened tagged entry parameters.  Monomorphic self-recursive inductives now work as internal values with lazy local constructors and arena pointers at strict boundaries; the correctness corpus covers a source-defined `UInt64` list, nested matches, branch-selected recursive values, a fuel-recursive traversal, direct structural recursion over list-shaped and branching constructors, an expression-AST evaluator, and recursive tree descent through an `Array` child field.  The recursive-inductive representation now also carries concrete runtime type parameters, so ordinary `List UInt64` construction, matching, helper calls, direct structural recursion, generated `Array.attach` fold recursion, explicit-accumulator `List.foldl` helpers, top-level closed `List.foldl` bodies with one hidden accumulator, closed structural predicates for direct `List.any` and `List.all`, and monomorphic helper calls to `List.map`, `List.filter`, `List.find?`, and `List.any` compile through the same heap-recursive path when callbacks are direct lambdas and results are first-order values.  `Option` and `Except` now use source-identified internal representations, so `Except Unit α` works for supported payloads and neither built-in sum shares an anonymous runtime shape.  Public `Option` and `Except` parameters and results use the same tagged multi-value ABI as user-defined inductives.  Arrays now cover one-cell scalar element types and a fixed-width multi-slot layout for monomorphic structures and small tagged values, including copy-on-write replication, reads, default reads, writes, modifications, mapping, scalar-accumulator folds, `find?`, `findIdx?`, `any`, `all`, `filter`, pushes, pops, appends, extracts, insertions, erasures, swaps, and reversals.  Pure `Id.run` `for` loops over `ByteArray`, fixed-width arrays, and `Std.Legacy.Range` now carry supported structured, tagged, product, array-pointer, and recursive-pointer accumulators when the accumulator contains no `ByteArray` field, and those loops support `break`, `continue`, and conditional skip-or-exit forms before later assignments in the same loop body.  The restricted Nat-fuel recursion path now carries and returns supported structures and tagged values, not only scalar values, and it can carry recursive inductive pointers for traversal.  Its recursive step may stage computations through local `let` bindings before the tail call or before the immediate tail-call `if`, and the correctness corpus now includes a byte parser that carries cursor state in a structure.  `ByteArray` parameters and results use a pointer-length ABI; `ByteArray.empty`, `ByteArray.mk` from `Array UInt8`, slices, copy-on-write `push`, copy-on-write `append`, append notation, proof-indexed copy-on-write `set`, trapping copy-on-write `set!`, value-level `copySlice`, fixed-width `UInt64` decoding, scalar-accumulator `foldl`, and `findIdx?` support small byte-output and byte-processing programs in the arena memory model.  `AsciiString` now has bytewise equality, prefix testing, and byte-containment helpers in addition to validation, indexing, append, and extract.  The integer-map example now uses a `Slot` structure and `Table` structure over `Array Slot`, and the regression harness runs it with Wasmtime.
+Current progress: the first implementation slice for monomorphic, nonrecursive user inductives now supports constructors, generated matcher extraction, proof-erased constructor fields, nullary enums, local helper values, branch-selected values, exported tagged results, and flattened tagged entry parameters.  Monomorphic self-recursive inductives now work as internal values with lazy local constructors and arena pointers at strict boundaries; the correctness corpus covers a source-defined `UInt64` list, nested matches, branch-selected recursive values, a fuel-recursive traversal, direct structural recursion over list-shaped and branching constructors, source-defined `List UInt64` helpers for length, append, reverse, and fold-right-style traversals, an expression-AST evaluator, and recursive tree descent through an `Array` child field.  The recursive-inductive representation now also carries concrete runtime type parameters, so ordinary `List UInt64` construction, matching, helper calls, direct structural recursion, generated `Array.attach` fold recursion, explicit-accumulator `List.foldl` helpers, top-level closed `List.foldl` bodies with one hidden accumulator, closed structural predicates for direct `List.any` and `List.all`, and monomorphic helper calls to `List.map`, `List.filter`, `List.find?`, and `List.any` compile through the same heap-recursive path when callbacks are direct lambdas and results are first-order values.  Direct expression-position standard `List.map`, `List.filter`, `List.length`, list append notation, `List.reverse`, and `List.foldr` are recorded as rejected cases until expression-position structural recursion has a principled lowering.  `Option` and `Except` now use source-identified internal representations, so `Except Unit α` works for supported payloads and neither built-in sum shares an anonymous runtime shape.  Public `Option` and `Except` parameters and results use the same tagged multi-value ABI as user-defined inductives.  Arrays now cover one-cell scalar element types and a fixed-width multi-slot layout for monomorphic structures and small tagged values, including copy-on-write replication, reads, default reads, writes, modifications, mapping, scalar-accumulator folds, `find?`, `findIdx?`, `any`, `all`, `filter`, pushes, pops, appends, extracts, insertions, erasures, swaps, and reversals.  Pure `Id.run` `for` loops over `ByteArray`, fixed-width arrays, and `Std.Legacy.Range` now carry supported structured, tagged, product, array-pointer, and recursive-pointer accumulators when the accumulator contains no `ByteArray` field, and those loops support `break`, `continue`, and conditional skip-or-exit forms before later assignments in the same loop body.  The restricted Nat-fuel recursion path now carries and returns supported structures and tagged values, not only scalar values, and it can carry recursive inductive pointers for traversal.  Its recursive step may stage computations through local `let` bindings before the tail call or before the immediate tail-call `if`, and the correctness corpus now includes a byte parser that carries cursor state in a structure.  `ByteArray` parameters and results use a pointer-length ABI; `ByteArray.empty`, `ByteArray.mk` from `Array UInt8`, slices, copy-on-write `push`, copy-on-write `append`, append notation, proof-indexed copy-on-write `set`, trapping copy-on-write `set!`, value-level `copySlice`, fixed-width `UInt64` decoding, scalar-accumulator `foldl`, and `findIdx?` support small byte-output and byte-processing programs in the arena memory model.  `AsciiString` now has bytewise equality, prefix testing, and byte-containment helpers in addition to validation, indexing, append, and extract.  The integer-map example now uses a `Slot` structure and `Table` structure over `Array Slot`, and the regression harness runs it with Wasmtime.
 
 ## Go-level expressiveness milestone
 
@@ -121,7 +121,7 @@ erased/proof-free representation
 
 ### 2. Extractable core IR
 
-Define a small typed IR in Lean.  It should be closer to a first-order functional language than to Wasm at first.
+Define a small typed IR in Lean.  It should be closer to a first-order functional language than to WASM at first.
 
 It should contain:
 
@@ -153,7 +153,7 @@ data-layout selection
 
 Each pass should either be small enough to prove correct or designed for translation validation.
 
-### 4. Wasm-shaped IR
+### 4. WASM-shaped IR
 
 Lower the typed core IR into a structured-control IR close to WebAssembly.  This IR should model:
 
@@ -170,7 +170,7 @@ calls
 imports and exports
 ```
 
-Avoid modeling the whole Wasm ecosystem.  Model only the Wasm subset the compiler emits.
+Avoid modeling the whole WASM ecosystem.  Model only the WASM subset the compiler emits.
 
 ### 5. Memory model
 
@@ -194,12 +194,12 @@ Later options:
 region allocation
 escape-analysis-driven stack allocation
 reference counting
-Wasm GC, only after the core compiler is stable
+WASM GC, only after the core compiler is stable
 ```
 
-### 6. Wasm emitter
+### 6. WASM emitter
 
-Emit a `.wasm` module from the Wasm-shaped IR.  The initial host ABI should be minimal.
+Emit a `.wasm` module from the WASM-shaped IR.  The initial host ABI should be minimal.
 
 Example exports:
 
@@ -227,7 +227,7 @@ For generated modules:
 
 ```text
 run Lean source function on input
-run Wasm module on same input
+run WASM module on same input
 compare outputs
 fuzz inputs
 run regression corpus
@@ -261,9 +261,9 @@ theorem loop_lowering_correct
 
 When proof cost is too high, use translation validation: the pass emits a certificate that Lean checks.
 
-### Stage 4: Wasm model correctness
+### Stage 4: WASM model correctness
 
-Define a Lean model of the emitted Wasm subset.  Prove that lowering from the Wasm-shaped IR to the Wasm model preserves behavior.
+Define a Lean model of the emitted WASM subset.  Prove that lowering from the WASM-shaped IR to the WASM model preserves behavior.
 
 Target theorem:
 
@@ -285,9 +285,9 @@ The remaining trusted base is then:
 
 ```text
 Lean kernel and axioms used
-formal semantics of the modeled Wasm subset
-Wasm emitter correctness, unless separately verified
-actual Wasm runtime compliance
+formal semantics of the modeled WASM subset
+WASM emitter correctness, unless separately verified
+actual WASM runtime compliance
 host ABI correctness
 hardware and operating system
 ```
@@ -314,9 +314,9 @@ Deliverables:
 ```text
 Lean source validator
 extraction report
-generated Wasm module
+generated WASM module
 host runner
-fuzz harness comparing Lean and Wasm
+fuzz harness comparing Lean and WASM
 initial core IR semantics
 first proof sketches or completed proofs for proof erasure and pattern-match lowering
 ```
@@ -334,10 +334,10 @@ Add simple inductive outputs, structured results, arena-allocated ASTs, and poin
 Deliverables:
 
 ```text
-Wasm AST layout
+WASM AST layout
 host decoder
 round-trip tests
-Lean/Wasm differential tests
+Lean/WASM differential tests
 translation certificate for selected examples
 ```
 
@@ -349,7 +349,7 @@ Deliverables:
 
 ```text
 formal semantics for core IR
-formal semantics for emitted Wasm subset or Wasm-shaped IR
+formal semantics for emitted WASM subset or WASM-shaped IR
 proved extraction correctness for accepted first-order definitions
 proved lowering correctness for pattern matches, calls, constructors, projections, and loops
 one end-to-end compile_correct theorem for a real validator
@@ -361,16 +361,16 @@ Keep the accepted language small.  The compiler’s strength is a narrow semanti
 
 Reject unsupported code precisely.  A useful failure mode is better than unsound generated code.
 
-Avoid the Lean runtime in the Wasm output.  The output should be a small, standalone module with explicit memory and host ABI.
+Avoid the Lean runtime in the WASM output.  The output should be a small, standalone module with explicit memory and host ABI.
 
 Prefer byte-oriented APIs first.  Strings, Unicode, arbitrary maps, and rich standard-library behavior can wait.
 
-Keep the generated Wasm deterministic.  Avoid host nondeterminism unless explicitly modeled.
+Keep the generated WASM deterministic.  Avoid host nondeterminism unless explicitly modeled.
 
-Use Wasm as the semantic target, not as a disguised runtime for arbitrary Lean objects.
+Use WASM as the semantic target, not as a disguised runtime for arbitrary Lean objects.
 
 ## Summary
 
 The project should be handed off as:
 
-**Build a restricted, verification-oriented Lean-to-Wasm extractor.  Use Lean for parsing, elaboration, type checking, and proofs.  Accept only a closed first-order executable subset.  Erase proofs, specialize definitions, lower to a small typed IR, then to a modeled Wasm subset with arena allocation.  Start with byte-array validators and parsers.  Provide differential testing immediately and build toward a composed theorem showing that the Wasm model computes the same function as the checked Lean source.**
+**Build a restricted, verification-oriented Lean-to-WASM extractor.  Use Lean for parsing, elaboration, type checking, and proofs.  Accept only a closed first-order executable subset.  Erase proofs, specialize definitions, lower to a small typed IR, then to a modeled WASM subset with arena allocation.  Start with byte-array validators and parsers.  Provide differential testing immediately and build toward a composed theorem showing that the WASM model computes the same function as the checked Lean source.**
