@@ -900,6 +900,32 @@ def mutualTaggedArrayFindDemo : UInt64 :=
   | none => 0
   | some slot => mutJsonSlotScore slot
 
+mutual
+def mutJsonDeepSize : MutJson → UInt64
+  | .null => 1
+  | .num _value => 1
+  | .arr items => items.foldl (fun acc item => acc + mutJsonDeepSize item) 1
+  | .obj fields => fields.foldl (fun acc field => acc + mutFieldDeepSize field) 1
+
+def mutFieldDeepSize : MutField → UInt64
+  | .mk key value => key + mutJsonDeepSize value
+end
+
+def mutualStructuralJsonSizeDemo : UInt64 :=
+  mutJsonDeepSize
+    (MutJson.obj #[
+      MutField.mk 2 (MutJson.num 7),
+      MutField.mk 3 (MutJson.arr #[MutJson.null, MutJson.num 5])
+    ])
+
+def mutualStructuralFieldSizeDemo : UInt64 :=
+  mutFieldDeepSize
+    (MutField.mk 4
+      (MutJson.obj #[
+        MutField.mk 1 MutJson.null,
+        MutField.mk 2 (MutJson.arr #[MutJson.num 8])
+      ]))
+
 def rejectRecursiveInductiveParam (xs : U64List) : UInt64 :=
   u64ListHeadOrZero xs
 

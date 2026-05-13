@@ -2631,7 +2631,7 @@ Checks run:
 
 ## 2026-05-13: Internal mutual recursive inductives
 
-Recursive-inductive layout classification now uses Lean's `InductiveVal.all` family list.  A field inside a recursive family may refer to any member of the same specialized family, so a `MutJson` constructor can store an `Array MutField`, and a `MutField` constructor can store a `MutJson`.  Each family member still lowers to the existing one-slot heap-pointer representation at strict boundaries.  Public entry parameters and results still reject recursive-family values, and mutual structural recursion and mutual recursive helper functions remain outside the accepted language.
+Recursive-inductive layout classification now uses Lean's `InductiveVal.all` family list.  A field inside a recursive family may refer to any member of the same specialized family, so a `MutJson` constructor can store an `Array MutField`, and a `MutField` constructor can store a `MutJson`.  Each family member still lowers to the existing one-slot heap-pointer representation at strict boundaries.  At this point, public entry parameters and results still rejected recursive-family values, and mutual structural recursion and mutual recursive helper functions remained outside the accepted language.
 
 The correctness corpus now includes a `MutJson` and `MutField` pair, direct array construction over `MutJson`, object-like arrays over `MutField`, a structure wrapper around `MutField`, a tagged wrapper around `MutJson`, and public ABI rejection cases for both family members and arrays of family members.  Sparse constructor matches still lower to generated helpers outside the current matcher path, so the accepted examples use exhaustive matches.
 
@@ -2650,3 +2650,21 @@ Checks run:
 - [x] `build/tools/wasmtime/current/wasmtime --invoke mutualTaggedArrayFindDemo /tmp/mutualTaggedArrayFindDemo.wasm` returned `102`.
 - [x] `node test/core_correctness.js` returned `checked 517 accepted, 30 rejected, and 13 trapped cases`.
 - [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 517 accepted, 30 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 46 json program cases`, and `checked 56 cases`.
+
+## 2026-05-13: Two-branch mutual structural recursion
+
+Ordinary two-function mutual structural recursion over two members of the same recursive family now compiles through Lean's generated `WellFounded.Nat.fix` helper over `PSum`.  The extractor treats `PSum` as an internal sum layout, compiles the generated mutual helper as an internal function with tag-plus-payload parameters, and consumes the hidden well-founded binder in each member's generated constructor matcher.  Recursive calls inside those constructor arms use the same well-founded handle, including calls inside fixed-width `Array.attach` folds over family members.
+
+The correctness corpus now includes `mutJsonDeepSize` and `mutFieldDeepSize`, which traverse `MutJson` and `MutField` through both direct fields and arrays.  The supported shape is still narrow: it covers the binary `PSum` helper that Lean generates for ordinary two-function mutual definitions.  Broader mutual groups, non-family `PSum` recursion, public recursive values, and arbitrary well-founded recursion remain outside the accepted language.
+
+Checks run:
+
+- [x] `lake build LeanExe.Extract.Core`
+- [x] `lake build lean-wasm`
+- [x] `lake build LeanExe.Examples.Correctness`
+- [x] `.lake/build/bin/lean-wasm compile --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.mutualStructuralJsonSizeDemo --out /tmp/mutualStructuralJsonSizeDemo.wasm`
+- [x] `.lake/build/bin/lean-wasm compile --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.mutualStructuralFieldSizeDemo --out /tmp/mutualStructuralFieldSizeDemo.wasm`
+- [x] `build/tools/wasmtime/current/wasmtime --invoke mutualStructuralJsonSizeDemo /tmp/mutualStructuralJsonSizeDemo.wasm` returned `10`.
+- [x] `build/tools/wasmtime/current/wasmtime --invoke mutualStructuralFieldSizeDemo /tmp/mutualStructuralFieldSizeDemo.wasm` returned `11`.
+- [x] `node test/core_correctness.js` returned `checked 519 accepted, 30 rejected, and 13 trapped cases`.
+- [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 519 accepted, 30 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 46 json program cases`, and `checked 56 cases`.
