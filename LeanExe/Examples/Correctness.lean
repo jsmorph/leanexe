@@ -742,6 +742,25 @@ inductive ExprSlot where
   | empty : ExprSlot
   | filled : UInt64 → U64Expr → ExprSlot
 
+mutual
+inductive MutJson where
+  | null : MutJson
+  | num : UInt64 → MutJson
+  | arr : Array MutJson → MutJson
+  | obj : Array MutField → MutJson
+
+inductive MutField where
+  | mk : UInt64 → MutJson → MutField
+end
+
+structure MutFieldBox where
+  field : MutField
+  salt : UInt64
+
+inductive MutJsonSlot where
+  | missing : MutJsonSlot
+  | present : MutJson → MutJsonSlot
+
 def u64TreeFirstChildHead (tree : U64Tree) : UInt64 :=
   match tree with
   | .leaf value => value
@@ -824,6 +843,63 @@ def recursiveTaggedArrayFindDemo : UInt64 :=
   | none => 0
   | some slot => exprSlotScore slot
 
+def mutJsonShallowScore : MutJson → UInt64
+  | .null => 0
+  | .num value => value
+  | .arr items => items.size.toUInt64
+  | .obj fields => fields.size.toUInt64
+
+def mutFieldScore : MutField → UInt64
+  | .mk key value => key * 10 + mutJsonShallowScore value
+
+def mutJsonObjectScore : MutJson → UInt64
+  | .obj fields => fields.foldl (fun acc field => acc + mutFieldScore field) 1
+  | .null => 0
+  | .num value => value
+  | .arr items => items.size.toUInt64
+
+def mutualJsonArrayDemo : UInt64 :=
+  match MutJson.arr #[MutJson.num 3, MutJson.obj #[MutField.mk 4 MutJson.null]] with
+  | .arr items => items.foldl (fun acc item => acc + mutJsonShallowScore item) 0
+  | .null => 0
+  | .num value => value
+  | .obj fields => fields.size.toUInt64
+
+def mutualJsonObjectDemo : UInt64 :=
+  mutJsonObjectScore
+    (MutJson.obj #[
+      MutField.mk 2 (MutJson.num 7),
+      MutField.mk 3 (MutJson.arr #[MutJson.null, MutJson.num 5])
+    ])
+
+def mutFieldBoxScore (box : MutFieldBox) : UInt64 :=
+  box.salt + mutFieldScore box.field
+
+def mutualWrappedFieldArrayDemo : UInt64 :=
+  let boxes : Array MutFieldBox :=
+    #[
+      { field := MutField.mk 1 (MutJson.num 2), salt := 5 },
+      { field := MutField.mk 3 (MutJson.arr #[MutJson.null]), salt := 7 }
+    ]
+  boxes.foldl (fun acc box => acc + mutFieldBoxScore box) 0
+
+def mutJsonSlotScore : MutJsonSlot → UInt64
+  | .missing => 0
+  | .present value => 100 + mutJsonShallowScore value
+
+def mutualTaggedArrayFindDemo : UInt64 :=
+  let slots : Array MutJsonSlot :=
+    #[
+      MutJsonSlot.missing,
+      MutJsonSlot.present (MutJson.obj #[MutField.mk 1 MutJson.null, MutField.mk 2 (MutJson.num 3)])
+    ]
+  match slots.find? (fun slot =>
+    match slot with
+    | .missing => false
+    | .present value => mutJsonShallowScore value == 2) with
+  | none => 0
+  | some slot => mutJsonSlotScore slot
+
 def rejectRecursiveInductiveParam (xs : U64List) : UInt64 :=
   u64ListHeadOrZero xs
 
@@ -841,6 +917,18 @@ def rejectRecursiveStructParam (box : ExprBox) : UInt64 :=
 
 def rejectRecursiveTaggedParam (slot : ExprSlot) : UInt64 :=
   exprSlotScore slot
+
+def rejectMutualJsonParam (json : MutJson) : UInt64 :=
+  mutJsonObjectScore json
+
+def rejectMutualFieldParam (field : MutField) : UInt64 :=
+  mutFieldScore field
+
+def rejectMutualJsonReturn : MutJson :=
+  MutJson.num 1
+
+def rejectMutualFieldArrayReturn : Array MutField :=
+  #[MutField.mk 1 MutJson.null]
 
 def unitArgHelper (_value : Unit) : UInt64 :=
   11

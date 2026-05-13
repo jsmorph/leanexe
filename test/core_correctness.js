@@ -455,6 +455,10 @@ const accepted = [
   { name: "recursiveStructArrayFoldDemo", args: [], expected: 24n },
   { name: "recursiveTaggedPayloadDemo", args: [], expected: 17n },
   { name: "recursiveTaggedArrayFindDemo", args: [], expected: 19n },
+  { name: "mutualJsonArrayDemo", args: [], expected: 4n },
+  { name: "mutualJsonObjectDemo", args: [], expected: 60n },
+  { name: "mutualWrappedFieldArrayDemo", args: [], expected: 55n },
+  { name: "mutualTaggedArrayFindDemo", args: [], expected: 102n },
   { name: "optionSomeMatch", args: [], expected: 8n },
   { name: "optionSomeFirstMatch", args: [], expected: 8n },
   { name: "optionNoneMatchSkipsSomeArm", args: [], expected: 5n },
@@ -691,6 +695,22 @@ const rejected = [
   {
     name: "rejectRecursiveTaggedParam",
     message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectRecursiveTaggedParam",
+  },
+  {
+    name: "rejectMutualJsonParam",
+    message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectMutualJsonParam",
+  },
+  {
+    name: "rejectMutualFieldParam",
+    message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectMutualFieldParam",
+  },
+  {
+    name: "rejectMutualJsonReturn",
+    message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectMutualJsonReturn",
+  },
+  {
+    name: "rejectMutualFieldArrayReturn",
+    message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectMutualFieldArrayReturn",
   },
   {
     name: "rejectHigherOrder",

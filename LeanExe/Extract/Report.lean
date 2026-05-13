@@ -279,7 +279,9 @@ def classifyLocal (env : Environment) (info : ConstantInfo) : Classification :=
       status := "reported",
       reason := "generated match helper; supported matcher and recursion patterns consume it during extraction"
     }
-  else if LeanExe.Extract.Core.anyVariantLayout? env info.name |>.isSome then
+  else if LeanExe.Extract.Core.recursiveVariantLayout? env info.name |>.isSome then
+    { status := "implemented", reason := "source-identified recursive inductive in the generic compiler fragment" }
+  else if LeanExe.Extract.Core.variantLayout? env info.name |>.isSome then
     { status := "implemented", reason := "source-identified user inductive in the generic compiler fragment" }
   else if
       match info with

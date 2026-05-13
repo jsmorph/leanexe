@@ -265,6 +265,22 @@ def userRecursiveInductiveInfo? (env : Environment) (typeName : Name) : Option I
           none
     | _ => none
 
+def recursiveFamilyNames? (env : Environment) (typeName : Name) (params : List Ty) :
+    Option (List Name) := do
+  let info ← userRecursiveInductiveInfo? env typeName
+  if params.length != info.numParams then
+    none
+  else if info.all.all (fun member =>
+      match userRecursiveInductiveInfo? env member with
+      | some memberInfo =>
+          memberInfo.all == info.all &&
+            memberInfo.numParams == info.numParams &&
+            memberInfo.numIndices == 0
+      | none => false) then
+    some info.all
+  else
+    none
+
 def runtimeTypesFromKinds (kinds : List (Option Ty)) : List Ty :=
   kinds.filterMap id
 
@@ -460,31 +476,31 @@ mutual
 
   partial def typeAtomRecursiveField?
       (env : Environment)
-      (selfName : Name)
-      (selfParams : List Ty)
+      (familyNames : List Name)
+      (familyParams : List Ty)
       (expr : Expr) :
       Option Ty :=
     match appFnArgs expr with
     | (.const ``Array _, [item]) =>
-        typeAtomRecursiveField? env selfName selfParams item |>.map .array
+        typeAtomRecursiveField? env familyNames familyParams item |>.map .array
     | (.const ``Prod _, [left, right]) =>
-        match typeAtomRecursiveField? env selfName selfParams left,
-            typeAtomRecursiveField? env selfName selfParams right with
+        match typeAtomRecursiveField? env familyNames familyParams left,
+            typeAtomRecursiveField? env familyNames familyParams right with
         | some leftTy, some rightTy => some (.product leftTy rightTy)
         | _, _ => none
     | (.const ``Option _, [item]) =>
-        typeAtomRecursiveField? env selfName selfParams item |>.map
+        typeAtomRecursiveField? env familyNames familyParams item |>.map
           (fun itemTy => .variant ``Option [[], [itemTy]])
     | (.const ``Except _, [error, ok]) =>
-        match typeAtomRecursiveField? env selfName selfParams error,
-            typeAtomRecursiveField? env selfName selfParams ok with
+        match typeAtomRecursiveField? env familyNames familyParams error,
+            typeAtomRecursiveField? env familyNames familyParams ok with
         | some errorTy, some okTy => some (.variant ``Except [[errorTy], [okTy]])
         | _, _ => none
     | (.const name _, args) =>
-        if name == selfName then
+        if familyNames.contains name then
           match args.mapM (typeAtom? env) with
           | some params =>
-              if params == selfParams then some (.recVariant selfName selfParams) else none
+              if params == familyParams then some (.recVariant name familyParams) else none
           | none => none
         else
           match typeAtom? env expr with
@@ -499,9 +515,9 @@ mutual
       Option VariantLayout :=
     match userRecursiveInductiveInfo? env typeName with
     | some info =>
-        if params.length != info.numParams then
-          none
-        else
+        match recursiveFamilyNames? env typeName params with
+        | none => none
+        | some familyNames =>
           let ctorLayouts? := info.ctors.mapM fun ctorName =>
             match env.find? ctorName with
             | some (.ctorInfo ctorInfo) =>
@@ -512,7 +528,7 @@ mutual
                         if isProofType? env field then
                           some none
                         else
-                          typeAtomRecursiveField? env typeName params field |>.map some)
+                          typeAtomRecursiveField? env familyNames params field |>.map some)
                         |>.map fun fieldKinds =>
                           ({ name := ctorName, fields := fieldKinds } : VariantCtorLayout)
                   | none => none
