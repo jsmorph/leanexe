@@ -13,8 +13,8 @@ inductive Ty where
   | array (item : Ty)
   | product (left right : Ty)
   | sum (left right : Ty)
-  | struct (name : Lean.Name) (fields : List Ty)
-  | variant (name : Lean.Name) (ctors : List (List Ty))
+  | struct (name : Lean.Name) (params : List Ty) (fields : List Ty)
+  | variant (name : Lean.Name) (params : List Ty) (ctors : List (List Ty))
   | recVariant (name : Lean.Name) (params : List Ty)
   deriving BEq, Repr
 

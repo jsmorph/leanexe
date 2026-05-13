@@ -2688,3 +2688,19 @@ Checks run:
 - [x] `build/tools/wasmtime/current/wasmtime run --invoke mutualStructuralTriCDemo .lake/build/mutual-tri-c.wasm` returned `15`.
 - [x] `node test/core_correctness.js` returned `checked 522 accepted, 30 rejected, and 13 trapped cases`.
 - [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 522 accepted, 30 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 46 json program cases`, and `checked 56 cases`.
+
+## 2026-05-13: Concrete parameters for data layouts
+
+User-defined structures and nonrecursive inductives now carry concrete runtime type arguments in the extracted `Ty` representation.  The extractor reconstructs the instantiated Lean type when substituting constructor fields, projection targets, matcher scrutinees, helper parameters, helper results, and array element layouts.  This fixes nested cases such as `ParamResult UInt64 (Box UInt64)`, where rebuilding the type as bare `Box` lost the `UInt64` argument and made constructor payload classification fail.
+
+Lean registered structures now use `isStructure`, while ordinary one-constructor inductives stay on the user-inductive path.  This distinction matters because Lean's `isStructureLike` also returns true for nonrecursive single-constructor inductives with no indices, but only registered structures have field metadata for `getStructureFieldsFlattened`.  The bug surfaced through `CheckedPayload`, a one-constructor inductive with a proof-erased field, which must compile as a tagged value rather than as a structure.
+
+Concrete parametric structures also exposed a dependency-collection boundary around type-class evidence.  `Inhabited Slot` became a supported structure-shaped type once parametric structures were allowed, which pulled the derived `instInhabitedSlot.default` helper into the compiled call graph for array bang indexing.  Evidence carrier types such as `Inhabited`, `BEq`, arithmetic classes, ordering classes, and `GetElem` classes are now rejected as runtime data, so primitive extractors consume their applications without compiling the instance values as ordinary helpers.
+
+Checks run:
+
+- [x] `lake build LeanExe.Extract.Core`
+- [x] `lake build lean-wasm`
+- [x] `lake build LeanExe.Examples.Correctness`
+- [x] `node test/core_correctness.js` returned `checked 537 accepted, 30 rejected, and 13 trapped cases`.
+- [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 537 accepted, 30 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 46 json program cases`, and `checked 56 cases`.

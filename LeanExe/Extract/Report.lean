@@ -103,12 +103,16 @@ def tyText : Ty → String
   | .array item => s!"Array {tyText item}"
   | .product left right => s!"({tyText left} × {tyText right})"
   | .sum left right => s!"PSum {tyText left} {tyText right}"
-  | .struct name _ => displayName name
-  | .variant name [[], [payload]] =>
+  | .struct name [] _ => displayName name
+  | .struct name params _ =>
+      s!"{displayName name} {String.intercalate " " (params.map tyText)}"
+  | .variant name _ [[], [payload]] =>
       if name == ``Option then s!"Option {tyText payload}" else displayName name
-  | .variant name [[error], [ok]] =>
+  | .variant name _ [[error], [ok]] =>
       if name == ``Except then s!"Except {tyText error} {tyText ok}" else displayName name
-  | .variant name _ => displayName name
+  | .variant name [] _ => displayName name
+  | .variant name params _ =>
+      s!"{displayName name} {String.intercalate " " (params.map tyText)}"
   | .recVariant name [] => displayName name
   | .recVariant name params =>
       s!"{displayName name} {String.intercalate " " (params.map tyText)}"

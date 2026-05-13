@@ -276,6 +276,17 @@ structure CheckedPoint where
   value : UInt64
   ok : value = value
 
+structure Box (α : Type) where
+  value : α
+
+structure PairBox (α β : Type) where
+  left : α
+  right : β
+
+structure CheckedBox (α : Type) where
+  value : α
+  ok : True
+
 def structureProjection : UInt64 :=
   let point : Point := { x := (Array.replicate 0 (0 : UInt64)).back!, y := 7 }
   point.y
@@ -348,6 +359,28 @@ def structureCallArgMaterialized : UInt64 :=
 def proofStructureParam (point : CheckedPoint) : UInt64 :=
   point.value + 1
 
+def paramBoxProjection : UInt64 :=
+  let box : Box UInt64 := { value := 41 }
+  box.value + 1
+
+def paramBoxMatch : UInt64 :=
+  match ({ value := 7 } : Box UInt64) with
+  | { value } => value + 1
+
+def paramPairBoxParam (box : PairBox UInt64 Bool) : UInt64 :=
+  if box.right then box.left else 0
+
+def paramBoxReturn (x : UInt64) : Box UInt64 :=
+  { value := x + 1 }
+
+def paramCheckedBoxProjection : UInt64 :=
+  let box : CheckedBox UInt64 := { value := 8, ok := True.intro }
+  box.value + 1
+
+def paramBoxArrayFold : UInt64 :=
+  let boxes : Array (Box UInt64) := #[{ value := 2 }, { value := 3 }]
+  boxes.foldl (fun acc box => acc + box.value) 0
+
 structure DigitState where
   pos : Nat
   sum : UInt64
@@ -398,6 +431,13 @@ inductive Mode where
 inductive CheckedStatus where
   | checked : (value : UInt64) -> value = value -> CheckedStatus
   | failed : UInt64 -> CheckedStatus
+
+inductive ParamResult (ε α : Type) where
+  | error : ε -> ParamResult ε α
+  | ok : α -> ParamResult ε α
+
+inductive CheckedPayload (α : Type) where
+  | wrap : (value : α) -> True -> CheckedPayload α
 
 def statusOkMatch : UInt64 :=
   match Status.ok 8 with
@@ -463,6 +503,41 @@ def checkedStatusMatch : UInt64 :=
 
 def checkedStatusReturn : CheckedStatus :=
   CheckedStatus.checked 9 rfl
+
+def paramResultOkMatch : UInt64 :=
+  match (ParamResult.ok ({ value := 5 } : Box UInt64) : ParamResult UInt64 (Box UInt64)) with
+  | .error code => code
+  | .ok box => box.value + 1
+
+def paramResultErrorMatch : UInt64 :=
+  match (ParamResult.error (4 : UInt64) : ParamResult UInt64 (Box UInt64)) with
+  | .error code => code + 10
+  | .ok box => box.value
+
+def paramResultReturn (flag : UInt64) : ParamResult UInt64 Point :=
+  if flag == 0 then
+    ParamResult.error 7
+  else
+    ParamResult.ok { x := flag, y := flag + 1 }
+
+def paramResultParam (value : ParamResult UInt64 Point) : UInt64 :=
+  match value with
+  | .error code => code
+  | .ok point => point.x * 10 + point.y
+
+def checkedPayloadMatch : UInt64 :=
+  match (CheckedPayload.wrap (9 : UInt64) True.intro) with
+  | .wrap value _ => value + 1
+
+def paramResultArrayFold : UInt64 :=
+  let values : Array (ParamResult UInt64 UInt64) :=
+    #[ParamResult.ok 5, ParamResult.error 7]
+  values.foldl
+    (fun acc item =>
+      match item with
+      | .error code => acc + code * 10
+      | .ok value => acc + value)
+    0
 
 def statusParam (status : Status) : UInt64 :=
   match status with
