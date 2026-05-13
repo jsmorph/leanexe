@@ -734,6 +734,14 @@ inductive U64Expr where
   | add : U64Expr → U64Expr → U64Expr
   | mul : U64Expr → U64Expr → U64Expr
 
+structure ExprBox where
+  value : U64Expr
+  bias : UInt64
+
+inductive ExprSlot where
+  | empty : ExprSlot
+  | filled : UInt64 → U64Expr → ExprSlot
+
 def u64TreeFirstChildHead (tree : U64Tree) : UInt64 :=
   match tree with
   | .leaf value => value
@@ -781,6 +789,41 @@ def u64ExprEvalDemo : UInt64 :=
       (U64Expr.add (U64Expr.lit 2) (U64Expr.lit 3))
       (U64Expr.add (U64Expr.lit 4) (U64Expr.lit 5)))
 
+def exprBoxScore (box : ExprBox) : UInt64 :=
+  box.bias + u64ExprEval box.value
+
+def recursiveStructFieldDemo : UInt64 :=
+  exprBoxScore { value := U64Expr.add (U64Expr.lit 8) (U64Expr.lit 9), bias := 4 }
+
+def recursiveStructArrayFoldDemo : UInt64 :=
+  let boxes : Array ExprBox :=
+    #[
+      { value := U64Expr.lit 3, bias := 10 },
+      { value := U64Expr.mul (U64Expr.lit 2) (U64Expr.lit 5), bias := 1 }
+    ]
+  boxes.foldl (fun acc box => acc + exprBoxScore box) 0
+
+def exprSlotScore : ExprSlot → UInt64
+  | .empty => 0
+  | .filled tag value => tag + u64ExprEval value
+
+def recursiveTaggedPayloadDemo : UInt64 :=
+  exprSlotScore (ExprSlot.filled 7 (U64Expr.add (U64Expr.lit 4) (U64Expr.lit 6)))
+
+def recursiveTaggedArrayFindDemo : UInt64 :=
+  let slots : Array ExprSlot :=
+    #[
+      ExprSlot.empty,
+      ExprSlot.filled 4 (U64Expr.mul (U64Expr.lit 3) (U64Expr.lit 5)),
+      ExprSlot.filled 9 (U64Expr.lit 1)
+    ]
+  match slots.find? (fun slot =>
+    match slot with
+    | .empty => false
+    | .filled tag _value => tag == 4) with
+  | none => 0
+  | some slot => exprSlotScore slot
+
 def rejectRecursiveInductiveParam (xs : U64List) : UInt64 :=
   u64ListHeadOrZero xs
 
@@ -792,6 +835,12 @@ def rejectRecursiveArrayParam (xs : Array U64List) : Nat :=
 
 def rejectRecursiveArrayReturn : Array U64List :=
   #[u64List123]
+
+def rejectRecursiveStructParam (box : ExprBox) : UInt64 :=
+  exprBoxScore box
+
+def rejectRecursiveTaggedParam (slot : ExprSlot) : UInt64 :=
+  exprSlotScore slot
 
 def unitArgHelper (_value : Unit) : UInt64 :=
   11
