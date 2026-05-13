@@ -73,8 +73,6 @@ mutual
     | arrayMap (array : Expr) (itemSlot : Nat) (body : Expr)
     | arrayMapSlots (sourceWidth resultWidth : Nat) (array : Expr) (itemStart : Nat)
         (bodyValues : List Expr)
-    | arrayFoldSlots (sourceWidth : Nat) (array start stop init : Expr)
-        (accSlot itemStart : Nat) (body : Expr)
     | arrayFoldMultiSlot (sourceWidth resultWidth : Nat) (array start stop : Expr)
         (initValues : List Expr) (accStart itemStart : Nat) (bodyValues : List Expr)
         (bodyDone : Expr) (resultSlot : Nat)
@@ -103,7 +101,6 @@ mutual
         (srcPtr srcLen srcOff destPtr destLen destOff copyLen : Expr)
     | byteArrayFindIdx (ptr len start : Expr) (byteSlot : Nat) (predicate : Expr)
         (returnPayload : Bool)
-    | byteArrayFold (ptr len start stop init : Expr) (accSlot byteSlot : Nat) (body : Expr)
     | byteArrayFoldMultiSlot (resultWidth : Nat) (ptr len start stop : Expr)
         (initValues : List Expr) (accStart byteSlot : Nat) (bodyValues : List Expr)
         (bodyDone : Expr) (resultSlot : Nat)
@@ -228,7 +225,6 @@ mutual
     | .arrayExtractSlots _ array _ _ => array.eval module_ store
     | .arrayMap array _ _ => array.eval module_ store
     | .arrayMapSlots _ _ array _ _ => array.eval module_ store
-    | .arrayFoldSlots _ _ _ _ init _ _ _ => init.eval module_ store
     | .arrayFoldMultiSlot _ _ _ _ _ initValues _ _ _ _ resultSlot =>
         match initValues[resultSlot]? with
         | some init => init.eval module_ store
@@ -252,7 +248,6 @@ mutual
     | .byteArrayFromArrayPtr array => array.eval module_ store
     | .byteArrayCopySlicePtr _ _ _ destPtr _ _ _ => destPtr.eval module_ store
     | .byteArrayFindIdx _ _ _ _ _ _ => 0
-    | .byteArrayFold _ _ _ _ init _ _ _ => init.eval module_ store
     | .byteArrayFoldMultiSlot _ _ _ _ _ initValues _ _ _ _ resultSlot =>
         match initValues[resultSlot]? with
         | some init => init.eval module_ store
