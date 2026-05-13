@@ -2598,3 +2598,14 @@ Checks run:
 - [x] `build/tools/wasmtime/current/wasmtime --invoke leanListReverseDirectDemo /tmp/leanListReverseDirectDemo.wasm` returned `3`.
 - [x] `node test/core_correctness.js` returned `checked 509 accepted, 24 rejected, and 13 trapped cases`.
 - [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 509 accepted, 24 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 46 json program cases`, and `checked 56 cases`.
+
+## 2026-05-13: Shared structural-recursion parsing
+
+The extractor now parses recursive-inductive `brecOn` applications through `rawStructuralRecApplication?`, with `structuralRecApplication?` adding normalization for expression-position terms.  The shared record holds the constant, type arguments, motive, scrutinee, step, and post-arguments that the expression-level synthetic helper path, closed predicate path, closed fold path, top-level structural-recursion extractor, and top-level candidate detector decoded separately.  The regression counts stayed unchanged, which matches the intent of this refactor: one parser now supplies the existing lowering paths.
+
+Checks run:
+
+- [x] `lake build LeanExe.Extract.Core`
+- [x] `lake build lean-wasm LeanExe.Examples.Correctness`
+- [x] `node test/core_correctness.js` returned `checked 509 accepted, 24 rejected, and 13 trapped cases`.
+- [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 509 accepted, 24 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 46 json program cases`, and `checked 56 cases`.

@@ -4033,6 +4033,16 @@ def brecOnTypeName? : Name → Option Name
   | .str typeName "brecOn" => some typeName
   | _ => none
 
+structure StructuralRecApplication where
+  fn : Expr
+  typeName : Name
+  typeParams : List Ty
+  typeArgExprs : List Expr
+  motive : Expr
+  scrutinee : Expr
+  step : Expr
+  postArgs : List Expr
+
 structure StructuralExpressionRecShape where
   fn : Expr
   typeName : Name
@@ -4044,6 +4054,29 @@ structure StructuralExpressionRecShape where
   step : Expr
   postArgs : List Expr
   resultTy : Ty
+
+def rawStructuralRecApplication? (env : Environment) (expr : Expr) :
+    Option StructuralRecApplication :=
+  match appFnArgs expr with
+  | (fn@(.const candidate _), args) => do
+      let typeName ← brecOnTypeName? candidate
+      let info ← userRecursiveInductiveInfo? env typeName
+      let typeArgExprs := args.take info.numParams
+      let typeParams ← typeArgExprs.mapM (typeAtom? env)
+      match args.drop info.numParams with
+      | motive :: scrutinee :: step :: postArgs =>
+          some {
+            fn := fn,
+            typeName := typeName,
+            typeParams := typeParams,
+            typeArgExprs := typeArgExprs,
+            motive := motive,
+            scrutinee := scrutinee,
+            step := step,
+            postArgs := postArgs
+          }
+      | _ => none
+  | _ => none
 
 partial def containsSupportedBrecOn (env : Environment) (expr : Expr) : Bool :=
   expr.getUsedConstants.any fun name =>
@@ -4178,6 +4211,13 @@ partial def structuralNormalizeExpr
           | none => .proj typeName index normalizedBody
       | other => other
 
+def structuralRecApplication?
+    (env : Environment)
+    (root : Name)
+    (expr : Expr) :
+    Option StructuralRecApplication :=
+  rawStructuralRecApplication? env (structuralNormalizeExpr env root 32 expr)
+
 def structuralPostArgTypesAndResult?
     (env : Environment)
     (root : Name)
@@ -4217,36 +4257,29 @@ def expressionStructuralRecShape?
     (root : Name)
     (expr : Expr) :
     Option StructuralExpressionRecShape :=
-  match appFnArgs (structuralNormalizeExpr env root 32 expr) with
-  | (fn@(.const candidate _), args) => do
-      let typeName ← brecOnTypeName? candidate
-      let info ← userRecursiveInductiveInfo? env typeName
-      let typeArgExprs := args.take info.numParams
-      let typeParams ← typeArgExprs.mapM (typeAtom? env)
-      match args.drop info.numParams with
-      | motive :: scrutinee :: step :: postArgs =>
-          if containsBVar 0 motive || containsBVar 0 step then
-            none
-          else
-            let (dynamicPostArgTypes, resultTy) ←
-              structuralPostArgTypesAndResult? env root motive scrutinee postArgs
-            if supportedInternalResultType resultTy then
-              some {
-                fn := fn,
-                typeName := typeName,
-                typeParams := typeParams,
-                typeArgExprs := typeArgExprs,
-                dynamicPostArgTypes := dynamicPostArgTypes,
-                motive := motive,
-                scrutinee := scrutinee,
-                step := step,
-                postArgs := postArgs,
-                resultTy := resultTy
-              }
-            else
-              none
-      | _ => none
-  | _ => none
+  match structuralRecApplication? env root expr with
+  | some app => do
+      if containsBVar 0 app.motive || containsBVar 0 app.step then
+        none
+      else
+        let (dynamicPostArgTypes, resultTy) ←
+          structuralPostArgTypesAndResult? env root app.motive app.scrutinee app.postArgs
+        if supportedInternalResultType resultTy then
+          some {
+            fn := app.fn,
+            typeName := app.typeName,
+            typeParams := app.typeParams,
+            typeArgExprs := app.typeArgExprs,
+            dynamicPostArgTypes := dynamicPostArgTypes,
+            motive := app.motive,
+            scrutinee := app.scrutinee,
+            step := app.step,
+            postArgs := app.postArgs,
+            resultTy := resultTy
+          }
+        else
+          none
+  | none => none
 
 def syntheticMatchesShape (synth : SyntheticFunction) (shape : StructuralExpressionRecShape) :
     Bool :=
@@ -4532,26 +4565,22 @@ structure ClosedStructuralPredicateShape where
 
 def closedStructuralPredicateShape? (env : Environment) (body : Expr) :
     Option ClosedStructuralPredicateShape :=
-  match appFnArgs body with
-  | (.const candidate _, args) => do
-      let typeName ← brecOnTypeName? candidate
-      let info ← userRecursiveInductiveInfo? env typeName
-      let typeArgExprs := args.take info.numParams
-      let typeParams ← typeArgExprs.mapM (typeAtom? env)
-      match args.drop info.numParams with
-      | _motive :: scrutinee :: step :: [predicate] =>
+  match rawStructuralRecApplication? env body with
+  | some app =>
+      match app.postArgs with
+      | [predicate] =>
           if isDirectLambda predicate then
             some {
-              typeName := typeName,
-              typeParams := typeParams,
-              scrutinee := scrutinee,
-              step := step,
+              typeName := app.typeName,
+              typeParams := app.typeParams,
+              scrutinee := app.scrutinee,
+              step := app.step,
               predicate := predicate
             }
           else
             none
       | _ => none
-  | _ => none
+  | none => none
 
 mutual
   partial def extractStructuralRecCallValueFrom
@@ -8143,15 +8172,13 @@ def extractStructuralRecFunc
     | some body => .ok body
     | none => .error s!"definition body does not match function arity: {name}"
   let (scrutinee, step, postArgs) ←
-    match appFnArgs body with
-    | (.const candidate _, args) =>
-        if candidate == brecOnName typeName then
-          match args.drop typeParams.length with
-          | _motive :: scrutinee :: step :: postArgs => .ok (scrutinee, step, postArgs)
-          | _ => .error s!"unsupported structural recursion shape: {name}"
+    match rawStructuralRecApplication? ctx.env body with
+    | some app =>
+        if app.typeName == typeName && app.typeParams == typeParams then
+          .ok (app.scrutinee, app.step, app.postArgs)
         else
-          .error s!"unsupported structural recursion shape: {name}"
-    | _ => .error s!"unsupported structural recursion shape: {name}"
+          .error s!"structural recursion type mismatch: {name}"
+    | none => .error s!"unsupported structural recursion shape: {name}"
   let postPlans ← structuralPostArgs params postArgs
   if !isBVar (params.length - 1) scrutinee then
     .error s!"unsupported structural recursion scrutinee: {name}"
@@ -8239,26 +8266,22 @@ structure ClosedStructuralFoldShape where
 
 def closedStructuralFoldShape? (env : Environment) (body : Expr) :
     Option ClosedStructuralFoldShape :=
-  match appFnArgs body with
-  | (.const candidate _, args) => do
-      let typeName ← brecOnTypeName? candidate
-      let info ← userRecursiveInductiveInfo? env typeName
-      let typeArgExprs := args.take info.numParams
-      let typeParams ← typeArgExprs.mapM (typeAtom? env)
-      match args.drop info.numParams with
-      | _motive :: scrutinee :: step :: [init] =>
+  match rawStructuralRecApplication? env body with
+  | some app =>
+      match app.postArgs with
+      | [init] =>
           if isDirectLambda init then
             none
           else
             some {
-              typeName := typeName,
-              typeParams := typeParams,
-              scrutinee := scrutinee,
-              step := step,
+              typeName := app.typeName,
+              typeParams := app.typeParams,
+              scrutinee := app.scrutinee,
+              step := app.step,
               init := init
             }
       | _ => none
-  | _ => none
+  | none => none
 
 def closedStructuralFoldCandidate? (env : Environment) (value : Expr) (paramCount : Nat) :
     Bool :=
@@ -8869,21 +8892,17 @@ partial def freshStructuralExpressionSyntheticName
   else
     candidate
 
-def topLevelStructuralRecCandidate? (value : Expr) (params : List Ty) : Bool :=
+def topLevelStructuralRecCandidate? (env : Environment) (value : Expr) (params : List Ty) : Bool :=
   match params with
   | .recVariant typeName typeParams :: _ =>
       match collectLambdas value params.length with
       | some body =>
-          match appFnArgs body with
-          | (.const candidate _, args) =>
-              if candidate == brecOnName typeName then
-                match args.drop typeParams.length with
-                | _motive :: scrutinee :: _step :: _postArgs =>
-                    isBVar (params.length - 1) scrutinee
-                | _ => false
-              else
-                false
-          | _ => false
+          match rawStructuralRecApplication? env body with
+          | some app =>
+              app.typeName == typeName &&
+                app.typeParams == typeParams &&
+                isBVar (params.length - 1) app.scrutinee
+          | none => false
       | none => false
   | _ => false
 
@@ -8946,7 +8965,7 @@ def collectFunctionExpressionStructuralSynthetics
     (value : Expr)
     (synthetics : Array SyntheticFunction) :
     Array SyntheticFunction :=
-  if topLevelStructuralRecCandidate? value sig.params then
+  if topLevelStructuralRecCandidate? env value sig.params then
     synthetics
   else
     collectExpressionStructuralSynthetics env root reserved value synthetics
