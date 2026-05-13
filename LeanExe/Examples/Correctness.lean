@@ -926,6 +926,55 @@ def mutualStructuralFieldSizeDemo : UInt64 :=
         MutField.mk 2 (MutJson.arr #[MutJson.num 8])
       ]))
 
+mutual
+inductive TriA where
+  | leaf : UInt64 → TriA
+  | bs : Array TriB → TriA
+
+inductive TriB where
+  | leaf : UInt64 → TriB
+  | cs : Array TriC → TriB
+
+inductive TriC where
+  | leaf : UInt64 → TriC
+  | as : Array TriA → TriC
+end
+
+mutual
+def triAScore : TriA → UInt64
+  | .leaf value => value
+  | .bs items => items.foldl (fun acc item => acc + triBScore item) 1
+
+def triBScore : TriB → UInt64
+  | .leaf value => value
+  | .cs items => items.foldl (fun acc item => acc + triCScore item) 2
+
+def triCScore : TriC → UInt64
+  | .leaf value => value
+  | .as items => items.foldl (fun acc item => acc + triAScore item) 3
+end
+
+def mutualStructuralTriADemo : UInt64 :=
+  triAScore
+    (TriA.bs #[
+      TriB.leaf 4,
+      TriB.cs #[TriC.leaf 5, TriC.as #[TriA.leaf 6]]
+    ])
+
+def mutualStructuralTriBDemo : UInt64 :=
+  triBScore
+    (TriB.cs #[
+      TriC.as #[TriA.bs #[TriB.leaf 2]],
+      TriC.leaf 7
+    ])
+
+def mutualStructuralTriCDemo : UInt64 :=
+  triCScore
+    (TriC.as #[
+      TriA.bs #[TriB.cs #[TriC.leaf 1]],
+      TriA.leaf 8
+    ])
+
 def rejectRecursiveInductiveParam (xs : U64List) : UInt64 :=
   u64ListHeadOrZero xs
 

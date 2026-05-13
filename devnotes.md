@@ -2668,3 +2668,23 @@ Checks run:
 - [x] `build/tools/wasmtime/current/wasmtime --invoke mutualStructuralFieldSizeDemo /tmp/mutualStructuralFieldSizeDemo.wasm` returned `11`.
 - [x] `node test/core_correctness.js` returned `checked 519 accepted, 30 rejected, and 13 trapped cases`.
 - [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 519 accepted, 30 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 46 json program cases`, and `checked 56 cases`.
+
+## 2026-05-13: N-way mutual structural recursion
+
+Lean lowers ordinary mutual definitions over three or more recursive-family members with a right-nested `PSum` parameter, such as `PSum A (PSum B C)`, and a single generated `WellFounded.Nat.fix` helper.  The extractor now parses that nested `PSum.casesOn` tree recursively.  Each leaf must still match one supported recursive-family member, and each member branch still goes through the existing generated-matcher checks for direct recursive fields and fixed-width `Array.attach` folds.
+
+The correctness corpus now includes `TriA`, `TriB`, and `TriC`, a three-member recursive family whose constructors recurse through arrays.  `triAScore`, `triBScore`, and `triCScore` compile through the shared generated helper and produce independent entry demos for all three wrapper functions.  The accepted shape remains the Lean-generated structural form; arbitrary well-founded recursion, non-family `PSum` recursion, public recursive values, and mutual helper groups that do not structurally descend through recursive-family values remain outside the accepted language.
+
+Checks run:
+
+- [x] `lake build LeanExe.Extract.Core`
+- [x] `lake build lean-wasm`
+- [x] `lake build LeanExe.Examples.Correctness`
+- [x] `.lake/build/bin/lean-wasm compile --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.mutualStructuralTriADemo --out .lake/build/mutual-tri-a.wasm`
+- [x] `.lake/build/bin/lean-wasm compile --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.mutualStructuralTriBDemo --out .lake/build/mutual-tri-b.wasm`
+- [x] `.lake/build/bin/lean-wasm compile --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.mutualStructuralTriCDemo --out .lake/build/mutual-tri-c.wasm`
+- [x] `build/tools/wasmtime/current/wasmtime run --invoke mutualStructuralTriADemo .lake/build/mutual-tri-a.wasm` returned `21`.
+- [x] `build/tools/wasmtime/current/wasmtime run --invoke mutualStructuralTriBDemo .lake/build/mutual-tri-b.wasm` returned `15`.
+- [x] `build/tools/wasmtime/current/wasmtime run --invoke mutualStructuralTriCDemo .lake/build/mutual-tri-c.wasm` returned `15`.
+- [x] `node test/core_correctness.js` returned `checked 522 accepted, 30 rejected, and 13 trapped cases`.
+- [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 522 accepted, 30 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 46 json program cases`, and `checked 56 cases`.
