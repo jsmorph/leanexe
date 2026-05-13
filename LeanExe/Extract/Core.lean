@@ -225,14 +225,24 @@ partial def peelForall (expr : Expr) : List Expr × Expr :=
       (domain :: rest.fst, rest.snd)
   | other => ([], other)
 
+def nonRuntimeEvidenceTypeNames : List Name :=
+  [``Inhabited, ``Decidable, ``BEq, ``LT, ``LE, ``OfNat, ``HAdd, ``HSub, ``HMul, ``HDiv,
+    ``HMod, ``GetElem, ``GetElem?]
+
+def isRuntimeStructure (env : Environment) (name : Name) : Bool :=
+  isStructure env name && !isClass env name && !nonRuntimeEvidenceTypeNames.contains name
+
 def structureInductiveInfo? (env : Environment) (structName : Name) : Option InductiveVal :=
-  match env.find? structName with
-  | some (.inductInfo info) =>
-      if info.numParams == 0 && info.numIndices == 0 && info.ctors.length == 1 && !info.isRec then
-        some info
-      else
-        none
-  | _ => none
+  if !isRuntimeStructure env structName then
+    none
+  else
+    match env.find? structName with
+    | some (.inductInfo info) =>
+        if info.numIndices == 0 && info.ctors.length == 1 && !info.isRec then
+          some info
+        else
+          none
+    | _ => none
 
 def structureCtorInfo? (env : Environment) (structName : Name) : Option ConstructorVal :=
   match structureInductiveInfo? env structName with
@@ -249,19 +259,21 @@ def builtinInductiveNames : List Name :=
   [``Bool, ``Nat, ``Unit, ``Option, ``Except, ``Prod, ``PSum, ``String]
 
 def userInductiveInfo? (env : Environment) (typeName : Name) : Option InductiveVal :=
-  if builtinInductiveNames.contains typeName || isStructureLike env typeName then
+  if builtinInductiveNames.contains typeName || isRuntimeStructure env typeName ||
+      isClass env typeName || nonRuntimeEvidenceTypeNames.contains typeName then
     none
   else
     match env.find? typeName with
     | some (.inductInfo info) =>
-        if info.numParams == 0 && info.numIndices == 0 && !info.isRec && !info.ctors.isEmpty then
+        if info.numIndices == 0 && !info.isRec && !info.ctors.isEmpty then
           some info
         else
           none
     | _ => none
 
 def userRecursiveInductiveInfo? (env : Environment) (typeName : Name) : Option InductiveVal :=
-  if builtinInductiveNames.contains typeName || isStructureLike env typeName then
+  if builtinInductiveNames.contains typeName || isRuntimeStructure env typeName ||
+      isClass env typeName || nonRuntimeEvidenceTypeNames.contains typeName then
     none
   else
     match env.find? typeName with
@@ -351,20 +363,26 @@ partial def tyExpr? : Ty → Option Expr
       let leftExpr ← tyExpr? left
       let rightExpr ← tyExpr? right
       some (.app (.app (.const ``Prod []) leftExpr) rightExpr)
-  | .struct name _ => some (.const name [])
-  | .variant name [[], [payload]] =>
+  | .struct name params _ => do
+      let paramExprs ← params.mapM tyExpr?
+      some (paramExprs.foldl (fun acc param => .app acc param) (.const name []))
+  | .variant name params [[], [payload]] =>
       if name == ``Option then
         tyExpr? payload |>.map (fun payloadExpr => .app (.const ``Option []) payloadExpr)
-      else
-        some (.const name [])
-  | .variant name [[error], [ok]] =>
+      else do
+        let paramExprs ← params.mapM tyExpr?
+        some (paramExprs.foldl (fun acc param => .app acc param) (.const name []))
+  | .variant name params [[error], [ok]] =>
       if name == ``Except then do
         let errorExpr ← tyExpr? error
         let okExpr ← tyExpr? ok
         some (.app (.app (.const ``Except []) errorExpr) okExpr)
-      else
-        some (.const name [])
-  | .variant name _ => some (.const name [])
+      else do
+        let paramExprs ← params.mapM tyExpr?
+        some (paramExprs.foldl (fun acc param => .app acc param) (.const name []))
+  | .variant name params _ => do
+      let paramExprs ← params.mapM tyExpr?
+      some (paramExprs.foldl (fun acc param => .app acc param) (.const name []))
   | .recVariant name params => do
       let paramExprs ← params.mapM tyExpr?
       some (paramExprs.foldl (fun acc param => .app acc param) (.const name []))
@@ -428,73 +446,117 @@ mutual
               | _, _ => none
           | _, _ => none
       | (.const ``Option _, [item]) =>
-          typeAtom? env item |>.map (fun itemTy => .variant ``Option [[], [itemTy]])
+          typeAtom? env item |>.map (fun itemTy => .variant ``Option [itemTy] [[], [itemTy]])
       | (.const ``Except _, [error, ok]) =>
           match typeAtom? env error, typeAtom? env ok with
-          | some errorTy, some okTy => some (.variant ``Except [[errorTy], [okTy]])
+          | some errorTy, some okTy =>
+              some (.variant ``Except [errorTy, okTy] [[errorTy], [okTy]])
           | _, _ => none
       | (.const name _, args) =>
-          if args.isEmpty && isStructureLike env name then
-            structureFieldTypes? env name |>.map (fun fields => .struct name fields)
-          else if args.isEmpty then
-            match variantLayout? env name with
-            | some layout =>
-                some (.variant name (layout.ctors.map (fun ctor => runtimeTypesFromKinds ctor.fields)))
-            | none =>
-                recursiveVariantLayout? env name [] |>.map fun _layout => .recVariant name []
+          if nonRuntimeEvidenceTypeNames.contains name then
+            none
           else
             match args.mapM (typeAtom? env) with
             | some params =>
-                recursiveVariantLayout? env name params |>.map fun _layout =>
-                  .recVariant name params
+                if isRuntimeStructure env name then
+                  structureFieldKindsWithParams? env name params |>.map fun fields =>
+                    .struct name params (runtimeTypesFromKinds fields)
+                else
+                  match variantLayoutWithParams? env name params with
+                  | some layout =>
+                      some (.variant name params (layout.ctors.map fun ctor =>
+                        runtimeTypesFromKinds ctor.fields))
+                  | none =>
+                      recursiveVariantLayout? env name params |>.map fun _layout =>
+                        .recVariant name params
             | none => none
       | _ => none
 
-  partial def structureFieldKinds? (env : Environment) (structName : Name) :
+  partial def structureFieldKindsWithParams? (env : Environment) (structName : Name)
+      (params : List Ty) :
       Option (List (Option Ty)) :=
-    if !isStructureLike env structName then
+    if !isRuntimeStructure env structName then
       none
     else
       match structureCtorInfo? env structName with
       | some ctorInfo =>
-          let fields := (peelForall ctorInfo.type).fst.drop ctorInfo.numParams
+          if params.length != ctorInfo.numParams then
+            none
+          else
+          let fields? := ctorFieldDomainsWithParams? ctorInfo params
           let flatFieldNames :=
             (getStructureFieldsFlattened env structName (includeSubobjectFields := false)).toList
-          if fields.length == ctorInfo.numFields && fields.length == flatFieldNames.length then
-            fields.mapM fun field =>
-              if isProofType? env field then
-                some none
+          match fields? with
+          | some fields =>
+              if fields.length == ctorInfo.numFields && fields.length == flatFieldNames.length then
+                fields.mapM fun field =>
+                  if isProofType? env field then
+                    some none
+                  else
+                    typeAtom? env field |>.map some
               else
-                typeAtom? env field |>.map some
-          else
-            none
+                none
+          | none => none
       | none => none
+
+  partial def structureFieldKinds? (env : Environment) (structName : Name) :
+      Option (List (Option Ty)) :=
+    structureFieldKindsWithParams? env structName []
 
   partial def structureFieldTypes? (env : Environment) (structName : Name) : Option (List Ty) :=
     structureFieldKinds? env structName |>.map (fun fields => fields.filterMap id)
 
-  partial def variantLayout? (env : Environment) (typeName : Name) : Option VariantLayout :=
+  partial def structureTypeLayout? (env : Environment) (expr : Expr) :
+      Option (Name × List (Option Ty)) :=
+    match appFnArgs expr with
+    | (.const name _, args) =>
+        if isRuntimeStructure env name then
+          match args.mapM (typeAtom? env) with
+          | some params =>
+              structureFieldKindsWithParams? env name params |>.map fun fields => (name, fields)
+          | none => none
+        else
+          none
+    | _ => none
+
+  partial def variantLayoutWithParams? (env : Environment) (typeName : Name)
+      (params : List Ty) : Option VariantLayout :=
     match userInductiveInfo? env typeName with
     | some info =>
+        if params.length != info.numParams then
+          none
+        else
         let ctorLayouts? := info.ctors.mapM fun ctorName =>
           match env.find? ctorName with
           | some (.ctorInfo ctorInfo) =>
-              if ctorInfo.numParams == 0 && ctorInfo.induct == typeName then
-                let fields := (peelForall ctorInfo.type).fst.drop ctorInfo.numParams
-                if fields.length == ctorInfo.numFields then
-                  fields.mapM (fun field =>
-                    if isProofType? env field then
-                      some none
-                    else
-                      typeAtom? env field |>.map some) |>.map fun fieldKinds =>
-                        ({ name := ctorName, fields := fieldKinds } : VariantCtorLayout)
-                else
-                  none
+              if ctorInfo.numParams == info.numParams && ctorInfo.induct == typeName then
+                match ctorFieldDomainsWithParams? ctorInfo params with
+                | some fields =>
+                    fields.mapM (fun field =>
+                      if isProofType? env field then
+                        some none
+                      else
+                        typeAtom? env field |>.map some) |>.map fun fieldKinds =>
+                          ({ name := ctorName, fields := fieldKinds } : VariantCtorLayout)
+                | none => none
               else
                 none
           | _ => none
-        ctorLayouts? |>.map fun ctors => ({ name := typeName, params := [], ctors := ctors } : VariantLayout)
+        ctorLayouts? |>.map fun ctors =>
+          ({ name := typeName, params := params, ctors := ctors } : VariantLayout)
     | none => none
+
+  partial def variantLayout? (env : Environment) (typeName : Name) : Option VariantLayout :=
+    variantLayoutWithParams? env typeName []
+
+  partial def variantTypeLayout? (env : Environment) (expr : Expr) :
+      Option VariantLayout :=
+    match appFnArgs expr with
+    | (.const name _, args) =>
+        match args.mapM (typeAtom? env) with
+        | some params => variantLayoutWithParams? env name params
+        | none => none
+    | _ => none
 
   partial def typeAtomRecursiveField?
       (env : Environment)
@@ -517,11 +579,12 @@ mutual
         | _, _ => none
     | (.const ``Option _, [item]) =>
         typeAtomRecursiveField? env familyNames familyParams item |>.map
-          (fun itemTy => .variant ``Option [[], [itemTy]])
+          (fun itemTy => .variant ``Option [itemTy] [[], [itemTy]])
     | (.const ``Except _, [error, ok]) =>
         match typeAtomRecursiveField? env familyNames familyParams error,
             typeAtomRecursiveField? env familyNames familyParams ok with
-        | some errorTy, some okTy => some (.variant ``Except [[errorTy], [okTy]])
+        | some errorTy, some okTy =>
+            some (.variant ``Except [errorTy, okTy] [[errorTy], [okTy]])
         | _, _ => none
     | (.const name _, args) =>
         if familyNames.contains name then
@@ -572,11 +635,28 @@ def anyVariantLayout? (env : Environment) (typeName : Name) : Option VariantLayo
   | some layout => some layout
   | none => recursiveVariantLayout? env typeName
 
+def structureConstructorForArgs? (env : Environment) (ctorName : Name) (args : List Expr) :
+    Option (Name × List (Option Ty) × List Expr) :=
+  match env.find? ctorName with
+  | some (.ctorInfo ctorInfo) =>
+      if ctorInfo.cidx == 0 && isRuntimeStructure env ctorInfo.induct then
+        let paramArgs := args.take ctorInfo.numParams
+        let runtimeArgs := args.drop ctorInfo.numParams
+        match paramArgs.mapM (typeAtom? env) with
+        | some params =>
+            structureFieldKindsWithParams? env ctorInfo.induct params |>.map fun fields =>
+              (ctorInfo.induct, fields, runtimeArgs)
+        | none => none
+      else
+        none
+  | _ => none
+
 def structureConstructor? (env : Environment) (ctorName : Name) :
     Option (Name × List (Option Ty)) :=
   match env.find? ctorName with
   | some (.ctorInfo ctorInfo) =>
-      if ctorInfo.numParams == 0 && ctorInfo.cidx == 0 && isStructureLike env ctorInfo.induct then
+      if ctorInfo.numParams == 0 && ctorInfo.cidx == 0 &&
+          isRuntimeStructure env ctorInfo.induct then
         structureFieldKinds? env ctorInfo.induct |>.map (fun fields => (ctorInfo.induct, fields))
       else
         none
@@ -592,6 +672,26 @@ def variantConstructor? (env : Environment) (ctorName : Name) :
           | some index =>
               match layout.ctors[index]? with
               | some ctor => some (layout, index, ctor)
+              | none => none
+          | none => none
+      | none => none
+  | _ => none
+
+def variantConstructorForArgs? (env : Environment) (ctorName : Name) (args : List Expr) :
+    Option (VariantLayout × Nat × VariantCtorLayout × List Expr) :=
+  match env.find? ctorName with
+  | some (.ctorInfo ctorInfo) =>
+      let paramArgs := args.take ctorInfo.numParams
+      let runtimeArgs := args.drop ctorInfo.numParams
+      match paramArgs.mapM (typeAtom? env) with
+      | some params =>
+          match variantLayoutWithParams? env ctorInfo.induct params with
+          | some layout =>
+              match ctorIndex? ctorName layout.ctors with
+              | some index =>
+                  match layout.ctors[index]? with
+                  | some ctor => some (layout, index, ctor, runtimeArgs)
+                  | none => none
               | none => none
           | none => none
       | none => none
@@ -645,7 +745,7 @@ def structureProjection? (env : Environment) (projName : Name) :
       if projInfo.numParams == 0 then
         match env.find? projInfo.ctorName with
         | some (.ctorInfo ctorInfo) =>
-            if ctorInfo.numParams == 0 && isStructureLike env ctorInfo.induct then
+            if ctorInfo.numParams == 0 && isRuntimeStructure env ctorInfo.induct then
               match structureFieldKinds? env ctorInfo.induct with
               | some kinds =>
                   runtimeFieldIndexFromKinds projInfo.i kinds |>.map (fun index? =>
@@ -656,6 +756,28 @@ def structureProjection? (env : Environment) (projName : Name) :
         | _ => none
       else
         none
+  | none => none
+
+def structureProjectionForArgs? (env : Environment) (projName : Name) (args : List Expr) :
+    Option (Name × Option Nat × Expr) :=
+  match env.getProjectionFnInfo? projName with
+  | some projInfo =>
+      match env.find? projInfo.ctorName with
+      | some (.ctorInfo ctorInfo) =>
+          if isRuntimeStructure env ctorInfo.induct then
+            let paramArgs := args.take projInfo.numParams
+            let restArgs := args.drop projInfo.numParams
+            match paramArgs.mapM (typeAtom? env), restArgs with
+            | some params, target :: [] =>
+                match structureFieldKindsWithParams? env ctorInfo.induct params with
+                | some kinds =>
+                    runtimeFieldIndexFromKinds projInfo.i kinds |>.map fun index? =>
+                      (ctorInfo.induct, index?, target)
+                | none => none
+            | _, _ => none
+          else
+            none
+      | _ => none
   | none => none
 
 def supportedArrayCellType : Ty → Bool
@@ -674,8 +796,8 @@ mutual
     | .u64 => some 1
     | .nat => some 1
     | .recVariant _ _ => some 1
-    | .struct _ fields => arrayFieldSlots? fields
-    | .variant _ ctors => do
+    | .struct _ _ fields => arrayFieldSlots? fields
+    | .variant _ _ ctors => do
         let payloadSlots ← arrayCtorSlots? ctors
         some (payloadSlots + 1)
     | _ => none
@@ -702,8 +824,8 @@ partial def containsRecVariant : Ty → Bool
   | .array item => containsRecVariant item
   | .product left right => containsRecVariant left || containsRecVariant right
   | .sum left right => containsRecVariant left || containsRecVariant right
-  | .struct _ fields => fields.any containsRecVariant
-  | .variant _ ctors => ctors.any (fun fields => fields.any containsRecVariant)
+  | .struct _ _ fields => fields.any containsRecVariant
+  | .variant _ _ ctors => ctors.any (fun fields => fields.any containsRecVariant)
   | .recVariant _ _ => true
   | _ => false
 
@@ -719,14 +841,14 @@ def supportedAbiType : Ty → Bool
 
 partial def supportedParamAbiType : Ty → Bool
   | .byteArray => true
-  | .struct _ fields => fields.all supportedParamAbiType
-  | .variant _ ctors => ctors.all (fun fields => fields.all supportedParamAbiType)
+  | .struct _ _ fields => fields.all supportedParamAbiType
+  | .variant _ _ ctors => ctors.all (fun fields => fields.all supportedParamAbiType)
   | ty => supportedAbiType ty
 
 partial def supportedResultAbiType : Ty → Bool
   | .byteArray => true
-  | .struct _ fields => fields.all supportedResultAbiType
-  | .variant _ ctors => ctors.all (fun fields => fields.all supportedResultAbiType)
+  | .struct _ _ fields => fields.all supportedResultAbiType
+  | .variant _ _ ctors => ctors.all (fun fields => fields.all supportedResultAbiType)
   | ty => supportedAbiType ty
 
 partial def supportedInternalValueType : Ty → Bool
@@ -739,8 +861,8 @@ partial def supportedInternalValueType : Ty → Bool
   | .byteArray => true
   | .array item => supportedArrayElementType item
   | .sum left right => supportedInternalValueType left && supportedInternalValueType right
-  | .struct _ fields => fields.all supportedInternalValueType
-  | .variant _ ctors => ctors.all (fun fields => fields.all supportedInternalValueType)
+  | .struct _ _ fields => fields.all supportedInternalValueType
+  | .variant _ _ ctors => ctors.all (fun fields => fields.all supportedInternalValueType)
   | .recVariant _ _ => true
   | _ => false
 
@@ -754,8 +876,8 @@ def supportedInternalResultType : Ty → Bool :=
 partial def abiSlots : Ty → Nat
   | .byteArray => 2
   | .sum left right => 1 + abiSlots left + abiSlots right
-  | .struct _ fields => fields.foldl (fun total field => total + abiSlots field) 0
-  | .variant _ ctors =>
+  | .struct _ _ fields => fields.foldl (fun total field => total + abiSlots field) 0
+  | .variant _ _ ctors =>
       1 + ctors.foldl
         (fun total fields => total + fields.foldl (fun acc field => acc + abiSlots field) 0)
         0
@@ -766,8 +888,8 @@ partial def internalSlots : Ty → Nat
   | .byteArray => 2
   | .product left right => internalSlots left + internalSlots right
   | .sum left right => 1 + internalSlots left + internalSlots right
-  | .struct _ fields => fields.foldl (fun total field => total + internalSlots field) 0
-  | .variant _ ctors =>
+  | .struct _ _ fields => fields.foldl (fun total field => total + internalSlots field) 0
+  | .variant _ _ ctors =>
       1 + ctors.foldl
         (fun total fields => total + fields.foldl (fun acc field => acc + internalSlots field) 0)
         0
@@ -823,8 +945,8 @@ partial def supportedLocalType : Ty → Bool
   | .array item => supportedArrayElementType item
   | .product left right => supportedLocalType left && supportedLocalType right
   | .sum left right => supportedLocalType left && supportedLocalType right
-  | .struct _ fields => fields.all supportedLocalType
-  | .variant _ ctors => ctors.all (fun fields => fields.all supportedLocalType)
+  | .struct _ _ fields => fields.all supportedLocalType
+  | .variant _ _ ctors => ctors.all (fun fields => fields.all supportedLocalType)
   | .recVariant _ _ => true
 
 def supportedOneSlotExprType : Ty → Bool
@@ -849,8 +971,8 @@ partial def supportedForInAccumulatorType : Ty → Bool
       supportedForInAccumulatorType left && supportedForInAccumulatorType right
   | .sum left right =>
       supportedForInAccumulatorType left && supportedForInAccumulatorType right
-  | .struct _ fields => fields.all supportedForInAccumulatorType
-  | .variant _ ctors => ctors.all (fun fields => fields.all supportedForInAccumulatorType)
+  | .struct _ _ fields => fields.all supportedForInAccumulatorType
+  | .variant _ _ ctors => ctors.all (fun fields => fields.all supportedForInAccumulatorType)
   | .recVariant _ _ => true
   | _ => false
 
@@ -1307,7 +1429,7 @@ def mkOptionValue (tag : IRExpr) (payload : ExtractedValue) : ExtractedValue :=
   .variant ``Option tag [[], [payload]]
 
 def optionPayloadType? : Ty → Option Ty
-  | .variant name [[], [payloadTy]] => if name == ``Option then some payloadTy else none
+  | .variant name _ [[], [payloadTy]] => if name == ``Option then some payloadTy else none
   | _ => none
 
 partial def wrapValueLets (lets : List ValueLet) (value : ExtractedValue) :
@@ -1576,9 +1698,9 @@ partial def defaultValue : Ty → Except String ExtractedValue
         .error s!"unsupported default value type: {reprStr ((.array item : Ty))}"
   | .product left right => do
       .ok (.product (← defaultValue left) (← defaultValue right))
-  | .struct name fields => do
+  | .struct name _ fields => do
       .ok (.struct name (← fields.mapM defaultValue))
-  | .variant name ctors => do
+  | .variant name _ ctors => do
       .ok (.variant name (.u64 0) (← ctors.mapM (fun fields => fields.mapM defaultValue)))
   | .recVariant name _ => .ok (.heapVariant name (.u64 0))
   | .sum left right => do
@@ -1599,9 +1721,9 @@ partial def trapValue : Ty → Except String ExtractedValue
         .error s!"unsupported trap value type: {reprStr ((.array item : Ty))}"
   | .product left right => do
       .ok (.product (← trapValue left) (← trapValue right))
-  | .struct name fields => do
+  | .struct name _ fields => do
       .ok (.struct name (← fields.mapM trapValue))
-  | .variant name ctors => do
+  | .variant name _ ctors => do
       .ok (.variant name .trap (← ctors.mapM (fun fields => fields.mapM trapValue)))
   | .recVariant name _ => .ok (.heapVariant name .trap)
   | .sum left right => do
@@ -1759,7 +1881,7 @@ partial def flattenInternalValue (ty : Ty) (value : ExtractedValue) :
       | .ite cond thenValue elseValue => do
           combineIteSlots cond (← flattenInternalValue ty thenValue) (← flattenInternalValue ty elseValue)
       | _ => .error "non-sum value used where sum internal value is required"
-  | .struct name fields =>
+  | .struct name _ fields =>
       match value with
       | .struct actual values =>
           if actual == name && values.length == fields.length then do
@@ -1777,7 +1899,7 @@ partial def flattenInternalValue (ty : Ty) (value : ExtractedValue) :
       | .ite cond thenValue elseValue => do
           combineIteSlots cond (← flattenInternalValue ty thenValue) (← flattenInternalValue ty elseValue)
       | _ => .error s!"non-structure value used where structure internal value is required: {name}"
-  | .variant name ctors =>
+  | .variant name _ ctors =>
       match value with
       | .variant actual tag values =>
           if actual == name && values.length == ctors.length then do
@@ -1841,7 +1963,7 @@ partial def flattenAbiValue (ty : Ty) (value : ExtractedValue) : Except String (
   | .byteArray => do
       let parts ← byteArrayParts value
       .ok [parts.fst, parts.snd]
-  | .struct name fields => do
+  | .struct name _ fields => do
       match value with
       | .struct actual values =>
           if actual == name && values.length == fields.length then
@@ -1859,7 +1981,7 @@ partial def flattenAbiValue (ty : Ty) (value : ExtractedValue) : Except String (
       | .ite cond thenValue elseValue => do
           combineIteSlots cond (← flattenAbiValue ty thenValue) (← flattenAbiValue ty elseValue)
       | _ => .error s!"non-structure value used where structure ABI value is required: {name}"
-  | .variant name ctors => do
+  | .variant name _ ctors => do
       match value with
       | .variant actual tag values =>
           if actual == name && values.length == ctors.length then do
@@ -2035,10 +2157,10 @@ mutual
         let leftLoaded ← heapLoadValueAt ptr left (slot + 1)
         let rightLoaded ← heapLoadValueAt ptr right leftLoaded.snd
         .ok (.sum (.heapLoadSlot ptr slot) leftLoaded.fst rightLoaded.fst, rightLoaded.snd)
-    | .struct name fields, slot => do
+    | .struct name _ fields, slot => do
         let loaded ← heapLoadFieldsAt ptr fields slot
         .ok (.struct name loaded.fst, loaded.snd)
-    | .variant name ctors, slot => do
+    | .variant name _ ctors, slot => do
         let loaded ← heapLoadCtorsAt ptr ctors (slot + 1)
         .ok (.variant name (.heapLoadSlot ptr slot) loaded.fst, loaded.snd)
     | .recVariant name _, slot => .ok (.heapVariant name (.heapLoadSlot ptr slot), slot + 1)
@@ -2136,7 +2258,7 @@ partial def flattenArrayElementValue
             (← flattenArrayElementValue ty elseValue)
       | _ =>
           .error s!"non-recursive value used where recursive inductive array element is required: {name}"
-  | .struct name fields =>
+  | .struct name _ fields =>
       match value with
       | .struct actual values =>
           if actual == name && values.length == fields.length then do
@@ -2157,7 +2279,7 @@ partial def flattenArrayElementValue
             (← flattenArrayElementValue ty elseValue)
       | _ =>
           .error s!"non-structure value used where structure array element is required: {name}"
-  | .variant name ctors =>
+  | .variant name _ ctors =>
       match value with
       | .variant actual tag values =>
           if actual == name && values.length == ctors.length then do
@@ -2225,10 +2347,10 @@ mutual
     | .nat, slot => .ok (.scalar (.arrayGetSlot width slot array index), slot + 1)
     | .recVariant name _, slot =>
         .ok (.heapVariant name (.arrayGetSlot width slot array index), slot + 1)
-    | .struct name fields, slot => do
+    | .struct name _ fields, slot => do
         let result ← arrayLoadFieldsAt width array index fields slot
         .ok (.struct name result.fst, result.snd)
-    | .variant name ctors, slot => do
+    | .variant name _ ctors, slot => do
         let tag := .arrayGetSlot width slot array index
         let result ← arrayLoadCtorsAt width array index ctors (slot + 1)
         .ok (.variant name tag result.fst, result.snd)
@@ -2280,10 +2402,10 @@ mutual
     | .nat, slot => .ok (.scalar (.arrayFindSlot width array itemStart predicate slot), slot + 1)
     | .recVariant name _, slot =>
         .ok (.heapVariant name (.arrayFindSlot width array itemStart predicate slot), slot + 1)
-    | .struct name fields, slot => do
+    | .struct name _ fields, slot => do
         let result ← arrayFindFieldsAt width array itemStart predicate fields slot
         .ok (.struct name result.fst, result.snd)
-    | .variant name ctors, slot => do
+    | .variant name _ ctors, slot => do
         let tag := .arrayFindSlot width array itemStart predicate slot
         let result ← arrayFindCtorsAt width array itemStart predicate ctors (slot + 1)
         .ok (.variant name tag result.fst, result.snd)
@@ -2333,10 +2455,10 @@ mutual
     | .u64, slot => .ok (.scalar (.local (start + slot)), slot + 1)
     | .nat, slot => .ok (.scalar (.local (start + slot)), slot + 1)
     | .recVariant name _, slot => .ok (.heapVariant name (.local (start + slot)), slot + 1)
-    | .struct name fields, slot => do
+    | .struct name _ fields, slot => do
         let result ← arrayLocalFieldsAt start fields slot
         .ok (.struct name result.fst, result.snd)
-    | .variant name ctors, slot => do
+    | .variant name _ ctors, slot => do
         let tag := .local (start + slot)
         let result ← arrayLocalCtorsAt start ctors (slot + 1)
         .ok (.variant name tag result.fst, result.snd)
@@ -2376,10 +2498,10 @@ mutual
         let leftValue := valueFromInternalSlotsAt slotExpr left (slot + 1)
         let rightValue := valueFromInternalSlotsAt slotExpr right leftValue.snd
         (.sum (slotExpr slot) leftValue.fst rightValue.fst, rightValue.snd)
-    | .struct name fields, slot =>
+    | .struct name _ fields, slot =>
         let fieldsValue := valuesFromInternalSlotsAt slotExpr fields slot
         (.struct name fieldsValue.fst, fieldsValue.snd)
-    | .variant name ctors, slot =>
+    | .variant name _ ctors, slot =>
         let ctorsValue := ctorValuesFromInternalSlotsAt slotExpr ctors (slot + 1)
         (.variant name (slotExpr slot) ctorsValue.fst, ctorsValue.snd)
     | .recVariant name _, slot =>
@@ -2419,8 +2541,8 @@ mutual
         .sum (.local slot)
           (extractedValueForParam (slot + 1) left)
           (extractedValueForParam (slot + 1 + abiSlots left) right)
-    | .struct name fields => .struct name (extractedStructFieldsForParam slot fields)
-    | .variant name ctors =>
+    | .struct name _ fields => .struct name (extractedStructFieldsForParam slot fields)
+    | .variant name _ ctors =>
         .variant name (.local slot) (extractedVariantCtorsForParam (slot + 1) ctors)
     | .recVariant name _ => .heapVariant name (.local slot)
     | _ => .scalar (.local slot)
@@ -2447,8 +2569,8 @@ def bindingForParam (slot : Nat) : Ty → Binding
         (.sum (.local slot)
           (extractedValueForParam (slot + 1) left)
           (extractedValueForParam (slot + 1 + abiSlots left) right))
-  | .struct name fields => .value (.struct name (extractedStructFieldsForParam slot fields))
-  | .variant name ctors =>
+  | .struct name _ fields => .value (.struct name (extractedStructFieldsForParam slot fields))
+  | .variant name _ ctors =>
       .value (.variant name (.local slot) (extractedVariantCtorsForParam (slot + 1) ctors))
   | .recVariant name _ => .value (.heapVariant name (.local slot))
   | _ => .slot slot
@@ -2586,7 +2708,7 @@ def exceptOrElseArgs? (env : Environment) (fn : Expr) (args : List Expr) : Optio
   | .const name _ =>
       if name == ``HOrElse.hOrElse then
         match primitiveResultType? env args, args.reverse with
-        | some (.variant typeName _), fallback :: exceptValue :: _ =>
+        | some (.variant typeName _ _), fallback :: exceptValue :: _ =>
             if typeName == ``Except then some (exceptValue, fallback) else none
         | _, _ => none
       else
@@ -2614,7 +2736,7 @@ structure ForInArgs where
   body : Expr
 
 def isLegacyRangeType : Ty → Bool
-  | .struct name [.nat, .nat, .nat] => name == ``Std.Legacy.Range
+  | .struct name _ [.nat, .nat, .nat] => name == ``Std.Legacy.Range
   | _ => false
 
 def legacyRangeParts (value : ExtractedValue) : Except String (IRExpr × IRExpr × IRExpr) := do
@@ -2849,9 +2971,9 @@ def generatedMatcherVariantScrutineeArg?
               | some ty =>
                   let matchesTarget :=
                     match targetName?, ty with
-                    | some targetName, .variant typeName _ => targetName == typeName
+                    | some targetName, .variant typeName _ _ => targetName == typeName
                     | some targetName, .recVariant typeName _ => targetName == typeName
-                    | none, .variant _ _ => true
+                    | none, .variant _ _ _ => true
                     | none, .recVariant _ _ => true
                     | _, _ => false
                   if matchesTarget then
@@ -3036,33 +3158,47 @@ def psumMatcherArgs? (env : Environment) (fn : Expr) (args : List Expr) :
   | _ => none
 
 def structureMatcherArgs? (env : Environment) (fn : Expr) (args : List Expr) :
-    Option (Name × Expr × Expr) :=
-  let directMatcher? (name : Name) : Option (Name × Expr × Expr) :=
+    Option (Name × List (Option Ty) × Expr × Expr) :=
+  let directMatcher? (name : Name) : Option (Name × List (Option Ty) × Expr × Expr) :=
     match env.find? name with
     | some (.recInfo recInfo) =>
         match recInfo.all with
         | structName :: [] =>
-            if (structureFieldKinds? env structName).isSome then
-              if name == .str structName "casesOn" || name == .str structName "recOn" then
-                match args.reverse with
-                | arm :: scrutinee :: _ => some (structName, scrutinee, arm)
-                | _ => none
-              else if name == .str structName "rec" then
-                match args.reverse with
-                | scrutinee :: arm :: _ => some (structName, scrutinee, arm)
-                | _ => none
-              else
-                none
-            else
-              none
+            match structureCtorInfo? env structName with
+            | some ctorInfo =>
+                let params? := (args.take ctorInfo.numParams).mapM (typeAtom? env)
+                let rest := args.drop ctorInfo.numParams
+                match params?.bind (structureFieldKindsWithParams? env structName) with
+                | some fieldKinds =>
+                    if name == .str structName "casesOn" ||
+                        name == .str structName "recOn" then
+                      match rest.reverse with
+                      | arm :: scrutinee :: _ => some (structName, fieldKinds, scrutinee, arm)
+                      | _ => none
+                    else if name == .str structName "rec" then
+                      match rest.reverse with
+                      | scrutinee :: arm :: _ => some (structName, fieldKinds, scrutinee, arm)
+                      | _ => none
+                    else
+                      none
+                | none => none
+            | none => none
         | _ => none
     | _ => none
-  let generatedMatcher? (name : Name) : Option (Name × Expr × Expr) :=
+  let generatedMatcher? (name : Name) : Option (Name × List (Option Ty) × Expr × Expr) :=
     match generatedMatcherScrutineeArg? env name args with
-    | some (scrutineeIndex, .struct structName _) =>
-        match args[scrutineeIndex]?, args.drop (scrutineeIndex + 1) with
-        | some scrutinee, [arm] => some (structName, scrutinee, arm)
-        | _, _ => none
+    | some (scrutineeIndex, .struct _ _ _) =>
+        match env.find? name with
+        | some info =>
+            let domains := (peelForall info.type).fst
+            match domains[scrutineeIndex]?, args[scrutineeIndex]?, args.drop (scrutineeIndex + 1) with
+            | some domain, some scrutinee, [arm] =>
+                let instantiated := domain.instantiateRev (args.take scrutineeIndex).toArray
+                match structureTypeLayout? env instantiated with
+                | some (structName, fieldKinds) => some (structName, fieldKinds, scrutinee, arm)
+                | none => none
+            | _, _, _ => none
+        | none => none
     | _ => none
   match fn.consumeMData with
   | .const name _ =>
@@ -3130,11 +3266,22 @@ def variantMatcherInfo?
               | some targetName => targetName == typeName
               | none => true
             if targetMatches then
-              match anyVariantLayout? env typeName with
+              let params? :=
+                match env.find? typeName with
+                | some (.inductInfo info) => (args.take info.numParams).mapM (typeAtom? env)
+                | _ => none
+              let rest :=
+                match env.find? typeName with
+                | some (.inductInfo info) => args.drop info.numParams
+                | _ => args
+              match params?.bind (fun params =>
+                  match variantLayoutWithParams? env typeName params with
+                  | some layout => some layout
+                  | none => recursiveVariantLayout? env typeName params) with
               | some layout =>
                   let ctorCount := layout.ctors.length
                   if name == .str typeName "casesOn" || name == .str typeName "recOn" then
-                    match args with
+                    match rest with
                     | _motive :: scrutinee :: rest =>
                         if rest.length == ctorCount then
                           some { layout := layout, scrutinee := scrutinee, arms := rest }
@@ -3142,7 +3289,7 @@ def variantMatcherInfo?
                           none
                     | _ => none
                   else if name == .str typeName "rec" then
-                    match args with
+                    match rest with
                     | _motive :: rest =>
                         let arms := rest.take ctorCount
                         match rest.drop ctorCount with
@@ -3193,10 +3340,15 @@ def variantMatcherInfo?
           | none => none
       | _, _ => none
     match generatedMatcherVariantScrutineeArg? env name args targetName?, env.find? name with
-    | some (scrutineeIndex, .variant typeName _), some info =>
-        match anyVariantLayout? env typeName, args[scrutineeIndex]? with
-        | some layout, some scrutinee =>
-            orderArms info scrutineeIndex layout scrutinee (args.drop (scrutineeIndex + 1))
+    | some (scrutineeIndex, .variant _ _ _), some info =>
+        let domains := (peelForall info.type).fst
+        match domains[scrutineeIndex]?, args[scrutineeIndex]? with
+        | some domain, some scrutinee =>
+            let instantiated := domain.instantiateRev (args.take scrutineeIndex).toArray
+            match variantTypeLayout? env instantiated with
+            | some layout =>
+                orderArms info scrutineeIndex layout scrutinee (args.drop (scrutineeIndex + 1))
+            | none => none
         | _, _ => none
     | some (scrutineeIndex, .recVariant typeName typeParams), some info =>
         match recursiveVariantLayout? env typeName typeParams, args[scrutineeIndex]? with
@@ -5940,9 +6092,9 @@ mutual
                       .ok (.sum (.u64 1) leftDefault payloadResult.fst, payloadResult.snd)
                   | _ => .error "unsupported PSum.inr application"
                 else
-                match structureConstructor? ctx.env name with
-                | some (structName, fieldKinds) =>
-                    if args.length == fieldKinds.length then
+                match structureConstructorForArgs? ctx.env name args with
+                | some (structName, fieldKinds, runtimeArgs) =>
+                    if runtimeArgs.length == fieldKinds.length then
                       let rec loop :
                           List Expr → List (Option Ty) → Nat →
                             Except String (List ExtractedValue × Nat)
@@ -5954,7 +6106,7 @@ mutual
                         | _arg :: restArgs, none :: restKinds, next =>
                             loop restArgs restKinds next
                         | _, _, _ => .error s!"structure constructor arity mismatch: {name}"
-                      let result ← loop args fieldKinds nextLocal
+                      let result ← loop runtimeArgs fieldKinds nextLocal
                       .ok (.struct structName result.fst, result.snd)
                     else
                       .error s!"structure constructor arity mismatch: {name}"
@@ -5987,9 +6139,9 @@ mutual
                         else
                           .error s!"inductive constructor arity mismatch: {name}"
                     | none =>
-                        match variantConstructor? ctx.env name with
-                        | some (layout, ctorIndex, ctor) =>
-                            if args.length == ctor.fields.length then
+                        match variantConstructorForArgs? ctx.env name args with
+                        | some (layout, ctorIndex, ctor, runtimeArgs) =>
+                            if runtimeArgs.length == ctor.fields.length then
                               let rec variantCtorLoop :
                                   List Expr → List (Option Ty) → Nat →
                                     Except String (List ExtractedValue × Nat)
@@ -6001,7 +6153,7 @@ mutual
                                 | _arg :: restArgs, none :: restKinds, next =>
                                     variantCtorLoop restArgs restKinds next
                                 | _, _, _ => .error s!"inductive constructor arity mismatch: {name}"
-                              let runtimeFields ← variantCtorLoop args ctor.fields nextLocal
+                              let runtimeFields ← variantCtorLoop runtimeArgs ctor.fields nextLocal
                               let defaults ← defaultCtorValues layout.ctors
                               let ctors ←
                                 match replaceAt? ctorIndex runtimeFields.fst defaults with
@@ -6011,13 +6163,13 @@ mutual
                             else
                               .error s!"inductive constructor arity mismatch: {name}"
                         | none =>
-                            match structureProjection? ctx.env name, args with
-                            | some (structName, some index), target :: [] =>
+                            match structureProjectionForArgs? ctx.env name args with
+                            | some (structName, some index, target) =>
                                 let valueResult ← extractValueFrom ctx locals nextLocal target
                                 .ok (← structField structName index valueResult.fst, valueResult.snd)
-                            | some (_structName, none), _target :: [] =>
+                            | some (_structName, none, _target) =>
                                 .ok (.scalar (.u64 0), nextLocal)
-                            | _, _ =>
+                            | none =>
                                 extractNonStructureValueFrom ctx locals nextLocal expr fn args
             | _ => extractNonStructureValueFrom ctx locals nextLocal expr fn args
 
@@ -6056,8 +6208,9 @@ mutual
                                 extractProductMatchValueFrom ctx locals nextLocal scrutinee arm
                             | none =>
                                 match structureMatcherArgs? ctx.env fn args with
-                                | some (structName, scrutinee, arm) =>
-                                    extractStructureMatchValueFrom ctx locals nextLocal structName scrutinee arm
+                                | some (structName, fieldKinds, scrutinee, arm) =>
+                                    extractStructureMatchValueFrom ctx locals nextLocal
+                                      structName fieldKinds scrutinee arm
                                 | none =>
                                     match variantMatcherArgs? ctx.env fn args with
                                     | some (layout, scrutinee, arms) =>
@@ -6284,12 +6437,9 @@ mutual
       (locals : List Binding)
       (nextLocal : Nat)
       (structName : Name)
+      (fieldKinds : List (Option Ty))
       (scrutinee arm : Expr) :
       Except String (ExtractedValue × Nat) := do
-    let fieldKinds ←
-      match structureFieldKinds? ctx.env structName with
-      | some fields => .ok fields
-      | none => .error s!"unsupported structure matcher type: {structName}"
     let scrutineeResult ← extractValueFrom ctx locals nextLocal scrutinee
     let rec fieldsFromKinds :
         Nat → List (Option Ty) → Except String (List ExtractedValue)
@@ -7636,14 +7786,14 @@ mutual
                 match ← extractClosedStructuralPredicateExprFrom ctx locals nextLocal expr with
                 | some result => .ok result
                 | none =>
-                    match structureProjection? ctx.env primitive, args with
-                    | some (structName, some index), target :: [] =>
+                    match structureProjectionForArgs? ctx.env primitive args with
+                    | some (structName, some index, target) =>
                         let valueResult ← extractValueFrom ctx locals nextLocal target
                         .ok (← scalarValue (← structField structName index valueResult.fst),
                           valueResult.snd)
-                    | some (_structName, none), _target :: [] =>
+                    | some (_structName, none, _target) =>
                         .ok (.u64 0, nextLocal)
-                    | _, _ =>
+                    | none =>
                         match boolMatcherArgs? ctx.env (.const primitive []) args with
                         | some (scrutinee, falseArm, trueArm) =>
                             let condResult ← extractCondFrom ctx locals nextLocal scrutinee
@@ -7679,10 +7829,10 @@ mutual
                                             .ok (← scalarValue valueResult.fst, valueResult.snd)
                                         | none =>
                                             match structureMatcherArgs? ctx.env (.const primitive []) args with
-                                            | some (structName, scrutinee, arm) =>
+                                            | some (structName, fieldKinds, scrutinee, arm) =>
                                                 let valueResult ←
                                                   extractStructureMatchValueFrom ctx locals nextLocal
-                                                    structName scrutinee arm
+                                                    structName fieldKinds scrutinee arm
                                                 .ok (← scalarValue valueResult.fst, valueResult.snd)
                                             | none =>
                                                 match variantMatcherArgs? ctx.env (.const primitive []) args with
