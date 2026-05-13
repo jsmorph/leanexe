@@ -422,6 +422,10 @@ const accepted = [
   { name: "leanListStructuralSumDemo", args: [], expected: 6n },
   { name: "leanListMapDemo", args: [], expected: 2n },
   { name: "leanListFilterDemo", args: [], expected: 2n },
+  { name: "leanListLengthRecDemo", args: [], expected: 3n },
+  { name: "leanListAppendRecDemo", args: [], expected: 15n },
+  { name: "leanListReverseRecDemo", args: [], expected: 3n },
+  { name: "leanListFoldrRecDemo", args: [], expected: 321n },
   { name: "leanListFindDemo", args: [], expected: 2n },
   { name: "leanListFindMissingDemo", args: [], expected: 0n },
   { name: "leanListFoldlDemo", args: [], expected: 123n },
@@ -665,6 +669,30 @@ const rejected = [
   {
     name: "rejectRecursiveArrayReturn",
     message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectRecursiveArrayReturn",
+  },
+  {
+    name: "rejectLeanListMapDirectDemo",
+    message: "while extracting plain function: unsupported expression: fun",
+  },
+  {
+    name: "rejectLeanListFilterDirectDemo",
+    message: "while extracting plain function: unsupported expression: fun",
+  },
+  {
+    name: "rejectLeanListLengthDemo",
+    message: "unsupported constant in expression: UInt64",
+  },
+  {
+    name: "rejectLeanListAppendDemo",
+    message: "unsupported HAppend.hAppend application",
+  },
+  {
+    name: "rejectLeanListReverseDemo",
+    message: "unsupported constant in expression: UInt64",
+  },
+  {
+    name: "rejectLeanListFoldrDemo",
+    message: "while extracting plain function: unsupported expression: fun",
   },
   {
     name: "rejectHigherOrder",

@@ -599,11 +599,57 @@ def leanListMapAddOne (xs : List UInt64) : List UInt64 :=
 def leanListMapDemo : UInt64 :=
   leanListHeadOrZero (leanListMapAddOne leanList123)
 
+def rejectLeanListMapDirectDemo : UInt64 :=
+  leanListHeadOrZero (leanList123.map (fun x => x + 1))
+
 def leanListFilterGtOne (xs : List UInt64) : List UInt64 :=
   xs.filter (fun x => x > 1)
 
 def leanListFilterDemo : UInt64 :=
   leanListHeadOrZero (leanListFilterGtOne leanList123)
+
+def rejectLeanListFilterDirectDemo : UInt64 :=
+  leanListHeadOrZero (leanList123.filter (fun x => x > 1))
+
+def rejectLeanListLengthDemo : UInt64 :=
+  leanList123.length.toUInt64
+
+def leanListLengthRec : List UInt64 → UInt64
+  | [] => 0
+  | _head :: tail => 1 + leanListLengthRec tail
+
+def leanListLengthRecDemo : UInt64 :=
+  leanListLengthRec leanList123
+
+def rejectLeanListAppendDemo : UInt64 :=
+  leanListStructuralSum (leanList123 ++ [4, 5])
+
+def leanListAppendRec : List UInt64 → List UInt64 → List UInt64
+  | [], ys => ys
+  | head :: tail, ys => head :: leanListAppendRec tail ys
+
+def leanListAppendRecDemo : UInt64 :=
+  leanListStructuralSum (leanListAppendRec leanList123 [4, 5])
+
+def rejectLeanListReverseDemo : UInt64 :=
+  leanListHeadOrZero leanList123.reverse
+
+def leanListReverseAcc : List UInt64 → List UInt64 → List UInt64
+  | [], acc => acc
+  | head :: tail, acc => leanListReverseAcc tail (head :: acc)
+
+def leanListReverseRecDemo : UInt64 :=
+  leanListHeadOrZero (leanListReverseAcc leanList123 [])
+
+def rejectLeanListFoldrDemo : UInt64 :=
+  leanList123.foldr (fun x acc => acc * 10 + x) 0
+
+def leanListFoldrRec : List UInt64 → UInt64 → UInt64
+  | [], acc => acc
+  | head :: tail, acc => leanListFoldrRec tail acc * 10 + head
+
+def leanListFoldrRecDemo : UInt64 :=
+  leanListFoldrRec leanList123 0
 
 def leanListFindGtOne (xs : List UInt64) : Option UInt64 :=
   xs.find? (fun x => x > 1)

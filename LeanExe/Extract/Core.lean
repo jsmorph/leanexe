@@ -1620,6 +1620,16 @@ partial def valueIte
         .ok (.heapVariant thenName (.ite cond thenPtr elsePtr))
       else
         .error "if branches have incompatible recursive inductive value shapes"
+  | .heapVariant heapName _, .recursiveVariant recursiveName _ _ =>
+      if heapName == recursiveName then
+        .ok (.ite cond thenValue elseValue)
+      else
+        .error "if branches have incompatible recursive inductive value shapes"
+  | .recursiveVariant recursiveName _ _, .heapVariant heapName _ =>
+      if recursiveName == heapName then
+        .ok (.ite cond thenValue elseValue)
+      else
+        .error "if branches have incompatible recursive inductive value shapes"
   | .recursiveVariant thenName _thenTag thenCtors,
       .recursiveVariant elseName _elseTag elseCtors =>
       if thenName == elseName && thenCtors.length == elseCtors.length then
@@ -8527,14 +8537,7 @@ def extractFunction
       if containsConstantInExpr (brecOnName typeName) value then
         match extractStructuralRecFunc ctx name sig.params typeName typeParams sig.result value exportName with
         | .ok func => .ok func
-        | .error error =>
-            if closedStructuralFoldCandidate? ctx.env value sig.params.length then
-              match extractClosedStructuralFoldFunc ctx name sig.params sig.result value exportName with
-              | .ok func => .ok func
-              | .error closedError =>
-                  .error s!"while extracting closed structural fold: {closedError}"
-            else
-              .error s!"while extracting structural recursion: {error}"
+        | .error error => .error s!"while extracting structural recursion: {error}"
       else if containsConstantInExpr ``WellFounded.fix value then
         match extractWellFoundedRecFunc ctx name sig.params typeName typeParams sig.result value exportName with
         | .ok func => .ok func

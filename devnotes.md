@@ -2530,3 +2530,26 @@ Checks run:
 - [x] `build/tools/wasmtime/current/wasmtime --invoke leanListAllDirectMissingDemo /tmp/leanListAllDirectMissingDemo.wasm` returned `0`.
 - [x] `node test/core_correctness.js` returned `checked 495 accepted, 24 rejected, and 13 trapped cases`.
 - [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 495 accepted, 24 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 46 json program cases`, and `checked 56 cases`.
+
+## 2026-05-12: Recursive list-valued helpers
+
+Structural-recursion extraction now preserves the structural-recursion error when a recursive helper fails to lower, instead of trying the closed-fold path for helpers whose first parameter is already the recursive value.  The closed-fold path remains for top-level closed expressions, where it fits the generated `brecOn` shape with a hidden accumulator.  The earlier fallback hid the real failure for a source-defined append helper by reporting a closed-fold tail-call error.
+
+Recursive branch selection now accepts a branch that returns an existing heap recursive value and another branch that constructs a fresh recursive value of the same type.  Flattening already knew how to turn both forms into the internal heap-pointer slot, so the branch combiner now keeps the conditional value lazy and lets result materialization allocate only the selected constructed branch.  This admits source-defined `List UInt64` helpers for length, append, reverse, and fold-right-style traversal.
+
+The regression corpus records direct expression-position standard-library calls as rejected cases: direct `List.map`, `List.filter`, `List.length`, list append notation, `List.reverse`, and `List.foldr`.  Those forms need an expression-position structural-recursion lowering or another principled first-order extraction path.  The accepted cases exercise ordinary source-defined recursive helpers while the compiler remains generic over recursive inductive layouts.
+
+Checks run:
+
+- [x] `lake build lean-wasm`
+- [x] `lake build LeanExe.Examples.Correctness`
+- [x] `.lake/build/bin/lean-wasm compile --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.leanListLengthRecDemo --out /tmp/leanListLengthRecDemo.wasm`
+- [x] `.lake/build/bin/lean-wasm compile --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.leanListAppendRecDemo --out /tmp/leanListAppendRecDemo.wasm`
+- [x] `.lake/build/bin/lean-wasm compile --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.leanListReverseRecDemo --out /tmp/leanListReverseRecDemo.wasm`
+- [x] `.lake/build/bin/lean-wasm compile --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.leanListFoldrRecDemo --out /tmp/leanListFoldrRecDemo.wasm`
+- [x] `build/tools/wasmtime/current/wasmtime --invoke leanListLengthRecDemo /tmp/leanListLengthRecDemo.wasm` returned `3`.
+- [x] `build/tools/wasmtime/current/wasmtime --invoke leanListAppendRecDemo /tmp/leanListAppendRecDemo.wasm` returned `15`.
+- [x] `build/tools/wasmtime/current/wasmtime --invoke leanListReverseRecDemo /tmp/leanListReverseRecDemo.wasm` returned `3`.
+- [x] `build/tools/wasmtime/current/wasmtime --invoke leanListFoldrRecDemo /tmp/leanListFoldrRecDemo.wasm` returned `321`.
+- [x] `node test/core_correctness.js` returned `checked 499 accepted, 30 rejected, and 13 trapped cases`.
+- [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 499 accepted, 30 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 46 json program cases`, and `checked 56 cases`.
