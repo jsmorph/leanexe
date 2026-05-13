@@ -982,6 +982,71 @@ def supportedInlineFunction? (env : Environment) (info : ConstantInfo) : Option 
   else
     functionTypeWith? env supportedLocalType supportedLocalType info.type
 
+structure InlineSpecialization where
+  sig : Signature
+  staticArgs : List Expr
+  runtimeArgs : List Expr
+
+def staticInlineDomain (env : Environment) (domain : Expr) : Bool :=
+  match domain.consumeMData with
+  | .sort _ => true
+  | _ => isProofType? env domain
+
+def specializedInlineCall?
+    (env : Environment)
+    (info : ConstantInfo)
+    (args : List Expr) :
+    Option InlineSpecialization := do
+  if info.isUnsafe || info.isPartial || info.value?.isNone then
+    none
+  else
+    let parts := peelForall info.type
+    if parts.fst.length != args.length then
+      none
+    else
+      let rec loop
+          (previous staticArgs runtimeArgs : List Expr)
+          (runtimeTys : List Ty)
+          (seenRuntime : Bool) :
+          List Expr → List Expr → Option (List Expr × List Expr × List Ty)
+        | [], [] => some (staticArgs, runtimeArgs, runtimeTys)
+        | domain :: restDomains, arg :: restArgs =>
+            let instantiatedDomain := domain.instantiateRev previous.toArray
+            match typeAtom? env instantiatedDomain with
+            | some ty =>
+                if supportedLocalType ty then
+                  loop (previous ++ [arg]) staticArgs (runtimeArgs ++ [arg])
+                    (runtimeTys ++ [ty]) true
+                    restDomains restArgs
+                else
+                  none
+            | none =>
+                if seenRuntime then
+                  none
+                else if staticInlineDomain env instantiatedDomain then
+                  loop (previous ++ [arg]) (staticArgs ++ [arg]) runtimeArgs runtimeTys false
+                    restDomains restArgs
+                else
+                  none
+        | _, _ => none
+      let (staticArgs, runtimeArgs, runtimeTys) ← loop [] [] [] [] false parts.fst args
+      let resultTy ← typeAtom? env (parts.snd.instantiateRev args.toArray)
+      if supportedLocalType resultTy then
+        some {
+          sig := { params := runtimeTys, result := resultTy },
+          staticArgs := staticArgs,
+          runtimeArgs := runtimeArgs
+        }
+      else
+        none
+
+partial def instantiateLeadingLambdas (value : Expr) : List Expr → Option Expr
+  | [] => some value
+  | arg :: rest =>
+      match value.consumeMData with
+      | .lam _ _ body _ => instantiateLeadingLambdas (body.instantiate1 arg) rest
+      | _ => none
+
 def pushName (names : List Name) (name : Name) : List Name :=
   if names.contains name then names else names ++ [name]
 
@@ -6626,11 +6691,14 @@ mutual
       | none => .error s!"declaration disappeared during extraction: {name}"
     if containsConstant ``Nat.brecOn info || containsConstant name info then
       return none
-    let sig ←
+    let specialization ←
       match supportedInlineFunction? ctx.env info with
-      | some sig => .ok sig
-      | none => .error s!"unsupported function type or declaration: {name}"
-    if args.length != sig.params.length then
+      | some sig => .ok ({ sig := sig, staticArgs := [], runtimeArgs := args } : InlineSpecialization)
+      | none =>
+          match specializedInlineCall? ctx.env info args with
+          | some specialization => .ok specialization
+          | none => .error s!"unsupported function type or declaration: {name}"
+    if specialization.runtimeArgs.length != specialization.sig.params.length then
       .error s!"inline call arity mismatch: {name}"
     else
       if (functionIndex? ctx name).isSome && strictCallSafe ctx name args then
@@ -6639,11 +6707,15 @@ mutual
         match info.value? with
         | some value => .ok (betaSpecializeExpr ctx.env ctx.root 32 value)
         | none => .error s!"declaration has no executable value: {name}"
+      let value ←
+        match instantiateLeadingLambdas value specialization.staticArgs with
+        | some value => .ok (betaSpecializeExpr ctx.env ctx.root 32 value)
+        | none => .error s!"definition body does not match static function arity: {name}"
       let body ←
-        match collectLambdas value sig.params.length with
+        match collectLambdas value specialization.sig.params.length with
         | some body => .ok body
         | none => .error s!"definition body does not match function arity: {name}"
-      let argBindings := args.reverse.map (fun arg => Binding.thunk locals arg)
+      let argBindings := specialization.runtimeArgs.reverse.map (fun arg => Binding.thunk locals arg)
       let inlineCtx := { ctx with inlineStack := name :: ctx.inlineStack }
       let result ← extractValueFrom inlineCtx argBindings nextLocal body
       .ok (some result)

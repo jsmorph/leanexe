@@ -381,6 +381,30 @@ def paramBoxArrayFold : UInt64 :=
   let boxes : Array (Box UInt64) := #[{ value := 2 }, { value := 3 }]
   boxes.foldl (fun acc box => acc + box.value) 0
 
+def genericBoxValue {α : Type} (box : Box α) : α :=
+  box.value
+
+def genericPairLeft {α β : Type} (box : PairBox α β) : α :=
+  box.left
+
+def genericPairRight {α β : Type} (box : PairBox α β) : β :=
+  box.right
+
+def genericFirstBoxValue {α β : Type} (left : Box α) (_right : Box β) : α :=
+  left.value
+
+def genericBoxHelperProjection : UInt64 :=
+  genericBoxValue ({ value := 20 } : Box UInt64) + 2
+
+def genericPairBoxHelper : UInt64 :=
+  let box : PairBox UInt64 Bool := { left := 9, right := true }
+  if genericPairRight box then genericPairLeft box else 0
+
+def genericBoxHelperSkipsUnusedTrap : UInt64 :=
+  genericFirstBoxValue
+    ({ value := 7 } : Box UInt64)
+    ({ value := (Array.replicate 0 (0 : UInt64)).back! } : Box UInt64)
+
 structure DigitState where
   pos : Nat
   sum : UInt64
@@ -538,6 +562,37 @@ def paramResultArrayFold : UInt64 :=
       | .error code => acc + code * 10
       | .ok value => acc + value)
     0
+
+def genericResultIsOk {ε α : Type} (value : ParamResult ε α) : Bool :=
+  match value with
+  | .error _ => false
+  | .ok _ => true
+
+def genericResultValueOr {ε α : Type} (fallback : α) (value : ParamResult ε α) : α :=
+  match value with
+  | .error _ => fallback
+  | .ok item => item
+
+def genericCheckedPayloadValue {α : Type} (payload : CheckedPayload α) : α :=
+  match payload with
+  | .wrap value _ => value
+
+def genericResultIsOkDemo : UInt64 :=
+  if genericResultIsOk (ParamResult.ok ({ x := 1, y := 2 } : Point) :
+      ParamResult UInt64 Point) then
+    1
+  else
+    0
+
+def genericResultValueOrDemo : UInt64 :=
+  let point :=
+    genericResultValueOr
+      ({ x := 9, y := 9 } : Point)
+      (ParamResult.ok ({ x := 3, y := 4 } : Point) : ParamResult UInt64 Point)
+  point.x * 10 + point.y
+
+def genericCheckedPayloadDemo : UInt64 :=
+  genericCheckedPayloadValue (CheckedPayload.wrap (11 : UInt64) True.intro) + 1
 
 def statusParam (status : Status) : UInt64 :=
   match status with
