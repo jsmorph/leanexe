@@ -788,19 +788,93 @@ def supportedArrayCellType : Ty → Bool
   | .nat => true
   | _ => false
 
+inductive ValueLayout where
+  | scalar
+  | pointer
+  | fixed (slots : Nat)
+  deriving BEq, Repr
+
+def ValueLayout.slotCount : ValueLayout → Nat
+  | .scalar => 1
+  | .pointer => 1
+  | .fixed slots => slots
+
 mutual
-  partial def arrayElementSlots? : Ty → Option Nat
-    | .bool => some 1
-    | .u8 => some 1
-    | .u32 => some 1
-    | .u64 => some 1
-    | .nat => some 1
-    | .recVariant _ _ => some 1
-    | .struct _ _ fields => arrayFieldSlots? fields
+  partial def valueLayout? : Ty → Option ValueLayout
+    | .unit => some .scalar
+    | .bool => some .scalar
+    | .u8 => some .scalar
+    | .u32 => some .scalar
+    | .u64 => some .scalar
+    | .nat => some .scalar
+    | .byteArray => some (.fixed 2)
+    | .array item => do
+        let _ ← arrayElementLayout? item
+        some .pointer
+    | .product left right => do
+        let leftSlots ← valueLayoutSlots? left
+        let rightSlots ← valueLayoutSlots? right
+        some (.fixed (leftSlots + rightSlots))
+    | .sum left right => do
+        let leftSlots ← valueLayoutSlots? left
+        let rightSlots ← valueLayoutSlots? right
+        some (.fixed (leftSlots + rightSlots + 1))
+    | .struct _ _ fields => do
+        let slots ← valueFieldSlots? fields
+        some (.fixed slots)
+    | .variant _ _ ctors => do
+        let payloadSlots ← valueCtorSlots? ctors
+        some (.fixed (payloadSlots + 1))
+    | .recVariant _ _ => some .pointer
+
+  partial def valueLayoutSlots? (ty : Ty) : Option Nat := do
+    let layout ← valueLayout? ty
+    some layout.slotCount
+
+  partial def valueFieldSlots? : List Ty → Option Nat
+    | [] => some 0
+    | field :: rest => do
+        let head ← valueLayoutSlots? field
+        let tail ← valueFieldSlots? rest
+        some (head + tail)
+
+  partial def valueCtorSlots? : List (List Ty) → Option Nat
+    | [] => some 0
+    | fields :: rest => do
+        let head ← valueFieldSlots? fields
+        let tail ← valueCtorSlots? rest
+        some (head + tail)
+
+  partial def arrayElementLayout? : Ty → Option ValueLayout
+    | .unit => some .scalar
+    | .bool => some .scalar
+    | .u8 => some .scalar
+    | .u32 => some .scalar
+    | .u64 => some .scalar
+    | .nat => some .scalar
+    | .array item => do
+        let _ ← arrayElementLayout? item
+        some .pointer
+    | .product left right => do
+        let leftSlots ← arrayElementSlots? left
+        let rightSlots ← arrayElementSlots? right
+        some (.fixed (leftSlots + rightSlots))
+    | .sum left right => do
+        let leftSlots ← arrayElementSlots? left
+        let rightSlots ← arrayElementSlots? right
+        some (.fixed (leftSlots + rightSlots + 1))
+    | .struct _ _ fields => do
+        let slots ← arrayFieldSlots? fields
+        some (.fixed slots)
     | .variant _ _ ctors => do
         let payloadSlots ← arrayCtorSlots? ctors
-        some (payloadSlots + 1)
-    | _ => none
+        some (.fixed (payloadSlots + 1))
+    | .recVariant _ _ => some .pointer
+    | .byteArray => none
+
+  partial def arrayElementSlots? (ty : Ty) : Option Nat := do
+    let layout ← arrayElementLayout? ty
+    some layout.slotCount
 
   partial def arrayFieldSlots? : List Ty → Option Nat
     | [] => some 0
@@ -820,17 +894,15 @@ end
 def supportedArrayElementType (ty : Ty) : Bool :=
   arrayElementSlots? ty |>.isSome
 
-partial def containsRecVariant : Ty → Bool
-  | .array item => containsRecVariant item
-  | .product left right => containsRecVariant left || containsRecVariant right
-  | .sum left right => containsRecVariant left || containsRecVariant right
-  | .struct _ _ fields => fields.any containsRecVariant
-  | .variant _ _ ctors => ctors.any (fun fields => fields.any containsRecVariant)
-  | .recVariant _ _ => true
+partial def supportedAbiArrayElementType : Ty → Bool
+  | .bool => true
+  | .u8 => true
+  | .u32 => true
+  | .u64 => true
+  | .nat => true
+  | .struct _ _ fields => fields.all supportedAbiArrayElementType
+  | .variant _ _ ctors => ctors.all (fun fields => fields.all supportedAbiArrayElementType)
   | _ => false
-
-def supportedAbiArrayElementType (ty : Ty) : Bool :=
-  supportedArrayElementType ty && !containsRecVariant ty
 
 def supportedAbiType : Ty → Bool
   | .bool => true
@@ -851,20 +923,8 @@ partial def supportedResultAbiType : Ty → Bool
   | .variant _ _ ctors => ctors.all (fun fields => fields.all supportedResultAbiType)
   | ty => supportedAbiType ty
 
-partial def supportedInternalValueType : Ty → Bool
-  | .unit => true
-  | .bool => true
-  | .u8 => true
-  | .u32 => true
-  | .u64 => true
-  | .nat => true
-  | .byteArray => true
-  | .array item => supportedArrayElementType item
-  | .sum left right => supportedInternalValueType left && supportedInternalValueType right
-  | .struct _ _ fields => fields.all supportedInternalValueType
-  | .variant _ _ ctors => ctors.all (fun fields => fields.all supportedInternalValueType)
-  | .recVariant _ _ => true
-  | _ => false
+def supportedInternalValueType (ty : Ty) : Bool :=
+  valueLayout? ty |>.isSome
 
 def supportedInternalParamType : Ty → Bool
   | .byteArray => true
@@ -898,6 +958,12 @@ partial def internalSlots : Ty → Nat
 
 def abiParamCount (params : List Ty) : Nat :=
   params.foldl (fun total ty => total + abiSlots ty) 0
+
+def functionParamSlots (useAbi : Bool) (ty : Ty) : Nat :=
+  if useAbi then abiSlots ty else internalSlots ty
+
+def functionParamCount (useAbi : Bool) (params : List Ty) : Nat :=
+  params.foldl (fun total ty => total + functionParamSlots useAbi ty) 0
 
 def functionTypeWith?
     (env : Environment)
@@ -934,20 +1000,8 @@ def supportedFunction? (env : Environment) (info : ConstantInfo) : Option Signat
   else
     functionType? env info.type
 
-partial def supportedLocalType : Ty → Bool
-  | .unit => true
-  | .bool => true
-  | .u8 => true
-  | .u32 => true
-  | .u64 => true
-  | .nat => true
-  | .byteArray => true
-  | .array item => supportedArrayElementType item
-  | .product left right => supportedLocalType left && supportedLocalType right
-  | .sum left right => supportedLocalType left && supportedLocalType right
-  | .struct _ _ fields => fields.all supportedLocalType
-  | .variant _ _ ctors => ctors.all (fun fields => fields.all supportedLocalType)
-  | .recVariant _ _ => true
+def supportedLocalType (ty : Ty) : Bool :=
+  valueLayout? ty |>.isSome
 
 def supportedOneSlotExprType : Ty → Bool
   | .unit => true
@@ -2292,11 +2346,17 @@ partial def flattenArrayElementValue
     (value : ExtractedValue) :
     Except String (List IRExpr) :=
   match ty with
+  | .unit => scalarValue value |>.map (fun expr => [expr])
   | .bool => scalarValue value |>.map (fun expr => [expr])
   | .u8 => scalarValue value |>.map (fun expr => [expr])
   | .u32 => scalarValue value |>.map (fun expr => [expr])
   | .u64 => scalarValue value |>.map (fun expr => [expr])
   | .nat => scalarValue value |>.map (fun expr => [expr])
+  | .array item =>
+      if supportedArrayElementType item then
+        scalarValue value |>.map (fun expr => [expr])
+      else
+        .error s!"unsupported array element value type: {reprStr ((.array item : Ty))}"
   | .recVariant name _ =>
       match value with
       | .heapVariant actual ptr =>
@@ -2323,6 +2383,40 @@ partial def flattenArrayElementValue
             (← flattenArrayElementValue ty elseValue)
       | _ =>
           .error s!"non-recursive value used where recursive inductive array element is required: {name}"
+  | .product left right =>
+      match value with
+      | .product leftValue rightValue => do
+          let leftSlots ← flattenArrayElementValue left leftValue
+          let rightSlots ← flattenArrayElementValue right rightValue
+          .ok (leftSlots ++ rightSlots)
+      | .letE slot value body => do
+          let flattened ← flattenArrayElementValue ty body
+          .ok (flattened.map (fun expr => .letE slot value expr))
+      | .letCall slots index args body => do
+          let flattened ← flattenArrayElementValue ty body
+          .ok (flattened.map (fun expr => .letCall slots index args expr))
+      | .ite cond thenValue elseValue => do
+          combineIteSlots cond
+            (← flattenArrayElementValue ty thenValue)
+            (← flattenArrayElementValue ty elseValue)
+      | _ => .error "non-product value used where product array element is required"
+  | .sum left right =>
+      match value with
+      | .sum tag leftValue rightValue => do
+          let leftSlots ← flattenArrayElementValue left leftValue
+          let rightSlots ← flattenArrayElementValue right rightValue
+          .ok (tag :: leftSlots ++ rightSlots)
+      | .letE slot value body => do
+          let flattened ← flattenArrayElementValue ty body
+          .ok (flattened.map (fun expr => .letE slot value expr))
+      | .letCall slots index args body => do
+          let flattened ← flattenArrayElementValue ty body
+          .ok (flattened.map (fun expr => .letCall slots index args expr))
+      | .ite cond thenValue elseValue => do
+          combineIteSlots cond
+            (← flattenArrayElementValue ty thenValue)
+            (← flattenArrayElementValue ty elseValue)
+      | _ => .error "non-sum value used where sum array element is required"
   | .struct name _ fields =>
       match value with
       | .struct actual values =>
@@ -2405,13 +2499,28 @@ mutual
       (width : Nat)
       (array index : IRExpr) :
       Ty → Nat → Except String (ExtractedValue × Nat)
+    | .unit, slot => .ok (.scalar (.arrayGetSlot width slot array index), slot + 1)
     | .bool, slot => .ok (.scalar (.arrayGetSlot width slot array index), slot + 1)
     | .u8, slot => .ok (.scalar (.arrayGetSlot width slot array index), slot + 1)
     | .u32, slot => .ok (.scalar (.arrayGetSlot width slot array index), slot + 1)
     | .u64, slot => .ok (.scalar (.arrayGetSlot width slot array index), slot + 1)
     | .nat, slot => .ok (.scalar (.arrayGetSlot width slot array index), slot + 1)
+    | .array item, slot =>
+        if supportedArrayElementType item then
+          .ok (.scalar (.arrayGetSlot width slot array index), slot + 1)
+        else
+          .error s!"unsupported array element load type: {reprStr ((.array item : Ty))}"
     | .recVariant name _, slot =>
         .ok (.heapVariant name (.arrayGetSlot width slot array index), slot + 1)
+    | .product left right, slot => do
+        let leftLoaded ← arrayLoadValueAt width array index left slot
+        let rightLoaded ← arrayLoadValueAt width array index right leftLoaded.snd
+        .ok (.product leftLoaded.fst rightLoaded.fst, rightLoaded.snd)
+    | .sum left right, slot => do
+        let leftLoaded ← arrayLoadValueAt width array index left (slot + 1)
+        let rightLoaded ← arrayLoadValueAt width array index right leftLoaded.snd
+        .ok (.sum (.arrayGetSlot width slot array index) leftLoaded.fst rightLoaded.fst,
+          rightLoaded.snd)
     | .struct name _ fields, slot => do
         let result ← arrayLoadFieldsAt width array index fields slot
         .ok (.struct name result.fst, result.snd)
@@ -2460,13 +2569,28 @@ mutual
       (itemStart : Nat)
       (predicate : IRExpr) :
       Ty → Nat → Except String (ExtractedValue × Nat)
+    | .unit, slot => .ok (.scalar (.arrayFindSlot width array itemStart predicate slot), slot + 1)
     | .bool, slot => .ok (.scalar (.arrayFindSlot width array itemStart predicate slot), slot + 1)
     | .u8, slot => .ok (.scalar (.arrayFindSlot width array itemStart predicate slot), slot + 1)
     | .u32, slot => .ok (.scalar (.arrayFindSlot width array itemStart predicate slot), slot + 1)
     | .u64, slot => .ok (.scalar (.arrayFindSlot width array itemStart predicate slot), slot + 1)
     | .nat, slot => .ok (.scalar (.arrayFindSlot width array itemStart predicate slot), slot + 1)
+    | .array item, slot =>
+        if supportedArrayElementType item then
+          .ok (.scalar (.arrayFindSlot width array itemStart predicate slot), slot + 1)
+        else
+          .error s!"unsupported array find element type: {reprStr ((.array item : Ty))}"
     | .recVariant name _, slot =>
         .ok (.heapVariant name (.arrayFindSlot width array itemStart predicate slot), slot + 1)
+    | .product left right, slot => do
+        let leftLoaded ← arrayFindValueAt width array itemStart predicate left slot
+        let rightLoaded ← arrayFindValueAt width array itemStart predicate right leftLoaded.snd
+        .ok (.product leftLoaded.fst rightLoaded.fst, rightLoaded.snd)
+    | .sum left right, slot => do
+        let leftLoaded ← arrayFindValueAt width array itemStart predicate left (slot + 1)
+        let rightLoaded ← arrayFindValueAt width array itemStart predicate right leftLoaded.snd
+        .ok (.sum (.arrayFindSlot width array itemStart predicate slot) leftLoaded.fst
+          rightLoaded.fst, rightLoaded.snd)
     | .struct name _ fields, slot => do
         let result ← arrayFindFieldsAt width array itemStart predicate fields slot
         .ok (.struct name result.fst, result.snd)
@@ -2514,12 +2638,26 @@ def arrayFindValue
 mutual
   partial def arrayLocalValueAt (start : Nat) :
       Ty → Nat → Except String (ExtractedValue × Nat)
+    | .unit, slot => .ok (.scalar (.local (start + slot)), slot + 1)
     | .bool, slot => .ok (.scalar (.local (start + slot)), slot + 1)
     | .u8, slot => .ok (.scalar (.local (start + slot)), slot + 1)
     | .u32, slot => .ok (.scalar (.local (start + slot)), slot + 1)
     | .u64, slot => .ok (.scalar (.local (start + slot)), slot + 1)
     | .nat, slot => .ok (.scalar (.local (start + slot)), slot + 1)
+    | .array item, slot =>
+        if supportedArrayElementType item then
+          .ok (.scalar (.local (start + slot)), slot + 1)
+        else
+          .error s!"unsupported array local element type: {reprStr ((.array item : Ty))}"
     | .recVariant name _, slot => .ok (.heapVariant name (.local (start + slot)), slot + 1)
+    | .product left right, slot => do
+        let leftLoaded ← arrayLocalValueAt start left slot
+        let rightLoaded ← arrayLocalValueAt start right leftLoaded.snd
+        .ok (.product leftLoaded.fst rightLoaded.fst, rightLoaded.snd)
+    | .sum left right, slot => do
+        let leftLoaded ← arrayLocalValueAt start left (slot + 1)
+        let rightLoaded ← arrayLocalValueAt start right leftLoaded.snd
+        .ok (.sum (.local (start + slot)) leftLoaded.fst rightLoaded.fst, rightLoaded.snd)
     | .struct name _ fields, slot => do
         let result ← arrayLocalFieldsAt start fields slot
         .ok (.struct name result.fst, result.snd)
@@ -2640,12 +2778,26 @@ def bindingForParam (slot : Nat) : Ty → Binding
   | .recVariant name _ => .value (.heapVariant name (.local slot))
   | _ => .slot slot
 
+def bindingForInternalParam (slot : Nat) (ty : Ty) : Binding :=
+  .value (valueFromInternalSlots ty fun offset => .local (slot + offset))
+
 partial def sourceParamBindingsFrom (slot : Nat) : List Ty → List Binding
   | [] => []
   | ty :: rest => bindingForParam slot ty :: sourceParamBindingsFrom (slot + abiSlots ty) rest
 
 def sourceParamBindings (params : List Ty) : List Binding :=
   sourceParamBindingsFrom 0 params
+
+partial def internalParamBindingsFrom (slot : Nat) : List Ty → List Binding
+  | [] => []
+  | ty :: rest =>
+      bindingForInternalParam slot ty :: internalParamBindingsFrom (slot + internalSlots ty) rest
+
+def internalParamBindings (params : List Ty) : List Binding :=
+  internalParamBindingsFrom 0 params
+
+def functionParamBindings (useAbi : Bool) (params : List Ty) : List Binding :=
+  if useAbi then sourceParamBindings params else internalParamBindings params
 
 partial def abiTargetsFrom (slot : Nat) : List Ty → List (Ty × List Nat)
   | [] => []
@@ -2655,6 +2807,18 @@ partial def abiTargetsFrom (slot : Nat) : List Ty → List (Ty × List Nat)
 
 def abiTargets (params : List Ty) : List (Ty × List Nat) :=
   abiTargetsFrom 0 params
+
+partial def internalTargetsFrom (slot : Nat) : List Ty → List (Ty × List Nat)
+  | [] => []
+  | ty :: rest =>
+      let slots := (List.range (internalSlots ty)).map (fun offset => slot + offset)
+      (ty, slots) :: internalTargetsFrom (slot + internalSlots ty) rest
+
+def internalTargets (params : List Ty) : List (Ty × List Nat) :=
+  internalTargetsFrom 0 params
+
+def functionParamTargets (useAbi : Bool) (params : List Ty) : List (Ty × List Nat) :=
+  if useAbi then abiTargets params else internalTargets params
 
 def sourceFieldBindingsFromKinds
     (typeName : Name)
@@ -4299,6 +4463,10 @@ def strictCallSafe (ctx : Context) (name : Name) (args : List Expr) : Bool :=
   indexed.all fun item =>
     !mayTrapExpr ctx item.snd || boolAt summary.mustDemand item.fst
 
+def strictCallMaterializationSafe (ctx : Context) (params : List Ty) (args : List Expr) : Bool :=
+  params.zip args |>.all fun item =>
+    internalSlots item.fst == 1 || !mayTrapExpr ctx item.snd
+
 def strictRecursiveCallCheck (ctx : Context) (name : Name) (args : List Expr) :
     Except String Unit := do
   let summary := demandSummary ctx [] name
@@ -4306,6 +4474,17 @@ def strictRecursiveCallCheck (ctx : Context) (name : Name) (args : List Expr) :
   for item in indexed do
     if mayTrapExpr ctx item.snd && !boolAt summary.mustDemand item.fst then
       .error s!"strict call may evaluate an argument not demanded by callee: {name}"
+  .ok ()
+
+def strictCallMaterializationCheck
+    (ctx : Context)
+    (name : Name)
+    (params : List Ty)
+    (args : List Expr) :
+    Except String Unit := do
+  for item in params.zip args do
+    if internalSlots item.fst != 1 && mayTrapExpr ctx item.snd then
+      .error s!"strict call may materialize trapping structured argument fields: {name}"
   .ok ()
 
 def brecOnName (typeName : Name) : Name :=
@@ -4677,7 +4856,7 @@ def structuralPostArgs
     (postArgs : List Expr) :
     Except String (List StructuralPostArg) := do
   let dynamicParams := params.drop 1
-  let dynamicBindings := (sourceParamBindings params).drop 1
+  let dynamicBindings := (internalParamBindings params).drop 1
   let rec loop :
       Nat → List Expr → List (Ty × Binding) → List StructuralPostArg →
         Except String (List StructuralPostArg)
@@ -4890,10 +5069,10 @@ mutual
     let dynamicExtraArgs ← dynamicStructuralExtraArgs (sig.params.drop 1) extraArgs
     let extraResult ← extractCallArgsFrom ctx locals bound.nextLocal
       (sig.params.drop 1) dynamicExtraArgs
-    let slotCount := abiSlots sig.result
+    let slotCount := internalSlots sig.result
     let slotStart := extraResult.nextLocal
     let slots := (List.range slotCount).map (fun offset => slotStart + offset)
-    let value := extractedValueForParam slotStart sig.result
+    let value := valueFromInternalSlots sig.result fun offset => .local (slotStart + offset)
     .ok
       (wrapValueLets (argSlots.lets ++ bound.lets ++ extraResult.lets)
         (.letCall slots index (bound.slots ++ extraResult.args) value),
@@ -6701,7 +6880,9 @@ mutual
     if specialization.runtimeArgs.length != specialization.sig.params.length then
       .error s!"inline call arity mismatch: {name}"
     else
-      if (functionIndex? ctx name).isSome && strictCallSafe ctx name args then
+      if (functionIndex? ctx name).isSome &&
+          strictCallSafe ctx name args &&
+          strictCallMaterializationSafe ctx specialization.sig.params specialization.runtimeArgs then
         return none
       let value ←
         match info.value? with
@@ -6738,11 +6919,12 @@ mutual
               | some sig => .ok sig
               | none => .error s!"unsupported function type or declaration: {name}"
           | none => .error s!"declaration disappeared during extraction: {name}"
+        strictCallMaterializationCheck ctx name sig.params args
         let argsResult ← extractCallArgsFrom ctx locals nextLocal sig.params args
-        let slotCount := abiSlots sig.result
+        let slotCount := internalSlots sig.result
         let slotStart := argsResult.nextLocal
         let slots := (List.range slotCount).map (fun offset => slotStart + offset)
-        let value := extractedValueForParam slotStart sig.result
+        let value := valueFromInternalSlots sig.result fun offset => .local (slotStart + offset)
         .ok
           (some
             (wrapValueLets argsResult.lets (.letCall slots index argsResult.args value),
@@ -7938,6 +8120,7 @@ mutual
                   | some sig => .ok sig
                   | none => .error s!"unsupported function type or declaration: {primitive}"
               | none => .error s!"declaration disappeared during extraction: {primitive}"
+            strictCallMaterializationCheck ctx primitive sig.params args
             let argsResult ← extractCallArgsFrom ctx locals nextLocal sig.params args
             .ok (wrapExprLets argsResult.lets (.call index argsResult.args), argsResult.nextLocal)
         | none =>
@@ -8443,6 +8626,7 @@ mutual
                                                         s!"unsupported function type or declaration: {name}"
                                               | none =>
                                                   .error s!"declaration disappeared during extraction: {name}"
+                                            strictCallMaterializationCheck ctx name sig.params args
                                             let argsResult ← extractCallArgsFrom ctx locals nextLocal sig.params args
                                             .ok
                                               (boolCond
@@ -8490,14 +8674,14 @@ def extractCond (ctx : Context) (locals : List Binding) (nextLocal : Nat) (expr 
     Except String (IRCond × Nat) :=
   extractCondFrom ctx locals nextLocal expr
 
-def localBindingsForParams (params : List Ty) : List Binding :=
-  (sourceParamBindings params).reverse
+def localBindingsForParams (useAbi : Bool) (params : List Ty) : List Binding :=
+  (functionParamBindings useAbi params).reverse
 
-def baseBindingsForParams (params : List Ty) : List Binding :=
-  .recursor :: ((sourceParamBindings params).drop 1).reverse
+def baseBindingsForParams (useAbi : Bool) (params : List Ty) : List Binding :=
+  .recursor :: ((functionParamBindings useAbi params).drop 1).reverse
 
-def stepBindingsForParams (params : List Ty) : List Binding :=
-  let carried := ((sourceParamBindings params).drop 1).reverse
+def stepBindingsForParams (useAbi : Bool) (params : List Ty) : List Binding :=
+  let carried := ((functionParamBindings useAbi params).drop 1).reverse
   (.recursor :: carried) ++ [.value (.scalar (.u64Bin .sub (.local 0) (.u64 1)))]
 
 def extractStructuralRecFunc
@@ -8509,7 +8693,9 @@ def extractStructuralRecFunc
     (resultTy : Ty)
     (value : Expr)
     (exportName : Option String) : Except String IRFunc := do
-  let wasmParamCount := abiParamCount params
+  let useAbi := exportName.isSome
+  let wasmParamCount := functionParamCount useAbi params
+  let paramLocals := localBindingsForParams useAbi params
   let body ←
     match collectLambdas value params.length with
     | some body => .ok body
@@ -8535,7 +8721,7 @@ def extractStructuralRecFunc
       if arms.length != layout.ctors.length then
         .error s!"inductive matcher arity mismatch: {layout.name}"
       else
-        let scrutineeResult ← extractValueFrom ctx (localBindingsForParams params) wasmParamCount scrutinee
+        let scrutineeResult ← extractValueFrom ctx paramLocals wasmParamCount scrutinee
         let parts ← heapVariantPtrWithLets layout.name scrutineeResult.fst
         let ptrSlot := scrutineeResult.snd
         let ptrExpr := wrapExprLets parts.fst parts.snd
@@ -8574,7 +8760,7 @@ def extractStructuralRecFunc
                 else
                   consumeStructuralArmBinders ctx layout.name armBinders arm
               let armResult ←
-                extractValueFrom ctx (parsedArm.snd ++ localBindingsForParams params)
+                extractValueFrom ctx (parsedArm.snd ++ paramLocals)
                   next parsedArm.fst
               let restResult ← extractArms restCtors restArms runtimeFields.snd armResult.snd
               .ok (armResult.fst :: restResult.fst, restResult.snd)
@@ -8587,7 +8773,6 @@ def extractStructuralRecFunc
               let elseValue ← combine rest
               valueIte (.eqU64 tag (.u64 index)) value elseValue
         let resultValue := .letE ptrSlot ptrExpr (← combine (enumerate armResults.fst))
-        let useAbi := exportName.isSome
         let resultCount := resultSlotCount useAbi resultTy
         let resultTargets := (List.range resultCount).map (fun offset => armResults.snd + offset)
         let resultBody ← materializeResultValue useAbi resultTy resultTargets resultValue
@@ -8713,8 +8898,9 @@ def extractWellFoundedRecFunc
   else if info.arms.length != layout.ctors.length then
     .error s!"inductive matcher arity mismatch: {layout.name}"
   else
-  let wasmParamCount := abiParamCount params
-  let stepLocals := .wfRecursor name :: localBindingsForParams params
+  let useAbi := exportName.isSome
+  let wasmParamCount := functionParamCount useAbi params
+  let stepLocals := .wfRecursor name :: localBindingsForParams useAbi params
   let scrutineeResult ←
     match extractValueFrom ctx stepLocals wasmParamCount info.scrutinee with
     | .ok result => .ok result
@@ -8764,7 +8950,6 @@ def extractWellFoundedRecFunc
         let elseValue ← combine rest
         valueIte (.eqU64 tag (.u64 index)) value elseValue
   let resultValue := .letE ptrSlot ptrExpr (← combine (enumerate armResults.fst))
-  let useAbi := exportName.isSome
   let resultCount := resultSlotCount useAbi resultTy
   let resultTargets := (List.range resultCount).map (fun offset => armResults.snd + offset)
   let resultBody ← materializeResultValue useAbi resultTy resultTargets resultValue
@@ -8806,7 +8991,7 @@ def extractWellFoundedNatMemberBranch
   let ptrExpr := wrapExprLets parts.fst parts.snd
   let ptrLocal : IRExpr := .local ptrSlot
   let tag := .heapLoadSlot ptrLocal 0
-  let stepLocals := .wfRecursor name :: .value payload :: localBindingsForParams params
+  let stepLocals := .wfRecursor name :: .value payload :: localBindingsForParams false params
   let postBinders := [StructuralArmBinder.below (.wfRecursor name)]
   let rec extractArms :
       List VariantCtorLayout → List Expr → Nat → Nat →
@@ -8917,7 +9102,9 @@ def extractWellFoundedNatSumFunc
         | .sum _ _ => .ok sumTy
         | _ => .error s!"unsupported well-founded Nat recursion parameter type: {name}"
     | _ => .error s!"unsupported well-founded Nat recursion arity: {name}"
-  let wasmParamCount := abiParamCount params
+  let useAbi := exportName.isSome
+  let wasmParamCount := functionParamCount useAbi params
+  let paramLocals := localBindingsForParams useAbi params
   let step ←
     match wellFoundedNatFixStep? value with
     | some step => .ok step
@@ -8926,10 +9113,9 @@ def extractWellFoundedNatSumFunc
     match collectLambdas step 2 with
     | some body => .ok body
     | none => .error s!"unsupported well-founded Nat recursion step: {name}"
-  let scrutineeResult ← extractValueFrom ctx (localBindingsForParams params) wasmParamCount (.bvar 0)
+  let scrutineeResult ← extractValueFrom ctx paramLocals wasmParamCount (.bvar 0)
   let result ←
     extractWellFoundedNatSumTree ctx name params sumTy scrutineeResult.fst scrutineeResult.snd stepBody
-  let useAbi := exportName.isSome
   let resultCount := resultSlotCount useAbi resultTy
   let resultTargets := (List.range resultCount).map (fun offset => result.snd + offset)
   let resultBody ← materializeResultValue useAbi resultTy resultTargets result.fst
@@ -9081,7 +9267,9 @@ def extractClosedStructuralFoldFunc
     (exportName : Option String) : Except String IRFunc := do
   if !supportedInternalResultType resultTy then
     .error s!"unsupported closed structural fold result type: {reprStr resultTy}"
-  let wasmParamCount := abiParamCount params
+  let useAbi := exportName.isSome
+  let wasmParamCount := functionParamCount useAbi params
+  let paramLocals := localBindingsForParams useAbi params
   let body ←
     match collectLambdas value params.length with
     | some body => .ok body
@@ -9126,12 +9314,12 @@ def extractClosedStructuralFoldFunc
         | _ => .error s!"closed structural fold requires one recursive field: {name}"
       let resultWidth := internalSlots resultTy
       let scrutineeResult ←
-        extractValueFrom ctx (localBindingsForParams params) wasmParamCount shape.scrutinee
+        extractValueFrom ctx paramLocals wasmParamCount shape.scrutinee
       let parts ← heapVariantPtrWithLets layout.name scrutineeResult.fst
       let ptrSlot := scrutineeResult.snd
       let ptrExpr := wrapExprLets parts.fst parts.snd
       let initResult ←
-        extractValueFrom ctx (localBindingsForParams params) (ptrSlot + 1) shape.init
+        extractValueFrom ctx paramLocals (ptrSlot + 1) shape.init
       let initSlots ← flattenInternalValue resultTy initResult.fst
       if initSlots.length != resultWidth then
         .error s!"closed structural fold initializer shape mismatch: {name}"
@@ -9163,7 +9351,7 @@ def extractClosedStructuralFoldFunc
               consumeStructuralCtorArm ctx layout.name stepInfo.prePostArgCount postBinders fieldBinders
                 info.ctor belowBinding arm
             let armResult ←
-              extractValueFrom ctx (parsedArm.snd ++ localBindingsForParams params)
+              extractValueFrom ctx (parsedArm.snd ++ paramLocals)
                 fieldStart parsedArm.fst
             let armSlots ← flattenInternalValue resultTy armResult.fst
             let expected := (List.range resultWidth).map fun offset => .local (accStart + offset)
@@ -9206,7 +9394,7 @@ def extractClosedStructuralFoldFunc
         | [arg] => .ok arg
         | _ => .error s!"closed structural fold step must update one carried argument: {name}"
       let nextAccResult ←
-        extractValueFrom ctx (parsedContinue.snd ++ localBindingsForParams params)
+        extractValueFrom ctx (parsedContinue.snd ++ paramLocals)
           (fieldStart + fieldSlotCount) nextAccExpr
       let nextAccSlots ← flattenInternalValue resultTy nextAccResult.fst
       if nextAccSlots.length != resultWidth then
@@ -9228,7 +9416,6 @@ def extractClosedStructuralFoldFunc
               LeanExe.IR.Stmt.assign ptrSlot (.local (fieldStart + recursiveFieldOffset))])
       let loopCond : IRCond :=
         .eqU64 (.heapLoadSlot (.local ptrSlot) 0) (.u64 continueInfo.index)
-      let useAbi := exportName.isSome
       let resultCount := resultSlotCount useAbi resultTy
       let resultTargets :=
         (List.range resultCount).map (fun offset => tempStart + resultWidth + offset)
@@ -9256,13 +9443,14 @@ def extractNatRecFunc
     (value : Expr)
     (exportName : Option String) : Except String IRFunc := do
   let sourceParamCount := params.length
-  let wasmParamCount := abiParamCount params
+  let useAbi := exportName.isSome
+  let wasmParamCount := functionParamCount useAbi params
   let spec ←
     match ← findRecSpec? ctx.env name sourceParamCount value with
     | some spec => .ok spec
     | none => .error s!"unsupported Nat recursion shape: {name}"
-  let stepLocals := stepBindingsForParams params
-  let baseLocals := baseBindingsForParams params
+  let stepLocals := stepBindingsForParams useAbi params
+  let baseLocals := baseBindingsForParams useAbi params
   let fuelLive : IRCond := .not (.eqU64 (.local 0) (.u64 0))
   let condResult ←
     match spec.continueCond? with
@@ -9286,7 +9474,7 @@ def extractNatRecFunc
   let baseResult ← extractValueFrom ctx baseLocals recArgsResult.nextLocal spec.base
   let loopCond := condResult.fst
   let recIRArgs := recArgsResult.args
-  let targets := (abiTargets params |>.drop 1).flatMap Prod.snd
+  let targets := (functionParamTargets useAbi params |>.drop 1).flatMap Prod.snd
   let tempStart := baseResult.snd
   let updateArgs :=
     LeanExe.IR.seqList <|
@@ -9297,7 +9485,6 @@ def extractNatRecFunc
     match exitResult?.fst with
     | some exitValue => valueIte fuelLive exitValue baseResult.fst
     | none => .ok baseResult.fst
-  let useAbi := exportName.isSome
   let resultStart := tempStart + targets.length
   let resultCount := resultSlotCount useAbi resultTy
   let resultTargets := (List.range resultCount).map (fun offset => resultStart + offset)
@@ -9319,13 +9506,14 @@ def extractPlainFunc
     (value : Expr)
     (exportName : Option String) : Except String IRFunc := do
   let sourceParamCount := params.length
-  let wasmParamCount := abiParamCount params
+  let useAbi := exportName.isSome
+  let wasmParamCount := functionParamCount useAbi params
+  let paramLocals := localBindingsForParams useAbi params
   let body ←
     match collectLambdas value sourceParamCount with
     | some body => .ok body
     | none => .error s!"definition body does not match function arity: {name}"
-  let result ← extractValueFrom ctx (localBindingsForParams params) wasmParamCount body
-  let useAbi := exportName.isSome
+  let result ← extractValueFrom ctx paramLocals wasmParamCount body
   let resultCount := resultSlotCount useAbi resultTy
   let resultTargets := (List.range resultCount).map (fun offset => result.snd + offset)
   let resultBody ← materializeResultValue useAbi resultTy resultTargets result.fst
