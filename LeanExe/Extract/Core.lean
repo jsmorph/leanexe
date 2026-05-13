@@ -119,6 +119,9 @@ def isIdType (expr : Expr) : Bool :=
 def isStringType (expr : Expr) : Bool :=
   isConst ``String expr
 
+def isCharType (expr : Expr) : Bool :=
+  isConst ``Char expr
+
 partial def containsBVar (index : Nat) (expr : Expr) : Bool :=
   if isBVar index expr then
     true
@@ -192,18 +195,21 @@ def boundedNatExpr (value : Nat) : Except String IRExpr :=
     .error s!"Nat literal exceeds bounded runtime representation: {value}"
 
 def scalarLiteralExpr? (expr : Expr) : Option (Except String IRExpr) :=
-  match ofNat? ``UInt64 expr with
-  | some value => some (.ok (.u64 value))
+  match natLit? expr with
+  | some value => some (boundedNatExpr value)
   | none =>
-      match ofNat? ``UInt8 expr with
-      | some value => some (.ok (.u64 (value % 256)))
+      match ofNat? ``UInt64 expr with
+      | some value => some (.ok (.u64 value))
       | none =>
-          match ofNat? ``UInt32 expr with
-          | some value => some (.ok (.u64 (value % (2 ^ 32))))
+          match ofNat? ``UInt8 expr with
+          | some value => some (.ok (.u64 (value % 256)))
           | none =>
-              match ofNat? ``Nat expr with
-              | some value => some (boundedNatExpr value)
-              | none => none
+              match ofNat? ``UInt32 expr with
+              | some value => some (.ok (.u64 (value % (2 ^ 32))))
+              | none =>
+                  match ofNat? ``Nat expr with
+                  | some value => some (boundedNatExpr value)
+                  | none => none
 
 partial def peelForall (expr : Expr) : List Expr × Expr :=
   match expr.consumeMData with
@@ -374,7 +380,7 @@ mutual
       some .u32
     else if isConst ``ByteArray expr then
       some .byteArray
-    else if isStringType expr then
+    else if isStringType expr || isCharType expr then
       none
     else
       match appFnArgs expr with
@@ -4032,18 +4038,186 @@ structure StructuralExpressionRecShape where
   typeName : Name
   typeParams : List Ty
   typeArgExprs : List Expr
+  dynamicPostArgTypes : List Ty
   motive : Expr
   scrutinee : Expr
   step : Expr
   postArgs : List Expr
   resultTy : Ty
 
+partial def containsSupportedBrecOn (env : Environment) (expr : Expr) : Bool :=
+  expr.getUsedConstants.any fun name =>
+    match brecOnTypeName? name with
+    | some typeName => (userRecursiveInductiveInfo? env typeName).isSome
+    | none => false
+
+partial def peelLambdaBody (expr : Expr) : Expr :=
+  match expr.consumeMData with
+  | .lam _ _ body _ => peelLambdaBody body
+  | body => body
+
+partial def transparentStructuralAdapterAt? (env : Environment) (fuel : Nat) (expr : Expr) : Bool :=
+  match fuel with
+  | 0 => false
+  | fuel + 1 =>
+      let body := peelLambdaBody expr
+      match body.consumeMData with
+      | .proj _ _ _ => true
+      | _ =>
+          match appFnArgs body with
+          | (.const name _, _) =>
+              match env.find? name with
+              | some (.ctorInfo _) => true
+              | some info =>
+                  match info.value? with
+                  | some value =>
+                      containsSupportedBrecOn env value ||
+                        transparentStructuralAdapterAt? env fuel value
+                  | none => false
+              | none => false
+          | _ => false
+
+def transparentStructuralAdapter? (env : Environment) (expr : Expr) : Bool :=
+  transparentStructuralAdapterAt? env 8 expr
+
+def structuralUnfoldCandidate? (env : Environment) (root name : Name) (value : Expr) : Bool :=
+  name.getRoot != root &&
+    !blocksTransparentSpecialization name &&
+    (containsSupportedBrecOn env value || transparentStructuralAdapter? env value)
+
+def ctorProjection? (env : Environment) (typeName : Name) (index : Nat) (expr : Expr) :
+    Option Expr :=
+  match appFnArgs expr with
+  | (.const ctorName _, args) =>
+      match env.find? ctorName with
+      | some (.ctorInfo info) =>
+          if info.induct == typeName then
+            args[info.numParams + index]?
+          else
+            none
+      | _ => none
+  | _ => none
+
+partial def forallBinderInfos (expr : Expr) : List BinderInfo :=
+  match expr.consumeMData with
+  | .forallE _ _ body info => info :: forallBinderInfos body
+  | _ => []
+
+def shouldNormalizeStructuralArg : BinderInfo → Bool
+  | .default => false
+  | _ => true
+
+partial def structuralNormalizeExpr
+    (env : Environment)
+    (root : Name)
+    (fuel : Nat)
+    (expr : Expr) : Expr :=
+  match fuel with
+  | 0 => expr
+  | fuel + 1 =>
+      let normalize := structuralNormalizeExpr env root fuel
+      let reduceApp (fn : Expr) (args : List Expr) : Expr :=
+        let rec applyNormalized (fn : Expr) : List Expr → Expr
+          | [] => fn
+          | arg :: rest =>
+              match fn.consumeMData with
+              | .lam _ _ body _ => applyNormalized (normalize (body.instantiate1 arg)) rest
+              | _ => rebuildApp fn (arg :: rest)
+        let applied := applyNormalized fn args
+        match appFnArgs applied with
+        | (.const name _, appliedArgs) =>
+            match env.find? name with
+            | some info =>
+                match info.value? with
+                | some value =>
+                    if structuralUnfoldCandidate? env root name value then
+                      normalize (rebuildApp value appliedArgs)
+                    else
+                      applied
+                | none => applied
+            | none => applied
+        | _ => applied
+      match expr.consumeMData with
+      | .app _ _ =>
+          match appFnArgs expr with
+          | (.const candidate _, _) =>
+              if (brecOnTypeName? candidate).any (fun typeName =>
+                  (userRecursiveInductiveInfo? env typeName).isSome) then
+                expr
+              else
+                let (fn, args) := appFnArgs expr
+                let normalizedArgs :=
+                  match fn.consumeMData with
+                  | .const name _ =>
+                      match env.find? name with
+                      | some info =>
+                          let binders := forallBinderInfos info.type
+                          args.zipIdx.map fun item =>
+                            match binders[item.snd]? with
+                            | some binder =>
+                                if shouldNormalizeStructuralArg binder then
+                                  normalize item.fst
+                                else
+                                  item.fst
+                            | none => item.fst
+                      | none => args
+                  | _ => args.map normalize
+                reduceApp (normalize fn) normalizedArgs
+          | _ =>
+              let (fn, args) := appFnArgs expr
+              reduceApp (normalize fn) (args.map normalize)
+      | .lam name type body bi => .lam name (normalize type) (normalize body) bi
+      | .forallE name type body bi => .forallE name (normalize type) (normalize body) bi
+      | .letE name type value body nondep =>
+          .letE name (normalize type) (normalize value) (normalize body) nondep
+      | .mdata data body => .mdata data (normalize body)
+      | .proj typeName index body =>
+          let normalizedBody := normalize body
+          match ctorProjection? env typeName index normalizedBody with
+          | some projected => normalize projected
+          | none => .proj typeName index normalizedBody
+      | other => other
+
+def structuralPostArgTypesAndResult?
+    (env : Environment)
+    (root : Name)
+    (motive scrutinee : Expr)
+    (postArgs : List Expr) :
+    Option (List Ty × Ty) := do
+  let motiveResult :=
+    structuralNormalizeExpr env root 16 (rebuildApp motive [scrutinee])
+  let rec loop :
+      List Expr → Expr → List Ty → Option (List Ty × Expr)
+    | [], resultExpr, acc => some (acc.reverse, resultExpr)
+    | arg :: restArgs, resultExpr, acc =>
+        match resultExpr.consumeMData with
+        | .forallE _ domain body _ =>
+            let nextResult := structuralNormalizeExpr env root 16 (body.instantiate1 arg)
+            if isDirectLambda arg then
+              if containsBVar 0 arg then
+                none
+              else
+                loop restArgs nextResult acc
+            else
+              match typeAtom? env domain with
+              | some ty =>
+                  if supportedInternalParamType ty then
+                    loop restArgs nextResult (ty :: acc)
+                  else
+                    none
+              | none => none
+        | _ => none
+  let (dynamicTypes, resultExpr) ← loop postArgs motiveResult []
+  let resultExpr := structuralNormalizeExpr env root 16 resultExpr
+  let resultTy ← typeAtom? env resultExpr
+  some (dynamicTypes, resultTy)
+
 def expressionStructuralRecShape?
     (env : Environment)
     (root : Name)
     (expr : Expr) :
     Option StructuralExpressionRecShape :=
-  match appFnArgs expr with
+  match appFnArgs (structuralNormalizeExpr env root 32 expr) with
   | (fn@(.const candidate _), args) => do
       let typeName ← brecOnTypeName? candidate
       let info ← userRecursiveInductiveInfo? env typeName
@@ -4051,18 +4225,18 @@ def expressionStructuralRecShape?
       let typeParams ← typeArgExprs.mapM (typeAtom? env)
       match args.drop info.numParams with
       | motive :: scrutinee :: step :: postArgs =>
-          if !postArgs.isEmpty || containsBVar 0 motive || containsBVar 0 step then
+          if containsBVar 0 motive || containsBVar 0 step then
             none
           else
-            let resultExpr :=
-              betaSpecializeExpr env root 8 (rebuildApp motive [scrutinee])
-            let resultTy ← typeAtom? env resultExpr
+            let (dynamicPostArgTypes, resultTy) ←
+              structuralPostArgTypesAndResult? env root motive scrutinee postArgs
             if supportedInternalResultType resultTy then
               some {
                 fn := fn,
                 typeName := typeName,
                 typeParams := typeParams,
                 typeArgExprs := typeArgExprs,
+                dynamicPostArgTypes := dynamicPostArgTypes,
                 motive := motive,
                 scrutinee := scrutinee,
                 step := step,
@@ -4079,6 +4253,7 @@ def syntheticMatchesShape (synth : SyntheticFunction) (shape : StructuralExpress
   synth.typeName == shape.typeName &&
     synth.typeParams == shape.typeParams &&
     synth.sig.result == shape.resultTy &&
+    synth.sig.params == (.recVariant shape.typeName shape.typeParams :: shape.dynamicPostArgTypes) &&
     synth.motive == shape.motive &&
     synth.step == shape.step &&
     synth.postArgs == shape.postArgs
@@ -4087,12 +4262,28 @@ def syntheticForShape? (ctx : Context) (shape : StructuralExpressionRecShape) :
     Option SyntheticFunction :=
   ctx.synthetics.toList.find? (fun synth => syntheticMatchesShape synth shape)
 
-def structuralExpressionSyntheticValue (shape : StructuralExpressionRecShape) : Expr :=
+def structuralExpressionSyntheticPostArgs (postArgs : List Expr) : List Expr :=
+  let rec loop (index remaining : Nat) : List Expr → List Expr
+    | [] => []
+    | arg :: rest =>
+        if isDirectLambda arg then
+          arg :: loop index remaining rest
+        else
+          .bvar (remaining - 1) :: loop (index + 1) (remaining - 1) rest
+  loop 0 (postArgs.filter (fun arg => !isDirectLambda arg)).length postArgs
+
+def structuralExpressionSyntheticValue? (shape : StructuralExpressionRecShape) : Option Expr := do
   let domain := rebuildApp (.const shape.typeName []) shape.typeArgExprs
+  let dynamicDomains ← shape.dynamicPostArgTypes.mapM tyExpr?
+  let scrutineeIndex := shape.dynamicPostArgTypes.length
   let body :=
     rebuildApp shape.fn
-      (shape.typeArgExprs ++ [shape.motive, .bvar 0, shape.step] ++ shape.postArgs)
-  .lam `xs domain body .default
+      (shape.typeArgExprs ++
+        [shape.motive, .bvar scrutineeIndex, shape.step] ++
+        structuralExpressionSyntheticPostArgs shape.postArgs)
+  let withDynamicArgs :=
+    dynamicDomains.foldr (fun argType body => .lam `arg argType body .default) body
+  some (.lam `xs domain withDynamicArgs .default)
 
 structure StructuralStep where
   layout : VariantLayout
@@ -4592,7 +4783,7 @@ mutual
             | some synth =>
                 let scrutineeResult ← extractValueFrom ctx locals nextLocal shape.scrutinee
                 extractStructuralRecCallValueFrom ctx locals scrutineeResult.snd synth.name
-                  scrutineeResult.fst []
+                  scrutineeResult.fst shape.postArgs
             | none => .error s!"unsupported expression-level structural recursion: {shape.typeName}"
         | none =>
         match appFnArgs expr with
@@ -7280,6 +7471,18 @@ mutual
             | (.const ``Prod.mk _, _) =>
                 .error "product value used where scalar value is required"
             | (.const primitive _, args) =>
+                match expressionStructuralRecShape? ctx.env ctx.root expr with
+                | some shape =>
+                    match syntheticForShape? ctx shape with
+                    | some synth =>
+                        let scrutineeResult ← extractValueFrom ctx locals nextLocal shape.scrutinee
+                        let valueResult ←
+                          extractStructuralRecCallValueFrom ctx locals scrutineeResult.snd synth.name
+                            scrutineeResult.fst shape.postArgs
+                        .ok (← scalarValue valueResult.fst, valueResult.snd)
+                    | none =>
+                        .error s!"unsupported expression-level structural recursion: {shape.typeName}"
+                | none =>
                 match ← extractClosedStructuralPredicateExprFrom ctx locals nextLocal expr with
                 | some result => .ok result
                 | none =>
@@ -8699,19 +8902,23 @@ partial def collectExpressionStructuralSynthetics
         else
           let reserved := reserved ++ synthetics.toList.map (fun synth => synth.name)
           let name := freshStructuralExpressionSyntheticName env root reserved synthetics.size
-          synthetics.push {
-            name := name,
-            sig := {
-              params := [.recVariant shape.typeName shape.typeParams],
-              result := shape.resultTy
-            },
-            value := structuralExpressionSyntheticValue shape,
-            typeName := shape.typeName,
-            typeParams := shape.typeParams,
-            motive := shape.motive,
-            step := shape.step,
-            postArgs := shape.postArgs
-          }
+          match structuralExpressionSyntheticValue? shape with
+          | some value =>
+              synthetics.push {
+                name := name,
+                sig := {
+                  params := .recVariant shape.typeName shape.typeParams ::
+                    shape.dynamicPostArgTypes,
+                  result := shape.resultTy
+                },
+                value := value,
+                typeName := shape.typeName,
+                typeParams := shape.typeParams,
+                motive := shape.motive,
+                step := shape.step,
+                postArgs := shape.postArgs
+              }
+          | none => synthetics
     | none => synthetics
   match expr.consumeMData with
   | .app fn arg =>
