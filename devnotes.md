@@ -2704,3 +2704,17 @@ Checks run:
 - [x] `lake build LeanExe.Examples.Correctness`
 - [x] `node test/core_correctness.js` returned `checked 537 accepted, 30 rejected, and 13 trapped cases`.
 - [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 537 accepted, 30 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 46 json program cases`, and `checked 56 cases`.
+
+## 2026-05-13: Inline specialization for polymorphic helpers
+
+The extractor now recognizes local first-order polymorphic helper applications whose static type or proof arguments precede all runtime arguments.  At a concrete call site, it substitutes those static arguments into the helper body, derives the concrete runtime parameter and result types from the instantiated function type, and reuses the existing inline extraction path for the remaining runtime arguments.  This keeps the first slice small: there is no shared generic runtime function, no typeclass specialization, and no escaping function value.
+
+The specialized inline path preserves the existing lazy argument behavior.  The correctness corpus includes a polymorphic helper that returns the first `Box` value while the unused second `Box` contains an out-of-bounds array read; the generated WASM returns the first value rather than evaluating the unused argument.  Other examples cover `Box α -> α`, projections from `PairBox α β`, boolean matching over `ParamResult ε α`, extracting a `Point` through a polymorphic result helper, and extracting a value from `CheckedPayload α`.
+
+Checks run:
+
+- [x] `lake build LeanExe.Extract.Core`
+- [x] `lake build lean-wasm`
+- [x] `lake build LeanExe.Examples.Correctness`
+- [x] `node test/core_correctness.js` returned `checked 543 accepted, 30 rejected, and 13 trapped cases`.
+- [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 543 accepted, 30 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 46 json program cases`, and `checked 56 cases`.
