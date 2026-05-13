@@ -19,6 +19,16 @@ structure Signature where
   result : Ty
   deriving BEq, Repr
 
+structure SyntheticFunction where
+  name : Name
+  sig : Signature
+  value : Expr
+  typeName : Name
+  typeParams : List Ty
+  motive : Expr
+  step : Expr
+  postArgs : List Expr
+
 inductive ExtractedValue where
   | scalar (expr : IRExpr)
   | byteArray (ptr len : IRExpr)
@@ -73,6 +83,7 @@ structure Context where
   env : Environment
   root : Name
   names : Array Name
+  synthetics : Array SyntheticFunction
   inlineStack : List Name
 
 structure VariantCtorLayout where
@@ -941,6 +952,17 @@ def functionIndex? (ctx : Context) (name : Name) : Option Nat :=
     else
       none
   loop 0
+
+def syntheticFunction? (ctx : Context) (name : Name) : Option SyntheticFunction :=
+  ctx.synthetics.toList.find? (fun synth => synth.name == name)
+
+def functionSignature? (ctx : Context) (name : Name) : Option Signature :=
+  match syntheticFunction? ctx name with
+  | some synth => some synth.sig
+  | none =>
+      match ctx.env.find? name with
+      | some info => supportedFunction? ctx.env info
+      | none => none
 
 def localInlineFunction? (ctx : Context) (name : Name) : Bool :=
   name.getRoot == ctx.root &&
@@ -4005,6 +4027,73 @@ def brecOnTypeName? : Name → Option Name
   | .str typeName "brecOn" => some typeName
   | _ => none
 
+structure StructuralExpressionRecShape where
+  fn : Expr
+  typeName : Name
+  typeParams : List Ty
+  typeArgExprs : List Expr
+  motive : Expr
+  scrutinee : Expr
+  step : Expr
+  postArgs : List Expr
+  resultTy : Ty
+
+def expressionStructuralRecShape?
+    (env : Environment)
+    (root : Name)
+    (expr : Expr) :
+    Option StructuralExpressionRecShape :=
+  match appFnArgs expr with
+  | (fn@(.const candidate _), args) => do
+      let typeName ← brecOnTypeName? candidate
+      let info ← userRecursiveInductiveInfo? env typeName
+      let typeArgExprs := args.take info.numParams
+      let typeParams ← typeArgExprs.mapM (typeAtom? env)
+      match args.drop info.numParams with
+      | motive :: scrutinee :: step :: postArgs =>
+          if !postArgs.isEmpty || containsBVar 0 motive || containsBVar 0 step then
+            none
+          else
+            let resultExpr :=
+              betaSpecializeExpr env root 8 (rebuildApp motive [scrutinee])
+            let resultTy ← typeAtom? env resultExpr
+            if supportedInternalResultType resultTy then
+              some {
+                fn := fn,
+                typeName := typeName,
+                typeParams := typeParams,
+                typeArgExprs := typeArgExprs,
+                motive := motive,
+                scrutinee := scrutinee,
+                step := step,
+                postArgs := postArgs,
+                resultTy := resultTy
+              }
+            else
+              none
+      | _ => none
+  | _ => none
+
+def syntheticMatchesShape (synth : SyntheticFunction) (shape : StructuralExpressionRecShape) :
+    Bool :=
+  synth.typeName == shape.typeName &&
+    synth.typeParams == shape.typeParams &&
+    synth.sig.result == shape.resultTy &&
+    synth.motive == shape.motive &&
+    synth.step == shape.step &&
+    synth.postArgs == shape.postArgs
+
+def syntheticForShape? (ctx : Context) (shape : StructuralExpressionRecShape) :
+    Option SyntheticFunction :=
+  ctx.synthetics.toList.find? (fun synth => syntheticMatchesShape synth shape)
+
+def structuralExpressionSyntheticValue (shape : StructuralExpressionRecShape) : Expr :=
+  let domain := rebuildApp (.const shape.typeName []) shape.typeArgExprs
+  let body :=
+    rebuildApp shape.fn
+      (shape.typeArgExprs ++ [shape.motive, .bvar 0, shape.step] ++ shape.postArgs)
+  .lam `xs domain body .default
+
 structure StructuralStep where
   layout : VariantLayout
   arms : List Expr
@@ -4287,12 +4376,9 @@ mutual
       | some index => .ok index
       | none => .error s!"structural recursive function is not compiled: {functionName}"
     let sig ←
-      match ctx.env.find? functionName with
-      | some info =>
-          match supportedFunction? ctx.env info with
-          | some sig => .ok sig
-          | none => .error s!"unsupported function type or declaration: {functionName}"
-      | none => .error s!"declaration disappeared during extraction: {functionName}"
+      match functionSignature? ctx functionName with
+      | some sig => .ok sig
+      | none => .error s!"unsupported function type or declaration: {functionName}"
     let paramTy ←
       match sig.params with
       | .recVariant typeName typeParams :: _ => .ok (.recVariant typeName typeParams)
@@ -4500,6 +4586,15 @@ mutual
     | .const ``Unit.unit _ => .ok (.scalar (.u64 0), nextLocal)
     | .const ``ByteArray.empty _ => .ok (.byteArray (.u64 0) (.u64 0), nextLocal)
     | _ =>
+        match expressionStructuralRecShape? ctx.env ctx.root expr with
+        | some shape =>
+            match syntheticForShape? ctx shape with
+            | some synth =>
+                let scrutineeResult ← extractValueFrom ctx locals nextLocal shape.scrutinee
+                extractStructuralRecCallValueFrom ctx locals scrutineeResult.snd synth.name
+                  scrutineeResult.fst []
+            | none => .error s!"unsupported expression-level structural recursion: {shape.typeName}"
+        | none =>
         match appFnArgs expr with
         | (.bvar index, args) =>
             match ← lookupBinding locals index with
@@ -8556,6 +8651,99 @@ def extractFunction
         | .ok func => .ok func
         | .error error => .error s!"while extracting plain function: {error}"
 
+def structuralExpressionSyntheticName (root : Name) (index : Nat) : Name :=
+  .str (.str root "_leanexe_expr_rec") (toString index)
+
+partial def freshStructuralExpressionSyntheticName
+    (env : Environment)
+    (root : Name)
+    (reserved : List Name)
+    (index : Nat) :
+    Name :=
+  let candidate := structuralExpressionSyntheticName root index
+  if reserved.contains candidate || (env.find? candidate).isSome then
+    freshStructuralExpressionSyntheticName env root reserved (index + 1)
+  else
+    candidate
+
+def topLevelStructuralRecCandidate? (value : Expr) (params : List Ty) : Bool :=
+  match params with
+  | .recVariant typeName typeParams :: _ =>
+      match collectLambdas value params.length with
+      | some body =>
+          match appFnArgs body with
+          | (.const candidate _, args) =>
+              if candidate == brecOnName typeName then
+                match args.drop typeParams.length with
+                | _motive :: scrutinee :: _step :: _postArgs =>
+                    isBVar (params.length - 1) scrutinee
+                | _ => false
+              else
+                false
+          | _ => false
+      | none => false
+  | _ => false
+
+partial def collectExpressionStructuralSynthetics
+    (env : Environment)
+    (root : Name)
+    (reserved : List Name)
+    (expr : Expr)
+    (synthetics : Array SyntheticFunction) :
+    Array SyntheticFunction :=
+  let synthetics :=
+    match expressionStructuralRecShape? env root expr with
+    | some shape =>
+        if synthetics.toList.any (fun synth => syntheticMatchesShape synth shape) then
+          synthetics
+        else
+          let reserved := reserved ++ synthetics.toList.map (fun synth => synth.name)
+          let name := freshStructuralExpressionSyntheticName env root reserved synthetics.size
+          synthetics.push {
+            name := name,
+            sig := {
+              params := [.recVariant shape.typeName shape.typeParams],
+              result := shape.resultTy
+            },
+            value := structuralExpressionSyntheticValue shape,
+            typeName := shape.typeName,
+            typeParams := shape.typeParams,
+            motive := shape.motive,
+            step := shape.step,
+            postArgs := shape.postArgs
+          }
+    | none => synthetics
+  match expr.consumeMData with
+  | .app fn arg =>
+      let synthetics := collectExpressionStructuralSynthetics env root reserved fn synthetics
+      collectExpressionStructuralSynthetics env root reserved arg synthetics
+  | .lam _ type body _ =>
+      let synthetics := collectExpressionStructuralSynthetics env root reserved type synthetics
+      collectExpressionStructuralSynthetics env root reserved body synthetics
+  | .forallE _ type body _ =>
+      let synthetics := collectExpressionStructuralSynthetics env root reserved type synthetics
+      collectExpressionStructuralSynthetics env root reserved body synthetics
+  | .letE _ type value body _ =>
+      let synthetics := collectExpressionStructuralSynthetics env root reserved type synthetics
+      let synthetics := collectExpressionStructuralSynthetics env root reserved value synthetics
+      collectExpressionStructuralSynthetics env root reserved body synthetics
+  | .mdata _ body => collectExpressionStructuralSynthetics env root reserved body synthetics
+  | .proj _ _ body => collectExpressionStructuralSynthetics env root reserved body synthetics
+  | _ => synthetics
+
+def collectFunctionExpressionStructuralSynthetics
+    (env : Environment)
+    (root : Name)
+    (reserved : List Name)
+    (sig : Signature)
+    (value : Expr)
+    (synthetics : Array SyntheticFunction) :
+    Array SyntheticFunction :=
+  if topLevelStructuralRecCandidate? value sig.params then
+    synthetics
+  else
+    collectExpressionStructuralSynthetics env root reserved value synthetics
+
 def compileEnvironment (env : Environment) (moduleName entry : Name) : Except String IRModule := do
   let entryInfo ←
     match env.find? entry with
@@ -8566,10 +8754,32 @@ def compileEnvironment (env : Environment) (moduleName entry : Name) : Except St
     | some sig => .ok sig
     | none => .error s!"unsupported function type or declaration: {entry}"
   let (_, namesList) ← collectReachable env moduleName.getRoot entry [] []
-  let names := namesList.toArray
-  let ctx : Context := { env := env, root := moduleName.getRoot, names := names, inlineStack := [] }
+  let root := moduleName.getRoot
+  let mut synthetics := #[]
+  for name in namesList do
+    let info ←
+      match env.find? name with
+      | some info => .ok info
+      | none => .error s!"declaration disappeared during extraction: {name}"
+    let sig ←
+      if name == entry then
+        match supportedEntryFunction? env info with
+        | some sig => .ok sig
+        | none => .error s!"unsupported function type or declaration: {name}"
+      else
+        match supportedFunction? env info with
+        | some sig => .ok sig
+        | none => .error s!"unsupported function type or declaration: {name}"
+    let value ←
+      match info.value? with
+      | some value => .ok (betaSpecializeExpr env root 32 value)
+      | none => .error s!"declaration has no executable value: {name}"
+    synthetics := collectFunctionExpressionStructuralSynthetics env root namesList sig value synthetics
+  let names := (namesList ++ synthetics.toList.map (fun synth => synth.name)).toArray
+  let ctx : Context :=
+    { env := env, root := root, names := names, synthetics := synthetics, inlineStack := [] }
   let mut funcs := #[]
-  for name in names do
+  for name in namesList do
     let info ←
       match env.find? name with
       | some info => .ok info
@@ -8587,6 +8797,13 @@ def compileEnvironment (env : Environment) (moduleName entry : Name) : Except St
       match extractFunction ctx entry name info sig with
       | .ok func => .ok func
       | .error error => .error s!"while extracting {name}: {error}"
+    funcs := funcs.push func
+  for synth in synthetics do
+    let func ←
+      match extractStructuralRecFunc ctx synth.name synth.sig.params synth.typeName synth.typeParams
+          synth.sig.result synth.value none with
+      | .ok func => .ok func
+      | .error error => .error s!"while extracting {synth.name}: {error}"
     funcs := funcs.push func
   .ok { funcs := funcs }
 

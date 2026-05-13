@@ -599,8 +599,12 @@ def leanListMapAddOne (xs : List UInt64) : List UInt64 :=
 def leanListMapDemo : UInt64 :=
   leanListHeadOrZero (leanListMapAddOne leanList123)
 
-def rejectLeanListMapDirectDemo : UInt64 :=
+def leanListMapDirectDemo : UInt64 :=
   leanListHeadOrZero (leanList123.map (fun x => x + 1))
+
+def leanListMapDirectBranchDemo (flag : Bool) : UInt64 :=
+  let xs := if flag then leanList123 else [9]
+  leanListHeadOrZero (xs.map (fun x => x + 1))
 
 def leanListFilterGtOne (xs : List UInt64) : List UInt64 :=
   xs.filter (fun x => x > 1)
@@ -608,7 +612,7 @@ def leanListFilterGtOne (xs : List UInt64) : List UInt64 :=
 def leanListFilterDemo : UInt64 :=
   leanListHeadOrZero (leanListFilterGtOne leanList123)
 
-def rejectLeanListFilterDirectDemo : UInt64 :=
+def leanListFilterDirectDemo : UInt64 :=
   leanListHeadOrZero (leanList123.filter (fun x => x > 1))
 
 def rejectLeanListLengthDemo : UInt64 :=
@@ -641,7 +645,7 @@ def leanListReverseAcc : List UInt64 → List UInt64 → List UInt64
 def leanListReverseRecDemo : UInt64 :=
   leanListHeadOrZero (leanListReverseAcc leanList123 [])
 
-def rejectLeanListFoldrDemo : UInt64 :=
+def leanListFoldrDemo : UInt64 :=
   leanList123.foldr (fun x acc => acc * 10 + x) 0
 
 def leanListFoldrRec : List UInt64 → UInt64 → UInt64

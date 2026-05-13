@@ -2553,3 +2553,26 @@ Checks run:
 - [x] `build/tools/wasmtime/current/wasmtime --invoke leanListFoldrRecDemo /tmp/leanListFoldrRecDemo.wasm` returned `321`.
 - [x] `node test/core_correctness.js` returned `checked 499 accepted, 30 rejected, and 13 trapped cases`.
 - [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 499 accepted, 30 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 46 json program cases`, and `checked 56 cases`.
+
+## 2026-05-12: Expression-position structural recursion
+
+Expression-level `brecOn` terms with no hidden runtime post-arguments now lower through private synthetic helpers.  The collector scans beta-specialized reachable declarations, identifies closed structural-recursion expressions over supported recursive inductive instances, and appends deterministic synthetic functions to the module.  Extraction of the original expression compiles the scrutinee and emits a call to the private helper, while the helper body uses the existing structural-recursion extractor, including generated below projections and WASM self-calls.
+
+This admits direct expression-position `List.map`, `List.filter`, and `List.foldr` over `List UInt64` when the callback specializes to closed first-order code.  The lowering is keyed on recursive-inductive layouts rather than `List` declarations.  `List.length`, list append notation, and `List.reverse` remain rejected because their generated forms do not match this expression-level structural-recursion shape.
+
+Checks run:
+
+- [x] `lake build LeanExe.Extract.Core`
+- [x] `lake build lean-wasm`
+- [x] `lake build LeanExe.Examples.Correctness`
+- [x] `.lake/build/bin/lean-wasm compile --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.leanListMapDirectDemo --out /tmp/leanListMapDirectDemo.wasm`
+- [x] `.lake/build/bin/lean-wasm compile --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.leanListMapDirectBranchDemo --out /tmp/leanListMapDirectBranchDemo.wasm`
+- [x] `.lake/build/bin/lean-wasm compile --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.leanListFilterDirectDemo --out /tmp/leanListFilterDirectDemo.wasm`
+- [x] `.lake/build/bin/lean-wasm compile --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.leanListFoldrDemo --out /tmp/leanListFoldrDemo.wasm`
+- [x] `build/tools/wasmtime/current/wasmtime --invoke leanListMapDirectDemo /tmp/leanListMapDirectDemo.wasm` returned `2`.
+- [x] `build/tools/wasmtime/current/wasmtime --invoke leanListMapDirectBranchDemo /tmp/leanListMapDirectBranchDemo.wasm 0` returned `10`.
+- [x] `build/tools/wasmtime/current/wasmtime --invoke leanListMapDirectBranchDemo /tmp/leanListMapDirectBranchDemo.wasm 1` returned `2`.
+- [x] `build/tools/wasmtime/current/wasmtime --invoke leanListFilterDirectDemo /tmp/leanListFilterDirectDemo.wasm` returned `2`.
+- [x] `build/tools/wasmtime/current/wasmtime --invoke leanListFoldrDemo /tmp/leanListFoldrDemo.wasm` returned `321`.
+- [x] `node test/core_correctness.js` returned `checked 504 accepted, 27 rejected, and 13 trapped cases`.
+- [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 504 accepted, 27 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 46 json program cases`, and `checked 56 cases`.
