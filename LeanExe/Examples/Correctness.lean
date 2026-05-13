@@ -1612,6 +1612,42 @@ def arrayFoldEmptySkipsFunctionTrap : Nat :=
     (fun acc _value => acc + ((Array.replicate 0 (0 : UInt64))[0]!).toNat)
     7
 
+def arrayFoldStructAccumulator : UInt64 :=
+  let result :=
+    (#[1, 2, 3] : Array UInt64).foldl
+      (fun acc value => { count := acc.count + 1, sum := acc.sum + value })
+      ({ count := 0, sum := 0 } : CountSum)
+  result.count * (10 : UInt64) + result.sum
+
+def arrayFoldProductAccumulator : UInt64 :=
+  let result :=
+    (#[2, 3, 4] : Array UInt64).foldl
+      (fun acc value => (acc.1 + 1, acc.2 + value))
+      ((0 : UInt64), (0 : UInt64))
+  result.1 * (10 : UInt64) + result.2
+
+def arrayFoldStatusAccumulator : UInt64 :=
+  let result :=
+    (#[1, 2, 3] : Array UInt64).foldl
+      (fun acc value =>
+        match acc with
+        | Status.ok sum => Status.ok (sum + value)
+        | Status.error code => Status.error code)
+      (Status.ok 0)
+  match result with
+  | Status.ok sum => sum
+  | Status.error code => code + 100
+
+def arrayFoldArrayAccumulator : UInt64 :=
+  let result :=
+    (#[1, 2, 3] : Array UInt64).foldl
+      (fun acc value => acc.push (value + 10))
+      (#[] : Array UInt64)
+  if result.size == 3 then
+    result[0]! * (100 : UInt64) + result[2]!
+  else
+    0
+
 def arrayFindIdxSome : Option Nat :=
   (#[1, 2, 3] : Array UInt64).findIdx? (fun value => value == 2)
 
@@ -3087,6 +3123,46 @@ def byteArrayFoldEmptySkipsFunctionTrap : Nat :=
     (fun acc _byte => acc + ((Array.replicate 0 (0 : UInt64))[0]!).toNat)
     7
 
+def byteArrayFoldStructAccumulator : UInt64 :=
+  let result :=
+    (ByteArray.mk #[(1 : UInt8), (2 : UInt8), (3 : UInt8)]).foldl
+      (fun acc byte => { pos := acc.pos + 1, sum := acc.sum + byte.toUInt64 })
+      ({ pos := 0, sum := 0 } : DigitState)
+  result.pos.toUInt64 * (10 : UInt64) + result.sum
+
+def byteArrayFoldProductAccumulator : UInt64 :=
+  let result :=
+    (ByteArray.mk #[(5 : UInt8), (6 : UInt8)]).foldl
+      (fun acc byte => (acc.1 + 1, acc.2 + byte.toUInt64))
+      ((0 : UInt64), (0 : UInt64))
+  result.1 * (100 : UInt64) + result.2
+
+def byteArrayFoldStatusAccumulator : UInt64 :=
+  let result :=
+    (ByteArray.mk #[(1 : UInt8), (2 : UInt8), (3 : UInt8)]).foldl
+      (fun acc byte =>
+        match acc with
+        | Status.ok sum =>
+            if byte == (2 : UInt8) then
+              Status.error (sum + 20)
+            else
+              Status.ok (sum + byte.toUInt64)
+        | Status.error code => Status.error (code + byte.toUInt64))
+      (Status.ok 0)
+  match result with
+  | Status.ok sum => sum
+  | Status.error code => code
+
+def byteArrayFoldArrayAccumulator : UInt64 :=
+  let result :=
+    (ByteArray.mk #[(1 : UInt8), (2 : UInt8)]).foldl
+      (fun acc byte => acc.push byte.toUInt64)
+      (#[] : Array UInt64)
+  if result.size == 2 then
+    result[0]! * (10 : UInt64) + result[1]!
+  else
+    0
+
 def byteArrayFindIdxSome : Option Nat :=
   (ByteArray.mk #[(1 : UInt8), (42 : UInt8), (3 : UInt8)]).findIdx?
     (fun byte => byte == (42 : UInt8))
@@ -3167,5 +3243,15 @@ def rejectIdRangeForByteArrayAccumulator : ByteArray := Id.run do
   for _i in [0:2] do
     output := output.push (1 : UInt8)
   return output
+
+def rejectArrayFoldByteArrayAccumulator : ByteArray :=
+  (#[1, 2] : Array UInt64).foldl
+    (fun acc _value => acc.push (1 : UInt8))
+    ByteArray.empty
+
+def rejectByteArrayFoldByteArrayAccumulator : ByteArray :=
+  (ByteArray.mk #[(1 : UInt8), (2 : UInt8)]).foldl
+    (fun acc byte => acc.push byte)
+    ByteArray.empty
 
 end LeanExe.Examples.Correctness

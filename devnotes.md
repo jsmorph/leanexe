@@ -2740,3 +2740,18 @@ Checks run:
 - [x] `build/tools/wasmtime/current/wasmtime run --invoke arrayBoxElementRead /tmp/arrayBoxElementRead.wasm` returned `223`.
 - [x] `build/tools/wasmtime/current/wasmtime run --invoke arrayProductElementRead /tmp/arrayProductElementRead.wasm` returned `43`.
 - [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 550 accepted, 32 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 46 json program cases`, and `checked 56 cases`.
+
+## 2026-05-13: Structured direct fold accumulators
+
+Direct `Array.foldl` and `ByteArray.foldl` now use the same internal-slot accumulator model as accepted pure `Id.run` `for` loops.  The extractor reconstructs the accumulator from loop-local slots, extracts the direct-lambda body as a structured value, flattens the body result, and rebuilds the requested source-level result value from the projected fold slots.  Supported accumulator shapes are scalars, supported array pointers, products, structures, nonrecursive tagged values, and recursive-inductive pointer values, provided the flattened accumulator contains no `ByteArray` field.
+
+The correctness corpus now covers direct folds carrying a `CountSum` structure, a product, a `Status` tagged value, and an array pointer.  It covers both `Array.foldl` and `ByteArray.foldl`, and it rejects direct folds whose accumulator is a `ByteArray`.  This extends ordinary direct-lambda folds without adding a primitive for a specific source type.
+
+Checks run:
+
+- [x] `lake build`
+- [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 558 accepted, 34 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 46 json program cases`, and `checked 56 cases`.
+- [x] `.lake/build/bin/lean-wasm compile --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.arrayFoldStructAccumulator --out .lake/build/core-correctness/arrayFoldStructAccumulator.wasmtime.wasm`
+- [x] `.lake/build/bin/lean-wasm compile --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.byteArrayFoldStatusAccumulator --out .lake/build/core-correctness/byteArrayFoldStatusAccumulator.wasmtime.wasm`
+- [x] `build/tools/wasmtime/current/wasmtime --invoke arrayFoldStructAccumulator .lake/build/core-correctness/arrayFoldStructAccumulator.wasmtime.wasm` returned `36`.
+- [x] `build/tools/wasmtime/current/wasmtime --invoke byteArrayFoldStatusAccumulator .lake/build/core-correctness/byteArrayFoldStatusAccumulator.wasmtime.wasm` returned `24`.
