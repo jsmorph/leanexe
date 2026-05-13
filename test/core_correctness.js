@@ -426,8 +426,13 @@ const accepted = [
   { name: "leanListMapDirectBranchDemo", args: [1n], expected: 2n },
   { name: "leanListFilterDemo", args: [], expected: 2n },
   { name: "leanListFilterDirectDemo", args: [], expected: 2n },
+  { name: "leanListLengthDirectDemo", args: [], expected: 3n },
   { name: "leanListLengthRecDemo", args: [], expected: 3n },
+  { name: "leanListAppendDirectDemo", args: [], expected: 15n },
+  { name: "leanListAppendDirectBranchDemo", args: [0n], expected: 6n },
+  { name: "leanListAppendDirectBranchDemo", args: [1n], expected: 15n },
   { name: "leanListAppendRecDemo", args: [], expected: 15n },
+  { name: "leanListReverseDirectDemo", args: [], expected: 3n },
   { name: "leanListReverseRecDemo", args: [], expected: 3n },
   { name: "leanListFoldrDemo", args: [], expected: 321n },
   { name: "leanListFoldrRecDemo", args: [], expected: 321n },
@@ -674,18 +679,6 @@ const rejected = [
   {
     name: "rejectRecursiveArrayReturn",
     message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectRecursiveArrayReturn",
-  },
-  {
-    name: "rejectLeanListLengthDemo",
-    message: "unsupported constant in expression: UInt64",
-  },
-  {
-    name: "rejectLeanListAppendDemo",
-    message: "unsupported HAppend.hAppend application",
-  },
-  {
-    name: "rejectLeanListReverseDemo",
-    message: "unsupported constant in expression: UInt64",
   },
   {
     name: "rejectHigherOrder",

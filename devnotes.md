@@ -2576,3 +2576,25 @@ Checks run:
 - [x] `build/tools/wasmtime/current/wasmtime --invoke leanListFoldrDemo /tmp/leanListFoldrDemo.wasm` returned `321`.
 - [x] `node test/core_correctness.js` returned `checked 504 accepted, 27 rejected, and 13 trapped cases`.
 - [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 504 accepted, 27 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 46 json program cases`, and `checked 56 cases`.
+
+## 2026-05-12: Structural recursion with post-arguments
+
+Expression-level structural-recursion lowering now synthesizes helpers that accept supported first-order post-arguments after the recursive scrutinee.  The discovery pass reduces transparent wrapper definitions only far enough to expose a supported recursive-inductive `brecOn`; it reduces projection and constructor adapters for typeclass methods, preserves default runtime arguments, and leaves the existing primitive extractors responsible for ordinary arithmetic, string, array, and byte-array operations.  The synthetic helper body replaces dynamic post-arguments with helper parameters, while direct-lambda post-arguments remain static when they are closed.
+
+This admits direct `List.length`, list append notation through `++`, and `List.reverse` over `List UInt64` without adding compiler cases for those declarations.  The append branch example passes the right-hand list as a runtime carried value, which exercises the new post-argument path rather than a closed literal.  Runtime `Char` is now rejected by the type classifier, so compile-time string helpers such as `String.length` continue to use the string-specific ASCII path instead of being captured as generic `List Char` recursion.
+
+Checks run:
+
+- [x] `lake build lean-wasm`
+- [x] `lake build LeanExe.Examples.Correctness`
+- [x] `.lake/build/bin/lean-wasm compile --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.leanListLengthDirectDemo --out /tmp/leanListLengthDirectDemo.wasm`
+- [x] `.lake/build/bin/lean-wasm compile --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.leanListAppendDirectDemo --out /tmp/leanListAppendDirectDemo.wasm`
+- [x] `.lake/build/bin/lean-wasm compile --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.leanListAppendDirectBranchDemo --out /tmp/leanListAppendDirectBranchDemo.wasm`
+- [x] `.lake/build/bin/lean-wasm compile --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.leanListReverseDirectDemo --out /tmp/leanListReverseDirectDemo.wasm`
+- [x] `build/tools/wasmtime/current/wasmtime --invoke leanListLengthDirectDemo /tmp/leanListLengthDirectDemo.wasm` returned `3`.
+- [x] `build/tools/wasmtime/current/wasmtime --invoke leanListAppendDirectDemo /tmp/leanListAppendDirectDemo.wasm` returned `15`.
+- [x] `build/tools/wasmtime/current/wasmtime --invoke leanListAppendDirectBranchDemo /tmp/leanListAppendDirectBranchDemo.wasm 0` returned `6`.
+- [x] `build/tools/wasmtime/current/wasmtime --invoke leanListAppendDirectBranchDemo /tmp/leanListAppendDirectBranchDemo.wasm 1` returned `15`.
+- [x] `build/tools/wasmtime/current/wasmtime --invoke leanListReverseDirectDemo /tmp/leanListReverseDirectDemo.wasm` returned `3`.
+- [x] `node test/core_correctness.js` returned `checked 509 accepted, 24 rejected, and 13 trapped cases`.
+- [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 509 accepted, 24 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 46 json program cases`, and `checked 56 cases`.

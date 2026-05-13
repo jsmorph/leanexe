@@ -615,7 +615,7 @@ def leanListFilterDemo : UInt64 :=
 def leanListFilterDirectDemo : UInt64 :=
   leanListHeadOrZero (leanList123.filter (fun x => x > 1))
 
-def rejectLeanListLengthDemo : UInt64 :=
+def leanListLengthDirectDemo : UInt64 :=
   leanList123.length.toUInt64
 
 def leanListLengthRec : List UInt64 → UInt64
@@ -625,8 +625,12 @@ def leanListLengthRec : List UInt64 → UInt64
 def leanListLengthRecDemo : UInt64 :=
   leanListLengthRec leanList123
 
-def rejectLeanListAppendDemo : UInt64 :=
+def leanListAppendDirectDemo : UInt64 :=
   leanListStructuralSum (leanList123 ++ [4, 5])
+
+def leanListAppendDirectBranchDemo (flag : Bool) : UInt64 :=
+  let ys := if flag then [4, 5] else []
+  leanListStructuralSum (leanList123 ++ ys)
 
 def leanListAppendRec : List UInt64 → List UInt64 → List UInt64
   | [], ys => ys
@@ -635,7 +639,7 @@ def leanListAppendRec : List UInt64 → List UInt64 → List UInt64
 def leanListAppendRecDemo : UInt64 :=
   leanListStructuralSum (leanListAppendRec leanList123 [4, 5])
 
-def rejectLeanListReverseDemo : UInt64 :=
+def leanListReverseDirectDemo : UInt64 :=
   leanListHeadOrZero leanList123.reverse
 
 def leanListReverseAcc : List UInt64 → List UInt64 → List UInt64
