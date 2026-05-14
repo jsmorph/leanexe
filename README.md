@@ -2,7 +2,7 @@
 
 LeanExe compiles a restricted Lean 4 program to a standalone WebAssembly module.  Lean remains the type checker and source language; the compiler loads a checked declaration from a Lean module and emits WASM for the executable subset described in [Language Specification](spec.md).  The supported subset covers first-order pure programs over scalar values, byte arrays, fixed-width arrays, structures, inductive values, bounded recursion, and internal recursive data structures.
 
-The default generated module exports a plain WASM function for the selected Lean declaration.  Scalar programs can run directly with Wasmtime or another WASM engine that can invoke exported functions.  Programs that pass or return byte arrays, structures, variants, or arrays use the ABI described below, so a host program must provide flattened values or memory values in the expected form.  A separate WASI command mode accepts a zero-argument `ByteArray` entry and writes the returned bytes to stdout.
+The default generated module exports a plain WASM function for the selected Lean declaration.  Scalar programs can run directly with Wasmtime or another WASM engine that can invoke exported functions.  Programs that pass or return byte arrays, structures, variants, or arrays use the ABI described below, so a host program must provide flattened values or memory values in the expected form.  WASI command modes provide stdout output, bounded stdin input, and an error-aware byte transform without compiling Lean `IO`.
 
 ## Requirements
 
@@ -143,6 +143,16 @@ Use `compile-wasi-stdin` for a bounded stdin-to-stdout transform.  The selected 
   --out build/stdin-stdout.wasm
 ```
 
+Use `compile-wasi-stdin-except` when the pure entry reports failure explicitly.  The selected entry must have type `ByteArray -> Except ByteArray ByteArray`.  The generated `_start` reads bounded stdin, calls the Lean entry, writes `Except.ok` bytes to stdout with exit status `0`, and writes `Except.error` bytes to stderr before calling WASI `proc_exit 1`.
+
+```sh
+.lake/build/bin/lean-wasm compile-wasi-stdin-except \
+  --max-input-bytes 65536 \
+  --module LeanExe.Examples.Correctness \
+  --entry LeanExe.Examples.Correctness.byteArrayExceptBangOrError \
+  --out build/stdin-except.wasm
+```
+
 ## Run
 
 Scalar parameters and scalar results use WASM `i64`.  `Bool` uses `0` for false and `1` for true.  `Nat` values must fit in the compiler's bounded `i64` representation.
@@ -168,11 +178,12 @@ The repository examples can be compiled the same way.  `LeanExe.Examples.Collatz
 wasmtime run --invoke steps build/collatz.wasm 27
 ```
 
-A WASI command module runs through Wasmtime without `--invoke`.  Its observable result is stdout, so byte-producing programs can be tested as real command programs.
+A WASI command module runs through Wasmtime without `--invoke`.  The stdout modes make byte-producing programs observable as command programs, and the `Except` mode also exposes stderr and a nonzero exit status for source-level errors.
 
 ```sh
 wasmtime run build/stdout.wasm
 printf AB | wasmtime run build/stdin-stdout.wasm
+printf AB | wasmtime run build/stdin-except.wasm
 ```
 
 ## Host Memory Values

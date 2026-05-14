@@ -3245,6 +3245,12 @@ def rejectUnitParam (_value : Unit) : UInt64 :=
 def byteArrayIdentityReturn (input : ByteArray) : ByteArray :=
   input
 
+def byteArrayExceptBangOrError (input : ByteArray) : Except ByteArray ByteArray :=
+  if input.isEmpty then
+    Except.error "empty".toUTF8
+  else
+    Except.ok (input.push (33 : UInt8))
+
 def rejectNestedArrayReturn : Array (Array UInt64) :=
   #[#[1, 2]]
 

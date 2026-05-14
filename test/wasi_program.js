@@ -60,6 +60,26 @@ function compileStdin(moduleName, entry, maxInputBytes) {
   return out;
 }
 
+function compileStdinExcept(moduleName, entry, maxInputBytes) {
+  const out = path.join(outDir, `${entry}.stdin-except.wasi.wasm`);
+  const result = run([
+    leanExe,
+    "compile-wasi-stdin-except",
+    "--max-input-bytes",
+    maxInputBytes.toString(),
+    "--module",
+    moduleName,
+    "--entry",
+    `${moduleName}.${entry}`,
+    "--out",
+    out,
+  ]);
+  if (result.status !== 0) {
+    throw new Error(outputText(result).trim() || `${entry} failed to compile`);
+  }
+  return out;
+}
+
 function expectProgram(entry, expectedBytes) {
   const wasm = compileStdout(entry);
   const result = run([wasmtime, "run", wasm]);
@@ -97,6 +117,40 @@ function expectStdinProgram(moduleName, entry, maxInputBytes, inputBytes, expect
   const actual = result.stdout || Buffer.alloc(0);
   if (Buffer.compare(actual, expected) !== 0) {
     throw new Error(`${entry}: expected ${expected.toString("hex")}, got ${actual.toString("hex")}`);
+  }
+}
+
+function expectStdinExceptOk(moduleName, entry, maxInputBytes, inputBytes, expectedBytes) {
+  const wasm = compileStdinExcept(moduleName, entry, maxInputBytes);
+  const result = runWasmtimeWithInput(wasm, entry, "except-ok", inputBytes);
+  if (result.status !== 0) {
+    throw new Error(outputText(result).trim() || `${entry} failed in Wasmtime`);
+  }
+  const expected = Buffer.from(expectedBytes);
+  const actual = result.stdout || Buffer.alloc(0);
+  if (Buffer.compare(actual, expected) !== 0) {
+    throw new Error(`${entry}: expected stdout ${expected.toString("hex")}, got ${actual.toString("hex")}`);
+  }
+  const stderr = result.stderr || Buffer.alloc(0);
+  if (stderr.length !== 0) {
+    throw new Error(`${entry}: expected empty stderr, got ${stderr.toString("hex")}`);
+  }
+}
+
+function expectStdinExceptError(moduleName, entry, maxInputBytes, inputBytes, expectedBytes) {
+  const wasm = compileStdinExcept(moduleName, entry, maxInputBytes);
+  const result = runWasmtimeWithInput(wasm, entry, "except-error", inputBytes);
+  if (result.status !== 1) {
+    throw new Error(outputText(result).trim() || `${entry} should have exited with status 1`);
+  }
+  const expected = Buffer.from(expectedBytes);
+  const actual = result.stderr || Buffer.alloc(0);
+  if (Buffer.compare(actual, expected) !== 0) {
+    throw new Error(`${entry}: expected stderr ${expected.toString("hex")}, got ${actual.toString("hex")}`);
+  }
+  const stdout = result.stdout || Buffer.alloc(0);
+  if (stdout.length !== 0) {
+    throw new Error(`${entry}: expected empty stdout, got ${stdout.toString("hex")}`);
   }
 }
 
@@ -150,6 +204,28 @@ function expectStdinReject(moduleName, entry, maxInputBytes, message) {
   }
 }
 
+function expectStdinExceptReject(moduleName, entry, maxInputBytes, message) {
+  const out = path.join(outDir, `${entry}.reject.stdin-except.wasi.wasm`);
+  const result = run([
+    leanExe,
+    "compile-wasi-stdin-except",
+    "--max-input-bytes",
+    maxInputBytes.toString(),
+    "--module",
+    moduleName,
+    "--entry",
+    `${moduleName}.${entry}`,
+    "--out",
+    out,
+  ]);
+  if (result.status === 0) {
+    throw new Error(`${entry} compiled but should have failed`);
+  }
+  if (!outputText(result).includes(message)) {
+    throw new Error(`${entry}: expected rejection containing "${message}"`);
+  }
+}
+
 function main() {
   if (!fs.existsSync(wasmtime)) {
     throw new Error(`wasmtime not found: ${wasmtime}`);
@@ -165,6 +241,8 @@ function main() {
   expectStdinProgram(byteArrayModule, "appendBang", 8, [65, 66], [65, 66, 33]);
   expectStdinProgram(byteArrayModule, "tailSlice", 8, [65, 66, 67], [66, 67]);
   expectStdinTrap(correctnessModule, "byteArrayIdentityReturn", 8, [65, 66, 67, 68, 69, 70, 71, 72, 73]);
+  expectStdinExceptOk(correctnessModule, "byteArrayExceptBangOrError", 8, [65, 66], [65, 66, 33]);
+  expectStdinExceptError(correctnessModule, "byteArrayExceptBangOrError", 8, [], [101, 109, 112, 116, 121]);
 
   expectReject("byteArrayPushSize", "program entry must return ByteArray");
   expectReject("byteArrayBranchHelperReturn", "program entry must take no parameters");
@@ -180,8 +258,14 @@ function main() {
     1048576,
     "max input bytes exceeds WASM memory capacity"
   );
+  expectStdinExceptReject(
+    correctnessModule,
+    "byteArrayIdentityReturn",
+    8,
+    "program stdin-except entry must have type ByteArray -> Except ByteArray ByteArray"
+  );
 
-  process.stdout.write("checked 7 WASI program cases, 1 stdin trap, and 4 rejections\n");
+  process.stdout.write("checked 9 WASI program cases, 1 stdin trap, and 5 rejections\n");
 }
 
 try {
