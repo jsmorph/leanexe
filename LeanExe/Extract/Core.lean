@@ -7772,7 +7772,7 @@ mutual
                 | index :: array :: _ =>
                     let arrayResult ← extractExprFrom ctx locals nextLocal array
                     let indexResult ← extractExprFrom ctx locals arrayResult.snd index
-                    .ok (.arrayGet arrayResult.fst indexResult.fst, indexResult.snd)
+                    .ok (.arrayGetSlot 1 0 arrayResult.fst indexResult.fst, indexResult.snd)
                 | _ => .error "unsupported Array.get!Internal application"
             | (.const ``GetElem?.getElem! _, args) =>
                 match args.reverse with
@@ -7789,7 +7789,7 @@ mutual
                     | _ =>
                         let arrayResult ← extractExprFrom ctx locals nextLocal array
                         let indexResult ← extractExprFrom ctx locals arrayResult.snd index
-                        .ok (.arrayGet arrayResult.fst indexResult.fst, indexResult.snd)
+                        .ok (.arrayGetSlot 1 0 arrayResult.fst indexResult.fst, indexResult.snd)
                 | _ => .error "unsupported GetElem?.getElem! application"
             | (.const ``GetElem.getElem _, args) =>
                 match args.reverse with
@@ -7806,7 +7806,7 @@ mutual
                     | _ =>
                         let arrayResult ← extractExprFrom ctx locals nextLocal array
                         let indexResult ← extractExprFrom ctx locals arrayResult.snd index
-                        .ok (.arrayGet arrayResult.fst indexResult.fst, indexResult.snd)
+                        .ok (.arrayGetSlot 1 0 arrayResult.fst indexResult.fst, indexResult.snd)
                 | _ => .error "unsupported GetElem.getElem application"
             | (.const ``Array.back! _, args) =>
                 match args.reverse with
@@ -7814,7 +7814,7 @@ mutual
                     let arrayResult ← extractExprFrom ctx locals nextLocal array
                     let slot := arrayResult.snd
                     let value :=
-                      .arrayGet (.local slot) (.u64Bin .sub (.arraySize (.local slot)) (.u64 1))
+                      .arrayGetSlot 1 0 (.local slot) (.u64Bin .sub (.arraySize (.local slot)) (.u64 1))
                     .ok (.letE slot arrayResult.fst value, slot + 1)
                 | _ => .error "unsupported Array.back! application"
             | (.const ``Array.back _, args) =>
@@ -7823,7 +7823,7 @@ mutual
                     let arrayResult ← extractExprFrom ctx locals nextLocal array
                     let slot := arrayResult.snd
                     let value :=
-                      .arrayGet (.local slot) (.u64Bin .sub (.arraySize (.local slot)) (.u64 1))
+                      .arrayGetSlot 1 0 (.local slot) (.u64Bin .sub (.arraySize (.local slot)) (.u64 1))
                     .ok (.letE slot arrayResult.fst value, slot + 1)
                 | _ => .error "unsupported Array.back application"
             | (.const ``Array.getD _, _) =>

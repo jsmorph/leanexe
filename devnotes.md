@@ -2772,3 +2772,14 @@ Checks run:
 - [x] `build/tools/wasmtime/current/wasmtime --invoke arrayFoldSum .lake/build/core-correctness/arrayFoldSum.unified.wasm` returned `6`.
 - [x] `build/tools/wasmtime/current/wasmtime --invoke byteArrayFoldSum .lake/build/core-correctness/byteArrayFoldSum.unified.wasm` returned `6`.
 - [x] `wc -c .lake/build/core-correctness/arrayFoldSum.unified.wat` returned `11373`.
+
+## 2026-05-13: Slot-width array IR cleanup
+
+The one-slot array expression forms have been removed from the IR and the WASM emitters.  Scalar arrays now use the same slot-width representation as arrays of products, structures, tagged values, recursive pointers, and nested array pointers, with scalar elements represented as width one.  Scalar reads from primitive `Array` indexing lower to `arrayGetSlot 1 0`, so extraction no longer needs a separate scalar array read constructor.
+
+This removes the duplicate allocation, replication, update, push, pop, append, extract, map, insert, erase, swap, and reverse emitter paths.  The remaining array representation still stores the logical length in the array header and stores the element payload as `length * width` contiguous 64-bit cells.  The public ABI restrictions remain unchanged: nested heap references may appear in internal arrays but still cannot cross exported function boundaries as public array parameters or results.
+
+Checks run:
+
+- [x] `lake build`
+- [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 558 accepted, 34 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 46 json program cases`, and `checked 56 cases`.
