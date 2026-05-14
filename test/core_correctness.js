@@ -58,10 +58,14 @@ const accepted = [
   { name: "uint8ToUInt32Value", args: [], expected: 256n },
   { name: "uint32ToUInt8Wrap", args: [], expected: 44n },
   { name: "uint8OfNatValue", args: [298n], expected: 43n },
+  { name: "uint8ParamToNat", args: [300n], expected: 44n },
+  { name: "uint8Return", args: [], expected: 44n },
   { name: "uint8AddWrap", args: [], expected: 0n },
   { name: "uint8SubWrap", args: [], expected: 255n },
   { name: "uint8MulWrap", args: [], expected: 16n },
   { name: "uint8DivModZero", args: [], expected: 7n },
+  { name: "uint32ParamToNat", args: [4294967297n], expected: 1n },
+  { name: "uint32Return", args: [], expected: 1n },
   { name: "nestedShadow", args: [3n], expected: 64n },
   { name: "unusedScalarLetSkipsTrap", args: [], expected: 1n },
   { name: "letUsedOnlyInUnusedProductField", args: [], expected: 7n },
@@ -724,22 +728,6 @@ const rejected = [
   {
     name: "rejectArrayBoxArrayReturn",
     message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectArrayBoxArrayReturn",
-  },
-  {
-    name: "rejectUInt8Param",
-    message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectUInt8Param",
-  },
-  {
-    name: "rejectUInt8Return",
-    message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectUInt8Return",
-  },
-  {
-    name: "rejectUInt32Param",
-    message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectUInt32Param",
-  },
-  {
-    name: "rejectUInt32Return",
-    message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectUInt32Return",
   },
   {
     name: "rejectRuntimeStringToUTF8",

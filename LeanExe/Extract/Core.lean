@@ -906,6 +906,8 @@ partial def supportedAbiArrayElementType : Ty → Bool
 
 def supportedAbiType : Ty → Bool
   | .bool => true
+  | .u8 => true
+  | .u32 => true
   | .u64 => true
   | .nat => true
   | .array item => supportedAbiArrayElementType item
@@ -2060,8 +2062,8 @@ partial def flattenAbiValue (ty : Ty) (value : ExtractedValue) : Except String (
   match ty with
   | .unit => scalarValue value |>.map (fun expr => [expr])
   | .bool => scalarValue value |>.map (fun expr => [expr])
-  | .u8 => scalarValue value |>.map (fun expr => [expr])
-  | .u32 => scalarValue value |>.map (fun expr => [expr])
+  | .u8 => scalarValue value |>.map (fun expr => [u8WrapExpr expr])
+  | .u32 => scalarValue value |>.map (fun expr => [u32WrapExpr expr])
   | .u64 => scalarValue value |>.map (fun expr => [expr])
   | .nat => scalarValue value |>.map (fun expr => [expr])
   | .array item =>
@@ -2729,6 +2731,8 @@ def arrayElementWidth (context : String) (itemTy : Ty) : Except String Nat :=
 
 mutual
   partial def extractedValueForParam (slot : Nat) : Ty → ExtractedValue
+    | .u8 => .scalar (u8WrapExpr (.local slot))
+    | .u32 => .scalar (u32WrapExpr (.local slot))
     | .byteArray => .byteArray (.local slot) (.local (slot + 1))
     | .sum left right =>
         .sum (.local slot)
@@ -2756,6 +2760,8 @@ mutual
 end
 
 def bindingForParam (slot : Nat) : Ty → Binding
+  | .u8 => .value (.scalar (u8WrapExpr (.local slot)))
+  | .u32 => .value (.scalar (u32WrapExpr (.local slot)))
   | .byteArray => .value (.byteArray (.local slot) (.local (slot + 1)))
   | .sum left right =>
       .value

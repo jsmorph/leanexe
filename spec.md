@@ -29,7 +29,7 @@ A generated module exports one 16-page linear memory, `alloc(len : i64) : i64`, 
 
 The entry export name is the last component of the Lean declaration name.  For example, `My.Module.answer` exports `answer`.  The entry name must not be `memory`, `alloc`, or `reset`, because those names belong to the runtime ABI.
 
-Every scalar ABI slot is a WASM `i64`.  `Bool` uses `0` for false and `1` for true.  `UInt64` uses the full unsigned 64-bit representation, and `Nat` uses the bounded unsigned representation described below.
+Every scalar ABI slot is a WASM `i64`.  `Bool` uses `0` for false and `1` for true.  `UInt8` and `UInt32` use one slot and are reduced modulo `2^8` or `2^32` when they enter or leave the public ABI.  `UInt64` uses the full unsigned 64-bit representation, and `Nat` uses the bounded unsigned representation described below.
 
 `ByteArray` crosses the ABI as two slots: byte pointer and byte length.  Structure values flatten their runtime fields in Lean declaration order after proof-field erasure.  Nonrecursive inductive values flatten as a constructor tag followed by payload slots for every constructor in declaration order; inactive payload slots are ignored on input and may hold default values on output.
 
@@ -41,8 +41,8 @@ Arrays cross the ABI as arena pointers.  Public array elements must have a fixed
 |-----------|-----------------|--------------|----------------|-------|
 | `Unit` | No | No | Yes | Runtime value is erased to a zero-valued scalar where needed. |
 | `Bool` | Yes | Yes | Yes | ABI slot is `0` or `1`. |
-| `UInt8` | No | No | Yes | Used by `ByteArray`, arrays, and helper code. |
-| `UInt32` | No | No | Yes | Used by helper code and byte-oriented algorithms. |
+| `UInt8` | Yes | Yes | Yes | Public ABI slot is reduced modulo `2^8`. |
+| `UInt32` | Yes | Yes | Yes | Public ABI slot is reduced modulo `2^32`. |
 | `UInt64` | Yes | Yes | Yes | Main scalar integer type for public entries. |
 | `Nat` | Yes | Yes | Yes | Runtime values must fit in the bounded `i64` representation. |
 | `ByteArray` | Yes | Yes | Yes | ABI is pointer and length. |
@@ -59,7 +59,7 @@ Arrays cross the ABI as arena pointers.  Public array elements must have a fixed
 | Propositions | Erased | Erased | Erased | Proofs may justify Lean source but have no WASM value. |
 | `String` | No | No | Compile-time ASCII only | Runtime strings are unsupported; restricted compile-time ASCII expressions may feed `String.toUTF8`, `String.length`, `String.isEmpty`, and equality. |
 
-Entry parameters support `Bool`, `UInt64`, bounded `Nat`, `ByteArray`, fixed-width `Array`, supported structures, supported nonrecursive inductives, `Option`, and `Except`.  Entry results support the same set.  Public structures, public tagged values, public `Option`, public `Except`, and public arrays must not contain recursive-inductive values anywhere in their flattened layout.  `UInt8`, `UInt32`, `Unit`, products, `PSum`, and recursive inductives are internal-only types even though helpers may use them.
+Entry parameters support `Bool`, `UInt8`, `UInt32`, `UInt64`, bounded `Nat`, `ByteArray`, fixed-width `Array`, supported structures, supported nonrecursive inductives, `Option`, and `Except`.  Entry results support the same set.  Public structures, public tagged values, public `Option`, public `Except`, and public arrays must not contain recursive-inductive values anywhere in their flattened layout.  `Unit`, products, `PSum`, and recursive inductives are internal-only types even though helpers may use them.
 
 An array element type is fixed-width when LeanExe can assign a constant number of `i64` slots to each element.  The accepted public element types are `Bool`, `UInt8`, `UInt32`, `UInt64`, bounded `Nat`, supported structures, supported nonrecursive inductives, `Option`, and `Except`, provided their layouts do not contain recursive values, nested arrays, or other heap-reference fields.  Internal arrays may also store nested arrays and recursive inductive values as one-slot heap pointers, and they may store products, fixed-width structures, or tagged values that contain those pointer fields.
 
@@ -67,7 +67,7 @@ An array element type is fixed-width when LeanExe can assign a constant number o
 
 `UInt64` arithmetic uses the unsigned 64-bit Lean semantics.  Addition, subtraction, and multiplication wrap modulo `2^64`.  Division by zero returns `0`, and remainder by zero returns the dividend, matching Lean's fixed-width integer behavior.
 
-`UInt8` and `UInt32` are represented internally as constrained `i64` values.  Literals and `ofNat` conversions reduce modulo `2^8` or `2^32`, arithmetic wraps to the same width, and conversions to wider supported types preserve the constrained value.  Shifts mask the shift amount modulo the type width before shifting.
+`UInt8` and `UInt32` are represented internally as constrained `i64` values.  Public entry arguments are reduced modulo `2^8` or `2^32` before the source function observes them, and public results are reduced to the same widths before returning to the host.  Literals and `ofNat` conversions reduce modulo the type width, arithmetic wraps to the same width, and conversions to wider supported types preserve the constrained value.  Shifts mask the shift amount modulo the type width before shifting.
 
 Runtime `Nat` uses an unsigned 64-bit bound rather than arbitrary precision.  A runtime `Nat` literal must be less than `2^64` unless it is consumed directly by a fixed-width conversion that defines its own modulo behavior.  `Nat` subtraction is saturating, `Nat.pred` uses that saturation, and `Nat.succ` uses checked addition.
 

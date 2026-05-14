@@ -3254,17 +3254,17 @@ def rejectNestedArrayParam (rows : Array (Array UInt64)) : UInt64 :=
 def rejectArrayBoxArrayReturn : Array ArrayBox :=
   #[{ values := #[1, 2], count := 2 }]
 
-def rejectUInt8Param (b : UInt8) : Bool :=
-  b == (0 : UInt8)
+def uint8ParamToNat (b : UInt8) : Nat :=
+  b.toNat
 
-def rejectUInt8Return : UInt8 :=
-  42
+def uint8Return : UInt8 :=
+  300
 
-def rejectUInt32Param (x : UInt32) : Nat :=
+def uint32ParamToNat (x : UInt32) : Nat :=
   x.toNat
 
-def rejectUInt32Return : UInt32 :=
-  42
+def uint32Return : UInt32 :=
+  4294967297
 
 def rejectRuntimeStringToUTF8 (flag : Bool) : ByteArray :=
   (if flag then "A" else "B").toUTF8
