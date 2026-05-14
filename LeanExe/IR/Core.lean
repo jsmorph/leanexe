@@ -51,26 +51,17 @@ mutual
     | ite (cond : Cond) (thenValue elseValue : Expr)
     | letE (slot : Nat) (value body : Expr)
     | letCall (slots : List Nat) (index : Nat) (args : List Expr) (body : Expr)
-    | arrayAlloc (cells : Expr)
     | arrayAllocSlots (width : Nat) (cells : Expr)
     | heapAllocSlots (values : List Expr)
     | heapLoadSlot (ptr : Expr) (slot : Nat)
-    | arrayReplicate (cells value : Expr)
     | arrayReplicateSlots (width : Nat) (cells : Expr) (values : List Expr)
     | arraySize (array : Expr)
-    | arrayGet (array index : Expr)
     | arrayGetSlot (width slot : Nat) (array index : Expr)
-    | arraySet (array index value : Expr)
     | arraySetSlots (width : Nat) (array index : Expr) (values : List Expr)
-    | arrayPush (array value : Expr)
     | arrayPushSlots (width : Nat) (array : Expr) (values : List Expr)
-    | arrayPop (array : Expr)
     | arrayPopSlots (width : Nat) (array : Expr)
-    | arrayAppend (left right : Expr)
     | arrayAppendSlots (width : Nat) (left right : Expr)
-    | arrayExtract (array start stop : Expr)
     | arrayExtractSlots (width : Nat) (array start stop : Expr)
-    | arrayMap (array : Expr) (itemSlot : Nat) (body : Expr)
     | arrayMapSlots (sourceWidth resultWidth : Nat) (array : Expr) (itemStart : Nat)
         (bodyValues : List Expr)
     | arrayFoldMultiSlot (sourceWidth resultWidth : Nat) (array start stop : Expr)
@@ -84,13 +75,9 @@ mutual
         (predicate : Expr) (forAll : Bool)
     | arrayFilterSlots (sourceWidth : Nat) (array start stop : Expr) (itemStart : Nat)
         (predicate : Expr)
-    | arrayInsertIfInBounds (array index value : Expr)
     | arrayInsertIfInBoundsSlots (width : Nat) (array index : Expr) (values : List Expr)
-    | arrayEraseIfInBounds (array index : Expr)
     | arrayEraseIfInBoundsSlots (width : Nat) (array index : Expr)
-    | arraySwapIfInBounds (array left right : Expr)
     | arraySwapIfInBoundsSlots (width : Nat) (array left right : Expr)
-    | arrayReverse (array : Expr)
     | arrayReverseSlots (width : Nat) (array : Expr)
     | byteArrayGet (ptr len index : Expr)
     | byteArrayPushPtr (ptr len value : Expr)
@@ -204,26 +191,17 @@ mutual
             (fun current item => current.set item.fst item.snd)
             store
         body.eval module_ callStore
-    | .arrayAlloc _ => 0
     | .arrayAllocSlots _ _ => 0
     | .heapAllocSlots _ => 0
     | .heapLoadSlot _ _ => 0
-    | .arrayReplicate _ _ => 0
     | .arrayReplicateSlots _ _ _ => 0
     | .arraySize _ => 0
-    | .arrayGet _ _ => 0
     | .arrayGetSlot _ _ _ _ => 0
-    | .arraySet array _ _ => array.eval module_ store
     | .arraySetSlots _ array _ _ => array.eval module_ store
-    | .arrayPush array _ => array.eval module_ store
     | .arrayPushSlots _ array _ => array.eval module_ store
-    | .arrayPop array => array.eval module_ store
     | .arrayPopSlots _ array => array.eval module_ store
-    | .arrayAppend left _ => left.eval module_ store
     | .arrayAppendSlots _ left _ => left.eval module_ store
-    | .arrayExtract array _ _ => array.eval module_ store
     | .arrayExtractSlots _ array _ _ => array.eval module_ store
-    | .arrayMap array _ _ => array.eval module_ store
     | .arrayMapSlots _ _ array _ _ => array.eval module_ store
     | .arrayFoldMultiSlot _ _ _ _ _ initValues _ _ _ _ resultSlot =>
         match initValues[resultSlot]? with
@@ -233,13 +211,9 @@ mutual
     | .arrayFindSlot _ _ _ _ _ => 0
     | .arrayAnySlots _ _ _ _ _ _ forAll => if forAll then 1 else 0
     | .arrayFilterSlots _ array _ _ _ _ => array.eval module_ store
-    | .arrayInsertIfInBounds array _ _ => array.eval module_ store
     | .arrayInsertIfInBoundsSlots _ array _ _ => array.eval module_ store
-    | .arrayEraseIfInBounds array _ => array.eval module_ store
     | .arrayEraseIfInBoundsSlots _ array _ => array.eval module_ store
-    | .arraySwapIfInBounds array _ _ => array.eval module_ store
     | .arraySwapIfInBoundsSlots _ array _ _ => array.eval module_ store
-    | .arrayReverse array => array.eval module_ store
     | .arrayReverseSlots _ array => array.eval module_ store
     | .byteArrayGet _ _ _ => 0
     | .byteArrayPushPtr ptr _ _ => ptr.eval module_ store
