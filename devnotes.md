@@ -1,5 +1,16 @@
 # Development Journal
 
+## 2026-05-14: JSON Tree Example Cleanup
+
+`LeanExe.Examples.JsonTreeCommand` now renders the intermediate tree through the JSON AST renderer instead of assembling byte-level object fragments by hand.  The example keeps the attached-field fold in `decodeTree`, because that spelling exposes the field-membership proof Lean needs for structural recursion and matches the well-founded-recursion shape the compiler already supports.  A getter-based recursive decoder is valid Lean, but Lean lowers it through a generated well-founded shape outside the current extractor.
+
+`LeanExe.Ascii.Json.Value` now provides reusable object helpers for nonrecursive AST consumers: `countField`, `getUniqueField?`, `nameInArray`, and `allFieldNamesIn`.  The helper theorem for unique field lookup records that a returned field value is structurally smaller than the containing field array, which is useful for future recursive decoders once the extractor accepts the corresponding generated shape.
+
+Checks run:
+
+- [x] `lake build LeanExe.Examples.JsonTreeCommand`
+- [x] `node test/wasi_program.js`
+
 ## 2026-05-14: AST JSON Parser and Tree Pipeline
 
 `LeanExe.Ascii.Json.Value` adds an ASCII-only JSON AST with `null`, booleans, unsigned `UInt64` numbers, restricted unescaped strings, arrays, and objects.  The parser is a single bounded recursive dispatcher over a request type, so recursive descent uses one accepted Nat-recursive helper with an explicit parse mode and tagged parse result.  The tree command now parses both the input array and the intermediate tree JSON through that AST, and it emits the tree through JSON writer helpers instead of embedding punctuation fragments in the example.

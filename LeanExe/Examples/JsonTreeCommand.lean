@@ -3,40 +3,23 @@ import LeanExe.Ascii.Json.Value
 namespace LeanExe
 namespace Examples.JsonTreeCommand
 
+open Ascii.Json
+
 inductive Tree where
   | empty : Tree
   | node : UInt64 -> Tree -> Tree -> Tree
 
-def fieldName (bytes : ByteArray) : AsciiString :=
-  AsciiString.ofTrustedByteArray bytes
-
-def valueFieldBytes : ByteArray :=
-  "value".toUTF8
-
-def leftFieldBytes : ByteArray :=
-  "left".toUTF8
-
-def rightFieldBytes : ByteArray :=
-  "right".toUTF8
-
-def foundFieldBytes : ByteArray :=
-  "found".toUTF8
-
 def valueFieldName : AsciiString :=
-  fieldName valueFieldBytes
+  AsciiString.ofTrustedByteArray "value".toUTF8
 
 def leftFieldName : AsciiString :=
-  fieldName leftFieldBytes
+  AsciiString.ofTrustedByteArray "left".toUTF8
 
 def rightFieldName : AsciiString :=
-  fieldName rightFieldBytes
+  AsciiString.ofTrustedByteArray "right".toUTF8
 
 def foundFieldName : AsciiString :=
-  fieldName foundFieldBytes
-
-structure BuildState where
-  failed : Bool
-  tree : Tree
+  AsciiString.ofTrustedByteArray "found".toUTF8
 
 structure DecodeState where
   failed : Bool
@@ -70,81 +53,62 @@ def insert (tree : Tree) (value : UInt64) : Tree :=
       else
         Tree.node current left (insert right value)
 
-def addJsonValue (state : BuildState) (value : Ascii.Json.Value) : BuildState :=
-  if state.failed then
-    state
-  else
-    match Ascii.Json.asUInt64? value with
-    | some value => { failed := false, tree := insert state.tree value }
-    | none => { state with failed := true }
-
-def buildTree : Ascii.Json.Value -> Option Tree
-  | Ascii.Json.Value.null => none
-  | Ascii.Json.Value.bool _ => none
-  | Ascii.Json.Value.num _ => none
-  | Ascii.Json.Value.str _ => none
-  | Ascii.Json.Value.arr items =>
-      let state :=
-        items.foldl (fun state value => addJsonValue state value)
-          { failed := false, tree := Tree.empty }
-      if state.failed then
-        none
-      else
-        some state.tree
-  | Ascii.Json.Value.obj _ => none
-
-def treeJson? : Tree -> Option ByteArray
-  | Tree.empty => some Ascii.Json.literalNull
-  | Tree.node value left right =>
-      match treeJson? left with
+def addJsonValue (state : Option Tree) (value : Value) : Option Tree :=
+  match state with
+  | some tree =>
+      match asUInt64? value with
+      | some value => some (insert tree value)
       | none => none
-      | some leftJson =>
-          match treeJson? right with
-          | none => none
-          | some rightJson =>
-              match Ascii.Json.appendUInt64Field?
-                  (ByteArray.empty.push Ascii.byteLBrace) true valueFieldBytes value with
-              | none => none
-              | some out1 =>
-                  match Ascii.Json.appendRawField? out1 false leftFieldBytes
-                      (AsciiString.ofTrustedByteArray leftJson) with
-                  | none => none
-                  | some out2 =>
-                      match Ascii.Json.appendRawField? out2 false rightFieldBytes
-                          (AsciiString.ofTrustedByteArray rightJson) with
-                      | none => none
-                      | some out3 => some (out3.push Ascii.byteRBrace)
+  | none => none
 
-def makeTreeValue (value : Ascii.Json.Value) : Except ByteArray ByteArray :=
+def buildTree : Value -> Option Tree
+  | Value.null => none
+  | Value.bool _ => none
+  | Value.num _ => none
+  | Value.str _ => none
+  | Value.arr items =>
+      items.foldl (fun state value => addJsonValue state value) (some Tree.empty)
+  | Value.obj _ => none
+
+def treeValue : Tree -> Value
+  | Tree.empty => Value.null
+  | Tree.node value left right =>
+      Value.obj #[
+        Field.mk valueFieldName (Value.num value),
+        Field.mk leftFieldName (treeValue left),
+        Field.mk rightFieldName (treeValue right)
+      ]
+
+def makeTreeValue (value : Value) : Except ByteArray ByteArray :=
   match buildTree value with
   | some tree =>
-      match treeJson? tree with
+      match render? (treeValue tree) with
       | some bytes => Except.ok bytes
-      | none => Except.error Ascii.Json.errorJson
-  | none => Except.error Ascii.Json.errorJson
+      | none => Except.error errorJson
+  | none => Except.error errorJson
 
 def makeTree (input : ByteArray) : Except ByteArray ByteArray :=
-  match Ascii.Json.parseBytes input with
+  match parseBytes input with
   | some value => makeTreeValue value
-  | none => Except.error Ascii.Json.errorJson
+  | none => Except.error errorJson
 
-def decodeTree : Ascii.Json.Value -> Option Tree
-  | Ascii.Json.Value.null => some Tree.empty
-  | Ascii.Json.Value.obj fields =>
+def decodeTree : Value -> Option Tree
+  | Value.null => some Tree.empty
+  | Value.obj fields =>
       let state :=
         fields.attach.foldl
           (fun state item =>
             match item with
             | ⟨field, _hmem⟩ =>
-                let name := Ascii.Json.Field.name field
-                let value := Ascii.Json.Field.value field
+                let name := Field.name field
+                let value := Field.value field
                 if state.failed then
                   state
                 else if name.equals valueFieldName then
                   if state.seenValue then
                     DecodeState.fail state
                   else
-                    match Ascii.Json.asUInt64? value with
+                    match asUInt64? value with
                     | some value => { state with seenValue := true, value := value }
                     | none => DecodeState.fail state
                 else if name.equals leftFieldName then
@@ -168,10 +132,10 @@ def decodeTree : Ascii.Json.Value -> Option Tree
         none
       else
         some (Tree.node state.value state.left state.right)
-  | Ascii.Json.Value.bool _ => none
-  | Ascii.Json.Value.num _ => none
-  | Ascii.Json.Value.str _ => none
-  | Ascii.Json.Value.arr _ => none
+  | Value.bool _ => none
+  | Value.num _ => none
+  | Value.str _ => none
+  | Value.arr _ => none
 termination_by value => sizeOf value
 decreasing_by
   all_goals
@@ -180,7 +144,7 @@ decreasing_by
       Array.sizeOf_lt_of_mem _hmem
     cases field with
     | mk name value =>
-        simp [Ascii.Json.Field.value] at hField ⊢
+        simp [Field.value] at hField ⊢
         omega
 
 def contains (tree : Tree) (needle : UInt64) : Bool :=
@@ -214,19 +178,18 @@ def parseNeedle (args : Array ByteArray) : Option UInt64 :=
 
 def searchTreeValue (tree : Tree) (args : Array ByteArray) : Except ByteArray ByteArray :=
   match parseNeedle args with
-  | none => Except.error Ascii.Json.errorJson
+  | none => Except.error errorJson
   | some needle =>
       Except.ok
-        (Ascii.Json.render
-          (Ascii.Json.object1Value foundFieldName (Ascii.Json.Value.bool (contains tree needle))))
+        (render (object1Value foundFieldName (Value.bool (contains tree needle))))
 
 def searchTree (input : ByteArray) (args : Array ByteArray) : Except ByteArray ByteArray :=
-  match Ascii.Json.parseBytes input with
+  match parseBytes input with
   | some value =>
       match decodeTree value with
       | some tree => searchTreeValue tree args
-      | none => Except.error Ascii.Json.errorJson
-  | none => Except.error Ascii.Json.errorJson
+      | none => Except.error errorJson
+  | none => Except.error errorJson
 
 end Examples.JsonTreeCommand
 end LeanExe
