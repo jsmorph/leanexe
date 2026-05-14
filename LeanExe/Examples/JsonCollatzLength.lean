@@ -7,14 +7,14 @@ namespace Examples.JsonCollatzLength
 def fieldName : ByteArray :=
   "collatzLengthFor".toUTF8
 
-def parseObject (text : AsciiString) : Option UInt64 :=
+def parseInput (text : AsciiString) : Option UInt64 :=
   Ascii.Json.getUInt64Field text fieldName
 
 def resultJson (n : UInt64) : ByteArray :=
   Ascii.Json.object1UInt64 "length".toUTF8 n
 
 def transformAscii (text : AsciiString) : ByteArray :=
-  match parseObject text with
+  match parseInput text with
   | some n =>
       match Collatz.length? n with
       | some len => resultJson len

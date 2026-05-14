@@ -1,5 +1,15 @@
 # Development Journal
 
+## 2026-05-14: JSON Example Cleanup
+
+`LeanExe.Examples.JsonDouble` and `LeanExe.Examples.JsonAdd` use `Ascii.Json.getUInt64Field` for input and `Ascii.Json.object1UInt64` for output.  Both examples share the library field scanner and object generator.  Their behavior matches the documented limited JSON API: requested fields are order-independent, unknown supported values may be skipped, and malformed input or arithmetic overflow returns `{"error":1}`.
+
+Checks run:
+
+- [x] `lake build LeanExe.Examples.JsonDouble LeanExe.Examples.JsonAdd LeanExe.Examples.JsonCollatzLength LeanExe.Examples.JsonTools`
+- [x] `node test/json_double.js`
+- [x] `node test/run_all.js`
+
 ## 2026-05-06
 
 The repository started with `plan.md` only.  The first implementation step creates a Lake package pinned to Lean 4.29.1, because elan reports that toolchain as installed and active.  No third-party Lean, JavaScript, or Wasm dependencies were added.
