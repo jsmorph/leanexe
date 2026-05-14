@@ -409,6 +409,10 @@ structure DigitState where
   pos : Nat
   sum : UInt64
 
+structure ByteOutputState where
+  count : UInt64
+  bytes : ByteArray
+
 def isAsciiDigitByte (byte : UInt8) : Bool :=
   (48 : UInt8) <= byte && byte <= (57 : UInt8)
 
@@ -1250,6 +1254,31 @@ def idRunByteArrayForContinueNoElse : UInt64 := Id.run do
     acc := acc + byte.toUInt64
   return acc
 
+def idRunByteArrayForOutput : ByteArray := Id.run do
+  let input := ByteArray.mk #[(1 : UInt8), (2 : UInt8)]
+  let mut output := ByteArray.empty
+  for byte in input do
+    output := output.push byte
+  return output
+
+def idRunByteArrayForOutputBreak : ByteArray := Id.run do
+  let input := ByteArray.mk #[(1 : UInt8), (2 : UInt8), (99 : UInt8), (3 : UInt8)]
+  let mut output := ByteArray.empty
+  for byte in input do
+    if byte == (99 : UInt8) then
+      break
+    output := output.push byte
+  return output
+
+def idRunByteArrayForOutputContinue : ByteArray := Id.run do
+  let input := ByteArray.mk #[(1 : UInt8), (2 : UInt8), (99 : UInt8), (3 : UInt8)]
+  let mut output := ByteArray.empty
+  for byte in input do
+    if byte == (99 : UInt8) then
+      continue
+    output := output.push byte
+  return output
+
 def idRunArrayForStatus : Status := Id.run do
   let values : Array UInt64 := #[1, 2, 3]
   let mut state : Status := .ok 0
@@ -1311,6 +1340,12 @@ def idRunRangeForContinueNoElse : UInt64 := Id.run do
       continue
     acc := acc + i.toUInt64
   return acc
+
+def idRunRangeForByteArrayOutput : ByteArray := Id.run do
+  let mut output := ByteArray.empty
+  for _i in [0:2] do
+    output := output.push (1 : UInt8)
+  return output
 
 def idRunRangeForBreakState : DigitState := Id.run do
   let mut state : DigitState := { pos := 0, sum := 0 }
@@ -1647,6 +1682,17 @@ def arrayFoldArrayAccumulator : UInt64 :=
     result[0]! * (100 : UInt64) + result[2]!
   else
     0
+
+def arrayFoldByteArrayAccumulator : ByteArray :=
+  (#[65, 66] : Array UInt64).foldl
+    (fun acc value => acc.push (UInt64.toUInt8 value))
+    ByteArray.empty
+
+def arrayFoldByteOutputState : ByteOutputState :=
+  (#[65, 66, 67] : Array UInt64).foldl
+    (fun acc value =>
+      { count := acc.count + 1, bytes := acc.bytes.push (UInt64.toUInt8 value) })
+    ({ count := 0, bytes := ByteArray.empty } : ByteOutputState)
 
 def arrayFindIdxSome : Option Nat :=
   (#[1, 2, 3] : Array UInt64).findIdx? (fun value => value == 2)
@@ -3163,6 +3209,16 @@ def byteArrayFoldArrayAccumulator : UInt64 :=
   else
     0
 
+def byteArrayFoldByteArrayAccumulator : ByteArray :=
+  (ByteArray.mk #[(1 : UInt8), (2 : UInt8)]).foldl
+    (fun acc byte => acc.push byte)
+    ByteArray.empty
+
+def byteArrayFoldByteOutputState : ByteOutputState :=
+  (ByteArray.mk #[(1 : UInt8), (2 : UInt8), (3 : UInt8)]).foldl
+    (fun acc byte => { count := acc.count + 1, bytes := acc.bytes.push byte })
+    ({ count := 0, bytes := ByteArray.empty } : ByteOutputState)
+
 def byteArrayFindIdxSome : Option Nat :=
   (ByteArray.mk #[(1 : UInt8), (42 : UInt8), (3 : UInt8)]).findIdx?
     (fun byte => byte == (42 : UInt8))
@@ -3230,28 +3286,5 @@ def rejectHigherOrder (f : UInt64 → UInt64) : UInt64 :=
 
 def rejectIO : IO UInt64 :=
   pure 1
-
-def rejectIdForByteArrayAccumulator : ByteArray := Id.run do
-  let input := ByteArray.mk #[(1 : UInt8), (2 : UInt8)]
-  let mut output := ByteArray.empty
-  for byte in input do
-    output := output.push byte
-  return output
-
-def rejectIdRangeForByteArrayAccumulator : ByteArray := Id.run do
-  let mut output := ByteArray.empty
-  for _i in [0:2] do
-    output := output.push (1 : UInt8)
-  return output
-
-def rejectArrayFoldByteArrayAccumulator : ByteArray :=
-  (#[1, 2] : Array UInt64).foldl
-    (fun acc _value => acc.push (1 : UInt8))
-    ByteArray.empty
-
-def rejectByteArrayFoldByteArrayAccumulator : ByteArray :=
-  (ByteArray.mk #[(1 : UInt8), (2 : UInt8)]).foldl
-    (fun acc byte => acc.push byte)
-    ByteArray.empty
 
 end LeanExe.Examples.Correctness

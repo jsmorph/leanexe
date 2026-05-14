@@ -1010,6 +1010,7 @@ partial def supportedLoopAccumulatorType : Ty → Bool
   | .u32 => true
   | .u64 => true
   | .nat => true
+  | .byteArray => true
   | .array item => supportedArrayElementType item
   | .product left right =>
       supportedLoopAccumulatorType left && supportedLoopAccumulatorType right
@@ -1018,7 +1019,6 @@ partial def supportedLoopAccumulatorType : Ty → Bool
   | .struct _ _ fields => fields.all supportedLoopAccumulatorType
   | .variant _ _ ctors => ctors.all (fun fields => fields.all supportedLoopAccumulatorType)
   | .recVariant _ _ => true
-  | _ => false
 
 def supportedInlineFunction? (env : Environment) (info : ConstantInfo) : Option Signature :=
   if info.isUnsafe || info.isPartial || info.value?.isNone then

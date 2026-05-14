@@ -257,6 +257,18 @@ const accepted = [
   { name: "byteArrayFoldProductAccumulator", args: [], expected: 211n },
   { name: "byteArrayFoldStatusAccumulator", args: [], expected: 24n },
   { name: "byteArrayFoldArrayAccumulator", args: [], expected: 12n },
+  {
+    name: "byteArrayFoldByteArrayAccumulator",
+    args: [],
+    expected: [null, 2n],
+    memoryBytes: [{ resultIndex: 0, lengthIndex: 1, values: [1, 2] }],
+  },
+  {
+    name: "byteArrayFoldByteOutputState",
+    args: [],
+    expected: [3n, null, 3n],
+    memoryBytes: [{ resultIndex: 1, lengthIndex: 2, values: [1, 2, 3] }],
+  },
   { name: "byteArrayFindIdxSome", args: [], expected: [1n, 1n] },
   { name: "byteArrayFindIdxNone", args: [], expected: [0n, 0n] },
   { name: "byteArrayFindIdxStart", args: [], expected: [1n, 2n] },
@@ -280,6 +292,24 @@ const accepted = [
   { name: "idRunByteArrayForState", args: [], expected: [3n, 6n] },
   { name: "idRunByteArrayForBreakSum", args: [], expected: 3n },
   { name: "idRunByteArrayForContinueNoElse", args: [], expected: 6n },
+  {
+    name: "idRunByteArrayForOutput",
+    args: [],
+    expected: [null, 2n],
+    memoryBytes: [{ resultIndex: 0, lengthIndex: 1, values: [1, 2] }],
+  },
+  {
+    name: "idRunByteArrayForOutputBreak",
+    args: [],
+    expected: [null, 2n],
+    memoryBytes: [{ resultIndex: 0, lengthIndex: 1, values: [1, 2] }],
+  },
+  {
+    name: "idRunByteArrayForOutputContinue",
+    args: [],
+    expected: [null, 3n],
+    memoryBytes: [{ resultIndex: 0, lengthIndex: 1, values: [1, 2, 3] }],
+  },
   { name: "idRunArrayForStatus", args: [], expected: [1n, 0n, 2n] },
   { name: "idRunArrayForStatusScore", args: [], expected: 102n },
   { name: "idRunRangeForCount", args: [], expected: 3n },
@@ -288,6 +318,12 @@ const accepted = [
   { name: "idRunRangeForBreakSum", args: [], expected: 6n },
   { name: "idRunRangeForBreakNoElse", args: [], expected: 3n },
   { name: "idRunRangeForContinueNoElse", args: [], expected: 12n },
+  {
+    name: "idRunRangeForByteArrayOutput",
+    args: [],
+    expected: [null, 2n],
+    memoryBytes: [{ resultIndex: 0, lengthIndex: 1, values: [1, 1] }],
+  },
   { name: "idRunRangeForBreakState", args: [], expected: [3n, 6n] },
   { name: "idRunRangeForContinueState", args: [], expected: [4n, 11n] },
   { name: "idFunctionUInt64", args: [4n], expected: 5n },
@@ -336,6 +372,18 @@ const accepted = [
   { name: "arrayFoldProductAccumulator", args: [], expected: 39n },
   { name: "arrayFoldStatusAccumulator", args: [], expected: 6n },
   { name: "arrayFoldArrayAccumulator", args: [], expected: 1113n },
+  {
+    name: "arrayFoldByteArrayAccumulator",
+    args: [],
+    expected: [null, 2n],
+    memoryBytes: [{ resultIndex: 0, lengthIndex: 1, values: [65, 66] }],
+  },
+  {
+    name: "arrayFoldByteOutputState",
+    args: [],
+    expected: [3n, null, 3n],
+    memoryBytes: [{ resultIndex: 1, lengthIndex: 2, values: [65, 66, 67] }],
+  },
   { name: "arrayFindIdxSome", args: [], expected: [1n, 1n] },
   { name: "arrayFindIdxNone", args: [], expected: [0n, 0n] },
   { name: "arrayFindIdxStructure", args: [], expected: [1n, 1n] },
@@ -768,22 +816,6 @@ const rejected = [
   {
     name: "rejectIO",
     message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectIO",
-  },
-  {
-    name: "rejectIdForByteArrayAccumulator",
-    message: "unsupported for-in accumulator type",
-  },
-  {
-    name: "rejectIdRangeForByteArrayAccumulator",
-    message: "unsupported for-in accumulator type",
-  },
-  {
-    name: "rejectArrayFoldByteArrayAccumulator",
-    message: "unsupported Array.foldl accumulator type",
-  },
-  {
-    name: "rejectByteArrayFoldByteArrayAccumulator",
-    message: "unsupported ByteArray.foldl accumulator type",
   },
 ];
 
