@@ -172,6 +172,9 @@ def i64Const (n : Nat) : List UInt8 :=
       Int.ofNat bits - Int.ofNat (2 ^ 64)
   byte 66 :: s64lebInt signed
 
+def i32Const (n : Nat) : List UInt8 :=
+  byte 65 :: u32leb n
+
 def localGet (index : Nat) : List UInt8 :=
   ofNats [32] ++ u32leb index
 
@@ -197,6 +200,170 @@ abbrev Cond := LeanExe.IR.Cond
 abbrev Stmt := LeanExe.IR.Stmt
 abbrev Func := LeanExe.IR.Func
 abbrev Module := LeanExe.IR.Module
+
+mutual
+  partial def shiftExprCalls (offset : Nat) : Expr → Expr
+    | .local index => .local index
+    | .trap => .trap
+    | .u64 value => .u64 value
+    | .u64Bin op left right =>
+        .u64Bin op (shiftExprCalls offset left) (shiftExprCalls offset right)
+    | .ite cond thenValue elseValue =>
+        .ite (shiftCondCalls offset cond)
+          (shiftExprCalls offset thenValue)
+          (shiftExprCalls offset elseValue)
+    | .letE slot value body =>
+        .letE slot (shiftExprCalls offset value) (shiftExprCalls offset body)
+    | .letCall slots index args body =>
+        .letCall slots (index + offset) (args.map (shiftExprCalls offset))
+          (shiftExprCalls offset body)
+    | .arrayAllocSlots width cells =>
+        .arrayAllocSlots width (shiftExprCalls offset cells)
+    | .heapAllocSlots values =>
+        .heapAllocSlots (values.map (shiftExprCalls offset))
+    | .heapLoadSlot ptr slot =>
+        .heapLoadSlot (shiftExprCalls offset ptr) slot
+    | .arrayReplicateSlots width cells values =>
+        .arrayReplicateSlots width (shiftExprCalls offset cells)
+          (values.map (shiftExprCalls offset))
+    | .arraySize array =>
+        .arraySize (shiftExprCalls offset array)
+    | .arrayGetSlot width slot array index =>
+        .arrayGetSlot width slot (shiftExprCalls offset array) (shiftExprCalls offset index)
+    | .arraySetSlots width array index values =>
+        .arraySetSlots width (shiftExprCalls offset array) (shiftExprCalls offset index)
+          (values.map (shiftExprCalls offset))
+    | .arrayPushSlots width array values =>
+        .arrayPushSlots width (shiftExprCalls offset array) (values.map (shiftExprCalls offset))
+    | .arrayPopSlots width array =>
+        .arrayPopSlots width (shiftExprCalls offset array)
+    | .arrayAppendSlots width left right =>
+        .arrayAppendSlots width (shiftExprCalls offset left) (shiftExprCalls offset right)
+    | .arrayExtractSlots width array start stop =>
+        .arrayExtractSlots width (shiftExprCalls offset array) (shiftExprCalls offset start)
+          (shiftExprCalls offset stop)
+    | .arrayMapSlots sourceWidth resultWidth array itemStart bodyValues =>
+        .arrayMapSlots sourceWidth resultWidth (shiftExprCalls offset array) itemStart
+          (bodyValues.map (shiftExprCalls offset))
+    | .arrayFoldMultiSlot sourceWidth resultWidth array start stop initValues accStart
+        itemStart bodyValues bodyDone resultSlot =>
+        .arrayFoldMultiSlot sourceWidth resultWidth (shiftExprCalls offset array)
+          (shiftExprCalls offset start) (shiftExprCalls offset stop)
+          (initValues.map (shiftExprCalls offset)) accStart itemStart
+          (bodyValues.map (shiftExprCalls offset)) (shiftExprCalls offset bodyDone) resultSlot
+    | .arrayFindIdxSlots sourceWidth array itemStart predicate returnPayload =>
+        .arrayFindIdxSlots sourceWidth (shiftExprCalls offset array) itemStart
+          (shiftExprCalls offset predicate) returnPayload
+    | .arrayFindSlot sourceWidth array itemStart predicate slot =>
+        .arrayFindSlot sourceWidth (shiftExprCalls offset array) itemStart
+          (shiftExprCalls offset predicate) slot
+    | .arrayAnySlots sourceWidth array start stop itemStart predicate forAll =>
+        .arrayAnySlots sourceWidth (shiftExprCalls offset array) (shiftExprCalls offset start)
+          (shiftExprCalls offset stop) itemStart (shiftExprCalls offset predicate) forAll
+    | .arrayFilterSlots sourceWidth array start stop itemStart predicate =>
+        .arrayFilterSlots sourceWidth (shiftExprCalls offset array) (shiftExprCalls offset start)
+          (shiftExprCalls offset stop) itemStart (shiftExprCalls offset predicate)
+    | .arrayInsertIfInBoundsSlots width array index values =>
+        .arrayInsertIfInBoundsSlots width (shiftExprCalls offset array)
+          (shiftExprCalls offset index) (values.map (shiftExprCalls offset))
+    | .arrayEraseIfInBoundsSlots width array index =>
+        .arrayEraseIfInBoundsSlots width (shiftExprCalls offset array) (shiftExprCalls offset index)
+    | .arraySwapIfInBoundsSlots width array left right =>
+        .arraySwapIfInBoundsSlots width (shiftExprCalls offset array)
+          (shiftExprCalls offset left) (shiftExprCalls offset right)
+    | .arrayReverseSlots width array =>
+        .arrayReverseSlots width (shiftExprCalls offset array)
+    | .byteArrayGet ptr len index =>
+        .byteArrayGet (shiftExprCalls offset ptr) (shiftExprCalls offset len)
+          (shiftExprCalls offset index)
+    | .byteArrayPushPtr ptr len value =>
+        .byteArrayPushPtr (shiftExprCalls offset ptr) (shiftExprCalls offset len)
+          (shiftExprCalls offset value)
+    | .byteArrayAppendPtr leftPtr leftLen rightPtr rightLen =>
+        .byteArrayAppendPtr (shiftExprCalls offset leftPtr) (shiftExprCalls offset leftLen)
+          (shiftExprCalls offset rightPtr) (shiftExprCalls offset rightLen)
+    | .byteArraySetPtr ptr len index value =>
+        .byteArraySetPtr (shiftExprCalls offset ptr) (shiftExprCalls offset len)
+          (shiftExprCalls offset index) (shiftExprCalls offset value)
+    | .byteArrayFromArrayPtr array =>
+        .byteArrayFromArrayPtr (shiftExprCalls offset array)
+    | .byteArrayCopySlicePtr srcPtr srcLen srcOff destPtr destLen destOff copyLen =>
+        .byteArrayCopySlicePtr (shiftExprCalls offset srcPtr) (shiftExprCalls offset srcLen)
+          (shiftExprCalls offset srcOff) (shiftExprCalls offset destPtr)
+          (shiftExprCalls offset destLen) (shiftExprCalls offset destOff)
+          (shiftExprCalls offset copyLen)
+    | .byteArrayFindIdx ptr len start byteSlot predicate returnPayload =>
+        .byteArrayFindIdx (shiftExprCalls offset ptr) (shiftExprCalls offset len)
+          (shiftExprCalls offset start) byteSlot (shiftExprCalls offset predicate) returnPayload
+    | .byteArrayFoldMultiSlot resultWidth ptr len start stop initValues accStart byteSlot
+        bodyValues bodyDone resultSlot =>
+        .byteArrayFoldMultiSlot resultWidth (shiftExprCalls offset ptr)
+          (shiftExprCalls offset len) (shiftExprCalls offset start) (shiftExprCalls offset stop)
+          (initValues.map (shiftExprCalls offset)) accStart byteSlot
+          (bodyValues.map (shiftExprCalls offset)) (shiftExprCalls offset bodyDone) resultSlot
+    | .rangeFoldMultiSlot resultWidth start stop step initValues accStart itemSlot bodyValues
+        bodyDone resultSlot =>
+        .rangeFoldMultiSlot resultWidth (shiftExprCalls offset start) (shiftExprCalls offset stop)
+          (shiftExprCalls offset step) (initValues.map (shiftExprCalls offset)) accStart
+          itemSlot (bodyValues.map (shiftExprCalls offset)) (shiftExprCalls offset bodyDone)
+          resultSlot
+    | .heapLinearPredicate ptr continueTag fieldSlotCount recursiveFieldOffset fieldStart
+        predicate stopWhenTrue terminalValue =>
+        .heapLinearPredicate (shiftExprCalls offset ptr) continueTag fieldSlotCount
+          recursiveFieldOffset fieldStart (shiftExprCalls offset predicate) stopWhenTrue
+          terminalValue
+    | .call index args =>
+        .call (index + offset) (args.map (shiftExprCalls offset))
+
+  partial def shiftCondCalls (offset : Nat) : Cond → Cond
+    | .true => .true
+    | .false => .false
+    | .eqU64 left right =>
+        .eqU64 (shiftExprCalls offset left) (shiftExprCalls offset right)
+    | .ltU64 left right =>
+        .ltU64 (shiftExprCalls offset left) (shiftExprCalls offset right)
+    | .leU64 left right =>
+        .leU64 (shiftExprCalls offset left) (shiftExprCalls offset right)
+    | .not cond => .not (shiftCondCalls offset cond)
+    | .and left right => .and (shiftCondCalls offset left) (shiftCondCalls offset right)
+    | .or left right => .or (shiftCondCalls offset left) (shiftCondCalls offset right)
+
+  partial def shiftStmtCalls (offset : Nat) : Stmt → Stmt
+    | .skip => .skip
+    | .assign index value => .assign index (shiftExprCalls offset value)
+    | .call slots index args => .call slots (index + offset) (args.map (shiftExprCalls offset))
+    | .arrayFoldMultiSlotAssign sourceWidth resultWidth array start stop initValues accStart
+        itemStart bodyValues bodyDone targets =>
+        .arrayFoldMultiSlotAssign sourceWidth resultWidth (shiftExprCalls offset array)
+          (shiftExprCalls offset start) (shiftExprCalls offset stop)
+          (initValues.map (shiftExprCalls offset)) accStart itemStart
+          (bodyValues.map (shiftExprCalls offset)) (shiftExprCalls offset bodyDone) targets
+    | .byteArrayFoldMultiSlotAssign resultWidth ptr len start stop initValues accStart
+        byteSlot bodyValues bodyDone targets =>
+        .byteArrayFoldMultiSlotAssign resultWidth (shiftExprCalls offset ptr)
+          (shiftExprCalls offset len) (shiftExprCalls offset start) (shiftExprCalls offset stop)
+          (initValues.map (shiftExprCalls offset)) accStart byteSlot
+          (bodyValues.map (shiftExprCalls offset)) (shiftExprCalls offset bodyDone) targets
+    | .rangeFoldMultiSlotAssign resultWidth start stop step initValues accStart itemSlot
+        bodyValues bodyDone targets =>
+        .rangeFoldMultiSlotAssign resultWidth (shiftExprCalls offset start)
+          (shiftExprCalls offset stop) (shiftExprCalls offset step)
+          (initValues.map (shiftExprCalls offset)) accStart itemSlot
+          (bodyValues.map (shiftExprCalls offset)) (shiftExprCalls offset bodyDone) targets
+    | .ite cond thenStmt elseStmt =>
+        .ite (shiftCondCalls offset cond) (shiftStmtCalls offset thenStmt)
+          (shiftStmtCalls offset elseStmt)
+    | .seq first second => .seq (shiftStmtCalls offset first) (shiftStmtCalls offset second)
+    | .while cond body => .while (shiftCondCalls offset cond) (shiftStmtCalls offset body)
+end
+
+def shiftFuncCalls (offset : Nat) (func : Func) : Func :=
+  { func with
+    body := shiftStmtCalls offset func.body,
+    results := func.results.map (shiftExprCalls offset) }
+
+def shiftModuleCalls (offset : Nat) (module_ : Module) : Module :=
+  { funcs := module_.funcs.map (shiftFuncCalls offset) }
 
 def emitU64Op : LeanExe.IR.U64Op → List UInt8
   | .add => ofNats [124]
@@ -229,8 +396,14 @@ def i32WrapI64 : List UInt8 :=
 def i64Load : List UInt8 :=
   ofNats [41, 3, 0]
 
+def i32Load : List UInt8 :=
+  ofNats [40, 2, 0]
+
 def i64Store : List UInt8 :=
   ofNats [55, 3, 0]
+
+def i32Store : List UInt8 :=
+  ofNats [54, 2, 0]
 
 def i32Load8U : List UInt8 :=
   ofNats [45, 0, 0]
@@ -2006,6 +2179,74 @@ def moduleBytes (module_ : Module) : ByteArray :=
     ++ coreGlobalSection
     ++ exportSection module_
     ++ codeSection module_).toArray
+
+def importEntry (moduleName fieldName : String) (typeIndex : Nat) : List UInt8 :=
+  name moduleName ++ name fieldName ++ ofNats [0] ++ u32leb typeIndex
+
+def wasiImportSection : List UInt8 :=
+  wasmSection 2 <| vec [
+    importEntry "wasi_snapshot_preview1" "fd_write" 0
+  ]
+
+def wasiTypeSection (module_ : Module) : List UInt8 :=
+  wasmSection 1 <| vec (
+    [funcType [i32, i32, i32, i32] [i32]] ++
+      module_.funcs.toList.map typeForFunc ++
+      [funcType [] []])
+
+def wasiFunctionSection (module_ : Module) : List UInt8 :=
+  wasmSection 3 <| u32Vec ((List.range (module_.funcs.size + 1)).map (fun index => index + 1))
+
+def wasiExportSection (module_ : Module) : List UInt8 :=
+  wasmSection 7 <| vec [
+    exportEntry "memory" 2 0,
+    exportEntry "_start" 0 (module_.funcs.size + 1)
+  ]
+
+def entryFuncIndex? (module_ : Module) : Option Nat :=
+  let rec loop (index : Nat) : Option Nat :=
+    if h : index < module_.funcs.size then
+      if module_.funcs[index].exportName.isSome then
+        some index
+      else
+        loop (index + 1)
+    else
+      none
+  loop 0
+
+def wasiStartBody (entryIndex : Nat) : List UInt8 :=
+  body
+    (ofNats [1, 2, 126])
+    (call entryIndex ++
+      localSet 1 ++
+      localSet 0 ++
+      i32Const 0 ++ localGet 0 ++ i32WrapI64 ++ i32Store ++
+      i32Const 4 ++ localGet 1 ++ i32WrapI64 ++ i32Store ++
+      i32Const 8 ++ i32Const 0 ++ i32Store ++
+      i32Const 1 ++ i32Const 0 ++ i32Const 1 ++ i32Const 8 ++ call 0 ++
+      ofNats [69, 4, 64] ++
+        i32Const 8 ++ i32Load ++ localGet 1 ++ i32WrapI64 ++
+        ofNats [70, 4, 64, 5, 0, 11, 5, 0, 11])
+
+def wasiCodeSection (module_ : Module) (entryIndex : Nat) : List UInt8 :=
+  let shifted := shiftModuleCalls 1 module_
+  wasmSection 10 <| vec (
+    shifted.funcs.toList.map emitFuncBody ++
+      [wasiStartBody (entryIndex + 1)])
+
+def wasiModuleBytes (module_ : Module) : Except String ByteArray := do
+  let entryIndex ←
+    match entryFuncIndex? module_ with
+    | some index => .ok index
+    | none => .error "program module has no exported entry function"
+  .ok <| ByteArray.mk <| (ofNats [0, 97, 115, 109, 1, 0, 0, 0]
+    ++ wasiTypeSection module_
+    ++ wasiImportSection
+    ++ wasiFunctionSection module_
+    ++ coreMemorySection
+    ++ coreGlobalSection
+    ++ wasiExportSection module_
+    ++ wasiCodeSection module_ entryIndex).toArray
 
 def indent (spaces : Nat) (lines : List String) : List String :=
   let pad := String.ofList (List.replicate spaces ' ')

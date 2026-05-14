@@ -18,6 +18,7 @@ def usage : String :=
     "  lean-wasm eval --hex <hex-bytes>",
     "  lean-wasm compile --module <module> --entry <name> --out <path>",
     "  lean-wasm compile-wat --module <module> --entry <name> --out <path>",
+    "  lean-wasm compile-wasi --module <module> --entry <name> --out <path>",
     "  lean-wasm collatz-eval --input <n>",
     "  lean-wasm collatz-bench --input <n> --iters <n>",
     "",
@@ -146,6 +147,14 @@ def main : List String → IO UInt32
   | ["compile-wat", "--module", moduleName, "--entry", entryName, "--out", out] => do
       writeText out (LeanExe.Wasm.Binary.CoreWasm.moduleWat
         (← LeanExe.Extract.Core.compile moduleName entryName))
+      return 0
+  | ["compile-wasi", "--module", moduleName, "--entry", entryName, "--out", out] => do
+      match LeanExe.Wasm.Binary.CoreWasm.wasiModuleBytes
+          (← LeanExe.Extract.Core.compileProgram moduleName entryName) with
+      | .ok bytes =>
+          writeBytes out bytes
+      | .error error =>
+          throw <| IO.userError error
       return 0
   | ["collatz-eval", "--input", input] => do
       match parseNatArg input with

@@ -2813,3 +2813,21 @@ Checks run:
 - [x] `build/tools/wasmtime/current/wasmtime --invoke uint8Return .lake/build/core-correctness/uint8Return.public.wasm` returned `44`.
 - [x] `build/tools/wasmtime/current/wasmtime --invoke uint32ParamToNat .lake/build/core-correctness/uint32ParamToNat.public.wasm 4294967297` returned `1`.
 - [x] `build/tools/wasmtime/current/wasmtime --invoke uint32Return .lake/build/core-correctness/uint32Return.public.wasm` returned `1`.
+
+## 2026-05-14: WASI ByteArray stdout programs
+
+`compile-wasi` adds a command-style target for pure entries that take no parameters and return `ByteArray`.  The generated module imports `wasi_snapshot_preview1.fd_write`, exports `_start`, calls the compiled Lean entry, writes the returned byte range to stdout, and traps when `fd_write` reports an error or a short write.  This keeps Lean `IO` outside the source language while giving byte-producing programs observable output under Wasmtime.
+
+The WASI target reuses the same extracted function bodies as library mode.  Because imported functions occupy the start of the WASM function-index space, the emitter shifts internal call indices by the number of imports before encoding command modules.  The command module exports memory and `_start`; it does not expose the selected Lean entry, `alloc`, or `reset` as its program interface.
+
+Checks run:
+
+- [x] `lake build lean-wasm`
+- [x] `node test/core_correctness.js` returned `checked 570 accepted, 26 rejected, and 13 trapped cases`.
+- [x] `node test/wasi_program.js` returned `checked 4 WASI program cases and 2 rejections`.
+- [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 570 accepted, 26 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 46 json program cases`, `checked 4 WASI program cases and 2 rejections`, and `checked 56 cases`.
+- [x] `.lake/build/bin/lean-wasm compile-wasi --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.byteArrayStringConstReturn --out .lake/build/core-correctness/byteArrayStringConstReturn.wasi.wasm`
+- [x] `.lake/build/bin/lean-wasm compile-wasi --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.byteArrayAppendReturn --out .lake/build/core-correctness/byteArrayAppendReturn.wasi.wasm`
+- [x] `.lake/build/bin/lean-wasm compile-wasi --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.byteArrayPushSize --out .lake/build/core-correctness/bad-non-bytearray.wasm` rejected with `program entry must return ByteArray`.
+- [x] `build/tools/wasmtime/current/wasmtime run .lake/build/core-correctness/byteArrayStringConstReturn.wasi.wasm` returned `XYZ`.
+- [x] `build/tools/wasmtime/current/wasmtime run .lake/build/core-correctness/byteArrayAppendReturn.wasi.wasm` returned `ABC`.
