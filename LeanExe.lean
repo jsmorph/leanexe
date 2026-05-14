@@ -15,6 +15,7 @@ import LeanExe.Examples.IntMap
 import LeanExe.Examples.JsonAdd
 import LeanExe.Examples.JsonCollatzLength
 import LeanExe.Examples.JsonDouble
+import LeanExe.Examples.JsonGcd
 import LeanExe.Examples.JsonTools
 import LeanExe.Examples.Let
 import LeanExe.Examples.Prime
