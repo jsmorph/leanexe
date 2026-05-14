@@ -9807,11 +9807,34 @@ def compileProgramEnvironment (env : Environment) (moduleName entry : Name) :
   else
     compileEnvironment env moduleName entry
 
+def compileStdinProgramEnvironment (env : Environment) (moduleName entry : Name) :
+    Except String IRModule := do
+  let entryInfo ←
+    match env.find? entry with
+    | some info => .ok info
+    | none => .error s!"entry not found: {entry}"
+  let entrySig ←
+    match supportedEntryFunction? env entryInfo with
+    | some sig => .ok sig
+    | none => .error s!"unsupported function type or declaration: {entry}"
+  if entrySig.params != [.byteArray] || entrySig.result != .byteArray then
+    .error s!"program stdin entry must have type ByteArray -> ByteArray: {entry}"
+  else
+    compileEnvironment env moduleName entry
+
 def compileProgram (moduleText entryText : String) : IO IRModule := do
   let moduleName := LeanExe.Extract.Env.parseName moduleText
   let entryName := LeanExe.Extract.Env.parseName entryText
   let env ← LeanExe.Extract.Env.loadEnvironment moduleName
   match compileProgramEnvironment env moduleName entryName with
+  | .ok module_ => pure module_
+  | .error error => throw <| IO.userError error
+
+def compileStdinProgram (moduleText entryText : String) : IO IRModule := do
+  let moduleName := LeanExe.Extract.Env.parseName moduleText
+  let entryName := LeanExe.Extract.Env.parseName entryText
+  let env ← LeanExe.Extract.Env.loadEnvironment moduleName
+  match compileStdinProgramEnvironment env moduleName entryName with
   | .ok module_ => pure module_
   | .error error => throw <| IO.userError error
 

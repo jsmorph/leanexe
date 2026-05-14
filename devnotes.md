@@ -2831,3 +2831,24 @@ Checks run:
 - [x] `.lake/build/bin/lean-wasm compile-wasi --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.byteArrayPushSize --out .lake/build/core-correctness/bad-non-bytearray.wasm` rejected with `program entry must return ByteArray`.
 - [x] `build/tools/wasmtime/current/wasmtime run .lake/build/core-correctness/byteArrayStringConstReturn.wasi.wasm` returned `XYZ`.
 - [x] `build/tools/wasmtime/current/wasmtime run .lake/build/core-correctness/byteArrayAppendReturn.wasi.wasm` returned `ABC`.
+
+## 2026-05-14: WASI bounded stdin programs
+
+`compile-wasi-stdin` adds a bounded stdin-to-stdout command target for pure entries of type `ByteArray -> ByteArray`.  The generated `_start` imports `wasi_snapshot_preview1.fd_read` and `fd_write`, reads stdin into the arena until EOF, traps if input exceeds the explicit `--max-input-bytes` limit, calls the compiled Lean entry with the input pointer and length, and writes the returned byte range to stdout.  This keeps input effects in the generated adapter rather than in Lean source code.
+
+The adapter reserves `max-input-bytes + 1` bytes so it can distinguish EOF exactly at the limit from input that exceeds the limit.  The maximum configured limit must fit in the initial 16-page memory after the arena start at byte offset `4096`.  Imported functions shift the WASM function-index space by two for stdin modules, so the emitter reuses the existing call-index shifter with offset `2`.
+
+Checks run:
+
+- [x] `lake build lean-wasm`
+- [x] `.lake/build/bin/lean-wasm compile-wasi-stdin --max-input-bytes 8 --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.byteArrayIdentityReturn --out .lake/build/wasi-programs/byteArrayIdentityReturn.stdin.wasm`
+- [x] `.lake/build/bin/lean-wasm compile-wasi-stdin --max-input-bytes 8 --module LeanExe.Examples.ByteArrayPrograms --entry LeanExe.Examples.ByteArrayPrograms.appendBang --out .lake/build/wasi-programs/appendBang.stdin.wasm`
+- [x] `.lake/build/bin/lean-wasm compile-wasi-stdin --max-input-bytes 8 --module LeanExe.Examples.ByteArrayPrograms --entry LeanExe.Examples.ByteArrayPrograms.tailSlice --out .lake/build/wasi-programs/tailSlice.stdin.wasm`
+- [x] `.lake/build/bin/lean-wasm compile-wasi-stdin --max-input-bytes 8 --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.byteArrayStringConstReturn --out .lake/build/wasi-programs/bad-stdin-shape.wasm` rejected with `program stdin entry must have type ByteArray -> ByteArray`.
+- [x] `compile-wasi-stdin` rejects `--max-input-bytes 1048576` with `max input bytes exceeds WASM memory capacity`.
+- [x] `printf AB | build/tools/wasmtime/current/wasmtime run .lake/build/wasi-programs/byteArrayIdentityReturn.stdin.wasm` returned `AB`.
+- [x] `printf AB | build/tools/wasmtime/current/wasmtime run .lake/build/wasi-programs/appendBang.stdin.wasm` returned `AB!`.
+- [x] `printf ABC | build/tools/wasmtime/current/wasmtime run .lake/build/wasi-programs/tailSlice.stdin.wasm` returned `BC`.
+- [x] `printf ABCDEFGHI | build/tools/wasmtime/current/wasmtime run .lake/build/wasi-programs/byteArrayIdentityReturn.stdin.wasm` trapped on input limit.
+- [x] `node test/wasi_program.js` returned `checked 7 WASI program cases, 1 stdin trap, and 4 rejections`.
+- [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 570 accepted, 26 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 46 json program cases`, `checked 7 WASI program cases, 1 stdin trap, and 4 rejections`, and `checked 56 cases`.
