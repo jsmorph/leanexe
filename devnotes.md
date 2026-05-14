@@ -1,5 +1,22 @@
 # Development Journal
 
+## 2026-05-14: AST JSON Parser and Tree Pipeline
+
+`LeanExe.Ascii.Json.Value` adds an ASCII-only JSON AST with `null`, booleans, unsigned `UInt64` numbers, restricted unescaped strings, arrays, and objects.  The parser is a single bounded recursive dispatcher over a request type, so recursive descent uses one accepted Nat-recursive helper with an explicit parse mode and tagged parse result.  The tree command now parses both the input array and the intermediate tree JSON through that AST, and it emits the tree through JSON writer helpers instead of embedding punctuation fragments in the example.
+
+The compiler now accepts expression-position calls to the generated Nat-recursive handle by emitting an ordinary WASM call with decremented fuel.  Tail-position calls still lower to the existing loop form, so parser loops keep the efficient path when the source branch is a plain continuation.  Fuel-recursive steps that match a recursive inductive now fall back to exit-expression lowering, which allows bounded search helpers to inspect recursive AST values without treating the match as loop control.
+
+Checks run:
+
+- [x] `lake build LeanExe.Ascii.Json.Value`
+- [x] `lake build LeanExe.Examples.JsonTreeCommand`
+- [x] `.lake/build/bin/lean-wasm compile-wasi-stdin-except --max-input-bytes 4096 --module LeanExe.Examples.JsonTreeCommand --entry LeanExe.Examples.JsonTreeCommand.makeTree --out build/make-tree.wasm`
+- [x] `.lake/build/bin/lean-wasm compile-wasi-stdin-argv-except --max-input-bytes 8192 --max-args 8 --max-argv-bytes 256 --module LeanExe.Examples.JsonTreeCommand --entry LeanExe.Examples.JsonTreeCommand.searchTree --out build/search-tree.wasm`
+- [x] `printf '%s' '[1,6,4,100,33,5,5,20]' | build/tools/wasmtime/current/wasmtime run build/make-tree.wasm | build/tools/wasmtime/current/wasmtime run build/search-tree.wasm 4` returned `{"found":true}`.
+- [x] `printf '%s' '[1,6,4,100,33,5,5,20]' | build/tools/wasmtime/current/wasmtime run build/make-tree.wasm | build/tools/wasmtime/current/wasmtime run build/search-tree.wasm 7` returned `{"found":false}`.
+- [x] `node test/wasi_program.js` returned `checked 19 WASI program cases, 2 traps, and 7 rejections`.
+- [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 574 accepted, 28 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 19 WASI program cases, 2 traps, and 7 rejections`, and `checked 56 cases`.
+
 ## 2026-05-14: JSON Array GCD Command
 
 `LeanExe.Ascii.Json.parseArrayRanges` scans a JSON array and returns raw element ranges.  It is a JSON-level scanner: callers decide how to interpret each element.  `LeanExe.Examples.JsonGcd.transform` uses that scanner to read a nonempty array of decimal `UInt64` values from stdin under `compile-wasi-stdin-except`, computes their GCD, and writes `{"gcd":N}` to stdout.
@@ -2901,3 +2918,19 @@ Checks run:
 - [x] `node test/core_correctness.js` returned `checked 574 accepted, 28 rejected, and 13 trapped cases`.
 - [x] `node test/wasi_program.js` returned `checked 11 WASI program cases, 2 traps, and 7 rejections`.
 - [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 574 accepted, 28 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 46 json program cases`, `checked 11 WASI program cases, 2 traps, and 7 rejections`, and `checked 56 cases`.
+
+## 2026-05-14: JSON tree pipeline
+
+`LeanExe.Examples.JsonTreeCommand` adds a two-command JSON pipeline.  `makeTree` reads a JSON array through `compile-wasi-stdin-except`, builds a source-level recursive binary-search tree, and writes the tree as nested JSON.  `searchTree` reads that tree JSON through stdin, reads the search key from argv through `compile-wasi-stdin-argv-except`, and writes a JSON boolean result.
+
+The example exposed three compiler issues.  Structural recursion with captured non-scrutinee parameters now passes those parameters through direct recursive-field calls, which lets ordinary definitions such as `insert tree value` compile without source reshaping.  Fuel recursion now lowers tail-position control flow under nested `if`, dependent `if`, `Bool` matches, `Option` matches, and supported nonrecursive inductive matches, which lets parser-style loops return early or recur from natural source branches.
+
+The same example also exposed duplicated evaluation of byte-array operand expressions.  `ByteArray.push`, `ByteArray.append`, and byte-array append notation now bind operand pointer-length pairs before constructing the result, so a recursive byte-producing helper used as an operand runs once.  The stdin-plus-argv WASI adapter now aligns the arena before building the argv pointer table, matching the alignment expected by WASI `args_get`.
+
+Checks run:
+
+- [x] `lake build lean-wasm`
+- [x] `.lake/build/bin/lean-wasm compile-wasi-stdin-except --max-input-bytes 4096 --module LeanExe.Examples.JsonTreeCommand --entry LeanExe.Examples.JsonTreeCommand.makeTree --out .lake/build/make-tree.wasm`
+- [x] `.lake/build/bin/lean-wasm compile-wasi-stdin-argv-except --max-input-bytes 8192 --max-args 8 --max-argv-bytes 256 --module LeanExe.Examples.JsonTreeCommand --entry LeanExe.Examples.JsonTreeCommand.searchTree --out .lake/build/search-tree.wasm`
+- [x] `printf '%s' '[1,6,4,100,33,5,5,20]' | build/tools/wasmtime/wasmtime-v44.0.0-aarch64-linux/wasmtime .lake/build/make-tree.wasm | build/tools/wasmtime/wasmtime-v44.0.0-aarch64-linux/wasmtime .lake/build/search-tree.wasm 4` returned `{"found":true}`.
+- [x] `printf '%s' '[1,6,4,100,33,5,5,20]' | build/tools/wasmtime/wasmtime-v44.0.0-aarch64-linux/wasmtime .lake/build/make-tree.wasm | build/tools/wasmtime/wasmtime-v44.0.0-aarch64-linux/wasmtime .lake/build/search-tree.wasm 7` returned `{"found":false}`.

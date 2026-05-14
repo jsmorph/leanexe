@@ -164,6 +164,18 @@ Use `compile-wasi-argv-except` for command arguments.  The selected entry must h
   --out build/argv-except.wasm
 ```
 
+Use `compile-wasi-stdin-argv-except` when a command needs both stdin and arguments.  The selected entry must have type `ByteArray -> Array ByteArray -> Except ByteArray ByteArray`.  The generated `_start` reads bounded stdin, reads bounded WASI argv, skips `argv[0]`, and applies the same stdout, stderr, and exit-status rules as `compile-wasi-stdin-except`.  The stdin bound and argv bounds reserve fixed memory regions before the Lean entry runs.
+
+```sh
+.lake/build/bin/lean-wasm compile-wasi-stdin-argv-except \
+  --max-input-bytes 8192 \
+  --max-args 8 \
+  --max-argv-bytes 256 \
+  --module LeanExe.Examples.JsonTreeCommand \
+  --entry LeanExe.Examples.JsonTreeCommand.searchTree \
+  --out build/search-tree.wasm
+```
+
 ## Run
 
 Scalar parameters and scalar results use WASM `i64`.  `Bool` uses `0` for false and `1` for true.  `Nat` values must fit in the compiler's bounded `i64` representation.
@@ -198,6 +210,14 @@ printf AB | wasmtime run build/stdin-except.wasm
 wasmtime run build/argv-except.wasm alpha omega
 ```
 
+`LeanExe.Examples.JsonTreeCommand` demonstrates a two-command JSON pipeline.  `makeTree` reads a JSON array from stdin, parses it through the ASCII JSON AST parser, and writes a binary-search tree as JSON.  `searchTree` reads that JSON tree from stdin, parses it through the same AST parser, reads the search key from argv, and writes a JSON boolean result.
+
+```sh
+printf '%s' '[1,6,4,100,33,5,5,20]' \
+  | wasmtime run build/make-tree.wasm \
+  | wasmtime run build/search-tree.wasm 4
+```
+
 ## Host Memory Values
 
 `ByteArray` and arrays use the module memory.  The module exports `alloc(len : i64) : i64`; a host calls `alloc`, writes bytes into the exported memory, and passes the returned pointer plus a length when the entry expects a `ByteArray`.  Returned byte arrays use a pointer and length result pair.
@@ -230,7 +250,7 @@ The supported subset is practical but restricted.  Programs should use concrete,
 
 Supported values include `Unit`, `Bool`, `UInt8`, `UInt32`, `UInt64`, bounded `Nat`, `ByteArray`, `LeanExe.AsciiString`, `Array`, products, internal `PSum`, user-defined structures, user-defined inductives, `Option`, `Except`, monomorphic self-recursive inductives, mutual recursive inductive families, and monomorphic recursive instances such as `List UInt64`.  `UInt8` and `UInt32` may appear at the public entry boundary as one-slot scalar values, where inputs and outputs are reduced modulo their fixed width.  Internal arrays may store byte arrays, nested arrays, products, recursive-inductive pointer fields, and fixed-width structures or tagged values containing those pointers.  `LeanExe.AsciiString` is a one-field structure over `ByteArray` with explicit validation helpers for the ASCII invariant.  Restricted compile-time ASCII `String` expressions may be converted to bytes with `.toUTF8`, measured with `.length`, tested with `.isEmpty`, and compared with `==` or `!=`.
 
-Supported control flow includes `let`, direct calls, `if`, pattern matching, pure `do` notation, bounded tail recursion over an explicit `Nat` fuel argument, direct structural recursion over recursive inductives, mutual structural recursion over recursive-family members, expression-position structural recursion with supported first-order post-arguments, a top-level closed `List.foldl` shape with one hidden accumulator, closed structural predicates for direct `List.any` and `List.all`, generated `Array`-child recursion, inline-specialized first-order polymorphic helpers, and selected direct-lambda library calls that specialize to first-order code.  Unsupported features include shared generic runtime functions, type classes, higher-order functions, closures, full `IO`, runtime `String`, runtime `Char`, arbitrary Lean and Std library functions, hidden carried arguments outside the accepted expression-position, closed structural-fold, structural-predicate, generated array-descent, mutual recursion outside the nested `PSum` shapes described in the specification, `unsafe`, `partial`, unbounded natural-number arithmetic, course-of-values recursion, exported recursive data structures, public nested arrays, and public arrays of recursive values.  These features remain outside the accepted language even when Lean accepts the source file.
+Supported control flow includes `let`, direct calls, `if`, pattern matching, pure `do` notation, bounded recursion over an explicit `Nat` fuel argument, direct structural recursion over recursive inductives, mutual structural recursion over recursive-family members, expression-position structural recursion with supported first-order post-arguments, a top-level closed `List.foldl` shape with one hidden accumulator, closed structural predicates for direct `List.any` and `List.all`, generated `Array`-child recursion, inline-specialized first-order polymorphic helpers, and selected direct-lambda library calls that specialize to first-order code.  Fuel-recursive functions may branch through nested `if` and supported inductive matches when tail calls remain in the accepted loop shape, and recursive-descent helpers may use non-tail self-calls when they consume decremented fuel and then inspect the returned value.  Unsupported features include shared generic runtime functions, type classes, higher-order functions, closures, full `IO`, runtime `String`, runtime `Char`, arbitrary Lean and Std library functions, hidden carried arguments outside the accepted expression-position, unsupported structural-recursion shapes, mutual recursion outside the nested `PSum` shapes described in the specification, `unsafe`, `partial`, unbounded natural-number arithmetic, course-of-values recursion, exported recursive data structures, public nested arrays, and public arrays of recursive values.  These features remain outside the accepted language even when Lean accepts the source file.
 
 ## ABI Summary
 
@@ -265,6 +285,7 @@ The examples directory contains small programs that exercise the user-facing sub
 | `LeanExe.Examples.JsonAdd` | `transform` | Parses two decimal JSON fields and returns their checked sum. |
 | `LeanExe.Examples.JsonCollatzLength` | `transform` | Parses a decimal Collatz request and returns the sequence length. |
 | `LeanExe.Examples.JsonGcd` | `transform` | Reads a JSON array from stdin and writes a JSON GCD result through WASI. |
+| `LeanExe.Examples.JsonTreeCommand` | `makeTree`, `searchTree` | Builds a simple JSON binary-search tree and searches it through a WASI pipeline. |
 | `LeanExe.Examples.JsonTools` | `transform`, `lookup` | Exercises limited JSON field lookup and object generation helpers. |
 | `LeanExe.Examples.Correctness` | Many entries | Exercises structures, inductives, arrays, recursion, and edge cases. |
 

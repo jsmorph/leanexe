@@ -7,6 +7,7 @@ const { spawnSync } = require("child_process");
 const correctnessModule = "LeanExe.Examples.Correctness";
 const byteArrayModule = "LeanExe.Examples.ByteArrayPrograms";
 const jsonGcdModule = "LeanExe.Examples.JsonGcd";
+const jsonTreeModule = "LeanExe.Examples.JsonTreeCommand";
 const leanExe = process.env.LEAN_WASM_EXE || path.join(".lake", "build", "bin", "lean-wasm");
 const wasmtime = process.env.WASMTIME || path.join("build", "tools", "wasmtime", "current", "wasmtime");
 const outDir = path.join(".lake", "build", "wasi-programs");
@@ -107,6 +108,30 @@ function compileArgvExcept(moduleName, entry, maxArgs, maxArgBytes) {
   return out;
 }
 
+function compileStdinArgvExcept(moduleName, entry, maxInputBytes, maxArgs, maxArgBytes) {
+  const out = path.join(outDir, `${entry}.stdin-argv-except.wasi.wasm`);
+  const result = run([
+    leanExe,
+    "compile-wasi-stdin-argv-except",
+    "--max-input-bytes",
+    maxInputBytes.toString(),
+    "--max-args",
+    maxArgs.toString(),
+    "--max-argv-bytes",
+    maxArgBytes.toString(),
+    "--module",
+    moduleName,
+    "--entry",
+    `${moduleName}.${entry}`,
+    "--out",
+    out,
+  ]);
+  if (result.status !== 0) {
+    throw new Error(outputText(result).trim() || `${entry} failed to compile`);
+  }
+  return out;
+}
+
 function expectProgram(entry, expectedBytes) {
   const wasm = compileStdout(entry);
   const result = run([wasmtime, "run", wasm]);
@@ -126,6 +151,20 @@ function runWasmtimeWithInput(wasm, entry, suffix, inputBytes) {
   const inputFd = fs.openSync(inputPath, "r");
   try {
     return run([wasmtime, "run", wasm], {
+      stdio: [inputFd, "pipe", "pipe"],
+      timeout: 10000,
+    });
+  } finally {
+    fs.closeSync(inputFd);
+  }
+}
+
+function runWasmtimeWithInputAndArgs(wasm, entry, suffix, inputBytes, args) {
+  const inputPath = path.join(outDir, `${entry}.${inputBytes.length}.${suffix}.stdin`);
+  fs.writeFileSync(inputPath, Buffer.from(inputBytes));
+  const inputFd = fs.openSync(inputPath, "r");
+  try {
+    return run([wasmtime, "run", wasm, ...args], {
       stdio: [inputFd, "pipe", "pipe"],
       timeout: 10000,
     });
@@ -198,6 +237,34 @@ function expectArgvExceptOk(moduleName, entry, maxArgs, maxArgBytes, args, expec
   const stderr = result.stderr || Buffer.alloc(0);
   if (stderr.length !== 0) {
     throw new Error(`${entry}: expected empty stderr, got ${stderr.toString("hex")}`);
+  }
+}
+
+function expectTreePipeline(inputBytes, needle, expectedBytes) {
+  const makeTree = compileStdinExcept(jsonTreeModule, "makeTree", 4096);
+  const searchTree = compileStdinArgvExcept(jsonTreeModule, "searchTree", 8192, 8, 256);
+  const makeResult = runWasmtimeWithInput(makeTree, "makeTree", "tree", inputBytes);
+  if (makeResult.status !== 0) {
+    throw new Error(outputText(makeResult).trim() || "makeTree failed in Wasmtime");
+  }
+  const searchResult = runWasmtimeWithInputAndArgs(
+    searchTree,
+    "searchTree",
+    `needle-${needle}`,
+    makeResult.stdout || Buffer.alloc(0),
+    [needle]
+  );
+  if (searchResult.status !== 0) {
+    throw new Error(outputText(searchResult).trim() || "searchTree failed in Wasmtime");
+  }
+  const expected = Buffer.from(expectedBytes);
+  const actual = searchResult.stdout || Buffer.alloc(0);
+  if (Buffer.compare(actual, expected) !== 0) {
+    throw new Error(`searchTree: expected stdout ${expected.toString("hex")}, got ${actual.toString("hex")}`);
+  }
+  const stderr = searchResult.stderr || Buffer.alloc(0);
+  if (stderr.length !== 0) {
+    throw new Error(`searchTree: expected empty stderr, got ${stderr.toString("hex")}`);
   }
 }
 
@@ -356,6 +423,8 @@ function main() {
   ]);
   expectArgvExceptError(byteArrayModule, "argvFirstLast", 4, 1024, [], [109, 105, 115, 115, 105, 110, 103]);
   expectArgvTrap(byteArrayModule, "argvFirstLast", 1, 1024, ["one", "two"]);
+  expectTreePipeline(bytes("[1,6,4,100,33,5,5,20]"), "4", bytes('{"found":true}'));
+  expectTreePipeline(bytes("[1,6,4,100,33,5,5,20]"), "7", bytes('{"found":false}'));
 
   expectReject("byteArrayPushSize", "program entry must return ByteArray");
   expectReject("byteArrayBranchHelperReturn", "program entry must take no parameters");
@@ -392,7 +461,7 @@ function main() {
     "max argv storage exceeds WASM memory capacity"
   );
 
-  process.stdout.write("checked 17 WASI program cases, 2 traps, and 7 rejections\n");
+  process.stdout.write("checked 19 WASI program cases, 2 traps, and 7 rejections\n");
 }
 
 try {
