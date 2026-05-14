@@ -22,6 +22,7 @@ function main() {
   run(["node", path.join("test", "asciistring.js")]);
   run(["node", path.join("test", "intmap.js")]);
   run(["node", path.join("test", "json_double.js")]);
+  run(["node", path.join("test", "wasi_program.js")]);
   run([
     "node",
     path.join("test", "fuzz_validate.js"),

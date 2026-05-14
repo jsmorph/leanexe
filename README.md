@@ -2,17 +2,17 @@
 
 LeanExe compiles a restricted Lean 4 program to a standalone WebAssembly module.  Lean remains the type checker and source language; the compiler loads a checked declaration from a Lean module and emits WASM for the executable subset described in [Language Specification](spec.md).  The supported subset covers first-order pure programs over scalar values, byte arrays, fixed-width arrays, structures, inductive values, bounded recursion, and internal recursive data structures.
 
-The generated module exports a plain WASM function for the selected Lean declaration.  Scalar programs can run directly with Wasmtime or another WASM engine that can invoke exported functions.  Programs that pass or return byte arrays, structures, variants, or arrays use the ABI described below, so a host program must provide flattened values or memory values in the expected form.
+The default generated module exports a plain WASM function for the selected Lean declaration.  Scalar programs can run directly with Wasmtime or another WASM engine that can invoke exported functions.  Programs that pass or return byte arrays, structures, variants, or arrays use the ABI described below, so a host program must provide flattened values or memory values in the expected form.  A separate WASI command mode accepts a zero-argument `ByteArray` entry and writes the returned bytes to stdout.
 
 ## Requirements
 
-This repository uses Lean through `elan` and Lake.  The pinned Lean version lives in `lean-toolchain`, and Lake builds the `lean-wasm` executable.  A standalone WASM engine such as Wasmtime can run scalar examples from the command line, while a JavaScript, Go, Rust, or C host can instantiate modules that use memory values.
+This repository uses Lean through `elan` and Lake.  The pinned Lean version lives in `lean-toolchain`, and Lake builds the `lean-wasm` executable.  A standalone WASM engine such as Wasmtime can run scalar examples and WASI command examples from the command line, while a JavaScript, Go, Rust, or C host can instantiate modules that use memory values.
 
 ```sh
 lake build
 ```
 
-The test suite uses Node for WASM instantiation checks.  Wasmtime is useful for command-line runs, but it is not required for the compiler itself.  If Wasmtime is not on `PATH`, use the absolute path to the downloaded binary.
+The test suite uses Node for the existing instantiation checks, including host-memory checks, and Wasmtime for command-style WASM execution.  Wasmtime is not required for the compiler itself, but the full repository test suite expects the downloaded binary at `build/tools/wasmtime/current/wasmtime` or a `WASMTIME` environment variable.  If Wasmtime is not on `PATH`, use the absolute path to the downloaded binary.
 
 ```sh
 node test/run_all.js
@@ -124,6 +124,15 @@ Use `compile-wat` to inspect the generated module as WAT.  Use `report` before c
   --entry LeanExe.Examples.ReadmeDemo.choose
 ```
 
+Use `compile-wasi` for a command-style module whose selected entry takes no parameters and returns `ByteArray`.  The generated module imports WASI Preview 1 `fd_write`, exports `_start`, and writes the returned bytes to stdout.  This mode does not compile Lean `IO`; the Lean entry remains a pure function.
+
+```sh
+.lake/build/bin/lean-wasm compile-wasi \
+  --module LeanExe.Examples.Correctness \
+  --entry LeanExe.Examples.Correctness.byteArrayStringConstReturn \
+  --out build/stdout.wasm
+```
+
 ## Run
 
 Scalar parameters and scalar results use WASM `i64`.  `Bool` uses `0` for false and `1` for true.  `Nat` values must fit in the compiler's bounded `i64` representation.
@@ -147,6 +156,12 @@ The repository examples can be compiled the same way.  `LeanExe.Examples.Collatz
   --out build/collatz.wasm
 
 wasmtime run --invoke steps build/collatz.wasm 27
+```
+
+A WASI command module runs through Wasmtime without `--invoke`.  Its observable result is stdout, so byte-producing programs can be tested as real command programs.
+
+```sh
+wasmtime run build/stdout.wasm
 ```
 
 ## Host Memory Values
