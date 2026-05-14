@@ -20,6 +20,7 @@ def usage : String :=
     "  lean-wasm compile-wat --module <module> --entry <name> --out <path>",
     "  lean-wasm compile-wasi --module <module> --entry <name> --out <path>",
     "  lean-wasm compile-wasi-stdin --max-input-bytes <n> --module <module> --entry <name> --out <path>",
+    "  lean-wasm compile-wasi-stdin-except --max-input-bytes <n> --module <module> --entry <name> --out <path>",
     "  lean-wasm collatz-eval --input <n>",
     "  lean-wasm collatz-bench --input <n> --iters <n>",
     "",
@@ -163,6 +164,20 @@ def main : List String → IO UInt32
       | .ok maxBytes =>
           match LeanExe.Wasm.Binary.CoreWasm.wasiStdinModuleBytes maxBytes
               (← LeanExe.Extract.Core.compileStdinProgram moduleName entryName) with
+          | .ok bytes =>
+              writeBytes out bytes
+          | .error error =>
+              throw <| IO.userError error
+          return 0
+      | .error error =>
+          IO.eprintln error
+          return 2
+  | ["compile-wasi-stdin-except", "--max-input-bytes", maxInput, "--module", moduleName,
+      "--entry", entryName, "--out", out] => do
+      match parseNatArg maxInput with
+      | .ok maxBytes =>
+          match LeanExe.Wasm.Binary.CoreWasm.wasiStdinExceptModuleBytes maxBytes
+              (← LeanExe.Extract.Core.compileStdinExceptProgram moduleName entryName) with
           | .ok bytes =>
               writeBytes out bytes
           | .error error =>

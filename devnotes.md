@@ -2852,3 +2852,16 @@ Checks run:
 - [x] `printf ABCDEFGHI | build/tools/wasmtime/current/wasmtime run .lake/build/wasi-programs/byteArrayIdentityReturn.stdin.wasm` trapped on input limit.
 - [x] `node test/wasi_program.js` returned `checked 7 WASI program cases, 1 stdin trap, and 4 rejections`.
 - [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 570 accepted, 26 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 46 json program cases`, `checked 7 WASI program cases, 1 stdin trap, and 4 rejections`, and `checked 56 cases`.
+
+## 2026-05-14: WASI error-result programs
+
+`compile-wasi-stdin-except` adds a command target for pure entries of type `ByteArray -> Except ByteArray ByteArray`.  The generated `_start` uses the same bounded `fd_read` input path as `compile-wasi-stdin`.  It decodes the public `Except` result as tag, error pointer, error length, ok pointer, and ok length.  Tag `1` writes the ok payload to stdout and returns normally.  Tag `0` writes the error payload to stderr and calls `wasi_snapshot_preview1.proc_exit` with status `1`.
+
+The WASI emitter now builds command-module type sections from an explicit list of import function types.  `fd_read` and `fd_write` share the `[i32, i32, i32, i32] -> i32` type, while `proc_exit` uses `[i32] -> []`.  Module function type indices start after those import types, and module function indices start after the imported functions, so the existing call-index shifter still has one concrete offset per command adapter.
+
+Checks run:
+
+- [x] `lake build lean-wasm`
+- [x] `lake build LeanExe.Examples.Correctness`
+- [x] `node test/wasi_program.js` returned `checked 9 WASI program cases, 1 stdin trap, and 5 rejections`.
+- [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 570 accepted, 26 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 46 json program cases`, `checked 9 WASI program cases, 1 stdin trap, and 5 rejections`, and `checked 56 cases`.

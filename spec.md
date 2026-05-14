@@ -2,7 +2,7 @@
 
 LeanExe accepts a restricted executable subset of Lean 4 and emits a standalone WebAssembly module for one selected entry declaration.  Lean remains the parser, elaborator, type checker, and proof checker.  The compiler reads checked declarations from the Lean environment, rejects declarations outside this specification, and emits WASM only for accepted programs.
 
-The language targets deterministic pure programs over machine integers, byte buffers, arrays, structures, and inductive values.  It supports enough Lean to write conventional first-order programs with bounded loops and recursive helper data structures.  Lean effects such as `IO`, file access, user-defined host calls, concurrency, randomness, and time remain outside the accepted source language; WASI command mode adds a fixed stdout wrapper around a pure `ByteArray` result.
+The language targets deterministic pure programs over machine integers, byte buffers, arrays, structures, and inductive values.  It supports enough Lean to write conventional first-order programs with bounded loops and recursive helper data structures.  Lean effects such as `IO`, file access, user-defined host calls, concurrency, randomness, and time remain outside the accepted source language; WASI command mode adds fixed adapters for byte output, bounded byte input, stderr error output, and process exit status.
 
 ## Compilation Model
 
@@ -21,7 +21,7 @@ The command-line entry point for generic compilation is:
   --out build/entry.wasm
 ```
 
-`compile-wat` emits text-format WASM for inspection.  `compile-wasi` emits a WASI command module for a zero-argument entry whose result type is `ByteArray`; the generated `_start` wrapper calls the pure Lean entry and writes the returned bytes to stdout.  `compile-wasi-stdin --max-input-bytes n` emits a WASI command module for an entry of type `ByteArray -> ByteArray`; the generated `_start` wrapper reads stdin through `fd_read` up to the configured limit, calls the pure Lean entry, and writes the returned bytes to stdout.  `report --module Module.Name --entry Module.Name.entry` imports the same module and prints the entry shape, dependency frontier, and first rejection reasons.  A program that Lean accepts but LeanExe rejects lies outside this language.
+`compile-wat` emits text-format WASM for inspection.  `compile-wasi` emits a WASI command module for a zero-argument entry whose result type is `ByteArray`; the generated `_start` wrapper calls the pure Lean entry and writes the returned bytes to stdout.  `compile-wasi-stdin --max-input-bytes n` emits a WASI command module for an entry of type `ByteArray -> ByteArray`; the generated `_start` wrapper reads stdin through `fd_read` up to the configured limit, calls the pure Lean entry, and writes the returned bytes to stdout.  `compile-wasi-stdin-except --max-input-bytes n` emits a WASI command module for an entry of type `ByteArray -> Except ByteArray ByteArray`; `Except.ok` writes stdout and returns success, while `Except.error` writes stderr and exits with status `1`.  `report --module Module.Name --entry Module.Name.entry` imports the same module and prints the entry shape, dependency frontier, and first rejection reasons.  A program that Lean accepts but LeanExe rejects lies outside this language.
 
 ## WASM Module ABI
 
@@ -32,6 +32,8 @@ The entry export name is the last component of the Lean declaration name.  For e
 The stdout-only WASI command-mode module imports `wasi_snapshot_preview1.fd_write`, exports `_start`, and exports the same memory.  It does not export `alloc`, `reset`, or the selected Lean entry as the public program interface.  The selected entry must take no parameters and return `ByteArray`; `_start` writes the returned pointer-length byte range to stdout and traps if `fd_write` returns an error or reports a short write.
 
 The stdin-to-stdout WASI command-mode module imports both `fd_read` and `fd_write`.  The selected entry must have type `ByteArray -> ByteArray`.  `_start` reserves `max-input-bytes + 1` bytes in the arena, reads stdin until EOF, traps when input exceeds the configured limit, passes the read byte range to the pure Lean entry, and writes the returned byte range to stdout.  The configured limit must fit in the initial 16-page memory after the arena start at byte offset `4096`.
+
+The stdin-to-`Except` WASI command-mode module imports `fd_read`, `fd_write`, and `proc_exit`.  The selected entry must have type `ByteArray -> Except ByteArray ByteArray`.  `_start` uses the same bounded stdin reader as the stdin-to-stdout mode.  It writes `Except.ok` payload bytes to stdout and returns normally.  It writes `Except.error` payload bytes to stderr and calls `proc_exit 1`.  It traps on invalid `Except` tags, input that exceeds the configured limit, `fd_read` errors, `fd_write` errors, and short writes.
 
 Every scalar ABI slot is a WASM `i64`.  `Bool` uses `0` for false and `1` for true.  `UInt8` and `UInt32` use one slot and are reduced modulo `2^8` or `2^32` when they enter or leave the public ABI.  `UInt64` uses the full unsigned 64-bit representation, and `Nat` uses the bounded unsigned representation described below.
 
@@ -139,7 +141,7 @@ Supported construction and update operations include `ByteArray.empty`, `ByteArr
 
 Supported binary and loop operations include `ByteArray.toUInt64LE!`, `ByteArray.toUInt64BE!`, `ByteArray.foldl`, and `ByteArray.findIdx?`.  The fixed-width decoding operations require exactly eight bytes and trap otherwise.  `ByteArray.foldl` supports scalar accumulators, `ByteArray` accumulators, supported array pointers, products, structures, nonrecursive tagged values, and recursive-inductive pointer values.  Products, structures, and tagged values may contain `ByteArray` fields when their other fields are supported.  Byte-array folders and predicates must be direct lambdas.
 
-Unsupported byte-array features include `ByteArray.foldlM`, `USize` indexing APIs, `ByteArray.uset`, runtime string conversion, UTF-8 decoding, effectful callbacks, and closure-valued callbacks.  Library-mode hosts interact with byte arrays through `alloc`, `memory`, and the pointer-length ABI.  WASI command mode supports observable byte output for zero-argument `ByteArray` entries and bounded stdin-to-stdout transforms for `ByteArray -> ByteArray` entries.
+Unsupported byte-array features include `ByteArray.foldlM`, `USize` indexing APIs, `ByteArray.uset`, runtime string conversion, UTF-8 decoding, effectful callbacks, and closure-valued callbacks.  Library-mode hosts interact with byte arrays through `alloc`, `memory`, and the pointer-length ABI.  WASI command mode supports observable byte output for zero-argument `ByteArray` entries, bounded stdin-to-stdout transforms for `ByteArray -> ByteArray` entries, and bounded error-aware transforms for `ByteArray -> Except ByteArray ByteArray` entries.
 
 ## ASCII Strings
 
