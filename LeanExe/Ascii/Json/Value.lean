@@ -262,6 +262,115 @@ def get? (value : Value) (name : AsciiString) : Option Value :=
   | Value.arr _ => none
   | Value.obj fields => getFieldFuel (fields.size + 1) fields name 0
 
+def countFieldFuel : Nat -> Array Field -> AsciiString -> Nat -> Nat -> Nat
+  | 0, _fields, _name, _index, count => count
+  | fuel + 1, fields, name, index, count =>
+      if index == fields.size then
+        count
+      else
+        let field := fields[index]!
+        let nextCount :=
+          if (Field.name field).equals name then
+            count + 1
+          else
+            count
+        countFieldFuel fuel fields name (index + 1) nextCount
+
+def countField (fields : Array Field) (name : AsciiString) : Nat :=
+  countFieldFuel (fields.size + 1) fields name 0 0
+
+def getUniqueField? (fields : Array Field) (name : AsciiString) : Option Value :=
+  if countField fields name == 1 then
+    getFieldFuel (fields.size + 1) fields name 0
+  else
+    none
+
+def nameInArrayFuel : Nat -> Array AsciiString -> AsciiString -> Nat -> Bool
+  | 0, _names, _name, _index => false
+  | fuel + 1, names, name, index =>
+      if index == names.size then
+        false
+      else
+        match names[index]? with
+        | some candidate =>
+            if candidate.equals name then
+              true
+            else
+              nameInArrayFuel fuel names name (index + 1)
+        | none => false
+
+def nameInArray (names : Array AsciiString) (name : AsciiString) : Bool :=
+  nameInArrayFuel (names.size + 1) names name 0
+
+def allFieldNamesInFuel : Nat -> Array Field -> Array AsciiString -> Nat -> Bool
+  | 0, _fields, _names, _index => false
+  | fuel + 1, fields, names, index =>
+      if index == fields.size then
+        true
+      else if nameInArray names (Field.name fields[index]!) then
+        allFieldNamesInFuel fuel fields names (index + 1)
+      else
+        false
+
+def allFieldNamesIn (fields : Array Field) (names : Array AsciiString) : Bool :=
+  allFieldNamesInFuel (fields.size + 1) fields names 0
+
+theorem fieldValue_sizeOf_lt_of_mem
+    (field : Field)
+    (fields : Array Field)
+    (hmem : field ∈ fields) :
+    sizeOf (Field.value field) < sizeOf fields := by
+  have hField : sizeOf field < sizeOf fields :=
+    Array.sizeOf_lt_of_mem hmem
+  cases field with
+  | mk name value =>
+      simp [Field.value] at hField ⊢
+      omega
+
+theorem getFieldFuel_sizeOf_lt
+    (fuel : Nat)
+    (fields : Array Field)
+    (name : AsciiString)
+    (index : Nat)
+    (hindex : index <= fields.size)
+    (value : Value) :
+    getFieldFuel fuel fields name index = some value -> sizeOf value < sizeOf fields := by
+  induction fuel generalizing index with
+  | zero =>
+      intro h
+      cases h
+  | succ fuel ih =>
+      intro h
+      unfold getFieldFuel at h
+      by_cases hEnd : index == fields.size
+      · simp [hEnd] at h
+      · have hlt : index < fields.size := by
+          exact Nat.lt_of_le_of_ne hindex (by
+            intro h
+            apply hEnd
+            simp [h])
+        have hBang : fields[index]! = fields[index] :=
+          getElem!_pos fields index hlt
+        simp [hEnd, hBang] at h
+        by_cases hName : (Field.name fields[index]).equals name
+        · simp [hName] at h
+          rw [← h]
+          exact fieldValue_sizeOf_lt_of_mem fields[index] fields
+            (Array.getElem_mem hlt)
+        · simp [hName] at h
+          exact ih (index + 1) (Nat.succ_le_of_lt hlt) h
+
+theorem getUniqueField?_sizeOf_lt
+    (fields : Array Field)
+    (name : AsciiString)
+    (value : Value) :
+    getUniqueField? fields name = some value -> sizeOf value < sizeOf fields := by
+  unfold getUniqueField?
+  by_cases hCount : countField fields name == 1
+  · simp [hCount]
+    exact getFieldFuel_sizeOf_lt (fields.size + 1) fields name 0 (Nat.zero_le fields.size) value
+  · simp [hCount]
+
 structure RenderState where
   failed : Bool
   first : Bool
