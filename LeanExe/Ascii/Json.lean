@@ -50,6 +50,7 @@ structure ParsedString where
 structure FieldRange where
   start : Nat
   stop : Nat
+deriving Inhabited
 
 structure CompositeScanState where
   pos : Nat
@@ -63,6 +64,13 @@ structure FieldSearchState where
   found : Bool
   start : Nat
   stop : Nat
+
+structure ArrayRangeState where
+  pos : Nat
+  canEnd : Bool
+  done : Bool
+  failed : Bool
+  ranges : Array FieldRange
 
 def literalTrue : ByteArray :=
   "true".toUTF8
@@ -164,6 +172,50 @@ def skipValueAt (text : AsciiString) (pos : Nat) : Option Nat :=
   else
     none
 
+def arrayRangeScanContinue (state : ArrayRangeState) : Bool :=
+  !state.done && !state.failed
+
+def arrayRangeScanStep (text : AsciiString) (state : ArrayRangeState) : ArrayRangeState :=
+  let pos0 := skipWs text state.pos
+  if pos0 < text.size && text.get! pos0 == byteRBracket then
+    if state.canEnd then
+      { state with pos := pos0 + 1, done := true }
+    else
+      { state with failed := true }
+  else
+    let valueStart := pos0
+    match skipValueAt text valueStart with
+    | none => { state with failed := true }
+    | some valueStop =>
+        let ranges := state.ranges.push { start := valueStart, stop := valueStop }
+        let afterValue := skipWs text valueStop
+        if afterValue < text.size && text.get! afterValue == byteComma then
+          { state with pos := afterValue + 1, canEnd := false, ranges := ranges }
+        else if afterValue < text.size && text.get! afterValue == byteRBracket then
+          { state with pos := afterValue + 1, canEnd := true, done := true, ranges := ranges }
+        else
+          { state with failed := true }
+
+def arrayRangeScanFuel : Nat -> AsciiString -> ArrayRangeState -> ArrayRangeState
+  | 0, _text, state => state
+  | fuel + 1, text, state =>
+      if arrayRangeScanContinue state then
+        arrayRangeScanFuel fuel text (arrayRangeScanStep text state)
+      else
+        state
+
+def parseArrayRanges (text : AsciiString) : Option (Array FieldRange) :=
+  match expectWsByte text 0 byteLBracket with
+  | none => none
+  | some pos =>
+      let state :=
+        arrayRangeScanFuel (text.size + 1) text
+          { pos := pos, canEnd := true, done := false, failed := false, ranges := #[] }
+      if !state.failed && state.done && skipWs text state.pos == text.size then
+        some state.ranges
+      else
+        none
+
 def nameMatchesAt (text : AsciiString) (start stop : Nat) (name : ByteArray) : Bool :=
   match expectBytes text start name with
   | some afterName => afterName + 1 == stop
@@ -232,17 +284,19 @@ def getRawField (text : AsciiString) (name : ByteArray) : Option AsciiString :=
   | some range => some (rangeText text range)
   | none => none
 
+def parseUInt64Range (text : AsciiString) (range : FieldRange) : Option UInt64 :=
+  match parseUInt64 text range.start with
+  | some parsed =>
+      if parsed.pos == range.stop then
+        some parsed.value
+      else
+        none
+  | none => none
+
 def getUInt64Field (text : AsciiString) (name : ByteArray) : Option UInt64 :=
   match findFieldRange text name with
+  | some range => parseUInt64Range text range
   | none => none
-  | some range =>
-      match parseUInt64 text range.start with
-      | some parsed =>
-          if parsed.pos == range.stop then
-            some parsed.value
-          else
-            none
-      | none => none
 
 def getStringField (text : AsciiString) (name : ByteArray) : Option AsciiString :=
   match findFieldRange text name with
@@ -299,6 +353,12 @@ def getArrayField (text : AsciiString) (name : ByteArray) : Option AsciiString :
         some (rangeText text range)
       else
         none
+  | none => none
+
+def getArrayRangesField (text : AsciiString) (name : ByteArray) :
+    Option (Array FieldRange) :=
+  match getArrayField text name with
+  | some arrayText => parseArrayRanges arrayText
   | none => none
 
 def appendQuotedBytesFuel : Nat -> ByteArray -> Nat -> ByteArray -> Option ByteArray

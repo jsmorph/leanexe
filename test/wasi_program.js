@@ -6,6 +6,7 @@ const { spawnSync } = require("child_process");
 
 const correctnessModule = "LeanExe.Examples.Correctness";
 const byteArrayModule = "LeanExe.Examples.ByteArrayPrograms";
+const jsonGcdModule = "LeanExe.Examples.JsonGcd";
 const leanExe = process.env.LEAN_WASM_EXE || path.join(".lake", "build", "bin", "lean-wasm");
 const wasmtime = process.env.WASMTIME || path.join("build", "tools", "wasmtime", "current", "wasmtime");
 const outDir = path.join(".lake", "build", "wasi-programs");
@@ -20,6 +21,10 @@ function run(args, options = {}) {
 
 function outputText(result) {
   return Buffer.concat([result.stdout || Buffer.alloc(0), result.stderr || Buffer.alloc(0)]).toString("utf8");
+}
+
+function bytes(text) {
+  return Buffer.from(text, "utf8");
 }
 
 function compileStdout(entry) {
@@ -340,6 +345,12 @@ function main() {
   expectStdinTrap(correctnessModule, "byteArrayIdentityReturn", 8, [65, 66, 67, 68, 69, 70, 71, 72, 73]);
   expectStdinExceptOk(correctnessModule, "byteArrayExceptBangOrError", 8, [65, 66], [65, 66, 33]);
   expectStdinExceptError(correctnessModule, "byteArrayExceptBangOrError", 8, [], [101, 109, 112, 116, 121]);
+  expectStdinExceptOk(jsonGcdModule, "transform", 1024, bytes("[48,18,30]"), bytes('{"gcd":6}'));
+  expectStdinExceptOk(jsonGcdModule, "transform", 1024, bytes(" [ 0 , 42 , 56 ] "), bytes('{"gcd":14}'));
+  expectStdinExceptOk(jsonGcdModule, "transform", 1024, bytes("[17]"), bytes('{"gcd":17}'));
+  expectStdinExceptError(jsonGcdModule, "transform", 1024, bytes("[]"), bytes('{"error":1}'));
+  expectStdinExceptError(jsonGcdModule, "transform", 1024, bytes('[4,"x"]'), bytes('{"error":1}'));
+  expectStdinExceptError(jsonGcdModule, "transform", 1024, bytes("[1,]"), bytes('{"error":1}'));
   expectArgvExceptOk(byteArrayModule, "argvFirstLast", 4, 1024, ["alpha", "omega"], [
     97, 108, 112, 104, 97, 58, 111, 109, 101, 103, 97,
   ]);
@@ -381,7 +392,7 @@ function main() {
     "max argv storage exceeds WASM memory capacity"
   );
 
-  process.stdout.write("checked 11 WASI program cases, 2 traps, and 7 rejections\n");
+  process.stdout.write("checked 17 WASI program cases, 2 traps, and 7 rejections\n");
 }
 
 try {

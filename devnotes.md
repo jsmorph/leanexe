@@ -1,5 +1,17 @@
 # Development Journal
 
+## 2026-05-14: JSON Array GCD Command
+
+`LeanExe.Ascii.Json.parseArrayRanges` scans a JSON array and returns raw element ranges.  It is a JSON-level scanner: callers decide how to interpret each element.  `LeanExe.Examples.JsonGcd.transform` uses that scanner to read a nonempty array of decimal `UInt64` values from stdin under `compile-wasi-stdin-except`, computes their GCD, and writes `{"gcd":N}` to stdout.
+
+Checks run:
+
+- [x] `lake build LeanExe.Examples.JsonGcd`
+- [x] `.lake/build/bin/lean-wasm compile-wasi-stdin-except --max-input-bytes 1024 --module LeanExe.Examples.JsonGcd --entry LeanExe.Examples.JsonGcd.transform --out .lake/build/json-gcd.wasm`
+- [x] `env XDG_CACHE_HOME=.lake/build/cache build/tools/wasmtime/current/wasmtime run .lake/build/json-gcd.wasm < /tmp/leanexe-json-gcd-input.json`
+- [x] `node test/wasi_program.js`
+- [x] `node test/run_all.js`
+
 ## 2026-05-14: JSON Example Cleanup
 
 `LeanExe.Examples.JsonDouble` and `LeanExe.Examples.JsonAdd` use `Ascii.Json.getUInt64Field` for input and `Ascii.Json.object1UInt64` for output.  Both examples share the library field scanner and object generator.  Their behavior matches the documented limited JSON API: requested fields are order-independent, unknown supported values may be skipped, and malformed input or arithmetic overflow returns `{"error":1}`.

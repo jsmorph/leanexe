@@ -264,6 +264,7 @@ The examples directory contains small programs that exercise the user-facing sub
 | `LeanExe.Examples.JsonDouble` | `transform` | Parses a small ASCII JSON request and returns JSON bytes. |
 | `LeanExe.Examples.JsonAdd` | `transform` | Parses two decimal JSON fields and returns their checked sum. |
 | `LeanExe.Examples.JsonCollatzLength` | `transform` | Parses a decimal Collatz request and returns the sequence length. |
+| `LeanExe.Examples.JsonGcd` | `transform` | Reads a JSON array from stdin and writes a JSON GCD result through WASI. |
 | `LeanExe.Examples.JsonTools` | `transform`, `lookup` | Exercises limited JSON field lookup and object generation helpers. |
 | `LeanExe.Examples.Correctness` | Many entries | Exercises structures, inductives, arrays, recursion, and edge cases. |
 
