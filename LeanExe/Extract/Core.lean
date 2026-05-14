@@ -41,6 +41,7 @@ inductive ExtractedValue where
   | ite (cond : IRCond) (thenValue elseValue : ExtractedValue)
   | letE (slot : Nat) (value : IRExpr) (body : ExtractedValue)
   | letCall (slots : List Nat) (index : Nat) (args : List IRExpr) (body : ExtractedValue)
+  | letLocal (lets : List LeanExe.IR.LocalLet) (body : ExtractedValue)
   deriving BEq, Repr
 
 instance : Inhabited ExtractedValue :=
@@ -1422,6 +1423,302 @@ def supportedEqType : Ty → Bool
   | .nat => true
   | _ => false
 
+def addLiveSlot (live : List Nat) (slot : Nat) : List Nat :=
+  if live.contains slot then live else slot :: live
+
+def addLiveSlots (live slots : List Nat) : List Nat :=
+  slots.foldl addLiveSlot live
+
+def removeLiveSlot (live : List Nat) (slot : Nat) : List Nat :=
+  live.filter fun candidate => candidate != slot
+
+def removeLiveSlots (live slots : List Nat) : List Nat :=
+  slots.foldl removeLiveSlot live
+
+def anyLiveSlot (live slots : List Nat) : Bool :=
+  slots.any fun slot => live.contains slot
+
+def slotsFrom (start width : Nat) : List Nat :=
+  (List.range width).map fun offset => start + offset
+
+mutual
+  partial def exprUsedSlots : IRExpr → List Nat
+    | .local index => [index]
+    | .trap => []
+    | .u64 _ => []
+    | .u64Bin _ left right =>
+        addLiveSlots (exprUsedSlots left) (exprUsedSlots right)
+    | .ite cond thenValue elseValue =>
+        addLiveSlots (addLiveSlots (condUsedSlots cond) (exprUsedSlots thenValue))
+          (exprUsedSlots elseValue)
+    | .letE slot value body =>
+        let bodyLive := exprUsedSlots body
+        if bodyLive.contains slot then
+          addLiveSlots (removeLiveSlot bodyLive slot) (exprUsedSlots value)
+        else
+          bodyLive
+    | .letCall slots _ args body =>
+        let bodyLive := exprUsedSlots body
+        if anyLiveSlot bodyLive slots then
+          addLiveSlots (removeLiveSlots bodyLive slots) (exprListUsedSlots args)
+        else
+          bodyLive
+    | .letLets lets body =>
+        (pruneLocalLetsWithLive lets (exprUsedSlots body)).snd
+    | .arrayAllocSlots _ cells => exprUsedSlots cells
+    | .heapAllocSlots values => exprListUsedSlots values
+    | .heapLoadSlot ptr _ => exprUsedSlots ptr
+    | .arrayReplicateSlots _ cells values =>
+        addLiveSlots (exprUsedSlots cells) (exprListUsedSlots values)
+    | .arraySize array => exprUsedSlots array
+    | .arrayGetSlot _ _ array index =>
+        addLiveSlots (exprUsedSlots array) (exprUsedSlots index)
+    | .arraySetSlots _ array index values =>
+        addLiveSlots (addLiveSlots (exprUsedSlots array) (exprUsedSlots index))
+          (exprListUsedSlots values)
+    | .arrayPushSlots _ array values =>
+        addLiveSlots (exprUsedSlots array) (exprListUsedSlots values)
+    | .arrayPopSlots _ array => exprUsedSlots array
+    | .arrayAppendSlots _ left right =>
+        addLiveSlots (exprUsedSlots left) (exprUsedSlots right)
+    | .arrayExtractSlots _ array start stop =>
+        addLiveSlots (addLiveSlots (exprUsedSlots array) (exprUsedSlots start))
+          (exprUsedSlots stop)
+    | .arrayMapSlots sourceWidth _ array itemStart bodyValues =>
+        let bodyLive := removeLiveSlots (exprListUsedSlots bodyValues)
+          (slotsFrom itemStart sourceWidth)
+        addLiveSlots (exprUsedSlots array) bodyLive
+    | .arrayFoldMultiSlot sourceWidth resultWidth array start stop initValues accStart
+        itemStart bodyValues bodyLets bodyDone _ =>
+        let bodyLive := addLiveSlots (exprListUsedSlots bodyValues) (exprUsedSlots bodyDone)
+        let bodyFree := removeLiveSlots
+          (removeLiveSlots (pruneLocalLetsWithLive bodyLets bodyLive).snd
+            (slotsFrom accStart resultWidth))
+          (slotsFrom itemStart sourceWidth)
+        addLiveSlots
+          (addLiveSlots
+            (addLiveSlots (exprUsedSlots array) (exprUsedSlots start))
+            (exprUsedSlots stop))
+          (addLiveSlots (exprListUsedSlots initValues) bodyFree)
+    | .arrayFindIdxSlots sourceWidth array itemStart predicate _ =>
+        let predicateFree := removeLiveSlots (exprUsedSlots predicate)
+          (slotsFrom itemStart sourceWidth)
+        addLiveSlots (exprUsedSlots array) predicateFree
+    | .arrayFindSlot sourceWidth array itemStart predicate _ =>
+        let predicateFree := removeLiveSlots (exprUsedSlots predicate)
+          (slotsFrom itemStart sourceWidth)
+        addLiveSlots (exprUsedSlots array) predicateFree
+    | .arrayAnySlots sourceWidth array start stop itemStart predicate _ =>
+        let predicateFree := removeLiveSlots (exprUsedSlots predicate)
+          (slotsFrom itemStart sourceWidth)
+        addLiveSlots
+          (addLiveSlots
+            (addLiveSlots (exprUsedSlots array) (exprUsedSlots start))
+            (exprUsedSlots stop))
+          predicateFree
+    | .arrayFilterSlots sourceWidth array start stop itemStart predicate =>
+        let predicateFree := removeLiveSlots (exprUsedSlots predicate)
+          (slotsFrom itemStart sourceWidth)
+        addLiveSlots
+          (addLiveSlots
+            (addLiveSlots (exprUsedSlots array) (exprUsedSlots start))
+            (exprUsedSlots stop))
+          predicateFree
+    | .arrayInsertIfInBoundsSlots _ array index values =>
+        addLiveSlots (addLiveSlots (exprUsedSlots array) (exprUsedSlots index))
+          (exprListUsedSlots values)
+    | .arrayEraseIfInBoundsSlots _ array index =>
+        addLiveSlots (exprUsedSlots array) (exprUsedSlots index)
+    | .arraySwapIfInBoundsSlots _ array left right =>
+        addLiveSlots (addLiveSlots (exprUsedSlots array) (exprUsedSlots left))
+          (exprUsedSlots right)
+    | .arrayReverseSlots _ array => exprUsedSlots array
+    | .byteArrayGet ptr len index =>
+        addLiveSlots (addLiveSlots (exprUsedSlots ptr) (exprUsedSlots len))
+          (exprUsedSlots index)
+    | .byteArrayPushPtr ptr len value =>
+        addLiveSlots (addLiveSlots (exprUsedSlots ptr) (exprUsedSlots len))
+          (exprUsedSlots value)
+    | .byteArrayAppendPtr leftPtr leftLen rightPtr rightLen =>
+        addLiveSlots
+          (addLiveSlots (addLiveSlots (exprUsedSlots leftPtr) (exprUsedSlots leftLen))
+            (exprUsedSlots rightPtr))
+          (exprUsedSlots rightLen)
+    | .byteArraySetPtr ptr len index value =>
+        addLiveSlots
+          (addLiveSlots (addLiveSlots (exprUsedSlots ptr) (exprUsedSlots len))
+            (exprUsedSlots index))
+          (exprUsedSlots value)
+    | .byteArrayFromArrayPtr array => exprUsedSlots array
+    | .byteArrayCopySlicePtr srcPtr srcLen srcOff destPtr destLen destOff copyLen =>
+        addLiveSlots
+          (addLiveSlots
+            (addLiveSlots
+              (addLiveSlots
+                (addLiveSlots
+                  (addLiveSlots (exprUsedSlots srcPtr) (exprUsedSlots srcLen))
+                  (exprUsedSlots srcOff))
+                (exprUsedSlots destPtr))
+              (exprUsedSlots destLen))
+            (exprUsedSlots destOff))
+          (exprUsedSlots copyLen)
+    | .byteArrayFindIdx ptr len start byteSlot predicate _ =>
+        addLiveSlots
+          (addLiveSlots (addLiveSlots (exprUsedSlots ptr) (exprUsedSlots len))
+            (exprUsedSlots start))
+          (removeLiveSlot (exprUsedSlots predicate) byteSlot)
+    | .byteArrayFoldMultiSlot resultWidth ptr len start stop initValues accStart byteSlot
+        bodyValues bodyLets bodyDone _ =>
+        let bodyLive := addLiveSlots (exprListUsedSlots bodyValues) (exprUsedSlots bodyDone)
+        let bodyFree := removeLiveSlot
+          (removeLiveSlots (pruneLocalLetsWithLive bodyLets bodyLive).snd
+            (slotsFrom accStart resultWidth))
+          byteSlot
+        addLiveSlots
+          (addLiveSlots
+            (addLiveSlots
+              (addLiveSlots (exprUsedSlots ptr) (exprUsedSlots len))
+              (exprUsedSlots start))
+            (exprUsedSlots stop))
+          (addLiveSlots (exprListUsedSlots initValues) bodyFree)
+    | .rangeFoldMultiSlot resultWidth start stop step initValues accStart itemSlot
+        bodyValues bodyLets bodyDone _ =>
+        let bodyLive := addLiveSlots (exprListUsedSlots bodyValues) (exprUsedSlots bodyDone)
+        let bodyFree := removeLiveSlot
+          (removeLiveSlots (pruneLocalLetsWithLive bodyLets bodyLive).snd
+            (slotsFrom accStart resultWidth))
+          itemSlot
+        addLiveSlots
+          (addLiveSlots
+            (addLiveSlots (exprUsedSlots start) (exprUsedSlots stop))
+            (exprUsedSlots step))
+          (addLiveSlots (exprListUsedSlots initValues) bodyFree)
+    | .heapLinearPredicate ptr _ fieldSlotCount _ fieldStart predicate _ _ =>
+        addLiveSlots (exprUsedSlots ptr)
+          (removeLiveSlots (exprUsedSlots predicate) (slotsFrom fieldStart fieldSlotCount))
+    | .call _ args => exprListUsedSlots args
+
+  partial def condUsedSlots : IRCond → List Nat
+    | .true => []
+    | .false => []
+    | .eqU64 left right =>
+        addLiveSlots (exprUsedSlots left) (exprUsedSlots right)
+    | .ltU64 left right =>
+        addLiveSlots (exprUsedSlots left) (exprUsedSlots right)
+    | .leU64 left right =>
+        addLiveSlots (exprUsedSlots left) (exprUsedSlots right)
+    | .not cond => condUsedSlots cond
+    | .and left right =>
+        addLiveSlots (condUsedSlots left) (condUsedSlots right)
+    | .or left right =>
+        addLiveSlots (condUsedSlots left) (condUsedSlots right)
+
+  partial def exprListUsedSlots (exprs : List IRExpr) : List Nat :=
+    exprs.foldl (fun live expr => addLiveSlots live (exprUsedSlots expr)) []
+
+  partial def valueUsedSlots : ExtractedValue → List Nat
+    | .scalar expr => exprUsedSlots expr
+    | .byteArray ptr len => addLiveSlots (exprUsedSlots ptr) (exprUsedSlots len)
+    | .product left right =>
+        addLiveSlots (valueUsedSlots left) (valueUsedSlots right)
+    | .sum tag left right =>
+        addLiveSlots (addLiveSlots (exprUsedSlots tag) (valueUsedSlots left))
+          (valueUsedSlots right)
+    | .struct _ fields =>
+        fields.foldl (fun live field => addLiveSlots live (valueUsedSlots field)) []
+    | .variant _ tag ctors =>
+        ctors.foldl
+          (fun live fields =>
+            fields.foldl (fun acc field => addLiveSlots acc (valueUsedSlots field)) live)
+          (exprUsedSlots tag)
+    | .recursiveVariant _ tag ctors =>
+        ctors.foldl
+          (fun live fields =>
+            fields.foldl (fun acc field => addLiveSlots acc (valueUsedSlots field.snd)) live)
+          (exprUsedSlots tag)
+    | .heapVariant _ ptr => exprUsedSlots ptr
+    | .ite cond thenValue elseValue =>
+        addLiveSlots (addLiveSlots (condUsedSlots cond) (valueUsedSlots thenValue))
+          (valueUsedSlots elseValue)
+    | .letE slot value body =>
+        let bodyLive := valueUsedSlots body
+        if bodyLive.contains slot then
+          addLiveSlots (removeLiveSlot bodyLive slot) (exprUsedSlots value)
+        else
+          bodyLive
+    | .letCall slots _ args body =>
+        let bodyLive := valueUsedSlots body
+        if anyLiveSlot bodyLive slots then
+          addLiveSlots (removeLiveSlots bodyLive slots) (exprListUsedSlots args)
+        else
+          bodyLive
+    | .letLocal lets body =>
+        (pruneLocalLetsWithLive lets (valueUsedSlots body)).snd
+
+  partial def pruneLocalLetWithLive (localLet : LeanExe.IR.LocalLet) (liveAfter : List Nat) :
+      Option LeanExe.IR.LocalLet × List Nat :=
+    match localLet with
+    | .expr slot value =>
+        if liveAfter.contains slot then
+          (some (.expr slot value), addLiveSlots (removeLiveSlot liveAfter slot)
+            (exprUsedSlots value))
+        else
+          (none, liveAfter)
+    | .call slots index args =>
+        if anyLiveSlot liveAfter slots then
+          (some (.call slots index args), addLiveSlots (removeLiveSlots liveAfter slots)
+            (exprListUsedSlots args))
+        else
+          (none, liveAfter)
+    | .slots slots values =>
+        let kept := (slots.zip values).filter fun item => liveAfter.contains item.fst
+        if kept.isEmpty then
+          (none, liveAfter)
+        else
+          let keptSlots := kept.map Prod.fst
+          let keptValues := kept.map Prod.snd
+          (some (.slots keptSlots keptValues),
+            addLiveSlots (removeLiveSlots liveAfter keptSlots) (exprListUsedSlots keptValues))
+    | .branch cond thenLets elseLets =>
+        let thenResult := pruneLocalLetsWithLive thenLets liveAfter
+        let elseResult := pruneLocalLetsWithLive elseLets liveAfter
+        if thenResult.fst.isEmpty && elseResult.fst.isEmpty then
+          (none, liveAfter)
+        else
+          let branchLive := addLiveSlots (addLiveSlots thenResult.snd elseResult.snd)
+            (condUsedSlots cond)
+          (some (.branch cond thenResult.fst elseResult.fst), branchLive)
+
+  partial def pruneLocalLetsWithLive : List LeanExe.IR.LocalLet → List Nat →
+      List LeanExe.IR.LocalLet × List Nat
+    | [], liveAfter => ([], liveAfter)
+    | localLet :: rest, liveAfter =>
+        let restResult := pruneLocalLetsWithLive rest liveAfter
+        let itemResult := pruneLocalLetWithLive localLet restResult.snd
+        match itemResult.fst with
+        | some kept => (kept :: restResult.fst, itemResult.snd)
+        | none => (restResult.fst, itemResult.snd)
+end
+
+def pruneLocalLets (lets : List LeanExe.IR.LocalLet) (liveAfter : List Nat) :
+    List LeanExe.IR.LocalLet :=
+  (pruneLocalLetsWithLive lets liveAfter).fst
+
+def wrapValueLocalLets (lets : List LeanExe.IR.LocalLet) (value : ExtractedValue) :
+    ExtractedValue :=
+  let kept := pruneLocalLets lets (valueUsedSlots value)
+  if kept.isEmpty then
+    value
+  else
+    .letLocal kept value
+
+def wrapExprLocalLets (lets : List LeanExe.IR.LocalLet) (expr : IRExpr) : IRExpr :=
+  let kept := pruneLocalLets lets (exprUsedSlots expr)
+  if kept.isEmpty then
+    expr
+  else
+    .letLets kept expr
+
 def scalarValue (value : ExtractedValue) : Except String IRExpr :=
   match value with
   | .scalar expr => .ok expr
@@ -1439,6 +1736,8 @@ def scalarValue (value : ExtractedValue) : Except String IRExpr :=
       .ok (.letE slot value (← scalarValue body))
   | .letCall slots index args body => do
       .ok (.letCall slots index args (← scalarValue body))
+  | .letLocal lets body => do
+      .ok (wrapExprLocalLets lets (← scalarValue body))
 
 def byteArrayParts (value : ExtractedValue) : Except String (IRExpr × IRExpr) :=
   match value with
@@ -1462,6 +1761,9 @@ def byteArrayParts (value : ExtractedValue) : Except String (IRExpr × IRExpr) :
   | .letCall slots index args body => do
       let parts ← byteArrayParts body
       .ok (.letCall slots index args parts.fst, .letCall slots index args parts.snd)
+  | .letLocal lets body => do
+      let parts ← byteArrayParts body
+      .ok (wrapExprLocalLets lets parts.fst, wrapExprLocalLets lets parts.snd)
 
 partial def byteArrayPartsWithLets (value : ExtractedValue) :
     Except String (List ValueLet × IRExpr × IRExpr) :=
@@ -1485,6 +1787,9 @@ partial def byteArrayPartsWithLets (value : ExtractedValue) :
   | .letCall slots index args body => do
       let parts ← byteArrayPartsWithLets body
       .ok (.call slots index args :: parts.fst, parts.snd.fst, parts.snd.snd)
+  | .letLocal lets body => do
+      let parts ← byteArrayParts body
+      .ok ([], wrapExprLocalLets lets parts.fst, wrapExprLocalLets lets parts.snd)
 
 def productField (index : Nat) (value : ExtractedValue) : Except String ExtractedValue :=
   match value with
@@ -1510,6 +1815,8 @@ def productField (index : Nat) (value : ExtractedValue) : Except String Extracte
       .ok (.letE slot value (← productField index body))
   | .letCall slots callIndex args body => do
       .ok (.letCall slots callIndex args (← productField index body))
+  | .letLocal lets body => do
+      .ok (wrapValueLocalLets lets (← productField index body))
 
 def structField (name : Name) (index : Nat) (value : ExtractedValue) : Except String ExtractedValue :=
   match value with
@@ -1536,6 +1843,8 @@ def structField (name : Name) (index : Nat) (value : ExtractedValue) : Except St
       .ok (.letE slot value (← structField name index body))
   | .letCall slots callIndex args body => do
       .ok (.letCall slots callIndex args (← structField name index body))
+  | .letLocal lets body => do
+      .ok (wrapValueLocalLets lets (← structField name index body))
 
 def mkOptionValue (tag : IRExpr) (payload : ExtractedValue) : ExtractedValue :=
   .variant ``Option tag [[], [payload]]
@@ -1599,6 +1908,11 @@ partial def optionPartsWithLets (value : ExtractedValue) :
   | .letCall slots index args body => do
       let parts ← optionPartsWithLets body
       .ok (.call slots index args :: parts.fst, parts.snd.fst, parts.snd.snd)
+  | .letLocal lets body => do
+      let parts ← optionPartsWithLets body
+      .ok ([],
+        wrapExprLocalLets lets (wrapExprLets parts.fst parts.snd.fst),
+        wrapValueLocalLets lets (wrapValueLets parts.fst parts.snd.snd))
 
 partial def sumPartsWithLets (value : ExtractedValue) :
     Except String (List ValueLet × IRExpr × ExtractedValue × ExtractedValue) :=
@@ -1633,6 +1947,12 @@ partial def sumPartsWithLets (value : ExtractedValue) :
   | .letCall slots index args body => do
       let parts ← sumPartsWithLets body
       .ok (.call slots index args :: parts.fst, parts.snd.fst, parts.snd.snd.fst, parts.snd.snd.snd)
+  | .letLocal lets body => do
+      let parts ← sumPartsWithLets body
+      .ok ([],
+        wrapExprLocalLets lets (wrapExprLets parts.fst parts.snd.fst),
+        wrapValueLocalLets lets (wrapValueLets parts.fst parts.snd.snd.fst),
+        wrapValueLocalLets lets (wrapValueLets parts.fst parts.snd.snd.snd))
 
 partial def variantPartsWithLets (expectedName : Name) (value : ExtractedValue) :
     Except String (List ValueLet × IRExpr × List (List ExtractedValue)) :=
@@ -1676,6 +1996,12 @@ partial def variantPartsWithLets (expectedName : Name) (value : ExtractedValue) 
   | .letCall slots index args body => do
       let parts ← variantPartsWithLets expectedName body
       .ok (.call slots index args :: parts.fst, parts.snd.fst, parts.snd.snd)
+  | .letLocal lets body => do
+      let parts ← variantPartsWithLets expectedName body
+      .ok ([],
+        wrapExprLocalLets lets (wrapExprLets parts.fst parts.snd.fst),
+        parts.snd.snd.map fun fields =>
+          fields.map fun field => wrapValueLocalLets lets (wrapValueLets parts.fst field))
 
 partial def heapVariantPtrWithLets (expectedName : Name) (value : ExtractedValue) :
     Except String (List ValueLet × IRExpr) :=
@@ -1707,6 +2033,9 @@ partial def heapVariantPtrWithLets (expectedName : Name) (value : ExtractedValue
   | .letCall slots index args body => do
       let parts ← heapVariantPtrWithLets expectedName body
       .ok (.call slots index args :: parts.fst, parts.snd)
+  | .letLocal lets body => do
+      let parts ← heapVariantPtrWithLets expectedName body
+      .ok ([], wrapExprLocalLets lets (wrapExprLets parts.fst parts.snd))
 
 partial def heapVariantPtrWithLets? (expectedName : Name) (value : ExtractedValue) :
     Option (List ValueLet × IRExpr) :=
@@ -1719,6 +2048,9 @@ partial def heapVariantPtrWithLets? (expectedName : Name) (value : ExtractedValu
   | .letCall slots index args body =>
       heapVariantPtrWithLets? expectedName body |>.map fun parts =>
         (.call slots index args :: parts.fst, parts.snd)
+  | .letLocal lets body =>
+      heapVariantPtrWithLets? expectedName body |>.map fun parts =>
+        ([], wrapExprLocalLets lets (wrapExprLets parts.fst parts.snd))
   | _ => none
 
 partial def recursiveVariantPartsWithLets (expectedName : Name) (value : ExtractedValue) :
@@ -1751,6 +2083,12 @@ partial def recursiveVariantPartsWithLets (expectedName : Name) (value : Extract
   | .letCall slots index args body => do
       let parts ← recursiveVariantPartsWithLets expectedName body
       .ok (.call slots index args :: parts.fst, parts.snd.fst, parts.snd.snd)
+  | .letLocal lets body => do
+      let parts ← recursiveVariantPartsWithLets expectedName body
+      .ok ([],
+        wrapExprLocalLets lets (wrapExprLets parts.fst parts.snd.fst),
+        parts.snd.snd.map fun fields =>
+          fields.map fun field => wrapValueLocalLets lets (wrapValueLets parts.fst field))
 
 def mkExceptValue (tag : IRExpr) (errorPayload okPayload : ExtractedValue) : ExtractedValue :=
   .variant ``Except tag [[errorPayload], [okPayload]]
@@ -1794,6 +2132,12 @@ partial def exceptPartsWithLets (value : ExtractedValue) :
   | .letCall slots index args body => do
       let parts ← exceptPartsWithLets body
       .ok (.call slots index args :: parts.fst, parts.snd.fst, parts.snd.snd.fst, parts.snd.snd.snd)
+  | .letLocal lets body => do
+      let parts ← exceptPartsWithLets body
+      .ok ([],
+        wrapExprLocalLets lets (wrapExprLets parts.fst parts.snd.fst),
+        wrapValueLocalLets lets (wrapValueLets parts.fst parts.snd.snd.fst),
+        wrapValueLocalLets lets (wrapValueLets parts.fst parts.snd.snd.snd))
 
 partial def defaultValue : Ty → Except String ExtractedValue
   | .unit => .ok (.scalar (.u64 0))
@@ -1884,6 +2228,8 @@ partial def valueIte
   | _, .letE _ _ _ => .ok (.ite cond thenValue elseValue)
   | .letCall _ _ _ _, _ => .ok (.ite cond thenValue elseValue)
   | _, .letCall _ _ _ _ => .ok (.ite cond thenValue elseValue)
+  | .letLocal _ _, _ => .ok (.ite cond thenValue elseValue)
+  | _, .letLocal _ _ => .ok (.ite cond thenValue elseValue)
   | .ite _ _ _, _ => .ok (.ite cond thenValue elseValue)
   | _, .ite _ _ _ => .ok (.ite cond thenValue elseValue)
   | .scalar thenExpr, .scalar elseExpr => .ok (.scalar (.ite cond thenExpr elseExpr))
@@ -1975,6 +2321,9 @@ partial def flattenInternalValue (ty : Ty) (value : ExtractedValue) :
       | .letCall slots index args body => do
           let flattened ← flattenInternalValue ty body
           .ok (flattened.map (fun expr => .letCall slots index args expr))
+      | .letLocal lets body => do
+          let flattened ← flattenInternalValue ty body
+          .ok (flattened.map (wrapExprLocalLets lets))
       | .ite cond thenValue elseValue => do
           combineIteSlots cond (← flattenInternalValue ty thenValue) (← flattenInternalValue ty elseValue)
       | _ => .error "non-product value used where product internal value is required"
@@ -1990,6 +2339,9 @@ partial def flattenInternalValue (ty : Ty) (value : ExtractedValue) :
       | .letCall slots index args body => do
           let flattened ← flattenInternalValue ty body
           .ok (flattened.map (fun expr => .letCall slots index args expr))
+      | .letLocal lets body => do
+          let flattened ← flattenInternalValue ty body
+          .ok (flattened.map (wrapExprLocalLets lets))
       | .ite cond thenValue elseValue => do
           combineIteSlots cond (← flattenInternalValue ty thenValue) (← flattenInternalValue ty elseValue)
       | _ => .error "non-sum value used where sum internal value is required"
@@ -2008,6 +2360,9 @@ partial def flattenInternalValue (ty : Ty) (value : ExtractedValue) :
       | .letCall slots index args body => do
           let flattened ← flattenInternalValue ty body
           .ok (flattened.map (fun expr => .letCall slots index args expr))
+      | .letLocal lets body => do
+          let flattened ← flattenInternalValue ty body
+          .ok (flattened.map (wrapExprLocalLets lets))
       | .ite cond thenValue elseValue => do
           combineIteSlots cond (← flattenInternalValue ty thenValue) (← flattenInternalValue ty elseValue)
       | _ => .error s!"non-structure value used where structure internal value is required: {name}"
@@ -2031,6 +2386,9 @@ partial def flattenInternalValue (ty : Ty) (value : ExtractedValue) :
       | .letCall slots index args body => do
           let flattened ← flattenInternalValue ty body
           .ok (flattened.map (fun expr => .letCall slots index args expr))
+      | .letLocal lets body => do
+          let flattened ← flattenInternalValue ty body
+          .ok (flattened.map (wrapExprLocalLets lets))
       | .ite cond thenValue elseValue => do
           combineIteSlots cond (← flattenInternalValue ty thenValue) (← flattenInternalValue ty elseValue)
       | _ => .error s!"non-inductive value used where inductive internal value is required: {name}"
@@ -2054,6 +2412,9 @@ partial def flattenInternalValue (ty : Ty) (value : ExtractedValue) :
       | .letCall slots index args body => do
           let flattened ← flattenInternalValue ty body
           .ok (flattened.map (fun expr => .letCall slots index args expr))
+      | .letLocal lets body => do
+          let flattened ← flattenInternalValue ty body
+          .ok (flattened.map (wrapExprLocalLets lets))
       | .ite cond thenValue elseValue => do
           combineIteSlots cond (← flattenInternalValue ty thenValue) (← flattenInternalValue ty elseValue)
       | _ =>
@@ -2090,6 +2451,9 @@ partial def flattenAbiValue (ty : Ty) (value : ExtractedValue) : Except String (
       | .letCall slots index args body => do
           let flattened ← flattenAbiValue ty body
           .ok (flattened.map (fun expr => .letCall slots index args expr))
+      | .letLocal lets body => do
+          let flattened ← flattenAbiValue ty body
+          .ok (flattened.map (wrapExprLocalLets lets))
       | .ite cond thenValue elseValue => do
           combineIteSlots cond (← flattenAbiValue ty thenValue) (← flattenAbiValue ty elseValue)
       | _ => .error s!"non-structure value used where structure ABI value is required: {name}"
@@ -2113,6 +2477,9 @@ partial def flattenAbiValue (ty : Ty) (value : ExtractedValue) : Except String (
       | .letCall slots index args body => do
           let flattened ← flattenAbiValue ty body
           .ok (flattened.map (fun expr => .letCall slots index args expr))
+      | .letLocal lets body => do
+          let flattened ← flattenAbiValue ty body
+          .ok (flattened.map (wrapExprLocalLets lets))
       | .ite cond thenValue elseValue => do
           combineIteSlots cond (← flattenAbiValue ty thenValue) (← flattenAbiValue ty elseValue)
       | _ => .error s!"non-inductive value used where inductive ABI value is required: {name}"
@@ -2136,6 +2503,9 @@ partial def flattenAbiValue (ty : Ty) (value : ExtractedValue) : Except String (
       | .letCall slots index args body => do
           let flattened ← flattenAbiValue ty body
           .ok (flattened.map (fun expr => .letCall slots index args expr))
+      | .letLocal lets body => do
+          let flattened ← flattenAbiValue ty body
+          .ok (flattened.map (wrapExprLocalLets lets))
       | .ite cond thenValue elseValue => do
           combineIteSlots cond (← flattenAbiValue ty thenValue) (← flattenAbiValue ty elseValue)
       | _ => .error s!"non-recursive value used where recursive inductive ABI value is required: {name}"
@@ -2157,16 +2527,16 @@ def arrayFoldMultiSlotAssign? (targets : List Nat) (values : List IRExpr) :
     Option IRStmt :=
   match values with
   | .arrayFoldMultiSlot sourceWidth resultWidth array start stop initValues accStart itemStart
-      bodyValues bodyDone _ :: _ =>
+      bodyValues bodyLets bodyDone _ :: _ =>
       if values.length == resultWidth && targets.length == resultWidth then
         let expected : List IRExpr :=
           (List.range resultWidth).map fun offset =>
             .arrayFoldMultiSlot sourceWidth resultWidth array start stop initValues accStart
-              itemStart bodyValues bodyDone offset
+              itemStart bodyValues bodyLets bodyDone offset
         if values == expected then
           some <|
             .arrayFoldMultiSlotAssign sourceWidth resultWidth array start stop initValues accStart
-              itemStart bodyValues bodyDone targets
+              itemStart bodyValues bodyLets bodyDone targets
         else
           none
       else
@@ -2177,16 +2547,16 @@ def byteArrayFoldMultiSlotAssign? (targets : List Nat) (values : List IRExpr) :
     Option IRStmt :=
   match values with
   | .byteArrayFoldMultiSlot resultWidth ptr len start stop initValues accStart byteSlot
-      bodyValues bodyDone _ :: _ =>
+      bodyValues bodyLets bodyDone _ :: _ =>
       if values.length == resultWidth && targets.length == resultWidth then
         let expected : List IRExpr :=
           (List.range resultWidth).map fun offset =>
             .byteArrayFoldMultiSlot resultWidth ptr len start stop initValues accStart
-              byteSlot bodyValues bodyDone offset
+              byteSlot bodyValues bodyLets bodyDone offset
         if values == expected then
           some <|
             .byteArrayFoldMultiSlotAssign resultWidth ptr len start stop initValues accStart
-              byteSlot bodyValues bodyDone targets
+              byteSlot bodyValues bodyLets bodyDone targets
         else
           none
       else
@@ -2197,16 +2567,16 @@ def rangeFoldMultiSlotAssign? (targets : List Nat) (values : List IRExpr) :
     Option IRStmt :=
   match values with
   | .rangeFoldMultiSlot resultWidth start stop step initValues accStart itemSlot
-      bodyValues bodyDone _ :: _ =>
+      bodyValues bodyLets bodyDone _ :: _ =>
       if values.length == resultWidth && targets.length == resultWidth then
         let expected : List IRExpr :=
           (List.range resultWidth).map fun offset =>
             .rangeFoldMultiSlot resultWidth start stop step initValues accStart itemSlot bodyValues
-              bodyDone offset
+              bodyLets bodyDone offset
         if values == expected then
           some <|
             .rangeFoldMultiSlotAssign resultWidth start stop step initValues accStart itemSlot
-              bodyValues bodyDone targets
+              bodyValues bodyLets bodyDone targets
         else
           none
       else
@@ -2221,6 +2591,24 @@ def foldMultiSlotAssign? (targets : List Nat) (values : List IRExpr) : Option IR
       | some stmt => some stmt
       | none => rangeFoldMultiSlotAssign? targets values
 
+mutual
+  def localLetStmtOptimized : LeanExe.IR.LocalLet → IRStmt
+    | .expr slot expr => .assign slot expr
+    | .call slots index args => .call slots index args
+    | .slots slots values =>
+        match foldMultiSlotAssign? slots values with
+        | some stmt => stmt
+        | none =>
+            LeanExe.IR.seqList <|
+              (slots.zip values).map fun item => LeanExe.IR.Stmt.assign item.fst item.snd
+    | .branch cond thenLets elseLets =>
+        .ite cond (localLetStmtListOptimized thenLets) (localLetStmtListOptimized elseLets)
+
+  def localLetStmtListOptimized : List LeanExe.IR.LocalLet → IRStmt
+    | [] => .skip
+    | item :: rest => .seq (localLetStmtOptimized item) (localLetStmtListOptimized rest)
+end
+
 partial def materializeResultValue
     (useAbi : Bool)
     (ty : Ty)
@@ -2232,6 +2620,11 @@ partial def materializeResultValue
       .ok (.seq (.assign slot expr) (← materializeResultValue useAbi ty targets body))
   | .letCall slots index args body => do
       .ok (.seq (.call slots index args) (← materializeResultValue useAbi ty targets body))
+  | .letLocal lets body => do
+      let values ← flattenResultValue useAbi ty body
+      let kept := pruneLocalLets lets (exprListUsedSlots values)
+      .ok (.seq (localLetStmtListOptimized kept)
+        (← materializeResultValue useAbi ty targets body))
   | .ite cond thenValue elseValue => do
       let thenStmt ← materializeResultValue useAbi ty targets thenValue
       let elseStmt ← materializeResultValue useAbi ty targets elseValue
@@ -2472,6 +2865,8 @@ partial def materializeStrictSlotsWith
   | .letCall slots index args body => do
       let result ← materializeStrictSlotsWith flatten body nextLocal
       .ok { result with lets := .call slots index args :: result.lets }
+  | .letLocal _ _ =>
+      .ok { lets := [], slots := ← flatten value, nextLocal := nextLocal }
   | _ =>
       .ok { lets := [], slots := ← flatten value, nextLocal := nextLocal }
 
@@ -2481,6 +2876,119 @@ def materializeStrictInternalSlots
     (nextLocal : Nat) :
     Except String StrictSlots :=
   materializeStrictSlotsWith (flattenInternalValue ty) value nextLocal
+
+mutual
+  partial def materializeInternalValueLets
+      (ty : Ty)
+      (value : ExtractedValue)
+      (targets : List Nat) :
+      Except String (List LeanExe.IR.LocalLet) := do
+    match value with
+    | .letE slot expr body =>
+        let rest ← materializeInternalValueLets ty body targets
+        .ok (.expr slot expr :: rest)
+    | .letCall slots index args body =>
+        let rest ← materializeInternalValueLets ty body targets
+        .ok (.call slots index args :: rest)
+    | .letLocal lets body =>
+        let rest ← materializeInternalValueLets ty body targets
+        let restResult := pruneLocalLetsWithLive rest targets
+        .ok (pruneLocalLets lets restResult.snd ++ restResult.fst)
+    | .ite cond thenValue elseValue => do
+        let thenLets ← materializeInternalValueLets ty thenValue targets
+        let elseLets ← materializeInternalValueLets ty elseValue targets
+        .ok [.branch cond thenLets elseLets]
+    | _ =>
+        match flattenInternalValue ty value with
+        | .ok slots =>
+            if (foldMultiSlotAssign? targets slots).isSome then
+              return [.slots targets slots]
+        | .error _ => pure ()
+        match ty, value with
+        | .product leftTy rightTy, .product leftValue rightValue =>
+            let leftWidth := internalSlots leftTy
+            let leftTargets := targets.take leftWidth
+            let rightTargets := targets.drop leftWidth
+            if leftTargets.length != leftWidth then
+              .error "product materialization target shape mismatch"
+            else
+              let leftLets ← materializeInternalValueLets leftTy leftValue leftTargets
+              let rightLets ← materializeInternalValueLets rightTy rightValue rightTargets
+              .ok (leftLets ++ rightLets)
+        | .sum leftTy rightTy, .sum tag leftValue rightValue =>
+            match targets with
+            | tagTarget :: payloadTargets =>
+                let leftWidth := internalSlots leftTy
+                let leftTargets := payloadTargets.take leftWidth
+                let rightTargets := payloadTargets.drop leftWidth
+                if leftTargets.length != leftWidth then
+                  .error "sum materialization target shape mismatch"
+                else
+                  let leftLets ← materializeInternalValueLets leftTy leftValue leftTargets
+                  let rightLets ← materializeInternalValueLets rightTy rightValue rightTargets
+                  .ok (.slots [tagTarget] [tag] :: leftLets ++ rightLets)
+            | [] => .error "sum materialization target shape mismatch"
+        | .struct expected _ fieldTys, .struct actual fieldValues =>
+            if expected == actual && fieldTys.length == fieldValues.length then
+              materializeInternalFieldLets fieldTys fieldValues targets
+            else
+              .error s!"structure materialization shape mismatch: {expected}"
+        | .variant expected _ ctorTys, .variant actual tag ctorValues =>
+            if expected == actual && ctorTys.length == ctorValues.length then
+              match targets with
+              | tagTarget :: payloadTargets => do
+                  let payloadLets ← materializeInternalCtorLets ctorTys ctorValues payloadTargets
+                  .ok (.slots [tagTarget] [tag] :: payloadLets)
+              | [] => .error s!"inductive materialization target shape mismatch: {expected}"
+            else
+              .error s!"inductive materialization shape mismatch: {expected}"
+        | _, _ => do
+            let slots ← flattenInternalValue ty value
+            if slots.length == targets.length then
+              .ok [.slots targets slots]
+            else
+              .error "materialization target shape mismatch"
+
+  partial def materializeInternalFieldLets
+      (fieldTys : List Ty)
+      (fieldValues : List ExtractedValue)
+      (targets : List Nat) :
+      Except String (List LeanExe.IR.LocalLet) := do
+    match fieldTys, fieldValues with
+    | [], [] =>
+        if targets.isEmpty then .ok [] else .error "field materialization target shape mismatch"
+    | fieldTy :: restTys, fieldValue :: restValues =>
+        let width := internalSlots fieldTy
+        let fieldTargets := targets.take width
+        let restTargets := targets.drop width
+        if fieldTargets.length != width then
+          .error "field materialization target shape mismatch"
+        else
+          let head ← materializeInternalValueLets fieldTy fieldValue fieldTargets
+          let tail ← materializeInternalFieldLets restTys restValues restTargets
+          .ok (head ++ tail)
+    | _, _ => .error "field materialization shape mismatch"
+
+  partial def materializeInternalCtorLets
+      (ctorTys : List (List Ty))
+      (ctorValues : List (List ExtractedValue))
+      (targets : List Nat) :
+      Except String (List LeanExe.IR.LocalLet) := do
+    match ctorTys, ctorValues with
+    | [], [] =>
+        if targets.isEmpty then .ok [] else .error "constructor materialization target shape mismatch"
+    | fieldTys :: restTys, fieldValues :: restValues =>
+        let width := fieldTys.foldl (fun total ty => total + internalSlots ty) 0
+        let ctorTargets := targets.take width
+        let restTargets := targets.drop width
+        if ctorTargets.length != width then
+          .error "constructor materialization target shape mismatch"
+        else
+          let head ← materializeInternalFieldLets fieldTys fieldValues ctorTargets
+          let tail ← materializeInternalCtorLets restTys restValues restTargets
+          .ok (head ++ tail)
+    | _, _ => .error "constructor materialization shape mismatch"
+end
 
 def materializeStrictArrayElementSlots
     (ty : Ty)
@@ -3002,6 +3510,53 @@ def arrayMapUnattachBody? (expr : Expr) : Option Expr :=
       | arm :: _scrutinee :: _ => collectLambdas arm 2
       | _ => none
   | _ => none
+
+def isArrayAttachGeneratedMatcherName (candidate : Name) : Bool :=
+  match candidate with
+  | .str _ component => component.startsWith "match_"
+  | _ => false
+
+def isSubtypeTypeExpr (expr : Expr) : Bool :=
+  match appFnArgs expr with
+  | (.const name _, _) => name == ``Subtype
+  | _ => false
+
+def arrayAttachSubtypeMatcherBody? (env : Environment) (name : Name) (args : List Expr) :
+    Option Expr :=
+  if !isArrayAttachGeneratedMatcherName name then
+    none
+  else
+    match env.find? name with
+    | some info =>
+        let domains := (peelForall info.type).fst
+        let rec loop (index : Nat) : List Expr → Option Nat
+          | [] => none
+          | domain :: rest =>
+              let instantiated := domain.instantiateRev (args.take index).toArray
+              if isSubtypeTypeExpr instantiated then
+                some index
+              else
+                loop (index + 1) rest
+        match loop 0 domains with
+        | some scrutineeIndex =>
+            match args[scrutineeIndex]?, args.drop (scrutineeIndex + 1) with
+            | some scrutinee, [arm] =>
+                if isBVar 0 scrutinee then
+                  collectLambdas arm 2
+                else
+                  none
+            | _, _ => none
+        | none => none
+    | none => none
+
+def arrayAttachUnwrapBody? (env : Environment) (expr : Expr) : Option Expr :=
+  match arrayMapUnattachBody? expr with
+  | some body => some body
+  | none =>
+      match appFnArgs expr with
+      | (.const name _, args) =>
+          arrayAttachSubtypeMatcherBody? env name args
+      | _ => none
 
 def idPureArg? (fn : Expr) (args : List Expr) : Option Expr :=
   match fn.consumeMData with
@@ -4921,8 +5476,11 @@ def checkStructuralArmBinder
           if actual == expected then
             .ok ()
           else
-            .error s!"structural recursion arm binder type mismatch: {typeName}"
-      | none => .error s!"unsupported structural recursion arm binder type: {typeName}"
+            .error
+              s!"structural recursion arm binder type mismatch: {typeName}: expected {reprStr expected}, got {reprStr actual}"
+      | none =>
+          .error
+            s!"unsupported structural recursion arm binder type: {typeName}: {reprStr domain}"
   | .runtime none _ =>
       if isProofType? env domain then
         .ok ()
@@ -5343,7 +5901,15 @@ mutual
           match typeAtom? ctx.env type with
           | some ty =>
               if supportedLocalType ty then
-                extractValueFrom ctx (.thunk locals value :: locals) nextLocal body
+                let valueResult ← extractValueFrom ctx locals nextLocal value
+                let width := internalSlots ty
+                let targets := (List.range width).map fun offset => valueResult.snd + offset
+                let lets ← materializeInternalValueLets ty valueResult.fst targets
+                let localValue :=
+                  valueFromInternalSlots ty (fun offset => .local (valueResult.snd + offset))
+                let bodyResult ←
+                  extractValueFrom ctx (.value localValue :: locals) (valueResult.snd + width) body
+                .ok (wrapValueLocalLets lets bodyResult.fst, bodyResult.snd)
               else
                 .error s!"unsupported let-bound type: {type}"
           | none => .error s!"unsupported let-bound type: {type}"
@@ -5479,14 +6045,17 @@ mutual
                               .value (.scalar (.local byteSlot)) :: locals)
                             (byteSlot + 1)
                             stepBody.value
+                        let bodyTargets :=
+                          (List.range resultWidth).map fun offset => bodyResult.snd + offset
+                        let bodyLets ←
+                          materializeInternalValueLets forIn.resultTy bodyResult.fst bodyTargets
                         let doneResult ←
                           extractExprFrom ctx
                             (.value accValue ::
                               .value (.scalar (.local byteSlot)) :: locals)
-                            bodyResult.snd
+                            (bodyResult.snd + resultWidth)
                             stepBody.done
-                        let bodySlots ← flattenInternalValue forIn.resultTy bodyResult.fst
-                        if bodySlots.length != resultWidth then
+                        if bodyTargets.length != resultWidth then
                           .error "for-in accumulator body value shape mismatch"
                         else
                         let resultValue :=
@@ -5501,7 +6070,8 @@ mutual
                                 initSlots
                                 accStart
                                 byteSlot
-                                bodySlots
+                                (bodyTargets.map fun slot => (.local slot : IRExpr))
+                                bodyLets
                                 doneResult.fst
                                 offset)
                         .ok
@@ -5530,14 +6100,17 @@ mutual
                                   .value itemValue :: locals)
                                 (itemStart + width)
                                 stepBody.value
+                            let bodyTargets :=
+                              (List.range resultWidth).map fun offset => bodyResult.snd + offset
+                            let bodyLets ←
+                              materializeInternalValueLets forIn.resultTy bodyResult.fst bodyTargets
                             let doneResult ←
                               extractExprFrom ctx
                                 (.value accValue ::
                                   .value itemValue :: locals)
-                                bodyResult.snd
+                                (bodyResult.snd + resultWidth)
                                 stepBody.done
-                            let bodySlots ← flattenInternalValue forIn.resultTy bodyResult.fst
-                            if bodySlots.length != resultWidth then
+                            if bodyTargets.length != resultWidth then
                               .error "for-in accumulator body value shape mismatch"
                             else
                             let resultValue :=
@@ -5552,7 +6125,8 @@ mutual
                                     initSlots
                                     accStart
                                     itemStart
-                                    bodySlots
+                                    (bodyTargets.map fun slot => (.local slot : IRExpr))
+                                    bodyLets
                                     doneResult.fst
                                     offset)
                             .ok
@@ -5580,14 +6154,17 @@ mutual
                               .value (.scalar (.local itemSlot)) :: locals)
                             (itemSlot + 1)
                             stepBody.value
+                        let bodyTargets :=
+                          (List.range resultWidth).map fun offset => bodyResult.snd + offset
+                        let bodyLets ←
+                          materializeInternalValueLets forIn.resultTy bodyResult.fst bodyTargets
                         let doneResult ←
                           extractExprFrom ctx
                             (.value accValue ::
                               .value (.scalar (.local itemSlot)) :: locals)
-                            bodyResult.snd
+                            (bodyResult.snd + resultWidth)
                             stepBody.done
-                        let bodySlots ← flattenInternalValue forIn.resultTy bodyResult.fst
-                        if bodySlots.length != resultWidth then
+                        if bodyTargets.length != resultWidth then
                           .error "for-in accumulator body value shape mismatch"
                         else
                         let resultValue :=
@@ -5601,7 +6178,8 @@ mutual
                                 initSlots
                                 accStart
                                 itemSlot
-                                bodySlots
+                                (bodyTargets.map fun slot => (.local slot : IRExpr))
+                                bodyLets
                                 doneResult.fst
                                 offset)
                         .ok (resultValue, doneResult.snd)
@@ -5662,7 +6240,7 @@ mutual
                           let bodyExpr ←
                             match attached? with
                             | some _ =>
-                                match arrayMapUnattachBody? foldBody with
+                                match arrayAttachUnwrapBody? ctx.env foldBody with
                                 | some body => .ok body
                                 | none => .error "unsupported Array.attach fold body"
                             | none => .ok foldBody
@@ -5678,8 +6256,10 @@ mutual
                               bodyLocals
                               (itemStart + sourceWidth)
                               bodyExpr
-                          let bodySlots ← flattenInternalValue resultTy bodyResult.fst
-                          if bodySlots.length != resultWidth then
+                          let bodyTargets :=
+                            (List.range resultWidth).map fun offset => bodyResult.snd + offset
+                          let bodyLets ← materializeInternalValueLets resultTy bodyResult.fst bodyTargets
+                          if bodyTargets.length != resultWidth then
                             .error "Array.foldl accumulator body value shape mismatch"
                           else
                           let resultValue :=
@@ -5694,10 +6274,11 @@ mutual
                                   initSlots
                                   accStart
                                   itemStart
-                                  bodySlots
+                                  (bodyTargets.map fun slot => (.local slot : IRExpr))
+                                  bodyLets
                                   (.u64 0)
                                   offset)
-                          .ok (resultValue, bodyResult.snd)
+                          .ok (resultValue, bodyResult.snd + resultWidth)
                       | none => .error s!"unsupported Array.foldl item type: {reprStr sourceTy}"
                 | _, _ => .error "unsupported Array.foldl application"
             | _ => .error "unsupported Array.foldl application"
@@ -5745,8 +6326,10 @@ mutual
                             .value accValue :: locals)
                           (byteSlot + 1)
                           body
-                      let bodySlots ← flattenInternalValue resultTy bodyResult.fst
-                      if bodySlots.length != resultWidth then
+                      let bodyTargets :=
+                        (List.range resultWidth).map fun offset => bodyResult.snd + offset
+                      let bodyLets ← materializeInternalValueLets resultTy bodyResult.fst bodyTargets
+                      if bodyTargets.length != resultWidth then
                         .error "ByteArray.foldl accumulator body value shape mismatch"
                       else
                       let resultValue :=
@@ -5761,10 +6344,11 @@ mutual
                               initSlots
                               accStart
                               byteSlot
-                              bodySlots
+                              (bodyTargets.map fun slot => (.local slot : IRExpr))
+                              bodyLets
                               (.u64 0)
                               offset)
-                      .ok (resultValue, bodyResult.snd)
+                      .ok (resultValue, bodyResult.snd + resultWidth)
                 | none => .error "unsupported ByteArray.foldl result type"
             | _ => .error "unsupported ByteArray.foldl application"
         | (.const ``Id.run _, args) =>
@@ -9016,20 +9600,31 @@ def wellFoundedMatcherInfo?
       match generatedMatcherVariantScrutineeArg? env name args (some typeName) with
       | some (scrutineeIndex, .recVariant actual params) =>
           if actual == typeName && params == typeParams then
-            match recursiveVariantLayout? env typeName typeParams, args[scrutineeIndex]? with
-            | some layout, some scrutinee =>
-                let ctorCount := layout.ctors.length
-                let afterScrutinee := args.drop (scrutineeIndex + 1)
-                if afterScrutinee.length == ctorCount + 1 then
-                  some {
-                    layout := layout,
-                    scrutinee := scrutinee,
-                    arms := afterScrutinee.take ctorCount,
-                    prePostArgCount := 0
-                  }
-                else
-                  none
-            | _, _ => none
+            match recursiveVariantLayout? env typeName typeParams, args[scrutineeIndex]?, env.find? name with
+            | some layout, some scrutinee, some info =>
+              let ctorCount := layout.ctors.length
+              let afterScrutinee := args.drop (scrutineeIndex + 1)
+              let armArgs := afterScrutinee.take ctorCount
+              let armDomains := (peelForall info.type).fst.drop (scrutineeIndex + 1) |>.take ctorCount
+              if afterScrutinee.length == ctorCount + 1 then
+                let typedArms? :=
+                  (armDomains.zip armArgs).mapM fun item =>
+                    variantArmCtorName? env item.fst |>.map fun ctorName => (ctorName, item.snd)
+                match typedArms? with
+                | some typedArms =>
+                    match reorderVariantArms? (layout.ctors.map (fun ctor => ctor.name)) typedArms with
+                    | some orderedArms =>
+                        some {
+                          layout := layout,
+                          scrutinee := scrutinee,
+                          arms := orderedArms,
+                          prePostArgCount := 0
+                        }
+                    | none => none
+                | none => none
+              else
+                none
+            | _, _, _ => none
           else
             none
       | _ => none
@@ -9298,6 +9893,48 @@ def extractWellFoundedNatSumFunc
     body := resultBody,
     results := resultTargets.map LeanExe.IR.Expr.local
   }
+
+def extractWellFoundedNatRecFunc
+    (ctx : Context)
+    (name : Name)
+    (params : List Ty)
+    (typeName : Name)
+    (typeParams : List Ty)
+    (resultTy : Ty)
+    (value : Expr)
+    (exportName : Option String) : Except String IRFunc := do
+  match params with
+  | [.recVariant actual actualParams] =>
+      if actual != typeName || actualParams != typeParams then
+        .error s!"well-founded Nat recursion parameter type mismatch: {name}"
+      else
+      let useAbi := exportName.isSome
+      let wasmParamCount := functionParamCount useAbi params
+      let paramLocals := localBindingsForParams useAbi params
+      let step ←
+        match wellFoundedNatFixStep? value with
+        | some step => .ok step
+        | none => .error s!"unsupported well-founded Nat recursion shape: {name}"
+      let stepBody ←
+        match collectLambdas step 2 with
+        | some body => .ok body
+        | none => .error s!"unsupported well-founded Nat recursion step: {name}"
+      let scrutineeResult ← extractValueFrom ctx paramLocals wasmParamCount (.bvar 0)
+      let result ←
+        extractWellFoundedNatMemberBranch ctx name params typeName typeParams
+          scrutineeResult.fst scrutineeResult.snd stepBody
+      let resultCount := resultSlotCount useAbi resultTy
+      let resultTargets := (List.range resultCount).map (fun offset => result.snd + offset)
+      let resultBody ← materializeResultValue useAbi resultTy resultTargets result.fst
+      .ok {
+        sourceName := name,
+        exportName := exportName,
+        params := wasmParamCount,
+        locals := result.snd + resultCount,
+        body := resultBody,
+        results := resultTargets.map LeanExe.IR.Expr.local
+      }
+  | _ => .error s!"unsupported well-founded Nat recursion arity: {name}"
 
 def recCallArgsAt? (recursorIndex expected : Nat) (expr : Expr) : Option (List Expr) :=
   match appFnArgs expr with
@@ -10139,6 +10776,11 @@ def extractFunction
         match extractStructuralRecFunc ctx name sig.params typeName typeParams sig.result value exportName with
         | .ok func => .ok func
         | .error error => .error s!"while extracting structural recursion: {error}"
+      else if containsConstantInExpr ``WellFounded.Nat.fix value then
+        match extractWellFoundedNatRecFunc ctx name sig.params typeName typeParams sig.result value
+            exportName with
+        | .ok func => .ok func
+        | .error error => .error s!"while extracting well-founded Nat recursion: {error}"
       else if containsConstantInExpr ``WellFounded.fix value then
         match extractWellFoundedRecFunc ctx name sig.params typeName typeParams sig.result value exportName with
         | .ok func => .ok func

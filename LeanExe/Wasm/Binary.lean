@@ -197,6 +197,7 @@ namespace CoreWasm
 
 abbrev Expr := LeanExe.IR.Expr
 abbrev Cond := LeanExe.IR.Cond
+abbrev LocalLet := LeanExe.IR.LocalLet
 abbrev Stmt := LeanExe.IR.Stmt
 abbrev Func := LeanExe.IR.Func
 abbrev Module := LeanExe.IR.Module
@@ -217,6 +218,8 @@ mutual
     | .letCall slots index args body =>
         .letCall slots (index + offset) (args.map (shiftExprCalls offset))
           (shiftExprCalls offset body)
+    | .letLets lets body =>
+        .letLets (lets.map (shiftLocalLetCalls offset)) (shiftExprCalls offset body)
     | .arrayAllocSlots width cells =>
         .arrayAllocSlots width (shiftExprCalls offset cells)
     | .heapAllocSlots values =>
@@ -246,11 +249,12 @@ mutual
         .arrayMapSlots sourceWidth resultWidth (shiftExprCalls offset array) itemStart
           (bodyValues.map (shiftExprCalls offset))
     | .arrayFoldMultiSlot sourceWidth resultWidth array start stop initValues accStart
-        itemStart bodyValues bodyDone resultSlot =>
+        itemStart bodyValues bodyLets bodyDone resultSlot =>
         .arrayFoldMultiSlot sourceWidth resultWidth (shiftExprCalls offset array)
           (shiftExprCalls offset start) (shiftExprCalls offset stop)
           (initValues.map (shiftExprCalls offset)) accStart itemStart
-          (bodyValues.map (shiftExprCalls offset)) (shiftExprCalls offset bodyDone) resultSlot
+          (bodyValues.map (shiftExprCalls offset)) (bodyLets.map (shiftLocalLetCalls offset))
+          (shiftExprCalls offset bodyDone) resultSlot
     | .arrayFindIdxSlots sourceWidth array itemStart predicate returnPayload =>
         .arrayFindIdxSlots sourceWidth (shiftExprCalls offset array) itemStart
           (shiftExprCalls offset predicate) returnPayload
@@ -296,17 +300,18 @@ mutual
         .byteArrayFindIdx (shiftExprCalls offset ptr) (shiftExprCalls offset len)
           (shiftExprCalls offset start) byteSlot (shiftExprCalls offset predicate) returnPayload
     | .byteArrayFoldMultiSlot resultWidth ptr len start stop initValues accStart byteSlot
-        bodyValues bodyDone resultSlot =>
+        bodyValues bodyLets bodyDone resultSlot =>
         .byteArrayFoldMultiSlot resultWidth (shiftExprCalls offset ptr)
           (shiftExprCalls offset len) (shiftExprCalls offset start) (shiftExprCalls offset stop)
           (initValues.map (shiftExprCalls offset)) accStart byteSlot
-          (bodyValues.map (shiftExprCalls offset)) (shiftExprCalls offset bodyDone) resultSlot
+          (bodyValues.map (shiftExprCalls offset)) (bodyLets.map (shiftLocalLetCalls offset))
+          (shiftExprCalls offset bodyDone) resultSlot
     | .rangeFoldMultiSlot resultWidth start stop step initValues accStart itemSlot bodyValues
-        bodyDone resultSlot =>
+        bodyLets bodyDone resultSlot =>
         .rangeFoldMultiSlot resultWidth (shiftExprCalls offset start) (shiftExprCalls offset stop)
           (shiftExprCalls offset step) (initValues.map (shiftExprCalls offset)) accStart
-          itemSlot (bodyValues.map (shiftExprCalls offset)) (shiftExprCalls offset bodyDone)
-          resultSlot
+          itemSlot (bodyValues.map (shiftExprCalls offset)) (bodyLets.map (shiftLocalLetCalls offset))
+          (shiftExprCalls offset bodyDone) resultSlot
     | .heapLinearPredicate ptr continueTag fieldSlotCount recursiveFieldOffset fieldStart
         predicate stopWhenTrue terminalValue =>
         .heapLinearPredicate (shiftExprCalls offset ptr) continueTag fieldSlotCount
@@ -328,28 +333,40 @@ mutual
     | .and left right => .and (shiftCondCalls offset left) (shiftCondCalls offset right)
     | .or left right => .or (shiftCondCalls offset left) (shiftCondCalls offset right)
 
+  partial def shiftLocalLetCalls (offset : Nat) : LocalLet → LocalLet
+    | .expr slot value => .expr slot (shiftExprCalls offset value)
+    | .call slots index args => .call slots (index + offset) (args.map (shiftExprCalls offset))
+    | .slots slots values => .slots slots (values.map (shiftExprCalls offset))
+    | .branch cond thenLets elseLets =>
+        .branch (shiftCondCalls offset cond)
+          (thenLets.map (shiftLocalLetCalls offset))
+          (elseLets.map (shiftLocalLetCalls offset))
+
   partial def shiftStmtCalls (offset : Nat) : Stmt → Stmt
     | .skip => .skip
     | .assign index value => .assign index (shiftExprCalls offset value)
     | .call slots index args => .call slots (index + offset) (args.map (shiftExprCalls offset))
     | .arrayFoldMultiSlotAssign sourceWidth resultWidth array start stop initValues accStart
-        itemStart bodyValues bodyDone targets =>
+        itemStart bodyValues bodyLets bodyDone targets =>
         .arrayFoldMultiSlotAssign sourceWidth resultWidth (shiftExprCalls offset array)
           (shiftExprCalls offset start) (shiftExprCalls offset stop)
           (initValues.map (shiftExprCalls offset)) accStart itemStart
-          (bodyValues.map (shiftExprCalls offset)) (shiftExprCalls offset bodyDone) targets
+          (bodyValues.map (shiftExprCalls offset)) (bodyLets.map (shiftLocalLetCalls offset))
+          (shiftExprCalls offset bodyDone) targets
     | .byteArrayFoldMultiSlotAssign resultWidth ptr len start stop initValues accStart
-        byteSlot bodyValues bodyDone targets =>
+        byteSlot bodyValues bodyLets bodyDone targets =>
         .byteArrayFoldMultiSlotAssign resultWidth (shiftExprCalls offset ptr)
           (shiftExprCalls offset len) (shiftExprCalls offset start) (shiftExprCalls offset stop)
           (initValues.map (shiftExprCalls offset)) accStart byteSlot
-          (bodyValues.map (shiftExprCalls offset)) (shiftExprCalls offset bodyDone) targets
+          (bodyValues.map (shiftExprCalls offset)) (bodyLets.map (shiftLocalLetCalls offset))
+          (shiftExprCalls offset bodyDone) targets
     | .rangeFoldMultiSlotAssign resultWidth start stop step initValues accStart itemSlot
-        bodyValues bodyDone targets =>
+        bodyValues bodyLets bodyDone targets =>
         .rangeFoldMultiSlotAssign resultWidth (shiftExprCalls offset start)
           (shiftExprCalls offset stop) (shiftExprCalls offset step)
           (initValues.map (shiftExprCalls offset)) accStart itemSlot
-          (bodyValues.map (shiftExprCalls offset)) (shiftExprCalls offset bodyDone) targets
+          (bodyValues.map (shiftExprCalls offset)) (bodyLets.map (shiftLocalLetCalls offset))
+          (shiftExprCalls offset bodyDone) targets
     | .ite cond thenStmt elseStmt =>
         .ite (shiftCondCalls offset cond) (shiftStmtCalls offset thenStmt)
           (shiftStmtCalls offset elseStmt)
@@ -488,10 +505,13 @@ mutual
     | .arrayMapSlots _ _ array _ bodyValues =>
         4 + max (exprScratch array)
           (bodyValues.foldl (fun n value => max n (exprScratch value)) 0)
-    | .arrayFoldMultiSlot sourceWidth resultWidth array start stop initValues _ _ bodyValues bodyDone _ =>
+    | .arrayFoldMultiSlot sourceWidth resultWidth array start stop initValues _ _ bodyValues
+        bodyLets bodyDone _ =>
         let initScratch := initValues.foldl (fun n value => max n (exprScratch value)) 0
+        let letScratch := bodyLets.foldl (fun n item => max n (localLetScratch item)) 0
         let bodyScratch :=
-          max (exprScratch bodyDone) (bodyValues.foldl (fun n value => max n (exprScratch value)) 0)
+          max letScratch <|
+            max (exprScratch bodyDone) (bodyValues.foldl (fun n value => max n (exprScratch value)) 0)
         5 + sourceWidth + resultWidth + 1 +
           max
             (max (exprScratch array) (max (exprScratch start) (exprScratch stop)))
@@ -542,19 +562,24 @@ mutual
         4 + max
           (max (exprScratch ptr) (max (exprScratch len) (exprScratch start)))
           (exprScratch predicate)
-    | .byteArrayFoldMultiSlot resultWidth ptr len start stop initValues _ _ bodyValues bodyDone _ =>
+    | .byteArrayFoldMultiSlot resultWidth ptr len start stop initValues _ _ bodyValues
+        bodyLets bodyDone _ =>
         let initScratch := initValues.foldl (fun n value => max n (exprScratch value)) 0
+        let letScratch := bodyLets.foldl (fun n item => max n (localLetScratch item)) 0
         let bodyScratch :=
-          max (exprScratch bodyDone) (bodyValues.foldl (fun n value => max n (exprScratch value)) 0)
+          max letScratch <|
+            max (exprScratch bodyDone) (bodyValues.foldl (fun n value => max n (exprScratch value)) 0)
         5 + resultWidth + 1 +
           max
             (max (exprScratch ptr) (exprScratch len))
             (max (max (exprScratch start) (exprScratch stop))
               (max initScratch bodyScratch))
-    | .rangeFoldMultiSlot resultWidth start stop step initValues _ _ bodyValues bodyDone _ =>
+    | .rangeFoldMultiSlot resultWidth start stop step initValues _ _ bodyValues bodyLets bodyDone _ =>
         let initScratch := initValues.foldl (fun n value => max n (exprScratch value)) 0
+        let letScratch := bodyLets.foldl (fun n item => max n (localLetScratch item)) 0
         let bodyScratch :=
-          max (exprScratch bodyDone) (bodyValues.foldl (fun n value => max n (exprScratch value)) 0)
+          max letScratch <|
+            max (exprScratch bodyDone) (bodyValues.foldl (fun n value => max n (exprScratch value)) 0)
         3 +
           max
             (max (exprScratch start) (max (exprScratch stop) (exprScratch step)))
@@ -564,6 +589,20 @@ mutual
     | .call _ args => args.foldl (fun count arg => max count (exprScratch arg)) 0
     | .letCall _ _ args body =>
         max (args.foldl (fun count arg => max count (exprScratch arg)) 0) (exprScratch body)
+    | .letLets lets body =>
+        max
+          (lets.foldl (fun count item => max count (localLetScratch item)) 0)
+          (exprScratch body)
+
+  partial def localLetScratch : LocalLet → Nat
+    | .expr _ value => exprScratch value
+    | .call _ _ args => args.foldl (fun count arg => max count (exprScratch arg)) 0
+    | .slots _ values => values.foldl (fun count value => max count (exprScratch value)) 0
+    | .branch cond thenLets elseLets =>
+        max (condScratch cond)
+          (max
+            (thenLets.foldl (fun count item => max count (localLetScratch item)) 0)
+            (elseLets.foldl (fun count item => max count (localLetScratch item)) 0))
 
   partial def condScratch : Cond → Nat
     | .true => 0
@@ -580,27 +619,35 @@ partial def stmtScratch : Stmt → Nat
   | .skip => 0
   | .assign _ value => exprScratch value
   | .call _ _ args => args.foldl (fun count arg => max count (exprScratch arg)) 0
-  | .arrayFoldMultiSlotAssign sourceWidth resultWidth array start stop initValues _ _ bodyValues bodyDone _ =>
+  | .arrayFoldMultiSlotAssign sourceWidth resultWidth array start stop initValues _ _ bodyValues
+      bodyLets bodyDone _ =>
       let initScratch := initValues.foldl (fun n value => max n (exprScratch value)) 0
+      let letScratch := bodyLets.foldl (fun n item => max n (localLetScratch item)) 0
       let bodyScratch :=
-        max (exprScratch bodyDone) (bodyValues.foldl (fun n value => max n (exprScratch value)) 0)
+        max letScratch <|
+          max (exprScratch bodyDone) (bodyValues.foldl (fun n value => max n (exprScratch value)) 0)
       5 + sourceWidth + resultWidth + 1 +
         max
           (max (exprScratch array) (max (exprScratch start) (exprScratch stop)))
           (max initScratch bodyScratch)
-  | .byteArrayFoldMultiSlotAssign resultWidth ptr len start stop initValues _ _ bodyValues bodyDone _ =>
+  | .byteArrayFoldMultiSlotAssign resultWidth ptr len start stop initValues _ _ bodyValues
+      bodyLets bodyDone _ =>
       let initScratch := initValues.foldl (fun n value => max n (exprScratch value)) 0
+      let letScratch := bodyLets.foldl (fun n item => max n (localLetScratch item)) 0
       let bodyScratch :=
-        max (exprScratch bodyDone) (bodyValues.foldl (fun n value => max n (exprScratch value)) 0)
+        max letScratch <|
+          max (exprScratch bodyDone) (bodyValues.foldl (fun n value => max n (exprScratch value)) 0)
       5 + resultWidth + 1 +
         max
           (max (exprScratch ptr) (exprScratch len))
           (max (max (exprScratch start) (exprScratch stop))
             (max initScratch bodyScratch))
-  | .rangeFoldMultiSlotAssign resultWidth start stop step initValues _ _ bodyValues bodyDone _ =>
+  | .rangeFoldMultiSlotAssign resultWidth start stop step initValues _ _ bodyValues bodyLets bodyDone _ =>
       let initScratch := initValues.foldl (fun n value => max n (exprScratch value)) 0
+      let letScratch := bodyLets.foldl (fun n item => max n (localLetScratch item)) 0
       let bodyScratch :=
-        max (exprScratch bodyDone) (bodyValues.foldl (fun n value => max n (exprScratch value)) 0)
+        max letScratch <|
+          max (exprScratch bodyDone) (bodyValues.foldl (fun n value => max n (exprScratch value)) 0)
       3 +
         max
           (max (exprScratch start) (max (exprScratch stop) (exprScratch step)))
@@ -979,6 +1026,7 @@ mutual
       (initValues : List Expr)
       (accStart itemStart : Nat)
       (bodyValues : List Expr)
+      (bodyLets : List LocalLet)
       (bodyDone : Expr)
       (resultSlot : Nat) : List UInt8 :=
     let arrayLocal := scratch
@@ -987,8 +1035,10 @@ mutual
     let stopLocal := scratch + 3
     let effectiveStopLocal := scratch + 4
     let childScratch := scratch + 5
+    let letScratch := bodyLets.foldl (fun n item => max n (localLetScratch item)) 0
     let bodyScratch :=
-      max (exprScratch bodyDone) (bodyValues.foldl (fun n value => max n (exprScratch value)) 0)
+      max letScratch <|
+        max (exprScratch bodyDone) (bodyValues.foldl (fun n value => max n (exprScratch value)) 0)
     let doneSlot := childScratch + bodyScratch
     let tempStart := doneSlot + 1
     let rec emitSourceLoads : List Nat → List UInt8
@@ -1023,6 +1073,7 @@ mutual
         localGet indexLocal ++ localGet effectiveStopLocal ++ i64GeU ++
           ofNats [13] ++ u32leb 1 ++
         emitSourceLoads (List.range sourceWidth) ++
+        bodyLets.flatMap (emitLocalLet childScratch) ++
         emitBodyStages (enumerate bodyValues) ++
         emitExpr childScratch bodyDone ++ localSet doneSlot ++
         emitTempCopies (List.range resultWidth) ++
@@ -1038,6 +1089,7 @@ mutual
       (initValues : List Expr)
       (accStart itemStart : Nat)
       (bodyValues : List Expr)
+      (bodyLets : List LocalLet)
       (bodyDone : Expr)
       (targets : List Nat) : List UInt8 :=
     let arrayLocal := scratch
@@ -1046,8 +1098,10 @@ mutual
     let stopLocal := scratch + 3
     let effectiveStopLocal := scratch + 4
     let childScratch := scratch + 5
+    let letScratch := bodyLets.foldl (fun n item => max n (localLetScratch item)) 0
     let bodyScratch :=
-      max (exprScratch bodyDone) (bodyValues.foldl (fun n value => max n (exprScratch value)) 0)
+      max letScratch <|
+        max (exprScratch bodyDone) (bodyValues.foldl (fun n value => max n (exprScratch value)) 0)
     let doneSlot := childScratch + bodyScratch
     let tempStart := doneSlot + 1
     let rec emitSourceLoads : List Nat → List UInt8
@@ -1086,6 +1140,7 @@ mutual
         localGet indexLocal ++ localGet effectiveStopLocal ++ i64GeU ++
           ofNats [13] ++ u32leb 1 ++
         emitSourceLoads (List.range sourceWidth) ++
+        bodyLets.flatMap (emitLocalLet childScratch) ++
         emitBodyStages (enumerate bodyValues) ++
         emitExpr childScratch bodyDone ++ localSet doneSlot ++
         emitTempCopies (List.range resultWidth) ++
@@ -1705,6 +1760,7 @@ mutual
       (initValues : List Expr)
       (accStart byteSlot : Nat)
       (bodyValues : List Expr)
+      (bodyLets : List LocalLet)
       (bodyDone : Expr)
       (resultSlot : Nat) : List UInt8 :=
     let ptrLocal := scratch
@@ -1713,8 +1769,10 @@ mutual
     let stopLocal := scratch + 3
     let effectiveStopLocal := scratch + 4
     let childScratch := scratch + 5
+    let letScratch := bodyLets.foldl (fun n item => max n (localLetScratch item)) 0
     let bodyScratch :=
-      max (exprScratch bodyDone) (bodyValues.foldl (fun n value => max n (exprScratch value)) 0)
+      max letScratch <|
+        max (exprScratch bodyDone) (bodyValues.foldl (fun n value => max n (exprScratch value)) 0)
     let doneSlot := childScratch + bodyScratch
     let tempStart := doneSlot + 1
     let rec emitInitStores : List (Nat × Expr) → List UInt8
@@ -1745,6 +1803,7 @@ mutual
           ofNats [13] ++ u32leb 1 ++
         localGet ptrLocal ++ localGet indexLocal ++ ofNats [124] ++ i32WrapI64 ++
           i32Load8U ++ i64ExtendI32U ++ localSet byteSlot ++
+        bodyLets.flatMap (emitLocalLet childScratch) ++
         emitBodyStages (enumerate bodyValues) ++
         emitExpr childScratch bodyDone ++ localSet doneSlot ++
         emitTempCopies (List.range resultWidth) ++
@@ -1760,6 +1819,7 @@ mutual
       (initValues : List Expr)
       (accStart byteSlot : Nat)
       (bodyValues : List Expr)
+      (bodyLets : List LocalLet)
       (bodyDone : Expr)
       (targets : List Nat) : List UInt8 :=
     let ptrLocal := scratch
@@ -1768,8 +1828,10 @@ mutual
     let stopLocal := scratch + 3
     let effectiveStopLocal := scratch + 4
     let childScratch := scratch + 5
+    let letScratch := bodyLets.foldl (fun n item => max n (localLetScratch item)) 0
     let bodyScratch :=
-      max (exprScratch bodyDone) (bodyValues.foldl (fun n value => max n (exprScratch value)) 0)
+      max letScratch <|
+        max (exprScratch bodyDone) (bodyValues.foldl (fun n value => max n (exprScratch value)) 0)
     let doneSlot := childScratch + bodyScratch
     let tempStart := doneSlot + 1
     let rec emitInitStores : List (Nat × Expr) → List UInt8
@@ -1804,6 +1866,7 @@ mutual
           ofNats [13] ++ u32leb 1 ++
         localGet ptrLocal ++ localGet indexLocal ++ ofNats [124] ++ i32WrapI64 ++
           i32Load8U ++ i64ExtendI32U ++ localSet byteSlot ++
+        bodyLets.flatMap (emitLocalLet childScratch) ++
         emitBodyStages (enumerate bodyValues) ++
         emitExpr childScratch bodyDone ++ localSet doneSlot ++
         emitTempCopies (List.range resultWidth) ++
@@ -1893,14 +1956,17 @@ mutual
       (initValues : List Expr)
       (accStart itemSlot : Nat)
       (bodyValues : List Expr)
+      (bodyLets : List LocalLet)
       (bodyDone : Expr)
       (resultSlot : Nat) : List UInt8 :=
     let indexLocal := scratch
     let stopLocal := scratch + 1
     let stepLocal := scratch + 2
     let childScratch := scratch + 3
+    let letScratch := bodyLets.foldl (fun n item => max n (localLetScratch item)) 0
     let bodyScratch :=
-      max (exprScratch bodyDone) (bodyValues.foldl (fun n value => max n (exprScratch value)) 0)
+      max letScratch <|
+        max (exprScratch bodyDone) (bodyValues.foldl (fun n value => max n (exprScratch value)) 0)
     let doneSlot := childScratch + bodyScratch
     let tempStart := doneSlot + 1
     let rec emitInitStores : List (Nat × Expr) → List UInt8
@@ -1922,6 +1988,7 @@ mutual
       ofNats [2, 64, 3, 64] ++
         localGet indexLocal ++ localGet stopLocal ++ i64GeU ++ ofNats [13] ++ u32leb 1 ++
         localGet indexLocal ++ localSet itemSlot ++
+        bodyLets.flatMap (emitLocalLet childScratch) ++
         emitBodyStages (enumerate bodyValues) ++
         emitExpr childScratch bodyDone ++ localSet doneSlot ++
         emitTempCopies (List.range resultWidth) ++
@@ -1938,14 +2005,17 @@ mutual
       (initValues : List Expr)
       (accStart itemSlot : Nat)
       (bodyValues : List Expr)
+      (bodyLets : List LocalLet)
       (bodyDone : Expr)
       (targets : List Nat) : List UInt8 :=
     let indexLocal := scratch
     let stopLocal := scratch + 1
     let stepLocal := scratch + 2
     let childScratch := scratch + 3
+    let letScratch := bodyLets.foldl (fun n item => max n (localLetScratch item)) 0
     let bodyScratch :=
-      max (exprScratch bodyDone) (bodyValues.foldl (fun n value => max n (exprScratch value)) 0)
+      max letScratch <|
+        max (exprScratch bodyDone) (bodyValues.foldl (fun n value => max n (exprScratch value)) 0)
     let doneSlot := childScratch + bodyScratch
     let tempStart := doneSlot + 1
     let rec emitInitStores : List (Nat × Expr) → List UInt8
@@ -1971,6 +2041,7 @@ mutual
       ofNats [2, 64, 3, 64] ++
         localGet indexLocal ++ localGet stopLocal ++ i64GeU ++ ofNats [13] ++ u32leb 1 ++
         localGet indexLocal ++ localSet itemSlot ++
+        bodyLets.flatMap (emitLocalLet childScratch) ++
         emitBodyStages (enumerate bodyValues) ++
         emitExpr childScratch bodyDone ++ localSet doneSlot ++
         emitTempCopies (List.range resultWidth) ++
@@ -2046,9 +2117,9 @@ mutual
     | .arrayMapSlots sourceWidth resultWidth array itemStart bodyValues =>
         emitArrayMapSlots scratch sourceWidth resultWidth array itemStart bodyValues
     | .arrayFoldMultiSlot sourceWidth resultWidth array start stop initValues accStart itemStart
-        bodyValues bodyDone resultSlot =>
+        bodyValues bodyLets bodyDone resultSlot =>
         emitArrayFoldMultiSlot scratch sourceWidth resultWidth array start stop initValues accStart
-          itemStart bodyValues bodyDone resultSlot
+          itemStart bodyValues bodyLets bodyDone resultSlot
     | .arrayFindIdxSlots sourceWidth array itemStart predicate returnPayload =>
         emitArrayFindIdxSlots scratch sourceWidth array itemStart predicate returnPayload
     | .arrayFindSlot sourceWidth array itemStart predicate slot =>
@@ -2076,13 +2147,13 @@ mutual
     | .byteArrayFindIdx ptr len start byteSlot predicate returnPayload =>
         emitByteArrayFindIdx scratch ptr len start byteSlot predicate returnPayload
     | .byteArrayFoldMultiSlot resultWidth ptr len start stop initValues accStart byteSlot
-        bodyValues bodyDone resultSlot =>
+        bodyValues bodyLets bodyDone resultSlot =>
         emitByteArrayFoldMultiSlot scratch resultWidth ptr len start stop initValues accStart
-          byteSlot bodyValues bodyDone resultSlot
+          byteSlot bodyValues bodyLets bodyDone resultSlot
     | .rangeFoldMultiSlot resultWidth start stop step initValues accStart itemSlot bodyValues
-        bodyDone resultSlot =>
+        bodyLets bodyDone resultSlot =>
         emitRangeFoldMultiSlot scratch resultWidth start stop step initValues accStart itemSlot
-          bodyValues bodyDone resultSlot
+          bodyValues bodyLets bodyDone resultSlot
     | .heapLinearPredicate ptr continueTag fieldSlotCount recursiveFieldOffset fieldStart predicate
         stopWhenTrue terminalValue =>
         emitHeapLinearPredicate scratch ptr continueTag fieldSlotCount recursiveFieldOffset fieldStart
@@ -2091,6 +2162,71 @@ mutual
     | .letCall slots index args body =>
         args.flatMap (emitExpr scratch) ++ call index ++
           slots.reverse.flatMap localSet ++ emitExpr scratch body
+    | .letLets lets body =>
+        lets.flatMap (emitLocalLet scratch) ++ emitExpr scratch body
+
+  partial def emitSlotsAssign (scratch : Nat) (slots : List Nat) (values : List Expr) :
+      List UInt8 :=
+    match values with
+    | .arrayFoldMultiSlot sourceWidth resultWidth array start stop initValues accStart itemStart
+        bodyValues bodyLets bodyDone _ :: _ =>
+        if slots.length == resultWidth && values.length == resultWidth then
+          let expected :=
+            (List.range resultWidth).map fun offset =>
+              (.arrayFoldMultiSlot sourceWidth resultWidth array start stop initValues accStart
+                itemStart bodyValues bodyLets bodyDone offset
+                : Expr)
+          if values == expected then
+            emitArrayFoldMultiSlotAssign scratch sourceWidth resultWidth array start stop initValues
+              accStart itemStart bodyValues bodyLets bodyDone slots
+          else
+            (slots.zip values).flatMap fun item => emitExpr scratch item.snd ++ localSet item.fst
+        else
+          (slots.zip values).flatMap fun item => emitExpr scratch item.snd ++ localSet item.fst
+    | .byteArrayFoldMultiSlot resultWidth ptr len start stop initValues accStart byteSlot
+        bodyValues bodyLets bodyDone _ :: _ =>
+        if slots.length == resultWidth && values.length == resultWidth then
+          let expected :=
+            (List.range resultWidth).map fun offset =>
+              (.byteArrayFoldMultiSlot resultWidth ptr len start stop initValues accStart
+                byteSlot bodyValues bodyLets bodyDone offset
+                : Expr)
+          if values == expected then
+            emitByteArrayFoldMultiSlotAssign scratch resultWidth ptr len start stop initValues
+              accStart byteSlot bodyValues bodyLets bodyDone slots
+          else
+            (slots.zip values).flatMap fun item => emitExpr scratch item.snd ++ localSet item.fst
+        else
+          (slots.zip values).flatMap fun item => emitExpr scratch item.snd ++ localSet item.fst
+    | .rangeFoldMultiSlot resultWidth start stop step initValues accStart itemSlot bodyValues
+        bodyLets bodyDone _ :: _ =>
+        if slots.length == resultWidth && values.length == resultWidth then
+          let expected :=
+            (List.range resultWidth).map fun offset =>
+              (.rangeFoldMultiSlot resultWidth start stop step initValues accStart itemSlot
+                bodyValues bodyLets bodyDone offset
+                : Expr)
+          if values == expected then
+            emitRangeFoldMultiSlotAssign scratch resultWidth start stop step initValues accStart
+              itemSlot bodyValues bodyLets bodyDone slots
+          else
+            (slots.zip values).flatMap fun item => emitExpr scratch item.snd ++ localSet item.fst
+        else
+          (slots.zip values).flatMap fun item => emitExpr scratch item.snd ++ localSet item.fst
+    | _ =>
+        (slots.zip values).flatMap fun item => emitExpr scratch item.snd ++ localSet item.fst
+
+  partial def emitLocalLet (scratch : Nat) : LocalLet → List UInt8
+    | .expr slot value => emitExpr scratch value ++ localSet slot
+    | .call slots index args =>
+        args.flatMap (emitExpr scratch) ++ call index ++ slots.reverse.flatMap localSet
+    | .slots slots values => emitSlotsAssign scratch slots values
+    | .branch cond thenLets elseLets =>
+        emitCond scratch cond ++ ofNats [4, 64] ++
+          thenLets.flatMap (emitLocalLet scratch) ++
+          ofNats [5] ++
+          elseLets.flatMap (emitLocalLet scratch) ++
+          ofNats [11]
 
   partial def emitCond (scratch : Nat) : Cond → List UInt8
     | .true => ofNats [65, 1]
@@ -2114,17 +2250,17 @@ partial def emitStmt (scratch : Nat) : Stmt → List UInt8
   | .assign index value => emitExpr scratch value ++ localSet index
   | .call slots index args => args.flatMap (emitExpr scratch) ++ call index ++ slots.reverse.flatMap localSet
   | .arrayFoldMultiSlotAssign sourceWidth resultWidth array start stop initValues accStart itemStart
-      bodyValues bodyDone targets =>
+      bodyValues bodyLets bodyDone targets =>
       emitArrayFoldMultiSlotAssign scratch sourceWidth resultWidth array start stop initValues accStart
-        itemStart bodyValues bodyDone targets
+        itemStart bodyValues bodyLets bodyDone targets
   | .byteArrayFoldMultiSlotAssign resultWidth ptr len start stop initValues accStart byteSlot
-      bodyValues bodyDone targets =>
+      bodyValues bodyLets bodyDone targets =>
       emitByteArrayFoldMultiSlotAssign scratch resultWidth ptr len start stop initValues accStart
-        byteSlot bodyValues bodyDone targets
+        byteSlot bodyValues bodyLets bodyDone targets
   | .rangeFoldMultiSlotAssign resultWidth start stop step initValues accStart itemSlot bodyValues
-      bodyDone targets =>
+      bodyLets bodyDone targets =>
       emitRangeFoldMultiSlotAssign scratch resultWidth start stop step initValues accStart itemSlot
-        bodyValues bodyDone targets
+        bodyValues bodyLets bodyDone targets
   | .ite cond thenStmt elseStmt =>
       emitCond scratch cond ++ ofNats [4, 64] ++
         emitStmt scratch thenStmt ++
@@ -3004,6 +3140,7 @@ mutual
       (initValues : List Expr)
       (accStart itemStart : Nat)
       (bodyValues : List Expr)
+      (bodyLets : List LocalLet)
       (bodyDone : Expr)
       (resultSlot : Nat) : List String :=
     let arrayLocal := scratch
@@ -3012,8 +3149,10 @@ mutual
     let stopLocal := scratch + 3
     let effectiveStopLocal := scratch + 4
     let childScratch := scratch + 5
+    let letScratch := bodyLets.foldl (fun n item => max n (localLetScratch item)) 0
     let bodyScratch :=
-      max (exprScratch bodyDone) (bodyValues.foldl (fun n value => max n (exprScratch value)) 0)
+      max letScratch <|
+        max (exprScratch bodyDone) (bodyValues.foldl (fun n value => max n (exprScratch value)) 0)
     let doneSlot := childScratch + bodyScratch
     let tempStart := doneSlot + 1
     let rec sourceLoads : List Nat → List String
@@ -3050,6 +3189,7 @@ mutual
         "    br_if 1"] ++
       indent 4 (
         sourceLoads (List.range sourceWidth) ++
+        bodyLets.flatMap (localLetWatLines childScratch) ++
         bodyStages (enumerate bodyValues) ++
         exprWatLines childScratch bodyDone ++
         [s!"local.set {doneSlot}"] ++
@@ -3065,6 +3205,7 @@ mutual
       (initValues : List Expr)
       (accStart itemStart : Nat)
       (bodyValues : List Expr)
+      (bodyLets : List LocalLet)
       (bodyDone : Expr)
       (targets : List Nat) : List String :=
     let arrayLocal := scratch
@@ -3073,8 +3214,10 @@ mutual
     let stopLocal := scratch + 3
     let effectiveStopLocal := scratch + 4
     let childScratch := scratch + 5
+    let letScratch := bodyLets.foldl (fun n item => max n (localLetScratch item)) 0
     let bodyScratch :=
-      max (exprScratch bodyDone) (bodyValues.foldl (fun n value => max n (exprScratch value)) 0)
+      max letScratch <|
+        max (exprScratch bodyDone) (bodyValues.foldl (fun n value => max n (exprScratch value)) 0)
     let doneSlot := childScratch + bodyScratch
     let tempStart := doneSlot + 1
     let rec sourceLoads : List Nat → List String
@@ -3115,6 +3258,7 @@ mutual
         "    br_if 1"] ++
       indent 4 (
         sourceLoads (List.range sourceWidth) ++
+        bodyLets.flatMap (localLetWatLines childScratch) ++
         bodyStages (enumerate bodyValues) ++
         exprWatLines childScratch bodyDone ++
         [s!"local.set {doneSlot}"] ++
@@ -3720,6 +3864,7 @@ mutual
       (initValues : List Expr)
       (accStart byteSlot : Nat)
       (bodyValues : List Expr)
+      (bodyLets : List LocalLet)
       (bodyDone : Expr)
       (resultSlot : Nat) : List String :=
     let ptrLocal := scratch
@@ -3728,8 +3873,10 @@ mutual
     let stopLocal := scratch + 3
     let effectiveStopLocal := scratch + 4
     let childScratch := scratch + 5
+    let letScratch := bodyLets.foldl (fun n item => max n (localLetScratch item)) 0
     let bodyScratch :=
-      max (exprScratch bodyDone) (bodyValues.foldl (fun n value => max n (exprScratch value)) 0)
+      max letScratch <|
+        max (exprScratch bodyDone) (bodyValues.foldl (fun n value => max n (exprScratch value)) 0)
     let doneSlot := childScratch + bodyScratch
     let tempStart := doneSlot + 1
     let rec initStores : List (Nat × Expr) → List String
@@ -3760,6 +3907,7 @@ mutual
         "br_if 1",
         s!"local.get {ptrLocal}", s!"local.get {indexLocal}", "i64.add", "i32.wrap_i64",
         "i32.load8_u", "i64.extend_i32_u", s!"local.set {byteSlot}"] ++
+      bodyLets.flatMap (localLetWatLines childScratch) ++
       bodyStages (enumerate bodyValues) ++
       exprWatLines childScratch bodyDone ++
       [s!"local.set {doneSlot}"] ++
@@ -3774,6 +3922,7 @@ mutual
       (initValues : List Expr)
       (accStart byteSlot : Nat)
       (bodyValues : List Expr)
+      (bodyLets : List LocalLet)
       (bodyDone : Expr)
       (targets : List Nat) : List String :=
     let ptrLocal := scratch
@@ -3782,8 +3931,10 @@ mutual
     let stopLocal := scratch + 3
     let effectiveStopLocal := scratch + 4
     let childScratch := scratch + 5
+    let letScratch := bodyLets.foldl (fun n item => max n (localLetScratch item)) 0
     let bodyScratch :=
-      max (exprScratch bodyDone) (bodyValues.foldl (fun n value => max n (exprScratch value)) 0)
+      max letScratch <|
+        max (exprScratch bodyDone) (bodyValues.foldl (fun n value => max n (exprScratch value)) 0)
     let doneSlot := childScratch + bodyScratch
     let tempStart := doneSlot + 1
     let rec initStores : List (Nat × Expr) → List String
@@ -3818,6 +3969,7 @@ mutual
         "br_if 1",
         s!"local.get {ptrLocal}", s!"local.get {indexLocal}", "i64.add", "i32.wrap_i64",
         "i32.load8_u", "i64.extend_i32_u", s!"local.set {byteSlot}"] ++
+      bodyLets.flatMap (localLetWatLines childScratch) ++
       bodyStages (enumerate bodyValues) ++
       exprWatLines childScratch bodyDone ++
       [s!"local.set {doneSlot}"] ++
@@ -3891,14 +4043,17 @@ mutual
       (initValues : List Expr)
       (accStart itemSlot : Nat)
       (bodyValues : List Expr)
+      (bodyLets : List LocalLet)
       (bodyDone : Expr)
       (resultSlot : Nat) : List String :=
     let indexLocal := scratch
     let stopLocal := scratch + 1
     let stepLocal := scratch + 2
     let childScratch := scratch + 3
+    let letScratch := bodyLets.foldl (fun n item => max n (localLetScratch item)) 0
     let bodyScratch :=
-      max (exprScratch bodyDone) (bodyValues.foldl (fun n value => max n (exprScratch value)) 0)
+      max letScratch <|
+        max (exprScratch bodyDone) (bodyValues.foldl (fun n value => max n (exprScratch value)) 0)
     let doneSlot := childScratch + bodyScratch
     let tempStart := doneSlot + 1
     let rec initStores : List (Nat × Expr) → List String
@@ -3924,6 +4079,7 @@ mutual
         s!"local.get {indexLocal}", s!"local.get {stopLocal}", "i64.ge_u",
         "br_if 1",
         s!"local.get {indexLocal}", s!"local.set {itemSlot}"] ++
+      bodyLets.flatMap (localLetWatLines childScratch) ++
       bodyStages (enumerate bodyValues) ++
       exprWatLines childScratch bodyDone ++
       [s!"local.set {doneSlot}"] ++
@@ -3939,14 +4095,17 @@ mutual
       (initValues : List Expr)
       (accStart itemSlot : Nat)
       (bodyValues : List Expr)
+      (bodyLets : List LocalLet)
       (bodyDone : Expr)
       (targets : List Nat) : List String :=
     let indexLocal := scratch
     let stopLocal := scratch + 1
     let stepLocal := scratch + 2
     let childScratch := scratch + 3
+    let letScratch := bodyLets.foldl (fun n item => max n (localLetScratch item)) 0
     let bodyScratch :=
-      max (exprScratch bodyDone) (bodyValues.foldl (fun n value => max n (exprScratch value)) 0)
+      max letScratch <|
+        max (exprScratch bodyDone) (bodyValues.foldl (fun n value => max n (exprScratch value)) 0)
     let doneSlot := childScratch + bodyScratch
     let tempStart := doneSlot + 1
     let rec initStores : List (Nat × Expr) → List String
@@ -3976,6 +4135,7 @@ mutual
         s!"local.get {indexLocal}", s!"local.get {stopLocal}", "i64.ge_u",
         "br_if 1",
         s!"local.get {indexLocal}", s!"local.set {itemSlot}"] ++
+      bodyLets.flatMap (localLetWatLines childScratch) ++
       bodyStages (enumerate bodyValues) ++
       exprWatLines childScratch bodyDone ++
       [s!"local.set {doneSlot}"] ++
@@ -4067,9 +4227,9 @@ mutual
     | .arrayMapSlots sourceWidth resultWidth array itemStart bodyValues =>
         arrayMapSlotsWatLines scratch sourceWidth resultWidth array itemStart bodyValues
     | .arrayFoldMultiSlot sourceWidth resultWidth array start stop initValues accStart itemStart
-        bodyValues bodyDone resultSlot =>
+        bodyValues bodyLets bodyDone resultSlot =>
         arrayFoldMultiSlotWatLines scratch sourceWidth resultWidth array start stop initValues accStart
-          itemStart bodyValues bodyDone resultSlot
+          itemStart bodyValues bodyLets bodyDone resultSlot
     | .arrayFindIdxSlots sourceWidth array itemStart predicate returnPayload =>
         arrayFindIdxSlotsWatLines scratch sourceWidth array itemStart predicate returnPayload
     | .arrayFindSlot sourceWidth array itemStart predicate slot =>
@@ -4096,13 +4256,13 @@ mutual
     | .byteArrayFindIdx ptr len start byteSlot predicate returnPayload =>
         byteArrayFindIdxWatLines scratch ptr len start byteSlot predicate returnPayload
     | .byteArrayFoldMultiSlot resultWidth ptr len start stop initValues accStart byteSlot
-        bodyValues bodyDone resultSlot =>
+        bodyValues bodyLets bodyDone resultSlot =>
         byteArrayFoldMultiSlotWatLines scratch resultWidth ptr len start stop initValues accStart
-          byteSlot bodyValues bodyDone resultSlot
+          byteSlot bodyValues bodyLets bodyDone resultSlot
     | .rangeFoldMultiSlot resultWidth start stop step initValues accStart itemSlot bodyValues
-        bodyDone resultSlot =>
+        bodyLets bodyDone resultSlot =>
         rangeFoldMultiSlotWatLines scratch resultWidth start stop step initValues accStart itemSlot
-          bodyValues bodyDone resultSlot
+          bodyValues bodyLets bodyDone resultSlot
     | .heapLinearPredicate ptr continueTag fieldSlotCount recursiveFieldOffset fieldStart predicate
         stopWhenTrue terminalValue =>
         heapLinearPredicateWatLines scratch ptr continueTag fieldSlotCount recursiveFieldOffset
@@ -4111,6 +4271,74 @@ mutual
     | .letCall slots index args body =>
         args.flatMap (exprWatLines scratch) ++ [s!"call {index}"] ++
           slots.reverse.map (fun slot => s!"local.set {slot}") ++ exprWatLines scratch body
+    | .letLets lets body =>
+        lets.flatMap (localLetWatLines scratch) ++ exprWatLines scratch body
+
+  partial def slotsAssignWatLines (scratch : Nat) (slots : List Nat) (values : List Expr) :
+      List String :=
+    let direct :=
+      (slots.zip values).flatMap fun item =>
+        exprWatLines scratch item.snd ++ [s!"local.set {item.fst}"]
+    match values with
+    | .arrayFoldMultiSlot sourceWidth resultWidth array start stop initValues accStart itemStart
+        bodyValues bodyLets bodyDone _ :: _ =>
+        if slots.length == resultWidth && values.length == resultWidth then
+          let expected :=
+            (List.range resultWidth).map fun offset =>
+              (.arrayFoldMultiSlot sourceWidth resultWidth array start stop initValues accStart
+                itemStart bodyValues bodyLets bodyDone offset
+                : Expr)
+          if values == expected then
+            arrayFoldMultiSlotAssignWatLines scratch sourceWidth resultWidth array start stop
+              initValues accStart itemStart bodyValues bodyLets bodyDone slots
+          else
+            direct
+        else
+          direct
+    | .byteArrayFoldMultiSlot resultWidth ptr len start stop initValues accStart byteSlot
+        bodyValues bodyLets bodyDone _ :: _ =>
+        if slots.length == resultWidth && values.length == resultWidth then
+          let expected :=
+            (List.range resultWidth).map fun offset =>
+              (.byteArrayFoldMultiSlot resultWidth ptr len start stop initValues accStart
+                byteSlot bodyValues bodyLets bodyDone offset
+                : Expr)
+          if values == expected then
+            byteArrayFoldMultiSlotAssignWatLines scratch resultWidth ptr len start stop initValues
+              accStart byteSlot bodyValues bodyLets bodyDone slots
+          else
+            direct
+        else
+          direct
+    | .rangeFoldMultiSlot resultWidth start stop step initValues accStart itemSlot bodyValues
+        bodyLets bodyDone _ :: _ =>
+        if slots.length == resultWidth && values.length == resultWidth then
+          let expected :=
+            (List.range resultWidth).map fun offset =>
+              (.rangeFoldMultiSlot resultWidth start stop step initValues accStart itemSlot
+                bodyValues bodyLets bodyDone offset
+                : Expr)
+          if values == expected then
+            rangeFoldMultiSlotAssignWatLines scratch resultWidth start stop step initValues accStart
+              itemSlot bodyValues bodyLets bodyDone slots
+          else
+            direct
+        else
+          direct
+    | _ => direct
+
+  partial def localLetWatLines (scratch : Nat) : LocalLet → List String
+    | .expr slot value => exprWatLines scratch value ++ [s!"local.set {slot}"]
+    | .call slots index args =>
+        args.flatMap (exprWatLines scratch) ++ [s!"call {index}"] ++
+          slots.reverse.map (fun slot => s!"local.set {slot}")
+    | .slots slots values => slotsAssignWatLines scratch slots values
+    | .branch cond thenLets elseLets =>
+        condWatLines scratch cond ++ ["if"] ++
+          indent 2 (thenLets.flatMap (localLetWatLines scratch)) ++
+          ["else"] ++
+          indent 2 (elseLets.flatMap (localLetWatLines scratch)) ++
+          ["end"]
 
   partial def condWatLines (scratch : Nat) : Cond → List String
     | .true => ["i32.const 1"]
@@ -4138,17 +4366,17 @@ partial def stmtWatLines (scratch : Nat) : Stmt → List String
       args.flatMap (exprWatLines scratch) ++ [s!"call {index}"] ++
         slots.reverse.map (fun slot => s!"local.set {slot}")
   | .arrayFoldMultiSlotAssign sourceWidth resultWidth array start stop initValues accStart itemStart
-      bodyValues bodyDone targets =>
+      bodyValues bodyLets bodyDone targets =>
       arrayFoldMultiSlotAssignWatLines scratch sourceWidth resultWidth array start stop initValues
-        accStart itemStart bodyValues bodyDone targets
+        accStart itemStart bodyValues bodyLets bodyDone targets
   | .byteArrayFoldMultiSlotAssign resultWidth ptr len start stop initValues accStart byteSlot
-      bodyValues bodyDone targets =>
+      bodyValues bodyLets bodyDone targets =>
       byteArrayFoldMultiSlotAssignWatLines scratch resultWidth ptr len start stop initValues accStart
-        byteSlot bodyValues bodyDone targets
+        byteSlot bodyValues bodyLets bodyDone targets
   | .rangeFoldMultiSlotAssign resultWidth start stop step initValues accStart itemSlot bodyValues
-      bodyDone targets =>
+      bodyLets bodyDone targets =>
       rangeFoldMultiSlotAssignWatLines scratch resultWidth start stop step initValues accStart itemSlot
-        bodyValues bodyDone targets
+        bodyValues bodyLets bodyDone targets
   | .ite cond thenStmt elseStmt =>
       condWatLines scratch cond ++ ["if"] ++
         indent 2 (stmtWatLines scratch thenStmt) ++

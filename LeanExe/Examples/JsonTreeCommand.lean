@@ -38,6 +38,29 @@ structure BuildState where
   failed : Bool
   tree : Tree
 
+structure DecodeState where
+  failed : Bool
+  seenValue : Bool
+  value : UInt64
+  seenLeft : Bool
+  left : Tree
+  seenRight : Bool
+  right : Tree
+
+def DecodeState.fail (state : DecodeState) : DecodeState :=
+  { state with failed := true }
+
+def initialDecodeState : DecodeState :=
+  {
+    failed := false,
+    seenValue := false,
+    value := 0,
+    seenLeft := false,
+    left := Tree.empty,
+    seenRight := false,
+    right := Tree.empty
+  }
+
 def insert (tree : Tree) (value : UInt64) : Tree :=
   match tree with
   | Tree.empty => Tree.node value Tree.empty Tree.empty
@@ -55,14 +78,6 @@ def addJsonValue (state : BuildState) (value : Ascii.Json.Value) : BuildState :=
     | some value => { failed := false, tree := insert state.tree value }
     | none => { state with failed := true }
 
-def buildTreeFuel : Nat -> Array Ascii.Json.Value -> Nat -> BuildState -> BuildState
-  | 0, _items, _index, state => { state with failed := true }
-  | fuel + 1, items, index, state =>
-      if state.failed || index == items.size then
-        state
-      else
-        buildTreeFuel fuel items (index + 1) (addJsonValue state items[index]!)
-
 def buildTree : Ascii.Json.Value -> Option Tree
   | Ascii.Json.Value.null => none
   | Ascii.Json.Value.bool _ => none
@@ -70,7 +85,7 @@ def buildTree : Ascii.Json.Value -> Option Tree
   | Ascii.Json.Value.str _ => none
   | Ascii.Json.Value.arr items =>
       let state :=
-        buildTreeFuel (items.size + 1) items 0
+        items.foldl (fun state value => addJsonValue state value)
           { failed := false, tree := Tree.empty }
       if state.failed then
         none
@@ -113,35 +128,71 @@ def makeTree (input : ByteArray) : Except ByteArray ByteArray :=
   | some value => makeTreeValue value
   | none => Except.error Ascii.Json.errorJson
 
-def containsJsonTreeFuel : Nat -> Ascii.Json.Value -> UInt64 -> Option Bool
-  | 0, _tree, _needle => none
-  | fuel + 1, tree, needle =>
-      match tree with
-      | Ascii.Json.Value.null => some false
-      | Ascii.Json.Value.obj _fields =>
-          match Ascii.Json.get? tree valueFieldName with
-          | none => none
-          | some valueJson =>
-              match Ascii.Json.asUInt64? valueJson with
-              | none => none
-              | some value =>
-                  if needle == value then
-                    some true
-                  else if needle < value then
-                    match Ascii.Json.get? tree leftFieldName with
-                    | some leftTree => containsJsonTreeFuel fuel leftTree needle
-                    | none => none
+def decodeTree : Ascii.Json.Value -> Option Tree
+  | Ascii.Json.Value.null => some Tree.empty
+  | Ascii.Json.Value.obj fields =>
+      let state :=
+        fields.attach.foldl
+          (fun state item =>
+            match item with
+            | ⟨field, _hmem⟩ =>
+                let name := Ascii.Json.Field.name field
+                let value := Ascii.Json.Field.value field
+                if state.failed then
+                  state
+                else if name.equals valueFieldName then
+                  if state.seenValue then
+                    DecodeState.fail state
                   else
-                    match Ascii.Json.get? tree rightFieldName with
-                    | some rightTree => containsJsonTreeFuel fuel rightTree needle
-                    | none => none
-      | Ascii.Json.Value.bool _ => none
-      | Ascii.Json.Value.num _ => none
-      | Ascii.Json.Value.str _ => none
-      | Ascii.Json.Value.arr _ => none
+                    match Ascii.Json.asUInt64? value with
+                    | some value => { state with seenValue := true, value := value }
+                    | none => DecodeState.fail state
+                else if name.equals leftFieldName then
+                  if state.seenLeft then
+                    DecodeState.fail state
+                  else
+                    match decodeTree value with
+                    | some left => { state with seenLeft := true, left := left }
+                    | none => DecodeState.fail state
+                else if name.equals rightFieldName then
+                  if state.seenRight then
+                    DecodeState.fail state
+                  else
+                    match decodeTree value with
+                    | some right => { state with seenRight := true, right := right }
+                    | none => DecodeState.fail state
+                else
+                  DecodeState.fail state)
+          initialDecodeState
+      if state.failed || !state.seenValue || !state.seenLeft || !state.seenRight then
+        none
+      else
+        some (Tree.node state.value state.left state.right)
+  | Ascii.Json.Value.bool _ => none
+  | Ascii.Json.Value.num _ => none
+  | Ascii.Json.Value.str _ => none
+  | Ascii.Json.Value.arr _ => none
+termination_by value => sizeOf value
+decreasing_by
+  all_goals
+    simp_wf
+    have hField : sizeOf field < sizeOf fields :=
+      Array.sizeOf_lt_of_mem _hmem
+    cases field with
+    | mk name value =>
+        simp [Ascii.Json.Field.value] at hField ⊢
+        omega
 
-def containsJsonTree? (tree : Ascii.Json.Value) (fuel : Nat) (needle : UInt64) : Option Bool :=
-  containsJsonTreeFuel fuel tree needle
+def contains (tree : Tree) (needle : UInt64) : Bool :=
+  match tree with
+  | Tree.empty => false
+  | Tree.node value left right =>
+      if needle == value then
+        true
+      else if needle < value then
+        contains left needle
+      else
+        contains right needle
 
 def parseUInt64Text (text : AsciiString) : Option UInt64 :=
   let pos := Ascii.skipWs text 0
@@ -161,19 +212,20 @@ def parseNeedle (args : Array ByteArray) : Option UInt64 :=
   else
     none
 
-def searchTreeValue (tree : Ascii.Json.Value) (args : Array ByteArray) (fuel : Nat) :
-    Except ByteArray ByteArray :=
+def searchTreeValue (tree : Tree) (args : Array ByteArray) : Except ByteArray ByteArray :=
   match parseNeedle args with
   | none => Except.error Ascii.Json.errorJson
   | some needle =>
-      match containsJsonTree? tree fuel needle with
-      | some found =>
-          Except.ok (Ascii.Json.render (Ascii.Json.object1Value foundFieldName (Ascii.Json.Value.bool found)))
-      | none => Except.error Ascii.Json.errorJson
+      Except.ok
+        (Ascii.Json.render
+          (Ascii.Json.object1Value foundFieldName (Ascii.Json.Value.bool (contains tree needle))))
 
 def searchTree (input : ByteArray) (args : Array ByteArray) : Except ByteArray ByteArray :=
   match Ascii.Json.parseBytes input with
-  | some tree => searchTreeValue tree args (input.size + 1)
+  | some value =>
+      match decodeTree value with
+      | some tree => searchTreeValue tree args
+      | none => Except.error Ascii.Json.errorJson
   | none => Except.error Ascii.Json.errorJson
 
 end Examples.JsonTreeCommand

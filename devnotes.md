@@ -4,6 +4,10 @@
 
 `LeanExe.Ascii.Json.Value` adds an ASCII-only JSON AST with `null`, booleans, unsigned `UInt64` numbers, restricted unescaped strings, arrays, and objects.  The parser is a single bounded recursive dispatcher over a request type, so recursive descent uses one accepted Nat-recursive helper with an explicit parse mode and tagged parse result.  The tree command now parses both the input array and the intermediate tree JSON through that AST, and it emits the tree through JSON writer helpers instead of embedding punctuation fragments in the example.
 
+`JsonTreeCommand.buildTree` uses `Array.foldl` over parsed JSON array elements.  It no longer carries an explicit fuel counter for that scan, because the compiler supports `Array.foldl` with a supported structure accumulator and direct-lambda folder.  `JsonTreeCommand.searchTree` now decodes the parsed JSON AST into the source-level `Tree` type before searching.  The search is ordinary structural recursion over `Tree`, so the example no longer needs a bounded search through object-field lookup.
+
+The extractor now represents materialized internal values as `LocalLet` blocks when a fold body or source `let` produces a multi-slot structure.  Fold IR nodes carry those blocks and the WASM emitter runs them once per iteration before assigning the next accumulator slots.  The local-let liveness pass removes definitions that the demanded projection or returned value does not use, preserving Lean's lazy behavior for unused fields while still avoiding repeated recursive calls in structured fold bodies.
+
 The compiler now accepts expression-position calls to the generated Nat-recursive handle by emitting an ordinary WASM call with decremented fuel.  Tail-position calls still lower to the existing loop form, so parser loops keep the efficient path when the source branch is a plain continuation.  Fuel-recursive steps that match a recursive inductive now fall back to exit-expression lowering, which allows bounded search helpers to inspect recursive AST values without treating the match as loop control.
 
 Checks run:

@@ -210,7 +210,7 @@ printf AB | wasmtime run build/stdin-except.wasm
 wasmtime run build/argv-except.wasm alpha omega
 ```
 
-`LeanExe.Examples.JsonTreeCommand` demonstrates a two-command JSON pipeline.  `makeTree` reads a JSON array from stdin, parses it through the ASCII JSON AST parser, and writes a binary-search tree as JSON.  `searchTree` reads that JSON tree from stdin, parses it through the same AST parser, reads the search key from argv, and writes a JSON boolean result.
+`LeanExe.Examples.JsonTreeCommand` demonstrates a two-command JSON pipeline.  `makeTree` reads a JSON array from stdin, parses it through the ASCII JSON AST parser, and writes a binary-search tree as JSON.  `searchTree` reads that JSON tree from stdin, parses it through the same AST parser, decodes it into the source-level `Tree` type, reads the search key from argv, and writes a JSON boolean result.
 
 ```sh
 printf '%s' '[1,6,4,100,33,5,5,20]' \
