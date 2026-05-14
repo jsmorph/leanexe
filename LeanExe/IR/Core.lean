@@ -51,6 +51,7 @@ mutual
     | ite (cond : Cond) (thenValue elseValue : Expr)
     | letE (slot : Nat) (value body : Expr)
     | letCall (slots : List Nat) (index : Nat) (args : List Expr) (body : Expr)
+    | letLets (lets : List LocalLet) (body : Expr)
     | arrayAllocSlots (width : Nat) (cells : Expr)
     | heapAllocSlots (values : List Expr)
     | heapLoadSlot (ptr : Expr) (slot : Nat)
@@ -66,7 +67,7 @@ mutual
         (bodyValues : List Expr)
     | arrayFoldMultiSlot (sourceWidth resultWidth : Nat) (array start stop : Expr)
         (initValues : List Expr) (accStart itemStart : Nat) (bodyValues : List Expr)
-        (bodyDone : Expr) (resultSlot : Nat)
+        (bodyLets : List LocalLet) (bodyDone : Expr) (resultSlot : Nat)
     | arrayFindIdxSlots (sourceWidth : Nat) (array : Expr) (itemStart : Nat)
         (predicate : Expr) (returnPayload : Bool)
     | arrayFindSlot (sourceWidth : Nat) (array : Expr) (itemStart : Nat)
@@ -90,10 +91,10 @@ mutual
         (returnPayload : Bool)
     | byteArrayFoldMultiSlot (resultWidth : Nat) (ptr len start stop : Expr)
         (initValues : List Expr) (accStart byteSlot : Nat) (bodyValues : List Expr)
-        (bodyDone : Expr) (resultSlot : Nat)
+        (bodyLets : List LocalLet) (bodyDone : Expr) (resultSlot : Nat)
     | rangeFoldMultiSlot (resultWidth : Nat) (start stop step : Expr)
         (initValues : List Expr) (accStart itemSlot : Nat) (bodyValues : List Expr)
-        (bodyDone : Expr) (resultSlot : Nat)
+        (bodyLets : List LocalLet) (bodyDone : Expr) (resultSlot : Nat)
     | heapLinearPredicate (ptr : Expr)
         (continueTag fieldSlotCount recursiveFieldOffset fieldStart : Nat)
         (predicate : Expr) (stopWhenTrue terminalValue : Bool)
@@ -110,6 +111,13 @@ mutual
     | and (left right : Cond)
     | or (left right : Cond)
     deriving BEq, Repr
+
+  inductive LocalLet where
+    | expr (slot : Nat) (value : Expr)
+    | call (slots : List Nat) (index : Nat) (args : List Expr)
+    | slots (slots : List Nat) (values : List Expr)
+    | branch (cond : Cond) (thenLets elseLets : List LocalLet)
+    deriving BEq, Repr
 end
 
 mutual
@@ -119,13 +127,13 @@ mutual
     | call (slots : List Nat) (index : Nat) (args : List Expr)
     | arrayFoldMultiSlotAssign (sourceWidth resultWidth : Nat) (array start stop : Expr)
         (initValues : List Expr) (accStart itemStart : Nat) (bodyValues : List Expr)
-        (bodyDone : Expr) (targets : List Nat)
+        (bodyLets : List LocalLet) (bodyDone : Expr) (targets : List Nat)
     | byteArrayFoldMultiSlotAssign (resultWidth : Nat) (ptr len start stop : Expr)
         (initValues : List Expr) (accStart byteSlot : Nat) (bodyValues : List Expr)
-        (bodyDone : Expr) (targets : List Nat)
+        (bodyLets : List LocalLet) (bodyDone : Expr) (targets : List Nat)
     | rangeFoldMultiSlotAssign (resultWidth : Nat) (start stop step : Expr)
         (initValues : List Expr) (accStart itemSlot : Nat) (bodyValues : List Expr)
-        (bodyDone : Expr) (targets : List Nat)
+        (bodyLets : List LocalLet) (bodyDone : Expr) (targets : List Nat)
     | ite (cond : Cond) (thenStmt elseStmt : Stmt)
     | seq (first second : Stmt)
     | while (cond : Cond) (body : Stmt)
@@ -191,6 +199,7 @@ mutual
             (fun current item => current.set item.fst item.snd)
             store
         body.eval module_ callStore
+    | .letLets lets body => body.eval module_ (evalLocalLets module_ lets store)
     | .arrayAllocSlots _ _ => 0
     | .heapAllocSlots _ => 0
     | .heapLoadSlot _ _ => 0
@@ -203,10 +212,15 @@ mutual
     | .arrayAppendSlots _ left _ => left.eval module_ store
     | .arrayExtractSlots _ array _ _ => array.eval module_ store
     | .arrayMapSlots _ _ array _ _ => array.eval module_ store
-    | .arrayFoldMultiSlot _ _ _ _ _ initValues _ _ _ _ resultSlot =>
-        match initValues[resultSlot]? with
-        | some init => init.eval module_ store
-        | none => 0
+    | .arrayFoldMultiSlot sourceWidth resultWidth array start stop initValues accStart itemStart
+        bodyValues bodyLets bodyDone resultSlot =>
+        let resultStore :=
+          evalCountedFold module_ resultWidth initValues accStart itemStart sourceWidth
+            (fun _index => 0)
+            (start.eval module_ store)
+            (min (stop.eval module_ store) ((.arraySize array : Expr).eval module_ store))
+            1 bodyValues bodyLets bodyDone store
+        resultStore (accStart + resultSlot)
     | .arrayFindIdxSlots _ _ _ _ _ => 0
     | .arrayFindSlot _ _ _ _ _ => 0
     | .arrayAnySlots _ _ _ _ _ _ forAll => if forAll then 1 else 0
@@ -222,14 +236,23 @@ mutual
     | .byteArrayFromArrayPtr array => array.eval module_ store
     | .byteArrayCopySlicePtr _ _ _ destPtr _ _ _ => destPtr.eval module_ store
     | .byteArrayFindIdx _ _ _ _ _ _ => 0
-    | .byteArrayFoldMultiSlot _ _ _ _ _ initValues _ _ _ _ resultSlot =>
-        match initValues[resultSlot]? with
-        | some init => init.eval module_ store
-        | none => 0
-    | .rangeFoldMultiSlot _ _ _ _ initValues _ _ _ _ resultSlot =>
-        match initValues[resultSlot]? with
-        | some init => init.eval module_ store
-        | none => 0
+    | .byteArrayFoldMultiSlot resultWidth _ptr len start stop initValues accStart byteSlot
+        bodyValues bodyLets bodyDone resultSlot =>
+        let resultStore :=
+          evalCountedFold module_ resultWidth initValues accStart byteSlot 1
+            (fun _index => 0)
+            (start.eval module_ store)
+            (min (stop.eval module_ store) (len.eval module_ store))
+            1 bodyValues bodyLets bodyDone store
+        resultStore (accStart + resultSlot)
+    | .rangeFoldMultiSlot resultWidth start stop step initValues accStart itemSlot bodyValues
+        bodyLets bodyDone resultSlot =>
+        let resultStore :=
+          evalCountedFold module_ resultWidth initValues accStart itemSlot 1
+            (fun index => index)
+            (start.eval module_ store) (stop.eval module_ store) (step.eval module_ store)
+            bodyValues bodyLets bodyDone store
+        resultStore (accStart + resultSlot)
     | .heapLinearPredicate _ _ _ _ _ _ _ terminalValue => if terminalValue then 1 else 0
     | .call index args =>
         match module_.getFunc? index with
@@ -246,6 +269,78 @@ mutual
     | .and left right => left.eval module_ store && right.eval module_ store
     | .or left right => left.eval module_ store || right.eval module_ store
 
+  partial def assignValues (module_ : Module) (targets : List Nat) (values : List Expr)
+      (store : Store) : Store :=
+    (targets.zip values).foldl
+      (fun current item => current.set item.fst (item.snd.eval module_ current))
+      store
+
+  partial def setSlotsToZero (start width : Nat) (store : Store) : Store :=
+    (List.range width).foldl
+      (fun current offset => current.set (start + offset) 0)
+      store
+
+  partial def setSlotsFromValues (start : Nat) (values : List UInt64) (store : Store) :
+      Store :=
+    (List.range values.length).zip values |>.foldl
+      (fun current item => current.set (start + item.fst) item.snd)
+      store
+
+  partial def evalLocalLet (module_ : Module) (localLet : LocalLet) (store : Store) :
+      Store :=
+    match localLet with
+    | .expr slot value => store.set slot (value.eval module_ store)
+    | .call slots index args =>
+        let results :=
+          match module_.getFunc? index with
+          | some func => func.evalResults module_ (args.map (fun arg => arg.eval module_ store))
+          | none => []
+        (slots.zip results).foldl (fun current item => current.set item.fst item.snd) store
+    | .slots slots values => assignValues module_ slots values store
+    | .branch cond thenLets elseLets =>
+        if cond.eval module_ store then
+          evalLocalLets module_ thenLets store
+        else
+          evalLocalLets module_ elseLets store
+
+  partial def evalLocalLets (module_ : Module) (lets : List LocalLet) (store : Store) :
+      Store :=
+    lets.foldl (fun current localLet => evalLocalLet module_ localLet current) store
+
+  partial def evalCountedFold
+      (module_ : Module)
+      (resultWidth : Nat)
+      (initValues : List Expr)
+      (accStart itemStart itemWidth : Nat)
+      (itemValue : UInt64 → UInt64)
+      (start stop step : UInt64)
+      (bodyValues : List Expr)
+      (bodyLets : List LocalLet)
+      (bodyDone : Expr)
+      (store : Store) : Store :=
+    let initStore :=
+      assignValues module_ ((List.range resultWidth).map fun offset => accStart + offset)
+        initValues store
+    let rec loop : Nat → UInt64 → Store → Store
+      | 0, _, current => current
+      | fuel + 1, index, current =>
+          if index >= stop then
+            current
+          else
+            let itemStore :=
+              if itemWidth == 1 then
+                current.set itemStart (itemValue index)
+              else
+                setSlotsToZero itemStart itemWidth current
+            let letStore := evalLocalLets module_ bodyLets itemStore
+            let nextValues := bodyValues.map fun value => value.eval module_ letStore
+            let nextStore := setSlotsFromValues accStart nextValues letStore
+            if bodyDone.eval module_ letStore != 0 || step == 0 then
+              nextStore
+            else
+              loop fuel (index + step) nextStore
+    loop 1000000 start initStore
+
   partial def Stmt.eval (module_ : Module) : Stmt → Store → Store
     | .skip, store => store
     | .assign index value, store => store.set index (value.eval module_ store)
@@ -255,17 +350,37 @@ mutual
           | some func => func.evalResults module_ (args.map (fun arg => arg.eval module_ store))
           | none => []
         (slots.zip results).foldl (fun current item => current.set item.fst item.snd) store
-    | .arrayFoldMultiSlotAssign _ _ _ _ _ initValues _ _ _ _ targets, store =>
-        (targets.zip (initValues.map (fun value => value.eval module_ store))).foldl
-          (fun current item => current.set item.fst item.snd)
+    | .arrayFoldMultiSlotAssign sourceWidth resultWidth array start stop initValues accStart
+        itemStart bodyValues bodyLets bodyDone targets, store =>
+        let resultStore :=
+          evalCountedFold module_ resultWidth initValues accStart itemStart sourceWidth
+            (fun _index => 0)
+            (start.eval module_ store)
+            (min (stop.eval module_ store) ((.arraySize array : Expr).eval module_ store))
+            1 bodyValues bodyLets bodyDone store
+        (targets.zip (List.range resultWidth)).foldl
+          (fun current item => current.set item.fst (resultStore (accStart + item.snd)))
           store
-    | .byteArrayFoldMultiSlotAssign _ _ _ _ _ initValues _ _ _ _ targets, store =>
-        (targets.zip (initValues.map (fun value => value.eval module_ store))).foldl
-          (fun current item => current.set item.fst item.snd)
+    | .byteArrayFoldMultiSlotAssign resultWidth _ptr len start stop initValues accStart byteSlot
+        bodyValues bodyLets bodyDone targets, store =>
+        let resultStore :=
+          evalCountedFold module_ resultWidth initValues accStart byteSlot 1
+            (fun _index => 0)
+            (start.eval module_ store)
+            (min (stop.eval module_ store) (len.eval module_ store))
+            1 bodyValues bodyLets bodyDone store
+        (targets.zip (List.range resultWidth)).foldl
+          (fun current item => current.set item.fst (resultStore (accStart + item.snd)))
           store
-    | .rangeFoldMultiSlotAssign _ _ _ _ initValues _ _ _ _ targets, store =>
-        (targets.zip (initValues.map (fun value => value.eval module_ store))).foldl
-          (fun current item => current.set item.fst item.snd)
+    | .rangeFoldMultiSlotAssign resultWidth start stop step initValues accStart itemSlot bodyValues
+        bodyLets bodyDone targets, store =>
+        let resultStore :=
+          evalCountedFold module_ resultWidth initValues accStart itemSlot 1
+            (fun index => index)
+            (start.eval module_ store) (stop.eval module_ store) (step.eval module_ store)
+            bodyValues bodyLets bodyDone store
+        (targets.zip (List.range resultWidth)).foldl
+          (fun current item => current.set item.fst (resultStore (accStart + item.snd)))
           store
     | .ite cond thenStmt elseStmt, store =>
         if cond.eval module_ store then
