@@ -267,6 +267,15 @@ const accepted = [
     expected: [null, 2n],
     memoryBytes: [{ resultIndex: 0, lengthIndex: 1, values: [1, 2] }],
   },
+  { name: "byteArrayArrayReadSize", args: [], expected: 12n },
+  { name: "byteArrayArrayFoldSize", args: [], expected: 6n },
+  {
+    name: "byteArrayArrayFoldAppend",
+    args: [],
+    expected: [null, 6n],
+    memoryBytes: [{ resultIndex: 0, lengthIndex: 1, values: [65, 66, 67, 68, 69, 70] }],
+  },
+  { name: "byteArrayFieldStructureArrayFold", args: [], expected: 6n },
   {
     name: "byteArrayFoldByteOutputState",
     args: [],
@@ -724,6 +733,14 @@ const rejected = [
   {
     name: "rejectNestedArrayParam",
     message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectNestedArrayParam",
+  },
+  {
+    name: "rejectByteArrayArrayReturn",
+    message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectByteArrayArrayReturn",
+  },
+  {
+    name: "rejectByteArrayArrayParam",
+    message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectByteArrayArrayParam",
   },
   {
     name: "rejectArrayBoxArrayReturn",

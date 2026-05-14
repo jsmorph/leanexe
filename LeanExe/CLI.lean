@@ -21,6 +21,7 @@ def usage : String :=
     "  lean-wasm compile-wasi --module <module> --entry <name> --out <path>",
     "  lean-wasm compile-wasi-stdin --max-input-bytes <n> --module <module> --entry <name> --out <path>",
     "  lean-wasm compile-wasi-stdin-except --max-input-bytes <n> --module <module> --entry <name> --out <path>",
+    "  lean-wasm compile-wasi-argv-except --max-args <n> --max-argv-bytes <n> --module <module> --entry <name> --out <path>",
     "  lean-wasm collatz-eval --input <n>",
     "  lean-wasm collatz-bench --input <n> --iters <n>",
     "",
@@ -184,6 +185,27 @@ def main : List String → IO UInt32
               throw <| IO.userError error
           return 0
       | .error error =>
+          IO.eprintln error
+          return 2
+  | ["compile-wasi-argv-except", "--max-args", maxArgs, "--max-argv-bytes", maxArgBytes,
+      "--module", moduleName, "--entry", entryName, "--out", out] => do
+      match parseNatArg maxArgs, parseNatArg maxArgBytes with
+      | .ok maxArgsValue, .ok maxArgBytesValue =>
+          let entry := LeanExe.Extract.Env.parseName entryName
+          match LeanExe.Wasm.Binary.CoreWasm.wasiArgvExceptModuleBytes
+              maxArgsValue
+              maxArgBytesValue
+              entry
+              (← LeanExe.Extract.Core.compileArgvExceptProgram moduleName entryName) with
+          | .ok bytes =>
+              writeBytes out bytes
+          | .error error =>
+              throw <| IO.userError error
+          return 0
+      | .error error, _ =>
+          IO.eprintln error
+          return 2
+      | _, .error error =>
           IO.eprintln error
           return 2
   | ["collatz-eval", "--input", input] => do

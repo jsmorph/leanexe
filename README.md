@@ -153,6 +153,17 @@ Use `compile-wasi-stdin-except` when the pure entry reports failure explicitly. 
   --out build/stdin-except.wasm
 ```
 
+Use `compile-wasi-argv-except` for command arguments.  The selected entry must have type `Array ByteArray -> Except ByteArray ByteArray`.  The generated `_start` reads WASI arguments through `args_sizes_get` and `args_get`, skips `argv[0]`, builds an internal `Array ByteArray` containing the user arguments, and applies the same stdout, stderr, and exit-status rules as `compile-wasi-stdin-except`.  `--max-args` limits user arguments.  `--max-argv-bytes` limits the WASI argument buffer, including `argv[0]` and NUL terminators.
+
+```sh
+.lake/build/bin/lean-wasm compile-wasi-argv-except \
+  --max-args 16 \
+  --max-argv-bytes 4096 \
+  --module LeanExe.Examples.ByteArrayPrograms \
+  --entry LeanExe.Examples.ByteArrayPrograms.argvFirstLast \
+  --out build/argv-except.wasm
+```
+
 ## Run
 
 Scalar parameters and scalar results use WASM `i64`.  `Bool` uses `0` for false and `1` for true.  `Nat` values must fit in the compiler's bounded `i64` representation.
@@ -184,6 +195,7 @@ A WASI command module runs through Wasmtime without `--invoke`.  The stdout mode
 wasmtime run build/stdout.wasm
 printf AB | wasmtime run build/stdin-stdout.wasm
 printf AB | wasmtime run build/stdin-except.wasm
+wasmtime run build/argv-except.wasm alpha omega
 ```
 
 ## Host Memory Values
@@ -210,13 +222,13 @@ const ok = instance.exports.validateGeneric(BigInt(ptr), BigInt(input.length));
 console.log(ok === 1n ? "accepted" : "rejected");
 ```
 
-Fixed-width arrays use the compiler's arena layout.  Scalar values occupy one slot, products and fixed-width structures or tagged values occupy their flattened slot count, and heap-backed internal values such as nested arrays and recursive inductives occupy one pointer slot.  Structure values flatten field-by-field at the ABI boundary, while nonrecursive inductive values flatten to a constructor tag followed by payload slots.  Recursive inductive values are supported as internal values, including recursive pointer fields inside internal fixed-width structures and tagged values, mutual-family pointers, monomorphic `List UInt64` construction, matching, direct traversal over one or more direct recursive fields, mutual structural traversal over recursive-family members, source-defined list builders such as append and reverse, generated array-child traversal, explicit-accumulator `List.foldl` helpers, top-level closed `List.foldl` bodies with one hidden accumulator, closed structural predicates such as direct `List.any` and `List.all`, direct expression-position `List.length`, list append notation through `++`, `List.reverse`, `List.map`, `List.filter`, and `List.foldr` with closed direct-lambda callbacks, and limited direct-lambda helper calls to `List.map`, `List.filter`, `List.find?`, and `List.any`, but entry parameters and entry results cannot expose recursive data or nested arrays through the host ABI.
+Fixed-width arrays use the compiler's arena layout.  Scalar values occupy one slot, `ByteArray` elements occupy pointer and length slots, products and fixed-width structures or tagged values occupy their flattened slot count, and heap-backed internal values such as nested arrays and recursive inductives occupy one pointer slot.  Structure values flatten field-by-field at the ABI boundary, while nonrecursive inductive values flatten to a constructor tag followed by payload slots.  Recursive inductive values are supported as internal values, including recursive pointer fields inside internal fixed-width structures and tagged values, mutual-family pointers, monomorphic `List UInt64` construction, matching, direct traversal over one or more direct recursive fields, mutual structural traversal over recursive-family members, source-defined list builders such as append and reverse, generated array-child traversal, explicit-accumulator `List.foldl` helpers, top-level closed `List.foldl` bodies with one hidden accumulator, closed structural predicates such as direct `List.any` and `List.all`, direct expression-position `List.length`, list append notation through `++`, `List.reverse`, `List.map`, `List.filter`, and `List.foldr` with closed direct-lambda callbacks, and limited direct-lambda helper calls to `List.map`, `List.filter`, `List.find?`, and `List.any`, but entry parameters and entry results cannot expose recursive data, byte-array arrays, or nested arrays through the host ABI.
 
 ## Supported Lean
 
 The supported subset is practical but restricted.  Programs should use concrete, first-order definitions with no runtime-polymorphic functions or type-class resolution at the entry boundary.  Helper definitions may be separate Lean declarations as long as the compiler can classify every reachable dependency.
 
-Supported values include `Unit`, `Bool`, `UInt8`, `UInt32`, `UInt64`, bounded `Nat`, `ByteArray`, `LeanExe.AsciiString`, `Array`, products, internal `PSum`, user-defined structures, user-defined inductives, `Option`, `Except`, monomorphic self-recursive inductives, mutual recursive inductive families, and monomorphic recursive instances such as `List UInt64`.  `UInt8` and `UInt32` may appear at the public entry boundary as one-slot scalar values, where inputs and outputs are reduced modulo their fixed width.  Internal arrays may store nested arrays, products, recursive-inductive pointer fields, and fixed-width structures or tagged values containing those pointers.  `LeanExe.AsciiString` is a one-field structure over `ByteArray` with explicit validation helpers for the ASCII invariant.  Restricted compile-time ASCII `String` expressions may be converted to bytes with `.toUTF8`, measured with `.length`, tested with `.isEmpty`, and compared with `==` or `!=`.
+Supported values include `Unit`, `Bool`, `UInt8`, `UInt32`, `UInt64`, bounded `Nat`, `ByteArray`, `LeanExe.AsciiString`, `Array`, products, internal `PSum`, user-defined structures, user-defined inductives, `Option`, `Except`, monomorphic self-recursive inductives, mutual recursive inductive families, and monomorphic recursive instances such as `List UInt64`.  `UInt8` and `UInt32` may appear at the public entry boundary as one-slot scalar values, where inputs and outputs are reduced modulo their fixed width.  Internal arrays may store byte arrays, nested arrays, products, recursive-inductive pointer fields, and fixed-width structures or tagged values containing those pointers.  `LeanExe.AsciiString` is a one-field structure over `ByteArray` with explicit validation helpers for the ASCII invariant.  Restricted compile-time ASCII `String` expressions may be converted to bytes with `.toUTF8`, measured with `.length`, tested with `.isEmpty`, and compared with `==` or `!=`.
 
 Supported control flow includes `let`, direct calls, `if`, pattern matching, pure `do` notation, bounded tail recursion over an explicit `Nat` fuel argument, direct structural recursion over recursive inductives, mutual structural recursion over recursive-family members, expression-position structural recursion with supported first-order post-arguments, a top-level closed `List.foldl` shape with one hidden accumulator, closed structural predicates for direct `List.any` and `List.all`, generated `Array`-child recursion, inline-specialized first-order polymorphic helpers, and selected direct-lambda library calls that specialize to first-order code.  Unsupported features include shared generic runtime functions, type classes, higher-order functions, closures, full `IO`, runtime `String`, runtime `Char`, arbitrary Lean and Std library functions, hidden carried arguments outside the accepted expression-position, closed structural-fold, structural-predicate, generated array-descent, mutual recursion outside the nested `PSum` shapes described in the specification, `unsafe`, `partial`, unbounded natural-number arithmetic, course-of-values recursion, exported recursive data structures, public nested arrays, and public arrays of recursive values.  These features remain outside the accepted language even when Lean accepts the source file.
 

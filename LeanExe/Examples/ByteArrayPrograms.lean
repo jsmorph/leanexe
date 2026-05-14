@@ -160,4 +160,12 @@ def copyShortSource : ByteArray :=
 def tailSlice (input : ByteArray) : ByteArray :=
   input.extract 1 input.size
 
+def argvFirstLast (args : Array ByteArray) : Except ByteArray ByteArray :=
+  if args.isEmpty then
+    Except.error "missing".toUTF8
+  else
+    let first := args[0]!
+    let last := args[args.size - 1]!
+    Except.ok ((first ++ ":".toUTF8) ++ last)
+
 end LeanExe.Examples.ByteArrayPrograms
