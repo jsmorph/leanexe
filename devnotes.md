@@ -2751,6 +2751,19 @@ Checks run:
 
 - [x] `lake build`
 - [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 558 accepted, 34 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 46 json program cases`, and `checked 56 cases`.
+
+## 2026-05-14: ByteArray loop and fold accumulators
+
+`ByteArray` now participates in the shared internal accumulator layout for pure `Id.run` `for` loops, `Array.foldl`, and `ByteArray.foldl`.  The representation uses the existing two-slot pointer-length value, so byte-producing loops and folds require no new WASM expression form.  Products, structures, and tagged values can carry `ByteArray` fields through the same accumulator path when their other fields are supported.
+
+The correctness corpus now covers byte-producing `ByteArray` loops, `break`, `continue`, range loops, `Array.foldl` with a `ByteArray` accumulator, `ByteArray.foldl` with a `ByteArray` accumulator, and structures that carry a `ByteArray` field as part of the accumulator.
+
+Checks run:
+
+- [x] `lake build LeanExe.Examples.Correctness`
+- [x] `lake build lean-wasm`
+- [x] `node test/core_correctness.js` returned `checked 566 accepted, 30 rejected, and 13 trapped cases`.
+- [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 566 accepted, 30 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 46 json program cases`, and `checked 56 cases`.
 - [x] `.lake/build/bin/lean-wasm compile --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.arrayFoldStructAccumulator --out .lake/build/core-correctness/arrayFoldStructAccumulator.wasmtime.wasm`
 - [x] `.lake/build/bin/lean-wasm compile --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.byteArrayFoldStatusAccumulator --out .lake/build/core-correctness/byteArrayFoldStatusAccumulator.wasmtime.wasm`
 - [x] `build/tools/wasmtime/current/wasmtime --invoke arrayFoldStructAccumulator .lake/build/core-correctness/arrayFoldStructAccumulator.wasmtime.wasm` returned `36`.
