@@ -399,6 +399,9 @@ def i64Load : List UInt8 :=
 def i32Load : List UInt8 :=
   ofNats [40, 2, 0]
 
+def i64Eq : List UInt8 :=
+  ofNats [81]
+
 def i64Store : List UInt8 :=
   ofNats [55, 3, 0]
 
@@ -410,6 +413,9 @@ def i32Load8U : List UInt8 :=
 
 def i32Store8 : List UInt8 :=
   ofNats [58, 0, 0]
+
+def i32Eq : List UInt8 :=
+  ofNats [70]
 
 def i64ExtendI32U : List UInt8 :=
   ofNats [173]
@@ -2188,6 +2194,12 @@ def wasiImportSection : List UInt8 :=
     importEntry "wasi_snapshot_preview1" "fd_write" 0
   ]
 
+def wasiStdinImportSection : List UInt8 :=
+  wasmSection 2 <| vec [
+    importEntry "wasi_snapshot_preview1" "fd_write" 0,
+    importEntry "wasi_snapshot_preview1" "fd_read" 0
+  ]
+
 def wasiTypeSection (module_ : Module) : List UInt8 :=
   wasmSection 1 <| vec (
     [funcType [i32, i32, i32, i32] [i32]] ++
@@ -2197,10 +2209,10 @@ def wasiTypeSection (module_ : Module) : List UInt8 :=
 def wasiFunctionSection (module_ : Module) : List UInt8 :=
   wasmSection 3 <| u32Vec ((List.range (module_.funcs.size + 1)).map (fun index => index + 1))
 
-def wasiExportSection (module_ : Module) : List UInt8 :=
+def wasiExportSection (module_ : Module) (importCount : Nat) : List UInt8 :=
   wasmSection 7 <| vec [
     exportEntry "memory" 2 0,
-    exportEntry "_start" 0 (module_.funcs.size + 1)
+    exportEntry "_start" 0 (module_.funcs.size + importCount)
   ]
 
 def entryFuncIndex? (module_ : Module) : Option Nat :=
@@ -2214,25 +2226,70 @@ def entryFuncIndex? (module_ : Module) : Option Nat :=
       none
   loop 0
 
-def wasiStartBody (entryIndex : Nat) : List UInt8 :=
+def wasiWriteStdout (ptrLocal lenLocal fdWriteIndex : Nat) : List UInt8 :=
+  i32Const 0 ++ localGet ptrLocal ++ i32WrapI64 ++ i32Store ++
+    i32Const 4 ++ localGet lenLocal ++ i32WrapI64 ++ i32Store ++
+    i32Const 8 ++ i32Const 0 ++ i32Store ++
+    i32Const 1 ++ i32Const 0 ++ i32Const 1 ++ i32Const 8 ++ call fdWriteIndex ++
+    ofNats [69, 4, 64] ++
+      i32Const 8 ++ i32Load ++ localGet lenLocal ++ i32WrapI64 ++ i32Eq ++
+      ofNats [4, 64, 5, 0, 11, 5, 0, 11]
+
+def wasiStdoutStartBody (entryIndex : Nat) : List UInt8 :=
   body
     (ofNats [1, 2, 126])
     (call entryIndex ++
       localSet 1 ++
       localSet 0 ++
-      i32Const 0 ++ localGet 0 ++ i32WrapI64 ++ i32Store ++
-      i32Const 4 ++ localGet 1 ++ i32WrapI64 ++ i32Store ++
-      i32Const 8 ++ i32Const 0 ++ i32Store ++
-      i32Const 1 ++ i32Const 0 ++ i32Const 1 ++ i32Const 8 ++ call 0 ++
-      ofNats [69, 4, 64] ++
-        i32Const 8 ++ i32Load ++ localGet 1 ++ i32WrapI64 ++
-        ofNats [70, 4, 64, 5, 0, 11, 5, 0, 11])
+      wasiWriteStdout 0 1 0)
 
 def wasiCodeSection (module_ : Module) (entryIndex : Nat) : List UInt8 :=
   let shifted := shiftModuleCalls 1 module_
   wasmSection 10 <| vec (
     shifted.funcs.toList.map emitFuncBody ++
-      [wasiStartBody (entryIndex + 1)])
+      [wasiStdoutStartBody (entryIndex + 1)])
+
+def wasiMemoryBytes : Nat :=
+  16 * 65536
+
+def wasiInputStart : Nat :=
+  4096
+
+def wasiMaxInputBytes : Nat :=
+  wasiMemoryBytes - wasiInputStart - 1
+
+def wasiReadStdinLoop (maxInput : Nat) : List UInt8 :=
+  ofNats [2, 64, 3, 64] ++
+    i64Const (maxInput + 1) ++ localGet 1 ++ ofNats [125] ++ localSet 2 ++
+    i32Const 0 ++ localGet 0 ++ localGet 1 ++ ofNats [124] ++ i32WrapI64 ++ i32Store ++
+    i32Const 4 ++ localGet 2 ++ i32WrapI64 ++ i32Store ++
+    i32Const 8 ++ i32Const 0 ++ i32Store ++
+    i32Const 0 ++ i32Const 0 ++ i32Const 1 ++ i32Const 8 ++ call 1 ++
+    ofNats [69, 4, 64, 5, 0, 11] ++
+    i32Const 8 ++ i32Load ++ i64ExtendI32U ++ localSet 3 ++
+    localGet 3 ++ i64Const 0 ++ i64Eq ++ ofNats [13] ++ u32leb 1 ++
+    localGet 1 ++ localGet 3 ++ ofNats [124] ++ localSet 1 ++
+    i64Const maxInput ++ localGet 1 ++ i64LtU ++ ofNats [4, 64, 0, 11] ++
+    ofNats [12] ++ u32leb 0 ++
+  ofNats [11, 11]
+
+def wasiStdinStartBody (maxInput entryIndex : Nat) : List UInt8 :=
+  body
+    (ofNats [1, 4, 126])
+    (globalGet 0 ++ localSet 0 ++
+      localGet 0 ++ i64Const (maxInput + 1) ++ ofNats [124] ++ globalSet 0 ++
+      i64Const 0 ++ localSet 1 ++
+      wasiReadStdinLoop maxInput ++
+      localGet 0 ++ localGet 1 ++ call entryIndex ++
+      localSet 1 ++
+      localSet 0 ++
+      wasiWriteStdout 0 1 0)
+
+def wasiStdinCodeSection (maxInput : Nat) (module_ : Module) (entryIndex : Nat) : List UInt8 :=
+  let shifted := shiftModuleCalls 2 module_
+  wasmSection 10 <| vec (
+    shifted.funcs.toList.map emitFuncBody ++
+      [wasiStdinStartBody maxInput (entryIndex + 2)])
 
 def wasiModuleBytes (module_ : Module) : Except String ByteArray := do
   let entryIndex ←
@@ -2245,8 +2302,25 @@ def wasiModuleBytes (module_ : Module) : Except String ByteArray := do
     ++ wasiFunctionSection module_
     ++ coreMemorySection
     ++ coreGlobalSection
-    ++ wasiExportSection module_
+    ++ wasiExportSection module_ 1
     ++ wasiCodeSection module_ entryIndex).toArray
+
+def wasiStdinModuleBytes (maxInput : Nat) (module_ : Module) : Except String ByteArray := do
+  if maxInput > wasiMaxInputBytes then
+    .error s!"max input bytes exceeds WASM memory capacity: {maxInput}"
+  else
+    let entryIndex ←
+      match entryFuncIndex? module_ with
+      | some index => .ok index
+      | none => .error "program module has no exported entry function"
+    .ok <| ByteArray.mk <| (ofNats [0, 97, 115, 109, 1, 0, 0, 0]
+      ++ wasiTypeSection module_
+      ++ wasiStdinImportSection
+      ++ wasiFunctionSection module_
+      ++ coreMemorySection
+      ++ coreGlobalSection
+      ++ wasiExportSection module_ 2
+      ++ wasiStdinCodeSection maxInput module_ entryIndex).toArray
 
 def indent (spaces : Nat) (lines : List String) : List String :=
   let pad := String.ofList (List.replicate spaces ' ')

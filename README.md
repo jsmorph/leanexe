@@ -133,6 +133,16 @@ Use `compile-wasi` for a command-style module whose selected entry takes no para
   --out build/stdout.wasm
 ```
 
+Use `compile-wasi-stdin` for a bounded stdin-to-stdout transform.  The selected entry must have type `ByteArray -> ByteArray`.  The generated `_start` reads stdin through WASI `fd_read` until EOF, traps if input exceeds `--max-input-bytes`, calls the pure Lean entry, and writes the returned bytes to stdout.
+
+```sh
+.lake/build/bin/lean-wasm compile-wasi-stdin \
+  --max-input-bytes 65536 \
+  --module LeanExe.Examples.ByteArrayPrograms \
+  --entry LeanExe.Examples.ByteArrayPrograms.appendBang \
+  --out build/stdin-stdout.wasm
+```
+
 ## Run
 
 Scalar parameters and scalar results use WASM `i64`.  `Bool` uses `0` for false and `1` for true.  `Nat` values must fit in the compiler's bounded `i64` representation.
@@ -162,6 +172,7 @@ A WASI command module runs through Wasmtime without `--invoke`.  Its observable 
 
 ```sh
 wasmtime run build/stdout.wasm
+printf AB | wasmtime run build/stdin-stdout.wasm
 ```
 
 ## Host Memory Values
