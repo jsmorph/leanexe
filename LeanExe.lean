@@ -2,6 +2,7 @@ import LeanExe.AsciiString
 import LeanExe.Ascii.Basic
 import LeanExe.Ascii.Decimal
 import LeanExe.Ascii.Json
+import LeanExe.Ascii.Json.Value
 import LeanExe.Core
 import LeanExe.CLI
 import LeanExe.Extract.Report
@@ -16,6 +17,7 @@ import LeanExe.Examples.JsonAdd
 import LeanExe.Examples.JsonCollatzLength
 import LeanExe.Examples.JsonDouble
 import LeanExe.Examples.JsonGcd
+import LeanExe.Examples.JsonTreeCommand
 import LeanExe.Examples.JsonTools
 import LeanExe.Examples.Let
 import LeanExe.Examples.Prime
