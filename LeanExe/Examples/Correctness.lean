@@ -3214,6 +3214,24 @@ def byteArrayFoldByteArrayAccumulator : ByteArray :=
     (fun acc byte => acc.push byte)
     ByteArray.empty
 
+def byteArrayArrayReadSize : Nat :=
+  let values := #["A".toUTF8, "BC".toUTF8]
+  values[0]!.size * 10 + values[1]!.size
+
+def byteArrayArrayFoldSize : Nat :=
+  let values := #["A".toUTF8, "BC".toUTF8, "DEF".toUTF8]
+  values.foldl (fun acc bytes => acc + bytes.size) 0
+
+def byteArrayArrayFoldAppend : ByteArray :=
+  let values := #["A".toUTF8, "BC".toUTF8, "DEF".toUTF8]
+  values.foldl (fun acc bytes => acc ++ bytes) ByteArray.empty
+
+def byteArrayFieldStructureArrayFold : UInt64 :=
+  let values :=
+    #[({ count := 1, bytes := "A".toUTF8 } : ByteOutputState),
+      ({ count := 2, bytes := "BC".toUTF8 } : ByteOutputState)]
+  values.foldl (fun acc state => acc + state.count + state.bytes.size.toUInt64) 0
+
 def byteArrayFoldByteOutputState : ByteOutputState :=
   (ByteArray.mk #[(1 : UInt8), (2 : UInt8), (3 : UInt8)]).foldl
     (fun acc byte => { count := acc.count + 1, bytes := acc.bytes.push byte })
@@ -3256,6 +3274,12 @@ def rejectNestedArrayReturn : Array (Array UInt64) :=
 
 def rejectNestedArrayParam (rows : Array (Array UInt64)) : UInt64 :=
   rows.size.toUInt64
+
+def rejectByteArrayArrayReturn : Array ByteArray :=
+  #["A".toUTF8]
+
+def rejectByteArrayArrayParam (values : Array ByteArray) : UInt64 :=
+  values.size.toUInt64
 
 def rejectArrayBoxArrayReturn : Array ArrayBox :=
   #[{ values := #[1, 2], count := 2 }]

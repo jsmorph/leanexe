@@ -870,7 +870,7 @@ mutual
         let payloadSlots ← arrayCtorSlots? ctors
         some (.fixed (payloadSlots + 1))
     | .recVariant _ _ => some .pointer
-    | .byteArray => none
+    | .byteArray => some (.fixed 2)
 
   partial def arrayElementSlots? (ty : Ty) : Option Nat := do
     let layout ← arrayElementLayout? ty
@@ -1954,14 +1954,14 @@ partial def flattenInternalValue (ty : Ty) (value : ExtractedValue) :
   | .u32 => scalarValue value |>.map (fun expr => [expr])
   | .u64 => scalarValue value |>.map (fun expr => [expr])
   | .nat => scalarValue value |>.map (fun expr => [expr])
+  | .byteArray => do
+      let parts ← byteArrayParts value
+      .ok [parts.fst, parts.snd]
   | .array item =>
       if supportedArrayElementType item then
         scalarValue value |>.map (fun expr => [expr])
       else
         .error s!"unsupported internal value type: {reprStr ((.array item : Ty))}"
-  | .byteArray => do
-      let parts ← byteArrayParts value
-      .ok [parts.fst, parts.snd]
   | .product left right =>
       match value with
       | .product leftValue rightValue => do
@@ -2344,6 +2344,9 @@ partial def flattenArrayElementValue
   | .u32 => scalarValue value |>.map (fun expr => [expr])
   | .u64 => scalarValue value |>.map (fun expr => [expr])
   | .nat => scalarValue value |>.map (fun expr => [expr])
+  | .byteArray => do
+      let parts ← byteArrayParts value
+      .ok [parts.fst, parts.snd]
   | .array item =>
       if supportedArrayElementType item then
         scalarValue value |>.map (fun expr => [expr])
@@ -2455,7 +2458,6 @@ partial def flattenArrayElementValue
             (← flattenArrayElementValue ty thenValue)
             (← flattenArrayElementValue ty elseValue)
       | _ => .error s!"non-inductive value used where inductive array element is required: {name}"
-  | other => .error s!"unsupported array element value type: {reprStr other}"
 
 partial def materializeStrictSlotsWith
     (flatten : ExtractedValue → Except String (List IRExpr))
@@ -2497,6 +2499,9 @@ mutual
     | .u32, slot => .ok (.scalar (.arrayGetSlot width slot array index), slot + 1)
     | .u64, slot => .ok (.scalar (.arrayGetSlot width slot array index), slot + 1)
     | .nat, slot => .ok (.scalar (.arrayGetSlot width slot array index), slot + 1)
+    | .byteArray, slot =>
+        .ok (.byteArray (.arrayGetSlot width slot array index)
+          (.arrayGetSlot width (slot + 1) array index), slot + 2)
     | .array item, slot =>
         if supportedArrayElementType item then
           .ok (.scalar (.arrayGetSlot width slot array index), slot + 1)
@@ -2520,7 +2525,6 @@ mutual
         let tag := .arrayGetSlot width slot array index
         let result ← arrayLoadCtorsAt width array index ctors (slot + 1)
         .ok (.variant name tag result.fst, result.snd)
-    | other, _ => .error s!"unsupported array element load type: {reprStr other}"
 
   partial def arrayLoadFieldsAt
       (width : Nat)
@@ -2567,6 +2571,9 @@ mutual
     | .u32, slot => .ok (.scalar (.arrayFindSlot width array itemStart predicate slot), slot + 1)
     | .u64, slot => .ok (.scalar (.arrayFindSlot width array itemStart predicate slot), slot + 1)
     | .nat, slot => .ok (.scalar (.arrayFindSlot width array itemStart predicate slot), slot + 1)
+    | .byteArray, slot =>
+        .ok (.byteArray (.arrayFindSlot width array itemStart predicate slot)
+          (.arrayFindSlot width array itemStart predicate (slot + 1)), slot + 2)
     | .array item, slot =>
         if supportedArrayElementType item then
           .ok (.scalar (.arrayFindSlot width array itemStart predicate slot), slot + 1)
@@ -2590,7 +2597,6 @@ mutual
         let tag := .arrayFindSlot width array itemStart predicate slot
         let result ← arrayFindCtorsAt width array itemStart predicate ctors (slot + 1)
         .ok (.variant name tag result.fst, result.snd)
-    | other, _ => .error s!"unsupported array find element type: {reprStr other}"
 
   partial def arrayFindFieldsAt
       (width : Nat)
@@ -2636,6 +2642,8 @@ mutual
     | .u32, slot => .ok (.scalar (.local (start + slot)), slot + 1)
     | .u64, slot => .ok (.scalar (.local (start + slot)), slot + 1)
     | .nat, slot => .ok (.scalar (.local (start + slot)), slot + 1)
+    | .byteArray, slot =>
+        .ok (.byteArray (.local (start + slot)) (.local (start + slot + 1)), slot + 2)
     | .array item, slot =>
         if supportedArrayElementType item then
           .ok (.scalar (.local (start + slot)), slot + 1)
@@ -2657,7 +2665,6 @@ mutual
         let tag := .local (start + slot)
         let result ← arrayLocalCtorsAt start ctors (slot + 1)
         .ok (.variant name tag result.fst, result.snd)
-    | other, _ => .error s!"unsupported array local element type: {reprStr other}"
 
   partial def arrayLocalFieldsAt (start : Nat) :
       List Ty → Nat → Except String (List ExtractedValue × Nat)
@@ -9571,6 +9578,7 @@ def reservedExportNames : List String :=
   ["memory", "alloc", "reset"]
 
 def extractFunction
+    (exportEntry : Bool)
     (ctx : Context)
     (entry name : Name)
     (info : ConstantInfo)
@@ -9580,7 +9588,7 @@ def extractFunction
     | some value => .ok (betaSpecializeExpr ctx.env ctx.root 32 value)
     | none => .error s!"declaration has no executable value: {name}"
   let exportName ←
-    if name == entry then
+    if exportEntry && name == entry then
       let candidate := shortExportName name
       if reservedExportNames.contains candidate then
         .error s!"entry export name is reserved by the runtime ABI: {candidate}"
@@ -9719,13 +9727,28 @@ def collectFunctionExpressionStructuralSynthetics
   else
     collectExpressionStructuralSynthetics env root reserved value synthetics
 
-def compileEnvironment (env : Environment) (moduleName entry : Name) : Except String IRModule := do
+def entryModeSignature?
+    (exportEntry : Bool)
+    (env : Environment)
+    (entry name : Name)
+    (info : ConstantInfo) :
+    Option Signature :=
+  if exportEntry && name == entry then
+    supportedEntryFunction? env info
+  else
+    supportedFunction? env info
+
+def compileEnvironmentWithEntryMode
+    (exportEntry : Bool)
+    (env : Environment)
+    (moduleName entry : Name) :
+    Except String IRModule := do
   let entryInfo ←
     match env.find? entry with
     | some info => .ok info
     | none => .error s!"entry not found: {entry}"
   let _entrySig ←
-    match supportedEntryFunction? env entryInfo with
+    match entryModeSignature? exportEntry env entry entry entryInfo with
     | some sig => .ok sig
     | none => .error s!"unsupported function type or declaration: {entry}"
   let (_, namesList) ← collectReachable env moduleName.getRoot entry [] []
@@ -9737,14 +9760,9 @@ def compileEnvironment (env : Environment) (moduleName entry : Name) : Except St
       | some info => .ok info
       | none => .error s!"declaration disappeared during extraction: {name}"
     let sig ←
-      if name == entry then
-        match supportedEntryFunction? env info with
-        | some sig => .ok sig
-        | none => .error s!"unsupported function type or declaration: {name}"
-      else
-        match supportedFunction? env info with
-        | some sig => .ok sig
-        | none => .error s!"unsupported function type or declaration: {name}"
+      match entryModeSignature? exportEntry env entry name info with
+      | some sig => .ok sig
+      | none => .error s!"unsupported function type or declaration: {name}"
     let value ←
       match info.value? with
       | some value => .ok (betaSpecializeExpr env root 32 value)
@@ -9760,16 +9778,11 @@ def compileEnvironment (env : Environment) (moduleName entry : Name) : Except St
       | some info => .ok info
       | none => .error s!"declaration disappeared during extraction: {name}"
     let sig ←
-      if name == entry then
-        match supportedEntryFunction? ctx.env info with
-        | some sig => .ok sig
-        | none => .error s!"unsupported function type or declaration: {name}"
-      else
-        match supportedFunction? ctx.env info with
-        | some sig => .ok sig
-        | none => .error s!"unsupported function type or declaration: {name}"
+      match entryModeSignature? exportEntry ctx.env entry name info with
+      | some sig => .ok sig
+      | none => .error s!"unsupported function type or declaration: {name}"
     let func ←
-      match extractFunction ctx entry name info sig with
+      match extractFunction exportEntry ctx entry name info sig with
       | .ok func => .ok func
       | .error error => .error s!"while extracting {name}: {error}"
     funcs := funcs.push func
@@ -9781,6 +9794,13 @@ def compileEnvironment (env : Environment) (moduleName entry : Name) : Except St
       | .error error => .error s!"while extracting {synth.name}: {error}"
     funcs := funcs.push func
   .ok { funcs := funcs }
+
+def compileEnvironment (env : Environment) (moduleName entry : Name) : Except String IRModule :=
+  compileEnvironmentWithEntryMode true env moduleName entry
+
+def compileInternalEntryEnvironment (env : Environment) (moduleName entry : Name) :
+    Except String IRModule :=
+  compileEnvironmentWithEntryMode false env moduleName entry
 
 def compile (moduleText entryText : String) : IO IRModule := do
   let moduleName := LeanExe.Extract.Env.parseName moduleText
@@ -9825,6 +9845,9 @@ def compileStdinProgramEnvironment (env : Environment) (moduleName entry : Name)
 def stdinExceptResultTy : Ty :=
   .variant ``Except [.byteArray, .byteArray] [[.byteArray], [.byteArray]]
 
+def argvExceptParamTy : Ty :=
+  .array .byteArray
+
 def compileStdinExceptProgramEnvironment (env : Environment) (moduleName entry : Name) :
     Except String IRModule := do
   let entryInfo ←
@@ -9839,6 +9862,21 @@ def compileStdinExceptProgramEnvironment (env : Environment) (moduleName entry :
     .error s!"program stdin-except entry must have type ByteArray -> Except ByteArray ByteArray: {entry}"
   else
     compileEnvironment env moduleName entry
+
+def compileArgvExceptProgramEnvironment (env : Environment) (moduleName entry : Name) :
+    Except String IRModule := do
+  let entryInfo ←
+    match env.find? entry with
+    | some info => .ok info
+    | none => .error s!"entry not found: {entry}"
+  let entrySig ←
+    match supportedFunction? env entryInfo with
+    | some sig => .ok sig
+    | none => .error s!"unsupported function type or declaration: {entry}"
+  if entrySig.params != [argvExceptParamTy] || entrySig.result != stdinExceptResultTy then
+    .error s!"program argv-except entry must have type Array ByteArray -> Except ByteArray ByteArray: {entry}"
+  else
+    compileInternalEntryEnvironment env moduleName entry
 
 def compileProgram (moduleText entryText : String) : IO IRModule := do
   let moduleName := LeanExe.Extract.Env.parseName moduleText
@@ -9861,6 +9899,14 @@ def compileStdinExceptProgram (moduleText entryText : String) : IO IRModule := d
   let entryName := LeanExe.Extract.Env.parseName entryText
   let env ← LeanExe.Extract.Env.loadEnvironment moduleName
   match compileStdinExceptProgramEnvironment env moduleName entryName with
+  | .ok module_ => pure module_
+  | .error error => throw <| IO.userError error
+
+def compileArgvExceptProgram (moduleText entryText : String) : IO IRModule := do
+  let moduleName := LeanExe.Extract.Env.parseName moduleText
+  let entryName := LeanExe.Extract.Env.parseName entryText
+  let env ← LeanExe.Extract.Env.loadEnvironment moduleName
+  match compileArgvExceptProgramEnvironment env moduleName entryName with
   | .ok module_ => pure module_
   | .error error => throw <| IO.userError error
 

@@ -80,6 +80,28 @@ function compileStdinExcept(moduleName, entry, maxInputBytes) {
   return out;
 }
 
+function compileArgvExcept(moduleName, entry, maxArgs, maxArgBytes) {
+  const out = path.join(outDir, `${entry}.argv-except.wasi.wasm`);
+  const result = run([
+    leanExe,
+    "compile-wasi-argv-except",
+    "--max-args",
+    maxArgs.toString(),
+    "--max-argv-bytes",
+    maxArgBytes.toString(),
+    "--module",
+    moduleName,
+    "--entry",
+    `${moduleName}.${entry}`,
+    "--out",
+    out,
+  ]);
+  if (result.status !== 0) {
+    throw new Error(outputText(result).trim() || `${entry} failed to compile`);
+  }
+  return out;
+}
+
 function expectProgram(entry, expectedBytes) {
   const wasm = compileStdout(entry);
   const result = run([wasmtime, "run", wasm]);
@@ -151,6 +173,57 @@ function expectStdinExceptError(moduleName, entry, maxInputBytes, inputBytes, ex
   const stdout = result.stdout || Buffer.alloc(0);
   if (stdout.length !== 0) {
     throw new Error(`${entry}: expected empty stdout, got ${stdout.toString("hex")}`);
+  }
+}
+
+function expectArgvExceptOk(moduleName, entry, maxArgs, maxArgBytes, args, expectedBytes) {
+  const wasm = compileArgvExcept(moduleName, entry, maxArgs, maxArgBytes);
+  const result = run([wasmtime, "run", wasm, ...args], {
+    stdio: ["ignore", "pipe", "pipe"],
+    timeout: 10000,
+  });
+  if (result.status !== 0) {
+    throw new Error(outputText(result).trim() || `${entry} failed in Wasmtime`);
+  }
+  const expected = Buffer.from(expectedBytes);
+  const actual = result.stdout || Buffer.alloc(0);
+  if (Buffer.compare(actual, expected) !== 0) {
+    throw new Error(`${entry}: expected stdout ${expected.toString("hex")}, got ${actual.toString("hex")}`);
+  }
+  const stderr = result.stderr || Buffer.alloc(0);
+  if (stderr.length !== 0) {
+    throw new Error(`${entry}: expected empty stderr, got ${stderr.toString("hex")}`);
+  }
+}
+
+function expectArgvExceptError(moduleName, entry, maxArgs, maxArgBytes, args, expectedBytes) {
+  const wasm = compileArgvExcept(moduleName, entry, maxArgs, maxArgBytes);
+  const result = run([wasmtime, "run", wasm, ...args], {
+    stdio: ["ignore", "pipe", "pipe"],
+    timeout: 10000,
+  });
+  if (result.status !== 1) {
+    throw new Error(outputText(result).trim() || `${entry} should have exited with status 1`);
+  }
+  const expected = Buffer.from(expectedBytes);
+  const actual = result.stderr || Buffer.alloc(0);
+  if (Buffer.compare(actual, expected) !== 0) {
+    throw new Error(`${entry}: expected stderr ${expected.toString("hex")}, got ${actual.toString("hex")}`);
+  }
+  const stdout = result.stdout || Buffer.alloc(0);
+  if (stdout.length !== 0) {
+    throw new Error(`${entry}: expected empty stdout, got ${stdout.toString("hex")}`);
+  }
+}
+
+function expectArgvTrap(moduleName, entry, maxArgs, maxArgBytes, args) {
+  const wasm = compileArgvExcept(moduleName, entry, maxArgs, maxArgBytes);
+  const result = run([wasmtime, "run", wasm, ...args], {
+    stdio: ["ignore", "pipe", "pipe"],
+    timeout: 10000,
+  });
+  if (result.status === 0) {
+    throw new Error(`${entry} succeeded but should have trapped`);
   }
 }
 
@@ -226,6 +299,30 @@ function expectStdinExceptReject(moduleName, entry, maxInputBytes, message) {
   }
 }
 
+function expectArgvExceptReject(moduleName, entry, maxArgs, maxArgBytes, message) {
+  const out = path.join(outDir, `${entry}.reject.argv-except.wasi.wasm`);
+  const result = run([
+    leanExe,
+    "compile-wasi-argv-except",
+    "--max-args",
+    maxArgs.toString(),
+    "--max-argv-bytes",
+    maxArgBytes.toString(),
+    "--module",
+    moduleName,
+    "--entry",
+    `${moduleName}.${entry}`,
+    "--out",
+    out,
+  ]);
+  if (result.status === 0) {
+    throw new Error(`${entry} compiled but should have failed`);
+  }
+  if (!outputText(result).includes(message)) {
+    throw new Error(`${entry}: expected rejection containing "${message}"`);
+  }
+}
+
 function main() {
   if (!fs.existsSync(wasmtime)) {
     throw new Error(`wasmtime not found: ${wasmtime}`);
@@ -243,6 +340,11 @@ function main() {
   expectStdinTrap(correctnessModule, "byteArrayIdentityReturn", 8, [65, 66, 67, 68, 69, 70, 71, 72, 73]);
   expectStdinExceptOk(correctnessModule, "byteArrayExceptBangOrError", 8, [65, 66], [65, 66, 33]);
   expectStdinExceptError(correctnessModule, "byteArrayExceptBangOrError", 8, [], [101, 109, 112, 116, 121]);
+  expectArgvExceptOk(byteArrayModule, "argvFirstLast", 4, 1024, ["alpha", "omega"], [
+    97, 108, 112, 104, 97, 58, 111, 109, 101, 103, 97,
+  ]);
+  expectArgvExceptError(byteArrayModule, "argvFirstLast", 4, 1024, [], [109, 105, 115, 115, 105, 110, 103]);
+  expectArgvTrap(byteArrayModule, "argvFirstLast", 1, 1024, ["one", "two"]);
 
   expectReject("byteArrayPushSize", "program entry must return ByteArray");
   expectReject("byteArrayBranchHelperReturn", "program entry must take no parameters");
@@ -264,8 +366,22 @@ function main() {
     8,
     "program stdin-except entry must have type ByteArray -> Except ByteArray ByteArray"
   );
+  expectArgvExceptReject(
+    correctnessModule,
+    "byteArrayIdentityReturn",
+    4,
+    1024,
+    "program argv-except entry must have type Array ByteArray -> Except ByteArray ByteArray"
+  );
+  expectArgvExceptReject(
+    byteArrayModule,
+    "argvFirstLast",
+    60000,
+    60000,
+    "max argv storage exceeds WASM memory capacity"
+  );
 
-  process.stdout.write("checked 9 WASI program cases, 1 stdin trap, and 5 rejections\n");
+  process.stdout.write("checked 11 WASI program cases, 2 traps, and 7 rejections\n");
 }
 
 try {

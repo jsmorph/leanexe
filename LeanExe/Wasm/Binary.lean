@@ -2207,8 +2207,19 @@ def wasiStdinExceptImportSection : List UInt8 :=
     importEntry "wasi_snapshot_preview1" "proc_exit" 1
   ]
 
+def wasiArgvExceptImportSection : List UInt8 :=
+  wasmSection 2 <| vec [
+    importEntry "wasi_snapshot_preview1" "fd_write" 0,
+    importEntry "wasi_snapshot_preview1" "args_sizes_get" 1,
+    importEntry "wasi_snapshot_preview1" "args_get" 1,
+    importEntry "wasi_snapshot_preview1" "proc_exit" 2
+  ]
+
 def wasiFdIoType : List UInt8 :=
   funcType [i32, i32, i32, i32] [i32]
+
+def wasiArgsType : List UInt8 :=
+  funcType [i32, i32] [i32]
 
 def wasiProcExitType : List UInt8 :=
   funcType [i32] []
@@ -2243,6 +2254,17 @@ def entryFuncIndex? (module_ : Module) : Option Nat :=
   let rec loop (index : Nat) : Option Nat :=
     if h : index < module_.funcs.size then
       if module_.funcs[index].exportName.isSome then
+        some index
+      else
+        loop (index + 1)
+    else
+      none
+  loop 0
+
+def funcIndexBySourceName? (module_ : Module) (sourceName : Lean.Name) : Option Nat :=
+  let rec loop (index : Nat) : Option Nat :=
+    if h : index < module_.funcs.size then
+      if module_.funcs[index].sourceName == sourceName then
         some index
       else
         loop (index + 1)
@@ -2285,6 +2307,12 @@ def wasiInputStart : Nat :=
 def wasiMaxInputBytes : Nat :=
   wasiMemoryBytes - wasiInputStart - 1
 
+def wasiMaxReservedBytes : Nat :=
+  wasiMemoryBytes - wasiInputStart
+
+def wasiArgvReservedBytes (maxArgs maxArgBytes : Nat) : Nat :=
+  8 + maxArgs * 16 + (maxArgs + 1) * 4 + maxArgBytes
+
 def wasiReadStdinLoop (maxInput : Nat) : List UInt8 :=
   ofNats [2, 64, 3, 64] ++
     i64Const (maxInput + 1) ++ localGet 1 ++ ofNats [125] ++ localSet 2 ++
@@ -2298,7 +2326,47 @@ def wasiReadStdinLoop (maxInput : Nat) : List UInt8 :=
     localGet 1 ++ localGet 3 ++ ofNats [124] ++ localSet 1 ++
     i64Const maxInput ++ localGet 1 ++ i64LtU ++ ofNats [4, 64, 0, 11] ++
     ofNats [12] ++ u32leb 0 ++
-  ofNats [11, 11]
+      ofNats [11, 11]
+
+def wasiReadArgvArray (maxArgs maxArgBytes : Nat) : List UInt8 :=
+  let arrayBytes := 8 + maxArgs * 16
+  let tableBytes := (maxArgs + 1) * 4
+  let reservedBytes := wasiArgvReservedBytes maxArgs maxArgBytes
+  globalGet 0 ++ localSet 0 ++
+    localGet 0 ++ i64Const arrayBytes ++ ofNats [124] ++ localSet 1 ++
+    localGet 1 ++ i64Const tableBytes ++ ofNats [124] ++ localSet 2 ++
+    localGet 0 ++ i64Const reservedBytes ++ ofNats [124] ++ globalSet 0 ++
+    i32Const 16 ++ i32Const 20 ++ call 1 ++
+    ofNats [69, 4, 64, 5, 0, 11] ++
+    i32Const 16 ++ i32Load ++ i64ExtendI32U ++ localSet 3 ++
+    i32Const 20 ++ i32Load ++ i64ExtendI32U ++ localSet 4 ++
+    i64Const (maxArgs + 1) ++ localGet 3 ++ i64LtU ++ ofNats [4, 64, 0, 11] ++
+    i64Const maxArgBytes ++ localGet 4 ++ i64LtU ++ ofNats [4, 64, 0, 11] ++
+    localGet 3 ++ i64Const 0 ++ i64Eq ++ ofNats [4, 64] ++
+      i64Const 0 ++ localSet 5 ++
+    ofNats [5] ++
+      localGet 3 ++ i64Const 1 ++ ofNats [125] ++ localSet 5 ++
+    ofNats [11] ++
+    localGet 0 ++ i32WrapI64 ++ localGet 5 ++ i64Store ++
+    localGet 1 ++ i32WrapI64 ++ localGet 2 ++ i32WrapI64 ++ call 2 ++
+    ofNats [69, 4, 64, 5, 0, 11] ++
+    i64Const 0 ++ localSet 6 ++
+    ofNats [2, 64, 3, 64] ++
+      localGet 6 ++ localGet 5 ++ i64GeU ++ ofNats [13] ++ u32leb 1 ++
+      localGet 1 ++ localGet 6 ++ i64Const 1 ++ ofNats [124] ++ i64Const 4 ++ ofNats [126, 124] ++
+        i32WrapI64 ++ i32Load ++ i64ExtendI32U ++ localSet 7 ++
+      i64Const 0 ++ localSet 8 ++
+      ofNats [2, 64, 3, 64] ++
+        localGet 7 ++ localGet 8 ++ ofNats [124] ++ i32WrapI64 ++ i32Load8U ++
+          ofNats [69, 13] ++ u32leb 1 ++
+        localGet 8 ++ i64Const 1 ++ ofNats [124] ++ localSet 8 ++
+        ofNats [12] ++ u32leb 0 ++
+      ofNats [11, 11] ++
+      arraySlotAddress 2 0 (localGet 0) (localGet 6) ++ localGet 7 ++ i64Store ++
+      arraySlotAddress 2 1 (localGet 0) (localGet 6) ++ localGet 8 ++ i64Store ++
+      localGet 6 ++ i64Const 1 ++ ofNats [124] ++ localSet 6 ++
+      ofNats [12] ++ u32leb 0 ++
+    ofNats [11, 11]
 
 def wasiStdinStartBody (maxInput entryIndex : Nat) : List UInt8 :=
   body
@@ -2334,6 +2402,25 @@ def wasiStdinExceptStartBody (maxInput entryIndex : Nat) : List UInt8 :=
         ofNats [5, 0, 11] ++
       ofNats [11])
 
+def wasiArgvExceptStartBody (maxArgs maxArgBytes entryIndex : Nat) : List UInt8 :=
+  body
+    (ofNats [1, 14, 126])
+    (wasiReadArgvArray maxArgs maxArgBytes ++
+      localGet 0 ++ call entryIndex ++
+      localSet 13 ++
+      localSet 12 ++
+      localSet 11 ++
+      localSet 10 ++
+      localSet 9 ++
+      localGet 9 ++ i64Const 0 ++ i64Eq ++ ofNats [4, 64] ++
+        wasiWriteFd 2 10 11 0 ++
+        i32Const 1 ++ call 3 ++
+      ofNats [5] ++
+        localGet 9 ++ i64Const 1 ++ i64Eq ++ ofNats [4, 64] ++
+          wasiWriteStdout 12 13 0 ++
+        ofNats [5, 0, 11] ++
+      ofNats [11])
+
 def wasiStdinCodeSection (maxInput : Nat) (module_ : Module) (entryIndex : Nat) : List UInt8 :=
   let shifted := shiftModuleCalls 2 module_
   wasmSection 10 <| vec (
@@ -2346,6 +2433,16 @@ def wasiStdinExceptCodeSection (maxInput : Nat) (module_ : Module) (entryIndex :
   wasmSection 10 <| vec (
     shifted.funcs.toList.map emitFuncBody ++
       [wasiStdinExceptStartBody maxInput (entryIndex + 3)])
+
+def wasiArgvExceptCodeSection
+    (maxArgs maxArgBytes : Nat)
+    (module_ : Module)
+    (entryIndex : Nat) :
+    List UInt8 :=
+  let shifted := shiftModuleCalls 4 module_
+  wasmSection 10 <| vec (
+    shifted.funcs.toList.map emitFuncBody ++
+      [wasiArgvExceptStartBody maxArgs maxArgBytes (entryIndex + 4)])
 
 def wasiModuleBytes (module_ : Module) : Except String ByteArray := do
   let entryIndex ←
@@ -2394,6 +2491,28 @@ def wasiStdinExceptModuleBytes (maxInput : Nat) (module_ : Module) : Except Stri
       ++ coreGlobalSection
       ++ wasiExportSection module_ 3
       ++ wasiStdinExceptCodeSection maxInput module_ entryIndex).toArray
+
+def wasiArgvExceptModuleBytes
+    (maxArgs maxArgBytes : Nat)
+    (entryName : Lean.Name)
+    (module_ : Module) :
+    Except String ByteArray := do
+  let reservedBytes := wasiArgvReservedBytes maxArgs maxArgBytes
+  if reservedBytes > wasiMaxReservedBytes then
+    .error s!"max argv storage exceeds WASM memory capacity: {reservedBytes}"
+  else
+    let entryIndex ←
+      match funcIndexBySourceName? module_ entryName with
+      | some index => .ok index
+      | none => .error "program module has no selected entry function"
+    .ok <| ByteArray.mk <| (ofNats [0, 97, 115, 109, 1, 0, 0, 0]
+      ++ wasiTypeSectionWithImportTypes [wasiFdIoType, wasiArgsType, wasiProcExitType] module_
+      ++ wasiArgvExceptImportSection
+      ++ wasiFunctionSectionWithImportTypes 3 module_
+      ++ coreMemorySection
+      ++ coreGlobalSection
+      ++ wasiExportSection module_ 4
+      ++ wasiArgvExceptCodeSection maxArgs maxArgBytes module_ entryIndex).toArray
 
 def indent (spaces : Nat) (lines : List String) : List String :=
   let pad := String.ofList (List.replicate spaces ' ')

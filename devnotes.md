@@ -2865,3 +2865,17 @@ Checks run:
 - [x] `lake build LeanExe.Examples.Correctness`
 - [x] `node test/wasi_program.js` returned `checked 9 WASI program cases, 1 stdin trap, and 5 rejections`.
 - [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 570 accepted, 26 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 46 json program cases`, `checked 9 WASI program cases, 1 stdin trap, and 5 rejections`, and `checked 56 cases`.
+
+## 2026-05-14: WASI argv programs
+
+`Array ByteArray` is now a supported internal array shape.  Each element stores two slots, the byte pointer and byte length, using the same internal `ByteArray` representation used for locals and helper calls.  Public `Array ByteArray` parameters and results remain rejected because the library-mode host ABI still excludes arrays with heap-reference elements.
+
+`compile-wasi-argv-except` adds a command target for pure entries of type `Array ByteArray -> Except ByteArray ByteArray`.  The generated `_start` imports `args_sizes_get`, `args_get`, `fd_write`, and `proc_exit`.  It allocates a fixed arena region from the configured `--max-args` and `--max-argv-bytes`, reads WASI argv into that region, skips `argv[0]`, builds an internal array of user-argument byte slices, calls the Lean entry, writes `Except.ok` bytes to stdout, and writes `Except.error` bytes to stderr before `proc_exit 1`.
+
+Checks run:
+
+- [x] `lake build lean-wasm`
+- [x] `lake build LeanExe.Examples.Correctness LeanExe.Examples.ByteArrayPrograms`
+- [x] `node test/core_correctness.js` returned `checked 574 accepted, 28 rejected, and 13 trapped cases`.
+- [x] `node test/wasi_program.js` returned `checked 11 WASI program cases, 2 traps, and 7 rejections`.
+- [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 574 accepted, 28 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 46 json program cases`, `checked 11 WASI program cases, 2 traps, and 7 rejections`, and `checked 56 cases`.
