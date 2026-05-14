@@ -463,7 +463,7 @@ Checks run:
 
 ## 2026-05-06: Internal UInt8 Values
 
-`ByteArray.get!` returns `UInt8`, so byte-oriented programs need to compare byte reads with `UInt8` literals without converting through `Nat`.  The extractor now admits `UInt8` as a local scalar type while keeping `UInt8` out of the exported function ABI.  `OfNat UInt8` and `UInt8.ofNat` lower modulo `256`, matching Lean evaluation for values such as `(300 : UInt8).toNat = 44`.
+`ByteArray.get!` returns `UInt8`, so byte-oriented programs need to compare byte reads with `UInt8` literals without converting through `Nat`.  At this checkpoint, the extractor admitted `UInt8` as a local scalar type while keeping `UInt8` out of the exported function ABI.  `OfNat UInt8` and `UInt8.ofNat` lower modulo `256`, matching Lean evaluation for values such as `(300 : UInt8).toNat = 44`.
 
 `LeanExe.Examples.ByteArrayPrograms.firstByteIsStar` checks a `ByteArray.get!` result against `(42 : UInt8)`.  `LeanExe.Examples.Correctness.wrappedUInt8Literal` covers literal wrapping, and `uint8OfNatValue` covers runtime bounded-`Nat` conversion through `UInt8.ofNat`.
 
@@ -479,9 +479,9 @@ Checks run:
 
 ## 2026-05-06: Internal UInt8 Helper Signatures
 
-The compiler now separates exported entry ABI support from project-local helper support.  Exported entries still reject `UInt8` parameters and results, because the public ABI has not assigned byte-sized scalar slots.  Internal helpers may use `UInt8` parameters and results, and the lowering represents those values as scalar `i64` slots constrained by the operations that produce them.
+The compiler now separates exported entry ABI support from project-local helper support.  Exported entries still rejected `UInt8` parameters and results at this checkpoint, because the public ABI had not assigned byte-sized scalar slots.  Internal helpers may use `UInt8` parameters and results, and the lowering represents those values as scalar `i64` slots constrained by the operations that produce them.  The later public `UInt8` and `UInt32` ABI entry supersedes this boundary.
 
-`LeanExe.Examples.ByteArrayPrograms.nextByte` takes and returns `UInt8`.  `firstByteNextIsZero` calls it on a `ByteArray.get!` result and checks the modulo-256 wrap from `255` to `0`.  `LeanExe.Examples.Correctness.rejectUInt8Param` and `rejectUInt8Return` keep the entry boundary explicit.
+`LeanExe.Examples.ByteArrayPrograms.nextByte` takes and returns `UInt8`.  `firstByteNextIsZero` calls it on a `ByteArray.get!` result and checks the modulo-256 wrap from `255` to `0`.
 
 Checks run:
 
@@ -2743,31 +2743,14 @@ Checks run:
 
 ## 2026-05-13: Structured direct fold accumulators
 
-Direct `Array.foldl` and `ByteArray.foldl` now use the same internal-slot accumulator model as accepted pure `Id.run` `for` loops.  The extractor reconstructs the accumulator from loop-local slots, extracts the direct-lambda body as a structured value, flattens the body result, and rebuilds the requested source-level result value from the projected fold slots.  Supported accumulator shapes are scalars, supported array pointers, products, structures, nonrecursive tagged values, and recursive-inductive pointer values, provided the flattened accumulator contains no `ByteArray` field.
+Direct `Array.foldl` and `ByteArray.foldl` now use the same internal-slot accumulator model as accepted pure `Id.run` `for` loops.  The extractor reconstructs the accumulator from loop-local slots, extracts the direct-lambda body as a structured value, flattens the body result, and rebuilds the requested source-level result value from the projected fold slots.  At this checkpoint, supported accumulator shapes were scalars, supported array pointers, products, structures, nonrecursive tagged values, and recursive-inductive pointer values, provided the flattened accumulator contained no `ByteArray` field.
 
-The correctness corpus now covers direct folds carrying a `CountSum` structure, a product, a `Status` tagged value, and an array pointer.  It covers both `Array.foldl` and `ByteArray.foldl`, and it rejects direct folds whose accumulator is a `ByteArray`.  This extends ordinary direct-lambda folds without adding a primitive for a specific source type.
+The correctness corpus now covers direct folds carrying a `CountSum` structure, a product, a `Status` tagged value, and an array pointer.  It covers both `Array.foldl` and `ByteArray.foldl`, and it rejected direct folds whose accumulator was a `ByteArray`.  The later `ByteArray` accumulator entry supersedes that limitation.
 
 Checks run:
 
 - [x] `lake build`
 - [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 558 accepted, 34 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 46 json program cases`, and `checked 56 cases`.
-
-## 2026-05-14: ByteArray loop and fold accumulators
-
-`ByteArray` now participates in the shared internal accumulator layout for pure `Id.run` `for` loops, `Array.foldl`, and `ByteArray.foldl`.  The representation uses the existing two-slot pointer-length value, so byte-producing loops and folds require no new WASM expression form.  Products, structures, and tagged values can carry `ByteArray` fields through the same accumulator path when their other fields are supported.
-
-The correctness corpus now covers byte-producing `ByteArray` loops, `break`, `continue`, range loops, `Array.foldl` with a `ByteArray` accumulator, `ByteArray.foldl` with a `ByteArray` accumulator, and structures that carry a `ByteArray` field as part of the accumulator.
-
-Checks run:
-
-- [x] `lake build LeanExe.Examples.Correctness`
-- [x] `lake build lean-wasm`
-- [x] `node test/core_correctness.js` returned `checked 566 accepted, 30 rejected, and 13 trapped cases`.
-- [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 566 accepted, 30 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 46 json program cases`, and `checked 56 cases`.
-- [x] `.lake/build/bin/lean-wasm compile --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.arrayFoldStructAccumulator --out .lake/build/core-correctness/arrayFoldStructAccumulator.wasmtime.wasm`
-- [x] `.lake/build/bin/lean-wasm compile --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.byteArrayFoldStatusAccumulator --out .lake/build/core-correctness/byteArrayFoldStatusAccumulator.wasmtime.wasm`
-- [x] `build/tools/wasmtime/current/wasmtime --invoke arrayFoldStructAccumulator .lake/build/core-correctness/arrayFoldStructAccumulator.wasmtime.wasm` returned `36`.
-- [x] `build/tools/wasmtime/current/wasmtime --invoke byteArrayFoldStatusAccumulator .lake/build/core-correctness/byteArrayFoldStatusAccumulator.wasmtime.wasm` returned `24`.
 
 ## 2026-05-13: Unified direct fold lowering
 
@@ -2796,3 +2779,37 @@ Checks run:
 
 - [x] `lake build`
 - [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 558 accepted, 34 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 46 json program cases`, and `checked 56 cases`.
+
+## 2026-05-14: ByteArray loop and fold accumulators
+
+`ByteArray` now participates in the shared internal accumulator layout for pure `Id.run` `for` loops, `Array.foldl`, and `ByteArray.foldl`.  The representation uses the existing two-slot pointer-length value, so byte-producing loops and folds require no new WASM expression form.  Products, structures, and tagged values can carry `ByteArray` fields through the same accumulator path when their other fields are supported.
+
+The correctness corpus now covers byte-producing `ByteArray` loops, `break`, `continue`, range loops, `Array.foldl` with a `ByteArray` accumulator, `ByteArray.foldl` with a `ByteArray` accumulator, and structures that carry a `ByteArray` field as part of the accumulator.
+
+Checks run:
+
+- [x] `lake build LeanExe.Examples.Correctness`
+- [x] `lake build lean-wasm`
+- [x] `node test/core_correctness.js` returned `checked 566 accepted, 30 rejected, and 13 trapped cases`.
+- [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 566 accepted, 30 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 46 json program cases`, and `checked 56 cases`.
+- [x] `.lake/build/bin/lean-wasm compile --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.arrayFoldStructAccumulator --out .lake/build/core-correctness/arrayFoldStructAccumulator.wasmtime.wasm`
+- [x] `.lake/build/bin/lean-wasm compile --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.byteArrayFoldStatusAccumulator --out .lake/build/core-correctness/byteArrayFoldStatusAccumulator.wasmtime.wasm`
+- [x] `build/tools/wasmtime/current/wasmtime --invoke arrayFoldStructAccumulator .lake/build/core-correctness/arrayFoldStructAccumulator.wasmtime.wasm` returned `36`.
+- [x] `build/tools/wasmtime/current/wasmtime --invoke byteArrayFoldStatusAccumulator .lake/build/core-correctness/byteArrayFoldStatusAccumulator.wasmtime.wasm` returned `24`.
+
+## 2026-05-14: Public UInt8 and UInt32 ABI
+
+`UInt8` and `UInt32` now cross the public entry ABI as one `i64` slot each.  Public parameters normalize at function entry by masking to `2^8 - 1` or `2^32 - 1`, and public results normalize before returning to the host.  This matches the fixed-width representation already used by literals, conversions, arithmetic, arrays, and byte-oriented helper code inside the compiler subset.
+
+The former public-scalar rejection fixtures now compile as ordinary examples.  `uint8ParamToNat` and `uint32ParamToNat` test parameter normalization from oversized host arguments, while `uint8Return` and `uint32Return` test result normalization from oversized Lean literals.
+
+Checks run:
+
+- [x] `lake build LeanExe.Examples.Correctness`
+- [x] `lake build lean-wasm`
+- [x] `node test/core_correctness.js` returned `checked 570 accepted, 26 rejected, and 13 trapped cases`.
+- [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 570 accepted, 26 rejected, and 13 trapped cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 46 json program cases`, and `checked 56 cases`.
+- [x] `build/tools/wasmtime/current/wasmtime --invoke uint8ParamToNat .lake/build/core-correctness/uint8ParamToNat.public.wasm 300` returned `44`.
+- [x] `build/tools/wasmtime/current/wasmtime --invoke uint8Return .lake/build/core-correctness/uint8Return.public.wasm` returned `44`.
+- [x] `build/tools/wasmtime/current/wasmtime --invoke uint32ParamToNat .lake/build/core-correctness/uint32ParamToNat.public.wasm 4294967297` returned `1`.
+- [x] `build/tools/wasmtime/current/wasmtime --invoke uint32Return .lake/build/core-correctness/uint32Return.public.wasm` returned `1`.
