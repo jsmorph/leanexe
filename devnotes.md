@@ -3191,3 +3191,20 @@ Checks run:
 - [x] `lake build LeanExe.Wasm.Binary LeanExe.Examples.ByteArrayPrograms lean-wasm`
 - [x] `node test/wasi_program.js` returned `checked 22 WASI program cases, 2 traps, and 7 rejections`.
 - [x] `node test/run_all.js` returned `checked 94 report classification cases`, `checked 612 accepted, 29 rejected, and 13 trapped cases`, `checked 6 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 22 WASI program cases, 2 traps, and 7 rejections`, `checked 38 standard Lean comparison cases`, and `checked 56 cases`.
+
+## 2026-05-15: Owned helper-call result cleanup
+
+The release pass now reclaims owner slots from helper-call results in scalar-result functions when the callee has no heap-bearing parameters.  This covers helper results such as an owned `Array UInt64`, an owned `ByteArray`, or a fixed-width structure containing both, while avoiding helpers such as `AsciiString.ofTrustedByteArray` that return a borrowed owner from a caller-owned byte array.  The rule is conservative because the compiler still lacks a helper-result ownership summary.
+
+This work also fixed internal result materialization for heap fields inside structures and tagged values.  A structure result that contains `Array` or `ByteArray` fields now evaluates each inline heap field once, then copies owner and pointer slots from that one local value.  Without that rule, one field expression could allocate separately for the owner slot and visible pointer slot, which made later release either leak or reclaim the wrong allocation.
+
+The GC tree rewrite WASI test now allows nonzero frees before the explicit rewrite loop.  Compiler-emitted cleanup can release temporary helper-call results before that metric is sampled, so the test checks the invariant that allocations exceed initial frees and that later explicit releases advance the counters.
+
+Checks run:
+
+- [x] `lake build lean-wasm`
+- [x] `node test/refcount.js` returned `checked 14 refcount cases`.
+- [x] `node test/core_correctness.js` returned `checked 617 accepted, 29 rejected, and 13 trapped cases`.
+- [x] `node test/wasi_program.js` returned `checked 22 WASI program cases, 2 traps, and 7 rejections`.
+- [x] `node test/asciistring.js` returned `checked 23 asciistring cases`.
+- [x] `node test/run_all.js` returned `checked 94 report classification cases`, `checked 617 accepted, 29 rejected, and 13 trapped cases`, `checked 14 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 22 WASI program cases, 2 traps, and 7 rejections`, `checked 38 standard Lean comparison cases`, and `checked 56 cases`.

@@ -103,7 +103,7 @@ end LeanExe.Examples.ReadmeData
 
 ## Compile
 
-Use `compile` to write a WASM binary.  The exported entry name is the final component of the Lean declaration name, so `LeanExe.Examples.ReadmeDemo.choose` exports `choose`.  The module also exports `memory`, `alloc`, and `reset` for host-side allocation and repeated execution.
+Use `compile` to write a WASM binary.  The exported entry name is the final component of the Lean declaration name, so `LeanExe.Examples.ReadmeDemo.choose` exports `choose`.  The module also exports `memory`, `alloc`, `reset`, `retain`, `release`, and `free` for host-side allocation, repeated execution, and reference-counted result lifetime.
 
 ```sh
 .lake/build/bin/lean-wasm compile \
@@ -286,7 +286,7 @@ console.log(ok === 1n ? "accepted" : "rejected");
 
 When a library-mode result points into module memory, read or copy the result before calling `release` or `reset`.  `release` decrements the object's reference count and returns the block to the runtime free list when the count reaches zero.  Public `ByteArray` results expose only pointer and length, so a returned slice may not be a releasable root pointer; use `reset` at a call boundary or release only when the program's result protocol guarantees a root pointer.  `reset` rewinds the whole heap and invalidates every old pointer, regardless of reference count.
 
-The compiler emits `release` for local heap temporaries when the temporary comes from a visible fresh allocation and the function returns only scalar or fixed non-heap data.  It keeps heap-pointer results conservative: hosts remain responsible for releasing returned arrays and byte arrays after reading them.
+The compiler emits `release` for local heap temporaries when the temporary comes from a visible fresh allocation and the function returns only scalar or fixed non-heap data.  It also releases owned helper-call results in that scalar-result case when the callee has no heap-bearing parameters.  It keeps heap-pointer results and helper calls that may return borrowed heap arguments conservative: hosts remain responsible for releasing returned arrays and byte arrays after reading them.
 
 Compiled Lean code can read runtime counters with `LeanExe.Runtime.allocCount`, `retainCount`, `releaseCount`, and `freeCount`.  Source code can call `LeanExe.Runtime.release value` for a monomorphic recursive-inductive root or an array value when the program has an explicit ownership boundary.  The released value, and any heap node shared with a live value, must not be used after the call; the compiler does not yet prove that ownership condition.  Array and recursive-value release follows recursive-inductive child pointers, `ByteArray` owner slots, and nested `Array` owner slots in fixed-width layouts.  Releasing a borrowed public array with owner `0` is a no-op.
 
