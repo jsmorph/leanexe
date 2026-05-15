@@ -81,6 +81,8 @@ mutual
         (predicate : Expr) (returnPayload : Bool)
     | arrayFindSlot (sourceWidth : Nat) (array : Expr) (itemStart : Nat)
         (predicate : Expr) (slot : Nat)
+    | arrayEqSlots (width : Nat) (left right : Expr) (leftStart rightStart : Nat)
+        (predicate : Expr)
     | arrayAnySlots (sourceWidth : Nat) (array start stop : Expr) (itemStart : Nat)
         (predicate : Expr) (forAll : Bool)
     | arrayFilterSlots (sourceWidth : Nat) (array start stop : Expr) (itemStart : Nat)
@@ -96,6 +98,7 @@ mutual
     | byteArrayFromArrayPtr (array : Expr)
     | byteArrayCopySlicePtr
         (srcPtr srcLen srcOff destPtr destLen destOff copyLen : Expr)
+    | byteArrayEq (leftPtr leftLen rightPtr rightLen : Expr)
     | byteArrayFindIdx (ptr len start : Expr) (byteSlot : Nat) (predicate : Expr)
         (returnPayload : Bool)
     | byteArrayFoldMultiSlot (resultWidth : Nat) (ptr len start stop : Expr)
@@ -235,6 +238,7 @@ mutual
         resultStore (accStart + resultSlot)
     | .arrayFindIdxSlots _ _ _ _ _ => 0
     | .arrayFindSlot _ _ _ _ _ => 0
+    | .arrayEqSlots _ _ _ _ _ _ => 0
     | .arrayAnySlots _ _ _ _ _ _ forAll => if forAll then 1 else 0
     | .arrayFilterSlots _ array _ _ _ _ => array.eval module_ store
     | .arrayInsertIfInBoundsSlots _ array _ _ => array.eval module_ store
@@ -247,6 +251,7 @@ mutual
     | .byteArraySetPtr ptr _ _ _ => ptr.eval module_ store
     | .byteArrayFromArrayPtr array => array.eval module_ store
     | .byteArrayCopySlicePtr _ _ _ destPtr _ _ _ => destPtr.eval module_ store
+    | .byteArrayEq _ _ _ _ => 0
     | .byteArrayFindIdx _ _ _ _ _ _ => 0
     | .byteArrayFoldMultiSlot resultWidth _ptr len start stop initValues accStart byteSlot
         bodyValues bodyLets bodyDone resultSlot =>

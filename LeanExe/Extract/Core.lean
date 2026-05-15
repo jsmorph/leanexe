@@ -1438,6 +1438,8 @@ partial def supportedEqType : Ty → Bool
   | .u32 => true
   | .u64 => true
   | .nat => true
+  | .byteArray => true
+  | .array item => supportedEqType item && (arrayElementSlots? item |>.isSome)
   | .product left right => supportedEqType left && supportedEqType right
   | .sum left right => supportedEqType left && supportedEqType right
   | .struct _ _ fields => fields.all supportedEqType
@@ -1531,6 +1533,13 @@ mutual
         let predicateFree := removeLiveSlots (exprUsedSlots predicate)
           (slotsFrom itemStart sourceWidth)
         addLiveSlots (exprUsedSlots array) predicateFree
+    | .arrayEqSlots width left right leftStart rightStart predicate =>
+        let predicateFree :=
+          removeLiveSlots
+            (removeLiveSlots (exprUsedSlots predicate) (slotsFrom leftStart width))
+            (slotsFrom rightStart width)
+        addLiveSlots (addLiveSlots (exprUsedSlots left) (exprUsedSlots right))
+          predicateFree
     | .arrayAnySlots sourceWidth array start stop itemStart predicate _ =>
         let predicateFree := removeLiveSlots (exprUsedSlots predicate)
           (slotsFrom itemStart sourceWidth)
@@ -1585,6 +1594,11 @@ mutual
               (exprUsedSlots destLen))
             (exprUsedSlots destOff))
           (exprUsedSlots copyLen)
+    | .byteArrayEq leftPtr leftLen rightPtr rightLen =>
+        addLiveSlots
+          (addLiveSlots (addLiveSlots (exprUsedSlots leftPtr) (exprUsedSlots leftLen))
+            (exprUsedSlots rightPtr))
+          (exprUsedSlots rightLen)
     | .byteArrayFindIdx ptr len start byteSlot predicate _ =>
         addLiveSlots
           (addLiveSlots (addLiveSlots (exprUsedSlots ptr) (exprUsedSlots len))
@@ -4452,22 +4466,28 @@ partial def valueTopLetsWithBody (value : ExtractedValue) : List ValueLet × Ext
 
 mutual
 partial def structuralEqFieldsExpr
+    (nextLocal : Nat)
     (fields : List Ty)
     (leftFields rightFields : List ExtractedValue) :
-    Except String IRExpr := do
+    Except String (IRExpr × Nat) := do
   if leftFields.length != fields.length || rightFields.length != fields.length then
     .error "structural equality value shape mismatch"
   else
-    let exprs ←
-      (fields.zip (leftFields.zip rightFields)).mapM fun item =>
-        structuralEqValueExpr item.fst item.snd.fst item.snd.snd
-    .ok (boolAndExprs exprs)
+    let rec loop : List (Ty × (ExtractedValue × ExtractedValue)) → Nat → List IRExpr →
+        Except String (List IRExpr × Nat)
+      | [], next, exprs => .ok (exprs.reverse, next)
+      | item :: rest, next, exprs => do
+          let result ← structuralEqValueExpr next item.fst item.snd.fst item.snd.snd
+          loop rest result.snd (result.fst :: exprs)
+    let result ← loop (fields.zip (leftFields.zip rightFields)) nextLocal []
+    .ok (boolAndExprs result.fst, result.snd)
 
 partial def structuralEqVariantExpr
+    (nextLocal : Nat)
     (name : Name)
     (ctors : List (List Ty))
     (left right : ExtractedValue) :
-    Except String IRExpr := do
+    Except String (IRExpr × Nat) := do
   let leftParts ← variantPartsWithLets name left
   let rightParts ← variantPartsWithLets name right
   let leftTag := leftParts.snd.fst
@@ -4477,66 +4497,96 @@ partial def structuralEqVariantExpr
   if leftCtors.length != ctors.length || rightCtors.length != ctors.length then
     .error s!"inductive equality value shape mismatch: {name}"
   else
-    let payloadExprs ←
-      (enumerate (ctors.zip (leftCtors.zip rightCtors))).mapM fun item => do
-        let payload ← structuralEqFieldsExpr item.snd.fst item.snd.snd.fst item.snd.snd.snd
-        .ok (.ite (.eqU64 leftTag (.u64 item.fst)) payload (.u64 1))
-    let body := .ite (.eqU64 leftTag rightTag) (boolAndExprs payloadExprs) (.u64 0)
-    .ok (wrapExprLets (leftParts.fst ++ rightParts.fst) body)
+    let rec loop :
+        List (Nat × (List Ty × (List ExtractedValue × List ExtractedValue))) →
+          Nat → List IRExpr → Except String (List IRExpr × Nat)
+      | [], next, exprs => .ok (exprs.reverse, next)
+      | item :: rest, next, exprs => do
+          let payload ← structuralEqFieldsExpr next item.snd.fst item.snd.snd.fst item.snd.snd.snd
+          let expr := .ite (.eqU64 leftTag (.u64 item.fst)) payload.fst (.u64 1)
+          loop rest payload.snd (expr :: exprs)
+    let payloadResult ← loop (enumerate (ctors.zip (leftCtors.zip rightCtors))) nextLocal []
+    let body := .ite (.eqU64 leftTag rightTag) (boolAndExprs payloadResult.fst) (.u64 0)
+    .ok (wrapExprLets (leftParts.fst ++ rightParts.fst) body, payloadResult.snd)
 
 partial def structuralEqSumExpr
+    (nextLocal : Nat)
     (leftTy rightTy : Ty)
     (left right : ExtractedValue) :
-    Except String IRExpr := do
+    Except String (IRExpr × Nat) := do
   let leftParts ← sumPartsWithLets left
   let rightParts ← sumPartsWithLets right
   let leftTag := leftParts.snd.fst
   let rightTag := rightParts.snd.fst
-  let leftPayload ← structuralEqValueExpr leftTy leftParts.snd.snd.fst rightParts.snd.snd.fst
-  let rightPayload ← structuralEqValueExpr rightTy leftParts.snd.snd.snd rightParts.snd.snd.snd
+  let leftPayload ←
+    structuralEqValueExpr nextLocal leftTy leftParts.snd.snd.fst rightParts.snd.snd.fst
+  let rightPayload ←
+    structuralEqValueExpr leftPayload.snd rightTy leftParts.snd.snd.snd rightParts.snd.snd.snd
   let payload :=
     boolAndExprs [
-      .ite (.eqU64 leftTag (.u64 0)) leftPayload (.u64 1),
-      .ite (.eqU64 leftTag (.u64 1)) rightPayload (.u64 1)
+      .ite (.eqU64 leftTag (.u64 0)) leftPayload.fst (.u64 1),
+      .ite (.eqU64 leftTag (.u64 1)) rightPayload.fst (.u64 1)
     ]
   let body := .ite (.eqU64 leftTag rightTag) payload (.u64 0)
-  .ok (wrapExprLets (leftParts.fst ++ rightParts.fst) body)
+  .ok (wrapExprLets (leftParts.fst ++ rightParts.fst) body, rightPayload.snd)
 
 partial def structuralEqValueExpr
+    (nextLocal : Nat)
     (ty : Ty)
     (left right : ExtractedValue) :
-    Except String IRExpr := do
+    Except String (IRExpr × Nat) := do
   let leftTop := valueTopLetsWithBody left
   let rightTop := valueTopLetsWithBody right
-  let body ←
+  let result ←
     match ty with
     | .unit | .bool | .u8 | .u32 | .u64 | .nat => do
         let leftExpr ← scalarValue leftTop.snd
         let rightExpr ← scalarValue rightTop.snd
-        .ok (boolExpr (.eqU64 leftExpr rightExpr))
+        .ok (boolExpr (.eqU64 leftExpr rightExpr), nextLocal)
     | .product leftTy rightTy => do
         let leftFirst ← productField 0 leftTop.snd
         let leftSecond ← productField 1 leftTop.snd
         let rightFirst ← productField 0 rightTop.snd
         let rightSecond ← productField 1 rightTop.snd
-        let firstExpr ← structuralEqValueExpr leftTy leftFirst rightFirst
-        let secondExpr ← structuralEqValueExpr rightTy leftSecond rightSecond
-        .ok (boolAndExpr firstExpr secondExpr)
+        let firstExpr ← structuralEqValueExpr nextLocal leftTy leftFirst rightFirst
+        let secondExpr ← structuralEqValueExpr firstExpr.snd rightTy leftSecond rightSecond
+        .ok (boolAndExpr firstExpr.fst secondExpr.fst, secondExpr.snd)
     | .sum leftTy rightTy =>
-        structuralEqSumExpr leftTy rightTy leftTop.snd rightTop.snd
+        structuralEqSumExpr nextLocal leftTy rightTy leftTop.snd rightTop.snd
     | .struct name _ fields => do
         let leftFields ← enumerate fields |>.mapM fun item => structField name item.fst leftTop.snd
         let rightFields ← enumerate fields |>.mapM fun item => structField name item.fst rightTop.snd
-        structuralEqFieldsExpr fields leftFields rightFields
+        structuralEqFieldsExpr nextLocal fields leftFields rightFields
     | .variant name _ ctors =>
-        structuralEqVariantExpr name ctors leftTop.snd rightTop.snd
-    | .byteArray =>
-        .error "ByteArray equality is unsupported"
-    | .array item =>
-        .error s!"Array equality is unsupported for item type: {reprStr item}"
+        structuralEqVariantExpr nextLocal name ctors leftTop.snd rightTop.snd
+    | .byteArray => do
+        let leftParts ← byteArrayPartsWithLets leftTop.snd
+        let rightParts ← byteArrayPartsWithLets rightTop.snd
+        let body :=
+          wrapExprLets (leftParts.fst ++ rightParts.fst)
+            (.byteArrayEq leftParts.snd.fst leftParts.snd.snd rightParts.snd.fst rightParts.snd.snd)
+        .ok (body, nextLocal)
+    | .array item => do
+        if !supportedEqType item then
+          .error s!"Array equality is unsupported for item type: {reprStr item}"
+        else
+          let width ←
+            match arrayElementSlots? item with
+            | some width => .ok width
+            | none => .error s!"unsupported array equality item layout: {reprStr item}"
+          let leftExpr ← scalarValue leftTop.snd
+          let rightExpr ← scalarValue rightTop.snd
+          let leftStart := nextLocal
+          let rightStart := nextLocal + width
+          let predicateNext := nextLocal + 2 * width
+          let leftItem ← arrayLocalValue item leftStart
+          let rightItem ← arrayLocalValue item rightStart
+          let predicate ← structuralEqValueExpr predicateNext item leftItem rightItem
+          .ok (.arrayEqSlots width leftExpr rightExpr leftStart rightStart predicate.fst,
+            predicate.snd)
     | .recVariant name _ =>
         .error s!"recursive inductive equality is unsupported: {name}"
-  .ok (wrapExprLets (leftTop.fst ++ rightTop.fst) body)
+  .ok (wrapExprLets (leftTop.fst ++ rightTop.fst) result.fst, result.snd)
 end
 
 def bindStrictSlots (slots : List IRExpr) (nextLocal : Nat) : StrictSlots :=
@@ -9396,7 +9446,7 @@ mutual
       Except String (IRExpr × Nat) := do
     let leftResult ← extractValueFrom ctx locals nextLocal left
     let rightResult ← extractValueFrom ctx locals leftResult.snd right
-    .ok (← structuralEqValueExpr ty leftResult.fst rightResult.fst, rightResult.snd)
+    structuralEqValueExpr rightResult.snd ty leftResult.fst rightResult.fst
 
   partial def extractPrimitivePairFrom
       (ctx : Context)

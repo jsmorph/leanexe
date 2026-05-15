@@ -475,6 +475,11 @@ structure ByteOutputState where
   count : UInt64
   bytes : ByteArray
 
+structure EqByteBox where
+  bytes : ByteArray
+  count : UInt64
+deriving BEq
+
 def isAsciiDigitByte (byte : UInt8) : Bool :=
   (48 : UInt8) <= byte && byte <= (57 : UInt8)
 
@@ -717,16 +722,107 @@ def optionStructuralEquality : UInt64 :=
   else
     0
 
-def rejectArrayEquality : UInt64 :=
+def byteArrayEquality : UInt64 :=
+  if (ByteArray.mk #[(65 : UInt8), (66 : UInt8)] ==
+      ByteArray.mk #[(65 : UInt8), (66 : UInt8)]) then
+    1
+  else
+    0
+
+def byteArrayInequalityValue : UInt64 :=
+  if (ByteArray.mk #[(65 : UInt8), (66 : UInt8)] !=
+      ByteArray.mk #[(65 : UInt8), (67 : UInt8)]) then
+    1
+  else
+    0
+
+def byteArrayInequalityLength : UInt64 :=
+  if (ByteArray.mk #[(65 : UInt8), (66 : UInt8)] !=
+      ByteArray.mk #[(65 : UInt8)]) then
+    1
+  else
+    0
+
+def byteArrayFieldStructureEquality : UInt64 :=
+  if (({ bytes := ByteArray.mk #[(65 : UInt8)], count := 1 } : EqByteBox) ==
+      ({ bytes := ByteArray.mk #[(65 : UInt8)], count := 1 } : EqByteBox)) then
+    1
+  else
+    0
+
+def byteArrayOptionEquality : UInt64 :=
+  if ((some (ByteArray.mk #[(65 : UInt8), (66 : UInt8)])) ==
+      some (ByteArray.mk #[(65 : UInt8), (66 : UInt8)])) then
+    1
+  else
+    0
+
+def arrayEquality : UInt64 :=
   if ((#[(1 : UInt64), (2 : UInt64)] : Array UInt64) ==
       (#[(1 : UInt64), (2 : UInt64)] : Array UInt64)) then
     1
   else
     0
 
-def rejectByteArrayEquality : UInt64 :=
-  if (ByteArray.mk #[(65 : UInt8), (66 : UInt8)] ==
-      ByteArray.mk #[(65 : UInt8), (66 : UInt8)]) then
+def arrayInequalityValue : UInt64 :=
+  if ((#[(1 : UInt64), (2 : UInt64)] : Array UInt64) !=
+      (#[(1 : UInt64), (3 : UInt64)] : Array UInt64)) then
+    1
+  else
+    0
+
+def arrayInequalityLength : UInt64 :=
+  if ((#[(1 : UInt64), (2 : UInt64)] : Array UInt64) !=
+      (#[(1 : UInt64)] : Array UInt64)) then
+    1
+  else
+    0
+
+def arrayPropEquality : UInt64 :=
+  if (#[(1 : UInt64), (2 : UInt64)] : Array UInt64) =
+      (#[(1 : UInt64), (2 : UInt64)] : Array UInt64) then
+    1
+  else
+    0
+
+def pointArrayEquality : UInt64 :=
+  if ((#[({ x := 1, y := 2 } : EqPoint), ({ x := 3, y := 4 } : EqPoint)] : Array EqPoint) ==
+      #[({ x := 1, y := 2 } : EqPoint), ({ x := 3, y := 4 } : EqPoint)]) then
+    1
+  else
+    0
+
+def statusArrayEquality : UInt64 :=
+  if ((#[EqStatus.ok 5, EqStatus.error 7] : Array EqStatus) ==
+      #[EqStatus.ok 5, EqStatus.error 7]) then
+    1
+  else
+    0
+
+def nestedArrayEquality : UInt64 :=
+  if ((#[#[1, 2], #[3]] : Array (Array UInt64)) ==
+      (#[#[1, 2], #[3]] : Array (Array UInt64))) then
+    1
+  else
+    0
+
+def byteArrayArrayEquality : UInt64 :=
+  if ((#[ByteArray.mk #[(65 : UInt8)], ByteArray.mk #[(66 : UInt8), (67 : UInt8)]] :
+        Array ByteArray) ==
+      #[ByteArray.mk #[(65 : UInt8)], ByteArray.mk #[(66 : UInt8), (67 : UInt8)]]) then
+    1
+  else
+    0
+
+def byteArrayStructureArrayEquality : UInt64 :=
+  if ((#[
+          ({ bytes := ByteArray.mk #[(65 : UInt8)], count := 1 } : EqByteBox),
+          ({ bytes := ByteArray.mk #[(66 : UInt8), (67 : UInt8)], count := 2 } : EqByteBox)
+        ] : Array EqByteBox) ==
+      #[
+          ({ bytes := ByteArray.mk #[(65 : UInt8)], count := 1 } : EqByteBox),
+          ({ bytes := ByteArray.mk #[(66 : UInt8), (67 : UInt8)], count := 2 } : EqByteBox)
+        ]) then
     1
   else
     0
