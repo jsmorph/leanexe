@@ -998,9 +998,24 @@ mutual
   partial def emitArrayAllocSlots (scratch width childMask : Nat) (cells : Expr) : List UInt8 :=
     let len := scratch
     let ptr := scratch + 1
+    let loopLocal := scratch + 2
+    let cellCountLocal := scratch + 3
+    let zeroLoop :=
+      localGet len ++ i64Const width ++ ofNats [126] ++ localSet cellCountLocal ++
+        i64Const 0 ++ localSet loopLocal ++
+        ofNats [2, 64, 3, 64] ++
+          localGet loopLocal ++ localGet cellCountLocal ++ i64GeU ++
+            ofNats [13] ++ u32leb 1 ++
+          localGet ptr ++ i64Const 8 ++ ofNats [124] ++
+            localGet loopLocal ++ i64Const 8 ++ ofNats [126, 124] ++
+            i32WrapI64 ++ i64Const 0 ++ i64Store ++
+          localGet loopLocal ++ i64Const 1 ++ ofNats [124] ++ localSet loopLocal ++
+          ofNats [12] ++ u32leb 0 ++
+        ofNats [11, 11]
     emitExpr (scratch + 2) cells ++ localSet len ++
       rcAllocArrayObject (scratch + 2) width childMask (localGet len) ++ localSet ptr ++
       localGet ptr ++ i32WrapI64 ++ localGet len ++ i64Store ++
+      zeroLoop ++
       localGet ptr
 
   partial def emitHeapAllocSlots (scratch childMask : Nat) (values : List Expr) : List UInt8 :=
@@ -3090,7 +3105,7 @@ def wasiMaxReservedBytes : Nat :=
   wasiMemoryBytes - wasiInputStart
 
 def wasiArgvReservedBytes (maxArgs maxArgBytes : Nat) : Nat :=
-  8 + maxArgs * 16 + (maxArgs + 1) * 4 + maxArgBytes
+  8 + maxArgs * 24 + (maxArgs + 1) * 4 + maxArgBytes
 
 def wasiReadStdinLoop (maxInput : Nat) : List UInt8 :=
   ofNats [2, 64, 3, 64] ++
@@ -3110,7 +3125,7 @@ def wasiReadStdinLoop (maxInput : Nat) : List UInt8 :=
 def wasiReadArgvArrayWithImports
     (argsSizesGetIndex argsGetIndex maxArgs maxArgBytes : Nat) :
     List UInt8 :=
-  let arrayBytes := 8 + maxArgs * 16
+  let arrayBytes := 8 + maxArgs * 24
   let tableBytes := (maxArgs + 1) * 4
   let reservedBytes := wasiArgvReservedBytes maxArgs maxArgBytes
   i64Align8 (globalGet 0) ++ localSet 0 ++
@@ -3143,8 +3158,9 @@ def wasiReadArgvArrayWithImports
         localGet 8 ++ i64Const 1 ++ ofNats [124] ++ localSet 8 ++
         ofNats [12] ++ u32leb 0 ++
       ofNats [11, 11] ++
-      arraySlotAddress 2 0 (localGet 0) (localGet 6) ++ localGet 7 ++ i64Store ++
-      arraySlotAddress 2 1 (localGet 0) (localGet 6) ++ localGet 8 ++ i64Store ++
+      arraySlotAddress 3 0 (localGet 0) (localGet 6) ++ i64Const 0 ++ i64Store ++
+      arraySlotAddress 3 1 (localGet 0) (localGet 6) ++ localGet 7 ++ i64Store ++
+      arraySlotAddress 3 2 (localGet 0) (localGet 6) ++ localGet 8 ++ i64Store ++
       localGet 6 ++ i64Const 1 ++ ofNats [124] ++ localSet 6 ++
       ofNats [12] ++ u32leb 0 ++
     ofNats [11, 11]
@@ -3188,20 +3204,22 @@ def wasiStdinExceptStartBody (maxInput entryIndex : Nat) : List UInt8 :=
 
 def wasiArgvExceptStartBody (maxArgs maxArgBytes entryIndex : Nat) : List UInt8 :=
   body
-    (ofNats [1, 14, 126])
+    (ofNats [1, 16, 126])
     (wasiReadArgvArray maxArgs maxArgBytes ++
       localGet 0 ++ call entryIndex ++
+      localSet 15 ++
+      localSet 14 ++
       localSet 13 ++
       localSet 12 ++
       localSet 11 ++
       localSet 10 ++
       localSet 9 ++
       localGet 9 ++ i64Const 0 ++ i64Eq ++ ofNats [4, 64] ++
-        wasiWriteFd 2 10 11 0 ++
+        wasiWriteFd 2 11 12 0 ++
         i32Const 1 ++ call 3 ++
       ofNats [5] ++
         localGet 9 ++ i64Const 1 ++ i64Eq ++ ofNats [4, 64] ++
-          wasiWriteStdout 12 13 0 ++
+          wasiWriteStdout 14 15 0 ++
         ofNats [5, 0, 11] ++
       ofNats [11])
 
@@ -3217,18 +3235,20 @@ def wasiStdinArgvExceptStartBody
       localGet 0 ++ localSet 14 ++
       localGet 1 ++ localSet 15 ++
       wasiReadArgvArrayWithImports 2 3 maxArgs maxArgBytes ++
-      localGet 14 ++ localGet 15 ++ localGet 0 ++ call entryIndex ++
+      i64Const 0 ++ localGet 14 ++ localGet 15 ++ localGet 0 ++ call entryIndex ++
+      localSet 15 ++
+      localSet 14 ++
       localSet 13 ++
       localSet 12 ++
       localSet 11 ++
       localSet 10 ++
       localSet 9 ++
       localGet 9 ++ i64Const 0 ++ i64Eq ++ ofNats [4, 64] ++
-        wasiWriteFd 2 10 11 0 ++
+        wasiWriteFd 2 11 12 0 ++
         i32Const 1 ++ call 4 ++
       ofNats [5] ++
         localGet 9 ++ i64Const 1 ++ i64Eq ++ ofNats [4, 64] ++
-          wasiWriteStdout 12 13 0 ++
+          wasiWriteStdout 14 15 0 ++
         ofNats [5, 0, 11] ++
       ofNats [11])
 
@@ -3452,12 +3472,26 @@ mutual
   partial def arrayAllocSlotsWatLines (scratch width _childMask : Nat) (cells : Expr) : List String :=
     let len := scratch
     let ptr := scratch + 1
+    let loopLocal := scratch + 2
+    let cellCountLocal := scratch + 3
+    let zeroLoop :=
+      [s!"local.get {len}", s!"i64.const {width}", "i64.mul", s!"local.set {cellCountLocal}",
+        "i64.const 0", s!"local.set {loopLocal}", "block", "  loop"] ++
+        indent 4
+          [s!"local.get {loopLocal}", s!"local.get {cellCountLocal}", "i64.ge_u", "br_if 1",
+            s!"local.get {ptr}", "i64.const 8", "i64.add",
+            s!"local.get {loopLocal}", "i64.const 8", "i64.mul", "i64.add",
+            "i32.wrap_i64", "i64.const 0", "i64.store align=8",
+            s!"local.get {loopLocal}", "i64.const 1", "i64.add", s!"local.set {loopLocal}",
+            "br 0"] ++
+        ["  end", "end"]
     exprWatLines (scratch + 2) cells ++
       [s!"local.set {len}", "global.get 0", s!"local.set {ptr}",
         s!"local.get {ptr}", "i32.wrap_i64", s!"local.get {len}", "i64.store align=8",
         "global.get 0", "i64.const 8", s!"local.get {len}", s!"i64.const {width}",
-        "i64.mul", "i64.const 8", "i64.mul", "i64.add", "i64.add", "global.set 0",
-        s!"local.get {ptr}"]
+        "i64.mul", "i64.const 8", "i64.mul", "i64.add", "i64.add", "global.set 0"] ++
+      zeroLoop ++
+      [s!"local.get {ptr}"]
 
   partial def heapAllocSlotsWatLines (scratch _childMask : Nat) (values : List Expr) : List String :=
     let ptrLocal := scratch

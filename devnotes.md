@@ -3158,3 +3158,20 @@ Checks run:
 - [x] `build/tools/wasmtime/current/wasmtime run --invoke u64ListArrayRuntimeReleaseFrees .lake/build/u64ListArrayRuntimeReleaseFrees.wasm` returned `103`.
 - [x] `node test/core_correctness.js` returned `checked 611 accepted, 29 rejected, and 13 trapped cases`.
 - [x] `node test/run_all.js` returned `checked 94 report classification cases`, `checked 611 accepted, 29 rejected, and 13 trapped cases`, `checked 5 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 22 WASI program cases, 2 traps, and 7 rejections`, `checked 38 standard Lean comparison cases`, and `checked 56 cases`.
+
+## 2026-05-15: ByteArray owner slots in stored values
+
+`ByteArray` now has separate public and internal layouts.  Public entry parameters and results still use pointer and length slots, which keeps the host ABI stable.  Internal values use owner, pointer, and length slots, where owner `0` marks borrowed storage and a nonzero owner names the reference-counted allocation root.
+
+Byte-array constructors that allocate new buffers set owner equal to the allocated pointer.  `ByteArray.extract` preserves the source owner while changing the visible pointer and length, so a slice stored in an array, structure, or tagged value can keep the root allocation alive.  The release child mask now marks `ByteArray` owner slots in recursive values and fixed-width array elements, while nested array fields remain outside recursive release until their representation carries equivalent owner metadata.
+
+The extractor also tracks owned aliases through local `let` bindings when it decides whether a child slot transfers ownership into a newly allocated array or heap object.  Explicit `LeanExe.Runtime.release` calls suppress compiler-emitted cleanup for the released slot, which prevents a user-declared ownership boundary from being followed by an automatic second release.  The WASI argv adapters now build internal `Array ByteArray` values with three-slot elements and consume the seven-slot internal result for `Except ByteArray ByteArray` entries.
+
+Checks run:
+
+- [x] `lake build LeanExe.Extract.Core LeanExe.Examples.Correctness lean-wasm`
+- [x] `node test/core_correctness.js` returned `checked 612 accepted, 29 rejected, and 13 trapped cases`.
+- [x] `node test/refcount.js` returned `checked 6 refcount cases`.
+- [x] `lake build LeanExe.Wasm.Binary LeanExe.Examples.ByteArrayPrograms lean-wasm`
+- [x] `node test/wasi_program.js` returned `checked 22 WASI program cases, 2 traps, and 7 rejections`.
+- [x] `node test/run_all.js` returned `checked 94 report classification cases`, `checked 612 accepted, 29 rejected, and 13 trapped cases`, `checked 6 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 22 WASI program cases, 2 traps, and 7 rejections`, `checked 38 standard Lean comparison cases`, and `checked 56 cases`.
