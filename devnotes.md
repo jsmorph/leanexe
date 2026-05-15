@@ -1,5 +1,22 @@
 # Development Journal
 
+## 2026-05-15: Standard Lean Comparison Batch
+
+The standard Lean comparison tool matched generated WASM for the main command-shaped examples that do not read LeanExe runtime counters.  The batch covered plain byte output, JSON field parsing and rendering, checked arithmetic failure encoded as JSON, Collatz JSON, GCD success and failure through `Except`, JSON tree construction, JSON tree search with stdin plus argv, and argv-only byte handling.
+
+Checks run:
+
+- [x] `LeanExe.Examples.JsonDouble.transform` under `stdin` with `{"n":21}`.
+- [x] `LeanExe.Examples.JsonAdd.transform` under `stdin` with `{"a":19,"b":23}`.
+- [x] `LeanExe.Examples.JsonAdd.transform` under `stdin` with `{"a":18446744073709551615,"b":1}`.
+- [x] `LeanExe.Examples.JsonCollatzLength.transform` under `stdin` with `{"collatzLengthFor":41}`.
+- [x] `LeanExe.Examples.JsonGcd.transform` under `stdin-except` with `[1,6,4,100,33,5,5,20]`.
+- [x] `LeanExe.Examples.JsonGcd.transform` under `stdin-except` with `[]`.
+- [x] `LeanExe.Examples.JsonTreeCommand.makeTree` under `stdin-except` with `[1,6,4,100,33,5,5,20]`.
+- [x] `LeanExe.Examples.JsonTreeCommand.searchTree` under `stdin-argv-except` with a nested tree and search values `4` and `7`.
+- [x] `LeanExe.Examples.ByteArrayPrograms.argvFirstLast` under `argv-except` with `alpha` and `omega`.
+- [x] `LeanExe.Examples.Correctness.byteArrayAppendReturn` under `wasi`.
+
 ## 2026-05-15: Standard Lean Comparison Tool
 
 `tools/compare-standard.js` compares a command-shaped entry against official Lean execution.  It generates a temporary Lean runner under `.lake/build/standard-compare`, runs that runner with `lake env lean --run`, compiles the same entry through the selected LeanExe WASI mode, runs the generated WASM with Wasmtime, and compares exit status, stdout, and stderr byte-for-byte.  The first supported modes are the byte-oriented command shapes: `wasi`, `stdin`, `stdin-except`, `argv-except`, and `stdin-argv-except`.
