@@ -1,5 +1,17 @@
 # Development Journal
 
+## 2026-05-15: Structural Equality Lowering
+
+The extractor now lowers equality through a type-directed value comparison instead of routing every `BEq.beq`, `bne`, and `Eq` proposition through scalar extraction.  The supported equality fragment covers `Unit`, scalar values, products, structures, internal sums, `Option`, `Except`, and nonrecursive tagged values whose runtime fields also support equality.  The lowering compares fields in source order and compares tagged values by constructor tag before active payload fields, preserving short-circuit behavior for later fields and inactive constructor payloads.
+
+Array equality, `ByteArray` equality, and recursive-inductive equality remain unsupported because they need explicit element iteration or heap traversal semantics.  The new correctness cases cover product equality, structure equality, nested structures, proposition equality through `DecidableEq`, nonrecursive-inductive equality, `Option` equality over structures, and short-circuit cases whose skipped payloads would trap if evaluated.  The public documentation now describes the supported equality forms and the unsupported heap-backed cases.
+
+Checks run:
+
+- [x] `lake build LeanExe.Examples.Correctness`
+- [x] `node test/core_correctness.js` returned `checked 596 accepted, 28 rejected, and 13 trapped cases`.
+- [x] `node test/run_all.js` returned `checked 94 report classification cases`, `checked 596 accepted, 28 rejected, and 13 trapped cases`, `checked 5 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 22 WASI program cases, 2 traps, and 7 rejections`, `checked 8 standard Lean comparison cases`, and `checked 56 cases`.
+
 ## 2026-05-15: Option and Except Do Notation
 
 The extractor now recognizes `Option` and `Except ε` as supported monads for overloaded `Pure.pure`, `Bind.bind`, and `Functor.map`.  `Option` and `Except` `do` notation lowers to the same first-order tag and payload representation as the existing direct `Option.bind`, `Option.map`, `Except.bind`, and `Except.map` paths when callbacks are direct lambdas and payload types are concrete supported types.  `Functor.map` is now blocked from transparent unfolding, so Lean's class projection for the selected instance does not become a runtime function value.

@@ -152,6 +152,8 @@ def statusCode : Status -> UInt64
 end LeanExe.Examples.ManualStatus
 ```
 
+Use `deriving BEq, DecidableEq` when source code compares structures or nonrecursive tagged values with `==`, `!=`, or `if left = right then ...`.  Lean still needs those instances for the program to type-check, but LeanExe lowers the comparison from the concrete value type rather than by executing an instance dictionary at runtime.  Structural equality supports products, structures, internal sums, `Option`, `Except`, and nonrecursive tagged values when every runtime field has supported equality.  It compares fields in source order and checks an inductive constructor tag before active payload fields, so a false early field or a different constructor skips later payload work.  Arrays, `ByteArray`, and recursive inductives do not yet have equality lowering.
+
 Use recursive inductives as internal data.  They may be constructed, stored in internal arrays, traversed, returned from helpers, and carried in `Option`, `Except`, structures, or tagged values inside the compiled program.  They cannot appear as public entry parameters or public entry results.
 
 ```lean
