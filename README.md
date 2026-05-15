@@ -223,6 +223,24 @@ printf '%s' '[1,6,4,100,33,5,5,20]' \
   | wasmtime run build/search-tree.wasm 4
 ```
 
+## Compare With Standard Lean
+
+Use `tools/compare-standard.js` to compare command-shaped entries against standard Lean execution.  The tool generates a temporary Lean runner under `.lake/build/standard-compare`, runs it with `lake env lean --run`, compiles the same entry through the selected LeanExe WASI mode, runs the generated WASM with Wasmtime, and compares exit status, stdout, and stderr byte-for-byte.  It supports `ByteArray`, `ByteArray -> ByteArray`, `ByteArray -> Except ByteArray ByteArray`, `Array ByteArray -> Except ByteArray ByteArray`, and `ByteArray -> Array ByteArray -> Except ByteArray ByteArray` command entries.  It does not compare library-mode scalar exports, and programs that read `LeanExe.Runtime` counters will differ from standard Lean because those counters are runtime intrinsics in generated WASM.
+
+```sh
+node tools/compare-standard.js \
+  --mode stdin-except \
+  --module LeanExe.Examples.JsonGcd \
+  --entry transform \
+  --stdin '[48,18,30]'
+```
+
+Run the built-in comparison cases with:
+
+```sh
+node tools/compare-standard.js --self-test
+```
+
 ## Host Memory Values
 
 `ByteArray` and arrays use the module memory.  The module exports `alloc(len : i64) : i64`; a host calls `alloc`, writes bytes into the exported memory, and passes the returned pointer plus a length when the entry expects a `ByteArray`.  The allocator grows WASM memory when no free block and no current heap range can satisfy a request.  Returned byte arrays use a pointer and length result pair.  The module also exports `retain(ptr : i64) : i64`, `release(ptr : i64)`, and `free(ptr : i64)` for reference-counted heap objects.

@@ -460,6 +460,20 @@ Common rejections and source fixes:
 
 Do not fix source by adding dummy effects, unsafe definitions, hidden runtime calls, or unchecked host assumptions.  A program accepted by LeanExe should have behavior explainable through the specification.  If a natural source shape repeatedly fails, reduce it to a small example and add it to the compiler test plan.
 
+## Comparing With Standard Lean
+
+Use `tools/compare-standard.js` when a command-shaped program should match official Lean execution.  The tool generates a temporary Lean runner that imports the target module and calls the named pure entry, then compares that result with the WASM command produced by LeanExe and executed by Wasmtime.  It compares observable command behavior: exit status, stdout bytes, and stderr bytes.
+
+```sh
+node tools/compare-standard.js \
+  --mode stdin-except \
+  --module LeanExe.Examples.JsonGcd \
+  --entry transform \
+  --stdin '[48,18,30]'
+```
+
+The supported modes correspond to the WASI command compilers: `wasi`, `stdin`, `stdin-except`, `argv-except`, and `stdin-argv-except`.  This comparison path works best for ordinary pure entries that do not inspect LeanExe runtime counters.  Those counters are compiler intrinsics in generated WASM, while standard Lean evaluates their stub definitions.
+
 ## LLM Source Generation Checklist
 
 Use this checklist when asking an LLM to write LeanExe source:
