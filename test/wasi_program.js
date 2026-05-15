@@ -9,6 +9,7 @@ const byteArrayModule = "LeanExe.Examples.ByteArrayPrograms";
 const jsonGcdModule = "LeanExe.Examples.JsonGcd";
 const jsonTreeModule = "LeanExe.Examples.JsonTreeCommand";
 const jsonMergeTreeModule = "LeanExe.Examples.JsonMergeTreeCommand";
+const jsonGcTreeRewriteModule = "LeanExe.Examples.JsonGcTreeRewrite";
 const leanExe = process.env.LEAN_WASM_EXE || path.join(".lake", "build", "bin", "lean-wasm");
 const wasmtime = process.env.WASMTIME || path.join("build", "tools", "wasmtime", "current", "wasmtime");
 const outDir = path.join(".lake", "build", "wasi-programs");
@@ -308,6 +309,49 @@ function expectMergeTreePipeline(inputBytes, needle) {
   }
 }
 
+function expectGcTreeRewrite(inputBytes) {
+  const wasm = compileStdinExcept(jsonGcTreeRewriteModule, "transform", 1024);
+  const result = runWasmtimeWithInput(wasm, "jsonGcTreeRewrite", "gc-tree-rewrite", inputBytes);
+  if (result.status !== 0) {
+    throw new Error(outputText(result).trim() || "jsonGcTreeRewrite failed in Wasmtime");
+  }
+  const stderr = result.stderr || Buffer.alloc(0);
+  if (stderr.length !== 0) {
+    throw new Error(`jsonGcTreeRewrite: expected empty stderr, got ${stderr.toString("hex")}`);
+  }
+  const json = JSON.parse((result.stdout || Buffer.alloc(0)).toString("utf8"));
+  if (json.nodeCount !== 63 || json.height !== 6) {
+    throw new Error("jsonGcTreeRewrite: expected a depth-six tree");
+  }
+  if (json.gc.allocsAfterInitial <= 0 || json.gc.freesBeforeRun !== 0) {
+    throw new Error("jsonGcTreeRewrite: unexpected initial GC counters");
+  }
+  if (json.gc.freesAfterRounds <= json.gc.freesBeforeRun) {
+    throw new Error("jsonGcTreeRewrite: expected old generations to be freed");
+  }
+  if (json.gc.freesAfterFinal <= json.gc.freesAfterRounds) {
+    throw new Error("jsonGcTreeRewrite: expected final generation to be freed");
+  }
+  if (json.gc.releasesAfterFinal !== json.gc.freesAfterFinal) {
+    throw new Error("jsonGcTreeRewrite: expected releases and frees to match");
+  }
+
+  const invalid = runWasmtimeWithInput(
+    wasm,
+    "jsonGcTreeRewrite",
+    "gc-tree-rewrite-invalid",
+    bytes('{"depth":9,"rounds":1,"salt":17,"search":12345}')
+  );
+  if (invalid.status !== 1) {
+    throw new Error(outputText(invalid).trim() || "jsonGcTreeRewrite should reject oversized depth");
+  }
+  const expected = Buffer.from('{"error":1}');
+  const actual = invalid.stderr || Buffer.alloc(0);
+  if (Buffer.compare(actual, expected) !== 0) {
+    throw new Error(`jsonGcTreeRewrite: expected error ${expected.toString("hex")}, got ${actual.toString("hex")}`);
+  }
+}
+
 function expectArgvExceptError(moduleName, entry, maxArgs, maxArgBytes, args, expectedBytes) {
   const wasm = compileArgvExcept(moduleName, entry, maxArgs, maxArgBytes);
   const result = run([wasmtime, "run", wasm, ...args], {
@@ -466,6 +510,7 @@ function main() {
   expectTreePipeline(bytes("[1,6,4,100,33,5,5,20]"), "4", bytes('{"found":true}'));
   expectTreePipeline(bytes("[1,6,4,100,33,5,5,20]"), "7", bytes('{"found":false}'));
   expectMergeTreePipeline(bytes("[[1,6,4,100],[33,5,5,20]]"), "4");
+  expectGcTreeRewrite(bytes('{"depth":6,"rounds":8,"salt":17,"search":12345}'));
 
   expectReject("byteArrayPushSize", "program entry must return ByteArray");
   expectReject("byteArrayBranchHelperReturn", "program entry must take no parameters");
@@ -502,7 +547,7 @@ function main() {
     "max argv storage exceeds WASM memory capacity"
   );
 
-  process.stdout.write("checked 20 WASI program cases, 2 traps, and 7 rejections\n");
+  process.stdout.write("checked 22 WASI program cases, 2 traps, and 7 rejections\n");
 }
 
 try {

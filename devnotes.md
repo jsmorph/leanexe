@@ -1,5 +1,20 @@
 # Development Journal
 
+## 2026-05-15: JSON GC Tree Rewrite Benchmark
+
+`LeanExe.Examples.JsonGcTreeRewrite` is a JSON-to-JSON WASI command that builds a balanced source-level tree, rewrites whole tree generations, releases the previous root after each rewrite, and releases the final root after computing metrics.  The input object contains `depth`, `rounds`, `salt`, and `search`.  The current accepted workload is `1 <= depth <= 8` and `rounds <= 20`, which fits the generated module's fixed 16-page WASM memory while still exercising thousands of recursive-inductive frees.
+
+The first implementation built a linear tree through a fuel-recursive structure accumulator.  That shape compiled but produced unusable runtime behavior once the tree passed roughly twenty nodes, because the accumulator carried a recursive heap root through every loop step.  The benchmark now builds the initial tree through direct balanced recursion by depth, then uses generation-level release boundaries.  A Wasmtime run for `{"depth":8,"rounds":20,"salt":17,"search":12345}` returned `nodeCount:255`, `height:8`, `allocsAfterInitial:575`, `freesAfterRounds:10220`, `releasesAfterFinal:10731`, and `freesAfterFinal:10731`.
+
+Checks run:
+
+- [x] `lake build LeanExe.Examples.JsonGcTreeRewrite`
+- [x] `.lake/build/bin/lean-wasm compile-wasi-stdin-except --max-input-bytes 1024 --module LeanExe.Examples.JsonGcTreeRewrite --entry LeanExe.Examples.JsonGcTreeRewrite.transform --out .lake/build/wasi-programs/jsonGcTreeRewrite.stdin-except.wasi.wasm`
+- [x] `printf '{"depth":8,"rounds":20,"salt":17,"search":12345}' | build/tools/wasmtime/current/wasmtime run .lake/build/wasi-programs/jsonGcTreeRewrite.stdin-except.wasi.wasm`
+- [x] `printf '{"depth":8,"rounds":21,"salt":17,"search":12345}' | build/tools/wasmtime/current/wasmtime run .lake/build/wasi-programs/jsonGcTreeRewrite.stdin-except.wasi.wasm` returned `{"error":1}`.
+- [x] `node test/wasi_program.js` returned `checked 22 WASI program cases, 2 traps, and 7 rejections`.
+- [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 574 accepted, 28 rejected, and 13 trapped cases`, `checked 4 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 22 WASI program cases, 2 traps, and 7 rejections`, and `checked 56 cases`.
+
 ## 2026-05-15: Runtime Counters and Merge-Tree Release Demo
 
 The runtime now maintains allocation, retain, release, and free counters in mutable WASM globals.  `LeanExe.Runtime.allocCount`, `retainCount`, `releaseCount`, and `freeCount` compile to reads of those globals, while `LeanExe.Runtime.release` compiles to an explicit release for monomorphic recursive-inductive heap roots.  Source-level release keeps a manual ownership precondition: the released root and any heap nodes it shares with live values must not be used after the call.
