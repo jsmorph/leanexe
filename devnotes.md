@@ -138,6 +138,17 @@ Checks run:
 
 - [x] `lake build lean-wasm`
 - [x] `node test/run_all.js` returned `checked 94 report classification cases`, `checked 617 accepted, 29 rejected, and 13 trapped cases`, `checked 14 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 22 WASI program cases, 2 traps, and 7 rejections`, `checked 38 standard Lean comparison cases`, and `checked 56 cases`.
+
+## 2026-05-15: Pattern recognition module split
+
+`LeanExe.Extract.Patterns` now contains constructor type helpers, monad and `ForIn` recognition, array-attach generated matcher helpers, list literal recognition, generated matcher scrutinee discovery, and matcher decoding for `Option`, `Except`, `Bool`, `Nat`, products, `PSum`, structures, and variants.  `Core.lean` imports that module and now begins with demand analysis.
+
+This split preserves declaration names and behavior.  It reduces `Core.lean` from 8,496 to 7,694 lines.  Demand analysis is now the next clean module boundary, followed by structural and well-founded recursion lowering.
+
+Checks run:
+
+- [x] `lake build lean-wasm`
+- [x] `node test/run_all.js` returned `checked 94 report classification cases`, `checked 617 accepted, 29 rejected, and 13 trapped cases`, `checked 14 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 22 WASI program cases, 2 traps, and 7 rejections`, `checked 38 standard Lean comparison cases`, and `checked 56 cases`.
 - [x] `node test/refcount.js` returned `checked 5 refcount cases`.
 - [x] `.lake/build/bin/lean-wasm compile-wat --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.byteArrayStringConstReturn --out .lake/build/refcount/byteArrayStringConstReturn.grow.wat`
 - [x] `build/tools/wasmtime/current/wasmtime --invoke alloc .lake/build/refcount/byteArrayStringConstReturn.grow.wat 1048576` returned `4096`.
