@@ -25,9 +25,9 @@ The command-line entry point for generic compilation is:
 
 ## WASM Module ABI
 
-The default library-mode module exports one 16-page linear memory, `alloc(len : i64) : i64`, `reset()`, and the selected entry function.  The arena starts at byte offset `4096`, and `alloc` returns byte offsets in that memory.  The host may call `reset()` between runs to clear arena allocations; returned pointers remain valid only until `reset`.
+The default library-mode module exports one 16-page linear memory, `alloc(len : i64) : i64`, `reset()`, `retain(ptr : i64) : i64`, `release(ptr : i64)`, `free(ptr : i64)`, and the selected entry function.  The heap starts at byte offset `4096`, and `alloc` returns a byte offset in exported memory.  `free` is an alias for `release`.
 
-The entry export name is the last component of the Lean declaration name.  For example, `My.Module.answer` exports `answer`.  The entry name must not be `memory`, `alloc`, or `reset`, because those names belong to the runtime ABI.
+The entry export name is the last component of the Lean declaration name.  For example, `My.Module.answer` exports `answer`.  The entry name must not be `memory`, `alloc`, `reset`, `retain`, `release`, or `free`, because those names belong to the runtime ABI.
 
 The stdout-only WASI command-mode module imports `wasi_snapshot_preview1.fd_write`, exports `_start`, and exports the same memory.  It does not export `alloc`, `reset`, or the selected Lean entry as the public program interface.  The selected entry must take no parameters and return `ByteArray`; `_start` writes the returned pointer-length byte range to stdout and traps if `fd_write` returns an error or reports a short write.
 
@@ -44,6 +44,18 @@ Every scalar ABI slot is a WASM `i64`.  `Bool` uses `0` for false and `1` for tr
 `ByteArray` crosses the ABI as two slots: byte pointer and byte length.  Structure values flatten their runtime fields in Lean declaration order after proof-field erasure.  Nonrecursive inductive values flatten as a constructor tag followed by payload slots for every constructor in declaration order; inactive payload slots are ignored on input and may hold default values on output.
 
 Arrays cross the ABI as arena pointers.  Public array elements must have a fixed slot width with no nested heap-reference fields.  The pointed-to layout starts with the array length as an `i64` header followed by flattened element slots.  Recursive inductive values and nested array pointers are internal heap values and cannot cross the public entry ABI.
+
+## Memory Management
+
+LeanExe allocates heap-backed values in WASM linear memory with a small reference-counted object header before each returned payload pointer.  Heap-backed values such as `ByteArray`, `Array`, recursive inductives, internal nested arrays, and JSON AST nodes use this allocator when compiled code constructs them.  Allocations never move, and the current collector reuses whole released blocks through a free list.
+
+In library mode, `alloc(len)` creates a raw byte object with reference count `1` and returns the payload pointer.  `retain(ptr)` increments the count for a nonzero pointer and returns the same pointer.  `release(ptr)` decrements the count, puts the object on the free list when the count reaches zero, and traps on invalid or double release; `free(ptr)` is the same operation under a host-facing name.
+
+The generated compiler backend now emits reference-counted allocation headers for byte arrays, arrays, and recursive-inductive heap objects.  It does not yet perform full ownership analysis for source-level locals, so it does not generally release dead internal temporaries during one compiled call.  Library hosts can release returned heap-backed values after reading or copying the result, and future compiler passes can use the same runtime operations for proven-dead temporary values.
+
+The exported `reset()` function rewinds the heap and clears the free list, invalidating every pointer returned by `alloc` or by a compiled entry.  A host must not retain pointers across `reset()`, even if their reference count was positive before the reset.  `reset()` remains useful as a coarse call-boundary reclamation operation when the host has finished with every result from prior calls.
+
+WASI command modules are single-run command programs.  Their `_start` adapter and compiled Lean entry allocate in linear memory, write observable output, and then return or call `proc_exit`.  The operating environment discards the module instance after process exit, so command-mode programs need no source-visible memory-management mechanism.
 
 ## Types
 

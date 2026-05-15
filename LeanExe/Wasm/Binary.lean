@@ -399,7 +399,8 @@ def emitU64Op : LeanExe.IR.U64Op → List UInt8
 
 def coreGlobalSection : List UInt8 :=
   wasmSection 6 <| vec [
-    ofNats [126, 1] ++ i64Const 4096 ++ ofNats [11]
+    ofNats [126, 1] ++ i64Const 4096 ++ ofNats [11],
+    ofNats [126, 1] ++ i64Const 0 ++ ofNats [11]
   ]
 
 def coreMemorySection : List UInt8 :=
@@ -449,9 +450,134 @@ def i64LeU : List UInt8 :=
 def i64GeU : List UInt8 :=
   ofNats [90]
 
+def i64And : List UInt8 :=
+  ofNats [131]
+
+def i64ShrU : List UInt8 :=
+  ofNats [136]
+
+def i64Eqz : List UInt8 :=
+  ofNats [80]
+
+def unreachable : List UInt8 :=
+  ofNats [0]
+
+def returnOp : List UInt8 :=
+  ofNats [15]
+
 def i64Align8 (value : List UInt8) : List UInt8 :=
   value ++ i64Const 7 ++ ofNats [124] ++ i64Const 8 ++ ofNats [128] ++
     i64Const 8 ++ ofNats [126]
+
+def rcHeaderBytes : Nat :=
+  48
+
+def rcMagic : Nat :=
+  5501223100278326855
+
+def rcKindRaw : Nat :=
+  0
+
+def rcKindSlots : Nat :=
+  1
+
+def rcKindArray : Nat :=
+  2
+
+def rcHeaderAddress (ptr : List UInt8) (offset : Nat) : List UInt8 :=
+  ptr ++ i64Const offset ++ ofNats [125] ++ i32WrapI64
+
+def rcHeaderLoad (ptr : List UInt8) (offset : Nat) : List UInt8 :=
+  rcHeaderAddress ptr offset ++ i64Load
+
+def rcHeaderStore (ptr : List UInt8) (offset : Nat) (value : List UInt8) : List UInt8 :=
+  rcHeaderAddress ptr offset ++ value ++ i64Store
+
+def rcInitHeader
+    (ptr capacity kind aux1 aux2 : List UInt8) :
+    List UInt8 :=
+  rcHeaderStore ptr 48 (i64Const rcMagic) ++
+    rcHeaderStore ptr 40 (i64Const 1) ++
+    rcHeaderStore ptr 32 capacity ++
+    rcHeaderStore ptr 24 kind ++
+    rcHeaderStore ptr 16 aux1 ++
+    rcHeaderStore ptr 8 aux2
+
+def rcAllocPayload
+    (scratch : Nat)
+    (payloadBytes kind aux1 aux2 : List UInt8) :
+    List UInt8 :=
+  let alignedLocal := scratch
+  let prevLocal := scratch + 1
+  let currLocal := scratch + 2
+  let sizeLocal := scratch + 3
+  let nextLocal := scratch + 4
+  let ptrLocal := scratch + 5
+  let unlinkCurrent :=
+    localGet prevLocal ++ i64Const 0 ++ i64Eq ++
+      ofNats [4, 64] ++
+        localGet nextLocal ++ globalSet 1 ++
+      ofNats [5] ++
+        rcHeaderStore (localGet prevLocal) 8 (localGet nextLocal) ++
+      ofNats [11]
+  let takeCurrent :=
+    unlinkCurrent ++
+      rcInitHeader (localGet currLocal) (localGet sizeLocal) kind aux1 aux2 ++
+      localGet currLocal ++ localSet ptrLocal
+  let searchLoop :=
+    ofNats [2, 64, 3, 64] ++
+      localGet currLocal ++ i64Const 0 ++ i64Eq ++ ofNats [13] ++ u32leb 1 ++
+      localGet ptrLocal ++ i64Const 0 ++ i64Ne ++ ofNats [13] ++ u32leb 1 ++
+      rcHeaderLoad (localGet currLocal) 32 ++ localSet sizeLocal ++
+      rcHeaderLoad (localGet currLocal) 8 ++ localSet nextLocal ++
+      localGet sizeLocal ++ localGet alignedLocal ++ i64GeU ++
+        ofNats [4, 64] ++
+          takeCurrent ++
+        ofNats [5] ++
+          localGet currLocal ++ localSet prevLocal ++
+          localGet nextLocal ++ localSet currLocal ++
+        ofNats [11] ++
+      ofNats [12] ++ u32leb 0 ++
+    ofNats [11, 11]
+  let bumpAllocate :=
+    globalGet 0 ++ i64Const rcHeaderBytes ++ ofNats [124] ++ localSet ptrLocal ++
+      globalGet 0 ++ i64Const rcHeaderBytes ++ ofNats [124] ++ localGet alignedLocal ++
+        ofNats [124] ++ globalSet 0 ++
+      rcInitHeader (localGet ptrLocal) (localGet alignedLocal) kind aux1 aux2
+  i64Align8 payloadBytes ++ localSet alignedLocal ++
+    localGet alignedLocal ++ i64Const 8 ++ i64LtU ++
+      ofNats [4, 64] ++
+        i64Const 8 ++ localSet alignedLocal ++
+      ofNats [11] ++
+    i64Const 0 ++ localSet ptrLocal ++
+    i64Const 0 ++ localSet prevLocal ++
+    globalGet 1 ++ localSet currLocal ++
+    searchLoop ++
+    localGet ptrLocal ++ i64Const 0 ++ i64Eq ++
+      ofNats [4, 64] ++
+        bumpAllocate ++
+      ofNats [11] ++
+    localGet ptrLocal
+
+def rcArrayPayloadBytes (width : Nat) (len : List UInt8) : List UInt8 :=
+  i64Const 8 ++ len ++ i64Const width ++ ofNats [126] ++ i64Const 8 ++ ofNats [126, 124]
+
+def rcAllocArrayObject (scratch width : Nat) (len : List UInt8) : List UInt8 :=
+  rcAllocPayload scratch
+    (rcArrayPayloadBytes width len)
+    (i64Const rcKindArray)
+    (i64Const width)
+    (i64Const 0)
+
+def rcAllocSlotObject (scratch slots : Nat) : List UInt8 :=
+  rcAllocPayload scratch
+    (i64Const (slots * 8))
+    (i64Const rcKindSlots)
+    (i64Const slots)
+    (i64Const 0)
+
+def rcAllocRawObject (scratch : Nat) (len : List UInt8) : List UInt8 :=
+  rcAllocPayload scratch (len) (i64Const rcKindRaw) (i64Const 0) (i64Const 0)
 
 def arrayCellAddress (base index : List UInt8) : List UInt8 :=
   base ++ index ++ i64Const 1 ++ ofNats [124] ++ i64Const 8 ++ ofNats [126, 124] ++
@@ -482,29 +608,35 @@ mutual
     | .ite cond thenValue elseValue =>
         max (condScratch cond) (max (exprScratch thenValue) (exprScratch elseValue))
     | .letE _ value body => max (exprScratch value) (exprScratch body)
-    | .arrayAllocSlots _ cells => 2 + exprScratch cells
+    | .arrayAllocSlots _ cells => 8 + exprScratch cells
     | .heapAllocSlots values =>
-        1 + values.length + values.foldl (fun n value => max n (exprScratch value)) 0
+        1 + values.length +
+          max 6 (values.foldl (fun n value => max n (exprScratch value)) 0)
     | .heapLoadSlot ptr _ => 1 + exprScratch ptr
     | .arrayReplicateSlots _ cells values =>
         3 + values.length +
-          max (exprScratch cells) (values.foldl (fun n value => max n (exprScratch value)) 0)
+          max 6
+            (max (exprScratch cells) (values.foldl (fun n value => max n (exprScratch value)) 0))
     | .arraySize array => 1 + exprScratch array
     | .arrayGetSlot _ _ array index => 2 + max (exprScratch array) (exprScratch index)
     | .arraySetSlots _ array index values =>
         6 + values.length +
-          max (exprScratch array)
-            (max (exprScratch index) (values.foldl (fun n value => max n (exprScratch value)) 0))
+          max 6
+            (max (exprScratch array)
+              (max (exprScratch index)
+                (values.foldl (fun n value => max n (exprScratch value)) 0)))
     | .arrayPushSlots _ array values =>
         6 + values.length +
-          max (exprScratch array) (values.foldl (fun n value => max n (exprScratch value)) 0)
-    | .arrayPopSlots _ array => 6 + exprScratch array
-    | .arrayAppendSlots _ left right => 9 + max (exprScratch left) (exprScratch right)
+          max 6
+            (max (exprScratch array) (values.foldl (fun n value => max n (exprScratch value)) 0))
+    | .arrayPopSlots _ array => 6 + max 6 (exprScratch array)
+    | .arrayAppendSlots _ left right => 9 + max 6 (max (exprScratch left) (exprScratch right))
     | .arrayExtractSlots _ array start stop =>
-        10 + max (exprScratch array) (max (exprScratch start) (exprScratch stop))
+        10 + max 6 (max (exprScratch array) (max (exprScratch start) (exprScratch stop)))
     | .arrayMapSlots _ _ array _ bodyValues =>
-        4 + max (exprScratch array)
-          (bodyValues.foldl (fun n value => max n (exprScratch value)) 0)
+        4 + max 6
+          (max (exprScratch array)
+            (bodyValues.foldl (fun n value => max n (exprScratch value)) 0))
     | .arrayFoldMultiSlot sourceWidth resultWidth array start stop initValues _ _ bodyValues
         bodyLets bodyDone _ =>
         let initScratch := initValues.foldl (fun n value => max n (exprScratch value)) 0
@@ -527,37 +659,43 @@ mutual
             (exprScratch predicate)
     | .arrayFilterSlots sourceWidth array start stop _ predicate =>
         8 + sourceWidth +
-          max
-            (max (exprScratch array) (max (exprScratch start) (exprScratch stop)))
-            (exprScratch predicate)
+          max 6
+            (max
+              (max (exprScratch array) (max (exprScratch start) (exprScratch stop)))
+              (exprScratch predicate))
     | .arrayInsertIfInBoundsSlots _ array index values =>
         8 + values.length +
-          max (exprScratch array)
-            (max (exprScratch index) (values.foldl (fun n value => max n (exprScratch value)) 0))
+          max 6
+            (max (exprScratch array)
+              (max (exprScratch index)
+                (values.foldl (fun n value => max n (exprScratch value)) 0)))
     | .arrayEraseIfInBoundsSlots _ array index =>
-        8 + max (exprScratch array) (exprScratch index)
+        8 + max 6 (max (exprScratch array) (exprScratch index))
     | .arraySwapIfInBoundsSlots _ array left right =>
-        7 + max (exprScratch array) (max (exprScratch left) (exprScratch right))
-    | .arrayReverseSlots _ array => 4 + exprScratch array
+        7 + max 6 (max (exprScratch array) (max (exprScratch left) (exprScratch right)))
+    | .arrayReverseSlots _ array => 4 + max 6 (exprScratch array)
     | .byteArrayGet ptr len index =>
         3 + max (exprScratch ptr) (max (exprScratch len) (exprScratch index))
     | .byteArrayPushPtr ptr len value =>
-        6 + max (exprScratch ptr) (max (exprScratch len) (exprScratch value))
+        6 + max 6 (max (exprScratch ptr) (max (exprScratch len) (exprScratch value)))
     | .byteArrayAppendPtr leftPtr leftLen rightPtr rightLen =>
-        7 + max
-          (max (exprScratch leftPtr) (exprScratch leftLen))
-          (max (exprScratch rightPtr) (exprScratch rightLen))
-    | .byteArraySetPtr ptr len index value =>
-        6 + max
-          (max (exprScratch ptr) (exprScratch len))
-          (max (exprScratch index) (exprScratch value))
-    | .byteArrayFromArrayPtr array => 4 + exprScratch array
-    | .byteArrayCopySlicePtr srcPtr srcLen srcOff destPtr destLen destOff copyLen =>
-        15 + max
-          (max (exprScratch srcPtr) (max (exprScratch srcLen) (exprScratch srcOff)))
+        7 + max 6
           (max
-            (max (exprScratch destPtr) (max (exprScratch destLen) (exprScratch destOff)))
-            (exprScratch copyLen))
+            (max (exprScratch leftPtr) (exprScratch leftLen))
+            (max (exprScratch rightPtr) (exprScratch rightLen)))
+    | .byteArraySetPtr ptr len index value =>
+        6 + max 6
+          (max
+            (max (exprScratch ptr) (exprScratch len))
+            (max (exprScratch index) (exprScratch value)))
+    | .byteArrayFromArrayPtr array => 4 + max 6 (exprScratch array)
+    | .byteArrayCopySlicePtr srcPtr srcLen srcOff destPtr destLen destOff copyLen =>
+        15 + max 6
+          (max
+            (max (exprScratch srcPtr) (max (exprScratch srcLen) (exprScratch srcOff)))
+            (max
+              (max (exprScratch destPtr) (max (exprScratch destLen) (exprScratch destOff)))
+              (exprScratch copyLen)))
     | .byteArrayFindIdx ptr len start _ predicate _ =>
         4 + max
           (max (exprScratch ptr) (max (exprScratch len) (exprScratch start)))
@@ -736,10 +874,8 @@ mutual
     let len := scratch
     let ptr := scratch + 1
     emitExpr (scratch + 2) cells ++ localSet len ++
-      globalGet 0 ++ localSet ptr ++
+      rcAllocArrayObject (scratch + 2) width (localGet len) ++ localSet ptr ++
       localGet ptr ++ i32WrapI64 ++ localGet len ++ i64Store ++
-      globalGet 0 ++ i64Const 8 ++ localGet len ++ i64Const width ++ ofNats [126] ++
-        i64Const 8 ++ ofNats [126, 124, 124] ++ globalSet 0 ++
       localGet ptr
 
   partial def emitHeapAllocSlots (scratch : Nat) (values : List Expr) : List UInt8 :=
@@ -756,9 +892,8 @@ mutual
           localGet ptrLocal ++ i64Const (offset * 8) ++ ofNats [124] ++ i32WrapI64 ++
             localGet (valueStart + offset) ++ i64Store ++ emitSlotStores rest
     emitValueStores (enumerate values) ++
-      globalGet 0 ++ localSet ptrLocal ++
+      rcAllocSlotObject childScratch values.length ++ localSet ptrLocal ++
       emitSlotStores (enumerate values) ++
-      globalGet 0 ++ i64Const (values.length * 8) ++ ofNats [124] ++ globalSet 0 ++
       localGet ptrLocal
 
   partial def emitHeapLoadSlot (scratch : Nat) (ptr : Expr) (slot : Nat) : List UInt8 :=
@@ -794,10 +929,8 @@ mutual
         ofNats [11, 11]
     emitExpr childScratch cells ++ localSet lenLocal ++
       emitValueStores (enumerate values) ++
-      globalGet 0 ++ localSet ptrLocal ++
+      rcAllocArrayObject childScratch width (localGet lenLocal) ++ localSet ptrLocal ++
       localGet ptrLocal ++ i32WrapI64 ++ localGet lenLocal ++ i64Store ++
-      globalGet 0 ++ i64Const 8 ++ localGet lenLocal ++ i64Const width ++
-        ofNats [126] ++ i64Const 8 ++ ofNats [126, 124, 124] ++ globalSet 0 ++
       fillLoop ++
       localGet ptrLocal
 
@@ -849,10 +982,8 @@ mutual
       localGet indexLocal ++ localGet lenLocal ++ i64LtU ++
       ofNats [4, 126] ++
         localGet lenLocal ++ i64Const width ++ ofNats [126] ++ localSet cellsLocal ++
-        globalGet 0 ++ localSet newLocal ++
+        rcAllocArrayObject childScratch width (localGet lenLocal) ++ localSet newLocal ++
         localGet newLocal ++ i32WrapI64 ++ localGet lenLocal ++ i64Store ++
-        globalGet 0 ++ i64Const 8 ++ localGet cellsLocal ++ i64Const 8 ++
-          ofNats [126, 124, 124] ++ globalSet 0 ++
         emitCopyLoop arrayLocal newLocal cellsLocal loopLocal ++
         emitSlotStores (enumerate values) ++
         localGet newLocal ++
@@ -886,10 +1017,8 @@ mutual
       localGet arrayLocal ++ i32WrapI64 ++ i64Load ++ localSet lenLocal ++
       localGet lenLocal ++ i64Const width ++ ofNats [126] ++ localSet cellsLocal ++
       localGet lenLocal ++ i64Const 1 ++ ofNats [124] ++ localSet newLenLocal ++
-      globalGet 0 ++ localSet newLocal ++
+      rcAllocArrayObject childScratch width (localGet newLenLocal) ++ localSet newLocal ++
       localGet newLocal ++ i32WrapI64 ++ localGet newLenLocal ++ i64Store ++
-      globalGet 0 ++ i64Const 8 ++ localGet newLenLocal ++ i64Const width ++
-        ofNats [126] ++ i64Const 8 ++ ofNats [126, 124, 124] ++ globalSet 0 ++
       emitCopyLoop arrayLocal newLocal cellsLocal loopLocal ++
       emitSlotStores (enumerate values) ++
       localGet newLocal
@@ -910,10 +1039,8 @@ mutual
       ofNats [5] ++
         localGet lenLocal ++ i64Const 1 ++ ofNats [125] ++ localSet newLenLocal ++
         localGet newLenLocal ++ i64Const width ++ ofNats [126] ++ localSet cellsLocal ++
-        globalGet 0 ++ localSet newLocal ++
+        rcAllocArrayObject childScratch width (localGet newLenLocal) ++ localSet newLocal ++
         localGet newLocal ++ i32WrapI64 ++ localGet newLenLocal ++ i64Store ++
-        globalGet 0 ++ i64Const 8 ++ localGet cellsLocal ++ i64Const 8 ++
-          ofNats [126, 124, 124] ++ globalSet 0 ++
         emitCopyLoop arrayLocal newLocal cellsLocal loopLocal ++
         localGet newLocal ++
       ofNats [11]
@@ -937,10 +1064,8 @@ mutual
         localSet newLenLocal ++
       localGet leftLenLocal ++ i64Const width ++ ofNats [126] ++ localSet leftCellsLocal ++
       localGet rightLenLocal ++ i64Const width ++ ofNats [126] ++ localSet rightCellsLocal ++
-      globalGet 0 ++ localSet newLocal ++
+      rcAllocArrayObject childScratch width (localGet newLenLocal) ++ localSet newLocal ++
       localGet newLocal ++ i32WrapI64 ++ localGet newLenLocal ++ i64Store ++
-      globalGet 0 ++ i64Const 8 ++ localGet newLenLocal ++ i64Const width ++
-        ofNats [126] ++ i64Const 8 ++ ofNats [126, 124, 124] ++ globalSet 0 ++
       emitCopyLoop leftLocal newLocal leftCellsLocal loopLocal ++
       emitCopyLoopAt rightLocal newLocal leftCellsLocal rightCellsLocal loopLocal ++
       localGet newLocal
@@ -977,10 +1102,8 @@ mutual
       ofNats [11] ++ localSet newLenLocal ++
       localGet startLocal ++ i64Const width ++ ofNats [126] ++ localSet startCellLocal ++
       localGet newLenLocal ++ i64Const width ++ ofNats [126] ++ localSet cellsLocal ++
-      globalGet 0 ++ localSet newLocal ++
+      rcAllocArrayObject childScratch width (localGet newLenLocal) ++ localSet newLocal ++
       localGet newLocal ++ i32WrapI64 ++ localGet newLenLocal ++ i64Store ++
-      globalGet 0 ++ i64Const 8 ++ localGet cellsLocal ++ i64Const 8 ++
-        ofNats [126, 124, 124] ++ globalSet 0 ++
       emitExtractCopyLoop arrayLocal newLocal startCellLocal cellsLocal loopLocal ++
       localGet newLocal
 
@@ -1006,10 +1129,8 @@ mutual
             emitExpr childScratch value ++ i64Store ++ emitResultStores rest
     emitExpr childScratch array ++ localSet arrayLocal ++
       localGet arrayLocal ++ i32WrapI64 ++ i64Load ++ localSet lenLocal ++
-      globalGet 0 ++ localSet newLocal ++
+      rcAllocArrayObject childScratch resultWidth (localGet lenLocal) ++ localSet newLocal ++
       localGet newLocal ++ i32WrapI64 ++ localGet lenLocal ++ i64Store ++
-      globalGet 0 ++ i64Const 8 ++ localGet lenLocal ++ i64Const resultWidth ++
-        ofNats [126] ++ i64Const 8 ++ ofNats [126, 124, 124] ++ globalSet 0 ++
       i64Const 0 ++ localSet loopLocal ++
       ofNats [2, 64, 3, 64] ++
         localGet loopLocal ++ localGet lenLocal ++ i64GeU ++ ofNats [13] ++ u32leb 1 ++
@@ -1298,9 +1419,7 @@ mutual
       emitExpr childScratch start ++ localSet indexLocal ++
       emitExpr childScratch stop ++ localSet stopLocal ++
       localGet lenLocal ++ i64Const sourceWidth ++ ofNats [126] ++ localSet cellsLocal ++
-      globalGet 0 ++ localSet newLocal ++
-      globalGet 0 ++ i64Const 8 ++ localGet cellsLocal ++ i64Const 8 ++
-        ofNats [126, 124, 124] ++ globalSet 0 ++
+      rcAllocArrayObject childScratch sourceWidth (localGet lenLocal) ++ localSet newLocal ++
       i64Const 0 ++ localSet writeIndexLocal ++
       localGet stopLocal ++ localGet lenLocal ++ i64LtU ++
       ofNats [4, 126] ++
@@ -1356,10 +1475,8 @@ mutual
         localGet indexLocal ++ i64Const width ++ ofNats [126] ++ localSet prefixCellsLocal ++
         localGet lenLocal ++ localGet indexLocal ++ ofNats [125] ++
           i64Const width ++ ofNats [126] ++ localSet suffixCellsLocal ++
-        globalGet 0 ++ localSet newLocal ++
+        rcAllocArrayObject childScratch width (localGet newLenLocal) ++ localSet newLocal ++
         localGet newLocal ++ i32WrapI64 ++ localGet newLenLocal ++ i64Store ++
-        globalGet 0 ++ i64Const 8 ++ localGet newLenLocal ++ i64Const width ++
-          ofNats [126] ++ i64Const 8 ++ ofNats [126, 124, 124] ++ globalSet 0 ++
         emitCopyLoop arrayLocal newLocal prefixCellsLocal loopLocal ++
         emitSlotStores (enumerate values) ++
         emitRangeCopyLoop
@@ -1395,10 +1512,8 @@ mutual
         localGet indexLocal ++ i64Const width ++ ofNats [126] ++ localSet prefixCellsLocal ++
         localGet newLenLocal ++ localGet indexLocal ++ ofNats [125] ++
           i64Const width ++ ofNats [126] ++ localSet suffixCellsLocal ++
-        globalGet 0 ++ localSet newLocal ++
+        rcAllocArrayObject childScratch width (localGet newLenLocal) ++ localSet newLocal ++
         localGet newLocal ++ i32WrapI64 ++ localGet newLenLocal ++ i64Store ++
-        globalGet 0 ++ i64Const 8 ++ localGet newLenLocal ++ i64Const width ++
-          ofNats [126] ++ i64Const 8 ++ ofNats [126, 124, 124] ++ globalSet 0 ++
         emitCopyLoop arrayLocal newLocal prefixCellsLocal loopLocal ++
         emitRangeCopyLoop
           arrayLocal
@@ -1435,10 +1550,8 @@ mutual
           emitSlotCopies rest
     let swapBody :=
       localGet lenLocal ++ i64Const width ++ ofNats [126] ++ localSet cellsLocal ++
-        globalGet 0 ++ localSet newLocal ++
+        rcAllocArrayObject childScratch width (localGet lenLocal) ++ localSet newLocal ++
         localGet newLocal ++ i32WrapI64 ++ localGet lenLocal ++ i64Store ++
-        globalGet 0 ++ i64Const 8 ++ localGet cellsLocal ++ i64Const 8 ++
-          ofNats [126, 124, 124] ++ globalSet 0 ++
         emitCopyLoop arrayLocal newLocal cellsLocal loopLocal ++
         emitSlotCopies (List.range width) ++
         localGet newLocal
@@ -1488,10 +1601,8 @@ mutual
       ofNats [4, 126] ++
         localGet arrayLocal ++
       ofNats [5] ++
-        globalGet 0 ++ localSet newLocal ++
+        rcAllocArrayObject childScratch width (localGet lenLocal) ++ localSet newLocal ++
         localGet newLocal ++ i32WrapI64 ++ localGet lenLocal ++ i64Store ++
-        globalGet 0 ++ i64Const 8 ++ localGet lenLocal ++ i64Const width ++
-          ofNats [126] ++ i64Const 8 ++ ofNats [126, 124, 124] ++ globalSet 0 ++
         copyLoop ++
         localGet newLocal ++
       ofNats [11]
@@ -1534,8 +1645,7 @@ mutual
       emitExpr childScratch len ++ localSet lenLocal ++
       emitExpr childScratch value ++ localSet valueLocal ++
       localGet lenLocal ++ i64Const 1 ++ ofNats [124] ++ localSet newLenLocal ++
-      globalGet 0 ++ localSet newPtrLocal ++
-      globalGet 0 ++ localGet newLenLocal ++ ofNats [124] ++ globalSet 0 ++
+      rcAllocRawObject childScratch (localGet newLenLocal) ++ localSet newPtrLocal ++
       copyLoop ++
       localGet newPtrLocal ++ localGet lenLocal ++ ofNats [124] ++ i32WrapI64 ++
         localGet valueLocal ++ i32WrapI64 ++ i32Store8 ++
@@ -1580,8 +1690,7 @@ mutual
       emitExpr childScratch rightPtr ++ localSet rightPtrLocal ++
       emitExpr childScratch rightLen ++ localSet rightLenLocal ++
       localGet leftLenLocal ++ localGet rightLenLocal ++ ofNats [124] ++ localSet newLenLocal ++
-      globalGet 0 ++ localSet newPtrLocal ++
-      globalGet 0 ++ localGet newLenLocal ++ ofNats [124] ++ globalSet 0 ++
+      rcAllocRawObject childScratch (localGet newLenLocal) ++ localSet newPtrLocal ++
       copyLeftLoop ++
       copyRightLoop ++
       localGet newPtrLocal
@@ -1612,8 +1721,7 @@ mutual
       emitExpr childScratch value ++ localSet valueLocal ++
       localGet indexLocal ++ localGet lenLocal ++ i64LtU ++
       ofNats [4, 126] ++
-        globalGet 0 ++ localSet newPtrLocal ++
-        globalGet 0 ++ localGet lenLocal ++ ofNats [124] ++ globalSet 0 ++
+        rcAllocRawObject childScratch (localGet lenLocal) ++ localSet newPtrLocal ++
         copyLoop ++
         localGet newPtrLocal ++ localGet indexLocal ++ ofNats [124] ++ i32WrapI64 ++
           localGet valueLocal ++ i32WrapI64 ++ i32Store8 ++
@@ -1640,8 +1748,7 @@ mutual
         ofNats [11, 11]
     emitExpr childScratch array ++ localSet arrayLocal ++
       localGet arrayLocal ++ i32WrapI64 ++ i64Load ++ localSet lenLocal ++
-      globalGet 0 ++ localSet newPtrLocal ++
-      globalGet 0 ++ localGet lenLocal ++ ofNats [124] ++ globalSet 0 ++
+      rcAllocRawObject childScratch (localGet lenLocal) ++ localSet newPtrLocal ++
       copyLoop ++
       localGet newPtrLocal
 
@@ -1698,8 +1805,7 @@ mutual
       ofNats [11] ++ localSet suffixLenLocal ++
       localGet prefixLenLocal ++ localGet copiedLenLocal ++ ofNats [124] ++
         localGet suffixLenLocal ++ ofNats [124] ++ localSet newLenLocal ++
-      globalGet 0 ++ localSet newPtrLocal ++
-      globalGet 0 ++ localGet newLenLocal ++ ofNats [124] ++ globalSet 0 ++
+      rcAllocRawObject childScratch (localGet newLenLocal) ++ localSet newPtrLocal ++
       emitByteRangeCopyLoop
         destPtrLocal
         newPtrLocal
@@ -2291,10 +2397,10 @@ def typeForFunc (func : Func) : List UInt8 :=
 def typeSection (module_ : Module) : List UInt8 :=
   wasmSection 1 <| vec (
     module_.funcs.toList.map typeForFunc ++
-      [funcType [i64] [i64], funcType [] []])
+      [funcType [i64] [i64], funcType [] [], funcType [i64] [i64], funcType [i64] []])
 
 def functionSection (module_ : Module) : List UInt8 :=
-  wasmSection 3 <| u32Vec (List.range (module_.funcs.size + 2))
+  wasmSection 3 <| u32Vec (List.range (module_.funcs.size + 4))
 
 def exportSection (module_ : Module) : List UInt8 :=
   wasmSection 7 <| vec <|
@@ -2302,20 +2408,123 @@ def exportSection (module_ : Module) : List UInt8 :=
       (enumerate module_.funcs.toList |>.filterMap fun item =>
         item.snd.exportName.map (fun exportName => exportEntry exportName 0 item.fst)) ++
       [exportEntry "alloc" 0 module_.funcs.size,
-        exportEntry "reset" 0 (module_.funcs.size + 1)]
+        exportEntry "reset" 0 (module_.funcs.size + 1),
+        exportEntry "retain" 0 (module_.funcs.size + 2),
+        exportEntry "release" 0 (module_.funcs.size + 3),
+        exportEntry "free" 0 (module_.funcs.size + 3)]
 
 def coreAllocBody : List UInt8 :=
   body
-    (ofNats [0])
-    (globalGet 0 ++ globalGet 0 ++ localGet 0 ++ ofNats [124] ++ globalSet 0)
+    (ofNats [1, 6, 126])
+    (rcAllocRawObject 1 (localGet 0))
 
 def coreResetBody : List UInt8 :=
   body
     (ofNats [0])
-    (i64Const 4096 ++ globalSet 0)
+    (i64Const 4096 ++ globalSet 0 ++ i64Const 0 ++ globalSet 1)
+
+def coreRetainBody : List UInt8 :=
+  let rcLocal := 1
+  body
+    (ofNats [1, 1, 126])
+    (localGet 0 ++ i64Const 0 ++ i64Ne ++
+      ofNats [4, 64] ++
+        rcHeaderLoad (localGet 0) 48 ++ i64Const rcMagic ++ i64Ne ++
+          ofNats [4, 64] ++ unreachable ++ ofNats [11] ++
+        rcHeaderLoad (localGet 0) 40 ++ localSet rcLocal ++
+        localGet rcLocal ++ i64Const 0 ++ i64Eq ++
+          ofNats [4, 64] ++ unreachable ++ ofNats [11] ++
+        rcHeaderStore (localGet 0) 40 (localGet rcLocal ++ i64Const 1 ++ ofNats [124]) ++
+      ofNats [11] ++
+      localGet 0)
+
+def coreReleaseBody (releaseIndex : Nat) : List UInt8 :=
+  let rcLocal := 1
+  let kindLocal := 2
+  let limitLocal := 3
+  let widthLocal := 4
+  let maskLocal := 5
+  let slotLocal := 6
+  let itemLocal := 7
+  let childLocal := 8
+  let callReleaseChild := localGet childLocal ++ call releaseIndex
+  let slotReleaseLoop :=
+    i64Const 0 ++ localSet slotLocal ++
+      ofNats [2, 64, 3, 64] ++
+        localGet slotLocal ++ localGet limitLocal ++ i64GeU ++
+          ofNats [13] ++ u32leb 1 ++
+        localGet maskLocal ++ localGet slotLocal ++ i64ShrU ++ i64Const 1 ++ i64And ++
+          i64Const 0 ++ i64Ne ++
+          ofNats [4, 64] ++
+            localGet 0 ++ localGet slotLocal ++ i64Const 8 ++ ofNats [126, 124] ++
+              i32WrapI64 ++ i64Load ++ localSet childLocal ++
+            callReleaseChild ++
+          ofNats [11] ++
+        localGet slotLocal ++ i64Const 1 ++ ofNats [124] ++ localSet slotLocal ++
+        ofNats [12] ++ u32leb 0 ++
+      ofNats [11, 11]
+  let arrayReleaseLoop :=
+    localGet 0 ++ i32WrapI64 ++ i64Load ++ localSet limitLocal ++
+      rcHeaderLoad (localGet 0) 16 ++ localSet widthLocal ++
+      rcHeaderLoad (localGet 0) 8 ++ localSet maskLocal ++
+      i64Const 0 ++ localSet itemLocal ++
+      ofNats [2, 64, 3, 64] ++
+        localGet itemLocal ++ localGet limitLocal ++ i64GeU ++
+          ofNats [13] ++ u32leb 1 ++
+        i64Const 0 ++ localSet slotLocal ++
+        ofNats [2, 64, 3, 64] ++
+          localGet slotLocal ++ localGet widthLocal ++ i64GeU ++
+            ofNats [13] ++ u32leb 1 ++
+          localGet maskLocal ++ localGet slotLocal ++ i64ShrU ++ i64Const 1 ++ i64And ++
+            i64Const 0 ++ i64Ne ++
+            ofNats [4, 64] ++
+              localGet 0 ++ i64Const 8 ++ ofNats [124] ++
+                localGet itemLocal ++ localGet widthLocal ++ ofNats [126] ++
+                localGet slotLocal ++ ofNats [124] ++ i64Const 8 ++ ofNats [126, 124] ++
+                i32WrapI64 ++ i64Load ++ localSet childLocal ++
+              callReleaseChild ++
+            ofNats [11] ++
+          localGet slotLocal ++ i64Const 1 ++ ofNats [124] ++ localSet slotLocal ++
+          ofNats [12] ++ u32leb 0 ++
+        ofNats [11, 11] ++
+        localGet itemLocal ++ i64Const 1 ++ ofNats [124] ++ localSet itemLocal ++
+        ofNats [12] ++ u32leb 0 ++
+      ofNats [11, 11]
+  let freeCurrent :=
+    rcHeaderStore (localGet 0) 40 (i64Const 0) ++
+      rcHeaderStore (localGet 0) 8 (globalGet 1) ++
+      localGet 0 ++ globalSet 1
+  body
+    (ofNats [1, 8, 126])
+    (localGet 0 ++ i64Const 0 ++ i64Eq ++
+      ofNats [4, 64] ++ returnOp ++ ofNats [11] ++
+      rcHeaderLoad (localGet 0) 48 ++ i64Const rcMagic ++ i64Ne ++
+        ofNats [4, 64] ++ unreachable ++ ofNats [11] ++
+      rcHeaderLoad (localGet 0) 40 ++ localSet rcLocal ++
+      localGet rcLocal ++ i64Const 0 ++ i64Eq ++
+        ofNats [4, 64] ++ unreachable ++ ofNats [11] ++
+      i64Const 1 ++ localGet rcLocal ++ i64LtU ++
+        ofNats [4, 64] ++
+          rcHeaderStore (localGet 0) 40 (localGet rcLocal ++ i64Const 1 ++ ofNats [125]) ++
+          returnOp ++
+        ofNats [11] ++
+      rcHeaderLoad (localGet 0) 24 ++ localSet kindLocal ++
+      localGet kindLocal ++ i64Const rcKindSlots ++ i64Eq ++
+        ofNats [4, 64] ++
+          rcHeaderLoad (localGet 0) 16 ++ localSet limitLocal ++
+          rcHeaderLoad (localGet 0) 8 ++ localSet maskLocal ++
+          slotReleaseLoop ++
+        ofNats [11] ++
+      localGet kindLocal ++ i64Const rcKindArray ++ i64Eq ++
+        ofNats [4, 64] ++
+          arrayReleaseLoop ++
+        ofNats [11] ++
+      freeCurrent)
 
 def codeSection (module_ : Module) : List UInt8 :=
-  wasmSection 10 <| vec (module_.funcs.toList.map emitFuncBody ++ [coreAllocBody, coreResetBody])
+  wasmSection 10 <| vec (
+    module_.funcs.toList.map emitFuncBody ++
+      [coreAllocBody, coreResetBody, coreRetainBody, coreReleaseBody (module_.funcs.size + 3)])
 
 def moduleBytes (module_ : Module) : ByteArray :=
   ByteArray.mk <| (ofNats [0, 97, 115, 109, 1, 0, 0, 0]

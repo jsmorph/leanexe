@@ -69,7 +69,19 @@ Choose the compile command from the entry type.  The Lean source stays pure in e
 | `Array ByteArray -> Except ByteArray ByteArray` | `compile-wasi-argv-except` | Passes user argv as an internal array of byte arrays. |
 | `ByteArray -> Array ByteArray -> Except ByteArray ByteArray` | `compile-wasi-stdin-argv-except` | Passes bounded stdin and bounded user argv. |
 
-Library-mode array and byte-array values use exported memory.  Hosts allocate input bytes with `alloc`, write data into `memory`, pass pointer-length pairs, and read returned pointer-length pairs before calling `reset`.  Command-mode programs hide that host ABI behind WASI.
+Library-mode array and byte-array values use exported memory.  Hosts allocate input bytes with `alloc`, write data into `memory`, pass pointer-length pairs, and read returned pointer-length pairs before calling `release` or `reset`.  Command-mode programs hide that host ABI behind WASI.
+
+## Memory Management
+
+LeanExe modules use a small reference-counted heap inside WASM linear memory.  Heap-backed values allocate with a header before the payload pointer, and released objects return to a free list for later allocation.  This includes byte arrays, arrays, recursive inductive values, nested internal arrays, JSON AST nodes, and other heap-backed values created by compiled code.
+
+In library mode, the host controls result lifetime.  It may call `alloc` to reserve input memory, call the exported Lean entry, read returned pointer-length values or memory-backed arrays, and call `release(ptr)` or `free(ptr)` when a returned object is no longer needed.  `retain(ptr)` increments the reference count and returns the same pointer, which lets a host keep a result while passing it through code that may release its own reference.
+
+`reset()` remains a coarse reclamation operation.  It rewinds the heap and clears the free list, invalidating every old pointer regardless of reference count.  A host should use either explicit `release` calls for individual returned objects or `reset()` at a boundary where no old pointer remains live.
+
+The compiler does not yet perform full ownership analysis for every local temporary.  Generated code allocates heap-backed objects with reference-count headers, but it does not generally emit `release` for dead internal temporaries during one call.  Long-running library hosts can reclaim returned objects today; reclaiming all dead temporaries inside a call requires the next ownership pass.
+
+In WASI command mode, the generated module is a single-run command.  The adapter reads stdin or argv, calls the pure Lean entry, writes stdout or stderr, and exits.  All allocations disappear with the process, so command programs do not need source-level memory management.
 
 ## Scalar Template
 
