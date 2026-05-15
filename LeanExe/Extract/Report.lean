@@ -200,9 +200,9 @@ def knownExternal? (name : Name) : Option Classification :=
     some { status := "implemented", reason := "control, equality, or comparison primitive in the generic compiler fragment" }
   else if [``UInt64.decLt].contains name then
     some { status := "implemented", reason := "decidable comparison instance used by supported UInt64 comparisons" }
-  else if [``Id.run, ``Pure.pure, ``Bind.bind, ``Applicative.toPure, ``Monad.toApplicative,
-      ``Monad.toBind].contains name then
-    some { status := "implemented", reason := "pure Id do-notation plumbing erased by the generic compiler fragment" }
+  else if [``Id.run, ``Pure.pure, ``Bind.bind, ``Functor.map, ``Applicative.toPure,
+      ``Monad.toApplicative, ``Monad.toBind, ``Alternative.toApplicative].contains name then
+    some { status := "implemented", reason := "supported first-order do-notation and functor applications" }
   else if [``Array.mk, ``Array.empty, ``Array.mkEmpty, ``Array.emptyWithCapacity, ``Array.singleton,
       ``Array.replicate, ``Array.size, ``Array.isEmpty, ``Array.push, ``Array.pop,
       ``Array.eraseIdx, ``Array.eraseIdx!, ``Array.eraseIdxIfInBounds,

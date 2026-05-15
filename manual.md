@@ -182,13 +182,19 @@ Structural recursion works best when the recursive argument is the first paramet
 
 ## Option, Except, and Error Results
 
-`Option` works well for internal parse failures, search results, and optional values.  Match explicitly on `some` and `none`.  Avoid helper chains that create higher-order functions unless the pattern already appears in accepted examples.
+`Option` works well for internal parse failures, search results, and optional values.  Match explicitly on `some` and `none` when the control flow is clearer as a case split.  Use `Option` `do` notation when parse steps should short-circuit on `none`; LeanExe lowers the resulting `Pure.pure` and `Bind.bind` applications to the same representation as explicit matches when callbacks are direct lambdas.
 
 ```lean
 def optionOrZero (value : Option UInt64) : UInt64 :=
   match value with
   | some n => n
   | none => 0
+
+def checkedPair (a? b? : Option UInt64) : Option (UInt64 × UInt64) :=
+  do
+    let a <- a?
+    let b <- b?
+    some (a, b)
 ```
 
 `Except ByteArray ByteArray` is the preferred command result type when a byte-oriented program can fail.  In WASI `Except` modes, `Except.ok bytes` writes to stdout and exits successfully.  `Except.error bytes` writes to stderr and exits with status `1`.
@@ -205,8 +211,19 @@ def bangOrError (input : ByteArray) : Except ByteArray ByteArray :=
   else
     Except.ok (input.push (33 : UInt8))
 
+def bangOrErrorDo (input : ByteArray) : Except ByteArray ByteArray :=
+  do
+    let bytes <-
+      if input.size == 0 then
+        Except.error errorJson
+      else
+        Except.ok input
+    pure (bytes.push (33 : UInt8))
+
 end LeanExe.Examples.ManualExcept
 ```
+
+The supported `Option` and `Except` combinators include direct `map` and `bind`, overloaded `Functor.map`, and `do` notation that elaborates to `Pure.pure` and `Bind.bind`.  The callback must be written at the call site.  Do not pass callback values through variables, structures, arrays, or helper parameters.
 
 Compile a stdin command:
 

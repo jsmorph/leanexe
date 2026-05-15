@@ -416,6 +416,18 @@ function selfTest() {
       input: Buffer.from("[]", "utf8"),
     },
     {
+      mode: "stdin",
+      moduleName: "LeanExe.Examples.JsonAdd",
+      entry: "transform",
+      input: Buffer.from("{\"a\":19,\"b\":23}", "utf8"),
+    },
+    {
+      mode: "stdin",
+      moduleName: "LeanExe.Examples.JsonCollatzLength",
+      entry: "transform",
+      input: Buffer.from("{\"collatzLengthFor\":41}", "utf8"),
+    },
+    {
       mode: "stdin-except",
       moduleName: "LeanExe.Examples.JsonTreeCommand",
       entry: "makeTree",

@@ -60,10 +60,15 @@ def gcdInput? (text : AsciiString) : Option UInt64 :=
       else
         some state.value
 
-def transformAscii (text : AsciiString) : Except ByteArray ByteArray :=
+def requireGcdInput (text : AsciiString) : Except ByteArray UInt64 :=
   match gcdInput? text with
-  | some value => Except.ok (Ascii.Json.object1UInt64 resultFieldName value)
+  | some value => Except.ok value
   | none => Except.error Ascii.Json.errorJson
+
+def transformAscii (text : AsciiString) : Except ByteArray ByteArray :=
+  do
+    let value <- requireGcdInput text
+    pure (Ascii.Json.object1UInt64 resultFieldName value)
 
 def transform (input : ByteArray) : Except ByteArray ByteArray :=
   match AsciiString.ofByteArray? input with

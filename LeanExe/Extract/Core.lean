@@ -126,6 +126,9 @@ partial def collectLambdas (expr : Expr) : Nat → Option Expr
 def isIdType (expr : Expr) : Bool :=
   isConst ``Id expr
 
+def isOptionMonadType (expr : Expr) : Bool :=
+  isConst ``Option expr
+
 def isStringType (expr : Expr) : Bool :=
   isConst ``String expr
 
@@ -1143,7 +1146,7 @@ def blocksTransparentSpecialization (name : Name) : Bool :=
           component == "recOn" ||
           component == "casesOn"
     | _ => false) ||
-    [``Array, ``ByteArray, ``Option, ``Except, ``ForIn, ``Bind, ``Pure, ``Id, ``Nat,
+    [``Array, ``ByteArray, ``Option, ``Except, ``ForIn, ``Functor, ``Bind, ``Pure, ``Id, ``Nat,
       ``Decidable, ``GetElem, ``GetElem?, ``HOrElse, ``OrElse].contains root
 
 partial def rebuildApp (fn : Expr) : List Expr → Expr
@@ -3608,6 +3611,31 @@ def idBindArgs? (fn : Expr) (args : List Expr) : Option (Expr × Expr) :=
         none
   | _ => none
 
+inductive SupportedMonad where
+  | id
+  | option
+  | except (errorTy : Ty)
+
+def exceptMonadErrorType? (env : Environment) (expr : Expr) : Option Ty :=
+  match appFnArgs expr with
+  | (.const ``Except _, [errorTy]) => typeAtom? env errorTy
+  | _ => none
+
+def supportedMonadType? (env : Environment) (expr : Expr) : Option SupportedMonad :=
+  if isIdType expr then
+    some .id
+  else if isOptionMonadType expr then
+    some .option
+  else
+    match exceptMonadErrorType? env expr with
+    | some errorTy => some (.except errorTy)
+    | none => none
+
+def monadMapResultType? (env : Environment) (args : List Expr) : Option Ty :=
+  match args with
+  | _monadTy :: _inst :: _sourceTy :: resultTy :: _ => typeAtom? env resultTy
+  | _ => none
+
 structure ForInArgs where
   collectionTy : Ty
   itemTy : Ty
@@ -4445,15 +4473,49 @@ partial def demandExpr
           | (.const ``Pure.pure _, args) =>
               match args, args.reverse with
               | monadTy :: _, value :: _ =>
-                  if isIdType monadTy then demandExpr ctx visiting value else .empty
+                  match supportedMonadType? ctx.env monadTy with
+                  | some .id => demandExpr ctx visiting value
+                  | some .option => demandExpr ctx visiting value
+                  | some (.except _) => demandExpr ctx visiting value
+                  | none => .empty
               | _, _ => .empty
           | (.const ``Bind.bind _, args) =>
-              match idBindArgs? (.const ``Bind.bind []) args with
-              | some (value, bindFn) =>
-                  match collectLambdas bindFn 1 with
-                  | some body => Demand.letE (demandExpr ctx visiting value) (demandExpr ctx visiting body)
+              match args, args.reverse with
+              | monadTy :: _, bindFn :: value :: _ =>
+                  match supportedMonadType? ctx.env monadTy with
+                  | some .id =>
+                      match collectLambdas bindFn 1 with
+                      | some body =>
+                          Demand.letE (demandExpr ctx visiting value) (demandExpr ctx visiting body)
+                      | none => .empty
+                  | some .option =>
+                      Demand.branch
+                        (demandExpr ctx visiting value)
+                        .empty
+                        (demandOptionSomeArm ctx visiting bindFn)
+                  | some (.except _) =>
+                      Demand.branch
+                        (demandExpr ctx visiting value)
+                        .empty
+                        (demandOptionSomeArm ctx visiting bindFn)
                   | none => .empty
-              | none => .empty
+              | _, _ => .empty
+          | (.const ``Functor.map _, args) =>
+              match args, args.reverse with
+              | monadTy :: _, value :: mapFn :: _ =>
+                  match supportedMonadType? ctx.env monadTy with
+                  | some .option =>
+                      Demand.branch
+                        (demandExpr ctx visiting value)
+                        .empty
+                        (demandOptionSomeArm ctx visiting mapFn)
+                  | some (.except _) =>
+                      Demand.branch
+                        (demandExpr ctx visiting value)
+                        .empty
+                        (demandOptionSomeArm ctx visiting mapFn)
+                  | _ => .empty
+              | _, _ => .empty
           | (.const ``Prod.fst _, args) =>
               match args.reverse with
               | product :: _ => demandProductField ctx visiting 0 product
@@ -6498,21 +6560,131 @@ mutual
         | (.const ``Pure.pure _, args) =>
             match args, args.reverse with
             | monadTy :: _, value :: _ =>
-                if isIdType monadTy then
-                  extractValueFrom ctx locals nextLocal value
-                else
-                  .error "unsupported Pure.pure application"
+                match supportedMonadType? ctx.env monadTy with
+                | some .id =>
+                    extractValueFrom ctx locals nextLocal value
+                | some .option =>
+                    let valueResult ← extractValueFrom ctx locals nextLocal value
+                    .ok (mkOptionValue (.u64 1) valueResult.fst, valueResult.snd)
+                | some (.except errorTy) =>
+                    let valueResult ← extractValueFrom ctx locals nextLocal value
+                    .ok (mkExceptValue (.u64 1) (← defaultValue errorTy) valueResult.fst,
+                      valueResult.snd)
+                | none =>
+                    .error "unsupported Pure.pure application"
             | _, _ => .error "unsupported Pure.pure application"
         | (.const ``Bind.bind _, args) =>
-            match idBindArgs? (.const ``Bind.bind []) args with
-            | some (value, bindFn) =>
-                let valueResult ← extractValueFrom ctx locals nextLocal value
-                let body ←
-                  match collectLambdas bindFn 1 with
-                  | some body => .ok body
-                  | none => .error "unsupported Id bind function"
-                extractValueFrom ctx (.value valueResult.fst :: locals) valueResult.snd body
-            | none => .error "unsupported Bind.bind application"
+            match args, args.reverse, monadMapResultType? ctx.env args with
+            | monadTy :: _, bindFn :: value :: _, resultTy? =>
+                match supportedMonadType? ctx.env monadTy with
+                | some .id =>
+                    let valueResult ← extractValueFrom ctx locals nextLocal value
+                    let body ←
+                      match collectLambdas bindFn 1 with
+                      | some body => .ok body
+                      | none => .error "unsupported Id bind function"
+                    extractValueFrom ctx (.value valueResult.fst :: locals) valueResult.snd body
+                | some .option =>
+                    match resultTy? with
+                    | some resultTy =>
+                        let optionResult ← extractValueFrom ctx locals nextLocal value
+                        let parts ← optionPartsWithLets optionResult.fst
+                        let lets := parts.fst
+                        let tag := parts.snd.fst
+                        let payload := parts.snd.snd
+                        let bindBody ←
+                          match collectLambdas bindFn 1 with
+                          | some body => .ok body
+                          | none => .error "unsupported Option bind function"
+                        let bindResult ←
+                          extractValueFrom ctx (.value payload :: locals) optionResult.snd bindBody
+                        let bindParts ← optionPartsWithLets bindResult.fst
+                        let bindLets := bindParts.fst
+                        let bindTag := wrapExprLets bindLets bindParts.snd.fst
+                        let bindPayload := wrapValueLets bindLets bindParts.snd.snd
+                        let nonePayload ← defaultValue resultTy
+                        .ok
+                          (wrapValueLets lets
+                            (mkOptionValue
+                              (.ite (.eqU64 tag (.u64 0)) (.u64 0) bindTag)
+                              (← valueIte (.eqU64 tag (.u64 0)) nonePayload bindPayload)),
+                            bindResult.snd)
+                    | none => .error "unsupported Option bind application"
+                | some (.except _errorTy) =>
+                    match resultTy? with
+                    | some resultTy =>
+                        let exceptResult ← extractValueFrom ctx locals nextLocal value
+                        let parts ← exceptPartsWithLets exceptResult.fst
+                        let lets := parts.fst
+                        let tag := parts.snd.fst
+                        let errorPayload := parts.snd.snd.fst
+                        let okPayload := parts.snd.snd.snd
+                        let bindBody ←
+                          match collectLambdas bindFn 1 with
+                          | some body => .ok body
+                          | none => .error "unsupported Except bind function"
+                        let bindResult ←
+                          extractValueFrom ctx (.value okPayload :: locals) exceptResult.snd bindBody
+                        let bindParts ← exceptPartsWithLets bindResult.fst
+                        let bindLets := bindParts.fst
+                        let bindTag := wrapExprLets bindLets bindParts.snd.fst
+                        let bindError := wrapValueLets bindLets bindParts.snd.snd.fst
+                        let bindOk := wrapValueLets bindLets bindParts.snd.snd.snd
+                        let defaultOk ← defaultValue resultTy
+                        let isError := .eqU64 tag (.u64 0)
+                        .ok
+                          (wrapValueLets lets
+                            (mkExceptValue
+                              (.ite isError (.u64 0) bindTag)
+                              (← valueIte isError errorPayload bindError)
+                              (← valueIte isError defaultOk bindOk)),
+                            bindResult.snd)
+                    | none => .error "unsupported Except bind application"
+                | none => .error "unsupported Bind.bind application"
+            | _, _, _ => .error "unsupported Bind.bind application"
+        | (.const ``Functor.map _, args) =>
+            match args, args.reverse, monadMapResultType? ctx.env args with
+            | monadTy :: _, value :: mapFn :: _, some resultTy =>
+                match supportedMonadType? ctx.env monadTy with
+                | some .option =>
+                    let optionResult ← extractValueFrom ctx locals nextLocal value
+                    let parts ← optionPartsWithLets optionResult.fst
+                    let lets := parts.fst
+                    let tag := parts.snd.fst
+                    let payload := parts.snd.snd
+                    let mapBody ←
+                      match collectLambdas mapFn 1 with
+                      | some body => .ok body
+                      | none => .error "unsupported Option Functor.map function"
+                    let mapResult ←
+                      extractValueFrom ctx (.value payload :: locals) optionResult.snd mapBody
+                    let nonePayload ← defaultValue resultTy
+                    .ok
+                      (wrapValueLets lets
+                        (mkOptionValue tag
+                          (← valueIte (.eqU64 tag (.u64 0)) nonePayload mapResult.fst)),
+                        mapResult.snd)
+                | some (.except _errorTy) =>
+                    let exceptResult ← extractValueFrom ctx locals nextLocal value
+                    let parts ← exceptPartsWithLets exceptResult.fst
+                    let lets := parts.fst
+                    let tag := parts.snd.fst
+                    let errorPayload := parts.snd.snd.fst
+                    let okPayload := parts.snd.snd.snd
+                    let mapBody ←
+                      match collectLambdas mapFn 1 with
+                      | some body => .ok body
+                      | none => .error "unsupported Except Functor.map function"
+                    let mapResult ←
+                      extractValueFrom ctx (.value okPayload :: locals) exceptResult.snd mapBody
+                    let defaultOk ← defaultValue resultTy
+                    .ok
+                      (wrapValueLets lets
+                        (mkExceptValue tag errorPayload
+                          (← valueIte (.eqU64 tag (.u64 0)) defaultOk mapResult.fst)),
+                        mapResult.snd)
+                | _ => .error "unsupported Functor.map application"
+            | _, _, _ => .error "unsupported Functor.map application"
         | (.const ``Option.none _, args) =>
             match optionConstructorType? ctx.env args with
             | some payloadTy =>
