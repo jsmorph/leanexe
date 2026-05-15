@@ -3208,3 +3208,14 @@ Checks run:
 - [x] `node test/wasi_program.js` returned `checked 22 WASI program cases, 2 traps, and 7 rejections`.
 - [x] `node test/asciistring.js` returned `checked 23 asciistring cases`.
 - [x] `node test/run_all.js` returned `checked 94 report classification cases`, `checked 617 accepted, 29 rejected, and 13 trapped cases`, `checked 14 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 22 WASI program cases, 2 traps, and 7 rejections`, `checked 38 standard Lean comparison cases`, and `checked 56 cases`.
+
+## 2026-05-15: Extractor module split
+
+`LeanExe.Extract.Core` now imports two new modules that keep public declarations in the same namespace.  `Types.lean` contains the core aliases, signatures, extracted values, binding context, type recognition, layout rules, supported type predicates, and reachability helpers.  `Values.lean` contains binding lookup, primitive recognition, liveness pruning, value flattening, ownership and release analysis, and result materialization.
+
+This first split preserves declaration names and behavior.  It reduces `Core.lean` from 12,696 to 9,168 lines and creates a boundary before heap loading and expression extraction.  Later splits can move heap loading, array and byte-array lowering, matcher decoding, demand analysis, and recursion lowering without mixing redesign into the mechanical refactor.
+
+Checks run:
+
+- [x] `lake build lean-wasm`
+- [x] `node test/run_all.js` returned `checked 94 report classification cases`, `checked 617 accepted, 29 rejected, and 13 trapped cases`, `checked 14 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 22 WASI program cases, 2 traps, and 7 rejections`, `checked 38 standard Lean comparison cases`, and `checked 56 cases`.
