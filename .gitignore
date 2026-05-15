@@ -1,6 +1,7 @@
 # Lean and Lake
 /.lake/
 /build/
+/LeanExe/StandardCompare/
 *.olean
 *.ilean
 *.olean.hash

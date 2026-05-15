@@ -225,7 +225,9 @@ printf '%s' '[1,6,4,100,33,5,5,20]' \
 
 ## Compare With Standard Lean
 
-Use `tools/compare-standard.js` to compare accepted entries against standard Lean execution.  The tool generates a temporary Lean runner under `.lake/build/standard-compare`, runs it with `lake env lean --run`, compiles the same entry through LeanExe, runs the generated WASM with Wasmtime, and compares the observed results.  Command modes compare exit status, stdout, and stderr byte-for-byte for `ByteArray`, `ByteArray -> ByteArray`, `ByteArray -> Except ByteArray ByteArray`, `Array ByteArray -> Except ByteArray ByteArray`, and `ByteArray -> Array ByteArray -> Except ByteArray ByteArray` entries.  Pure mode compares library exports invoked through `wasmtime --invoke`; the caller supplies the standard Lean call expression when flattened WASM parameters differ from the Lean source call, and supplies a result-slot expression of type `Array UInt64` for the flattened return value.
+Use `tools/compare-standard.js` to compare accepted entries against standard Lean execution.  The tool generates a temporary Lean runner under `.lake/build/standard-compare`, runs it with `lake env lean --run`, compiles the same entry through LeanExe, runs the generated WASM with Wasmtime, and compares the observed results.  Command modes compare exit status, stdout, and stderr byte-for-byte for `ByteArray`, `ByteArray -> ByteArray`, `ByteArray -> Except ByteArray ByteArray`, `Array ByteArray -> Except ByteArray ByteArray`, and `ByteArray -> Array ByteArray -> Except ByteArray ByteArray` entries.
+
+Pure mode compares library exports invoked through `wasmtime --invoke`; the caller supplies the standard Lean call expression when flattened WASM parameters differ from the Lean source call, and supplies a result-slot expression of type `Array UInt64` for the flattened return value.  Pure-bytes mode compares a concrete pure call by serializing its result to `ByteArray`, compiling a generated wrapper through `compile-wasi`, and comparing the bytes written by standard Lean with the bytes written by the generated WASM command.  Use pure-bytes for heap-backed pure results such as `ByteArray` values, array-containing structures, and other results that need source-level serialization before comparison.
 
 ```sh
 node tools/compare-standard.js \
@@ -242,6 +244,14 @@ node tools/compare-standard.js \
   --entry structureReturn \
   --arg 4 \
   --result-slots '#[__leanexeValue.x, __leanexeValue.y]'
+```
+
+```sh
+node tools/compare-standard.js \
+  --mode pure-bytes \
+  --module LeanExe.Examples.Correctness \
+  --entry byteArrayReturnABC \
+  --serializer '__leanexeValue'
 ```
 
 Run the built-in comparison cases with:

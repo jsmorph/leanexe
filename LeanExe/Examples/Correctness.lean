@@ -716,9 +716,34 @@ def optionStructuralEquality : UInt64 :=
   else
     0
 
+def rejectArrayEquality : UInt64 :=
+  if ((#[(1 : UInt64), (2 : UInt64)] : Array UInt64) ==
+      (#[(1 : UInt64), (2 : UInt64)] : Array UInt64)) then
+    1
+  else
+    0
+
+def rejectByteArrayEquality : UInt64 :=
+  if (ByteArray.mk #[(65 : UInt8), (66 : UInt8)] ==
+      ByteArray.mk #[(65 : UInt8), (66 : UInt8)]) then
+    1
+  else
+    0
+
 inductive U64List where
   | nil : U64List
   | cons : UInt64 → U64List → U64List
+
+inductive EqU64List where
+  | nil : EqU64List
+  | cons : UInt64 → EqU64List → EqU64List
+deriving BEq, DecidableEq
+
+def rejectRecursiveInductiveEquality : UInt64 :=
+  if (EqU64List.cons 1 EqU64List.nil == EqU64List.cons 1 EqU64List.nil) then
+    1
+  else
+    0
 
 def u64List123 : U64List :=
   U64List.cons 1 (U64List.cons 2 (U64List.cons 3 U64List.nil))

@@ -481,7 +481,7 @@ Do not fix source by adding dummy effects, unsafe definitions, hidden runtime ca
 
 ## Comparing With Standard Lean
 
-Use `tools/compare-standard.js` when an accepted program should match official Lean execution.  The tool generates a temporary Lean runner that imports the target module and calls the selected entry, then compares that result with the WASM produced by LeanExe and executed by Wasmtime.  Command modes compare observable process behavior: exit status, stdout bytes, and stderr bytes.  Pure mode compares library exports invoked with `wasmtime --invoke`, using a result-slot expression to print the standard Lean result in the same flattened `UInt64` slot shape returned by the WASM export.
+Use `tools/compare-standard.js` when an accepted program should match official Lean execution.  The tool generates a temporary Lean runner that imports the target module and calls the selected entry, then compares that result with the WASM produced by LeanExe and executed by Wasmtime.  Command modes compare observable process behavior: exit status, stdout bytes, and stderr bytes.  Pure mode compares library exports invoked with `wasmtime --invoke`, using a result-slot expression to print the standard Lean result in the same flattened `UInt64` slot shape returned by the WASM export.  Pure-bytes mode serializes a concrete pure result to `ByteArray`, compiles a generated wrapper through `compile-wasi`, and compares standard Lean's serialized bytes with the generated command output.
 
 ```sh
 node tools/compare-standard.js \
@@ -503,6 +503,8 @@ node tools/compare-standard.js \
 ```
 
 The supported command modes correspond to the WASI command compilers: `wasi`, `stdin`, `stdin-except`, `argv-except`, and `stdin-argv-except`.  Pure mode uses `compile` rather than a WASI adapter.  It works best for deterministic entries that do not inspect LeanExe runtime counters and do not rely on intentionally skipped trapping expressions.  Runtime counters are compiler intrinsics in generated WASM, while standard Lean evaluates their stub definitions.
+
+Pure-bytes mode works best for heap-backed pure results whose observable value can be serialized by ordinary accepted Lean code.  The generated wrapper binds the result as `__leanexeValue`, then evaluates the caller's `--serializer` expression.  The serializer must have type `ByteArray` and should stay inside the accepted subset, because LeanExe compiles the generated wrapper as ordinary source.
 
 ## LLM Source Generation Checklist
 
