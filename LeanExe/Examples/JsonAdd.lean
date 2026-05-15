@@ -20,12 +20,10 @@ def checkedAdd (a b : UInt64) : Option UInt64 :=
     some sum
 
 def parseInput (text : AsciiString) : Option UInt64 :=
-  match Ascii.Json.getUInt64Field text leftFieldName with
-  | none => none
-  | some a =>
-      match Ascii.Json.getUInt64Field text rightFieldName with
-      | none => none
-      | some b => checkedAdd a b
+  do
+    let a <- Ascii.Json.getUInt64Field text leftFieldName
+    let b <- Ascii.Json.getUInt64Field text rightFieldName
+    checkedAdd a b
 
 def resultJson (n : UInt64) : ByteArray :=
   Ascii.Json.object1UInt64 sumFieldName n

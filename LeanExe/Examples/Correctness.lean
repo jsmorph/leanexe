@@ -3021,6 +3021,62 @@ def exceptUnitErrorBind : UInt64 :=
   | Except.error _ => 0
   | Except.ok item => item
 
+def optionDoSome : UInt64 :=
+  match (do
+      let first <- (some (5 : UInt64) : Option UInt64)
+      let second <- some (first + 1)
+      pure (second + 1) : Option UInt64) with
+  | none => 0
+  | some value => value
+
+def optionDoNoneSkipsRestTrap : UInt64 :=
+  match (do
+      let _first <- (none : Option UInt64)
+      let second <- some ((Array.replicate 0 (0 : UInt64)).back!)
+      pure second : Option UInt64) with
+  | none => 7
+  | some value => value
+
+def optionFunctorMapSome : UInt64 :=
+  match (Functor.map (fun value : UInt64 => value + 1)
+      (some (5 : UInt64)) : Option UInt64) with
+  | none => 0
+  | some value => value
+
+def optionFunctorMapNoneSkipsFunctionTrap : UInt64 :=
+  match (Functor.map (fun _value : UInt64 => (Array.replicate 0 (0 : UInt64)).back!)
+      (none : Option UInt64) : Option UInt64) with
+  | none => 7
+  | some value => value
+
+def exceptDoOk : UInt64 :=
+  match (do
+      let first <- (Except.ok (5 : UInt64) : Except UInt64 UInt64)
+      let second <- exceptIncrementHelper first
+      pure (second + 1) : Except UInt64 UInt64) with
+  | Except.error code => code
+  | Except.ok value => value
+
+def exceptDoErrorSkipsRestTrap : UInt64 :=
+  match (do
+      let _first <- (Except.error (7 : UInt64) : Except UInt64 UInt64)
+      let second <- Except.ok ((Array.replicate 0 (0 : UInt64)).back!)
+      pure second : Except UInt64 UInt64) with
+  | Except.error code => code
+  | Except.ok value => value
+
+def exceptFunctorMapOk : UInt64 :=
+  match (Functor.map (fun value : UInt64 => value + 1)
+      (Except.ok (5 : UInt64) : Except UInt64 UInt64) : Except UInt64 UInt64) with
+  | Except.error code => code
+  | Except.ok value => value
+
+def exceptFunctorMapErrorSkipsFunctionTrap : UInt64 :=
+  match (Functor.map (fun _value : UInt64 => (Array.replicate 0 (0 : UInt64)).back!)
+      (Except.error (7 : UInt64) : Except UInt64 UInt64) : Except UInt64 UInt64) with
+  | Except.error code => code
+  | Except.ok value => value
+
 def byteArrayReturnABC : ByteArray :=
   ((ByteArray.empty.push (65 : UInt8)).push (66 : UInt8)).push (67 : UInt8)
 

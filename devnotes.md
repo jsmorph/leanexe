@@ -1,5 +1,21 @@
 # Development Journal
 
+## 2026-05-15: Option and Except Do Notation
+
+The extractor now recognizes `Option` and `Except ε` as supported monads for overloaded `Pure.pure`, `Bind.bind`, and `Functor.map`.  `Option` and `Except` `do` notation lowers to the same first-order tag and payload representation as the existing direct `Option.bind`, `Option.map`, `Except.bind`, and `Except.map` paths when callbacks are direct lambdas and payload types are concrete supported types.  `Functor.map` is now blocked from transparent unfolding, so Lean's class projection for the selected instance does not become a runtime function value.
+
+The JSON examples now use the new source style where it improves the program shape.  `LeanExe.Examples.JsonAdd.parseInput` and `LeanExe.Examples.JsonCollatzLength.lengthInput?` use `Option` `do` notation, while `LeanExe.Examples.JsonGcd.transformAscii` uses `Except` `do` notation through a small `requireGcdInput` helper.  The standard Lean comparison self-test now includes the JSON add and JSON Collatz command entries.
+
+Checks run:
+
+- [x] `lake build LeanExe.Examples.Correctness lean-wasm`
+- [x] `node test/core_correctness.js` returned `checked 582 accepted, 28 rejected, and 13 trapped cases`.
+- [x] `node test/report_classification.js` returned `checked 94 report classification cases`.
+- [x] `lake build LeanExe.Examples.JsonAdd LeanExe.Examples.JsonCollatzLength LeanExe.Examples.JsonGcd lean-wasm`
+- [x] `node test/json_double.js` returned `checked 48 json program cases`.
+- [x] `node tools/compare-standard.js --self-test` returned `checked 8 standard Lean comparison cases`.
+- [x] `node test/run_all.js` returned `checked 94 report classification cases`, `checked 582 accepted, 28 rejected, and 13 trapped cases`, `checked 5 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 22 WASI program cases, 2 traps, and 7 rejections`, `checked 8 standard Lean comparison cases`, and `checked 56 cases`.
+
 ## 2026-05-15: Standard Lean Comparison Batch
 
 The standard Lean comparison tool matched generated WASM for the main command-shaped examples that do not read LeanExe runtime counters.  The batch covered plain byte output, JSON field parsing and rendering, checked arithmetic failure encoded as JSON, Collatz JSON, GCD success and failure through `Except`, JSON tree construction, JSON tree search with stdin plus argv, and argv-only byte handling.
