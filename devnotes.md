@@ -1,5 +1,23 @@
 # Development Journal
 
+## 2026-05-15: Serialized Pure Standard Lean Comparison
+
+`tools/compare-standard.js` now supports `pure-bytes` mode for concrete pure calls whose results need byte-level serialization.  The tool generates a temporary Lean wrapper under `LeanExe/StandardCompare`, compiles that wrapper with `compile-wasi`, runs the resulting WASI command with Wasmtime, and compares stdout and stderr with a standard Lean runner that evaluates the same serializer.  The serializer sees the target result as `__leanexeValue` and must produce `ByteArray`, so heap-backed results can be compared without adding JavaScript-specific memory inspectors for each source type.
+
+The self-test covers `ByteArray` returns, branch-selected byte arrays, structures containing arrays, structures containing arrays of structures, and byte-producing state structures returned by array and byte-array folds.  The array serializers use `Array.foldl` rather than unchecked indexing, which keeps the generated wrapper inside ordinary Lean source and avoids adding artificial `Inhabited` instances to example types.  `LeanExe/StandardCompare` is ignored because failed comparison runs may leave generated wrapper sources for diagnosis.
+
+The correctness fixtures now include valid Lean programs that compare unsupported heap-backed values: `Array UInt64`, `ByteArray`, and a recursive inductive.  Each case reaches the extractor and fails with an explicit unsupported-equality diagnostic.  These tests protect the current equality boundary: supported structural equality covers scalars, products, structures, internal sums, `Option`, `Except`, and nonrecursive tagged values, while arrays, byte arrays, and recursive inductives remain outside the implemented equality lowering.
+
+Checks run:
+
+- [x] `lake build LeanExe.Examples.Correctness`
+- [x] `.lake/build/bin/lean-wasm compile --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.rejectArrayEquality --out /tmp/rejectArrayEquality.wasm` rejected with `unsupported equality type: LeanExe.IR.Ty.array (LeanExe.IR.Ty.u64)`.
+- [x] `.lake/build/bin/lean-wasm compile --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.rejectByteArrayEquality --out /tmp/rejectByteArrayEquality.wasm` rejected with `unsupported equality type: LeanExe.IR.Ty.byteArray`.
+- [x] `.lake/build/bin/lean-wasm compile --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.rejectRecursiveInductiveEquality --out /tmp/rejectRecursiveInductiveEquality.wasm` rejected with `unsupported equality type: LeanExe.IR.Ty.recVariant`.
+- [x] `node test/core_correctness.js` returned `checked 596 accepted, 31 rejected, and 13 trapped cases`.
+- [x] `node tools/compare-standard.js --self-test` returned `checked 24 standard Lean comparison cases`.
+- [x] `node test/run_all.js` returned `checked 94 report classification cases`, `checked 596 accepted, 31 rejected, and 13 trapped cases`, `checked 5 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 22 WASI program cases, 2 traps, and 7 rejections`, `checked 24 standard Lean comparison cases`, and `checked 56 cases`.
+
 ## 2026-05-15: Pure Standard Lean Comparison
 
 `tools/compare-standard.js` now supports a `pure` mode for library exports in addition to the existing WASI command modes.  Pure mode compiles the selected entry with `compile`, invokes the exported function through `wasmtime --invoke`, and compares the printed result slots with a generated standard-Lean runner.  The runner evaluates a Lean call expression and prints a caller-provided `Array UInt64` slot expression, which makes flattened structure parameters and multi-slot structure or tagged results explicit in the test case rather than inferred by JavaScript.

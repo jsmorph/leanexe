@@ -781,6 +781,18 @@ const rejected = [
     message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectStringParam",
   },
   {
+    name: "rejectArrayEquality",
+    message: "unsupported equality type: LeanExe.IR.Ty.array (LeanExe.IR.Ty.u64)",
+  },
+  {
+    name: "rejectByteArrayEquality",
+    message: "unsupported equality type: LeanExe.IR.Ty.byteArray",
+  },
+  {
+    name: "rejectRecursiveInductiveEquality",
+    message: "unsupported equality type: LeanExe.IR.Ty.recVariant `LeanExe.Examples.Correctness.EqU64List []",
+  },
+  {
     name: "alloc",
     message: "entry export name is reserved by the runtime ABI: alloc",
   },

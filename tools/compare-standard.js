@@ -2,6 +2,7 @@
 
 const fs = require("fs");
 const path = require("path");
+const crypto = require("crypto");
 const { spawnSync } = require("child_process");
 
 const leanExe = process.env.LEAN_WASM_EXE || path.join(".lake", "build", "bin", "lean-wasm");
@@ -12,6 +13,7 @@ const defaultMaxArgs = 8;
 const defaultMaxArgBytes = 4096;
 const validModes = new Set([
   "pure",
+  "pure-bytes",
   "wasi",
   "stdin",
   "stdin-except",
@@ -27,6 +29,7 @@ function usage() {
 
 Modes:
   pure               Library export invoked with wasmtime --invoke
+  pure-bytes         Concrete pure call serialized to ByteArray and run as WASI
   wasi               ByteArray
   stdin              ByteArray -> ByteArray
   stdin-except       ByteArray -> Except ByteArray ByteArray
@@ -36,6 +39,7 @@ Modes:
 Options:
   --standard-call LEAN_EXPR
   --result-slots LEAN_EXPR
+  --serializer LEAN_EXPR
   --stdin TEXT
   --stdin-file PATH
   --arg VALUE
@@ -124,6 +128,7 @@ function parseArgs(argv) {
     selfTest: false,
     standardCall: "",
     resultSlots: "",
+    serializer: "",
   };
 
   for (let i = 0; i < argv.length; i += 1) {
@@ -146,6 +151,8 @@ function parseArgs(argv) {
       config.standardCall = argv[++i] || "";
     } else if (arg === "--result-slots") {
       config.resultSlots = argv[++i] || "";
+    } else if (arg === "--serializer") {
+      config.serializer = argv[++i] || "";
     } else if (arg === "--stdin") {
       config.input = Buffer.from(argv[++i] || "", "utf8");
     } else if (arg === "--stdin-file") {
@@ -181,6 +188,9 @@ function validateConfig(config) {
   }
   if (config.mode === "pure" && !config.resultSlots) {
     throw new Error("--result-slots is required for pure mode");
+  }
+  if (config.mode === "pure-bytes" && !config.serializer) {
+    throw new Error("--serializer is required for pure-bytes mode");
   }
   if (config.input.length > config.maxInputBytes) {
     throw new Error(`stdin has ${config.input.length} bytes, but --max-input-bytes is ${config.maxInputBytes}`);
@@ -224,6 +234,55 @@ def __leanexeWriteSlots (values : Array UInt64) : IO UInt32 := do
 def main (_args : List String) : IO UInt32 := do
   let __leanexeValue := ${pureStandardCall(config, fullEntry)}
   __leanexeWriteSlots (${config.resultSlots})
+`;
+}
+
+function serializedSupportDefs() {
+  return `def __leanexeAppendUInt64 (out : ByteArray) (value : UInt64) : ByteArray :=
+  LeanExe.Ascii.appendUInt64Decimal out value
+
+def __leanexeAppendNat (out : ByteArray) (value : Nat) : ByteArray :=
+  LeanExe.Ascii.appendUInt64Decimal out (UInt64.ofNat value)
+
+def __leanexeSep (out : ByteArray) : ByteArray :=
+  out.push (10 : UInt8)
+`;
+}
+
+function pureBytesRunnerSource(config, paths, fullEntry) {
+  return `import ${config.moduleName}
+import LeanExe.Ascii.Decimal
+
+${serializedSupportDefs()}
+
+def __leanexeInputPath : System.FilePath := System.FilePath.mk ${leanString(paths.input)}
+def __leanexeStdoutPath : System.FilePath := System.FilePath.mk ${leanString(paths.standardStdout)}
+def __leanexeStderrPath : System.FilePath := System.FilePath.mk ${leanString(paths.standardStderr)}
+
+def __leanexeOk (bytes : ByteArray) : IO UInt32 := do
+  IO.FS.writeBinFile __leanexeStdoutPath bytes
+  IO.FS.writeBinFile __leanexeStderrPath ByteArray.empty
+  return 0
+
+def main (_args : List String) : IO UInt32 := do
+  let __leanexeValue := ${pureStandardCall(config, fullEntry)}
+  __leanexeOk (${config.serializer})
+`;
+}
+
+function pureBytesWrapperSource(config, paths, fullEntry) {
+  return `import ${config.moduleName}
+import LeanExe.Ascii.Decimal
+
+namespace ${paths.wrapperModule}
+
+${serializedSupportDefs()}
+
+def __leanexeEntry : ByteArray :=
+  let __leanexeValue := ${pureStandardCall(config, fullEntry)}
+  ${config.serializer}
+
+end ${paths.wrapperModule}
 `;
 }
 
@@ -288,19 +347,48 @@ function runnerSource(config, paths, fullEntry) {
 
 function pathsFor(config, fullEntry, shortEntry) {
   const base = safeName(`${config.mode}.${fullEntry}`);
+  const wrapperHash = crypto.createHash("sha1")
+    .update(JSON.stringify({
+      mode: config.mode,
+      moduleName: config.moduleName,
+      entry: fullEntry,
+      args: config.programArgs,
+      standardCall: config.standardCall,
+      serializer: config.serializer,
+    }))
+    .digest("hex")
+    .slice(0, 16);
+  const wrapperName = `Case_${wrapperHash}`;
+  const wrapperModule = `LeanExe.StandardCompare.${wrapperName}`;
   return {
     runner: path.join(workDir, `${base}.runner.lean`),
     input: path.join(workDir, `${base}.stdin`),
     standardStdout: path.join(workDir, `${base}.standard.stdout`),
     standardStderr: path.join(workDir, `${base}.standard.stderr`),
     wasm: path.join(workDir, `${safeName(config.mode)}.${safeName(shortEntry)}.wasm`),
+    wrapperModule,
+    wrapperSource: path.join("LeanExe", "StandardCompare", `${wrapperName}.lean`),
+    wrapperOlean: path.join(".lake", "build", "lib", "lean", "LeanExe", "StandardCompare", `${wrapperName}.olean`),
   };
+}
+
+function buildPureBytesWrapper(config, paths, fullEntry) {
+  fs.mkdirSync(path.dirname(paths.wrapperSource), { recursive: true });
+  fs.mkdirSync(path.dirname(paths.wrapperOlean), { recursive: true });
+  fs.writeFileSync(paths.wrapperSource, pureBytesWrapperSource(config, paths, fullEntry));
+  requireSuccess(
+    run(["lake", "env", "lean", "-o", paths.wrapperOlean, paths.wrapperSource], { encoding: null }),
+    `lake env lean -o ${paths.wrapperOlean} ${paths.wrapperSource}`,
+  );
 }
 
 function compileWasm(config, paths, fullEntry) {
   const args = [leanExe];
   if (config.mode === "pure") {
     args.push("compile");
+  } else if (config.mode === "pure-bytes") {
+    buildPureBytesWrapper(config, paths, fullEntry);
+    args.push("compile-wasi");
   } else if (config.mode === "wasi") {
     args.push("compile-wasi");
   } else if (config.mode === "stdin") {
@@ -328,7 +416,12 @@ function compileWasm(config, paths, fullEntry) {
   } else {
     throw new Error(`unsupported mode: ${config.mode}`);
   }
-  args.push("--module", config.moduleName, "--entry", fullEntry, "--out", paths.wasm);
+  if (config.mode === "pure-bytes") {
+    args.push("--module", paths.wrapperModule, "--entry", `${paths.wrapperModule}.__leanexeEntry`);
+  } else {
+    args.push("--module", config.moduleName, "--entry", fullEntry);
+  }
+  args.push("--out", paths.wasm);
   requireSuccess(run(args, { encoding: null }), `${leanExe} ${args.slice(1).join(" ")}`);
 }
 
@@ -337,7 +430,11 @@ function runStandard(config, paths, fullEntry) {
   fs.writeFileSync(paths.standardStdout, Buffer.alloc(0));
   fs.writeFileSync(paths.standardStderr, Buffer.alloc(0));
   fs.writeFileSync(paths.runner,
-    config.mode === "pure" ? pureRunnerSource(config, fullEntry) : runnerSource(config, paths, fullEntry));
+    config.mode === "pure"
+      ? pureRunnerSource(config, fullEntry)
+      : config.mode === "pure-bytes"
+        ? pureBytesRunnerSource(config, paths, fullEntry)
+        : runnerSource(config, paths, fullEntry));
 
   const result = run(["lake", "env", "lean", "--run", paths.runner, ...config.programArgs], {
     encoding: null,
@@ -369,6 +466,18 @@ function runWasm(config, paths, shortEntry) {
       status: result.status,
       stdout: result.stdout || Buffer.alloc(0),
       stderr: result.status === 0 ? Buffer.alloc(0) : result.stderr || Buffer.alloc(0),
+    };
+  }
+  if (config.mode === "pure-bytes") {
+    const result = run([wasmtime, "run", paths.wasm], {
+      encoding: null,
+      stdio: ["ignore", "pipe", "pipe"],
+      timeout: 10000,
+    });
+    return {
+      status: result.status,
+      stdout: result.stdout || Buffer.alloc(0),
+      stderr: result.stderr || Buffer.alloc(0),
     };
   }
   const usesStdin =
@@ -441,7 +550,15 @@ function compareCase(inputConfig) {
   compareResults(config, standard, wasm);
 
   if (!config.keep) {
-    for (const file of [paths.runner, paths.input, paths.standardStdout, paths.standardStderr, paths.wasm]) {
+    for (const file of [
+      paths.runner,
+      paths.input,
+      paths.standardStdout,
+      paths.standardStderr,
+      paths.wasm,
+      paths.wrapperSource,
+      paths.wrapperOlean,
+    ]) {
       fs.rmSync(file, { force: true });
     }
   }
@@ -522,6 +639,59 @@ function selfTest() {
       resultSlots: "#[__leanexeValue]",
     },
     {
+      mode: "pure-bytes",
+      moduleName: correctness,
+      entry: "byteArrayReturnABC",
+      serializer: "__leanexeValue",
+    },
+    {
+      mode: "pure-bytes",
+      moduleName: correctness,
+      entry: "byteArrayBranchHelperReturn",
+      programArgs: ["1"],
+      serializer: "__leanexeValue",
+    },
+    {
+      mode: "pure-bytes",
+      moduleName: correctness,
+      entry: "structureArrayReturn",
+      serializer: `let out := __leanexeAppendNat ByteArray.empty __leanexeValue.values.size
+let out := __leanexeValue.values.foldl (fun out value =>
+  let out := __leanexeSep out
+  __leanexeAppendUInt64 out value) out
+let out := __leanexeSep out
+__leanexeAppendUInt64 out __leanexeValue.count`,
+    },
+    {
+      mode: "pure-bytes",
+      moduleName: correctness,
+      entry: "structurePointArrayReturn",
+      serializer: `let out := __leanexeAppendNat ByteArray.empty __leanexeValue.values.size
+let out := __leanexeValue.values.foldl (fun out point =>
+  let out := __leanexeSep out
+  let out := __leanexeAppendUInt64 out point.x
+  let out := __leanexeSep out
+  __leanexeAppendUInt64 out point.y) out
+let out := __leanexeSep out
+__leanexeAppendUInt64 out __leanexeValue.count`,
+    },
+    {
+      mode: "pure-bytes",
+      moduleName: correctness,
+      entry: "byteArrayFoldByteOutputState",
+      serializer: `let out := __leanexeAppendUInt64 ByteArray.empty __leanexeValue.count
+let out := __leanexeSep out
+out ++ __leanexeValue.bytes`,
+    },
+    {
+      mode: "pure-bytes",
+      moduleName: correctness,
+      entry: "arrayFoldByteOutputState",
+      serializer: `let out := __leanexeAppendUInt64 ByteArray.empty __leanexeValue.count
+let out := __leanexeSep out
+out ++ __leanexeValue.bytes`,
+    },
+    {
       mode: "wasi",
       moduleName: correctness,
       entry: "byteArrayStringConstReturn",
@@ -594,6 +764,7 @@ try {
       maxArgBytes: config.maxArgBytes,
       standardCall: config.standardCall,
       resultSlots: config.resultSlots,
+      serializer: config.serializer,
       keep: config.keep,
     });
   }
