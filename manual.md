@@ -1,0 +1,484 @@
+# LeanExe User Manual
+
+## Purpose
+
+This manual explains how to write Lean source code that LeanExe can compile to WASM.  The [Language Specification](spec.md) defines the accepted language, ABI, and semantics.  This manual gives authoring rules, source templates, and debugging practices for users and LLMs that need to produce accepted source code.
+
+The main rule is simple: write concrete, first-order Lean.  Let Lean type-check the program, then let LeanExe reject anything outside its executable subset.  When a concise Lean expression compiles to a generated helper shape that LeanExe does not support, rewrite the source into one of the stable shapes shown here.
+
+## Quick Workflow
+
+1. Write a Lean module under the package, usually under `LeanExe/Examples` or another namespace rooted in the module being compiled.
+2. Build the module with Lake.
+3. Run `report` on the intended entry if the source uses arrays, recursion, JSON, structures, inductives, or byte arrays.
+4. Compile with the command mode that matches the entry type.
+5. Run the generated WASM with Wasmtime or instantiate it from a host program.
+6. If compilation fails, simplify the source shape before adding compiler features.
+
+```sh
+lake build LeanExe.Examples.MyProgram
+
+.lake/build/bin/lean-wasm report \
+  --module LeanExe.Examples.MyProgram \
+  --entry LeanExe.Examples.MyProgram.entry
+
+.lake/build/bin/lean-wasm compile \
+  --module LeanExe.Examples.MyProgram \
+  --entry LeanExe.Examples.MyProgram.entry \
+  --out build/my-program.wasm
+```
+
+The report command is the first diagnostic tool.  It imports the module, expands reachable declarations under the module root namespace, classifies dependencies, and reports the first useful rejection.  A source program that Lean accepts but LeanExe rejects lies outside this compiler's current language.
+
+## Core Authoring Rules
+
+Use these rules before reaching for more specific templates:
+
+- Use concrete runtime types: `UInt64`, `Nat`, `Bool`, `ByteArray`, `Array`, structures, nonrecursive inductives, `Option`, `Except`, and internal recursive inductives.
+- Keep public entry types ABI-friendly.  Recursive data, `List`, products, `PSum`, nested arrays, and arrays of recursive values are internal-only.
+- Keep helper definitions under the same root namespace as the module being compiled.
+- Use named helper declarations freely when their types are concrete and first-order.
+- Use direct lambdas in `Array.foldl`, `Array.map`, `Array.filter`, `Array.find?`, `ByteArray.foldl`, and similar accepted callbacks.
+- Use `UInt64` for most arithmetic at public boundaries.  Use `Nat` for fuel and indexes when the value stays within the bounded runtime representation.
+- Use `ByteArray` at command boundaries.  Validate text with `AsciiString.ofByteArray?` inside the program when the input must be ASCII.
+- Use `Except ByteArray ByteArray` for command-style programs that need explicit user-visible errors.
+- Use explicit constructor arms for user-defined inductives and recursive ASTs when a concise match causes generated sparse matcher dependencies.
+- Use `report` after changing source shape.  Do not assume that a Lean library function compiles because Lean can evaluate it.
+
+Avoid these forms in source intended for LeanExe:
+
+- Runtime `String`, runtime `Char`, `IO`, `EIO`, `BaseIO`, `Task`, file access, randomness, time, concurrency, reflection, and FFI.
+- `unsafe`, `partial`, opaque executable constants, executable axioms, quotients, and arbitrary Lean runtime calls.
+- Escaping lambdas, function-valued fields, closure-valued helpers, and higher-order values that survive as runtime data.
+- Runtime-polymorphic public entries and shared generic runtime helper bodies.
+- Public recursive data structures, public `List`, public nested arrays, public arrays of `ByteArray`, and public arrays of recursive values.
+- Wildcard-heavy matches over large inductives when the report shows a `_sparseCasesOn` dependency.
+- Generic recursive JSON object decoders that hide the child-size proof from LeanExe's accepted well-founded-recursion shape.
+
+## Entry Shapes
+
+Choose the compile command from the entry type.  The Lean source stays pure in every mode.  WASI adapters add command behavior around the pure entry.
+
+| Entry type | Command | Runtime behavior |
+|------------|---------|------------------|
+| Scalar or ABI value function | `compile` | Exports a callable WASM function, `memory`, `alloc`, and `reset`. |
+| Any accepted entry | `compile-wat` | Emits WAT for inspection instead of binary WASM. |
+| `ByteArray` | `compile-wasi` | Calls the entry and writes returned bytes to stdout. |
+| `ByteArray -> ByteArray` | `compile-wasi-stdin` | Reads bounded stdin and writes returned bytes to stdout. |
+| `ByteArray -> Except ByteArray ByteArray` | `compile-wasi-stdin-except` | Writes `ok` bytes to stdout, writes `error` bytes to stderr, and exits nonzero. |
+| `Array ByteArray -> Except ByteArray ByteArray` | `compile-wasi-argv-except` | Passes user argv as an internal array of byte arrays. |
+| `ByteArray -> Array ByteArray -> Except ByteArray ByteArray` | `compile-wasi-stdin-argv-except` | Passes bounded stdin and bounded user argv. |
+
+Library-mode array and byte-array values use exported memory.  Hosts allocate input bytes with `alloc`, write data into `memory`, pass pointer-length pairs, and read returned pointer-length pairs before calling `reset`.  Command-mode programs hide that host ABI behind WASI.
+
+## Scalar Template
+
+Scalar entries are the easiest way to test core logic.  Public scalar arguments and results become WASM `i64` values.  `Bool` uses `0` and `1`, `UInt8` and `UInt32` reduce at the ABI boundary, and `UInt64` uses the full unsigned 64-bit representation.
+
+```lean
+namespace LeanExe.Examples.ManualScalar
+
+def choose (flag x y : UInt64) : UInt64 :=
+  if flag == 0 then
+    x
+  else
+    y
+
+end LeanExe.Examples.ManualScalar
+```
+
+Compile and run:
+
+```sh
+.lake/build/bin/lean-wasm compile \
+  --module LeanExe.Examples.ManualScalar \
+  --entry LeanExe.Examples.ManualScalar.choose \
+  --out build/choose.wasm
+
+wasmtime run --invoke choose build/choose.wasm 0 41 99
+```
+
+Use `UInt64` unless the source logic specifically needs bounded `Nat` operations.  `UInt64` arithmetic wraps like Lean's fixed-width integer operations.  Runtime `Nat` is bounded to the compiler's `i64` representation, and overflowing `Nat` addition or multiplication traps.
+
+## Structures and Inductives
+
+Use structures for named fixed-width records.  Public structures flatten by runtime field order after proof-field erasure.  Internal structures may contain recursive-inductive pointer fields, byte arrays, arrays, or other supported values when their use stays inside accepted code.
+
+```lean
+namespace LeanExe.Examples.ManualData
+
+structure Point where
+  x : UInt64
+  y : UInt64
+
+def moveRight (p : Point) : Point :=
+  { p with x := p.x + 1 }
+
+def score (p : Point) : UInt64 :=
+  p.x * 10 + p.y
+
+end LeanExe.Examples.ManualData
+```
+
+Use nonrecursive inductives for small tagged values.  Public nonrecursive inductives flatten to a constructor tag plus payload slots for all constructors in declaration order.  Pattern matches should return a common supported shape.
+
+```lean
+namespace LeanExe.Examples.ManualStatus
+
+inductive Status where
+  | ok
+  | retry (code : UInt64)
+  | fail
+
+def statusCode : Status -> UInt64
+  | .ok => 0
+  | .retry code => code
+  | .fail => 999
+
+end LeanExe.Examples.ManualStatus
+```
+
+Use recursive inductives as internal data.  They may be constructed, stored in internal arrays, traversed, returned from helpers, and carried in `Option`, `Except`, structures, or tagged values inside the compiled program.  They cannot appear as public entry parameters or public entry results.
+
+```lean
+namespace LeanExe.Examples.ManualTree
+
+inductive Tree where
+  | empty : Tree
+  | node : UInt64 -> Tree -> Tree -> Tree
+
+def size : Tree -> UInt64
+  | .empty => 0
+  | .node _ left right => 1 + size left + size right
+
+def contains (needle : UInt64) : Tree -> Bool
+  | .empty => false
+  | .node value left right =>
+      if needle == value then
+        true
+      else if needle < value then
+        contains needle left
+      else
+        contains needle right
+
+end LeanExe.Examples.ManualTree
+```
+
+Structural recursion works best when the recursive argument is the first parameter or when recursive descent follows accepted generated shapes.  If the report rejects a recursive helper, rewrite it so the recursive data parameter drives the match directly and nonrecursive carried values remain explicit parameters.
+
+## Option, Except, and Error Results
+
+`Option` works well for internal parse failures, search results, and optional values.  Match explicitly on `some` and `none`.  Avoid helper chains that create higher-order functions unless the pattern already appears in accepted examples.
+
+```lean
+def optionOrZero (value : Option UInt64) : UInt64 :=
+  match value with
+  | some n => n
+  | none => 0
+```
+
+`Except ByteArray ByteArray` is the preferred command result type when a byte-oriented program can fail.  In WASI `Except` modes, `Except.ok bytes` writes to stdout and exits successfully.  `Except.error bytes` writes to stderr and exits with status `1`.
+
+```lean
+namespace LeanExe.Examples.ManualExcept
+
+def errorJson : ByteArray :=
+  "{\"error\":1}".toUTF8
+
+def bangOrError (input : ByteArray) : Except ByteArray ByteArray :=
+  if input.size == 0 then
+    Except.error errorJson
+  else
+    Except.ok (input.push (33 : UInt8))
+
+end LeanExe.Examples.ManualExcept
+```
+
+Compile a stdin command:
+
+```sh
+.lake/build/bin/lean-wasm compile-wasi-stdin-except \
+  --max-input-bytes 65536 \
+  --module LeanExe.Examples.ManualExcept \
+  --entry LeanExe.Examples.ManualExcept.bangOrError \
+  --out build/bang-or-error.wasm
+```
+
+## Arrays
+
+Use arrays when the element type has a fixed-width layout.  Public arrays cannot contain heap-reference fields such as `ByteArray`, nested arrays, or recursive data.  Internal arrays may contain `ByteArray`, nested arrays, recursive pointers, and structures or tagged values that contain those internal pointer fields.
+
+Stable array operations include literals, `Array.size`, `isEmpty`, indexing, safe indexing, `getD`, `back?`, `push`, `pop`, `append`, `extract`, `set`, `set!`, `setIfInBounds`, `modify`, `insertIdx`, `eraseIdx`, `swap`, `reverse`, `map`, `filter`, `find?`, `findIdx?`, `any`, `all`, and `foldl`.  Bang operations trap on invalid indexes.  Updates allocate fresh arrays and preserve Lean value semantics.
+
+Direct lambdas are the safest callback form:
+
+```lean
+namespace LeanExe.Examples.ManualArray
+
+structure SumCount where
+  sum : UInt64
+  count : UInt64
+
+def addItem (state : SumCount) (item : UInt64) : SumCount :=
+  { sum := state.sum + item, count := state.count + 1 }
+
+def averageFloor (values : Array UInt64) : UInt64 :=
+  let state := values.foldl (fun state item => addItem state item) { sum := 0, count := 0 }
+  if state.count == 0 then
+    0
+  else
+    state.sum / state.count
+
+end LeanExe.Examples.ManualArray
+```
+
+Avoid passing named higher-order callbacks around as runtime values.  Write the lambda at the call site, call a concrete helper inside the lambda, and keep the accumulator type concrete.  If a fold over `array.attach` is needed for a termination proof, match the attached element immediately and use the runtime value while ignoring the proof field.
+
+```lean
+def foldAttached (items : Array UInt64) : UInt64 :=
+  items.attach.foldl
+    (fun acc item =>
+      match item with
+      | ⟨value, _hmem⟩ => acc + value)
+    0
+```
+
+## Byte Arrays and ASCII Text
+
+Use `ByteArray` for binary input, binary output, and command boundaries.  Supported operations include `size`, `isEmpty`, `get!`, safe indexing, `extract`, `empty`, `mk` from `Array UInt8`, compile-time ASCII `.toUTF8`, `push`, `append`, append notation, `set`, `set!`, `copySlice`, `foldl`, `findIdx?`, `toUInt64LE!`, and `toUInt64BE!`.
+
+Use `LeanExe.AsciiString` for byte-indexed ASCII text after validation.  The public boundary should usually remain `ByteArray`; validate with `AsciiString.ofByteArray?` inside the program.  Runtime Lean `String` and `Char` are outside the language.
+
+```lean
+import LeanExe.Ascii.Decimal
+
+namespace LeanExe.Examples.ManualAscii
+
+def countDigits (input : ByteArray) : UInt64 :=
+  match AsciiString.ofByteArray? input with
+  | none => 0
+  | some text =>
+      let digits :=
+        text.toByteArray.foldl
+          (fun acc byte =>
+            if Ascii.isDigit byte then
+              acc + 1
+            else
+              acc)
+          0
+      digits
+
+end LeanExe.Examples.ManualAscii
+```
+
+Compile-time ASCII string literals are accepted when consumed by supported string operations such as `.toUTF8`, `.length`, `.isEmpty`, `==`, and `!=`.  The compiler rejects non-ASCII literal bytes in this path.  Runtime strings remain unsupported even when the source type-checks in Lean.
+
+## Fuel Recursion
+
+Use explicit `Nat` fuel for loops that are not structural recursion over a recursive inductive.  Put fuel first, decrease it on every recursive call, and return a supported value when fuel reaches zero.  Tail-position calls compile to WASM loops in the accepted shapes.
+
+```lean
+namespace LeanExe.Examples.ManualFuel
+
+def collatzStep (n : UInt64) : Option UInt64 :=
+  if n == 0 then
+    none
+  else if n % 2 == 0 then
+    some (n / 2)
+  else
+    let next := n * 3 + 1
+    if next < n then none else some next
+
+def collatzLengthFuel : Nat -> UInt64 -> UInt64 -> Option UInt64
+  | 0, _n, _steps => none
+  | fuel + 1, n, steps =>
+      if n == 1 then
+        some steps
+      else
+        match collatzStep n with
+        | some next => collatzLengthFuel fuel next (steps + 1)
+        | none => none
+
+def collatzLength (n : UInt64) : UInt64 :=
+  match collatzLengthFuel 10000 n 0 with
+  | some steps => steps
+  | none => 0
+
+end LeanExe.Examples.ManualFuel
+```
+
+Fuel is part of source behavior.  Choose a bound that makes sense for the input protocol, return an error on exhaustion when failure should be observable, and avoid `partial`.  Bounded recursion is also useful for parsers whose state is a supported structure.
+
+## Structural Recursion
+
+Use structural recursion for internal recursive data.  Recursive calls should follow direct recursive fields or accepted array-child traversal shapes.  Public entries should accept ABI-friendly values, build the recursive value internally, process it, and return an ABI-friendly result.
+
+```lean
+namespace LeanExe.Examples.ManualList
+
+def sumList : List UInt64 -> UInt64
+  | [] => 0
+  | head :: tail => head + sumList tail
+
+def demo : UInt64 :=
+  sumList [1, 2, 3, 4]
+
+end LeanExe.Examples.ManualList
+```
+
+Monomorphic `List UInt64` is useful inside the program, but `List` has no public ABI.  Direct source-defined helpers are safer than arbitrary library combinations.  Use library calls such as `List.map`, `List.filter`, `List.find?`, `List.foldl`, `List.any`, and `List.all` only in shapes already covered by accepted examples, with direct lambdas and concrete types.
+
+## JSON Programs
+
+LeanExe provides two JSON layers.  Use `LeanExe.Ascii.Json` range helpers for small top-level object or array scans.  Use `LeanExe.Ascii.Json.Value` when the program needs complete nested JSON parsing and rendering through a recursive AST.
+
+Range-helper example:
+
+```lean
+import LeanExe.Ascii.Json
+
+namespace LeanExe.Examples.ManualJsonField
+
+def resultField : ByteArray :=
+  "value".toUTF8
+
+def transformAscii (text : AsciiString) : ByteArray :=
+  match LeanExe.Ascii.Json.getUInt64Field text "n".toUTF8 with
+  | some n => LeanExe.Ascii.Json.object1UInt64 resultField (n + 1)
+  | none => LeanExe.Ascii.Json.errorJson
+
+def transform (input : ByteArray) : ByteArray :=
+  match AsciiString.ofByteArray? input with
+  | some text => transformAscii text
+  | none => LeanExe.Ascii.Json.errorJson
+
+end LeanExe.Examples.ManualJsonField
+```
+
+AST-rendering example:
+
+```lean
+import LeanExe.Ascii.Json.Value
+
+namespace LeanExe.Examples.ManualJsonAst
+
+open LeanExe.Ascii.Json
+
+def answerName : AsciiString :=
+  AsciiString.ofTrustedByteArray "answer".toUTF8
+
+def answerJson : ByteArray :=
+  render (object1Value answerName (Value.num 42))
+
+end LeanExe.Examples.ManualJsonAst
+```
+
+For recursive JSON decoders, prefer the pattern used by [JSON Tree WASI Demo](demo.md).  The important source shape is `fields.attach.foldl` with an immediate match on `⟨field, _hmem⟩`, because Lean's termination proof can use field membership to show recursive calls descend into smaller JSON values.  A generic object getter may be valid Lean but still lower to a well-founded-recursion shape that LeanExe does not yet compile in recursive decoders.
+
+```lean
+fields.attach.foldl
+  (fun state item =>
+    match item with
+    | ⟨field, _hmem⟩ =>
+        let name := Field.name field
+        let value := Field.value field
+        -- inspect name, decode value, and update state
+        state)
+  initialState
+```
+
+The JSON AST supports `null`, booleans, unsigned `UInt64` numbers, restricted unescaped ASCII strings, arrays, and objects.  It rejects signed numbers, fractional numbers, exponent notation, string escapes, Unicode, malformed nesting, trailing commas, trailing input, and non-ASCII bytes.  Use `Except ByteArray ByteArray` at WASI boundaries when malformed JSON should produce `{"error":1}` on stderr with a nonzero exit status.
+
+## Matches That Compile Reliably
+
+Prefer direct matches with explicit constructor arms:
+
+```lean
+def boolToU64 : Bool -> UInt64
+  | true => 1
+  | false => 0
+
+def optionToU64 : Option UInt64 -> UInt64
+  | some n => n
+  | none => 0
+```
+
+For user inductives, write every constructor arm when the type has several constructors.  If `report` shows a generated `_sparseCasesOn` helper, rewrite the match with explicit arms or a supported helper shape.  Concise matches with one interesting constructor and a wildcard default can be valid Lean but can generate sparse matchers outside the current compiler.
+
+Use `_` for unused payload fields, but avoid relying on wildcard catch-all arms over large inductives.  In source templates intended for LLM generation, spelling every constructor is more predictable than clever pattern compression.  This rule matters most for recursive ASTs such as JSON values.
+
+## Compile-Time Strings
+
+Use Lean string literals only when they are consumed at compile time.  The common accepted pattern is assigning a field name or literal output through `.toUTF8`, then converting to `AsciiString` when needed.
+
+```lean
+def okBytes : ByteArray :=
+  "ok".toUTF8
+
+def name : AsciiString :=
+  AsciiString.ofTrustedByteArray "name".toUTF8
+```
+
+The accepted compile-time string operations are restricted ASCII `String.toUTF8`, `String.length`, `String.isEmpty`, `==`, `!=`, `String.append`, and append notation through `++`.  Runtime `String` parameters, results, indexed strings, `Char`, UTF-8 decoding, and Unicode semantics are unsupported.  Public text protocols should use `ByteArray` plus explicit ASCII validation.
+
+## Debugging Rejections
+
+Use the report command before changing the compiler.  The most useful information is usually the first rejected declaration or the first unsupported external dependency.  Read the dependency name carefully; it often tells you which Lean source form generated the unsupported shape.
+
+```sh
+.lake/build/bin/lean-wasm report \
+  --module LeanExe.Examples.MyProgram \
+  --entry LeanExe.Examples.MyProgram.entry
+```
+
+Common rejections and source fixes:
+
+| Report symptom | Likely cause | Source fix |
+|----------------|--------------|------------|
+| `_sparseCasesOn` | Wildcard-heavy match over an inductive | Write explicit constructor arms. |
+| Higher-order argument or closure | Callback escaped as runtime value | Use a direct lambda at the call site. |
+| Unsupported function type | Public entry or helper uses unsupported ABI shape | Move recursive data or products to internal helpers; expose scalar, structure, tagged, array, or byte values. |
+| Runtime `String` or `Char` dependency | Text was not consumed at compile time | Use `ByteArray` and `AsciiString`. |
+| External Lean or Std dependency | Library function lacks a primitive or accepted specialization | Inline a first-order helper or use a supported operation. |
+| Type-class instance dependency in behavior | Runtime dispatch survived elaboration | Add concrete types, avoid overloaded helpers, or rewrite with direct operations. |
+| Unsupported recursion shape | Lean generated an unsupported recursor or well-founded helper | Use explicit fuel or direct structural recursion over the recursive argument. |
+| Public nested array rejection | Entry ABI contains heap-reference element fields | Keep nested arrays internal or expose bytes/scalars instead. |
+
+Do not fix source by adding dummy effects, unsafe definitions, hidden runtime calls, or unchecked host assumptions.  A program accepted by LeanExe should have behavior explainable through the specification.  If a natural source shape repeatedly fails, reduce it to a small example and add it to the compiler test plan.
+
+## LLM Source Generation Checklist
+
+Use this checklist when asking an LLM to write LeanExe source:
+
+- Name the module and the fully qualified entry declaration.
+- State the compile mode and required entry type.
+- Require concrete first-order helper definitions.
+- Require public entry types from the supported ABI.
+- Require `UInt64` for external integers unless bounded `Nat` is needed.
+- Require `ByteArray` for text or binary public input.
+- Require `Except ByteArray ByteArray` for command errors.
+- Require explicit constructor arms for user inductives and JSON AST matches.
+- Require direct lambdas for array and byte-array folds.
+- Require fuel for parser-like recursion and structural recursion for internal recursive data.
+- Prohibit `IO`, `unsafe`, `partial`, runtime `String`, runtime `Char`, type classes as runtime behavior, closures, and arbitrary Std helpers.
+- Ask for a compile command and a report command with the generated entry.
+
+A good prompt says what should happen on malformed input, overflow, empty input, and fuel exhaustion.  It should also say whether duplicate JSON fields are allowed, whether unknown JSON fields are allowed, and whether output errors should go to stderr through an `Except` WASI adapter.  The compiler will not infer these protocol decisions from the type alone.
+
+## Example Map
+
+Use existing examples as templates:
+
+| Need | Example |
+|------|---------|
+| Scalar arithmetic | [Collatz Example](LeanExe/Examples/Collatz.lean), [Prime Example](LeanExe/Examples/Prime.lean) |
+| Compile-time strings and byte arrays | [ByteArray Programs](LeanExe/Examples/ByteArrayPrograms.lean) |
+| ASCII validation and text processing | [ASCII String Programs](LeanExe/Examples/AsciiStringPrograms.lean) |
+| Open-addressed table structure | [Integer Map Example](LeanExe/Examples/IntMap.lean) |
+| Range-based JSON field lookup | [JSON Double Example](LeanExe/Examples/JsonDouble.lean), [JSON Add Example](LeanExe/Examples/JsonAdd.lean) |
+| JSON AST parsing and rendering | [JSON Tree Command](LeanExe/Examples/JsonTreeCommand.lean) |
+| WASI stdin `Except` command | [JSON GCD Example](LeanExe/Examples/JsonGcd.lean) |
+| End-to-end WASI pipeline | [JSON Tree WASI Demo](demo.md) |
+| Broad compiler fixtures | [Correctness Examples](LeanExe/Examples/Correctness.lean) |
+
+The examples are executable tests as well as documentation.  If a new source pattern matters, add a small example and run the test harness.  The safest authoring practice is to make each new feature compile in isolation before combining it with JSON, WASI, recursive data, or structured accumulators.
