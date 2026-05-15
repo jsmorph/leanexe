@@ -1,5 +1,21 @@
 # Development Journal
 
+## 2026-05-15: Internal Array Owner Slots
+
+Internal `Array α` values now carry two slots: an owner root and the visible array pointer.  The public ABI remains one array pointer, and public or WASI-adapter arrays enter compiled code with owner `0`.  Nested arrays stored inside fixed-width values now have enough ownership metadata for release to follow them without treating borrowed public arrays as owned roots.
+
+The array child mask now marks nested `Array` owner slots in the same way it marks `ByteArray` owners and recursive-inductive child pointers.  Array-copying operations retain nested-array owners when they share elements, while operations that insert freshly constructed arrays transfer the owned root into the new array.  Array operations that can return the original input preserve the original owner slot, so no-op updates over borrowed public arrays remain borrowed.
+
+The extractor no longer treats an arbitrary scalar as a complete array value during materialization.  Array values must carry owner and pointer slots, which exposed and fixed `Array.swapAt`'s updated-array result.  Local materialization also has a specific owned-array path to avoid creating an alias that would be released twice after an explicit `LeanExe.Runtime.release`.  The WASI argv adapters now pass owner `0` plus the visible array pointer to entries that accept `Array ByteArray`.
+
+Checks run:
+
+- [x] `lake build lean-wasm` returned successfully.
+- [x] `node test/refcount.js` returned `checked 11 refcount cases`.
+- [x] `node test/core_correctness.js` returned `checked 614 accepted, 29 rejected, and 13 trapped cases`.
+- [x] `node test/wasi_program.js` returned `checked 22 WASI program cases, 2 traps, and 7 rejections`.
+- [x] `node test/run_all.js` returned `checked 94 report classification cases`, `checked 614 accepted, 29 rejected, and 13 trapped cases`, `checked 11 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 22 WASI program cases, 2 traps, and 7 rejections`, `checked 38 standard Lean comparison cases`, and `checked 56 cases`.
+
 ## 2026-05-15: Heap-backed Equality Lowering
 
 Equality lowering now includes `ByteArray` and fixed-width `Array α` values when `α` also has supported equality.  `ByteArray` equality binds both pointer-length pairs once, compares lengths first, and then scans bytes in order.  Array equality binds both array pointers once, compares lengths first, loads each element into compiler-managed local slots, and evaluates the same type-directed structural equality expression used for standalone values.

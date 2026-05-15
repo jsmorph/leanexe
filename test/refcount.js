@@ -37,6 +37,16 @@ function pointer(value) {
   return Number(BigInt.asUintN(64, value));
 }
 
+function writeU64Array(exports, values) {
+  const ptr = pointer(exports.alloc(BigInt(8 + values.length * 8)));
+  const view = new DataView(exports.memory.buffer);
+  view.setBigUint64(ptr, BigInt(values.length), true);
+  values.forEach((value, index) => {
+    view.setBigUint64(ptr + 8 + index * 8, BigInt(value), true);
+  });
+  return ptr;
+}
+
 async function checkArrayReleaseReuse() {
   const exports = await instantiate(correctnessModule, "structureArrayReturn");
   const result = exports.structureArrayReturn();
@@ -129,6 +139,48 @@ async function checkByteArrayOwnerChildRelease() {
   }
 }
 
+async function checkArrayOwnerChildRelease() {
+  const nested = await instantiate(correctnessModule, "nestedArrayRuntimeReleaseFrees");
+  const nestedActual = pointer(nested.nestedArrayRuntimeReleaseFrees());
+  if (nestedActual !== 202) {
+    throw new Error(`nestedArrayRuntimeReleaseFrees: expected 202, got ${nestedActual}`);
+  }
+
+  const structField = await instantiate(correctnessModule, "structArrayFieldRuntimeReleaseFrees");
+  const structActual = pointer(structField.structArrayFieldRuntimeReleaseFrees());
+  if (structActual !== 202) {
+    throw new Error(`structArrayFieldRuntimeReleaseFrees: expected 202, got ${structActual}`);
+  }
+}
+
+async function checkBorrowedArrayNoopRelease() {
+  const popped = await instantiate(correctnessModule, "borrowedArrayPopEmptyReleaseFrees");
+  const emptyPtr = writeU64Array(popped, []);
+  const poppedActual = pointer(popped.borrowedArrayPopEmptyReleaseFrees(BigInt(emptyPtr)));
+  if (poppedActual !== 0) {
+    throw new Error(`borrowedArrayPopEmptyReleaseFrees: expected 0, got ${poppedActual}`);
+  }
+  popped.release(BigInt(emptyPtr));
+
+  const setOob = await instantiate(correctnessModule, "borrowedArraySetOobReleaseFrees");
+  const setPtr = writeU64Array(setOob, [7, 8]);
+  const setActual = pointer(setOob.borrowedArraySetOobReleaseFrees(BigInt(setPtr)));
+  if (setActual !== 0) {
+    throw new Error(`borrowedArraySetOobReleaseFrees: expected 0, got ${setActual}`);
+  }
+  setOob.release(BigInt(setPtr));
+
+  const reversed = await instantiate(correctnessModule, "borrowedArrayReverseSingletonReleaseFrees");
+  const singletonPtr = writeU64Array(reversed, [7]);
+  const reversedActual = pointer(
+    reversed.borrowedArrayReverseSingletonReleaseFrees(BigInt(singletonPtr)),
+  );
+  if (reversedActual !== 0) {
+    throw new Error(`borrowedArrayReverseSingletonReleaseFrees: expected 0, got ${reversedActual}`);
+  }
+  reversed.release(BigInt(singletonPtr));
+}
+
 async function main() {
   run(["lake", "build", correctnessModule]);
   run(["lake", "build", byteArrayModule]);
@@ -139,7 +191,9 @@ async function main() {
   await checkCompilerReleasesScalarTemp();
   await checkAllocatorGrowsMemory();
   await checkByteArrayOwnerChildRelease();
-  process.stdout.write("checked 6 refcount cases\n");
+  await checkArrayOwnerChildRelease();
+  await checkBorrowedArrayNoopRelease();
+  process.stdout.write("checked 11 refcount cases\n");
 }
 
 main().catch((error) => {

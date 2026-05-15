@@ -3206,7 +3206,7 @@ def wasiArgvExceptStartBody (maxArgs maxArgBytes entryIndex : Nat) : List UInt8 
   body
     (ofNats [1, 16, 126])
     (wasiReadArgvArray maxArgs maxArgBytes ++
-      localGet 0 ++ call entryIndex ++
+      i64Const 0 ++ localGet 0 ++ call entryIndex ++
       localSet 15 ++
       localSet 14 ++
       localSet 13 ++
@@ -3235,7 +3235,7 @@ def wasiStdinArgvExceptStartBody
       localGet 0 ++ localSet 14 ++
       localGet 1 ++ localSet 15 ++
       wasiReadArgvArrayWithImports 2 3 maxArgs maxArgBytes ++
-      i64Const 0 ++ localGet 14 ++ localGet 15 ++ localGet 0 ++ call entryIndex ++
+      i64Const 0 ++ localGet 14 ++ localGet 15 ++ i64Const 0 ++ localGet 0 ++ call entryIndex ++
       localSet 15 ++
       localSet 14 ++
       localSet 13 ++
