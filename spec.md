@@ -25,7 +25,7 @@ The command-line entry point for generic compilation is:
 
 ## WASM Module ABI
 
-The default library-mode module exports one 16-page linear memory, `alloc(len : i64) : i64`, `reset()`, `retain(ptr : i64) : i64`, `release(ptr : i64)`, `free(ptr : i64)`, and the selected entry function.  The heap starts at byte offset `4096`, and `alloc` returns a byte offset in exported memory.  `free` is an alias for `release`.
+The default library-mode module exports growable linear memory, `alloc(len : i64) : i64`, `reset()`, `retain(ptr : i64) : i64`, `release(ptr : i64)`, `free(ptr : i64)`, and the selected entry function.  The memory starts at 16 pages, the heap starts at byte offset `4096`, and `alloc` returns a byte offset in exported memory.  `free` is an alias for `release`.
 
 The entry export name is the last component of the Lean declaration name.  For example, `My.Module.answer` exports `answer`.  The entry name must not be `memory`, `alloc`, `reset`, `retain`, `release`, or `free`, because those names belong to the runtime ABI.
 
@@ -47,7 +47,7 @@ Arrays cross the ABI as arena pointers.  Public array elements must have a fixed
 
 ## Memory Management
 
-LeanExe allocates heap-backed values in WASM linear memory with a small reference-counted object header before each returned payload pointer.  Heap-backed values such as `ByteArray`, `Array`, recursive inductives, internal nested arrays, and JSON AST nodes use this allocator when compiled code constructs them.  Allocations never move, and the current collector reuses whole released blocks through a free list.
+LeanExe allocates heap-backed values in WASM linear memory with a small reference-counted object header before each returned payload pointer.  Heap-backed values such as `ByteArray`, `Array`, recursive inductives, internal nested arrays, and JSON AST nodes use this allocator when compiled code constructs them.  Allocations never move, the allocator grows memory when the free list and current heap range cannot satisfy a request, and the current collector reuses whole released blocks through a free list.
 
 In library mode, `alloc(len)` creates a raw byte object with reference count `1` and returns the payload pointer.  `retain(ptr)` increments the count for a nonzero pointer and returns the same pointer.  `release(ptr)` decrements the count, puts the object on the free list when the count reaches zero, and traps on invalid or double release; `free(ptr)` is the same operation under a host-facing name.
 
@@ -59,7 +59,7 @@ Compiled Lean code may read runtime counters through `LeanExe.Runtime.allocCount
 
 The exported `reset()` function rewinds the heap and clears the free list, invalidating every pointer returned by `alloc` or by a compiled entry.  A host must not retain pointers across `reset()`, even if their reference count was positive before the reset.  `reset()` remains useful as a coarse call-boundary reclamation operation when the host has finished with every result from prior calls.
 
-WASI command modules are single-run command programs.  Their `_start` adapter and compiled Lean entry allocate in linear memory, write observable output, and then return or call `proc_exit`.  The operating environment discards the module instance after process exit, but a single command can still exhaust linear memory before it exits.  Source code that builds large intermediate recursive values can call `LeanExe.Runtime.release` at explicit ownership boundaries to make the freed blocks available later in the same command.
+WASI command modules are single-run command programs.  Their `_start` adapter and compiled Lean entry allocate in linear memory, write observable output, and then return or call `proc_exit`.  The operating environment discards the module instance after process exit, but a single command can still exhaust host-imposed WASM memory limits before it exits.  Source code that builds large intermediate recursive values can call `LeanExe.Runtime.release` at explicit ownership boundaries to make the freed blocks available later in the same command.
 
 ## Types
 
@@ -205,7 +205,7 @@ The generator helpers include `appendQuotedBytes?`, `appendQuotedString?`, `appe
 
 `LeanExe.Examples.JsonMergeTreeCommand.makeMergedTree : ByteArray -> Except ByteArray ByteArray` accepts a JSON value whose top-level form is two arrays of unsigned integers, builds one source-level tree per array, copies both trees into a third merged tree, explicitly releases the first two roots with `LeanExe.Runtime.release`, and writes `{"tree":...,"gc":...}`.  The `gc` object reports allocation, release, and free counters before and after those explicit releases.  `searchMergedTree : ByteArray -> Array ByteArray -> Except ByteArray ByteArray` reads that intermediate object, decodes its `tree` field, reads one decimal search key from argv, and writes a JSON search result with runtime counters for the search command.
 
-`LeanExe.Examples.JsonGcTreeRewrite.transform : ByteArray -> Except ByteArray ByteArray` accepts an object with unsigned integer fields `depth`, `rounds`, `salt`, and `search`.  The program builds a balanced source-level tree with `2^depth - 1` nodes, rewrites the whole tree for each round, explicitly releases the old root after each rewrite, searches the final tree, releases the final root, and returns metrics plus runtime GC counters.  It currently accepts `1 <= depth <= 8` and `rounds <= 20`; malformed input, missing fields, wrong value types, and out-of-range workloads return `{"error":1}` through `Except.error`.
+`LeanExe.Examples.JsonGcTreeRewrite.transform : ByteArray -> Except ByteArray ByteArray` accepts an object with unsigned integer fields `depth`, `rounds`, `salt`, and `search`.  The program builds a balanced source-level tree with `2^depth - 1` nodes, rewrites the whole tree for each round, explicitly releases the old root after each rewrite, searches the final tree, releases the final root, and returns metrics plus runtime GC counters.  It currently accepts `1 <= depth <= 8` and `rounds <= 40`; malformed input, missing fields, wrong value types, and out-of-range workloads return `{"error":1}` through `Except.error`.
 
 `LeanExe.Examples.JsonTools.transform : ByteArray -> ByteArray` demonstrates generated JSON output through `object1UInt64` and reads its input through `Ascii.Json.getUInt64Field`, including skipped unknown values before the requested field.  `LeanExe.Examples.JsonTools.lookup : ByteArray -> UInt64` demonstrates the same generic object-field lookup as a scalar entry.
 

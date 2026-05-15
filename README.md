@@ -225,7 +225,7 @@ printf '%s' '[1,6,4,100,33,5,5,20]' \
 
 ## Host Memory Values
 
-`ByteArray` and arrays use the module memory.  The module exports `alloc(len : i64) : i64`; a host calls `alloc`, writes bytes into the exported memory, and passes the returned pointer plus a length when the entry expects a `ByteArray`.  Returned byte arrays use a pointer and length result pair.  The module also exports `retain(ptr : i64) : i64`, `release(ptr : i64)`, and `free(ptr : i64)` for reference-counted heap objects.
+`ByteArray` and arrays use the module memory.  The module exports `alloc(len : i64) : i64`; a host calls `alloc`, writes bytes into the exported memory, and passes the returned pointer plus a length when the entry expects a `ByteArray`.  The allocator grows WASM memory when no free block and no current heap range can satisfy a request.  Returned byte arrays use a pointer and length result pair.  The module also exports `retain(ptr : i64) : i64`, `release(ptr : i64)`, and `free(ptr : i64)` for reference-counted heap objects.
 
 ```sh
 .lake/build/bin/lean-wasm compile \
