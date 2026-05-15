@@ -222,33 +222,35 @@ mutual
         .letLets (lets.map (shiftLocalLetCalls offset)) (shiftExprCalls offset body)
     | .runtimeStat stat => .runtimeStat stat
     | .release ptr => .release (shiftExprCalls offset ptr)
-    | .arrayAllocSlots width cells =>
-        .arrayAllocSlots width (shiftExprCalls offset cells)
+    | .arrayAllocSlots width childMask cells =>
+        .arrayAllocSlots width childMask (shiftExprCalls offset cells)
     | .heapAllocSlots childMask values =>
         .heapAllocSlots childMask (values.map (shiftExprCalls offset))
     | .heapLoadSlot ptr slot =>
         .heapLoadSlot (shiftExprCalls offset ptr) slot
-    | .arrayReplicateSlots width cells values =>
-        .arrayReplicateSlots width (shiftExprCalls offset cells)
+    | .arrayReplicateSlots width childMask ownedMask cells values =>
+        .arrayReplicateSlots width childMask ownedMask (shiftExprCalls offset cells)
           (values.map (shiftExprCalls offset))
     | .arraySize array =>
         .arraySize (shiftExprCalls offset array)
     | .arrayGetSlot width slot array index =>
         .arrayGetSlot width slot (shiftExprCalls offset array) (shiftExprCalls offset index)
-    | .arraySetSlots width array index values =>
-        .arraySetSlots width (shiftExprCalls offset array) (shiftExprCalls offset index)
+    | .arraySetSlots width childMask ownedMask array index values =>
+        .arraySetSlots width childMask ownedMask (shiftExprCalls offset array)
+          (shiftExprCalls offset index)
           (values.map (shiftExprCalls offset))
-    | .arrayPushSlots width array values =>
-        .arrayPushSlots width (shiftExprCalls offset array) (values.map (shiftExprCalls offset))
-    | .arrayPopSlots width array =>
-        .arrayPopSlots width (shiftExprCalls offset array)
-    | .arrayAppendSlots width left right =>
-        .arrayAppendSlots width (shiftExprCalls offset left) (shiftExprCalls offset right)
-    | .arrayExtractSlots width array start stop =>
-        .arrayExtractSlots width (shiftExprCalls offset array) (shiftExprCalls offset start)
+    | .arrayPushSlots width childMask ownedMask array values =>
+        .arrayPushSlots width childMask ownedMask (shiftExprCalls offset array)
+          (values.map (shiftExprCalls offset))
+    | .arrayPopSlots width childMask array =>
+        .arrayPopSlots width childMask (shiftExprCalls offset array)
+    | .arrayAppendSlots width childMask left right =>
+        .arrayAppendSlots width childMask (shiftExprCalls offset left) (shiftExprCalls offset right)
+    | .arrayExtractSlots width childMask array start stop =>
+        .arrayExtractSlots width childMask (shiftExprCalls offset array) (shiftExprCalls offset start)
           (shiftExprCalls offset stop)
-    | .arrayMapSlots sourceWidth resultWidth array itemStart bodyValues =>
-        .arrayMapSlots sourceWidth resultWidth (shiftExprCalls offset array) itemStart
+    | .arrayMapSlots sourceWidth resultWidth childMask ownedMask array itemStart bodyValues =>
+        .arrayMapSlots sourceWidth resultWidth childMask ownedMask (shiftExprCalls offset array) itemStart
           (bodyValues.map (shiftExprCalls offset))
     | .arrayFoldMultiSlot sourceWidth resultWidth array start stop initValues accStart
         itemStart bodyValues bodyLets bodyDone resultSlot =>
@@ -269,19 +271,19 @@ mutual
     | .arrayAnySlots sourceWidth array start stop itemStart predicate forAll =>
         .arrayAnySlots sourceWidth (shiftExprCalls offset array) (shiftExprCalls offset start)
           (shiftExprCalls offset stop) itemStart (shiftExprCalls offset predicate) forAll
-    | .arrayFilterSlots sourceWidth array start stop itemStart predicate =>
-        .arrayFilterSlots sourceWidth (shiftExprCalls offset array) (shiftExprCalls offset start)
+    | .arrayFilterSlots sourceWidth childMask array start stop itemStart predicate =>
+        .arrayFilterSlots sourceWidth childMask (shiftExprCalls offset array) (shiftExprCalls offset start)
           (shiftExprCalls offset stop) itemStart (shiftExprCalls offset predicate)
-    | .arrayInsertIfInBoundsSlots width array index values =>
-        .arrayInsertIfInBoundsSlots width (shiftExprCalls offset array)
+    | .arrayInsertIfInBoundsSlots width childMask ownedMask array index values =>
+        .arrayInsertIfInBoundsSlots width childMask ownedMask (shiftExprCalls offset array)
           (shiftExprCalls offset index) (values.map (shiftExprCalls offset))
-    | .arrayEraseIfInBoundsSlots width array index =>
-        .arrayEraseIfInBoundsSlots width (shiftExprCalls offset array) (shiftExprCalls offset index)
-    | .arraySwapIfInBoundsSlots width array left right =>
-        .arraySwapIfInBoundsSlots width (shiftExprCalls offset array)
+    | .arrayEraseIfInBoundsSlots width childMask array index =>
+        .arrayEraseIfInBoundsSlots width childMask (shiftExprCalls offset array) (shiftExprCalls offset index)
+    | .arraySwapIfInBoundsSlots width childMask array left right =>
+        .arraySwapIfInBoundsSlots width childMask (shiftExprCalls offset array)
           (shiftExprCalls offset left) (shiftExprCalls offset right)
-    | .arrayReverseSlots width array =>
-        .arrayReverseSlots width (shiftExprCalls offset array)
+    | .arrayReverseSlots width childMask array =>
+        .arrayReverseSlots width childMask (shiftExprCalls offset array)
     | .byteArrayGet ptr len index =>
         .byteArrayGet (shiftExprCalls offset ptr) (shiftExprCalls offset len)
           (shiftExprCalls offset index)
@@ -611,12 +613,12 @@ def rcAllocPayload
 def rcArrayPayloadBytes (width : Nat) (len : List UInt8) : List UInt8 :=
   i64Const 8 ++ len ++ i64Const width ++ ofNats [126] ++ i64Const 8 ++ ofNats [126, 124]
 
-def rcAllocArrayObject (scratch width : Nat) (len : List UInt8) : List UInt8 :=
+def rcAllocArrayObject (scratch width childMask : Nat) (len : List UInt8) : List UInt8 :=
   rcAllocPayload scratch
     (rcArrayPayloadBytes width len)
     (i64Const rcKindArray)
     (i64Const width)
-    (i64Const 0)
+    (i64Const childMask)
 
 def rcAllocSlotObject (scratch slots childMask : Nat) : List UInt8 :=
   rcAllocPayload scratch
@@ -643,6 +645,69 @@ def enumerateAux {α : Type} : List α → Nat → List (Nat × α)
 def enumerate {α : Type} (items : List α) : List (Nat × α) :=
   enumerateAux items 0
 
+def maskBitSet (mask slot : Nat) : Bool :=
+  (mask / (2 ^ slot)) % 2 == 1
+
+def emitRetainLocal (ptrLocal rcLocal : Nat) : List UInt8 :=
+  localGet ptrLocal ++ i64Const 0 ++ i64Ne ++
+    ofNats [4, 64] ++
+      rcHeaderLoad (localGet ptrLocal) 48 ++ i64Const rcMagic ++ i64Ne ++
+        ofNats [4, 64] ++ unreachable ++ ofNats [11] ++
+      rcHeaderLoad (localGet ptrLocal) 40 ++ localSet rcLocal ++
+      localGet rcLocal ++ i64Const 0 ++ i64Eq ++
+        ofNats [4, 64] ++ unreachable ++ ofNats [11] ++
+      incGlobal (runtimeStatGlobal .retains) ++
+      rcHeaderStore (localGet ptrLocal) 40 (localGet rcLocal ++ i64Const 1 ++ ofNats [124]) ++
+    ofNats [11]
+
+def emitRetainArraySlotsAtIndex
+    (width childMask skipMask childLocal rcLocal : Nat)
+    (base index : List UInt8) :
+    List UInt8 :=
+  (List.range width).flatMap fun slot =>
+    if maskBitSet childMask slot && !maskBitSet skipMask slot then
+      arraySlotAddress width slot base index ++ i64Load ++ localSet childLocal ++
+        emitRetainLocal childLocal rcLocal
+    else
+      []
+
+def emitRetainArrayRange
+    (width childMask loopLocal childLocal rcLocal : Nat)
+    (base start len : List UInt8) :
+    List UInt8 :=
+  if childMask == 0 then
+    []
+  else
+    let index := start ++ localGet loopLocal ++ ofNats [124]
+    i64Const 0 ++ localSet loopLocal ++
+      ofNats [2, 64, 3, 64] ++
+        localGet loopLocal ++ len ++ i64GeU ++ ofNats [13] ++ u32leb 1 ++
+        emitRetainArraySlotsAtIndex width childMask 0 childLocal rcLocal base index ++
+        localGet loopLocal ++ i64Const 1 ++ ofNats [124] ++ localSet loopLocal ++
+        ofNats [12] ++ u32leb 0 ++
+      ofNats [11, 11]
+
+def emitRetainArrayRangeWithSpecial
+    (width childMask skipMask loopLocal childLocal rcLocal : Nat)
+    (base start len specialIndex : List UInt8) :
+    List UInt8 :=
+  if childMask == 0 then
+    []
+  else
+    let index := start ++ localGet loopLocal ++ ofNats [124]
+    i64Const 0 ++ localSet loopLocal ++
+      ofNats [2, 64, 3, 64] ++
+        localGet loopLocal ++ len ++ i64GeU ++ ofNats [13] ++ u32leb 1 ++
+        index ++ specialIndex ++ i64Eq ++
+          ofNats [4, 64] ++
+            emitRetainArraySlotsAtIndex width childMask skipMask childLocal rcLocal base index ++
+          ofNats [5] ++
+            emitRetainArraySlotsAtIndex width childMask 0 childLocal rcLocal base index ++
+          ofNats [11] ++
+        localGet loopLocal ++ i64Const 1 ++ ofNats [124] ++ localSet loopLocal ++
+        ofNats [12] ++ u32leb 0 ++
+      ofNats [11, 11]
+
 mutual
   partial def exprScratch : Expr → Nat
     | .local _ => 0
@@ -659,33 +724,33 @@ mutual
     | .letE _ value body => max (exprScratch value) (exprScratch body)
     | .runtimeStat _ => 0
     | .release ptr => exprScratch ptr
-    | .arrayAllocSlots _ cells => 8 + exprScratch cells
+    | .arrayAllocSlots _ _ cells => 8 + exprScratch cells
     | .heapAllocSlots _ values =>
         1 + values.length +
           max 6 (values.foldl (fun n value => max n (exprScratch value)) 0)
     | .heapLoadSlot ptr _ => 1 + exprScratch ptr
-    | .arrayReplicateSlots _ cells values =>
-        3 + values.length +
+    | .arrayReplicateSlots _ _ _ cells values =>
+        5 + values.length +
           max 6
             (max (exprScratch cells) (values.foldl (fun n value => max n (exprScratch value)) 0))
     | .arraySize array => 1 + exprScratch array
     | .arrayGetSlot _ _ array index => 2 + max (exprScratch array) (exprScratch index)
-    | .arraySetSlots _ array index values =>
-        6 + values.length +
+    | .arraySetSlots _ _ _ array index values =>
+        8 + values.length +
           max 6
             (max (exprScratch array)
               (max (exprScratch index)
                 (values.foldl (fun n value => max n (exprScratch value)) 0)))
-    | .arrayPushSlots _ array values =>
-        6 + values.length +
+    | .arrayPushSlots _ _ _ array values =>
+        8 + values.length +
           max 6
             (max (exprScratch array) (values.foldl (fun n value => max n (exprScratch value)) 0))
-    | .arrayPopSlots _ array => 6 + max 6 (exprScratch array)
-    | .arrayAppendSlots _ left right => 9 + max 6 (max (exprScratch left) (exprScratch right))
-    | .arrayExtractSlots _ array start stop =>
-        10 + max 6 (max (exprScratch array) (max (exprScratch start) (exprScratch stop)))
-    | .arrayMapSlots _ _ array _ bodyValues =>
-        4 + max 6
+    | .arrayPopSlots _ _ array => 8 + max 6 (exprScratch array)
+    | .arrayAppendSlots _ _ left right => 11 + max 6 (max (exprScratch left) (exprScratch right))
+    | .arrayExtractSlots _ _ array start stop =>
+        12 + max 6 (max (exprScratch array) (max (exprScratch start) (exprScratch stop)))
+    | .arrayMapSlots _ _ _ _ array _ bodyValues =>
+        6 + max 6
           (max (exprScratch array)
             (bodyValues.foldl (fun n value => max n (exprScratch value)) 0))
     | .arrayFoldMultiSlot sourceWidth resultWidth array start stop initValues _ _ bodyValues
@@ -712,23 +777,23 @@ mutual
           max
             (max (exprScratch array) (max (exprScratch start) (exprScratch stop)))
             (exprScratch predicate)
-    | .arrayFilterSlots sourceWidth array start stop _ predicate =>
-        8 + sourceWidth +
+    | .arrayFilterSlots sourceWidth _ array start stop _ predicate =>
+        10 + sourceWidth +
           max 6
             (max
               (max (exprScratch array) (max (exprScratch start) (exprScratch stop)))
               (exprScratch predicate))
-    | .arrayInsertIfInBoundsSlots _ array index values =>
-        8 + values.length +
+    | .arrayInsertIfInBoundsSlots _ _ _ array index values =>
+        10 + values.length +
           max 6
             (max (exprScratch array)
               (max (exprScratch index)
                 (values.foldl (fun n value => max n (exprScratch value)) 0)))
-    | .arrayEraseIfInBoundsSlots _ array index =>
-        8 + max 6 (max (exprScratch array) (exprScratch index))
-    | .arraySwapIfInBoundsSlots _ array left right =>
-        7 + max 6 (max (exprScratch array) (max (exprScratch left) (exprScratch right)))
-    | .arrayReverseSlots _ array => 4 + max 6 (exprScratch array)
+    | .arrayEraseIfInBoundsSlots _ _ array index =>
+        10 + max 6 (max (exprScratch array) (exprScratch index))
+    | .arraySwapIfInBoundsSlots _ _ array left right =>
+        9 + max 6 (max (exprScratch array) (max (exprScratch left) (exprScratch right)))
+    | .arrayReverseSlots _ _ array => 6 + max 6 (exprScratch array)
     | .byteArrayGet ptr len index =>
         3 + max (exprScratch ptr) (max (exprScratch len) (exprScratch index))
     | .byteArrayPushPtr ptr len value =>
@@ -930,11 +995,11 @@ def emitByteRangeCopyLoop
     ofNats [11, 11]
 
 mutual
-  partial def emitArrayAllocSlots (scratch width : Nat) (cells : Expr) : List UInt8 :=
+  partial def emitArrayAllocSlots (scratch width childMask : Nat) (cells : Expr) : List UInt8 :=
     let len := scratch
     let ptr := scratch + 1
     emitExpr (scratch + 2) cells ++ localSet len ++
-      rcAllocArrayObject (scratch + 2) width (localGet len) ++ localSet ptr ++
+      rcAllocArrayObject (scratch + 2) width childMask (localGet len) ++ localSet ptr ++
       localGet ptr ++ i32WrapI64 ++ localGet len ++ i64Store ++
       localGet ptr
 
@@ -962,14 +1027,16 @@ mutual
       localGet ptrLocal ++ i64Const (slot * 8) ++ ofNats [124] ++ i32WrapI64 ++ i64Load
 
   partial def emitArrayReplicateSlots
-      (scratch width : Nat)
+      (scratch width childMask ownedMask : Nat)
       (cells : Expr)
       (values : List Expr) : List UInt8 :=
     let lenLocal := scratch
     let ptrLocal := scratch + 1
     let loopLocal := scratch + 2
     let valueStart := scratch + 3
-    let childScratch := scratch + 3 + values.length
+    let retainChildLocal := scratch + 3 + values.length
+    let retainRcLocal := retainChildLocal + 1
+    let childScratch := retainRcLocal + 1
     let rec emitValueStores : List (Nat × Expr) → List UInt8
       | [] => []
       | (offset, value) :: rest =>
@@ -989,9 +1056,11 @@ mutual
         ofNats [11, 11]
     emitExpr childScratch cells ++ localSet lenLocal ++
       emitValueStores (enumerate values) ++
-      rcAllocArrayObject childScratch width (localGet lenLocal) ++ localSet ptrLocal ++
+      rcAllocArrayObject childScratch width childMask (localGet lenLocal) ++ localSet ptrLocal ++
       localGet ptrLocal ++ i32WrapI64 ++ localGet lenLocal ++ i64Store ++
       fillLoop ++
+      emitRetainArrayRangeWithSpecial width childMask ownedMask loopLocal retainChildLocal
+        retainRcLocal (localGet ptrLocal) (i64Const 0) (localGet lenLocal) (i64Const 0) ++
       localGet ptrLocal
 
   partial def emitArrayGetSlot
@@ -1015,7 +1084,7 @@ mutual
       localGet arrayLocal ++ i32WrapI64 ++ i64Load
 
   partial def emitArraySetSlots
-      (scratch width : Nat)
+      (scratch width childMask ownedMask : Nat)
       (array index : Expr)
       (values : List Expr) : List UInt8 :=
     let arrayLocal := scratch
@@ -1025,7 +1094,9 @@ mutual
     let newLocal := scratch + 4
     let loopLocal := scratch + 5
     let valueStart := scratch + 6
-    let childScratch := scratch + 6 + values.length
+    let retainChildLocal := scratch + 6 + values.length
+    let retainRcLocal := retainChildLocal + 1
+    let childScratch := retainRcLocal + 1
     let rec emitValueStores : List (Nat × Expr) → List UInt8
       | [] => []
       | (offset, value) :: rest =>
@@ -1042,17 +1113,19 @@ mutual
       localGet indexLocal ++ localGet lenLocal ++ i64LtU ++
       ofNats [4, 126] ++
         localGet lenLocal ++ i64Const width ++ ofNats [126] ++ localSet cellsLocal ++
-        rcAllocArrayObject childScratch width (localGet lenLocal) ++ localSet newLocal ++
+        rcAllocArrayObject childScratch width childMask (localGet lenLocal) ++ localSet newLocal ++
         localGet newLocal ++ i32WrapI64 ++ localGet lenLocal ++ i64Store ++
         emitCopyLoop arrayLocal newLocal cellsLocal loopLocal ++
         emitSlotStores (enumerate values) ++
+        emitRetainArrayRangeWithSpecial width childMask ownedMask loopLocal retainChildLocal
+          retainRcLocal (localGet newLocal) (i64Const 0) (localGet lenLocal) (localGet indexLocal) ++
         localGet newLocal ++
       ofNats [5] ++
         ofNats [0] ++
       ofNats [11]
 
   partial def emitArrayPushSlots
-      (scratch width : Nat)
+      (scratch width childMask ownedMask : Nat)
       (array : Expr)
       (values : List Expr) : List UInt8 :=
     let arrayLocal := scratch
@@ -1062,7 +1135,9 @@ mutual
     let newLocal := scratch + 4
     let loopLocal := scratch + 5
     let valueStart := scratch + 6
-    let childScratch := scratch + 6 + values.length
+    let retainChildLocal := scratch + 6 + values.length
+    let retainRcLocal := retainChildLocal + 1
+    let childScratch := retainRcLocal + 1
     let rec emitValueStores : List (Nat × Expr) → List UInt8
       | [] => []
       | (offset, value) :: rest =>
@@ -1077,20 +1152,26 @@ mutual
       localGet arrayLocal ++ i32WrapI64 ++ i64Load ++ localSet lenLocal ++
       localGet lenLocal ++ i64Const width ++ ofNats [126] ++ localSet cellsLocal ++
       localGet lenLocal ++ i64Const 1 ++ ofNats [124] ++ localSet newLenLocal ++
-      rcAllocArrayObject childScratch width (localGet newLenLocal) ++ localSet newLocal ++
+      rcAllocArrayObject childScratch width childMask (localGet newLenLocal) ++ localSet newLocal ++
       localGet newLocal ++ i32WrapI64 ++ localGet newLenLocal ++ i64Store ++
       emitCopyLoop arrayLocal newLocal cellsLocal loopLocal ++
       emitSlotStores (enumerate values) ++
+      emitRetainArrayRange width childMask loopLocal retainChildLocal retainRcLocal
+        (localGet newLocal) (i64Const 0) (localGet lenLocal) ++
+      emitRetainArraySlotsAtIndex width childMask ownedMask retainChildLocal retainRcLocal
+        (localGet newLocal) (localGet lenLocal) ++
       localGet newLocal
 
-  partial def emitArrayPopSlots (scratch width : Nat) (array : Expr) : List UInt8 :=
+  partial def emitArrayPopSlots (scratch width childMask : Nat) (array : Expr) : List UInt8 :=
     let arrayLocal := scratch
     let lenLocal := scratch + 1
     let newLenLocal := scratch + 2
     let cellsLocal := scratch + 3
     let newLocal := scratch + 4
     let loopLocal := scratch + 5
-    let childScratch := scratch + 6
+    let retainChildLocal := scratch + 6
+    let retainRcLocal := scratch + 7
+    let childScratch := scratch + 8
     emitExpr childScratch array ++ localSet arrayLocal ++
       localGet arrayLocal ++ i32WrapI64 ++ i64Load ++ localSet lenLocal ++
       localGet lenLocal ++ i64Const 0 ++ ofNats [81] ++
@@ -1099,13 +1180,17 @@ mutual
       ofNats [5] ++
         localGet lenLocal ++ i64Const 1 ++ ofNats [125] ++ localSet newLenLocal ++
         localGet newLenLocal ++ i64Const width ++ ofNats [126] ++ localSet cellsLocal ++
-        rcAllocArrayObject childScratch width (localGet newLenLocal) ++ localSet newLocal ++
+        rcAllocArrayObject childScratch width childMask (localGet newLenLocal) ++ localSet newLocal ++
         localGet newLocal ++ i32WrapI64 ++ localGet newLenLocal ++ i64Store ++
         emitCopyLoop arrayLocal newLocal cellsLocal loopLocal ++
+        emitRetainArrayRange width childMask loopLocal retainChildLocal retainRcLocal
+          (localGet newLocal) (i64Const 0) (localGet newLenLocal) ++
         localGet newLocal ++
       ofNats [11]
 
-  partial def emitArrayAppendSlots (scratch width : Nat) (left right : Expr) : List UInt8 :=
+  partial def emitArrayAppendSlots
+      (scratch width childMask : Nat)
+      (left right : Expr) : List UInt8 :=
     let leftLocal := scratch
     let rightLocal := scratch + 1
     let leftLenLocal := scratch + 2
@@ -1115,7 +1200,9 @@ mutual
     let rightCellsLocal := scratch + 6
     let newLocal := scratch + 7
     let loopLocal := scratch + 8
-    let childScratch := scratch + 9
+    let retainChildLocal := scratch + 9
+    let retainRcLocal := scratch + 10
+    let childScratch := scratch + 11
     emitExpr childScratch left ++ localSet leftLocal ++
       emitExpr childScratch right ++ localSet rightLocal ++
       localGet leftLocal ++ i32WrapI64 ++ i64Load ++ localSet leftLenLocal ++
@@ -1124,14 +1211,18 @@ mutual
         localSet newLenLocal ++
       localGet leftLenLocal ++ i64Const width ++ ofNats [126] ++ localSet leftCellsLocal ++
       localGet rightLenLocal ++ i64Const width ++ ofNats [126] ++ localSet rightCellsLocal ++
-      rcAllocArrayObject childScratch width (localGet newLenLocal) ++ localSet newLocal ++
+      rcAllocArrayObject childScratch width childMask (localGet newLenLocal) ++ localSet newLocal ++
       localGet newLocal ++ i32WrapI64 ++ localGet newLenLocal ++ i64Store ++
       emitCopyLoop leftLocal newLocal leftCellsLocal loopLocal ++
       emitCopyLoopAt rightLocal newLocal leftCellsLocal rightCellsLocal loopLocal ++
+      emitRetainArrayRange width childMask loopLocal retainChildLocal retainRcLocal
+        (localGet newLocal) (i64Const 0) (localGet leftLenLocal) ++
+      emitRetainArrayRange width childMask loopLocal retainChildLocal retainRcLocal
+        (localGet newLocal) (localGet leftLenLocal) (localGet rightLenLocal) ++
       localGet newLocal
 
   partial def emitArrayExtractSlots
-      (scratch width : Nat)
+      (scratch width childMask : Nat)
       (array start stop : Expr) : List UInt8 :=
     let arrayLocal := scratch
     let startLocal := scratch + 1
@@ -1143,7 +1234,9 @@ mutual
     let cellsLocal := scratch + 7
     let newLocal := scratch + 8
     let loopLocal := scratch + 9
-    let childScratch := scratch + 10
+    let retainChildLocal := scratch + 10
+    let retainRcLocal := scratch + 11
+    let childScratch := scratch + 12
     emitExpr childScratch array ++ localSet arrayLocal ++
       emitExpr childScratch start ++ localSet startLocal ++
       emitExpr childScratch stop ++ localSet stopLocal ++
@@ -1162,13 +1255,15 @@ mutual
       ofNats [11] ++ localSet newLenLocal ++
       localGet startLocal ++ i64Const width ++ ofNats [126] ++ localSet startCellLocal ++
       localGet newLenLocal ++ i64Const width ++ ofNats [126] ++ localSet cellsLocal ++
-      rcAllocArrayObject childScratch width (localGet newLenLocal) ++ localSet newLocal ++
+      rcAllocArrayObject childScratch width childMask (localGet newLenLocal) ++ localSet newLocal ++
       localGet newLocal ++ i32WrapI64 ++ localGet newLenLocal ++ i64Store ++
       emitExtractCopyLoop arrayLocal newLocal startCellLocal cellsLocal loopLocal ++
+      emitRetainArrayRange width childMask loopLocal retainChildLocal retainRcLocal
+        (localGet newLocal) (i64Const 0) (localGet newLenLocal) ++
       localGet newLocal
 
   partial def emitArrayMapSlots
-      (scratch sourceWidth resultWidth : Nat)
+      (scratch sourceWidth resultWidth childMask ownedMask : Nat)
       (array : Expr)
       (itemStart : Nat)
       (bodyValues : List Expr) : List UInt8 :=
@@ -1176,7 +1271,9 @@ mutual
     let lenLocal := scratch + 1
     let newLocal := scratch + 2
     let loopLocal := scratch + 3
-    let childScratch := scratch + 4
+    let retainChildLocal := scratch + 4
+    let retainRcLocal := scratch + 5
+    let childScratch := scratch + 6
     let rec emitSourceLoads : List Nat → List UInt8
       | [] => []
       | offset :: rest =>
@@ -1189,13 +1286,15 @@ mutual
             emitExpr childScratch value ++ i64Store ++ emitResultStores rest
     emitExpr childScratch array ++ localSet arrayLocal ++
       localGet arrayLocal ++ i32WrapI64 ++ i64Load ++ localSet lenLocal ++
-      rcAllocArrayObject childScratch resultWidth (localGet lenLocal) ++ localSet newLocal ++
+      rcAllocArrayObject childScratch resultWidth childMask (localGet lenLocal) ++ localSet newLocal ++
       localGet newLocal ++ i32WrapI64 ++ localGet lenLocal ++ i64Store ++
       i64Const 0 ++ localSet loopLocal ++
       ofNats [2, 64, 3, 64] ++
         localGet loopLocal ++ localGet lenLocal ++ i64GeU ++ ofNats [13] ++ u32leb 1 ++
         emitSourceLoads (List.range sourceWidth) ++
         emitResultStores (enumerate bodyValues) ++
+        emitRetainArraySlotsAtIndex resultWidth childMask ownedMask retainChildLocal retainRcLocal
+          (localGet newLocal) (localGet loopLocal) ++
         localGet loopLocal ++ i64Const 1 ++ ofNats [124] ++ localSet loopLocal ++
         ofNats [12] ++ u32leb 0 ++
       ofNats [11, 11] ++
@@ -1494,7 +1593,7 @@ mutual
       localGet resultLocal
 
   partial def emitArrayFilterSlots
-      (scratch sourceWidth : Nat)
+      (scratch sourceWidth childMask : Nat)
       (array start stop : Expr)
       (itemStart : Nat)
       (predicate : Expr) : List UInt8 :=
@@ -1506,7 +1605,9 @@ mutual
     let newLocal := scratch + 5
     let writeIndexLocal := scratch + 6
     let cellsLocal := scratch + 7
-    let childScratch := scratch + 8
+    let retainChildLocal := scratch + 8
+    let retainRcLocal := scratch + 9
+    let childScratch := scratch + 10
     let rec emitSourceLoads : List Nat → List UInt8
       | [] => []
       | offset :: rest =>
@@ -1522,7 +1623,7 @@ mutual
       emitExpr childScratch start ++ localSet indexLocal ++
       emitExpr childScratch stop ++ localSet stopLocal ++
       localGet lenLocal ++ i64Const sourceWidth ++ ofNats [126] ++ localSet cellsLocal ++
-      rcAllocArrayObject childScratch sourceWidth (localGet lenLocal) ++ localSet newLocal ++
+      rcAllocArrayObject childScratch sourceWidth childMask (localGet lenLocal) ++ localSet newLocal ++
       i64Const 0 ++ localSet writeIndexLocal ++
       localGet stopLocal ++ localGet lenLocal ++ i64LtU ++
       ofNats [4, 126] ++
@@ -1537,6 +1638,8 @@ mutual
         emitExpr childScratch predicate ++ i64Const 0 ++ i64Ne ++
         ofNats [4, 64] ++
           emitResultStores (List.range sourceWidth) ++
+          emitRetainArraySlotsAtIndex sourceWidth childMask 0 retainChildLocal retainRcLocal
+            (localGet newLocal) (localGet writeIndexLocal) ++
           localGet writeIndexLocal ++ i64Const 1 ++ ofNats [124] ++ localSet writeIndexLocal ++
         ofNats [11] ++
         localGet indexLocal ++ i64Const 1 ++ ofNats [124] ++ localSet indexLocal ++
@@ -1546,7 +1649,7 @@ mutual
       localGet newLocal
 
   partial def emitArrayInsertIfInBoundsSlots
-      (scratch width : Nat)
+      (scratch width childMask ownedMask : Nat)
       (array index : Expr)
       (values : List Expr) : List UInt8 :=
     let arrayLocal := scratch
@@ -1558,7 +1661,9 @@ mutual
     let newLocal := scratch + 6
     let loopLocal := scratch + 7
     let valueStart := scratch + 8
-    let childScratch := scratch + 8 + values.length
+    let retainChildLocal := scratch + 8 + values.length
+    let retainRcLocal := retainChildLocal + 1
+    let childScratch := retainRcLocal + 1
     let rec emitValueStores : List (Nat × Expr) → List UInt8
       | [] => []
       | (offset, value) :: rest =>
@@ -1578,7 +1683,7 @@ mutual
         localGet indexLocal ++ i64Const width ++ ofNats [126] ++ localSet prefixCellsLocal ++
         localGet lenLocal ++ localGet indexLocal ++ ofNats [125] ++
           i64Const width ++ ofNats [126] ++ localSet suffixCellsLocal ++
-        rcAllocArrayObject childScratch width (localGet newLenLocal) ++ localSet newLocal ++
+        rcAllocArrayObject childScratch width childMask (localGet newLenLocal) ++ localSet newLocal ++
         localGet newLocal ++ i32WrapI64 ++ localGet newLenLocal ++ i64Store ++
         emitCopyLoop arrayLocal newLocal prefixCellsLocal loopLocal ++
         emitSlotStores (enumerate values) ++
@@ -1589,13 +1694,20 @@ mutual
           (localGet prefixCellsLocal ++ i64Const width ++ ofNats [124])
           suffixCellsLocal
           loopLocal ++
+        emitRetainArrayRange width childMask loopLocal retainChildLocal retainRcLocal
+          (localGet newLocal) (i64Const 0) (localGet indexLocal) ++
+        emitRetainArraySlotsAtIndex width childMask ownedMask retainChildLocal retainRcLocal
+          (localGet newLocal) (localGet indexLocal) ++
+        emitRetainArrayRange width childMask loopLocal retainChildLocal retainRcLocal
+          (localGet newLocal) (localGet indexLocal ++ i64Const 1 ++ ofNats [124])
+          (localGet lenLocal ++ localGet indexLocal ++ ofNats [125]) ++
         localGet newLocal ++
       ofNats [5] ++
         localGet arrayLocal ++
       ofNats [11]
 
   partial def emitArrayEraseIfInBoundsSlots
-      (scratch width : Nat)
+      (scratch width childMask : Nat)
       (array index : Expr) : List UInt8 :=
     let arrayLocal := scratch
     let indexLocal := scratch + 1
@@ -1605,7 +1717,9 @@ mutual
     let newLenLocal := scratch + 5
     let newLocal := scratch + 6
     let loopLocal := scratch + 7
-    let childScratch := scratch + 8
+    let retainChildLocal := scratch + 8
+    let retainRcLocal := scratch + 9
+    let childScratch := scratch + 10
     emitExpr childScratch array ++ localSet arrayLocal ++
       emitExpr childScratch index ++ localSet indexLocal ++
       localGet arrayLocal ++ i32WrapI64 ++ i64Load ++ localSet lenLocal ++
@@ -1615,7 +1729,7 @@ mutual
         localGet indexLocal ++ i64Const width ++ ofNats [126] ++ localSet prefixCellsLocal ++
         localGet newLenLocal ++ localGet indexLocal ++ ofNats [125] ++
           i64Const width ++ ofNats [126] ++ localSet suffixCellsLocal ++
-        rcAllocArrayObject childScratch width (localGet newLenLocal) ++ localSet newLocal ++
+        rcAllocArrayObject childScratch width childMask (localGet newLenLocal) ++ localSet newLocal ++
         localGet newLocal ++ i32WrapI64 ++ localGet newLenLocal ++ i64Store ++
         emitCopyLoop arrayLocal newLocal prefixCellsLocal loopLocal ++
         emitRangeCopyLoop
@@ -1625,13 +1739,18 @@ mutual
           (localGet prefixCellsLocal)
           suffixCellsLocal
           loopLocal ++
+        emitRetainArrayRange width childMask loopLocal retainChildLocal retainRcLocal
+          (localGet newLocal) (i64Const 0) (localGet indexLocal) ++
+        emitRetainArrayRange width childMask loopLocal retainChildLocal retainRcLocal
+          (localGet newLocal) (localGet indexLocal)
+          (localGet newLenLocal ++ localGet indexLocal ++ ofNats [125]) ++
         localGet newLocal ++
       ofNats [5] ++
         localGet arrayLocal ++
       ofNats [11]
 
   partial def emitArraySwapIfInBoundsSlots
-      (scratch width : Nat)
+      (scratch width childMask : Nat)
       (array left right : Expr) : List UInt8 :=
     let arrayLocal := scratch
     let leftLocal := scratch + 1
@@ -1640,7 +1759,9 @@ mutual
     let cellsLocal := scratch + 4
     let newLocal := scratch + 5
     let loopLocal := scratch + 6
-    let childScratch := scratch + 7
+    let retainChildLocal := scratch + 7
+    let retainRcLocal := scratch + 8
+    let childScratch := scratch + 9
     let rec emitSlotCopies : List Nat → List UInt8
       | [] => []
       | offset :: rest =>
@@ -1653,10 +1774,12 @@ mutual
           emitSlotCopies rest
     let swapBody :=
       localGet lenLocal ++ i64Const width ++ ofNats [126] ++ localSet cellsLocal ++
-        rcAllocArrayObject childScratch width (localGet lenLocal) ++ localSet newLocal ++
+        rcAllocArrayObject childScratch width childMask (localGet lenLocal) ++ localSet newLocal ++
         localGet newLocal ++ i32WrapI64 ++ localGet lenLocal ++ i64Store ++
         emitCopyLoop arrayLocal newLocal cellsLocal loopLocal ++
         emitSlotCopies (List.range width) ++
+        emitRetainArrayRange width childMask loopLocal retainChildLocal retainRcLocal
+          (localGet newLocal) (i64Const 0) (localGet lenLocal) ++
         localGet newLocal
     emitExpr childScratch array ++ localSet arrayLocal ++
       emitExpr childScratch left ++ localSet leftLocal ++
@@ -1675,13 +1798,15 @@ mutual
       ofNats [11]
 
   partial def emitArrayReverseSlots
-      (scratch width : Nat)
+      (scratch width childMask : Nat)
       (array : Expr) : List UInt8 :=
     let arrayLocal := scratch
     let lenLocal := scratch + 1
     let newLocal := scratch + 2
     let loopLocal := scratch + 3
-    let childScratch := scratch + 4
+    let retainChildLocal := scratch + 4
+    let retainRcLocal := scratch + 5
+    let childScratch := scratch + 6
     let sourceIndex :=
       localGet lenLocal ++ localGet loopLocal ++ ofNats [125] ++ i64Const 1 ++ ofNats [125]
     let rec emitSlotCopies : List Nat → List UInt8
@@ -1704,9 +1829,11 @@ mutual
       ofNats [4, 126] ++
         localGet arrayLocal ++
       ofNats [5] ++
-        rcAllocArrayObject childScratch width (localGet lenLocal) ++ localSet newLocal ++
+        rcAllocArrayObject childScratch width childMask (localGet lenLocal) ++ localSet newLocal ++
         localGet newLocal ++ i32WrapI64 ++ localGet lenLocal ++ i64Store ++
         copyLoop ++
+        emitRetainArrayRange width childMask loopLocal retainChildLocal retainRcLocal
+          (localGet newLocal) (i64Const 0) (localGet lenLocal) ++
         localGet newLocal ++
       ofNats [11]
 
@@ -2347,24 +2474,26 @@ mutual
         emitCond scratch cond ++ ofNats [4, 126] ++ emitExpr scratch thenValue ++ ofNats [5] ++
           emitExpr scratch elseValue ++ ofNats [11]
     | .letE slot value body => emitExpr scratch value ++ localSet slot ++ emitExpr scratch body
-    | .arrayAllocSlots width cells => emitArrayAllocSlots scratch width cells
+    | .arrayAllocSlots width childMask cells => emitArrayAllocSlots scratch width childMask cells
     | .runtimeStat stat => globalGet (runtimeStatGlobal stat)
     | .release ptr => emitExpr scratch ptr ++ unreachable
     | .heapAllocSlots childMask values => emitHeapAllocSlots scratch childMask values
     | .heapLoadSlot ptr slot => emitHeapLoadSlot scratch ptr slot
-    | .arrayReplicateSlots width cells values =>
-        emitArrayReplicateSlots scratch width cells values
+    | .arrayReplicateSlots width childMask ownedMask cells values =>
+        emitArrayReplicateSlots scratch width childMask ownedMask cells values
     | .arraySize array => emitArraySize scratch array
     | .arrayGetSlot width slot array index => emitArrayGetSlot scratch width slot array index
-    | .arraySetSlots width array index values =>
-        emitArraySetSlots scratch width array index values
-    | .arrayPushSlots width array values => emitArrayPushSlots scratch width array values
-    | .arrayPopSlots width array => emitArrayPopSlots scratch width array
-    | .arrayAppendSlots width left right => emitArrayAppendSlots scratch width left right
-    | .arrayExtractSlots width array start stop =>
-        emitArrayExtractSlots scratch width array start stop
-    | .arrayMapSlots sourceWidth resultWidth array itemStart bodyValues =>
-        emitArrayMapSlots scratch sourceWidth resultWidth array itemStart bodyValues
+    | .arraySetSlots width childMask ownedMask array index values =>
+        emitArraySetSlots scratch width childMask ownedMask array index values
+    | .arrayPushSlots width childMask ownedMask array values =>
+        emitArrayPushSlots scratch width childMask ownedMask array values
+    | .arrayPopSlots width childMask array => emitArrayPopSlots scratch width childMask array
+    | .arrayAppendSlots width childMask left right =>
+        emitArrayAppendSlots scratch width childMask left right
+    | .arrayExtractSlots width childMask array start stop =>
+        emitArrayExtractSlots scratch width childMask array start stop
+    | .arrayMapSlots sourceWidth resultWidth childMask ownedMask array itemStart bodyValues =>
+        emitArrayMapSlots scratch sourceWidth resultWidth childMask ownedMask array itemStart bodyValues
     | .arrayFoldMultiSlot sourceWidth resultWidth array start stop initValues accStart itemStart
         bodyValues bodyLets bodyDone resultSlot =>
         emitArrayFoldMultiSlot scratch sourceWidth resultWidth array start stop initValues accStart
@@ -2377,15 +2506,15 @@ mutual
         emitArrayEqSlots scratch width left right leftStart rightStart predicate
     | .arrayAnySlots sourceWidth array start stop itemStart predicate forAll =>
         emitArrayAnySlots scratch sourceWidth array start stop itemStart predicate forAll
-    | .arrayFilterSlots sourceWidth array start stop itemStart predicate =>
-        emitArrayFilterSlots scratch sourceWidth array start stop itemStart predicate
-    | .arrayInsertIfInBoundsSlots width array index values =>
-        emitArrayInsertIfInBoundsSlots scratch width array index values
-    | .arrayEraseIfInBoundsSlots width array index =>
-        emitArrayEraseIfInBoundsSlots scratch width array index
-    | .arraySwapIfInBoundsSlots width array left right =>
-        emitArraySwapIfInBoundsSlots scratch width array left right
-    | .arrayReverseSlots width array => emitArrayReverseSlots scratch width array
+    | .arrayFilterSlots sourceWidth childMask array start stop itemStart predicate =>
+        emitArrayFilterSlots scratch sourceWidth childMask array start stop itemStart predicate
+    | .arrayInsertIfInBoundsSlots width childMask ownedMask array index values =>
+        emitArrayInsertIfInBoundsSlots scratch width childMask ownedMask array index values
+    | .arrayEraseIfInBoundsSlots width childMask array index =>
+        emitArrayEraseIfInBoundsSlots scratch width childMask array index
+    | .arraySwapIfInBoundsSlots width childMask array left right =>
+        emitArraySwapIfInBoundsSlots scratch width childMask array left right
+    | .arrayReverseSlots width childMask array => emitArrayReverseSlots scratch width childMask array
     | .byteArrayGet ptr len index => emitByteArrayGet scratch ptr len index
     | .byteArrayPushPtr ptr len value => emitByteArrayPushPtr scratch ptr len value
     | .byteArrayAppendPtr leftPtr leftLen rightPtr rightLen =>
@@ -3320,7 +3449,7 @@ def byteRangeCopyLoopWat
     ["  end", "end"]
 
 mutual
-  partial def arrayAllocSlotsWatLines (scratch width : Nat) (cells : Expr) : List String :=
+  partial def arrayAllocSlotsWatLines (scratch width _childMask : Nat) (cells : Expr) : List String :=
     let len := scratch
     let ptr := scratch + 1
     exprWatLines (scratch + 2) cells ++
@@ -3358,7 +3487,7 @@ mutual
       "i64.load align=8"]
 
   partial def arrayReplicateSlotsWatLines
-      (scratch width : Nat)
+      (scratch width _childMask _ownedMask : Nat)
       (cells : Expr)
       (values : List Expr) : List String :=
     let lenLocal := scratch
@@ -3415,7 +3544,7 @@ mutual
       s!"local.get {arrayLocal}", "i32.wrap_i64", "i64.load align=8"]
 
   partial def arraySetSlotsWatLines
-      (scratch width : Nat)
+      (scratch width _childMask _ownedMask : Nat)
       (array index : Expr)
       (values : List Expr) : List String :=
     let arrayLocal := scratch
@@ -3459,7 +3588,7 @@ mutual
       ["else", "  unreachable", "end"]
 
   partial def arrayPushSlotsWatLines
-      (scratch width : Nat)
+      (scratch width _childMask _ownedMask : Nat)
       (array : Expr)
       (values : List Expr) : List String :=
     let arrayLocal := scratch
@@ -3498,7 +3627,7 @@ mutual
       slotStores (enumerate values) ++
       [s!"local.get {newLocal}"]
 
-  partial def arrayPopSlotsWatLines (scratch width : Nat) (array : Expr) : List String :=
+  partial def arrayPopSlotsWatLines (scratch width _childMask : Nat) (array : Expr) : List String :=
     let arrayLocal := scratch
     let lenLocal := scratch + 1
     let newLenLocal := scratch + 2
@@ -3524,7 +3653,9 @@ mutual
         [s!"local.get {newLocal}"]) ++
       ["end"]
 
-  partial def arrayAppendSlotsWatLines (scratch width : Nat) (left right : Expr) : List String :=
+  partial def arrayAppendSlotsWatLines
+      (scratch width _childMask : Nat)
+      (left right : Expr) : List String :=
     let leftLocal := scratch
     let rightLocal := scratch + 1
     let leftLenLocal := scratch + 2
@@ -3557,7 +3688,7 @@ mutual
       [s!"local.get {newLocal}"]
 
   partial def arrayExtractSlotsWatLines
-      (scratch width : Nat)
+      (scratch width _childMask : Nat)
       (array start stop : Expr) : List String :=
     let arrayLocal := scratch
     let startLocal := scratch + 1
@@ -3602,7 +3733,7 @@ mutual
       [s!"local.get {newLocal}"]
 
   partial def arrayMapSlotsWatLines
-      (scratch sourceWidth resultWidth : Nat)
+      (scratch sourceWidth resultWidth _childMask _ownedMask : Nat)
       (array : Expr)
       (itemStart : Nat)
       (bodyValues : List Expr) : List String :=
@@ -3928,7 +4059,7 @@ mutual
       ["  end", "end", s!"local.get {resultLocal}"]
 
   partial def arrayFilterSlotsWatLines
-      (scratch sourceWidth : Nat)
+      (scratch sourceWidth _childMask : Nat)
       (array start stop : Expr)
       (itemStart : Nat)
       (predicate : Expr) : List String :=
@@ -3984,7 +4115,7 @@ mutual
         s!"local.get {newLocal}"]
 
   partial def arrayInsertIfInBoundsSlotsWatLines
-      (scratch width : Nat)
+      (scratch width _childMask _ownedMask : Nat)
       (array index : Expr)
       (values : List Expr) : List String :=
     let arrayLocal := scratch
@@ -4041,7 +4172,7 @@ mutual
       ["end"]
 
   partial def arrayEraseIfInBoundsSlotsWatLines
-      (scratch width : Nat)
+      (scratch width _childMask : Nat)
       (array index : Expr) : List String :=
     let arrayLocal := scratch
     let indexLocal := scratch + 1
@@ -4083,7 +4214,7 @@ mutual
       ["end"]
 
   partial def arraySwapIfInBoundsSlotsWatLines
-      (scratch width : Nat)
+      (scratch width _childMask : Nat)
       (array left right : Expr) : List String :=
     let arrayLocal := scratch
     let leftLocal := scratch + 1
@@ -4131,7 +4262,7 @@ mutual
       ["end"]
 
   partial def arrayReverseSlotsWatLines
-      (scratch width : Nat)
+      (scratch width _childMask : Nat)
       (array : Expr) : List String :=
     let arrayLocal := scratch
     let lenLocal := scratch + 1
@@ -4786,25 +4917,29 @@ mutual
           ["end"]
     | .letE slot value body =>
         exprWatLines scratch value ++ [s!"local.set {slot}"] ++ exprWatLines scratch body
-    | .arrayAllocSlots width cells => arrayAllocSlotsWatLines scratch width cells
+    | .arrayAllocSlots width childMask cells =>
+        arrayAllocSlotsWatLines scratch width childMask cells
     | .runtimeStat stat => [s!"global.get {runtimeStatGlobal stat}"]
     | .release ptr => exprWatLines scratch ptr ++ ["unreachable"]
     | .heapAllocSlots childMask values => heapAllocSlotsWatLines scratch childMask values
     | .heapLoadSlot ptr slot => heapLoadSlotWatLines scratch ptr slot
-    | .arrayReplicateSlots width cells values =>
-        arrayReplicateSlotsWatLines scratch width cells values
+    | .arrayReplicateSlots width childMask ownedMask cells values =>
+        arrayReplicateSlotsWatLines scratch width childMask ownedMask cells values
     | .arraySize array => arraySizeWatLines scratch array
     | .arrayGetSlot width slot array index =>
         arrayGetSlotWatLines scratch width slot array index
-    | .arraySetSlots width array index values =>
-        arraySetSlotsWatLines scratch width array index values
-    | .arrayPushSlots width array values => arrayPushSlotsWatLines scratch width array values
-    | .arrayPopSlots width array => arrayPopSlotsWatLines scratch width array
-    | .arrayAppendSlots width left right => arrayAppendSlotsWatLines scratch width left right
-    | .arrayExtractSlots width array start stop =>
-        arrayExtractSlotsWatLines scratch width array start stop
-    | .arrayMapSlots sourceWidth resultWidth array itemStart bodyValues =>
-        arrayMapSlotsWatLines scratch sourceWidth resultWidth array itemStart bodyValues
+    | .arraySetSlots width childMask ownedMask array index values =>
+        arraySetSlotsWatLines scratch width childMask ownedMask array index values
+    | .arrayPushSlots width childMask ownedMask array values =>
+        arrayPushSlotsWatLines scratch width childMask ownedMask array values
+    | .arrayPopSlots width childMask array => arrayPopSlotsWatLines scratch width childMask array
+    | .arrayAppendSlots width childMask left right =>
+        arrayAppendSlotsWatLines scratch width childMask left right
+    | .arrayExtractSlots width childMask array start stop =>
+        arrayExtractSlotsWatLines scratch width childMask array start stop
+    | .arrayMapSlots sourceWidth resultWidth childMask ownedMask array itemStart bodyValues =>
+        arrayMapSlotsWatLines scratch sourceWidth resultWidth childMask ownedMask array itemStart
+          bodyValues
     | .arrayFoldMultiSlot sourceWidth resultWidth array start stop initValues accStart itemStart
         bodyValues bodyLets bodyDone resultSlot =>
         arrayFoldMultiSlotWatLines scratch sourceWidth resultWidth array start stop initValues accStart
@@ -4817,15 +4952,16 @@ mutual
         arrayEqSlotsWatLines scratch width left right leftStart rightStart predicate
     | .arrayAnySlots sourceWidth array start stop itemStart predicate forAll =>
         arrayAnySlotsWatLines scratch sourceWidth array start stop itemStart predicate forAll
-    | .arrayFilterSlots sourceWidth array start stop itemStart predicate =>
-        arrayFilterSlotsWatLines scratch sourceWidth array start stop itemStart predicate
-    | .arrayInsertIfInBoundsSlots width array index values =>
-        arrayInsertIfInBoundsSlotsWatLines scratch width array index values
-    | .arrayEraseIfInBoundsSlots width array index =>
-        arrayEraseIfInBoundsSlotsWatLines scratch width array index
-    | .arraySwapIfInBoundsSlots width array left right =>
-        arraySwapIfInBoundsSlotsWatLines scratch width array left right
-    | .arrayReverseSlots width array => arrayReverseSlotsWatLines scratch width array
+    | .arrayFilterSlots sourceWidth childMask array start stop itemStart predicate =>
+        arrayFilterSlotsWatLines scratch sourceWidth childMask array start stop itemStart predicate
+    | .arrayInsertIfInBoundsSlots width childMask ownedMask array index values =>
+        arrayInsertIfInBoundsSlotsWatLines scratch width childMask ownedMask array index values
+    | .arrayEraseIfInBoundsSlots width childMask array index =>
+        arrayEraseIfInBoundsSlotsWatLines scratch width childMask array index
+    | .arraySwapIfInBoundsSlots width childMask array left right =>
+        arraySwapIfInBoundsSlotsWatLines scratch width childMask array left right
+    | .arrayReverseSlots width childMask array =>
+        arrayReverseSlotsWatLines scratch width childMask array
     | .byteArrayGet ptr len index => byteArrayGetWatLines scratch ptr len index
     | .byteArrayPushPtr ptr len value => byteArrayPushPtrWatLines scratch ptr len value
     | .byteArrayAppendPtr leftPtr leftLen rightPtr rightLen =>

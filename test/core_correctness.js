@@ -542,6 +542,7 @@ const accepted = [
   { name: "u64ListArrayPushSetSum", args: [], expected: 6n },
   { name: "u64ListArrayMapTailHead", args: [], expected: 2n },
   { name: "u64ListArrayFoldHeads", args: [], expected: 10n },
+  { name: "u64ListArrayRuntimeReleaseFrees", args: [], expected: 103n },
   { name: "leanListHeadDemo", args: [], expected: 1n },
   { name: "leanListTailHeadDemo", args: [], expected: 2n },
   { name: "leanListStructuralSumDemo", args: [], expected: 6n },
