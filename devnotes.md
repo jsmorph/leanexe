@@ -1,5 +1,16 @@
 # Development Journal
 
+## 2026-05-15: Standard Lean Comparison Tool
+
+`tools/compare-standard.js` compares a command-shaped entry against official Lean execution.  It generates a temporary Lean runner under `.lake/build/standard-compare`, runs that runner with `lake env lean --run`, compiles the same entry through the selected LeanExe WASI mode, runs the generated WASM with Wasmtime, and compares exit status, stdout, and stderr byte-for-byte.  The first supported modes are the byte-oriented command shapes: `wasi`, `stdin`, `stdin-except`, `argv-except`, and `stdin-argv-except`.
+
+The tool deliberately treats standard Lean as the reference program, not as another hand-written expected-output fixture.  The runner writes standard Lean output to binary files with `IO.FS.writeBinFile`, which avoids text-encoding behavior in `IO.print`.  Programs that inspect `LeanExe.Runtime` counters are outside this comparison because standard Lean uses stub definitions while generated WASM reads runtime counters.
+
+Checks run:
+
+- [x] `node tools/compare-standard.js --self-test` returned `checked 6 standard Lean comparison cases`.
+- [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 574 accepted, 28 rejected, and 13 trapped cases`, `checked 5 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 22 WASI program cases, 2 traps, and 7 rejections`, `checked 6 standard Lean comparison cases`, and `checked 56 cases`.
+
 ## 2026-05-15: Growable Runtime Allocator
 
 The runtime allocator now calls WASM `memory.grow` when neither the free list nor the current heap range can satisfy an allocation.  The generated memory still starts at 16 pages, and `reset()` still rewinds the heap to byte offset `4096`, but large library-mode allocations and compiled-code allocations can grow the module memory instead of trapping at the initial page boundary.  `test/refcount.js` now allocates a block as large as the initial memory, verifies that the memory grew, and writes the last byte of the returned range.
