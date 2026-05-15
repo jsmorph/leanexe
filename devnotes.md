@@ -3142,3 +3142,19 @@ Checks run:
 - [x] `lake build`
 - [x] `node test/refcount.js` returned `checked 4 refcount cases`.
 - [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 574 accepted, 28 rejected, and 13 trapped cases`, `checked 4 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 19 WASI program cases, 2 traps, and 7 rejections`, and `checked 56 cases`.
+
+## 2026-05-15: Array child release for recursive values
+
+Array allocation now records a child mask for recursive-inductive pointer slots in the fixed-width element layout.  The mask follows products, structures, and nonrecursive tagged values, but it does not mark `ByteArray` fields or nested array fields.  Those pointer shapes can name borrowed input storage, byte-array slices, or WASI adapter arrays, so treating them as owned RC roots would make correct programs trap.
+
+Array-producing operations now retain recursive child pointers when they copy existing elements into a new array.  Inserted values also carry an owned-child mask, so a freshly constructed recursive value can be transferred into the new array without an extra retain while a borrowed recursive value is retained before sharing.  `Array.replicate` treats the first replicated owned child as the transferred reference and retains the remaining references.
+
+`LeanExe.Runtime.release` now accepts compiler-owned array roots as well as monomorphic recursive-inductive roots.  The ownership precondition is unchanged: source code must release only a value that will not be used again, and the compiler does not prove that condition.  Releasing a host-owned public array pointer or a WASI adapter array violates the runtime representation and may trap.
+
+Checks run:
+
+- [x] `lake build LeanExe.Examples.Correctness`
+- [x] `.lake/build/bin/lean-wasm compile --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.u64ListArrayRuntimeReleaseFrees --out .lake/build/u64ListArrayRuntimeReleaseFrees.wasm`
+- [x] `build/tools/wasmtime/current/wasmtime run --invoke u64ListArrayRuntimeReleaseFrees .lake/build/u64ListArrayRuntimeReleaseFrees.wasm` returned `103`.
+- [x] `node test/core_correctness.js` returned `checked 611 accepted, 29 rejected, and 13 trapped cases`.
+- [x] `node test/run_all.js` returned `checked 94 report classification cases`, `checked 611 accepted, 29 rejected, and 13 trapped cases`, `checked 5 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 22 WASI program cases, 2 traps, and 7 rejections`, `checked 38 standard Lean comparison cases`, and `checked 56 cases`.

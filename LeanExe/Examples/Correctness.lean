@@ -1,5 +1,6 @@
 import Init.Data.ByteArray.Extra
 import LeanExe.Ascii.Decimal
+import LeanExe.Runtime
 
 namespace LeanExe.Examples.Correctness
 
@@ -928,6 +929,14 @@ def u64ListArrayMapTailHead : UInt64 :=
 def u64ListArrayFoldHeads : UInt64 :=
   let xs : Array U64List := #[u64List123, U64List.cons 9 U64List.nil]
   xs.foldl (fun acc item => acc + u64ListHeadOrZero item) 0
+
+def u64ListArrayRuntimeReleaseFrees : UInt64 :=
+  let before := LeanExe.Runtime.freeCount
+  let retainBefore := LeanExe.Runtime.retainCount
+  let after :=
+    LeanExe.Runtime.release
+      (Array.replicate 2 (U64List.cons 1 U64List.nil) : Array U64List)
+  (LeanExe.Runtime.retainCount - retainBefore) * 100 + (after - before)
 
 def u64ListTailValue : U64List :=
   u64ListTail u64List123

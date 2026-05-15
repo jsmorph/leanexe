@@ -170,11 +170,11 @@ def byteArrayLiteralArrayExprAux (index : Nat) (array : IRExpr) : List UInt8 →
   | byte :: rest =>
       byteArrayLiteralArrayExprAux
         (index + 1)
-        (.arraySetSlots 1 array (.u64 index) [.u64 byte.toNat])
+        (.arraySetSlots 1 0 0 array (.u64 index) [.u64 byte.toNat])
         rest
 
 def byteArrayLiteralArrayExpr (bytes : List UInt8) : IRExpr :=
-  byteArrayLiteralArrayExprAux 0 (.arrayAllocSlots 1 (.u64 bytes.length)) bytes
+  byteArrayLiteralArrayExprAux 0 (.arrayAllocSlots 1 0 (.u64 bytes.length)) bytes
 
 def byteArrayLiteralValue (slot : Nat) (bytes : List UInt8) : ExtractedValue × Nat :=
   match bytes with
@@ -1490,26 +1490,26 @@ mutual
         (pruneLocalLetsWithLive lets (exprUsedSlots body)).snd
     | .runtimeStat _ => []
     | .release ptr => exprUsedSlots ptr
-    | .arrayAllocSlots _ cells => exprUsedSlots cells
+    | .arrayAllocSlots _ _ cells => exprUsedSlots cells
     | .heapAllocSlots _ values => exprListUsedSlots values
     | .heapLoadSlot ptr _ => exprUsedSlots ptr
-    | .arrayReplicateSlots _ cells values =>
+    | .arrayReplicateSlots _ _ _ cells values =>
         addLiveSlots (exprUsedSlots cells) (exprListUsedSlots values)
     | .arraySize array => exprUsedSlots array
     | .arrayGetSlot _ _ array index =>
         addLiveSlots (exprUsedSlots array) (exprUsedSlots index)
-    | .arraySetSlots _ array index values =>
+    | .arraySetSlots _ _ _ array index values =>
         addLiveSlots (addLiveSlots (exprUsedSlots array) (exprUsedSlots index))
           (exprListUsedSlots values)
-    | .arrayPushSlots _ array values =>
+    | .arrayPushSlots _ _ _ array values =>
         addLiveSlots (exprUsedSlots array) (exprListUsedSlots values)
-    | .arrayPopSlots _ array => exprUsedSlots array
-    | .arrayAppendSlots _ left right =>
+    | .arrayPopSlots _ _ array => exprUsedSlots array
+    | .arrayAppendSlots _ _ left right =>
         addLiveSlots (exprUsedSlots left) (exprUsedSlots right)
-    | .arrayExtractSlots _ array start stop =>
+    | .arrayExtractSlots _ _ array start stop =>
         addLiveSlots (addLiveSlots (exprUsedSlots array) (exprUsedSlots start))
           (exprUsedSlots stop)
-    | .arrayMapSlots sourceWidth _ array itemStart bodyValues =>
+    | .arrayMapSlots sourceWidth _ _ _ array itemStart bodyValues =>
         let bodyLive := removeLiveSlots (exprListUsedSlots bodyValues)
           (slotsFrom itemStart sourceWidth)
         addLiveSlots (exprUsedSlots array) bodyLive
@@ -1548,7 +1548,7 @@ mutual
             (addLiveSlots (exprUsedSlots array) (exprUsedSlots start))
             (exprUsedSlots stop))
           predicateFree
-    | .arrayFilterSlots sourceWidth array start stop itemStart predicate =>
+    | .arrayFilterSlots sourceWidth _ array start stop itemStart predicate =>
         let predicateFree := removeLiveSlots (exprUsedSlots predicate)
           (slotsFrom itemStart sourceWidth)
         addLiveSlots
@@ -1556,15 +1556,15 @@ mutual
             (addLiveSlots (exprUsedSlots array) (exprUsedSlots start))
             (exprUsedSlots stop))
           predicateFree
-    | .arrayInsertIfInBoundsSlots _ array index values =>
+    | .arrayInsertIfInBoundsSlots _ _ _ array index values =>
         addLiveSlots (addLiveSlots (exprUsedSlots array) (exprUsedSlots index))
           (exprListUsedSlots values)
-    | .arrayEraseIfInBoundsSlots _ array index =>
+    | .arrayEraseIfInBoundsSlots _ _ array index =>
         addLiveSlots (exprUsedSlots array) (exprUsedSlots index)
-    | .arraySwapIfInBoundsSlots _ array left right =>
+    | .arraySwapIfInBoundsSlots _ _ array left right =>
         addLiveSlots (addLiveSlots (exprUsedSlots array) (exprUsedSlots left))
           (exprUsedSlots right)
-    | .arrayReverseSlots _ array => exprUsedSlots array
+    | .arrayReverseSlots _ _ array => exprUsedSlots array
     | .byteArrayGet ptr len index =>
         addLiveSlots (addLiveSlots (exprUsedSlots ptr) (exprUsedSlots len))
           (exprUsedSlots index)
@@ -2362,6 +2362,12 @@ end
 def heapChildMaskForCtors (ctors : List (List (Ty × ExtractedValue))) : Nat :=
   (heapChildMaskFromTypes 1 (ctors.flatten.map Prod.fst)).fst
 
+def maskBitSet (mask slot : Nat) : Bool :=
+  (mask / (2 ^ slot)) % 2 == 1
+
+def arrayElementChildMask (ty : Ty) : Nat :=
+  (heapChildMaskFromType 0 ty).fst
+
 partial def flattenInternalValue (ty : Ty) (value : ExtractedValue) :
     Except String (List IRExpr) :=
   match ty with
@@ -2715,6 +2721,18 @@ def exprReturnsOwnedHeapObject : IRExpr → Bool
   | .byteArrayFromArrayPtr .. => true
   | .byteArrayCopySlicePtr .. => true
   | _ => false
+
+def ownedChildMaskForSlots (childMask : Nat) (slots : List IRExpr) : Nat :=
+  let rec loop : Nat → List IRExpr → Nat → Nat
+    | _, [], acc => acc
+    | slot, expr :: rest, acc =>
+        let nextAcc :=
+          if maskBitSet childMask slot && exprReturnsOwnedHeapObject expr then
+            acc + 2 ^ slot
+          else
+            acc
+        loop (slot + 1) rest nextAcc
+  loop 0 slots 0
 
 def localLetOwnedHeapSlots : LeanExe.IR.LocalLet → List Nat
   | .expr slot expr => if exprReturnsOwnedHeapObject expr then [slot] else []
@@ -6359,9 +6377,13 @@ mutual
                     let indexSlot := arraySlot + 1
                     let valueResult ← extractValueFrom ctx locals (indexSlot + 1) value
                     let valueSlots ← flattenArrayElementValue itemTy valueResult.fst
+                    let childMask := arrayElementChildMask itemTy
+                    let ownedMask := ownedChildMaskForSlots childMask valueSlots
                     let oldValue ← arrayLoadValue itemTy (.local arraySlot) (.local indexSlot)
                     let updatedArray :=
-                      .scalar (.arraySetSlots width (.local arraySlot) (.local indexSlot) valueSlots)
+                      .scalar
+                        (.arraySetSlots
+                          width childMask ownedMask (.local arraySlot) (.local indexSlot) valueSlots)
                     .ok
                       (.letE arraySlot arrayResult.fst
                         (.letE indexSlot indexResult.fst
@@ -8468,6 +8490,7 @@ mutual
                     | some (itemTy, items) =>
                       match arrayElementSlots? itemTy with
                       | some width =>
+                        let childMask := arrayElementChildMask itemTy
                         let rec build
                             (index next : Nat)
                             (arrayExpr : IRExpr)
@@ -8485,11 +8508,13 @@ mutual
                                   (wrapExprLets itemSlots.lets
                                     (.arraySetSlots
                                       width
+                                      childMask
+                                      (ownedChildMaskForSlots childMask itemSlots.slots)
                                       (.local arraySlot)
                                       (.u64 index)
                                       itemSlots.slots)))
                                 rest
-                        build 0 nextLocal (.arrayAllocSlots width (.u64 items.length)) items
+                        build 0 nextLocal (.arrayAllocSlots width childMask (.u64 items.length)) items
                       | none => .error s!"unsupported List.toArray item type: {reprStr itemTy}"
                     | none => .error "unsupported List.toArray argument"
                 | _ => .error "unsupported List.toArray application"
@@ -8499,6 +8524,7 @@ mutual
                     match typeAtom? ctx.env itemTy with
                     | some itemTy =>
                         let width ← arrayElementWidth "Array.replicate" itemTy
+                        let childMask := arrayElementChildMask itemTy
                         let cellsResult ← extractExprFrom ctx locals nextLocal cells
                         let valueResult ← extractValueFrom ctx locals cellsResult.snd value
                         let slots ←
@@ -8507,7 +8533,9 @@ mutual
                         .ok
                           (.letE cellsSlot cellsResult.fst
                             (wrapExprLets slots.lets
-                              (.arrayReplicateSlots width (.local cellsSlot) slots.slots)),
+                              (.arrayReplicateSlots
+                                width childMask (ownedChildMaskForSlots childMask slots.slots)
+                                (.local cellsSlot) slots.slots)),
                             cellsSlot + 1)
                     | none => .error "unsupported Array.replicate item type"
                 | _, _ => .error "unsupported Array.replicate application"
@@ -8529,6 +8557,7 @@ mutual
                     match typeAtom? ctx.env itemTy with
                     | some itemTy =>
                         let width ← arrayElementWidth "Array.push" itemTy
+                        let childMask := arrayElementChildMask itemTy
                         let arrayResult ← extractExprFrom ctx locals nextLocal array
                         let valueResult ← extractValueFrom ctx locals arrayResult.snd value
                         let slots ←
@@ -8537,7 +8566,9 @@ mutual
                         .ok
                           (.letE arraySlot arrayResult.fst
                             (wrapExprLets slots.lets
-                              (.arrayPushSlots width (.local arraySlot) slots.slots)),
+                              (.arrayPushSlots
+                                width childMask (ownedChildMaskForSlots childMask slots.slots)
+                                (.local arraySlot) slots.slots)),
                             arraySlot + 1)
                     | none => .error "unsupported Array.push item type"
                 | _, _ => .error "unsupported Array.push application"
@@ -8547,8 +8578,9 @@ mutual
                     match typeAtom? ctx.env itemTy with
                     | some itemTy =>
                         let width ← arrayElementWidth "Array.pop" itemTy
+                        let childMask := arrayElementChildMask itemTy
                         let arrayResult ← extractExprFrom ctx locals nextLocal array
-                        .ok (.arrayPopSlots width arrayResult.fst, arrayResult.snd)
+                        .ok (.arrayPopSlots width childMask arrayResult.fst, arrayResult.snd)
                     | none => .error "unsupported Array.pop item type"
                 | _, _ => .error "unsupported Array.pop application"
             | (.const ``Array.eraseIdxIfInBounds _, args) =>
@@ -8557,9 +8589,10 @@ mutual
                     match typeAtom? ctx.env itemTy with
                     | some itemTy =>
                         let width ← arrayElementWidth "Array.eraseIdxIfInBounds" itemTy
+                        let childMask := arrayElementChildMask itemTy
                         let arrayResult ← extractExprFrom ctx locals nextLocal array
                         let indexResult ← extractExprFrom ctx locals arrayResult.snd index
-                        .ok (.arrayEraseIfInBoundsSlots width arrayResult.fst indexResult.fst,
+                        .ok (.arrayEraseIfInBoundsSlots width childMask arrayResult.fst indexResult.fst,
                           indexResult.snd)
                     | none => .error "unsupported Array.eraseIdxIfInBounds item type"
                 | _, _ => .error "unsupported Array.eraseIdxIfInBounds application"
@@ -8569,9 +8602,10 @@ mutual
                     match typeAtom? ctx.env itemTy with
                     | some itemTy =>
                         let width ← arrayElementWidth "Array.eraseIdx" itemTy
+                        let childMask := arrayElementChildMask itemTy
                         let arrayResult ← extractExprFrom ctx locals nextLocal array
                         let indexResult ← extractExprFrom ctx locals arrayResult.snd index
-                        .ok (.arrayEraseIfInBoundsSlots width arrayResult.fst indexResult.fst,
+                        .ok (.arrayEraseIfInBoundsSlots width childMask arrayResult.fst indexResult.fst,
                           indexResult.snd)
                     | none => .error "unsupported Array.eraseIdx item type"
                 | _, _ => .error "unsupported Array.eraseIdx application"
@@ -8581,12 +8615,14 @@ mutual
                     match typeAtom? ctx.env itemTy with
                     | some itemTy =>
                         let width ← arrayElementWidth "Array.swapIfInBounds" itemTy
+                        let childMask := arrayElementChildMask itemTy
                         let arrayResult ← extractExprFrom ctx locals nextLocal array
                         let leftResult ← extractExprFrom ctx locals arrayResult.snd left
                         let rightResult ← extractExprFrom ctx locals leftResult.snd right
                         .ok
                           (.arraySwapIfInBoundsSlots
                             width
+                            childMask
                             arrayResult.fst
                             leftResult.fst
                             rightResult.fst,
@@ -8599,12 +8635,14 @@ mutual
                     match typeAtom? ctx.env itemTy with
                     | some itemTy =>
                         let width ← arrayElementWidth "Array.swap" itemTy
+                        let childMask := arrayElementChildMask itemTy
                         let arrayResult ← extractExprFrom ctx locals nextLocal array
                         let leftResult ← extractExprFrom ctx locals arrayResult.snd left
                         let rightResult ← extractExprFrom ctx locals leftResult.snd right
                         .ok
                           (.arraySwapIfInBoundsSlots
                             width
+                            childMask
                             arrayResult.fst
                             leftResult.fst
                             rightResult.fst,
@@ -8617,8 +8655,9 @@ mutual
                     match typeAtom? ctx.env itemTy with
                     | some itemTy =>
                         let width ← arrayElementWidth "Array.reverse" itemTy
+                        let childMask := arrayElementChildMask itemTy
                         let arrayResult ← extractExprFrom ctx locals nextLocal array
-                        .ok (.arrayReverseSlots width arrayResult.fst, arrayResult.snd)
+                        .ok (.arrayReverseSlots width childMask arrayResult.fst, arrayResult.snd)
                     | none => .error "unsupported Array.reverse item type"
                 | _, _ => .error "unsupported Array.reverse application"
             | (.const ``Array.insertIdx _, args) =>
@@ -8627,6 +8666,7 @@ mutual
                     match typeAtom? ctx.env itemTy with
                     | some itemTy =>
                         let width ← arrayElementWidth "Array.insertIdx" itemTy
+                        let childMask := arrayElementChildMask itemTy
                         let arrayResult ← extractExprFrom ctx locals nextLocal array
                         let indexResult ← extractExprFrom ctx locals arrayResult.snd index
                         let valueResult ← extractValueFrom ctx locals indexResult.snd value
@@ -8640,6 +8680,8 @@ mutual
                               (wrapExprLets slots.lets
                                 (.arrayInsertIfInBoundsSlots
                                   width
+                                  childMask
+                                  (ownedChildMaskForSlots childMask slots.slots)
                                   (.local arraySlot)
                                   (.local indexSlot)
                                   slots.slots))),
@@ -8652,6 +8694,7 @@ mutual
                     match typeAtom? ctx.env itemTy with
                     | some itemTy =>
                         let width ← arrayElementWidth "Array.insertIdx!" itemTy
+                        let childMask := arrayElementChildMask itemTy
                         let arrayResult ← extractExprFrom ctx locals nextLocal array
                         let indexResult ← extractExprFrom ctx locals arrayResult.snd index
                         let arraySlot := indexResult.snd
@@ -8663,6 +8706,8 @@ mutual
                           wrapExprLets slots.lets
                             (.arrayInsertIfInBoundsSlots
                               width
+                              childMask
+                              (ownedChildMaskForSlots childMask slots.slots)
                               (.local arraySlot)
                               (.local indexSlot)
                               slots.slots)
@@ -8680,9 +8725,11 @@ mutual
                     match typeAtom? ctx.env itemTy with
                     | some itemTy =>
                         let width ← arrayElementWidth "Array.append" itemTy
+                        let childMask := arrayElementChildMask itemTy
                         let leftResult ← extractExprFrom ctx locals nextLocal left
                         let rightResult ← extractExprFrom ctx locals leftResult.snd right
-                        .ok (.arrayAppendSlots width leftResult.fst rightResult.fst, rightResult.snd)
+                        .ok (.arrayAppendSlots width childMask leftResult.fst rightResult.fst,
+                          rightResult.snd)
                     | none => .error "unsupported Array.append item type"
                 | _, _ => .error "unsupported Array.append application"
             | (.const ``Array.insertIdxIfInBounds _, args) =>
@@ -8691,6 +8738,7 @@ mutual
                     match typeAtom? ctx.env itemTy with
                     | some itemTy =>
                         let width ← arrayElementWidth "Array.insertIdxIfInBounds" itemTy
+                        let childMask := arrayElementChildMask itemTy
                         let arrayResult ← extractExprFrom ctx locals nextLocal array
                         let indexResult ← extractExprFrom ctx locals arrayResult.snd index
                         let valueResult ← extractValueFrom ctx locals indexResult.snd value
@@ -8698,6 +8746,8 @@ mutual
                         .ok
                           (.arrayInsertIfInBoundsSlots
                             width
+                            childMask
+                            (ownedChildMaskForSlots childMask slots)
                             arrayResult.fst
                             indexResult.fst
                             slots,
@@ -8708,9 +8758,11 @@ mutual
                 match args.reverse, primitiveResultType? ctx.env args with
                 | right :: left :: _, some (.array itemTy) =>
                     let width ← arrayElementWidth "HAppend.hAppend" itemTy
+                    let childMask := arrayElementChildMask itemTy
                     let leftResult ← extractExprFrom ctx locals nextLocal left
                     let rightResult ← extractExprFrom ctx locals leftResult.snd right
-                    .ok (.arrayAppendSlots width leftResult.fst rightResult.fst, rightResult.snd)
+                    .ok (.arrayAppendSlots width childMask leftResult.fst rightResult.fst,
+                      rightResult.snd)
                 | _, _ => .error "unsupported HAppend.hAppend application"
             | (.const ``Array.modify _, args) =>
                 match args, args.reverse with
@@ -8718,6 +8770,7 @@ mutual
                     match typeAtom? ctx.env itemTy with
                     | some itemTy =>
                         let width ← arrayElementWidth "Array.modify" itemTy
+                        let childMask := arrayElementChildMask itemTy
                         let arrayResult ← extractExprFrom ctx locals nextLocal array
                         let indexResult ← extractExprFrom ctx locals arrayResult.snd index
                         let arraySlot := indexResult.snd
@@ -8730,9 +8783,11 @@ mutual
                         let modifiedResult ←
                           extractValueFrom ctx (.value oldValue :: locals) (indexSlot + 1) modifyBody
                         let slots ← flattenArrayElementValue itemTy modifiedResult.fst
+                        let ownedMask := ownedChildMaskForSlots childMask slots
                         let inBounds := .ltU64 (.local indexSlot) (.arraySize (.local arraySlot))
                         let modifiedArray :=
-                          .arraySetSlots width (.local arraySlot) (.local indexSlot) slots
+                          .arraySetSlots width childMask ownedMask (.local arraySlot) (.local indexSlot)
+                            slots
                         .ok
                           (.letE arraySlot arrayResult.fst
                             (.letE indexSlot indexResult.fst
@@ -8746,11 +8801,14 @@ mutual
                     match typeAtom? ctx.env itemTy with
                     | some itemTy =>
                         let width ← arrayElementWidth "Array.extract" itemTy
+                        let childMask := arrayElementChildMask itemTy
                         let arrayResult ← extractExprFrom ctx locals nextLocal array
                         let startResult ← extractExprFrom ctx locals arrayResult.snd start
                         let stopResult ← extractExprFrom ctx locals startResult.snd stop
-                        .ok (.arrayExtractSlots width arrayResult.fst startResult.fst stopResult.fst,
-                          stopResult.snd)
+                        .ok
+                          (.arrayExtractSlots
+                            width childMask arrayResult.fst startResult.fst stopResult.fst,
+                            stopResult.snd)
                     | none => .error "unsupported Array.extract item type"
                 | _, _ => .error "unsupported Array.extract application"
             | (.const ``Array.map _, args) =>
@@ -8760,6 +8818,7 @@ mutual
                     | some source, some result =>
                       match arrayElementSlots? source, arrayElementSlots? result with
                       | some sourceWidth, some resultWidth =>
+                        let resultChildMask := arrayElementChildMask result
                         let arrayResult ← extractExprFrom ctx locals nextLocal array
                         let itemStart := arrayResult.snd
                         let mapBody ←
@@ -8771,10 +8830,13 @@ mutual
                           extractValueFrom ctx (.value itemValue :: locals)
                             (itemStart + sourceWidth) mapBody
                         let bodySlots ← flattenArrayElementValue result bodyResult.fst
+                        let bodyOwnedMask := ownedChildMaskForSlots resultChildMask bodySlots
                         .ok
                           (.arrayMapSlots
                             sourceWidth
                             resultWidth
+                            resultChildMask
+                            bodyOwnedMask
                             arrayResult.fst
                             itemStart
                             bodySlots,
@@ -8876,6 +8938,7 @@ mutual
                     | some itemTy =>
                       match arrayElementSlots? itemTy with
                       | some sourceWidth =>
+                        let childMask := arrayElementChildMask itemTy
                         let arrayResult ← extractExprFrom ctx locals nextLocal array
                         let startStop ←
                           match rest with
@@ -8902,6 +8965,7 @@ mutual
                         .ok
                           (.arrayFilterSlots
                             sourceWidth
+                            childMask
                             arrayResult.fst
                             startStop.fst.fst
                             startStop.fst.snd
@@ -8920,7 +8984,8 @@ mutual
                     match typeAtom? ctx.env itemTy with
                     | some itemTy =>
                         let width ← arrayElementWidth "Array.empty" itemTy
-                        .ok (.arrayAllocSlots width (.u64 0), nextLocal)
+                        let childMask := arrayElementChildMask itemTy
+                        .ok (.arrayAllocSlots width childMask (.u64 0), nextLocal)
                     | none => .error "unsupported Array.empty item type"
                 | _ => .error "unsupported Array.empty application"
             | (.const ``Array.mkEmpty _, args) =>
@@ -8929,7 +8994,8 @@ mutual
                     match typeAtom? ctx.env itemTy with
                     | some itemTy =>
                         let width ← arrayElementWidth "Array.mkEmpty" itemTy
-                        .ok (.arrayAllocSlots width (.u64 0), nextLocal)
+                        let childMask := arrayElementChildMask itemTy
+                        .ok (.arrayAllocSlots width childMask (.u64 0), nextLocal)
                     | none => .error "unsupported Array.mkEmpty item type"
                 | _ => .error "unsupported Array.mkEmpty application"
             | (.const ``Array.emptyWithCapacity _, args) =>
@@ -8938,7 +9004,8 @@ mutual
                     match typeAtom? ctx.env itemTy with
                     | some itemTy =>
                         let width ← arrayElementWidth "Array.emptyWithCapacity" itemTy
-                        .ok (.arrayAllocSlots width (.u64 0), nextLocal)
+                        let childMask := arrayElementChildMask itemTy
+                        .ok (.arrayAllocSlots width childMask (.u64 0), nextLocal)
                     | none => .error "unsupported Array.emptyWithCapacity item type"
                 | _ => .error "unsupported Array.emptyWithCapacity application"
             | (.const ``Array.singleton _, args) =>
@@ -8947,6 +9014,7 @@ mutual
                     match typeAtom? ctx.env itemTy with
                     | some itemTy =>
                         let width ← arrayElementWidth "Array.singleton" itemTy
+                        let childMask := arrayElementChildMask itemTy
                         let valueResult ← extractValueFrom ctx locals nextLocal value
                         let slots ←
                           materializeStrictArrayElementSlots itemTy valueResult.fst valueResult.snd
@@ -8954,7 +9022,9 @@ mutual
                           (wrapExprLets slots.lets
                             (.arraySetSlots
                               width
-                              (.arrayAllocSlots width (.u64 1))
+                              childMask
+                              (ownedChildMaskForSlots childMask slots.slots)
+                              (.arrayAllocSlots width childMask (.u64 1))
                               (.u64 0)
                               slots.slots),
                             slots.nextLocal)
@@ -9030,6 +9100,7 @@ mutual
                     | some itemTy =>
                       match arrayElementSlots? itemTy with
                       | some width =>
+                        let childMask := arrayElementChildMask itemTy
                         let arrayResult ← extractExprFrom ctx locals nextLocal array
                         let indexResult ← extractExprFrom ctx locals arrayResult.snd index
                         let valueResult ← extractValueFrom ctx locals indexResult.snd value
@@ -9043,6 +9114,8 @@ mutual
                               (wrapExprLets slots.lets
                                 (.arraySetSlots
                                   width
+                                  childMask
+                                  (ownedChildMaskForSlots childMask slots.slots)
                                   (.local arraySlot)
                                   (.local indexSlot)
                                   slots.slots))),
@@ -9057,14 +9130,17 @@ mutual
                     | some itemTy =>
                       match arrayElementSlots? itemTy with
                       | some width =>
+                        let childMask := arrayElementChildMask itemTy
                         let arrayResult ← extractExprFrom ctx locals nextLocal array
                         let indexResult ← extractExprFrom ctx locals arrayResult.snd index
                         let arraySlot := indexResult.snd
                         let indexSlot := arraySlot + 1
                         let valueResult ← extractValueFrom ctx locals (indexSlot + 1) value
                         let slots ← flattenArrayElementValue itemTy valueResult.fst
+                        let ownedMask := ownedChildMaskForSlots childMask slots
                         let updated :=
-                          .arraySetSlots width (.local arraySlot) (.local indexSlot) slots
+                          .arraySetSlots width childMask ownedMask (.local arraySlot) (.local indexSlot)
+                            slots
                         let inBounds := .ltU64 (.local indexSlot) (.arraySize (.local arraySlot))
                         .ok
                           (.letE arraySlot arrayResult.fst
@@ -9080,6 +9156,7 @@ mutual
                     match typeAtom? ctx.env itemTy with
                     | some itemTy =>
                         let width ← arrayElementWidth "Array.set!" itemTy
+                        let childMask := arrayElementChildMask itemTy
                         let arrayResult ← extractExprFrom ctx locals nextLocal array
                         let indexResult ← extractExprFrom ctx locals arrayResult.snd index
                         let valueResult ← extractValueFrom ctx locals indexResult.snd value
@@ -9093,6 +9170,8 @@ mutual
                               (wrapExprLets slots.lets
                                 (.arraySetSlots
                                   width
+                                  childMask
+                                  (ownedChildMaskForSlots childMask slots.slots)
                                   (.local arraySlot)
                                   (.local indexSlot)
                                   slots.slots))),
@@ -9105,12 +9184,14 @@ mutual
                     match typeAtom? ctx.env itemTy with
                     | some itemTy =>
                         let width ← arrayElementWidth "Array.eraseIdx!" itemTy
+                        let childMask := arrayElementChildMask itemTy
                         let arrayResult ← extractExprFrom ctx locals nextLocal array
                         let indexResult ← extractExprFrom ctx locals arrayResult.snd index
                         let arraySlot := indexResult.snd
                         let indexSlot := arraySlot + 1
                         let erased :=
-                          .arrayEraseIfInBoundsSlots width (.local arraySlot) (.local indexSlot)
+                          .arrayEraseIfInBoundsSlots width childMask (.local arraySlot)
+                            (.local indexSlot)
                         let inBounds := .ltU64 (.local indexSlot) (.arraySize (.local arraySlot))
                         .ok
                           (.letE arraySlot arrayResult.fst
@@ -9342,6 +9423,8 @@ mutual
           | .recVariant name _ =>
               let parts ← heapVariantPtrWithLets name valueResult.fst
               .ok (.release (wrapExprLets parts.fst parts.snd), valueResult.snd)
+          | .array _ =>
+              .ok (.release (← scalarValue valueResult.fst), valueResult.snd)
           | _ => .error s!"unsupported Runtime.release type: {reprStr ty}"
       | _ => .error "unsupported Runtime.release application"
     else

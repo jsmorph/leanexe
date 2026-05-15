@@ -61,18 +61,18 @@ mutual
     | letLets (lets : List LocalLet) (body : Expr)
     | runtimeStat (stat : RuntimeStat)
     | release (ptr : Expr)
-    | arrayAllocSlots (width : Nat) (cells : Expr)
+    | arrayAllocSlots (width childMask : Nat) (cells : Expr)
     | heapAllocSlots (childMask : Nat) (values : List Expr)
     | heapLoadSlot (ptr : Expr) (slot : Nat)
-    | arrayReplicateSlots (width : Nat) (cells : Expr) (values : List Expr)
+    | arrayReplicateSlots (width childMask ownedMask : Nat) (cells : Expr) (values : List Expr)
     | arraySize (array : Expr)
     | arrayGetSlot (width slot : Nat) (array index : Expr)
-    | arraySetSlots (width : Nat) (array index : Expr) (values : List Expr)
-    | arrayPushSlots (width : Nat) (array : Expr) (values : List Expr)
-    | arrayPopSlots (width : Nat) (array : Expr)
-    | arrayAppendSlots (width : Nat) (left right : Expr)
-    | arrayExtractSlots (width : Nat) (array start stop : Expr)
-    | arrayMapSlots (sourceWidth resultWidth : Nat) (array : Expr) (itemStart : Nat)
+    | arraySetSlots (width childMask ownedMask : Nat) (array index : Expr) (values : List Expr)
+    | arrayPushSlots (width childMask ownedMask : Nat) (array : Expr) (values : List Expr)
+    | arrayPopSlots (width childMask : Nat) (array : Expr)
+    | arrayAppendSlots (width childMask : Nat) (left right : Expr)
+    | arrayExtractSlots (width childMask : Nat) (array start stop : Expr)
+    | arrayMapSlots (sourceWidth resultWidth childMask ownedMask : Nat) (array : Expr) (itemStart : Nat)
         (bodyValues : List Expr)
     | arrayFoldMultiSlot (sourceWidth resultWidth : Nat) (array start stop : Expr)
         (initValues : List Expr) (accStart itemStart : Nat) (bodyValues : List Expr)
@@ -85,12 +85,13 @@ mutual
         (predicate : Expr)
     | arrayAnySlots (sourceWidth : Nat) (array start stop : Expr) (itemStart : Nat)
         (predicate : Expr) (forAll : Bool)
-    | arrayFilterSlots (sourceWidth : Nat) (array start stop : Expr) (itemStart : Nat)
+    | arrayFilterSlots (sourceWidth childMask : Nat) (array start stop : Expr) (itemStart : Nat)
         (predicate : Expr)
-    | arrayInsertIfInBoundsSlots (width : Nat) (array index : Expr) (values : List Expr)
-    | arrayEraseIfInBoundsSlots (width : Nat) (array index : Expr)
-    | arraySwapIfInBoundsSlots (width : Nat) (array left right : Expr)
-    | arrayReverseSlots (width : Nat) (array : Expr)
+    | arrayInsertIfInBoundsSlots (width childMask ownedMask : Nat) (array index : Expr)
+        (values : List Expr)
+    | arrayEraseIfInBoundsSlots (width childMask : Nat) (array index : Expr)
+    | arraySwapIfInBoundsSlots (width childMask : Nat) (array left right : Expr)
+    | arrayReverseSlots (width childMask : Nat) (array : Expr)
     | byteArrayGet (ptr len index : Expr)
     | byteArrayPushPtr (ptr len value : Expr)
     | byteArrayAppendPtr (leftPtr leftLen rightPtr rightLen : Expr)
@@ -215,18 +216,18 @@ mutual
     | .letLets lets body => body.eval module_ (evalLocalLets module_ lets store)
     | .runtimeStat _ => 0
     | .release _ => 0
-    | .arrayAllocSlots _ _ => 0
+    | .arrayAllocSlots _ _ _ => 0
     | .heapAllocSlots _ _ => 0
     | .heapLoadSlot _ _ => 0
-    | .arrayReplicateSlots _ _ _ => 0
+    | .arrayReplicateSlots _ _ _ _ _ => 0
     | .arraySize _ => 0
     | .arrayGetSlot _ _ _ _ => 0
-    | .arraySetSlots _ array _ _ => array.eval module_ store
-    | .arrayPushSlots _ array _ => array.eval module_ store
-    | .arrayPopSlots _ array => array.eval module_ store
-    | .arrayAppendSlots _ left _ => left.eval module_ store
-    | .arrayExtractSlots _ array _ _ => array.eval module_ store
-    | .arrayMapSlots _ _ array _ _ => array.eval module_ store
+    | .arraySetSlots _ _ _ array _ _ => array.eval module_ store
+    | .arrayPushSlots _ _ _ array _ => array.eval module_ store
+    | .arrayPopSlots _ _ array => array.eval module_ store
+    | .arrayAppendSlots _ _ left _ => left.eval module_ store
+    | .arrayExtractSlots _ _ array _ _ => array.eval module_ store
+    | .arrayMapSlots _ _ _ _ array _ _ => array.eval module_ store
     | .arrayFoldMultiSlot sourceWidth resultWidth array start stop initValues accStart itemStart
         bodyValues bodyLets bodyDone resultSlot =>
         let resultStore :=
@@ -240,11 +241,11 @@ mutual
     | .arrayFindSlot _ _ _ _ _ => 0
     | .arrayEqSlots _ _ _ _ _ _ => 0
     | .arrayAnySlots _ _ _ _ _ _ forAll => if forAll then 1 else 0
-    | .arrayFilterSlots _ array _ _ _ _ => array.eval module_ store
-    | .arrayInsertIfInBoundsSlots _ array _ _ => array.eval module_ store
-    | .arrayEraseIfInBoundsSlots _ array _ => array.eval module_ store
-    | .arraySwapIfInBoundsSlots _ array _ _ => array.eval module_ store
-    | .arrayReverseSlots _ array => array.eval module_ store
+    | .arrayFilterSlots _ _ array _ _ _ _ => array.eval module_ store
+    | .arrayInsertIfInBoundsSlots _ _ _ array _ _ => array.eval module_ store
+    | .arrayEraseIfInBoundsSlots _ _ array _ => array.eval module_ store
+    | .arraySwapIfInBoundsSlots _ _ array _ _ => array.eval module_ store
+    | .arrayReverseSlots _ _ array => array.eval module_ store
     | .byteArrayGet _ _ _ => 0
     | .byteArrayPushPtr ptr _ _ => ptr.eval module_ store
     | .byteArrayAppendPtr leftPtr _ _ _ => leftPtr.eval module_ store
