@@ -1,5 +1,20 @@
 # Development Journal
 
+## 2026-05-15: Heap-backed Equality Lowering
+
+Equality lowering now includes `ByteArray` and fixed-width `Array α` values when `α` also has supported equality.  `ByteArray` equality binds both pointer-length pairs once, compares lengths first, and then scans bytes in order.  Array equality binds both array pointers once, compares lengths first, loads each element into compiler-managed local slots, and evaluates the same type-directed structural equality expression used for standalone values.
+
+The implementation keeps recursive-inductive equality rejected.  Arrays of recursive-inductive elements therefore remain outside supported equality, even though recursive values can still appear in internal arrays for traversal and storage.  Supported array equality covers scalar elements, nested arrays, byte-array elements, structures containing byte arrays, and nonrecursive tagged values whose payload fields all support equality.
+
+Checks run:
+
+- [x] `lake build LeanExe.Examples.Correctness` returned successfully.
+- [x] `node test/core_correctness.js` returned `checked 610 accepted, 29 rejected, and 13 trapped cases`.
+- [x] `node tools/compare-standard.js --self-test` returned `checked 38 standard Lean comparison cases`.
+- [x] `node test/run_all.js` returned `checked 94 report classification cases`, `checked 610 accepted, 29 rejected, and 13 trapped cases`, `checked 5 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 22 WASI program cases, 2 traps, and 7 rejections`, `checked 38 standard Lean comparison cases`, and `checked 56 cases`.
+- [x] `.lake/build/bin/lean-wasm compile-wat --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.byteArrayStructureArrayEquality --out /tmp/byteArrayStructureArrayEquality.wat` returned successfully.
+- [x] `build/tools/wasmtime/current/wasmtime --invoke byteArrayStructureArrayEquality /tmp/byteArrayStructureArrayEquality.wat` returned `1`.
+
 ## 2026-05-15: Recursive Pure Result Comparisons
 
 The standard Lean comparison self-test now exercises heap-shaped pure results through `pure-bytes`.  `LeanExe.Examples.Correctness` defines small source-level serializers for a custom recursive list, ordinary `List UInt64`, an array-child tree, a binary tree, and a mutual-recursive JSON-like value.  The comparison tool now serializes producer results for custom-list tail selection, `List` append, reverse, map, and filter, tree construction, binary-tree construction, and mutual-recursive object construction, then compares those bytes against standard Lean.
@@ -18,7 +33,7 @@ Checks run:
 
 The self-test covers `ByteArray` returns, branch-selected byte arrays, structures containing arrays, structures containing arrays of structures, and byte-producing state structures returned by array and byte-array folds.  The array serializers use `Array.foldl` rather than unchecked indexing, which keeps the generated wrapper inside ordinary Lean source and avoids adding artificial `Inhabited` instances to example types.  `LeanExe/StandardCompare` is ignored because failed comparison runs may leave generated wrapper sources for diagnosis.
 
-The correctness fixtures now include valid Lean programs that compare unsupported heap-backed values: `Array UInt64`, `ByteArray`, and a recursive inductive.  Each case reaches the extractor and fails with an explicit unsupported-equality diagnostic.  These tests protect the current equality boundary: supported structural equality covers scalars, products, structures, internal sums, `Option`, `Except`, and nonrecursive tagged values, while arrays, byte arrays, and recursive inductives remain outside the implemented equality lowering.
+At this checkpoint, the correctness fixtures included valid Lean programs that compared unsupported heap-backed values: `Array UInt64`, `ByteArray`, and a recursive inductive.  Each case reached the extractor and failed with an explicit unsupported-equality diagnostic.  The later heap-backed equality work superseded the array and byte-array part of this boundary, while recursive inductive equality remains rejected.
 
 Checks run:
 
@@ -45,7 +60,7 @@ Checks run:
 
 The extractor now lowers equality through a type-directed value comparison instead of routing every `BEq.beq`, `bne`, and `Eq` proposition through scalar extraction.  The supported equality fragment covers `Unit`, scalar values, products, structures, internal sums, `Option`, `Except`, and nonrecursive tagged values whose runtime fields also support equality.  The lowering compares fields in source order and compares tagged values by constructor tag before active payload fields, preserving short-circuit behavior for later fields and inactive constructor payloads.
 
-Array equality, `ByteArray` equality, and recursive-inductive equality remain unsupported because they need explicit element iteration or heap traversal semantics.  The new correctness cases cover product equality, structure equality, nested structures, proposition equality through `DecidableEq`, nonrecursive-inductive equality, `Option` equality over structures, and short-circuit cases whose skipped payloads would trap if evaluated.  The public documentation now describes the supported equality forms and the unsupported heap-backed cases.
+At this checkpoint, array equality, `ByteArray` equality, and recursive-inductive equality remained unsupported because they needed explicit element iteration or heap traversal semantics.  The correctness cases covered product equality, structure equality, nested structures, proposition equality through `DecidableEq`, nonrecursive-inductive equality, `Option` equality over structures, and short-circuit cases whose skipped payloads would trap if evaluated.  The later heap-backed equality work superseded the array and byte-array limitation while retaining the recursive-inductive rejection.
 
 Checks run:
 

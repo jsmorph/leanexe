@@ -152,7 +152,7 @@ def statusCode : Status -> UInt64
 end LeanExe.Examples.ManualStatus
 ```
 
-Use `deriving BEq, DecidableEq` when source code compares structures or nonrecursive tagged values with `==`, `!=`, or `if left = right then ...`.  Lean still needs those instances for the program to type-check, but LeanExe lowers the comparison from the concrete value type rather than by executing an instance dictionary at runtime.  Structural equality supports products, structures, internal sums, `Option`, `Except`, and nonrecursive tagged values when every runtime field has supported equality.  It compares fields in source order and checks an inductive constructor tag before active payload fields, so a false early field or a different constructor skips later payload work.  Arrays, `ByteArray`, and recursive inductives do not yet have equality lowering.
+Use `deriving BEq, DecidableEq` when source code compares structures or nonrecursive tagged values with `==`, `!=`, or `if left = right then ...`.  Lean still needs those instances for the program to type-check, but LeanExe lowers the comparison from the concrete value type rather than by executing an instance dictionary at runtime.  Structural equality supports products, structures, internal sums, `Option`, `Except`, and nonrecursive tagged values when every runtime field has supported equality.  `ByteArray` equality compares lengths and bytes, and `Array` equality compares lengths and elements when the element type has a fixed-width layout and supported equality.  Recursive-inductive equality remains unsupported, including array element equality for recursive inductive values.
 
 Use recursive inductives as internal data.  They may be constructed, stored in internal arrays, traversed, returned from helpers, and carried in `Option`, `Except`, structures, or tagged values inside the compiled program.  They cannot appear as public entry parameters or public entry results.
 
@@ -278,7 +278,7 @@ def foldAttached (items : Array UInt64) : UInt64 :=
 
 ## Byte Arrays and ASCII Text
 
-Use `ByteArray` for binary input, binary output, and command boundaries.  Supported operations include `size`, `isEmpty`, `get!`, safe indexing, `extract`, `empty`, `mk` from `Array UInt8`, compile-time ASCII `.toUTF8`, `push`, `append`, append notation, `set`, `set!`, `copySlice`, `foldl`, `findIdx?`, `toUInt64LE!`, and `toUInt64BE!`.
+Use `ByteArray` for binary input, binary output, and command boundaries.  Supported operations include `size`, `isEmpty`, `get!`, safe indexing, `extract`, `empty`, `mk` from `Array UInt8`, compile-time ASCII `.toUTF8`, `push`, `append`, append notation, `set`, `set!`, `copySlice`, `foldl`, `findIdx?`, `toUInt64LE!`, `toUInt64BE!`, and equality.
 
 Use `LeanExe.AsciiString` for byte-indexed ASCII text after validation.  The public boundary should usually remain `ByteArray`; validate with `AsciiString.ofByteArray?` inside the program.  Runtime Lean `String` and `Char` are outside the language.
 

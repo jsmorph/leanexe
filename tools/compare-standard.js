@@ -639,6 +639,36 @@ function selfTest() {
       resultSlots: "#[__leanexeValue]",
     },
     {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "byteArrayEquality",
+      resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "arrayEquality",
+      resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "pointArrayEquality",
+      resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "nestedArrayEquality",
+      resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "byteArrayStructureArrayEquality",
+      resultSlots: "#[__leanexeValue]",
+    },
+    {
       mode: "pure-bytes",
       moduleName: correctness,
       entry: "byteArrayReturnABC",
