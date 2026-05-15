@@ -493,6 +493,7 @@ Use existing examples as templates:
 | JSON AST parsing and rendering | [JSON Tree Command](LeanExe/Examples/JsonTreeCommand.lean) |
 | WASI stdin `Except` command | [JSON GCD Example](LeanExe/Examples/JsonGcd.lean) |
 | End-to-end WASI pipeline | [JSON Tree WASI Demo](demo.md), [JSON Merge Tree Command](LeanExe/Examples/JsonMergeTreeCommand.lean) |
+| Source-level release and GC counters | [JSON GC Tree Rewrite Example](LeanExe/Examples/JsonGcTreeRewrite.lean) |
 | Broad compiler fixtures | [Correctness Examples](LeanExe/Examples/Correctness.lean) |
 
 The examples are executable tests as well as documentation.  If a new source pattern matters, add a small example and run the test harness.  The safest authoring practice is to make each new feature compile in isolation before combining it with JSON, WASI, recursive data, or structured accumulators.

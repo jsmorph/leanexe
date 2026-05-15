@@ -215,6 +215,8 @@ wasmtime run build/argv-except.wasm alpha omega
 
 `LeanExe.Examples.JsonMergeTreeCommand` extends that pipeline with explicit RC observation.  `makeMergedTree` reads two JSON arrays, builds one tree for each, copies both into a third merged tree, releases the first two roots, and writes the merged tree plus GC counters.  `searchMergedTree` reads that intermediate object and searches the final tree.
 
+`LeanExe.Examples.JsonGcTreeRewrite` is a single-command GC exercise.  It reads a JSON object with `depth`, `rounds`, `salt`, and `search`, builds a balanced tree, rewrites whole tree generations, releases each old root after the next generation exists, releases the final root after computing metrics, and writes a JSON result with allocation, release, and free counters.
+
 ```sh
 printf '%s' '[1,6,4,100,33,5,5,20]' \
   | wasmtime run build/make-tree.wasm \
@@ -296,6 +298,7 @@ The examples directory contains small programs that exercise the user-facing sub
 | `LeanExe.Examples.JsonGcd` | `transform` | Reads a JSON array from stdin and writes a JSON GCD result through WASI. |
 | `LeanExe.Examples.JsonTreeCommand` | `makeTree`, `searchTree` | Builds a simple JSON binary-search tree and searches it through a WASI pipeline. |
 | `LeanExe.Examples.JsonMergeTreeCommand` | `makeMergedTree`, `searchMergedTree` | Merges two JSON integer-array trees, releases the source trees, and reports runtime GC counters. |
+| `LeanExe.Examples.JsonGcTreeRewrite` | `transform` | Rewrites balanced tree generations, releases old roots, and reports runtime GC counters. |
 | `LeanExe.Examples.JsonTools` | `transform`, `lookup` | Exercises limited JSON field lookup and object generation helpers. |
 | `LeanExe.Examples.Correctness` | Many entries | Exercises structures, inductives, arrays, recursion, and edge cases. |
 
