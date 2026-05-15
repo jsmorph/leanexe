@@ -73,7 +73,7 @@ Library-mode array and byte-array values use exported memory.  Hosts allocate in
 
 ## Memory Management
 
-LeanExe modules use a small reference-counted heap inside WASM linear memory.  Heap-backed values allocate with a header before the payload pointer, and released objects return to a free list for later allocation.  This includes byte arrays, arrays, recursive inductive values, nested internal arrays, JSON AST nodes, and other heap-backed values created by compiled code.
+LeanExe modules use a small reference-counted heap inside growable WASM linear memory.  Heap-backed values allocate with a header before the payload pointer, and released objects return to a free list for later allocation.  This includes byte arrays, arrays, recursive inductive values, nested internal arrays, JSON AST nodes, and other heap-backed values created by compiled code.
 
 In library mode, the host controls result lifetime.  It may call `alloc` to reserve input memory, call the exported Lean entry, read returned pointer-length values or memory-backed arrays, and call `release(ptr)` or `free(ptr)` when a returned object is no longer needed.  `retain(ptr)` increments the reference count and returns the same pointer, which lets a host keep a result while passing it through code that may release its own reference.
 
@@ -83,7 +83,7 @@ The compiler emits `release` for a conservative class of local heap temporaries:
 
 Compiled Lean code may read runtime counters through `LeanExe.Runtime.allocCount`, `retainCount`, `releaseCount`, and `freeCount`.  It may call `LeanExe.Runtime.release value` for a monomorphic recursive-inductive root at an explicit ownership boundary; the compiled call releases the root and returns the current free count.  The program must not use the released value, or any heap node shared with a live value, after the call, and the compiler does not yet prove that condition.
 
-In WASI command mode, the generated module is a single-run command.  The adapter reads stdin or argv, calls the pure Lean entry, writes stdout or stderr, and exits.  All allocations disappear with the process, so command programs do not need source-level memory management.
+In WASI command mode, the generated module is a single-run command.  The adapter reads stdin or argv, calls the pure Lean entry, writes stdout or stderr, and exits.  Process exit discards all allocations, but one large request can still allocate enough intermediate data to hit a host memory limit before exit.  In those cases, source-level `LeanExe.Runtime.release` can mark an owned recursive root dead inside the command.
 
 ## Scalar Template
 

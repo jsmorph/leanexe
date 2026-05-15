@@ -442,6 +442,9 @@ def i32Store8 : List UInt8 :=
 def i32Eq : List UInt8 :=
   ofNats [70]
 
+def i32ConstNegOne : List UInt8 :=
+  ofNats [65, 127]
+
 def i64ExtendI32U : List UInt8 :=
   ofNats [173]
 
@@ -471,6 +474,12 @@ def unreachable : List UInt8 :=
 
 def returnOp : List UInt8 :=
   ofNats [15]
+
+def memorySize : List UInt8 :=
+  ofNats [63, 0]
+
+def memoryGrow : List UInt8 :=
+  ofNats [64, 0]
 
 def i64Align8 (value : List UInt8) : List UInt8 :=
   value ++ i64Const 7 ++ ofNats [124] ++ i64Const 8 ++ ofNats [128] ++
@@ -529,6 +538,8 @@ def rcAllocPayload
   let sizeLocal := scratch + 3
   let nextLocal := scratch + 4
   let ptrLocal := scratch + 5
+  let endLocal := sizeLocal
+  let requiredPagesLocal := nextLocal
   let unlinkCurrent :=
     localGet prevLocal ++ i64Const 0 ++ i64Eq ++
       ofNats [4, 64] ++
@@ -556,9 +567,24 @@ def rcAllocPayload
       ofNats [12] ++ u32leb 0 ++
     ofNats [11, 11]
   let bumpAllocate :=
-    globalGet 0 ++ i64Const rcHeaderBytes ++ ofNats [124] ++ localSet ptrLocal ++
-      globalGet 0 ++ i64Const rcHeaderBytes ++ ofNats [124] ++ localGet alignedLocal ++
-        ofNats [124] ++ globalSet 0 ++
+    globalGet 0 ++ i64Const rcHeaderBytes ++ ofNats [124] ++ localGet alignedLocal ++
+      ofNats [124] ++ localTee endLocal ++
+      globalGet 0 ++ i64LtU ++
+      ofNats [4, 64] ++
+        unreachable ++
+      ofNats [11] ++
+      localGet endLocal ++ i64Const 1 ++ ofNats [125] ++ i64Const 65536 ++
+        ofNats [128] ++ i64Const 1 ++ ofNats [124] ++ localSet requiredPagesLocal ++
+      memorySize ++ i64ExtendI32U ++ localGet requiredPagesLocal ++ i64LtU ++
+      ofNats [4, 64] ++
+        localGet requiredPagesLocal ++ memorySize ++ i64ExtendI32U ++ ofNats [125] ++
+          i32WrapI64 ++ memoryGrow ++ i32ConstNegOne ++ i32Eq ++
+          ofNats [4, 64] ++
+            unreachable ++
+          ofNats [11] ++
+      ofNats [11] ++
+      globalGet 0 ++ i64Const rcHeaderBytes ++ ofNats [124] ++ localSet ptrLocal ++
+      localGet endLocal ++ globalSet 0 ++
       rcInitHeader (localGet ptrLocal) (localGet alignedLocal) kind aux1 aux2
   i64Align8 payloadBytes ++ localSet alignedLocal ++
     localGet alignedLocal ++ i64Const 8 ++ i64LtU ++
@@ -4919,15 +4945,54 @@ def moduleWat (module_ : Module) : String :=
       (module_.funcs.toList.flatMap (fun func => indent 2 (funcWatLines releaseIndex func))) ++
       indent 2 [
         "(func (export \"alloc\") (param i64) (result i64)",
+        "  (local i64 i64)",
         "  global.get 0",
+        "  local.set 1",
         "  global.get 0",
         "  local.get 0",
         "  i64.add",
+        "  local.tee 2",
+        "  global.get 0",
+        "  i64.lt_u",
+        "  if",
+        "    unreachable",
+        "  end",
+        "  local.get 2",
+        "  i64.const 1",
+        "  i64.sub",
+        "  i64.const 65536",
+        "  i64.div_u",
+        "  i64.const 1",
+        "  i64.add",
+        "  memory.size",
+        "  i64.extend_i32_u",
+        "  i64.gt_u",
+        "  if",
+        "    local.get 2",
+        "    i64.const 1",
+        "    i64.sub",
+        "    i64.const 65536",
+        "    i64.div_u",
+        "    i64.const 1",
+        "    i64.add",
+        "    memory.size",
+        "    i64.extend_i32_u",
+        "    i64.sub",
+        "    i32.wrap_i64",
+        "    memory.grow",
+        "    i32.const -1",
+        "    i32.eq",
+        "    if",
+        "      unreachable",
+        "    end",
+        "  end",
+        "  local.get 2",
         "  global.set 0",
         "  global.get 2",
         "  i64.const 1",
         "  i64.add",
         "  global.set 2",
+        "  local.get 1",
         ")",
         "(func (export \"reset\")",
         "  i64.const 4096",

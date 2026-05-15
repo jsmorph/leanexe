@@ -72,7 +72,7 @@ def maxDepth : UInt64 :=
   8
 
 def maxRounds : UInt64 :=
-  20
+  40
 
 def valueModulus : UInt64 :=
   1000003

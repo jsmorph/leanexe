@@ -1,8 +1,27 @@
 # Development Journal
 
+## 2026-05-15: Growable Runtime Allocator
+
+The runtime allocator now calls WASM `memory.grow` when neither the free list nor the current heap range can satisfy an allocation.  The generated memory still starts at 16 pages, and `reset()` still rewinds the heap to byte offset `4096`, but large library-mode allocations and compiled-code allocations can grow the module memory instead of trapping at the initial page boundary.  `test/refcount.js` now allocates a block as large as the initial memory, verifies that the memory grew, and writes the last byte of the returned range.
+
+This changes the failure mode for large single requests.  Reference counting still matters because memory growth is bounded by the host and because long computations can allocate more live data than they need if dead generations are not released.  The JSON GC tree rewrite example now accepts `rounds <= 40`; a Wasmtime run for `{"depth":8,"rounds":40,"salt":17,"search":12345}` returned `nodeCount:255`, `height:8`, `allocsAfterInitial:575`, `freesAfterRounds:20440`, `releasesAfterFinal:20951`, and `freesAfterFinal:20951`.
+
+Checks run:
+
+- [x] `lake build lean-wasm`
+- [x] `node test/refcount.js` returned `checked 5 refcount cases`.
+- [x] `.lake/build/bin/lean-wasm compile-wat --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.byteArrayStringConstReturn --out .lake/build/refcount/byteArrayStringConstReturn.grow.wat`
+- [x] `build/tools/wasmtime/current/wasmtime --invoke alloc .lake/build/refcount/byteArrayStringConstReturn.grow.wat 1048576` returned `4096`.
+- [x] `.lake/build/bin/lean-wasm compile-wasi-stdin-except --max-input-bytes 1024 --module LeanExe.Examples.JsonGcTreeRewrite --entry LeanExe.Examples.JsonGcTreeRewrite.transform --out .lake/build/wasi-programs/jsonGcTreeRewrite.stdin-except.wasi.wasm`
+- [x] `printf '{"depth":8,"rounds":40,"salt":17,"search":12345}' | build/tools/wasmtime/current/wasmtime run .lake/build/wasi-programs/jsonGcTreeRewrite.stdin-except.wasi.wasm`
+- [x] `printf '{"depth":8,"rounds":41,"salt":17,"search":12345}' | build/tools/wasmtime/current/wasmtime run .lake/build/wasi-programs/jsonGcTreeRewrite.stdin-except.wasi.wasm` returned `{"error":1}`.
+- [x] `node test/wasi_program.js` returned `checked 22 WASI program cases, 2 traps, and 7 rejections`.
+- [x] `node test/core_correctness.js` returned `checked 574 accepted, 28 rejected, and 13 trapped cases`.
+- [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 574 accepted, 28 rejected, and 13 trapped cases`, `checked 5 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 22 WASI program cases, 2 traps, and 7 rejections`, and `checked 56 cases`.
+
 ## 2026-05-15: JSON GC Tree Rewrite Benchmark
 
-`LeanExe.Examples.JsonGcTreeRewrite` is a JSON-to-JSON WASI command that builds a balanced source-level tree, rewrites whole tree generations, releases the previous root after each rewrite, and releases the final root after computing metrics.  The input object contains `depth`, `rounds`, `salt`, and `search`.  The current accepted workload is `1 <= depth <= 8` and `rounds <= 20`, which fits the generated module's fixed 16-page WASM memory while still exercising thousands of recursive-inductive frees.
+`LeanExe.Examples.JsonGcTreeRewrite` is a JSON-to-JSON WASI command that builds a balanced source-level tree, rewrites whole tree generations, releases the previous root after each rewrite, and releases the final root after computing metrics.  The input object contains `depth`, `rounds`, `salt`, and `search`.  The current accepted workload is `1 <= depth <= 8` and `rounds <= 40`, which exercises thousands of recursive-inductive frees.
 
 The first implementation built a linear tree through a fuel-recursive structure accumulator.  That shape compiled but produced unusable runtime behavior once the tree passed roughly twenty nodes, because the accumulator carried a recursive heap root through every loop step.  The benchmark now builds the initial tree through direct balanced recursion by depth, then uses generation-level release boundaries.  A Wasmtime run for `{"depth":8,"rounds":20,"salt":17,"search":12345}` returned `nodeCount:255`, `height:8`, `allocsAfterInitial:575`, `freesAfterRounds:10220`, `releasesAfterFinal:10731`, and `freesAfterFinal:10731`.
 

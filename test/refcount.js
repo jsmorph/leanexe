@@ -105,6 +105,22 @@ async function checkCompilerReleasesScalarTemp() {
   }
 }
 
+async function checkAllocatorGrowsMemory() {
+  const exports = await instantiate(correctnessModule, "byteArrayStringConstReturn");
+  exports.reset();
+  const beforeBytes = exports.memory.buffer.byteLength;
+  const len = BigInt(beforeBytes);
+  const ptr = pointer(exports.alloc(len));
+  const afterBytes = exports.memory.buffer.byteLength;
+  if (afterBytes <= beforeBytes) {
+    throw new Error(`alloc did not grow memory: before ${beforeBytes}, after ${afterBytes}`);
+  }
+  if (ptr + beforeBytes > afterBytes) {
+    throw new Error(`grown allocation exceeds memory: ptr ${ptr}, len ${beforeBytes}, memory ${afterBytes}`);
+  }
+  new Uint8Array(exports.memory.buffer, ptr + beforeBytes - 1, 1)[0] = 123;
+}
+
 async function main() {
   run(["lake", "build", correctnessModule]);
   run(["lake", "build", byteArrayModule]);
@@ -113,7 +129,8 @@ async function main() {
   await checkRetainDelaysReuse();
   await checkFreeAlias();
   await checkCompilerReleasesScalarTemp();
-  process.stdout.write("checked 4 refcount cases\n");
+  await checkAllocatorGrowsMemory();
+  process.stdout.write("checked 5 refcount cases\n");
 }
 
 main().catch((error) => {
