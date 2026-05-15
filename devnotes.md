@@ -1,5 +1,16 @@
 # Development Journal
 
+## 2026-05-15: Pure Standard Lean Comparison
+
+`tools/compare-standard.js` now supports a `pure` mode for library exports in addition to the existing WASI command modes.  Pure mode compiles the selected entry with `compile`, invokes the exported function through `wasmtime --invoke`, and compares the printed result slots with a generated standard-Lean runner.  The runner evaluates a Lean call expression and prints a caller-provided `Array UInt64` slot expression, which makes flattened structure parameters and multi-slot structure or tagged results explicit in the test case rather than inferred by JavaScript.
+
+The self-test now includes scalar results, bounded `Nat` results, structure results, flattened structure parameters, tagged results, flattened tagged parameters, and structural equality over products, structures, nonrecursive tagged values, and `Option` values.  It deliberately avoids examples whose purpose is to prove LeanExe's demand analysis skips a trapping expression, because the standard Lean runner may evaluate that expression before the value reaches the inspected field or tag.
+
+Checks run:
+
+- [x] `node tools/compare-standard.js --self-test` returned `checked 18 standard Lean comparison cases`.
+- [x] `node test/run_all.js` returned `checked 94 report classification cases`, `checked 596 accepted, 28 rejected, and 13 trapped cases`, `checked 5 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 22 WASI program cases, 2 traps, and 7 rejections`, `checked 18 standard Lean comparison cases`, and `checked 56 cases`.
+
 ## 2026-05-15: Structural Equality Lowering
 
 The extractor now lowers equality through a type-directed value comparison instead of routing every `BEq.beq`, `bne`, and `Eq` proposition through scalar extraction.  The supported equality fragment covers `Unit`, scalar values, products, structures, internal sums, `Option`, `Except`, and nonrecursive tagged values whose runtime fields also support equality.  The lowering compares fields in source order and compares tagged values by constructor tag before active payload fields, preserving short-circuit behavior for later fields and inactive constructor payloads.

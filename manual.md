@@ -481,7 +481,7 @@ Do not fix source by adding dummy effects, unsafe definitions, hidden runtime ca
 
 ## Comparing With Standard Lean
 
-Use `tools/compare-standard.js` when a command-shaped program should match official Lean execution.  The tool generates a temporary Lean runner that imports the target module and calls the named pure entry, then compares that result with the WASM command produced by LeanExe and executed by Wasmtime.  It compares observable command behavior: exit status, stdout bytes, and stderr bytes.
+Use `tools/compare-standard.js` when an accepted program should match official Lean execution.  The tool generates a temporary Lean runner that imports the target module and calls the selected entry, then compares that result with the WASM produced by LeanExe and executed by Wasmtime.  Command modes compare observable process behavior: exit status, stdout bytes, and stderr bytes.  Pure mode compares library exports invoked with `wasmtime --invoke`, using a result-slot expression to print the standard Lean result in the same flattened `UInt64` slot shape returned by the WASM export.
 
 ```sh
 node tools/compare-standard.js \
@@ -491,7 +491,18 @@ node tools/compare-standard.js \
   --stdin '[48,18,30]'
 ```
 
-The supported modes correspond to the WASI command compilers: `wasi`, `stdin`, `stdin-except`, `argv-except`, and `stdin-argv-except`.  This comparison path works best for ordinary pure entries that do not inspect LeanExe runtime counters.  Those counters are compiler intrinsics in generated WASM, while standard Lean evaluates their stub definitions.
+```sh
+node tools/compare-standard.js \
+  --mode pure \
+  --module LeanExe.Examples.Correctness \
+  --entry structureParam \
+  --arg 2 \
+  --arg 3 \
+  --standard-call 'LeanExe.Examples.Correctness.structureParam ({ x := (2 : UInt64), y := (3 : UInt64) } : LeanExe.Examples.Correctness.Point)' \
+  --result-slots '#[__leanexeValue]'
+```
+
+The supported command modes correspond to the WASI command compilers: `wasi`, `stdin`, `stdin-except`, `argv-except`, and `stdin-argv-except`.  Pure mode uses `compile` rather than a WASI adapter.  It works best for deterministic entries that do not inspect LeanExe runtime counters and do not rely on intentionally skipped trapping expressions.  Runtime counters are compiler intrinsics in generated WASM, while standard Lean evaluates their stub definitions.
 
 ## LLM Source Generation Checklist
 
