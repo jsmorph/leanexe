@@ -256,9 +256,38 @@ def productFirstHelper (pair : UInt64 × UInt64) : UInt64 :=
 def productHelperParamSkipsTrap : UInt64 :=
   productFirstHelper ((7 : UInt64), (Array.replicate 0 (0 : UInt64)).back!)
 
+def productEquality : UInt64 :=
+  if (((1 : UInt64), (2 : UInt64)) == ((1 : UInt64), (2 : UInt64))) then
+    1
+  else
+    0
+
+def productInequality : UInt64 :=
+  if (((1 : UInt64), (2 : UInt64)) != ((1 : UInt64), (3 : UInt64))) then
+    1
+  else
+    0
+
+def productEqualityShortCircuit : UInt64 :=
+  if (((1 : UInt64), (Array.replicate 0 (0 : UInt64)).back!) ==
+      ((2 : UInt64), (0 : UInt64))) then
+    0
+  else
+    1
+
 structure Point where
   x : UInt64
   y : UInt64
+
+structure EqPoint where
+  x : UInt64
+  y : UInt64
+deriving BEq, DecidableEq
+
+structure EqTaggedPoint where
+  point : EqPoint
+  tag : UInt64
+deriving BEq, DecidableEq
 
 structure TaggedPoint where
   point : Point
@@ -302,6 +331,38 @@ def makePointHelper (x : UInt64) : Point :=
 def structureHelperResult : UInt64 :=
   let point := makePointHelper 4
   point.x * (10 : UInt64) + point.y
+
+def structureEquality : UInt64 :=
+  if (({ x := 1, y := 2 } : EqPoint) == ({ x := 1, y := 2 } : EqPoint)) then
+    1
+  else
+    0
+
+def structureInequality : UInt64 :=
+  if (({ x := 1, y := 2 } : EqPoint) != ({ x := 1, y := 3 } : EqPoint)) then
+    1
+  else
+    0
+
+def nestedStructureEquality : UInt64 :=
+  if (({ point := { x := 1, y := 2 }, tag := 3 } : EqTaggedPoint) ==
+      ({ point := { x := 1, y := 2 }, tag := 3 } : EqTaggedPoint)) then
+    1
+  else
+    0
+
+def structureEqualityShortCircuit : UInt64 :=
+  if (({ x := 1, y := (Array.replicate 0 (0 : UInt64)).back! } : EqPoint) ==
+      ({ x := 2, y := 0 } : EqPoint)) then
+    0
+  else
+    1
+
+def structurePropEquality : UInt64 :=
+  if ({ x := 3, y := 4 } : EqPoint) = ({ x := 3, y := 4 } : EqPoint) then
+    1
+  else
+    0
 
 def structureReturn (x : UInt64) : Point :=
   { x := x + 1, y := x + 2 }
@@ -450,6 +511,11 @@ def digitStateParserStopsDemo : UInt64 :=
 inductive Status where
   | ok : UInt64 -> Status
   | error : UInt64 -> Status
+
+inductive EqStatus where
+  | ok : UInt64 -> EqStatus
+  | error : UInt64 -> EqStatus
+deriving BEq, DecidableEq
 
 inductive Mode where
   | idle : Mode
@@ -612,6 +678,43 @@ def statusRightScore (status : Status) : UInt64 :=
   match status with
   | .ok value => value + 100
   | .error code => code
+
+def inductiveEqualitySameCtor : UInt64 :=
+  if (EqStatus.ok 7 == EqStatus.ok 7) then
+    1
+  else
+    0
+
+def inductiveInequalitySameCtor : UInt64 :=
+  if (EqStatus.ok 7 != EqStatus.ok 8) then
+    1
+  else
+    0
+
+def inductiveEqualityDifferentCtor : UInt64 :=
+  if (EqStatus.ok 7 == EqStatus.error 7) then
+    0
+  else
+    1
+
+def inductiveEqualityDifferentCtorSkipsPayload : UInt64 :=
+  if (EqStatus.ok ((Array.replicate 0 (0 : UInt64)).back!) == EqStatus.error 0) then
+    0
+  else
+    1
+
+def inductivePropEquality : UInt64 :=
+  if EqStatus.ok 5 = EqStatus.ok 5 then
+    1
+  else
+    0
+
+def optionStructuralEquality : UInt64 :=
+  if ((some ({ x := 1, y := 2 } : EqPoint)) == some ({ x := 1, y := 2 } : EqPoint)) &&
+      ((none : Option EqPoint) != some ({ x := 0, y := 0 } : EqPoint)) then
+    1
+  else
+    0
 
 inductive U64List where
   | nil : U64List

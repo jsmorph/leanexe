@@ -1431,12 +1431,17 @@ def u32WrapExpr (expr : IRExpr) : IRExpr :=
 def u32ShiftAmountExpr (expr : IRExpr) : IRExpr :=
   .u64Bin .bitAnd expr (.u64 31)
 
-def supportedEqType : Ty → Bool
+partial def supportedEqType : Ty → Bool
+  | .unit => true
   | .bool => true
   | .u8 => true
   | .u32 => true
   | .u64 => true
   | .nat => true
+  | .product left right => supportedEqType left && supportedEqType right
+  | .sum left right => supportedEqType left && supportedEqType right
+  | .struct _ _ fields => fields.all supportedEqType
+  | .variant _ _ ctors => ctors.all (fun fields => fields.all supportedEqType)
   | _ => false
 
 def addLiveSlot (live : List Nat) (slot : Nat) : List Nat :=
@@ -4427,6 +4432,112 @@ def enumerateAux {α : Type} : List α → Nat → List (Nat × α)
 
 def enumerate {α : Type} (items : List α) : List (Nat × α) :=
   enumerateAux items 0
+
+def boolAndExpr (left right : IRExpr) : IRExpr :=
+  .ite (boolCond left) right (.u64 0)
+
+def boolAndExprs : List IRExpr → IRExpr
+  | [] => .u64 1
+  | expr :: rest => rest.foldl boolAndExpr expr
+
+partial def valueTopLetsWithBody (value : ExtractedValue) : List ValueLet × ExtractedValue :=
+  match value with
+  | .letE slot expr body =>
+      let parts := valueTopLetsWithBody body
+      (.expr slot expr :: parts.fst, parts.snd)
+  | .letCall slots index args body =>
+      let parts := valueTopLetsWithBody body
+      (.call slots index args :: parts.fst, parts.snd)
+  | other => ([], other)
+
+mutual
+partial def structuralEqFieldsExpr
+    (fields : List Ty)
+    (leftFields rightFields : List ExtractedValue) :
+    Except String IRExpr := do
+  if leftFields.length != fields.length || rightFields.length != fields.length then
+    .error "structural equality value shape mismatch"
+  else
+    let exprs ←
+      (fields.zip (leftFields.zip rightFields)).mapM fun item =>
+        structuralEqValueExpr item.fst item.snd.fst item.snd.snd
+    .ok (boolAndExprs exprs)
+
+partial def structuralEqVariantExpr
+    (name : Name)
+    (ctors : List (List Ty))
+    (left right : ExtractedValue) :
+    Except String IRExpr := do
+  let leftParts ← variantPartsWithLets name left
+  let rightParts ← variantPartsWithLets name right
+  let leftTag := leftParts.snd.fst
+  let rightTag := rightParts.snd.fst
+  let leftCtors := leftParts.snd.snd
+  let rightCtors := rightParts.snd.snd
+  if leftCtors.length != ctors.length || rightCtors.length != ctors.length then
+    .error s!"inductive equality value shape mismatch: {name}"
+  else
+    let payloadExprs ←
+      (enumerate (ctors.zip (leftCtors.zip rightCtors))).mapM fun item => do
+        let payload ← structuralEqFieldsExpr item.snd.fst item.snd.snd.fst item.snd.snd.snd
+        .ok (.ite (.eqU64 leftTag (.u64 item.fst)) payload (.u64 1))
+    let body := .ite (.eqU64 leftTag rightTag) (boolAndExprs payloadExprs) (.u64 0)
+    .ok (wrapExprLets (leftParts.fst ++ rightParts.fst) body)
+
+partial def structuralEqSumExpr
+    (leftTy rightTy : Ty)
+    (left right : ExtractedValue) :
+    Except String IRExpr := do
+  let leftParts ← sumPartsWithLets left
+  let rightParts ← sumPartsWithLets right
+  let leftTag := leftParts.snd.fst
+  let rightTag := rightParts.snd.fst
+  let leftPayload ← structuralEqValueExpr leftTy leftParts.snd.snd.fst rightParts.snd.snd.fst
+  let rightPayload ← structuralEqValueExpr rightTy leftParts.snd.snd.snd rightParts.snd.snd.snd
+  let payload :=
+    boolAndExprs [
+      .ite (.eqU64 leftTag (.u64 0)) leftPayload (.u64 1),
+      .ite (.eqU64 leftTag (.u64 1)) rightPayload (.u64 1)
+    ]
+  let body := .ite (.eqU64 leftTag rightTag) payload (.u64 0)
+  .ok (wrapExprLets (leftParts.fst ++ rightParts.fst) body)
+
+partial def structuralEqValueExpr
+    (ty : Ty)
+    (left right : ExtractedValue) :
+    Except String IRExpr := do
+  let leftTop := valueTopLetsWithBody left
+  let rightTop := valueTopLetsWithBody right
+  let body ←
+    match ty with
+    | .unit | .bool | .u8 | .u32 | .u64 | .nat => do
+        let leftExpr ← scalarValue leftTop.snd
+        let rightExpr ← scalarValue rightTop.snd
+        .ok (boolExpr (.eqU64 leftExpr rightExpr))
+    | .product leftTy rightTy => do
+        let leftFirst ← productField 0 leftTop.snd
+        let leftSecond ← productField 1 leftTop.snd
+        let rightFirst ← productField 0 rightTop.snd
+        let rightSecond ← productField 1 rightTop.snd
+        let firstExpr ← structuralEqValueExpr leftTy leftFirst rightFirst
+        let secondExpr ← structuralEqValueExpr rightTy leftSecond rightSecond
+        .ok (boolAndExpr firstExpr secondExpr)
+    | .sum leftTy rightTy =>
+        structuralEqSumExpr leftTy rightTy leftTop.snd rightTop.snd
+    | .struct name _ fields => do
+        let leftFields ← enumerate fields |>.mapM fun item => structField name item.fst leftTop.snd
+        let rightFields ← enumerate fields |>.mapM fun item => structField name item.fst rightTop.snd
+        structuralEqFieldsExpr fields leftFields rightFields
+    | .variant name _ ctors =>
+        structuralEqVariantExpr name ctors leftTop.snd rightTop.snd
+    | .byteArray =>
+        .error "ByteArray equality is unsupported"
+    | .array item =>
+        .error s!"Array equality is unsupported for item type: {reprStr item}"
+    | .recVariant name _ =>
+        .error s!"recursive inductive equality is unsupported: {name}"
+  .ok (wrapExprLets (leftTop.fst ++ rightTop.fst) body)
+end
 
 def bindStrictSlots (slots : List IRExpr) (nextLocal : Nat) : StrictSlots :=
   let indexed := enumerate slots
@@ -9231,6 +9342,18 @@ mutual
                           "unsupported String inequality string: expected ASCII"
                       .ok (boolExpr (if leftBytes == rightBytes then .false else .true), nextLocal)
                   | none => .error "unsupported String inequality application"
+                else if primitive == ``BEq.beq || primitive == ``bne then
+                  match primitiveArgPair? args, primitiveReceiverType? ctx.env args with
+                  | some (left, right), some ty =>
+                      if supportedEqType ty then
+                        let eqResult ← extractStructuralEqExprFrom ctx locals nextLocal ty left right
+                        if primitive == ``BEq.beq then
+                          .ok eqResult
+                        else
+                          .ok (boolExpr (.not (boolCond eqResult.fst)), eqResult.snd)
+                      else
+                        .error s!"unsupported equality type: {reprStr ty}"
+                  | _, _ => .error s!"unsupported equality application: {primitive}"
                 else if primitive == ``Complement.complement then
                   match args.reverse with
                   | value :: _ =>
@@ -9263,6 +9386,17 @@ mutual
                   | some (left, right) =>
                       extractPrimitivePairFrom ctx locals nextLocal primitive args left right
                   | none => .error s!"unsupported application: {primitive}"
+
+  partial def extractStructuralEqExprFrom
+      (ctx : Context)
+      (locals : List Binding)
+      (nextLocal : Nat)
+      (ty : Ty)
+      (left right : Expr) :
+      Except String (IRExpr × Nat) := do
+    let leftResult ← extractValueFrom ctx locals nextLocal left
+    let rightResult ← extractValueFrom ctx locals leftResult.snd right
+    .ok (← structuralEqValueExpr ty leftResult.fst rightResult.fst, rightResult.snd)
 
   partial def extractPrimitivePairFrom
       (ctx : Context)
@@ -9480,9 +9614,8 @@ mutual
               match typeAtom? ctx.env ty with
               | some eqTy =>
                   if supportedEqType eqTy then
-                    let leftResult ← extractExprFrom ctx locals nextLocal left
-                    let rightResult ← extractExprFrom ctx locals leftResult.snd right
-                    .ok (.eqU64 leftResult.fst rightResult.fst, rightResult.snd)
+                    let eqResult ← extractStructuralEqExprFrom ctx locals nextLocal eqTy left right
+                    .ok (boolCond eqResult.fst, eqResult.snd)
                   else
                     .error "unsupported equality proposition in condition"
               | none => .error "unsupported equality proposition in condition"
@@ -9528,9 +9661,14 @@ mutual
                       "unsupported String equality string: expected ASCII"
                   .ok (if leftBytes == rightBytes then .true else .false, nextLocal)
                 else
-                  let leftResult ← extractExprFrom ctx locals nextLocal left
-                  let rightResult ← extractExprFrom ctx locals leftResult.snd right
-                  .ok (.eqU64 leftResult.fst rightResult.fst, rightResult.snd)
+                  match primitiveReceiverType? ctx.env args with
+                  | some ty =>
+                      if supportedEqType ty then
+                        let eqResult ← extractStructuralEqExprFrom ctx locals nextLocal ty left right
+                        .ok (boolCond eqResult.fst, eqResult.snd)
+                      else
+                        .error s!"unsupported equality type: {reprStr ty}"
+                  | none => .error "unsupported BEq application"
             | none => .error "unsupported BEq application"
         | (.const ``bne _, args) =>
             match primitiveArgPair? args with
@@ -9546,9 +9684,14 @@ mutual
                       "unsupported String inequality string: expected ASCII"
                   .ok (if leftBytes == rightBytes then .false else .true, nextLocal)
                 else
-                  let leftResult ← extractExprFrom ctx locals nextLocal left
-                  let rightResult ← extractExprFrom ctx locals leftResult.snd right
-                  .ok (.not (.eqU64 leftResult.fst rightResult.fst), rightResult.snd)
+                  match primitiveReceiverType? ctx.env args with
+                  | some ty =>
+                      if supportedEqType ty then
+                        let eqResult ← extractStructuralEqExprFrom ctx locals nextLocal ty left right
+                        .ok (.not (boolCond eqResult.fst), eqResult.snd)
+                      else
+                        .error s!"unsupported equality type: {reprStr ty}"
+                  | none => .error "unsupported bne application"
             | none => .error "unsupported bne application"
         | (.const ``LT.lt _, args) =>
             match primitiveArgPair? args with
