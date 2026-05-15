@@ -125,6 +125,7 @@ mutual
     | skip
     | assign (index : Nat) (value : Expr)
     | call (slots : List Nat) (index : Nat) (args : List Expr)
+    | release (ptr : Expr)
     | arrayFoldMultiSlotAssign (sourceWidth resultWidth : Nat) (array start stop : Expr)
         (initValues : List Expr) (accStart itemStart : Nat) (bodyValues : List Expr)
         (bodyLets : List LocalLet) (bodyDone : Expr) (targets : List Nat)
@@ -350,6 +351,7 @@ mutual
           | some func => func.evalResults module_ (args.map (fun arg => arg.eval module_ store))
           | none => []
         (slots.zip results).foldl (fun current item => current.set item.fst item.snd) store
+    | .release _, store => store
     | .arrayFoldMultiSlotAssign sourceWidth resultWidth array start stop initValues accStart
         itemStart bodyValues bodyLets bodyDone targets, store =>
         let resultStore :=
