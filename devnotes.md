@@ -1,5 +1,17 @@
 # Development Journal
 
+## 2026-05-15: Recursive Pure Result Comparisons
+
+The standard Lean comparison self-test now exercises heap-shaped pure results through `pure-bytes`.  `LeanExe.Examples.Correctness` defines small source-level serializers for a custom recursive list, ordinary `List UInt64`, an array-child tree, a binary tree, and a mutual-recursive JSON-like value.  The comparison tool now serializes producer results for custom-list tail selection, `List` append, reverse, map, and filter, tree construction, binary-tree construction, and mutual-recursive object construction, then compares those bytes against standard Lean.
+
+The self-test also compares the real JSON AST parser as a pure value producer.  The case calls `LeanExe.Ascii.Json.parseBytes` on a nested object, serializes `some value` through `LeanExe.Ascii.Json.render`, and compares the rendered bytes with the WASM wrapper output.  This gives standard-Lean coverage for a recursive AST result without depending on JavaScript heap inspection.
+
+Checks run:
+
+- [x] `lake build LeanExe.Examples.Correctness`
+- [x] `node tools/compare-standard.js --self-test` returned `checked 33 standard Lean comparison cases`.
+- [x] `node test/run_all.js` returned `checked 94 report classification cases`, `checked 596 accepted, 31 rejected, and 13 trapped cases`, `checked 5 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 22 WASI program cases, 2 traps, and 7 rejections`, `checked 33 standard Lean comparison cases`, and `checked 56 cases`.
+
 ## 2026-05-15: Serialized Pure Standard Lean Comparison
 
 `tools/compare-standard.js` now supports `pure-bytes` mode for concrete pure calls whose results need byte-level serialization.  The tool generates a temporary Lean wrapper under `LeanExe/StandardCompare`, compiles that wrapper with `compile-wasi`, runs the resulting WASI command with Wasmtime, and compares stdout and stderr with a standard Lean runner that evaluates the same serializer.  The serializer sees the target result as `__leanexeValue` and must produce `ByteArray`, so heap-backed results can be compared without adding JavaScript-specific memory inspectors for each source type.
