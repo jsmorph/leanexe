@@ -2,6 +2,7 @@ import Lean
 import Init.Data.ByteArray.Extra
 import LeanExe.Extract.Env
 import LeanExe.IR.Core
+import LeanExe.Runtime
 
 open Lean
 
@@ -1312,6 +1313,18 @@ def primitiveStringResult? (args : List Expr) : Bool :=
   | _leftTy :: _rightTy :: resultTy :: _ => isStringType resultTy
   | _ => false
 
+def runtimeStatPrimitive? (name : Name) : Option LeanExe.IR.RuntimeStat :=
+  if name == ``LeanExe.Runtime.allocCount then
+    some .allocs
+  else if name == ``LeanExe.Runtime.retainCount then
+    some .retains
+  else if name == ``LeanExe.Runtime.releaseCount then
+    some .releases
+  else if name == ``LeanExe.Runtime.freeCount then
+    some .frees
+  else
+    none
+
 partial def compileTimeString?
     (ctx : Context)
     (locals : List Binding)
@@ -1465,8 +1478,10 @@ mutual
           bodyLive
     | .letLets lets body =>
         (pruneLocalLetsWithLive lets (exprUsedSlots body)).snd
+    | .runtimeStat _ => []
+    | .release ptr => exprUsedSlots ptr
     | .arrayAllocSlots _ cells => exprUsedSlots cells
-    | .heapAllocSlots values => exprListUsedSlots values
+    | .heapAllocSlots _ values => exprListUsedSlots values
     | .heapLoadSlot ptr _ => exprUsedSlots ptr
     | .arrayReplicateSlots _ cells values =>
         addLiveSlots (exprUsedSlots cells) (exprListUsedSlots values)
@@ -2292,6 +2307,39 @@ def combineIteSlots (cond : IRCond) (thenSlots elseSlots : List IRExpr) :
   else
     .error "conditional flattened value shape mismatch"
 
+mutual
+  partial def heapChildMaskFromType (slot : Nat) : Ty → Nat × Nat
+    | .recVariant _ _ => (2 ^ slot, slot + 1)
+    | .product left right =>
+        let leftResult := heapChildMaskFromType slot left
+        let rightResult := heapChildMaskFromType leftResult.snd right
+        (leftResult.fst + rightResult.fst, rightResult.snd)
+    | .sum left right =>
+        let leftResult := heapChildMaskFromType (slot + 1) left
+        let rightResult := heapChildMaskFromType leftResult.snd right
+        (leftResult.fst + rightResult.fst, rightResult.snd)
+    | .struct _ _ fields => heapChildMaskFromTypes slot fields
+    | .variant _ _ ctors => heapChildMaskFromTypes (slot + 1) ctors.flatten
+    | .byteArray => (0, slot + 2)
+    | .unit => (0, slot + 1)
+    | .bool => (0, slot + 1)
+    | .u8 => (0, slot + 1)
+    | .u32 => (0, slot + 1)
+    | .u64 => (0, slot + 1)
+    | .nat => (0, slot + 1)
+    | .array _ => (0, slot + 1)
+
+  partial def heapChildMaskFromTypes : Nat → List Ty → Nat × Nat
+    | slot, [] => (0, slot)
+    | slot, ty :: rest =>
+        let head := heapChildMaskFromType slot ty
+        let tail := heapChildMaskFromTypes head.snd rest
+        (head.fst + tail.fst, tail.snd)
+end
+
+def heapChildMaskForCtors (ctors : List (List (Ty × ExtractedValue))) : Nat :=
+  (heapChildMaskFromTypes 1 (ctors.flatten.map Prod.fst)).fst
+
 partial def flattenInternalValue (ty : Ty) (value : ExtractedValue) :
     Except String (List IRExpr) :=
   match ty with
@@ -2403,7 +2451,7 @@ partial def flattenInternalValue (ty : Ty) (value : ExtractedValue) :
           if actual == name then do
             let flattened ← ctors.mapM fun fields =>
               fields.mapM (fun field => flattenInternalValue field.fst field.snd)
-            .ok [(.heapAllocSlots (tag :: flattened.flatten.flatten))]
+            .ok [(.heapAllocSlots (heapChildMaskForCtors ctors) (tag :: flattened.flatten.flatten))]
           else
             .error s!"recursive inductive internal value shape mismatch: {name}"
       | .letE slot value body => do
@@ -2494,7 +2542,7 @@ partial def flattenAbiValue (ty : Ty) (value : ExtractedValue) : Except String (
           if actual == name then do
             let flattened ← ctors.mapM fun fields =>
               fields.mapM (fun field => flattenInternalValue field.fst field.snd)
-            .ok [(.heapAllocSlots (tag :: flattened.flatten.flatten))]
+            .ok [(.heapAllocSlots (heapChildMaskForCtors ctors) (tag :: flattened.flatten.flatten))]
           else
             .error s!"recursive inductive ABI value shape mismatch: {name}"
       | .letE slot value body => do
@@ -2849,7 +2897,7 @@ partial def flattenArrayElementValue
           if actual == name then do
             let flattened ← ctors.mapM fun fields =>
               fields.mapM (fun field => flattenInternalValue field.fst field.snd)
-            .ok [(.heapAllocSlots (tag :: flattened.flatten.flatten))]
+            .ok [(.heapAllocSlots (heapChildMaskForCtors ctors) (tag :: flattened.flatten.flatten))]
           else
             .error s!"recursive inductive array element shape mismatch: {name}"
       | .letE slot value body => do
@@ -7403,14 +7451,20 @@ mutual
                                     | none =>
                                         match fn.consumeMData with
                                         | .const name _ =>
-                                            match ← extractInlineCallValueFrom ctx locals nextLocal name args with
-                                            | some valueResult => .ok valueResult
-                                            | none =>
-                                                match ← extractFunctionCallValueFrom ctx locals nextLocal name args with
-                                                | some valueResult => .ok valueResult
-                                                | none =>
-                                                    let exprResult ← extractExprFrom ctx locals nextLocal expr
-                                                    .ok (.scalar exprResult.fst, exprResult.snd)
+                                            if name == ``LeanExe.Runtime.release ||
+                                                (args.isEmpty && (runtimeStatPrimitive? name).isSome) then
+                                              let exprResult ←
+                                                extractPrimitiveApplicationFrom ctx locals nextLocal name args
+                                              .ok (.scalar exprResult.fst, exprResult.snd)
+                                            else
+                                              match ← extractInlineCallValueFrom ctx locals nextLocal name args with
+                                              | some valueResult => .ok valueResult
+                                              | none =>
+                                                  match ← extractFunctionCallValueFrom ctx locals nextLocal name args with
+                                                  | some valueResult => .ok valueResult
+                                                  | none =>
+                                                      let exprResult ← extractExprFrom ctx locals nextLocal expr
+                                                      .ok (.scalar exprResult.fst, exprResult.snd)
                                         | _ =>
                                             let exprResult ← extractExprFrom ctx locals nextLocal expr
                                             .ok (.scalar exprResult.fst, exprResult.snd)
@@ -7927,12 +7981,15 @@ mutual
     | .const ``Bool.true _ => .ok (.u64 1, nextLocal)
     | .const ``Bool.false _ => .ok (.u64 0, nextLocal)
     | .const name _ =>
-        match constNatValue? ctx.env name with
-        | some value => .ok (← boundedNatExpr value, nextLocal)
+        match runtimeStatPrimitive? name with
+        | some stat => .ok (.runtimeStat stat, nextLocal)
         | none =>
-            match functionIndex? ctx name with
-            | some index => .ok (.call index [], nextLocal)
-            | none => .error s!"unsupported constant in expression: {name}"
+            match constNatValue? ctx.env name with
+            | some value => .ok (← boundedNatExpr value, nextLocal)
+            | none =>
+                match functionIndex? ctx name with
+                | some index => .ok (.call index [], nextLocal)
+                | none => .error s!"unsupported constant in expression: {name}"
     | _ =>
         match scalarLiteralExpr? expr with
         | some result => .ok (← result, nextLocal)
@@ -8940,81 +8997,100 @@ mutual
       (primitive : Name)
       (args : List Expr) :
       Except String (IRExpr × Nat) := do
-    match ← extractInlineCallValueFrom ctx locals nextLocal primitive args with
-    | some valueResult => .ok (← scalarValue valueResult.fst, valueResult.snd)
-    | none =>
-        match functionIndex? ctx primitive with
-        | some index =>
-            strictRecursiveCallCheck ctx primitive args
-            let sig ←
-              match ctx.env.find? primitive with
-              | some info =>
-                  match supportedFunction? ctx.env info with
-                  | some sig => .ok sig
-                  | none => .error s!"unsupported function type or declaration: {primitive}"
-              | none => .error s!"declaration disappeared during extraction: {primitive}"
-            strictCallMaterializationCheck ctx primitive sig.params args
-            let argsResult ← extractCallArgsFrom ctx locals nextLocal sig.params args
-            .ok (wrapExprLets argsResult.lets (.call index argsResult.args), argsResult.nextLocal)
+    if primitive == ``LeanExe.Runtime.release then
+      match args.reverse with
+      | value :: typeExpr :: _ =>
+          let ty ←
+            match typeAtom? ctx.env typeExpr with
+            | some ty => .ok ty
+            | none => .error "unsupported Runtime.release type"
+          let valueResult ← extractValueFrom ctx locals nextLocal value
+          match ty with
+          | .recVariant name _ =>
+              let parts ← heapVariantPtrWithLets name valueResult.fst
+              .ok (.release (wrapExprLets parts.fst parts.snd), valueResult.snd)
+          | _ => .error s!"unsupported Runtime.release type: {reprStr ty}"
+      | _ => .error "unsupported Runtime.release application"
+    else
+      match runtimeStatPrimitive? primitive, args with
+      | some stat, [] => .ok (.runtimeStat stat, nextLocal)
+      | some _, _ => .error s!"unsupported runtime stat application: {primitive}"
+      | none, _ =>
+        match ← extractInlineCallValueFrom ctx locals nextLocal primitive args with
+        | some valueResult => .ok (← scalarValue valueResult.fst, valueResult.snd)
         | none =>
-            if primitive == ``BEq.beq && primitiveStringReceiver? args then
-              match primitiveArgPair? args with
-              | some (left, right) =>
-                  let leftBytes ←
-                    asciiStringExprBytesFrom ctx locals left
-                      "unsupported String equality argument: expected compile-time string expression"
-                      "unsupported String equality string: expected ASCII"
-                  let rightBytes ←
-                    asciiStringExprBytesFrom ctx locals right
-                      "unsupported String equality argument: expected compile-time string expression"
-                      "unsupported String equality string: expected ASCII"
-                  .ok (boolExpr (if leftBytes == rightBytes then .true else .false), nextLocal)
-              | none => .error "unsupported String equality application"
-            else if primitive == ``bne && primitiveStringReceiver? args then
-              match primitiveArgPair? args with
-              | some (left, right) =>
-                  let leftBytes ←
-                    asciiStringExprBytesFrom ctx locals left
-                      "unsupported String inequality argument: expected compile-time string expression"
-                      "unsupported String inequality string: expected ASCII"
-                  let rightBytes ←
-                    asciiStringExprBytesFrom ctx locals right
-                      "unsupported String inequality argument: expected compile-time string expression"
-                      "unsupported String inequality string: expected ASCII"
-                  .ok (boolExpr (if leftBytes == rightBytes then .false else .true), nextLocal)
-              | none => .error "unsupported String inequality application"
-            else if primitive == ``Complement.complement then
-              match args.reverse with
-              | value :: _ =>
-                  let valueResult ← extractExprFrom ctx locals nextLocal value
-                  match primitiveReceiverType? ctx.env args with
-                  | some .u8 =>
-                      .ok (.u64Bin .bitXor valueResult.fst (.u64 255), valueResult.snd)
-                  | some .u32 =>
-                      .ok (.u64Bin .bitXor valueResult.fst (.u64 (2 ^ 32 - 1)),
-                        valueResult.snd)
-                  | some .u64 =>
-                      .ok (.u64Bin .bitXor valueResult.fst (.u64 (runtimeNatLimit - 1)),
-                        valueResult.snd)
+            match functionIndex? ctx primitive with
+            | some index =>
+                strictRecursiveCallCheck ctx primitive args
+                let sig ←
+                  match ctx.env.find? primitive with
+                  | some info =>
+                      match supportedFunction? ctx.env info with
+                      | some sig => .ok sig
+                      | none => .error s!"unsupported function type or declaration: {primitive}"
+                  | none => .error s!"declaration disappeared during extraction: {primitive}"
+                strictCallMaterializationCheck ctx primitive sig.params args
+                let argsResult ← extractCallArgsFrom ctx locals nextLocal sig.params args
+                .ok (wrapExprLets argsResult.lets (.call index argsResult.args), argsResult.nextLocal)
+            | none =>
+                if primitive == ``BEq.beq && primitiveStringReceiver? args then
+                  match primitiveArgPair? args with
+                  | some (left, right) =>
+                      let leftBytes ←
+                        asciiStringExprBytesFrom ctx locals left
+                          "unsupported String equality argument: expected compile-time string expression"
+                          "unsupported String equality string: expected ASCII"
+                      let rightBytes ←
+                        asciiStringExprBytesFrom ctx locals right
+                          "unsupported String equality argument: expected compile-time string expression"
+                          "unsupported String equality string: expected ASCII"
+                      .ok (boolExpr (if leftBytes == rightBytes then .true else .false), nextLocal)
+                  | none => .error "unsupported String equality application"
+                else if primitive == ``bne && primitiveStringReceiver? args then
+                  match primitiveArgPair? args with
+                  | some (left, right) =>
+                      let leftBytes ←
+                        asciiStringExprBytesFrom ctx locals left
+                          "unsupported String inequality argument: expected compile-time string expression"
+                          "unsupported String inequality string: expected ASCII"
+                      let rightBytes ←
+                        asciiStringExprBytesFrom ctx locals right
+                          "unsupported String inequality argument: expected compile-time string expression"
+                          "unsupported String inequality string: expected ASCII"
+                      .ok (boolExpr (if leftBytes == rightBytes then .false else .true), nextLocal)
+                  | none => .error "unsupported String inequality application"
+                else if primitive == ``Complement.complement then
+                  match args.reverse with
+                  | value :: _ =>
+                      let valueResult ← extractExprFrom ctx locals nextLocal value
+                      match primitiveReceiverType? ctx.env args with
+                      | some .u8 =>
+                          .ok (.u64Bin .bitXor valueResult.fst (.u64 255), valueResult.snd)
+                      | some .u32 =>
+                          .ok (.u64Bin .bitXor valueResult.fst (.u64 (2 ^ 32 - 1)),
+                            valueResult.snd)
+                      | some .u64 =>
+                          .ok (.u64Bin .bitXor valueResult.fst (.u64 (runtimeNatLimit - 1)),
+                            valueResult.snd)
+                      | _ => .error s!"unsupported complement expression: {primitive}"
                   | _ => .error s!"unsupported complement expression: {primitive}"
-              | _ => .error s!"unsupported complement expression: {primitive}"
-            else if primitive == ``Nat.succ then
-              match args.reverse with
-              | value :: _ =>
-                  let valueResult ← extractExprFrom ctx locals nextLocal value
-                  .ok (.u64Bin .natAdd valueResult.fst (.u64 1), valueResult.snd)
-              | _ => .error "unsupported Nat.succ application"
-            else if primitive == ``Nat.pred then
-              match args.reverse with
-              | value :: _ =>
-                  let valueResult ← extractExprFrom ctx locals nextLocal value
-                  .ok (.u64Bin .natSub valueResult.fst (.u64 1), valueResult.snd)
-              | _ => .error "unsupported Nat.pred application"
-            else
-              match primitiveArgPair? args with
-              | some (left, right) =>
-                  extractPrimitivePairFrom ctx locals nextLocal primitive args left right
-              | none => .error s!"unsupported application: {primitive}"
+                else if primitive == ``Nat.succ then
+                  match args.reverse with
+                  | value :: _ =>
+                      let valueResult ← extractExprFrom ctx locals nextLocal value
+                      .ok (.u64Bin .natAdd valueResult.fst (.u64 1), valueResult.snd)
+                  | _ => .error "unsupported Nat.succ application"
+                else if primitive == ``Nat.pred then
+                  match args.reverse with
+                  | value :: _ =>
+                      let valueResult ← extractExprFrom ctx locals nextLocal value
+                      .ok (.u64Bin .natSub valueResult.fst (.u64 1), valueResult.snd)
+                  | _ => .error "unsupported Nat.pred application"
+                else
+                  match primitiveArgPair? args with
+                  | some (left, right) =>
+                      extractPrimitivePairFrom ctx locals nextLocal primitive args left right
+                  | none => .error s!"unsupported application: {primitive}"
 
   partial def extractPrimitivePairFrom
       (ctx : Context)

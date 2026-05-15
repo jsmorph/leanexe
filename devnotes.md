@@ -1,5 +1,24 @@
 # Development Journal
 
+## 2026-05-15: Runtime Counters and Merge-Tree Release Demo
+
+The runtime now maintains allocation, retain, release, and free counters in mutable WASM globals.  `LeanExe.Runtime.allocCount`, `retainCount`, `releaseCount`, and `freeCount` compile to reads of those globals, while `LeanExe.Runtime.release` compiles to an explicit release for monomorphic recursive-inductive heap roots.  Source-level release keeps a manual ownership precondition: the released root and any heap nodes it shares with live values must not be used after the call.
+
+Recursive-inductive heap allocation now records a child-pointer mask in the object header.  The release runtime follows that mask and recursively releases child pointers before putting the current object on the free list.  Array objects have a mask slot in the runtime header, but the compiler still emits zero for array masks, so array child release remains future work.
+
+`LeanExe.Examples.JsonMergeTreeCommand` reads two JSON integer arrays, builds one source-level binary-search tree for each, constructs a third merged tree by copying values from the first two trees, and then releases the first two roots.  The command emits the merged tree plus GC counters, and its companion search command reads the intermediate object and searches the final tree.  A Wasmtime run for `[[1,6,4,100],[33,5,5,20]]` reported `allocs:145`, `freesBefore:0`, `freesAfterFirst:9`, `freesAfterSecond:18`, and `releasesAfterSecond:18` before search.
+
+Checks run:
+
+- [x] `lake build`
+- [x] `lake build LeanExe.Examples.JsonMergeTreeCommand`
+- [x] `.lake/build/bin/lean-wasm compile-wasi-stdin-except --max-input-bytes 4096 --module LeanExe.Examples.JsonMergeTreeCommand --entry LeanExe.Examples.JsonMergeTreeCommand.makeMergedTree --out .lake/build/wasi-programs/makeMergedTree.stdin-except.wasi.wasm`
+- [x] `.lake/build/bin/lean-wasm compile-wasi-stdin-argv-except --max-input-bytes 8192 --max-args 8 --max-argv-bytes 256 --module LeanExe.Examples.JsonMergeTreeCommand --entry LeanExe.Examples.JsonMergeTreeCommand.searchMergedTree --out .lake/build/wasi-programs/searchMergedTree.stdin-argv-except.wasi.wasm`
+- [x] `printf '[[1,6,4,100],[33,5,5,20]]' | build/tools/wasmtime/current/wasmtime run .lake/build/wasi-programs/makeMergedTree.stdin-except.wasi.wasm`
+- [x] `printf '[[1,6,4,100],[33,5,5,20]]' | build/tools/wasmtime/current/wasmtime run .lake/build/wasi-programs/makeMergedTree.stdin-except.wasi.wasm | build/tools/wasmtime/current/wasmtime run .lake/build/wasi-programs/searchMergedTree.stdin-argv-except.wasi.wasm 4` returned `{"found":true,"allocs":849,"releases":0,"frees":0}`.
+- [x] `node test/wasi_program.js` returned `checked 20 WASI program cases, 2 traps, and 7 rejections`.
+- [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 574 accepted, 28 rejected, and 13 trapped cases`, `checked 4 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 20 WASI program cases, 2 traps, and 7 rejections`, and `checked 56 cases`.
+
 ## 2026-05-14: JSON Tree Example Cleanup
 
 `LeanExe.Examples.JsonTreeCommand` now renders the intermediate tree through the JSON AST renderer instead of assembling byte-level object fragments by hand.  The example keeps the attached-field fold in `decodeTree`, because that spelling exposes the field-membership proof Lean needs for structural recursion and matches the well-founded-recursion shape the compiler already supports.  A getter-based recursive decoder is valid Lean, but Lean lowers it through a generated well-founded shape outside the current extractor.
