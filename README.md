@@ -27,13 +27,14 @@ node test/run_all.js
 | `LeanExe/Wasm` | WASM module model, binary encoder, WAT printer, and interpreter support used by tests. |
 | `LeanExe/Examples` | Example Lean programs that exercise the supported subset. |
 | `test` | Node and Lean tests that compare Lean execution with generated WASM behavior. |
+| `manual.md` | Practical guide to writing Lean source that LeanExe can compile. |
 | `spec.md` | The accepted Lean subset, ABI, semantics, and known unsupported features. |
 | `plan.md` | Development plan for expanding the compiler. |
 | `devnotes.md` | Development notes and references. |
 
 ## Write a Program
 
-Write ordinary Lean definitions inside a Lake module.  The selected entry declaration must be pure, monomorphically specialized at runtime, first-order, and accepted by the subset in [Language Specification](spec.md).  Use concrete types such as `UInt64`, `Nat`, `Bool`, `ByteArray`, arrays, structures, and inductives; parametric structures and inductives may appear at concrete supported instantiations.  Simple polymorphic helpers can be useful when each call site fixes concrete supported types, while type classes, function values, `IO`, `unsafe`, and `partial` remain outside the accepted subset.
+Write ordinary Lean definitions inside a Lake module.  The selected entry declaration must be pure, monomorphically specialized at runtime, first-order, and accepted by the subset in [Language Specification](spec.md).  Use [LeanExe User Manual](manual.md) for source templates and practical authoring rules.  Use concrete types such as `UInt64`, `Nat`, `Bool`, `ByteArray`, arrays, structures, and inductives; parametric structures and inductives may appear at concrete supported instantiations.  Simple polymorphic helpers can be useful when each call site fixes concrete supported types, while type classes, function values, `IO`, `unsafe`, and `partial` remain outside the accepted subset.
 
 This scalar example compiles to an exported WASM function that Wasmtime can call directly:
 
