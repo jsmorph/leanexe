@@ -225,7 +225,7 @@ printf '%s' '[1,6,4,100,33,5,5,20]' \
 
 ## Compare With Standard Lean
 
-Use `tools/compare-standard.js` to compare command-shaped entries against standard Lean execution.  The tool generates a temporary Lean runner under `.lake/build/standard-compare`, runs it with `lake env lean --run`, compiles the same entry through the selected LeanExe WASI mode, runs the generated WASM with Wasmtime, and compares exit status, stdout, and stderr byte-for-byte.  It supports `ByteArray`, `ByteArray -> ByteArray`, `ByteArray -> Except ByteArray ByteArray`, `Array ByteArray -> Except ByteArray ByteArray`, and `ByteArray -> Array ByteArray -> Except ByteArray ByteArray` command entries.  It does not compare library-mode scalar exports, and programs that read `LeanExe.Runtime` counters will differ from standard Lean because those counters are runtime intrinsics in generated WASM.
+Use `tools/compare-standard.js` to compare accepted entries against standard Lean execution.  The tool generates a temporary Lean runner under `.lake/build/standard-compare`, runs it with `lake env lean --run`, compiles the same entry through LeanExe, runs the generated WASM with Wasmtime, and compares the observed results.  Command modes compare exit status, stdout, and stderr byte-for-byte for `ByteArray`, `ByteArray -> ByteArray`, `ByteArray -> Except ByteArray ByteArray`, `Array ByteArray -> Except ByteArray ByteArray`, and `ByteArray -> Array ByteArray -> Except ByteArray ByteArray` entries.  Pure mode compares library exports invoked through `wasmtime --invoke`; the caller supplies the standard Lean call expression when flattened WASM parameters differ from the Lean source call, and supplies a result-slot expression of type `Array UInt64` for the flattened return value.
 
 ```sh
 node tools/compare-standard.js \
@@ -233,6 +233,15 @@ node tools/compare-standard.js \
   --module LeanExe.Examples.JsonGcd \
   --entry transform \
   --stdin '[48,18,30]'
+```
+
+```sh
+node tools/compare-standard.js \
+  --mode pure \
+  --module LeanExe.Examples.Correctness \
+  --entry structureReturn \
+  --arg 4 \
+  --result-slots '#[__leanexeValue.x, __leanexeValue.y]'
 ```
 
 Run the built-in comparison cases with:

@@ -11,6 +11,7 @@ const defaultMaxInputBytes = 4096;
 const defaultMaxArgs = 8;
 const defaultMaxArgBytes = 4096;
 const validModes = new Set([
+  "pure",
   "wasi",
   "stdin",
   "stdin-except",
@@ -25,6 +26,7 @@ function usage() {
   node tools/compare-standard.js --self-test
 
 Modes:
+  pure               Library export invoked with wasmtime --invoke
   wasi               ByteArray
   stdin              ByteArray -> ByteArray
   stdin-except       ByteArray -> Except ByteArray ByteArray
@@ -32,6 +34,8 @@ Modes:
   stdin-argv-except  ByteArray -> Array ByteArray -> Except ByteArray ByteArray
 
 Options:
+  --standard-call LEAN_EXPR
+  --result-slots LEAN_EXPR
   --stdin TEXT
   --stdin-file PATH
   --arg VALUE
@@ -118,6 +122,8 @@ function parseArgs(argv) {
     maxArgBytes: defaultMaxArgBytes,
     keep: false,
     selfTest: false,
+    standardCall: "",
+    resultSlots: "",
   };
 
   for (let i = 0; i < argv.length; i += 1) {
@@ -136,6 +142,10 @@ function parseArgs(argv) {
       config.moduleName = argv[++i] || "";
     } else if (arg === "--entry") {
       config.entry = argv[++i] || "";
+    } else if (arg === "--standard-call") {
+      config.standardCall = argv[++i] || "";
+    } else if (arg === "--result-slots") {
+      config.resultSlots = argv[++i] || "";
     } else if (arg === "--stdin") {
       config.input = Buffer.from(argv[++i] || "", "utf8");
     } else if (arg === "--stdin-file") {
@@ -169,6 +179,9 @@ function validateConfig(config) {
   if (!config.entry) {
     throw new Error("--entry is required");
   }
+  if (config.mode === "pure" && !config.resultSlots) {
+    throw new Error("--result-slots is required for pure mode");
+  }
   if (config.input.length > config.maxInputBytes) {
     throw new Error(`stdin has ${config.input.length} bytes, but --max-input-bytes is ${config.maxInputBytes}`);
   }
@@ -187,6 +200,31 @@ function validateArgvBytes(config, paths) {
   if (argvBytes > config.maxArgBytes) {
     throw new Error(`${argvBytes} WASI argv bytes exceed --max-argv-bytes ${config.maxArgBytes}`);
   }
+}
+
+function pureStandardCall(config, fullEntry) {
+  if (config.standardCall) {
+    return config.standardCall;
+  }
+  const args = config.programArgs.join(" ");
+  if (args.length === 0) {
+    return fullEntry;
+  }
+  return `(${fullEntry} ${args})`;
+}
+
+function pureRunnerSource(config, fullEntry) {
+  return `import ${config.moduleName}
+
+def __leanexeWriteSlots (values : Array UInt64) : IO UInt32 := do
+  for value in values do
+    IO.println value
+  return 0
+
+def main (_args : List String) : IO UInt32 := do
+  let __leanexeValue := ${pureStandardCall(config, fullEntry)}
+  __leanexeWriteSlots (${config.resultSlots})
+`;
 }
 
 function runnerSource(config, paths, fullEntry) {
@@ -261,7 +299,9 @@ function pathsFor(config, fullEntry, shortEntry) {
 
 function compileWasm(config, paths, fullEntry) {
   const args = [leanExe];
-  if (config.mode === "wasi") {
+  if (config.mode === "pure") {
+    args.push("compile");
+  } else if (config.mode === "wasi") {
     args.push("compile-wasi");
   } else if (config.mode === "stdin") {
     args.push("compile-wasi-stdin", "--max-input-bytes", config.maxInputBytes.toString());
@@ -296,12 +336,20 @@ function runStandard(config, paths, fullEntry) {
   fs.writeFileSync(paths.input, config.input);
   fs.writeFileSync(paths.standardStdout, Buffer.alloc(0));
   fs.writeFileSync(paths.standardStderr, Buffer.alloc(0));
-  fs.writeFileSync(paths.runner, runnerSource(config, paths, fullEntry));
+  fs.writeFileSync(paths.runner,
+    config.mode === "pure" ? pureRunnerSource(config, fullEntry) : runnerSource(config, paths, fullEntry));
 
   const result = run(["lake", "env", "lean", "--run", paths.runner, ...config.programArgs], {
     encoding: null,
     timeout: 10000,
   });
+  if (config.mode === "pure") {
+    return {
+      status: result.status,
+      stdout: result.stdout || Buffer.alloc(0),
+      stderr: result.stderr || Buffer.alloc(0),
+    };
+  }
   const stdout = fs.readFileSync(paths.standardStdout);
   const stderr = fs.readFileSync(paths.standardStderr);
   const processOutput = outputText(result).trim();
@@ -311,7 +359,18 @@ function runStandard(config, paths, fullEntry) {
   return { status: result.status, stdout, stderr };
 }
 
-function runWasm(config, paths) {
+function runWasm(config, paths, shortEntry) {
+  if (config.mode === "pure") {
+    const result = run([wasmtime, "--invoke", shortEntry, paths.wasm, ...config.programArgs], {
+      encoding: null,
+      timeout: 10000,
+    });
+    return {
+      status: result.status,
+      stdout: result.stdout || Buffer.alloc(0),
+      stderr: result.status === 0 ? Buffer.alloc(0) : result.stderr || Buffer.alloc(0),
+    };
+  }
   const usesStdin =
     config.mode === "stdin" ||
     config.mode === "stdin-except" ||
@@ -378,7 +437,7 @@ function compareCase(inputConfig) {
   ensureBuilt(config.moduleName);
   compileWasm(config, paths, fullEntry);
   const standard = runStandard(config, paths, fullEntry);
-  const wasm = runWasm(config, paths);
+  const wasm = runWasm(config, paths, shortEntry);
   compareResults(config, standard, wasm);
 
   if (!config.keep) {
@@ -390,10 +449,81 @@ function compareCase(inputConfig) {
 }
 
 function selfTest() {
+  const correctness = "LeanExe.Examples.Correctness";
   const cases = [
     {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "idFunctionUInt64",
+      programArgs: ["4"],
+      resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "natDivModNormal",
+      programArgs: ["7"],
+      resultSlots: "#[UInt64.ofNat __leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "structureReturn",
+      programArgs: ["4"],
+      resultSlots: "#[__leanexeValue.x, __leanexeValue.y]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "structureParam",
+      programArgs: ["2", "3"],
+      standardCall:
+        `${correctness}.structureParam ({ x := (2 : UInt64), y := (3 : UInt64) } : ${correctness}.Point)`,
+      resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "statusBranchReturn",
+      programArgs: ["0"],
+      resultSlots:
+        "match __leanexeValue with | .ok value => #[0, value, 0] | .error code => #[1, 0, code]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "statusParam",
+      programArgs: ["0", "5", "0"],
+      standardCall: `${correctness}.statusParam (${correctness}.Status.ok 5)`,
+      resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "productEquality",
+      resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "structurePropEquality",
+      resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "inductiveEqualityDifferentCtor",
+      resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "optionStructuralEquality",
+      resultSlots: "#[__leanexeValue]",
+    },
+    {
       mode: "wasi",
-      moduleName: "LeanExe.Examples.Correctness",
+      moduleName: correctness,
       entry: "byteArrayStringConstReturn",
     },
     {
@@ -462,6 +592,8 @@ try {
       maxInputBytes: config.maxInputBytes,
       maxArgs: config.maxArgs,
       maxArgBytes: config.maxArgBytes,
+      standardCall: config.standardCall,
+      resultSlots: config.resultSlots,
       keep: config.keep,
     });
   }
