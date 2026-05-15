@@ -137,6 +137,7 @@ This changes the failure mode for large single requests.  Reference counting sti
 Checks run:
 
 - [x] `lake build lean-wasm`
+- [x] `node test/run_all.js` returned `checked 94 report classification cases`, `checked 617 accepted, 29 rejected, and 13 trapped cases`, `checked 14 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 22 WASI program cases, 2 traps, and 7 rejections`, `checked 38 standard Lean comparison cases`, and `checked 56 cases`.
 - [x] `node test/refcount.js` returned `checked 5 refcount cases`.
 - [x] `.lake/build/bin/lean-wasm compile-wat --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.byteArrayStringConstReturn --out .lake/build/refcount/byteArrayStringConstReturn.grow.wat`
 - [x] `build/tools/wasmtime/current/wasmtime --invoke alloc .lake/build/refcount/byteArrayStringConstReturn.grow.wat 1048576` returned `4096`.
@@ -3219,3 +3220,13 @@ Checks run:
 
 - [x] `lake build lean-wasm`
 - [x] `node test/run_all.js` returned `checked 94 report classification cases`, `checked 617 accepted, 29 rejected, and 13 trapped cases`, `checked 14 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 22 WASI program cases, 2 traps, and 7 rejections`, `checked 38 standard Lean comparison cases`, and `checked 56 cases`.
+
+## 2026-05-15: Storage lowering module split
+
+`LeanExe.Extract.Storage` now contains heap loads, field flattening from runtime field kinds, array-element flattening, strict-slot materialization, array load/find/local reconstruction, internal-slot reconstruction, public and internal parameter bindings, function parameter targets, and constructor-field binding helpers.  `Core.lean` imports that module and now begins with generic matcher and control-flow helpers.
+
+This split preserves declaration names and behavior.  It reduces `Core.lean` from 9,168 to 8,496 lines.  The next clean boundary is matcher decoding because `Core.lean` now opens with helpers for `Option`, `Except`, `ForIn`, generated matchers, structures, and variants.
+
+Checks run:
+
+- [x] `lake build lean-wasm`
