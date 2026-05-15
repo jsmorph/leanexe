@@ -34,6 +34,13 @@ inductive U64Op where
   | shiftRight
   deriving BEq, Repr
 
+inductive RuntimeStat where
+  | allocs
+  | retains
+  | releases
+  | frees
+  deriving BEq, Repr
+
 def Store := Nat → UInt64
 
 def Store.empty : Store :=
@@ -52,8 +59,10 @@ mutual
     | letE (slot : Nat) (value body : Expr)
     | letCall (slots : List Nat) (index : Nat) (args : List Expr) (body : Expr)
     | letLets (lets : List LocalLet) (body : Expr)
+    | runtimeStat (stat : RuntimeStat)
+    | release (ptr : Expr)
     | arrayAllocSlots (width : Nat) (cells : Expr)
-    | heapAllocSlots (values : List Expr)
+    | heapAllocSlots (childMask : Nat) (values : List Expr)
     | heapLoadSlot (ptr : Expr) (slot : Nat)
     | arrayReplicateSlots (width : Nat) (cells : Expr) (values : List Expr)
     | arraySize (array : Expr)
@@ -201,8 +210,10 @@ mutual
             store
         body.eval module_ callStore
     | .letLets lets body => body.eval module_ (evalLocalLets module_ lets store)
+    | .runtimeStat _ => 0
+    | .release _ => 0
     | .arrayAllocSlots _ _ => 0
-    | .heapAllocSlots _ => 0
+    | .heapAllocSlots _ _ => 0
     | .heapLoadSlot _ _ => 0
     | .arrayReplicateSlots _ _ _ => 0
     | .arraySize _ => 0

@@ -81,6 +81,8 @@ In library mode, the host controls result lifetime.  It may call `alloc` to rese
 
 The compiler emits `release` for a conservative class of local heap temporaries: the temporary must come from a visible fresh allocation in a local expression or local binding, and the function result type must contain no heap pointer.  This lets scalar-result helpers reclaim internal arrays, byte arrays, and recursive values before returning.  The compiler does not yet perform full ownership analysis for heap-pointer results, call results, loop-carried values, or temporaries whose lifetime ends before function exit.  Long-running library hosts can reclaim returned objects today, while broader in-call reclamation requires further ownership analysis.
 
+Compiled Lean code may read runtime counters through `LeanExe.Runtime.allocCount`, `retainCount`, `releaseCount`, and `freeCount`.  It may call `LeanExe.Runtime.release value` for a monomorphic recursive-inductive root at an explicit ownership boundary; the compiled call releases the root and returns the current free count.  The program must not use the released value, or any heap node shared with a live value, after the call, and the compiler does not yet prove that condition.
+
 In WASI command mode, the generated module is a single-run command.  The adapter reads stdin or argv, calls the pure Lean entry, writes stdout or stderr, and exits.  All allocations disappear with the process, so command programs do not need source-level memory management.
 
 ## Scalar Template
@@ -490,7 +492,7 @@ Use existing examples as templates:
 | Range-based JSON field lookup | [JSON Double Example](LeanExe/Examples/JsonDouble.lean), [JSON Add Example](LeanExe/Examples/JsonAdd.lean) |
 | JSON AST parsing and rendering | [JSON Tree Command](LeanExe/Examples/JsonTreeCommand.lean) |
 | WASI stdin `Except` command | [JSON GCD Example](LeanExe/Examples/JsonGcd.lean) |
-| End-to-end WASI pipeline | [JSON Tree WASI Demo](demo.md) |
+| End-to-end WASI pipeline | [JSON Tree WASI Demo](demo.md), [JSON Merge Tree Command](LeanExe/Examples/JsonMergeTreeCommand.lean) |
 | Broad compiler fixtures | [Correctness Examples](LeanExe/Examples/Correctness.lean) |
 
 The examples are executable tests as well as documentation.  If a new source pattern matters, add a small example and run the test harness.  The safest authoring practice is to make each new feature compile in isolation before combining it with JSON, WASI, recursive data, or structured accumulators.

@@ -8,6 +8,7 @@ const correctnessModule = "LeanExe.Examples.Correctness";
 const byteArrayModule = "LeanExe.Examples.ByteArrayPrograms";
 const jsonGcdModule = "LeanExe.Examples.JsonGcd";
 const jsonTreeModule = "LeanExe.Examples.JsonTreeCommand";
+const jsonMergeTreeModule = "LeanExe.Examples.JsonMergeTreeCommand";
 const leanExe = process.env.LEAN_WASM_EXE || path.join(".lake", "build", "bin", "lean-wasm");
 const wasmtime = process.env.WASMTIME || path.join("build", "tools", "wasmtime", "current", "wasmtime");
 const outDir = path.join(".lake", "build", "wasi-programs");
@@ -268,6 +269,45 @@ function expectTreePipeline(inputBytes, needle, expectedBytes) {
   }
 }
 
+function expectMergeTreePipeline(inputBytes, needle) {
+  const makeTree = compileStdinExcept(jsonMergeTreeModule, "makeMergedTree", 4096);
+  const searchTree = compileStdinArgvExcept(jsonMergeTreeModule, "searchMergedTree", 8192, 8, 256);
+  const makeResult = runWasmtimeWithInput(makeTree, "makeMergedTree", "merge-tree", inputBytes);
+  if (makeResult.status !== 0) {
+    throw new Error(outputText(makeResult).trim() || "makeMergedTree failed in Wasmtime");
+  }
+  const makeJson = JSON.parse((makeResult.stdout || Buffer.alloc(0)).toString("utf8"));
+  if (makeJson.gc.allocs <= 0) {
+    throw new Error("makeMergedTree: expected allocation count to increase");
+  }
+  if (makeJson.gc.releasesBefore !== 0 || makeJson.gc.freesBefore !== 0) {
+    throw new Error("makeMergedTree: expected no releases before explicit release");
+  }
+  if (makeJson.gc.freesAfterFirst <= makeJson.gc.freesBefore) {
+    throw new Error("makeMergedTree: expected first source tree to be freed");
+  }
+  if (makeJson.gc.freesAfterSecond <= makeJson.gc.freesAfterFirst) {
+    throw new Error("makeMergedTree: expected second source tree to be freed");
+  }
+  if (makeJson.gc.releasesAfterSecond !== makeJson.gc.freesAfterSecond) {
+    throw new Error("makeMergedTree: expected releases and frees to match for unshared source trees");
+  }
+  const searchResult = runWasmtimeWithInputAndArgs(
+    searchTree,
+    "searchMergedTree",
+    `needle-${needle}`,
+    makeResult.stdout || Buffer.alloc(0),
+    [needle]
+  );
+  if (searchResult.status !== 0) {
+    throw new Error(outputText(searchResult).trim() || "searchMergedTree failed in Wasmtime");
+  }
+  const searchJson = JSON.parse((searchResult.stdout || Buffer.alloc(0)).toString("utf8"));
+  if (searchJson.found !== true) {
+    throw new Error("searchMergedTree: expected successful search");
+  }
+}
+
 function expectArgvExceptError(moduleName, entry, maxArgs, maxArgBytes, args, expectedBytes) {
   const wasm = compileArgvExcept(moduleName, entry, maxArgs, maxArgBytes);
   const result = run([wasmtime, "run", wasm, ...args], {
@@ -425,6 +465,7 @@ function main() {
   expectArgvTrap(byteArrayModule, "argvFirstLast", 1, 1024, ["one", "two"]);
   expectTreePipeline(bytes("[1,6,4,100,33,5,5,20]"), "4", bytes('{"found":true}'));
   expectTreePipeline(bytes("[1,6,4,100,33,5,5,20]"), "7", bytes('{"found":false}'));
+  expectMergeTreePipeline(bytes("[[1,6,4,100],[33,5,5,20]]"), "4");
 
   expectReject("byteArrayPushSize", "program entry must return ByteArray");
   expectReject("byteArrayBranchHelperReturn", "program entry must take no parameters");
@@ -461,7 +502,7 @@ function main() {
     "max argv storage exceeds WASM memory capacity"
   );
 
-  process.stdout.write("checked 19 WASI program cases, 2 traps, and 7 rejections\n");
+  process.stdout.write("checked 20 WASI program cases, 2 traps, and 7 rejections\n");
 }
 
 try {

@@ -213,6 +213,8 @@ wasmtime run build/argv-except.wasm alpha omega
 
 `LeanExe.Examples.JsonTreeCommand` demonstrates a two-command JSON pipeline.  `makeTree` reads a JSON array from stdin, parses it through the ASCII JSON AST parser, and writes a binary-search tree as JSON.  `searchTree` reads that JSON tree from stdin, parses it through the same AST parser, decodes it into the source-level `Tree` type, reads the search key from argv, and writes a JSON boolean result.
 
+`LeanExe.Examples.JsonMergeTreeCommand` extends that pipeline with explicit RC observation.  `makeMergedTree` reads two JSON arrays, builds one tree for each, copies both into a third merged tree, releases the first two roots, and writes the merged tree plus GC counters.  `searchMergedTree` reads that intermediate object and searches the final tree.
+
 ```sh
 printf '%s' '[1,6,4,100,33,5,5,20]' \
   | wasmtime run build/make-tree.wasm \
@@ -246,6 +248,8 @@ console.log(ok === 1n ? "accepted" : "rejected");
 When a library-mode result points into module memory, read or copy the result before calling `release` or `reset`.  `release` decrements the object's reference count and returns the block to the runtime free list when the count reaches zero.  `reset` rewinds the whole heap and invalidates every old pointer, regardless of reference count.
 
 The compiler emits `release` for local heap temporaries when the temporary comes from a visible fresh allocation and the function returns only scalar or fixed non-heap data.  It keeps heap-pointer results conservative: hosts remain responsible for releasing returned arrays and byte arrays after reading them.
+
+Compiled Lean code can read runtime counters with `LeanExe.Runtime.allocCount`, `retainCount`, `releaseCount`, and `freeCount`.  Source code can call `LeanExe.Runtime.release value` for a monomorphic recursive-inductive root when the program has an explicit ownership boundary.  The released value, and any heap node shared with a live value, must not be used after the call; the compiler does not yet prove that ownership condition.
 
 Fixed-width arrays use the compiler's heap layout.  Scalar values occupy one slot, `ByteArray` elements occupy pointer and length slots, products and fixed-width structures or tagged values occupy their flattened slot count, and heap-backed internal values such as nested arrays and recursive inductives occupy one pointer slot.  Structure values flatten field-by-field at the ABI boundary, while nonrecursive inductive values flatten to a constructor tag followed by payload slots.  Recursive inductive values are supported as internal values, including recursive pointer fields inside internal fixed-width structures and tagged values, mutual-family pointers, monomorphic `List UInt64` construction, matching, direct traversal over one or more direct recursive fields, mutual structural traversal over recursive-family members, source-defined list builders such as append and reverse, generated array-child traversal, explicit-accumulator `List.foldl` helpers, top-level closed `List.foldl` bodies with one hidden accumulator, closed structural predicates such as direct `List.any` and `List.all`, direct expression-position `List.length`, list append notation through `++`, `List.reverse`, `List.map`, `List.filter`, and `List.foldr` with closed direct-lambda callbacks, and limited direct-lambda helper calls to `List.map`, `List.filter`, `List.find?`, and `List.any`, but entry parameters and entry results cannot expose recursive data, byte-array arrays, or nested arrays through the host ABI.
 
@@ -291,6 +295,7 @@ The examples directory contains small programs that exercise the user-facing sub
 | `LeanExe.Examples.JsonCollatzLength` | `transform` | Parses a decimal Collatz request and returns the sequence length. |
 | `LeanExe.Examples.JsonGcd` | `transform` | Reads a JSON array from stdin and writes a JSON GCD result through WASI. |
 | `LeanExe.Examples.JsonTreeCommand` | `makeTree`, `searchTree` | Builds a simple JSON binary-search tree and searches it through a WASI pipeline. |
+| `LeanExe.Examples.JsonMergeTreeCommand` | `makeMergedTree`, `searchMergedTree` | Merges two JSON integer-array trees, releases the source trees, and reports runtime GC counters. |
 | `LeanExe.Examples.JsonTools` | `transform`, `lookup` | Exercises limited JSON field lookup and object generation helpers. |
 | `LeanExe.Examples.Correctness` | Many entries | Exercises structures, inductives, arrays, recursion, and edge cases. |
 

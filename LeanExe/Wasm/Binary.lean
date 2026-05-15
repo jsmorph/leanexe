@@ -220,10 +220,12 @@ mutual
           (shiftExprCalls offset body)
     | .letLets lets body =>
         .letLets (lets.map (shiftLocalLetCalls offset)) (shiftExprCalls offset body)
+    | .runtimeStat stat => .runtimeStat stat
+    | .release ptr => .release (shiftExprCalls offset ptr)
     | .arrayAllocSlots width cells =>
         .arrayAllocSlots width (shiftExprCalls offset cells)
-    | .heapAllocSlots values =>
-        .heapAllocSlots (values.map (shiftExprCalls offset))
+    | .heapAllocSlots childMask values =>
+        .heapAllocSlots childMask (values.map (shiftExprCalls offset))
     | .heapLoadSlot ptr slot =>
         .heapLoadSlot (shiftExprCalls offset ptr) slot
     | .arrayReplicateSlots width cells values =>
@@ -401,6 +403,10 @@ def emitU64Op : LeanExe.IR.U64Op → List UInt8
 def coreGlobalSection : List UInt8 :=
   wasmSection 6 <| vec [
     ofNats [126, 1] ++ i64Const 4096 ++ ofNats [11],
+    ofNats [126, 1] ++ i64Const 0 ++ ofNats [11],
+    ofNats [126, 1] ++ i64Const 0 ++ ofNats [11],
+    ofNats [126, 1] ++ i64Const 0 ++ ofNats [11],
+    ofNats [126, 1] ++ i64Const 0 ++ ofNats [11],
     ofNats [126, 1] ++ i64Const 0 ++ ofNats [11]
   ]
 
@@ -485,6 +491,15 @@ def rcKindSlots : Nat :=
 def rcKindArray : Nat :=
   2
 
+def runtimeStatGlobal : LeanExe.IR.RuntimeStat → Nat
+  | .allocs => 2
+  | .retains => 3
+  | .releases => 4
+  | .frees => 5
+
+def incGlobal (index : Nat) : List UInt8 :=
+  globalGet index ++ i64Const 1 ++ ofNats [124] ++ globalSet index
+
 def rcHeaderAddress (ptr : List UInt8) (offset : Nat) : List UInt8 :=
   ptr ++ i64Const offset ++ ofNats [125] ++ i32WrapI64
 
@@ -558,6 +573,7 @@ def rcAllocPayload
       ofNats [4, 64] ++
         bumpAllocate ++
       ofNats [11] ++
+    incGlobal (runtimeStatGlobal .allocs) ++
     localGet ptrLocal
 
 def rcArrayPayloadBytes (width : Nat) (len : List UInt8) : List UInt8 :=
@@ -570,12 +586,12 @@ def rcAllocArrayObject (scratch width : Nat) (len : List UInt8) : List UInt8 :=
     (i64Const width)
     (i64Const 0)
 
-def rcAllocSlotObject (scratch slots : Nat) : List UInt8 :=
+def rcAllocSlotObject (scratch slots childMask : Nat) : List UInt8 :=
   rcAllocPayload scratch
     (i64Const (slots * 8))
     (i64Const rcKindSlots)
     (i64Const slots)
-    (i64Const 0)
+    (i64Const childMask)
 
 def rcAllocRawObject (scratch : Nat) (len : List UInt8) : List UInt8 :=
   rcAllocPayload scratch (len) (i64Const rcKindRaw) (i64Const 0) (i64Const 0)
@@ -609,8 +625,10 @@ mutual
     | .ite cond thenValue elseValue =>
         max (condScratch cond) (max (exprScratch thenValue) (exprScratch elseValue))
     | .letE _ value body => max (exprScratch value) (exprScratch body)
+    | .runtimeStat _ => 0
+    | .release ptr => exprScratch ptr
     | .arrayAllocSlots _ cells => 8 + exprScratch cells
-    | .heapAllocSlots values =>
+    | .heapAllocSlots _ values =>
         1 + values.length +
           max 6 (values.foldl (fun n value => max n (exprScratch value)) 0)
     | .heapLoadSlot ptr _ => 1 + exprScratch ptr
@@ -880,7 +898,7 @@ mutual
       localGet ptr ++ i32WrapI64 ++ localGet len ++ i64Store ++
       localGet ptr
 
-  partial def emitHeapAllocSlots (scratch : Nat) (values : List Expr) : List UInt8 :=
+  partial def emitHeapAllocSlots (scratch childMask : Nat) (values : List Expr) : List UInt8 :=
     let ptrLocal := scratch
     let valueStart := scratch + 1
     let childScratch := scratch + 1 + values.length
@@ -894,7 +912,7 @@ mutual
           localGet ptrLocal ++ i64Const (offset * 8) ++ ofNats [124] ++ i32WrapI64 ++
             localGet (valueStart + offset) ++ i64Store ++ emitSlotStores rest
     emitValueStores (enumerate values) ++
-      rcAllocSlotObject childScratch values.length ++ localSet ptrLocal ++
+      rcAllocSlotObject childScratch values.length childMask ++ localSet ptrLocal ++
       emitSlotStores (enumerate values) ++
       localGet ptrLocal
 
@@ -2209,7 +2227,9 @@ mutual
           emitExpr scratch elseValue ++ ofNats [11]
     | .letE slot value body => emitExpr scratch value ++ localSet slot ++ emitExpr scratch body
     | .arrayAllocSlots width cells => emitArrayAllocSlots scratch width cells
-    | .heapAllocSlots values => emitHeapAllocSlots scratch values
+    | .runtimeStat stat => globalGet (runtimeStatGlobal stat)
+    | .release ptr => emitExpr scratch ptr ++ unreachable
+    | .heapAllocSlots childMask values => emitHeapAllocSlots scratch childMask values
     | .heapLoadSlot ptr slot => emitHeapLoadSlot scratch ptr slot
     | .arrayReplicateSlots width cells values =>
         emitArrayReplicateSlots scratch width cells values
@@ -2353,11 +2373,144 @@ mutual
         ofNats [11]
 end
 
+mutual
+partial def emitExprWithRelease (releaseIndex scratch : Nat) : Expr → List UInt8
+  | .local index => localGet index
+  | .trap => unreachable
+  | .u64 value => i64Const value
+  | .u64Bin .natAdd left right =>
+      emitNatAddWithRelease releaseIndex scratch left right
+  | .u64Bin .natSub left right =>
+      emitNatSubWithRelease releaseIndex scratch left right
+  | .u64Bin .natMul left right =>
+      emitNatMulWithRelease releaseIndex scratch left right
+  | .u64Bin .divU left right =>
+      emitCheckedDivModWithRelease releaseIndex scratch .divU left right
+  | .u64Bin .modU left right =>
+      emitCheckedDivModWithRelease releaseIndex scratch .modU left right
+  | .u64Bin op left right =>
+      emitExprWithRelease releaseIndex scratch left ++
+        emitExprWithRelease releaseIndex scratch right ++ emitU64Op op
+  | .ite cond thenValue elseValue =>
+      emitCondWithRelease releaseIndex scratch cond ++ ofNats [4, 126] ++
+        emitExprWithRelease releaseIndex scratch thenValue ++ ofNats [5] ++
+        emitExprWithRelease releaseIndex scratch elseValue ++ ofNats [11]
+  | .letE slot value body =>
+      emitExprWithRelease releaseIndex scratch value ++ localSet slot ++
+        emitExprWithRelease releaseIndex scratch body
+  | .letCall slots index args body =>
+      args.flatMap (emitExprWithRelease releaseIndex scratch) ++ call index ++
+        slots.reverse.flatMap localSet ++ emitExprWithRelease releaseIndex scratch body
+  | .runtimeStat stat => globalGet (runtimeStatGlobal stat)
+  | .release ptr =>
+      emitExprWithRelease releaseIndex scratch ptr ++ call releaseIndex ++
+        globalGet (runtimeStatGlobal .frees)
+  | expr => emitExpr scratch expr
+
+partial def emitCondWithRelease (releaseIndex scratch : Nat) : Cond → List UInt8
+  | .true => ofNats [65, 1]
+  | .false => ofNats [65, 0]
+  | .eqU64 left right =>
+      emitExprWithRelease releaseIndex scratch left ++
+        emitExprWithRelease releaseIndex scratch right ++ ofNats [81]
+  | .ltU64 left right =>
+      emitExprWithRelease releaseIndex scratch left ++
+        emitExprWithRelease releaseIndex scratch right ++ i64LtU
+  | .leU64 left right =>
+      emitExprWithRelease releaseIndex scratch left ++
+        emitExprWithRelease releaseIndex scratch right ++ i64LeU
+  | .not cond => emitCondWithRelease releaseIndex scratch cond ++ ofNats [69]
+  | .and left right =>
+      emitCondWithRelease releaseIndex scratch left ++ ofNats [4, 127] ++
+        emitCondWithRelease releaseIndex scratch right ++
+      ofNats [5, 65, 0, 11]
+  | .or left right =>
+      emitCondWithRelease releaseIndex scratch left ++ ofNats [4, 127, 65, 1, 5] ++
+        emitCondWithRelease releaseIndex scratch right ++
+      ofNats [11]
+
+partial def emitCheckedDivModWithRelease
+    (releaseIndex scratch : Nat)
+    (op : LeanExe.IR.U64Op)
+    (left right : Expr) : List UInt8 :=
+  let leftLocal := scratch
+  let rightLocal := scratch + 1
+  let childScratch := scratch + 2
+  let zeroValue :=
+    match op with
+    | .divU => i64Const 0
+    | .modU => localGet leftLocal
+    | _ => i64Const 0
+  emitExprWithRelease releaseIndex childScratch left ++ localSet leftLocal ++
+    emitExprWithRelease releaseIndex childScratch right ++ localSet rightLocal ++
+    localGet rightLocal ++ i64Const 0 ++ ofNats [81] ++
+    ofNats [4, 126] ++
+      zeroValue ++
+    ofNats [5] ++
+      localGet leftLocal ++ localGet rightLocal ++ emitU64Op op ++
+    ofNats [11]
+
+partial def emitNatAddWithRelease
+    (releaseIndex scratch : Nat)
+    (left right : Expr) : List UInt8 :=
+  let leftLocal := scratch
+  let rightLocal := scratch + 1
+  let resultLocal := scratch + 2
+  let childScratch := scratch + 3
+  emitExprWithRelease releaseIndex childScratch left ++ localSet leftLocal ++
+    emitExprWithRelease releaseIndex childScratch right ++ localSet rightLocal ++
+    localGet leftLocal ++ localGet rightLocal ++ ofNats [124] ++ localTee resultLocal ++
+    localGet leftLocal ++ i64LtU ++
+    ofNats [4, 126] ++
+      ofNats [0] ++
+    ofNats [5] ++
+      localGet resultLocal ++
+    ofNats [11]
+
+partial def emitNatMulWithRelease
+    (releaseIndex scratch : Nat)
+    (left right : Expr) : List UInt8 :=
+  let leftLocal := scratch
+  let rightLocal := scratch + 1
+  let childScratch := scratch + 2
+  emitExprWithRelease releaseIndex childScratch left ++ localSet leftLocal ++
+    emitExprWithRelease releaseIndex childScratch right ++ localSet rightLocal ++
+    localGet rightLocal ++ i64Const 0 ++ ofNats [81] ++
+    ofNats [4, 126] ++
+      i64Const 0 ++
+    ofNats [5] ++
+      i64Const (2 ^ 64 - 1) ++ localGet rightLocal ++ ofNats [128] ++
+        localGet leftLocal ++ i64LtU ++
+      ofNats [4, 126] ++
+        ofNats [0] ++
+      ofNats [5] ++
+        localGet leftLocal ++ localGet rightLocal ++ ofNats [126] ++
+      ofNats [11] ++
+    ofNats [11]
+
+partial def emitNatSubWithRelease
+    (releaseIndex scratch : Nat)
+    (left right : Expr) : List UInt8 :=
+  let leftLocal := scratch
+  let rightLocal := scratch + 1
+  let childScratch := scratch + 2
+  emitExprWithRelease releaseIndex childScratch left ++ localSet leftLocal ++
+    emitExprWithRelease releaseIndex childScratch right ++ localSet rightLocal ++
+    localGet leftLocal ++ localGet rightLocal ++ i64LtU ++
+    ofNats [4, 126] ++
+      i64Const 0 ++
+    ofNats [5] ++
+      localGet leftLocal ++ localGet rightLocal ++ ofNats [125] ++
+    ofNats [11]
+end
+
 partial def emitStmt (releaseIndex scratch : Nat) : Stmt → List UInt8
   | .skip => []
-  | .assign index value => emitExpr scratch value ++ localSet index
-  | .call slots index args => args.flatMap (emitExpr scratch) ++ call index ++ slots.reverse.flatMap localSet
-  | .release ptr => emitExpr scratch ptr ++ call releaseIndex
+  | .assign index value => emitExprWithRelease releaseIndex scratch value ++ localSet index
+  | .call slots index args =>
+      args.flatMap (emitExprWithRelease releaseIndex scratch) ++ call index ++
+        slots.reverse.flatMap localSet
+  | .release ptr => emitExprWithRelease releaseIndex scratch ptr ++ call releaseIndex
   | .arrayFoldMultiSlotAssign sourceWidth resultWidth array start stop initValues accStart itemStart
       bodyValues bodyLets bodyDone targets =>
       emitArrayFoldMultiSlotAssign scratch sourceWidth resultWidth array start stop initValues accStart
@@ -2371,7 +2524,7 @@ partial def emitStmt (releaseIndex scratch : Nat) : Stmt → List UInt8
       emitRangeFoldMultiSlotAssign scratch resultWidth start stop step initValues accStart itemSlot
         bodyValues bodyLets bodyDone targets
   | .ite cond thenStmt elseStmt =>
-      emitCond scratch cond ++ ofNats [4, 64] ++
+      emitCondWithRelease releaseIndex scratch cond ++ ofNats [4, 64] ++
         emitStmt releaseIndex scratch thenStmt ++
         ofNats [5] ++
         emitStmt releaseIndex scratch elseStmt ++
@@ -2425,7 +2578,12 @@ def coreAllocBody : List UInt8 :=
 def coreResetBody : List UInt8 :=
   body
     (ofNats [0])
-    (i64Const 4096 ++ globalSet 0 ++ i64Const 0 ++ globalSet 1)
+    (i64Const 4096 ++ globalSet 0 ++
+      i64Const 0 ++ globalSet 1 ++
+      i64Const 0 ++ globalSet (runtimeStatGlobal .allocs) ++
+      i64Const 0 ++ globalSet (runtimeStatGlobal .retains) ++
+      i64Const 0 ++ globalSet (runtimeStatGlobal .releases) ++
+      i64Const 0 ++ globalSet (runtimeStatGlobal .frees))
 
 def coreRetainBody : List UInt8 :=
   let rcLocal := 1
@@ -2435,9 +2593,10 @@ def coreRetainBody : List UInt8 :=
       ofNats [4, 64] ++
         rcHeaderLoad (localGet 0) 48 ++ i64Const rcMagic ++ i64Ne ++
           ofNats [4, 64] ++ unreachable ++ ofNats [11] ++
-        rcHeaderLoad (localGet 0) 40 ++ localSet rcLocal ++
-        localGet rcLocal ++ i64Const 0 ++ i64Eq ++
-          ofNats [4, 64] ++ unreachable ++ ofNats [11] ++
+      rcHeaderLoad (localGet 0) 40 ++ localSet rcLocal ++
+      localGet rcLocal ++ i64Const 0 ++ i64Eq ++
+        ofNats [4, 64] ++ unreachable ++ ofNats [11] ++
+        incGlobal (runtimeStatGlobal .retains) ++
         rcHeaderStore (localGet 0) 40 (localGet rcLocal ++ i64Const 1 ++ ofNats [124]) ++
       ofNats [11] ++
       localGet 0)
@@ -2495,7 +2654,8 @@ def coreReleaseBody (releaseIndex : Nat) : List UInt8 :=
         ofNats [12] ++ u32leb 0 ++
       ofNats [11, 11]
   let freeCurrent :=
-    rcHeaderStore (localGet 0) 40 (i64Const 0) ++
+    incGlobal (runtimeStatGlobal .frees) ++
+      rcHeaderStore (localGet 0) 40 (i64Const 0) ++
       rcHeaderStore (localGet 0) 8 (globalGet 1) ++
       localGet 0 ++ globalSet 1
   body
@@ -2507,6 +2667,7 @@ def coreReleaseBody (releaseIndex : Nat) : List UInt8 :=
       rcHeaderLoad (localGet 0) 40 ++ localSet rcLocal ++
       localGet rcLocal ++ i64Const 0 ++ i64Eq ++
         ofNats [4, 64] ++ unreachable ++ ofNats [11] ++
+      incGlobal (runtimeStatGlobal .releases) ++
       i64Const 1 ++ localGet rcLocal ++ i64LtU ++
         ofNats [4, 64] ++
           rcHeaderStore (localGet 0) 40 (localGet rcLocal ++ i64Const 1 ++ ofNats [125]) ++
@@ -3044,7 +3205,7 @@ mutual
         "i64.mul", "i64.const 8", "i64.mul", "i64.add", "i64.add", "global.set 0",
         s!"local.get {ptr}"]
 
-  partial def heapAllocSlotsWatLines (scratch : Nat) (values : List Expr) : List String :=
+  partial def heapAllocSlotsWatLines (scratch _childMask : Nat) (values : List Expr) : List String :=
     let ptrLocal := scratch
     let valueStart := scratch + 1
     let childScratch := scratch + 1 + values.length
@@ -4430,7 +4591,9 @@ mutual
     | .letE slot value body =>
         exprWatLines scratch value ++ [s!"local.set {slot}"] ++ exprWatLines scratch body
     | .arrayAllocSlots width cells => arrayAllocSlotsWatLines scratch width cells
-    | .heapAllocSlots values => heapAllocSlotsWatLines scratch values
+    | .runtimeStat stat => [s!"global.get {runtimeStatGlobal stat}"]
+    | .release ptr => exprWatLines scratch ptr ++ ["unreachable"]
+    | .heapAllocSlots childMask values => heapAllocSlotsWatLines scratch childMask values
     | .heapLoadSlot ptr slot => heapLoadSlotWatLines scratch ptr slot
     | .arrayReplicateSlots width cells values =>
         arrayReplicateSlotsWatLines scratch width cells values
@@ -4579,13 +4742,113 @@ mutual
           ["end"]
 end
 
+mutual
+  partial def exprWatLinesWithRelease (releaseIndex scratch : Nat) : Expr → List String
+    | .local index => [s!"local.get {index}"]
+    | .trap => ["unreachable"]
+    | .u64 value => [s!"i64.const {value}"]
+    | .u64Bin .add left right =>
+        exprWatLinesWithRelease releaseIndex scratch left ++
+          exprWatLinesWithRelease releaseIndex scratch right ++ ["i64.add"]
+    | .u64Bin .natAdd left right => natAddWatLines scratch left right
+    | .u64Bin .sub left right =>
+        exprWatLinesWithRelease releaseIndex scratch left ++
+          exprWatLinesWithRelease releaseIndex scratch right ++ ["i64.sub"]
+    | .u64Bin .natSub left right => natSubWatLines scratch left right
+    | .u64Bin .mul left right =>
+        exprWatLinesWithRelease releaseIndex scratch left ++
+          exprWatLinesWithRelease releaseIndex scratch right ++ ["i64.mul"]
+    | .u64Bin .natMul left right => natMulWatLines scratch left right
+    | .u64Bin .divU left right => checkedDivModWatLines scratch .divU left right
+    | .u64Bin .modU left right => checkedDivModWatLines scratch .modU left right
+    | .u64Bin .bitAnd left right =>
+        exprWatLinesWithRelease releaseIndex scratch left ++
+          exprWatLinesWithRelease releaseIndex scratch right ++ ["i64.and"]
+    | .u64Bin .bitOr left right =>
+        exprWatLinesWithRelease releaseIndex scratch left ++
+          exprWatLinesWithRelease releaseIndex scratch right ++ ["i64.or"]
+    | .u64Bin .bitXor left right =>
+        exprWatLinesWithRelease releaseIndex scratch left ++
+          exprWatLinesWithRelease releaseIndex scratch right ++ ["i64.xor"]
+    | .u64Bin .shiftLeft left right =>
+        exprWatLinesWithRelease releaseIndex scratch left ++
+          exprWatLinesWithRelease releaseIndex scratch right ++ ["i64.shl"]
+    | .u64Bin .shiftRight left right =>
+        exprWatLinesWithRelease releaseIndex scratch left ++
+          exprWatLinesWithRelease releaseIndex scratch right ++ ["i64.shr_u"]
+    | .ite cond thenValue elseValue =>
+        condWatLinesWithRelease releaseIndex scratch cond ++
+          ["if (result i64)"] ++
+          indent 2 (exprWatLinesWithRelease releaseIndex scratch thenValue) ++
+          ["else"] ++
+          indent 2 (exprWatLinesWithRelease releaseIndex scratch elseValue) ++
+          ["end"]
+    | .letE slot value body =>
+        exprWatLinesWithRelease releaseIndex scratch value ++ [s!"local.set {slot}"] ++
+          exprWatLinesWithRelease releaseIndex scratch body
+    | .letCall slots index args body =>
+        args.flatMap (exprWatLinesWithRelease releaseIndex scratch) ++ [s!"call {index}"] ++
+          slots.reverse.map (fun slot => s!"local.set {slot}") ++
+          exprWatLinesWithRelease releaseIndex scratch body
+    | .letLets lets body =>
+        lets.flatMap (localLetWatLinesWithRelease releaseIndex scratch) ++
+          exprWatLinesWithRelease releaseIndex scratch body
+    | .runtimeStat stat => [s!"global.get {runtimeStatGlobal stat}"]
+    | .release ptr =>
+        exprWatLinesWithRelease releaseIndex scratch ptr ++ [s!"call {releaseIndex}"] ++
+          [s!"global.get {runtimeStatGlobal .frees}"]
+    | expr => exprWatLines scratch expr
+
+  partial def condWatLinesWithRelease (releaseIndex scratch : Nat) : Cond → List String
+    | .true => ["i32.const 1"]
+    | .false => ["i32.const 0"]
+    | .eqU64 left right =>
+        exprWatLinesWithRelease releaseIndex scratch left ++
+          exprWatLinesWithRelease releaseIndex scratch right ++ ["i64.eq"]
+    | .ltU64 left right =>
+        exprWatLinesWithRelease releaseIndex scratch left ++
+          exprWatLinesWithRelease releaseIndex scratch right ++ ["i64.lt_u"]
+    | .leU64 left right =>
+        exprWatLinesWithRelease releaseIndex scratch left ++
+          exprWatLinesWithRelease releaseIndex scratch right ++ ["i64.le_u"]
+    | .not cond => condWatLinesWithRelease releaseIndex scratch cond ++ ["i32.eqz"]
+    | .and left right =>
+        condWatLinesWithRelease releaseIndex scratch left ++
+          ["if (result i32)"] ++
+          indent 2 (condWatLinesWithRelease releaseIndex scratch right) ++
+          ["else", "  i32.const 0", "end"]
+    | .or left right =>
+        condWatLinesWithRelease releaseIndex scratch left ++
+          ["if (result i32)", "  i32.const 1", "else"] ++
+          indent 2 (condWatLinesWithRelease releaseIndex scratch right) ++
+          ["end"]
+
+  partial def localLetWatLinesWithRelease (releaseIndex scratch : Nat) :
+      LocalLet → List String
+    | .expr slot value =>
+        exprWatLinesWithRelease releaseIndex scratch value ++ [s!"local.set {slot}"]
+    | .call slots index args =>
+        args.flatMap (exprWatLinesWithRelease releaseIndex scratch) ++ [s!"call {index}"] ++
+          slots.reverse.map (fun slot => s!"local.set {slot}")
+    | .slots slots values =>
+        (slots.zip values).flatMap fun item =>
+          exprWatLinesWithRelease releaseIndex scratch item.snd ++ [s!"local.set {item.fst}"]
+    | .branch cond thenLets elseLets =>
+        condWatLinesWithRelease releaseIndex scratch cond ++ ["if"] ++
+          indent 2 (thenLets.flatMap (localLetWatLinesWithRelease releaseIndex scratch)) ++
+          ["else"] ++
+          indent 2 (elseLets.flatMap (localLetWatLinesWithRelease releaseIndex scratch)) ++
+          ["end"]
+end
+
 partial def stmtWatLines (releaseIndex scratch : Nat) : Stmt → List String
   | .skip => []
-  | .assign index value => exprWatLines scratch value ++ [s!"local.set {index}"]
+  | .assign index value =>
+      exprWatLinesWithRelease releaseIndex scratch value ++ [s!"local.set {index}"]
   | .call slots index args =>
-      args.flatMap (exprWatLines scratch) ++ [s!"call {index}"] ++
+      args.flatMap (exprWatLinesWithRelease releaseIndex scratch) ++ [s!"call {index}"] ++
         slots.reverse.map (fun slot => s!"local.set {slot}")
-  | .release ptr => exprWatLines scratch ptr ++ [s!"call {releaseIndex}"]
+  | .release ptr => exprWatLinesWithRelease releaseIndex scratch ptr ++ [s!"call {releaseIndex}"]
   | .arrayFoldMultiSlotAssign sourceWidth resultWidth array start stop initValues accStart itemStart
       bodyValues bodyLets bodyDone targets =>
       arrayFoldMultiSlotAssignWatLines scratch sourceWidth resultWidth array start stop initValues
@@ -4599,7 +4862,7 @@ partial def stmtWatLines (releaseIndex scratch : Nat) : Stmt → List String
       rangeFoldMultiSlotAssignWatLines scratch resultWidth start stop step initValues accStart itemSlot
         bodyValues bodyLets bodyDone targets
   | .ite cond thenStmt elseStmt =>
-      condWatLines scratch cond ++ ["if"] ++
+      condWatLinesWithRelease releaseIndex scratch cond ++ ["if"] ++
         indent 2 (stmtWatLines releaseIndex scratch thenStmt) ++
         ["else"] ++
         indent 2 (stmtWatLines releaseIndex scratch elseStmt) ++
@@ -4608,7 +4871,7 @@ partial def stmtWatLines (releaseIndex scratch : Nat) : Stmt → List String
       stmtWatLines releaseIndex scratch first ++ stmtWatLines releaseIndex scratch second
   | .while cond loopBody =>
       ["block", "  loop"] ++
-        indent 4 (condWatLines scratch cond ++ ["i32.eqz", "br_if 1"] ++
+        indent 4 (condWatLinesWithRelease releaseIndex scratch cond ++ ["i32.eqz", "br_if 1"] ++
           stmtWatLines releaseIndex scratch loopBody ++ ["br 0"]) ++
         ["  end", "end"]
 
@@ -4640,13 +4903,19 @@ def funcWatLines (releaseIndex : Nat) (func : Func) : List String :=
   [s!"(func{exportText}{paramWat func.params}{resultWat func.results.length}"] ++
     indent 2
       (localWat extra ++ stmtWatLines releaseIndex scratch func.body ++
-        func.results.flatMap (exprWatLines scratch)) ++
+        func.results.flatMap (exprWatLinesWithRelease releaseIndex scratch)) ++
     [")"]
 
 def moduleWat (module_ : Module) : String :=
   let releaseIndex := module_.funcs.size + 3
   String.intercalate "\n" <|
-    ["(module", "  (memory (export \"memory\") 16)", "  (global (mut i64) (i64.const 4096))"] ++
+    ["(module", "  (memory (export \"memory\") 16)",
+      "  (global (mut i64) (i64.const 4096))",
+      "  (global (mut i64) (i64.const 0))",
+      "  (global (mut i64) (i64.const 0))",
+      "  (global (mut i64) (i64.const 0))",
+      "  (global (mut i64) (i64.const 0))",
+      "  (global (mut i64) (i64.const 0))"] ++
       (module_.funcs.toList.flatMap (fun func => indent 2 (funcWatLines releaseIndex func))) ++
       indent 2 [
         "(func (export \"alloc\") (param i64) (result i64)",
@@ -4655,15 +4924,52 @@ def moduleWat (module_ : Module) : String :=
         "  local.get 0",
         "  i64.add",
         "  global.set 0",
+        "  global.get 2",
+        "  i64.const 1",
+        "  i64.add",
+        "  global.set 2",
         ")",
         "(func (export \"reset\")",
         "  i64.const 4096",
         "  global.set 0",
+        "  i64.const 0",
+        "  global.set 1",
+        "  i64.const 0",
+        "  global.set 2",
+        "  i64.const 0",
+        "  global.set 3",
+        "  i64.const 0",
+        "  global.set 4",
+        "  i64.const 0",
+        "  global.set 5",
         ")",
         "(func (export \"retain\") (param i64) (result i64)",
         "  local.get 0",
+        "  i64.eqz",
+        "  if",
+        "    local.get 0",
+        "    return",
+        "  end",
+        "  global.get 3",
+        "  i64.const 1",
+        "  i64.add",
+        "  global.set 3",
+        "  local.get 0",
         ")",
         "(func (export \"release\") (param i64)",
+        "  local.get 0",
+        "  i64.eqz",
+        "  if",
+        "    return",
+        "  end",
+        "  global.get 4",
+        "  i64.const 1",
+        "  i64.add",
+        "  global.set 4",
+        "  global.get 5",
+        "  i64.const 1",
+        "  i64.add",
+        "  global.set 5",
         "  local.get 0",
         "  drop",
         ")",
