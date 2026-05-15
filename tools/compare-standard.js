@@ -692,6 +692,63 @@ let out := __leanexeSep out
 out ++ __leanexeValue.bytes`,
     },
     {
+      mode: "pure-bytes",
+      moduleName: correctness,
+      entry: "u64ListTailValue",
+      serializer: `${correctness}.u64ListBytes __leanexeValue`,
+    },
+    {
+      mode: "pure-bytes",
+      moduleName: correctness,
+      entry: "leanListAppendRecValue",
+      serializer: `${correctness}.leanListBytes __leanexeValue`,
+    },
+    {
+      mode: "pure-bytes",
+      moduleName: correctness,
+      entry: "leanListReverseValue",
+      serializer: `${correctness}.leanListBytes __leanexeValue`,
+    },
+    {
+      mode: "pure-bytes",
+      moduleName: correctness,
+      entry: "leanListMapValue",
+      serializer: `${correctness}.leanListBytes __leanexeValue`,
+    },
+    {
+      mode: "pure-bytes",
+      moduleName: correctness,
+      entry: "leanListFilterValue",
+      serializer: `${correctness}.leanListBytes __leanexeValue`,
+    },
+    {
+      mode: "pure-bytes",
+      moduleName: correctness,
+      entry: "u64TreeValue",
+      serializer: `${correctness}.u64TreeBytes __leanexeValue`,
+    },
+    {
+      mode: "pure-bytes",
+      moduleName: correctness,
+      entry: "u64BinaryValue",
+      serializer: `${correctness}.u64BinaryBytes __leanexeValue`,
+    },
+    {
+      mode: "pure-bytes",
+      moduleName: correctness,
+      entry: "mutJsonValue",
+      serializer: `${correctness}.mutJsonBytes __leanexeValue`,
+    },
+    {
+      mode: "pure-bytes",
+      moduleName: "LeanExe.Ascii.Json.Value",
+      entry: "LeanExe.Ascii.Json.parseBytes",
+      standardCall: `LeanExe.Ascii.Json.parseBytes "{\\"a\\":[1,true,null],\\"b\\":{\\"c\\":\\"ok\\"}}".toUTF8`,
+      serializer: `match __leanexeValue with
+| some value => LeanExe.Ascii.Json.render value
+| none => "none".toUTF8`,
+    },
+    {
       mode: "wasi",
       moduleName: correctness,
       entry: "byteArrayStringConstReturn",

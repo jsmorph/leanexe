@@ -1,4 +1,5 @@
 import Init.Data.ByteArray.Extra
+import LeanExe.Ascii.Decimal
 
 namespace LeanExe.Examples.Correctness
 
@@ -832,6 +833,18 @@ def u64ListArrayFoldHeads : UInt64 :=
   let xs : Array U64List := #[u64List123, U64List.cons 9 U64List.nil]
   xs.foldl (fun acc item => acc + u64ListHeadOrZero item) 0
 
+def u64ListTailValue : U64List :=
+  u64ListTail u64List123
+
+def u64ListBytes : U64List -> ByteArray
+  | .nil => "N".toUTF8
+  | .cons head tail =>
+      let out := "C(".toUTF8
+      let out := LeanExe.Ascii.appendUInt64Decimal out head
+      let out := out.push (44 : UInt8)
+      let out := out.append (u64ListBytes tail)
+      out.push (41 : UInt8)
+
 def leanList123 : List UInt64 :=
   [1, 2, 3]
 
@@ -983,6 +996,27 @@ def leanListAllDirectDemo : UInt64 :=
 def leanListAllDirectMissingDemo : UInt64 :=
   if leanList123.all (fun x => x < 3) then 1 else 0
 
+def leanListAppendRecValue : List UInt64 :=
+  leanListAppendRec leanList123 [4, 5]
+
+def leanListReverseValue : List UInt64 :=
+  leanListReverseAcc leanList123 []
+
+def leanListMapValue : List UInt64 :=
+  leanList123.map (fun x => x + 1)
+
+def leanListFilterValue : List UInt64 :=
+  leanList123.filter (fun x => x > 1)
+
+def leanListBytes : List UInt64 -> ByteArray
+  | [] => "N".toUTF8
+  | head :: tail =>
+      let out := "C(".toUTF8
+      let out := LeanExe.Ascii.appendUInt64Decimal out head
+      let out := out.push (44 : UInt8)
+      let out := out.append (leanListBytes tail)
+      out.push (41 : UInt8)
+
 inductive U64Tree where
   | leaf : UInt64 → U64Tree
   | node : Array U64Tree → U64Tree
@@ -1023,6 +1057,18 @@ inductive MutJsonSlot where
   | missing : MutJsonSlot
   | present : MutJson → MutJsonSlot
 
+structure BytesFoldState where
+  first : Bool
+  out : ByteArray
+
+def appendSeparatedBytes (state : BytesFoldState) (bytes : ByteArray) : BytesFoldState :=
+  let out :=
+    if state.first then
+      state.out
+    else
+      state.out.push (44 : UInt8)
+  { first := false, out := out.append bytes }
+
 def u64TreeFirstChildHead (tree : U64Tree) : UInt64 :=
   match tree with
   | .leaf value => value
@@ -1051,6 +1097,25 @@ def u64TreeSizeDemo : UInt64 :=
       U64Tree.leaf 4
     ])
 
+def u64TreeValue : U64Tree :=
+  U64Tree.node #[
+    U64Tree.leaf 1,
+    U64Tree.node #[U64Tree.leaf 2, U64Tree.leaf 3],
+    U64Tree.leaf 4
+  ]
+
+def u64TreeBytes : U64Tree -> ByteArray
+  | .leaf value =>
+      let out := "L(".toUTF8
+      let out := LeanExe.Ascii.appendUInt64Decimal out value
+      out.push (41 : UInt8)
+  | .node children =>
+      let state :=
+        children.foldl
+          (fun state child => appendSeparatedBytes state (u64TreeBytes child))
+          { first := true, out := "T[".toUTF8 }
+      state.out.push (93 : UInt8)
+
 def u64BinaryStructuralSize : U64Binary → UInt64
   | .leaf _value => 1
   | .node left right => u64BinaryStructuralSize left + u64BinaryStructuralSize right
@@ -1058,6 +1123,23 @@ def u64BinaryStructuralSize : U64Binary → UInt64
 def u64BinaryStructuralSizeDemo : UInt64 :=
   u64BinaryStructuralSize
     (U64Binary.node (U64Binary.leaf 1) (U64Binary.node (U64Binary.leaf 2) (U64Binary.leaf 3)))
+
+def u64BinaryValue : U64Binary :=
+  U64Binary.node
+    (U64Binary.leaf 1)
+    (U64Binary.node (U64Binary.leaf 2) (U64Binary.leaf 3))
+
+def u64BinaryBytes : U64Binary -> ByteArray
+  | .leaf value =>
+      let out := "L(".toUTF8
+      let out := LeanExe.Ascii.appendUInt64Decimal out value
+      out.push (41 : UInt8)
+  | .node left right =>
+      let out := "B(".toUTF8
+      let out := out.append (u64BinaryBytes left)
+      let out := out.push (44 : UInt8)
+      let out := out.append (u64BinaryBytes right)
+      out.push (41 : UInt8)
 
 def u64ExprEval : U64Expr → UInt64
   | .lit value => value
@@ -1104,6 +1186,36 @@ def recursiveTaggedArrayFindDemo : UInt64 :=
     | .filled tag _value => tag == 4) with
   | none => 0
   | some slot => exprSlotScore slot
+
+def mutJsonValue : MutJson :=
+  MutJson.obj #[
+    MutField.mk 2 (MutJson.num 7),
+    MutField.mk 3 (MutJson.arr #[MutJson.null, MutJson.num 5])
+  ]
+
+mutual
+def mutJsonBytes : MutJson -> ByteArray
+  | .null => "null".toUTF8
+  | .num value => LeanExe.Ascii.appendUInt64Decimal ByteArray.empty value
+  | .arr items =>
+      let state :=
+        items.foldl
+          (fun state item => appendSeparatedBytes state (mutJsonBytes item))
+          { first := true, out := ByteArray.empty.push (91 : UInt8) }
+      state.out.push (93 : UInt8)
+  | .obj fields =>
+      let state :=
+        fields.foldl
+          (fun state field => appendSeparatedBytes state (mutFieldBytes field))
+          { first := true, out := ByteArray.empty.push (123 : UInt8) }
+      state.out.push (125 : UInt8)
+
+def mutFieldBytes : MutField -> ByteArray
+  | .mk key value =>
+      let out := LeanExe.Ascii.appendUInt64Decimal ByteArray.empty key
+      let out := out.push (58 : UInt8)
+      out.append (mutJsonBytes value)
+end
 
 def mutJsonShallowScore : MutJson → UInt64
   | .null => 0
