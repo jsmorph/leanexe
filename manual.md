@@ -79,7 +79,7 @@ In library mode, the host controls result lifetime.  It may call `alloc` to rese
 
 `reset()` remains a coarse reclamation operation.  It rewinds the heap and clears the free list, invalidating every old pointer regardless of reference count.  A host should use either explicit `release` calls for individual returned objects or `reset()` at a boundary where no old pointer remains live.
 
-The compiler does not yet perform full ownership analysis for every local temporary.  Generated code allocates heap-backed objects with reference-count headers, but it does not generally emit `release` for dead internal temporaries during one call.  Long-running library hosts can reclaim returned objects today; reclaiming all dead temporaries inside a call requires the next ownership pass.
+The compiler emits `release` for a conservative class of local heap temporaries: the temporary must come from a visible fresh allocation in a local expression or local binding, and the function result type must contain no heap pointer.  This lets scalar-result helpers reclaim internal arrays, byte arrays, and recursive values before returning.  The compiler does not yet perform full ownership analysis for heap-pointer results, call results, loop-carried values, or temporaries whose lifetime ends before function exit.  Long-running library hosts can reclaim returned objects today, while broader in-call reclamation requires further ownership analysis.
 
 In WASI command mode, the generated module is a single-run command.  The adapter reads stdin or argv, calls the pure Lean entry, writes stdout or stderr, and exits.  All allocations disappear with the process, so command programs do not need source-level memory management.
 

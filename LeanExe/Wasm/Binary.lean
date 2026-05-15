@@ -346,6 +346,7 @@ mutual
     | .skip => .skip
     | .assign index value => .assign index (shiftExprCalls offset value)
     | .call slots index args => .call slots (index + offset) (args.map (shiftExprCalls offset))
+    | .release ptr => .release (shiftExprCalls offset ptr)
     | .arrayFoldMultiSlotAssign sourceWidth resultWidth array start stop initValues accStart
         itemStart bodyValues bodyLets bodyDone targets =>
         .arrayFoldMultiSlotAssign sourceWidth resultWidth (shiftExprCalls offset array)
@@ -757,6 +758,7 @@ partial def stmtScratch : Stmt → Nat
   | .skip => 0
   | .assign _ value => exprScratch value
   | .call _ _ args => args.foldl (fun count arg => max count (exprScratch arg)) 0
+  | .release ptr => exprScratch ptr
   | .arrayFoldMultiSlotAssign sourceWidth resultWidth array start stop initValues _ _ bodyValues
       bodyLets bodyDone _ =>
       let initScratch := initValues.foldl (fun n value => max n (exprScratch value)) 0
@@ -2351,10 +2353,11 @@ mutual
         ofNats [11]
 end
 
-partial def emitStmt (scratch : Nat) : Stmt → List UInt8
+partial def emitStmt (releaseIndex scratch : Nat) : Stmt → List UInt8
   | .skip => []
   | .assign index value => emitExpr scratch value ++ localSet index
   | .call slots index args => args.flatMap (emitExpr scratch) ++ call index ++ slots.reverse.flatMap localSet
+  | .release ptr => emitExpr scratch ptr ++ call releaseIndex
   | .arrayFoldMultiSlotAssign sourceWidth resultWidth array start stop initValues accStart itemStart
       bodyValues bodyLets bodyDone targets =>
       emitArrayFoldMultiSlotAssign scratch sourceWidth resultWidth array start stop initValues accStart
@@ -2369,15 +2372,15 @@ partial def emitStmt (scratch : Nat) : Stmt → List UInt8
         bodyValues bodyLets bodyDone targets
   | .ite cond thenStmt elseStmt =>
       emitCond scratch cond ++ ofNats [4, 64] ++
-        emitStmt scratch thenStmt ++
+        emitStmt releaseIndex scratch thenStmt ++
         ofNats [5] ++
-        emitStmt scratch elseStmt ++
+        emitStmt releaseIndex scratch elseStmt ++
         ofNats [11]
-  | .seq first second => emitStmt scratch first ++ emitStmt scratch second
+  | .seq first second => emitStmt releaseIndex scratch first ++ emitStmt releaseIndex scratch second
   | .while cond loopBody =>
       ofNats [2, 64, 3, 64] ++
       emitCond scratch cond ++ ofNats [69, 13, 1] ++
-      emitStmt scratch loopBody ++
+      emitStmt releaseIndex scratch loopBody ++
       ofNats [12, 0, 11, 11]
 
 def localDecls (func : Func) : List UInt8 :=
@@ -2387,9 +2390,10 @@ def localDecls (func : Func) : List UInt8 :=
   else
     u32leb 1 ++ u32leb extra ++ ofNats [126]
 
-def emitFuncBody (func : Func) : List UInt8 :=
+def emitFuncBody (releaseIndex : Nat) (func : Func) : List UInt8 :=
   let scratch := func.locals
-  body (localDecls func) (emitStmt scratch func.body ++ func.results.flatMap (emitExpr scratch))
+  body (localDecls func)
+    (emitStmt releaseIndex scratch func.body ++ func.results.flatMap (emitExpr scratch))
 
 def typeForFunc (func : Func) : List UInt8 :=
   funcType (List.replicate func.params i64) (List.replicate func.results.length i64)
@@ -2522,9 +2526,10 @@ def coreReleaseBody (releaseIndex : Nat) : List UInt8 :=
       freeCurrent)
 
 def codeSection (module_ : Module) : List UInt8 :=
+  let releaseIndex := module_.funcs.size + 3
   wasmSection 10 <| vec (
-    module_.funcs.toList.map emitFuncBody ++
-      [coreAllocBody, coreResetBody, coreRetainBody, coreReleaseBody (module_.funcs.size + 3)])
+    module_.funcs.toList.map (emitFuncBody releaseIndex) ++
+      [coreAllocBody, coreResetBody, coreRetainBody, coreReleaseBody releaseIndex])
 
 def moduleBytes (module_ : Module) : ByteArray :=
   ByteArray.mk <| (ofNats [0, 97, 115, 109, 1, 0, 0, 0]
@@ -2590,14 +2595,14 @@ def wasiTypeSectionWithImportTypes (importTypes : List (List UInt8)) (module_ : 
   wasmSection 1 <| vec (
     importTypes ++
       module_.funcs.toList.map typeForFunc ++
-      [wasiStartType])
+      [wasiStartType, funcType [i64] []])
 
 def wasiTypeSection (module_ : Module) : List UInt8 :=
   wasiTypeSectionWithImportTypes [wasiFdIoType] module_
 
 def wasiFunctionSectionWithImportTypes (importTypeCount : Nat) (module_ : Module) : List UInt8 :=
   wasmSection 3 <|
-    u32Vec ((List.range (module_.funcs.size + 1)).map (fun index => index + importTypeCount))
+    u32Vec ((List.range (module_.funcs.size + 2)).map (fun index => index + importTypeCount))
 
 def wasiFunctionSection (module_ : Module) : List UInt8 :=
   wasiFunctionSectionWithImportTypes 1 module_
@@ -2652,9 +2657,10 @@ def wasiStdoutStartBody (entryIndex : Nat) : List UInt8 :=
 
 def wasiCodeSection (module_ : Module) (entryIndex : Nat) : List UInt8 :=
   let shifted := shiftModuleCalls 1 module_
+  let releaseIndex := module_.funcs.size + 2
   wasmSection 10 <| vec (
-    shifted.funcs.toList.map emitFuncBody ++
-      [wasiStdoutStartBody (entryIndex + 1)])
+    shifted.funcs.toList.map (emitFuncBody releaseIndex) ++
+      [wasiStdoutStartBody (entryIndex + 1), coreReleaseBody releaseIndex])
 
 def wasiMemoryBytes : Nat :=
   16 * 65536
@@ -2813,16 +2819,18 @@ def wasiStdinArgvExceptStartBody
 
 def wasiStdinCodeSection (maxInput : Nat) (module_ : Module) (entryIndex : Nat) : List UInt8 :=
   let shifted := shiftModuleCalls 2 module_
+  let releaseIndex := module_.funcs.size + 3
   wasmSection 10 <| vec (
-    shifted.funcs.toList.map emitFuncBody ++
-      [wasiStdinStartBody maxInput (entryIndex + 2)])
+    shifted.funcs.toList.map (emitFuncBody releaseIndex) ++
+      [wasiStdinStartBody maxInput (entryIndex + 2), coreReleaseBody releaseIndex])
 
 def wasiStdinExceptCodeSection (maxInput : Nat) (module_ : Module) (entryIndex : Nat) :
     List UInt8 :=
   let shifted := shiftModuleCalls 3 module_
+  let releaseIndex := module_.funcs.size + 4
   wasmSection 10 <| vec (
-    shifted.funcs.toList.map emitFuncBody ++
-      [wasiStdinExceptStartBody maxInput (entryIndex + 3)])
+    shifted.funcs.toList.map (emitFuncBody releaseIndex) ++
+      [wasiStdinExceptStartBody maxInput (entryIndex + 3), coreReleaseBody releaseIndex])
 
 def wasiArgvExceptCodeSection
     (maxArgs maxArgBytes : Nat)
@@ -2830,9 +2838,10 @@ def wasiArgvExceptCodeSection
     (entryIndex : Nat) :
     List UInt8 :=
   let shifted := shiftModuleCalls 4 module_
+  let releaseIndex := module_.funcs.size + 5
   wasmSection 10 <| vec (
-    shifted.funcs.toList.map emitFuncBody ++
-      [wasiArgvExceptStartBody maxArgs maxArgBytes (entryIndex + 4)])
+    shifted.funcs.toList.map (emitFuncBody releaseIndex) ++
+      [wasiArgvExceptStartBody maxArgs maxArgBytes (entryIndex + 4), coreReleaseBody releaseIndex])
 
 def wasiStdinArgvExceptCodeSection
     (maxInput maxArgs maxArgBytes : Nat)
@@ -2840,9 +2849,11 @@ def wasiStdinArgvExceptCodeSection
     (entryIndex : Nat) :
     List UInt8 :=
   let shifted := shiftModuleCalls 5 module_
+  let releaseIndex := module_.funcs.size + 6
   wasmSection 10 <| vec (
-    shifted.funcs.toList.map emitFuncBody ++
-      [wasiStdinArgvExceptStartBody maxInput maxArgs maxArgBytes (entryIndex + 5)])
+    shifted.funcs.toList.map (emitFuncBody releaseIndex) ++
+      [wasiStdinArgvExceptStartBody maxInput maxArgs maxArgBytes (entryIndex + 5),
+        coreReleaseBody releaseIndex])
 
 def wasiModuleBytes (module_ : Module) : Except String ByteArray := do
   let entryIndex ←
@@ -4568,12 +4579,13 @@ mutual
           ["end"]
 end
 
-partial def stmtWatLines (scratch : Nat) : Stmt → List String
+partial def stmtWatLines (releaseIndex scratch : Nat) : Stmt → List String
   | .skip => []
   | .assign index value => exprWatLines scratch value ++ [s!"local.set {index}"]
   | .call slots index args =>
       args.flatMap (exprWatLines scratch) ++ [s!"call {index}"] ++
         slots.reverse.map (fun slot => s!"local.set {slot}")
+  | .release ptr => exprWatLines scratch ptr ++ [s!"call {releaseIndex}"]
   | .arrayFoldMultiSlotAssign sourceWidth resultWidth array start stop initValues accStart itemStart
       bodyValues bodyLets bodyDone targets =>
       arrayFoldMultiSlotAssignWatLines scratch sourceWidth resultWidth array start stop initValues
@@ -4588,15 +4600,16 @@ partial def stmtWatLines (scratch : Nat) : Stmt → List String
         bodyValues bodyLets bodyDone targets
   | .ite cond thenStmt elseStmt =>
       condWatLines scratch cond ++ ["if"] ++
-        indent 2 (stmtWatLines scratch thenStmt) ++
+        indent 2 (stmtWatLines releaseIndex scratch thenStmt) ++
         ["else"] ++
-        indent 2 (stmtWatLines scratch elseStmt) ++
+        indent 2 (stmtWatLines releaseIndex scratch elseStmt) ++
         ["end"]
-  | .seq first second => stmtWatLines scratch first ++ stmtWatLines scratch second
+  | .seq first second =>
+      stmtWatLines releaseIndex scratch first ++ stmtWatLines releaseIndex scratch second
   | .while cond loopBody =>
       ["block", "  loop"] ++
         indent 4 (condWatLines scratch cond ++ ["i32.eqz", "br_if 1"] ++
-          stmtWatLines scratch loopBody ++ ["br 0"]) ++
+          stmtWatLines releaseIndex scratch loopBody ++ ["br 0"]) ++
         ["  end", "end"]
 
 def paramWat (count : Nat) : String :=
@@ -4617,7 +4630,7 @@ def resultWat (count : Nat) : String :=
   else
     " (result " ++ String.intercalate " " (List.replicate count "i64") ++ ")"
 
-def funcWatLines (func : Func) : List String :=
+def funcWatLines (releaseIndex : Nat) (func : Func) : List String :=
   let extra := func.locals - func.params + funcScratch func
   let scratch := func.locals
   let exportText :=
@@ -4626,14 +4639,15 @@ def funcWatLines (func : Func) : List String :=
     | none => ""
   [s!"(func{exportText}{paramWat func.params}{resultWat func.results.length}"] ++
     indent 2
-      (localWat extra ++ stmtWatLines scratch func.body ++
+      (localWat extra ++ stmtWatLines releaseIndex scratch func.body ++
         func.results.flatMap (exprWatLines scratch)) ++
     [")"]
 
 def moduleWat (module_ : Module) : String :=
+  let releaseIndex := module_.funcs.size + 3
   String.intercalate "\n" <|
     ["(module", "  (memory (export \"memory\") 16)", "  (global (mut i64) (i64.const 4096))"] ++
-      (module_.funcs.toList.flatMap (fun func => indent 2 (funcWatLines func))) ++
+      (module_.funcs.toList.flatMap (fun func => indent 2 (funcWatLines releaseIndex func))) ++
       indent 2 [
         "(func (export \"alloc\") (param i64) (result i64)",
         "  global.get 0",
@@ -4645,6 +4659,17 @@ def moduleWat (module_ : Module) : String :=
         "(func (export \"reset\")",
         "  i64.const 4096",
         "  global.set 0",
+        ")",
+        "(func (export \"retain\") (param i64) (result i64)",
+        "  local.get 0",
+        ")",
+        "(func (export \"release\") (param i64)",
+        "  local.get 0",
+        "  drop",
+        ")",
+        "(func (export \"free\") (param i64)",
+        "  local.get 0",
+        "  drop",
         ")"] ++
       [")", ""]
 

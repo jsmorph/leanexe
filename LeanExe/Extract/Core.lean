@@ -2609,22 +2609,114 @@ mutual
     | item :: rest => .seq (localLetStmtOptimized item) (localLetStmtListOptimized rest)
 end
 
+partial def tyContainsHeapPointer : Ty → Bool
+  | .byteArray => true
+  | .array _ => true
+  | .recVariant _ _ => true
+  | .product left right => tyContainsHeapPointer left || tyContainsHeapPointer right
+  | .sum left right => tyContainsHeapPointer left || tyContainsHeapPointer right
+  | .struct _ _ fields => fields.any tyContainsHeapPointer
+  | .variant _ _ ctors => ctors.any fun ctor => ctor.any tyContainsHeapPointer
+  | .unit => false
+  | .bool => false
+  | .u8 => false
+  | .u32 => false
+  | .u64 => false
+  | .nat => false
+
+def exprReturnsOwnedHeapObject : IRExpr → Bool
+  | .letE _ _ body => exprReturnsOwnedHeapObject body
+  | .letCall _ _ _ body => exprReturnsOwnedHeapObject body
+  | .letLets _ body => exprReturnsOwnedHeapObject body
+  | .ite _ thenValue elseValue =>
+      exprReturnsOwnedHeapObject thenValue && exprReturnsOwnedHeapObject elseValue
+  | .arrayAllocSlots .. => true
+  | .heapAllocSlots .. => true
+  | .arrayReplicateSlots .. => true
+  | .arraySetSlots .. => true
+  | .arrayPushSlots .. => true
+  | .arrayAppendSlots .. => true
+  | .arrayExtractSlots .. => true
+  | .arrayMapSlots .. => true
+  | .arrayFilterSlots .. => true
+  | .byteArrayPushPtr .. => true
+  | .byteArrayAppendPtr .. => true
+  | .byteArraySetPtr .. => true
+  | .byteArrayFromArrayPtr .. => true
+  | .byteArrayCopySlicePtr .. => true
+  | _ => false
+
+def localLetOwnedHeapSlots : LeanExe.IR.LocalLet → List Nat
+  | .expr slot expr => if exprReturnsOwnedHeapObject expr then [slot] else []
+  | .slots slots values =>
+      (slots.zip values).filterMap fun item =>
+        if exprReturnsOwnedHeapObject item.snd then some item.fst else none
+  | .call _ _ _ => []
+  | .branch _ _ _ => []
+
+def appendReleases (stmt : IRStmt) (slots : List Nat) : IRStmt :=
+  slots.foldl (fun current slot => .seq current (.release (.local slot))) stmt
+
+def assignResultExprWithOwnedReleases
+    (canReleaseOwnedTemps : Bool)
+    (target : Nat)
+    (expr : IRExpr) :
+    IRStmt :=
+  match expr with
+  | .letE slot value body =>
+      let bodyStmt := assignResultExprWithOwnedReleases canReleaseOwnedTemps target body
+      let stmt := .seq (.assign slot value) bodyStmt
+      if canReleaseOwnedTemps && exprReturnsOwnedHeapObject value then
+        .seq stmt (.release (.local slot))
+      else
+        stmt
+  | .letCall slots index args body =>
+      .seq (.call slots index args)
+        (assignResultExprWithOwnedReleases canReleaseOwnedTemps target body)
+  | .letLets lets body =>
+      let bodyStmt := assignResultExprWithOwnedReleases canReleaseOwnedTemps target body
+      let stmt := .seq (localLetStmtListOptimized lets) bodyStmt
+      if canReleaseOwnedTemps then
+        appendReleases stmt (lets.flatMap localLetOwnedHeapSlots)
+      else
+        stmt
+  | _ => .assign target expr
+
+def assignResultSlotsWithOwnedReleases
+    (canReleaseOwnedTemps : Bool)
+    (targets : List Nat)
+    (values : List IRExpr) :
+    IRStmt :=
+  LeanExe.IR.seqList <|
+    (targets.zip values).map fun item =>
+      assignResultExprWithOwnedReleases canReleaseOwnedTemps item.fst item.snd
+
 partial def materializeResultValue
     (useAbi : Bool)
     (ty : Ty)
     (targets : List Nat)
     (value : ExtractedValue) :
     Except String IRStmt := do
+  let canReleaseOwnedTemps := !tyContainsHeapPointer ty
   match value with
   | .letE slot expr body => do
-      .ok (.seq (.assign slot expr) (← materializeResultValue useAbi ty targets body))
+      let bodyStmt ← materializeResultValue useAbi ty targets body
+      let stmt := .seq (.assign slot expr) bodyStmt
+      if canReleaseOwnedTemps && exprReturnsOwnedHeapObject expr then
+        .ok (.seq stmt (.release (.local slot)))
+      else
+        .ok stmt
   | .letCall slots index args body => do
       .ok (.seq (.call slots index args) (← materializeResultValue useAbi ty targets body))
   | .letLocal lets body => do
       let values ← flattenResultValue useAbi ty body
       let kept := pruneLocalLets lets (exprListUsedSlots values)
-      .ok (.seq (localLetStmtListOptimized kept)
-        (← materializeResultValue useAbi ty targets body))
+      let bodyStmt ← materializeResultValue useAbi ty targets body
+      let stmt := .seq (localLetStmtListOptimized kept) bodyStmt
+      if canReleaseOwnedTemps then
+        .ok (appendReleases stmt (kept.flatMap localLetOwnedHeapSlots))
+      else
+        .ok stmt
   | .ite cond thenValue elseValue => do
       let thenStmt ← materializeResultValue useAbi ty targets thenValue
       let elseStmt ← materializeResultValue useAbi ty targets elseValue
@@ -2635,7 +2727,7 @@ partial def materializeResultValue
       | some stmt => .ok stmt
       | none =>
           if targets.length == values.length then
-            .ok (assignResultSlots targets values)
+            .ok (assignResultSlotsWithOwnedReleases canReleaseOwnedTemps targets values)
           else
             .error "result slot count mismatch"
 

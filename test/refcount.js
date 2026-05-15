@@ -4,7 +4,8 @@ const fs = require("fs");
 const path = require("path");
 const { spawnSync } = require("child_process");
 
-const moduleName = "LeanExe.Examples.Correctness";
+const correctnessModule = "LeanExe.Examples.Correctness";
+const byteArrayModule = "LeanExe.Examples.ByteArrayPrograms";
 const leanExe = process.env.LEAN_WASM_EXE || path.join(".lake", "build", "bin", "lean-wasm");
 const outDir = path.join(".lake", "build", "refcount");
 
@@ -15,13 +16,13 @@ function run(args) {
   }
 }
 
-function compile(entry, out) {
+function compile(moduleName, entry, out) {
   run([leanExe, "compile", "--module", moduleName, "--entry", `${moduleName}.${entry}`, "--out", out]);
 }
 
-async function instantiate(entry) {
-  const out = path.join(outDir, `${entry}.wasm`);
-  compile(entry, out);
+async function instantiate(moduleName, entry) {
+  const out = path.join(outDir, `${moduleName}.${entry}.wasm`);
+  compile(moduleName, entry, out);
   const bytes = fs.readFileSync(out);
   const { instance } = await WebAssembly.instantiate(bytes, {});
   for (const name of ["alloc", "reset", "retain", "release", "free"]) {
@@ -37,7 +38,7 @@ function pointer(value) {
 }
 
 async function checkArrayReleaseReuse() {
-  const exports = await instantiate("structureArrayReturn");
+  const exports = await instantiate(correctnessModule, "structureArrayReturn");
   const result = exports.structureArrayReturn();
   const ptr = pointer(result[0]);
   const len = new DataView(exports.memory.buffer).getBigUint64(ptr, true);
@@ -52,7 +53,7 @@ async function checkArrayReleaseReuse() {
 }
 
 async function checkRetainDelaysReuse() {
-  const exports = await instantiate("structureArrayReturn");
+  const exports = await instantiate(correctnessModule, "structureArrayReturn");
   const ptr = pointer(exports.structureArrayReturn()[0]);
   exports.retain(BigInt(ptr));
   exports.release(BigInt(ptr));
@@ -68,7 +69,7 @@ async function checkRetainDelaysReuse() {
 }
 
 async function checkFreeAlias() {
-  const exports = await instantiate("byteArrayStringConstReturn");
+  const exports = await instantiate(correctnessModule, "byteArrayStringConstReturn");
   const result = exports.byteArrayStringConstReturn();
   const ptr = pointer(result[0]);
   const len = pointer(result[1]);
@@ -83,13 +84,36 @@ async function checkFreeAlias() {
   }
 }
 
+async function checkCompilerReleasesScalarTemp() {
+  const exports = await instantiate(byteArrayModule, "firstBytePlusArray");
+  exports.reset();
+  const probeInput = pointer(exports.alloc(1n));
+  const expectedTempBlock = pointer(exports.alloc(16n));
+  exports.reset();
+  const input = pointer(exports.alloc(1n));
+  if (input !== probeInput) {
+    throw new Error(`reset did not restore heap start: expected ${probeInput}, got ${input}`);
+  }
+  new Uint8Array(exports.memory.buffer, input, 1)[0] = 37;
+  const result = pointer(exports.firstBytePlusArray(BigInt(input), 1n));
+  if (result !== 42) {
+    throw new Error(`firstBytePlusArray: expected 42, got ${result}`);
+  }
+  const reused = pointer(exports.alloc(16n));
+  if (reused !== expectedTempBlock) {
+    throw new Error(`compiler did not release scalar temporary: expected ${expectedTempBlock}, got ${reused}`);
+  }
+}
+
 async function main() {
-  run(["lake", "build", moduleName]);
+  run(["lake", "build", correctnessModule]);
+  run(["lake", "build", byteArrayModule]);
   fs.mkdirSync(outDir, { recursive: true });
   await checkArrayReleaseReuse();
   await checkRetainDelaysReuse();
   await checkFreeAlias();
-  process.stdout.write("checked 3 refcount cases\n");
+  await checkCompilerReleasesScalarTemp();
+  process.stdout.write("checked 4 refcount cases\n");
 }
 
 main().catch((error) => {

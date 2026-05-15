@@ -2963,3 +2963,17 @@ Checks run:
 - [x] `lake build`
 - [x] `node test/refcount.js` returned `checked 3 refcount cases`.
 - [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 574 accepted, 28 rejected, and 13 trapped cases`, `checked 3 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 19 WASI program cases, 2 traps, and 7 rejections`, and `checked 56 cases`.
+
+## 2026-05-14: Conservative compiler-emitted releases
+
+The IR now has a `release` statement, and the binary emitter passes the runtime release-function index into user-function emission.  Library modules call the exported release runtime.  WASI command modules define the same release runtime after `_start`, so compiled user functions have a valid target when the extractor emits a release in command mode.
+
+The extractor emits releases for a narrow ownership case: a local expression or local binding must assign a value whose final expression returns a fresh heap allocation, and the surrounding function result type must contain no heap pointer.  This keeps returned heap values conservative while reclaiming scalar-result temporaries such as `let a := Array.replicate 1 (5 : UInt64); ... a[0]! ...`.  The pass follows expression lets to find the allocated value and handles one-slot heap allocations inside `LocalLet.slots`.  It does not release call results, loop-carried values, heap-pointer result aliases, or values whose last use occurs before the final result assignment.
+
+`test/refcount.js` now checks this compiler path by compiling `LeanExe.Examples.ByteArrayPrograms.firstBytePlusArray`, calling it with a byte-array input, and verifying that the next 16-byte allocation reuses the internal array block.  The test derives the expected block location from allocator behavior after `reset()`, rather than from a hard-coded header size.
+
+Checks run:
+
+- [x] `lake build`
+- [x] `node test/refcount.js` returned `checked 4 refcount cases`.
+- [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 574 accepted, 28 rejected, and 13 trapped cases`, `checked 4 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 19 WASI program cases, 2 traps, and 7 rejections`, and `checked 56 cases`.
