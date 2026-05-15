@@ -3642,6 +3642,42 @@ def byteArrayStructReplicateRuntimeReleaseFrees : UInt64 :=
   let after := LeanExe.Runtime.release values
   (LeanExe.Runtime.releaseCount - releasesBefore) * 100 + (after - before)
 
+def nestedArrayRuntimeReleaseFrees : UInt64 :=
+  let values := Array.replicate 1 (Array.replicate 2 (5 : UInt64))
+  let before := LeanExe.Runtime.freeCount
+  let releasesBefore := LeanExe.Runtime.releaseCount
+  let after := LeanExe.Runtime.release values
+  (LeanExe.Runtime.releaseCount - releasesBefore) * 100 + (after - before)
+
+def structArrayFieldRuntimeReleaseFrees : UInt64 :=
+  let values :=
+    Array.replicate 1 ({ values := Array.replicate 2 (5 : UInt64), count := 2 } : ArrayBox)
+  let before := LeanExe.Runtime.freeCount
+  let releasesBefore := LeanExe.Runtime.releaseCount
+  let after := LeanExe.Runtime.release values
+  (LeanExe.Runtime.releaseCount - releasesBefore) * 100 + (after - before)
+
+def borrowedArrayPopEmptyReleaseFrees (values : Array UInt64) : UInt64 :=
+  let popped := values.pop
+  let before := LeanExe.Runtime.freeCount
+  let releasesBefore := LeanExe.Runtime.releaseCount
+  let after := LeanExe.Runtime.release popped
+  (LeanExe.Runtime.releaseCount - releasesBefore) * 100 + (after - before)
+
+def borrowedArraySetOobReleaseFrees (values : Array UInt64) : UInt64 :=
+  let updated := values.setIfInBounds values.size (99 : UInt64)
+  let before := LeanExe.Runtime.freeCount
+  let releasesBefore := LeanExe.Runtime.releaseCount
+  let after := LeanExe.Runtime.release updated
+  (LeanExe.Runtime.releaseCount - releasesBefore) * 100 + (after - before)
+
+def borrowedArrayReverseSingletonReleaseFrees (values : Array UInt64) : UInt64 :=
+  let reversed := values.reverse
+  let before := LeanExe.Runtime.freeCount
+  let releasesBefore := LeanExe.Runtime.releaseCount
+  let after := LeanExe.Runtime.release reversed
+  (LeanExe.Runtime.releaseCount - releasesBefore) * 100 + (after - before)
+
 def byteArrayFoldByteOutputState : ByteOutputState :=
   (ByteArray.mk #[(1 : UInt8), (2 : UInt8), (3 : UInt8)]).foldl
     (fun acc byte => { count := acc.count + 1, bytes := acc.bytes.push byte })

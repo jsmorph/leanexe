@@ -32,6 +32,7 @@ structure SyntheticFunction where
 
 inductive ExtractedValue where
   | scalar (expr : IRExpr)
+  | array (owner ptr : IRExpr)
   | byteArray (owner ptr len : IRExpr)
   | product (left right : ExtractedValue)
   | sum (tag : IRExpr) (left right : ExtractedValue)
@@ -817,8 +818,8 @@ mutual
     | .nat => some .scalar
     | .byteArray => some (.fixed 3)
     | .array item => do
-        let _ ← arrayElementLayout? item
-        some .pointer
+      let _ ← arrayElementLayout? item
+      some (.fixed 2)
     | .product left right => do
         let leftSlots ← valueLayoutSlots? left
         let rightSlots ← valueLayoutSlots? right
@@ -861,8 +862,8 @@ mutual
     | .u64 => some .scalar
     | .nat => some .scalar
     | .array item => do
-        let _ ← arrayElementLayout? item
-        some .pointer
+      let _ ← arrayElementLayout? item
+      some (.fixed 2)
     | .product left right => do
         let leftSlots ← arrayElementSlots? left
         let rightSlots ← arrayElementSlots? right
@@ -956,6 +957,7 @@ partial def abiSlots : Ty → Nat
 
 partial def internalSlots : Ty → Nat
   | .byteArray => 3
+  | .array _ => 2
   | .product left right => internalSlots left + internalSlots right
   | .sum left right => 1 + internalSlots left + internalSlots right
   | .struct _ _ fields => fields.foldl (fun total field => total + internalSlots field) 0
@@ -1657,6 +1659,7 @@ mutual
 
   partial def valueUsedSlots : ExtractedValue → List Nat
     | .scalar expr => exprUsedSlots expr
+    | .array owner ptr => addLiveSlots (exprUsedSlots owner) (exprUsedSlots ptr)
     | .byteArray owner ptr len =>
         addLiveSlots (exprUsedSlots owner) (addLiveSlots (exprUsedSlots ptr) (exprUsedSlots len))
     | .product left right =>
@@ -1762,6 +1765,7 @@ def wrapExprLocalLets (lets : List LeanExe.IR.LocalLet) (expr : IRExpr) : IRExpr
 def scalarValue (value : ExtractedValue) : Except String IRExpr :=
   match value with
   | .scalar expr => .ok expr
+  | .array _ ptr => .ok ptr
   | .byteArray _ _ _ => .error "ByteArray value used where scalar value is required"
   | .product _ _ => .error "product value used where scalar value is required"
   | .sum _ _ _ => .error "sum value used where scalar value is required"
@@ -1790,6 +1794,7 @@ partial def byteArrayFullParts (value : ExtractedValue) :
   match value with
   | .byteArray owner ptr len => .ok { owner, ptr, len }
   | .scalar _ => .error "scalar value used where ByteArray value is required"
+  | .array _ _ => .error "array value used where ByteArray value is required"
   | .product _ _ => .error "product value used where ByteArray value is required"
   | .sum _ _ _ => .error "sum value used where ByteArray value is required"
   | .struct name _ => .error s!"structure value used where ByteArray value is required: {name}"
@@ -1837,6 +1842,7 @@ partial def byteArrayFullPartsWithLets (value : ExtractedValue) :
   match value with
   | .byteArray owner ptr len => .ok ([], { owner, ptr, len })
   | .scalar _ => .error "scalar value used where ByteArray value is required"
+  | .array _ _ => .error "array value used where ByteArray value is required"
   | .product _ _ => .error "product value used where ByteArray value is required"
   | .sum _ _ _ => .error "sum value used where ByteArray value is required"
   | .struct name _ => .error s!"structure value used where ByteArray value is required: {name}"
@@ -1867,6 +1873,96 @@ partial def byteArrayPartsWithLets (value : ExtractedValue) :
   let parts ← byteArrayFullPartsWithLets value
   .ok (parts.fst, parts.snd.ptr, parts.snd.len)
 
+structure ArraySlots where
+  owner : IRExpr
+  ptr : IRExpr
+  deriving BEq, Repr
+
+partial def arrayFullParts (value : ExtractedValue) :
+    Except String ArraySlots :=
+  match value with
+  | .array owner ptr => .ok { owner, ptr }
+  | .scalar _ => .error "scalar value used where array value is required"
+  | .byteArray _ _ _ => .error "ByteArray value used where array value is required"
+  | .product _ _ => .error "product value used where array value is required"
+  | .sum _ _ _ => .error "sum value used where array value is required"
+  | .struct name _ => .error s!"structure value used where array value is required: {name}"
+  | .variant name _ _ => .error s!"inductive value used where array value is required: {name}"
+  | .recursiveVariant name _ _ =>
+      .error s!"recursive inductive value used where array value is required: {name}"
+  | .heapVariant name _ =>
+      .error s!"recursive inductive value used where array value is required: {name}"
+  | .ite cond thenValue elseValue => do
+      let thenParts ← arrayFullParts thenValue
+      let elseParts ← arrayFullParts elseValue
+      .ok {
+        owner := .ite cond thenParts.owner elseParts.owner,
+        ptr := .ite cond thenParts.ptr elseParts.ptr
+      }
+  | .letE slot value body => do
+      let parts ← arrayFullParts body
+      .ok {
+        owner := .letE slot value parts.owner,
+        ptr := .letE slot value parts.ptr
+      }
+  | .letCall slots index args body => do
+      let parts ← arrayFullParts body
+      .ok {
+        owner := .letCall slots index args parts.owner,
+        ptr := .letCall slots index args parts.ptr
+      }
+  | .letLocal lets body => do
+      let parts ← arrayFullParts body
+      .ok {
+        owner := wrapExprLocalLets lets parts.owner,
+        ptr := wrapExprLocalLets lets parts.ptr
+      }
+
+partial def arrayFullPartsWithLets (value : ExtractedValue) :
+    Except String (List ValueLet × ArraySlots) :=
+  match value with
+  | .array owner ptr => .ok ([], { owner, ptr })
+  | .scalar _ => .error "scalar value used where array value is required"
+  | .byteArray _ _ _ => .error "ByteArray value used where array value is required"
+  | .product _ _ => .error "product value used where array value is required"
+  | .sum _ _ _ => .error "sum value used where array value is required"
+  | .struct name _ => .error s!"structure value used where array value is required: {name}"
+  | .variant name _ _ => .error s!"inductive value used where array value is required: {name}"
+  | .recursiveVariant name _ _ =>
+      .error s!"recursive inductive value used where array value is required: {name}"
+  | .heapVariant name _ =>
+      .error s!"recursive inductive value used where array value is required: {name}"
+  | .ite cond thenValue elseValue => do
+      let parts ← arrayFullParts (.ite cond thenValue elseValue)
+      .ok ([], parts)
+  | .letE slot value body => do
+      let parts ← arrayFullPartsWithLets body
+      .ok (.expr slot value :: parts.fst, parts.snd)
+  | .letCall slots index args body => do
+      let parts ← arrayFullPartsWithLets body
+      .ok (.call slots index args :: parts.fst, parts.snd)
+  | .letLocal lets body => do
+      let parts ← arrayFullParts body
+      .ok ([], {
+        owner := wrapExprLocalLets lets parts.owner,
+        ptr := wrapExprLocalLets lets parts.ptr
+      })
+
+def arrayPtr (value : ExtractedValue) : Except String IRExpr := do
+  let parts ← arrayFullParts value
+  .ok parts.ptr
+
+def ownedArrayValue (slot : Nat) (ptr : IRExpr) : ExtractedValue :=
+  .letE slot ptr (.array (.local slot) (.local slot))
+
+def conditionalArrayOwnerValue
+    (slot : Nat)
+    (ptr : IRExpr)
+    (takesOwnership : IRCond)
+    (borrowedOwner : IRExpr) :
+    ExtractedValue :=
+  .letE slot ptr (.array (.ite takesOwnership (.local slot) borrowedOwner) (.local slot))
+
 def productField (index : Nat) (value : ExtractedValue) : Except String ExtractedValue :=
   match value with
   | .product left right =>
@@ -1877,6 +1973,7 @@ def productField (index : Nat) (value : ExtractedValue) : Except String Extracte
       else
         .error s!"unsupported product projection index: {index}"
   | .scalar _ => .error "scalar value used where product value is required"
+  | .array _ _ => .error "array value used where product value is required"
   | .byteArray _ _ _ => .error "ByteArray value used where product value is required"
   | .sum _ _ _ => .error "sum value used where product value is required"
   | .struct name _ => .error s!"structure value used where product value is required: {name}"
@@ -1904,6 +2001,7 @@ def structField (name : Name) (index : Nat) (value : ExtractedValue) : Except St
       else
         .error s!"structure projection type mismatch: expected {name}, got {actual}"
   | .scalar _ => .error s!"scalar value used where structure value is required: {name}"
+  | .array _ _ => .error s!"array value used where structure value is required: {name}"
   | .byteArray _ _ _ => .error s!"ByteArray value used where structure value is required: {name}"
   | .product _ _ => .error s!"product value used where structure value is required: {name}"
   | .sum _ _ _ => .error s!"sum value used where structure value is required: {name}"
@@ -1959,6 +2057,7 @@ partial def optionPartsWithLets (value : ExtractedValue) :
       else
         .error s!"inductive value used where Option value is required: {name}"
   | .scalar _ => .error "scalar value used where option value is required"
+  | .array _ _ => .error "array value used where option value is required"
   | .byteArray _ _ _ => .error "ByteArray value used where option value is required"
   | .product _ _ => .error "product value used where option value is required"
   | .sum _ _ _ => .error "sum value used where option value is required"
@@ -1995,6 +2094,7 @@ partial def sumPartsWithLets (value : ExtractedValue) :
   match value with
   | .sum tag left right => .ok ([], tag, left, right)
   | .scalar _ => .error "scalar value used where sum value is required"
+  | .array _ _ => .error "array value used where sum value is required"
   | .byteArray _ _ _ => .error "ByteArray value used where sum value is required"
   | .product _ _ => .error "product value used where sum value is required"
   | .struct name _ => .error s!"structure value used where sum value is required: {name}"
@@ -2039,6 +2139,7 @@ partial def variantPartsWithLets (expectedName : Name) (value : ExtractedValue) 
       else
         .error s!"inductive value type mismatch: expected {expectedName}, got {name}"
   | .scalar _ => .error s!"scalar value used where inductive value is required: {expectedName}"
+  | .array _ _ => .error s!"array value used where inductive value is required: {expectedName}"
   | .byteArray _ _ _ =>
       .error s!"ByteArray value used where inductive value is required: {expectedName}"
   | .product _ _ => .error s!"product value used where inductive value is required: {expectedName}"
@@ -2089,6 +2190,8 @@ partial def heapVariantPtrWithLets (expectedName : Name) (value : ExtractedValue
         .error s!"recursive inductive value type mismatch: expected {expectedName}, got {name}"
   | .scalar _ =>
       .error s!"scalar value used where recursive inductive value is required: {expectedName}"
+  | .array _ _ =>
+      .error s!"array value used where recursive inductive value is required: {expectedName}"
   | .byteArray _ _ _ =>
       .error s!"ByteArray value used where recursive inductive value is required: {expectedName}"
   | .product _ _ =>
@@ -2139,6 +2242,8 @@ partial def recursiveVariantPartsWithLets (expectedName : Name) (value : Extract
         .error s!"recursive inductive value type mismatch: expected {expectedName}, got {name}"
   | .scalar _ =>
       .error s!"scalar value used where recursive inductive value is required: {expectedName}"
+  | .array _ _ =>
+      .error s!"array value used where recursive inductive value is required: {expectedName}"
   | .byteArray _ _ _ =>
       .error s!"ByteArray value used where recursive inductive value is required: {expectedName}"
   | .product _ _ =>
@@ -2178,6 +2283,7 @@ partial def exceptPartsWithLets (value : ExtractedValue) :
       else
         .error s!"inductive value used where Except value is required: {name}"
   | .scalar _ => .error "scalar value used where Except value is required"
+  | .array _ _ => .error "array value used where Except value is required"
   | .byteArray _ _ _ => .error "ByteArray value used where Except value is required"
   | .product _ _ => .error "product value used where Except value is required"
   | .sum _ _ _ => .error "sum value used where Except value is required"
@@ -2225,7 +2331,7 @@ partial def defaultValue : Ty → Except String ExtractedValue
   | .byteArray => .ok (.byteArray (.u64 0) (.u64 0) (.u64 0))
   | .array item =>
       if supportedArrayElementType item then
-        .ok (.scalar (.u64 0))
+        .ok (.array (.u64 0) (.u64 0))
       else
         .error s!"unsupported default value type: {reprStr ((.array item : Ty))}"
   | .product left right => do
@@ -2248,7 +2354,7 @@ partial def trapValue : Ty → Except String ExtractedValue
   | .byteArray => .ok (.byteArray .trap .trap .trap)
   | .array item =>
       if supportedArrayElementType item then
-        .ok (.scalar .trap)
+        .ok (.array .trap .trap)
       else
         .error s!"unsupported trap value type: {reprStr ((.array item : Ty))}"
   | .product left right => do
@@ -2309,6 +2415,8 @@ partial def valueIte
   | .ite _ _ _, _ => .ok (.ite cond thenValue elseValue)
   | _, .ite _ _ _ => .ok (.ite cond thenValue elseValue)
   | .scalar thenExpr, .scalar elseExpr => .ok (.scalar (.ite cond thenExpr elseExpr))
+  | .array thenOwner thenPtr, .array elseOwner elsePtr =>
+      .ok (.array (.ite cond thenOwner elseOwner) (.ite cond thenPtr elsePtr))
   | .byteArray thenOwner thenPtr thenLen, .byteArray elseOwner elsePtr elseLen =>
       .ok (.byteArray
         (.ite cond thenOwner elseOwner)
@@ -2385,13 +2493,13 @@ mutual
     | .struct _ _ fields => heapChildMaskFromTypes slot fields
     | .variant _ _ ctors => heapChildMaskFromTypes (slot + 1) ctors.flatten
     | .byteArray => (2 ^ slot, slot + 3)
+    | .array _ => (2 ^ slot, slot + 2)
     | .unit => (0, slot + 1)
     | .bool => (0, slot + 1)
     | .u8 => (0, slot + 1)
     | .u32 => (0, slot + 1)
     | .u64 => (0, slot + 1)
     | .nat => (0, slot + 1)
-    | .array _ => (0, slot + 1)
 
   partial def heapChildMaskFromTypes : Nat → List Ty → Nat × Nat
     | slot, [] => (0, slot)
@@ -2423,8 +2531,9 @@ partial def flattenInternalValue (ty : Ty) (value : ExtractedValue) :
       let parts ← byteArrayFullParts value
       .ok [parts.owner, parts.ptr, parts.len]
   | .array item =>
-      if supportedArrayElementType item then
-        scalarValue value |>.map (fun expr => [expr])
+      if supportedArrayElementType item then do
+        let parts ← arrayFullParts value
+        .ok [parts.owner, parts.ptr]
       else
         .error s!"unsupported internal value type: {reprStr ((.array item : Ty))}"
   | .product left right =>
@@ -2548,7 +2657,7 @@ partial def flattenAbiValue (ty : Ty) (value : ExtractedValue) : Except String (
   | .nat => scalarValue value |>.map (fun expr => [expr])
   | .array item =>
       if supportedAbiArrayElementType item then
-        scalarValue value |>.map (fun expr => [expr])
+        arrayPtr value |>.map (fun expr => [expr])
       else
         .error s!"unsupported ABI value type: {reprStr ((.array item : Ty))}"
   | .byteArray => do
@@ -3025,6 +3134,8 @@ end
 mutual
   partial def valueReleasedSlots : ExtractedValue → List Nat
     | .scalar expr => exprReleasedSlots expr
+    | .array owner ptr =>
+        addLiveSlots (exprReleasedSlots owner) (exprReleasedSlots ptr)
     | .byteArray owner ptr len =>
         addLiveSlots (exprReleasedSlots owner)
           (addLiveSlots (exprReleasedSlots ptr) (exprReleasedSlots len))
@@ -3154,7 +3265,11 @@ mutual
     | .nat, slot => .ok (.scalar (.heapLoadSlot ptr slot), slot + 1)
     | .array item, slot =>
         if supportedArrayElementType item then
-          .ok (.scalar (.heapLoadSlot ptr slot), slot + 1)
+          .ok
+            (.array
+              (.heapLoadSlot ptr slot)
+              (.heapLoadSlot ptr (slot + 1)),
+              slot + 2)
         else
           .error s!"unsupported heap field array type: {reprStr ((.array item : Ty))}"
     | .byteArray, slot =>
@@ -3252,8 +3367,9 @@ partial def flattenArrayElementValue
       let parts ← byteArrayFullParts value
       .ok [parts.owner, parts.ptr, parts.len]
   | .array item =>
-      if supportedArrayElementType item then
-        scalarValue value |>.map (fun expr => [expr])
+      if supportedArrayElementType item then do
+        let parts ← arrayFullParts value
+        .ok [parts.owner, parts.ptr]
       else
         .error s!"unsupported array element value type: {reprStr ((.array item : Ty))}"
   | .recVariant name _ =>
@@ -3394,6 +3510,20 @@ mutual
       (targets : List Nat) :
       Except String (List LeanExe.IR.LocalLet) := do
     match value with
+    | .letE slot expr (.array (.local ownerSlot) (.local ptrSlot)) =>
+        match ty, targets with
+        | .array item, [ownerTarget, ptrTarget] =>
+            if supportedArrayElementType item && ownerSlot == slot && ptrSlot == slot then
+              .ok [.expr ownerTarget expr, .slots [ptrTarget] [.local ownerTarget]]
+            else
+              let rest ←
+                materializeInternalValueLets ty (.array (.local ownerSlot) (.local ptrSlot))
+                  targets
+              .ok (.expr slot expr :: rest)
+        | _, _ =>
+            let rest ← materializeInternalValueLets ty (.array (.local ownerSlot) (.local ptrSlot))
+              targets
+            .ok (.expr slot expr :: rest)
     | .letE slot expr body =>
         let rest ← materializeInternalValueLets ty body targets
         .ok (.expr slot expr :: rest)
@@ -3527,7 +3657,11 @@ mutual
             slot + 3)
     | .array item, slot =>
         if supportedArrayElementType item then
-          .ok (.scalar (.arrayGetSlot width slot array index), slot + 1)
+          .ok
+            (.array
+              (.arrayGetSlot width slot array index)
+              (.arrayGetSlot width (slot + 1) array index),
+              slot + 2)
         else
           .error s!"unsupported array element load type: {reprStr ((.array item : Ty))}"
     | .recVariant name _, slot =>
@@ -3603,7 +3737,11 @@ mutual
             slot + 3)
     | .array item, slot =>
         if supportedArrayElementType item then
-          .ok (.scalar (.arrayFindSlot width array itemStart predicate slot), slot + 1)
+          .ok
+            (.array
+              (.arrayFindSlot width array itemStart predicate slot)
+              (.arrayFindSlot width array itemStart predicate (slot + 1)),
+              slot + 2)
         else
           .error s!"unsupported array find element type: {reprStr ((.array item : Ty))}"
     | .recVariant name _, slot =>
@@ -3678,7 +3816,7 @@ mutual
             slot + 3)
     | .array item, slot =>
         if supportedArrayElementType item then
-          .ok (.scalar (.local (start + slot)), slot + 1)
+          .ok (.array (.local (start + slot)) (.local (start + slot + 1)), slot + 2)
         else
           .error s!"unsupported array local element type: {reprStr ((.array item : Ty))}"
     | .recVariant name _, slot => .ok (.heapVariant name (.local (start + slot)), slot + 1)
@@ -3722,6 +3860,11 @@ def arrayLocalValue (itemTy : Ty) (start : Nat) : Except String ExtractedValue :
 mutual
   partial def valueFromInternalSlotsAt (slotExpr : Nat → IRExpr) :
       Ty → Nat → ExtractedValue × Nat
+    | .array item, slot =>
+        if supportedArrayElementType item then
+          (.array (slotExpr slot) (slotExpr (slot + 1)), slot + 2)
+        else
+          (.scalar .trap, slot + 1)
     | .byteArray, slot =>
         (.byteArray (slotExpr slot) (slotExpr (slot + 1)) (slotExpr (slot + 2)), slot + 3)
     | .product left right, slot =>
@@ -3773,6 +3916,11 @@ mutual
     | .u8 => .scalar (u8WrapExpr (.local slot))
     | .u32 => .scalar (u32WrapExpr (.local slot))
     | .byteArray => .byteArray (.u64 0) (.local slot) (.local (slot + 1))
+    | .array item =>
+        if supportedArrayElementType item then
+          .array (.u64 0) (.local slot)
+        else
+          .scalar .trap
     | .sum left right =>
         .sum (.local slot)
           (extractedValueForParam (slot + 1) left)
@@ -3802,6 +3950,11 @@ def bindingForParam (slot : Nat) : Ty → Binding
   | .u8 => .value (.scalar (u8WrapExpr (.local slot)))
   | .u32 => .value (.scalar (u32WrapExpr (.local slot)))
   | .byteArray => .value (.byteArray (.u64 0) (.local slot) (.local (slot + 1)))
+  | .array item =>
+      if supportedArrayElementType item then
+        .value (.array (.u64 0) (.local slot))
+      else
+        .value (.scalar .trap)
   | .sum left right =>
       .value
         (.sum (.local slot)
@@ -6724,17 +6877,320 @@ mutual
                     let ownedMask := ownedChildMaskForSlots childMask valueSlots
                     let oldValue ← arrayLoadValue itemTy (.local arraySlot) (.local indexSlot)
                     let updatedArray :=
-                      .scalar
+                      ownedArrayValue valueResult.snd
                         (.arraySetSlots
                           width childMask ownedMask (.local arraySlot) (.local indexSlot) valueSlots)
                     .ok
                       (.letE arraySlot arrayResult.fst
                         (.letE indexSlot indexResult.fst
                           (.product oldValue updatedArray)),
-                        valueResult.snd)
+                        valueResult.snd + 1)
                   | none => .error s!"unsupported Array.swapAt item type: {reprStr itemTy}"
                 | none => .error "unsupported Array.swapAt item type"
             | _, _ => .error "unsupported Array.swapAt application"
+        | (.const ``List.toArray _, _) =>
+            let ptrResult ← extractExprFrom ctx locals nextLocal expr
+            .ok (ownedArrayValue ptrResult.snd ptrResult.fst, ptrResult.snd + 1)
+        | (.const ``Array.replicate _, _) =>
+            let ptrResult ← extractExprFrom ctx locals nextLocal expr
+            .ok (ownedArrayValue ptrResult.snd ptrResult.fst, ptrResult.snd + 1)
+        | (.const ``Array.push _, _) =>
+            let ptrResult ← extractExprFrom ctx locals nextLocal expr
+            .ok (ownedArrayValue ptrResult.snd ptrResult.fst, ptrResult.snd + 1)
+        | (.const ``Array.append _, _) =>
+            let ptrResult ← extractExprFrom ctx locals nextLocal expr
+            .ok (ownedArrayValue ptrResult.snd ptrResult.fst, ptrResult.snd + 1)
+        | (.const ``Array.extract _, _) =>
+            let ptrResult ← extractExprFrom ctx locals nextLocal expr
+            .ok (ownedArrayValue ptrResult.snd ptrResult.fst, ptrResult.snd + 1)
+        | (.const ``Array.map _, _) =>
+            let ptrResult ← extractExprFrom ctx locals nextLocal expr
+            .ok (ownedArrayValue ptrResult.snd ptrResult.fst, ptrResult.snd + 1)
+        | (.const ``Array.filter _, _) =>
+            let ptrResult ← extractExprFrom ctx locals nextLocal expr
+            .ok (ownedArrayValue ptrResult.snd ptrResult.fst, ptrResult.snd + 1)
+        | (.const ``Array.empty _, _) =>
+            let ptrResult ← extractExprFrom ctx locals nextLocal expr
+            .ok (ownedArrayValue ptrResult.snd ptrResult.fst, ptrResult.snd + 1)
+        | (.const ``Array.mkEmpty _, _) =>
+            let ptrResult ← extractExprFrom ctx locals nextLocal expr
+            .ok (ownedArrayValue ptrResult.snd ptrResult.fst, ptrResult.snd + 1)
+        | (.const ``Array.emptyWithCapacity _, _) =>
+            let ptrResult ← extractExprFrom ctx locals nextLocal expr
+            .ok (ownedArrayValue ptrResult.snd ptrResult.fst, ptrResult.snd + 1)
+        | (.const ``Array.singleton _, _) =>
+            let ptrResult ← extractExprFrom ctx locals nextLocal expr
+            .ok (ownedArrayValue ptrResult.snd ptrResult.fst, ptrResult.snd + 1)
+        | (.const ``Array.set _, _) =>
+            let ptrResult ← extractExprFrom ctx locals nextLocal expr
+            .ok (ownedArrayValue ptrResult.snd ptrResult.fst, ptrResult.snd + 1)
+        | (.const ``Array.set! _, _) =>
+            let ptrResult ← extractExprFrom ctx locals nextLocal expr
+            .ok (ownedArrayValue ptrResult.snd ptrResult.fst, ptrResult.snd + 1)
+        | (.const ``Array.insertIdx _, _) =>
+            let ptrResult ← extractExprFrom ctx locals nextLocal expr
+            .ok (ownedArrayValue ptrResult.snd ptrResult.fst, ptrResult.snd + 1)
+        | (.const ``Array.insertIdx! _, _) =>
+            let ptrResult ← extractExprFrom ctx locals nextLocal expr
+            .ok (ownedArrayValue ptrResult.snd ptrResult.fst, ptrResult.snd + 1)
+        | (.const ``Array.eraseIdx! _, _) =>
+            let ptrResult ← extractExprFrom ctx locals nextLocal expr
+            .ok (ownedArrayValue ptrResult.snd ptrResult.fst, ptrResult.snd + 1)
+        | (.const ``Array.pop _, args) =>
+            match args, args.reverse with
+            | itemTy :: _, array :: _ =>
+                match typeAtom? ctx.env itemTy with
+                | some itemTy =>
+                    let width ← arrayElementWidth "Array.pop" itemTy
+                    let childMask := arrayElementChildMask itemTy
+                    let arrayResult ← extractValueFrom ctx locals nextLocal array
+                    let parts ← arrayFullPartsWithLets arrayResult.fst
+                    let arraySlot := arrayResult.snd
+                    let resultSlot := arraySlot + 1
+                    let isEmpty := .eqU64 (.arraySize (.local arraySlot)) (.u64 0)
+                    let resultPtr := .arrayPopSlots width childMask (.local arraySlot)
+                    .ok
+                      (wrapValueLets parts.fst
+                        (.letE arraySlot parts.snd.ptr
+                          (conditionalArrayOwnerValue resultSlot resultPtr (.not isEmpty)
+                            parts.snd.owner)),
+                        resultSlot + 1)
+                | none => .error "unsupported Array.pop item type"
+            | _, _ => .error "unsupported Array.pop application"
+        | (.const ``Array.eraseIdxIfInBounds _, args) =>
+            match args, args.reverse with
+            | itemTy :: _, index :: array :: _ =>
+                match typeAtom? ctx.env itemTy with
+                | some itemTy =>
+                    let width ← arrayElementWidth "Array.eraseIdxIfInBounds" itemTy
+                    let childMask := arrayElementChildMask itemTy
+                    let arrayResult ← extractValueFrom ctx locals nextLocal array
+                    let parts ← arrayFullPartsWithLets arrayResult.fst
+                    let indexResult ← extractExprFrom ctx locals arrayResult.snd index
+                    let arraySlot := indexResult.snd
+                    let indexSlot := arraySlot + 1
+                    let resultSlot := arraySlot + 2
+                    let inBounds := .ltU64 (.local indexSlot) (.arraySize (.local arraySlot))
+                    let resultPtr :=
+                      .arrayEraseIfInBoundsSlots width childMask (.local arraySlot)
+                        (.local indexSlot)
+                    .ok
+                      (wrapValueLets parts.fst
+                        (.letE arraySlot parts.snd.ptr
+                          (.letE indexSlot indexResult.fst
+                            (conditionalArrayOwnerValue resultSlot resultPtr inBounds
+                              parts.snd.owner))),
+                        resultSlot + 1)
+                | none => .error "unsupported Array.eraseIdxIfInBounds item type"
+            | _, _ => .error "unsupported Array.eraseIdxIfInBounds application"
+        | (.const ``Array.eraseIdx _, args) =>
+            match args, args.reverse with
+            | itemTy :: _, _proof :: index :: array :: _ =>
+                match typeAtom? ctx.env itemTy with
+                | some itemTy =>
+                    let width ← arrayElementWidth "Array.eraseIdx" itemTy
+                    let childMask := arrayElementChildMask itemTy
+                    let arrayResult ← extractValueFrom ctx locals nextLocal array
+                    let parts ← arrayFullPartsWithLets arrayResult.fst
+                    let indexResult ← extractExprFrom ctx locals arrayResult.snd index
+                    let arraySlot := indexResult.snd
+                    let indexSlot := arraySlot + 1
+                    let resultSlot := arraySlot + 2
+                    let inBounds := .ltU64 (.local indexSlot) (.arraySize (.local arraySlot))
+                    let resultPtr :=
+                      .arrayEraseIfInBoundsSlots width childMask (.local arraySlot)
+                        (.local indexSlot)
+                    .ok
+                      (wrapValueLets parts.fst
+                        (.letE arraySlot parts.snd.ptr
+                          (.letE indexSlot indexResult.fst
+                            (conditionalArrayOwnerValue resultSlot resultPtr inBounds
+                              parts.snd.owner))),
+                        resultSlot + 1)
+                | none => .error "unsupported Array.eraseIdx item type"
+            | _, _ => .error "unsupported Array.eraseIdx application"
+        | (.const ``Array.swapIfInBounds _, args) =>
+            match args, args.reverse with
+            | itemTy :: _, right :: left :: array :: _ =>
+                match typeAtom? ctx.env itemTy with
+                | some itemTy =>
+                    let width ← arrayElementWidth "Array.swapIfInBounds" itemTy
+                    let childMask := arrayElementChildMask itemTy
+                    let arrayResult ← extractValueFrom ctx locals nextLocal array
+                    let parts ← arrayFullPartsWithLets arrayResult.fst
+                    let leftResult ← extractExprFrom ctx locals arrayResult.snd left
+                    let rightResult ← extractExprFrom ctx locals leftResult.snd right
+                    let arraySlot := rightResult.snd
+                    let leftSlot := arraySlot + 1
+                    let rightSlot := arraySlot + 2
+                    let resultSlot := arraySlot + 3
+                    let len := .arraySize (.local arraySlot)
+                    let inBounds :=
+                      .and (.ltU64 (.local leftSlot) len) (.ltU64 (.local rightSlot) len)
+                    let resultPtr :=
+                      .arraySwapIfInBoundsSlots width childMask (.local arraySlot)
+                        (.local leftSlot) (.local rightSlot)
+                    .ok
+                      (wrapValueLets parts.fst
+                        (.letE arraySlot parts.snd.ptr
+                          (.letE leftSlot leftResult.fst
+                            (.letE rightSlot rightResult.fst
+                              (conditionalArrayOwnerValue resultSlot resultPtr inBounds
+                                parts.snd.owner)))),
+                        resultSlot + 1)
+                | none => .error "unsupported Array.swapIfInBounds item type"
+            | _, _ => .error "unsupported Array.swapIfInBounds application"
+        | (.const ``Array.swap _, args) =>
+            match args, args.reverse with
+            | itemTy :: _, _rightProof :: _leftProof :: right :: left :: array :: _ =>
+                match typeAtom? ctx.env itemTy with
+                | some itemTy =>
+                    let width ← arrayElementWidth "Array.swap" itemTy
+                    let childMask := arrayElementChildMask itemTy
+                    let arrayResult ← extractValueFrom ctx locals nextLocal array
+                    let parts ← arrayFullPartsWithLets arrayResult.fst
+                    let leftResult ← extractExprFrom ctx locals arrayResult.snd left
+                    let rightResult ← extractExprFrom ctx locals leftResult.snd right
+                    let arraySlot := rightResult.snd
+                    let leftSlot := arraySlot + 1
+                    let rightSlot := arraySlot + 2
+                    let resultSlot := arraySlot + 3
+                    let len := .arraySize (.local arraySlot)
+                    let inBounds :=
+                      .and (.ltU64 (.local leftSlot) len) (.ltU64 (.local rightSlot) len)
+                    let resultPtr :=
+                      .arraySwapIfInBoundsSlots width childMask (.local arraySlot)
+                        (.local leftSlot) (.local rightSlot)
+                    .ok
+                      (wrapValueLets parts.fst
+                        (.letE arraySlot parts.snd.ptr
+                          (.letE leftSlot leftResult.fst
+                            (.letE rightSlot rightResult.fst
+                              (conditionalArrayOwnerValue resultSlot resultPtr inBounds
+                                parts.snd.owner)))),
+                        resultSlot + 1)
+                | none => .error "unsupported Array.swap item type"
+            | _, _ => .error "unsupported Array.swap application"
+        | (.const ``Array.reverse _, args) =>
+            match args, args.reverse with
+            | itemTy :: _, array :: _ =>
+                match typeAtom? ctx.env itemTy with
+                | some itemTy =>
+                    let width ← arrayElementWidth "Array.reverse" itemTy
+                    let childMask := arrayElementChildMask itemTy
+                    let arrayResult ← extractValueFrom ctx locals nextLocal array
+                    let parts ← arrayFullPartsWithLets arrayResult.fst
+                    let arraySlot := arrayResult.snd
+                    let resultSlot := arraySlot + 1
+                    let takesOwnership := .not (.leU64 (.arraySize (.local arraySlot)) (.u64 1))
+                    let resultPtr := .arrayReverseSlots width childMask (.local arraySlot)
+                    .ok
+                      (wrapValueLets parts.fst
+                        (.letE arraySlot parts.snd.ptr
+                          (conditionalArrayOwnerValue resultSlot resultPtr takesOwnership
+                            parts.snd.owner)),
+                        resultSlot + 1)
+                | none => .error "unsupported Array.reverse item type"
+            | _, _ => .error "unsupported Array.reverse application"
+        | (.const ``Array.insertIdxIfInBounds _, args) =>
+            match args, args.reverse with
+            | itemTy :: _, value :: index :: array :: _ =>
+                match typeAtom? ctx.env itemTy with
+                | some itemTy =>
+                    let width ← arrayElementWidth "Array.insertIdxIfInBounds" itemTy
+                    let childMask := arrayElementChildMask itemTy
+                    let arrayResult ← extractValueFrom ctx locals nextLocal array
+                    let parts ← arrayFullPartsWithLets arrayResult.fst
+                    let indexResult ← extractExprFrom ctx locals arrayResult.snd index
+                    let arraySlot := indexResult.snd
+                    let indexSlot := arraySlot + 1
+                    let valueResult ← extractValueFrom ctx locals (indexSlot + 1) value
+                    let slots ← flattenArrayElementValue itemTy valueResult.fst
+                    let ownedMask := ownedChildMaskForSlots childMask slots
+                    let resultSlot := valueResult.snd
+                    let inBounds := .leU64 (.local indexSlot) (.arraySize (.local arraySlot))
+                    let resultPtr :=
+                      .arrayInsertIfInBoundsSlots width childMask ownedMask (.local arraySlot)
+                        (.local indexSlot) slots
+                    .ok
+                      (wrapValueLets parts.fst
+                        (.letE arraySlot parts.snd.ptr
+                          (.letE indexSlot indexResult.fst
+                            (conditionalArrayOwnerValue resultSlot resultPtr inBounds
+                              parts.snd.owner))),
+                        resultSlot + 1)
+                | none => .error "unsupported Array.insertIdxIfInBounds item type"
+            | _, _ => .error "unsupported Array.insertIdxIfInBounds application"
+        | (.const ``Array.modify _, args) =>
+            match args, args.reverse with
+            | itemTy :: _, modifyFn :: index :: array :: _ =>
+                match typeAtom? ctx.env itemTy with
+                | some itemTy =>
+                    let width ← arrayElementWidth "Array.modify" itemTy
+                    let childMask := arrayElementChildMask itemTy
+                    let arrayResult ← extractValueFrom ctx locals nextLocal array
+                    let parts ← arrayFullPartsWithLets arrayResult.fst
+                    let indexResult ← extractExprFrom ctx locals arrayResult.snd index
+                    let arraySlot := indexResult.snd
+                    let indexSlot := arraySlot + 1
+                    let oldValue ← arrayLoadValue itemTy (.local arraySlot) (.local indexSlot)
+                    let modifyBody ←
+                      match collectLambdas modifyFn 1 with
+                      | some body => .ok body
+                      | none => .error "unsupported Array.modify function"
+                    let modifiedResult ←
+                      extractValueFrom ctx (.value oldValue :: locals) (indexSlot + 1) modifyBody
+                    let slots ← flattenArrayElementValue itemTy modifiedResult.fst
+                    let ownedMask := ownedChildMaskForSlots childMask slots
+                    let resultSlot := modifiedResult.snd
+                    let inBounds := .ltU64 (.local indexSlot) (.arraySize (.local arraySlot))
+                    let resultPtr :=
+                      .ite inBounds
+                        (.arraySetSlots width childMask ownedMask (.local arraySlot)
+                          (.local indexSlot) slots)
+                        (.local arraySlot)
+                    .ok
+                      (wrapValueLets parts.fst
+                        (.letE arraySlot parts.snd.ptr
+                          (.letE indexSlot indexResult.fst
+                            (conditionalArrayOwnerValue resultSlot resultPtr inBounds
+                              parts.snd.owner))),
+                        resultSlot + 1)
+                | none => .error "unsupported Array.modify item type"
+            | _, _ => .error "unsupported Array.modify application"
+        | (.const ``Array.setIfInBounds _, args) =>
+            match args, args.reverse with
+            | itemTy :: _, value :: index :: array :: _ =>
+                match typeAtom? ctx.env itemTy with
+                | some itemTy =>
+                  match arrayElementSlots? itemTy with
+                  | some width =>
+                    let childMask := arrayElementChildMask itemTy
+                    let arrayResult ← extractValueFrom ctx locals nextLocal array
+                    let parts ← arrayFullPartsWithLets arrayResult.fst
+                    let indexResult ← extractExprFrom ctx locals arrayResult.snd index
+                    let arraySlot := indexResult.snd
+                    let indexSlot := arraySlot + 1
+                    let valueResult ← extractValueFrom ctx locals (indexSlot + 1) value
+                    let slots ← flattenArrayElementValue itemTy valueResult.fst
+                    let ownedMask := ownedChildMaskForSlots childMask slots
+                    let resultSlot := valueResult.snd
+                    let inBounds := .ltU64 (.local indexSlot) (.arraySize (.local arraySlot))
+                    let resultPtr :=
+                      .ite inBounds
+                        (.arraySetSlots width childMask ownedMask (.local arraySlot)
+                          (.local indexSlot) slots)
+                        (.local arraySlot)
+                    .ok
+                      (wrapValueLets parts.fst
+                        (.letE arraySlot parts.snd.ptr
+                          (.letE indexSlot indexResult.fst
+                            (conditionalArrayOwnerValue resultSlot resultPtr inBounds
+                              parts.snd.owner))),
+                        resultSlot + 1)
+                  | none => .error s!"unsupported Array.setIfInBounds item type: {reprStr itemTy}"
+                | none => .error "unsupported Array.setIfInBounds item type"
+            | _, _ => .error "unsupported Array.setIfInBounds application"
         | (.const ``id _, args) =>
             match args.reverse with
             | value :: _ => extractValueFrom ctx locals nextLocal value
@@ -7781,6 +8237,9 @@ mutual
             | _ => .error "unsupported ByteArray.append application"
         | (.const ``HAppend.hAppend _, args) =>
             match args.reverse, primitiveResultType? ctx.env args with
+            | _right :: _left :: _, some (.array _) =>
+                let ptrResult ← extractExprFrom ctx locals nextLocal expr
+                .ok (ownedArrayValue ptrResult.snd ptrResult.fst, ptrResult.snd + 1)
             | right :: left :: _, some .byteArray =>
                 let leftResult ← extractValueFrom ctx locals nextLocal left
                 let leftParts ← byteArrayPartsWithLets leftResult.fst
@@ -9788,7 +10247,8 @@ mutual
               let parts ← heapVariantPtrWithLets name valueResult.fst
               .ok (.release (wrapExprLets parts.fst parts.snd), valueResult.snd)
           | .array _ =>
-              .ok (.release (← scalarValue valueResult.fst), valueResult.snd)
+              let parts ← arrayFullPartsWithLets valueResult.fst
+              .ok (.release (wrapExprLets parts.fst parts.snd.owner), valueResult.snd)
           | _ => .error s!"unsupported Runtime.release type: {reprStr ty}"
       | _ => .error "unsupported Runtime.release application"
     else
