@@ -307,6 +307,9 @@ const accepted = [
   { name: "byteArrayStructReplicateRuntimeReleaseFrees", args: [], expected: 202n },
   { name: "nestedArrayRuntimeReleaseFrees", args: [], expected: 202n },
   { name: "structArrayFieldRuntimeReleaseFrees", args: [], expected: 202n },
+  { name: "ownedArrayCallTempScalar", args: [], expected: 5n },
+  { name: "ownedByteArrayCallTempScalar", args: [], expected: 66n },
+  { name: "ownedBoxCallTempScalar", args: [], expected: 13n },
   {
     name: "byteArrayFoldByteOutputState",
     args: [],

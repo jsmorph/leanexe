@@ -323,7 +323,7 @@ function expectGcTreeRewrite(inputBytes) {
   if (json.nodeCount !== 63 || json.height !== 6) {
     throw new Error("jsonGcTreeRewrite: expected a depth-six tree");
   }
-  if (json.gc.allocsAfterInitial <= 0 || json.gc.freesBeforeRun !== 0) {
+  if (json.gc.allocsAfterInitial <= 0 || json.gc.freesBeforeRun >= json.gc.allocsAfterInitial) {
     throw new Error("jsonGcTreeRewrite: unexpected initial GC counters");
   }
   if (json.gc.freesAfterRounds <= json.gc.freesBeforeRun) {

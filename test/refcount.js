@@ -181,6 +181,60 @@ async function checkBorrowedArrayNoopRelease() {
   reversed.release(BigInt(singletonPtr));
 }
 
+async function checkCompilerReleasesOwnedCallResults() {
+  const array = await instantiate(correctnessModule, "ownedArrayCallTempScalar");
+  array.reset();
+  const expectedArrayBlock = pointer(array.alloc(16n));
+  array.reset();
+  const arrayResult = pointer(array.ownedArrayCallTempScalar());
+  if (arrayResult !== 5) {
+    throw new Error(`ownedArrayCallTempScalar: expected 5, got ${arrayResult}`);
+  }
+  const reusedArrayBlock = pointer(array.alloc(16n));
+  if (reusedArrayBlock !== expectedArrayBlock) {
+    throw new Error(
+      `compiler did not release array call result: expected ${expectedArrayBlock}, got ${reusedArrayBlock}`,
+    );
+  }
+
+  const bytes = await instantiate(correctnessModule, "ownedByteArrayCallTempScalar");
+  bytes.reset();
+  const expectedByteBlock = pointer(bytes.alloc(1n));
+  bytes.reset();
+  const byteResult = pointer(bytes.ownedByteArrayCallTempScalar());
+  if (byteResult !== 66) {
+    throw new Error(`ownedByteArrayCallTempScalar: expected 66, got ${byteResult}`);
+  }
+  const reusedByteBlock = pointer(bytes.alloc(1n));
+  if (reusedByteBlock !== expectedByteBlock) {
+    throw new Error(
+      `compiler did not release byte-array call result: expected ${expectedByteBlock}, got ${reusedByteBlock}`,
+    );
+  }
+
+  const box = await instantiate(correctnessModule, "ownedBoxCallTempScalar");
+  box.reset();
+  const expectedBoxArrayBlock = pointer(box.alloc(16n));
+  const expectedBoxByteBlock = pointer(box.alloc(1n));
+  box.reset();
+  const boxResult = pointer(box.ownedBoxCallTempScalar());
+  if (boxResult !== 13) {
+    throw new Error(`ownedBoxCallTempScalar: expected 13, got ${boxResult}`);
+  }
+  const reusedBoxArrayBlock = pointer(box.alloc(16n));
+  const reusedBoxByteBlock = pointer(box.alloc(1n));
+  if (reusedBoxArrayBlock !== expectedBoxArrayBlock) {
+    throw new Error(
+      `compiler did not release boxed array call result: expected ${expectedBoxArrayBlock}, got ${reusedBoxArrayBlock}`,
+    );
+  }
+  if (reusedBoxByteBlock !== expectedBoxByteBlock) {
+    throw new Error(
+      `compiler did not release boxed byte-array call result: expected ${expectedBoxByteBlock}, got ${reusedBoxByteBlock}`,
+    );
+  }
+}
+
 async function main() {
   run(["lake", "build", correctnessModule]);
   run(["lake", "build", byteArrayModule]);
@@ -193,7 +247,8 @@ async function main() {
   await checkByteArrayOwnerChildRelease();
   await checkArrayOwnerChildRelease();
   await checkBorrowedArrayNoopRelease();
-  process.stdout.write("checked 11 refcount cases\n");
+  await checkCompilerReleasesOwnedCallResults();
+  process.stdout.write("checked 14 refcount cases\n");
 }
 
 main().catch((error) => {

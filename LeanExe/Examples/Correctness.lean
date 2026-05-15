@@ -476,6 +476,11 @@ structure ByteOutputState where
   count : UInt64
   bytes : ByteArray
 
+structure OwnedCallBox where
+  values : Array UInt64
+  bytes : ByteArray
+  count : UInt64
+
 structure EqByteBox where
   bytes : ByteArray
   count : UInt64
@@ -3656,6 +3661,29 @@ def structArrayFieldRuntimeReleaseFrees : UInt64 :=
   let releasesBefore := LeanExe.Runtime.releaseCount
   let after := LeanExe.Runtime.release values
   (LeanExe.Runtime.releaseCount - releasesBefore) * 100 + (after - before)
+
+def ownedArrayCallTemp : Array UInt64 :=
+  Array.replicate 1 (5 : UInt64)
+
+def ownedArrayCallTempScalar : UInt64 :=
+  let values := ownedArrayCallTemp
+  values[0]!
+
+def ownedByteArrayCallTemp : ByteArray :=
+  ByteArray.empty.push (65 : UInt8)
+
+def ownedByteArrayCallTempScalar : UInt64 :=
+  let bytes := ownedByteArrayCallTemp
+  bytes.size.toUInt64 + bytes[0]!.toUInt64
+
+def ownedBoxCallTemp : OwnedCallBox :=
+  { values := Array.replicate 1 (5 : UInt64),
+    bytes := ByteArray.empty.push (65 : UInt8),
+    count := 7 }
+
+def ownedBoxCallTempScalar : UInt64 :=
+  let box := ownedBoxCallTemp
+  box.values[0]! + box.bytes.size.toUInt64 + box.count
 
 def borrowedArrayPopEmptyReleaseFrees (values : Array UInt64) : UInt64 :=
   let popped := values.pop
