@@ -304,6 +304,7 @@ const accepted = [
     memoryBytes: [{ resultIndex: 0, lengthIndex: 1, values: [65, 66, 67, 68, 69, 70] }],
   },
   { name: "byteArrayFieldStructureArrayFold", args: [], expected: 6n },
+  { name: "byteArrayStructReplicateRuntimeReleaseFrees", args: [], expected: 202n },
   {
     name: "byteArrayFoldByteOutputState",
     args: [],

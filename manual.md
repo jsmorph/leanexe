@@ -69,19 +69,19 @@ Choose the compile command from the entry type.  The Lean source stays pure in e
 | `Array ByteArray -> Except ByteArray ByteArray` | `compile-wasi-argv-except` | Passes user argv as an internal array of byte arrays. |
 | `ByteArray -> Array ByteArray -> Except ByteArray ByteArray` | `compile-wasi-stdin-argv-except` | Passes bounded stdin and bounded user argv. |
 
-Library-mode array and byte-array values use exported memory.  Hosts allocate input bytes with `alloc`, write data into `memory`, pass pointer-length pairs, and read returned pointer-length pairs before calling `release` or `reset`.  Command-mode programs hide that host ABI behind WASI.
+Library-mode array and byte-array values use exported memory.  Hosts allocate input bytes with `alloc`, write data into `memory`, pass pointer-length pairs, and read returned pointer-length pairs before releasing owned root pointers or calling `reset`.  Command-mode programs hide that host ABI behind WASI.
 
 ## Memory Management
 
 LeanExe modules use a small reference-counted heap inside growable WASM linear memory.  Heap-backed values allocate with a header before the payload pointer, and released objects return to a free list for later allocation.  This includes byte arrays, arrays, recursive inductive values, nested internal arrays, JSON AST nodes, and other heap-backed values created by compiled code.
 
-In library mode, the host controls result lifetime.  It may call `alloc` to reserve input memory, call the exported Lean entry, read returned pointer-length values or memory-backed arrays, and call `release(ptr)` or `free(ptr)` when a returned object is no longer needed.  `retain(ptr)` increments the reference count and returns the same pointer, which lets a host keep a result while passing it through code that may release its own reference.
+In library mode, the host controls result lifetime.  It may call `alloc` to reserve input memory, call the exported Lean entry, and read returned pointer-length values or memory-backed arrays.  It may call `release(ptr)` or `free(ptr)` for a returned pointer known to be an owned allocation root.  A public `ByteArray` result exposes only pointer and length, so a slice can point inside an owned allocation or into borrowed input; the host should copy or consume those bytes before `reset()` unless the program's result protocol guarantees that the pointer is a root.  `retain(ptr)` increments the reference count and returns the same pointer, which lets a host keep a result while passing it through code that may release its own reference.
 
 `reset()` remains a coarse reclamation operation.  It rewinds the heap and clears the free list, invalidating every old pointer regardless of reference count.  A host should use either explicit `release` calls for individual returned objects or `reset()` at a boundary where no old pointer remains live.
 
 The compiler emits `release` for a conservative class of local heap temporaries: the temporary must come from a visible fresh allocation in a local expression or local binding, and the function result type must contain no heap pointer.  This lets scalar-result helpers reclaim internal arrays, byte arrays, and recursive values before returning.  The compiler does not yet perform full ownership analysis for heap-pointer results, call results, loop-carried values, or temporaries whose lifetime ends before function exit.  Long-running library hosts can reclaim returned objects today, while broader in-call reclamation requires further ownership analysis.
 
-Compiled Lean code may read runtime counters through `LeanExe.Runtime.allocCount`, `retainCount`, `releaseCount`, and `freeCount`.  It may call `LeanExe.Runtime.release value` for a monomorphic recursive-inductive root or a compiler-owned array root at an explicit ownership boundary; the compiled call releases the root and returns the current free count.  The program must not use the released value, or any heap node shared with a live value, after the call, and the compiler does not yet prove that condition.  Array release follows recursive-inductive child pointers stored in fixed-width element slots, but it does not follow `ByteArray` fields or nested array fields because those pointers may name borrowed input storage rather than owned heap roots.
+Compiled Lean code may read runtime counters through `LeanExe.Runtime.allocCount`, `retainCount`, `releaseCount`, and `freeCount`.  It may call `LeanExe.Runtime.release value` for a monomorphic recursive-inductive root or a compiler-owned array root at an explicit ownership boundary; the compiled call releases the root and returns the current free count.  The program must not use the released value, or any heap node shared with a live value, after the call, and the compiler does not yet prove that condition.  Array and recursive-value release follows recursive-inductive child pointers and `ByteArray` owner slots stored in fixed-width layouts.  It still does not follow nested array fields, because nested arrays do not yet carry an internal owner slot.
 
 In WASI command mode, the generated module is a single-run command.  The adapter reads stdin or argv, calls the pure Lean entry, writes stdout or stderr, and exits.  Process exit discards all allocations, but one large request can still allocate enough intermediate data to hit a host memory limit before exit.  In those cases, source-level `LeanExe.Runtime.release` can mark an owned recursive root dead inside the command.
 
@@ -239,7 +239,7 @@ Compile a stdin command:
 
 ## Arrays
 
-Use arrays when the element type has a fixed-width layout.  Public arrays cannot contain heap-reference fields such as `ByteArray`, nested arrays, or recursive data.  Internal arrays may contain `ByteArray`, nested arrays, recursive pointers, and structures or tagged values that contain those internal pointer fields.
+Use arrays when the element type has a fixed-width layout.  Public arrays cannot contain heap-reference fields such as `ByteArray`, nested arrays, or recursive data.  Internal arrays may contain `ByteArray`, nested arrays, recursive pointers, and structures or tagged values that contain those internal pointer fields.  A `ByteArray` element uses owner, pointer, and length slots internally, so copied array elements retain the owner when the byte buffer is compiler-owned.
 
 Stable array operations include literals, `Array.size`, `isEmpty`, indexing, safe indexing, `getD`, `back?`, `push`, `pop`, `append`, `extract`, `set`, `set!`, `setIfInBounds`, `modify`, `insertIdx`, `eraseIdx`, `swap`, `reverse`, `map`, `filter`, `find?`, `findIdx?`, `any`, `all`, and `foldl`.  Bang operations trap on invalid indexes.  Updates allocate fresh arrays and preserve Lean value semantics.
 
@@ -278,7 +278,7 @@ def foldAttached (items : Array UInt64) : UInt64 :=
 
 ## Byte Arrays and ASCII Text
 
-Use `ByteArray` for binary input, binary output, and command boundaries.  Supported operations include `size`, `isEmpty`, `get!`, safe indexing, `extract`, `empty`, `mk` from `Array UInt8`, compile-time ASCII `.toUTF8`, `push`, `append`, append notation, `set`, `set!`, `copySlice`, `foldl`, `findIdx?`, `toUInt64LE!`, `toUInt64BE!`, and equality.
+Use `ByteArray` for binary input, binary output, and command boundaries.  Public calls pass byte arrays as pointer-length pairs.  Compiled helpers carry an internal owner slot as well, which keeps an allocated byte-buffer root alive when a slice or byte array field is stored in an array, structure, or tagged value.  Supported operations include `size`, `isEmpty`, `get!`, safe indexing, `extract`, `empty`, `mk` from `Array UInt8`, compile-time ASCII `.toUTF8`, `push`, `append`, append notation, `set`, `set!`, `copySlice`, `foldl`, `findIdx?`, `toUInt64LE!`, `toUInt64BE!`, and equality.
 
 Use `LeanExe.AsciiString` for byte-indexed ASCII text after validation.  The public boundary should usually remain `ByteArray`; validate with `AsciiString.ofByteArray?` inside the program.  Runtime Lean `String` and `Char` are outside the language.
 

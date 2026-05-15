@@ -121,6 +121,14 @@ async function checkAllocatorGrowsMemory() {
   new Uint8Array(exports.memory.buffer, ptr + beforeBytes - 1, 1)[0] = 123;
 }
 
+async function checkByteArrayOwnerChildRelease() {
+  const exports = await instantiate(correctnessModule, "byteArrayStructReplicateRuntimeReleaseFrees");
+  const actual = pointer(exports.byteArrayStructReplicateRuntimeReleaseFrees());
+  if (actual !== 202) {
+    throw new Error(`byteArrayStructReplicateRuntimeReleaseFrees: expected 202, got ${actual}`);
+  }
+}
+
 async function main() {
   run(["lake", "build", correctnessModule]);
   run(["lake", "build", byteArrayModule]);
@@ -130,7 +138,8 @@ async function main() {
   await checkFreeAlias();
   await checkCompilerReleasesScalarTemp();
   await checkAllocatorGrowsMemory();
-  process.stdout.write("checked 5 refcount cases\n");
+  await checkByteArrayOwnerChildRelease();
+  process.stdout.write("checked 6 refcount cases\n");
 }
 
 main().catch((error) => {

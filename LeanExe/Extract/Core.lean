@@ -32,7 +32,7 @@ structure SyntheticFunction where
 
 inductive ExtractedValue where
   | scalar (expr : IRExpr)
-  | byteArray (ptr len : IRExpr)
+  | byteArray (owner ptr len : IRExpr)
   | product (left right : ExtractedValue)
   | sum (tag : IRExpr) (left right : ExtractedValue)
   | struct (name : Name) (fields : List ExtractedValue)
@@ -178,11 +178,13 @@ def byteArrayLiteralArrayExpr (bytes : List UInt8) : IRExpr :=
 
 def byteArrayLiteralValue (slot : Nat) (bytes : List UInt8) : ExtractedValue × Nat :=
   match bytes with
-  | [] => (.byteArray (.u64 0) (.u64 0), slot)
+  | [] => (.byteArray (.u64 0) (.u64 0) (.u64 0), slot)
   | _ =>
+      let ptrSlot := slot + 1
       (.letE slot (byteArrayLiteralArrayExpr bytes)
-        (.byteArray (.byteArrayFromArrayPtr (.local slot)) (.arraySize (.local slot))),
-        slot + 1)
+        (.letE ptrSlot (.byteArrayFromArrayPtr (.local slot))
+          (.byteArray (.local ptrSlot) (.local ptrSlot) (.arraySize (.local slot)))),
+        ptrSlot + 1)
 
 def ofNat? (typeName : Name) (expr : Expr) : Option Nat :=
   match appFnArgs expr with
@@ -813,7 +815,7 @@ mutual
     | .u32 => some .scalar
     | .u64 => some .scalar
     | .nat => some .scalar
-    | .byteArray => some (.fixed 2)
+    | .byteArray => some (.fixed 3)
     | .array item => do
         let _ ← arrayElementLayout? item
         some .pointer
@@ -876,7 +878,7 @@ mutual
         let payloadSlots ← arrayCtorSlots? ctors
         some (.fixed (payloadSlots + 1))
     | .recVariant _ _ => some .pointer
-    | .byteArray => some (.fixed 2)
+    | .byteArray => some (.fixed 3)
 
   partial def arrayElementSlots? (ty : Ty) : Option Nat := do
     let layout ← arrayElementLayout? ty
@@ -953,7 +955,7 @@ partial def abiSlots : Ty → Nat
   | _ => 1
 
 partial def internalSlots : Ty → Nat
-  | .byteArray => 2
+  | .byteArray => 3
   | .product left right => internalSlots left + internalSlots right
   | .sum left right => 1 + internalSlots left + internalSlots right
   | .struct _ _ fields => fields.foldl (fun total field => total + internalSlots field) 0
@@ -1655,7 +1657,8 @@ mutual
 
   partial def valueUsedSlots : ExtractedValue → List Nat
     | .scalar expr => exprUsedSlots expr
-    | .byteArray ptr len => addLiveSlots (exprUsedSlots ptr) (exprUsedSlots len)
+    | .byteArray owner ptr len =>
+        addLiveSlots (exprUsedSlots owner) (addLiveSlots (exprUsedSlots ptr) (exprUsedSlots len))
     | .product left right =>
         addLiveSlots (valueUsedSlots left) (valueUsedSlots right)
     | .sum tag left right =>
@@ -1759,7 +1762,7 @@ def wrapExprLocalLets (lets : List LeanExe.IR.LocalLet) (expr : IRExpr) : IRExpr
 def scalarValue (value : ExtractedValue) : Except String IRExpr :=
   match value with
   | .scalar expr => .ok expr
-  | .byteArray _ _ => .error "ByteArray value used where scalar value is required"
+  | .byteArray _ _ _ => .error "ByteArray value used where scalar value is required"
   | .product _ _ => .error "product value used where scalar value is required"
   | .sum _ _ _ => .error "sum value used where scalar value is required"
   | .struct name _ => .error s!"structure value used where scalar value is required: {name}"
@@ -1776,9 +1779,16 @@ def scalarValue (value : ExtractedValue) : Except String IRExpr :=
   | .letLocal lets body => do
       .ok (wrapExprLocalLets lets (← scalarValue body))
 
-def byteArrayParts (value : ExtractedValue) : Except String (IRExpr × IRExpr) :=
+structure ByteArraySlots where
+  owner : IRExpr
+  ptr : IRExpr
+  len : IRExpr
+  deriving BEq, Repr
+
+partial def byteArrayFullParts (value : ExtractedValue) :
+    Except String ByteArraySlots :=
   match value with
-  | .byteArray ptr len => .ok (ptr, len)
+  | .byteArray owner ptr len => .ok { owner, ptr, len }
   | .scalar _ => .error "scalar value used where ByteArray value is required"
   | .product _ _ => .error "product value used where ByteArray value is required"
   | .sum _ _ _ => .error "sum value used where ByteArray value is required"
@@ -1789,44 +1799,73 @@ def byteArrayParts (value : ExtractedValue) : Except String (IRExpr × IRExpr) :
   | .heapVariant name _ =>
       .error s!"recursive inductive value used where ByteArray value is required: {name}"
   | .ite cond thenValue elseValue => do
-      let thenParts ← byteArrayParts thenValue
-      let elseParts ← byteArrayParts elseValue
-      .ok (.ite cond thenParts.fst elseParts.fst, .ite cond thenParts.snd elseParts.snd)
+      let thenParts ← byteArrayFullParts thenValue
+      let elseParts ← byteArrayFullParts elseValue
+      .ok {
+        owner := .ite cond thenParts.owner elseParts.owner,
+        ptr := .ite cond thenParts.ptr elseParts.ptr,
+        len := .ite cond thenParts.len elseParts.len
+      }
   | .letE slot value body => do
-      let parts ← byteArrayParts body
-      .ok (.letE slot value parts.fst, .letE slot value parts.snd)
+      let parts ← byteArrayFullParts body
+      .ok {
+        owner := .letE slot value parts.owner,
+        ptr := .letE slot value parts.ptr,
+        len := .letE slot value parts.len
+      }
   | .letCall slots index args body => do
-      let parts ← byteArrayParts body
-      .ok (.letCall slots index args parts.fst, .letCall slots index args parts.snd)
+      let parts ← byteArrayFullParts body
+      .ok {
+        owner := .letCall slots index args parts.owner,
+        ptr := .letCall slots index args parts.ptr,
+        len := .letCall slots index args parts.len
+      }
   | .letLocal lets body => do
-      let parts ← byteArrayParts body
-      .ok (wrapExprLocalLets lets parts.fst, wrapExprLocalLets lets parts.snd)
+      let parts ← byteArrayFullParts body
+      .ok {
+        owner := wrapExprLocalLets lets parts.owner,
+        ptr := wrapExprLocalLets lets parts.ptr,
+        len := wrapExprLocalLets lets parts.len
+      }
+
+def byteArrayParts (value : ExtractedValue) : Except String (IRExpr × IRExpr) := do
+  let parts ← byteArrayFullParts value
+  .ok (parts.ptr, parts.len)
+
+partial def byteArrayFullPartsWithLets (value : ExtractedValue) :
+    Except String (List ValueLet × ByteArraySlots) :=
+  match value with
+  | .byteArray owner ptr len => .ok ([], { owner, ptr, len })
+  | .scalar _ => .error "scalar value used where ByteArray value is required"
+  | .product _ _ => .error "product value used where ByteArray value is required"
+  | .sum _ _ _ => .error "sum value used where ByteArray value is required"
+  | .struct name _ => .error s!"structure value used where ByteArray value is required: {name}"
+  | .variant name _ _ => .error s!"inductive value used where ByteArray value is required: {name}"
+  | .recursiveVariant name _ _ =>
+      .error s!"recursive inductive value used where ByteArray value is required: {name}"
+  | .heapVariant name _ =>
+      .error s!"recursive inductive value used where ByteArray value is required: {name}"
+  | .ite cond thenValue elseValue => do
+      let parts ← byteArrayFullParts (.ite cond thenValue elseValue)
+      .ok ([], parts)
+  | .letE slot value body => do
+      let parts ← byteArrayFullPartsWithLets body
+      .ok (.expr slot value :: parts.fst, parts.snd)
+  | .letCall slots index args body => do
+      let parts ← byteArrayFullPartsWithLets body
+      .ok (.call slots index args :: parts.fst, parts.snd)
+  | .letLocal lets body => do
+      let parts ← byteArrayFullParts body
+      .ok ([], {
+        owner := wrapExprLocalLets lets parts.owner,
+        ptr := wrapExprLocalLets lets parts.ptr,
+        len := wrapExprLocalLets lets parts.len
+      })
 
 partial def byteArrayPartsWithLets (value : ExtractedValue) :
-    Except String (List ValueLet × IRExpr × IRExpr) :=
-  match value with
-  | .byteArray ptr len => .ok ([], ptr, len)
-  | .scalar _ => .error "scalar value used where ByteArray value is required"
-  | .product _ _ => .error "product value used where ByteArray value is required"
-  | .sum _ _ _ => .error "sum value used where ByteArray value is required"
-  | .struct name _ => .error s!"structure value used where ByteArray value is required: {name}"
-  | .variant name _ _ => .error s!"inductive value used where ByteArray value is required: {name}"
-  | .recursiveVariant name _ _ =>
-      .error s!"recursive inductive value used where ByteArray value is required: {name}"
-  | .heapVariant name _ =>
-      .error s!"recursive inductive value used where ByteArray value is required: {name}"
-  | .ite cond thenValue elseValue => do
-      let parts ← byteArrayParts (.ite cond thenValue elseValue)
-      .ok ([], parts.fst, parts.snd)
-  | .letE slot value body => do
-      let parts ← byteArrayPartsWithLets body
-      .ok (.expr slot value :: parts.fst, parts.snd.fst, parts.snd.snd)
-  | .letCall slots index args body => do
-      let parts ← byteArrayPartsWithLets body
-      .ok (.call slots index args :: parts.fst, parts.snd.fst, parts.snd.snd)
-  | .letLocal lets body => do
-      let parts ← byteArrayParts body
-      .ok ([], wrapExprLocalLets lets parts.fst, wrapExprLocalLets lets parts.snd)
+    Except String (List ValueLet × IRExpr × IRExpr) := do
+  let parts ← byteArrayFullPartsWithLets value
+  .ok (parts.fst, parts.snd.ptr, parts.snd.len)
 
 def productField (index : Nat) (value : ExtractedValue) : Except String ExtractedValue :=
   match value with
@@ -1838,7 +1877,7 @@ def productField (index : Nat) (value : ExtractedValue) : Except String Extracte
       else
         .error s!"unsupported product projection index: {index}"
   | .scalar _ => .error "scalar value used where product value is required"
-  | .byteArray _ _ => .error "ByteArray value used where product value is required"
+  | .byteArray _ _ _ => .error "ByteArray value used where product value is required"
   | .sum _ _ _ => .error "sum value used where product value is required"
   | .struct name _ => .error s!"structure value used where product value is required: {name}"
   | .variant name _ _ => .error s!"inductive value used where product value is required: {name}"
@@ -1865,7 +1904,7 @@ def structField (name : Name) (index : Nat) (value : ExtractedValue) : Except St
       else
         .error s!"structure projection type mismatch: expected {name}, got {actual}"
   | .scalar _ => .error s!"scalar value used where structure value is required: {name}"
-  | .byteArray _ _ => .error s!"ByteArray value used where structure value is required: {name}"
+  | .byteArray _ _ _ => .error s!"ByteArray value used where structure value is required: {name}"
   | .product _ _ => .error s!"product value used where structure value is required: {name}"
   | .sum _ _ _ => .error s!"sum value used where structure value is required: {name}"
   | .variant actual _ _ =>
@@ -1920,7 +1959,7 @@ partial def optionPartsWithLets (value : ExtractedValue) :
       else
         .error s!"inductive value used where Option value is required: {name}"
   | .scalar _ => .error "scalar value used where option value is required"
-  | .byteArray _ _ => .error "ByteArray value used where option value is required"
+  | .byteArray _ _ _ => .error "ByteArray value used where option value is required"
   | .product _ _ => .error "product value used where option value is required"
   | .sum _ _ _ => .error "sum value used where option value is required"
   | .struct name _ => .error s!"structure value used where option value is required: {name}"
@@ -1956,7 +1995,7 @@ partial def sumPartsWithLets (value : ExtractedValue) :
   match value with
   | .sum tag left right => .ok ([], tag, left, right)
   | .scalar _ => .error "scalar value used where sum value is required"
-  | .byteArray _ _ => .error "ByteArray value used where sum value is required"
+  | .byteArray _ _ _ => .error "ByteArray value used where sum value is required"
   | .product _ _ => .error "product value used where sum value is required"
   | .struct name _ => .error s!"structure value used where sum value is required: {name}"
   | .variant name _ _ => .error s!"inductive value used where sum value is required: {name}"
@@ -2000,7 +2039,7 @@ partial def variantPartsWithLets (expectedName : Name) (value : ExtractedValue) 
       else
         .error s!"inductive value type mismatch: expected {expectedName}, got {name}"
   | .scalar _ => .error s!"scalar value used where inductive value is required: {expectedName}"
-  | .byteArray _ _ =>
+  | .byteArray _ _ _ =>
       .error s!"ByteArray value used where inductive value is required: {expectedName}"
   | .product _ _ => .error s!"product value used where inductive value is required: {expectedName}"
   | .sum _ _ _ => .error s!"sum value used where inductive value is required: {expectedName}"
@@ -2050,7 +2089,7 @@ partial def heapVariantPtrWithLets (expectedName : Name) (value : ExtractedValue
         .error s!"recursive inductive value type mismatch: expected {expectedName}, got {name}"
   | .scalar _ =>
       .error s!"scalar value used where recursive inductive value is required: {expectedName}"
-  | .byteArray _ _ =>
+  | .byteArray _ _ _ =>
       .error s!"ByteArray value used where recursive inductive value is required: {expectedName}"
   | .product _ _ =>
       .error s!"product value used where recursive inductive value is required: {expectedName}"
@@ -2100,7 +2139,7 @@ partial def recursiveVariantPartsWithLets (expectedName : Name) (value : Extract
         .error s!"recursive inductive value type mismatch: expected {expectedName}, got {name}"
   | .scalar _ =>
       .error s!"scalar value used where recursive inductive value is required: {expectedName}"
-  | .byteArray _ _ =>
+  | .byteArray _ _ _ =>
       .error s!"ByteArray value used where recursive inductive value is required: {expectedName}"
   | .product _ _ =>
       .error s!"product value used where recursive inductive value is required: {expectedName}"
@@ -2139,7 +2178,7 @@ partial def exceptPartsWithLets (value : ExtractedValue) :
       else
         .error s!"inductive value used where Except value is required: {name}"
   | .scalar _ => .error "scalar value used where Except value is required"
-  | .byteArray _ _ => .error "ByteArray value used where Except value is required"
+  | .byteArray _ _ _ => .error "ByteArray value used where Except value is required"
   | .product _ _ => .error "product value used where Except value is required"
   | .sum _ _ _ => .error "sum value used where Except value is required"
   | .struct name _ => .error s!"structure value used where Except value is required: {name}"
@@ -2183,7 +2222,7 @@ partial def defaultValue : Ty → Except String ExtractedValue
   | .u32 => .ok (.scalar (.u64 0))
   | .u64 => .ok (.scalar (.u64 0))
   | .nat => .ok (.scalar (.u64 0))
-  | .byteArray => .ok (.byteArray (.u64 0) (.u64 0))
+  | .byteArray => .ok (.byteArray (.u64 0) (.u64 0) (.u64 0))
   | .array item =>
       if supportedArrayElementType item then
         .ok (.scalar (.u64 0))
@@ -2206,7 +2245,7 @@ partial def trapValue : Ty → Except String ExtractedValue
   | .u32 => .ok (.scalar .trap)
   | .u64 => .ok (.scalar .trap)
   | .nat => .ok (.scalar .trap)
-  | .byteArray => .ok (.byteArray .trap .trap)
+  | .byteArray => .ok (.byteArray .trap .trap .trap)
   | .array item =>
       if supportedArrayElementType item then
         .ok (.scalar .trap)
@@ -2270,8 +2309,11 @@ partial def valueIte
   | .ite _ _ _, _ => .ok (.ite cond thenValue elseValue)
   | _, .ite _ _ _ => .ok (.ite cond thenValue elseValue)
   | .scalar thenExpr, .scalar elseExpr => .ok (.scalar (.ite cond thenExpr elseExpr))
-  | .byteArray thenPtr thenLen, .byteArray elsePtr elseLen =>
-      .ok (.byteArray (.ite cond thenPtr elsePtr) (.ite cond thenLen elseLen))
+  | .byteArray thenOwner thenPtr thenLen, .byteArray elseOwner elsePtr elseLen =>
+      .ok (.byteArray
+        (.ite cond thenOwner elseOwner)
+        (.ite cond thenPtr elsePtr)
+        (.ite cond thenLen elseLen))
   | .product thenLeft thenRight, .product elseLeft elseRight => do
       .ok (.product
         (← valueIte cond thenLeft elseLeft)
@@ -2342,7 +2384,7 @@ mutual
         (leftResult.fst + rightResult.fst, rightResult.snd)
     | .struct _ _ fields => heapChildMaskFromTypes slot fields
     | .variant _ _ ctors => heapChildMaskFromTypes (slot + 1) ctors.flatten
-    | .byteArray => (0, slot + 2)
+    | .byteArray => (2 ^ slot, slot + 3)
     | .unit => (0, slot + 1)
     | .bool => (0, slot + 1)
     | .u8 => (0, slot + 1)
@@ -2378,8 +2420,8 @@ partial def flattenInternalValue (ty : Ty) (value : ExtractedValue) :
   | .u64 => scalarValue value |>.map (fun expr => [expr])
   | .nat => scalarValue value |>.map (fun expr => [expr])
   | .byteArray => do
-      let parts ← byteArrayParts value
-      .ok [parts.fst, parts.snd]
+      let parts ← byteArrayFullParts value
+      .ok [parts.owner, parts.ptr, parts.len]
   | .array item =>
       if supportedArrayElementType item then
         scalarValue value |>.map (fun expr => [expr])
@@ -2700,27 +2742,66 @@ partial def tyContainsHeapPointer : Ty → Bool
   | .u64 => false
   | .nat => false
 
-def exprReturnsOwnedHeapObject : IRExpr → Bool
-  | .letE _ _ body => exprReturnsOwnedHeapObject body
-  | .letCall _ _ _ body => exprReturnsOwnedHeapObject body
-  | .letLets _ body => exprReturnsOwnedHeapObject body
+def exprReturnsLocalSlot (slot : Nat) : IRExpr → Bool
+  | .local candidate => candidate == slot
+  | .letE _ _ body => exprReturnsLocalSlot slot body
+  | .letCall _ _ _ body => exprReturnsLocalSlot slot body
+  | .letLets _ body => exprReturnsLocalSlot slot body
   | .ite _ thenValue elseValue =>
-      exprReturnsOwnedHeapObject thenValue && exprReturnsOwnedHeapObject elseValue
-  | .arrayAllocSlots .. => true
-  | .heapAllocSlots .. => true
-  | .arrayReplicateSlots .. => true
-  | .arraySetSlots .. => true
-  | .arrayPushSlots .. => true
-  | .arrayAppendSlots .. => true
-  | .arrayExtractSlots .. => true
-  | .arrayMapSlots .. => true
-  | .arrayFilterSlots .. => true
-  | .byteArrayPushPtr .. => true
-  | .byteArrayAppendPtr .. => true
-  | .byteArraySetPtr .. => true
-  | .byteArrayFromArrayPtr .. => true
-  | .byteArrayCopySlicePtr .. => true
+      exprReturnsLocalSlot slot thenValue && exprReturnsLocalSlot slot elseValue
   | _ => false
+
+mutual
+  partial def exprReturnsOwnedHeapObjectFrom (ownedLocals : List Nat) : IRExpr → Bool
+    | .local slot => ownedLocals.contains slot
+    | .letE slot value body =>
+        let valueOwned := exprReturnsOwnedHeapObjectFrom ownedLocals value
+        let nextOwned := if valueOwned then slot :: ownedLocals else ownedLocals
+        exprReturnsOwnedHeapObjectFrom nextOwned body
+    | .letCall _ _ _ body => exprReturnsOwnedHeapObjectFrom ownedLocals body
+    | .letLets lets body =>
+        exprReturnsOwnedHeapObjectFrom (ownedHeapLocalsFromLocalLets ownedLocals lets) body
+    | .ite _ thenValue elseValue =>
+        exprReturnsOwnedHeapObjectFrom ownedLocals thenValue &&
+          exprReturnsOwnedHeapObjectFrom ownedLocals elseValue
+    | .arrayAllocSlots .. => true
+    | .heapAllocSlots .. => true
+    | .arrayReplicateSlots .. => true
+    | .arraySetSlots .. => true
+    | .arrayPushSlots .. => true
+    | .arrayAppendSlots .. => true
+    | .arrayExtractSlots .. => true
+    | .arrayMapSlots .. => true
+    | .arrayFilterSlots .. => true
+    | .byteArrayPushPtr .. => true
+    | .byteArrayAppendPtr .. => true
+    | .byteArraySetPtr .. => true
+    | .byteArrayFromArrayPtr .. => true
+    | .byteArrayCopySlicePtr .. => true
+    | _ => false
+
+  partial def localLetOwnedHeapSlotsFrom
+      (ownedLocals : List Nat) :
+      LeanExe.IR.LocalLet → List Nat
+    | .expr slot expr =>
+        if exprReturnsOwnedHeapObjectFrom ownedLocals expr then [slot] else []
+    | .slots slots values =>
+        (slots.zip values).filterMap fun item =>
+          if exprReturnsOwnedHeapObjectFrom ownedLocals item.snd then some item.fst else none
+    | .call _ _ _ => []
+    | .branch _ _ _ => []
+
+  partial def ownedHeapLocalsFromLocalLets
+      (ownedLocals : List Nat)
+      (lets : List LeanExe.IR.LocalLet) :
+      List Nat :=
+    lets.foldl
+      (fun owned localLet => owned ++ localLetOwnedHeapSlotsFrom owned localLet)
+      ownedLocals
+end
+
+def exprReturnsOwnedHeapObject (expr : IRExpr) : Bool :=
+  exprReturnsOwnedHeapObjectFrom [] expr
 
 def ownedChildMaskForSlots (childMask : Nat) (slots : List IRExpr) : Nat :=
   let rec loop : Nat → List IRExpr → Nat → Nat
@@ -2734,6 +2815,49 @@ def ownedChildMaskForSlots (childMask : Nat) (slots : List IRExpr) : Nat :=
         loop (slot + 1) rest nextAcc
   loop 0 slots 0
 
+def valueLetOwnedHeapSlots : ValueLet → List Nat
+  | .expr slot expr => if exprReturnsOwnedHeapObject expr then [slot] else []
+  | .call _ _ _ => []
+
+def valueLetOwnedHeapSlotsFrom (ownedLocals : List Nat) : ValueLet → List Nat
+  | .expr slot expr =>
+      let localAliasOwned :=
+        match expr with
+        | .local sourceSlot => ownedLocals.contains sourceSlot
+        | _ => false
+      if exprReturnsOwnedHeapObject expr || localAliasOwned then [slot] else []
+  | .call _ _ _ => []
+
+def ownedHeapLocalsFromValueLets (lets : List ValueLet) : List Nat :=
+  lets.foldl
+    (fun owned letValue =>
+      owned ++ valueLetOwnedHeapSlotsFrom owned letValue)
+    []
+
+def ownedChildMaskForSlotsWithLets
+    (childMask : Nat)
+    (lets : List ValueLet)
+    (slots : List IRExpr) :
+    Nat :=
+  let ownedLocals := ownedHeapLocalsFromValueLets lets
+  let rec loop : Nat → List IRExpr → Nat → Nat
+    | _, [], acc => acc
+    | slot, expr :: rest, acc =>
+        let localOwned :=
+          match expr with
+          | .local localSlot => ownedLocals.contains localSlot
+          | _ => false
+        let nextAcc :=
+          if maskBitSet childMask slot && (exprReturnsOwnedHeapObject expr || localOwned) then
+            acc + 2 ^ slot
+          else
+            acc
+        loop (slot + 1) rest nextAcc
+  loop 0 slots 0
+
+def ownedChildMaskForStrictSlots (childMask : Nat) (slots : StrictSlots) : Nat :=
+  ownedChildMaskForSlotsWithLets childMask slots.lets slots.slots
+
 def localLetOwnedHeapSlots : LeanExe.IR.LocalLet → List Nat
   | .expr slot expr => if exprReturnsOwnedHeapObject expr then [slot] else []
   | .slots slots values =>
@@ -2741,6 +2865,198 @@ def localLetOwnedHeapSlots : LeanExe.IR.LocalLet → List Nat
         if exprReturnsOwnedHeapObject item.snd then some item.fst else none
   | .call _ _ _ => []
   | .branch _ _ _ => []
+
+mutual
+  partial def exprReleasedSlots : IRExpr → List Nat
+    | .release ptr => exprUsedSlots ptr
+    | .u64Bin _ left right => addLiveSlots (exprReleasedSlots left) (exprReleasedSlots right)
+    | .ite cond thenValue elseValue =>
+        addLiveSlots (condReleasedSlots cond)
+          (addLiveSlots (exprReleasedSlots thenValue) (exprReleasedSlots elseValue))
+    | .letE _ value body => addLiveSlots (exprReleasedSlots value) (exprReleasedSlots body)
+    | .letCall _ _ args body =>
+        addLiveSlots (exprListReleasedSlots args) (exprReleasedSlots body)
+    | .letLets lets body =>
+        addLiveSlots (localLetsReleasedSlots lets) (exprReleasedSlots body)
+    | .heapAllocSlots _ values => exprListReleasedSlots values
+    | .heapLoadSlot ptr _ => exprReleasedSlots ptr
+    | .arrayAllocSlots _ _ cells => exprReleasedSlots cells
+    | .arrayReplicateSlots _ _ _ cells values =>
+        addLiveSlots (exprReleasedSlots cells) (exprListReleasedSlots values)
+    | .arraySize array => exprReleasedSlots array
+    | .arrayGetSlot _ _ array index =>
+        addLiveSlots (exprReleasedSlots array) (exprReleasedSlots index)
+    | .arraySetSlots _ _ _ array index values =>
+        addLiveSlots
+          (addLiveSlots (exprReleasedSlots array) (exprReleasedSlots index))
+          (exprListReleasedSlots values)
+    | .arrayPushSlots _ _ _ array values =>
+        addLiveSlots (exprReleasedSlots array) (exprListReleasedSlots values)
+    | .arrayPopSlots _ _ array => exprReleasedSlots array
+    | .arrayAppendSlots _ _ left right =>
+        addLiveSlots (exprReleasedSlots left) (exprReleasedSlots right)
+    | .arrayExtractSlots _ _ array start stop =>
+        addLiveSlots
+          (addLiveSlots (exprReleasedSlots array) (exprReleasedSlots start))
+          (exprReleasedSlots stop)
+    | .arrayMapSlots _ _ _ _ array _ bodyValues =>
+        addLiveSlots (exprReleasedSlots array) (exprListReleasedSlots bodyValues)
+    | .arrayFoldMultiSlot _ _ array start stop initValues _ _ bodyValues _ bodyDone _ =>
+        addLiveSlots
+          (addLiveSlots
+            (addLiveSlots (exprReleasedSlots array) (exprReleasedSlots start))
+            (exprReleasedSlots stop))
+          (addLiveSlots (exprListReleasedSlots initValues)
+            (addLiveSlots (exprListReleasedSlots bodyValues) (exprReleasedSlots bodyDone)))
+    | .arrayFindIdxSlots _ array _ predicate _ =>
+        addLiveSlots (exprReleasedSlots array) (exprReleasedSlots predicate)
+    | .arrayFindSlot _ array _ predicate _ =>
+        addLiveSlots (exprReleasedSlots array) (exprReleasedSlots predicate)
+    | .arrayEqSlots _ left right _ _ predicate =>
+        addLiveSlots
+          (addLiveSlots (exprReleasedSlots left) (exprReleasedSlots right))
+          (exprReleasedSlots predicate)
+    | .arrayAnySlots _ array start stop _ predicate _ =>
+        addLiveSlots
+          (addLiveSlots
+            (addLiveSlots (exprReleasedSlots array) (exprReleasedSlots start))
+            (exprReleasedSlots stop))
+          (exprReleasedSlots predicate)
+    | .arrayFilterSlots _ _ array start stop _ predicate =>
+        addLiveSlots
+          (addLiveSlots
+            (addLiveSlots (exprReleasedSlots array) (exprReleasedSlots start))
+            (exprReleasedSlots stop))
+          (exprReleasedSlots predicate)
+    | .arrayInsertIfInBoundsSlots _ _ _ array index values =>
+        addLiveSlots
+          (addLiveSlots (exprReleasedSlots array) (exprReleasedSlots index))
+          (exprListReleasedSlots values)
+    | .arrayEraseIfInBoundsSlots _ _ array index =>
+        addLiveSlots (exprReleasedSlots array) (exprReleasedSlots index)
+    | .arraySwapIfInBoundsSlots _ _ array left right =>
+        addLiveSlots
+          (addLiveSlots (exprReleasedSlots array) (exprReleasedSlots left))
+          (exprReleasedSlots right)
+    | .arrayReverseSlots _ _ array => exprReleasedSlots array
+    | .byteArrayGet ptr len index =>
+        addLiveSlots
+          (addLiveSlots (exprReleasedSlots ptr) (exprReleasedSlots len))
+          (exprReleasedSlots index)
+    | .byteArrayPushPtr ptr len value =>
+        addLiveSlots
+          (addLiveSlots (exprReleasedSlots ptr) (exprReleasedSlots len))
+          (exprReleasedSlots value)
+    | .byteArrayAppendPtr leftPtr leftLen rightPtr rightLen =>
+        addLiveSlots
+          (addLiveSlots (exprReleasedSlots leftPtr) (exprReleasedSlots leftLen))
+          (addLiveSlots (exprReleasedSlots rightPtr) (exprReleasedSlots rightLen))
+    | .byteArraySetPtr ptr len index value =>
+        addLiveSlots
+          (addLiveSlots
+            (addLiveSlots (exprReleasedSlots ptr) (exprReleasedSlots len))
+            (exprReleasedSlots index))
+          (exprReleasedSlots value)
+    | .byteArrayFromArrayPtr array => exprReleasedSlots array
+    | .byteArrayCopySlicePtr srcPtr srcLen srcOff destPtr destLen destOff copyLen =>
+        addLiveSlots
+          (addLiveSlots
+            (addLiveSlots (exprReleasedSlots srcPtr) (exprReleasedSlots srcLen))
+            (exprReleasedSlots srcOff))
+          (addLiveSlots
+            (addLiveSlots
+              (addLiveSlots (exprReleasedSlots destPtr) (exprReleasedSlots destLen))
+              (exprReleasedSlots destOff))
+            (exprReleasedSlots copyLen))
+    | .byteArrayEq leftPtr leftLen rightPtr rightLen =>
+        addLiveSlots
+          (addLiveSlots (exprReleasedSlots leftPtr) (exprReleasedSlots leftLen))
+          (addLiveSlots (exprReleasedSlots rightPtr) (exprReleasedSlots rightLen))
+    | .byteArrayFindIdx ptr len start _ predicate _ =>
+        addLiveSlots
+          (addLiveSlots
+            (addLiveSlots (exprReleasedSlots ptr) (exprReleasedSlots len))
+            (exprReleasedSlots start))
+          (exprReleasedSlots predicate)
+    | .byteArrayFoldMultiSlot _ ptr len start stop initValues _ _ bodyValues _ bodyDone _ =>
+        addLiveSlots
+          (addLiveSlots
+            (addLiveSlots (exprReleasedSlots ptr) (exprReleasedSlots len))
+            (addLiveSlots (exprReleasedSlots start) (exprReleasedSlots stop)))
+          (addLiveSlots (exprListReleasedSlots initValues)
+            (addLiveSlots (exprListReleasedSlots bodyValues) (exprReleasedSlots bodyDone)))
+    | .rangeFoldMultiSlot _ start stop step initValues _ _ bodyValues _ bodyDone _ =>
+        addLiveSlots
+          (addLiveSlots
+            (addLiveSlots (exprReleasedSlots start) (exprReleasedSlots stop))
+            (exprReleasedSlots step))
+          (addLiveSlots (exprListReleasedSlots initValues)
+            (addLiveSlots (exprListReleasedSlots bodyValues) (exprReleasedSlots bodyDone)))
+    | .heapLinearPredicate ptr _ _ _ _ predicate _ _ =>
+        addLiveSlots (exprReleasedSlots ptr) (exprReleasedSlots predicate)
+    | .call _ args => exprListReleasedSlots args
+    | .local _ | .trap | .u64 _ | .runtimeStat _ => []
+
+  partial def exprListReleasedSlots (exprs : List IRExpr) : List Nat :=
+    exprs.foldl (fun acc expr => addLiveSlots acc (exprReleasedSlots expr)) []
+
+  partial def condReleasedSlots : IRCond → List Nat
+    | .true => []
+    | .false => []
+    | .eqU64 left right => addLiveSlots (exprReleasedSlots left) (exprReleasedSlots right)
+    | .ltU64 left right => addLiveSlots (exprReleasedSlots left) (exprReleasedSlots right)
+    | .leU64 left right => addLiveSlots (exprReleasedSlots left) (exprReleasedSlots right)
+    | .not cond => condReleasedSlots cond
+    | .and left right => addLiveSlots (condReleasedSlots left) (condReleasedSlots right)
+    | .or left right => addLiveSlots (condReleasedSlots left) (condReleasedSlots right)
+
+  partial def localLetReleasedSlots : LeanExe.IR.LocalLet → List Nat
+    | .expr _ value => exprReleasedSlots value
+    | .call _ _ args => exprListReleasedSlots args
+    | .slots _ values => exprListReleasedSlots values
+    | .branch cond thenLets elseLets =>
+        addLiveSlots (condReleasedSlots cond)
+          (addLiveSlots (localLetsReleasedSlots thenLets) (localLetsReleasedSlots elseLets))
+
+  partial def localLetsReleasedSlots (lets : List LeanExe.IR.LocalLet) : List Nat :=
+    lets.foldl (fun acc letValue => addLiveSlots acc (localLetReleasedSlots letValue)) []
+end
+
+mutual
+  partial def valueReleasedSlots : ExtractedValue → List Nat
+    | .scalar expr => exprReleasedSlots expr
+    | .byteArray owner ptr len =>
+        addLiveSlots (exprReleasedSlots owner)
+          (addLiveSlots (exprReleasedSlots ptr) (exprReleasedSlots len))
+    | .product left right =>
+        addLiveSlots (valueReleasedSlots left) (valueReleasedSlots right)
+    | .sum tag left right =>
+        addLiveSlots (exprReleasedSlots tag)
+          (addLiveSlots (valueReleasedSlots left) (valueReleasedSlots right))
+    | .struct _ fields => valueListReleasedSlots fields
+    | .variant _ tag ctors =>
+        addLiveSlots (exprReleasedSlots tag) (valueListReleasedSlots ctors.flatten)
+    | .recursiveVariant _ tag ctors =>
+        addLiveSlots (exprReleasedSlots tag) (valueListReleasedSlots (ctors.flatten.map Prod.snd))
+    | .heapVariant _ ptr => exprReleasedSlots ptr
+    | .ite _ thenValue elseValue =>
+        addLiveSlots (valueReleasedSlots thenValue) (valueReleasedSlots elseValue)
+    | .letE _ value body =>
+        addLiveSlots (exprReleasedSlots value) (valueReleasedSlots body)
+    | .letCall _ _ args body =>
+        addLiveSlots (exprListReleasedSlots args) (valueReleasedSlots body)
+    | .letLocal lets body =>
+        addLiveSlots (localLetsReleasedSlots lets) (valueReleasedSlots body)
+
+  partial def valueListReleasedSlots (values : List ExtractedValue) : List Nat :=
+    values.foldl (fun acc value => addLiveSlots acc (valueReleasedSlots value)) []
+end
+
+def slotReleasedByValue (slot : Nat) (value : ExtractedValue) : Bool :=
+  (valueReleasedSlots value).contains slot
+
+def slotReleasedByExpr (slot : Nat) (expr : IRExpr) : Bool :=
+  (exprReleasedSlots expr).contains slot
 
 def appendReleases (stmt : IRStmt) (slots : List Nat) : IRStmt :=
   slots.foldl (fun current slot => .seq current (.release (.local slot))) stmt
@@ -2754,7 +3070,10 @@ def assignResultExprWithOwnedReleases
   | .letE slot value body =>
       let bodyStmt := assignResultExprWithOwnedReleases canReleaseOwnedTemps target body
       let stmt := .seq (.assign slot value) bodyStmt
-      if canReleaseOwnedTemps && exprReturnsOwnedHeapObject value then
+      if canReleaseOwnedTemps &&
+          exprReturnsOwnedHeapObject value &&
+          !slotReleasedByExpr slot body &&
+          !exprReturnsLocalSlot slot body then
         .seq stmt (.release (.local slot))
       else
         stmt
@@ -2765,7 +3084,9 @@ def assignResultExprWithOwnedReleases
       let bodyStmt := assignResultExprWithOwnedReleases canReleaseOwnedTemps target body
       let stmt := .seq (localLetStmtListOptimized lets) bodyStmt
       if canReleaseOwnedTemps then
-        appendReleases stmt (lets.flatMap localLetOwnedHeapSlots)
+        let released := addLiveSlots (localLetsReleasedSlots lets) (exprReleasedSlots body)
+        appendReleases stmt
+          ((lets.flatMap localLetOwnedHeapSlots).filter fun slot => !released.contains slot)
       else
         stmt
   | _ => .assign target expr
@@ -2790,7 +3111,9 @@ partial def materializeResultValue
   | .letE slot expr body => do
       let bodyStmt ← materializeResultValue useAbi ty targets body
       let stmt := .seq (.assign slot expr) bodyStmt
-      if canReleaseOwnedTemps && exprReturnsOwnedHeapObject expr then
+      if canReleaseOwnedTemps &&
+          exprReturnsOwnedHeapObject expr &&
+          !slotReleasedByValue slot body then
         .ok (.seq stmt (.release (.local slot)))
       else
         .ok stmt
@@ -2802,7 +3125,9 @@ partial def materializeResultValue
       let bodyStmt ← materializeResultValue useAbi ty targets body
       let stmt := .seq (localLetStmtListOptimized kept) bodyStmt
       if canReleaseOwnedTemps then
-        .ok (appendReleases stmt (kept.flatMap localLetOwnedHeapSlots))
+        let released := addLiveSlots (localLetsReleasedSlots kept) (valueReleasedSlots body)
+        .ok (appendReleases stmt
+          ((kept.flatMap localLetOwnedHeapSlots).filter fun slot => !released.contains slot))
       else
         .ok stmt
   | .ite cond thenValue elseValue => do
@@ -2833,7 +3158,12 @@ mutual
         else
           .error s!"unsupported heap field array type: {reprStr ((.array item : Ty))}"
     | .byteArray, slot =>
-        .ok (.byteArray (.heapLoadSlot ptr slot) (.heapLoadSlot ptr (slot + 1)), slot + 2)
+        .ok
+          (.byteArray
+            (.heapLoadSlot ptr slot)
+            (.heapLoadSlot ptr (slot + 1))
+            (.heapLoadSlot ptr (slot + 2)),
+            slot + 3)
     | .product left right, slot => do
         let leftLoaded ← heapLoadValueAt ptr left slot
         let rightLoaded ← heapLoadValueAt ptr right leftLoaded.snd
@@ -2919,8 +3249,8 @@ partial def flattenArrayElementValue
   | .u64 => scalarValue value |>.map (fun expr => [expr])
   | .nat => scalarValue value |>.map (fun expr => [expr])
   | .byteArray => do
-      let parts ← byteArrayParts value
-      .ok [parts.fst, parts.snd]
+      let parts ← byteArrayFullParts value
+      .ok [parts.owner, parts.ptr, parts.len]
   | .array item =>
       if supportedArrayElementType item then
         scalarValue value |>.map (fun expr => [expr])
@@ -3189,8 +3519,12 @@ mutual
     | .u64, slot => .ok (.scalar (.arrayGetSlot width slot array index), slot + 1)
     | .nat, slot => .ok (.scalar (.arrayGetSlot width slot array index), slot + 1)
     | .byteArray, slot =>
-        .ok (.byteArray (.arrayGetSlot width slot array index)
-          (.arrayGetSlot width (slot + 1) array index), slot + 2)
+        .ok
+          (.byteArray
+            (.arrayGetSlot width slot array index)
+            (.arrayGetSlot width (slot + 1) array index)
+            (.arrayGetSlot width (slot + 2) array index),
+            slot + 3)
     | .array item, slot =>
         if supportedArrayElementType item then
           .ok (.scalar (.arrayGetSlot width slot array index), slot + 1)
@@ -3261,8 +3595,12 @@ mutual
     | .u64, slot => .ok (.scalar (.arrayFindSlot width array itemStart predicate slot), slot + 1)
     | .nat, slot => .ok (.scalar (.arrayFindSlot width array itemStart predicate slot), slot + 1)
     | .byteArray, slot =>
-        .ok (.byteArray (.arrayFindSlot width array itemStart predicate slot)
-          (.arrayFindSlot width array itemStart predicate (slot + 1)), slot + 2)
+        .ok
+          (.byteArray
+            (.arrayFindSlot width array itemStart predicate slot)
+            (.arrayFindSlot width array itemStart predicate (slot + 1))
+            (.arrayFindSlot width array itemStart predicate (slot + 2)),
+            slot + 3)
     | .array item, slot =>
         if supportedArrayElementType item then
           .ok (.scalar (.arrayFindSlot width array itemStart predicate slot), slot + 1)
@@ -3332,7 +3670,12 @@ mutual
     | .u64, slot => .ok (.scalar (.local (start + slot)), slot + 1)
     | .nat, slot => .ok (.scalar (.local (start + slot)), slot + 1)
     | .byteArray, slot =>
-        .ok (.byteArray (.local (start + slot)) (.local (start + slot + 1)), slot + 2)
+        .ok
+          (.byteArray
+            (.local (start + slot))
+            (.local (start + slot + 1))
+            (.local (start + slot + 2)),
+            slot + 3)
     | .array item, slot =>
         if supportedArrayElementType item then
           .ok (.scalar (.local (start + slot)), slot + 1)
@@ -3380,7 +3723,7 @@ mutual
   partial def valueFromInternalSlotsAt (slotExpr : Nat → IRExpr) :
       Ty → Nat → ExtractedValue × Nat
     | .byteArray, slot =>
-        (.byteArray (slotExpr slot) (slotExpr (slot + 1)), slot + 2)
+        (.byteArray (slotExpr slot) (slotExpr (slot + 1)) (slotExpr (slot + 2)), slot + 3)
     | .product left right, slot =>
         let leftValue := valueFromInternalSlotsAt slotExpr left slot
         let rightValue := valueFromInternalSlotsAt slotExpr right leftValue.snd
@@ -3429,7 +3772,7 @@ mutual
   partial def extractedValueForParam (slot : Nat) : Ty → ExtractedValue
     | .u8 => .scalar (u8WrapExpr (.local slot))
     | .u32 => .scalar (u32WrapExpr (.local slot))
-    | .byteArray => .byteArray (.local slot) (.local (slot + 1))
+    | .byteArray => .byteArray (.u64 0) (.local slot) (.local (slot + 1))
     | .sum left right =>
         .sum (.local slot)
           (extractedValueForParam (slot + 1) left)
@@ -3458,7 +3801,7 @@ end
 def bindingForParam (slot : Nat) : Ty → Binding
   | .u8 => .value (.scalar (u8WrapExpr (.local slot)))
   | .u32 => .value (.scalar (u32WrapExpr (.local slot)))
-  | .byteArray => .value (.byteArray (.local slot) (.local (slot + 1)))
+  | .byteArray => .value (.byteArray (.u64 0) (.local slot) (.local (slot + 1)))
   | .sum left right =>
       .value
         (.sum (.local slot)
@@ -6316,7 +6659,7 @@ mutual
             | none => .error s!"unsupported structure projection index: {typeName}.{index}"
         | none => .error s!"unsupported projection: {typeName}"
     | .const ``Unit.unit _ => .ok (.scalar (.u64 0), nextLocal)
-    | .const ``ByteArray.empty _ => .ok (.byteArray (.u64 0) (.u64 0), nextLocal)
+    | .const ``ByteArray.empty _ => .ok (.byteArray (.u64 0) (.u64 0) (.u64 0), nextLocal)
     | _ =>
         match expressionStructuralRecShape? ctx.env ctx.root expr with
         | some shape =>
@@ -7350,13 +7693,14 @@ mutual
             match args with
             | [array, start, stop] =>
                 let arrayResult ← extractValueFrom ctx locals nextLocal array
-                let parts ← byteArrayPartsWithLets arrayResult.fst
+                let parts ← byteArrayFullPartsWithLets arrayResult.fst
                 let startResult ← extractExprFrom ctx locals arrayResult.snd start
                 let stopResult ← extractExprFrom ctx locals startResult.snd stop
-                let ptrSlot := stopResult.snd
-                let lenSlot := ptrSlot + 1
-                let startSlot := ptrSlot + 2
-                let stopSlot := ptrSlot + 3
+                let ownerSlot := stopResult.snd
+                let ptrSlot := ownerSlot + 1
+                let lenSlot := ownerSlot + 2
+                let startSlot := ownerSlot + 3
+                let stopSlot := ownerSlot + 4
                 let effectiveStop :=
                   .ite
                     (.ltU64 (.local stopSlot) (.local lenSlot))
@@ -7371,11 +7715,12 @@ mutual
                   .ite nonempty (.u64Bin .sub effectiveStop (.local startSlot)) (.u64 0)
                 .ok
                   (wrapValueLets parts.fst
-                    (.letE ptrSlot parts.snd.fst
-                      (.letE lenSlot parts.snd.snd
-                        (.letE startSlot startResult.fst
-                          (.letE stopSlot stopResult.fst
-                            (.byteArray slicePtr sliceLen))))),
+                    (.letE ownerSlot parts.snd.owner
+                      (.letE ptrSlot parts.snd.ptr
+                        (.letE lenSlot parts.snd.len
+                          (.letE startSlot startResult.fst
+                            (.letE stopSlot stopResult.fst
+                              (.byteArray (.local ownerSlot) slicePtr sliceLen)))))),
                     stopSlot + 1)
             | _ => .error "unsupported ByteArray.extract application"
         | (.const ``ByteArray.push _, args) =>
@@ -7387,18 +7732,22 @@ mutual
                 let valueSlot := valueResult.snd
                 let ptrSlot := valueSlot + 1
                 let lenSlot := valueSlot + 2
+                let resultPtrSlot := valueSlot + 3
                 .ok
                   (wrapValueLets parts.fst
                     (.letE valueSlot valueResult.fst
                       (.letE ptrSlot parts.snd.fst
                         (.letE lenSlot parts.snd.snd
-                          (.byteArray
+                          (.letE resultPtrSlot
                             (.byteArrayPushPtr
                               (.local ptrSlot)
                               (.local lenSlot)
                               (.local valueSlot))
-                            (.u64Bin .add (.local lenSlot) (.u64 1)))))),
-                    lenSlot + 1)
+                            (.byteArray
+                              (.local resultPtrSlot)
+                              (.local resultPtrSlot)
+                              (.u64Bin .add (.local lenSlot) (.u64 1))))))),
+                    resultPtrSlot + 1)
             | _ => .error "unsupported ByteArray.push application"
         | (.const ``ByteArray.append _, args) =>
             match args with
@@ -7411,20 +7760,24 @@ mutual
                 let leftLenSlot := leftPtrSlot + 1
                 let rightPtrSlot := leftPtrSlot + 2
                 let rightLenSlot := leftPtrSlot + 3
+                let resultPtrSlot := leftPtrSlot + 4
                 .ok
                   (wrapValueLets (leftParts.fst ++ rightParts.fst)
                     (.letE leftPtrSlot leftParts.snd.fst
                       (.letE leftLenSlot leftParts.snd.snd
                         (.letE rightPtrSlot rightParts.snd.fst
                           (.letE rightLenSlot rightParts.snd.snd
-                            (.byteArray
+                            (.letE resultPtrSlot
                               (.byteArrayAppendPtr
                                 (.local leftPtrSlot)
                                 (.local leftLenSlot)
                                 (.local rightPtrSlot)
                                 (.local rightLenSlot))
-                              (.u64Bin .add (.local leftLenSlot) (.local rightLenSlot))))))),
-                    rightLenSlot + 1)
+                              (.byteArray
+                                (.local resultPtrSlot)
+                                (.local resultPtrSlot)
+                                (.u64Bin .add (.local leftLenSlot) (.local rightLenSlot)))))))),
+                    resultPtrSlot + 1)
             | _ => .error "unsupported ByteArray.append application"
         | (.const ``HAppend.hAppend _, args) =>
             match args.reverse, primitiveResultType? ctx.env args with
@@ -7437,20 +7790,24 @@ mutual
                 let leftLenSlot := leftPtrSlot + 1
                 let rightPtrSlot := leftPtrSlot + 2
                 let rightLenSlot := leftPtrSlot + 3
+                let resultPtrSlot := leftPtrSlot + 4
                 .ok
                   (wrapValueLets (leftParts.fst ++ rightParts.fst)
                     (.letE leftPtrSlot leftParts.snd.fst
                       (.letE leftLenSlot leftParts.snd.snd
                         (.letE rightPtrSlot rightParts.snd.fst
                           (.letE rightLenSlot rightParts.snd.snd
-                            (.byteArray
+                            (.letE resultPtrSlot
                               (.byteArrayAppendPtr
                                 (.local leftPtrSlot)
                                 (.local leftLenSlot)
                                 (.local rightPtrSlot)
                                 (.local rightLenSlot))
-                              (.u64Bin .add (.local leftLenSlot) (.local rightLenSlot))))))),
-                    rightLenSlot + 1)
+                              (.byteArray
+                                (.local resultPtrSlot)
+                                (.local resultPtrSlot)
+                                (.u64Bin .add (.local leftLenSlot) (.local rightLenSlot)))))))),
+                    resultPtrSlot + 1)
             | _, _ =>
                 let scalarResult ← extractExprFrom ctx locals nextLocal expr
                 .ok (.scalar scalarResult.fst, scalarResult.snd)
@@ -7465,21 +7822,24 @@ mutual
                 let valueSlot := indexSlot + 1
                 let ptrSlot := indexSlot + 2
                 let lenSlot := indexSlot + 3
-                let sourcePtr := wrapExprLets parts.fst parts.snd.fst
-                let sourceLen := wrapExprLets parts.fst parts.snd.snd
-                let setPtr :=
-                  .letE ptrSlot sourcePtr
-                    (.letE lenSlot sourceLen
-                      (.byteArraySetPtr
-                        (.local ptrSlot)
-                        (.local lenSlot)
-                        (.local indexSlot)
-                        (.local valueSlot)))
+                let resultPtrSlot := indexSlot + 4
                 .ok
-                  (.letE indexSlot indexResult.fst
-                    (.letE valueSlot valueResult.fst
-                      (.byteArray setPtr sourceLen)),
-                    lenSlot + 1)
+                  (wrapValueLets parts.fst
+                    (.letE indexSlot indexResult.fst
+                      (.letE valueSlot valueResult.fst
+                        (.letE ptrSlot parts.snd.fst
+                          (.letE lenSlot parts.snd.snd
+                            (.letE resultPtrSlot
+                              (.byteArraySetPtr
+                                (.local ptrSlot)
+                                (.local lenSlot)
+                                (.local indexSlot)
+                                (.local valueSlot))
+                              (.byteArray
+                                (.local resultPtrSlot)
+                                (.local resultPtrSlot)
+                                (.local lenSlot))))))),
+                    resultPtrSlot + 1)
             | _ => .error "unsupported ByteArray.set! application"
         | (.const ``ByteArray.set _, args) =>
             match args.reverse with
@@ -7492,21 +7852,24 @@ mutual
                 let valueSlot := indexSlot + 1
                 let ptrSlot := indexSlot + 2
                 let lenSlot := indexSlot + 3
-                let sourcePtr := wrapExprLets parts.fst parts.snd.fst
-                let sourceLen := wrapExprLets parts.fst parts.snd.snd
-                let setPtr :=
-                  .letE ptrSlot sourcePtr
-                    (.letE lenSlot sourceLen
-                      (.byteArraySetPtr
-                        (.local ptrSlot)
-                        (.local lenSlot)
-                        (.local indexSlot)
-                        (.local valueSlot)))
+                let resultPtrSlot := indexSlot + 4
                 .ok
-                  (.letE indexSlot indexResult.fst
-                    (.letE valueSlot valueResult.fst
-                      (.byteArray setPtr sourceLen)),
-                    lenSlot + 1)
+                  (wrapValueLets parts.fst
+                    (.letE indexSlot indexResult.fst
+                      (.letE valueSlot valueResult.fst
+                        (.letE ptrSlot parts.snd.fst
+                          (.letE lenSlot parts.snd.snd
+                            (.letE resultPtrSlot
+                              (.byteArraySetPtr
+                                (.local ptrSlot)
+                                (.local lenSlot)
+                                (.local indexSlot)
+                                (.local valueSlot))
+                              (.byteArray
+                                (.local resultPtrSlot)
+                                (.local resultPtrSlot)
+                                (.local lenSlot))))))),
+                    resultPtrSlot + 1)
             | _ => .error "unsupported ByteArray.set application"
         | (.const ``ByteArray.copySlice _, args) =>
             let copyArgs? :=
@@ -7532,41 +7895,38 @@ mutual
                 let destLenSlot := srcPtrSlot + 4
                 let destOffSlot := srcPtrSlot + 5
                 let copyLenSlot := srcPtrSlot + 6
-                let srcPtr := wrapExprLets srcParts.fst srcParts.snd.fst
-                let srcLen := wrapExprLets srcParts.fst srcParts.snd.snd
-                let destPtr := wrapExprLets destParts.fst destParts.snd.fst
-                let destLen := wrapExprLets destParts.fst destParts.snd.snd
-                let resultLen :=
-                  .letE srcPtrSlot srcPtr
-                    (.letE srcLenSlot srcLen
-                      (.letE srcOffSlot srcOffResult.fst
-                        (.letE destPtrSlot destPtr
-                          (.letE destLenSlot destLen
-                            (.letE destOffSlot destOffResult.fst
-                              (.letE copyLenSlot copyLenResult.fst
-                                (byteArrayCopySliceResultLen
-                                  (.local srcLenSlot)
-                                  (.local srcOffSlot)
-                                  (.local destLenSlot)
-                                  (.local destOffSlot)
-                                  (.local copyLenSlot))))))))
-                let resultPtr :=
-                  .letE srcPtrSlot srcPtr
-                    (.letE srcLenSlot srcLen
-                      (.letE srcOffSlot srcOffResult.fst
-                        (.letE destPtrSlot destPtr
-                          (.letE destLenSlot destLen
-                            (.letE destOffSlot destOffResult.fst
-                              (.letE copyLenSlot copyLenResult.fst
-                                (.byteArrayCopySlicePtr
-                                  (.local srcPtrSlot)
-                                  (.local srcLenSlot)
-                                  (.local srcOffSlot)
-                                  (.local destPtrSlot)
-                                  (.local destLenSlot)
-                                  (.local destOffSlot)
-                                  (.local copyLenSlot))))))))
-                .ok (.byteArray resultPtr resultLen, copyLenSlot + 1)
+                let resultLenSlot := srcPtrSlot + 7
+                let resultPtrSlot := srcPtrSlot + 8
+                .ok
+                  (wrapValueLets (srcParts.fst ++ destParts.fst)
+                    (.letE srcPtrSlot srcParts.snd.fst
+                      (.letE srcLenSlot srcParts.snd.snd
+                        (.letE srcOffSlot srcOffResult.fst
+                          (.letE destPtrSlot destParts.snd.fst
+                            (.letE destLenSlot destParts.snd.snd
+                              (.letE destOffSlot destOffResult.fst
+                                (.letE copyLenSlot copyLenResult.fst
+                                  (.letE resultLenSlot
+                                    (byteArrayCopySliceResultLen
+                                      (.local srcLenSlot)
+                                      (.local srcOffSlot)
+                                      (.local destLenSlot)
+                                      (.local destOffSlot)
+                                      (.local copyLenSlot))
+                                    (.letE resultPtrSlot
+                                      (.byteArrayCopySlicePtr
+                                        (.local srcPtrSlot)
+                                        (.local srcLenSlot)
+                                        (.local srcOffSlot)
+                                        (.local destPtrSlot)
+                                        (.local destLenSlot)
+                                        (.local destOffSlot)
+                                        (.local copyLenSlot))
+                                      (.byteArray
+                                        (.local resultPtrSlot)
+                                        (.local resultPtrSlot)
+                                        (.local resultLenSlot))))))))))),
+                    resultPtrSlot + 1)
             | none => .error "unsupported ByteArray.copySlice application"
         | (.const ``ByteArray.findIdx? _, args) =>
             let findArgs? :=
@@ -7605,12 +7965,15 @@ mutual
             | [array] =>
                 let arrayResult ← extractExprFrom ctx locals nextLocal array
                 let arraySlot := arrayResult.snd
+                let ptrSlot := arraySlot + 1
                 .ok
                   (.letE arraySlot arrayResult.fst
-                    (.byteArray
-                      (.byteArrayFromArrayPtr (.local arraySlot))
-                      (.arraySize (.local arraySlot))),
-                    arraySlot + 1)
+                    (.letE ptrSlot (.byteArrayFromArrayPtr (.local arraySlot))
+                      (.byteArray
+                        (.local ptrSlot)
+                        (.local ptrSlot)
+                        (.arraySize (.local arraySlot)))),
+                    ptrSlot + 1)
             | _ => .error "unsupported ByteArray.mk application"
         | (.const ``String.toUTF8 _, args) =>
             match args with
@@ -8503,16 +8866,17 @@ mutual
                               let itemSlots ←
                                 materializeStrictArrayElementSlots itemTy itemResult.fst itemResult.snd
                               let arraySlot := itemSlots.nextLocal
+                              let updatedArray :=
+                                wrapExprLets itemSlots.lets
+                                  (.arraySetSlots
+                                    width
+                                    childMask
+                                    (ownedChildMaskForStrictSlots childMask itemSlots)
+                                    (.local arraySlot)
+                                    (.u64 index)
+                                    itemSlots.slots)
                               build (index + 1) (arraySlot + 1)
-                                (.letE arraySlot arrayExpr
-                                  (wrapExprLets itemSlots.lets
-                                    (.arraySetSlots
-                                      width
-                                      childMask
-                                      (ownedChildMaskForSlots childMask itemSlots.slots)
-                                      (.local arraySlot)
-                                      (.u64 index)
-                                      itemSlots.slots)))
+                                (.letE arraySlot arrayExpr updatedArray)
                                 rest
                         build 0 nextLocal (.arrayAllocSlots width childMask (.u64 items.length)) items
                       | none => .error s!"unsupported List.toArray item type: {reprStr itemTy}"
@@ -8534,7 +8898,7 @@ mutual
                           (.letE cellsSlot cellsResult.fst
                             (wrapExprLets slots.lets
                               (.arrayReplicateSlots
-                                width childMask (ownedChildMaskForSlots childMask slots.slots)
+                                width childMask (ownedChildMaskForStrictSlots childMask slots)
                                 (.local cellsSlot) slots.slots)),
                             cellsSlot + 1)
                     | none => .error "unsupported Array.replicate item type"
@@ -8567,7 +8931,7 @@ mutual
                           (.letE arraySlot arrayResult.fst
                             (wrapExprLets slots.lets
                               (.arrayPushSlots
-                                width childMask (ownedChildMaskForSlots childMask slots.slots)
+                                width childMask (ownedChildMaskForStrictSlots childMask slots)
                                 (.local arraySlot) slots.slots)),
                             arraySlot + 1)
                     | none => .error "unsupported Array.push item type"
@@ -8681,7 +9045,7 @@ mutual
                                 (.arrayInsertIfInBoundsSlots
                                   width
                                   childMask
-                                  (ownedChildMaskForSlots childMask slots.slots)
+                                  (ownedChildMaskForStrictSlots childMask slots)
                                   (.local arraySlot)
                                   (.local indexSlot)
                                   slots.slots))),
@@ -8707,7 +9071,7 @@ mutual
                             (.arrayInsertIfInBoundsSlots
                               width
                               childMask
-                              (ownedChildMaskForSlots childMask slots.slots)
+                              (ownedChildMaskForStrictSlots childMask slots)
                               (.local arraySlot)
                               (.local indexSlot)
                               slots.slots)
@@ -9023,7 +9387,7 @@ mutual
                             (.arraySetSlots
                               width
                               childMask
-                              (ownedChildMaskForSlots childMask slots.slots)
+                              (ownedChildMaskForStrictSlots childMask slots)
                               (.arrayAllocSlots width childMask (.u64 1))
                               (.u64 0)
                               slots.slots),
@@ -9115,7 +9479,7 @@ mutual
                                 (.arraySetSlots
                                   width
                                   childMask
-                                  (ownedChildMaskForSlots childMask slots.slots)
+                                  (ownedChildMaskForStrictSlots childMask slots)
                                   (.local arraySlot)
                                   (.local indexSlot)
                                   slots.slots))),
@@ -9171,7 +9535,7 @@ mutual
                                 (.arraySetSlots
                                   width
                                   childMask
-                                  (ownedChildMaskForSlots childMask slots.slots)
+                                  (ownedChildMaskForStrictSlots childMask slots)
                                   (.local arraySlot)
                                   (.local indexSlot)
                                   slots.slots))),
