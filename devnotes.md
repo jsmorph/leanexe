@@ -2949,3 +2949,17 @@ Checks run:
 - [x] `.lake/build/bin/lean-wasm compile-wasi-stdin-argv-except --max-input-bytes 8192 --max-args 8 --max-argv-bytes 256 --module LeanExe.Examples.JsonTreeCommand --entry LeanExe.Examples.JsonTreeCommand.searchTree --out .lake/build/search-tree.wasm`
 - [x] `printf '%s' '[1,6,4,100,33,5,5,20]' | build/tools/wasmtime/wasmtime-v44.0.0-aarch64-linux/wasmtime .lake/build/make-tree.wasm | build/tools/wasmtime/wasmtime-v44.0.0-aarch64-linux/wasmtime .lake/build/search-tree.wasm 4` returned `{"found":true}`.
 - [x] `printf '%s' '[1,6,4,100,33,5,5,20]' | build/tools/wasmtime/wasmtime-v44.0.0-aarch64-linux/wasmtime .lake/build/make-tree.wasm | build/tools/wasmtime/wasmtime-v44.0.0-aarch64-linux/wasmtime .lake/build/search-tree.wasm 7` returned `{"found":false}`.
+
+## 2026-05-14: Reference-counted heap runtime
+
+Library-mode modules now allocate heap-backed payloads behind a small reference-counted header in WASM linear memory.  The payload pointer remains the public pointer, so array length headers and byte-array contents keep their existing ABI positions.  The runtime stores reference count, payload capacity, object kind, and two descriptor fields immediately before the payload, and it reuses released blocks through a first-fit free list.
+
+The library ABI now exports `retain`, `release`, and `free` in addition to `alloc` and `reset`.  `alloc` creates a raw byte object with count `1`, `retain` increments a nonzero object's count and returns the same pointer, and `release` decrements the count and returns the block to the free list at zero.  `free` is an alias for `release` for hosts that expect that name.
+
+This is the runtime foundation for compiler-emitted reclamation, not full ownership analysis.  Generated code now gives byte arrays, arrays, and recursive-inductive heap objects RC headers, and hosts can release returned objects.  The compiler still needs a type-directed ownership pass before it can release dead internal temporaries inside one call without risking use-after-free.
+
+Checks run:
+
+- [x] `lake build`
+- [x] `node test/refcount.js` returned `checked 3 refcount cases`.
+- [x] `node test/run_all.js` returned `checked 92 report classification cases`, `checked 574 accepted, 28 rejected, and 13 trapped cases`, `checked 3 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 19 WASI program cases, 2 traps, and 7 rejections`, and `checked 56 cases`.

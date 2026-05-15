@@ -221,7 +221,7 @@ printf '%s' '[1,6,4,100,33,5,5,20]' \
 
 ## Host Memory Values
 
-`ByteArray` and arrays use the module memory.  The module exports `alloc(len : i64) : i64`; a host calls `alloc`, writes bytes into the exported memory, and passes the returned pointer plus a length when the entry expects a `ByteArray`.  Returned byte arrays use a pointer and length result pair.
+`ByteArray` and arrays use the module memory.  The module exports `alloc(len : i64) : i64`; a host calls `alloc`, writes bytes into the exported memory, and passes the returned pointer plus a length when the entry expects a `ByteArray`.  Returned byte arrays use a pointer and length result pair.  The module also exports `retain(ptr : i64) : i64`, `release(ptr : i64)`, and `free(ptr : i64)` for reference-counted heap objects.
 
 ```sh
 .lake/build/bin/lean-wasm compile \
@@ -243,7 +243,9 @@ const ok = instance.exports.validateGeneric(BigInt(ptr), BigInt(input.length));
 console.log(ok === 1n ? "accepted" : "rejected");
 ```
 
-Fixed-width arrays use the compiler's arena layout.  Scalar values occupy one slot, `ByteArray` elements occupy pointer and length slots, products and fixed-width structures or tagged values occupy their flattened slot count, and heap-backed internal values such as nested arrays and recursive inductives occupy one pointer slot.  Structure values flatten field-by-field at the ABI boundary, while nonrecursive inductive values flatten to a constructor tag followed by payload slots.  Recursive inductive values are supported as internal values, including recursive pointer fields inside internal fixed-width structures and tagged values, mutual-family pointers, monomorphic `List UInt64` construction, matching, direct traversal over one or more direct recursive fields, mutual structural traversal over recursive-family members, source-defined list builders such as append and reverse, generated array-child traversal, explicit-accumulator `List.foldl` helpers, top-level closed `List.foldl` bodies with one hidden accumulator, closed structural predicates such as direct `List.any` and `List.all`, direct expression-position `List.length`, list append notation through `++`, `List.reverse`, `List.map`, `List.filter`, and `List.foldr` with closed direct-lambda callbacks, and limited direct-lambda helper calls to `List.map`, `List.filter`, `List.find?`, and `List.any`, but entry parameters and entry results cannot expose recursive data, byte-array arrays, or nested arrays through the host ABI.
+When a library-mode result points into module memory, read or copy the result before calling `release` or `reset`.  `release` decrements the object's reference count and returns the block to the runtime free list when the count reaches zero.  `reset` rewinds the whole heap and invalidates every old pointer, regardless of reference count.
+
+Fixed-width arrays use the compiler's heap layout.  Scalar values occupy one slot, `ByteArray` elements occupy pointer and length slots, products and fixed-width structures or tagged values occupy their flattened slot count, and heap-backed internal values such as nested arrays and recursive inductives occupy one pointer slot.  Structure values flatten field-by-field at the ABI boundary, while nonrecursive inductive values flatten to a constructor tag followed by payload slots.  Recursive inductive values are supported as internal values, including recursive pointer fields inside internal fixed-width structures and tagged values, mutual-family pointers, monomorphic `List UInt64` construction, matching, direct traversal over one or more direct recursive fields, mutual structural traversal over recursive-family members, source-defined list builders such as append and reverse, generated array-child traversal, explicit-accumulator `List.foldl` helpers, top-level closed `List.foldl` bodies with one hidden accumulator, closed structural predicates such as direct `List.any` and `List.all`, direct expression-position `List.length`, list append notation through `++`, `List.reverse`, `List.map`, `List.filter`, and `List.foldr` with closed direct-lambda callbacks, and limited direct-lambda helper calls to `List.map`, `List.filter`, `List.find?`, and `List.any`, but entry parameters and entry results cannot expose recursive data, byte-array arrays, or nested arrays through the host ABI.
 
 ## Supported Lean
 
@@ -264,12 +266,12 @@ Supported control flow includes `let`, direct calls, `if`, pattern matching, pur
 | `Nat` | One nonnegative `i64` within the supported bound. |
 | `ByteArray` parameter | Pointer and length, both `i64`. |
 | `ByteArray` result | Pointer and length, both `i64`. |
-| `Array α` | Pointer to an arena array whose elements have fixed-width slots. |
+| `Array α` | Pointer to a heap array whose elements have fixed-width slots. |
 | Structure | Field values flattened in declaration order. |
 | Nonrecursive inductive | Constructor tag followed by payload slots. |
-| Recursive inductive | Internal arena value only. |
+| Recursive inductive | Internal heap value only. |
 
-The entry declaration name must not collide with runtime exports such as `memory`, `alloc`, or `reset`.  The host may call `reset()` between runs to clear the module allocator.  Integer overflow and invalid memory access trap according to the semantics in [Language Specification](spec.md).
+The entry declaration name must not collide with runtime exports such as `memory`, `alloc`, `reset`, `retain`, `release`, or `free`.  The host may call `release()` for individual returned heap objects or `reset()` when no old pointer remains live.  Integer overflow and invalid memory access trap according to the semantics in [Language Specification](spec.md).
 
 ## Examples
 
