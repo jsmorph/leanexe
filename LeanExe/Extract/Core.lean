@@ -5824,6 +5824,36 @@ def entryModeSignature?
   else
     supportedFunction? env info
 
+def extractFunctionsWithEntryMode
+    (exportEntry : Bool)
+    (ctx : Context)
+    (entry : Name)
+    (namesList : List Name) :
+    Except String (Array IRFunc) := do
+  let mut funcs := #[]
+  for name in namesList do
+    let info ←
+      match ctx.env.find? name with
+      | some info => .ok info
+      | none => .error s!"declaration disappeared during extraction: {name}"
+    let sig ←
+      match entryModeSignature? exportEntry ctx.env entry name info with
+      | some sig => .ok sig
+      | none => .error s!"unsupported function type or declaration: {name}"
+    let func ←
+      match extractFunction exportEntry ctx entry name info sig with
+      | .ok func => .ok func
+      | .error error => .error s!"while extracting {name}: {error}"
+    funcs := funcs.push func
+  for synth in ctx.synthetics do
+    let func ←
+      match extractStructuralRecFunc ctx synth.name synth.sig.params synth.typeName synth.typeParams
+          synth.sig.result synth.value none with
+      | .ok func => .ok func
+      | .error error => .error s!"while extracting {synth.name}: {error}"
+    funcs := funcs.push func
+  .ok funcs
+
 def compileEnvironmentWithEntryMode
     (exportEntry : Bool)
     (env : Environment)
@@ -5855,30 +5885,18 @@ def compileEnvironmentWithEntryMode
       | none => .error s!"declaration has no executable value: {name}"
     synthetics := collectFunctionExpressionStructuralSynthetics env root namesList sig value synthetics
   let names := (namesList ++ synthetics.toList.map (fun synth => synth.name)).toArray
-  let ctx : Context :=
-    { env := env, root := root, names := names, synthetics := synthetics, inlineStack := [] }
-  let mut funcs := #[]
-  for name in namesList do
-    let info ←
-      match env.find? name with
-      | some info => .ok info
-      | none => .error s!"declaration disappeared during extraction: {name}"
-    let sig ←
-      match entryModeSignature? exportEntry ctx.env entry name info with
-      | some sig => .ok sig
-      | none => .error s!"unsupported function type or declaration: {name}"
-    let func ←
-      match extractFunction exportEntry ctx entry name info sig with
-      | .ok func => .ok func
-      | .error error => .error s!"while extracting {name}: {error}"
-    funcs := funcs.push func
-  for synth in synthetics do
-    let func ←
-      match extractStructuralRecFunc ctx synth.name synth.sig.params synth.typeName synth.typeParams
-          synth.sig.result synth.value none with
-      | .ok func => .ok func
-      | .error error => .error s!"while extracting {synth.name}: {error}"
-    funcs := funcs.push func
+  let baseCtx : Context :=
+    { env := env,
+      root := root,
+      names := names,
+      synthetics := synthetics,
+      freshResultOwnerOffsets := #[],
+      inlineStack := [] }
+  let firstPassFuncs ← extractFunctionsWithEntryMode exportEntry baseCtx entry namesList
+  let freshResultOwnerOffsets :=
+    freshResultOwnerOffsetsForModule baseCtx { funcs := firstPassFuncs }
+  let ctx : Context := { baseCtx with freshResultOwnerOffsets := freshResultOwnerOffsets }
+  let funcs ← extractFunctionsWithEntryMode exportEntry ctx entry namesList
   .ok { funcs := funcs }
 
 def compileEnvironment (env : Environment) (moduleName entry : Name) : Except String IRModule :=

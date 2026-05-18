@@ -1,5 +1,19 @@
 # Development Journal
 
+## 2026-05-18: Helper Result Ownership Summaries
+
+The release pass now has per-helper ownership summaries for fresh array and byte-array result owner slots.  The compiler first extracts the reachable functions without summaries, computes a fixed-point summary over the extracted IR, then extracts again with those summaries available to the existing release insertion paths.  This removes the old rule that suppressed helper-call cleanup whenever a callee had any heap-bearing parameter.
+
+The summary pass starts with parameters unowned, follows assignments, local lets, helper calls, branches, releases, and simple loops conservatively, and marks a result owner slot only when the result expression is fresh on every path.  It applies to array and byte-array owner offsets, including structured results that contain those owners.  Recursive-inductive helper results remain outside automatic call-result release because constructor child ownership masks do not yet consume helper-call summaries.
+
+Checks run:
+
+- [x] `lake build LeanExe.Extract.Core` returned successfully.
+- [x] `lake build lean-wasm` returned successfully.
+- [x] `node test/refcount.js` returned `checked 16 refcount cases`.
+- [x] `node test/core_correctness.js` returned `checked 629 accepted, 29 rejected, and 13 trapped cases`.
+- [x] `node test/run_all.js` returned `checked 94 report classification cases`, `checked 629 accepted, 29 rejected, and 13 trapped cases`, `checked 16 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 22 WASI program cases, 2 traps, and 7 rejections`, `checked 47 standard Lean comparison cases`, and `checked 56 cases`.
+
 ## 2026-05-15: Internal Array Owner Slots
 
 Internal `Array α` values now carry two slots: an owner root and the visible array pointer.  The public ABI remains one array pointer, and public or WASI-adapter arrays enter compiled code with owner `0`.  Nested arrays stored inside fixed-width values now have enough ownership metadata for release to follow them without treating borrowed public arrays as owned roots.
