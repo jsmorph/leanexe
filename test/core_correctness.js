@@ -309,6 +309,8 @@ const accepted = [
   { name: "structArrayFieldRuntimeReleaseFrees", args: [], expected: 202n },
   { name: "ownedArrayCallTempScalar", args: [], expected: 5n },
   { name: "ownedByteArrayCallTempScalar", args: [], expected: 66n },
+  { name: "ownedArrayParamCallTempScalar", args: [], expected: 16n },
+  { name: "ownedByteArrayParamCallTempScalar", args: [], expected: 100n },
   { name: "ownedBoxCallTempScalar", args: [], expected: 13n },
   {
     name: "byteArrayFoldByteOutputState",

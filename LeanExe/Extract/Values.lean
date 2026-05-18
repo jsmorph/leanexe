@@ -265,16 +265,19 @@ def functionNameAtIndex? (ctx : Context) (index : Nat) : Option Name :=
     none
 
 def callResultReleaseOwnerSlots (ctx : Context) (index : Nat) (slots : List Nat) : List Nat :=
-  match functionNameAtIndex? ctx index with
-  | some name =>
-      match functionSignature? ctx name with
-      | some sig =>
-          if sig.params.any tyContainsHeapPointer then
-            []
-          else
-            slotsAtOffsets slots (tyReleaseOwnerSlotOffsets sig.result)
+  match ctx.freshResultOwnerOffsets[index]? with
+  | some offsets => slotsAtOffsets slots offsets
+  | none =>
+      match functionNameAtIndex? ctx index with
+      | some name =>
+          match functionSignature? ctx name with
+          | some sig =>
+              if sig.params.any tyContainsHeapPointer then
+                []
+              else
+                slotsAtOffsets slots (tyReleaseOwnerSlotOffsets sig.result)
+          | none => []
       | none => []
-  | none => []
 
 mutual
   partial def exprUsedSlots : IRExpr → List Nat
@@ -1927,6 +1930,211 @@ mutual
   partial def localLetsReleasedSlots (lets : List LeanExe.IR.LocalLet) : List Nat :=
     lets.foldl (fun acc letValue => addLiveSlots acc (localLetReleasedSlots letValue)) []
 end
+
+def intersectLiveSlots (left right : List Nat) : List Nat :=
+  left.filter fun slot => right.contains slot
+
+def summarizedCallResultOwnerSlots
+    (summaries : Array (List Nat))
+    (index : Nat)
+    (slots : List Nat) :
+    List Nat :=
+  match summaries[index]? with
+  | some offsets => slotsAtOffsets slots offsets
+  | none => []
+
+mutual
+  partial def exprReturnsFreshOwnedHeapObjectFrom
+      (summaries : Array (List Nat))
+      (ownedLocals : List Nat) :
+      IRExpr → Bool
+    | .local slot => ownedLocals.contains slot
+    | .letE slot value body =>
+        let valueOwned := exprReturnsFreshOwnedHeapObjectFrom summaries ownedLocals value
+        let afterValue := removeLiveSlots (removeLiveSlot ownedLocals slot) (exprReleasedSlots value)
+        let nextOwned := if valueOwned then addLiveSlot afterValue slot else afterValue
+        exprReturnsFreshOwnedHeapObjectFrom summaries nextOwned body
+    | .letCall slots index args body =>
+        let afterCall :=
+          removeLiveSlots (removeLiveSlots ownedLocals slots) (exprListReleasedSlots args)
+        let nextOwned :=
+          addLiveSlots afterCall (summarizedCallResultOwnerSlots summaries index slots)
+        exprReturnsFreshOwnedHeapObjectFrom summaries nextOwned body
+    | .letLets lets body =>
+        let nextOwned := ownedHeapLocalsAfterLocalLets summaries ownedLocals lets
+        exprReturnsFreshOwnedHeapObjectFrom summaries nextOwned body
+    | .ite cond thenValue elseValue =>
+        let branchOwned := removeLiveSlots ownedLocals (condReleasedSlots cond)
+        exprReturnsFreshOwnedHeapObjectFrom summaries branchOwned thenValue &&
+          exprReturnsFreshOwnedHeapObjectFrom summaries branchOwned elseValue
+    | .arrayAllocSlots .. => true
+    | .heapAllocSlots .. => true
+    | .arrayReplicateSlots .. => true
+    | .arraySetSlots .. => true
+    | .arrayPushSlots .. => true
+    | .arrayAppendSlots .. => true
+    | .arrayExtractSlots .. => true
+    | .arrayMapSlots .. => true
+    | .arrayFilterSlots .. => true
+    | .byteArrayPushPtr .. => true
+    | .byteArrayAppendPtr .. => true
+    | .byteArraySetPtr .. => true
+    | .byteArrayFromArrayPtr .. => true
+    | .byteArrayCopySlicePtr .. => true
+    | .call index _ =>
+        match summaries[index]? with
+        | some offsets => offsets.contains 0
+        | none => false
+    | _ => false
+
+  partial def ownedHeapLocalsAfterLocalLet
+      (summaries : Array (List Nat))
+      (ownedLocals : List Nat) :
+      LeanExe.IR.LocalLet → List Nat
+    | .expr slot expr =>
+        let exprOwned := exprReturnsFreshOwnedHeapObjectFrom summaries ownedLocals expr
+        let afterExpr := removeLiveSlots (removeLiveSlot ownedLocals slot) (exprReleasedSlots expr)
+        if exprOwned then addLiveSlot afterExpr slot else afterExpr
+    | .call slots index args =>
+        let afterCall :=
+          removeLiveSlots (removeLiveSlots ownedLocals slots) (exprListReleasedSlots args)
+        addLiveSlots afterCall (summarizedCallResultOwnerSlots summaries index slots)
+    | .slots slots values =>
+        let afterValues :=
+          removeLiveSlots (removeLiveSlots ownedLocals slots) (exprListReleasedSlots values)
+        (slots.zip values).foldl
+          (fun owned item =>
+            if exprReturnsFreshOwnedHeapObjectFrom summaries ownedLocals item.snd then
+              addLiveSlot owned item.fst
+            else
+              owned)
+          afterValues
+    | .branch cond thenLets elseLets =>
+        let branchOwned := removeLiveSlots ownedLocals (condReleasedSlots cond)
+        intersectLiveSlots
+          (ownedHeapLocalsAfterLocalLets summaries branchOwned thenLets)
+          (ownedHeapLocalsAfterLocalLets summaries branchOwned elseLets)
+
+  partial def ownedHeapLocalsAfterLocalLets
+      (summaries : Array (List Nat))
+      (ownedLocals : List Nat)
+      (lets : List LeanExe.IR.LocalLet) :
+      List Nat :=
+    lets.foldl
+      (fun owned localLet => ownedHeapLocalsAfterLocalLet summaries owned localLet)
+      ownedLocals
+end
+
+def foldAssignReleasedSlots
+    (values : List IRExpr)
+    (lets : List LeanExe.IR.LocalLet)
+    (done : IRExpr) :
+    List Nat :=
+  addLiveSlots (exprListReleasedSlots values)
+    (addLiveSlots (localLetsReleasedSlots lets) (exprReleasedSlots done))
+
+mutual
+  partial def stmtFreshOwnedLocalsAfter
+      (summaries : Array (List Nat))
+      (ownedLocals : List Nat) :
+      IRStmt → List Nat
+    | .skip => ownedLocals
+    | .assign slot expr =>
+        let exprOwned := exprReturnsFreshOwnedHeapObjectFrom summaries ownedLocals expr
+        let afterExpr := removeLiveSlots (removeLiveSlot ownedLocals slot) (exprReleasedSlots expr)
+        if exprOwned then addLiveSlot afterExpr slot else afterExpr
+    | .call slots index args =>
+        let afterCall :=
+          removeLiveSlots (removeLiveSlots ownedLocals slots) (exprListReleasedSlots args)
+        addLiveSlots afterCall (summarizedCallResultOwnerSlots summaries index slots)
+    | .release ptr => removeLiveSlots ownedLocals (exprUsedSlots ptr)
+    | .arrayFoldMultiSlotAssign _ _ array start stop initValues _ _ bodyValues bodyLets bodyDone
+        targets =>
+        let released :=
+          addLiveSlots
+            (addLiveSlots (addLiveSlots (exprReleasedSlots array) (exprReleasedSlots start))
+              (exprReleasedSlots stop))
+            (addLiveSlots (exprListReleasedSlots initValues)
+              (foldAssignReleasedSlots bodyValues bodyLets bodyDone))
+        removeLiveSlots (removeLiveSlots ownedLocals targets) released
+    | .byteArrayFoldMultiSlotAssign _ ptr len start stop initValues _ _ bodyValues bodyLets
+        bodyDone targets =>
+        let released :=
+          addLiveSlots
+            (addLiveSlots
+              (addLiveSlots (exprReleasedSlots ptr) (exprReleasedSlots len))
+              (addLiveSlots (exprReleasedSlots start) (exprReleasedSlots stop)))
+            (addLiveSlots (exprListReleasedSlots initValues)
+              (foldAssignReleasedSlots bodyValues bodyLets bodyDone))
+        removeLiveSlots (removeLiveSlots ownedLocals targets) released
+    | .rangeFoldMultiSlotAssign _ start stop step initValues _ _ bodyValues bodyLets bodyDone
+        targets =>
+        let released :=
+          addLiveSlots
+            (addLiveSlots
+              (addLiveSlots (exprReleasedSlots start) (exprReleasedSlots stop))
+              (exprReleasedSlots step))
+            (addLiveSlots (exprListReleasedSlots initValues)
+              (foldAssignReleasedSlots bodyValues bodyLets bodyDone))
+        removeLiveSlots (removeLiveSlots ownedLocals targets) released
+    | .ite cond thenStmt elseStmt =>
+        let branchOwned := removeLiveSlots ownedLocals (condReleasedSlots cond)
+        intersectLiveSlots
+          (stmtFreshOwnedLocalsAfter summaries branchOwned thenStmt)
+          (stmtFreshOwnedLocalsAfter summaries branchOwned elseStmt)
+    | .seq first second =>
+        stmtFreshOwnedLocalsAfter summaries
+          (stmtFreshOwnedLocalsAfter summaries ownedLocals first)
+          second
+    | .while cond body =>
+        let bodyStart := removeLiveSlots ownedLocals (condReleasedSlots cond)
+        intersectLiveSlots bodyStart (stmtFreshOwnedLocalsAfter summaries bodyStart body)
+end
+
+def freshResultOwnerOffsetsForFunc
+    (ctx : Context)
+    (summaries : Array (List Nat))
+    (func : IRFunc) :
+    List Nat :=
+  if func.exportName.isSome then
+    []
+  else
+    match functionSignature? ctx func.sourceName with
+    | none => []
+    | some sig =>
+        let ownedAfterBody := stmtFreshOwnedLocalsAfter summaries [] func.body
+        (tyReleaseOwnerSlotOffsets sig.result).filter fun offset =>
+          match func.results[offset]? with
+          | some expr => exprReturnsFreshOwnedHeapObjectFrom summaries ownedAfterBody expr
+          | none => false
+
+def freshResultOwnerOffsetsPass
+    (ctx : Context)
+    (module_ : IRModule)
+    (summaries : Array (List Nat)) :
+    Array (List Nat) :=
+  module_.funcs.foldl
+    (fun acc func => acc.push (freshResultOwnerOffsetsForFunc ctx summaries func))
+    #[]
+
+partial def freshResultOwnerOffsetsFixed
+    (ctx : Context)
+    (module_ : IRModule)
+    (fuel : Nat)
+    (summaries : Array (List Nat)) :
+    Array (List Nat) :=
+  match fuel with
+  | 0 => summaries
+  | fuel + 1 =>
+      let next := freshResultOwnerOffsetsPass ctx module_ summaries
+      if next == summaries then
+        next
+      else
+        freshResultOwnerOffsetsFixed ctx module_ fuel next
+
+def freshResultOwnerOffsetsForModule (ctx : Context) (module_ : IRModule) : Array (List Nat) :=
+  let initial := (List.replicate module_.funcs.size ([] : List Nat)).toArray
+  freshResultOwnerOffsetsFixed ctx module_ (module_.funcs.size + 1) initial
 
 mutual
   partial def valueReleasedSlots : ExtractedValue → List Nat

@@ -3840,6 +3840,26 @@ def ownedByteArrayCallTempScalar : UInt64 :=
   let bytes := ownedByteArrayCallTemp
   bytes.size.toUInt64 + bytes[0]!.toUInt64
 
+def ownedArrayCallTempFromParam (input : Array UInt64) : Array UInt64 :=
+  input.push (9 : UInt64)
+
+def ownedArrayParamCallTempScalarFromInput (input : Array UInt64) : UInt64 :=
+  let values := ownedArrayCallTempFromParam input
+  values.size.toUInt64 + values[0]! + values[1]!
+
+def ownedArrayParamCallTempScalar : UInt64 :=
+  ownedArrayParamCallTempScalarFromInput #[5]
+
+def ownedByteArrayCallTempFromParam (input : ByteArray) : ByteArray :=
+  input.push (33 : UInt8)
+
+def ownedByteArrayParamCallTempScalarFromInput (input : ByteArray) : UInt64 :=
+  let bytes := ownedByteArrayCallTempFromParam input
+  bytes.size.toUInt64 + bytes[0]!.toUInt64 + bytes[1]!.toUInt64
+
+def ownedByteArrayParamCallTempScalar : UInt64 :=
+  ownedByteArrayParamCallTempScalarFromInput "A".toUTF8
+
 def ownedBoxCallTemp : OwnedCallBox :=
   { values := Array.replicate 1 (5 : UInt64),
     bytes := ByteArray.empty.push (65 : UInt8),

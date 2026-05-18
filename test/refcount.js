@@ -212,6 +212,49 @@ async function checkCompilerReleasesOwnedCallResults() {
     );
   }
 
+  const arrayParam = await instantiate(correctnessModule, "ownedArrayParamCallTempScalarFromInput");
+  arrayParam.reset();
+  const probeArrayInput = writeU64Array(arrayParam, [5]);
+  const expectedArrayParamBlock = pointer(arrayParam.alloc(24n));
+  arrayParam.reset();
+  const arrayInput = writeU64Array(arrayParam, [5]);
+  if (arrayInput !== probeArrayInput) {
+    throw new Error(`reset did not restore array input block: expected ${probeArrayInput}, got ${arrayInput}`);
+  }
+  const arrayParamResult = pointer(arrayParam.ownedArrayParamCallTempScalarFromInput(BigInt(arrayInput)));
+  if (arrayParamResult !== 16) {
+    throw new Error(`ownedArrayParamCallTempScalarFromInput: expected 16, got ${arrayParamResult}`);
+  }
+  const reusedArrayParamBlock = pointer(arrayParam.alloc(24n));
+  if (reusedArrayParamBlock !== expectedArrayParamBlock) {
+    throw new Error(
+      `compiler did not release heap-parameter array call result: expected ${expectedArrayParamBlock}, got ${reusedArrayParamBlock}`,
+    );
+  }
+
+  const bytesParam = await instantiate(correctnessModule, "ownedByteArrayParamCallTempScalarFromInput");
+  bytesParam.reset();
+  const probeByteInput = pointer(bytesParam.alloc(1n));
+  const expectedByteParamBlock = pointer(bytesParam.alloc(2n));
+  bytesParam.reset();
+  const byteInput = pointer(bytesParam.alloc(1n));
+  if (byteInput !== probeByteInput) {
+    throw new Error(`reset did not restore byte input block: expected ${probeByteInput}, got ${byteInput}`);
+  }
+  new Uint8Array(bytesParam.memory.buffer, byteInput, 1)[0] = 65;
+  const byteParamResult = pointer(
+    bytesParam.ownedByteArrayParamCallTempScalarFromInput(BigInt(byteInput), 1n),
+  );
+  if (byteParamResult !== 100) {
+    throw new Error(`ownedByteArrayParamCallTempScalarFromInput: expected 100, got ${byteParamResult}`);
+  }
+  const reusedByteParamBlock = pointer(bytesParam.alloc(2n));
+  if (reusedByteParamBlock !== expectedByteParamBlock) {
+    throw new Error(
+      `compiler did not release heap-parameter byte-array call result: expected ${expectedByteParamBlock}, got ${reusedByteParamBlock}`,
+    );
+  }
+
   const box = await instantiate(correctnessModule, "ownedBoxCallTempScalar");
   box.reset();
   const expectedBoxArrayBlock = pointer(box.alloc(16n));
@@ -248,7 +291,7 @@ async function main() {
   await checkArrayOwnerChildRelease();
   await checkBorrowedArrayNoopRelease();
   await checkCompilerReleasesOwnedCallResults();
-  process.stdout.write("checked 14 refcount cases\n");
+  process.stdout.write("checked 16 refcount cases\n");
 }
 
 main().catch((error) => {

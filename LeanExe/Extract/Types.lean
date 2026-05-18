@@ -90,6 +90,7 @@ structure Context where
   root : Name
   names : Array Name
   synthetics : Array SyntheticFunction
+  freshResultOwnerOffsets : Array (List Nat)
   inlineStack : List Name
 
 structure VariantCtorLayout where
