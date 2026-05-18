@@ -47,6 +47,12 @@ function writeU64Array(exports, values) {
   return ptr;
 }
 
+function writeBytes(exports, values) {
+  const ptr = pointer(exports.alloc(BigInt(values.length)));
+  new Uint8Array(exports.memory.buffer, ptr, values.length).set(values);
+  return ptr;
+}
+
 function samePointers(left, right) {
   if (left.length !== right.length) {
     return false;
@@ -310,6 +316,41 @@ async function checkCompilerReleasesOwnedCallResults() {
   }
 }
 
+async function checkCompilerReleasesFoldAccumulators() {
+  const cases = [
+    ["arrayFoldByteArrayAccumulatorReleaseStats", 30202],
+    ["byteArrayFoldByteArrayAccumulatorReleaseStats", 30202],
+    ["idRunByteArrayForOutputReleaseStats", 30202],
+    ["idRunRangeForByteArrayOutputReleaseStats", 30202],
+    ["arrayFoldRecursiveAccumulatorReleaseStats", 30606],
+  ];
+  for (const [entry, expected] of cases) {
+    const exports = await instantiate(correctnessModule, entry);
+    const actual = pointer(exports[entry]());
+    if (actual !== expected) {
+      throw new Error(`${entry}: expected ${expected}, got ${actual}`);
+    }
+  }
+
+  const arrayInput = await instantiate(correctnessModule, "arrayFoldInputByteArrayAccumulatorReleaseStats");
+  const arrayInputPtr = writeU64Array(arrayInput, [65, 66, 67]);
+  const arrayInputActual = pointer(
+    arrayInput.arrayFoldInputByteArrayAccumulatorReleaseStats(BigInt(arrayInputPtr)),
+  );
+  if (arrayInputActual !== 30202) {
+    throw new Error(`arrayFoldInputByteArrayAccumulatorReleaseStats: expected 30202, got ${arrayInputActual}`);
+  }
+
+  const byteInput = await instantiate(correctnessModule, "byteArrayFoldInputByteArrayAccumulatorReleaseStats");
+  const byteInputPtr = writeBytes(byteInput, [1, 2, 3]);
+  const byteInputActual = pointer(
+    byteInput.byteArrayFoldInputByteArrayAccumulatorReleaseStats(BigInt(byteInputPtr), 3n),
+  );
+  if (byteInputActual !== 30202) {
+    throw new Error(`byteArrayFoldInputByteArrayAccumulatorReleaseStats: expected 30202, got ${byteInputActual}`);
+  }
+}
+
 async function main() {
   run(["lake", "build", correctnessModule]);
   run(["lake", "build", byteArrayModule]);
@@ -323,7 +364,8 @@ async function main() {
   await checkArrayOwnerChildRelease();
   await checkBorrowedArrayNoopRelease();
   await checkCompilerReleasesOwnedCallResults();
-  process.stdout.write("checked 17 refcount cases\n");
+  await checkCompilerReleasesFoldAccumulators();
+  process.stdout.write("checked 24 refcount cases\n");
 }
 
 main().catch((error) => {

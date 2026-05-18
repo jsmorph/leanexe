@@ -1,5 +1,22 @@
 # Development Journal
 
+## 2026-05-18: Fold Accumulator Ownership Release
+
+Loop-carried heap values now have a conservative compiler-emitted release path.  The extractor computes owner-slot offsets for the accumulator result type, including owner slots inside products, structures, sums, and nonrecursive tagged payloads.  It attaches a release offset to an `Array.foldl`, `ByteArray.foldl`, or accepted pure `for` loop only when the staged next accumulator slot is proven fresh by local allocation analysis and the body has not already released the old accumulator slot.
+
+The WASM emitter now evaluates the loop body, stages the next accumulator slots, evaluates the loop-exit flag, releases the previous iteration's owned accumulator roots, and then copies staged values over the accumulator locals.  A loop releases a shared root only once when two owner slots hold the same pointer.  It skips the initial accumulator value, because ordinary Lean aliases can still refer to that value after the loop and the compiler does not yet prove that the initializer is unique.  This rule reclaims the common immutable-update pattern used by byte-array accumulators, array accumulators, and recursive-inductive accumulators without requiring source-level `LeanExe.Runtime.release` in the loop body.
+
+The release rule remains local to supported loop and fold accumulator replacement.  Escaping heap-pointer results stay owned by the caller or host, and helper results that may borrow from heap arguments stay conservative unless the existing ownership-summary pass proves the relevant owner slot fresh.
+
+Checks run:
+
+- [x] `lake build LeanExe.Wasm.Binary` returned successfully.
+- [x] `lake build lean-wasm` returned successfully.
+- [x] `lake build LeanExe.Examples.Correctness lean-wasm` returned successfully.
+- [x] `node test/core_correctness.js` returned `checked 636 accepted, 29 rejected, and 13 trapped cases`.
+- [x] `node test/refcount.js` returned `checked 24 refcount cases`.
+- [x] `node test/run_all.js` returned `checked 94 report classification cases`, `checked 636 accepted, 29 rejected, and 13 trapped cases`, `checked 24 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 22 WASI program cases, 2 traps, and 7 rejections`, `checked 47 standard Lean comparison cases`, and `checked 56 cases`.
+
 ## 2026-05-18: Recursive Child Ownership Transfer
 
 Recursive heap allocation now carries an owned-child mask in addition to the child-pointer mask.  The child-pointer mask still tells `release` which slots contain heap children, while the owned-child mask tells allocation which child pointers are already owned by the newly allocated parent.  Allocation retains child pointers that are borrowed and skips the retain for child pointers proven fresh by local allocation analysis or helper-result ownership summaries.

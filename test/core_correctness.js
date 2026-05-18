@@ -295,6 +295,7 @@ const accepted = [
     expected: [null, 2n],
     memoryBytes: [{ resultIndex: 0, lengthIndex: 1, values: [1, 2] }],
   },
+  { name: "byteArrayFoldByteArrayAccumulatorReleaseStats", args: [], expected: 30202n },
   { name: "byteArrayArrayReadSize", args: [], expected: 12n },
   { name: "byteArrayArrayFoldSize", args: [], expected: 6n },
   {
@@ -313,6 +314,7 @@ const accepted = [
   { name: "ownedByteArrayParamCallTempScalar", args: [], expected: 100n },
   { name: "ownedRecursiveNodeParamCallTempScalar", args: [], expected: 310n },
   { name: "unusedRecursiveRuntimeReleaseFrees", args: [], expected: 3n },
+  { name: "arrayFoldRecursiveAccumulatorReleaseStats", args: [], expected: 30606n },
   { name: "ownedBoxCallTempScalar", args: [], expected: 13n },
   {
     name: "byteArrayFoldByteOutputState",
@@ -361,6 +363,7 @@ const accepted = [
     expected: [null, 3n],
     memoryBytes: [{ resultIndex: 0, lengthIndex: 1, values: [1, 2, 3] }],
   },
+  { name: "idRunByteArrayForOutputReleaseStats", args: [], expected: 30202n },
   { name: "idRunArrayForStatus", args: [], expected: [1n, 0n, 2n] },
   { name: "idRunArrayForStatusScore", args: [], expected: 102n },
   { name: "idRunRangeForCount", args: [], expected: 3n },
@@ -375,6 +378,7 @@ const accepted = [
     expected: [null, 2n],
     memoryBytes: [{ resultIndex: 0, lengthIndex: 1, values: [1, 1] }],
   },
+  { name: "idRunRangeForByteArrayOutputReleaseStats", args: [], expected: 30202n },
   { name: "idRunRangeForBreakState", args: [], expected: [3n, 6n] },
   { name: "idRunRangeForContinueState", args: [], expected: [4n, 11n] },
   { name: "idFunctionUInt64", args: [4n], expected: 5n },
@@ -429,6 +433,7 @@ const accepted = [
     expected: [null, 2n],
     memoryBytes: [{ resultIndex: 0, lengthIndex: 1, values: [65, 66] }],
   },
+  { name: "arrayFoldByteArrayAccumulatorReleaseStats", args: [], expected: 30202n },
   {
     name: "arrayFoldByteOutputState",
     args: [],

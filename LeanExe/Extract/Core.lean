@@ -731,6 +731,9 @@ mutual
                         if bodyTargets.length != resultWidth then
                           .error "for-in accumulator body value shape mismatch"
                         else
+                        let releaseOffsets :=
+                          foldAccumulatorReleaseOffsets ctx.freshResultOwnerOffsets forIn.resultTy
+                            accStart bodyLets doneResult.fst bodyTargets
                         let resultValue :=
                           valueFromInternalSlots forIn.resultTy
                             (fun offset =>
@@ -746,6 +749,7 @@ mutual
                                 (bodyTargets.map fun slot => (.local slot : IRExpr))
                                 bodyLets
                                 doneResult.fst
+                                releaseOffsets
                                 offset)
                         .ok
                           (resultValue, doneResult.snd)
@@ -786,6 +790,9 @@ mutual
                             if bodyTargets.length != resultWidth then
                               .error "for-in accumulator body value shape mismatch"
                             else
+                            let releaseOffsets :=
+                              foldAccumulatorReleaseOffsets ctx.freshResultOwnerOffsets
+                                forIn.resultTy accStart bodyLets doneResult.fst bodyTargets
                             let resultValue :=
                               valueFromInternalSlots forIn.resultTy
                                 (fun offset =>
@@ -801,6 +808,7 @@ mutual
                                     (bodyTargets.map fun slot => (.local slot : IRExpr))
                                     bodyLets
                                     doneResult.fst
+                                    releaseOffsets
                                     offset)
                             .ok
                               (resultValue, doneResult.snd)
@@ -840,6 +848,9 @@ mutual
                         if bodyTargets.length != resultWidth then
                           .error "for-in accumulator body value shape mismatch"
                         else
+                        let releaseOffsets :=
+                          foldAccumulatorReleaseOffsets ctx.freshResultOwnerOffsets forIn.resultTy
+                            accStart bodyLets doneResult.fst bodyTargets
                         let resultValue :=
                           valueFromInternalSlots forIn.resultTy
                             (fun offset =>
@@ -854,6 +865,7 @@ mutual
                                 (bodyTargets.map fun slot => (.local slot : IRExpr))
                                 bodyLets
                                 doneResult.fst
+                                releaseOffsets
                                 offset)
                         .ok (resultValue, doneResult.snd)
                       else
@@ -935,6 +947,9 @@ mutual
                           if bodyTargets.length != resultWidth then
                             .error "Array.foldl accumulator body value shape mismatch"
                           else
+                          let releaseOffsets :=
+                            foldAccumulatorReleaseOffsets ctx.freshResultOwnerOffsets resultTy
+                              accStart bodyLets (.u64 0) bodyTargets
                           let resultValue :=
                             valueFromInternalSlots resultTy
                               (fun offset =>
@@ -950,6 +965,7 @@ mutual
                                   (bodyTargets.map fun slot => (.local slot : IRExpr))
                                   bodyLets
                                   (.u64 0)
+                                  releaseOffsets
                                   offset)
                           .ok (resultValue, bodyResult.snd + resultWidth)
                       | none => .error s!"unsupported Array.foldl item type: {reprStr sourceTy}"
@@ -1005,6 +1021,9 @@ mutual
                       if bodyTargets.length != resultWidth then
                         .error "ByteArray.foldl accumulator body value shape mismatch"
                       else
+                      let releaseOffsets :=
+                        foldAccumulatorReleaseOffsets ctx.freshResultOwnerOffsets resultTy
+                          accStart bodyLets (.u64 0) bodyTargets
                       let resultValue :=
                         valueFromInternalSlots resultTy
                           (fun offset =>
@@ -1020,6 +1039,7 @@ mutual
                               (bodyTargets.map fun slot => (.local slot : IRExpr))
                               bodyLets
                               (.u64 0)
+                              releaseOffsets
                               offset)
                       .ok (resultValue, bodyResult.snd + resultWidth)
                 | none => .error "unsupported ByteArray.foldl result type"
