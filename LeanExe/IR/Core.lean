@@ -76,7 +76,8 @@ mutual
         (bodyValues : List Expr)
     | arrayFoldMultiSlot (sourceWidth resultWidth : Nat) (array start stop : Expr)
         (initValues : List Expr) (accStart itemStart : Nat) (bodyValues : List Expr)
-        (bodyLets : List LocalLet) (bodyDone : Expr) (resultSlot : Nat)
+        (bodyLets : List LocalLet) (bodyDone : Expr) (releaseOffsets : List Nat)
+        (resultSlot : Nat)
     | arrayFindIdxSlots (sourceWidth : Nat) (array : Expr) (itemStart : Nat)
         (predicate : Expr) (returnPayload : Bool)
     | arrayFindSlot (sourceWidth : Nat) (array : Expr) (itemStart : Nat)
@@ -104,10 +105,12 @@ mutual
         (returnPayload : Bool)
     | byteArrayFoldMultiSlot (resultWidth : Nat) (ptr len start stop : Expr)
         (initValues : List Expr) (accStart byteSlot : Nat) (bodyValues : List Expr)
-        (bodyLets : List LocalLet) (bodyDone : Expr) (resultSlot : Nat)
+        (bodyLets : List LocalLet) (bodyDone : Expr) (releaseOffsets : List Nat)
+        (resultSlot : Nat)
     | rangeFoldMultiSlot (resultWidth : Nat) (start stop step : Expr)
         (initValues : List Expr) (accStart itemSlot : Nat) (bodyValues : List Expr)
-        (bodyLets : List LocalLet) (bodyDone : Expr) (resultSlot : Nat)
+        (bodyLets : List LocalLet) (bodyDone : Expr) (releaseOffsets : List Nat)
+        (resultSlot : Nat)
     | heapLinearPredicate (ptr : Expr)
         (continueTag fieldSlotCount recursiveFieldOffset fieldStart : Nat)
         (predicate : Expr) (stopWhenTrue terminalValue : Bool)
@@ -141,13 +144,16 @@ mutual
     | release (ptr : Expr)
     | arrayFoldMultiSlotAssign (sourceWidth resultWidth : Nat) (array start stop : Expr)
         (initValues : List Expr) (accStart itemStart : Nat) (bodyValues : List Expr)
-        (bodyLets : List LocalLet) (bodyDone : Expr) (targets : List Nat)
+        (bodyLets : List LocalLet) (bodyDone : Expr) (releaseOffsets : List Nat)
+        (targets : List Nat)
     | byteArrayFoldMultiSlotAssign (resultWidth : Nat) (ptr len start stop : Expr)
         (initValues : List Expr) (accStart byteSlot : Nat) (bodyValues : List Expr)
-        (bodyLets : List LocalLet) (bodyDone : Expr) (targets : List Nat)
+        (bodyLets : List LocalLet) (bodyDone : Expr) (releaseOffsets : List Nat)
+        (targets : List Nat)
     | rangeFoldMultiSlotAssign (resultWidth : Nat) (start stop step : Expr)
         (initValues : List Expr) (accStart itemSlot : Nat) (bodyValues : List Expr)
-        (bodyLets : List LocalLet) (bodyDone : Expr) (targets : List Nat)
+        (bodyLets : List LocalLet) (bodyDone : Expr) (releaseOffsets : List Nat)
+        (targets : List Nat)
     | ite (cond : Cond) (thenStmt elseStmt : Stmt)
     | seq (first second : Stmt)
     | while (cond : Cond) (body : Stmt)
@@ -229,7 +235,7 @@ mutual
     | .arrayExtractSlots _ _ array _ _ => array.eval module_ store
     | .arrayMapSlots _ _ _ _ array _ _ => array.eval module_ store
     | .arrayFoldMultiSlot sourceWidth resultWidth array start stop initValues accStart itemStart
-        bodyValues bodyLets bodyDone resultSlot =>
+        bodyValues bodyLets bodyDone _releaseOffsets resultSlot =>
         let resultStore :=
           evalCountedFold module_ resultWidth initValues accStart itemStart sourceWidth
             (fun _index => 0)
@@ -255,7 +261,7 @@ mutual
     | .byteArrayEq _ _ _ _ => 0
     | .byteArrayFindIdx _ _ _ _ _ _ => 0
     | .byteArrayFoldMultiSlot resultWidth _ptr len start stop initValues accStart byteSlot
-        bodyValues bodyLets bodyDone resultSlot =>
+        bodyValues bodyLets bodyDone _releaseOffsets resultSlot =>
         let resultStore :=
           evalCountedFold module_ resultWidth initValues accStart byteSlot 1
             (fun _index => 0)
@@ -264,7 +270,7 @@ mutual
             1 bodyValues bodyLets bodyDone store
         resultStore (accStart + resultSlot)
     | .rangeFoldMultiSlot resultWidth start stop step initValues accStart itemSlot bodyValues
-        bodyLets bodyDone resultSlot =>
+        bodyLets bodyDone _releaseOffsets resultSlot =>
         let resultStore :=
           evalCountedFold module_ resultWidth initValues accStart itemSlot 1
             (fun index => index)
@@ -370,7 +376,7 @@ mutual
         (slots.zip results).foldl (fun current item => current.set item.fst item.snd) store
     | .release _, store => store
     | .arrayFoldMultiSlotAssign sourceWidth resultWidth array start stop initValues accStart
-        itemStart bodyValues bodyLets bodyDone targets, store =>
+        itemStart bodyValues bodyLets bodyDone _releaseOffsets targets, store =>
         let resultStore :=
           evalCountedFold module_ resultWidth initValues accStart itemStart sourceWidth
             (fun _index => 0)
@@ -381,7 +387,7 @@ mutual
           (fun current item => current.set item.fst (resultStore (accStart + item.snd)))
           store
     | .byteArrayFoldMultiSlotAssign resultWidth _ptr len start stop initValues accStart byteSlot
-        bodyValues bodyLets bodyDone targets, store =>
+        bodyValues bodyLets bodyDone _releaseOffsets targets, store =>
         let resultStore :=
           evalCountedFold module_ resultWidth initValues accStart byteSlot 1
             (fun _index => 0)
@@ -392,7 +398,7 @@ mutual
           (fun current item => current.set item.fst (resultStore (accStart + item.snd)))
           store
     | .rangeFoldMultiSlotAssign resultWidth start stop step initValues accStart itemSlot bodyValues
-        bodyLets bodyDone targets, store =>
+        bodyLets bodyDone _releaseOffsets targets, store =>
         let resultStore :=
           evalCountedFold module_ resultWidth initValues accStart itemSlot 1
             (fun index => index)

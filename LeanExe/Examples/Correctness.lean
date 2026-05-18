@@ -1793,6 +1793,19 @@ def idRunByteArrayForOutputContinue : ByteArray := Id.run do
     output := output.push byte
   return output
 
+def idRunByteArrayForOutputReleaseStats : UInt64 :=
+  let before := LeanExe.Runtime.freeCount
+  let releasesBefore := LeanExe.Runtime.releaseCount
+  let output := Id.run do
+    let input := ByteArray.mk #[(1 : UInt8), (2 : UInt8), (3 : UInt8)]
+    let mut output := ByteArray.empty
+    for byte in input do
+      output := output.push byte
+    return output
+  let releasesAfterLoop := LeanExe.Runtime.releaseCount - releasesBefore
+  let freesAfterLoop := LeanExe.Runtime.freeCount - before
+  output.size.toUInt64 * 10000 + releasesAfterLoop * 100 + freesAfterLoop
+
 def idRunArrayForStatus : Status := Id.run do
   let values : Array UInt64 := #[1, 2, 3]
   let mut state : Status := .ok 0
@@ -1860,6 +1873,18 @@ def idRunRangeForByteArrayOutput : ByteArray := Id.run do
   for _i in [0:2] do
     output := output.push (1 : UInt8)
   return output
+
+def idRunRangeForByteArrayOutputReleaseStats : UInt64 :=
+  let before := LeanExe.Runtime.freeCount
+  let releasesBefore := LeanExe.Runtime.releaseCount
+  let output := Id.run do
+    let mut output := ByteArray.empty
+    for _i in [0:3] do
+      output := output.push (1 : UInt8)
+    return output
+  let releasesAfterLoop := LeanExe.Runtime.releaseCount - releasesBefore
+  let freesAfterLoop := LeanExe.Runtime.freeCount - before
+  output.size.toUInt64 * 10000 + releasesAfterLoop * 100 + freesAfterLoop
 
 def idRunRangeForBreakState : DigitState := Id.run do
   let mut state : DigitState := { pos := 0, sum := 0 }
@@ -2201,6 +2226,28 @@ def arrayFoldByteArrayAccumulator : ByteArray :=
   (#[65, 66] : Array UInt64).foldl
     (fun acc value => acc.push (UInt64.toUInt8 value))
     ByteArray.empty
+
+def arrayFoldByteArrayAccumulatorReleaseStats : UInt64 :=
+  let before := LeanExe.Runtime.freeCount
+  let releasesBefore := LeanExe.Runtime.releaseCount
+  let output :=
+    (#[65, 66, 67] : Array UInt64).foldl
+      (fun acc value => acc.push (UInt64.toUInt8 value))
+      ByteArray.empty
+  let releasesAfterFold := LeanExe.Runtime.releaseCount - releasesBefore
+  let freesAfterFold := LeanExe.Runtime.freeCount - before
+  output.size.toUInt64 * 10000 + releasesAfterFold * 100 + freesAfterFold
+
+def arrayFoldInputByteArrayAccumulatorReleaseStats (values : Array UInt64) : UInt64 :=
+  let before := LeanExe.Runtime.freeCount
+  let releasesBefore := LeanExe.Runtime.releaseCount
+  let output :=
+    values.foldl
+      (fun acc value => acc.push (UInt64.toUInt8 value))
+      ByteArray.empty
+  let releasesAfterFold := LeanExe.Runtime.releaseCount - releasesBefore
+  let freesAfterFold := LeanExe.Runtime.freeCount - before
+  output.size.toUInt64 * 10000 + releasesAfterFold * 100 + freesAfterFold
 
 def arrayFoldByteOutputState : ByteOutputState :=
   (#[65, 66, 67] : Array UInt64).foldl
@@ -3784,6 +3831,28 @@ def byteArrayFoldByteArrayAccumulator : ByteArray :=
     (fun acc byte => acc.push byte)
     ByteArray.empty
 
+def byteArrayFoldByteArrayAccumulatorReleaseStats : UInt64 :=
+  let before := LeanExe.Runtime.freeCount
+  let releasesBefore := LeanExe.Runtime.releaseCount
+  let output :=
+    (ByteArray.mk #[(1 : UInt8), (2 : UInt8), (3 : UInt8)]).foldl
+      (fun acc byte => acc.push byte)
+      ByteArray.empty
+  let releasesAfterFold := LeanExe.Runtime.releaseCount - releasesBefore
+  let freesAfterFold := LeanExe.Runtime.freeCount - before
+  output.size.toUInt64 * 10000 + releasesAfterFold * 100 + freesAfterFold
+
+def byteArrayFoldInputByteArrayAccumulatorReleaseStats (input : ByteArray) : UInt64 :=
+  let before := LeanExe.Runtime.freeCount
+  let releasesBefore := LeanExe.Runtime.releaseCount
+  let output :=
+    input.foldl
+      (fun acc byte => acc.push byte)
+      ByteArray.empty
+  let releasesAfterFold := LeanExe.Runtime.releaseCount - releasesBefore
+  let freesAfterFold := LeanExe.Runtime.freeCount - before
+  output.size.toUInt64 * 10000 + releasesAfterFold * 100 + freesAfterFold
+
 def byteArrayArrayReadSize : Nat :=
   let values := #["A".toUTF8, "BC".toUTF8]
   values[0]!.size * 10 + values[1]!.size
@@ -3873,6 +3942,20 @@ def unusedRecursiveRuntimeReleaseFrees : UInt64 :=
   let before := LeanExe.Runtime.freeCount
   let _ := LeanExe.Runtime.release tree
   LeanExe.Runtime.freeCount - before
+
+def arrayFoldRecursiveAccumulatorReleaseStats : UInt64 :=
+  let before := LeanExe.Runtime.freeCount
+  let releasesBefore := LeanExe.Runtime.releaseCount
+  let tree :=
+    (#[1, 2, 3] : Array UInt64).foldl
+      (fun _acc value =>
+        U64Binary.node
+          (U64Binary.leaf value)
+          (U64Binary.leaf (value + 10)))
+      (U64Binary.leaf 0)
+  let releasesAfterFold := LeanExe.Runtime.releaseCount - releasesBefore
+  let freesAfterFold := LeanExe.Runtime.freeCount - before
+  u64BinaryNodeCount tree * 10000 + releasesAfterFold * 100 + freesAfterFold
 
 def ownedBoxCallTemp : OwnedCallBox :=
   { values := Array.replicate 1 (5 : UInt64),

@@ -231,7 +231,12 @@ mutual
         addLiveSlots
           (tyReleaseOwnerSlotOffsetsAt base left)
           (tyReleaseOwnerSlotOffsetsAt (base + internalSlots left) right)
+    | .sum left right =>
+        addLiveSlots
+          (tyReleaseOwnerSlotOffsetsAt (base + 1) left)
+          (tyReleaseOwnerSlotOffsetsAt (base + 1 + internalSlots left) right)
     | .struct _ _ fields => tyListReleaseOwnerSlotOffsetsAt base fields
+    | .variant _ _ ctors => tyCtorListReleaseOwnerSlotOffsetsAt (base + 1) ctors
     | _ => []
 
   partial def tyListReleaseOwnerSlotOffsetsAt (base : Nat) : List Ty → List Nat
@@ -240,6 +245,14 @@ mutual
         addLiveSlots
           (tyReleaseOwnerSlotOffsetsAt base ty)
           (tyListReleaseOwnerSlotOffsetsAt (base + internalSlots ty) rest)
+
+  partial def tyCtorListReleaseOwnerSlotOffsetsAt (base : Nat) : List (List Ty) → List Nat
+    | [] => []
+    | fields :: rest =>
+        let width := fields.foldl (fun total ty => total + internalSlots ty) 0
+        addLiveSlots
+          (tyListReleaseOwnerSlotOffsetsAt base fields)
+          (tyCtorListReleaseOwnerSlotOffsetsAt (base + width) rest)
 end
 
 def tyReleaseOwnerSlotOffsets (ty : Ty) : List Nat :=
@@ -343,7 +356,7 @@ mutual
           (slotsFrom itemStart sourceWidth)
         addLiveSlots (exprUsedSlots array) bodyLive
     | .arrayFoldMultiSlot sourceWidth resultWidth array start stop initValues accStart
-        itemStart bodyValues bodyLets bodyDone _ =>
+        itemStart bodyValues bodyLets bodyDone _releaseOffsets _ =>
         let bodyLive := addLiveSlots (exprListUsedSlots bodyValues) (exprUsedSlots bodyDone)
         let bodyFree := removeLiveSlots
           (removeLiveSlots (pruneLocalLetsWithLive bodyLets bodyLive).snd
@@ -434,7 +447,7 @@ mutual
             (exprUsedSlots start))
           (removeLiveSlot (exprUsedSlots predicate) byteSlot)
     | .byteArrayFoldMultiSlot resultWidth ptr len start stop initValues accStart byteSlot
-        bodyValues bodyLets bodyDone _ =>
+        bodyValues bodyLets bodyDone _releaseOffsets _ =>
         let bodyLive := addLiveSlots (exprListUsedSlots bodyValues) (exprUsedSlots bodyDone)
         let bodyFree := removeLiveSlot
           (removeLiveSlots (pruneLocalLetsWithLive bodyLets bodyLive).snd
@@ -448,7 +461,7 @@ mutual
             (exprUsedSlots stop))
           (addLiveSlots (exprListUsedSlots initValues) bodyFree)
     | .rangeFoldMultiSlot resultWidth start stop step initValues accStart itemSlot
-        bodyValues bodyLets bodyDone _ =>
+        bodyValues bodyLets bodyDone _releaseOffsets _ =>
         let bodyLive := addLiveSlots (exprListUsedSlots bodyValues) (exprUsedSlots bodyDone)
         let bodyFree := removeLiveSlot
           (removeLiveSlots (pruneLocalLetsWithLive bodyLets bodyLive).snd
@@ -1682,16 +1695,16 @@ def arrayFoldMultiSlotAssign? (targets : List Nat) (values : List IRExpr) :
     Option IRStmt :=
   match values with
   | .arrayFoldMultiSlot sourceWidth resultWidth array start stop initValues accStart itemStart
-      bodyValues bodyLets bodyDone _ :: _ =>
+      bodyValues bodyLets bodyDone releaseOffsets _ :: _ =>
       if values.length == resultWidth && targets.length == resultWidth then
         let expected : List IRExpr :=
           (List.range resultWidth).map fun offset =>
             .arrayFoldMultiSlot sourceWidth resultWidth array start stop initValues accStart
-              itemStart bodyValues bodyLets bodyDone offset
+              itemStart bodyValues bodyLets bodyDone releaseOffsets offset
         if values == expected then
           some <|
             .arrayFoldMultiSlotAssign sourceWidth resultWidth array start stop initValues accStart
-              itemStart bodyValues bodyLets bodyDone targets
+              itemStart bodyValues bodyLets bodyDone releaseOffsets targets
         else
           none
       else
@@ -1702,16 +1715,16 @@ def byteArrayFoldMultiSlotAssign? (targets : List Nat) (values : List IRExpr) :
     Option IRStmt :=
   match values with
   | .byteArrayFoldMultiSlot resultWidth ptr len start stop initValues accStart byteSlot
-      bodyValues bodyLets bodyDone _ :: _ =>
+      bodyValues bodyLets bodyDone releaseOffsets _ :: _ =>
       if values.length == resultWidth && targets.length == resultWidth then
         let expected : List IRExpr :=
           (List.range resultWidth).map fun offset =>
             .byteArrayFoldMultiSlot resultWidth ptr len start stop initValues accStart
-              byteSlot bodyValues bodyLets bodyDone offset
+              byteSlot bodyValues bodyLets bodyDone releaseOffsets offset
         if values == expected then
           some <|
             .byteArrayFoldMultiSlotAssign resultWidth ptr len start stop initValues accStart
-              byteSlot bodyValues bodyLets bodyDone targets
+              byteSlot bodyValues bodyLets bodyDone releaseOffsets targets
         else
           none
       else
@@ -1722,16 +1735,16 @@ def rangeFoldMultiSlotAssign? (targets : List Nat) (values : List IRExpr) :
     Option IRStmt :=
   match values with
   | .rangeFoldMultiSlot resultWidth start stop step initValues accStart itemSlot
-      bodyValues bodyLets bodyDone _ :: _ =>
+      bodyValues bodyLets bodyDone releaseOffsets _ :: _ =>
       if values.length == resultWidth && targets.length == resultWidth then
         let expected : List IRExpr :=
           (List.range resultWidth).map fun offset =>
             .rangeFoldMultiSlot resultWidth start stop step initValues accStart itemSlot bodyValues
-              bodyLets bodyDone offset
+              bodyLets bodyDone releaseOffsets offset
         if values == expected then
           some <|
             .rangeFoldMultiSlotAssign resultWidth start stop step initValues accStart itemSlot
-              bodyValues bodyLets bodyDone targets
+              bodyValues bodyLets bodyDone releaseOffsets targets
         else
           none
       else
@@ -1998,7 +2011,7 @@ mutual
           (exprReleasedSlots stop)
     | .arrayMapSlots _ _ _ _ array _ bodyValues =>
         addLiveSlots (exprReleasedSlots array) (exprListReleasedSlots bodyValues)
-    | .arrayFoldMultiSlot _ _ array start stop initValues _ _ bodyValues _ bodyDone _ =>
+    | .arrayFoldMultiSlot _ _ array start stop initValues _ _ bodyValues _ bodyDone _ _ =>
         addLiveSlots
           (addLiveSlots
             (addLiveSlots (exprReleasedSlots array) (exprReleasedSlots start))
@@ -2075,14 +2088,14 @@ mutual
             (addLiveSlots (exprReleasedSlots ptr) (exprReleasedSlots len))
             (exprReleasedSlots start))
           (exprReleasedSlots predicate)
-    | .byteArrayFoldMultiSlot _ ptr len start stop initValues _ _ bodyValues _ bodyDone _ =>
+    | .byteArrayFoldMultiSlot _ ptr len start stop initValues _ _ bodyValues _ bodyDone _ _ =>
         addLiveSlots
           (addLiveSlots
             (addLiveSlots (exprReleasedSlots ptr) (exprReleasedSlots len))
             (addLiveSlots (exprReleasedSlots start) (exprReleasedSlots stop)))
           (addLiveSlots (exprListReleasedSlots initValues)
             (addLiveSlots (exprListReleasedSlots bodyValues) (exprReleasedSlots bodyDone)))
-    | .rangeFoldMultiSlot _ start stop step initValues _ _ bodyValues _ bodyDone _ =>
+    | .rangeFoldMultiSlot _ start stop step initValues _ _ bodyValues _ bodyDone _ _ =>
         addLiveSlots
           (addLiveSlots
             (addLiveSlots (exprReleasedSlots start) (exprReleasedSlots stop))
@@ -2212,6 +2225,22 @@ def foldAssignReleasedSlots
   addLiveSlots (exprListReleasedSlots values)
     (addLiveSlots (localLetsReleasedSlots lets) (exprReleasedSlots done))
 
+def foldAccumulatorReleaseOffsets
+    (summaries : Array (List Nat))
+    (resultTy : Ty)
+    (accStart : Nat)
+    (bodyLets : List LeanExe.IR.LocalLet)
+    (bodyDone : IRExpr)
+    (bodyTargets : List Nat) :
+    List Nat :=
+  let ownedBodyLocals := ownedHeapLocalsFromLocalLetsForAlloc summaries [] bodyLets
+  let released := addLiveSlots (localLetsReleasedSlots bodyLets) (exprReleasedSlots bodyDone)
+  (tyReleaseOwnerSlotOffsets resultTy).filter fun offset =>
+    match bodyTargets[offset]? with
+    | some target =>
+        ownedBodyLocals.contains target && !released.contains (accStart + offset)
+    | none => false
+
 mutual
   partial def stmtFreshOwnedLocalsAfter
       (summaries : Array (List Nat))
@@ -2228,7 +2257,7 @@ mutual
         addLiveSlots afterCall (summarizedCallResultOwnerSlots summaries index slots)
     | .release ptr => removeLiveSlots ownedLocals (exprUsedSlots ptr)
     | .arrayFoldMultiSlotAssign _ _ array start stop initValues _ _ bodyValues bodyLets bodyDone
-        targets =>
+        _releaseOffsets targets =>
         let released :=
           addLiveSlots
             (addLiveSlots (addLiveSlots (exprReleasedSlots array) (exprReleasedSlots start))
@@ -2237,7 +2266,7 @@ mutual
               (foldAssignReleasedSlots bodyValues bodyLets bodyDone))
         removeLiveSlots (removeLiveSlots ownedLocals targets) released
     | .byteArrayFoldMultiSlotAssign _ ptr len start stop initValues _ _ bodyValues bodyLets
-        bodyDone targets =>
+        bodyDone _releaseOffsets targets =>
         let released :=
           addLiveSlots
             (addLiveSlots
@@ -2247,7 +2276,7 @@ mutual
               (foldAssignReleasedSlots bodyValues bodyLets bodyDone))
         removeLiveSlots (removeLiveSlots ownedLocals targets) released
     | .rangeFoldMultiSlotAssign _ start stop step initValues _ _ bodyValues bodyLets bodyDone
-        targets =>
+        _releaseOffsets targets =>
         let released :=
           addLiveSlots
             (addLiveSlots
