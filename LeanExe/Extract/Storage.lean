@@ -105,7 +105,8 @@ partial def heapRuntimeFieldsFromKinds
 
 partial def flattenArrayElementValue
     (ty : Ty)
-    (value : ExtractedValue) :
+    (value : ExtractedValue)
+    (summaries : Array (List Nat) := #[]) :
     Except String (List IRExpr) :=
   match ty with
   | .unit => scalarValue value |>.map (fun expr => [expr])
@@ -133,75 +134,78 @@ partial def flattenArrayElementValue
       | .recursiveVariant actual tag ctors =>
           if actual == name then do
             let flattened ← ctors.mapM fun fields =>
-              fields.mapM (fun field => flattenInternalValue field.fst field.snd)
-            .ok [(.heapAllocSlots (heapChildMaskForCtors ctors) (tag :: flattened.flatten.flatten))]
+              fields.mapM (fun field => flattenInternalValue field.fst field.snd summaries)
+            let values := tag :: flattened.flatten.flatten
+            let childMask := heapChildMaskForCtors ctors
+            let ownedMask := ownedChildMaskForSlotsWithSummaries summaries childMask values
+            .ok [(.heapAllocSlots childMask ownedMask values)]
           else
             .error s!"recursive inductive array element shape mismatch: {name}"
       | .letE slot value body => do
-          let flattened ← flattenArrayElementValue ty body
+          let flattened ← flattenArrayElementValue ty body summaries
           .ok (flattened.map (fun expr => .letE slot value expr))
       | .letCall slots index args body => do
-          let flattened ← flattenArrayElementValue ty body
+          let flattened ← flattenArrayElementValue ty body summaries
           .ok (flattened.map (fun expr => .letCall slots index args expr))
       | .ite cond thenValue elseValue => do
           combineIteSlots cond
-            (← flattenArrayElementValue ty thenValue)
-            (← flattenArrayElementValue ty elseValue)
+            (← flattenArrayElementValue ty thenValue summaries)
+            (← flattenArrayElementValue ty elseValue summaries)
       | _ =>
           .error s!"non-recursive value used where recursive inductive array element is required: {name}"
   | .product left right =>
       match value with
       | .product leftValue rightValue => do
-          let leftSlots ← flattenArrayElementValue left leftValue
-          let rightSlots ← flattenArrayElementValue right rightValue
+          let leftSlots ← flattenArrayElementValue left leftValue summaries
+          let rightSlots ← flattenArrayElementValue right rightValue summaries
           .ok (leftSlots ++ rightSlots)
       | .letE slot value body => do
-          let flattened ← flattenArrayElementValue ty body
+          let flattened ← flattenArrayElementValue ty body summaries
           .ok (flattened.map (fun expr => .letE slot value expr))
       | .letCall slots index args body => do
-          let flattened ← flattenArrayElementValue ty body
+          let flattened ← flattenArrayElementValue ty body summaries
           .ok (flattened.map (fun expr => .letCall slots index args expr))
       | .ite cond thenValue elseValue => do
           combineIteSlots cond
-            (← flattenArrayElementValue ty thenValue)
-            (← flattenArrayElementValue ty elseValue)
+            (← flattenArrayElementValue ty thenValue summaries)
+            (← flattenArrayElementValue ty elseValue summaries)
       | _ => .error "non-product value used where product array element is required"
   | .sum left right =>
       match value with
       | .sum tag leftValue rightValue => do
-          let leftSlots ← flattenArrayElementValue left leftValue
-          let rightSlots ← flattenArrayElementValue right rightValue
+          let leftSlots ← flattenArrayElementValue left leftValue summaries
+          let rightSlots ← flattenArrayElementValue right rightValue summaries
           .ok (tag :: leftSlots ++ rightSlots)
       | .letE slot value body => do
-          let flattened ← flattenArrayElementValue ty body
+          let flattened ← flattenArrayElementValue ty body summaries
           .ok (flattened.map (fun expr => .letE slot value expr))
       | .letCall slots index args body => do
-          let flattened ← flattenArrayElementValue ty body
+          let flattened ← flattenArrayElementValue ty body summaries
           .ok (flattened.map (fun expr => .letCall slots index args expr))
       | .ite cond thenValue elseValue => do
           combineIteSlots cond
-            (← flattenArrayElementValue ty thenValue)
-            (← flattenArrayElementValue ty elseValue)
+            (← flattenArrayElementValue ty thenValue summaries)
+            (← flattenArrayElementValue ty elseValue summaries)
       | _ => .error "non-sum value used where sum array element is required"
   | .struct name _ fields =>
       match value with
       | .struct actual values =>
           if actual == name && values.length == fields.length then do
             let flattened ← (fields.zip values).mapM fun item =>
-              flattenArrayElementValue item.fst item.snd
+              flattenArrayElementValue item.fst item.snd summaries
             .ok flattened.flatten
           else
             .error s!"structure array element shape mismatch: {name}"
       | .letE slot value body => do
-          let flattened ← flattenArrayElementValue ty body
+          let flattened ← flattenArrayElementValue ty body summaries
           .ok (flattened.map (fun expr => .letE slot value expr))
       | .letCall slots index args body => do
-          let flattened ← flattenArrayElementValue ty body
+          let flattened ← flattenArrayElementValue ty body summaries
           .ok (flattened.map (fun expr => .letCall slots index args expr))
       | .ite cond thenValue elseValue => do
           combineIteSlots cond
-            (← flattenArrayElementValue ty thenValue)
-            (← flattenArrayElementValue ty elseValue)
+            (← flattenArrayElementValue ty thenValue summaries)
+            (← flattenArrayElementValue ty elseValue summaries)
       | _ =>
           .error s!"non-structure value used where structure array element is required: {name}"
   | .variant name _ ctors =>
@@ -211,7 +215,7 @@ partial def flattenArrayElementValue
             let flattened ← (ctors.zip values).mapM fun ctorPair =>
               if ctorPair.fst.length == ctorPair.snd.length then do
                 let fields ← (ctorPair.fst.zip ctorPair.snd).mapM (fun item =>
-                  flattenArrayElementValue item.fst item.snd)
+                  flattenArrayElementValue item.fst item.snd summaries)
                 .ok fields.flatten
               else
                 .error s!"inductive array element payload shape mismatch: {name}"
@@ -219,15 +223,15 @@ partial def flattenArrayElementValue
           else
             .error s!"inductive array element shape mismatch: {name}"
       | .letE slot value body => do
-          let flattened ← flattenArrayElementValue ty body
+          let flattened ← flattenArrayElementValue ty body summaries
           .ok (flattened.map (fun expr => .letE slot value expr))
       | .letCall slots index args body => do
-          let flattened ← flattenArrayElementValue ty body
+          let flattened ← flattenArrayElementValue ty body summaries
           .ok (flattened.map (fun expr => .letCall slots index args expr))
       | .ite cond thenValue elseValue => do
           combineIteSlots cond
-            (← flattenArrayElementValue ty thenValue)
-            (← flattenArrayElementValue ty elseValue)
+            (← flattenArrayElementValue ty thenValue summaries)
+            (← flattenArrayElementValue ty elseValue summaries)
       | _ => .error s!"non-inductive value used where inductive array element is required: {name}"
 
 partial def materializeStrictSlotsWith
@@ -254,12 +258,29 @@ def materializeStrictInternalSlots
     Except String StrictSlots :=
   materializeStrictSlotsWith (flattenInternalValue ty) value nextLocal
 
+def materializeStrictInternalSlotsWithSummaries
+    (summaries : Array (List Nat))
+    (ty : Ty)
+    (value : ExtractedValue)
+    (nextLocal : Nat) :
+    Except String StrictSlots :=
+  materializeStrictSlotsWith (fun value => flattenInternalValue ty value summaries) value nextLocal
+
 def materializeStrictArrayElementSlots
     (ty : Ty)
     (value : ExtractedValue)
     (nextLocal : Nat) :
     Except String StrictSlots :=
   materializeStrictSlotsWith (flattenArrayElementValue ty) value nextLocal
+
+def materializeStrictArrayElementSlotsWithSummaries
+    (summaries : Array (List Nat))
+    (ty : Ty)
+    (value : ExtractedValue)
+    (nextLocal : Nat) :
+    Except String StrictSlots :=
+  materializeStrictSlotsWith (fun value => flattenArrayElementValue ty value summaries) value
+    nextLocal
 
 mutual
   partial def arrayLoadValueAt

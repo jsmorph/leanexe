@@ -47,6 +47,15 @@ function writeU64Array(exports, values) {
   return ptr;
 }
 
+function samePointers(left, right) {
+  if (left.length !== right.length) {
+    return false;
+  }
+  const sortedLeft = [...left].sort((a, b) => a - b);
+  const sortedRight = [...right].sort((a, b) => a - b);
+  return sortedLeft.every((value, index) => value === sortedRight[index]);
+}
+
 async function checkArrayReleaseReuse() {
   const exports = await instantiate(correctnessModule, "structureArrayReturn");
   const result = exports.structureArrayReturn();
@@ -255,6 +264,29 @@ async function checkCompilerReleasesOwnedCallResults() {
     );
   }
 
+  const recursive = await instantiate(correctnessModule, "ownedRecursiveNodeParamCallTempScalar");
+  recursive.reset();
+  const expectedRecursiveBlocks = [
+    pointer(recursive.alloc(32n)),
+    pointer(recursive.alloc(32n)),
+    pointer(recursive.alloc(32n)),
+  ];
+  recursive.reset();
+  const recursiveResult = pointer(recursive.ownedRecursiveNodeParamCallTempScalar());
+  if (recursiveResult !== 310) {
+    throw new Error(`ownedRecursiveNodeParamCallTempScalar: expected 310, got ${recursiveResult}`);
+  }
+  const reusedRecursiveBlocks = [
+    pointer(recursive.alloc(32n)),
+    pointer(recursive.alloc(32n)),
+    pointer(recursive.alloc(32n)),
+  ];
+  if (!samePointers(reusedRecursiveBlocks, expectedRecursiveBlocks)) {
+    throw new Error(
+      `compiler did not release recursive call result: expected ${expectedRecursiveBlocks.join(",")}, got ${reusedRecursiveBlocks.join(",")}`,
+    );
+  }
+
   const box = await instantiate(correctnessModule, "ownedBoxCallTempScalar");
   box.reset();
   const expectedBoxArrayBlock = pointer(box.alloc(16n));
@@ -291,7 +323,7 @@ async function main() {
   await checkArrayOwnerChildRelease();
   await checkBorrowedArrayNoopRelease();
   await checkCompilerReleasesOwnedCallResults();
-  process.stdout.write("checked 16 refcount cases\n");
+  process.stdout.write("checked 17 refcount cases\n");
 }
 
 main().catch((error) => {

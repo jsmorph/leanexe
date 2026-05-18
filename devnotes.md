@@ -1,10 +1,27 @@
 # Development Journal
 
+## 2026-05-18: Recursive Child Ownership Transfer
+
+Recursive heap allocation now carries an owned-child mask in addition to the child-pointer mask.  The child-pointer mask still tells `release` which slots contain heap children, while the owned-child mask tells allocation which child pointers are already owned by the newly allocated parent.  Allocation retains child pointers that are borrowed and skips the retain for child pointers proven fresh by local allocation analysis or helper-result ownership summaries.
+
+This makes recursive helper-result cleanup sound for scalar-result callers.  A helper may receive a recursive heap value, return a fresh recursive value that embeds both a fresh child and a borrowed input child, and the caller may release the temporary result after scalar traversal.  The refcount test covers that shape with a small binary tree and checks that all three recursive heap blocks become reusable.
+
+The WASI tree examples exposed the matching source-level rule.  Immutable insertion shares untouched subtrees with the previous accumulator, so correct RC must retain those children and the old accumulator root must be released after replacement when the program owns that accumulator.  The extractor now preserves `let _ := LeanExe.Runtime.release value` as an ownership boundary, `JsonTreeCommand` uses that form when inserting into an owned accumulator, and the WASI tests check that explicit releases advance free counters without assuming that release and free counts are equal under sharing.
+
+Checks run:
+
+- [x] `lake build LeanExe.Extract.Core` returned successfully.
+- [x] `lake build lean-wasm` returned successfully.
+- [x] `node test/refcount.js` returned `checked 17 refcount cases`.
+- [x] `node test/core_correctness.js` returned `checked 631 accepted, 29 rejected, and 13 trapped cases`.
+- [x] `node test/wasi_program.js` returned `checked 22 WASI program cases, 2 traps, and 7 rejections`.
+- [x] `node test/run_all.js` returned `checked 94 report classification cases`, `checked 631 accepted, 29 rejected, and 13 trapped cases`, `checked 17 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 22 WASI program cases, 2 traps, and 7 rejections`, `checked 47 standard Lean comparison cases`, and `checked 56 cases`.
+
 ## 2026-05-18: Helper Result Ownership Summaries
 
 The release pass now has per-helper ownership summaries for fresh array and byte-array result owner slots.  The compiler first extracts the reachable functions without summaries, computes a fixed-point summary over the extracted IR, then extracts again with those summaries available to the existing release insertion paths.  This removes the old rule that suppressed helper-call cleanup whenever a callee had any heap-bearing parameter.
 
-The summary pass starts with parameters unowned, follows assignments, local lets, helper calls, branches, releases, and simple loops conservatively, and marks a result owner slot only when the result expression is fresh on every path.  It applies to array and byte-array owner offsets, including structured results that contain those owners.  Recursive-inductive helper results remain outside automatic call-result release because constructor child ownership masks do not yet consume helper-call summaries.
+The summary pass starts with parameters unowned, follows assignments, local lets, helper calls, branches, releases, and simple loops conservatively, and marks a result owner slot only when the result expression is fresh on every path.  At this checkpoint it applied to array and byte-array owner offsets, including structured results that contain those owners.  The later recursive child ownership work extended the same summary path to recursive-inductive result slots.
 
 Checks run:
 

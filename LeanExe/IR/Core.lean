@@ -62,7 +62,7 @@ mutual
     | runtimeStat (stat : RuntimeStat)
     | release (ptr : Expr)
     | arrayAllocSlots (width childMask : Nat) (cells : Expr)
-    | heapAllocSlots (childMask : Nat) (values : List Expr)
+    | heapAllocSlots (childMask ownedMask : Nat) (values : List Expr)
     | heapLoadSlot (ptr : Expr) (slot : Nat)
     | arrayReplicateSlots (width childMask ownedMask : Nat) (cells : Expr) (values : List Expr)
     | arraySize (array : Expr)
@@ -217,7 +217,7 @@ mutual
     | .runtimeStat _ => 0
     | .release _ => 0
     | .arrayAllocSlots _ _ _ => 0
-    | .heapAllocSlots _ _ => 0
+    | .heapAllocSlots _ _ _ => 0
     | .heapLoadSlot _ _ => 0
     | .arrayReplicateSlots _ _ _ _ _ => 0
     | .arraySize _ => 0

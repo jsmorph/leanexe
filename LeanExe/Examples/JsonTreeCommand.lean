@@ -1,4 +1,5 @@
 import LeanExe.Ascii.Json.Value
+import LeanExe.Runtime
 
 namespace LeanExe
 namespace Examples.JsonTreeCommand
@@ -53,11 +54,20 @@ def insert (tree : Tree) (value : UInt64) : Tree :=
       else
         Tree.node current left (insert right value)
 
+def insertOwned (tree : Tree) (value : UInt64) : Tree :=
+  let updated := insert tree value
+  let _ := LeanExe.Runtime.release tree
+  updated
+
+def nodeCount : Tree -> UInt64
+  | Tree.empty => 0
+  | Tree.node _ left right => 1 + nodeCount left + nodeCount right
+
 def addJsonValue (state : Option Tree) (value : Value) : Option Tree :=
   match state with
   | some tree =>
       match asUInt64? value with
-      | some value => some (insert tree value)
+      | some value => some (insertOwned tree value)
       | none => none
   | none => none
 

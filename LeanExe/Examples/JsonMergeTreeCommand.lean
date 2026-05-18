@@ -31,6 +31,12 @@ def freesAfterSecondFieldName : AsciiString :=
 def releasesAfterSecondFieldName : AsciiString :=
   AsciiString.ofTrustedByteArray "releasesAfterSecond".toUTF8
 
+def firstNodesFieldName : AsciiString :=
+  AsciiString.ofTrustedByteArray "firstNodes".toUTF8
+
+def secondNodesFieldName : AsciiString :=
+  AsciiString.ofTrustedByteArray "secondNodes".toUTF8
+
 def releasesFieldName : AsciiString :=
   AsciiString.ofTrustedByteArray "releases".toUTF8
 
@@ -41,7 +47,7 @@ def mergeInto : Tree -> Tree -> Tree
   | Tree.empty, acc => acc
   | Tree.node value left right, acc =>
       let withLeft := mergeInto left acc
-      let withValue := insert withLeft value
+      let withValue := insertOwned withLeft value
       mergeInto right withValue
 
 def mergeTrees (first second : Tree) : Tree :=
@@ -50,7 +56,7 @@ def mergeTrees (first second : Tree) : Tree :=
 
 def gcValue
     (allocs releasesBefore freesBefore freesAfterFirst freesAfterSecond
-      releasesAfterSecond : UInt64) :
+      releasesAfterSecond firstNodes secondNodes : UInt64) :
     Value :=
   Value.obj #[
     Field.mk allocsFieldName (Value.num allocs),
@@ -58,19 +64,21 @@ def gcValue
     Field.mk freesBeforeFieldName (Value.num freesBefore),
     Field.mk freesAfterFirstFieldName (Value.num freesAfterFirst),
     Field.mk freesAfterSecondFieldName (Value.num freesAfterSecond),
-    Field.mk releasesAfterSecondFieldName (Value.num releasesAfterSecond)
+    Field.mk releasesAfterSecondFieldName (Value.num releasesAfterSecond),
+    Field.mk firstNodesFieldName (Value.num firstNodes),
+    Field.mk secondNodesFieldName (Value.num secondNodes)
   ]
 
 def mergedTreeValue
     (tree : Tree)
     (allocs releasesBefore freesBefore freesAfterFirst freesAfterSecond
-      releasesAfterSecond : UInt64) :
+      releasesAfterSecond firstNodes secondNodes : UInt64) :
     Value :=
   Value.obj #[
     Field.mk treeFieldName (treeValue tree),
     Field.mk gcFieldName
       (gcValue allocs releasesBefore freesBefore freesAfterFirst freesAfterSecond
-        releasesAfterSecond)
+        releasesAfterSecond firstNodes secondNodes)
   ]
 
 def makeMergedTreeValue : Value -> Except ByteArray ByteArray
@@ -81,6 +89,8 @@ def makeMergedTreeValue : Value -> Except ByteArray ByteArray
             match buildTree items[1]! with
             | some second =>
                 let merged := mergeTrees first second
+                let firstNodes := nodeCount first
+                let secondNodes := nodeCount second
                 let allocs := Runtime.allocCount
                 let releasesBefore := Runtime.releaseCount
                 let freesBefore := Runtime.freeCount
@@ -89,7 +99,7 @@ def makeMergedTreeValue : Value -> Except ByteArray ByteArray
                 let releasesAfterSecond := Runtime.releaseCount
                 match render?
                     (mergedTreeValue merged allocs releasesBefore freesBefore freesAfterFirst
-                      freesAfterSecond releasesAfterSecond) with
+                      freesAfterSecond releasesAfterSecond firstNodes secondNodes) with
                 | some bytes => Except.ok bytes
                 | none => Except.error errorJson
             | none => Except.error errorJson

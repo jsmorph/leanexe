@@ -9,6 +9,12 @@ open Lean
 
 namespace LeanExe.Extract.Core
 
+def runtimeReleaseArgs? (expr : Expr) : Option (List Expr) :=
+  match appFnArgs expr.consumeMData with
+  | (.const name _, args) =>
+      if name == ``LeanExe.Runtime.release then some args else none
+  | _ => none
+
 mutual
   partial def extractStructuralRecCallValueFrom
       (ctx : Context)
@@ -31,7 +37,7 @@ mutual
       match sig.params with
       | paramTy :: _ => .ok paramTy
       | _ => .error s!"unsupported structural recursion arity: {functionName}"
-    let argSlots ← materializeStrictInternalSlots paramTy arg nextLocal
+    let argSlots ← materializeStrictInternalSlotsWithSummaries ctx.freshResultOwnerOffsets paramTy arg nextLocal
     let bound := bindStrictSlots argSlots.slots argSlots.nextLocal
     let expectedExtra := sig.params.drop 1
     let extraResult ←
@@ -245,7 +251,16 @@ mutual
         | .recursor => .error "recursive handle used as a value"
     | .letE _ type value body _ =>
         if !containsBVar 0 body then
-          extractValueFrom ctx (.recursor :: locals) nextLocal body
+          match runtimeReleaseArgs? value with
+          | some args =>
+              let releaseResult ←
+                extractPrimitiveApplicationFrom ctx locals nextLocal ``LeanExe.Runtime.release args
+              let releaseSlot := releaseResult.snd
+              let bodyResult ←
+                extractValueFrom ctx (.recursor :: locals) (releaseSlot + 1) body
+              .ok (.letE releaseSlot releaseResult.fst bodyResult.fst, bodyResult.snd)
+          | none =>
+              extractValueFrom ctx (.recursor :: locals) nextLocal body
         else if isStringType type then
           extractValueFrom ctx (.thunk locals value :: locals) nextLocal body
         else
@@ -255,7 +270,7 @@ mutual
                 let valueResult ← extractValueFrom ctx locals nextLocal value
                 let width := internalSlots ty
                 let targets := (List.range width).map fun offset => valueResult.snd + offset
-                let lets ← materializeInternalValueLets ty valueResult.fst targets
+                let lets ← materializeInternalValueLets ty valueResult.fst targets ctx.freshResultOwnerOffsets
                 let localValue :=
                   valueFromInternalSlots ty (fun offset => .local (valueResult.snd + offset))
                 let bodyResult ←
@@ -346,9 +361,9 @@ mutual
                     let arraySlot := indexResult.snd
                     let indexSlot := arraySlot + 1
                     let valueResult ← extractValueFrom ctx locals (indexSlot + 1) value
-                    let valueSlots ← flattenArrayElementValue itemTy valueResult.fst
+                    let valueSlots ← flattenArrayElementValue itemTy valueResult.fst ctx.freshResultOwnerOffsets
                     let childMask := arrayElementChildMask itemTy
-                    let ownedMask := ownedChildMaskForSlots childMask valueSlots
+                    let ownedMask := ownedChildMaskForSlotsWithSummaries ctx.freshResultOwnerOffsets childMask valueSlots
                     let oldValue ← arrayLoadValue itemTy (.local arraySlot) (.local indexSlot)
                     let updatedArray :=
                       ownedArrayValue valueResult.snd
@@ -579,8 +594,8 @@ mutual
                     let arraySlot := indexResult.snd
                     let indexSlot := arraySlot + 1
                     let valueResult ← extractValueFrom ctx locals (indexSlot + 1) value
-                    let slots ← flattenArrayElementValue itemTy valueResult.fst
-                    let ownedMask := ownedChildMaskForSlots childMask slots
+                    let slots ← flattenArrayElementValue itemTy valueResult.fst ctx.freshResultOwnerOffsets
+                    let ownedMask := ownedChildMaskForSlotsWithSummaries ctx.freshResultOwnerOffsets childMask slots
                     let resultSlot := valueResult.snd
                     let inBounds := .leU64 (.local indexSlot) (.arraySize (.local arraySlot))
                     let resultPtr :=
@@ -614,8 +629,8 @@ mutual
                       | none => .error "unsupported Array.modify function"
                     let modifiedResult ←
                       extractValueFrom ctx (.value oldValue :: locals) (indexSlot + 1) modifyBody
-                    let slots ← flattenArrayElementValue itemTy modifiedResult.fst
-                    let ownedMask := ownedChildMaskForSlots childMask slots
+                    let slots ← flattenArrayElementValue itemTy modifiedResult.fst ctx.freshResultOwnerOffsets
+                    let ownedMask := ownedChildMaskForSlotsWithSummaries ctx.freshResultOwnerOffsets childMask slots
                     let resultSlot := modifiedResult.snd
                     let inBounds := .ltU64 (.local indexSlot) (.arraySize (.local arraySlot))
                     let resultPtr :=
@@ -646,8 +661,8 @@ mutual
                     let arraySlot := indexResult.snd
                     let indexSlot := arraySlot + 1
                     let valueResult ← extractValueFrom ctx locals (indexSlot + 1) value
-                    let slots ← flattenArrayElementValue itemTy valueResult.fst
-                    let ownedMask := ownedChildMaskForSlots childMask slots
+                    let slots ← flattenArrayElementValue itemTy valueResult.fst ctx.freshResultOwnerOffsets
+                    let ownedMask := ownedChildMaskForSlotsWithSummaries ctx.freshResultOwnerOffsets childMask slots
                     let resultSlot := valueResult.snd
                     let inBounds := .ltU64 (.local indexSlot) (.arraySize (.local arraySlot))
                     let resultPtr :=
@@ -688,7 +703,7 @@ mutual
                         let ptr := wrapExprLets parts.fst parts.snd.fst
                         let len := wrapExprLets parts.fst parts.snd.snd
                         let initResult ← extractValueFrom ctx locals collectionResult.snd forIn.init
-                        let initSlots ← flattenInternalValue forIn.resultTy initResult.fst
+                        let initSlots ← flattenInternalValue forIn.resultTy initResult.fst ctx.freshResultOwnerOffsets
                         if initSlots.length != resultWidth then
                           .error "for-in accumulator initial value shape mismatch"
                         else
@@ -706,7 +721,7 @@ mutual
                         let bodyTargets :=
                           (List.range resultWidth).map fun offset => bodyResult.snd + offset
                         let bodyLets ←
-                          materializeInternalValueLets forIn.resultTy bodyResult.fst bodyTargets
+                          materializeInternalValueLets forIn.resultTy bodyResult.fst bodyTargets ctx.freshResultOwnerOffsets
                         let doneResult ←
                           extractExprFrom ctx
                             (.value accValue ::
@@ -742,7 +757,7 @@ mutual
                         | some width =>
                             let collectionResult ← extractExprFrom ctx locals nextLocal forIn.collection
                             let initResult ← extractValueFrom ctx locals collectionResult.snd forIn.init
-                            let initSlots ← flattenInternalValue forIn.resultTy initResult.fst
+                            let initSlots ← flattenInternalValue forIn.resultTy initResult.fst ctx.freshResultOwnerOffsets
                             if initSlots.length != resultWidth then
                               .error "for-in accumulator initial value shape mismatch"
                             else
@@ -761,7 +776,7 @@ mutual
                             let bodyTargets :=
                               (List.range resultWidth).map fun offset => bodyResult.snd + offset
                             let bodyLets ←
-                              materializeInternalValueLets forIn.resultTy bodyResult.fst bodyTargets
+                              materializeInternalValueLets forIn.resultTy bodyResult.fst bodyTargets ctx.freshResultOwnerOffsets
                             let doneResult ←
                               extractExprFrom ctx
                                 (.value accValue ::
@@ -797,7 +812,7 @@ mutual
                         let collectionResult ← extractValueFrom ctx locals nextLocal forIn.collection
                         let rangeParts ← legacyRangeParts collectionResult.fst
                         let initResult ← extractValueFrom ctx locals collectionResult.snd forIn.init
-                        let initSlots ← flattenInternalValue forIn.resultTy initResult.fst
+                        let initSlots ← flattenInternalValue forIn.resultTy initResult.fst ctx.freshResultOwnerOffsets
                         if initSlots.length != resultWidth then
                           .error "for-in accumulator initial value shape mismatch"
                         else
@@ -815,7 +830,7 @@ mutual
                         let bodyTargets :=
                           (List.range resultWidth).map fun offset => bodyResult.snd + offset
                         let bodyLets ←
-                          materializeInternalValueLets forIn.resultTy bodyResult.fst bodyTargets
+                          materializeInternalValueLets forIn.resultTy bodyResult.fst bodyTargets ctx.freshResultOwnerOffsets
                         let doneResult ←
                           extractExprFrom ctx
                             (.value accValue ::
@@ -881,7 +896,7 @@ mutual
                                     .ok ((startResult.fst, stopResult.fst), stopResult.snd)
                             | _ => .error "unsupported Array.foldl application"
                           let resultWidth := internalSlots resultTy
-                          let initSlots ← flattenInternalValue resultTy initResult.fst
+                          let initSlots ← flattenInternalValue resultTy initResult.fst ctx.freshResultOwnerOffsets
                           if initSlots.length != resultWidth then
                             .error "Array.foldl accumulator initial value shape mismatch"
                           else
@@ -916,7 +931,7 @@ mutual
                               bodyExpr
                           let bodyTargets :=
                             (List.range resultWidth).map fun offset => bodyResult.snd + offset
-                          let bodyLets ← materializeInternalValueLets resultTy bodyResult.fst bodyTargets
+                          let bodyLets ← materializeInternalValueLets resultTy bodyResult.fst bodyTargets ctx.freshResultOwnerOffsets
                           if bodyTargets.length != resultWidth then
                             .error "Array.foldl accumulator body value shape mismatch"
                           else
@@ -965,7 +980,7 @@ mutual
                             .ok ((startResult.fst, stopResult.fst), stopResult.snd)
                         | _ => .error "unsupported ByteArray.foldl application"
                       let resultWidth := internalSlots resultTy
-                      let initSlots ← flattenInternalValue resultTy initResult.fst
+                      let initSlots ← flattenInternalValue resultTy initResult.fst ctx.freshResultOwnerOffsets
                       if initSlots.length != resultWidth then
                         .error "ByteArray.foldl accumulator initial value shape mismatch"
                       else
@@ -986,7 +1001,7 @@ mutual
                           body
                       let bodyTargets :=
                         (List.range resultWidth).map fun offset => bodyResult.snd + offset
-                      let bodyLets ← materializeInternalValueLets resultTy bodyResult.fst bodyTargets
+                      let bodyLets ← materializeInternalValueLets resultTy bodyResult.fst bodyTargets ctx.freshResultOwnerOffsets
                       if bodyTargets.length != resultWidth then
                         .error "ByteArray.foldl accumulator body value shape mismatch"
                       else
@@ -2600,7 +2615,16 @@ mutual
         | .recursor => .error "recursive handle used as a value"
     | .letE _ type value body _ =>
         if !containsBVar 0 body then
-          extractExprFrom ctx (.recursor :: locals) nextLocal body
+          match runtimeReleaseArgs? value with
+          | some args =>
+              let releaseResult ←
+                extractPrimitiveApplicationFrom ctx locals nextLocal ``LeanExe.Runtime.release args
+              let releaseSlot := releaseResult.snd
+              let bodyResult ←
+                extractExprFrom ctx (.recursor :: locals) (releaseSlot + 1) body
+              .ok (.letE releaseSlot releaseResult.fst bodyResult.fst, bodyResult.snd)
+          | none =>
+              extractExprFrom ctx (.recursor :: locals) nextLocal body
         else if isStringType type then
           extractExprFrom ctx (.thunk locals value :: locals) nextLocal body
         else
@@ -2797,14 +2821,14 @@ mutual
                           | item :: rest =>
                               let itemResult ← extractValueFrom ctx locals next item
                               let itemSlots ←
-                                materializeStrictArrayElementSlots itemTy itemResult.fst itemResult.snd
+                                materializeStrictArrayElementSlotsWithSummaries ctx.freshResultOwnerOffsets itemTy itemResult.fst itemResult.snd
                               let arraySlot := itemSlots.nextLocal
                               let updatedArray :=
                                 wrapExprLets itemSlots.lets
                                   (.arraySetSlots
                                     width
                                     childMask
-                                    (ownedChildMaskForStrictSlots childMask itemSlots)
+                                    (ownedChildMaskForStrictSlotsWithSummaries ctx.freshResultOwnerOffsets childMask itemSlots)
                                     (.local arraySlot)
                                     (.u64 index)
                                     itemSlots.slots)
@@ -2825,13 +2849,13 @@ mutual
                         let cellsResult ← extractExprFrom ctx locals nextLocal cells
                         let valueResult ← extractValueFrom ctx locals cellsResult.snd value
                         let slots ←
-                          materializeStrictArrayElementSlots itemTy valueResult.fst valueResult.snd
+                          materializeStrictArrayElementSlotsWithSummaries ctx.freshResultOwnerOffsets itemTy valueResult.fst valueResult.snd
                         let cellsSlot := slots.nextLocal
                         .ok
                           (.letE cellsSlot cellsResult.fst
                             (wrapExprLets slots.lets
                               (.arrayReplicateSlots
-                                width childMask (ownedChildMaskForStrictSlots childMask slots)
+                                width childMask (ownedChildMaskForStrictSlotsWithSummaries ctx.freshResultOwnerOffsets childMask slots)
                                 (.local cellsSlot) slots.slots)),
                             cellsSlot + 1)
                     | none => .error "unsupported Array.replicate item type"
@@ -2858,13 +2882,13 @@ mutual
                         let arrayResult ← extractExprFrom ctx locals nextLocal array
                         let valueResult ← extractValueFrom ctx locals arrayResult.snd value
                         let slots ←
-                          materializeStrictArrayElementSlots itemTy valueResult.fst valueResult.snd
+                          materializeStrictArrayElementSlotsWithSummaries ctx.freshResultOwnerOffsets itemTy valueResult.fst valueResult.snd
                         let arraySlot := slots.nextLocal
                         .ok
                           (.letE arraySlot arrayResult.fst
                             (wrapExprLets slots.lets
                               (.arrayPushSlots
-                                width childMask (ownedChildMaskForStrictSlots childMask slots)
+                                width childMask (ownedChildMaskForStrictSlotsWithSummaries ctx.freshResultOwnerOffsets childMask slots)
                                 (.local arraySlot) slots.slots)),
                             arraySlot + 1)
                     | none => .error "unsupported Array.push item type"
@@ -2968,7 +2992,7 @@ mutual
                         let indexResult ← extractExprFrom ctx locals arrayResult.snd index
                         let valueResult ← extractValueFrom ctx locals indexResult.snd value
                         let slots ←
-                          materializeStrictArrayElementSlots itemTy valueResult.fst valueResult.snd
+                          materializeStrictArrayElementSlotsWithSummaries ctx.freshResultOwnerOffsets itemTy valueResult.fst valueResult.snd
                         let arraySlot := slots.nextLocal
                         let indexSlot := arraySlot + 1
                         .ok
@@ -2978,7 +3002,7 @@ mutual
                                 (.arrayInsertIfInBoundsSlots
                                   width
                                   childMask
-                                  (ownedChildMaskForStrictSlots childMask slots)
+                                  (ownedChildMaskForStrictSlotsWithSummaries ctx.freshResultOwnerOffsets childMask slots)
                                   (.local arraySlot)
                                   (.local indexSlot)
                                   slots.slots))),
@@ -2998,13 +3022,13 @@ mutual
                         let indexSlot := arraySlot + 1
                         let valueResult ← extractValueFrom ctx locals (indexSlot + 1) value
                         let slots ←
-                          materializeStrictArrayElementSlots itemTy valueResult.fst valueResult.snd
+                          materializeStrictArrayElementSlotsWithSummaries ctx.freshResultOwnerOffsets itemTy valueResult.fst valueResult.snd
                         let inserted :=
                           wrapExprLets slots.lets
                             (.arrayInsertIfInBoundsSlots
                               width
                               childMask
-                              (ownedChildMaskForStrictSlots childMask slots)
+                              (ownedChildMaskForStrictSlotsWithSummaries ctx.freshResultOwnerOffsets childMask slots)
                               (.local arraySlot)
                               (.local indexSlot)
                               slots.slots)
@@ -3039,12 +3063,12 @@ mutual
                         let arrayResult ← extractExprFrom ctx locals nextLocal array
                         let indexResult ← extractExprFrom ctx locals arrayResult.snd index
                         let valueResult ← extractValueFrom ctx locals indexResult.snd value
-                        let slots ← flattenArrayElementValue itemTy valueResult.fst
+                        let slots ← flattenArrayElementValue itemTy valueResult.fst ctx.freshResultOwnerOffsets
                         .ok
                           (.arrayInsertIfInBoundsSlots
                             width
                             childMask
-                            (ownedChildMaskForSlots childMask slots)
+                            (ownedChildMaskForSlotsWithSummaries ctx.freshResultOwnerOffsets childMask slots)
                             arrayResult.fst
                             indexResult.fst
                             slots,
@@ -3079,8 +3103,8 @@ mutual
                           | none => .error "unsupported Array.modify function"
                         let modifiedResult ←
                           extractValueFrom ctx (.value oldValue :: locals) (indexSlot + 1) modifyBody
-                        let slots ← flattenArrayElementValue itemTy modifiedResult.fst
-                        let ownedMask := ownedChildMaskForSlots childMask slots
+                        let slots ← flattenArrayElementValue itemTy modifiedResult.fst ctx.freshResultOwnerOffsets
+                        let ownedMask := ownedChildMaskForSlotsWithSummaries ctx.freshResultOwnerOffsets childMask slots
                         let inBounds := .ltU64 (.local indexSlot) (.arraySize (.local arraySlot))
                         let modifiedArray :=
                           .arraySetSlots width childMask ownedMask (.local arraySlot) (.local indexSlot)
@@ -3126,8 +3150,8 @@ mutual
                         let bodyResult ←
                           extractValueFrom ctx (.value itemValue :: locals)
                             (itemStart + sourceWidth) mapBody
-                        let bodySlots ← flattenArrayElementValue result bodyResult.fst
-                        let bodyOwnedMask := ownedChildMaskForSlots resultChildMask bodySlots
+                        let bodySlots ← flattenArrayElementValue result bodyResult.fst ctx.freshResultOwnerOffsets
+                        let bodyOwnedMask := ownedChildMaskForSlotsWithSummaries ctx.freshResultOwnerOffsets resultChildMask bodySlots
                         .ok
                           (.arrayMapSlots
                             sourceWidth
@@ -3314,13 +3338,13 @@ mutual
                         let childMask := arrayElementChildMask itemTy
                         let valueResult ← extractValueFrom ctx locals nextLocal value
                         let slots ←
-                          materializeStrictArrayElementSlots itemTy valueResult.fst valueResult.snd
+                          materializeStrictArrayElementSlotsWithSummaries ctx.freshResultOwnerOffsets itemTy valueResult.fst valueResult.snd
                         .ok
                           (wrapExprLets slots.lets
                             (.arraySetSlots
                               width
                               childMask
-                              (ownedChildMaskForStrictSlots childMask slots)
+                              (ownedChildMaskForStrictSlotsWithSummaries ctx.freshResultOwnerOffsets childMask slots)
                               (.arrayAllocSlots width childMask (.u64 1))
                               (.u64 0)
                               slots.slots),
@@ -3402,7 +3426,7 @@ mutual
                         let indexResult ← extractExprFrom ctx locals arrayResult.snd index
                         let valueResult ← extractValueFrom ctx locals indexResult.snd value
                         let slots ←
-                          materializeStrictArrayElementSlots itemTy valueResult.fst valueResult.snd
+                          materializeStrictArrayElementSlotsWithSummaries ctx.freshResultOwnerOffsets itemTy valueResult.fst valueResult.snd
                         let arraySlot := slots.nextLocal
                         let indexSlot := arraySlot + 1
                         .ok
@@ -3412,7 +3436,7 @@ mutual
                                 (.arraySetSlots
                                   width
                                   childMask
-                                  (ownedChildMaskForStrictSlots childMask slots)
+                                  (ownedChildMaskForStrictSlotsWithSummaries ctx.freshResultOwnerOffsets childMask slots)
                                   (.local arraySlot)
                                   (.local indexSlot)
                                   slots.slots))),
@@ -3433,8 +3457,8 @@ mutual
                         let arraySlot := indexResult.snd
                         let indexSlot := arraySlot + 1
                         let valueResult ← extractValueFrom ctx locals (indexSlot + 1) value
-                        let slots ← flattenArrayElementValue itemTy valueResult.fst
-                        let ownedMask := ownedChildMaskForSlots childMask slots
+                        let slots ← flattenArrayElementValue itemTy valueResult.fst ctx.freshResultOwnerOffsets
+                        let ownedMask := ownedChildMaskForSlotsWithSummaries ctx.freshResultOwnerOffsets childMask slots
                         let updated :=
                           .arraySetSlots width childMask ownedMask (.local arraySlot) (.local indexSlot)
                             slots
@@ -3458,7 +3482,7 @@ mutual
                         let indexResult ← extractExprFrom ctx locals arrayResult.snd index
                         let valueResult ← extractValueFrom ctx locals indexResult.snd value
                         let slots ←
-                          materializeStrictArrayElementSlots itemTy valueResult.fst valueResult.snd
+                          materializeStrictArrayElementSlotsWithSummaries ctx.freshResultOwnerOffsets itemTy valueResult.fst valueResult.snd
                         let arraySlot := slots.nextLocal
                         let indexSlot := arraySlot + 1
                         .ok
@@ -3468,7 +3492,7 @@ mutual
                                 (.arraySetSlots
                                   width
                                   childMask
-                                  (ownedChildMaskForStrictSlots childMask slots)
+                                  (ownedChildMaskForStrictSlotsWithSummaries ctx.freshResultOwnerOffsets childMask slots)
                                   (.local arraySlot)
                                   (.local indexSlot)
                                   slots.slots))),
@@ -4321,7 +4345,7 @@ mutual
     | [], [] => .ok { lets := [], args := [], nextLocal := nextLocal }
     | ty :: restTys, expr :: restExprs => do
         let valueResult ← extractValueFrom ctx locals nextLocal expr
-        let head ← materializeStrictInternalSlots ty valueResult.fst valueResult.snd
+        let head ← materializeStrictInternalSlotsWithSummaries ctx.freshResultOwnerOffsets ty valueResult.fst valueResult.snd
         let bound := bindStrictSlots head.slots head.nextLocal
         let rest ← extractCallArgsFrom ctx locals bound.nextLocal restTys restExprs
         .ok {
@@ -5131,7 +5155,7 @@ def extractClosedStructuralFoldFunc
       let ptrExpr := wrapExprLets parts.fst parts.snd
       let initResult ←
         extractValueFrom ctx paramLocals (ptrSlot + 1) shape.init
-      let initSlots ← flattenInternalValue resultTy initResult.fst
+      let initSlots ← flattenInternalValue resultTy initResult.fst ctx.freshResultOwnerOffsets
       if initSlots.length != resultWidth then
         .error s!"closed structural fold initializer shape mismatch: {name}"
       else
@@ -5164,7 +5188,7 @@ def extractClosedStructuralFoldFunc
             let armResult ←
               extractValueFrom ctx (parsedArm.snd ++ paramLocals)
                 fieldStart parsedArm.fst
-            let armSlots ← flattenInternalValue resultTy armResult.fst
+            let armSlots ← flattenInternalValue resultTy armResult.fst ctx.freshResultOwnerOffsets
             let expected := (List.range resultWidth).map fun offset => .local (accStart + offset)
             if armSlots == expected then
               parseTerminalArms rest
@@ -5212,7 +5236,7 @@ def extractClosedStructuralFoldFunc
       let nextAccResult ←
         extractValueFrom ctx (parsedContinue.snd ++ paramLocals)
           (fieldStart + fieldSlotCount) nextAccExpr
-      let nextAccSlots ← flattenInternalValue resultTy nextAccResult.fst
+      let nextAccSlots ← flattenInternalValue resultTy nextAccResult.fst ctx.freshResultOwnerOffsets
       if nextAccSlots.length != resultWidth then
         .error s!"closed structural fold step result shape mismatch: {name}"
       else

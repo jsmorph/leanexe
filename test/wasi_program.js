@@ -281,17 +281,17 @@ function expectMergeTreePipeline(inputBytes, needle) {
   if (makeJson.gc.allocs <= 0) {
     throw new Error("makeMergedTree: expected allocation count to increase");
   }
-  if (makeJson.gc.releasesBefore !== 0 || makeJson.gc.freesBefore !== 0) {
-    throw new Error("makeMergedTree: expected no releases before explicit release");
+  if (makeJson.gc.firstNodes <= 0 || makeJson.gc.secondNodes <= 0) {
+    throw new Error("makeMergedTree: expected source node counts");
   }
-  if (makeJson.gc.freesAfterFirst <= makeJson.gc.freesBefore) {
-    throw new Error("makeMergedTree: expected first source tree to be freed");
+  if (makeJson.gc.freesAfterFirst - makeJson.gc.freesBefore < makeJson.gc.firstNodes) {
+    throw new Error("makeMergedTree: expected first source tree release to free its nodes");
   }
-  if (makeJson.gc.freesAfterSecond <= makeJson.gc.freesAfterFirst) {
-    throw new Error("makeMergedTree: expected second source tree to be freed");
+  if (makeJson.gc.freesAfterSecond - makeJson.gc.freesAfterFirst < makeJson.gc.secondNodes) {
+    throw new Error("makeMergedTree: expected second source tree release to free its nodes");
   }
-  if (makeJson.gc.releasesAfterSecond !== makeJson.gc.freesAfterSecond) {
-    throw new Error("makeMergedTree: expected releases and frees to match for unshared source trees");
+  if (makeJson.gc.releasesAfterSecond < makeJson.gc.freesAfterSecond) {
+    throw new Error("makeMergedTree: expected release count to cover freed blocks");
   }
   const searchResult = runWasmtimeWithInputAndArgs(
     searchTree,
@@ -332,8 +332,8 @@ function expectGcTreeRewrite(inputBytes) {
   if (json.gc.freesAfterFinal <= json.gc.freesAfterRounds) {
     throw new Error("jsonGcTreeRewrite: expected final generation to be freed");
   }
-  if (json.gc.releasesAfterFinal !== json.gc.freesAfterFinal) {
-    throw new Error("jsonGcTreeRewrite: expected releases and frees to match");
+  if (json.gc.releasesAfterFinal < json.gc.freesAfterFinal) {
+    throw new Error("jsonGcTreeRewrite: expected release count to cover freed blocks");
   }
 
   const invalid = runWasmtimeWithInput(
