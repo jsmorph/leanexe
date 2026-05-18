@@ -137,18 +137,6 @@ This changes the failure mode for large single requests.  Reference counting sti
 Checks run:
 
 - [x] `lake build lean-wasm`
-- [x] `node test/run_all.js` returned `checked 94 report classification cases`, `checked 617 accepted, 29 rejected, and 13 trapped cases`, `checked 14 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 22 WASI program cases, 2 traps, and 7 rejections`, `checked 38 standard Lean comparison cases`, and `checked 56 cases`.
-
-## 2026-05-15: Pattern recognition module split
-
-`LeanExe.Extract.Patterns` now contains constructor type helpers, monad and `ForIn` recognition, array-attach generated matcher helpers, list literal recognition, generated matcher scrutinee discovery, and matcher decoding for `Option`, `Except`, `Bool`, `Nat`, products, `PSum`, structures, and variants.  `Core.lean` imports that module and now begins with demand analysis.
-
-This split preserves declaration names and behavior.  It reduces `Core.lean` from 8,496 to 7,694 lines.  Demand analysis is now the next clean module boundary, followed by structural and well-founded recursion lowering.
-
-Checks run:
-
-- [x] `lake build lean-wasm`
-- [x] `node test/run_all.js` returned `checked 94 report classification cases`, `checked 617 accepted, 29 rejected, and 13 trapped cases`, `checked 14 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 22 WASI program cases, 2 traps, and 7 rejections`, `checked 38 standard Lean comparison cases`, and `checked 56 cases`.
 - [x] `node test/refcount.js` returned `checked 5 refcount cases`.
 - [x] `.lake/build/bin/lean-wasm compile-wat --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.byteArrayStringConstReturn --out .lake/build/refcount/byteArrayStringConstReturn.grow.wat`
 - [x] `build/tools/wasmtime/current/wasmtime --invoke alloc .lake/build/refcount/byteArrayStringConstReturn.grow.wat 1048576` returned `4096`.
@@ -3241,3 +3229,26 @@ This split preserves declaration names and behavior.  It reduces `Core.lean` fro
 Checks run:
 
 - [x] `lake build lean-wasm`
+- [x] `node test/run_all.js` returned `checked 94 report classification cases`, `checked 617 accepted, 29 rejected, and 13 trapped cases`, `checked 14 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 22 WASI program cases, 2 traps, and 7 rejections`, `checked 38 standard Lean comparison cases`, and `checked 56 cases`.
+
+## 2026-05-15: Pattern recognition module split
+
+`LeanExe.Extract.Patterns` now contains constructor type helpers, monad and `ForIn` recognition, array-attach generated matcher helpers, list literal recognition, generated matcher scrutinee discovery, and matcher decoding for `Option`, `Except`, `Bool`, `Nat`, products, `PSum`, structures, and variants.  `Core.lean` imports that module and now begins with demand analysis.
+
+This split preserves declaration names and behavior.  It reduces `Core.lean` from 8,496 to 7,694 lines.  Demand analysis is now the next clean module boundary, followed by structural and well-founded recursion lowering.
+
+Checks run:
+
+- [x] `lake build lean-wasm`
+- [x] `node test/run_all.js` returned `checked 94 report classification cases`, `checked 617 accepted, 29 rejected, and 13 trapped cases`, `checked 14 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 22 WASI program cases, 2 traps, and 7 rejections`, `checked 38 standard Lean comparison cases`, and `checked 56 cases`.
+
+## 2026-05-18: Demand analysis module split
+
+`LeanExe.Extract.Demand` now contains the demand-set helpers, `Demand`, `DemandSummary`, structural equality demand helpers, expression and condition demand analysis, `demandSummary`, `mayTrapExpr`, and strict-call materialization checks.  `Core.lean` imports that module and now begins with structural-recursion recognition and lowering.
+
+This split preserves declaration names and behavior.  It reduces `Core.lean` from 7,694 to 6,627 lines.  Structural recursion is now the next clean module boundary; after that, well-founded and Nat recursion lowering can move into a second recursion-focused module or a sibling module.
+
+Checks run:
+
+- [x] `lake build lean-wasm`
+- [x] `node test/run_all.js` returned `checked 94 report classification cases`, `checked 617 accepted, 29 rejected, and 13 trapped cases`, `checked 14 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 22 WASI program cases, 2 traps, and 7 rejections`, `checked 38 standard Lean comparison cases`, and `checked 56 cases`.
