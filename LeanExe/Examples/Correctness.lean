@@ -3860,6 +3860,20 @@ def ownedByteArrayParamCallTempScalarFromInput (input : ByteArray) : UInt64 :=
 def ownedByteArrayParamCallTempScalar : UInt64 :=
   ownedByteArrayParamCallTempScalarFromInput "A".toUTF8
 
+def ownedRecursiveNodeCallTempFromParam (tree : U64Binary) : U64Binary :=
+  U64Binary.node (U64Binary.leaf 9) tree
+
+def ownedRecursiveNodeParamCallTempScalar : UInt64 :=
+  let source := U64Binary.leaf 1
+  let tree := ownedRecursiveNodeCallTempFromParam source
+  u64BinaryNodeCount tree * 100 + u64BinaryLeafSum tree
+
+def unusedRecursiveRuntimeReleaseFrees : UInt64 :=
+  let tree := U64Binary.node (U64Binary.leaf 2) (U64Binary.leaf 3)
+  let before := LeanExe.Runtime.freeCount
+  let _ := LeanExe.Runtime.release tree
+  LeanExe.Runtime.freeCount - before
+
 def ownedBoxCallTemp : OwnedCallBox :=
   { values := Array.replicate 1 (5 : UInt64),
     bytes := ByteArray.empty.push (65 : UInt8),

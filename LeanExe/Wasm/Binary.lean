@@ -224,8 +224,8 @@ mutual
     | .release ptr => .release (shiftExprCalls offset ptr)
     | .arrayAllocSlots width childMask cells =>
         .arrayAllocSlots width childMask (shiftExprCalls offset cells)
-    | .heapAllocSlots childMask values =>
-        .heapAllocSlots childMask (values.map (shiftExprCalls offset))
+    | .heapAllocSlots childMask ownedMask values =>
+        .heapAllocSlots childMask ownedMask (values.map (shiftExprCalls offset))
     | .heapLoadSlot ptr slot =>
         .heapLoadSlot (shiftExprCalls offset ptr) slot
     | .arrayReplicateSlots width childMask ownedMask cells values =>
@@ -725,8 +725,8 @@ mutual
     | .runtimeStat _ => 0
     | .release ptr => exprScratch ptr
     | .arrayAllocSlots _ _ cells => 8 + exprScratch cells
-    | .heapAllocSlots _ values =>
-        1 + values.length +
+    | .heapAllocSlots _ _ values =>
+        3 + values.length +
           max 6 (values.foldl (fun n value => max n (exprScratch value)) 0)
     | .heapLoadSlot ptr _ => 1 + exprScratch ptr
     | .arrayReplicateSlots _ _ _ cells values =>
@@ -1018,10 +1018,15 @@ mutual
       zeroLoop ++
       localGet ptr
 
-  partial def emitHeapAllocSlots (scratch childMask : Nat) (values : List Expr) : List UInt8 :=
+  partial def emitHeapAllocSlots
+      (scratch childMask ownedMask : Nat)
+      (values : List Expr) :
+      List UInt8 :=
     let ptrLocal := scratch
     let valueStart := scratch + 1
-    let childScratch := scratch + 1 + values.length
+    let retainChildLocal := scratch + 1 + values.length
+    let retainRcLocal := retainChildLocal + 1
+    let childScratch := retainRcLocal + 1
     let rec emitValueStores : List (Nat × Expr) → List UInt8
       | [] => []
       | (offset, value) :: rest =>
@@ -1031,9 +1036,18 @@ mutual
       | (offset, _) :: rest =>
           localGet ptrLocal ++ i64Const (offset * 8) ++ ofNats [124] ++ i32WrapI64 ++
             localGet (valueStart + offset) ++ i64Store ++ emitSlotStores rest
+    let retainBorrowedChildren :=
+      (enumerate values).flatMap fun item =>
+        let offset := item.fst
+        if maskBitSet childMask offset && !maskBitSet ownedMask offset then
+          localGet (valueStart + offset) ++ localSet retainChildLocal ++
+            emitRetainLocal retainChildLocal retainRcLocal
+        else
+          []
     emitValueStores (enumerate values) ++
       rcAllocSlotObject childScratch values.length childMask ++ localSet ptrLocal ++
       emitSlotStores (enumerate values) ++
+      retainBorrowedChildren ++
       localGet ptrLocal
 
   partial def emitHeapLoadSlot (scratch : Nat) (ptr : Expr) (slot : Nat) : List UInt8 :=
@@ -2492,7 +2506,8 @@ mutual
     | .arrayAllocSlots width childMask cells => emitArrayAllocSlots scratch width childMask cells
     | .runtimeStat stat => globalGet (runtimeStatGlobal stat)
     | .release ptr => emitExpr scratch ptr ++ unreachable
-    | .heapAllocSlots childMask values => emitHeapAllocSlots scratch childMask values
+    | .heapAllocSlots childMask ownedMask values =>
+        emitHeapAllocSlots scratch childMask ownedMask values
     | .heapLoadSlot ptr slot => emitHeapLoadSlot scratch ptr slot
     | .arrayReplicateSlots width childMask ownedMask cells values =>
         emitArrayReplicateSlots scratch width childMask ownedMask cells values
@@ -3493,7 +3508,10 @@ mutual
       zeroLoop ++
       [s!"local.get {ptr}"]
 
-  partial def heapAllocSlotsWatLines (scratch _childMask : Nat) (values : List Expr) : List String :=
+  partial def heapAllocSlotsWatLines
+      (scratch _childMask _ownedMask : Nat)
+      (values : List Expr) :
+      List String :=
     let ptrLocal := scratch
     let valueStart := scratch + 1
     let childScratch := scratch + 1 + values.length
@@ -4955,7 +4973,8 @@ mutual
         arrayAllocSlotsWatLines scratch width childMask cells
     | .runtimeStat stat => [s!"global.get {runtimeStatGlobal stat}"]
     | .release ptr => exprWatLines scratch ptr ++ ["unreachable"]
-    | .heapAllocSlots childMask values => heapAllocSlotsWatLines scratch childMask values
+    | .heapAllocSlots childMask ownedMask values =>
+        heapAllocSlotsWatLines scratch childMask ownedMask values
     | .heapLoadSlot ptr slot => heapLoadSlotWatLines scratch ptr slot
     | .arrayReplicateSlots width childMask ownedMask cells values =>
         arrayReplicateSlotsWatLines scratch width childMask ownedMask cells values

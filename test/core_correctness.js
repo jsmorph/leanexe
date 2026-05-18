@@ -311,6 +311,8 @@ const accepted = [
   { name: "ownedByteArrayCallTempScalar", args: [], expected: 66n },
   { name: "ownedArrayParamCallTempScalar", args: [], expected: 16n },
   { name: "ownedByteArrayParamCallTempScalar", args: [], expected: 100n },
+  { name: "ownedRecursiveNodeParamCallTempScalar", args: [], expected: 310n },
+  { name: "unusedRecursiveRuntimeReleaseFrees", args: [], expected: 3n },
   { name: "ownedBoxCallTempScalar", args: [], expected: 13n },
   {
     name: "byteArrayFoldByteOutputState",
