@@ -1127,6 +1127,26 @@ def leanListBytes : List UInt64 -> ByteArray
       let out := out.append (leanListBytes tail)
       out.push (41 : UInt8)
 
+structure LeanListBox where
+  values : List UInt64
+  tag : UInt64
+
+def leanListBoxValue : LeanListBox :=
+  { values := leanListReverseAcc leanList123 [], tag := 8 }
+
+def leanListBoxScore (box : LeanListBox) : UInt64 :=
+  box.tag * 10 + leanListStructuralSum box.values
+
+def leanListBoxScoreDemo : UInt64 :=
+  leanListBoxScore leanListBoxValue
+
+def leanListBoxBytes (box : LeanListBox) : ByteArray :=
+  let out := "Box(".toUTF8
+  let out := LeanExe.Ascii.appendUInt64Decimal out box.tag
+  let out := out.push (44 : UInt8)
+  let out := out.append (leanListBytes box.values)
+  out.push (41 : UInt8)
+
 inductive U64Tree where
   | leaf : UInt64 → U64Tree
   | node : Array U64Tree → U64Tree
@@ -1249,6 +1269,150 @@ def u64BinaryBytes : U64Binary -> ByteArray
       let out := out.append (u64BinaryBytes left)
       let out := out.push (44 : UInt8)
       let out := out.append (u64BinaryBytes right)
+      out.push (41 : UInt8)
+
+def u64BinaryNodeCount : U64Binary → UInt64
+  | .leaf _value => 1
+  | .node left right => 1 + u64BinaryNodeCount left + u64BinaryNodeCount right
+
+def u64BinaryHeight : U64Binary → UInt64
+  | .leaf _value => 1
+  | .node left right =>
+      let leftHeight := u64BinaryHeight left
+      let rightHeight := u64BinaryHeight right
+      if leftHeight < rightHeight then rightHeight + 1 else leftHeight + 1
+
+def u64BinaryLeafSum : U64Binary → UInt64
+  | .leaf value => value
+  | .node left right => u64BinaryLeafSum left + u64BinaryLeafSum right
+
+def u64BinaryContains (needle : UInt64) : U64Binary → Bool
+  | .leaf value => value == needle
+  | .node left right =>
+      u64BinaryContains needle left || u64BinaryContains needle right
+
+def u64BinaryLeftmost : U64Binary → UInt64
+  | .leaf value => value
+  | .node left _right => u64BinaryLeftmost left
+
+def u64BinaryMapAddOne : U64Binary → U64Binary
+  | .leaf value => .leaf (value + 1)
+  | .node left right =>
+      .node (u64BinaryMapAddOne left) (u64BinaryMapAddOne right)
+
+def u64BinaryMirror : U64Binary → U64Binary
+  | .leaf value => .leaf value
+  | .node left right => .node (u64BinaryMirror right) (u64BinaryMirror left)
+
+def u64BinaryInsertLeftmost (value : UInt64) : U64Binary → U64Binary
+  | .leaf leafValue => .node (.leaf value) (.leaf leafValue)
+  | .node left right => .node (u64BinaryInsertLeftmost value left) right
+
+def u64BinaryFindLeaf (needle : UInt64) : U64Binary → Option U64Binary
+  | .leaf value =>
+      if value == needle then some (.leaf value) else none
+  | .node left right =>
+      match u64BinaryFindLeaf needle left with
+      | some found => some found
+      | none => u64BinaryFindLeaf needle right
+
+def u64BinaryRequireLeaf (needle : UInt64) (tree : U64Binary) : Except UInt64 U64Binary :=
+  match u64BinaryFindLeaf needle tree with
+  | some found => Except.ok found
+  | none => Except.error needle
+
+def u64BinaryShapeDemo : UInt64 :=
+  let tree := u64BinaryValue
+  let foundTwo := if u64BinaryContains 2 tree then 1 else 0
+  let foundNine := if u64BinaryContains 9 tree then 1 else 0
+  u64BinaryNodeCount tree * 100 + u64BinaryHeight tree * 10 + foundTwo + foundNine
+
+def u64BinaryMapLeafSumDemo : UInt64 :=
+  u64BinaryLeafSum (u64BinaryMapAddOne u64BinaryValue)
+
+def u64BinaryMirrorLeftmostDemo : UInt64 :=
+  u64BinaryLeftmost (u64BinaryMirror u64BinaryValue)
+
+def u64BinaryInsertShapeDemo : UInt64 :=
+  let tree := u64BinaryInsertLeftmost 9 u64BinaryValue
+  u64BinaryNodeCount tree * 100 + u64BinaryHeight tree * 10 + u64BinaryLeafSum tree
+
+def u64BinaryFindOptionDemo : UInt64 :=
+  match u64BinaryFindLeaf 2 u64BinaryValue with
+  | none => 0
+  | some tree => u64BinaryLeafSum tree
+
+def u64BinaryFindMissingDemo : UInt64 :=
+  match u64BinaryFindLeaf 9 u64BinaryValue with
+  | none => 7
+  | some tree => u64BinaryLeafSum tree
+
+def u64BinaryRequireOkDemo : UInt64 :=
+  match u64BinaryRequireLeaf 2 u64BinaryValue with
+  | Except.error code => code
+  | Except.ok tree => u64BinaryLeafSum tree + 10
+
+def u64BinaryRequireErrorDemo : UInt64 :=
+  match u64BinaryRequireLeaf 9 u64BinaryValue with
+  | Except.error code => code
+  | Except.ok tree => u64BinaryLeafSum tree
+
+def u64BinaryMapValue : U64Binary :=
+  u64BinaryMapAddOne u64BinaryValue
+
+def u64BinaryMirrorValue : U64Binary :=
+  u64BinaryMirror u64BinaryValue
+
+def u64BinaryInsertValue : U64Binary :=
+  u64BinaryInsertLeftmost 9 u64BinaryValue
+
+def u64BinaryFindValue : Option U64Binary :=
+  u64BinaryFindLeaf 2 u64BinaryValue
+
+def u64BinaryFindMissingValue : Option U64Binary :=
+  u64BinaryFindLeaf 9 u64BinaryValue
+
+def u64BinaryRequireValue : Except UInt64 U64Binary :=
+  u64BinaryRequireLeaf 2 u64BinaryValue
+
+def u64BinaryRequireMissingValue : Except UInt64 U64Binary :=
+  u64BinaryRequireLeaf 9 u64BinaryValue
+
+structure U64BinaryBox where
+  tree : U64Binary
+  label : UInt64
+
+def u64BinaryBoxValue : U64BinaryBox :=
+  { tree := u64BinaryMirror u64BinaryValue, label := 7 }
+
+def u64BinaryBoxScore (box : U64BinaryBox) : UInt64 :=
+  box.label * 100 + u64BinaryLeafSum box.tree
+
+def u64BinaryBoxScoreDemo : UInt64 :=
+  u64BinaryBoxScore u64BinaryBoxValue
+
+def u64BinaryBoxBytes (box : U64BinaryBox) : ByteArray :=
+  let out := "Box(".toUTF8
+  let out := LeanExe.Ascii.appendUInt64Decimal out box.label
+  let out := out.push (44 : UInt8)
+  let out := out.append (u64BinaryBytes box.tree)
+  out.push (41 : UInt8)
+
+def u64BinaryOptionBytes : Option U64Binary -> ByteArray
+  | none => "none".toUTF8
+  | some tree =>
+      let out := "some(".toUTF8
+      let out := out.append (u64BinaryBytes tree)
+      out.push (41 : UInt8)
+
+def u64BinaryExceptBytes : Except UInt64 U64Binary -> ByteArray
+  | Except.error code =>
+      let out := "error(".toUTF8
+      let out := LeanExe.Ascii.appendUInt64Decimal out code
+      out.push (41 : UInt8)
+  | Except.ok tree =>
+      let out := "ok(".toUTF8
+      let out := out.append (u64BinaryBytes tree)
       out.push (41 : UInt8)
 
 def u64ExprEval : U64Expr → UInt64

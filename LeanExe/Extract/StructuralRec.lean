@@ -30,6 +30,8 @@ structure StructuralExpressionRecShape where
   typeParams : List Ty
   typeArgExprs : List Expr
   dynamicPostArgTypes : List Ty
+  captureIndices : List Nat
+  captureTypes : List Ty
   motive : Expr
   scrutinee : Expr
   step : Expr
@@ -233,6 +235,87 @@ def structuralPostArgTypesAndResult?
   let resultTy ← typeAtom? env resultExpr
   some (dynamicTypes, resultTy)
 
+def insertSortedNat (value : Nat) : List Nat → List Nat
+  | [] => [value]
+  | head :: rest =>
+      if value == head then
+        head :: rest
+      else if value < head then
+        value :: head :: rest
+      else
+        head :: insertSortedNat value rest
+
+partial def looseBVarIndicesAt (depth : Nat) (expr : Expr) (acc : List Nat) : List Nat :=
+  match expr.consumeMData with
+  | .bvar index =>
+      if index < depth then
+        acc
+      else
+        insertSortedNat (index - depth) acc
+  | .app fn arg =>
+      looseBVarIndicesAt depth arg (looseBVarIndicesAt depth fn acc)
+  | .lam _ type body _ =>
+      looseBVarIndicesAt (depth + 1) body (looseBVarIndicesAt depth type acc)
+  | .forallE _ type body _ =>
+      looseBVarIndicesAt (depth + 1) body (looseBVarIndicesAt depth type acc)
+  | .letE _ type value body _ =>
+      looseBVarIndicesAt (depth + 1) body
+        (looseBVarIndicesAt depth value (looseBVarIndicesAt depth type acc))
+  | .mdata _ body => looseBVarIndicesAt depth body acc
+  | .proj _ _ body => looseBVarIndicesAt depth body acc
+  | _ => acc
+
+def looseBVarIndices (expr : Expr) : List Nat :=
+  looseBVarIndicesAt 0 expr []
+
+def structuralRecCaptureIndices? (app : StructuralRecApplication) : Option (List Nat) :=
+  let relevantPostArgs := app.postArgs.filter isDirectLambda
+  let indices :=
+    relevantPostArgs.foldl
+      (fun acc arg => looseBVarIndicesAt 0 arg acc)
+      (looseBVarIndicesAt 0 app.step (looseBVarIndices app.motive))
+  match app.scrutinee.consumeMData with
+  | .bvar scrutineeIndex =>
+      if indices.contains scrutineeIndex then none else some indices
+  | _ => some indices
+
+def captureTypes? (localTypes : List (Option Ty)) (captureIndices : List Nat) :
+    Option (List Ty) :=
+  captureIndices.mapM fun index => do
+    let ty ← localTypes[index]? |>.join
+    if supportedInternalParamType ty then some ty else none
+
+def expressionStructuralRecShapeWithLocalTypes?
+    (env : Environment)
+    (root : Name)
+    (localTypes : List (Option Ty))
+    (expr : Expr) :
+    Option StructuralExpressionRecShape :=
+  match structuralRecApplication? env root expr with
+  | some app => do
+      let captureIndices ← structuralRecCaptureIndices? app
+      let captureTypes ← captureTypes? localTypes captureIndices
+      let (dynamicPostArgTypes, resultTy) ←
+        structuralPostArgTypesAndResult? env root app.motive app.scrutinee app.postArgs
+      if supportedInternalResultType resultTy then
+        some {
+          fn := app.fn,
+          typeName := app.typeName,
+          typeParams := app.typeParams,
+          typeArgExprs := app.typeArgExprs,
+          dynamicPostArgTypes := dynamicPostArgTypes,
+          captureIndices := captureIndices,
+          captureTypes := captureTypes,
+          motive := app.motive,
+          scrutinee := app.scrutinee,
+          step := app.step,
+          postArgs := app.postArgs,
+          resultTy := resultTy
+        }
+      else
+        none
+  | none => none
+
 def expressionStructuralRecShape?
     (env : Environment)
     (root : Name)
@@ -240,26 +323,26 @@ def expressionStructuralRecShape?
     Option StructuralExpressionRecShape :=
   match structuralRecApplication? env root expr with
   | some app => do
-      if containsBVar 0 app.motive || containsBVar 0 app.step then
-        none
+      let captureIndices ← structuralRecCaptureIndices? app
+      let (dynamicPostArgTypes, resultTy) ←
+        structuralPostArgTypesAndResult? env root app.motive app.scrutinee app.postArgs
+      if supportedInternalResultType resultTy then
+        some {
+          fn := app.fn,
+          typeName := app.typeName,
+          typeParams := app.typeParams,
+          typeArgExprs := app.typeArgExprs,
+          dynamicPostArgTypes := dynamicPostArgTypes,
+          captureIndices := captureIndices,
+          captureTypes := [],
+          motive := app.motive,
+          scrutinee := app.scrutinee,
+          step := app.step,
+          postArgs := app.postArgs,
+          resultTy := resultTy
+        }
       else
-        let (dynamicPostArgTypes, resultTy) ←
-          structuralPostArgTypesAndResult? env root app.motive app.scrutinee app.postArgs
-        if supportedInternalResultType resultTy then
-          some {
-            fn := app.fn,
-            typeName := app.typeName,
-            typeParams := app.typeParams,
-            typeArgExprs := app.typeArgExprs,
-            dynamicPostArgTypes := dynamicPostArgTypes,
-            motive := app.motive,
-            scrutinee := app.scrutinee,
-            step := app.step,
-            postArgs := app.postArgs,
-            resultTy := resultTy
-          }
-        else
-          none
+        none
   | none => none
 
 def syntheticMatchesShape (synth : SyntheticFunction) (shape : StructuralExpressionRecShape) :
@@ -267,7 +350,12 @@ def syntheticMatchesShape (synth : SyntheticFunction) (shape : StructuralExpress
   synth.typeName == shape.typeName &&
     synth.typeParams == shape.typeParams &&
     synth.sig.result == shape.resultTy &&
-    synth.sig.params == (.recVariant shape.typeName shape.typeParams :: shape.dynamicPostArgTypes) &&
+    synth.dynamicPostArgTypes == shape.dynamicPostArgTypes &&
+    synth.captureIndices == shape.captureIndices &&
+    (shape.captureTypes.isEmpty || synth.captureTypes == shape.captureTypes) &&
+    synth.sig.params ==
+      (.recVariant shape.typeName shape.typeParams ::
+        (shape.dynamicPostArgTypes ++ synth.captureTypes)) &&
     synth.motive == shape.motive &&
     synth.step == shape.step &&
     synth.postArgs == shape.postArgs
@@ -276,28 +364,96 @@ def syntheticForShape? (ctx : Context) (shape : StructuralExpressionRecShape) :
     Option SyntheticFunction :=
   ctx.synthetics.toList.find? (fun synth => syntheticMatchesShape synth shape)
 
-def structuralExpressionSyntheticPostArgs (postArgs : List Expr) : List Expr :=
-  let rec loop (index remaining : Nat) : List Expr → List Expr
-    | [] => []
-    | arg :: rest =>
+def captureParamIndex? (captureIndices : List Nat) (index : Nat) : Option Nat :=
+  let rec loop (position : Nat) : List Nat → Option Nat
+    | [] => none
+    | head :: rest =>
+        if head == index then some position else loop (position + 1) rest
+  loop 0 captureIndices
+
+partial def rebaseCapturedBVarsAt
+    (captureIndices : List Nat)
+    (captureCount : Nat)
+    (depth : Nat)
+    (expr : Expr) :
+    Option Expr :=
+  match expr.consumeMData with
+  | .bvar index =>
+      if index < depth then
+        some (.bvar index)
+      else
+        let sourceIndex := index - depth
+        match captureParamIndex? captureIndices sourceIndex with
+        | some position => some (.bvar (depth + captureCount - 1 - position))
+        | none => none
+  | .app fn arg => do
+      let fn ← rebaseCapturedBVarsAt captureIndices captureCount depth fn
+      let arg ← rebaseCapturedBVarsAt captureIndices captureCount depth arg
+      some (.app fn arg)
+  | .lam name type body info => do
+      let type ← rebaseCapturedBVarsAt captureIndices captureCount depth type
+      let body ← rebaseCapturedBVarsAt captureIndices captureCount (depth + 1) body
+      some (.lam name type body info)
+  | .forallE name type body info => do
+      let type ← rebaseCapturedBVarsAt captureIndices captureCount depth type
+      let body ← rebaseCapturedBVarsAt captureIndices captureCount (depth + 1) body
+      some (.forallE name type body info)
+  | .letE name type value body nondep => do
+      let type ← rebaseCapturedBVarsAt captureIndices captureCount depth type
+      let value ← rebaseCapturedBVarsAt captureIndices captureCount depth value
+      let body ← rebaseCapturedBVarsAt captureIndices captureCount (depth + 1) body
+      some (.letE name type value body nondep)
+  | .mdata data body => do
+      let body ← rebaseCapturedBVarsAt captureIndices captureCount depth body
+      some (.mdata data body)
+  | .proj typeName index body => do
+      let body ← rebaseCapturedBVarsAt captureIndices captureCount depth body
+      some (.proj typeName index body)
+  | other => some other
+
+def rebaseCapturedBVars (captureIndices : List Nat) (expr : Expr) : Option Expr :=
+  rebaseCapturedBVarsAt captureIndices captureIndices.length 0 expr
+
+def structuralExpressionSyntheticPostArgs
+    (captureIndices : List Nat)
+    (captureCount : Nat)
+    (postArgs : List Expr) :
+    Option (List Expr) :=
+  let rec loop (remaining : Nat) : List Expr → Option (List Expr)
+    | [] => some []
+    | arg :: rest => do
+        let nextRemaining := if isDirectLambda arg then remaining else remaining - 1
+        let rest ← loop nextRemaining rest
         if isDirectLambda arg then
-          arg :: loop index remaining rest
+          let rebased ← rebaseCapturedBVarsAt captureIndices captureCount 0 arg
+          some (rebased :: rest)
         else
-          .bvar (remaining - 1) :: loop (index + 1) (remaining - 1) rest
-  loop 0 (postArgs.filter (fun arg => !isDirectLambda arg)).length postArgs
+          some (.bvar (captureCount + remaining - 1) :: rest)
+  loop (postArgs.filter (fun arg => !isDirectLambda arg)).length postArgs
 
 def structuralExpressionSyntheticValue? (shape : StructuralExpressionRecShape) : Option Expr := do
+  if shape.captureIndices.length != shape.captureTypes.length then
+    none
+  else
   let domain := rebuildApp (.const shape.typeName []) shape.typeArgExprs
-  let dynamicDomains ← shape.dynamicPostArgTypes.mapM tyExpr?
-  let scrutineeIndex := shape.dynamicPostArgTypes.length
+  let dynamicDomains ← (shape.dynamicPostArgTypes ++ shape.captureTypes).mapM tyExpr?
+  let captureCount := shape.captureTypes.length
+  let scrutineeIndex := shape.dynamicPostArgTypes.length + captureCount
+  let motive ← rebaseCapturedBVars shape.captureIndices shape.motive
+  let step ← rebaseCapturedBVars shape.captureIndices shape.step
+  let postArgs ←
+    structuralExpressionSyntheticPostArgs shape.captureIndices captureCount shape.postArgs
   let body :=
     rebuildApp shape.fn
       (shape.typeArgExprs ++
-        [shape.motive, .bvar scrutineeIndex, shape.step] ++
-        structuralExpressionSyntheticPostArgs shape.postArgs)
+        [motive, .bvar scrutineeIndex, step] ++
+        postArgs)
   let withDynamicArgs :=
     dynamicDomains.foldr (fun argType body => .lam `arg argType body .default) body
   some (.lam `xs domain withDynamicArgs .default)
+
+def structuralExpressionCallExtraArgs (shape : StructuralExpressionRecShape) : List Expr :=
+  shape.postArgs ++ shape.captureIndices.map Expr.bvar
 
 structure StructuralStep where
   layout : VariantLayout

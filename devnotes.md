@@ -3220,6 +3220,21 @@ Checks run:
 - [x] `lake build lean-wasm`
 - [x] `node test/run_all.js` returned `checked 94 report classification cases`, `checked 617 accepted, 29 rejected, and 13 trapped cases`, `checked 14 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 22 WASI program cases, 2 traps, and 7 rejections`, `checked 38 standard Lean comparison cases`, and `checked 56 cases`.
 
+## 2026-05-18: Captured structural recursion
+
+Expression-position structural recursion now records loose de Bruijn variables in the generated motive, step, and direct-lambda post-arguments.  When those loose variables refer to supported first-order locals, the extractor synthesizes a private helper whose first parameter is the recursive scrutinee and whose later parameters carry the captured values.  The synthetic helper rebases the captured references into that new parameter context, so recursive calls produced from Lean's generated below value reuse the same captured values.
+
+The correctness examples now exercise recursive-data programs that return structures, map and transform binary trees, return `Option U64Binary` and `Except UInt64 U64Binary`, and use a tree predicate with a non-recursive `needle` parameter before the recursive tree argument.  The last case exposed the original failure mode: the extractor had generated a synthetic helper whose step still referenced the outer `needle` binder, producing an unbound de Bruijn variable during extraction.  The fix keeps the source program shape ordinary Lean code rather than rewriting examples to put the recursive argument first.
+
+Checks run:
+
+- [x] `lake build LeanExe.Extract.Core`
+- [x] `lake build lean-wasm`
+- [x] `lake build LeanExe.Examples.Correctness`
+- [x] `node test/core_correctness.js` returned `checked 627 accepted, 29 rejected, and 13 trapped cases`.
+- [x] `node tools/compare-standard.js --self-test` returned `checked 47 standard Lean comparison cases`.
+- [x] `node test/run_all.js` returned `checked 94 report classification cases`, `checked 627 accepted, 29 rejected, and 13 trapped cases`, `checked 14 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 22 WASI program cases, 2 traps, and 7 rejections`, `checked 47 standard Lean comparison cases`, and `checked 56 cases`.
+
 ## 2026-05-15: Storage lowering module split
 
 `LeanExe.Extract.Storage` now contains heap loads, field flattening from runtime field kinds, array-element flattening, strict-slot materialization, array load/find/local reconstruction, internal-slot reconstruction, public and internal parameter bindings, function parameter targets, and constructor-field binding helpers.  `Core.lean` imports that module and now begins with generic matcher and control-flow helpers.

@@ -25,6 +25,9 @@ structure SyntheticFunction where
   value : Expr
   typeName : Name
   typeParams : List Ty
+  dynamicPostArgTypes : List Ty
+  captureIndices : List Nat
+  captureTypes : List Ty
   motive : Expr
   step : Expr
   postArgs : List Expr

@@ -294,7 +294,7 @@ mutual
             | some synth =>
                 let scrutineeResult ← extractValueFrom ctx locals nextLocal shape.scrutinee
                 extractStructuralRecCallValueFrom ctx locals scrutineeResult.snd synth.name
-                  scrutineeResult.fst [] shape.postArgs
+                  scrutineeResult.fst [] (structuralExpressionCallExtraArgs shape)
             | none => .error s!"unsupported expression-level structural recursion: {shape.typeName}"
         | none =>
         match appFnArgs expr with
@@ -3633,7 +3633,7 @@ mutual
                         let scrutineeResult ← extractValueFrom ctx locals nextLocal shape.scrutinee
                         let valueResult ←
                           extractStructuralRecCallValueFrom ctx locals scrutineeResult.snd synth.name
-                            scrutineeResult.fst [] shape.postArgs
+                            scrutineeResult.fst [] (structuralExpressionCallExtraArgs shape)
                         .ok (← scalarValue valueResult.fst, valueResult.snd)
                     | none =>
                         .error s!"unsupported expression-level structural recursion: {shape.typeName}"
@@ -5746,51 +5746,58 @@ partial def collectExpressionStructuralSynthetics
     (env : Environment)
     (root : Name)
     (reserved : List Name)
+    (localTypes : List (Option Ty))
     (expr : Expr)
     (synthetics : Array SyntheticFunction) :
     Array SyntheticFunction :=
   let synthetics :=
-    match expressionStructuralRecShape? env root expr with
+    match expressionStructuralRecShapeWithLocalTypes? env root localTypes expr with
     | some shape =>
         if synthetics.toList.any (fun synth => syntheticMatchesShape synth shape) then
           synthetics
         else
-          let reserved := reserved ++ synthetics.toList.map (fun synth => synth.name)
-          let name := freshStructuralExpressionSyntheticName env root reserved synthetics.size
-          match structuralExpressionSyntheticValue? shape with
-          | some value =>
-              synthetics.push {
-                name := name,
-                sig := {
-                  params := .recVariant shape.typeName shape.typeParams ::
-                    shape.dynamicPostArgTypes,
-                  result := shape.resultTy
-                },
-                value := value,
-                typeName := shape.typeName,
-                typeParams := shape.typeParams,
-                motive := shape.motive,
-                step := shape.step,
-                postArgs := shape.postArgs
-              }
-          | none => synthetics
+            let reserved := reserved ++ synthetics.toList.map (fun synth => synth.name)
+            let name := freshStructuralExpressionSyntheticName env root reserved synthetics.size
+            match structuralExpressionSyntheticValue? shape with
+            | some value =>
+                synthetics.push {
+                  name := name,
+                  sig := {
+                    params := .recVariant shape.typeName shape.typeParams ::
+                      (shape.dynamicPostArgTypes ++ shape.captureTypes),
+                    result := shape.resultTy
+                  },
+                  value := value,
+                  typeName := shape.typeName,
+                  typeParams := shape.typeParams,
+                  dynamicPostArgTypes := shape.dynamicPostArgTypes,
+                  captureIndices := shape.captureIndices,
+                  captureTypes := shape.captureTypes,
+                  motive := shape.motive,
+                  step := shape.step,
+                  postArgs := shape.postArgs
+                }
+            | none => synthetics
     | none => synthetics
   match expr.consumeMData with
   | .app fn arg =>
-      let synthetics := collectExpressionStructuralSynthetics env root reserved fn synthetics
-      collectExpressionStructuralSynthetics env root reserved arg synthetics
+      let synthetics := collectExpressionStructuralSynthetics env root reserved localTypes fn synthetics
+      collectExpressionStructuralSynthetics env root reserved localTypes arg synthetics
   | .lam _ type body _ =>
-      let synthetics := collectExpressionStructuralSynthetics env root reserved type synthetics
-      collectExpressionStructuralSynthetics env root reserved body synthetics
+      let synthetics := collectExpressionStructuralSynthetics env root reserved localTypes type synthetics
+      let localType := typeAtom? env type
+      collectExpressionStructuralSynthetics env root reserved (localType :: localTypes) body synthetics
   | .forallE _ type body _ =>
-      let synthetics := collectExpressionStructuralSynthetics env root reserved type synthetics
-      collectExpressionStructuralSynthetics env root reserved body synthetics
+      let synthetics := collectExpressionStructuralSynthetics env root reserved localTypes type synthetics
+      let localType := typeAtom? env type
+      collectExpressionStructuralSynthetics env root reserved (localType :: localTypes) body synthetics
   | .letE _ type value body _ =>
-      let synthetics := collectExpressionStructuralSynthetics env root reserved type synthetics
-      let synthetics := collectExpressionStructuralSynthetics env root reserved value synthetics
-      collectExpressionStructuralSynthetics env root reserved body synthetics
-  | .mdata _ body => collectExpressionStructuralSynthetics env root reserved body synthetics
-  | .proj _ _ body => collectExpressionStructuralSynthetics env root reserved body synthetics
+      let synthetics := collectExpressionStructuralSynthetics env root reserved localTypes type synthetics
+      let synthetics := collectExpressionStructuralSynthetics env root reserved localTypes value synthetics
+      let localType := typeAtom? env type
+      collectExpressionStructuralSynthetics env root reserved (localType :: localTypes) body synthetics
+  | .mdata _ body => collectExpressionStructuralSynthetics env root reserved localTypes body synthetics
+  | .proj _ _ body => collectExpressionStructuralSynthetics env root reserved localTypes body synthetics
   | _ => synthetics
 
 def collectFunctionExpressionStructuralSynthetics
@@ -5804,7 +5811,7 @@ def collectFunctionExpressionStructuralSynthetics
   if topLevelStructuralRecCandidate? env value sig.params then
     synthetics
   else
-    collectExpressionStructuralSynthetics env root reserved value synthetics
+    collectExpressionStructuralSynthetics env root reserved [] value synthetics
 
 def entryModeSignature?
     (exportEntry : Bool)

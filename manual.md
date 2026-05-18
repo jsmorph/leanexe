@@ -361,6 +361,8 @@ end LeanExe.Examples.ManualList
 
 Monomorphic `List UInt64` is useful inside the program, but `List` has no public ABI.  Direct source-defined helpers are safer than arbitrary library combinations.  Use library calls such as `List.map`, `List.filter`, `List.find?`, `List.foldl`, `List.any`, and `List.all` only in shapes already covered by accepted examples, with direct lambdas and concrete types.
 
+Structural helpers may put first-order parameters before the recursive argument.  Lean often lowers that source shape to expression-position structural recursion, and LeanExe compiles it by generating a private helper whose first parameter is the recursive value and whose later parameters carry the captured first-order values.  This supports ordinary helpers such as `contains needle tree`, provided the captured values have supported internal parameter types and recursive calls descend through Lean's generated below value.
+
 ## JSON Programs
 
 LeanExe provides two JSON layers.  Use `LeanExe.Ascii.Json` range helpers for small top-level object or array scans.  Use `LeanExe.Ascii.Json.Value` when the program needs complete nested JSON parsing and rendering through a recursive AST.
