@@ -3252,3 +3252,14 @@ Checks run:
 
 - [x] `lake build lean-wasm`
 - [x] `node test/run_all.js` returned `checked 94 report classification cases`, `checked 617 accepted, 29 rejected, and 13 trapped cases`, `checked 14 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 22 WASI program cases, 2 traps, and 7 rejections`, `checked 38 standard Lean comparison cases`, and `checked 56 cases`.
+
+## 2026-05-18: Structural recursion module split
+
+`LeanExe.Extract.StructuralRec` now contains `brecOn` recognition, structural normalization, expression-shaped structural recursion synthesis, structural matcher parsing, recursive-field below bindings, structural arm binder consumption, closed structural predicate shape recognition, and Nat recursor projection recognition.  `Core.lean` imports that module and now begins with the extraction mutual block.
+
+This split preserves declaration names and behavior.  It reduces `Core.lean` from 6,627 to 6,015 lines.  The next boundary is the extraction mutual block itself; it should be split with more care because it contains value extraction, scalar extraction, condition extraction, and primitive lowering in one mutual recursion.
+
+Checks run:
+
+- [x] `lake build lean-wasm`
+- [x] `node test/run_all.js` returned `checked 94 report classification cases`, `checked 617 accepted, 29 rejected, and 13 trapped cases`, `checked 14 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 22 WASI program cases, 2 traps, and 7 rejections`, `checked 38 standard Lean comparison cases`, and `checked 56 cases`.
