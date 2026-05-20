@@ -322,6 +322,11 @@ mutual
           (shiftExprCalls offset step) (initValues.map (shiftExprCalls offset)) accStart
           itemSlot (bodyValues.map (shiftExprCalls offset)) (bodyLets.map (shiftLocalLetCalls offset))
           (shiftExprCalls offset bodyDone) releaseOffsets resultSlot
+    | .loopFoldMultiSlot resultWidth initValues accStart bodyValues bodyLets bodyDone
+        releaseOffsets resultSlot =>
+        .loopFoldMultiSlot resultWidth (initValues.map (shiftExprCalls offset)) accStart
+          (bodyValues.map (shiftExprCalls offset)) (bodyLets.map (shiftLocalLetCalls offset))
+          (shiftExprCalls offset bodyDone) releaseOffsets resultSlot
     | .heapLinearPredicate ptr continueTag fieldSlotCount recursiveFieldOffset fieldStart
         predicate stopWhenTrue terminalValue =>
         .heapLinearPredicate (shiftExprCalls offset ptr) continueTag fieldSlotCount
@@ -376,6 +381,11 @@ mutual
         .rangeFoldMultiSlotAssign resultWidth (shiftExprCalls offset start)
           (shiftExprCalls offset stop) (shiftExprCalls offset step)
           (initValues.map (shiftExprCalls offset)) accStart itemSlot
+          (bodyValues.map (shiftExprCalls offset)) (bodyLets.map (shiftLocalLetCalls offset))
+          (shiftExprCalls offset bodyDone) releaseOffsets targets
+    | .loopFoldMultiSlotAssign resultWidth initValues accStart bodyValues bodyLets bodyDone
+        releaseOffsets targets =>
+        .loopFoldMultiSlotAssign resultWidth (initValues.map (shiftExprCalls offset)) accStart
           (bodyValues.map (shiftExprCalls offset)) (bodyLets.map (shiftLocalLetCalls offset))
           (shiftExprCalls offset bodyDone) releaseOffsets targets
     | .ite cond thenStmt elseStmt =>
@@ -846,6 +856,13 @@ mutual
           max
             (max (exprScratch start) (max (exprScratch stop) (exprScratch step)))
             (max (max initScratch bodyScratch) (max (bodyScratch + resultWidth + 1) 3))
+    | .loopFoldMultiSlot resultWidth initValues _ bodyValues bodyLets bodyDone _ _ =>
+        let initScratch := initValues.foldl (fun n value => max n (exprScratch value)) 0
+        let letScratch := bodyLets.foldl (fun n item => max n (localLetScratch item)) 0
+        let bodyScratch :=
+          max letScratch <|
+            max (exprScratch bodyDone) (bodyValues.foldl (fun n value => max n (exprScratch value)) 0)
+        2 + resultWidth + max initScratch bodyScratch
     | .heapLinearPredicate ptr _ _ _ _ predicate _ _ =>
         2 + max (exprScratch ptr) (exprScratch predicate)
     | .call _ args => args.foldl (fun count arg => max count (exprScratch arg)) 0
@@ -915,6 +932,13 @@ partial def stmtScratch : Stmt → Nat
         max
           (max (exprScratch start) (max (exprScratch stop) (exprScratch step)))
           (max (max initScratch bodyScratch) (max (bodyScratch + resultWidth + 1) 3))
+  | .loopFoldMultiSlotAssign resultWidth initValues _ bodyValues bodyLets bodyDone _ _ =>
+      let initScratch := initValues.foldl (fun n value => max n (exprScratch value)) 0
+      let letScratch := bodyLets.foldl (fun n item => max n (localLetScratch item)) 0
+      let bodyScratch :=
+        max letScratch <|
+          max (exprScratch bodyDone) (bodyValues.foldl (fun n value => max n (exprScratch value)) 0)
+      2 + resultWidth + max initScratch bodyScratch
   | .ite cond thenStmt elseStmt =>
       max (condScratch cond) (max (stmtScratch thenStmt) (stmtScratch elseStmt))
   | .seq first second => max (stmtScratch first) (stmtScratch second)
@@ -2523,6 +2547,96 @@ mutual
       ofNats [11, 11] ++
       emitTargetCopies (enumerate targets)
 
+  partial def emitLoopFoldMultiSlot
+      (releaseIndex scratch resultWidth : Nat)
+      (initValues : List Expr)
+      (accStart : Nat)
+      (bodyValues : List Expr)
+      (bodyLets : List LocalLet)
+      (bodyDone : Expr)
+      (releaseOffsets : List Nat)
+      (resultSlot : Nat) : List UInt8 :=
+    let childScratch := scratch
+    let letScratch := bodyLets.foldl (fun n item => max n (localLetScratch item)) 0
+    let bodyScratch :=
+      max letScratch <|
+        max (exprScratch bodyDone) (bodyValues.foldl (fun n value => max n (exprScratch value)) 0)
+    let doneSlot := childScratch + bodyScratch
+    let tempStart := doneSlot + 1
+    let releaseReadyLocal := tempStart + resultWidth
+    let rec emitInitStores : List (Nat × Expr) → List UInt8
+      | [] => []
+      | (offset, value) :: rest =>
+          emitExpr childScratch value ++ localSet (accStart + offset) ++ emitInitStores rest
+    let rec emitBodyStages : List (Nat × Expr) → List UInt8
+      | [] => []
+      | (offset, value) :: rest =>
+          emitExpr childScratch value ++ localSet (tempStart + offset) ++ emitBodyStages rest
+    let rec emitTempCopies : List Nat → List UInt8
+      | [] => []
+      | offset :: rest =>
+          localGet (tempStart + offset) ++ localSet (accStart + offset) ++ emitTempCopies rest
+    emitInitStores (enumerate initValues) ++
+      i64Const 0 ++ localSet releaseReadyLocal ++
+      ofNats [2, 64, 3, 64] ++
+        bodyLets.flatMap (emitLocalLet childScratch) ++
+        emitBodyStages (enumerate bodyValues) ++
+        emitExpr childScratch bodyDone ++ localSet doneSlot ++
+        emitGuardedAccumulatorReleases releaseIndex releaseReadyLocal accStart releaseOffsets ++
+        emitTempCopies (List.range resultWidth) ++
+        i64Const 1 ++ localSet releaseReadyLocal ++
+        localGet doneSlot ++ i64Const 0 ++ i64Ne ++ ofNats [13] ++ u32leb 1 ++
+        ofNats [12] ++ u32leb 0 ++
+      ofNats [11, 11] ++
+      localGet (accStart + resultSlot)
+
+  partial def emitLoopFoldMultiSlotAssign
+      (releaseIndex scratch resultWidth : Nat)
+      (initValues : List Expr)
+      (accStart : Nat)
+      (bodyValues : List Expr)
+      (bodyLets : List LocalLet)
+      (bodyDone : Expr)
+      (releaseOffsets : List Nat)
+      (targets : List Nat) : List UInt8 :=
+    let childScratch := scratch
+    let letScratch := bodyLets.foldl (fun n item => max n (localLetScratch item)) 0
+    let bodyScratch :=
+      max letScratch <|
+        max (exprScratch bodyDone) (bodyValues.foldl (fun n value => max n (exprScratch value)) 0)
+    let doneSlot := childScratch + bodyScratch
+    let tempStart := doneSlot + 1
+    let releaseReadyLocal := tempStart + resultWidth
+    let rec emitInitStores : List (Nat × Expr) → List UInt8
+      | [] => []
+      | (offset, value) :: rest =>
+          emitExpr childScratch value ++ localSet (accStart + offset) ++ emitInitStores rest
+    let rec emitBodyStages : List (Nat × Expr) → List UInt8
+      | [] => []
+      | (offset, value) :: rest =>
+          emitExpr childScratch value ++ localSet (tempStart + offset) ++ emitBodyStages rest
+    let rec emitTempCopies : List Nat → List UInt8
+      | [] => []
+      | offset :: rest =>
+          localGet (tempStart + offset) ++ localSet (accStart + offset) ++ emitTempCopies rest
+    let rec emitTargetCopies : List (Nat × Nat) → List UInt8
+      | [] => []
+      | (offset, target) :: rest =>
+          localGet (accStart + offset) ++ localSet target ++ emitTargetCopies rest
+    emitInitStores (enumerate initValues) ++
+      i64Const 0 ++ localSet releaseReadyLocal ++
+      ofNats [2, 64, 3, 64] ++
+        bodyLets.flatMap (emitLocalLet childScratch) ++
+        emitBodyStages (enumerate bodyValues) ++
+        emitExpr childScratch bodyDone ++ localSet doneSlot ++
+        emitGuardedAccumulatorReleases releaseIndex releaseReadyLocal accStart releaseOffsets ++
+        emitTempCopies (List.range resultWidth) ++
+        i64Const 1 ++ localSet releaseReadyLocal ++
+        localGet doneSlot ++ i64Const 0 ++ i64Ne ++ ofNats [13] ++ u32leb 1 ++
+        ofNats [12] ++ u32leb 0 ++
+      ofNats [11, 11] ++
+      emitTargetCopies (enumerate targets)
+
   partial def emitHeapLinearPredicate
       (scratch : Nat)
       (ptr : Expr)
@@ -2634,6 +2748,10 @@ mutual
         bodyLets bodyDone _releaseOffsets resultSlot =>
         emitRangeFoldMultiSlot 0 scratch resultWidth start stop step initValues accStart itemSlot
           bodyValues bodyLets bodyDone [] resultSlot
+    | .loopFoldMultiSlot resultWidth initValues accStart bodyValues bodyLets bodyDone
+        _releaseOffsets resultSlot =>
+        emitLoopFoldMultiSlot 0 scratch resultWidth initValues accStart bodyValues bodyLets
+          bodyDone [] resultSlot
     | .heapLinearPredicate ptr continueTag fieldSlotCount recursiveFieldOffset fieldStart predicate
         stopWhenTrue terminalValue =>
         emitHeapLinearPredicate scratch ptr continueTag fieldSlotCount recursiveFieldOffset fieldStart
@@ -2689,6 +2807,21 @@ mutual
           if values == expected then
             emitRangeFoldMultiSlotAssign 0 scratch resultWidth start stop step initValues accStart
               itemSlot bodyValues bodyLets bodyDone [] slots
+          else
+            (slots.zip values).flatMap fun item => emitExpr scratch item.snd ++ localSet item.fst
+        else
+          (slots.zip values).flatMap fun item => emitExpr scratch item.snd ++ localSet item.fst
+    | .loopFoldMultiSlot resultWidth initValues accStart bodyValues bodyLets bodyDone
+        releaseOffsets _ :: _ =>
+        if slots.length == resultWidth && values.length == resultWidth then
+          let expected :=
+            (List.range resultWidth).map fun offset =>
+              (.loopFoldMultiSlot resultWidth initValues accStart bodyValues bodyLets bodyDone
+                releaseOffsets offset
+                : Expr)
+          if values == expected then
+            emitLoopFoldMultiSlotAssign 0 scratch resultWidth initValues accStart bodyValues
+              bodyLets bodyDone [] slots
           else
             (slots.zip values).flatMap fun item => emitExpr scratch item.snd ++ localSet item.fst
         else
@@ -2772,6 +2905,10 @@ partial def emitExprWithRelease (releaseIndex scratch : Nat) : Expr → List UIn
       bodyLets bodyDone releaseOffsets resultSlot =>
       emitRangeFoldMultiSlot releaseIndex scratch resultWidth start stop step initValues accStart
         itemSlot bodyValues bodyLets bodyDone releaseOffsets resultSlot
+  | .loopFoldMultiSlot resultWidth initValues accStart bodyValues bodyLets bodyDone releaseOffsets
+      resultSlot =>
+      emitLoopFoldMultiSlot releaseIndex scratch resultWidth initValues accStart bodyValues bodyLets
+        bodyDone releaseOffsets resultSlot
   | expr => emitExpr scratch expr
 
 partial def emitCondWithRelease (releaseIndex scratch : Nat) : Cond → List UInt8
@@ -2844,6 +2981,23 @@ partial def emitSlotsAssignWithRelease
         if values == expected then
           emitRangeFoldMultiSlotAssign releaseIndex scratch resultWidth start stop step initValues
             accStart itemSlot bodyValues bodyLets bodyDone releaseOffsets slots
+        else
+          (slots.zip values).flatMap fun item =>
+            emitExprWithRelease releaseIndex scratch item.snd ++ localSet item.fst
+      else
+        (slots.zip values).flatMap fun item =>
+          emitExprWithRelease releaseIndex scratch item.snd ++ localSet item.fst
+  | .loopFoldMultiSlot resultWidth initValues accStart bodyValues bodyLets bodyDone
+      releaseOffsets _ :: _ =>
+      if slots.length == resultWidth && values.length == resultWidth then
+        let expected :=
+          (List.range resultWidth).map fun offset =>
+            (.loopFoldMultiSlot resultWidth initValues accStart bodyValues bodyLets bodyDone
+              releaseOffsets offset
+              : Expr)
+        if values == expected then
+          emitLoopFoldMultiSlotAssign releaseIndex scratch resultWidth initValues accStart
+            bodyValues bodyLets bodyDone releaseOffsets slots
         else
           (slots.zip values).flatMap fun item =>
             emitExprWithRelease releaseIndex scratch item.snd ++ localSet item.fst
@@ -2961,6 +3115,10 @@ partial def emitStmt (releaseIndex scratch : Nat) : Stmt → List UInt8
       bodyLets bodyDone releaseOffsets targets =>
       emitRangeFoldMultiSlotAssign releaseIndex scratch resultWidth start stop step initValues accStart
         itemSlot bodyValues bodyLets bodyDone releaseOffsets targets
+  | .loopFoldMultiSlotAssign resultWidth initValues accStart bodyValues bodyLets bodyDone
+      releaseOffsets targets =>
+      emitLoopFoldMultiSlotAssign releaseIndex scratch resultWidth initValues accStart bodyValues
+        bodyLets bodyDone releaseOffsets targets
   | .ite cond thenStmt elseStmt =>
       emitCondWithRelease releaseIndex scratch cond ++ ofNats [4, 64] ++
         emitStmt releaseIndex scratch thenStmt ++
@@ -5126,6 +5284,101 @@ mutual
       [s!"local.set {indexLocal}", "br 0", "end", "end"] ++
       targetCopies (enumerate targets)
 
+  partial def loopFoldMultiSlotWatLines
+      (releaseIndex scratch resultWidth : Nat)
+      (initValues : List Expr)
+      (accStart : Nat)
+      (bodyValues : List Expr)
+      (bodyLets : List LocalLet)
+      (bodyDone : Expr)
+      (releaseOffsets : List Nat)
+      (resultSlot : Nat) : List String :=
+    let childScratch := scratch
+    let letScratch := bodyLets.foldl (fun n item => max n (localLetScratch item)) 0
+    let bodyScratch :=
+      max letScratch <|
+        max (exprScratch bodyDone) (bodyValues.foldl (fun n value => max n (exprScratch value)) 0)
+    let doneSlot := childScratch + bodyScratch
+    let tempStart := doneSlot + 1
+    let releaseReadyLocal := tempStart + resultWidth
+    let rec initStores : List (Nat × Expr) → List String
+      | [] => []
+      | (offset, value) :: rest =>
+          exprWatLines childScratch value ++
+            [s!"local.set {accStart + offset}"] ++ initStores rest
+    let rec bodyStages : List (Nat × Expr) → List String
+      | [] => []
+      | (offset, value) :: rest =>
+          exprWatLines childScratch value ++
+            [s!"local.set {tempStart + offset}"] ++ bodyStages rest
+    let rec tempCopies : List Nat → List String
+      | [] => []
+      | offset :: rest =>
+          [s!"local.get {tempStart + offset}", s!"local.set {accStart + offset}"] ++
+            tempCopies rest
+    initStores (enumerate initValues) ++
+      [s!"i64.const 0", s!"local.set {releaseReadyLocal}"] ++
+      ["block", "loop"] ++
+      bodyLets.flatMap (localLetWatLines childScratch) ++
+      bodyStages (enumerate bodyValues) ++
+      exprWatLines childScratch bodyDone ++
+      [s!"local.set {doneSlot}"] ++
+      guardedAccumulatorReleasesWatLines releaseIndex releaseReadyLocal accStart releaseOffsets ++
+      tempCopies (List.range resultWidth) ++
+      [s!"i64.const 1", s!"local.set {releaseReadyLocal}"] ++
+      [s!"local.get {doneSlot}", "i64.const 0", "i64.ne", "br_if 1"] ++
+      ["br 0", "end", "end", s!"local.get {accStart + resultSlot}"]
+
+  partial def loopFoldMultiSlotAssignWatLines
+      (releaseIndex scratch resultWidth : Nat)
+      (initValues : List Expr)
+      (accStart : Nat)
+      (bodyValues : List Expr)
+      (bodyLets : List LocalLet)
+      (bodyDone : Expr)
+      (releaseOffsets : List Nat)
+      (targets : List Nat) : List String :=
+    let childScratch := scratch
+    let letScratch := bodyLets.foldl (fun n item => max n (localLetScratch item)) 0
+    let bodyScratch :=
+      max letScratch <|
+        max (exprScratch bodyDone) (bodyValues.foldl (fun n value => max n (exprScratch value)) 0)
+    let doneSlot := childScratch + bodyScratch
+    let tempStart := doneSlot + 1
+    let releaseReadyLocal := tempStart + resultWidth
+    let rec initStores : List (Nat × Expr) → List String
+      | [] => []
+      | (offset, value) :: rest =>
+          exprWatLines childScratch value ++
+            [s!"local.set {accStart + offset}"] ++ initStores rest
+    let rec bodyStages : List (Nat × Expr) → List String
+      | [] => []
+      | (offset, value) :: rest =>
+          exprWatLines childScratch value ++
+            [s!"local.set {tempStart + offset}"] ++ bodyStages rest
+    let rec tempCopies : List Nat → List String
+      | [] => []
+      | offset :: rest =>
+          [s!"local.get {tempStart + offset}", s!"local.set {accStart + offset}"] ++
+            tempCopies rest
+    let rec targetCopies : List (Nat × Nat) → List String
+      | [] => []
+      | (offset, target) :: rest =>
+          [s!"local.get {accStart + offset}", s!"local.set {target}"] ++ targetCopies rest
+    initStores (enumerate initValues) ++
+      [s!"i64.const 0", s!"local.set {releaseReadyLocal}"] ++
+      ["block", "loop"] ++
+      bodyLets.flatMap (localLetWatLines childScratch) ++
+      bodyStages (enumerate bodyValues) ++
+      exprWatLines childScratch bodyDone ++
+      [s!"local.set {doneSlot}"] ++
+      guardedAccumulatorReleasesWatLines releaseIndex releaseReadyLocal accStart releaseOffsets ++
+      tempCopies (List.range resultWidth) ++
+      [s!"i64.const 1", s!"local.set {releaseReadyLocal}"] ++
+      [s!"local.get {doneSlot}", "i64.const 0", "i64.ne", "br_if 1"] ++
+      ["br 0", "end", "end"] ++
+      targetCopies (enumerate targets)
+
   partial def heapLinearPredicateWatLines
       (scratch : Nat)
       (ptr : Expr)
@@ -5256,6 +5509,10 @@ mutual
         bodyLets bodyDone _releaseOffsets resultSlot =>
         rangeFoldMultiSlotWatLines 0 scratch resultWidth start stop step initValues accStart itemSlot
           bodyValues bodyLets bodyDone [] resultSlot
+    | .loopFoldMultiSlot resultWidth initValues accStart bodyValues bodyLets bodyDone
+        _releaseOffsets resultSlot =>
+        loopFoldMultiSlotWatLines 0 scratch resultWidth initValues accStart bodyValues bodyLets
+          bodyDone [] resultSlot
     | .heapLinearPredicate ptr continueTag fieldSlotCount recursiveFieldOffset fieldStart predicate
         stopWhenTrue terminalValue =>
         heapLinearPredicateWatLines scratch ptr continueTag fieldSlotCount recursiveFieldOffset
@@ -5314,6 +5571,21 @@ mutual
           if values == expected then
             rangeFoldMultiSlotAssignWatLines 0 scratch resultWidth start stop step initValues accStart
               itemSlot bodyValues bodyLets bodyDone [] slots
+          else
+            direct
+        else
+          direct
+    | .loopFoldMultiSlot resultWidth initValues accStart bodyValues bodyLets bodyDone
+        releaseOffsets _ :: _ =>
+        if slots.length == resultWidth && values.length == resultWidth then
+          let expected :=
+            (List.range resultWidth).map fun offset =>
+              (.loopFoldMultiSlot resultWidth initValues accStart bodyValues bodyLets bodyDone
+                releaseOffsets offset
+                : Expr)
+          if values == expected then
+            loopFoldMultiSlotAssignWatLines 0 scratch resultWidth initValues accStart bodyValues
+              bodyLets bodyDone [] slots
           else
             direct
         else
@@ -5419,6 +5691,10 @@ mutual
         bodyLets bodyDone releaseOffsets resultSlot =>
         rangeFoldMultiSlotWatLines releaseIndex scratch resultWidth start stop step initValues
           accStart itemSlot bodyValues bodyLets bodyDone releaseOffsets resultSlot
+    | .loopFoldMultiSlot resultWidth initValues accStart bodyValues bodyLets bodyDone
+        releaseOffsets resultSlot =>
+        loopFoldMultiSlotWatLines releaseIndex scratch resultWidth initValues accStart bodyValues
+          bodyLets bodyDone releaseOffsets resultSlot
     | expr => exprWatLines scratch expr
 
   partial def condWatLinesWithRelease (releaseIndex scratch : Nat) : Cond → List String
@@ -5513,6 +5789,21 @@ mutual
             direct
         else
           direct
+    | .loopFoldMultiSlot resultWidth initValues accStart bodyValues bodyLets bodyDone
+        releaseOffsets _ :: _ =>
+        if slots.length == resultWidth && values.length == resultWidth then
+          let expected :=
+            (List.range resultWidth).map fun offset =>
+              (.loopFoldMultiSlot resultWidth initValues accStart bodyValues bodyLets bodyDone
+                releaseOffsets offset
+                : Expr)
+          if values == expected then
+            loopFoldMultiSlotAssignWatLines releaseIndex scratch resultWidth initValues accStart
+              bodyValues bodyLets bodyDone releaseOffsets slots
+          else
+            direct
+        else
+          direct
     | _ => direct
 end
 
@@ -5536,6 +5827,10 @@ partial def stmtWatLines (releaseIndex scratch : Nat) : Stmt → List String
       bodyLets bodyDone releaseOffsets targets =>
       rangeFoldMultiSlotAssignWatLines releaseIndex scratch resultWidth start stop step initValues
         accStart itemSlot bodyValues bodyLets bodyDone releaseOffsets targets
+  | .loopFoldMultiSlotAssign resultWidth initValues accStart bodyValues bodyLets bodyDone
+      releaseOffsets targets =>
+      loopFoldMultiSlotAssignWatLines releaseIndex scratch resultWidth initValues accStart bodyValues
+        bodyLets bodyDone releaseOffsets targets
   | .ite cond thenStmt elseStmt =>
       condWatLinesWithRelease releaseIndex scratch cond ++ ["if"] ++
         indent 2 (stmtWatLines releaseIndex scratch thenStmt) ++

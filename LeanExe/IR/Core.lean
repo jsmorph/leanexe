@@ -111,6 +111,10 @@ mutual
         (initValues : List Expr) (accStart itemSlot : Nat) (bodyValues : List Expr)
         (bodyLets : List LocalLet) (bodyDone : Expr) (releaseOffsets : List Nat)
         (resultSlot : Nat)
+    | loopFoldMultiSlot (resultWidth : Nat)
+        (initValues : List Expr) (accStart : Nat) (bodyValues : List Expr)
+        (bodyLets : List LocalLet) (bodyDone : Expr) (releaseOffsets : List Nat)
+        (resultSlot : Nat)
     | heapLinearPredicate (ptr : Expr)
         (continueTag fieldSlotCount recursiveFieldOffset fieldStart : Nat)
         (predicate : Expr) (stopWhenTrue terminalValue : Bool)
@@ -152,6 +156,10 @@ mutual
         (targets : List Nat)
     | rangeFoldMultiSlotAssign (resultWidth : Nat) (start stop step : Expr)
         (initValues : List Expr) (accStart itemSlot : Nat) (bodyValues : List Expr)
+        (bodyLets : List LocalLet) (bodyDone : Expr) (releaseOffsets : List Nat)
+        (targets : List Nat)
+    | loopFoldMultiSlotAssign (resultWidth : Nat)
+        (initValues : List Expr) (accStart : Nat) (bodyValues : List Expr)
         (bodyLets : List LocalLet) (bodyDone : Expr) (releaseOffsets : List Nat)
         (targets : List Nat)
     | ite (cond : Cond) (thenStmt elseStmt : Stmt)
@@ -277,6 +285,11 @@ mutual
             (start.eval module_ store) (stop.eval module_ store) (step.eval module_ store)
             bodyValues bodyLets bodyDone store
         resultStore (accStart + resultSlot)
+    | .loopFoldMultiSlot resultWidth initValues accStart bodyValues bodyLets bodyDone
+        _releaseOffsets resultSlot =>
+        let resultStore :=
+          evalLoopFold module_ resultWidth initValues accStart bodyValues bodyLets bodyDone store
+        resultStore (accStart + resultSlot)
     | .heapLinearPredicate _ _ _ _ _ _ _ terminalValue => if terminalValue then 1 else 0
     | .call index args =>
         match module_.getFunc? index with
@@ -365,6 +378,30 @@ mutual
               loop fuel (index + step) nextStore
     loop 1000000 start initStore
 
+  partial def evalLoopFold
+      (module_ : Module)
+      (resultWidth : Nat)
+      (initValues : List Expr)
+      (accStart : Nat)
+      (bodyValues : List Expr)
+      (bodyLets : List LocalLet)
+      (bodyDone : Expr)
+      (store : Store) : Store :=
+    let initStore :=
+      assignValues module_ ((List.range resultWidth).map fun offset => accStart + offset)
+        initValues store
+    let rec loop : Nat → Store → Store
+      | 0, current => current
+      | fuel + 1, current =>
+          let letStore := evalLocalLets module_ bodyLets current
+          let nextValues := bodyValues.map fun value => value.eval module_ letStore
+          let nextStore := setSlotsFromValues accStart nextValues letStore
+          if bodyDone.eval module_ letStore != 0 then
+            nextStore
+          else
+            loop fuel nextStore
+    loop 1000000 initStore
+
   partial def Stmt.eval (module_ : Module) : Stmt → Store → Store
     | .skip, store => store
     | .assign index value, store => store.set index (value.eval module_ store)
@@ -404,6 +441,13 @@ mutual
             (fun index => index)
             (start.eval module_ store) (stop.eval module_ store) (step.eval module_ store)
             bodyValues bodyLets bodyDone store
+        (targets.zip (List.range resultWidth)).foldl
+          (fun current item => current.set item.fst (resultStore (accStart + item.snd)))
+          store
+    | .loopFoldMultiSlotAssign resultWidth initValues accStart bodyValues bodyLets bodyDone
+        _releaseOffsets targets, store =>
+        let resultStore :=
+          evalLoopFold module_ resultWidth initValues accStart bodyValues bodyLets bodyDone store
         (targets.zip (List.range resultWidth)).foldl
           (fun current item => current.set item.fst (resultStore (accStart + item.snd)))
           store

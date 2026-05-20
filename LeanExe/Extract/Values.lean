@@ -527,6 +527,13 @@ mutual
             (addLiveSlots (exprUsedSlots start) (exprUsedSlots stop))
             (exprUsedSlots step))
           (addLiveSlots (exprListUsedSlots initValues) bodyFree)
+    | .loopFoldMultiSlot resultWidth initValues accStart bodyValues bodyLets bodyDone
+        _releaseOffsets _ =>
+        let bodyLive := addLiveSlots (exprListUsedSlots bodyValues) (exprUsedSlots bodyDone)
+        let bodyFree :=
+          removeLiveSlots (pruneLocalLetsWithLive bodyLets bodyLive).snd
+            (slotsFrom accStart resultWidth)
+        addLiveSlots (exprListUsedSlots initValues) bodyFree
     | .heapLinearPredicate ptr _ fieldSlotCount _ fieldStart predicate _ _ =>
         addLiveSlots (exprUsedSlots ptr)
           (removeLiveSlots (exprUsedSlots predicate) (slotsFrom fieldStart fieldSlotCount))
@@ -1806,13 +1813,36 @@ def rangeFoldMultiSlotAssign? (targets : List Nat) (values : List IRExpr) :
         none
   | _ => none
 
+def loopFoldMultiSlotAssign? (targets : List Nat) (values : List IRExpr) :
+    Option IRStmt :=
+  match values with
+  | .loopFoldMultiSlot resultWidth initValues accStart bodyValues bodyLets bodyDone
+      releaseOffsets _ :: _ =>
+      if values.length == resultWidth && targets.length == resultWidth then
+        let expected : List IRExpr :=
+          (List.range resultWidth).map fun offset =>
+            .loopFoldMultiSlot resultWidth initValues accStart bodyValues bodyLets bodyDone
+              releaseOffsets offset
+        if values == expected then
+          some <|
+            .loopFoldMultiSlotAssign resultWidth initValues accStart bodyValues bodyLets bodyDone
+              releaseOffsets targets
+        else
+          none
+      else
+        none
+  | _ => none
+
 def foldMultiSlotAssign? (targets : List Nat) (values : List IRExpr) : Option IRStmt :=
   match arrayFoldMultiSlotAssign? targets values with
   | some stmt => some stmt
   | none =>
       match byteArrayFoldMultiSlotAssign? targets values with
       | some stmt => some stmt
-      | none => rangeFoldMultiSlotAssign? targets values
+      | none =>
+          match rangeFoldMultiSlotAssign? targets values with
+          | some stmt => some stmt
+          | none => loopFoldMultiSlotAssign? targets values
 
 mutual
   def localLetStmtOptimized : LeanExe.IR.LocalLet → IRStmt
@@ -2181,6 +2211,9 @@ mutual
             (exprReleasedSlots step))
           (addLiveSlots (exprListReleasedSlots initValues)
             (addLiveSlots (exprListReleasedSlots bodyValues) (exprReleasedSlots bodyDone)))
+    | .loopFoldMultiSlot _ initValues _ bodyValues _ bodyDone _ _ =>
+        addLiveSlots (exprListReleasedSlots initValues)
+          (addLiveSlots (exprListReleasedSlots bodyValues) (exprReleasedSlots bodyDone))
     | .heapLinearPredicate ptr _ _ _ _ predicate _ _ =>
         addLiveSlots (exprReleasedSlots ptr) (exprReleasedSlots predicate)
     | .call _ args => exprListReleasedSlots args
@@ -2363,6 +2396,12 @@ mutual
               (exprReleasedSlots step))
             (addLiveSlots (exprListReleasedSlots initValues)
               (foldAssignReleasedSlots bodyValues bodyLets bodyDone))
+        removeLiveSlots (removeLiveSlots ownedLocals targets) released
+    | .loopFoldMultiSlotAssign _ initValues _ bodyValues bodyLets bodyDone _releaseOffsets
+        targets =>
+        let released :=
+          addLiveSlots (exprListReleasedSlots initValues)
+            (foldAssignReleasedSlots bodyValues bodyLets bodyDone)
         removeLiveSlots (removeLiveSlots ownedLocals targets) released
     | .ite cond thenStmt elseStmt =>
         let branchOwned := removeLiveSlots ownedLocals (condReleasedSlots cond)

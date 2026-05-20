@@ -134,6 +134,11 @@ def isLegacyRangeType : Ty → Bool
   | .struct name _ [.nat, .nat, .nat] => name == ``Std.Legacy.Range
   | _ => false
 
+def isLeanLoopType : Ty → Bool
+  | .struct name _ [] => name == ``Lean.Loop
+  | .variant name _ [[]] => name == ``Lean.Loop
+  | _ => false
+
 def legacyRangeParts (value : ExtractedValue) : Except String (IRExpr × IRExpr × IRExpr) := do
   let start ← scalarValue (← structField ``Std.Legacy.Range 0 value)
   let stop ← scalarValue (← structField ``Std.Legacy.Range 1 value)
@@ -223,11 +228,6 @@ def idPureArg? (fn : Expr) (args : List Expr) : Option Expr :=
       else
         none
   | _ => none
-
-def isPUnitUnit (expr : Expr) : Bool :=
-  match expr.consumeMData with
-  | .const name _ => name == ``PUnit.unit
-  | _ => false
 
 def idForInArgs? (env : Environment) (fn : Expr) (args : List Expr) : Option ForInArgs :=
   match fn.consumeMData, args with
@@ -327,20 +327,10 @@ partial def forInStepBody? (resultTy : Ty) (expr : Expr) : Except String ForInSt
       | (.const ``Bind.bind _, args) =>
           match idBindArgs? (.const ``Bind.bind []) args with
           | some (value, bindFn) =>
-              let pureValue ←
-                match appFnArgs value with
-                | (.const ``Pure.pure _, pureArgs) =>
-                    match idPureArg? (.const ``Pure.pure []) pureArgs with
-                    | some pureValue => .ok pureValue
-                    | none => .error "unsupported for-in body bind"
-                | _ => .error "unsupported for-in body bind"
-              if !isPUnitUnit pureValue then
-                .error "unsupported for-in body bind"
-              else
-                match bindFn.consumeMData with
-                | .lam name type body _ =>
-                    forInStepBody? resultTy (.letE name type pureValue body true)
-                | _ => .error "unsupported for-in body bind function"
+              match bindFn.consumeMData with
+              | .lam name type body _ =>
+                  forInStepBody? resultTy (.letE name type value body true)
+              | _ => .error "unsupported for-in body bind function"
           | none => .error "unsupported for-in body bind"
       | (.const ``ite _, [_ty, condExpr, inst, thenExpr, elseExpr]) =>
           match tyExpr? resultTy with
