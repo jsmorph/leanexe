@@ -89,6 +89,19 @@ def decodeUInt64Array (value : Value) : Except ByteArray (Array UInt64) := do
           | Except.ok n => Except.ok (values.push n))
     (Except.ok #[])
 
+def decodeArray {α : Type} (decode : Value -> Except ByteArray α) (value : Value) :
+    Except ByteArray (Array α) := do
+  let items <- requireArray value
+  items.foldl
+    (fun state item =>
+      match state with
+      | Except.error err => Except.error err
+      | Except.ok values =>
+          match decode item with
+          | Except.error err => Except.error err
+          | Except.ok decoded => Except.ok (values.push decoded))
+    (Except.ok #[])
+
 def parseBytesExcept (bytes : ByteArray) : Except ByteArray Value :=
   match parseBytes bytes with
   | some value => Except.ok value

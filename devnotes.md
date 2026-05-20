@@ -1,5 +1,20 @@
 # Development Journal
 
+## 2026-05-20: JSON Object Array Decoding
+
+The JSON decoder layer now has a generic `decodeArray` helper that accepts a direct decoder lambda and returns an array of decoded source-level values.  This required two compiler generalizations: transparent inline specialization now accepts direct-lambda static arguments before runtime arguments, and generated `Except` match helpers are recognized by locating the typed `Except` scrutinee even when Lean places type and motive parameters before it.  The lambda is substituted into the helper body, so the generated WASM still contains first-order code rather than a runtime closure.
+
+`LeanExe.Examples.JsonObjectArrayDecode` decodes `{"items":[{"id":...,"weight":...}],"scale":...}` into source-defined `Item` and `Request` structures, rejects duplicate, missing, unknown, and mistyped fields, checks arithmetic overflow, and returns `{"weighted":...,"count":...}` through the WASI `Except` adapter.  The example keeps JSON decoding as ordinary Lean code over the recursive AST.
+
+Checks run:
+
+- [x] `lake build LeanExe.Extract.Core lean-wasm LeanExe.Examples.JsonObjectArrayDecode` returned successfully.
+- [x] `.lake/build/bin/lean-wasm compile-wasi-stdin-except --max-input-bytes 1024 --module LeanExe.Examples.JsonObjectArrayDecode --entry LeanExe.Examples.JsonObjectArrayDecode.transform --out .lake/build/json-object-array-decode.wasm` returned successfully.
+- [x] `printf '%s' '{"items":[{"id":1,"weight":4},{"id":2,"weight":7}],"scale":3}' | build/tools/wasmtime/current/wasmtime run .lake/build/json-object-array-decode.wasm` returned `{"weighted":54,"count":2}`.
+- [x] `node test/wasi_program.js` returned `checked 35 WASI program cases, 2 traps, and 7 rejections`.
+- [x] `node tools/compare-standard.js --self-test` returned `checked 78 standard Lean comparison cases`.
+- [x] `node test/run_all.js` returned `checked 94 report classification cases`, `checked 669 accepted, 30 rejected, and 13 trapped cases`, `checked 25 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 35 WASI program cases, 2 traps, and 7 rejections`, `checked 78 standard Lean comparison cases`, and `checked 56 cases`.
+
 ## 2026-05-20: Typed JSON Decode Helpers
 
 The JSON AST now has a small `Except ByteArray` decoder layer in `LeanExe.Ascii.Json.Decode`.  It wraps parse, render, object lookup, required-field lookup, typed scalar assertions, exact field-set checks, and unsigned-integer array decoding without adding JSON-specific compiler behavior.  `LeanExe.Examples.JsonTypedDecode` uses that layer to decode a JSON object into a source-defined request structure, reject missing, duplicate, unknown, and mistyped fields, check arithmetic overflow, and return compact JSON through the WASI `Except` adapter.
