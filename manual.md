@@ -520,7 +520,7 @@ def answerJson : ByteArray :=
 end LeanExe.Examples.ManualJsonAst
 ```
 
-Typed AST decoders should use `LeanExe.Ascii.Json.Decode` when failures should flow through `Except ByteArray`.  The helper layer provides required-field lookup, duplicate rejection through `getUniqueField?`, object field whitelisting through `requireOnlyFields`, typed scalar assertions, `decodeUInt64Array`, generic `decodeArray` with a direct decoder lambda, and `renderExcept`.  This style works well for small request structures whose schema is explicit in Lean source.
+Typed AST decoders should use `LeanExe.Ascii.Json.Decode` when failures should flow through `Except ByteArray`.  The helper layer provides required-field lookup, duplicate rejection through `getUniqueField?`, object field whitelisting through `requireOnlyFields`, typed scalar assertions, `decodeRequiredField`, `decodeUInt64Array`, generic `decodeArray` with a direct decoder lambda, and `renderExcept`.  This style works well for small request structures whose schema is explicit in Lean source.
 
 ```lean
 import LeanExe.Ascii.Json.Decode
@@ -540,15 +540,17 @@ def multiplierName : AsciiString :=
   AsciiString.ofTrustedByteArray "multiplier".toUTF8
 
 def decodeRequest (value : Value) : Except ByteArray Request := do
-  let rawValues <- requireField value valuesName
-  let numbers <- decodeUInt64Array rawValues
-  let multiplier <- requireUInt64Field value multiplierName
+  let fields <- requireObject value
+  let numbers <- decodeRequiredField fields valuesName
+    (fun raw => decodeUInt64Array raw)
+  let multiplier <- decodeRequiredField fields multiplierName
+    (fun raw => requireUInt64 raw)
   pure { values := numbers, multiplier := multiplier }
 
 end LeanExe.Examples.ManualJsonDecode
 ```
 
-Use `decodeArray` when a JSON array should become an array of source-defined structures.  The decoder argument should be a direct lambda at the call site, because LeanExe specializes that lambda into the helper body rather than compiling a runtime function value.
+Use `decodeRequiredField` and `decodeArray` together when a JSON array field should become an array of source-defined structures.  The decoder argument should be a direct lambda at the call site, because LeanExe specializes that lambda into the helper body rather than compiling a runtime function value.
 
 ```lean
 structure Item where
@@ -561,6 +563,9 @@ def idName : AsciiString :=
 def weightName : AsciiString :=
   AsciiString.ofTrustedByteArray "weight".toUTF8
 
+def itemsName : AsciiString :=
+  AsciiString.ofTrustedByteArray "items".toUTF8
+
 def decodeItem (value : Value) : Except ByteArray Item := do
   let id <- requireUInt64Field value idName
   let weight <- requireUInt64Field value weightName
@@ -568,6 +573,10 @@ def decodeItem (value : Value) : Except ByteArray Item := do
 
 def decodeItems (value : Value) : Except ByteArray (Array Item) :=
   decodeArray (fun item => decodeItem item) value
+
+def decodeItemsField (fields : Array Field) : Except ByteArray (Array Item) :=
+  decodeRequiredField fields itemsName
+    (fun raw => decodeArray (fun item => decodeItem item) raw)
 ```
 
 For recursive JSON decoders, prefer the pattern used by [JSON Tree WASI Demo](demo.md).  The important source shape is `fields.attach.foldl` with an immediate match on `⟨field, _hmem⟩`, because Lean's termination proof can use field membership to show recursive calls descend into smaller JSON values.  A generic object getter may be valid Lean but still lower to a well-founded-recursion shape that LeanExe does not yet compile in recursive decoders.

@@ -733,6 +733,12 @@ function selfTest() {
     {
       mode: "pure",
       moduleName: correctness,
+      entry: "genericInterleavedLambdaHelper",
+      resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
       entry: "statusBranchReturn",
       programArgs: ["0"],
       resultSlots:

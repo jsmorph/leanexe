@@ -1043,10 +1043,14 @@ def supportedInlineFunction? (env : Environment) (info : ConstantInfo) : Option 
   else
     functionTypeWith? env supportedLocalType supportedLocalType info.type
 
+inductive InlineParameter where
+  | static (arg : Expr)
+  | runtime (ty : Ty) (arg : Expr)
+
 structure InlineSpecialization where
   sig : Signature
-  staticArgs : List Expr
   runtimeArgs : List Expr
+  parameters : List InlineParameter
 
 def staticInlineDomain (env : Environment) (domain : Expr) : Bool :=
   match domain.consumeMData with
@@ -1079,40 +1083,63 @@ def specializedInlineCall?
       none
     else
       let rec loop
-          (previous staticArgs runtimeArgs : List Expr)
+          (previous runtimeArgs : List Expr)
+          (parameters : List InlineParameter)
           (runtimeTys : List Ty)
-          (seenRuntime : Bool) :
-          List Expr → List Expr → Option (List Expr × List Expr × List Ty)
-        | [], [] => some (staticArgs, runtimeArgs, runtimeTys)
+          :
+          List Expr → List Expr → Option (List Expr × List Ty × List InlineParameter)
+        | [], [] => some (runtimeArgs, runtimeTys, parameters)
         | domain :: restDomains, arg :: restArgs =>
             let instantiatedDomain := domain.instantiateRev previous.toArray
             match typeAtom? env instantiatedDomain with
             | some ty =>
                 if supportedLocalType ty then
-                  loop (previous ++ [arg]) staticArgs (runtimeArgs ++ [arg])
-                    (runtimeTys ++ [ty]) true
+                  loop (previous ++ [arg]) (runtimeArgs ++ [arg])
+                    (parameters ++ [InlineParameter.runtime ty arg])
+                    (runtimeTys ++ [ty])
                     restDomains restArgs
                 else
                   none
             | none =>
-                if seenRuntime then
-                  none
-                else if staticInlineArg env instantiatedDomain arg then
-                  loop (previous ++ [arg]) (staticArgs ++ [arg]) runtimeArgs runtimeTys false
+                if staticInlineArg env instantiatedDomain arg then
+                  loop (previous ++ [arg]) runtimeArgs
+                    (parameters ++ [InlineParameter.static arg])
+                    runtimeTys
                     restDomains restArgs
                 else
                   none
         | _, _ => none
-      let (staticArgs, runtimeArgs, runtimeTys) ← loop [] [] [] [] false parts.fst args
+      let (runtimeArgs, runtimeTys, parameters) ← loop [] [] [] [] parts.fst args
       let resultTy ← typeAtom? env (parts.snd.instantiateRev args.toArray)
       if supportedLocalType resultTy then
         some {
           sig := { params := runtimeTys, result := resultTy },
-          staticArgs := staticArgs,
-          runtimeArgs := runtimeArgs
+          runtimeArgs := runtimeArgs,
+          parameters := parameters
         }
       else
         none
+
+partial def specializeInlineValueAt (depth : Nat) (value : Expr) :
+    List InlineParameter → Option Expr
+  | [] => some value
+  | parameter :: rest =>
+      match value.consumeMData with
+      | .lam name type body bi =>
+          match parameter with
+          | .static arg =>
+              specializeInlineValueAt depth
+                (body.instantiate1 (arg.liftLooseBVars 0 depth))
+                rest
+          | .runtime _ _ =>
+              match specializeInlineValueAt (depth + 1) body rest with
+              | some body => some (.lam name type body bi)
+              | none => none
+      | _ => none
+
+def specializeInlineValue (value : Expr) (parameters : List InlineParameter) :
+    Option Expr :=
+  specializeInlineValueAt 0 value parameters
 
 partial def instantiateLeadingLambdas (value : Expr) : List Expr → Option Expr
   | [] => some value
@@ -1133,6 +1160,11 @@ def usedConstantsOf (info : ConstantInfo) : Array Name :=
   fromValue.foldl
     (fun acc name => if acc.contains name then acc else acc.push name)
     fromType
+
+def usedValueConstantsOf (info : ConstantInfo) : Array Name :=
+  match info.value? with
+  | some value => value.getUsedConstants
+  | none => #[]
 
 def containsConstant (name : Name) (info : ConstantInfo) : Bool :=
   info.value? |>.any (fun value => value.getUsedConstants.contains name)
@@ -1216,6 +1248,18 @@ partial def betaSpecializeExpr
 def containsConstantInExpr (name : Name) (expr : Expr) : Bool :=
   expr.getUsedConstants.contains name
 
+def traversableInlineDependency (env : Environment) (info : ConstantInfo) : Bool :=
+  !info.isUnsafe && !info.isPartial && info.value?.isSome && !isProofType? env info.type
+
+def inlineOnlyDependency (env : Environment) (name : Name) (info : ConstantInfo) : Bool :=
+  traversableInlineDependency env info &&
+    !blocksTransparentSpecialization name &&
+    (supportedFunction? env info).isNone &&
+    (peelForall info.type).fst.any
+      (fun domain =>
+        (typeAtom? env domain).isNone &&
+          (staticInlineDomain env domain || isFunctionDomain domain))
+
 partial def collectReachable
     (env : Environment)
     (root entry : Name)
@@ -1228,23 +1272,29 @@ partial def collectReachable
     match env.find? entry with
     | some info => .ok info
     | none => .error s!"entry not found: {entry}"
-  let sig ←
-    match supportedFunction? env info with
-    | some sig => .ok sig
-    | none => .error s!"unsupported function type or declaration: {entry}"
+  let sig? := supportedFunction? env info
+  if sig?.isNone && seen.isEmpty then
+    .error s!"unsupported function type or declaration: {entry}"
   let mut nextSeen := pushName seen entry
   let mut nextNames := names
-  for dep in usedConstantsOf info do
+  let dependencies :=
+    match sig? with
+    | some _ => usedConstantsOf info
+    | none => usedValueConstantsOf info
+  for dep in dependencies do
     if dep.getRoot == root then
       match env.find? dep with
       | some depInfo =>
-          if dep != entry && (supportedFunction? env depInfo |>.isSome) then
+          if dep != entry &&
+              ((supportedFunction? env depInfo).isSome ||
+                inlineOnlyDependency env dep depInfo) then
             let result ← collectReachable env root dep nextSeen nextNames
             nextSeen := result.fst
             nextNames := result.snd
       | none => pure ()
-  let _ := sig
-  return (nextSeen, pushName nextNames entry)
+  match sig? with
+  | some _ => return (nextSeen, pushName nextNames entry)
+  | none => return (nextSeen, nextNames)
 
 def functionIndex? (ctx : Context) (name : Name) : Option Nat :=
   let rec loop (index : Nat) : Option Nat :=

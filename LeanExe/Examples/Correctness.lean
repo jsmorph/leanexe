@@ -456,6 +456,10 @@ def genericPairRight {α β : Type} (box : PairBox α β) : β :=
 def genericFirstBoxValue {α β : Type} (left : Box α) (_right : Box β) : α :=
   left.value
 
+def genericApplyWithSeed {α : Type} (seed : UInt64) (value : α)
+    (f : α -> UInt64) : UInt64 :=
+  seed + f value
+
 def genericBoxHelperProjection : UInt64 :=
   genericBoxValue ({ value := 20 } : Box UInt64) + 2
 
@@ -467,6 +471,13 @@ def genericBoxHelperSkipsUnusedTrap : UInt64 :=
   genericFirstBoxValue
     ({ value := 7 } : Box UInt64)
     ({ value := (Array.replicate 0 (0 : UInt64)).back! } : Box UInt64)
+
+def genericInterleavedLambdaHelper : UInt64 :=
+  let bonus := (5 : UInt64)
+  genericApplyWithSeed
+    10
+    ({ value := 7 } : Box UInt64)
+    (fun box => box.value + bonus)
 
 structure DigitState where
   pos : Nat

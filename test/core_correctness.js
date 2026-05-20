@@ -129,6 +129,7 @@ const accepted = [
   { name: "genericBoxHelperProjection", args: [], expected: 22n },
   { name: "genericPairBoxHelper", args: [], expected: 9n },
   { name: "genericBoxHelperSkipsUnusedTrap", args: [], expected: 7n },
+  { name: "genericInterleavedLambdaHelper", args: [], expected: 22n },
   { name: "digitStateParserAllDigitsDemo", args: [], expected: 603n },
   { name: "digitStateParserStopsDemo", args: [], expected: 999n },
   { name: "statusOkMatch", args: [], expected: 8n },

@@ -1,5 +1,25 @@
 # Development Journal
 
+## 2026-05-20: Interleaved Inline Specialization
+
+Transparent inline specialization now supports static type, proof, and direct-lambda arguments interleaved with runtime arguments.  The specializer walks the helper lambda prefix in source order, substitutes static binders in place, preserves runtime binders in order, and lifts substituted static expressions across preserved runtime binders.  Inline extraction now appends the caller locals after helper runtime argument bindings, so a substituted direct lambda can capture a caller-local value without turning into a runtime closure.
+
+Dependency collection now follows inline-only helper bodies far enough to add their supported callees to the compiled function set.  The inline-only helper itself remains uncompiled and specialized at the call site.  This fixes helper shapes such as `decodeRequiredField fields name (fun raw => ...)`, where the supported callees live inside a helper whose own type contains a function parameter.
+
+The correctness corpus now includes `genericInterleavedLambdaHelper`, which calls a polymorphic helper with runtime arguments before a direct lambda that captures a local `bonus`.  The JSON decoder layer now includes `decodeRequiredField`, and `JsonObjectArrayDecode` uses it for scalar fields and for the nested `decodeArray` item decoder.
+
+Checks run:
+
+- [x] `lake build LeanExe.Extract.Core lean-wasm LeanExe.Examples.Correctness LeanExe.Examples.JsonObjectArrayDecode` returned successfully.
+- [x] `.lake/build/bin/lean-wasm compile --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.genericInterleavedLambdaHelper --out .lake/build/generic-interleaved.wasm` returned successfully.
+- [x] `build/tools/wasmtime/current/wasmtime run --invoke genericInterleavedLambdaHelper .lake/build/generic-interleaved.wasm` returned `22`.
+- [x] `.lake/build/bin/lean-wasm compile-wasi-stdin-except --max-input-bytes 1024 --module LeanExe.Examples.JsonObjectArrayDecode --entry LeanExe.Examples.JsonObjectArrayDecode.transform --out .lake/build/json-object-array-decode.wasm` returned successfully.
+- [x] `printf '%s' '{"items":[{"id":1,"weight":4},{"id":2,"weight":7}],"scale":3}' | build/tools/wasmtime/current/wasmtime run .lake/build/json-object-array-decode.wasm` returned `{"weighted":54,"count":2}`.
+- [x] `node test/core_correctness.js` returned `checked 670 accepted, 30 rejected, and 13 trapped cases`.
+- [x] `node test/wasi_program.js` returned `checked 35 WASI program cases, 2 traps, and 7 rejections`.
+- [x] `node tools/compare-standard.js --self-test` returned `checked 79 standard Lean comparison cases`.
+- [x] `node test/run_all.js` returned `checked 94 report classification cases`, `checked 670 accepted, 30 rejected, and 13 trapped cases`, `checked 25 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 35 WASI program cases, 2 traps, and 7 rejections`, `checked 79 standard Lean comparison cases`, and `checked 56 cases`.
+
 ## 2026-05-20: JSON Object Array Decoding
 
 The JSON decoder layer now has a generic `decodeArray` helper that accepts a direct decoder lambda and returns an array of decoded source-level values.  This required two compiler generalizations: transparent inline specialization now accepts direct-lambda static arguments before runtime arguments, and generated `Except` match helpers are recognized by locating the typed `Except` scrutinee even when Lean places type and motive parameters before it.  The lambda is substituted into the helper body, so the generated WASM still contains first-order code rather than a runtime closure.
