@@ -641,6 +641,30 @@ function selfTest() {
     {
       mode: "pure",
       moduleName: correctness,
+      entry: "idRunMutStatusIfLet",
+      resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "idRunMutStatusCatchAllMatch",
+      resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "idRunMutModeIfLet",
+      resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "idRunWhileStatusIfLetSum",
+      resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
       entry: "idRunMutMatchStateRecord",
       resultSlots: "#[UInt64.ofNat __leanexeValue.pos, __leanexeValue.sum]",
     },

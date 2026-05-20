@@ -1,5 +1,18 @@
 # Development Journal
 
+## 2026-05-20: Sparse User-Inductive Matches
+
+Pure `Id.run do` examples now cover sparse matches over nonrecursive user inductives.  The correctness corpus has `if let Status.ok value := status`, a named catch-all `Status` arm that rematches the fallback value, a nullary-constructor `Mode` `if let`, and a `while` loop that reads `Array Status` elements and uses the same sparse match inside the loop body.  These examples cover the source style used for tagged status values without making the compiler know about `Status`.
+
+The matcher classifier now recognizes generated sparse match helpers whose explicit arms are indexed by constructor result types and whose fallback arm receives the whole scrutinee type.  The value extractor binds that fallback arm to the reconstructed nonrecursive tagged value for each unmatched constructor path.  Sparse generated matches over recursive inductives remain rejected.  The loop-step extractor also beta-reduces first-order local continuation lambdas before classifying let-bound types, matching the existing ordinary value extractor behavior.
+
+Checks run:
+
+- [x] `lake build LeanExe.Extract.Core lean-wasm` returned successfully.
+- [x] `node test/core_correctness.js` returned `checked 665 accepted, 30 rejected, and 13 trapped cases`.
+- [x] `node tools/compare-standard.js --self-test` returned `checked 72 standard Lean comparison cases`.
+- [x] `node test/run_all.js` returned `checked 94 report classification cases`, `checked 665 accepted, 30 rejected, and 13 trapped cases`, `checked 25 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 22 WASI program cases, 2 traps, and 7 rejections`, `checked 72 standard Lean comparison cases`, and `checked 56 cases`.
+
 ## 2026-05-20: Mutable Id Matches and If-let
 
 Pure `Id.run do` examples now cover mutable assignments under `match` and `if let`.  The correctness corpus has an `Option` match that updates a scalar, an `if let some` assignment, a named catch-all `Option` arm that uses the fallback scrutinee value, a user-defined `Status` match that returns a tagged value, and a state-record update under an `Option` match.  These examples exercise the source shapes used by ordinary parser and transformer code without adding a source-level special case for parser programs.

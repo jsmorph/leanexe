@@ -285,24 +285,29 @@ mutual
             else if isStringType type then
               return ← extractForInStepBody ctx (.thunk locals value :: locals) nextLocal resultTy letBody
             else
-              match typeAtom? ctx.env type with
-              | some ty =>
-                  if supportedLocalType ty then
-                    let valueResult ← extractValueFrom ctx locals nextLocal value
-                    let width := internalSlots ty
-                    let targets := (List.range width).map fun offset => valueResult.snd + offset
-                    let lets ←
-                      materializeInternalValueLets ty valueResult.fst targets
-                        ctx.freshResultOwnerOffsets
-                    let localValue :=
-                      valueFromInternalSlots ty (fun offset => .local (valueResult.snd + offset))
-                    let step ←
-                      extractForInStepBody ctx (.value localValue :: locals)
-                        (valueResult.snd + width) resultTy letBody
-                    return { step with bodyLets := lets ++ step.bodyLets }
-                  else
-                    .error s!"unsupported for-in step let-bound type: {type}"
-              | none => .error s!"unsupported for-in step let-bound type: {type}"
+              match value.consumeMData with
+              | .lam _ _ _ _ =>
+                  return ← extractForInStepBody ctx locals nextLocal resultTy
+                    (betaReduceLocalExpr 32 (letBody.instantiateRev #[value]))
+              | _ =>
+                  match typeAtom? ctx.env type with
+                  | some ty =>
+                      if supportedLocalType ty then
+                        let valueResult ← extractValueFrom ctx locals nextLocal value
+                        let width := internalSlots ty
+                        let targets := (List.range width).map fun offset => valueResult.snd + offset
+                        let lets ←
+                          materializeInternalValueLets ty valueResult.fst targets
+                            ctx.freshResultOwnerOffsets
+                        let localValue :=
+                          valueFromInternalSlots ty (fun offset => .local (valueResult.snd + offset))
+                        let step ←
+                          extractForInStepBody ctx (.value localValue :: locals)
+                            (valueResult.snd + width) resultTy letBody
+                        return { step with bodyLets := lets ++ step.bodyLets }
+                      else
+                        .error s!"unsupported for-in step let-bound type: {type}"
+                  | none => .error s!"unsupported for-in step let-bound type: {type}"
         | _ =>
             match appFnArgs body with
             | (.const ``ite _, [_ty, condExpr, _, thenExpr, elseExpr]) =>
@@ -2279,8 +2284,9 @@ mutual
                                       structName fieldKinds scrutinee arm
                                 | none =>
                                     match variantMatcherArgs? ctx.env fn args with
-                                    | some (layout, scrutinee, arms) =>
+                                    | some (layout, scrutinee, arms, fallbackArms) =>
                                         extractVariantMatchValueFrom ctx locals nextLocal layout scrutinee arms
+                                          fallbackArms
                                     | none =>
                                         match fn.consumeMData with
                                         | .const name _ =>
@@ -2626,13 +2632,17 @@ mutual
       (nextLocal : Nat)
       (layout : VariantLayout)
       (scrutinee : Expr)
-      (arms : List Expr) :
+      (arms : List Expr)
+      (fallbackArms : List Bool) :
       Except String (ExtractedValue × Nat) := do
-    if arms.length != layout.ctors.length then
+    if arms.length != layout.ctors.length || fallbackArms.length != layout.ctors.length then
       .error s!"inductive matcher arity mismatch: {layout.name}"
     else
       let scrutineeResult ← extractValueFrom ctx locals nextLocal scrutinee
       if (recursiveVariantLayout? ctx.env layout.name layout.params).isSome then
+        if fallbackArms.any id then
+          .error s!"sparse matcher over recursive inductive is unsupported: {layout.name}"
+        else
         match heapVariantPtrWithLets? layout.name scrutineeResult.fst with
         | some parts =>
             let ptrSlot := scrutineeResult.snd
@@ -2715,24 +2725,37 @@ mutual
           .error s!"inductive matcher value shape mismatch: {layout.name}"
         else
           let rec variantExtractArms :
-              List VariantCtorLayout → List (List ExtractedValue) → List Expr → Nat →
+              List VariantCtorLayout → List (List ExtractedValue) → List Expr → List Bool →
+                Nat → Nat →
                 Except String (List ExtractedValue × Nat)
-            | [], [], [], next => .ok ([], next)
-            | ctor :: restCtors, fields :: restFields, arm :: restArms, next => do
+            | [], [], [], [], _, next => .ok ([], next)
+            | ctor :: restCtors, fields :: restFields, arm :: restArms,
+                isFallback :: restFallbacks, ctorIndex, next => do
                 let sourceBindings ← sourceFieldBindingsFromKinds layout.name ctor.fields fields
                 let armResult ←
-                  if ctor.fields.isEmpty then
-                    extractUnitArmValueFrom ctx locals next arm
+                  if isFallback then
+                    match arm.consumeMData with
+                    | .lam _ _ body _ =>
+                        extractValueFrom ctx
+                          (.value (.variant layout.name (.u64 ctorIndex) ctorValues) :: locals)
+                          next body
+                    | _ => extractValueFrom ctx locals next arm
                   else
-                    let body ←
-                      match collectLambdas arm ctor.fields.length with
-                      | some body => .ok body
-                      | none => .error s!"unsupported inductive matcher arm: {ctor.name}"
-                    extractValueFrom ctx (sourceBindings.reverse ++ locals) next body
-                let restResult ← variantExtractArms restCtors restFields restArms armResult.snd
+                    if ctor.fields.isEmpty then
+                      extractUnitArmValueFrom ctx locals next arm
+                    else
+                      let body ←
+                        match collectLambdas arm ctor.fields.length with
+                        | some body => .ok body
+                        | none => .error s!"unsupported inductive matcher arm: {ctor.name}"
+                      extractValueFrom ctx (sourceBindings.reverse ++ locals) next body
+                let restResult ←
+                  variantExtractArms restCtors restFields restArms restFallbacks
+                    (ctorIndex + 1) armResult.snd
                 .ok (armResult.fst :: restResult.fst, restResult.snd)
-            | _, _, _, _ => .error s!"inductive matcher arity mismatch: {layout.name}"
-          let armResults ← variantExtractArms layout.ctors ctorValues arms scrutineeResult.snd
+            | _, _, _, _, _, _ => .error s!"inductive matcher arity mismatch: {layout.name}"
+          let armResults ←
+            variantExtractArms layout.ctors ctorValues arms fallbackArms 0 scrutineeResult.snd
           let rec variantCombine : List (Nat × ExtractedValue) → Except String ExtractedValue
             | [] => .error s!"inductive matcher has no arms: {layout.name}"
             | [(_index, value)] => .ok value
@@ -3948,10 +3971,10 @@ mutual
                                                 .ok (← scalarValue valueResult.fst, valueResult.snd)
                                             | none =>
                                                 match variantMatcherArgs? ctx.env (.const primitive []) args with
-                                                | some (layout, scrutinee, arms) =>
+                                                | some (layout, scrutinee, arms, fallbackArms) =>
                                                     let valueResult ←
                                                       extractVariantMatchValueFrom ctx locals nextLocal
-                                                        layout scrutinee arms
+                                                        layout scrutinee arms fallbackArms
                                                     .ok (← scalarValue valueResult.fst, valueResult.snd)
                                                 | none =>
                                                     extractPrimitiveApplicationFrom ctx locals nextLocal
@@ -4794,6 +4817,7 @@ def wellFoundedMatcherInfo?
                           layout := layout,
                           scrutinee := scrutinee,
                           arms := orderedArms,
+                          fallbackArms := List.replicate orderedArms.length false,
                           prePostArgCount := 0
                         }
                     | none => none
@@ -4839,6 +4863,8 @@ def extractWellFoundedRecFunc
     .error s!"well-founded recursion matcher type mismatch: {name}"
   else if info.arms.length != layout.ctors.length then
     .error s!"inductive matcher arity mismatch: {layout.name}"
+  else if info.fallbackArms.any id then
+    .error s!"sparse well-founded recursion matcher is unsupported: {layout.name}"
   else
   let useAbi := exportName.isSome
   let wasmParamCount := functionParamCount useAbi params
@@ -4927,6 +4953,8 @@ def extractWellFoundedNatMemberBranch
     .error s!"well-founded Nat member matcher type mismatch: {name}"
   else if info.arms.length != layout.ctors.length then
     .error s!"inductive matcher arity mismatch: {layout.name}"
+  else if info.fallbackArms.any id then
+    .error s!"sparse well-founded Nat member matcher is unsupported: {layout.name}"
   else
   let parts ← heapVariantPtrWithLets layout.name payload
   let ptrSlot := nextLocal
@@ -5568,16 +5596,28 @@ mutual
       (lower : NatTailContext)
       (locals : List Binding)
       (recursorIndex : Nat)
+      (layout : VariantLayout)
       (ctors : List VariantCtorLayout)
       (ctorValues : List (List ExtractedValue))
       (arms : List Expr)
+      (fallbackArms : List Bool)
       (nextLocal index : Nat) :
       Except String (List (Nat × IRStmt) × Nat) := do
-    match ctors, ctorValues, arms with
-    | [], [], [] => .ok ([], nextLocal)
-    | ctor :: restCtors, values :: restValues, arm :: restArms =>
+    match ctors, ctorValues, arms, fallbackArms with
+    | [], [], [], [] => .ok ([], nextLocal)
+    | ctor :: restCtors, values :: restValues, arm :: restArms, isFallback :: restFallbacks =>
         let armResult ←
-          if ctor.fields.isEmpty then
+          if isFallback then
+            match arm.consumeMData with
+            | .lam _ _ body _ =>
+                extractNatTailStepStmt lower
+                  (.value (.variant layout.name (.u64 index) ctorValues) :: locals)
+                  (recursorIndex + 1)
+                  nextLocal
+                  body
+            | _ =>
+                extractNatTailStepStmt lower locals recursorIndex nextLocal arm
+          else if ctor.fields.isEmpty then
             extractNatTailUnitArmStmt lower locals recursorIndex nextLocal arm
           else
             let sourceBindings ← sourceFieldBindingsFromKinds ctor.name ctor.fields values
@@ -5592,9 +5632,9 @@ mutual
               body
         let restResult ←
           extractNatTailVariantArmResults lower locals recursorIndex
-            restCtors restValues restArms armResult.nextLocal (index + 1)
+            layout restCtors restValues restArms restFallbacks armResult.nextLocal (index + 1)
         .ok ((index, armResult.stmt) :: restResult.fst, restResult.snd)
-    | _, _, _ => .error "inductive matcher arity mismatch"
+    | _, _, _, _ => .error "inductive matcher arity mismatch"
 
   partial def extractNatTailVariantMatchStmt
       (lower : NatTailContext)
@@ -5603,11 +5643,12 @@ mutual
       (nextLocal : Nat)
       (layout : VariantLayout)
       (scrutinee : Expr)
-      (arms : List Expr) :
+      (arms : List Expr)
+      (fallbackArms : List Bool) :
       Except String TailStepResult := do
     if containsBVar recursorIndex scrutinee then
       .error "recursive call is not in tail position"
-    else if arms.length != layout.ctors.length then
+    else if arms.length != layout.ctors.length || fallbackArms.length != layout.ctors.length then
       .error s!"inductive matcher arity mismatch: {layout.name}"
     else if (recursiveVariantLayout? lower.extractCtx.env layout.name layout.params).isSome then
       .error s!"tail-recursive matcher over recursive inductive is unsupported: {layout.name}"
@@ -5621,7 +5662,7 @@ mutual
       else
         let armResults ←
           extractNatTailVariantArmResults lower locals recursorIndex
-            layout.ctors ctorValues arms scrutineeResult.snd 0
+            layout layout.ctors ctorValues arms fallbackArms scrutineeResult.snd 0
         let body ← combineTailMatchArms tag armResults.fst
         .ok {
           stmt := seqWithPrefix (parts.fst.map valueLetStmt) body,
@@ -5826,7 +5867,7 @@ mutual
                                 extractNatTailExitStmt lower locals nextLocal body
                               else
                                 extractNatTailVariantMatchStmt lower locals recursorIndex nextLocal
-                                  info.layout info.scrutinee info.arms
+                                  info.layout info.scrutinee info.arms info.fallbackArms
                           | none =>
                               extractNatTailExitStmt lower locals nextLocal body
 end
