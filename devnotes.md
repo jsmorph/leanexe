@@ -1,5 +1,18 @@
 # Development Journal
 
+## 2026-05-20: Ordinary Id Mutable Assignments
+
+Pure `Id.run do` extraction now handles ordinary mutable-local code outside loop bodies.  Lean lowers nested assignment branches to local continuation lambdas that accept the current mutable locals and a `PUnit` sequencing value, then return an `Id` result.  The extractor now substitutes those local lambdas when they remain first-order, beta-reduces their direct applications, treats `PUnit` as the existing unit representation, and lowers `ite (Id α)` by extracting both branch values under a shared condition.
+
+The correctness corpus now covers multiple scalar mutable locals under nested conditionals, structure return after assignment, `ByteArray` return after branch assignment, `Option` return after mutable status updates, and `Except` return after mutable status updates.  The standard Lean comparison self-test covers the same scalar, structure, tagged, and byte-array results.  The rejection corpus now includes a local function stored as data inside `Id.run`, so this change accepts Lean's generated local continuations without adding runtime closures.
+
+Checks run:
+
+- [x] `lake build LeanExe.Extract.Core LeanExe.Examples.Correctness lean-wasm` returned successfully.
+- [x] `node test/core_correctness.js` returned `checked 650 accepted, 30 rejected, and 13 trapped cases`.
+- [x] `node tools/compare-standard.js --self-test` returned `checked 57 standard Lean comparison cases`.
+- [x] `node test/run_all.js` returned `checked 94 report classification cases`, `checked 650 accepted, 30 rejected, and 13 trapped cases`, `checked 25 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 22 WASI program cases, 2 traps, and 7 rejections`, `checked 57 standard Lean comparison cases`, and `checked 56 cases`.
+
 ## 2026-05-20: Pure While and Nested Id Loops
 
 The extractor now accepts the checked Lean form behind source `while` loops.  Lean elaborates `while` in `Id.run do` to `ForIn.forIn` over `Lean.Loop`, whose step returns `ForInStep.done` to stop and `ForInStep.yield` to continue.  The IR now has `loopFoldMultiSlot` expression and statement forms that reuse the existing multi-slot accumulator layout without inventing a source-level loop syntax in the compiler.

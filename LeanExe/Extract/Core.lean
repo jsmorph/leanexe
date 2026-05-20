@@ -398,21 +398,26 @@ mutual
         else if isStringType type then
           extractValueFrom ctx (.thunk locals value :: locals) nextLocal body
         else
-          match typeAtom? ctx.env type with
-          | some ty =>
-              if supportedLocalType ty then
-                let valueResult ← extractValueFrom ctx locals nextLocal value
-                let width := internalSlots ty
-                let targets := (List.range width).map fun offset => valueResult.snd + offset
-                let lets ← materializeInternalValueLets ty valueResult.fst targets ctx.freshResultOwnerOffsets
-                let localValue :=
-                  valueFromInternalSlots ty (fun offset => .local (valueResult.snd + offset))
-                let bodyResult ←
-                  extractValueFrom ctx (.value localValue :: locals) (valueResult.snd + width) body
-                .ok (wrapValueLocalLets lets bodyResult.fst, bodyResult.snd)
-              else
-                .error s!"unsupported let-bound type: {type}"
-          | none => .error s!"unsupported let-bound type: {type}"
+          match value.consumeMData with
+          | .lam _ _ _ _ =>
+              extractValueFrom ctx locals nextLocal
+                (betaReduceLocalExpr 32 (body.instantiateRev #[value]))
+          | _ =>
+              match typeAtom? ctx.env type with
+              | some ty =>
+                  if supportedLocalType ty then
+                    let valueResult ← extractValueFrom ctx locals nextLocal value
+                    let width := internalSlots ty
+                    let targets := (List.range width).map fun offset => valueResult.snd + offset
+                    let lets ← materializeInternalValueLets ty valueResult.fst targets ctx.freshResultOwnerOffsets
+                    let localValue :=
+                      valueFromInternalSlots ty (fun offset => .local (valueResult.snd + offset))
+                    let bodyResult ←
+                      extractValueFrom ctx (.value localValue :: locals) (valueResult.snd + width) body
+                    .ok (wrapValueLocalLets lets bodyResult.fst, bodyResult.snd)
+                  else
+                    .error s!"unsupported let-bound type: {type}"
+              | none => .error s!"unsupported let-bound type: {type}"
     | .proj ``PProd index body =>
         match ← natRecursorProjection? locals (.proj ``PProd index body) with
         | some _functionName => .error "Nat recursion handle used as a value"
@@ -435,6 +440,7 @@ mutual
             | none => .error s!"unsupported structure projection index: {typeName}.{index}"
         | none => .error s!"unsupported projection: {typeName}"
     | .const ``Unit.unit _ => .ok (.scalar (.u64 0), nextLocal)
+    | .const ``PUnit.unit _ => .ok (.scalar (.u64 0), nextLocal)
     | .const ``ByteArray.empty _ => .ok (.byteArray (.u64 0) (.u64 0) (.u64 0), nextLocal)
     | _ =>
         match expressionStructuralRecShape? ctx.env ctx.root expr with
@@ -2102,8 +2108,19 @@ mutual
                   let exprResult ← extractExprFrom ctx locals nextLocal expr
                   .ok (.scalar exprResult.fst, exprResult.snd)
             | none =>
-                let exprResult ← extractExprFrom ctx locals nextLocal expr
-                .ok (.scalar exprResult.fst, exprResult.snd)
+                match appFnArgs ty with
+                | (.const name _, [_resultTyExpr]) =>
+                  if name == ``Id then
+                    let condResult ← extractCondFrom ctx locals nextLocal condExpr
+                    let thenResult ← extractValueFrom ctx locals condResult.snd thenExpr
+                    let elseResult ← extractValueFrom ctx locals thenResult.snd elseExpr
+                    .ok (← valueIte condResult.fst thenResult.fst elseResult.fst, elseResult.snd)
+                  else
+                    let exprResult ← extractExprFrom ctx locals nextLocal expr
+                    .ok (.scalar exprResult.fst, exprResult.snd)
+                | _ =>
+                    let exprResult ← extractExprFrom ctx locals nextLocal expr
+                    .ok (.scalar exprResult.fst, exprResult.snd)
         | (.const ``dite _, [ty, condExpr, _, thenArm, elseArm]) =>
             match typeAtom? ctx.env ty with
             | some resultTy =>
@@ -2778,13 +2795,18 @@ mutual
         else if isStringType type then
           extractExprFrom ctx (.thunk locals value :: locals) nextLocal body
         else
-          match typeAtom? ctx.env type with
-          | some ty =>
-              if supportedLocalType ty then
-                extractExprFrom ctx (.thunk locals value :: locals) nextLocal body
-              else
-                .error s!"unsupported let-bound type: {type}"
-          | none => .error s!"unsupported let-bound type: {type}"
+          match value.consumeMData with
+          | .lam _ _ _ _ =>
+              extractExprFrom ctx locals nextLocal
+                (betaReduceLocalExpr 32 (body.instantiateRev #[value]))
+          | _ =>
+              match typeAtom? ctx.env type with
+              | some ty =>
+                  if supportedLocalType ty then
+                    extractExprFrom ctx (.thunk locals value :: locals) nextLocal body
+                  else
+                    .error s!"unsupported let-bound type: {type}"
+              | none => .error s!"unsupported let-bound type: {type}"
     | .proj ``PProd index body =>
         let valueResult ← extractValueFrom ctx locals nextLocal (.proj ``PProd index body)
         .ok (← scalarValue valueResult.fst, valueResult.snd)
@@ -2803,6 +2825,7 @@ mutual
             | none => .error s!"unsupported structure projection index: {typeName}.{index}"
         | none => .error s!"unsupported projection: {typeName}"
     | .const ``Unit.unit _ => .ok (.u64 0, nextLocal)
+    | .const ``PUnit.unit _ => .ok (.u64 0, nextLocal)
     | .const ``Bool.true _ => .ok (.u64 1, nextLocal)
     | .const ``Bool.false _ => .ok (.u64 0, nextLocal)
     | .const name _ =>
@@ -4157,13 +4180,18 @@ mutual
         else if isStringType type then
           extractCondFrom ctx (.thunk locals value :: locals) nextLocal body
         else
-          match typeAtom? ctx.env type with
-          | some ty =>
-              if supportedLocalType ty then
-                extractCondFrom ctx (.thunk locals value :: locals) nextLocal body
-              else
-                .error s!"unsupported let-bound type: {type}"
-          | none => .error s!"unsupported let-bound type: {type}"
+          match value.consumeMData with
+          | .lam _ _ _ _ =>
+              extractCondFrom ctx locals nextLocal
+                (betaReduceLocalExpr 32 (body.instantiateRev #[value]))
+          | _ =>
+              match typeAtom? ctx.env type with
+              | some ty =>
+                  if supportedLocalType ty then
+                    extractCondFrom ctx (.thunk locals value :: locals) nextLocal body
+                  else
+                    .error s!"unsupported let-bound type: {type}"
+              | none => .error s!"unsupported let-bound type: {type}"
     | .const ``Bool.true _ => .ok (.true, nextLocal)
     | .const ``Bool.false _ => .ok (.false, nextLocal)
     | .const ``True _ => .ok (.true, nextLocal)

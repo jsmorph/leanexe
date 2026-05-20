@@ -430,6 +430,8 @@ mutual
       some .bool
     else if isConst ``Unit expr then
       some .unit
+    else if isConst ``PUnit expr then
+      some .unit
     else if isConst ``UInt8 expr then
       some .u8
     else if isConst ``UInt32 expr then

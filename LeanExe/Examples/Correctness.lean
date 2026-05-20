@@ -1709,6 +1709,62 @@ def idRunMut : UInt64 := Id.run do
   x := x + 1
   return x
 
+def idRunMutNestedIf : UInt64 := Id.run do
+  let mut score := (1 : UInt64)
+  let mut count := (0 : UInt64)
+  if score == (1 : UInt64) then
+    score := score + (2 : UInt64)
+    if count == (0 : UInt64) then
+      count := count + (4 : UInt64)
+    else
+      count := count + (40 : UInt64)
+  else
+    score := score + (20 : UInt64)
+  return score * (10 : UInt64) + count
+
+def idRunMutStructureReturn : Point := Id.run do
+  let mut point : Point := { x := 1, y := 2 }
+  if point.x < point.y then
+    point := { point with x := point.y + 3 }
+  else
+    point := { point with y := point.x + 3 }
+  return point
+
+def idRunMutByteArrayReturn : ByteArray := Id.run do
+  let mut output := ByteArray.empty
+  if output.isEmpty then
+    output := output.push (65 : UInt8)
+  else
+    output := output.push (90 : UInt8)
+  if output.size == 1 then
+    output := output.push (66 : UInt8)
+  return output
+
+def idRunMutOptionReturn : Option UInt64 := Id.run do
+  let mut found : Option UInt64 := none
+  if found.isNone then
+    found := some (7 : UInt64)
+  if found == some (7 : UInt64) then
+    found := some (9 : UInt64)
+  return found
+
+def idRunMutExceptReturn : Except UInt64 UInt64 := Id.run do
+  let mut result : Except UInt64 UInt64 := Except.ok (3 : UInt64)
+  match result with
+  | Except.error code =>
+      result := Except.error (code + 1)
+  | Except.ok value =>
+      if value == (3 : UInt64) then
+        result := Except.ok (value + 4)
+      else
+        result := Except.error value
+  return result
+
+def rejectIdRunFunctionValue : UInt64 := Id.run do
+  let f := fun x : UInt64 => x + 1
+  let value := (f, (1 : UInt64))
+  return value.2
+
 def idRunByteArrayForSum : UInt64 := Id.run do
   let input := ByteArray.mk #[(1 : UInt8), (2 : UInt8), (3 : UInt8)]
   let mut acc := (0 : UInt64)
