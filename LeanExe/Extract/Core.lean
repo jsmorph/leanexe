@@ -2504,6 +2504,11 @@ mutual
       | none => .error "unsupported product matcher arm"
     extractValueFrom ctx (.value rightValue :: .value leftValue :: locals) scrutineeResult.snd body
 
+  partial def leadingLambdaCount (expr : Expr) : Nat :=
+    match expr.consumeMData with
+    | .lam _ _ body _ => leadingLambdaCount body + 1
+    | _ => 0
+
   partial def extractStructureMatchValueFrom
       (ctx : Context)
       (locals : List Binding)
@@ -2524,11 +2529,47 @@ mutual
           let restFields ← fieldsFromKinds runtimeIndex rest
           .ok (.scalar (.u64 0) :: restFields)
     let fieldValues ← fieldsFromKinds 0 fieldKinds
+    let rec flattenFields :
+        List (Option Ty) → List ExtractedValue → Except String (List ExtractedValue)
+      | [], [] => .ok []
+      | some (.struct nestedName nestedParams _nestedFields) :: restKinds, value :: restValues => do
+          let nestedKinds ←
+            match structureFieldKindsWithParams? ctx.env nestedName nestedParams with
+            | some kinds => .ok kinds
+            | none => .error s!"unsupported nested structure matcher field: {nestedName}"
+          let rec nestedFromKinds :
+              Nat → List (Option Ty) → Except String (List ExtractedValue)
+            | _, [] => .ok []
+            | runtimeIndex, some _ :: rest => do
+                let field ← structField nestedName runtimeIndex value
+                let restFields ← nestedFromKinds (runtimeIndex + 1) rest
+                .ok (field :: restFields)
+            | runtimeIndex, none :: rest => do
+                let restFields ← nestedFromKinds runtimeIndex rest
+                .ok (.scalar (.u64 0) :: restFields)
+          let nestedFields ← nestedFromKinds 0 nestedKinds
+          let nestedFlat ← flattenFields nestedKinds nestedFields
+          let restFlat ← flattenFields restKinds restValues
+          .ok (nestedFlat ++ restFlat)
+      | _kind :: restKinds, value :: restValues => do
+          let restFlat ← flattenFields restKinds restValues
+          .ok (value :: restFlat)
+      | _, _ => .error s!"structure matcher arity mismatch: {structName}"
+    let binderCount := leadingLambdaCount arm
+    let bindingValues ←
+      if binderCount == fieldKinds.length then
+        .ok fieldValues
+      else
+        let flattened ← flattenFields fieldKinds fieldValues
+        if binderCount == flattened.length then
+          .ok flattened
+        else
+          .error s!"unsupported structure matcher arm: {structName}"
     let body ←
-      match collectLambdas arm fieldKinds.length with
+      match collectLambdas arm bindingValues.length with
       | some body => .ok body
       | none => .error s!"unsupported structure matcher arm: {structName}"
-    let fieldBindings := fieldValues.reverse.map Binding.value
+    let fieldBindings := bindingValues.reverse.map Binding.value
     extractValueFrom ctx (fieldBindings ++ locals) scrutineeResult.snd body
 
   partial def extractPsumMatchValueFrom

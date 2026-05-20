@@ -1,5 +1,18 @@
 # Development Journal
 
+## 2026-05-20: Parser-Style Id Cursor Loops
+
+Pure `Id.run do` examples now cover parser-style cursor code.  The correctness corpus has a byte scanner that reads `input[pos]!`, stops on the first non-digit, and returns a structure; a byte-output loop that writes parsed digit values; an `Except UInt64 DigitState` parser status; and a mutable `Array UInt64` updated in a `while` loop before a `for` fold.  These examples exercise indexed reads, mutable cursors, mutable heap values, mutable arrays, explicit status, and loop-exit control in one source style.
+
+The compiler change is in generated structure matcher extraction.  Lean carries several mutable locals through loops as nested `MProd` values, then may recover the locals through a generated matcher whose arm receives flattened fields such as `ok`, `pos`, and `sum`, rather than an immediate nested pair.  Structure match extraction now checks the arm lambda arity and, when it matches the flattened field count of nested single-constructor structures, binds those flattened fields directly.  Ordinary immediate-field structure matches keep their previous behavior.
+
+Checks run:
+
+- [x] `lake build LeanExe.Extract.Core LeanExe.Examples.Correctness lean-wasm` returned successfully.
+- [x] `node test/core_correctness.js` returned `checked 654 accepted, 30 rejected, and 13 trapped cases`.
+- [x] `node tools/compare-standard.js --self-test` returned `checked 61 standard Lean comparison cases`.
+- [x] `node test/run_all.js` returned `checked 94 report classification cases`, `checked 654 accepted, 30 rejected, and 13 trapped cases`, `checked 25 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 22 WASI program cases, 2 traps, and 7 rejections`, `checked 61 standard Lean comparison cases`, and `checked 56 cases`.
+
 ## 2026-05-20: Ordinary Id Mutable Assignments
 
 Pure `Id.run do` extraction now handles ordinary mutable-local code outside loop bodies.  Lean lowers nested assignment branches to local continuation lambdas that accept the current mutable locals and a `PUnit` sequencing value, then return an `Id` result.  The extractor now substitutes those local lambdas when they remain first-order, beta-reduces their direct applications, treats `PUnit` as the existing unit representation, and lowers `ite (Id α)` by extracting both branch values under a shared condition.

@@ -274,10 +274,25 @@ def boundedSum : UInt64 := Id.run do
     i := i + 1
   return sum
 
+def scanDigits (input : ByteArray) : Except UInt64 ScanState := Id.run do
+  let mut pos : Nat := 0
+  let mut sum := (0 : UInt64)
+  let mut result : Except UInt64 ScanState := Except.ok { count := 0, sum := 0 }
+  while pos < input.size do
+    let byte := input[pos]!
+    if (48 : UInt8) <= byte && byte <= (57 : UInt8) then
+      sum := sum + (byte.toUInt64 - 48)
+      pos := pos + 1
+      result := Except.ok { count := pos.toUInt64, sum := sum }
+    else
+      result := Except.error pos.toUInt64
+      break
+  return result
+
 end LeanExe.Examples.ManualLoops
 ```
 
-Ordinary pure `Id.run do` blocks may use mutable scalars, structures, byte arrays, arrays, `Option`, `Except`, products, supported tagged values, and internal recursive pointers.  Nested `if` branches are accepted when Lean's generated continuation lambdas stay local and first-order.  If a local function escapes as a runtime value, the compiler rejects it under the normal higher-order-function rule.
+Ordinary pure `Id.run do` blocks may use mutable scalars, structures, byte arrays, arrays, `Option`, `Except`, products, supported tagged values, and internal recursive pointers.  Nested `if` branches are accepted when Lean's generated continuation lambdas stay local and first-order.  Parser-style loops may combine mutable cursors, `ByteArray` indexing, mutable output buffers, mutable arrays, and explicit `Except` status values.  If a local function escapes as a runtime value, the compiler rejects it under the normal higher-order-function rule.
 
 Accepted `for` collections are `ByteArray`, fixed-width `Array` values, and ranges such as `[start:stop]` or `[start:stop:step]`.  Source `while` loops compile through Lean's `Lean.Loop` iterator and repeat until the checked loop step returns `ForInStep.done`.  Loop accumulators may be scalars, byte arrays, internal arrays, products, structures, nonrecursive tagged values, or recursive-inductive pointers, with the same field-type limits used elsewhere in the language.
 
