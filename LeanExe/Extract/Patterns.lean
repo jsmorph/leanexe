@@ -424,12 +424,18 @@ def takeLast? {α : Type} (count : Nat) (items : List α) : Option (List α) :=
 
 def optionMatcherArgs? (env : Environment) (fn : Expr) (args : List Expr) :
     Option (Expr × Expr × Expr) :=
-  let optionArmKind? (payloadTy : Ty) (arm : Expr) : Option Bool :=
+  let optionArmKind? (optionTy payloadTy : Ty) (arm : Expr) : Option Bool :=
     match arm.consumeMData with
     | .lam _ domain _ _ =>
         match typeAtom? env domain with
         | some .unit => some false
-        | some ty => if ty == payloadTy then some true else none
+        | some ty =>
+            if ty == payloadTy then
+              some true
+            else if ty == optionTy then
+              some false
+            else
+              none
         | none => none
     | _ => none
   match fn.consumeMData with
@@ -440,10 +446,12 @@ def optionMatcherArgs? (env : Environment) (fn : Expr) (args : List Expr) :
         | _ => none
       else
         match generatedMatcherScrutineeArg? env name args with
-        | some (scrutineeIndex, resultTy) =>
-            match optionPayloadType? resultTy, args[scrutineeIndex]?, args.drop (scrutineeIndex + 1) with
+        | some (scrutineeIndex, optionTy) =>
+            match optionPayloadType? optionTy, args[scrutineeIndex]?,
+                args.drop (scrutineeIndex + 1) with
             | some payloadTy, some scrutinee, [firstArm, secondArm] =>
-                match optionArmKind? payloadTy firstArm, optionArmKind? payloadTy secondArm with
+                match optionArmKind? optionTy payloadTy firstArm,
+                    optionArmKind? optionTy payloadTy secondArm with
                 | some false, some true => some (scrutinee, firstArm, secondArm)
                 | some true, some false => some (scrutinee, secondArm, firstArm)
                 | _, _ => none

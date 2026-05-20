@@ -2312,6 +2312,29 @@ mutual
     | some body => extractValueFrom ctx (.value (.scalar (.u64 0)) :: locals) nextLocal body
     | none => extractValueFrom ctx locals nextLocal arm
 
+  partial def optionNoneArmBinding
+      (ctx : Context)
+      (domain : Expr) :
+      Except String Binding := do
+    match typeAtom? ctx.env domain with
+    | some ty =>
+        match optionPayloadType? ty with
+        | some payloadTy => .ok (.value (mkOptionValue (.u64 0) (← defaultValue payloadTy)))
+        | none => .ok (.value (.scalar (.u64 0)))
+    | none => .ok (.value (.scalar (.u64 0)))
+
+  partial def extractOptionNoneArmValueFrom
+      (ctx : Context)
+      (locals : List Binding)
+      (nextLocal : Nat)
+      (arm : Expr) :
+      Except String (ExtractedValue × Nat) := do
+    match arm.consumeMData with
+    | .lam _ domain body _ => do
+        let binding ← optionNoneArmBinding ctx domain
+        extractValueFrom ctx (binding :: locals) nextLocal body
+    | _ => extractValueFrom ctx locals nextLocal arm
+
   partial def extractOptionMatchValueFrom
       (ctx : Context)
       (locals : List Binding)
@@ -2323,12 +2346,8 @@ mutual
     let lets := parts.fst
     let tag := parts.snd.fst
     let payload := parts.snd.snd
-    let noneArmResult ←
-      match collectLambdas noneArm 1 with
-      | some body => .ok (body, .value (.scalar (.u64 0)) :: locals)
-      | none => .ok (noneArm, locals)
     let noneResult ←
-      extractValueFrom ctx noneArmResult.snd scrutineeResult.snd noneArmResult.fst
+      extractOptionNoneArmValueFrom ctx locals scrutineeResult.snd noneArm
     let someBody ←
       match collectLambdas someArm 1 with
       | some body => .ok body
@@ -5624,14 +5643,15 @@ mutual
       let tag := parts.snd.fst
       let payload := parts.snd.snd
       let noneResult ←
-        match collectLambdas noneArm 1 with
-        | some body =>
+        match noneArm.consumeMData with
+        | .lam _ domain body _ =>
+            let binding ← optionNoneArmBinding lower.extractCtx domain
             extractNatTailStepStmt lower
-              (.value (.scalar (.u64 0)) :: locals)
+              (binding :: locals)
               (recursorIndex + 1)
               scrutineeResult.snd
               body
-        | none =>
+        | _ =>
             extractNatTailStepStmt lower locals recursorIndex scrutineeResult.snd noneArm
       let someBody ←
         match collectLambdas someArm 1 with

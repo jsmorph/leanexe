@@ -616,6 +616,37 @@ function selfTest() {
     {
       mode: "pure",
       moduleName: correctness,
+      entry: "idRunMutOptionMatch",
+      resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "idRunMutOptionIfLet",
+      resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "idRunMutOptionCatchAllMatch",
+      resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "idRunMutStatusMatchReturn",
+      resultSlots:
+        "match __leanexeValue with | .ok value => #[0, value, 0] | .error code => #[1, 0, code]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "idRunMutMatchStateRecord",
+      resultSlots: "#[UInt64.ofNat __leanexeValue.pos, __leanexeValue.sum]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
       entry: "idRunWhileDigitScanner",
       resultSlots: "#[UInt64.ofNat __leanexeValue.pos, __leanexeValue.sum]",
     },

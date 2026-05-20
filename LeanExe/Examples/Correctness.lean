@@ -1769,6 +1769,58 @@ def idRunMutExceptReturn : Except UInt64 UInt64 := Id.run do
         result := Except.error value
   return result
 
+def idRunMutOptionMatch : UInt64 := Id.run do
+  let mut total := (1 : UInt64)
+  let found : Option UInt64 := some 4
+  match found with
+  | some value =>
+      total := total + value
+  | none =>
+      total := total + 100
+  return total
+
+def idRunMutOptionIfLet : UInt64 := Id.run do
+  let mut total := (3 : UInt64)
+  let found : Option UInt64 := some 5
+  if let some value := found then
+    total := total + value
+  else
+    total := total + 100
+  return total
+
+def idRunMutOptionCatchAllMatch : UInt64 := Id.run do
+  let mut total := (0 : UInt64)
+  let found : Option UInt64 := none
+  match found with
+  | some value =>
+      total := value
+  | other =>
+      match other with
+      | none =>
+          total := 11
+      | some value =>
+          total := value + 100
+  return total
+
+def idRunMutStatusMatchReturn : Status := Id.run do
+  let mut status : Status := Status.ok 2
+  match status with
+  | .ok value =>
+      status := Status.ok (value + 8)
+  | .error code =>
+      status := Status.error (code + 1)
+  return status
+
+def idRunMutMatchStateRecord : DigitState := Id.run do
+  let mut state : DigitState := { pos := 1, sum := 5 }
+  let found : Option UInt64 := some 4
+  match found with
+  | some value =>
+      state := { pos := state.pos + 1, sum := state.sum + value }
+  | none =>
+      state := { state with sum := 99 }
+  return state
+
 def rejectIdRunFunctionValue : UInt64 := Id.run do
   let f := fun x : UInt64 => x + 1
   let value := (f, (1 : UInt64))
