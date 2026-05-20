@@ -419,6 +419,18 @@ const accepted = [
   },
   { name: "idRunWhileParserExcept", args: [], expected: [0n, 2n, 0n, 0n] },
   { name: "idRunWhileArrayUpdateSum", args: [], expected: 9n },
+  {
+    name: "idRunWhileParserBufferState",
+    args: [],
+    expected: [2n, null, 2n, 0n],
+    memoryBytes: [{ resultIndex: 1, lengthIndex: 2, values: [1, 2] }],
+  },
+  {
+    name: "idRunWhileArrayBuilderState",
+    args: [],
+    expected: [null, 3n],
+    memoryArrays: [{ resultIndex: 0, values: [1n, 3n, 5n] }],
+  },
   { name: "idFunctionUInt64", args: [4n], expected: 5n },
   { name: "idFunctionProductSecond", args: [], expected: 7n },
   { name: "arrayUpdateRead", args: [], expected: 110n },

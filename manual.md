@@ -248,6 +248,11 @@ structure ScanState where
   count : UInt64
   sum : UInt64
 
+structure BufferState where
+  pos : Nat
+  out : ByteArray
+  ok : Bool
+
 def classify (x : UInt64) : Option UInt64 := Id.run do
   let mut result : Option UInt64 := none
   if x > 10 then
@@ -289,10 +294,21 @@ def scanDigits (input : ByteArray) : Except UInt64 ScanState := Id.run do
       break
   return result
 
+def collectDigits (input : ByteArray) : BufferState := Id.run do
+  let mut state : BufferState := { pos := 0, out := ByteArray.empty, ok := true }
+  while state.pos < input.size do
+    let byte := input[state.pos]!
+    if (48 : UInt8) <= byte && byte <= (57 : UInt8) then
+      state := { pos := state.pos + 1, out := state.out.push (byte - 48), ok := state.ok }
+    else
+      state := { state with ok := false }
+      break
+  return state
+
 end LeanExe.Examples.ManualLoops
 ```
 
-Ordinary pure `Id.run do` blocks may use mutable scalars, structures, byte arrays, arrays, `Option`, `Except`, products, supported tagged values, and internal recursive pointers.  Nested `if` branches are accepted when Lean's generated continuation lambdas stay local and first-order.  Parser-style loops may combine mutable cursors, `ByteArray` indexing, mutable output buffers, mutable arrays, and explicit `Except` status values.  If a local function escapes as a runtime value, the compiler rejects it under the normal higher-order-function rule.
+Ordinary pure `Id.run do` blocks may use mutable scalars, structures, byte arrays, arrays, `Option`, `Except`, products, supported tagged values, and internal recursive pointers.  State records may contain heap fields such as `ByteArray` and internal `Array` values.  Nested `if` branches are accepted when Lean's generated continuation lambdas stay local and first-order.  Parser-style loops may combine mutable cursors, `ByteArray` indexing, mutable output buffers, mutable arrays, and explicit `Except` status values.  If a local function escapes as a runtime value, the compiler rejects it under the normal higher-order-function rule.
 
 Accepted `for` collections are `ByteArray`, fixed-width `Array` values, and ranges such as `[start:stop]` or `[start:stop:step]`.  Source `while` loops compile through Lean's `Lean.Loop` iterator and repeat until the checked loop step returns `ForInStep.done`.  Loop accumulators may be scalars, byte arrays, internal arrays, products, structures, nonrecursive tagged values, or recursive-inductive pointers, with the same field-type limits used elsewhere in the language.
 
