@@ -56,19 +56,17 @@ def checkedMul (left right : UInt64) : Except ByteArray UInt64 :=
 def decodeItem (value : Value) : Except ByteArray Item := do
   let fields <- requireObject value
   let _ <- requireOnlyFields fields itemFieldNames
-  let rawId <- requireUniqueField fields idFieldName
-  let id <- requireUInt64 rawId
-  let rawWeight <- requireUniqueField fields weightFieldName
-  let weight <- requireUInt64 rawWeight
+  let id <- decodeRequiredField fields idFieldName (fun raw => requireUInt64 raw)
+  let weight <- decodeRequiredField fields weightFieldName (fun raw => requireUInt64 raw)
   pure { id := id, weight := weight }
 
 def decodeRequest (value : Value) : Except ByteArray Request := do
   let fields <- requireObject value
   let _ <- requireOnlyFields fields requestFieldNames
-  let rawItems <- requireUniqueField fields itemsFieldName
-  let items <- decodeArray (fun item => decodeItem item) rawItems
-  let rawScale <- requireUniqueField fields scaleFieldName
-  let scale <- requireUInt64 rawScale
+  let items <-
+    decodeRequiredField fields itemsFieldName
+      (fun raw => decodeArray (fun item => decodeItem item) raw)
+  let scale <- decodeRequiredField fields scaleFieldName (fun raw => requireUInt64 raw)
   pure { items := items, scale := scale }
 
 def itemContribution (item : Item) : Except ByteArray UInt64 := do

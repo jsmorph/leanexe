@@ -45,6 +45,11 @@ def requireField (value : Value) (name : AsciiString) : Except ByteArray Value :
   let fields <- requireObject value
   requireUniqueField fields name
 
+def decodeRequiredField {α : Type} (fields : Array Field) (name : AsciiString)
+    (decode : Value -> Except ByteArray α) : Except ByteArray α := do
+  let raw <- requireUniqueField fields name
+  decode raw
+
 def requireUInt64Field (value : Value) (name : AsciiString) :
     Except ByteArray UInt64 := do
   let raw <- requireField value name

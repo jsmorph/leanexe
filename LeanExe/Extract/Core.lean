@@ -2783,7 +2783,13 @@ mutual
       return none
     let specialization ←
       match supportedInlineFunction? ctx.env info with
-      | some sig => .ok ({ sig := sig, staticArgs := [], runtimeArgs := args } : InlineSpecialization)
+      | some sig =>
+          .ok ({
+            sig := sig,
+            runtimeArgs := args,
+            parameters := (sig.params.zip args).map fun item =>
+              InlineParameter.runtime item.fst item.snd
+          } : InlineSpecialization)
       | none =>
           match specializedInlineCall? ctx.env info args with
           | some specialization => .ok specialization
@@ -2800,7 +2806,7 @@ mutual
         | some value => .ok (betaSpecializeExpr ctx.env ctx.root 32 value)
         | none => .error s!"declaration has no executable value: {name}"
       let value ←
-        match instantiateLeadingLambdas value specialization.staticArgs with
+        match specializeInlineValue value specialization.parameters with
         | some value => .ok (betaSpecializeExpr ctx.env ctx.root 32 value)
         | none => .error s!"definition body does not match static function arity: {name}"
       let body ←
@@ -2809,7 +2815,7 @@ mutual
         | none => .error s!"definition body does not match function arity: {name}"
       let argBindings := specialization.runtimeArgs.reverse.map (fun arg => Binding.thunk locals arg)
       let inlineCtx := { ctx with inlineStack := name :: ctx.inlineStack }
-      let result ← extractValueFrom inlineCtx argBindings nextLocal body
+      let result ← extractValueFrom inlineCtx (argBindings ++ locals) nextLocal body
       .ok (some result)
 
   partial def extractFunctionCallValueFrom
