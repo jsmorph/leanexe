@@ -2021,6 +2021,65 @@ def idRunWhileByteArrayOutput : ByteArray := Id.run do
     i := i + (1 : UInt64)
   return output
 
+def idRunWhileDigitScanner : DigitState := Id.run do
+  let input := ByteArray.mk #[(49 : UInt8), (50 : UInt8), (65 : UInt8), (51 : UInt8)]
+  let mut pos : Nat := 0
+  let mut sum := (0 : UInt64)
+  let mut ok := true
+  while pos < input.size do
+    let byte := input[pos]!
+    if isAsciiDigitByte byte then
+      sum := sum + (byte.toUInt64 - 48)
+      pos := pos + 1
+    else
+      ok := false
+      break
+  if ok then
+    return { pos := pos, sum := sum }
+  else
+    return { pos := pos, sum := sum + 100 }
+
+def idRunWhileDigitOutput : ByteArray := Id.run do
+  let input := ByteArray.mk #[(49 : UInt8), (50 : UInt8), (51 : UInt8)]
+  let mut pos : Nat := 0
+  let mut output := ByteArray.empty
+  while pos < input.size do
+    let byte := input[pos]!
+    if isAsciiDigitByte byte then
+      output := output.push (byte - 48)
+      pos := pos + 1
+    else
+      break
+  return output
+
+def idRunWhileParserExcept : Except UInt64 DigitState := Id.run do
+  let input := ByteArray.mk #[(49 : UInt8), (50 : UInt8), (65 : UInt8)]
+  let mut pos : Nat := 0
+  let mut sum := (0 : UInt64)
+  let mut result : Except UInt64 DigitState := Except.ok { pos := 0, sum := 0 }
+  while pos < input.size do
+    let byte := input[pos]!
+    if isAsciiDigitByte byte then
+      sum := sum + (byte.toUInt64 - 48)
+      pos := pos + 1
+      result := Except.ok { pos := pos, sum := sum }
+    else
+      result := Except.error pos.toUInt64
+      break
+  return result
+
+def idRunWhileArrayUpdateSum : UInt64 := Id.run do
+  let mut values : Array UInt64 := #[1, 2, 3]
+  let mut i : Nat := 0
+  while i < values.size do
+    let value := values[i]!
+    values := values.set! i (value + i.toUInt64)
+    i := i + 1
+  let mut sum := (0 : UInt64)
+  for value in values do
+    sum := sum + value
+  return sum
+
 def idFunctionUInt64 (x : UInt64) : UInt64 :=
   id (x + 1)
 

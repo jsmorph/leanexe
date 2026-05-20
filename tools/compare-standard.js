@@ -616,6 +616,25 @@ function selfTest() {
     {
       mode: "pure",
       moduleName: correctness,
+      entry: "idRunWhileDigitScanner",
+      resultSlots: "#[UInt64.ofNat __leanexeValue.pos, __leanexeValue.sum]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "idRunWhileParserExcept",
+      resultSlots:
+        "match __leanexeValue with | Except.error code => #[0, code, 0, 0] | Except.ok state => #[1, 0, UInt64.ofNat state.pos, state.sum]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "idRunWhileArrayUpdateSum",
+      resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
       entry: "natDivModNormal",
       programArgs: ["7"],
       resultSlots: "#[UInt64.ofNat __leanexeValue]",
@@ -735,6 +754,12 @@ function selfTest() {
       mode: "pure-bytes",
       moduleName: correctness,
       entry: "idRunMutByteArrayReturn",
+      serializer: "__leanexeValue",
+    },
+    {
+      mode: "pure-bytes",
+      moduleName: correctness,
+      entry: "idRunWhileDigitOutput",
       serializer: "__leanexeValue",
     },
     {
