@@ -2159,6 +2159,96 @@ def optionWhileSum : Option UInt64 := do
     i := i + 1
   return acc
 
+def optionForByteArrayOutput : Option ByteArray := do
+  let input := ByteArray.mk #[(65 : UInt8), (66 : UInt8), (67 : UInt8)]
+  let mut output := ByteArray.empty
+  for byte in input do
+    output := output.push byte
+  return output
+
+def optionForByteArrayOutputNoneSkipsRestTrap : Option ByteArray := do
+  let input := ByteArray.mk #[(65 : UInt8), (99 : UInt8), (66 : UInt8)]
+  let mut output := ByteArray.empty
+  for byte in input do
+    if byte == (99 : UInt8) then
+      none
+    else if byte == (66 : UInt8) then
+      output := output.push ((Array.replicate 0 (0 : UInt8))[0]!)
+    else
+      output := output.push byte
+  return output
+
+def exceptForByteArrayOutput : Except UInt64 ByteArray := do
+  let input := ByteArray.mk #[(65 : UInt8), (66 : UInt8), (67 : UInt8)]
+  let mut output := ByteArray.empty
+  for byte in input do
+    output := output.push byte
+  return output
+
+def exceptForByteArrayOutputErrorSkipsRestTrap : Except UInt64 ByteArray := do
+  let input := ByteArray.mk #[(65 : UInt8), (99 : UInt8), (66 : UInt8)]
+  let mut output := ByteArray.empty
+  for byte in input do
+    if byte == (99 : UInt8) then
+      Except.error (output.size.toUInt64 + 20)
+    else if byte == (66 : UInt8) then
+      output := output.push ((Array.replicate 0 (0 : UInt8))[0]!)
+    else
+      output := output.push byte
+  return output
+
+def optionForByteArrayState : Option ByteOutputState := do
+  let input := ByteArray.mk #[(65 : UInt8), (66 : UInt8), (67 : UInt8)]
+  let mut state : ByteOutputState := { count := 0, bytes := ByteArray.empty }
+  for byte in input do
+    state := { count := state.count + 1, bytes := state.bytes.push byte }
+  return state
+
+def optionForByteArrayOutputReleaseStats : UInt64 :=
+  let before := LeanExe.Runtime.freeCount
+  let releasesBefore := LeanExe.Runtime.releaseCount
+  let result : Option ByteArray := do
+    let input := ByteArray.mk #[(65 : UInt8), (66 : UInt8), (67 : UInt8)]
+    let mut output := ByteArray.empty
+    for byte in input do
+      output := output.push byte
+    return output
+  let releasesAfterLoop := LeanExe.Runtime.releaseCount - releasesBefore
+  let freesAfterLoop := LeanExe.Runtime.freeCount - before
+  match result with
+  | some _ => 10000 + releasesAfterLoop * 100 + freesAfterLoop
+  | none => releasesAfterLoop * 100 + freesAfterLoop
+
+def exceptForByteArrayOutputReleaseStats : UInt64 :=
+  let before := LeanExe.Runtime.freeCount
+  let releasesBefore := LeanExe.Runtime.releaseCount
+  let result : Except UInt64 ByteArray := do
+    let input := ByteArray.mk #[(65 : UInt8), (66 : UInt8), (67 : UInt8)]
+    let mut output := ByteArray.empty
+    for byte in input do
+      output := output.push byte
+    return output
+  let releasesAfterLoop := LeanExe.Runtime.releaseCount - releasesBefore
+  let freesAfterLoop := LeanExe.Runtime.freeCount - before
+  match result with
+  | Except.ok _ => 10000 + releasesAfterLoop * 100 + freesAfterLoop
+  | Except.error code => code * 1000000 + releasesAfterLoop * 100 + freesAfterLoop
+
+def optionForByteArrayStateReleaseStats : UInt64 :=
+  let before := LeanExe.Runtime.freeCount
+  let releasesBefore := LeanExe.Runtime.releaseCount
+  let result : Option ByteOutputState := do
+    let input := ByteArray.mk #[(65 : UInt8), (66 : UInt8), (67 : UInt8)]
+    let mut state : ByteOutputState := { count := 0, bytes := ByteArray.empty }
+    for byte in input do
+      state := { count := state.count + 1, bytes := state.bytes.push byte }
+    return state
+  let releasesAfterLoop := LeanExe.Runtime.releaseCount - releasesBefore
+  let freesAfterLoop := LeanExe.Runtime.freeCount - before
+  match result with
+  | some state => state.count * 10000 + releasesAfterLoop * 100 + freesAfterLoop
+  | none => releasesAfterLoop * 100 + freesAfterLoop
+
 def idRunWhileSum : UInt64 := Id.run do
   let mut i := (0 : UInt64)
   let mut sum := (0 : UInt64)

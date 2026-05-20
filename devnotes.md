@@ -3455,6 +3455,20 @@ Checks run:
 - [x] `node tools/compare-standard.js --self-test` returned `checked 89 standard Lean comparison cases`.
 - [x] `node test/run_all.js` returned `checked 94 report classification cases`, `checked 687 accepted, 30 rejected, and 13 trapped cases`, `checked 25 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 35 WASI program cases, 2 traps, and 7 rejections`, `checked 89 standard Lean comparison cases`, and `checked 56 cases`.
 
+## 2026-05-20: Heap-valued monadic loop accumulators
+
+The monadic loop tests now cover `Option` and `Except` loops whose accumulator is a `ByteArray` or a structure containing a `ByteArray`.  These cases exercise the ownership path where each iteration constructs a fresh heap value and replaces the previous accumulator.  The extractor now reduces constant IR conditions through simple local lets, tracks constants through local-let ownership analysis, and recognizes constant-source monadic binds before choosing the generic bind lowering.  Heap-valued bind sources use the materialized path so the continuation receives stable local slots instead of re-demanding separate fields of a heap result.
+
+The release-counter examples show the current state precisely.  `Option ByteArray` reports the intended two loop-replacement releases for a three-byte output.  `Except UInt64 ByteArray` and `Option ByteOutputState` still expose a separate result-demand duplication issue in their stat examples, so those counters currently report four releases.  The ordinary output examples compare against standard Lean and produce the expected bytes; the remaining issue is in how some structured monadic results are demanded by counter-oriented test code.
+
+Checks run:
+
+- [x] `lake build LeanExe.Extract.Core`
+- [x] `lake build lean-wasm LeanExe.Examples.Correctness`
+- [x] `node test/core_correctness.js` returned `checked 695 accepted, 30 rejected, and 13 trapped cases`.
+- [x] `node tools/compare-standard.js --self-test` returned `checked 94 standard Lean comparison cases`.
+- [x] `node test/run_all.js` returned `checked 94 report classification cases`, `checked 695 accepted, 30 rejected, and 13 trapped cases`, `checked 25 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 35 WASI program cases, 2 traps, and 7 rejections`, `checked 94 standard Lean comparison cases`, and `checked 56 cases`.
+
 ## 2026-05-18: Captured structural recursion
 
 Expression-position structural recursion now records loose de Bruijn variables in the generated motive, step, and direct-lambda post-arguments.  When those loose variables refer to supported first-order locals, the extractor synthesizes a private helper whose first parameter is the recursive scrutinee and whose later parameters carry the captured values.  The synthetic helper rebases the captured references into that new parameter context, so recursive calls produced from Lean's generated below value reuse the same captured values.

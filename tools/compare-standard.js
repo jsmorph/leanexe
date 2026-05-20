@@ -971,6 +971,49 @@ out ++ __leanexeValue.bytes`,
     {
       mode: "pure-bytes",
       moduleName: correctness,
+      entry: "optionForByteArrayOutput",
+      serializer: `match __leanexeValue with
+| some bytes => bytes
+| none => "none".toUTF8`,
+    },
+    {
+      mode: "pure-bytes",
+      moduleName: correctness,
+      entry: "optionForByteArrayOutputNoneSkipsRestTrap",
+      serializer: `match __leanexeValue with
+| some bytes => bytes
+| none => "none".toUTF8`,
+    },
+    {
+      mode: "pure-bytes",
+      moduleName: correctness,
+      entry: "exceptForByteArrayOutput",
+      serializer: `match __leanexeValue with
+| Except.error code => __leanexeAppendUInt64 ByteArray.empty code
+| Except.ok bytes => bytes`,
+    },
+    {
+      mode: "pure-bytes",
+      moduleName: correctness,
+      entry: "exceptForByteArrayOutputErrorSkipsRestTrap",
+      serializer: `match __leanexeValue with
+| Except.error code => __leanexeAppendUInt64 ByteArray.empty code
+| Except.ok bytes => bytes`,
+    },
+    {
+      mode: "pure-bytes",
+      moduleName: correctness,
+      entry: "optionForByteArrayState",
+      serializer: `match __leanexeValue with
+| some state =>
+    let out := __leanexeAppendUInt64 ByteArray.empty state.count
+    let out := __leanexeSep out
+    out ++ state.bytes
+| none => "none".toUTF8`,
+    },
+    {
+      mode: "pure-bytes",
+      moduleName: correctness,
       entry: "arrayAttachFoldMExcept",
       serializer: `match __leanexeValue with
 | Except.error code => __leanexeAppendUInt64 ByteArray.empty code
