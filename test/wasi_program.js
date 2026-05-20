@@ -7,6 +7,7 @@ const { spawnSync } = require("child_process");
 const correctnessModule = "LeanExe.Examples.Correctness";
 const byteArrayModule = "LeanExe.Examples.ByteArrayPrograms";
 const jsonGcdModule = "LeanExe.Examples.JsonGcd";
+const jsonTypedDecodeModule = "LeanExe.Examples.JsonTypedDecode";
 const jsonTreeModule = "LeanExe.Examples.JsonTreeCommand";
 const jsonMergeTreeModule = "LeanExe.Examples.JsonMergeTreeCommand";
 const jsonGcTreeRewriteModule = "LeanExe.Examples.JsonGcTreeRewrite";
@@ -502,6 +503,55 @@ function main() {
   expectStdinExceptError(jsonGcdModule, "transform", 1024, bytes("[]"), bytes('{"error":1}'));
   expectStdinExceptError(jsonGcdModule, "transform", 1024, bytes('[4,"x"]'), bytes('{"error":1}'));
   expectStdinExceptError(jsonGcdModule, "transform", 1024, bytes("[1,]"), bytes('{"error":1}'));
+  expectStdinExceptOk(
+    jsonTypedDecodeModule,
+    "transform",
+    1024,
+    bytes('{"values":[6,10,14],"multiplier":2,"includeCount":true}'),
+    bytes('{"sum":30,"scaled":60,"count":3,"included":true}')
+  );
+  expectStdinExceptOk(
+    jsonTypedDecodeModule,
+    "transform",
+    1024,
+    bytes('{"values":[5,7],"multiplier":3,"includeCount":false}'),
+    bytes('{"sum":12,"scaled":36,"count":0,"included":false}')
+  );
+  expectStdinExceptError(
+    jsonTypedDecodeModule,
+    "transform",
+    1024,
+    bytes('{"values":[1],"multiplier":2}'),
+    bytes('{"error":1}')
+  );
+  expectStdinExceptError(
+    jsonTypedDecodeModule,
+    "transform",
+    1024,
+    bytes('{"values":[1],"multiplier":2,"includeCount":true,"extra":0}'),
+    bytes('{"error":1}')
+  );
+  expectStdinExceptError(
+    jsonTypedDecodeModule,
+    "transform",
+    1024,
+    bytes('{"values":[1],"values":[2],"multiplier":2,"includeCount":true}'),
+    bytes('{"error":1}')
+  );
+  expectStdinExceptError(
+    jsonTypedDecodeModule,
+    "transform",
+    1024,
+    bytes('{"values":[1],"multiplier":"2","includeCount":true}'),
+    bytes('{"error":1}')
+  );
+  expectStdinExceptError(
+    jsonTypedDecodeModule,
+    "transform",
+    1024,
+    bytes('{"values":[18446744073709551615,1],"multiplier":1,"includeCount":true}'),
+    bytes('{"error":1}')
+  );
   expectArgvExceptOk(byteArrayModule, "argvFirstLast", 4, 1024, ["alpha", "omega"], [
     97, 108, 112, 104, 97, 58, 111, 109, 101, 103, 97,
   ]);
@@ -547,7 +597,7 @@ function main() {
     "max argv storage exceeds WASM memory capacity"
   );
 
-  process.stdout.write("checked 22 WASI program cases, 2 traps, and 7 rejections\n");
+  process.stdout.write("checked 29 WASI program cases, 2 traps, and 7 rejections\n");
 }
 
 try {

@@ -1048,6 +1048,12 @@ out ++ __leanexeValue.bytes`,
       input: Buffer.from("[]", "utf8"),
     },
     {
+      mode: "stdin-except",
+      moduleName: "LeanExe.Examples.JsonTypedDecode",
+      entry: "transform",
+      input: Buffer.from("{\"values\":[6,10,14],\"multiplier\":2,\"includeCount\":true}", "utf8"),
+    },
+    {
       mode: "stdin",
       moduleName: "LeanExe.Examples.JsonAdd",
       entry: "transform",
