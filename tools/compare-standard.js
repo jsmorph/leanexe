@@ -590,6 +590,32 @@ function selfTest() {
     {
       mode: "pure",
       moduleName: correctness,
+      entry: "idRunMutNestedIf",
+      resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "idRunMutStructureReturn",
+      resultSlots: "#[__leanexeValue.x, __leanexeValue.y]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "idRunMutOptionReturn",
+      resultSlots:
+        "match __leanexeValue with | none => #[0, 0] | some value => #[1, value]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "idRunMutExceptReturn",
+      resultSlots:
+        "match __leanexeValue with | Except.error code => #[0, code, 0] | Except.ok value => #[1, 0, value]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
       entry: "natDivModNormal",
       programArgs: ["7"],
       resultSlots: "#[UInt64.ofNat __leanexeValue]",
@@ -703,6 +729,12 @@ function selfTest() {
       mode: "pure-bytes",
       moduleName: correctness,
       entry: "idRunWhileByteArrayOutput",
+      serializer: "__leanexeValue",
+    },
+    {
+      mode: "pure-bytes",
+      moduleName: correctness,
+      entry: "idRunMutByteArrayReturn",
       serializer: "__leanexeValue",
     },
     {

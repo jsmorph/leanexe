@@ -237,7 +237,7 @@ Compile a stdin command:
   --out build/bang-or-error.wasm
 ```
 
-## Pure Mutable Loops
+## Pure Mutable Code
 
 Use `Id.run do` when the clearest source shape has local mutable state.  Lean elaborates `let mut`, assignment, `for`, `while`, `break`, and `continue` into pure first-order terms, and LeanExe accepts the checked forms for supported accumulator types.  This is often the most readable way to write scanner and transformer code with counters, cursors, byte output buffers, status values, or small state structures.
 
@@ -247,6 +247,14 @@ namespace LeanExe.Examples.ManualLoops
 structure ScanState where
   count : UInt64
   sum : UInt64
+
+def classify (x : UInt64) : Option UInt64 := Id.run do
+  let mut result : Option UInt64 := none
+  if x > 10 then
+    result := some (x + 1)
+  else if x == 10 then
+    result := some x
+  return result
 
 def scan (values : Array UInt64) : ScanState := Id.run do
   let mut state : ScanState := { count := 0, sum := 0 }
@@ -268,6 +276,8 @@ def boundedSum : UInt64 := Id.run do
 
 end LeanExe.Examples.ManualLoops
 ```
+
+Ordinary pure `Id.run do` blocks may use mutable scalars, structures, byte arrays, arrays, `Option`, `Except`, products, supported tagged values, and internal recursive pointers.  Nested `if` branches are accepted when Lean's generated continuation lambdas stay local and first-order.  If a local function escapes as a runtime value, the compiler rejects it under the normal higher-order-function rule.
 
 Accepted `for` collections are `ByteArray`, fixed-width `Array` values, and ranges such as `[start:stop]` or `[start:stop:step]`.  Source `while` loops compile through Lean's `Lean.Loop` iterator and repeat until the checked loop step returns `ForInStep.done`.  Loop accumulators may be scalars, byte arrays, internal arrays, products, structures, nonrecursive tagged values, or recursive-inductive pointers, with the same field-type limits used elsewhere in the language.
 

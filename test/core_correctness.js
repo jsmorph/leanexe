@@ -345,6 +345,16 @@ const accepted = [
   { name: "idRunBindOption", args: [], expected: 5n },
   { name: "idRunBindExcept", args: [], expected: 6n },
   { name: "idRunMut", args: [], expected: 2n },
+  { name: "idRunMutNestedIf", args: [], expected: 34n },
+  { name: "idRunMutStructureReturn", args: [], expected: [5n, 2n] },
+  {
+    name: "idRunMutByteArrayReturn",
+    args: [],
+    expected: [null, 2n],
+    memoryBytes: [{ resultIndex: 0, lengthIndex: 1, values: [65, 66] }],
+  },
+  { name: "idRunMutOptionReturn", args: [], expected: [1n, 9n] },
+  { name: "idRunMutExceptReturn", args: [], expected: [1n, 0n, 7n] },
   { name: "idRunByteArrayForSum", args: [], expected: 6n },
   { name: "idRunArrayForSum", args: [], expected: 6n },
   { name: "idRunArrayForTwoCounters", args: [], expected: 63n },
@@ -902,6 +912,10 @@ const rejected = [
   {
     name: "rejectHigherOrder",
     message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectHigherOrder",
+  },
+  {
+    name: "rejectIdRunFunctionValue",
+    message: "unsupported let-bound type",
   },
   {
     name: "rejectIO",
