@@ -42,7 +42,7 @@ Use these rules before reaching for more specific templates:
 - Use `UInt64` for most arithmetic at public boundaries.  Use `Nat` for fuel and indexes when the value stays within the bounded runtime representation.
 - Use `ByteArray` at command boundaries.  Validate text with `AsciiString.ofByteArray?` inside the program when the input must be ASCII.
 - Use `Except ByteArray ByteArray` for command-style programs that need explicit user-visible errors.
-- Use explicit constructor arms for user-defined inductives and recursive ASTs when a concise match causes generated sparse matcher dependencies.
+- Use explicit constructor arms for recursive ASTs.  Sparse `if let` and catch-all matches are accepted for `Option` and nonrecursive user inductives.
 - Use `report` after changing source shape.  Do not assume that a Lean library function compiles because Lean can evaluate it.
 
 Avoid these forms in source intended for LeanExe:
@@ -52,7 +52,7 @@ Avoid these forms in source intended for LeanExe:
 - Escaping lambdas, function-valued fields, closure-valued helpers, and higher-order values that survive as runtime data.
 - Runtime-polymorphic public entries and shared generic runtime helper bodies.
 - Public recursive data structures, public `List`, public nested arrays, public arrays of `ByteArray`, and public arrays of recursive values.
-- Wildcard-heavy matches over large inductives when the report shows a `_sparseCasesOn` dependency.
+- Wildcard-heavy matches over recursive or large inductives when explicit arms make the accepted shape clearer.
 - Generic recursive JSON object decoders that hide the child-size proof from LeanExe's accepted well-founded-recursion shape.
 
 ## Entry Shapes
@@ -253,6 +253,10 @@ structure BufferState where
   out : ByteArray
   ok : Bool
 
+inductive StepStatus where
+  | ok : UInt64 -> StepStatus
+  | skip : UInt64 -> StepStatus
+
 def classify (x : UInt64) : Option UInt64 := Id.run do
   let mut result : Option UInt64 := none
   if x > 10 then
@@ -264,6 +268,14 @@ def classify (x : UInt64) : Option UInt64 := Id.run do
 def classifyOption (input : Option UInt64) : UInt64 := Id.run do
   let mut result := (0 : UInt64)
   if let some value := input then
+    result := value + 1
+  else
+    result := 100
+  return result
+
+def classifyStatus (status : StepStatus) : UInt64 := Id.run do
+  let mut result := (0 : UInt64)
+  if let StepStatus.ok value := status then
     result := value + 1
   else
     result := 100
@@ -316,7 +328,7 @@ def collectDigits (input : ByteArray) : BufferState := Id.run do
 end LeanExe.Examples.ManualLoops
 ```
 
-Ordinary pure `Id.run do` blocks may use mutable scalars, structures, byte arrays, arrays, `Option`, `Except`, products, supported tagged values, and internal recursive pointers.  State records may contain heap fields such as `ByteArray` and internal `Array` values.  Nested `if`, `match`, and `if let` branches are accepted when Lean's generated continuation lambdas stay local and first-order.  Parser-style loops may combine mutable cursors, `ByteArray` indexing, mutable output buffers, mutable arrays, and explicit `Except` status values.  If a local function escapes as a runtime value, the compiler rejects it under the normal higher-order-function rule.
+Ordinary pure `Id.run do` blocks may use mutable scalars, structures, byte arrays, arrays, `Option`, `Except`, products, supported tagged values, and internal recursive pointers.  State records may contain heap fields such as `ByteArray` and internal `Array` values.  Nested `if`, `match`, and `if let` branches are accepted when Lean's generated continuation lambdas stay local and first-order.  `if let` and catch-all matches over `Option` and nonrecursive user inductives are accepted when Lean elaborates them to sparse generated match helpers.  Parser-style loops may combine mutable cursors, `ByteArray` indexing, mutable output buffers, mutable arrays, and explicit `Except` status values.  If a local function escapes as a runtime value, the compiler rejects it under the normal higher-order-function rule.
 
 Accepted `for` collections are `ByteArray`, fixed-width `Array` values, and ranges such as `[start:stop]` or `[start:stop:step]`.  Source `while` loops compile through Lean's `Lean.Loop` iterator and repeat until the checked loop step returns `ForInStep.done`.  Loop accumulators may be scalars, byte arrays, internal arrays, products, structures, nonrecursive tagged values, or recursive-inductive pointers, with the same field-type limits used elsewhere in the language.
 
@@ -523,7 +535,7 @@ def optionToU64 : Option UInt64 -> UInt64
   | none => 0
 ```
 
-For user inductives, write every constructor arm when the type has several constructors.  If `report` shows a generated `_sparseCasesOn` helper, rewrite the match with explicit arms or a supported helper shape.  Concise matches with one interesting constructor and a wildcard default can be valid Lean but can generate sparse matchers outside the current compiler.
+For nonrecursive user inductives, sparse `if let` and catch-all matches are accepted when every arm stays first-order.  The fallback arm receives the source tagged value for each unmatched constructor path, so a fallback branch may rematch the value.  Recursive inductives still need explicit constructor arms in the accepted structural-recursion shapes.
 
 Use `_` for unused payload fields, but avoid relying on wildcard catch-all arms over large inductives.  In source templates intended for LLM generation, spelling every constructor is more predictable than clever pattern compression.  This rule matters most for recursive ASTs such as JSON values.
 
@@ -555,7 +567,7 @@ Common rejections and source fixes:
 
 | Report symptom | Likely cause | Source fix |
 |----------------|--------------|------------|
-| `_sparseCasesOn` | Wildcard-heavy match over an inductive | Write explicit constructor arms. |
+| `_sparseCasesOn` | Sparse match outside the accepted `Option` or nonrecursive-inductive shape | Write explicit constructor arms. |
 | Higher-order argument or closure | Callback escaped as runtime value | Use a direct lambda at the call site. |
 | Unsupported function type | Public entry or helper uses unsupported ABI shape | Move recursive data or products to internal helpers; expose scalar, structure, tagged, array, or byte values. |
 | Runtime `String` or `Char` dependency | Text was not consumed at compile time | Use `ByteArray` and `AsciiString`. |
@@ -604,7 +616,7 @@ Use this checklist when asking an LLM to write LeanExe source:
 - Require `UInt64` for external integers unless bounded `Nat` is needed.
 - Require `ByteArray` for text or binary public input.
 - Require `Except ByteArray ByteArray` for command errors.
-- Require explicit constructor arms for user inductives and JSON AST matches.
+- Require explicit constructor arms for recursive inductives and JSON AST matches.
 - Require direct lambdas for array and byte-array folds.
 - Require fuel for parser-like recursion and structural recursion for internal recursive data.
 - Prohibit `IO`, `unsafe`, `partial`, runtime `String`, runtime `Char`, type classes as runtime behavior, closures, and arbitrary Std helpers.

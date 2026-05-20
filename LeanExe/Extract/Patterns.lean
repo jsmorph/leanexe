@@ -687,6 +687,7 @@ structure VariantMatch where
   layout : VariantLayout
   scrutinee : Expr
   arms : List Expr
+  fallbackArms : List Bool := []
   prePostArgCount : Nat := 0
 
 def variantMatcherInfo?
@@ -748,9 +749,63 @@ def variantMatcherInfo?
         | _ => none
     | _ => none
   let generatedMatcher? (name : Name) : Option VariantMatch :=
+    let fallbackArm? (layout : VariantLayout) (armType : Expr) : Option Bool :=
+      match armType.consumeMData with
+      | .forallE _ domain _ _ =>
+          match typeAtom? env domain with
+          | some (.variant typeName params _) =>
+              some (typeName == layout.name && params == layout.params)
+          | some (.recVariant typeName params) =>
+              some (typeName == layout.name && params == layout.params)
+          | _ => none
+      | _ => none
+    let orderSparseArms (layout : VariantLayout) (arms armTypes : List Expr) :
+        Option (List Expr × List Bool) :=
+      let entries? :=
+        (armTypes.zip arms).mapM fun item =>
+          match variantArmCtorName? env item.fst with
+          | some ctorName => some (some ctorName, item.snd)
+          | none =>
+              match fallbackArm? layout item.fst with
+              | some true => some (none, item.snd)
+              | _ => none
+      match entries? with
+      | some entries =>
+          let fallbackArms := entries.filterMap fun item =>
+            match item.fst with
+            | none => some item.snd
+            | some _ => none
+          match fallbackArms with
+          | [fallbackArm] =>
+              let ctorArms := entries.filterMap fun item =>
+                match item.fst with
+                | some ctorName => some (ctorName, item.snd)
+                | none => none
+              let ordered :=
+                layout.ctors.map fun ctor =>
+                  match ctorArms.find? (fun item => item.fst == ctor.name) with
+                  | some item => (item.snd, false)
+                  | none => (fallbackArm, true)
+              some (ordered.map Prod.fst, ordered.map Prod.snd)
+          | _ => none
+      | none => none
     let orderArms (info : ConstantInfo) (scrutineeIndex : Nat) (layout : VariantLayout)
         (scrutinee : Expr) (afterScrutinee : List Expr) : Option VariantMatch :=
       let ctorCount := layout.ctors.length
+      let sparseResult? : Option VariantMatch :=
+        if postArgCount?.isSome then
+          none
+        else
+          match orderSparseArms layout afterScrutinee
+              ((peelForall info.type).fst.drop (scrutineeIndex + 1)) with
+          | some (orderedArms, fallbackArms) =>
+              some {
+                layout := layout,
+                scrutinee := scrutinee,
+                arms := orderedArms,
+                fallbackArms := fallbackArms
+              }
+          | none => none
       match takeLast? ctorCount afterScrutinee,
           takeLast? ctorCount ((peelForall info.type).fst.drop (scrutineeIndex + 1)) with
       | some arms, some armTypes =>
@@ -770,15 +825,21 @@ def variantMatcherInfo?
                           layout := layout,
                           scrutinee := scrutinee,
                           arms := orderedArms,
+                          fallbackArms := List.replicate orderedArms.length false,
                           prePostArgCount := postArgCount - postAfterCount
                         }
                       else
                         none
                   | none =>
-                      some { layout := layout, scrutinee := scrutinee, arms := orderedArms }
-              | none => none
-          | none => none
-      | _, _ => none
+                      some {
+                        layout := layout,
+                        scrutinee := scrutinee,
+                        arms := orderedArms,
+                        fallbackArms := List.replicate orderedArms.length false
+                      }
+              | none => sparseResult?
+          | none => sparseResult?
+      | _, _ => sparseResult?
     match generatedMatcherVariantScrutineeArg? env name args targetName?, env.find? name with
     | some (scrutineeIndex, .variant _ _ _), some info =>
         let domains := (peelForall info.type).fst
@@ -804,7 +865,8 @@ def variantMatcherInfo?
   | _ => none
 
 def variantMatcherArgs? (env : Environment) (fn : Expr) (args : List Expr) :
-    Option (VariantLayout × Expr × List Expr) :=
-  variantMatcherInfo? env fn args |>.map fun info => (info.layout, info.scrutinee, info.arms)
+    Option (VariantLayout × Expr × List Expr × List Bool) :=
+  variantMatcherInfo? env fn args |>.map fun info =>
+    (info.layout, info.scrutinee, info.arms, info.fallbackArms)
 
 end LeanExe.Extract.Core

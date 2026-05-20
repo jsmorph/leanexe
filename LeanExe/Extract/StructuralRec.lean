@@ -481,7 +481,9 @@ def structuralRecStepMatcher?
         | some info =>
             let layout := info.layout
             let scrutinee := info.scrutinee
-            if layout.name == typeName then
+            if info.fallbackArms.any id then
+              .error s!"unsupported sparse structural recursion matcher: {typeName}"
+            else if layout.name == typeName then
               if isBVar (postArgCount + 1) scrutinee then
                 .ok {
                   layout := layout,

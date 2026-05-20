@@ -1811,6 +1811,54 @@ def idRunMutStatusMatchReturn : Status := Id.run do
       status := Status.error (code + 1)
   return status
 
+def idRunMutStatusIfLet : UInt64 := Id.run do
+  let mut total := (1 : UInt64)
+  let status : Status := Status.ok 6
+  if let Status.ok value := status then
+    total := total + value
+  else
+    total := total + 100
+  return total
+
+def idRunMutStatusCatchAllMatch : UInt64 := Id.run do
+  let mut total := (0 : UInt64)
+  let status : Status := Status.error 9
+  match status with
+  | .ok value =>
+      total := value
+  | other =>
+      match other with
+      | .error code =>
+          total := code + 20
+      | .ok value =>
+          total := value + 100
+  return total
+
+def idRunMutModeIfLet : UInt64 := Id.run do
+  let mut total := (0 : UInt64)
+  let mode : Mode := Mode.done
+  if let Mode.done := mode then
+    total := 7
+  else
+    total := 3
+  return total
+
+def idRunWhileStatusIfLetSum : UInt64 := Id.run do
+  let statuses : Array Status := #[Status.ok 2, Status.error 7, Status.ok 3]
+  let mut i : Nat := 0
+  let mut total := (0 : UInt64)
+  while i < statuses.size do
+    match statuses[i]? with
+    | some status =>
+        if let Status.ok value := status then
+          total := total + value
+        else
+          total := total + 10
+    | none =>
+        total := total + 100
+    i := i + 1
+  return total
+
 def idRunMutMatchStateRecord : DigitState := Id.run do
   let mut state : DigitState := { pos := 1, sum := 5 }
   let found : Option UInt64 := some 4
