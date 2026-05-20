@@ -1,5 +1,13 @@
 # Development Journal
 
+## 2026-05-20: Parked Ownership Diagnostics
+
+The next ownership follow-up should be diagnostic.  A proposed `lean-wasm ownership-report --module M --entry E` command should print, per extracted function, the result type, result owner slots, helper-result fresh-owner offsets, compiler-inserted releases, returned owner slots kept live, fold accumulator release offsets, and explicit `LeanExe.Runtime.release` sites.  Snapshot cases should include `byteArrayResultDropsOwnedTempStats`, `u64ListTailValue`, `JsonTreeCommand.makeTree`, and a fold-accumulator release case.
+
+Broader recursive heap-result cleanup should wait for explicit provenance.  The compiler needs enough data to prove whether returned recursive roots own their children or borrow from a temporary, including arrays and byte-array owners inside the graph.  The current conservative recursive boundary is deliberate: nonrecursive result cleanup, accumulator releases, helper-result summaries, and source-level release boundaries cover the cases the compiler can justify today.
+
+This note parks the memory-management topic so the next work can return to language expressiveness.  The most useful next target is broader Lean source support for local mutable-state style through checked `Id.run` and `do` forms.  That target would make parser, scanner, and command-transform examples shorter without adding runtime services.
+
 ## 2026-05-20: Nonrecursive Heap-Result Temporary Release
 
 Heap-returning functions now have a limited compiler-emitted release path for dead nonrecursive heap temporaries.  During result materialization, the extractor protects owner slots that appear in the returned heap value, owner slots reached through borrowed root expressions, and heap arguments to returned helper-call results that may borrow from those arguments.  It may release a fresh nonrecursive owner slot, currently an internal `ByteArray` or `Array` owner, when that owner is absent from the protected set and the body has not already released it.
