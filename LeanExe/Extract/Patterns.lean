@@ -123,6 +123,7 @@ def monadMapResultType? (env : Environment) (args : List Expr) : Option Ty :=
   | _ => none
 
 structure ForInArgs where
+  monad : SupportedMonad
   collectionTy : Ty
   itemTy : Ty
   resultTy : Ty
@@ -229,20 +230,24 @@ def idPureArg? (fn : Expr) (args : List Expr) : Option Expr :=
         none
   | _ => none
 
-def idForInArgs? (env : Environment) (fn : Expr) (args : List Expr) : Option ForInArgs :=
+def forInArgs? (env : Environment) (fn : Expr) (args : List Expr) : Option ForInArgs :=
   match fn.consumeMData, args with
   | .const name _, [monadTy, collectionTyExpr, itemTyExpr, _inst, resultTyExpr, collection, init, body] =>
-      if name == ``ForIn.forIn && isIdType monadTy then
+      if name == ``ForIn.forIn then
         match typeAtom? env collectionTyExpr, typeAtom? env itemTyExpr, typeAtom? env resultTyExpr with
         | some collectionTy, some itemTy, some resultTy =>
-            some {
-              collectionTy := collectionTy,
-              itemTy := itemTy,
-              resultTy := resultTy,
-              collection := collection,
-              init := init,
-              body := body
-            }
+            match supportedMonadType? env monadTy with
+            | some monad =>
+                some {
+                  monad := monad,
+                  collectionTy := collectionTy,
+                  itemTy := itemTy,
+                  resultTy := resultTy,
+                  collection := collection,
+                  init := init,
+                  body := body
+                }
+            | none => none
         | _, _, _ => none
       else
         none

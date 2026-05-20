@@ -201,8 +201,9 @@ def knownExternal? (name : Name) : Option Classification :=
   else if [``UInt64.decLt].contains name then
     some { status := "implemented", reason := "decidable comparison instance used by supported UInt64 comparisons" }
   else if [``Id.run, ``Pure.pure, ``Bind.bind, ``Functor.map, ``Applicative.toPure,
-      ``Monad.toApplicative, ``Monad.toBind, ``Alternative.toApplicative].contains name then
-    some { status := "implemented", reason := "supported first-order do-notation and functor applications" }
+      ``Monad.toApplicative, ``Monad.toBind, ``Alternative.toApplicative,
+      ``ForIn.forIn, ``ForInStep, ``ForInStep.yield, ``ForInStep.done].contains name then
+    some { status := "implemented", reason := "supported first-order do-notation, loop, and functor applications" }
   else if [``Array.mk, ``Array.empty, ``Array.mkEmpty, ``Array.emptyWithCapacity, ``Array.singleton,
       ``Array.replicate, ``Array.size, ``Array.isEmpty, ``Array.push, ``Array.pop,
       ``Array.eraseIdx, ``Array.eraseIdx!, ``Array.eraseIdxIfInBounds,

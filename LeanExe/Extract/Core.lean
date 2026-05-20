@@ -405,6 +405,150 @@ mutual
           wrapValueLets parts.fst parts.snd.snd.snd)
     | .id => .error "Id foldlM is unsupported; use foldl"
 
+  partial def extractMonadicForInStepBody
+      (ctx : Context)
+      (nextLocal : Nat)
+      (monad : SupportedMonad)
+      (payloadTy : Ty)
+      (accStart : Nat)
+      (bodyLocalPrefix : List Binding)
+      (bodyLocalSuffix : List Binding)
+      (bodyExpr : Expr) :
+      Except String ExtractedForInStepBody := do
+    let resultTy ← monadPayloadResultType monad payloadTy
+    let resultWidth := internalSlots resultTy
+    let accValue :=
+      valueFromInternalSlots resultTy (fun offset => .local (accStart + offset))
+    let accParts ← monadFoldAccumulatorParts monad accValue
+    let failed := .eqU64 accParts.fst (.u64 0)
+    let payload := accParts.snd
+    let stepTy : Ty := .variant ``ForInStep [payloadTy] [[payloadTy], [payloadTy]]
+    let bodyResult ←
+      extractValueFrom ctx
+        (bodyLocalPrefix ++ [.value payload] ++ bodyLocalSuffix)
+        nextLocal
+        bodyExpr
+    let stepWidth := internalSlots stepTy
+    let stepTargetStart := bodyResult.snd
+    let stepTargets :=
+      (List.range stepWidth).map fun offset => stepTargetStart + offset
+    let bodyTargetStart := stepTargetStart + stepWidth
+    let bodyTargets :=
+      (List.range resultWidth).map fun offset => bodyTargetStart + offset
+    let doneSlot := bodyTargetStart + resultWidth
+    let pairTy : Ty := .product resultTy .bool
+    let pairTargets := bodyTargets ++ [doneSlot]
+    let priorPair := .product accValue (.scalar (.u64 1))
+    let defaultPayload ← defaultValue payloadTy
+    let computedPair ←
+      match monad with
+      | .option =>
+          let parts ← optionPartsWithLets bodyResult.fst
+          let bodyTag := parts.snd.fst
+          let bodyFailed := .eqU64 bodyTag (.u64 0)
+          let stepLets ←
+            materializeInternalValueLets stepTy parts.snd.snd stepTargets
+              ctx.freshResultOwnerOffsets
+          let stepTag := .local stepTargetStart
+          let donePayloadStart := stepTargetStart + 1
+          let yieldPayloadStart := donePayloadStart + internalSlots payloadTy
+          let doneValue :=
+            valueFromInternalSlots payloadTy
+              (fun offset => .local (donePayloadStart + offset))
+          let yieldValue :=
+            valueFromInternalSlots payloadTy
+              (fun offset => .local (yieldPayloadStart + offset))
+          let stepDone := .eqU64 stepTag (.u64 0)
+          let selectedPayload ← valueIte stepDone doneValue yieldValue
+          let failedResult := mkOptionValue (.u64 0) defaultPayload
+          let okResult := mkOptionValue (.u64 1) selectedPayload
+          let nextValue ← valueIte bodyFailed failedResult okResult
+          let doneValue := boolExpr (.or bodyFailed stepDone)
+          .ok
+            (wrapValueLets parts.fst
+              (wrapValueLocalLets stepLets
+                (.product nextValue (.scalar doneValue))))
+      | .except errorTy =>
+          let parts ← exceptPartsWithLets bodyResult.fst
+          let bodyTag := parts.snd.fst
+          let bodyFailed := .eqU64 bodyTag (.u64 0)
+          let errorPayload := parts.snd.snd.fst
+          let stepPayload := parts.snd.snd.snd
+          let stepLets ←
+            materializeInternalValueLets stepTy stepPayload stepTargets
+              ctx.freshResultOwnerOffsets
+          let stepTag := .local stepTargetStart
+          let donePayloadStart := stepTargetStart + 1
+          let yieldPayloadStart := donePayloadStart + internalSlots payloadTy
+          let doneValue :=
+            valueFromInternalSlots payloadTy
+              (fun offset => .local (donePayloadStart + offset))
+          let yieldValue :=
+            valueFromInternalSlots payloadTy
+              (fun offset => .local (yieldPayloadStart + offset))
+          let stepDone := .eqU64 stepTag (.u64 0)
+          let selectedPayload ← valueIte stepDone doneValue yieldValue
+          let failedResult := mkExceptValue (.u64 0) errorPayload defaultPayload
+          let okResult :=
+            mkExceptValue (.u64 1) (← defaultValue errorTy) selectedPayload
+          let nextValue ← valueIte bodyFailed failedResult okResult
+          let doneValue := boolExpr (.or bodyFailed stepDone)
+          .ok
+            (wrapValueLets parts.fst
+              (wrapValueLocalLets stepLets
+                (.product nextValue (.scalar doneValue))))
+      | .id => .error "Id for-in is handled by extractForInStepBody"
+    let pairValue ← valueIte failed priorPair computedPair
+    let bodyLets ←
+      materializeInternalValueLets pairTy pairValue pairTargets
+        ctx.freshResultOwnerOffsets
+    .ok {
+      bodyTargets := bodyTargets,
+      bodyValues := bodyTargets.map fun slot => (.local slot : IRExpr),
+      bodyLets := bodyLets,
+      bodyDone := .local doneSlot,
+      nextLocal := doneSlot + 1
+    }
+
+  partial def forInAccumulatorType
+      (monad : SupportedMonad)
+      (payloadTy : Ty) :
+      Except String Ty :=
+    match monad with
+    | .id => .ok payloadTy
+    | .option => monadPayloadResultType monad payloadTy
+    | .except _ => monadPayloadResultType monad payloadTy
+
+  partial def mkForInInitialAccumulatorValue
+      (monad : SupportedMonad)
+      (payload : ExtractedValue) :
+      Except String ExtractedValue :=
+    match monad with
+    | .id => .ok payload
+    | .option => mkMonadPureValue monad payload
+    | .except _ => mkMonadPureValue monad payload
+
+  partial def extractForInStepForMonad
+      (ctx : Context)
+      (nextLocal : Nat)
+      (monad : SupportedMonad)
+      (payloadTy : Ty)
+      (accStart : Nat)
+      (itemLocals : List Binding)
+      (bodyExpr : Expr) :
+      Except String ExtractedForInStepBody := do
+    match monad with
+    | .id =>
+        let accValue :=
+          valueFromInternalSlots payloadTy (fun offset => .local (accStart + offset))
+        extractForInStepBody ctx (.value accValue :: itemLocals) nextLocal payloadTy bodyExpr
+    | .option =>
+        extractMonadicForInStepBody ctx nextLocal monad payloadTy accStart []
+          itemLocals bodyExpr
+    | .except _ =>
+        extractMonadicForInStepBody ctx nextLocal monad payloadTy accStart []
+          itemLocals bodyExpr
+
   partial def extractMonadicFoldStep
       (ctx : Context)
       (nextLocal : Nat)
@@ -1070,16 +1214,17 @@ mutual
             | value :: _ => extractValueFrom ctx locals nextLocal value
             | _ => .error "unsupported id application"
         | (.const ``ForIn.forIn _, args) =>
-            match idForInArgs? ctx.env (.const ``ForIn.forIn []) args with
+            match forInArgs? ctx.env (.const ``ForIn.forIn []) args with
             | some forIn =>
-                if !supportedLoopAccumulatorType forIn.resultTy then
-                  .error s!"unsupported for-in accumulator type: {reprStr forIn.resultTy}"
+                let accumulatorTy ← forInAccumulatorType forIn.monad forIn.resultTy
+                if !supportedLoopAccumulatorType accumulatorTy then
+                  .error s!"unsupported for-in accumulator type: {reprStr accumulatorTy}"
                 else
                   let stepBody ←
                     match collectLambdas forIn.body 2 with
                     | some body => .ok body
                     | none => .error "unsupported for-in body"
-                  let resultWidth := internalSlots forIn.resultTy
+                  let resultWidth := internalSlots accumulatorTy
                   match forIn.collectionTy with
                   | .byteArray =>
                       if forIn.itemTy == .u8 then
@@ -1088,27 +1233,27 @@ mutual
                         let ptr := wrapExprLets parts.fst parts.snd.fst
                         let len := wrapExprLets parts.fst parts.snd.snd
                         let initResult ← extractValueFrom ctx locals collectionResult.snd forIn.init
-                        let initSlots ← flattenInternalValue forIn.resultTy initResult.fst ctx.freshResultOwnerOffsets
+                        let initValue ←
+                          mkForInInitialAccumulatorValue forIn.monad initResult.fst
+                        let initSlots ←
+                          flattenInternalValue accumulatorTy initValue
+                            ctx.freshResultOwnerOffsets
                         if initSlots.length != resultWidth then
                           .error "for-in accumulator initial value shape mismatch"
                         else
                         let accStart := initResult.snd
                         let byteSlot := accStart + resultWidth
-                        let accValue :=
-                          valueFromInternalSlots forIn.resultTy
-                            (fun offset => .local (accStart + offset))
                         let step ←
-                          extractForInStepBody ctx
-                            (.value accValue ::
-                              .value (.scalar (.local byteSlot)) :: locals)
-                            (byteSlot + 1)
-                            forIn.resultTy
+                          extractForInStepForMonad ctx (byteSlot + 1) forIn.monad
+                            forIn.resultTy accStart
+                            (.value (.scalar (.local byteSlot)) :: locals)
                             stepBody
                         let releaseOffsets :=
-                          foldAccumulatorReleaseOffsets ctx.freshResultOwnerOffsets forIn.resultTy
-                            accStart step.bodyLets step.bodyDone step.bodyTargets
+                          foldAccumulatorReleaseOffsets ctx.freshResultOwnerOffsets
+                            accumulatorTy accStart step.bodyLets step.bodyDone
+                            step.bodyTargets
                         let resultValue :=
-                          valueFromInternalSlots forIn.resultTy
+                          valueFromInternalSlots accumulatorTy
                             (fun offset =>
                               .byteArrayFoldMultiSlot
                                 resultWidth
@@ -1134,28 +1279,28 @@ mutual
                         | some width =>
                             let collectionResult ← extractExprFrom ctx locals nextLocal forIn.collection
                             let initResult ← extractValueFrom ctx locals collectionResult.snd forIn.init
-                            let initSlots ← flattenInternalValue forIn.resultTy initResult.fst ctx.freshResultOwnerOffsets
+                            let initValue ←
+                              mkForInInitialAccumulatorValue forIn.monad initResult.fst
+                            let initSlots ←
+                              flattenInternalValue accumulatorTy initValue
+                                ctx.freshResultOwnerOffsets
                             if initSlots.length != resultWidth then
                               .error "for-in accumulator initial value shape mismatch"
                             else
                             let accStart := initResult.snd
                             let itemStart := accStart + resultWidth
                             let itemValue ← arrayLocalValue itemTy itemStart
-                            let accValue :=
-                              valueFromInternalSlots forIn.resultTy
-                                (fun offset => .local (accStart + offset))
                             let step ←
-                              extractForInStepBody ctx
-                                (.value accValue ::
-                                  .value itemValue :: locals)
-                                (itemStart + width)
-                                forIn.resultTy
+                              extractForInStepForMonad ctx (itemStart + width)
+                                forIn.monad forIn.resultTy accStart
+                                (.value itemValue :: locals)
                                 stepBody
                             let releaseOffsets :=
                               foldAccumulatorReleaseOffsets ctx.freshResultOwnerOffsets
-                                forIn.resultTy accStart step.bodyLets step.bodyDone step.bodyTargets
+                                accumulatorTy accStart step.bodyLets step.bodyDone
+                                step.bodyTargets
                             let resultValue :=
-                              valueFromInternalSlots forIn.resultTy
+                              valueFromInternalSlots accumulatorTy
                                 (fun offset =>
                                   .arrayFoldMultiSlot
                                     width
@@ -1180,24 +1325,26 @@ mutual
                       if isLeanLoopType rangeTy && forIn.itemTy == .unit then
                         let collectionResult ← extractValueFrom ctx locals nextLocal forIn.collection
                         let initResult ← extractValueFrom ctx locals collectionResult.snd forIn.init
-                        let initSlots ← flattenInternalValue forIn.resultTy initResult.fst ctx.freshResultOwnerOffsets
+                        let initValue ←
+                          mkForInInitialAccumulatorValue forIn.monad initResult.fst
+                        let initSlots ←
+                          flattenInternalValue accumulatorTy initValue
+                            ctx.freshResultOwnerOffsets
                         if initSlots.length != resultWidth then
                           .error "for-in accumulator initial value shape mismatch"
                         else
                         let accStart := initResult.snd
-                        let accValue :=
-                          valueFromInternalSlots forIn.resultTy
-                            (fun offset => .local (accStart + offset))
-                        let bodyLocals :=
-                          .value accValue :: .value (.scalar (.u64 0)) :: locals
                         let step ←
-                          extractForInStepBody ctx bodyLocals (accStart + resultWidth)
-                            forIn.resultTy stepBody
+                          extractForInStepForMonad ctx (accStart + resultWidth)
+                            forIn.monad forIn.resultTy accStart
+                            (.value (.scalar (.u64 0)) :: locals)
+                            stepBody
                         let releaseOffsets :=
-                          foldAccumulatorReleaseOffsets ctx.freshResultOwnerOffsets forIn.resultTy
-                            accStart step.bodyLets step.bodyDone step.bodyTargets
+                          foldAccumulatorReleaseOffsets ctx.freshResultOwnerOffsets
+                            accumulatorTy accStart step.bodyLets step.bodyDone
+                            step.bodyTargets
                         let resultValue :=
-                          valueFromInternalSlots forIn.resultTy
+                          valueFromInternalSlots accumulatorTy
                             (fun offset =>
                               .loopFoldMultiSlot
                                 resultWidth
@@ -1213,27 +1360,27 @@ mutual
                         let collectionResult ← extractValueFrom ctx locals nextLocal forIn.collection
                         let rangeParts ← legacyRangeParts collectionResult.fst
                         let initResult ← extractValueFrom ctx locals collectionResult.snd forIn.init
-                        let initSlots ← flattenInternalValue forIn.resultTy initResult.fst ctx.freshResultOwnerOffsets
+                        let initValue ←
+                          mkForInInitialAccumulatorValue forIn.monad initResult.fst
+                        let initSlots ←
+                          flattenInternalValue accumulatorTy initValue
+                            ctx.freshResultOwnerOffsets
                         if initSlots.length != resultWidth then
                           .error "for-in accumulator initial value shape mismatch"
                         else
                         let accStart := initResult.snd
                         let itemSlot := accStart + resultWidth
-                        let accValue :=
-                          valueFromInternalSlots forIn.resultTy
-                            (fun offset => .local (accStart + offset))
                         let step ←
-                          extractForInStepBody ctx
-                            (.value accValue ::
-                              .value (.scalar (.local itemSlot)) :: locals)
-                            (itemSlot + 1)
-                            forIn.resultTy
+                          extractForInStepForMonad ctx (itemSlot + 1)
+                            forIn.monad forIn.resultTy accStart
+                            (.value (.scalar (.local itemSlot)) :: locals)
                             stepBody
                         let releaseOffsets :=
-                          foldAccumulatorReleaseOffsets ctx.freshResultOwnerOffsets forIn.resultTy
-                            accStart step.bodyLets step.bodyDone step.bodyTargets
+                          foldAccumulatorReleaseOffsets ctx.freshResultOwnerOffsets
+                            accumulatorTy accStart step.bodyLets step.bodyDone
+                            step.bodyTargets
                         let resultValue :=
-                          valueFromInternalSlots forIn.resultTy
+                          valueFromInternalSlots accumulatorTy
                             (fun offset =>
                               .rangeFoldMultiSlot
                                 resultWidth

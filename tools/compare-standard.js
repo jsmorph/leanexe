@@ -931,6 +931,46 @@ out ++ __leanexeValue.bytes`,
     {
       mode: "pure-bytes",
       moduleName: correctness,
+      entry: "exceptForArrayErrorSkipsRestTrap",
+      serializer: `match __leanexeValue with
+| Except.error code => __leanexeAppendUInt64 ByteArray.empty code
+| Except.ok value => __leanexeAppendUInt64 "ok".toUTF8 value`,
+    },
+    {
+      mode: "pure-bytes",
+      moduleName: correctness,
+      entry: "optionForByteArrayNoneSkipsRestTrap",
+      serializer: `match __leanexeValue with
+| some value => __leanexeAppendUInt64 ByteArray.empty value
+| none => "none".toUTF8`,
+    },
+    {
+      mode: "pure-bytes",
+      moduleName: correctness,
+      entry: "exceptForRangeBreakSum",
+      serializer: `match __leanexeValue with
+| Except.error code => __leanexeAppendUInt64 ByteArray.empty code
+| Except.ok value => __leanexeAppendUInt64 "ok".toUTF8 value`,
+    },
+    {
+      mode: "pure-bytes",
+      moduleName: correctness,
+      entry: "optionForArrayContinueSum",
+      serializer: `match __leanexeValue with
+| some value => __leanexeAppendUInt64 ByteArray.empty value
+| none => "none".toUTF8`,
+    },
+    {
+      mode: "pure-bytes",
+      moduleName: correctness,
+      entry: "optionWhileSum",
+      serializer: `match __leanexeValue with
+| some value => __leanexeAppendUInt64 ByteArray.empty value
+| none => "none".toUTF8`,
+    },
+    {
+      mode: "pure-bytes",
+      moduleName: correctness,
       entry: "arrayAttachFoldMExcept",
       serializer: `match __leanexeValue with
 | Except.error code => __leanexeAppendUInt64 ByteArray.empty code

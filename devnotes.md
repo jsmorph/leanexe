@@ -3441,6 +3441,20 @@ Checks run:
 - [x] `lake build lean-wasm`
 - [x] `node test/run_all.js` returned `checked 94 report classification cases`, `checked 617 accepted, 29 rejected, and 13 trapped cases`, `checked 14 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 22 WASI program cases, 2 traps, and 7 rejections`, `checked 38 standard Lean comparison cases`, and `checked 56 cases`.
 
+## 2026-05-20: Monadic loops
+
+The extractor now carries the selected `ForIn.forIn` monad through the existing checked-loop lowering.  `Id` loops use the previous `ForInStep` body extraction, while `Option` and `Except ε` loops carry the accumulator as `Option α` or `Except ε α`, unwrap the successful payload for the body, and stop after `none`, `Except.error`, or `ForInStep.done`.  The implementation follows Lean's checked term for `for`, `while`, `break`, and `continue`, so those source forms share one lowering path.
+
+The correctness corpus covers `Except` loops over fixed-width arrays, `Option` loops over `ByteArray`, `Except` range loops with `break`, `Option` array loops with `continue`, and an `Option` source `while` loop through `Lean.Loop`.  The standard comparison harness now checks representative monadic-loop entries against the official Lean toolchain.  `spec.md`, `manual.md`, `README.md`, and `plan.md` describe loops in `Id`, `Option`, and `Except` as the accepted surface when the collection and accumulator layouts are supported.
+
+Checks run:
+
+- [x] `lake build lean-wasm`
+- [x] `lake build LeanExe.Examples.Correctness`
+- [x] `node test/core_correctness.js` returned `checked 687 accepted, 30 rejected, and 13 trapped cases`.
+- [x] `node tools/compare-standard.js --self-test` returned `checked 89 standard Lean comparison cases`.
+- [x] `node test/run_all.js` returned `checked 94 report classification cases`, `checked 687 accepted, 30 rejected, and 13 trapped cases`, `checked 25 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 35 WASI program cases, 2 traps, and 7 rejections`, `checked 89 standard Lean comparison cases`, and `checked 56 cases`.
+
 ## 2026-05-18: Captured structural recursion
 
 Expression-position structural recursion now records loose de Bruijn variables in the generated motive, step, and direct-lambda post-arguments.  When those loose variables refer to supported first-order locals, the extractor synthesizes a private helper whose first parameter is the recursive scrutinee and whose later parameters carry the captured values.  The synthetic helper rebases the captured references into that new parameter context, so recursive calls produced from Lean's generated below value reuse the same captured values.
