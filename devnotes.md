@@ -1,5 +1,18 @@
 # Development Journal
 
+## 2026-05-20: Heap-field Id state records
+
+Pure `Id.run do` examples now cover mutable state records that contain heap fields.  The correctness corpus has one parser-style `while` loop that carries `pos`, `out : ByteArray`, and `ok` in one structure, stops at a nondigit, and returns the byte output accumulated before the stop.  It also has a mutable state record that carries an internal `Array UInt64` and a counter through a `while` loop, updating array elements with the current counter value.
+
+This slice adds coverage rather than a new compiler rule.  The existing internal structure layout, byte-array owner slots, internal array owner slots, generated structure matcher extraction, and pure-loop accumulator path already provide the required behavior.  The new examples make that support observable through Wasmtime and through the standard Lean comparison harness.
+
+Checks run:
+
+- [x] `lake build LeanExe.Examples.Correctness` returned successfully.
+- [x] `node test/core_correctness.js` returned `checked 656 accepted, 30 rejected, and 13 trapped cases`.
+- [x] `node tools/compare-standard.js --self-test` returned `checked 63 standard Lean comparison cases`.
+- [x] `node test/run_all.js` returned `checked 94 report classification cases`, `checked 656 accepted, 30 rejected, and 13 trapped cases`, `checked 25 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 22 WASI program cases, 2 traps, and 7 rejections`, `checked 63 standard Lean comparison cases`, and `checked 56 cases`.
+
 ## 2026-05-20: Parser-Style Id Cursor Loops
 
 Pure `Id.run do` examples now cover parser-style cursor code.  The correctness corpus has a byte scanner that reads `input[pos]!`, stops on the first non-digit, and returns a structure; a byte-output loop that writes parsed digit values; an `Except UInt64 DigitState` parser status; and a mutable `Array UInt64` updated in a `while` loop before a `for` fold.  These examples exercise indexed reads, mutable cursors, mutable heap values, mutable arrays, explicit status, and loop-exit control in one source style.

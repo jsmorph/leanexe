@@ -765,6 +765,27 @@ function selfTest() {
     {
       mode: "pure-bytes",
       moduleName: correctness,
+      entry: "idRunWhileParserBufferState",
+      serializer: `let out := __leanexeAppendNat ByteArray.empty __leanexeValue.pos
+let out := __leanexeSep out
+let out := out ++ __leanexeValue.out
+let out := __leanexeSep out
+__leanexeAppendUInt64 out (if __leanexeValue.ok then 1 else 0)`,
+    },
+    {
+      mode: "pure-bytes",
+      moduleName: correctness,
+      entry: "idRunWhileArrayBuilderState",
+      serializer: `let out := __leanexeAppendNat ByteArray.empty __leanexeValue.values.size
+let out := __leanexeValue.values.foldl (fun out value =>
+  let out := __leanexeSep out
+  __leanexeAppendUInt64 out value) out
+let out := __leanexeSep out
+__leanexeAppendUInt64 out __leanexeValue.count`,
+    },
+    {
+      mode: "pure-bytes",
+      moduleName: correctness,
       entry: "structureArrayReturn",
       serializer: `let out := __leanexeAppendNat ByteArray.empty __leanexeValue.values.size
 let out := __leanexeValue.values.foldl (fun out value =>

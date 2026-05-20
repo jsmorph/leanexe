@@ -476,6 +476,15 @@ structure ByteOutputState where
   count : UInt64
   bytes : ByteArray
 
+structure ParserBufferState where
+  pos : Nat
+  out : ByteArray
+  ok : Bool
+
+structure ArrayBuilderState where
+  values : Array UInt64
+  count : UInt64
+
 structure OwnedCallBox where
   values : Array UInt64
   bytes : ByteArray
@@ -2079,6 +2088,27 @@ def idRunWhileArrayUpdateSum : UInt64 := Id.run do
   for value in values do
     sum := sum + value
   return sum
+
+def idRunWhileParserBufferState : ParserBufferState := Id.run do
+  let input := ByteArray.mk #[(49 : UInt8), (50 : UInt8), (65 : UInt8), (51 : UInt8)]
+  let mut state : ParserBufferState := { pos := 0, out := ByteArray.empty, ok := true }
+  while state.pos < input.size do
+    let byte := input[state.pos]!
+    if isAsciiDigitByte byte then
+      state := { pos := state.pos + 1, out := state.out.push (byte - 48), ok := state.ok }
+    else
+      state := { state with ok := false }
+      break
+  return state
+
+def idRunWhileArrayBuilderState : ArrayBuilderState := Id.run do
+  let mut state : ArrayBuilderState := { values := #[1, 2, 3], count := 0 }
+  let mut i : Nat := 0
+  while i < state.values.size do
+    let value := state.values[i]!
+    state := { values := state.values.set! i (value + state.count), count := state.count + 1 }
+    i := i + 1
+  return state
 
 def idFunctionUInt64 (x : UInt64) : UInt64 :=
   id (x + 1)
