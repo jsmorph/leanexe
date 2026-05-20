@@ -8,6 +8,7 @@ const correctnessModule = "LeanExe.Examples.Correctness";
 const byteArrayModule = "LeanExe.Examples.ByteArrayPrograms";
 const jsonGcdModule = "LeanExe.Examples.JsonGcd";
 const jsonTypedDecodeModule = "LeanExe.Examples.JsonTypedDecode";
+const jsonObjectArrayDecodeModule = "LeanExe.Examples.JsonObjectArrayDecode";
 const jsonTreeModule = "LeanExe.Examples.JsonTreeCommand";
 const jsonMergeTreeModule = "LeanExe.Examples.JsonMergeTreeCommand";
 const jsonGcTreeRewriteModule = "LeanExe.Examples.JsonGcTreeRewrite";
@@ -552,6 +553,48 @@ function main() {
     bytes('{"values":[18446744073709551615,1],"multiplier":1,"includeCount":true}'),
     bytes('{"error":1}')
   );
+  expectStdinExceptOk(
+    jsonObjectArrayDecodeModule,
+    "transform",
+    1024,
+    bytes('{"items":[{"id":1,"weight":4},{"id":2,"weight":7}],"scale":3}'),
+    bytes('{"weighted":54,"count":2}')
+  );
+  expectStdinExceptOk(
+    jsonObjectArrayDecodeModule,
+    "transform",
+    1024,
+    bytes('{"items":[],"scale":9}'),
+    bytes('{"weighted":0,"count":0}')
+  );
+  expectStdinExceptError(
+    jsonObjectArrayDecodeModule,
+    "transform",
+    1024,
+    bytes('{"items":[{"id":1}],"scale":3}'),
+    bytes('{"error":1}')
+  );
+  expectStdinExceptError(
+    jsonObjectArrayDecodeModule,
+    "transform",
+    1024,
+    bytes('{"items":[{"id":1,"weight":4,"extra":0}],"scale":3}'),
+    bytes('{"error":1}')
+  );
+  expectStdinExceptError(
+    jsonObjectArrayDecodeModule,
+    "transform",
+    1024,
+    bytes('{"items":[{"id":1,"weight":"4"}],"scale":3}'),
+    bytes('{"error":1}')
+  );
+  expectStdinExceptError(
+    jsonObjectArrayDecodeModule,
+    "transform",
+    1024,
+    bytes('{"items":[{"id":18446744073709551615,"weight":2}],"scale":1}'),
+    bytes('{"error":1}')
+  );
   expectArgvExceptOk(byteArrayModule, "argvFirstLast", 4, 1024, ["alpha", "omega"], [
     97, 108, 112, 104, 97, 58, 111, 109, 101, 103, 97,
   ]);
@@ -597,7 +640,7 @@ function main() {
     "max argv storage exceeds WASM memory capacity"
   );
 
-  process.stdout.write("checked 29 WASI program cases, 2 traps, and 7 rejections\n");
+  process.stdout.write("checked 35 WASI program cases, 2 traps, and 7 rejections\n");
 }
 
 try {

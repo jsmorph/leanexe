@@ -219,6 +219,8 @@ wasmtime run build/argv-except.wasm alpha omega
 
 `LeanExe.Examples.JsonTypedDecode` demonstrates typed JSON decoding over the AST.  It decodes a JSON object into a source-defined `Request` structure, rejects missing, duplicate, unknown, and mistyped fields, computes checked aggregate values, and returns JSON through the WASI `Except` adapter.
 
+`LeanExe.Examples.JsonObjectArrayDecode` extends the typed decoder style to arrays of source-defined structures.  It decodes a request whose `items` field contains objects with `id` and `weight` fields, computes a scaled weighted sum, rejects malformed nested values, and returns compact JSON through the WASI `Except` adapter.
+
 `LeanExe.Examples.JsonMergeTreeCommand` extends that pipeline with explicit RC observation.  `makeMergedTree` reads two JSON arrays, builds one tree for each, copies both into a third merged tree, releases replaced accumulator roots during immutable insertion, releases the first two final source roots, and writes the merged tree plus GC counters and source node counts.  `searchMergedTree` reads that intermediate object and searches the final tree.
 
 `LeanExe.Examples.JsonGcTreeRewrite` is a single-command GC exercise.  It reads a JSON object with `depth`, `rounds`, `salt`, and `search`, builds a balanced tree, rewrites whole tree generations, releases each old root after the next generation exists, releases the final root after computing metrics, and writes a JSON result with allocation, release, and free counters.
@@ -340,6 +342,7 @@ The examples directory contains small programs that exercise the user-facing sub
 | `LeanExe.Examples.JsonCollatzLength` | `transform` | Parses a decimal Collatz request and returns the sequence length. |
 | `LeanExe.Examples.JsonGcd` | `transform` | Reads a JSON array from stdin and writes a JSON GCD result through WASI. |
 | `LeanExe.Examples.JsonTypedDecode` | `transform` | Decodes a JSON object into a source-defined request structure and writes checked aggregate results through WASI. |
+| `LeanExe.Examples.JsonObjectArrayDecode` | `transform` | Decodes a JSON object containing an array of source-defined item structures through WASI. |
 | `LeanExe.Examples.JsonTreeCommand` | `makeTree`, `searchTree` | Builds a simple JSON binary-search tree and searches it through a WASI pipeline. |
 | `LeanExe.Examples.JsonMergeTreeCommand` | `makeMergedTree`, `searchMergedTree` | Merges two JSON integer-array trees, releases the source trees, and reports runtime GC counters. |
 | `LeanExe.Examples.JsonGcTreeRewrite` | `transform` | Rewrites balanced tree generations, releases old roots, and reports runtime GC counters. |

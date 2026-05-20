@@ -1053,6 +1053,19 @@ def staticInlineDomain (env : Environment) (domain : Expr) : Bool :=
   | .sort _ => true
   | _ => isProofType? env domain
 
+def isDirectLambda (expr : Expr) : Bool :=
+  match expr.consumeMData with
+  | .lam _ _ _ _ => true
+  | _ => false
+
+def isFunctionDomain (expr : Expr) : Bool :=
+  match expr.consumeMData with
+  | .forallE _ _ _ _ => true
+  | _ => false
+
+def staticInlineArg (env : Environment) (domain arg : Expr) : Bool :=
+  staticInlineDomain env domain || (isFunctionDomain domain && isDirectLambda arg)
+
 def specializedInlineCall?
     (env : Environment)
     (info : ConstantInfo)
@@ -1084,7 +1097,7 @@ def specializedInlineCall?
             | none =>
                 if seenRuntime then
                   none
-                else if staticInlineDomain env instantiatedDomain then
+                else if staticInlineArg env instantiatedDomain arg then
                   loop (previous ++ [arg]) (staticArgs ++ [arg]) runtimeArgs runtimeTys false
                     restDomains restArgs
                 else
@@ -1123,11 +1136,6 @@ def usedConstantsOf (info : ConstantInfo) : Array Name :=
 
 def containsConstant (name : Name) (info : ConstantInfo) : Bool :=
   info.value? |>.any (fun value => value.getUsedConstants.contains name)
-
-def isDirectLambda (expr : Expr) : Bool :=
-  match expr.consumeMData with
-  | .lam _ _ _ _ => true
-  | _ => false
 
 def hasDirectLambdaArg (args : List Expr) : Bool :=
   args.any isDirectLambda

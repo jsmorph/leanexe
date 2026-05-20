@@ -472,16 +472,19 @@ partial def exceptArmTarget? (expr : Expr) : Option Bool :=
 def exceptMatcherArgs? (env : Environment) (fn : Expr) (args : List Expr) :
     Option (Expr × Expr × Expr) :=
   let generatedExceptArgs? (name : Name) : Option (Expr × Expr × Expr) :=
-    match env.find? name, args with
-    | some info, [_motive, scrutinee, firstArm, secondArm] =>
-        match (peelForall info.type).fst with
-        | _motiveTy :: _scrutineeTy :: firstArmTy :: secondArmTy :: _ =>
-            match exceptArmTarget? firstArmTy, exceptArmTarget? secondArmTy with
-            | some false, some true => some (scrutinee, firstArm, secondArm)
-            | some true, some false => some (scrutinee, secondArm, firstArm)
-            | _, _ => none
-        | _ => none
-    | _, _ => none
+    match generatedMatcherVariantScrutineeArg? env name args (some ``Except) with
+    | some (scrutineeIndex, _scrutineeTy) =>
+        match env.find? name, args[scrutineeIndex]?, args.drop (scrutineeIndex + 1) with
+        | some info, some scrutinee, [firstArm, secondArm] =>
+            match (peelForall info.type).fst.drop (scrutineeIndex + 1) with
+            | firstArmTy :: secondArmTy :: _ =>
+                match exceptArmTarget? firstArmTy, exceptArmTarget? secondArmTy with
+                | some false, some true => some (scrutinee, firstArm, secondArm)
+                | some true, some false => some (scrutinee, secondArm, firstArm)
+                | _, _ => none
+            | _ => none
+        | _, _, _ => none
+    | none => none
   match fn.consumeMData with
   | .const name _ =>
       if name == ``Except.casesOn then

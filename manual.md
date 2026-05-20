@@ -520,7 +520,7 @@ def answerJson : ByteArray :=
 end LeanExe.Examples.ManualJsonAst
 ```
 
-Typed AST decoders should use `LeanExe.Ascii.Json.Decode` when failures should flow through `Except ByteArray`.  The helper layer provides required-field lookup, duplicate rejection through `getUniqueField?`, object field whitelisting through `requireOnlyFields`, typed scalar assertions, `decodeUInt64Array`, and `renderExcept`.  This style works well for small request structures whose schema is explicit in Lean source.
+Typed AST decoders should use `LeanExe.Ascii.Json.Decode` when failures should flow through `Except ByteArray`.  The helper layer provides required-field lookup, duplicate rejection through `getUniqueField?`, object field whitelisting through `requireOnlyFields`, typed scalar assertions, `decodeUInt64Array`, generic `decodeArray` with a direct decoder lambda, and `renderExcept`.  This style works well for small request structures whose schema is explicit in Lean source.
 
 ```lean
 import LeanExe.Ascii.Json.Decode
@@ -546,6 +546,28 @@ def decodeRequest (value : Value) : Except ByteArray Request := do
   pure { values := numbers, multiplier := multiplier }
 
 end LeanExe.Examples.ManualJsonDecode
+```
+
+Use `decodeArray` when a JSON array should become an array of source-defined structures.  The decoder argument should be a direct lambda at the call site, because LeanExe specializes that lambda into the helper body rather than compiling a runtime function value.
+
+```lean
+structure Item where
+  id : UInt64
+  weight : UInt64
+
+def idName : AsciiString :=
+  AsciiString.ofTrustedByteArray "id".toUTF8
+
+def weightName : AsciiString :=
+  AsciiString.ofTrustedByteArray "weight".toUTF8
+
+def decodeItem (value : Value) : Except ByteArray Item := do
+  let id <- requireUInt64Field value idName
+  let weight <- requireUInt64Field value weightName
+  pure { id := id, weight := weight }
+
+def decodeItems (value : Value) : Except ByteArray (Array Item) :=
+  decodeArray (fun item => decodeItem item) value
 ```
 
 For recursive JSON decoders, prefer the pattern used by [JSON Tree WASI Demo](demo.md).  The important source shape is `fields.attach.foldl` with an immediate match on `⟨field, _hmem⟩`, because Lean's termination proof can use field membership to show recursive calls descend into smaller JSON values.  A generic object getter may be valid Lean but still lower to a well-founded-recursion shape that LeanExe does not yet compile in recursive decoders.
@@ -678,7 +700,7 @@ Use existing examples as templates:
 | ASCII validation and text processing | [ASCII String Programs](LeanExe/Examples/AsciiStringPrograms.lean) |
 | Open-addressed table structure | [Integer Map Example](LeanExe/Examples/IntMap.lean) |
 | Range-based JSON field lookup | [JSON Double Example](LeanExe/Examples/JsonDouble.lean), [JSON Add Example](LeanExe/Examples/JsonAdd.lean) |
-| Typed JSON AST decoding | [JSON Typed Decode Example](LeanExe/Examples/JsonTypedDecode.lean) |
+| Typed JSON AST decoding | [JSON Typed Decode Example](LeanExe/Examples/JsonTypedDecode.lean), [JSON Object Array Decode Example](LeanExe/Examples/JsonObjectArrayDecode.lean) |
 | JSON AST parsing and rendering | [JSON Tree Command](LeanExe/Examples/JsonTreeCommand.lean) |
 | WASI stdin `Except` command | [JSON GCD Example](LeanExe/Examples/JsonGcd.lean) |
 | End-to-end WASI pipeline | [JSON Tree WASI Demo](demo.md), [JSON Merge Tree Command](LeanExe/Examples/JsonMergeTreeCommand.lean) |
