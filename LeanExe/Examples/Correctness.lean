@@ -2622,6 +2622,45 @@ def arrayFoldByteOutputState : ByteOutputState :=
       { count := acc.count + 1, bytes := acc.bytes.push (UInt64.toUInt8 value) })
     ({ count := 0, bytes := ByteArray.empty } : ByteOutputState)
 
+def arrayFoldMExceptSuccess : Except UInt64 UInt64 :=
+  (#[1, 2, 3] : Array UInt64).foldlM (m := Except UInt64)
+    (fun (acc : UInt64) (value : UInt64) => Except.ok (acc + value))
+    0
+
+def arrayFoldMExceptErrorSkipsRestTrap : Except UInt64 UInt64 :=
+  (#[1, 2, 3] : Array UInt64).foldlM (m := Except UInt64)
+    (fun (acc : UInt64) (value : UInt64) =>
+      if value == 2 then
+        Except.error (acc + 20)
+      else if value == 3 then
+        Except.ok ((Array.replicate 0 (0 : UInt64))[0]!)
+      else
+        Except.ok (acc + value))
+    0
+
+def arrayFoldMOptionSuccess : Option UInt64 :=
+  (#[1, 2, 3] : Array UInt64).foldlM (m := Option)
+    (fun (acc : UInt64) (value : UInt64) => some (acc + value))
+    0
+
+def arrayFoldMOptionNoneSkipsRestTrap : Option UInt64 :=
+  (#[1, 2, 3] : Array UInt64).foldlM (m := Option)
+    (fun (acc : UInt64) (value : UInt64) =>
+      if value == 2 then
+        none
+      else if value == 3 then
+        some ((Array.replicate 0 (0 : UInt64))[0]!)
+      else
+        some (acc + value))
+    0
+
+def arrayAttachFoldMExcept : Except UInt64 UInt64 :=
+  (#[1, 2, 3] : Array UInt64).attach.foldlM (m := Except UInt64)
+    (fun (acc : UInt64) item =>
+      match item with
+      | ⟨value, _hmem⟩ => Except.ok (acc + value))
+    0
+
 def arrayFindIdxSome : Option Nat :=
   (#[1, 2, 3] : Array UInt64).findIdx? (fun value => value == 2)
 
@@ -4208,6 +4247,43 @@ def byteArrayFoldByteArrayAccumulatorReleaseStats : UInt64 :=
   let releasesAfterFold := LeanExe.Runtime.releaseCount - releasesBefore
   let freesAfterFold := LeanExe.Runtime.freeCount - before
   output.size.toUInt64 * 10000 + releasesAfterFold * 100 + freesAfterFold
+
+def byteArrayFoldMExceptSuccess : Except UInt64 UInt64 :=
+  (ByteArray.mk #[(1 : UInt8), (2 : UInt8), (3 : UInt8)]).foldlM (m := Except UInt64)
+    (fun (acc : UInt64) byte => Except.ok (acc + byte.toUInt64))
+    0
+
+def byteArrayFoldMExceptErrorSkipsRestTrap : Except UInt64 UInt64 :=
+  (ByteArray.mk #[(1 : UInt8), (2 : UInt8), (3 : UInt8)]).foldlM (m := Except UInt64)
+    (fun (acc : UInt64) byte =>
+      if byte == (2 : UInt8) then
+        Except.error (acc + 20)
+      else if byte == (3 : UInt8) then
+        Except.ok ((Array.replicate 0 (0 : UInt64))[0]!)
+      else
+        Except.ok (acc + byte.toUInt64))
+    0
+
+def byteArrayFoldMOptionSuccess : Option UInt64 :=
+  (ByteArray.mk #[(1 : UInt8), (2 : UInt8), (3 : UInt8)]).foldlM (m := Option)
+    (fun (acc : UInt64) byte => some (acc + byte.toUInt64))
+    0
+
+def byteArrayFoldMOptionNoneSkipsRestTrap : Option UInt64 :=
+  (ByteArray.mk #[(1 : UInt8), (2 : UInt8), (3 : UInt8)]).foldlM (m := Option)
+    (fun (acc : UInt64) byte =>
+      if byte == (2 : UInt8) then
+        none
+      else if byte == (3 : UInt8) then
+        some ((Array.replicate 0 (0 : UInt64))[0]!)
+      else
+        some (acc + byte.toUInt64))
+    0
+
+def byteArrayFoldMOptionByteArray : Option ByteArray :=
+  (ByteArray.mk #[(65 : UInt8), (66 : UInt8)]).foldlM (m := Option)
+    (fun acc byte => some (acc.push byte))
+    ByteArray.empty
 
 def byteArrayFoldInputByteArrayAccumulatorReleaseStats (input : ByteArray) : UInt64 :=
   let before := LeanExe.Runtime.freeCount

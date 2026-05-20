@@ -297,6 +297,16 @@ const accepted = [
     memoryBytes: [{ resultIndex: 0, lengthIndex: 1, values: [1, 2] }],
   },
   { name: "byteArrayFoldByteArrayAccumulatorReleaseStats", args: [], expected: 30202n },
+  { name: "byteArrayFoldMExceptSuccess", args: [], expected: [1n, 0n, 6n] },
+  { name: "byteArrayFoldMExceptErrorSkipsRestTrap", args: [], expected: [0n, 21n, 0n] },
+  { name: "byteArrayFoldMOptionSuccess", args: [], expected: [1n, 6n] },
+  { name: "byteArrayFoldMOptionNoneSkipsRestTrap", args: [], expected: [0n, 0n] },
+  {
+    name: "byteArrayFoldMOptionByteArray",
+    args: [],
+    expected: [1n, null, 2n],
+    memoryBytes: [{ resultIndex: 1, lengthIndex: 2, values: [65, 66] }],
+  },
   { name: "byteArrayArrayReadSize", args: [], expected: 12n },
   { name: "byteArrayArrayFoldSize", args: [], expected: 6n },
   {
@@ -503,6 +513,11 @@ const accepted = [
     memoryBytes: [{ resultIndex: 0, lengthIndex: 1, values: [65, 66] }],
   },
   { name: "arrayFoldByteArrayAccumulatorReleaseStats", args: [], expected: 30202n },
+  { name: "arrayFoldMExceptSuccess", args: [], expected: [1n, 0n, 6n] },
+  { name: "arrayFoldMExceptErrorSkipsRestTrap", args: [], expected: [0n, 21n, 0n] },
+  { name: "arrayFoldMOptionSuccess", args: [], expected: [1n, 6n] },
+  { name: "arrayFoldMOptionNoneSkipsRestTrap", args: [], expected: [0n, 0n] },
+  { name: "arrayAttachFoldMExcept", args: [], expected: [1n, 0n, 6n] },
   {
     name: "arrayFoldByteOutputState",
     args: [],

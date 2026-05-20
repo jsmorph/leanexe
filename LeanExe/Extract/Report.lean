@@ -207,7 +207,7 @@ def knownExternal? (name : Name) : Option Classification :=
       ``Array.replicate, ``Array.size, ``Array.isEmpty, ``Array.push, ``Array.pop,
       ``Array.eraseIdx, ``Array.eraseIdx!, ``Array.eraseIdxIfInBounds,
       ``Array.swap, ``Array.swapAt, ``Array.swapIfInBounds,
-      ``Array.append, ``Array.map, ``Array.find?, ``Array.findIdx?, ``Array.any, ``Array.all, ``Array.filter, ``Array.foldl, ``Array.insertIdx, ``Array.insertIdx!, ``Array.insertIdxIfInBounds, ``Array.modify,
+      ``Array.append, ``Array.map, ``Array.find?, ``Array.findIdx?, ``Array.any, ``Array.all, ``Array.filter, ``Array.foldl, ``Array.foldlM, ``Array.insertIdx, ``Array.insertIdx!, ``Array.insertIdxIfInBounds, ``Array.modify,
       ``Array.reverse, ``Array.extract,
       ``Array.get!Internal, ``Array.back!, ``Array.back,
       ``Array.getD, ``Array.set, ``Array.set!, ``Array.setIfInBounds,
@@ -216,7 +216,7 @@ def knownExternal? (name : Name) : Option Classification :=
     some { status := "implemented", reason := "array primitive in the generic compiler fragment" }
   else if [``ByteArray.empty, ``ByteArray.mk, ``ByteArray.size, ``ByteArray.isEmpty, ``ByteArray.get!,
       ``ByteArray.extract, ``ByteArray.push, ``ByteArray.append, ``ByteArray.set!, ``ByteArray.set,
-      ``ByteArray.copySlice, ``ByteArray.findIdx?, ``ByteArray.foldl, ``ByteArray.toUInt64LE!,
+      ``ByteArray.copySlice, ``ByteArray.findIdx?, ``ByteArray.foldl, ``ByteArray.foldlM, ``ByteArray.toUInt64LE!,
       ``ByteArray.toUInt64BE!].contains name then
     some { status := "implemented", reason := "ByteArray primitive in the generic compiler fragment" }
   else if [``Option.casesOn, ``Option.rec, ``Option.none, ``Option.some,

@@ -371,6 +371,246 @@ mutual
           nextLocal := bodyTargetStart + resultWidth
         }
 
+  partial def monadPayloadResultType
+      (monad : SupportedMonad)
+      (payloadTy : Ty) :
+      Except String Ty :=
+    match monad with
+    | .option => .ok (.variant ``Option [payloadTy] [[], [payloadTy]])
+    | .except errorTy => .ok (.variant ``Except [errorTy, payloadTy] [[errorTy], [payloadTy]])
+    | .id => .error "Id foldlM is unsupported; use foldl"
+
+  partial def mkMonadPureValue
+      (monad : SupportedMonad)
+      (payload : ExtractedValue) :
+      Except String ExtractedValue := do
+    match monad with
+    | .option => .ok (mkOptionValue (.u64 1) payload)
+    | .except errorTy =>
+        .ok (mkExceptValue (.u64 1) (← defaultValue errorTy) payload)
+    | .id => .error "Id foldlM is unsupported; use foldl"
+
+  partial def monadFoldAccumulatorParts
+      (monad : SupportedMonad)
+      (value : ExtractedValue) :
+      Except String (IRExpr × ExtractedValue) := do
+    match monad with
+    | .option =>
+        let parts ← optionPartsWithLets value
+        .ok (wrapExprLets parts.fst parts.snd.fst,
+          wrapValueLets parts.fst parts.snd.snd)
+    | .except _ =>
+        let parts ← exceptPartsWithLets value
+        .ok (wrapExprLets parts.fst parts.snd.fst,
+          wrapValueLets parts.fst parts.snd.snd.snd)
+    | .id => .error "Id foldlM is unsupported; use foldl"
+
+  partial def extractMonadicFoldStep
+      (ctx : Context)
+      (nextLocal : Nat)
+      (monad : SupportedMonad)
+      (resultTy : Ty)
+      (accStart : Nat)
+      (bodyLocalPrefix : List Binding)
+      (bodyLocalSuffix : List Binding)
+      (bodyExpr : Expr) :
+      Except String ExtractedForInStepBody := do
+    let resultWidth := internalSlots resultTy
+    let accValue :=
+      valueFromInternalSlots resultTy (fun offset => .local (accStart + offset))
+    let parts ← monadFoldAccumulatorParts monad accValue
+    let tag := parts.fst
+    let payload := parts.snd
+    let failed := .eqU64 tag (.u64 0)
+    let bodyResult ←
+      extractValueFrom ctx
+        (bodyLocalPrefix ++ [.value payload] ++ bodyLocalSuffix)
+        nextLocal
+        bodyExpr
+    let nextValue ← valueIte failed accValue bodyResult.fst
+    let bodyTargets :=
+      (List.range resultWidth).map fun offset => bodyResult.snd + offset
+    let bodyLets ←
+      materializeInternalValueLets resultTy nextValue bodyTargets
+        ctx.freshResultOwnerOffsets
+    match bodyTargets with
+    | tagTarget :: _ =>
+        .ok {
+          bodyTargets := bodyTargets,
+          bodyValues := bodyTargets.map fun slot => (.local slot : IRExpr),
+          bodyLets := bodyLets,
+          bodyDone := boolExpr (.eqU64 (.local tagTarget) (.u64 0)),
+          nextLocal := bodyResult.snd + resultWidth
+        }
+    | [] => .error "monadic fold result has no tag slot"
+
+  partial def extractArrayFoldMValueFrom
+      (ctx : Context)
+      (locals : List Binding)
+      (nextLocal : Nat)
+      (args : List Expr) :
+      Except String (ExtractedValue × Nat) := do
+    match args with
+    | sourceTyExpr :: payloadTyExpr :: monadTyExpr :: _inst :: foldFn :: init :: array :: rest =>
+        let attached? := arrayAttachValue? ctx.env array
+        let sourceTy? :=
+          match attached? with
+          | some item => some item.fst
+          | none => typeAtom? ctx.env sourceTyExpr
+        match sourceTy?, typeAtom? ctx.env payloadTyExpr, supportedMonadType? ctx.env monadTyExpr with
+        | some sourceTy, some payloadTy, some monad =>
+            let resultTy ← monadPayloadResultType monad payloadTy
+            if !supportedLoopAccumulatorType resultTy then
+              .error s!"unsupported Array.foldlM result type: {reprStr resultTy}"
+            else
+              match arrayElementSlots? sourceTy with
+              | some sourceWidth =>
+                  let arrayExpr :=
+                    match attached? with
+                    | some item => item.snd
+                    | none => array
+                  let arrayResult ← extractExprFrom ctx locals nextLocal arrayExpr
+                  let initResult ← extractValueFrom ctx locals arrayResult.snd init
+                  let initValue ← mkMonadPureValue monad initResult.fst
+                  let startStop ←
+                    match rest with
+                    | [] => .ok ((.u64 0, .arraySize arrayResult.fst), initResult.snd)
+                    | [start] =>
+                        let startResult ← extractExprFrom ctx locals initResult.snd start
+                        .ok ((startResult.fst, .arraySize arrayResult.fst), startResult.snd)
+                    | [start, stop] =>
+                        let startResult ← extractExprFrom ctx locals initResult.snd start
+                        match attached?, arrayAttachSize? ctx.env stop with
+                        | some _, some _ =>
+                            .ok ((startResult.fst, .arraySize arrayResult.fst), startResult.snd)
+                        | _, _ =>
+                            let stopResult ← extractExprFrom ctx locals startResult.snd stop
+                            .ok ((startResult.fst, stopResult.fst), stopResult.snd)
+                    | _ => .error "unsupported Array.foldlM application"
+                  let resultWidth := internalSlots resultTy
+                  let initSlots ← flattenInternalValue resultTy initValue ctx.freshResultOwnerOffsets
+                  if initSlots.length != resultWidth then
+                    .error "Array.foldlM accumulator initial value shape mismatch"
+                  else
+                  let accStart := startStop.snd
+                  let itemStart := accStart + resultWidth
+                  let foldBody ←
+                    match collectLambdas foldFn 2 with
+                    | some body => .ok body
+                    | none => .error "unsupported Array.foldlM function"
+                  let itemValue ← arrayLocalValue sourceTy itemStart
+                  let bodyExpr ←
+                    match attached? with
+                    | some _ =>
+                        match arrayAttachUnwrapBody? ctx.env foldBody with
+                        | some body => .ok body
+                        | none => .error "unsupported Array.attach foldlM body"
+                    | none => .ok foldBody
+                  let step ←
+                    match attached? with
+                    | some _ =>
+                        extractMonadicFoldStep ctx (itemStart + sourceWidth)
+                          monad resultTy accStart
+                          [.recursor, .value itemValue, .recursor]
+                          locals
+                          bodyExpr
+                    | none =>
+                        extractMonadicFoldStep ctx (itemStart + sourceWidth) monad
+                          resultTy accStart [.value itemValue] locals bodyExpr
+                  let releaseOffsets :=
+                    foldAccumulatorReleaseOffsets ctx.freshResultOwnerOffsets resultTy
+                      accStart step.bodyLets step.bodyDone step.bodyTargets
+                  let resultValue :=
+                    valueFromInternalSlots resultTy
+                      (fun offset =>
+                        .arrayFoldMultiSlot
+                          sourceWidth
+                          resultWidth
+                          arrayResult.fst
+                          startStop.fst.fst
+                          startStop.fst.snd
+                          initSlots
+                          accStart
+                          itemStart
+                          step.bodyValues
+                          step.bodyLets
+                          step.bodyDone
+                          releaseOffsets
+                          offset)
+                  .ok (resultValue, step.nextLocal)
+              | none => .error s!"unsupported Array.foldlM item type: {reprStr sourceTy}"
+        | _, _, _ => .error "unsupported Array.foldlM application"
+    | _ => .error "unsupported Array.foldlM application"
+
+  partial def extractByteArrayFoldMValueFrom
+      (ctx : Context)
+      (locals : List Binding)
+      (nextLocal : Nat)
+      (args : List Expr) :
+      Except String (ExtractedValue × Nat) := do
+    match args with
+    | payloadTyExpr :: monadTyExpr :: _inst :: foldFn :: init :: array :: rest =>
+        match typeAtom? ctx.env payloadTyExpr, supportedMonadType? ctx.env monadTyExpr with
+        | some payloadTy, some monad =>
+            let resultTy ← monadPayloadResultType monad payloadTy
+            if !supportedLoopAccumulatorType resultTy then
+              .error s!"unsupported ByteArray.foldlM result type: {reprStr resultTy}"
+            else
+              let arrayResult ← extractValueFrom ctx locals nextLocal array
+              let parts ← byteArrayPartsWithLets arrayResult.fst
+              let ptr := wrapExprLets parts.fst parts.snd.fst
+              let len := wrapExprLets parts.fst parts.snd.snd
+              let initResult ← extractValueFrom ctx locals arrayResult.snd init
+              let initValue ← mkMonadPureValue monad initResult.fst
+              let startStop ←
+                match rest with
+                | [] => .ok ((.u64 0, len), initResult.snd)
+                | [start] =>
+                    let startResult ← extractExprFrom ctx locals initResult.snd start
+                    .ok ((startResult.fst, len), startResult.snd)
+                | [start, stop] =>
+                    let startResult ← extractExprFrom ctx locals initResult.snd start
+                    let stopResult ← extractExprFrom ctx locals startResult.snd stop
+                    .ok ((startResult.fst, stopResult.fst), stopResult.snd)
+                | _ => .error "unsupported ByteArray.foldlM application"
+              let resultWidth := internalSlots resultTy
+              let initSlots ← flattenInternalValue resultTy initValue ctx.freshResultOwnerOffsets
+              if initSlots.length != resultWidth then
+                .error "ByteArray.foldlM accumulator initial value shape mismatch"
+              else
+              let accStart := startStop.snd
+              let byteSlot := accStart + resultWidth
+              let body ←
+                match collectLambdas foldFn 2 with
+                | some body => .ok body
+                | none => .error "unsupported ByteArray.foldlM function"
+              let step ←
+                extractMonadicFoldStep ctx (byteSlot + 1) monad resultTy accStart
+                  [.value (.scalar (.local byteSlot))] locals body
+              let releaseOffsets :=
+                foldAccumulatorReleaseOffsets ctx.freshResultOwnerOffsets resultTy
+                  accStart step.bodyLets step.bodyDone step.bodyTargets
+              let resultValue :=
+                valueFromInternalSlots resultTy
+                  (fun offset =>
+                    .byteArrayFoldMultiSlot
+                      resultWidth
+                      ptr
+                      len
+                      startStop.fst.fst
+                      startStop.fst.snd
+                      initSlots
+                      accStart
+                      byteSlot
+                      step.bodyValues
+                      step.bodyLets
+                      step.bodyDone
+                      releaseOffsets
+                      offset)
+              .ok (resultValue, step.nextLocal)
+        | _, _ => .error "unsupported ByteArray.foldlM application"
+    | _ => .error "unsupported ByteArray.foldlM application"
+
   partial def extractValueFrom
       (ctx : Context)
       (locals : List Binding)
@@ -1012,6 +1252,8 @@ mutual
                       else
                         .error s!"unsupported for-in collection type: {reprStr forIn.collectionTy}"
             | none => .error "unsupported ForIn.forIn application"
+        | (.const ``Array.foldlM _, args) =>
+            extractArrayFoldMValueFrom ctx locals nextLocal args
         | (.const ``Array.foldl _, args) =>
             match args with
             | sourceTyExpr :: resultTyExpr :: foldFn :: init :: array :: rest =>
@@ -1112,6 +1354,8 @@ mutual
                       | none => .error s!"unsupported Array.foldl item type: {reprStr sourceTy}"
                 | _, _ => .error "unsupported Array.foldl application"
             | _ => .error "unsupported Array.foldl application"
+        | (.const ``ByteArray.foldlM _, args) =>
+            extractByteArrayFoldMValueFrom ctx locals nextLocal args
         | (.const ``ByteArray.foldl _, args) =>
             match args with
             | resultTyExpr :: foldFn :: init :: array :: rest =>

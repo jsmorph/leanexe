@@ -38,7 +38,7 @@ Use these rules before reaching for more specific templates:
 - Keep public entry types ABI-friendly.  Recursive data, `List`, products, `PSum`, nested arrays, and arrays of recursive values are internal-only.
 - Keep helper definitions under the same root namespace as the module being compiled.
 - Use named helper declarations freely when their types are concrete and first-order.
-- Use direct lambdas in `Array.foldl`, `Array.map`, `Array.filter`, `Array.find?`, `ByteArray.foldl`, and similar accepted callbacks.
+- Use direct lambdas in `Array.foldl`, `Array.foldlM`, `Array.map`, `Array.filter`, `Array.find?`, `ByteArray.foldl`, `ByteArray.foldlM`, and similar accepted callbacks.
 - Use `UInt64` for most arithmetic at public boundaries.  Use `Nat` for fuel and indexes when the value stays within the bounded runtime representation.
 - Use `ByteArray` at command boundaries.  Validate text with `AsciiString.ofByteArray?` inside the program when the input must be ASCII.
 - Use `Except ByteArray ByteArray` for command-style programs that need explicit user-visible errors.
@@ -79,7 +79,7 @@ In library mode, the host controls result lifetime.  It may call `alloc` to rese
 
 `reset()` remains a coarse reclamation operation.  It rewinds the heap and clears the free list, invalidating every old pointer regardless of reference count.  A host should use either explicit `release` calls for individual returned objects or `reset()` at a boundary where no old pointer remains live.
 
-The compiler emits `release` for a conservative class of local heap temporaries: the temporary must come from a visible fresh allocation in a local expression or local binding, and the function result type must contain no heap pointer.  This lets scalar-result helpers reclaim internal arrays, byte arrays, and recursive values before returning.  It also computes helper-result ownership summaries from the extracted IR, then releases array, byte-array, and recursive-inductive owner slots in scalar-result callers when the callee result is proven fresh, including helpers that receive heap-bearing parameters.  Heap-result functions have a narrower cleanup rule: a fresh nonrecursive owner slot, currently `ByteArray` or `Array`, may be released after result materialization when it is absent from the returned heap roots and from borrowed root expressions used by the returned value.  Recursive heap-result temporaries remain conservative unless released by an explicit source-level ownership boundary or by another supported rule.  Recursive heap allocation retains borrowed child pointers and transfers child pointers proven fresh by the same ownership summaries.  `Array.foldl`, `ByteArray.foldl`, and accepted pure loops release replaced accumulator owner slots after the first iteration when the next accumulator slot is proven fresh and the body has not already released the old slot; this covers byte-array accumulators, array accumulators, recursive-inductive accumulators, and owner slots inside supported accumulator structures or tagged values.  The compiler skips the initial accumulator value for this rule because ordinary Lean aliases can still refer to that value after the loop.  The compiler keeps heap-pointer helper results that may borrow from heap arguments conservative.
+The compiler emits `release` for a conservative class of local heap temporaries: the temporary must come from a visible fresh allocation in a local expression or local binding, and the function result type must contain no heap pointer.  This lets scalar-result helpers reclaim internal arrays, byte arrays, and recursive values before returning.  It also computes helper-result ownership summaries from the extracted IR, then releases array, byte-array, and recursive-inductive owner slots in scalar-result callers when the callee result is proven fresh, including helpers that receive heap-bearing parameters.  Heap-result functions have a narrower cleanup rule: a fresh nonrecursive owner slot, currently `ByteArray` or `Array`, may be released after result materialization when it is absent from the returned heap roots and from borrowed root expressions used by the returned value.  Recursive heap-result temporaries remain conservative unless released by an explicit source-level ownership boundary or by another supported rule.  Recursive heap allocation retains borrowed child pointers and transfers child pointers proven fresh by the same ownership summaries.  `Array.foldl`, `Array.foldlM`, `ByteArray.foldl`, `ByteArray.foldlM`, and accepted pure loops release replaced accumulator owner slots after the first iteration when the next accumulator slot is proven fresh and the body has not already released the old slot; this covers byte-array accumulators, array accumulators, recursive-inductive accumulators, and owner slots inside supported accumulator structures or tagged values.  The compiler skips the initial accumulator value for this rule because ordinary Lean aliases can still refer to that value after the loop.  The compiler keeps heap-pointer helper results that may borrow from heap arguments conservative.
 
 Compiled Lean code may read runtime counters through `LeanExe.Runtime.allocCount`, `retainCount`, `releaseCount`, and `freeCount`.  It may call `LeanExe.Runtime.release value` for a monomorphic recursive-inductive root or an array value at an explicit ownership boundary; the compiled call releases the nonzero owner root and returns the current free count.  The extractor preserves `let _ := LeanExe.Runtime.release value`, so a program can mark the boundary without adding the returned counter to its own result.  The program must not use the released value, or any heap node shared with a live value, after the call, and the compiler does not yet prove that condition.  Array and recursive-value release follows recursive-inductive child pointers, `ByteArray` owner slots, and nested `Array` owner slots stored in fixed-width layouts.  Releasing a borrowed public array with owner `0` is a no-op.
 
@@ -353,7 +353,7 @@ Nested pure loops are accepted when each loop has a supported collection and acc
 
 Use arrays when the element type has a fixed-width layout.  Public arrays cannot contain heap-reference fields such as `ByteArray`, nested arrays, or recursive data.  Internal arrays may contain `ByteArray`, nested arrays, recursive pointers, and structures or tagged values that contain those internal pointer fields.  A `ByteArray` element uses owner, pointer, and length slots internally; a nested array element uses owner and pointer slots internally.  Copied array elements retain compiler-owned child roots.
 
-Stable array operations include literals, `Array.size`, `isEmpty`, indexing, safe indexing, `getD`, `back?`, `push`, `pop`, `append`, `extract`, `set`, `set!`, `setIfInBounds`, `modify`, `insertIdx`, `eraseIdx`, `swap`, `reverse`, `map`, `filter`, `find?`, `findIdx?`, `any`, `all`, and `foldl`.  Bang operations trap on invalid indexes.  Updates allocate fresh arrays and preserve Lean value semantics.
+Stable array operations include literals, `Array.size`, `isEmpty`, indexing, safe indexing, `getD`, `back?`, `push`, `pop`, `append`, `extract`, `set`, `set!`, `setIfInBounds`, `modify`, `insertIdx`, `eraseIdx`, `swap`, `reverse`, `map`, `filter`, `find?`, `findIdx?`, `any`, `all`, `foldl`, and `foldlM`.  Bang operations trap on invalid indexes.  Updates allocate fresh arrays and preserve Lean value semantics.
 
 Direct lambdas are the safest callback form:
 
@@ -379,6 +379,19 @@ end LeanExe.Examples.ManualArray
 
 Avoid passing named higher-order callbacks around as runtime values.  Write the lambda at the call site, call a concrete helper inside the lambda, and keep the accumulator type concrete.  If a fold over `array.attach` is needed for a termination proof, match the attached element immediately and use the runtime value while ignoring the proof field.
 
+Use `foldlM` when the fold should stop at the first `none` or `Except.error`.  The accepted monads are `Option` and `Except ε`, and the callback must be a direct lambda whose accumulator and error payload types have supported layouts.  Later elements are not evaluated after failure, so code in those callbacks may contain trapping expressions that Lean would skip.
+
+```lean
+def checkedSum (values : Array UInt64) : Except UInt64 UInt64 :=
+  values.foldlM (m := Except UInt64)
+    (fun acc value =>
+      if value > 100 then
+        Except.error value
+      else
+        Except.ok (acc + value))
+    0
+```
+
 ```lean
 def foldAttached (items : Array UInt64) : UInt64 :=
   items.attach.foldl
@@ -390,7 +403,7 @@ def foldAttached (items : Array UInt64) : UInt64 :=
 
 ## Byte Arrays and ASCII Text
 
-Use `ByteArray` for binary input, binary output, and command boundaries.  Public calls pass byte arrays as pointer-length pairs.  Compiled helpers carry an internal owner slot as well, which keeps an allocated byte-buffer root alive when a slice or byte array field is stored in an array, structure, or tagged value.  Supported operations include `size`, `isEmpty`, `get!`, safe indexing, `extract`, `empty`, `mk` from `Array UInt8`, compile-time ASCII `.toUTF8`, `push`, `append`, append notation, `set`, `set!`, `copySlice`, `foldl`, `findIdx?`, `toUInt64LE!`, `toUInt64BE!`, and equality.
+Use `ByteArray` for binary input, binary output, and command boundaries.  Public calls pass byte arrays as pointer-length pairs.  Compiled helpers carry an internal owner slot as well, which keeps an allocated byte-buffer root alive when a slice or byte array field is stored in an array, structure, or tagged value.  Supported operations include `size`, `isEmpty`, `get!`, safe indexing, `extract`, `empty`, `mk` from `Array UInt8`, compile-time ASCII `.toUTF8`, `push`, `append`, append notation, `set`, `set!`, `copySlice`, `foldl`, `foldlM`, `findIdx?`, `toUInt64LE!`, `toUInt64BE!`, and equality.
 
 Use `LeanExe.AsciiString` for byte-indexed ASCII text after validation.  The public boundary should usually remain `ByteArray`; validate with `AsciiString.ofByteArray?` inside the program.  Runtime Lean `String` and `Char` are outside the language.
 
