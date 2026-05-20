@@ -1,5 +1,16 @@
 # Development Journal
 
+## 2026-05-20: Except Do-Notation Parser Shapes
+
+The correctness corpus now covers parser-shaped `Except` do-notation that calls helpers using accepted pure `Id.run` cursor loops.  The new examples return a structured ok payload, a nonrecursive tagged ok payload, and a byte-array ok payload, and they check that an error result skips a later trapping computation.  No extractor change was needed; the existing first-order `Except` bind lowering and pure-loop extraction already accepted these checked forms.
+
+Checks run:
+
+- [x] `lake build LeanExe.Examples.Correctness` returned successfully.
+- [x] `node test/core_correctness.js` returned `checked 669 accepted, 30 rejected, and 13 trapped cases`.
+- [x] `node tools/compare-standard.js --self-test` returned `checked 76 standard Lean comparison cases`.
+- [x] `node test/run_all.js` returned `checked 94 report classification cases`, `checked 669 accepted, 30 rejected, and 13 trapped cases`, `checked 25 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 22 WASI program cases, 2 traps, and 7 rejections`, `checked 76 standard Lean comparison cases`, and `checked 56 cases`.
+
 ## 2026-05-20: Sparse User-Inductive Matches
 
 Pure `Id.run do` examples now cover sparse matches over nonrecursive user inductives.  The correctness corpus has `if let Status.ok value := status`, a named catch-all `Status` arm that rematches the fallback value, a nullary-constructor `Mode` `if let`, and a `while` loop that reads `Array Status` elements and uses the same sparse match inside the loop body.  These examples cover the source style used for tagged status values without making the compiler know about `Status`.

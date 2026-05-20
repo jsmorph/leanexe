@@ -2210,6 +2210,55 @@ def idRunWhileArrayBuilderState : ArrayBuilderState := Id.run do
     i := i + 1
   return state
 
+def digitByteOrError (byte : UInt8) : Except UInt64 UInt8 :=
+  if isAsciiDigitByte byte then
+    Except.ok (byte - 48)
+  else
+    Except.error byte.toUInt64
+
+def scanDigitsExceptLoop (input : ByteArray) : Except UInt64 DigitState := Id.run do
+  let mut pos : Nat := 0
+  let mut sum := (0 : UInt64)
+  let mut result : Except UInt64 DigitState := Except.ok { pos := 0, sum := 0 }
+  while pos < input.size do
+    let byte := input[pos]!
+    if isAsciiDigitByte byte then
+      sum := sum + (byte.toUInt64 - 48)
+      pos := pos + 1
+      result := Except.ok { pos := pos, sum := sum }
+    else
+      result := Except.error pos.toUInt64
+      break
+  return result
+
+def exceptDoStateFromLoop : Except UInt64 DigitState := do
+  let input ← Except.ok (ByteArray.mk #[(49 : UInt8), (50 : UInt8), (51 : UInt8)])
+  let state ← scanDigitsExceptLoop input
+  pure { pos := state.pos + 1, sum := state.sum + 10 }
+
+def exceptDoLoopErrorSkipsRestTrap : UInt64 :=
+  match (do
+      let input ← Except.ok (ByteArray.mk #[(49 : UInt8), (65 : UInt8)])
+      let _state ← scanDigitsExceptLoop input
+      let later ← digitByteOrError ((Array.replicate 0 (0 : UInt8))[0]!)
+      pure later : Except UInt64 UInt8) with
+  | Except.error code => code
+  | Except.ok value => value.toUInt64
+
+def exceptDoByteArrayFromValidation : Except UInt64 ByteArray := do
+  let first ← digitByteOrError (52 : UInt8)
+  let second ← digitByteOrError (53 : UInt8)
+  let output := Id.run do
+    let mut out := ByteArray.empty
+    out := out.push first
+    out := out.push second
+    return out
+  pure output
+
+def exceptDoStatusFromLoop : Except UInt64 Status := do
+  let state ← scanDigitsExceptLoop (ByteArray.mk #[(50 : UInt8), (51 : UInt8)])
+  pure (Status.ok (state.sum + state.pos.toUInt64))
+
 def idFunctionUInt64 (x : UInt64) : UInt64 :=
   id (x + 1)
 
