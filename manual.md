@@ -520,6 +520,34 @@ def answerJson : ByteArray :=
 end LeanExe.Examples.ManualJsonAst
 ```
 
+Typed AST decoders should use `LeanExe.Ascii.Json.Decode` when failures should flow through `Except ByteArray`.  The helper layer provides required-field lookup, duplicate rejection through `getUniqueField?`, object field whitelisting through `requireOnlyFields`, typed scalar assertions, `decodeUInt64Array`, and `renderExcept`.  This style works well for small request structures whose schema is explicit in Lean source.
+
+```lean
+import LeanExe.Ascii.Json.Decode
+
+namespace LeanExe.Examples.ManualJsonDecode
+
+open LeanExe.Ascii.Json
+
+structure Request where
+  values : Array UInt64
+  multiplier : UInt64
+
+def valuesName : AsciiString :=
+  AsciiString.ofTrustedByteArray "values".toUTF8
+
+def multiplierName : AsciiString :=
+  AsciiString.ofTrustedByteArray "multiplier".toUTF8
+
+def decodeRequest (value : Value) : Except ByteArray Request := do
+  let rawValues <- requireField value valuesName
+  let numbers <- decodeUInt64Array rawValues
+  let multiplier <- requireUInt64Field value multiplierName
+  pure { values := numbers, multiplier := multiplier }
+
+end LeanExe.Examples.ManualJsonDecode
+```
+
 For recursive JSON decoders, prefer the pattern used by [JSON Tree WASI Demo](demo.md).  The important source shape is `fields.attach.foldl` with an immediate match on `⟨field, _hmem⟩`, because Lean's termination proof can use field membership to show recursive calls descend into smaller JSON values.  A generic object getter may be valid Lean but still lower to a well-founded-recursion shape that LeanExe does not yet compile in recursive decoders.
 
 ```lean
@@ -650,6 +678,7 @@ Use existing examples as templates:
 | ASCII validation and text processing | [ASCII String Programs](LeanExe/Examples/AsciiStringPrograms.lean) |
 | Open-addressed table structure | [Integer Map Example](LeanExe/Examples/IntMap.lean) |
 | Range-based JSON field lookup | [JSON Double Example](LeanExe/Examples/JsonDouble.lean), [JSON Add Example](LeanExe/Examples/JsonAdd.lean) |
+| Typed JSON AST decoding | [JSON Typed Decode Example](LeanExe/Examples/JsonTypedDecode.lean) |
 | JSON AST parsing and rendering | [JSON Tree Command](LeanExe/Examples/JsonTreeCommand.lean) |
 | WASI stdin `Except` command | [JSON GCD Example](LeanExe/Examples/JsonGcd.lean) |
 | End-to-end WASI pipeline | [JSON Tree WASI Demo](demo.md), [JSON Merge Tree Command](LeanExe/Examples/JsonMergeTreeCommand.lean) |

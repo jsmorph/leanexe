@@ -1,5 +1,16 @@
 # Development Journal
 
+## 2026-05-20: Typed JSON Decode Helpers
+
+The JSON AST now has a small `Except ByteArray` decoder layer in `LeanExe.Ascii.Json.Decode`.  It wraps parse, render, object lookup, required-field lookup, typed scalar assertions, exact field-set checks, and unsigned-integer array decoding without adding JSON-specific compiler behavior.  `LeanExe.Examples.JsonTypedDecode` uses that layer to decode a JSON object into a source-defined request structure, reject missing, duplicate, unknown, and mistyped fields, check arithmetic overflow, and return compact JSON through the WASI `Except` adapter.
+
+Checks run:
+
+- [x] `lake build LeanExe.Ascii.Json.Decode LeanExe.Examples.JsonTypedDecode` returned successfully.
+- [x] `node test/wasi_program.js` returned `checked 29 WASI program cases, 2 traps, and 7 rejections`.
+- [x] `node tools/compare-standard.js --self-test` returned `checked 77 standard Lean comparison cases`.
+- [x] `node test/run_all.js` returned `checked 94 report classification cases`, `checked 669 accepted, 30 rejected, and 13 trapped cases`, `checked 25 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 29 WASI program cases, 2 traps, and 7 rejections`, `checked 77 standard Lean comparison cases`, and `checked 56 cases`.
+
 ## 2026-05-20: Except Do-Notation Parser Shapes
 
 The correctness corpus now covers parser-shaped `Except` do-notation that calls helpers using accepted pure `Id.run` cursor loops.  The new examples return a structured ok payload, a nonrecursive tagged ok payload, and a byte-array ok payload, and they check that an error result skips a later trapping computation.  No extractor change was needed; the existing first-order `Except` bind lowering and pure-loop extraction already accepted these checked forms.
