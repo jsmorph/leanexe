@@ -2096,6 +2096,69 @@ def idRunRangeForContinueState : DigitState := Id.run do
     state := { pos := state.pos + 1, sum := state.sum + i.toUInt64 }
   return state
 
+def exceptForArraySum : Except UInt64 UInt64 := do
+  let values : Array UInt64 := #[1, 2, 3]
+  let mut acc := (0 : UInt64)
+  for value in values do
+    acc := acc + value
+  return acc
+
+def exceptForArrayErrorSkipsRestTrap : Except UInt64 UInt64 := do
+  let values : Array UInt64 := #[1, 2, 3]
+  let mut acc := (0 : UInt64)
+  for value in values do
+    if value == (2 : UInt64) then
+      Except.error (acc + 20)
+    else if value == (3 : UInt64) then
+      acc := (Array.replicate 0 (0 : UInt64))[0]!
+    else
+      acc := acc + value
+  return acc
+
+def optionForByteArraySum : Option UInt64 := do
+  let input := ByteArray.mk #[(1 : UInt8), (2 : UInt8), (3 : UInt8)]
+  let mut acc := (0 : UInt64)
+  for byte in input do
+    acc := acc + byte.toUInt64
+  return acc
+
+def optionForByteArrayNoneSkipsRestTrap : Option UInt64 := do
+  let input := ByteArray.mk #[(1 : UInt8), (2 : UInt8), (3 : UInt8)]
+  let mut acc := (0 : UInt64)
+  for byte in input do
+    if byte == (2 : UInt8) then
+      none
+    else if byte == (3 : UInt8) then
+      acc := (Array.replicate 0 (0 : UInt64))[0]!
+    else
+      acc := acc + byte.toUInt64
+  return acc
+
+def exceptForRangeBreakSum : Except UInt64 UInt64 := do
+  let mut acc := (0 : UInt64)
+  for i in [0:6] do
+    if i == (4 : Nat) then
+      break
+    acc := acc + i.toUInt64
+  return acc
+
+def optionForArrayContinueSum : Option UInt64 := do
+  let values : Array UInt64 := #[1, 2, 3]
+  let mut acc := (0 : UInt64)
+  for value in values do
+    if value == (2 : UInt64) then
+      continue
+    acc := acc + value
+  return acc
+
+def optionWhileSum : Option UInt64 := do
+  let mut i := (0 : UInt64)
+  let mut acc := (0 : UInt64)
+  while i < (3 : UInt64) do
+    acc := acc + i
+    i := i + 1
+  return acc
+
 def idRunWhileSum : UInt64 := Id.run do
   let mut i := (0 : UInt64)
   let mut sum := (0 : UInt64)
