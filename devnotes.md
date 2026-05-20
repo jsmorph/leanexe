@@ -1,5 +1,21 @@
 # Development Journal
 
+## 2026-05-20: Pure While and Nested Id Loops
+
+The extractor now accepts the checked Lean form behind source `while` loops.  Lean elaborates `while` in `Id.run do` to `ForIn.forIn` over `Lean.Loop`, whose step returns `ForInStep.done` to stop and `ForInStep.yield` to continue.  The IR now has `loopFoldMultiSlot` expression and statement forms that reuse the existing multi-slot accumulator layout without inventing a source-level loop syntax in the compiler.
+
+Loop-body extraction now has a second path for ordinary pure `Id` computations that produce a `ForInStep` value.  The older parser still handles direct `yield`, `done`, `break`, `continue`, and simple conditional step shapes.  When the body contains nested pure loops or generated product and structure destructuring, the extractor materializes the `ForInStep` value once, reads its tag, selects the active accumulator payload, and carries the done flag through the same staged loop assignment path.
+
+The correctness corpus now covers multiple mutable locals in a `for` loop, nested array `for` loops, scalar `while`, `while` with `break` and `continue`, a structure accumulator in `while`, nested `while`, and a byte-array result built in `while`.  The standard Lean comparison self-test covers the nested array loop, `while` with `break` and `continue`, and the byte-array `while` result.  This moves ordinary cursor and counter code closer to the intended first-order programming style while keeping the source language pure.
+
+Checks run:
+
+- [x] `lake build LeanExe.Extract.Core LeanExe.Wasm.Binary` returned successfully.
+- [x] `lake build LeanExe.Examples.Correctness lean-wasm` returned successfully.
+- [x] `node test/core_correctness.js` returned `checked 645 accepted, 29 rejected, and 13 trapped cases`.
+- [x] `node tools/compare-standard.js --self-test` returned `checked 52 standard Lean comparison cases`.
+- [x] `node test/run_all.js` returned `checked 94 report classification cases`, `checked 645 accepted, 29 rejected, and 13 trapped cases`, `checked 25 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 22 WASI program cases, 2 traps, and 7 rejections`, `checked 52 standard Lean comparison cases`, and `checked 56 cases`.
+
 ## 2026-05-20: Parked Ownership Diagnostics
 
 The next ownership follow-up should be diagnostic.  A proposed `lean-wasm ownership-report --module M --entry E` command should print, per extracted function, the result type, result owner slots, helper-result fresh-owner offsets, compiler-inserted releases, returned owner slots kept live, fold accumulator release offsets, and explicit `LeanExe.Runtime.release` sites.  Snapshot cases should include `byteArrayResultDropsOwnedTempStats`, `u64ListTailValue`, `JsonTreeCommand.makeTree`, and a fold-accumulator release case.

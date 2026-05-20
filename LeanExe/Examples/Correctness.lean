@@ -1723,6 +1723,23 @@ def idRunArrayForSum : UInt64 := Id.run do
     acc := acc + value
   return acc
 
+def idRunArrayForTwoCounters : UInt64 := Id.run do
+  let values : Array UInt64 := #[1, 2, 3]
+  let mut sum := (0 : UInt64)
+  let mut count := (0 : UInt64)
+  for value in values do
+    sum := sum + value
+    count := count + 1
+  return sum * 10 + count
+
+def idRunNestedArrayForSum : UInt64 := Id.run do
+  let rows : Array (Array UInt64) := #[#[1, 2], #[3, 4]]
+  let mut sum := (0 : UInt64)
+  for row in rows do
+    for value in row do
+      sum := sum + value
+  return sum
+
 def idRunArrayForBreakSum : UInt64 := Id.run do
   let values : Array UInt64 := #[1, 2, 99, 3]
   let mut acc := (0 : UInt64)
@@ -1902,6 +1919,51 @@ def idRunRangeForContinueState : DigitState := Id.run do
       continue
     state := { pos := state.pos + 1, sum := state.sum + i.toUInt64 }
   return state
+
+def idRunWhileSum : UInt64 := Id.run do
+  let mut i := (0 : UInt64)
+  let mut sum := (0 : UInt64)
+  while i < 5 do
+    sum := sum + i
+    i := i + 1
+  return sum
+
+def idRunWhileBreakContinue : UInt64 := Id.run do
+  let mut i := (0 : UInt64)
+  let mut sum := (0 : UInt64)
+  while i < 8 do
+    i := i + 1
+    if i == (3 : UInt64) then
+      continue
+    if i == (6 : UInt64) then
+      break
+    sum := sum + i
+  return sum
+
+def idRunWhileState : DigitState := Id.run do
+  let mut state : DigitState := { pos := 0, sum := 0 }
+  while state.pos < 4 do
+    state := { pos := state.pos + 1, sum := state.sum + state.pos.toUInt64 }
+  return state
+
+def idRunNestedWhileSum : UInt64 := Id.run do
+  let mut outer := (0 : UInt64)
+  let mut sum := (0 : UInt64)
+  while outer < 3 do
+    let mut inner := (0 : UInt64)
+    while inner < 2 do
+      sum := sum + outer * (10 : UInt64) + inner
+      inner := inner + (1 : UInt64)
+    outer := outer + (1 : UInt64)
+  return sum
+
+def idRunWhileByteArrayOutput : ByteArray := Id.run do
+  let mut i := (0 : UInt64)
+  let mut output := ByteArray.empty
+  while i < 3 do
+    output := output.push (1 : UInt8)
+    i := i + (1 : UInt64)
+  return output
 
 def idFunctionUInt64 (x : UInt64) : UInt64 :=
   id (x + 1)

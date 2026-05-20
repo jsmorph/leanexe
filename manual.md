@@ -79,7 +79,7 @@ In library mode, the host controls result lifetime.  It may call `alloc` to rese
 
 `reset()` remains a coarse reclamation operation.  It rewinds the heap and clears the free list, invalidating every old pointer regardless of reference count.  A host should use either explicit `release` calls for individual returned objects or `reset()` at a boundary where no old pointer remains live.
 
-The compiler emits `release` for a conservative class of local heap temporaries: the temporary must come from a visible fresh allocation in a local expression or local binding, and the function result type must contain no heap pointer.  This lets scalar-result helpers reclaim internal arrays, byte arrays, and recursive values before returning.  It also computes helper-result ownership summaries from the extracted IR, then releases array, byte-array, and recursive-inductive owner slots in scalar-result callers when the callee result is proven fresh, including helpers that receive heap-bearing parameters.  Heap-result functions have a narrower cleanup rule: a fresh nonrecursive owner slot, currently `ByteArray` or `Array`, may be released after result materialization when it is absent from the returned heap roots and from borrowed root expressions used by the returned value.  Recursive heap-result temporaries remain conservative unless released by an explicit source-level ownership boundary or by another supported rule.  Recursive heap allocation retains borrowed child pointers and transfers child pointers proven fresh by the same ownership summaries.  `Array.foldl`, `ByteArray.foldl`, and accepted pure `for` loops release replaced accumulator owner slots after the first iteration when the next accumulator slot is proven fresh and the body has not already released the old slot; this covers byte-array accumulators, array accumulators, recursive-inductive accumulators, and owner slots inside supported accumulator structures or tagged values.  The compiler skips the initial accumulator value for this rule because ordinary Lean aliases can still refer to that value after the loop.  The compiler keeps heap-pointer helper results that may borrow from heap arguments conservative.
+The compiler emits `release` for a conservative class of local heap temporaries: the temporary must come from a visible fresh allocation in a local expression or local binding, and the function result type must contain no heap pointer.  This lets scalar-result helpers reclaim internal arrays, byte arrays, and recursive values before returning.  It also computes helper-result ownership summaries from the extracted IR, then releases array, byte-array, and recursive-inductive owner slots in scalar-result callers when the callee result is proven fresh, including helpers that receive heap-bearing parameters.  Heap-result functions have a narrower cleanup rule: a fresh nonrecursive owner slot, currently `ByteArray` or `Array`, may be released after result materialization when it is absent from the returned heap roots and from borrowed root expressions used by the returned value.  Recursive heap-result temporaries remain conservative unless released by an explicit source-level ownership boundary or by another supported rule.  Recursive heap allocation retains borrowed child pointers and transfers child pointers proven fresh by the same ownership summaries.  `Array.foldl`, `ByteArray.foldl`, and accepted pure loops release replaced accumulator owner slots after the first iteration when the next accumulator slot is proven fresh and the body has not already released the old slot; this covers byte-array accumulators, array accumulators, recursive-inductive accumulators, and owner slots inside supported accumulator structures or tagged values.  The compiler skips the initial accumulator value for this rule because ordinary Lean aliases can still refer to that value after the loop.  The compiler keeps heap-pointer helper results that may borrow from heap arguments conservative.
 
 Compiled Lean code may read runtime counters through `LeanExe.Runtime.allocCount`, `retainCount`, `releaseCount`, and `freeCount`.  It may call `LeanExe.Runtime.release value` for a monomorphic recursive-inductive root or an array value at an explicit ownership boundary; the compiled call releases the nonzero owner root and returns the current free count.  The extractor preserves `let _ := LeanExe.Runtime.release value`, so a program can mark the boundary without adding the returned counter to its own result.  The program must not use the released value, or any heap node shared with a live value, after the call, and the compiler does not yet prove that condition.  Array and recursive-value release follows recursive-inductive child pointers, `ByteArray` owner slots, and nested `Array` owner slots stored in fixed-width layouts.  Releasing a borrowed public array with owner `0` is a no-op.
 
@@ -236,6 +236,42 @@ Compile a stdin command:
   --entry LeanExe.Examples.ManualExcept.bangOrError \
   --out build/bang-or-error.wasm
 ```
+
+## Pure Mutable Loops
+
+Use `Id.run do` when the clearest source shape has local mutable state.  Lean elaborates `let mut`, assignment, `for`, `while`, `break`, and `continue` into pure first-order terms, and LeanExe accepts the checked forms for supported accumulator types.  This is often the most readable way to write scanner and transformer code with counters, cursors, byte output buffers, status values, or small state structures.
+
+```lean
+namespace LeanExe.Examples.ManualLoops
+
+structure ScanState where
+  count : UInt64
+  sum : UInt64
+
+def scan (values : Array UInt64) : ScanState := Id.run do
+  let mut state : ScanState := { count := 0, sum := 0 }
+  for value in values do
+    if value == 0 then
+      continue
+    state := { count := state.count + 1, sum := state.sum + value }
+  return state
+
+def boundedSum : UInt64 := Id.run do
+  let mut i := (0 : UInt64)
+  let mut sum := (0 : UInt64)
+  while i < 10 do
+    if i == 7 then
+      break
+    sum := sum + i
+    i := i + 1
+  return sum
+
+end LeanExe.Examples.ManualLoops
+```
+
+Accepted `for` collections are `ByteArray`, fixed-width `Array` values, and ranges such as `[start:stop]` or `[start:stop:step]`.  Source `while` loops compile through Lean's `Lean.Loop` iterator and repeat until the checked loop step returns `ForInStep.done`.  Loop accumulators may be scalars, byte arrays, internal arrays, products, structures, nonrecursive tagged values, or recursive-inductive pointers, with the same field-type limits used elsewhere in the language.
+
+Nested pure loops are accepted when each loop has a supported collection and accumulator.  The body may contain ordinary `Id` binds generated by `do` notation, local `let` bindings, generated product or structure destructuring, and nested accepted loops.  The compiler still rejects non-`Id` effects, runtime callback values, polymorphic iterators, and loop bodies whose hidden carried values have unsupported runtime types.
 
 ## Arrays
 

@@ -578,6 +578,18 @@ function selfTest() {
     {
       mode: "pure",
       moduleName: correctness,
+      entry: "idRunNestedArrayForSum",
+      resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "idRunWhileBreakContinue",
+      resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
       entry: "natDivModNormal",
       programArgs: ["7"],
       resultSlots: "#[UInt64.ofNat __leanexeValue]",
@@ -685,6 +697,12 @@ function selfTest() {
       mode: "pure-bytes",
       moduleName: correctness,
       entry: "byteArrayResultDropsOwnedTemp",
+      serializer: "__leanexeValue",
+    },
+    {
+      mode: "pure-bytes",
+      moduleName: correctness,
+      entry: "idRunWhileByteArrayOutput",
       serializer: "__leanexeValue",
     },
     {

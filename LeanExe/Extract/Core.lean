@@ -15,6 +15,13 @@ def runtimeReleaseArgs? (expr : Expr) : Option (List Expr) :=
       if name == ``LeanExe.Runtime.release then some args else none
   | _ => none
 
+structure ExtractedForInStepBody where
+  bodyTargets : List Nat
+  bodyValues : List IRExpr
+  bodyLets : List LeanExe.IR.LocalLet
+  bodyDone : IRExpr
+  nextLocal : Nat
+
 mutual
   partial def extractStructuralRecCallValueFrom
       (ctx : Context)
@@ -231,6 +238,133 @@ mutual
                   (.heapLinearPredicate ptrExpr continueInfo.index fieldSlotCount recursiveFieldOffset
                     fieldStart predicateResult.fst stopWhenTrue terminalValue,
                     predicateResult.snd))
+
+  partial def extractForInStepBody
+      (ctx : Context)
+      (locals : List Binding)
+      (nextLocal : Nat)
+      (resultTy : Ty)
+      (body : Expr) :
+      Except String ExtractedForInStepBody := do
+    let resultWidth := internalSlots resultTy
+    match forInStepBody? resultTy body with
+    | .ok parsedStep =>
+        let bodyResult ← extractValueFrom ctx locals nextLocal parsedStep.value
+        let bodyTargets :=
+          (List.range resultWidth).map fun offset => bodyResult.snd + offset
+        let bodyLets ←
+          materializeInternalValueLets resultTy bodyResult.fst bodyTargets
+            ctx.freshResultOwnerOffsets
+        let doneResult ←
+          extractExprFrom ctx locals (bodyResult.snd + resultWidth) parsedStep.done
+        .ok {
+          bodyTargets := bodyTargets,
+          bodyValues := bodyTargets.map fun slot => (.local slot : IRExpr),
+          bodyLets := bodyLets,
+          bodyDone := doneResult.fst,
+          nextLocal := doneResult.snd
+        }
+    | .error _ =>
+        match body.consumeMData with
+        | .letE _ type value letBody _ =>
+            if !containsBVar 0 letBody then
+              match runtimeReleaseArgs? value with
+              | some args =>
+                  let releaseResult ←
+                    extractPrimitiveApplicationFrom ctx locals nextLocal
+                      ``LeanExe.Runtime.release args
+                  let releaseSlot := releaseResult.snd
+                  let step ←
+                    extractForInStepBody ctx (.recursor :: locals) (releaseSlot + 1)
+                      resultTy letBody
+                  return { step with
+                    bodyLets := .expr releaseSlot releaseResult.fst :: step.bodyLets
+                  }
+              | none =>
+                  return ← extractForInStepBody ctx (.recursor :: locals) nextLocal resultTy letBody
+            else if isStringType type then
+              return ← extractForInStepBody ctx (.thunk locals value :: locals) nextLocal resultTy letBody
+            else
+              match typeAtom? ctx.env type with
+              | some ty =>
+                  if supportedLocalType ty then
+                    let valueResult ← extractValueFrom ctx locals nextLocal value
+                    let width := internalSlots ty
+                    let targets := (List.range width).map fun offset => valueResult.snd + offset
+                    let lets ←
+                      materializeInternalValueLets ty valueResult.fst targets
+                        ctx.freshResultOwnerOffsets
+                    let localValue :=
+                      valueFromInternalSlots ty (fun offset => .local (valueResult.snd + offset))
+                    let step ←
+                      extractForInStepBody ctx (.value localValue :: locals)
+                        (valueResult.snd + width) resultTy letBody
+                    return { step with bodyLets := lets ++ step.bodyLets }
+                  else
+                    .error s!"unsupported for-in step let-bound type: {type}"
+              | none => .error s!"unsupported for-in step let-bound type: {type}"
+        | _ =>
+            match appFnArgs body with
+            | (.const ``ite _, [_ty, condExpr, _, thenExpr, elseExpr]) =>
+                let condResult ← extractCondFrom ctx locals nextLocal condExpr
+                let thenStep ←
+                  extractForInStepBody ctx locals condResult.snd resultTy thenExpr
+                let elseStep ←
+                  extractForInStepBody ctx locals thenStep.nextLocal resultTy elseExpr
+                let bodyTargetStart := elseStep.nextLocal
+                let bodyTargets :=
+                  (List.range resultWidth).map fun offset => bodyTargetStart + offset
+                let doneSlot := bodyTargetStart + resultWidth
+                let thenLets :=
+                  thenStep.bodyLets ++
+                    [.slots bodyTargets thenStep.bodyValues, .expr doneSlot thenStep.bodyDone]
+                let elseLets :=
+                  elseStep.bodyLets ++
+                    [.slots bodyTargets elseStep.bodyValues, .expr doneSlot elseStep.bodyDone]
+                return {
+                  bodyTargets := bodyTargets,
+                  bodyValues := bodyTargets.map fun slot => (.local slot : IRExpr),
+                  bodyLets := [.branch condResult.fst thenLets elseLets],
+                  bodyDone := .local doneSlot,
+                  nextLocal := doneSlot + 1
+                }
+            | _ => pure ()
+        let stepTy : Ty := .variant ``ForInStep [resultTy] [[resultTy], [resultTy]]
+        let stepResult ←
+          match extractValueFrom ctx locals nextLocal body with
+          | .ok result => .ok result
+          | .error message =>
+              .error s!"unsupported for-in step value extraction: {message}; body: {body}"
+        let stepWidth := internalSlots stepTy
+        let stepTargets :=
+          (List.range stepWidth).map fun offset => stepResult.snd + offset
+        let stepLets ←
+          materializeInternalValueLets stepTy stepResult.fst stepTargets
+            ctx.freshResultOwnerOffsets
+        let tagSlot := stepResult.snd
+        let donePayloadStart := tagSlot + 1
+        let yieldPayloadStart := donePayloadStart + resultWidth
+        let doneValue :=
+          valueFromInternalSlots resultTy
+            (fun offset => .local (donePayloadStart + offset))
+        let yieldValue :=
+          valueFromInternalSlots resultTy
+            (fun offset => .local (yieldPayloadStart + offset))
+        let doneCond := .eqU64 (.local tagSlot) (.u64 0)
+        let selectedValue ← valueIte doneCond doneValue yieldValue
+        let bodyTargetStart := stepResult.snd + stepWidth
+        let bodyTargets :=
+          (List.range resultWidth).map fun offset => bodyTargetStart + offset
+        let bodyLets ←
+          materializeInternalValueLets resultTy selectedValue bodyTargets
+            ctx.freshResultOwnerOffsets
+        .ok {
+          bodyTargets := bodyTargets,
+          bodyValues := bodyTargets.map fun slot => (.local slot : IRExpr),
+          bodyLets := stepLets ++ bodyLets,
+          bodyDone := boolExpr doneCond,
+          nextLocal := bodyTargetStart + resultWidth
+        }
 
   partial def extractValueFrom
       (ctx : Context)
@@ -692,7 +826,7 @@ mutual
                 else
                   let stepBody ←
                     match collectLambdas forIn.body 2 with
-                    | some body => forInStepBody? forIn.resultTy body
+                    | some body => .ok body
                     | none => .error "unsupported for-in body"
                   let resultWidth := internalSlots forIn.resultTy
                   match forIn.collectionTy with
@@ -712,28 +846,16 @@ mutual
                         let accValue :=
                           valueFromInternalSlots forIn.resultTy
                             (fun offset => .local (accStart + offset))
-                        let bodyResult ←
-                          extractValueFrom ctx
+                        let step ←
+                          extractForInStepBody ctx
                             (.value accValue ::
                               .value (.scalar (.local byteSlot)) :: locals)
                             (byteSlot + 1)
-                            stepBody.value
-                        let bodyTargets :=
-                          (List.range resultWidth).map fun offset => bodyResult.snd + offset
-                        let bodyLets ←
-                          materializeInternalValueLets forIn.resultTy bodyResult.fst bodyTargets ctx.freshResultOwnerOffsets
-                        let doneResult ←
-                          extractExprFrom ctx
-                            (.value accValue ::
-                              .value (.scalar (.local byteSlot)) :: locals)
-                            (bodyResult.snd + resultWidth)
-                            stepBody.done
-                        if bodyTargets.length != resultWidth then
-                          .error "for-in accumulator body value shape mismatch"
-                        else
+                            forIn.resultTy
+                            stepBody
                         let releaseOffsets :=
                           foldAccumulatorReleaseOffsets ctx.freshResultOwnerOffsets forIn.resultTy
-                            accStart bodyLets doneResult.fst bodyTargets
+                            accStart step.bodyLets step.bodyDone step.bodyTargets
                         let resultValue :=
                           valueFromInternalSlots forIn.resultTy
                             (fun offset =>
@@ -746,13 +868,13 @@ mutual
                                 initSlots
                                 accStart
                                 byteSlot
-                                (bodyTargets.map fun slot => (.local slot : IRExpr))
-                                bodyLets
-                                doneResult.fst
+                                step.bodyValues
+                                step.bodyLets
+                                step.bodyDone
                                 releaseOffsets
                                 offset)
                         .ok
-                          (resultValue, doneResult.snd)
+                          (resultValue, step.nextLocal)
                       else
                         .error s!"unsupported ByteArray for-in item type: {reprStr forIn.itemTy}"
                   | .array itemTy =>
@@ -771,28 +893,16 @@ mutual
                             let accValue :=
                               valueFromInternalSlots forIn.resultTy
                                 (fun offset => .local (accStart + offset))
-                            let bodyResult ←
-                              extractValueFrom ctx
+                            let step ←
+                              extractForInStepBody ctx
                                 (.value accValue ::
                                   .value itemValue :: locals)
                                 (itemStart + width)
-                                stepBody.value
-                            let bodyTargets :=
-                              (List.range resultWidth).map fun offset => bodyResult.snd + offset
-                            let bodyLets ←
-                              materializeInternalValueLets forIn.resultTy bodyResult.fst bodyTargets ctx.freshResultOwnerOffsets
-                            let doneResult ←
-                              extractExprFrom ctx
-                                (.value accValue ::
-                                  .value itemValue :: locals)
-                                (bodyResult.snd + resultWidth)
-                                stepBody.done
-                            if bodyTargets.length != resultWidth then
-                              .error "for-in accumulator body value shape mismatch"
-                            else
+                                forIn.resultTy
+                                stepBody
                             let releaseOffsets :=
                               foldAccumulatorReleaseOffsets ctx.freshResultOwnerOffsets
-                                forIn.resultTy accStart bodyLets doneResult.fst bodyTargets
+                                forIn.resultTy accStart step.bodyLets step.bodyDone step.bodyTargets
                             let resultValue :=
                               valueFromInternalSlots forIn.resultTy
                                 (fun offset =>
@@ -805,18 +915,50 @@ mutual
                                     initSlots
                                     accStart
                                     itemStart
-                                    (bodyTargets.map fun slot => (.local slot : IRExpr))
-                                    bodyLets
-                                    doneResult.fst
+                                    step.bodyValues
+                                    step.bodyLets
+                                    step.bodyDone
                                     releaseOffsets
                                     offset)
                             .ok
-                              (resultValue, doneResult.snd)
+                              (resultValue, step.nextLocal)
                         | none => .error s!"unsupported Array for-in item type: {reprStr itemTy}"
                       else
                         .error "Array for-in item type mismatch"
                   | rangeTy =>
-                      if isLegacyRangeType rangeTy && forIn.itemTy == .nat then
+                      if isLeanLoopType rangeTy && forIn.itemTy == .unit then
+                        let collectionResult ← extractValueFrom ctx locals nextLocal forIn.collection
+                        let initResult ← extractValueFrom ctx locals collectionResult.snd forIn.init
+                        let initSlots ← flattenInternalValue forIn.resultTy initResult.fst ctx.freshResultOwnerOffsets
+                        if initSlots.length != resultWidth then
+                          .error "for-in accumulator initial value shape mismatch"
+                        else
+                        let accStart := initResult.snd
+                        let accValue :=
+                          valueFromInternalSlots forIn.resultTy
+                            (fun offset => .local (accStart + offset))
+                        let bodyLocals :=
+                          .value accValue :: .value (.scalar (.u64 0)) :: locals
+                        let step ←
+                          extractForInStepBody ctx bodyLocals (accStart + resultWidth)
+                            forIn.resultTy stepBody
+                        let releaseOffsets :=
+                          foldAccumulatorReleaseOffsets ctx.freshResultOwnerOffsets forIn.resultTy
+                            accStart step.bodyLets step.bodyDone step.bodyTargets
+                        let resultValue :=
+                          valueFromInternalSlots forIn.resultTy
+                            (fun offset =>
+                              .loopFoldMultiSlot
+                                resultWidth
+                                initSlots
+                                accStart
+                                step.bodyValues
+                                step.bodyLets
+                                step.bodyDone
+                                releaseOffsets
+                                offset)
+                        .ok (resultValue, step.nextLocal)
+                      else if isLegacyRangeType rangeTy && forIn.itemTy == .nat then
                         let collectionResult ← extractValueFrom ctx locals nextLocal forIn.collection
                         let rangeParts ← legacyRangeParts collectionResult.fst
                         let initResult ← extractValueFrom ctx locals collectionResult.snd forIn.init
@@ -829,28 +971,16 @@ mutual
                         let accValue :=
                           valueFromInternalSlots forIn.resultTy
                             (fun offset => .local (accStart + offset))
-                        let bodyResult ←
-                          extractValueFrom ctx
+                        let step ←
+                          extractForInStepBody ctx
                             (.value accValue ::
                               .value (.scalar (.local itemSlot)) :: locals)
                             (itemSlot + 1)
-                            stepBody.value
-                        let bodyTargets :=
-                          (List.range resultWidth).map fun offset => bodyResult.snd + offset
-                        let bodyLets ←
-                          materializeInternalValueLets forIn.resultTy bodyResult.fst bodyTargets ctx.freshResultOwnerOffsets
-                        let doneResult ←
-                          extractExprFrom ctx
-                            (.value accValue ::
-                              .value (.scalar (.local itemSlot)) :: locals)
-                            (bodyResult.snd + resultWidth)
-                            stepBody.done
-                        if bodyTargets.length != resultWidth then
-                          .error "for-in accumulator body value shape mismatch"
-                        else
+                            forIn.resultTy
+                            stepBody
                         let releaseOffsets :=
                           foldAccumulatorReleaseOffsets ctx.freshResultOwnerOffsets forIn.resultTy
-                            accStart bodyLets doneResult.fst bodyTargets
+                            accStart step.bodyLets step.bodyDone step.bodyTargets
                         let resultValue :=
                           valueFromInternalSlots forIn.resultTy
                             (fun offset =>
@@ -862,12 +992,12 @@ mutual
                                 initSlots
                                 accStart
                                 itemSlot
-                                (bodyTargets.map fun slot => (.local slot : IRExpr))
-                                bodyLets
-                                doneResult.fst
+                                step.bodyValues
+                                step.bodyLets
+                                step.bodyDone
                                 releaseOffsets
                                 offset)
-                        .ok (resultValue, doneResult.snd)
+                        .ok (resultValue, step.nextLocal)
                       else
                         .error s!"unsupported for-in collection type: {reprStr forIn.collectionTy}"
             | none => .error "unsupported ForIn.forIn application"
