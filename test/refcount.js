@@ -270,6 +270,12 @@ async function checkCompilerReleasesOwnedCallResults() {
     );
   }
 
+  const byteHeapResultStats = await instantiate(correctnessModule, "byteArrayResultDropsOwnedTempStats");
+  const byteResultActual = pointer(byteHeapResultStats.byteArrayResultDropsOwnedTempStats());
+  if (byteResultActual !== 10101) {
+    throw new Error(`byteArrayResultDropsOwnedTempStats: expected 10101, got ${byteResultActual}`);
+  }
+
   const recursive = await instantiate(correctnessModule, "ownedRecursiveNodeParamCallTempScalar");
   recursive.reset();
   const expectedRecursiveBlocks = [
@@ -365,7 +371,7 @@ async function main() {
   await checkBorrowedArrayNoopRelease();
   await checkCompilerReleasesOwnedCallResults();
   await checkCompilerReleasesFoldAccumulators();
-  process.stdout.write("checked 24 refcount cases\n");
+  process.stdout.write("checked 25 refcount cases\n");
 }
 
 main().catch((error) => {

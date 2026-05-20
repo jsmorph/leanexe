@@ -1,5 +1,19 @@
 # Development Journal
 
+## 2026-05-20: Nonrecursive Heap-Result Temporary Release
+
+Heap-returning functions now have a limited compiler-emitted release path for dead nonrecursive heap temporaries.  During result materialization, the extractor protects owner slots that appear in the returned heap value, owner slots reached through borrowed root expressions, and heap arguments to returned helper-call results that may borrow from those arguments.  It may release a fresh nonrecursive owner slot, currently an internal `ByteArray` or `Array` owner, when that owner is absent from the protected set and the body has not already released it.
+
+The implementation excludes recursive heap-result temporaries.  A broader recursive rule exposed unsound releases in existing JSON tree programs, where returned recursive values can contain borrowed children, arrays, and byte-array owners whose lifetime depends on retain and ownership-transfer details across several layouts.  Recursive heap temporaries still release in scalar-result functions, helper-result scalar callers, fold and loop accumulator replacement, and explicit source-level `LeanExe.Runtime.release` boundaries.
+
+Checks run:
+
+- [x] `lake build LeanExe.Extract.Core LeanExe.Examples.Correctness lean-wasm` returned successfully.
+- [x] `node test/refcount.js` returned `checked 25 refcount cases`.
+- [x] `node test/core_correctness.js` returned `checked 638 accepted, 29 rejected, and 13 trapped cases`.
+- [x] `node tools/compare-standard.js --self-test` returned `checked 49 standard Lean comparison cases`.
+- [x] `node test/run_all.js` returned `checked 94 report classification cases`, `checked 638 accepted, 29 rejected, and 13 trapped cases`, `checked 25 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 22 WASI program cases, 2 traps, and 7 rejections`, `checked 49 standard Lean comparison cases`, and `checked 56 cases`.
+
 ## 2026-05-18: Fold Accumulator Ownership Release
 
 Loop-carried heap values now have a conservative compiler-emitted release path.  The extractor computes owner-slot offsets for the accumulator result type, including owner slots inside products, structures, sums, and nonrecursive tagged payloads.  It attaches a release offset to an `Array.foldl`, `ByteArray.foldl`, or accepted pure `for` loop only when the staged next accumulator slot is proven fresh by local allocation analysis and the body has not already released the old accumulator slot.
