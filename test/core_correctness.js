@@ -312,6 +312,13 @@ const accepted = [
   { name: "ownedByteArrayCallTempScalar", args: [], expected: 66n },
   { name: "ownedArrayParamCallTempScalar", args: [], expected: 16n },
   { name: "ownedByteArrayParamCallTempScalar", args: [], expected: 100n },
+  {
+    name: "byteArrayResultDropsOwnedTemp",
+    args: [],
+    expected: [null, 1n],
+    memoryBytes: [{ resultIndex: 0, lengthIndex: 1, values: [66] }],
+  },
+  { name: "byteArrayResultDropsOwnedTempStats", args: [], expected: 10101n },
   { name: "ownedRecursiveNodeParamCallTempScalar", args: [], expected: 310n },
   { name: "unusedRecursiveRuntimeReleaseFrees", args: [], expected: 3n },
   { name: "arrayFoldRecursiveAccumulatorReleaseStats", args: [], expected: 30606n },

@@ -3929,6 +3929,21 @@ def ownedByteArrayParamCallTempScalarFromInput (input : ByteArray) : UInt64 :=
 def ownedByteArrayParamCallTempScalar : UInt64 :=
   ownedByteArrayParamCallTempScalarFromInput "A".toUTF8
 
+def byteArrayResultDropsOwnedTemp : ByteArray :=
+  let temp := ByteArray.empty.push (65 : UInt8)
+  if temp[0]! == (65 : UInt8) then
+    ByteArray.empty.push (66 : UInt8)
+  else
+    ByteArray.empty.push (67 : UInt8)
+
+def byteArrayResultDropsOwnedTempStats : UInt64 :=
+  let before := LeanExe.Runtime.freeCount
+  let releasesBefore := LeanExe.Runtime.releaseCount
+  let output := byteArrayResultDropsOwnedTemp
+  let releasesAfterCall := LeanExe.Runtime.releaseCount - releasesBefore
+  let freesAfterCall := LeanExe.Runtime.freeCount - before
+  output.size.toUInt64 * 10000 + releasesAfterCall * 100 + freesAfterCall
+
 def ownedRecursiveNodeCallTempFromParam (tree : U64Binary) : U64Binary :=
   U64Binary.node (U64Binary.leaf 9) tree
 
@@ -3936,6 +3951,13 @@ def ownedRecursiveNodeParamCallTempScalar : UInt64 :=
   let source := U64Binary.leaf 1
   let tree := ownedRecursiveNodeCallTempFromParam source
   u64BinaryNodeCount tree * 100 + u64BinaryLeafSum tree
+
+def recursiveResultDropsOwnedTemp : U64Binary :=
+  let temp := U64Binary.node (U64Binary.leaf 1) (U64Binary.leaf 2)
+  if u64BinaryLeafSum temp == 3 then
+    U64Binary.node (U64Binary.leaf 4) (U64Binary.leaf 5)
+  else
+    U64Binary.leaf 0
 
 def unusedRecursiveRuntimeReleaseFrees : UInt64 :=
   let tree := U64Binary.node (U64Binary.leaf 2) (U64Binary.leaf 3)

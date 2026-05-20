@@ -684,6 +684,12 @@ function selfTest() {
     {
       mode: "pure-bytes",
       moduleName: correctness,
+      entry: "byteArrayResultDropsOwnedTemp",
+      serializer: "__leanexeValue",
+    },
+    {
+      mode: "pure-bytes",
+      moduleName: correctness,
       entry: "structureArrayReturn",
       serializer: `let out := __leanexeAppendNat ByteArray.empty __leanexeValue.values.size
 let out := __leanexeValue.values.foldl (fun out value =>
@@ -767,6 +773,12 @@ out ++ __leanexeValue.bytes`,
       mode: "pure-bytes",
       moduleName: correctness,
       entry: "u64BinaryValue",
+      serializer: `${correctness}.u64BinaryBytes __leanexeValue`,
+    },
+    {
+      mode: "pure-bytes",
+      moduleName: correctness,
+      entry: "recursiveResultDropsOwnedTemp",
       serializer: `${correctness}.u64BinaryBytes __leanexeValue`,
     },
     {
