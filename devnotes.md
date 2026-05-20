@@ -1,5 +1,18 @@
 # Development Journal
 
+## 2026-05-20: Mutable Id Matches and If-let
+
+Pure `Id.run do` examples now cover mutable assignments under `match` and `if let`.  The correctness corpus has an `Option` match that updates a scalar, an `if let some` assignment, a named catch-all `Option` arm that uses the fallback scrutinee value, a user-defined `Status` match that returns a tagged value, and a state-record update under an `Option` match.  These examples exercise the source shapes used by ordinary parser and transformer code without adding a source-level special case for parser programs.
+
+The compiler change is in generated `Option` matcher recognition.  Lean may elaborate `if let some ...` and sparse `Option` matches to a local `match_` helper whose fallback arm receives the scrutinee rather than a unit argument.  The matcher classifier now treats an arm whose parameter has the `Option α` scrutinee type as the none/catch-all arm, and the extractor binds that parameter to an `Option.none` value on the none path.  The same binding rule is used in the restricted Nat-tail-recursion matcher path.
+
+Checks run:
+
+- [x] `lake build LeanExe.Extract.Core LeanExe.Examples.Correctness lean-wasm` returned successfully.
+- [x] `node test/core_correctness.js` returned `checked 661 accepted, 30 rejected, and 13 trapped cases`.
+- [x] `node tools/compare-standard.js --self-test` returned `checked 68 standard Lean comparison cases`.
+- [x] `node test/run_all.js` returned `checked 94 report classification cases`, `checked 661 accepted, 30 rejected, and 13 trapped cases`, `checked 25 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 22 WASI program cases, 2 traps, and 7 rejections`, `checked 68 standard Lean comparison cases`, and `checked 56 cases`.
+
 ## 2026-05-20: Heap-field Id state records
 
 Pure `Id.run do` examples now cover mutable state records that contain heap fields.  The correctness corpus has one parser-style `while` loop that carries `pos`, `out : ByteArray`, and `ok` in one structure, stops at a nondigit, and returns the byte output accumulated before the stop.  It also has a mutable state record that carries an internal `Array UInt64` and a counter through a `while` loop, updating array elements with the current counter value.
