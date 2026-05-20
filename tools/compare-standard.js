@@ -690,6 +690,26 @@ function selfTest() {
     {
       mode: "pure",
       moduleName: correctness,
+      entry: "exceptDoStateFromLoop",
+      resultSlots:
+        "match __leanexeValue with | Except.error code => #[0, code, 0, 0] | Except.ok state => #[1, 0, UInt64.ofNat state.pos, state.sum]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "exceptDoLoopErrorSkipsRestTrap",
+      resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "exceptDoStatusFromLoop",
+      resultSlots:
+        "match __leanexeValue with | Except.error code => #[0, code, 0, 0, 0] | Except.ok status => match status with | .ok value => #[1, 0, 0, value, 0] | .error code => #[1, 0, 1, 0, code]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
       entry: "natDivModNormal",
       programArgs: ["7"],
       resultSlots: "#[UInt64.ofNat __leanexeValue]",
@@ -816,6 +836,14 @@ function selfTest() {
       moduleName: correctness,
       entry: "idRunWhileDigitOutput",
       serializer: "__leanexeValue",
+    },
+    {
+      mode: "pure-bytes",
+      moduleName: correctness,
+      entry: "exceptDoByteArrayFromValidation",
+      serializer: `match __leanexeValue with
+| Except.error code => __leanexeAppendUInt64 ByteArray.empty code
+| Except.ok bytes => bytes`,
     },
     {
       mode: "pure-bytes",

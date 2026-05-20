@@ -225,6 +225,21 @@ def bangOrErrorDo (input : ByteArray) : Except ByteArray ByteArray :=
 end LeanExe.Examples.ManualExcept
 ```
 
+Parser-shaped `Except` code may call helpers whose bodies use accepted pure loops.  The successful path can return a scalar, structure, tagged value, array, or byte array when that value fits the normal layout rules.  The error path short-circuits later binds, so a failed parse skips later computation exactly as Lean does.
+
+```lean
+def digitByteOrError (byte : UInt8) : Except UInt64 UInt8 :=
+  if (48 : UInt8) <= byte && byte <= (57 : UInt8) then
+    Except.ok (byte - 48)
+  else
+    Except.error byte.toUInt64
+
+def digitBytes : Except UInt64 ByteArray := do
+  let first <- digitByteOrError (52 : UInt8)
+  let second <- digitByteOrError (53 : UInt8)
+  pure ((ByteArray.empty.push first).push second)
+```
+
 The supported `Option` and `Except` combinators include direct `map` and `bind`, overloaded `Functor.map`, and `do` notation that elaborates to `Pure.pure` and `Bind.bind`.  The callback must be written at the call site.  Do not pass callback values through variables, structures, arrays, or helper parameters.
 
 Compile a stdin command:
