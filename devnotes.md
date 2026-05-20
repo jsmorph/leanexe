@@ -1,5 +1,18 @@
 # Development Journal
 
+## 2026-05-20: Option and Except foldlM
+
+`Array.foldlM` and `ByteArray.foldlM` now compile for `Option` and `Except ε` when the callback is a direct lambda and the accumulator payload has a supported concrete layout.  The extractor represents the loop accumulator as the monad result value, stages each callback result through the existing multi-slot fold loop, and derives the loop stop flag from the staged tag.  A `none` or `Except.error` result stops the generated loop before later callback bodies run.
+
+This uses the existing `Array.foldl` and `ByteArray.foldl` machinery instead of adding a new IR loop.  The implementation accepts the same accumulator payload classes as ordinary folds, including byte arrays and supported structures, while keeping `Id` `foldlM`, effectful callbacks, and escaping callback values rejected.  The correctness examples cover success, early failure that skips a later trap, an `Option ByteArray` accumulator, and `Array.attach.foldlM` with erased membership proofs.
+
+Checks run:
+
+- [x] `lake build LeanExe.Extract.Core lean-wasm LeanExe.Examples.Correctness` returned successfully.
+- [x] `node test/core_correctness.js` returned `checked 680 accepted, 30 rejected, and 13 trapped cases`.
+- [x] `node tools/compare-standard.js --self-test` returned `checked 84 standard Lean comparison cases`.
+- [x] `node test/run_all.js` returned `checked 94 report classification cases`, `checked 680 accepted, 30 rejected, and 13 trapped cases`, `checked 25 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 35 WASI program cases, 2 traps, and 7 rejections`, `checked 84 standard Lean comparison cases`, and `checked 56 cases`.
+
 ## 2026-05-20: Interleaved Inline Specialization
 
 Transparent inline specialization now supports static type, proof, and direct-lambda arguments interleaved with runtime arguments.  The specializer walks the helper lambda prefix in source order, substitutes static binders in place, preserves runtime binders in order, and lifts substituted static expressions across preserved runtime binders.  Inline extraction now appends the caller locals after helper runtime argument bindings, so a substituted direct lambda can capture a caller-local value without turning into a runtime closure.

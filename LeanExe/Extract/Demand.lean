@@ -383,6 +383,8 @@ partial def demandExpr
               args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
           | (.const ``ByteArray.foldl _, args) =>
               args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
+          | (.const ``ByteArray.foldlM _, args) =>
+              args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
           | (.const ``ByteArray.toUInt64LE! _, args) =>
               args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
           | (.const ``ByteArray.toUInt64BE! _, args) =>
@@ -452,6 +454,8 @@ partial def demandExpr
           | (.const ``Array.filter _, args) =>
               args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
           | (.const ``Array.foldl _, args) =>
+              args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
+          | (.const ``Array.foldlM _, args) =>
               args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
           | (.const ``Array.insertIdxIfInBounds _, args) =>
               match args.reverse with

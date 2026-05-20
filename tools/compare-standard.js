@@ -915,6 +915,46 @@ out ++ __leanexeValue.bytes`,
     {
       mode: "pure-bytes",
       moduleName: correctness,
+      entry: "arrayFoldMExceptErrorSkipsRestTrap",
+      serializer: `match __leanexeValue with
+| Except.error code => __leanexeAppendUInt64 ByteArray.empty code
+| Except.ok value => __leanexeAppendUInt64 "ok".toUTF8 value`,
+    },
+    {
+      mode: "pure-bytes",
+      moduleName: correctness,
+      entry: "arrayFoldMOptionSuccess",
+      serializer: `match __leanexeValue with
+| some value => __leanexeAppendUInt64 ByteArray.empty value
+| none => "none".toUTF8`,
+    },
+    {
+      mode: "pure-bytes",
+      moduleName: correctness,
+      entry: "arrayAttachFoldMExcept",
+      serializer: `match __leanexeValue with
+| Except.error code => __leanexeAppendUInt64 ByteArray.empty code
+| Except.ok value => __leanexeAppendUInt64 "ok".toUTF8 value`,
+    },
+    {
+      mode: "pure-bytes",
+      moduleName: correctness,
+      entry: "byteArrayFoldMExceptErrorSkipsRestTrap",
+      serializer: `match __leanexeValue with
+| Except.error code => __leanexeAppendUInt64 ByteArray.empty code
+| Except.ok value => __leanexeAppendUInt64 "ok".toUTF8 value`,
+    },
+    {
+      mode: "pure-bytes",
+      moduleName: correctness,
+      entry: "byteArrayFoldMOptionByteArray",
+      serializer: `match __leanexeValue with
+| some bytes => bytes
+| none => "none".toUTF8`,
+    },
+    {
+      mode: "pure-bytes",
+      moduleName: correctness,
       entry: "u64ListTailValue",
       serializer: `${correctness}.u64ListBytes __leanexeValue`,
     },
