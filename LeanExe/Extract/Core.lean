@@ -22,6 +22,21 @@ structure ExtractedForInStepBody where
   bodyDone : IRExpr
   nextLocal : Nat
 
+def valueIteConst
+    (cond : IRCond)
+    (thenValue elseValue : ExtractedValue) :
+    Except String ExtractedValue :=
+  match condConst? cond with
+  | some true => .ok thenValue
+  | some false => .ok elseValue
+  | none => valueIte cond thenValue elseValue
+
+def boolExprConst (cond : IRCond) : IRExpr :=
+  match condConst? cond with
+  | some true => .u64 1
+  | some false => .u64 0
+  | none => boolExpr cond
+
 mutual
   partial def extractStructuralRecCallValueFrom
       (ctx : Context)
@@ -420,7 +435,6 @@ mutual
     let accValue :=
       valueFromInternalSlots resultTy (fun offset => .local (accStart + offset))
     let accParts ← monadFoldAccumulatorParts monad accValue
-    let failed := .eqU64 accParts.fst (.u64 0)
     let payload := accParts.snd
     let stepTy : Ty := .variant ``ForInStep [payloadTy] [[payloadTy], [payloadTy]]
     let bodyResult ←
@@ -438,7 +452,6 @@ mutual
     let doneSlot := bodyTargetStart + resultWidth
     let pairTy : Ty := .product resultTy .bool
     let pairTargets := bodyTargets ++ [doneSlot]
-    let priorPair := .product accValue (.scalar (.u64 1))
     let defaultPayload ← defaultValue payloadTy
     let computedPair ←
       match monad with
@@ -446,6 +459,9 @@ mutual
           let parts ← optionPartsWithLets bodyResult.fst
           let bodyTag := parts.snd.fst
           let bodyFailed := .eqU64 bodyTag (.u64 0)
+          let rawStepParts ← variantPartsWithLets ``ForInStep parts.snd.snd
+          let rawStepDone :=
+            .eqU64 (wrapExprLets rawStepParts.fst rawStepParts.snd.fst) (.u64 0)
           let stepLets ←
             materializeInternalValueLets stepTy parts.snd.snd stepTargets
               ctx.freshResultOwnerOffsets
@@ -458,12 +474,16 @@ mutual
           let yieldValue :=
             valueFromInternalSlots payloadTy
               (fun offset => .local (yieldPayloadStart + offset))
-          let stepDone := .eqU64 stepTag (.u64 0)
-          let selectedPayload ← valueIte stepDone doneValue yieldValue
+          let stepDone :=
+            match condConst? rawStepDone with
+            | some true => .true
+            | some false => .false
+            | none => .eqU64 stepTag (.u64 0)
+          let selectedPayload ← valueIteConst stepDone doneValue yieldValue
           let failedResult := mkOptionValue (.u64 0) defaultPayload
           let okResult := mkOptionValue (.u64 1) selectedPayload
-          let nextValue ← valueIte bodyFailed failedResult okResult
-          let doneValue := boolExpr (.or bodyFailed stepDone)
+          let nextValue ← valueIteConst bodyFailed failedResult okResult
+          let doneValue := boolExprConst (.or bodyFailed stepDone)
           .ok
             (wrapValueLets parts.fst
               (wrapValueLocalLets stepLets
@@ -474,6 +494,9 @@ mutual
           let bodyFailed := .eqU64 bodyTag (.u64 0)
           let errorPayload := parts.snd.snd.fst
           let stepPayload := parts.snd.snd.snd
+          let rawStepParts ← variantPartsWithLets ``ForInStep stepPayload
+          let rawStepDone :=
+            .eqU64 (wrapExprLets rawStepParts.fst rawStepParts.snd.fst) (.u64 0)
           let stepLets ←
             materializeInternalValueLets stepTy stepPayload stepTargets
               ctx.freshResultOwnerOffsets
@@ -486,21 +509,24 @@ mutual
           let yieldValue :=
             valueFromInternalSlots payloadTy
               (fun offset => .local (yieldPayloadStart + offset))
-          let stepDone := .eqU64 stepTag (.u64 0)
-          let selectedPayload ← valueIte stepDone doneValue yieldValue
+          let stepDone :=
+            match condConst? rawStepDone with
+            | some true => .true
+            | some false => .false
+            | none => .eqU64 stepTag (.u64 0)
+          let selectedPayload ← valueIteConst stepDone doneValue yieldValue
           let failedResult := mkExceptValue (.u64 0) errorPayload defaultPayload
           let okResult :=
             mkExceptValue (.u64 1) (← defaultValue errorTy) selectedPayload
-          let nextValue ← valueIte bodyFailed failedResult okResult
-          let doneValue := boolExpr (.or bodyFailed stepDone)
+          let nextValue ← valueIteConst bodyFailed failedResult okResult
+          let doneValue := boolExprConst (.or bodyFailed stepDone)
           .ok
             (wrapValueLets parts.fst
               (wrapValueLocalLets stepLets
                 (.product nextValue (.scalar doneValue))))
       | .id => .error "Id for-in is handled by extractForInStepBody"
-    let pairValue ← valueIte failed priorPair computedPair
     let bodyLets ←
-      materializeInternalValueLets pairTy pairValue pairTargets
+      materializeInternalValueLets pairTy computedPair pairTargets
         ctx.freshResultOwnerOffsets
     .ok {
       bodyTargets := bodyTargets,
@@ -563,19 +589,16 @@ mutual
     let accValue :=
       valueFromInternalSlots resultTy (fun offset => .local (accStart + offset))
     let parts ← monadFoldAccumulatorParts monad accValue
-    let tag := parts.fst
     let payload := parts.snd
-    let failed := .eqU64 tag (.u64 0)
     let bodyResult ←
       extractValueFrom ctx
         (bodyLocalPrefix ++ [.value payload] ++ bodyLocalSuffix)
         nextLocal
         bodyExpr
-    let nextValue ← valueIte failed accValue bodyResult.fst
     let bodyTargets :=
       (List.range resultWidth).map fun offset => bodyResult.snd + offset
     let bodyLets ←
-      materializeInternalValueLets resultTy nextValue bodyTargets
+      materializeInternalValueLets resultTy bodyResult.fst bodyTargets
         ctx.freshResultOwnerOffsets
     match bodyTargets with
     | tagTarget :: _ =>
@@ -1598,7 +1621,9 @@ mutual
             | _, _ => .error "unsupported Pure.pure application"
         | (.const ``Bind.bind _, args) =>
             match args, args.reverse, monadMapResultType? ctx.env args with
-            | monadTy :: _, bindFn :: value :: _, resultTy? =>
+            | monadTy :: _inst :: sourceTyExpr :: _resultTyExpr :: _, bindFn :: value :: _,
+                resultTy? =>
+                let sourceTy? := typeAtom? ctx.env sourceTyExpr
                 match supportedMonadType? ctx.env monadTy with
                 | some .id =>
                     let valueResult ← extractValueFrom ctx locals nextLocal value
@@ -1608,61 +1633,141 @@ mutual
                       | none => .error "unsupported Id bind function"
                     extractValueFrom ctx (.value valueResult.fst :: locals) valueResult.snd body
                 | some .option =>
-                    match resultTy? with
-                    | some resultTy =>
+                    match sourceTy?, resultTy? with
+                    | some sourceTy, some resultTy =>
+                        let sourceResultTy ← monadPayloadResultType .option sourceTy
+                        let resultMonadTy ← monadPayloadResultType .option resultTy
                         let optionResult ← extractValueFrom ctx locals nextLocal value
-                        let parts ← optionPartsWithLets optionResult.fst
-                        let lets := parts.fst
-                        let tag := parts.snd.fst
-                        let payload := parts.snd.snd
+                        let directParts ← optionPartsWithLets optionResult.fst
+                        let directTag := wrapExprLets directParts.fst directParts.snd.fst
                         let bindBody ←
                           match collectLambdas bindFn 1 with
                           | some body => .ok body
                           | none => .error "unsupported Option bind function"
-                        let bindResult ←
-                          extractValueFrom ctx (.value payload :: locals) optionResult.snd bindBody
-                        let bindParts ← optionPartsWithLets bindResult.fst
-                        let bindLets := bindParts.fst
-                        let bindTag := wrapExprLets bindLets bindParts.snd.fst
-                        let bindPayload := wrapValueLets bindLets bindParts.snd.snd
                         let nonePayload ← defaultValue resultTy
-                        .ok
-                          (wrapValueLets lets
-                            (mkOptionValue
-                              (.ite (.eqU64 tag (.u64 0)) (.u64 0) bindTag)
-                              (← valueIte (.eqU64 tag (.u64 0)) nonePayload bindPayload)),
-                            bindResult.snd)
-                    | none => .error "unsupported Option bind application"
+                        let directCond? := condConst? (.eqU64 directTag (.u64 0))
+                        let bindCond? :=
+                          match directCond? with
+                          | some false =>
+                              if tyContainsHeapPointer sourceTy ||
+                                  valueContainsFoldMultiSlot optionResult.fst ||
+                                  valueContainsFoldMultiSlot directParts.snd.snd then
+                                none
+                              else
+                                some false
+                          | other => other
+                        match bindCond? with
+                        | some true =>
+                            .ok
+                              (wrapValueLets directParts.fst
+                                (mkOptionValue (.u64 0) nonePayload),
+                                optionResult.snd)
+                        | some false =>
+                            let bindResult ←
+                              extractValueFrom ctx (.value directParts.snd.snd :: locals)
+                                optionResult.snd bindBody
+                            .ok (wrapValueLets directParts.fst bindResult.fst, bindResult.snd)
+                        | none =>
+                            let sourceWidth := internalSlots sourceResultTy
+                            let sourceTargets :=
+                              (List.range sourceWidth).map fun offset => optionResult.snd + offset
+                            let sourceLets ←
+                              materializeInternalValueLets sourceResultTy optionResult.fst
+                                sourceTargets ctx.freshResultOwnerOffsets
+                            let sourceValue :=
+                              valueFromInternalSlots sourceResultTy
+                                (fun offset => .local (optionResult.snd + offset))
+                            let parts ← optionPartsWithLets sourceValue
+                            let tag := parts.snd.fst
+                            let payload := parts.snd.snd
+                            let bindResult ←
+                              extractValueFrom ctx (.value payload :: locals)
+                                (optionResult.snd + sourceWidth) bindBody
+                            let bindWidth := internalSlots resultMonadTy
+                            let bindTargets :=
+                              (List.range bindWidth).map fun offset => bindResult.snd + offset
+                            let bindLets ←
+                              materializeInternalValueLets resultMonadTy bindResult.fst
+                                bindTargets ctx.freshResultOwnerOffsets
+                            let bindValue :=
+                              valueFromInternalSlots resultMonadTy
+                                (fun offset => .local (bindResult.snd + offset))
+                            let failedValue := mkOptionValue (.u64 0) nonePayload
+                            let successValue := wrapValueLocalLets bindLets bindValue
+                            .ok
+                              (wrapValueLocalLets sourceLets
+                                (.ite (.eqU64 tag (.u64 0)) failedValue successValue),
+                                bindResult.snd + bindWidth)
+                    | _, _ => .error "unsupported Option bind application"
                 | some (.except _errorTy) =>
-                    match resultTy? with
-                    | some resultTy =>
+                    match sourceTy?, resultTy? with
+                    | some sourceTy, some resultTy =>
+                        let sourceResultTy ← monadPayloadResultType (SupportedMonad.except _errorTy) sourceTy
+                        let resultMonadTy ← monadPayloadResultType (SupportedMonad.except _errorTy) resultTy
                         let exceptResult ← extractValueFrom ctx locals nextLocal value
-                        let parts ← exceptPartsWithLets exceptResult.fst
-                        let lets := parts.fst
-                        let tag := parts.snd.fst
-                        let errorPayload := parts.snd.snd.fst
-                        let okPayload := parts.snd.snd.snd
+                        let directParts ← exceptPartsWithLets exceptResult.fst
+                        let directTag := wrapExprLets directParts.fst directParts.snd.fst
                         let bindBody ←
                           match collectLambdas bindFn 1 with
                           | some body => .ok body
                           | none => .error "unsupported Except bind function"
-                        let bindResult ←
-                          extractValueFrom ctx (.value okPayload :: locals) exceptResult.snd bindBody
-                        let bindParts ← exceptPartsWithLets bindResult.fst
-                        let bindLets := bindParts.fst
-                        let bindTag := wrapExprLets bindLets bindParts.snd.fst
-                        let bindError := wrapValueLets bindLets bindParts.snd.snd.fst
-                        let bindOk := wrapValueLets bindLets bindParts.snd.snd.snd
                         let defaultOk ← defaultValue resultTy
-                        let isError := .eqU64 tag (.u64 0)
-                        .ok
-                          (wrapValueLets lets
-                            (mkExceptValue
-                              (.ite isError (.u64 0) bindTag)
-                              (← valueIte isError errorPayload bindError)
-                              (← valueIte isError defaultOk bindOk)),
-                            bindResult.snd)
-                    | none => .error "unsupported Except bind application"
+                        let directCond? := condConst? (.eqU64 directTag (.u64 0))
+                        let bindCond? :=
+                          match directCond? with
+                          | some false =>
+                              if tyContainsHeapPointer sourceTy ||
+                                  valueContainsFoldMultiSlot exceptResult.fst ||
+                                  valueContainsFoldMultiSlot directParts.snd.snd.snd then
+                                none
+                              else
+                                some false
+                          | other => other
+                        match bindCond? with
+                        | some true =>
+                            .ok
+                              (wrapValueLets directParts.fst
+                                (mkExceptValue (.u64 0) directParts.snd.snd.fst defaultOk),
+                                exceptResult.snd)
+                        | some false =>
+                            let bindResult ←
+                              extractValueFrom ctx (.value directParts.snd.snd.snd :: locals)
+                                exceptResult.snd bindBody
+                            .ok (wrapValueLets directParts.fst bindResult.fst, bindResult.snd)
+                        | none =>
+                            let sourceWidth := internalSlots sourceResultTy
+                            let sourceTargets :=
+                              (List.range sourceWidth).map fun offset => exceptResult.snd + offset
+                            let sourceLets ←
+                              materializeInternalValueLets sourceResultTy exceptResult.fst
+                                sourceTargets ctx.freshResultOwnerOffsets
+                            let sourceValue :=
+                              valueFromInternalSlots sourceResultTy
+                                (fun offset => .local (exceptResult.snd + offset))
+                            let parts ← exceptPartsWithLets sourceValue
+                            let tag := parts.snd.fst
+                            let errorPayload := parts.snd.snd.fst
+                            let okPayload := parts.snd.snd.snd
+                            let bindResult ←
+                              extractValueFrom ctx (.value okPayload :: locals)
+                                (exceptResult.snd + sourceWidth) bindBody
+                            let bindWidth := internalSlots resultMonadTy
+                            let bindTargets :=
+                              (List.range bindWidth).map fun offset => bindResult.snd + offset
+                            let bindLets ←
+                              materializeInternalValueLets resultMonadTy bindResult.fst
+                                bindTargets ctx.freshResultOwnerOffsets
+                            let bindValue :=
+                              valueFromInternalSlots resultMonadTy
+                                (fun offset => .local (bindResult.snd + offset))
+                            let isError := .eqU64 tag (.u64 0)
+                            let failedValue := mkExceptValue (.u64 0) errorPayload defaultOk
+                            let successValue := wrapValueLocalLets bindLets bindValue
+                            .ok
+                              (wrapValueLocalLets sourceLets
+                                (.ite isError failedValue successValue),
+                                bindResult.snd + bindWidth)
+                    | _, _ => .error "unsupported Except bind application"
                 | none => .error "unsupported Bind.bind application"
             | _, _, _ => .error "unsupported Bind.bind application"
         | (.const ``Functor.map _, args) =>

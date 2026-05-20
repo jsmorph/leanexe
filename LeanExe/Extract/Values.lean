@@ -168,6 +168,158 @@ def boolExpr (cond : IRCond) : IRExpr :=
 def boolCond (expr : IRExpr) : IRCond :=
   .not (.eqU64 expr (.u64 0))
 
+def constLocal? (slot : Nat) : List (Nat × Nat) → Option Nat
+  | [] => none
+  | (candidate, value) :: rest =>
+      if candidate == slot then some value else constLocal? slot rest
+
+def removeConstLocal (slot : Nat) (locals : List (Nat × Nat)) : List (Nat × Nat) :=
+  locals.filter fun item => item.fst != slot
+
+def removeConstLocals (slots : List Nat) (locals : List (Nat × Nat)) : List (Nat × Nat) :=
+  slots.foldl (fun acc slot => removeConstLocal slot acc) locals
+
+mutual
+  partial def exprConstFrom? (locals : List (Nat × Nat)) : IRExpr → Option Nat
+    | .u64 value => some value
+    | .local slot => constLocal? slot locals
+    | .ite cond thenValue elseValue =>
+        match condConstFrom? locals cond with
+        | some true => exprConstFrom? locals thenValue
+        | some false => exprConstFrom? locals elseValue
+        | none =>
+            match exprConstFrom? locals thenValue, exprConstFrom? locals elseValue with
+            | some thenConst, some elseConst =>
+                if thenConst == elseConst then some thenConst else none
+            | _, _ => none
+    | .letE slot value body =>
+        let nextLocals :=
+          match exprConstFrom? locals value with
+          | some valueConst => (slot, valueConst) :: removeConstLocal slot locals
+          | none => removeConstLocal slot locals
+        exprConstFrom? nextLocals body
+    | .letCall slots _ _ body =>
+        exprConstFrom? (removeConstLocals slots locals) body
+    | _ => none
+
+  partial def condConstFrom? (locals : List (Nat × Nat)) : IRCond → Option Bool
+    | .true => some true
+    | .false => some false
+    | .eqU64 left right => do
+        some ((← exprConstFrom? locals left) == (← exprConstFrom? locals right))
+    | .ltU64 left right => do
+        some ((← exprConstFrom? locals left) < (← exprConstFrom? locals right))
+    | .leU64 left right => do
+        some ((← exprConstFrom? locals left) <= (← exprConstFrom? locals right))
+    | .not cond => condConstFrom? locals cond |>.map Bool.not
+    | .and left right =>
+        match condConstFrom? locals left, condConstFrom? locals right with
+        | some false, _ => some false
+        | _, some false => some false
+        | some true, some true => some true
+        | _, _ => none
+    | .or left right =>
+        match condConstFrom? locals left, condConstFrom? locals right with
+        | some true, _ => some true
+        | _, some true => some true
+        | some false, some false => some false
+        | _, _ => none
+end
+
+def exprConst? (expr : IRExpr) : Option Nat :=
+  exprConstFrom? [] expr
+
+def condConst? (cond : IRCond) : Option Bool :=
+  condConstFrom? [] cond
+
+mutual
+  partial def exprContainsFoldMultiSlot : IRExpr → Bool
+    | .arrayFoldMultiSlot .. => true
+    | .byteArrayFoldMultiSlot .. => true
+    | .rangeFoldMultiSlot .. => true
+    | .loopFoldMultiSlot .. => true
+    | .ite cond thenValue elseValue =>
+        condContainsFoldMultiSlot cond ||
+          exprContainsFoldMultiSlot thenValue ||
+          exprContainsFoldMultiSlot elseValue
+    | .letE _ value body =>
+        exprContainsFoldMultiSlot value || exprContainsFoldMultiSlot body
+    | .letCall _ _ args body =>
+        exprListContainsFoldMultiSlot args || exprContainsFoldMultiSlot body
+    | .letLets lets body =>
+        localLetsContainFoldMultiSlot lets || exprContainsFoldMultiSlot body
+    | _ => false
+
+  partial def condContainsFoldMultiSlot : IRCond → Bool
+    | .eqU64 left right
+    | .ltU64 left right
+    | .leU64 left right =>
+        exprContainsFoldMultiSlot left || exprContainsFoldMultiSlot right
+    | .not cond => condContainsFoldMultiSlot cond
+    | .and left right
+    | .or left right =>
+        condContainsFoldMultiSlot left || condContainsFoldMultiSlot right
+    | .true
+    | .false => false
+
+  partial def exprListContainsFoldMultiSlot : List IRExpr → Bool
+    | [] => false
+    | expr :: rest => exprContainsFoldMultiSlot expr || exprListContainsFoldMultiSlot rest
+
+  partial def localLetContainsFoldMultiSlot : LeanExe.IR.LocalLet → Bool
+    | .expr _ expr => exprContainsFoldMultiSlot expr
+    | .slots _ values => exprListContainsFoldMultiSlot values
+    | .call _ _ args => exprListContainsFoldMultiSlot args
+    | .branch cond thenLets elseLets =>
+        condContainsFoldMultiSlot cond ||
+          localLetsContainFoldMultiSlot thenLets ||
+          localLetsContainFoldMultiSlot elseLets
+
+  partial def localLetsContainFoldMultiSlot : List LeanExe.IR.LocalLet → Bool
+    | [] => false
+    | localLet :: rest =>
+        localLetContainsFoldMultiSlot localLet || localLetsContainFoldMultiSlot rest
+
+  partial def valueContainsFoldMultiSlot : ExtractedValue → Bool
+    | .scalar expr => exprContainsFoldMultiSlot expr
+    | .array owner ptr => exprContainsFoldMultiSlot owner || exprContainsFoldMultiSlot ptr
+    | .byteArray owner ptr len =>
+        exprContainsFoldMultiSlot owner ||
+          exprContainsFoldMultiSlot ptr ||
+          exprContainsFoldMultiSlot len
+    | .product left right =>
+        valueContainsFoldMultiSlot left || valueContainsFoldMultiSlot right
+    | .sum tag left right =>
+        exprContainsFoldMultiSlot tag ||
+          valueContainsFoldMultiSlot left ||
+          valueContainsFoldMultiSlot right
+    | .struct _ fields => valuesContainFoldMultiSlot fields
+    | .variant _ tag ctors =>
+        exprContainsFoldMultiSlot tag || ctorValuesContainFoldMultiSlot ctors
+    | .recursiveVariant _ tag ctors =>
+        exprContainsFoldMultiSlot tag ||
+          ctors.any (fun fields => fields.any fun field => valueContainsFoldMultiSlot field.snd)
+    | .heapVariant _ ptr => exprContainsFoldMultiSlot ptr
+    | .ite cond thenValue elseValue =>
+        condContainsFoldMultiSlot cond ||
+          valueContainsFoldMultiSlot thenValue ||
+          valueContainsFoldMultiSlot elseValue
+    | .letE _ expr body =>
+        exprContainsFoldMultiSlot expr || valueContainsFoldMultiSlot body
+    | .letCall _ _ args body =>
+        exprListContainsFoldMultiSlot args || valueContainsFoldMultiSlot body
+    | .letLocal lets body =>
+        localLetsContainFoldMultiSlot lets || valueContainsFoldMultiSlot body
+
+  partial def valuesContainFoldMultiSlot : List ExtractedValue → Bool
+    | [] => false
+    | value :: rest => valueContainsFoldMultiSlot value || valuesContainFoldMultiSlot rest
+
+  partial def ctorValuesContainFoldMultiSlot : List (List ExtractedValue) → Bool
+    | [] => false
+    | fields :: rest => valuesContainFoldMultiSlot fields || ctorValuesContainFoldMultiSlot rest
+end
+
 def irConstNat? : IRExpr → Option Nat
   | .u64 value => some value
   | _ => none
@@ -1419,26 +1571,44 @@ def arrayElementChildMask (ty : Ty) : Nat :=
   (heapChildMaskFromType 0 ty).fst
 
 mutual
-  partial def exprReturnsOwnedHeapObjectForAlloc
+  partial def exprReturnsOwnedHeapObjectForAllocFrom
       (summaries : Array (List Nat))
-      (ownedLocals : List Nat) :
+      (ownedLocals : List Nat)
+      (constLocals : List (Nat × Nat)) :
       IRExpr → Bool
     | .local slot => ownedLocals.contains slot
     | .letE slot value body =>
-        let valueOwned := exprReturnsOwnedHeapObjectForAlloc summaries ownedLocals value
-        let nextOwned := if valueOwned then slot :: ownedLocals else ownedLocals
-        exprReturnsOwnedHeapObjectForAlloc summaries nextOwned body
+        let valueOwned :=
+          exprReturnsOwnedHeapObjectForAllocFrom summaries ownedLocals constLocals value
+        let nextOwned :=
+          if valueOwned then
+            addLiveSlot (removeLiveSlot ownedLocals slot) slot
+          else
+            removeLiveSlot ownedLocals slot
+        let nextConsts :=
+          match exprConstFrom? constLocals value with
+          | some valueConst => (slot, valueConst) :: removeConstLocal slot constLocals
+          | none => removeConstLocal slot constLocals
+        exprReturnsOwnedHeapObjectForAllocFrom summaries nextOwned nextConsts body
     | .letCall slots index _ body =>
         let nextOwned :=
-          addLiveSlots ownedLocals (summarizedCallResultOwnerSlots summaries index slots)
-        exprReturnsOwnedHeapObjectForAlloc summaries nextOwned body
+          addLiveSlots (removeLiveSlots ownedLocals slots)
+            (summarizedCallResultOwnerSlots summaries index slots)
+        exprReturnsOwnedHeapObjectForAllocFrom summaries nextOwned
+          (removeConstLocals slots constLocals) body
     | .letLets lets body =>
-        exprReturnsOwnedHeapObjectForAlloc summaries
-          (ownedHeapLocalsFromLocalLetsForAlloc summaries ownedLocals lets)
-          body
-    | .ite _ thenValue elseValue =>
-        exprReturnsOwnedHeapObjectForAlloc summaries ownedLocals thenValue &&
-          exprReturnsOwnedHeapObjectForAlloc summaries ownedLocals elseValue
+        let state :=
+          ownedHeapAndConstLocalsFromLocalLetsForAlloc summaries ownedLocals constLocals lets
+        exprReturnsOwnedHeapObjectForAllocFrom summaries state.fst state.snd body
+    | .ite cond thenValue elseValue =>
+        match condConstFrom? constLocals cond with
+        | some true =>
+            exprReturnsOwnedHeapObjectForAllocFrom summaries ownedLocals constLocals thenValue
+        | some false =>
+            exprReturnsOwnedHeapObjectForAllocFrom summaries ownedLocals constLocals elseValue
+        | none =>
+            exprReturnsOwnedHeapObjectForAllocFrom summaries ownedLocals constLocals thenValue &&
+              exprReturnsOwnedHeapObjectForAllocFrom summaries ownedLocals constLocals elseValue
     | .arrayAllocSlots .. => true
     | .heapAllocSlots .. => true
     | .arrayReplicateSlots .. => true
@@ -1459,31 +1629,84 @@ mutual
         | none => false
     | _ => false
 
-  partial def localLetOwnedHeapSlotsForAlloc
-      (summaries : Array (List Nat))
-      (ownedLocals : List Nat) :
-      LeanExe.IR.LocalLet → List Nat
-    | .expr slot expr =>
-        if exprReturnsOwnedHeapObjectForAlloc summaries ownedLocals expr then [slot] else []
-    | .slots slots values =>
-        (slots.zip values).filterMap fun item =>
-          if exprReturnsOwnedHeapObjectForAlloc summaries ownedLocals item.snd then
-            some item.fst
-          else
-            none
-    | .call slots index _ => summarizedCallResultOwnerSlots summaries index slots
-    | .branch _ _ _ => []
-
-  partial def ownedHeapLocalsFromLocalLetsForAlloc
+  partial def ownedHeapAndConstLocalsAfterLocalLetForAlloc
       (summaries : Array (List Nat))
       (ownedLocals : List Nat)
+      (constLocals : List (Nat × Nat)) :
+      LeanExe.IR.LocalLet → List Nat × List (Nat × Nat)
+    | .expr slot expr =>
+        let ownedLocals :=
+          if exprReturnsOwnedHeapObjectForAllocFrom summaries ownedLocals constLocals expr then
+            addLiveSlot (removeLiveSlot ownedLocals slot) slot
+          else
+            removeLiveSlot ownedLocals slot
+        let constLocals :=
+          match exprConstFrom? constLocals expr with
+          | some value => (slot, value) :: removeConstLocal slot constLocals
+          | none => removeConstLocal slot constLocals
+        (ownedLocals, constLocals)
+    | .slots slots values =>
+        (slots.zip values).foldl
+          (fun state item =>
+            let ownedLocals := state.fst
+            let constLocals := state.snd
+            let ownedLocals :=
+              if exprReturnsOwnedHeapObjectForAllocFrom summaries ownedLocals constLocals item.snd then
+                addLiveSlot (removeLiveSlot ownedLocals item.fst) item.fst
+              else
+                removeLiveSlot ownedLocals item.fst
+            let constLocals :=
+              match exprConstFrom? constLocals item.snd with
+              | some value => (item.fst, value) :: removeConstLocal item.fst constLocals
+              | none => removeConstLocal item.fst constLocals
+            (ownedLocals, constLocals))
+          (ownedLocals, constLocals)
+    | .call slots index _ => summarizedCallResultOwnerSlots summaries index slots
+        |> addLiveSlots (removeLiveSlots ownedLocals slots)
+        |> fun owned => (owned, removeConstLocals slots constLocals)
+    | .branch cond thenLets elseLets =>
+        match condConstFrom? constLocals cond with
+        | some true => ownedHeapAndConstLocalsFromLocalLetsForAlloc summaries ownedLocals constLocals thenLets
+        | some false => ownedHeapAndConstLocalsFromLocalLetsForAlloc summaries ownedLocals constLocals elseLets
+        | none =>
+            let thenState :=
+              ownedHeapAndConstLocalsFromLocalLetsForAlloc summaries ownedLocals constLocals thenLets
+            let elseState :=
+              ownedHeapAndConstLocalsFromLocalLetsForAlloc summaries ownedLocals constLocals elseLets
+            let owned :=
+              thenState.fst.filter fun slot => elseState.fst.contains slot
+            let consts :=
+              thenState.snd.filter fun item =>
+                match constLocal? item.fst elseState.snd with
+                | some value => value == item.snd
+                | none => false
+            (owned, consts)
+
+  partial def ownedHeapAndConstLocalsFromLocalLetsForAlloc
+      (summaries : Array (List Nat))
+      (ownedLocals : List Nat)
+      (constLocals : List (Nat × Nat))
       (lets : List LeanExe.IR.LocalLet) :
-      List Nat :=
+      List Nat × List (Nat × Nat) :=
     lets.foldl
-      (fun owned localLet =>
-        owned ++ localLetOwnedHeapSlotsForAlloc summaries owned localLet)
-      ownedLocals
+      (fun state localLet =>
+        ownedHeapAndConstLocalsAfterLocalLetForAlloc summaries state.fst state.snd localLet)
+      (ownedLocals, constLocals)
 end
+
+def exprReturnsOwnedHeapObjectForAlloc
+    (summaries : Array (List Nat))
+    (ownedLocals : List Nat)
+    (expr : IRExpr) :
+    Bool :=
+  exprReturnsOwnedHeapObjectForAllocFrom summaries ownedLocals [] expr
+
+def ownedHeapLocalsFromLocalLetsForAlloc
+    (summaries : Array (List Nat))
+    (ownedLocals : List Nat)
+    (lets : List LeanExe.IR.LocalLet) :
+    List Nat :=
+  (ownedHeapAndConstLocalsFromLocalLetsForAlloc summaries ownedLocals [] lets).fst
 
 def ownedChildMaskForSlotsForAlloc
     (summaries : Array (List Nat))
@@ -2269,8 +2492,12 @@ mutual
         exprReturnsFreshOwnedHeapObjectFrom summaries nextOwned body
     | .ite cond thenValue elseValue =>
         let branchOwned := removeLiveSlots ownedLocals (condReleasedSlots cond)
-        exprReturnsFreshOwnedHeapObjectFrom summaries branchOwned thenValue &&
-          exprReturnsFreshOwnedHeapObjectFrom summaries branchOwned elseValue
+        match condConst? cond with
+        | some true => exprReturnsFreshOwnedHeapObjectFrom summaries branchOwned thenValue
+        | some false => exprReturnsFreshOwnedHeapObjectFrom summaries branchOwned elseValue
+        | none =>
+            exprReturnsFreshOwnedHeapObjectFrom summaries branchOwned thenValue &&
+              exprReturnsFreshOwnedHeapObjectFrom summaries branchOwned elseValue
     | .arrayAllocSlots .. => true
     | .heapAllocSlots .. => true
     | .arrayReplicateSlots .. => true
