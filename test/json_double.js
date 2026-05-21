@@ -3,6 +3,7 @@
 const fs = require("fs");
 const path = require("path");
 const { spawnSync } = require("child_process");
+const host = require("./wasmtime_host");
 
 const leanExe = process.env.LEAN_WASM_EXE || path.join(".lake", "build", "bin", "lean-wasm");
 const outDir = path.join(".lake", "build", "json-programs");
@@ -21,16 +22,7 @@ async function instantiate(moduleName) {
   const out = path.join(outDir, `${parts[parts.length - 1]}.wasm`);
   const entryName = `${moduleName}.transform`;
   run([leanExe, "compile", "--module", moduleName, "--entry", entryName, "--out", out]);
-  const wasm = fs.readFileSync(out);
-  const { instance } = await WebAssembly.instantiate(wasm, {});
-  const { memory, alloc, reset, transform } = instance.exports;
-  if (!memory || typeof alloc !== "function" || typeof reset !== "function") {
-    throw new Error("compiled module does not export memory, alloc, and reset");
-  }
-  if (typeof transform !== "function") {
-    throw new Error("compiled module does not export transform");
-  }
-  return { memory, alloc, reset, transform };
+  return { entry: "transform", wasm: out };
 }
 
 async function instantiateScalar(moduleName, entry) {
@@ -39,17 +31,7 @@ async function instantiateScalar(moduleName, entry) {
   const out = path.join(outDir, `${parts[parts.length - 1]}-${entry}.wasm`);
   const entryName = `${moduleName}.${entry}`;
   run([leanExe, "compile", "--module", moduleName, "--entry", entryName, "--out", out]);
-  const wasm = fs.readFileSync(out);
-  const { instance } = await WebAssembly.instantiate(wasm, {});
-  const { memory, alloc, reset } = instance.exports;
-  const fn = instance.exports[entry];
-  if (!memory || typeof alloc !== "function" || typeof reset !== "function") {
-    throw new Error("compiled module does not export memory, alloc, and reset");
-  }
-  if (typeof fn !== "function") {
-    throw new Error(`compiled module does not export ${entry}`);
-  }
-  return { memory, alloc, reset, fn };
+  return { entry, wasm: out };
 }
 
 function checkWatSize(moduleName, entry, maxBytes) {
@@ -66,22 +48,6 @@ function checkWatSize(moduleName, entry, maxBytes) {
 
 function bytes(text) {
   return new TextEncoder().encode(text);
-}
-
-function writeInput(exports, input) {
-  exports.reset();
-  const ptr = Number(exports.alloc(BigInt(input.length)));
-  new Uint8Array(exports.memory.buffer, ptr, input.length).set(input);
-  return [BigInt(ptr), BigInt(input.length)];
-}
-
-function readByteArrayResult(exports, result) {
-  if (!Array.isArray(result) || result.length !== 2) {
-    throw new Error(`expected ByteArray result, got ${result}`);
-  }
-  const ptr = Number(BigInt.asUintN(64, result[0]));
-  const len = Number(BigInt.asUintN(64, result[1]));
-  return Uint8Array.from(new Uint8Array(exports.memory.buffer, ptr, len));
 }
 
 function sameBytes(left, right) {
@@ -103,13 +69,11 @@ function expectBytes(name, actual, expected) {
 }
 
 function callTransform(exports, input) {
-  const args = writeInput(exports, input);
-  return readByteArrayResult(exports, exports.transform(...args));
+  return host.callBytes(exports.wasm, exports.entry, [host.byteArray(input)]);
 }
 
 function callScalar(exports, input) {
-  const args = writeInput(exports, input);
-  return exports.fn(...args);
+  return host.callI64(exports.wasm, exports.entry, [host.byteArray(input)]);
 }
 
 async function main() {

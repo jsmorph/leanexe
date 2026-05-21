@@ -3,6 +3,7 @@
 const fs = require("fs");
 const path = require("path");
 const { spawnSync } = require("child_process");
+const host = require("./wasmtime_host");
 
 const moduleName = "LeanExe.Examples.ByteArrayPrograms";
 const leanExe = process.env.LEAN_WASM_EXE || path.join(".lake", "build", "bin", "lean-wasm");
@@ -16,65 +17,37 @@ function run(args) {
   return result;
 }
 
-function writeInput(memory, ptr, input) {
-  new Uint8Array(memory.buffer, ptr, input.length).set(input);
-}
-
 function compile(entry, out) {
   run([leanExe, "compile", "--module", moduleName, "--entry", `${moduleName}.${entry}`, "--out", out]);
 }
 
-async function instantiate(entry) {
+function instantiate(entry) {
   const out = path.join(outDir, `${entry}.wasm`);
   compile(entry, out);
-  const wasm = fs.readFileSync(out);
-  const { instance } = await WebAssembly.instantiate(wasm, {});
-  const fn = instance.exports[entry];
-  if (typeof fn !== "function") {
-    throw new Error(`compiled module does not export ${entry}`);
-  }
-  const { memory, alloc, reset } = instance.exports;
-  if (!memory || typeof alloc !== "function" || typeof reset !== "function") {
-    throw new Error("compiled module does not export memory, alloc, and reset");
-  }
-  return { memory, alloc, reset, fn };
+  return { entry, wasm: out };
 }
 
 function callByteArray(exports, input, args = []) {
-  return withByteArray(exports, input, (ptr, len) => exports.fn(ptr, len, ...args));
+  return host.callI64(exports.wasm, exports.entry, [
+    host.byteArray(input),
+    ...args.map((arg) => host.i64(arg)),
+  ]);
 }
 
 function callByteArrayOutput(exports, input) {
-  return withByteArrayRaw(exports, input, (ptr, len) => exports.fn(ptr, len));
+  return host.callBytes(exports.wasm, exports.entry, [host.byteArray(input)]);
 }
 
 function callNoInputByteArrayOutput(exports) {
-  exports.reset();
-  return readByteArrayResult(exports, exports.fn());
+  return host.callBytes(exports.wasm, exports.entry);
 }
 
 function callScalarByteArray(exports, prefix, input) {
-  return withByteArray(exports, input, (ptr, len) => exports.fn(prefix, ptr, len));
+  return host.callI64(exports.wasm, exports.entry, [host.i64(prefix), host.byteArray(input)]);
 }
 
-function withByteArray(exports, input, call) {
-  return BigInt.asUintN(64, withByteArrayRaw(exports, input, call));
-}
-
-function withByteArrayRaw(exports, input, call) {
-  exports.reset();
-  const ptr = Number(exports.alloc(BigInt(input.length)));
-  writeInput(exports.memory, ptr, input);
-  return call(BigInt(ptr), BigInt(input.length));
-}
-
-function readByteArrayResult(exports, result) {
-  if (!Array.isArray(result) || result.length !== 2) {
-    throw new Error(`expected ByteArray result, got ${result}`);
-  }
-  const ptr = Number(BigInt.asUintN(64, result[0]));
-  const len = Number(BigInt.asUintN(64, result[1]));
-  return Uint8Array.from(new Uint8Array(exports.memory.buffer, ptr, len));
+function readByteArrayResult(_exports, result) {
+  return result;
 }
 
 function sameBytes(left, right) {

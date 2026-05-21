@@ -3,6 +3,7 @@
 const fs = require("fs");
 const path = require("path");
 const { spawnSync } = require("child_process");
+const host = require("./wasmtime_host");
 
 const moduleName = "LeanExe.Examples.AsciiStringPrograms";
 const leanExe = process.env.LEAN_WASM_EXE || path.join(".lake", "build", "bin", "lean-wasm");
@@ -22,58 +23,27 @@ function compile(entry) {
   return out;
 }
 
-async function instantiate(entry) {
-  const wasm = fs.readFileSync(compile(entry));
-  const { instance } = await WebAssembly.instantiate(wasm, {});
-  const fn = instance.exports[entry];
-  if (typeof fn !== "function") {
-    throw new Error(`compiled module does not export ${entry}`);
-  }
-  const { memory, alloc, reset } = instance.exports;
-  if (!memory || typeof alloc !== "function" || typeof reset !== "function") {
-    throw new Error("compiled module does not export memory, alloc, and reset");
-  }
-  return { memory, alloc, reset, fn };
-}
-
-function writeInput(memory, ptr, input) {
-  new Uint8Array(memory.buffer, ptr, input.length).set(input);
-}
-
-function withByteArray(exports, input, call) {
-  exports.reset();
-  const ptr = Number(exports.alloc(BigInt(input.length)));
-  writeInput(exports.memory, ptr, input);
-  return call(BigInt(ptr), BigInt(input.length));
+function instantiate(entry) {
+  return { entry, wasm: compile(entry) };
 }
 
 function callScalar(exports, input) {
-  return BigInt.asUintN(64, withByteArray(exports, input, (ptr, len) => exports.fn(ptr, len)));
+  return host.callI64(exports.wasm, exports.entry, [host.byteArray(input)]);
 }
 
 function callByteArray(exports, input) {
-  return readByteArrayResult(exports, withByteArray(exports, input, (ptr, len) => exports.fn(ptr, len)));
+  return host.callBytes(exports.wasm, exports.entry, [host.byteArray(input)]);
 }
 
 function callScalarNoArgs(exports) {
-  exports.reset();
-  return BigInt.asUintN(64, exports.fn());
+  return host.callI64(exports.wasm, exports.entry);
 }
 
 function callByteArrayWithArgs(exports, input, args) {
-  return readByteArrayResult(
-    exports,
-    withByteArray(exports, input, (ptr, len) => exports.fn(ptr, len, ...args)),
-  );
-}
-
-function readByteArrayResult(exports, result) {
-  if (!Array.isArray(result) || result.length !== 2) {
-    throw new Error(`expected ByteArray result, got ${result}`);
-  }
-  const ptr = Number(BigInt.asUintN(64, result[0]));
-  const len = Number(BigInt.asUintN(64, result[1]));
-  return Uint8Array.from(new Uint8Array(exports.memory.buffer, ptr, len));
+  return host.callBytes(exports.wasm, exports.entry, [
+    host.byteArray(input),
+    ...args.map((arg) => host.i64(arg)),
+  ]);
 }
 
 function bytes(text) {
