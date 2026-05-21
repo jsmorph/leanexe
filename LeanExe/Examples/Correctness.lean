@@ -4686,6 +4686,11 @@ def publicNestedArrayReturn : Array (Array UInt64) :=
 def publicNestedArrayParam (rows : Array (Array UInt64)) : UInt64 :=
   rows.foldl (fun acc row => acc + row.foldl (fun inner value => inner + value) 0) 0
 
+def publicNestedArrayOpsReturn (rows : Array (Array UInt64)) : Array (Array UInt64) :=
+  let mapped := rows.map (fun row => row.push row.size.toUInt64)
+  let grown := mapped.push #[99, 100]
+  (grown.extract 0 3).reverse
+
 def publicByteArrayArrayReturn : Array ByteArray :=
   #["A".toUTF8, "BC".toUTF8]
 
