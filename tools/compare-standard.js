@@ -711,7 +711,9 @@ function selfTest() {
   ]);
   const byteArrayGroupArrayLayout = arrayLayout(byteArrayGroupLayout);
   const nestedU64ArraySample = [[1, 2], [3, 4, 5]];
+  const nestedU64ArrayAltSample = [[], [9], [10, 11]];
   const byteArrayArraySample = [[65], [66, 67], [68, 69, 70]];
+  const byteArrayArrayAltSample = [[87], [88, 89], [90]];
   const tokenArraySample = [
     { tag: 0, fields: [[65]] },
     { tag: 1, fields: [7] },
@@ -744,6 +746,13 @@ function selfTest() {
       moduleName: correctness,
       entry: "idFunctionUInt64",
       programArgs: ["4"],
+      resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "idFunctionUInt64",
+      programArgs: ["0"],
       resultSlots: "#[__leanexeValue]",
     },
     {
@@ -888,8 +897,22 @@ function selfTest() {
     {
       mode: "pure",
       moduleName: correctness,
+      entry: "natDivModNormal",
+      programArgs: ["8"],
+      resultSlots: "#[UInt64.ofNat __leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
       entry: "structureReturn",
       programArgs: ["4"],
+      resultSlots: "#[__leanexeValue.x, __leanexeValue.y]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "structureReturn",
+      programArgs: ["0"],
       resultSlots: "#[__leanexeValue.x, __leanexeValue.y]",
     },
     {
@@ -918,9 +941,25 @@ function selfTest() {
     {
       mode: "pure",
       moduleName: correctness,
+      entry: "statusBranchReturn",
+      programArgs: ["1"],
+      resultSlots:
+        "match __leanexeValue with | .ok value => #[0, value, 0] | .error code => #[1, 0, code]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
       entry: "statusParam",
       programArgs: ["0", "5", "0"],
       standardCall: `${correctness}.statusParam (${correctness}.Status.ok 5)`,
+      resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "statusParam",
+      programArgs: ["1", "0", "7"],
+      standardCall: `${correctness}.statusParam (${correctness}.Status.error 7)`,
       resultSlots: "#[__leanexeValue]",
     },
     {
@@ -1014,6 +1053,16 @@ out.push (125 : UInt8)`,
     {
       mode: "pure-abi",
       moduleName: correctness,
+      entry: "publicNestedArrayParam",
+      abiArgs: [{ layout: nestedU64ArrayLayout, value: nestedU64ArrayAltSample }],
+      standardCall:
+        `${correctness}.publicNestedArrayParam (#[#[], #[9], #[10, 11]] : Array (Array UInt64))`,
+      resultLayout: u64Layout,
+      serializer: "__leanexeJsonUInt64 __leanexeValue",
+    },
+    {
+      mode: "pure-abi",
+      moduleName: correctness,
       entry: "publicNestedArrayOpsReturn",
       abiArgs: [{ layout: nestedU64ArrayLayout, value: nestedU64ArraySample }],
       standardCall:
@@ -1028,6 +1077,16 @@ out.push (125 : UInt8)`,
       abiArgs: [{ layout: byteArrayArrayLayout, value: byteArrayArraySample }],
       standardCall:
         `${correctness}.publicByteArrayArrayOpsReturn #["A".toUTF8, "BC".toUTF8, "DEF".toUTF8]`,
+      resultLayout: byteArrayArrayLayout,
+      serializer: "__leanexeJsonArray __leanexeValue __leanexeJsonByteArray",
+    },
+    {
+      mode: "pure-abi",
+      moduleName: correctness,
+      entry: "publicByteArrayArrayOpsReturn",
+      abiArgs: [{ layout: byteArrayArrayLayout, value: byteArrayArrayAltSample }],
+      standardCall:
+        `${correctness}.publicByteArrayArrayOpsReturn #["W".toUTF8, "XY".toUTF8, "Z".toUTF8]`,
       resultLayout: byteArrayArrayLayout,
       serializer: "__leanexeJsonArray __leanexeValue __leanexeJsonByteArray",
     },
@@ -1432,6 +1491,27 @@ out ++ __leanexeValue.bytes`,
       maxInputBytes: 8,
     },
     {
+      mode: "stdin",
+      moduleName: "LeanExe.Examples.ByteArrayPrograms",
+      entry: "appendBang",
+      input: Buffer.from("", "utf8"),
+      maxInputBytes: 8,
+    },
+    {
+      mode: "stdin",
+      moduleName: "LeanExe.Examples.ByteArrayPrograms",
+      entry: "tailSlice",
+      input: Buffer.from("ABC", "utf8"),
+      maxInputBytes: 8,
+    },
+    {
+      mode: "stdin",
+      moduleName: "LeanExe.Examples.ByteArrayPrograms",
+      entry: "tailSlice",
+      input: Buffer.from("", "utf8"),
+      maxInputBytes: 8,
+    },
+    {
       mode: "stdin-except",
       moduleName: "LeanExe.Examples.JsonGcd",
       entry: "transform",
@@ -1441,7 +1521,19 @@ out ++ __leanexeValue.bytes`,
       mode: "stdin-except",
       moduleName: "LeanExe.Examples.JsonGcd",
       entry: "transform",
+      input: Buffer.from(" [ 0 , 42 , 56 ] ", "utf8"),
+    },
+    {
+      mode: "stdin-except",
+      moduleName: "LeanExe.Examples.JsonGcd",
+      entry: "transform",
       input: Buffer.from("[]", "utf8"),
+    },
+    {
+      mode: "stdin-except",
+      moduleName: "LeanExe.Examples.JsonGcd",
+      entry: "transform",
+      input: Buffer.from("[4,\"x\"]", "utf8"),
     },
     {
       mode: "stdin-except",
@@ -1451,9 +1543,33 @@ out ++ __leanexeValue.bytes`,
     },
     {
       mode: "stdin-except",
+      moduleName: "LeanExe.Examples.JsonTypedDecode",
+      entry: "transform",
+      input: Buffer.from("{\"values\":[5,7],\"multiplier\":3,\"includeCount\":false}", "utf8"),
+    },
+    {
+      mode: "stdin-except",
+      moduleName: "LeanExe.Examples.JsonTypedDecode",
+      entry: "transform",
+      input: Buffer.from("{\"values\":[1],\"values\":[2],\"multiplier\":2,\"includeCount\":true}", "utf8"),
+    },
+    {
+      mode: "stdin-except",
       moduleName: "LeanExe.Examples.JsonObjectArrayDecode",
       entry: "transform",
       input: Buffer.from("{\"items\":[{\"id\":1,\"weight\":4},{\"id\":2,\"weight\":7}],\"scale\":3}", "utf8"),
+    },
+    {
+      mode: "stdin-except",
+      moduleName: "LeanExe.Examples.JsonObjectArrayDecode",
+      entry: "transform",
+      input: Buffer.from("{\"items\":[],\"scale\":9}", "utf8"),
+    },
+    {
+      mode: "stdin-except",
+      moduleName: "LeanExe.Examples.JsonObjectArrayDecode",
+      entry: "transform",
+      input: Buffer.from("{\"items\":[{\"id\":1}],\"scale\":3}", "utf8"),
     },
     {
       mode: "stdin",
@@ -1463,9 +1579,33 @@ out ++ __leanexeValue.bytes`,
     },
     {
       mode: "stdin",
+      moduleName: "LeanExe.Examples.JsonAdd",
+      entry: "transform",
+      input: Buffer.from(" { \"b\" : 1 , \"a\" : 2 } ", "utf8"),
+    },
+    {
+      mode: "stdin",
+      moduleName: "LeanExe.Examples.JsonAdd",
+      entry: "transform",
+      input: Buffer.from("{\"a\":18446744073709551615,\"b\":1}", "utf8"),
+    },
+    {
+      mode: "stdin",
       moduleName: "LeanExe.Examples.JsonCollatzLength",
       entry: "transform",
       input: Buffer.from("{\"collatzLengthFor\":41}", "utf8"),
+    },
+    {
+      mode: "stdin",
+      moduleName: "LeanExe.Examples.JsonCollatzLength",
+      entry: "transform",
+      input: Buffer.from(" { \"collatzLengthFor\" : 7 } ", "utf8"),
+    },
+    {
+      mode: "stdin",
+      moduleName: "LeanExe.Examples.JsonCollatzLength",
+      entry: "transform",
+      input: Buffer.from("{\"collatzLengthFor\":0}", "utf8"),
     },
     {
       mode: "stdin-except",
@@ -1479,6 +1619,12 @@ out ++ __leanexeValue.bytes`,
       moduleName: "LeanExe.Examples.ByteArrayPrograms",
       entry: "argvFirstLast",
       programArgs: ["alpha", "omega"],
+    },
+    {
+      mode: "argv-except",
+      moduleName: "LeanExe.Examples.ByteArrayPrograms",
+      entry: "argvFirstLast",
+      programArgs: [],
     },
   ];
   for (const testCase of cases) {

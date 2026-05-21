@@ -1,5 +1,15 @@
 # Development Journal
 
+## 2026-05-21: More Standard Comparison Cases
+
+The standard comparison self-test now includes repeated inputs for several programs rather than one representative call per entry.  The added cases cover pure scalar entries with different arguments, public nested-array and byte-array-array ABI arguments, byte-array stdin transforms on empty and nonempty input, JSON GCD success and error inputs, typed JSON object decoding success and schema-error inputs, JSON addition with reordered fields and overflow, Collatz JSON success and error inputs, and argv success and error behavior.  Each case still runs the official Lean program and compares it with the LeanExe-generated WASM under Wasmtime.
+
+Checks run:
+
+- [x] `node --check tools/compare-standard.js`
+- [x] `node tools/compare-standard.js --self-test` returned `checked 126 standard Lean comparison cases`.
+- [x] `node test/run_all.js` returned `checked 112 report classification cases`, `checked 7 ownership report cases`, `checked JavaScript WASM execution guard`, `checked 751 accepted, 29 rejected, and 13 trapped cases`, `checked 31 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 35 WASI program cases, 2 traps, and 7 rejections`, `checked 126 standard Lean comparison cases`, and `checked 56 cases`.
+
 ## 2026-05-21: Array foldr
 
 `Array.foldr` now lowers through the array multi-slot fold IR with an explicit traversal direction.  The reverse loop evaluates the array, `start`, `stop`, and initial accumulator once, clamps `start` to the array size, decrements before each load, and treats `stop` as the exclusive lower bound.  The direct-lambda body follows Lean's `α -> β -> β` binder order, while sharing the staged accumulator assignment and heap-accumulator release rule used by `Array.foldl`.
