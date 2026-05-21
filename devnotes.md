@@ -1,5 +1,23 @@
 # Development Journal
 
+## 2026-05-21: Conservative Recursive Cleanup
+
+Recursive result cleanup now follows the project policy that leaks are acceptable and incorrect computation is not.  The result-materialization cleanup pass no longer emits compiler releases for ordinary recursive heap temporaries in scalar-result functions or heap-result functions.  It still releases nonrecursive owners such as `ByteArray` and `Array` when the existing local rules prove them fresh and absent from returned roots.
+
+The aliasing corpus now includes source programs that share recursive children through constructor fields, return a subtree alias, duplicate recursive values in an array, duplicate recursive fields in a structure, and duplicate recursive payloads in a tagged value.  These cases compare the generated WASM under Wasmtime with standard Lean execution where possible.  The first version of the tests exposed unsafe compiler-inserted recursive releases in scalar-result functions, which now report no compiler statement releases in `ownership-report`.
+
+Checks run:
+
+- [x] `lake build LeanExe.Extract.Values LeanExe.Examples.Correctness lean-wasm`
+- [x] `.lake/build/bin/lean-wasm ownership-report --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.u64BinarySharedChildScore` reported `compiler statement releases: none`.
+- [x] `.lake/build/bin/lean-wasm ownership-report --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.u64BinaryReturnedSubtreeAliasScore` reported `compiler statement releases: none`.
+- [x] `node --check test/core_correctness.js`
+- [x] `node --check tools/compare-standard.js`
+- [x] `node test/refcount.js` returned `checked 38 refcount cases`.
+- [x] `node test/core_correctness.js` returned `checked 771 accepted, 29 rejected, and 13 trapped cases`.
+- [x] `node tools/compare-standard.js --self-test` returned `checked 217 standard Lean comparison cases`.
+- [x] `node test/run_all.js` returned `checked 112 report classification cases`, `checked 8 ownership report cases`, `checked JavaScript WASM execution guard`, `checked 771 accepted, 29 rejected, and 13 trapped cases`, `checked 38 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 35 WASI program cases, 2 traps, and 7 rejections`, `checked 217 standard Lean comparison cases`, and `checked 56 cases`.
+
 ## 2026-05-21: Heap Owner Provenance
 
 Owned-mask generation now tracks the local slot that first received an owned heap value.  When a later heap or array allocation consumes child slots, the compiler transfers ownership for only the first use of a source slot and retains later aliases.  Result materialization also refreshes owned masks after pruning local lets, so sequential source `let` bindings keep the ordered ownership context that extraction created.

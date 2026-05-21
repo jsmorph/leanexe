@@ -1467,6 +1467,36 @@ function selfTest() {
     {
       mode: "pure",
       moduleName: correctness,
+      entry: "u64BinarySharedChildScore",
+      resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "u64BinaryReturnedSubtreeAliasScore",
+      resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "u64BinarySharedArrayScore",
+      resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "u64BinarySharedStructAliasScore",
+      resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "u64BinarySharedTaggedAliasScore",
+      resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
       entry: "pointArrayEquality",
       resultSlots: "#[__leanexeValue]",
     },

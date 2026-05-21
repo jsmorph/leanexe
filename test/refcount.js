@@ -92,13 +92,13 @@ function checkCompilerReleasesOwnedCallResults() {
   const noargCases = [
     ["ownedArrayCallTempScalar", 5, "16"],
     ["ownedByteArrayCallTempScalar", 66, "1"],
-    ["ownedRecursiveNodeParamCallTempScalar", 310, "32,32,32"],
     ["ownedBoxCallTempScalar", 13, "16,1"],
   ];
   for (const [entry, expected, sizes] of noargCases) {
     const wasm = compile(correctnessModule, entry);
     runHost(["noarg-temp-reuse", wasm, entry, String(expected), sizes]);
   }
+  expectI64(correctnessModule, "ownedRecursiveNodeParamCallTempScalar", 310);
 
   const arrayParam = compile(correctnessModule, "ownedArrayParamCallTempScalarFromInput");
   runHost(["temp-array-call", arrayParam, "ownedArrayParamCallTempScalarFromInput", "5", "16", "24"]);
