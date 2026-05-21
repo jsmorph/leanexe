@@ -1,5 +1,27 @@
 # Development Journal
 
+## 2026-05-21: Release Alias Propagation
+
+A recursive value returned from a helper function trapped when source code released it with `LeanExe.Runtime.release`.  The helper result lived in local `2`, result materialization copied it into local `3`, and the source release consumed local `3`.  Release analysis propagated aliases inside a local-let prefix, but it did not propagate a release from the following body back into the prefix, so local `2` remained eligible for an automatic compiler release.
+
+Release accounting now tracks release targets through `let` aliases and local-let prefixes using the set of slots released later in the expression or value.  A body release of an alias now marks the owner slot that produced the alias, while call-result ownership still treats returned slots as owned results rather than as ownership of the call arguments.  `recursiveScenarioHelperRuntimeReleaseStats` covers the helper-return case for leaf, balanced, and skewed recursive trees, and the ownership report asserts that the compiler emits no extra release for the helper result.
+
+Checks run:
+
+- [x] `lake build LeanExe.Extract.Values LeanExe.Examples.Correctness lean-wasm`
+- [x] `.lake/build/bin/lean-wasm ownership-report --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.recursiveScenarioHelperRuntimeReleaseStats` reported `compiler statement releases: none`.
+- [x] `.lake/build/bin/lean-wasm compile --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.recursiveScenarioHelperRuntimeReleaseStats --out .lake/build/recursive-helper-release.wasm`
+- [x] `build/tools/wasmtime/current/wasmtime --invoke recursiveScenarioHelperRuntimeReleaseStats .lake/build/recursive-helper-release.wasm 0` returned `101`.
+- [x] `build/tools/wasmtime/current/wasmtime --invoke recursiveScenarioHelperRuntimeReleaseStats .lake/build/recursive-helper-release.wasm 1` returned `707`.
+- [x] `build/tools/wasmtime/current/wasmtime --invoke recursiveScenarioHelperRuntimeReleaseStats .lake/build/recursive-helper-release.wasm 2` returned `707`.
+- [x] `node --check test/core_correctness.js`
+- [x] `node --check test/refcount.js`
+- [x] `node --check test/ownership_report.js`
+- [x] `node test/ownership_report.js` returned `checked 8 ownership report cases`.
+- [x] `node test/refcount.js` returned `checked 37 refcount cases`.
+- [x] `node test/core_correctness.js` returned `checked 765 accepted, 29 rejected, and 13 trapped cases`.
+- [x] `node test/run_all.js` returned `checked 112 report classification cases`, `checked 8 ownership report cases`, `checked JavaScript WASM execution guard`, `checked 765 accepted, 29 rejected, and 13 trapped cases`, `checked 37 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 35 WASI program cases, 2 traps, and 7 rejections`, `checked 212 standard Lean comparison cases`, and `checked 56 cases`.
+
 ## 2026-05-21: Recursive Standard Comparisons
 
 The standard comparison self-test now has parameterized recursive-value fixtures.  `leanListScenarioScore` compares empty, singleton, ordinary, and longer `List UInt64` inputs through scalar summaries, while `leanListScenarioReverseValue` and `leanListScenarioAppendMapValue` return recursive values that the wrapper serializes through the existing list renderer.  `u64BinaryScenarioScore` compares leaf, balanced, and skewed binary-tree shapes through scalar summaries, while `u64BinaryScenarioValue`, `u64BinaryScenarioMirrorValue`, `u64BinaryScenarioFindValue`, and `u64BinaryScenarioRequireByteErrorValue` compare returned recursive values, present and missing searches, and `Except ByteArray U64Binary` success and error paths.

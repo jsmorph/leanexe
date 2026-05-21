@@ -4763,6 +4763,13 @@ def recursiveScenarioRuntimeReleaseStats (kind : UInt64) : UInt64 :=
   let after := LeanExe.Runtime.release tree
   (LeanExe.Runtime.releaseCount - releasesBefore) * 100 + (after - before)
 
+def recursiveScenarioHelperRuntimeReleaseStats (kind : UInt64) : UInt64 :=
+  let tree := u64BinaryScenario kind
+  let before := LeanExe.Runtime.freeCount
+  let releasesBefore := LeanExe.Runtime.releaseCount
+  let after := LeanExe.Runtime.release tree
+  (LeanExe.Runtime.releaseCount - releasesBefore) * 100 + (after - before)
+
 def ownedBoxCallTemp : OwnedCallBox :=
   { values := Array.replicate 1 (5 : UInt64),
     bytes := ByteArray.empty.push (65 : UInt8),
