@@ -3,6 +3,7 @@
 const fs = require("fs");
 const path = require("path");
 const { spawnSync } = require("child_process");
+const host = require("./wasmtime_host");
 
 function toHex(bytes) {
   return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
@@ -46,32 +47,8 @@ async function main() {
     }
   }
 
-  const wasm = fs.readFileSync(wasmPath);
-  const { instance } = await WebAssembly.instantiate(wasm, {});
-  const { memory, alloc, reset, validate, validateGeneric } = instance.exports;
-  if (!memory) {
-    throw new Error("Wasm module does not export memory");
-  }
-
   function runWasm(input) {
-    if (typeof validateGeneric === "function") {
-      let ptr = 1024;
-      if (typeof alloc === "function" && typeof reset === "function") {
-        reset();
-        ptr = Number(alloc(BigInt(input.length)));
-      }
-      new Uint8Array(memory.buffer, ptr, input.length).set(input);
-      return Number(validateGeneric(BigInt(ptr), BigInt(input.length)));
-    }
-
-    if (typeof validate === "function" && typeof alloc === "function" && typeof reset === "function") {
-      reset();
-      const ptr = alloc(input.length);
-      new Uint8Array(memory.buffer, ptr, input.length).set(input);
-      return Number(validate(ptr, input.length));
-    }
-
-    throw new Error("Wasm module does not export a supported validator ABI");
+    return Number(host.callI64(wasmPath, "validateGeneric", [host.byteArray(input)]));
   }
 
   const fixed = [
