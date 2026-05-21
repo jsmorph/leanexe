@@ -166,6 +166,24 @@ async function checkArrayOwnerChildRelease() {
   if (structActual !== 202) {
     throw new Error(`structArrayFieldRuntimeReleaseFrees: expected 202, got ${structActual}`);
   }
+
+  const optionBytes = await instantiate(correctnessModule, "optionByteArrayArrayRuntimeReleaseFrees");
+  const optionBytesActual = pointer(optionBytes.optionByteArrayArrayRuntimeReleaseFrees());
+  if (optionBytesActual !== 302) {
+    throw new Error(`optionByteArrayArrayRuntimeReleaseFrees: expected 302, got ${optionBytesActual}`);
+  }
+
+  const tokens = await instantiate(correctnessModule, "publicTokenArrayRuntimeReleaseFrees");
+  const tokensActual = pointer(tokens.publicTokenArrayRuntimeReleaseFrees());
+  if (tokensActual !== 302) {
+    throw new Error(`publicTokenArrayRuntimeReleaseFrees: expected 302, got ${tokensActual}`);
+  }
+
+  const groups = await instantiate(correctnessModule, "byteArrayGroupArrayRuntimeReleaseFrees");
+  const groupsActual = pointer(groups.byteArrayGroupArrayRuntimeReleaseFrees());
+  if (groupsActual !== 403) {
+    throw new Error(`byteArrayGroupArrayRuntimeReleaseFrees: expected 403, got ${groupsActual}`);
+  }
 }
 
 async function checkBorrowedArrayNoopRelease() {
@@ -325,6 +343,9 @@ async function checkCompilerReleasesOwnedCallResults() {
 async function checkCompilerReleasesFoldAccumulators() {
   const cases = [
     ["arrayFoldByteArrayAccumulatorReleaseStats", 30202],
+    ["arrayFoldOptionByteArrayAccumulatorReleaseStats", 30502],
+    ["arrayFoldPublicTokenAccumulatorReleaseStats", 30402],
+    ["arrayFoldByteArrayGroupAccumulatorReleaseStats", 30502],
     ["byteArrayFoldByteArrayAccumulatorReleaseStats", 30202],
     ["idRunByteArrayForOutputReleaseStats", 30202],
     ["idRunRangeForByteArrayOutputReleaseStats", 30202],
@@ -371,7 +392,7 @@ async function main() {
   await checkBorrowedArrayNoopRelease();
   await checkCompilerReleasesOwnedCallResults();
   await checkCompilerReleasesFoldAccumulators();
-  process.stdout.write("checked 25 refcount cases\n");
+  process.stdout.write("checked 31 refcount cases\n");
 }
 
 main().catch((error) => {

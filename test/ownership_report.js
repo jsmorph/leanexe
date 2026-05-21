@@ -94,12 +94,28 @@ function checkJsonTreeOutFile() {
   assertContains(report, "helper fresh result owner offsets: [0]", "JsonTreeCommand.makeTree");
 }
 
+function checkHeapBearingArrayFoldAccumulators() {
+  const cases = [
+    `${correctnessModule}.arrayFoldOptionByteArrayAccumulatorReleaseStats`,
+    `${correctnessModule}.arrayFoldPublicTokenAccumulatorReleaseStats`,
+    `${correctnessModule}.arrayFoldByteArrayGroupAccumulatorReleaseStats`,
+  ];
+  for (const entry of cases) {
+    const report = ownershipReport(correctnessModule, entry);
+    assertContains(report, `entry: ${entry}`, entry);
+    assertContains(report, "arrayFoldMultiSlotAssign", entry);
+    assertContains(report, "releaseOffsets=[0]", entry);
+    assertOccurrenceCount(report, "arrayFoldMultiSlotAssign", 1, entry);
+  }
+}
+
 function main() {
   checkOptionByteArrayLoop();
   checkExceptByteArrayLoop();
   checkOptionByteArrayStateLoop();
   checkJsonTreeOutFile();
-  process.stdout.write("checked 4 ownership report cases\n");
+  checkHeapBearingArrayFoldAccumulators();
+  process.stdout.write("checked 7 ownership report cases\n");
 }
 
 try {

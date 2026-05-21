@@ -370,6 +370,9 @@ const accepted = [
   { name: "byteArrayStructReplicateRuntimeReleaseFrees", args: [], expected: 202n },
   { name: "nestedArrayRuntimeReleaseFrees", args: [], expected: 202n },
   { name: "structArrayFieldRuntimeReleaseFrees", args: [], expected: 202n },
+  { name: "optionByteArrayArrayRuntimeReleaseFrees", args: [], expected: 302n },
+  { name: "publicTokenArrayRuntimeReleaseFrees", args: [], expected: 302n },
+  { name: "byteArrayGroupArrayRuntimeReleaseFrees", args: [], expected: 403n },
   { name: "ownedArrayCallTempScalar", args: [], expected: 5n },
   { name: "ownedByteArrayCallTempScalar", args: [], expected: 66n },
   { name: "ownedArrayParamCallTempScalar", args: [], expected: 16n },
@@ -594,6 +597,9 @@ const accepted = [
     memoryBytes: [{ resultIndex: 0, lengthIndex: 1, values: [65, 66] }],
   },
   { name: "arrayFoldByteArrayAccumulatorReleaseStats", args: [], expected: 30202n },
+  { name: "arrayFoldOptionByteArrayAccumulatorReleaseStats", args: [], expected: 30502n },
+  { name: "arrayFoldPublicTokenAccumulatorReleaseStats", args: [], expected: 30402n },
+  { name: "arrayFoldByteArrayGroupAccumulatorReleaseStats", args: [], expected: 30502n },
   { name: "arrayFoldMExceptSuccess", args: [], expected: [1n, 0n, 6n] },
   { name: "arrayFoldMExceptErrorSkipsRestTrap", args: [], expected: [0n, 21n, 0n] },
   { name: "arrayFoldMOptionSuccess", args: [], expected: [1n, 6n] },
@@ -1387,6 +1393,22 @@ const rejected = [
   {
     name: "rejectRecursiveTaggedParam",
     message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectRecursiveTaggedParam",
+  },
+  {
+    name: "rejectRecursiveOptionArrayParam",
+    message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectRecursiveOptionArrayParam",
+  },
+  {
+    name: "rejectRecursiveOptionArrayReturn",
+    message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectRecursiveOptionArrayReturn",
+  },
+  {
+    name: "rejectRecursiveStructArrayParam",
+    message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectRecursiveStructArrayParam",
+  },
+  {
+    name: "rejectRecursiveTaggedArrayParam",
+    message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectRecursiveTaggedArrayParam",
   },
   {
     name: "rejectMutualJsonParam",
