@@ -4642,20 +4642,31 @@ def byteArrayExceptBangOrError (input : ByteArray) : Except ByteArray ByteArray 
   else
     Except.ok (input.push (33 : UInt8))
 
-def rejectNestedArrayReturn : Array (Array UInt64) :=
+def publicNestedArrayReturn : Array (Array UInt64) :=
   #[#[1, 2]]
 
-def rejectNestedArrayParam (rows : Array (Array UInt64)) : UInt64 :=
-  rows.size.toUInt64
+def publicNestedArrayParam (rows : Array (Array UInt64)) : UInt64 :=
+  rows.foldl (fun acc row => acc + row.foldl (fun inner value => inner + value) 0) 0
 
-def rejectByteArrayArrayReturn : Array ByteArray :=
-  #["A".toUTF8]
+def publicByteArrayArrayReturn : Array ByteArray :=
+  #["A".toUTF8, "BC".toUTF8]
 
-def rejectByteArrayArrayParam (values : Array ByteArray) : UInt64 :=
-  values.size.toUInt64
+def publicByteArrayArrayParam (values : Array ByteArray) : UInt64 :=
+  values.foldl (fun acc bytes => acc + bytes.size.toUInt64) 0
 
-def rejectArrayBoxArrayReturn : Array ArrayBox :=
+def publicByteOutputStateArrayReturn : Array ByteOutputState :=
+  #[{ count := 1, bytes := "A".toUTF8 }, { count := 2, bytes := "BC".toUTF8 }]
+
+def publicByteOutputStateArrayParam (values : Array ByteOutputState) : UInt64 :=
+  values.foldl (fun acc state => acc + state.count + state.bytes.size.toUInt64) 0
+
+def publicArrayBoxArrayReturn : Array ArrayBox :=
   #[{ values := #[1, 2], count := 2 }]
+
+def publicArrayBoxArrayParam (boxes : Array ArrayBox) : UInt64 :=
+  boxes.foldl
+    (fun acc box => acc + box.count + box.values.foldl (fun inner value => inner + value) 0)
+    0
 
 def uint8ParamToNat (b : UInt8) : Nat :=
   b.toNat

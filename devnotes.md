@@ -1,5 +1,18 @@
 # Development Journal
 
+## 2026-05-21: Public Heap-Bearing Arrays
+
+The public array ABI now accepts fixed-width element layouts that contain heap-reference fields.  `Array ByteArray`, nested arrays such as `Array (Array UInt64)`, arrays of structures containing `ByteArray`, and arrays of structures containing array fields can appear as entry parameters and entry results.  The public element predicate is separate from the internal element predicate: it permits scalar values, `ByteArray`, nested arrays, structures, nonrecursive inductives, `Option`, and `Except` when all flattened fields meet the same rule, while recursive inductive values remain excluded from the public ABI.
+
+The boundary representation uses the same slots as internal arrays.  `ByteArray` elements use owner, pointer, and length slots; nested arrays use owner and pointer slots.  Host-provided borrowed children use owner `0`, and compiler-owned result arrays retain the existing child-pointer mask behavior so `release` can reclaim owned byte arrays and nested arrays reached from an array result.
+
+Checks run:
+
+- [x] `lake build LeanExe.Extract.Types LeanExe.Extract.Values LeanExe.Examples.Correctness lean-wasm`
+- [x] `node test/report_classification.js` returned `checked 97 report classification cases`.
+- [x] `node test/core_correctness.js` returned `checked 703 accepted, 25 rejected, and 13 trapped cases`.
+- [x] `node test/run_all.js` returned `checked 97 report classification cases`, `checked 4 ownership report cases`, `checked 703 accepted, 25 rejected, and 13 trapped cases`, `checked 25 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 35 WASI program cases, 2 traps, and 7 rejections`, `checked 94 standard Lean comparison cases`, and `checked 56 cases`.
+
 ## 2026-05-20: Atomic Multi-Slot Fold Pruning
 
 The liveness pass now treats a materialized multi-slot fold result as an atomic local assignment.  Before this change, a let-bound `Except UInt64 ByteArray` or `Option ByteOutputState` loop result could be pruned down to the tag and one scalar payload field when the later `match` ignored the byte-array payload.  That split one fold result into separate result-slot expressions, so the generated code ran the loop more than once and duplicated accumulator releases.

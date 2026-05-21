@@ -908,14 +908,16 @@ end
 def supportedArrayElementType (ty : Ty) : Bool :=
   arrayElementSlots? ty |>.isSome
 
-partial def supportedAbiArrayElementType : Ty → Bool
+partial def supportedPublicArrayElementType : Ty → Bool
   | .bool => true
   | .u8 => true
   | .u32 => true
   | .u64 => true
   | .nat => true
-  | .struct _ _ fields => fields.all supportedAbiArrayElementType
-  | .variant _ _ ctors => ctors.all (fun fields => fields.all supportedAbiArrayElementType)
+  | .byteArray => true
+  | .array item => supportedPublicArrayElementType item
+  | .struct _ _ fields => fields.all supportedPublicArrayElementType
+  | .variant _ _ ctors => ctors.all (fun fields => fields.all supportedPublicArrayElementType)
   | _ => false
 
 def supportedAbiType : Ty → Bool
@@ -924,7 +926,7 @@ def supportedAbiType : Ty → Bool
   | .u32 => true
   | .u64 => true
   | .nat => true
-  | .array item => supportedAbiArrayElementType item
+  | .array item => supportedPublicArrayElementType item
   | _ => false
 
 partial def supportedParamAbiType : Ty → Bool

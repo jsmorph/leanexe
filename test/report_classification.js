@@ -335,6 +335,21 @@ const cases = [
   },
   {
     moduleName: "LeanExe.Examples.Correctness",
+    entryName: "LeanExe.Examples.Correctness.publicByteArrayArrayParam",
+    shape: "entry shape: Array ByteArray -> UInt64",
+  },
+  {
+    moduleName: "LeanExe.Examples.Correctness",
+    entryName: "LeanExe.Examples.Correctness.publicNestedArrayReturn",
+    shape: "entry shape: Array Array UInt64",
+  },
+  {
+    moduleName: "LeanExe.Examples.Correctness",
+    entryName: "LeanExe.Examples.Correctness.publicArrayBoxArrayParam",
+    shape: "entry shape: Array LeanExe.Examples.Correctness.ArrayBox -> UInt64",
+  },
+  {
+    moduleName: "LeanExe.Examples.Correctness",
     entryName: "LeanExe.Examples.Correctness.recPointFuel",
     shape: "entry shape: Nat -> UInt64 -> LeanExe.Examples.Correctness.Point",
   },

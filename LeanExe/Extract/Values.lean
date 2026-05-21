@@ -1978,7 +1978,7 @@ partial def flattenAbiValue (ty : Ty) (value : ExtractedValue) : Except String (
   | .u64 => scalarValue value |>.map (fun expr => [expr])
   | .nat => scalarValue value |>.map (fun expr => [expr])
   | .array item =>
-      if supportedAbiArrayElementType item then
+      if supportedPublicArrayElementType item then
         arrayPtr value |>.map (fun expr => [expr])
       else
         .error s!"unsupported ABI value type: {reprStr ((.array item : Ty))}"
