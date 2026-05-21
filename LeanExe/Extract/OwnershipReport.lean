@@ -161,7 +161,7 @@ mutual
         Scan.append
           (scanExpr (childPath path "array") array)
           (scanExprListFrom (childPath path "bodyValue") 0 bodyValues)
-    | .arrayFoldMultiSlot _ resultWidth array start stop initValues accStart _ bodyValues
+    | .arrayFoldMultiSlot _ resultWidth _reverse array start stop initValues accStart _ bodyValues
         bodyLets bodyDone releaseOffsets resultSlot =>
         Scan.many [
           { Scan.empty with foldSites := [
@@ -410,7 +410,7 @@ mutual
         Scan.append
           { Scan.empty with statementReleases := [{ path := path, ptr := ptr }] }
           (scanExpr (childPath path "ptr") ptr)
-    | .arrayFoldMultiSlotAssign _ resultWidth array start stop initValues accStart _ bodyValues
+    | .arrayFoldMultiSlotAssign _ resultWidth _reverse array start stop initValues accStart _ bodyValues
         bodyLets bodyDone releaseOffsets targets =>
         Scan.many [
           { Scan.empty with foldSites := [

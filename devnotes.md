@@ -1,5 +1,24 @@
 # Development Journal
 
+## 2026-05-21: Array foldr
+
+`Array.foldr` now lowers through the array multi-slot fold IR with an explicit traversal direction.  The reverse loop evaluates the array, `start`, `stop`, and initial accumulator once, clamps `start` to the array size, decrements before each load, and treats `stop` as the exclusive lower bound.  The direct-lambda body follows Lean's `α -> β -> β` binder order, while sharing the staged accumulator assignment and heap-accumulator release rule used by `Array.foldl`.
+
+The correctness corpus covers the default scan, explicit windows, clamped starts, skipped empty bodies, structured accumulators, byte-array accumulators, and release counters.  Standard comparison checks both a scalar `foldr` result and a byte-array `foldr` result against the official Lean toolchain.  The specification, manual, README, and plan now describe `Array.foldr` as part of the supported fixed-width array surface, with attached-array erasure still limited to `foldl` and `foldlM`.
+
+Checks run:
+
+- [x] `lake build LeanExe.IR.Core LeanExe.Extract.Core LeanExe.Wasm.Binary LeanExe.Examples.Correctness lean-wasm`
+- [x] `.lake/build/bin/lean-wasm compile --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.arrayFoldrDigits --out /tmp/arrayFoldrDigits.wasm`
+- [x] `build/tools/wasmtime/current/wasmtime --invoke arrayFoldrDigits /tmp/arrayFoldrDigits.wasm` returned `321`.
+- [x] `.lake/build/bin/lean-wasm compile --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.arrayFoldrByteArrayAccumulatorReleaseStats --out /tmp/arrayFoldrByteArrayAccumulatorReleaseStats.wasm`
+- [x] `build/tools/wasmtime/current/wasmtime --invoke arrayFoldrByteArrayAccumulatorReleaseStats /tmp/arrayFoldrByteArrayAccumulatorReleaseStats.wasm` returned `30202`.
+- [x] `node --check test/core_correctness.js`
+- [x] `node --check tools/compare-standard.js`
+- [x] `node test/core_correctness.js` returned `checked 751 accepted, 29 rejected, and 13 trapped cases`.
+- [x] `node tools/compare-standard.js --self-test` returned `checked 105 standard Lean comparison cases`.
+- [x] `node test/run_all.js` returned `checked 112 report classification cases`, `checked 7 ownership report cases`, `checked JavaScript WASM execution guard`, `checked 751 accepted, 29 rejected, and 13 trapped cases`, `checked 31 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 35 WASI program cases, 2 traps, and 7 rejections`, `checked 105 standard Lean comparison cases`, and `checked 56 cases`.
+
 ## 2026-05-21: Pure-ABI Parameter Comparisons
 
 The standard comparison self-test now covers `pure-abi` library calls with heap-backed public parameters as well as heap-backed public results.  The added cases materialize nested scalar arrays, arrays of byte arrays, arrays of tagged values with byte-array payloads, and arrays of structures whose fields contain nested byte-array arrays through the Wasmtime C host script path.  A small `publicNestedArrayOpsReturn` correctness fixture gives `Array (Array UInt64)` a parameter-to-result case, matching the existing byte-array, tagged, and structured array examples.

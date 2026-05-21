@@ -376,17 +376,17 @@ def slotsFrom (start width : Nat) : List Nat :=
 def arrayFoldMultiSlotAssign? (targets : List Nat) (values : List IRExpr) :
     Option IRStmt :=
   match values with
-  | .arrayFoldMultiSlot sourceWidth resultWidth array start stop initValues accStart itemStart
+  | .arrayFoldMultiSlot sourceWidth resultWidth reverse array start stop initValues accStart itemStart
       bodyValues bodyLets bodyDone releaseOffsets _ :: _ =>
       if values.length == resultWidth && targets.length == resultWidth then
         let expected : List IRExpr :=
           (List.range resultWidth).map fun offset =>
-            .arrayFoldMultiSlot sourceWidth resultWidth array start stop initValues accStart
+            .arrayFoldMultiSlot sourceWidth resultWidth reverse array start stop initValues accStart
               itemStart bodyValues bodyLets bodyDone releaseOffsets offset
         if values == expected then
           some <|
-            .arrayFoldMultiSlotAssign sourceWidth resultWidth array start stop initValues accStart
-              itemStart bodyValues bodyLets bodyDone releaseOffsets targets
+            .arrayFoldMultiSlotAssign sourceWidth resultWidth reverse array start stop initValues
+              accStart itemStart bodyValues bodyLets bodyDone releaseOffsets targets
         else
           none
       else
@@ -653,7 +653,7 @@ mutual
         let bodyLive := removeLiveSlots (exprListUsedSlots bodyValues)
           (slotsFrom itemStart sourceWidth)
         addLiveSlots (exprUsedSlots array) bodyLive
-    | .arrayFoldMultiSlot sourceWidth resultWidth array start stop initValues accStart
+    | .arrayFoldMultiSlot sourceWidth resultWidth _reverse array start stop initValues accStart
         itemStart bodyValues bodyLets bodyDone _releaseOffsets _ =>
         let bodyLive := addLiveSlots (exprListUsedSlots bodyValues) (exprUsedSlots bodyDone)
         let bodyFree := removeLiveSlots
@@ -2351,7 +2351,7 @@ mutual
           (exprReleasedSlots stop)
     | .arrayMapSlots _ _ _ _ array _ bodyValues =>
         addLiveSlots (exprReleasedSlots array) (exprListReleasedSlots bodyValues)
-    | .arrayFoldMultiSlot _ _ array start stop initValues _ _ bodyValues _ bodyDone _ _ =>
+    | .arrayFoldMultiSlot _ _ _reverse array start stop initValues _ _ bodyValues _ bodyDone _ _ =>
         addLiveSlots
           (addLiveSlots
             (addLiveSlots (exprReleasedSlots array) (exprReleasedSlots start))
@@ -2603,7 +2603,7 @@ mutual
           removeLiveSlots (removeLiveSlots ownedLocals slots) (exprListReleasedSlots args)
         addLiveSlots afterCall (summarizedCallResultOwnerSlots summaries index slots)
     | .release ptr => removeLiveSlots ownedLocals (exprUsedSlots ptr)
-    | .arrayFoldMultiSlotAssign _ _ array start stop initValues _ _ bodyValues bodyLets bodyDone
+    | .arrayFoldMultiSlotAssign _ _ _reverse array start stop initValues _ _ bodyValues bodyLets bodyDone
         _releaseOffsets targets =>
         let released :=
           addLiveSlots

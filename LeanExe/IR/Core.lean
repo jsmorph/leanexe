@@ -74,7 +74,8 @@ mutual
     | arrayExtractSlots (width childMask : Nat) (array start stop : Expr)
     | arrayMapSlots (sourceWidth resultWidth childMask ownedMask : Nat) (array : Expr) (itemStart : Nat)
         (bodyValues : List Expr)
-    | arrayFoldMultiSlot (sourceWidth resultWidth : Nat) (array start stop : Expr)
+    | arrayFoldMultiSlot (sourceWidth resultWidth : Nat) (reverse : Bool)
+        (array start stop : Expr)
         (initValues : List Expr) (accStart itemStart : Nat) (bodyValues : List Expr)
         (bodyLets : List LocalLet) (bodyDone : Expr) (releaseOffsets : List Nat)
         (resultSlot : Nat)
@@ -146,7 +147,8 @@ mutual
     | assign (index : Nat) (value : Expr)
     | call (slots : List Nat) (index : Nat) (args : List Expr)
     | release (ptr : Expr)
-    | arrayFoldMultiSlotAssign (sourceWidth resultWidth : Nat) (array start stop : Expr)
+    | arrayFoldMultiSlotAssign (sourceWidth resultWidth : Nat) (reverse : Bool)
+        (array start stop : Expr)
         (initValues : List Expr) (accStart itemStart : Nat) (bodyValues : List Expr)
         (bodyLets : List LocalLet) (bodyDone : Expr) (releaseOffsets : List Nat)
         (targets : List Nat)
@@ -242,14 +244,22 @@ mutual
     | .arrayAppendSlots _ _ left _ => left.eval module_ store
     | .arrayExtractSlots _ _ array _ _ => array.eval module_ store
     | .arrayMapSlots _ _ _ _ array _ _ => array.eval module_ store
-    | .arrayFoldMultiSlot sourceWidth resultWidth array start stop initValues accStart itemStart
+    | .arrayFoldMultiSlot sourceWidth resultWidth reverse array start stop initValues accStart itemStart
         bodyValues bodyLets bodyDone _releaseOffsets resultSlot =>
+        let len := (.arraySize array : Expr).eval module_ store
         let resultStore :=
-          evalCountedFold module_ resultWidth initValues accStart itemStart sourceWidth
-            (fun _index => 0)
-            (start.eval module_ store)
-            (min (stop.eval module_ store) ((.arraySize array : Expr).eval module_ store))
-            1 bodyValues bodyLets bodyDone store
+          if reverse then
+            evalCountedFoldReverse module_ resultWidth initValues accStart itemStart sourceWidth
+              (fun _index => 0)
+              (min (start.eval module_ store) len)
+              (stop.eval module_ store)
+              bodyValues bodyLets bodyDone store
+          else
+            evalCountedFold module_ resultWidth initValues accStart itemStart sourceWidth
+              (fun _index => 0)
+              (start.eval module_ store)
+              (min (stop.eval module_ store) len)
+              1 bodyValues bodyLets bodyDone store
         resultStore (accStart + resultSlot)
     | .arrayFindIdxSlots _ _ _ _ _ => 0
     | .arrayFindSlot _ _ _ _ _ => 0
@@ -378,6 +388,41 @@ mutual
               loop fuel (index + step) nextStore
     loop 1000000 start initStore
 
+  partial def evalCountedFoldReverse
+      (module_ : Module)
+      (resultWidth : Nat)
+      (initValues : List Expr)
+      (accStart itemStart itemWidth : Nat)
+      (itemValue : UInt64 → UInt64)
+      (start stop : UInt64)
+      (bodyValues : List Expr)
+      (bodyLets : List LocalLet)
+      (bodyDone : Expr)
+      (store : Store) : Store :=
+    let initStore :=
+      assignValues module_ ((List.range resultWidth).map fun offset => accStart + offset)
+        initValues store
+    let rec loop : Nat → UInt64 → Store → Store
+      | 0, _, current => current
+      | fuel + 1, index, current =>
+          if index <= stop then
+            current
+          else
+            let itemIndex := index - 1
+            let itemStore :=
+              if itemWidth == 1 then
+                current.set itemStart (itemValue itemIndex)
+              else
+                setSlotsToZero itemStart itemWidth current
+            let letStore := evalLocalLets module_ bodyLets itemStore
+            let nextValues := bodyValues.map fun value => value.eval module_ letStore
+            let nextStore := setSlotsFromValues accStart nextValues letStore
+            if bodyDone.eval module_ letStore != 0 then
+              nextStore
+            else
+              loop fuel itemIndex nextStore
+    loop 1000000 start initStore
+
   partial def evalLoopFold
       (module_ : Module)
       (resultWidth : Nat)
@@ -412,14 +457,22 @@ mutual
           | none => []
         (slots.zip results).foldl (fun current item => current.set item.fst item.snd) store
     | .release _, store => store
-    | .arrayFoldMultiSlotAssign sourceWidth resultWidth array start stop initValues accStart
+    | .arrayFoldMultiSlotAssign sourceWidth resultWidth reverse array start stop initValues accStart
         itemStart bodyValues bodyLets bodyDone _releaseOffsets targets, store =>
+        let len := (.arraySize array : Expr).eval module_ store
         let resultStore :=
-          evalCountedFold module_ resultWidth initValues accStart itemStart sourceWidth
-            (fun _index => 0)
-            (start.eval module_ store)
-            (min (stop.eval module_ store) ((.arraySize array : Expr).eval module_ store))
-            1 bodyValues bodyLets bodyDone store
+          if reverse then
+            evalCountedFoldReverse module_ resultWidth initValues accStart itemStart sourceWidth
+              (fun _index => 0)
+              (min (start.eval module_ store) len)
+              (stop.eval module_ store)
+              bodyValues bodyLets bodyDone store
+          else
+            evalCountedFold module_ resultWidth initValues accStart itemStart sourceWidth
+              (fun _index => 0)
+              (start.eval module_ store)
+              (min (stop.eval module_ store) len)
+              1 bodyValues bodyLets bodyDone store
         (targets.zip (List.range resultWidth)).foldl
           (fun current item => current.set item.fst (resultStore (accStart + item.snd)))
           store
