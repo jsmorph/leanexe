@@ -992,6 +992,16 @@ def u64ListBytes : U64List -> ByteArray
 def leanList123 : List UInt64 :=
   [1, 2, 3]
 
+def leanListScenario (kind : UInt64) : List UInt64 :=
+  if kind == 0 then
+    []
+  else if kind == 1 then
+    [7]
+  else if kind == 2 then
+    [1, 2, 3]
+  else
+    [8, 13, 21, 34]
+
 def leanListHeadOrZero (xs : List UInt64) : UInt64 :=
   match xs with
   | [] => 0
@@ -1181,6 +1191,20 @@ def leanListBoxBytes (box : LeanListBox) : ByteArray :=
   let out := out.append (leanListBytes box.values)
   out.push (41 : UInt8)
 
+def leanListScenarioScore (kind needle : UInt64) : UInt64 :=
+  let xs := leanListScenario kind
+  let found :=
+    match xs.find? (fun value => value == needle) with
+    | none => 0
+    | some value => value
+  xs.length.toUInt64 * 1000 + leanListStructuralSum xs * 10 + found
+
+def leanListScenarioReverseValue (kind : UInt64) : List UInt64 :=
+  leanListReverseAcc (leanListScenario kind) []
+
+def leanListScenarioAppendMapValue (kind : UInt64) : List UInt64 :=
+  (leanListAppendRec (leanListScenario kind) [5]).map (fun value => value + 1)
+
 inductive U64Tree where
   | leaf : UInt64 → U64Tree
   | node : Array U64Tree → U64Tree
@@ -1301,6 +1325,26 @@ def u64BinaryValue : U64Binary :=
     (U64Binary.leaf 1)
     (U64Binary.node (U64Binary.leaf 2) (U64Binary.leaf 3))
 
+def u64BinaryScenario (kind : UInt64) : U64Binary :=
+  if kind == 0 then
+    U64Binary.leaf 5
+  else if kind == 1 then
+    U64Binary.node
+      (U64Binary.node (U64Binary.leaf 1) (U64Binary.leaf 2))
+      (U64Binary.node (U64Binary.leaf 3) (U64Binary.leaf 4))
+  else if kind == 2 then
+    U64Binary.node
+      (U64Binary.node
+        (U64Binary.node (U64Binary.leaf 1) (U64Binary.leaf 2))
+        (U64Binary.leaf 3))
+      (U64Binary.leaf 4)
+  else
+    U64Binary.node
+      (U64Binary.leaf 1)
+      (U64Binary.node
+        (U64Binary.leaf 2)
+        (U64Binary.node (U64Binary.leaf 3) (U64Binary.leaf 4)))
+
 def u64BinaryBytes : U64Binary -> ByteArray
   | .leaf value =>
       let out := "L(".toUTF8
@@ -1362,6 +1406,30 @@ def u64BinaryRequireLeaf (needle : UInt64) (tree : U64Binary) : Except UInt64 U6
   match u64BinaryFindLeaf needle tree with
   | some found => Except.ok found
   | none => Except.error needle
+
+def u64BinaryScenarioScore (kind needle : UInt64) : UInt64 :=
+  let tree := u64BinaryScenario kind
+  let found := if u64BinaryContains needle tree then 1 else 0
+  u64BinaryNodeCount tree * 10000 +
+    u64BinaryHeight tree * 100 +
+    u64BinaryLeafSum tree * 10 +
+    found
+
+def u64BinaryScenarioValue (kind : UInt64) : U64Binary :=
+  u64BinaryScenario kind
+
+def u64BinaryScenarioMirrorValue (kind : UInt64) : U64Binary :=
+  u64BinaryMirror (u64BinaryScenario kind)
+
+def u64BinaryScenarioFindValue (kind needle : UInt64) : Option U64Binary :=
+  u64BinaryFindLeaf needle (u64BinaryScenario kind)
+
+def u64BinaryScenarioRequireByteErrorValue (kind needle : UInt64) : Except ByteArray U64Binary :=
+  match u64BinaryFindLeaf needle (u64BinaryScenario kind) with
+  | none =>
+      let out := "missing:".toUTF8
+      Except.error (LeanExe.Ascii.appendUInt64Decimal out needle)
+  | some found => Except.ok found
 
 def u64BinaryShapeDemo : UInt64 :=
   let tree := u64BinaryValue
@@ -1451,6 +1519,16 @@ def u64BinaryExceptBytes : Except UInt64 U64Binary -> ByteArray
   | Except.error code =>
       let out := "error(".toUTF8
       let out := LeanExe.Ascii.appendUInt64Decimal out code
+      out.push (41 : UInt8)
+  | Except.ok tree =>
+      let out := "ok(".toUTF8
+      let out := out.append (u64BinaryBytes tree)
+      out.push (41 : UInt8)
+
+def u64BinaryByteErrorExceptBytes : Except ByteArray U64Binary -> ByteArray
+  | Except.error bytes =>
+      let out := "error(".toUTF8
+      let out := out.append bytes
       out.push (41 : UInt8)
   | Except.ok tree =>
       let out := "ok(".toUTF8
@@ -4659,6 +4737,31 @@ def arrayFoldRecursiveAccumulatorReleaseStats : UInt64 :=
   let releasesAfterFold := LeanExe.Runtime.releaseCount - releasesBefore
   let freesAfterFold := LeanExe.Runtime.freeCount - before
   u64BinaryNodeCount tree * 10000 + releasesAfterFold * 100 + freesAfterFold
+
+def recursiveScenarioRuntimeReleaseStats (kind : UInt64) : UInt64 :=
+  let tree :=
+    if kind == 0 then
+      U64Binary.leaf 5
+    else if kind == 1 then
+      U64Binary.node
+        (U64Binary.node (U64Binary.leaf 1) (U64Binary.leaf 2))
+        (U64Binary.node (U64Binary.leaf 3) (U64Binary.leaf 4))
+    else if kind == 2 then
+      U64Binary.node
+        (U64Binary.node
+          (U64Binary.node (U64Binary.leaf 1) (U64Binary.leaf 2))
+          (U64Binary.leaf 3))
+        (U64Binary.leaf 4)
+    else
+      U64Binary.node
+        (U64Binary.leaf 1)
+        (U64Binary.node
+          (U64Binary.leaf 2)
+          (U64Binary.node (U64Binary.leaf 3) (U64Binary.leaf 4)))
+  let before := LeanExe.Runtime.freeCount
+  let releasesBefore := LeanExe.Runtime.releaseCount
+  let after := LeanExe.Runtime.release tree
+  (LeanExe.Runtime.releaseCount - releasesBefore) * 100 + (after - before)
 
 def ownedBoxCallTemp : OwnedCallBox :=
   { values := Array.replicate 1 (5 : UInt64),

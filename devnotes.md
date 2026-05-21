@@ -1,5 +1,22 @@
 # Development Journal
 
+## 2026-05-21: Recursive Standard Comparisons
+
+The standard comparison self-test now has parameterized recursive-value fixtures.  `leanListScenarioScore` compares empty, singleton, ordinary, and longer `List UInt64` inputs through scalar summaries, while `leanListScenarioReverseValue` and `leanListScenarioAppendMapValue` return recursive values that the wrapper serializes through the existing list renderer.  `u64BinaryScenarioScore` compares leaf, balanced, and skewed binary-tree shapes through scalar summaries, while `u64BinaryScenarioValue`, `u64BinaryScenarioMirrorValue`, `u64BinaryScenarioFindValue`, and `u64BinaryScenarioRequireByteErrorValue` compare returned recursive values, present and missing searches, and `Except ByteArray U64Binary` success and error paths.
+
+Release-counter checks remain in the Wasmtime correctness and refcount suites because standard Lean defines `LeanExe.Runtime` counters as zero.  `recursiveScenarioRuntimeReleaseStats` now checks explicit source-level release of leaf, balanced, and skewed recursive trees, with the refcount suite asserting one released block for a leaf and seven released blocks for the nontrivial trees.  During exploratory testing, releasing a recursive value returned from a helper function trapped; that pattern needs a root-cause pass before it becomes a supported release-counter fixture.
+
+Checks run:
+
+- [x] `lake build LeanExe.Examples.Correctness lean-wasm`
+- [x] `node --check tools/compare-standard.js`
+- [x] `node --check test/core_correctness.js`
+- [x] `node --check test/refcount.js`
+- [x] `node test/core_correctness.js` returned `checked 762 accepted, 29 rejected, and 13 trapped cases`.
+- [x] `node test/refcount.js` returned `checked 34 refcount cases`.
+- [x] `node tools/compare-standard.js --self-test` returned `checked 212 standard Lean comparison cases`.
+- [x] `node test/run_all.js` returned `checked 112 report classification cases`, `checked 7 ownership report cases`, `checked JavaScript WASM execution guard`, `checked 762 accepted, 29 rejected, and 13 trapped cases`, `checked 34 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 35 WASI program cases, 2 traps, and 7 rejections`, `checked 212 standard Lean comparison cases`, and `checked 56 cases`.
+
 ## 2026-05-21: Standard Comparison Edge Cases
 
 The standard comparison self-test now covers more of the scalar and tagged-value perimeter against official Lean execution.  The added cases compare short-circuiting, fixed-width division by zero, UInt64 wrapping, Nat subtraction and division edge cases, fixed-width UInt8 and UInt32 wrapping, Option and Except public layouts, array reads, array filters, fixed-width array element operations, and selected foldr windows.  Pure comparison mode now normalizes successful Wasmtime `i64` CLI output back to unsigned `UInt64` text, because the harness slot type is `Array UInt64` while Wasmtime renders high-bit `i64` results as signed decimal.
