@@ -6660,11 +6660,15 @@ def extractFunctionsWithEntryMode
     funcs := funcs.push func
   .ok funcs
 
-def compileEnvironmentWithEntryMode
+structure CompiledModule where
+  ctx : Context
+  module : IRModule
+
+def compileEnvironmentWithEntryModeDetailed
     (exportEntry : Bool)
     (env : Environment)
     (moduleName entry : Name) :
-    Except String IRModule := do
+    Except String CompiledModule := do
   let entryInfo ←
     match env.find? entry with
     | some info => .ok info
@@ -6703,7 +6707,15 @@ def compileEnvironmentWithEntryMode
     freshResultOwnerOffsetsForModule baseCtx { funcs := firstPassFuncs }
   let ctx : Context := { baseCtx with freshResultOwnerOffsets := freshResultOwnerOffsets }
   let funcs ← extractFunctionsWithEntryMode exportEntry ctx entry namesList
-  .ok { funcs := funcs }
+  .ok { ctx := ctx, module := { funcs := funcs } }
+
+def compileEnvironmentWithEntryMode
+    (exportEntry : Bool)
+    (env : Environment)
+    (moduleName entry : Name) :
+    Except String IRModule := do
+  let compiled ← compileEnvironmentWithEntryModeDetailed exportEntry env moduleName entry
+  .ok compiled.module
 
 def compileEnvironment (env : Environment) (moduleName entry : Name) : Except String IRModule :=
   compileEnvironmentWithEntryMode true env moduleName entry
@@ -6718,6 +6730,14 @@ def compile (moduleText entryText : String) : IO IRModule := do
   let env ← LeanExe.Extract.Env.loadEnvironment moduleName
   match compileEnvironment env moduleName entryName with
   | .ok module_ => pure module_
+  | .error error => throw <| IO.userError error
+
+def compileDetailed (moduleText entryText : String) : IO CompiledModule := do
+  let moduleName := LeanExe.Extract.Env.parseName moduleText
+  let entryName := LeanExe.Extract.Env.parseName entryText
+  let env ← LeanExe.Extract.Env.loadEnvironment moduleName
+  match compileEnvironmentWithEntryModeDetailed true env moduleName entryName with
+  | .ok compiled => pure compiled
   | .error error => throw <| IO.userError error
 
 def compileProgramEnvironment (env : Environment) (moduleName entry : Name) :
