@@ -21,6 +21,17 @@ function assertContains(text, needle, label) {
   }
 }
 
+function countOccurrences(text, needle) {
+  return text.split(needle).length - 1;
+}
+
+function assertOccurrenceCount(text, needle, expected, label) {
+  const actual = countOccurrences(text, needle);
+  if (actual !== expected) {
+    throw new Error(`${label}: expected ${expected} occurrences of ${needle}, got ${actual}`);
+  }
+}
+
 function ownershipReport(moduleName, entryName) {
   return run([
     leanExe,
@@ -38,8 +49,9 @@ function checkOptionByteArrayLoop() {
   assertContains(report, "LeanExe ownership report", entry);
   assertContains(report, "entry: LeanExe.Examples.Correctness.optionForByteArrayOutputReleaseStats", entry);
   assertContains(report, "compiler statement releases: 2", entry);
-  assertContains(report, "byteArrayFoldMultiSlot", entry);
+  assertContains(report, "byteArrayFoldMultiSlotAssign", entry);
   assertContains(report, "releaseOffsets=[1]", entry);
+  assertOccurrenceCount(report, "byteArrayFoldMultiSlot", 1, entry);
 }
 
 function checkExceptByteArrayLoop() {
@@ -49,6 +61,19 @@ function checkExceptByteArrayLoop() {
   assertContains(report, "compiler statement releases: 2", entry);
   assertContains(report, "resultWidth=5", entry);
   assertContains(report, "releaseOffsets=[2]", entry);
+  assertContains(report, "byteArrayFoldMultiSlotAssign", entry);
+  assertOccurrenceCount(report, "byteArrayFoldMultiSlot", 1, entry);
+}
+
+function checkOptionByteArrayStateLoop() {
+  const entry = `${correctnessModule}.optionForByteArrayStateReleaseStats`;
+  const report = ownershipReport(correctnessModule, entry);
+  assertContains(report, "entry: LeanExe.Examples.Correctness.optionForByteArrayStateReleaseStats", entry);
+  assertContains(report, "compiler statement releases: 2", entry);
+  assertContains(report, "resultWidth=5", entry);
+  assertContains(report, "releaseOffsets=[2]", entry);
+  assertContains(report, "byteArrayFoldMultiSlotAssign", entry);
+  assertOccurrenceCount(report, "byteArrayFoldMultiSlot", 1, entry);
 }
 
 function checkJsonTreeOutFile() {
@@ -72,8 +97,9 @@ function checkJsonTreeOutFile() {
 function main() {
   checkOptionByteArrayLoop();
   checkExceptByteArrayLoop();
+  checkOptionByteArrayStateLoop();
   checkJsonTreeOutFile();
-  process.stdout.write("checked 3 ownership report cases\n");
+  process.stdout.write("checked 4 ownership report cases\n");
 }
 
 try {

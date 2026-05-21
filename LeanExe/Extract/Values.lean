@@ -373,6 +373,97 @@ def anyLiveSlot (live slots : List Nat) : Bool :=
 def slotsFrom (start width : Nat) : List Nat :=
   (List.range width).map fun offset => start + offset
 
+def arrayFoldMultiSlotAssign? (targets : List Nat) (values : List IRExpr) :
+    Option IRStmt :=
+  match values with
+  | .arrayFoldMultiSlot sourceWidth resultWidth array start stop initValues accStart itemStart
+      bodyValues bodyLets bodyDone releaseOffsets _ :: _ =>
+      if values.length == resultWidth && targets.length == resultWidth then
+        let expected : List IRExpr :=
+          (List.range resultWidth).map fun offset =>
+            .arrayFoldMultiSlot sourceWidth resultWidth array start stop initValues accStart
+              itemStart bodyValues bodyLets bodyDone releaseOffsets offset
+        if values == expected then
+          some <|
+            .arrayFoldMultiSlotAssign sourceWidth resultWidth array start stop initValues accStart
+              itemStart bodyValues bodyLets bodyDone releaseOffsets targets
+        else
+          none
+      else
+        none
+  | _ => none
+
+def byteArrayFoldMultiSlotAssign? (targets : List Nat) (values : List IRExpr) :
+    Option IRStmt :=
+  match values with
+  | .byteArrayFoldMultiSlot resultWidth ptr len start stop initValues accStart byteSlot
+      bodyValues bodyLets bodyDone releaseOffsets _ :: _ =>
+      if values.length == resultWidth && targets.length == resultWidth then
+        let expected : List IRExpr :=
+          (List.range resultWidth).map fun offset =>
+            .byteArrayFoldMultiSlot resultWidth ptr len start stop initValues accStart
+              byteSlot bodyValues bodyLets bodyDone releaseOffsets offset
+        if values == expected then
+          some <|
+            .byteArrayFoldMultiSlotAssign resultWidth ptr len start stop initValues accStart
+              byteSlot bodyValues bodyLets bodyDone releaseOffsets targets
+        else
+          none
+      else
+        none
+  | _ => none
+
+def rangeFoldMultiSlotAssign? (targets : List Nat) (values : List IRExpr) :
+    Option IRStmt :=
+  match values with
+  | .rangeFoldMultiSlot resultWidth start stop step initValues accStart itemSlot
+      bodyValues bodyLets bodyDone releaseOffsets _ :: _ =>
+      if values.length == resultWidth && targets.length == resultWidth then
+        let expected : List IRExpr :=
+          (List.range resultWidth).map fun offset =>
+            .rangeFoldMultiSlot resultWidth start stop step initValues accStart itemSlot bodyValues
+              bodyLets bodyDone releaseOffsets offset
+        if values == expected then
+          some <|
+            .rangeFoldMultiSlotAssign resultWidth start stop step initValues accStart itemSlot
+              bodyValues bodyLets bodyDone releaseOffsets targets
+        else
+          none
+      else
+        none
+  | _ => none
+
+def loopFoldMultiSlotAssign? (targets : List Nat) (values : List IRExpr) :
+    Option IRStmt :=
+  match values with
+  | .loopFoldMultiSlot resultWidth initValues accStart bodyValues bodyLets bodyDone
+      releaseOffsets _ :: _ =>
+      if values.length == resultWidth && targets.length == resultWidth then
+        let expected : List IRExpr :=
+          (List.range resultWidth).map fun offset =>
+            .loopFoldMultiSlot resultWidth initValues accStart bodyValues bodyLets bodyDone
+              releaseOffsets offset
+        if values == expected then
+          some <|
+            .loopFoldMultiSlotAssign resultWidth initValues accStart bodyValues bodyLets bodyDone
+              releaseOffsets targets
+        else
+          none
+      else
+        none
+  | _ => none
+
+def foldMultiSlotAssign? (targets : List Nat) (values : List IRExpr) : Option IRStmt :=
+  match arrayFoldMultiSlotAssign? targets values with
+  | some stmt => some stmt
+  | none =>
+      match byteArrayFoldMultiSlotAssign? targets values with
+      | some stmt => some stmt
+      | none =>
+          match rangeFoldMultiSlotAssign? targets values with
+          | some stmt => some stmt
+          | none => loopFoldMultiSlotAssign? targets values
+
 mutual
   partial def tyReleaseOwnerSlotOffsetsAt (base : Nat) : Ty → List Nat
     | .array item =>
@@ -766,14 +857,22 @@ mutual
         else
           (none, liveAfter)
     | .slots slots values =>
-        let kept := (slots.zip values).filter fun item => liveAfter.contains item.fst
-        if kept.isEmpty then
-          (none, liveAfter)
-        else
-          let keptSlots := kept.map Prod.fst
-          let keptValues := kept.map Prod.snd
-          (some (.slots keptSlots keptValues),
-            addLiveSlots (removeLiveSlots liveAfter keptSlots) (exprListUsedSlots keptValues))
+        match foldMultiSlotAssign? slots values with
+        | some _ =>
+            if anyLiveSlot liveAfter slots then
+              (some (.slots slots values),
+                addLiveSlots (removeLiveSlots liveAfter slots) (exprListUsedSlots values))
+            else
+              (none, liveAfter)
+        | none =>
+            let kept := (slots.zip values).filter fun item => liveAfter.contains item.fst
+            if kept.isEmpty then
+              (none, liveAfter)
+            else
+              let keptSlots := kept.map Prod.fst
+              let keptValues := kept.map Prod.snd
+              (some (.slots keptSlots keptValues),
+                addLiveSlots (removeLiveSlots liveAfter keptSlots) (exprListUsedSlots keptValues))
     | .branch cond thenLets elseLets =>
         let thenResult := pruneLocalLetsWithLive thenLets liveAfter
         let elseResult := pruneLocalLetsWithLive elseLets liveAfter
@@ -1975,97 +2074,6 @@ def assignResultSlots (targets : List Nat) (values : List IRExpr) : IRStmt :=
   LeanExe.IR.seqList <|
     (targets.zip values).map fun item =>
       LeanExe.IR.Stmt.assign item.fst item.snd
-
-def arrayFoldMultiSlotAssign? (targets : List Nat) (values : List IRExpr) :
-    Option IRStmt :=
-  match values with
-  | .arrayFoldMultiSlot sourceWidth resultWidth array start stop initValues accStart itemStart
-      bodyValues bodyLets bodyDone releaseOffsets _ :: _ =>
-      if values.length == resultWidth && targets.length == resultWidth then
-        let expected : List IRExpr :=
-          (List.range resultWidth).map fun offset =>
-            .arrayFoldMultiSlot sourceWidth resultWidth array start stop initValues accStart
-              itemStart bodyValues bodyLets bodyDone releaseOffsets offset
-        if values == expected then
-          some <|
-            .arrayFoldMultiSlotAssign sourceWidth resultWidth array start stop initValues accStart
-              itemStart bodyValues bodyLets bodyDone releaseOffsets targets
-        else
-          none
-      else
-        none
-  | _ => none
-
-def byteArrayFoldMultiSlotAssign? (targets : List Nat) (values : List IRExpr) :
-    Option IRStmt :=
-  match values with
-  | .byteArrayFoldMultiSlot resultWidth ptr len start stop initValues accStart byteSlot
-      bodyValues bodyLets bodyDone releaseOffsets _ :: _ =>
-      if values.length == resultWidth && targets.length == resultWidth then
-        let expected : List IRExpr :=
-          (List.range resultWidth).map fun offset =>
-            .byteArrayFoldMultiSlot resultWidth ptr len start stop initValues accStart
-              byteSlot bodyValues bodyLets bodyDone releaseOffsets offset
-        if values == expected then
-          some <|
-            .byteArrayFoldMultiSlotAssign resultWidth ptr len start stop initValues accStart
-              byteSlot bodyValues bodyLets bodyDone releaseOffsets targets
-        else
-          none
-      else
-        none
-  | _ => none
-
-def rangeFoldMultiSlotAssign? (targets : List Nat) (values : List IRExpr) :
-    Option IRStmt :=
-  match values with
-  | .rangeFoldMultiSlot resultWidth start stop step initValues accStart itemSlot
-      bodyValues bodyLets bodyDone releaseOffsets _ :: _ =>
-      if values.length == resultWidth && targets.length == resultWidth then
-        let expected : List IRExpr :=
-          (List.range resultWidth).map fun offset =>
-            .rangeFoldMultiSlot resultWidth start stop step initValues accStart itemSlot bodyValues
-              bodyLets bodyDone releaseOffsets offset
-        if values == expected then
-          some <|
-            .rangeFoldMultiSlotAssign resultWidth start stop step initValues accStart itemSlot
-              bodyValues bodyLets bodyDone releaseOffsets targets
-        else
-          none
-      else
-        none
-  | _ => none
-
-def loopFoldMultiSlotAssign? (targets : List Nat) (values : List IRExpr) :
-    Option IRStmt :=
-  match values with
-  | .loopFoldMultiSlot resultWidth initValues accStart bodyValues bodyLets bodyDone
-      releaseOffsets _ :: _ =>
-      if values.length == resultWidth && targets.length == resultWidth then
-        let expected : List IRExpr :=
-          (List.range resultWidth).map fun offset =>
-            .loopFoldMultiSlot resultWidth initValues accStart bodyValues bodyLets bodyDone
-              releaseOffsets offset
-        if values == expected then
-          some <|
-            .loopFoldMultiSlotAssign resultWidth initValues accStart bodyValues bodyLets bodyDone
-              releaseOffsets targets
-        else
-          none
-      else
-        none
-  | _ => none
-
-def foldMultiSlotAssign? (targets : List Nat) (values : List IRExpr) : Option IRStmt :=
-  match arrayFoldMultiSlotAssign? targets values with
-  | some stmt => some stmt
-  | none =>
-      match byteArrayFoldMultiSlotAssign? targets values with
-      | some stmt => some stmt
-      | none =>
-          match rangeFoldMultiSlotAssign? targets values with
-          | some stmt => some stmt
-          | none => loopFoldMultiSlotAssign? targets values
 
 mutual
   def localLetStmtOptimized : LeanExe.IR.LocalLet → IRStmt

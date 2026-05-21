@@ -1,10 +1,23 @@
 # Development Journal
 
+## 2026-05-20: Atomic Multi-Slot Fold Pruning
+
+The liveness pass now treats a materialized multi-slot fold result as an atomic local assignment.  Before this change, a let-bound `Except UInt64 ByteArray` or `Option ByteOutputState` loop result could be pruned down to the tag and one scalar payload field when the later `match` ignored the byte-array payload.  That split one fold result into separate result-slot expressions, so the generated code ran the loop more than once and duplicated accumulator releases.
+
+The pruning rule now keeps the complete `.slots` local let whenever `foldMultiSlotAssign?` recognizes the values as one fold assignment and any target slot remains live.  The ordinary scalar-slot pruning path still applies to unrelated `.slots` lets.  The counter examples now report the intended two loop-replacement releases and two frees: `exceptForByteArrayOutputReleaseStats` returns `10202`, and `optionForByteArrayStateReleaseStats` returns `30202`.
+
+Checks run:
+
+- [x] `lake build lean-wasm LeanExe.Examples.Correctness`
+- [x] `node test/ownership_report.js` returned `checked 4 ownership report cases`.
+- [x] `node test/core_correctness.js` returned `checked 695 accepted, 30 rejected, and 13 trapped cases`.
+- [x] `node test/run_all.js` returned `checked 94 report classification cases`, `checked 4 ownership report cases`, `checked 695 accepted, 30 rejected, and 13 trapped cases`, `checked 25 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 35 WASI program cases, 2 traps, and 7 rejections`, `checked 94 standard Lean comparison cases`, and `checked 56 cases`.
+
 ## 2026-05-20: Ownership Report Command
 
 `lean-wasm ownership-report --module M --entry E` now compiles the selected entry through the same two-pass extraction path as `compile`, then reports ownership data from the extracted IR.  The command lists each extracted function's result type, internal result owner offsets, helper-result fresh-owner offsets, returned owner expressions, compiler-emitted statement releases, fold accumulator release offsets, and explicit `LeanExe.Runtime.release` expressions.  `compileEnvironmentWithEntryModeDetailed` exposes the extraction context and IR together, while the existing compile entry points keep returning the same `IRModule` type.
 
-The first tests cover the `Option ByteArray` and `Except UInt64 ByteArray` loop-output counter examples and `JsonTreeCommand.makeTree`.  The structured `Except` report shows two byte-array fold result slots with the same accumulator release offset, which is useful evidence for the remaining duplicate result-demand issue.  The report also distinguishes the source-level release in `JsonTreeCommand.insertOwned` from compiler-emitted releases, so source ownership boundaries and automatic cleanup can be inspected separately.
+The first tests cover the `Option ByteArray` and `Except UInt64 ByteArray` loop-output counter examples and `JsonTreeCommand.makeTree`.  The initial structured `Except` report showed two byte-array fold result slots with the same accumulator release offset, which identified the duplicate result-demand issue fixed in the next ownership change.  The report also distinguishes the source-level release in `JsonTreeCommand.insertOwned` from compiler-emitted releases, so source ownership boundaries and automatic cleanup can be inspected separately.
 
 Checks run:
 
@@ -3471,7 +3484,7 @@ Checks run:
 
 The monadic loop tests now cover `Option` and `Except` loops whose accumulator is a `ByteArray` or a structure containing a `ByteArray`.  These cases exercise the ownership path where each iteration constructs a fresh heap value and replaces the previous accumulator.  The extractor now reduces constant IR conditions through simple local lets, tracks constants through local-let ownership analysis, and recognizes constant-source monadic binds before choosing the generic bind lowering.  Heap-valued bind sources use the materialized path so the continuation receives stable local slots instead of re-demanding separate fields of a heap result.
 
-The release-counter examples show the current state precisely.  `Option ByteArray` reports the intended two loop-replacement releases for a three-byte output.  `Except UInt64 ByteArray` and `Option ByteOutputState` still expose a separate result-demand duplication issue in their stat examples, so those counters currently report four releases.  The ordinary output examples compare against standard Lean and produce the expected bytes; the remaining issue is in how some structured monadic results are demanded by counter-oriented test code.
+The release-counter examples originally showed the remaining ownership issue after this slice.  `Option ByteArray` reported the intended two loop-replacement releases for a three-byte output, while `Except UInt64 ByteArray` and `Option ByteOutputState` exposed duplicate demand in their stat examples.  The later atomic multi-slot fold pruning change fixes that demand issue by preserving one materialized fold assignment when only part of a tagged or structured result is live.
 
 Checks run:
 
