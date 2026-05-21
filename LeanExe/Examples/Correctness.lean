@@ -490,10 +490,12 @@ structure ByteOutputState where
 structure ByteArrayGroup where
   values : Array ByteArray
   marker : UInt64
+deriving BEq
 
 inductive PublicToken where
   | text : ByteArray -> PublicToken
   | number : UInt64 -> PublicToken
+deriving BEq
 
 inductive PublicHeapArrayResult where
   | failed : ByteArray -> PublicHeapArrayResult
@@ -4702,6 +4704,78 @@ def publicOptionByteArrayArrayOpsReturn (values : Array (Option ByteArray)) :
       | some bytes => some (bytes.push (33 : UInt8)))
   mapped.reverse
 
+def publicOptionByteArrayScore : Option ByteArray -> UInt64
+  | none => 10
+  | some bytes => bytes.size.toUInt64
+
+def publicOptionByteArrayArrayFullOps (values : Array (Option ByteArray)) :
+    Except UInt64 UInt64 := do
+  let pushed := values.push (some "D".toUTF8)
+  let appended := pushed ++ #[none, some "EF".toUTF8]
+  let extracted := appended.extract 1 5
+  let set := extracted.setIfInBounds 0 (some "GHI".toUTF8)
+  let inserted := set.insertIdxIfInBounds 2 (some "JK".toUTF8)
+  let erased := inserted.eraseIdxIfInBounds 3
+  let swapped := erased.swapIfInBounds 0 3
+  let reversed := swapped.reverse
+  let mapped := reversed.map (fun item =>
+    match item with
+    | none => none
+    | some bytes => some (bytes.push (33 : UInt8)))
+  let filtered := mapped.filter (fun item =>
+    match item with
+    | none => false
+    | some bytes => if bytes.size > 2 then true else false)
+  let foundSize :=
+    match mapped.find? (fun item =>
+      match item with
+      | none => false
+      | some bytes => bytes.size == 3) with
+    | none => 0
+    | some item => publicOptionByteArrayScore item
+  let foundIdx :=
+    match mapped.findIdx? (fun item =>
+      match item with
+      | none => true
+      | some _bytes => false) with
+    | none => 99
+    | some index => index.toUInt64
+  let anyScore := if mapped.any (fun item => item.isNone) then 1 else 0
+  let allScore :=
+    if mapped.all (fun item =>
+      match item with
+      | none => false
+      | some bytes => if bytes.size > 0 then true else false) then 1 else 0
+  let foldSum ←
+    filtered.foldlM (m := Except UInt64)
+      (fun acc item =>
+        match item with
+        | none => Except.error 99
+        | some bytes => Except.ok (acc + bytes.size.toUInt64))
+      0
+  Except.ok
+    (foldSum * 100000 + filtered.size.toUInt64 * 10000 + foundSize * 1000 +
+      foundIdx * 100 + anyScore * 10 + allScore)
+
+def publicOptionByteArrayArrayFullOpsReturn (values : Array (Option ByteArray)) :
+    Array (Option ByteArray) :=
+  let pushed := values.push (some "D".toUTF8)
+  let appended := pushed ++ #[none, some "EF".toUTF8]
+  let extracted := appended.extract 1 5
+  let set := extracted.setIfInBounds 0 (some "GHI".toUTF8)
+  let inserted := set.insertIdxIfInBounds 2 (some "JK".toUTF8)
+  let erased := inserted.eraseIdxIfInBounds 3
+  let swapped := erased.swapIfInBounds 0 3
+  let reversed := swapped.reverse
+  let mapped := reversed.map (fun item =>
+    match item with
+    | none => none
+    | some bytes => some (bytes.push (33 : UInt8)))
+  mapped.filter (fun item =>
+    match item with
+    | none => false
+    | some bytes => if bytes.size > 2 then true else false)
+
 def publicExceptByteArrayArrayReturn : Array (Except ByteArray ByteArray) :=
   #[Except.ok "A".toUTF8, Except.error "BC".toUTF8, Except.ok "DEF".toUTF8]
 
@@ -4712,6 +4786,86 @@ def publicExceptByteArrayArrayParam (values : Array (Except ByteArray ByteArray)
       | Except.error bytes => acc + bytes.size.toUInt64 * 10
       | Except.ok bytes => acc + bytes.size.toUInt64)
     0
+
+def publicExceptByteArrayScore : Except ByteArray ByteArray -> UInt64
+  | Except.error bytes => bytes.size.toUInt64 * 10
+  | Except.ok bytes => bytes.size.toUInt64
+
+def publicExceptByteArrayArrayFullOps (values : Array (Except ByteArray ByteArray)) :
+    Except UInt64 UInt64 := do
+  let pushed := values.push (Except.error "G".toUTF8)
+  let appended := pushed ++ #[Except.ok "HI".toUTF8]
+  let extracted := appended.extract 1 5
+  let set := extracted.setIfInBounds 1 (Except.ok "JK".toUTF8)
+  let inserted := set.insertIdxIfInBounds 2 (Except.error "LMN".toUTF8)
+  let erased := inserted.eraseIdxIfInBounds 3
+  let swapped := erased.swapIfInBounds 0 2
+  let reversed := swapped.reverse
+  let mapped := reversed.map (fun item =>
+    match item with
+    | Except.error bytes => Except.error (bytes.push (63 : UInt8))
+    | Except.ok bytes => Except.ok (bytes.push (33 : UInt8)))
+  let filtered := mapped.filter (fun item =>
+    match item with
+    | Except.error bytes => if bytes.size > 3 then true else false
+    | Except.ok _bytes => true)
+  let foundErrorSize :=
+    match mapped.find? (fun item =>
+      match item with
+      | Except.error _bytes => true
+      | Except.ok _bytes => false) with
+    | none => 0
+    | some item => publicExceptByteArrayScore item
+  let foundIdx :=
+    match mapped.findIdx? (fun item =>
+      match item with
+      | Except.error _bytes => false
+      | Except.ok bytes => bytes.size == 3) with
+    | none => 99
+    | some index => index.toUInt64
+  let anyScore :=
+    if mapped.any (fun item =>
+      match item with
+      | Except.error bytes => bytes.size == 4
+      | Except.ok _bytes => false) then 1 else 0
+  let allScore :=
+    if mapped.all (fun item =>
+      match item with
+      | Except.error bytes => if bytes.size > 2 then true else false
+      | Except.ok bytes => if bytes.size > 2 then true else false) then 1 else 0
+  let foldSum ←
+    mapped.foldlM (m := Except UInt64)
+      (fun acc item =>
+        match item with
+        | Except.error bytes =>
+            if bytes.size > 4 then
+              Except.error 99
+            else
+              Except.ok (acc + bytes.size.toUInt64 * 10)
+        | Except.ok bytes => Except.ok (acc + bytes.size.toUInt64))
+      0
+  Except.ok
+    (foldSum * 100000 + filtered.size.toUInt64 * 10000 + foundErrorSize * 1000 +
+      foundIdx * 100 + anyScore * 10 + allScore)
+
+def publicExceptByteArrayArrayFullOpsReturn (values : Array (Except ByteArray ByteArray)) :
+    Array (Except ByteArray ByteArray) :=
+  let pushed := values.push (Except.error "G".toUTF8)
+  let appended := pushed ++ #[Except.ok "HI".toUTF8]
+  let extracted := appended.extract 1 5
+  let set := extracted.setIfInBounds 1 (Except.ok "JK".toUTF8)
+  let inserted := set.insertIdxIfInBounds 2 (Except.error "LMN".toUTF8)
+  let erased := inserted.eraseIdxIfInBounds 3
+  let swapped := erased.swapIfInBounds 0 2
+  let reversed := swapped.reverse
+  let mapped := reversed.map (fun item =>
+    match item with
+    | Except.error bytes => Except.error (bytes.push (63 : UInt8))
+    | Except.ok bytes => Except.ok (bytes.push (33 : UInt8)))
+  mapped.filter (fun item =>
+    match item with
+    | Except.error bytes => if bytes.size > 3 then true else false
+    | Except.ok _bytes => true)
 
 def publicTokenArrayReturn : Array PublicToken :=
   #[PublicToken.text "A".toUTF8, PublicToken.number 7, PublicToken.text "BC".toUTF8]
@@ -4735,11 +4889,181 @@ def publicTokenArrayOpsReturn (values : Array PublicToken) : Array PublicToken :
     | PublicToken.text bytes => if bytes.size > 1 then true else false
     | PublicToken.number value => if value > 7 then true else false)).reverse
 
+def publicTokenScore : PublicToken -> UInt64
+  | PublicToken.text bytes => bytes.size.toUInt64
+  | PublicToken.number value => value
+
+def publicTokenArrayFullOps (values : Array PublicToken) : Except UInt64 UInt64 := do
+  let pushed := values.push (PublicToken.text "D".toUTF8)
+  let appended := pushed ++ #[PublicToken.number 3, PublicToken.text "EF".toUTF8]
+  let extracted := appended.extract 1 5
+  let set := extracted.setIfInBounds 2 (PublicToken.text "GHI".toUTF8)
+  let inserted := set.insertIdxIfInBounds 1 (PublicToken.number 11)
+  let erased := inserted.eraseIdxIfInBounds 0
+  let swapped := erased.swapIfInBounds 1 3
+  let reversed := swapped.reverse
+  let mapped := reversed.map (fun token =>
+    match token with
+    | PublicToken.text bytes => PublicToken.text (bytes.push (33 : UInt8))
+    | PublicToken.number value => PublicToken.number (value + 1))
+  let filtered := mapped.filter (fun token =>
+    match token with
+    | PublicToken.text bytes => if bytes.size > 3 then true else false
+    | PublicToken.number value => if value > 10 then true else false)
+  let foundValue :=
+    match mapped.find? (fun token =>
+      match token with
+      | PublicToken.text _bytes => false
+      | PublicToken.number _value => true) with
+    | none => 0
+    | some token => publicTokenScore token
+  let foundIdx :=
+    match mapped.findIdx? (fun token =>
+      match token with
+      | PublicToken.text bytes => bytes.size == 3
+      | PublicToken.number _value => false) with
+    | none => 99
+    | some index => index.toUInt64
+  let anyScore :=
+    if mapped.any (fun token =>
+      match token with
+      | PublicToken.text _bytes => false
+      | PublicToken.number value => value == 12) then 1 else 0
+  let allScore :=
+    if mapped.all (fun token =>
+      match token with
+      | PublicToken.text bytes => if bytes.size > 0 then true else false
+      | PublicToken.number value => if value > 0 then true else false) then 1 else 0
+  let foldSum ←
+    mapped.foldlM (m := Except UInt64)
+      (fun acc token =>
+        match token with
+        | PublicToken.text bytes => Except.ok (acc + bytes.size.toUInt64)
+        | PublicToken.number value =>
+            if value == 0 then
+              Except.error 99
+            else
+              Except.ok (acc + value))
+      0
+  Except.ok
+    (foldSum * 100000 + filtered.size.toUInt64 * 10000 + foundValue * 1000 +
+      foundIdx * 100 + anyScore * 10 + allScore)
+
+def publicTokenArrayFullOpsReturn (values : Array PublicToken) : Array PublicToken :=
+  let pushed := values.push (PublicToken.text "D".toUTF8)
+  let appended := pushed ++ #[PublicToken.number 3, PublicToken.text "EF".toUTF8]
+  let extracted := appended.extract 1 5
+  let set := extracted.setIfInBounds 2 (PublicToken.text "GHI".toUTF8)
+  let inserted := set.insertIdxIfInBounds 1 (PublicToken.number 11)
+  let erased := inserted.eraseIdxIfInBounds 0
+  let swapped := erased.swapIfInBounds 1 3
+  let reversed := swapped.reverse
+  let mapped := reversed.map (fun token =>
+    match token with
+    | PublicToken.text bytes => PublicToken.text (bytes.push (33 : UInt8))
+    | PublicToken.number value => PublicToken.number (value + 1))
+  mapped.filter (fun token =>
+    match token with
+    | PublicToken.text bytes => if bytes.size > 3 then true else false
+    | PublicToken.number value => if value > 10 then true else false)
+
 def publicByteArrayGroupReturn : ByteArrayGroup :=
   { values := #["A".toUTF8, "BC".toUTF8], marker := 9 }
 
 def publicByteArrayGroupParam (group : ByteArrayGroup) : UInt64 :=
   group.values.foldl (fun acc bytes => acc + bytes.size.toUInt64) group.marker
+
+def publicByteArrayGroupScore (group : ByteArrayGroup) : UInt64 :=
+  group.marker * 100 + group.values.foldl (fun acc bytes => acc + bytes.size.toUInt64) 0
+
+def publicByteArrayGroupArrayReturn : Array ByteArrayGroup :=
+  #[
+    { values := #["A".toUTF8, "BC".toUTF8], marker := 2 },
+    { values := #["D".toUTF8], marker := 3 }
+  ]
+
+def publicByteArrayGroupArrayParam (groups : Array ByteArrayGroup) : UInt64 :=
+  groups.foldl (fun acc group => acc + publicByteArrayGroupScore group) 0
+
+def publicByteArrayGroupArrayFullOps (groups : Array ByteArrayGroup) : Except UInt64 UInt64 := do
+  let pushed := groups.push { values := #["F".toUTF8], marker := 4 }
+  let appended := pushed ++ #[{ values := #["GH".toUTF8], marker := 5 }]
+  let extracted := appended.extract 0 4
+  let set := extracted.setIfInBounds 1 { values := #["IJ".toUTF8, "K".toUTF8], marker := 6 }
+  let inserted := set.insertIdxIfInBounds 2 { values := #["LMN".toUTF8], marker := 7 }
+  let erased := inserted.eraseIdxIfInBounds 3
+  let swapped := erased.swapIfInBounds 0 3
+  let reversed := swapped.reverse
+  let mapped := reversed.map (fun group =>
+    { values := group.values.push "Z".toUTF8, marker := group.marker + 1 })
+  let filtered := mapped.filter (fun group => if group.marker > 6 then true else false)
+  let foundScore :=
+    match mapped.find? (fun group => group.marker == 7) with
+    | none => 0
+    | some group => publicByteArrayGroupScore group
+  let foundIdx :=
+    match mapped.findIdx? (fun group => group.values.size == 2) with
+    | none => 99
+    | some index => index.toUInt64
+  let anyScore := if mapped.any (fun group => group.marker == 8) then 1 else 0
+  let allScore := if mapped.all (fun group => if group.values.isEmpty then false else true) then 1 else 0
+  let foldSum ←
+    mapped.foldlM (m := Except UInt64)
+      (fun acc group =>
+        if group.values.isEmpty then
+          Except.error 99
+        else
+          Except.ok (acc + publicByteArrayGroupScore group))
+      0
+  Except.ok
+    (foldSum * 100000000 + filtered.size.toUInt64 * 1000000 + foundScore * 1000 +
+      foundIdx * 100 + anyScore * 10 + allScore)
+
+def publicByteArrayGroupArrayFullOpsReturn (groups : Array ByteArrayGroup) :
+    Array ByteArrayGroup :=
+  let pushed := groups.push { values := #["F".toUTF8], marker := 4 }
+  let appended := pushed ++ #[{ values := #["GH".toUTF8], marker := 5 }]
+  let extracted := appended.extract 0 4
+  let set := extracted.setIfInBounds 1 { values := #["IJ".toUTF8, "K".toUTF8], marker := 6 }
+  let inserted := set.insertIdxIfInBounds 2 { values := #["LMN".toUTF8], marker := 7 }
+  let erased := inserted.eraseIdxIfInBounds 3
+  let swapped := erased.swapIfInBounds 0 3
+  let reversed := swapped.reverse
+  let mapped := reversed.map (fun group =>
+    { values := group.values.push "Z".toUTF8, marker := group.marker + 1 })
+  mapped.filter (fun group => if group.marker > 6 then true else false)
+
+def publicNestedTaggedArrayReturn : Option (Array (Option ByteArray)) :=
+  some #[some "A".toUTF8, none, some "BC".toUTF8]
+
+def publicNestedTaggedArrayParam (value : Option (Array (Option ByteArray))) : UInt64 :=
+  match value with
+  | none => 99
+  | some values =>
+      values.foldl (fun acc item => acc + publicOptionByteArrayScore item) 0
+
+def optionByteArrayArrayEquality : UInt64 :=
+  let first := #[some "A".toUTF8, none, some "BC".toUTF8]
+  let second := #[some "A".toUTF8, none, some "BC".toUTF8]
+  if first == second then 1 else 0
+
+def publicTokenArrayEquality : UInt64 :=
+  let first := #[PublicToken.text "A".toUTF8, PublicToken.number 7]
+  let second := #[PublicToken.text "A".toUTF8, PublicToken.number 7]
+  if first == second then 1 else 0
+
+def byteArrayGroupArrayEquality : UInt64 :=
+  let first : Array ByteArrayGroup :=
+    #[
+      { values := #["A".toUTF8, "BC".toUTF8], marker := 2 },
+      { values := #["D".toUTF8], marker := 3 }
+    ]
+  let second : Array ByteArrayGroup :=
+    #[
+      { values := #["A".toUTF8, "BC".toUTF8], marker := 2 },
+      { values := #["D".toUTF8], marker := 3 }
+    ]
+  if first == second then 1 else 0
 
 def publicHeapArrayResultReturn (flag : UInt64) : PublicHeapArrayResult :=
   if flag == 0 then

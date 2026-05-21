@@ -355,8 +355,23 @@ const cases = [
   },
   {
     moduleName: "LeanExe.Examples.Correctness",
+    entryName: "LeanExe.Examples.Correctness.publicOptionByteArrayArrayFullOps",
+    shape: "entry shape: Array Option ByteArray -> Except UInt64 UInt64",
+  },
+  {
+    moduleName: "LeanExe.Examples.Correctness",
+    entryName: "LeanExe.Examples.Correctness.publicExceptByteArrayArrayFullOps",
+    shape: "entry shape: Array Except ByteArray ByteArray -> Except UInt64 UInt64",
+  },
+  {
+    moduleName: "LeanExe.Examples.Correctness",
     entryName: "LeanExe.Examples.Correctness.publicTokenArrayParam",
     shape: "entry shape: Array LeanExe.Examples.Correctness.PublicToken -> UInt64",
+  },
+  {
+    moduleName: "LeanExe.Examples.Correctness",
+    entryName: "LeanExe.Examples.Correctness.publicTokenArrayFullOps",
+    shape: "entry shape: Array LeanExe.Examples.Correctness.PublicToken -> Except UInt64 UInt64",
   },
   {
     moduleName: "LeanExe.Examples.Correctness",
@@ -372,6 +387,26 @@ const cases = [
     moduleName: "LeanExe.Examples.Correctness",
     entryName: "LeanExe.Examples.Correctness.publicByteArrayGroupParam",
     shape: "entry shape: LeanExe.Examples.Correctness.ByteArrayGroup -> UInt64",
+  },
+  {
+    moduleName: "LeanExe.Examples.Correctness",
+    entryName: "LeanExe.Examples.Correctness.publicByteArrayGroupArrayReturn",
+    shape: "entry shape: Array LeanExe.Examples.Correctness.ByteArrayGroup",
+  },
+  {
+    moduleName: "LeanExe.Examples.Correctness",
+    entryName: "LeanExe.Examples.Correctness.publicByteArrayGroupArrayFullOps",
+    shape: "entry shape: Array LeanExe.Examples.Correctness.ByteArrayGroup -> Except UInt64 UInt64",
+  },
+  {
+    moduleName: "LeanExe.Examples.Correctness",
+    entryName: "LeanExe.Examples.Correctness.publicNestedTaggedArrayReturn",
+    shape: "entry shape: Option Array Option ByteArray",
+  },
+  {
+    moduleName: "LeanExe.Examples.Correctness",
+    entryName: "LeanExe.Examples.Correctness.publicNestedTaggedArrayParam",
+    shape: "entry shape: Option Array Option ByteArray -> UInt64",
   },
   {
     moduleName: "LeanExe.Examples.Correctness",
