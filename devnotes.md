@@ -1,5 +1,23 @@
 # Development Journal
 
+## 2026-05-21: Heap Owner Provenance
+
+Owned-mask generation now tracks the local slot that first received an owned heap value.  When a later heap or array allocation consumes child slots, the compiler transfers ownership for only the first use of a source slot and retains later aliases.  Result materialization also refreshes owned masks after pruning local lets, so sequential source `let` bindings keep the ordered ownership context that extraction created.
+
+`sharedRecursiveChildReleaseStats` covers the duplicate-reference case with a recursive binary tree.  The program constructs one leaf, stores that same leaf in both fields of a node, releases the node, and returns a packed counter value.  The expected `10302` means one retain during construction, three release calls during teardown, and two freed heap objects.
+
+Checks run:
+
+- [x] `lake build LeanExe.Extract.Values`
+- [x] `lake build LeanExe.Examples.Correctness lean-wasm`
+- [x] `.lake/build/bin/lean-wasm compile --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.sharedRecursiveChildReleaseStats --out .lake/build/shared-recursive-child-release.wasm`
+- [x] `build/tools/wasmtime/current/wasmtime --invoke sharedRecursiveChildReleaseStats .lake/build/shared-recursive-child-release.wasm` returned `10302`.
+- [x] `node --check test/core_correctness.js`
+- [x] `node --check test/refcount.js`
+- [x] `node test/refcount.js` returned `checked 38 refcount cases`.
+- [x] `node test/core_correctness.js` returned `checked 766 accepted, 29 rejected, and 13 trapped cases`.
+- [x] `node test/run_all.js` returned `checked 112 report classification cases`, `checked 8 ownership report cases`, `checked JavaScript WASM execution guard`, `checked 766 accepted, 29 rejected, and 13 trapped cases`, `checked 38 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 35 WASI program cases, 2 traps, and 7 rejections`, `checked 212 standard Lean comparison cases`, and `checked 56 cases`.
+
 ## 2026-05-21: Release Alias Propagation
 
 A recursive value returned from a helper function trapped when source code released it with `LeanExe.Runtime.release`.  The helper result lived in local `2`, result materialization copied it into local `3`, and the source release consumed local `3`.  Release analysis propagated aliases inside a local-let prefix, but it did not propagate a release from the following body back into the prefix, so local `2` remained eligible for an automatic compiler release.

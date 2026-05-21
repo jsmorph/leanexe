@@ -1666,6 +1666,25 @@ def heapChildMaskForCtors (ctors : List (List (Ty × ExtractedValue))) : Nat :=
 def maskBitSet (mask slot : Nat) : Bool :=
   (mask / (2 ^ slot)) % 2 == 1
 
+def ownerSourceSlots? (sources : List (Nat × List Nat)) (slot : Nat) : Option (List Nat) :=
+  match sources.find? (fun item => item.fst == slot) with
+  | some item => some item.snd
+  | none => none
+
+def removeOwnerSourceSlot (sources : List (Nat × List Nat)) (slot : Nat) :
+    List (Nat × List Nat) :=
+  sources.filter fun item => item.fst != slot
+
+def addOwnerSourceSlot
+    (sources : List (Nat × List Nat))
+    (slot : Nat)
+    (sourceSlots : List Nat) :
+    List (Nat × List Nat) :=
+  (slot, sourceSlots) :: removeOwnerSourceSlot sources slot
+
+def normalizedOwnerSourceSlots (slot : Nat) (sourceSlots : List Nat) : List Nat :=
+  if sourceSlots.isEmpty then [slot] else sourceSlots
+
 def arrayElementChildMask (ty : Ty) : Nat :=
   (heapChildMaskFromType 0 ty).fst
 
@@ -1807,27 +1826,149 @@ def ownedHeapLocalsFromLocalLetsForAlloc
     List Nat :=
   (ownedHeapAndConstLocalsFromLocalLetsForAlloc summaries ownedLocals [] lets).fst
 
+mutual
+  partial def exprOwnerSourceSlotsForAllocFrom
+      (summaries : Array (List Nat))
+      (ownerSources : List (Nat × List Nat)) :
+      IRExpr → Option (List Nat)
+    | .local slot => ownerSourceSlots? ownerSources slot
+    | .letE slot value body =>
+        let nextSources :=
+          match exprOwnerSourceSlotsForAllocFrom summaries ownerSources value with
+          | some sourceSlots =>
+              addOwnerSourceSlot ownerSources slot (normalizedOwnerSourceSlots slot sourceSlots)
+          | none => removeOwnerSourceSlot ownerSources slot
+        exprOwnerSourceSlotsForAllocFrom summaries nextSources body
+    | .letCall slots index _ body =>
+        let nextSources :=
+          (summarizedCallResultOwnerSlots summaries index slots).foldl
+            (fun acc slot => addOwnerSourceSlot acc slot [slot])
+            (slots.foldl removeOwnerSourceSlot ownerSources)
+        exprOwnerSourceSlotsForAllocFrom summaries nextSources body
+    | .letLets lets body =>
+        exprOwnerSourceSlotsForAllocFrom summaries
+          (ownerSourcesAfterLocalLetsForAlloc summaries ownerSources lets)
+          body
+    | .ite _ thenValue elseValue =>
+        match exprOwnerSourceSlotsForAllocFrom summaries ownerSources thenValue,
+            exprOwnerSourceSlotsForAllocFrom summaries ownerSources elseValue with
+        | some thenSources, some elseSources => some (addLiveSlots thenSources elseSources)
+        | _, _ => none
+    | .arrayAllocSlots .. => some []
+    | .heapAllocSlots .. => some []
+    | .arrayReplicateSlots .. => some []
+    | .arraySetSlots .. => some []
+    | .arrayPushSlots .. => some []
+    | .arrayAppendSlots .. => some []
+    | .arrayExtractSlots .. => some []
+    | .arrayMapSlots .. => some []
+    | .arrayFilterSlots .. => some []
+    | .byteArrayPushPtr .. => some []
+    | .byteArrayAppendPtr .. => some []
+    | .byteArraySetPtr .. => some []
+    | .byteArrayFromArrayPtr .. => some []
+    | .byteArrayCopySlicePtr .. => some []
+    | .call index _ =>
+        match summaries[index]? with
+        | some offsets => if offsets.contains 0 then some [] else none
+        | none => none
+    | _ => none
+
+  partial def ownerSourcesAfterLocalLetForAlloc
+      (summaries : Array (List Nat))
+      (ownerSources : List (Nat × List Nat)) :
+      LeanExe.IR.LocalLet → List (Nat × List Nat)
+    | .expr slot expr =>
+        match exprOwnerSourceSlotsForAllocFrom summaries ownerSources expr with
+        | some sourceSlots =>
+            addOwnerSourceSlot ownerSources slot (normalizedOwnerSourceSlots slot sourceSlots)
+        | none => removeOwnerSourceSlot ownerSources slot
+    | .slots slots values =>
+        (slots.zip values).foldl
+          (fun sources item =>
+            match exprOwnerSourceSlotsForAllocFrom summaries sources item.snd with
+            | some sourceSlots =>
+                addOwnerSourceSlot sources item.fst
+                  (normalizedOwnerSourceSlots item.fst sourceSlots)
+            | none => removeOwnerSourceSlot sources item.fst)
+          ownerSources
+    | .call slots index _ =>
+        (summarizedCallResultOwnerSlots summaries index slots).foldl
+          (fun acc slot => addOwnerSourceSlot acc slot [slot])
+          (slots.foldl removeOwnerSourceSlot ownerSources)
+    | .branch _ thenLets elseLets =>
+        let thenSources := ownerSourcesAfterLocalLetsForAlloc summaries ownerSources thenLets
+        let elseSources := ownerSourcesAfterLocalLetsForAlloc summaries ownerSources elseLets
+        thenSources.filterMap fun item =>
+          match ownerSourceSlots? elseSources item.fst with
+          | some otherSources => some (item.fst, addLiveSlots item.snd otherSources)
+          | none => none
+
+  partial def ownerSourcesAfterLocalLetsForAlloc
+      (summaries : Array (List Nat))
+      (ownerSources : List (Nat × List Nat))
+      (lets : List LeanExe.IR.LocalLet) :
+      List (Nat × List Nat) :=
+    lets.foldl
+      (fun sources localLet => ownerSourcesAfterLocalLetForAlloc summaries sources localLet)
+      ownerSources
+end
+
+def ownerSourcesAfterExprForAlloc
+    (summaries : Array (List Nat))
+    (ownerSources : List (Nat × List Nat))
+    (slot : Nat)
+    (expr : IRExpr) :
+    List (Nat × List Nat) :=
+  match exprOwnerSourceSlotsForAllocFrom summaries ownerSources expr with
+  | some sourceSlots =>
+      addOwnerSourceSlot ownerSources slot (normalizedOwnerSourceSlots slot sourceSlots)
+  | none => removeOwnerSourceSlot ownerSources slot
+
+def ownerSourcesAfterCallForAlloc
+    (summaries : Array (List Nat))
+    (ownerSources : List (Nat × List Nat))
+    (slots : List Nat)
+    (index : Nat) :
+    List (Nat × List Nat) :=
+  (summarizedCallResultOwnerSlots summaries index slots).foldl
+    (fun acc slot => addOwnerSourceSlot acc slot [slot])
+    (slots.foldl removeOwnerSourceSlot ownerSources)
+
+def ownedChildMaskForSlotsWithOwnerSourcesForAlloc
+    (summaries : Array (List Nat))
+    (childMask : Nat)
+    (ownerSources : List (Nat × List Nat))
+    (slots : List IRExpr) :
+    Nat :=
+  let rec loop : Nat → List IRExpr → List Nat → Nat → Nat
+    | _, [], _, acc => acc
+    | slot, expr :: rest, transferredSources, acc =>
+        let sourceSlots? := exprOwnerSourceSlotsForAllocFrom summaries ownerSources expr
+        let shouldTransfer :=
+          maskBitSet childMask slot &&
+            sourceSlots?.isSome &&
+            !(sourceSlots?.getD []).any (fun source => transferredSources.contains source)
+        let nextTransferred :=
+          match sourceSlots? with
+          | some sourceSlots => addLiveSlots transferredSources sourceSlots
+          | none => transferredSources
+        let nextAcc := if shouldTransfer then acc + 2 ^ slot else acc
+        loop (slot + 1) rest nextTransferred nextAcc
+  loop 0 slots [] 0
+
 def ownedChildMaskForSlotsForAlloc
     (summaries : Array (List Nat))
     (childMask : Nat)
     (slots : List IRExpr) :
     Nat :=
-  let rec loop : Nat → List IRExpr → Nat → Nat
-    | _, [], acc => acc
-    | slot, expr :: rest, acc =>
-        let nextAcc :=
-          if maskBitSet childMask slot &&
-              exprReturnsOwnedHeapObjectForAlloc summaries [] expr then
-            acc + 2 ^ slot
-          else
-            acc
-        loop (slot + 1) rest nextAcc
-  loop 0 slots 0
+  ownedChildMaskForSlotsWithOwnerSourcesForAlloc summaries childMask [] slots
 
 partial def flattenInternalValue
     (ty : Ty)
     (value : ExtractedValue)
-    (summaries : Array (List Nat) := #[]) :
+    (summaries : Array (List Nat) := #[])
+    (ownerSources : List (Nat × List Nat) := []) :
     Except String (List IRExpr) :=
   match ty with
   | .unit => scalarValue value |>.map (fun expr => [expr])
@@ -1848,65 +1989,98 @@ partial def flattenInternalValue
   | .product left right =>
       match value with
       | .product leftValue rightValue => do
-          let leftSlots ← flattenInternalValue left leftValue summaries
-          let rightSlots ← flattenInternalValue right rightValue summaries
+          let leftSlots ← flattenInternalValue left leftValue summaries ownerSources
+          let rightSlots ← flattenInternalValue right rightValue summaries ownerSources
           .ok (leftSlots ++ rightSlots)
       | .letE slot value body => do
-          let flattened ← flattenInternalValue ty body summaries
+          let nextSources :=
+            match exprOwnerSourceSlotsForAllocFrom summaries ownerSources value with
+            | some sourceSlots =>
+                addOwnerSourceSlot ownerSources slot
+                  (normalizedOwnerSourceSlots slot sourceSlots)
+            | none => removeOwnerSourceSlot ownerSources slot
+          let flattened ← flattenInternalValue ty body summaries nextSources
           .ok (flattened.map (fun expr => .letE slot value expr))
       | .letCall slots index args body => do
-          let flattened ← flattenInternalValue ty body summaries
+          let nextSources :=
+            (summarizedCallResultOwnerSlots summaries index slots).foldl
+              (fun acc slot => addOwnerSourceSlot acc slot [slot])
+              (slots.foldl removeOwnerSourceSlot ownerSources)
+          let flattened ← flattenInternalValue ty body summaries nextSources
           .ok (flattened.map (fun expr => .letCall slots index args expr))
       | .letLocal lets body => do
-          let flattened ← flattenInternalValue ty body summaries
+          let nextSources := ownerSourcesAfterLocalLetsForAlloc summaries ownerSources lets
+          let flattened ← flattenInternalValue ty body summaries nextSources
           .ok (flattened.map (wrapExprLocalLets lets))
       | .ite cond thenValue elseValue => do
           combineIteSlots cond
-            (← flattenInternalValue ty thenValue summaries)
-            (← flattenInternalValue ty elseValue summaries)
+            (← flattenInternalValue ty thenValue summaries ownerSources)
+            (← flattenInternalValue ty elseValue summaries ownerSources)
       | _ => .error "non-product value used where product internal value is required"
   | .sum left right =>
       match value with
       | .sum tag leftValue rightValue => do
-          let leftSlots ← flattenInternalValue left leftValue summaries
-          let rightSlots ← flattenInternalValue right rightValue summaries
+          let leftSlots ← flattenInternalValue left leftValue summaries ownerSources
+          let rightSlots ← flattenInternalValue right rightValue summaries ownerSources
           .ok (tag :: leftSlots ++ rightSlots)
       | .letE slot value body => do
-          let flattened ← flattenInternalValue ty body summaries
+          let nextSources :=
+            match exprOwnerSourceSlotsForAllocFrom summaries ownerSources value with
+            | some sourceSlots =>
+                addOwnerSourceSlot ownerSources slot
+                  (normalizedOwnerSourceSlots slot sourceSlots)
+            | none => removeOwnerSourceSlot ownerSources slot
+          let flattened ← flattenInternalValue ty body summaries nextSources
           .ok (flattened.map (fun expr => .letE slot value expr))
       | .letCall slots index args body => do
-          let flattened ← flattenInternalValue ty body summaries
+          let nextSources :=
+            (summarizedCallResultOwnerSlots summaries index slots).foldl
+              (fun acc slot => addOwnerSourceSlot acc slot [slot])
+              (slots.foldl removeOwnerSourceSlot ownerSources)
+          let flattened ← flattenInternalValue ty body summaries nextSources
           .ok (flattened.map (fun expr => .letCall slots index args expr))
       | .letLocal lets body => do
-          let flattened ← flattenInternalValue ty body summaries
+          let nextSources := ownerSourcesAfterLocalLetsForAlloc summaries ownerSources lets
+          let flattened ← flattenInternalValue ty body summaries nextSources
           .ok (flattened.map (wrapExprLocalLets lets))
       | .ite cond thenValue elseValue => do
           combineIteSlots cond
-            (← flattenInternalValue ty thenValue summaries)
-            (← flattenInternalValue ty elseValue summaries)
+            (← flattenInternalValue ty thenValue summaries ownerSources)
+            (← flattenInternalValue ty elseValue summaries ownerSources)
       | _ => .error "non-sum value used where sum internal value is required"
   | .struct name _ fields =>
       match value with
       | .struct actual values =>
           if actual == name && values.length == fields.length then do
             let flattened ← (fields.zip values).mapM fun item =>
-              flattenInternalValue item.fst item.snd summaries
+              flattenInternalValue item.fst item.snd summaries ownerSources
             .ok flattened.flatten
           else
             .error s!"structure internal value shape mismatch: {name}"
       | .letE slot value body => do
-          let flattened ← flattenInternalValue ty body summaries
+          let nextSources :=
+            match exprOwnerSourceSlotsForAllocFrom summaries ownerSources value with
+            | some sourceSlots =>
+                addOwnerSourceSlot ownerSources slot
+                  (normalizedOwnerSourceSlots slot sourceSlots)
+            | none => removeOwnerSourceSlot ownerSources slot
+          let flattened ← flattenInternalValue ty body summaries nextSources
           .ok (flattened.map (fun expr => .letE slot value expr))
       | .letCall slots index args body => do
-          let flattened ← flattenInternalValue ty body summaries
+          let nextSources :=
+            (summarizedCallResultOwnerSlots summaries index slots).foldl
+              (fun acc slot => addOwnerSourceSlot acc slot [slot])
+              (slots.foldl removeOwnerSourceSlot ownerSources)
+          let flattened ← flattenInternalValue ty body summaries nextSources
           .ok (flattened.map (fun expr => .letCall slots index args expr))
       | .letLocal lets body => do
-          let flattened ← flattenInternalValue ty body summaries
+          let nextSources := ownerSourcesAfterLocalLetsForAlloc summaries ownerSources lets
+          let flattened ← flattenInternalValue ty body summaries nextSources
           .ok (flattened.map (wrapExprLocalLets lets))
       | .ite cond thenValue elseValue => do
           combineIteSlots cond
-            (← flattenInternalValue ty thenValue summaries)
-            (← flattenInternalValue ty elseValue summaries)
+            (← flattenInternalValue ty thenValue summaries ownerSources)
+            (← flattenInternalValue ty elseValue summaries ownerSources)
       | _ => .error s!"non-structure value used where structure internal value is required: {name}"
   | .variant name _ ctors =>
       match value with
@@ -1915,7 +2089,7 @@ partial def flattenInternalValue
             let flattened ← (ctors.zip values).mapM fun ctorPair =>
               if ctorPair.fst.length == ctorPair.snd.length then do
                 let fields ← ctorPair.fst.zip ctorPair.snd |>.mapM fun fieldPair =>
-                  flattenInternalValue fieldPair.fst fieldPair.snd summaries
+                  flattenInternalValue fieldPair.fst fieldPair.snd summaries ownerSources
                 .ok fields.flatten
               else
                 .error s!"inductive internal constructor payload shape mismatch: {name}"
@@ -1923,18 +2097,29 @@ partial def flattenInternalValue
           else
             .error s!"inductive internal value shape mismatch: {name}"
       | .letE slot value body => do
-          let flattened ← flattenInternalValue ty body summaries
+          let nextSources :=
+            match exprOwnerSourceSlotsForAllocFrom summaries ownerSources value with
+            | some sourceSlots =>
+                addOwnerSourceSlot ownerSources slot
+                  (normalizedOwnerSourceSlots slot sourceSlots)
+            | none => removeOwnerSourceSlot ownerSources slot
+          let flattened ← flattenInternalValue ty body summaries nextSources
           .ok (flattened.map (fun expr => .letE slot value expr))
       | .letCall slots index args body => do
-          let flattened ← flattenInternalValue ty body summaries
+          let nextSources :=
+            (summarizedCallResultOwnerSlots summaries index slots).foldl
+              (fun acc slot => addOwnerSourceSlot acc slot [slot])
+              (slots.foldl removeOwnerSourceSlot ownerSources)
+          let flattened ← flattenInternalValue ty body summaries nextSources
           .ok (flattened.map (fun expr => .letCall slots index args expr))
       | .letLocal lets body => do
-          let flattened ← flattenInternalValue ty body summaries
+          let nextSources := ownerSourcesAfterLocalLetsForAlloc summaries ownerSources lets
+          let flattened ← flattenInternalValue ty body summaries nextSources
           .ok (flattened.map (wrapExprLocalLets lets))
       | .ite cond thenValue elseValue => do
           combineIteSlots cond
-            (← flattenInternalValue ty thenValue summaries)
-            (← flattenInternalValue ty elseValue summaries)
+            (← flattenInternalValue ty thenValue summaries ownerSources)
+            (← flattenInternalValue ty elseValue summaries ownerSources)
       | _ => .error s!"non-inductive value used where inductive internal value is required: {name}"
   | .recVariant name _ =>
       match value with
@@ -1946,26 +2131,38 @@ partial def flattenInternalValue
       | .recursiveVariant actual tag ctors =>
           if actual == name then do
             let flattened ← ctors.mapM fun fields =>
-              fields.mapM (fun field => flattenInternalValue field.fst field.snd summaries)
+              fields.mapM (fun field => flattenInternalValue field.fst field.snd summaries ownerSources)
             let values := tag :: flattened.flatten.flatten
             let childMask := heapChildMaskForCtors ctors
-            let ownedMask := ownedChildMaskForSlotsForAlloc summaries childMask values
+            let ownedMask :=
+              ownedChildMaskForSlotsWithOwnerSourcesForAlloc summaries childMask ownerSources values
             .ok [(.heapAllocSlots childMask ownedMask values)]
           else
             .error s!"recursive inductive internal value shape mismatch: {name}"
       | .letE slot value body => do
-          let flattened ← flattenInternalValue ty body summaries
+          let nextSources :=
+            match exprOwnerSourceSlotsForAllocFrom summaries ownerSources value with
+            | some sourceSlots =>
+                addOwnerSourceSlot ownerSources slot
+                  (normalizedOwnerSourceSlots slot sourceSlots)
+            | none => removeOwnerSourceSlot ownerSources slot
+          let flattened ← flattenInternalValue ty body summaries nextSources
           .ok (flattened.map (fun expr => .letE slot value expr))
       | .letCall slots index args body => do
-          let flattened ← flattenInternalValue ty body summaries
+          let nextSources :=
+            (summarizedCallResultOwnerSlots summaries index slots).foldl
+              (fun acc slot => addOwnerSourceSlot acc slot [slot])
+              (slots.foldl removeOwnerSourceSlot ownerSources)
+          let flattened ← flattenInternalValue ty body summaries nextSources
           .ok (flattened.map (fun expr => .letCall slots index args expr))
       | .letLocal lets body => do
-          let flattened ← flattenInternalValue ty body summaries
+          let nextSources := ownerSourcesAfterLocalLetsForAlloc summaries ownerSources lets
+          let flattened ← flattenInternalValue ty body summaries nextSources
           .ok (flattened.map (wrapExprLocalLets lets))
       | .ite cond thenValue elseValue => do
           combineIteSlots cond
-            (← flattenInternalValue ty thenValue summaries)
-            (← flattenInternalValue ty elseValue summaries)
+            (← flattenInternalValue ty thenValue summaries ownerSources)
+            (← flattenInternalValue ty elseValue summaries ownerSources)
       | _ =>
           .error s!"non-recursive value used where recursive inductive internal value is required: {name}"
 
@@ -2199,23 +2396,26 @@ def ownedChildMaskForSlotsWithSummaries
         loop (slot + 1) rest nextAcc
   loop 0 slots 0
 
-def valueLetOwnedHeapSlots : ValueLet → List Nat
-  | .expr slot expr => if exprReturnsOwnedHeapObject expr then [slot] else []
-  | .call _ _ _ => []
-
-def valueLetOwnedHeapSlotsFrom (ownedLocals : List Nat) : ValueLet → List Nat
+def ownerSourcesAfterValueLetForAlloc
+    (summaries : Array (List Nat))
+    (ownerSources : List (Nat × List Nat)) :
+    ValueLet → List (Nat × List Nat)
   | .expr slot expr =>
-      let localAliasOwned :=
-        match expr with
-        | .local sourceSlot => ownedLocals.contains sourceSlot
-        | _ => false
-      if exprReturnsOwnedHeapObject expr || localAliasOwned then [slot] else []
-  | .call _ _ _ => []
+      match exprOwnerSourceSlotsForAllocFrom summaries ownerSources expr with
+      | some sourceSlots =>
+          addOwnerSourceSlot ownerSources slot (normalizedOwnerSourceSlots slot sourceSlots)
+      | none => removeOwnerSourceSlot ownerSources slot
+  | .call slots index _ =>
+      (summarizedCallResultOwnerSlots summaries index slots).foldl
+        (fun acc slot => addOwnerSourceSlot acc slot [slot])
+        (slots.foldl removeOwnerSourceSlot ownerSources)
 
-def ownedHeapLocalsFromValueLets (lets : List ValueLet) : List Nat :=
+def ownerSourcesFromValueLetsForAlloc
+    (summaries : Array (List Nat))
+    (lets : List ValueLet) :
+    List (Nat × List Nat) :=
   lets.foldl
-    (fun owned letValue =>
-      owned ++ valueLetOwnedHeapSlotsFrom owned letValue)
+    (fun sources letValue => ownerSourcesAfterValueLetForAlloc summaries sources letValue)
     []
 
 def ownedChildMaskForSlotsWithLets
@@ -2223,48 +2423,12 @@ def ownedChildMaskForSlotsWithLets
     (lets : List ValueLet)
     (slots : List IRExpr) :
     Nat :=
-  let ownedLocals := ownedHeapLocalsFromValueLets lets
-  let rec loop : Nat → List IRExpr → Nat → Nat
-    | _, [], acc => acc
-    | slot, expr :: rest, acc =>
-        let localOwned :=
-          match expr with
-          | .local localSlot => ownedLocals.contains localSlot
-          | _ => false
-        let nextAcc :=
-          if maskBitSet childMask slot && (exprReturnsOwnedHeapObject expr || localOwned) then
-            acc + 2 ^ slot
-          else
-            acc
-        loop (slot + 1) rest nextAcc
-  loop 0 slots 0
+  ownedChildMaskForSlotsWithOwnerSourcesForAlloc #[] childMask
+    (ownerSourcesFromValueLetsForAlloc #[] lets)
+    slots
 
 def ownedChildMaskForStrictSlots (childMask : Nat) (slots : StrictSlots) : Nat :=
   ownedChildMaskForSlotsWithLets childMask slots.lets slots.slots
-
-def valueLetOwnedHeapSlotsFromWithSummaries
-    (summaries : Array (List Nat))
-    (ownedLocals : List Nat) :
-    ValueLet → List Nat
-  | .expr slot expr =>
-      let localAliasOwned :=
-        match expr with
-        | .local sourceSlot => ownedLocals.contains sourceSlot
-        | _ => false
-      if exprReturnsOwnedHeapObjectForAlloc summaries ownedLocals expr || localAliasOwned then
-        [slot]
-      else
-        []
-  | .call slots index _ => summarizedCallResultOwnerSlots summaries index slots
-
-def ownedHeapLocalsFromValueLetsWithSummaries
-    (summaries : Array (List Nat))
-    (lets : List ValueLet) :
-    List Nat :=
-  lets.foldl
-    (fun owned letValue =>
-      owned ++ valueLetOwnedHeapSlotsFromWithSummaries summaries owned letValue)
-    []
 
 def ownedChildMaskForSlotsWithLetsWithSummaries
     (summaries : Array (List Nat))
@@ -2272,22 +2436,9 @@ def ownedChildMaskForSlotsWithLetsWithSummaries
     (lets : List ValueLet)
     (slots : List IRExpr) :
     Nat :=
-  let ownedLocals := ownedHeapLocalsFromValueLetsWithSummaries summaries lets
-  let rec loop : Nat → List IRExpr → Nat → Nat
-    | _, [], acc => acc
-    | slot, expr :: rest, acc =>
-        let localOwned :=
-          match expr with
-          | .local localSlot => ownedLocals.contains localSlot
-          | _ => false
-        let nextAcc :=
-          if maskBitSet childMask slot &&
-              (exprReturnsOwnedHeapObjectForAlloc summaries ownedLocals expr || localOwned) then
-            acc + 2 ^ slot
-          else
-            acc
-        loop (slot + 1) rest nextAcc
-  loop 0 slots 0
+  ownedChildMaskForSlotsWithOwnerSourcesForAlloc summaries childMask
+    (ownerSourcesFromValueLetsForAlloc summaries lets)
+    slots
 
 def ownedChildMaskForStrictSlotsWithSummaries
     (summaries : Array (List Nat))
@@ -2317,6 +2468,21 @@ def localLetOwnedNonrecursiveHeapSlots (ctx : Context) : LeanExe.IR.LocalLet →
   | .branch _ _ _ => []
 
 mutual
+  partial def transferredOwnerSlotsFromValues
+      (childMask ownedMask : Nat)
+      (values : List IRExpr) :
+      List Nat :=
+    let rec loop : Nat → List IRExpr → List Nat → List Nat
+      | _, [], acc => acc
+      | slot, value :: rest, acc =>
+          let nextAcc :=
+            if maskBitSet childMask slot && maskBitSet ownedMask slot then
+              addLiveSlots acc (exprReleaseTargetSlots value)
+            else
+              acc
+          loop (slot + 1) rest nextAcc
+    loop 0 values []
+
   partial def exprReleasedSlots : IRExpr → List Nat
     | .release ptr =>
         addLiveSlots (exprUsedSlots ptr) (exprReleaseTargetSlots ptr)
@@ -2333,20 +2499,28 @@ mutual
         addLiveSlots (exprListReleasedSlots args) (exprReleasedSlots body)
     | .letLets lets body =>
         localLetsReleasedSlotsWithLater (exprReleasedSlots body) lets
-    | .heapAllocSlots _ _ values => exprListReleasedSlots values
+    | .heapAllocSlots childMask ownedMask values =>
+        addLiveSlots (exprListReleasedSlots values)
+          (transferredOwnerSlotsFromValues childMask ownedMask values)
     | .heapLoadSlot ptr _ => exprReleasedSlots ptr
     | .arrayAllocSlots _ _ cells => exprReleasedSlots cells
-    | .arrayReplicateSlots _ _ _ cells values =>
-        addLiveSlots (exprReleasedSlots cells) (exprListReleasedSlots values)
+    | .arrayReplicateSlots _ childMask ownedMask cells values =>
+        addLiveSlots
+          (addLiveSlots (exprReleasedSlots cells) (exprListReleasedSlots values))
+          (transferredOwnerSlotsFromValues childMask ownedMask values)
     | .arraySize array => exprReleasedSlots array
     | .arrayGetSlot _ _ array index =>
         addLiveSlots (exprReleasedSlots array) (exprReleasedSlots index)
-    | .arraySetSlots _ _ _ array index values =>
+    | .arraySetSlots _ childMask ownedMask array index values =>
         addLiveSlots
-          (addLiveSlots (exprReleasedSlots array) (exprReleasedSlots index))
-          (exprListReleasedSlots values)
-    | .arrayPushSlots _ _ _ array values =>
-        addLiveSlots (exprReleasedSlots array) (exprListReleasedSlots values)
+          (addLiveSlots
+            (addLiveSlots (exprReleasedSlots array) (exprReleasedSlots index))
+            (exprListReleasedSlots values))
+          (transferredOwnerSlotsFromValues childMask ownedMask values)
+    | .arrayPushSlots _ childMask ownedMask array values =>
+        addLiveSlots
+          (addLiveSlots (exprReleasedSlots array) (exprListReleasedSlots values))
+          (transferredOwnerSlotsFromValues childMask ownedMask values)
     | .arrayPopSlots _ _ array => exprReleasedSlots array
     | .arrayAppendSlots _ _ left right =>
         addLiveSlots (exprReleasedSlots left) (exprReleasedSlots right)
@@ -2354,8 +2528,10 @@ mutual
         addLiveSlots
           (addLiveSlots (exprReleasedSlots array) (exprReleasedSlots start))
           (exprReleasedSlots stop)
-    | .arrayMapSlots _ _ _ _ array _ bodyValues =>
-        addLiveSlots (exprReleasedSlots array) (exprListReleasedSlots bodyValues)
+    | .arrayMapSlots _ _ childMask ownedMask array _ bodyValues =>
+        addLiveSlots
+          (addLiveSlots (exprReleasedSlots array) (exprListReleasedSlots bodyValues))
+          (transferredOwnerSlotsFromValues childMask ownedMask bodyValues)
     | .arrayFoldMultiSlot _ _ _reverse array start stop initValues _ _ bodyValues _ bodyDone _ _ =>
         addLiveSlots
           (addLiveSlots
@@ -2383,10 +2559,12 @@ mutual
             (addLiveSlots (exprReleasedSlots array) (exprReleasedSlots start))
             (exprReleasedSlots stop))
           (exprReleasedSlots predicate)
-    | .arrayInsertIfInBoundsSlots _ _ _ array index values =>
+    | .arrayInsertIfInBoundsSlots _ childMask ownedMask array index values =>
         addLiveSlots
-          (addLiveSlots (exprReleasedSlots array) (exprReleasedSlots index))
-          (exprListReleasedSlots values)
+          (addLiveSlots
+            (addLiveSlots (exprReleasedSlots array) (exprReleasedSlots index))
+            (exprListReleasedSlots values))
+          (transferredOwnerSlotsFromValues childMask ownedMask values)
     | .arrayEraseIfInBoundsSlots _ _ array index =>
         addLiveSlots (exprReleasedSlots array) (exprReleasedSlots index)
     | .arraySwapIfInBoundsSlots _ _ array left right =>
@@ -2873,10 +3051,12 @@ mutual
       (ty : Ty)
       (value : ExtractedValue)
       (targets : List Nat)
-      (summaries : Array (List Nat) := #[]) :
+      (summaries : Array (List Nat) := #[])
+      (ownerSources : List (Nat × List Nat) := []) :
       Except String (List LeanExe.IR.LocalLet) := do
     match value with
     | .letE slot expr (.array (.local ownerSlot) (.local ptrSlot)) =>
+        let nextSources := ownerSourcesAfterExprForAlloc summaries ownerSources slot expr
         match ty, targets with
         | .array item, [ownerTarget, ptrTarget] =>
             if supportedArrayElementType item && ownerSlot == slot && ptrSlot == slot then
@@ -2884,13 +3064,14 @@ mutual
             else
               let rest ←
                 materializeInternalValueLets ty (.array (.local ownerSlot) (.local ptrSlot))
-                  targets summaries
+                  targets summaries nextSources
               .ok (.expr slot expr :: rest)
         | _, _ =>
             let rest ← materializeInternalValueLets ty (.array (.local ownerSlot) (.local ptrSlot))
-              targets summaries
+              targets summaries nextSources
             .ok (.expr slot expr :: rest)
     | .letE slot expr (.byteArray (.local ownerSlot) (.local ptrSlot) len) =>
+        let nextSources := ownerSourcesAfterExprForAlloc summaries ownerSources slot expr
         match ty, targets with
         | .byteArray, [ownerTarget, ptrTarget, lenTarget] =>
             if ownerSlot == slot && ptrSlot == slot then
@@ -2899,29 +3080,32 @@ mutual
               let rest ←
                 materializeInternalValueLets ty
                   (.byteArray (.local ownerSlot) (.local ptrSlot) len)
-                  targets summaries
+                  targets summaries nextSources
               .ok (.expr slot expr :: rest)
         | _, _ =>
             let rest ←
               materializeInternalValueLets ty (.byteArray (.local ownerSlot) (.local ptrSlot) len)
-                targets summaries
+                targets summaries nextSources
             .ok (.expr slot expr :: rest)
     | .letE slot expr body =>
-        let rest ← materializeInternalValueLets ty body targets summaries
+        let nextSources := ownerSourcesAfterExprForAlloc summaries ownerSources slot expr
+        let rest ← materializeInternalValueLets ty body targets summaries nextSources
         .ok (.expr slot expr :: rest)
     | .letCall slots index args body =>
-        let rest ← materializeInternalValueLets ty body targets summaries
+        let nextSources := ownerSourcesAfterCallForAlloc summaries ownerSources slots index
+        let rest ← materializeInternalValueLets ty body targets summaries nextSources
         .ok (.call slots index args :: rest)
     | .letLocal lets body =>
-        let rest ← materializeInternalValueLets ty body targets summaries
+        let nextSources := ownerSourcesAfterLocalLetsForAlloc summaries ownerSources lets
+        let rest ← materializeInternalValueLets ty body targets summaries nextSources
         let restResult := pruneLocalLetsWithLive rest targets
         .ok (pruneLocalLets lets restResult.snd ++ restResult.fst)
     | .ite cond thenValue elseValue => do
-        let thenLets ← materializeInternalValueLets ty thenValue targets summaries
-        let elseLets ← materializeInternalValueLets ty elseValue targets summaries
+        let thenLets ← materializeInternalValueLets ty thenValue targets summaries ownerSources
+        let elseLets ← materializeInternalValueLets ty elseValue targets summaries ownerSources
         .ok [.branch cond thenLets elseLets]
     | _ =>
-        match flattenInternalValue ty value summaries with
+        match flattenInternalValue ty value summaries ownerSources with
         | .ok slots =>
             if (foldMultiSlotAssign? targets slots).isSome then
               return [.slots targets slots]
@@ -2934,8 +3118,10 @@ mutual
             if leftTargets.length != leftWidth then
               .error "product materialization target shape mismatch"
             else
-              let leftLets ← materializeInternalValueLets leftTy leftValue leftTargets summaries
-              let rightLets ← materializeInternalValueLets rightTy rightValue rightTargets summaries
+              let leftLets ←
+                materializeInternalValueLets leftTy leftValue leftTargets summaries ownerSources
+              let rightLets ←
+                materializeInternalValueLets rightTy rightValue rightTargets summaries ownerSources
               .ok (leftLets ++ rightLets)
         | .sum leftTy rightTy, .sum tag leftValue rightValue =>
             match targets with
@@ -2946,13 +3132,15 @@ mutual
                 if leftTargets.length != leftWidth then
                   .error "sum materialization target shape mismatch"
                 else
-                  let leftLets ← materializeInternalValueLets leftTy leftValue leftTargets summaries
-                  let rightLets ← materializeInternalValueLets rightTy rightValue rightTargets summaries
+                  let leftLets ←
+                    materializeInternalValueLets leftTy leftValue leftTargets summaries ownerSources
+                  let rightLets ←
+                    materializeInternalValueLets rightTy rightValue rightTargets summaries ownerSources
                   .ok (.slots [tagTarget] [tag] :: leftLets ++ rightLets)
             | [] => .error "sum materialization target shape mismatch"
         | .struct expected _ fieldTys, .struct actual fieldValues =>
             if expected == actual && fieldTys.length == fieldValues.length then
-              materializeInternalFieldLets fieldTys fieldValues targets summaries
+              materializeInternalFieldLets fieldTys fieldValues targets summaries ownerSources
             else
               .error s!"structure materialization shape mismatch: {expected}"
         | .variant expected _ ctorTys, .variant actual tag ctorValues =>
@@ -2960,13 +3148,13 @@ mutual
               match targets with
               | tagTarget :: payloadTargets => do
                   let payloadLets ← materializeInternalCtorLets ctorTys ctorValues payloadTargets
-                    summaries
+                    summaries ownerSources
                   .ok (.slots [tagTarget] [tag] :: payloadLets)
               | [] => .error s!"inductive materialization target shape mismatch: {expected}"
             else
               .error s!"inductive materialization shape mismatch: {expected}"
         | _, _ => do
-            let slots ← flattenInternalValue ty value summaries
+            let slots ← flattenInternalValue ty value summaries ownerSources
             if slots.length == targets.length then
               .ok [.slots targets slots]
             else
@@ -2976,7 +3164,8 @@ mutual
       (fieldTys : List Ty)
       (fieldValues : List ExtractedValue)
       (targets : List Nat)
-      (summaries : Array (List Nat) := #[]) :
+      (summaries : Array (List Nat) := #[])
+      (ownerSources : List (Nat × List Nat) := []) :
       Except String (List LeanExe.IR.LocalLet) := do
     match fieldTys, fieldValues with
     | [], [] =>
@@ -2988,8 +3177,10 @@ mutual
         if fieldTargets.length != width then
           .error "field materialization target shape mismatch"
         else
-          let head ← materializeInternalValueLets fieldTy fieldValue fieldTargets summaries
-          let tail ← materializeInternalFieldLets restTys restValues restTargets summaries
+          let head ←
+            materializeInternalValueLets fieldTy fieldValue fieldTargets summaries ownerSources
+          let tail ←
+            materializeInternalFieldLets restTys restValues restTargets summaries ownerSources
           .ok (head ++ tail)
     | _, _ => .error "field materialization shape mismatch"
 
@@ -2997,7 +3188,8 @@ mutual
       (ctorTys : List (List Ty))
       (ctorValues : List (List ExtractedValue))
       (targets : List Nat)
-      (summaries : Array (List Nat) := #[]) :
+      (summaries : Array (List Nat) := #[])
+      (ownerSources : List (Nat × List Nat) := []) :
       Except String (List LeanExe.IR.LocalLet) := do
     match ctorTys, ctorValues with
     | [], [] =>
@@ -3009,8 +3201,10 @@ mutual
         if ctorTargets.length != width then
           .error "constructor materialization target shape mismatch"
         else
-          let head ← materializeInternalFieldLets fieldTys fieldValues ctorTargets summaries
-          let tail ← materializeInternalCtorLets restTys restValues restTargets summaries
+          let head ←
+            materializeInternalFieldLets fieldTys fieldValues ctorTargets summaries ownerSources
+          let tail ←
+            materializeInternalCtorLets restTys restValues restTargets summaries ownerSources
           .ok (head ++ tail)
     | _, _ => .error "constructor materialization shape mismatch"
 end
@@ -3075,17 +3269,279 @@ def assignResultSlotsWithOwnedReleases
     (targets.zip values).map fun item =>
       assignResultExprWithOwnedReleases ctx canReleaseOwnedTemps item.fst item.snd
 
+mutual
+  partial def refreshOwnerMasksExprForAlloc
+      (summaries : Array (List Nat))
+      (ownerSources : List (Nat × List Nat)) :
+      IRExpr → IRExpr
+    | .u64Bin op left right =>
+        .u64Bin op
+          (refreshOwnerMasksExprForAlloc summaries ownerSources left)
+          (refreshOwnerMasksExprForAlloc summaries ownerSources right)
+    | .ite cond thenValue elseValue =>
+        .ite
+          (refreshOwnerMasksCondForAlloc summaries ownerSources cond)
+          (refreshOwnerMasksExprForAlloc summaries ownerSources thenValue)
+          (refreshOwnerMasksExprForAlloc summaries ownerSources elseValue)
+    | .letE slot value body =>
+        let value := refreshOwnerMasksExprForAlloc summaries ownerSources value
+        let nextSources := ownerSourcesAfterExprForAlloc summaries ownerSources slot value
+        .letE slot value (refreshOwnerMasksExprForAlloc summaries nextSources body)
+    | .letCall slots index args body =>
+        let args := args.map (refreshOwnerMasksExprForAlloc summaries ownerSources)
+        let nextSources := ownerSourcesAfterCallForAlloc summaries ownerSources slots index
+        .letCall slots index args (refreshOwnerMasksExprForAlloc summaries nextSources body)
+    | .letLets lets body =>
+        let refreshed := refreshOwnerMasksLocalLetsForAlloc summaries ownerSources lets
+        .letLets refreshed.fst (refreshOwnerMasksExprForAlloc summaries refreshed.snd body)
+    | .release ptr =>
+        .release (refreshOwnerMasksExprForAlloc summaries ownerSources ptr)
+    | .arrayAllocSlots width childMask cells =>
+        .arrayAllocSlots width childMask
+          (refreshOwnerMasksExprForAlloc summaries ownerSources cells)
+    | .heapAllocSlots childMask _ values =>
+        let values := values.map (refreshOwnerMasksExprForAlloc summaries ownerSources)
+        let ownedMask :=
+          ownedChildMaskForSlotsWithOwnerSourcesForAlloc summaries childMask ownerSources values
+        .heapAllocSlots childMask ownedMask values
+    | .heapLoadSlot ptr slot =>
+        .heapLoadSlot (refreshOwnerMasksExprForAlloc summaries ownerSources ptr) slot
+    | .arrayReplicateSlots width childMask _ cells values =>
+        let cells := refreshOwnerMasksExprForAlloc summaries ownerSources cells
+        let values := values.map (refreshOwnerMasksExprForAlloc summaries ownerSources)
+        let ownedMask :=
+          ownedChildMaskForSlotsWithOwnerSourcesForAlloc summaries childMask ownerSources values
+        .arrayReplicateSlots width childMask ownedMask cells values
+    | .arraySize array =>
+        .arraySize (refreshOwnerMasksExprForAlloc summaries ownerSources array)
+    | .arrayGetSlot width slot array index =>
+        .arrayGetSlot width slot
+          (refreshOwnerMasksExprForAlloc summaries ownerSources array)
+          (refreshOwnerMasksExprForAlloc summaries ownerSources index)
+    | .arraySetSlots width childMask _ array index values =>
+        let array := refreshOwnerMasksExprForAlloc summaries ownerSources array
+        let index := refreshOwnerMasksExprForAlloc summaries ownerSources index
+        let values := values.map (refreshOwnerMasksExprForAlloc summaries ownerSources)
+        let ownedMask :=
+          ownedChildMaskForSlotsWithOwnerSourcesForAlloc summaries childMask ownerSources values
+        .arraySetSlots width childMask ownedMask array index values
+    | .arrayPushSlots width childMask _ array values =>
+        let array := refreshOwnerMasksExprForAlloc summaries ownerSources array
+        let values := values.map (refreshOwnerMasksExprForAlloc summaries ownerSources)
+        let ownedMask :=
+          ownedChildMaskForSlotsWithOwnerSourcesForAlloc summaries childMask ownerSources values
+        .arrayPushSlots width childMask ownedMask array values
+    | .arrayPopSlots width childMask array =>
+        .arrayPopSlots width childMask
+          (refreshOwnerMasksExprForAlloc summaries ownerSources array)
+    | .arrayAppendSlots width childMask left right =>
+        .arrayAppendSlots width childMask
+          (refreshOwnerMasksExprForAlloc summaries ownerSources left)
+          (refreshOwnerMasksExprForAlloc summaries ownerSources right)
+    | .arrayExtractSlots width childMask array start stop =>
+        .arrayExtractSlots width childMask
+          (refreshOwnerMasksExprForAlloc summaries ownerSources array)
+          (refreshOwnerMasksExprForAlloc summaries ownerSources start)
+          (refreshOwnerMasksExprForAlloc summaries ownerSources stop)
+    | .arrayFindIdxSlots sourceWidth array itemStart predicate returnPayload =>
+        .arrayFindIdxSlots sourceWidth
+          (refreshOwnerMasksExprForAlloc summaries ownerSources array)
+          itemStart
+          (refreshOwnerMasksExprForAlloc summaries ownerSources predicate)
+          returnPayload
+    | .arrayFindSlot sourceWidth array itemStart predicate slot =>
+        .arrayFindSlot sourceWidth
+          (refreshOwnerMasksExprForAlloc summaries ownerSources array)
+          itemStart
+          (refreshOwnerMasksExprForAlloc summaries ownerSources predicate)
+          slot
+    | .arrayEqSlots width left right leftStart rightStart predicate =>
+        .arrayEqSlots width
+          (refreshOwnerMasksExprForAlloc summaries ownerSources left)
+          (refreshOwnerMasksExprForAlloc summaries ownerSources right)
+          leftStart
+          rightStart
+          (refreshOwnerMasksExprForAlloc summaries ownerSources predicate)
+    | .arrayAnySlots sourceWidth array start stop itemStart predicate forAll =>
+        .arrayAnySlots sourceWidth
+          (refreshOwnerMasksExprForAlloc summaries ownerSources array)
+          (refreshOwnerMasksExprForAlloc summaries ownerSources start)
+          (refreshOwnerMasksExprForAlloc summaries ownerSources stop)
+          itemStart
+          (refreshOwnerMasksExprForAlloc summaries ownerSources predicate)
+          forAll
+    | .arrayFilterSlots sourceWidth childMask array start stop itemStart predicate =>
+        .arrayFilterSlots sourceWidth childMask
+          (refreshOwnerMasksExprForAlloc summaries ownerSources array)
+          (refreshOwnerMasksExprForAlloc summaries ownerSources start)
+          (refreshOwnerMasksExprForAlloc summaries ownerSources stop)
+          itemStart
+          (refreshOwnerMasksExprForAlloc summaries ownerSources predicate)
+    | .arrayInsertIfInBoundsSlots width childMask _ array index values =>
+        let array := refreshOwnerMasksExprForAlloc summaries ownerSources array
+        let index := refreshOwnerMasksExprForAlloc summaries ownerSources index
+        let values := values.map (refreshOwnerMasksExprForAlloc summaries ownerSources)
+        let ownedMask :=
+          ownedChildMaskForSlotsWithOwnerSourcesForAlloc summaries childMask ownerSources values
+        .arrayInsertIfInBoundsSlots width childMask ownedMask array index values
+    | .arrayEraseIfInBoundsSlots width childMask array index =>
+        .arrayEraseIfInBoundsSlots width childMask
+          (refreshOwnerMasksExprForAlloc summaries ownerSources array)
+          (refreshOwnerMasksExprForAlloc summaries ownerSources index)
+    | .arraySwapIfInBoundsSlots width childMask array left right =>
+        .arraySwapIfInBoundsSlots width childMask
+          (refreshOwnerMasksExprForAlloc summaries ownerSources array)
+          (refreshOwnerMasksExprForAlloc summaries ownerSources left)
+          (refreshOwnerMasksExprForAlloc summaries ownerSources right)
+    | .arrayReverseSlots width childMask array =>
+        .arrayReverseSlots width childMask
+          (refreshOwnerMasksExprForAlloc summaries ownerSources array)
+    | .byteArrayGet ptr len index =>
+        .byteArrayGet
+          (refreshOwnerMasksExprForAlloc summaries ownerSources ptr)
+          (refreshOwnerMasksExprForAlloc summaries ownerSources len)
+          (refreshOwnerMasksExprForAlloc summaries ownerSources index)
+    | .byteArrayPushPtr ptr len value =>
+        .byteArrayPushPtr
+          (refreshOwnerMasksExprForAlloc summaries ownerSources ptr)
+          (refreshOwnerMasksExprForAlloc summaries ownerSources len)
+          (refreshOwnerMasksExprForAlloc summaries ownerSources value)
+    | .byteArrayAppendPtr leftPtr leftLen rightPtr rightLen =>
+        .byteArrayAppendPtr
+          (refreshOwnerMasksExprForAlloc summaries ownerSources leftPtr)
+          (refreshOwnerMasksExprForAlloc summaries ownerSources leftLen)
+          (refreshOwnerMasksExprForAlloc summaries ownerSources rightPtr)
+          (refreshOwnerMasksExprForAlloc summaries ownerSources rightLen)
+    | .byteArraySetPtr ptr len index value =>
+        .byteArraySetPtr
+          (refreshOwnerMasksExprForAlloc summaries ownerSources ptr)
+          (refreshOwnerMasksExprForAlloc summaries ownerSources len)
+          (refreshOwnerMasksExprForAlloc summaries ownerSources index)
+          (refreshOwnerMasksExprForAlloc summaries ownerSources value)
+    | .byteArrayFromArrayPtr array =>
+        .byteArrayFromArrayPtr
+          (refreshOwnerMasksExprForAlloc summaries ownerSources array)
+    | .byteArrayCopySlicePtr srcPtr srcLen srcOff destPtr destLen destOff copyLen =>
+        .byteArrayCopySlicePtr
+          (refreshOwnerMasksExprForAlloc summaries ownerSources srcPtr)
+          (refreshOwnerMasksExprForAlloc summaries ownerSources srcLen)
+          (refreshOwnerMasksExprForAlloc summaries ownerSources srcOff)
+          (refreshOwnerMasksExprForAlloc summaries ownerSources destPtr)
+          (refreshOwnerMasksExprForAlloc summaries ownerSources destLen)
+          (refreshOwnerMasksExprForAlloc summaries ownerSources destOff)
+          (refreshOwnerMasksExprForAlloc summaries ownerSources copyLen)
+    | .byteArrayEq leftPtr leftLen rightPtr rightLen =>
+        .byteArrayEq
+          (refreshOwnerMasksExprForAlloc summaries ownerSources leftPtr)
+          (refreshOwnerMasksExprForAlloc summaries ownerSources leftLen)
+          (refreshOwnerMasksExprForAlloc summaries ownerSources rightPtr)
+          (refreshOwnerMasksExprForAlloc summaries ownerSources rightLen)
+    | .byteArrayFindIdx ptr len start byteSlot predicate returnPayload =>
+        .byteArrayFindIdx
+          (refreshOwnerMasksExprForAlloc summaries ownerSources ptr)
+          (refreshOwnerMasksExprForAlloc summaries ownerSources len)
+          (refreshOwnerMasksExprForAlloc summaries ownerSources start)
+          byteSlot
+          (refreshOwnerMasksExprForAlloc summaries ownerSources predicate)
+          returnPayload
+    | .heapLinearPredicate ptr continueTag fieldSlotCount recursiveFieldOffset fieldStart
+        predicate stopWhenTrue terminalValue =>
+        .heapLinearPredicate
+          (refreshOwnerMasksExprForAlloc summaries ownerSources ptr)
+          continueTag
+          fieldSlotCount
+          recursiveFieldOffset
+          fieldStart
+          (refreshOwnerMasksExprForAlloc summaries ownerSources predicate)
+          stopWhenTrue
+          terminalValue
+    | .call index args =>
+        .call index (args.map (refreshOwnerMasksExprForAlloc summaries ownerSources))
+    | expr => expr
+
+  partial def refreshOwnerMasksCondForAlloc
+      (summaries : Array (List Nat))
+      (ownerSources : List (Nat × List Nat)) :
+      IRCond → IRCond
+    | .eqU64 left right =>
+        .eqU64
+          (refreshOwnerMasksExprForAlloc summaries ownerSources left)
+          (refreshOwnerMasksExprForAlloc summaries ownerSources right)
+    | .ltU64 left right =>
+        .ltU64
+          (refreshOwnerMasksExprForAlloc summaries ownerSources left)
+          (refreshOwnerMasksExprForAlloc summaries ownerSources right)
+    | .leU64 left right =>
+        .leU64
+          (refreshOwnerMasksExprForAlloc summaries ownerSources left)
+          (refreshOwnerMasksExprForAlloc summaries ownerSources right)
+    | .not cond =>
+        .not (refreshOwnerMasksCondForAlloc summaries ownerSources cond)
+    | .and left right =>
+        .and
+          (refreshOwnerMasksCondForAlloc summaries ownerSources left)
+          (refreshOwnerMasksCondForAlloc summaries ownerSources right)
+    | .or left right =>
+        .or
+          (refreshOwnerMasksCondForAlloc summaries ownerSources left)
+          (refreshOwnerMasksCondForAlloc summaries ownerSources right)
+    | cond => cond
+
+  partial def refreshOwnerMasksLocalLetForAlloc
+      (summaries : Array (List Nat))
+      (ownerSources : List (Nat × List Nat)) :
+      LeanExe.IR.LocalLet → LeanExe.IR.LocalLet × List (Nat × List Nat)
+    | .expr slot expr =>
+        let expr := refreshOwnerMasksExprForAlloc summaries ownerSources expr
+        let localLet := LeanExe.IR.LocalLet.expr slot expr
+        (localLet, ownerSourcesAfterLocalLetForAlloc summaries ownerSources localLet)
+    | .slots slots values =>
+        let values := values.map (refreshOwnerMasksExprForAlloc summaries ownerSources)
+        let localLet := LeanExe.IR.LocalLet.slots slots values
+        (localLet, ownerSourcesAfterLocalLetForAlloc summaries ownerSources localLet)
+    | .call slots index args =>
+        let args := args.map (refreshOwnerMasksExprForAlloc summaries ownerSources)
+        let localLet := LeanExe.IR.LocalLet.call slots index args
+        (localLet, ownerSourcesAfterLocalLetForAlloc summaries ownerSources localLet)
+    | .branch cond thenLets elseLets =>
+        let cond := refreshOwnerMasksCondForAlloc summaries ownerSources cond
+        let thenResult := refreshOwnerMasksLocalLetsForAlloc summaries ownerSources thenLets
+        let elseResult := refreshOwnerMasksLocalLetsForAlloc summaries ownerSources elseLets
+        let localLet := LeanExe.IR.LocalLet.branch cond thenResult.fst elseResult.fst
+        (localLet, ownerSourcesAfterLocalLetForAlloc summaries ownerSources localLet)
+
+  partial def refreshOwnerMasksLocalLetsForAlloc
+      (summaries : Array (List Nat))
+      (ownerSources : List (Nat × List Nat))
+      (lets : List LeanExe.IR.LocalLet) :
+      List LeanExe.IR.LocalLet × List (Nat × List Nat) :=
+    let rec loop :
+        List LeanExe.IR.LocalLet →
+          List LeanExe.IR.LocalLet →
+          List (Nat × List Nat) →
+          List LeanExe.IR.LocalLet × List (Nat × List Nat)
+      | [], acc, sources => (acc.reverse, sources)
+      | localLet :: rest, acc, sources =>
+          let refreshed := refreshOwnerMasksLocalLetForAlloc summaries sources localLet
+          loop rest (refreshed.fst :: acc) refreshed.snd
+    loop lets [] ownerSources
+end
+
 partial def materializeResultValue
     (ctx : Context)
     (useAbi : Bool)
     (ty : Ty)
     (targets : List Nat)
-    (value : ExtractedValue) :
+    (value : ExtractedValue)
+    (ownerSources : List (Nat × List Nat) := []) :
     Except String IRStmt := do
   let canReleaseOwnedTemps := !tyContainsHeapPointer ty
   match value with
   | .letE slot expr body => do
-      let bodyStmt ← materializeResultValue ctx useAbi ty targets body
+      let expr := refreshOwnerMasksExprForAlloc ctx.freshResultOwnerOffsets ownerSources expr
+      let nextSources :=
+        ownerSourcesAfterExprForAlloc ctx.freshResultOwnerOffsets ownerSources slot expr
+      let bodyStmt ← materializeResultValue ctx useAbi ty targets body nextSources
       let stmt := .seq (.assign slot expr) bodyStmt
       let returnedOwnerSlots := valueReleaseOwnerLocalSlots body
       let exprOwned :=
@@ -3100,7 +3556,10 @@ partial def materializeResultValue
       else
         .ok stmt
   | .letCall slots index args body => do
-      let bodyStmt ← materializeResultValue ctx useAbi ty targets body
+      let args := args.map (refreshOwnerMasksExprForAlloc ctx.freshResultOwnerOffsets ownerSources)
+      let nextSources :=
+        ownerSourcesAfterCallForAlloc ctx.freshResultOwnerOffsets ownerSources slots index
+      let bodyStmt ← materializeResultValue ctx useAbi ty targets body nextSources
       let stmt := .seq (.call slots index args) bodyStmt
       if canReleaseOwnedTemps then
         let released := valueReleasedSlots body
@@ -3127,7 +3586,10 @@ partial def materializeResultValue
   | .letLocal lets body => do
       let values ← flattenResultValue useAbi ty body
       let kept := pruneLocalLets lets (exprListUsedSlots values)
-      let bodyStmt ← materializeResultValue ctx useAbi ty targets body
+      let refreshed :=
+        refreshOwnerMasksLocalLetsForAlloc ctx.freshResultOwnerOffsets ownerSources kept
+      let kept := refreshed.fst
+      let bodyStmt ← materializeResultValue ctx useAbi ty targets body refreshed.snd
       let stmt := .seq (localLetStmtListOptimized kept) bodyStmt
       if canReleaseOwnedTemps then
         let released := localLetsReleasedSlotsWithLater (valueReleasedSlots body) kept
@@ -3149,12 +3611,14 @@ partial def materializeResultValue
             releaseSlotAllowedForResult canReleaseOwnedTemps returnedOwnerSlots slot &&
               !released.contains slot))
   | .ite cond thenValue elseValue => do
-      let thenStmt ← materializeResultValue ctx useAbi ty targets thenValue
-      let elseStmt ← materializeResultValue ctx useAbi ty targets elseValue
+      let cond := refreshOwnerMasksCondForAlloc ctx.freshResultOwnerOffsets ownerSources cond
+      let thenStmt ← materializeResultValue ctx useAbi ty targets thenValue ownerSources
+      let elseStmt ← materializeResultValue ctx useAbi ty targets elseValue ownerSources
       .ok (.ite cond thenStmt elseStmt)
   | _ =>
       if !useAbi then
-        let lets ← materializeInternalValueLets ty value targets ctx.freshResultOwnerOffsets
+        let lets ←
+          materializeInternalValueLets ty value targets ctx.freshResultOwnerOffsets ownerSources
         let stmt := localLetStmtListOptimized lets
         if canReleaseOwnedTemps then
           let released := localLetsReleasedSlots lets
