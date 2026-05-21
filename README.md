@@ -241,7 +241,9 @@ printf '%s' '[1,6,4,100,33,5,5,20]' \
 
 Use `tools/compare-standard.js` to compare accepted entries against standard Lean execution.  The tool generates a temporary Lean runner under `.lake/build/standard-compare`, runs it with `lake env lean --run`, compiles the same entry through LeanExe, runs the generated WASM with Wasmtime, and compares the observed results.  Command modes compare exit status, stdout, and stderr byte-for-byte for `ByteArray`, `ByteArray -> ByteArray`, `ByteArray -> Except ByteArray ByteArray`, `Array ByteArray -> Except ByteArray ByteArray`, and `ByteArray -> Array ByteArray -> Except ByteArray ByteArray` entries.
 
-Pure mode compares library exports invoked through `wasmtime --invoke`; the caller supplies the standard Lean call expression when flattened WASM parameters differ from the Lean source call, and supplies a result-slot expression of type `Array UInt64` for the flattened return value.  Pure-bytes mode compares a concrete pure call by serializing its result to `ByteArray`, compiling a generated wrapper through `compile-wasi`, and comparing the bytes written by standard Lean with the bytes written by the generated WASM command.  Use pure-bytes for heap-backed pure results such as `ByteArray` values, array-containing structures, and other results that need source-level serialization before comparison.
+Pure mode compares scalar library exports invoked through `wasmtime --invoke`; the caller supplies the standard Lean call expression when flattened WASM parameters differ from the Lean source call, and supplies a result-slot expression of type `Array UInt64` for the flattened return value.  Pure-ABI mode compares library exports through the Wasmtime C host runner and decodes heap-backed public ABI results from exported memory using a JSON layout descriptor.  The standard Lean side serializes the same value to JSON through `--serializer`, so this mode can compare public structures, tagged values, byte arrays, and arrays without compiling a generated WASI wrapper.  Pure-bytes mode compares a concrete pure call by serializing its result to `ByteArray`, compiling a generated wrapper through `compile-wasi`, and comparing the bytes written by standard Lean with the bytes written by the generated WASM command.
+
+`--abi-layout` accepts JSON descriptors for public ABI values: scalar names such as `"UInt64"` and `"Nat"`, `"ByteArray"`, `{"array": ...}`, `{"struct": [["field", ...], ...]}`, and `{"tagged": [[...], ...]}`.  `--abi-arg` supplies heap-bearing host arguments in the same descriptor-value shape when scalar `--arg` values are insufficient.  The generated standard Lean runner defines small JSON serializer helpers such as `__leanexeJsonUInt64`, `__leanexeJsonArray`, and `__leanexeJsonByteArray` for comparison expressions.
 
 ```sh
 node tools/compare-standard.js \
@@ -266,6 +268,15 @@ node tools/compare-standard.js \
   --module LeanExe.Examples.Correctness \
   --entry byteArrayReturnABC \
   --serializer '__leanexeValue'
+```
+
+```sh
+node tools/compare-standard.js \
+  --mode pure-abi \
+  --module LeanExe.Examples.Correctness \
+  --entry publicByteArrayArrayReturn \
+  --abi-layout '{"array":"ByteArray"}' \
+  --serializer '__leanexeJsonArray __leanexeValue __leanexeJsonByteArray'
 ```
 
 Run the built-in comparison cases with:

@@ -4,6 +4,20 @@ const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 const { spawnSync } = require("child_process");
+const host = require("../test/wasmtime_host");
+const {
+  HostPlan,
+  arrayLayout,
+  assertAbiEqual,
+  byteArrayLayout,
+  decodePublicValue,
+  layoutFromDescriptor,
+  materializeArgPlan,
+  resultReadCommands,
+  scalarLayout,
+  structLayout,
+  variantLayout,
+} = require("./abi_layout");
 
 const leanExe = process.env.LEAN_WASM_EXE || path.join(".lake", "build", "bin", "lean-wasm");
 const wasmtime = process.env.WASMTIME || path.join("build", "tools", "wasmtime", "current", "wasmtime");
@@ -13,6 +27,7 @@ const defaultMaxArgs = 8;
 const defaultMaxArgBytes = 4096;
 const validModes = new Set([
   "pure",
+  "pure-abi",
   "pure-bytes",
   "wasi",
   "stdin",
@@ -29,6 +44,7 @@ function usage() {
 
 Modes:
   pure               Library export invoked with wasmtime --invoke
+  pure-abi           Library export invoked through Wasmtime C host and decoded by ABI layout
   pure-bytes         Concrete pure call serialized to ByteArray and run as WASI
   wasi               ByteArray
   stdin              ByteArray -> ByteArray
@@ -40,6 +56,8 @@ Options:
   --standard-call LEAN_EXPR
   --result-slots LEAN_EXPR
   --serializer LEAN_EXPR
+  --abi-layout JSON
+  --abi-arg JSON
   --stdin TEXT
   --stdin-file PATH
   --arg VALUE
@@ -129,6 +147,8 @@ function parseArgs(argv) {
     standardCall: "",
     resultSlots: "",
     serializer: "",
+    resultLayout: null,
+    abiArgs: null,
   };
 
   for (let i = 0; i < argv.length; i += 1) {
@@ -153,6 +173,13 @@ function parseArgs(argv) {
       config.resultSlots = argv[++i] || "";
     } else if (arg === "--serializer") {
       config.serializer = argv[++i] || "";
+    } else if (arg === "--abi-layout") {
+      config.resultLayout = JSON.parse(argv[++i] || "null");
+    } else if (arg === "--abi-arg") {
+      if (config.abiArgs === null) {
+        config.abiArgs = [];
+      }
+      config.abiArgs.push(JSON.parse(argv[++i] || "null"));
     } else if (arg === "--stdin") {
       config.input = Buffer.from(argv[++i] || "", "utf8");
     } else if (arg === "--stdin-file") {
@@ -188,6 +215,12 @@ function validateConfig(config) {
   }
   if (config.mode === "pure" && !config.resultSlots) {
     throw new Error("--result-slots is required for pure mode");
+  }
+  if (config.mode === "pure-abi" && !config.serializer) {
+    throw new Error("--serializer is required for pure-abi mode");
+  }
+  if (config.mode === "pure-abi" && !config.resultLayout) {
+    throw new Error("--abi-layout is required for pure-abi mode");
   }
   if (config.mode === "pure-bytes" && !config.serializer) {
     throw new Error("--serializer is required for pure-bytes mode");
@@ -246,6 +279,30 @@ def __leanexeAppendNat (out : ByteArray) (value : Nat) : ByteArray :=
 
 def __leanexeSep (out : ByteArray) : ByteArray :=
   out.push (10 : UInt8)
+
+def __leanexeJsonUInt64 (value : UInt64) : ByteArray :=
+  __leanexeAppendUInt64 ByteArray.empty value
+
+def __leanexeJsonNat (value : Nat) : ByteArray :=
+  __leanexeAppendNat ByteArray.empty value
+
+def __leanexeJsonArray {α : Type} (items : Array α) (render : α -> ByteArray) : ByteArray :=
+  let state :=
+    items.foldl
+      (fun state item =>
+        let out := if state.1 then state.2 else state.2.push (44 : UInt8)
+        (false, out ++ render item))
+      (true, ByteArray.empty.push (91 : UInt8))
+  state.2.push (93 : UInt8)
+
+def __leanexeJsonByteArray (bytes : ByteArray) : ByteArray :=
+  let state :=
+    bytes.foldl
+      (fun state byte =>
+        let out := if state.1 then state.2 else state.2.push (44 : UInt8)
+        (false, __leanexeAppendUInt64 out byte.toUInt64))
+      (true, ByteArray.empty.push (91 : UInt8))
+  state.2.push (93 : UInt8)
 `;
 }
 
@@ -353,6 +410,8 @@ function pathsFor(config, fullEntry, shortEntry) {
       moduleName: config.moduleName,
       entry: fullEntry,
       args: config.programArgs,
+      abiArgs: config.abiArgs,
+      resultLayout: config.resultLayout,
       standardCall: config.standardCall,
       serializer: config.serializer,
     }))
@@ -384,7 +443,7 @@ function buildPureBytesWrapper(config, paths, fullEntry) {
 
 function compileWasm(config, paths, fullEntry) {
   const args = [leanExe];
-  if (config.mode === "pure") {
+  if (config.mode === "pure" || config.mode === "pure-abi") {
     args.push("compile");
   } else if (config.mode === "pure-bytes") {
     buildPureBytesWrapper(config, paths, fullEntry);
@@ -432,7 +491,7 @@ function runStandard(config, paths, fullEntry) {
   fs.writeFileSync(paths.runner,
     config.mode === "pure"
       ? pureRunnerSource(config, fullEntry)
-      : config.mode === "pure-bytes"
+      : config.mode === "pure-bytes" || config.mode === "pure-abi"
         ? pureBytesRunnerSource(config, paths, fullEntry)
         : runnerSource(config, paths, fullEntry));
 
@@ -503,6 +562,60 @@ function runWasm(config, paths, shortEntry) {
   }
 }
 
+function resolveLayout(layout) {
+  if (layout && typeof layout.publicSlots === "number") {
+    return layout;
+  }
+  return layoutFromDescriptor(layout);
+}
+
+function resolveAbiArg(arg) {
+  if (arg && typeof arg === "object" && arg.layout) {
+    return {
+      layout: resolveLayout(arg.layout),
+      value: arg.value,
+    };
+  }
+  return arg;
+}
+
+function wasmAbiArgs(config) {
+  if (config.abiArgs !== null) {
+    return config.abiArgs.map(resolveAbiArg);
+  }
+  return config.programArgs;
+}
+
+function parseStandardAbiValue(config, standard, layout) {
+  if (standard.status !== 0) {
+    throw new Error(`${config.moduleName}.${config.entry} standard Lean runner failed with status ${standard.status}`);
+  }
+  if (standard.stderr.length !== 0) {
+    throw new Error(`${config.moduleName}.${config.entry} standard Lean runner wrote stderr: ${describeBytes(standard.stderr)}`);
+  }
+  const text = standard.stdout.toString("utf8");
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch (error) {
+    throw new Error(`${config.moduleName}.${config.entry} standard ABI serializer did not return JSON: ${text}`);
+  }
+  return layout.normalize(parsed);
+}
+
+function runWasmAbi(config, paths, shortEntry, layout, expected) {
+  const plan = new HostPlan();
+  wasmAbiArgs(config).forEach((arg) => materializeArgPlan(plan, arg));
+  const result = host.script(
+    paths.wasm,
+    plan.commands,
+    shortEntry,
+    layout.publicSlots,
+    resultReadCommands(layout, expected),
+  );
+  return decodePublicValue(layout, result.memoryChunks, result.slots);
+}
+
 function describeBytes(bytes) {
   const text = bytes.toString("utf8");
   if (/^[\x09\x0a\x0d\x20-\x7e]*$/.test(text)) {
@@ -535,6 +648,8 @@ function compareCase(inputConfig) {
     input: Buffer.alloc(0),
     programArgs: [],
     keep: false,
+    resultLayout: null,
+    abiArgs: null,
     ...inputConfig,
   };
   validateConfig(config);
@@ -546,27 +661,54 @@ function compareCase(inputConfig) {
   ensureBuilt(config.moduleName);
   compileWasm(config, paths, fullEntry);
   const standard = runStandard(config, paths, fullEntry);
+  if (config.mode === "pure-abi") {
+    const layout = resolveLayout(config.resultLayout);
+    const expected = parseStandardAbiValue(config, standard, layout);
+    const actual = runWasmAbi(config, paths, shortEntry, layout, expected);
+    assertAbiEqual(`${config.moduleName}.${config.entry}`, "result", actual, expected);
+    cleanup(config, paths);
+    process.stdout.write(`matched ${config.mode} ${fullEntry}\n`);
+    return;
+  }
   const wasm = runWasm(config, paths, shortEntry);
   compareResults(config, standard, wasm);
 
-  if (!config.keep) {
-    for (const file of [
-      paths.runner,
-      paths.input,
-      paths.standardStdout,
-      paths.standardStderr,
-      paths.wasm,
-      paths.wrapperSource,
-      paths.wrapperOlean,
-    ]) {
-      fs.rmSync(file, { force: true });
-    }
-  }
+  cleanup(config, paths);
   process.stdout.write(`matched ${config.mode} ${fullEntry}\n`);
+}
+
+function cleanup(config, paths) {
+  if (config.keep) {
+    return;
+  }
+  for (const file of [
+    paths.runner,
+    paths.input,
+    paths.standardStdout,
+    paths.standardStderr,
+    paths.wasm,
+    paths.wrapperSource,
+    paths.wrapperOlean,
+  ]) {
+    fs.rmSync(file, { force: true });
+  }
 }
 
 function selfTest() {
   const correctness = "LeanExe.Examples.Correctness";
+  const u64Layout = scalarLayout("UInt64");
+  const byteArrayArrayLayout = arrayLayout(byteArrayLayout);
+  const tokenLayout = variantLayout([[byteArrayLayout], [u64Layout]]);
+  const tokenArrayLayout = arrayLayout(tokenLayout);
+  const arrayBoxLayout = structLayout([
+    ["values", arrayLayout(u64Layout)],
+    ["count", u64Layout],
+  ]);
+  const byteArrayGroupLayout = structLayout([
+    ["values", byteArrayArrayLayout],
+    ["marker", u64Layout],
+  ]);
+  const byteArrayGroupArrayLayout = arrayLayout(byteArrayGroupLayout);
   const cases = [
     {
       mode: "pure",
@@ -805,6 +947,52 @@ function selfTest() {
       moduleName: correctness,
       entry: "byteArrayStructureArrayEquality",
       resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure-abi",
+      moduleName: correctness,
+      entry: "structureArrayReturn",
+      resultLayout: arrayBoxLayout,
+      serializer: `let out := "{\\"values\\":".toUTF8
+let out := out ++ __leanexeJsonArray __leanexeValue.values __leanexeJsonUInt64
+let out := out ++ ",\\"count\\":".toUTF8
+let out := __leanexeAppendUInt64 out __leanexeValue.count
+out.push (125 : UInt8)`,
+    },
+    {
+      mode: "pure-abi",
+      moduleName: correctness,
+      entry: "publicByteArrayArrayReturn",
+      resultLayout: byteArrayArrayLayout,
+      serializer: "__leanexeJsonArray __leanexeValue __leanexeJsonByteArray",
+    },
+    {
+      mode: "pure-abi",
+      moduleName: correctness,
+      entry: "publicTokenArrayReturn",
+      resultLayout: tokenArrayLayout,
+      serializer: `__leanexeJsonArray __leanexeValue (fun token =>
+  match token with
+  | .text bytes =>
+      let out := "{\\"tag\\":0,\\"fields\\":[".toUTF8
+      let out := out ++ __leanexeJsonByteArray bytes
+      (out.push (93 : UInt8)).push (125 : UInt8)
+  | .number value =>
+      let out := "{\\"tag\\":1,\\"fields\\":[".toUTF8
+      let out := __leanexeAppendUInt64 out value
+      (out.push (93 : UInt8)).push (125 : UInt8))`,
+    },
+    {
+      mode: "pure-abi",
+      moduleName: correctness,
+      entry: "publicByteArrayGroupArrayReturn",
+      resultLayout: byteArrayGroupArrayLayout,
+      serializer: `__leanexeJsonArray __leanexeValue (fun group =>
+  let out := "{\\"values\\":".toUTF8
+  let out := out ++ __leanexeJsonArray group.values __leanexeJsonByteArray
+  let out := out ++ ",\\"marker\\":".toUTF8
+  let out := __leanexeAppendUInt64 out group.marker
+  out.push (125 : UInt8))`,
     },
     {
       mode: "pure-bytes",
@@ -1238,6 +1426,8 @@ try {
       standardCall: config.standardCall,
       resultSlots: config.resultSlots,
       serializer: config.serializer,
+      resultLayout: config.resultLayout,
+      abiArgs: config.abiArgs,
       keep: config.keep,
     });
   }

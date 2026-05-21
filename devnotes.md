@@ -1,5 +1,21 @@
 # Development Journal
 
+## 2026-05-21: Standard Comparison for Public ABI Values
+
+`tools/abi_layout.js` now owns the public ABI layout helpers that used to live inside `test/core_correctness.js`.  The shared code can materialize scalar, byte-array, array, structure, and tagged public arguments for the Wasmtime C host script runner, plan targeted memory reads for heap-backed results, decode those sparse memory reads back to JavaScript values, and compare nested ABI values structurally.
+
+`tools/compare-standard.js` now has `pure-abi` mode for library exports whose public results contain heap-backed ABI values.  Standard Lean still computes the expected value, but the runner serializes that value to JSON through the caller's `--serializer`; the generated WASM is executed through the Wasmtime C host, and the result is decoded from ABI slots plus targeted memory ranges.  This adds standard Lean comparisons for public structure results with array fields, public `Array ByteArray`, public arrays of tagged values, and public arrays of structures with nested arrays.
+
+Checks run:
+
+- [x] `node --check tools/abi_layout.js`
+- [x] `node --check test/core_correctness.js`
+- [x] `node --check tools/compare-standard.js`
+- [x] `node tools/compare-standard.js --mode pure-abi --module LeanExe.Examples.Correctness --entry publicByteArrayArrayReturn --abi-layout '{"array":"ByteArray"}' --serializer '__leanexeJsonArray __leanexeValue __leanexeJsonByteArray'` returned `matched pure-abi LeanExe.Examples.Correctness.publicByteArrayArrayReturn`.
+- [x] `node tools/compare-standard.js --self-test` returned `checked 98 standard Lean comparison cases`.
+- [x] `node test/core_correctness.js` returned `checked 743 accepted, 29 rejected, and 13 trapped cases`.
+- [x] `node test/run_all.js` returned `checked 112 report classification cases`, `checked 7 ownership report cases`, `checked JavaScript WASM execution guard`, `checked 743 accepted, 29 rejected, and 13 trapped cases`, `checked 31 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 35 WASI program cases, 2 traps, and 7 rejections`, `checked 98 standard Lean comparison cases`, and `checked 56 cases`.
+
 ## 2026-05-21: Wasmtime Setup and Targeted Reads
 
 `tools/download-wasmtime.sh` now downloads the Wasmtime CLI and matching C API archive into `build/tools/wasmtime`, using Wasmtime 44.0.0 and the detected Linux platform by default.  `tools/build-wasmtime-host.sh` derives the same version and platform, and still accepts `WASMTIME_C_API` for a custom C API package.  The repository-local Wasmtime setup is now reproducible from tracked tooling.
