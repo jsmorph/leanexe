@@ -63,6 +63,30 @@ function callBytes(wasm, entry, args = []) {
   return fromHex(call(wasm, entry, "bytes", args));
 }
 
+function script(wasm, commands, entry, resultCount, dumpMemory) {
+  const exe = ensureHost();
+  const input = `${commands.join("\n")}\ncall ${entry} ${resultCount} ${dumpMemory ? 1 : 0}\n`;
+  const result = spawnSync(exe, ["script", wasm], {
+    encoding: "utf8",
+    input,
+    maxBuffer: 64 * 1024 * 1024,
+  });
+  if (result.status !== 0) {
+    throw new Error(result.stderr.trim() || result.stdout.trim() || `${exe} script failed`);
+  }
+  const lines = result.stdout.trim().split(/\n/).filter((line) => line.length > 0);
+  const resultLine = lines.find((line) => line.startsWith("results"));
+  if (!resultLine) {
+    throw new Error("Wasmtime host script did not return result slots");
+  }
+  const slots = resultLine.split(/\s+/).slice(1).map((value) => BigInt(value));
+  const memoryLine = lines.find((line) => line.startsWith("memory"));
+  return {
+    slots,
+    memory: memoryLine ? fromHex(memoryLine.slice("memory".length)).buffer : null,
+  };
+}
+
 module.exports = {
   arrayU64,
   byteArray,
@@ -71,4 +95,5 @@ module.exports = {
   callI64,
   ensureHost,
   i64,
+  script,
 };
