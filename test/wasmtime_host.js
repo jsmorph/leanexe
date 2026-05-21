@@ -46,6 +46,10 @@ function byteArray(bytes) {
   return `bytes:${toHex(bytes)}`;
 }
 
+function arrayU64(values) {
+  return `array-u64:${values.map((value) => BigInt(value).toString()).join(",")}`;
+}
+
 function call(wasm, entry, resultKind, args = []) {
   const exe = ensureHost();
   return run([exe, "call", wasm, entry, resultKind, ...args]);
@@ -60,6 +64,7 @@ function callBytes(wasm, entry, args = []) {
 }
 
 module.exports = {
+  arrayU64,
   byteArray,
   call,
   callBytes,
