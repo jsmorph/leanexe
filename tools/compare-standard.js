@@ -343,6 +343,17 @@ end ${paths.wrapperModule}
 `;
 }
 
+function normalizePureWasmStdout(bytes) {
+  const text = bytes.toString("utf8");
+  if (text.length === 0 || !/^-?\d+(\n-?\d+)*\n?$/.test(text)) {
+    return bytes;
+  }
+  const trailingNewline = text.endsWith("\n");
+  const lines = text.trimEnd().split("\n").map((line) =>
+    BigInt.asUintN(64, BigInt(line)).toString());
+  return Buffer.from(lines.join("\n") + (trailingNewline ? "\n" : ""), "utf8");
+}
+
 function runnerSource(config, paths, fullEntry) {
   const header = [
     `import ${config.moduleName}`,
@@ -523,7 +534,9 @@ function runWasm(config, paths, shortEntry) {
     });
     return {
       status: result.status,
-      stdout: result.stdout || Buffer.alloc(0),
+      stdout: result.status === 0
+        ? normalizePureWasmStdout(result.stdout || Buffer.alloc(0))
+        : result.stdout || Buffer.alloc(0),
       stderr: result.status === 0 ? Buffer.alloc(0) : result.stderr || Buffer.alloc(0),
     };
   }
@@ -699,6 +712,13 @@ function selfTest() {
   const u64Layout = scalarLayout("UInt64");
   const nestedU64ArrayLayout = arrayLayout(arrayLayout(u64Layout));
   const byteArrayArrayLayout = arrayLayout(byteArrayLayout);
+  const optionArrayByteArrayLayout = variantLayout([[], [byteArrayArrayLayout]]);
+  const exceptByteArrayArrayLayout = variantLayout([[byteArrayLayout], [byteArrayArrayLayout]]);
+  const optionByteArrayLayout = variantLayout([[], [byteArrayLayout]]);
+  const exceptByteArrayByteArrayLayout = variantLayout([[byteArrayLayout], [byteArrayLayout]]);
+  const optionByteArrayArrayLayout = arrayLayout(optionByteArrayLayout);
+  const exceptByteArrayByteArrayArrayLayout = arrayLayout(exceptByteArrayByteArrayLayout);
+  const optionArrayOptionByteArrayLayout = variantLayout([[], [optionByteArrayArrayLayout]]);
   const tokenLayout = variantLayout([[byteArrayLayout], [u64Layout]]);
   const tokenArrayLayout = arrayLayout(tokenLayout);
   const arrayBoxLayout = structLayout([
@@ -714,6 +734,32 @@ function selfTest() {
   const nestedU64ArrayAltSample = [[], [9], [10, 11]];
   const byteArrayArraySample = [[65], [66, 67], [68, 69, 70]];
   const byteArrayArrayAltSample = [[87], [88, 89], [90]];
+  const optionByteArrayArraySample = [
+    { tag: 1, fields: [[65]] },
+    { tag: 0, fields: [] },
+    { tag: 1, fields: [[66, 67]] },
+  ];
+  const exceptByteArrayByteArrayArraySample = [
+    { tag: 1, fields: [[65]] },
+    { tag: 0, fields: [[66, 67]] },
+    { tag: 1, fields: [[68, 69, 70]] },
+  ];
+  const nestedTaggedArraySample = {
+    tag: 1,
+    fields: [optionByteArrayArraySample],
+  };
+  const nestedTaggedArrayNoneSample = {
+    tag: 0,
+    fields: [],
+  };
+  const exceptArrayOkSample = {
+    tag: 1,
+    fields: [[[65], [66, 67]]],
+  };
+  const exceptArrayErrorSample = {
+    tag: 0,
+    fields: [[69, 82, 82]],
+  };
   const tokenArraySample = [
     { tag: 0, fields: [[65]] },
     { tag: 1, fields: [7] },
@@ -754,6 +800,66 @@ function selfTest() {
       entry: "idFunctionUInt64",
       programArgs: ["0"],
       resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "shortOrSkipsTrap",
+      resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "shortAndSkipsTrap",
+      resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "divByZero",
+      resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "modByZero",
+      resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "overflow",
+      resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "underflow",
+      resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "natSubSaturates",
+      resultSlots: "#[UInt64.ofNat __leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "natSubNormal",
+      resultSlots: "#[UInt64.ofNat __leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "natAddNormal",
+      resultSlots: "#[UInt64.ofNat __leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "natMulNormal",
+      resultSlots: "#[UInt64.ofNat __leanexeValue]",
     },
     {
       mode: "pure",
@@ -904,6 +1010,146 @@ function selfTest() {
     {
       mode: "pure",
       moduleName: correctness,
+      entry: "natDivModZero",
+      programArgs: ["7"],
+      resultSlots: "#[UInt64.ofNat __leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "natSuccPred",
+      programArgs: ["0"],
+      resultSlots: "#[UInt64.ofNat __leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "natSuccPred",
+      programArgs: ["5"],
+      resultSlots: "#[UInt64.ofNat __leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "bitwiseOrXor",
+      resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "complementNotation",
+      resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "shiftMasking",
+      resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "uint8ShiftNotation",
+      resultSlots: "#[UInt64.ofNat __leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "uint8DirectShift",
+      resultSlots: "#[UInt64.ofNat __leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "uint64OfNatValue",
+      programArgs: ["41"],
+      resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "uint64OfHugeNat",
+      resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "natToUInt64Huge",
+      resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "uint64ToNatMethodMax",
+      resultSlots: "#[UInt64.ofNat __leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "uint8ParamToNat",
+      programArgs: ["300"],
+      standardCall: `${correctness}.uint8ParamToNat (300 : UInt8)`,
+      resultSlots: "#[UInt64.ofNat __leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "uint8Return",
+      resultSlots: "#[UInt8.toUInt64 __leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "uint8AddWrap",
+      resultSlots: "#[UInt64.ofNat __leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "uint8SubWrap",
+      resultSlots: "#[UInt64.ofNat __leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "uint8MulWrap",
+      resultSlots: "#[UInt64.ofNat __leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "uint8DivModZero",
+      resultSlots: "#[UInt64.ofNat __leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "uint32ParamToNat",
+      programArgs: ["4294967297"],
+      standardCall: `${correctness}.uint32ParamToNat (4294967297 : UInt32)`,
+      resultSlots: "#[UInt64.ofNat __leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "uint32Return",
+      resultSlots: "#[UInt32.toUInt64 __leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "uint32DivMod",
+      resultSlots: "#[UInt64.ofNat __leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "uint32DivModZero",
+      resultSlots: "#[UInt64.ofNat __leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
       entry: "structureReturn",
       programArgs: ["4"],
       resultSlots: "#[__leanexeValue.x, __leanexeValue.y]",
@@ -965,6 +1211,70 @@ function selfTest() {
     {
       mode: "pure",
       moduleName: correctness,
+      entry: "optionReturn",
+      programArgs: ["0"],
+      resultSlots:
+        "match __leanexeValue with | none => #[0, 0] | some value => #[1, value]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "optionReturn",
+      programArgs: ["3"],
+      resultSlots:
+        "match __leanexeValue with | none => #[0, 0] | some value => #[1, value]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "optionParam",
+      programArgs: ["0", "44"],
+      standardCall: `${correctness}.optionParam (none : Option UInt64)`,
+      resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "optionParam",
+      programArgs: ["1", "5"],
+      standardCall: `${correctness}.optionParam (some (5 : UInt64))`,
+      resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "exceptReturn",
+      programArgs: ["0"],
+      resultSlots:
+        "match __leanexeValue with | Except.error code => #[0, code, 0] | Except.ok value => #[1, 0, value]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "exceptReturn",
+      programArgs: ["3"],
+      resultSlots:
+        "match __leanexeValue with | Except.error code => #[0, code, 0] | Except.ok value => #[1, 0, value]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "exceptParam",
+      programArgs: ["0", "7", "0"],
+      standardCall: `${correctness}.exceptParam (Except.error (7 : UInt64) : Except UInt64 UInt64)`,
+      resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "exceptParam",
+      programArgs: ["1", "0", "5"],
+      standardCall: `${correctness}.exceptParam (Except.ok (5 : UInt64) : Except UInt64 UInt64)`,
+      resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
       entry: "productEquality",
       resultSlots: "#[__leanexeValue]",
     },
@@ -1007,6 +1317,100 @@ function selfTest() {
     {
       mode: "pure",
       moduleName: correctness,
+      entry: "arrayFoldrWindow",
+      resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "arrayFoldrStartClamps",
+      resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "arrayGetDRead",
+      programArgs: ["1"],
+      resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "arrayGetDRead",
+      programArgs: ["2"],
+      resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "arrayGetQuestionRead",
+      programArgs: ["1"],
+      resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "arrayGetQuestionRead",
+      programArgs: ["2"],
+      resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "arrayFilterScalarsRead",
+      resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "arrayFilterWindowRead",
+      resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "arrayFilterNoneSize",
+      resultSlots: "#[UInt64.ofNat __leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "arrayUInt8Read",
+      resultSlots: "#[UInt64.ofNat __leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "arrayUInt8SetRead",
+      resultSlots: "#[UInt64.ofNat __leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "arrayUInt32MapRead",
+      resultSlots: "#[UInt64.ofNat __leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "arrayBoolRead",
+      resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "arrayNatRead",
+      resultSlots: "#[UInt64.ofNat __leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "arrayStructureFoldRead",
+      resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
       entry: "pointArrayEquality",
       resultSlots: "#[__leanexeValue]",
     },
@@ -1039,6 +1443,86 @@ out.push (125 : UInt8)`,
       entry: "publicByteArrayArrayReturn",
       resultLayout: byteArrayArrayLayout,
       serializer: "__leanexeJsonArray __leanexeValue __leanexeJsonByteArray",
+    },
+    {
+      mode: "pure-abi",
+      moduleName: correctness,
+      entry: "publicOptionArrayParam",
+      abiArgs: [{ layout: optionArrayByteArrayLayout, value: { tag: 1, fields: [byteArrayArraySample] } }],
+      standardCall:
+        `${correctness}.publicOptionArrayParam (some (#["A".toUTF8, "BC".toUTF8, "DEF".toUTF8] : Array ByteArray))`,
+      resultLayout: u64Layout,
+      serializer: "__leanexeJsonUInt64 __leanexeValue",
+    },
+    {
+      mode: "pure-abi",
+      moduleName: correctness,
+      entry: "publicOptionArrayParam",
+      abiArgs: [{ layout: optionArrayByteArrayLayout, value: { tag: 0, fields: [] } }],
+      standardCall:
+        `${correctness}.publicOptionArrayParam (none : Option (Array ByteArray))`,
+      resultLayout: u64Layout,
+      serializer: "__leanexeJsonUInt64 __leanexeValue",
+    },
+    {
+      mode: "pure-abi",
+      moduleName: correctness,
+      entry: "publicExceptArrayParam",
+      abiArgs: [{ layout: exceptByteArrayArrayLayout, value: exceptArrayOkSample }],
+      standardCall:
+        `${correctness}.publicExceptArrayParam (Except.ok (#["A".toUTF8, "BC".toUTF8] : Array ByteArray) : Except ByteArray (Array ByteArray))`,
+      resultLayout: u64Layout,
+      serializer: "__leanexeJsonUInt64 __leanexeValue",
+    },
+    {
+      mode: "pure-abi",
+      moduleName: correctness,
+      entry: "publicExceptArrayParam",
+      abiArgs: [{ layout: exceptByteArrayArrayLayout, value: exceptArrayErrorSample }],
+      standardCall:
+        `${correctness}.publicExceptArrayParam (Except.error ("ERR".toUTF8) : Except ByteArray (Array ByteArray))`,
+      resultLayout: u64Layout,
+      serializer: "__leanexeJsonUInt64 __leanexeValue",
+    },
+    {
+      mode: "pure-abi",
+      moduleName: correctness,
+      entry: "publicOptionByteArrayArrayParam",
+      abiArgs: [{ layout: optionByteArrayArrayLayout, value: optionByteArrayArraySample }],
+      standardCall:
+        `${correctness}.publicOptionByteArrayArrayParam (#[(some ("A".toUTF8) : Option ByteArray), (none : Option ByteArray), (some ("BC".toUTF8) : Option ByteArray)] : Array (Option ByteArray))`,
+      resultLayout: u64Layout,
+      serializer: "__leanexeJsonUInt64 __leanexeValue",
+    },
+    {
+      mode: "pure-abi",
+      moduleName: correctness,
+      entry: "publicExceptByteArrayArrayParam",
+      abiArgs: [{ layout: exceptByteArrayByteArrayArrayLayout, value: exceptByteArrayByteArrayArraySample }],
+      standardCall:
+        `${correctness}.publicExceptByteArrayArrayParam (#[(Except.ok ("A".toUTF8) : Except ByteArray ByteArray), (Except.error ("BC".toUTF8) : Except ByteArray ByteArray), (Except.ok ("DEF".toUTF8) : Except ByteArray ByteArray)] : Array (Except ByteArray ByteArray))`,
+      resultLayout: u64Layout,
+      serializer: "__leanexeJsonUInt64 __leanexeValue",
+    },
+    {
+      mode: "pure-abi",
+      moduleName: correctness,
+      entry: "publicNestedTaggedArrayParam",
+      abiArgs: [{ layout: optionArrayOptionByteArrayLayout, value: nestedTaggedArraySample }],
+      standardCall:
+        `${correctness}.publicNestedTaggedArrayParam (some (#[(some ("A".toUTF8) : Option ByteArray), (none : Option ByteArray), (some ("BC".toUTF8) : Option ByteArray)] : Array (Option ByteArray)))`,
+      resultLayout: u64Layout,
+      serializer: "__leanexeJsonUInt64 __leanexeValue",
+    },
+    {
+      mode: "pure-abi",
+      moduleName: correctness,
+      entry: "publicNestedTaggedArrayParam",
+      abiArgs: [{ layout: optionArrayOptionByteArrayLayout, value: nestedTaggedArrayNoneSample }],
+      standardCall:
+        `${correctness}.publicNestedTaggedArrayParam (none : Option (Array (Option ByteArray)))`,
+      resultLayout: u64Layout,
+      serializer: "__leanexeJsonUInt64 __leanexeValue",
     },
     {
       mode: "pure-abi",
