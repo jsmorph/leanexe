@@ -332,6 +332,22 @@ static void write_u64_at(Runtime *runtime, uint64_t ptr, uint64_t value) {
   }
 }
 
+static uint64_t read_u64_at(Runtime *runtime, uint64_t ptr) {
+  if (!runtime->has_memory) {
+    die("missing memory export");
+  }
+  size_t memory_len = wasmtime_memory_data_size(runtime->context, &runtime->memory);
+  if (ptr > memory_len || 8 > memory_len - (size_t)ptr) {
+    die("u64 read is outside memory");
+  }
+  uint8_t *memory = wasmtime_memory_data(runtime->context, &runtime->memory);
+  uint64_t value = 0;
+  for (size_t i = 0; i < 8; i++) {
+    value |= (uint64_t)memory[ptr + i] << (i * 8);
+  }
+  return value;
+}
+
 static uint64_t alloc_bytes(Runtime *runtime, const uint8_t *bytes, size_t len) {
   if (!runtime->has_memory || !runtime->has_alloc) {
     die("ByteArray argument requires exported memory and alloc");
@@ -707,15 +723,63 @@ static void write_bytes_at(Runtime *runtime, uint64_t ptr, const uint8_t *bytes,
   memcpy(memory + ptr, bytes, len);
 }
 
+static uint64_t checked_add_u64(uint64_t left, uint64_t right) {
+  if (right > UINT64_MAX - left) {
+    die("u64 addition overflow");
+  }
+  return left + right;
+}
+
+static uint64_t resolve_script_value(const char *text, const wasmtime_val_t *results,
+                                     size_t nresults, const uint64_t *vars) {
+  if (strncmp(text, "result:", 7) == 0) {
+    uint64_t index = parse_u64(text + 7);
+    if (index >= nresults) {
+      die("result index is outside result slots");
+    }
+    return (uint64_t)results[index].of.i64;
+  }
+  if (strncmp(text, "u64:", 4) == 0) {
+    uint64_t index = parse_u64(text + 4);
+    if (index >= 4096) {
+      die("u64 variable id is too large");
+    }
+    return vars[index];
+  }
+  return parse_u64(text);
+}
+
+static void print_memory_range(Runtime *runtime, uint64_t ptr, uint64_t len) {
+  if (!runtime->has_memory) {
+    die("missing memory export");
+  }
+  size_t memory_len = wasmtime_memory_data_size(runtime->context, &runtime->memory);
+  if (ptr > memory_len || len > memory_len - (size_t)ptr) {
+    die("memory read is outside memory");
+  }
+  uint8_t *memory = wasmtime_memory_data(runtime->context, &runtime->memory);
+  printf("memory %" PRIu64 " %" PRIu64 " ", ptr, len);
+  for (uint64_t i = 0; i < len; i++) {
+    printf("%02x", memory[ptr + i]);
+  }
+  printf("\n");
+}
+
 static void command_script(Runtime *runtime, int argc, char **argv) {
   if (argc != 0) {
     die("usage: script <module.wasm>");
   }
   (void)argv;
   uint64_t ids[4096];
+  uint64_t vars[4096];
   wasmtime_val_t args[256];
+  wasmtime_val_t results[128];
   size_t nargs = 0;
+  size_t nresults = 0;
+  bool called = false;
   memset(ids, 0, sizeof(ids));
+  memset(vars, 0, sizeof(vars));
+  memset(results, 0, sizeof(results));
   char line[16384];
   while (fgets(line, sizeof(line), stdin) != NULL) {
     size_t len = strlen(line);
@@ -816,36 +880,69 @@ static void command_script(Runtime *runtime, int argc, char **argv) {
       char *func_name = strtok(NULL, " ");
       char *nresults_text = strtok(NULL, " ");
       char *dump_text = strtok(NULL, " ");
-      if (func_name == NULL || nresults_text == NULL || dump_text == NULL) {
-        die("call requires function, result count, and dump flag");
+      if (func_name == NULL || nresults_text == NULL) {
+        die("call requires function and result count");
       }
-      size_t nresults = (size_t)parse_u64(nresults_text);
+      if (dump_text != NULL && parse_u64(dump_text) != 0) {
+        die("full memory dump is unsupported; use read-memory");
+      }
+      if (called) {
+        die("script may call only one export");
+      }
+      nresults = (size_t)parse_u64(nresults_text);
       if (nresults > 128) {
         die("too many result slots");
       }
-      wasmtime_val_t results[128];
       wasmtime_func_t func = get_func(runtime, func_name);
       invoke_func(runtime, &func, args, nargs, results, nresults);
+      called = true;
       printf("results");
       for (size_t i = 0; i < nresults; i++) {
         printf(" %" PRIu64, (uint64_t)results[i].of.i64);
       }
       printf("\n");
-      if (parse_u64(dump_text) != 0) {
-        size_t memory_len = wasmtime_memory_data_size(runtime->context, &runtime->memory);
-        uint8_t *memory = wasmtime_memory_data(runtime->context, &runtime->memory);
-        printf("memory");
-        for (size_t i = 0; i < memory_len; i++) {
-          printf("%02x", memory[i]);
-        }
-        printf("\n");
+    } else if (strcmp(command, "read-u64") == 0) {
+      char *id_text = strtok(NULL, " ");
+      char *ptr_text = strtok(NULL, " ");
+      char *offset_text = strtok(NULL, " ");
+      if (id_text == NULL || ptr_text == NULL || offset_text == NULL) {
+        die("read-u64 requires id, pointer, and offset");
+      }
+      if (!called) {
+        die("read-u64 requires a prior call");
+      }
+      uint64_t id = parse_u64(id_text);
+      if (id >= 4096) {
+        die("u64 variable id is too large");
+      }
+      uint64_t ptr = resolve_script_value(ptr_text, results, nresults, vars);
+      uint64_t offset = resolve_script_value(offset_text, results, nresults, vars);
+      vars[id] = read_u64_at(runtime, checked_add_u64(ptr, offset));
+      printf("u64 %" PRIu64 " %" PRIu64 "\n", id, vars[id]);
+    } else if (strcmp(command, "read-memory") == 0) {
+      char *ptr_text = strtok(NULL, " ");
+      char *len_text = strtok(NULL, " ");
+      if (ptr_text == NULL || len_text == NULL) {
+        die("read-memory requires pointer and length");
+      }
+      if (!called) {
+        die("read-memory requires a prior call");
+      }
+      uint64_t ptr = resolve_script_value(ptr_text, results, nresults, vars);
+      uint64_t len = resolve_script_value(len_text, results, nresults, vars);
+      print_memory_range(runtime, ptr, len);
+    } else if (strcmp(command, "done") == 0) {
+      if (!called) {
+        die("done requires a prior call");
       }
       return;
     } else {
       die("unknown script command");
     }
   }
-  die("script ended before call");
+  if (!called) {
+    die("script ended before call");
+  }
 }
 
 static void usage(void) {
