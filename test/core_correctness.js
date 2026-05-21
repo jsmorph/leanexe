@@ -641,6 +641,62 @@ const accepted = [
   { name: "nestedArrayFoldSizes", args: [], expected: 5n },
   { name: "nestedArrayMapPushRead", args: [], expected: 299n },
   { name: "nestedArrayFindRead", args: [], expected: 5n },
+  {
+    name: "publicNestedArrayReturn",
+    args: [],
+    expected: null,
+    memoryNestedU64Arrays: [{ resultIndex: 0, values: [[1n, 2n]] }],
+  },
+  {
+    name: "publicNestedArrayParam",
+    args: [{ kind: "nestedU64Array", values: [[1n, 2n], [3n, 4n, 5n]] }],
+    expected: 15n,
+  },
+  {
+    name: "publicByteArrayArrayReturn",
+    args: [],
+    expected: null,
+    memoryByteArrayArrays: [{ resultIndex: 0, values: [[65], [66, 67]] }],
+  },
+  {
+    name: "publicByteArrayArrayParam",
+    args: [{ kind: "byteArrayArray", values: [[65], [66, 67], [68, 69, 70]] }],
+    expected: 6n,
+  },
+  {
+    name: "publicByteOutputStateArrayReturn",
+    args: [],
+    expected: null,
+    memoryByteOutputStateArrays: [
+      { resultIndex: 0, values: [{ count: 1n, bytes: [65] }, { count: 2n, bytes: [66, 67] }] },
+    ],
+  },
+  {
+    name: "publicByteOutputStateArrayParam",
+    args: [
+      {
+        kind: "byteOutputStateArray",
+        values: [{ count: 1n, bytes: [65] }, { count: 2n, bytes: [66, 67] }],
+      },
+    ],
+    expected: 6n,
+  },
+  {
+    name: "publicArrayBoxArrayReturn",
+    args: [],
+    expected: null,
+    memoryArrayBoxArrays: [{ resultIndex: 0, values: [{ values: [1n, 2n], count: 2n }] }],
+  },
+  {
+    name: "publicArrayBoxArrayParam",
+    args: [
+      {
+        kind: "arrayBoxArray",
+        values: [{ values: [1n, 2n], count: 2n }, { values: [3n], count: 1n }],
+      },
+    ],
+    expected: 9n,
+  },
   { name: "arrayBoxElementRead", args: [], expected: 223n },
   { name: "arrayProductElementRead", args: [], expected: 43n },
   { name: "recLetDemo", args: [], expected: 518n },
@@ -903,26 +959,6 @@ const rejected = [
     message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectUnitParam",
   },
   {
-    name: "rejectNestedArrayReturn",
-    message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectNestedArrayReturn",
-  },
-  {
-    name: "rejectNestedArrayParam",
-    message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectNestedArrayParam",
-  },
-  {
-    name: "rejectByteArrayArrayReturn",
-    message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectByteArrayArrayReturn",
-  },
-  {
-    name: "rejectByteArrayArrayParam",
-    message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectByteArrayArrayParam",
-  },
-  {
-    name: "rejectArrayBoxArrayReturn",
-    message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectArrayBoxArrayReturn",
-  },
-  {
     name: "rejectRuntimeStringToUTF8",
     message: "unsupported String.toUTF8 argument: expected compile-time string expression",
   },
@@ -1066,6 +1102,239 @@ function checkWatSize(testCase) {
   }
 }
 
+function pointer(value) {
+  return Number(BigInt.asUintN(64, value));
+}
+
+function writeU64Array(exports, values) {
+  const ptr = pointer(exports.alloc(BigInt(8 + values.length * 8)));
+  const view = new DataView(exports.memory.buffer);
+  view.setBigUint64(ptr, BigInt(values.length), true);
+  values.forEach((value, index) => {
+    view.setBigUint64(ptr + 8 + index * 8, BigInt(value), true);
+  });
+  return ptr;
+}
+
+function writeBytes(exports, values) {
+  const ptr = pointer(exports.alloc(BigInt(values.length)));
+  new Uint8Array(exports.memory.buffer, ptr, values.length).set(values);
+  return ptr;
+}
+
+function writeByteArrayArray(exports, values) {
+  const width = 3;
+  const ptr = pointer(exports.alloc(BigInt(8 + values.length * width * 8)));
+  let view = new DataView(exports.memory.buffer);
+  view.setBigUint64(ptr, BigInt(values.length), true);
+  values.forEach((bytes, index) => {
+    const bytePtr = writeBytes(exports, bytes);
+    view = new DataView(exports.memory.buffer);
+    const base = ptr + 8 + index * width * 8;
+    view.setBigUint64(base, 0n, true);
+    view.setBigUint64(base + 8, BigInt(bytePtr), true);
+    view.setBigUint64(base + 16, BigInt(bytes.length), true);
+  });
+  return ptr;
+}
+
+function writeNestedU64Array(exports, values) {
+  const width = 2;
+  const ptr = pointer(exports.alloc(BigInt(8 + values.length * width * 8)));
+  let view = new DataView(exports.memory.buffer);
+  view.setBigUint64(ptr, BigInt(values.length), true);
+  values.forEach((row, index) => {
+    const rowPtr = writeU64Array(exports, row);
+    view = new DataView(exports.memory.buffer);
+    const base = ptr + 8 + index * width * 8;
+    view.setBigUint64(base, 0n, true);
+    view.setBigUint64(base + 8, BigInt(rowPtr), true);
+  });
+  return ptr;
+}
+
+function writeByteOutputStateArray(exports, values) {
+  const width = 4;
+  const ptr = pointer(exports.alloc(BigInt(8 + values.length * width * 8)));
+  let view = new DataView(exports.memory.buffer);
+  view.setBigUint64(ptr, BigInt(values.length), true);
+  values.forEach((state, index) => {
+    const bytePtr = writeBytes(exports, state.bytes);
+    view = new DataView(exports.memory.buffer);
+    const base = ptr + 8 + index * width * 8;
+    view.setBigUint64(base, BigInt(state.count), true);
+    view.setBigUint64(base + 8, 0n, true);
+    view.setBigUint64(base + 16, BigInt(bytePtr), true);
+    view.setBigUint64(base + 24, BigInt(state.bytes.length), true);
+  });
+  return ptr;
+}
+
+function writeArrayBoxArray(exports, values) {
+  const width = 3;
+  const ptr = pointer(exports.alloc(BigInt(8 + values.length * width * 8)));
+  let view = new DataView(exports.memory.buffer);
+  view.setBigUint64(ptr, BigInt(values.length), true);
+  values.forEach((box, index) => {
+    const valuesPtr = writeU64Array(exports, box.values);
+    view = new DataView(exports.memory.buffer);
+    const base = ptr + 8 + index * width * 8;
+    view.setBigUint64(base, 0n, true);
+    view.setBigUint64(base + 8, BigInt(valuesPtr), true);
+    view.setBigUint64(base + 16, BigInt(box.count), true);
+  });
+  return ptr;
+}
+
+function materializeArg(exports, arg) {
+  if (typeof arg === "bigint") {
+    return arg;
+  }
+  switch (arg.kind) {
+    case "byteArrayArray":
+      return BigInt(writeByteArrayArray(exports, arg.values));
+    case "nestedU64Array":
+      return BigInt(writeNestedU64Array(exports, arg.values));
+    case "byteOutputStateArray":
+      return BigInt(writeByteOutputStateArray(exports, arg.values));
+    case "arrayBoxArray":
+      return BigInt(writeArrayBoxArray(exports, arg.values));
+    default:
+      throw new Error(`unknown memory argument kind: ${arg.kind}`);
+  }
+}
+
+function readU64Array(view, ptr) {
+  const len = Number(view.getBigUint64(Number(ptr), true));
+  const values = [];
+  for (let index = 0; index < len; index += 1) {
+    values.push(view.getBigUint64(Number(ptr + BigInt(8 * (index + 1))), true));
+  }
+  return values;
+}
+
+function checkMemoryExpectations(testCase, instance, actualSlots) {
+  const view = new DataView(instance.exports.memory.buffer);
+  for (const memoryArray of testCase.memoryArrays || []) {
+    const ptr = actualSlots[memoryArray.resultIndex];
+    const len = view.getBigUint64(Number(ptr), true);
+    const expectedLength = memoryArray.length ?? memoryArray.values.length;
+    if (len !== BigInt(expectedLength)) {
+      throw new Error(`${testCase.name}: expected array length ${expectedLength}, got ${len}`);
+    }
+    for (let index = 0; index < memoryArray.values.length; index += 1) {
+      const cell = view.getBigUint64(Number(ptr + BigInt(8 * (index + 1))), true);
+      if (cell !== memoryArray.values[index]) {
+        throw new Error(`${testCase.name}: expected array[${index}] ${memoryArray.values[index]}, got ${cell}`);
+      }
+    }
+  }
+  for (const memoryBytes of testCase.memoryBytes || []) {
+    const ptr = actualSlots[memoryBytes.resultIndex];
+    const len = actualSlots[memoryBytes.lengthIndex];
+    const expectedLength = BigInt(memoryBytes.values.length);
+    if (len !== expectedLength) {
+      throw new Error(`${testCase.name}: expected byte length ${expectedLength}, got ${len}`);
+    }
+    const bytes = new Uint8Array(instance.exports.memory.buffer, Number(ptr), Number(len));
+    for (let index = 0; index < memoryBytes.values.length; index += 1) {
+      if (bytes[index] !== memoryBytes.values[index]) {
+        throw new Error(`${testCase.name}: expected byte[${index}] ${memoryBytes.values[index]}, got ${bytes[index]}`);
+      }
+    }
+  }
+  for (const memoryArray of testCase.memoryByteArrayArrays || []) {
+    const ptr = actualSlots[memoryArray.resultIndex];
+    const len = Number(view.getBigUint64(Number(ptr), true));
+    if (len !== memoryArray.values.length) {
+      throw new Error(`${testCase.name}: expected byte-array array length ${memoryArray.values.length}, got ${len}`);
+    }
+    memoryArray.values.forEach((expectedBytes, index) => {
+      const base = ptr + BigInt(8 * (1 + index * 3));
+      const bytePtr = view.getBigUint64(Number(base + 8n), true);
+      const byteLen = view.getBigUint64(Number(base + 16n), true);
+      if (byteLen !== BigInt(expectedBytes.length)) {
+        throw new Error(`${testCase.name}: expected byte-array[${index}] length ${expectedBytes.length}, got ${byteLen}`);
+      }
+      const bytes = new Uint8Array(instance.exports.memory.buffer, Number(bytePtr), Number(byteLen));
+      expectedBytes.forEach((expected, byteIndex) => {
+        if (bytes[byteIndex] !== expected) {
+          throw new Error(`${testCase.name}: expected byte-array[${index}][${byteIndex}] ${expected}, got ${bytes[byteIndex]}`);
+        }
+      });
+    });
+  }
+  for (const memoryArray of testCase.memoryNestedU64Arrays || []) {
+    const ptr = actualSlots[memoryArray.resultIndex];
+    const len = Number(view.getBigUint64(Number(ptr), true));
+    if (len !== memoryArray.values.length) {
+      throw new Error(`${testCase.name}: expected nested array length ${memoryArray.values.length}, got ${len}`);
+    }
+    memoryArray.values.forEach((expectedRow, index) => {
+      const base = ptr + BigInt(8 * (1 + index * 2));
+      const rowPtr = view.getBigUint64(Number(base + 8n), true);
+      const row = readU64Array(view, rowPtr);
+      if (row.length !== expectedRow.length) {
+        throw new Error(`${testCase.name}: expected row ${index} length ${expectedRow.length}, got ${row.length}`);
+      }
+      row.forEach((actual, valueIndex) => {
+        if (actual !== expectedRow[valueIndex]) {
+          throw new Error(`${testCase.name}: expected row ${index}[${valueIndex}] ${expectedRow[valueIndex]}, got ${actual}`);
+        }
+      });
+    });
+  }
+  for (const memoryArray of testCase.memoryByteOutputStateArrays || []) {
+    const ptr = actualSlots[memoryArray.resultIndex];
+    const len = Number(view.getBigUint64(Number(ptr), true));
+    if (len !== memoryArray.values.length) {
+      throw new Error(`${testCase.name}: expected ByteOutputState array length ${memoryArray.values.length}, got ${len}`);
+    }
+    memoryArray.values.forEach((expectedState, index) => {
+      const base = ptr + BigInt(8 * (1 + index * 4));
+      const count = view.getBigUint64(Number(base), true);
+      const bytePtr = view.getBigUint64(Number(base + 16n), true);
+      const byteLen = view.getBigUint64(Number(base + 24n), true);
+      if (count !== expectedState.count) {
+        throw new Error(`${testCase.name}: expected state ${index} count ${expectedState.count}, got ${count}`);
+      }
+      if (byteLen !== BigInt(expectedState.bytes.length)) {
+        throw new Error(`${testCase.name}: expected state ${index} byte length ${expectedState.bytes.length}, got ${byteLen}`);
+      }
+      const bytes = new Uint8Array(instance.exports.memory.buffer, Number(bytePtr), Number(byteLen));
+      expectedState.bytes.forEach((expected, byteIndex) => {
+        if (bytes[byteIndex] !== expected) {
+          throw new Error(`${testCase.name}: expected state ${index} byte ${byteIndex} ${expected}, got ${bytes[byteIndex]}`);
+        }
+      });
+    });
+  }
+  for (const memoryArray of testCase.memoryArrayBoxArrays || []) {
+    const ptr = actualSlots[memoryArray.resultIndex];
+    const len = Number(view.getBigUint64(Number(ptr), true));
+    if (len !== memoryArray.values.length) {
+      throw new Error(`${testCase.name}: expected ArrayBox array length ${memoryArray.values.length}, got ${len}`);
+    }
+    memoryArray.values.forEach((expectedBox, index) => {
+      const base = ptr + BigInt(8 * (1 + index * 3));
+      const valuesPtr = view.getBigUint64(Number(base + 8n), true);
+      const count = view.getBigUint64(Number(base + 16n), true);
+      const values = readU64Array(view, valuesPtr);
+      if (count !== expectedBox.count) {
+        throw new Error(`${testCase.name}: expected box ${index} count ${expectedBox.count}, got ${count}`);
+      }
+      if (values.length !== expectedBox.values.length) {
+        throw new Error(`${testCase.name}: expected box ${index} values length ${expectedBox.values.length}, got ${values.length}`);
+      }
+      values.forEach((actual, valueIndex) => {
+        if (actual !== expectedBox.values[valueIndex]) {
+          throw new Error(`${testCase.name}: expected box ${index} value ${valueIndex} ${expectedBox.values[valueIndex]}, got ${actual}`);
+        }
+      });
+    });
+  }
+}
+
 async function runAccepted(testCase) {
   const out = path.join(outDir, `${testCase.name}.wasm`);
   const compiled = compile(testCase.name, out);
@@ -1082,7 +1351,8 @@ async function runAccepted(testCase) {
 
   let result;
   try {
-    result = fn(...testCase.args);
+    const args = testCase.args.map((arg) => materializeArg(instance.exports, arg));
+    result = fn(...args);
   } catch (error) {
     throw new Error(`${testCase.name}: unexpected trap: ${error.message}`);
   }
@@ -1100,38 +1370,12 @@ async function runAccepted(testCase) {
         throw new Error(`${testCase.name}: expected ${testCase.expected}, got ${actual}`);
       }
     }
-    for (const memoryArray of testCase.memoryArrays || []) {
-      const ptr = actual[memoryArray.resultIndex];
-      const view = new DataView(instance.exports.memory.buffer);
-      const len = view.getBigUint64(Number(ptr), true);
-      const expectedLength = memoryArray.length ?? memoryArray.values.length;
-      if (len !== BigInt(expectedLength)) {
-        throw new Error(`${testCase.name}: expected array length ${expectedLength}, got ${len}`);
-      }
-      for (let index = 0; index < memoryArray.values.length; index += 1) {
-        const cell = view.getBigUint64(Number(ptr + BigInt(8 * (index + 1))), true);
-        if (cell !== memoryArray.values[index]) {
-          throw new Error(`${testCase.name}: expected array[${index}] ${memoryArray.values[index]}, got ${cell}`);
-        }
-      }
-    }
-    for (const memoryBytes of testCase.memoryBytes || []) {
-      const ptr = actual[memoryBytes.resultIndex];
-      const len = actual[memoryBytes.lengthIndex];
-      const expectedLength = BigInt(memoryBytes.values.length);
-      if (len !== expectedLength) {
-        throw new Error(`${testCase.name}: expected byte length ${expectedLength}, got ${len}`);
-      }
-      const bytes = new Uint8Array(instance.exports.memory.buffer, Number(ptr), Number(len));
-      for (let index = 0; index < memoryBytes.values.length; index += 1) {
-        if (bytes[index] !== memoryBytes.values[index]) {
-          throw new Error(`${testCase.name}: expected byte[${index}] ${memoryBytes.values[index]}, got ${bytes[index]}`);
-        }
-      }
-    }
+    checkMemoryExpectations(testCase, instance, actual);
   } else {
     const actual = BigInt.asUintN(64, result);
-    if (actual !== testCase.expected) {
+    if (testCase.expected === null) {
+      checkMemoryExpectations(testCase, instance, [actual]);
+    } else if (actual !== testCase.expected) {
       throw new Error(`${testCase.name}: expected ${testCase.expected}, got ${actual}`);
     }
   }

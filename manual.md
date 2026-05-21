@@ -35,7 +35,7 @@ The report command is the first diagnostic tool.  It imports the module, expands
 Use these rules before reaching for more specific templates:
 
 - Use concrete runtime types: `UInt64`, `Nat`, `Bool`, `ByteArray`, `Array`, structures, nonrecursive inductives, `Option`, `Except`, and internal recursive inductives.
-- Keep public entry types ABI-friendly.  Recursive data, `List`, products, `PSum`, nested arrays, and arrays of recursive values are internal-only.
+- Keep public entry types ABI-friendly.  Recursive data, `List`, products, `PSum`, and arrays of recursive values are internal-only.  Public arrays may contain byte arrays, nested arrays, and structures or tagged values with fixed-width heap fields.
 - Keep helper definitions under the same root namespace as the module being compiled.
 - Use named helper declarations freely when their types are concrete and first-order.
 - Use `for` and `while` loops in `Id`, `Option`, or `Except` when the collection and accumulator types are supported.
@@ -52,7 +52,7 @@ Avoid these forms in source intended for LeanExe:
 - `unsafe`, `partial`, opaque executable constants, executable axioms, quotients, and arbitrary Lean runtime calls.
 - Escaping lambdas, function-valued fields, closure-valued helpers, and higher-order values that survive as runtime data.
 - Runtime-polymorphic public entries and shared generic runtime helper bodies.
-- Public recursive data structures, public `List`, public nested arrays, public arrays of `ByteArray`, and public arrays of recursive values.
+- Public recursive data structures, public `List`, and public arrays of recursive values.
 - Wildcard-heavy matches over recursive or large inductives when explicit arms make the accepted shape clearer.
 - Generic recursive JSON object decoders that hide the child-size proof from LeanExe's accepted well-founded-recursion shape.
 
@@ -361,7 +361,7 @@ Nested loops are accepted when each loop has a supported monad, collection, and 
 
 ## Arrays
 
-Use arrays when the element type has a fixed-width layout.  Public arrays cannot contain heap-reference fields such as `ByteArray`, nested arrays, or recursive data.  Internal arrays may contain `ByteArray`, nested arrays, recursive pointers, and structures or tagged values that contain those internal pointer fields.  A `ByteArray` element uses owner, pointer, and length slots internally; a nested array element uses owner and pointer slots internally.  Copied array elements retain compiler-owned child roots.
+Use arrays when the element type has a fixed-width layout.  Public arrays may contain heap-reference fields such as `ByteArray`, nested arrays, and structures or tagged values that contain those fields.  Public arrays cannot contain recursive inductive values.  Internal arrays may additionally contain recursive pointers, products, and structures or tagged values that contain recursive pointer fields.  A `ByteArray` element uses owner, pointer, and length slots; a nested array element uses owner and pointer slots.  Copied array elements retain compiler-owned child roots.
 
 Stable array operations include literals, `Array.size`, `isEmpty`, indexing, safe indexing, `getD`, `back?`, `push`, `pop`, `append`, `extract`, `set`, `set!`, `setIfInBounds`, `modify`, `insertIdx`, `eraseIdx`, `swap`, `reverse`, `map`, `filter`, `find?`, `findIdx?`, `any`, `all`, `foldl`, and `foldlM`.  Bang operations trap on invalid indexes.  Updates allocate fresh arrays and preserve Lean value semantics.
 
@@ -679,7 +679,7 @@ Common rejections and source fixes:
 | External Lean or Std dependency | Library function lacks a primitive or accepted specialization | Inline a first-order helper or use a supported operation. |
 | Type-class instance dependency in behavior | Runtime dispatch survived elaboration | Add concrete types, avoid overloaded helpers, or rewrite with direct operations. |
 | Unsupported recursion shape | Lean generated an unsupported recursor or well-founded helper | Use explicit fuel or direct structural recursion over the recursive argument. |
-| Public nested array rejection | Entry ABI contains heap-reference element fields | Keep nested arrays internal or expose bytes/scalars instead. |
+| Public recursive array rejection | Entry ABI contains recursive data inside an array element | Keep recursive data internal or serialize it through bytes. |
 
 Do not fix source by adding dummy effects, unsafe definitions, hidden runtime calls, or unchecked host assumptions.  A program accepted by LeanExe should have behavior explainable through the specification.  If a natural source shape repeatedly fails, reduce it to a small example and add it to the compiler test plan.
 
