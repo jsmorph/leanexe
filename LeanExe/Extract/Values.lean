@@ -2318,16 +2318,21 @@ def localLetOwnedNonrecursiveHeapSlots (ctx : Context) : LeanExe.IR.LocalLet →
 
 mutual
   partial def exprReleasedSlots : IRExpr → List Nat
-    | .release ptr => exprUsedSlots ptr
+    | .release ptr =>
+        addLiveSlots (exprUsedSlots ptr) (exprReleaseTargetSlots ptr)
     | .u64Bin _ left right => addLiveSlots (exprReleasedSlots left) (exprReleasedSlots right)
     | .ite cond thenValue elseValue =>
         addLiveSlots (condReleasedSlots cond)
           (addLiveSlots (exprReleasedSlots thenValue) (exprReleasedSlots elseValue))
-    | .letE _ value body => addLiveSlots (exprReleasedSlots value) (exprReleasedSlots body)
+    | .letE slot value body =>
+        let bodyReleased := exprReleasedSlots body
+        let aliasReleased :=
+          if bodyReleased.contains slot then exprReleaseTargetSlots value else []
+        addLiveSlots (exprReleasedSlots value) (addLiveSlots bodyReleased aliasReleased)
     | .letCall _ _ args body =>
         addLiveSlots (exprListReleasedSlots args) (exprReleasedSlots body)
     | .letLets lets body =>
-        addLiveSlots (localLetsReleasedSlots lets) (exprReleasedSlots body)
+        localLetsReleasedSlotsWithLater (exprReleasedSlots body) lets
     | .heapAllocSlots _ _ values => exprListReleasedSlots values
     | .heapLoadSlot ptr _ => exprReleasedSlots ptr
     | .arrayAllocSlots _ _ cells => exprReleasedSlots cells
@@ -2450,6 +2455,24 @@ mutual
     | .call _ args => exprListReleasedSlots args
     | .local _ | .trap | .u64 _ | .runtimeStat _ => []
 
+  partial def exprReleaseTargetSlots : IRExpr → List Nat
+    | .local slot => [slot]
+    | .release ptr =>
+        addLiveSlots (exprReleasedSlots ptr) (exprReleaseTargetSlots ptr)
+    | .ite cond thenValue elseValue =>
+        addLiveSlots (condReleasedSlots cond)
+          (addLiveSlots (exprReleaseTargetSlots thenValue) (exprReleaseTargetSlots elseValue))
+    | .letE slot value body =>
+        let bodyTargets := exprReleaseTargetSlots body
+        let aliasTargets :=
+          if bodyTargets.contains slot then exprReleaseTargetSlots value else []
+        addLiveSlots (exprReleasedSlots value) (addLiveSlots bodyTargets aliasTargets)
+    | .letCall _ _ args body =>
+        addLiveSlots (exprListReleasedSlots args) (exprReleaseTargetSlots body)
+    | .letLets lets body =>
+        localLetsReleasedSlotsWithLater (exprReleaseTargetSlots body) lets
+    | expr => exprUsedSlots expr
+
   partial def exprListReleasedSlots (exprs : List IRExpr) : List Nat :=
     exprs.foldl (fun acc expr => addLiveSlots acc (exprReleasedSlots expr)) []
 
@@ -2471,8 +2494,37 @@ mutual
         addLiveSlots (condReleasedSlots cond)
           (addLiveSlots (localLetsReleasedSlots thenLets) (localLetsReleasedSlots elseLets))
 
+  partial def localLetAliasReleasedSlots
+      (laterReleased : List Nat) :
+      LeanExe.IR.LocalLet → List Nat
+    | .expr slot value =>
+        if laterReleased.contains slot then exprReleaseTargetSlots value else []
+    | .slots slots values =>
+        (slots.zip values).foldl
+          (fun acc item =>
+            if laterReleased.contains item.fst then
+              addLiveSlots acc (exprReleaseTargetSlots item.snd)
+            else
+              acc)
+          []
+    | .call _ _ _ => []
+    | .branch _ thenLets elseLets =>
+        addLiveSlots
+          (localLetsReleasedSlotsWithLater laterReleased thenLets)
+          (localLetsReleasedSlotsWithLater laterReleased elseLets)
+
+  partial def localLetsReleasedSlotsWithLater
+      (laterReleased : List Nat) :
+      List LeanExe.IR.LocalLet → List Nat
+    | [] => laterReleased
+    | localLet :: rest =>
+        let restReleased := localLetsReleasedSlotsWithLater laterReleased rest
+        addLiveSlots restReleased
+          (addLiveSlots (localLetReleasedSlots localLet)
+            (localLetAliasReleasedSlots restReleased localLet))
+
   partial def localLetsReleasedSlots (lets : List LeanExe.IR.LocalLet) : List Nat :=
-    lets.foldl (fun acc letValue => addLiveSlots acc (localLetReleasedSlots letValue)) []
+    localLetsReleasedSlotsWithLater [] lets
 end
 
 def intersectLiveSlots (left right : List Nat) : List Nat :=
@@ -2718,12 +2770,15 @@ mutual
     | .heapVariant _ ptr => exprReleasedSlots ptr
     | .ite _ thenValue elseValue =>
         addLiveSlots (valueReleasedSlots thenValue) (valueReleasedSlots elseValue)
-    | .letE _ value body =>
-        addLiveSlots (exprReleasedSlots value) (valueReleasedSlots body)
+    | .letE slot value body =>
+        let bodyReleased := valueReleasedSlots body
+        let aliasReleased :=
+          if bodyReleased.contains slot then exprReleaseTargetSlots value else []
+        addLiveSlots (exprReleasedSlots value) (addLiveSlots bodyReleased aliasReleased)
     | .letCall _ _ args body =>
         addLiveSlots (exprListReleasedSlots args) (valueReleasedSlots body)
     | .letLocal lets body =>
-        addLiveSlots (localLetsReleasedSlots lets) (valueReleasedSlots body)
+        localLetsReleasedSlotsWithLater (valueReleasedSlots body) lets
 
   partial def valueListReleasedSlots (values : List ExtractedValue) : List Nat :=
     values.foldl (fun acc value => addLiveSlots acc (valueReleasedSlots value)) []
@@ -2999,7 +3054,7 @@ def assignResultExprWithOwnedReleases
       let bodyStmt := assignResultExprWithOwnedReleases ctx canReleaseOwnedTemps target body
       let stmt := .seq (localLetStmtListOptimized lets) bodyStmt
       if canReleaseOwnedTemps then
-        let released := addLiveSlots (localLetsReleasedSlots lets) (exprReleasedSlots body)
+        let released := localLetsReleasedSlotsWithLater (exprReleasedSlots body) lets
         let ownerSlots :=
           addLiveSlots
             (lets.flatMap localLetOwnedHeapSlots)
@@ -3075,7 +3130,7 @@ partial def materializeResultValue
       let bodyStmt ← materializeResultValue ctx useAbi ty targets body
       let stmt := .seq (localLetStmtListOptimized kept) bodyStmt
       if canReleaseOwnedTemps then
-        let released := addLiveSlots (localLetsReleasedSlots kept) (valueReleasedSlots body)
+        let released := localLetsReleasedSlotsWithLater (valueReleasedSlots body) kept
         let returnedOwnerSlots := valueReleaseOwnerLocalSlots body
         let ownerSlots :=
           addLiveSlots
@@ -3086,7 +3141,7 @@ partial def materializeResultValue
             releaseSlotAllowedForResult canReleaseOwnedTemps returnedOwnerSlots slot &&
               !released.contains slot))
       else
-        let released := addLiveSlots (localLetsReleasedSlots kept) (valueReleasedSlots body)
+        let released := localLetsReleasedSlotsWithLater (valueReleasedSlots body) kept
         let returnedOwnerSlots := valueReleaseOwnerLocalSlots body
         let ownerSlots := kept.flatMap (localLetOwnedNonrecursiveHeapSlots ctx)
         .ok (appendDistinctReleases stmt

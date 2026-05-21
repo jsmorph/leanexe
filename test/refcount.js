@@ -72,6 +72,7 @@ function checkSourceReleaseStats() {
   ];
   for (const [kind, expected] of recursiveCases) {
     expectI64(correctnessModule, "recursiveScenarioRuntimeReleaseStats", expected, [host.i64(kind)]);
+    expectI64(correctnessModule, "recursiveScenarioHelperRuntimeReleaseStats", expected, [host.i64(kind)]);
   }
 }
 
@@ -146,7 +147,7 @@ function main() {
   checkBorrowedArrayNoopRelease();
   checkCompilerReleasesOwnedCallResults();
   checkCompilerReleasesFoldAccumulators();
-  process.stdout.write("checked 34 refcount cases\n");
+  process.stdout.write("checked 37 refcount cases\n");
 }
 
 try {

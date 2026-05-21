@@ -43,6 +43,17 @@ function ownershipReport(moduleName, entryName) {
   ]);
 }
 
+function exportSection(report, exportName) {
+  const marker = `export: ${exportName}`;
+  const markerIndex = report.indexOf(marker);
+  if (markerIndex < 0) {
+    throw new Error(`${exportName}: missing export section`);
+  }
+  const start = report.lastIndexOf("\n[", markerIndex);
+  const end = report.indexOf("\n[", markerIndex + marker.length);
+  return report.slice(start < 0 ? markerIndex : start, end < 0 ? report.length : end);
+}
+
 function checkOptionByteArrayLoop() {
   const entry = `${correctnessModule}.optionForByteArrayOutputReleaseStats`;
   const report = ownershipReport(correctnessModule, entry);
@@ -109,13 +120,22 @@ function checkHeapBearingArrayFoldAccumulators() {
   }
 }
 
+function checkExplicitRecursiveReleaseSuppressesCompilerRelease() {
+  const entry = `${correctnessModule}.recursiveScenarioHelperRuntimeReleaseStats`;
+  const report = ownershipReport(correctnessModule, entry);
+  const section = exportSection(report, "recursiveScenarioHelperRuntimeReleaseStats");
+  assertContains(section, "compiler statement releases: none", entry);
+  assertContains(section, "explicit release expressions: 1", entry);
+}
+
 function main() {
   checkOptionByteArrayLoop();
   checkExceptByteArrayLoop();
   checkOptionByteArrayStateLoop();
   checkJsonTreeOutFile();
   checkHeapBearingArrayFoldAccumulators();
-  process.stdout.write("checked 7 ownership report cases\n");
+  checkExplicitRecursiveReleaseSuppressesCompilerRelease();
+  process.stdout.write("checked 8 ownership report cases\n");
 }
 
 try {
