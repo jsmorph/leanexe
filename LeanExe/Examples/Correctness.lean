@@ -1492,6 +1492,15 @@ structure U64BinaryBox where
   tree : U64Binary
   label : UInt64
 
+structure U64BinaryPairBox where
+  left : U64Binary
+  right : U64Binary
+  marker : UInt64
+
+inductive U64BinaryPairSlot where
+  | empty : U64BinaryPairSlot
+  | pair : U64Binary → U64Binary → U64BinaryPairSlot
+
 def u64BinaryBoxValue : U64BinaryBox :=
   { tree := u64BinaryMirror u64BinaryValue, label := 7 }
 
@@ -1500,6 +1509,49 @@ def u64BinaryBoxScore (box : U64BinaryBox) : UInt64 :=
 
 def u64BinaryBoxScoreDemo : UInt64 :=
   u64BinaryBoxScore u64BinaryBoxValue
+
+def u64BinarySharedChildScore : UInt64 :=
+  let child := U64Binary.node (U64Binary.leaf 1) (U64Binary.leaf 2)
+  let tree := U64Binary.node child child
+  u64BinaryNodeCount tree * 10000 + u64BinaryHeight tree * 100 + u64BinaryLeafSum tree
+
+def u64BinaryLeftSubtree? : U64Binary → Option U64Binary
+  | .leaf _ => none
+  | .node left _right => some left
+
+def u64BinaryReturnedSubtreeAliasScore : UInt64 :=
+  let shared := U64Binary.node (U64Binary.leaf 8) (U64Binary.leaf 9)
+  let tree := U64Binary.node shared shared
+  match u64BinaryLeftSubtree? tree with
+  | none => 0
+  | some left => u64BinaryNodeCount left * 100 + u64BinaryLeafSum left
+
+def u64BinarySharedArrayScore : UInt64 :=
+  let child := U64Binary.node (U64Binary.leaf 2) (U64Binary.leaf 3)
+  let values := #[child, child, U64Binary.leaf 4]
+  values.foldl
+    (fun acc tree => acc + u64BinaryNodeCount tree * 100 + u64BinaryLeafSum tree)
+    0
+
+def u64BinarySharedStructAliasScore : UInt64 :=
+  let child := U64Binary.node (U64Binary.leaf 5) (U64Binary.leaf 6)
+  let box : U64BinaryPairBox := { left := child, right := child, marker := 7 }
+  u64BinaryNodeCount box.left * 10000 +
+    u64BinaryNodeCount box.right * 100 +
+    u64BinaryLeafSum box.left +
+    u64BinaryLeafSum box.right +
+    box.marker
+
+def u64BinarySharedTaggedAliasScore : UInt64 :=
+  let child := U64Binary.node (U64Binary.leaf 10) (U64Binary.leaf 11)
+  let slot := U64BinaryPairSlot.pair child child
+  match slot with
+  | .empty => 1
+  | .pair left right =>
+      u64BinaryNodeCount left * 10000 +
+        u64BinaryNodeCount right * 100 +
+        u64BinaryLeafSum left +
+        u64BinaryLeafSum right
 
 def u64BinaryBoxBytes (box : U64BinaryBox) : ByteArray :=
   let out := "Box(".toUTF8

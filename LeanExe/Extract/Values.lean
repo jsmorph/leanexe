@@ -2351,21 +2351,73 @@ end
 def exprReturnsOwnedHeapObject (expr : IRExpr) : Bool :=
   exprReturnsOwnedHeapObjectFrom [] expr
 
-def exprReturnsOwnedNonrecursiveHeapObject : IRExpr → Bool
-  | .arrayAllocSlots .. => true
-  | .arrayReplicateSlots .. => true
-  | .arraySetSlots .. => true
-  | .arrayPushSlots .. => true
-  | .arrayAppendSlots .. => true
-  | .arrayExtractSlots .. => true
-  | .arrayMapSlots .. => true
-  | .arrayFilterSlots .. => true
-  | .byteArrayPushPtr .. => true
-  | .byteArrayAppendPtr .. => true
-  | .byteArraySetPtr .. => true
-  | .byteArrayFromArrayPtr .. => true
-  | .byteArrayCopySlicePtr .. => true
-  | _ => false
+partial def localLetTargetSlots : LeanExe.IR.LocalLet → List Nat
+  | .expr slot _ => [slot]
+  | .slots slots _ => slots
+  | .call slots _ _ => slots
+  | .branch _ thenLets elseLets =>
+      addLiveSlots (thenLets.flatMap localLetTargetSlots) (elseLets.flatMap localLetTargetSlots)
+
+mutual
+  partial def exprReturnsOwnedNonrecursiveHeapObjectFrom (ownedLocals : List Nat) :
+      IRExpr → Bool
+    | .local slot => ownedLocals.contains slot
+    | .letE slot value body =>
+        let valueOwned := exprReturnsOwnedNonrecursiveHeapObjectFrom ownedLocals value
+        let nextOwned :=
+          if valueOwned then
+            addLiveSlot (removeLiveSlot ownedLocals slot) slot
+          else
+            removeLiveSlot ownedLocals slot
+        exprReturnsOwnedNonrecursiveHeapObjectFrom nextOwned body
+    | .letCall slots _ _ body =>
+        exprReturnsOwnedNonrecursiveHeapObjectFrom (removeLiveSlots ownedLocals slots) body
+    | .letLets lets body =>
+        exprReturnsOwnedNonrecursiveHeapObjectFrom
+          (ownedNonrecursiveHeapLocalsFromLocalLets ownedLocals lets)
+          body
+    | .ite _ thenValue elseValue =>
+        exprReturnsOwnedNonrecursiveHeapObjectFrom ownedLocals thenValue &&
+          exprReturnsOwnedNonrecursiveHeapObjectFrom ownedLocals elseValue
+    | .arrayAllocSlots .. => true
+    | .arrayReplicateSlots .. => true
+    | .arraySetSlots .. => true
+    | .arrayPushSlots .. => true
+    | .arrayAppendSlots .. => true
+    | .arrayExtractSlots .. => true
+    | .arrayMapSlots .. => true
+    | .arrayFilterSlots .. => true
+    | .byteArrayPushPtr .. => true
+    | .byteArrayAppendPtr .. => true
+    | .byteArraySetPtr .. => true
+    | .byteArrayFromArrayPtr .. => true
+    | .byteArrayCopySlicePtr .. => true
+    | _ => false
+
+  partial def localLetOwnedNonrecursiveHeapSlotsFrom
+      (ownedLocals : List Nat) :
+      LeanExe.IR.LocalLet → List Nat
+    | .expr slot expr =>
+        if exprReturnsOwnedNonrecursiveHeapObjectFrom ownedLocals expr then [slot] else []
+    | .slots slots values =>
+        (slots.zip values).filterMap fun item =>
+          if exprReturnsOwnedNonrecursiveHeapObjectFrom ownedLocals item.snd then some item.fst else none
+    | .call _ _ _ => []
+    | .branch _ _ _ => []
+
+  partial def ownedNonrecursiveHeapLocalsFromLocalLets
+      (ownedLocals : List Nat)
+      (lets : List LeanExe.IR.LocalLet) :
+      List Nat :=
+    lets.foldl
+      (fun owned localLet =>
+        addLiveSlots (removeLiveSlots owned (localLetTargetSlots localLet))
+          (localLetOwnedNonrecursiveHeapSlotsFrom owned localLet))
+      ownedLocals
+end
+
+def exprReturnsOwnedNonrecursiveHeapObject (expr : IRExpr) : Bool :=
+  exprReturnsOwnedNonrecursiveHeapObjectFrom [] expr
 
 def ownedChildMaskForSlots (childMask : Nat) (slots : List IRExpr) : Nat :=
   let rec loop : Nat → List IRExpr → Nat → Nat
@@ -2446,18 +2498,6 @@ def ownedChildMaskForStrictSlotsWithSummaries
     (slots : StrictSlots) :
     Nat :=
   ownedChildMaskForSlotsWithLetsWithSummaries summaries childMask slots.lets slots.slots
-
-def localLetOwnedHeapSlots : LeanExe.IR.LocalLet → List Nat
-  | .expr slot expr => if exprReturnsOwnedHeapObject expr then [slot] else []
-  | .slots slots values =>
-      (slots.zip values).filterMap fun item =>
-        if exprReturnsOwnedHeapObject item.snd then some item.fst else none
-  | .call _ _ _ => []
-  | .branch _ _ _ => []
-
-def localLetCallReleaseOwnerSlots (ctx : Context) : LeanExe.IR.LocalLet → List Nat
-  | .call slots index _ => callResultReleaseOwnerSlots ctx index slots
-  | _ => []
 
 def localLetOwnedNonrecursiveHeapSlots (ctx : Context) : LeanExe.IR.LocalLet → List Nat
   | .expr slot expr => if exprReturnsOwnedNonrecursiveHeapObject expr then [slot] else []
@@ -3227,7 +3267,7 @@ def assignResultExprWithOwnedReleases
       let bodyStmt := assignResultExprWithOwnedReleases ctx canReleaseOwnedTemps target body
       let stmt := .seq (.assign slot value) bodyStmt
       if canReleaseOwnedTemps &&
-          exprReturnsOwnedHeapObject value &&
+          exprReturnsOwnedNonrecursiveHeapObject value &&
           !slotReleasedByExpr slot body &&
           !exprReturnsLocalSlot slot body then
         .seq stmt (.release (.local slot))
@@ -3249,12 +3289,9 @@ def assignResultExprWithOwnedReleases
       let stmt := .seq (localLetStmtListOptimized lets) bodyStmt
       if canReleaseOwnedTemps then
         let released := localLetsReleasedSlotsWithLater (exprReleasedSlots body) lets
-        let ownerSlots :=
-          addLiveSlots
-            (lets.flatMap localLetOwnedHeapSlots)
-            (lets.flatMap (localLetCallReleaseOwnerSlots ctx))
         appendDistinctReleases stmt
-          (ownerSlots.filter fun slot => !released.contains slot)
+          ((lets.flatMap (localLetOwnedNonrecursiveHeapSlots ctx)).filter fun slot =>
+            !released.contains slot)
       else
         stmt
   | _ => .assign target expr
@@ -3544,11 +3581,7 @@ partial def materializeResultValue
       let bodyStmt ← materializeResultValue ctx useAbi ty targets body nextSources
       let stmt := .seq (.assign slot expr) bodyStmt
       let returnedOwnerSlots := valueReleaseOwnerLocalSlots body
-      let exprOwned :=
-        if canReleaseOwnedTemps then
-          exprReturnsOwnedHeapObject expr
-        else
-          exprReturnsOwnedNonrecursiveHeapObject expr
+      let exprOwned := exprReturnsOwnedNonrecursiveHeapObject expr
       if exprOwned &&
           releaseSlotAllowedForResult canReleaseOwnedTemps returnedOwnerSlots slot &&
           !slotReleasedByValue slot body then
@@ -3564,13 +3597,14 @@ partial def materializeResultValue
       if canReleaseOwnedTemps then
         let released := valueReleasedSlots body
         let returnedOwnerSlots := valueReleaseOwnerLocalSlots body
+        let nonrecursiveSlots := callResultNonrecursiveReleaseOwnerSlots ctx index slots
         let bodyOwnerSlots :=
           (valueReleaseOwnerLocalSlots body).filter fun slot =>
-            slots.contains slot &&
+            nonrecursiveSlots.contains slot &&
               releaseSlotAllowedForResult canReleaseOwnedTemps returnedOwnerSlots slot &&
               !released.contains slot
         let resultOwnerSlots :=
-          (callResultReleaseOwnerSlots ctx index slots).filter fun slot =>
+          nonrecursiveSlots.filter fun slot =>
             releaseSlotAllowedForResult canReleaseOwnedTemps returnedOwnerSlots slot &&
               !released.contains slot
         let ownerSlots := addLiveSlots bodyOwnerSlots resultOwnerSlots
@@ -3594,10 +3628,7 @@ partial def materializeResultValue
       if canReleaseOwnedTemps then
         let released := localLetsReleasedSlotsWithLater (valueReleasedSlots body) kept
         let returnedOwnerSlots := valueReleaseOwnerLocalSlots body
-        let ownerSlots :=
-          addLiveSlots
-            (kept.flatMap localLetOwnedHeapSlots)
-            (kept.flatMap (localLetCallReleaseOwnerSlots ctx))
+        let ownerSlots := kept.flatMap (localLetOwnedNonrecursiveHeapSlots ctx)
         .ok (appendDistinctReleases stmt
           (ownerSlots.filter fun slot =>
             releaseSlotAllowedForResult canReleaseOwnedTemps returnedOwnerSlots slot &&
@@ -3622,10 +3653,7 @@ partial def materializeResultValue
         let stmt := localLetStmtListOptimized lets
         if canReleaseOwnedTemps then
           let released := localLetsReleasedSlots lets
-          let ownerSlots :=
-            addLiveSlots
-              (lets.flatMap localLetOwnedHeapSlots)
-              (lets.flatMap (localLetCallReleaseOwnerSlots ctx))
+          let ownerSlots := lets.flatMap (localLetOwnedNonrecursiveHeapSlots ctx)
           .ok (appendDistinctReleases stmt
             (ownerSlots.filter fun slot => !released.contains slot))
         else
