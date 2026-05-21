@@ -1,12 +1,28 @@
 # Development Journal
 
+## 2026-05-21: Wasmtime Setup and Targeted Reads
+
+`tools/download-wasmtime.sh` now downloads the Wasmtime CLI and matching C API archive into `build/tools/wasmtime`, using Wasmtime 44.0.0 and the detected Linux platform by default.  `tools/build-wasmtime-host.sh` derives the same version and platform, and still accepts `WASMTIME_C_API` for a custom C API package.  The repository-local Wasmtime setup is now reproducible from tracked tooling.
+
+The C host script mode no longer dumps the full WASM memory for ABI assertions.  It keeps the Wasmtime instance alive after the call, supports `read-u64` and `read-memory` commands that can refer to result slots and earlier reads, and exits through an explicit `done` command.  `test/core_correctness.js` now plans the memory ranges required by each expected heap result and checks those ranges through a sparse memory reader.
+
+Checks run:
+
+- [x] `tools/download-wasmtime.sh`
+- [x] `tools/build-wasmtime-host.sh`
+- [x] `node --check test/wasmtime_host.js`
+- [x] `node --check test/core_correctness.js`
+- [x] `node test/core_correctness.js` returned `checked 743 accepted, 29 rejected, and 13 trapped cases`.
+- [x] `node test/no_js_wasm_execution.js` returned `checked JavaScript WASM execution guard`.
+- [x] `node test/run_all.js` returned `checked 112 report classification cases`, `checked 7 ownership report cases`, `checked JavaScript WASM execution guard`, `checked 743 accepted, 29 rejected, and 13 trapped cases`, `checked 31 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 35 WASI program cases, 2 traps, and 7 rejections`, `checked 94 standard Lean comparison cases`, and `checked 56 cases`.
+
 ## 2026-05-21: Wasmtime Host Runner
 
 The test suite now has a small C host runner built against the Wasmtime C API.  The runner instantiates a compiled library-mode module with Wasmtime, materializes `i64` and `ByteArray` arguments through the module's exported `alloc`, calls one exported function, and prints either an `i64`, flattened result slots, or returned bytes as hex.  This removes JavaScript WASM execution from the byte-array allocation tests, ASCII-string tests, JSON byte-transform tests, and validator fuzz test while preserving host-memory argument and result coverage for those cases.
 
 The matching Wasmtime C API package for the existing CLI version is expected at `build/tools/wasmtime/wasmtime-v44.0.0-aarch64-linux-c-api`, or through `WASMTIME_C_API`.  `tools/build-wasmtime-host.sh` builds `build/tools/leanexe-wasmtime-host` from `tools/wasmtime-host.c`.  Node still orchestrates tests, but it no longer instantiates or executes WASM.
 
-The runner now also owns the same-instance reference-count checks that used to require JavaScript's embedded engine.  Its dedicated commands cover release reuse, retained-pointer delayed reuse, the `free` alias, allocator growth, reset-sensitive temporary reuse for byte-array and array inputs, no-argument temporary reuse, and scalar calls with `Array UInt64` and `ByteArray` arguments.  A script mode lets `test/core_correctness.js` construct arbitrary public ABI inputs through symbolic `alloc`, byte writes, slot writes, and argument commands, then receive flattened result slots and a memory dump for the existing ABI assertions.  `test/no_js_wasm_execution.js` now fails the suite if test or tool JavaScript reintroduces direct WASM execution references.
+The runner now also owns the same-instance reference-count checks that used to require JavaScript's embedded engine.  Its dedicated commands cover release reuse, retained-pointer delayed reuse, the `free` alias, allocator growth, reset-sensitive temporary reuse for byte-array and array inputs, no-argument temporary reuse, and scalar calls with `Array UInt64` and `ByteArray` arguments.  A script mode lets `test/core_correctness.js` construct arbitrary public ABI inputs through symbolic `alloc`, byte writes, slot writes, and argument commands, then receive flattened result slots and targeted memory ranges for ABI assertions.  `test/no_js_wasm_execution.js` now fails the suite if test or tool JavaScript reintroduces direct WASM execution references.
 
 Checks run:
 

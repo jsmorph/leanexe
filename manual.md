@@ -12,7 +12,7 @@ The main rule is simple: write concrete, first-order Lean.  Let Lean type-check 
 2. Build the module with Lake.
 3. Run `report` on the intended entry if the source uses arrays, recursion, JSON, structures, inductives, or byte arrays.
 4. Compile with the command mode that matches the entry type.
-5. Run the generated WASM with Wasmtime or instantiate it from a host program.
+5. Run the generated WASM with Wasmtime or from a host program built on the Wasmtime API.
 6. If compilation fails, simplify the source shape before adding compiler features.
 
 ```sh

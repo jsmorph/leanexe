@@ -9,10 +9,12 @@ The default generated module exports a plain WASM function for the selected Lean
 This repository uses Lean through `elan` and Lake.  The pinned Lean version lives in `lean-toolchain`, and Lake builds the `lean-wasm` executable.  Wasmtime runs scalar examples and WASI command examples from the command line.  The repository test suite uses a small C host runner built against the Wasmtime C API for library-mode ABI tests that need memory writes and memory inspection.
 
 ```sh
+tools/download-wasmtime.sh
 lake build
+tools/build-wasmtime-host.sh
 ```
 
-The full repository test suite expects the Wasmtime CLI at `build/tools/wasmtime/current/wasmtime` or a `WASMTIME` environment variable.  It also expects the matching Wasmtime C API package at `build/tools/wasmtime/wasmtime-v44.0.0-aarch64-linux-c-api`, or a `WASMTIME_C_API` environment variable.  Node orchestrates tests, but generated WASM executes through Wasmtime.
+`tools/download-wasmtime.sh` downloads the Wasmtime CLI and matching C API package for the detected Linux platform into `build/tools/wasmtime`.  It uses Wasmtime 44.0.0 by default.  `WASMTIME_VERSION` and `WASMTIME_PLATFORM` select a specific release artifact.  The full repository test suite expects the CLI at `build/tools/wasmtime/current/wasmtime` or a `WASMTIME` environment variable, and it expects the C API package at `build/tools/wasmtime/wasmtime-v44.0.0-<platform>-c-api` or a `WASMTIME_C_API` environment variable.  Node orchestrates tests, but generated WASM executes through Wasmtime.
 
 ```sh
 node test/run_all.js
@@ -283,17 +285,15 @@ node tools/compare-standard.js --self-test
   --out build/bytes.wasm
 ```
 
-```js
-import fs from "node:fs";
+```sh
+tools/build-wasmtime-host.sh
+build/tools/leanexe-wasmtime-host call build/bytes.wasm validateGeneric i64 bytes:3132333435
+```
 
-const bytes = fs.readFileSync("build/bytes.wasm");
-const { instance } = await WebAssembly.instantiate(bytes, {});
-const input = new TextEncoder().encode("12345");
-const ptr = Number(instance.exports.alloc(BigInt(input.length)));
-new Uint8Array(instance.exports.memory.buffer, ptr, input.length).set(input);
+The expected output is:
 
-const ok = instance.exports.validateGeneric(BigInt(ptr), BigInt(input.length));
-console.log(ok === 1n ? "accepted" : "rejected");
+```text
+1
 ```
 
 When a library-mode result points into module memory, read or copy the result before calling `release` or `reset`.  `release` decrements the object's reference count and returns the block to the runtime free list when the count reaches zero.  Public `ByteArray` results expose only pointer and length, so a returned slice may not be a releasable root pointer; use `reset` at a call boundary or release only when the program's result protocol guarantees a root pointer.  `reset` rewinds the whole heap and invalidates every old pointer, regardless of reference count.

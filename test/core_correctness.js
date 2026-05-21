@@ -1510,6 +1510,34 @@ function writeBytes(exports, values) {
   return ptr;
 }
 
+class SparseMemory {
+  constructor(chunks) {
+    this.chunks = chunks.map((chunk) => ({
+      start: pointer(chunk.start),
+      bytes: chunk.bytes,
+    }));
+  }
+
+  range(ptr, len) {
+    const start = pointer(ptr);
+    const length = Number(BigInt.asUintN(64, BigInt(len)));
+    const chunk = this.chunks.find((item) => start >= item.start && start + length <= item.start + item.bytes.length);
+    if (!chunk) {
+      throw new Error(`missing memory range ${start}+${length}`);
+    }
+    return chunk.bytes.slice(start - chunk.start, start - chunk.start + length);
+  }
+
+  u64(ptr) {
+    const bytes = this.range(ptr, 8n);
+    let value = 0n;
+    for (let index = 0; index < 8; index += 1) {
+      value |= BigInt(bytes[index]) << BigInt(index * 8);
+    }
+    return value;
+  }
+}
+
 function scalarLayout(name) {
   return {
     name,
@@ -1521,6 +1549,8 @@ function scalarLayout(name) {
     writeElementPlan(_plan, value) {
       return [{ kind: "u64", value: BigInt(value) }];
     },
+    readPublicPlan() {},
+    readElementPlan() {},
     writePublicSlots(_exports, value) {
       return [BigInt(value)];
     },
@@ -1553,6 +1583,12 @@ function makeByteArrayLayout() {
         { kind: "u64", value: BigInt(value.length) },
       ];
     },
+    readPublicPlan(plan, slots) {
+      plan.readMemory(slots[0], slots[1]);
+    },
+    readElementPlan(plan, slots) {
+      plan.readMemory(slots[1], slots[2]);
+    },
     writePublicSlots(exports, value) {
       const ptr = writeBytes(exports, value);
       return [BigInt(ptr), BigInt(value.length)];
@@ -1561,11 +1597,11 @@ function makeByteArrayLayout() {
       const ptr = writeBytes(exports, value);
       return [0n, BigInt(ptr), BigInt(value.length)];
     },
-    readPublicSlots(instance, slots) {
-      return readBytes(instance, slots[0], slots[1]);
+    readPublicSlots(memory, slots) {
+      return readBytes(memory, slots[0], slots[1]);
     },
-    readElementSlots(instance, slots) {
-      return readBytes(instance, slots[1], slots[2]);
+    readElementSlots(memory, slots) {
+      return readBytes(memory, slots[1], slots[2]);
     },
   };
 }
@@ -1584,17 +1620,23 @@ function arrayLayout(itemLayout) {
         { kind: "ptr", id: writeArrayRootPlan(plan, itemLayout, value) },
       ];
     },
+    readPublicPlan(plan, slots, value) {
+      readArrayRootPlan(plan, itemLayout, slots[0], value);
+    },
+    readElementPlan(plan, slots, value) {
+      readArrayRootPlan(plan, itemLayout, slots[1], value);
+    },
     writePublicSlots(exports, value) {
       return [BigInt(writeArrayRoot(exports, itemLayout, value))];
     },
     writeElementSlots(exports, value) {
       return [0n, BigInt(writeArrayRoot(exports, itemLayout, value))];
     },
-    readPublicSlots(instance, slots) {
-      return readArrayRoot(instance, itemLayout, slots[0]);
+    readPublicSlots(memory, slots) {
+      return readArrayRoot(memory, itemLayout, slots[0]);
     },
-    readElementSlots(instance, slots) {
-      return readArrayRoot(instance, itemLayout, slots[1]);
+    readElementSlots(memory, slots) {
+      return readArrayRoot(memory, itemLayout, slots[1]);
     },
   };
 }
@@ -1612,17 +1654,23 @@ function structLayout(fields) {
     writeElementPlan(plan, value) {
       return fields.flatMap((field) => field[1].writeElementPlan(plan, value[field[0]]));
     },
+    readPublicPlan(plan, slots, value) {
+      readStructPlan(plan, fields, slots, value, "publicSlots", "readPublicPlan");
+    },
+    readElementPlan(plan, slots, value) {
+      readStructPlan(plan, fields, slots, value, "elementSlots", "readElementPlan");
+    },
     writePublicSlots(exports, value) {
       return fields.flatMap((field) => field[1].writePublicSlots(exports, value[field[0]]));
     },
     writeElementSlots(exports, value) {
       return fields.flatMap((field) => field[1].writeElementSlots(exports, value[field[0]]));
     },
-    readPublicSlots(instance, slots) {
-      return readStructSlots(instance, fields, slots, "publicSlots", "readPublicSlots");
+    readPublicSlots(memory, slots) {
+      return readStructSlots(memory, fields, slots, "publicSlots", "readPublicSlots");
     },
-    readElementSlots(instance, slots) {
-      return readStructSlots(instance, fields, slots, "elementSlots", "readElementSlots");
+    readElementSlots(memory, slots) {
+      return readStructSlots(memory, fields, slots, "elementSlots", "readElementSlots");
     },
   };
 }
@@ -1640,17 +1688,23 @@ function variantLayout(ctors) {
     writeElementPlan(plan, value) {
       return writeVariantPlan(plan, ctors, value, "elementSlots", "writeElementPlan");
     },
+    readPublicPlan(plan, slots, value) {
+      readVariantPlan(plan, ctors, slots, value, "publicSlots", "readPublicPlan");
+    },
+    readElementPlan(plan, slots, value) {
+      readVariantPlan(plan, ctors, slots, value, "elementSlots", "readElementPlan");
+    },
     writePublicSlots(exports, value) {
       return writeVariantSlots(exports, ctors, value, "publicSlots", "writePublicSlots");
     },
     writeElementSlots(exports, value) {
       return writeVariantSlots(exports, ctors, value, "elementSlots", "writeElementSlots");
     },
-    readPublicSlots(instance, slots) {
-      return readVariantSlots(instance, ctors, slots, "publicSlots", "readPublicSlots");
+    readPublicSlots(memory, slots) {
+      return readVariantSlots(memory, ctors, slots, "publicSlots", "readPublicSlots");
     },
-    readElementSlots(instance, slots) {
-      return readVariantSlots(instance, ctors, slots, "elementSlots", "readElementSlots");
+    readElementSlots(memory, slots) {
+      return readVariantSlots(memory, ctors, slots, "elementSlots", "readElementSlots");
     },
   };
 }
@@ -1711,18 +1765,49 @@ function writeVariantSlots(exports, ctors, value, widthKey, writeKey) {
   return slots;
 }
 
-function readStructSlots(instance, fields, slots, widthKey, readKey) {
+function readStructPlan(plan, fields, slots, value, widthKey, readKey) {
+  let offset = 0;
+  for (const [name, layout] of fields) {
+    const width = layout[widthKey];
+    layout[readKey](plan, slots.slice(offset, offset + width), value[name]);
+    offset += width;
+  }
+}
+
+function readVariantPlan(plan, ctors, slots, value, widthKey, readKey) {
+  const tag = Number(value.tag);
+  if (tag < 0 || tag >= ctors.length) {
+    throw new Error(`variant tag ${tag} is outside constructor range`);
+  }
+  let offset = 1;
+  for (let ctorIndex = 0; ctorIndex < ctors.length; ctorIndex += 1) {
+    const fields = ctors[ctorIndex];
+    if (ctorIndex === tag && (value.fields || []).length !== fields.length) {
+      throw new Error(`variant tag ${tag} expected ${fields.length} fields`);
+    }
+    for (let fieldIndex = 0; fieldIndex < fields.length; fieldIndex += 1) {
+      const layout = fields[fieldIndex];
+      const width = layout[widthKey];
+      if (ctorIndex === tag) {
+        layout[readKey](plan, slots.slice(offset, offset + width), value.fields[fieldIndex]);
+      }
+      offset += width;
+    }
+  }
+}
+
+function readStructSlots(memory, fields, slots, widthKey, readKey) {
   const value = {};
   let offset = 0;
   for (const [name, layout] of fields) {
     const width = layout[widthKey];
-    value[name] = layout[readKey](instance, slots.slice(offset, offset + width));
+    value[name] = layout[readKey](memory, slots.slice(offset, offset + width));
     offset += width;
   }
   return value;
 }
 
-function readVariantSlots(instance, ctors, slots, widthKey, readKey) {
+function readVariantSlots(memory, ctors, slots, widthKey, readKey) {
   const tag = Number(BigInt.asUintN(64, slots[0]));
   const fields = [];
   let offset = 1;
@@ -1730,7 +1815,7 @@ function readVariantSlots(instance, ctors, slots, widthKey, readKey) {
     for (const layout of ctors[ctorIndex]) {
       const width = layout[widthKey];
       if (ctorIndex === tag) {
-        fields.push(layout[readKey](instance, slots.slice(offset, offset + width)));
+        fields.push(layout[readKey](memory, slots.slice(offset, offset + width)));
       }
       offset += width;
     }
@@ -1795,6 +1880,28 @@ class HostPlan {
   }
 }
 
+class ReadPlan {
+  constructor() {
+    this.commands = [];
+    this.nextId = 1;
+  }
+
+  result(index) {
+    return `result:${index}`;
+  }
+
+  readU64(ptrExpr, offset) {
+    const id = this.nextId;
+    this.nextId += 1;
+    this.commands.push(`read-u64 ${id} ${ptrExpr} ${offset}`);
+    return `u64:${id}`;
+  }
+
+  readMemory(ptrExpr, lenExpr) {
+    this.commands.push(`read-memory ${ptrExpr} ${lenExpr}`);
+  }
+}
+
 function writeArrayRootPlan(plan, itemLayout, values) {
   const width = itemLayout.elementSlots;
   const root = plan.alloc(8 + values.length * width * 8);
@@ -1812,23 +1919,35 @@ function writeArrayRootPlan(plan, itemLayout, values) {
   return root;
 }
 
-function readArrayRoot(instance, itemLayout, ptr) {
-  const view = new DataView(instance.exports.memory.buffer);
-  const length = Number(view.getBigUint64(Number(ptr), true));
+function readArrayRootPlan(plan, itemLayout, ptrExpr, values) {
+  const width = itemLayout.elementSlots;
+  plan.readMemory(ptrExpr, 8 + values.length * width * 8);
+  values.forEach((value, index) => {
+    const slots = [];
+    const base = 8 + index * width * 8;
+    for (let slot = 0; slot < width; slot += 1) {
+      slots.push(plan.readU64(ptrExpr, base + slot * 8));
+    }
+    itemLayout.readElementPlan(plan, slots, value);
+  });
+}
+
+function readArrayRoot(memory, itemLayout, ptr) {
+  const length = Number(memory.u64(ptr));
   const values = [];
   for (let index = 0; index < length; index += 1) {
     const slots = [];
     for (let slot = 0; slot < itemLayout.elementSlots; slot += 1) {
-      slots.push(view.getBigUint64(Number(ptr + BigInt(8 * (1 + index * itemLayout.elementSlots + slot))), true));
+      slots.push(memory.u64(ptr + BigInt(8 * (1 + index * itemLayout.elementSlots + slot))));
     }
-    values.push(itemLayout.readElementSlots(instance, slots));
+    values.push(itemLayout.readElementSlots(memory, slots));
   }
   return values;
 }
 
-function readBytes(instance, ptr, len) {
+function readBytes(memory, ptr, len) {
   const length = Number(BigInt.asUintN(64, len));
-  return Array.from(new Uint8Array(instance.exports.memory.buffer, Number(ptr), length));
+  return Array.from(memory.range(ptr, length));
 }
 
 function materializeArg(exports, arg) {
@@ -1887,17 +2006,34 @@ function assertAbiEqual(testName, path, actual, expected) {
   }
 }
 
-function checkMemoryExpectations(testCase, instance, actualSlots) {
-  const view = new DataView(instance.exports.memory.buffer);
+function memoryReadCommands(testCase) {
+  const plan = new ReadPlan();
+  for (const memoryArray of testCase.memoryArrays || []) {
+    const ptr = plan.result(memoryArray.resultIndex);
+    plan.readMemory(ptr, 8 + memoryArray.values.length * 8);
+  }
+  for (const memoryBytes of testCase.memoryBytes || []) {
+    plan.readMemory(plan.result(memoryBytes.resultIndex), plan.result(memoryBytes.lengthIndex));
+  }
+  for (const memoryValue of testCase.memoryValues || []) {
+    const slots = Array.from({ length: memoryValue.layout.publicSlots }, (_item, index) =>
+      plan.result(memoryValue.resultIndex + index),
+    );
+    memoryValue.layout.readPublicPlan(plan, slots, memoryValue.value);
+  }
+  return plan.commands;
+}
+
+function checkMemoryExpectations(testCase, memory, actualSlots) {
   for (const memoryArray of testCase.memoryArrays || []) {
     const ptr = actualSlots[memoryArray.resultIndex];
-    const len = view.getBigUint64(Number(ptr), true);
+    const len = memory.u64(ptr);
     const expectedLength = memoryArray.length ?? memoryArray.values.length;
     if (len !== BigInt(expectedLength)) {
       throw new Error(`${testCase.name}: expected array length ${expectedLength}, got ${len}`);
     }
     for (let index = 0; index < memoryArray.values.length; index += 1) {
-      const cell = view.getBigUint64(Number(ptr + BigInt(8 * (index + 1))), true);
+      const cell = memory.u64(ptr + BigInt(8 * (index + 1)));
       if (cell !== memoryArray.values[index]) {
         throw new Error(`${testCase.name}: expected array[${index}] ${memoryArray.values[index]}, got ${cell}`);
       }
@@ -1910,7 +2046,7 @@ function checkMemoryExpectations(testCase, instance, actualSlots) {
     if (len !== expectedLength) {
       throw new Error(`${testCase.name}: expected byte length ${expectedLength}, got ${len}`);
     }
-    const bytes = new Uint8Array(instance.exports.memory.buffer, Number(ptr), Number(len));
+    const bytes = memory.range(ptr, len);
     for (let index = 0; index < memoryBytes.values.length; index += 1) {
       if (bytes[index] !== memoryBytes.values[index]) {
         throw new Error(`${testCase.name}: expected byte[${index}] ${memoryBytes.values[index]}, got ${bytes[index]}`);
@@ -1922,7 +2058,7 @@ function checkMemoryExpectations(testCase, instance, actualSlots) {
       memoryValue.resultIndex,
       memoryValue.resultIndex + memoryValue.layout.publicSlots,
     );
-    const actual = memoryValue.layout.readPublicSlots(instance, slots);
+    const actual = memoryValue.layout.readPublicSlots(memory, slots);
     assertAbiEqual(testCase.name, `result[${memoryValue.resultIndex}]`, actual, memoryValue.value);
   }
 }
@@ -1941,15 +2077,15 @@ async function runAccepted(testCase) {
     (testCase.memoryValues || []).length > 0;
   const needsPlan = needsMemory || testCase.args.some((arg) => arg && typeof arg === "object" && arg.layout);
   let actualSlots;
-  let instance = null;
+  let memory = null;
 
   if (needsPlan) {
     const plan = new HostPlan();
     testCase.args.forEach((arg) => materializeArgPlan(plan, arg));
-    const result = host.script(out, plan.commands, testCase.name, resultCount, needsMemory);
+    const result = host.script(out, plan.commands, testCase.name, resultCount, memoryReadCommands(testCase));
     actualSlots = result.slots.map((slot) => BigInt.asUintN(64, slot));
     if (needsMemory) {
-      instance = { exports: { memory: { buffer: result.memory } } };
+      memory = new SparseMemory(result.memoryChunks);
     }
   } else if (Array.isArray(testCase.expected)) {
     const output = host.call(
@@ -1974,11 +2110,11 @@ async function runAccepted(testCase) {
       }
     }
     if (needsMemory) {
-      checkMemoryExpectations(testCase, instance, actualSlots);
+      checkMemoryExpectations(testCase, memory, actualSlots);
     }
   } else {
     if (testCase.expected === null) {
-      checkMemoryExpectations(testCase, instance, actualSlots);
+      checkMemoryExpectations(testCase, memory, actualSlots);
     } else if (actualSlots[0] !== testCase.expected) {
       throw new Error(`${testCase.name}: expected ${testCase.expected}, got ${actualSlots[0]}`);
     }
