@@ -1202,6 +1202,14 @@ inductive ExprSlot where
   | empty : ExprSlot
   | filled : UInt64 → U64Expr → ExprSlot
 
+structure RecursiveArrayBox where
+  values : Array U64List
+  marker : UInt64
+
+inductive RecursiveArraySlot where
+  | empty : RecursiveArraySlot
+  | values : Array U64List -> RecursiveArraySlot
+
 mutual
 inductive MutJson where
   | null : MutJson
@@ -1674,6 +1682,22 @@ def rejectRecursiveStructParam (box : ExprBox) : UInt64 :=
 
 def rejectRecursiveTaggedParam (slot : ExprSlot) : UInt64 :=
   exprSlotScore slot
+
+def rejectRecursiveOptionArrayParam (value : Option (Array U64List)) : UInt64 :=
+  match value with
+  | none => 0
+  | some xs => xs.size.toUInt64
+
+def rejectRecursiveOptionArrayReturn : Option (Array U64List) :=
+  some #[u64List123]
+
+def rejectRecursiveStructArrayParam (box : RecursiveArrayBox) : UInt64 :=
+  box.marker + box.values.size.toUInt64
+
+def rejectRecursiveTaggedArrayParam (slot : RecursiveArraySlot) : UInt64 :=
+  match slot with
+  | .empty => 0
+  | .values xs => xs.size.toUInt64
 
 def rejectMutualJsonParam (json : MutJson) : UInt64 :=
   mutJsonObjectScore json
@@ -5041,6 +5065,74 @@ def publicNestedTaggedArrayParam (value : Option (Array (Option ByteArray))) : U
   | none => 99
   | some values =>
       values.foldl (fun acc item => acc + publicOptionByteArrayScore item) 0
+
+def optionByteArrayArrayRuntimeReleaseFrees : UInt64 :=
+  let values : Array (Option ByteArray) :=
+    #[some "A".toUTF8, none, some "BC".toUTF8]
+  let before := LeanExe.Runtime.freeCount
+  let releasesBefore := LeanExe.Runtime.releaseCount
+  let after := LeanExe.Runtime.release values
+  (LeanExe.Runtime.releaseCount - releasesBefore) * 100 + (after - before)
+
+def publicTokenArrayRuntimeReleaseFrees : UInt64 :=
+  let values : Array PublicToken :=
+    #[PublicToken.text "A".toUTF8, PublicToken.number 7, PublicToken.text "BC".toUTF8]
+  let before := LeanExe.Runtime.freeCount
+  let releasesBefore := LeanExe.Runtime.releaseCount
+  let after := LeanExe.Runtime.release values
+  (LeanExe.Runtime.releaseCount - releasesBefore) * 100 + (after - before)
+
+def byteArrayGroupArrayRuntimeReleaseFrees : UInt64 :=
+  let values : Array ByteArrayGroup :=
+    #[
+      { values := #["A".toUTF8, "BC".toUTF8], marker := 2 },
+      { values := #["D".toUTF8], marker := 3 }
+    ]
+  let before := LeanExe.Runtime.freeCount
+  let releasesBefore := LeanExe.Runtime.releaseCount
+  let after := LeanExe.Runtime.release values
+  (LeanExe.Runtime.releaseCount - releasesBefore) * 100 + (after - before)
+
+def arrayFoldOptionByteArrayAccumulatorReleaseStats : UInt64 :=
+  let before := LeanExe.Runtime.freeCount
+  let releasesBefore := LeanExe.Runtime.releaseCount
+  let output :=
+    (#[65, 66, 67] : Array UInt64).foldl
+      (fun acc value =>
+        acc.push (some (ByteArray.empty.push (UInt64.toUInt8 value))))
+      (#[] : Array (Option ByteArray))
+  let releasesAfterFold := LeanExe.Runtime.releaseCount - releasesBefore
+  let freesAfterFold := LeanExe.Runtime.freeCount - before
+  output.size.toUInt64 * 10000 + releasesAfterFold * 100 + freesAfterFold
+
+def arrayFoldPublicTokenAccumulatorReleaseStats : UInt64 :=
+  let before := LeanExe.Runtime.freeCount
+  let releasesBefore := LeanExe.Runtime.releaseCount
+  let output :=
+    (#[65, 66, 67] : Array UInt64).foldl
+      (fun acc value =>
+        if value == 66 then
+          acc.push (PublicToken.number value)
+        else
+          acc.push (PublicToken.text (ByteArray.empty.push (UInt64.toUInt8 value))))
+      (#[] : Array PublicToken)
+  let releasesAfterFold := LeanExe.Runtime.releaseCount - releasesBefore
+  let freesAfterFold := LeanExe.Runtime.freeCount - before
+  output.size.toUInt64 * 10000 + releasesAfterFold * 100 + freesAfterFold
+
+def arrayFoldByteArrayGroupAccumulatorReleaseStats : UInt64 :=
+  let before := LeanExe.Runtime.freeCount
+  let releasesBefore := LeanExe.Runtime.releaseCount
+  let output :=
+    (#[65, 66, 67] : Array UInt64).foldl
+      (fun acc value =>
+        acc.push
+          ({ values := #[ByteArray.empty.push (UInt64.toUInt8 value)],
+             marker := value } : ByteArrayGroup))
+      (#[] : Array ByteArrayGroup)
+  let releasesAfterFold := LeanExe.Runtime.releaseCount - releasesBefore
+  let freesAfterFold := LeanExe.Runtime.freeCount - before
+  output.size.toUInt64 * 10000 + releasesAfterFold * 100 + freesAfterFold
 
 def optionByteArrayArrayEquality : UInt64 :=
   let first := #[some "A".toUTF8, none, some "BC".toUTF8]

@@ -1,5 +1,20 @@
 # Development Journal
 
+## 2026-05-21: Heap-Bearing Array Ownership Tests
+
+The correctness corpus now measures release behavior for arrays whose elements contain heap references through `Option ByteArray`, `PublicToken`, and `ByteArrayGroup`.  The refcount tests assert that source-level `Runtime.release` frees child values through the generic element layout, and the fold accumulator tests assert that array folds release replaced heap-bearing accumulators.  Public ABI rejection coverage now includes recursive values hidden inside `Option (Array U64List)`, a structure, and a tagged wrapper, so recursive public roots remain excluded even through otherwise supported containers.
+
+Checks run:
+
+- [x] `lake build LeanExe.Examples.Correctness`
+- [x] `node --check test/core_correctness.js`
+- [x] `node --check test/refcount.js`
+- [x] `node --check test/ownership_report.js`
+- [x] `node test/ownership_report.js` returned `checked 7 ownership report cases`.
+- [x] `node test/refcount.js` returned `checked 31 refcount cases`.
+- [x] `node test/core_correctness.js` returned `checked 743 accepted, 29 rejected, and 13 trapped cases`.
+- [x] `node test/run_all.js` returned `checked 112 report classification cases`, `checked 7 ownership report cases`, `checked 743 accepted, 29 rejected, and 13 trapped cases`, `checked 31 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 35 WASI program cases, 2 traps, and 7 rejections`, `checked 94 standard Lean comparison cases`, and `checked 56 cases`.
+
 ## 2026-05-21: Heap-Bearing Array Operations
 
 The correctness corpus now exercises ordinary array operations over fixed-width heap-bearing element layouts.  The new entries cover `Array (Option ByteArray)`, `Array (Except ByteArray ByteArray)`, `Array PublicToken`, and `Array ByteArrayGroup`, where `ByteArrayGroup` contains an `Array ByteArray` field.  The exercised operations include public parameter materialization, public result decoding, `push`, append notation, `extract`, `setIfInBounds`, `insertIdxIfInBounds`, `eraseIdxIfInBounds`, `swapIfInBounds`, `reverse`, `map`, `filter`, `find?`, `findIdx?`, `any`, `all`, `foldlM`, and structural equality for arrays whose elements contain byte arrays or nested arrays.
