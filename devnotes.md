@@ -1,5 +1,18 @@
 # Development Journal
 
+## 2026-05-21: Heap-Bearing Array Operations
+
+The correctness corpus now exercises ordinary array operations over fixed-width heap-bearing element layouts.  The new entries cover `Array (Option ByteArray)`, `Array (Except ByteArray ByteArray)`, `Array PublicToken`, and `Array ByteArrayGroup`, where `ByteArrayGroup` contains an `Array ByteArray` field.  The exercised operations include public parameter materialization, public result decoding, `push`, append notation, `extract`, `setIfInBounds`, `insertIdxIfInBounds`, `eraseIdxIfInBounds`, `swapIfInBounds`, `reverse`, `map`, `filter`, `find?`, `findIdx?`, `any`, `all`, `foldlM`, and structural equality for arrays whose elements contain byte arrays or nested arrays.
+
+No compiler change was required.  These tests verify that the fixed-width layout, child-owner masks, retained copied children, inactive tagged payload slots, and public ABI reader/writer helpers compose for the heap-bearing element layouts already accepted by the compiler.
+
+Checks run:
+
+- [x] `lake build LeanExe.Examples.Correctness lean-wasm`
+- [x] `node test/core_correctness.js` returned `checked 737 accepted, 25 rejected, and 13 trapped cases`.
+- [x] `node test/report_classification.js` returned `checked 112 report classification cases`.
+- [x] `node test/run_all.js` returned `checked 112 report classification cases`, `checked 4 ownership report cases`, `checked 737 accepted, 25 rejected, and 13 trapped cases`, `checked 25 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 35 WASI program cases, 2 traps, and 7 rejections`, `checked 94 standard Lean comparison cases`, and `checked 56 cases`.
+
 ## 2026-05-21: Public Tagged Heap Arrays
 
 The public ABI coverage now includes heap-bearing arrays inside supported structures, nonrecursive tagged values, `Option`, and `Except`.  The correctness fixture covers public `Option (Array ByteArray)`, `Except ByteArray (Array ByteArray)`, arrays of `Option ByteArray`, arrays of `Except ByteArray ByteArray`, arrays of a source-defined `PublicToken` tag containing `ByteArray`, a public structure carrying `Array ByteArray`, and a public tagged result whose ok constructor carries `Array ByteArray`.  It also exercises `Array ByteArray` update, append, extract, insert, erase, swap, reverse, map, filter, find, any, all, and `foldlM` operations through public parameters and results.

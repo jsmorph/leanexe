@@ -39,7 +39,29 @@ const byteArrayGroupLayout = structLayout([
   ["values", byteArrayArrayLayout],
   ["marker", u64Layout],
 ]);
+const byteArrayGroupArrayLayout = arrayLayout(byteArrayGroupLayout);
 const heapArrayResultLayout = variantLayout([[byteArrayLayout], [byteArrayArrayLayout, u64Layout]]);
+const optionArrayOptionByteArrayLayout = variantLayout([[], [optionByteArrayArrayLayout]]);
+
+const optionByteArrayArraySample = [
+  { tag: 1, fields: [[65]] },
+  { tag: 0, fields: [] },
+  { tag: 1, fields: [[66, 67]] },
+];
+const exceptByteArrayByteArrayArraySample = [
+  { tag: 1, fields: [[65]] },
+  { tag: 0, fields: [[66, 67]] },
+  { tag: 1, fields: [[68, 69, 70]] },
+];
+const publicTokenArraySample = [
+  { tag: 0, fields: [[65]] },
+  { tag: 1, fields: [7n] },
+  { tag: 0, fields: [[66, 67]] },
+];
+const byteArrayGroupArraySample = [
+  { values: [[65], [66, 67]], marker: 2n },
+  { values: [[68]], marker: 3n },
+];
 
 const accepted = [
   { name: "shortOrSkipsTrap", args: [], expected: 1n },
@@ -770,6 +792,27 @@ const accepted = [
     ],
   },
   {
+    name: "publicOptionByteArrayArrayFullOps",
+    args: [{ layout: optionByteArrayArrayLayout, value: optionByteArrayArraySample }],
+    expected: [1n, 0n, 1033310n],
+  },
+  {
+    name: "publicOptionByteArrayArrayFullOpsReturn",
+    args: [{ layout: optionByteArrayArrayLayout, value: optionByteArrayArraySample }],
+    expected: null,
+    memoryValues: [
+      {
+        resultIndex: 0,
+        layout: optionByteArrayArrayLayout,
+        value: [
+          { tag: 1, fields: [[71, 72, 73, 33]] },
+          { tag: 1, fields: [[74, 75, 33]] },
+          { tag: 1, fields: [[66, 67, 33]] },
+        ],
+      },
+    ],
+  },
+  {
     name: "publicExceptByteArrayArrayReturn",
     args: [],
     expected: null,
@@ -798,6 +841,27 @@ const accepted = [
       },
     ],
     expected: 24n,
+  },
+  {
+    name: "publicExceptByteArrayArrayFullOps",
+    args: [{ layout: exceptByteArrayByteArrayArrayLayout, value: exceptByteArrayByteArrayArraySample }],
+    expected: [1n, 0n, 7660011n],
+  },
+  {
+    name: "publicExceptByteArrayArrayFullOpsReturn",
+    args: [{ layout: exceptByteArrayByteArrayArrayLayout, value: exceptByteArrayByteArrayArraySample }],
+    expected: null,
+    memoryValues: [
+      {
+        resultIndex: 0,
+        layout: exceptByteArrayByteArrayArrayLayout,
+        value: [
+          { tag: 1, fields: [[72, 73, 33]] },
+          { tag: 1, fields: [[74, 75, 33]] },
+          { tag: 0, fields: [[76, 77, 78, 63]] },
+        ],
+      },
+    ],
   },
   {
     name: "publicTokenArrayReturn",
@@ -855,6 +919,26 @@ const accepted = [
     ],
   },
   {
+    name: "publicTokenArrayFullOps",
+    args: [{ layout: tokenArrayLayout, value: publicTokenArraySample }],
+    expected: [1n, 0n, 2324011n],
+  },
+  {
+    name: "publicTokenArrayFullOpsReturn",
+    args: [{ layout: tokenArrayLayout, value: publicTokenArraySample }],
+    expected: null,
+    memoryValues: [
+      {
+        resultIndex: 0,
+        layout: tokenArrayLayout,
+        value: [
+          { tag: 0, fields: [[71, 72, 73, 33]] },
+          { tag: 1, fields: [12n] },
+        ],
+      },
+    ],
+  },
+  {
     name: "publicByteArrayGroupReturn",
     args: [],
     expected: [null, 9n],
@@ -865,6 +949,51 @@ const accepted = [
     args: [{ layout: byteArrayGroupLayout, value: { values: [[65], [66, 67]], marker: 9n } }],
     expected: 12n,
   },
+  {
+    name: "publicByteArrayGroupArrayReturn",
+    args: [],
+    expected: null,
+    memoryValues: [{ resultIndex: 0, layout: byteArrayGroupArrayLayout, value: byteArrayGroupArraySample }],
+  },
+  {
+    name: "publicByteArrayGroupArrayParam",
+    args: [{ layout: byteArrayGroupArrayLayout, value: byteArrayGroupArraySample }],
+    expected: 504n,
+  },
+  {
+    name: "publicByteArrayGroupArrayFullOps",
+    args: [{ layout: byteArrayGroupArrayLayout, value: byteArrayGroupArraySample }],
+    expected: [1n, 0n, 241502704111n],
+  },
+  {
+    name: "publicByteArrayGroupArrayFullOpsReturn",
+    args: [{ layout: byteArrayGroupArrayLayout, value: byteArrayGroupArraySample }],
+    expected: null,
+    memoryValues: [
+      {
+        resultIndex: 0,
+        layout: byteArrayGroupArrayLayout,
+        value: [
+          { values: [[76, 77, 78], [90]], marker: 8n },
+          { values: [[73, 74], [75], [90]], marker: 7n },
+        ],
+      },
+    ],
+  },
+  {
+    name: "publicNestedTaggedArrayReturn",
+    args: [],
+    expected: [1n, null],
+    memoryValues: [{ resultIndex: 1, layout: optionByteArrayArrayLayout, value: optionByteArrayArraySample }],
+  },
+  {
+    name: "publicNestedTaggedArrayParam",
+    args: [{ layout: optionArrayOptionByteArrayLayout, value: { tag: 1, fields: [optionByteArrayArraySample] } }],
+    expected: 13n,
+  },
+  { name: "optionByteArrayArrayEquality", args: [], expected: 1n },
+  { name: "publicTokenArrayEquality", args: [], expected: 1n },
+  { name: "byteArrayGroupArrayEquality", args: [], expected: 1n },
   {
     name: "publicHeapArrayResultReturn",
     args: [0n],
