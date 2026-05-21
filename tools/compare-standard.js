@@ -962,6 +962,12 @@ function selfTest() {
     {
       mode: "pure",
       moduleName: correctness,
+      entry: "arrayFoldrDigits",
+      resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
       entry: "pointArrayEquality",
       resultSlots: "#[__leanexeValue]",
     },
@@ -1078,6 +1084,12 @@ out.push (125 : UInt8)`,
       mode: "pure-bytes",
       moduleName: correctness,
       entry: "byteArrayResultDropsOwnedTemp",
+      serializer: "__leanexeValue",
+    },
+    {
+      mode: "pure-bytes",
+      moduleName: correctness,
+      entry: "arrayFoldrByteArrayAccumulator",
       serializer: "__leanexeValue",
     },
     {

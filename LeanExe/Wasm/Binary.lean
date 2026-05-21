@@ -252,9 +252,9 @@ mutual
     | .arrayMapSlots sourceWidth resultWidth childMask ownedMask array itemStart bodyValues =>
         .arrayMapSlots sourceWidth resultWidth childMask ownedMask (shiftExprCalls offset array) itemStart
           (bodyValues.map (shiftExprCalls offset))
-    | .arrayFoldMultiSlot sourceWidth resultWidth array start stop initValues accStart
+    | .arrayFoldMultiSlot sourceWidth resultWidth reverse array start stop initValues accStart
         itemStart bodyValues bodyLets bodyDone releaseOffsets resultSlot =>
-        .arrayFoldMultiSlot sourceWidth resultWidth (shiftExprCalls offset array)
+        .arrayFoldMultiSlot sourceWidth resultWidth reverse (shiftExprCalls offset array)
           (shiftExprCalls offset start) (shiftExprCalls offset stop)
           (initValues.map (shiftExprCalls offset)) accStart itemStart
           (bodyValues.map (shiftExprCalls offset)) (bodyLets.map (shiftLocalLetCalls offset))
@@ -362,9 +362,9 @@ mutual
     | .assign index value => .assign index (shiftExprCalls offset value)
     | .call slots index args => .call slots (index + offset) (args.map (shiftExprCalls offset))
     | .release ptr => .release (shiftExprCalls offset ptr)
-    | .arrayFoldMultiSlotAssign sourceWidth resultWidth array start stop initValues accStart
+    | .arrayFoldMultiSlotAssign sourceWidth resultWidth reverse array start stop initValues accStart
         itemStart bodyValues bodyLets bodyDone releaseOffsets targets =>
-        .arrayFoldMultiSlotAssign sourceWidth resultWidth (shiftExprCalls offset array)
+        .arrayFoldMultiSlotAssign sourceWidth resultWidth reverse (shiftExprCalls offset array)
           (shiftExprCalls offset start) (shiftExprCalls offset stop)
           (initValues.map (shiftExprCalls offset)) accStart itemStart
           (bodyValues.map (shiftExprCalls offset)) (bodyLets.map (shiftLocalLetCalls offset))
@@ -763,7 +763,7 @@ mutual
         6 + max 6
           (max (exprScratch array)
             (bodyValues.foldl (fun n value => max n (exprScratch value)) 0))
-    | .arrayFoldMultiSlot sourceWidth resultWidth array start stop initValues _ _ bodyValues
+    | .arrayFoldMultiSlot sourceWidth resultWidth _reverse array start stop initValues _ _ bodyValues
         bodyLets bodyDone _ _ =>
         let initScratch := initValues.foldl (fun n value => max n (exprScratch value)) 0
         let letScratch := bodyLets.foldl (fun n item => max n (localLetScratch item)) 0
@@ -899,7 +899,7 @@ partial def stmtScratch : Stmt → Nat
   | .assign _ value => exprScratch value
   | .call _ _ args => args.foldl (fun count arg => max count (exprScratch arg)) 0
   | .release ptr => exprScratch ptr
-  | .arrayFoldMultiSlotAssign sourceWidth resultWidth array start stop initValues _ _ bodyValues
+  | .arrayFoldMultiSlotAssign sourceWidth resultWidth _reverse array start stop initValues _ _ bodyValues
       bodyLets bodyDone _ _ =>
       let initScratch := initValues.foldl (fun n value => max n (exprScratch value)) 0
       let letScratch := bodyLets.foldl (fun n item => max n (localLetScratch item)) 0
@@ -1393,6 +1393,7 @@ mutual
 
   partial def emitArrayFoldMultiSlot
       (releaseIndex scratch sourceWidth resultWidth : Nat)
+      (reverse : Bool)
       (array start stop : Expr)
       (initValues : List Expr)
       (accStart itemStart : Nat)
@@ -1431,36 +1432,62 @@ mutual
       | [] => []
       | offset :: rest =>
           localGet (tempStart + offset) ++ localSet (accStart + offset) ++ emitTempCopies rest
+    let emitLoop :=
+      if reverse then
+        localGet indexLocal ++ localGet lenLocal ++ i64LtU ++
+        ofNats [4, 126] ++
+          localGet indexLocal ++
+        ofNats [5] ++
+          localGet lenLocal ++
+        ofNats [11] ++ localSet effectiveStopLocal ++
+        localGet effectiveStopLocal ++ localSet indexLocal ++
+        ofNats [2, 64, 3, 64] ++
+          localGet indexLocal ++ localGet stopLocal ++ i64LeU ++
+            ofNats [13] ++ u32leb 1 ++
+          localGet indexLocal ++ i64Const 1 ++ ofNats [125] ++ localSet indexLocal ++
+          emitSourceLoads (List.range sourceWidth) ++
+          bodyLets.flatMap (emitLocalLet childScratch) ++
+          emitBodyStages (enumerate bodyValues) ++
+          emitExpr childScratch bodyDone ++ localSet doneSlot ++
+          emitGuardedAccumulatorReleases releaseIndex releaseReadyLocal accStart releaseOffsets ++
+          emitTempCopies (List.range resultWidth) ++
+          i64Const 1 ++ localSet releaseReadyLocal ++
+          localGet doneSlot ++ i64Const 0 ++ i64Ne ++ ofNats [13] ++ u32leb 1 ++
+          ofNats [12] ++ u32leb 0 ++
+        ofNats [11, 11]
+      else
+        localGet stopLocal ++ localGet lenLocal ++ i64LtU ++
+        ofNats [4, 126] ++
+          localGet stopLocal ++
+        ofNats [5] ++
+          localGet lenLocal ++
+        ofNats [11] ++ localSet effectiveStopLocal ++
+        ofNats [2, 64, 3, 64] ++
+          localGet indexLocal ++ localGet effectiveStopLocal ++ i64GeU ++
+            ofNats [13] ++ u32leb 1 ++
+          emitSourceLoads (List.range sourceWidth) ++
+          bodyLets.flatMap (emitLocalLet childScratch) ++
+          emitBodyStages (enumerate bodyValues) ++
+          emitExpr childScratch bodyDone ++ localSet doneSlot ++
+          emitGuardedAccumulatorReleases releaseIndex releaseReadyLocal accStart releaseOffsets ++
+          emitTempCopies (List.range resultWidth) ++
+          i64Const 1 ++ localSet releaseReadyLocal ++
+          localGet doneSlot ++ i64Const 0 ++ i64Ne ++ ofNats [13] ++ u32leb 1 ++
+          localGet indexLocal ++ i64Const 1 ++ ofNats [124] ++ localSet indexLocal ++
+          ofNats [12] ++ u32leb 0 ++
+        ofNats [11, 11]
     emitExpr childScratch array ++ localSet arrayLocal ++
       localGet arrayLocal ++ i32WrapI64 ++ i64Load ++ localSet lenLocal ++
       emitExpr childScratch start ++ localSet indexLocal ++
       emitExpr childScratch stop ++ localSet stopLocal ++
       emitInitStores (enumerate initValues) ++
       i64Const 0 ++ localSet releaseReadyLocal ++
-      localGet stopLocal ++ localGet lenLocal ++ i64LtU ++
-      ofNats [4, 126] ++
-        localGet stopLocal ++
-      ofNats [5] ++
-        localGet lenLocal ++
-      ofNats [11] ++ localSet effectiveStopLocal ++
-      ofNats [2, 64, 3, 64] ++
-        localGet indexLocal ++ localGet effectiveStopLocal ++ i64GeU ++
-          ofNats [13] ++ u32leb 1 ++
-        emitSourceLoads (List.range sourceWidth) ++
-        bodyLets.flatMap (emitLocalLet childScratch) ++
-        emitBodyStages (enumerate bodyValues) ++
-        emitExpr childScratch bodyDone ++ localSet doneSlot ++
-        emitGuardedAccumulatorReleases releaseIndex releaseReadyLocal accStart releaseOffsets ++
-        emitTempCopies (List.range resultWidth) ++
-        i64Const 1 ++ localSet releaseReadyLocal ++
-        localGet doneSlot ++ i64Const 0 ++ i64Ne ++ ofNats [13] ++ u32leb 1 ++
-        localGet indexLocal ++ i64Const 1 ++ ofNats [124] ++ localSet indexLocal ++
-        ofNats [12] ++ u32leb 0 ++
-      ofNats [11, 11] ++
+      emitLoop ++
       localGet (accStart + resultSlot)
 
   partial def emitArrayFoldMultiSlotAssign
       (releaseIndex scratch sourceWidth resultWidth : Nat)
+      (reverse : Bool)
       (array start stop : Expr)
       (initValues : List Expr)
       (accStart itemStart : Nat)
@@ -1503,32 +1530,57 @@ mutual
       | [] => []
       | (offset, target) :: rest =>
           localGet (accStart + offset) ++ localSet target ++ emitTargetCopies rest
+    let emitLoop :=
+      if reverse then
+        localGet indexLocal ++ localGet lenLocal ++ i64LtU ++
+        ofNats [4, 126] ++
+          localGet indexLocal ++
+        ofNats [5] ++
+          localGet lenLocal ++
+        ofNats [11] ++ localSet effectiveStopLocal ++
+        localGet effectiveStopLocal ++ localSet indexLocal ++
+        ofNats [2, 64, 3, 64] ++
+          localGet indexLocal ++ localGet stopLocal ++ i64LeU ++
+            ofNats [13] ++ u32leb 1 ++
+          localGet indexLocal ++ i64Const 1 ++ ofNats [125] ++ localSet indexLocal ++
+          emitSourceLoads (List.range sourceWidth) ++
+          bodyLets.flatMap (emitLocalLet childScratch) ++
+          emitBodyStages (enumerate bodyValues) ++
+          emitExpr childScratch bodyDone ++ localSet doneSlot ++
+          emitGuardedAccumulatorReleases releaseIndex releaseReadyLocal accStart releaseOffsets ++
+          emitTempCopies (List.range resultWidth) ++
+          i64Const 1 ++ localSet releaseReadyLocal ++
+          localGet doneSlot ++ i64Const 0 ++ i64Ne ++ ofNats [13] ++ u32leb 1 ++
+          ofNats [12] ++ u32leb 0 ++
+        ofNats [11, 11]
+      else
+        localGet stopLocal ++ localGet lenLocal ++ i64LtU ++
+        ofNats [4, 126] ++
+          localGet stopLocal ++
+        ofNats [5] ++
+          localGet lenLocal ++
+        ofNats [11] ++ localSet effectiveStopLocal ++
+        ofNats [2, 64, 3, 64] ++
+          localGet indexLocal ++ localGet effectiveStopLocal ++ i64GeU ++
+            ofNats [13] ++ u32leb 1 ++
+          emitSourceLoads (List.range sourceWidth) ++
+          bodyLets.flatMap (emitLocalLet childScratch) ++
+          emitBodyStages (enumerate bodyValues) ++
+          emitExpr childScratch bodyDone ++ localSet doneSlot ++
+          emitGuardedAccumulatorReleases releaseIndex releaseReadyLocal accStart releaseOffsets ++
+          emitTempCopies (List.range resultWidth) ++
+          i64Const 1 ++ localSet releaseReadyLocal ++
+          localGet doneSlot ++ i64Const 0 ++ i64Ne ++ ofNats [13] ++ u32leb 1 ++
+          localGet indexLocal ++ i64Const 1 ++ ofNats [124] ++ localSet indexLocal ++
+          ofNats [12] ++ u32leb 0 ++
+        ofNats [11, 11]
     emitExpr childScratch array ++ localSet arrayLocal ++
       localGet arrayLocal ++ i32WrapI64 ++ i64Load ++ localSet lenLocal ++
       emitExpr childScratch start ++ localSet indexLocal ++
       emitExpr childScratch stop ++ localSet stopLocal ++
       emitInitStores (enumerate initValues) ++
       i64Const 0 ++ localSet releaseReadyLocal ++
-      localGet stopLocal ++ localGet lenLocal ++ i64LtU ++
-      ofNats [4, 126] ++
-        localGet stopLocal ++
-      ofNats [5] ++
-        localGet lenLocal ++
-      ofNats [11] ++ localSet effectiveStopLocal ++
-      ofNats [2, 64, 3, 64] ++
-        localGet indexLocal ++ localGet effectiveStopLocal ++ i64GeU ++
-          ofNats [13] ++ u32leb 1 ++
-        emitSourceLoads (List.range sourceWidth) ++
-        bodyLets.flatMap (emitLocalLet childScratch) ++
-        emitBodyStages (enumerate bodyValues) ++
-        emitExpr childScratch bodyDone ++ localSet doneSlot ++
-        emitGuardedAccumulatorReleases releaseIndex releaseReadyLocal accStart releaseOffsets ++
-        emitTempCopies (List.range resultWidth) ++
-        i64Const 1 ++ localSet releaseReadyLocal ++
-        localGet doneSlot ++ i64Const 0 ++ i64Ne ++ ofNats [13] ++ u32leb 1 ++
-        localGet indexLocal ++ i64Const 1 ++ ofNats [124] ++ localSet indexLocal ++
-        ofNats [12] ++ u32leb 0 ++
-      ofNats [11, 11] ++
+      emitLoop ++
       emitTargetCopies (enumerate targets)
 
   partial def emitArrayFindIdxSlots
@@ -2706,10 +2758,10 @@ mutual
         emitArrayExtractSlots scratch width childMask array start stop
     | .arrayMapSlots sourceWidth resultWidth childMask ownedMask array itemStart bodyValues =>
         emitArrayMapSlots scratch sourceWidth resultWidth childMask ownedMask array itemStart bodyValues
-    | .arrayFoldMultiSlot sourceWidth resultWidth array start stop initValues accStart itemStart
+    | .arrayFoldMultiSlot sourceWidth resultWidth reverse array start stop initValues accStart itemStart
         bodyValues bodyLets bodyDone _releaseOffsets resultSlot =>
-        emitArrayFoldMultiSlot 0 scratch sourceWidth resultWidth array start stop initValues accStart
-          itemStart bodyValues bodyLets bodyDone [] resultSlot
+        emitArrayFoldMultiSlot 0 scratch sourceWidth resultWidth reverse array start stop initValues
+          accStart itemStart bodyValues bodyLets bodyDone [] resultSlot
     | .arrayFindIdxSlots sourceWidth array itemStart predicate returnPayload =>
         emitArrayFindIdxSlots scratch sourceWidth array itemStart predicate returnPayload
     | .arrayFindSlot sourceWidth array itemStart predicate slot =>
@@ -2766,17 +2818,17 @@ mutual
   partial def emitSlotsAssign (scratch : Nat) (slots : List Nat) (values : List Expr) :
       List UInt8 :=
     match values with
-    | .arrayFoldMultiSlot sourceWidth resultWidth array start stop initValues accStart itemStart
+    | .arrayFoldMultiSlot sourceWidth resultWidth reverse array start stop initValues accStart itemStart
         bodyValues bodyLets bodyDone releaseOffsets _ :: _ =>
         if slots.length == resultWidth && values.length == resultWidth then
           let expected :=
             (List.range resultWidth).map fun offset =>
-              (.arrayFoldMultiSlot sourceWidth resultWidth array start stop initValues accStart
+              (.arrayFoldMultiSlot sourceWidth resultWidth reverse array start stop initValues accStart
                 itemStart bodyValues bodyLets bodyDone releaseOffsets offset
                 : Expr)
           if values == expected then
-            emitArrayFoldMultiSlotAssign 0 scratch sourceWidth resultWidth array start stop initValues
-              accStart itemStart bodyValues bodyLets bodyDone [] slots
+            emitArrayFoldMultiSlotAssign 0 scratch sourceWidth resultWidth reverse array start stop
+              initValues accStart itemStart bodyValues bodyLets bodyDone [] slots
           else
             (slots.zip values).flatMap fun item => emitExpr scratch item.snd ++ localSet item.fst
         else
@@ -2893,10 +2945,10 @@ partial def emitExprWithRelease (releaseIndex scratch : Nat) : Expr → List UIn
   | .release ptr =>
       emitExprWithRelease releaseIndex scratch ptr ++ call releaseIndex ++
         globalGet (runtimeStatGlobal .frees)
-  | .arrayFoldMultiSlot sourceWidth resultWidth array start stop initValues accStart itemStart
+  | .arrayFoldMultiSlot sourceWidth resultWidth reverse array start stop initValues accStart itemStart
       bodyValues bodyLets bodyDone releaseOffsets resultSlot =>
-      emitArrayFoldMultiSlot releaseIndex scratch sourceWidth resultWidth array start stop initValues
-        accStart itemStart bodyValues bodyLets bodyDone releaseOffsets resultSlot
+      emitArrayFoldMultiSlot releaseIndex scratch sourceWidth resultWidth reverse array start stop
+        initValues accStart itemStart bodyValues bodyLets bodyDone releaseOffsets resultSlot
   | .byteArrayFoldMultiSlot resultWidth ptr len start stop initValues accStart byteSlot
       bodyValues bodyLets bodyDone releaseOffsets resultSlot =>
       emitByteArrayFoldMultiSlot releaseIndex scratch resultWidth ptr len start stop initValues
@@ -2936,17 +2988,17 @@ partial def emitCondWithRelease (releaseIndex scratch : Nat) : Cond → List UIn
 partial def emitSlotsAssignWithRelease
     (releaseIndex scratch : Nat) (slots : List Nat) (values : List Expr) : List UInt8 :=
   match values with
-  | .arrayFoldMultiSlot sourceWidth resultWidth array start stop initValues accStart itemStart
+  | .arrayFoldMultiSlot sourceWidth resultWidth reverse array start stop initValues accStart itemStart
       bodyValues bodyLets bodyDone releaseOffsets _ :: _ =>
       if slots.length == resultWidth && values.length == resultWidth then
         let expected :=
           (List.range resultWidth).map fun offset =>
-            (.arrayFoldMultiSlot sourceWidth resultWidth array start stop initValues accStart
+            (.arrayFoldMultiSlot sourceWidth resultWidth reverse array start stop initValues accStart
               itemStart bodyValues bodyLets bodyDone releaseOffsets offset
               : Expr)
         if values == expected then
-          emitArrayFoldMultiSlotAssign releaseIndex scratch sourceWidth resultWidth array start stop
-            initValues accStart itemStart bodyValues bodyLets bodyDone releaseOffsets slots
+          emitArrayFoldMultiSlotAssign releaseIndex scratch sourceWidth resultWidth reverse array
+            start stop initValues accStart itemStart bodyValues bodyLets bodyDone releaseOffsets slots
         else
           (slots.zip values).flatMap fun item =>
             emitExprWithRelease releaseIndex scratch item.snd ++ localSet item.fst
@@ -3103,9 +3155,9 @@ partial def emitStmt (releaseIndex scratch : Nat) : Stmt → List UInt8
       args.flatMap (emitExprWithRelease releaseIndex scratch) ++ call index ++
         slots.reverse.flatMap localSet
   | .release ptr => emitExprWithRelease releaseIndex scratch ptr ++ call releaseIndex
-  | .arrayFoldMultiSlotAssign sourceWidth resultWidth array start stop initValues accStart itemStart
+  | .arrayFoldMultiSlotAssign sourceWidth resultWidth reverse array start stop initValues accStart itemStart
       bodyValues bodyLets bodyDone releaseOffsets targets =>
-      emitArrayFoldMultiSlotAssign releaseIndex scratch sourceWidth resultWidth array start stop
+      emitArrayFoldMultiSlotAssign releaseIndex scratch sourceWidth resultWidth reverse array start stop
         initValues accStart itemStart bodyValues bodyLets bodyDone releaseOffsets targets
   | .byteArrayFoldMultiSlotAssign resultWidth ptr len start stop initValues accStart byteSlot
       bodyValues bodyLets bodyDone releaseOffsets targets =>
@@ -4174,6 +4226,7 @@ mutual
 
   partial def arrayFoldMultiSlotWatLines
       (releaseIndex scratch sourceWidth resultWidth : Nat)
+      (reverse : Bool)
       (array start stop : Expr)
       (initValues : List Expr)
       (accStart itemStart : Nat)
@@ -4215,6 +4268,49 @@ mutual
       | offset :: rest =>
           [s!"local.get {tempStart + offset}", s!"local.set {accStart + offset}"] ++
             tempCopies rest
+    let loopLines :=
+      if reverse then
+        [s!"local.get {indexLocal}", s!"local.get {lenLocal}", "i64.lt_u",
+          "if (result i64)", s!"  local.get {indexLocal}", "else",
+          s!"  local.get {lenLocal}", "end", s!"local.set {effectiveStopLocal}",
+          s!"local.get {effectiveStopLocal}", s!"local.set {indexLocal}",
+          "block", "  loop",
+          s!"    local.get {indexLocal}", s!"    local.get {stopLocal}", "    i64.le_u",
+          "    br_if 1",
+          s!"    local.get {indexLocal}", "    i64.const 1", "    i64.sub",
+          s!"    local.set {indexLocal}"] ++
+        indent 4 (
+          sourceLoads (List.range sourceWidth) ++
+          bodyLets.flatMap (localLetWatLines childScratch) ++
+          bodyStages (enumerate bodyValues) ++
+          exprWatLines childScratch bodyDone ++
+          [s!"local.set {doneSlot}"] ++
+          guardedAccumulatorReleasesWatLines releaseIndex releaseReadyLocal accStart releaseOffsets ++
+          tempCopies (List.range resultWidth) ++
+          [s!"i64.const 1", s!"local.set {releaseReadyLocal}"] ++
+          [s!"local.get {doneSlot}", "i64.const 0", "i64.ne", "br_if 1"] ++
+          ["br 0"]) ++
+        ["  end", "end"]
+      else
+        [s!"local.get {stopLocal}", s!"local.get {lenLocal}", "i64.lt_u",
+          "if (result i64)", s!"  local.get {stopLocal}", "else",
+          s!"  local.get {lenLocal}", "end", s!"local.set {effectiveStopLocal}",
+          "block", "  loop",
+          s!"    local.get {indexLocal}", s!"    local.get {effectiveStopLocal}", "    i64.ge_u",
+          "    br_if 1"] ++
+        indent 4 (
+          sourceLoads (List.range sourceWidth) ++
+          bodyLets.flatMap (localLetWatLines childScratch) ++
+          bodyStages (enumerate bodyValues) ++
+          exprWatLines childScratch bodyDone ++
+          [s!"local.set {doneSlot}"] ++
+          guardedAccumulatorReleasesWatLines releaseIndex releaseReadyLocal accStart releaseOffsets ++
+          tempCopies (List.range resultWidth) ++
+          [s!"i64.const 1", s!"local.set {releaseReadyLocal}"] ++
+          [s!"local.get {doneSlot}", "i64.const 0", "i64.ne", "br_if 1"] ++
+          [s!"local.get {indexLocal}", "i64.const 1", "i64.add", s!"local.set {indexLocal}",
+            "br 0"]) ++
+        ["  end", "end"]
     exprWatLines childScratch array ++ [s!"local.set {arrayLocal}",
       s!"local.get {arrayLocal}", "i32.wrap_i64", "i64.load align=8",
       s!"local.set {lenLocal}"] ++
@@ -4222,28 +4318,12 @@ mutual
       exprWatLines childScratch stop ++ [s!"local.set {stopLocal}"] ++
       initStores (enumerate initValues) ++
       [s!"i64.const 0", s!"local.set {releaseReadyLocal}"] ++
-      [s!"local.get {stopLocal}", s!"local.get {lenLocal}", "i64.lt_u",
-        "if (result i64)", s!"  local.get {stopLocal}", "else",
-        s!"  local.get {lenLocal}", "end", s!"local.set {effectiveStopLocal}",
-        "block", "  loop",
-        s!"    local.get {indexLocal}", s!"    local.get {effectiveStopLocal}", "    i64.ge_u",
-        "    br_if 1"] ++
-      indent 4 (
-        sourceLoads (List.range sourceWidth) ++
-        bodyLets.flatMap (localLetWatLines childScratch) ++
-        bodyStages (enumerate bodyValues) ++
-        exprWatLines childScratch bodyDone ++
-        [s!"local.set {doneSlot}"] ++
-        guardedAccumulatorReleasesWatLines releaseIndex releaseReadyLocal accStart releaseOffsets ++
-        tempCopies (List.range resultWidth) ++
-        [s!"i64.const 1", s!"local.set {releaseReadyLocal}"] ++
-        [s!"local.get {doneSlot}", "i64.const 0", "i64.ne", "br_if 1"] ++
-        [s!"local.get {indexLocal}", "i64.const 1", "i64.add", s!"local.set {indexLocal}",
-          "br 0"]) ++
-      ["  end", "end", s!"local.get {accStart + resultSlot}"]
+      loopLines ++
+      [s!"local.get {accStart + resultSlot}"]
 
   partial def arrayFoldMultiSlotAssignWatLines
       (releaseIndex scratch sourceWidth resultWidth : Nat)
+      (reverse : Bool)
       (array start stop : Expr)
       (initValues : List Expr)
       (accStart itemStart : Nat)
@@ -4289,6 +4369,49 @@ mutual
       | [] => []
       | (offset, target) :: rest =>
           [s!"local.get {accStart + offset}", s!"local.set {target}"] ++ targetCopies rest
+    let loopLines :=
+      if reverse then
+        [s!"local.get {indexLocal}", s!"local.get {lenLocal}", "i64.lt_u",
+          "if (result i64)", s!"  local.get {indexLocal}", "else",
+          s!"  local.get {lenLocal}", "end", s!"local.set {effectiveStopLocal}",
+          s!"local.get {effectiveStopLocal}", s!"local.set {indexLocal}",
+          "block", "  loop",
+          s!"    local.get {indexLocal}", s!"    local.get {stopLocal}", "    i64.le_u",
+          "    br_if 1",
+          s!"    local.get {indexLocal}", "    i64.const 1", "    i64.sub",
+          s!"    local.set {indexLocal}"] ++
+        indent 4 (
+          sourceLoads (List.range sourceWidth) ++
+          bodyLets.flatMap (localLetWatLines childScratch) ++
+          bodyStages (enumerate bodyValues) ++
+          exprWatLines childScratch bodyDone ++
+          [s!"local.set {doneSlot}"] ++
+          guardedAccumulatorReleasesWatLines releaseIndex releaseReadyLocal accStart releaseOffsets ++
+          tempCopies (List.range resultWidth) ++
+          [s!"i64.const 1", s!"local.set {releaseReadyLocal}"] ++
+          [s!"local.get {doneSlot}", "i64.const 0", "i64.ne", "br_if 1"] ++
+          ["br 0"]) ++
+        ["  end", "end"]
+      else
+        [s!"local.get {stopLocal}", s!"local.get {lenLocal}", "i64.lt_u",
+          "if (result i64)", s!"  local.get {stopLocal}", "else",
+          s!"  local.get {lenLocal}", "end", s!"local.set {effectiveStopLocal}",
+          "block", "  loop",
+          s!"    local.get {indexLocal}", s!"    local.get {effectiveStopLocal}", "    i64.ge_u",
+          "    br_if 1"] ++
+        indent 4 (
+          sourceLoads (List.range sourceWidth) ++
+          bodyLets.flatMap (localLetWatLines childScratch) ++
+          bodyStages (enumerate bodyValues) ++
+          exprWatLines childScratch bodyDone ++
+          [s!"local.set {doneSlot}"] ++
+          guardedAccumulatorReleasesWatLines releaseIndex releaseReadyLocal accStart releaseOffsets ++
+          tempCopies (List.range resultWidth) ++
+          [s!"i64.const 1", s!"local.set {releaseReadyLocal}"] ++
+          [s!"local.get {doneSlot}", "i64.const 0", "i64.ne", "br_if 1"] ++
+          [s!"local.get {indexLocal}", "i64.const 1", "i64.add", s!"local.set {indexLocal}",
+            "br 0"]) ++
+        ["  end", "end"]
     exprWatLines childScratch array ++ [s!"local.set {arrayLocal}",
       s!"local.get {arrayLocal}", "i32.wrap_i64", "i64.load align=8",
       s!"local.set {lenLocal}"] ++
@@ -4296,25 +4419,7 @@ mutual
       exprWatLines childScratch stop ++ [s!"local.set {stopLocal}"] ++
       initStores (enumerate initValues) ++
       [s!"i64.const 0", s!"local.set {releaseReadyLocal}"] ++
-      [s!"local.get {stopLocal}", s!"local.get {lenLocal}", "i64.lt_u",
-        "if (result i64)", s!"  local.get {stopLocal}", "else",
-        s!"  local.get {lenLocal}", "end", s!"local.set {effectiveStopLocal}",
-        "block", "  loop",
-        s!"    local.get {indexLocal}", s!"    local.get {effectiveStopLocal}", "    i64.ge_u",
-        "    br_if 1"] ++
-      indent 4 (
-        sourceLoads (List.range sourceWidth) ++
-        bodyLets.flatMap (localLetWatLines childScratch) ++
-        bodyStages (enumerate bodyValues) ++
-        exprWatLines childScratch bodyDone ++
-        [s!"local.set {doneSlot}"] ++
-        guardedAccumulatorReleasesWatLines releaseIndex releaseReadyLocal accStart releaseOffsets ++
-        tempCopies (List.range resultWidth) ++
-        [s!"i64.const 1", s!"local.set {releaseReadyLocal}"] ++
-        [s!"local.get {doneSlot}", "i64.const 0", "i64.ne", "br_if 1"] ++
-        [s!"local.get {indexLocal}", "i64.const 1", "i64.add", s!"local.set {indexLocal}",
-          "br 0"]) ++
-      ["  end", "end"] ++
+      loopLines ++
       targetCopies (enumerate targets)
 
   partial def arrayFindIdxSlotsWatLines
@@ -5467,10 +5572,10 @@ mutual
     | .arrayMapSlots sourceWidth resultWidth childMask ownedMask array itemStart bodyValues =>
         arrayMapSlotsWatLines scratch sourceWidth resultWidth childMask ownedMask array itemStart
           bodyValues
-    | .arrayFoldMultiSlot sourceWidth resultWidth array start stop initValues accStart itemStart
+    | .arrayFoldMultiSlot sourceWidth resultWidth reverse array start stop initValues accStart itemStart
         bodyValues bodyLets bodyDone _releaseOffsets resultSlot =>
-        arrayFoldMultiSlotWatLines 0 scratch sourceWidth resultWidth array start stop initValues
-          accStart itemStart bodyValues bodyLets bodyDone [] resultSlot
+        arrayFoldMultiSlotWatLines 0 scratch sourceWidth resultWidth reverse array start stop
+          initValues accStart itemStart bodyValues bodyLets bodyDone [] resultSlot
     | .arrayFindIdxSlots sourceWidth array itemStart predicate returnPayload =>
         arrayFindIdxSlotsWatLines scratch sourceWidth array itemStart predicate returnPayload
     | .arrayFindSlot sourceWidth array itemStart predicate slot =>
@@ -5530,17 +5635,17 @@ mutual
       (slots.zip values).flatMap fun item =>
         exprWatLines scratch item.snd ++ [s!"local.set {item.fst}"]
     match values with
-    | .arrayFoldMultiSlot sourceWidth resultWidth array start stop initValues accStart itemStart
+    | .arrayFoldMultiSlot sourceWidth resultWidth reverse array start stop initValues accStart itemStart
         bodyValues bodyLets bodyDone releaseOffsets _ :: _ =>
         if slots.length == resultWidth && values.length == resultWidth then
           let expected :=
             (List.range resultWidth).map fun offset =>
-              (.arrayFoldMultiSlot sourceWidth resultWidth array start stop initValues accStart
+              (.arrayFoldMultiSlot sourceWidth resultWidth reverse array start stop initValues accStart
                 itemStart bodyValues bodyLets bodyDone releaseOffsets offset
                 : Expr)
           if values == expected then
-            arrayFoldMultiSlotAssignWatLines 0 scratch sourceWidth resultWidth array start stop
-              initValues accStart itemStart bodyValues bodyLets bodyDone [] slots
+            arrayFoldMultiSlotAssignWatLines 0 scratch sourceWidth resultWidth reverse array
+              start stop initValues accStart itemStart bodyValues bodyLets bodyDone [] slots
           else
             direct
         else
@@ -5679,10 +5784,11 @@ mutual
     | .release ptr =>
         exprWatLinesWithRelease releaseIndex scratch ptr ++ [s!"call {releaseIndex}"] ++
           [s!"global.get {runtimeStatGlobal .frees}"]
-    | .arrayFoldMultiSlot sourceWidth resultWidth array start stop initValues accStart itemStart
+    | .arrayFoldMultiSlot sourceWidth resultWidth reverse array start stop initValues accStart itemStart
         bodyValues bodyLets bodyDone releaseOffsets resultSlot =>
-        arrayFoldMultiSlotWatLines releaseIndex scratch sourceWidth resultWidth array start stop
-          initValues accStart itemStart bodyValues bodyLets bodyDone releaseOffsets resultSlot
+        arrayFoldMultiSlotWatLines releaseIndex scratch sourceWidth resultWidth reverse array
+          start stop initValues accStart itemStart bodyValues bodyLets bodyDone releaseOffsets
+          resultSlot
     | .byteArrayFoldMultiSlot resultWidth ptr len start stop initValues accStart byteSlot
         bodyValues bodyLets bodyDone releaseOffsets resultSlot =>
         byteArrayFoldMultiSlotWatLines releaseIndex scratch resultWidth ptr len start stop initValues
@@ -5743,18 +5849,18 @@ mutual
       (slots.zip values).flatMap fun item =>
         exprWatLinesWithRelease releaseIndex scratch item.snd ++ [s!"local.set {item.fst}"]
     match values with
-    | .arrayFoldMultiSlot sourceWidth resultWidth array start stop initValues accStart itemStart
+    | .arrayFoldMultiSlot sourceWidth resultWidth reverse array start stop initValues accStart itemStart
         bodyValues bodyLets bodyDone releaseOffsets _ :: _ =>
         if slots.length == resultWidth && values.length == resultWidth then
           let expected :=
             (List.range resultWidth).map fun offset =>
-              (.arrayFoldMultiSlot sourceWidth resultWidth array start stop initValues accStart
+              (.arrayFoldMultiSlot sourceWidth resultWidth reverse array start stop initValues accStart
                 itemStart bodyValues bodyLets bodyDone releaseOffsets offset
                 : Expr)
           if values == expected then
-            arrayFoldMultiSlotAssignWatLines releaseIndex scratch sourceWidth resultWidth array
-              start stop initValues accStart itemStart bodyValues bodyLets bodyDone releaseOffsets
-              slots
+            arrayFoldMultiSlotAssignWatLines releaseIndex scratch sourceWidth resultWidth reverse
+              array start stop initValues accStart itemStart bodyValues bodyLets bodyDone
+              releaseOffsets slots
           else
             direct
         else
@@ -5815,10 +5921,10 @@ partial def stmtWatLines (releaseIndex scratch : Nat) : Stmt → List String
       args.flatMap (exprWatLinesWithRelease releaseIndex scratch) ++ [s!"call {index}"] ++
         slots.reverse.map (fun slot => s!"local.set {slot}")
   | .release ptr => exprWatLinesWithRelease releaseIndex scratch ptr ++ [s!"call {releaseIndex}"]
-  | .arrayFoldMultiSlotAssign sourceWidth resultWidth array start stop initValues accStart itemStart
+  | .arrayFoldMultiSlotAssign sourceWidth resultWidth reverse array start stop initValues accStart itemStart
       bodyValues bodyLets bodyDone releaseOffsets targets =>
-      arrayFoldMultiSlotAssignWatLines releaseIndex scratch sourceWidth resultWidth array start stop
-        initValues accStart itemStart bodyValues bodyLets bodyDone releaseOffsets targets
+      arrayFoldMultiSlotAssignWatLines releaseIndex scratch sourceWidth resultWidth reverse array
+        start stop initValues accStart itemStart bodyValues bodyLets bodyDone releaseOffsets targets
   | .byteArrayFoldMultiSlotAssign resultWidth ptr len start stop initValues accStart byteSlot
       bodyValues bodyLets bodyDone releaseOffsets targets =>
       byteArrayFoldMultiSlotAssignWatLines releaseIndex scratch resultWidth ptr len start stop

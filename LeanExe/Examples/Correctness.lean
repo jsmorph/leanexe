@@ -2744,6 +2744,53 @@ def arrayFoldEmptySkipsFunctionTrap : Nat :=
     (fun acc _value => acc + ((Array.replicate 0 (0 : UInt64))[0]!).toNat)
     7
 
+def arrayFoldrDigits : UInt64 :=
+  (#[1, 2, 3] : Array UInt64).foldr
+    (fun value acc => acc * 10 + value)
+    0
+
+def arrayFoldrWindow : UInt64 :=
+  (#[1, 2, 3, 4] : Array UInt64).foldr
+    (fun value acc => acc * 10 + value)
+    0
+    3
+    1
+
+def arrayFoldrStartClamps : UInt64 :=
+  (#[1, 2, 3] : Array UInt64).foldr
+    (fun value acc => acc * 10 + value)
+    0
+    10
+    0
+
+def arrayFoldrEmptySkipsFunctionTrap : UInt64 :=
+  (#[] : Array UInt64).foldr
+    (fun _value acc => acc + (Array.replicate 0 (0 : UInt64))[0]!)
+    7
+
+def arrayFoldrStructAccumulator : UInt64 :=
+  let result :=
+    (#[1, 2, 3] : Array UInt64).foldr
+      (fun value acc => { count := acc.count + 1, sum := acc.sum * 10 + value })
+      ({ count := 0, sum := 0 } : CountSum)
+  result.count * (1000 : UInt64) + result.sum
+
+def arrayFoldrByteArrayAccumulator : ByteArray :=
+  (#[65, 66, 67] : Array UInt64).foldr
+    (fun value acc => acc.push (UInt64.toUInt8 value))
+    ByteArray.empty
+
+def arrayFoldrByteArrayAccumulatorReleaseStats : UInt64 :=
+  let before := LeanExe.Runtime.freeCount
+  let releasesBefore := LeanExe.Runtime.releaseCount
+  let output :=
+    (#[65, 66, 67] : Array UInt64).foldr
+      (fun value acc => acc.push (UInt64.toUInt8 value))
+      ByteArray.empty
+  let releasesAfterFold := LeanExe.Runtime.releaseCount - releasesBefore
+  let freesAfterFold := LeanExe.Runtime.freeCount - before
+  output.size.toUInt64 * 10000 + releasesAfterFold * 100 + freesAfterFold
+
 def arrayFoldStructAccumulator : UInt64 :=
   let result :=
     (#[1, 2, 3] : Array UInt64).foldl
