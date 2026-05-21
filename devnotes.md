@@ -1,5 +1,19 @@
 # Development Journal
 
+## 2026-05-21: Public Tagged Heap Arrays
+
+The public ABI coverage now includes heap-bearing arrays inside supported structures, nonrecursive tagged values, `Option`, and `Except`.  The correctness fixture covers public `Option (Array ByteArray)`, `Except ByteArray (Array ByteArray)`, arrays of `Option ByteArray`, arrays of `Except ByteArray ByteArray`, arrays of a source-defined `PublicToken` tag containing `ByteArray`, a public structure carrying `Array ByteArray`, and a public tagged result whose ok constructor carries `Array ByteArray`.  It also exercises `Array ByteArray` update, append, extract, insert, erase, swap, reverse, map, filter, find, any, all, and `foldlM` operations through public parameters and results.
+
+The JS correctness harness now has composable ABI layout helpers for scalar slots, byte arrays, arrays, structures, and tagged values.  Tests can materialize nested public arguments and read nested public results through the same layout description, so future public ABI cases should not need one-off memory readers.  The old dedicated readers for public byte-array arrays, nested scalar arrays, and arrays of specific structures were removed from the active path.
+
+Checks run:
+
+- [x] `lake build LeanExe.Examples.Correctness lean-wasm`
+- [x] `node --check test/core_correctness.js`
+- [x] `node test/core_correctness.js` returned `checked 722 accepted, 25 rejected, and 13 trapped cases`.
+- [x] `node test/report_classification.js` returned `checked 105 report classification cases`.
+- [x] `node test/run_all.js` returned `checked 105 report classification cases`, `checked 4 ownership report cases`, `checked 722 accepted, 25 rejected, and 13 trapped cases`, `checked 25 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 35 WASI program cases, 2 traps, and 7 rejections`, `checked 94 standard Lean comparison cases`, and `checked 56 cases`.
+
 ## 2026-05-21: Public Heap-Bearing Arrays
 
 The public array ABI now accepts fixed-width element layouts that contain heap-reference fields.  `Array ByteArray`, nested arrays such as `Array (Array UInt64)`, arrays of structures containing `ByteArray`, and arrays of structures containing array fields can appear as entry parameters and entry results.  The public element predicate is separate from the internal element predicate: it permits scalar values, `ByteArray`, nested arrays, structures, nonrecursive inductives, `Option`, and `Except` when all flattened fields meet the same rule, while recursive inductive values remain excluded from the public ABI.

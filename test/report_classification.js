@@ -340,6 +340,26 @@ const cases = [
   },
   {
     moduleName: "LeanExe.Examples.Correctness",
+    entryName: "LeanExe.Examples.Correctness.publicOptionArrayReturn",
+    shape: "entry shape: Option Array ByteArray",
+  },
+  {
+    moduleName: "LeanExe.Examples.Correctness",
+    entryName: "LeanExe.Examples.Correctness.publicExceptArrayReturn",
+    shape: "entry shape: Except ByteArray Array ByteArray",
+  },
+  {
+    moduleName: "LeanExe.Examples.Correctness",
+    entryName: "LeanExe.Examples.Correctness.publicOptionByteArrayArrayParam",
+    shape: "entry shape: Array Option ByteArray -> UInt64",
+  },
+  {
+    moduleName: "LeanExe.Examples.Correctness",
+    entryName: "LeanExe.Examples.Correctness.publicTokenArrayParam",
+    shape: "entry shape: Array LeanExe.Examples.Correctness.PublicToken -> UInt64",
+  },
+  {
+    moduleName: "LeanExe.Examples.Correctness",
     entryName: "LeanExe.Examples.Correctness.publicNestedArrayReturn",
     shape: "entry shape: Array Array UInt64",
   },
@@ -347,6 +367,26 @@ const cases = [
     moduleName: "LeanExe.Examples.Correctness",
     entryName: "LeanExe.Examples.Correctness.publicArrayBoxArrayParam",
     shape: "entry shape: Array LeanExe.Examples.Correctness.ArrayBox -> UInt64",
+  },
+  {
+    moduleName: "LeanExe.Examples.Correctness",
+    entryName: "LeanExe.Examples.Correctness.publicByteArrayGroupParam",
+    shape: "entry shape: LeanExe.Examples.Correctness.ByteArrayGroup -> UInt64",
+  },
+  {
+    moduleName: "LeanExe.Examples.Correctness",
+    entryName: "LeanExe.Examples.Correctness.publicHeapArrayResultReturn",
+    shape: "entry shape: UInt64 -> LeanExe.Examples.Correctness.PublicHeapArrayResult",
+  },
+  {
+    moduleName: "LeanExe.Examples.Correctness",
+    entryName: "LeanExe.Examples.Correctness.publicByteArrayArrayOps",
+    shape: "entry shape: Array ByteArray -> Except UInt64 UInt64",
+  },
+  {
+    moduleName: "LeanExe.Examples.Correctness",
+    entryName: "LeanExe.Examples.Correctness.publicByteArrayArrayOpsReturn",
+    shape: "entry shape: Array ByteArray -> Array ByteArray",
   },
   {
     moduleName: "LeanExe.Examples.Correctness",

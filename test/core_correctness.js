@@ -12,6 +12,35 @@ const watSizeGuards = [
   { name: "arrayStructureReplicateHelperRead", maxBytes: 500_000 },
 ];
 
+const u64Layout = scalarLayout("UInt64");
+const byteArrayLayout = makeByteArrayLayout();
+const u64ArrayLayout = arrayLayout(u64Layout);
+const byteArrayArrayLayout = arrayLayout(byteArrayLayout);
+const nestedU64ArrayLayout = arrayLayout(u64ArrayLayout);
+const optionArrayByteArrayLayout = variantLayout([[], [byteArrayArrayLayout]]);
+const exceptByteArrayArrayLayout = variantLayout([[byteArrayLayout], [byteArrayArrayLayout]]);
+const optionByteArrayLayout = variantLayout([[], [byteArrayLayout]]);
+const exceptByteArrayByteArrayLayout = variantLayout([[byteArrayLayout], [byteArrayLayout]]);
+const tokenLayout = variantLayout([[byteArrayLayout], [u64Layout]]);
+const optionByteArrayArrayLayout = arrayLayout(optionByteArrayLayout);
+const exceptByteArrayByteArrayArrayLayout = arrayLayout(exceptByteArrayByteArrayLayout);
+const tokenArrayLayout = arrayLayout(tokenLayout);
+const byteOutputStateLayout = structLayout([
+  ["count", u64Layout],
+  ["bytes", byteArrayLayout],
+]);
+const byteOutputStateArrayLayout = arrayLayout(byteOutputStateLayout);
+const arrayBoxLayout = structLayout([
+  ["values", u64ArrayLayout],
+  ["count", u64Layout],
+]);
+const arrayBoxArrayLayout = arrayLayout(arrayBoxLayout);
+const byteArrayGroupLayout = structLayout([
+  ["values", byteArrayArrayLayout],
+  ["marker", u64Layout],
+]);
+const heapArrayResultLayout = variantLayout([[byteArrayLayout], [byteArrayArrayLayout, u64Layout]]);
+
 const accepted = [
   { name: "shortOrSkipsTrap", args: [], expected: 1n },
   { name: "shortAndSkipsTrap", args: [], expected: 0n },
@@ -645,38 +674,237 @@ const accepted = [
     name: "publicNestedArrayReturn",
     args: [],
     expected: null,
-    memoryNestedU64Arrays: [{ resultIndex: 0, values: [[1n, 2n]] }],
+    memoryValues: [{ resultIndex: 0, layout: nestedU64ArrayLayout, value: [[1n, 2n]] }],
   },
   {
     name: "publicNestedArrayParam",
-    args: [{ kind: "nestedU64Array", values: [[1n, 2n], [3n, 4n, 5n]] }],
+    args: [{ layout: nestedU64ArrayLayout, value: [[1n, 2n], [3n, 4n, 5n]] }],
     expected: 15n,
   },
   {
     name: "publicByteArrayArrayReturn",
     args: [],
     expected: null,
-    memoryByteArrayArrays: [{ resultIndex: 0, values: [[65], [66, 67]] }],
+    memoryValues: [{ resultIndex: 0, layout: byteArrayArrayLayout, value: [[65], [66, 67]] }],
   },
   {
     name: "publicByteArrayArrayParam",
-    args: [{ kind: "byteArrayArray", values: [[65], [66, 67], [68, 69, 70]] }],
+    args: [{ layout: byteArrayArrayLayout, value: [[65], [66, 67], [68, 69, 70]] }],
     expected: 6n,
+  },
+  {
+    name: "publicOptionArrayReturn",
+    args: [],
+    expected: [1n, null],
+    memoryValues: [{ resultIndex: 1, layout: byteArrayArrayLayout, value: [[65], [66, 67]] }],
+  },
+  {
+    name: "publicOptionArrayParam",
+    args: [{ layout: optionArrayByteArrayLayout, value: { tag: 1, fields: [[[65], [66, 67]]] } }],
+    expected: 3n,
+  },
+  {
+    name: "publicExceptArrayReturn",
+    args: [],
+    expected: [1n, 0n, 0n, null],
+    memoryValues: [{ resultIndex: 3, layout: byteArrayArrayLayout, value: [[65], [66, 67]] }],
+  },
+  {
+    name: "publicExceptArrayParam",
+    args: [{ layout: exceptByteArrayArrayLayout, value: { tag: 1, fields: [[[65], [66, 67]]] } }],
+    expected: 13n,
+  },
+  {
+    name: "publicOptionByteArrayArrayReturn",
+    args: [],
+    expected: null,
+    memoryValues: [
+      {
+        resultIndex: 0,
+        layout: optionByteArrayArrayLayout,
+        value: [
+          { tag: 1, fields: [[65]] },
+          { tag: 0, fields: [] },
+          { tag: 1, fields: [[66, 67]] },
+        ],
+      },
+    ],
+  },
+  {
+    name: "publicOptionByteArrayArrayParam",
+    args: [
+      {
+        layout: optionByteArrayArrayLayout,
+        value: [
+          { tag: 1, fields: [[65]] },
+          { tag: 0, fields: [] },
+          { tag: 1, fields: [[66, 67]] },
+        ],
+      },
+    ],
+    expected: 13n,
+  },
+  {
+    name: "publicOptionByteArrayArrayOpsReturn",
+    args: [
+      {
+        layout: optionByteArrayArrayLayout,
+        value: [
+          { tag: 1, fields: [[65]] },
+          { tag: 0, fields: [] },
+          { tag: 1, fields: [[66, 67]] },
+        ],
+      },
+    ],
+    expected: null,
+    memoryValues: [
+      {
+        resultIndex: 0,
+        layout: optionByteArrayArrayLayout,
+        value: [
+          { tag: 1, fields: [[66, 67, 33]] },
+          { tag: 0, fields: [] },
+          { tag: 1, fields: [[65, 33]] },
+        ],
+      },
+    ],
+  },
+  {
+    name: "publicExceptByteArrayArrayReturn",
+    args: [],
+    expected: null,
+    memoryValues: [
+      {
+        resultIndex: 0,
+        layout: exceptByteArrayByteArrayArrayLayout,
+        value: [
+          { tag: 1, fields: [[65]] },
+          { tag: 0, fields: [[66, 67]] },
+          { tag: 1, fields: [[68, 69, 70]] },
+        ],
+      },
+    ],
+  },
+  {
+    name: "publicExceptByteArrayArrayParam",
+    args: [
+      {
+        layout: exceptByteArrayByteArrayArrayLayout,
+        value: [
+          { tag: 1, fields: [[65]] },
+          { tag: 0, fields: [[66, 67]] },
+          { tag: 1, fields: [[68, 69, 70]] },
+        ],
+      },
+    ],
+    expected: 24n,
+  },
+  {
+    name: "publicTokenArrayReturn",
+    args: [],
+    expected: null,
+    memoryValues: [
+      {
+        resultIndex: 0,
+        layout: tokenArrayLayout,
+        value: [
+          { tag: 0, fields: [[65]] },
+          { tag: 1, fields: [7n] },
+          { tag: 0, fields: [[66, 67]] },
+        ],
+      },
+    ],
+  },
+  {
+    name: "publicTokenArrayParam",
+    args: [
+      {
+        layout: tokenArrayLayout,
+        value: [
+          { tag: 0, fields: [[65]] },
+          { tag: 1, fields: [7n] },
+          { tag: 0, fields: [[66, 67]] },
+        ],
+      },
+    ],
+    expected: 10n,
+  },
+  {
+    name: "publicTokenArrayOpsReturn",
+    args: [
+      {
+        layout: tokenArrayLayout,
+        value: [
+          { tag: 0, fields: [[65]] },
+          { tag: 1, fields: [7n] },
+          { tag: 0, fields: [[66, 67]] },
+        ],
+      },
+    ],
+    expected: null,
+    memoryValues: [
+      {
+        resultIndex: 0,
+        layout: tokenArrayLayout,
+        value: [
+          { tag: 0, fields: [[66, 67, 33]] },
+          { tag: 1, fields: [8n] },
+          { tag: 0, fields: [[65, 33]] },
+        ],
+      },
+    ],
+  },
+  {
+    name: "publicByteArrayGroupReturn",
+    args: [],
+    expected: [null, 9n],
+    memoryValues: [{ resultIndex: 0, layout: byteArrayArrayLayout, value: [[65], [66, 67]] }],
+  },
+  {
+    name: "publicByteArrayGroupParam",
+    args: [{ layout: byteArrayGroupLayout, value: { values: [[65], [66, 67]], marker: 9n } }],
+    expected: 12n,
+  },
+  {
+    name: "publicHeapArrayResultReturn",
+    args: [0n],
+    expected: [0n, null, 3n, 0n, 0n],
+    memoryBytes: [{ resultIndex: 1, lengthIndex: 2, values: [98, 97, 100] }],
+  },
+  {
+    name: "publicHeapArrayResultReturn",
+    args: [1n],
+    expected: [1n, 0n, 0n, null, 5n],
+    memoryValues: [{ resultIndex: 3, layout: byteArrayArrayLayout, value: [[65], [66, 67]] }],
+  },
+  {
+    name: "publicHeapArrayResultParam",
+    args: [
+      {
+        layout: heapArrayResultLayout,
+        value: { tag: 1, fields: [[[65], [66, 67]], 5n] },
+      },
+    ],
+    expected: 8n,
   },
   {
     name: "publicByteOutputStateArrayReturn",
     args: [],
     expected: null,
-    memoryByteOutputStateArrays: [
-      { resultIndex: 0, values: [{ count: 1n, bytes: [65] }, { count: 2n, bytes: [66, 67] }] },
+    memoryValues: [
+      {
+        resultIndex: 0,
+        layout: byteOutputStateArrayLayout,
+        value: [{ count: 1n, bytes: [65] }, { count: 2n, bytes: [66, 67] }],
+      },
     ],
   },
   {
     name: "publicByteOutputStateArrayParam",
     args: [
       {
-        kind: "byteOutputStateArray",
-        values: [{ count: 1n, bytes: [65] }, { count: 2n, bytes: [66, 67] }],
+        layout: byteOutputStateArrayLayout,
+        value: [{ count: 1n, bytes: [65] }, { count: 2n, bytes: [66, 67] }],
       },
     ],
     expected: 6n,
@@ -685,17 +913,34 @@ const accepted = [
     name: "publicArrayBoxArrayReturn",
     args: [],
     expected: null,
-    memoryArrayBoxArrays: [{ resultIndex: 0, values: [{ values: [1n, 2n], count: 2n }] }],
+    memoryValues: [{ resultIndex: 0, layout: arrayBoxArrayLayout, value: [{ values: [1n, 2n], count: 2n }] }],
   },
   {
     name: "publicArrayBoxArrayParam",
     args: [
       {
-        kind: "arrayBoxArray",
-        values: [{ values: [1n, 2n], count: 2n }, { values: [3n], count: 1n }],
+        layout: arrayBoxArrayLayout,
+        value: [{ values: [1n, 2n], count: 2n }, { values: [3n], count: 1n }],
       },
     ],
     expected: 9n,
+  },
+  {
+    name: "publicByteArrayArrayOps",
+    args: [{ layout: byteArrayArrayLayout, value: [[65], [66, 67], [68, 69, 70]] }],
+    expected: [1n, 0n, 1234211n],
+  },
+  {
+    name: "publicByteArrayArrayOpsReturn",
+    args: [{ layout: byteArrayArrayLayout, value: [[65], [66, 67], [68, 69, 70]] }],
+    expected: null,
+    memoryValues: [
+      {
+        resultIndex: 0,
+        layout: byteArrayArrayLayout,
+        value: [[68, 69, 70, 33], [66, 67, 33], [90, 90, 33]],
+      },
+    ],
   },
   { name: "arrayBoxElementRead", args: [], expected: 223n },
   { name: "arrayProductElementRead", args: [], expected: 43n },
@@ -1106,111 +1351,251 @@ function pointer(value) {
   return Number(BigInt.asUintN(64, value));
 }
 
-function writeU64Array(exports, values) {
-  const ptr = pointer(exports.alloc(BigInt(8 + values.length * 8)));
-  const view = new DataView(exports.memory.buffer);
-  view.setBigUint64(ptr, BigInt(values.length), true);
-  values.forEach((value, index) => {
-    view.setBigUint64(ptr + 8 + index * 8, BigInt(value), true);
-  });
-  return ptr;
-}
-
 function writeBytes(exports, values) {
   const ptr = pointer(exports.alloc(BigInt(values.length)));
   new Uint8Array(exports.memory.buffer, ptr, values.length).set(values);
   return ptr;
 }
 
-function writeByteArrayArray(exports, values) {
-  const width = 3;
+function scalarLayout(name) {
+  return {
+    name,
+    publicSlots: 1,
+    elementSlots: 1,
+    writePublicSlots(_exports, value) {
+      return [BigInt(value)];
+    },
+    writeElementSlots(_exports, value) {
+      return [BigInt(value)];
+    },
+    readPublicSlots(_instance, slots) {
+      return BigInt.asUintN(64, slots[0]);
+    },
+    readElementSlots(_instance, slots) {
+      return BigInt.asUintN(64, slots[0]);
+    },
+  };
+}
+
+function makeByteArrayLayout() {
+  return {
+    name: "ByteArray",
+    publicSlots: 2,
+    elementSlots: 3,
+    writePublicSlots(exports, value) {
+      const ptr = writeBytes(exports, value);
+      return [BigInt(ptr), BigInt(value.length)];
+    },
+    writeElementSlots(exports, value) {
+      const ptr = writeBytes(exports, value);
+      return [0n, BigInt(ptr), BigInt(value.length)];
+    },
+    readPublicSlots(instance, slots) {
+      return readBytes(instance, slots[0], slots[1]);
+    },
+    readElementSlots(instance, slots) {
+      return readBytes(instance, slots[1], slots[2]);
+    },
+  };
+}
+
+function arrayLayout(itemLayout) {
+  return {
+    name: `Array ${itemLayout.name}`,
+    publicSlots: 1,
+    elementSlots: 2,
+    writePublicSlots(exports, value) {
+      return [BigInt(writeArrayRoot(exports, itemLayout, value))];
+    },
+    writeElementSlots(exports, value) {
+      return [0n, BigInt(writeArrayRoot(exports, itemLayout, value))];
+    },
+    readPublicSlots(instance, slots) {
+      return readArrayRoot(instance, itemLayout, slots[0]);
+    },
+    readElementSlots(instance, slots) {
+      return readArrayRoot(instance, itemLayout, slots[1]);
+    },
+  };
+}
+
+function structLayout(fields) {
+  const publicSlots = fields.reduce((total, field) => total + field[1].publicSlots, 0);
+  const elementSlots = fields.reduce((total, field) => total + field[1].elementSlots, 0);
+  return {
+    name: "structure",
+    publicSlots,
+    elementSlots,
+    writePublicSlots(exports, value) {
+      return fields.flatMap((field) => field[1].writePublicSlots(exports, value[field[0]]));
+    },
+    writeElementSlots(exports, value) {
+      return fields.flatMap((field) => field[1].writeElementSlots(exports, value[field[0]]));
+    },
+    readPublicSlots(instance, slots) {
+      return readStructSlots(instance, fields, slots, "publicSlots", "readPublicSlots");
+    },
+    readElementSlots(instance, slots) {
+      return readStructSlots(instance, fields, slots, "elementSlots", "readElementSlots");
+    },
+  };
+}
+
+function variantLayout(ctors) {
+  const publicSlots = 1 + ctors.flat().reduce((total, layout) => total + layout.publicSlots, 0);
+  const elementSlots = 1 + ctors.flat().reduce((total, layout) => total + layout.elementSlots, 0);
+  return {
+    name: "tagged",
+    publicSlots,
+    elementSlots,
+    writePublicSlots(exports, value) {
+      return writeVariantSlots(exports, ctors, value, "publicSlots", "writePublicSlots");
+    },
+    writeElementSlots(exports, value) {
+      return writeVariantSlots(exports, ctors, value, "elementSlots", "writeElementSlots");
+    },
+    readPublicSlots(instance, slots) {
+      return readVariantSlots(instance, ctors, slots, "publicSlots", "readPublicSlots");
+    },
+    readElementSlots(instance, slots) {
+      return readVariantSlots(instance, ctors, slots, "elementSlots", "readElementSlots");
+    },
+  };
+}
+
+function defaultSlots(count) {
+  return Array.from({ length: count }, () => 0n);
+}
+
+function writeVariantSlots(exports, ctors, value, widthKey, writeKey) {
+  const tag = Number(value.tag);
+  if (tag < 0 || tag >= ctors.length) {
+    throw new Error(`variant tag ${tag} is outside constructor range`);
+  }
+  const slots = [BigInt(tag)];
+  for (let ctorIndex = 0; ctorIndex < ctors.length; ctorIndex += 1) {
+    const fields = ctors[ctorIndex];
+    if (ctorIndex === tag) {
+      if ((value.fields || []).length !== fields.length) {
+        throw new Error(`variant tag ${tag} expected ${fields.length} fields`);
+      }
+      fields.forEach((layout, fieldIndex) => {
+        slots.push(...layout[writeKey](exports, value.fields[fieldIndex]));
+      });
+    } else {
+      fields.forEach((layout) => {
+        slots.push(...defaultSlots(layout[widthKey]));
+      });
+    }
+  }
+  return slots;
+}
+
+function readStructSlots(instance, fields, slots, widthKey, readKey) {
+  const value = {};
+  let offset = 0;
+  for (const [name, layout] of fields) {
+    const width = layout[widthKey];
+    value[name] = layout[readKey](instance, slots.slice(offset, offset + width));
+    offset += width;
+  }
+  return value;
+}
+
+function readVariantSlots(instance, ctors, slots, widthKey, readKey) {
+  const tag = Number(BigInt.asUintN(64, slots[0]));
+  const fields = [];
+  let offset = 1;
+  for (let ctorIndex = 0; ctorIndex < ctors.length; ctorIndex += 1) {
+    for (const layout of ctors[ctorIndex]) {
+      const width = layout[widthKey];
+      if (ctorIndex === tag) {
+        fields.push(layout[readKey](instance, slots.slice(offset, offset + width)));
+      }
+      offset += width;
+    }
+  }
+  return { tag, fields };
+}
+
+function writeArrayRoot(exports, itemLayout, values) {
+  const width = itemLayout.elementSlots;
   const ptr = pointer(exports.alloc(BigInt(8 + values.length * width * 8)));
   let view = new DataView(exports.memory.buffer);
   view.setBigUint64(ptr, BigInt(values.length), true);
-  values.forEach((bytes, index) => {
-    const bytePtr = writeBytes(exports, bytes);
+  values.forEach((value, index) => {
+    const slots = itemLayout.writeElementSlots(exports, value);
+    if (slots.length !== width) {
+      throw new Error(`${itemLayout.name}: wrote ${slots.length} slots, expected ${width}`);
+    }
     view = new DataView(exports.memory.buffer);
     const base = ptr + 8 + index * width * 8;
-    view.setBigUint64(base, 0n, true);
-    view.setBigUint64(base + 8, BigInt(bytePtr), true);
-    view.setBigUint64(base + 16, BigInt(bytes.length), true);
+    slots.forEach((slot, slotIndex) => {
+      view.setBigUint64(base + slotIndex * 8, BigInt(slot), true);
+    });
   });
   return ptr;
 }
 
-function writeNestedU64Array(exports, values) {
-  const width = 2;
-  const ptr = pointer(exports.alloc(BigInt(8 + values.length * width * 8)));
-  let view = new DataView(exports.memory.buffer);
-  view.setBigUint64(ptr, BigInt(values.length), true);
-  values.forEach((row, index) => {
-    const rowPtr = writeU64Array(exports, row);
-    view = new DataView(exports.memory.buffer);
-    const base = ptr + 8 + index * width * 8;
-    view.setBigUint64(base, 0n, true);
-    view.setBigUint64(base + 8, BigInt(rowPtr), true);
-  });
-  return ptr;
+function readArrayRoot(instance, itemLayout, ptr) {
+  const view = new DataView(instance.exports.memory.buffer);
+  const length = Number(view.getBigUint64(Number(ptr), true));
+  const values = [];
+  for (let index = 0; index < length; index += 1) {
+    const slots = [];
+    for (let slot = 0; slot < itemLayout.elementSlots; slot += 1) {
+      slots.push(view.getBigUint64(Number(ptr + BigInt(8 * (1 + index * itemLayout.elementSlots + slot))), true));
+    }
+    values.push(itemLayout.readElementSlots(instance, slots));
+  }
+  return values;
 }
 
-function writeByteOutputStateArray(exports, values) {
-  const width = 4;
-  const ptr = pointer(exports.alloc(BigInt(8 + values.length * width * 8)));
-  let view = new DataView(exports.memory.buffer);
-  view.setBigUint64(ptr, BigInt(values.length), true);
-  values.forEach((state, index) => {
-    const bytePtr = writeBytes(exports, state.bytes);
-    view = new DataView(exports.memory.buffer);
-    const base = ptr + 8 + index * width * 8;
-    view.setBigUint64(base, BigInt(state.count), true);
-    view.setBigUint64(base + 8, 0n, true);
-    view.setBigUint64(base + 16, BigInt(bytePtr), true);
-    view.setBigUint64(base + 24, BigInt(state.bytes.length), true);
-  });
-  return ptr;
-}
-
-function writeArrayBoxArray(exports, values) {
-  const width = 3;
-  const ptr = pointer(exports.alloc(BigInt(8 + values.length * width * 8)));
-  let view = new DataView(exports.memory.buffer);
-  view.setBigUint64(ptr, BigInt(values.length), true);
-  values.forEach((box, index) => {
-    const valuesPtr = writeU64Array(exports, box.values);
-    view = new DataView(exports.memory.buffer);
-    const base = ptr + 8 + index * width * 8;
-    view.setBigUint64(base, 0n, true);
-    view.setBigUint64(base + 8, BigInt(valuesPtr), true);
-    view.setBigUint64(base + 16, BigInt(box.count), true);
-  });
-  return ptr;
+function readBytes(instance, ptr, len) {
+  const length = Number(BigInt.asUintN(64, len));
+  return Array.from(new Uint8Array(instance.exports.memory.buffer, Number(ptr), length));
 }
 
 function materializeArg(exports, arg) {
   if (typeof arg === "bigint") {
-    return arg;
+    return [arg];
   }
-  switch (arg.kind) {
-    case "byteArrayArray":
-      return BigInt(writeByteArrayArray(exports, arg.values));
-    case "nestedU64Array":
-      return BigInt(writeNestedU64Array(exports, arg.values));
-    case "byteOutputStateArray":
-      return BigInt(writeByteOutputStateArray(exports, arg.values));
-    case "arrayBoxArray":
-      return BigInt(writeArrayBoxArray(exports, arg.values));
-    default:
-      throw new Error(`unknown memory argument kind: ${arg.kind}`);
+  if (arg.layout) {
+    return arg.layout.writePublicSlots(exports, arg.value);
   }
+  throw new Error(`unknown memory argument shape: ${JSON.stringify(arg)}`);
 }
 
-function readU64Array(view, ptr) {
-  const len = Number(view.getBigUint64(Number(ptr), true));
-  const values = [];
-  for (let index = 0; index < len; index += 1) {
-    values.push(view.getBigUint64(Number(ptr + BigInt(8 * (index + 1))), true));
+function formatAbiValue(value) {
+  return JSON.stringify(value, (_key, item) => (typeof item === "bigint" ? item.toString() : item));
+}
+
+function assertAbiEqual(testName, path, actual, expected) {
+  if (typeof expected === "bigint" || typeof actual === "bigint") {
+    if (BigInt(actual) !== BigInt(expected)) {
+      throw new Error(`${testName}: expected ${path} ${formatAbiValue(expected)}, got ${formatAbiValue(actual)}`);
+    }
+    return;
   }
-  return values;
+  if (Array.isArray(expected)) {
+    if (!Array.isArray(actual) || actual.length !== expected.length) {
+      throw new Error(`${testName}: expected ${path} ${formatAbiValue(expected)}, got ${formatAbiValue(actual)}`);
+    }
+    expected.forEach((item, index) => assertAbiEqual(testName, `${path}[${index}]`, actual[index], item));
+    return;
+  }
+  if (expected && typeof expected === "object") {
+    if (!actual || typeof actual !== "object") {
+      throw new Error(`${testName}: expected ${path} ${formatAbiValue(expected)}, got ${formatAbiValue(actual)}`);
+    }
+    for (const key of Object.keys(expected)) {
+      assertAbiEqual(testName, `${path}.${key}`, actual[key], expected[key]);
+    }
+    return;
+  }
+  if (actual !== expected) {
+    throw new Error(`${testName}: expected ${path} ${formatAbiValue(expected)}, got ${formatAbiValue(actual)}`);
+  }
 }
 
 function checkMemoryExpectations(testCase, instance, actualSlots) {
@@ -1243,95 +1628,13 @@ function checkMemoryExpectations(testCase, instance, actualSlots) {
       }
     }
   }
-  for (const memoryArray of testCase.memoryByteArrayArrays || []) {
-    const ptr = actualSlots[memoryArray.resultIndex];
-    const len = Number(view.getBigUint64(Number(ptr), true));
-    if (len !== memoryArray.values.length) {
-      throw new Error(`${testCase.name}: expected byte-array array length ${memoryArray.values.length}, got ${len}`);
-    }
-    memoryArray.values.forEach((expectedBytes, index) => {
-      const base = ptr + BigInt(8 * (1 + index * 3));
-      const bytePtr = view.getBigUint64(Number(base + 8n), true);
-      const byteLen = view.getBigUint64(Number(base + 16n), true);
-      if (byteLen !== BigInt(expectedBytes.length)) {
-        throw new Error(`${testCase.name}: expected byte-array[${index}] length ${expectedBytes.length}, got ${byteLen}`);
-      }
-      const bytes = new Uint8Array(instance.exports.memory.buffer, Number(bytePtr), Number(byteLen));
-      expectedBytes.forEach((expected, byteIndex) => {
-        if (bytes[byteIndex] !== expected) {
-          throw new Error(`${testCase.name}: expected byte-array[${index}][${byteIndex}] ${expected}, got ${bytes[byteIndex]}`);
-        }
-      });
-    });
-  }
-  for (const memoryArray of testCase.memoryNestedU64Arrays || []) {
-    const ptr = actualSlots[memoryArray.resultIndex];
-    const len = Number(view.getBigUint64(Number(ptr), true));
-    if (len !== memoryArray.values.length) {
-      throw new Error(`${testCase.name}: expected nested array length ${memoryArray.values.length}, got ${len}`);
-    }
-    memoryArray.values.forEach((expectedRow, index) => {
-      const base = ptr + BigInt(8 * (1 + index * 2));
-      const rowPtr = view.getBigUint64(Number(base + 8n), true);
-      const row = readU64Array(view, rowPtr);
-      if (row.length !== expectedRow.length) {
-        throw new Error(`${testCase.name}: expected row ${index} length ${expectedRow.length}, got ${row.length}`);
-      }
-      row.forEach((actual, valueIndex) => {
-        if (actual !== expectedRow[valueIndex]) {
-          throw new Error(`${testCase.name}: expected row ${index}[${valueIndex}] ${expectedRow[valueIndex]}, got ${actual}`);
-        }
-      });
-    });
-  }
-  for (const memoryArray of testCase.memoryByteOutputStateArrays || []) {
-    const ptr = actualSlots[memoryArray.resultIndex];
-    const len = Number(view.getBigUint64(Number(ptr), true));
-    if (len !== memoryArray.values.length) {
-      throw new Error(`${testCase.name}: expected ByteOutputState array length ${memoryArray.values.length}, got ${len}`);
-    }
-    memoryArray.values.forEach((expectedState, index) => {
-      const base = ptr + BigInt(8 * (1 + index * 4));
-      const count = view.getBigUint64(Number(base), true);
-      const bytePtr = view.getBigUint64(Number(base + 16n), true);
-      const byteLen = view.getBigUint64(Number(base + 24n), true);
-      if (count !== expectedState.count) {
-        throw new Error(`${testCase.name}: expected state ${index} count ${expectedState.count}, got ${count}`);
-      }
-      if (byteLen !== BigInt(expectedState.bytes.length)) {
-        throw new Error(`${testCase.name}: expected state ${index} byte length ${expectedState.bytes.length}, got ${byteLen}`);
-      }
-      const bytes = new Uint8Array(instance.exports.memory.buffer, Number(bytePtr), Number(byteLen));
-      expectedState.bytes.forEach((expected, byteIndex) => {
-        if (bytes[byteIndex] !== expected) {
-          throw new Error(`${testCase.name}: expected state ${index} byte ${byteIndex} ${expected}, got ${bytes[byteIndex]}`);
-        }
-      });
-    });
-  }
-  for (const memoryArray of testCase.memoryArrayBoxArrays || []) {
-    const ptr = actualSlots[memoryArray.resultIndex];
-    const len = Number(view.getBigUint64(Number(ptr), true));
-    if (len !== memoryArray.values.length) {
-      throw new Error(`${testCase.name}: expected ArrayBox array length ${memoryArray.values.length}, got ${len}`);
-    }
-    memoryArray.values.forEach((expectedBox, index) => {
-      const base = ptr + BigInt(8 * (1 + index * 3));
-      const valuesPtr = view.getBigUint64(Number(base + 8n), true);
-      const count = view.getBigUint64(Number(base + 16n), true);
-      const values = readU64Array(view, valuesPtr);
-      if (count !== expectedBox.count) {
-        throw new Error(`${testCase.name}: expected box ${index} count ${expectedBox.count}, got ${count}`);
-      }
-      if (values.length !== expectedBox.values.length) {
-        throw new Error(`${testCase.name}: expected box ${index} values length ${expectedBox.values.length}, got ${values.length}`);
-      }
-      values.forEach((actual, valueIndex) => {
-        if (actual !== expectedBox.values[valueIndex]) {
-          throw new Error(`${testCase.name}: expected box ${index} value ${valueIndex} ${expectedBox.values[valueIndex]}, got ${actual}`);
-        }
-      });
-    });
+  for (const memoryValue of testCase.memoryValues || []) {
+    const slots = actualSlots.slice(
+      memoryValue.resultIndex,
+      memoryValue.resultIndex + memoryValue.layout.publicSlots,
+    );
+    const actual = memoryValue.layout.readPublicSlots(instance, slots);
+    assertAbiEqual(testCase.name, `result[${memoryValue.resultIndex}]`, actual, memoryValue.value);
   }
 }
 
@@ -1351,7 +1654,7 @@ async function runAccepted(testCase) {
 
   let result;
   try {
-    const args = testCase.args.map((arg) => materializeArg(instance.exports, arg));
+    const args = testCase.args.flatMap((arg) => materializeArg(instance.exports, arg));
     result = fn(...args);
   } catch (error) {
     throw new Error(`${testCase.name}: unexpected trap: ${error.message}`);
@@ -1410,12 +1713,13 @@ async function runTrapped(testCase) {
 
   let trapped = false;
   try {
-    fn(...testCase.args);
+    const args = testCase.args.flatMap((arg) => materializeArg(instance.exports, arg));
+    fn(...args);
   } catch (_error) {
     trapped = true;
   }
   if (!trapped) {
-    throw new Error(`${testCase.name}: expected Wasm trap`);
+    throw new Error(`${testCase.name}: expected WASM trap`);
   }
 }
 

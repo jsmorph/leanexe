@@ -35,7 +35,7 @@ The report command is the first diagnostic tool.  It imports the module, expands
 Use these rules before reaching for more specific templates:
 
 - Use concrete runtime types: `UInt64`, `Nat`, `Bool`, `ByteArray`, `Array`, structures, nonrecursive inductives, `Option`, `Except`, and internal recursive inductives.
-- Keep public entry types ABI-friendly.  Recursive data, `List`, products, `PSum`, and arrays of recursive values are internal-only.  Public arrays may contain byte arrays, nested arrays, and structures or tagged values with fixed-width heap fields.
+- Keep public entry types ABI-friendly.  Recursive data, `List`, products, `PSum`, and arrays of recursive values are internal-only.  Public arrays may contain byte arrays, nested arrays, `Option`, `Except`, and structures or tagged values with fixed-width heap fields.
 - Keep helper definitions under the same root namespace as the module being compiled.
 - Use named helper declarations freely when their types are concrete and first-order.
 - Use `for` and `while` loops in `Id`, `Option`, or `Except` when the collection and accumulator types are supported.
@@ -361,9 +361,36 @@ Nested loops are accepted when each loop has a supported monad, collection, and 
 
 ## Arrays
 
-Use arrays when the element type has a fixed-width layout.  Public arrays may contain heap-reference fields such as `ByteArray`, nested arrays, and structures or tagged values that contain those fields.  Public arrays cannot contain recursive inductive values.  Internal arrays may additionally contain recursive pointers, products, and structures or tagged values that contain recursive pointer fields.  A `ByteArray` element uses owner, pointer, and length slots; a nested array element uses owner and pointer slots.  Copied array elements retain compiler-owned child roots.
+Use arrays when the element type has a fixed-width layout.  Public arrays may contain heap-reference fields such as `ByteArray`, nested arrays, `Option`, `Except`, and structures or tagged values that contain those fields.  Public entry structures and tagged values may also contain array fields, provided the flattened layout contains no recursive inductive value.  Public arrays cannot contain recursive inductive values.  Internal arrays may additionally contain recursive pointers, products, and structures or tagged values that contain recursive pointer fields.  A `ByteArray` element uses owner, pointer, and length slots; a nested array element uses owner and pointer slots.  Copied array elements retain compiler-owned child roots.
 
 Stable array operations include literals, `Array.size`, `isEmpty`, indexing, safe indexing, `getD`, `back?`, `push`, `pop`, `append`, `extract`, `set`, `set!`, `setIfInBounds`, `modify`, `insertIdx`, `eraseIdx`, `swap`, `reverse`, `map`, `filter`, `find?`, `findIdx?`, `any`, `all`, `foldl`, and `foldlM`.  Bang operations trap on invalid indexes.  Updates allocate fresh arrays and preserve Lean value semantics.
+
+Arrays of heap-bearing tagged values work when the tag has a fixed flattened width.  The same rule covers `Array (Option ByteArray)`, `Array (Except ByteArray ByteArray)`, and arrays of source-defined tags.  Public entry structures can carry array fields when every element follows the same rule.
+
+```lean
+namespace LeanExe.Examples.ManualPublicArrays
+
+inductive Token where
+  | text : ByteArray -> Token
+  | number : UInt64 -> Token
+
+structure Batch where
+  values : Array ByteArray
+  marker : UInt64
+
+def tokenScore (values : Array Token) : UInt64 :=
+  values.foldl
+    (fun acc token =>
+      match token with
+      | .text bytes => acc + bytes.size.toUInt64
+      | .number value => acc + value)
+    0
+
+def batchScore (batch : Batch) : UInt64 :=
+  batch.values.foldl (fun acc bytes => acc + bytes.size.toUInt64) batch.marker
+
+end LeanExe.Examples.ManualPublicArrays
+```
 
 Direct lambdas are the safest callback form:
 
