@@ -4,7 +4,9 @@
 
 The test suite now has a small C host runner built against the Wasmtime C API.  The runner instantiates a compiled library-mode module with Wasmtime, materializes `i64` and `ByteArray` arguments through the module's exported `alloc`, calls one exported function, and prints either an `i64`, flattened result slots, or returned bytes as hex.  This removes JavaScript WASM execution from the byte-array allocation tests, ASCII-string tests, JSON byte-transform tests, and validator fuzz test while preserving host-memory argument and result coverage for those cases.
 
-The matching Wasmtime C API package for the existing CLI version is expected at `build/tools/wasmtime/wasmtime-v44.0.0-aarch64-linux-c-api`, or through `WASMTIME_C_API`.  `tools/build-wasmtime-host.sh` builds `build/tools/leanexe-wasmtime-host` from `tools/wasmtime-host.c`.  Node still orchestrates these tests, but it no longer instantiates WASM for the migrated cases.  The remaining JavaScript WASM execution paths are `test/core_correctness.js` and `test/refcount.js`; those require the next runner generalization for structured public ABI layouts and same-instance runtime API checks.
+The matching Wasmtime C API package for the existing CLI version is expected at `build/tools/wasmtime/wasmtime-v44.0.0-aarch64-linux-c-api`, or through `WASMTIME_C_API`.  `tools/build-wasmtime-host.sh` builds `build/tools/leanexe-wasmtime-host` from `tools/wasmtime-host.c`.  Node still orchestrates these tests, but it no longer instantiates WASM for the migrated cases.  The remaining JavaScript WASM execution path is `test/core_correctness.js`, which requires the next runner generalization for structured public ABI layouts.
+
+The runner now also owns the same-instance reference-count checks that used to require JavaScript's embedded engine.  Its dedicated commands cover release reuse, retained-pointer delayed reuse, the `free` alias, allocator growth, reset-sensitive temporary reuse for byte-array and array inputs, no-argument temporary reuse, and scalar calls with `Array UInt64` and `ByteArray` arguments.  `test/refcount.js` now orchestrates those Wasmtime runner commands instead of instantiating WASM in Node.  The only remaining JavaScript WASM execution path is `test/core_correctness.js`, which still needs structured public ABI argument and result inspection.
 
 Checks run:
 
@@ -18,6 +20,7 @@ Checks run:
 - [x] `node test/asciistring.js` returned `checked 23 asciistring cases`.
 - [x] `node test/json_double.js` returned `checked 48 json program cases`.
 - [x] `node test/fuzz_validate.js .lake/build/ascii-generic.wasm 10` returned `checked 16 cases`.
+- [x] `node test/refcount.js` returned `checked 31 refcount cases`.
 - [x] `node test/run_all.js` returned `checked 112 report classification cases`, `checked 7 ownership report cases`, `checked 743 accepted, 29 rejected, and 13 trapped cases`, `checked 31 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 35 WASI program cases, 2 traps, and 7 rejections`, `checked 94 standard Lean comparison cases`, and `checked 56 cases`.
 
 ## 2026-05-21: Heap-Bearing Array Ownership Tests
