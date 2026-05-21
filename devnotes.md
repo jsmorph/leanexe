@@ -1,5 +1,17 @@
 # Development Journal
 
+## 2026-05-21: Standard Comparison Edge Cases
+
+The standard comparison self-test now covers more of the scalar and tagged-value perimeter against official Lean execution.  The added cases compare short-circuiting, fixed-width division by zero, UInt64 wrapping, Nat subtraction and division edge cases, fixed-width UInt8 and UInt32 wrapping, Option and Except public layouts, array reads, array filters, fixed-width array element operations, and selected foldr windows.  Pure comparison mode now normalizes successful Wasmtime `i64` CLI output back to unsigned `UInt64` text, because the harness slot type is `Array UInt64` while Wasmtime renders high-bit `i64` results as signed decimal.
+
+The public ABI comparison slice now includes heap-bearing tagged argument values in addition to previous heap-bearing results.  It covers `Option (Array ByteArray)`, `Except ByteArray (Array ByteArray)`, `Array (Option ByteArray)`, `Array (Except ByteArray ByteArray)`, and `Option (Array (Option ByteArray))`, with both present and absent or error and ok constructor paths where those paths have different semantics.  These cases still compare standard Lean output with generated WASM executed under Wasmtime.
+
+Checks run:
+
+- [x] `node --check tools/compare-standard.js`
+- [x] `node tools/compare-standard.js --self-test` returned `checked 189 standard Lean comparison cases`.
+- [x] `node test/run_all.js` returned `checked 112 report classification cases`, `checked 7 ownership report cases`, `checked JavaScript WASM execution guard`, `checked 751 accepted, 29 rejected, and 13 trapped cases`, `checked 31 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 35 WASI program cases, 2 traps, and 7 rejections`, `checked 189 standard Lean comparison cases`, and `checked 56 cases`.
+
 ## 2026-05-21: More Standard Comparison Cases
 
 The standard comparison self-test now includes repeated inputs for several programs rather than one representative call per entry.  The added cases cover pure scalar entries with different arguments, public nested-array and byte-array-array ABI arguments, byte-array stdin transforms on empty and nonempty input, JSON GCD success and error inputs, typed JSON object decoding success and schema-error inputs, JSON addition with reordered fields and overflow, Collatz JSON success and error inputs, and argv success and error behavior.  Each case still runs the official Lean program and compares it with the LeanExe-generated WASM under Wasmtime.
