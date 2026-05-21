@@ -406,6 +406,7 @@ const accepted = [
   { name: "recursiveScenarioHelperRuntimeReleaseStats", args: [0n], expected: 101n },
   { name: "recursiveScenarioHelperRuntimeReleaseStats", args: [1n], expected: 707n },
   { name: "recursiveScenarioHelperRuntimeReleaseStats", args: [2n], expected: 707n },
+  { name: "sharedRecursiveChildReleaseStats", args: [], expected: 10302n },
   { name: "ownedBoxCallTempScalar", args: [], expected: 13n },
   {
     name: "byteArrayFoldByteOutputState",

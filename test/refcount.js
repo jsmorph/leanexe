@@ -74,6 +74,7 @@ function checkSourceReleaseStats() {
     expectI64(correctnessModule, "recursiveScenarioRuntimeReleaseStats", expected, [host.i64(kind)]);
     expectI64(correctnessModule, "recursiveScenarioHelperRuntimeReleaseStats", expected, [host.i64(kind)]);
   }
+  expectI64(correctnessModule, "sharedRecursiveChildReleaseStats", 10302);
 }
 
 function checkBorrowedArrayNoopRelease() {
@@ -147,7 +148,7 @@ function main() {
   checkBorrowedArrayNoopRelease();
   checkCompilerReleasesOwnedCallResults();
   checkCompilerReleasesFoldAccumulators();
-  process.stdout.write("checked 37 refcount cases\n");
+  process.stdout.write("checked 38 refcount cases\n");
 }
 
 try {
