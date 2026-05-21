@@ -3,9 +3,11 @@
 const fs = require("fs");
 const path = require("path");
 const { spawnSync } = require("child_process");
+const host = require("./wasmtime_host");
 
 const moduleName = "LeanExe.Examples.Correctness";
 const leanExe = process.env.LEAN_WASM_EXE || path.join(".lake", "build", "bin", "lean-wasm");
+const wasmtime = process.env.WASMTIME || path.join("build", "tools", "wasmtime", "current", "wasmtime");
 const outDir = path.join(".lake", "build", "core-correctness");
 
 const watSizeGuards = [
@@ -1513,6 +1515,12 @@ function scalarLayout(name) {
     name,
     publicSlots: 1,
     elementSlots: 1,
+    writePublicPlan(_plan, value) {
+      return [{ kind: "u64", value: BigInt(value) }];
+    },
+    writeElementPlan(_plan, value) {
+      return [{ kind: "u64", value: BigInt(value) }];
+    },
     writePublicSlots(_exports, value) {
       return [BigInt(value)];
     },
@@ -1533,6 +1541,18 @@ function makeByteArrayLayout() {
     name: "ByteArray",
     publicSlots: 2,
     elementSlots: 3,
+    writePublicPlan(plan, value) {
+      const id = plan.bytes(value);
+      return [{ kind: "ptr", id }, { kind: "u64", value: BigInt(value.length) }];
+    },
+    writeElementPlan(plan, value) {
+      const id = plan.bytes(value);
+      return [
+        { kind: "u64", value: 0n },
+        { kind: "ptr", id },
+        { kind: "u64", value: BigInt(value.length) },
+      ];
+    },
     writePublicSlots(exports, value) {
       const ptr = writeBytes(exports, value);
       return [BigInt(ptr), BigInt(value.length)];
@@ -1555,6 +1575,15 @@ function arrayLayout(itemLayout) {
     name: `Array ${itemLayout.name}`,
     publicSlots: 1,
     elementSlots: 2,
+    writePublicPlan(plan, value) {
+      return [{ kind: "ptr", id: writeArrayRootPlan(plan, itemLayout, value) }];
+    },
+    writeElementPlan(plan, value) {
+      return [
+        { kind: "u64", value: 0n },
+        { kind: "ptr", id: writeArrayRootPlan(plan, itemLayout, value) },
+      ];
+    },
     writePublicSlots(exports, value) {
       return [BigInt(writeArrayRoot(exports, itemLayout, value))];
     },
@@ -1577,6 +1606,12 @@ function structLayout(fields) {
     name: "structure",
     publicSlots,
     elementSlots,
+    writePublicPlan(plan, value) {
+      return fields.flatMap((field) => field[1].writePublicPlan(plan, value[field[0]]));
+    },
+    writeElementPlan(plan, value) {
+      return fields.flatMap((field) => field[1].writeElementPlan(plan, value[field[0]]));
+    },
     writePublicSlots(exports, value) {
       return fields.flatMap((field) => field[1].writePublicSlots(exports, value[field[0]]));
     },
@@ -1599,6 +1634,12 @@ function variantLayout(ctors) {
     name: "tagged",
     publicSlots,
     elementSlots,
+    writePublicPlan(plan, value) {
+      return writeVariantPlan(plan, ctors, value, "publicSlots", "writePublicPlan");
+    },
+    writeElementPlan(plan, value) {
+      return writeVariantPlan(plan, ctors, value, "elementSlots", "writeElementPlan");
+    },
     writePublicSlots(exports, value) {
       return writeVariantSlots(exports, ctors, value, "publicSlots", "writePublicSlots");
     },
@@ -1616,6 +1657,34 @@ function variantLayout(ctors) {
 
 function defaultSlots(count) {
   return Array.from({ length: count }, () => 0n);
+}
+
+function defaultPlanSlots(count) {
+  return Array.from({ length: count }, () => ({ kind: "u64", value: 0n }));
+}
+
+function writeVariantPlan(plan, ctors, value, widthKey, writeKey) {
+  const tag = Number(value.tag);
+  if (tag < 0 || tag >= ctors.length) {
+    throw new Error(`variant tag ${tag} is outside constructor range`);
+  }
+  const slots = [{ kind: "u64", value: BigInt(tag) }];
+  for (let ctorIndex = 0; ctorIndex < ctors.length; ctorIndex += 1) {
+    const fields = ctors[ctorIndex];
+    if (ctorIndex === tag) {
+      if ((value.fields || []).length !== fields.length) {
+        throw new Error(`variant tag ${tag} expected ${fields.length} fields`);
+      }
+      fields.forEach((layout, fieldIndex) => {
+        slots.push(...layout[writeKey](plan, value.fields[fieldIndex]));
+      });
+    } else {
+      fields.forEach((layout) => {
+        slots.push(...defaultPlanSlots(layout[widthKey]));
+      });
+    }
+  }
+  return slots;
 }
 
 function writeVariantSlots(exports, ctors, value, widthKey, writeKey) {
@@ -1688,6 +1757,61 @@ function writeArrayRoot(exports, itemLayout, values) {
   return ptr;
 }
 
+class HostPlan {
+  constructor() {
+    this.commands = [];
+    this.nextId = 1;
+  }
+
+  alloc(size) {
+    const id = this.nextId;
+    this.nextId += 1;
+    this.commands.push(`alloc ${id} ${size}`);
+    return id;
+  }
+
+  bytes(values) {
+    const id = this.nextId;
+    this.nextId += 1;
+    const hex = Array.from(values, (byte) => byte.toString(16).padStart(2, "0")).join("");
+    this.commands.push(`bytes ${id} ${hex}`);
+    return id;
+  }
+
+  writeSlot(blockId, offset, slot) {
+    if (slot.kind === "ptr") {
+      this.commands.push(`write-ptr ${blockId} ${offset} ${slot.id}`);
+      return;
+    }
+    this.commands.push(`write-u64 ${blockId} ${offset} ${BigInt(slot.value).toString()}`);
+  }
+
+  argSlot(slot) {
+    if (slot.kind === "ptr") {
+      this.commands.push(`arg-ptr ${slot.id}`);
+      return;
+    }
+    this.commands.push(`arg-u64 ${BigInt(slot.value).toString()}`);
+  }
+}
+
+function writeArrayRootPlan(plan, itemLayout, values) {
+  const width = itemLayout.elementSlots;
+  const root = plan.alloc(8 + values.length * width * 8);
+  plan.writeSlot(root, 0, { kind: "u64", value: BigInt(values.length) });
+  values.forEach((value, index) => {
+    const slots = itemLayout.writeElementPlan(plan, value);
+    if (slots.length !== width) {
+      throw new Error(`${itemLayout.name}: wrote ${slots.length} slots, expected ${width}`);
+    }
+    const base = 8 + index * width * 8;
+    slots.forEach((slot, slotIndex) => {
+      plan.writeSlot(root, base + slotIndex * 8, slot);
+    });
+  });
+  return root;
+}
+
 function readArrayRoot(instance, itemLayout, ptr) {
   const view = new DataView(instance.exports.memory.buffer);
   const length = Number(view.getBigUint64(Number(ptr), true));
@@ -1713,6 +1837,20 @@ function materializeArg(exports, arg) {
   }
   if (arg.layout) {
     return arg.layout.writePublicSlots(exports, arg.value);
+  }
+  throw new Error(`unknown memory argument shape: ${JSON.stringify(arg)}`);
+}
+
+function materializeArgPlan(plan, arg) {
+  if (typeof arg === "bigint") {
+    plan.argSlot({ kind: "u64", value: arg });
+    return;
+  }
+  if (arg.layout) {
+    for (const slot of arg.layout.writePublicPlan(plan, arg.value)) {
+      plan.argSlot(slot);
+    }
+    return;
   }
   throw new Error(`unknown memory argument shape: ${JSON.stringify(arg)}`);
 }
@@ -1796,41 +1934,53 @@ async function runAccepted(testCase) {
     throw new Error(`${testCase.name} failed to compile: ${compiled.stderr.trim()}`);
   }
 
-  const wasm = fs.readFileSync(out);
-  const { instance } = await WebAssembly.instantiate(wasm, {});
-  const fn = instance.exports[testCase.name];
-  if (typeof fn !== "function") {
-    throw new Error(`${testCase.name} was not exported`);
+  const resultCount = Array.isArray(testCase.expected) ? testCase.expected.length : 1;
+  const needsMemory =
+    (testCase.memoryArrays || []).length > 0 ||
+    (testCase.memoryBytes || []).length > 0 ||
+    (testCase.memoryValues || []).length > 0;
+  const needsPlan = needsMemory || testCase.args.some((arg) => arg && typeof arg === "object" && arg.layout);
+  let actualSlots;
+  let instance = null;
+
+  if (needsPlan) {
+    const plan = new HostPlan();
+    testCase.args.forEach((arg) => materializeArgPlan(plan, arg));
+    const result = host.script(out, plan.commands, testCase.name, resultCount, needsMemory);
+    actualSlots = result.slots.map((slot) => BigInt.asUintN(64, slot));
+    if (needsMemory) {
+      instance = { exports: { memory: { buffer: result.memory } } };
+    }
+  } else if (Array.isArray(testCase.expected)) {
+    const output = host.call(
+      out,
+      testCase.name,
+      `slots:${resultCount}`,
+      testCase.args.map((arg) => host.i64(arg)),
+    );
+    actualSlots = output.split(/\s+/).filter((value) => value.length > 0).map((value) => BigInt.asUintN(64, BigInt(value)));
+  } else {
+    actualSlots = [host.callI64(out, testCase.name, testCase.args.map((arg) => host.i64(arg)))];
   }
 
-  let result;
-  try {
-    const args = testCase.args.flatMap((arg) => materializeArg(instance.exports, arg));
-    result = fn(...args);
-  } catch (error) {
-    throw new Error(`${testCase.name}: unexpected trap: ${error.message}`);
-  }
   if (Array.isArray(testCase.expected)) {
-    if (!Array.isArray(result)) {
-      throw new Error(`${testCase.name}: expected multi-value result, got ${result}`);
+    if (actualSlots.length !== testCase.expected.length) {
+      throw new Error(`${testCase.name}: expected ${testCase.expected}, got ${actualSlots}`);
     }
-    const actual = result.map((item) => BigInt.asUintN(64, item));
-    if (actual.length !== testCase.expected.length) {
-      throw new Error(`${testCase.name}: expected ${testCase.expected}, got ${actual}`);
-    }
-    for (let index = 0; index < actual.length; index += 1) {
+    for (let index = 0; index < actualSlots.length; index += 1) {
       const expected = testCase.expected[index];
-      if (expected !== null && actual[index] !== expected) {
-        throw new Error(`${testCase.name}: expected ${testCase.expected}, got ${actual}`);
+      if (expected !== null && actualSlots[index] !== expected) {
+        throw new Error(`${testCase.name}: expected ${testCase.expected}, got ${actualSlots}`);
       }
     }
-    checkMemoryExpectations(testCase, instance, actual);
+    if (needsMemory) {
+      checkMemoryExpectations(testCase, instance, actualSlots);
+    }
   } else {
-    const actual = BigInt.asUintN(64, result);
     if (testCase.expected === null) {
-      checkMemoryExpectations(testCase, instance, [actual]);
-    } else if (actual !== testCase.expected) {
-      throw new Error(`${testCase.name}: expected ${testCase.expected}, got ${actual}`);
+      checkMemoryExpectations(testCase, instance, actualSlots);
+    } else if (actualSlots[0] !== testCase.expected) {
+      throw new Error(`${testCase.name}: expected ${testCase.expected}, got ${actualSlots[0]}`);
     }
   }
 }
@@ -1855,21 +2005,12 @@ async function runTrapped(testCase) {
     throw new Error(`${testCase.name} failed to compile: ${compiled.stderr.trim()}`);
   }
 
-  const wasm = fs.readFileSync(out);
-  const { instance } = await WebAssembly.instantiate(wasm, {});
-  const fn = instance.exports[testCase.name];
-  if (typeof fn !== "function") {
-    throw new Error(`${testCase.name} was not exported`);
-  }
-
-  let trapped = false;
-  try {
-    const args = testCase.args.flatMap((arg) => materializeArg(instance.exports, arg));
-    fn(...args);
-  } catch (_error) {
-    trapped = true;
-  }
-  if (!trapped) {
+  const result = spawnSync(
+    wasmtime,
+    ["run", "--invoke", testCase.name, out, ...testCase.args.map((arg) => arg.toString())],
+    { encoding: "utf8" },
+  );
+  if (result.status === 0) {
     throw new Error(`${testCase.name}: expected WASM trap`);
   }
 }

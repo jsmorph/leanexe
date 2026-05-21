@@ -695,6 +695,159 @@ static void command_allocator_grows(Runtime *runtime, int argc, char **argv) {
   memory[ptr + before - 1] = 123;
 }
 
+static void write_bytes_at(Runtime *runtime, uint64_t ptr, const uint8_t *bytes, size_t len) {
+  if (!runtime->has_memory) {
+    die("missing memory export");
+  }
+  size_t memory_len = wasmtime_memory_data_size(runtime->context, &runtime->memory);
+  if (ptr > memory_len || len > memory_len - (size_t)ptr) {
+    die("byte write is outside memory");
+  }
+  uint8_t *memory = wasmtime_memory_data(runtime->context, &runtime->memory);
+  memcpy(memory + ptr, bytes, len);
+}
+
+static void command_script(Runtime *runtime, int argc, char **argv) {
+  if (argc != 0) {
+    die("usage: script <module.wasm>");
+  }
+  (void)argv;
+  uint64_t ids[4096];
+  wasmtime_val_t args[256];
+  size_t nargs = 0;
+  memset(ids, 0, sizeof(ids));
+  char line[16384];
+  while (fgets(line, sizeof(line), stdin) != NULL) {
+    size_t len = strlen(line);
+    while (len > 0 && (line[len - 1] == '\n' || line[len - 1] == '\r')) {
+      line[--len] = 0;
+    }
+    if (len == 0) {
+      continue;
+    }
+    char *command = strtok(line, " ");
+    if (command == NULL) {
+      continue;
+    }
+    if (strcmp(command, "alloc") == 0) {
+      char *id_text = strtok(NULL, " ");
+      char *size_text = strtok(NULL, " ");
+      if (id_text == NULL || size_text == NULL) {
+        die("alloc requires id and size");
+      }
+      uint64_t id = parse_u64(id_text);
+      if (id >= 4096) {
+        die("allocation id is too large");
+      }
+      ids[id] = call_alloc(runtime, parse_u64(size_text));
+    } else if (strcmp(command, "bytes") == 0) {
+      char *id_text = strtok(NULL, " ");
+      char *hex = strtok(NULL, " ");
+      if (id_text == NULL || hex == NULL) {
+        die("bytes requires id and hex");
+      }
+      uint64_t id = parse_u64(id_text);
+      if (id >= 4096) {
+        die("allocation id is too large");
+      }
+      size_t byte_len = 0;
+      uint8_t *bytes = parse_hex(hex, &byte_len);
+      ids[id] = alloc_bytes(runtime, bytes, byte_len);
+      free(bytes);
+    } else if (strcmp(command, "write-u64") == 0 || strcmp(command, "write-ptr") == 0) {
+      char *id_text = strtok(NULL, " ");
+      char *offset_text = strtok(NULL, " ");
+      char *value_text = strtok(NULL, " ");
+      if (id_text == NULL || offset_text == NULL || value_text == NULL) {
+        die("write requires id, offset, and value");
+      }
+      uint64_t id = parse_u64(id_text);
+      if (id >= 4096) {
+        die("allocation id is too large");
+      }
+      uint64_t value = 0;
+      if (strcmp(command, "write-ptr") == 0) {
+        uint64_t value_id = parse_u64(value_text);
+        if (value_id >= 4096) {
+          die("pointer id is too large");
+        }
+        value = ids[value_id];
+      } else {
+        value = parse_u64(value_text);
+      }
+      write_u64_at(runtime, ids[id] + parse_u64(offset_text), value);
+    } else if (strcmp(command, "write-bytes") == 0) {
+      char *id_text = strtok(NULL, " ");
+      char *offset_text = strtok(NULL, " ");
+      char *hex = strtok(NULL, " ");
+      if (id_text == NULL || offset_text == NULL || hex == NULL) {
+        die("write-bytes requires id, offset, and hex");
+      }
+      uint64_t id = parse_u64(id_text);
+      if (id >= 4096) {
+        die("allocation id is too large");
+      }
+      size_t byte_len = 0;
+      uint8_t *bytes = parse_hex(hex, &byte_len);
+      write_bytes_at(runtime, ids[id] + parse_u64(offset_text), bytes, byte_len);
+      free(bytes);
+    } else if (strcmp(command, "arg-u64") == 0 || strcmp(command, "arg-ptr") == 0) {
+      char *value_text = strtok(NULL, " ");
+      if (value_text == NULL) {
+        die("arg requires value");
+      }
+      if (nargs >= 256) {
+        die("too many arguments");
+      }
+      uint64_t value = 0;
+      if (strcmp(command, "arg-ptr") == 0) {
+        uint64_t id = parse_u64(value_text);
+        if (id >= 4096) {
+          die("pointer id is too large");
+        }
+        value = ids[id];
+      } else {
+        value = parse_u64(value_text);
+      }
+      args[nargs].kind = WASMTIME_I64;
+      args[nargs].of.i64 = (int64_t)value;
+      nargs++;
+    } else if (strcmp(command, "call") == 0) {
+      char *func_name = strtok(NULL, " ");
+      char *nresults_text = strtok(NULL, " ");
+      char *dump_text = strtok(NULL, " ");
+      if (func_name == NULL || nresults_text == NULL || dump_text == NULL) {
+        die("call requires function, result count, and dump flag");
+      }
+      size_t nresults = (size_t)parse_u64(nresults_text);
+      if (nresults > 128) {
+        die("too many result slots");
+      }
+      wasmtime_val_t results[128];
+      wasmtime_func_t func = get_func(runtime, func_name);
+      invoke_func(runtime, &func, args, nargs, results, nresults);
+      printf("results");
+      for (size_t i = 0; i < nresults; i++) {
+        printf(" %" PRIu64, (uint64_t)results[i].of.i64);
+      }
+      printf("\n");
+      if (parse_u64(dump_text) != 0) {
+        size_t memory_len = wasmtime_memory_data_size(runtime->context, &runtime->memory);
+        uint8_t *memory = wasmtime_memory_data(runtime->context, &runtime->memory);
+        printf("memory");
+        for (size_t i = 0; i < memory_len; i++) {
+          printf("%02x", memory[i]);
+        }
+        printf("\n");
+      }
+      return;
+    } else {
+      die("unknown script command");
+    }
+  }
+  die("script ended before call");
+}
+
 static void usage(void) {
   fprintf(stderr,
           "usage: wasmtime-host call <module.wasm> <function> <i64|bytes|slots:N> "
@@ -734,6 +887,9 @@ int main(int argc, char **argv) {
   } else if (strcmp(argv[1], "allocator-grows") == 0) {
     init_runtime(&runtime, argv[2]);
     command_allocator_grows(&runtime, argc - 3, argv + 3);
+  } else if (strcmp(argv[1], "script") == 0) {
+    init_runtime(&runtime, argv[2]);
+    command_script(&runtime, argc - 3, argv + 3);
   } else {
     usage();
   }

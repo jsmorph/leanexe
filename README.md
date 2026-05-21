@@ -2,17 +2,17 @@
 
 LeanExe compiles a restricted Lean 4 program to a standalone WebAssembly module.  Lean remains the type checker and source language; the compiler loads a checked declaration from a Lean module and emits WASM for the executable subset described in [Language Specification](spec.md).  The supported subset covers first-order pure programs over scalar values, byte arrays, fixed-width arrays, structures, inductive values, bounded recursion, and internal recursive data structures.
 
-The default generated module exports a plain WASM function for the selected Lean declaration.  Scalar programs can run directly with Wasmtime or another WASM engine that can invoke exported functions.  Programs that pass or return byte arrays, structures, variants, or arrays use the ABI described below, so a host program must provide flattened values or memory values in the expected form.  WASI command modes provide stdout output, bounded stdin input, and an error-aware byte transform without compiling Lean `IO`.
+The default generated module exports a plain WASM function for the selected Lean declaration.  Scalar programs can run directly with Wasmtime.  Programs that pass or return byte arrays, structures, variants, or arrays use the ABI described below, so a host program must provide flattened values or memory values in the expected form.  WASI command modes provide stdout output, bounded stdin input, and an error-aware byte transform without compiling Lean `IO`.
 
 ## Requirements
 
-This repository uses Lean through `elan` and Lake.  The pinned Lean version lives in `lean-toolchain`, and Lake builds the `lean-wasm` executable.  A standalone WASM engine such as Wasmtime can run scalar examples and WASI command examples from the command line, while a JavaScript, Go, Rust, or C host can instantiate modules that use memory values.
+This repository uses Lean through `elan` and Lake.  The pinned Lean version lives in `lean-toolchain`, and Lake builds the `lean-wasm` executable.  Wasmtime runs scalar examples and WASI command examples from the command line.  The repository test suite uses a small C host runner built against the Wasmtime C API for library-mode ABI tests that need memory writes and memory inspection.
 
 ```sh
 lake build
 ```
 
-The test suite uses Node for the existing instantiation checks, including host-memory checks, and Wasmtime for command-style WASM execution.  Wasmtime is not required for the compiler itself, but the full repository test suite expects the downloaded binary at `build/tools/wasmtime/current/wasmtime` or a `WASMTIME` environment variable.  If Wasmtime is not on `PATH`, use the absolute path to the downloaded binary.
+The full repository test suite expects the Wasmtime CLI at `build/tools/wasmtime/current/wasmtime` or a `WASMTIME` environment variable.  It also expects the matching Wasmtime C API package at `build/tools/wasmtime/wasmtime-v44.0.0-aarch64-linux-c-api`, or a `WASMTIME_C_API` environment variable.  Node orchestrates tests, but generated WASM executes through Wasmtime.
 
 ```sh
 node test/run_all.js

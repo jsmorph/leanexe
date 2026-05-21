@@ -19,6 +19,7 @@ function main() {
   run(["lake", "build", "LeanExe.Examples.Correctness"]);
   run(["node", path.join("test", "report_classification.js")]);
   run(["node", path.join("test", "ownership_report.js")]);
+  run(["node", path.join("test", "no_js_wasm_execution.js")]);
   run(["node", path.join("test", "core_correctness.js")]);
   run(["node", path.join("test", "refcount.js")]);
   run(["node", path.join("test", "bytearray_alloc.js")]);
