@@ -712,7 +712,9 @@ Do not fix source by adding dummy effects, unsafe definitions, hidden runtime ca
 
 ## Comparing With Standard Lean
 
-Use `tools/compare-standard.js` when an accepted program should match official Lean execution.  The tool generates a temporary Lean runner that imports the target module and calls the selected entry, then compares that result with the WASM produced by LeanExe and executed by Wasmtime.  Command modes compare observable process behavior: exit status, stdout bytes, and stderr bytes.  Pure mode compares library exports invoked with `wasmtime --invoke`, using a result-slot expression to print the standard Lean result in the same flattened `UInt64` slot shape returned by the WASM export.  Pure-bytes mode serializes a concrete pure result to `ByteArray`, compiles a generated wrapper through `compile-wasi`, and compares standard Lean's serialized bytes with the generated command output.
+Use `tools/compare-standard.js` when an accepted program should match official Lean execution.  The tool generates a temporary Lean runner that imports the target module and calls the selected entry, then compares that result with the WASM produced by LeanExe and executed by Wasmtime.  Command modes compare observable process behavior: exit status, stdout bytes, and stderr bytes.
+
+Pure mode compares scalar library exports invoked with `wasmtime --invoke`, using a result-slot expression to print the standard Lean result in the same flattened `UInt64` slot shape returned by the WASM export.  Pure-ABI mode runs the generated library export through the Wasmtime C host runner, reads public ABI result slots and targeted memory ranges, and decodes the result with a JSON layout descriptor.  Pure-bytes mode serializes a concrete pure result to `ByteArray`, compiles a generated wrapper through `compile-wasi`, and compares standard Lean's serialized bytes with the generated command output.
 
 ```sh
 node tools/compare-standard.js \
@@ -733,7 +735,18 @@ node tools/compare-standard.js \
   --result-slots '#[__leanexeValue]'
 ```
 
-The supported command modes correspond to the WASI command compilers: `wasi`, `stdin`, `stdin-except`, `argv-except`, and `stdin-argv-except`.  Pure mode uses `compile` rather than a WASI adapter.  It works best for deterministic entries that do not inspect LeanExe runtime counters and do not rely on intentionally skipped trapping expressions.  Runtime counters are compiler intrinsics in generated WASM, while standard Lean evaluates their stub definitions.
+```sh
+node tools/compare-standard.js \
+  --mode pure-abi \
+  --module LeanExe.Examples.Correctness \
+  --entry publicByteArrayArrayReturn \
+  --abi-layout '{"array":"ByteArray"}' \
+  --serializer '__leanexeJsonArray __leanexeValue __leanexeJsonByteArray'
+```
+
+The supported command modes correspond to the WASI command compilers: `wasi`, `stdin`, `stdin-except`, `argv-except`, and `stdin-argv-except`.  Pure mode and pure-ABI mode use `compile` rather than a WASI adapter.  They work best for deterministic entries that do not inspect LeanExe runtime counters and do not rely on intentionally skipped trapping expressions.  Runtime counters are compiler intrinsics in generated WASM, while standard Lean evaluates their stub definitions.
+
+Pure-ABI layout descriptors are JSON values that describe the public result shape: scalar names such as `"UInt64"` and `"Nat"`, `"ByteArray"`, `{"array": ...}`, `{"struct": [["field", ...], ...]}`, or `{"tagged": [[...], ...]}`.  A `--serializer` expression runs in the generated standard Lean runner with the result bound as `__leanexeValue`, and it must produce JSON bytes matching that descriptor.  Heap-bearing public arguments can be supplied with repeated `--abi-arg` values shaped as `{"layout": descriptor, "value": jsonValue}`.
 
 Pure-bytes mode works best for heap-backed pure results whose observable value can be serialized by ordinary accepted Lean code.  The generated wrapper binds the result as `__leanexeValue`, then evaluates the caller's `--serializer` expression.  The serializer must have type `ByteArray` and should stay inside the accepted subset, because LeanExe compiles the generated wrapper as ordinary source.
 
