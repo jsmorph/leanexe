@@ -1,5 +1,17 @@
 # Development Journal
 
+## 2026-05-20: Ownership Report Command
+
+`lean-wasm ownership-report --module M --entry E` now compiles the selected entry through the same two-pass extraction path as `compile`, then reports ownership data from the extracted IR.  The command lists each extracted function's result type, internal result owner offsets, helper-result fresh-owner offsets, returned owner expressions, compiler-emitted statement releases, fold accumulator release offsets, and explicit `LeanExe.Runtime.release` expressions.  `compileEnvironmentWithEntryModeDetailed` exposes the extraction context and IR together, while the existing compile entry points keep returning the same `IRModule` type.
+
+The first tests cover the `Option ByteArray` and `Except UInt64 ByteArray` loop-output counter examples and `JsonTreeCommand.makeTree`.  The structured `Except` report shows two byte-array fold result slots with the same accumulator release offset, which is useful evidence for the remaining duplicate result-demand issue.  The report also distinguishes the source-level release in `JsonTreeCommand.insertOwned` from compiler-emitted releases, so source ownership boundaries and automatic cleanup can be inspected separately.
+
+Checks run:
+
+- [x] `lake build lean-wasm`
+- [x] `node test/ownership_report.js` returned `checked 3 ownership report cases`.
+- [x] `node test/run_all.js` returned `checked 94 report classification cases`, `checked 3 ownership report cases`, `checked 695 accepted, 30 rejected, and 13 trapped cases`, `checked 25 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 35 WASI program cases, 2 traps, and 7 rejections`, `checked 94 standard Lean comparison cases`, and `checked 56 cases`.
+
 ## 2026-05-20: Option and Except foldlM
 
 `Array.foldlM` and `ByteArray.foldlM` now compile for `Option` and `Except ε` when the callback is a direct lambda and the accumulator payload has a supported concrete layout.  The extractor represents the loop accumulator as the monad result value, stages each callback result through the existing multi-slot fold loop, and derives the loop stop flag from the staged tag.  A `none` or `Except.error` result stops the generated loop before later callback bodies run.

@@ -5,6 +5,7 @@ import LeanExe.Ascii.Json
 import LeanExe.Ascii.Json.Value
 import LeanExe.Core
 import LeanExe.CLI
+import LeanExe.Extract.OwnershipReport
 import LeanExe.Extract.Report
 import LeanExe.Examples.ArraySemantics
 import LeanExe.Examples.AsciiDigits

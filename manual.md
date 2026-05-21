@@ -660,6 +660,14 @@ Use the report command before changing the compiler.  The most useful informatio
   --entry LeanExe.Examples.MyProgram.entry
 ```
 
+Use `ownership-report` when an accepted program's allocation or release behavior needs inspection.  The command compiles the same checked entry, then prints ownership data from the extracted IR: result owner offsets, helper fresh-result summaries, compiler-emitted releases, returned owner expressions, fold accumulator release offsets, and explicit `LeanExe.Runtime.release` expressions.  This report is meant for compiler development and for source-level ownership boundaries; ordinary source rejection should still start with `report`.
+
+```sh
+.lake/build/bin/lean-wasm ownership-report \
+  --module LeanExe.Examples.MyProgram \
+  --entry LeanExe.Examples.MyProgram.entry
+```
+
 Common rejections and source fixes:
 
 | Report symptom | Likely cause | Source fix |

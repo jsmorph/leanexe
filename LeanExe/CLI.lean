@@ -1,5 +1,6 @@
 import LeanExe.Core
 import LeanExe.Extract.Core
+import LeanExe.Extract.OwnershipReport
 import LeanExe.Extract.Report
 import LeanExe.Examples.AsciiDigits
 import LeanExe.Examples.Collatz
@@ -15,6 +16,8 @@ def usage : String :=
     "  lean-wasm report --out <path>",
     "  lean-wasm report --module <module> --entry <name>",
     "  lean-wasm report --module <module> --entry <name> --out <path>",
+    "  lean-wasm ownership-report --module <module> --entry <name>",
+    "  lean-wasm ownership-report --module <module> --entry <name> --out <path>",
     "  lean-wasm eval --hex <hex-bytes>",
     "  lean-wasm compile --module <module> --entry <name> --out <path>",
     "  lean-wasm compile-wat --module <module> --entry <name> --out <path>",
@@ -135,6 +138,12 @@ def main : List String → IO UInt32
       return 0
   | ["report", "--module", moduleName, "--entry", entryName, "--out", out] => do
       writeText out (← LeanExe.Extract.Report.makeReport moduleName entryName)
+      return 0
+  | ["ownership-report", "--module", moduleName, "--entry", entryName] => do
+      IO.println (← LeanExe.Extract.OwnershipReport.makeReport moduleName entryName)
+      return 0
+  | ["ownership-report", "--module", moduleName, "--entry", entryName, "--out", out] => do
+      writeText out (← LeanExe.Extract.OwnershipReport.makeReport moduleName entryName)
       return 0
   | ["eval", "--hex", hex] => do
       match parseHex hex with

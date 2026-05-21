@@ -116,7 +116,7 @@ Use `compile` to write a WASM binary.  The exported entry name is the final comp
   --out build/choose.wasm
 ```
 
-Use `compile-wat` to inspect the generated module as WAT.  Use `report` before compilation when you want to see how the entry declaration and its dependencies classify under the supported subset.  The report command is the best first diagnostic when a program does not compile.
+Use `compile-wat` to inspect the generated module as WAT.  Use `report` before compilation when you want to see how the entry declaration and its dependencies classify under the supported subset.  Use `ownership-report` when memory management is the question: it prints each extracted function's result owner slots, helper-result fresh-owner offsets, compiler-emitted release statements, returned owner expressions, fold accumulator release offsets, and source-level `LeanExe.Runtime.release` expressions.
 
 ```sh
 .lake/build/bin/lean-wasm compile-wat \
@@ -125,6 +125,10 @@ Use `compile-wat` to inspect the generated module as WAT.  Use `report` before c
   --out build/choose.wat
 
 .lake/build/bin/lean-wasm report \
+  --module LeanExe.Examples.ReadmeDemo \
+  --entry LeanExe.Examples.ReadmeDemo.choose
+
+.lake/build/bin/lean-wasm ownership-report \
   --module LeanExe.Examples.ReadmeDemo \
   --entry LeanExe.Examples.ReadmeDemo.choose
 ```
