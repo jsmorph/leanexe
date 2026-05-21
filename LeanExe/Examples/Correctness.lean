@@ -487,6 +487,18 @@ structure ByteOutputState where
   count : UInt64
   bytes : ByteArray
 
+structure ByteArrayGroup where
+  values : Array ByteArray
+  marker : UInt64
+
+inductive PublicToken where
+  | text : ByteArray -> PublicToken
+  | number : UInt64 -> PublicToken
+
+inductive PublicHeapArrayResult where
+  | failed : ByteArray -> PublicHeapArrayResult
+  | ok : Array ByteArray -> UInt64 -> PublicHeapArrayResult
+
 structure ParserBufferState where
   pos : Nat
   out : ByteArray
@@ -4654,6 +4666,93 @@ def publicByteArrayArrayReturn : Array ByteArray :=
 def publicByteArrayArrayParam (values : Array ByteArray) : UInt64 :=
   values.foldl (fun acc bytes => acc + bytes.size.toUInt64) 0
 
+def publicOptionArrayReturn : Option (Array ByteArray) :=
+  some #["A".toUTF8, "BC".toUTF8]
+
+def publicOptionArrayParam (value : Option (Array ByteArray)) : UInt64 :=
+  match value with
+  | none => 0
+  | some values => values.foldl (fun acc bytes => acc + bytes.size.toUInt64) 0
+
+def publicExceptArrayReturn : Except ByteArray (Array ByteArray) :=
+  Except.ok #["A".toUTF8, "BC".toUTF8]
+
+def publicExceptArrayParam (value : Except ByteArray (Array ByteArray)) : UInt64 :=
+  match value with
+  | Except.error bytes => bytes.size.toUInt64
+  | Except.ok values => values.foldl (fun acc bytes => acc + bytes.size.toUInt64) 10
+
+def publicOptionByteArrayArrayReturn : Array (Option ByteArray) :=
+  #[some "A".toUTF8, none, some "BC".toUTF8]
+
+def publicOptionByteArrayArrayParam (values : Array (Option ByteArray)) : UInt64 :=
+  values.foldl
+    (fun acc item =>
+      match item with
+      | none => acc + 10
+      | some bytes => acc + bytes.size.toUInt64)
+    0
+
+def publicOptionByteArrayArrayOpsReturn (values : Array (Option ByteArray)) :
+    Array (Option ByteArray) :=
+  let mapped :=
+    values.map (fun item =>
+      match item with
+      | none => none
+      | some bytes => some (bytes.push (33 : UInt8)))
+  mapped.reverse
+
+def publicExceptByteArrayArrayReturn : Array (Except ByteArray ByteArray) :=
+  #[Except.ok "A".toUTF8, Except.error "BC".toUTF8, Except.ok "DEF".toUTF8]
+
+def publicExceptByteArrayArrayParam (values : Array (Except ByteArray ByteArray)) : UInt64 :=
+  values.foldl
+    (fun acc item =>
+      match item with
+      | Except.error bytes => acc + bytes.size.toUInt64 * 10
+      | Except.ok bytes => acc + bytes.size.toUInt64)
+    0
+
+def publicTokenArrayReturn : Array PublicToken :=
+  #[PublicToken.text "A".toUTF8, PublicToken.number 7, PublicToken.text "BC".toUTF8]
+
+def publicTokenArrayParam (values : Array PublicToken) : UInt64 :=
+  values.foldl
+    (fun acc token =>
+      match token with
+      | PublicToken.text bytes => acc + bytes.size.toUInt64
+      | PublicToken.number value => acc + value)
+    0
+
+def publicTokenArrayOpsReturn (values : Array PublicToken) : Array PublicToken :=
+  let mapped :=
+    values.map (fun token =>
+      match token with
+      | PublicToken.text bytes => PublicToken.text (bytes.push (33 : UInt8))
+      | PublicToken.number value => PublicToken.number (value + 1))
+  (mapped.filter (fun token =>
+    match token with
+    | PublicToken.text bytes => if bytes.size > 1 then true else false
+    | PublicToken.number value => if value > 7 then true else false)).reverse
+
+def publicByteArrayGroupReturn : ByteArrayGroup :=
+  { values := #["A".toUTF8, "BC".toUTF8], marker := 9 }
+
+def publicByteArrayGroupParam (group : ByteArrayGroup) : UInt64 :=
+  group.values.foldl (fun acc bytes => acc + bytes.size.toUInt64) group.marker
+
+def publicHeapArrayResultReturn (flag : UInt64) : PublicHeapArrayResult :=
+  if flag == 0 then
+    PublicHeapArrayResult.failed "bad".toUTF8
+  else
+    PublicHeapArrayResult.ok #["A".toUTF8, "BC".toUTF8] 5
+
+def publicHeapArrayResultParam (result : PublicHeapArrayResult) : UInt64 :=
+  match result with
+  | PublicHeapArrayResult.failed bytes => bytes.size.toUInt64
+  | PublicHeapArrayResult.ok values marker =>
+      values.foldl (fun acc bytes => acc + bytes.size.toUInt64) marker
+
 def publicByteOutputStateArrayReturn : Array ByteOutputState :=
   #[{ count := 1, bytes := "A".toUTF8 }, { count := 2, bytes := "BC".toUTF8 }]
 
@@ -4667,6 +4766,46 @@ def publicArrayBoxArrayParam (boxes : Array ArrayBox) : UInt64 :=
   boxes.foldl
     (fun acc box => acc + box.count + box.values.foldl (fun inner value => inner + value) 0)
     0
+
+def publicByteArrayArrayOps (values : Array ByteArray) : Except UInt64 UInt64 := do
+  let pushed := values.push "G".toUTF8
+  let appended := pushed ++ #["HI".toUTF8]
+  let extracted := appended.extract 1 5
+  let set := extracted.setIfInBounds 2 "JKL".toUTF8
+  let inserted := set.insertIdxIfInBounds 1 "M".toUTF8
+  let erased := inserted.eraseIdxIfInBounds 3
+  let swapped := erased.swapIfInBounds 0 2
+  let reversed := swapped.reverse
+  let mapped := reversed.map (fun bytes => bytes.push (33 : UInt8))
+  let filtered := mapped.filter (fun bytes => if bytes.size > 2 then true else false)
+  let foundSize :=
+    match mapped.find? (fun bytes => bytes.size == 4) with
+    | none => 0
+    | some bytes => bytes.size.toUInt64
+  let foundIdx :=
+    match mapped.findIdx? (fun bytes => bytes.size == 2) with
+    | none => 99
+    | some index => index.toUInt64
+  let anyScore := if mapped.any (fun bytes => bytes.size == 4) then 1 else 0
+  let allScore := if mapped.all (fun bytes => if bytes.size > 1 then true else false) then 1 else 0
+  let foldSum ←
+    mapped.foldlM (m := Except UInt64)
+      (fun acc bytes =>
+        if bytes.isEmpty then
+          Except.error 99
+        else
+          Except.ok (acc + bytes.size.toUInt64))
+      0
+  Except.ok
+    (foldSum * 100000 + filtered.size.toUInt64 * 10000 + foundSize * 1000 +
+      foundIdx * 100 + anyScore * 10 + allScore)
+
+def publicByteArrayArrayOpsReturn (values : Array ByteArray) : Array ByteArray :=
+  let updated := values.setIfInBounds 0 "ZZ".toUTF8
+  let grown := updated.push "Q".toUTF8
+  let window := grown.extract 0 3
+  (window.reverse.map (fun bytes => bytes.push (33 : UInt8))).filter
+    (fun bytes => if bytes.size > 2 then true else false)
 
 def uint8ParamToNat (b : UInt8) : Nat :=
   b.toNat
