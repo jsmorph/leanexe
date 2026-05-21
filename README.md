@@ -279,6 +279,17 @@ node tools/compare-standard.js \
   --serializer '__leanexeJsonArray __leanexeValue __leanexeJsonByteArray'
 ```
 
+```sh
+node tools/compare-standard.js \
+  --mode pure-abi \
+  --module LeanExe.Examples.Correctness \
+  --entry publicByteArrayArrayOpsReturn \
+  --abi-layout '{"array":"ByteArray"}' \
+  --abi-arg '{"layout":{"array":"ByteArray"},"value":[[65],[66,67],[68,69,70]]}' \
+  --standard-call 'LeanExe.Examples.Correctness.publicByteArrayArrayOpsReturn #["A".toUTF8, "BC".toUTF8, "DEF".toUTF8]' \
+  --serializer '__leanexeJsonArray __leanexeValue __leanexeJsonByteArray'
+```
+
 Run the built-in comparison cases with:
 
 ```sh

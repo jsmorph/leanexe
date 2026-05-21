@@ -723,6 +723,12 @@ const accepted = [
     expected: 15n,
   },
   {
+    name: "publicNestedArrayOpsReturn",
+    args: [{ layout: nestedU64ArrayLayout, value: [[1n, 2n], [3n, 4n, 5n]] }],
+    expected: null,
+    memoryValues: [{ resultIndex: 0, layout: nestedU64ArrayLayout, value: [[99n, 100n], [3n, 4n, 5n, 3n], [1n, 2n, 2n]] }],
+  },
+  {
     name: "publicByteArrayArrayReturn",
     args: [],
     expected: null,

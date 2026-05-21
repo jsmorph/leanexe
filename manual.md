@@ -744,6 +744,17 @@ node tools/compare-standard.js \
   --serializer '__leanexeJsonArray __leanexeValue __leanexeJsonByteArray'
 ```
 
+```sh
+node tools/compare-standard.js \
+  --mode pure-abi \
+  --module LeanExe.Examples.Correctness \
+  --entry publicByteArrayArrayOpsReturn \
+  --abi-layout '{"array":"ByteArray"}' \
+  --abi-arg '{"layout":{"array":"ByteArray"},"value":[[65],[66,67],[68,69,70]]}' \
+  --standard-call 'LeanExe.Examples.Correctness.publicByteArrayArrayOpsReturn #["A".toUTF8, "BC".toUTF8, "DEF".toUTF8]' \
+  --serializer '__leanexeJsonArray __leanexeValue __leanexeJsonByteArray'
+```
+
 The supported command modes correspond to the WASI command compilers: `wasi`, `stdin`, `stdin-except`, `argv-except`, and `stdin-argv-except`.  Pure mode and pure-ABI mode use `compile` rather than a WASI adapter.  They work best for deterministic entries that do not inspect LeanExe runtime counters and do not rely on intentionally skipped trapping expressions.  Runtime counters are compiler intrinsics in generated WASM, while standard Lean evaluates their stub definitions.
 
 Pure-ABI layout descriptors are JSON values that describe the public result shape: scalar names such as `"UInt64"` and `"Nat"`, `"ByteArray"`, `{"array": ...}`, `{"struct": [["field", ...], ...]}`, or `{"tagged": [[...], ...]}`.  A `--serializer` expression runs in the generated standard Lean runner with the result bound as `__leanexeValue`, and it must produce JSON bytes matching that descriptor.  Heap-bearing public arguments can be supplied with repeated `--abi-arg` values shaped as `{"layout": descriptor, "value": jsonValue}`.

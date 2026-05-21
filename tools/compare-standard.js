@@ -697,6 +697,7 @@ function cleanup(config, paths) {
 function selfTest() {
   const correctness = "LeanExe.Examples.Correctness";
   const u64Layout = scalarLayout("UInt64");
+  const nestedU64ArrayLayout = arrayLayout(arrayLayout(u64Layout));
   const byteArrayArrayLayout = arrayLayout(byteArrayLayout);
   const tokenLayout = variantLayout([[byteArrayLayout], [u64Layout]]);
   const tokenArrayLayout = arrayLayout(tokenLayout);
@@ -709,6 +710,34 @@ function selfTest() {
     ["marker", u64Layout],
   ]);
   const byteArrayGroupArrayLayout = arrayLayout(byteArrayGroupLayout);
+  const nestedU64ArraySample = [[1, 2], [3, 4, 5]];
+  const byteArrayArraySample = [[65], [66, 67], [68, 69, 70]];
+  const tokenArraySample = [
+    { tag: 0, fields: [[65]] },
+    { tag: 1, fields: [7] },
+    { tag: 0, fields: [[66, 67]] },
+  ];
+  const byteArrayGroupArraySample = [
+    { values: [[65], [66, 67]], marker: 2 },
+    { values: [[68]], marker: 3 },
+  ];
+  const renderUInt64Array = "(fun row => __leanexeJsonArray row __leanexeJsonUInt64)";
+  const renderToken = `(fun token =>
+  match token with
+  | .text bytes =>
+      let out := "{\\"tag\\":0,\\"fields\\":[".toUTF8
+      let out := out ++ __leanexeJsonByteArray bytes
+      (out.push (93 : UInt8)).push (125 : UInt8)
+  | .number value =>
+      let out := "{\\"tag\\":1,\\"fields\\":[".toUTF8
+      let out := __leanexeAppendUInt64 out value
+      (out.push (93 : UInt8)).push (125 : UInt8))`;
+  const renderByteArrayGroup = `(fun group =>
+  let out := "{\\"values\\":".toUTF8
+  let out := out ++ __leanexeJsonArray group.values __leanexeJsonByteArray
+  let out := out ++ ",\\"marker\\":".toUTF8
+  let out := __leanexeAppendUInt64 out group.marker
+  out.push (125 : UInt8))`;
   const cases = [
     {
       mode: "pure",
@@ -969,30 +998,68 @@ out.push (125 : UInt8)`,
     {
       mode: "pure-abi",
       moduleName: correctness,
+      entry: "publicNestedArrayParam",
+      abiArgs: [{ layout: nestedU64ArrayLayout, value: nestedU64ArraySample }],
+      standardCall:
+        `${correctness}.publicNestedArrayParam (#[#[1, 2], #[3, 4, 5]] : Array (Array UInt64))`,
+      resultLayout: u64Layout,
+      serializer: "__leanexeJsonUInt64 __leanexeValue",
+    },
+    {
+      mode: "pure-abi",
+      moduleName: correctness,
+      entry: "publicNestedArrayOpsReturn",
+      abiArgs: [{ layout: nestedU64ArrayLayout, value: nestedU64ArraySample }],
+      standardCall:
+        `${correctness}.publicNestedArrayOpsReturn (#[#[1, 2], #[3, 4, 5]] : Array (Array UInt64))`,
+      resultLayout: nestedU64ArrayLayout,
+      serializer: `__leanexeJsonArray __leanexeValue ${renderUInt64Array}`,
+    },
+    {
+      mode: "pure-abi",
+      moduleName: correctness,
+      entry: "publicByteArrayArrayOpsReturn",
+      abiArgs: [{ layout: byteArrayArrayLayout, value: byteArrayArraySample }],
+      standardCall:
+        `${correctness}.publicByteArrayArrayOpsReturn #["A".toUTF8, "BC".toUTF8, "DEF".toUTF8]`,
+      resultLayout: byteArrayArrayLayout,
+      serializer: "__leanexeJsonArray __leanexeValue __leanexeJsonByteArray",
+    },
+    {
+      mode: "pure-abi",
+      moduleName: correctness,
       entry: "publicTokenArrayReturn",
       resultLayout: tokenArrayLayout,
-      serializer: `__leanexeJsonArray __leanexeValue (fun token =>
-  match token with
-  | .text bytes =>
-      let out := "{\\"tag\\":0,\\"fields\\":[".toUTF8
-      let out := out ++ __leanexeJsonByteArray bytes
-      (out.push (93 : UInt8)).push (125 : UInt8)
-  | .number value =>
-      let out := "{\\"tag\\":1,\\"fields\\":[".toUTF8
-      let out := __leanexeAppendUInt64 out value
-      (out.push (93 : UInt8)).push (125 : UInt8))`,
+      serializer: `__leanexeJsonArray __leanexeValue ${renderToken}`,
+    },
+    {
+      mode: "pure-abi",
+      moduleName: correctness,
+      entry: "publicTokenArrayOpsReturn",
+      abiArgs: [{ layout: tokenArrayLayout, value: tokenArraySample }],
+      standardCall:
+        `${correctness}.publicTokenArrayOpsReturn #[${correctness}.PublicToken.text "A".toUTF8, ${correctness}.PublicToken.number 7, ${correctness}.PublicToken.text "BC".toUTF8]`,
+      resultLayout: tokenArrayLayout,
+      serializer: `__leanexeJsonArray __leanexeValue ${renderToken}`,
     },
     {
       mode: "pure-abi",
       moduleName: correctness,
       entry: "publicByteArrayGroupArrayReturn",
       resultLayout: byteArrayGroupArrayLayout,
-      serializer: `__leanexeJsonArray __leanexeValue (fun group =>
-  let out := "{\\"values\\":".toUTF8
-  let out := out ++ __leanexeJsonArray group.values __leanexeJsonByteArray
-  let out := out ++ ",\\"marker\\":".toUTF8
-  let out := __leanexeAppendUInt64 out group.marker
-  out.push (125 : UInt8))`,
+      serializer: `__leanexeJsonArray __leanexeValue ${renderByteArrayGroup}`,
+    },
+    {
+      mode: "pure-abi",
+      moduleName: correctness,
+      entry: "publicByteArrayGroupArrayFullOpsReturn",
+      abiArgs: [{ layout: byteArrayGroupArrayLayout, value: byteArrayGroupArraySample }],
+      standardCall: `${correctness}.publicByteArrayGroupArrayFullOpsReturn (#[
+  { values := #["A".toUTF8, "BC".toUTF8], marker := (2 : UInt64) },
+  { values := #["D".toUTF8], marker := (3 : UInt64) }
+] : Array ${correctness}.ByteArrayGroup)`,
+      resultLayout: byteArrayGroupArrayLayout,
+      serializer: `__leanexeJsonArray __leanexeValue ${renderByteArrayGroup}`,
     },
     {
       mode: "pure-bytes",

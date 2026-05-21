@@ -1,5 +1,21 @@
 # Development Journal
 
+## 2026-05-21: Pure-ABI Parameter Comparisons
+
+The standard comparison self-test now covers `pure-abi` library calls with heap-backed public parameters as well as heap-backed public results.  The added cases materialize nested scalar arrays, arrays of byte arrays, arrays of tagged values with byte-array payloads, and arrays of structures whose fields contain nested byte-array arrays through the Wasmtime C host script path.  A small `publicNestedArrayOpsReturn` correctness fixture gives `Array (Array UInt64)` a parameter-to-result case, matching the existing byte-array, tagged, and structured array examples.
+
+The command-line path now has documented and tested `--abi-arg` coverage.  The standard Lean side receives an explicit `--standard-call`, while the generated WASM side receives the JSON-described ABI argument through the host runner and decodes the returned public ABI value from result slots plus targeted memory reads.
+
+Checks run:
+
+- [x] `node --check tools/compare-standard.js`
+- [x] `node --check test/core_correctness.js`
+- [x] `lake build LeanExe.Examples.Correctness`
+- [x] `node tools/compare-standard.js --self-test` returned `checked 103 standard Lean comparison cases`.
+- [x] `node tools/compare-standard.js --mode pure-abi --module LeanExe.Examples.Correctness --entry publicByteArrayArrayOpsReturn --abi-layout '{"array":"ByteArray"}' --abi-arg '{"layout":{"array":"ByteArray"},"value":[[65],[66,67],[68,69,70]]}' --standard-call 'LeanExe.Examples.Correctness.publicByteArrayArrayOpsReturn #["A".toUTF8, "BC".toUTF8, "DEF".toUTF8]' --serializer '__leanexeJsonArray __leanexeValue __leanexeJsonByteArray'` returned `matched pure-abi LeanExe.Examples.Correctness.publicByteArrayArrayOpsReturn`.
+- [x] `node test/core_correctness.js` returned `checked 744 accepted, 29 rejected, and 13 trapped cases`.
+- [x] `node test/run_all.js` returned `checked 112 report classification cases`, `checked 7 ownership report cases`, `checked JavaScript WASM execution guard`, `checked 744 accepted, 29 rejected, and 13 trapped cases`, `checked 31 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 35 WASI program cases, 2 traps, and 7 rejections`, `checked 103 standard Lean comparison cases`, and `checked 56 cases`.
+
 ## 2026-05-21: Standard Comparison for Public ABI Values
 
 `tools/abi_layout.js` now owns the public ABI layout helpers that used to live inside `test/core_correctness.js`.  The shared code can materialize scalar, byte-array, array, structure, and tagged public arguments for the Wasmtime C host script runner, plan targeted memory reads for heap-backed results, decode those sparse memory reads back to JavaScript values, and compare nested ABI values structurally.
