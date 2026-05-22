@@ -1,5 +1,17 @@
 # Development Journal
 
+## 2026-05-21: Recursive Flow Comparisons
+
+The standard comparison corpus now covers recursive `U64Binary` values flowing through ordinary first-order program shapes.  The new fixtures compare `Option.map`, `Except.map`, `Except.bind`, branch-selected structures with recursive fields, source-defined tagged values with recursive payloads, arrays of recursive values, and `Id.run` loops carrying recursive, `Option` recursive, and `Except ByteArray` recursive state.  These tests compare standard Lean execution with generated WASM under Wasmtime through byte serializers, so the checked behavior is the source-level value rather than a hand-written numeric summary.
+
+Checks run:
+
+- [x] `lake build LeanExe.Examples.Correctness`
+- [x] `node --check tools/compare-standard.js`
+- [x] `node --check test/core_correctness.js`
+- [x] `node tools/compare-standard.js --self-test` returned `checked 233 standard Lean comparison cases`.
+- [x] `node test/run_all.js` returned `checked 112 report classification cases`, `checked 8 ownership report cases`, `checked JavaScript WASM execution guard`, `checked 771 accepted, 29 rejected, and 13 trapped cases`, `checked 38 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 35 WASI program cases, 2 traps, and 7 rejections`, `checked 233 standard Lean comparison cases`, and `checked 56 cases`.
+
 ## 2026-05-21: Conservative Recursive Cleanup
 
 Recursive result cleanup now follows the project policy that leaks are acceptable and incorrect computation is not.  The result-materialization cleanup pass no longer emits compiler releases for ordinary recursive heap temporaries in scalar-result functions or heap-result functions.  It still releases nonrecursive owners such as `ByteArray` and `Array` when the existing local rules prove them fresh and absent from returned roots.

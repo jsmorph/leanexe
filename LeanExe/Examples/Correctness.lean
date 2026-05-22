@@ -1431,6 +1431,31 @@ def u64BinaryScenarioRequireByteErrorValue (kind needle : UInt64) : Except ByteA
       Except.error (LeanExe.Ascii.appendUInt64Decimal out needle)
   | some found => Except.ok found
 
+def u64BinaryOptionMapValue (kind needle : UInt64) : Option U64Binary :=
+  Option.map
+    (fun tree => u64BinaryMirror tree)
+    (u64BinaryScenarioFindValue kind needle)
+
+def u64BinaryExceptMapValue (kind needle : UInt64) : Except ByteArray U64Binary :=
+  Except.map
+    (fun tree => u64BinaryMapAddOne tree)
+    (u64BinaryScenarioRequireByteErrorValue kind needle)
+
+def u64BinaryScenarioExceptValue (kind flag : UInt64) : Except ByteArray U64Binary :=
+  if flag == 0 then
+    Except.error "disabled".toUTF8
+  else
+    Except.ok (u64BinaryScenario kind)
+
+def u64BinaryExceptBindValue (kind flag : UInt64) : Except ByteArray U64Binary :=
+  Except.bind
+    (u64BinaryScenarioExceptValue kind flag)
+    (fun tree =>
+      if u64BinaryHeight tree > 1 then
+        Except.ok (u64BinaryMirror tree)
+      else
+        Except.error "leaf".toUTF8)
+
 def u64BinaryShapeDemo : UInt64 :=
   let tree := u64BinaryValue
   let foundTwo := if u64BinaryContains 2 tree then 1 else 0
@@ -1553,12 +1578,71 @@ def u64BinarySharedTaggedAliasScore : UInt64 :=
         u64BinaryLeafSum left +
         u64BinaryLeafSum right
 
+def u64BinaryBoxFlowValue (kind flag : UInt64) : U64BinaryBox :=
+  let source := u64BinaryScenario kind
+  if flag == 0 then
+    { tree := u64BinaryMapAddOne source, label := 20 }
+  else
+    { tree := u64BinaryMirror source, label := 10 }
+
+def u64BinaryPairSlotFlowValue (kind : UInt64) : U64BinaryPairSlot :=
+  if kind == 0 then
+    U64BinaryPairSlot.empty
+  else
+    let source := u64BinaryScenario kind
+    U64BinaryPairSlot.pair source (u64BinaryMirror source)
+
+def u64BinaryArrayFlowValue (kind : UInt64) : Array U64Binary :=
+  let source := u64BinaryScenario kind
+  let selected :=
+    if u64BinaryContains 3 source then
+      source
+    else
+      u64BinaryMirror source
+  #[selected, u64BinaryMapAddOne source, u64BinaryMirror selected]
+
+def u64BinaryLoopGrowValue : U64Binary := Id.run do
+  let mut tree : U64Binary := U64Binary.leaf 0
+  for i in [0:3] do
+    tree := U64Binary.node tree (U64Binary.leaf i.toUInt64)
+  return tree
+
+def u64BinaryLoopOptionValue : Option U64Binary := Id.run do
+  let mut result : Option U64Binary := none
+  for i in [0:4] do
+    if i == (2 : Nat) then
+      result := some (U64Binary.node (U64Binary.leaf i.toUInt64) (U64Binary.leaf 9))
+  return result
+
+def u64BinaryLoopExceptValue : Except ByteArray U64Binary := Id.run do
+  let mut result : Except ByteArray U64Binary := Except.error "none".toUTF8
+  for i in [0:3] do
+    if i == (1 : Nat) then
+      result := Except.ok (U64Binary.node (U64Binary.leaf i.toUInt64) (U64Binary.leaf 8))
+  return result
+
 def u64BinaryBoxBytes (box : U64BinaryBox) : ByteArray :=
   let out := "Box(".toUTF8
   let out := LeanExe.Ascii.appendUInt64Decimal out box.label
   let out := out.push (44 : UInt8)
   let out := out.append (u64BinaryBytes box.tree)
   out.push (41 : UInt8)
+
+def u64BinaryPairSlotBytes : U64BinaryPairSlot -> ByteArray
+  | .empty => "empty".toUTF8
+  | .pair left right =>
+      let out := "pair(".toUTF8
+      let out := out.append (u64BinaryBytes left)
+      let out := out.push (44 : UInt8)
+      let out := out.append (u64BinaryBytes right)
+      out.push (41 : UInt8)
+
+def u64BinaryArrayBytes (values : Array U64Binary) : ByteArray :=
+  let state :=
+    values.foldl
+      (fun state tree => appendSeparatedBytes state (u64BinaryBytes tree))
+      { first := true, out := ByteArray.empty.push (91 : UInt8) }
+  state.out.push (93 : UInt8)
 
 def u64BinaryOptionBytes : Option U64Binary -> ByteArray
   | none => "none".toUTF8
