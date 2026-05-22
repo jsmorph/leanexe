@@ -1,5 +1,19 @@
 # Development Journal
 
+## 2026-05-21: Heap-Bearing List Fold Comparisons
+
+The standard comparison corpus now covers heap-bearing `List.foldl` and `List.foldr` results over `List (Option ByteArray)` and `List (Except ByteArray UInt64)`.  The accepted cases return `ByteArray` values directly and return a `ByteOutputState` structure that carries a byte-array accumulator.  The corpus also records direct `List.concat` as accepted after verifying the generated WASM against standard Lean with the appended element demanded by a structural sum.
+
+The new rejection cases mark the current boundary around closed structural folds.  Local callback values, function-valued accumulators, nested closed folds, and a tagged `Option ByteArray` accumulator that lowers through an unsupported generated matcher remain outside the accepted subset.
+
+Checks run:
+
+- [x] `lake build LeanExe.Extract.Core LeanExe.Examples.Correctness lean-wasm`
+- [x] `node --check tools/compare-standard.js`
+- [x] `node --check test/core_correctness.js`
+- [x] `node tools/compare-standard.js --self-test` returned `checked 284 standard Lean comparison cases`.
+- [x] `node test/run_all.js` returned `checked 112 report classification cases`, `checked 8 ownership report cases`, `checked JavaScript WASM execution guard`, `checked 772 accepted, 33 rejected, and 13 trapped cases`, `checked 38 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 35 WASI program cases, 2 traps, and 7 rejections`, `checked 284 standard Lean comparison cases`, and `checked 56 cases`.
+
 ## 2026-05-21: Heap-Tagged List Predicates
 
 The standard comparison corpus now covers direct `List.any` and `List.all` over non-scalar element layouts.  The new cases exercise structures, source-defined tagged values, `ByteArray`, `Option UInt64`, `Option ByteArray`, and `Except ByteArray UInt64`, comparing standard Lean execution with generated WASM under Wasmtime.
