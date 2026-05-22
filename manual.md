@@ -521,7 +521,7 @@ def demo : UInt64 :=
 end LeanExe.Examples.ManualList
 ```
 
-Monomorphic `List UInt64` is useful inside the program, but `List` has no public ABI.  Direct source-defined helpers are safer than arbitrary library combinations.  Use library calls such as `List.map`, `List.filter`, `List.find?`, `List.foldl`, `List.any`, and `List.all` only in shapes already covered by accepted examples, with direct lambdas and concrete types.
+Monomorphic `List` values are useful inside the program when the element type has a supported internal layout.  `List` has no public ABI.  Direct source-defined helpers are safer than arbitrary library combinations.  Use library calls such as `List.map`, `List.filter`, `List.find?`, `List.foldl`, `List.any`, and `List.all` only in shapes already covered by accepted examples, with direct lambdas and concrete types.  Current comparison examples cover `List UInt64`, `List Point`, `List Status`, `List ByteArray`, and `List (Option UInt64)`.
 
 Structural helpers may put first-order parameters before the recursive argument.  Lean often lowers that source shape to expression-position structural recursion, and LeanExe compiles it by generating a private helper whose first parameter is the recursive value and whose later parameters carry the captured first-order values.  This supports ordinary helpers such as `contains needle tree`, provided the captured values have supported internal parameter types and recursive calls descend through Lean's generated below value.
 

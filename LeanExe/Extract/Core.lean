@@ -5075,51 +5075,56 @@ mutual
                     let exprResult ← extractExprFrom ctx locals nextLocal expr
                     .ok (boolCond exprResult.fst, exprResult.snd)
                 | none =>
-                    match natMatcherArgs? ctx.env (.const name []) args with
+                    match optionMatcherArgs? ctx.env (.const name []) args with
                     | some _ =>
                         let exprResult ← extractExprFrom ctx locals nextLocal expr
                         .ok (boolCond exprResult.fst, exprResult.snd)
                     | none =>
-                        match productMatcherArgs? ctx.env (.const name []) args with
+                        match natMatcherArgs? ctx.env (.const name []) args with
                         | some _ =>
                             let exprResult ← extractExprFrom ctx locals nextLocal expr
                             .ok (boolCond exprResult.fst, exprResult.snd)
                         | none =>
-                            match structureMatcherArgs? ctx.env (.const name []) args with
+                            match productMatcherArgs? ctx.env (.const name []) args with
                             | some _ =>
                                 let exprResult ← extractExprFrom ctx locals nextLocal expr
                                 .ok (boolCond exprResult.fst, exprResult.snd)
                             | none =>
-                                match variantMatcherArgs? ctx.env (.const name []) args with
+                                match structureMatcherArgs? ctx.env (.const name []) args with
                                 | some _ =>
                                     let exprResult ← extractExprFrom ctx locals nextLocal expr
                                     .ok (boolCond exprResult.fst, exprResult.snd)
                                 | none =>
-                                    match ← extractInlineCallValueFrom ctx locals nextLocal name args with
-                                    | some valueResult =>
-                                        .ok (boolCond (← scalarValue valueResult.fst), valueResult.snd)
+                                    match variantMatcherArgs? ctx.env (.const name []) args with
+                                    | some _ =>
+                                        let exprResult ← extractExprFrom ctx locals nextLocal expr
+                                        .ok (boolCond exprResult.fst, exprResult.snd)
                                     | none =>
-                                        match functionIndex? ctx name with
-                                        | some index =>
-                                            strictRecursiveCallCheck ctx name args
-                                            let sig ←
-                                              match ctx.env.find? name with
-                                              | some info =>
-                                                  match supportedFunction? ctx.env info with
-                                                  | some sig => .ok sig
+                                        match ← extractInlineCallValueFrom ctx locals nextLocal name args with
+                                        | some valueResult =>
+                                            .ok (boolCond (← scalarValue valueResult.fst), valueResult.snd)
+                                        | none =>
+                                            match functionIndex? ctx name with
+                                            | some index =>
+                                                strictRecursiveCallCheck ctx name args
+                                                let sig ←
+                                                  match ctx.env.find? name with
+                                                  | some info =>
+                                                      match supportedFunction? ctx.env info with
+                                                      | some sig => .ok sig
+                                                      | none =>
+                                                          .error
+                                                            s!"unsupported function type or declaration: {name}"
                                                   | none =>
-                                                      .error
-                                                        s!"unsupported function type or declaration: {name}"
-                                              | none =>
-                                                  .error s!"declaration disappeared during extraction: {name}"
-                                            strictCallMaterializationCheck ctx name sig.params args
-                                            let argsResult ← extractCallArgsFrom ctx locals nextLocal sig.params args
-                                            .ok
-                                              (boolCond
-                                                (wrapExprLets argsResult.lets
-                                                  (.call index argsResult.args)),
-                                                argsResult.nextLocal)
-                                        | none => .error s!"unsupported condition: {expr}"
+                                                      .error s!"declaration disappeared during extraction: {name}"
+                                                strictCallMaterializationCheck ctx name sig.params args
+                                                let argsResult ← extractCallArgsFrom ctx locals nextLocal sig.params args
+                                                .ok
+                                                  (boolCond
+                                                    (wrapExprLets argsResult.lets
+                                                      (.call index argsResult.args)),
+                                                    argsResult.nextLocal)
+                                            | none => .error s!"unsupported condition: {expr}"
         | _ => .error s!"unsupported condition: {expr}"
 
   partial def extractExprListFrom
