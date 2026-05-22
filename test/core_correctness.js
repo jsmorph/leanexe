@@ -1161,6 +1161,7 @@ const accepted = [
   { name: "leanListAppendDirectBranchDemo", args: [0n], expected: 6n },
   { name: "leanListAppendDirectBranchDemo", args: [1n], expected: 15n },
   { name: "leanListAppendRecDemo", args: [], expected: 15n },
+  { name: "leanListConcatDirectDemo", args: [4n], expected: 10n },
   { name: "leanListReverseDirectDemo", args: [], expected: 3n },
   { name: "leanListReverseRecDemo", args: [], expected: 3n },
   { name: "leanListFoldrDemo", args: [], expected: 321n },
@@ -1476,6 +1477,23 @@ const rejected = [
   {
     name: "rejectMutualFieldArrayReturn",
     message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectMutualFieldArrayReturn",
+  },
+  {
+    name: "rejectListFoldlLocalCallback",
+    message: "unsupported expression-level structural recursion: List",
+  },
+  {
+    name: "rejectListFoldlFunctionAccumulator",
+    message: "unsupported let-bound type: UInt64 -> UInt64",
+  },
+  {
+    name: "rejectListNestedClosedFold",
+    message: "unsupported structural recursion carried arguments",
+  },
+  {
+    name: "rejectListFoldlTaggedAccumulator",
+    message:
+      "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectListFoldlTaggedAccumulator.match_1",
   },
   {
     name: "rejectHigherOrder",

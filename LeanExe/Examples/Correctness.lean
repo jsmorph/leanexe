@@ -1420,6 +1420,38 @@ def optionByteArrayListAllDemo : UInt64 :=
     | some bytes => bytes.size < 3
     | none => true) then 1 else 0
 
+def optionByteArrayListFoldlValue : ByteArray :=
+  optionByteArrayListValue.foldl
+    (fun acc item =>
+      let out := acc.append (optionByteArrayBytes item)
+      out.push (59 : UInt8))
+    ByteArray.empty
+
+def optionByteArrayListFoldrValue : ByteArray :=
+  optionByteArrayListValue.foldr
+    (fun item acc =>
+      let out := optionByteArrayBytes item
+      let out := out.push (59 : UInt8)
+      out.append acc)
+    ByteArray.empty
+
+def optionByteArrayListFoldlStateValue : ByteOutputState :=
+  optionByteArrayListValue.foldl
+    (fun acc item =>
+      let out := acc.bytes.append (optionByteArrayBytes item)
+      { count := acc.count + 1, bytes := out.push (59 : UInt8) })
+    ({ count := 0, bytes := ByteArray.empty } : ByteOutputState)
+
+def rejectListFoldlTaggedAccumulator : Option ByteArray :=
+  optionByteArrayListValue.foldl
+    (fun acc item =>
+      match acc, item with
+      | none, none => some "N".toUTF8
+      | none, some bytes => some bytes
+      | some out, none => some (out.push (45 : UInt8))
+      | some out, some bytes => some (out.append bytes))
+    none
+
 def optionByteArrayListBytes : List (Option ByteArray) -> ByteArray
   | [] => "N".toUTF8
   | head :: tail =>
@@ -1482,6 +1514,28 @@ def exceptByteArrayUInt64ListAllDemo : UInt64 :=
     | Except.error bytes => bytes.size == 1
     | Except.ok value => value < 10) then 1 else 0
 
+def exceptByteArrayUInt64ListFoldlValue : ByteArray :=
+  exceptByteArrayUInt64ListValue.foldl
+    (fun acc item =>
+      let out := acc.append (exceptByteArrayUInt64Bytes item)
+      out.push (59 : UInt8))
+    ByteArray.empty
+
+def exceptByteArrayUInt64ListFoldrValue : ByteArray :=
+  exceptByteArrayUInt64ListValue.foldr
+    (fun item acc =>
+      let out := exceptByteArrayUInt64Bytes item
+      let out := out.push (59 : UInt8)
+      out.append acc)
+    ByteArray.empty
+
+def exceptByteArrayUInt64ListFoldlStateValue : ByteOutputState :=
+  exceptByteArrayUInt64ListValue.foldl
+    (fun acc item =>
+      let out := acc.bytes.append (exceptByteArrayUInt64Bytes item)
+      { count := acc.count + 1, bytes := out.push (59 : UInt8) })
+    ({ count := 0, bytes := ByteArray.empty } : ByteOutputState)
+
 def exceptByteArrayUInt64ListBytes : List (Except ByteArray UInt64) -> ByteArray
   | [] => "N".toUTF8
   | head :: tail =>
@@ -1497,6 +1551,13 @@ def optionExceptByteArrayUInt64Bytes : Option (Except ByteArray UInt64) -> ByteA
       let out := "some(".toUTF8
       let out := out.append (exceptByteArrayUInt64Bytes item)
       out.push (41 : UInt8)
+
+def byteOutputStateBytes (state : ByteOutputState) : ByteArray :=
+  let out := "state(".toUTF8
+  let out := LeanExe.Ascii.appendUInt64Decimal out state.count
+  let out := out.push (44 : UInt8)
+  let out := out.append (byteArrayCellBytes state.bytes)
+  out.push (41 : UInt8)
 
 def optionUInt64Bytes : Option UInt64 -> ByteArray
   | none => "none".toUTF8
@@ -2286,6 +2347,25 @@ def rejectMutualJsonReturn : MutJson :=
 
 def rejectMutualFieldArrayReturn : Array MutField :=
   #[MutField.mk 1 MutJson.null]
+
+def leanListConcatDirectDemo (value : UInt64) : UInt64 :=
+  leanListStructuralSum (leanList123.concat value)
+
+def rejectListFoldlLocalCallback : UInt64 :=
+  let folder := fun (acc : UInt64) (value : UInt64) => acc * 10 + value
+  leanList123.foldl folder 0
+
+def rejectListFoldlFunctionAccumulator : UInt64 :=
+  let folder :=
+    leanList123.foldl
+      (fun acc value => fun seed => acc (seed + value))
+      (fun seed : UInt64 => seed + 1)
+  folder 10
+
+def rejectListNestedClosedFold : UInt64 :=
+  leanList123.foldl
+    (fun acc value => acc + (leanList123.foldl (fun inner item => inner + item + value) 0))
+    0
 
 def unitArgHelper (_value : Unit) : UInt64 :=
   11
