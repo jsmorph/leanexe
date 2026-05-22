@@ -1233,6 +1233,12 @@ def pointListFoldlScore : UInt64 :=
 def pointListFoldrScore : UInt64 :=
   pointListValue.foldr (fun point acc => acc * 100 + point.x * 10 + point.y) 0
 
+def pointListAnyDemo : UInt64 :=
+  if pointListValue.any (fun point => point.x == 3 && point.y == 5) then 1 else 0
+
+def pointListAllDemo : UInt64 :=
+  if pointListValue.all (fun point => point.x < point.y) then 1 else 0
+
 def pointListBytes : List Point -> ByteArray
   | [] => "N".toUTF8
   | head :: tail =>
@@ -1300,6 +1306,18 @@ def statusListFoldrScore : UInt64 :=
       | Status.error code => acc * 10 + code)
     0
 
+def statusListAnyDemo : UInt64 :=
+  if statusListValue.any (fun status =>
+    match status with
+    | Status.ok value => value > 5
+    | Status.error _ => false) then 1 else 0
+
+def statusListAllDemo : UInt64 :=
+  if statusListValue.all (fun status =>
+    match status with
+    | Status.ok _ => true
+    | Status.error code => code < 10) then 1 else 0
+
 def statusListBytes : List Status -> ByteArray
   | [] => "N".toUTF8
   | head :: tail =>
@@ -1344,6 +1362,12 @@ def byteArrayListFoldlValue : ByteArray :=
 def byteArrayListFoldrValue : ByteArray :=
   byteArrayListValue.foldr (fun bytes acc => acc.append bytes) ByteArray.empty
 
+def byteArrayListAnyDemo : UInt64 :=
+  if byteArrayListValue.any (fun bytes => bytes.size == 0) then 1 else 0
+
+def byteArrayListAllDemo : UInt64 :=
+  if byteArrayListValue.all (fun bytes => bytes.size < 3) then 1 else 0
+
 def byteArrayListBytes : List ByteArray -> ByteArray
   | [] => "N".toUTF8
   | head :: tail =>
@@ -1358,6 +1382,120 @@ def byteArrayOptionBytes : Option ByteArray -> ByteArray
   | some bytes =>
       let out := "some(".toUTF8
       let out := out.append (byteArrayCellBytes bytes)
+      out.push (41 : UInt8)
+
+def optionByteArrayBytes (value : Option ByteArray) : ByteArray :=
+  byteArrayOptionBytes value
+
+def optionByteArrayListValue : List (Option ByteArray) :=
+  [some "A".toUTF8, none, some "BC".toUTF8]
+
+def optionByteArrayListMapValue : List (Option ByteArray) :=
+  optionByteArrayListValue.map (fun item => item.map (fun bytes => bytes.push (33 : UInt8)))
+
+def optionByteArrayListFilterValue : List (Option ByteArray) :=
+  optionByteArrayListValue.filter (fun item =>
+    match item with
+    | some bytes => bytes.size > 1
+    | none => false)
+
+def optionByteArrayListFindValue : Option (Option ByteArray) :=
+  optionByteArrayListValue.find? (fun item =>
+    match item with
+    | some bytes => bytes.size == 1
+    | none => false)
+
+def optionByteArrayListAppendReverseValue : List (Option ByteArray) :=
+  optionByteArrayListValue.reverse ++ [some "DEF".toUTF8]
+
+def optionByteArrayListAnyDemo : UInt64 :=
+  if optionByteArrayListValue.any (fun item =>
+    match item with
+    | some bytes => bytes.size == 2
+    | none => false) then 1 else 0
+
+def optionByteArrayListAllDemo : UInt64 :=
+  if optionByteArrayListValue.all (fun item =>
+    match item with
+    | some bytes => bytes.size < 3
+    | none => true) then 1 else 0
+
+def optionByteArrayListBytes : List (Option ByteArray) -> ByteArray
+  | [] => "N".toUTF8
+  | head :: tail =>
+      let out := "C(".toUTF8
+      let out := out.append (optionByteArrayBytes head)
+      let out := out.push (44 : UInt8)
+      let out := out.append (optionByteArrayListBytes tail)
+      out.push (41 : UInt8)
+
+def optionOptionByteArrayBytes : Option (Option ByteArray) -> ByteArray
+  | none => "none".toUTF8
+  | some item =>
+      let out := "some(".toUTF8
+      let out := out.append (optionByteArrayBytes item)
+      out.push (41 : UInt8)
+
+def exceptByteArrayUInt64Bytes : Except ByteArray UInt64 -> ByteArray
+  | Except.error bytes =>
+      let out := "error(".toUTF8
+      let out := out.append (byteArrayCellBytes bytes)
+      out.push (41 : UInt8)
+  | Except.ok value =>
+      let out := "ok(".toUTF8
+      let out := LeanExe.Ascii.appendUInt64Decimal out value
+      out.push (41 : UInt8)
+
+def exceptByteArrayUInt64ListValue : List (Except ByteArray UInt64) :=
+  [Except.ok 1, Except.error "E".toUTF8, Except.ok 5]
+
+def exceptByteArrayUInt64ListMapValue : List (Except ByteArray UInt64) :=
+  exceptByteArrayUInt64ListValue.map (fun item =>
+    match item with
+    | Except.error bytes => Except.error (bytes.push (33 : UInt8))
+    | Except.ok value => Except.ok (value + 1))
+
+def exceptByteArrayUInt64ListFilterValue : List (Except ByteArray UInt64) :=
+  exceptByteArrayUInt64ListValue.filter (fun item =>
+    match item with
+    | Except.error _ => true
+    | Except.ok value => value > 3)
+
+def exceptByteArrayUInt64ListFindValue : Option (Except ByteArray UInt64) :=
+  exceptByteArrayUInt64ListValue.find? (fun item =>
+    match item with
+    | Except.error _ => true
+    | Except.ok _ => false)
+
+def exceptByteArrayUInt64ListAppendReverseValue : List (Except ByteArray UInt64) :=
+  exceptByteArrayUInt64ListValue.reverse ++ [Except.error "FG".toUTF8]
+
+def exceptByteArrayUInt64ListAnyDemo : UInt64 :=
+  if exceptByteArrayUInt64ListValue.any (fun item =>
+    match item with
+    | Except.error _ => true
+    | Except.ok _ => false) then 1 else 0
+
+def exceptByteArrayUInt64ListAllDemo : UInt64 :=
+  if exceptByteArrayUInt64ListValue.all (fun item =>
+    match item with
+    | Except.error bytes => bytes.size == 1
+    | Except.ok value => value < 10) then 1 else 0
+
+def exceptByteArrayUInt64ListBytes : List (Except ByteArray UInt64) -> ByteArray
+  | [] => "N".toUTF8
+  | head :: tail =>
+      let out := "C(".toUTF8
+      let out := out.append (exceptByteArrayUInt64Bytes head)
+      let out := out.push (44 : UInt8)
+      let out := out.append (exceptByteArrayUInt64ListBytes tail)
+      out.push (41 : UInt8)
+
+def optionExceptByteArrayUInt64Bytes : Option (Except ByteArray UInt64) -> ByteArray
+  | none => "none".toUTF8
+  | some item =>
+      let out := "some(".toUTF8
+      let out := out.append (exceptByteArrayUInt64Bytes item)
       out.push (41 : UInt8)
 
 def optionUInt64Bytes : Option UInt64 -> ByteArray
@@ -1400,6 +1538,18 @@ def optionUInt64ListFoldrScore : UInt64 :=
       | none => acc * 10
       | some value => acc * 10 + value)
     0
+
+def optionUInt64ListAnyDemo : UInt64 :=
+  if optionUInt64ListValue.any (fun item =>
+    match item with
+    | some value => value > 3
+    | none => false) then 1 else 0
+
+def optionUInt64ListAllDemo : UInt64 :=
+  if optionUInt64ListValue.all (fun item =>
+    match item with
+    | some value => value < 10
+    | none => true) then 1 else 0
 
 def optionUInt64ListBytes : List (Option UInt64) -> ByteArray
   | [] => "N".toUTF8

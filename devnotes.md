@@ -1,5 +1,19 @@
 # Development Journal
 
+## 2026-05-21: Heap-Tagged List Predicates
+
+The standard comparison corpus now covers direct `List.any` and `List.all` over non-scalar element layouts.  The new cases exercise structures, source-defined tagged values, `ByteArray`, `Option UInt64`, `Option ByteArray`, and `Except ByteArray UInt64`, comparing standard Lean execution with generated WASM under Wasmtime.
+
+The recursive-family specialization also now has heap-bearing tagged list-result cases.  `List (Option ByteArray)` and `List (Except ByteArray UInt64)` are tested through `List.map`, `List.filter`, `List.find?`, and append after reverse with source-level byte serializers.  One serializer alias had to be eta-expanded because the extractor accepts ordinary function bodies at that boundary, not a bare definition alias.
+
+Checks run:
+
+- [x] `lake build LeanExe.Extract.Core LeanExe.Examples.Correctness lean-wasm`
+- [x] `node --check tools/compare-standard.js`
+- [x] `node --check test/core_correctness.js`
+- [x] `node tools/compare-standard.js --self-test` returned `checked 277 standard Lean comparison cases`.
+- [x] `node test/run_all.js` returned `checked 112 report classification cases`, `checked 8 ownership report cases`, `checked JavaScript WASM execution guard`, `checked 771 accepted, 29 rejected, and 13 trapped cases`, `checked 38 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 35 WASI program cases, 2 traps, and 7 rejections`, `checked 277 standard Lean comparison cases`, and `checked 56 cases`.
+
 ## 2026-05-21: Non-Scalar List Comparisons
 
 The standard comparison corpus now covers monomorphic `List` values whose elements are structures, source-defined tagged values, byte arrays, and nested `Option` values.  The new fixtures exercise `List.map`, `List.filter`, `List.find?`, append after reverse, `List.foldl`, and `List.foldr`, comparing standard Lean execution with generated WASM under Wasmtime through byte serializers or scalar slots.  This extends the tested recursive-family specialization beyond `List UInt64` without adding a list-specific compiler path.
