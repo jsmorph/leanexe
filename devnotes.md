@@ -1,5 +1,20 @@
 # Development Journal
 
+## 2026-05-21: Non-Scalar List Comparisons
+
+The standard comparison corpus now covers monomorphic `List` values whose elements are structures, source-defined tagged values, byte arrays, and nested `Option` values.  The new fixtures exercise `List.map`, `List.filter`, `List.find?`, append after reverse, `List.foldl`, and `List.foldr`, comparing standard Lean execution with generated WASM under Wasmtime through byte serializers or scalar slots.  This extends the tested recursive-family specialization beyond `List UInt64` without adding a list-specific compiler path.
+
+The first `List (Option UInt64).find?` case exposed a missing condition-extraction branch for generated `Option` matchers.  Value extraction already accepted that matcher form, but condition extraction skipped from generated `Except` matches to `Nat` matches.  The extractor now routes generated `Option` matchers used as conditions through the ordinary value extractor before converting the scalar result to a condition.
+
+Checks run:
+
+- [x] `lake build LeanExe.Extract.Core LeanExe.Examples.Correctness lean-wasm`
+- [x] `node --check tools/compare-standard.js`
+- [x] `node --check test/core_correctness.js`
+- [x] `node tools/compare-standard.js --mode pure-bytes --module LeanExe.Examples.Correctness --entry optionUInt64ListFindValue --serializer 'LeanExe.Examples.Correctness.optionOptionUInt64Bytes __leanexeValue'` returned `matched pure-bytes LeanExe.Examples.Correctness.optionUInt64ListFindValue`.
+- [x] `node tools/compare-standard.js --self-test` returned `checked 257 standard Lean comparison cases`.
+- [x] `node test/run_all.js` returned `checked 112 report classification cases`, `checked 8 ownership report cases`, `checked JavaScript WASM execution guard`, `checked 771 accepted, 29 rejected, and 13 trapped cases`, `checked 38 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 35 WASI program cases, 2 traps, and 7 rejections`, `checked 257 standard Lean comparison cases`, and `checked 56 cases`.
+
 ## 2026-05-21: Recursive Flow Comparisons
 
 The standard comparison corpus now covers recursive `U64Binary` values flowing through ordinary first-order program shapes.  The new fixtures compare `Option.map`, `Except.map`, `Except.bind`, branch-selected structures with recursive fields, source-defined tagged values with recursive payloads, arrays of recursive values, and `Id.run` loops carrying recursive, `Option` recursive, and `Except ByteArray` recursive state.  These tests compare standard Lean execution with generated WASM under Wasmtime through byte serializers, so the checked behavior is the source-level value rather than a hand-written numeric summary.

@@ -1205,6 +1205,218 @@ def leanListScenarioReverseValue (kind : UInt64) : List UInt64 :=
 def leanListScenarioAppendMapValue (kind : UInt64) : List UInt64 :=
   (leanListAppendRec (leanListScenario kind) [5]).map (fun value => value + 1)
 
+def pointBytes (point : Point) : ByteArray :=
+  let out := "P(".toUTF8
+  let out := LeanExe.Ascii.appendUInt64Decimal out point.x
+  let out := out.push (44 : UInt8)
+  let out := LeanExe.Ascii.appendUInt64Decimal out point.y
+  out.push (41 : UInt8)
+
+def pointListValue : List Point :=
+  [{ x := 1, y := 2 }, { x := 3, y := 5 }, { x := 8, y := 13 }]
+
+def pointListMapValue : List Point :=
+  pointListValue.map (fun point => { x := point.x + 1, y := point.y + 2 })
+
+def pointListFilterValue : List Point :=
+  pointListValue.filter (fun point => point.x + 2 < point.y)
+
+def pointListFindValue : Option Point :=
+  pointListValue.find? (fun point => point.x == 3)
+
+def pointListAppendReverseValue : List Point :=
+  pointListValue.reverse ++ [{ x := 21, y := 34 }]
+
+def pointListFoldlScore : UInt64 :=
+  pointListValue.foldl (fun acc point => acc + point.x * 10 + point.y) 0
+
+def pointListFoldrScore : UInt64 :=
+  pointListValue.foldr (fun point acc => acc * 100 + point.x * 10 + point.y) 0
+
+def pointListBytes : List Point -> ByteArray
+  | [] => "N".toUTF8
+  | head :: tail =>
+      let out := "C(".toUTF8
+      let out := out.append (pointBytes head)
+      let out := out.push (44 : UInt8)
+      let out := out.append (pointListBytes tail)
+      out.push (41 : UInt8)
+
+def pointOptionBytes : Option Point -> ByteArray
+  | none => "none".toUTF8
+  | some point =>
+      let out := "some(".toUTF8
+      let out := out.append (pointBytes point)
+      out.push (41 : UInt8)
+
+def statusBytes : Status -> ByteArray
+  | .ok value =>
+      let out := "ok(".toUTF8
+      let out := LeanExe.Ascii.appendUInt64Decimal out value
+      out.push (41 : UInt8)
+  | .error code =>
+      let out := "error(".toUTF8
+      let out := LeanExe.Ascii.appendUInt64Decimal out code
+      out.push (41 : UInt8)
+
+def statusListValue : List Status :=
+  [Status.ok 1, Status.error 4, Status.ok 9]
+
+def statusListBump : Status -> Status
+  | Status.ok value => Status.ok (value + 1)
+  | Status.error code => Status.error (code + 1)
+
+def statusListMapValue : List Status :=
+  statusListValue.map statusListBump
+
+def statusListFilterValue : List Status :=
+  statusListValue.filter (fun status =>
+    match status with
+    | Status.ok _ => true
+    | Status.error _ => false)
+
+def statusListFindValue : Option Status :=
+  statusListValue.find? (fun status =>
+    match status with
+    | Status.ok value => value > 5
+    | Status.error _ => false)
+
+def statusListAppendReverseValue : List Status :=
+  statusListValue.reverse ++ [Status.error 12]
+
+def statusListFoldlScore : UInt64 :=
+  statusListValue.foldl
+    (fun acc status =>
+      match status with
+      | Status.ok value => acc + value
+      | Status.error code => acc + code * 10)
+    0
+
+def statusListFoldrScore : UInt64 :=
+  statusListValue.foldr
+    (fun status acc =>
+      match status with
+      | Status.ok value => acc * 10 + value
+      | Status.error code => acc * 10 + code)
+    0
+
+def statusListBytes : List Status -> ByteArray
+  | [] => "N".toUTF8
+  | head :: tail =>
+      let out := "C(".toUTF8
+      let out := out.append (statusBytes head)
+      let out := out.push (44 : UInt8)
+      let out := out.append (statusListBytes tail)
+      out.push (41 : UInt8)
+
+def statusOptionBytes : Option Status -> ByteArray
+  | none => "none".toUTF8
+  | some status =>
+      let out := "some(".toUTF8
+      let out := out.append (statusBytes status)
+      out.push (41 : UInt8)
+
+def byteArrayCellBytes (bytes : ByteArray) : ByteArray :=
+  let out := "B(".toUTF8
+  let out := LeanExe.Ascii.appendUInt64Decimal out bytes.size.toUInt64
+  let out := out.push (58 : UInt8)
+  let out := out.append bytes
+  out.push (41 : UInt8)
+
+def byteArrayListValue : List ByteArray :=
+  ["A".toUTF8, "BC".toUTF8, ByteArray.empty]
+
+def byteArrayListMapValue : List ByteArray :=
+  byteArrayListValue.map (fun bytes => bytes.push (33 : UInt8))
+
+def byteArrayListFilterValue : List ByteArray :=
+  byteArrayListValue.filter (fun bytes => bytes.size > 1)
+
+def byteArrayListFindValue : Option ByteArray :=
+  byteArrayListValue.find? (fun bytes => bytes.size == 0)
+
+def byteArrayListAppendReverseValue : List ByteArray :=
+  byteArrayListValue.reverse ++ ["DEF".toUTF8]
+
+def byteArrayListFoldlValue : ByteArray :=
+  byteArrayListValue.foldl (fun acc bytes => acc.append bytes) ByteArray.empty
+
+def byteArrayListFoldrValue : ByteArray :=
+  byteArrayListValue.foldr (fun bytes acc => acc.append bytes) ByteArray.empty
+
+def byteArrayListBytes : List ByteArray -> ByteArray
+  | [] => "N".toUTF8
+  | head :: tail =>
+      let out := "C(".toUTF8
+      let out := out.append (byteArrayCellBytes head)
+      let out := out.push (44 : UInt8)
+      let out := out.append (byteArrayListBytes tail)
+      out.push (41 : UInt8)
+
+def byteArrayOptionBytes : Option ByteArray -> ByteArray
+  | none => "none".toUTF8
+  | some bytes =>
+      let out := "some(".toUTF8
+      let out := out.append (byteArrayCellBytes bytes)
+      out.push (41 : UInt8)
+
+def optionUInt64Bytes : Option UInt64 -> ByteArray
+  | none => "none".toUTF8
+  | some value =>
+      let out := "some(".toUTF8
+      let out := LeanExe.Ascii.appendUInt64Decimal out value
+      out.push (41 : UInt8)
+
+def optionUInt64ListValue : List (Option UInt64) :=
+  [some 1, none, some 5]
+
+def optionUInt64ListMapValue : List (Option UInt64) :=
+  optionUInt64ListValue.map (fun item => item.map (fun value => value + 1))
+
+def optionUInt64ListFilterValue : List (Option UInt64) :=
+  optionUInt64ListValue.filter (fun item => item.isSome)
+
+def optionUInt64ListFindValue : Option (Option UInt64) :=
+  optionUInt64ListValue.find? (fun item =>
+    match item with
+    | some value => value > 3
+    | none => false)
+
+def optionUInt64ListAppendReverseValue : List (Option UInt64) :=
+  optionUInt64ListValue.reverse ++ [some 8]
+
+def optionUInt64ListFoldlScore : UInt64 :=
+  optionUInt64ListValue.foldl
+    (fun acc item =>
+      match item with
+      | none => acc + 10
+      | some value => acc + value)
+    0
+
+def optionUInt64ListFoldrScore : UInt64 :=
+  optionUInt64ListValue.foldr
+    (fun item acc =>
+      match item with
+      | none => acc * 10
+      | some value => acc * 10 + value)
+    0
+
+def optionUInt64ListBytes : List (Option UInt64) -> ByteArray
+  | [] => "N".toUTF8
+  | head :: tail =>
+      let out := "C(".toUTF8
+      let out := out.append (optionUInt64Bytes head)
+      let out := out.push (44 : UInt8)
+      let out := out.append (optionUInt64ListBytes tail)
+      out.push (41 : UInt8)
+
+def optionOptionUInt64Bytes : Option (Option UInt64) -> ByteArray
+  | none => "none".toUTF8
+  | some item =>
+      let out := "some(".toUTF8
+      let out := out.append (optionUInt64Bytes item)
+      out.push (41 : UInt8)
+
 inductive U64Tree where
   | leaf : UInt64 → U64Tree
   | node : Array U64Tree → U64Tree
