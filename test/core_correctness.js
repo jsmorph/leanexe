@@ -1491,11 +1491,6 @@ const rejected = [
     message: "unsupported structural recursion carried arguments",
   },
   {
-    name: "rejectListFoldlTaggedAccumulator",
-    message:
-      "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectListFoldlTaggedAccumulator.match_1",
-  },
-  {
     name: "rejectHigherOrder",
     message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectHigherOrder",
   },

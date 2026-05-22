@@ -1072,6 +1072,35 @@ def isFunctionDomain (expr : Expr) : Bool :=
 def staticInlineArg (env : Environment) (domain arg : Expr) : Bool :=
   staticInlineDomain env domain || (isFunctionDomain domain && isDirectLambda arg)
 
+partial def rebuildApp (fn : Expr) : List Expr → Expr
+  | [] => fn
+  | arg :: rest => rebuildApp (.app fn arg) rest
+
+partial def betaReduceExpr (fuel : Nat) (expr : Expr) : Expr :=
+  match fuel with
+  | 0 => expr
+  | fuel + 1 =>
+      let normalize := betaReduceExpr fuel
+      match expr.consumeMData with
+      | .app _ _ =>
+          let (fn, args) := appFnArgs expr
+          let normalizedFn := normalize fn
+          let normalizedArgs := args.map normalize
+          let rec applyNormalized (fn : Expr) : List Expr → Expr
+            | [] => fn
+            | arg :: rest =>
+                match fn.consumeMData with
+                | .lam _ _ body _ => applyNormalized (normalize (body.instantiate1 arg)) rest
+                | _ => rebuildApp fn (arg :: rest)
+          applyNormalized normalizedFn normalizedArgs
+      | .lam name type body bi => .lam name (normalize type) (normalize body) bi
+      | .forallE name type body bi => .forallE name (normalize type) (normalize body) bi
+      | .letE name type value body nondep =>
+          .letE name (normalize type) (normalize value) (normalize body) nondep
+      | .mdata data body => .mdata data (normalize body)
+      | .proj typeName index body => .proj typeName index (normalize body)
+      | other => other
+
 def specializedInlineCall?
     (env : Environment)
     (info : ConstantInfo)
@@ -1092,7 +1121,7 @@ def specializedInlineCall?
           List Expr → List Expr → Option (List Expr × List Ty × List InlineParameter)
         | [], [] => some (runtimeArgs, runtimeTys, parameters)
         | domain :: restDomains, arg :: restArgs =>
-            let instantiatedDomain := domain.instantiateRev previous.toArray
+            let instantiatedDomain := betaReduceExpr 32 (domain.instantiateRev previous.toArray)
             match typeAtom? env instantiatedDomain with
             | some ty =>
                 if supportedLocalType ty then
@@ -1112,7 +1141,8 @@ def specializedInlineCall?
                   none
         | _, _ => none
       let (runtimeArgs, runtimeTys, parameters) ← loop [] [] [] [] parts.fst args
-      let resultTy ← typeAtom? env (parts.snd.instantiateRev args.toArray)
+      let resultExpr := betaReduceExpr 32 (parts.snd.instantiateRev args.toArray)
+      let resultTy ← typeAtom? env resultExpr
       if supportedLocalType resultTy then
         some {
           sig := { params := runtimeTys, result := resultTy },
@@ -1199,10 +1229,6 @@ def blocksTransparentSpecialization (name : Name) : Bool :=
     | _ => false) ||
     [``Array, ``ByteArray, ``Option, ``Except, ``ForIn, ``Functor, ``Bind, ``Pure, ``Id, ``Nat,
       ``Decidable, ``GetElem, ``GetElem?, ``HOrElse, ``OrElse].contains root
-
-partial def rebuildApp (fn : Expr) : List Expr → Expr
-  | [] => fn
-  | arg :: rest => rebuildApp (.app fn arg) rest
 
 partial def betaSpecializeExpr
     (env : Environment)
