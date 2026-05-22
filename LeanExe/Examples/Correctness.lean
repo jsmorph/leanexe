@@ -1442,7 +1442,7 @@ def optionByteArrayListFoldlStateValue : ByteOutputState :=
       { count := acc.count + 1, bytes := out.push (59 : UInt8) })
     ({ count := 0, bytes := ByteArray.empty } : ByteOutputState)
 
-def rejectListFoldlTaggedAccumulator : Option ByteArray :=
+def optionByteArrayListFoldlTaggedAccumulatorValue : Option ByteArray :=
   optionByteArrayListValue.foldl
     (fun acc item =>
       match acc, item with
@@ -1476,6 +1476,16 @@ def exceptByteArrayUInt64Bytes : Except ByteArray UInt64 -> ByteArray
   | Except.ok value =>
       let out := "ok(".toUTF8
       let out := LeanExe.Ascii.appendUInt64Decimal out value
+      out.push (41 : UInt8)
+
+def exceptByteArrayByteArrayBytes : Except ByteArray ByteArray -> ByteArray
+  | Except.error bytes =>
+      let out := "error(".toUTF8
+      let out := out.append (byteArrayCellBytes bytes)
+      out.push (41 : UInt8)
+  | Except.ok bytes =>
+      let out := "ok(".toUTF8
+      let out := out.append (byteArrayCellBytes bytes)
       out.push (41 : UInt8)
 
 def exceptByteArrayUInt64ListValue : List (Except ByteArray UInt64) :=
@@ -1535,6 +1545,18 @@ def exceptByteArrayUInt64ListFoldlStateValue : ByteOutputState :=
       let out := acc.bytes.append (exceptByteArrayUInt64Bytes item)
       { count := acc.count + 1, bytes := out.push (59 : UInt8) })
     ({ count := 0, bytes := ByteArray.empty } : ByteOutputState)
+
+def exceptByteArrayUInt64ListFoldlTaggedAccumulatorValue : Except ByteArray ByteArray :=
+  exceptByteArrayUInt64ListValue.foldl
+    (fun acc item =>
+      match acc, item with
+      | Except.error out, Except.error bytes => Except.error (out.append bytes)
+      | Except.error out, Except.ok value =>
+          Except.error (LeanExe.Ascii.appendUInt64Decimal (out.push (35 : UInt8)) value)
+      | Except.ok out, Except.error bytes => Except.error (out.append bytes)
+      | Except.ok out, Except.ok value =>
+          Except.ok (LeanExe.Ascii.appendUInt64Decimal out value))
+    (Except.ok ByteArray.empty)
 
 def exceptByteArrayUInt64ListBytes : List (Except ByteArray UInt64) -> ByteArray
   | [] => "N".toUTF8
