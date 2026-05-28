@@ -1,5 +1,36 @@
 # Development Journal
 
+## 2026-05-28: Static Type-Class Evidence
+
+LeanExe now treats class evidence as a static specialization input for inline-specialized helpers.  The classifier reads Lean's imported class-extension entries directly instead of importing modules with `loadExts := true`, which preserves access to source-defined classes without requiring imported initializer execution in the `lean-wasm` executable.  Specialized helper bodies run through bounded evidence normalization that beta-reduces, unfolds class evidence applications, unfolds class projection functions, and reduces projections from class constructors before ordinary extraction.
+
+The correctness examples cover `BEq`, `Inhabited`, and a source-defined `TypeclassScore` class.  The custom `BEq` example is intentionally nonstructural, so it catches the unsound path where generic `==` would ignore the selected instance and lower to structural equality.  The `TypeclassScore` examples cover scalar and structure instances, a dependent `Option` instance, and a class method used inside an `Array.foldl` direct lambda.  Runtime dictionaries, exported unresolved class constraints, dynamic dispatch, and unsupported method result types remain outside the accepted subset.
+
+The implementation also adds direct lowering for `UInt64`, `UInt32`, and `UInt8` arithmetic primitives exposed after method inlining, plus proof-erased lowering for `UInt64.ofNatLT`, `UInt32.ofNatLT`, and `UInt8.ofNatLT`.  Those forms are not type-class-specific; they are ordinary checked Lean fixed-width integer operations that became visible once evidence normalization exposed method bodies.  The `ofNatLT` match uses plain `Name` values because quoting the external declaration in the compiled extractor made the native `lean-wasm` executable look for a nonexistent runtime implementation of that checked constructor.
+
+Checks run:
+
+- [x] `lake build LeanExe.Extract.Types LeanExe.Extract.Core lean-wasm`
+- [x] `lake build LeanExe.Examples.Correctness`
+- [x] `node --check tools/compare-standard.js`
+- [x] `node --check test/core_correctness.js`
+- [x] `node tools/compare-standard.js --mode pure --module LeanExe.Examples.Correctness --entry typeclassSameUInt64 --result-slots '#[__leanexeValue]'` returned `matched pure LeanExe.Examples.Correctness.typeclassSameUInt64`.
+- [x] `node tools/compare-standard.js --mode pure --module LeanExe.Examples.Correctness --entry typeclassSameCustomBEq --result-slots '#[__leanexeValue]'` returned `matched pure LeanExe.Examples.Correctness.typeclassSameCustomBEq`.
+- [x] `node tools/compare-standard.js --mode pure --module LeanExe.Examples.Correctness --entry typeclassDefaultUInt64 --result-slots '#[__leanexeValue]'` returned `matched pure LeanExe.Examples.Correctness.typeclassDefaultUInt64`.
+- [x] `node tools/compare-standard.js --mode pure --module LeanExe.Examples.Correctness --entry typeclassDefaultPoint --result-slots '#[__leanexeValue]'` returned `matched pure LeanExe.Examples.Correctness.typeclassDefaultPoint`.
+- [x] `node tools/compare-standard.js --mode pure --module LeanExe.Examples.Correctness --entry typeclassScoreUInt64 --result-slots '#[__leanexeValue]'` returned `matched pure LeanExe.Examples.Correctness.typeclassScoreUInt64`.
+- [x] `node tools/compare-standard.js --mode pure --module LeanExe.Examples.Correctness --entry typeclassScorePoint --result-slots '#[__leanexeValue]'` returned `matched pure LeanExe.Examples.Correctness.typeclassScorePoint`.
+- [x] `node tools/compare-standard.js --mode pure --module LeanExe.Examples.Correctness --entry typeclassScoreOptionUInt64 --result-slots '#[__leanexeValue]'` returned `matched pure LeanExe.Examples.Correctness.typeclassScoreOptionUInt64`.
+- [x] `node tools/compare-standard.js --mode pure --module LeanExe.Examples.Correctness --entry typeclassScoreArrayTotalDemo --result-slots '#[__leanexeValue]'` returned `matched pure LeanExe.Examples.Correctness.typeclassScoreArrayTotalDemo`.
+- [x] `node tools/compare-standard.js --self-test` returned `checked 294 standard Lean comparison cases`.
+- [x] `node test/run_all.js` returned `checked 112 report classification cases`, `checked 8 ownership report cases`, `checked JavaScript WASM execution guard`, `checked 780 accepted, 32 rejected, and 13 trapped cases`, `checked 38 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 35 WASI program cases, 2 traps, and 7 rejections`, `checked 294 standard Lean comparison cases`, and `checked 56 cases`.
+
+## 2026-05-28: Type-Class Implementation Plan
+
+`typeclasses.md` records the literature context and implementation plan for type-class support.  The design conclusion is static evidence specialization: Lean should perform instance search, and LeanExe should specialize the elaborated evidence terms until class methods become ordinary first-order code or reject the program.  Runtime dictionaries, witness tables, indirect calls, and a public ABI for class evidence remain outside the first implementation slice.
+
+The plan is staged around evidence classification, bounded evidence normalization, specialization keys for static arguments, method lowering after specialization, comparison tests against standard Lean, and documentation updates.  The first accepted examples should cover `BEq`, `Inhabited`, and a source-defined class with dependent instances.  Rejection tests should cover exported unresolved class constraints, escaping dictionary values, unsupported method result types, and evidence normalization that fails to reach first-order code.
+
 ## 2026-05-22: Tagged List Fold Accumulators
 
 Specialized inline calls now beta-reduce instantiated dependent domains and result types before classifying them.  This fixes generated match helpers whose declared result is `motive acc item`: after substituting a direct motive lambda, the result is an ordinary supported value type, but the previous classifier inspected the unreduced application and rejected the helper as an unsupported function type.

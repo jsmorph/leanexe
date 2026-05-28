@@ -1179,6 +1179,54 @@ function selfTest() {
     {
       mode: "pure",
       moduleName: correctness,
+      entry: "typeclassSameUInt64",
+      resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "typeclassSameCustomBEq",
+      resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "typeclassDefaultUInt64",
+      resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "typeclassDefaultPoint",
+      resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "typeclassScoreUInt64",
+      resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "typeclassScorePoint",
+      resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "typeclassScoreOptionUInt64",
+      resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "typeclassScoreArrayTotalDemo",
+      resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
       entry: "statusBranchReturn",
       programArgs: ["0"],
       resultSlots:

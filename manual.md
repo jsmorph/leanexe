@@ -38,6 +38,7 @@ Use these rules before reaching for more specific templates:
 - Keep public entry types ABI-friendly.  Recursive data, `List`, products, `PSum`, and arrays of recursive values are internal-only.  Public arrays may contain byte arrays, nested arrays, `Option`, `Except`, and structures or tagged values with fixed-width heap fields.
 - Keep helper definitions under the same root namespace as the module being compiled.
 - Use named helper declarations freely when their types are concrete and first-order.
+- Use type-class-constrained helpers when the selected entry supplies concrete instances and the methods specialize to accepted first-order code.
 - Use `for` and `while` loops in `Id`, `Option`, or `Except` when the collection and accumulator types are supported.
 - Use direct lambdas in `Array.foldl`, `Array.foldr`, `Array.foldlM`, `Array.map`, `Array.filter`, `Array.find?`, `ByteArray.foldl`, `ByteArray.foldlM`, and similar accepted callbacks.
 - Use `UInt64` for most arithmetic at public boundaries.  Use `Nat` for fuel and indexes when the value stays within the bounded runtime representation.
@@ -51,7 +52,7 @@ Avoid these forms in source intended for LeanExe:
 - Runtime `String`, runtime `Char`, `IO`, `EIO`, `BaseIO`, `Task`, file access, randomness, time, concurrency, reflection, and FFI.
 - `unsafe`, `partial`, opaque executable constants, executable axioms, quotients, and arbitrary Lean runtime calls.
 - Escaping lambdas, function-valued fields, closure-valued helpers, and higher-order values that survive as runtime data.
-- Runtime-polymorphic public entries and shared generic runtime helper bodies.
+- Runtime-polymorphic public entries, shared generic runtime helper bodies, runtime class dictionaries, and unresolved class-constrained entries.
 - Public recursive data structures, public `List`, and public arrays of recursive values.
 - Wildcard-heavy matches over recursive or large inductives when explicit arms make the accepted shape clearer.
 - Generic recursive JSON object decoders that hide the child-size proof from LeanExe's accepted well-founded-recursion shape.
@@ -154,6 +155,8 @@ end LeanExe.Examples.ManualStatus
 ```
 
 Use `deriving BEq, DecidableEq` when source code compares structures or nonrecursive tagged values with `==`, `!=`, or `if left = right then ...`.  Lean still needs those instances for the program to type-check, but LeanExe lowers the comparison from the concrete value type rather than by executing an instance dictionary at runtime.  Structural equality supports products, structures, internal sums, `Option`, `Except`, and nonrecursive tagged values when every runtime field has supported equality.  `ByteArray` equality compares lengths and bytes, and `Array` equality compares lengths and elements when the element type has a fixed-width layout and supported equality.  Recursive-inductive equality remains unsupported, including array element equality for recursive inductive values.
+
+Type-class-constrained helpers are accepted when Lean has already resolved the instance at a concrete call site and LeanExe can specialize the evidence away.  The generated WASM contains the selected method body or a first-order expression produced from it, not a class dictionary argument.  This covers simple helpers using `BEq`, `Inhabited`, and source-defined classes whose methods return supported first-order values, including instances that depend on another concrete instance.  Public entries with unresolved class constraints, runtime dictionary values, dynamic dispatch, and method results outside the supported subset remain rejected.
 
 Use recursive inductives as internal data.  They may be constructed, stored in internal arrays, traversed, returned from helpers, and carried in `Option`, `Except`, structures, or tagged values inside the compiled program.  They cannot appear as public entry parameters or public entry results.
 
@@ -704,7 +707,7 @@ Common rejections and source fixes:
 | Unsupported function type | Public entry or helper uses unsupported ABI shape | Move recursive data or products to internal helpers; expose scalar, structure, tagged, array, or byte values. |
 | Runtime `String` or `Char` dependency | Text was not consumed at compile time | Use `ByteArray` and `AsciiString`. |
 | External Lean or Std dependency | Library function lacks a primitive or accepted specialization | Inline a first-order helper or use a supported operation. |
-| Type-class instance dependency in behavior | Runtime dispatch survived elaboration | Add concrete types, avoid overloaded helpers, or rewrite with direct operations. |
+| Runtime class evidence | A class dictionary or method projection survived specialization | Add a concrete wrapper, make the helper body visible under the module root, or rewrite the helper so evidence specializes away. |
 | Unsupported recursion shape | Lean generated an unsupported recursor or well-founded helper | Use explicit fuel or direct structural recursion over the recursive argument. |
 | Public recursive array rejection | Entry ABI contains recursive data inside an array element | Keep recursive data internal or serialize it through bytes. |
 
@@ -775,7 +778,7 @@ Use this checklist when asking an LLM to write LeanExe source:
 - Require explicit constructor arms for recursive inductives and JSON AST matches.
 - Require direct lambdas for array and byte-array folds.
 - Require fuel for parser-like recursion and structural recursion for internal recursive data.
-- Prohibit `IO`, `unsafe`, `partial`, runtime `String`, runtime `Char`, type classes as runtime behavior, closures, and arbitrary Std helpers.
+- Prohibit `IO`, `unsafe`, `partial`, runtime `String`, runtime `Char`, runtime class dictionaries, closures, and arbitrary Std helpers.
 - Ask for a compile command and a report command with the generated entry.
 
 A good prompt says what should happen on malformed input, overflow, empty input, and fuel exhaustion.  It should also say whether duplicate JSON fields are allowed, whether unknown JSON fields are allowed, and whether output errors should go to stderr through an `Except` WASI adapter.  The compiler will not infer these protocol decisions from the type alone.

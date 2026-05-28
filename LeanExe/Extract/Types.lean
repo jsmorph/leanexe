@@ -241,8 +241,20 @@ def nonRuntimeEvidenceTypeNames : List Name :=
   [``Inhabited, ``Decidable, ``BEq, ``LT, ``LE, ``OfNat, ``HAdd, ``HSub, ``HMul, ``HDiv,
     ``HMod, ``GetElem, ``GetElem?]
 
+def importedClassName (env : Environment) (name : Name) : Bool :=
+  env.allImportedModuleNames.any fun moduleName =>
+    match env.getModuleIdx? moduleName with
+    | some idx =>
+        let entries :=
+          PersistentEnvExtension.getModuleEntries classExtension env idx (level := .private)
+        entries.any fun entry => entry.name == name
+    | none => false
+
+def className (env : Environment) (name : Name) : Bool :=
+  isClass env name || importedClassName env name
+
 def isRuntimeStructure (env : Environment) (name : Name) : Bool :=
-  isStructure env name && !isClass env name && !nonRuntimeEvidenceTypeNames.contains name
+  isStructure env name && !className env name && !nonRuntimeEvidenceTypeNames.contains name
 
 def structureInductiveInfo? (env : Environment) (structName : Name) : Option InductiveVal :=
   if !isRuntimeStructure env structName then
@@ -272,7 +284,7 @@ def builtinInductiveNames : List Name :=
 
 def userInductiveInfo? (env : Environment) (typeName : Name) : Option InductiveVal :=
   if builtinInductiveNames.contains typeName || isRuntimeStructure env typeName ||
-      isClass env typeName || nonRuntimeEvidenceTypeNames.contains typeName then
+      className env typeName || nonRuntimeEvidenceTypeNames.contains typeName then
     none
   else
     match env.find? typeName with
@@ -285,7 +297,7 @@ def userInductiveInfo? (env : Environment) (typeName : Name) : Option InductiveV
 
 def userRecursiveInductiveInfo? (env : Environment) (typeName : Name) : Option InductiveVal :=
   if builtinInductiveNames.contains typeName || isRuntimeStructure env typeName ||
-      isClass env typeName || nonRuntimeEvidenceTypeNames.contains typeName then
+      className env typeName || nonRuntimeEvidenceTypeNames.contains typeName then
     none
   else
     match env.find? typeName with
@@ -1054,10 +1066,24 @@ structure InlineSpecialization where
   runtimeArgs : List Expr
   parameters : List InlineParameter
 
+def isClassEvidenceType? (env : Environment) (expr : Expr) : Bool :=
+  match appFnArgs expr with
+  | (.const name _, _) => className env name || nonRuntimeEvidenceTypeNames.contains name
+  | _ => false
+
 def staticInlineDomain (env : Environment) (domain : Expr) : Bool :=
   match domain.consumeMData with
   | .sort _ => true
-  | _ => isProofType? env domain
+  | _ => isProofType? env domain || isClassEvidenceType? env domain
+
+def isEvidenceProjectionFunction (env : Environment) (name : Name) : Bool :=
+  match env.getProjectionFnInfo? name with
+  | some projInfo =>
+      match env.find? projInfo.ctorName with
+      | some (.ctorInfo ctorInfo) =>
+          className env ctorInfo.induct || nonRuntimeEvidenceTypeNames.contains ctorInfo.induct
+      | _ => false
+  | none => false
 
 def isDirectLambda (expr : Expr) : Bool :=
   match expr.consumeMData with
@@ -1099,6 +1125,92 @@ partial def betaReduceExpr (fuel : Nat) (expr : Expr) : Expr :=
           .letE name (normalize type) (normalize value) (normalize body) nondep
       | .mdata data body => .mdata data (normalize body)
       | .proj typeName index body => .proj typeName index (normalize body)
+      | other => other
+
+def constantApplicationResult? (env : Environment) (name : Name) (args : List Expr) :
+    Option Expr := do
+  let info ← env.find? name
+  let parts := peelForall info.type
+  if args.length == parts.fst.length then
+    some (betaReduceExpr 32 (parts.snd.instantiateRev args.toArray))
+  else
+    none
+
+def classEvidenceApplication? (env : Environment) (expr : Expr) : Bool :=
+  match appFnArgs expr with
+  | (.const name _, args) =>
+      match constantApplicationResult? env name args with
+      | some result => isClassEvidenceType? env result
+      | none => false
+  | _ => false
+
+def constructorFieldArg? (env : Environment) (typeName : Name) (index : Nat) (expr : Expr) :
+    Option Expr := do
+  let (fn, args) := appFnArgs expr
+  let ctorName ←
+    match fn.consumeMData with
+    | .const name _ => some name
+    | _ => none
+  let ctorInfo ←
+    match env.find? ctorName with
+    | some (.ctorInfo info) => some info
+    | _ => none
+  if ctorInfo.induct == typeName then
+    args[ctorInfo.numParams + index]?
+  else
+    none
+
+partial def normalizeClassEvidenceExpr
+    (env : Environment)
+    (fuel : Nat)
+    (expr : Expr) : Expr :=
+  match fuel with
+  | 0 => expr
+  | fuel + 1 =>
+      let normalize := normalizeClassEvidenceExpr env fuel
+      let unfoldApplication (name : Name) (levels : List Level) (args : List Expr)
+          (fallback : Expr) : Expr :=
+        if isEvidenceProjectionFunction env name || classEvidenceApplication? env fallback then
+          match env.find? name with
+          | some info =>
+              match info.value? with
+              | some value =>
+                  normalize
+                    (rebuildApp
+                      (value.instantiateLevelParamsArray info.levelParams.toArray levels.toArray)
+                      args)
+              | none => fallback
+          | none => fallback
+        else
+          fallback
+      match expr.consumeMData with
+      | .app _ _ =>
+          let (fn, args) := appFnArgs expr
+          let normalizedFn := normalize fn
+          let normalizedArgs := args.map normalize
+          let rec applyNormalized (fn : Expr) : List Expr → Expr
+            | [] => fn
+            | arg :: rest =>
+                match fn.consumeMData with
+                | .lam _ _ body _ => applyNormalized (normalize (body.instantiate1 arg)) rest
+                | _ => rebuildApp fn (arg :: rest)
+          let applied := applyNormalized normalizedFn normalizedArgs
+          match appFnArgs applied with
+          | (.const name levels, appliedArgs) =>
+              unfoldApplication name levels appliedArgs applied
+          | _ => applied
+      | .const name levels =>
+          unfoldApplication name levels [] expr
+      | .lam name type body bi => .lam name (normalize type) (normalize body) bi
+      | .forallE name type body bi => .forallE name (normalize type) (normalize body) bi
+      | .letE name type value body nondep =>
+          .letE name (normalize type) (normalize value) (normalize body) nondep
+      | .mdata data body => .mdata data (normalize body)
+      | .proj typeName index body =>
+          let normalizedBody := normalize body
+          match constructorFieldArg? env typeName index normalizedBody with
+          | some field => normalize field
+          | none => .proj typeName index normalizedBody
       | other => other
 
 def specializedInlineCall?
