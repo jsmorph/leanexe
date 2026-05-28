@@ -1,5 +1,31 @@
 # Development Journal
 
+## 2026-05-28: Type-Class Boundary Hardening
+
+Type-class diagnostics now distinguish public runtime evidence from internal evidence-bearing helpers.  Public entries with unresolved class evidence or explicit dictionary parameters reject with `runtime class evidence is not supported`, while the report command describes internal class methods, instances, and class constructors as static-specialization requirements.  The report remains entry-aware, so accepted concrete wrappers can mention class declarations in their dependency graph without marking the whole reachable graph as rejected.
+
+Evidence normalization now runs at class-method application sites that reach extraction after specialization, which lets source-defined class methods compile inside additional direct-lambda array callbacks.  The correctness examples now compare `TypeclassScore` methods inside `Array.any` and `Array.find?`, in addition to the earlier `Array.foldl` case.  The BEq path keeps custom lambda instances on the normalization path, but it preserves the existing structural equality lowering for evidence that is structurally derived or built from `instBEqOfDecidableEq`, including `Option.instBEq` and `Array.instBEq`.
+
+This pass also filled direct fixed-width primitive gaps exposed by the stricter evidence handling.  Direct `UInt64`, `UInt32`, and `UInt8` comparison methods lower as conditions, direct `UInt64`, `UInt32`, and `UInt8` complement methods lower without relying on class projection unfolding, and direct `UInt8.land`, `UInt8.lor`, and `UInt8.xor` now share the existing fixed-width bitwise lowering.  Numeric class projections already handled by primitive extraction stay on that explicit path instead of being unfolded through library instance bodies.
+
+Checks run:
+
+- [x] `lake build LeanExe.Extract.Core lean-wasm`
+- [x] `lake build LeanExe.Extract.Report lean-wasm`
+- [x] `lake build LeanExe.Examples.Correctness lean-wasm`
+- [x] `node --check tools/compare-standard.js`
+- [x] `node --check test/core_correctness.js`
+- [x] `node --check test/report_classification.js`
+- [x] `node tools/compare-standard.js --mode pure --module LeanExe.Examples.Correctness --entry typeclassScoreArrayAnyDemo --result-slots '#[__leanexeValue]'` returned `matched pure LeanExe.Examples.Correctness.typeclassScoreArrayAnyDemo`.
+- [x] `node tools/compare-standard.js --mode pure --module LeanExe.Examples.Correctness --entry typeclassScoreArrayFindDemo --result-slots '#[__leanexeValue]'` returned `matched pure LeanExe.Examples.Correctness.typeclassScoreArrayFindDemo`.
+- [x] `.lake/build/bin/lean-wasm compile --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.rejectTypeclassEntry --out .lake/build/typeclass-reject-entry.wasm` rejected with `runtime class evidence is not supported: LeanExe.Examples.Correctness.rejectTypeclassEntry`.
+- [x] `.lake/build/bin/lean-wasm compile --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.rejectTypeclassRuntimeDictionaryParam --out .lake/build/typeclass-reject-dict.wasm` rejected with `runtime class evidence is not supported: LeanExe.Examples.Correctness.rejectTypeclassRuntimeDictionaryParam`.
+- [x] `node tools/compare-standard.js --self-test` returned `checked 296 standard Lean comparison cases`.
+- [x] `node test/core_correctness.js` returned `checked 782 accepted, 34 rejected, and 13 trapped cases`.
+- [x] `node test/bytearray_alloc.js` returned `checked 70 bytearray allocation cases`.
+- [x] `node test/report_classification.js` returned `checked 113 report classification cases`.
+- [x] `node test/run_all.js` returned `checked 113 report classification cases`, `checked 8 ownership report cases`, `checked JavaScript WASM execution guard`, `checked 782 accepted, 34 rejected, and 13 trapped cases`, `checked 38 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 35 WASI program cases, 2 traps, and 7 rejections`, `checked 296 standard Lean comparison cases`, and `checked 56 cases`.
+
 ## 2026-05-28: Static Type-Class Evidence
 
 LeanExe now treats class evidence as a static specialization input for inline-specialized helpers.  The classifier reads Lean's imported class-extension entries directly instead of importing modules with `loadExts := true`, which preserves access to source-defined classes without requiring imported initializer execution in the `lean-wasm` executable.  Specialized helper bodies run through bounded evidence normalization that beta-reduces, unfolds class evidence applications, unfolds class projection functions, and reduces projections from class constructors before ordinary extraction.

@@ -41,6 +41,76 @@ def uint64OfNatLTName : Name := .str (.str .anonymous "UInt64") "ofNatLT"
 def uint32OfNatLTName : Name := .str (.str .anonymous "UInt32") "ofNatLT"
 def uint8OfNatLTName : Name := .str (.str .anonymous "UInt8") "ofNatLT"
 
+def generatedBEqMethodName : Name → Bool
+  | .str _ "beq" => true
+  | _ => false
+
+def structuralBEqMethod? (expr : Expr) : Bool :=
+  match appFnArgs expr with
+  | (.const name _, []) => generatedBEqMethodName name
+  | _ => false
+
+partial def structuralBEqEvidence? (env : Environment) (fuel : Nat) (expr : Expr) : Bool :=
+  match fuel with
+  | 0 => false
+  | fuel + 1 =>
+      match appFnArgs expr with
+      | (.const ``instBEqOfDecidableEq _, _) => true
+      | (.const ``Option.instBEq _, args) =>
+          match args.reverse with
+          | evidence :: _ => structuralBEqEvidence? env fuel evidence
+          | _ => false
+      | (.const ``Array.instBEq _, args) =>
+          match args.reverse with
+          | evidence :: _ => structuralBEqEvidence? env fuel evidence
+          | _ => false
+      | (.const ``BEq.mk _, args) =>
+          match args.reverse with
+          | method :: _ => structuralBEqMethod? method
+          | _ => false
+      | (.const name levels, args) =>
+          match env.find? name with
+          | some info =>
+              match info.value? with
+              | some value =>
+                  structuralBEqEvidence? env fuel
+                    (rebuildApp
+                      (value.instantiateLevelParamsArray info.levelParams.toArray levels.toArray)
+                      args)
+              | none => false
+          | none => false
+      | _ => false
+
+def structuralBEqApplication? (env : Environment) (name : Name) (expr : Expr) : Bool :=
+  name == ``BEq.beq &&
+    match appFnArgs expr with
+    | (_, _type :: evidence :: _left :: _right :: []) => structuralBEqEvidence? env 16 evidence
+    | _ => false
+
+def directPrimitiveClassProjection (name : Name) : Bool :=
+  name == ``OfNat.ofNat || name == ``HAdd.hAdd || name == ``HSub.hSub ||
+    name == ``HMul.hMul || name == ``HDiv.hDiv || name == ``HMod.hMod ||
+    name == ``LT.lt || name == ``LE.le || name == ``GT.gt || name == ``GE.ge ||
+    name == ``Min.min || name == ``Max.max
+
+def classEvidenceNormalizedApp? (env : Environment) (name : Name) (expr : Expr) : Option Expr :=
+  if structuralBEqApplication? env name expr || directPrimitiveClassProjection name then
+    none
+  else if isEvidenceProjectionFunction env name || classEvidenceApplication? env expr then
+    let normalized := normalizeClassEvidenceExpr env 64 expr
+    let (fn, _) := appFnArgs normalized
+    match fn.consumeMData with
+    | .const normalizedName _ => if normalizedName == name then none else some normalized
+    | _ => some normalized
+  else
+    none
+
+def directScalarLtPrimitive (name : Name) : Bool :=
+  name == ``UInt64.lt || name == ``UInt32.lt || name == ``UInt8.lt
+
+def directScalarLePrimitive (name : Name) : Bool :=
+  name == ``UInt64.le || name == ``UInt32.le || name == ``UInt8.le
+
 mutual
   partial def extractStructuralRecCallValueFrom
       (ctx : Context)
@@ -2823,20 +2893,24 @@ mutual
                                     | none =>
                                         match fn.consumeMData with
                                         | .const name _ =>
-                                            if name == ``LeanExe.Runtime.release ||
-                                                (args.isEmpty && (runtimeStatPrimitive? name).isSome) then
-                                              let exprResult ←
-                                                extractPrimitiveApplicationFrom ctx locals nextLocal name args
-                                              .ok (.scalar exprResult.fst, exprResult.snd)
-                                            else
-                                              match ← extractInlineCallValueFrom ctx locals nextLocal name args with
-                                              | some valueResult => .ok valueResult
-                                              | none =>
-                                                  match ← extractFunctionCallValueFrom ctx locals nextLocal name args with
+                                            match classEvidenceNormalizedApp? ctx.env name expr with
+                                            | some normalized =>
+                                                extractValueFrom ctx locals nextLocal normalized
+                                            | none =>
+                                                if name == ``LeanExe.Runtime.release ||
+                                                    (args.isEmpty && (runtimeStatPrimitive? name).isSome) then
+                                                  let exprResult ←
+                                                    extractPrimitiveApplicationFrom ctx locals nextLocal name args
+                                                  .ok (.scalar exprResult.fst, exprResult.snd)
+                                                else
+                                                  match ← extractInlineCallValueFrom ctx locals nextLocal name args with
                                                   | some valueResult => .ok valueResult
                                                   | none =>
-                                                      let exprResult ← extractExprFrom ctx locals nextLocal expr
-                                                      .ok (.scalar exprResult.fst, exprResult.snd)
+                                                      match ← extractFunctionCallValueFrom ctx locals nextLocal name args with
+                                                      | some valueResult => .ok valueResult
+                                                      | none =>
+                                                          let exprResult ← extractExprFrom ctx locals nextLocal expr
+                                                          .ok (.scalar exprResult.fst, exprResult.snd)
                                         | _ =>
                                             let exprResult ← extractExprFrom ctx locals nextLocal expr
                                             .ok (.scalar exprResult.fst, exprResult.snd)
@@ -3326,7 +3400,7 @@ mutual
       | none =>
           match specializedInlineCall? ctx.env info args with
           | some specialization => .ok specialization
-          | none => .error s!"unsupported function type or declaration: {name}"
+          | none => .error (functionTypeRejectionMessage ctx.env name info.type)
     if specialization.runtimeArgs.length != specialization.sig.params.length then
       .error s!"inline call arity mismatch: {name}"
     else
@@ -3368,7 +3442,7 @@ mutual
           | some info =>
               match supportedFunction? ctx.env info with
               | some sig => .ok sig
-              | none => .error s!"unsupported function type or declaration: {name}"
+              | none => .error (functionTypeRejectionMessage ctx.env name info.type)
           | none => .error s!"declaration disappeared during extraction: {name}"
         strictCallMaterializationCheck ctx name sig.params args
         let argsResult ← extractCallArgsFrom ctx locals nextLocal sig.params args
@@ -4467,86 +4541,89 @@ mutual
                                 argResult.snd)
                           | none => .ok argResult
                   | _ => .error message
-                if primitive == uint64OfNatLTName then
-                  extractBoundedNat none "unsupported UInt64.ofNatLT application"
-                else if primitive == uint32OfNatLTName then
-                  extractBoundedNat (some (2 ^ 32)) "unsupported UInt32.ofNatLT application"
-                else if primitive == uint8OfNatLTName then
-                  extractBoundedNat (some 256) "unsupported UInt8.ofNatLT application"
-                else
-                match expressionStructuralRecShape? ctx.env ctx.root expr with
-                | some shape =>
-                    match syntheticForShape? ctx shape with
-                    | some synth =>
-                        let scrutineeResult ← extractValueFrom ctx locals nextLocal shape.scrutinee
-                        let valueResult ←
-                          extractStructuralRecCallValueFrom ctx locals scrutineeResult.snd synth.name
-                            scrutineeResult.fst [] (structuralExpressionCallExtraArgs shape)
-                        .ok (← scalarValue valueResult.fst, valueResult.snd)
-                    | none =>
-                        .error s!"unsupported expression-level structural recursion: {shape.typeName}"
+                match classEvidenceNormalizedApp? ctx.env primitive expr with
+                | some normalized => extractExprFrom ctx locals nextLocal normalized
                 | none =>
-                match ← extractClosedStructuralPredicateExprFrom ctx locals nextLocal expr with
-                | some result => .ok result
-                | none =>
-                    match structureProjectionForArgs? ctx.env primitive args with
-                    | some (structName, some index, target) =>
-                        let valueResult ← extractValueFrom ctx locals nextLocal target
-                        .ok (← scalarValue (← structField structName index valueResult.fst),
-                          valueResult.snd)
-                    | some (_structName, none, _target) =>
-                        .ok (.u64 0, nextLocal)
-                    | none =>
-                        match boolMatcherArgs? ctx.env (.const primitive []) args with
-                        | some (scrutinee, falseArm, trueArm) =>
-                            let condResult ← extractCondFrom ctx locals nextLocal scrutinee
-                            let falseResult ← extractUnitArmValueFrom ctx locals condResult.snd falseArm
-                            let trueResult ← extractUnitArmValueFrom ctx locals falseResult.snd trueArm
-                            .ok
-                              (← scalarValue
-                                (← valueIte condResult.fst trueResult.fst falseResult.fst),
-                                trueResult.snd)
+                    if primitive == uint64OfNatLTName then
+                      extractBoundedNat none "unsupported UInt64.ofNatLT application"
+                    else if primitive == uint32OfNatLTName then
+                      extractBoundedNat (some (2 ^ 32)) "unsupported UInt32.ofNatLT application"
+                    else if primitive == uint8OfNatLTName then
+                      extractBoundedNat (some 256) "unsupported UInt8.ofNatLT application"
+                    else
+                    match expressionStructuralRecShape? ctx.env ctx.root expr with
+                    | some shape =>
+                        match syntheticForShape? ctx shape with
+                        | some synth =>
+                            let scrutineeResult ← extractValueFrom ctx locals nextLocal shape.scrutinee
+                            let valueResult ←
+                              extractStructuralRecCallValueFrom ctx locals scrutineeResult.snd synth.name
+                                scrutineeResult.fst [] (structuralExpressionCallExtraArgs shape)
+                            .ok (← scalarValue valueResult.fst, valueResult.snd)
                         | none =>
-                            match exceptMatcherArgs? ctx.env (.const primitive []) args with
-                            | some (scrutinee, errorArm, okArm) =>
-                                let valueResult ←
-                                  extractExceptMatchValueFrom ctx locals nextLocal scrutinee errorArm okArm
-                                .ok (← scalarValue valueResult.fst, valueResult.snd)
+                            .error s!"unsupported expression-level structural recursion: {shape.typeName}"
+                    | none =>
+                    match ← extractClosedStructuralPredicateExprFrom ctx locals nextLocal expr with
+                    | some result => .ok result
+                    | none =>
+                        match structureProjectionForArgs? ctx.env primitive args with
+                        | some (structName, some index, target) =>
+                            let valueResult ← extractValueFrom ctx locals nextLocal target
+                            .ok (← scalarValue (← structField structName index valueResult.fst),
+                              valueResult.snd)
+                        | some (_structName, none, _target) =>
+                            .ok (.u64 0, nextLocal)
+                        | none =>
+                            match boolMatcherArgs? ctx.env (.const primitive []) args with
+                            | some (scrutinee, falseArm, trueArm) =>
+                                let condResult ← extractCondFrom ctx locals nextLocal scrutinee
+                                let falseResult ← extractUnitArmValueFrom ctx locals condResult.snd falseArm
+                                let trueResult ← extractUnitArmValueFrom ctx locals falseResult.snd trueArm
+                                .ok
+                                  (← scalarValue
+                                    (← valueIte condResult.fst trueResult.fst falseResult.fst),
+                                    trueResult.snd)
                             | none =>
-                                match optionMatcherArgs? ctx.env (.const primitive []) args with
-                                | some (scrutinee, noneArm, someArm) =>
+                                match exceptMatcherArgs? ctx.env (.const primitive []) args with
+                                | some (scrutinee, errorArm, okArm) =>
                                     let valueResult ←
-                                      extractOptionMatchValueFrom ctx locals nextLocal scrutinee noneArm someArm
+                                      extractExceptMatchValueFrom ctx locals nextLocal scrutinee errorArm okArm
                                     .ok (← scalarValue valueResult.fst, valueResult.snd)
                                 | none =>
-                                    match natMatcherArgs? ctx.env (.const primitive []) args with
-                                    | some (scrutinee, zeroArm, succArm) =>
+                                    match optionMatcherArgs? ctx.env (.const primitive []) args with
+                                    | some (scrutinee, noneArm, someArm) =>
                                         let valueResult ←
-                                          extractNatMatchValueFrom ctx locals nextLocal scrutinee zeroArm succArm
+                                          extractOptionMatchValueFrom ctx locals nextLocal scrutinee noneArm someArm
                                         .ok (← scalarValue valueResult.fst, valueResult.snd)
                                     | none =>
-                                        match productMatcherArgs? ctx.env (.const primitive []) args with
-                                        | some (scrutinee, arm) =>
+                                        match natMatcherArgs? ctx.env (.const primitive []) args with
+                                        | some (scrutinee, zeroArm, succArm) =>
                                             let valueResult ←
-                                              extractProductMatchValueFrom ctx locals nextLocal scrutinee arm
+                                              extractNatMatchValueFrom ctx locals nextLocal scrutinee zeroArm succArm
                                             .ok (← scalarValue valueResult.fst, valueResult.snd)
                                         | none =>
-                                            match structureMatcherArgs? ctx.env (.const primitive []) args with
-                                            | some (structName, fieldKinds, scrutinee, arm) =>
+                                            match productMatcherArgs? ctx.env (.const primitive []) args with
+                                            | some (scrutinee, arm) =>
                                                 let valueResult ←
-                                                  extractStructureMatchValueFrom ctx locals nextLocal
-                                                    structName fieldKinds scrutinee arm
+                                                  extractProductMatchValueFrom ctx locals nextLocal scrutinee arm
                                                 .ok (← scalarValue valueResult.fst, valueResult.snd)
                                             | none =>
-                                                match variantMatcherArgs? ctx.env (.const primitive []) args with
-                                                | some (layout, scrutinee, arms, fallbackArms) =>
+                                                match structureMatcherArgs? ctx.env (.const primitive []) args with
+                                                | some (structName, fieldKinds, scrutinee, arm) =>
                                                     let valueResult ←
-                                                      extractVariantMatchValueFrom ctx locals nextLocal
-                                                        layout scrutinee arms fallbackArms
+                                                      extractStructureMatchValueFrom ctx locals nextLocal
+                                                        structName fieldKinds scrutinee arm
                                                     .ok (← scalarValue valueResult.fst, valueResult.snd)
                                                 | none =>
-                                                    extractPrimitiveApplicationFrom ctx locals nextLocal
-                                                      primitive args
+                                                    match variantMatcherArgs? ctx.env (.const primitive []) args with
+                                                    | some (layout, scrutinee, arms, fallbackArms) =>
+                                                        let valueResult ←
+                                                          extractVariantMatchValueFrom ctx locals nextLocal
+                                                            layout scrutinee arms fallbackArms
+                                                        .ok (← scalarValue valueResult.fst, valueResult.snd)
+                                                    | none =>
+                                                        extractPrimitiveApplicationFrom ctx locals nextLocal
+                                                          primitive args
             | (fn, _) => .error s!"unsupported expression: {fn}"
 
   partial def extractPrimitiveApplicationFrom
@@ -4589,7 +4666,7 @@ mutual
                   | some info =>
                       match supportedFunction? ctx.env info with
                       | some sig => .ok sig
-                      | none => .error s!"unsupported function type or declaration: {primitive}"
+                      | none => .error (functionTypeRejectionMessage ctx.env primitive info.type)
                   | none => .error s!"declaration disappeared during extraction: {primitive}"
                 strictCallMaterializationCheck ctx primitive sig.params args
                 let argsResult ← extractCallArgsFrom ctx locals nextLocal sig.params args
@@ -4633,20 +4710,30 @@ mutual
                       else
                         .error s!"unsupported equality type: {reprStr ty}"
                   | _, _ => .error s!"unsupported equality application: {primitive}"
-                else if primitive == ``Complement.complement then
+                else if primitive == ``Complement.complement || primitive == ``UInt64.complement ||
+                    primitive == ``UInt32.complement || primitive == ``UInt8.complement then
                   match args.reverse with
                   | value :: _ =>
                       let valueResult ← extractExprFrom ctx locals nextLocal value
-                      match primitiveReceiverType? ctx.env args with
-                      | some .u8 =>
+                      if primitive == ``UInt8.complement then
+                        .ok (.u64Bin .bitXor valueResult.fst (.u64 255), valueResult.snd)
+                      else if primitive == ``UInt32.complement then
+                        .ok (.u64Bin .bitXor valueResult.fst (.u64 (2 ^ 32 - 1)),
+                          valueResult.snd)
+                      else if primitive == ``UInt64.complement then
+                        .ok (.u64Bin .bitXor valueResult.fst (.u64 (runtimeNatLimit - 1)),
+                          valueResult.snd)
+                      else
+                        match primitiveReceiverType? ctx.env args with
+                        | some .u8 =>
                           .ok (.u64Bin .bitXor valueResult.fst (.u64 255), valueResult.snd)
-                      | some .u32 =>
+                        | some .u32 =>
                           .ok (.u64Bin .bitXor valueResult.fst (.u64 (2 ^ 32 - 1)),
                             valueResult.snd)
-                      | some .u64 =>
+                        | some .u64 =>
                           .ok (.u64Bin .bitXor valueResult.fst (.u64 (runtimeNatLimit - 1)),
                             valueResult.snd)
-                      | _ => .error s!"unsupported complement expression: {primitive}"
+                        | _ => .error s!"unsupported complement expression: {primitive}"
                   | _ => .error s!"unsupported complement expression: {primitive}"
                 else if primitive == ``Nat.succ then
                   match args.reverse with
@@ -4816,6 +4903,12 @@ mutual
         rightResult.snd)
     else if primitive == ``UInt32.shiftRight then
       .ok (.u64Bin .shiftRight leftIR (u32ShiftAmountExpr rightIR), rightResult.snd)
+    else if primitive == ``UInt8.land then
+      .ok (.u64Bin .bitAnd leftIR rightIR, rightResult.snd)
+    else if primitive == ``UInt8.lor then
+      .ok (.u64Bin .bitOr leftIR rightIR, rightResult.snd)
+    else if primitive == ``UInt8.xor then
+      .ok (.u64Bin .bitXor leftIR rightIR, rightResult.snd)
     else if primitive == ``UInt8.shiftLeft then
       .ok (u8WrapExpr (.u64Bin .shiftLeft leftIR (u8ShiftAmountExpr rightIR)),
         rightResult.snd)
@@ -4825,6 +4918,10 @@ mutual
       .ok (boolExpr (.eqU64 leftIR rightIR), rightResult.snd)
     else if primitive == ``bne then
       .ok (boolExpr (.not (.eqU64 leftIR rightIR)), rightResult.snd)
+    else if directScalarLtPrimitive primitive then
+      .ok (boolExpr (.ltU64 leftIR rightIR), rightResult.snd)
+    else if directScalarLePrimitive primitive then
+      .ok (boolExpr (.leU64 leftIR rightIR), rightResult.snd)
     else if primitive == ``LT.lt then
       .ok (boolExpr (.ltU64 leftIR rightIR), rightResult.snd)
     else if primitive == ``LE.le then
@@ -5138,67 +5235,95 @@ mutual
                 .ok (.eqU64 len (.u64 0), arrayResult.snd)
             | _ => .error "unsupported ByteArray.isEmpty condition"
         | (.const name _, args) =>
-            match boolMatcherArgs? ctx.env (.const name []) args with
+            match primitiveArgPair? args with
+            | some (left, right) =>
+                if directScalarLtPrimitive name then
+                  let leftResult ← extractExprFrom ctx locals nextLocal left
+                  let rightResult ← extractExprFrom ctx locals leftResult.snd right
+                  .ok (.ltU64 leftResult.fst rightResult.fst, rightResult.snd)
+                else if directScalarLePrimitive name then
+                  let leftResult ← extractExprFrom ctx locals nextLocal left
+                  let rightResult ← extractExprFrom ctx locals leftResult.snd right
+                  .ok (.leU64 leftResult.fst rightResult.fst, rightResult.snd)
+                else
+                  extractGenericConstCondFrom ctx locals nextLocal expr name args
+            | none =>
+                extractGenericConstCondFrom ctx locals nextLocal expr name args
+        | _ => .error s!"unsupported condition: {expr}"
+
+  partial def extractGenericConstCondFrom
+      (ctx : Context)
+      (locals : List Binding)
+      (nextLocal : Nat)
+      (expr : Expr)
+      (name : Name)
+      (args : List Expr) :
+      Except String (IRCond × Nat) := do
+    match classEvidenceNormalizedApp? ctx.env name expr with
+    | some normalized =>
+        extractCondFrom ctx locals nextLocal normalized
+    | none =>
+        match boolMatcherArgs? ctx.env (.const name []) args with
+        | some _ =>
+            let exprResult ← extractExprFrom ctx locals nextLocal expr
+            .ok (boolCond exprResult.fst, exprResult.snd)
+        | none =>
+            match exceptMatcherArgs? ctx.env (.const name []) args with
             | some _ =>
                 let exprResult ← extractExprFrom ctx locals nextLocal expr
                 .ok (boolCond exprResult.fst, exprResult.snd)
             | none =>
-                match exceptMatcherArgs? ctx.env (.const name []) args with
+                match optionMatcherArgs? ctx.env (.const name []) args with
                 | some _ =>
                     let exprResult ← extractExprFrom ctx locals nextLocal expr
                     .ok (boolCond exprResult.fst, exprResult.snd)
                 | none =>
-                    match optionMatcherArgs? ctx.env (.const name []) args with
+                    match natMatcherArgs? ctx.env (.const name []) args with
                     | some _ =>
                         let exprResult ← extractExprFrom ctx locals nextLocal expr
                         .ok (boolCond exprResult.fst, exprResult.snd)
                     | none =>
-                        match natMatcherArgs? ctx.env (.const name []) args with
+                        match productMatcherArgs? ctx.env (.const name []) args with
                         | some _ =>
                             let exprResult ← extractExprFrom ctx locals nextLocal expr
                             .ok (boolCond exprResult.fst, exprResult.snd)
                         | none =>
-                            match productMatcherArgs? ctx.env (.const name []) args with
+                            match structureMatcherArgs? ctx.env (.const name []) args with
                             | some _ =>
                                 let exprResult ← extractExprFrom ctx locals nextLocal expr
                                 .ok (boolCond exprResult.fst, exprResult.snd)
                             | none =>
-                                match structureMatcherArgs? ctx.env (.const name []) args with
+                                match variantMatcherArgs? ctx.env (.const name []) args with
                                 | some _ =>
                                     let exprResult ← extractExprFrom ctx locals nextLocal expr
                                     .ok (boolCond exprResult.fst, exprResult.snd)
                                 | none =>
-                                    match variantMatcherArgs? ctx.env (.const name []) args with
-                                    | some _ =>
-                                        let exprResult ← extractExprFrom ctx locals nextLocal expr
-                                        .ok (boolCond exprResult.fst, exprResult.snd)
+                                    match ← extractInlineCallValueFrom ctx locals nextLocal name args with
+                                    | some valueResult =>
+                                        .ok (boolCond (← scalarValue valueResult.fst), valueResult.snd)
                                     | none =>
-                                        match ← extractInlineCallValueFrom ctx locals nextLocal name args with
-                                        | some valueResult =>
-                                            .ok (boolCond (← scalarValue valueResult.fst), valueResult.snd)
-                                        | none =>
-                                            match functionIndex? ctx name with
-                                            | some index =>
-                                                strictRecursiveCallCheck ctx name args
-                                                let sig ←
-                                                  match ctx.env.find? name with
-                                                  | some info =>
-                                                      match supportedFunction? ctx.env info with
-                                                      | some sig => .ok sig
-                                                      | none =>
-                                                          .error
-                                                            s!"unsupported function type or declaration: {name}"
+                                        match functionIndex? ctx name with
+                                        | some index =>
+                                            strictRecursiveCallCheck ctx name args
+                                            let sig ←
+                                              match ctx.env.find? name with
+                                              | some info =>
+                                                  match supportedFunction? ctx.env info with
+                                                  | some sig => .ok sig
                                                   | none =>
-                                                      .error s!"declaration disappeared during extraction: {name}"
-                                                strictCallMaterializationCheck ctx name sig.params args
-                                                let argsResult ← extractCallArgsFrom ctx locals nextLocal sig.params args
-                                                .ok
-                                                  (boolCond
-                                                    (wrapExprLets argsResult.lets
-                                                      (.call index argsResult.args)),
-                                                    argsResult.nextLocal)
-                                            | none => .error s!"unsupported condition: {expr}"
-        | _ => .error s!"unsupported condition: {expr}"
+                                                      .error
+                                                        (functionTypeRejectionMessage ctx.env name info.type)
+                                              | none =>
+                                                  .error s!"declaration disappeared during extraction: {name}"
+                                            strictCallMaterializationCheck ctx name sig.params args
+                                            let argsResult ← extractCallArgsFrom ctx locals nextLocal
+                                              sig.params args
+                                            .ok
+                                              (boolCond
+                                                (wrapExprLets argsResult.lets
+                                                  (.call index argsResult.args)),
+                                                argsResult.nextLocal)
+                                        | none => .error s!"unsupported condition: {expr}"
 
   partial def extractExprListFrom
       (ctx : Context)
@@ -6756,7 +6881,7 @@ def extractFunctionsWithEntryMode
     let sig ←
       match entryModeSignature? exportEntry ctx.env entry name info with
       | some sig => .ok sig
-      | none => .error s!"unsupported function type or declaration: {name}"
+      | none => .error (functionTypeRejectionMessage ctx.env name info.type)
     let func ←
       match extractFunction exportEntry ctx entry name info sig with
       | .ok func => .ok func
@@ -6787,7 +6912,7 @@ def compileEnvironmentWithEntryModeDetailed
   let _entrySig ←
     match entryModeSignature? exportEntry env entry entry entryInfo with
     | some sig => .ok sig
-    | none => .error s!"unsupported function type or declaration: {entry}"
+    | none => .error (functionTypeRejectionMessage env entry entryInfo.type)
   let (_, namesList) ← collectReachable env moduleName.getRoot entry [] []
   let root := moduleName.getRoot
   let mut synthetics := #[]
@@ -6799,7 +6924,7 @@ def compileEnvironmentWithEntryModeDetailed
     let sig ←
       match entryModeSignature? exportEntry env entry name info with
       | some sig => .ok sig
-      | none => .error s!"unsupported function type or declaration: {name}"
+      | none => .error (functionTypeRejectionMessage env name info.type)
     let value ←
       match info.value? with
       | some value => .ok (betaSpecializeExpr env root 32 value)
@@ -6860,7 +6985,7 @@ def compileProgramEnvironment (env : Environment) (moduleName entry : Name) :
   let entrySig ←
     match supportedEntryFunction? env entryInfo with
     | some sig => .ok sig
-    | none => .error s!"unsupported function type or declaration: {entry}"
+    | none => .error (functionTypeRejectionMessage env entry entryInfo.type)
   if !entrySig.params.isEmpty then
     .error s!"program entry must take no parameters: {entry}"
   else if entrySig.result != .byteArray then
@@ -6877,7 +7002,7 @@ def compileStdinProgramEnvironment (env : Environment) (moduleName entry : Name)
   let entrySig ←
     match supportedEntryFunction? env entryInfo with
     | some sig => .ok sig
-    | none => .error s!"unsupported function type or declaration: {entry}"
+    | none => .error (functionTypeRejectionMessage env entry entryInfo.type)
   if entrySig.params != [.byteArray] || entrySig.result != .byteArray then
     .error s!"program stdin entry must have type ByteArray -> ByteArray: {entry}"
   else
@@ -6898,7 +7023,7 @@ def compileStdinExceptProgramEnvironment (env : Environment) (moduleName entry :
   let entrySig ←
     match supportedEntryFunction? env entryInfo with
     | some sig => .ok sig
-    | none => .error s!"unsupported function type or declaration: {entry}"
+    | none => .error (functionTypeRejectionMessage env entry entryInfo.type)
   if entrySig.params != [.byteArray] || entrySig.result != stdinExceptResultTy then
     .error s!"program stdin-except entry must have type ByteArray -> Except ByteArray ByteArray: {entry}"
   else
@@ -6913,7 +7038,7 @@ def compileArgvExceptProgramEnvironment (env : Environment) (moduleName entry : 
   let entrySig ←
     match supportedFunction? env entryInfo with
     | some sig => .ok sig
-    | none => .error s!"unsupported function type or declaration: {entry}"
+    | none => .error (functionTypeRejectionMessage env entry entryInfo.type)
   if entrySig.params != [argvExceptParamTy] || entrySig.result != stdinExceptResultTy then
     .error s!"program argv-except entry must have type Array ByteArray -> Except ByteArray ByteArray: {entry}"
   else
@@ -6928,7 +7053,7 @@ def compileStdinArgvExceptProgramEnvironment (env : Environment) (moduleName ent
   let entrySig ←
     match supportedFunction? env entryInfo with
     | some sig => .ok sig
-    | none => .error s!"unsupported function type or declaration: {entry}"
+    | none => .error (functionTypeRejectionMessage env entry entryInfo.type)
   if entrySig.params != [.byteArray, argvExceptParamTy] || entrySig.result != stdinExceptResultTy then
     .error s!"program stdin-argv-except entry must have type ByteArray -> Array ByteArray -> Except ByteArray ByteArray: {entry}"
   else

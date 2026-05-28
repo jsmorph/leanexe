@@ -265,7 +265,7 @@ def knownExternal? (name : Name) : Option Classification :=
   else
     none
 
-def classifyLocal (env : Environment) (info : ConstantInfo) : Classification :=
+def classifyLocal (env : Environment) (entryName : Name) (info : ConstantInfo) : Classification :=
   if validatorImplementedNames.contains info.name then
     { status := "implemented", reason := "accepted by the validator demo compiler path" }
   else if LeanExe.Extract.Core.supportedFunction? env info |>.isSome then
@@ -311,6 +311,22 @@ def classifyLocal (env : Environment) (info : ConstantInfo) : Classification :=
     { status := "rejected", reason := "partial declaration" }
   else if infoUsesEffect info then
     { status := "rejected", reason := "unsupported effect in type or value" }
+  else if
+      match info with
+      | .ctorInfo ctorInfo => LeanExe.Extract.Core.className env ctorInfo.induct
+      | _ => false then
+    {
+      status := "reported",
+      reason := "type-class evidence constructor requires static specialization before extraction"
+    }
+  else if (LeanExe.Extract.Core.classEvidenceDomain? env info.type).isSome then
+    if info.name == entryName then
+      { status := "rejected", reason := "runtime class evidence is not supported" }
+    else
+      {
+        status := "reported",
+        reason := "type-class evidence requires static specialization before extraction"
+      }
   else if hasFunctionDomain info.type then
     { status := "rejected", reason := "higher-order argument requires closure or specialization support" }
   else if !info.levelParams.isEmpty then
@@ -374,7 +390,7 @@ partial def visit (env : Environment) (moduleName entryName name : Name) :
             nodes := state.nodes.push {
               name := name,
               kind := declarationKind info,
-              classification := classifyLocal env info,
+              classification := classifyLocal env entryName info,
               deps := deps
             }
           }
