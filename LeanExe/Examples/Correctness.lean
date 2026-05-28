@@ -543,6 +543,29 @@ def typeclassScoreArrayTotal [TypeclassScore α] (values : Array α) : UInt64 :=
 def typeclassScoreArrayTotalDemo : UInt64 :=
   typeclassScoreArrayTotal (#[some (1 : UInt64), none, some 2] : Array (Option UInt64))
 
+def typeclassScoreArrayAny [TypeclassScore α] (limit : UInt64) (values : Array α) : Bool :=
+  values.any (fun value => limit < TypeclassScore.score value)
+
+def typeclassScoreArrayAnyDemo : UInt64 :=
+  if typeclassScoreArrayAny 14 (#[some (1 : UInt64), none, some 2] : Array (Option UInt64)) then
+    1
+  else
+    0
+
+def typeclassScoreArrayFind? [TypeclassScore α] (target : UInt64) (values : Array α) : Option α :=
+  values.find? (fun value => TypeclassScore.score value == target)
+
+def typeclassScoreArrayFindDemo : UInt64 :=
+  match typeclassScoreArrayFind? 15 (#[some (1 : UInt64), none, some 2] : Array (Option UInt64)) with
+  | none => 0
+  | some value => TypeclassScore.score value
+
+def rejectTypeclassEntry [TypeclassScore UInt64] (value : UInt64) : UInt64 :=
+  TypeclassScore.score value
+
+def rejectTypeclassRuntimeDictionaryParam (inst : TypeclassScore UInt64) (value : UInt64) : UInt64 :=
+  TypeclassScore.score (self := inst) value
+
 structure DigitState where
   pos : Nat
   sum : UInt64

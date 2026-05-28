@@ -57,6 +57,12 @@ Avoid these forms in source intended for LeanExe:
 - Wildcard-heavy matches over recursive or large inductives when explicit arms make the accepted shape clearer.
 - Generic recursive JSON object decoders that hide the child-size proof from LeanExe's accepted well-founded-recursion shape.
 
+## Type Classes
+
+LeanExe accepts type-class-constrained helpers when Lean has already resolved the instance and specialization removes the class evidence before WASM generation.  This covers ordinary helpers using built-in classes such as `BEq` and `Inhabited`, and source-defined classes whose methods reduce to supported first-order code.  The accepted examples include class methods inside `Array.foldl`, `Array.any`, and `Array.find?` callbacks, provided the callback is a direct lambda and all runtime values have supported concrete types.
+
+Public entries must be monomorphic after elaboration.  A public function with a `[SomeClass α]` parameter, an explicit dictionary parameter, or a result containing class evidence is outside the ABI and rejects with a runtime class evidence diagnostic.  When a rejection mentions class evidence, add a concrete wrapper for the intended instance or make the helper body visible under the module root so extraction can specialize the method call away.
+
 ## Entry Shapes
 
 Choose the compile command from the entry type.  The Lean source stays pure in every mode.  WASI adapters add command behavior around the pure entry.

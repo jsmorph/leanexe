@@ -1071,6 +1071,15 @@ def isClassEvidenceType? (env : Environment) (expr : Expr) : Bool :=
   | (.const name _, _) => className env name || nonRuntimeEvidenceTypeNames.contains name
   | _ => false
 
+def classEvidenceDomain? (env : Environment) (type : Expr) : Option Expr :=
+  (peelForall type).fst.find? fun domain => isClassEvidenceType? env domain
+
+def functionTypeRejectionMessage (env : Environment) (name : Name) (type : Expr) : String :=
+  if (classEvidenceDomain? env type).isSome then
+    s!"runtime class evidence is not supported: {name}"
+  else
+    s!"unsupported function type or declaration: {name}"
+
 def staticInlineDomain (env : Environment) (domain : Expr) : Bool :=
   match domain.consumeMData with
   | .sort _ => true
@@ -1414,7 +1423,7 @@ partial def collectReachable
     | none => .error s!"entry not found: {entry}"
   let sig? := supportedFunction? env info
   if sig?.isNone && seen.isEmpty then
-    .error s!"unsupported function type or declaration: {entry}"
+    .error (functionTypeRejectionMessage env entry info.type)
   let mut nextSeen := pushName seen entry
   let mut nextNames := names
   let dependencies :=
