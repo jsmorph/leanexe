@@ -37,6 +37,10 @@ def boolExprConst (cond : IRCond) : IRExpr :=
   | some false => .u64 0
   | none => boolExpr cond
 
+def uint64OfNatLTName : Name := .str (.str .anonymous "UInt64") "ofNatLT"
+def uint32OfNatLTName : Name := .str (.str .anonymous "UInt32") "ofNatLT"
+def uint8OfNatLTName : Name := .str (.str .anonymous "UInt8") "ofNatLT"
+
 mutual
   partial def extractStructuralRecCallValueFrom
       (ctx : Context)
@@ -3338,6 +3342,7 @@ mutual
         match specializeInlineValue value specialization.parameters with
         | some value => .ok (betaSpecializeExpr ctx.env ctx.root 32 value)
         | none => .error s!"definition body does not match static function arity: {name}"
+      let value := normalizeClassEvidenceExpr ctx.env 64 value
       let body ←
         match collectLambdas value specialization.sig.params.length with
         | some body => .ok body
@@ -4441,6 +4446,34 @@ mutual
             | (.const ``Prod.mk _, _) =>
                 .error "product value used where scalar value is required"
             | (.const primitive _, args) =>
+                let extractBoundedNat
+                    (modulus? : Option Nat)
+                    (message : String) :
+                    Except String (IRExpr × Nat) := do
+                  match args with
+                  | arg :: _proof :: _ =>
+                      match ofNat? ``Nat arg with
+                      | some value =>
+                          let value :=
+                            match modulus? with
+                            | some modulus => value % modulus
+                            | none => value
+                          .ok (.u64 value, nextLocal)
+                      | none =>
+                          let argResult ← extractExprFrom ctx locals nextLocal arg
+                          match modulus? with
+                          | some modulus =>
+                              .ok (.u64Bin .bitAnd argResult.fst (.u64 (modulus - 1)),
+                                argResult.snd)
+                          | none => .ok argResult
+                  | _ => .error message
+                if primitive == uint64OfNatLTName then
+                  extractBoundedNat none "unsupported UInt64.ofNatLT application"
+                else if primitive == uint32OfNatLTName then
+                  extractBoundedNat (some (2 ^ 32)) "unsupported UInt32.ofNatLT application"
+                else if primitive == uint8OfNatLTName then
+                  extractBoundedNat (some 256) "unsupported UInt8.ofNatLT application"
+                else
                 match expressionStructuralRecShape? ctx.env ctx.root expr with
                 | some shape =>
                     match syntheticForShape? ctx shape with
@@ -4686,6 +4719,46 @@ mutual
     else if primitive == ``HDiv.hDiv then
       .ok (.u64Bin .divU leftIR rightIR, rightResult.snd)
     else if primitive == ``HMod.hMod then
+      .ok (.u64Bin .modU leftIR rightIR, rightResult.snd)
+    else if primitive == ``Nat.add then
+      .ok (.u64Bin .natAdd leftIR rightIR, rightResult.snd)
+    else if primitive == ``Nat.sub then
+      .ok (.u64Bin .natSub leftIR rightIR, rightResult.snd)
+    else if primitive == ``Nat.mul then
+      .ok (.u64Bin .natMul leftIR rightIR, rightResult.snd)
+    else if primitive == ``Nat.div then
+      .ok (.u64Bin .divU leftIR rightIR, rightResult.snd)
+    else if primitive == ``Nat.mod then
+      .ok (.u64Bin .modU leftIR rightIR, rightResult.snd)
+    else if primitive == ``UInt64.add then
+      .ok (.u64Bin .add leftIR rightIR, rightResult.snd)
+    else if primitive == ``UInt64.sub then
+      .ok (.u64Bin .sub leftIR rightIR, rightResult.snd)
+    else if primitive == ``UInt64.mul then
+      .ok (.u64Bin .mul leftIR rightIR, rightResult.snd)
+    else if primitive == ``UInt64.div then
+      .ok (.u64Bin .divU leftIR rightIR, rightResult.snd)
+    else if primitive == ``UInt64.mod then
+      .ok (.u64Bin .modU leftIR rightIR, rightResult.snd)
+    else if primitive == ``UInt32.add then
+      .ok (u32WrapExpr (.u64Bin .add leftIR rightIR), rightResult.snd)
+    else if primitive == ``UInt32.sub then
+      .ok (u32WrapExpr (.u64Bin .sub leftIR rightIR), rightResult.snd)
+    else if primitive == ``UInt32.mul then
+      .ok (u32WrapExpr (.u64Bin .mul leftIR rightIR), rightResult.snd)
+    else if primitive == ``UInt32.div then
+      .ok (.u64Bin .divU leftIR rightIR, rightResult.snd)
+    else if primitive == ``UInt32.mod then
+      .ok (.u64Bin .modU leftIR rightIR, rightResult.snd)
+    else if primitive == ``UInt8.add then
+      .ok (u8WrapExpr (.u64Bin .add leftIR rightIR), rightResult.snd)
+    else if primitive == ``UInt8.sub then
+      .ok (u8WrapExpr (.u64Bin .sub leftIR rightIR), rightResult.snd)
+    else if primitive == ``UInt8.mul then
+      .ok (u8WrapExpr (.u64Bin .mul leftIR rightIR), rightResult.snd)
+    else if primitive == ``UInt8.div then
+      .ok (.u64Bin .divU leftIR rightIR, rightResult.snd)
+    else if primitive == ``UInt8.mod then
       .ok (.u64Bin .modU leftIR rightIR, rightResult.snd)
     else if primitive == ``HAnd.hAnd then
       match primitiveResultType? ctx.env args with

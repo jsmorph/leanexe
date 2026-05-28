@@ -479,6 +479,70 @@ def genericInterleavedLambdaHelper : UInt64 :=
     ({ value := 7 } : Box UInt64)
     (fun box => box.value + bonus)
 
+structure TypeclassPoint where
+  x : UInt64
+  y : UInt64
+
+instance : Inhabited TypeclassPoint where
+  default := { x := 3, y := 4 }
+
+structure WeirdEq where
+  value : UInt64
+
+instance : BEq WeirdEq where
+  beq _left _right := false
+
+class TypeclassScore (α : Type) where
+  score : α -> UInt64
+
+instance : TypeclassScore UInt64 where
+  score value := value + 3
+
+instance : TypeclassScore TypeclassPoint where
+  score point := point.x * (10 : UInt64) + point.y
+
+instance [TypeclassScore α] : TypeclassScore (Option α) where
+  score
+    | none => 5
+    | some value => TypeclassScore.score value + 10
+
+def typeclassSame [BEq α] (left right : α) : Bool :=
+  left == right
+
+def typeclassSameUInt64 : UInt64 :=
+  if typeclassSame (7 : UInt64) 7 then 1 else 0
+
+def typeclassSameCustomBEq : UInt64 :=
+  if typeclassSame ({ value := 1 } : WeirdEq) ({ value := 1 } : WeirdEq) then 0 else 1
+
+def typeclassDefaultOr [Inhabited α] (flag : Bool) (value : α) : α :=
+  if flag then value else default
+
+def typeclassDefaultUInt64 : UInt64 :=
+  typeclassDefaultOr false (7 : UInt64)
+
+def typeclassDefaultPoint : UInt64 :=
+  let point := typeclassDefaultOr false ({ x := 9, y := 9 } : TypeclassPoint)
+  point.x * (10 : UInt64) + point.y
+
+def typeclassScoreGeneric [TypeclassScore α] (value : α) : UInt64 :=
+  TypeclassScore.score value
+
+def typeclassScoreUInt64 : UInt64 :=
+  typeclassScoreGeneric (5 : UInt64)
+
+def typeclassScorePoint : UInt64 :=
+  typeclassScoreGeneric ({ x := 8, y := 6 } : TypeclassPoint)
+
+def typeclassScoreOptionUInt64 : UInt64 :=
+  typeclassScoreGeneric (some (5 : UInt64))
+
+def typeclassScoreArrayTotal [TypeclassScore α] (values : Array α) : UInt64 :=
+  values.foldl (fun acc value => acc + TypeclassScore.score value) 0
+
+def typeclassScoreArrayTotalDemo : UInt64 :=
+  typeclassScoreArrayTotal (#[some (1 : UInt64), none, some 2] : Array (Option UInt64))
+
 structure DigitState where
   pos : Nat
   sum : UInt64
