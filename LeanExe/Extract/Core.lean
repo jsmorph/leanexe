@@ -243,8 +243,16 @@ mutual
               | [offset] => .ok offset
               | _ => .error s!"closed structural predicate requires one recursive field: {shape.typeName}"
             let scrutineeResult ← extractValueFrom ctx locals nextLocal shape.scrutinee
-            let parts ← heapVariantPtrWithLets layout.name scrutineeResult.fst
-            let ptrExpr := wrapExprLets parts.fst parts.snd
+            let ptrExpr ←
+              match heapVariantPtrWithLets? layout.name scrutineeResult.fst with
+              | some parts => .ok (wrapExprLets parts.fst parts.snd)
+              | none =>
+                  match ← flattenInternalValue
+                      (.recVariant shape.typeName shape.typeParams)
+                      scrutineeResult.fst
+                      ctx.freshResultOwnerOffsets with
+                  | [ptr] => .ok ptr
+                  | _ => .error s!"recursive predicate scrutinee shape mismatch: {shape.typeName}"
             let fieldSlotCount := runtimeFieldSlotCount continueInfo.ctor.fields
             let fieldStart := scrutineeResult.snd
             let runtimeFields := localRuntimeFieldsFromKinds continueInfo.ctor.fields fieldStart
@@ -6784,13 +6792,32 @@ def topLevelStructuralRecCandidate? (env : Environment) (value : Expr) (params :
       | none => false
   | _ => false
 
+def inlineSpecializedValueForSynthetics?
+    (env : Environment)
+    (root : Name)
+    (name : Name)
+    (info : ConstantInfo)
+    (args : List Expr) :
+    Option (Signature × Expr) := do
+  if name.getRoot != root || containsConstant ``Nat.brecOn info || containsConstant name info then
+    none
+  else
+    let specialization ← specializedInlineCall? env info args
+    let value ← info.value?
+    let value := betaSpecializeExpr env root 32 value
+    let value ← specializeInlineValue value specialization.parameters
+    let value := betaSpecializeExpr env root 32 value
+    let value := normalizeClassEvidenceExpr env 64 value
+    some (specialization.sig, value)
+
 partial def collectExpressionStructuralSynthetics
     (env : Environment)
     (root : Name)
     (reserved : List Name)
     (localTypes : List (Option Ty))
     (expr : Expr)
-    (synthetics : Array SyntheticFunction) :
+    (synthetics : Array SyntheticFunction)
+    (inlineStack : List Name) :
     Array SyntheticFunction :=
   let synthetics :=
     match expressionStructuralRecShapeWithLocalTypes? env root localTypes expr with
@@ -6821,25 +6848,50 @@ partial def collectExpressionStructuralSynthetics
                 }
             | none => synthetics
     | none => synthetics
+  let synthetics :=
+    match appFnArgs expr with
+    | (.const name _, args) =>
+        if inlineStack.contains name then
+          synthetics
+        else
+          match env.find? name with
+          | some info =>
+              match inlineSpecializedValueForSynthetics? env root name info args with
+              | some (_sig, value) =>
+                  collectExpressionStructuralSynthetics env root reserved [] value synthetics
+                    (name :: inlineStack)
+              | none => synthetics
+          | none => synthetics
+    | _ => synthetics
   match expr.consumeMData with
   | .app fn arg =>
-      let synthetics := collectExpressionStructuralSynthetics env root reserved localTypes fn synthetics
-      collectExpressionStructuralSynthetics env root reserved localTypes arg synthetics
+      let synthetics :=
+        collectExpressionStructuralSynthetics env root reserved localTypes fn synthetics inlineStack
+      collectExpressionStructuralSynthetics env root reserved localTypes arg synthetics inlineStack
   | .lam _ type body _ =>
-      let synthetics := collectExpressionStructuralSynthetics env root reserved localTypes type synthetics
+      let synthetics :=
+        collectExpressionStructuralSynthetics env root reserved localTypes type synthetics inlineStack
       let localType := typeAtom? env type
       collectExpressionStructuralSynthetics env root reserved (localType :: localTypes) body synthetics
+        inlineStack
   | .forallE _ type body _ =>
-      let synthetics := collectExpressionStructuralSynthetics env root reserved localTypes type synthetics
+      let synthetics :=
+        collectExpressionStructuralSynthetics env root reserved localTypes type synthetics inlineStack
       let localType := typeAtom? env type
       collectExpressionStructuralSynthetics env root reserved (localType :: localTypes) body synthetics
+        inlineStack
   | .letE _ type value body _ =>
-      let synthetics := collectExpressionStructuralSynthetics env root reserved localTypes type synthetics
-      let synthetics := collectExpressionStructuralSynthetics env root reserved localTypes value synthetics
+      let synthetics :=
+        collectExpressionStructuralSynthetics env root reserved localTypes type synthetics inlineStack
+      let synthetics :=
+        collectExpressionStructuralSynthetics env root reserved localTypes value synthetics inlineStack
       let localType := typeAtom? env type
       collectExpressionStructuralSynthetics env root reserved (localType :: localTypes) body synthetics
-  | .mdata _ body => collectExpressionStructuralSynthetics env root reserved localTypes body synthetics
-  | .proj _ _ body => collectExpressionStructuralSynthetics env root reserved localTypes body synthetics
+        inlineStack
+  | .mdata _ body =>
+      collectExpressionStructuralSynthetics env root reserved localTypes body synthetics inlineStack
+  | .proj _ _ body =>
+      collectExpressionStructuralSynthetics env root reserved localTypes body synthetics inlineStack
   | _ => synthetics
 
 def collectFunctionExpressionStructuralSynthetics
@@ -6853,7 +6905,7 @@ def collectFunctionExpressionStructuralSynthetics
   if topLevelStructuralRecCandidate? env value sig.params then
     synthetics
   else
-    collectExpressionStructuralSynthetics env root reserved [] value synthetics
+    collectExpressionStructuralSynthetics env root reserved [] value synthetics []
 
 def entryModeSignature?
     (exportEntry : Bool)

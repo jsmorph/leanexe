@@ -204,6 +204,8 @@ const accepted = [
   { name: "typeclassScoreArrayTotalDemo", args: [], expected: 34n },
   { name: "typeclassScoreArrayAnyDemo", args: [], expected: 1n },
   { name: "typeclassScoreArrayFindDemo", args: [], expected: 15n },
+  { name: "typeclassScoreListFoldlDemo", args: [], expected: 34n },
+  { name: "typeclassScoreListFindDemo", args: [], expected: 15n },
   { name: "digitStateParserAllDigitsDemo", args: [], expected: 603n },
   { name: "digitStateParserStopsDemo", args: [], expected: 999n },
   { name: "statusOkMatch", args: [], expected: 8n },
