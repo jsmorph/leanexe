@@ -1239,6 +1239,18 @@ function selfTest() {
     {
       mode: "pure",
       moduleName: correctness,
+      entry: "typeclassScoreListFoldlDemo",
+      resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "typeclassScoreListFindDemo",
+      resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
       entry: "statusBranchReturn",
       programArgs: ["0"],
       resultSlots:

@@ -1,5 +1,19 @@
 # Development Journal
 
+## 2026-06-16: Type-Class Specialization Through List Helpers
+
+Type-class evidence specialization now feeds the expression-level structural-recursion discovery pass.  When a same-root helper call has static class evidence and concrete supported runtime arguments, the discovery pass inline-specializes the helper body, normalizes class evidence, and collects any structural-recursion helpers exposed by the specialized body.  This lets generic class-constrained helpers compile when their specialized bodies call `List.foldl` or `List.find?` over supported element layouts.
+
+The new correctness examples use `TypeclassScore` over `List (Option UInt64)`.  `typeclassScoreListFoldlDemo` folds scores through `List.foldl`, and `typeclassScoreListFindDemo` searches with `List.find?` before scoring the returned value.  Direct `List.any` remains covered by existing closed-predicate tests, but the generic class-constrained `List.any` shape still needs a predicate-extraction improvement.
+
+Checks run:
+
+- [x] `lake build LeanExe.Extract.Core LeanExe.Examples.Correctness lean-wasm`
+- [x] `node --check tools/compare-standard.js`
+- [x] `node --check test/core_correctness.js`
+- [x] `node --check test/report_classification.js`
+- [x] `node test/run_all.js` returned `checked 114 report classification cases`, `checked 8 ownership report cases`, `checked JavaScript WASM execution guard`, `checked 784 accepted, 34 rejected, and 13 trapped cases`, `checked 38 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 35 WASI program cases, 2 traps, and 7 rejections`, `checked 298 standard Lean comparison cases`, and `checked 56 cases`.
+
 ## 2026-05-28: Type-Class Boundary Hardening
 
 Type-class diagnostics now distinguish public runtime evidence from internal evidence-bearing helpers.  Public entries with unresolved class evidence or explicit dictionary parameters reject with `runtime class evidence is not supported`, while the report command describes internal class methods, instances, and class constructors as static-specialization requirements.  The report remains entry-aware, so accepted concrete wrappers can mention class declarations in their dependency graph without marking the whole reachable graph as rejected.

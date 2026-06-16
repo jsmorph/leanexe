@@ -560,6 +560,20 @@ def typeclassScoreArrayFindDemo : UInt64 :=
   | none => 0
   | some value => TypeclassScore.score value
 
+def typeclassScoreListFoldl [TypeclassScore α] (values : List α) : UInt64 :=
+  values.foldl (fun acc value => acc + TypeclassScore.score value) 0
+
+def typeclassScoreListFoldlDemo : UInt64 :=
+  typeclassScoreListFoldl ([some (1 : UInt64), none, some 2] : List (Option UInt64))
+
+def typeclassScoreListFind? [TypeclassScore α] (target : UInt64) (values : List α) : Option α :=
+  values.find? (fun value => TypeclassScore.score value == target)
+
+def typeclassScoreListFindDemo : UInt64 :=
+  match typeclassScoreListFind? 15 ([some (1 : UInt64), none, some 2] : List (Option UInt64)) with
+  | none => 0
+  | some value => TypeclassScore.score value
+
 def rejectTypeclassEntry [TypeclassScore UInt64] (value : UInt64) : UInt64 :=
   TypeclassScore.score value
 

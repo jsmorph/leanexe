@@ -583,6 +583,11 @@ const cases = [
     entryName: "LeanExe.Examples.Correctness.typeclassScoreArrayFindDemo",
     shape: "entry shape: UInt64",
   },
+  {
+    moduleName: "LeanExe.Examples.Correctness",
+    entryName: "LeanExe.Examples.Correctness.typeclassScoreListFindDemo",
+    shape: "entry shape: UInt64",
+  },
 ];
 
 for (const testCase of cases) {
