@@ -5389,6 +5389,123 @@ def ownedByteArrayParamCallTempScalarFromInput (input : ByteArray) : UInt64 :=
 def ownedByteArrayParamCallTempScalar : UInt64 :=
   ownedByteArrayParamCallTempScalarFromInput "A".toUTF8
 
+def depthAliasSideBuy : UInt64 := 0
+
+def depthAliasSideSell : UInt64 := 1
+
+structure DepthAliasOrder where
+  id : UInt64
+  trader : UInt64
+  side : UInt64
+  qty : UInt64
+  price : UInt64
+deriving Inhabited
+
+structure DepthAliasLevel where
+  price : UInt64
+  qty : UInt64
+deriving Inhabited
+
+structure DepthAliasState where
+  bids : Array DepthAliasLevel
+  asks : Array DepthAliasLevel
+
+structure DepthAliasResult where
+  bids : Array DepthAliasLevel
+  asks : Array DepthAliasLevel
+
+def depthAliasInsertLevelFuel :
+    Nat → Array DepthAliasLevel → DepthAliasLevel → Nat → Array DepthAliasLevel
+  | 0, levels, level, _index => levels.push level
+  | fuel + 1, levels, level, index =>
+      if index == levels.size then
+        levels.push level
+      else
+        let current := levels[index]!
+        if current.price == level.price then
+          levels.setIfInBounds index { current with qty := current.qty + level.qty }
+        else if current.price < level.price then
+          levels.insertIdxIfInBounds index level
+        else
+          depthAliasInsertLevelFuel fuel levels level (index + 1)
+
+def depthAliasInsertLevel (levels : Array DepthAliasLevel) (level : DepthAliasLevel) :
+    Array DepthAliasLevel :=
+  depthAliasInsertLevelFuel (levels.size + 1) levels level 0
+
+def depthAliasBidOnlyOrders : Array DepthAliasOrder :=
+  Array.empty.push
+    { id := 1, trader := 5, side := depthAliasSideBuy, qty := 6, price := 12 }
+
+def depthAliasAskOnlyOrders : Array DepthAliasOrder :=
+  Array.empty.push
+    { id := 1, trader := 5, side := depthAliasSideSell, qty := 6, price := 100 }
+
+def depthAliasAddOrder (state : DepthAliasState) (order : DepthAliasOrder) :
+    DepthAliasState :=
+  let level := { price := order.price, qty := order.qty }
+  if order.side == depthAliasSideBuy then
+    { state with bids := depthAliasInsertLevel state.bids level }
+  else if order.side == depthAliasSideSell then
+    { state with asks := depthAliasInsertLevel state.asks level }
+  else
+    state
+
+def depthAliasStateFuel :
+    Nat → Array DepthAliasOrder → Nat → DepthAliasState → DepthAliasState
+  | 0, _orders, _index, state => state
+  | fuel + 1, orders, index, state =>
+      if index == orders.size then
+        state
+      else
+        depthAliasStateFuel fuel orders (index + 1) (depthAliasAddOrder state orders[index]!)
+
+def depthAliasResult (orders : Array DepthAliasOrder) : DepthAliasResult :=
+  let state :=
+    depthAliasStateFuel
+      (orders.size + 1)
+      orders
+      0
+      ({ bids := Array.empty, asks := Array.empty } : DepthAliasState)
+  { bids := state.bids, asks := state.asks }
+
+def appendDepthAliasLevel (out : ByteArray) (level : DepthAliasLevel) : ByteArray :=
+  let out := LeanExe.Ascii.appendUInt64Decimal out level.price
+  let out := out.push (32 : UInt8)
+  LeanExe.Ascii.appendUInt64Decimal out level.qty
+
+def appendDepthAliasLevelsFuel :
+    Nat → ByteArray → Array DepthAliasLevel → Nat → ByteArray
+  | 0, out, _levels, _index => out
+  | fuel + 1, out, levels, index =>
+      if index == levels.size then
+        out
+      else
+        let out := out.push (32 : UInt8)
+        let out := appendDepthAliasLevel out levels[index]!
+        appendDepthAliasLevelsFuel fuel out levels (index + 1)
+
+def appendDepthAliasLevels (out : ByteArray) (levels : Array DepthAliasLevel) : ByteArray :=
+  let out := LeanExe.Ascii.appendUInt64Decimal out levels.size.toUInt64
+  appendDepthAliasLevelsFuel (levels.size + 1) out levels 0
+
+def renderDepthAliasResult (result : DepthAliasResult) : ByteArray :=
+  let out := LeanExe.Ascii.appendUInt64Decimal ByteArray.empty 0
+  let out := out.push (32 : UInt8)
+  let out := appendDepthAliasLevels out result.bids
+  let out := out.push (32 : UInt8)
+  let out := appendDepthAliasLevels out result.asks
+  out.push (10 : UInt8)
+
+def depthAliasOrdersForInput (input : ByteArray) : Array DepthAliasOrder :=
+  if input.size == 0 then
+    depthAliasBidOnlyOrders
+  else
+    depthAliasAskOnlyOrders
+
+def depthAliasRun (input : ByteArray) : Except ByteArray ByteArray :=
+  Except.ok (renderDepthAliasResult (depthAliasResult (depthAliasOrdersForInput input)))
+
 def byteArrayResultDropsOwnedTemp : ByteArray :=
   let temp := ByteArray.empty.push (65 : UInt8)
   if temp[0]! == (65 : UInt8) then

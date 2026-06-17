@@ -1,5 +1,32 @@
 # Development Journal
 
+## 2026-06-16: Helper Result Owner Aliases
+
+The orderbook WASM harness exposed a release-analysis bug in functions that return heap-bearing structures assembled from helper results.  The reduced case was a depth state with `bids` and `asks` arrays: the recursive helper returned one accumulator array unchanged, while the caller copied the helper result into a `DepthResult` and then released the original empty array local.  Rendering the returned result then read a freed empty array; empty stdin produced corrupt depth output, and non-empty stdin trapped in Wasmtime.
+
+Release analysis now expands returned owner slots through local lets and helper calls before deciding which non-recursive owned temporaries can be released.  A helper call contributes its argument slots to that expansion only when the helper has heap parameters and at least one heap result owner that the existing fresh-result summary does not prove fresh.  This keeps the existing release behavior for helpers that return newly allocated arrays or byte arrays, while preserving argument-owned roots returned through accumulator helpers.
+
+The new `depthAliasRun` WASI example in `LeanExe.Examples.Correctness` keeps the failing shape without importing the orderbook module.  It selects a bid-only or ask-only book from stdin, computes old-style depth through a two-array state, and renders both sides into `ByteArray`.  Before the fix, empty stdin emitted the corrupt sequence beginning `0 1 12 6 48 5501223100278326855`, and stdin `x` trapped at `wasm unreachable`; after the fix, the outputs are `0 1 12 6 0\n` and `0 0 1 100 6\n`.
+
+Checks run:
+
+- [x] `lake build LeanExe.Extract.Values`
+- [x] `lake build lean-wasm`
+- [x] `.lake/build/bin/lean-wasm compile-wasi-stdin-except --max-input-bytes 16 --module LeanExe.Examples.Correctness --entry LeanExe.Examples.Correctness.depthAliasRun --out .lake/build/wasi-programs/depthAliasRun.final.wasm`
+- [x] `timeout 5s build/tools/wasmtime/current/wasmtime run .lake/build/wasi-programs/depthAliasRun.final.wasm < /dev/null` returned `0 1 12 6 0`.
+- [x] `printf x | timeout 5s build/tools/wasmtime/current/wasmtime run .lake/build/wasi-programs/depthAliasRun.final.wasm` returned `0 0 1 100 6`.
+- [x] `node test/wasi_program.js` returned `checked 35 WASI program cases, 2 traps, and 7 rejections`.
+- [x] `node test/refcount.js` returned `checked 38 refcount cases`.
+- [x] `node test/ownership_report.js` returned `checked 8 ownership report cases`.
+- [x] `node test/core_correctness.js` returned `checked 784 accepted, 34 rejected, and 13 trapped cases`.
+- [x] In `orderbook-wasm`, `lake env ../leanexe/.lake/build/bin/lean-wasm compile-wasi-stdin-except --max-input-bytes 16 --module PmobOrderBook.LeanExeDepthRenderRepro --entry PmobOrderBook.LeanExeDepthRenderRepro.run --out .lake/build/repro-depth-old-state.fixed.wasm`, followed by empty stdin and stdin `x` Wasmtime runs, returned `0 1 12 6 0` and `0 0 1 100 6`.
+- [x] In `orderbook-wasm`, `lake env ../leanexe/.lake/build/bin/lean-wasm ownership-report --module PmobOrderBook.LeanExeDepthRenderRepro --entry PmobOrderBook.LeanExeDepthRenderRepro.run` showed `PmobOrderBook.LeanExeDepthRenderRepro.oldDepth` with `compiler statement releases: none`.
+- [x] In `orderbook-wasm`, `lake env ../leanexe/.lake/build/bin/lean-wasm compile-wasi-stdin-except --max-input-bytes 4096 --module PmobOrderBook.RawCommand --entry PmobOrderBook.RawCommand.run --out .lake/build/pmob-orderbook-raw.wasm`
+- [x] In `orderbook-wasm`, `lake env lean PmobOrderBook/KernelTest.lean`
+- [x] In `orderbook-wasm`, `lake env lean PmobOrderBook/RawCommandTest.lean`
+- [x] In `orderbook-wasm`, `lake env lean PmobOrderBook/LeanExeDepthRenderReproTest.lean`
+- [x] In `orderbook-wasm`, `go test -count=1 ./harness` returned `ok  	leanclob/orderbookwasm/harness	5.232s`.
+
 ## 2026-06-16: Type-Class Specialization Through List Helpers
 
 Type-class evidence specialization now feeds the expression-level structural-recursion discovery pass.  When a same-root helper call has static class evidence and concrete supported runtime arguments, the discovery pass inline-specializes the helper body, normalizes class evidence, and collects any structural-recursion helpers exposed by the specialized body.  This lets generic class-constrained helpers compile when their specialized bodies call `List.foldl` or `List.find?` over supported element layouts.

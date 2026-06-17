@@ -498,6 +498,8 @@ function main() {
   expectStdinTrap(correctnessModule, "byteArrayIdentityReturn", 8, [65, 66, 67, 68, 69, 70, 71, 72, 73]);
   expectStdinExceptOk(correctnessModule, "byteArrayExceptBangOrError", 8, [65, 66], [65, 66, 33]);
   expectStdinExceptError(correctnessModule, "byteArrayExceptBangOrError", 8, [], [101, 109, 112, 116, 121]);
+  expectStdinExceptOk(correctnessModule, "depthAliasRun", 16, [], bytes("0 1 12 6 0\n"));
+  expectStdinExceptOk(correctnessModule, "depthAliasRun", 16, [120], bytes("0 0 1 100 6\n"));
   expectStdinExceptOk(jsonGcdModule, "transform", 1024, bytes("[48,18,30]"), bytes('{"gcd":6}'));
   expectStdinExceptOk(jsonGcdModule, "transform", 1024, bytes(" [ 0 , 42 , 56 ] "), bytes('{"gcd":14}'));
   expectStdinExceptOk(jsonGcdModule, "transform", 1024, bytes("[17]"), bytes('{"gcd":17}'));
