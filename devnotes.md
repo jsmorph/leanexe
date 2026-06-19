@@ -4015,3 +4015,11 @@ Checks run:
 
 - [x] `node --check test/wasi_program.js`
 - [x] `node test/wasi_program.js` returned `checked 35 WASI program cases, 2 traps, 7 rejections, and 19 compiles` in `217.208` seconds.
+
+## 2026-06-19: Plain Lean association-list proof
+
+`LeanExe.Examples.TalosAssocList` now includes `lookupDemoExpected` and the ordinary Lean theorem `lookupDemo_correct`.  The theorem proves the source-level statement `lookupDemo key = lookupDemoExpected key` for every `UInt64` key.  This proof does not use LeanExe compilation, generated WASM, Talos, or Wasmtime; it checks the Lean program directly under the standard Lean elaborator and kernel.
+
+Checks run:
+
+- [x] `lake build LeanExe.Examples.TalosAssocList`
