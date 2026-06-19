@@ -4026,3 +4026,37 @@ Checks run:
 
 - [x] `lake build LeanExe.Examples.TalosAssocList`
 - [x] `lake build Project.AssocList.Spec`
+
+## 2026-06-19: Simple order-book example
+
+`LeanExe.Examples.OrderBook` defines a small single-asset central limit order book example.  The book contains one best bid and one best ask, and `matchBook` accepts both the book and incoming order as `UInt64` inputs: bid quantity, bid price, ask quantity, ask price, side flag, order quantity, and order limit price.  Side flag `0` means buy, while every other flag means sell.
+
+The match rule emits at most one `Option Trade`.  A buy crosses when its limit price is at least the best ask price, and the trade prints at the best ask price.  A sell crosses when its limit price is at most the best bid price, and the trade prints at the best bid price.  Trade quantity is the smaller of the incoming quantity and the relevant resting quantity, and this first example does not update the book.
+
+The standard-comparison helper writes generated files under a path derived from module and entry.  It must run sequentially for multiple inputs to the same entry, or concurrent runs can overwrite each other.  The result observation for `Option Trade` uses three scalar projections: option tag, trade quantity, and trade price.
+
+Checks run:
+
+- [x] `lake build LeanExe.Examples.OrderBook lean-wasm`
+- [x] `.lake/build/bin/lean-wasm compile --module LeanExe.Examples.OrderBook --entry LeanExe.Examples.OrderBook.matchBook --out build/order-book.wasm`
+- [x] `build/tools/wasmtime/current/wasmtime --invoke matchBook build/order-book.wasm 5 99 7 101 0 3 101` returned option tag `1`, quantity `3`, and price `101`.
+- [x] `build/tools/wasmtime/current/wasmtime --invoke matchBook build/order-book.wasm 12 200 4 250 0 9 250` returned option tag `1`, quantity `4`, and price `250`.
+- [x] `build/tools/wasmtime/current/wasmtime --invoke matchBook build/order-book.wasm 12 200 4 250 1 9 199` returned option tag `1`, quantity `9`, and price `200`.
+- [x] `build/tools/wasmtime/current/wasmtime --invoke matchBook build/order-book.wasm 12 200 4 250 1 9 201` returned option tag `0`, quantity `0`, and price `0`.
+
+## 2026-06-19: Order-book Talos proof
+
+The Talos proof project includes an `order_book` slice generated from the LeanExe WASM for `LeanExe.Examples.OrderBook.matchBook`.  `proofs/talos-gcd/lean/Project/OrderBook/Program.lean` is emitted from `proofs/talos-gcd/rust/build/order_book/program.wat`, and `Project.OrderBook.Spec` proves a quantified theorem about the exported `matchBook` function.  The theorem covers all seven scalar inputs: bid quantity, bid price, ask quantity, ask price, side flag, order quantity, and order limit price.
+
+The theorem `matchBook_correct` states that the decoded WASM export terminates for every supplied one-level book and incoming order, returning exactly the expected option tag, trade quantity, and trade price.  Talos represents the WASM value stack with the top at the head of the list, so the proof names `tradeStackResult tag quantity price` as `[price, quantity, tag]`.  This is the reverse of Wasmtime's printed multi-result order, but it is the direct representation consumed by Talos's `TerminatesWith` predicate.
+
+The proof follows the generated export `func1` and uses a separate lemma for the generated `minQty` helper `func0`.  It splits on the side flag and crossing predicate, proving the buy-crossing, buy-non-crossing, sell-crossing, and sell-non-crossing paths.  The proof artifact for this generalized scalar entry is `1207` bytes of WASM.
+
+Checks run:
+
+- [x] `.lake/build/bin/lean-wasm compile --module LeanExe.Examples.OrderBook --entry LeanExe.Examples.OrderBook.matchBook --out proofs/talos-gcd/rust/build/order_book/program.wasm`
+- [x] `$HOME/.cargo/bin/wasm-tools print proofs/talos-gcd/rust/build/order_book/program.wasm -o proofs/talos-gcd/rust/build/order_book/program.wat`
+- [x] `proofs/talos-gcd/lean/.lake/packages/CodeLib/verifier/.lake/build/bin/verifier emit --force-emit order_book`
+- [x] `lake build Project.OrderBook.Spec`
+- [x] `tools/check-talos-order-book.sh`
+- [x] `lake build Project`
