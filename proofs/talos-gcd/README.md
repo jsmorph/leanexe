@@ -1,10 +1,10 @@
-# Talos GCD Proof
+# Talos Proofs
 
-This directory proves the WASM generated from `LeanExe.Examples.TalosGcd.gcd`.
+This directory proves properties of WASM generated from LeanExe examples.
 Talos’s verifier expects a project with `rust/` and `lean/` directories, so the
-compiled LeanExe artifact lives at `rust/build/gcd/program.wasm`.  The source
-program is Lean, and `tools/check-talos-gcd.sh` rebuilds the artifact from that
-source before checking the Talos proof.
+compiled LeanExe artifacts live under `rust/build/<name>/program.wasm`.  The
+source programs are Lean, and the `tools/check-talos-*.sh` scripts rebuild the
+artifacts from that source before checking the corresponding Talos proof.
 
 The proof uses Talos revision `bb3277e21c9786e3133d5c1601e34ebdc0bea4df`.  The
 Lean proof project pins that revision through Lake.  Regenerating `Program.lean`
