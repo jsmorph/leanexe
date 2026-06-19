@@ -1,5 +1,20 @@
 # Development Journal
 
+## 2026-06-19: Talos Proof for Generated GCD WASM
+
+`LeanExe.Examples.TalosGcd.gcd` is a small Euclidean GCD program written in the supported Lean subset.  The LeanExe compiler emits the WASM artifact stored at `proofs/talos-gcd/rust/build/gcd/program.wasm`; `wasm-tools print` produces the WAT that Talos decodes into `Project.Gcd.Program`.  The proof in `proofs/talos-gcd/lean/Project/Gcd/Spec.lean` states that exported function `0` terminates for all `UInt64` inputs and returns `UInt64.ofNat (Nat.gcd a.toNat b.toNat)`.
+
+The proof follows the generated WASM, including the compiler’s Boolean-normalization blocks, rather than a hand-written WAT model.  Its loop invariant names the generated local frame, treats WASM locals `4` and `5` as the Euclidean state, leaves scratch locals unconstrained, and uses `y.toNat` as the decreasing measure.  The generated module includes LeanExe runtime exports, but the `gcd` export itself does not touch memory or call runtime functions, so the spec is store-parametric.
+
+`tools/check-talos-gcd.sh` is the integrity check for this proof slice.  It rebuilds the Lean source with `lean-wasm`, emits a fresh WASM file, prints fresh WAT with `wasm-tools`, compares both files against the Talos proof inputs, and then rebuilds the Talos Lean proof project.  The script accepts `WASM_TOOLS` or finds `$HOME/.cargo/bin/wasm-tools`, because `cargo install` does not guarantee the binary is on the noninteractive shell path.
+
+Checks run:
+
+- [x] `bash tools/check-talos-gcd.sh` rebuilt `LeanExe.Examples.TalosGcd`, compared regenerated WASM and WAT against `proofs/talos-gcd/rust/build/gcd/`, and built the Talos proof project.
+- [x] `build/tools/wasmtime/current/wasmtime --invoke gcd proofs/talos-gcd/rust/build/gcd/program.wasm 48 18` returned `6`.
+- [x] `build/tools/wasmtime/current/wasmtime --invoke gcd proofs/talos-gcd/rust/build/gcd/program.wasm 270 192` returned `6`.
+- [x] `build/tools/wasmtime/current/wasmtime --invoke gcd proofs/talos-gcd/rust/build/gcd/program.wasm 17 0` returned `17`.
+
 ## 2026-06-16: Helper Result Owner Aliases
 
 The orderbook WASM harness exposed a release-analysis bug in functions that return heap-bearing structures assembled from helper results.  The reduced case was a depth state with `bids` and `asks` arrays: the recursive helper returned one accumulator array unchanged, while the caller copied the helper result into a `DepthResult` and then released the original empty array local.  Rendering the returned result then read a freed empty array; empty stdin produced corrupt depth output, and non-empty stdin trapped in Wasmtime.
@@ -1104,7 +1119,7 @@ Checks run:
 - [x] Lean evaluation for `productLet`, `nestedProduct`, `productSkipsUnusedField`, `productBranch 0`, `productBranch 1`, `productArrayAlias`, `recProductDemo`, and `unusedScalarLetSkipsTrap` returned `12`, `203`, `7`, `12`, `34`, `2211`, `10`, and `1`.
 - [x] `node test/core_correctness.js` returned `checked 19 accepted and 5 rejected cases`.
 - [x] `node test/fuzz_validate.js .lake/build/validate.wasm 200` returned `checked 206 cases`.
-- [x] Node WebAssembly smoke regressions returned `2211` for array aliasing, `51200` for `IntMap.checksum`, `1009` for `Prime.next 1000`, and `111` for `Collatz.steps 27`.
+- [x] Node WebAssembly execution checks returned `2211` for array aliasing, `51200` for `IntMap.checksum`, `1009` for `Prime.next 1000`, and `111` for `Collatz.steps 27`.
 
 ## 2026-05-06: Lazy Bindings, Option Values, and Strict Calls
 

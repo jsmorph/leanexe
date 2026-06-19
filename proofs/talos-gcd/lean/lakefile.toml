@@ -1,0 +1,12 @@
+name = "Project"
+version = "0.1.0"
+defaultTargets = ["Project"]
+
+[[require]]
+name = "CodeLib"
+git = "https://github.com/cajal-technologies/talos"
+subDir = "codelib"
+rev = "bb3277e21c9786e3133d5c1601e34ebdc0bea4df"
+
+[[lean_lib]]
+name = "Project"
