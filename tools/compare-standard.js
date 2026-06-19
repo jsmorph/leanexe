@@ -1511,6 +1511,27 @@ function selfTest() {
     {
       mode: "pure",
       moduleName: correctness,
+      entry: "leanPairListLookupDemo",
+      programArgs: ["7"],
+      resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "leanPairListLookupDemo",
+      programArgs: ["2"],
+      resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "leanPairListLookupDemo",
+      programArgs: ["5"],
+      resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
       entry: "u64BinaryScenarioScore",
       programArgs: ["0", "5"],
       resultSlots: "#[__leanexeValue]",

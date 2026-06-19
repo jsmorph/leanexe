@@ -192,6 +192,28 @@ end LeanExe.Examples.ManualTree
 
 Structural recursion works best when the recursive argument is the first parameter or when recursive descent follows accepted generated shapes.  If the report rejects a recursive helper, rewrite it so the recursive data parameter drives the match directly and nonrecursive carried values remain explicit parameters.
 
+Association lists can use ordinary `List (α × β)` data when both product fields have supported internal layouts.  The list stays inside the compiled program, while the public entry uses ABI-friendly scalars or byte arrays.  Product patterns in constructor arms compile, so `(k, v) :: rest` may bind the pair fields directly.
+
+```lean
+namespace LeanExe.Examples.ManualAssocList
+
+def lookup : List (UInt64 × UInt64) -> UInt64 -> UInt64
+  | [], _ => 0
+  | (k, v) :: rest, key =>
+      if k == key then
+        v
+      else
+        lookup rest key
+
+def sample : List (UInt64 × UInt64) :=
+  [(7, 70), (2, 20), (9, 90), (2, 22)]
+
+def lookupDemo (key : UInt64) : UInt64 :=
+  lookup sample key
+
+end LeanExe.Examples.ManualAssocList
+```
+
 ## Option, Except, and Error Results
 
 `Option` works well for internal parse failures, search results, and optional values.  Match explicitly on `some` and `none` when the control flow is clearer as a case split.  Use `Option` `do` notation when parse steps should short-circuit on `none`; LeanExe lowers accepted `Pure.pure`, `Bind.bind`, and loop forms to the same tagged representation as explicit matches.
