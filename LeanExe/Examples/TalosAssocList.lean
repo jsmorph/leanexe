@@ -25,7 +25,13 @@ def lookupDemoExpected (key : UInt64) : UInt64 :=
   else
     0
 
-theorem lookupDemo_correct (key : UInt64) :
+def LookupSpec (runsTo : UInt64 → UInt64 → Prop) : Prop :=
+  ∀ key, runsTo key (lookupDemoExpected key)
+
+def leanRunsTo (key output : UInt64) : Prop :=
+  lookupDemo key = output
+
+theorem lookupDemo_eq_expected (key : UInt64) :
     lookupDemo key = lookupDemoExpected key := by
   unfold lookupDemo sample lookupDemoExpected
   simp [lookup]
@@ -42,6 +48,10 @@ theorem lookupDemo_correct (key : UInt64) :
         have h2' : (2 : UInt64) ≠ key := fun h => h2 h.symm
         have h9' : (9 : UInt64) ≠ key := fun h => h9 h.symm
         simp [h7, h2, h9, h7', h2', h9']
+
+theorem lookupDemo_correct : LookupSpec leanRunsTo := by
+  intro key
+  exact lookupDemo_eq_expected key
 
 end Examples.TalosAssocList
 end LeanExe

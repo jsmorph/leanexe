@@ -8,5 +8,9 @@ git = "https://github.com/cajal-technologies/talos"
 subDir = "codelib"
 rev = "bb3277e21c9786e3133d5c1601e34ebdc0bea4df"
 
+[[require]]
+name = "leanexe"
+path = "../../.."
+
 [[lean_lib]]
 name = "Project"

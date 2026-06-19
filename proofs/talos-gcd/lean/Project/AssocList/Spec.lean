@@ -1,4 +1,5 @@
 import Project.AssocList.Program
+import LeanExe.Examples.TalosAssocList
 import Interpreter.Wasm.Wp.Tactic
 import Interpreter.Wasm.Wp.Call
 
@@ -9,17 +10,6 @@ import Interpreter.Wasm.Wp.Call
 namespace Project.AssocList.Spec
 
 open Wasm
-
-private def lookupDemoExpected (key : UInt64) : UInt64 :=
-  if key == 7 then
-    70
-  else
-    if key == 2 then
-      20
-    else if key == 9 then
-      90
-    else
-      0
 
 private def node4224Expected (key : UInt64) : UInt64 :=
   if key == 2 then
@@ -344,7 +334,8 @@ private theorem func0_sample_terminates
     (hSample : SampleListStore st) (key : UInt64) :
     TerminatesWith (m := «module») (id := 0) (initial := st)
       (env := ({} : HostEnv Unit)) [.i64 key, .i64 4464]
-      (fun st' vs => st' = st ∧ vs = [.i64 (lookupDemoExpected key)]) := by
+      (fun st' vs =>
+        st' = st ∧ vs = [.i64 (LeanExe.Examples.TalosAssocList.lookupDemoExpected key)]) := by
   rcases hSample with
     ⟨h4464, h4472, h4480, h4488, h4384, h4392, h4400, h4408,
      h4304, h4312, h4320, h4328, h4224, h4232, h4240, h4248, h4144⟩
@@ -386,7 +377,7 @@ private theorem func0_sample_terminates
           · omega
           · have hread4480 : st.mem.read64 (4480 : UInt32) = 70 := by
               simpa [read64At] using h4480
-            simp [func0Def, lookupDemoExpected, hread4480]
+            simp [func0Def, LeanExe.Examples.TalosAssocList.lookupDemoExpected, hread4480]
         · simp [hkey]
           apply wp_iff_cons rfl
           wp_run
@@ -408,7 +399,8 @@ private theorem func0_sample_terminates
             rintro st' vs ⟨rfl, rfl⟩
             wp_run
             have hkey' : key ≠ 7 := fun hk => hkey hk.symm
-            simp [func0Def, lookupDemoExpected, node4384Expected, node4304Expected,
+            simp [func0Def, LeanExe.Examples.TalosAssocList.lookupDemoExpected,
+              node4384Expected, node4304Expected,
               node4224Expected, hkey']
             by_cases h2 : key = 2
             · simp [h2]
@@ -462,16 +454,19 @@ private theorem func1_constructs_sample :
   | Thrown tag args st =>
       simp [sampleRunOk, hrun] at hok
 
+def wasmRunsTo (key output : UInt64) : Prop :=
+  TerminatesWith (m := «module») (id := 2)
+    (initial := «module».initialStore (α := Unit))
+    (env := ({} : HostEnv Unit)) [.i64 key]
+    (fun _ vs => vs = [.i64 output])
+
 @[spec_of "lean" "LeanExe.Examples.TalosAssocList.lookupDemo"]
 def LookupDemoSpec : Prop :=
-  ∀ key : UInt64,
-    TerminatesWith (m := «module») (id := 2)
-      (initial := «module».initialStore (α := Unit))
-      (env := ({} : HostEnv Unit)) [.i64 key]
-      (fun _ vs => vs = [.i64 (lookupDemoExpected key)])
+  LeanExe.Examples.TalosAssocList.LookupSpec wasmRunsTo
 
 @[proves Project.AssocList.Spec.LookupDemoSpec]
 theorem lookupDemo_correct : LookupDemoSpec := by
+  unfold LookupDemoSpec LeanExe.Examples.TalosAssocList.LookupSpec wasmRunsTo
   intro key
   apply TerminatesWith.of_wp_entry_for (f := func2Def)
   · simp [«module»]
