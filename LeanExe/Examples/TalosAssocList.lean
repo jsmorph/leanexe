@@ -15,5 +15,33 @@ def sample : List (UInt64 × UInt64) :=
 def lookupDemo (key : UInt64) : UInt64 :=
   lookup sample key
 
+def lookupDemoExpected (key : UInt64) : UInt64 :=
+  if key == 7 then
+    70
+  else if key == 2 then
+    20
+  else if key == 9 then
+    90
+  else
+    0
+
+theorem lookupDemo_correct (key : UInt64) :
+    lookupDemo key = lookupDemoExpected key := by
+  unfold lookupDemo sample lookupDemoExpected
+  simp [lookup]
+  by_cases h7 : key = 7
+  · subst key
+    simp
+  · by_cases h2 : key = 2
+    · subst key
+      simp
+    · by_cases h9 : key = 9
+      · subst key
+        simp
+      · have h7' : (7 : UInt64) ≠ key := fun h => h7 h.symm
+        have h2' : (2 : UInt64) ≠ key := fun h => h2 h.symm
+        have h9' : (9 : UInt64) ≠ key := fun h => h9 h.symm
+        simp [h7, h2, h9, h7', h2', h9']
+
 end Examples.TalosAssocList
 end LeanExe
