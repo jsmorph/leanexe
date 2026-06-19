@@ -1300,6 +1300,17 @@ def leanListScenarioScore (kind needle : UInt64) : UInt64 :=
     | some value => value
   xs.length.toUInt64 * 1000 + leanListStructuralSum xs * 10 + found
 
+def leanPairList : List (UInt64 × UInt64) :=
+  [(7, 70), (2, 20), (9, 90), (2, 22)]
+
+def leanPairListLookup : List (UInt64 × UInt64) → UInt64 → UInt64
+  | [], _ => 0
+  | (k, v) :: rest, key =>
+      if k == key then v else leanPairListLookup rest key
+
+def leanPairListLookupDemo (key : UInt64) : UInt64 :=
+  leanPairListLookup leanPairList key
+
 def leanListScenarioReverseValue (kind : UInt64) : List UInt64 :=
   leanListReverseAcc (leanListScenario kind) []
 

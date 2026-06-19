@@ -15,6 +15,8 @@ const jsonGcTreeRewriteModule = "LeanExe.Examples.JsonGcTreeRewrite";
 const leanExe = process.env.LEAN_WASM_EXE || path.join(".lake", "build", "bin", "lean-wasm");
 const wasmtime = process.env.WASMTIME || path.join("build", "tools", "wasmtime", "current", "wasmtime");
 const outDir = path.join(".lake", "build", "wasi-programs");
+const compileCache = new Map();
+let compileCount = 0;
 
 function run(args, options = {}) {
   const result = spawnSync(args[0], args.slice(1), options);
@@ -32,108 +34,114 @@ function bytes(text) {
   return Buffer.from(text, "utf8");
 }
 
-function compileStdout(entry) {
-  const out = path.join(outDir, `${entry}.wasi.wasm`);
-  const result = run([
-    leanExe,
-    "compile-wasi",
-    "--module",
-    correctnessModule,
-    "--entry",
-    `${correctnessModule}.${entry}`,
-    "--out",
-    out,
-  ]);
+function artifactName(parts) {
+  return parts.map((part) => String(part)).join(".").replace(/[^A-Za-z0-9_.-]/g, "_");
+}
+
+function compileCached(parts, args, entry) {
+  const key = JSON.stringify(parts);
+  const cached = compileCache.get(key);
+  if (cached) {
+    return cached;
+  }
+
+  const out = path.join(outDir, `${artifactName(parts)}.wasm`);
+  const result = run([...args, "--out", out]);
   if (result.status !== 0) {
     throw new Error(outputText(result).trim() || `${entry} failed to compile`);
   }
+  compileCount += 1;
+  compileCache.set(key, out);
   return out;
+}
+
+function compileStdout(entry) {
+  return compileCached(
+    ["wasi", correctnessModule, entry],
+    [
+      leanExe,
+      "compile-wasi",
+      "--module",
+      correctnessModule,
+      "--entry",
+      `${correctnessModule}.${entry}`,
+    ],
+    entry
+  );
 }
 
 function compileStdin(moduleName, entry, maxInputBytes) {
-  const out = path.join(outDir, `${entry}.stdin.wasi.wasm`);
-  const result = run([
-    leanExe,
-    "compile-wasi-stdin",
-    "--max-input-bytes",
-    maxInputBytes.toString(),
-    "--module",
-    moduleName,
-    "--entry",
-    `${moduleName}.${entry}`,
-    "--out",
-    out,
-  ]);
-  if (result.status !== 0) {
-    throw new Error(outputText(result).trim() || `${entry} failed to compile`);
-  }
-  return out;
+  return compileCached(
+    ["stdin", moduleName, entry, maxInputBytes],
+    [
+      leanExe,
+      "compile-wasi-stdin",
+      "--max-input-bytes",
+      maxInputBytes.toString(),
+      "--module",
+      moduleName,
+      "--entry",
+      `${moduleName}.${entry}`,
+    ],
+    entry
+  );
 }
 
 function compileStdinExcept(moduleName, entry, maxInputBytes) {
-  const out = path.join(outDir, `${entry}.stdin-except.wasi.wasm`);
-  const result = run([
-    leanExe,
-    "compile-wasi-stdin-except",
-    "--max-input-bytes",
-    maxInputBytes.toString(),
-    "--module",
-    moduleName,
-    "--entry",
-    `${moduleName}.${entry}`,
-    "--out",
-    out,
-  ]);
-  if (result.status !== 0) {
-    throw new Error(outputText(result).trim() || `${entry} failed to compile`);
-  }
-  return out;
+  return compileCached(
+    ["stdin-except", moduleName, entry, maxInputBytes],
+    [
+      leanExe,
+      "compile-wasi-stdin-except",
+      "--max-input-bytes",
+      maxInputBytes.toString(),
+      "--module",
+      moduleName,
+      "--entry",
+      `${moduleName}.${entry}`,
+    ],
+    entry
+  );
 }
 
 function compileArgvExcept(moduleName, entry, maxArgs, maxArgBytes) {
-  const out = path.join(outDir, `${entry}.argv-except.wasi.wasm`);
-  const result = run([
-    leanExe,
-    "compile-wasi-argv-except",
-    "--max-args",
-    maxArgs.toString(),
-    "--max-argv-bytes",
-    maxArgBytes.toString(),
-    "--module",
-    moduleName,
-    "--entry",
-    `${moduleName}.${entry}`,
-    "--out",
-    out,
-  ]);
-  if (result.status !== 0) {
-    throw new Error(outputText(result).trim() || `${entry} failed to compile`);
-  }
-  return out;
+  return compileCached(
+    ["argv-except", moduleName, entry, maxArgs, maxArgBytes],
+    [
+      leanExe,
+      "compile-wasi-argv-except",
+      "--max-args",
+      maxArgs.toString(),
+      "--max-argv-bytes",
+      maxArgBytes.toString(),
+      "--module",
+      moduleName,
+      "--entry",
+      `${moduleName}.${entry}`,
+    ],
+    entry
+  );
 }
 
 function compileStdinArgvExcept(moduleName, entry, maxInputBytes, maxArgs, maxArgBytes) {
-  const out = path.join(outDir, `${entry}.stdin-argv-except.wasi.wasm`);
-  const result = run([
-    leanExe,
-    "compile-wasi-stdin-argv-except",
-    "--max-input-bytes",
-    maxInputBytes.toString(),
-    "--max-args",
-    maxArgs.toString(),
-    "--max-argv-bytes",
-    maxArgBytes.toString(),
-    "--module",
-    moduleName,
-    "--entry",
-    `${moduleName}.${entry}`,
-    "--out",
-    out,
-  ]);
-  if (result.status !== 0) {
-    throw new Error(outputText(result).trim() || `${entry} failed to compile`);
-  }
-  return out;
+  return compileCached(
+    ["stdin-argv-except", moduleName, entry, maxInputBytes, maxArgs, maxArgBytes],
+    [
+      leanExe,
+      "compile-wasi-stdin-argv-except",
+      "--max-input-bytes",
+      maxInputBytes.toString(),
+      "--max-args",
+      maxArgs.toString(),
+      "--max-argv-bytes",
+      maxArgBytes.toString(),
+      "--module",
+      moduleName,
+      "--entry",
+      `${moduleName}.${entry}`,
+    ],
+    entry
+  );
 }
 
 function expectProgram(entry, expectedBytes) {
@@ -642,7 +650,7 @@ function main() {
     "max argv storage exceeds WASM memory capacity"
   );
 
-  process.stdout.write("checked 35 WASI program cases, 2 traps, and 7 rejections\n");
+  process.stdout.write(`checked 35 WASI program cases, 2 traps, 7 rejections, and ${compileCount} compiles\n`);
 }
 
 try {

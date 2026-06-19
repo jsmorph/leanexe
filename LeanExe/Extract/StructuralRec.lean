@@ -582,6 +582,21 @@ inductive StructuralArmBinder where
   | staticLambda (expr : Expr)
   | below (binding : Binding)
 
+def expandProductArmBinder?
+    (expected : Ty)
+    (binding : Binding) :
+    Except String (Option (List StructuralArmBinder)) := do
+  match expected, binding with
+  | .product left right, .value value =>
+      let leftValue ← productField 0 value
+      let rightValue ← productField 1 value
+      .ok (some [
+        StructuralArmBinder.runtime (some left) (.value leftValue),
+        StructuralArmBinder.runtime (some right) (.value rightValue)])
+  | .product _ _, _ =>
+      .error "product structural recursion arm binder is not a value"
+  | _, _ => .ok none
+
 def checkStructuralArmBinder
     (env : Environment)
     (typeName : Name)
@@ -620,9 +635,27 @@ partial def consumeStructuralArmBinders
     | binder :: rest, expr, bindings =>
         match expr.consumeMData with
         | .lam _ domain body _ => do
-            checkStructuralArmBinder ctx.env typeName binder domain
             match binder with
-            | .runtime _ binding => loop rest body (binding :: bindings)
+            | .runtime (some expected) binding =>
+                match typeAtom? ctx.env domain with
+                | some actual =>
+                    if actual == expected then
+                      loop rest body (binding :: bindings)
+                    else
+                      match ← expandProductArmBinder? expected binding with
+                      | some expanded => loop (expanded ++ rest) expr bindings
+                      | none =>
+                          .error
+                            s!"structural recursion arm binder type mismatch: {typeName}: expected {reprStr expected}, got {reprStr actual}"
+                | none =>
+                    match ← expandProductArmBinder? expected binding with
+                    | some expanded => loop (expanded ++ rest) expr bindings
+                    | none =>
+                        .error
+                          s!"unsupported structural recursion arm binder type: {typeName}: {reprStr domain}"
+            | .runtime none binding =>
+                checkStructuralArmBinder ctx.env typeName binder domain
+                loop rest body (binding :: bindings)
             | .below binding => loop rest body (binding :: bindings)
             | .staticLambda staticExpr => loop rest (body.instantiate1 staticExpr) bindings
         | _ => .error s!"unsupported structural recursion arm: {typeName}"

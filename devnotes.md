@@ -3982,3 +3982,36 @@ Checks run:
 
 - [x] `lake build lean-wasm`
 - [x] `node test/run_all.js` returned `checked 94 report classification cases`, `checked 617 accepted, 29 rejected, and 13 trapped cases`, `checked 14 refcount cases`, `checked 70 bytearray allocation cases`, `checked 23 asciistring cases`, `checked 4 intmap cases`, `checked 48 json program cases`, `checked 22 WASI program cases, 2 traps, and 7 rejections`, `checked 38 standard Lean comparison cases`, and `checked 56 cases`.
+
+## 2026-06-19: Talos association-list example
+
+`LeanExe.Examples.TalosAssocList` defines an ordinary Lean association-list lookup over `List (UInt64 × UInt64)`.  The exported `lookupDemo` function takes a `UInt64` key, searches a fixed source-level list of pairs, returns the first matching value, and returns `0` for a miss.  This keeps recursive data internal while exercising product element layout, source-level product destructuring in a list constructor arm, and direct structural recursion through the generated list matcher.
+
+The compiler change belongs in structural-recursion arm binding, not in `List` or association-list recognition.  Lean elaborates a source pattern such as `(k, v) :: rest` into separate lambdas for the pair fields before the recursive tail, while the constructor field layout remains one product value.  `consumeStructuralArmBinders` now expands an expected product runtime binder into projected field binders when the arm lambda destructures the product, preserving the previous single-binder path when the source keeps the product intact.
+
+The Talos artifact decodes the generated WASM for `lookupDemo` and proves the exported function for every `UInt64` key.  The proof uses a concrete generated-constructor lemma for `func1`, expressed as a Boolean summary of Talos `run 5000` so it avoids equality over the whole `Store`; the summary exposes the root pointer, the list-cell memory layout, and the memory bound needed by loads.  The recursive search proof is symbolic over the key: each suffix theorem follows the generated `func0` body, splits on the stored key comparison, reads the hit value, or calls the theorem for the tail pointer.  The selected Wasmtime executions remain useful examples, but the Talos theorem no longer depends on enumerating those keys.
+
+Checks run:
+
+- [x] `lake build LeanExe.Examples.TalosAssocList lean-wasm`
+- [x] `.lake/build/bin/lean-wasm compile --module LeanExe.Examples.TalosAssocList --entry LeanExe.Examples.TalosAssocList.lookupDemo --out build/talos-assoc-list.wasm`
+- [x] `build/tools/wasmtime/current/wasmtime --invoke lookupDemo build/talos-assoc-list.wasm 7` returned `70`.
+- [x] `build/tools/wasmtime/current/wasmtime --invoke lookupDemo build/talos-assoc-list.wasm 2` returned `20`.
+- [x] `build/tools/wasmtime/current/wasmtime --invoke lookupDemo build/talos-assoc-list.wasm 9` returned `90`.
+- [x] `build/tools/wasmtime/current/wasmtime --invoke lookupDemo build/talos-assoc-list.wasm 5` returned `0`.
+- [x] `lake build Project.AssocList.Spec` proved the all-key Talos theorem for the decoded generated WAT.
+- [x] `tools/check-talos-assoc-list.sh`
+- [x] `node tools/compare-standard.js --mode pure --module LeanExe.Examples.Correctness --entry leanPairListLookupDemo --result-slots '#[__leanexeValue]' --arg 7`
+- [x] `node tools/compare-standard.js --mode pure --module LeanExe.Examples.Correctness --entry leanPairListLookupDemo --result-slots '#[__leanexeValue]' --arg 2`
+- [x] `node tools/compare-standard.js --mode pure --module LeanExe.Examples.Correctness --entry leanPairListLookupDemo --result-slots '#[__leanexeValue]' --arg 5`
+
+## 2026-06-19: WASI test compile cache
+
+`test/wasi_program.js` now caches successful WASI compiles within one test-process run.  The cache key includes the compile mode, module name, entry name, and mode-specific limits, so input variants for one command reuse the same generated module while different modules that share an entry name such as `transform` get distinct output files.  Rejection tests still compile directly because those cases check diagnostics rather than a reusable executable artifact.
+
+The output path now uses the same key fields instead of the entry name alone.  This removes accidental overwrites between modules such as `JsonGcd.transform`, `JsonTypedDecode.transform`, `JsonObjectArrayDecode.transform`, and `JsonGcTreeRewrite.transform`.  The final summary reports the number of successful compiles, which makes cache behavior visible without adding per-case output.
+
+Checks run:
+
+- [x] `node --check test/wasi_program.js`
+- [x] `node test/wasi_program.js` returned `checked 35 WASI program cases, 2 traps, 7 rejections, and 19 compiles` in `217.208` seconds.
