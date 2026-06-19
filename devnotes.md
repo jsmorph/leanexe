@@ -4018,8 +4018,11 @@ Checks run:
 
 ## 2026-06-19: Plain Lean association-list proof
 
-`LeanExe.Examples.TalosAssocList` now includes `lookupDemoExpected` and the ordinary Lean theorem `lookupDemo_correct`.  The theorem proves the source-level statement `lookupDemo key = lookupDemoExpected key` for every `UInt64` key.  This proof does not use LeanExe compilation, generated WASM, Talos, or Wasmtime; it checks the Lean program directly under the standard Lean elaborator and kernel.
+`LeanExe.Examples.TalosAssocList` now includes `lookupDemoExpected`, `LookupSpec`, and two observation relations.  The ordinary Lean theorem `lookupDemo_correct` proves `LookupSpec leanRunsTo`; the Talos theorem now proves the same shared `LookupSpec` instantiated with `wasmRunsTo`, where `wasmRunsTo` is the generated-WASM termination-and-stack observation.  The equality theorem `lookupDemo_eq_expected` remains as the source-level helper behind the plain Lean observation.
+
+The Talos proof project now imports `LeanExe.Examples.TalosAssocList` through a local path dependency on the root `leanexe` package.  This keeps the expected-value function and the quantified spec in one Lean module, while leaving the WASM-specific observation relation inside the Talos proof file.
 
 Checks run:
 
 - [x] `lake build LeanExe.Examples.TalosAssocList`
+- [x] `lake build Project.AssocList.Spec`
