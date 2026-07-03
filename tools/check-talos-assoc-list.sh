@@ -27,7 +27,7 @@ mkdir -p "$(dirname "$wasm_tmp")"
   --module LeanExe.Examples.TalosAssocList \
   --entry LeanExe.Examples.TalosAssocList.lookupDemo \
   --out "$wasm_tmp"
-"$wasm_tools" print "$wasm_tmp" > "$wat_tmp"
+"$wasm_tools" print "$wasm_tmp" -o "$wat_tmp"
 
 cmp "$wasm_tmp" "$wasm_ref"
 cmp "$wat_tmp" "$wat_ref"

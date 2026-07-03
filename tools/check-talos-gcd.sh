@@ -27,10 +27,10 @@ mkdir -p "$(dirname "$wasm_tmp")"
   --module LeanExe.Examples.TalosGcd \
   --entry LeanExe.Examples.TalosGcd.gcd \
   --out "$wasm_tmp"
-"$wasm_tools" print "$wasm_tmp" > "$wat_tmp"
+"$wasm_tools" print "$wasm_tmp" -o "$wat_tmp"
 
 cmp "$wasm_tmp" "$wasm_ref"
 cmp "$wat_tmp" "$wat_ref"
 
 cd "$repo_root/proofs/talos-gcd/lean"
-lake build
+lake build Project.Gcd.Spec
