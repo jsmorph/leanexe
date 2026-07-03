@@ -261,4 +261,6 @@ The report command classifies the entry point and its reachable declarations.  I
 
 The compiler's user-facing correctness claim is semantic agreement for accepted pure programs under the bounded numeric and memory model stated here.  Tests compare generated WASM behavior with Lean execution for the supported examples and correctness fixtures.  The generic compiler does not claim a complete mechanized proof of source-to-WASM equivalence.
 
+The repository also contains [Talos artifact proofs](proofs/talos-gcd/README.md) for selected generated WASM modules.  Those proofs establish properties of the decoded generated WAT for specific examples, while the general compiler-correctness theorem remains future work.  They complement the Lean-versus-Wasmtime comparison tests by proving universal statements for selected artifacts.
+
 Traps are part of the modeled behavior for operations that Lean would panic on in ordinary execution, such as bang indexing out of bounds.  The compiler must preserve observable evaluation order for accepted pure code, including lazy field projection and short-circuiting boolean operations.  Host behavior outside the ABI, including reading stale pointers after `reset` or passing malformed flattened values, is outside the Lean source semantics.

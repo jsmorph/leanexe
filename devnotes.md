@@ -4060,3 +4060,15 @@ Checks run:
 - [x] `lake build Project.OrderBook.Spec`
 - [x] `tools/check-talos-order-book.sh`
 - [x] `lake build Project`
+
+## 2026-07-03: Talos documentation and check scripts
+
+The top-level README now has a `Verification With Talos` section that explains the artifact proof path: LeanExe emits WASM, `wasm-tools print` renders WAT, Talos decodes the generated WAT into Lean, and the handwritten proof establishes a property of that decoded module.  The section links to the proof workspace, the Lean sources, the proof specs, and the per-case check scripts for GCD, association-list lookup, and order-book matching.  It also points users to `tools/check-talos.sh` as the combined artifact check.
+
+`proofs/talos-gcd/README.md` now describes the proof workspace layout, the pinned Talos revision, the generated `Program.lean` files, the handwritten `Spec.lean` files, the checked-in WASM/WAT proof inputs, the current theorem scopes, the proof boundary, and the command path for regenerating `Program.lean` from an updated WAT artifact.  `spec.md` and `plan.md` now cross-reference the Talos artifact proofs while preserving the distinction between selected artifact proofs and the broader compiler-correctness theorem.  The GCD and association-list check scripts now use the same `wasm-tools print -o` form as the order-book script, and GCD now builds `Project.Gcd.Spec` instead of the whole proof project.  The combined `tools/check-talos.sh` script runs all three per-case checks and then builds the aggregate `Project` import.
+
+Checks run:
+
+- [x] `tools/check-talos.sh`
+- [x] `git diff --check`
+- [x] `bash -n tools/check-talos.sh tools/check-talos-gcd.sh tools/check-talos-assoc-list.sh tools/check-talos-order-book.sh`
