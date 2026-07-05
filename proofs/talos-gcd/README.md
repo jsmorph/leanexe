@@ -50,21 +50,15 @@ The association-list proof has a fixed source-level list because the exported pr
 
 ## Check Scripts
 
-Each per-case script performs the same artifact-integrity check.  It builds the Lean source module and the `lean-wasm` executable, compiles the selected source entry to a temporary WASM file, renders temporary WAT with `wasm-tools print`, compares both temporary files against the checked-in proof inputs, and rebuilds the relevant `Spec.lean` file.  The script stops at the first mismatch or failed proof.
+Each per-case script wraps [`tools/check-talos-case.sh`](../../tools/check-talos-case.sh), which performs the artifact-integrity check.  It builds the Lean source module and the `lean-wasm` executable, compiles the selected source entry to a temporary WASM file, renders temporary WAT with `wasm-tools print`, compares both temporary files against the checked-in proof inputs, and rebuilds the relevant `Spec.lean` file.  The script stops at the first mismatch or failed proof.
 
-The checked-in files under `rust/build/<case>/program.wasm` and `rust/build/<case>/program.wat` are the proof inputs.  The generated `Program.lean` file is derived from the checked-in WAT by Talos's verifier emitter.  When the compiler output changes intentionally, update the WASM and WAT artifacts, regenerate `Program.lean`, repair the proof, and run the corresponding check script before committing.
-
-For example, after recompiling the order-book artifact, regenerate WAT and the generated Lean module from the repository root:
+The checked-in files under `rust/build/<case>/program.wasm` and `rust/build/<case>/program.wat` are the proof inputs.  The generated `Program.lean` file is derived from the checked-in WAT by Talos's verifier emitter.  When the compiler output changes intentionally, run the corresponding check script with `--update`:
 
 ```sh
-$HOME/.cargo/bin/wasm-tools print \
-  proofs/talos-gcd/rust/build/order_book/program.wasm \
-  -o proofs/talos-gcd/rust/build/order_book/program.wat
-
-cd proofs/talos-gcd
-lean/.lake/packages/CodeLib/verifier/.lake/build/bin/verifier emit \
-  --force-emit order_book
+tools/check-talos-order-book.sh --update
 ```
+
+Update mode replaces the proof inputs with fresh compiler output, regenerates the matching `Program.lean` through the verifier emitter, and rebuilds the proof.  A proof failure after an update means the `Spec.lean` file needs repair before committing.  `tools/check-talos.sh --update` updates every case.  Update mode expects the verifier emitter binary at `lean/.lake/packages/CodeLib/verifier/.lake/build/bin/verifier`.
 
 The `emit` case name matches the directory under `rust/build`.  The generated Lean file is `lean/Project/OrderBook/Program.lean` for `order_book`, `lean/Project/AssocList/Program.lean` for `assoc_list`, and `lean/Project/Gcd/Program.lean` for `gcd`.
 
