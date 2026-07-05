@@ -315,7 +315,7 @@ Run all current Talos artifact checks from the repository root:
 tools/check-talos.sh
 ```
 
-Each per-case script rebuilds the relevant Lean module and `lean-wasm`, recompiles the source entry to a fresh temporary WASM file, prints fresh WAT, compares both files against the checked-in proof inputs under `proofs/talos-gcd/rust/build`, and rebuilds the corresponding Lean proof.  A file mismatch means the proof input no longer matches the current compiler output.  The scripts use `wasm-tools` from `PATH`, or the binary named by `WASM_TOOLS`, or `$HOME/.cargo/bin/wasm-tools`.
+Each per-case script rebuilds the relevant Lean module and `lean-wasm`, recompiles the source entry to a fresh temporary WASM file, prints fresh WAT, compares both files against the checked-in proof inputs under `proofs/talos-gcd/rust/build`, and rebuilds the corresponding Lean proof.  A file mismatch means the proof input no longer matches the current compiler output.  After an intentional compiler change, `--update` replaces the proof inputs with the fresh output, regenerates the Talos `Program.lean` model through the verifier emitter, and rebuilds the proof.  The scripts use `wasm-tools` from `PATH`, or the binary named by `WASM_TOOLS`, or `$HOME/.cargo/bin/wasm-tools`.
 
 ## Host Memory Values
 
