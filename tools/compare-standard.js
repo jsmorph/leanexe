@@ -637,6 +637,36 @@ function describeBytes(bytes) {
   return `0x${bytes.toString("hex")}`;
 }
 
+let irComparisonCount = 0;
+
+function runIR(config, fullEntry) {
+  const args = [leanExe, "eval-ir", "--module", config.moduleName, "--entry", fullEntry];
+  for (const value of config.programArgs) {
+    args.push(BigInt.asUintN(64, BigInt(value)).toString());
+  }
+  const result = run(args, { encoding: null, timeout: 10000 });
+  if (result.status === 3) {
+    return null;
+  }
+  requireSuccess(result, `${leanExe} ${args.slice(1).join(" ")}`);
+  return result.stdout || Buffer.alloc(0);
+}
+
+function compareIRResult(config, fullEntry, wasm) {
+  const irStdout = runIR(config, fullEntry);
+  if (irStdout === null) {
+    return false;
+  }
+  if (Buffer.compare(irStdout, wasm.stdout) !== 0) {
+    throw new Error(
+      `${config.moduleName}.${config.entry} IR interpreter differs:\n` +
+        `stdout: wasm ${describeBytes(wasm.stdout)}, ir ${describeBytes(irStdout)}`,
+    );
+  }
+  irComparisonCount += 1;
+  return true;
+}
+
 function compareResults(config, standard, wasm) {
   const problems = [];
   if (standard.status !== wasm.status) {
@@ -685,9 +715,14 @@ function compareCase(inputConfig) {
   }
   const wasm = runWasm(config, paths, shortEntry);
   compareResults(config, standard, wasm);
+  const irMatched =
+    config.mode === "pure" && wasm.status === 0 && compareIRResult(config, fullEntry, wasm);
 
   cleanup(config, paths);
   process.stdout.write(`matched ${config.mode} ${fullEntry}\n`);
+  if (irMatched) {
+    process.stdout.write(`matched ir ${fullEntry}\n`);
+  }
 }
 
 function cleanup(config, paths) {
@@ -2827,6 +2862,7 @@ out ++ __leanexeValue.bytes`,
     compareCase(testCase);
   }
   process.stdout.write(`checked ${cases.length} standard Lean comparison cases\n`);
+  process.stdout.write(`checked ${irComparisonCount} IR interpreter comparison cases\n`);
 }
 
 try {
