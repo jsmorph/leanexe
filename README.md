@@ -110,7 +110,7 @@ end LeanExe.Examples.ReadmeData
 
 ## Compile
 
-Use `compile` to write a WASM binary.  The exported entry name is the final component of the Lean declaration name, so `LeanExe.Examples.ReadmeDemo.choose` exports `choose`.  The module also exports `memory`, `alloc`, `reset`, `retain`, `release`, and `free` for host-side allocation, repeated execution, and reference-counted result lifetime.
+Use `compile` to write a WASM binary.  The exported entry name is the final component of the Lean declaration name, so `LeanExe.Examples.ReadmeDemo.choose` exports `choose`.  The module also exports `memory`, `alloc`, `reset`, `retain`, `release`, and `free` for host-side allocation, repeated execution, and reference-counted result lifetime, plus the runtime counter globals `allocCount`, `retainCount`, `releaseCount`, and `freeCount` for host-side leak accounting.
 
 ```sh
 .lake/build/bin/lean-wasm compile \
@@ -379,7 +379,7 @@ Supported control flow includes `let`, direct calls, `if`, pattern matching, pur
 | Nonrecursive inductive | Constructor tag followed by payload slots. |
 | Recursive inductive | Internal heap value only. |
 
-The entry declaration name must not collide with runtime exports such as `memory`, `alloc`, `reset`, `retain`, `release`, or `free`.  The host may call `release()` for individual returned heap objects or `reset()` when no old pointer remains live.  Integer overflow and invalid memory access trap according to the semantics in [Language Specification](spec.md).
+The entry declaration name must not collide with runtime exports such as `memory`, `alloc`, `reset`, `retain`, `release`, `free`, or the counter globals `allocCount`, `retainCount`, `releaseCount`, and `freeCount`.  The host may call `release()` for individual returned heap objects or `reset()` when no old pointer remains live.  Integer overflow and invalid memory access trap according to the semantics in [Language Specification](spec.md).
 
 ## Examples
 

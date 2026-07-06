@@ -63,6 +63,23 @@ function callBytes(wasm, entry, args = []) {
   return fromHex(call(wasm, entry, "bytes", args));
 }
 
+function callStats(wasm, entry, resultKind, args = []) {
+  const exe = ensureHost();
+  const output = run([exe, "call-stats", wasm, entry, resultKind, ...args]);
+  const lines = output.split(/\r?\n/);
+  const parts = lines[lines.length - 1].split(/\s+/);
+  if (parts[0] !== "stats" || parts.length !== 5) {
+    throw new Error(`missing stats line from Wasmtime host: ${output}`);
+  }
+  return {
+    result: lines.slice(0, -1).join("\n"),
+    allocs: BigInt(parts[1]),
+    retains: BigInt(parts[2]),
+    releases: BigInt(parts[3]),
+    frees: BigInt(parts[4]),
+  };
+}
+
 function script(wasm, commands, entry, resultCount, readCommands = []) {
   const exe = ensureHost();
   const input = `${commands.join("\n")}\ncall ${entry} ${resultCount}\n${readCommands.join("\n")}\ndone\n`;
@@ -107,6 +124,7 @@ module.exports = {
   call,
   callBytes,
   callI64,
+  callStats,
   ensureHost,
   i64,
   script,

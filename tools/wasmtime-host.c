@@ -484,6 +484,32 @@ static void call_export(Runtime *runtime, const char *func_name, const char *res
   printf("\n");
 }
 
+static uint64_t read_global_u64(Runtime *runtime, const char *name) {
+  wasmtime_extern_t item;
+  if (!wasmtime_instance_export_get(runtime->context, &runtime->instance, name, strlen(name), &item)) {
+    fprintf(stderr, "missing export: %s\n", name);
+    exit(1);
+  }
+  if (item.kind != WASMTIME_EXTERN_GLOBAL) {
+    fprintf(stderr, "export is not a global: %s\n", name);
+    exit(1);
+  }
+  wasmtime_val_t value;
+  wasmtime_global_get(runtime->context, &item.of.global, &value);
+  if (value.kind != WASMTIME_I64) {
+    die("expected i64 global");
+  }
+  return (uint64_t)value.of.i64;
+}
+
+static void print_stats(Runtime *runtime) {
+  printf("stats %" PRIu64 " %" PRIu64 " %" PRIu64 " %" PRIu64 "\n",
+         read_global_u64(runtime, "allocCount"),
+         read_global_u64(runtime, "retainCount"),
+         read_global_u64(runtime, "releaseCount"),
+         read_global_u64(runtime, "freeCount"));
+}
+
 static void invoke_func(Runtime *runtime, wasmtime_func_t *func, wasmtime_val_t *args,
                         size_t nargs, wasmtime_val_t *results, size_t nresults) {
   for (size_t i = 0; i < nresults; i++) {
@@ -947,7 +973,7 @@ static void command_script(Runtime *runtime, int argc, char **argv) {
 
 static void usage(void) {
   fprintf(stderr,
-          "usage: wasmtime-host call <module.wasm> <function> <i64|bytes|slots:N> "
+          "usage: wasmtime-host call|call-stats <module.wasm> <function> <i64|bytes|slots:N> "
           "[i64:N|bytes:HEX|array-u64:N,N ...]\n");
   exit(1);
 }
@@ -963,6 +989,13 @@ int main(int argc, char **argv) {
     }
     init_runtime(&runtime, argv[2]);
     call_export(&runtime, argv[3], argv[4], argc - 5, argv + 5);
+  } else if (strcmp(argv[1], "call-stats") == 0) {
+    if (argc < 5) {
+      usage();
+    }
+    init_runtime(&runtime, argv[2]);
+    call_export(&runtime, argv[3], argv[4], argc - 5, argv + 5);
+    print_stats(&runtime);
   } else if (strcmp(argv[1], "release-reuse") == 0) {
     init_runtime(&runtime, argv[2]);
     command_release_reuse(&runtime, argc - 3, argv + 3);

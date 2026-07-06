@@ -3217,7 +3217,11 @@ def exportSection (module_ : Module) : List UInt8 :=
         exportEntry "reset" 0 (module_.funcs.size + 1),
         exportEntry "retain" 0 (module_.funcs.size + 2),
         exportEntry "release" 0 (module_.funcs.size + 3),
-        exportEntry "free" 0 (module_.funcs.size + 3)]
+        exportEntry "free" 0 (module_.funcs.size + 3),
+        exportEntry "allocCount" 3 (runtimeStatGlobal .allocs),
+        exportEntry "retainCount" 3 (runtimeStatGlobal .retains),
+        exportEntry "releaseCount" 3 (runtimeStatGlobal .releases),
+        exportEntry "freeCount" 3 (runtimeStatGlobal .frees)]
 
 def coreAllocBody : List UInt8 :=
   body
