@@ -19,6 +19,10 @@
   (export "retain" (func 4))
   (export "release" (func 5))
   (export "free" (func 5))
+  (export "allocCount" (global 2))
+  (export "retainCount" (global 3))
+  (export "releaseCount" (global 4))
+  (export "freeCount" (global 5))
   (func (;0;) (type 0) (param i64 i64) (result i64)
     (local i64)
     local.get 0
