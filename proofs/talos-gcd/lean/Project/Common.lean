@@ -45,4 +45,11 @@ theorem toUInt32_eq_ofNat (x : UInt64) :
   rw [toUInt32_ofNat_mod_toNat]
   exact toUInt32_toNat x
 
+/-- The input bytes as a module reads them: each index has its byte at the
+wrapped 32-bit address, and that address is in bounds. -/
+def BytesAt (st : Wasm.Store Unit) (ptr : UInt64) (bytes : List UInt8) : Prop :=
+  ∀ i : Nat, i < bytes.length →
+    st.mem.read8 ((ptr + UInt64.ofNat i).toUInt32) = bytes[i]! ∧
+    ((ptr + UInt64.ofNat i).toUInt32).toNat + 1 ≤ st.mem.pages * 65536
+
 end Project.Common

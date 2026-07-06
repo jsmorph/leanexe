@@ -309,7 +309,7 @@ node tools/compare-standard.js --self-test
 
 The standard comparison suite checks generated WASM against standard Lean execution over selected inputs.  The Talos proof workspace adds artifact-level proofs for selected generated modules.  LeanExe emits WASM, `wasm-tools print` renders that WASM as WAT, Talos decodes the generated WAT into a Lean model, and the handwritten proof establishes a property of that decoded module.
 
-These proofs live in [Talos Proofs](proofs/talos-gcd/README.md), which contains proofs for GCD, association-list lookup, order-book matching, and byte validation over linear memory.  Each proof checks one generated artifact.  The broader compiler-correctness theorem remains the development target described in [Development Plan](plan.md).
+These proofs live in [Talos Proofs](proofs/talos-gcd/README.md), which contains proofs for GCD, association-list lookup, order-book matching, byte validation over linear memory, and byte append through the runtime allocator.  Each proof checks one generated artifact.  The broader compiler-correctness theorem remains the development target described in [Development Plan](plan.md).
 
 | Program | Source | Proved statement | Proof | Check |
 |---------|--------|------------------|-------|-------|
@@ -317,6 +317,7 @@ These proofs live in [Talos Proofs](proofs/talos-gcd/README.md), which contains 
 | Association-list lookup | [Talos Association List Source](LeanExe/Examples/TalosAssocList.lean) | For every `UInt64` key, `lookupDemo` returns the first matching value from the source-level sample list, or `0` when absent. | [Association List Talos Spec](proofs/talos-gcd/lean/Project/AssocList/Spec.lean) | [Association List Check Script](tools/check-talos-assoc-list.sh) |
 | Order-book matching | [Order Book Source](LeanExe/Examples/OrderBook.lean) | For all seven scalar inputs encoding one best bid, one best ask, and one incoming order, `matchBook` returns the expected option tag, quantity, and price. | [Order Book Talos Spec](proofs/talos-gcd/lean/Project/OrderBook/Spec.lean) | [Order Book Check Script](tools/check-talos-order-book.sh) |
 | Byte validation | [ASCII Digits Source](LeanExe/Examples/AsciiDigits.lean) | For every byte list written into linear memory at a pointer, `validateGeneric` terminates and returns `1` exactly when all bytes are ASCII digits. | [Validate Talos Spec](proofs/talos-gcd/lean/Project/Validate/Spec.lean) | [Validate Check Script](tools/check-talos-validate.sh) |
+| Byte append | [Byte Array Programs Source](LeanExe/Examples/ByteArrayPrograms.lean) | From a clean allocator state, `appendBang` allocates a fresh array holding the input bytes followed by `33`, returns its pointer and `length + 1`, and leaves every byte below the old heap top unchanged. | [Append Bang Talos Spec](proofs/talos-gcd/lean/Project/AppendBang/Spec.lean) | [Append Bang Check Script](tools/check-talos-append-bang.sh) |
 
 Run all current Talos artifact checks from the repository root:
 
