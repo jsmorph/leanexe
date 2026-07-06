@@ -1,4 +1,5 @@
 import Project.Validate.Program
+import Project.Common
 import LeanExe.Examples.AsciiDigits
 import Interpreter.Wasm.Wp.Tactic
 import Interpreter.Wasm.Wp.Block
@@ -17,6 +18,7 @@ byte list; the `BytesAt` hypothesis states what the host wrote into memory.
 namespace Project.Validate.Spec
 
 open Wasm
+open Project.Common
 open LeanExe.Examples.AsciiDigits
 
 set_option maxHeartbeats 64000000
@@ -27,29 +29,6 @@ def BytesAt (st : Store Unit) (ptr : UInt64) (bytes : List UInt8) : Prop :=
   ∀ i : Nat, i < bytes.length →
     st.mem.read8 ((ptr + UInt64.ofNat i).toUInt32) = bytes[i]! ∧
     ((ptr + UInt64.ofNat i).toUInt32).toNat + 1 ≤ st.mem.pages * 65536
-
-private theorem size_eq : UInt64.size = 18446744073709551616 := rfl
-
-private theorem toNat_ofNat_lt {n : Nat} (h : n < UInt64.size) :
-    (UInt64.ofNat n).toNat = n :=
-  UInt64.toNat_ofNat_of_lt' h
-
-private theorem ofNat_inj {a b : Nat} (ha : a < UInt64.size) (hb : b < UInt64.size)
-    (h : UInt64.ofNat a = UInt64.ofNat b) : a = b := by
-  have := congrArg UInt64.toNat h
-  rwa [toNat_ofNat_lt ha, toNat_ofNat_lt hb] at this
-
-private theorem toNat_add_one {x : UInt64} (h : x.toNat + 1 < UInt64.size) :
-    (x + 1).toNat = x.toNat + 1 := by
-  rw [size_eq] at h
-  rw [UInt64.toNat_add]
-  have h1 : (1 : UInt64).toNat = 1 := rfl
-  rw [h1]
-  omega
-
-private theorem getBang_eq {bytes : List UInt8} {i : Nat} (hi : i < bytes.length) :
-    bytes[i]! = bytes[i] := by
-  rw [List.getElem!_eq_getElem?_getD, List.getElem?_eq_getElem hi, Option.getD_some]
 
 private def digitFlag (b : UInt64) : UInt64 :=
   if 48 ≤ b ∧ b ≤ 57 then 1 else 0

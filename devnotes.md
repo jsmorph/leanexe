@@ -4143,3 +4143,14 @@ Checks run:
 
 - [x] `tools/check-talos-validate.sh --update` built the proof with zero errors
 - [x] `tools/check-talos.sh` over all four cases plus the aggregate `Project` build
+
+## 2026-07-06: Abstract heap predicate and shared proof lemmas
+
+The association-list proof no longer hard-codes cell addresses.  A new inductive predicate `ListSegAt st addr kvs` describes a linked association-list segment in memory: each cell holds a tag word `1`, the key, the value, and the tail pointer in consecutive 8-byte slots, the terminator holds tag `0`, and every read carries its bound.  The generated lookup function gets one lemma, `func0_seg`, proved by induction over the list: for every segment and every key, the export returns the first matching value or `0`.  The four per-node lemmas at addresses 4464, 4384, 4304, and 4224, and their per-node expected-value functions, are deleted; the only place concrete addresses remain is `sample_seg`, which shows the constructed sample is a segment at its root.  The public theorem `lookupDemo_correct` is unchanged in statement, and the lookup lemma now applies to arbitrary constructed lists, which is what the next list-building artifact will need.
+
+`Project/Common.lean` now holds the lemmas the artifact proofs share: `size_eq`, `toNat_ofNat_lt`, `ofNat_inj`, `toNat_add_one`, and `getBang_eq` from the byte-validation proof, plus the address-form conversions `toUInt32_toNat`, `toUInt32_ofNat_mod_toNat`, and `toUInt32_eq_ofNat` that connect `(addr + c).toUInt32` hypotheses to the modular normal form `simp` produces in wp goals.  The mechanical lesson: `omega` treats `addr.toUInt32.toNat` and `addr.toNat % 4294967296` as unrelated atoms, so segment-style predicates must be rewritten into the goal's normal form before the bounds discharge, and the conversions belong in one place.
+
+Checks run:
+
+- [x] `tools/check-talos-assoc-list.sh` built the refactored proof with zero errors
+- [x] `tools/check-talos.sh` over all four cases plus the aggregate `Project` build
