@@ -2,9 +2,11 @@
 set -euo pipefail
 
 usage() {
-  echo "usage: check-talos-case.sh --case <name> --module <module> --entry <entry> --spec <target> [--update]" >&2
-  echo "  --update replaces the checked-in proof inputs with fresh compiler output" >&2
-  echo "  and regenerates the Talos Program.lean model before rebuilding the proof." >&2
+  echo "usage: check-talos-case.sh --case <name> --module <module> --entry <entry> --spec <target> --program <path> [--update]" >&2
+  echo "  --program names the generated model file relative to proofs/talos-gcd/lean." >&2
+  echo "  --update replaces the checked-in proof inputs with fresh compiler output," >&2
+  echo "  regenerates the Talos Program.lean model, and rebuilds the proof; on any" >&2
+  echo "  failure it restores the previous proof inputs." >&2
   exit 2
 }
 
@@ -12,6 +14,7 @@ case_name=""
 module=""
 entry=""
 spec=""
+program_path=""
 update=0
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -19,11 +22,12 @@ while [[ $# -gt 0 ]]; do
     --module) module="$2"; shift 2 ;;
     --entry) entry="$2"; shift 2 ;;
     --spec) spec="$2"; shift 2 ;;
+    --program) program_path="$2"; shift 2 ;;
     --update) update=1; shift ;;
     *) usage ;;
   esac
 done
-[[ -n "$case_name" && -n "$module" && -n "$entry" && -n "$spec" ]] || usage
+[[ -n "$case_name" && -n "$module" && -n "$entry" && -n "$spec" && -n "$program_path" ]] || usage
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 wasm_tmp="$repo_root/.lake/build/talos-check/$case_name/program.wasm"
@@ -60,13 +64,36 @@ if [[ "$update" -eq 1 ]]; then
     echo "Build it with: cd proofs/talos-gcd/lean/.lake/packages/CodeLib/verifier && lake build" >&2
     exit 127
   fi
+  backup_dir="$(mktemp -d)"
+  program_ref="$repo_root/proofs/talos-gcd/lean/$program_path"
+  restore() {
+    for file in "$wasm_ref" "$wat_ref" "$program_ref"; do
+      local name
+      name="$(basename "$file").$(basename "$(dirname "$file")")"
+      if [[ -f "$backup_dir/$name" ]]; then
+        cp "$backup_dir/$name" "$file"
+      else
+        rm -f "$file"
+      fi
+    done
+    rm -rf "$backup_dir"
+    echo "update failed; restored previous proof inputs for $case_name" >&2
+  }
+  trap restore ERR
+  for file in "$wasm_ref" "$wat_ref" "$program_ref"; do
+    if [[ -f "$file" ]]; then
+      cp "$file" "$backup_dir/$(basename "$file").$(basename "$(dirname "$file")")"
+    fi
+  done
+  mkdir -p "$(dirname "$wasm_ref")"
   cp "$wasm_tmp" "$wasm_ref"
   cp "$wat_tmp" "$wat_ref"
   (cd "$repo_root/proofs/talos-gcd" && "$verifier" emit --force-emit "$case_name")
+  (cd "$repo_root/proofs/talos-gcd/lean" && lake build "$spec")
+  trap - ERR
+  rm -rf "$backup_dir"
 else
   cmp "$wasm_tmp" "$wasm_ref"
   cmp "$wat_tmp" "$wat_ref"
+  (cd "$repo_root/proofs/talos-gcd/lean" && lake build "$spec")
 fi
-
-cd "$repo_root/proofs/talos-gcd/lean"
-lake build "$spec"
