@@ -1,5 +1,6 @@
 import LeanExe.Core
 import LeanExe.Extract.Core
+import LeanExe.Extract.Eval
 import LeanExe.Extract.OwnershipReport
 import LeanExe.Extract.Report
 import LeanExe.Examples.AsciiDigits
@@ -19,6 +20,7 @@ def usage : String :=
     "  lean-wasm ownership-report --module <module> --entry <name>",
     "  lean-wasm ownership-report --module <module> --entry <name> --out <path>",
     "  lean-wasm eval --hex <hex-bytes>",
+    "  lean-wasm eval-ir --module <module> --entry <name> [arg ...]",
     "  lean-wasm compile --module <module> --entry <name> --out <path>",
     "  lean-wasm compile-wat --module <module> --entry <name> --out <path>",
     "  lean-wasm compile-wasi --module <module> --entry <name> --out <path>",
@@ -123,6 +125,14 @@ def parseNatArg (text : String) : Except String Nat :=
   | some n => .ok n
   | none => .error s!"invalid natural number: {text}"
 
+def parseU64Args : List String → Except String (List UInt64)
+  | [] => .ok []
+  | arg :: rest =>
+      match arg.toNat?, parseU64Args rest with
+      | some n, .ok values => .ok (UInt64.ofNat n :: values)
+      | none, _ => .error s!"invalid unsigned integer: {arg}"
+      | _, .error error => .error error
+
 def main : List String → IO UInt32
   | ["emit", "--out", out] => do
       emitAll out
@@ -150,6 +160,20 @@ def main : List String → IO UInt32
       | .ok input =>
           IO.println (boolCode (LeanExe.Examples.AsciiDigits.validate input))
           return 0
+      | .error error =>
+          IO.eprintln error
+          return 2
+  | "eval-ir" :: "--module" :: moduleName :: "--entry" :: entryName :: rest => do
+      match parseU64Args rest with
+      | .ok args =>
+          match ← LeanExe.Extract.Eval.evalEntry moduleName entryName args with
+          | .results values =>
+              for value in values do
+                IO.println s!"{value.toNat}"
+              return 0
+          | .outsideFragment reason =>
+              IO.eprintln reason
+              return 3
       | .error error =>
           IO.eprintln error
           return 2

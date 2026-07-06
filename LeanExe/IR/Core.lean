@@ -41,13 +41,22 @@ inductive RuntimeStat where
   | frees
   deriving BEq, Repr
 
-def Store := Nat → UInt64
+structure Store where
+  values : Array UInt64
+
+instance : CoeFun Store (fun _ => Nat → UInt64) :=
+  ⟨fun store index => store.values.getD index 0⟩
 
 def Store.empty : Store :=
-  fun _ => 0
+  ⟨#[]⟩
 
 def Store.set (store : Store) (index : Nat) (value : UInt64) : Store :=
-  fun candidate => if candidate == index then value else store candidate
+  let values :=
+    if index < store.values.size then
+      store.values
+    else
+      store.values ++ Array.replicate (index + 1 - store.values.size) 0
+  ⟨values.set! index value⟩
 
 mutual
   inductive Expr where

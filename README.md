@@ -291,6 +291,14 @@ node tools/compare-standard.js \
   --serializer '__leanexeJsonArray __leanexeValue __leanexeJsonByteArray'
 ```
 
+Pure mode adds a third executable semantics.  The `eval-ir` command compiles the entry to the core IR and evaluates it with the reference interpreter in `LeanExe/IR/Core.lean`, so the harness can compare standard Lean, the IR interpreter, and Wasmtime on the same inputs.  A mismatch then localizes to extraction (standard Lean versus IR) or emission (IR versus WASM).  The interpreter covers the scalar IR fragment only; when the compiled module contains heap constructs, `eval-ir` exits with status 3 and the harness skips the comparison.
+
+```sh
+.lake/build/bin/lean-wasm eval-ir \
+  --module LeanExe.Examples.Collatz \
+  --entry LeanExe.Examples.Collatz.steps 27
+```
+
 Run the built-in comparison cases with:
 
 ```sh
