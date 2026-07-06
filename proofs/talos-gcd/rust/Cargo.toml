@@ -1,3 +1,3 @@
 [workspace]
 resolver = "2"
-members = ["gcd", "assoc_list", "order_book"]
+members = ["gcd", "assoc_list", "order_book", "validate"]
