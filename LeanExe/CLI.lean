@@ -22,7 +22,6 @@ def usage : String :=
     "  lean-wasm eval --hex <hex-bytes>",
     "  lean-wasm eval-ir --module <module> --entry <name> [arg ...]",
     "  lean-wasm compile --module <module> --entry <name> --out <path>",
-    "  lean-wasm compile-wat --module <module> --entry <name> --out <path>",
     "  lean-wasm compile-wasi --module <module> --entry <name> --out <path>",
     "  lean-wasm compile-wasi-stdin --max-input-bytes <n> --module <module> --entry <name> --out <path>",
     "  lean-wasm compile-wasi-stdin-except --max-input-bytes <n> --module <module> --entry <name> --out <path>",
@@ -179,10 +178,6 @@ def main : List String → IO UInt32
           return 2
   | ["compile", "--module", moduleName, "--entry", entryName, "--out", out] => do
       writeBytes out (LeanExe.Wasm.Binary.CoreWasm.moduleBytes
-        (← LeanExe.Extract.Core.compile moduleName entryName))
-      return 0
-  | ["compile-wat", "--module", moduleName, "--entry", entryName, "--out", out] => do
-      writeText out (LeanExe.Wasm.Binary.CoreWasm.moduleWat
         (← LeanExe.Extract.Core.compile moduleName entryName))
       return 0
   | ["compile-wasi", "--module", moduleName, "--entry", entryName, "--out", out] => do
