@@ -257,37 +257,17 @@ theorem appendBang_correct : AppendBangSpec := by
         · rfl
         · rfl
         · intro a ha
-          have hstep : ∀ (mm : Mem) (ad : UInt32) (v : UInt64),
-              a < ad.toNat →
-              (mm.write64 ad v).bytes a = mm.bytes a := by
-            intro mm ad v han
-            unfold Mem.write64
-            dsimp only
-            split_ifs <;> first | rfl | omega
-          rw [hstep _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-            hstep _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-            hstep _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-            hstep _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-            hstep _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-            hstep _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega)]
+          rw [write64_bytes_lo _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+            write64_bytes_lo _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+            write64_bytes_lo _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+            write64_bytes_lo _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+            write64_bytes_lo _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+            write64_bytes_lo _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega)]
         · intro i hi
           omega
       · rintro st2 s2 ⟨k, hk, rfl, hpg, hgl, hlo, hpref⟩
         have hkU : (UInt64.ofNat k).toNat = k :=
           toNat_ofNat_lt (by rw [size_eq]; omega)
-        have hw8ne : ∀ (mm : Mem) (ad : UInt32) (v : UInt8) (x : Nat),
-            x ≠ ad.toNat → (mm.write8 ad v).bytes x = mm.bytes x := by
-          intro mm ad v x hx
-          unfold Mem.write8
-          dsimp only
-          rw [if_neg hx]
-        have hw8hit : ∀ (mm : Mem) (ad : UInt32) (v : UInt8) (x : Nat),
-            x = ad.toNat → (mm.write8 ad v).bytes x = v := by
-          intro mm ad v x hx
-          subst hx
-          unfold Mem.write8
-          dsimp only
-          rw [if_pos rfl]
         simp only [vFrame]
         wp_run
         try simp
@@ -305,16 +285,16 @@ theorem appendBang_correct : AppendBangSpec := by
           · intro i hi
             by_cases hieq : i = bytes.length
             · subst hieq
-              rw [hw8hit _ _ _ _ (by rw [toUInt32_ofNat_mod_toNat]; omega)]
+              rw [write8_bytes_hit _ _ _ (by rw [toUInt32_ofNat_mod_toNat]; omega)]
               rw [List.getElem?_append_right (Nat.le_refl _)]
               simp
             · have hilt : i < bytes.length := by omega
-              rw [hw8ne _ _ _ _ (by rw [toUInt32_ofNat_mod_toNat]; omega)]
+              rw [write8_bytes_ne _ _ _ (by rw [toUInt32_ofNat_mod_toNat]; omega)]
               rw [hpref i hilt, getBang_eq hilt]
               rw [List.getElem?_append_left hilt, List.getElem?_eq_getElem hilt]
               simp
           · intro a ha
-            rw [hw8ne _ _ _ _ (by rw [toUInt32_ofNat_mod_toNat]; omega)]
+            rw [write8_bytes_ne _ _ _ (by rw [toUInt32_ofNat_mod_toNat]; omega)]
             exact hlo a ha
         · -- copy one byte and continue
           have hklt : k < bytes.length := Nat.lt_of_le_of_ne hk hkend
@@ -354,13 +334,13 @@ theorem appendBang_correct : AppendBangSpec := by
           · rw [← hkadd]
             simp only [vFrame]
           · intro a ha
-            rw [hw8ne _ _ _ _ (by rw [toUInt32_ofNat_mod_toNat]; omega)]
+            rw [write8_bytes_ne _ _ _ (by rw [toUInt32_ofNat_mod_toNat]; omega)]
             exact hlo a ha
           · intro i hi
             by_cases hieq : i = k
             · subst hieq
-              rw [hw8hit _ _ _ _ (by rw [toUInt32_ofNat_mod_toNat]; omega)]
-            · rw [hw8ne _ _ _ _ (by rw [toUInt32_ofNat_mod_toNat]; omega)]
+              rw [write8_bytes_hit _ _ _ (by rw [toUInt32_ofNat_mod_toNat]; omega)]
+            · rw [write8_bytes_ne _ _ _ (by rw [toUInt32_ofNat_mod_toNat]; omega)]
               exact hpref i (by omega)
           · simp [vMeasure]
             omega

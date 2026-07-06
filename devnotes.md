@@ -4167,3 +4167,15 @@ Checks run:
 
 - [x] `tools/check-talos-append-bang.sh --update` built the proof with zero errors
 - [x] `tools/check-talos.sh` over all five cases plus the aggregate `Project` build
+
+## 2026-07-06: Shared write-frame lemmas
+
+`Project/Common.lean` now holds `write8_bytes_ne`, `write8_bytes_hit`, and `write64_bytes_lo`, and the byte-append proof uses them instead of local copies.  The hit lemma takes the address as an equation hypothesis so the rewrite never touches the address expression, which is the form the copy-loop and exit-store steps need.
+
+## 2026-07-06: Fold leak diagnosis
+
+The leak accounting flagged `arrayFoldByteArrayAccumulatorReleaseStats` at 11 allocations against 2 frees.  The diagnosis from the generated binary: the entry contains nine inline allocation sites, and at runtime the source-level costs decompose as one allocation for the `#[65, 66, 67]` literal, one for the starting accumulator, and three per fold iteration, of which only one is the copy-on-write `push` itself.  A direct push chain costs exactly one allocation per push (`bytesABC` runs at 3 allocations, 2 releases, 2 frees, with each replaced fresh predecessor reclaimed), so the fold body introduces roughly two extra allocations per iteration: intermediates from materializing the accumulator value into and out of the callback.  The accumulator-replacement rule fires correctly (2 releases, matching the source-level counters) but sees none of the intermediates, the initial accumulator is skipped by the documented alias rule even though it is provably fresh here, the input array literal is never released despite being a fresh nonrecursive owner in a scalar-result function, and the final accumulator leaks after its last use.  The release-rule work should target the per-iteration intermediates first, since they dominate and are provably fresh and dead within one iteration.
+
+## 2026-07-06: compile-wat diverges from the emitted binary
+
+Comparing `compile-wat` output against `wasm-tools print` of the `compile` binary for the same entry shows two different programs.  The binary contains the reference-counted runtime: paired free-list and bump allocation paths with header writes at every inline allocation site, and counter increments that match the observed runtime statistics.  The `compile-wat` output contains a headerless bump allocator with no free list and no counters: `moduleWat` in `LeanExe/Wasm/Binary.lean` is a second, hand-written WAT backend with its own hard-coded runtime, and it has drifted from the binary emitter.  The Talos proof pipeline is unaffected because the check scripts print WAT from the binary with `wasm-tools`.  Anyone reading `compile-wat` output, and any future proof work that trusted it, would be reasoning about code that does not ship.  The fix is a design decision: either derive the WAT text from the same lowering as `moduleBytes`, or retire `compile-wat` and document `wasm-tools print` as the inspection path.

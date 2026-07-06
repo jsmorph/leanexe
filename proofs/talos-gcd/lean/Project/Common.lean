@@ -52,4 +52,27 @@ def BytesAt (st : Wasm.Store Unit) (ptr : UInt64) (bytes : List UInt8) : Prop :=
     st.mem.read8 ((ptr + UInt64.ofNat i).toUInt32) = bytes[i]! ∧
     ((ptr + UInt64.ofNat i).toUInt32).toNat + 1 ≤ st.mem.pages * 65536
 
+/-- A byte write leaves every other address unchanged. -/
+theorem write8_bytes_ne (mm : Wasm.Mem) (ad : UInt32) (v : UInt8) {x : Nat}
+    (hx : x ≠ ad.toNat) : (mm.write8 ad v).bytes x = mm.bytes x := by
+  unfold Wasm.Mem.write8
+  dsimp only
+  rw [if_neg hx]
+
+/-- A byte write is visible at its own address.  The address is an equation
+hypothesis so the rewrite never touches the address expression itself. -/
+theorem write8_bytes_hit (mm : Wasm.Mem) (ad : UInt32) (v : UInt8) {x : Nat}
+    (hx : x = ad.toNat) : (mm.write8 ad v).bytes x = v := by
+  subst hx
+  unfold Wasm.Mem.write8
+  dsimp only
+  rw [if_pos rfl]
+
+/-- A word write leaves every address below it unchanged. -/
+theorem write64_bytes_lo (mm : Wasm.Mem) (ad : UInt32) (v : UInt64) {x : Nat}
+    (hx : x < ad.toNat) : (mm.write64 ad v).bytes x = mm.bytes x := by
+  unfold Wasm.Mem.write64
+  dsimp only
+  split_ifs <;> first | rfl | omega
+
 end Project.Common
