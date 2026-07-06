@@ -4072,3 +4072,55 @@ Checks run:
 - [x] `tools/check-talos.sh`
 - [x] `git diff --check`
 - [x] `bash -n tools/check-talos.sh tools/check-talos-gcd.sh tools/check-talos-assoc-list.sh tools/check-talos-order-book.sh`
+
+## 2026-07-05: Repository summary and development agenda
+
+`summary.md` describes the repository as it stands: the extraction pipeline, the accepted subset, the reference-counted arena memory model, the ABI and WASI adapters, the differential test suite, and the three Talos artifact proofs.  `agenda.md` sequences the next work: harden the Talos workflow, add the IR interpreter as a third differential semantics, measure heap leaks, then state and prove a lowering theorem for the scalar IR fragment, with the runtime `String` slice and backend module split behind those.  The agenda marks one design decision for discussion before the theorem work starts: whether the fragment theorem should speak about the WAT-decoded Talos module or a model built directly from the compiler's module value.
+
+## 2026-07-06: Talos check script update mode
+
+The three per-case check scripts are now thin wrappers over `tools/check-talos-case.sh`, which takes the case name, source module, entry, and proof spec target as flags.  The new `--update` flag replaces the checked-in proof inputs under `proofs/talos-gcd/rust/build` with fresh compiler output, regenerates the matching `Program.lean` through the Talos verifier emitter at `lean/.lake/packages/CodeLib/verifier/.lake/build/bin/verifier`, and rebuilds the proof.  Default mode keeps the byte-for-byte comparison.  `tools/check-talos.sh` forwards its arguments to all three cases.
+
+Checks run:
+
+- [x] `tools/check-talos-gcd.sh`
+- [x] `tools/check-talos-gcd.sh --update` left a clean tree on an unchanged compiler
+- [x] `tools/check-talos-assoc-list.sh`
+- [x] `tools/check-talos-order-book.sh`
+
+## 2026-07-06: IR interpreter differential column
+
+The new `eval-ir` command compiles an entry to the core IR and evaluates it with the reference interpreter in `LeanExe/IR/Core.lean`, printing one unsigned decimal per result slot.  The interpreter is faithful only on the scalar fragment: heap constructs evaluate to `0` and `trap` evaluates to `0`.  `LeanExe/Extract/Eval.lean` therefore checks both the entry signature and the whole compiled module; any heap construct anywhere in the module exits with status `3`, and `tools/compare-standard.js` skips the IR column for that case.  The first self-test run caught exactly this: `idRunNestedArrayForSum` has a scalar signature but folds an internal array, and the signature-only check let the interpreter return `0` where WASM returned `10`.  The module scan replaced the signature-only check.
+
+The interpreter `Store` is now a structure over `Array UInt64` with a `CoeFun` view, replacing the closure-chain function store.  The old representation added one closure per `set`, so loop evaluation was quadratic with large constants: `Collatz.steps 27` (fuel 10000) did not finish in fifteen minutes and now evaluates in under 0.2 seconds.  Extensional behavior is unchanged (`Store.empty` is all zeros, `set` shadows one index).
+
+Pure-mode standard comparisons now run three semantics on the same inputs: standard Lean, the IR interpreter, and Wasmtime.  A mismatch localizes to extraction (standard versus IR) or emission (IR versus WASM).
+
+Checks run:
+
+- [x] `lean-wasm eval-ir --module LeanExe.Examples.Collatz --entry LeanExe.Examples.Collatz.steps 27` returned `111`
+- [x] `lean-wasm eval-ir` on `byteArrayReturnABC` and `idRunNestedArrayForSum` exited `3` with fragment diagnostics
+- [x] `node tools/compare-standard.js --self-test` returned `checked 301 standard Lean comparison cases` and `checked 58 IR interpreter comparison cases`
+
+## 2026-07-06: Host leak accounting
+
+Library-mode modules now export the runtime counter globals `allocCount`, `retainCount`, `releaseCount`, and `freeCount` as mutable `i64` globals, extending the reserved export-name list.  The Wasmtime host runner has a `call-stats` command that invokes an export like `call` and then prints the four counters, and `test/wasmtime_host.js` exposes `callStats`.  `test/refcount.js` asserts exact counter quadruples for seven heap-using scalar-result entries and reports the leak balance.
+
+Five entries run leak-free (allocations equal frees): `ownedArrayCallTempScalar`, `ownedByteArrayCallTempScalar`, `ownedBoxCallTempScalar`, `sharedRecursiveChildReleaseStats`, and `byteArrayResultDropsOwnedTempStats`.  Two retain blocks at exit.  `ownedRecursiveNodeParamCallTempScalar` allocates 3 and frees 0, which is the documented conservative policy for recursive temporaries.  `arrayFoldByteArrayAccumulatorReleaseStats` allocates 11 and frees 2, so nine blocks survive a fold that the accumulator-replacement rule was thought to cover; the unreleased blocks are candidates for the next release-rule extension and should be diagnosed before new rules are written.
+
+The export change alters every generated library module, so the three Talos proof inputs were regenerated with `tools/check-talos.sh --update`.  The WASM and WAT inputs changed, each generated `Program.lean` came back byte-identical, and all three proofs rebuilt without repair: the Talos verifier emitter's model does not reflect the export section, so the weakest-precondition proofs are untouched by added exports.
+
+Checks run:
+
+- [x] `node test/refcount.js` returned `checked 7 leak accounting cases, 5 leak-free, 2 retaining blocks` and `checked 38 refcount cases`
+- [x] `tools/check-talos.sh --update` regenerated all three proof inputs and rebuilt all proofs
+
+## 2026-07-06: Fragment-theorem model question
+
+The agenda's Priority 1 needs one design decision before the theorem statement can be written.  The theorem quantifies over IR programs in the scalar fragment and asserts that the emitted WASM module, read in the Talos model, computes what `Expr.eval` computes.  The question is how the Talos-model module value is obtained.
+
+Option A keeps the current artifact path: the emitter produces bytes, `wasm-tools` prints WAT, and Talos's WAT decoder produces the module value.  The theorem then needs a connection lemma stating that decoding the printed form of the emitted bytes yields a module with the expected shape, which drags `wasm-tools` (a Rust binary) and the WAT decoder into the proof pipeline for every fragment program.  A universally quantified theorem cannot run an external binary, so Option A in its literal form only supports per-artifact proofs, which is what exists today.
+
+Option B constructs the Talos-model module value directly from the compiler's own module representation in `LeanExe/Wasm/Binary.lean`, as a Lean function from the compiler's `Module` to Talos's module type.  The theorem then speaks about `talosModule (emit ir)` with no external tools, and the byte-level artifact comparison remains a separate check that the shipped bytes match the modeled module (per artifact, exactly as the check scripts do now).  The cost is a translation function and the obligation that it agrees with the WAT-decode path on the artifacts we ship; the existing byte-for-byte check scripts already discharge that agreement empirically per case.
+
+Recommendation: Option B.  It is the only form in which a universally quantified fragment theorem can be stated, and it shortens the trusted path by removing `wasm-tools` and the WAT decoder from the proof loop.  The decision affects the `CodeLib` dependency surface (the translation function needs Talos's module type as a library) and should be confirmed before implementation.
