@@ -6,4 +6,5 @@ exec "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/check-talos-case.sh" \
   --module LeanExe.Examples.OrderBook \
   --entry LeanExe.Examples.OrderBook.matchBook \
   --spec Project.OrderBook.Spec \
+  --program Project/OrderBook/Program.lean \
   "$@"
