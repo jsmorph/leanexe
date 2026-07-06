@@ -1,0 +1,4 @@
+[package]
+name = "append_bang"
+version = "0.1.0"
+edition = "2024"
