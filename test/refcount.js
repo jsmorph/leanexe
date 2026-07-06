@@ -138,6 +138,41 @@ function checkCompilerReleasesFoldAccumulators() {
   );
 }
 
+function checkLeakAccounting() {
+  const cases = [
+    ["ownedArrayCallTempScalar", [1n, 0n, 1n, 1n]],
+    ["ownedByteArrayCallTempScalar", [1n, 0n, 1n, 1n]],
+    ["ownedBoxCallTempScalar", [2n, 0n, 2n, 2n]],
+    ["sharedRecursiveChildReleaseStats", [2n, 1n, 3n, 2n]],
+    ["byteArrayResultDropsOwnedTempStats", [2n, 0n, 2n, 2n]],
+    ["ownedRecursiveNodeParamCallTempScalar", [3n, 1n, 0n, 0n]],
+    ["arrayFoldByteArrayAccumulatorReleaseStats", [11n, 0n, 2n, 2n]],
+  ];
+  let leakFree = 0;
+  let retaining = 0;
+  for (const [entry, [allocs, retains, releases, frees]] of cases) {
+    const wasm = compile(correctnessModule, entry);
+    const stats = host.callStats(wasm, entry, "i64");
+    const observed = [stats.allocs, stats.retains, stats.releases, stats.frees];
+    const expected = [allocs, retains, releases, frees];
+    for (let index = 0; index < 4; index += 1) {
+      if (observed[index] !== expected[index]) {
+        throw new Error(
+          `${entry}: expected stats ${expected.join(" ")}, got ${observed.join(" ")}`,
+        );
+      }
+    }
+    if (stats.allocs === stats.frees) {
+      leakFree += 1;
+    } else {
+      retaining += 1;
+    }
+  }
+  process.stdout.write(
+    `checked ${cases.length} leak accounting cases, ${leakFree} leak-free, ${retaining} retaining blocks\n`,
+  );
+}
+
 function main() {
   run(["lake", "build", correctnessModule]);
   run(["lake", "build", byteArrayModule]);
@@ -148,6 +183,7 @@ function main() {
   checkBorrowedArrayNoopRelease();
   checkCompilerReleasesOwnedCallResults();
   checkCompilerReleasesFoldAccumulators();
+  checkLeakAccounting();
   process.stdout.write("checked 38 refcount cases\n");
 }
 

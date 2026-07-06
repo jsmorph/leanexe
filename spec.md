@@ -25,9 +25,9 @@ The command-line entry point for generic compilation is:
 
 ## WASM Module ABI
 
-The default library-mode module exports growable linear memory, `alloc(len : i64) : i64`, `reset()`, `retain(ptr : i64) : i64`, `release(ptr : i64)`, `free(ptr : i64)`, and the selected entry function.  The memory starts at 16 pages, the heap starts at byte offset `4096`, and `alloc` returns a byte offset in exported memory.  `free` is an alias for `release`.
+The default library-mode module exports growable linear memory, `alloc(len : i64) : i64`, `reset()`, `retain(ptr : i64) : i64`, `release(ptr : i64)`, `free(ptr : i64)`, the runtime counter globals `allocCount`, `retainCount`, `releaseCount`, and `freeCount` (each a mutable `i64`), and the selected entry function.  The memory starts at 16 pages, the heap starts at byte offset `4096`, and `alloc` returns a byte offset in exported memory.  `free` is an alias for `release`.
 
-The entry export name is the last component of the Lean declaration name.  For example, `My.Module.answer` exports `answer`.  The entry name must not be `memory`, `alloc`, `reset`, `retain`, `release`, or `free`, because those names belong to the runtime ABI.
+The entry export name is the last component of the Lean declaration name.  For example, `My.Module.answer` exports `answer`.  The entry name must not be `memory`, `alloc`, `reset`, `retain`, `release`, `free`, `allocCount`, `retainCount`, `releaseCount`, or `freeCount`, because those names belong to the runtime ABI.
 
 The stdout-only WASI command-mode module imports `wasi_snapshot_preview1.fd_write`, exports `_start`, and exports the same memory.  It does not export `alloc`, `reset`, or the selected Lean entry as the public program interface.  The selected entry must take no parameters and return `ByteArray`; `_start` writes the returned pointer-length byte range to stdout and traps if `fd_write` returns an error or reports a short write.
 
