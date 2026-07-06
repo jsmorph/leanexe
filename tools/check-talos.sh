@@ -8,6 +8,7 @@ tools/check-talos-gcd.sh "$@"
 tools/check-talos-assoc-list.sh "$@"
 tools/check-talos-order-book.sh "$@"
 tools/check-talos-validate.sh "$@"
+tools/check-talos-append-bang.sh "$@"
 
 cd "$repo_root/proofs/talos-gcd/lean"
 lake build Project

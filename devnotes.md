@@ -4154,3 +4154,16 @@ Checks run:
 
 - [x] `tools/check-talos-assoc-list.sh` built the refactored proof with zero errors
 - [x] `tools/check-talos.sh` over all four cases plus the aggregate `Project` build
+
+## 2026-07-06: Talos proof for byte append through the allocator
+
+The fifth Talos artifact proof covers `LeanExe.Examples.ByteArrayPrograms.appendBang`, the first memory-writing artifact.  `Project.AppendBang.Spec.appendBang_correct` states: from any store whose free list is empty, whose heap-top global leaves room for the rounded allocation within current memory, and whose input bytes sit below the heap top, the export terminates, returns the fresh pointer `g0 + 48` and `length + 1`, the result region holds the input bytes followed by `33`, and every byte below the old heap top is unchanged.  The proof has no `sorry`, no added axioms, and no `native_decide`, and it verifies the inlined runtime allocator on its bump path: the free-list walk exits on its first test, the pointer-wrap and memory-grow guards discharge from the fit hypotheses, and the six reference-count header stores land above the old heap top.
+
+The copy loop uses a two-clause memory invariant: the number of bytes already copied into the result region, plus a frame clause that everything below the old heap top equals the pre-call memory.  The frame clause is also part of the public theorem, so the statement rules out corruption of the caller's input.  Pointwise write reasoning goes through two small local lemmas, `write8` at the hit address and `write8` away from it, with the hit stated as an equation hypothesis so the rewrite never touches the address expression itself; the six `write64` header stores use the same shape with a generic address.
+
+Mechanical lessons beyond the validate proof.  First, `wp_run` stops on locals bookkeeping when the frame comes from an invariant; a plain `simp` after `wp_run` collapses it, and branch conditions surface as `if a ≥ b` in `GE` form, so the deciding facts must be supplied as `≥`-typed terms for `if_pos`/`if_neg`.  Second, `simp only [Mem.write64]` across a six-write chain exceeds the step limit because of the literal byte-extraction arms; unfolding is avoided entirely by the generic one-write frame lemma applied six times with the disequality proofs inline.  Third, `simp` normalizes `(UInt64.ofNat k + 1).toNat` to `(k + 1) % 2^64` on its own, so measure goals close with `omega` directly.
+
+Checks run:
+
+- [x] `tools/check-talos-append-bang.sh --update` built the proof with zero errors
+- [x] `tools/check-talos.sh` over all five cases plus the aggregate `Project` build

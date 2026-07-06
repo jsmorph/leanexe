@@ -23,13 +23,6 @@ open LeanExe.Examples.AsciiDigits
 
 set_option maxHeartbeats 64000000
 
-/-- The input bytes as the module reads them: each index has its byte at the
-wrapped 32-bit address, and that address is in bounds. -/
-def BytesAt (st : Store Unit) (ptr : UInt64) (bytes : List UInt8) : Prop :=
-  ∀ i : Nat, i < bytes.length →
-    st.mem.read8 ((ptr + UInt64.ofNat i).toUInt32) = bytes[i]! ∧
-    ((ptr + UInt64.ofNat i).toUInt32).toNat + 1 ≤ st.mem.pages * 65536
-
 private def digitFlag (b : UInt64) : UInt64 :=
   if 48 ≤ b ∧ b ≤ 57 then 1 else 0
 
