@@ -23,7 +23,7 @@ const wasmtime = process.env.WASMTIME || path.join("build", "tools", "wasmtime",
 const outDir = path.join(".lake", "build", "core-correctness");
 
 const watSizeGuards = [
-  { name: "arrayStructureReplicateHelperRead", maxBytes: 500_000 },
+  { name: "arrayStructureReplicateHelperRead", maxBytes: 20_000 },
 ];
 
 const u64Layout = scalarLayout("UInt64");
@@ -1558,28 +1558,15 @@ function compile(name, out) {
   ]);
 }
 
-function compileWat(name, out) {
-  return run([
-    leanExe,
-    "compile-wat",
-    "--module",
-    moduleName,
-    "--entry",
-    `${moduleName}.${name}`,
-    "--out",
-    out,
-  ]);
-}
-
-function checkWatSize(testCase) {
-  const out = path.join(outDir, `${testCase.name}.wat`);
-  const compiled = compileWat(testCase.name, out);
+function checkWasmSize(testCase) {
+  const out = path.join(outDir, `${testCase.name}.size.wasm`);
+  const compiled = compile(testCase.name, out);
   if (compiled.status !== 0) {
-    throw new Error(`${testCase.name} failed to compile WAT: ${compiled.stderr.trim()}`);
+    throw new Error(`${testCase.name} failed to compile: ${compiled.stderr.trim()}`);
   }
   const size = fs.statSync(out).size;
   if (size > testCase.maxBytes) {
-    throw new Error(`${testCase.name}: WAT is ${size} bytes, expected at most ${testCase.maxBytes}`);
+    throw new Error(`${testCase.name}: WASM is ${size} bytes, expected at most ${testCase.maxBytes}`);
   }
 }
 
@@ -1687,7 +1674,7 @@ async function main() {
   }
 
   for (const testCase of watSizeGuards) {
-    checkWatSize(testCase);
+    checkWasmSize(testCase);
   }
 
   process.stdout.write(

@@ -34,12 +34,12 @@ async function instantiateScalar(moduleName, entry) {
   return { entry, wasm: out };
 }
 
-function checkWatSize(moduleName, entry, maxBytes) {
+function checkWasmSize(moduleName, entry, maxBytes) {
   fs.mkdirSync(outDir, { recursive: true });
   const parts = moduleName.split(".");
-  const out = path.join(outDir, `${parts[parts.length - 1]}-${entry}.wat`);
+  const out = path.join(outDir, `${parts[parts.length - 1]}-${entry}.size.wasm`);
   const entryName = `${moduleName}.${entry}`;
-  run([leanExe, "compile-wat", "--module", moduleName, "--entry", entryName, "--out", out]);
+  run([leanExe, "compile", "--module", moduleName, "--entry", entryName, "--out", out]);
   const size = fs.statSync(out).size;
   if (size > maxBytes) {
     throw new Error(`${out} is ${size} bytes, expected at most ${maxBytes}`);
@@ -85,8 +85,8 @@ async function main() {
   run(["lake", "build", addModule]);
   run(["lake", "build", collatzModule]);
   run(["lake", "build", toolsModule]);
-  checkWatSize(collatzModule, "transform", 1_000_000);
-  checkWatSize(toolsModule, "transform", 1_000_000);
+  checkWasmSize(collatzModule, "transform", 200_000);
+  checkWasmSize(toolsModule, "transform", 200_000);
   const doubleExports = await instantiate(doubleModule);
   const addExports = await instantiate(addModule);
   const collatzExports = await instantiate(collatzModule);
