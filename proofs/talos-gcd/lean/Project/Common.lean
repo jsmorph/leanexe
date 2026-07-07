@@ -75,4 +75,43 @@ theorem write64_bytes_lo (mm : Wasm.Mem) (ad : UInt32) (v : UInt64) {x : Nat}
   dsimp only
   split_ifs <;> first | rfl | omega
 
+/-- A word write leaves every address outside its window unchanged. -/
+theorem write64_bytes_ne (mm : Wasm.Mem) (ad : UInt32) (v : UInt64) {x : Nat}
+    (hx : x < ad.toNat ∨ ad.toNat + 8 ≤ x) :
+    (mm.write64 ad v).bytes x = mm.bytes x := by
+  unfold Wasm.Mem.write64
+  dsimp only
+  split_ifs <;> first | rfl | omega
+
+theorem write8_pages (mm : Wasm.Mem) (ad : UInt32) (v : UInt8) :
+    (mm.write8 ad v).pages = mm.pages := rfl
+
+/-- Two memories that agree on a word's window read the same word. -/
+theorem read64_congr {m1 m2 : Wasm.Mem} (b : UInt32)
+    (h : ∀ i : Nat, i < 8 → m1.bytes (b.toNat + i) = m2.bytes (b.toNat + i)) :
+    m1.read64 b = m2.read64 b := by
+  have h0 := h 0 (by omega)
+  have h1 := h 1 (by omega)
+  have h2 := h 2 (by omega)
+  have h3 := h 3 (by omega)
+  have h4 := h 4 (by omega)
+  have h5 := h 5 (by omega)
+  have h6 := h 6 (by omega)
+  have h7 := h 7 (by omega)
+  rw [Nat.add_zero] at h0
+  simp only [Wasm.Mem.read64]
+  rw [h0, h1, h2, h3, h4, h5, h6, h7]
+
+/-- A word write leaves a disjoint word read unchanged. -/
+theorem read64_write64_ne (mm : Wasm.Mem) (ad : UInt32) (v : UInt64)
+    (b : UInt32) (h : b.toNat + 8 ≤ ad.toNat ∨ ad.toNat + 8 ≤ b.toNat) :
+    (mm.write64 ad v).read64 b = mm.read64 b :=
+  read64_congr b fun i hi => write64_bytes_ne mm ad v (by omega)
+
+/-- A byte write outside a word's window leaves the word read unchanged. -/
+theorem read64_write8_ne (mm : Wasm.Mem) (ad : UInt32) (v : UInt8)
+    (b : UInt32) (h : ad.toNat < b.toNat ∨ b.toNat + 8 ≤ ad.toNat) :
+    (mm.write8 ad v).read64 b = mm.read64 b :=
+  read64_congr b fun i hi => write8_bytes_ne mm ad v (by omega)
+
 end Project.Common
