@@ -70,7 +70,7 @@ Choose the compile command from the entry type.  The Lean source stays pure in e
 | Entry type | Command | Runtime behavior |
 |------------|---------|------------------|
 | Scalar or ABI value function | `compile` | Exports a callable WASM function, `memory`, `alloc`, and `reset`. |
-| Any accepted entry | `wasm-tools print` on the compiled binary | Prints the shipped module as WAT for inspection. |
+| Any accepted entry | `compile-wat` | Serializes the compiled module as WAT from the same lowering as `compile`; `tools/check-wat.sh` checks the two byte for byte. |
 | `ByteArray` | `compile-wasi` | Calls the entry and writes returned bytes to stdout. |
 | `ByteArray -> ByteArray` | `compile-wasi-stdin` | Reads bounded stdin and writes returned bytes to stdout. |
 | `ByteArray -> Except ByteArray ByteArray` | `compile-wasi-stdin-except` | Writes `ok` bytes to stdout, writes `error` bytes to stderr, and exits nonzero. |

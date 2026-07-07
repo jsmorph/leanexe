@@ -6,6 +6,7 @@ import LeanExe.Extract.Report
 import LeanExe.Examples.AsciiDigits
 import LeanExe.Examples.Collatz
 import LeanExe.Wasm.Binary
+import LeanExe.Wasm.Wat
 
 namespace LeanExe.CLI
 
@@ -181,6 +182,10 @@ def main : List String → IO UInt32
           return 2
   | ["compile", "--module", moduleName, "--entry", entryName, "--out", out] => do
       writeBytes out (LeanExe.Wasm.Binary.CoreWasm.moduleBytes
+        (← LeanExe.Extract.Core.compile moduleName entryName))
+      return 0
+  | ["compile-wat", "--module", moduleName, "--entry", entryName, "--out", out] => do
+      writeText out (LeanExe.Wasm.Wat.moduleWat
         (← LeanExe.Extract.Core.compile moduleName entryName))
       return 0
   | ["compile-wasi", "--module", moduleName, "--entry", entryName, "--out", out] => do

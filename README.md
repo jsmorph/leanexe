@@ -119,10 +119,13 @@ Use `compile` to write a WASM binary.  The exported entry name is the final comp
   --out build/choose.wasm
 ```
 
-Inspect a generated module as WAT by printing the compiled binary with `wasm-tools print`; the printed text is the module that ships.  Use `report` before compilation when you want to see how the entry declaration and its dependencies classify under the supported subset.  Use `ownership-report` when memory management is the question: it prints each extracted function's result owner slots, helper-result fresh-owner offsets, compiler-emitted release statements, returned owner expressions, fold accumulator release offsets, and source-level `LeanExe.Runtime.release` expressions.
+Inspect a generated module as WAT with `compile-wat`, which serializes the same lowering as `compile` from the same structured instructions; `tools/check-wat.sh` verifies that `wasm-tools parse` of the text reproduces the compiled binary byte for byte.  Printing the compiled binary with `wasm-tools print` remains an independent view of the module that ships.  Use `report` before compilation when you want to see how the entry declaration and its dependencies classify under the supported subset.  Use `ownership-report` when memory management is the question: it prints each extracted function's result owner slots, helper-result fresh-owner offsets, compiler-emitted release statements, returned owner expressions, fold accumulator release offsets, and source-level `LeanExe.Runtime.release` expressions.
 
 ```sh
-wasm-tools print build/choose.wasm -o build/choose.wat
+.lake/build/bin/lean-wasm compile-wat \
+  --module LeanExe.Examples.Arithmetic \
+  --entry LeanExe.Examples.Arithmetic.choose \
+  --out build/choose.wat
 
 .lake/build/bin/lean-wasm report \
   --module LeanExe.Examples.ReadmeDemo \
