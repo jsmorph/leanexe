@@ -1,4 +1,5 @@
 import Init.Data.ByteArray.Extra
+import LeanExe.Runtime
 
 namespace LeanExe.Examples.ByteArrayPrograms
 
@@ -126,6 +127,14 @@ def pushTwiceSizes (input : ByteArray) : Nat :=
 def sharedPushPair (input : ByteArray) : Array ByteArray :=
   let appended := input.push (33 : UInt8)
   #[appended, appended]
+
+def sharedPairFreeStats (input : ByteArray) : UInt64 :=
+  let pair := sharedPushPair input
+  let releasesBefore := LeanExe.Runtime.releaseCount
+  let freesBefore := LeanExe.Runtime.freeCount
+  let freesAfter := LeanExe.Runtime.release pair
+  (LeanExe.Runtime.releaseCount - releasesBefore) * 100 +
+    (freesAfter - freesBefore)
 
 def singlePushPair (input : ByteArray) : Array ByteArray :=
   let appended := input.push (33 : UInt8)

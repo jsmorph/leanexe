@@ -12,6 +12,7 @@ tools/check-talos-append-bang.sh "$@"
 tools/check-talos-push-size.sh "$@"
 tools/check-talos-push-twice.sh "$@"
 tools/check-talos-shared-pair.sh "$@"
+tools/check-talos-pair-free.sh "$@"
 
 cd "$repo_root/proofs/talos-gcd/lean"
 lake build Project
