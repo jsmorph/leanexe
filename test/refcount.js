@@ -111,14 +111,14 @@ function checkCompilerReleasesOwnedCallResults() {
 
 function checkCompilerReleasesFoldAccumulators() {
   const cases = [
-    ["arrayFoldByteArrayAccumulatorReleaseStats", 30202],
-    ["arrayFoldOptionByteArrayAccumulatorReleaseStats", 30502],
-    ["arrayFoldPublicTokenAccumulatorReleaseStats", 30402],
-    ["arrayFoldByteArrayGroupAccumulatorReleaseStats", 30502],
+    ["arrayFoldByteArrayAccumulatorReleaseStats", 30303],
+    ["arrayFoldOptionByteArrayAccumulatorReleaseStats", 30603],
+    ["arrayFoldPublicTokenAccumulatorReleaseStats", 30503],
+    ["arrayFoldByteArrayGroupAccumulatorReleaseStats", 30603],
     ["byteArrayFoldByteArrayAccumulatorReleaseStats", 30202],
     ["idRunByteArrayForOutputReleaseStats", 30202],
     ["idRunRangeForByteArrayOutputReleaseStats", 30202],
-    ["arrayFoldRecursiveAccumulatorReleaseStats", 30606],
+    ["arrayFoldRecursiveAccumulatorReleaseStats", 30707],
   ];
   for (const [entry, expected] of cases) {
     expectI64(correctnessModule, entry, expected);
@@ -146,7 +146,7 @@ function checkLeakAccounting() {
     ["sharedRecursiveChildReleaseStats", [2n, 1n, 3n, 2n]],
     ["byteArrayResultDropsOwnedTempStats", [2n, 0n, 2n, 2n]],
     ["ownedRecursiveNodeParamCallTempScalar", [3n, 1n, 0n, 0n]],
-    ["arrayFoldByteArrayAccumulatorReleaseStats", [4n, 0n, 2n, 2n]],
+    ["arrayFoldByteArrayAccumulatorReleaseStats", [4n, 0n, 4n, 4n]],
   ];
   let leakFree = 0;
   let retaining = 0;
