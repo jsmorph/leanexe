@@ -74,6 +74,7 @@ mutual
     | heapAllocSlots (childMask ownedMask : Nat) (values : List Expr)
     | heapLoadSlot (ptr : Expr) (slot : Nat)
     | arrayReplicateSlots (width childMask ownedMask : Nat) (cells : Expr) (values : List Expr)
+    | arrayLiteralSlots (width childMask : Nat) (elements : List (Nat × List Expr))
     | arraySize (array : Expr)
     | arrayGetSlot (width slot : Nat) (array index : Expr)
     | arraySetSlots (width childMask ownedMask : Nat) (array index : Expr) (values : List Expr)
@@ -245,6 +246,7 @@ mutual
     | .heapAllocSlots _ _ _ => 0
     | .heapLoadSlot _ _ => 0
     | .arrayReplicateSlots _ _ _ _ _ => 0
+    | .arrayLiteralSlots _ _ _ => 0
     | .arraySize _ => 0
     | .arrayGetSlot _ _ _ _ => 0
     | .arraySetSlots _ _ _ array _ _ => array.eval module_ store

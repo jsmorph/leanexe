@@ -127,6 +127,10 @@ mutual
         Scan.append
           (scanExpr (childPath path "cells") cells)
           (scanExprListFrom (childPath path "value") 0 values)
+    | .arrayLiteralSlots _ _ elements =>
+        Scan.many <|
+          elements.zipIdx.map fun (element, index) =>
+            scanExprListFrom (indexedPath path "element" index) 0 element.snd
     | .arraySize array =>
         scanExpr (childPath path "array") array
     | .arrayGetSlot _ _ array index =>
@@ -602,6 +606,17 @@ def makeReport (moduleText entryText : String) : IO String := do
   let env ← LeanExe.Extract.Env.loadEnvironment moduleName
   match LeanExe.Extract.Core.compileEnvironmentWithEntryModeDetailed true env moduleName entryName with
   | .ok compiled => pure (moduleReport moduleName entryName compiled)
+  | .error error => throw <| IO.userError error
+
+def makeIRDump (moduleText entryText : String) : IO String := do
+  let moduleName := LeanExe.Extract.Env.parseName moduleText
+  let entryName := LeanExe.Extract.Env.parseName entryText
+  let env ← LeanExe.Extract.Env.loadEnvironment moduleName
+  match LeanExe.Extract.Core.compileEnvironmentWithEntryModeDetailed true env moduleName entryName with
+  | .ok compiled =>
+      let functionTexts := compiled.module.funcs.toList.zipIdx.map fun (func, index) =>
+        s!"[{index}]\n{reprStr func}"
+      pure (String.intercalate "\n\n" functionTexts ++ "\n")
   | .error error => throw <| IO.userError error
 
 end LeanExe.Extract.OwnershipReport
