@@ -3829,7 +3829,18 @@ partial def materializeResultValue
       if !useAbi then
         let lets ←
           materializeInternalValueLets ty value targets ctx.freshResultOwnerOffsets ownerSources
-        let stmt := localLetStmtListOptimized lets
+        let convert : LeanExe.IR.LocalLet → IRStmt
+          | .expr slot expr => assignResultExprWithOwnedReleases ctx canReleaseOwnedTemps slot expr
+          | .slots slots values =>
+              (match foldMultiSlotAssign? slots values with
+               | some stmt => stmt
+               | none =>
+                   LeanExe.IR.seqList <|
+                     (slots.zip values).map fun item =>
+                       assignResultExprWithOwnedReleases ctx canReleaseOwnedTemps item.fst
+                         item.snd)
+          | other => localLetStmtOptimized other
+        let stmt := LeanExe.IR.seqList (lets.map convert)
         if canReleaseOwnedTemps then
           let released := localLetsReleasedSlots lets
           let ownerSlots := lets.flatMap (localLetOwnedNonrecursiveHeapSlots ctx)
