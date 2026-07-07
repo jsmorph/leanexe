@@ -117,6 +117,9 @@ def mkABC : ByteArray :=
 def appendBang (input : ByteArray) : ByteArray :=
   input.push (33 : UInt8)
 
+def pushBangSize (input : ByteArray) : Nat :=
+  (input.push (33 : UInt8)).size
+
 def appendABCXYZ : ByteArray :=
   bytesABC.append
     (((ByteArray.empty.push (88 : UInt8)).push (89 : UInt8)).push (90 : UInt8))
