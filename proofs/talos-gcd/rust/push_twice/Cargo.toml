@@ -1,0 +1,4 @@
+[package]
+name = "push_twice"
+version = "0.1.0"
+edition = "2024"
