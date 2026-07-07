@@ -120,6 +120,9 @@ def appendBang (input : ByteArray) : ByteArray :=
 def pushBangSize (input : ByteArray) : Nat :=
   (input.push (33 : UInt8)).size
 
+def pushTwiceSizes (input : ByteArray) : Nat :=
+  pushBangSize input + pushBangSize input
+
 def appendABCXYZ : ByteArray :=
   bytesABC.append
     (((ByteArray.empty.push (88 : UInt8)).push (89 : UInt8)).push (90 : UInt8))
