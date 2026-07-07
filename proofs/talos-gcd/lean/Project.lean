@@ -6,3 +6,4 @@ import Project.AppendBang.Spec
 import Project.PushSize.Spec
 import Project.PushTwice.Spec
 import Project.SharedPair.Spec
+import Project.PairFree.Spec
