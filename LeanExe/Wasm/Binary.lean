@@ -3051,11 +3051,13 @@ def localDecls (func : Func) : List UInt8 :=
   else
     u32leb 1 ++ u32leb extra ++ ofNats [126]
 
-def emitFuncBody (releaseIndex : Nat) (func : Func) : List UInt8 :=
+def emitFuncInstrs (releaseIndex : Nat) (func : Func) : List Instr :=
   let scratch := func.locals
-  body (localDecls func)
-    (encodeInstrs (emitStmt releaseIndex scratch func.body ++
-      func.results.flatMap (emitExprWithRelease releaseIndex scratch)))
+  emitStmt releaseIndex scratch func.body ++
+    func.results.flatMap (emitExprWithRelease releaseIndex scratch)
+
+def emitFuncBody (releaseIndex : Nat) (func : Func) : List UInt8 :=
+  body (localDecls func) (encodeInstrs (emitFuncInstrs releaseIndex func))
 
 def typeForFunc (func : Func) : List UInt8 :=
   funcType (List.replicate func.params i64) (List.replicate func.results.length i64)
@@ -3086,26 +3088,26 @@ def exportSection (module_ : Module) : List UInt8 :=
 def bodyI (locals : List UInt8) (code : List Instr) : List UInt8 :=
   body locals (encodeInstrs code)
 
-def coreAllocBody : List UInt8 :=
-  bodyI
-    (ofNats [1, 6, 126])
-    (rcAllocRawObject 1 (localGet 0))
+def coreAllocInstrs : List Instr :=
+  rcAllocRawObject 1 (localGet 0)
 
-def coreResetBody : List UInt8 :=
-  bodyI
-    (ofNats [0])
-    (i64Const 4096 ++ globalSet 0 ++
+def coreAllocBody : List UInt8 :=
+  bodyI (ofNats [1, 6, 126]) coreAllocInstrs
+
+def coreResetInstrs : List Instr :=
+  (i64Const 4096 ++ globalSet 0 ++
       i64Const 0 ++ globalSet 1 ++
       i64Const 0 ++ globalSet (runtimeStatGlobal .allocs) ++
       i64Const 0 ++ globalSet (runtimeStatGlobal .retains) ++
       i64Const 0 ++ globalSet (runtimeStatGlobal .releases) ++
       i64Const 0 ++ globalSet (runtimeStatGlobal .frees))
 
-def coreRetainBody : List UInt8 :=
+def coreResetBody : List UInt8 :=
+  bodyI (ofNats [0]) coreResetInstrs
+
+def coreRetainInstrs : List Instr :=
   let rcLocal := 1
-  bodyI
-    (ofNats [1, 1, 126])
-    (localGet 0 ++ i64Const 0 ++ i64Ne ++
+  (localGet 0 ++ i64Const 0 ++ i64Ne ++
       ([Instr.iff false (rcHeaderLoad (localGet 0) 48 ++ i64Const rcMagic ++ i64Ne ++
           ([Instr.iff false (unreachable) none]) ++
       rcHeaderLoad (localGet 0) 40 ++ localSet rcLocal ++
@@ -3115,7 +3117,10 @@ def coreRetainBody : List UInt8 :=
         rcHeaderStore (localGet 0) 40 (localGet rcLocal ++ i64Const 1 ++ [Instr.addI64])) none]) ++
       localGet 0)
 
-def coreReleaseBody (releaseIndex : Nat) : List UInt8 :=
+def coreRetainBody : List UInt8 :=
+  bodyI (ofNats [1, 1, 126]) coreRetainInstrs
+
+def coreReleaseInstrs (releaseIndex : Nat) : List Instr :=
   let rcLocal := 1
   let kindLocal := 2
   let limitLocal := 3
@@ -3162,9 +3167,7 @@ def coreReleaseBody (releaseIndex : Nat) : List UInt8 :=
       rcHeaderStore (localGet 0) 40 (i64Const 0) ++
       rcHeaderStore (localGet 0) 8 (globalGet 1) ++
       localGet 0 ++ globalSet 1
-  bodyI
-    (ofNats [1, 8, 126])
-    (localGet 0 ++ i64Const 0 ++ i64Eq ++
+  (localGet 0 ++ i64Const 0 ++ i64Eq ++
       ([Instr.iff false (returnOp) none]) ++
       rcHeaderLoad (localGet 0) 48 ++ i64Const rcMagic ++ i64Ne ++
         ([Instr.iff false (unreachable) none]) ++
@@ -3183,6 +3186,9 @@ def coreReleaseBody (releaseIndex : Nat) : List UInt8 :=
       localGet kindLocal ++ i64Const rcKindArray ++ i64Eq ++
         ([Instr.iff false (arrayReleaseLoop) none]) ++
       freeCurrent)
+
+def coreReleaseBody (releaseIndex : Nat) : List UInt8 :=
+  bodyI (ofNats [1, 8, 126]) (coreReleaseInstrs releaseIndex)
 
 def codeSection (module_ : Module) : List UInt8 :=
   let releaseIndex := module_.funcs.size + 3
