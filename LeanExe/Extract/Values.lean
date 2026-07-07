@@ -373,6 +373,29 @@ def anyLiveSlot (live slots : List Nat) : Bool :=
 def slotsFrom (start width : Nat) : List Nat :=
   (List.range width).map fun offset => start + offset
 
+/-- Conservative allowlist of expressions that construct a fresh array the
+evaluator owns.  Used to release a fold's bound source array after the loop;
+anything unrecognized keeps the previous leak rather than risking a double
+release. -/
+partial def exprBuildsFreshArray : IRExpr → Bool
+  | .arrayLiteralSlots .. => true
+  | .arrayAllocSlots .. => true
+  | .arrayReplicateSlots .. => true
+  | .arraySetSlots .. => true
+  | .arrayPushSlots .. => true
+  | .arrayAppendSlots .. => true
+  | .arrayExtractSlots .. => true
+  | .arrayMapSlots .. => true
+  | .arrayFilterSlots .. => true
+  | .arrayInsertIfInBoundsSlots .. => true
+  | .arrayEraseIfInBoundsSlots .. => true
+  | .arraySwapIfInBoundsSlots .. => true
+  | .arrayReverseSlots .. => true
+  | .letE _ _ body => exprBuildsFreshArray body
+  | .letCall _ _ _ body => exprBuildsFreshArray body
+  | .letLets _ body => exprBuildsFreshArray body
+  | _ => false
+
 def arrayFoldMultiSlotAssign? (targets : List Nat) (values : List IRExpr) :
     Option IRStmt :=
   match values with
@@ -401,10 +424,15 @@ def arrayFoldMultiSlotAssign? (targets : List Nat) (values : List IRExpr) :
               (.arrayFoldMultiSlot sourceWidth resultWidth reverse array start stop initValues
                 accStart itemStart bodyValues bodyLets bodyDone releaseOffsets offset)
         if values == expected then
-          some <|
-            .seq (.assign bindSlot bound)
-              (.arrayFoldMultiSlotAssign sourceWidth resultWidth reverse array start stop initValues
-                accStart itemStart bodyValues bodyLets bodyDone releaseOffsets targets)
+          let foldStmt :=
+            .arrayFoldMultiSlotAssign sourceWidth resultWidth reverse array start stop initValues
+              accStart itemStart bodyValues bodyLets bodyDone releaseOffsets targets
+          let foldStmt :=
+            if exprBuildsFreshArray bound then
+              .seq foldStmt (.release (.local bindSlot))
+            else
+              foldStmt
+          some (.seq (.assign bindSlot bound) foldStmt)
         else
           none
       else
@@ -2435,7 +2463,30 @@ mutual
     | .byteArraySetPtr .. => true
     | .byteArrayFromArrayPtr .. => true
     | .byteArrayCopySlicePtr .. => true
+    | .arrayFoldMultiSlot _ _ _ _ _ _ initValues _ _ _ _ _ releaseOffsets offset =>
+        foldResultOffsetOwned ownedLocals initValues releaseOffsets offset
+    | .byteArrayFoldMultiSlot _ _ _ _ _ initValues _ _ _ _ _ releaseOffsets offset =>
+        foldResultOffsetOwned ownedLocals initValues releaseOffsets offset
+    | .rangeFoldMultiSlot _ _ _ _ initValues _ _ _ _ _ releaseOffsets offset =>
+        foldResultOffsetOwned ownedLocals initValues releaseOffsets offset
+    | .loopFoldMultiSlot _ initValues _ _ _ _ releaseOffsets offset =>
+        foldResultOffsetOwned ownedLocals initValues releaseOffsets offset
     | _ => false
+
+  /-- A fold's value at `offset` is a released-on-replacement owner slot, so
+  the final accumulator there is owned, provided the initial accumulator that
+  survives a zero-iteration fold is itself owned or the null pointer. -/
+  partial def foldResultOffsetOwned
+      (ownedLocals : List Nat)
+      (initValues : List IRExpr)
+      (releaseOffsets : List Nat)
+      (offset : Nat) :
+      Bool :=
+    releaseOffsets.contains offset &&
+      (match initValues[offset]? with
+       | some (.u64 0) => true
+       | some init => exprReturnsOwnedNonrecursiveHeapObjectFrom ownedLocals init
+       | none => false)
 
   partial def localLetOwnedNonrecursiveHeapSlotsFrom
       (ownedLocals : List Nat) :
