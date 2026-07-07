@@ -123,6 +123,14 @@ def pushBangSize (input : ByteArray) : Nat :=
 def pushTwiceSizes (input : ByteArray) : Nat :=
   pushBangSize input + pushBangSize input
 
+def sharedPushPair (input : ByteArray) : Array ByteArray :=
+  let appended := input.push (33 : UInt8)
+  #[appended, appended]
+
+def singlePushPair (input : ByteArray) : Array ByteArray :=
+  let appended := input.push (33 : UInt8)
+  #[appended]
+
 def appendABCXYZ : ByteArray :=
   bytesABC.append
     (((ByteArray.empty.push (88 : UInt8)).push (89 : UInt8)).push (90 : UInt8))
