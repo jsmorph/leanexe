@@ -819,13 +819,31 @@ mutual
                     | some item => item.snd
                     | none => array
                   let arrayResult ← extractExprFrom ctx locals nextLocal arrayExpr
-                  let initResult ← extractValueFrom ctx locals arrayResult.snd init
-                  let arraySizeExpr : IRExpr := .arraySize arrayResult.fst
+                  let (arrayIR, arrayBind?, afterArray) :=
+                    match arrayResult.fst with
+                    | .local index => ((.local index : IRExpr), none, arrayResult.snd)
+                    | bound =>
+                        ((.local arrayResult.snd : IRExpr),
+                          some (arrayResult.snd, bound),
+                          arrayResult.snd + 1)
+                  let initResult ← extractValueFrom ctx locals afterArray init
+                  let arraySizeExpr : IRExpr := .arraySize arrayIR
+                  let sameArraySize? (expr : Expr) : Bool :=
+                    match appFnArgs expr with
+                    | (.const ``Array.size _, sizeArgs) =>
+                        match sizeArgs.reverse with
+                        | sized :: _ => sized == arrayExpr
+                        | _ => false
+                    | _ => false
                   let extractArraySizeBound (next : Nat) (expr : Expr) :
                       Except String (IRExpr × Nat) :=
                     match attached?, arrayAttachSize? ctx.env expr with
                     | some _, some _ => .ok (arraySizeExpr, next)
-                    | _, _ => extractExprFrom ctx locals next expr
+                    | _, _ =>
+                        if sameArraySize? expr then
+                          .ok (arraySizeExpr, next)
+                        else
+                          extractExprFrom ctx locals next expr
                   let startStop ←
                     if reverse then
                       match rest with
@@ -899,21 +917,25 @@ mutual
                   let resultValue :=
                     valueFromInternalSlots resultTy
                       (fun offset =>
-                        .arrayFoldMultiSlot
-                          sourceWidth
-                          resultWidth
-                          reverse
-                          arrayResult.fst
-                          startStop.fst.fst
-                          startStop.fst.snd
-                          initSlots
-                          accStart
-                          itemStart
-                          (bodyTargets.map fun slot => (.local slot : IRExpr))
-                          bodyLets
-                          (.u64 0)
-                          releaseOffsets
-                          offset)
+                        let fold : IRExpr :=
+                          .arrayFoldMultiSlot
+                            sourceWidth
+                            resultWidth
+                            reverse
+                            arrayIR
+                            startStop.fst.fst
+                            startStop.fst.snd
+                            initSlots
+                            accStart
+                            itemStart
+                            (bodyTargets.map fun slot => (.local slot : IRExpr))
+                            bodyLets
+                            (.u64 0)
+                            releaseOffsets
+                            offset
+                        match arrayBind? with
+                        | some (slot, bound) => .letE slot bound fold
+                        | none => fold)
                   .ok (resultValue, bodyResult.snd + resultWidth)
               | none => .error s!"unsupported Array.{foldName} item type: {reprStr sourceTy}"
         | _, _ => .error s!"unsupported Array.{foldName} application"
@@ -3689,31 +3711,51 @@ mutual
                       match arrayElementSlots? itemTy with
                       | some width =>
                         let childMask := arrayElementChildMask itemTy
+                        let dedupeOwnedElements
+                            (elements : List (Nat × List IRExpr)) :
+                            List (Nat × List IRExpr) :=
+                          (elements.foldl
+                            (fun (state : List Nat × List (Nat × List IRExpr)) element =>
+                              let masked :=
+                                element.snd.zipIdx.foldl
+                                  (fun (inner : List Nat × Nat) slotItem =>
+                                    match slotItem.fst with
+                                    | .local index =>
+                                        if inner.snd.testBit slotItem.snd then
+                                          if inner.fst.contains index then
+                                            (inner.fst, inner.snd - 2 ^ slotItem.snd)
+                                          else
+                                            (index :: inner.fst, inner.snd)
+                                        else
+                                          inner
+                                    | _ => inner)
+                                  (state.fst, element.fst)
+                              (masked.fst, (masked.snd, element.snd) :: state.snd))
+                            ([], [])).snd.reverse
                         let rec build
-                            (index next : Nat)
-                            (arrayExpr : IRExpr)
+                            (next : Nat)
+                            (elements : List (Nat × List IRExpr))
+                            (wrap : IRExpr → IRExpr)
                             (remaining : List Expr) :
                             Except String (IRExpr × Nat) := do
                           match remaining with
-                          | [] => .ok (arrayExpr, next)
+                          | [] =>
+                              .ok
+                                (wrap
+                                  (.arrayLiteralSlots width childMask
+                                    (dedupeOwnedElements elements.reverse)),
+                                  next)
                           | item :: rest =>
                               let itemResult ← extractValueFrom ctx locals next item
                               let itemSlots ←
                                 materializeStrictArrayElementSlotsWithSummaries ctx.freshResultOwnerOffsets itemTy itemResult.fst itemResult.snd
-                              let arraySlot := itemSlots.nextLocal
-                              let updatedArray :=
-                                wrapExprLets itemSlots.lets
-                                  (.arraySetSlots
-                                    width
-                                    childMask
-                                    (ownedChildMaskForStrictSlotsWithSummaries ctx.freshResultOwnerOffsets childMask itemSlots)
-                                    (.local arraySlot)
-                                    (.u64 index)
-                                    itemSlots.slots)
-                              build (index + 1) (arraySlot + 1)
-                                (.letE arraySlot arrayExpr updatedArray)
+                              let ownedMask :=
+                                ownedChildMaskForStrictSlotsWithSummaries ctx.freshResultOwnerOffsets childMask itemSlots
+                              build itemSlots.nextLocal
+                                ((ownedMask, itemSlots.slots) :: elements)
+                                (fun expr => wrap (wrapExprLets itemSlots.lets expr))
                                 rest
-                        build 0 nextLocal (.arrayAllocSlots width childMask (.u64 items.length)) items
+                        build nextLocal [] id items
                       | none => .error s!"unsupported List.toArray item type: {reprStr itemTy}"
                     | none => .error "unsupported List.toArray argument"
                 | _ => .error "unsupported List.toArray application"

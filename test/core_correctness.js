@@ -395,9 +395,9 @@ const accepted = [
   { name: "byteArrayStructReplicateRuntimeReleaseFrees", args: [], expected: 202n },
   { name: "nestedArrayRuntimeReleaseFrees", args: [], expected: 202n },
   { name: "structArrayFieldRuntimeReleaseFrees", args: [], expected: 202n },
-  { name: "optionByteArrayArrayRuntimeReleaseFrees", args: [], expected: 302n },
-  { name: "publicTokenArrayRuntimeReleaseFrees", args: [], expected: 302n },
-  { name: "byteArrayGroupArrayRuntimeReleaseFrees", args: [], expected: 403n },
+  { name: "optionByteArrayArrayRuntimeReleaseFrees", args: [], expected: 303n },
+  { name: "publicTokenArrayRuntimeReleaseFrees", args: [], expected: 303n },
+  { name: "byteArrayGroupArrayRuntimeReleaseFrees", args: [], expected: 606n },
   { name: "ownedArrayCallTempScalar", args: [], expected: 5n },
   { name: "ownedByteArrayCallTempScalar", args: [], expected: 66n },
   { name: "ownedArrayParamCallTempScalar", args: [], expected: 16n },
@@ -1662,7 +1662,11 @@ async function main() {
   fs.mkdirSync(outDir, { recursive: true });
 
   for (const testCase of accepted) {
-    await runAccepted(testCase);
+    try {
+      await runAccepted(testCase);
+    } catch (error) {
+      throw new Error(`${testCase.name}: ${error.message}`);
+    }
   }
 
   for (const testCase of rejected) {

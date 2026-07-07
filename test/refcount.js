@@ -58,9 +58,9 @@ function checkSourceReleaseStats() {
     ["byteArrayStructReplicateRuntimeReleaseFrees", 202],
     ["nestedArrayRuntimeReleaseFrees", 202],
     ["structArrayFieldRuntimeReleaseFrees", 202],
-    ["optionByteArrayArrayRuntimeReleaseFrees", 302],
-    ["publicTokenArrayRuntimeReleaseFrees", 302],
-    ["byteArrayGroupArrayRuntimeReleaseFrees", 403],
+    ["optionByteArrayArrayRuntimeReleaseFrees", 303],
+    ["publicTokenArrayRuntimeReleaseFrees", 303],
+    ["byteArrayGroupArrayRuntimeReleaseFrees", 606],
   ];
   for (const [entry, expected] of cases) {
     expectI64(correctnessModule, entry, expected);
@@ -146,7 +146,7 @@ function checkLeakAccounting() {
     ["sharedRecursiveChildReleaseStats", [2n, 1n, 3n, 2n]],
     ["byteArrayResultDropsOwnedTempStats", [2n, 0n, 2n, 2n]],
     ["ownedRecursiveNodeParamCallTempScalar", [3n, 1n, 0n, 0n]],
-    ["arrayFoldByteArrayAccumulatorReleaseStats", [11n, 0n, 2n, 2n]],
+    ["arrayFoldByteArrayAccumulatorReleaseStats", [4n, 0n, 2n, 2n]],
   ];
   let leakFree = 0;
   let retaining = 0;

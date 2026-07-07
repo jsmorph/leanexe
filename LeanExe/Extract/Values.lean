@@ -391,6 +391,24 @@ def arrayFoldMultiSlotAssign? (targets : List Nat) (values : List IRExpr) :
           none
       else
         none
+  | .letE bindSlot bound
+      (.arrayFoldMultiSlot sourceWidth resultWidth reverse array start stop initValues accStart
+        itemStart bodyValues bodyLets bodyDone releaseOffsets _) :: _ =>
+      if values.length == resultWidth && targets.length == resultWidth then
+        let expected : List IRExpr :=
+          (List.range resultWidth).map fun offset =>
+            .letE bindSlot bound
+              (.arrayFoldMultiSlot sourceWidth resultWidth reverse array start stop initValues
+                accStart itemStart bodyValues bodyLets bodyDone releaseOffsets offset)
+        if values == expected then
+          some <|
+            .seq (.assign bindSlot bound)
+              (.arrayFoldMultiSlotAssign sourceWidth resultWidth reverse array start stop initValues
+                accStart itemStart bodyValues bodyLets bodyDone releaseOffsets targets)
+        else
+          none
+      else
+        none
   | _ => none
 
 def byteArrayFoldMultiSlotAssign? (targets : List Nat) (values : List IRExpr) :
@@ -652,6 +670,10 @@ mutual
     | .heapLoadSlot ptr _ => exprUsedSlots ptr
     | .arrayReplicateSlots _ _ _ cells values =>
         addLiveSlots (exprUsedSlots cells) (exprListUsedSlots values)
+    | .arrayLiteralSlots _ _ elements =>
+        elements.foldl
+          (fun acc element => addLiveSlots acc (exprListUsedSlots element.snd))
+          []
     | .arraySize array => exprUsedSlots array
     | .arrayGetSlot _ _ array index =>
         addLiveSlots (exprUsedSlots array) (exprUsedSlots index)
@@ -1747,6 +1769,7 @@ mutual
     | .arrayAllocSlots .. => true
     | .heapAllocSlots .. => true
     | .arrayReplicateSlots .. => true
+    | .arrayLiteralSlots .. => true
     | .arraySetSlots .. => true
     | .arrayPushSlots .. => true
     | .arrayAppendSlots .. => true
@@ -1874,6 +1897,7 @@ mutual
     | .arrayAllocSlots .. => some []
     | .heapAllocSlots .. => some []
     | .arrayReplicateSlots .. => some []
+    | .arrayLiteralSlots .. => some []
     | .arraySetSlots .. => some []
     | .arrayPushSlots .. => some []
     | .arrayAppendSlots .. => some []
@@ -2332,6 +2356,7 @@ mutual
     | .arrayAllocSlots .. => true
     | .heapAllocSlots .. => true
     | .arrayReplicateSlots .. => true
+    | .arrayLiteralSlots .. => true
     | .arraySetSlots .. => true
     | .arrayPushSlots .. => true
     | .arrayAppendSlots .. => true
@@ -2398,6 +2423,7 @@ mutual
           exprReturnsOwnedNonrecursiveHeapObjectFrom ownedLocals elseValue
     | .arrayAllocSlots .. => true
     | .arrayReplicateSlots .. => true
+    | .arrayLiteralSlots .. => true
     | .arraySetSlots .. => true
     | .arrayPushSlots .. => true
     | .arrayAppendSlots .. => true
@@ -2565,6 +2591,12 @@ mutual
         addLiveSlots
           (addLiveSlots (exprReleasedSlots cells) (exprListReleasedSlots values))
           (transferredOwnerSlotsFromValues childMask ownedMask values)
+    | .arrayLiteralSlots _ childMask elements =>
+        elements.foldl
+          (fun acc element =>
+            addLiveSlots (addLiveSlots acc (exprListReleasedSlots element.snd))
+              (transferredOwnerSlotsFromValues childMask element.fst element.snd))
+          []
     | .arraySize array => exprReleasedSlots array
     | .arrayGetSlot _ _ array index =>
         addLiveSlots (exprReleasedSlots array) (exprReleasedSlots index)
@@ -2796,6 +2828,7 @@ mutual
     | .arrayAllocSlots .. => true
     | .heapAllocSlots .. => true
     | .arrayReplicateSlots .. => true
+    | .arrayLiteralSlots .. => true
     | .arraySetSlots .. => true
     | .arrayPushSlots .. => true
     | .arrayAppendSlots .. => true
@@ -3414,6 +3447,31 @@ mutual
         let ownedMask :=
           ownedChildMaskForSlotsWithOwnerSourcesForAlloc summaries childMask ownerSources values
         .arrayReplicateSlots width childMask ownedMask cells values
+    | .arrayLiteralSlots width childMask elements =>
+        let refreshed :=
+          (elements.foldl
+            (fun (state : List Nat × List (Nat × List IRExpr)) element =>
+              let slots := element.snd.map (refreshOwnerMasksExprForAlloc summaries ownerSources)
+              let ownedMask :=
+                ownedChildMaskForSlotsWithOwnerSourcesForAlloc summaries childMask ownerSources
+                  slots
+              let masked :=
+                slots.zipIdx.foldl
+                  (fun (inner : List Nat × Nat) slotItem =>
+                    match slotItem.fst with
+                    | .local index =>
+                        if inner.snd.testBit slotItem.snd then
+                          if inner.fst.contains index then
+                            (inner.fst, inner.snd - 2 ^ slotItem.snd)
+                          else
+                            (index :: inner.fst, inner.snd)
+                        else
+                          inner
+                    | _ => inner)
+                  (state.fst, ownedMask)
+              (masked.fst, (masked.snd, slots) :: state.snd))
+            ([], [])).snd.reverse
+        .arrayLiteralSlots width childMask refreshed
     | .arraySize array =>
         .arraySize (refreshOwnerMasksExprForAlloc summaries ownerSources array)
     | .arrayGetSlot width slot array index =>

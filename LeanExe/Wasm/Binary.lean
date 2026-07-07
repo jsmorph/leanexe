@@ -326,6 +326,10 @@ mutual
         .heapAllocSlots childMask ownedMask (values.map (shiftExprCalls offset))
     | .heapLoadSlot ptr slot =>
         .heapLoadSlot (shiftExprCalls offset ptr) slot
+    | .arrayLiteralSlots width childMask elements =>
+        .arrayLiteralSlots width childMask
+          (elements.map fun element =>
+            (element.fst, element.snd.map (shiftExprCalls offset)))
     | .arrayReplicateSlots width childMask ownedMask cells values =>
         .arrayReplicateSlots width childMask ownedMask (shiftExprCalls offset cells)
           (values.map (shiftExprCalls offset))
@@ -807,6 +811,13 @@ mutual
         3 + values.length +
           max 6 (values.foldl (fun n value => max n (exprScratch value)) 0)
     | .heapLoadSlot ptr _ => 1 + exprScratch ptr
+    | .arrayLiteralSlots width _ elements =>
+        3 + width +
+          max 6
+            (elements.foldl
+              (fun n element =>
+                element.snd.foldl (fun m value => max m (exprScratch value)) n)
+              0)
     | .arrayReplicateSlots _ _ _ cells values =>
         5 + values.length +
           max 6
@@ -1168,6 +1179,37 @@ mutual
     | _ =>
         localGet releaseReadyLocal ++ i64Const 0 ++ i64Ne ++
           ([Instr.iff false (emitAccumulatorReleases releaseIndex accStart releaseOffsets) none])
+
+  partial def emitArrayLiteralSlots
+      (scratch width childMask : Nat)
+      (elements : List (Nat × List Expr)) : List Instr :=
+    let ptrLocal := scratch
+    let retainChildLocal := scratch + 1
+    let retainRcLocal := scratch + 2
+    let valueStart := scratch + 3
+    let childScratch := valueStart + width
+    let rec emitValueStores : List (Nat × Expr) → List Instr
+      | [] => []
+      | (offset, value) :: rest =>
+          emitExpr childScratch value ++ localSet (valueStart + offset) ++ emitValueStores rest
+    let rec emitSlotStores (index : Nat) : List Nat → List Instr
+      | [] => []
+      | offset :: rest =>
+          arraySlotAddress width offset (localGet ptrLocal) (i64Const index) ++
+            localGet (valueStart + offset) ++ i64Store ++ emitSlotStores index rest
+    let rec emitElements : List (Nat × (Nat × List Expr)) → List Instr
+      | [] => []
+      | (index, (ownedMask, slots)) :: rest =>
+          emitValueStores (enumerate slots) ++
+            emitSlotStores index (List.range slots.length) ++
+            emitRetainArraySlotsAtIndex width childMask ownedMask retainChildLocal retainRcLocal
+              (localGet ptrLocal) (i64Const index) ++
+            emitElements rest
+    rcAllocArrayObject childScratch width childMask (i64Const elements.length) ++
+      localSet ptrLocal ++
+      localGet ptrLocal ++ i32WrapI64 ++ i64Const elements.length ++ i64Store ++
+      emitElements (enumerate elements) ++
+      localGet ptrLocal
 
   partial def emitArrayReplicateSlots
       (scratch width childMask ownedMask : Nat)
@@ -2602,6 +2644,8 @@ mutual
     | .heapAllocSlots childMask ownedMask values =>
         emitHeapAllocSlots scratch childMask ownedMask values
     | .heapLoadSlot ptr slot => emitHeapLoadSlot scratch ptr slot
+    | .arrayLiteralSlots width childMask elements =>
+        emitArrayLiteralSlots scratch width childMask elements
     | .arrayReplicateSlots width childMask ownedMask cells values =>
         emitArrayReplicateSlots scratch width childMask ownedMask cells values
     | .arraySize array => emitArraySize scratch array

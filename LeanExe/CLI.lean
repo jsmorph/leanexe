@@ -148,6 +148,9 @@ def main : List String → IO UInt32
   | ["report", "--module", moduleName, "--entry", entryName, "--out", out] => do
       writeText out (← LeanExe.Extract.Report.makeReport moduleName entryName)
       return 0
+  | ["dump-ir", "--module", moduleName, "--entry", entryName] => do
+      IO.println (← LeanExe.Extract.OwnershipReport.makeIRDump moduleName entryName)
+      return 0
   | ["ownership-report", "--module", moduleName, "--entry", entryName] => do
       IO.println (← LeanExe.Extract.OwnershipReport.makeReport moduleName entryName)
       return 0
