@@ -14,6 +14,7 @@ tools/check-talos-push-twice.sh "$@"
 tools/check-talos-shared-pair.sh "$@"
 tools/check-talos-pair-free.sh "$@"
 tools/check-talos-box-free.sh "$@"
+tools/check-talos-fold-sum.sh "$@"
 
 cd "$repo_root/proofs/talos-gcd/lean"
 lake build Project
