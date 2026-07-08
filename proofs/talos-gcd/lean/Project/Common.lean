@@ -114,4 +114,24 @@ theorem read64_write8_ne (mm : Wasm.Mem) (ad : UInt32) (v : UInt8)
     (mm.write8 ad v).read64 b = mm.read64 b :=
   read64_congr b fun i hi => write8_bytes_ne mm ad v (by omega)
 
+/-- Resolve a word read over a chain of word writes: peel disjoint writes
+outermost-in, discharging separation by `omega` after normalizing the
+`UInt32.ofNat (_ % 2^32)` address forms, and stop at the syntactic hit.
+Address forms must already match at the hit; normalize first if not. -/
+macro "read_frames" : tactic =>
+  `(tactic|
+    repeat first
+      | rw [Wasm.Mem.read64_write64_same]
+      | rw [read64_write64_ne _ _ _ _
+          (by simp only [toUInt32_ofNat_mod_toNat]; omega)])
+
+/-- Subtraction stays within `Nat` when the subtrahend fits. -/
+theorem toNat_sub_le (p q : UInt64) (h : q.toNat ≤ p.toNat) :
+    (p - q).toNat = p.toNat - q.toNat := by
+  rw [UInt64.toNat_sub]
+  have hs : (18446744073709551616 : Nat) = UInt64.size := rfl
+  have hp : p.toNat < UInt64.size := p.toNat_lt_size
+  have hq : q.toNat < UInt64.size := q.toNat_lt_size
+  omega
+
 end Project.Common
