@@ -8,6 +8,7 @@ import Project.Runtime.Defs
 import Project.AppendBang.Program
 import Project.AssocList.Program
 import Project.BoxFree.Program
+import Project.FoldSum.Program
 import Project.Gcd.Program
 import Project.OrderBook.Program
 import Project.PairFree.Program
@@ -32,6 +33,11 @@ example : Project.BoxFree.func3Def = allocFuncDef := rfl
 example : Project.BoxFree.func4Def = resetFuncDef := rfl
 example : Project.BoxFree.func5Def = retainFuncDef := rfl
 example : Project.BoxFree.func6Def = releaseFuncDef 6 := rfl
+
+example : Project.FoldSum.func1Def = allocFuncDef := rfl
+example : Project.FoldSum.func2Def = resetFuncDef := rfl
+example : Project.FoldSum.func3Def = retainFuncDef := rfl
+example : Project.FoldSum.func4Def = releaseFuncDef 4 := rfl
 
 example : Project.Gcd.func1Def = allocFuncDef := rfl
 example : Project.Gcd.func2Def = resetFuncDef := rfl
