@@ -27,6 +27,8 @@ inductive RelTree where
   | shared (p : UInt64) (rc : UInt64)
 end
 
+instance : Inhabited RelSlot := ⟨.null⟩
+
 def RelTree.root : RelTree → UInt64
   | .node p _ => p
   | .shared p _ => p
@@ -542,5 +544,43 @@ theorem events_bounds {t : RelTree} (hok : footprintOk t.footprint) :
   unfold regionSub eventRegion at hsub
   simp only at hsub
   omega
+
+def RelSlot.masked : RelSlot → Bool
+  | .scalar _ => false
+  | _ => true
+
+def natMask (slots : List RelSlot) : Nat :=
+  slots.foldr (fun slot acc => 2 * acc + if slot.masked then 1 else 0) 0
+
+theorem natMask_cons (slot : RelSlot) (rest : List RelSlot) :
+    natMask (slot :: rest) =
+    2 * natMask rest + (if slot.masked then 1 else 0) := rfl
+
+theorem natMask_lt (slots : List RelSlot) :
+    natMask slots < 2 ^ slots.length := by
+  induction slots with
+  | nil => simp [natMask]
+  | cons slot rest ih =>
+      rw [natMask_cons, List.length_cons, Nat.pow_succ]
+      cases slot <;> simp [RelSlot.masked] <;> omega
+
+theorem natMask_testBit (slots : List RelSlot) (k : Nat)
+    (hk : k < slots.length) :
+    (natMask slots).testBit k = (slots[k]!).masked := by
+  induction slots generalizing k with
+  | nil => simp at hk
+  | cons slot rest ih =>
+      cases k with
+      | zero =>
+          rw [natMask_cons, Nat.testBit_zero]
+          cases slot <;> simp [RelSlot.masked] <;> omega
+      | succ k =>
+          rw [natMask_cons]
+          have hdiv : (2 * natMask rest +
+              (if slot.masked then 1 else 0)) / 2 = natMask rest := by
+            cases slot <;> simp [RelSlot.masked] <;> omega
+          rw [Nat.testBit_succ, hdiv,
+            ih k (by simpa using hk)]
+          simp
 
 end Project.Runtime
