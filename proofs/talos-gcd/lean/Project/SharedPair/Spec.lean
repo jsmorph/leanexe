@@ -788,4 +788,92 @@ theorem sharedPushPair_correct : SharedPairSpec := by
           · simp [vMeasure]
             omega
 
+/-- The exported retain: a nonzero pointer with a valid header and a live
+refcount gains exactly one count, the retain counter advances, and the
+pointer is returned.  This is the host-facing function 3; the inline retain
+sequence inside the entry is proved as part of `sharedPushPair_correct`. -/
+theorem func3_retains (env : HostEnv Unit) (st4 : Store Unit)
+    (p c r3 : UInt64)
+    (hp48 : 48 ≤ p.toNat)
+    (hp32 : p.toNat < 4294967296)
+    (hfit : p.toNat ≤ st4.mem.pages * 65536)
+    (hmagic : st4.mem.read64 (UInt32.ofNat ((p.toNat - 48) % 4294967296)) =
+      5501223100278326855)
+    (hrc : st4.mem.read64 (UInt32.ofNat ((p.toNat - 40) % 4294967296)) = c)
+    (hc0 : 0 < c.toNat)
+    (hg3 : st4.globals.globals[3]? = some (.i64 r3)) :
+    TerminatesWith (m := «module») (id := 3) (initial := st4) (env := env)
+      [.i64 p]
+      (fun st' vs =>
+        vs = [.i64 p] ∧
+        st'.mem = st4.mem.write64 (p.toUInt32 - 40) (c + 1) ∧
+        st'.globals.globals =
+          st4.globals.globals.set 3 (.i64 (r3 + 1))) := by
+  have hpne : ¬ (p = 0) := by
+    intro h
+    have := congrArg UInt64.toNat h
+    have h0 : (0 : UInt64).toNat = 0 := rfl
+    rw [h0] at this
+    omega
+  have hcne : ¬ (c = 0) := by
+    intro h
+    have := congrArg UInt64.toNat h
+    have h0 : (0 : UInt64).toNat = 0 := rfl
+    rw [h0] at this
+    omega
+  have hsubP : ∀ q : UInt64, q.toNat ≤ 48 → (p - q).toNat = p.toNat - q.toNat := by
+    intro q hq
+    rw [UInt64.toNat_sub]
+    have hs : (18446744073709551616 : Nat) = UInt64.size := rfl
+    omega
+  have hP48 : (p - 48).toNat = p.toNat - 48 := hsubP 48 (by rfl)
+  have hP40 : (p - 40).toNat = p.toNat - 40 := hsubP 40 (by decide)
+  have hmagic' : st4.mem.read64 (UInt32.ofNat ((p - 48).toNat % 4294967296)) =
+      5501223100278326855 := by
+    rw [hP48]
+    exact hmagic
+  have hrc' : st4.mem.read64 (UInt32.ofNat ((p - 40).toNat % 4294967296)) =
+      c := by
+    rw [hP40]
+    exact hrc
+  apply TerminatesWith.of_wp_entry_for (f := func3Def)
+  · simp [«module»]
+  · change wp «module» func3 _ st4
+      { params := [.i64 p],
+        locals := [.i64 0],
+        values := [] } env
+    unfold func3
+    wp_run
+    refine wp_iff_cons rfl ?_
+    rw [if_pos (by simp [hpne])]
+    wp_run
+    try simp
+    refine ⟨by omega, ?_⟩
+    simp only [hmagic']
+    refine wp_iff_cons rfl ?_
+    rw [if_neg (by simp)]
+    wp_run
+    try simp
+    refine ⟨by omega, ?_⟩
+    simp only [hrc']
+    refine wp_iff_cons rfl ?_
+    rw [if_neg (by simp [hcne])]
+    wp_run
+    try simp only [hg3]
+    try wp_run
+    try simp
+    have haP40 : UInt32.ofNat ((p - 40).toNat % 4294967296) =
+        p.toUInt32 - 40 := by
+      apply UInt32.toNat.inj
+      rw [toUInt32_ofNat_mod_toNat, hP40,
+        Wasm.UInt32.toNat_sub_of_le _ _ (by
+          rw [UInt32.le_iff_toNat_le]
+          have hb : (40 : UInt32).toNat = 40 := rfl
+          rw [hb, toUInt32_toNat]
+          omega)]
+      have hb : (40 : UInt32).toNat = 40 := rfl
+      rw [hb, toUInt32_toNat]
+      omega
+    exact ⟨by omega, by simp [func3Def], by rw [haP40]⟩
+
 end Project.SharedPair.Spec
