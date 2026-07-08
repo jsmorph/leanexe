@@ -906,125 +906,50 @@ private theorem boxPhase2_spec (env : HostEnv Unit) (st1 : Store Unit)
     simp only [hXm]
     have hNm : (((((((((stY.mem.write64 (UInt32.ofNat ((g0.toNat + 48 + 24) % 4294967296)) 5501223100278326855).write64 (UInt32.ofNat ((g0.toNat + 80) % 4294967296)) 1).write64 (UInt32.ofNat ((g0.toNat + 88) % 4294967296)) 24).write64 (UInt32.ofNat ((g0.toNat + 96) % 4294967296)) 1).write64 (UInt32.ofNat ((g0.toNat + 104) % 4294967296)) 3).write64 (UInt32.ofNat ((g0.toNat + 112) % 4294967296)) 4).write64 (UInt32.ofNat ((g0.toNat + 120) % 4294967296)) 1).write64 (UInt32.ofNat ((g0.toNat + 120 + 8) % 4294967296)) 7).write64 (UInt32.ofNat ((g0.toNat + 120 + 16) % 4294967296)) (g0 + 48)).read64
         (UInt32.ofNat ((g0.toNat + 48 + 24) % 4294967296)) = 5501223100278326855 := by
-      rw [read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        Mem.read64_write64_same]
+      read_frames
     have hNr : (((((((((stY.mem.write64 (UInt32.ofNat ((g0.toNat + 48 + 24) % 4294967296)) 5501223100278326855).write64 (UInt32.ofNat ((g0.toNat + 80) % 4294967296)) 1).write64 (UInt32.ofNat ((g0.toNat + 88) % 4294967296)) 24).write64 (UInt32.ofNat ((g0.toNat + 96) % 4294967296)) 1).write64 (UInt32.ofNat ((g0.toNat + 104) % 4294967296)) 3).write64 (UInt32.ofNat ((g0.toNat + 112) % 4294967296)) 4).write64 (UInt32.ofNat ((g0.toNat + 120) % 4294967296)) 1).write64 (UInt32.ofNat ((g0.toNat + 120 + 8) % 4294967296)) 7).write64 (UInt32.ofNat ((g0.toNat + 120 + 16) % 4294967296)) (g0 + 48)).read64
         (UInt32.ofNat ((g0.toNat + 80) % 4294967296)) = 1 := by
-      rw [read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        Mem.read64_write64_same]
+      read_frames
     have hNk : (((((((((stY.mem.write64 (UInt32.ofNat ((g0.toNat + 48 + 24) % 4294967296)) 5501223100278326855).write64 (UInt32.ofNat ((g0.toNat + 80) % 4294967296)) 1).write64 (UInt32.ofNat ((g0.toNat + 88) % 4294967296)) 24).write64 (UInt32.ofNat ((g0.toNat + 96) % 4294967296)) 1).write64 (UInt32.ofNat ((g0.toNat + 104) % 4294967296)) 3).write64 (UInt32.ofNat ((g0.toNat + 112) % 4294967296)) 4).write64 (UInt32.ofNat ((g0.toNat + 120) % 4294967296)) 1).write64 (UInt32.ofNat ((g0.toNat + 120 + 8) % 4294967296)) 7).write64 (UInt32.ofNat ((g0.toNat + 120 + 16) % 4294967296)) (g0 + 48)).read64
         (UInt32.ofNat ((g0.toNat + 96) % 4294967296)) = 1 := by
-      rw [read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        Mem.read64_write64_same]
+      read_frames
     have hNl : (((((((((stY.mem.write64 (UInt32.ofNat ((g0.toNat + 48 + 24) % 4294967296)) 5501223100278326855).write64 (UInt32.ofNat ((g0.toNat + 80) % 4294967296)) 1).write64 (UInt32.ofNat ((g0.toNat + 88) % 4294967296)) 24).write64 (UInt32.ofNat ((g0.toNat + 96) % 4294967296)) 1).write64 (UInt32.ofNat ((g0.toNat + 104) % 4294967296)) 3).write64 (UInt32.ofNat ((g0.toNat + 112) % 4294967296)) 4).write64 (UInt32.ofNat ((g0.toNat + 120) % 4294967296)) 1).write64 (UInt32.ofNat ((g0.toNat + 120 + 8) % 4294967296)) 7).write64 (UInt32.ofNat ((g0.toNat + 120 + 16) % 4294967296)) (g0 + 48)).read64
         (UInt32.ofNat ((g0.toNat + 104) % 4294967296)) = 3 := by
-      rw [read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        Mem.read64_write64_same]
+      read_frames
     have hNmask : (((((((((stY.mem.write64 (UInt32.ofNat ((g0.toNat + 48 + 24) % 4294967296)) 5501223100278326855).write64 (UInt32.ofNat ((g0.toNat + 80) % 4294967296)) 1).write64 (UInt32.ofNat ((g0.toNat + 88) % 4294967296)) 24).write64 (UInt32.ofNat ((g0.toNat + 96) % 4294967296)) 1).write64 (UInt32.ofNat ((g0.toNat + 104) % 4294967296)) 3).write64 (UInt32.ofNat ((g0.toNat + 112) % 4294967296)) 4).write64 (UInt32.ofNat ((g0.toNat + 120) % 4294967296)) 1).write64 (UInt32.ofNat ((g0.toNat + 120 + 8) % 4294967296)) 7).write64 (UInt32.ofNat ((g0.toNat + 120 + 16) % 4294967296)) (g0 + 48)).read64
         (UInt32.ofNat ((g0.toNat + 112) % 4294967296)) = 4 := by
-      rw [read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        Mem.read64_write64_same]
+      read_frames
     have hNs2 : (((((((((stY.mem.write64 (UInt32.ofNat ((g0.toNat + 48 + 24) % 4294967296)) 5501223100278326855).write64 (UInt32.ofNat ((g0.toNat + 80) % 4294967296)) 1).write64 (UInt32.ofNat ((g0.toNat + 88) % 4294967296)) 24).write64 (UInt32.ofNat ((g0.toNat + 96) % 4294967296)) 1).write64 (UInt32.ofNat ((g0.toNat + 104) % 4294967296)) 3).write64 (UInt32.ofNat ((g0.toNat + 112) % 4294967296)) 4).write64 (UInt32.ofNat ((g0.toNat + 120) % 4294967296)) 1).write64 (UInt32.ofNat ((g0.toNat + 120 + 8) % 4294967296)) 7).write64 (UInt32.ofNat ((g0.toNat + 120 + 16) % 4294967296)) (g0 + 48)).read64
         (UInt32.ofNat ((g0.toNat + 120 + 16) % 4294967296)) = (g0 + 48) := by
       rw [Mem.read64_write64_same]
     have hCm : (((((((((stY.mem.write64 (UInt32.ofNat ((g0.toNat + 48 + 24) % 4294967296)) 5501223100278326855).write64 (UInt32.ofNat ((g0.toNat + 80) % 4294967296)) 1).write64 (UInt32.ofNat ((g0.toNat + 88) % 4294967296)) 24).write64 (UInt32.ofNat ((g0.toNat + 96) % 4294967296)) 1).write64 (UInt32.ofNat ((g0.toNat + 104) % 4294967296)) 3).write64 (UInt32.ofNat ((g0.toNat + 112) % 4294967296)) 4).write64 (UInt32.ofNat ((g0.toNat + 120) % 4294967296)) 1).write64 (UInt32.ofNat ((g0.toNat + 120 + 8) % 4294967296)) 7).write64 (UInt32.ofNat ((g0.toNat + 120 + 16) % 4294967296)) (g0 + 48)).read64
         (UInt32.ofNat (g0.toNat % 4294967296)) = 5501223100278326855 := by
-      rw [read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega)]
+      read_frames
       rw [hmY]
       exact hn0
     have hCr : (((((((((stY.mem.write64 (UInt32.ofNat ((g0.toNat + 48 + 24) % 4294967296)) 5501223100278326855).write64 (UInt32.ofNat ((g0.toNat + 80) % 4294967296)) 1).write64 (UInt32.ofNat ((g0.toNat + 88) % 4294967296)) 24).write64 (UInt32.ofNat ((g0.toNat + 96) % 4294967296)) 1).write64 (UInt32.ofNat ((g0.toNat + 104) % 4294967296)) 3).write64 (UInt32.ofNat ((g0.toNat + 112) % 4294967296)) 4).write64 (UInt32.ofNat ((g0.toNat + 120) % 4294967296)) 1).write64 (UInt32.ofNat ((g0.toNat + 120 + 8) % 4294967296)) 7).write64 (UInt32.ofNat ((g0.toNat + 120 + 16) % 4294967296)) (g0 + 48)).read64
         (UInt32.ofNat ((g0.toNat + 8) % 4294967296)) = 1 := by
-      rw [read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega)]
+      read_frames
       rw [hmY]
       exact hn8
     have hCk : (((((((((stY.mem.write64 (UInt32.ofNat ((g0.toNat + 48 + 24) % 4294967296)) 5501223100278326855).write64 (UInt32.ofNat ((g0.toNat + 80) % 4294967296)) 1).write64 (UInt32.ofNat ((g0.toNat + 88) % 4294967296)) 24).write64 (UInt32.ofNat ((g0.toNat + 96) % 4294967296)) 1).write64 (UInt32.ofNat ((g0.toNat + 104) % 4294967296)) 3).write64 (UInt32.ofNat ((g0.toNat + 112) % 4294967296)) 4).write64 (UInt32.ofNat ((g0.toNat + 120) % 4294967296)) 1).write64 (UInt32.ofNat ((g0.toNat + 120 + 8) % 4294967296)) 7).write64 (UInt32.ofNat ((g0.toNat + 120 + 16) % 4294967296)) (g0 + 48)).read64
         (UInt32.ofNat ((g0.toNat + 24) % 4294967296)) = 1 := by
-      rw [read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega)]
+      read_frames
       rw [hmY]
       exact hn24
     have hCl : (((((((((stY.mem.write64 (UInt32.ofNat ((g0.toNat + 48 + 24) % 4294967296)) 5501223100278326855).write64 (UInt32.ofNat ((g0.toNat + 80) % 4294967296)) 1).write64 (UInt32.ofNat ((g0.toNat + 88) % 4294967296)) 24).write64 (UInt32.ofNat ((g0.toNat + 96) % 4294967296)) 1).write64 (UInt32.ofNat ((g0.toNat + 104) % 4294967296)) 3).write64 (UInt32.ofNat ((g0.toNat + 112) % 4294967296)) 4).write64 (UInt32.ofNat ((g0.toNat + 120) % 4294967296)) 1).write64 (UInt32.ofNat ((g0.toNat + 120 + 8) % 4294967296)) 7).write64 (UInt32.ofNat ((g0.toNat + 120 + 16) % 4294967296)) (g0 + 48)).read64
         (UInt32.ofNat ((g0.toNat + 32) % 4294967296)) = 3 := by
-      rw [read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega)]
+      read_frames
       rw [hmY]
       exact hn32
     have hCmask : (((((((((stY.mem.write64 (UInt32.ofNat ((g0.toNat + 48 + 24) % 4294967296)) 5501223100278326855).write64 (UInt32.ofNat ((g0.toNat + 80) % 4294967296)) 1).write64 (UInt32.ofNat ((g0.toNat + 88) % 4294967296)) 24).write64 (UInt32.ofNat ((g0.toNat + 96) % 4294967296)) 1).write64 (UInt32.ofNat ((g0.toNat + 104) % 4294967296)) 3).write64 (UInt32.ofNat ((g0.toNat + 112) % 4294967296)) 4).write64 (UInt32.ofNat ((g0.toNat + 120) % 4294967296)) 1).write64 (UInt32.ofNat ((g0.toNat + 120 + 8) % 4294967296)) 7).write64 (UInt32.ofNat ((g0.toNat + 120 + 16) % 4294967296)) (g0 + 48)).read64
         (UInt32.ofNat ((g0.toNat + 40) % 4294967296)) = 4 := by
-      rw [read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega)]
+      read_frames
       rw [hmY]
       exact hn40
     have hCs2 : (((((((((stY.mem.write64 (UInt32.ofNat ((g0.toNat + 48 + 24) % 4294967296)) 5501223100278326855).write64 (UInt32.ofNat ((g0.toNat + 80) % 4294967296)) 1).write64 (UInt32.ofNat ((g0.toNat + 88) % 4294967296)) 24).write64 (UInt32.ofNat ((g0.toNat + 96) % 4294967296)) 1).write64 (UInt32.ofNat ((g0.toNat + 104) % 4294967296)) 3).write64 (UInt32.ofNat ((g0.toNat + 112) % 4294967296)) 4).write64 (UInt32.ofNat ((g0.toNat + 120) % 4294967296)) 1).write64 (UInt32.ofNat ((g0.toNat + 120 + 8) % 4294967296)) 7).write64 (UInt32.ofNat ((g0.toNat + 120 + 16) % 4294967296)) (g0 + 48)).read64
         (UInt32.ofNat ((g0.toNat + 64) % 4294967296)) = 0 := by
-      rw [read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega)]
+      read_frames
       rw [hmY]
       exact hn64
     have hnodeN : (g0 + 48 + 24 + 48 : UInt64).toNat = g0.toNat + 120 := by
@@ -1330,38 +1255,11 @@ theorem boxFreeStats_correct : BoxFreeSpec := by
         exact hg4
       · simp [List.getElem?_set]
         exact hg5
-      · rw [read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        Mem.read64_write64_same]
-      · rw [read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        Mem.read64_write64_same]
-      · rw [read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        Mem.read64_write64_same]
-      · rw [read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        Mem.read64_write64_same]
-      · rw [read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-        Mem.read64_write64_same]
+      · read_frames
+      · read_frames
+      · read_frames
+      · read_frames
+      · read_frames
       · rw [show (((g0.toNat + 48) % 18446744073709551616 + 16) %
             4294967296 : Nat) = (g0.toNat + 64) % 4294967296 from by omega]
         rw [Mem.read64_write64_same]
