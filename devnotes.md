@@ -4309,3 +4309,7 @@ The remaining supports for the teardown theorem's walk: `applyEvents_append` com
 ## 2026-07-08: mask bits characterized
 
 `natMask` computes the mask word the compiler stores for a slot list, and `natMask_testBit` identifies bit `k` with whether slot `k` is masked — the fact the walk's shift-and-test branch condition reduces to.  `natMask_lt` bounds the mask below `2 ^ length` for the shift arithmetic.  With these, every support the generic walk proof consumes exists; the walk theorem itself — the wp induction over the tree with the slot-loop invariant carrying the prefix of applied events — is the remaining piece.
+
+## 2026-07-08: walk preamble proved
+
+`TreeSpec.lean` holds the per-iteration facts for the generic walk: `slotsMask_shift_and` reduces the compiled shift-and-test branch condition on the stored mask word to the slot's kind, through the `Nat.testBit` characterization and the 64-bit shift semantics; `SlotsAt_get` indexes a slot predicate to the k-th read fact and child shape; `sizeOf_child_lt` feeds the fuel induction.  The walk theorem itself is what remains: the wp induction over the tree, with the loop invariant carrying the prefix of applied events and the recursive call consuming the induction hypothesis through the call rule.
