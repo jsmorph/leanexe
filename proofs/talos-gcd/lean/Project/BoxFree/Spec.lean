@@ -1,5 +1,6 @@
 import Project.BoxFree.Program
 import Project.Common
+import Project.Runtime.Spec
 import Interpreter.Wasm.Wp.Tactic
 import Interpreter.Wasm.Wp.Block
 import Interpreter.Wasm.Wp.Loop
@@ -31,21 +32,8 @@ set_option Elab.async false
 theorem func6_null (env : HostEnv Unit) (st4 : Store Unit) :
     TerminatesWith (m := «module») (id := 6) (initial := st4) (env := env)
       [.i64 0]
-      (fun st' vs => vs = [] ∧ st' = st4) := by
-  apply TerminatesWith.of_wp_entry_for (f := func6Def)
-  · simp [«module»]
-  · change wp «module» func6 _ st4
-      { params := [.i64 0],
-        locals := [.i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
-          .i64 0],
-        values := [] } env
-    unfold func6
-    wp_run
-    refine wp_iff_cons rfl ?_
-    rw [if_pos (by decide)]
-    wp_run
-    try simp
-    simp [func6Def]
+      (fun st' vs => vs = [] ∧ st' = st4) :=
+  Project.Runtime.release_null env «module» 6 st4 (by rfl) rfl
 
 private def rFrame (p l1 l2 l3 l4 l5 l6 l7 l8 : UInt64) : Locals :=
   { params := [.i64 p],
