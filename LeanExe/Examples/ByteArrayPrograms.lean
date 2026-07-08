@@ -132,6 +132,18 @@ def pushLetSizes (input : ByteArray) : Nat :=
 def pushOperandSizes (input : ByteArray) : Nat :=
   (input.push (33 : UInt8)).size + (input.push (34 : UInt8)).size
 
+inductive ByteChain where
+  | stop
+  | link (payload : ByteArray) (rest : ByteChain)
+
+def chainFreeStats (input : ByteArray) : UInt64 :=
+  let chain := ByteChain.link (input.push (33 : UInt8)) ByteChain.stop
+  let releasesBefore := LeanExe.Runtime.releaseCount
+  let freesBefore := LeanExe.Runtime.freeCount
+  let freesAfter := LeanExe.Runtime.release chain
+  (LeanExe.Runtime.releaseCount - releasesBefore) * 100 +
+    (freesAfter - freesBefore)
+
 def foldFreshSum : Nat :=
   (ByteArray.mk #[(65 : UInt8), (66 : UInt8)]).foldl
     (fun acc byte => acc + byte.toNat) 0
