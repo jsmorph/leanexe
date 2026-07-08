@@ -132,6 +132,18 @@ def pushLetSizes (input : ByteArray) : Nat :=
 def pushOperandSizes (input : ByteArray) : Nat :=
   (input.push (33 : UInt8)).size + (input.push (34 : UInt8)).size
 
+inductive UBox where
+  | nil
+  | node (value : UInt64) (rest : UBox)
+
+def boxFreeStats : UInt64 :=
+  let box := UBox.node 7 UBox.nil
+  let releasesBefore := LeanExe.Runtime.releaseCount
+  let freesBefore := LeanExe.Runtime.freeCount
+  let freesAfter := LeanExe.Runtime.release box
+  (LeanExe.Runtime.releaseCount - releasesBefore) * 100 +
+    (freesAfter - freesBefore)
+
 inductive ByteChain where
   | stop
   | link (payload : ByteArray) (rest : ByteChain)
