@@ -2083,6 +2083,80 @@ def ownedChildMaskForSlotsForAlloc
     Nat :=
   ownedChildMaskForSlotsWithOwnerSourcesForAlloc summaries childMask [] slots
 
+/-- A value-level let wrapper peeled off an extracted value so a multi-slot
+consumer can evaluate it once instead of once per slot. -/
+inductive ValueLetWrapper where
+  | expr (slot : Nat) (value : IRExpr)
+  | call (slots : List Nat) (index : Nat) (args : List IRExpr)
+  | locals (lets : List LeanExe.IR.LocalLet)
+
+def valueWrapperSourcesAfter
+    (summaries : Array (List Nat))
+    (sources : List (Nat × List Nat)) :
+    ValueLetWrapper → List (Nat × List Nat)
+  | .expr slot value =>
+      match exprOwnerSourceSlotsForAllocFrom summaries sources value with
+      | some sourceSlots =>
+          addOwnerSourceSlot sources slot (normalizedOwnerSourceSlots slot sourceSlots)
+      | none => removeOwnerSourceSlot sources slot
+  | .call slots index _ =>
+      (summarizedCallResultOwnerSlots summaries index slots).foldl
+        (fun acc slot => addOwnerSourceSlot acc slot [slot])
+        (slots.foldl removeOwnerSourceSlot sources)
+  | .locals lets => ownerSourcesAfterLocalLetsForAlloc summaries sources lets
+
+partial def stripExtractedValueWrappers
+    (summaries : Array (List Nat))
+    (sources : List (Nat × List Nat)) :
+    ExtractedValue →
+      List ValueLetWrapper × ExtractedValue × List (Nat × List Nat)
+  | .letE slot value body =>
+      let wrapper := ValueLetWrapper.expr slot value
+      let rest := stripExtractedValueWrappers summaries
+        (valueWrapperSourcesAfter summaries sources wrapper) body
+      (wrapper :: rest.1, rest.2.1, rest.2.2)
+  | .letCall slots index args body =>
+      let wrapper := ValueLetWrapper.call slots index args
+      let rest := stripExtractedValueWrappers summaries
+        (valueWrapperSourcesAfter summaries sources wrapper) body
+      (wrapper :: rest.1, rest.2.1, rest.2.2)
+  | .letLocal lets body =>
+      let wrapper := ValueLetWrapper.locals lets
+      let rest := stripExtractedValueWrappers summaries
+        (valueWrapperSourcesAfter summaries sources wrapper) body
+      (wrapper :: rest.1, rest.2.1, rest.2.2)
+  | other => ([], other, sources)
+
+def rewrapValueWrappers (wrappers : List ValueLetWrapper) (core : IRExpr) :
+    IRExpr :=
+  wrappers.foldr
+    (fun wrapper acc =>
+      match wrapper with
+      | .expr slot value => .letE slot value acc
+      | .call slots index args => .letCall slots index args acc
+      | .locals lets => wrapExprLocalLets lets acc)
+    core
+
+/-- Flatten constructor fields for a heap allocation, hoisting each field's
+let wrappers once instead of replicating them onto every slot. -/
+def hoistCtorFieldWrappers
+    (flattenResidue :
+      Ty → ExtractedValue → List (Nat × List Nat) → Except String (List IRExpr))
+    (summaries : Array (List Nat))
+    (ctors : List (List (Ty × ExtractedValue)))
+    (sources : List (Nat × List Nat)) :
+    Except String
+      (List ValueLetWrapper × List IRExpr × List (Nat × List Nat)) :=
+  ctors.foldlM
+    (fun acc fields =>
+      fields.foldlM
+        (fun acc field => do
+          let stripped := stripExtractedValueWrappers summaries acc.2.2 field.snd
+          let slots ← flattenResidue field.fst stripped.2.1 stripped.2.2
+          .ok (acc.1 ++ stripped.1, acc.2.1 ++ slots, stripped.2.2))
+        acc)
+    ([], [], sources)
+
 partial def flattenInternalValue
     (ty : Ty)
     (value : ExtractedValue)
@@ -2249,13 +2323,14 @@ partial def flattenInternalValue
             .error s!"recursive inductive internal value shape mismatch: {name}"
       | .recursiveVariant actual tag ctors =>
           if actual == name then do
-            let flattened ← ctors.mapM fun fields =>
-              fields.mapM (fun field => flattenInternalValue field.fst field.snd summaries ownerSources)
-            let values := tag :: flattened.flatten.flatten
+            let hoisted ← hoistCtorFieldWrappers
+              (fun ty value sources => flattenInternalValue ty value summaries sources)
+              summaries ctors ownerSources
+            let values := tag :: hoisted.2.1
             let childMask := heapChildMaskForCtors ctors
             let ownedMask :=
-              ownedChildMaskForSlotsWithOwnerSourcesForAlloc summaries childMask ownerSources values
-            .ok [(.heapAllocSlots childMask ownedMask values)]
+              ownedChildMaskForSlotsWithOwnerSourcesForAlloc summaries childMask hoisted.2.2 values
+            .ok [rewrapValueWrappers hoisted.1 (.heapAllocSlots childMask ownedMask values)]
           else
             .error s!"recursive inductive internal value shape mismatch: {name}"
       | .letE slot value body => do
@@ -2357,12 +2432,14 @@ partial def flattenAbiValue (ty : Ty) (value : ExtractedValue) : Except String (
             .error s!"recursive inductive ABI value shape mismatch: {name}"
       | .recursiveVariant actual tag ctors =>
           if actual == name then do
-            let flattened ← ctors.mapM fun fields =>
-              fields.mapM (fun field => flattenInternalValue field.fst field.snd)
-            let values := tag :: flattened.flatten.flatten
+            let hoisted ← hoistCtorFieldWrappers
+              (fun ty value sources => flattenInternalValue ty value #[] sources)
+              #[] ctors []
+            let values := tag :: hoisted.2.1
             let childMask := heapChildMaskForCtors ctors
-            let ownedMask := ownedChildMaskForSlotsForAlloc #[] childMask values
-            .ok [(.heapAllocSlots childMask ownedMask values)]
+            let ownedMask :=
+              ownedChildMaskForSlotsWithOwnerSourcesForAlloc #[] childMask hoisted.2.2 values
+            .ok [rewrapValueWrappers hoisted.1 (.heapAllocSlots childMask ownedMask values)]
           else
             .error s!"recursive inductive ABI value shape mismatch: {name}"
       | .letE slot value body => do
