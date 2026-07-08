@@ -132,6 +132,10 @@ def pushLetSizes (input : ByteArray) : Nat :=
 def pushOperandSizes (input : ByteArray) : Nat :=
   (input.push (33 : UInt8)).size + (input.push (34 : UInt8)).size
 
+def foldFreshSum : Nat :=
+  (ByteArray.mk #[(65 : UInt8), (66 : UInt8)]).foldl
+    (fun acc byte => acc + byte.toNat) 0
+
 def sharedPushPair (input : ByteArray) : Array ByteArray :=
   let appended := input.push (33 : UInt8)
   #[appended, appended]

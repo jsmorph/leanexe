@@ -115,7 +115,7 @@ function checkCompilerReleasesFoldAccumulators() {
     ["arrayFoldOptionByteArrayAccumulatorReleaseStats", 30603],
     ["arrayFoldPublicTokenAccumulatorReleaseStats", 30503],
     ["arrayFoldByteArrayGroupAccumulatorReleaseStats", 30603],
-    ["byteArrayFoldByteArrayAccumulatorReleaseStats", 30202],
+    ["byteArrayFoldByteArrayAccumulatorReleaseStats", 30404],
     ["idRunByteArrayForOutputReleaseStats", 30202],
     ["idRunRangeForByteArrayOutputReleaseStats", 30202],
     ["arrayFoldRecursiveAccumulatorReleaseStats", 30707],
