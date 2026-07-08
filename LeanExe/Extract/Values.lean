@@ -3405,6 +3405,43 @@ def releaseSlotAllowedForResult
     Bool :=
   canReleaseOwnedTemps || !returnedOwnerSlots.contains slot
 
+/-- Owned heap temporaries bound by `letE` along an expression's spine:
+through nested lets, both operands of scalar binary operations, and both
+branches of a conditional (locals are zero-initialized, and releasing null
+is a no-op, so a binder from the untaken branch is safe to release).  A
+binder counts only when its value is an owned nonrecursive object the rest
+of the expression neither consumes nor returns. -/
+partial def exprSpineOwnedTemps (ownedLocals : List Nat) : IRExpr → List Nat
+  | .letE slot value body =>
+      let valueOwned := exprReturnsOwnedNonrecursiveHeapObjectFrom ownedLocals value
+      let nextOwned :=
+        if valueOwned then
+          addLiveSlot (removeLiveSlot ownedLocals slot) slot
+        else
+          removeLiveSlot ownedLocals slot
+      let mine :=
+        if valueOwned && !(exprReleasedSlots body).contains slot &&
+            !exprReturnsLocalSlot slot body then
+          [slot]
+        else
+          []
+      addLiveSlots (addLiveSlots mine (exprSpineOwnedTemps ownedLocals value))
+        (exprSpineOwnedTemps nextOwned body)
+  | .letLets lets body =>
+      let fromLets := lets.flatMap (localLetOwnedNonrecursiveHeapSlotsFrom ownedLocals)
+      let released := addLiveSlots (localLetsReleasedSlots lets) (exprReleasedSlots body)
+      addLiveSlots
+        (fromLets.filter fun slot =>
+          !released.contains slot && !exprReturnsLocalSlot slot body)
+        (exprSpineOwnedTemps ownedLocals body)
+  | .u64Bin _ left right =>
+      addLiveSlots (exprSpineOwnedTemps ownedLocals left)
+        (exprSpineOwnedTemps ownedLocals right)
+  | .ite _ thenValue elseValue =>
+      addLiveSlots (exprSpineOwnedTemps ownedLocals thenValue)
+        (exprSpineOwnedTemps ownedLocals elseValue)
+  | _ => []
+
 def assignResultExprWithOwnedReleases
     (ctx : Context)
     (canReleaseOwnedTemps : Bool)
@@ -3443,7 +3480,12 @@ def assignResultExprWithOwnedReleases
             !released.contains slot)
       else
         stmt
-  | _ => .assign target expr
+  | _ =>
+      let stmt : IRStmt := .assign target expr
+      if canReleaseOwnedTemps then
+        appendDistinctReleases stmt (exprSpineOwnedTemps [] expr)
+      else
+        stmt
 
 def assignResultSlotsWithOwnedReleases
     (ctx : Context)
@@ -3779,6 +3821,22 @@ partial def stmtReleasedSlots : IRStmt → List Nat
       addLiveSlots (exprListReleasedSlots initValues)
         (foldAssignReleasedSlots bodyValues bodyLets bodyDone)
 
+/-- Convert one materialization let to a statement, flattening nested let
+chains through the release-aware assigner so owned intermediates release. -/
+def localLetStmtWithOwnedReleases
+    (ctx : Context)
+    (canReleaseOwnedTemps : Bool) :
+    LeanExe.IR.LocalLet → IRStmt
+  | .expr slot expr => assignResultExprWithOwnedReleases ctx canReleaseOwnedTemps slot expr
+  | .slots slots values =>
+      (match foldMultiSlotAssign? slots values with
+       | some stmt => stmt
+       | none =>
+           LeanExe.IR.seqList <|
+             (slots.zip values).map fun item =>
+               assignResultExprWithOwnedReleases ctx canReleaseOwnedTemps item.fst item.snd)
+  | other => localLetStmtOptimized other
+
 partial def materializeResultValue
     (ctx : Context)
     (useAbi : Bool)
@@ -3843,7 +3901,9 @@ partial def materializeResultValue
         refreshOwnerMasksLocalLetsForAlloc ctx.freshResultOwnerOffsets ownerSources kept
       let kept := refreshed.fst
       let bodyStmt ← materializeResultValue ctx useAbi ty targets body refreshed.snd
-      let stmt := .seq (localLetStmtListOptimized kept) bodyStmt
+      let stmt := .seq
+        (LeanExe.IR.seqList (kept.map (localLetStmtWithOwnedReleases ctx canReleaseOwnedTemps)))
+        bodyStmt
       let released :=
         addLiveSlots
           (localLetsReleasedSlotsWithLater (valueReleasedSlots body) kept)
@@ -3864,18 +3924,8 @@ partial def materializeResultValue
       if !useAbi then
         let lets ←
           materializeInternalValueLets ty value targets ctx.freshResultOwnerOffsets ownerSources
-        let convert : LeanExe.IR.LocalLet → IRStmt
-          | .expr slot expr => assignResultExprWithOwnedReleases ctx canReleaseOwnedTemps slot expr
-          | .slots slots values =>
-              (match foldMultiSlotAssign? slots values with
-               | some stmt => stmt
-               | none =>
-                   LeanExe.IR.seqList <|
-                     (slots.zip values).map fun item =>
-                       assignResultExprWithOwnedReleases ctx canReleaseOwnedTemps item.fst
-                         item.snd)
-          | other => localLetStmtOptimized other
-        let stmt := LeanExe.IR.seqList (lets.map convert)
+        let stmt := LeanExe.IR.seqList
+          (lets.map (localLetStmtWithOwnedReleases ctx canReleaseOwnedTemps))
         if canReleaseOwnedTemps then
           let released := localLetsReleasedSlots lets
           let ownerSlots := lets.flatMap (localLetOwnedNonrecursiveHeapSlots ctx)
