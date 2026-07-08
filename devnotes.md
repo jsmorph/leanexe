@@ -4305,3 +4305,7 @@ The frame infrastructure for the generic teardown theorem is proved.  `read64_ap
 ## 2026-07-08: event containment and composition lemmas
 
 The remaining supports for the teardown theorem's walk: `applyEvents_append` composes event folds over concatenation; `regionSub` with `regionsDisjoint_of_sub` transfers disjointness through containment; `events_sub` (fuel induction again) places every event's header region inside a footprint region of its own subtree, and `events_bounds` derives the pointer bounds from the footprint bounds.  Together with the frame theorem these give the walk proof everything it consumes: sibling disjointness pushes each child's events away from every other region, so headers stay readable and untouched subtrees stay intact as the loop advances.
+
+## 2026-07-08: mask bits characterized
+
+`natMask` computes the mask word the compiler stores for a slot list, and `natMask_testBit` identifies bit `k` with whether slot `k` is masked — the fact the walk's shift-and-test branch condition reduces to.  `natMask_lt` bounds the mask below `2 ^ length` for the shift arithmetic.  With these, every support the generic walk proof consumes exists; the walk theorem itself — the wp induction over the tree with the slot-loop invariant carrying the prefix of applied events — is the remaining piece.
