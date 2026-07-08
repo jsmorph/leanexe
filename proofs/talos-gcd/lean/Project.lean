@@ -8,3 +8,5 @@ import Project.PushTwice.Spec
 import Project.SharedPair.Spec
 import Project.PairFree.Spec
 import Project.BoxFree.Spec
+import Project.Runtime.Checks
+import Project.Runtime.Spec
