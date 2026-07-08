@@ -957,10 +957,17 @@ mutual
             else
               let arrayResult ← extractValueFrom ctx locals nextLocal array
               let parts ← byteArrayPartsWithLets arrayResult.fst
-              let ptr := wrapExprLets parts.fst parts.snd.fst
-              let len := wrapExprLets parts.fst parts.snd.snd
+              let ptr := parts.snd.fst
+              let len := parts.snd.snd
               let initResult ← extractValueFrom ctx locals arrayResult.snd init
               let initValue ← mkMonadPureValue monad initResult.fst
+              let sameByteSize? (expr : Expr) : Bool :=
+                match appFnArgs expr with
+                | (.const ``ByteArray.size _, sizeArgs) =>
+                    match sizeArgs.reverse with
+                    | sized :: _ => sized == array
+                    | _ => false
+                | _ => false
               let startStop ←
                 match rest with
                 | [] => .ok ((.u64 0, len), initResult.snd)
@@ -969,8 +976,11 @@ mutual
                     .ok ((startResult.fst, len), startResult.snd)
                 | [start, stop] =>
                     let startResult ← extractExprFrom ctx locals initResult.snd start
-                    let stopResult ← extractExprFrom ctx locals startResult.snd stop
-                    .ok ((startResult.fst, stopResult.fst), stopResult.snd)
+                    if sameByteSize? stop then
+                      .ok ((startResult.fst, len), startResult.snd)
+                    else
+                      let stopResult ← extractExprFrom ctx locals startResult.snd stop
+                      .ok ((startResult.fst, stopResult.fst), stopResult.snd)
                 | _ => .error "unsupported ByteArray.foldlM application"
               let resultWidth := internalSlots resultTy
               let initSlots ← flattenInternalValue resultTy initValue ctx.freshResultOwnerOffsets
@@ -992,7 +1002,7 @@ mutual
               let resultValue :=
                 valueFromInternalSlots resultTy
                   (fun offset =>
-                    .byteArrayFoldMultiSlot
+                    wrapExprLets parts.fst <| .byteArrayFoldMultiSlot
                       resultWidth
                       ptr
                       len
@@ -1673,9 +1683,16 @@ mutual
                     else
                       let arrayResult ← extractValueFrom ctx locals nextLocal array
                       let parts ← byteArrayPartsWithLets arrayResult.fst
-                      let ptr := wrapExprLets parts.fst parts.snd.fst
-                      let len := wrapExprLets parts.fst parts.snd.snd
+                      let ptr := parts.snd.fst
+                      let len := parts.snd.snd
                       let initResult ← extractValueFrom ctx locals arrayResult.snd init
+                      let sameByteSize? (expr : Expr) : Bool :=
+                        match appFnArgs expr with
+                        | (.const ``ByteArray.size _, sizeArgs) =>
+                            match sizeArgs.reverse with
+                            | sized :: _ => sized == array
+                            | _ => false
+                        | _ => false
                       let startStop ←
                         match rest with
                         | [] => .ok ((.u64 0, len), initResult.snd)
@@ -1684,8 +1701,11 @@ mutual
                             .ok ((startResult.fst, len), startResult.snd)
                         | [start, stop] =>
                             let startResult ← extractExprFrom ctx locals initResult.snd start
-                            let stopResult ← extractExprFrom ctx locals startResult.snd stop
-                            .ok ((startResult.fst, stopResult.fst), stopResult.snd)
+                            if sameByteSize? stop then
+                              .ok ((startResult.fst, len), startResult.snd)
+                            else
+                              let stopResult ← extractExprFrom ctx locals startResult.snd stop
+                              .ok ((startResult.fst, stopResult.fst), stopResult.snd)
                         | _ => .error "unsupported ByteArray.foldl application"
                       let resultWidth := internalSlots resultTy
                       let initSlots ← flattenInternalValue resultTy initResult.fst ctx.freshResultOwnerOffsets
@@ -1719,7 +1739,7 @@ mutual
                       let resultValue :=
                         valueFromInternalSlots resultTy
                           (fun offset =>
-                            .byteArrayFoldMultiSlot
+                            wrapExprLets parts.fst <| .byteArrayFoldMultiSlot
                               resultWidth
                               ptr
                               len
