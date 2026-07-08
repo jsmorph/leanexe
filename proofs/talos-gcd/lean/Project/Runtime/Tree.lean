@@ -437,4 +437,110 @@ theorem SlotsAt_applyEvents (start : Mem × UInt64) (events : List RelEvent)
   (frame_fuel (sizeOf slots)).2 start events p i slots (le_refl _) hs hword
     hok hsep hbnd
 
+theorem applyEvents_append (start : Mem × UInt64) (a b : List RelEvent) :
+    applyEvents start (a ++ b) = applyEvents (applyEvents start a) b :=
+  List.foldl_append ..
+
+/-- Containment of one region in another. -/
+def regionSub (a b : Nat × Nat) : Prop :=
+  b.1 ≤ a.1 ∧ a.1 + a.2 ≤ b.1 + b.2
+
+theorem regionsDisjoint_of_sub {a b c : Nat × Nat}
+    (hsub : regionSub a b) (hdis : regionsDisjoint b c) :
+    regionsDisjoint a c := by
+  unfold regionSub at hsub
+  unfold regionsDisjoint at hdis ⊢
+  omega
+
+theorem regionsDisjoint_symm {a b : Nat × Nat}
+    (h : regionsDisjoint a b) : regionsDisjoint b a := by
+  unfold regionsDisjoint at h ⊢
+  omega
+
+/-- Every event's header region sits inside a footprint region of its tree. -/
+private theorem events_sub_fuel (n : Nat) :
+    (∀ t : RelTree, sizeOf t ≤ n →
+      ∀ e ∈ t.events, ∃ r ∈ t.footprint, regionSub (eventRegion e) r) ∧
+    (∀ slots : List RelSlot, sizeOf slots ≤ n →
+      ∀ e ∈ slotsEvents slots, ∃ r ∈ slotsFootprint slots,
+        regionSub (eventRegion e) r) := by
+  induction n with
+  | zero =>
+      constructor
+      · intro t hn
+        cases t <;> simp at hn
+      · intro slots hn
+        cases slots <;> simp at hn <;> simp [slotsEvents]
+  | succ n ih =>
+      constructor
+      · intro t hn e he
+        cases t with
+        | shared p rc =>
+            simp only [RelTree.events, List.mem_singleton] at he
+            subst he
+            exact ⟨(p.toNat - 48, 48), by simp [RelTree.footprint],
+              by unfold regionSub eventRegion; simp [RelEvent.ptr]⟩
+        | node p slots =>
+            simp only [RelTree.events, List.mem_append,
+              List.mem_singleton] at he
+            cases he with
+            | inl hin =>
+                obtain ⟨r, hr, hsub⟩ := ih.2 slots (by simp at hn; omega) e hin
+                exact ⟨r, by
+                  simp only [RelTree.footprint, List.mem_cons]
+                  exact Or.inr hr, hsub⟩
+            | inr heq =>
+                subst heq
+                refine ⟨(p.toNat - 48, 48 + 8 * slots.length),
+                  by simp [RelTree.footprint], ?_⟩
+                unfold regionSub eventRegion
+                simp [RelEvent.ptr]
+      · intro slots hn e he
+        cases slots with
+        | nil => simp [slotsEvents] at he
+        | cons slot rest =>
+            cases slot with
+            | child t =>
+                simp only [slotsEvents, List.mem_append] at he
+                cases he with
+                | inl hin =>
+                    obtain ⟨r, hr, hsub⟩ :=
+                      ih.1 t (by simp at hn; omega) e hin
+                    exact ⟨r, by
+                      simp only [slotsFootprint]
+                      exact List.mem_append_left _ hr, hsub⟩
+                | inr hin =>
+                    obtain ⟨r, hr, hsub⟩ :=
+                      ih.2 rest (by simp at hn; omega) e hin
+                    exact ⟨r, by
+                      simp only [slotsFootprint]
+                      exact List.mem_append_right _ hr, hsub⟩
+            | scalar v =>
+                simp only [slotsEvents] at he
+                obtain ⟨r, hr, hsub⟩ := ih.2 rest (by simp at hn; omega) e he
+                exact ⟨r, by simpa [slotsFootprint] using hr, hsub⟩
+            | null =>
+                simp only [slotsEvents] at he
+                obtain ⟨r, hr, hsub⟩ := ih.2 rest (by simp at hn; omega) e he
+                exact ⟨r, by simpa [slotsFootprint] using hr, hsub⟩
+
+theorem events_sub (t : RelTree) :
+    ∀ e ∈ t.events, ∃ r ∈ t.footprint, regionSub (eventRegion e) r :=
+  (events_sub_fuel (sizeOf t)).1 t (le_refl _)
+
+theorem slotsEvents_sub (slots : List RelSlot) :
+    ∀ e ∈ slotsEvents slots, ∃ r ∈ slotsFootprint slots,
+      regionSub (eventRegion e) r :=
+  (events_sub_fuel (sizeOf slots)).2 slots (le_refl _)
+
+/-- Event pointer bounds follow from the footprint bounds. -/
+theorem events_bounds {t : RelTree} (hok : footprintOk t.footprint) :
+    ∀ e ∈ t.events, 48 ≤ e.ptr.toNat ∧ e.ptr.toNat < 4294967296 := by
+  intro e he
+  obtain ⟨r, hr, hsub⟩ := events_sub t e he
+  have hb := hok.2 r hr
+  unfold regionSub eventRegion at hsub
+  simp only at hsub
+  omega
+
 end Project.Runtime
