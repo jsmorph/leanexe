@@ -133,12 +133,17 @@ partial def flattenArrayElementValue
             .error s!"recursive inductive array element shape mismatch: {name}"
       | .recursiveVariant actual tag ctors =>
           if actual == name then do
-            let flattened ← ctors.mapM fun fields =>
-              fields.mapM (fun field => flattenInternalValue field.fst field.snd summaries)
-            let values := tag :: flattened.flatten.flatten
+            let hoisted ← hoistCtorFieldWrappers
+              (fun ty value sources => flattenInternalValue ty value summaries sources)
+              summaries ctors []
+            let values := tag :: hoisted.2.1
             let childMask := heapChildMaskForCtors ctors
-            let ownedMask := ownedChildMaskForSlotsWithSummaries summaries childMask values
-            .ok [(.heapAllocSlots childMask ownedMask values)]
+            let ownedMask :=
+              if hoisted.1.isEmpty then
+                ownedChildMaskForSlotsWithSummaries summaries childMask values
+              else
+                ownedChildMaskForSlotsWithOwnerSourcesForAlloc summaries childMask hoisted.2.2 values
+            .ok [rewrapValueWrappers hoisted.1 (.heapAllocSlots childMask ownedMask values)]
           else
             .error s!"recursive inductive array element shape mismatch: {name}"
       | .letE slot value body => do
