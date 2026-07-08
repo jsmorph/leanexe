@@ -29,7 +29,8 @@ node test/run_all.js
 | `LeanExe/Wasm` | WASM module model, binary encoder, WAT printer, and interpreter support used by tests. |
 | `LeanExe/Examples` | Example Lean programs that exercise the supported subset. |
 | `test` | Node and Lean tests that compare Lean execution with generated WASM behavior. |
-| `proofs/talos-gcd` | Talos proof workspace for selected generated WASM artifacts. |
+| `proofs/talos-gcd` | Talos proof workspace: eleven verified artifacts, the runtime lemma library, and the generic teardown theorem. |
+| `verifying.md` | End-to-end recipe for verifying a new program. |
 | `manual.md` | Practical guide to writing Lean source that LeanExe can compile. |
 | `spec.md` | The accepted Lean subset, ABI, semantics, and known unsupported features. |
 | `plan.md` | Development plan for expanding the compiler. |
@@ -307,17 +308,9 @@ node tools/compare-standard.js --self-test
 
 ## Verification With Talos
 
-The standard comparison suite checks generated WASM against standard Lean execution over selected inputs.  The Talos proof workspace adds artifact-level proofs for selected generated modules.  LeanExe emits WASM, `wasm-tools print` renders that WASM as WAT, Talos decodes the generated WAT into a Lean model, and the handwritten proof establishes a property of that decoded module.
+The standard comparison suite checks generated WASM against standard Lean execution over selected inputs.  The Talos proof workspace adds artifact-level theorems about selected generated modules.  LeanExe emits WASM, `wasm-tools print` renders that WASM as WAT, Talos decodes the generated WAT into a Lean model, and a handwritten proof establishes a property of that decoded module — the theorem is about the instruction stream that ships.
 
-These proofs live in [Talos Proofs](proofs/talos-gcd/README.md), which contains proofs for GCD, association-list lookup, order-book matching, byte validation over linear memory, and byte append through the runtime allocator.  Each proof checks one generated artifact.  The broader compiler-correctness theorem remains the development target described in [Development Plan](plan.md).
-
-| Program | Source | Proved statement | Proof | Check |
-|---------|--------|------------------|-------|-------|
-| GCD | [Talos GCD Source](LeanExe/Examples/TalosGcd.lean) | For all `a b : UInt64`, `gcd a b` terminates and returns the Euclidean greatest common divisor. | [GCD Talos Spec](proofs/talos-gcd/lean/Project/Gcd/Spec.lean) | [GCD Check Script](tools/check-talos-gcd.sh) |
-| Association-list lookup | [Talos Association List Source](LeanExe/Examples/TalosAssocList.lean) | For every `UInt64` key, `lookupDemo` returns the first matching value from the source-level sample list, or `0` when absent. | [Association List Talos Spec](proofs/talos-gcd/lean/Project/AssocList/Spec.lean) | [Association List Check Script](tools/check-talos-assoc-list.sh) |
-| Order-book matching | [Order Book Source](LeanExe/Examples/OrderBook.lean) | For all seven scalar inputs encoding one best bid, one best ask, and one incoming order, `matchBook` returns the expected option tag, quantity, and price. | [Order Book Talos Spec](proofs/talos-gcd/lean/Project/OrderBook/Spec.lean) | [Order Book Check Script](tools/check-talos-order-book.sh) |
-| Byte validation | [ASCII Digits Source](LeanExe/Examples/AsciiDigits.lean) | For every byte list written into linear memory at a pointer, `validateGeneric` terminates and returns `1` exactly when all bytes are ASCII digits. | [Validate Talos Spec](proofs/talos-gcd/lean/Project/Validate/Spec.lean) | [Validate Check Script](tools/check-talos-validate.sh) |
-| Byte append | [Byte Array Programs Source](LeanExe/Examples/ByteArrayPrograms.lean) | From a clean allocator state, `appendBang` allocates a fresh array holding the input bytes followed by `33`, returns its pointer and `length + 1`, and leaves every byte below the old heap top unchanged. | [Append Bang Talos Spec](proofs/talos-gcd/lean/Project/AppendBang/Spec.lean) | [Append Bang Check Script](tools/check-talos-append-bang.sh) |
+Eleven verified artifacts live in [Talos Proofs](proofs/talos-gcd/README.md), which holds the complete table of theorems.  Input-generic theorems relate exports to their Lean source functions for all inputs: Euclidean GCD, association-list lookup, order-book matching, byte validation, byte append, push-and-measure, and a byte fold.  Exact-accounting theorems verify the runtime: free-list reuse, the inline retain sequence, and recursive release through the array and slots branches.  The workspace is organized as a library — the runtime functions every module ships are proved once, generically, and a generic teardown theorem covers recursive release of ownership trees — so a new program's proof consumes shared theorems rather than repeating them.  [Verifying a Program](verifying.md) is the end-to-end recipe.
 
 Run all current Talos artifact checks from the repository root:
 
@@ -326,6 +319,8 @@ tools/check-talos.sh
 ```
 
 Each per-case script rebuilds the relevant Lean module and `lean-wasm`, recompiles the source entry to a fresh temporary WASM file, prints fresh WAT, compares both files against the checked-in proof inputs under `proofs/talos-gcd/rust/build`, and rebuilds the corresponding Lean proof.  A file mismatch means the proof input no longer matches the current compiler output.  After an intentional compiler change, `--update` replaces the proof inputs with the fresh output, regenerates the Talos `Program.lean` model through the verifier emitter, and rebuilds the proof.  The scripts use `wasm-tools` from `PATH`, or the binary named by `WASM_TOOLS`, or `$HOME/.cargo/bin/wasm-tools`.
+
+The broader compiler-correctness theorem remains the development target described in [Development Plan](plan.md); [Development Agenda](agenda.md) orders the open work.
 
 ## Host Memory Values
 
