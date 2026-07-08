@@ -379,6 +379,12 @@ anything unrecognized keeps the previous leak rather than risking a double
 release. -/
 partial def exprBuildsFreshArray : IRExpr → Bool
   | .arrayLiteralSlots .. => true
+  | .byteArrayPushPtr .. => true
+  | .byteArrayAppendPtr .. => true
+  | .byteArraySetPtr .. => true
+  | .byteArrayFromArrayPtr .. => true
+  | .byteArrayCopySlicePtr .. => true
+  | .heapAllocSlots .. => true
   | .arrayAllocSlots .. => true
   | .arrayReplicateSlots .. => true
   | .arraySetSlots .. => true
@@ -439,24 +445,68 @@ def arrayFoldMultiSlotAssign? (targets : List Nat) (values : List IRExpr) :
         none
   | _ => none
 
+/-- The binder prefix a value-let wrapper puts in front of a fold: plain
+lets and call lets, peeled so the fold underneath can convert to its
+statement form with the binders hoisted in front of it. -/
+partial def stripValueLetWrapper (expr : IRExpr) :
+    List (Sum (Nat × IRExpr) (List Nat × Nat × List IRExpr)) × IRExpr :=
+  match expr with
+  | .letE slot value body =>
+      let rest := stripValueLetWrapper body
+      (Sum.inl (slot, value) :: rest.fst, rest.snd)
+  | .letCall slots index args body =>
+      let rest := stripValueLetWrapper body
+      (Sum.inr (slots, index, args) :: rest.fst, rest.snd)
+  | other => ([], other)
+
+def rewrapValueLetWrapper
+    (binds : List (Sum (Nat × IRExpr) (List Nat × Nat × List IRExpr)))
+    (core : IRExpr) : IRExpr :=
+  binds.foldr
+    (fun bind acc =>
+      match bind with
+      | Sum.inl (slot, value) => .letE slot value acc
+      | Sum.inr (slots, index, args) => .letCall slots index args acc)
+    core
+
 def byteArrayFoldMultiSlotAssign? (targets : List Nat) (values : List IRExpr) :
     Option IRStmt :=
   match values with
-  | .byteArrayFoldMultiSlot resultWidth ptr len start stop initValues accStart byteSlot
-      bodyValues bodyLets bodyDone releaseOffsets _ :: _ =>
-      if values.length == resultWidth && targets.length == resultWidth then
-        let expected : List IRExpr :=
-          (List.range resultWidth).map fun offset =>
-            .byteArrayFoldMultiSlot resultWidth ptr len start stop initValues accStart
-              byteSlot bodyValues bodyLets bodyDone releaseOffsets offset
-        if values == expected then
-          some <|
-            .byteArrayFoldMultiSlotAssign resultWidth ptr len start stop initValues accStart
-              byteSlot bodyValues bodyLets bodyDone releaseOffsets targets
-        else
-          none
-      else
-        none
+  | first :: _ =>
+      let stripped := stripValueLetWrapper first
+      match stripped.snd with
+      | .byteArrayFoldMultiSlot resultWidth ptr len start stop initValues accStart byteSlot
+          bodyValues bodyLets bodyDone releaseOffsets _ =>
+          if values.length == resultWidth && targets.length == resultWidth then
+            let expected : List IRExpr :=
+              (List.range resultWidth).map fun offset =>
+                rewrapValueLetWrapper stripped.fst
+                  (.byteArrayFoldMultiSlot resultWidth ptr len start stop initValues accStart
+                    byteSlot bodyValues bodyLets bodyDone releaseOffsets offset)
+            if values == expected then
+              let bindStmts : List IRStmt :=
+                stripped.fst.map fun bind =>
+                  match bind with
+                  | Sum.inl (slot, value) => .assign slot value
+                  | Sum.inr (slots, index, args) => .call slots index args
+              let foldStmt : IRStmt :=
+                .byteArrayFoldMultiSlotAssign resultWidth ptr len start stop initValues accStart
+                  byteSlot bodyValues bodyLets bodyDone releaseOffsets targets
+              let freshSlots :=
+                stripped.fst.filterMap fun bind =>
+                  match bind with
+                  | Sum.inl (slot, value) =>
+                      if exprBuildsFreshArray value then some slot else none
+                  | Sum.inr _ => none
+              some <|
+                freshSlots.foldl
+                  (fun current slot => .seq current (.release (.local slot)))
+                  (LeanExe.IR.seqList (bindStmts ++ [foldStmt]))
+            else
+              none
+          else
+            none
+      | _ => none
   | _ => none
 
 def rangeFoldMultiSlotAssign? (targets : List Nat) (values : List IRExpr) :

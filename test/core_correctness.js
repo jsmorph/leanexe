@@ -372,7 +372,7 @@ const accepted = [
     expected: [null, 2n],
     memoryBytes: [{ resultIndex: 0, lengthIndex: 1, values: [1, 2] }],
   },
-  { name: "byteArrayFoldByteArrayAccumulatorReleaseStats", args: [], expected: 30202n },
+  { name: "byteArrayFoldByteArrayAccumulatorReleaseStats", args: [], expected: 30404n },
   { name: "byteArrayFoldMExceptSuccess", args: [], expected: [1n, 0n, 6n] },
   { name: "byteArrayFoldMExceptErrorSkipsRestTrap", args: [], expected: [0n, 21n, 0n] },
   { name: "byteArrayFoldMOptionSuccess", args: [], expected: [1n, 6n] },
