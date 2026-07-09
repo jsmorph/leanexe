@@ -416,8 +416,7 @@ def posProg : Wasm.Program :=
         .addI64,
         .localSet 7,
         .constI64 (1 : UInt64),
-        .localSet 8,
-  .br 0
+        .localSet 8
 ]
 
 def negProg : Wasm.Program :=
@@ -729,8 +728,7 @@ def negProg : Wasm.Program :=
         .localGet 0,
         .constI64 (1 : UInt64),
         .subI64,
-        .localSet 0,
-  .br 0
+        .localSet 0
 ]
 
 def tailProgPos : Wasm.Program :=
@@ -740,6 +738,49 @@ def tailProgPos : Wasm.Program :=
    .localGet 12, .localSet 6, .localGet 11, .constI64 (1 : UInt64),
    .addI64, .localSet 7, .constI64 (1 : UInt64), .localSet 8,
    .br 0]
+
+/-- The continuation step: when the rest is nonzero the encoder emits the
+low seven bits with the high bit set and recurses on `v / 128`. -/
+theorem lebList_cont (fuel : Nat) (v : UInt64) (h : ¬ v / 128 = 0) :
+    lebList (fuel + 1) v = (v % 128 + 128).toUInt8 :: lebList fuel (v / 128) := by
+  have hb : ¬ ((v / 128) == 0) = true := by simpa using h
+  conv_lhs => unfold lebList
+  simp only [hb]
+  simp
+
+/-- The final step: when the rest is zero the encoder emits the low seven
+bits and stops. -/
+theorem lebList_final (fuel : Nat) (v : UInt64) (h : v / 128 = 0) :
+    lebList (fuel + 1) v = [(v % 128).toUInt8] := by
+  have hb : ((v / 128) == 0) = true := by simpa using h
+  conv_lhs => unfold lebList
+  simp only [hb]
+  simp
+
+/-- The copy-loop frame for the continuation branch: `negProg` holds the
+rest in local 13 and the byte in local 14, shifting locals 9 through 16. -/
+def cFrameNeg (g0 v : UInt64) (k j : Nat)
+    (e : Nat → UInt64) : Locals :=
+  { params := [.i64 (UInt64.ofNat (10 - k)), .i64 v,
+        .i64 (bufPtr g0 k), .i64 (bufPtr g0 k),
+        .i64 (UInt64.ofNat k)],
+      locals := [.i64 0, .i64 0, .i64 0, .i64 0,
+        .i64 (e 9), .i64 (e 10),
+        .i64 (e 11), .i64 (e 12), .i64 (v / 128),
+        .i64 (v % 128 + 128 &&& 255), .i64 (bufPtr g0 k),
+        .i64 (UInt64.ofNat k), .i64 (e 17),
+        .i64 (e 18), .i64 (e 19), .i64 (e 20), .i64 (e 21),
+        .i64 (e 22), .i64 (e 23), .i64 (e 24),
+        .i64 (bufPtr g0 k), .i64 (UInt64.ofNat k),
+        .i64 (v % 128 + 128 &&& 255),
+        .i64 (g0 + 56 * UInt64.ofNat k + 48),
+        .i64 (UInt64.ofNat k + 1), .i64 (UInt64.ofNat j),
+        .i64 8, .i64 0, .i64 0,
+        .i64 (g0 + 56 * UInt64.ofNat k + 48 + 8),
+        .i64 ((g0 + 56 * UInt64.ofNat k + 48 + 8 - 1) /
+          65536 + 1),
+        .i64 (g0 + 56 * UInt64.ofNat k + 48)],
+      values := [] }
 
 def cFramePos (g0 v : UInt64) (k j : Nat)
     (e : Nat → UInt64) : Locals :=
