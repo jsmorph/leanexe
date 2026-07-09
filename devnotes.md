@@ -4345,3 +4345,62 @@ The proof is four sorry-free lemmas over the generated model.  `copyStepPos` and
 The proof found nothing wrong with the compiler or the emitted artifact.  It cost two mistakes of my own, recorded here because both are easy to repeat.  First, I defined `posProg` and `negProg` as the selector's then- and else-blocks with a trailing `.br 0`.  `wp_iff_cons` runs the chosen block alone under a continuation that handles the remaining instructions, so the branch programs must exclude the `.br 0`, and each iteration lemma's final obligation is a `Fallthrough`, not a `Break 0`.  The lemmas proved under the wrong definitions were true statements about the wrong programs, so they simply would not apply.  Second, I claimed Lean was behaving nondeterministically.  It was not: six builds from a fully-clean olean set are byte-identical.  The divergence came from rebuilding one olean while leaving a stale sibling whose lemma statement had since changed.  The real obstacle underneath is ordinary and documented: `exact` and `change` check definitional equality at bounded transparency and will not unfold a `def` down through `wp` and `exec`, so a lemma stated over a program name cannot be matched against a `wp_run`-reduced goal.  State the lemma so no such bridge is needed.
 
 One performance lesson: proving `(g0.toNat + 56 * j + 48 + j) % 4294967296 = g0.toNat + 56 * j + 48 + j` with `by omega` inside a `rw [show ...]` dominated `posIterLemma`'s elaboration.  Hoisting the bound as a hypothesis and rewriting with `Nat.mod_eq_of_lt` took the file from exceeding four million heartbeats to seventy-eight seconds.
+
+## 2026-07-09: a CLOB kernel from scratch, compiled and scaffolded for proof
+
+`LeanExe/Examples/Clob.lean` is a central-limit-order-book kernel written from scratch in the accepted subset, shaped for proofs: fuel recursion for the maker search and the matching loop instead of `Id.run` for-loops, a flat `Array Order` book in time order, and scalar `UInt64` fields throughout.  Operations: `postOnly`, `limit`, `market`, `cancel`, `quote`, and `depth`, plus a scalar `scenario` entry that runs a fixed operation sequence and folds every result into a checksum.  Matching preserves FIFO among equal prices by keeping the first index on ties, skips same-trader makers, and treats market orders as price-unlimited.  The leanclob kernel served as a design reference; no code was ported.
+
+`LeanExe/Examples/ClobTest.lean` holds the source-level guards: branch behavior for all four statuses, partial and full fills, FIFO on price ties, same-trader skipping, quote aggregation at the best price, and depth aggregation per side.  `report` classifies every entry as implemented by the first generic compiler fragment, and all seven entries compile.  Differential checks pass: `compare-standard --mode pure` matches on six `scenario` seeds, and `--mode pure-abi` matches `cancel` through the public array-of-structures ABI.  Two harness details worth remembering: with `--abi-arg` present the harness ignores `--arg`, so scalars also travel as `--abi-arg`, and structure values in `--abi-arg` and the serializer are JSON objects keyed by field name.
+
+The thirteenth Talos case is scaffolded as `clob_quote`: `quote` reads the book and returns six scalars, so it exercises the array-of-structures input without heap results.  The artifact is pinned, the model is generated, and the runtime pins hold by `rfl` (`func11` through `func14`, release at index 14).  The export takes one `i64` (the book pointer) and returns six `i64` values.  The proof needs one new piece of machinery: a segment predicate for an array of five-slot structures in memory, the `ListSegAt` pattern from `assoc_list` lifted to fixed-width elements, with the loop invariant carrying the source fold over the consumed prefix.  Statement and proof are the next work.
+
+- [x] Kernel builds; guards pass.
+- [x] All entries compile; `scenario` and `cancel` match standard Lean.
+- [x] `clob_quote` case scaffolded, pinned, model generated, runtime pinned.
+- [x] `ClobQuote` spec stated and proved.
+- [ ] Artifact theorems for `cancel`, `postOnly`, then `limit`.
+
+## 2026-07-09: the thirteenth artifact: `quote` over every book in memory
+
+`Project.ClobQuote.Spec.quote_correct` is proved, sorry-free, on the standard
+axiom set (`propext`, `Classical.choice`, `Quot.sound`).  The statement: for
+every order list laid out in memory as a length word followed by five words
+per element, the compiled `quote` export returns the six fields of the source
+fold and leaves the store untouched.  This is the first input-generic theorem
+over an array-of-structures input.  `tools/check-talos.sh` passes for all
+thirteen cases, and the differential suite passes untouched.
+
+The proof splits into three modules.  `Step.lean` proves `func9`, the
+compiled `quoteStep`: a pure 770-instruction branch tree that recomputes the
+branch conditions once per output field.  The proof case-splits on the eight
+source-level leaves and walks each with a `wp_step` macro that peels one
+`iff`, decides every `ite` in its condition by `split` with contradictory
+branches killed by `exfalso; simp_all`, and advances.  `norm_num` closes each
+leaf.  `Spec.lean` holds the export theorem: the `OrdersAt` predicate states
+every read in the exact normal form the walk produces
+(`UInt32.ofNat ((ptr.toNat + (j * 5 + c) * 8) % 4294967296)`), so the loads
+rewrite without address bridging.  The loop uses the `fold_sum` invariant
+pattern with thirty-six existential scratch slots, and `func9_spec` transfers
+the accumulator step through `wp_call_tw`.
+
+Three lessons cost most of the day.  First, `TerminatesWith` value lists are
+top-of-stack first: arguments arrive reversed relative to WASM parameter
+order, results run from the last push down, and the frame stores parameters
+in WASM order.  Second, a failing term-level `by` inside
+`rw [if_pos (by ...)]` elaborates to `sorry`, logs an error, and lets the
+rewrite take the wrong branch anyway; deciding branches at the tactic level
+with `split` avoids the silent wrong turn.  Third, `wp_run` over the export's
+59-local frame ground without converging on the 55-instruction loop-body
+epilogue, because every step re-traverses the loop-exit continuation carried
+in the postcondition.  `Epilogue.lean` cuts that tail into five segment
+lemmas, each generic in the continuation and binding only the frame slots it
+mentions; each walks in about two seconds where the monolithic walk did not
+finish in twenty minutes.  The binder minimization is load-bearing: a segment
+lemma that binds slots its frames never mention cannot be applied, because
+unification has nothing to synthesize them from.
+
+- [x] `func9_spec`: eight leaves, 179 seconds.
+- [x] `epilogueA`-`epilogueE` segment lemmas.
+- [x] `quote_correct`, sorry-free, standard axioms.
+- [x] `tools/check-talos.sh` green for all thirteen cases.
+- [x] `node test/run_all.js` green.
