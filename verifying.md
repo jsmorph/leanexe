@@ -76,7 +76,7 @@ The proof enters through `TerminatesWith.of_wp_entry_for`, changes to a `wp` goa
 - **Memory reads over write chains** close with the `read_frames` tactic from [`Common.lean`](proofs/talos-gcd/lean/Project/Common.lean); address normal forms bridge with `toNat_sub_le`, `toUInt32_toNat`, and the other `Common` lemmas, all `omega`-friendly.
 - **Loops** use `wp_loop_cons` with an invariant and a measure.  An input-consuming loop's invariant relates the accumulator to the source function on the consumed prefix; `fold_sum`'s invariant carries `List.foldl` over `bytes.take k`, with two ordinary list lemmas connecting the prefix to the whole.
 
-Iterate against the goal states: put `trace_state` before an unfinished step, build, read the goal, write the step.  Elaboration cost matters in big proofs: prefer `rw` with equation lemmas over `simp` on large terms, evaluate `UInt64` literal `toNat`s with `show ... from rfl` before `omega`, and if a single theorem's elaboration grows past memory, cut it at a `wp` boundary into a helper theorem over an explicit instruction suffix (see `BoxFree/Spec.lean` for the pattern, including composing across the cut with `wp.imp`).
+Iterate against the goal states: put `trace_state` before an unfinished step, build, read the goal, write the step.  Keep elaboration cheap: prefer `rw` with equation lemmas over `simp` on large terms, evaluate `UInt64` literal `toNat`s with `show ... from rfl` before `omega`, and if a single theorem's elaboration grows past memory, cut it at a `wp` boundary into a helper theorem over an explicit instruction suffix (see `BoxFree/Spec.lean` for the pattern, including composing across the cut with `wp.imp`).
 
 ## 6. Gate It
 
