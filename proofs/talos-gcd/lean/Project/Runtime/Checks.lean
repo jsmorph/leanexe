@@ -10,6 +10,7 @@ import Project.AssocList.Program
 import Project.BoxFree.Program
 import Project.FoldSum.Program
 import Project.Gcd.Program
+import Project.LebU32.Program
 import Project.OrderBook.Program
 import Project.PairFree.Program
 import Project.PushSize.Program
@@ -43,6 +44,11 @@ example : Project.Gcd.func1Def = allocFuncDef := rfl
 example : Project.Gcd.func2Def = resetFuncDef := rfl
 example : Project.Gcd.func3Def = retainFuncDef := rfl
 example : Project.Gcd.func4Def = releaseFuncDef 4 := rfl
+
+example : Project.LebU32.func2Def = allocFuncDef := rfl
+example : Project.LebU32.func3Def = resetFuncDef := rfl
+example : Project.LebU32.func4Def = retainFuncDef := rfl
+example : Project.LebU32.func5Def = releaseFuncDef 5 := rfl
 
 example : Project.OrderBook.func2Def = allocFuncDef := rfl
 example : Project.OrderBook.func3Def = resetFuncDef := rfl
