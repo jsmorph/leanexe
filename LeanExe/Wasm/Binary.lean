@@ -1,6 +1,7 @@
 import LeanExe.Core
 import LeanExe.IR.Core
 import LeanExe.Wasm.Instr
+import LeanExe.Wasm.Leb
 
 namespace LeanExe.Wasm.Binary
 
@@ -10,22 +11,14 @@ def byte (n : Nat) : UInt8 :=
 def ofNats (bytes : List Nat) : List UInt8 :=
   bytes.map byte
 
-partial def u32leb (n : Nat) : List UInt8 :=
-  let low := n % 128
-  let rest := n / 128
-  if rest = 0 then
-    [byte low]
-  else
-    byte (low + 128) :: u32leb rest
+def u32leb (n : Nat) : List UInt8 :=
+  (Leb.u32lebU64 (UInt64.ofNat n)).toList
 
-partial def s64lebInt (n : Int) : List UInt8 :=
-  let lowInt := n % 128
-  let low := lowInt.toNat
-  let rest := (n - lowInt) / 128
-  if (rest == 0 && low < 64) || (rest == -1 && 64 <= low) then
-    [byte low]
-  else
-    byte (low + 128) :: s64lebInt rest
+def intBits (n : Int) : UInt64 :=
+  if 0 ≤ n then UInt64.ofNat n.toNat else 0 - UInt64.ofNat (-n).toNat
+
+def s64lebInt (n : Int) : List UInt8 :=
+  (Leb.s64lebU64 (intBits n)).toList
 
 def byteVec (bytes : List UInt8) : List UInt8 :=
   u32leb bytes.length ++ bytes
