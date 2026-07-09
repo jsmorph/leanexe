@@ -21,23 +21,23 @@ def s64lebInt (n : Int) : List UInt8 :=
   (Leb.s64lebU64 (intBits n)).toList
 
 def byteVec (bytes : List UInt8) : List UInt8 :=
-  u32leb bytes.length ++ bytes
+  (Leb.byteVecBytes (ByteArray.mk bytes.toArray)).toList
 
 def concatBytes : List (List UInt8) → List UInt8
   | [] => []
   | item :: rest => item ++ concatBytes rest
 
 def u32Vec (values : List Nat) : List UInt8 :=
-  u32leb values.length ++ concatBytes (values.map u32leb)
+  (Leb.u32VecBytes (values.map UInt64.ofNat).toArray).toList
 
 def vec (items : List (List UInt8)) : List UInt8 :=
-  u32leb items.length ++ concatBytes items
+  (Leb.vecBytes (items.map (fun item => ByteArray.mk item.toArray)).toArray).toList
 
 def name (s : String) : List UInt8 :=
   byteVec s.toUTF8.data.toList
 
 def wasmSection (id : Nat) (payload : List UInt8) : List UInt8 :=
-  byte id :: u32leb payload.length ++ payload
+  (Leb.sectionBytes (UInt64.ofNat id) (ByteArray.mk payload.toArray)).toList
 
 def funcType (params results : List UInt8) : List UInt8 :=
   byte 96 :: byteVec params ++ byteVec results
