@@ -8,6 +8,7 @@ import Project.Runtime.Defs
 import Project.AppendBang.Program
 import Project.AssocList.Program
 import Project.BoxFree.Program
+import Project.ClobQuote.Program
 import Project.FoldSum.Program
 import Project.Gcd.Program
 import Project.LebU32.Program
@@ -79,5 +80,10 @@ example : Project.Validate.func4Def = allocFuncDef := rfl
 example : Project.Validate.func5Def = resetFuncDef := rfl
 example : Project.Validate.func6Def = retainFuncDef := rfl
 example : Project.Validate.func7Def = releaseFuncDef 7 := rfl
+
+example : Project.ClobQuote.func11Def = allocFuncDef := rfl
+example : Project.ClobQuote.func12Def = resetFuncDef := rfl
+example : Project.ClobQuote.func13Def = retainFuncDef := rfl
+example : Project.ClobQuote.func14Def = releaseFuncDef 14 := rfl
 
 end Project.Runtime
