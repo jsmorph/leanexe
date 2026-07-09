@@ -103,6 +103,39 @@ function main() {
   let total = 0;
   total += check(u32leb, "u32lebU64", u32lebRef, unsignedCorpus);
   total += check(s64leb, "s64lebU64", s64lebRef, signedBitsCorpus);
+
+  // The vector and section combinators with host-marshalable signatures.
+  // The array-input combinators (vecBytes, u32VecBytes) are exercised
+  // natively on every compile, since the native encoder calls them for
+  // every emitted module and the Talos artifact checks pin those bytes.
+  const byteCorpus = [
+    new Uint8Array([]),
+    new Uint8Array([0]),
+    new Uint8Array([1, 2, 3]),
+    new Uint8Array(Array.from({ length: 127 }, (_, i) => i % 256)),
+    new Uint8Array(Array.from({ length: 128 }, (_, i) => (i * 7) % 256)),
+    new Uint8Array(Array.from({ length: 300 }, (_, i) => (i * 13) % 256)),
+  ];
+  const byteVec = compile("byteVecBytes");
+  for (const bytes of byteCorpus) {
+    const actual = host.callBytes(byteVec, "byteVecBytes", [host.byteArray(bytes)]);
+    const expected = Uint8Array.from([...u32lebRef(bytes.length), ...bytes]);
+    if (!sameBytes(actual, expected)) {
+      throw new Error(`byteVecBytes(${bytes.length} bytes): mismatch`);
+    }
+    total += 1;
+  }
+  const section = compile("sectionBytes");
+  for (const bytes of byteCorpus) {
+    for (const id of [1n, 10n, 11n]) {
+      const actual = host.callBytes(section, "sectionBytes", [host.i64(id), host.byteArray(bytes)]);
+      const expected = Uint8Array.from([Number(id), ...u32lebRef(bytes.length), ...bytes]);
+      if (!sameBytes(actual, expected)) {
+        throw new Error(`sectionBytes(${id}, ${bytes.length} bytes): mismatch`);
+      }
+      total += 1;
+    }
+  }
   process.stdout.write(`checked ${total} self-emitted LEB128 cases\n`);
 }
 

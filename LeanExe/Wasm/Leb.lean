@@ -46,4 +46,27 @@ def s64lebU64 (n : UInt64) : ByteArray := Id.run do
     v := rest
   return out
 
+/-- A length-prefixed byte vector. -/
+def byteVecBytes (bytes : ByteArray) : ByteArray :=
+  u32lebU64 (UInt64.ofNat bytes.size) ++ bytes
+
+/-- A length-prefixed vector of encoded items. -/
+def vecBytes (items : Array ByteArray) : ByteArray := Id.run do
+  let mut out := u32lebU64 (UInt64.ofNat items.size)
+  for item in items do
+    out := out ++ item
+  return out
+
+/-- A length-prefixed vector of unsigned LEB128 values. -/
+def u32VecBytes (values : Array UInt64) : ByteArray := Id.run do
+  let mut out := u32lebU64 (UInt64.ofNat values.size)
+  for value in values do
+    out := out ++ u32lebU64 value
+  return out
+
+/-- A section: one id byte, then the length-prefixed payload. -/
+def sectionBytes (id : UInt64) (payload : ByteArray) : ByteArray :=
+  (ByteArray.empty.push id.toUInt8) ++
+    u32lebU64 (UInt64.ofNat payload.size) ++ payload
+
 end LeanExe.Wasm.Leb
