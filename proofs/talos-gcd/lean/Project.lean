@@ -10,5 +10,6 @@ import Project.PairFree.Spec
 import Project.BoxFree.Spec
 import Project.FoldSum.Spec
 import Project.LebU32.Spec
+import Project.ClobQuote.Spec
 import Project.Runtime.Checks
 import Project.Runtime.Spec
