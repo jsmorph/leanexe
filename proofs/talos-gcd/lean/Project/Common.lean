@@ -86,6 +86,19 @@ theorem write64_bytes_ne (mm : Wasm.Mem) (ad : UInt32) (v : UInt64) {x : Nat}
 theorem write8_pages (mm : Wasm.Mem) (ad : UInt32) (v : UInt8) :
     (mm.write8 ad v).pages = mm.pages := rfl
 
+/-- A byte write is read back at its own address. -/
+theorem write8_bytes_same (mm : Wasm.Mem) (ad : UInt32) (v : UInt8) :
+    (mm.write8 ad v).bytes ad.toNat = v := by
+  unfold Wasm.Mem.write8
+  simp
+
+/-- The hypothesis-form variant for indexes stated away from `toNat`. -/
+theorem write8_bytes_same' (mm : Wasm.Mem) (ad : UInt32) (v : UInt8)
+    {x : Nat} (hx : x = ad.toNat) :
+    (mm.write8 ad v).bytes x = v := by
+  rw [hx]
+  exact write8_bytes_same ..
+
 /-- Two memories that agree on a word's window read the same word. -/
 theorem read64_congr {m1 m2 : Wasm.Mem} (b : UInt32)
     (h : ∀ i : Nat, i < 8 → m1.bytes (b.toNat + i) = m2.bytes (b.toNat + i)) :
