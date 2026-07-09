@@ -11,18 +11,18 @@ and the self-compiled artifact run the same code.
 namespace LeanExe.Wasm.Leb
 
 /-- Unsigned LEB128.  Ten groups of seven bits cover a `UInt64`. -/
-def u32lebU64 (n : UInt64) : ByteArray := Id.run do
-  let mut out := ByteArray.empty
-  let mut v := n
-  for _ in [0:10] do
-    let low := v % 128
-    let rest := v / 128
-    if rest == 0 then
-      out := out.push low.toUInt8
-      break
-    out := out.push (low + 128).toUInt8
-    v := rest
-  return out
+def u32lebFuel : Nat → UInt64 → ByteArray → ByteArray
+  | 0, _, out => out
+  | fuel + 1, v, out =>
+      let low := v % 128
+      let rest := v / 128
+      if rest == 0 then
+        out.push low.toUInt8
+      else
+        u32lebFuel fuel rest (out.push (low + 128).toUInt8)
+
+def u32lebU64 (n : UInt64) : ByteArray :=
+  u32lebFuel 10 n ByteArray.empty
 
 /-- Arithmetic shift right by seven over the two's-complement bits. -/
 def sar7 (v : UInt64) : UInt64 :=
@@ -32,19 +32,19 @@ def sar7 (v : UInt64) : UInt64 :=
     (v >>> 7) ||| 18374686479671623680
 
 /-- Signed LEB128 over the two's-complement bit pattern of an `i64`. -/
-def s64lebU64 (n : UInt64) : ByteArray := Id.run do
-  let mut out := ByteArray.empty
-  let mut v := n
-  for _ in [0:10] do
-    let low := v &&& 127
-    let rest := sar7 v
-    if (rest == 0 && low &&& 64 == 0) ||
-        (rest == 18446744073709551615 && low &&& 64 == 64) then
-      out := out.push low.toUInt8
-      break
-    out := out.push (low + 128).toUInt8
-    v := rest
-  return out
+def s64lebFuel : Nat → UInt64 → ByteArray → ByteArray
+  | 0, _, out => out
+  | fuel + 1, v, out =>
+      let low := v &&& 127
+      let rest := sar7 v
+      if (rest == 0 && low &&& 64 == 0) ||
+          (rest == 18446744073709551615 && low &&& 64 == 64) then
+        out.push low.toUInt8
+      else
+        s64lebFuel fuel rest (out.push (low + 128).toUInt8)
+
+def s64lebU64 (n : UInt64) : ByteArray :=
+  s64lebFuel 10 n ByteArray.empty
 
 /-- A length-prefixed byte vector. -/
 def byteVecBytes (bytes : ByteArray) : ByteArray :=
