@@ -17,6 +17,7 @@ tools/check-talos-box-free.sh "$@"
 tools/check-talos-fold-sum.sh "$@"
 tools/check-talos-leb-u32.sh "$@"
 tools/check-talos-clob-quote.sh "$@"
+tools/check-talos-clob-cancel.sh "$@"
 
 cd "$repo_root/proofs/talos-gcd/lean"
 lake build Project

@@ -1,3 +1,3 @@
 [workspace]
 resolver = "2"
-members = ["gcd", "assoc_list", "order_book", "validate", "append_bang", "push_size", "push_twice", "shared_pair", "pair_free", "box_free", "fold_sum", "leb_u32", "clob_quote"]
+members = ["gcd", "assoc_list", "order_book", "validate", "append_bang", "push_size", "push_twice", "shared_pair", "pair_free", "box_free", "fold_sum", "leb_u32", "clob_quote", "clob_cancel"]
