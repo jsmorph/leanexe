@@ -4404,3 +4404,39 @@ unification has nothing to synthesize them from.
 - [x] `quote_correct`, sorry-free, standard axioms.
 - [x] `tools/check-talos.sh` green for all thirteen cases.
 - [x] `node test/run_all.js` green.
+
+## 2026-07-09: the fourteenth case: `cancel` not-found, plus the scan lemma
+
+`Project.ClobCancel.Spec.cancel_notFound` is proved, sorry-free, on the
+standard axiom set: for every order array in memory and every id absent from
+it, the compiled `cancel` export returns status three and the borrowed input
+pointer, and the store is untouched.  The full Talos suite and the
+differential suite pass.
+
+The reusable piece is `scanFlag_spec` in `Project/ClobCancel/Scan.lean`: the
+compiled id-scan loop, stated over the literal block-loop program with a
+generic continuation, concluding at either exit with `List.findIdx?` as the
+list-level bridge (`idIdx`).  The compiled `cancel` runs that identical scan
+three times — once for the status flag, once to select the branch, once to
+recompute the index — so one lemma discharges two call sites now and the
+third when the found branch is proved.  The triple scan is itself a gap-list
+entry: the extractor re-evaluates `findIdx?` once per use of the match
+result rather than binding it once, tripling both code size and proof
+obligations for this shape.
+
+Two mechanical notes.  With a generic continuation the load trap-guards stay
+as `ite`s rather than collapsing to conjunctions, and close with
+`if_neg (Nat.not_lt.mpr hbound)`.  And full `simp` inside the loop-body walk
+normalizes `getElem!` to `getElem?.getD` and discharges trivial invariant
+conjuncts, so re-establishment tuples start at the existential and
+hypothesis transfers go through `simpa`.
+
+The found branch remains: it needs the index-recording scan variant and the
+erase path, whose inline bump allocation, header stores, and two
+element-copy loops follow the `append_bang` and LEB templates.
+
+- [x] `scanFlag_spec` over the literal scan program.
+- [x] `cancel_notFound`, sorry-free, standard axioms.
+- [x] All fourteen check scripts and the differential suite pass.
+- [ ] `cancel` found branch: index scan variant, inline allocation, copy loops.
+- [ ] `postOnly`, then `limit`.
