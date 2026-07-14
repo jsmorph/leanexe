@@ -4633,3 +4633,11 @@ The checked artifact remains 3,462 bytes of WASM and 42,412 bytes of WAT.  The g
 - [x] `lake build Project.ClobFindBest.Spec` completed 3,008 jobs without a warning in the `findBest` modules.
 - [x] `tools/check-talos-clob-find-best.sh` matched the checked WASM and WAT and rebuilt the specification.
 - [x] The focused artifact check reported only the pre-existing `AsciiDigits.lean` unused-argument warning scheduled for Phase 6.
+
+## 2026-07-14: CLOB `postOnly` branch gate
+
+The existing source guards covered duplicate identifiers, invalid sides, zero quantities, crossing orders, and successful appends, but omitted zero identifiers and zero traders.  They inspected status and selected book lengths rather than the complete `OpResult`.  The standard/WASM comparison matrix contained no `postOnly` case.
+
+The branch gate now checks all five `validOrder` failure paths, the `findBest` crossing result, and the successful append result.  Each comparison passes an order array and taker through the public ABI, then compares status, every returned order field, and the empty trade array with ordinary Lean.  The result layout and serializers use the existing structured ABI test framework and add no source wrapper or dependency.
+
+`lake build LeanExe.Examples.ClobTest` accepted every source guard, including the two new validity cases.  `node tools/compare-standard.js --self-test` passed 321 standard-Lean cases and 62 IR cases, with all seven `postOnly` comparisons succeeding.  The standard total increased from 314 to 321, while the IR total remains unchanged because the interpreter does not accept heap-backed public ABI arguments.
