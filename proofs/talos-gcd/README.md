@@ -48,6 +48,7 @@ Two statement templates cover the artifacts.  Input-generic theorems quantify ov
 | `leb_u32` | [`LeanExe.Wasm.Leb`](../../LeanExe/Wasm/Leb.lean) | `u32lebU64` | `LebU32.Spec.u32lebU64_correct` | For every value below `2^32`, returns a buffer containing the source encoder's unsigned LEB128 bytes and preserves memory below the old heap top. |
 | `clob_quote` | [`LeanExe.Examples.Clob`](../../LeanExe/Examples/Clob.lean) | `quote` | `ClobQuote.Spec.quote_correct` | For every order array in memory, returns the six fields of the source quote fold and leaves the store untouched. |
 | `clob_cancel` | same module | `cancel` | `ClobCancel.Spec.cancel_correct` | For every represented order array and id, follows the exact source branch.  A missing id returns status three with the borrowed input and unchanged store; a found id returns status zero with a fresh refcount-one `eraseIdx` array, exact allocator counters, and preserved memory below the old heap top. |
+| `clob_find_best` | same module | `findBest` | `ClobFindBest.Spec.findBest_correct` | For every represented order array and taker, returns the exact source optional index and leaves the store untouched.  `findBestL_best` proves eligibility, best price, and first-index selection among equal-price makers. |
 
 Together the counter artifacts cover the runtime end to end: bump allocation, free-list reuse and unlink, release through all three object kinds including recursion, retain both inline and exported, and the null release.
 

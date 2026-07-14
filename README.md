@@ -29,7 +29,7 @@ node test/run_all.js
 | `LeanExe/Wasm` | WASM module model, binary encoder, WAT printer, and interpreter support used by tests. |
 | `LeanExe/Examples` | Example Lean programs that exercise the supported subset. |
 | `test` | Node and Lean tests that compare Lean execution with generated WASM behavior. |
-| `proofs/talos-gcd` | Talos proof workspace: fourteen verified artifacts, the runtime lemma library, and the generic teardown theorem. |
+| `proofs/talos-gcd` | Talos proof workspace: fifteen verified artifacts, the runtime lemma library, and the generic teardown theorem. |
 | `DEVELOPING.md` | Developer setup, diagnostics, test gates, proof artifacts, and troubleshooting. |
 | `verifying.md` | End-to-end recipe for verifying a new program. |
 | `manual.md` | Practical guide to writing Lean source that LeanExe can compile. |
@@ -315,7 +315,7 @@ node tools/compare-standard.js --self-test
 
 The standard comparison suite checks generated WASM against standard Lean execution over selected inputs.  The Talos proof workspace adds artifact-level theorems about selected generated modules.  LeanExe emits WASM, `wasm-tools print` renders that WASM as WAT, Talos decodes the generated WAT into a Lean model, and a handwritten proof establishes a property of that decoded module — the theorem is about the instruction stream that ships.
 
-Fourteen verified artifacts live in [Talos Proofs](proofs/talos-gcd/README.md), which holds the authoritative theorem inventory.  The artifacts cover scalar algorithms, recursive data, byte processing and allocation, the compiler's own unsigned LEB128 encoder, CLOB quote and cancel behavior, and exact runtime accounting.  The workspace proves shared runtime behavior once and uses a generic teardown theorem for recursive ownership trees, while [Verifying a Program](verifying.md) gives the end-to-end procedure for adding a case.
+Fifteen verified artifacts live in [Talos Proofs](proofs/talos-gcd/README.md), which holds the authoritative theorem inventory.  The artifacts cover scalar algorithms, recursive data, byte processing and allocation, the compiler's own unsigned LEB128 encoder, CLOB quote, cancel, and best-order selection, and exact runtime accounting.  The workspace proves shared runtime behavior once and uses a generic teardown theorem for recursive ownership trees, while [Verifying a Program](verifying.md) gives the end-to-end procedure for adding a case.
 
 Run all current Talos artifact checks from the repository root:
 
