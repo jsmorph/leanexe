@@ -4665,3 +4665,11 @@ The `clob_post_only` case now pins the compiled `LeanExe.Examples.Clob.postOnly`
 `Project.ClobPostOnly.FindBestWrapper.func13_spec` reads the array length, checks the fuel addition for overflow, and invokes function 12 with an empty initial result.  It returns the same two-word option ABI as the standalone `findBest` export and preserves the store.  The separate wrapper file keeps later wrapper edits from forcing another elaboration of the 1,005-line loop proof.
 
 `lake build Project.ClobPostOnly.FindBest` completed 3,007 jobs in 218 seconds.  The wrapper target then completed 3,008 jobs in five seconds.  Both builds produced no warning, and the adaptation leaves the generated `Program.lean` unchanged.
+
+## 2026-07-14: Shared fixed-array allocation predicate
+
+`Project.Clob` now defines the byte count and six-word allocation header for a fixed-width array.  The predicate records the runtime magic word, reference count, byte capacity, array kind, element stride, and owner mask at their exact offsets from the returned data pointer.  Order and trade arrays can specialize one statement instead of defining separate header layouts.
+
+The complete `cancel` theorem now defines `FreshOrderArrayAt` as the stride-five specialization of the shared predicate.  Its byte-count definitions remain local because its arithmetic proof depends on their direct normal form, while later artifacts can use the generic count from the start.  The theorem statement and generated artifact remain unchanged.
+
+`lake env lean Project/ClobCancel/Spec.lean` rebuilt the complete found and missing proof after rebuilding `Project.Clob`.  The target passed without an error or warning.  This checkpoint adds no axiom, admission, dependency, or generated-file edit.

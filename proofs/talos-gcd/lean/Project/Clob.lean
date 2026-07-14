@@ -5,7 +5,8 @@ import Project.Common
 
 The CLOB artifacts read one order as five consecutive `UInt64` words.  This
 module states that source-independent layout once for quote, cancel, and the
-remaining kernel proofs.
+remaining kernel proofs.  It also states the common fixed-width array header
+used by artifacts that allocate CLOB values.
 -/
 
 namespace Project.Clob
@@ -50,5 +51,19 @@ def OrdersAt (st : Store Unit) (ptr : UInt64) (os : List OrderL) : Prop :=
           os[j]!.oqty ∧
       (ptr.toNat + (j * 5 + 5) * 8) % 4294967296 + 8 ≤
         st.mem.pages * 65536)
+
+def fixedArrayBytes (n stride : Nat) : Nat :=
+  8 + n * stride * 8
+
+def fixedArrayBytesU (n stride : Nat) : UInt64 :=
+  8 + UInt64.ofNat n * UInt64.ofNat stride * 8
+
+def FreshFixedArrayAt (st : Store Unit) (ptr capacity stride : UInt64) : Prop :=
+  st.mem.read64 ((ptr - 48).toUInt32) = 5501223100278326855 ∧
+  st.mem.read64 ((ptr - 40).toUInt32) = 1 ∧
+  st.mem.read64 ((ptr - 32).toUInt32) = capacity ∧
+  st.mem.read64 ((ptr - 24).toUInt32) = 2 ∧
+  st.mem.read64 ((ptr - 16).toUInt32) = stride ∧
+  st.mem.read64 ((ptr - 8).toUInt32) = 0
 
 end Project.Clob
