@@ -4621,3 +4621,15 @@ The `clob_find_best` Talos case now pins the compiled `LeanExe.Examples.Clob.fin
 `tools/check-talos-clob-find-best.sh --update` generated the WASM, WAT, and decoded model transactionally and built the temporary specification module.  The case belongs to the aggregate artifact script and proof-library import, but this checkpoint does not count it as a verified artifact because the fuel-loop and export theorems remain.  The next increment proves the exact `findBestL` result for every represented order array before updating the theorem inventory.
 
 The checked artifact comparison passed after generation.  `lake build Project.Runtime.Checks Project` then completed 3,053 jobs, including the new runtime pins and aggregate proof-library import.  The build reported only warnings that predate this proof directory.
+
+## 2026-07-14: Complete CLOB `findBest` proof
+
+`Project.ClobFindBest.Loop.func7_spec` proves termination and the exact `findBestL` result for every represented order array, taker, and input length below `2^32`.  Its postcondition covers all five generated result branches and preserves the complete store.  `Project.ClobFindBest.Spec.findBest_correct` connects the public six-argument ABI to the source two-word `Option Nat` result with the same store guarantee.
+
+`Project.ClobFindBest.Spec.findBestL_best` proves the source search's economic property for a valid taker side.  A successful result is in bounds and eligible, no eligible candidate has a better price, and an equal-price eligible candidate cannot precede the returned index.  The proof derives the result from a prefix invariant shared with the exact fuel-recursive model.
+
+The checked artifact remains 3,462 bytes of WASM and 42,412 bytes of WAT.  The generated loop calls function 5 at four syntactic sites and performs the price comparison inline; function 6 remains present in the compiled module but function 7 does not call it.  The proof follows those emitted instructions, leaves `Program.lean` unchanged, and adds no axiom, admission, or third-party dependency.
+
+- [x] `lake build Project.ClobFindBest.Spec` completed 3,008 jobs without a warning in the `findBest` modules.
+- [x] `tools/check-talos-clob-find-best.sh` matched the checked WASM and WAT and rebuilt the specification.
+- [x] The focused artifact check reported only the pre-existing `AsciiDigits.lean` unused-argument warning scheduled for Phase 6.
