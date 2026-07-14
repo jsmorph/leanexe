@@ -2,6 +2,41 @@ import LeanExe.Examples.Clob
 
 namespace LeanExe.Examples.Clob
 
+def findBestBuy : Order :=
+  { id := 90, trader := 90, side := 0, price := 100, qty := 5 }
+
+def findBestSell : Order :=
+  { id := 91, trader := 91, side := 1, price := 100, qty := 5 }
+
+def findBestRejected : Array Order := #[
+  { id := 1, trader := 1, side := 0, price := 50, qty := 1 },
+  { id := 2, trader := 90, side := 1, price := 90, qty := 1 },
+  { id := 3, trader := 3, side := 1, price := 101, qty := 1 }
+]
+
+def findBestBuys : Array Order := #[
+  { id := 1, trader := 1, side := 1, price := 100, qty := 1 },
+  { id := 2, trader := 2, side := 1, price := 99, qty := 1 },
+  { id := 3, trader := 3, side := 1, price := 99, qty := 1 },
+  { id := 4, trader := 4, side := 1, price := 100, qty := 1 },
+  { id := 5, trader := 5, side := 0, price := 1, qty := 1 }
+]
+
+def findBestSells : Array Order := #[
+  { id := 1, trader := 1, side := 0, price := 100, qty := 1 },
+  { id := 2, trader := 2, side := 0, price := 101, qty := 1 },
+  { id := 3, trader := 3, side := 0, price := 101, qty := 1 },
+  { id := 4, trader := 4, side := 0, price := 99, qty := 1 },
+  { id := 5, trader := 5, side := 1, price := 200, qty := 1 },
+  { id := 6, trader := 91, side := 0, price := 200, qty := 1 }
+]
+
+#guard findBest #[] findBestBuy == none
+#guard findBest findBestRejected findBestBuy == none
+#guard findBest #[findBestRejected[0]!, findBestBuys[0]!] findBestBuy == some 1
+#guard findBest findBestBuys findBestBuy == some 1
+#guard findBest findBestSells findBestSell == some 1
+
 def b1 : Array Order := (postOnly #[] { id := 1, trader := 10, side := 0, price := 100, qty := 5 }).book
 
 #guard (postOnly #[] { id := 1, trader := 10, side := 0, price := 100, qty := 5 }).status == errOk

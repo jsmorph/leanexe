@@ -744,7 +744,17 @@ function cleanup(config, paths) {
 
 function selfTest() {
   const correctness = "LeanExe.Examples.Correctness";
+  const clob = "LeanExe.Examples.Clob";
   const u64Layout = scalarLayout("UInt64");
+  const optionNatLayout = variantLayout([[], [u64Layout]]);
+  const orderLayout = structLayout([
+    ["id", u64Layout],
+    ["trader", u64Layout],
+    ["side", u64Layout],
+    ["price", u64Layout],
+    ["qty", u64Layout],
+  ]);
+  const orderArrayLayout = arrayLayout(orderLayout);
   const nestedU64ArrayLayout = arrayLayout(arrayLayout(u64Layout));
   const byteArrayArrayLayout = arrayLayout(byteArrayLayout);
   const optionArrayByteArrayLayout = variantLayout([[], [byteArrayArrayLayout]]);
@@ -825,7 +835,62 @@ function selfTest() {
   let out := out ++ ",\\"marker\\":".toUTF8
   let out := __leanexeAppendUInt64 out group.marker
   out.push (125 : UInt8))`;
+  const renderOptionNat = `match __leanexeValue with
+  | none => "{\\"tag\\":0,\\"fields\\":[]}".toUTF8
+  | some value =>
+      let out := "{\\"tag\\":1,\\"fields\\":[".toUTF8
+      let out := __leanexeAppendNat out value
+      (out.push (93 : UInt8)).push (125 : UInt8)`;
+  const order = (id, trader, side, price, qty = 1) => ({ id, trader, side, price, qty });
+  const buy = order(90, 90, 0, 100, 5);
+  const sell = order(91, 91, 1, 100, 5);
+  const rejected = [
+    order(1, 1, 0, 50),
+    order(2, 90, 1, 90),
+    order(3, 3, 1, 101),
+  ];
+  const buys = [
+    order(1, 1, 1, 100),
+    order(2, 2, 1, 99),
+    order(3, 3, 1, 99),
+    order(4, 4, 1, 100),
+    order(5, 5, 0, 1),
+  ];
+  const sells = [
+    order(1, 1, 0, 100),
+    order(2, 2, 0, 101),
+    order(3, 3, 0, 101),
+    order(4, 4, 0, 99),
+    order(5, 5, 1, 200),
+    order(6, 91, 0, 200),
+  ];
+  const leanOrder = (value) =>
+    `({ id := ${value.id}, trader := ${value.trader}, side := ${value.side}, ` +
+      `price := ${value.price}, qty := ${value.qty} } : ${clob}.Order)`;
+  const leanBook = (values) =>
+    values.length === 0
+      ? `(#[] : Array ${clob}.Order)`
+      : `(#[${values.map(leanOrder).join(", ")}] : Array ${clob}.Order)`;
+  const findBestCases = [
+    { book: [], taker: buy },
+    { book: rejected, taker: buy },
+    { book: [rejected[0], buys[0]], taker: buy },
+    { book: buys, taker: buy },
+    { book: sells, taker: sell },
+  ].map(({ book, taker }) => ({
+    mode: "pure-abi",
+    moduleName: clob,
+    entry: "findBest",
+    abiArgs: [
+      { layout: orderArrayLayout, value: book },
+      { layout: orderLayout, value: taker },
+    ],
+    standardCall: `${clob}.findBest ${leanBook(book)} ${leanOrder(taker)}`,
+    resultLayout: optionNatLayout,
+    serializer: renderOptionNat,
+  }));
   const cases = [
+    ...findBestCases,
     {
       mode: "pure",
       moduleName: correctness,
