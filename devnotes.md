@@ -4459,7 +4459,7 @@ Review references are [Language Specification](spec.md), [User Manual](manual.md
 - [x] Run the complete execution suite.
 - [x] Run all fourteen byte-pinned artifact checks and the aggregate proof build.
 - [x] Replace the obsolete development roadmap with current priorities and exit conditions.
-- [ ] Check the ownership precondition for source-level release.
+- [x] Check the ownership precondition for source-level release.
 - [ ] Bind repeated match results once and reduce CLOB `cancel` to one identifier scan.
 - [ ] Prove complete CLOB `cancel`, followed by `postOnly`, `limit`, and `market`.
 
@@ -4511,7 +4511,7 @@ The specification, manual, repository overview, and developer guide now state th
 - [x] Separate ordinary Lean and IR-interpreter behavior from generated WASM behavior.
 - [x] Define the initial direct-handoff judgment.
 - [x] Classify all twenty-two tracked source release sites.
-- [ ] Enforce the judgment before IR extraction and report its result.
+- [x] Enforce the judgment before IR extraction and report its result.
 
 ## 2026-07-13: Direct release handoff checker
 
@@ -4527,4 +4527,6 @@ Focused verification passed 781 accepted core cases, 45 exact rejections, 13 tra
 - [x] Report accepted source judgments through `ownership-report`.
 - [x] Add exact rejection fixtures for every initial unsupported shape.
 - [x] Preserve the JSON tree pipeline through compiler-managed fold cleanup.
-- [ ] Run the complete execution, WAT, and Talos gates.
+- [x] Run the complete execution, WAT, and Talos gates.
+
+The complete execution gate passed 114 report-classification cases, 10 ownership-report cases, 781 accepted core cases, 45 rejections, 13 traps, 7 leak-accounting cases, 38 reference-counting cases, 70 byte-array allocation cases, 23 ASCII-string cases, 4 integer-map cases, 48 JSON cases, 33 WASI program cases with 2 traps, 9 rejections, and 16 compiles, 63 self-emitted LEB128 cases, 301 standard-Lean comparisons, 58 IR comparisons, and 56 fuzz cases.  The WAT gate passed nine entries after replacing the deferred `JsonGcTreeRewrite.transform` matrix entry with the accepted `JsonTypedDecode.transform`; every parsed WAT artifact matched the directly emitted binary byte-for-byte.  The Talos gate compared all fourteen regenerated WASM and WAT artifacts with their checked-in proof inputs and rebuilt the aggregate `Project` library without an artifact mismatch or proof error.

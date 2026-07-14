@@ -34,7 +34,7 @@ cases=(
   "LeanExe.Examples.ByteArrayPrograms LeanExe.Examples.ByteArrayPrograms.pushBangSize"
   "LeanExe.Examples.Collatz LeanExe.Examples.Collatz.steps"
   "LeanExe.Examples.Correctness LeanExe.Examples.Correctness.arrayFoldByteArrayAccumulatorReleaseStats"
-  "LeanExe.Examples.JsonGcTreeRewrite LeanExe.Examples.JsonGcTreeRewrite.transform"
+  "LeanExe.Examples.JsonTypedDecode LeanExe.Examples.JsonTypedDecode.transform"
 )
 
 for case in "${cases[@]}"; do
