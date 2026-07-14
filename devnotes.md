@@ -4530,3 +4530,21 @@ Focused verification passed 781 accepted core cases, 45 exact rejections, 13 tra
 - [x] Run the complete execution, WAT, and Talos gates.
 
 The complete execution gate passed 114 report-classification cases, 10 ownership-report cases, 781 accepted core cases, 45 rejections, 13 traps, 7 leak-accounting cases, 38 reference-counting cases, 70 byte-array allocation cases, 23 ASCII-string cases, 4 integer-map cases, 48 JSON cases, 33 WASI program cases with 2 traps, 9 rejections, and 16 compiles, 63 self-emitted LEB128 cases, 301 standard-Lean comparisons, 58 IR comparisons, and 56 fuzz cases.  The WAT gate passed nine entries after replacing the deferred `JsonGcTreeRewrite.transform` matrix entry with the accepted `JsonTypedDecode.transform`; every parsed WAT artifact matched the directly emitted binary byte-for-byte.  The Talos gate compared all fourteen regenerated WASM and WAT artifacts with their checked-in proof inputs and rebuilt the aggregate `Project` library without an artifact mismatch or proof error.
+
+## 2026-07-13: Single-evaluation array search matches
+
+`Array.findIdx?`, `Array.find?`, and `ByteArray.findIdx?` now bind one encoded search result whose zero value means missing and whose positive value is the found index plus one.  Extraction derives the public `Option` tag and payload from that local, and structured match results use a statement-level branch before result slots are assigned.  CLOB `cancel` therefore scans the order array once and reuses the recorded index in `eraseIdx!`.
+
+The reduced fixtures cover a scalar helper result, unused structure fields that contain trapping array reads, structure results, fresh array results, and an executed trapping predicate.  The heap fixture allocates the literal search array and one branch result, releases the returned root once, and records `2 0 1 1` for allocation, retain, release, and free counts on both found and missing inputs.  Standard Lean and Wasmtime agree on both scalar branches and both heap-result branches, while the scalar cases also agree with the IR interpreter.
+
+The CLOB WAT shrank from 23,020 bytes to 19,838 bytes in the reviewed text rendering.  The diff removes two full predicate scans, introduces one encoded-index local, and preserves the erase allocation, header stores, and two copy loops with local renumbering.  The checked Talos artifact remains unchanged, so `tools/check-talos-clob-cancel.sh` reports the expected byte mismatch until the complete cancel proof in the next phase accepts the regenerated artifact.
+
+Checks run:
+
+- [x] `lake build lean-wasm LeanExe.Examples.Correctness` completed successfully.
+- [x] `node test/matched_values.js` returned `checked 4 matched-value IR cases and 1 WAT scan case`.
+- [x] `node test/core_correctness.js` returned `checked 791 accepted, 45 rejected, and 14 trapped cases`.
+- [x] `node test/refcount.js` returned `checked 40 refcount cases` with both matched-array branches at `2 0 1 1`.
+- [x] `node tools/compare-standard.js --self-test` returned `checked 309 standard Lean comparison cases` and `checked 62 IR interpreter comparison cases`.
+- [x] Review of `/tmp/clob-cancel-before.wat` and `/tmp/clob-cancel-after.wat` accounted for every removed scan and retained found-branch block.
+- [x] `tools/check-talos-clob-cancel.sh` stopped at the expected proof-input byte comparison before rebuilding the stale proof.

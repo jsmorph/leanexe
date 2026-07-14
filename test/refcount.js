@@ -170,6 +170,31 @@ function checkLeakAccounting() {
   );
 }
 
+function checkMatchedArrayRelease() {
+  const wasm = compile(correctnessModule, "matchedFindIdxArrayReleaseStats");
+  const cases = [
+    [2, 2020101],
+    [9, 1020101],
+  ];
+  for (const [needle, expectedResult] of cases) {
+    const args = [host.i64(needle)];
+    const result = host.callI64(wasm, "matchedFindIdxArrayReleaseStats", args);
+    if (result !== BigInt(expectedResult)) {
+      throw new Error(
+        `matchedFindIdxArrayReleaseStats(${needle}): expected ${expectedResult}, got ${result}`,
+      );
+    }
+    const stats = host.callStats(wasm, "matchedFindIdxArrayReleaseStats", "i64", args);
+    const observed = [stats.allocs, stats.retains, stats.releases, stats.frees];
+    const expected = [2n, 0n, 1n, 1n];
+    if (observed.some((value, index) => value !== expected[index])) {
+      throw new Error(
+        `matchedFindIdxArrayReleaseStats(${needle}): expected stats ${expected.join(" ")}, got ${observed.join(" ")}`,
+      );
+    }
+  }
+}
+
 function main() {
   run(["lake", "build", correctnessModule]);
   run(["lake", "build", byteArrayModule]);
@@ -181,7 +206,8 @@ function main() {
   checkCompilerReleasesOwnedCallResults();
   checkCompilerReleasesFoldAccumulators();
   checkLeakAccounting();
-  process.stdout.write("checked 38 refcount cases\n");
+  checkMatchedArrayRelease();
+  process.stdout.write("checked 40 refcount cases\n");
 }
 
 try {
