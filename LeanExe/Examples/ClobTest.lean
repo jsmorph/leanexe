@@ -42,6 +42,8 @@ def b1 : Array Order := (postOnly #[] { id := 1, trader := 10, side := 0, price 
 #guard (postOnly #[] { id := 1, trader := 10, side := 0, price := 100, qty := 5 }).status == errOk
 #guard b1.size == 1
 
+#guard (postOnly #[] { id := 0, trader := 11, side := 1, price := 200, qty := 1 }).status == errInvalid
+#guard (postOnly #[] { id := 2, trader := 0, side := 1, price := 200, qty := 1 }).status == errInvalid
 #guard (postOnly b1 { id := 1, trader := 11, side := 1, price := 200, qty := 1 }).status == errInvalid
 #guard (postOnly b1 { id := 2, trader := 11, side := 3, price := 200, qty := 1 }).status == errInvalid
 #guard (postOnly b1 { id := 2, trader := 11, side := 1, price := 200, qty := 0 }).status == errInvalid

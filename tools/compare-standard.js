@@ -755,6 +755,17 @@ function selfTest() {
     ["qty", u64Layout],
   ]);
   const orderArrayLayout = arrayLayout(orderLayout);
+  const tradeLayout = structLayout([
+    ["takerId", u64Layout],
+    ["makerId", u64Layout],
+    ["price", u64Layout],
+    ["qty", u64Layout],
+  ]);
+  const opResultLayout = structLayout([
+    ["status", u64Layout],
+    ["book", orderArrayLayout],
+    ["trades", arrayLayout(tradeLayout)],
+  ]);
   const nestedU64ArrayLayout = arrayLayout(arrayLayout(u64Layout));
   const byteArrayArrayLayout = arrayLayout(byteArrayLayout);
   const optionArrayByteArrayLayout = variantLayout([[], [byteArrayArrayLayout]]);
@@ -841,6 +852,35 @@ function selfTest() {
       let out := "{\\"tag\\":1,\\"fields\\":[".toUTF8
       let out := __leanexeAppendNat out value
       (out.push (93 : UInt8)).push (125 : UInt8)`;
+  const renderOrder = `(fun order =>
+  let out := "{\\"id\\":".toUTF8
+  let out := __leanexeAppendUInt64 out order.id
+  let out := out ++ ",\\"trader\\":".toUTF8
+  let out := __leanexeAppendUInt64 out order.trader
+  let out := out ++ ",\\"side\\":".toUTF8
+  let out := __leanexeAppendUInt64 out order.side
+  let out := out ++ ",\\"price\\":".toUTF8
+  let out := __leanexeAppendUInt64 out order.price
+  let out := out ++ ",\\"qty\\":".toUTF8
+  let out := __leanexeAppendUInt64 out order.qty
+  out.push (125 : UInt8))`;
+  const renderTrade = `(fun trade =>
+  let out := "{\\"takerId\\":".toUTF8
+  let out := __leanexeAppendUInt64 out trade.takerId
+  let out := out ++ ",\\"makerId\\":".toUTF8
+  let out := __leanexeAppendUInt64 out trade.makerId
+  let out := out ++ ",\\"price\\":".toUTF8
+  let out := __leanexeAppendUInt64 out trade.price
+  let out := out ++ ",\\"qty\\":".toUTF8
+  let out := __leanexeAppendUInt64 out trade.qty
+  out.push (125 : UInt8))`;
+  const renderOpResult = `let out := "{\\"status\\":".toUTF8
+let out := __leanexeAppendUInt64 out __leanexeValue.status
+let out := out ++ ",\\"book\\":".toUTF8
+let out := out ++ __leanexeJsonArray __leanexeValue.book ${renderOrder}
+let out := out ++ ",\\"trades\\":".toUTF8
+let out := out ++ __leanexeJsonArray __leanexeValue.trades ${renderTrade}
+out.push (125 : UInt8)`;
   const order = (id, trader, side, price, qty = 1) => ({ id, trader, side, price, qty });
   const buy = order(90, 90, 0, 100, 5);
   const sell = order(91, 91, 1, 100, 5);
@@ -889,8 +929,30 @@ function selfTest() {
     resultLayout: optionNatLayout,
     serializer: renderOptionNat,
   }));
+  const baseBook = [order(1, 10, 0, 100, 5)];
+  const postOnlyCases = [
+    { book: [], taker: order(0, 11, 1, 200) },
+    { book: [], taker: order(2, 0, 1, 200) },
+    { book: baseBook, taker: order(2, 11, 3, 200) },
+    { book: baseBook, taker: order(2, 11, 1, 200, 0) },
+    { book: baseBook, taker: order(1, 11, 1, 200) },
+    { book: baseBook, taker: order(2, 11, 1, 100, 3) },
+    { book: baseBook, taker: order(2, 11, 1, 105, 3) },
+  ].map(({ book, taker }) => ({
+    mode: "pure-abi",
+    moduleName: clob,
+    entry: "postOnly",
+    abiArgs: [
+      { layout: orderArrayLayout, value: book },
+      { layout: orderLayout, value: taker },
+    ],
+    standardCall: `${clob}.postOnly ${leanBook(book)} ${leanOrder(taker)}`,
+    resultLayout: opResultLayout,
+    serializer: renderOpResult,
+  }));
   const cases = [
     ...findBestCases,
+    ...postOnlyCases,
     {
       mode: "pure",
       moduleName: correctness,
