@@ -17,6 +17,7 @@ function main() {
   run(["lake", "build"]);
   run(["lake", "build", "LeanExe"]);
   run(["lake", "build", "LeanExe.Examples.Correctness"]);
+  run(["lake", "build", "LeanExe.Examples.ClobTest"]);
   run(["node", path.join("test", "report_classification.js")]);
   run(["node", path.join("test", "ownership_report.js")]);
   run(["node", path.join("test", "no_js_wasm_execution.js")]);

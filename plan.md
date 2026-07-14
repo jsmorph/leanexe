@@ -14,7 +14,7 @@ LeanExe runtime intrinsics require a separate semantic statement.  Ordinary Lean
 |------|-------------------|------------|
 | Accepted language | First-order pure programs over scalars, byte arrays, fixed-width arrays, structures, tagged values, internal recursive values, supported loops, and selected specialized helpers.  Runtime intrinsics have separate ordinary-Lean and generated-WASM semantics, and every accepted explicit release has a compiler-produced direct-handoff judgment. | Branch-dependent roots, conditionally owned arrays, consuming parameters, structure fields, and loop-carried release roots remain deferred until a focused ownership analysis proves them. |
 | Compiler | Checked-environment extraction, a typed first-order IR with an interpreter, ownership summaries, a reference-counted heap, and one structured WASM instruction stream serialized as binary or WAT.  Array search matches bind one encoded scan result before projecting the tag and payload. | The remaining CLOB artifacts require input-generic proofs in dependency order, beginning with `findBest` and `postOnly`. |
-| Execution tests | The complete gate passes 791 accepted cases, 45 rejections, 14 traps, 309 standard-Lean comparisons, 62 IR comparisons, 40 reference-counting cases, and the matched-value IR and WAT assertions. | The IR interpreter does not model heap allocation, release, or runtime counters. |
+| Execution tests | The complete gate passes 791 accepted cases, 45 rejections, 14 traps, 314 standard-Lean comparisons, 62 IR comparisons, 40 reference-counting cases, and the matched-value IR and WAT assertions. | The IR interpreter does not model heap allocation, release, or runtime counters. |
 | Artifact proofs | Fourteen byte-pinned proof cases exist, including the self-compiled LEB128 encoder, CLOB quote, and complete single-scan CLOB cancel behavior. | `findBest`, `postOnly`, `matchFuel`, `limit`, `market`, and `depth` remain unproved. |
 | Documentation and tools | The repository overview, developer guide, manual, specification, proof inventory, verification guide, plan, and journal have distinct responsibilities and agree on the fourteen proof cases.  Lean and Talos use pinned revisions, and Wasmtime defaults to 44.0.0. | Node and `wasm-tools` remain unpinned, Wasmtime downloads lack checksum verification, CLI failures lack one exit-status scheme, and Lean reports unused proof arguments. |
 
@@ -97,6 +97,8 @@ Proceed in dependency order so each theorem supplies facts used by the next.  Pr
 | `depth` | Exact per-side aggregation, order of first price occurrence, bounded or modular quantity totals, and ownership of both result arrays. |
 
 Differential fixtures must cover every source branch before proof work begins.  A compiler gap discovered here becomes a reduced compiler task with its own fixture and acceptance tests.  An artifact theorem must quantify over meaningful input rather than certify a fixed scenario checksum.
+
+The `findBest` branch gate now builds the source guards and compares standard Lean with the public WASM ABI on empty input, rejected makers, an eligible maker after a rejected prefix, both taker sides, better candidates, worse candidates, and equal-price FIFO ties.  The remaining functions need the same branch inventory before their proof work begins.  Their fixtures should reuse the established order and result layouts rather than introduce source wrappers.
 
 ### 5. Consolidate Proof Machinery After Repetition
 
