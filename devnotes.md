@@ -4649,3 +4649,11 @@ The `clob_post_only` case now pins the compiled `LeanExe.Examples.Clob.postOnly`
 `Project.ClobPostOnly.Model` states the five validity conditions and the invalid, would-cross, and appended source outcomes over the shared order representation.  Invalid and would-cross results borrow the input book and allocate one empty trade array.  The successful result allocates both the appended book and an empty trade array, so its artifact theorem requires a separate two-allocation postcondition.
 
 `tools/check-talos-clob-post-only.sh --update` generated the proof inputs and decoded model transactionally, then built the placeholder specification.  `lake build Project.Runtime.Checks Project` completed 3,057 jobs with the new runtime pins and aggregate import.  The build reported existing linter warnings outside the new proof directory, and the case does not enter the verified theorem count until its input-generic specification is complete.
+
+## 2026-07-14: CLOB `postOnly` helper proofs
+
+`Project.ClobPostOnly.SearchHelpers` proves side selection, crossing, eligibility, and better-price behavior at the new artifact's function indices.  The instruction bodies match the earlier `findBest` helpers apart from their indices and internal call targets.  Each theorem ranges over arbitrary scalar orders and preserves the store.
+
+`Project.ClobPostOnly.ValidOrder.func5_spec` proves that the generated identifier scan returns one exactly when an order with the requested identifier occurs.  Its loop invariant records a clean processed prefix, reads all five fields through the shared `OrdersAt` predicate, and terminates by decreasing the unprocessed length.  `func6_spec` combines that result with nonzero identifier, nonzero trader, valid side, and nonzero quantity in the emitted short-circuit order.
+
+`lake build Project.ClobPostOnly.SearchHelpers` completed 3,006 jobs, and `lake build Project.ClobPostOnly.ValidOrder` completed 3,008 jobs.  Both focused targets build without a warning in the new proof files.  The proofs add no source wrapper, generated-file edit, axiom, or admission.
