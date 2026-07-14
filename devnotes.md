@@ -4560,3 +4560,32 @@ Checks run:
 - [x] `lake build Project.ClobCancel.Spec` completed 3,009 proof jobs.
 - [x] `tools/check-talos-clob-cancel.sh --update` regenerated the three proof inputs and rebuilt `Project.ClobCancel.Spec`.
 - [x] The checked WASM size changed from 2,216 bytes to 1,930 bytes after removal of the duplicate scans.
+
+## 2026-07-13: Complete single-scan cancel theorem
+
+`Project.ClobCancel.Spec.cancel_found` proves the allocating branch for every
+represented order array whose input and fresh result occupy disjoint,
+nonwrapping memory regions.  The proof follows the inline bump allocator,
+checks all six header stores, writes the output length, and proves both word
+copy loops with decreasing measures.  The final list argument converts the
+copied prefix and suffix into `OrdersAt st' (g0 + 48) (os.eraseIdx i)`.
+
+`Project.ClobCancel.Spec.cancel_correct` selects the missing or found theorem
+from the single `idIdx` result.  Its missing branch returns the borrowed input
+pointer and exact unchanged store without allocator assumptions.  Its found
+branch returns a refcount-one array, advances the heap top by the exact object
+size, increments the allocation counter once, preserves all other globals and
+pages, and leaves every byte below the old heap top unchanged.
+
+The focused proof build completed 3,009 jobs without a warning.  A repository
+scan found no `sorry`, admitted theorem, new axiom, or diagnostic trace in the
+CLOB cancel proof directory.  The cancel artifact check compared regenerated
+WASM and WAT with the checked proof inputs and rebuilt the theorem; the
+aggregate Talos and complete execution gates remain.
+
+- [x] Prove the inline allocator and six header stores.
+- [x] Prove the prefix and suffix copy loops.
+- [x] Prove exact `eraseIdx` contents and output ownership.
+- [x] Combine the found and missing branches in `cancel_correct`.
+- [x] Run `tools/check-talos-clob-cancel.sh`.
+- [ ] Run the aggregate proof and complete execution gates.

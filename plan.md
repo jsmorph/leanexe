@@ -13,9 +13,9 @@ LeanExe runtime intrinsics require a separate semantic statement.  Ordinary Lean
 | Area | Established state | Open issue |
 |------|-------------------|------------|
 | Accepted language | First-order pure programs over scalars, byte arrays, fixed-width arrays, structures, tagged values, internal recursive values, supported loops, and selected specialized helpers.  Runtime intrinsics have separate ordinary-Lean and generated-WASM semantics, and every accepted explicit release has a compiler-produced direct-handoff judgment. | Branch-dependent roots, conditionally owned arrays, consuming parameters, structure fields, and loop-carried release roots remain deferred until a focused ownership analysis proves them. |
-| Compiler | Checked-environment extraction, a typed first-order IR with an interpreter, ownership summaries, a reference-counted heap, and one structured WASM instruction stream serialized as binary or WAT.  Array search matches bind one encoded scan result before projecting the tag and payload. | The changed CLOB `cancel` artifact requires its complete proof before it can replace the checked proof input. |
+| Compiler | Checked-environment extraction, a typed first-order IR with an interpreter, ownership summaries, a reference-counted heap, and one structured WASM instruction stream serialized as binary or WAT.  Array search matches bind one encoded scan result before projecting the tag and payload. | The remaining CLOB artifacts require input-generic proofs in dependency order, beginning with `findBest` and `postOnly`. |
 | Execution tests | The focused gates pass 791 accepted cases, 45 rejections, 14 traps, 309 standard-Lean comparisons, 62 IR comparisons, 40 reference-counting cases, and the matched-value IR and WAT assertions. | The complete execution gate remains pending for the single-evaluation change.  The IR interpreter does not model heap allocation, release, or runtime counters. |
-| Artifact proofs | Fourteen byte-pinned proof cases exist, including the self-compiled LEB128 encoder, CLOB quote, and the current not-found branch of single-scan CLOB cancel. | The found branch of `cancel`, followed by `postOnly`, `limit`, `market`, and `depth`, remains unproved. |
+| Artifact proofs | Fourteen byte-pinned proof cases exist, including the self-compiled LEB128 encoder, CLOB quote, and complete single-scan CLOB cancel behavior. | `findBest`, `postOnly`, `matchFuel`, `limit`, `market`, and `depth` remain unproved. |
 | Documentation and tools | The repository overview, developer guide, manual, specification, proof inventory, verification guide, plan, and journal have distinct responsibilities and agree on the fourteen proof cases.  Lean and Talos use pinned revisions, and Wasmtime defaults to 44.0.0. | Node and `wasm-tools` remain unpinned, Wasmtime downloads lack checksum verification, CLI failures lack one exit-status scheme, and Lean reports unused proof arguments. |
 
 The baseline was checked on 2026-07-13.  The untracked `leanclob/` directory is a separate nested Git repository and remains outside this plan.  Update this table in the same change that alters a stated fact.
@@ -72,9 +72,9 @@ The focused implementation conditions now pass.  The full execution suite and WA
 Regenerate the CLOB cancel artifact after the single-evaluation fix, then prove both result branches.  The primary theorem should quantify over every well-laid-out order array and identifier and relate the result exactly to the Lean `cancel` function under `UInt64` semantics.  Its postcondition must distinguish the borrowed not-found book from the fresh found-branch array and state counters, contents, and unchanged memory.
 
 - [x] Repair the not-found proof against the updated artifact without weakening its statement.
-- [ ] Add the index-recording scan lemma needed by the found branch.
-- [ ] Prove the inline allocation, header initialization, and both element-copy loops for `eraseIdx!`.
-- [ ] State the returned owner, array length, elements, runtime counters, and unchanged-memory region for each branch.
+- [x] Add the index-recording scan lemma needed by the found branch.
+- [x] Prove the inline allocation, header initialization, and both element-copy loops for `eraseIdx!`.
+- [x] State the returned owner, array length, elements, runtime counters, and unchanged-memory region for each branch.
 - [ ] Run `tools/check-talos-clob-cancel.sh`, `tools/check-talos.sh`, and `node test/run_all.js`.
 
 This phase ends with one `cancel_correct` theorem covering found and missing identifiers.  The proof may use only the standard axioms already present in the workspace and must contain no `sorry`, new axiom, or unchecked artifact replacement.  The proof README must replace the branch-only description with the complete theorem.
