@@ -15,31 +15,7 @@ set_option maxHeartbeats 64000000
 
 namespace Project.ClobQuote.Spec
 
-open Wasm Project.Common Project.ClobQuote Project.ClobQuote.Step
-
-/-- The order array as the module reads it: the length word at the pointer,
-then five words per element, each read stated at the wrapped 32-bit address
-the compiled code computes, with its page bound. -/
-def OrdersAt (st : Store Unit) (ptr : UInt64) (os : List OrderL) : Prop :=
-  (st.mem.read64 (UInt32.ofNat (ptr.toNat % 4294967296))
-      = UInt64.ofNat os.length ∧
-   ptr.toNat % 4294967296 + 8 ≤ st.mem.pages * 65536) ∧
-  ∀ j : Nat, j < os.length →
-    (st.mem.read64 (UInt32.ofNat ((ptr.toNat + (j * 5 + 1) * 8) % 4294967296))
-        = os[j]!.oid ∧
-     (ptr.toNat + (j * 5 + 1) * 8) % 4294967296 + 8 ≤ st.mem.pages * 65536) ∧
-    (st.mem.read64 (UInt32.ofNat ((ptr.toNat + (j * 5 + 2) * 8) % 4294967296))
-        = os[j]!.otrader ∧
-     (ptr.toNat + (j * 5 + 2) * 8) % 4294967296 + 8 ≤ st.mem.pages * 65536) ∧
-    (st.mem.read64 (UInt32.ofNat ((ptr.toNat + (j * 5 + 3) * 8) % 4294967296))
-        = os[j]!.oside ∧
-     (ptr.toNat + (j * 5 + 3) * 8) % 4294967296 + 8 ≤ st.mem.pages * 65536) ∧
-    (st.mem.read64 (UInt32.ofNat ((ptr.toNat + (j * 5 + 4) * 8) % 4294967296))
-        = os[j]!.oprice ∧
-     (ptr.toNat + (j * 5 + 4) * 8) % 4294967296 + 8 ≤ st.mem.pages * 65536) ∧
-    (st.mem.read64 (UInt32.ofNat ((ptr.toNat + (j * 5 + 5) * 8) % 4294967296))
-        = os[j]!.oqty ∧
-     (ptr.toNat + (j * 5 + 5) * 8) % 4294967296 + 8 ≤ st.mem.pages * 65536)
+open Wasm Project.Common Project.Clob Project.ClobQuote Project.ClobQuote.Step
 
 /-- The fold over the consumed prefix. -/
 def foldTake (os : List OrderL) (k : Nat) : QuoteL :=

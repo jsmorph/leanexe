@@ -4605,3 +4605,9 @@ The Phase 4 test review found that `LeanExe/Examples/ClobTest.lean` was absent f
 The runner now builds `LeanExe.Examples.ClobTest`, whose direct `findBest` guards cover empty input, a same-side maker, a same-trader maker, a maker outside the limit price, an eligible maker after a rejected prefix, better and worse candidates, equal-price FIFO ties, and both taker sides.  Five public-ABI comparisons pass arrays of five-word `Order` structures and a scalar `Order` argument to the exported function, then compare its `Option Nat` result with ordinary Lean.  The comparison code reuses the existing ABI layout functions and adds no source wrapper or third-party dependency.
 
 `lake build LeanExe.Examples.ClobTest` completed three jobs with all guards accepted.  The focused public-ABI command matched the buy-side replacement case, and the complete standard-comparison matrix passed 314 standard-Lean cases and 62 IR cases.  The five added cases explain the standard total's increase from 309 to 314; the IR total is unchanged because its interpreter does not accept heap-backed public ABI arguments.
+
+## 2026-07-14: Shared CLOB order-array model
+
+The `findBest` artifact confirmed that quote, cancel, and the remaining CLOB proofs consume the same five-word order-array representation.  `Project.Clob` now owns `OrderL` and `OrdersAt`, while quote retains its fold model and cancel retains its identifier scan and allocation arithmetic.  This completes the first Phase 5 reuse item after three independent artifacts established the shared statement.
+
+The move changes no definition body or theorem statement after namespace resolution.  `lake build Project.ClobQuote.Spec Project.ClobCancel.Spec` rebuilt the shared module, quote step and specification, cancel scan, and complete cancel specification in 3,010 jobs.  Both proofs remain accepted without editing their generated `Program.lean` files or checked WASM and WAT inputs.

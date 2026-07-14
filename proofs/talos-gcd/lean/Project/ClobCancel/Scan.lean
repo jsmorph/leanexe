@@ -19,7 +19,8 @@ The list-level bridge is `List.findIdx?` over the element predicate.
 
 namespace Project.ClobCancel.Spec
 
-open Wasm Project.Common Project.ClobQuote.Step Project.ClobQuote.Spec Project.ClobCancel
+open Wasm Project.Common Project.Clob Project.ClobQuote.Step
+  Project.ClobQuote.Spec Project.ClobCancel
 
 set_option maxHeartbeats 64000000
 

@@ -1,5 +1,5 @@
 import Project.ClobQuote.Program
-import Project.Common
+import Project.Clob
 import Interpreter.Wasm.Wp.Tactic
 import Interpreter.Wasm.Wp.Block
 import Interpreter.Wasm.Wp.Loop
@@ -24,16 +24,7 @@ set_option maxHeartbeats 64000000
 
 namespace Project.ClobQuote.Step
 
-open Wasm Project.Common Project.ClobQuote
-
-/-- One order as the module reads it: five scalar fields. -/
-structure OrderL where
-  oid : UInt64
-  otrader : UInt64
-  oside : UInt64
-  oprice : UInt64
-  oqty : UInt64
-  deriving Inhabited
+open Wasm Project.Common Project.Clob Project.ClobQuote
 
 /-- The six-field quote accumulator. -/
 structure QuoteL where
