@@ -11,8 +11,8 @@ The found branch allocates a fresh array and copies every other order.
 
 namespace Project.ClobCancel.Spec
 
-open Wasm Project.Common Project.ClobQuote.Step Project.ClobQuote.Spec
-  Project.ClobCancel
+open Wasm Project.Common Project.Clob Project.ClobQuote.Step
+  Project.ClobQuote.Spec Project.ClobCancel
 
 set_option maxHeartbeats 64000000
 set_option maxRecDepth 1048576

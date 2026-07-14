@@ -106,7 +106,7 @@ The CLOB proofs will repeat fixed-width array reads, copy loops, allocation head
 
 This phase is numbered for accountability but runs during Phases 3 and 4 when the repetition threshold is met.  It must not postpone obvious reuse until all CLOB proofs are complete.  It must also avoid speculative helpers based on one artifact.
 
-- [ ] Generalize the fixed-width array predicate used by quote and cancel when the next CLOB proof confirms its shape.
+- [x] Generalize the fixed-width array predicate used by quote and cancel when the next CLOB proof confirms its shape.
 - [ ] Generalize copy-loop and fresh-array postconditions used by `eraseIdx!`, `push`, and later matching updates.
 - [ ] Extend `release_frees_tree` to array-kind nodes, then to shared interior nodes and aliased shared leaves.
 - [ ] Reprove `pair_free` and `box_free` as applications of the general teardown library and remove duplicated walk proofs.
