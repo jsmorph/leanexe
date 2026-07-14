@@ -4697,3 +4697,11 @@ The module also proves the exact results of functions 14, 15, and 16.  These hel
 The proof follows the emitted free-list loop, bump allocation, page check, six header stores, zero-length store, and allocation-counter update.  Its empty-free-list and fit hypotheses select the no-growth bump path.  The postcondition records the stride-four header, reference count one, eight-byte capacity, zero length, unchanged page count, advanced heap top and allocation count, and byte equality below the old heap top.
 
 `lake env lean Project/ClobPostOnly/Invalid.lean` checked the theorem without an error or warning.  A targeted Lake build produced the module object after rebuilding invalidated shared dependencies.  The proof contains no axiom, admission, generated-file edit, or additional dependency.
+
+## 2026-07-14: CLOB `postOnly` crossing branch
+
+`Project.ClobPostOnly.Crossing.postOnly_crossing` proves function 17 for every valid order whose source `findBestL` result is `some maker`.  The proof composes the exact validity and search theorems at functions 6 and 13, then selects the generated would-cross branch.  The public result contains status two, the borrowed input book, and one owned empty trade array.
+
+The allocator postcondition matches the invalid branch: heap top advances by 56 bytes, allocation count advances once, and page count remains fixed.  The fresh array has reference count one, eight-byte capacity, array kind two, stride four, owner mask zero, and length zero.  `OrdersAt.frame` proves that the seven allocation writes preserve the represented input book.
+
+Rebuilding the shared `FindBest` theorem after the CLOB model edit completed 3,007 jobs in 325 seconds.  `lake build Project.ClobPostOnly.Crossing` then completed 3,012 jobs in 24 seconds without an error or warning.  The crossing theorem adds no axiom, admission, dependency, or generated-file edit.
