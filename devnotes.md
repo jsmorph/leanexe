@@ -4486,3 +4486,29 @@ The matched-value phase now requires reduced tests for unused trapping payloads 
 The baseline now records the completed documentation work and the remaining tool gaps.  CLI errors, Node and `wasm-tools` versions, Wasmtime hashes, cold-build reporting, and known warnings form a numbered phase required by the next stable point.  The general lowering theorem moved to later work because the completion criteria do not require it, and the proof-consolidation phase now runs during CLOB proofs once repetition establishes a common statement.
 
 The documentation baseline was committed as `5659ef5` before this plan revision.  The plan link resolves, its prose passes the repository style scan, and `git diff --check` reports no whitespace errors.  No compiler, artifact, proof, or generated model changed in this revision.
+
+## 2026-07-13: Runtime intrinsic semantics and release audit
+
+The runtime intrinsic boundary now has one explicit semantic statement.  Ordinary Lean and the reference IR interpreter evaluate the four counters and `LeanExe.Runtime.release` as zero-valued stubs, while generated WASM maintains allocator counters and consumes one owned root reference.  A nonzero release validates the root, increments the release counter, decrements its reference count, recursively decrements marked children when the count reaches zero, increments the free counter, and returns the resulting free count; owner `0` changes no state.
+
+The source judgment concerns the released root reference rather than graph-wide uniqueness.  Release requires final use of a direct fresh local or fresh helper result, without a copied alias, return, container escape, or repeated release; a statically owner-zero array also qualifies as a no-op.  A child shared through a retained reference may remain live, while branch-selected roots, conditionally owned arrays, structure fields, loop-carried roots, consuming parameters, and unresolved aliases require analysis beyond the initial judgment.
+
+The tracked example source contains twenty-two explicit release calls.  Eleven consume direct fresh roots, four consume fresh helper results, one consumes a branch-selected fresh root, two consume conditionally owned array-operation results, one releases a statically owner-zero out-of-bounds update, one consumes a function parameter, and two consume roots carried in structures.  The table records the source classification that the compiler checker and focused tests must reproduce.
+
+| Source release sites | Count | Audit result |
+|----------------------|-------|--------------|
+| `Correctness`: inline replicate, three nested or structured arrays, `unusedRecursiveRuntimeReleaseFrees`, `sharedRecursiveChildReleaseStats`, and three public-layout arrays; `ByteArrayPrograms`: `boxFreeStats` and `chainFreeStats` | 11 | Direct fresh root with no root use after release.  The shared-child case remains valid because construction retains the second child reference. |
+| `Correctness.recursiveScenarioHelperRuntimeReleaseStats`, `ByteArrayPrograms.sharedPairFreeStats`, and both roots in `JsonMergeTreeCommand.makeMergedTreeValue` | 4 | Helper result whose fresh root must appear in the helper ownership summary. |
+| `Correctness.recursiveScenarioRuntimeReleaseStats` | 1 | Fresh on every branch, but provenance is branch-dependent and lies outside the initial checker. |
+| `Correctness.borrowedArrayPopEmptyReleaseFrees` and `borrowedArrayReverseSingletonReleaseFrees` | 2 | The result may borrow or own according to the input and operation path, so the initial checker must reject it. |
+| `Correctness.borrowedArraySetOobReleaseFrees` | 1 | The index equals the source size, making the update a statically borrowed owner-zero no-op. |
+| `JsonTreeCommand.insertOwned` | 1 | Consumes a function parameter after building a replacement and requires a consuming-parameter judgment. |
+| `JsonGcTreeRewrite.runRoundsFuel` and `runConfig` | 2 | Consume a loop-carried structure field and a helper-result field, which require field-sensitive ownership analysis. |
+
+The specification, manual, repository overview, and developer guide now state the same boundary.  The first compiler increment will accept only the direct cases and owner-zero case, reject unsupported provenance with the declaration and released expression, and expose the judgment in the ownership report.  Existing command examples that rely on consuming parameters or structure fields need a later proved increment or a source revision that exposes a direct handoff.
+
+- [x] Define generated runtime counter and release transitions.
+- [x] Separate ordinary Lean and IR-interpreter behavior from generated WASM behavior.
+- [x] Define the initial direct-handoff judgment.
+- [x] Classify all twenty-two tracked source release sites.
+- [ ] Enforce the judgment before IR extraction and report its result.
