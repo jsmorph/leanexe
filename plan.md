@@ -40,9 +40,9 @@ The first checker should accept a bounded set of handoffs: a direct local root f
 
 Existing explicit-release examples need an audit against this rule.  A user-facing example that the initial checker cannot justify may be rewritten to expose a real handoff, or its required ownership analysis may become a separate reduced compiler task.  Do not add a test-only or unchecked intrinsic that bypasses the accepted-language check.
 
-- [ ] Define the extended semantics for runtime counters and `Runtime.release`, including its relationship to ordinary Lean evaluation and the IR interpreter's current limits.
-- [ ] Define the static judgment for one owned root reference, final use, transfer, retained sharing, owner-zero arrays, and repeated release.
-- [ ] Inventory every explicit release and classify the provenance and later uses of its root.
+- [x] Define the extended semantics for runtime counters and `Runtime.release`, including its relationship to ordinary Lean evaluation and the IR interpreter's current limits.
+- [x] Define the static judgment for one owned root reference, final use, transfer, retained sharing, owner-zero arrays, and repeated release.
+- [x] Inventory every explicit release and classify the provenance and later uses of its root.
 - [ ] Accept direct fresh-local and fresh-helper-result handoffs that satisfy the initial judgment.
 - [ ] Accept statically known owner-zero array releases as no-ops, and reject ownership that is only conditionally zero.
 - [ ] Reject use after release, double release, direct unretained aliases, container escape, return escape, and unsupported interprocedural aliases.
