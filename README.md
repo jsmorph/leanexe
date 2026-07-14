@@ -6,7 +6,7 @@ The default generated module exports a plain WASM function for the selected Lean
 
 ## Requirements
 
-This repository uses Lean through `elan` and Lake.  The pinned Lean version lives in `lean-toolchain`, and Lake builds the `lean-wasm` executable.  Wasmtime runs scalar examples and WASI command examples from the command line.  The repository test suite uses a small C host runner built against the Wasmtime C API for library-mode ABI tests that need memory writes and memory inspection.
+This repository uses Lean through `elan` and Lake.  The root `lean-toolchain` pins Lean 4.29.1, while the Talos proof workspace pins Lean 4.31.0.  Wasmtime runs generated modules, and a small C host runner handles library-mode ABI tests that need memory writes and inspection.
 
 ```sh
 tools/download-wasmtime.sh
@@ -14,7 +14,7 @@ lake build
 tools/build-wasmtime-host.sh
 ```
 
-`tools/download-wasmtime.sh` downloads the Wasmtime CLI and matching C API package for the detected Linux platform into `build/tools/wasmtime`.  It uses Wasmtime 44.0.0 by default.  `WASMTIME_VERSION` and `WASMTIME_PLATFORM` select a specific release artifact.  The full repository test suite expects the CLI at `build/tools/wasmtime/current/wasmtime` or a `WASMTIME` environment variable, and it expects the C API package at `build/tools/wasmtime/wasmtime-v44.0.0-<platform>-c-api` or a `WASMTIME_C_API` environment variable.  Node orchestrates tests, but generated WASM executes through Wasmtime.
+`tools/download-wasmtime.sh` supports Linux `x86_64` and `aarch64`, downloads the Wasmtime CLI and matching C API package into `build/tools/wasmtime`, and uses Wasmtime 44.0.0 by default.  The test suite also requires Node.js, a C11 compiler available as `cc`, and the system tools used by the setup scripts; WAT and proof checks require `wasm-tools`.  Node and `wasm-tools` are not yet pinned, and [Developing LeanExe](DEVELOPING.md) records the complete prerequisites, environment overrides, proof setup, and troubleshooting procedures.
 
 ```sh
 node test/run_all.js
@@ -29,7 +29,8 @@ node test/run_all.js
 | `LeanExe/Wasm` | WASM module model, binary encoder, WAT printer, and interpreter support used by tests. |
 | `LeanExe/Examples` | Example Lean programs that exercise the supported subset. |
 | `test` | Node and Lean tests that compare Lean execution with generated WASM behavior. |
-| `proofs/talos-gcd` | Talos proof workspace: eleven verified artifacts, the runtime lemma library, and the generic teardown theorem. |
+| `proofs/talos-gcd` | Talos proof workspace: fourteen verified artifacts, the runtime lemma library, and the generic teardown theorem. |
+| `DEVELOPING.md` | Developer setup, diagnostics, test gates, proof artifacts, and troubleshooting. |
 | `verifying.md` | End-to-end recipe for verifying a new program. |
 | `manual.md` | Practical guide to writing Lean source that LeanExe can compile. |
 | `spec.md` | The accepted Lean subset, ABI, semantics, and known unsupported features. |
@@ -120,7 +121,7 @@ Use `compile` to write a WASM binary.  The exported entry name is the final comp
   --out build/choose.wasm
 ```
 
-Inspect a generated module as WAT with `compile-wat`, which serializes the same lowering as `compile` from the same structured instructions; `tools/check-wat.sh` verifies that `wasm-tools parse` of the text reproduces the compiled binary byte for byte.  Printing the compiled binary with `wasm-tools print` remains an independent view of the module that ships.  Use `report` before compilation when you want to see how the entry declaration and its dependencies classify under the supported subset.  Use `ownership-report` when memory management is the question: it prints each extracted function's result owner slots, helper-result fresh-owner offsets, compiler-emitted release statements, returned owner expressions, fold accumulator release offsets, and source-level `LeanExe.Runtime.release` expressions.
+Inspect a generated module as WAT with `compile-wat`, which serializes the same lowering as `compile` from the same structured instructions; `tools/check-wat.sh` verifies that `wasm-tools parse` of the text reproduces the compiled binary byte for byte.  Printing the compiled binary with `wasm-tools print` remains an independent view of the module that ships.  Use `report` to classify the entry and its dependencies, `dump-ir` to inspect accepted lowering, and `ownership-report` to inspect result owners, fresh-result summaries, emitted releases, returned owners, fold accumulator releases, and explicit source-level releases.
 
 ```sh
 .lake/build/bin/lean-wasm compile-wat \
@@ -129,6 +130,10 @@ Inspect a generated module as WAT with `compile-wat`, which serializes the same 
   --out build/choose.wat
 
 .lake/build/bin/lean-wasm report \
+  --module LeanExe.Examples.ReadmeDemo \
+  --entry LeanExe.Examples.ReadmeDemo.choose
+
+.lake/build/bin/lean-wasm dump-ir \
   --module LeanExe.Examples.ReadmeDemo \
   --entry LeanExe.Examples.ReadmeDemo.choose
 
@@ -310,7 +315,7 @@ node tools/compare-standard.js --self-test
 
 The standard comparison suite checks generated WASM against standard Lean execution over selected inputs.  The Talos proof workspace adds artifact-level theorems about selected generated modules.  LeanExe emits WASM, `wasm-tools print` renders that WASM as WAT, Talos decodes the generated WAT into a Lean model, and a handwritten proof establishes a property of that decoded module — the theorem is about the instruction stream that ships.
 
-Eleven verified artifacts live in [Talos Proofs](proofs/talos-gcd/README.md), which holds the complete table of theorems.  Input-generic theorems relate exports to their Lean source functions for all inputs: Euclidean GCD, association-list lookup, order-book matching, byte validation, byte append, push-and-measure, and a byte fold.  Exact-accounting theorems verify the runtime: free-list reuse, the inline retain sequence, and recursive release through the array and slots branches.  The workspace is organized as a library — the runtime functions every module ships are proved once, generically, and a generic teardown theorem covers recursive release of ownership trees — so a new program's proof consumes shared theorems rather than repeating them.  [Verifying a Program](verifying.md) is the end-to-end recipe.
+Fourteen verified artifacts live in [Talos Proofs](proofs/talos-gcd/README.md), which holds the authoritative theorem inventory.  The artifacts cover scalar algorithms, recursive data, byte processing and allocation, the compiler's own unsigned LEB128 encoder, CLOB quote and cancel behavior, and exact runtime accounting.  The workspace proves shared runtime behavior once and uses a generic teardown theorem for recursive ownership trees, while [Verifying a Program](verifying.md) gives the end-to-end procedure for adding a case.
 
 Run all current Talos artifact checks from the repository root:
 
@@ -320,7 +325,7 @@ tools/check-talos.sh
 
 Each per-case script rebuilds the relevant Lean module and `lean-wasm`, recompiles the source entry to a fresh temporary WASM file, prints fresh WAT, compares both files against the checked-in proof inputs under `proofs/talos-gcd/rust/build`, and rebuilds the corresponding Lean proof.  A file mismatch means the proof input no longer matches the current compiler output.  After an intentional compiler change, `--update` replaces the proof inputs with the fresh output, regenerates the Talos `Program.lean` model through the verifier emitter, and rebuilds the proof.  The scripts use `wasm-tools` from `PATH`, or the binary named by `WASM_TOOLS`, or `$HOME/.cargo/bin/wasm-tools`.
 
-The broader compiler-correctness theorem remains the development target described in [Development Plan](plan.md); [Development Agenda](agenda.md) orders the open work.
+The broader compiler-correctness theorem remains a target in the [Development Plan](plan.md).  [Developing LeanExe](DEVELOPING.md) defines the local gates and artifact-update rules.  The old development agenda is archived because the plan now owns the current work queue.
 
 ## Host Memory Values
 

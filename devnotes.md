@@ -4440,3 +4440,37 @@ element-copy loops follow the `append_bang` and LEB templates.
 - [x] All fourteen check scripts and the differential suite pass.
 - [ ] `cancel` found branch: index scan variant, inline allocation, copy loops.
 - [ ] `postOnly`, then `limit`.
+
+## 2026-07-13: Repository review and replacement development plan
+
+The repository review covered the tracked source, extraction pipeline, IR interpreter, structured WASM backend, CLI, execution tests, ownership diagnostics, documentation, recent history, and the Talos proof workspace.  The untracked `leanclob/` directory is a separate nested Git repository, so the review excluded it except as background already recorded in the journal.  The old [Development Plan](plan.md) described an early compiler roadmap whose principal language, memory, WASI, comparison, and artifact-proof milestones now exist.
+
+The replacement plan starts with two concrete compiler issues.  Source-level `LeanExe.Runtime.release` still relies on an unchecked ownership precondition, and CLOB `cancel` repeats one `findIdx?` scan three times while flattening its result.  The work order checks explicit-release ownership, evaluates matched values once, regenerates and proves complete `cancel`, then proves `postOnly`, `limit`, and `market` while extracting shared proof lemmas only from repeated cases.
+
+The review also found documentation and tool gaps.  [Repository Overview](README.md), [Talos Proofs](proofs/talos-gcd/README.md), [Technical Summary](summary.md), and [Development Agenda](agenda.md) describe eleven artifacts, while the aggregate script now checks fourteen; CLI help omits `dump-ir` and `compile-wat` and retains a prototype-era scope sentence.  The root workspace pins Lean 4.29.1, the proof workspace pins Lean 4.31.0 and Talos commit `bb3277e21c9786e3133d5c1601e34ebdc0bea4df`, and Wasmtime defaults to 44.0.0, while `wasm-tools` and Node have no recorded versions and the Wasmtime download script does not verify archive checksums.  The plan schedules version checks and archive verification after the active semantic work.
+
+The ordinary execution gate passed.  `node test/run_all.js` reported 114 classification cases, 8 ownership-report cases, 784 accepted cases, 34 rejections, 13 traps, 38 reference-counting cases, 70 byte-array allocation cases, 23 ASCII-string cases, 4 integer-map cases, 48 JSON cases, 35 WASI cases with 2 traps, 7 rejections, and 19 compile-only checks, 63 self-emitted LEB128 cases, 301 standard-Lean comparison cases, 58 IR-interpreter comparison cases, and 56 fuzz cases.  One leak-accounting fixture intentionally retains blocks, while the other six reported leak-free behavior.
+
+The artifact gate also passed.  `tools/check-talos.sh` compared all fourteen regenerated WASM and WAT artifacts with their checked-in proof inputs and rebuilt the aggregate `Project` library.  The cold proof workspace first built 3,003 dependency jobs, and the final aggregate build completed 3,048 jobs; Lean reported unused `simp` arguments and variables in handwritten source and proof files, but no artifact mismatch, proof error, `sorry`, or new axiom.
+
+Review references are [Language Specification](spec.md), [User Manual](manual.md), [Verifying a Program](verifying.md), [Talos Proofs](proofs/talos-gcd/README.md), [Core IR](LeanExe/IR/Core.lean), [Structured WASM Instructions](LeanExe/Wasm/Instr.lean), [Compiler CLI](LeanExe/CLI.lean), and [CLOB Source](LeanExe/Examples/Clob.lean).  These repository files define the current implementation and claimed behavior.  The replacement plan keeps their roles separate and schedules a factual consistency pass.
+
+- [x] Review the tracked repository and recent development history.
+- [x] Run the complete execution suite.
+- [x] Run all fourteen byte-pinned artifact checks and the aggregate proof build.
+- [x] Replace the obsolete development roadmap with current priorities and exit conditions.
+- [ ] Check the ownership precondition for source-level release.
+- [ ] Bind repeated match results once and reduce CLOB `cancel` to one identifier scan.
+- [ ] Prove complete CLOB `cancel`, followed by `postOnly`, `limit`, and `market`.
+
+## 2026-07-13: Developer guide and documentation consolidation
+
+[Developing LeanExe](DEVELOPING.md) now defines the developer entry path.  It records the Lean 4.29.1 compiler workspace, the Lean 4.31.0 proof workspace, Wasmtime 44.0.0, the unpinned Node and `wasm-tools` gaps, system prerequisites, environment overrides, first-build commands, diagnostic commands, test gates, tracked proof artifacts, update transactions, dependency rules, and failure diagnostics.  The guide also assigns one responsibility to each maintained document so current facts do not require parallel edits in several roadmaps.
+
+The current-state documents now agree with the aggregate proof script.  The repository overview and technical summary report fourteen artifacts, and the Talos README lists the unsigned LEB128, CLOB quote, and CLOB cancel theorems with the exact limitation that cancel covers only an absent identifier.  The technical summary no longer records volatile file sizes or test totals, `agenda.md` is an archived pointer to the development plan, the two early Talos documents identify themselves as historical experiments, and the string document identifies itself as an unimplemented proposal.
+
+The implemented diagnostic commands now appear in every relevant interface.  CLI usage includes `dump-ir` and `compile-wat` and replaces the prototype-era scope sentence, while the repository overview, manual, specification, technical summary, and verification guide explain their roles and the proof-workspace setup.  The manual sends tool and build failures to the developer guide instead of mixing them with source rejection advice.
+
+Documentation verification passed.  A local-link check covered all sixteen repository Markdown files, the Talos table and aggregate script each contain fourteen cases, the stale-current-state scan found no remaining eleven-artifact or prototype claims in maintained documents, and `git diff --check` reported no whitespace errors.  `lake build lean-wasm` completed 46 jobs, the no-argument CLI displayed the corrected command list with exit status 2, `dump-ir` succeeded for `LeanExe.Examples.TalosGcd.gcd`, and `node test/report_classification.js` passed all 114 cases.  The build still reports the existing unused `hsize` `simp` argument in `LeanExe/Examples/AsciiDigits.lean`; the plan keeps that warning cleanup separate from documentation work.
+
+The execution and artifact gates recorded in the preceding review remain applicable because these edits changed documentation and CLI usage text without changing extraction, IR, ownership, ABI, or WASM emission.  The targeted CLI build and report-classification test cover the executable change.  No proof input or generated model changed.
