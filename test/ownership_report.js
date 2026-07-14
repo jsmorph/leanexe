@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 
-const fs = require("fs");
 const path = require("path");
 const { spawnSync } = require("child_process");
 
@@ -87,22 +86,21 @@ function checkOptionByteArrayStateLoop() {
   assertOccurrenceCount(report, "byteArrayFoldMultiSlot", 1, entry);
 }
 
-function checkJsonTreeOutFile() {
-  const out = path.join(".lake", "build", "ownership-report", "json-tree.txt");
-  run([
-    leanExe,
-    "ownership-report",
-    "--module",
-    "LeanExe.Examples.JsonTreeCommand",
-    "--entry",
-    "LeanExe.Examples.JsonTreeCommand.makeTree",
-    "--out",
-    out,
-  ]);
-  const report = fs.readFileSync(out, "utf8");
-  assertContains(report, "LeanExe.Examples.JsonTreeCommand.insertOwned", "JsonTreeCommand.makeTree");
-  assertContains(report, "explicit release expressions: 1", "JsonTreeCommand.makeTree");
-  assertContains(report, "helper fresh result owner offsets: [0]", "JsonTreeCommand.makeTree");
+function checkSourceReleaseJudgments() {
+  const cases = [
+    ["unusedRecursiveRuntimeReleaseFrees", "tree: direct fresh allocation"],
+    [
+      "recursiveScenarioHelperRuntimeReleaseStats",
+      "tree: fresh helper result from LeanExe.Examples.Correctness.u64BinaryScenario",
+    ],
+    ["borrowedArraySetOobReleaseFrees", "updated: statically owner-zero array"],
+  ];
+  for (const [name, judgment] of cases) {
+    const entry = `${correctnessModule}.${name}`;
+    const report = ownershipReport(correctnessModule, entry);
+    assertContains(report, "source release judgments: 1", entry);
+    assertContains(report, judgment, entry);
+  }
 }
 
 function checkHeapBearingArrayFoldAccumulators() {
@@ -132,10 +130,10 @@ function main() {
   checkOptionByteArrayLoop();
   checkExceptByteArrayLoop();
   checkOptionByteArrayStateLoop();
-  checkJsonTreeOutFile();
+  checkSourceReleaseJudgments();
   checkHeapBearingArrayFoldAccumulators();
   checkExplicitRecursiveReleaseSuppressesCompilerRelease();
-  process.stdout.write("checked 8 ownership report cases\n");
+  process.stdout.write("checked 10 ownership report cases\n");
 }
 
 try {

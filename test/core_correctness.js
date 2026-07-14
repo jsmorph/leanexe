@@ -412,9 +412,6 @@ const accepted = [
   { name: "ownedRecursiveNodeParamCallTempScalar", args: [], expected: 310n },
   { name: "unusedRecursiveRuntimeReleaseFrees", args: [], expected: 3n },
   { name: "arrayFoldRecursiveAccumulatorReleaseStats", args: [], expected: 30707n },
-  { name: "recursiveScenarioRuntimeReleaseStats", args: [0n], expected: 101n },
-  { name: "recursiveScenarioRuntimeReleaseStats", args: [1n], expected: 707n },
-  { name: "recursiveScenarioRuntimeReleaseStats", args: [2n], expected: 707n },
   { name: "recursiveScenarioHelperRuntimeReleaseStats", args: [0n], expected: 101n },
   { name: "recursiveScenarioHelperRuntimeReleaseStats", args: [1n], expected: 707n },
   { name: "recursiveScenarioHelperRuntimeReleaseStats", args: [2n], expected: 707n },
@@ -1386,6 +1383,50 @@ const accepted = [
 ];
 
 const rejected = [
+  {
+    name: "recursiveScenarioRuntimeReleaseStats",
+    message: "reason: ownership is branch-dependent",
+  },
+  {
+    name: "borrowedArrayPopEmptyReleaseFrees",
+    message: "reason: the array operation may return either a borrowed or an owned root",
+  },
+  {
+    name: "borrowedArrayReverseSingletonReleaseFrees",
+    message: "reason: the array operation may return either a borrowed or an owned root",
+  },
+  {
+    name: "rejectReleaseUseAfter",
+    message: "reason: the root is used after release or released more than once",
+  },
+  {
+    name: "rejectReleaseTwice",
+    message: "reason: the root is used after release or released more than once",
+  },
+  {
+    name: "rejectReleaseAlias",
+    message: "reason: copied into heap-bearing binding alias",
+  },
+  {
+    name: "rejectReleaseContainerEscape",
+    message: "reason: copied into heap-bearing binding held",
+  },
+  {
+    name: "rejectReleaseReturnEscape",
+    message: "unsafe Runtime.release in LeanExe.Examples.Correctness.releaseReturnEscapeHelper",
+  },
+  {
+    name: "rejectReleaseParameter",
+    message: "reason: ownership comes from a function parameter",
+  },
+  {
+    name: "rejectReleaseInterproceduralAlias",
+    message: "reason: copied into heap-bearing binding alias",
+  },
+  {
+    name: "rejectReleaseOwnedSetOobHelper",
+    message: "reason: the array operation may return either a borrowed or an owned root",
+  },
   {
     name: "rejectProductReturn",
     message: "unsupported function type or declaration: LeanExe.Examples.Correctness.rejectProductReturn",

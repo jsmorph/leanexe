@@ -551,6 +551,15 @@ def renderFoldSites (sites : List FoldSite) : List String :=
   else
     ["fold accumulator release offsets:"] ++ sites.map renderFoldSite
 
+def renderSourceReleaseJudgments (judgments : List LeanExe.Extract.Core.ReleaseJudgment) :
+    List String :=
+  if judgments.isEmpty then
+    ["source release judgments: none"]
+  else
+    [s!"source release judgments: {judgments.length}"] ++
+      judgments.map fun judgment =>
+        s!"  - {judgment.expression}: {judgment.provenance.text}"
+
 def exportText : Option String → String
   | some name => name
   | none => "none"
@@ -574,6 +583,8 @@ def functionReport (compiled : CompiledModule) (item : IRFunc × Nat) : List Str
       ["returned owner expressions: none"]
     else
       ["returned owner expressions:"] ++ returnedLines
+  let releaseJudgments :=
+    compiled.releaseJudgments.toList.filter fun judgment => judgment.declaration == func.sourceName
   [
     "",
     s!"[{index}] {displayName func.sourceName}",
@@ -584,6 +595,7 @@ def functionReport (compiled : CompiledModule) (item : IRFunc × Nat) : List Str
     s!"helper fresh result owner offsets: {natListOrNone freshOffsets}"
   ] ++
     returnedOwnerLines ++
+    renderSourceReleaseJudgments releaseJudgments ++
     renderReleaseSites "compiler statement releases" scan.statementReleases ++
     renderReleaseSites "explicit release expressions" scan.explicitReleaseExprs ++
     renderFoldSites scan.foldSites
