@@ -3710,6 +3710,53 @@ def arrayFindIdxEmptySkipsPredicateTrap : Option Nat :=
   (#[] : Array UInt64).findIdx?
     (fun _value => (Array.replicate 0 false)[0]!)
 
+def matchedScalarScrutinee (flag : UInt64) : Option UInt64 :=
+  if flag == 0 then some 4 else none
+
+def matchedScalarScore (flag : UInt64) : UInt64 :=
+  let point : Point :=
+    match matchedScalarScrutinee flag with
+    | some value => { x := value, y := value + 1 }
+    | none => { x := 7, y := 8 }
+  point.x * 10 + point.y
+
+def matchedScalarSkipsUnusedBranchField (flag : UInt64) : UInt64 :=
+  let point : Point :=
+    match matchedScalarScrutinee flag with
+    | some value =>
+        { x := value, y := (Array.replicate 0 (0 : UInt64))[0]! }
+    | none =>
+        { x := 7, y := (Array.replicate 0 (0 : UInt64))[0]! }
+  point.x
+
+def matchedFindIdxPoint (needle : UInt64) : Point :=
+  match (#[1, 2, 3] : Array UInt64).findIdx? (fun value => value == needle) with
+  | some index => { x := 1, y := UInt64.ofNat index }
+  | none => { x := 0, y := 9 }
+
+def matchedFindIdxArray (needle : UInt64) : Array UInt64 :=
+  match (#[1, 2, 3] : Array UInt64).findIdx? (fun value => value == needle) with
+  | some index => #[UInt64.ofNat index, needle]
+  | none => #[99]
+
+def matchedFindIdxArrayReleaseStats (needle : UInt64) : UInt64 :=
+  let allocsBefore := LeanExe.Runtime.allocCount
+  let releasesBefore := LeanExe.Runtime.releaseCount
+  let freesBefore := LeanExe.Runtime.freeCount
+  let output := matchedFindIdxArray needle
+  let size := output.size.toUInt64
+  let freesAfter := LeanExe.Runtime.release output
+  size * 1000000 +
+    (LeanExe.Runtime.allocCount - allocsBefore) * 10000 +
+    (LeanExe.Runtime.releaseCount - releasesBefore) * 100 +
+    (freesAfter - freesBefore)
+
+def matchedFindIdxPredicateTrap : UInt64 :=
+  match (#[1] : Array UInt64).findIdx?
+      (fun _value => (Array.replicate 0 false)[0]!) with
+  | some index => UInt64.ofNat index
+  | none => 9
+
 def arrayFindSome : Option UInt64 :=
   (#[1, 2, 3] : Array UInt64).find? (fun value => value == 2)
 

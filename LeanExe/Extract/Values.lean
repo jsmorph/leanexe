@@ -1683,13 +1683,8 @@ partial def valueIte
   | .ite _ _ _, _ => .ok (.ite cond thenValue elseValue)
   | _, .ite _ _ _ => .ok (.ite cond thenValue elseValue)
   | .scalar thenExpr, .scalar elseExpr => .ok (.scalar (.ite cond thenExpr elseExpr))
-  | .array thenOwner thenPtr, .array elseOwner elsePtr =>
-      .ok (.array (.ite cond thenOwner elseOwner) (.ite cond thenPtr elsePtr))
-  | .byteArray thenOwner thenPtr thenLen, .byteArray elseOwner elsePtr elseLen =>
-      .ok (.byteArray
-        (.ite cond thenOwner elseOwner)
-        (.ite cond thenPtr elsePtr)
-        (.ite cond thenLen elseLen))
+  | .array _ _, .array _ _ => .ok (.ite cond thenValue elseValue)
+  | .byteArray _ _ _, .byteArray _ _ _ => .ok (.ite cond thenValue elseValue)
   | .product thenLeft thenRight, .product elseLeft elseRight => do
       .ok (.product
         (← valueIte cond thenLeft elseLeft)
@@ -1701,9 +1696,7 @@ partial def valueIte
         (← valueIte cond thenRight elseRight))
   | .struct thenName thenFields, .struct elseName elseFields =>
       if thenName == elseName && thenFields.length == elseFields.length then do
-        let fields ← (thenFields.zip elseFields).mapM fun item =>
-          valueIte cond item.fst item.snd
-        .ok (.struct thenName fields)
+        .ok (.ite cond thenValue elseValue)
       else
         .error "if branches have incompatible structure value shapes"
   | .variant thenName thenTag thenCtors, .variant elseName elseTag elseCtors =>

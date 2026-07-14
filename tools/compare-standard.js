@@ -760,6 +760,10 @@ function selfTest() {
     ["values", arrayLayout(u64Layout)],
     ["count", u64Layout],
   ]);
+  const pointLayout = structLayout([
+    ["x", u64Layout],
+    ["y", u64Layout],
+  ]);
   const byteArrayGroupLayout = structLayout([
     ["values", byteArrayArrayLayout],
     ["marker", u64Layout],
@@ -1639,6 +1643,74 @@ function selfTest() {
       moduleName: correctness,
       entry: "byteArrayStructureArrayEquality",
       resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "matchedScalarScore",
+      programArgs: ["0"],
+      resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "matchedScalarScore",
+      programArgs: ["1"],
+      resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "matchedScalarSkipsUnusedBranchField",
+      programArgs: ["0"],
+      resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure",
+      moduleName: correctness,
+      entry: "matchedScalarSkipsUnusedBranchField",
+      programArgs: ["1"],
+      resultSlots: "#[__leanexeValue]",
+    },
+    {
+      mode: "pure-abi",
+      moduleName: correctness,
+      entry: "matchedFindIdxPoint",
+      programArgs: ["2"],
+      resultLayout: pointLayout,
+      serializer: `let out := "{\\"x\\":".toUTF8
+let out := __leanexeAppendUInt64 out __leanexeValue.x
+let out := out ++ ",\\"y\\":".toUTF8
+let out := __leanexeAppendUInt64 out __leanexeValue.y
+out.push (125 : UInt8)`,
+    },
+    {
+      mode: "pure-abi",
+      moduleName: correctness,
+      entry: "matchedFindIdxPoint",
+      programArgs: ["9"],
+      resultLayout: pointLayout,
+      serializer: `let out := "{\\"x\\":".toUTF8
+let out := __leanexeAppendUInt64 out __leanexeValue.x
+let out := out ++ ",\\"y\\":".toUTF8
+let out := __leanexeAppendUInt64 out __leanexeValue.y
+out.push (125 : UInt8)`,
+    },
+    {
+      mode: "pure-abi",
+      moduleName: correctness,
+      entry: "matchedFindIdxArray",
+      programArgs: ["2"],
+      resultLayout: arrayLayout(u64Layout),
+      serializer: "__leanexeJsonArray __leanexeValue __leanexeJsonUInt64",
+    },
+    {
+      mode: "pure-abi",
+      moduleName: correctness,
+      entry: "matchedFindIdxArray",
+      programArgs: ["9"],
+      resultLayout: arrayLayout(u64Layout),
+      serializer: "__leanexeJsonArray __leanexeValue __leanexeJsonUInt64",
     },
     {
       mode: "pure-abi",
