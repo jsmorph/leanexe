@@ -23,13 +23,8 @@ def orderArrayBytes (n : Nat) : Nat :=
 def orderArrayBytesU (n : Nat) : UInt64 :=
   8 + UInt64.ofNat n * 5 * 8
 
-def FreshOrderArrayAt (st : Store Unit) (ptr capacity : UInt64) : Prop :=
-  st.mem.read64 ((ptr - 48).toUInt32) = 5501223100278326855 ∧
-  st.mem.read64 ((ptr - 40).toUInt32) = 1 ∧
-  st.mem.read64 ((ptr - 32).toUInt32) = capacity ∧
-  st.mem.read64 ((ptr - 24).toUInt32) = 2 ∧
-  st.mem.read64 ((ptr - 16).toUInt32) = 5 ∧
-  st.mem.read64 ((ptr - 8).toUInt32) = 0
+abbrev FreshOrderArrayAt (st : Store Unit) (ptr capacity : UInt64) : Prop :=
+  FreshFixedArrayAt st ptr capacity 5
 
 private def cAllocFrame (ptr cid f2 f3 f4 f5 f6 idx len : UInt64) : Locals :=
   { params := [.i64 ptr, .i64 cid],
@@ -478,7 +473,7 @@ theorem cancel_found
           · simp [cCopyFrame]
           · rfl
           · simp only [hcapacity]
-          · unfold FreshOrderArrayAt
+          · unfold FreshOrderArrayAt FreshFixedArrayAt
             simp only [toUInt32_eq_ofNat, hsub48, hsub40, hsub32, hsub24,
               hsub16, hsub8]
             refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩
