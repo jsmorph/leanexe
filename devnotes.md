@@ -4611,3 +4611,13 @@ The runner now builds `LeanExe.Examples.ClobTest`, whose direct `findBest` guard
 The `findBest` artifact confirmed that quote, cancel, and the remaining CLOB proofs consume the same five-word order-array representation.  `Project.Clob` now owns `OrderL` and `OrdersAt`, while quote retains its fold model and cancel retains its identifier scan and allocation arithmetic.  This completes the first Phase 5 reuse item after three independent artifacts established the shared statement.
 
 The move changes no definition body or theorem statement after namespace resolution.  `lake build Project.ClobQuote.Spec Project.ClobCancel.Spec` rebuilt the shared module, quote step and specification, cancel scan, and complete cancel specification in 3,010 jobs.  Both proofs remain accepted without editing their generated `Program.lean` files or checked WASM and WAT inputs.
+
+## 2026-07-14: CLOB `findBest` proof scaffold
+
+The `clob_find_best` Talos case now pins the compiled `LeanExe.Examples.Clob.findBest` export.  The artifact is 3,462 bytes of WASM and 42,412 bytes of printed WAT, with the public wrapper at function 8, the fuel loop at function 7, scalar decision helpers at functions 1, 4, 5, and 6, and runtime functions at indices 9 through 12.  The runtime definitions match the shared allocator, reset, retain, and index-parametrized release definitions by reduction.
+
+`Project.ClobFindBest.Model` restates opposite-side selection, crossing, eligibility, better-price comparison, fuel recursion, and the public two-word `Option Nat` result.  `Project.ClobFindBest.Helpers` proves the four scalar helpers over arbitrary orders and stores, including the short-circuit path that skips the crossing call when side or trader eligibility fails.  The helper build completed 3,006 jobs without a warning after unused simplification arguments were removed.
+
+`tools/check-talos-clob-find-best.sh --update` generated the WASM, WAT, and decoded model transactionally and built the temporary specification module.  The case belongs to the aggregate artifact script and proof-library import, but this checkpoint does not count it as a verified artifact because the fuel-loop and export theorems remain.  The next increment proves the exact `findBestL` result for every represented order array before updating the theorem inventory.
+
+The checked artifact comparison passed after generation.  `lake build Project.Runtime.Checks Project` then completed 3,053 jobs, including the new runtime pins and aggregate proof-library import.  The build reported only warnings that predate this proof directory.

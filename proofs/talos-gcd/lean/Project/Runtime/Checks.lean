@@ -9,6 +9,7 @@ import Project.AppendBang.Program
 import Project.AssocList.Program
 import Project.BoxFree.Program
 import Project.ClobCancel.Program
+import Project.ClobFindBest.Program
 import Project.ClobQuote.Program
 import Project.FoldSum.Program
 import Project.Gcd.Program
@@ -91,5 +92,10 @@ example : Project.ClobQuote.func11Def = allocFuncDef := rfl
 example : Project.ClobQuote.func12Def = resetFuncDef := rfl
 example : Project.ClobQuote.func13Def = retainFuncDef := rfl
 example : Project.ClobQuote.func14Def = releaseFuncDef 14 := rfl
+
+example : Project.ClobFindBest.func9Def = allocFuncDef := rfl
+example : Project.ClobFindBest.func10Def = resetFuncDef := rfl
+example : Project.ClobFindBest.func11Def = retainFuncDef := rfl
+example : Project.ClobFindBest.func12Def = releaseFuncDef 12 := rfl
 
 end Project.Runtime
