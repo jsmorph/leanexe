@@ -4641,3 +4641,11 @@ The existing source guards covered duplicate identifiers, invalid sides, zero qu
 The branch gate now checks all five `validOrder` failure paths, the `findBest` crossing result, and the successful append result.  Each comparison passes an order array and taker through the public ABI, then compares status, every returned order field, and the empty trade array with ordinary Lean.  The result layout and serializers use the existing structured ABI test framework and add no source wrapper or dependency.
 
 `lake build LeanExe.Examples.ClobTest` accepted every source guard, including the two new validity cases.  `node tools/compare-standard.js --self-test` passed 321 standard-Lean cases and 62 IR cases, with all seven `postOnly` comparisons succeeding.  The standard total increased from 314 to 321, while the IR total remains unchanged because the interpreter does not accept heap-backed public ABI arguments.
+
+## 2026-07-14: CLOB `postOnly` proof scaffold
+
+The `clob_post_only` case now pins the compiled `LeanExe.Examples.Clob.postOnly` export.  The artifact is 5,915 bytes of WASM and 70,775 bytes of WAT, with the public wrapper at function 17 and runtime functions at indices 18 through 21.  The runtime functions match the shared allocator, reset, retain, and index-parametrized release definitions by reduction.
+
+`Project.ClobPostOnly.Model` states the five validity conditions and the invalid, would-cross, and appended source outcomes over the shared order representation.  Invalid and would-cross results borrow the input book and allocate one empty trade array.  The successful result allocates both the appended book and an empty trade array, so its artifact theorem requires a separate two-allocation postcondition.
+
+`tools/check-talos-clob-post-only.sh --update` generated the proof inputs and decoded model transactionally, then built the placeholder specification.  `lake build Project.Runtime.Checks Project` completed 3,057 jobs with the new runtime pins and aggregate import.  The build reported existing linter warnings outside the new proof directory, and the case does not enter the verified theorem count until its input-generic specification is complete.

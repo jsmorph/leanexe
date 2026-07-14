@@ -13,5 +13,6 @@ import Project.LebU32.Spec
 import Project.ClobQuote.Spec
 import Project.ClobCancel.Spec
 import Project.ClobFindBest.Spec
+import Project.ClobPostOnly.Spec
 import Project.Runtime.Checks
 import Project.Runtime.Spec

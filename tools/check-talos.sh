@@ -19,6 +19,7 @@ tools/check-talos-leb-u32.sh "$@"
 tools/check-talos-clob-quote.sh "$@"
 tools/check-talos-clob-cancel.sh "$@"
 tools/check-talos-clob-find-best.sh "$@"
+tools/check-talos-clob-post-only.sh "$@"
 
 cd "$repo_root/proofs/talos-gcd/lean"
 lake build Project
