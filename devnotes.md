@@ -4681,3 +4681,11 @@ The complete `cancel` theorem now defines `FreshOrderArrayAt` as the stride-five
 The invalid and crossing `postOnly` branches can now state both the borrowed input pointer and its exact source contents after allocating the trade array.  Later matching proofs can apply the same theorem when fresh result arrays occupy memory above their input books.  This removes five-field readback proofs from each allocation branch.
 
 `lake env lean Project/Clob.lean` checked the new theorem without an error or warning.  The theorem uses the existing memory model and adds no axiom or dependency.  No artifact input changed.
+
+## 2026-07-14: CLOB `postOnly` allocation vocabulary
+
+`Project.ClobPostOnly.Allocation` specializes the shared fixed-array definitions for stride-five orders and stride-four trades.  `FreshTradeArrayAt` combines the common owned-array header with the emitted zero length at the returned data pointer.  The order byte count uses the generic fixed-width calculation from the start.
+
+The module also proves the exact results of functions 14, 15, and 16.  These helpers return would-cross status two, success status zero, and invalid status one while preserving the store.  The public wrapper proof can consume their behavior through the call rule.
+
+`lake build Project.ClobPostOnly.Allocation` completed 3,005 jobs without an error or warning.  The generated program remains unchanged.  The module adds no axiom, admission, or dependency.

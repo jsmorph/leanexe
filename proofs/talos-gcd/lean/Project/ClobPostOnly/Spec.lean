@@ -1,5 +1,6 @@
 import Project.ClobPostOnly.FindBestWrapper
 import Project.ClobPostOnly.ValidOrder
+import Project.ClobPostOnly.Allocation
 
 /-!
 # The `postOnly` theorem
