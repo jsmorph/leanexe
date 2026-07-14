@@ -10,10 +10,10 @@ import Interpreter.Wasm.Wp.Call
 
 The export folds `quoteStep` over an array of five-slot orders and returns
 the six quote fields.  `func9` is the compiled `quoteStep`: a pure branch
-tree over the eleven scalar arguments, computing each output field by
-re-deriving the branch conditions.  The export `func10` reads the array
-length, loops over the elements, loads five fields per element, and calls
-`func9` to advance the accumulator.
+tree over the eleven scalar arguments that assigns all six output fields in
+the selected branch.  The export `func10` reads the array length, loops over
+the elements, loads five fields per element, and calls `func9` to advance the
+accumulator.
 
 Value-list conventions: `TerminatesWith` argument lists and result lists are
 top-of-stack first, so arguments appear reversed relative to the WASM
@@ -86,6 +86,18 @@ macro "wp_step" : tactic => `(tactic|
    repeat (split <;> try (exfalso; simp_all; done));
    wp_run; wp_norm))
 
+macro "wp_bool" : tactic => `(tactic| (wp_step; wp_step))
+
+macro "wp_then" : tactic => `(tactic|
+  (refine wp_iff_cons rfl ?_;
+   rw [if_pos (by simp_all)];
+   wp_run; try wp_norm))
+
+macro "wp_else" : tactic => `(tactic|
+  (refine wp_iff_cons rfl ?_;
+   rw [if_neg (by simp_all)];
+   wp_run; try wp_norm))
+
 /-- `func9` computes `quoteStepL`: the eleven arguments are the six
 accumulator fields and the five order fields, and the six results are the
 fields of the advanced accumulator.  The store is untouched. -/
@@ -109,29 +121,55 @@ theorem func9_spec (env : HostEnv Unit) (st : Store Unit)
     wp_run
     by_cases hs : osd = 0
     · subst hs
+      wp_bool
+      wp_then
       by_cases hb : q1 = 0
       · subst hb
-        repeat wp_step
+        wp_bool
+        wp_then
         norm_num [func9Def, quoteVals, quoteStepL]
       · by_cases hlt : q2 < opr
-        · repeat wp_step
+        · wp_bool
+          wp_else
+          wp_then
           norm_num [func9Def, quoteVals, quoteStepL, hb, hlt]
         · by_cases heq : opr = q2
-          · repeat wp_step
+          · wp_bool
+            wp_else
+            wp_else
+            wp_bool
+            wp_then
             norm_num [func9Def, quoteVals, quoteStepL, hb, hlt, heq]
-          · repeat wp_step
+          · wp_bool
+            wp_else
+            wp_else
+            wp_bool
+            wp_else
             norm_num [func9Def, quoteVals, quoteStepL, hb, hlt, heq]
-    · by_cases ha : q4 = 0
+    · wp_bool
+      wp_else
+      by_cases ha : q4 = 0
       · subst ha
-        repeat wp_step
+        wp_bool
+        wp_then
         norm_num [func9Def, quoteVals, quoteStepL, hs]
       · by_cases hlt : opr < q5
-        · repeat wp_step
+        · wp_bool
+          wp_else
+          wp_then
           norm_num [func9Def, quoteVals, quoteStepL, hs, ha, hlt]
         · by_cases heq : opr = q5
-          · repeat wp_step
+          · wp_bool
+            wp_else
+            wp_else
+            wp_bool
+            wp_then
             norm_num [func9Def, quoteVals, quoteStepL, hs, ha, hlt, heq]
-          · repeat wp_step
+          · wp_bool
+            wp_else
+            wp_else
+            wp_bool
+            wp_else
             norm_num [func9Def, quoteVals, quoteStepL, hs, ha, hlt, heq]
 
 end Project.ClobQuote.Step
