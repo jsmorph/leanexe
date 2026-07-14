@@ -55,9 +55,7 @@ def insert (tree : Tree) (value : UInt64) : Tree :=
         Tree.node current left (insert right value)
 
 def insertOwned (tree : Tree) (value : UInt64) : Tree :=
-  let updated := insert tree value
-  let _ := LeanExe.Runtime.release tree
-  updated
+  insert tree value
 
 def nodeCount : Tree -> UInt64
   | Tree.empty => 0

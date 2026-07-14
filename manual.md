@@ -91,7 +91,7 @@ The compiler emits `release` for a conservative class of local heap temporaries:
 
 Compiled Lean code may read runtime counters through `LeanExe.Runtime.allocCount`, `retainCount`, `releaseCount`, and `freeCount`.  It may call `LeanExe.Runtime.release value` for a monomorphic recursive-inductive root or an array value at an explicit ownership boundary; the compiled call consumes one owned root reference and returns the current free count.  The extractor preserves `let _ := LeanExe.Runtime.release value`, so a program can mark the boundary without adding the returned counter to its own result.
 
-Release must be the final use of that root reference, with no copied alias, returned reference, container escape, or second release.  Independently retained children may remain live because release decrements marked child owners when the root reaches zero, rather than requiring every descendant to be unique.  Releasing a statically borrowed array whose owner is `0` changes no counters or memory, while conditionally owned arrays require proof of which owner reaches the call.  The current compiler does not yet enforce this judgment, so explicit release remains a checked-by-review source precondition.
+Release must be the final use of that root reference, with no copied alias, returned reference, container escape, or second release.  Independently retained children may remain live because release decrements marked child owners when the root reaches zero, rather than requiring every descendant to be unique.  Releasing a statically borrowed array whose owner is `0` changes no counters or memory, while conditionally owned arrays require proof of which owner reaches the call.  The compiler enforces the direct-handoff judgment and reports the declaration, expression, provenance, and reason for every rejected release.
 
 Ordinary Lean evaluates every definition in `LeanExe.Runtime` as a zero-valued stub, and the reference IR interpreter also treats the intrinsics as zero-valued no-ops.  Generated WASM instead updates its allocator state and counters according to the extended semantics in the language specification.  Use Wasmtime and the Talos runtime proofs for intrinsic behavior; standard-Lean and IR comparisons apply only when those observations do not affect the compared result.
 
@@ -839,8 +839,9 @@ Use existing examples as templates:
 | Typed JSON AST decoding | [JSON Typed Decode Example](LeanExe/Examples/JsonTypedDecode.lean), [JSON Object Array Decode Example](LeanExe/Examples/JsonObjectArrayDecode.lean) |
 | JSON AST parsing and rendering | [JSON Tree Command](LeanExe/Examples/JsonTreeCommand.lean) |
 | WASI stdin `Except` command | [JSON GCD Example](LeanExe/Examples/JsonGcd.lean) |
-| End-to-end WASI pipeline | [JSON Tree WASI Demo](demo.md), [JSON Merge Tree Command](LeanExe/Examples/JsonMergeTreeCommand.lean) |
-| Source-level release and GC counters | [JSON GC Tree Rewrite Example](LeanExe/Examples/JsonGcTreeRewrite.lean) |
+| End-to-end WASI pipeline | [JSON Tree WASI Demo](demo.md) |
+| Source-level release and GC counters | [Correctness Examples](LeanExe/Examples/Correctness.lean), [ByteArray Programs](LeanExe/Examples/ByteArrayPrograms.lean) |
+| Deferred ownership analysis | [JSON Merge Tree Command](LeanExe/Examples/JsonMergeTreeCommand.lean), [JSON GC Tree Rewrite Example](LeanExe/Examples/JsonGcTreeRewrite.lean) |
 | Broad compiler fixtures | [Correctness Examples](LeanExe/Examples/Correctness.lean) |
 
 The examples are executable tests as well as documentation.  If a new source pattern matters, add a small example and run the test harness.  The safest authoring practice is to make each new feature compile in isolation before combining it with JSON, WASI, recursive data, or structured accumulators.

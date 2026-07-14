@@ -4512,3 +4512,19 @@ The specification, manual, repository overview, and developer guide now state th
 - [x] Define the initial direct-handoff judgment.
 - [x] Classify all twenty-two tracked source release sites.
 - [ ] Enforce the judgment before IR extraction and report its result.
+
+## 2026-07-13: Direct release handoff checker
+
+`LeanExe/Extract/ReleaseCheck.lean` now validates every explicit source release after the first extraction pass computes helper fresh-result summaries and before the accepted IR reaches WASM emission.  It accepts recursive constructors, array literals and replication, helper results whose owner offset is fresh, and the exact owner-zero `setIfInBounds values.size` form.  Each accepted judgment records its declaration, source binding, and provenance for `ownership-report`.
+
+The checker rejects later use, repeated release, direct aliases, container escape, return escape, parameter ownership, branch-selected roots, conditionally owned array operations, structure fields, loop-carried roots, and helper results without a fresh-owner summary.  Diagnostics name the declaration and released expression, then state the known provenance and rejection reason.  Eight reduced source fixtures cover use after release, double release, aliasing, container escape, return escape, parameter consumption, an interprocedural alias, and an out-of-bounds update over a possibly owned helper parameter; the existing branch, pop, and reverse fixtures cover unresolved conditional provenance.
+
+The audit required one source correction and two explicit deferrals.  `JsonTreeCommand.insertOwned` no longer contains a redundant source release because its `Array.foldl` caller already uses the compiler's proved accumulator-replacement release rule, preserving the tree WASI pipeline.  `JsonMergeTreeCommand.makeMergedTree` now rejects when a source root has entered the heap-valued merged binding, and `JsonGcTreeRewrite.transform` rejects when `runRoundsFuel` releases the `tree` field of loop-carried state; both sources remain requirements for later retained-handoff and field-sensitive analysis.
+
+Focused verification passed 781 accepted core cases, 45 exact rejections, 13 traps, 10 ownership-report cases, and 38 reference-counting cases.  The reference-counting suite retains Wasmtime checks for direct fresh arrays, recursive roots, fresh helper results, shared retained children, and an owner-zero array release.  The WASI suite passed 33 program cases, two traps, nine rejections, and sixteen compiles after the merge assertion was corrected to check its heap-bearing escape reason.
+
+- [x] Validate every reachable explicit release before final extraction.
+- [x] Report accepted source judgments through `ownership-report`.
+- [x] Add exact rejection fixtures for every initial unsupported shape.
+- [x] Preserve the JSON tree pipeline through compiler-managed fold cleanup.
+- [ ] Run the complete execution, WAT, and Talos gates.
