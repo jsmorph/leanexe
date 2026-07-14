@@ -1,5 +1,4 @@
-import Project.ClobPostOnly.Program
-import Project.ClobPostOnly.Model
+import Project.ClobPostOnly.ValidOrder
 
 /-!
 # The `postOnly` theorem
