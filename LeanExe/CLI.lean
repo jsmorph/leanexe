@@ -18,11 +18,13 @@ def usage : String :=
     "  lean-wasm report --out <path>",
     "  lean-wasm report --module <module> --entry <name>",
     "  lean-wasm report --module <module> --entry <name> --out <path>",
+    "  lean-wasm dump-ir --module <module> --entry <name>",
     "  lean-wasm ownership-report --module <module> --entry <name>",
     "  lean-wasm ownership-report --module <module> --entry <name> --out <path>",
     "  lean-wasm eval --hex <hex-bytes>",
     "  lean-wasm eval-ir --module <module> --entry <name> [arg ...]",
     "  lean-wasm compile --module <module> --entry <name> --out <path>",
+    "  lean-wasm compile-wat --module <module> --entry <name> --out <path>",
     "  lean-wasm compile-wasi --module <module> --entry <name> --out <path>",
     "  lean-wasm compile-wasi-stdin --max-input-bytes <n> --module <module> --entry <name> --out <path>",
     "  lean-wasm compile-wasi-stdin-except --max-input-bytes <n> --module <module> --entry <name> --out <path>",
@@ -31,7 +33,7 @@ def usage : String :=
     "  lean-wasm collatz-eval --input <n>",
     "  lean-wasm collatz-bench --input <n> --iters <n>",
     "",
-    "This prototype supports the validator demo and the first scalar/array fragment of the generic compiler."
+    "LeanExe compiles checked declarations in the subset documented in spec.md."
   ]
 
 def ensureParent (path : System.FilePath) : IO Unit := do

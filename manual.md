@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This manual explains how to write Lean source code that LeanExe can compile to WASM.  The [Language Specification](spec.md) defines the accepted language, ABI, and semantics.  This manual gives authoring rules, source templates, and debugging practices for users and LLMs that need to produce accepted source code.
+This manual explains how to write Lean source code that LeanExe can compile to WASM.  The [Language Specification](spec.md) defines the accepted language, ABI, and semantics.  [Developing LeanExe](DEVELOPING.md) covers repository setup, compiler development, test gates, proof artifacts, and tool failures.
 
 The main rule is simple: write concrete, first-order Lean.  Let Lean type-check the program, then let LeanExe reject anything outside its executable subset.  When a concise Lean expression compiles to a generated helper shape that LeanExe does not support, rewrite the source into one of the stable shapes shown here.
 
@@ -725,6 +725,16 @@ Use `ownership-report` when an accepted program's allocation or release behavior
   --module LeanExe.Examples.MyProgram \
   --entry LeanExe.Examples.MyProgram.entry
 ```
+
+Use `dump-ir` after `report` accepts an entry when evaluation order, lowered control flow, calls, traps, or release placement remains in question.  The command prints the complete extracted IR for the checked entry and its compiled helpers.  It is a compiler diagnostic, so source authors should prefer the rejection report unless the accepted output behaves unexpectedly.
+
+```sh
+.lake/build/bin/lean-wasm dump-ir \
+  --module LeanExe.Examples.MyProgram \
+  --entry LeanExe.Examples.MyProgram.entry
+```
+
+Tool and build failures have different remedies from source rejections.  A missing checked declaration usually means its module has not been built, while missing Wasmtime, the C host, or `wasm-tools` indicates an incomplete developer setup.  The troubleshooting table in [Developing LeanExe](DEVELOPING.md) covers those failures, proof artifact mismatches, verifier setup, and cold proof builds.
 
 Common rejections and source fixes:
 
