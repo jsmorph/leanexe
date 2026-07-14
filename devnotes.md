@@ -4548,3 +4548,15 @@ Checks run:
 - [x] `node tools/compare-standard.js --self-test` returned `checked 309 standard Lean comparison cases` and `checked 62 IR interpreter comparison cases`.
 - [x] Review of `/tmp/clob-cancel-before.wat` and `/tmp/clob-cancel-after.wat` accounted for every removed scan and retained found-branch block.
 - [x] `tools/check-talos-clob-cancel.sh` stopped at the expected proof-input byte comparison before rebuilding the stale proof.
+
+## 2026-07-13: Single-scan cancel proof checkpoint
+
+The CLOB scan lemma now follows the single generated loop and records an encoded first-match index.  Its absent case returns zero after reaching the array length, while its found case returns `UInt64.ofNat i + 1` with the matched order fields still loaded.  The list bridge continues to identify the first matching source index through `List.findIdx?`.
+
+The existing `cancel_notFound` theorem retains its quantified order list, absent-identifier premise, borrowed input pointer, status-three result, and exact store equality.  Its proof now invokes the scan lemma once and follows the generated not-found helper call directly.  The transactional artifact update replaced the WASM, WAT, and generated Talos model only after the theorem rebuilt successfully.
+
+Checks run:
+
+- [x] `lake build Project.ClobCancel.Spec` completed 3,009 proof jobs.
+- [x] `tools/check-talos-clob-cancel.sh --update` regenerated the three proof inputs and rebuilt `Project.ClobCancel.Spec`.
+- [x] The checked WASM size changed from 2,216 bytes to 1,930 bytes after removal of the duplicate scans.
