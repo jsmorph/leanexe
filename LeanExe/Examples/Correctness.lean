@@ -5640,6 +5640,61 @@ def borrowedArrayReverseSingletonReleaseFrees (values : Array UInt64) : UInt64 :
   let after := LeanExe.Runtime.release reversed
   (LeanExe.Runtime.releaseCount - releasesBefore) * 100 + (after - before)
 
+def rejectReleaseUseAfter : UInt64 :=
+  let tree := U64Binary.node (U64Binary.leaf 1) (U64Binary.leaf 2)
+  let released := LeanExe.Runtime.release tree
+  released + u64BinaryNodeCount tree
+
+def rejectReleaseTwice : UInt64 :=
+  let tree := U64Binary.node (U64Binary.leaf 1) (U64Binary.leaf 2)
+  let first := LeanExe.Runtime.release tree
+  let second := LeanExe.Runtime.release tree
+  first + second
+
+def rejectReleaseAlias : UInt64 :=
+  let tree := U64Binary.node (U64Binary.leaf 1) (U64Binary.leaf 2)
+  let alias := tree
+  let released := LeanExe.Runtime.release tree
+  released + u64BinaryNodeCount alias
+
+def rejectReleaseContainerEscape : UInt64 :=
+  let tree := U64Binary.node (U64Binary.leaf 1) (U64Binary.leaf 2)
+  let held : Array U64Binary := #[tree]
+  let released := LeanExe.Runtime.release tree
+  released + held.size.toUInt64
+
+def releaseReturnEscapeHelper : U64Binary :=
+  let tree := U64Binary.node (U64Binary.leaf 1) (U64Binary.leaf 2)
+  let _ := LeanExe.Runtime.release tree
+  tree
+
+def rejectReleaseReturnEscape : UInt64 :=
+  u64BinaryNodeCount releaseReturnEscapeHelper
+
+def releaseParameterHelper (tree : U64Binary) : UInt64 :=
+  let released := LeanExe.Runtime.release tree
+  released
+
+def rejectReleaseParameter : UInt64 :=
+  releaseParameterHelper (U64Binary.leaf 1)
+
+def returnSameTree (tree : U64Binary) : U64Binary :=
+  tree
+
+def rejectReleaseInterproceduralAlias : UInt64 :=
+  let tree := U64Binary.node (U64Binary.leaf 1) (U64Binary.leaf 2)
+  let alias := returnSameTree tree
+  let released := LeanExe.Runtime.release tree
+  released + u64BinaryNodeCount alias
+
+def releaseOwnedSetOobHelper (values : Array UInt64) : UInt64 :=
+  let updated := values.setIfInBounds values.size (99 : UInt64)
+  let released := LeanExe.Runtime.release updated
+  released
+
+def rejectReleaseOwnedSetOobHelper : UInt64 :=
+  releaseOwnedSetOobHelper (Array.replicate 1 (5 : UInt64))
+
 def byteArrayFoldByteOutputState : ByteOutputState :=
   (ByteArray.mk #[(1 : UInt8), (2 : UInt8), (3 : UInt8)]).foldl
     (fun acc byte => { count := acc.count + 1, bytes := acc.bytes.push byte })

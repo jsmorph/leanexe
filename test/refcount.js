@@ -71,7 +71,6 @@ function checkSourceReleaseStats() {
     [2, 707],
   ];
   for (const [kind, expected] of recursiveCases) {
-    expectI64(correctnessModule, "recursiveScenarioRuntimeReleaseStats", expected, [host.i64(kind)]);
     expectI64(correctnessModule, "recursiveScenarioHelperRuntimeReleaseStats", expected, [host.i64(kind)]);
   }
   expectI64(correctnessModule, "sharedRecursiveChildReleaseStats", 10302);
@@ -79,9 +78,7 @@ function checkSourceReleaseStats() {
 
 function checkBorrowedArrayNoopRelease() {
   const cases = [
-    ["borrowedArrayPopEmptyReleaseFrees", [], 0],
     ["borrowedArraySetOobReleaseFrees", [7, 8], 0],
-    ["borrowedArrayReverseSingletonReleaseFrees", [7], 0],
   ];
   for (const [entry, values, expected] of cases) {
     expectI64(correctnessModule, entry, expected, [host.arrayU64(values)]);

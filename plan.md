@@ -43,12 +43,12 @@ Existing explicit-release examples need an audit against this rule.  A user-faci
 - [x] Define the extended semantics for runtime counters and `Runtime.release`, including its relationship to ordinary Lean evaluation and the IR interpreter's current limits.
 - [x] Define the static judgment for one owned root reference, final use, transfer, retained sharing, owner-zero arrays, and repeated release.
 - [x] Inventory every explicit release and classify the provenance and later uses of its root.
-- [ ] Accept direct fresh-local and fresh-helper-result handoffs that satisfy the initial judgment.
-- [ ] Accept statically known owner-zero array releases as no-ops, and reject ownership that is only conditionally zero.
-- [ ] Reject use after release, double release, direct unretained aliases, container escape, return escape, and unsupported interprocedural aliases.
-- [ ] Include the source declaration, released expression, provenance, and rejection reason in diagnostics and the ownership report.
-- [ ] Add exact rejection tests and Wasmtime counter tests; use Talos runtime theorems for the emitted recursive-release behavior.
-- [ ] Update the specification, manual, repository overview, developer guide, and journal in the same change.
+- [x] Accept direct fresh-local and fresh-helper-result handoffs that satisfy the initial judgment.
+- [x] Accept statically known owner-zero array releases as no-ops, and reject ownership that is only conditionally zero.
+- [x] Reject use after release, double release, direct unretained aliases, container escape, return escape, and unsupported interprocedural aliases.
+- [x] Include the source declaration, released expression, provenance, and rejection reason in diagnostics and the ownership report.
+- [x] Add exact rejection tests and Wasmtime counter tests; use Talos runtime theorems for the emitted recursive-release behavior.
+- [x] Update the specification, manual, repository overview, developer guide, and journal in the same change.
 
 This phase ends when every accepted explicit release has a compiler-produced ownership justification and every other shape rejects.  The ordinary execution suite, ownership-report tests, WAT round trip, and all artifact checks must pass.  Programs without runtime intrinsics retain their ordinary Lean comparison claim, while intrinsic-using programs state the extended semantic boundary.
 

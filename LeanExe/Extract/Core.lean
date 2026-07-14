@@ -1,6 +1,7 @@
 import Lean
 import Init.Data.ByteArray.Extra
 import LeanExe.Extract.Env
+import LeanExe.Extract.ReleaseCheck
 import LeanExe.Extract.StructuralRec
 import LeanExe.IR.Core
 import LeanExe.Runtime
@@ -8,12 +9,6 @@ import LeanExe.Runtime
 open Lean
 
 namespace LeanExe.Extract.Core
-
-def runtimeReleaseArgs? (expr : Expr) : Option (List Expr) :=
-  match appFnArgs expr.consumeMData with
-  | (.const name _, args) =>
-      if name == ``LeanExe.Runtime.release then some args else none
-  | _ => none
 
 structure ExtractedForInStepBody where
   bodyTargets : List Nat
@@ -7013,6 +7008,7 @@ def extractFunctionsWithEntryMode
 structure CompiledModule where
   ctx : Context
   module : IRModule
+  releaseJudgments : Array ReleaseJudgment
 
 def compileEnvironmentWithEntryModeDetailed
     (exportEntry : Bool)
@@ -7056,8 +7052,9 @@ def compileEnvironmentWithEntryModeDetailed
   let freshResultOwnerOffsets :=
     freshResultOwnerOffsetsForModule baseCtx { funcs := firstPassFuncs }
   let ctx : Context := { baseCtx with freshResultOwnerOffsets := freshResultOwnerOffsets }
+  let releaseJudgments ← validateModuleReleases ctx entry namesList
   let funcs ← extractFunctionsWithEntryMode exportEntry ctx entry namesList
-  .ok { ctx := ctx, module := { funcs := funcs } }
+  .ok { ctx := ctx, module := { funcs := funcs }, releaseJudgments := releaseJudgments }
 
 def compileEnvironmentWithEntryMode
     (exportEntry : Bool)
