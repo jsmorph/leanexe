@@ -45,6 +45,9 @@ Two statement templates cover the artifacts.  Input-generic theorems quantify ov
 | `pair_free` | same module | `sharedPairFreeStats` | `PairFree.Spec.sharedPairFreeStats_correct` | Builds the shared pair and releases it: three releases, two frees, full recursive teardown through the release function's array branch. |
 | `box_free` | same module | `boxFreeStats` | `BoxFree.Spec.boxFreeStats_correct` | Builds a two-box scalar chain and frees it through the release function's slots branch: two releases, two frees, free list ending at the node. |
 | `fold_sum` | same module | `foldSum` | `FoldSum.Spec.foldSum_correct` | For every input byte list, returns the value of the source fold and leaves the store untouched. |
+| `leb_u32` | [`LeanExe.Wasm.Leb`](../../LeanExe/Wasm/Leb.lean) | `u32lebU64` | `LebU32.Spec.u32lebU64_correct` | For every value below `2^32`, returns a buffer containing the source encoder's unsigned LEB128 bytes and preserves memory below the old heap top. |
+| `clob_quote` | [`LeanExe.Examples.Clob`](../../LeanExe/Examples/Clob.lean) | `quote` | `ClobQuote.Spec.quote_correct` | For every order array in memory, returns the six fields of the source quote fold and leaves the store untouched. |
+| `clob_cancel` | same module | `cancel` | `ClobCancel.Spec.cancel_notFound` | For every order array and absent order id, returns status three with the borrowed input book and leaves the store untouched.  The found branch remains unproved. |
 
 Together the counter artifacts cover the runtime end to end: bump allocation, free-list reuse and unlink, release through all three object kinds including recursion, retain both inline and exported, and the null release.
 
@@ -56,11 +59,15 @@ When the compiler output changes intentionally, run the corresponding check scri
 
 ## Requirements
 
-The Lean proof project pins Talos through the `CodeLib` Lake dependency; the pinned revision lives in [`lean/lakefile.toml`](lean/lakefile.toml).  The check scripts need `wasm-tools` to render WAT from regenerated WASM.  They look for `WASM_TOOLS`, then `wasm-tools` in `PATH`, then `$HOME/.cargo/bin/wasm-tools`.
+The proof workspace pins Lean 4.31.0, while the compiler workspace pins Lean 4.29.1.  `elan` selects the correct version from each directory's `lean-toolchain`, and the proof Lake manifest pins Talos and its transitive dependencies.  A cold `lake build Project` fetches those dependencies and compiles thousands of Lean jobs, so initialize the workspace before relying on a per-case check for quick feedback.
+
+The check scripts need `wasm-tools` to render WAT from regenerated WASM.  They look for `WASM_TOOLS`, then `wasm-tools` in `PATH`, then `$HOME/.cargo/bin/wasm-tools`; the repository does not yet pin its version.  [Developing LeanExe](../../DEVELOPING.md) gives the complete setup, verifier build command, environment variables, and failure diagnostics.
 
 ```sh
 tools/check-talos.sh
 ```
+
+An ordinary byte mismatch stops at `cmp` and leaves the checked-in proof inputs unchanged.  Determine whether the source, compiler, runtime, or artifact-producing tool caused the change before using `--update`.  Update mode is transactional and restores the prior WASM, WAT, and generated model if regeneration or proof compilation fails.
 
 ## Proof Boundary
 

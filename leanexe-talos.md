@@ -1,5 +1,7 @@
 # Verifying Generated LeanExe WASM with Talos
 
+This document records the original GCD proof experiment.  The current proof architecture, artifact inventory, and commands live in [Talos Proofs](proofs/talos-gcd/README.md), while [Verifying a Program](verifying.md) defines the maintained procedure.  Historical commands and file descriptions below may differ from the current shared proof library.
+
 This experiment connects [LeanExe](https://github.com/jsmorph/leanexe)-generated WASM to a [Talos](https://github.com/cajal-technologies/talos) proof.  The source program is ordinary Lean code inside the LeanExe supported subset.  LeanExe emits WASM, Talos decodes the generated WAT into a Lean model, and a Lean proof establishes the behavior of that decoded module.
 
 The proved claim covers one generated WASM export.  For all `UInt64` inputs `a` and `b`, the generated `gcd` export terminates and returns `UInt64.ofNat (Nat.gcd a.toNat b.toNat)`.  The proof target is the program Talos decoded from the generated WAT, so the proof follows the emitted control flow and local-variable layout.

@@ -1,5 +1,7 @@
 # Lean String Support
 
+This document is an unimplemented design proposal.  Runtime Lean `String` remains outside the accepted subset, and the [Development Plan](plan.md) determines whether this work enters the active queue.  The [Language Specification](spec.md) and [LeanExe User Manual](manual.md) define the current text boundary.
+
 ## Current Boundary
 
 LeanExe does not compile runtime Lean `String` values today.  It accepts ASCII `String` expressions only when extraction can consume them at compile time, such as through `String.toUTF8`, `String.length`, `String.isEmpty`, `String.append`, append notation, `==`, and `!=`.  The compiler rejects non-ASCII literal bytes in that path, because the lowered value becomes ordinary `ByteArray` data rather than a runtime `String`.
