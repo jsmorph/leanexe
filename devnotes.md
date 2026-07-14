@@ -4673,3 +4673,11 @@ The `clob_post_only` case now pins the compiled `LeanExe.Examples.Clob.postOnly`
 The complete `cancel` theorem now defines `FreshOrderArrayAt` as the stride-five specialization of the shared predicate.  Its byte-count definitions remain local because its arithmetic proof depends on their direct normal form, while later artifacts can use the generic count from the start.  The theorem statement and generated artifact remain unchanged.
 
 `lake env lean Project/ClobCancel/Spec.lean` rebuilt the complete found and missing proof after rebuilding `Project.Clob`.  The target passed without an error or warning.  This checkpoint adds no axiom, admission, dependency, or generated-file edit.
+
+## 2026-07-14: Shared CLOB memory frame theorem
+
+`Project.Clob.OrdersAt.frame` preserves a represented order array across writes above a stated heap boundary.  Its hypotheses require an unwrapped 32-bit input extent, the input below the boundary, unchanged page count, and byte equality below that boundary.  The proof derives every header and field read with the common `read64_congr` lemma and preserves each memory bound through page equality.
+
+The invalid and crossing `postOnly` branches can now state both the borrowed input pointer and its exact source contents after allocating the trade array.  Later matching proofs can apply the same theorem when fresh result arrays occupy memory above their input books.  This removes five-field readback proofs from each allocation branch.
+
+`lake env lean Project/Clob.lean` checked the new theorem without an error or warning.  The theorem uses the existing memory model and adds no axiom or dependency.  No artifact input changed.
