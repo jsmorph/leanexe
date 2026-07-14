@@ -4657,3 +4657,11 @@ The `clob_post_only` case now pins the compiled `LeanExe.Examples.Clob.postOnly`
 `Project.ClobPostOnly.ValidOrder.func5_spec` proves that the generated identifier scan returns one exactly when an order with the requested identifier occurs.  Its loop invariant records a clean processed prefix, reads all five fields through the shared `OrdersAt` predicate, and terminates by decreasing the unprocessed length.  `func6_spec` combines that result with nonzero identifier, nonzero trader, valid side, and nonzero quantity in the emitted short-circuit order.
 
 `lake build Project.ClobPostOnly.SearchHelpers` completed 3,006 jobs, and `lake build Project.ClobPostOnly.ValidOrder` completed 3,008 jobs.  Both focused targets build without a warning in the new proof files.  The proofs add no source wrapper, generated-file edit, axiom, or admission.
+
+## 2026-07-14: CLOB `postOnly` search proof
+
+`Project.ClobPostOnly.FindBest.func12_spec` proves termination and the exact source `findBestL` result for every represented order array and taker.  It instantiates the established prefix invariant at function 12 and calls the new artifact's eligibility helper at function 10.  All five generated result branches preserve the complete store.
+
+`Project.ClobPostOnly.FindBestWrapper.func13_spec` reads the array length, checks the fuel addition for overflow, and invokes function 12 with an empty initial result.  It returns the same two-word option ABI as the standalone `findBest` export and preserves the store.  The separate wrapper file keeps later wrapper edits from forcing another elaboration of the 1,005-line loop proof.
+
+`lake build Project.ClobPostOnly.FindBest` completed 3,007 jobs in 218 seconds.  The wrapper target then completed 3,008 jobs in five seconds.  Both builds produced no warning, and the adaptation leaves the generated `Program.lean` unchanged.
