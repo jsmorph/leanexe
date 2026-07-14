@@ -120,7 +120,6 @@ theorem func2_spec (env : HostEnv Unit) (st : Store Unit) :
 
 /-- Canceling an absent id returns status three and the borrowed input
 pointer, leaving the store unchanged. -/
-@[spec_of "lean" "LeanExe.Examples.Clob.cancel"]
 def CancelNotFoundSpec : Prop :=
   ∀ (env : HostEnv Unit) (st : Store Unit) (ptr cid : UInt64)
     (os : List OrderL),
@@ -858,5 +857,68 @@ theorem cancel_found
             · simp [cCopyMeasure, hkU]
               rw [Nat.mod_eq_of_lt (by omega)]
               omega
+
+/-- `CancelFoundReady` packages the allocator facts used by the found branch.
+The input lies below the heap top, and the fresh result fits in initialized
+memory without address wraparound.  The missing branch does not use it. -/
+def CancelFoundReady (st : Store Unit) (ptr g0 g2 : UInt64)
+    (os : List OrderL) : Prop :=
+  ptr.toNat + (os.length * 5 + 1) * 8 < 4294967296 ∧
+  ptr.toNat + (os.length * 5 + 1) * 8 ≤ g0.toNat ∧
+  g0.toNat + 48 + orderArrayBytes (os.length - 1) < 4294967296 ∧
+  g0.toNat + 48 + orderArrayBytes (os.length - 1) ≤
+    st.mem.pages * 65536 ∧
+  st.mem.pages ≤ 65536 ∧
+  st.globals.globals[0]? = some (.i64 g0) ∧
+  st.globals.globals[1]? = some (.i64 0) ∧
+  st.globals.globals[2]? = some (.i64 g2)
+
+/-- `CancelPost` follows the two source branches selected by `idIdx`.  A
+missing id returns the borrowed input with an unchanged store.  A found id
+returns a refcount-one array with the erased contents, exact allocator
+counters, and the stated memory frame. -/
+def CancelPost (st st' : Store Unit) (ptr cid g0 g2 : UInt64)
+    (os : List OrderL) (vs : List Value) : Prop :=
+  match idIdx os cid with
+  | none => vs = [.i64 ptr, .i64 3] ∧ st' = st
+  | some i =>
+      vs = [.i64 (g0 + 48), .i64 0] ∧
+      OrdersAt st' (g0 + 48) (os.eraseIdx i) ∧
+      FreshOrderArrayAt st' (g0 + 48) (orderArrayBytesU (os.length - 1)) ∧
+      st'.mem.pages = st.mem.pages ∧
+      st'.globals.globals =
+        ((st.globals.globals.set 0
+          (.i64 (g0 + 48 + orderArrayBytesU (os.length - 1)))).set 2
+          (.i64 (g2 + 1))) ∧
+      ∀ a : Nat, a < g0.toNat → st'.mem.bytes a = st.mem.bytes a
+
+/-- `CancelSpec` covers both branches of source `cancel` for every represented
+order array.  The found branch requires initialized allocator state and
+address space for its fresh result.  The missing branch retains its smaller
+precondition and exact unchanged-store result. -/
+@[spec_of "lean" "LeanExe.Examples.Clob.cancel"]
+def CancelSpec : Prop :=
+  ∀ (env : HostEnv Unit) (st : Store Unit) (ptr cid g0 g2 : UInt64)
+    (os : List OrderL),
+    os.length < 4294967296 →
+    OrdersAt st ptr os →
+    (∀ i : Nat, idIdx os cid = some i → CancelFoundReady st ptr g0 g2 os) →
+    TerminatesWith (m := «module») (id := 3) (initial := st) (env := env)
+      [.i64 cid, .i64 ptr]
+      (fun st' vs => CancelPost st st' ptr cid g0 g2 os vs)
+
+@[proves Project.ClobCancel.Spec.CancelSpec]
+theorem cancel_correct : CancelSpec := by
+  intro env st ptr cid g0 g2 os hlen hIn hReady
+  cases hidx : idIdx os cid with
+  | none =>
+      simpa [CancelPost, hidx] using
+        cancel_notFound env st ptr cid os hlen hIn hidx
+  | some i =>
+      obtain ⟨hInput32, hBelow, hFit32, hFit, hPages, hg0, hg1, hg2⟩ :=
+        hReady i hidx
+      simpa [CancelPost, hidx] using
+        cancel_found env st ptr cid g0 g2 os i hlen hInput32 hBelow hFit32
+          hFit hPages hg0 hg1 hg2 hIn hidx
 
 end Project.ClobCancel.Spec
