@@ -4689,3 +4689,11 @@ The invalid and crossing `postOnly` branches can now state both the borrowed inp
 The module also proves the exact results of functions 14, 15, and 16.  These helpers return would-cross status two, success status zero, and invalid status one while preserving the store.  The public wrapper proof can consume their behavior through the call rule.
 
 `lake build Project.ClobPostOnly.Allocation` completed 3,005 jobs without an error or warning.  The generated program remains unchanged.  The module adds no axiom, admission, or dependency.
+
+## 2026-07-14: CLOB `postOnly` invalid branch
+
+`Project.ClobPostOnly.Invalid.postOnly_invalid` proves the public function-17 path for every represented book and every order that fails `validOrderL`.  The export returns status one, the borrowed input-book pointer, and a fresh empty trade array at the old heap top plus 48 bytes.  The theorem re-establishes the exact input-book contents through `OrdersAt.frame` after the allocation writes.
+
+The proof follows the emitted free-list loop, bump allocation, page check, six header stores, zero-length store, and allocation-counter update.  Its empty-free-list and fit hypotheses select the no-growth bump path.  The postcondition records the stride-four header, reference count one, eight-byte capacity, zero length, unchanged page count, advanced heap top and allocation count, and byte equality below the old heap top.
+
+`lake env lean Project/ClobPostOnly/Invalid.lean` checked the theorem without an error or warning.  A targeted Lake build produced the module object after rebuilding invalidated shared dependencies.  The proof contains no axiom, admission, generated-file edit, or additional dependency.
