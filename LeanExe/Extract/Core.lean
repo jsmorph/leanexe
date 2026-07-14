@@ -2277,13 +2277,19 @@ mutual
                         (.value itemValue :: locals)
                         (itemStart + sourceWidth)
                         predicateBody
-                    let tag :=
-                      .arrayFindIdxSlots
-                        sourceWidth arrayResult.fst itemStart predicateResult.fst false
-                    let payload :=
+                    let resultSlot := predicateResult.snd
+                    let encoded :=
                       .arrayFindIdxSlots
                         sourceWidth arrayResult.fst itemStart predicateResult.fst true
-                    .ok (mkOptionValue tag (.scalar payload), predicateResult.snd)
+                    let found := .not (.eqU64 (.local resultSlot) (.u64 0))
+                    let payload :=
+                      .ite found
+                        (.u64Bin .natSub (.local resultSlot) (.u64 1))
+                        (.u64 0)
+                    .ok
+                      (.letE resultSlot encoded
+                        (mkOptionValue (boolExpr found) (.scalar payload)),
+                        resultSlot + 1)
                   | none => .error s!"unsupported Array.findIdx? item type: {reprStr itemTy}"
                 | none => .error "unsupported Array.findIdx? item type"
             | _, _ => .error "unsupported Array.findIdx? application"
@@ -2306,17 +2312,19 @@ mutual
                         (.value itemValue :: locals)
                         (itemStart + sourceWidth)
                         predicateBody
-                    let tag :=
+                    let resultSlot := predicateResult.snd
+                    let encoded :=
                       .arrayFindIdxSlots
-                        sourceWidth arrayResult.fst itemStart predicateResult.fst false
-                    let payload ←
-                      arrayFindValue
-                        itemTy
-                        sourceWidth
-                        arrayResult.fst
-                        itemStart
-                        predicateResult.fst
-                    .ok (mkOptionValue tag payload, predicateResult.snd)
+                        sourceWidth arrayResult.fst itemStart predicateResult.fst true
+                    let found := .not (.eqU64 (.local resultSlot) (.u64 0))
+                    let index := .u64Bin .natSub (.local resultSlot) (.u64 1)
+                    let foundPayload ← arrayLoadValue itemTy arrayResult.fst index
+                    let defaultPayload ← defaultValue itemTy
+                    let payload ← valueIte found foundPayload defaultPayload
+                    .ok
+                      (.letE resultSlot encoded
+                        (mkOptionValue (boolExpr found) payload),
+                        resultSlot + 1)
                   | none => .error s!"unsupported Array.find? item type: {reprStr itemTy}"
                 | none => .error "unsupported Array.find? item type"
             | _, _ => .error "unsupported Array.find? application"
@@ -2709,13 +2717,20 @@ mutual
                     (.value (.scalar (.local byteSlot)) :: locals)
                     (byteSlot + 1)
                     predicateBody
-                let ptr := wrapExprLets parts.fst parts.snd.fst
-                let len := wrapExprLets parts.fst parts.snd.snd
-                let tag :=
-                  .byteArrayFindIdx ptr len startResult.fst byteSlot predicateResult.fst false
+                let resultSlot := predicateResult.snd
+                let encoded :=
+                  .byteArrayFindIdx parts.snd.fst parts.snd.snd startResult.fst byteSlot
+                    predicateResult.fst true
+                let found := .not (.eqU64 (.local resultSlot) (.u64 0))
                 let payload :=
-                  .byteArrayFindIdx ptr len startResult.fst byteSlot predicateResult.fst true
-                .ok (mkOptionValue tag (.scalar payload), predicateResult.snd)
+                  .ite found
+                    (.u64Bin .natSub (.local resultSlot) (.u64 1))
+                    (.u64 0)
+                .ok
+                  (wrapValueLets parts.fst
+                    (.letE resultSlot encoded
+                      (mkOptionValue (boolExpr found) (.scalar payload))),
+                    resultSlot + 1)
             | none => .error "unsupported ByteArray.findIdx? application"
         | (.const ``ByteArray.mk _, args) =>
             match args with

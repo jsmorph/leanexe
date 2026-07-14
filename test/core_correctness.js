@@ -657,6 +657,26 @@ const accepted = [
   { name: "arrayFindIdxStructure", args: [], expected: [1n, 1n] },
   { name: "arrayFindIdxStatus", args: [], expected: [1n, 1n] },
   { name: "arrayFindIdxEmptySkipsPredicateTrap", args: [], expected: [0n, 0n] },
+  { name: "matchedScalarScore", args: [0n], expected: 45n },
+  { name: "matchedScalarScore", args: [1n], expected: 78n },
+  { name: "matchedScalarSkipsUnusedBranchField", args: [0n], expected: 4n },
+  { name: "matchedScalarSkipsUnusedBranchField", args: [1n], expected: 7n },
+  { name: "matchedFindIdxPoint", args: [2n], expected: [1n, 1n] },
+  { name: "matchedFindIdxPoint", args: [9n], expected: [0n, 9n] },
+  {
+    name: "matchedFindIdxArray",
+    args: [2n],
+    expected: [null],
+    memoryArrays: [{ resultIndex: 0, values: [1n, 2n] }],
+  },
+  {
+    name: "matchedFindIdxArray",
+    args: [9n],
+    expected: [null],
+    memoryArrays: [{ resultIndex: 0, values: [99n] }],
+  },
+  { name: "matchedFindIdxArrayReleaseStats", args: [2n], expected: 2020101n },
+  { name: "matchedFindIdxArrayReleaseStats", args: [9n], expected: 1020101n },
   { name: "arrayFindSome", args: [], expected: [1n, 2n] },
   { name: "arrayFindNone", args: [], expected: [0n, 0n] },
   { name: "arrayFindStructure", args: [], expected: [1n, 3n, 4n] },
@@ -1580,6 +1600,7 @@ const trapped = [
   { name: "byteArraySetBangTrap", args: [] },
   { name: "byteArrayToUInt64Trap", args: [] },
   { name: "byteArrayMkSizeForcesArrayTrap", args: [] },
+  { name: "matchedFindIdxPredicateTrap", args: [] },
 ];
 
 function run(args) {

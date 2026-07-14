@@ -1633,7 +1633,11 @@ mutual
     let indexLocal := scratch + 2
     let resultLocal := scratch + 3
     let childScratch := scratch + 4
-    let foundValue := if returnPayload then localGet indexLocal else i64Const 1
+    let foundValue :=
+      if returnPayload then
+        localGet indexLocal ++ i64Const 1 ++ [Instr.addI64]
+      else
+        i64Const 1
     let rec emitSourceLoads : List Nat → List Instr
       | [] => []
       | offset :: rest =>
@@ -2204,7 +2208,11 @@ mutual
     let indexLocal := scratch + 2
     let resultLocal := scratch + 3
     let childScratch := scratch + 4
-    let foundValue := if returnPayload then localGet indexLocal else i64Const 1
+    let foundValue :=
+      if returnPayload then
+        localGet indexLocal ++ i64Const 1 ++ [Instr.addI64]
+      else
+        i64Const 1
     emitExpr childScratch ptr ++ localSet ptrLocal ++
       emitExpr childScratch len ++ localSet lenLocal ++
       emitExpr childScratch start ++ localSet indexLocal ++

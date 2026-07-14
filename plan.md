@@ -13,9 +13,9 @@ LeanExe runtime intrinsics require a separate semantic statement.  Ordinary Lean
 | Area | Established state | Open issue |
 |------|-------------------|------------|
 | Accepted language | First-order pure programs over scalars, byte arrays, fixed-width arrays, structures, tagged values, internal recursive values, supported loops, and selected specialized helpers.  Runtime intrinsics have separate ordinary-Lean and generated-WASM semantics, and every accepted explicit release has a compiler-produced direct-handoff judgment. | Branch-dependent roots, conditionally owned arrays, consuming parameters, structure fields, and loop-carried release roots remain deferred until a focused ownership analysis proves them. |
-| Compiler | Checked-environment extraction, a typed first-order IR with an interpreter, ownership summaries, a reference-counted heap, and one structured WASM instruction stream serialized as binary or WAT. | Flattening some matched multi-slot values repeats their computation.  CLOB `cancel` scans for the same identifier three times. |
-| Execution tests | `node test/run_all.js` passes 781 accepted cases, 45 rejections, 13 traps, 301 standard-Lean comparisons, 58 IR comparisons, and the ABI, WASI, allocation, ownership, and fuzz suites. | The full run is verbose and expensive.  The IR interpreter does not model heap allocation, release, or runtime counters. |
-| Artifact proofs | Fourteen byte-pinned Talos cases pass, including the self-compiled LEB128 encoder, CLOB quote, and the not-found branch of CLOB cancel. | The found branch of `cancel`, followed by `postOnly`, `limit`, `market`, and `depth`, remains unproved. |
+| Compiler | Checked-environment extraction, a typed first-order IR with an interpreter, ownership summaries, a reference-counted heap, and one structured WASM instruction stream serialized as binary or WAT.  Array search matches bind one encoded scan result before projecting the tag and payload. | The changed CLOB `cancel` artifact requires its complete proof before it can replace the checked proof input. |
+| Execution tests | The focused gates pass 791 accepted cases, 45 rejections, 14 traps, 309 standard-Lean comparisons, 62 IR comparisons, 40 reference-counting cases, and the matched-value IR and WAT assertions. | The complete execution gate remains pending for the single-evaluation change.  The IR interpreter does not model heap allocation, release, or runtime counters. |
+| Artifact proofs | Fourteen proof cases exist, including the self-compiled LEB128 encoder, CLOB quote, and the prior not-found branch of CLOB cancel. | The regenerated cancel artifact differs from its checked input and requires the complete proof before replacement.  The found branch, followed by `postOnly`, `limit`, `market`, and `depth`, remains unproved. |
 | Documentation and tools | The repository overview, developer guide, manual, specification, proof inventory, verification guide, plan, and journal have distinct responsibilities and agree on the fourteen proof cases.  Lean and Talos use pinned revisions, and Wasmtime defaults to 44.0.0. | Node and `wasm-tools` remain unpinned, Wasmtime downloads lack checksum verification, CLI failures lack one exit-status scheme, and Lean reports unused proof arguments. |
 
 The baseline was checked on 2026-07-13.  The untracked `leanclob/` directory is a separate nested Git repository and remains outside this plan.  Update this table in the same change that alters a stated fact.
@@ -54,18 +54,18 @@ This phase completed on 2026-07-13.  Every accepted explicit release has a compi
 
 ### 2. Evaluate Matched Values Once
 
-The CLOB `cancel` artifact evaluates one `Array.findIdx?` match result three times while flattening the returned structure.  Lean evaluates the scrutinee once, and the repeated scans enlarge the artifact and multiply proof obligations.  Fix the extraction boundary by materializing the matched result into locals once and reusing those locals for projections and branch results.
+The prior CLOB `cancel` artifact evaluated one `Array.findIdx?` match result three times while flattening the returned structure.  Lean evaluates the scrutinee once, and the repeated scans enlarged the artifact and multiplied proof obligations.  The extractor now binds an encoded scan result once and reuses its normalized tag and payload through a statement-level branch.
 
 The change should target repeated value extraction rather than add a general common-subexpression pass.  Local materialization must preserve branch selection, demand, trap order, and owner provenance.  Demand and ownership analyses must consume the same local representation so evaluation and release decisions remain aligned.
 
-- [ ] Add a reduced scalar fixture that repeats one multi-slot match result and assert that its IR contains one scrutinee evaluation.
-- [ ] Add a branch fixture whose unused payload traps if evaluated, proving that materialization does not make payload fields strict.
-- [ ] Add a heap-bearing match result that checks owner transfer, returned roots, and absence of duplicate allocation or release.
-- [ ] Compare standard Lean, IR evaluation where supported, and generated WASM for found, missing, and trapping inputs.
-- [ ] Confirm through `dump-ir` and WAT that CLOB `cancel` contains one identifier scan.
-- [ ] Review every changed Talos artifact before updating a proof input.
+- [x] Add a reduced scalar fixture that repeats one multi-slot match result and assert that its IR contains one scrutinee evaluation.
+- [x] Add a branch fixture whose unused payload traps if evaluated, proving that materialization does not make payload fields strict.
+- [x] Add a heap-bearing match result that checks owner transfer, returned roots, and absence of duplicate allocation or release.
+- [x] Compare standard Lean, IR evaluation where supported, and generated WASM for found, missing, and trapping inputs.
+- [x] Confirm through `dump-ir` and WAT that CLOB `cancel` contains one identifier scan.
+- [x] Review every changed Talos artifact before updating a proof input.
 
-This phase ends when `cancel` performs one scan and the focused demand and ownership fixtures pass.  Run the full execution suite, WAT round trip, and aggregate Talos gate before completion.  Explain every artifact-byte change from the IR or structured instruction diff.
+The focused implementation conditions now pass.  The full execution suite and WAT round trip remain completion gates, while the aggregate Talos gate depends on the complete cancel proof in Phase 3.  The reviewed artifact diff removes two scan loops, adds one encoded-index local, and retains the found-branch allocation and copy loops with renumbered locals.
 
 ### 3. Prove Complete Cancel Behavior
 
