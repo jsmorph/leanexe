@@ -2,14 +2,11 @@ import Project.ClobCancel.Scan
 import Interpreter.Wasm.Wp.Call
 
 /-!
-# The `cancel` not-found theorem
+# The `cancel` theorem
 
-`func3` scans for the argument id, selects the status through two helper
-calls, rescans, and returns the input pointer unchanged when no element
-matches.  The theorem: for every order array in memory and every id absent
-from it, the export returns status three and the borrowed input pointer,
-and the store is untouched.  The found branch, which erases the element
-through a fresh allocation, is the next theorem.
+`func3` scans once for the argument id and records the first matching index
+plus one.  An absent id returns status three and the borrowed input pointer.
+The found branch allocates a fresh array and copies every other order.
 -/
 
 namespace Project.ClobCancel.Spec
@@ -68,35 +65,27 @@ theorem cancel_notFound : CancelNotFoundSpec := by
         locals := [.i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
           .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
           .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
-          .i64 0, .i64 0, .i64 0, .i64 0, .i64 0],
+          .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0],
         values := [] } env
     unfold func3
     wp_run
     try simp
     rw [hHead]
     refine ⟨hHeadB, ?_⟩
-    refine scanFlag_spec os hlen hIn ?_ ?_
+    refine scanIndex_spec os hlen hIn ?_ ?_
     · intro _h f2 f3 f4 f5 f6
       wp_run
+      refine wp_iff_cons rfl ?_
+      rw [if_neg (by simp)]
+      wp_run
+      simp
       refine wp_iff_cons rfl ?_
       rw [if_pos (by simp)]
       wp_run
       refine wp_call_tw (func2_spec env st) ?_
       rintro st' vs ⟨rfl, rfl⟩
       wp_run
-      try simp
-      rw [hHead]
-      refine ⟨hHeadB, ?_⟩
-      refine scanFlag_spec os hlen hIn ?_ ?_
-      · intro _h2 h2 h3 h4 h5 h6
-        wp_run
-        refine wp_iff_cons rfl ?_
-        rw [if_pos (by simp)]
-        wp_run
-        simp [func3Def]
-      · intro i hi
-        rw [hAbsent] at hi
-        cases hi
+      simp [func3Def]
     · intro i hi
       rw [hAbsent] at hi
       cases hi
