@@ -106,7 +106,7 @@
     i64.const 0
     i64.eq
     i32.eqz
-    if (result i64) ;; label = @1
+    if ;; label = @1
       local.get 0
       i64.const 0
       i64.eq
@@ -125,646 +125,36 @@
       i64.const 0
       i64.eq
       i32.eqz
-      if (result i64) ;; label = @2
+      if ;; label = @2
         i64.const 1
-      else
-        local.get 1
+        local.set 11
         local.get 9
-        i64.lt_u
-        if (result i64) ;; label = @3
-          local.get 0
-        else
-          local.get 9
-          local.get 1
-          i64.eq
-          if (result i64) ;; label = @4
-            i64.const 1
-          else
-            i64.const 0
-          end
-          i64.const 1
-          i64.eq
-          if (result i64) ;; label = @4
-            i64.const 1
-          else
-            i64.const 0
-          end
-          i64.const 0
-          i64.eq
-          i32.eqz
-          if (result i64) ;; label = @4
-            local.get 0
-          else
-            local.get 0
-          end
-        end
-      end
-    else
-      local.get 3
-      i64.const 0
-      i64.eq
-      if (result i64) ;; label = @2
-        i64.const 1
-      else
-        i64.const 0
-      end
-      i64.const 1
-      i64.eq
-      if (result i64) ;; label = @2
-        i64.const 1
-      else
-        i64.const 0
-      end
-      i64.const 0
-      i64.eq
-      i32.eqz
-      if (result i64) ;; label = @2
-        local.get 0
-      else
-        local.get 9
-        local.get 4
-        i64.lt_u
-        if (result i64) ;; label = @3
-          local.get 0
-        else
-          local.get 9
-          local.get 4
-          i64.eq
-          if (result i64) ;; label = @4
-            i64.const 1
-          else
-            i64.const 0
-          end
-          i64.const 1
-          i64.eq
-          if (result i64) ;; label = @4
-            i64.const 1
-          else
-            i64.const 0
-          end
-          i64.const 0
-          i64.eq
-          i32.eqz
-          if (result i64) ;; label = @4
-            local.get 0
-          else
-            local.get 0
-          end
-        end
-      end
-    end
-    local.set 11
-    local.get 8
-    i64.const 0
-    i64.eq
-    if (result i64) ;; label = @1
-      i64.const 1
-    else
-      i64.const 0
-    end
-    i64.const 1
-    i64.eq
-    if (result i64) ;; label = @1
-      i64.const 1
-    else
-      i64.const 0
-    end
-    i64.const 0
-    i64.eq
-    i32.eqz
-    if (result i64) ;; label = @1
-      local.get 0
-      i64.const 0
-      i64.eq
-      if (result i64) ;; label = @2
-        i64.const 1
-      else
-        i64.const 0
-      end
-      i64.const 1
-      i64.eq
-      if (result i64) ;; label = @2
-        i64.const 1
-      else
-        i64.const 0
-      end
-      i64.const 0
-      i64.eq
-      i32.eqz
-      if (result i64) ;; label = @2
-        local.get 9
-      else
-        local.get 1
-        local.get 9
-        i64.lt_u
-        if (result i64) ;; label = @3
-          local.get 9
-        else
-          local.get 9
-          local.get 1
-          i64.eq
-          if (result i64) ;; label = @4
-            i64.const 1
-          else
-            i64.const 0
-          end
-          i64.const 1
-          i64.eq
-          if (result i64) ;; label = @4
-            i64.const 1
-          else
-            i64.const 0
-          end
-          i64.const 0
-          i64.eq
-          i32.eqz
-          if (result i64) ;; label = @4
-            local.get 1
-          else
-            local.get 1
-          end
-        end
-      end
-    else
-      local.get 3
-      i64.const 0
-      i64.eq
-      if (result i64) ;; label = @2
-        i64.const 1
-      else
-        i64.const 0
-      end
-      i64.const 1
-      i64.eq
-      if (result i64) ;; label = @2
-        i64.const 1
-      else
-        i64.const 0
-      end
-      i64.const 0
-      i64.eq
-      i32.eqz
-      if (result i64) ;; label = @2
-        local.get 1
-      else
-        local.get 9
-        local.get 4
-        i64.lt_u
-        if (result i64) ;; label = @3
-          local.get 1
-        else
-          local.get 9
-          local.get 4
-          i64.eq
-          if (result i64) ;; label = @4
-            i64.const 1
-          else
-            i64.const 0
-          end
-          i64.const 1
-          i64.eq
-          if (result i64) ;; label = @4
-            i64.const 1
-          else
-            i64.const 0
-          end
-          i64.const 0
-          i64.eq
-          i32.eqz
-          if (result i64) ;; label = @4
-            local.get 1
-          else
-            local.get 1
-          end
-        end
-      end
-    end
-    local.set 12
-    local.get 8
-    i64.const 0
-    i64.eq
-    if (result i64) ;; label = @1
-      i64.const 1
-    else
-      i64.const 0
-    end
-    i64.const 1
-    i64.eq
-    if (result i64) ;; label = @1
-      i64.const 1
-    else
-      i64.const 0
-    end
-    i64.const 0
-    i64.eq
-    i32.eqz
-    if (result i64) ;; label = @1
-      local.get 0
-      i64.const 0
-      i64.eq
-      if (result i64) ;; label = @2
-        i64.const 1
-      else
-        i64.const 0
-      end
-      i64.const 1
-      i64.eq
-      if (result i64) ;; label = @2
-        i64.const 1
-      else
-        i64.const 0
-      end
-      i64.const 0
-      i64.eq
-      i32.eqz
-      if (result i64) ;; label = @2
+        local.set 12
         local.get 10
-      else
-        local.get 1
-        local.get 9
-        i64.lt_u
-        if (result i64) ;; label = @3
-          local.get 10
-        else
-          local.get 9
-          local.get 1
-          i64.eq
-          if (result i64) ;; label = @4
-            i64.const 1
-          else
-            i64.const 0
-          end
-          i64.const 1
-          i64.eq
-          if (result i64) ;; label = @4
-            i64.const 1
-          else
-            i64.const 0
-          end
-          i64.const 0
-          i64.eq
-          i32.eqz
-          if (result i64) ;; label = @4
-            local.get 2
-            local.get 10
-            i64.add
-          else
-            local.get 2
-          end
-        end
-      end
-    else
-      local.get 3
-      i64.const 0
-      i64.eq
-      if (result i64) ;; label = @2
-        i64.const 1
-      else
-        i64.const 0
-      end
-      i64.const 1
-      i64.eq
-      if (result i64) ;; label = @2
-        i64.const 1
-      else
-        i64.const 0
-      end
-      i64.const 0
-      i64.eq
-      i32.eqz
-      if (result i64) ;; label = @2
-        local.get 2
-      else
-        local.get 9
-        local.get 4
-        i64.lt_u
-        if (result i64) ;; label = @3
-          local.get 2
-        else
-          local.get 9
-          local.get 4
-          i64.eq
-          if (result i64) ;; label = @4
-            i64.const 1
-          else
-            i64.const 0
-          end
-          i64.const 1
-          i64.eq
-          if (result i64) ;; label = @4
-            i64.const 1
-          else
-            i64.const 0
-          end
-          i64.const 0
-          i64.eq
-          i32.eqz
-          if (result i64) ;; label = @4
-            local.get 2
-          else
-            local.get 2
-          end
-        end
-      end
-    end
-    local.set 13
-    local.get 8
-    i64.const 0
-    i64.eq
-    if (result i64) ;; label = @1
-      i64.const 1
-    else
-      i64.const 0
-    end
-    i64.const 1
-    i64.eq
-    if (result i64) ;; label = @1
-      i64.const 1
-    else
-      i64.const 0
-    end
-    i64.const 0
-    i64.eq
-    i32.eqz
-    if (result i64) ;; label = @1
-      local.get 0
-      i64.const 0
-      i64.eq
-      if (result i64) ;; label = @2
-        i64.const 1
-      else
-        i64.const 0
-      end
-      i64.const 1
-      i64.eq
-      if (result i64) ;; label = @2
-        i64.const 1
-      else
-        i64.const 0
-      end
-      i64.const 0
-      i64.eq
-      i32.eqz
-      if (result i64) ;; label = @2
+        local.set 13
         local.get 3
-      else
-        local.get 1
-        local.get 9
-        i64.lt_u
-        if (result i64) ;; label = @3
-          local.get 3
-        else
-          local.get 9
-          local.get 1
-          i64.eq
-          if (result i64) ;; label = @4
-            i64.const 1
-          else
-            i64.const 0
-          end
-          i64.const 1
-          i64.eq
-          if (result i64) ;; label = @4
-            i64.const 1
-          else
-            i64.const 0
-          end
-          i64.const 0
-          i64.eq
-          i32.eqz
-          if (result i64) ;; label = @4
-            local.get 3
-          else
-            local.get 3
-          end
-        end
-      end
-    else
-      local.get 3
-      i64.const 0
-      i64.eq
-      if (result i64) ;; label = @2
-        i64.const 1
-      else
-        i64.const 0
-      end
-      i64.const 1
-      i64.eq
-      if (result i64) ;; label = @2
-        i64.const 1
-      else
-        i64.const 0
-      end
-      i64.const 0
-      i64.eq
-      i32.eqz
-      if (result i64) ;; label = @2
-        i64.const 1
-      else
-        local.get 9
+        local.set 14
         local.get 4
-        i64.lt_u
-        if (result i64) ;; label = @3
-          local.get 3
-        else
-          local.get 9
-          local.get 4
-          i64.eq
-          if (result i64) ;; label = @4
-            i64.const 1
-          else
-            i64.const 0
-          end
-          i64.const 1
-          i64.eq
-          if (result i64) ;; label = @4
-            i64.const 1
-          else
-            i64.const 0
-          end
-          i64.const 0
-          i64.eq
-          i32.eqz
-          if (result i64) ;; label = @4
-            local.get 3
-          else
-            local.get 3
-          end
-        end
-      end
-    end
-    local.set 14
-    local.get 8
-    i64.const 0
-    i64.eq
-    if (result i64) ;; label = @1
-      i64.const 1
-    else
-      i64.const 0
-    end
-    i64.const 1
-    i64.eq
-    if (result i64) ;; label = @1
-      i64.const 1
-    else
-      i64.const 0
-    end
-    i64.const 0
-    i64.eq
-    i32.eqz
-    if (result i64) ;; label = @1
-      local.get 0
-      i64.const 0
-      i64.eq
-      if (result i64) ;; label = @2
-        i64.const 1
-      else
-        i64.const 0
-      end
-      i64.const 1
-      i64.eq
-      if (result i64) ;; label = @2
-        i64.const 1
-      else
-        i64.const 0
-      end
-      i64.const 0
-      i64.eq
-      i32.eqz
-      if (result i64) ;; label = @2
-        local.get 4
-      else
-        local.get 1
-        local.get 9
-        i64.lt_u
-        if (result i64) ;; label = @3
-          local.get 4
-        else
-          local.get 9
-          local.get 1
-          i64.eq
-          if (result i64) ;; label = @4
-            i64.const 1
-          else
-            i64.const 0
-          end
-          i64.const 1
-          i64.eq
-          if (result i64) ;; label = @4
-            i64.const 1
-          else
-            i64.const 0
-          end
-          i64.const 0
-          i64.eq
-          i32.eqz
-          if (result i64) ;; label = @4
-            local.get 4
-          else
-            local.get 4
-          end
-        end
-      end
-    else
-      local.get 3
-      i64.const 0
-      i64.eq
-      if (result i64) ;; label = @2
-        i64.const 1
-      else
-        i64.const 0
-      end
-      i64.const 1
-      i64.eq
-      if (result i64) ;; label = @2
-        i64.const 1
-      else
-        i64.const 0
-      end
-      i64.const 0
-      i64.eq
-      i32.eqz
-      if (result i64) ;; label = @2
-        local.get 9
-      else
-        local.get 9
-        local.get 4
-        i64.lt_u
-        if (result i64) ;; label = @3
-          local.get 9
-        else
-          local.get 9
-          local.get 4
-          i64.eq
-          if (result i64) ;; label = @4
-            i64.const 1
-          else
-            i64.const 0
-          end
-          i64.const 1
-          i64.eq
-          if (result i64) ;; label = @4
-            i64.const 1
-          else
-            i64.const 0
-          end
-          i64.const 0
-          i64.eq
-          i32.eqz
-          if (result i64) ;; label = @4
-            local.get 4
-          else
-            local.get 4
-          end
-        end
-      end
-    end
-    local.set 15
-    local.get 8
-    i64.const 0
-    i64.eq
-    if (result i64) ;; label = @1
-      i64.const 1
-    else
-      i64.const 0
-    end
-    i64.const 1
-    i64.eq
-    if (result i64) ;; label = @1
-      i64.const 1
-    else
-      i64.const 0
-    end
-    i64.const 0
-    i64.eq
-    i32.eqz
-    if (result i64) ;; label = @1
-      local.get 0
-      i64.const 0
-      i64.eq
-      if (result i64) ;; label = @2
-        i64.const 1
-      else
-        i64.const 0
-      end
-      i64.const 1
-      i64.eq
-      if (result i64) ;; label = @2
-        i64.const 1
-      else
-        i64.const 0
-      end
-      i64.const 0
-      i64.eq
-      i32.eqz
-      if (result i64) ;; label = @2
+        local.set 15
         local.get 5
+        local.set 16
       else
         local.get 1
         local.get 9
         i64.lt_u
-        if (result i64) ;; label = @3
+        if ;; label = @3
+          local.get 0
+          local.set 11
+          local.get 9
+          local.set 12
+          local.get 10
+          local.set 13
+          local.get 3
+          local.set 14
+          local.get 4
+          local.set 15
           local.get 5
+          local.set 16
         else
           local.get 9
           local.get 1
@@ -784,10 +174,34 @@
           i64.const 0
           i64.eq
           i32.eqz
-          if (result i64) ;; label = @4
+          if ;; label = @4
+            local.get 0
+            local.set 11
+            local.get 1
+            local.set 12
+            local.get 2
+            local.get 10
+            i64.add
+            local.set 13
+            local.get 3
+            local.set 14
+            local.get 4
+            local.set 15
             local.get 5
+            local.set 16
           else
+            local.get 0
+            local.set 11
+            local.get 1
+            local.set 12
+            local.get 2
+            local.set 13
+            local.get 3
+            local.set 14
+            local.get 4
+            local.set 15
             local.get 5
+            local.set 16
           end
         end
       end
@@ -810,14 +224,36 @@
       i64.const 0
       i64.eq
       i32.eqz
-      if (result i64) ;; label = @2
+      if ;; label = @2
+        local.get 0
+        local.set 11
+        local.get 1
+        local.set 12
+        local.get 2
+        local.set 13
+        i64.const 1
+        local.set 14
+        local.get 9
+        local.set 15
         local.get 10
+        local.set 16
       else
         local.get 9
         local.get 4
         i64.lt_u
-        if (result i64) ;; label = @3
+        if ;; label = @3
+          local.get 0
+          local.set 11
+          local.get 1
+          local.set 12
+          local.get 2
+          local.set 13
+          local.get 3
+          local.set 14
+          local.get 9
+          local.set 15
           local.get 10
+          local.set 16
         else
           local.get 9
           local.get 4
@@ -837,17 +273,38 @@
           i64.const 0
           i64.eq
           i32.eqz
-          if (result i64) ;; label = @4
+          if ;; label = @4
+            local.get 0
+            local.set 11
+            local.get 1
+            local.set 12
+            local.get 2
+            local.set 13
+            local.get 3
+            local.set 14
+            local.get 4
+            local.set 15
             local.get 5
             local.get 10
             i64.add
+            local.set 16
           else
+            local.get 0
+            local.set 11
+            local.get 1
+            local.set 12
+            local.get 2
+            local.set 13
+            local.get 3
+            local.set 14
+            local.get 4
+            local.set 15
             local.get 5
+            local.set 16
           end
         end
       end
     end
-    local.set 16
     local.get 11
     local.get 12
     local.get 13
