@@ -4580,12 +4580,20 @@ pages, and leaves every byte below the old heap top unchanged.
 The focused proof build completed 3,009 jobs without a warning.  A repository
 scan found no `sorry`, admitted theorem, new axiom, or diagnostic trace in the
 CLOB cancel proof directory.  The cancel artifact check compared regenerated
-WASM and WAT with the checked proof inputs and rebuilt the theorem; the
-aggregate Talos and complete execution gates remain.
+WASM and WAT with the checked proof inputs and rebuilt the theorem; the later
+aggregate Talos and complete execution gates also passed.
 
 - [x] Prove the inline allocator and six header stores.
 - [x] Prove the prefix and suffix copy loops.
 - [x] Prove exact `eraseIdx` contents and output ownership.
 - [x] Combine the found and missing branches in `cancel_correct`.
 - [x] Run `tools/check-talos-clob-cancel.sh`.
-- [ ] Run the aggregate proof and complete execution gates.
+- [x] Run the aggregate proof and complete execution gates.
+
+## 2026-07-13: Quote artifact repair and phase gates
+
+The statement-level branch materialization introduced for matched structure values also changed the CLOB quote artifact.  Its six `quoteStep` result fields now receive values inside one selected statement branch instead of projecting six independently guarded expressions.  The first aggregate artifact check found this omitted Phase 2 consequence, and the transactional `--update` command restored the checked inputs when the existing proof did not accept the regenerated program.
+
+The repaired `Project.ClobQuote.Step.func9_spec` follows the selected statement branch and retains the same source-level result.  The focused quote proof and specification build pass, and `tools/check-talos-clob-quote.sh` compares the regenerated WASM and WAT with the checked inputs before rebuilding them.  The WASM artifact decreased from 2,853 bytes to 2,047 bytes because the generated function no longer repeats the branch condition for each field.
+
+The aggregate `tools/check-talos.sh` gate compared all fourteen artifacts and completed 3,048 build jobs without an artifact mismatch or proof error.  The build reports existing linter warnings in older handwritten proofs, which remain Phase 6 work.  `node test/run_all.js` passed 114 report-classification cases, 10 ownership-report cases, the JavaScript execution guard, 791 accepted cases, 45 rejections, 14 traps, four matched-value IR cases, one WAT scan, seven leak-accounting cases, 40 reference-counting cases, 70 byte-array allocation cases, 23 ASCII-string cases, four integer-map cases, 48 JSON cases, 33 WASI program cases, 63 self-emitted LEB128 cases, 309 standard-Lean comparisons, 62 IR comparisons, and 56 final cases.
