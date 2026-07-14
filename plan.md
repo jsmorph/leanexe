@@ -12,9 +12,9 @@ LeanExe runtime intrinsics require a separate semantic statement.  Ordinary Lean
 
 | Area | Established state | Open issue |
 |------|-------------------|------------|
-| Accepted language | First-order pure programs over scalars, byte arrays, fixed-width arrays, structures, tagged values, internal recursive values, supported loops, and selected specialized helpers. | Source-level `LeanExe.Runtime.release` has a documented ownership precondition but no compiler check or explicit source-level runtime semantics. |
+| Accepted language | First-order pure programs over scalars, byte arrays, fixed-width arrays, structures, tagged values, internal recursive values, supported loops, and selected specialized helpers.  Runtime intrinsics have separate ordinary-Lean and generated-WASM semantics, and every accepted explicit release has a compiler-produced direct-handoff judgment. | Branch-dependent roots, conditionally owned arrays, consuming parameters, structure fields, and loop-carried release roots remain deferred until a focused ownership analysis proves them. |
 | Compiler | Checked-environment extraction, a typed first-order IR with an interpreter, ownership summaries, a reference-counted heap, and one structured WASM instruction stream serialized as binary or WAT. | Flattening some matched multi-slot values repeats their computation.  CLOB `cancel` scans for the same identifier three times. |
-| Execution tests | `node test/run_all.js` passes 784 accepted cases, 34 rejections, 13 traps, 301 standard-Lean comparisons, 58 IR comparisons, and the ABI, WASI, allocation, ownership, and fuzz suites. | The full run is verbose and expensive.  The IR interpreter does not model heap allocation, release, or runtime counters. |
+| Execution tests | `node test/run_all.js` passes 781 accepted cases, 45 rejections, 13 traps, 301 standard-Lean comparisons, 58 IR comparisons, and the ABI, WASI, allocation, ownership, and fuzz suites. | The full run is verbose and expensive.  The IR interpreter does not model heap allocation, release, or runtime counters. |
 | Artifact proofs | Fourteen byte-pinned Talos cases pass, including the self-compiled LEB128 encoder, CLOB quote, and the not-found branch of CLOB cancel. | The found branch of `cancel`, followed by `postOnly`, `limit`, `market`, and `depth`, remains unproved. |
 | Documentation and tools | The repository overview, developer guide, manual, specification, proof inventory, verification guide, plan, and journal have distinct responsibilities and agree on the fourteen proof cases.  Lean and Talos use pinned revisions, and Wasmtime defaults to 44.0.0. | Node and `wasm-tools` remain unpinned, Wasmtime downloads lack checksum verification, CLI failures lack one exit-status scheme, and Lean reports unused proof arguments. |
 
@@ -50,7 +50,7 @@ Existing explicit-release examples need an audit against this rule.  A user-faci
 - [x] Add exact rejection tests and Wasmtime counter tests; use Talos runtime theorems for the emitted recursive-release behavior.
 - [x] Update the specification, manual, repository overview, developer guide, and journal in the same change.
 
-This phase ends when every accepted explicit release has a compiler-produced ownership justification and every other shape rejects.  The ordinary execution suite, ownership-report tests, WAT round trip, and all artifact checks must pass.  Programs without runtime intrinsics retain their ordinary Lean comparison claim, while intrinsic-using programs state the extended semantic boundary.
+This phase completed on 2026-07-13.  Every accepted explicit release has a compiler-produced ownership justification, and unsupported shapes reject with source context.  The complete execution suite, ownership-report tests, nine-entry WAT round trip, and all fourteen artifact checks pass; programs without runtime intrinsics retain their ordinary Lean comparison claim, while intrinsic-using programs state the extended semantic boundary.
 
 ### 2. Evaluate Matched Values Once
 
