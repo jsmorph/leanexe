@@ -1,4 +1,4 @@
-import Project.ClobMatchFuel.Program
+import Project.ClobMatchFuel.FindBestWrapper
 
 /-!
 # The `matchFuel` theorem
