@@ -54,17 +54,21 @@ Together the counter artifacts cover the runtime end to end: bump allocation, fr
 
 ## Check Scripts
 
-Each per-case script (`tools/check-talos-<case>.sh`) wraps [`tools/check-talos-case.sh`](../../tools/check-talos-case.sh), which performs the artifact-integrity check.  It builds the Lean source module and the `lean-wasm` executable, compiles the selected source entry to a temporary WASM file, renders temporary WAT with `wasm-tools print`, compares both temporary files against the checked-in proof inputs, and rebuilds the relevant `Spec.lean` file.  The script stops at the first mismatch or failed proof.  `tools/check-talos.sh` runs every case and then builds the whole proof library, including the runtime pins.
+Each per-case script (`tools/check-talos-<case>.sh`) wraps [`tools/check-talos-case.sh`](../../tools/check-talos-case.sh), which performs the artifact-integrity check.  It builds the Lean source module and the `lean-wasm` executable, compiles the selected source entry to a temporary WASM file, renders temporary WAT with `wasm-tools print`, compares both temporary files against the checked-in proof inputs, and rebuilds the relevant `Spec.lean` file.  The `--artifacts-only` mode stops after the two byte comparisons and prints one result line for the case.
+
+`tools/check-talos.sh` invokes all sixteen cases in artifact-only mode before checking proof outputs.  Its default mode then asks Lake to verify that the complete `Project` target is current, using `--no-build` so a cold dependency build cannot obscure the artifact results.  `tools/setup-talos.sh` owns that build and must run separately when dependencies or proof outputs are missing or stale.
 
 When the compiler output changes intentionally, run the corresponding check script with `--update`.  Update mode replaces the proof inputs with fresh compiler output, regenerates the matching `Program.lean` through Talos's verifier emitter, and rebuilds the proof.  A proof failure after an update means the `Spec.lean` file needs repair before committing.  Update mode expects the verifier emitter binary at `lean/.lake/packages/CodeLib/verifier/.lake/build/bin/verifier`.
 
 ## Requirements
 
-The proof and compiler workspaces pin Lean 4.31.0 in their respective `lean-toolchain` files.  The proof Lake manifest also pins Talos and its transitive dependencies.  A cold `lake build Project` fetches those dependencies and compiles thousands of Lean jobs, so initialize the workspace before relying on a per-case check for quick feedback.
+The proof and compiler workspaces pin Lean 4.31.0 in their respective `lean-toolchain` files.  The proof Lake manifest also pins Talos and its transitive dependencies.  Run `tools/setup-talos.sh` before the aggregate gate after a clone, dependency change, proof edit, or cache deletion.
 
 The check scripts require `wasm-tools` 1.251.0 to render WAT from regenerated WASM.  They look for `WASM_TOOLS`, then `wasm-tools` in `PATH`, then `$HOME/.cargo/bin/wasm-tools`, and reject another version before generating an artifact.  [Developing LeanExe](../../DEVELOPING.md) gives the complete setup, verifier build command, environment variables, and failure diagnostics.
 
 ```sh
+tools/check-talos.sh --artifacts-only
+tools/setup-talos.sh
 tools/check-talos.sh
 ```
 

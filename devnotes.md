@@ -4761,3 +4761,16 @@ The cached aarch64 CLI and C API archives matched the official digests `294cae92
 - [x] Verify cached and downloaded archives before extraction.
 - [x] Reject unchecked version and platform overrides.
 - [x] Test corrupt-cache replacement in an isolated local fixture.
+
+## 2026-07-15: Separate Talos Setup and Gate Output
+
+The aggregate Talos driver now checks all sixteen WASM and WAT pairs before it consults the proof workspace.  Each case runs in a new `--artifacts-only` mode that suppresses successful root Lake output and prints one matched-case record.  The first byte mismatch therefore stops the gate before dependency builds or proof warnings can obscure its case name and file paths.
+
+The default aggregate then runs `lake --no-build` for `Project`, with informational and warning output suppressed.  A missing or stale target produces a short Lake error list and an instruction to run `tools/setup-talos.sh`.  That setup command owns the potentially large dependency and proof build, while ordinary per-case checks retain their focused proof build and transactional `--update` behavior.
+
+Bash syntax checks, argument-conflict checks, and `git diff --check` passed.  The constrained aggregate artifact test matched `gcd` and stopped at the known Lean 4.31 `assoc_list` WASM difference at byte 222.  A constrained no-build probe reported four stale proof targets in 1.3 seconds without compiling them; no hard Talos proof ran, and the current `postOnly` work remained unchanged.
+
+- [x] Add artifact-only per-case checks.
+- [x] Compare every aggregate artifact before proof output.
+- [x] Give cold and stale proof builds a separate command.
+- [x] Preserve per-case update rollback and proof validation.

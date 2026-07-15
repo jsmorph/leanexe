@@ -4,7 +4,7 @@ This guide covers a new verified program: a Lean function, its compiled WASM art
 
 The pipeline has three trusted-base components: the Lean kernel, the Talos WASM model, and the Talos decoder.  The compiler is not trusted.  Each verified program is translation validation: the theorem is about the decoded instruction stream, and a byte comparison pins that stream to the artifact the compiler ships.
 
-Complete the proof-workspace setup in [Developing LeanExe](DEVELOPING.md) before adding a case.  The compiler and proof workspaces use Lean 4.31.0, while the proof workspace adds pinned Talos dependencies.  A cold proof build compiles thousands of jobs, and an artifact update also requires the separately built Talos verifier emitter.
+Complete the proof-workspace setup in [Developing LeanExe](DEVELOPING.md) before adding a case.  The compiler and proof workspaces use Lean 4.31.0, while the proof workspace adds pinned Talos dependencies.  `tools/setup-talos.sh` owns the potentially large build, and an artifact update also requires the separately built Talos verifier emitter.
 
 ## 1. Write the Function
 
@@ -23,7 +23,7 @@ A case named `fold_sum` needs four registrations, each one line or one small fil
 
 1. `proofs/talos-gcd/rust/fold_sum/Cargo.toml`: a four-line package stub, and the package name added to the members list in `proofs/talos-gcd/rust/Cargo.toml`.
 2. `tools/check-talos-fold-sum.sh`: a wrapper naming the case, module, entry, spec module, and program path.  Copy an existing wrapper and edit the five arguments.
-3. A line in `tools/check-talos.sh` invoking the new wrapper.
+3. A line in the `case_scripts` array in `tools/check-talos.sh` naming the new wrapper.
 4. An import of the future spec in `proofs/talos-gcd/lean/Project.lean`, and a stub `Spec.lean` that imports the (not yet generated) `Program.lean`.
 
 Then emit the artifact and its model:
@@ -84,7 +84,8 @@ Iterate against the goal states: put `trace_state` before an unfinished step, bu
 
 ```sh
 tools/check-talos-fold-sum.sh   # byte comparison + proof build
-tools/check-talos.sh            # all cases + the whole proof library
+tools/setup-talos.sh            # build stale proof outputs
+tools/check-talos.sh            # all artifacts + proof freshness
 node test/run_all.js            # differential execution suite
 ```
 
