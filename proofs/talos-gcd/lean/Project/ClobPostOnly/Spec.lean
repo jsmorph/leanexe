@@ -9,7 +9,8 @@ import Project.ClobPostOnly.Append
 # The `postOnly` theorem
 
 The generated artifact and its source model are pinned before the instruction
-proof begins.  The primary theorem will cover invalid, crossing, and appended
-outcomes for every represented input.  Each branch will state exact ownership,
-allocator counters, returned arrays, and preserved memory.
+proof begins.  Three input-generic theorems cover invalid, crossing, and
+appended outcomes for every represented input under their stated bounds.  Each
+branch states exact ownership, allocator counters, returned arrays, and
+preserved memory.
 -/
