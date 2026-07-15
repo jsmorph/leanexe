@@ -25,7 +25,7 @@ def sumTake (bytes : List UInt8) (k : Nat) : Nat :=
 theorem sumTake_succ (bytes : List UInt8) (k : Nat) (h : k < bytes.length) :
     sumTake bytes (k + 1) = sumTake bytes k + bytes[k]!.toNat := by
   unfold sumTake
-  rw [List.take_succ, List.getElem?_eq_getElem h]
+  rw [List.take_add_one, List.getElem?_eq_getElem h]
   rw [List.foldl_append]
   simp [List.getElem?_eq_getElem h]
 
