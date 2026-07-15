@@ -4862,3 +4862,14 @@ Constrained warning-failing builds complete `AppendOrderCopy` in 2.3 seconds, `A
 The new `clob_match_fuel` case follows the existing verifier layout.  It adds one empty Rust crate manifest, compiler-produced WASM and WAT inputs, the generated 3,871-line `Project.ClobMatchFuel.Program`, a handwritten specification shell, and a focused check script.  The shell compiles but contains no semantic theorem, so the documentation records sixteen completed specifications and one in-progress case.
 
 The aggregate artifact gate matched all sixteen prior pairs before its proof-freshness check reported six stale modules.  Four are unchanged modules with recorded no-diagnostic timeouts: `Validate.Spec`, `SharedPair.Spec`, `LebU32.Iter`, and `LebU32.NegIter`; the other two are bounded CLOB dependencies, `ClobQuote.Step` and `ClobFindBest.Helpers`.  The unchanged timeout cases require proof division before another build, while the bounded CLOB dependencies can rebuild as later targets require them.
+
+## 2026-07-15: `matchFuel` Source Model
+
+The matching exports share a four-word trade layout, so `Project.Clob` now defines `TradeL`, `TradesAt`, and flat-word introduction and elimination theorems beside the existing order representation.  `Project.ClobFindBest.Model` exposes the bound on every successful search result, which the matching branches need before reading or replacing an order.  `Project.ClobMatchFuel.Model` follows the source recursion over list-backed books and trades while preserving `UInt64` arithmetic.
+
+The model target passes a warning-failing constrained build in 2.2 seconds after its dependencies were current.  The shared additions also passed warning-failing builds when Lake rebuilt `Project.Clob` and `Project.ClobFindBest.Model`.  No generated program changed.
+
+- [x] Define the shared trade value and memory representation.
+- [x] Prove that a successful `findBestL` result is in bounds.
+- [x] Define exact list-level book, trade, and remaining-quantity transitions.
+- [ ] Prove the generated scalar and search helpers for the new artifact.
