@@ -4722,7 +4722,7 @@ The WAT round-trip gate passed all nine entries.  Compiler-only comparison again
 - [x] Support Lean 4.31 recursion helpers and release validation.
 - [x] Constrain every Lean process by memory, CPU, I/O priority, and timeout.
 - [x] Run the complete root execution and WAT gates.
-- [ ] Regenerate and prove the changed `assoc_list` artifact after proof work resumes.
+- [x] Regenerate and prove the changed `assoc_list` artifact after proof work resumes.
 
 ## 2026-07-15: CLI Failure Interface
 
@@ -4774,3 +4774,16 @@ Bash syntax checks, argument-conflict checks, and `git diff --check` passed.  Th
 - [x] Compare every aggregate artifact before proof output.
 - [x] Give cold and stale proof builds a separate command.
 - [x] Preserve per-case update rollback and proof validation.
+
+## 2026-07-15: Lean 4.31 `assoc_list` Artifact
+
+The refreshed `assoc_list` artifact removes one eight-instruction Boolean normalization after the identifier comparison.  The deleted sequence compared an existing zero-or-one result with zero, inverted that comparison, rebuilt zero or one through a conditional, and then compared the rebuilt value with one.  Lean 4.31 leaves the original zero-or-one result in place for the final comparison.
+
+The WASM file shrank from 3,552 to 3,539 bytes, and the WAT and generated Talos model each lost the corresponding eight instructions.  The handwritten `Project.AssocList.Spec` file required no edit and rebuilt successfully after transactional regeneration.  The refreshed WASM, WAT, and model SHA-256 hashes are `6b356640062b5977acaf5459a6d3f8c3f1184c1a3e442b963c54e7a1d3a5a1de`, `231aa47360d41c24019b4447391a2d3d72f3c9ee11d6cc450238cf0e41ad48cd`, and `b5375bb25bec502a9d3291df2fea8f2b691f510df3f914e08582fedd581637a0`.
+
+The constrained per-case update completed 3,006 Lake jobs in 18 seconds.  The constrained aggregate artifact-only gate then matched all sixteen WASM and WAT pairs in eight seconds.  Both commands ran with the repository memory, CPU, priority, and timeout limits, and neither command changed the in-progress `postOnly` proof files.
+
+- [x] Review the emitted instruction difference.
+- [x] Regenerate the checked WASM, WAT, and Talos model.
+- [x] Rebuild the existing input-generic theorem.
+- [x] Match all sixteen artifacts against Lean 4.31 output.
