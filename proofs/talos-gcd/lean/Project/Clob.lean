@@ -66,6 +66,44 @@ def FreshFixedArrayAt (st : Store Unit) (ptr capacity stride : UInt64) : Prop :=
   st.mem.read64 ((ptr - 16).toUInt32) = stride ∧
   st.mem.read64 ((ptr - 8).toUInt32) = 0
 
+theorem FreshFixedArrayAt.write64_data {st : Store Unit}
+    {ptr capacity stride : UInt64} {ad : UInt32} {value : UInt64}
+    (hFresh : FreshFixedArrayAt st ptr capacity stride)
+    (hHeader : 48 ≤ ptr.toNat) (hData : ptr.toNat ≤ ad.toNat) :
+    FreshFixedArrayAt { st with mem := st.mem.write64 ad value }
+      ptr capacity stride := by
+  have hAd32 : ad.toNat < 4294967296 := ad.toNat_lt_size
+  have hPtr32 : ptr.toNat < 4294967296 := hData.trans_lt hAd32
+  have hDisjoint (offset : UInt64) (hOffset : offset.toNat ≤ ptr.toNat)
+      (hOffset8 : 8 ≤ offset.toNat) :
+      ((ptr - offset).toUInt32).toNat + 8 ≤ ad.toNat := by
+    rw [Project.Common.toUInt32_toNat,
+      Project.Common.toNat_sub_le ptr offset hOffset,
+      Nat.mod_eq_of_lt (by omega)]
+    omega
+  obtain ⟨h48, h40, h32, h24, h16, h8⟩ := hFresh
+  unfold FreshFixedArrayAt
+  dsimp only
+  refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩
+  · rw [Project.Common.read64_write64_ne _ _ _ _
+      (Or.inl (hDisjoint 48 (by change 48 ≤ ptr.toNat; omega) (by decide)))]
+    exact h48
+  · rw [Project.Common.read64_write64_ne _ _ _ _
+      (Or.inl (hDisjoint 40 (by change 40 ≤ ptr.toNat; omega) (by decide)))]
+    exact h40
+  · rw [Project.Common.read64_write64_ne _ _ _ _
+      (Or.inl (hDisjoint 32 (by change 32 ≤ ptr.toNat; omega) (by decide)))]
+    exact h32
+  · rw [Project.Common.read64_write64_ne _ _ _ _
+      (Or.inl (hDisjoint 24 (by change 24 ≤ ptr.toNat; omega) (by decide)))]
+    exact h24
+  · rw [Project.Common.read64_write64_ne _ _ _ _
+      (Or.inl (hDisjoint 16 (by change 16 ≤ ptr.toNat; omega) (by decide)))]
+    exact h16
+  · rw [Project.Common.read64_write64_ne _ _ _ _
+      (Or.inl (hDisjoint 8 (by change 8 ≤ ptr.toNat; omega) (by decide)))]
+    exact h8
+
 theorem OrdersAt.frame {st st' : Store Unit} {ptr g0 : UInt64}
     {os : List OrderL}
     (hInput32 : ptr.toNat + (os.length * 5 + 1) * 8 < 4294967296)
