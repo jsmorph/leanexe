@@ -711,20 +711,11 @@ theorem cancel_found
                   · simp only [cCopyFrame, hkNext]
                   · rw [Mem.write64_pages, hpg4]
                   · exact hgl4
-                  · obtain ⟨hh0, hh8, hh16, hh24, hh32, hh40⟩ := hfresh4
-                    refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩ <;>
-                      rw [read64_write64_ne _ _ _ _
-                        (by
-                          simp only [toUInt32_eq_ofNat, hsub48, hsub40,
-                            hsub32, hsub24, hsub16, hsub8,
-                            toUInt32_ofNat_mod_toNat]
-                          omega)]
-                    · exact hh0
-                    · exact hh8
-                    · exact hh16
-                    · exact hh24
-                    · exact hh32
-                    · exact hh40
+                  · refine FreshFixedArrayAt.write64_data hfresh4
+                      (by rw [hnewNat]; omega) ?_
+                    rw [hnewNat, toUInt32_ofNat_mod_toNat,
+                      Nat.mod_eq_of_lt hdstLt]
+                    omega
                   · rw [read64_write64_ne _ _ _ _
                       (by
                         simp only [toUInt32_eq_ofNat, hnewNat,
@@ -805,19 +796,11 @@ theorem cancel_found
               · simp only [cCopyFrame, hkNext]
               · rw [Mem.write64_pages, hpg]
               · exact hgl
-              · obtain ⟨hh0, hh8, hh16, hh24, hh32, hh40⟩ := hfresh
-                refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩ <;>
-                  rw [read64_write64_ne _ _ _ _
-                    (by
-                      simp only [toUInt32_eq_ofNat, hsub48, hsub40, hsub32,
-                        hsub24, hsub16, hsub8, toUInt32_ofNat_mod_toNat]
-                      omega)]
-                · exact hh0
-                · exact hh8
-                · exact hh16
-                · exact hh24
-                · exact hh32
-                · exact hh40
+              · refine FreshFixedArrayAt.write64_data hfresh
+                  (by rw [hnewNat]; omega) ?_
+                rw [hnewNat, toUInt32_ofNat_mod_toNat,
+                  Nat.mod_eq_of_lt hdstLt]
+                omega
               · rw [read64_write64_ne _ _ _ _
                   (by
                     simp only [toUInt32_eq_ofNat, hnewNat,
