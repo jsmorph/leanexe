@@ -4335,6 +4335,16 @@ def arrayProductElementRead : UInt64 :=
   let pair := swapped[1]!
   pair.1 * (10 : UInt64) + pair.2
 
+structure RecArrayState where
+  values : Array UInt64
+  marker : UInt64
+
+def recArrayStateFuel : Nat → RecArrayState → RecArrayState
+  | 0, state => state
+  | fuel + 1, state =>
+      recArrayStateFuel fuel
+        { values := state.values.push state.marker, marker := state.marker + 1 }
+
 def recLetFuel : Nat → UInt64 → UInt64 → UInt64
   | 0, left, right => combine left right
   | fuel + 1, left, right =>
