@@ -29,7 +29,7 @@ node test/run_all.js
 | `LeanExe/Wasm` | WASM module model, binary encoder, WAT printer, and interpreter support used by tests. |
 | `LeanExe/Examples` | Example Lean programs that exercise the supported subset. |
 | `test` | Node and Lean tests that compare Lean execution with generated WASM behavior. |
-| `proofs/talos-gcd` | Talos proof workspace: sixteen completed artifact proofs, the runtime lemma library, and the generic teardown theorem. |
+| `proofs/talos-gcd` | Talos proof workspace: sixteen completed artifact proofs, one in-progress CLOB proof, the runtime lemma library, and the generic teardown theorem. |
 | `DEVELOPING.md` | Developer setup, diagnostics, test gates, proof artifacts, and troubleshooting. |
 | `verifying.md` | End-to-end recipe for verifying a new program. |
 | `manual.md` | Practical guide to writing Lean source that LeanExe can compile. |

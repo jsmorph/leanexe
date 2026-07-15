@@ -4854,3 +4854,11 @@ Constrained warning-failing builds complete `AppendOrderCopy` in 2.3 seconds, `A
 - [x] Match each named instruction slice to the generated nested branch.
 - [x] Build `Project.ClobPostOnly.Append` and `Project.ClobPostOnly.Spec` with `--wfail`.
 - [ ] Compare the completed cancel and append copy invariants with the next matching update before generalizing a whole-loop theorem.
+
+## 2026-07-15: `matchFuel` Artifact Registration
+
+`matchFuel` is not reachable from the `postOnly` export, so its proof requires a separate byte-pinned artifact.  The accepted export has nine public `i64` parameters for fuel, the taker, two array pointers, and remaining quantity, and returns three `i64` values for the resulting book, trades, and quantity.  The temporary compiler artifact contains 6,881 WASM bytes, 95,874 WAT bytes, nineteen functions, and an exported body spanning roughly 1,850 WAT lines.
+
+The new `clob_match_fuel` case follows the existing verifier layout.  It adds one empty Rust crate manifest, compiler-produced WASM and WAT inputs, the generated 3,871-line `Project.ClobMatchFuel.Program`, a handwritten specification shell, and a focused check script.  The shell compiles but contains no semantic theorem, so the documentation records sixteen completed specifications and one in-progress case.
+
+The aggregate artifact gate matched all sixteen prior pairs before its proof-freshness check reported six stale modules.  Four are unchanged modules with recorded no-diagnostic timeouts: `Validate.Spec`, `SharedPair.Spec`, `LebU32.Iter`, and `LebU32.NegIter`; the other two are bounded CLOB dependencies, `ClobQuote.Step` and `ClobFindBest.Helpers`.  The unchanged timeout cases require proof division before another build, while the bounded CLOB dependencies can rebuild as later targets require them.
