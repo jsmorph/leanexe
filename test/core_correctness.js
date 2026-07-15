@@ -2,7 +2,7 @@
 
 const fs = require("fs");
 const path = require("path");
-const { spawnSync } = require("child_process");
+const { spawnResult } = require("../tools/run-process");
 const host = require("./wasmtime_host");
 const {
   HostPlan,
@@ -1604,7 +1604,7 @@ const trapped = [
 ];
 
 function run(args) {
-  return spawnSync(args[0], args.slice(1), { encoding: "utf8" });
+  return spawnResult(args, { encoding: "utf8" });
 }
 
 function compile(name, out) {
@@ -1710,9 +1710,9 @@ async function runTrapped(testCase) {
     throw new Error(`${testCase.name} failed to compile: ${compiled.stderr.trim()}`);
   }
 
-  const result = spawnSync(
-    wasmtime,
-    ["run", "--invoke", testCase.name, out, ...testCase.args.map((arg) => arg.toString())],
+  const result = spawnResult(
+    [wasmtime, "run", "--invoke", testCase.name, out,
+      ...testCase.args.map((arg) => arg.toString())],
     { encoding: "utf8" },
   );
   if (result.status === 0) {

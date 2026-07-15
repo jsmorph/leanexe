@@ -1,16 +1,12 @@
 #!/usr/bin/env node
 
 const path = require("path");
-const { spawnSync } = require("child_process");
+const { spawnResult } = require("../tools/run-process");
 
 const leanExe = process.env.LEAN_WASM_EXE || path.join(".lake", "build", "bin", "lean-wasm");
 
 function run(args) {
-  const result = spawnSync(leanExe, args, { encoding: "utf8" });
-  if (result.error) {
-    throw result.error;
-  }
-  return result;
+  return spawnResult([leanExe, ...args], { encoding: "utf8" });
 }
 
 function expectFailure(name, args, status, fragments) {

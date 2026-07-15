@@ -2,7 +2,7 @@
 
 const fs = require("fs");
 const path = require("path");
-const { spawnSync } = require("child_process");
+const { runChecked } = require("../tools/run-process");
 
 const moduleName = "LeanExe.Examples.IntMap";
 const leanExe = process.env.LEAN_WASM_EXE || path.join(".lake", "build", "bin", "lean-wasm");
@@ -10,13 +10,10 @@ const wasmtime = process.env.WASMTIME || path.join("build", "tools", "wasmtime",
 const outDir = path.join(".lake", "build", "intmap-programs");
 
 function run(args) {
-  const result = spawnSync(args[0], args.slice(1), {
+  const result = runChecked(args, {
     encoding: "utf8",
     env: { ...process.env, XDG_CACHE_HOME: path.join(process.cwd(), ".lake", "build", "cache") },
   });
-  if (result.status !== 0) {
-    throw new Error(result.stderr.trim() || result.stdout.trim() || `${args[0]} failed`);
-  }
   return result.stdout.trim();
 }
 

@@ -2,7 +2,7 @@
 
 const fs = require("fs");
 const path = require("path");
-const { spawnSync } = require("child_process");
+const { runChecked } = require("../tools/run-process");
 const host = require("./wasmtime_host");
 
 function toHex(bytes) {
@@ -10,12 +10,9 @@ function toHex(bytes) {
 }
 
 function leanEval(leanExe, hex) {
-  const result = spawnSync(leanExe, ["eval", "--hex", hex], {
+  const result = runChecked([leanExe, "eval", "--hex", hex], {
     encoding: "utf8",
   });
-  if (result.status !== 0) {
-    throw new Error(result.stderr.trim() || "Lean evaluator failed");
-  }
   return Number(result.stdout.trim());
 }
 
@@ -33,7 +30,7 @@ async function main() {
   const leanExe = process.env.LEAN_WASM_EXE || path.join(".lake", "build", "bin", "lean-wasm");
 
   if (!fs.existsSync(wasmPath)) {
-    const emit = spawnSync(leanExe, [
+    runChecked([leanExe,
       "compile",
       "--module",
       "LeanExe.Examples.AsciiDigits",
@@ -42,9 +39,6 @@ async function main() {
       "--out",
       wasmPath,
     ], { encoding: "utf8" });
-    if (emit.status !== 0) {
-      throw new Error(emit.stderr.trim() || "Wasm emission failed");
-    }
   }
 
   function runWasm(input) {
