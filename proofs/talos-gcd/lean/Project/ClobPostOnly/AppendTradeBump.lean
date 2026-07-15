@@ -120,10 +120,7 @@ def appendTradeBumpProg : Wasm.Program :=
   .localGet 34,
   .localSet 26,
   .localGet 26,
-  .localSet 33,
-  .localGet 31,
-  .localGet 32,
-  .localGet 33
+  .localSet 33
 ]
 
 abbrev appendTradePost := AppendTradeStore.appendTradePost

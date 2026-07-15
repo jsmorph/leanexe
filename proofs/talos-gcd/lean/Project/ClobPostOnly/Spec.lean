@@ -3,6 +3,7 @@ import Project.ClobPostOnly.ValidOrder
 import Project.ClobPostOnly.Allocation
 import Project.ClobPostOnly.Invalid
 import Project.ClobPostOnly.Crossing
+import Project.ClobPostOnly.Append
 
 /-!
 # The `postOnly` theorem

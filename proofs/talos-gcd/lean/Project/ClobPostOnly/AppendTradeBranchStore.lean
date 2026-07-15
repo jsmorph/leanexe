@@ -172,7 +172,7 @@ theorem appendTradeBranchHeaderProg_spec (env : HostEnv Unit)
   refine ⟨by omega, by omega, by omega, by omega, by omega, by omega, ?_⟩
   simp only [hg2]
   refine ⟨by omega, ?_⟩
-  refine ⟨by simp [func17Def, htradePtr], ?_, ?_, ?_, ?_, ?_, ?_⟩
+  refine ⟨htradePtr, rfl, ?_, ?_, ?_, ?_, ?_, ?_⟩
   · refine OrdersAt.frame (st := st6) (st' := _)
         (by
           simp only [List.length_append, List.length_singleton, hnewNat]

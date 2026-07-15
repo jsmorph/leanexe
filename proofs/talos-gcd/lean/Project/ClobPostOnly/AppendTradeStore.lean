@@ -5,9 +5,9 @@ import Project.FixedArrayAllocation
 # Empty trade-array stores
 
 This program starts after the bump allocator has checked its address and page
-requirements.  It updates the allocator globals, writes the empty trade-array
-header and length, and loads the public results.  Its input frame records the
-two values computed by the preceding checks.
+requirements.  It updates the allocator globals and writes the empty
+trade-array header and length.  Its postcondition records the public-result
+locals before the enclosing function loads them.
 -/
 
 namespace Project.ClobPostOnly.AppendTradeStore
@@ -101,10 +101,7 @@ def appendTradeStoreTailProg : Wasm.Program :=
   .localGet 34,
   .localSet 26,
   .localGet 26,
-  .localSet 33,
-  .localGet 31,
-  .localGet 32,
-  .localGet 33
+  .localSet 33
 ]
 
 def appendTradeStoreProg : Wasm.Program :=
@@ -132,11 +129,13 @@ def appendTradeAssertion (st0 : Store Unit) (g0 g2 : UInt64)
   fun c =>
     match c with
     | .Fallthrough st' s' =>
+        s'.get 31 = some (.i64 0) ∧
+        s'.get 32 = some (.i64 (g0 + 48)) ∧
+        s'.get 33 = some
+          (.i64 (g0 + 96 + orderArrayBytesU (os.length + 1))) ∧
         appendTradePost st0 g0 g2 os order st'
-          (List.take func17Def.results.length s'.values)
-    | .Return st' vs =>
-        appendTradePost st0 g0 g2 os order st'
-          (List.take func17Def.results.length vs)
+          [.i64 (g0 + 96 + orderArrayBytesU (os.length + 1)),
+            .i64 (g0 + 48), .i64 0]
     | _ => False
 
 set_option Elab.async false in
@@ -267,7 +266,7 @@ theorem appendTradeStoreProg_spec (env : HostEnv Unit) (st0 st6 : Store Unit)
   refine ⟨by omega, by omega, by omega, by omega, by omega, by omega, ?_⟩
   simp only [hg2]
   refine ⟨by omega, ?_⟩
-  refine ⟨by simp [func17Def, htradePtr], ?_, ?_, ?_, ?_, ?_, ?_⟩
+  refine ⟨htradePtr, rfl, ?_, ?_, ?_, ?_, ?_, ?_⟩
   · refine OrdersAt.frame (st := st6) (st' := _)
         (by
           simp only [List.length_append, List.length_singleton, hnewNat]
