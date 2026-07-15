@@ -293,6 +293,20 @@ partial def validateReleaseDeclaration
       validateReleaseDeclaration ctx entry declaration ({ name := name, origin := origin } :: bindings) body
   | _ => validateReleaseExpr ctx declaration bindings expr
 
+def generatedRecursionHelperValue?
+    (ctx : Context)
+    (name : Name)
+    (info : ConstantInfo) :
+    Option Expr := do
+  let value ← info.value?
+  let helperName := .str name "_f"
+  if !value.getUsedConstants.contains helperName then
+    none
+  else
+    let helperInfo ← ctx.env.find? helperName
+    let helperValue ← helperInfo.value?
+    some (betaSpecializeExpr ctx.env ctx.root 32 helperValue)
+
 def validateModuleReleases
     (ctx : Context)
     (entry : Name)
@@ -308,6 +322,11 @@ def validateModuleReleases
     | some value =>
         let specialized := betaSpecializeExpr ctx.env ctx.root 32 value
         judgments := judgments ++ (← validateReleaseDeclaration ctx entry name [] specialized)
+        match generatedRecursionHelperValue? ctx name info with
+        | some helperValue =>
+            judgments := judgments ++
+              (← validateReleaseDeclaration ctx entry name [] helperValue)
+        | none => pure ()
     | none => pure ()
   .ok judgments
 
