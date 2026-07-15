@@ -12,11 +12,11 @@ LeanExe develops and tests on Linux.  The Wasmtime download script supports `x86
 | Proof Lean and Lake | The proof workspace records its matching pin in `proofs/talos-gcd/lean/lean-toolchain`.  `elan` selects it after entering that directory. |
 | Wasmtime | `tools/download-wasmtime.sh` installs the default 44.0.0 CLI and C API under `build/tools/wasmtime`. |
 | C compiler | A C11 compiler available as `cc` builds the Wasmtime host runner. |
-| Node.js | Node runs the test drivers.  The repository does not yet pin a compatible version. |
-| `wasm-tools` | The WAT round-trip and Talos checks require `wasm-tools`.  The repository does not yet pin a compatible version. |
+| Node.js | Node 24.13.0 runs the test drivers.  `.node-version` records the exact version, and the complete runner checks it before building. |
+| `wasm-tools` | Version 1.251.0 renders WAT for round-trip and Talos checks.  `.wasm-tools-version` records the exact version, and both artifact gates check the selected executable. |
 | System tools | The setup and check scripts use Bash or POSIX `sh`, `curl`, `tar`, `cmp`, and ordinary Unix file tools. |
 
-The Talos revision is pinned in `proofs/talos-gcd/lean/lakefile.toml`, and its transitive Lean dependencies are pinned in the adjacent manifest.  Node and `wasm-tools` remain known reproducibility gaps, so record `node --version` and `wasm-tools --version` when reporting a tool-dependent failure.  The Wasmtime download script currently relies on HTTPS release downloads without checking archive hashes; the development plan tracks checksum verification.
+The Talos revision is pinned in `proofs/talos-gcd/lean/lakefile.toml`, and its transitive Lean dependencies are pinned in the adjacent manifest.  `tools/check-node-version.js` enforces the Node pin, while `tools/check-wasm-tools-version.sh` enforces the `wasm-tools` pin selected through `WASM_TOOLS`, `PATH`, or `$HOME/.cargo/bin`.  The Wasmtime download script currently relies on HTTPS release downloads without checking archive hashes; the development plan tracks checksum verification.
 
 These environment variables replace repository defaults when local tools live elsewhere.  Set them in the invoking environment rather than committing machine-specific paths.  Include the relevant values in a failure report when a nondefault executable may affect the result.
 

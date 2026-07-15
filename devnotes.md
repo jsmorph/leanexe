@@ -4736,3 +4736,15 @@ This work leaves the Talos proof workspace unchanged.  Existing proof support al
 - [x] Add process-level tests for every required failure path.
 - [x] Preserve successful compiler output and WAT round trips.
 - [ ] Review cancel and `postOnly` copy obligations together when Talos proof work resumes.
+
+## 2026-07-15: Node and `wasm-tools` Pins
+
+The repository now pins Node 24.13.0 in `.node-version` and `wasm-tools` 1.251.0 in `.wasm-tools-version`.  Node generates test runners and compares process output, while `wasm-tools` prints the WAT that Talos decodes, so the gates reject an unreviewed version change.  The pins add no package manager, library, or downloaded dependency.
+
+`tools/check-node-version.js` compares `process.version` with the Node pin before `test/run_all.js` starts a build, and the runner uses that process's `execPath` for every Node child test.  `tools/check-wasm-tools-version.sh` validates the executable selected through `WASM_TOOLS`, `PATH`, or `$HOME/.cargo/bin`, and both `tools/check-wat.sh` and `tools/check-talos-case.sh` invoke it before generating an artifact.  A mismatch names the expected version, first observed version line, and selected executable without ANSI output.
+
+The Node syntax, pin, and `execPath` checks passed with `v24.13.0`, and the `wasm-tools` success and deliberate mismatch paths returned the expected statuses and messages.  The version-enforced WAT gate checked `wasm-tools 1.251.0`, rebuilt `lean-wasm` under the repository resource limits, and matched all nine binary and text entries.  No Talos proof command ran, and no checked proof input changed.
+
+- [x] Record and enforce Node 24.13.0.
+- [x] Record and enforce `wasm-tools` 1.251.0.
+- [x] Run the version-enforced WAT gate.
