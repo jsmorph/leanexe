@@ -171,6 +171,32 @@ theorem FreshFixedArrayAt.write64_data {st : Store Unit}
       (Or.inl (hDisjoint 8 (by change 8 ≤ ptr.toNat; omega) (by decide)))]
     exact h8
 
+theorem FreshFixedArrayAt.frame {st st' : Store Unit}
+    {ptr capacity stride base : UInt64}
+    (hPtr32 : ptr.toNat < 4294967296)
+    (hHeader : 48 ≤ ptr.toNat) (hBelow : ptr.toNat ≤ base.toNat)
+    (hBytes : ∀ a : Nat, a < base.toNat →
+      st'.mem.bytes a = st.mem.bytes a)
+    (hFresh : FreshFixedArrayAt st ptr capacity stride) :
+    FreshFixedArrayAt st' ptr capacity stride := by
+  have hRead (offset : UInt64) (hOffset : offset.toNat ≤ 48)
+      (hOffset8 : 8 ≤ offset.toNat) :
+      st'.mem.read64 ((ptr - offset).toUInt32) =
+        st.mem.read64 ((ptr - offset).toUInt32) := by
+    apply Project.Common.read64_congr
+    intro i hi
+    rw [Project.Common.toUInt32_toNat,
+      Project.Common.toNat_sub_le ptr offset (by omega),
+      Nat.mod_eq_of_lt (by omega)]
+    exact hBytes _ (by omega)
+  obtain ⟨h48, h40, h32, h24, h16, h8⟩ := hFresh
+  exact ⟨(hRead 48 (by decide) (by decide)).trans h48,
+    (hRead 40 (by decide) (by decide)).trans h40,
+    (hRead 32 (by decide) (by decide)).trans h32,
+    (hRead 24 (by decide) (by decide)).trans h24,
+    (hRead 16 (by decide) (by decide)).trans h16,
+    (hRead 8 (by decide) (by decide)).trans h8⟩
+
 theorem OrdersAt.frame {st st' : Store Unit} {ptr g0 : UInt64}
     {os : List OrderL}
     (hInput32 : ptr.toNat + (os.length * 5 + 1) * 8 < 4294967296)
