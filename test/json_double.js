@@ -2,18 +2,14 @@
 
 const fs = require("fs");
 const path = require("path");
-const { spawnSync } = require("child_process");
+const { runChecked } = require("../tools/run-process");
 const host = require("./wasmtime_host");
 
 const leanExe = process.env.LEAN_WASM_EXE || path.join(".lake", "build", "bin", "lean-wasm");
 const outDir = path.join(".lake", "build", "json-programs");
 
 function run(args) {
-  const result = spawnSync(args[0], args.slice(1), { encoding: "utf8" });
-  if (result.status !== 0) {
-    throw new Error(result.stderr.trim() || result.stdout.trim() || `${args[0]} failed`);
-  }
-  return result;
+  return runChecked(args, { encoding: "utf8" });
 }
 
 async function instantiate(moduleName) {

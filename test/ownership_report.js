@@ -1,16 +1,13 @@
 #!/usr/bin/env node
 
 const path = require("path");
-const { spawnSync } = require("child_process");
+const { runChecked } = require("../tools/run-process");
 
 const leanExe = process.env.LEAN_WASM_EXE || path.join(".lake", "build", "bin", "lean-wasm");
 const correctnessModule = "LeanExe.Examples.Correctness";
 
 function run(args) {
-  const result = spawnSync(args[0], args.slice(1), { encoding: "utf8" });
-  if (result.status !== 0) {
-    throw new Error(result.stderr.trim() || result.stdout.trim() || `${args.join(" ")} failed`);
-  }
+  const result = runChecked(args, { encoding: "utf8" });
   return result.stdout;
 }
 

@@ -1,14 +1,11 @@
 const fs = require("fs");
 const path = require("path");
-const { spawnSync } = require("child_process");
+const { runChecked } = require("../tools/run-process");
 
 const hostExe = process.env.LEANEXE_WASMTIME_HOST || path.join("build", "tools", "leanexe-wasmtime-host");
 
 function run(args, options = {}) {
-  const result = spawnSync(args[0], args.slice(1), { encoding: "utf8", ...options });
-  if (result.status !== 0) {
-    throw new Error(result.stderr.trim() || result.stdout.trim() || `${args.join(" ")} failed`);
-  }
+  const result = runChecked(args, { encoding: "utf8", ...options });
   return result.stdout.trim();
 }
 
@@ -83,14 +80,11 @@ function callStats(wasm, entry, resultKind, args = []) {
 function script(wasm, commands, entry, resultCount, readCommands = []) {
   const exe = ensureHost();
   const input = `${commands.join("\n")}\ncall ${entry} ${resultCount}\n${readCommands.join("\n")}\ndone\n`;
-  const result = spawnSync(exe, ["script", wasm], {
+  const result = runChecked([exe, "script", wasm], {
     encoding: "utf8",
     input,
     maxBuffer: 8 * 1024 * 1024,
   });
-  if (result.status !== 0) {
-    throw new Error(result.stderr.trim() || result.stdout.trim() || `${exe} script failed`);
-  }
   const lines = result.stdout.split(/\r?\n/).filter((line) => line.length > 0);
   const resultLine = lines.find((line) => line.startsWith("results"));
   if (!resultLine) {
