@@ -14,7 +14,7 @@ function run(args) {
 }
 
 function main() {
-  run(["node", path.join("tools", "check-node-version.js")]);
+  run([process.execPath, path.join("tools", "check-node-version.js")]);
   run(["lake", "build"]);
   run(["lake", "build", "LeanExe"]);
   run(["lake", "build", "LeanExe.Examples.Correctness"]);
@@ -28,22 +28,22 @@ function main() {
     "LeanExe.Examples.JsonObjectArrayDecode",
     "LeanExe.Examples.JsonTypedDecode",
   ]);
-  run(["node", path.join("test", "report_classification.js")]);
-  run(["node", path.join("test", "ownership_report.js")]);
-  run(["node", path.join("test", "no_js_wasm_execution.js")]);
-  run(["node", path.join("test", "cli_errors.js")]);
-  run(["node", path.join("test", "core_correctness.js")]);
-  run(["node", path.join("test", "matched_values.js")]);
-  run(["node", path.join("test", "refcount.js")]);
-  run(["node", path.join("test", "bytearray_alloc.js")]);
-  run(["node", path.join("test", "asciistring.js")]);
-  run(["node", path.join("test", "intmap.js")]);
-  run(["node", path.join("test", "json_double.js")]);
-  run(["node", path.join("test", "wasi_program.js")]);
-  run(["node", path.join("test", "self_emit.js")]);
-  run(["node", path.join("tools", "compare-standard.js"), "--self-test"]);
+  run([process.execPath, path.join("test", "report_classification.js")]);
+  run([process.execPath, path.join("test", "ownership_report.js")]);
+  run([process.execPath, path.join("test", "no_js_wasm_execution.js")]);
+  run([process.execPath, path.join("test", "cli_errors.js")]);
+  run([process.execPath, path.join("test", "core_correctness.js")]);
+  run([process.execPath, path.join("test", "matched_values.js")]);
+  run([process.execPath, path.join("test", "refcount.js")]);
+  run([process.execPath, path.join("test", "bytearray_alloc.js")]);
+  run([process.execPath, path.join("test", "asciistring.js")]);
+  run([process.execPath, path.join("test", "intmap.js")]);
+  run([process.execPath, path.join("test", "json_double.js")]);
+  run([process.execPath, path.join("test", "wasi_program.js")]);
+  run([process.execPath, path.join("test", "self_emit.js")]);
+  run([process.execPath, path.join("tools", "compare-standard.js"), "--self-test"]);
   run([
-    "node",
+    process.execPath,
     path.join("test", "fuzz_validate.js"),
     path.join(".lake", "build", "ascii-generic.wasm"),
     fuzzCases,
