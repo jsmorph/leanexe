@@ -30,7 +30,7 @@ def appendTradeStoreFrame (ptr g0 : UInt64) (order : OrderL)
       .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
       .i64 (g0 + 48), .i64 0, .i64 ptr, .i64 (UInt64.ofNat n),
       .i64 (UInt64.ofNat n * 5), .i64 (UInt64.ofNat n + 1),
-      .i64 (g0 + 48), .i64 (UInt64.ofNat (n * 5)),
+      .i64 (g0 + 48), .i64 (UInt64.ofNat n * 5),
       .i64 order.oid, .i64 8, .i64 0, .i64 0,
       .i64 ((g0 + 48 + orderArrayBytesU (n + 1)) + 48 + 8),
       .i64 (((g0 + 48 + orderArrayBytesU (n + 1)) + 48 + 8 - 1) /
@@ -41,7 +41,7 @@ def appendTradeStoreFrame (ptr g0 : UInt64) (order : OrderL)
       .i64 (g0 + 48)],
     values := [.i64 (g0 + 48 + orderArrayBytesU (n + 1))] }
 
-def appendTradeStoreProg : Wasm.Program :=
+def appendTradeStoreHeaderProg : Wasm.Program :=
   [
   .constI64 (48 : UInt64),
   .addI64,
@@ -83,7 +83,11 @@ def appendTradeStoreProg : Wasm.Program :=
   .subI64,
   .wrapI64,
   .constI64 (0 : UInt64),
-  .store64 (0 : UInt32),
+  .store64 (0 : UInt32)
+]
+
+def appendTradeStoreTailProg : Wasm.Program :=
+  [
   .globalGet 2,
   .constI64 (1 : UInt64),
   .addI64,
@@ -102,6 +106,9 @@ def appendTradeStoreProg : Wasm.Program :=
   .localGet 32,
   .localGet 33
 ]
+
+def appendTradeStoreProg : Wasm.Program :=
+  appendTradeStoreHeaderProg ++ appendTradeStoreTailProg
 
 def appendTradePost (st0 : Store Unit) (g0 g2 : UInt64)
     (os : List OrderL) (order : OrderL) (st' : Store Unit)
@@ -161,7 +168,9 @@ theorem appendTradeStoreProg_spec (env : HostEnv Unit) (st0 st6 : Store Unit)
       (appendTradeAssertion st0 g0 g2 os order) st6
       (appendTradeStoreFrame ptr g0 order os.length) env := by
   unfold appendTradeAssertion
-  simp only [appendTradeStoreProg, appendTradeStoreFrame]
+  simp only [appendTradeStoreProg, appendTradeStoreHeaderProg,
+    appendTradeStoreTailProg, appendTradeStoreFrame, List.cons_append,
+    List.nil_append]
   wp_run
   simp only [hg0]
   try simp
