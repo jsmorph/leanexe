@@ -1,16 +1,15 @@
-import Project.ClobPostOnly.AppendStore
-import Project.FixedArrayAllocation
+import Project.ClobPostOnly.AppendTradeStore
 
 /-!
-# Empty trade-array stores
+# Trade-array stores in an `iff` branch
 
-This program starts after the bump allocator has checked its address and page
-requirements.  It updates the allocator globals, writes the empty trade-array
-header and length, and loads the public results.  Its input frame records the
-two values computed by the preceding checks.
+The bump allocator writes the trade-array header inside an `iff`, then performs
+the length write and result loads after the branch.  This module states the
+exact continuation produced by the zero-arity `iff` rule.  The address and page
+checks can apply the compiled result without elaborating the stores again.
 -/
 
-namespace Project.ClobPostOnly.AppendTradeStore
+namespace Project.ClobPostOnly.AppendTradeBranchStore
 
 open Wasm Project.Common Project.Clob Project.ClobPostOnly
   Project.ClobPostOnly.Allocation
@@ -18,130 +17,34 @@ open Wasm Project.Common Project.Clob Project.ClobPostOnly
 set_option maxHeartbeats 8000000
 set_option maxRecDepth 1048576
 
-def appendTradeStoreFrame (ptr g0 : UInt64) (order : OrderL)
+def appendTradeCheckedFrame (ptr g0 : UInt64) (order : OrderL)
     (n : Nat) : Locals :=
-  { params := [.i64 ptr, .i64 order.oid, .i64 order.otrader,
-      .i64 order.oside, .i64 order.oprice, .i64 order.oqty],
-    locals := [.i64 0, .i64 ptr, .i64 order.oid, .i64 order.otrader,
-      .i64 order.oside, .i64 order.oprice, .i64 order.oqty,
-      .i64 1, .i64 0, .i64 ptr, .i64 order.oid, .i64 order.otrader,
-      .i64 order.oside, .i64 order.oprice, .i64 order.oqty,
-      .i64 0, .i64 0, .i64 0, .i64 ptr, .i64 (g0 + 48),
-      .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
-      .i64 (g0 + 48), .i64 0, .i64 ptr, .i64 (UInt64.ofNat n),
-      .i64 (UInt64.ofNat n * 5), .i64 (UInt64.ofNat n + 1),
-      .i64 (g0 + 48), .i64 (UInt64.ofNat n * 5),
-      .i64 order.oid, .i64 8, .i64 0, .i64 0,
-      .i64 ((g0 + 48 + orderArrayBytesU (n + 1)) + 48 + 8),
-      .i64 (((g0 + 48 + orderArrayBytesU (n + 1)) + 48 + 8 - 1) /
-        65536 + 1),
-      .i64 0, .i64 (orderArrayBytesU (n + 1)),
-      .i64 0, .i64 0, .i64 (g0 + 48 + orderArrayBytesU (n + 1)),
-      .i64 ((g0 + 48 + orderArrayBytesU (n + 1) - 1) / 65536 + 1),
-      .i64 (g0 + 48)],
-    values := [.i64 (g0 + 48 + orderArrayBytesU (n + 1))] }
+  { AppendTradeStore.appendTradeStoreFrame ptr g0 order n with values := [] }
 
-def appendTradeStoreHeaderProg : Wasm.Program :=
-  [
-  .constI64 (48 : UInt64),
-  .addI64,
-  .localSet 46,
-  .localGet 44,
-  .globalSet 0,
-  .localGet 46,
-  .constI64 (48 : UInt64),
-  .subI64,
-  .wrapI64,
-  .constI64 (5501223100278326855 : UInt64),
-  .store64 (0 : UInt32),
-  .localGet 46,
-  .constI64 (40 : UInt64),
-  .subI64,
-  .wrapI64,
-  .constI64 (1 : UInt64),
-  .store64 (0 : UInt32),
-  .localGet 46,
-  .constI64 (32 : UInt64),
-  .subI64,
-  .wrapI64,
-  .localGet 41,
-  .store64 (0 : UInt32),
-  .localGet 46,
-  .constI64 (24 : UInt64),
-  .subI64,
-  .wrapI64,
-  .constI64 (2 : UInt64),
-  .store64 (0 : UInt32),
-  .localGet 46,
-  .constI64 (16 : UInt64),
-  .subI64,
-  .wrapI64,
-  .constI64 (4 : UInt64),
-  .store64 (0 : UInt32),
-  .localGet 46,
-  .constI64 (8 : UInt64),
-  .subI64,
-  .wrapI64,
-  .constI64 (0 : UInt64),
-  .store64 (0 : UInt32)
-]
+def appendTradeBranchHeaderProg : Wasm.Program :=
+  .globalGet 0 :: AppendTradeStore.appendTradeStoreHeaderProg
 
-def appendTradeStoreTailProg : Wasm.Program :=
-  [
-  .globalGet 2,
-  .constI64 (1 : UInt64),
-  .addI64,
-  .globalSet 2,
-  .localGet 46,
-  .localSet 34,
-  .localGet 34,
-  .wrapI64,
-  .constI64 (0 : UInt64),
-  .store64 (0 : UInt32),
-  .localGet 34,
-  .localSet 26,
-  .localGet 26,
-  .localSet 33,
-  .localGet 31,
-  .localGet 32,
-  .localGet 33
-]
-
-def appendTradeStoreProg : Wasm.Program :=
-  appendTradeStoreHeaderProg ++ appendTradeStoreTailProg
-
-def appendTradePost (st0 : Store Unit) (g0 g2 : UInt64)
-    (os : List OrderL) (order : OrderL) (st' : Store Unit)
-    (vs : List Value) : Prop :=
-  vs = [.i64 (g0 + 96 + orderArrayBytesU (os.length + 1)),
-      .i64 (g0 + 48), .i64 0] ∧
-    OrdersAt st' (g0 + 48) (os ++ [order]) ∧
-    FreshOrderArrayAt st' (g0 + 48)
-      (orderArrayBytesU (os.length + 1)) ∧
-    FreshTradeArrayAt st'
-      (g0 + 96 + orderArrayBytesU (os.length + 1)) ∧
-    st'.mem.pages = st0.mem.pages ∧
-    st'.globals.globals =
-      ((st0.globals.globals.set 0
-        (.i64 (g0 + 104 + orderArrayBytesU (os.length + 1)))).set 2
-          (.i64 (g2 + 2))) ∧
-    ∀ a : Nat, a < g0.toNat → st'.mem.bytes a = st0.mem.bytes a
-
-def appendTradeAssertion (st0 : Store Unit) (g0 g2 : UInt64)
-    (os : List OrderL) (order : OrderL) : Assertion Unit :=
-  fun c =>
-    match c with
+def appendTradeBranchContinuation (env : HostEnv Unit) (st0 : Store Unit)
+    (g0 g2 : UInt64) (os : List OrderL) (order : OrderL) : Assertion Unit :=
+  fun cont =>
+    match cont with
     | .Fallthrough st' s' =>
-        appendTradePost st0 g0 g2 os order st'
-          (List.take func17Def.results.length s'.values)
-    | .Return st' vs =>
-        appendTradePost st0 g0 g2 os order st'
-          (List.take func17Def.results.length vs)
-    | _ => False
+        wp «module» AppendTradeStore.appendTradeStoreTailProg
+          (AppendTradeStore.appendTradeAssertion st0 g0 g2 os order) st'
+          { s' with values := [] } env
+    | .Break 0 st' s' =>
+        wp «module» AppendTradeStore.appendTradeStoreTailProg
+          (AppendTradeStore.appendTradeAssertion st0 g0 g2 os order) st'
+          { s' with values := [] } env
+    | .Break (k + 1) st' s' =>
+        AppendTradeStore.appendTradeAssertion st0 g0 g2 os order
+          (.Break k st' s')
+    | other => AppendTradeStore.appendTradeAssertion st0 g0 g2 os order other
 
 set_option Elab.async false in
-theorem appendTradeStoreProg_spec (env : HostEnv Unit) (st0 st6 : Store Unit)
-    (ptr g0 g2 : UInt64) (os : List OrderL) (order : OrderL)
+theorem appendTradeBranchHeaderProg_spec (env : HostEnv Unit)
+    (st0 st6 : Store Unit) (ptr g0 g2 : UInt64) (os : List OrderL)
+    (order : OrderL)
     (hnewNat : (g0 + 48).toNat = g0.toNat + 48)
     (hbytesU : (orderArrayBytesU (os.length + 1)).toNat =
       orderArrayBytes (os.length + 1))
@@ -164,13 +67,15 @@ theorem appendTradeStoreProg_spec (env : HostEnv Unit) (st0 st6 : Store Unit)
           (.i64 (g2 + 1))))
     (hLowFrame : ∀ a : Nat, a < g0.toNat →
       st6.mem.bytes a = st0.mem.bytes a) :
-    wp «module» appendTradeStoreProg
-      (appendTradeAssertion st0 g0 g2 os order) st6
-      (appendTradeStoreFrame ptr g0 order os.length) env := by
-  unfold appendTradeAssertion
-  simp only [appendTradeStoreProg, appendTradeStoreHeaderProg,
-    appendTradeStoreTailProg, appendTradeStoreFrame, List.cons_append,
-    List.nil_append]
+    wp «module» appendTradeBranchHeaderProg
+      (appendTradeBranchContinuation env st0 g0 g2 os order) st6
+      (appendTradeCheckedFrame ptr g0 order os.length) env := by
+  unfold appendTradeBranchContinuation
+  unfold AppendTradeStore.appendTradeAssertion
+  simp only [appendTradeBranchHeaderProg, appendTradeCheckedFrame,
+    AppendTradeStore.appendTradeStoreHeaderProg,
+    AppendTradeStore.appendTradeStoreTailProg,
+    AppendTradeStore.appendTradeStoreFrame]
   wp_run
   simp only [hg0]
   try simp
@@ -344,4 +249,4 @@ theorem appendTradeStoreProg_spec (env : HostEnv Unit) (st0 st6 : Store Unit)
           (by simp only [toUInt32_ofNat_mod_toNat]; omega)]
     exact hLowFrame a ha
 
-end Project.ClobPostOnly.AppendTradeStore
+end Project.ClobPostOnly.AppendTradeBranchStore
