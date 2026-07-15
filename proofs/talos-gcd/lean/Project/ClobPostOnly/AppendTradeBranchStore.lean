@@ -224,6 +224,7 @@ theorem appendTradeBranchHeaderProg_spec (env : HostEnv Unit)
         rw [htop]
         omega)
     simpa only [FreshTradeArrayAt, FreshFixedArrayAt, emptyFixedArrayMem,
+      fixedArrayMem,
       toUInt32_eq_ofNat, htSub48, htSub40, htSub32, htSub24, htSub16,
       htSub8, htradeNat, htop, hbase8, hbase16, hbase24, hbase32,
       hbase40, hbase48] using hAlloc
