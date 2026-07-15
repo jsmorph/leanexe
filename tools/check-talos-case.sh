@@ -59,9 +59,11 @@ WASM_TOOLS="$wasm_tools" "$repo_root/tools/check-wasm-tools-version.sh"
 cd "$repo_root"
 
 if [[ "$artifacts_only" -eq 1 ]]; then
-  lake --no-ansi --quiet --log-level=error build "$module" lean-wasm
+  lake --no-ansi --quiet --log-level=error build "$module"
+  lake --no-ansi --quiet --log-level=error build lean-wasm
 else
-  lake --no-ansi build "$module" lean-wasm
+  lake --no-ansi build "$module"
+  lake --no-ansi build lean-wasm
 fi
 mkdir -p "$(dirname "$wasm_tmp")"
 .lake/build/bin/lean-wasm compile \
