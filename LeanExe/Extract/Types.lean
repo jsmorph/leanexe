@@ -1438,7 +1438,6 @@ partial def collectReachable
               ((supportedFunction? env depInfo).isSome ||
                 inlineOnlyDependency env dep depInfo ||
                 (dep == .str entry "_f" &&
-                  containsConstant ``Nat.brecOn info &&
                   traversableInlineDependency env depInfo)) then
             let result ← collectReachable env root dep nextSeen nextNames
             nextSeen := result.fst
