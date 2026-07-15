@@ -5,7 +5,8 @@ import Project.ClobPostOnly.Allocation
 
 The successful `postOnly` branch appends one order through five consecutive
 64-bit writes.  This module states that store transformation independently of
-the generated instruction proof and proves its read behavior.
+the generated instruction proof and proves its read behavior.  Later phases
+use these facts without elaborating the five writes again.
 -/
 
 namespace Project.ClobPostOnly.AppendStore
