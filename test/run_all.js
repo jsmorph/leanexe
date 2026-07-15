@@ -18,6 +18,15 @@ function main() {
   run(["lake", "build", "LeanExe"]);
   run(["lake", "build", "LeanExe.Examples.Correctness"]);
   run(["lake", "build", "LeanExe.Examples.ClobTest"]);
+  run([
+    "lake",
+    "build",
+    "LeanExe.Examples.ByteArrayPrograms",
+    "LeanExe.Examples.JsonGcTreeRewrite",
+    "LeanExe.Examples.JsonMergeTreeCommand",
+    "LeanExe.Examples.JsonObjectArrayDecode",
+    "LeanExe.Examples.JsonTypedDecode",
+  ]);
   run(["node", path.join("test", "report_classification.js")]);
   run(["node", path.join("test", "ownership_report.js")]);
   run(["node", path.join("test", "no_js_wasm_execution.js")]);
