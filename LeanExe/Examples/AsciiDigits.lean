@@ -92,7 +92,7 @@ theorem validateFuel_eq (bytes : List UInt8) :
         simp [validateFuel, hsize, List.drop_length]
       · have hlt' : index < bytes.length := Nat.lt_of_le_of_ne hle hend
         have hbyte : byteAsNat ⟨⟨bytes⟩⟩ index = (bytes[index]'hlt').toNat := by
-          simp [byteAsNat, ByteArray.get!, hsize, List.getElem!_eq_getElem?_getD,
+          simp [byteAsNat, ByteArray.get!, List.getElem!_eq_getElem?_getD,
             List.getElem?_eq_getElem hlt']
         have hdrop : bytes.drop index = bytes[index]'hlt' :: bytes.drop (index + 1) :=
           List.drop_eq_getElem_cons hlt'
