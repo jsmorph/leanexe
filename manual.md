@@ -740,6 +740,8 @@ Use `dump-ir` after `report` accepts an entry when evaluation order, lowered con
 
 Tool and build failures have different remedies from source rejections.  A missing checked declaration usually means its module has not been built, while missing Wasmtime, the C host, or `wasm-tools` indicates an incomplete developer setup.  The troubleshooting table in [Developing LeanExe](DEVELOPING.md) covers those failures, proof artifact mismatches, verifier setup, and cold proof builds.
 
+A failed `lean-wasm` command writes its diagnostic to stderr with a `lean-wasm: <category>:` prefix and command context.  Status `2` identifies command use or invalid bounds, status `3` identifies source or project input that cannot compile, status `4` identifies an I/O failure, and status `5` identifies an internal inconsistency.  The [CLI Failure Interface](DEVELOPING.md#cli-failure-interface) defines the complete format and test requirements.
+
 Common rejections and source fixes:
 
 | Report symptom | Likely cause | Source fix |

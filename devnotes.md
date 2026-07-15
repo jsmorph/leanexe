@@ -4723,3 +4723,16 @@ The WAT round-trip gate passed all nine entries.  Compiler-only comparison again
 - [x] Constrain every Lean process by memory, CPU, I/O priority, and timeout.
 - [x] Run the complete root execution and WAT gates.
 - [ ] Regenerate and prove the changed `assoc_list` artifact after proof work resumes.
+
+## 2026-07-15: CLI Failure Interface
+
+`LeanExe.CLI` now classifies handled failures at explicit operation boundaries.  Command-use and bound errors return status two, source and project-input rejections return three, I/O failures return four, and encoder invariants or exceptions outside those boundaries return five.  Each stderr record names the category and command, includes available module, entry, and output-path context, and retains the detailed extractor or operating-system message.
+
+`test/cli_errors.js` runs the executable as a child process and checks malformed command shape, nonnumeric and excessive bounds, a missing module, a missing entry, a wrong WASI entry type, an unsupported declaration, a reserved export name, a failed output write, and help output.  The test also requires empty stdout on failure, the documented status, contextual stderr, no ANSI escape, and no `uncaught exception` prefix.  The complete constrained root gate passed 114 classification cases, 10 ownership-report cases, 9 CLI failure cases, 791 accepted cases, 45 rejections, 14 traps, 40 reference-counting cases, 321 standard-Lean comparisons, 62 IR comparisons, and 56 fuzz cases; the nine-entry WAT round-trip also passed.
+
+This work leaves the Talos proof workspace unchanged.  Existing proof support already includes `read_frames`, `OrdersAt`, `OrdersAt.frame`, and `FreshFixedArrayAt`, which cover repeated read-over-write, represented-order, framing, and fixed-array-header obligations.  When proof work resumes, the next reuse review should compare the completed cancel copy loops with the in-progress `postOnly` append branch and add a shared theorem only if both need the same combined allocation, content, and frame postcondition; a new tactic should require repeated address or invariant forms that the current `read_frames` tactic does not solve.
+
+- [x] Define one public CLI failure status scheme.
+- [x] Add process-level tests for every required failure path.
+- [x] Preserve successful compiler output and WAT round trips.
+- [ ] Review cancel and `postOnly` copy obligations together when Talos proof work resumes.
