@@ -5458,6 +5458,39 @@ mutual
     | _, _ => .error "function call arity mismatch"
 end
 
+structure MaterializedCallArgs where
+  lets : List LeanExe.IR.LocalLet
+  args : List IRExpr
+  nextLocal : Nat
+
+partial def extractMaterializedCallArgsFrom
+    (ctx : Context)
+    (locals : List Binding)
+    (nextLocal : Nat) :
+    List Ty → List Expr → Except String MaterializedCallArgs
+  | [], [] => .ok { lets := [], args := [], nextLocal := nextLocal }
+  | ty :: restTys, expr :: restExprs => do
+      let valueResult ←
+        match extractValueFrom ctx locals nextLocal expr with
+        | .ok result => .ok result
+        | .error error => .error s!"while extracting call argument of type {reprStr ty}: {error}"
+      let width := internalSlots ty
+      let targets := (List.range width).map fun offset => valueResult.snd + offset
+      let headLets ←
+        match materializeInternalValueLets
+            ty valueResult.fst targets ctx.freshResultOwnerOffsets with
+        | .ok lets => .ok lets
+        | .error error =>
+            .error s!"while materializing call argument of type {reprStr ty}: {error}"
+      let rest ←
+        extractMaterializedCallArgsFrom ctx locals (valueResult.snd + width) restTys restExprs
+      .ok {
+        lets := headLets ++ rest.lets,
+        args := targets.map LeanExe.IR.Expr.local ++ rest.args,
+        nextLocal := rest.nextLocal
+      }
+  | _, _ => .error "function call arity mismatch"
+
 def extractExpr (ctx : Context) (locals : List Binding) (nextLocal : Nat) (expr : Expr) :
     Except String (IRExpr × Nat) :=
   extractExprFrom ctx locals nextLocal expr
@@ -6199,9 +6232,39 @@ structure NatTailContext where
   extractCtx : Context
   useAbi : Bool
   params : List Ty
+  carriedTargets : List Nat
+  carriedOwnerTargets : List (Nat × Nat)
   resultTy : Ty
   resultTargets : List Nat
   doneSlot : Nat
+
+def releaseIfUnretainedStmt (released retained : List Nat) (slot : Nat) : IRStmt :=
+  let nonzero : IRCond := .not (.eqU64 (.local slot) (.u64 0))
+  let distinct :=
+    released.foldl
+      (fun cond prior => .and cond (.not (.eqU64 (.local slot) (.local prior))))
+      nonzero
+  let unretained :=
+    retained.foldl
+      (fun cond next => .and cond (.not (.eqU64 (.local slot) (.local next))))
+      distinct
+  .ite unretained (.release (.local slot)) .skip
+
+def releaseUnretainedOwners (slots retained : List Nat) : IRStmt :=
+  let rec loop (released : List Nat) (current : IRStmt) : List Nat → IRStmt
+    | [] => current
+    | slot :: rest =>
+        loop (slot :: released) (.seq current (releaseIfUnretainedStmt released retained slot)) rest
+  loop [] .skip slots
+
+def trackedOwnerValue (ownedLocals releasedLocals oldTrackers : List Nat) (newOwner : Nat) : IRExpr :=
+  if ownedLocals.contains newOwner && !releasedLocals.contains newOwner then
+    .local newOwner
+  else
+    oldTrackers.foldr
+      (fun oldTracker rest =>
+        .ite (.eqU64 (.local newOwner) (.local oldTracker)) (.local newOwner) rest)
+      (.u64 0)
 
 partial def combineTailMatchArms (tag : IRExpr) : List (Nat × IRStmt) → Except String IRStmt
   | [] => .error "inductive matcher has no arms"
@@ -6420,19 +6483,35 @@ mutual
       (recArgs : List Expr) :
       Except String TailStepResult := do
     let carriedParams := lower.params.drop 1
-    let targets := (functionParamTargets lower.useAbi lower.params |>.drop 1).flatMap Prod.snd
     let argsResult ←
-      match extractCallArgsFrom lower.extractCtx locals nextLocal carriedParams recArgs with
+      match extractMaterializedCallArgsFrom
+          lower.extractCtx locals nextLocal carriedParams recArgs with
       | .ok result => .ok result
       | .error error => .error s!"while extracting Nat recursive arguments: {error}"
+    let ownedLocals :=
+      ownedHeapLocalsFromLocalLetsForAlloc
+        lower.extractCtx.freshResultOwnerOffsets [] argsResult.lets
+    let releasedLocals := localLetsReleasedSlots argsResult.lets
+    let nextOwners ← lower.carriedOwnerTargets.mapM fun item =>
+      match argsResult.args[item.fst]? with
+      | some (LeanExe.IR.Expr.local newOwner) => .ok newOwner
+      | _ => .error "Nat recursive owner argument was not materialized"
+    let ownerTrackers := lower.carriedOwnerTargets.map Prod.snd
+    let nextOwnerTrackers :=
+      nextOwners.map (trackedOwnerValue ownedLocals releasedLocals ownerTrackers)
     let tempStart := argsResult.nextLocal
     let updateArgs :=
       LeanExe.IR.seqList
-        (argsResult.lets.map valueLetStmt ++ [assignMany targets argsResult.args tempStart])
+        (argsResult.lets.map localLetStmtOptimized ++
+          [releaseUnretainedOwners ownerTrackers nextOwners,
+            assignMany
+              (lower.carriedTargets ++ ownerTrackers)
+              (argsResult.args ++ nextOwnerTrackers)
+              tempStart])
     let decFuel : IRStmt := .assign 0 (.u64Bin .sub (.local 0) (.u64 1))
     .ok {
       stmt := LeanExe.IR.seqList [updateArgs, decFuel],
-      nextLocal := tempStart + targets.length
+      nextLocal := tempStart + lower.carriedTargets.length + ownerTrackers.length
     }
 
   partial def extractNatTailUnitArmStmt
@@ -6748,15 +6827,57 @@ def extractNatRecFunc
   let sourceParamCount := params.length
   let useAbi := exportName.isSome
   let wasmParamCount := functionParamCount useAbi params
+  let carriedParams := params.drop 1
+  let needsInternalCarried :=
+    useAbi && carriedParams.any (fun ty => abiSlots ty != internalSlots ty)
+  let carriedTargets :=
+    if needsInternalCarried then
+      let carriedWidth := carriedParams.foldl (fun total ty => total + internalSlots ty) 0
+      (List.range carriedWidth).map (fun offset => wasmParamCount + offset)
+    else
+      (functionParamTargets useAbi params |>.drop 1).flatMap Prod.snd
+  let carriedStateEnd :=
+    if needsInternalCarried then wasmParamCount + carriedTargets.length else wasmParamCount
+  let carriedOwnerTargets :=
+    enumerate (tyListReleaseOwnerSlotOffsetsAt 0 carriedParams) |>.map fun item =>
+      (item.snd, carriedStateEnd + item.fst)
+  let carriedBindings :=
+    if needsInternalCarried then
+      (internalParamBindingsFrom wasmParamCount carriedParams).reverse
+    else
+      ((functionParamBindings useAbi params).drop 1).reverse
+  let stepLocals :=
+    if needsInternalCarried then
+      (.natRecursor name :: carriedBindings) ++
+        [.value (.scalar (.u64Bin .sub (.local 0) (.u64 1)))]
+    else
+      stepBindingsForParams useAbi name params
+  let baseLocals :=
+    if needsInternalCarried then
+      .natRecursor name :: carriedBindings
+    else
+      baseBindingsForParams useAbi name params
+  let initialCarriedSlots ←
+    if needsInternalCarried then
+      let sourceBindings := (sourceParamBindings params).drop 1
+      let fields ← (carriedParams.zip sourceBindings).mapM fun item =>
+        match item.snd with
+        | .value value =>
+            flattenInternalValue item.fst value ctx.freshResultOwnerOffsets
+        | _ => .error "unsupported Nat recursive ABI parameter binding"
+      .ok fields.flatten
+    else
+      .ok []
+  if needsInternalCarried && initialCarriedSlots.length != carriedTargets.length then
+    .error s!"Nat recursive ABI state shape mismatch: {name}"
+  else
   let shape ←
     match ← findNatRecShape? ctx.env name sourceParamCount value with
     | some shape => .ok shape
     | none => .error s!"unsupported Nat recursion shape: {name}"
-  let stepLocals := stepBindingsForParams useAbi name params
-  let baseLocals := baseBindingsForParams useAbi name params
   let fuelLive : IRCond := .not (.eqU64 (.local 0) (.u64 0))
   let resultCount := resultSlotCount useAbi resultTy
-  let resultStart := wasmParamCount
+  let resultStart := carriedStateEnd + carriedOwnerTargets.length
   let resultTargets := (List.range resultCount).map (fun offset => resultStart + offset)
   let doneSlot := resultStart + resultCount
   let tempStart := doneSlot + 1
@@ -6764,6 +6885,8 @@ def extractNatRecFunc
     extractCtx := ctx,
     useAbi := useAbi,
     params := params,
+    carriedTargets := carriedTargets,
+    carriedOwnerTargets := carriedOwnerTargets,
     resultTy := resultTy,
     resultTargets := resultTargets,
     doneSlot := doneSlot
@@ -6784,7 +6907,12 @@ def extractNatRecFunc
     params := wasmParamCount,
     locals := baseResult.snd,
     body :=
-      LeanExe.IR.seqList
+      LeanExe.IR.seqList <|
+        (if needsInternalCarried then
+          [assignResultSlots carriedTargets initialCarriedSlots]
+        else
+          []) ++
+        carriedOwnerTargets.map (fun item => .assign item.snd (.u64 0)) ++
         [.assign doneSlot (.u64 0),
           .while loopCond stepResult.stmt,
           .ite (.eqU64 (.local doneSlot) (.u64 0)) baseBody .skip],

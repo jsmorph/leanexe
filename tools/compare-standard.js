@@ -746,6 +746,7 @@ function selfTest() {
   const correctness = "LeanExe.Examples.Correctness";
   const clob = "LeanExe.Examples.Clob";
   const u64Layout = scalarLayout("UInt64");
+  const natLayout = scalarLayout("Nat");
   const optionNatLayout = variantLayout([[], [u64Layout]]);
   const orderLayout = structLayout([
     ["id", u64Layout],
@@ -761,10 +762,25 @@ function selfTest() {
     ["price", u64Layout],
     ["qty", u64Layout],
   ]);
+  const tradeArrayLayout = arrayLayout(tradeLayout);
   const opResultLayout = structLayout([
     ["status", u64Layout],
     ["book", orderArrayLayout],
-    ["trades", arrayLayout(tradeLayout)],
+    ["trades", tradeArrayLayout],
+  ]);
+  const matchStateLayout = structLayout([
+    ["book", orderArrayLayout],
+    ["trades", tradeArrayLayout],
+    ["remaining", u64Layout],
+  ]);
+  const levelLayout = structLayout([
+    ["price", u64Layout],
+    ["qty", u64Layout],
+  ]);
+  const levelArrayLayout = arrayLayout(levelLayout);
+  const depthLayout = structLayout([
+    ["bids", levelArrayLayout],
+    ["asks", levelArrayLayout],
   ]);
   const nestedU64ArrayLayout = arrayLayout(arrayLayout(u64Layout));
   const byteArrayArrayLayout = arrayLayout(byteArrayLayout);
@@ -780,6 +796,10 @@ function selfTest() {
   const arrayBoxLayout = structLayout([
     ["values", arrayLayout(u64Layout)],
     ["count", u64Layout],
+  ]);
+  const recArrayStateLayout = structLayout([
+    ["values", arrayLayout(u64Layout)],
+    ["marker", u64Layout],
   ]);
   const pointLayout = structLayout([
     ["x", u64Layout],
@@ -881,6 +901,24 @@ let out := out ++ __leanexeJsonArray __leanexeValue.book ${renderOrder}
 let out := out ++ ",\\"trades\\":".toUTF8
 let out := out ++ __leanexeJsonArray __leanexeValue.trades ${renderTrade}
 out.push (125 : UInt8)`;
+  const renderMatchState = `let out := "{\\"book\\":".toUTF8
+let out := out ++ __leanexeJsonArray __leanexeValue.book ${renderOrder}
+let out := out ++ ",\\"trades\\":".toUTF8
+let out := out ++ __leanexeJsonArray __leanexeValue.trades ${renderTrade}
+let out := out ++ ",\\"remaining\\":".toUTF8
+let out := __leanexeAppendUInt64 out __leanexeValue.remaining
+out.push (125 : UInt8)`;
+  const renderLevel = `(fun level =>
+  let out := "{\\"price\\":".toUTF8
+  let out := __leanexeAppendUInt64 out level.price
+  let out := out ++ ",\\"qty\\":".toUTF8
+  let out := __leanexeAppendUInt64 out level.qty
+  out.push (125 : UInt8))`;
+  const renderDepth = `let out := "{\\"bids\\":".toUTF8
+let out := out ++ __leanexeJsonArray __leanexeValue.bids ${renderLevel}
+let out := out ++ ",\\"asks\\":".toUTF8
+let out := out ++ __leanexeJsonArray __leanexeValue.asks ${renderLevel}
+out.push (125 : UInt8)`;
   const order = (id, trader, side, price, qty = 1) => ({ id, trader, side, price, qty });
   const buy = order(90, 90, 0, 100, 5);
   const sell = order(91, 91, 1, 100, 5);
@@ -911,6 +949,28 @@ out.push (125 : UInt8)`;
     values.length === 0
       ? `(#[] : Array ${clob}.Order)`
       : `(#[${values.map(leanOrder).join(", ")}] : Array ${clob}.Order)`;
+  const leanTrade = (value) =>
+    `({ takerId := ${value.takerId}, makerId := ${value.makerId}, ` +
+      `price := ${value.price}, qty := ${value.qty} } : ${clob}.Trade)`;
+  const leanTrades = (values) =>
+    values.length === 0
+      ? `(#[] : Array ${clob}.Trade)`
+      : `(#[${values.map(leanTrade).join(", ")}] : Array ${clob}.Trade)`;
+  const leanMatchState = (value) =>
+    `({ book := ${leanBook(value.book)}, trades := ${leanTrades(value.trades)}, ` +
+      `remaining := ${value.remaining} } : ${clob}.MatchState)`;
+  const opResultCases = (entry, values) => values.map(({ book, taker }) => ({
+    mode: "pure-abi",
+    moduleName: clob,
+    entry,
+    abiArgs: [
+      { layout: orderArrayLayout, value: book },
+      { layout: orderLayout, value: taker },
+    ],
+    standardCall: `${clob}.${entry} ${leanBook(book)} ${leanOrder(taker)}`,
+    resultLayout: opResultLayout,
+    serializer: renderOpResult,
+  }));
   const findBestCases = [
     { book: [], taker: buy },
     { book: rejected, taker: buy },
@@ -930,7 +990,7 @@ out.push (125 : UInt8)`;
     serializer: renderOptionNat,
   }));
   const baseBook = [order(1, 10, 0, 100, 5)];
-  const postOnlyCases = [
+  const postOnlyCases = opResultCases("postOnly", [
     { book: [], taker: order(0, 11, 1, 200) },
     { book: [], taker: order(2, 0, 1, 200) },
     { book: baseBook, taker: order(2, 11, 3, 200) },
@@ -938,21 +998,89 @@ out.push (125 : UInt8)`;
     { book: baseBook, taker: order(1, 11, 1, 200) },
     { book: baseBook, taker: order(2, 11, 1, 100, 3) },
     { book: baseBook, taker: order(2, 11, 1, 105, 3) },
-  ].map(({ book, taker }) => ({
+  ]);
+  const matchFuelCases = [
+    { fuel: 0, taker: order(2, 11, 1, 100, 3), state: { book: baseBook, trades: [], remaining: 3 } },
+    { fuel: 2, taker: order(2, 11, 1, 100, 3), state: { book: baseBook, trades: [], remaining: 0 } },
+    { fuel: 2, taker: order(2, 11, 1, 100, 3), state: { book: [], trades: [], remaining: 3 } },
+    { fuel: 1, taker: order(2, 11, 1, 100, 7), state: { book: baseBook, trades: [], remaining: 7 } },
+    { fuel: 2, taker: order(2, 11, 1, 100, 3), state: { book: baseBook, trades: [], remaining: 3 } },
+  ].map(({ fuel, taker, state }) => ({
     mode: "pure-abi",
     moduleName: clob,
-    entry: "postOnly",
+    entry: "matchFuel",
     abiArgs: [
-      { layout: orderArrayLayout, value: book },
+      { layout: natLayout, value: fuel },
       { layout: orderLayout, value: taker },
+      { layout: matchStateLayout, value: state },
     ],
-    standardCall: `${clob}.postOnly ${leanBook(book)} ${leanOrder(taker)}`,
-    resultLayout: opResultLayout,
-    serializer: renderOpResult,
+    standardCall: `${clob}.matchFuel ${fuel} ${leanOrder(taker)} ${leanMatchState(state)}`,
+    resultLayout: matchStateLayout,
+    serializer: renderMatchState,
   }));
+  const twoMakerBook = [
+    order(1, 10, 0, 100, 2),
+    order(2, 12, 0, 101, 3),
+  ];
+  const limitCases = opResultCases("limit", [
+    { book: baseBook, taker: order(1, 11, 1, 100, 3) },
+    { book: baseBook, taker: order(2, 11, 1, 100, 5) },
+    { book: baseBook, taker: order(2, 11, 1, 100, 3) },
+    { book: baseBook, taker: order(2, 11, 1, 100, 7) },
+    { book: baseBook, taker: order(2, 11, 1, 105, 3) },
+    { book: twoMakerBook, taker: order(3, 13, 1, 100, 5) },
+  ]);
+  const marketCases = opResultCases("market", [
+    { book: baseBook, taker: order(0, 11, 1, 999, 3) },
+    { book: [order(1, 10, 1, 500, 5)], taker: order(2, 11, 0, 0, 3) },
+    { book: [order(1, 10, 0, 1, 5)], taker: order(2, 11, 1, 999, 3) },
+    { book: baseBook, taker: order(2, 11, 1, 999, 9) },
+    { book: baseBook, taker: order(2, 10, 1, 999, 3) },
+  ]);
+  const depthBook = [
+    order(1, 10, 0, 100, 2),
+    order(2, 11, 1, 105, 4),
+    order(3, 12, 0, 99, 7),
+    order(4, 13, 0, 100, 3),
+    order(5, 14, 1, 104, 6),
+    order(6, 15, 1, 105, 1),
+    order(7, 16, 2, 777, 9),
+  ];
+  const depthCases = [[], depthBook].map((book) => ({
+    mode: "pure-abi",
+    moduleName: clob,
+    entry: "depth",
+    abiArgs: [{ layout: orderArrayLayout, value: book }],
+    standardCall: `${clob}.depth ${leanBook(book)}`,
+    resultLayout: depthLayout,
+    serializer: renderDepth,
+  }));
+  const recArrayStateCase = {
+    mode: "pure-abi",
+    moduleName: correctness,
+    entry: "recArrayStateFuel",
+    abiArgs: [
+      { layout: natLayout, value: 2 },
+      { layout: recArrayStateLayout, value: { values: [], marker: 7 } },
+    ],
+    standardCall:
+      `${correctness}.recArrayStateFuel 2 ` +
+        `({ values := #[], marker := 7 } : ${correctness}.RecArrayState)`,
+    resultLayout: recArrayStateLayout,
+    serializer: `let out := "{\\"values\\":".toUTF8
+let out := out ++ __leanexeJsonArray __leanexeValue.values __leanexeJsonUInt64
+let out := out ++ ",\\"marker\\":".toUTF8
+let out := __leanexeAppendUInt64 out __leanexeValue.marker
+out.push (125 : UInt8)`,
+  };
   const cases = [
     ...findBestCases,
     ...postOnlyCases,
+    ...matchFuelCases,
+    ...limitCases,
+    ...marketCases,
+    ...depthCases,
+    recArrayStateCase,
     {
       mode: "pure",
       moduleName: correctness,
