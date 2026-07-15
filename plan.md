@@ -16,7 +16,7 @@ LeanExe runtime intrinsics require a separate semantic statement.  Ordinary Lean
 | Compiler | Checked-environment extraction, a typed first-order IR with an interpreter, ownership summaries, a reference-counted heap, and one structured WASM instruction stream serialized as binary or WAT.  Array search matches bind one encoded scan result before projecting the tag and payload. | The remaining CLOB artifacts require input-generic proofs in dependency order, beginning with `postOnly`. |
 | Execution tests | The complete gate passes 791 accepted cases, 45 rejections, 14 traps, 321 standard-Lean comparisons, 62 IR comparisons, 40 reference-counting cases, 9 CLI failure cases, and the matched-value IR and WAT assertions. | The IR interpreter does not model heap allocation, release, or runtime counters. |
 | Artifact proofs | Fifteen completed byte-pinned proof cases exist, including the self-compiled LEB128 encoder and exact CLOB quote, cancel, and `findBest` behavior.  All sixteen checked artifact pairs match Lean 4.31 compiler output, and the existing `assoc_list` theorem passes against its refreshed model. | `postOnly`, `matchFuel`, `limit`, `market`, and `depth` remain unproved. |
-| Documentation and tools | The current documents distinguish fifteen completed proofs from sixteen checked artifacts.  The compiler and proof workspaces pin Lean 4.31.0, Node pins 24.13.0, `wasm-tools` pins 1.251.0, Wasmtime 44.0.0 archives have checked hashes, repository instructions constrain every Lean process, CLI failures use tested statuses and contextual stderr records, and Talos artifact comparisons run before a separate proof-freshness check. | Older handwritten proof files retain linter warnings. |
+| Documentation and tools | The current documents distinguish fifteen completed proofs from sixteen checked artifacts.  The compiler and proof workspaces pin Lean 4.31.0, Node pins 24.13.0, `wasm-tools` pins 1.251.0, Wasmtime 44.0.0 archives have checked hashes, repository instructions constrain every Lean process, CLI failures use tested statuses and contextual stderr records, and Talos artifact comparisons run before a separate proof-freshness check. | Older handwritten proof files retain linter warnings.  Warning-only builds of `SharedPair` and `LebU32.Iter` exceeded 30-minute and 15-minute limits under memory pressure, so those warnings remain until substantive work requires the same elaboration. |
 
 The baseline was checked on 2026-07-15.  The untracked `leanclob/` directory is a separate nested Git repository and remains outside this plan.  Update this table in the same change that alters a stated fact.
 
@@ -107,10 +107,13 @@ The CLOB proofs will repeat fixed-width array reads, copy loops, allocation head
 This phase is numbered for accountability but runs during Phases 3 and 4 when the repetition threshold is met.  It must not postpone obvious reuse until all CLOB proofs are complete.  It must also avoid speculative helpers based on one artifact.
 
 - [x] Generalize the fixed-width array predicate used by quote and cancel when the next CLOB proof confirms its shape.
+- [x] Generalize fixed-array header preservation across data writes after cancel and `postOnly` established the repeated address form.
 - [ ] Generalize copy-loop and fresh-array postconditions used by `eraseIdx!`, `push`, and later matching updates.
 - [ ] Extend `release_frees_tree` to array-kind nodes, then to shared interior nodes and aliased shared leaves.
 - [ ] Reprove `pair_free` and `box_free` as applications of the general teardown library and remove duplicated walk proofs.
 - [ ] Add normalizing lemmas or tactics only for address and invariant forms that recur across artifact modules.
+
+`FreshFixedArrayAt.write64_data` now proves that an aligned data write at or above a represented fixed array preserves all six header words.  The cancel proof uses it at two write sites, and the successful `postOnly` branch contains the third use site that established the repetition threshold.  A combined copy-loop, content, allocation, and memory-frame theorem remains open because the completed cases have not yet established one common statement.
 
 This phase ends when allocation-bearing CLOB proofs consume shared semantic lemmas instead of copied instruction walks.  The theorem statements, proof size, and build time provide the acceptance evidence.  A refactor must preserve every artifact theorem and the aggregate proof build.
 
@@ -125,7 +128,7 @@ Pin every tool that can change generated or decoded artifacts.  Record and enfor
 - [x] Add checked Wasmtime archive hashes for every supported release artifact and platform.
 - [x] Separate cold dependency setup from concise gate summaries so build volume cannot hide a failed comparison.
 - [x] Remove the known `AsciiDigits.lean` warning in a focused change that preserves behavior.
-- [ ] Remove proof warnings in focused changes that preserve behavior.
+- [ ] Remove proof warnings during substantive proof rebuilds, using focused checks that preserve behavior; defer warning-only elaboration when it exceeds the resource-limited diagnostic timeout.
 
 ## Reproducible Gates
 
