@@ -195,6 +195,19 @@ function checkMatchedArrayRelease() {
   }
 }
 
+function checkRecursiveAbiStateOwnership() {
+  const wasm = compile(correctnessModule, "recArrayStateFuel");
+  const args = [host.i64(2), host.arrayU64([]), host.i64(7)];
+  const stats = host.callStats(wasm, "recArrayStateFuel", "slots:2", args);
+  const observed = [stats.allocs, stats.retains, stats.releases, stats.frees];
+  const expected = [3n, 0n, 1n, 1n];
+  if (observed.some((value, index) => value !== expected[index])) {
+    throw new Error(
+      `recArrayStateFuel: expected stats ${expected.join(" ")}, got ${observed.join(" ")}`,
+    );
+  }
+}
+
 function main() {
   run(["lake", "build", correctnessModule]);
   run(["lake", "build", byteArrayModule]);
@@ -207,7 +220,8 @@ function main() {
   checkCompilerReleasesFoldAccumulators();
   checkLeakAccounting();
   checkMatchedArrayRelease();
-  process.stdout.write("checked 40 refcount cases\n");
+  checkRecursiveAbiStateOwnership();
+  process.stdout.write("checked 41 refcount cases\n");
 }
 
 try {
