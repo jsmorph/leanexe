@@ -37,10 +37,6 @@ private def cAllocFrame (ptr cid f2 f3 f4 f5 f6 idx len : UInt64) : Locals :=
       .i64 0, .i64 0, .i64 0, .i64 0, .i64 0],
     values := [] }
 
-private def orderWord (st : Store Unit) (ptr : UInt64) (w : Nat) : UInt64 :=
-  st.mem.read64
-    (UInt32.ofNat ((ptr.toNat + (w + 1) * 8) % 4294967296))
-
 private def cCopyFrame (ptr cid f2 f3 f4 f5 f6 g0 : UInt64)
     (i n k : Nat) : Locals :=
   { params := [.i64 ptr, .i64 cid],
@@ -586,15 +582,14 @@ theorem cancel_found
                   unfold orderArrayBytes at hFit'
                   omega
                 refine ⟨by simp [func3Def], ?_, hfresh4, hpg4, hgl4, hlo4⟩
-                refine ⟨?_, ?_⟩
-                · refine ⟨?_, ?_⟩
-                  · rw [List.length_eraseIdx_of_lt hi]
-                    simpa only [toUInt32_eq_ofNat] using hlength4
-                  · rw [hnewNat, Nat.mod_eq_of_lt (by omega), hpg4]
-                    have hFit' := hFit
-                    unfold orderArrayBytes at hFit'
-                    omega
-                · intro j hj
+                apply OrdersAt.ofFlatWords
+                · rw [List.length_eraseIdx_of_lt hi]
+                  simpa only [toUInt32_eq_ofNat] using hlength4
+                · rw [hnewNat, Nat.mod_eq_of_lt (by omega), hpg4]
+                  have hFit' := hFit
+                  unfold orderArrayBytes at hFit'
+                  omega
+                · intro j hj field hfield
                   have hjOut : j < os.length - 1 := by
                     rw [List.length_eraseIdx_of_lt hi] at hj
                     exact hj
@@ -602,67 +597,30 @@ theorem cancel_found
                     List.getElem_eraseIdx hj]
                   by_cases hji : j < i
                   · rw [dif_pos hji]
-                    obtain ⟨⟨hr1, _⟩, ⟨hr2, _⟩, ⟨hr3, _⟩, ⟨hr4, _⟩,
-                      ⟨hr5, _⟩⟩ := hIn.2 j (by omega)
-                    have hget : os[j]! = os[j] :=
-                      getElem!_pos os j (by omega)
-                    rw [hget] at hr1 hr2 hr3 hr4 hr5
-                    refine ⟨⟨?_, ?_⟩, ⟨?_, ?_⟩, ⟨?_, ?_⟩, ⟨?_, ?_⟩,
-                      ⟨?_, ?_⟩⟩
-                    · calc
-                        _ = _ := by simpa using hreadPrefix j 0 hji (by omega)
-                        _ = _ := hr1
-                    · simpa using houtBound j 0 hjOut (by omega)
-                    · calc
-                        _ = _ := by simpa using hreadPrefix j 1 hji (by omega)
-                        _ = _ := hr2
-                    · simpa using houtBound j 1 hjOut (by omega)
-                    · calc
-                        _ = _ := by simpa using hreadPrefix j 2 hji (by omega)
-                        _ = _ := hr3
-                    · simpa using houtBound j 2 hjOut (by omega)
-                    · calc
-                        _ = _ := by simpa using hreadPrefix j 3 hji (by omega)
-                        _ = _ := hr4
-                    · simpa using houtBound j 3 hjOut (by omega)
-                    · calc
-                        _ = _ := by simpa using hreadPrefix j 4 hji (by omega)
-                        _ = _ := hr5
-                    · simpa using houtBound j 4 hjOut (by omega)
+                    calc
+                      _ = orderWord st2 ptr (j * 5 + field) := by
+                        simpa [orderWord, hnewNat] using
+                          hreadPrefix j field hji hfield
+                      _ = _ := by
+                        have hs := hIn.orderWord_eq j field (by omega) hfield
+                        rw [getElem!_pos os j (by omega)] at hs
+                        exact hs
                   · rw [dif_neg hji]
                     have hji' : i ≤ j := by omega
-                    obtain ⟨⟨hr1, _⟩, ⟨hr2, _⟩, ⟨hr3, _⟩, ⟨hr4, _⟩,
-                      ⟨hr5, _⟩⟩ := hIn.2 (j + 1) (by omega)
-                    have hget : os[j + 1]! = os[j + 1] :=
-                      getElem!_pos os (j + 1) (by omega)
-                    rw [hget] at hr1 hr2 hr3 hr4 hr5
-                    refine ⟨⟨?_, ?_⟩, ⟨?_, ?_⟩, ⟨?_, ?_⟩, ⟨?_, ?_⟩,
-                      ⟨?_, ?_⟩⟩
-                    · calc
-                        _ = _ := by
-                          simpa using hreadSuffix j 0 hji' hjOut (by omega)
-                        _ = _ := hr1
-                    · simpa using houtBound j 0 hjOut (by omega)
-                    · calc
-                        _ = _ := by
-                          simpa using hreadSuffix j 1 hji' hjOut (by omega)
-                        _ = _ := hr2
-                    · simpa using houtBound j 1 hjOut (by omega)
-                    · calc
-                        _ = _ := by
-                          simpa using hreadSuffix j 2 hji' hjOut (by omega)
-                        _ = _ := hr3
-                    · simpa using houtBound j 2 hjOut (by omega)
-                    · calc
-                        _ = _ := by
-                          simpa using hreadSuffix j 3 hji' hjOut (by omega)
-                        _ = _ := hr4
-                    · simpa using houtBound j 3 hjOut (by omega)
-                    · calc
-                        _ = _ := by
-                          simpa using hreadSuffix j 4 hji' hjOut (by omega)
-                        _ = _ := hr5
-                    · simpa using houtBound j 4 hjOut (by omega)
+                    calc
+                      _ = orderWord st2 ptr ((j + 1) * 5 + field) := by
+                        simpa [orderWord, hnewNat] using
+                          hreadSuffix j field hji' hjOut hfield
+                      _ = _ := by
+                        have hs :=
+                          hIn.orderWord_eq (j + 1) field (by omega) hfield
+                        rw [getElem!_pos os (j + 1) (by omega)] at hs
+                        exact hs
+                · intro j hj field hfield
+                  have hjOut : j < os.length - 1 := by
+                    rw [List.length_eraseIdx_of_lt hi] at hj
+                    exact hj
+                  simpa using houtBound j field hjOut hfield
               · have hnge : ¬ (UInt64.ofNat k ≥
                     (UInt64.ofNat os.length - 1 - UInt64.ofNat i) * 5) := by
                   rw [ge_iff_le, UInt64.le_iff_toNat_le, hkU, hsuffixU]
