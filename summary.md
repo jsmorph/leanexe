@@ -1,6 +1,6 @@
 # LeanExe Technical Summary
 
-LeanExe compiles a restricted, first-order subset of Lean 4 to standalone WebAssembly.  Lean serves as the source language, type checker, and proof environment.  The compiler loads a checked declaration from a built Lake module, classifies its reachable call graph against the accepted subset, lowers it through a small typed IR, and emits a WASM module with an arena allocator and reference-counted heap but no Lean runtime.  The compiler workspace pins Lean 4.29.1, while the Talos proof workspace pins Lean 4.31.0.  This document describes architecture; [Developing LeanExe](DEVELOPING.md) owns development procedure, and the [Development Plan](plan.md) owns current work.
+LeanExe compiles a restricted, first-order subset of Lean 4 to standalone WebAssembly.  Lean serves as the source language, type checker, and proof environment.  The compiler loads a checked declaration from a built Lake module, classifies its reachable call graph against the accepted subset, lowers it through a small typed IR, and emits a WASM module with an arena allocator and reference-counted heap but no Lean runtime.  The compiler and Talos proof workspaces both pin Lean 4.31.0.  This document describes architecture; [Developing LeanExe](DEVELOPING.md) owns development procedure, and the [Development Plan](plan.md) owns current work.
 
 ## Compilation Pipeline
 
