@@ -6,7 +6,7 @@ The default generated module exports a plain WASM function for the selected Lean
 
 ## Requirements
 
-This repository uses Lean through `elan` and Lake.  The root `lean-toolchain` pins Lean 4.29.1, while the Talos proof workspace pins Lean 4.31.0.  Wasmtime runs generated modules, and a small C host runner handles library-mode ABI tests that need memory writes and inspection.
+This repository uses Lean through `elan` and Lake.  The compiler and Talos proof workspaces both pin Lean 4.31.0.  Wasmtime runs generated modules, and a small C host runner handles library-mode ABI tests that need memory writes and inspection.  Run every Lean or Lake command, including a script that starts either tool, through the [resource-limited process form](DEVELOPING.md#lean-process-limits).
 
 ```sh
 tools/download-wasmtime.sh
@@ -29,7 +29,7 @@ node test/run_all.js
 | `LeanExe/Wasm` | WASM module model, binary encoder, WAT printer, and interpreter support used by tests. |
 | `LeanExe/Examples` | Example Lean programs that exercise the supported subset. |
 | `test` | Node and Lean tests that compare Lean execution with generated WASM behavior. |
-| `proofs/talos-gcd` | Talos proof workspace: fifteen verified artifacts, the runtime lemma library, and the generic teardown theorem. |
+| `proofs/talos-gcd` | Talos proof workspace: fifteen completed artifact proofs, one in-progress CLOB artifact proof, the runtime lemma library, and the generic teardown theorem. |
 | `DEVELOPING.md` | Developer setup, diagnostics, test gates, proof artifacts, and troubleshooting. |
 | `verifying.md` | End-to-end recipe for verifying a new program. |
 | `manual.md` | Practical guide to writing Lean source that LeanExe can compile. |

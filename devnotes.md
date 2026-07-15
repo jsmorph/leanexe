@@ -4705,3 +4705,21 @@ The proof follows the emitted free-list loop, bump allocation, page check, six h
 The allocator postcondition matches the invalid branch: heap top advances by 56 bytes, allocation count advances once, and page count remains fixed.  The fresh array has reference count one, eight-byte capacity, array kind two, stride four, owner mask zero, and length zero.  `OrdersAt.frame` proves that the seven allocation writes preserve the represented input book.
 
 Rebuilding the shared `FindBest` theorem after the CLOB model edit completed 3,007 jobs in 325 seconds.  `lake build Project.ClobPostOnly.Crossing` then completed 3,012 jobs in 24 seconds without an error or warning.  The crossing theorem adds no axiom, admission, dependency, or generated-file edit.
+
+## 2026-07-15: Compiler Workspace Upgrade to Lean 4.31
+
+The root `lean-toolchain` now pins Lean 4.31.0, matching the Talos proof workspace.  Compatibility edits use Lean 4.31's direct `Nat` comparisons, proof-bearing `ByteArray.get`, nested error contexts, and generated recursion declarations.  The upgrade adds no dependency and leaves the public compiler commands unchanged.
+
+Lean 4.31 places equation-compiled natural-number recursion in a generated `<declaration>._f` helper, and structural `brecOn` helpers can apply `_f` to captured arguments before the recursive argument.  Extraction now recognizes that shape, instantiates and beta-reduces the helper, and traverses the helper dependencies when building the accepted declaration set.  The release checker validates releases inside `_f` under the source declaration name, which restores rejection of a loop-carried structure-field release in `JsonGcTreeRewrite.runRoundsFuel`.
+
+Repository instructions now require one resource-limited user scope around every Lean, Lake, compiler, or compiler-spawning command.  The scope sets `MemoryHigh=4G`, `MemoryMax=6G`, `MemorySwapMax=1G`, `CPUQuota=100%`, `nice -n 10`, `ionice -c 3`, and a command-specific timeout.  Lake 5.0.0 exposes no job-count option, so the CPU quota limits Lake and all child processes to one core and concurrent Lean processes remain prohibited.
+
+The complete root gate passed after a clean build.  It reported 114 classification cases, 10 ownership-report cases, 791 accepted cases, 45 rejections, 14 traps, 4 matched-value IR cases, 1 matched-value WAT assertion, 7 leak-accounting cases, 40 reference-counting cases, 70 byte-array allocation cases, 23 ASCII-string cases, 4 integer-map cases, 48 JSON cases, 33 WASI program cases with 2 traps, 9 rejections, and 16 compiles, 63 self-emitted LEB128 cases, 321 standard-Lean comparisons, 62 IR comparisons, and 56 fuzz cases.  The clean build exposed five modules that the complete runner consumed without building explicitly, so `test/run_all.js` now names them in its initial Lake build.  Removing the obsolete `hsize` simplification argument also leaves the root build free of warnings.
+
+The WAT round-trip gate passed all nine entries.  Compiler-only comparison against the sixteen checked Talos inputs matched fifteen WASM and WAT pairs; `assoc_list` differs because the Lean 4.31 form removes eight WAT lines that normalize an already Boolean result before comparing it with one.  Disk cleanup removed the proof cache, and the in-progress `postOnly` proof has uncommitted work, so this migration neither updated proof inputs nor ran the proof build; `assoc_list` regeneration and proof validation remain required before the toolchain artifact gate passes.
+
+- [x] Pin the root compiler workspace to Lean 4.31.0.
+- [x] Support Lean 4.31 recursion helpers and release validation.
+- [x] Constrain every Lean process by memory, CPU, I/O priority, and timeout.
+- [x] Run the complete root execution and WAT gates.
+- [ ] Regenerate and prove the changed `assoc_list` artifact after proof work resumes.

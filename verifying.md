@@ -4,7 +4,7 @@ This guide covers a new verified program: a Lean function, its compiled WASM art
 
 The pipeline has three trusted-base components: the Lean kernel, the Talos WASM model, and the Talos decoder.  The compiler is not trusted.  Each verified program is translation validation: the theorem is about the decoded instruction stream, and a byte comparison pins that stream to the artifact the compiler ships.
 
-Complete the proof-workspace setup in [Developing LeanExe](DEVELOPING.md) before adding a case.  The compiler workspace uses Lean 4.29.1, while this proof workspace uses Lean 4.31.0 and pinned Talos dependencies.  A cold proof build compiles thousands of jobs, and an artifact update also requires the separately built Talos verifier emitter.
+Complete the proof-workspace setup in [Developing LeanExe](DEVELOPING.md) before adding a case.  The compiler and proof workspaces use Lean 4.31.0, while the proof workspace adds pinned Talos dependencies.  A cold proof build compiles thousands of jobs, and an artifact update also requires the separately built Talos verifier emitter.
 
 ## 1. Write the Function
 

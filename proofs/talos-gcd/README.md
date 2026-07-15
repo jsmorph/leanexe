@@ -60,7 +60,7 @@ When the compiler output changes intentionally, run the corresponding check scri
 
 ## Requirements
 
-The proof workspace pins Lean 4.31.0, while the compiler workspace pins Lean 4.29.1.  `elan` selects the correct version from each directory's `lean-toolchain`, and the proof Lake manifest pins Talos and its transitive dependencies.  A cold `lake build Project` fetches those dependencies and compiles thousands of Lean jobs, so initialize the workspace before relying on a per-case check for quick feedback.
+The proof and compiler workspaces pin Lean 4.31.0 in their respective `lean-toolchain` files.  The proof Lake manifest also pins Talos and its transitive dependencies.  A cold `lake build Project` fetches those dependencies and compiles thousands of Lean jobs, so initialize the workspace before relying on a per-case check for quick feedback.
 
 The check scripts need `wasm-tools` to render WAT from regenerated WASM.  They look for `WASM_TOOLS`, then `wasm-tools` in `PATH`, then `$HOME/.cargo/bin/wasm-tools`; the repository does not yet pin its version.  [Developing LeanExe](../../DEVELOPING.md) gives the complete setup, verifier build command, environment variables, and failure diagnostics.
 
