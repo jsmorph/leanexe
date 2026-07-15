@@ -460,6 +460,26 @@ structure StructuralStep where
   arms : List Expr
   prePostArgCount : Nat
 
+def unfoldGeneratedStructuralStep (env : Environment) (step : Expr) : Expr :=
+  let (fn, args) := appFnArgs step
+  match fn.consumeMData with
+  | .const candidate levels =>
+      match candidate with
+      | .str _ "_f" =>
+          match env.find? candidate with
+          | some info =>
+              match info.value? with
+              | some value =>
+                  betaReduceExpr 32
+                    (rebuildApp
+                      (value.instantiateLevelParamsArray
+                        info.levelParams.toArray levels.toArray)
+                      args)
+              | none => step
+          | none => step
+      | _ => step
+  | _ => step
+
 def structuralRecStepMatcher?
     (env : Environment)
     (typeName : Name)
@@ -467,6 +487,7 @@ def structuralRecStepMatcher?
     (postArgCount : Nat)
     (step : Expr) :
     Except String StructuralStep := do
+  let step := unfoldGeneratedStructuralStep env step
   let stepBody ←
     match collectLambdas step (2 + postArgCount) with
     | some body => .ok body
