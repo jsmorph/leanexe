@@ -4787,3 +4787,15 @@ The constrained per-case update completed 3,006 Lake jobs in 18 seconds.  The co
 - [x] Regenerate the checked WASM, WAT, and Talos model.
 - [x] Rebuild the existing input-generic theorem.
 - [x] Match all sixteen artifacts against Lean 4.31 output.
+
+## 2026-07-15: Proof Maintenance and Fixed-Array Framing
+
+Stored Lean traces contained 267 warning records across twelve handwritten proof modules, including duplicate records for unreachable tactics.  Focused edits removed the warning in `FoldSum.Spec`, four interface-binder warnings in `LebU32.Copy`, and all seventeen warnings in `Runtime.Tree` and `Runtime.TreeSpec`.  Constrained `--wfail` builds completed in 3.2 seconds for `Runtime.Tree`, 13 seconds for `Runtime.TreeSpec`, and 2.8 seconds for `LebU32.Copy` after a separate three-second dependency rebuild, without a warning in any checked target.
+
+One Lake invocation named `Validate`, `FoldSum`, and `SharedPair` as separate targets.  Lake started two Lean children concurrently even though their common cgroup limited the process tree to one CPU and six gigabytes, which violated the repository rule against concurrent Lean processes.  I interrupted that build, restored the unverified `Validate` and `SharedPair` edits, confirmed their diffs were empty, and used exactly one target in every later Lake invocation.
+
+An isolated `SharedPair.Spec` warning-only build reached its 30-minute timeout, and an isolated `LebU32.Iter` warning-only build reached its 15-minute timeout.  Host process checks showed one Lean child in each scope, but memory pressure left little CPU progress during the elapsed time.  Both edits were restored exactly, and warning-only work on `Iter`, `NegIter`, `SharedPair`, `PushSize`, `PushTwice`, `PairFree`, and `BoxFree` remains deferred until a substantive theorem change or smaller module boundary justifies the elaboration cost.
+
+`Project.Clob.FreshFixedArrayAt.write64_data` proves that a 64-bit write in the data region preserves the six fixed-array header words.  `ClobCancel.Spec` now applies this theorem at two copy-write sites, replacing twenty-seven lines of repeated framing proofs, while the untracked `ClobPostOnly.Append` proof contains the third matching use site and remains untouched.  Constrained `--wfail` builds completed in 3.3 seconds for `Project.Clob` and 41 seconds for `Project.ClobCancel.Spec`, with one Lean child and no warning in either checked target.
+
+The final process check found no Lean or Lake process, and `LebU32.Iter` matched its committed contents after restoration.  The working tree still contains only the pre-existing modified `ClobPostOnly.Spec`, untracked `ClobPostOnly.Append`, and nested untracked `leanclob` repository.  No generated model, checked WASM, checked WAT, or current `postOnly` proof file changed during this maintenance.
