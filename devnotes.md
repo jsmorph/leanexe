@@ -4839,3 +4839,18 @@ The proof cache was restored one target at a time after the shared CLOB model ch
 The append proof needs separately compiled theorems for the first allocation and copy phase, the five-field order store and structured-book reconstruction, and the empty-trade allocation and final frame.  The shared `OrdersAt.ofFlatWords` theorem supplies the semantic boundary for the middle phase, while `FreshFixedArrayAt.write64_data` supplies its header frame.  The existing `omega`, `simp`, and `read_frames` tactics already discharge local normalization, so another tactic would not reduce the size of the elaborated store and instruction terms.
 
 Repository instructions now prohibit retrying an unchanged target after a no-diagnostic timeout.  A later attempt must divide the proof or module, or add a verified lemma that reduces the term elaborated in the timed-out target.  The in-progress `ClobPostOnly.Spec` and untracked `ClobPostOnly.Append` files remained unchanged during cache restoration.
+
+## 2026-07-15: Composed `postOnly` Append Proof
+
+The successful append branch now composes four instruction-slice theorems instead of elaborating one 870-line proof.  `AppendOrderAlloc` proves the free-list scan, bump allocation, header writes, and empty copy invariant; `AppendOrderCopy` proves the flat-word loop against a prefix invariant; `AppendOrderFinish` proves the five order stores and reconstructs `OrdersAt`; and `AppendTrade` proves the empty trade-array allocation.  The public `postOnly_appended` theorem retains the exact return values, book contents, fresh-array predicates, page and global updates, and low-memory frame.
+
+The split uses continuation-parametric statements for the first three phases.  Each theorem proves `wp` for `phaseProg ++ rest` and accepts the next phase through a semantic postcondition, which prevents `wp` simplification from expanding later instruction lists.  `FreshFixedArrayAt.write64_data`, generalized fixed-array memory initialization, `OrdersAt.ofFlatWords`, and the existing `read_frames` tactic discharge the repeated semantic obligations without a new tactic.
+
+The generated successful branch ends before the enclosing function's three result loads.  An initial composition included those loads in `AppendTrade.appendTradeProg`, and a checked program comparison found one nested suffix of length 125 matching the first 125 instructions of the 128-instruction composition.  The trade phase now stops after setting result locals 31, 32, and 33, and its assertion records those values so `wp.imp` can prove the enclosing continuation.
+
+Constrained warning-failing builds complete `AppendOrderCopy` in 2.3 seconds, `AppendOrderAlloc` in 6.3 seconds, `AppendOrderFinish` in 9.4 seconds, `AppendTrade` in 1.7 seconds, and the cleaned 229-line `Append` module in 14 seconds.  `Project.ClobPostOnly.Spec` then rebuilt the invalid branch in 37 seconds, the crossing branch in 45 seconds, and the aggregate module in 1.2 seconds.  Every command used the repository memory, CPU, I/O-priority, and timeout limits, and no Lean or Lake command ran concurrently.
+
+- [x] Divide the successful append proof into compiled semantic phases.
+- [x] Match each named instruction slice to the generated nested branch.
+- [x] Build `Project.ClobPostOnly.Append` and `Project.ClobPostOnly.Spec` with `--wfail`.
+- [ ] Compare the completed cancel and append copy invariants with the next matching update before generalizing a whole-loop theorem.
