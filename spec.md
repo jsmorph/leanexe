@@ -267,6 +267,8 @@ The report command classifies the entry point and its reachable declarations.  I
 .lake/build/bin/lean-wasm report --module Module.Name --entry Module.Name.entry
 ```
 
+The compiler command returns status `2` for command-use and bound errors, `3` for source or project input that cannot compile, `4` for I/O failures, and `5` for internal inconsistencies.  A handled failure writes `lean-wasm: <category>:` followed by the command and available module, entry, and output-path context to stderr.  Stdout remains reserved for requested reports and values, and the [developer guide](DEVELOPING.md#cli-failure-interface) defines the tested process interface.
+
 The compiler's user-facing correctness claim is semantic agreement for accepted pure programs under the bounded numeric and memory model stated here.  Tests compare generated WASM behavior with Lean execution for the supported examples and correctness fixtures.  The generic compiler does not claim a complete mechanized proof of source-to-WASM equivalence.
 
 The repository also contains [Talos artifact proofs](proofs/talos-gcd/README.md) for selected generated WASM modules.  Those proofs establish properties of the decoded generated WAT for specific examples, while the general compiler-correctness theorem remains future work.  They complement the Lean-versus-Wasmtime comparison tests by proving universal statements for selected artifacts.
