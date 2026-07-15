@@ -14,6 +14,7 @@ function run(args) {
 }
 
 function main() {
+  run(["node", path.join("tools", "check-node-version.js")]);
   run(["lake", "build"]);
   run(["lake", "build", "LeanExe"]);
   run(["lake", "build", "LeanExe.Examples.Correctness"]);
