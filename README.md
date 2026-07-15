@@ -317,13 +317,14 @@ The standard comparison suite checks generated WASM against standard Lean execut
 
 Fifteen verified artifacts live in [Talos Proofs](proofs/talos-gcd/README.md), which holds the authoritative theorem inventory.  The artifacts cover scalar algorithms, recursive data, byte processing and allocation, the compiler's own unsigned LEB128 encoder, CLOB quote, cancel, and best-order selection, and exact runtime accounting.  The workspace proves shared runtime behavior once and uses a generic teardown theorem for recursive ownership trees, while [Verifying a Program](verifying.md) gives the end-to-end procedure for adding a case.
 
-Run all current Talos artifact checks from the repository root:
+Initialize the proof outputs after cloning the repository or deleting the proof cache.  The setup command may perform a large cold build, so run it through the resource-limited process form.  Later aggregate checks keep that build output separate from artifact comparison results.
 
 ```sh
+tools/setup-talos.sh
 tools/check-talos.sh
 ```
 
-Each per-case script rebuilds the relevant Lean module and `lean-wasm`, recompiles the source entry to a fresh temporary WASM file, prints fresh WAT, compares both files against the checked-in proof inputs under `proofs/talos-gcd/rust/build`, and rebuilds the corresponding Lean proof.  A file mismatch means the proof input no longer matches the current compiler output.  After an intentional compiler change, `--update` replaces the proof inputs with the fresh output, regenerates the Talos `Program.lean` model through the verifier emitter, and rebuilds the proof.  The scripts use `wasm-tools` from `PATH`, or the binary named by `WASM_TOOLS`, or `$HOME/.cargo/bin/wasm-tools`.
+Each per-case script rebuilds the relevant Lean module and `lean-wasm`, recompiles the source entry to a fresh temporary WASM file, prints fresh WAT, compares both files against the checked-in proof inputs under `proofs/talos-gcd/rust/build`, and rebuilds the corresponding Lean proof.  `tools/check-talos.sh --artifacts-only` compares every artifact without entering the proof build, while the default aggregate checks every artifact first and then requires current proof outputs.  After an intentional compiler change, per-case `--update` replaces the proof inputs with fresh output, regenerates the Talos `Program.lean` model through the verifier emitter, and rebuilds the proof.
 
 The broader compiler-correctness theorem remains a target in the [Development Plan](plan.md).  [Developing LeanExe](DEVELOPING.md) defines the local gates and artifact-update rules.  The old development agenda is archived because the plan now owns the current work queue.
 

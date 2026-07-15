@@ -16,7 +16,7 @@ LeanExe runtime intrinsics require a separate semantic statement.  Ordinary Lean
 | Compiler | Checked-environment extraction, a typed first-order IR with an interpreter, ownership summaries, a reference-counted heap, and one structured WASM instruction stream serialized as binary or WAT.  Array search matches bind one encoded scan result before projecting the tag and payload. | The remaining CLOB artifacts require input-generic proofs in dependency order, beginning with `postOnly`. |
 | Execution tests | The complete gate passes 791 accepted cases, 45 rejections, 14 traps, 321 standard-Lean comparisons, 62 IR comparisons, 40 reference-counting cases, 9 CLI failure cases, and the matched-value IR and WAT assertions. | The IR interpreter does not model heap allocation, release, or runtime counters. |
 | Artifact proofs | Fifteen completed byte-pinned proof cases exist, including the self-compiled LEB128 encoder and exact CLOB quote, cancel, and `findBest` behavior.  A sixteenth checked artifact supports the in-progress `postOnly` proof. | The Lean 4.31 artifact review matches fifteen cases; `assoc_list` removes a redundant Boolean normalization and requires proof-input regeneration and a proof rebuild.  `postOnly`, `matchFuel`, `limit`, `market`, and `depth` remain unproved. |
-| Documentation and tools | The current documents distinguish fifteen completed proofs from sixteen checked artifacts.  The compiler and proof workspaces pin Lean 4.31.0, Node pins 24.13.0, `wasm-tools` pins 1.251.0, Wasmtime 44.0.0 archives have checked hashes, repository instructions constrain every Lean process, and CLI failures use tested statuses and contextual stderr records. | Cold dependency setup still shares output with concise gates, and older handwritten proof files retain linter warnings. |
+| Documentation and tools | The current documents distinguish fifteen completed proofs from sixteen checked artifacts.  The compiler and proof workspaces pin Lean 4.31.0, Node pins 24.13.0, `wasm-tools` pins 1.251.0, Wasmtime 44.0.0 archives have checked hashes, repository instructions constrain every Lean process, CLI failures use tested statuses and contextual stderr records, and Talos artifact comparisons run before a separate proof-freshness check. | Older handwritten proof files retain linter warnings. |
 
 The baseline was checked on 2026-07-15.  The untracked `leanclob/` directory is a separate nested Git repository and remains outside this plan.  Update this table in the same change that alters a stated fact.
 
@@ -123,7 +123,7 @@ Pin every tool that can change generated or decoded artifacts.  Record and enfor
 - [x] Define and test CLI failure categories, exit statuses, stdout use, and stderr context.
 - [x] Pin and check Node and `wasm-tools` without adding a package dependency solely for version checking.
 - [x] Add checked Wasmtime archive hashes for every supported release artifact and platform.
-- [ ] Separate cold dependency setup from concise gate summaries so build volume cannot hide a failed comparison.
+- [x] Separate cold dependency setup from concise gate summaries so build volume cannot hide a failed comparison.
 - [x] Remove the known `AsciiDigits.lean` warning in a focused change that preserves behavior.
 - [ ] Remove proof warnings in focused changes that preserve behavior.
 
