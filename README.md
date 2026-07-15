@@ -14,7 +14,7 @@ lake build
 tools/build-wasmtime-host.sh
 ```
 
-`tools/download-wasmtime.sh` supports Linux `x86_64` and `aarch64`, downloads the Wasmtime CLI and matching C API package into `build/tools/wasmtime`, and uses Wasmtime 44.0.0 by default.  The test suite requires Node.js 24.13.0, a C11 compiler available as `cc`, and the system tools used by the setup scripts; WAT and proof checks require `wasm-tools` 1.251.0.  [Developing LeanExe](DEVELOPING.md) records the version checks, environment overrides, proof setup, and troubleshooting procedures.
+`tools/download-wasmtime.sh` supports Linux `x86_64` and `aarch64`, downloads the Wasmtime CLI and matching C API package into `build/tools/wasmtime`, and verifies the published SHA-256 hashes for Wasmtime 44.0.0 before extraction.  The test suite requires Node.js 24.13.0, a C11 compiler available as `cc`, and the system tools used by the setup scripts; WAT and proof checks require `wasm-tools` 1.251.0.  [Developing LeanExe](DEVELOPING.md) records the version checks, environment overrides, proof setup, and troubleshooting procedures.
 
 ```sh
 node test/run_all.js
