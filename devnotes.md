@@ -4748,3 +4748,16 @@ The Node syntax, pin, and `execPath` checks passed with `v24.13.0`, and the `was
 - [x] Record and enforce Node 24.13.0.
 - [x] Record and enforce `wasm-tools` 1.251.0.
 - [x] Run the version-enforced WAT gate.
+
+## 2026-07-15: Wasmtime Archive Verification
+
+The [official immutable Wasmtime 44.0.0 release](https://github.com/bytecodealliance/wasmtime/releases/tag/v44.0.0) publishes SHA-256 digests for every release asset.  `tools/download-wasmtime.sh` now records the CLI and C API archive digests for `aarch64-linux` and `x86_64-linux`.  A version or platform without built-in digests requires explicit `WASMTIME_CLI_SHA256` and `WASMTIME_C_API_SHA256` values before the script creates its destination directory or contacts a release server.
+
+The downloader verifies a cached archive before reuse and verifies a new `.part` file before replacing the cache or extracting it.  A corrupt cached file triggers a replacement download, while a corrupt downloaded file produces a nonzero failure and never reaches extraction.  The script requires `sha256sum`, preserves its two stdout environment assignments, and sends recovery and failure details to stderr.
+
+The cached aarch64 CLI and C API archives matched the official digests `294cae921fb88cbbcb60a914eaaaf313df3249d718609afb5804186b3f1912f5` and `6f1fb604f6d3f307f2d093bdc18e9781c85692e17c2360f5975875817adc34ab`.  The official x86-64 CLI and C API digests are `52eba06fe9f4364aa6164a4a3eafb2ca692ba9a756cbe8137b5574871f8cbfc8` and `e193aa35338637d84f172323a909cebb907c14c55b5a4b5bdbf89f5cd0b89c81`.  An isolated `file://` fixture confirmed wrong-cache detection, verified replacement, extraction, and symlink creation without modifying the repository cache.
+
+- [x] Record all four official Wasmtime 44.0.0 Linux archive hashes.
+- [x] Verify cached and downloaded archives before extraction.
+- [x] Reject unchecked version and platform overrides.
+- [x] Test corrupt-cache replacement in an isolated local fixture.
