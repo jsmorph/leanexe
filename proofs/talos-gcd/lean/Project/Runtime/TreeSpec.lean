@@ -25,7 +25,7 @@ theorem slotsMask_eq (slots : List RelSlot) :
   | nil => rfl
   | cons slot rest ih =>
       rw [slotsMask_cons, natMask_cons, ih]
-      cases slot <;> simp [RelSlot.masked] <;> push_cast <;> ring
+      cases slot <;> simp [RelSlot.masked]
 
 theorem slotsMask_shift_and (slots : List RelSlot) (k : Nat)
     (hk : k < slots.length) (h32 : slots.length ≤ 32) :
@@ -155,7 +155,7 @@ theorem slotsEvents_take_succ (slots : List RelSlot) (k : Nat)
     (hk : k < slots.length) :
     slotsEvents (slots.take (k + 1)) =
     slotsEvents (slots.take k) ++ slotEvents (slots[k]!) := by
-  rw [List.take_succ, List.getElem?_eq_getElem hk, slotsEvents_append]
+  rw [List.take_add_one, List.getElem?_eq_getElem hk, slotsEvents_append]
   rw [getElem_bang _ _ hk]
   cases slots[k] <;> simp [slotsEvents, slotEvents]
 
@@ -477,7 +477,6 @@ private theorem release_tree_fuel (env : HostEnv Unit) (m : Module)
                 rfl
               · rw [hevn, applyEvents_append]
                 rw [List.getElem?_set]
-                simp only [if_pos rfl]
                 rw [List.length_set, hlenL]
                 simp [hlen1]
                 rfl
@@ -495,7 +494,6 @@ private theorem release_tree_fuel (env : HostEnv Unit) (m : Module)
                   rw [show (1 : UInt64).toNat = 1 from rfl]
                   omega
                 rw [List.getElem?_set]
-                simp only [if_pos rfl]
                 rw [hlenL]
                 simp [hlen5]
                 rw [hfree, ← harith]
@@ -583,7 +581,7 @@ private theorem release_tree_fuel (env : HostEnv Unit) (m : Module)
                 simpa using this
               rcases hshape : slots[k]! with v | _ | t'
               · rw [hshape] at hbit
-                simp only [RelSlot.masked, if_neg] at hbit
+                simp only [RelSlot.masked] at hbit
                 rw [if_neg (by simp [hbit])]
                 wp_run
                 try simp
