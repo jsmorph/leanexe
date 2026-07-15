@@ -112,6 +112,7 @@ This phase is numbered for accountability but runs during Phases 3 and 4 when th
 - [x] Generalize fixed-array header preservation across data writes after cancel and `postOnly` established the repeated address form.
 - [x] Generalize flat order-word reads and reconstruction of `OrdersAt` after cancel and `postOnly` established the repeated representation.
 - [ ] Generalize copy-loop and fresh-array postconditions used by `eraseIdx!`, `push`, and later matching updates.
+- [ ] Divide the successful `postOnly` branch into separately compiled first-allocation, copy, order-store, and trade-allocation theorems before another append build.
 - [ ] Extend `release_frees_tree` to array-kind nodes, then to shared interior nodes and aliased shared leaves.
 - [ ] Reprove `pair_free` and `box_free` as applications of the general teardown library and remove duplicated walk proofs.
 - [ ] Add normalizing lemmas or tactics only for address and invariant forms that recur across artifact modules.
@@ -119,6 +120,8 @@ This phase is numbered for accountability but runs during Phases 3 and 4 when th
 `FreshFixedArrayAt.write64_data` now proves that an aligned data write at or above a represented fixed array preserves all six header words.  The cancel proof uses it at two write sites, and the successful `postOnly` branch contains the third use site that established the repetition threshold.  A combined copy-loop, content, allocation, and memory-frame theorem remains open because the completed cases have not yet established one common statement.
 
 `OrderL.word`, `orderWord`, `OrdersAt.orderWord_eq`, and `OrdersAt.ofFlatWords` state the shared relation between flat five-word copies and structured orders.  The cancel proof now supplies one indexed field equality for each prefix or suffix branch instead of reconstructing ten field-and-bound conjunctions by hand.  The same lemma applies to the append proof's flat copy once that in-progress file is ready for integration; no new tactic is justified while `omega`, `simp`, and `read_frames` discharge the remaining syntactic obligations.
+
+The existing successful append theorem remains one 870-line proof after its local definitions and lemmas.  A constrained build reached its twenty-minute timeout without a diagnostic, while the heaviest separately compiled CLOB dependency completed in 216 seconds.  Another append build must follow a module split that lets Lake reuse completed allocation, copy, and finalization proofs independently.
 
 This phase ends when allocation-bearing CLOB proofs consume shared semantic lemmas instead of copied instruction walks.  The theorem statements, proof size, and build time provide the acceptance evidence.  A refactor must preserve every artifact theorem and the aggregate proof build.
 
@@ -135,6 +138,8 @@ Pin every tool that can change generated or decoded artifacts.  Record and enfor
 - [x] Remove the known `AsciiDigits.lean` warning in a focused change that preserves behavior.
 - [x] Preserve command, launch, status, signal, and output context when JavaScript test processes fail.
 - [ ] Remove proof warnings during substantive proof rebuilds, using focused checks that preserve behavior; defer warning-only elaboration when it exceeds the resource-limited diagnostic timeout.
+
+`Project.Validate.Spec` reached a fifteen-minute constrained timeout after the proof cache was removed.  Earlier unchanged builds of `Project.SharedPair.Spec` and `Project.LebU32.Iter` reached 30-minute and 15-minute limits, while the stale `Project.LebU32.NegIter` target has the same iteration structure.  Substantive work on any of these proofs starts by dividing its long instruction theorem into separately compiled phases.
 
 ## Reproducible Gates
 
