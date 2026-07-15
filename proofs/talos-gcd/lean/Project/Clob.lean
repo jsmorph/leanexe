@@ -21,6 +21,19 @@ structure OrderL where
   oqty : UInt64
   deriving Inhabited
 
+def OrderL.word (order : OrderL) (field : Nat) : UInt64 :=
+  match field with
+  | 0 => order.oid
+  | 1 => order.otrader
+  | 2 => order.oside
+  | 3 => order.oprice
+  | 4 => order.oqty
+  | _ => 0
+
+def orderWord (st : Store Unit) (ptr : UInt64) (word : Nat) : UInt64 :=
+  st.mem.read64
+    (UInt32.ofNat ((ptr.toNat + (word + 1) * 8) % 4294967296))
+
 def OrdersAt (st : Store Unit) (ptr : UInt64) (os : List OrderL) : Prop :=
   (st.mem.read64 (UInt32.ofNat (ptr.toNat % 4294967296)) =
       UInt64.ofNat os.length ∧
@@ -51,6 +64,60 @@ def OrdersAt (st : Store Unit) (ptr : UInt64) (os : List OrderL) : Prop :=
           os[j]!.oqty ∧
       (ptr.toNat + (j * 5 + 5) * 8) % 4294967296 + 8 ≤
         st.mem.pages * 65536)
+
+theorem OrdersAt.orderWord_eq {st : Store Unit} {ptr : UInt64}
+    {os : List OrderL} (hOrders : OrdersAt st ptr os) (j field : Nat)
+    (hj : j < os.length) (hfield : field < 5) :
+    orderWord st ptr (j * 5 + field) = os[j]!.word field := by
+  obtain ⟨h1, h2, h3, h4, h5⟩ := hOrders.2 j hj
+  unfold orderWord
+  rw [show j * 5 + field + 1 = j * 5 + (field + 1) by omega]
+  interval_cases field
+  · simpa [OrderL.word] using h1.1
+  · simpa [OrderL.word] using h2.1
+  · simpa [OrderL.word] using h3.1
+  · simpa [OrderL.word] using h4.1
+  · simpa [OrderL.word] using h5.1
+
+theorem OrdersAt.ofFlatWords {st : Store Unit} {ptr : UInt64}
+    {os : List OrderL}
+    (hLength : st.mem.read64 (UInt32.ofNat (ptr.toNat % 4294967296)) =
+      UInt64.ofNat os.length)
+    (hLengthBound : ptr.toNat % 4294967296 + 8 ≤ st.mem.pages * 65536)
+    (hWord : ∀ (j : Nat), j < os.length → ∀ field : Nat, field < 5 →
+      orderWord st ptr (j * 5 + field) = os[j]!.word field)
+    (hBound : ∀ (j : Nat), j < os.length → ∀ field : Nat, field < 5 →
+      (ptr.toNat + (j * 5 + field + 1) * 8) % 4294967296 + 8 ≤
+        st.mem.pages * 65536) :
+    OrdersAt st ptr os := by
+  refine ⟨⟨hLength, hLengthBound⟩, ?_⟩
+  intro j hj
+  have hRead (field : Nat) (hfield : field < 5) :
+      st.mem.read64
+          (UInt32.ofNat
+            ((ptr.toNat + (j * 5 + (field + 1)) * 8) % 4294967296)) =
+        os[j]!.word field := by
+    have h := hWord j hj field hfield
+    unfold orderWord at h
+    rw [show j * 5 + field + 1 = j * 5 + (field + 1) by omega] at h
+    exact h
+  have hFieldBound (field : Nat) (hfield : field < 5) :
+      (ptr.toNat + (j * 5 + (field + 1)) * 8) % 4294967296 + 8 ≤
+        st.mem.pages * 65536 := by
+    have h := hBound j hj field hfield
+    rw [show j * 5 + field + 1 = j * 5 + (field + 1) by omega] at h
+    exact h
+  refine ⟨⟨?_, ?_⟩, ⟨?_, ?_⟩, ⟨?_, ?_⟩, ⟨?_, ?_⟩, ⟨?_, ?_⟩⟩
+  · simpa [OrderL.word] using hRead 0 (by omega)
+  · simpa using hFieldBound 0 (by omega)
+  · simpa [OrderL.word] using hRead 1 (by omega)
+  · simpa using hFieldBound 1 (by omega)
+  · simpa [OrderL.word] using hRead 2 (by omega)
+  · simpa using hFieldBound 2 (by omega)
+  · simpa [OrderL.word] using hRead 3 (by omega)
+  · simpa using hFieldBound 3 (by omega)
+  · simpa [OrderL.word] using hRead 4 (by omega)
+  · simpa using hFieldBound 4 (by omega)
 
 def fixedArrayBytes (n stride : Nat) : Nat :=
   8 + n * stride * 8
