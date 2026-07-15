@@ -13,12 +13,12 @@ LeanExe runtime intrinsics require a separate semantic statement.  Ordinary Lean
 | Area | Established state | Open issue |
 |------|-------------------|------------|
 | Accepted language | First-order pure programs over scalars, byte arrays, fixed-width arrays, structures, tagged values, internal recursive values, supported loops, and selected specialized helpers.  Runtime intrinsics have separate ordinary-Lean and generated-WASM semantics, and every accepted explicit release has a compiler-produced direct-handoff judgment. | Branch-dependent roots, conditionally owned arrays, consuming parameters, structure fields, and loop-carried release roots remain deferred until a focused ownership analysis proves them. |
-| Compiler | Checked-environment extraction, a typed first-order IR with an interpreter, ownership summaries, a reference-counted heap, and one structured WASM instruction stream serialized as binary or WAT.  Array search matches bind one encoded scan result before projecting the tag and payload. | The remaining CLOB artifacts require input-generic proofs in dependency order, beginning with `findBest` and `postOnly`. |
-| Execution tests | The complete gate passes 791 accepted cases, 45 rejections, 14 traps, 314 standard-Lean comparisons, 62 IR comparisons, 40 reference-counting cases, and the matched-value IR and WAT assertions. | The IR interpreter does not model heap allocation, release, or runtime counters. |
-| Artifact proofs | Fifteen byte-pinned proof cases exist, including the self-compiled LEB128 encoder and exact CLOB quote, cancel, and `findBest` behavior. | `postOnly`, `matchFuel`, `limit`, `market`, and `depth` remain unproved. |
-| Documentation and tools | The repository overview, developer guide, manual, specification, proof inventory, verification guide, plan, and journal have distinct responsibilities and agree on the fifteen proof cases.  Lean and Talos use pinned revisions, and Wasmtime defaults to 44.0.0. | Node and `wasm-tools` remain unpinned, Wasmtime downloads lack checksum verification, CLI failures lack one exit-status scheme, and Lean reports unused proof arguments. |
+| Compiler | Checked-environment extraction, a typed first-order IR with an interpreter, ownership summaries, a reference-counted heap, and one structured WASM instruction stream serialized as binary or WAT.  Array search matches bind one encoded scan result before projecting the tag and payload. | The remaining CLOB artifacts require input-generic proofs in dependency order, beginning with `postOnly`. |
+| Execution tests | The complete gate passes 791 accepted cases, 45 rejections, 14 traps, 321 standard-Lean comparisons, 62 IR comparisons, 40 reference-counting cases, and the matched-value IR and WAT assertions. | The IR interpreter does not model heap allocation, release, or runtime counters. |
+| Artifact proofs | Fifteen completed byte-pinned proof cases exist, including the self-compiled LEB128 encoder and exact CLOB quote, cancel, and `findBest` behavior.  A sixteenth checked artifact supports the in-progress `postOnly` proof. | The Lean 4.31 artifact review matches fifteen cases; `assoc_list` removes a redundant Boolean normalization and requires proof-input regeneration and a proof rebuild.  `postOnly`, `matchFuel`, `limit`, `market`, and `depth` remain unproved. |
+| Documentation and tools | The current documents distinguish fifteen completed proofs from sixteen checked artifacts.  The compiler and proof workspaces pin Lean 4.31.0, Wasmtime defaults to 44.0.0, and repository instructions constrain every Lean process by memory, CPU, I/O priority, and timeout. | Node and `wasm-tools` remain unpinned, Wasmtime downloads lack checksum verification, CLI failures lack one exit-status scheme, and older handwritten proof files retain linter warnings. |
 
-The baseline was checked on 2026-07-13.  The untracked `leanclob/` directory is a separate nested Git repository and remains outside this plan.  Update this table in the same change that alters a stated fact.
+The baseline was checked on 2026-07-15.  The untracked `leanclob/` directory is a separate nested Git repository and remains outside this plan.  Update this table in the same change that alters a stated fact.
 
 ## Development Rules
 
@@ -124,7 +124,8 @@ Pin every tool that can change generated or decoded artifacts.  Record and enfor
 - [ ] Pin and check Node and `wasm-tools` without adding a package dependency solely for version checking.
 - [ ] Add checked Wasmtime archive hashes for every supported release artifact and platform.
 - [ ] Separate cold dependency setup from concise gate summaries so build volume cannot hide a failed comparison.
-- [ ] Remove the known `AsciiDigits.lean` warning and proof warnings in focused changes that preserve behavior.
+- [x] Remove the known `AsciiDigits.lean` warning in a focused change that preserves behavior.
+- [ ] Remove proof warnings in focused changes that preserve behavior.
 
 ## Reproducible Gates
 
