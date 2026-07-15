@@ -10,20 +10,25 @@ LeanExe develops and tests on Linux.  The Wasmtime download script supports `x86
 |------|------------------------|
 | Lean and Lake | Install through `elan`.  The compiler and proof workspaces pin Lean 4.31.0. |
 | Proof Lean and Lake | The proof workspace records its matching pin in `proofs/talos-gcd/lean/lean-toolchain`.  `elan` selects it after entering that directory. |
-| Wasmtime | `tools/download-wasmtime.sh` installs the default 44.0.0 CLI and C API under `build/tools/wasmtime`. |
+| Wasmtime | `tools/download-wasmtime.sh` installs the default 44.0.0 CLI and C API under `build/tools/wasmtime` after checking the published SHA-256 hashes. |
 | C compiler | A C11 compiler available as `cc` builds the Wasmtime host runner. |
 | Node.js | Node 24.13.0 runs the test drivers.  `.node-version` records the exact version, and the complete runner checks it before building. |
 | `wasm-tools` | Version 1.251.0 renders WAT for round-trip and Talos checks.  `.wasm-tools-version` records the exact version, and both artifact gates check the selected executable. |
-| System tools | The setup and check scripts use Bash or POSIX `sh`, `curl`, `tar`, `cmp`, and ordinary Unix file tools. |
+| System tools | The setup and check scripts use Bash or POSIX `sh`, `curl`, `sha256sum`, `tar`, `cmp`, and ordinary Unix file tools. |
 
-The Talos revision is pinned in `proofs/talos-gcd/lean/lakefile.toml`, and its transitive Lean dependencies are pinned in the adjacent manifest.  `tools/check-node-version.js` enforces the Node pin, while `tools/check-wasm-tools-version.sh` enforces the `wasm-tools` pin selected through `WASM_TOOLS`, `PATH`, or `$HOME/.cargo/bin`.  The Wasmtime download script currently relies on HTTPS release downloads without checking archive hashes; the development plan tracks checksum verification.
+The Talos revision is pinned in `proofs/talos-gcd/lean/lakefile.toml`, and its transitive Lean dependencies are pinned in the adjacent manifest.  `tools/check-node-version.js` enforces the Node pin, while `tools/check-wasm-tools-version.sh` enforces the `wasm-tools` pin selected through `WASM_TOOLS`, `PATH`, or `$HOME/.cargo/bin`.  The Wasmtime downloader checks both cached and downloaded archives before extraction and replaces a cached file only after its downloaded replacement passes verification.
 
-These environment variables replace repository defaults when local tools live elsewhere.  Set them in the invoking environment rather than committing machine-specific paths.  Include the relevant values in a failure report when a nondefault executable may affect the result.
+These environment variables configure local executables and the Wasmtime downloader.  Set them in the invoking environment rather than committing machine-specific paths.  Include the relevant values in a failure report when a nondefault executable or release source may affect the result.
 
 | Variable | Meaning |
 |----------|---------|
 | `WASMTIME` | Wasmtime CLI used by tests and comparison tools. |
 | `WASMTIME_C_API` | Directory containing `include/wasmtime.h` and `lib/libwasmtime.so`. |
+| `WASMTIME_VERSION` | Wasmtime release version downloaded by the setup script.  The default is 44.0.0. |
+| `WASMTIME_PLATFORM` | Release platform name.  Automatic detection supports `aarch64-linux` and `x86_64-linux`. |
+| `WASMTIME_BASE_URL` | Release mirror containing archives with the standard Wasmtime filenames. |
+| `WASMTIME_CLI_SHA256` | Expected CLI archive hash.  Required with an override that has no checked built-in hash. |
+| `WASMTIME_C_API_SHA256` | Expected C API archive hash.  Required with an override that has no checked built-in hash. |
 | `LEANEXE_WASMTIME_HOST` | Compiled C host runner used by ABI tests. |
 | `LEAN_WASM_EXE` | `lean-wasm` executable used by Node tests. |
 | `WASM_TOOLS` | `wasm-tools` executable used by WAT and Talos checks. |
