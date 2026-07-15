@@ -19,6 +19,7 @@ if [[ -z "$wasm_tools" ]]; then
     exit 127
   fi
 fi
+WASM_TOOLS="$wasm_tools" "$repo_root/tools/check-wasm-tools-version.sh"
 
 lake build lean-wasm
 
