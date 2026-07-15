@@ -166,9 +166,12 @@ def commandContext (command : String) (fields : List (String × String) := []) :
 def commandName (args : List String) : String :=
   args.head?.getD "<none>"
 
+def reportError (error : Error) : IO UInt32 := do
+  IO.eprintln error.render
+  return error.kind.status
+
 def fail (kind : ErrorKind) (context detail : String) : IO UInt32 := do
-  IO.eprintln ({ kind := kind, context := context, detail := detail : Error }).render
-  return kind.status
+  reportError { kind := kind, context := context, detail := detail }
 
 def captureError (kind : ErrorKind) (context : String) (action : IO α) :
     IO (Except Error α) := do
@@ -180,32 +183,24 @@ def captureError (kind : ErrorKind) (context : String) (action : IO α) :
 def writeTextResult (context path content : String) : IO UInt32 := do
   match ← captureError .io context (writeText path content) with
   | .ok _ => return 0
-  | .error error =>
-      IO.eprintln error.render
-      return error.kind.status
+  | .error error => reportError error
 
 def writeBytesResult (context path : String) (content : ByteArray) : IO UInt32 := do
   match ← captureError .io context (writeBytes path content) with
   | .ok _ => return 0
-  | .error error =>
-      IO.eprintln error.render
-      return error.kind.status
+  | .error error => reportError error
 
 def printTextResult (context content : String) : IO UInt32 := do
   match ← captureError .io context (IO.println content) with
   | .ok _ => return 0
-  | .error error =>
-      IO.eprintln error.render
-      return error.kind.status
+  | .error error => reportError error
 
 def compileBytesResult
     (context out : String)
     (compileAction : IO LeanExe.IR.Module)
     (encode : LeanExe.IR.Module → Except String ByteArray) : IO UInt32 := do
   match ← captureError .source context compileAction with
-  | .error error =>
-      IO.eprintln error.render
-      return error.kind.status
+  | .error error => reportError error
   | .ok module_ =>
       match encode module_ with
       | .error detail => fail .internal context detail
@@ -213,16 +208,12 @@ def compileBytesResult
 
 def sourcePrintResult (context : String) (action : IO String) : IO UInt32 := do
   match ← captureError .source context action with
-  | .error error =>
-      IO.eprintln error.render
-      return error.kind.status
+  | .error error => reportError error
   | .ok content => printTextResult context content
 
 def sourceWriteTextResult (context out : String) (action : IO String) : IO UInt32 := do
   match ← captureError .source context action with
-  | .error error =>
-      IO.eprintln error.render
-      return error.kind.status
+  | .error error => reportError error
   | .ok content => writeTextResult context out content
 
 def validateMaxInput (maxInput : Nat) : Except String Unit :=
@@ -292,9 +283,7 @@ def dispatch : List String → IO UInt32
       | .ok args =>
           match ← captureError .source context
               (LeanExe.Extract.Eval.evalEntry moduleName entryName args) with
-          | .error error =>
-              IO.eprintln error.render
-              return error.kind.status
+          | .error error => reportError error
           | .ok (.outsideFragment reason) => fail .source context reason
           | .ok (.results values) => do
               let printValues : IO Unit := do
@@ -302,9 +291,7 @@ def dispatch : List String → IO UInt32
                   IO.println s!"{value.toNat}"
               match ← captureError .io context printValues with
               | .ok _ => return 0
-              | .error error =>
-                  IO.eprintln error.render
-                  return error.kind.status
+              | .error error => reportError error
   | ["compile", "--module", moduleName, "--entry", entryName, "--out", out] =>
       compileBytesResult
         (commandContext "compile"
