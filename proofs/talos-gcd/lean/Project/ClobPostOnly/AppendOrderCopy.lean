@@ -118,17 +118,17 @@ theorem appendOrderCopyProg_spec (env : HostEnv Unit)
       4294967296)
     (hFit : g0.toNat + 104 + orderArrayBytes (os.length + 1) ≤
       st0.mem.pages * 65536)
-    (Q : Assertion Unit)
+    (Q : Assertion Unit) (rest : Wasm.Program)
     (hInit : appendCopyInv st0 ptr g0 g2 os order (os.length * 5) st4
       (appendCopyFrame ptr g0 order os.length 0))
     (hDone : ∀ st5,
       appendCopyInv st0 ptr g0 g2 os order (os.length * 5) st5
         (appendCopyFrame ptr g0 order os.length (os.length * 5)) →
-      Q (.Fallthrough st5
-        (appendCopyFrame ptr g0 order os.length (os.length * 5)))) :
-    wp «module» appendOrderCopyProg Q st4
+      wp «module» rest Q st5
+        (appendCopyFrame ptr g0 order os.length (os.length * 5)) env) :
+    wp «module» (appendOrderCopyProg ++ rest) Q st4
       (appendCopyFrame ptr g0 order os.length 0) env := by
-  simp only [appendOrderCopyProg]
+  simp only [appendOrderCopyProg, List.cons_append, List.nil_append]
   apply wp_block_cons
   apply wp_loop_cons
     (Inv := appendCopyInv st0 ptr g0 g2 os order (os.length * 5))

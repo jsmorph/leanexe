@@ -243,14 +243,15 @@ theorem appendOrderAllocProg_spec (env : HostEnv Unit) (st0 : Store Unit)
     (hPages : st0.mem.pages ≤ 65536)
     (hg0 : st0.globals.globals[0]? = some (.i64 g0))
     (hg2 : st0.globals.globals[2]? = some (.i64 g2))
-    (Q : Assertion Unit)
+    (Q : Assertion Unit) (rest : Wasm.Program)
     (hNext : ∀ st4,
       appendCopyInv st0 ptr g0 g2 os order (os.length * 5) st4
         (appendCopyFrame ptr g0 order os.length 0) →
-      Q (.Fallthrough st4 (appendCopyFrame ptr g0 order os.length 0))) :
-    wp «module» appendOrderAllocProg Q st0
+      wp «module» rest Q st4
+        (appendCopyFrame ptr g0 order os.length 0) env) :
+    wp «module» (appendOrderAllocProg ++ rest) Q st0
       (appendAllocFrame ptr order os.length) env := by
-  simp only [appendOrderAllocProg]
+  simp only [appendOrderAllocProg, List.cons_append, List.nil_append]
   apply wp_block_cons
   apply wp_loop_cons
     (Inv := fun st s => st = st0 ∧ s = appendAllocFrame ptr order os.length)
