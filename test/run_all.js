@@ -1,33 +1,31 @@
 #!/usr/bin/env node
 
 const path = require("path");
-const { spawnSync } = require("child_process");
+const { runChecked } = require("../tools/run-process");
 
 const leanExe = process.env.LEAN_WASM_EXE || path.join(".lake", "build", "bin", "lean-wasm");
 const fuzzCases = process.env.LEANEXE_FUZZ_CASES || "50";
 
 function run(args) {
-  const result = spawnSync(args[0], args.slice(1), { encoding: "utf8", stdio: "inherit" });
-  if (result.status !== 0) {
-    throw new Error(`${args.join(" ")} failed`);
-  }
+  runChecked(args, { encoding: "utf8", stdio: "inherit" });
 }
 
 function main() {
   run([process.execPath, path.join("tools", "check-node-version.js")]);
+  run([process.execPath, path.join("test", "run_process.js")]);
   run(["lake", "build"]);
   run(["lake", "build", "LeanExe"]);
   run(["lake", "build", "LeanExe.Examples.Correctness"]);
   run(["lake", "build", "LeanExe.Examples.ClobTest"]);
-  run([
-    "lake",
-    "build",
+  for (const target of [
     "LeanExe.Examples.ByteArrayPrograms",
     "LeanExe.Examples.JsonGcTreeRewrite",
     "LeanExe.Examples.JsonMergeTreeCommand",
     "LeanExe.Examples.JsonObjectArrayDecode",
     "LeanExe.Examples.JsonTypedDecode",
-  ]);
+  ]) {
+    run(["lake", "build", target]);
+  }
   run([process.execPath, path.join("test", "report_classification.js")]);
   run([process.execPath, path.join("test", "ownership_report.js")]);
   run([process.execPath, path.join("test", "no_js_wasm_execution.js")]);

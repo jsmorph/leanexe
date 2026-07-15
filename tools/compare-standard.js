@@ -3,7 +3,7 @@
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
-const { spawnSync } = require("child_process");
+const { spawnResult } = require("./run-process");
 const host = require("../test/wasmtime_host");
 const {
   HostPlan,
@@ -69,11 +69,7 @@ Options:
 }
 
 function run(args, options = {}) {
-  const result = spawnSync(args[0], args.slice(1), options);
-  if (result.status === null && result.error) {
-    throw result.error;
-  }
-  return result;
+  return spawnResult(args, options);
 }
 
 function outputText(result) {

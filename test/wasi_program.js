@@ -2,7 +2,7 @@
 
 const fs = require("fs");
 const path = require("path");
-const { spawnSync } = require("child_process");
+const { spawnResult } = require("../tools/run-process");
 
 const correctnessModule = "LeanExe.Examples.Correctness";
 const byteArrayModule = "LeanExe.Examples.ByteArrayPrograms";
@@ -19,11 +19,7 @@ const compileCache = new Map();
 let compileCount = 0;
 
 function run(args, options = {}) {
-  const result = spawnSync(args[0], args.slice(1), options);
-  if (result.status === null && result.error) {
-    throw result.error;
-  }
-  return result;
+  return spawnResult(args, options);
 }
 
 function outputText(result) {
