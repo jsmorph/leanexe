@@ -88,6 +88,24 @@ theorem findBestL_eq_prefix (os : List OrderL) (taker : OrderL) :
   unfold findBestL
   simpa [bestPrefixL] using findBestFuelL_from_prefix os taker 0 (Nat.zero_le _)
 
+theorem bestPrefixL_some_lt (os : List OrderL) (taker : OrderL)
+    (k j : Nat) (h : bestPrefixL os taker k = some j) : j < k := by
+  induction k with
+  | zero => simp [bestPrefixL] at h
+  | succ k ih =>
+      have hchoice : j = k ∨ bestPrefixL os taker k = some j := by
+        simp only [bestPrefixL] at h
+        unfold bestStepL at h
+        split at h <;> split at h <;> simp_all
+      rcases hchoice with rfl | hprev
+      · omega
+      · exact Nat.lt_succ_of_lt (ih hprev)
+
+theorem findBestL_some_lt (os : List OrderL) (taker : OrderL)
+    (j : Nat) (h : findBestL os taker = some j) : j < os.length := by
+  rw [findBestL_eq_prefix] at h
+  exact bestPrefixL_some_lt os taker os.length j h
+
 def optionTag : Option Nat → UInt64
   | none => 0
   | some _ => 1
