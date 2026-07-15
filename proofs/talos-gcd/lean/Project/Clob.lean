@@ -3,10 +3,10 @@ import Project.Common
 /-!
 # Shared CLOB model
 
-The CLOB artifacts read one order as five consecutive `UInt64` words.  This
-module states that source-independent layout once for quote, cancel, and the
-remaining kernel proofs.  It also states the common fixed-width array header
-used by artifacts that allocate CLOB values.
+The CLOB artifacts read one order as five consecutive `UInt64` words and one
+trade as four consecutive words.  This module states those source-independent
+layouts once for the kernel proofs.  It also states the common fixed-width
+array header used by artifacts that allocate CLOB values.
 -/
 
 namespace Project.Clob
@@ -21,6 +21,13 @@ structure OrderL where
   oqty : UInt64
   deriving Inhabited
 
+structure TradeL where
+  ttakerId : UInt64
+  tmakerId : UInt64
+  tprice : UInt64
+  tqty : UInt64
+  deriving Inhabited
+
 def OrderL.word (order : OrderL) (field : Nat) : UInt64 :=
   match field with
   | 0 => order.oid
@@ -30,7 +37,19 @@ def OrderL.word (order : OrderL) (field : Nat) : UInt64 :=
   | 4 => order.oqty
   | _ => 0
 
+def TradeL.word (trade : TradeL) (field : Nat) : UInt64 :=
+  match field with
+  | 0 => trade.ttakerId
+  | 1 => trade.tmakerId
+  | 2 => trade.tprice
+  | 3 => trade.tqty
+  | _ => 0
+
 def orderWord (st : Store Unit) (ptr : UInt64) (word : Nat) : UInt64 :=
+  st.mem.read64
+    (UInt32.ofNat ((ptr.toNat + (word + 1) * 8) % 4294967296))
+
+def tradeWord (st : Store Unit) (ptr : UInt64) (word : Nat) : UInt64 :=
   st.mem.read64
     (UInt32.ofNat ((ptr.toNat + (word + 1) * 8) % 4294967296))
 
@@ -63,6 +82,32 @@ def OrdersAt (st : Store Unit) (ptr : UInt64) (os : List OrderL) : Prop :=
         (UInt32.ofNat ((ptr.toNat + (j * 5 + 5) * 8) % 4294967296)) =
           os[j]!.oqty ∧
       (ptr.toNat + (j * 5 + 5) * 8) % 4294967296 + 8 ≤
+        st.mem.pages * 65536)
+
+def TradesAt (st : Store Unit) (ptr : UInt64) (ts : List TradeL) : Prop :=
+  (st.mem.read64 (UInt32.ofNat (ptr.toNat % 4294967296)) =
+      UInt64.ofNat ts.length ∧
+    ptr.toNat % 4294967296 + 8 ≤ st.mem.pages * 65536) ∧
+  ∀ j : Nat, j < ts.length →
+    (st.mem.read64
+        (UInt32.ofNat ((ptr.toNat + (j * 4 + 1) * 8) % 4294967296)) =
+          ts[j]!.ttakerId ∧
+      (ptr.toNat + (j * 4 + 1) * 8) % 4294967296 + 8 ≤
+        st.mem.pages * 65536) ∧
+    (st.mem.read64
+        (UInt32.ofNat ((ptr.toNat + (j * 4 + 2) * 8) % 4294967296)) =
+          ts[j]!.tmakerId ∧
+      (ptr.toNat + (j * 4 + 2) * 8) % 4294967296 + 8 ≤
+        st.mem.pages * 65536) ∧
+    (st.mem.read64
+        (UInt32.ofNat ((ptr.toNat + (j * 4 + 3) * 8) % 4294967296)) =
+          ts[j]!.tprice ∧
+      (ptr.toNat + (j * 4 + 3) * 8) % 4294967296 + 8 ≤
+        st.mem.pages * 65536) ∧
+    (st.mem.read64
+        (UInt32.ofNat ((ptr.toNat + (j * 4 + 4) * 8) % 4294967296)) =
+          ts[j]!.tqty ∧
+      (ptr.toNat + (j * 4 + 4) * 8) % 4294967296 + 8 ≤
         st.mem.pages * 65536)
 
 theorem OrdersAt.orderWord_eq {st : Store Unit} {ptr : UInt64}
@@ -118,6 +163,57 @@ theorem OrdersAt.ofFlatWords {st : Store Unit} {ptr : UInt64}
   · simpa using hFieldBound 3 (by omega)
   · simpa [OrderL.word] using hRead 4 (by omega)
   · simpa using hFieldBound 4 (by omega)
+
+theorem TradesAt.tradeWord_eq {st : Store Unit} {ptr : UInt64}
+    {ts : List TradeL} (hTrades : TradesAt st ptr ts) (j field : Nat)
+    (hj : j < ts.length) (hfield : field < 4) :
+    tradeWord st ptr (j * 4 + field) = ts[j]!.word field := by
+  obtain ⟨h1, h2, h3, h4⟩ := hTrades.2 j hj
+  unfold tradeWord
+  rw [show j * 4 + field + 1 = j * 4 + (field + 1) by omega]
+  interval_cases field
+  · simpa [TradeL.word] using h1.1
+  · simpa [TradeL.word] using h2.1
+  · simpa [TradeL.word] using h3.1
+  · simpa [TradeL.word] using h4.1
+
+theorem TradesAt.ofFlatWords {st : Store Unit} {ptr : UInt64}
+    {ts : List TradeL}
+    (hLength : st.mem.read64 (UInt32.ofNat (ptr.toNat % 4294967296)) =
+      UInt64.ofNat ts.length)
+    (hLengthBound : ptr.toNat % 4294967296 + 8 ≤ st.mem.pages * 65536)
+    (hWord : ∀ (j : Nat), j < ts.length → ∀ field : Nat, field < 4 →
+      tradeWord st ptr (j * 4 + field) = ts[j]!.word field)
+    (hBound : ∀ (j : Nat), j < ts.length → ∀ field : Nat, field < 4 →
+      (ptr.toNat + (j * 4 + field + 1) * 8) % 4294967296 + 8 ≤
+        st.mem.pages * 65536) :
+    TradesAt st ptr ts := by
+  refine ⟨⟨hLength, hLengthBound⟩, ?_⟩
+  intro j hj
+  have hRead (field : Nat) (hfield : field < 4) :
+      st.mem.read64
+          (UInt32.ofNat
+            ((ptr.toNat + (j * 4 + (field + 1)) * 8) % 4294967296)) =
+        ts[j]!.word field := by
+    have h := hWord j hj field hfield
+    unfold tradeWord at h
+    rw [show j * 4 + field + 1 = j * 4 + (field + 1) by omega] at h
+    exact h
+  have hFieldBound (field : Nat) (hfield : field < 4) :
+      (ptr.toNat + (j * 4 + (field + 1)) * 8) % 4294967296 + 8 ≤
+        st.mem.pages * 65536 := by
+    have h := hBound j hj field hfield
+    rw [show j * 4 + field + 1 = j * 4 + (field + 1) by omega] at h
+    exact h
+  refine ⟨⟨?_, ?_⟩, ⟨?_, ?_⟩, ⟨?_, ?_⟩, ⟨?_, ?_⟩⟩
+  · simpa [TradeL.word] using hRead 0 (by omega)
+  · simpa using hFieldBound 0 (by omega)
+  · simpa [TradeL.word] using hRead 1 (by omega)
+  · simpa using hFieldBound 1 (by omega)
+  · simpa [TradeL.word] using hRead 2 (by omega)
+  · simpa using hFieldBound 2 (by omega)
+  · simpa [TradeL.word] using hRead 3 (by omega)
+  · simpa using hFieldBound 3 (by omega)
 
 def fixedArrayBytes (n stride : Nat) : Nat :=
   8 + n * stride * 8
