@@ -6232,6 +6232,7 @@ structure NatTailContext where
   extractCtx : Context
   useAbi : Bool
   params : List Ty
+  materializeCarriedArgs : Bool
   carriedTargets : List Nat
   carriedOwnerTargets : List (Nat × Nat)
   resultTy : Ty
@@ -6483,36 +6484,52 @@ mutual
       (recArgs : List Expr) :
       Except String TailStepResult := do
     let carriedParams := lower.params.drop 1
-    let argsResult ←
-      match extractMaterializedCallArgsFrom
-          lower.extractCtx locals nextLocal carriedParams recArgs with
-      | .ok result => .ok result
-      | .error error => .error s!"while extracting Nat recursive arguments: {error}"
-    let ownedLocals :=
-      ownedHeapLocalsFromLocalLetsForAlloc
-        lower.extractCtx.freshResultOwnerOffsets [] argsResult.lets
-    let releasedLocals := localLetsReleasedSlots argsResult.lets
-    let nextOwners ← lower.carriedOwnerTargets.mapM fun item =>
-      match argsResult.args[item.fst]? with
-      | some (LeanExe.IR.Expr.local newOwner) => .ok newOwner
-      | _ => .error "Nat recursive owner argument was not materialized"
-    let ownerTrackers := lower.carriedOwnerTargets.map Prod.snd
-    let nextOwnerTrackers :=
-      nextOwners.map (trackedOwnerValue ownedLocals releasedLocals ownerTrackers)
-    let tempStart := argsResult.nextLocal
-    let updateArgs :=
-      LeanExe.IR.seqList
-        (argsResult.lets.map localLetStmtOptimized ++
-          [releaseUnretainedOwners ownerTrackers nextOwners,
-            assignMany
-              (lower.carriedTargets ++ ownerTrackers)
-              (argsResult.args ++ nextOwnerTrackers)
-              tempStart])
-    let decFuel : IRStmt := .assign 0 (.u64Bin .sub (.local 0) (.u64 1))
-    .ok {
-      stmt := LeanExe.IR.seqList [updateArgs, decFuel],
-      nextLocal := tempStart + lower.carriedTargets.length + ownerTrackers.length
-    }
+    if !lower.materializeCarriedArgs then
+      let argsResult ←
+        match extractCallArgsFrom lower.extractCtx locals nextLocal carriedParams recArgs with
+        | .ok result => .ok result
+        | .error error => .error s!"while extracting Nat recursive arguments: {error}"
+      let tempStart := argsResult.nextLocal
+      let updateArgs :=
+        LeanExe.IR.seqList
+          (argsResult.lets.map valueLetStmt ++
+            [assignMany lower.carriedTargets argsResult.args tempStart])
+      let decFuel : IRStmt := .assign 0 (.u64Bin .sub (.local 0) (.u64 1))
+      .ok {
+        stmt := LeanExe.IR.seqList [updateArgs, decFuel],
+        nextLocal := tempStart + lower.carriedTargets.length
+      }
+    else
+      let argsResult ←
+        match extractMaterializedCallArgsFrom
+            lower.extractCtx locals nextLocal carriedParams recArgs with
+        | .ok result => .ok result
+        | .error error => .error s!"while extracting Nat recursive arguments: {error}"
+      let ownedLocals :=
+        ownedHeapLocalsFromLocalLetsForAlloc
+          lower.extractCtx.freshResultOwnerOffsets [] argsResult.lets
+      let releasedLocals := localLetsReleasedSlots argsResult.lets
+      let nextOwners ← lower.carriedOwnerTargets.mapM fun item =>
+        match argsResult.args[item.fst]? with
+        | some (LeanExe.IR.Expr.local newOwner) => .ok newOwner
+        | _ => .error "Nat recursive owner argument was not materialized"
+      let ownerTrackers := lower.carriedOwnerTargets.map Prod.snd
+      let nextOwnerTrackers :=
+        nextOwners.map (trackedOwnerValue ownedLocals releasedLocals ownerTrackers)
+      let tempStart := argsResult.nextLocal
+      let updateArgs :=
+        LeanExe.IR.seqList
+          (argsResult.lets.map localLetStmtOptimized ++
+            [releaseUnretainedOwners ownerTrackers nextOwners,
+              assignMany
+                (lower.carriedTargets ++ ownerTrackers)
+                (argsResult.args ++ nextOwnerTrackers)
+                tempStart])
+      let decFuel : IRStmt := .assign 0 (.u64Bin .sub (.local 0) (.u64 1))
+      .ok {
+        stmt := LeanExe.IR.seqList [updateArgs, decFuel],
+        nextLocal := tempStart + lower.carriedTargets.length + ownerTrackers.length
+      }
 
   partial def extractNatTailUnitArmStmt
       (lower : NatTailContext)
@@ -6830,6 +6847,10 @@ def extractNatRecFunc
   let carriedParams := params.drop 1
   let needsInternalCarried :=
     useAbi && carriedParams.any (fun ty => abiSlots ty != internalSlots ty)
+  let carriesAggregate :=
+    carriedParams.any fun
+      | .product .. | .sum .. | .struct .. | .variant .. => true
+      | _ => false
   let carriedTargets :=
     if needsInternalCarried then
       let carriedWidth := carriedParams.foldl (fun total ty => total + internalSlots ty) 0
@@ -6839,8 +6860,11 @@ def extractNatRecFunc
   let carriedStateEnd :=
     if needsInternalCarried then wasmParamCount + carriedTargets.length else wasmParamCount
   let carriedOwnerTargets :=
-    enumerate (tyListReleaseOwnerSlotOffsetsAt 0 carriedParams) |>.map fun item =>
-      (item.snd, carriedStateEnd + item.fst)
+    if needsInternalCarried then
+      enumerate (tyListReleaseOwnerSlotOffsetsAt 0 carriedParams) |>.map fun item =>
+        (item.snd, carriedStateEnd + item.fst)
+    else
+      []
   let carriedBindings :=
     if needsInternalCarried then
       (internalParamBindingsFrom wasmParamCount carriedParams).reverse
@@ -6885,6 +6909,7 @@ def extractNatRecFunc
     extractCtx := ctx,
     useAbi := useAbi,
     params := params,
+    materializeCarriedArgs := needsInternalCarried || carriesAggregate,
     carriedTargets := carriedTargets,
     carriedOwnerTargets := carriedOwnerTargets,
     resultTy := resultTy,
