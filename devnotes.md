@@ -4872,4 +4872,15 @@ The model target passes a warning-failing constrained build in 2.2 seconds after
 - [x] Define the shared trade value and memory representation.
 - [x] Prove that a successful `findBestL` result is in bounds.
 - [x] Define exact list-level book, trade, and remaining-quantity transitions.
-- [ ] Prove the generated scalar and search helpers for the new artifact.
+- [x] Prove the generated scalar and search helpers for the new artifact.
+
+## 2026-07-15: Embedded `findBest` Proof
+
+Functions 1 through 9 in the matching artifact reproduce functions 0 through 8 in the standalone `findBest` artifact, with internal call indices increased by one.  The matching proof now covers the side, crossing, eligibility, and price helpers, the complete fuel loop, and the internal wrapper at their generated indices.  The loop uses the public `bestPrefixL_some_lt` theorem from the source model instead of retaining the copied private proof.
+
+Warning-failing constrained builds complete the helper module in 102 seconds, the 992-line loop module in 203 seconds, and the wrapper plus specification shell in 6.1 seconds.  The loop theorem returns `optionVals (findBestL os taker)` for every represented order list and preserves the complete store.  The remaining exported proof can therefore treat the generated search call as one verified semantic step.
+
+- [x] Prove the four pure search helpers at the matching artifact's indices.
+- [x] Prove the embedded generated search loop against `findBestL`.
+- [x] Prove the internal wrapper and import it from the specification shell.
+- [ ] Divide the exported matching loop at its three early-exit branches.
