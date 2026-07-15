@@ -4799,3 +4799,23 @@ An isolated `SharedPair.Spec` warning-only build reached its 30-minute timeout, 
 `Project.Clob.FreshFixedArrayAt.write64_data` proves that a 64-bit write in the data region preserves the six fixed-array header words.  `ClobCancel.Spec` now applies this theorem at two copy-write sites, replacing twenty-seven lines of repeated framing proofs, while the untracked `ClobPostOnly.Append` proof contains the third matching use site and remains untouched.  Constrained `--wfail` builds completed in 3.3 seconds for `Project.Clob` and 41 seconds for `Project.ClobCancel.Spec`, with one Lean child and no warning in either checked target.
 
 The final process check found no Lean or Lake process, and `LebU32.Iter` matched its committed contents after restoration.  The working tree still contains only the pre-existing modified `ClobPostOnly.Spec`, untracked `ClobPostOnly.Append`, and nested untracked `leanclob` repository.  No generated model, checked WASM, checked WAT, or current `postOnly` proof file changed during this maintenance.
+
+## 2026-07-15: Recursive Public-ABI State
+
+The expanded CLOB comparison matrix exposed a compiler error in exported natural-number recursion.  The public ABI represents a heap array by its data pointer, while the internal recursive representation carries its owner and data pointer in separate slots.  The old lowering assigned internal recursive slots positionally from public parameters, so a nested `MatchState` corrupted its book, trades, or remaining order after the first iteration.
+
+Exported recursion now initializes separate internal carried locals from the public ABI and materializes a fresh aggregate recursive argument once before assigning its component slots.  Loop-owner trackers start at zero because function inputs are borrowed, record allocations created inside the loop, retain ownership when the next state carries the same allocation, and release an owned value when no next owner slot retains it.  Materialization remains limited to exported ABI conversions and aggregate top-level carried types, preserving the established direct lowering for byte arrays, scalars, and nonaggregate arrays.
+
+A reduced `RecArrayState` fixture exercises two recursive iterations and checks the public owner-and-pointer conversion.  The reference-counting suite now passes 41 cases, including a two-iteration case with three allocations, no retain, one release, and one free.  The standard comparison matrix passes 340 source comparisons and 62 IR comparisons, including seven `postOnly`, five `matchFuel`, six `limit`, five `market`, and two `depth` cases.
+
+The complete root runner passed once during implementation with 791 accepted cases, 45 rejections, 14 traps, and the full supporting test set.  After the final materialization scope was narrowed, focused compiler, reference-counting, differential, WAT, and sixteen-case Talos artifact checks passed against the final source.  The narrowing restored byte-identical `validate` and `leb_u32` artifacts and changed no checked proof input.
+
+The default Talos gate matched all sixteen WASM and WAT pairs, then used its no-build proof check.  Seven proof targets were stale: `Project.Validate.Spec`, `Project.SharedPair.Spec`, `Project.LebU32.Iter`, `Project.LebU32.NegIter`, `Project.ClobFindBest.Model`, `Project.ClobPostOnly.Allocation`, and `Project.Runtime.Checks`.  This result reports missing or outdated build objects after cache removal; it does not report a failed theorem.
+
+## 2026-07-15: Flat Order Reconstruction
+
+`Project.Clob` now defines `OrderL.word` and `orderWord` as the shared flat view of one five-word order record.  `OrdersAt.orderWord_eq` projects any represented order to that view, and `OrdersAt.ofFlatWords` reconstructs the structured predicate from an indexed word equality and indexed memory bound.  These lemmas isolate the record-layout arithmetic that both cancel and the in-progress append proof had repeated.
+
+The cancel theorem now handles its copied prefix and shifted suffix through one arbitrary field index.  The shared constructor expands that result into the five field reads and their memory bounds, removing seventy-two lines while preserving the theorem statement.  Constrained warning-failing builds completed `Project.Clob` in 2.1 seconds and `Project.ClobCancel.Spec` in 35 seconds with one Lean process and no warning.
+
+A new tactic would add no useful proof boundary at this point.  `omega` handles the index arithmetic, `simp` handles the five concrete field projections, and `read_frames` handles read-over-write obligations.  Another helper should follow only when the completed append or matching proof reveals a second stable copy-loop or allocation postcondition beyond the flat-word lemma.
