@@ -63,4 +63,24 @@ theorem emptyFixedArrayMem_spec (st : Store Unit) (base capacity stride : UInt64
   read_frames
   simp
 
+theorem emptyFixedArrayMem_bytes_before (mem : Mem)
+    (base capacity stride : UInt64) (a : Nat)
+    (hFit32 : base.toNat + 56 < 4294967296) (ha : a < base.toNat) :
+    (emptyFixedArrayMem mem base capacity stride).bytes a = mem.bytes a := by
+  unfold emptyFixedArrayMem
+  rw [write64_bytes_lo _ _ _
+        (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+    write64_bytes_lo _ _ _
+        (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+    write64_bytes_lo _ _ _
+        (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+    write64_bytes_lo _ _ _
+        (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+    write64_bytes_lo _ _ _
+        (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+    write64_bytes_lo _ _ _
+        (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+    write64_bytes_lo _ _ _
+        (by simp only [toUInt32_ofNat_mod_toNat]; omega)]
+
 end Project.Clob
