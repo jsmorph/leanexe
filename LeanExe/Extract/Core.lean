@@ -101,10 +101,12 @@ def classEvidenceNormalizedApp? (env : Environment) (name : Name) (expr : Expr) 
     none
 
 def directScalarLtPrimitive (name : Name) : Bool :=
-  name == ``UInt64.lt || name == ``UInt32.lt || name == ``UInt8.lt
+  name == ``Nat.lt || name == ``UInt64.lt || name == ``UInt32.lt ||
+    name == ``UInt8.lt
 
 def directScalarLePrimitive (name : Name) : Bool :=
-  name == ``UInt64.le || name == ``UInt32.le || name == ``UInt8.le
+  name == ``Nat.le || name == ``UInt64.le || name == ``UInt32.le ||
+    name == ``UInt8.le
 
 mutual
   partial def extractStructuralRecCallValueFrom
@@ -3483,7 +3485,10 @@ mutual
         | none => .error s!"definition body does not match function arity: {name}"
       let argBindings := specialization.runtimeArgs.reverse.map (fun arg => Binding.thunk locals arg)
       let inlineCtx := { ctx with inlineStack := name :: ctx.inlineStack }
-      let result ← extractValueFrom inlineCtx (argBindings ++ locals) nextLocal body
+      let result ←
+        match extractValueFrom inlineCtx (argBindings ++ locals) nextLocal body with
+        | .ok result => .ok result
+        | .error error => .error s!"while inlining {name}: {error}"
       .ok (some result)
 
   partial def extractFunctionCallValueFrom
@@ -4538,6 +4543,17 @@ mutual
                         (.byteArrayGet parts.snd.fst parts.snd.snd indexResult.fst),
                         indexResult.snd)
                 | _ => .error "unsupported ByteArray.get! application"
+            | (.const ``ByteArray.get _, args) =>
+                match args.reverse with
+                | _proof :: index :: array :: _ =>
+                    let arrayResult ← extractValueFrom ctx locals nextLocal array
+                    let parts ← byteArrayPartsWithLets arrayResult.fst
+                    let indexResult ← extractExprFrom ctx locals arrayResult.snd index
+                    .ok
+                      (wrapExprLets parts.fst
+                        (.byteArrayGet parts.snd.fst parts.snd.snd indexResult.fst),
+                        indexResult.snd)
+                | _ => .error "unsupported ByteArray.get application"
             | (.const ``Bool.toNat _, [arg]) =>
                 extractExprFrom ctx locals nextLocal arg
             | (.const ``UInt64.ofNat _, [arg]) =>
@@ -5423,8 +5439,15 @@ mutual
       List Ty → List Expr → Except String StrictArgs
     | [], [] => .ok { lets := [], args := [], nextLocal := nextLocal }
     | ty :: restTys, expr :: restExprs => do
-        let valueResult ← extractValueFrom ctx locals nextLocal expr
-        let head ← materializeStrictInternalSlotsWithSummaries ctx.freshResultOwnerOffsets ty valueResult.fst valueResult.snd
+        let valueResult ←
+          match extractValueFrom ctx locals nextLocal expr with
+          | .ok result => .ok result
+          | .error error => .error s!"while extracting call argument of type {reprStr ty}: {error}"
+        let head ←
+          match materializeStrictInternalSlotsWithSummaries
+              ctx.freshResultOwnerOffsets ty valueResult.fst valueResult.snd with
+          | .ok result => .ok result
+          | .error error => .error s!"while materializing call argument of type {reprStr ty}: {error}"
         let bound := bindStrictSlots head.slots head.nextLocal
         let rest ← extractCallArgsFrom ctx locals bound.nextLocal restTys restExprs
         .ok {
@@ -6125,6 +6148,16 @@ mutual
       (paramCount : Nat) (expr : Expr) :
       Except String (Option NatRecShape) := do
     match expr.consumeMData with
+    | .const candidate _ =>
+        if candidate == .str name "_f" then
+          match env.find? candidate with
+          | some info =>
+              match info.value? with
+              | some value => findNatRecShape? env name paramCount value
+              | none => .ok none
+          | none => .ok none
+        else
+          .ok none
     | .app fn arg =>
         match ← findNatRecShape? env name paramCount fn with
         | some shape => .ok (some shape)
@@ -6366,9 +6399,15 @@ mutual
       (nextLocal : Nat)
       (expr : Expr) :
       Except String TailStepResult := do
-    let valueResult ← extractValueFrom lower.extractCtx locals nextLocal expr
+    let valueResult ←
+      match extractValueFrom lower.extractCtx locals nextLocal expr with
+      | .ok result => .ok result
+      | .error error => .error s!"while extracting Nat recursive exit value: {error}"
     let stmt ←
-      materializeResultValue lower.extractCtx lower.useAbi lower.resultTy lower.resultTargets valueResult.fst
+      match materializeResultValue
+          lower.extractCtx lower.useAbi lower.resultTy lower.resultTargets valueResult.fst with
+      | .ok stmt => .ok stmt
+      | .error error => .error s!"while materializing Nat recursive exit value: {error}"
     .ok {
       stmt := addDoneAfter lower.doneSlot stmt,
       nextLocal := valueResult.snd
@@ -6383,7 +6422,9 @@ mutual
     let carriedParams := lower.params.drop 1
     let targets := (functionParamTargets lower.useAbi lower.params |>.drop 1).flatMap Prod.snd
     let argsResult ←
-      extractCallArgsFrom lower.extractCtx locals nextLocal carriedParams recArgs
+      match extractCallArgsFrom lower.extractCtx locals nextLocal carriedParams recArgs with
+      | .ok result => .ok result
+      | .error error => .error s!"while extracting Nat recursive arguments: {error}"
     let tempStart := argsResult.nextLocal
     let updateArgs :=
       LeanExe.IR.seqList
@@ -6559,11 +6600,18 @@ mutual
     if containsBVar recursorIndex condExpr then
       .error "recursive call is not in tail position"
     else
-      let condResult ← extractCond lower.extractCtx locals nextLocal condExpr
+      let condResult ←
+        match extractCond lower.extractCtx locals nextLocal condExpr with
+        | .ok result => .ok result
+        | .error error => .error s!"while extracting Nat recursive condition: {error}"
       let thenResult ←
-        extractNatTailStepStmt lower locals recursorIndex condResult.snd thenExpr
+        match extractNatTailStepStmt lower locals recursorIndex condResult.snd thenExpr with
+        | .ok result => .ok result
+        | .error error => .error s!"while extracting Nat recursive then branch: {error}"
       let elseResult ←
-        extractNatTailStepStmt lower locals recursorIndex thenResult.nextLocal elseExpr
+        match extractNatTailStepStmt lower locals recursorIndex thenResult.nextLocal elseExpr with
+        | .ok result => .ok result
+        | .error error => .error s!"while extracting Nat recursive else branch: {error}"
       .ok {
         stmt := .ite condResult.fst thenResult.stmt elseResult.stmt,
         nextLocal := elseResult.nextLocal
@@ -6720,8 +6768,14 @@ def extractNatRecFunc
     resultTargets := resultTargets,
     doneSlot := doneSlot
   }
-  let stepResult ← extractNatTailStepStmt lower stepLocals 0 tempStart shape.step
-  let baseResult ← extractValueFrom ctx baseLocals stepResult.nextLocal shape.base
+  let stepResult ←
+    match extractNatTailStepStmt lower stepLocals 0 tempStart shape.step with
+    | .ok result => .ok result
+    | .error error => .error s!"while extracting Nat recursion step for {name}: {error}"
+  let baseResult ←
+    match extractValueFrom ctx baseLocals stepResult.nextLocal shape.base with
+    | .ok result => .ok result
+    | .error error => .error s!"while extracting Nat recursion base for {name}: {error}"
   let baseBody ← materializeResultValue ctx useAbi resultTy resultTargets baseResult.fst
   let loopCond : IRCond := .and fuelLive (.eqU64 (.local doneSlot) (.u64 0))
   .ok {
