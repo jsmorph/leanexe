@@ -390,6 +390,13 @@ partial def demandExpr
           | (.const ``ByteArray.toUInt64BE! _, args) =>
               args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
           | (.const ``ByteArray.get! _, _) => .trap
+          | (.const ``ByteArray.get _, args) =>
+              match args.reverse with
+              | _proof :: index :: array :: _ =>
+                  Demand.always
+                    (demandExpr ctx visiting array)
+                    (demandExpr ctx visiting index)
+              | _ => .empty
           | (.const ``Array.size _, args) =>
               args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
           | (.const ``Array.isEmpty _, args) =>

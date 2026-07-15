@@ -198,6 +198,9 @@ def knownExternal? (name : Name) : Option Classification :=
     some { status := "implemented", reason := "boolean primitive in the generic compiler fragment" }
   else if [``BEq.beq, ``LT.lt, ``LE.le, ``GT.gt, ``GE.ge, ``ite, ``dite].contains name then
     some { status := "implemented", reason := "control, equality, or comparison primitive in the generic compiler fragment" }
+  else if [``Nat.lt, ``Nat.le, ``UInt8.lt, ``UInt8.le, ``UInt32.lt, ``UInt32.le,
+      ``UInt64.lt, ``UInt64.le].contains name then
+    some { status := "implemented", reason := "direct scalar comparison primitive in the generic compiler fragment" }
   else if [``UInt64.decLt].contains name then
     some { status := "implemented", reason := "decidable comparison instance used by supported UInt64 comparisons" }
   else if [``Id.run, ``Pure.pure, ``Bind.bind, ``Functor.map, ``Applicative.toPure,
@@ -215,7 +218,8 @@ def knownExternal? (name : Name) : Option Classification :=
       ``Array.back?, ``GetElem?.getElem!, ``GetElem?.getElem?,
       ``GetElem.getElem].contains name then
     some { status := "implemented", reason := "array primitive in the generic compiler fragment" }
-  else if [``ByteArray.empty, ``ByteArray.mk, ``ByteArray.size, ``ByteArray.isEmpty, ``ByteArray.get!,
+  else if [``ByteArray.empty, ``ByteArray.mk, ``ByteArray.size, ``ByteArray.isEmpty,
+      ``ByteArray.get, ``ByteArray.get!,
       ``ByteArray.extract, ``ByteArray.push, ``ByteArray.append, ``ByteArray.set!, ``ByteArray.set,
       ``ByteArray.copySlice, ``ByteArray.findIdx?, ``ByteArray.foldl, ``ByteArray.foldlM, ``ByteArray.toUInt64LE!,
       ``ByteArray.toUInt64BE!].contains name then
