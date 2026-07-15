@@ -1335,14 +1335,6 @@
       else
         i64.const 0
       end
-      i64.const 0
-      i64.eq
-      i32.eqz
-      if (result i64) ;; label = @2
-        i64.const 1
-      else
-        i64.const 0
-      end
       i64.const 1
       i64.eq
       if (result i64) ;; label = @2

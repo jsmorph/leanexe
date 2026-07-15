@@ -1338,14 +1338,6 @@ def func3 : Wasm.Program :=
     ] [
       .constI64 (0 : UInt64)
     ],
-    .constI64 (0 : UInt64),
-    .eqI64,
-    .eqz,
-    .iff 0 1 [
-      .constI64 (1 : UInt64)
-    ] [
-      .constI64 (0 : UInt64)
-    ],
     .constI64 (1 : UInt64),
     .eqI64,
     .iff 0 1 [
