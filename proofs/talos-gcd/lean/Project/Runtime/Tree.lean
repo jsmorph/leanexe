@@ -173,7 +173,7 @@ theorem applyEvents_pages (start : Mem × UInt64) (events : List RelEvent) :
           rw [Mem.write64_pages, Mem.write64_pages]
 
 theorem read64_applyEvents_ne (start : Mem × UInt64) (events : List RelEvent)
-    (b : UInt32) (hb : b.toNat + 8 ≤ 4294967296)
+    (b : UInt32) (_hb : b.toNat + 8 ≤ 4294967296)
     (hsep : ∀ e ∈ events, eventSep b e) :
     (applyEvents start events).1.read64 b = start.1.read64 b := by
   induction events generalizing start with
@@ -287,7 +287,11 @@ private theorem frame_fuel (n : Nat) :
       · intro start events t hn
         cases t <;> simp at hn
       · intro start events p i slots hn
-        cases slots <;> simp at hn <;> intro h _ _ _ _ <;> trivial
+        cases slots with
+        | nil =>
+            intro _ _ _ _ _
+            trivial
+        | cons slot rest => simp at hn
   | succ n ih =>
       constructor
       · intro start events t hn ht hok hsep hbnd
@@ -472,7 +476,7 @@ private theorem events_sub_fuel (n : Nat) :
       · intro t hn
         cases t <;> simp at hn
       · intro slots hn
-        cases slots <;> simp at hn <;> simp [slotsEvents]
+        cases slots <;> simp at hn ⊢
   | succ n ih =>
       constructor
       · intro t hn e he
@@ -573,7 +577,7 @@ theorem natMask_testBit (slots : List RelSlot) (k : Nat)
       cases k with
       | zero =>
           rw [natMask_cons, Nat.testBit_zero]
-          cases slot <;> simp [RelSlot.masked] <;> omega
+          cases slot <;> simp [RelSlot.masked]
       | succ k =>
           rw [natMask_cons]
           have hdiv : (2 * natMask rest +
