@@ -119,189 +119,297 @@ def parseHex (s : String) : Except String ByteArray :=
 def boolCode (b : Bool) : String :=
   if b then "1" else "0"
 
-def emitAll (out : String) : IO Unit := do
-  writeBytes out LeanExe.Wasm.Binary.moduleBytes
-
-def parseNatArg (text : String) : Except String Nat :=
+def parseNatArg (option text : String) : Except String Nat :=
   match text.toNat? with
   | some n => .ok n
-  | none => .error s!"invalid natural number: {text}"
+  | none => .error s!"invalid value for {option}: expected a natural number, got {reprStr text}"
 
 def parseU64Args : List String → Except String (List UInt64)
   | [] => .ok []
   | arg :: rest =>
       match arg.toNat?, parseU64Args rest with
       | some n, .ok values => .ok (UInt64.ofNat n :: values)
-      | none, _ => .error s!"invalid unsigned integer: {arg}"
+      | none, _ => .error s!"invalid eval-ir argument: expected an unsigned integer, got {reprStr arg}"
       | _, .error error => .error error
 
-def main : List String → IO UInt32
-  | ["emit", "--out", out] => do
-      emitAll out
-      return 0
-  | ["wat", "--out", out] => do
-      writeText out LeanExe.Wasm.Binary.wat
-      return 0
-  | ["report", "--out", out] => do
-      writeText out extractionReport
-      return 0
-  | ["report", "--module", moduleName, "--entry", entryName] => do
-      IO.println (← LeanExe.Extract.Report.makeReport moduleName entryName)
-      return 0
-  | ["report", "--module", moduleName, "--entry", entryName, "--out", out] => do
-      writeText out (← LeanExe.Extract.Report.makeReport moduleName entryName)
-      return 0
-  | ["dump-ir", "--module", moduleName, "--entry", entryName] => do
-      IO.println (← LeanExe.Extract.OwnershipReport.makeIRDump moduleName entryName)
-      return 0
-  | ["ownership-report", "--module", moduleName, "--entry", entryName] => do
-      IO.println (← LeanExe.Extract.OwnershipReport.makeReport moduleName entryName)
-      return 0
-  | ["ownership-report", "--module", moduleName, "--entry", entryName, "--out", out] => do
-      writeText out (← LeanExe.Extract.OwnershipReport.makeReport moduleName entryName)
-      return 0
+inductive ErrorKind where
+  | usage
+  | source
+  | io
+  | internal
+
+def ErrorKind.label : ErrorKind → String
+  | .usage => "usage"
+  | .source => "source"
+  | .io => "I/O"
+  | .internal => "internal"
+
+def ErrorKind.status : ErrorKind → UInt32
+  | .usage => 2
+  | .source => 3
+  | .io => 4
+  | .internal => 5
+
+structure Error where
+  kind : ErrorKind
+  context : String
+  detail : String
+
+def Error.render (error : Error) : String :=
+  s!"lean-wasm: {error.kind.label}: {error.context}: {error.detail}"
+
+def commandContext (command : String) (fields : List (String × String) := []) : String :=
+  String.intercalate ", " <|
+    s!"command {reprStr command}" :: fields.map fun field =>
+      s!"{field.fst} {reprStr field.snd}"
+
+def commandName (args : List String) : String :=
+  args.head?.getD "<none>"
+
+def fail (kind : ErrorKind) (context detail : String) : IO UInt32 := do
+  IO.eprintln ({ kind := kind, context := context, detail := detail : Error }).render
+  return kind.status
+
+def captureError (kind : ErrorKind) (context : String) (action : IO α) :
+    IO (Except Error α) := do
+  try
+    return .ok (← action)
+  catch error =>
+    return .error { kind := kind, context := context, detail := toString error }
+
+def writeTextResult (context path content : String) : IO UInt32 := do
+  match ← captureError .io context (writeText path content) with
+  | .ok _ => return 0
+  | .error error =>
+      IO.eprintln error.render
+      return error.kind.status
+
+def writeBytesResult (context path : String) (content : ByteArray) : IO UInt32 := do
+  match ← captureError .io context (writeBytes path content) with
+  | .ok _ => return 0
+  | .error error =>
+      IO.eprintln error.render
+      return error.kind.status
+
+def printTextResult (context content : String) : IO UInt32 := do
+  match ← captureError .io context (IO.println content) with
+  | .ok _ => return 0
+  | .error error =>
+      IO.eprintln error.render
+      return error.kind.status
+
+def compileBytesResult
+    (context out : String)
+    (compileAction : IO LeanExe.IR.Module)
+    (encode : LeanExe.IR.Module → Except String ByteArray) : IO UInt32 := do
+  match ← captureError .source context compileAction with
+  | .error error =>
+      IO.eprintln error.render
+      return error.kind.status
+  | .ok module_ =>
+      match encode module_ with
+      | .error detail => fail .internal context detail
+      | .ok bytes => writeBytesResult context out bytes
+
+def sourcePrintResult (context : String) (action : IO String) : IO UInt32 := do
+  match ← captureError .source context action with
+  | .error error =>
+      IO.eprintln error.render
+      return error.kind.status
+  | .ok content => printTextResult context content
+
+def sourceWriteTextResult (context out : String) (action : IO String) : IO UInt32 := do
+  match ← captureError .source context action with
+  | .error error =>
+      IO.eprintln error.render
+      return error.kind.status
+  | .ok content => writeTextResult context out content
+
+def validateMaxInput (maxInput : Nat) : Except String Unit :=
+  if maxInput > LeanExe.Wasm.Binary.CoreWasm.wasiMaxInputBytes then
+    .error s!"max input bytes exceeds WASM memory capacity: {maxInput}"
+  else
+    .ok ()
+
+def validateArgvStorage (maxArgs maxArgBytes : Nat) : Except String Unit :=
+  let reserved := LeanExe.Wasm.Binary.CoreWasm.wasiArgvReservedBytes maxArgs maxArgBytes
+  if reserved > LeanExe.Wasm.Binary.CoreWasm.wasiMaxReservedBytes then
+    .error s!"max argv storage exceeds WASM memory capacity: {reserved}"
+  else
+    .ok ()
+
+def validateStdinArgvStorage (maxInput maxArgs maxArgBytes : Nat) : Except String Unit :=
+  let reserved := LeanExe.Wasm.Binary.CoreWasm.wasiArgvReservedBytes maxArgs maxArgBytes
+  if maxInput > LeanExe.Wasm.Binary.CoreWasm.wasiMaxInputBytes then
+    .error s!"max input bytes exceeds WASM memory capacity: {maxInput}"
+  else if maxInput + 8 + reserved > LeanExe.Wasm.Binary.CoreWasm.wasiMaxReservedBytes then
+    .error s!"max stdin and argv storage exceeds WASM memory capacity: {maxInput + 8 + reserved}"
+  else
+    .ok ()
+
+def dispatch : List String → IO UInt32
+  | ["emit", "--out", out] =>
+      writeBytesResult (commandContext "emit" [("output", out)]) out
+        LeanExe.Wasm.Binary.moduleBytes
+  | ["wat", "--out", out] =>
+      writeTextResult (commandContext "wat" [("output", out)]) out LeanExe.Wasm.Binary.wat
+  | ["report", "--out", out] =>
+      writeTextResult (commandContext "report" [("output", out)]) out extractionReport
+  | ["report", "--module", moduleName, "--entry", entryName] =>
+      sourcePrintResult
+        (commandContext "report" [("module", moduleName), ("entry", entryName)])
+        (LeanExe.Extract.Report.makeReport moduleName entryName)
+  | ["report", "--module", moduleName, "--entry", entryName, "--out", out] =>
+      sourceWriteTextResult
+        (commandContext "report"
+          [("module", moduleName), ("entry", entryName), ("output", out)])
+        out
+        (LeanExe.Extract.Report.makeReport moduleName entryName)
+  | ["dump-ir", "--module", moduleName, "--entry", entryName] =>
+      sourcePrintResult
+        (commandContext "dump-ir" [("module", moduleName), ("entry", entryName)])
+        (LeanExe.Extract.OwnershipReport.makeIRDump moduleName entryName)
+  | ["ownership-report", "--module", moduleName, "--entry", entryName] =>
+      sourcePrintResult
+        (commandContext "ownership-report" [("module", moduleName), ("entry", entryName)])
+        (LeanExe.Extract.OwnershipReport.makeReport moduleName entryName)
+  | ["ownership-report", "--module", moduleName, "--entry", entryName, "--out", out] =>
+      sourceWriteTextResult
+        (commandContext "ownership-report"
+          [("module", moduleName), ("entry", entryName), ("output", out)])
+        out
+        (LeanExe.Extract.OwnershipReport.makeReport moduleName entryName)
   | ["eval", "--hex", hex] => do
+      let context := commandContext "eval"
       match parseHex hex with
       | .ok input =>
-          IO.println (boolCode (LeanExe.Examples.AsciiDigits.validate input))
-          return 0
-      | .error error =>
-          IO.eprintln error
-          return 2
+          printTextResult context (boolCode (LeanExe.Examples.AsciiDigits.validate input))
+      | .error detail => fail .usage context detail
   | "eval-ir" :: "--module" :: moduleName :: "--entry" :: entryName :: rest => do
+      let context := commandContext "eval-ir" [("module", moduleName), ("entry", entryName)]
       match parseU64Args rest with
+      | .error detail => fail .usage context detail
       | .ok args =>
-          match ← LeanExe.Extract.Eval.evalEntry moduleName entryName args with
-          | .results values =>
-              for value in values do
-                IO.println s!"{value.toNat}"
-              return 0
-          | .outsideFragment reason =>
-              IO.eprintln reason
-              return 3
-      | .error error =>
-          IO.eprintln error
-          return 2
-  | ["compile", "--module", moduleName, "--entry", entryName, "--out", out] => do
-      writeBytes out (LeanExe.Wasm.Binary.CoreWasm.moduleBytes
-        (← LeanExe.Extract.Core.compile moduleName entryName))
-      return 0
-  | ["compile-wat", "--module", moduleName, "--entry", entryName, "--out", out] => do
-      writeText out (LeanExe.Wasm.Wat.moduleWat
-        (← LeanExe.Extract.Core.compile moduleName entryName))
-      return 0
-  | ["compile-wasi", "--module", moduleName, "--entry", entryName, "--out", out] => do
-      match LeanExe.Wasm.Binary.CoreWasm.wasiModuleBytes
-          (← LeanExe.Extract.Core.compileProgram moduleName entryName) with
-      | .ok bytes =>
-          writeBytes out bytes
-      | .error error =>
-          throw <| IO.userError error
-      return 0
+          match ← captureError .source context
+              (LeanExe.Extract.Eval.evalEntry moduleName entryName args) with
+          | .error error =>
+              IO.eprintln error.render
+              return error.kind.status
+          | .ok (.outsideFragment reason) => fail .source context reason
+          | .ok (.results values) => do
+              let printValues : IO Unit := do
+                for value in values do
+                  IO.println s!"{value.toNat}"
+              match ← captureError .io context printValues with
+              | .ok _ => return 0
+              | .error error =>
+                  IO.eprintln error.render
+                  return error.kind.status
+  | ["compile", "--module", moduleName, "--entry", entryName, "--out", out] =>
+      compileBytesResult
+        (commandContext "compile"
+          [("module", moduleName), ("entry", entryName), ("output", out)])
+        out
+        (LeanExe.Extract.Core.compile moduleName entryName)
+        (fun module_ => .ok (LeanExe.Wasm.Binary.CoreWasm.moduleBytes module_))
+  | ["compile-wat", "--module", moduleName, "--entry", entryName, "--out", out] =>
+      sourceWriteTextResult
+        (commandContext "compile-wat"
+          [("module", moduleName), ("entry", entryName), ("output", out)])
+        out
+        (LeanExe.Wasm.Wat.moduleWat <$> LeanExe.Extract.Core.compile moduleName entryName)
+  | ["compile-wasi", "--module", moduleName, "--entry", entryName, "--out", out] =>
+      compileBytesResult
+        (commandContext "compile-wasi"
+          [("module", moduleName), ("entry", entryName), ("output", out)])
+        out
+        (LeanExe.Extract.Core.compileProgram moduleName entryName)
+        LeanExe.Wasm.Binary.CoreWasm.wasiModuleBytes
   | ["compile-wasi-stdin", "--max-input-bytes", maxInput, "--module", moduleName,
       "--entry", entryName, "--out", out] => do
-      match parseNatArg maxInput with
+      let context := commandContext "compile-wasi-stdin"
+        [("module", moduleName), ("entry", entryName), ("output", out)]
+      match parseNatArg "--max-input-bytes" maxInput with
+      | .error detail => fail .usage context detail
       | .ok maxBytes =>
-          match LeanExe.Wasm.Binary.CoreWasm.wasiStdinModuleBytes maxBytes
-              (← LeanExe.Extract.Core.compileStdinProgram moduleName entryName) with
-          | .ok bytes =>
-              writeBytes out bytes
-          | .error error =>
-              throw <| IO.userError error
-          return 0
-      | .error error =>
-          IO.eprintln error
-          return 2
+          match validateMaxInput maxBytes with
+          | .error detail => fail .usage context detail
+          | .ok _ =>
+              compileBytesResult context out
+                (LeanExe.Extract.Core.compileStdinProgram moduleName entryName)
+                (LeanExe.Wasm.Binary.CoreWasm.wasiStdinModuleBytes maxBytes)
   | ["compile-wasi-stdin-except", "--max-input-bytes", maxInput, "--module", moduleName,
       "--entry", entryName, "--out", out] => do
-      match parseNatArg maxInput with
+      let context := commandContext "compile-wasi-stdin-except"
+        [("module", moduleName), ("entry", entryName), ("output", out)]
+      match parseNatArg "--max-input-bytes" maxInput with
+      | .error detail => fail .usage context detail
       | .ok maxBytes =>
-          match LeanExe.Wasm.Binary.CoreWasm.wasiStdinExceptModuleBytes maxBytes
-              (← LeanExe.Extract.Core.compileStdinExceptProgram moduleName entryName) with
-          | .ok bytes =>
-              writeBytes out bytes
-          | .error error =>
-              throw <| IO.userError error
-          return 0
-      | .error error =>
-          IO.eprintln error
-          return 2
+          match validateMaxInput maxBytes with
+          | .error detail => fail .usage context detail
+          | .ok _ =>
+              compileBytesResult context out
+                (LeanExe.Extract.Core.compileStdinExceptProgram moduleName entryName)
+                (LeanExe.Wasm.Binary.CoreWasm.wasiStdinExceptModuleBytes maxBytes)
   | ["compile-wasi-argv-except", "--max-args", maxArgs, "--max-argv-bytes", maxArgBytes,
       "--module", moduleName, "--entry", entryName, "--out", out] => do
-      match parseNatArg maxArgs, parseNatArg maxArgBytes with
+      let context := commandContext "compile-wasi-argv-except"
+        [("module", moduleName), ("entry", entryName), ("output", out)]
+      match parseNatArg "--max-args" maxArgs, parseNatArg "--max-argv-bytes" maxArgBytes with
+      | .error detail, _ => fail .usage context detail
+      | _, .error detail => fail .usage context detail
       | .ok maxArgsValue, .ok maxArgBytesValue =>
-          let entry := LeanExe.Extract.Env.parseName entryName
-          match LeanExe.Wasm.Binary.CoreWasm.wasiArgvExceptModuleBytes
-              maxArgsValue
-              maxArgBytesValue
-              entry
-              (← LeanExe.Extract.Core.compileArgvExceptProgram moduleName entryName) with
-          | .ok bytes =>
-              writeBytes out bytes
-          | .error error =>
-              throw <| IO.userError error
-          return 0
-      | .error error, _ =>
-          IO.eprintln error
-          return 2
-      | _, .error error =>
-          IO.eprintln error
-          return 2
+          match validateArgvStorage maxArgsValue maxArgBytesValue with
+          | .error detail => fail .usage context detail
+          | .ok _ =>
+              let entry := LeanExe.Extract.Env.parseName entryName
+              compileBytesResult context out
+                (LeanExe.Extract.Core.compileArgvExceptProgram moduleName entryName)
+                (LeanExe.Wasm.Binary.CoreWasm.wasiArgvExceptModuleBytes
+                  maxArgsValue maxArgBytesValue entry)
   | ["compile-wasi-stdin-argv-except", "--max-input-bytes", maxInput, "--max-args", maxArgs,
       "--max-argv-bytes", maxArgBytes, "--module", moduleName, "--entry", entryName,
       "--out", out] => do
-      match parseNatArg maxInput, parseNatArg maxArgs, parseNatArg maxArgBytes with
+      let context := commandContext "compile-wasi-stdin-argv-except"
+        [("module", moduleName), ("entry", entryName), ("output", out)]
+      match parseNatArg "--max-input-bytes" maxInput, parseNatArg "--max-args" maxArgs,
+          parseNatArg "--max-argv-bytes" maxArgBytes with
+      | .error detail, _, _ => fail .usage context detail
+      | _, .error detail, _ => fail .usage context detail
+      | _, _, .error detail => fail .usage context detail
       | .ok maxInputValue, .ok maxArgsValue, .ok maxArgBytesValue =>
-          let entry := LeanExe.Extract.Env.parseName entryName
-          match LeanExe.Wasm.Binary.CoreWasm.wasiStdinArgvExceptModuleBytes
-              maxInputValue
-              maxArgsValue
-              maxArgBytesValue
-              entry
-              (← LeanExe.Extract.Core.compileStdinArgvExceptProgram moduleName entryName) with
-          | .ok bytes =>
-              writeBytes out bytes
-          | .error error =>
-              throw <| IO.userError error
-          return 0
-      | .error error, _, _ =>
-          IO.eprintln error
-          return 2
-      | _, .error error, _ =>
-          IO.eprintln error
-          return 2
-      | _, _, .error error =>
-          IO.eprintln error
-          return 2
+          match validateStdinArgvStorage maxInputValue maxArgsValue maxArgBytesValue with
+          | .error detail => fail .usage context detail
+          | .ok _ =>
+              let entry := LeanExe.Extract.Env.parseName entryName
+              compileBytesResult context out
+                (LeanExe.Extract.Core.compileStdinArgvExceptProgram moduleName entryName)
+                (LeanExe.Wasm.Binary.CoreWasm.wasiStdinArgvExceptModuleBytes
+                  maxInputValue maxArgsValue maxArgBytesValue entry)
   | ["collatz-eval", "--input", input] => do
-      match parseNatArg input with
+      let context := commandContext "collatz-eval"
+      match parseNatArg "--input" input with
       | .ok n =>
           let steps := LeanExe.Examples.Collatz.steps (UInt64.ofNat n)
-          IO.println s!"{steps.toNat}"
-          return 0
-      | .error error =>
-          IO.eprintln error
-          return 2
+          printTextResult context s!"{steps.toNat}"
+      | .error detail => fail .usage context detail
   | ["collatz-bench", "--input", input, "--iters", iters] => do
-      match parseNatArg input, parseNatArg iters with
+      let context := commandContext "collatz-bench"
+      match parseNatArg "--input" input, parseNatArg "--iters" iters with
       | .ok n, .ok count =>
           let result := LeanExe.Examples.Collatz.bench (UInt64.ofNat n) (UInt64.ofNat count)
-          IO.println s!"{result.toNat}"
-          return 0
-      | .error error, _ =>
-          IO.eprintln error
-          return 2
-      | _, .error error =>
-          IO.eprintln error
-          return 2
-  | ["help"] => do
-      IO.println usage
-      return 0
-  | ["--help"] => do
-      IO.println usage
-      return 0
-  | _ => do
-      IO.eprintln usage
-      return 2
+          printTextResult context s!"{result.toNat}"
+      | .error detail, _ => fail .usage context detail
+      | _, .error detail => fail .usage context detail
+  | ["help"] => printTextResult (commandContext "help") usage
+  | ["--help"] => printTextResult (commandContext "--help") usage
+  | args =>
+      fail .usage (commandContext (commandName args)) ("invalid command or arguments\n" ++ usage)
+
+def main (args : List String) : IO UInt32 := do
+  try
+    dispatch args
+  catch error =>
+    fail .internal (commandContext (commandName args)) (toString error)
 
 end LeanExe.CLI
