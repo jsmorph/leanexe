@@ -4944,3 +4944,9 @@ The changed `Project.ClobMatchFuel.Spec` import target reached its three-minute 
 `Project.Clob.fixedArrayHeaderMem` names the six metadata writes that generated fixed-array allocations perform before writing the array length.  `fixedArrayMem` now composes that header transformation with its existing length write, preserving its seven-write behavior.  `fixedArrayHeaderMem_spec` proves the resulting `FreshFixedArrayAt` predicate and gives the book-allocation bump branch a semantic boundary that the later trade allocation can reuse.
 
 The warning-failing constrained `Project.FixedArrayAllocation` build completes in 2.3 seconds.  The helper adds no dependency, axiom, or tactic.  Its proof uses the existing `read_frames` tactic after normalizing the six header addresses.
+
+## 2026-07-15: Book Allocation Bump Path
+
+`Project.ClobMatchFuel.BookAllocBump.bookAllocBumpProg_spec` proves the generated no-result allocation branch from its local-81 test through the heap-top update and six header stores.  Its assumptions state the generated eight-byte minimum capacity, exact nonwrapping top arithmetic, sufficient existing pages, the Wasm page limit, and global 0.  The postcondition records `fixedArrayHeaderMem`, the new global 0 value, the payload root, the computed page count, and the overwritten local frame.
+
+`bookAllocNoFitProg_spec` composes that result with `bookAllocSearchProg_no_fit`, retaining the final predecessor as an irrelevant quantified local.  `freshOrderArrayAt_bookAllocBumpStore` proves the fresh kind-2 header, while `freeListAt_bookAllocBumpStore` preserves represented free nodes whose allocated regions end at or below the old heap top.  The warning-failing constrained `Project.ClobMatchFuel.BookAllocBump` build completes in 6.4 seconds, and the unchanged aggregate target was not retried after its recorded timeout.
