@@ -4908,3 +4908,11 @@ The generated `matchFuel` module's functions 15 through 18 are definitionally eq
 The existing release theorems did not cover the arrays used by matching.  `release_frees_fresh_raw` requires kind 0, while `release_frees_tree` models kind-1 slot objects; CLOB books and trades are kind-2 fixed arrays.  The runtime's kind-2 branch reads the array length, stride, and pointer mask, walks both dimensions, releases each masked field, and then adds the root to the free list.
 
 `Project.Runtime.FixedArraySpec.release_frees_fixed_array_zero_mask` proves the shared kind-2 case used by CLOB arrays.  Two natural-number variants prove termination of the generated nested loops, and the zero mask proves that the walk neither reads element words nor calls release recursively.  The theorem returns the exact refcount write, free-list link, release and free counter increments, and unchanged remaining globals; its warning-failing constrained build completes in 7.9 seconds.  `Project.ClobMatchFuel.Allocation.func18_frees_fixed_array_zero_mask` specializes the theorem to the generated module and passes a warning-failing constrained build in 1.9 seconds.
+
+## 2026-07-15: First-Fit Allocator Model
+
+`Project.Runtime.FreeList` models the state consumed by the shared `rcAllocPayload` instruction builder.  `takeFirstFit` selects the first node with adequate capacity and proves the selected capacity, membership, and one-node length change.  `FreeListAt` records each node's zero refcount, capacity, next link, memory bounds, and separation from its tail, while its frame theorem preserves those facts across unrelated writes.
+
+The compiler already emits every inline allocation through the single `LeanExe.Wasm.Binary.rcAllocPayload` builder.  A compiler change to call the exported allocator would change completed artifacts without eliminating source duplication.  The matching proof will instead verify the current first-fit and bump paths against `FreeListAt`, then reuse that semantic result at its four generated array-allocation sites.
+
+The free-list model passes a warning-failing constrained build in 1.7 seconds.  It introduces no axiom, tactic, or dependency and contains no artifact-specific local indices.  The next theorem must connect one generated allocation walk to `takeFirstFit` before the matching branch proof depends on this model.
