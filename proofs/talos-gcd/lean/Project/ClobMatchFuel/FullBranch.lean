@@ -120,6 +120,12 @@ theorem fullBranchProg_spec
       OwnedTradeArrayAt st1 oldTrades oldTradesCapacity ts →
       OwnedOrderArrayAt st1 book bookCapacity os →
       FreeListAt st1.mem nodes1 →
+      st1.mem.pages = st.mem.pages →
+      regionsDisjoint (fixedArrayRegion oldTrades oldTradesCapacity)
+        (fixedArrayRegion newBook newBookCapacity) →
+      regionsDisjoint (fixedArrayRegion oldTrades oldTradesCapacity)
+        (fixedArrayRegion newTrades newTradesCapacity) →
+      FreeListSeparatedFromFixedArray nodes1 oldTrades oldTradesCapacity →
       st1.globals.globals[0]? = some (.i64 g0Final) →
       st1.globals.globals[1]? = some (.i64 (freeHead nodes1)) →
       st1.globals.globals[2]? = some (.i64 (g2 + 2)) →
@@ -179,6 +185,11 @@ theorem fullBranchProg_spec
         node.root.toNat + node.capacity.toNat ≤ g0.toNat := by
       intro node hNode
       exact hNodesBelow node (takeFirstFitFrom_some_remaining_mem hTake hNode)
+    have hOldTradesNewBook : regionsDisjoint
+        (fixedArrayRegion oldTrades oldTradesCapacity)
+        (fixedArrayRegion choice.node.root choice.node.capacity) := by
+      simpa [fixedArrayRegion, FreeNode.region] using
+        hOldTradesFree choice.node hChoiceMem
     have hCurrentG4 : st1.globals.globals[4]? = some (.i64 g4) := by
       have hAllocG4 := fixedArrayAllocFitStore_global_of_ne_one st choice 5
         4 (.i64 g4) (by decide) hg4
@@ -279,6 +290,7 @@ theorem fullBranchProg_spec
     · exact hBookCapacity
     · exact hBookBelow
     · exact hBookFree1
+    · exact hOldTradesNewBook
     · exact hNodesBelow1
     · exact hOldTradesOwned1
     · exact hNewBookOwned
@@ -290,11 +302,18 @@ theorem fullBranchProg_spec
     · exact hCurrentG5
     · exact hFinalList
     · intro st2 s newTrades newTradesCapacity nodes2 g0Final hResult
-        hNewBookFinal hNewTradesFinal hOldTradesFinal hBookFinal hList2 hG0
-        hG1 hG2 hG4 hG5
+        hNewBookFinal hNewTradesFinal hOldTradesFinal hBookFinal hList2 hPages2
+        hOldTradesNewBook2 hOldTradesNewTrades hOldTradesFree2 hG0 hG1 hG2 hG4
+        hG5
       apply hDone st2 s choice.node.root choice.node.capacity newTrades
         newTradesCapacity nodes2 g0Final hResult hNewBookFinal hNewTradesFinal
-        hOldTradesFinal hBookFinal hList2 hG0 hG1
+        hOldTradesFinal hBookFinal hList2
+      · exact hPages2.trans hFinalPages
+      · exact hOldTradesNewBook2
+      · exact hOldTradesNewTrades
+      · exact hOldTradesFree2
+      · exact hG0
+      · exact hG1
       · simpa only [hg2Next] using hG2
       · exact hG4
       · exact hG5
@@ -349,6 +368,12 @@ theorem fullBranchProg_spec
     have hOldTradesBelow1 : oldTrades.toNat + oldTradesCapacity.toNat ≤
         g0AfterBook.toNat := by
       rw [hG0AfterBookNat]
+      omega
+    have hOldTradesNewBook : regionsDisjoint
+        (fixedArrayRegion oldTrades oldTradesCapacity)
+        (fixedArrayRegion newBook bookNeed) := by
+      unfold regionsDisjoint fixedArrayRegion
+      rw [hNewBookNat]
       omega
     have hCurrentG4 : st1.globals.globals[4]? = some (.i64 g4) := by
       have hAllocG4 := fixedArrayAllocBumpStore_global_of_ne_zero st g0
@@ -450,6 +475,7 @@ theorem fullBranchProg_spec
     · exact hBookCapacity
     · exact hBookBelow1
     · exact hBookFree
+    · exact hOldTradesNewBook
     · exact hNodesBelow1
     · exact hOldTradesOwned1
     · simpa [newBook, bookNeed] using hNewBookOwned
@@ -461,8 +487,9 @@ theorem fullBranchProg_spec
     · exact hCurrentG5
     · exact hFinalList
     · intro st2 s newTrades newTradesCapacity nodes2 g0Final hResult
-        hNewBookFinal hNewTradesFinal hOldTradesFinal hBookFinal hList2 hG0
-        hG1 hG2 hG4 hG5
+        hNewBookFinal hNewTradesFinal hOldTradesFinal hBookFinal hList2 hPages2
+        hOldTradesNewBook2 hOldTradesNewTrades hOldTradesFree2 hG0 hG1 hG2 hG4
+        hG5
       apply hDone st2 s newBook bookNeed newTrades newTradesCapacity nodes2
         g0Final hResult
       · simpa [newBook, bookNeed] using hNewBookFinal
@@ -470,6 +497,10 @@ theorem fullBranchProg_spec
       · exact hOldTradesFinal
       · exact hBookFinal
       · exact hList2
+      · exact hPages2.trans hFinalPages
+      · exact hOldTradesNewBook2
+      · exact hOldTradesNewTrades
+      · exact hOldTradesFree2
       · exact hG0
       · exact hG1
       · simpa only [hg2Next] using hG2
