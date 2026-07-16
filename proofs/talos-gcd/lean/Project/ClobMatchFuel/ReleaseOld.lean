@@ -388,4 +388,252 @@ theorem releaseOwnedArraysProg_spec
     exact hDone st1 st2 hMem1 hGlobals1 hMem2 hGlobals2 hNewBookOwned2
       hNewTradesOwned2 hList2
 
+set_option Elab.async false in
+theorem releaseOldValuesProg_none
+    (env : HostEnv Unit) (st : Store Unit) (base : Locals)
+    (newBook newTrades : UInt64)
+    (hOldBookLocal : base.get 19 = some (.i64 0))
+    (hOldTradesLocal : base.get 20 = some (.i64 0))
+    (hNewBookLocal : base.get 44 = some (.i64 newBook))
+    (hNewTradesLocal : base.get 46 = some (.i64 newTrades))
+    (hValues : base.values = [])
+    (Q : Assertion Unit) (rest : Wasm.Program)
+    (hDone : wp «module» rest Q st base env) :
+    wp «module» (releaseOldValuesProg ++ rest) Q st base env := by
+  rcases base with ⟨params, locals, values⟩
+  dsimp only at hValues
+  subst values
+  simp only [releaseOldValuesProg, List.cons_append, List.nil_append]
+  simp_all only [wp_simp, Locals.get]
+  refine wp_iff_cons
+    (s := { params, locals, values := [.i32 0] })
+    (c := 0) (vs := []) rfl ?_
+  rw [if_neg (by decide)]
+  simp_all only [wp_simp]
+  try simp
+  refine wp_iff_cons
+    (s := { params, locals, values := [.i32 0] })
+    (c := 0) (vs := []) rfl ?_
+  rw [if_neg (by decide)]
+  simp_all only [wp_simp]
+  try simp
+  refine wp_iff_cons
+    (s := { params, locals, values := [.i32 0] })
+    (c := 0) (vs := []) rfl ?_
+  rw [if_neg (by decide)]
+  simp_all only [wp_simp, Locals.get]
+  try simp
+  refine wp_iff_cons
+    (s := { params, locals, values := [.i32 0] })
+    (c := 0) (vs := []) rfl ?_
+  rw [if_neg (by decide)]
+  simp_all only [wp_simp]
+  try simp
+  refine wp_iff_cons
+    (s := { params, locals, values := [.i32 0] })
+    (c := 0) (vs := []) rfl ?_
+  rw [if_neg (by decide)]
+  simp_all only [wp_simp]
+  try simp
+  refine wp_iff_cons
+    (s := { params, locals, values := [.i32 0] })
+    (c := 0) (vs := []) rfl ?_
+  rw [if_neg (by decide)]
+  simp_all only [wp_simp]
+  try simp
+  refine wp_iff_cons
+    (s := { params, locals, values := [.i32 0] })
+    (c := 0) (vs := []) rfl ?_
+  rw [if_neg (by decide)]
+  simp_all only [wp_simp]
+  try simp
+  exact hDone
+
+set_option Elab.async false in
+theorem releaseOldValuesProg_trade_only_calls
+    (env : HostEnv Unit) (st : Store Unit) (base : Locals)
+    (oldTrades newBook newTrades : UInt64)
+    (tradePost : Store Unit → Prop)
+    (hOldBookLocal : base.get 19 = some (.i64 0))
+    (hOldTradesLocal : base.get 20 = some (.i64 oldTrades))
+    (hNewBookLocal : base.get 44 = some (.i64 newBook))
+    (hNewTradesLocal : base.get 46 = some (.i64 newTrades))
+    (hValues : base.values = [])
+    (hOldTradesNonzero : oldTrades ≠ 0)
+    (hOldTradesNewBook : oldTrades ≠ newBook)
+    (hOldTradesNewTrades : oldTrades ≠ newTrades)
+    (hReleaseTrades :
+      TerminatesWith (m := «module») (id := 18) (initial := st) (env := env)
+        [.i64 oldTrades] (fun st1 vs => vs = [] ∧ tradePost st1))
+    (Q : Assertion Unit) (rest : Wasm.Program)
+    (hDone : ∀ st1, tradePost st1 →
+      wp «module» rest Q st1 base env) :
+    wp «module» (releaseOldValuesProg ++ rest) Q st base env := by
+  rcases base with ⟨params, locals, values⟩
+  dsimp only at hValues
+  subst values
+  simp only [releaseOldValuesProg, List.cons_append, List.nil_append]
+  simp_all only [wp_simp, Locals.get]
+  refine wp_iff_cons
+    (s := { params, locals, values := [.i32 0] })
+    (c := 0) (vs := []) rfl ?_
+  rw [if_neg (by decide)]
+  simp_all only [wp_simp]
+  try simp
+  refine wp_iff_cons
+    (s := { params, locals, values := [.i32 0] })
+    (c := 0) (vs := []) rfl ?_
+  rw [if_neg (by decide)]
+  simp_all only [wp_simp]
+  try simp
+  refine wp_iff_cons
+    (s := { params, locals, values := [.i32 0] })
+    (c := 0) (vs := []) rfl ?_
+  rw [if_neg (by decide)]
+  simp_all only [wp_simp, Locals.get]
+  try simp
+  refine wp_iff_cons
+    (s := { params, locals, values := [.i32 1] })
+    (c := 1) (vs := []) rfl ?_
+  rw [if_pos (by decide)]
+  simp_all only [wp_simp, Locals.get]
+  try simp
+  refine wp_iff_cons
+    (s := { params, locals, values := [.i32 1] })
+    (c := 1) (vs := []) rfl ?_
+  rw [if_pos (by decide)]
+  simp_all only [wp_simp, Locals.get]
+  try simp
+  refine wp_iff_cons
+    (s := { params, locals, values := [.i32 1] })
+    (c := 1) (vs := []) rfl ?_
+  rw [if_pos (by decide)]
+  simp_all only [wp_simp, Locals.get]
+  try simp
+  refine wp_iff_cons
+    (s := { params, locals, values := [.i32 1] })
+    (c := 1) (vs := []) rfl ?_
+  rw [if_pos (by decide)]
+  simp_all only [wp_simp, Locals.get]
+  try simp
+  refine wp_call_tw hReleaseTrades ?_
+  rintro st1 vs ⟨rfl, hTradePost⟩
+  wp_run
+  try simp
+  exact hDone st1 hTradePost
+
+set_option Elab.async false in
+theorem releaseTrackedTradeProg_spec
+    (env : HostEnv Unit) (st : Store Unit) (base : Locals)
+    (oldTrades oldTradesCapacity : UInt64)
+    (newBook newBookCapacity newTrades newTradesCapacity : UInt64)
+    (g4 g5 : UInt64)
+    (oldTradeValues newTradeValues : List TradeL)
+    (newOrders : List OrderL) (nodes : List FreeNode)
+    (hOldBookLocal : base.get 19 = some (.i64 0))
+    (hOldTradesLocal : base.get 20 = some (.i64 oldTrades))
+    (hNewBookLocal : base.get 44 = some (.i64 newBook))
+    (hNewTradesLocal : base.get 46 = some (.i64 newTrades))
+    (hValues : base.values = [])
+    (hOldTrades48 : 48 ≤ oldTrades.toNat)
+    (hOldTrades32 :
+      oldTrades.toNat + oldTradesCapacity.toNat < 4294967296)
+    (hOldTradesFit :
+      oldTrades.toNat + oldTradesCapacity.toNat ≤ st.mem.pages * 65536)
+    (hOldTradesCapacity :
+      fixedArrayBytes oldTradeValues.length 4 ≤ oldTradesCapacity.toNat)
+    (hNewBook48 : 48 ≤ newBook.toNat)
+    (hNewBook32 : newBook.toNat + newBookCapacity.toNat < 4294967296)
+    (hNewBookCapacity :
+      fixedArrayBytes newOrders.length 5 ≤ newBookCapacity.toNat)
+    (hNewTrades48 : 48 ≤ newTrades.toNat)
+    (hNewTrades32 :
+      newTrades.toNat + newTradesCapacity.toNat < 4294967296)
+    (hNewTradesCapacity :
+      fixedArrayBytes newTradeValues.length 4 ≤ newTradesCapacity.toNat)
+    (hOldTradesOwned :
+      OwnedTradeArrayAt st oldTrades oldTradesCapacity oldTradeValues)
+    (hNewBookOwned :
+      OwnedOrderArrayAt st newBook newBookCapacity newOrders)
+    (hNewTradesOwned :
+      OwnedTradeArrayAt st newTrades newTradesCapacity newTradeValues)
+    (hOldTradesNewBook :
+      regionsDisjoint (fixedArrayRegion oldTrades oldTradesCapacity)
+        (fixedArrayRegion newBook newBookCapacity))
+    (hOldTradesNewTrades :
+      regionsDisjoint (fixedArrayRegion oldTrades oldTradesCapacity)
+        (fixedArrayRegion newTrades newTradesCapacity))
+    (hOldTradesNodes : ∀ node ∈ nodes,
+      regionsDisjoint (fixedArrayRegion oldTrades oldTradesCapacity)
+        node.region)
+    (hList : FreeListAt st.mem nodes)
+    (hg1 : st.globals.globals[1]? = some (.i64 (freeHead nodes)))
+    (hg4 : st.globals.globals[4]? = some (.i64 g4))
+    (hg5 : st.globals.globals[5]? = some (.i64 g5))
+    (Q : Assertion Unit) (rest : Wasm.Program)
+    (hDone : ∀ st1,
+      st1.mem = fixedArrayReleaseMem st oldTrades (freeHead nodes) →
+      st1.globals.globals = fixedArrayReleaseGlobals st oldTrades g4 g5 →
+      OwnedOrderArrayAt st1 newBook newBookCapacity newOrders →
+      OwnedTradeArrayAt st1 newTrades newTradesCapacity newTradeValues →
+      FreeListAt st1.mem (releasedNode oldTrades oldTradesCapacity :: nodes) →
+      wp «module» rest Q st1 base env) :
+    wp «module» (releaseOldValuesProg ++ rest) Q st base env := by
+  have hOldTradesContent32 :
+      oldTrades.toNat + fixedArrayBytes oldTradeValues.length 4 <
+        4294967296 := by
+    omega
+  have hNewBookContent32 :
+      newBook.toNat + fixedArrayBytes newOrders.length 5 < 4294967296 := by
+    omega
+  have hNewTradesContent32 :
+      newTrades.toNat + fixedArrayBytes newTradeValues.length 4 <
+        4294967296 := by
+    omega
+  have hOldTradesLength32 : oldTradeValues.length < 4294967296 := by
+    unfold fixedArrayBytes at hOldTradesContent32
+    omega
+  apply releaseOldValuesProg_trade_only_calls env st base oldTrades newBook
+    newTrades
+    (fun st1 =>
+      st1.mem = fixedArrayReleaseMem st oldTrades (freeHead nodes) ∧
+      st1.globals.globals = fixedArrayReleaseGlobals st oldTrades g4 g5)
+    hOldBookLocal hOldTradesLocal hNewBookLocal hNewTradesLocal hValues
+  · intro hzero
+    subst oldTrades
+    simp at hOldTrades48
+  · exact fixedArrayRoots_ne_of_regionsDisjoint hOldTradesNewBook
+  · exact fixedArrayRoots_ne_of_regionsDisjoint hOldTradesNewTrades
+  · apply func18_frees_fixed_array_zero_mask env st oldTrades
+      oldTradesCapacity (freeHead nodes) g4 g5 oldTradeValues.length 4
+      hOldTradesLength32 (by decide) hOldTrades48 (by omega)
+    · have hFit := hOldTradesOwned.2.1.2
+      rw [Nat.mod_eq_of_lt (by omega)] at hFit
+      exact hFit
+    · simpa using hOldTradesOwned.1
+    · simpa only [toUInt32_eq_ofNat] using hOldTradesOwned.2.1.1
+    · exact hg1
+    · exact hg4
+    · exact hg5
+  · intro st1 hTradePost
+    rcases hTradePost with ⟨hMem1, hGlobals1⟩
+    have hNewBookOwned1 :
+        OwnedOrderArrayAt st1 newBook newBookCapacity newOrders :=
+      ReleaseFrame.OwnedOrderArrayAt.frame_release hOldTrades48 hOldTrades32
+        hNewBook48 hNewBookContent32 hNewBookCapacity hOldTradesNewBook hMem1
+        hNewBookOwned
+    have hNewTradesOwned1 :
+        OwnedTradeArrayAt st1 newTrades newTradesCapacity newTradeValues :=
+      ReleaseFrame.OwnedTradeArrayAt.frame_release hOldTrades48 hOldTrades32
+        hNewTrades48 hNewTradesContent32 hNewTradesCapacity
+        hOldTradesNewTrades hMem1 hNewTradesOwned
+    have hList1Mem := freeListAt_fixedArrayReleaseMem st oldTrades
+      oldTradesCapacity nodes hOldTrades48 hOldTrades32 hOldTradesFit
+      hOldTradesOwned.1.2.2.1 hOldTradesNodes hList
+    have hList1 :
+        FreeListAt st1.mem (releasedNode oldTrades oldTradesCapacity :: nodes) := by
+      rw [hMem1]
+      exact hList1Mem
+    exact hDone st1 hMem1 hGlobals1 hNewBookOwned1 hNewTradesOwned1 hList1
+
 end Project.ClobMatchFuel.ReleaseOld
