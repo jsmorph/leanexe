@@ -4884,3 +4884,13 @@ Warning-failing constrained builds complete the helper module in 102 seconds, th
 - [x] Prove the embedded generated search loop against `findBestL`.
 - [x] Prove the internal wrapper and import it from the specification shell.
 - [ ] Divide the exported matching loop at its three early-exit branches.
+
+## 2026-07-15: Zero-Fuel Matching Exit
+
+The first exported-function theorem proves that zero public fuel returns the input book pointer, trade pointer, and remaining quantity without changing the store.  Its loop invariant records the relevant locals, the zero done flag, and the exact nine-parameter and seventy-six-local frame lengths.  The frame lengths let the final return suffix simplify local assignments without expanding the complete generated frame.
+
+The warning-failing constrained build completes `Project.ClobMatchFuel.EarlyExit` in 19 seconds.  The proof selects the generated false branch after the fuel test, follows its break from the enclosing block, and proves the final three-value ABI exactly.  The same frame facts will support the zero-remaining and no-maker exits, which each enter the loop once before setting the done flag.
+
+- [x] Prove the zero-fuel exit over the exact public ABI.
+- [ ] Prove the zero-remaining exit for nonzero fuel.
+- [ ] Prove the no-maker exit through the verified search wrapper.

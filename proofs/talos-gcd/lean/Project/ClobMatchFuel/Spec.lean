@@ -1,4 +1,4 @@
-import Project.ClobMatchFuel.FindBestWrapper
+import Project.ClobMatchFuel.EarlyExit
 
 /-!
 # The `matchFuel` theorem
