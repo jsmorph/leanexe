@@ -17,6 +17,37 @@ open Wasm Project.Common Project.Runtime Project.Clob Project.ClobMatchFuel
 def releasedNode (ptr capacity : UInt64) : FreeNode :=
   { root := ptr, capacity }
 
+theorem freeListSeparated_cons_releasedNode
+    {released releasedCapacity source sourceCapacity : UInt64}
+    {nodes : List FreeNode}
+    (hReleasedSource : regionsDisjoint
+      (fixedArrayRegion released releasedCapacity)
+      (fixedArrayRegion source sourceCapacity))
+    (hSourceNodes :
+      FreeListSeparatedFromFixedArray nodes source sourceCapacity) :
+    FreeListSeparatedFromFixedArray
+      (releasedNode released releasedCapacity :: nodes) source sourceCapacity := by
+  intro node hNode
+  simp only [List.mem_cons] at hNode
+  rcases hNode with rfl | hNode
+  · simpa [releasedNode, FreeNode.region, fixedArrayRegion] using
+      regionsDisjoint_symm hReleasedSource
+  · exact hSourceNodes node hNode
+
+theorem releasedNode_cons_below
+    {released releasedCapacity top : UInt64} {nodes : List FreeNode}
+    (hReleasedBelow :
+      released.toNat + releasedCapacity.toNat ≤ top.toNat)
+    (hNodesBelow : ∀ node ∈ nodes,
+      node.root.toNat + node.capacity.toNat ≤ top.toNat) :
+    ∀ node ∈ releasedNode released releasedCapacity :: nodes,
+      node.root.toNat + node.capacity.toNat ≤ top.toNat := by
+  intro node hNode
+  simp only [List.mem_cons] at hNode
+  rcases hNode with rfl | hNode
+  · exact hReleasedBelow
+  · exact hNodesBelow node hNode
+
 theorem fixedArrayReleaseMem_bytes
     (st : Store Unit) (ptr capacity freeHead : UInt64)
     (region : Nat × Nat) (a : Nat)

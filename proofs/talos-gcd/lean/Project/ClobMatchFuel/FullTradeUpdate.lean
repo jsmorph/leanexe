@@ -137,6 +137,13 @@ theorem fullTradeUpdateProg_spec
       fixedArrayBytes
           (ts ++ [Model.fillTradeL taker os[i]! os[i]!.oqty]).length 4 ≤
         newTradesCapacity.toNat →
+      newBook.toNat + newBookCapacity.toNat ≤ g0Final.toNat →
+      newTrades.toNat + newTradesCapacity.toNat ≤ g0Final.toNat →
+      g0.toNat ≤ g0Final.toNat →
+      FreeListSeparatedFromFixedArray nodes1 newBook newBookCapacity →
+      FreeListSeparatedFromFixedArray nodes1 newTrades newTradesCapacity →
+      (∀ node ∈ nodes1,
+        node.root.toNat + node.capacity.toNat ≤ g0Final.toNat) →
       FreeListAt st1.mem nodes1 →
       st1.mem.pages = st.mem.pages →
       regionsDisjoint (fixedArrayRegion oldTrades oldTradesCapacity)
@@ -296,6 +303,24 @@ theorem fullTradeUpdateProg_spec
       intro node hNode
       exact hOldTradesFree node
         (takeFirstFitFrom_some_remaining_mem hTake hNode)
+    have hNewBookFreeFinal : FreeListSeparatedFromFixedArray choice.remaining
+        newBook newBookCapacity := by
+      intro node hNode
+      exact hNewBookFree node
+        (takeFirstFitFrom_some_remaining_mem hTake hNode)
+    have hNewTradesFreeFinal : FreeListSeparatedFromFixedArray choice.remaining
+        choice.node.root choice.node.capacity := by
+      intro node hNode
+      simpa [fixedArrayRegion, FreeNode.region] using
+        hList.takeFirstFitFrom_node_disjoint hTake node hNode
+    have hNodesBelowFinal : ∀ node ∈ choice.remaining,
+        node.root.toNat + node.capacity.toNat ≤ g0.toNat := by
+      intro node hNode
+      exact hNodesBelow node
+        (takeFirstFitFrom_some_remaining_mem hTake hNode)
+    have hNewTradesBelow : choice.node.root.toNat +
+        choice.node.capacity.toNat ≤ g0.toNat :=
+      hNodesBelow choice.node hChoiceMem
     have hPagesFinal : finalStore.mem.pages = st.mem.pages :=
       hFinalPages.trans (fixedArrayAllocFitStore_pages st choice 4)
     have hFinalG2 : finalStore.globals.globals[2]? =
@@ -377,6 +402,12 @@ theorem fullTradeUpdateProg_spec
         omega
       · simpa only [List.length_append, List.length_singleton] using
           hChoiceCapacity
+      · exact hNewBookBelow
+      · exact hNewTradesBelow
+      · exact Nat.le_refl _
+      · exact hNewBookFreeFinal
+      · exact hNewTradesFreeFinal
+      · exact hNodesBelowFinal
       · exact hFinalList
       · exact hPagesFinal
       · exact hOldTradesNewBook
@@ -428,6 +459,34 @@ theorem fullTradeUpdateProg_spec
         (fixedArrayRegion target (tradeArrayBytesU (ts.length + 1))) := by
       unfold regionsDisjoint fixedArrayRegion
       rw [hTargetNat]
+      omega
+    have hNewBookBelowFinal : newBook.toNat + newBookCapacity.toNat ≤
+        (g0 + 48 + tradeArrayBytesU (ts.length + 1)).toNat := by
+      rw [htop]
+      omega
+    have hNewTradesBelow : target.toNat +
+        (tradeArrayBytesU (ts.length + 1)).toNat ≤
+        (g0 + 48 + tradeArrayBytesU (ts.length + 1)).toNat := by
+      rw [hTargetNat, htop]
+    have hTargetStart : target.toNat - 48 = g0.toNat := by
+      rw [hTargetNat]
+      omega
+    have hNewTradesFreeFinal : FreeListSeparatedFromFixedArray nodes target
+        (tradeArrayBytesU (ts.length + 1)) := by
+      intro node hNode
+      have hBelow := hNodesBelow node hNode
+      obtain ⟨hNode48, _, _⟩ := hList.mem_bounds hNode
+      unfold regionsDisjoint fixedArrayRegion FreeNode.region
+      right
+      rw [hTargetStart]
+      dsimp only
+      omega
+    have hNodesBelowFinal : ∀ node ∈ nodes,
+        node.root.toNat + node.capacity.toNat ≤
+          (g0 + 48 + tradeArrayBytesU (ts.length + 1)).toNat := by
+      intro node hNode
+      have hBelow := hNodesBelow node hNode
+      rw [htop]
       omega
     have hPagesFinal : finalStore.mem.pages = st.mem.pages :=
       hFinalPages.trans (fixedArrayAllocBumpStore_pages st g0
@@ -522,6 +581,13 @@ theorem fullTradeUpdateProg_spec
         exact (fixedArrayBytesU_toNat (ts.length + 1) 4 hn (by decide) (by
           change fixedArrayBytes (ts.length + 1) 4 + 7 < UInt64.size at hbytes
           omega)).symm.le
+      · exact hNewBookBelowFinal
+      · exact hNewTradesBelow
+      · rw [htop]
+        omega
+      · exact hNewBookFree
+      · exact hNewTradesFreeFinal
+      · exact hNodesBelowFinal
       · exact hFinalList
       · exact hPagesFinal
       · exact hOldTradesNewBook
