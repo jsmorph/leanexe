@@ -148,6 +148,10 @@ structure RunningFacts (ctx : Context) (st : Store Unit) (s : Locals)
 def RunningAt (ctx : Context) (st : Store Unit) (s : Locals) : Prop :=
   ∃ data, RunningFacts ctx st s data
 
+theorem RunningAt.values (h : RunningAt ctx st s) : s.values = [] := by
+  rcases h with ⟨data, facts⟩
+  exact facts.locals.2.2.1
+
 structure CompletedData where
   book : UInt64
   bookCapacity : UInt64
@@ -175,8 +179,17 @@ structure CompletedFacts (ctx : Context) (st : Store Unit) (s : Locals)
 def CompletedAt (ctx : Context) (st : Store Unit) (s : Locals) : Prop :=
   ∃ data, CompletedFacts ctx st s data
 
+theorem CompletedAt.values (h : CompletedAt ctx st s) : s.values = [] := by
+  rcases h with ⟨data, facts⟩
+  exact facts.result.2.2.2.2.2.2
+
 def Invariant (ctx : Context) : AssertionF Unit :=
   fun st s => RunningAt ctx st s ∨ CompletedAt ctx st s
+
+theorem Invariant.values (h : Invariant ctx st s) : s.values = [] := by
+  rcases h with hRunning | hCompleted
+  · exact hRunning.values
+  · exact hCompleted.values
 
 def measure (_ : Store Unit) (s : Locals) : Nat :=
   match s.get 0, s.get 24 with
