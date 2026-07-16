@@ -102,6 +102,9 @@ theorem fullTradeUpdateProg_spec
     (hOldBookBelow : oldBook.toNat + oldBookCapacity.toNat ≤ g0.toNat)
     (hOldBookFree :
       FreeListSeparatedFromFixedArray nodes oldBook oldBookCapacity)
+    (hOldTradesNewBook : regionsDisjoint
+      (fixedArrayRegion oldTrades oldTradesCapacity)
+      (fixedArrayRegion newBook newBookCapacity))
     (hNodesBelow : ∀ node ∈ nodes,
       node.root.toNat + node.capacity.toNat ≤ g0.toNat)
     (hOldTradesOwned :
@@ -125,6 +128,12 @@ theorem fullTradeUpdateProg_spec
       OwnedTradeArrayAt st1 oldTrades oldTradesCapacity ts →
       OwnedOrderArrayAt st1 oldBook oldBookCapacity os →
       FreeListAt st1.mem nodes1 →
+      st1.mem.pages = st.mem.pages →
+      regionsDisjoint (fixedArrayRegion oldTrades oldTradesCapacity)
+        (fixedArrayRegion newBook newBookCapacity) →
+      regionsDisjoint (fixedArrayRegion oldTrades oldTradesCapacity)
+        (fixedArrayRegion newTrades newTradesCapacity) →
+      FreeListSeparatedFromFixedArray nodes1 oldTrades oldTradesCapacity →
       st1.globals.globals[0]? = some (.i64 g0Final) →
       st1.globals.globals[1]? = some (.i64 (freeHead nodes1)) →
       st1.globals.globals[2]? = some (.i64 (g2 + 1)) →
@@ -267,6 +276,18 @@ theorem fullTradeUpdateProg_spec
         oldTradesCapacity ts :=
       OwnedTradeArrayAt.frame_outsideFlatWords hOldTrades48 hOldTrades32
         hOldTradesCapacity hFinalPages hPayloadTradeSep hOutside hOldTradesAlloc
+    have hOldTradesNewTrades : regionsDisjoint
+        (fixedArrayRegion oldTrades oldTradesCapacity)
+        (fixedArrayRegion choice.node.root choice.node.capacity) := by
+      simpa [fixedArrayRegion, FreeNode.region] using
+        hOldTradesFree choice.node hChoiceMem
+    have hOldTradesFreeFinal : FreeListSeparatedFromFixedArray choice.remaining
+        oldTrades oldTradesCapacity := by
+      intro node hNode
+      exact hOldTradesFree node
+        (takeFirstFitFrom_some_remaining_mem hTake hNode)
+    have hPagesFinal : finalStore.mem.pages = st.mem.pages :=
+      hFinalPages.trans (fixedArrayAllocFitStore_pages st choice 4)
     have hFinalG2 : finalStore.globals.globals[2]? =
         some (.i64 (g2 + 1)) := by
       have hAllocG2 :
@@ -338,6 +359,10 @@ theorem fullTradeUpdateProg_spec
       · exact hOldTradesFinal
       · exact hOldBookFinal
       · exact hFinalList
+      · exact hPagesFinal
+      · exact hOldTradesNewBook
+      · exact hOldTradesNewTrades
+      · exact hOldTradesFreeFinal
       · exact hFinalG0
       · exact hFinalG1
       · exact hFinalG2
@@ -379,6 +404,15 @@ theorem fullTradeUpdateProg_spec
         oldTradesCapacity ts :=
       OwnedTradeArrayAt.frame_outsideFlatWords hOldTrades48 hOldTrades32
         hOldTradesCapacity hFinalPages hPayloadTradeSep hOutside hOldTradesAlloc
+    have hOldTradesNewTrades : regionsDisjoint
+        (fixedArrayRegion oldTrades oldTradesCapacity)
+        (fixedArrayRegion target (tradeArrayBytesU (ts.length + 1))) := by
+      unfold regionsDisjoint fixedArrayRegion
+      rw [hTargetNat]
+      omega
+    have hPagesFinal : finalStore.mem.pages = st.mem.pages :=
+      hFinalPages.trans (fixedArrayAllocBumpStore_pages st g0
+        (tradeArrayBytesU (ts.length + 1)) 4)
     have hFinalG2 : finalStore.globals.globals[2]? =
         some (.i64 (g2 + 1)) := by
       have hAllocG2 :
@@ -451,6 +485,10 @@ theorem fullTradeUpdateProg_spec
       · exact hOldTradesFinal
       · exact hOldBookFinal
       · exact hFinalList
+      · exact hPagesFinal
+      · exact hOldTradesNewBook
+      · exact hOldTradesNewTrades
+      · exact hOldTradesFree
       · exact hFinalG0
       · exact hFinalG1
       · exact hFinalG2
