@@ -45,6 +45,7 @@ theorem fullBranchProg_spec
     (hFuel : base.get 0 = some (.i64 fuel))
     (hOldBookTracker : base.get 19 = some (.i64 oldBookTracker))
     (hOldTradesTracker : base.get 20 = some (.i64 oldTradesTracker))
+    (hDoneLocal : base.get 24 = some (.i64 0))
     (hCarryOid : base.get 34 = some (.i64 taker.oid))
     (hCarryTrader : base.get 35 = some (.i64 taker.otrader))
     (hCarrySide : base.get 36 = some (.i64 taker.oside))
@@ -268,6 +269,9 @@ theorem fullBranchProg_spec
         Locals.get, hParams, hLocals] using hOldTradesTracker
     · simpa [BookEraseSuffix.eraseResultFrame,
         BookErasePrefix.eraseCopyFrame, BookAllocSearch.bookAllocSearchFrame,
+        Locals.get, hParams, hLocals] using hDoneLocal
+    · simpa [BookEraseSuffix.eraseResultFrame,
+        BookErasePrefix.eraseCopyFrame, BookAllocSearch.bookAllocSearchFrame,
         Locals.get, hParams, hLocals] using hCarryOid
     · simpa [BookEraseSuffix.eraseResultFrame,
         BookErasePrefix.eraseCopyFrame, BookAllocSearch.bookAllocSearchFrame,
@@ -460,6 +464,9 @@ theorem fullBranchProg_spec
     · simpa [BookEraseSuffix.eraseResultFrame,
         BookErasePrefix.eraseCopyFrame, BookAllocSearch.bookAllocSearchFrame,
         Locals.get, hParams, hLocals] using hOldTradesTracker
+    · simpa [BookEraseSuffix.eraseResultFrame,
+        BookErasePrefix.eraseCopyFrame, BookAllocSearch.bookAllocSearchFrame,
+        Locals.get, hParams, hLocals] using hDoneLocal
     · simpa [BookEraseSuffix.eraseResultFrame,
         BookErasePrefix.eraseCopyFrame, BookAllocSearch.bookAllocSearchFrame,
         Locals.get, hParams, hLocals] using hCarryOid

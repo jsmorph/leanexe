@@ -47,6 +47,17 @@ theorem fullTransitionFrame_oldBookTracker_zero
     FullTransition.fullTransitionLocals, FullTransition.nextBookTracker,
     Locals.get, hParams, hLocals, hNewBookNonzero, hNewBookNeTracker]
 
+theorem fullTransitionFrame_done
+    (base : Locals) (fuel newBook newTrades remaining oldTradesTracker : UInt64)
+    (taker : OrderL) (hParams : base.params.length = 9)
+    (hLocals : base.locals.length = 76)
+    (hDone : base.get 24 = some (.i64 0)) :
+    (FullTransition.fullTransitionFrame base fuel taker newBook newTrades
+      remaining 0 oldTradesTracker).get 24 = some (.i64 0) := by
+  simpa [FullTransition.fullTransitionFrame,
+    FullTransition.fullTransitionLocals, Locals.get, hParams, hLocals] using
+    hDone
+
 set_option Elab.async false in
 theorem fullStepProg_spec
     (env : HostEnv Unit) (st : Store Unit) (base : Locals)
@@ -75,6 +86,7 @@ theorem fullStepProg_spec
     (hFuel : base.get 0 = some (.i64 fuel))
     (hOldBookTracker : base.get 19 = some (.i64 0))
     (hOldTradesTracker : base.get 20 = some (.i64 oldTradesTracker))
+    (hDoneLocal : base.get 24 = some (.i64 0))
     (hCarryOid : base.get 34 = some (.i64 taker.oid))
     (hCarryTrader : base.get 35 = some (.i64 taker.otrader))
     (hCarrySide : base.get 36 = some (.i64 taker.oside))
@@ -149,6 +161,9 @@ theorem fullStepProg_spec
       (FullTransition.fullTransitionFrame s fuel taker newBook newTrades
           (remaining - os[i]!.oqty) 0 oldTradesTracker).get 19 =
         some (.i64 0) →
+      (FullTransition.fullTransitionFrame s fuel taker newBook newTrades
+          (remaining - os[i]!.oqty) 0 oldTradesTracker).get 24 =
+        some (.i64 0) →
       OwnedOrderArrayAt st1 newBook newBookCapacity (os.eraseIdx i) →
       OwnedTradeArrayAt st1 newTrades newTradesCapacity
         (ts ++ [Model.fillTradeL taker os[i]! os[i]!.oqty]) →
@@ -191,7 +206,7 @@ theorem fullStepProg_spec
     oldTradesTracker taker os ts i nodes hParams hLocals hValues hTakerLocal
     hBookLocal hTradesLocal hRemainingLocal hIndexLocal hSourceLocal hPrefixLocal
     hSuffixLocal hLengthLocal hCapacityLocal hNextLocal hTradeNextLocal hFuel
-    hOldBookTracker hOldTradesTracker hCarryOid hCarryTrader hCarrySide
+    hOldBookTracker hOldTradesTracker hDoneLocal hCarryOid hCarryTrader hCarrySide
     hCarryPrice hCarryQty hi hOrdersLength64 hErasedLength64 hOrderWords64
     hBookBytes hBookTop hBookFit32 hBookFit hTradeLength64 hTradeBytes
     hTradeTotalU hTradeTotal64 hTradeTopAtG0 hTradeFit32AtG0 hTradeFitAtG0
@@ -222,6 +237,9 @@ theorem fullStepProg_spec
       · intro h
         subst newBook
         simp at hNewBook48
+    · apply fullTransitionFrame_done s fuel newBook newTrades
+        (remaining - os[i]!.oqty) 0 taker hResult.1 hResult.2.1
+      exact hResult.2.2.2.2.2.2.1
     · exact hNewBookOwned
     · exact hNewTradesOwned
     · exact hNewBook48
@@ -314,6 +332,9 @@ theorem fullStepProg_spec
         simp at hNewBook48
       · exact (fixedArrayRoots_ne_of_regionsDisjoint
           hOldTradesNewBook).symm
+    · apply fullTransitionFrame_done s fuel newBook newTrades
+        (remaining - os[i]!.oqty) oldTrades taker hResult.1 hResult.2.1
+      exact hResult.2.2.2.2.2.2.1
     · exact hNewBookOwned2
     · exact hNewTradesOwned2
     · exact hNewBook48
