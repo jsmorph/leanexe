@@ -3,6 +3,7 @@ import Project.ClobMatchFuel.BookEraseSuffix
 import Project.ClobMatchFuel.BookReplaceFinish
 import Project.ClobMatchFuel.BookAlloc
 import Project.ClobMatchFuel.BookAllocErase
+import Project.ClobMatchFuel.FullBookUpdate
 import Project.ClobMatchFuel.PartialBookAlloc
 import Project.ClobMatchFuel.PartialBookAllocCopy
 import Project.ClobMatchFuel.PartialBookUpdate
