@@ -5006,3 +5006,7 @@ The successful-fit and bump allocation stores now take the fixed-array element s
 ## 2026-07-15: Live-Array Allocator Frames
 
 `AllocatorFrame` defines refcount-one order and trade arrays by combining their fixed-array headers with their represented contents.  A free-list separation predicate covers the source's complete allocation region, so the successful-fit theorem preserves the source across both the predecessor unlink and the selected node's six header writes.  The bump theorem uses below-heap byte preservation, and a common interval lemma derives the payload separation required by each copy loop; the warning-failing constrained target completes in 1.5 seconds after its dependencies are current.
+
+## 2026-07-15: Copy Outside-Region Frame
+
+`MemEqOutsideFlatWords` states byte equality outside one fixed-width payload, and its write theorem preserves that equality for every declared payload slot.  The matched-trade copy invariant now carries this frame through the output-length store and every copied trade word, allowing later branch composition to recover unrelated live arrays.  The warning-failing constrained `TradeAppendCopy` build completes in 3.7 seconds after its dependencies are current.
