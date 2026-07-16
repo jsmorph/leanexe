@@ -123,11 +123,14 @@ theorem replaceFinishProg_spec
           (Model.setQtyL os i qty) →
         FreshOrderArrayAt (replaceOrderStore st1 target i os[i]! qty)
           target arrayCapacity →
+        MemEqOutsideFlatWords st0
+          (replaceOrderStore st1 target i os[i]! qty) target
+          (os.length * 5) →
         wp «module» rest Q (replaceOrderStore st1 target i os[i]! qty)
           (replaceResultFrame base target (os.length * 5)) env) :
     wp «module» (replaceFinishProg ++ rest) Q st1
       (replaceCopyFrame base target (os.length * 5)) env := by
-  obtain ⟨_, _, _, _, _, hFresh, _, _, _⟩ := hInv
+  obtain ⟨_, _, _, _, _, hFresh, _, _, hOutside, _⟩ := hInv
   have hTotal64 : os.length * 5 < UInt64.size := by
     change os.length * 5 < 18446744073709551616
     omega
@@ -195,8 +198,26 @@ theorem replaceFinishProg_spec
     ordersAt_replaceOrderStore st1 target os i qty hi hTarget32 hBook
   have hFreshFinal := freshOrderArrayAt_replaceOrderStore st1 target
     arrayCapacity os i qty hi hTarget48 hTarget32 hFresh
+  have hOutside1 := MemEqOutsideFlatWords.write64
+    (slot := i * 5 + 1) (value := os[i]!.oid) hTarget32 (by omega)
+      hOutside
+  have hOutside2 := MemEqOutsideFlatWords.write64
+    (slot := i * 5 + 2) (value := os[i]!.otrader) hTarget32 (by omega)
+      hOutside1
+  have hOutside3 := MemEqOutsideFlatWords.write64
+    (slot := i * 5 + 3) (value := os[i]!.oside) hTarget32 (by omega)
+      hOutside2
+  have hOutside4 := MemEqOutsideFlatWords.write64
+    (slot := i * 5 + 4) (value := os[i]!.oprice) hTarget32 (by omega)
+      hOutside3
+  have hOutside5 := MemEqOutsideFlatWords.write64
+    (slot := i * 5 + 5) (value := qty) hTarget32 (by omega) hOutside4
+  have hOutsideFinal : MemEqOutsideFlatWords st0
+      (replaceOrderStore st1 target i os[i]! qty) target
+      (os.length * 5) := by
+    simpa only [replaceOrderStore] using hOutside5
   simpa only [replaceOrderStore, replaceResultFrame, replaceCopyFrame,
     hTotalEq, List.getElem!_eq_getElem?_getD] using
-      hDone hBookFinal hFreshFinal
+      hDone hBookFinal hFreshFinal hOutsideFinal
 
 end Project.ClobMatchFuel.BookReplaceFinish
