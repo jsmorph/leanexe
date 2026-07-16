@@ -4938,3 +4938,9 @@ The proof identifies a nonempty skipped prefix through `List.dropLast_append_get
 The head case updates global 1 to the selected successor, while the non-head case writes that successor to the predecessor's next field.  Both cases write the six generated kind-2 fixed-array header words and expose the exact final locals through a continuation-parametric theorem.  `freeListAt_bookAllocFitMem` composes the shared unlink and disjoint-write frame theorems to preserve `FreeListAt` for every remaining node, and the warning-failing constrained module build completes in 7.8 seconds.
 
 The changed `Project.ClobMatchFuel.Spec` import target reached its three-minute constrained timeout without output or a Lean diagnostic.  The focused `BookAllocFit` target had already passed, and no Lean or Lake process remained after the timeout.  The aggregate target will not run again until another source change or a smaller verified boundary reduces its elaboration work.
+
+## 2026-07-15: Fixed-Array Header Boundary
+
+`Project.Clob.fixedArrayHeaderMem` names the six metadata writes that generated fixed-array allocations perform before writing the array length.  `fixedArrayMem` now composes that header transformation with its existing length write, preserving its seven-write behavior.  `fixedArrayHeaderMem_spec` proves the resulting `FreshFixedArrayAt` predicate and gives the book-allocation bump branch a semantic boundary that the later trade allocation can reuse.
+
+The warning-failing constrained `Project.FixedArrayAllocation` build completes in 2.3 seconds.  The helper adds no dependency, axiom, or tactic.  Its proof uses the existing `read_frames` tactic after normalizing the six header addresses.
