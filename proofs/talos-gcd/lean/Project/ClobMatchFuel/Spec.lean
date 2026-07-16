@@ -13,6 +13,7 @@ import Project.ClobMatchFuel.TradeAllocAppend
 import Project.ClobMatchFuel.PartialTradePrepare
 import Project.ClobMatchFuel.PartialFinish
 import Project.ClobMatchFuel.PartialTradeUpdate
+import Project.ClobMatchFuel.PartialBranch
 import Project.ClobMatchFuel.TradeAppendCopy
 import Project.ClobMatchFuel.TradeAppendFinish
 import Project.ClobMatchFuel.FullTradePrepare
