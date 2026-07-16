@@ -24,6 +24,7 @@ import Project.ClobMatchFuel.FullBranch
 import Project.ClobMatchFuel.ReleaseOld
 import Project.ClobMatchFuel.FullTransition
 import Project.ClobMatchFuel.FullReleaseTransition
+import Project.ClobMatchFuel.FullStep
 
 /-!
 # The `matchFuel` theorem
