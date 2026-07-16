@@ -67,6 +67,8 @@ theorem tradeAllocAppendProg_spec
     (hSourceBelow : source.toNat + sourceCapacity.toNat ≤ g0.toNat)
     (hSourceFree :
       FreeListSeparatedFromFixedArray nodes source sourceCapacity)
+    (hNodesBelow : ∀ node ∈ nodes,
+      node.root.toNat + node.capacity.toNat ≤ g0.toNat)
     (hOwned : OwnedTradeArrayAt st source sourceCapacity ts)
     (hg0 : st.globals.globals[0]? = some (.i64 g0))
     (hg1 : st.globals.globals[1]? = some (.i64 (freeHead nodes)))
@@ -99,6 +101,14 @@ theorem tradeAllocAppendProg_spec
             trade).globals.globals =
           (TradeAllocFit.tradeAllocFitStore st choice).globals.globals.set
             2 (.i64 (g2 + 1)) →
+        FreeListAt
+          (TradeAppendStore.appendTradeStore st1 choice.node.root ts.length
+            trade).mem choice.remaining →
+        (TradeAppendStore.appendTradeStore st1 choice.node.root ts.length
+            trade).globals.globals[0]? = some (.i64 g0) →
+        (TradeAppendStore.appendTradeStore st1 choice.node.root ts.length
+            trade).globals.globals[1]? =
+          some (.i64 (freeHead choice.remaining)) →
         wp «module» rest Q
           (TradeAppendStore.appendTradeStore st1 choice.node.root ts.length
             trade)
@@ -130,6 +140,14 @@ theorem tradeAllocAppendProg_spec
         (TradeAllocBump.tradeAllocBumpStore st g0
           (tradeArrayBytesU (ts.length + 1))).globals.globals.set
             2 (.i64 (g2 + 1)) →
+      FreeListAt
+        (TradeAppendStore.appendTradeStore st1 (g0 + 48) ts.length
+          trade).mem nodes →
+      (TradeAppendStore.appendTradeStore st1 (g0 + 48) ts.length
+          trade).globals.globals[0]? =
+        some (.i64 (g0 + 48 + tradeArrayBytesU (ts.length + 1))) →
+      (TradeAppendStore.appendTradeStore st1 (g0 + 48) ts.length
+          trade).globals.globals[1]? = some (.i64 (freeHead nodes)) →
       wp «module» rest Q
         (TradeAppendStore.appendTradeStore st1 (g0 + 48) ts.length trade)
         (TradeAppendFinish.tradeResultFrame
@@ -170,10 +188,48 @@ theorem tradeAllocAppendProg_spec
     · exact hOwnedSource.2
     · exact hInv
     · intro hTargetFinal hFreshFinal hOutsideFinal
+      have hFinalPages :
+          (TradeAppendStore.appendTradeStore st1 choice.node.root ts.length
+            trade).mem.pages =
+          (TradeAllocFit.tradeAllocFitStore st choice).mem.pages := by
+        simpa [TradeAppendStore.appendTradeStore] using hCopyPages
+      have hFinalGlobals :
+          (TradeAppendStore.appendTradeStore st1 choice.node.root ts.length
+            trade).globals.globals =
+          (TradeAllocFit.tradeAllocFitStore st choice).globals.globals.set
+            2 (.i64 (g2 + 1)) := by
+        simpa [TradeAppendStore.appendTradeStore] using hCopyGlobals
+      have hChoiceCapacity := takeFirstFitFrom_some_capacity hTake
+      have hNeedNat : (tradeArrayBytesU (ts.length + 1)).toNat =
+          tradeArrayBytes (ts.length + 1) :=
+        fixedArrayBytesU_toNat (ts.length + 1) 4 hn (by decide) (by
+          change fixedArrayBytes (ts.length + 1) 4 + 7 < UInt64.size at hbytes
+          omega)
+      rw [UInt64.le_iff_toNat_le, hNeedNat] at hChoiceCapacity
+      have hFinalList : FreeListAt
+          (TradeAppendStore.appendTradeStore st1 choice.node.root ts.length
+            trade).mem choice.remaining :=
+        freeListAt_fixedArrayAllocFitStore_after hList hTake
+          (by unfold tradeArrayBytes fixedArrayBytes at hChoiceCapacity; omega)
+          hFinalPages hOutsideFinal
+      have hAllocG0 := fixedArrayAllocFitStore_global0
+        (choice := choice) (stride := 4) hg0
+      have hAllocG1 := fixedArrayAllocFitStore_global1
+        (choice := choice) (stride := 4) hg1 hList hTake
+      have hFinalG0 :
+          (TradeAppendStore.appendTradeStore st1 choice.node.root ts.length
+            trade).globals.globals[0]? = some (.i64 g0) := by
+        rw [hFinalGlobals]
+        simpa [List.getElem?_set] using hAllocG0
+      have hFinalG1 :
+          (TradeAppendStore.appendTradeStore st1 choice.node.root ts.length
+            trade).globals.globals[1]? =
+          some (.i64 (freeHead choice.remaining)) := by
+        rw [hFinalGlobals]
+        simpa [List.getElem?_set] using hAllocG1
       exact hFitDone choice hTake st1 hTarget48 hTarget32 hTargetFit
-        hOwnedSource ⟨hFreshFinal, hTargetFinal⟩ hOutsideFinal
-        (by simpa [TradeAppendStore.appendTradeStore] using hCopyPages)
-        (by simpa [TradeAppendStore.appendTradeStore] using hCopyGlobals)
+        hOwnedSource ⟨hFreshFinal, hTargetFinal⟩ hOutsideFinal hFinalPages
+        hFinalGlobals hFinalList hFinalG0 hFinalG1
   · intro previous st1 hTarget48 hTarget32 hTargetFit hOwnedSource hInv
     have hState := hInv
     obtain ⟨_, _, _, hCopyPages, hCopyGlobals, _, _, _, _, _⟩ := hState
@@ -201,9 +257,41 @@ theorem tradeAllocAppendProg_spec
     · exact hOwnedSource.2
     · exact hInv
     · intro hTargetFinal hFreshFinal hOutsideFinal
+      have hFinalPages :
+          (TradeAppendStore.appendTradeStore st1 (g0 + 48) ts.length
+            trade).mem.pages =
+          (TradeAllocBump.tradeAllocBumpStore st g0
+            (tradeArrayBytesU (ts.length + 1))).mem.pages := by
+        simpa [TradeAppendStore.appendTradeStore] using hCopyPages
+      have hFinalGlobals :
+          (TradeAppendStore.appendTradeStore st1 (g0 + 48) ts.length
+            trade).globals.globals =
+          (TradeAllocBump.tradeAllocBumpStore st g0
+            (tradeArrayBytesU (ts.length + 1))).globals.globals.set
+              2 (.i64 (g2 + 1)) := by
+        simpa [TradeAppendStore.appendTradeStore] using hCopyGlobals
+      have hFinalList : FreeListAt
+          (TradeAppendStore.appendTradeStore st1 (g0 + 48) ts.length
+            trade).mem nodes :=
+        freeListAt_fixedArrayAllocBumpStore_after hFit32 hNodesBelow hList
+          hFinalPages hOutsideFinal
+      have hAllocG0 := fixedArrayAllocBumpStore_global0 st g0
+        (tradeArrayBytesU (ts.length + 1)) 4 hg0
+      have hAllocG1 := fixedArrayAllocBumpStore_global1 st g0
+        (tradeArrayBytesU (ts.length + 1)) 4 (freeHead nodes) hg1
+      have hFinalG0 :
+          (TradeAppendStore.appendTradeStore st1 (g0 + 48) ts.length
+            trade).globals.globals[0]? =
+          some (.i64 (g0 + 48 + tradeArrayBytesU (ts.length + 1))) := by
+        rw [hFinalGlobals]
+        simpa [List.getElem?_set] using hAllocG0
+      have hFinalG1 :
+          (TradeAppendStore.appendTradeStore st1 (g0 + 48) ts.length
+            trade).globals.globals[1]? = some (.i64 (freeHead nodes)) := by
+        rw [hFinalGlobals]
+        simpa [List.getElem?_set] using hAllocG1
       exact hBumpDone previous st1 hTarget48 hTarget32 hTargetFit
-        hOwnedSource ⟨hFreshFinal, hTargetFinal⟩ hOutsideFinal
-        (by simpa [TradeAppendStore.appendTradeStore] using hCopyPages)
-        (by simpa [TradeAppendStore.appendTradeStore] using hCopyGlobals)
+        hOwnedSource ⟨hFreshFinal, hTargetFinal⟩ hOutsideFinal hFinalPages
+        hFinalGlobals hFinalList hFinalG0 hFinalG1
 
 end Project.ClobMatchFuel.TradeAllocAppend
