@@ -164,6 +164,63 @@ theorem OrdersAt.ofFlatWords {st : Store Unit} {ptr : UInt64}
   · simpa [OrderL.word] using hRead 4 (by omega)
   · simpa using hFieldBound 4 (by omega)
 
+theorem OrdersAt.eraseIdx_ofFlatWords
+    {source target : Store Unit} {sourcePtr targetPtr : UInt64}
+    {os : List OrderL} {i : Nat}
+    (hi : i < os.length)
+    (hSource : OrdersAt source sourcePtr os)
+    (hLength : target.mem.read64
+      (UInt32.ofNat (targetPtr.toNat % 4294967296)) =
+        UInt64.ofNat (os.length - 1))
+    (hLengthBound : targetPtr.toNat % 4294967296 + 8 ≤
+      target.mem.pages * 65536)
+    (hPrefix : ∀ j : Nat, j < i → ∀ field : Nat, field < 5 →
+      orderWord target targetPtr (j * 5 + field) =
+        orderWord source sourcePtr (j * 5 + field))
+    (hSuffix : ∀ j : Nat, i ≤ j → j < os.length - 1 →
+      ∀ field : Nat, field < 5 →
+        orderWord target targetPtr (j * 5 + field) =
+          orderWord source sourcePtr ((j + 1) * 5 + field))
+    (hBound : ∀ j : Nat, j < os.length - 1 →
+      ∀ field : Nat, field < 5 →
+        (targetPtr.toNat + (j * 5 + field + 1) * 8) %
+            4294967296 + 8 ≤ target.mem.pages * 65536) :
+    OrdersAt target targetPtr (os.eraseIdx i) := by
+  apply OrdersAt.ofFlatWords
+  · rw [List.length_eraseIdx_of_lt hi]
+    exact hLength
+  · exact hLengthBound
+  · intro j hj field hfield
+    have hjOut : j < os.length - 1 := by
+      rw [List.length_eraseIdx_of_lt hi] at hj
+      exact hj
+    rw [getElem!_pos (os.eraseIdx i) j hj, List.getElem_eraseIdx hj]
+    by_cases hji : j < i
+    · rw [dif_pos hji]
+      calc
+        orderWord target targetPtr (j * 5 + field) =
+            orderWord source sourcePtr (j * 5 + field) :=
+          hPrefix j hji field hfield
+        _ = os[j].word field := by
+          have hs := hSource.orderWord_eq j field (by omega) hfield
+          rw [getElem!_pos os j (by omega)] at hs
+          exact hs
+    · rw [dif_neg hji]
+      have hji' : i ≤ j := by omega
+      calc
+        orderWord target targetPtr (j * 5 + field) =
+            orderWord source sourcePtr ((j + 1) * 5 + field) :=
+          hSuffix j hji' hjOut field hfield
+        _ = os[j + 1].word field := by
+          have hs := hSource.orderWord_eq (j + 1) field (by omega) hfield
+          rw [getElem!_pos os (j + 1) (by omega)] at hs
+          exact hs
+  · intro j hj field hfield
+    apply hBound j
+    · rw [List.length_eraseIdx_of_lt hi] at hj
+      exact hj
+    · exact hfield
+
 theorem TradesAt.tradeWord_eq {st : Store Unit} {ptr : UInt64}
     {ts : List TradeL} (hTrades : TradesAt st ptr ts) (j field : Nat)
     (hj : j < ts.length) (hfield : field < 4) :
