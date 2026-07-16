@@ -39,6 +39,65 @@ theorem flatWordsDisjoint_of_fixedArrayRegions
   unfold flatWordsDisjoint flatWordsRegion
   omega
 
+theorem MemEqOutsideFlatWords.fixedArray_bytes
+    {before after : Store Unit} {target source capacity : UInt64}
+    {targetWords : Nat}
+    (hsep : regionsDisjoint (flatWordsRegion target targetWords)
+      (fixedArrayRegion source capacity))
+    (hFrame : MemEqOutsideFlatWords before after target targetWords)
+    (a : Nat) (haLow : source.toNat - 48 ≤ a)
+    (haHigh : a < source.toNat + capacity.toNat) :
+    after.mem.bytes a = before.mem.bytes a := by
+  apply hFrame
+  unfold regionsDisjoint flatWordsRegion fixedArrayRegion at hsep
+  omega
+
+theorem OwnedOrderArrayAt.frame_outsideFlatWords
+    {before after : Store Unit}
+    {target source sourceCapacity : UInt64} {targetWords : Nat}
+    {os : List OrderL}
+    (hSource48 : 48 ≤ source.toNat)
+    (hSource32 : source.toNat + fixedArrayBytes os.length 5 < 4294967296)
+    (hSourceCapacity :
+      fixedArrayBytes os.length 5 ≤ sourceCapacity.toNat)
+    (hPages : after.mem.pages = before.mem.pages)
+    (hsep : regionsDisjoint (flatWordsRegion target targetWords)
+      (fixedArrayRegion source sourceCapacity))
+    (hFrame : MemEqOutsideFlatWords before after target targetWords)
+    (hOwned : OwnedOrderArrayAt before source sourceCapacity os) :
+    OwnedOrderArrayAt after source sourceCapacity os := by
+  have hBytes : ∀ a : Nat,
+      source.toNat - 48 ≤ a → a < source.toNat + sourceCapacity.toNat →
+        after.mem.bytes a = before.mem.bytes a := by
+    intro a haLow haHigh
+    exact MemEqOutsideFlatWords.fixedArray_bytes hsep hFrame a haLow haHigh
+  exact ⟨hOwned.1.frame_region (by omega) hSource48 hBytes,
+    OrdersAt.frame_region hSource32 hSource48 hSourceCapacity hPages hBytes
+      hOwned.2⟩
+
+theorem OwnedTradeArrayAt.frame_outsideFlatWords
+    {before after : Store Unit}
+    {target source sourceCapacity : UInt64} {targetWords : Nat}
+    {ts : List TradeL}
+    (hSource48 : 48 ≤ source.toNat)
+    (hSource32 : source.toNat + fixedArrayBytes ts.length 4 < 4294967296)
+    (hSourceCapacity :
+      fixedArrayBytes ts.length 4 ≤ sourceCapacity.toNat)
+    (hPages : after.mem.pages = before.mem.pages)
+    (hsep : regionsDisjoint (flatWordsRegion target targetWords)
+      (fixedArrayRegion source sourceCapacity))
+    (hFrame : MemEqOutsideFlatWords before after target targetWords)
+    (hOwned : OwnedTradeArrayAt before source sourceCapacity ts) :
+    OwnedTradeArrayAt after source sourceCapacity ts := by
+  have hBytes : ∀ a : Nat,
+      source.toNat - 48 ≤ a → a < source.toNat + sourceCapacity.toNat →
+        after.mem.bytes a = before.mem.bytes a := by
+    intro a haLow haHigh
+    exact MemEqOutsideFlatWords.fixedArray_bytes hsep hFrame a haLow haHigh
+  exact ⟨hOwned.1.frame_region (by omega) hSource48 hBytes,
+    TradesAt.frame_region hSource32 hSource48 hSourceCapacity hPages hBytes
+      hOwned.2⟩
+
 theorem fixedArrayAllocFitMem_bytes
     {mem : Mem} {nodes : List FreeNode} {need : UInt64}
     {choice : FreeChoice} {source sourceCapacity stride : UInt64} {a : Nat}
