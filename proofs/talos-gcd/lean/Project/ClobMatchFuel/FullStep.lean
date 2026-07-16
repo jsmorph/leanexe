@@ -36,6 +36,17 @@ theorem allocScratchAt_fullTransitionFrame
     simp [FullTransition.fullTransitionFrame,
       FullTransition.fullTransitionLocals, *]
 
+theorem fullTransitionFrame_oldBookTracker_zero
+    (base : Locals) (fuel newBook newTrades remaining oldTradesTracker : UInt64)
+    (taker : OrderL) (hParams : base.params.length = 9)
+    (hLocals : base.locals.length = 76) (hNewBookNonzero : newBook ≠ 0)
+    (hNewBookNeTracker : newBook ≠ oldTradesTracker) :
+    (FullTransition.fullTransitionFrame base fuel taker newBook newTrades
+      remaining 0 oldTradesTracker).get 19 = some (.i64 0) := by
+  simp [FullTransition.fullTransitionFrame,
+    FullTransition.fullTransitionLocals, FullTransition.nextBookTracker,
+    Locals.get, hParams, hLocals, hNewBookNonzero, hNewBookNeTracker]
+
 set_option Elab.async false in
 theorem fullStepProg_spec
     (env : HostEnv Unit) (st : Store Unit) (base : Locals)
@@ -135,6 +146,9 @@ theorem fullStepProg_spec
       FullTradeUpdate.AllocScratchAt
         (FullTransition.fullTransitionFrame s fuel taker newBook newTrades
           (remaining - os[i]!.oqty) 0 oldTradesTracker) →
+      (FullTransition.fullTransitionFrame s fuel taker newBook newTrades
+          (remaining - os[i]!.oqty) 0 oldTradesTracker).get 19 =
+        some (.i64 0) →
       OwnedOrderArrayAt st1 newBook newBookCapacity (os.eraseIdx i) →
       OwnedTradeArrayAt st1 newTrades newTradesCapacity
         (ts ++ [Model.fillTradeL taker os[i]! os[i]!.oqty]) →
@@ -200,6 +214,14 @@ theorem fullStepProg_spec
       g0Final
     · exact allocScratchAt_fullTransitionFrame s fuel newBook newTrades
         (remaining - os[i]!.oqty) 0 0 taker hScratch
+    · apply fullTransitionFrame_oldBookTracker_zero s fuel newBook newTrades
+        (remaining - os[i]!.oqty) 0 taker hResult.1 hResult.2.1
+      · intro h
+        subst newBook
+        simp at hNewBook48
+      · intro h
+        subst newBook
+        simp at hNewBook48
     · exact hNewBookOwned
     · exact hNewTradesOwned
     · exact hNewBook48
@@ -285,6 +307,13 @@ theorem fullStepProg_spec
       (releasedNode oldTrades oldTradesCapacity :: nodes1) g0Final
     · exact allocScratchAt_fullTransitionFrame s fuel newBook newTrades
         (remaining - os[i]!.oqty) 0 oldTrades taker hScratch
+    · apply fullTransitionFrame_oldBookTracker_zero s fuel newBook newTrades
+        (remaining - os[i]!.oqty) oldTrades taker hResult.1 hResult.2.1
+      · intro h
+        subst newBook
+        simp at hNewBook48
+      · exact (fixedArrayRoots_ne_of_regionsDisjoint
+          hOldTradesNewBook).symm
     · exact hNewBookOwned2
     · exact hNewTradesOwned2
     · exact hNewBook48
