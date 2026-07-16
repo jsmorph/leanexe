@@ -4869,6 +4869,8 @@ The matching exports share a four-word trade layout, so `Project.Clob` now defin
 
 The model target passes a warning-failing constrained build in 2.2 seconds after its dependencies were current.  The shared additions also passed warning-failing builds when Lake rebuilt `Project.Clob` and `Project.ClobFindBest.Model`.  No generated program changed.
 
+The partial-fill branch replaces one maker quantity while preserving every other order field.  `setQtyL_length` proves that this update preserves the book length, `setQtyL_eq_set` identifies it with a valid `List.set`, and `setQtyL_word` states the exact changed flat word.  The model passes a warning-failing constrained build in 1.3 seconds with these lemmas.
+
 - [x] Define the shared trade value and memory representation.
 - [x] Prove that a successful `findBestL` result is in bounds.
 - [x] Define exact list-level book, trade, and remaining-quantity transitions.
