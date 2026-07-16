@@ -4893,6 +4893,8 @@ The warning-failing constrained build completes `Project.ClobMatchFuel.EarlyExit
 
 - [x] Prove the zero-fuel exit over the exact public ABI.
 - [x] Prove the zero-remaining exit for nonzero fuel.
-- [ ] Prove the no-maker exit through the verified search wrapper.
+- [x] Prove the no-maker exit through the verified search wrapper.
 
 The zero-remaining theorem passes a warning-failing constrained build in 46 seconds.  Its two-phase invariant uses the done flag as a natural-number measure and proves the generated re-entry decreases that measure from one to zero.  Both phases preserve the complete store and return the input state pointers and zero remaining quantity.
+
+The no-maker theorem extends the invariant with the stable taker fields, the wrapper's zero argument, and the empty operand stack.  It calls the verified function-9 search theorem, reduces the `none` option ABI, and returns the input state without changing the store.  The complete early-exit module passes a warning-failing constrained build in 79 seconds.
