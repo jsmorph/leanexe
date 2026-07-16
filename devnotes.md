@@ -5030,3 +5030,7 @@ The partial-fill book copy now carries the same frame through its length store a
 ## 2026-07-15: Final Store Frames
 
 `BookReplaceFinish.replaceFinishProg_spec` now preserves byte equality outside the complete destination book payload through its five replacement stores.  `TradeAppendFinish.tradeFinishProg_spec` preserves the analogous frame through its four appended-trade stores.  Warning-failing constrained builds complete the book target in 4.0 seconds and the trade target in 4.7 seconds after their changed dependencies are current.
+
+## 2026-07-15: Allocation-Copy Result Bounds
+
+The partial-book and trade allocation-copy theorems now pass each target's lower bound, nonwrapping payload bound, current-memory fit bound, and pre-copy owned source array to both outcome continuations.  Their proofs already established these facts, and the stronger interfaces retain them for final stores and source release.  Warning-failing constrained builds complete `PartialBookAllocCopy` in 3.0 seconds and `TradeAllocCopy` in 3.9 seconds.

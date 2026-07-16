@@ -61,6 +61,13 @@ theorem tradeAllocCopyProg_spec
       takeFirstFitFrom 0 (tradeArrayBytesU (ts.length + 1)) nodes =
           some choice →
       ∀ st1,
+        48 ≤ choice.node.root.toNat →
+        choice.node.root.toNat + ((ts.length + 1) * 4 + 1) * 8 <
+          4294967296 →
+        choice.node.root.toNat + ((ts.length + 1) * 4 + 1) * 8 ≤
+          (TradeAllocFit.tradeAllocFitStore st choice).mem.pages * 65536 →
+        OwnedTradeArrayAt (TradeAllocFit.tradeAllocFitStore st choice)
+          source sourceCapacity ts →
         TradeAppendCopy.tradeCopyInv
             (TradeAllocFit.tradeAllocFitStore st choice)
             (TradeAllocSearch.tradeAllocSearchFrame base
@@ -83,6 +90,14 @@ theorem tradeAllocCopyProg_spec
               choice.node.root)
             choice.node.root (ts.length * 4)) env)
     (hBumpDone : ∀ previous : UInt64, ∀ st1,
+      48 ≤ (g0 + 48).toNat →
+      (g0 + 48).toNat + ((ts.length + 1) * 4 + 1) * 8 < 4294967296 →
+      (g0 + 48).toNat + ((ts.length + 1) * 4 + 1) * 8 ≤
+        (TradeAllocBump.tradeAllocBumpStore st g0
+          (tradeArrayBytesU (ts.length + 1))).mem.pages * 65536 →
+      OwnedTradeArrayAt
+        (TradeAllocBump.tradeAllocBumpStore st g0
+          (tradeArrayBytesU (ts.length + 1))) source sourceCapacity ts →
       TradeAppendCopy.tradeCopyInv
           (TradeAllocBump.tradeAllocBumpStore st g0
             (tradeArrayBytesU (ts.length + 1)))
@@ -208,7 +223,8 @@ theorem tradeAllocCopyProg_spec
         hList hTake
     · exact hOwnedFit.2
     · intro st1 hInv
-      exact hFitDone choice hTake st1 hInv
+      exact hFitDone choice hTake st1 hTarget48 hTarget32 hTargetFit
+        hOwnedFit hInv
   · intro previous
     let allocBase := TradeAllocSearch.tradeAllocSearchFrame base
       (tradeArrayBytesU (ts.length + 1)) previous 0
@@ -284,6 +300,7 @@ theorem tradeAllocCopyProg_spec
         (tradeArrayBytesU (ts.length + 1)) 4 hNeed8 hFit32
     · exact hOwnedBump.2
     · intro st1 hInv
-      exact hBumpDone previous st1 hInv
+      exact hBumpDone previous st1 (by rw [hTargetNat]; omega) hTarget32
+        hTargetFit hOwnedBump hInv
 
 end Project.ClobMatchFuel.TradeAllocCopy
