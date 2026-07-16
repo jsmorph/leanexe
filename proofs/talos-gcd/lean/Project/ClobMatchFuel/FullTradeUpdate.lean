@@ -127,6 +127,16 @@ theorem fullTradeUpdateProg_spec
         (ts ++ [Model.fillTradeL taker os[i]! os[i]!.oqty]) →
       OwnedTradeArrayAt st1 oldTrades oldTradesCapacity ts →
       OwnedOrderArrayAt st1 oldBook oldBookCapacity os →
+      48 ≤ newBook.toNat →
+      newBook.toNat + fixedArrayBytes newOrders.length 5 < 4294967296 →
+      fixedArrayBytes newOrders.length 5 ≤ newBookCapacity.toNat →
+      48 ≤ newTrades.toNat →
+      newTrades.toNat +
+        fixedArrayBytes (ts ++ [Model.fillTradeL taker os[i]! os[i]!.oqty]).length
+          4 < 4294967296 →
+      fixedArrayBytes
+          (ts ++ [Model.fillTradeL taker os[i]! os[i]!.oqty]).length 4 ≤
+        newTradesCapacity.toNat →
       FreeListAt st1.mem nodes1 →
       st1.mem.pages = st.mem.pages →
       regionsDisjoint (fixedArrayRegion oldTrades oldTradesCapacity)
@@ -358,6 +368,15 @@ theorem fullTradeUpdateProg_spec
       · simpa [finalStore, trade] using hNewTradesOwned
       · exact hOldTradesFinal
       · exact hOldBookFinal
+      · exact hNewBook48
+      · exact hNewBook32
+      · exact hNewBookCapacity
+      · exact hTarget48
+      · simp only [List.length_append, List.length_singleton]
+        unfold fixedArrayBytes
+        omega
+      · simpa only [List.length_append, List.length_singleton] using
+          hChoiceCapacity
       · exact hFinalList
       · exact hPagesFinal
       · exact hOldTradesNewBook
@@ -484,6 +503,25 @@ theorem fullTradeUpdateProg_spec
       · simpa [finalStore, target, trade] using hNewTradesOwned
       · exact hOldTradesFinal
       · exact hOldBookFinal
+      · exact hNewBook48
+      · exact hNewBook32
+      · exact hNewBookCapacity
+      · exact hTarget48
+      · have hTarget32' : target.toNat + ((ts.length + 1) * 4 + 1) * 8 <
+            4294967296 := by
+          simpa [target] using hTarget32
+        rw [hTargetNat] at hTarget32'
+        change target.toNat +
+          fixedArrayBytes (ts ++ [Model.fillTradeL taker os[i]! os[i]!.oqty]).length
+            4 < 4294967296
+        simp only [List.length_append, List.length_singleton]
+        unfold fixedArrayBytes
+        rw [hTargetNat]
+        omega
+      · rw [List.length_append, List.length_singleton]
+        exact (fixedArrayBytesU_toNat (ts.length + 1) 4 hn (by decide) (by
+          change fixedArrayBytes (ts.length + 1) 4 + 7 < UInt64.size at hbytes
+          omega)).symm.le
       · exact hFinalList
       · exact hPagesFinal
       · exact hOldTradesNewBook
