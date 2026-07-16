@@ -134,6 +134,8 @@ theorem fullStepProg_spec
       newBook.toNat + newBookCapacity.toNat ≤ g0Final.toNat →
       newTrades.toNat + newTradesCapacity.toNat ≤ g0Final.toNat →
       g0.toNat ≤ g0Final.toNat →
+      g0Final.toNat ≤ g0.toNat + 96 + orderArrayBytes (os.length - 1) +
+        tradeArrayBytes (ts.length + 1) →
       FreeListSeparatedFromFixedArray nodes1 newBook newBookCapacity →
       FreeListSeparatedFromFixedArray nodes1 newTrades newTradesCapacity →
       (∀ node ∈ nodes1,
@@ -170,7 +172,7 @@ theorem fullStepProg_spec
   intro st1 s newBook newBookCapacity newTrades newTradesCapacity nodes1 g0Final
     hResult hNewBookOwned hNewTradesOwned hOldTradesOwned1 hBookOwned1
     hNewBook48 hNewBook32 hNewBookCapacity hNewTrades48 hNewTrades32
-    hNewTradesCapacity hNewBookBelowFinal hNewTradesBelow hHeapMono
+    hNewTradesCapacity hNewBookBelowFinal hNewTradesBelow hHeapMono hHeapUpper
     hNewBookFreeFinal hNewTradesFreeFinal hNodesBelowFinal hList1 hPageEq
     hOldTradesNewBook hOldTradesNewTrades hOldTradesNodes hG0 hG1 hG2 hG4 hG5
   rcases hTracker with hNoTracker | hTradeTracker
@@ -180,7 +182,7 @@ theorem fullStepProg_spec
     apply hDone st1 s newBook newBookCapacity newTrades newTradesCapacity nodes1
       g0Final hNewBookOwned hNewTradesOwned hNewBook48 hNewBook32
       hNewBookCapacity hNewTrades48 hNewTrades32 hNewTradesCapacity
-      hNewBookBelowFinal hNewTradesBelow hHeapMono hNewBookFreeFinal
+      hNewBookBelowFinal hNewTradesBelow hHeapMono hHeapUpper hNewBookFreeFinal
       hNewTradesFreeFinal hNodesBelowFinal hList1 hPageEq hG0 hG1 hG2
     · simpa [releaseCount] using hG4
     · simpa [releaseCount] using hG5
@@ -247,7 +249,7 @@ theorem fullStepProg_spec
       (releasedNode oldTrades oldTradesCapacity :: nodes1) g0Final
       hNewBookOwned2 hNewTradesOwned2 hNewBook48 hNewBook32 hNewBookCapacity
       hNewTrades48 hNewTrades32 hNewTradesCapacity hNewBookBelowFinal
-      hNewTradesBelow hHeapMono hNewBookFreeAfter hNewTradesFreeAfter
+      hNewTradesBelow hHeapMono hHeapUpper hNewBookFreeAfter hNewTradesFreeAfter
       hNodesBelowAfter hList2 hPageAfter hG0After hG1After hG2After
     · simpa [releaseCount, hOldTradesNe] using hG4After
     · simpa [releaseCount, hOldTradesNe] using hG5After

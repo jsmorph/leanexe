@@ -140,6 +140,8 @@ theorem fullTradeUpdateProg_spec
       newBook.toNat + newBookCapacity.toNat ≤ g0Final.toNat →
       newTrades.toNat + newTradesCapacity.toNat ≤ g0Final.toNat →
       g0.toNat ≤ g0Final.toNat →
+      g0Final.toNat ≤
+        g0.toNat + 48 + tradeArrayBytes (ts.length + 1) →
       FreeListSeparatedFromFixedArray nodes1 newBook newBookCapacity →
       FreeListSeparatedFromFixedArray nodes1 newTrades newTradesCapacity →
       (∀ node ∈ nodes1,
@@ -405,6 +407,7 @@ theorem fullTradeUpdateProg_spec
       · exact hNewBookBelow
       · exact hNewTradesBelow
       · exact Nat.le_refl _
+      · omega
       · exact hNewBookFreeFinal
       · exact hNewTradesFreeFinal
       · exact hNodesBelowFinal
@@ -585,6 +588,10 @@ theorem fullTradeUpdateProg_spec
       · exact hNewTradesBelow
       · rw [htop]
         omega
+      · rw [htop]
+        simpa using (fixedArrayBytesU_toNat (ts.length + 1) 4 hn (by decide) (by
+          change fixedArrayBytes (ts.length + 1) 4 + 7 < UInt64.size at hbytes
+          omega)).le
       · exact hNewBookFree
       · exact hNewTradesFreeFinal
       · exact hNodesBelowFinal
