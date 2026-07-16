@@ -59,6 +59,8 @@ theorem partialBookUpdateProg_spec
     (hSourceBelow : source.toNat + sourceCapacity.toNat ≤ g0.toNat)
     (hSourceFree :
       FreeListSeparatedFromFixedArray nodes source sourceCapacity)
+    (hNodesBelow : ∀ node ∈ nodes,
+      node.root.toNat + node.capacity.toNat ≤ g0.toNat)
     (hOwned : OwnedOrderArrayAt st source sourceCapacity os)
     (hg0 : st.globals.globals[0]? = some (.i64 g0))
     (hg1 : st.globals.globals[1]? = some (.i64 (freeHead nodes)))
@@ -90,6 +92,14 @@ theorem partialBookUpdateProg_spec
             qty).globals.globals =
           (PartialBookAllocFit.bookAllocFitStore st choice).globals.globals.set
             2 (.i64 (g2 + 1)) →
+        FreeListAt
+          (BookReplaceStore.replaceOrderStore st1 choice.node.root i os[i]!
+            qty).mem choice.remaining →
+        (BookReplaceStore.replaceOrderStore st1 choice.node.root i os[i]!
+            qty).globals.globals[0]? = some (.i64 g0) →
+        (BookReplaceStore.replaceOrderStore st1 choice.node.root i os[i]!
+            qty).globals.globals[1]? =
+          some (.i64 (freeHead choice.remaining)) →
         wp «module» rest Q
           (BookReplaceStore.replaceOrderStore st1 choice.node.root i os[i]!
             qty)
@@ -122,6 +132,14 @@ theorem partialBookUpdateProg_spec
         (PartialBookAllocBump.bookAllocBumpStore st g0
           (orderArrayBytesU os.length)).globals.globals.set
             2 (.i64 (g2 + 1)) →
+      FreeListAt
+        (BookReplaceStore.replaceOrderStore st1 (g0 + 48) i os[i]!
+          qty).mem nodes →
+      (BookReplaceStore.replaceOrderStore st1 (g0 + 48) i os[i]!
+          qty).globals.globals[0]? =
+        some (.i64 (g0 + 48 + orderArrayBytesU os.length)) →
+      (BookReplaceStore.replaceOrderStore st1 (g0 + 48) i os[i]!
+          qty).globals.globals[1]? = some (.i64 (freeHead nodes)) →
       wp «module» rest Q
         (BookReplaceStore.replaceOrderStore st1 (g0 + 48) i os[i]! qty)
         (BookReplaceFinish.replaceResultFrame
@@ -173,10 +191,48 @@ theorem partialBookUpdateProg_spec
     · exact hInv
     · exact hTargetOrders
     · intro hTargetFinal hFreshFinal hOutsideFinal
+      have hFinalPages :
+          (BookReplaceStore.replaceOrderStore st1 choice.node.root i os[i]!
+            qty).mem.pages =
+          (PartialBookAllocFit.bookAllocFitStore st choice).mem.pages := by
+        simpa [BookReplaceStore.replaceOrderStore] using hCopyPages
+      have hFinalGlobals :
+          (BookReplaceStore.replaceOrderStore st1 choice.node.root i os[i]!
+            qty).globals.globals =
+          (PartialBookAllocFit.bookAllocFitStore st choice).globals.globals.set
+            2 (.i64 (g2 + 1)) := by
+        simpa [BookReplaceStore.replaceOrderStore] using hCopyGlobals
+      have hChoiceCapacity := takeFirstFitFrom_some_capacity hTake
+      have hNeedNat : (orderArrayBytesU os.length).toNat =
+          orderArrayBytes os.length :=
+        fixedArrayBytesU_toNat os.length 5 hn (by decide) (by
+          change fixedArrayBytes os.length 5 + 7 < UInt64.size at hbytes
+          omega)
+      rw [UInt64.le_iff_toNat_le, hNeedNat] at hChoiceCapacity
+      have hFinalList : FreeListAt
+          (BookReplaceStore.replaceOrderStore st1 choice.node.root i os[i]!
+            qty).mem choice.remaining :=
+        freeListAt_fixedArrayAllocFitStore_after hList hTake
+          (by unfold orderArrayBytes fixedArrayBytes at hChoiceCapacity; omega)
+          hFinalPages hOutsideFinal
+      have hAllocG0 := fixedArrayAllocFitStore_global0
+        (choice := choice) (stride := 5) hg0
+      have hAllocG1 := fixedArrayAllocFitStore_global1
+        (choice := choice) (stride := 5) hg1 hList hTake
+      have hFinalG0 :
+          (BookReplaceStore.replaceOrderStore st1 choice.node.root i os[i]!
+            qty).globals.globals[0]? = some (.i64 g0) := by
+        rw [hFinalGlobals]
+        simpa [List.getElem?_set] using hAllocG0
+      have hFinalG1 :
+          (BookReplaceStore.replaceOrderStore st1 choice.node.root i os[i]!
+            qty).globals.globals[1]? =
+          some (.i64 (freeHead choice.remaining)) := by
+        rw [hFinalGlobals]
+        simpa [List.getElem?_set] using hAllocG1
       exact hFitDone choice hTake st1 hTarget48 hTarget32 hTargetFit
-        hOwnedSource ⟨hFreshFinal, hTargetFinal⟩ hOutsideFinal
-        (by simpa [BookReplaceStore.replaceOrderStore] using hCopyPages)
-        (by simpa [BookReplaceStore.replaceOrderStore] using hCopyGlobals)
+        hOwnedSource ⟨hFreshFinal, hTargetFinal⟩ hOutsideFinal hFinalPages
+        hFinalGlobals hFinalList hFinalG0 hFinalG1
   · intro previous st1 hTarget48 hTarget32 hTargetFit hOwnedSource hInv
       hTargetOrders
     have hState := hInv
@@ -215,9 +271,41 @@ theorem partialBookUpdateProg_spec
     · exact hInv
     · exact hTargetOrders
     · intro hTargetFinal hFreshFinal hOutsideFinal
+      have hFinalPages :
+          (BookReplaceStore.replaceOrderStore st1 (g0 + 48) i os[i]!
+            qty).mem.pages =
+          (PartialBookAllocBump.bookAllocBumpStore st g0
+            (orderArrayBytesU os.length)).mem.pages := by
+        simpa [BookReplaceStore.replaceOrderStore] using hCopyPages
+      have hFinalGlobals :
+          (BookReplaceStore.replaceOrderStore st1 (g0 + 48) i os[i]!
+            qty).globals.globals =
+          (PartialBookAllocBump.bookAllocBumpStore st g0
+            (orderArrayBytesU os.length)).globals.globals.set
+              2 (.i64 (g2 + 1)) := by
+        simpa [BookReplaceStore.replaceOrderStore] using hCopyGlobals
+      have hFinalList : FreeListAt
+          (BookReplaceStore.replaceOrderStore st1 (g0 + 48) i os[i]!
+            qty).mem nodes :=
+        freeListAt_fixedArrayAllocBumpStore_after hFit32 hNodesBelow hList
+          hFinalPages hOutsideFinal
+      have hAllocG0 := fixedArrayAllocBumpStore_global0 st g0
+        (orderArrayBytesU os.length) 5 hg0
+      have hAllocG1 := fixedArrayAllocBumpStore_global1 st g0
+        (orderArrayBytesU os.length) 5 (freeHead nodes) hg1
+      have hFinalG0 :
+          (BookReplaceStore.replaceOrderStore st1 (g0 + 48) i os[i]!
+            qty).globals.globals[0]? =
+          some (.i64 (g0 + 48 + orderArrayBytesU os.length)) := by
+        rw [hFinalGlobals]
+        simpa [List.getElem?_set] using hAllocG0
+      have hFinalG1 :
+          (BookReplaceStore.replaceOrderStore st1 (g0 + 48) i os[i]!
+            qty).globals.globals[1]? = some (.i64 (freeHead nodes)) := by
+        rw [hFinalGlobals]
+        simpa [List.getElem?_set] using hAllocG1
       exact hBumpDone previous st1 hTarget48 hTarget32 hTargetFit
-        hOwnedSource ⟨hFreshFinal, hTargetFinal⟩ hOutsideFinal
-        (by simpa [BookReplaceStore.replaceOrderStore] using hCopyPages)
-        (by simpa [BookReplaceStore.replaceOrderStore] using hCopyGlobals)
+        hOwnedSource ⟨hFreshFinal, hTargetFinal⟩ hOutsideFinal hFinalPages
+        hFinalGlobals hFinalList hFinalG0 hFinalG1
 
 end Project.ClobMatchFuel.PartialBookUpdate
