@@ -39,8 +39,28 @@ theorem fixedArrayAllocBumpStore_pages
     (st : Store Unit) (g0 need stride : UInt64) :
     (BookAllocBump.fixedArrayAllocBumpStore st g0 need stride).mem.pages =
       st.mem.pages := by
-  simp [BookAllocBump.fixedArrayAllocBumpStore, fixedArrayHeaderMem,
-    Mem.write64_pages]
+    simp [BookAllocBump.fixedArrayAllocBumpStore, fixedArrayHeaderMem,
+      Mem.write64_pages]
+
+theorem fixedArrayAllocFitStore_global_of_ne_one
+    (st : Store Unit) (choice : FreeChoice) (stride : UInt64)
+    (i : Nat) (value : Value) (hi : i ≠ 1)
+    (hValue : st.globals.globals[i]? = some value) :
+    (BookAllocFit.fixedArrayAllocFitStore st choice stride).globals.globals[i]? =
+      some value := by
+  have hi' : 1 ≠ i := Ne.symm hi
+  by_cases hPrevious : choice.previous = 0
+  · simp [BookAllocFit.fixedArrayAllocFitStore, hPrevious, hi', hValue]
+  · simp [BookAllocFit.fixedArrayAllocFitStore, hPrevious, hValue]
+
+theorem fixedArrayAllocBumpStore_global_of_ne_zero
+    (st : Store Unit) (g0 need stride : UInt64)
+    (i : Nat) (value : Value) (hi : i ≠ 0)
+    (hValue : st.globals.globals[i]? = some value) :
+    (BookAllocBump.fixedArrayAllocBumpStore st g0 need stride).globals.globals[i]? =
+      some value := by
+  have hi' : 0 ≠ i := Ne.symm hi
+  simp [BookAllocBump.fixedArrayAllocBumpStore, hi', hValue]
 
 theorem flatWordsDisjoint_of_fixedArrayRegions
     {aPtr aCapacity bPtr bCapacity : UInt64} {aWords bWords : Nat}
