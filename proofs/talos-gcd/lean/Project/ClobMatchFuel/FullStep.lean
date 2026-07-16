@@ -121,7 +121,25 @@ theorem fullStepProg_spec
       OwnedOrderArrayAt st1 newBook newBookCapacity (os.eraseIdx i) →
       OwnedTradeArrayAt st1 newTrades newTradesCapacity
         (ts ++ [Model.fillTradeL taker os[i]! os[i]!.oqty]) →
+      48 ≤ newBook.toNat →
+      newBook.toNat + fixedArrayBytes (os.eraseIdx i).length 5 < 4294967296 →
+      fixedArrayBytes (os.eraseIdx i).length 5 ≤ newBookCapacity.toNat →
+      48 ≤ newTrades.toNat →
+      newTrades.toNat +
+        fixedArrayBytes (ts ++ [Model.fillTradeL taker os[i]! os[i]!.oqty]).length
+          4 < 4294967296 →
+      fixedArrayBytes
+          (ts ++ [Model.fillTradeL taker os[i]! os[i]!.oqty]).length 4 ≤
+        newTradesCapacity.toNat →
+      newBook.toNat + newBookCapacity.toNat ≤ g0Final.toNat →
+      newTrades.toNat + newTradesCapacity.toNat ≤ g0Final.toNat →
+      g0.toNat ≤ g0Final.toNat →
+      FreeListSeparatedFromFixedArray nodes1 newBook newBookCapacity →
+      FreeListSeparatedFromFixedArray nodes1 newTrades newTradesCapacity →
+      (∀ node ∈ nodes1,
+        node.root.toNat + node.capacity.toNat ≤ g0Final.toNat) →
       FreeListAt st1.mem nodes1 →
+      st1.mem.pages = st.mem.pages →
       st1.globals.globals[0]? = some (.i64 g0Final) →
       st1.globals.globals[1]? = some (.i64 (freeHead nodes1)) →
       st1.globals.globals[2]? = some (.i64 (g2 + 2)) →
@@ -152,14 +170,18 @@ theorem fullStepProg_spec
   intro st1 s newBook newBookCapacity newTrades newTradesCapacity nodes1 g0Final
     hResult hNewBookOwned hNewTradesOwned hOldTradesOwned1 hBookOwned1
     hNewBook48 hNewBook32 hNewBookCapacity hNewTrades48 hNewTrades32
-    hNewTradesCapacity hList1 hPageEq hOldTradesNewBook hOldTradesNewTrades
-    hOldTradesNodes hG0 hG1 hG2 hG4 hG5
+    hNewTradesCapacity hNewBookBelowFinal hNewTradesBelow hHeapMono
+    hNewBookFreeFinal hNewTradesFreeFinal hNodesBelowFinal hList1 hPageEq
+    hOldTradesNewBook hOldTradesNewTrades hOldTradesNodes hG0 hG1 hG2 hG4 hG5
   rcases hTracker with hNoTracker | hTradeTracker
   · subst oldTradesTracker
     apply FullReleaseTransition.fullReleaseTransitionProg_none env st1 s fuel
       newBook newTrades (remaining - os[i]!.oqty) taker hResult Q rest
     apply hDone st1 s newBook newBookCapacity newTrades newTradesCapacity nodes1
-      g0Final hNewBookOwned hNewTradesOwned hList1 hG0 hG1 hG2
+      g0Final hNewBookOwned hNewTradesOwned hNewBook48 hNewBook32
+      hNewBookCapacity hNewTrades48 hNewTrades32 hNewTradesCapacity
+      hNewBookBelowFinal hNewTradesBelow hHeapMono hNewBookFreeFinal
+      hNewTradesFreeFinal hNodesBelowFinal hList1 hPageEq hG0 hG1 hG2
     · simpa [releaseCount] using hG4
     · simpa [releaseCount] using hG5
   · subst oldTradesTracker
@@ -203,9 +225,30 @@ theorem fullStepProg_spec
     have hG5After : st2.globals.globals[5]? = some (.i64 (g5 + 1)) := by
       rw [hGlobals]
       exact fixedArrayReleaseGlobals_global5 st1 oldTrades g4 g5 hLength
+    have hPageAfter : st2.mem.pages = st.mem.pages := by
+      rw [hMem]
+      exact hPageEq
+    have hNewBookFreeAfter : FreeListSeparatedFromFixedArray
+        (releasedNode oldTrades oldTradesCapacity :: nodes1) newBook
+        newBookCapacity :=
+      freeListSeparated_cons_releasedNode hOldTradesNewBook
+        hNewBookFreeFinal
+    have hNewTradesFreeAfter : FreeListSeparatedFromFixedArray
+        (releasedNode oldTrades oldTradesCapacity :: nodes1) newTrades
+        newTradesCapacity :=
+      freeListSeparated_cons_releasedNode hOldTradesNewTrades
+        hNewTradesFreeFinal
+    have hNodesBelowAfter : ∀ node ∈
+        releasedNode oldTrades oldTradesCapacity :: nodes1,
+        node.root.toNat + node.capacity.toNat ≤ g0Final.toNat :=
+      releasedNode_cons_below (hOldTradesBelow.trans hHeapMono)
+        hNodesBelowFinal
     apply hDone st2 s newBook newBookCapacity newTrades newTradesCapacity
       (releasedNode oldTrades oldTradesCapacity :: nodes1) g0Final
-      hNewBookOwned2 hNewTradesOwned2 hList2 hG0After hG1After hG2After
+      hNewBookOwned2 hNewTradesOwned2 hNewBook48 hNewBook32 hNewBookCapacity
+      hNewTrades48 hNewTrades32 hNewTradesCapacity hNewBookBelowFinal
+      hNewTradesBelow hHeapMono hNewBookFreeAfter hNewTradesFreeAfter
+      hNodesBelowAfter hList2 hPageAfter hG0After hG1After hG2After
     · simpa [releaseCount, hOldTradesNe] using hG4After
     · simpa [releaseCount, hOldTradesNe] using hG5After
 

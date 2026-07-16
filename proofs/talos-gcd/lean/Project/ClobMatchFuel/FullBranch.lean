@@ -129,6 +129,13 @@ theorem fullBranchProg_spec
       fixedArrayBytes
           (ts ++ [Model.fillTradeL taker os[i]! os[i]!.oqty]).length 4 ≤
         newTradesCapacity.toNat →
+      newBook.toNat + newBookCapacity.toNat ≤ g0Final.toNat →
+      newTrades.toNat + newTradesCapacity.toNat ≤ g0Final.toNat →
+      g0.toNat ≤ g0Final.toNat →
+      FreeListSeparatedFromFixedArray nodes1 newBook newBookCapacity →
+      FreeListSeparatedFromFixedArray nodes1 newTrades newTradesCapacity →
+      (∀ node ∈ nodes1,
+        node.root.toNat + node.capacity.toNat ≤ g0Final.toNat) →
       FreeListAt st1.mem nodes1 →
       st1.mem.pages = st.mem.pages →
       regionsDisjoint (fixedArrayRegion oldTrades oldTradesCapacity)
@@ -314,12 +321,16 @@ theorem fullBranchProg_spec
     · intro st2 s newTrades newTradesCapacity nodes2 g0Final hResult
         hNewBookFinal hNewTradesFinal hOldTradesFinal hBookFinal hNewBook48
         hNewBook32 hNewBookCapacity hNewTrades48 hNewTrades32 hNewTradesCapacity
-        hList2 hPages2 hOldTradesNewBook2 hOldTradesNewTrades hOldTradesFree2 hG0
-        hG1 hG2 hG4 hG5
+        hNewBookBelowFinal hNewTradesBelow hHeapMono hNewBookFreeFinal
+        hNewTradesFreeFinal hNodesBelowFinal hList2 hPages2
+        hOldTradesNewBook2 hOldTradesNewTrades hOldTradesFree2 hG0 hG1 hG2 hG4
+        hG5
       apply hDone st2 s choice.node.root choice.node.capacity newTrades
         newTradesCapacity nodes2 g0Final hResult hNewBookFinal hNewTradesFinal
         hOldTradesFinal hBookFinal hNewBook48 hNewBook32 hNewBookCapacity
-        hNewTrades48 hNewTrades32 hNewTradesCapacity hList2
+        hNewTrades48 hNewTrades32 hNewTradesCapacity hNewBookBelowFinal
+        hNewTradesBelow hHeapMono hNewBookFreeFinal hNewTradesFreeFinal
+        hNodesBelowFinal hList2
       · exact hPages2.trans hFinalPages
       · exact hOldTradesNewBook2
       · exact hOldTradesNewTrades
@@ -501,8 +512,10 @@ theorem fullBranchProg_spec
     · intro st2 s newTrades newTradesCapacity nodes2 g0Final hResult
         hNewBookFinal hNewTradesFinal hOldTradesFinal hBookFinal hNewBook48
         hNewBook32 hNewBookCapacity hNewTrades48 hNewTrades32 hNewTradesCapacity
-        hList2 hPages2 hOldTradesNewBook2 hOldTradesNewTrades hOldTradesFree2 hG0
-        hG1 hG2 hG4 hG5
+        hNewBookBelowFinal hNewTradesBelow hHeapMono hNewBookFreeFinal
+        hNewTradesFreeFinal hNodesBelowFinal hList2 hPages2
+        hOldTradesNewBook2 hOldTradesNewTrades hOldTradesFree2 hG0 hG1 hG2 hG4
+        hG5
       apply hDone st2 s newBook bookNeed newTrades newTradesCapacity nodes2
         g0Final hResult
       · simpa [newBook, bookNeed] using hNewBookFinal
@@ -515,6 +528,14 @@ theorem fullBranchProg_spec
       · exact hNewTrades48
       · exact hNewTrades32
       · exact hNewTradesCapacity
+      · exact hNewBookBelowFinal
+      · exact hNewTradesBelow
+      · exact (show g0.toNat ≤ g0AfterBook.toNat by
+          rw [hG0AfterBookNat]
+          omega).trans hHeapMono
+      · exact hNewBookFreeFinal
+      · exact hNewTradesFreeFinal
+      · exact hNodesBelowFinal
       · exact hList2
       · exact hPages2.trans hFinalPages
       · exact hOldTradesNewBook2
