@@ -143,6 +143,27 @@ theorem OrdersAt.orderWord_bound {st : Store Unit} {ptr : UInt64}
   · simpa using h4.2
   · simpa using h5.2
 
+theorem OrdersAt.orderWord_eq_flat {st : Store Unit} {ptr : UInt64}
+    {os : List OrderL} (hOrders : OrdersAt st ptr os) (word : Nat)
+    (hword : word < os.length * 5) :
+    orderWord st ptr word = os[word / 5]!.word (word % 5) := by
+  have hfield : word % 5 < 5 := Nat.mod_lt _ (by decide)
+  have hindex : word / 5 < os.length :=
+    (Nat.div_lt_iff_lt_mul (by decide)).2 hword
+  have h := hOrders.orderWord_eq (word / 5) (word % 5) hindex hfield
+  simpa only [Nat.div_add_mod'] using h
+
+theorem OrdersAt.orderWord_bound_flat {st : Store Unit} {ptr : UInt64}
+    {os : List OrderL} (hOrders : OrdersAt st ptr os) (word : Nat)
+    (hword : word < os.length * 5) :
+    (ptr.toNat + (word + 1) * 8) % 4294967296 + 8 ≤
+      st.mem.pages * 65536 := by
+  have hfield : word % 5 < 5 := Nat.mod_lt _ (by decide)
+  have hindex : word / 5 < os.length :=
+    (Nat.div_lt_iff_lt_mul (by decide)).2 hword
+  have h := hOrders.orderWord_bound (word / 5) (word % 5) hindex hfield
+  simpa only [Nat.div_add_mod'] using h
+
 theorem OrdersAt.ofFlatWords {st : Store Unit} {ptr : UInt64}
     {os : List OrderL}
     (hLength : st.mem.read64 (UInt32.ofNat (ptr.toNat % 4294967296)) =
