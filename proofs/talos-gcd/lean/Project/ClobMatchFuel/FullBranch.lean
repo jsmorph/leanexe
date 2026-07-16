@@ -114,6 +114,7 @@ theorem fullBranchProg_spec
         newTradesCapacity nodes1 g0Final,
       FullTradeUpdate.FullResultAt s fuel taker oldBookTracker oldTradesTracker
         newBook newTrades (remaining - os[i]!.oqty) →
+      FullTradeUpdate.AllocScratchAt s →
       OwnedOrderArrayAt st1 newBook newBookCapacity (os.eraseIdx i) →
       OwnedTradeArrayAt st1 newTrades newTradesCapacity
         (ts ++ [Model.fillTradeL taker os[i]! os[i]!.oqty]) →
@@ -320,7 +321,7 @@ theorem fullBranchProg_spec
     · exact hCurrentG4
     · exact hCurrentG5
     · exact hFinalList
-    · intro st2 s newTrades newTradesCapacity nodes2 g0Final hResult
+    · intro st2 s newTrades newTradesCapacity nodes2 g0Final hResult hScratch
         hNewBookFinal hNewTradesFinal hOldTradesFinal hBookFinal hNewBook48
         hNewBook32 hNewBookCapacity hNewTrades48 hNewTrades32 hNewTradesCapacity
         hNewBookBelowFinal hNewTradesBelow hHeapMono hHeapUpper hNewBookFreeFinal
@@ -328,8 +329,9 @@ theorem fullBranchProg_spec
         hOldTradesNewBook2 hOldTradesNewTrades hOldTradesFree2 hG0 hG1 hG2 hG4
         hG5
       apply hDone st2 s choice.node.root choice.node.capacity newTrades
-        newTradesCapacity nodes2 g0Final hResult hNewBookFinal hNewTradesFinal
-        hOldTradesFinal hBookFinal hNewBook48 hNewBook32 hNewBookCapacity
+        newTradesCapacity nodes2 g0Final hResult hScratch hNewBookFinal
+        hNewTradesFinal hOldTradesFinal hBookFinal hNewBook48 hNewBook32
+        hNewBookCapacity
         hNewTrades48 hNewTrades32 hNewTradesCapacity hNewBookBelowFinal
         hNewTradesBelow hHeapMono
       · omega
@@ -515,7 +517,7 @@ theorem fullBranchProg_spec
     · exact hCurrentG4
     · exact hCurrentG5
     · exact hFinalList
-    · intro st2 s newTrades newTradesCapacity nodes2 g0Final hResult
+    · intro st2 s newTrades newTradesCapacity nodes2 g0Final hResult hScratch
         hNewBookFinal hNewTradesFinal hOldTradesFinal hBookFinal hNewBook48
         hNewBook32 hNewBookCapacity hNewTrades48 hNewTrades32 hNewTradesCapacity
         hNewBookBelowFinal hNewTradesBelow hHeapMono hHeapUpper hNewBookFreeFinal
@@ -523,7 +525,7 @@ theorem fullBranchProg_spec
         hOldTradesNewBook2 hOldTradesNewTrades hOldTradesFree2 hG0 hG1 hG2 hG4
         hG5
       apply hDone st2 s newBook bookNeed newTrades newTradesCapacity nodes2
-        g0Final hResult
+        g0Final hResult hScratch
       · simpa [newBook, bookNeed] using hNewBookFinal
       · exact hNewTradesFinal
       · exact hOldTradesFinal
