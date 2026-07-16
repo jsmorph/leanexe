@@ -30,6 +30,7 @@ import Project.ClobMatchFuel.Iteration
 import Project.ClobMatchFuel.LoopInvariant
 import Project.ClobMatchFuel.LoopBounds
 import Project.ClobMatchFuel.LoopProgress
+import Project.ClobMatchFuel.LoopCompletion
 
 /-!
 # The `matchFuel` theorem
