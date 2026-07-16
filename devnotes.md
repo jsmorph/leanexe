@@ -5047,6 +5047,8 @@ Allocator outcome lemmas now identify globals 0 and 1 after either a selected-no
 
 The partial-book and trade-update continuations now retain the final page count and exact global-list update already carried by their copy invariants.  These facts expose the post-allocation heap top, free-list head, and allocation counter needed by the following allocator and release block.  Warning-failing constrained builds complete `PartialBookUpdate` in 7.7 seconds and `TradeAllocAppend` in 6.9 seconds after their dependencies are current.
 
+`FullTradePrepare.fullTradePrepareProg_spec` proves the generated bridge from the full-fill book result to the common trade allocator input.  It checks the book length, matched maker identifier, price, quantity, and old trade length before producing the exact trade-allocation locals.  The warning-failing constrained module build completes in 7.3 seconds after its dependencies are current.
+
 ## 2026-07-15: Release Transformations
 
 `Allocation.fixedArrayReleaseMem` and `fixedArrayReleaseGlobals` name the exact memory and global-list results of freeing a refcount-one zero-mask fixed array.  `func18_frees_fixed_array_zero_mask` now states its existing runtime result with those definitions, without changing its assumptions or proof.  The warning-failing constrained `Allocation` build completes in 2.8 seconds.
