@@ -192,9 +192,32 @@ theorem Invariant.values (h : Invariant ctx st s) : s.values = [] := by
   · exact hCompleted.values
 
 def measure (_ : Store Unit) (s : Locals) : Nat :=
-  match s.get 0, s.get 24 with
-  | some (.i64 fuel), some (.i64 done) =>
-      2 * fuel.toNat + if done = 0 then 1 else 0
-  | _, _ => 0
+  match s.get 24 with
+  | some (.i64 done) =>
+      if done = 0 then
+        match s.get 0 with
+        | some (.i64 fuel) => 2 * fuel.toNat + 1
+        | _ => 0
+      else 0
+  | _ => 0
+
+theorem measure_running (facts : RunningFacts ctx st s data) :
+    measure st s = 2 * data.fuel.toNat + 1 := by
+  rcases facts.locals with ⟨_, _, _, hFuel, _, _, _, _, _, _, _, _, _, _, _,
+    hRunning, _⟩
+  unfold measure
+  rw [hRunning]
+  rw [hFuel]
+  rfl
+
+theorem measure_completed (h : CompletedAt ctx st s) : measure st s = 0 := by
+  rcases h with ⟨data, facts⟩
+  rcases facts.result with
+    ⟨_, _, _, hDone, hParams, hLocals, hValues⟩
+  have hDoneGet : s.get 24 = some (.i64 1) := by
+    simpa [Locals.get, hParams, hLocals] using hDone
+  unfold measure
+  rw [hDoneGet]
+  simp
 
 end Project.ClobMatchFuel.LoopInvariant
