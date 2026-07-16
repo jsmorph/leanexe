@@ -48,6 +48,7 @@ def tradeCopyInv (st0 : Store Unit) (base : Locals)
       FreshTradeArrayAt st target arrayCapacity ∧
       st.mem.read64 target.toUInt32 = newLength ∧
       TradesAt st source ts ∧
+      MemEqOutsideFlatWords st0 st target ((ts.length + 1) * 4) ∧
       ∀ copied : Nat, copied < word →
         tradeWord st target copied = tradeWord st0 source copied
 
@@ -178,7 +179,7 @@ theorem tradeCopyProg_spec
   apply wp_loop_cons
     (Inv := tradeCopyInv st0 base target source g2 arrayCapacity newLength ts)
     (μ := tradeCopyMeasure (ts.length * 4))
-  · refine ⟨0, Nat.zero_le _, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+  · refine ⟨0, Nat.zero_le _, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
     · simp [tradeCopyFrame]
     · exact Mem.write64_pages ..
     · rfl
@@ -188,11 +189,16 @@ theorem tradeCopyProg_spec
     · have hFrame := hTrades.frame_write64_flatWordsDisjoint hSource32
           hTarget32 (slot := 0) (value := newLength) (by omega) hsep
       simpa only [TradesAt, Nat.zero_mul, Nat.add_zero] using hFrame
+    · intro a ha
+      rw [write64_bytes_ne _ _ _ (by
+        simp only [toUInt32_ofNat_mod_toNat]
+        rw [Nat.mod_eq_of_lt (by omega)]
+        rcases ha with ha | ha <;> omega)]
     · intro copied hcopied
       omega
   · rintro st1 s1
       ⟨word, hword, rfl, hPages, hGlobals, hFresh1, hLength,
-        hTrades1, hCopied⟩
+        hTrades1, hOutside, hCopied⟩
     have hwordU : (UInt64.ofNat word).toNat = word :=
       toNat_ofNat_lt (by omega)
     simp only [tradeCopyBodyProg, tradeCopyFrame]
@@ -207,7 +213,7 @@ theorem tradeCopyProg_spec
       subst word
       apply hDone
       exact ⟨ts.length * 4, le_rfl, rfl, hPages, hGlobals, hFresh1,
-        hLength, hTrades1, hCopied⟩
+        hLength, hTrades1, hOutside, hCopied⟩
     · have hnge : ¬ UInt64.ofNat word ≥
           UInt64.ofNat ts.length * 4 := by
         rw [ge_iff_le, UInt64.le_iff_toNat_le, hwordU, hTotalU]
@@ -232,7 +238,7 @@ theorem tradeCopyProg_spec
           apply UInt64.toNat.inj
           rw [toNat_add_one (by rw [hwordU, size_eq]; omega), hwordU,
             toNat_ofNat_lt (by omega)]
-        refine ⟨word + 1, by omega, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+        refine ⟨word + 1, by omega, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
         · simp only [tradeCopyFrame, hwordNext]
         · rw [Mem.write64_pages, hPages]
         · exact hGlobals
@@ -251,6 +257,7 @@ theorem tradeCopyProg_spec
               (value := st1.mem.read64 (UInt32.ofNat
                 ((source.toNat + (word + 1) * 8) % 4294967296)))
               (by omega) hsep
+        · exact hOutside.write64 hTarget32 (by omega)
         · intro copied hcopied
           unfold tradeWord
           by_cases hcopiedWord : copied = word
