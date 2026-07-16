@@ -13,6 +13,14 @@ def freeHead : List FreeNode → UInt64
   | [] => 0
   | node :: _ => node.root
 
+def scanRemaining : List FreeNode → UInt64 → Nat
+  | [], _ => 0
+  | node :: rest, current =>
+      if node.root = current then
+        (node :: rest).length
+      else
+        scanRemaining rest current
+
 def takeFirstFit (need : UInt64) : List FreeNode →
     Option (FreeNode × List FreeNode)
   | [] => none
@@ -244,6 +252,49 @@ theorem FreeListAt.roots_nodup {mem : Mem} {nodes : List FreeNode}
             rw [← hroot] at hdisjoint
             omega
           · exact ih htail
+
+private theorem scanRemaining_append (visited remaining : List FreeNode)
+    (hNodup : ((visited ++ remaining).map FreeNode.root).Nodup)
+    (hNonzero : ∀ node ∈ visited ++ remaining, node.root ≠ 0) :
+    scanRemaining (visited ++ remaining) (freeHead remaining) =
+      remaining.length := by
+  induction visited with
+  | nil => cases remaining <;> simp [scanRemaining, freeHead]
+  | cons node visited ih =>
+      have hNodupTail :
+          ((visited ++ remaining).map FreeNode.root).Nodup := by
+        simpa using hNodup.tail
+      have hNonzeroTail :
+          ∀ other ∈ visited ++ remaining, other.root ≠ 0 := by
+        intro other hmem
+        exact hNonzero other (List.mem_cons_of_mem _ hmem)
+      have hne : node.root ≠ freeHead remaining := by
+        cases remaining with
+        | nil =>
+            simpa [freeHead] using
+              hNonzero node (List.mem_cons_self)
+        | cons first rest =>
+            intro heq
+            have hrootMem :
+                node.root ∈ (visited ++ first :: rest).map FreeNode.root := by
+              rw [heq]
+              exact List.mem_map.mpr ⟨first,
+                List.mem_append_right visited List.mem_cons_self, rfl⟩
+            have hNodupCons :
+                (node.root :: (visited ++ first :: rest).map
+                  FreeNode.root).Nodup := by
+              simpa using hNodup
+            cases hNodupCons with
+            | cons hnotMem _ => exact (hnotMem node.root hrootMem) rfl
+      simp only [List.cons_append, scanRemaining, hne, if_false]
+      exact ih hNodupTail hNonzeroTail
+
+theorem FreeListAt.scanRemaining_suffix {mem : Mem}
+    {nodes visited remaining : List FreeNode} (h : FreeListAt mem nodes)
+    (hsplit : nodes = visited ++ remaining) :
+    scanRemaining nodes (freeHead remaining) = remaining.length := by
+  subst nodes
+  exact scanRemaining_append visited remaining h.roots_nodup h.roots_ne_zero
 
 theorem FreeListAt.frame {mem mem' : Mem} {nodes : List FreeNode}
     (hpages : mem'.pages = mem.pages)
