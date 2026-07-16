@@ -193,6 +193,15 @@ theorem Invariant.values (h : Invariant ctx st s) : s.values = [] := by
   · exact hRunning.values
   · exact hCompleted.values
 
+def ExitAt (ctx : Context) (st : Store Unit) (s : Locals) : Prop :=
+  CompletedAt ctx st s ∨
+    ∃ data, RunningFacts ctx st s data ∧ data.fuel = 0
+
+theorem ExitAt.values (h : ExitAt ctx st s) : s.values = [] := by
+  rcases h with hCompleted | ⟨data, facts, hFuel⟩
+  · exact hCompleted.values
+  · exact facts.locals.2.2.1
+
 def measure (_ : Store Unit) (s : Locals) : Nat :=
   match s.get 24 with
   | some (.i64 done) =>
