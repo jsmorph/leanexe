@@ -5132,3 +5132,5 @@ The embedded search theorems now quantify over the loop-carried book owner passe
 `Iteration.dispatchProg_spec` now passes its known source-branch premise to each continuation.  A stop reports zero remaining quantity or a missing maker, while a full or partial update reports nonzero remaining quantity in addition to the search and quantity comparisons.  The warning-failing constrained module build completes in 13 seconds.
 
 `LoopProgress` proves the residual source equations for stopped, partial-fill, and full-fill states recorded by the loop invariant.  It also normalizes the modular allocation counter after an appended trade and the conditional release counter after a full fill.  The warning-failing constrained module build completes in 1.6 seconds.
+
+`LoopCompletion.of_stop` and `LoopCompletion.of_partial` construct the completed invariant from the two terminating dispatcher outcomes.  They prove the exact source result, owned output arrays, represented free list, allocator globals, and normalized allocation and release counters.  The warning-failing constrained module build completes in 2.0 seconds.
