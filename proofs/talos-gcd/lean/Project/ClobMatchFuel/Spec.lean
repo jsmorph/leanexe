@@ -3,7 +3,7 @@ import Project.ClobMatchFuel.BookEraseSuffix
 import Project.ClobMatchFuel.BookReplaceFinish
 import Project.ClobMatchFuel.BookAllocPrepare
 import Project.ClobMatchFuel.PartialBookAllocPrepare
-import Project.ClobMatchFuel.TradeAllocPrepare
+import Project.ClobMatchFuel.TradeAlloc
 import Project.ClobMatchFuel.TradeAppendCopy
 import Project.ClobMatchFuel.TradeAppendFinish
 
