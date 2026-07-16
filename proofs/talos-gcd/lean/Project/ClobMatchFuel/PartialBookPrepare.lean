@@ -28,7 +28,7 @@ macro "wp_run_prepare" "(" hParams:term "," hLocals:term ","
     ValueType.zero, List.headD, ($hParams), ($hLocals), ($hValues),
     ($hBook), ($hIndex), ($hRemaining)])
 
-def partialBookPrepareProg : Wasm.Program :=
+def partialBookPrefixProg : Wasm.Program :=
   [
   .localGet 15,
   .localSet 61,
@@ -171,15 +171,7 @@ def partialBookPrepareProg : Wasm.Program :=
   .localSet 68,
   .localGet 67,
   .localGet 68,
-  .ltUI64,
-  .iff 0 1 [
-    .localGet 68,
-    .constI64 5,
-    .mulI64,
-    .localSet 69
-  ] [
-    .unreachable
-  ]
+  .ltUI64
   ]
 
 def partialBookPrepareLocals (base : Locals) (book remaining : UInt64)
@@ -212,8 +204,37 @@ def partialBookPrepareFrame (base : Locals) (book remaining : UInt64)
     locals := partialBookPrepareLocals base book remaining os i
     values := [] }
 
+def partialBookGuardLocals (base : Locals) (book remaining : UInt64)
+    (os : List OrderL) (i : Nat) : List Value :=
+  let locals := base.locals.set 52 (.i64 book)
+  let locals := locals.set 53 (.i64 (UInt64.ofNat i))
+  let locals := locals.set 57 (.i64 book)
+  let locals := locals.set 58 (.i64 (UInt64.ofNat i))
+  let locals := locals.set 70 (.i64 book)
+  let locals := locals.set 71 (.i64 (UInt64.ofNat i))
+  let locals := locals.set 63 (.i64 os[i]!.oid)
+  let locals := locals.set 70 (.i64 book)
+  let locals := locals.set 71 (.i64 (UInt64.ofNat i))
+  let locals := locals.set 64 (.i64 os[i]!.otrader)
+  let locals := locals.set 70 (.i64 book)
+  let locals := locals.set 71 (.i64 (UInt64.ofNat i))
+  let locals := locals.set 65 (.i64 os[i]!.oside)
+  let locals := locals.set 70 (.i64 book)
+  let locals := locals.set 71 (.i64 (UInt64.ofNat i))
+  let locals := locals.set 66 (.i64 os[i]!.oprice)
+  let locals := locals.set 70 (.i64 book)
+  let locals := locals.set 71 (.i64 (UInt64.ofNat i))
+  let locals := locals.set 67 (.i64 (os[i]!.oqty - remaining))
+  locals.set 59 (.i64 (UInt64.ofNat os.length))
+
+def partialBookGuardFrame (base : Locals) (book remaining : UInt64)
+    (os : List OrderL) (i : Nat) : Locals :=
+  { base with
+    locals := partialBookGuardLocals base book remaining os i
+    values := [.i32 1] }
+
 set_option Elab.async false in
-theorem partialBookPrepareProg_spec
+theorem partialBookPrefixProg_spec
     (env : HostEnv Unit) (st : Store Unit) (base : Locals)
     (book remaining : UInt64) (os : List OrderL) (i : Nat)
     (hParams : base.params.length = 9)
@@ -227,8 +248,8 @@ theorem partialBookPrepareProg_spec
     (hOrders : OrdersAt st book os)
     (Q : Assertion Unit) (rest : Wasm.Program)
     (hDone : wp «module» rest Q st
-      (partialBookPrepareFrame base book remaining os i) env) :
-    wp «module» (partialBookPrepareProg ++ rest) Q st base env := by
+      (partialBookGuardFrame base book remaining os i) env) :
+    wp «module» (partialBookPrefixProg ++ rest) Q st base env := by
   have hBookGet : base.locals[6] = .i64 book := by
     apply Option.some.inj
     calc
@@ -265,7 +286,7 @@ theorem partialBookPrepareProg_spec
     rw [UInt64.lt_iff_toNat_lt, toNat_ofNat_lt (by omega),
       toNat_ofNat_lt hOrdersLength64]
     exact hi
-  simp only [partialBookPrepareProg, List.cons_append, List.nil_append]
+  simp only [partialBookPrefixProg, List.cons_append, List.nil_append]
   wp_run_prepare (hParams, hLocals, hValues, hBookGet, hIndexGet,
     hRemainingGet)
   rw [if_neg (Nat.not_lt.mpr hLengthBound), hLengthRead, if_pos hIndexLt]
@@ -319,11 +340,7 @@ theorem partialBookPrepareProg_spec
   wp_run_prepare (hParams, hLocals, hValues, hBookGet, hIndexGet,
     hRemainingGet)
   rw [if_neg (Nat.not_lt.mpr hLengthBound), hLengthRead, if_pos hIndexLt]
-  refine wp_iff_cons rfl ?_
-  rw [if_pos (by simp)]
-  wp_run_prepare (hParams, hLocals, hValues, hBookGet, hIndexGet,
-    hRemainingGet)
-  simpa only [partialBookPrepareFrame,
-    partialBookPrepareLocals, List.getElem!_eq_getElem?_getD] using hDone
+  simpa only [partialBookGuardFrame, partialBookGuardLocals,
+    List.getElem!_eq_getElem?_getD] using hDone
 
 end Project.ClobMatchFuel.PartialBookPrepare

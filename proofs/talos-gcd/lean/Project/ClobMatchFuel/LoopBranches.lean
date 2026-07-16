@@ -15,6 +15,8 @@ open Wasm Project.Clob Project.Runtime Project.ClobFindBest.Model
   Project.ClobMatchFuel.AllocatorFrame Project.ClobMatchFuel.LoopInvariant
   Project.ClobMatchFuel.LoopBounds
 
+set_option maxRecDepth 1048576
+
 set_option Elab.async false in
 theorem partial_spec (env : HostEnv Unit) (ctx : Context) (st : Store Unit)
     (base : Locals) (data : RunningData) (facts : RunningFacts ctx st base data)
@@ -120,7 +122,7 @@ theorem full_spec (env : HostEnv Unit) (ctx : Context) (st : Store Unit)
     (hDone : ∀ st1 s1, RunningAt ctx st1 s1 →
       measure st1 s1 < measure st base →
       wp «module» rest Q st1 s1 env) :
-    wp «module» ((Iteration.fullPrepareProg ++ FullStep.fullStepProg) ++ rest) Q
+    wp «module» (Iteration.fullBranchProg ++ rest) Q
       st (Iteration.quantityFrame base data.bookOwner data.book ctx.taker i) env := by
   rcases facts.locals with ⟨hParams, hLocals, hValues, hFuelLocal, hOid,
     hTrader, hSide, hPrice, hQtyLocal, hBookOwner, hBook, hTrades, hRemainingLocal,
@@ -140,7 +142,7 @@ theorem full_spec (env : HostEnv Unit) (ctx : Context) (st : Store Unit)
     · right
       rw [facts.oldTradesTracker]
       simp [hSteps]
-  apply Iteration.fullPrepareProg_spec env st
+  apply Iteration.fullBranchProg_spec env st
     (Iteration.quantityFrame base data.bookOwner data.book ctx.taker i) data.book
     ctx.taker data.orders i
   · simpa [Iteration.quantityFrame] using hParams
@@ -165,7 +167,7 @@ theorem full_spec (env : HostEnv Unit) (ctx : Context) (st : Store Unit)
   · exact bounds.ordersLength64
   · exact bounds.orderWords64
   · exact facts.bookOwned.2
-  · apply FullStep.fullStepProg_spec env st
+  · apply FullStep.fullBookThenStep_spec env st
       (Iteration.fullPrepareFrame
         (Iteration.quantityFrame base data.bookOwner data.book ctx.taker i)
         data.book ctx.taker data.orders i)
@@ -296,16 +298,18 @@ theorem full_spec (env : HostEnv Unit) (ctx : Context) (st : Store Unit)
           hRecursive hScratch hBookOwned hTradesOwned hBook48 hBook32 hBookCapacity
           hTrades48 hTrades32 hTradesCapacity hBookBelow hTradesBelow hHeapUpper
           hBookFree hTradesFree hNodesBelow hFreeList hPages hG0 hG1 hG2 hG4 hG5
-      apply hDone st1 final ⟨next, nextFacts⟩
-      rw [measure_running nextFacts, measure_running facts]
-      simp only [next, LoopAdvance.nextData]
-      rw [Budget.fuel_sub_one_toNat data.fuel hFuel]
-      have hFuelPositive : 0 < data.fuel.toNat := by
-        by_contra h
-        have hZero : data.fuel.toNat = 0 := by omega
-        apply hFuel
-        apply UInt64.toNat.inj
-        simpa using hZero
-      omega
+      have hMeasure : measure st1 final < measure st base := by
+        rw [measure_running nextFacts, measure_running facts]
+        simp only [next, LoopAdvance.nextData]
+        rw [Budget.fuel_sub_one_toNat data.fuel hFuel]
+        have hFuelPositive : 0 < data.fuel.toNat := by
+          by_contra h
+          have hZero : data.fuel.toNat = 0 := by omega
+          apply hFuel
+          apply UInt64.toNat.inj
+          simpa using hZero
+        omega
+      have hContinue := hDone st1 final ⟨next, nextFacts⟩ hMeasure
+      exact hContinue
 
 end Project.ClobMatchFuel.LoopBranches
