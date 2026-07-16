@@ -119,6 +119,16 @@ theorem fullBranchProg_spec
         (ts ++ [Model.fillTradeL taker os[i]! os[i]!.oqty]) →
       OwnedTradeArrayAt st1 oldTrades oldTradesCapacity ts →
       OwnedOrderArrayAt st1 book bookCapacity os →
+      48 ≤ newBook.toNat →
+      newBook.toNat + fixedArrayBytes (os.eraseIdx i).length 5 < 4294967296 →
+      fixedArrayBytes (os.eraseIdx i).length 5 ≤ newBookCapacity.toNat →
+      48 ≤ newTrades.toNat →
+      newTrades.toNat +
+        fixedArrayBytes (ts ++ [Model.fillTradeL taker os[i]! os[i]!.oqty]).length
+          4 < 4294967296 →
+      fixedArrayBytes
+          (ts ++ [Model.fillTradeL taker os[i]! os[i]!.oqty]).length 4 ≤
+        newTradesCapacity.toNat →
       FreeListAt st1.mem nodes1 →
       st1.mem.pages = st.mem.pages →
       regionsDisjoint (fixedArrayRegion oldTrades oldTradesCapacity)
@@ -302,12 +312,14 @@ theorem fullBranchProg_spec
     · exact hCurrentG5
     · exact hFinalList
     · intro st2 s newTrades newTradesCapacity nodes2 g0Final hResult
-        hNewBookFinal hNewTradesFinal hOldTradesFinal hBookFinal hList2 hPages2
-        hOldTradesNewBook2 hOldTradesNewTrades hOldTradesFree2 hG0 hG1 hG2 hG4
-        hG5
+        hNewBookFinal hNewTradesFinal hOldTradesFinal hBookFinal hNewBook48
+        hNewBook32 hNewBookCapacity hNewTrades48 hNewTrades32 hNewTradesCapacity
+        hList2 hPages2 hOldTradesNewBook2 hOldTradesNewTrades hOldTradesFree2 hG0
+        hG1 hG2 hG4 hG5
       apply hDone st2 s choice.node.root choice.node.capacity newTrades
         newTradesCapacity nodes2 g0Final hResult hNewBookFinal hNewTradesFinal
-        hOldTradesFinal hBookFinal hList2
+        hOldTradesFinal hBookFinal hNewBook48 hNewBook32 hNewBookCapacity
+        hNewTrades48 hNewTrades32 hNewTradesCapacity hList2
       · exact hPages2.trans hFinalPages
       · exact hOldTradesNewBook2
       · exact hOldTradesNewTrades
@@ -487,15 +499,22 @@ theorem fullBranchProg_spec
     · exact hCurrentG5
     · exact hFinalList
     · intro st2 s newTrades newTradesCapacity nodes2 g0Final hResult
-        hNewBookFinal hNewTradesFinal hOldTradesFinal hBookFinal hList2 hPages2
-        hOldTradesNewBook2 hOldTradesNewTrades hOldTradesFree2 hG0 hG1 hG2 hG4
-        hG5
+        hNewBookFinal hNewTradesFinal hOldTradesFinal hBookFinal hNewBook48
+        hNewBook32 hNewBookCapacity hNewTrades48 hNewTrades32 hNewTradesCapacity
+        hList2 hPages2 hOldTradesNewBook2 hOldTradesNewTrades hOldTradesFree2 hG0
+        hG1 hG2 hG4 hG5
       apply hDone st2 s newBook bookNeed newTrades newTradesCapacity nodes2
         g0Final hResult
       · simpa [newBook, bookNeed] using hNewBookFinal
       · exact hNewTradesFinal
       · exact hOldTradesFinal
       · exact hBookFinal
+      · exact hNewBook48
+      · exact hNewBook32
+      · exact hNewBookCapacity
+      · exact hNewTrades48
+      · exact hNewTrades32
+      · exact hNewTradesCapacity
       · exact hList2
       · exact hPages2.trans hFinalPages
       · exact hOldTradesNewBook2

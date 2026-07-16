@@ -23,6 +23,7 @@ import Project.ClobMatchFuel.FullTradeUpdate
 import Project.ClobMatchFuel.FullBranch
 import Project.ClobMatchFuel.ReleaseOld
 import Project.ClobMatchFuel.FullTransition
+import Project.ClobMatchFuel.FullReleaseTransition
 
 /-!
 # The `matchFuel` theorem
