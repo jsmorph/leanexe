@@ -31,8 +31,9 @@ def bumpFrame (base : Locals) (n : Nat) (g0 previous : UInt64) : Locals :=
 set_option Elab.async false in
 theorem tradeAllocAppendProg_spec
     (env : HostEnv Unit) (st : Store Unit) (base : Locals)
-    (source sourceCapacity g0 g2 capacity next : UInt64)
-    (ts : List TradeL) (trade : TradeL) (nodes : List FreeNode)
+    (source sourceCapacity liveBook liveBookCapacity g0 g2 capacity next : UInt64)
+    (ts : List TradeL) (trade : TradeL) (liveOrders : List OrderL)
+    (nodes : List FreeNode)
     (hParams : base.params.length = 9)
     (hLocals : base.locals.length = 76)
     (hValues : base.values = [])
@@ -67,9 +68,20 @@ theorem tradeAllocAppendProg_spec
     (hSourceBelow : source.toNat + sourceCapacity.toNat ≤ g0.toNat)
     (hSourceFree :
       FreeListSeparatedFromFixedArray nodes source sourceCapacity)
+    (hLiveBook48 : 48 ≤ liveBook.toNat)
+    (hLiveBook32 :
+      liveBook.toNat + fixedArrayBytes liveOrders.length 5 < 4294967296)
+    (hLiveBookCapacity :
+      fixedArrayBytes liveOrders.length 5 ≤ liveBookCapacity.toNat)
+    (hLiveBookBelow :
+      liveBook.toNat + liveBookCapacity.toNat ≤ g0.toNat)
+    (hLiveBookFree :
+      FreeListSeparatedFromFixedArray nodes liveBook liveBookCapacity)
     (hNodesBelow : ∀ node ∈ nodes,
       node.root.toNat + node.capacity.toNat ≤ g0.toNat)
     (hOwned : OwnedTradeArrayAt st source sourceCapacity ts)
+    (hLiveBookOwned :
+      OwnedOrderArrayAt st liveBook liveBookCapacity liveOrders)
     (hg0 : st.globals.globals[0]? = some (.i64 g0))
     (hg1 : st.globals.globals[1]? = some (.i64 (freeHead nodes)))
     (hg2 : st.globals.globals[2]? = some (.i64 g2))
@@ -90,6 +102,10 @@ theorem tradeAllocAppendProg_spec
           (TradeAppendStore.appendTradeStore st1 choice.node.root ts.length
             trade)
           choice.node.root choice.node.capacity (ts ++ [trade]) →
+        OwnedOrderArrayAt
+          (TradeAppendStore.appendTradeStore st1 choice.node.root ts.length
+            trade)
+          liveBook liveBookCapacity liveOrders →
         MemEqOutsideFlatWords (TradeAllocFit.tradeAllocFitStore st choice)
           (TradeAppendStore.appendTradeStore st1 choice.node.root ts.length
             trade)
@@ -126,6 +142,9 @@ theorem tradeAllocAppendProg_spec
       OwnedTradeArrayAt
         (TradeAppendStore.appendTradeStore st1 (g0 + 48) ts.length trade)
         (g0 + 48) (tradeArrayBytesU (ts.length + 1)) (ts ++ [trade]) →
+      OwnedOrderArrayAt
+        (TradeAppendStore.appendTradeStore st1 (g0 + 48) ts.length trade)
+        liveBook liveBookCapacity liveOrders →
       MemEqOutsideFlatWords
         (TradeAllocBump.tradeAllocBumpStore st g0
           (tradeArrayBytesU (ts.length + 1)))
@@ -206,6 +225,26 @@ theorem tradeAllocAppendProg_spec
           change fixedArrayBytes (ts.length + 1) 4 + 7 < UInt64.size at hbytes
           omega)
       rw [UInt64.le_iff_toNat_le, hNeedNat] at hChoiceCapacity
+      have hLiveBookAlloc : OwnedOrderArrayAt
+          (TradeAllocFit.tradeAllocFitStore st choice) liveBook
+          liveBookCapacity liveOrders :=
+        ownedOrderArrayAt_fixedArrayAllocFitStore hList hTake hLiveBook48
+          hLiveBook32 hLiveBookCapacity hLiveBookFree hLiveBookOwned
+      have hChoiceMem := takeFirstFitFrom_some_mem hTake
+      have hLiveBookChoiceSep := hLiveBookFree choice.node hChoiceMem
+      have hPayloadLiveBookSep : regionsDisjoint
+          (flatWordsRegion choice.node.root ((ts.length + 1) * 4))
+          (fixedArrayRegion liveBook liveBookCapacity) := by
+        unfold regionsDisjoint fixedArrayRegion FreeNode.region at hLiveBookChoiceSep
+        unfold regionsDisjoint flatWordsRegion fixedArrayRegion
+        unfold tradeArrayBytes fixedArrayBytes at hChoiceCapacity
+        omega
+      have hLiveBookFinal : OwnedOrderArrayAt
+          (TradeAppendStore.appendTradeStore st1 choice.node.root ts.length
+            trade) liveBook liveBookCapacity liveOrders :=
+        OwnedOrderArrayAt.frame_outsideFlatWords hLiveBook48 hLiveBook32
+          hLiveBookCapacity hFinalPages hPayloadLiveBookSep hOutsideFinal
+          hLiveBookAlloc
       have hFinalList : FreeListAt
           (TradeAppendStore.appendTradeStore st1 choice.node.root ts.length
             trade).mem choice.remaining :=
@@ -228,8 +267,8 @@ theorem tradeAllocAppendProg_spec
         rw [hFinalGlobals]
         simpa [List.getElem?_set] using hAllocG1
       exact hFitDone choice hTake st1 hTarget48 hTarget32 hTargetFit
-        hOwnedSource ⟨hFreshFinal, hTargetFinal⟩ hOutsideFinal hFinalPages
-        hFinalGlobals hFinalList hFinalG0 hFinalG1
+        hOwnedSource ⟨hFreshFinal, hTargetFinal⟩ hLiveBookFinal hOutsideFinal
+        hFinalPages hFinalGlobals hFinalList hFinalG0 hFinalG1
   · intro previous st1 hTarget48 hTarget32 hTargetFit hOwnedSource hInv
     have hState := hInv
     obtain ⟨_, _, _, hCopyPages, hCopyGlobals, _, _, _, _, _⟩ := hState
@@ -270,6 +309,29 @@ theorem tradeAllocAppendProg_spec
             (tradeArrayBytesU (ts.length + 1))).globals.globals.set
               2 (.i64 (g2 + 1)) := by
         simpa [TradeAppendStore.appendTradeStore] using hCopyGlobals
+      have hLiveBookAlloc : OwnedOrderArrayAt
+          (TradeAllocBump.tradeAllocBumpStore st g0
+            (tradeArrayBytesU (ts.length + 1))) liveBook liveBookCapacity
+              liveOrders :=
+        ownedOrderArrayAt_fixedArrayAllocBumpStore hFit32 hLiveBook48
+          hLiveBook32 hLiveBookCapacity hLiveBookBelow hLiveBookOwned
+      have hTargetNat : (g0 + 48).toNat = g0.toNat + 48 := by
+        rw [UInt64.toNat_add]
+        have h48 : (48 : UInt64).toNat = 48 := rfl
+        rw [h48, Nat.mod_eq_of_lt (by omega)]
+      have hPayloadLiveBookSep : regionsDisjoint
+          (flatWordsRegion (g0 + 48) ((ts.length + 1) * 4))
+          (fixedArrayRegion liveBook liveBookCapacity) := by
+        unfold regionsDisjoint flatWordsRegion fixedArrayRegion
+        right
+        rw [hTargetNat]
+        omega
+      have hLiveBookFinal : OwnedOrderArrayAt
+          (TradeAppendStore.appendTradeStore st1 (g0 + 48) ts.length trade)
+          liveBook liveBookCapacity liveOrders :=
+        OwnedOrderArrayAt.frame_outsideFlatWords hLiveBook48 hLiveBook32
+          hLiveBookCapacity hFinalPages hPayloadLiveBookSep hOutsideFinal
+          hLiveBookAlloc
       have hFinalList : FreeListAt
           (TradeAppendStore.appendTradeStore st1 (g0 + 48) ts.length
             trade).mem nodes :=
@@ -291,7 +353,7 @@ theorem tradeAllocAppendProg_spec
         rw [hFinalGlobals]
         simpa [List.getElem?_set] using hAllocG1
       exact hBumpDone previous st1 hTarget48 hTarget32 hTargetFit
-        hOwnedSource ⟨hFreshFinal, hTargetFinal⟩ hOutsideFinal hFinalPages
-        hFinalGlobals hFinalList hFinalG0 hFinalG1
+        hOwnedSource ⟨hFreshFinal, hTargetFinal⟩ hLiveBookFinal hOutsideFinal
+        hFinalPages hFinalGlobals hFinalList hFinalG0 hFinalG1
 
 end Project.ClobMatchFuel.TradeAllocAppend
