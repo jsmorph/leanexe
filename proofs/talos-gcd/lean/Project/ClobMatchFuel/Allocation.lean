@@ -24,6 +24,14 @@ abbrev FreshOrderArrayAt (st : Store Unit) (ptr capacity : UInt64) : Prop :=
 abbrev FreshTradeArrayAt (st : Store Unit) (ptr capacity : UInt64) : Prop :=
   FreshFixedArrayAt st ptr capacity 4
 
+def fixedArrayReleaseMem (st : Store Unit) (p freeHead : UInt64) : Mem :=
+  (st.mem.write64 ((p - 40).toUInt32) 0).write64
+    ((p - 8).toUInt32) freeHead
+
+def fixedArrayReleaseGlobals (st : Store Unit) (p g4 g5 : UInt64) :=
+  ((st.globals.globals.set 4 (.i64 (g4 + 1))).set 5
+    (.i64 (g5 + 1))).set 1 (.i64 p)
+
 theorem func18_frees_fixed_array_zero_mask
     (env : HostEnv Unit) (st : Store Unit) (p capacity g1 g4 g5 : UInt64)
     (len stride : Nat)
@@ -41,12 +49,10 @@ theorem func18_frees_fixed_array_zero_mask
       [.i64 p]
       (fun st' vs =>
         vs = [] ∧
-        st'.mem = (st.mem.write64 ((p - 40).toUInt32) 0).write64
-          ((p - 8).toUInt32) g1 ∧
-        st'.globals.globals =
-          ((st.globals.globals.set 4 (.i64 (g4 + 1))).set 5
-            (.i64 (g5 + 1))).set 1 (.i64 p)) := by
-  exact Project.Runtime.release_frees_fixed_array_zero_mask
+        st'.mem = fixedArrayReleaseMem st p g1 ∧
+        st'.globals.globals = fixedArrayReleaseGlobals st p g4 g5) := by
+  simpa only [fixedArrayReleaseMem, fixedArrayReleaseGlobals] using
+    Project.Runtime.release_frees_fixed_array_zero_mask
     env «module» 18 st p g1 g4 g5 len stride (by rfl) rfl hlen32
     hstride32 hp48 hp32 hfit hfresh.1 hfresh.2.1 hfresh.2.2.2.1 hlen
     hfresh.2.2.2.2.1 hfresh.2.2.2.2.2 hg1 hg4 hg5
