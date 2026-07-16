@@ -4898,3 +4898,11 @@ The warning-failing constrained build completes `Project.ClobMatchFuel.EarlyExit
 The zero-remaining theorem passes a warning-failing constrained build in 46 seconds.  Its two-phase invariant uses the done flag as a natural-number measure and proves the generated re-entry decreases that measure from one to zero.  Both phases preserve the complete store and return the input state pointers and zero remaining quantity.
 
 The no-maker theorem extends the invariant with the stable taker fields, the wrapper's zero argument, and the empty operand stack.  It calls the verified function-9 search theorem, reduces the `none` option ABI, and returns the input state without changing the store.  The complete early-exit module passes a warning-failing constrained build in 79 seconds.
+
+## 2026-07-15: Fixed-Array Release Semantics
+
+The generated `matchFuel` module's functions 15 through 18 are definitionally equal to the shared allocator, reset, retain, and release definitions.  `Project.Runtime.Checks` now pins those equalities, and its warning-failing constrained build completes in 2.2 seconds.  Function 18 therefore uses the module-generic runtime specifications instead of an artifact-specific copy of the release proof.
+
+The existing release theorems did not cover the arrays used by matching.  `release_frees_fresh_raw` requires kind 0, while `release_frees_tree` models kind-1 slot objects; CLOB books and trades are kind-2 fixed arrays.  The runtime's kind-2 branch reads the array length, stride, and pointer mask, walks both dimensions, releases each masked field, and then adds the root to the free list.
+
+`Project.Runtime.FixedArraySpec.release_frees_fixed_array_zero_mask` proves the shared kind-2 case used by CLOB arrays.  Two natural-number variants prove termination of the generated nested loops, and the zero mask proves that the walk neither reads element words nor calls release recursively.  The theorem returns the exact refcount write, free-list link, release and free counter increments, and unchanged remaining globals; its warning-failing constrained build completes in 7.9 seconds.
