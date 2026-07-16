@@ -20,8 +20,9 @@ theorem of_stop (ctx : Context) (st : Store Unit) (s : Locals)
     (data : RunningData) (facts : RunningFacts ctx st s data)
     (hFuel : data.fuel ≠ 0)
     (hStop : data.remaining = 0 ∨ findBestL data.orders ctx.taker = none)
-    (hResult : LoopControl.CompletedResultAt s data.book data.trades
-      data.remaining) : CompletedAt ctx st s := by
+    (s1 : Locals)
+    (hResult : LoopControl.CompletedResultAt s1 data.book data.trades
+      data.remaining) : CompletedAt ctx st s1 := by
   obtain ⟨hSource, hFills⟩ := stopped_source ctx st s data facts hFuel hStop
   have hG2 := expectedG2_current ctx st s data facts (by
     rw [hSource]
