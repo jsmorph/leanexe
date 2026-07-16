@@ -4950,3 +4950,9 @@ The warning-failing constrained `Project.FixedArrayAllocation` build completes i
 `Project.ClobMatchFuel.BookAllocBump.bookAllocBumpProg_spec` proves the generated no-result allocation branch from its local-81 test through the heap-top update and six header stores.  Its assumptions state the generated eight-byte minimum capacity, exact nonwrapping top arithmetic, sufficient existing pages, the Wasm page limit, and global 0.  The postcondition records `fixedArrayHeaderMem`, the new global 0 value, the payload root, the computed page count, and the overwritten local frame.
 
 `bookAllocNoFitProg_spec` composes that result with `bookAllocSearchProg_no_fit`, retaining the final predecessor as an irrelevant quantified local.  `freshOrderArrayAt_bookAllocBumpStore` proves the fresh kind-2 header, while `freeListAt_bookAllocBumpStore` preserves represented free nodes whose allocated regions end at or below the old heap top.  The warning-failing constrained `Project.ClobMatchFuel.BookAllocBump` build completes in 6.4 seconds, and the unchanged aggregate target was not retried after its recorded timeout.
+
+## 2026-07-15: Erased Order Reconstruction
+
+`OrdersAt.eraseIdx_ofFlatWords` reconstructs an erased order array from an unchanged flat prefix and a suffix shifted left by one five-word order.  It also consumes the output length word and all target read bounds, then uses the source `OrdersAt` predicate to identify each retained field.  The theorem factors the list-index and five-field reasoning shared by the completed cancel proof and the full-fill `matchFuel` branch.
+
+The warning-failing constrained `Project.Clob` build completes in 2.6 seconds.  The helper builds on `OrdersAt.ofFlatWords` and adds no tactic or memory-layout assumption.  The generated copy loops remain responsible for proving the prefix, suffix, and target-bound hypotheses.
