@@ -189,12 +189,13 @@ theorem releaseOwnedArraysProg_spec
     (hOldTradesCapacity :
       fixedArrayBytes oldTradeValues.length 4 ≤ oldTradesCapacity.toNat)
     (hNewBook48 : 48 ≤ newBook.toNat)
-    (hNewBook32 : newBook.toNat + newBookCapacity.toNat < 4294967296)
+    (hNewBook32 :
+      newBook.toNat + fixedArrayBytes newOrders.length 5 < 4294967296)
     (hNewBookCapacity :
       fixedArrayBytes newOrders.length 5 ≤ newBookCapacity.toNat)
     (hNewTrades48 : 48 ≤ newTrades.toNat)
-    (hNewTrades32 :
-      newTrades.toNat + newTradesCapacity.toNat < 4294967296)
+    (hNewTrades32 : newTrades.toNat +
+      fixedArrayBytes newTradeValues.length 4 < 4294967296)
     (hNewTradesCapacity :
       fixedArrayBytes newTradeValues.length 4 ≤ newTradesCapacity.toNat)
     (hOldBookOwned :
@@ -248,13 +249,6 @@ theorem releaseOwnedArraysProg_spec
     omega
   have hOldTradesContent32 :
       oldTrades.toNat + fixedArrayBytes oldTradeValues.length 4 <
-        4294967296 := by
-    omega
-  have hNewBookContent32 :
-      newBook.toNat + fixedArrayBytes newOrders.length 5 < 4294967296 := by
-    omega
-  have hNewTradesContent32 :
-      newTrades.toNat + fixedArrayBytes newTradeValues.length 4 <
         4294967296 := by
     omega
   have hOldBookLength32 : oldOrders.length < 4294967296 := by
@@ -338,22 +332,22 @@ theorem releaseOwnedArraysProg_spec
     have hNewBookOwned1 :
         OwnedOrderArrayAt st1 newBook newBookCapacity newOrders :=
       ReleaseFrame.OwnedOrderArrayAt.frame_release hOldBook48 hOldBook32
-        hNewBook48 hNewBookContent32 hNewBookCapacity hOldBookNewBook hMem1
+        hNewBook48 hNewBook32 hNewBookCapacity hOldBookNewBook hMem1
         hNewBookOwned
     have hNewTradesOwned1 :
         OwnedTradeArrayAt st1 newTrades newTradesCapacity newTradeValues :=
       ReleaseFrame.OwnedTradeArrayAt.frame_release hOldBook48 hOldBook32
-        hNewTrades48 hNewTradesContent32 hNewTradesCapacity
+        hNewTrades48 hNewTrades32 hNewTradesCapacity
         hOldBookNewTrades hMem1 hNewTradesOwned
     have hNewBookOwned2 :
         OwnedOrderArrayAt st2 newBook newBookCapacity newOrders :=
       ReleaseFrame.OwnedOrderArrayAt.frame_release hOldTrades48 hOldTrades32
-        hNewBook48 hNewBookContent32 hNewBookCapacity hOldTradesNewBook hMem2
+        hNewBook48 hNewBook32 hNewBookCapacity hOldTradesNewBook hMem2
         hNewBookOwned1
     have hNewTradesOwned2 :
         OwnedTradeArrayAt st2 newTrades newTradesCapacity newTradeValues :=
       ReleaseFrame.OwnedTradeArrayAt.frame_release hOldTrades48 hOldTrades32
-        hNewTrades48 hNewTradesContent32 hNewTradesCapacity
+        hNewTrades48 hNewTrades32 hNewTradesCapacity
         hOldTradesNewTrades hMem2 hNewTradesOwned1
     have hList1Mem := freeListAt_fixedArrayReleaseMem st oldBook
       oldBookCapacity nodes hOldBook48 hOldBook32 hOldBookFit
@@ -543,12 +537,13 @@ theorem releaseTrackedTradeProg_spec
     (hOldTradesCapacity :
       fixedArrayBytes oldTradeValues.length 4 ≤ oldTradesCapacity.toNat)
     (hNewBook48 : 48 ≤ newBook.toNat)
-    (hNewBook32 : newBook.toNat + newBookCapacity.toNat < 4294967296)
+    (hNewBook32 :
+      newBook.toNat + fixedArrayBytes newOrders.length 5 < 4294967296)
     (hNewBookCapacity :
       fixedArrayBytes newOrders.length 5 ≤ newBookCapacity.toNat)
     (hNewTrades48 : 48 ≤ newTrades.toNat)
-    (hNewTrades32 :
-      newTrades.toNat + newTradesCapacity.toNat < 4294967296)
+    (hNewTrades32 : newTrades.toNat +
+      fixedArrayBytes newTradeValues.length 4 < 4294967296)
     (hNewTradesCapacity :
       fixedArrayBytes newTradeValues.length 4 ≤ newTradesCapacity.toNat)
     (hOldTradesOwned :
@@ -583,13 +578,6 @@ theorem releaseTrackedTradeProg_spec
       oldTrades.toNat + fixedArrayBytes oldTradeValues.length 4 <
         4294967296 := by
     omega
-  have hNewBookContent32 :
-      newBook.toNat + fixedArrayBytes newOrders.length 5 < 4294967296 := by
-    omega
-  have hNewTradesContent32 :
-      newTrades.toNat + fixedArrayBytes newTradeValues.length 4 <
-        4294967296 := by
-    omega
   have hOldTradesLength32 : oldTradeValues.length < 4294967296 := by
     unfold fixedArrayBytes at hOldTradesContent32
     omega
@@ -620,12 +608,12 @@ theorem releaseTrackedTradeProg_spec
     have hNewBookOwned1 :
         OwnedOrderArrayAt st1 newBook newBookCapacity newOrders :=
       ReleaseFrame.OwnedOrderArrayAt.frame_release hOldTrades48 hOldTrades32
-        hNewBook48 hNewBookContent32 hNewBookCapacity hOldTradesNewBook hMem1
+        hNewBook48 hNewBook32 hNewBookCapacity hOldTradesNewBook hMem1
         hNewBookOwned
     have hNewTradesOwned1 :
         OwnedTradeArrayAt st1 newTrades newTradesCapacity newTradeValues :=
       ReleaseFrame.OwnedTradeArrayAt.frame_release hOldTrades48 hOldTrades32
-        hNewTrades48 hNewTradesContent32 hNewTradesCapacity
+        hNewTrades48 hNewTrades32 hNewTradesCapacity
         hOldTradesNewTrades hMem1 hNewTradesOwned
     have hList1Mem := freeListAt_fixedArrayReleaseMem st oldTrades
       oldTradesCapacity nodes hOldTrades48 hOldTrades32 hOldTradesFit
