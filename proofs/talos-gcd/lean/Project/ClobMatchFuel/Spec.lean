@@ -11,6 +11,7 @@ import Project.ClobMatchFuel.TradeAllocCopy
 import Project.ClobMatchFuel.TradeAllocAppend
 import Project.ClobMatchFuel.TradeAppendCopy
 import Project.ClobMatchFuel.TradeAppendFinish
+import Project.ClobMatchFuel.ReleaseOld
 
 /-!
 # The `matchFuel` theorem
