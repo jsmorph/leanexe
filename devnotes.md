@@ -4892,5 +4892,7 @@ The first exported-function theorem proves that zero public fuel returns the inp
 The warning-failing constrained build completes `Project.ClobMatchFuel.EarlyExit` in 19 seconds.  The proof selects the generated false branch after the fuel test, follows its break from the enclosing block, and proves the final three-value ABI exactly.  The same frame facts will support the zero-remaining and no-maker exits, which each enter the loop once before setting the done flag.
 
 - [x] Prove the zero-fuel exit over the exact public ABI.
-- [ ] Prove the zero-remaining exit for nonzero fuel.
+- [x] Prove the zero-remaining exit for nonzero fuel.
 - [ ] Prove the no-maker exit through the verified search wrapper.
+
+The zero-remaining theorem passes a warning-failing constrained build in 46 seconds.  Its two-phase invariant uses the done flag as a natural-number measure and proves the generated re-entry decreases that measure from one to zero.  Both phases preserve the complete store and return the input state pointers and zero remaining quantity.
