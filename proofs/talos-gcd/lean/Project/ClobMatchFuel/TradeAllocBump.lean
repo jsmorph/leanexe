@@ -270,6 +270,27 @@ theorem tradeAllocBumpProg_spec
     toUInt32_eq_ofNat, hsub48, hsub40, hsub32, hsub24, hsub16, hsub8]
     using hNext
 
+theorem tradeAllocBumpProg_skip
+    (env : HostEnv Unit) (st : Store Unit) (base : Locals)
+    (need previous current capacity next result : UInt64)
+    (hParams : base.params.length = 9)
+    (hLocals : base.locals.length = 76)
+    (hValues : base.values = [])
+    (hResult : result ≠ 0)
+    (Q : Assertion Unit) (rest : Wasm.Program)
+    (hNext : wp «module» rest Q st
+      (TradeAllocSearch.tradeAllocSearchFrame base need previous current
+        capacity next result) env) :
+    wp «module» (tradeAllocBumpProg ++ rest) Q st
+      (TradeAllocSearch.tradeAllocSearchFrame base need previous current
+        capacity next result) env := by
+  simp only [tradeAllocBumpProg, List.cons_append, List.nil_append,
+    TradeAllocSearch.tradeAllocSearchFrame]
+  wp_run_bump (hParams, hLocals, hValues)
+  refine wp_iff_cons rfl ?_
+  rw [if_neg (by simp [hResult])]
+  simpa [TradeAllocSearch.tradeAllocSearchFrame, hValues] using hNext
+
 def tradeAllocNoFitProg : Wasm.Program :=
   TradeAllocSearch.tradeAllocSearchProg ++ tradeAllocBumpProg
 
