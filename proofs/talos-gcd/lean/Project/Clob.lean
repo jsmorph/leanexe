@@ -59,6 +59,16 @@ def flatWordsRegion (ptr : UInt64) (words : Nat) : Nat × Nat :=
 def flatWordsDisjoint (a b : Nat × Nat) : Prop :=
   a.1 + a.2 ≤ b.1 ∨ b.1 + b.2 ≤ a.1
 
+theorem flatWordsDisjoint_address
+    {sourcePtr targetPtr : UInt64} {sourceWords targetWords slot offset : Nat}
+    (hSlot : slot ≤ targetWords) (hOffset : offset ≤ sourceWords * 8)
+    (hsep : flatWordsDisjoint (flatWordsRegion targetPtr targetWords)
+      (flatWordsRegion sourcePtr sourceWords)) :
+    sourcePtr.toNat + offset + 8 ≤ targetPtr.toNat + slot * 8 ∨
+      targetPtr.toNat + slot * 8 + 8 ≤ sourcePtr.toNat + offset := by
+  unfold flatWordsDisjoint flatWordsRegion at hsep
+  omega
+
 def OrdersAt (st : Store Unit) (ptr : UInt64) (os : List OrderL) : Prop :=
   (st.mem.read64 (UInt32.ofNat (ptr.toNat % 4294967296)) =
       UInt64.ofNat os.length ∧
@@ -226,8 +236,7 @@ theorem OrdersAt.frame_write64_flatWordsDisjoint
           targetPtr.toNat + slot * 8 ∨
         targetPtr.toNat + slot * 8 + 8 ≤
           sourcePtr.toNat + sourceOffset := by
-    unfold flatWordsDisjoint flatWordsRegion at hsep
-    omega
+    exact flatWordsDisjoint_address hSlot hSourceOffset hsep
   have hLengthRead :
       (st.mem.write64
           (UInt32.ofNat
@@ -394,6 +403,47 @@ theorem TradesAt.ofFlatWords {st : Store Unit} {ptr : UInt64}
   · simpa using hFieldBound 2 (by omega)
   · simpa [TradeL.word] using hRead 3 (by omega)
   · simpa using hFieldBound 3 (by omega)
+
+theorem TradesAt.frame_write64_flatWordsDisjoint
+    {st : Store Unit} {sourcePtr targetPtr : UInt64}
+    {ts : List TradeL} {targetWords slot : Nat} {value : UInt64}
+    (hSource32 :
+      sourcePtr.toNat + (ts.length * 4 + 1) * 8 < 4294967296)
+    (hTarget32 :
+      targetPtr.toNat + (targetWords + 1) * 8 < 4294967296)
+    (hSlot : slot ≤ targetWords)
+    (hsep : flatWordsDisjoint (flatWordsRegion targetPtr targetWords)
+      (flatWordsRegion sourcePtr (ts.length * 4)))
+    (hTrades : TradesAt st sourcePtr ts) :
+    TradesAt
+      { st with mem := (st.mem.write64
+        (UInt32.ofNat
+          ((targetPtr.toNat + slot * 8) % 4294967296)) value) }
+      sourcePtr ts := by
+  have hAddressSep (sourceOffset : Nat)
+      (hSourceOffset : sourceOffset ≤ ts.length * 4 * 8) :
+      sourcePtr.toNat + sourceOffset + 8 ≤
+          targetPtr.toNat + slot * 8 ∨
+        targetPtr.toNat + slot * 8 + 8 ≤
+          sourcePtr.toNat + sourceOffset :=
+    flatWordsDisjoint_address hSlot hSourceOffset hsep
+  apply TradesAt.ofFlatWords
+  · rw [Project.Common.read64_write64_ne _ _ _ _ (by
+        simp only [Project.Common.toUInt32_ofNat_mod_toNat]
+        rw [Nat.mod_eq_of_lt (by omega), Nat.mod_eq_of_lt (by omega)]
+        exact hAddressSep 0 (by omega))]
+    exact hTrades.1.1
+  · exact hTrades.1.2
+  · intro j hj field hfield
+    unfold tradeWord
+    rw [Project.Common.read64_write64_ne _ _ _ _ (by
+      simp only [Project.Common.toUInt32_ofNat_mod_toNat]
+      rw [Nat.mod_eq_of_lt (by omega), Nat.mod_eq_of_lt (by omega)]
+      apply hAddressSep ((j * 4 + field + 1) * 8)
+      omega)]
+    exact hTrades.tradeWord_eq j field hj hfield
+  · intro j hj field hfield
+    exact hTrades.tradeWord_bound j field hj hfield
 
 def fixedArrayBytes (n stride : Nat) : Nat :=
   8 + n * stride * 8
