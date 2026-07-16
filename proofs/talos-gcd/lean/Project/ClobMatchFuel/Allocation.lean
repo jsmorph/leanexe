@@ -32,6 +32,34 @@ def fixedArrayReleaseGlobals (st : Store Unit) (p g4 g5 : UInt64) :=
   ((st.globals.globals.set 4 (.i64 (g4 + 1))).set 5
     (.i64 (g5 + 1))).set 1 (.i64 p)
 
+theorem fixedArrayReleaseGlobals_get_of_ne
+    (st : Store Unit) (p g4 g5 : UInt64) (i : Nat) (value : Value)
+    (hi1 : i ≠ 1) (hi4 : i ≠ 4) (hi5 : i ≠ 5)
+    (hValue : st.globals.globals[i]? = some value) :
+    (fixedArrayReleaseGlobals st p g4 g5)[i]? = some value := by
+  have h1i : 1 ≠ i := Ne.symm hi1
+  have h4i : 4 ≠ i := Ne.symm hi4
+  have h5i : 5 ≠ i := Ne.symm hi5
+  simp [fixedArrayReleaseGlobals, h1i, h4i, h5i, hValue]
+
+theorem fixedArrayReleaseGlobals_global1
+    (st : Store Unit) (p g4 g5 : UInt64)
+    (hLength : 1 < st.globals.globals.length) :
+    (fixedArrayReleaseGlobals st p g4 g5)[1]? = some (.i64 p) := by
+  simp [fixedArrayReleaseGlobals, hLength]
+
+theorem fixedArrayReleaseGlobals_global4
+    (st : Store Unit) (p g4 g5 : UInt64)
+    (hLength : 4 < st.globals.globals.length) :
+    (fixedArrayReleaseGlobals st p g4 g5)[4]? = some (.i64 (g4 + 1)) := by
+  simp [fixedArrayReleaseGlobals, hLength]
+
+theorem fixedArrayReleaseGlobals_global5
+    (st : Store Unit) (p g4 g5 : UInt64)
+    (hLength : 5 < st.globals.globals.length) :
+    (fixedArrayReleaseGlobals st p g4 g5)[5]? = some (.i64 (g5 + 1)) := by
+  simp [fixedArrayReleaseGlobals, hLength]
+
 theorem func18_frees_fixed_array_zero_mask
     (env : HostEnv Unit) (st : Store Unit) (p capacity g1 g4 g5 : UInt64)
     (len stride : Nat)
