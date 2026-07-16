@@ -5002,3 +5002,7 @@ The successful-fit and bump allocation stores now take the fixed-array element s
 ## 2026-07-15: Fixed-Array Region Frames
 
 `fixedArrayRegion` covers the six-word allocation header and the payload capacity recorded in that header.  `FreshFixedArrayAt.frame_region`, `OrdersAt.frame_region`, and `TradesAt.frame_region` preserve the corresponding representations when memory pages agree and every byte in that region is unchanged.  The warning-failing constrained `Project.Clob` build completes in 4.8 seconds.
+
+## 2026-07-15: Live-Array Allocator Frames
+
+`AllocatorFrame` defines refcount-one order and trade arrays by combining their fixed-array headers with their represented contents.  A free-list separation predicate covers the source's complete allocation region, so the successful-fit theorem preserves the source across both the predecessor unlink and the selected node's six header writes.  The bump theorem uses below-heap byte preservation, and a common interval lemma derives the payload separation required by each copy loop; the warning-failing constrained target completes in 1.5 seconds after its dependencies are current.

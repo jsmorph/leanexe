@@ -108,6 +108,24 @@ theorem emptyFixedArrayMem_spec (st : Store Unit) (base capacity stride : UInt64
   read_frames
   simp
 
+theorem fixedArrayHeaderMem_bytes_before (mem : Mem)
+    (base capacity stride : UInt64) (a : Nat)
+    (hFit32 : base.toNat + 48 < 4294967296) (ha : a < base.toNat) :
+    (fixedArrayHeaderMem mem base capacity stride).bytes a = mem.bytes a := by
+  unfold fixedArrayHeaderMem
+  rw [write64_bytes_lo _ _ _
+        (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+    write64_bytes_lo _ _ _
+        (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+    write64_bytes_lo _ _ _
+        (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+    write64_bytes_lo _ _ _
+        (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+    write64_bytes_lo _ _ _
+        (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+    write64_bytes_lo _ _ _
+        (by simp only [toUInt32_ofNat_mod_toNat]; omega)]
+
 theorem fixedArrayMem_bytes_before (mem : Mem)
     (base capacity stride length : UInt64) (a : Nat)
     (hFit32 : base.toNat + 56 < 4294967296) (ha : a < base.toNat) :
