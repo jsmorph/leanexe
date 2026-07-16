@@ -28,6 +28,7 @@ def FullResultAt (s : Locals) (fuel : UInt64) (taker : OrderL)
   s.get 0 = some (.i64 fuel) ∧
   s.get 19 = some (.i64 oldBookTracker) ∧
   s.get 20 = some (.i64 oldTradesTracker) ∧
+  s.get 24 = some (.i64 0) ∧
   s.get 34 = some (.i64 taker.oid) ∧
   s.get 35 = some (.i64 taker.otrader) ∧
   s.get 36 = some (.i64 taker.oside) ∧
@@ -67,6 +68,7 @@ theorem fullTradeUpdateProg_spec
     (hFuel : base.get 0 = some (.i64 fuel))
     (hOldBookTracker : base.get 19 = some (.i64 oldBookTracker))
     (hOldTradesTracker : base.get 20 = some (.i64 oldTradesTracker))
+    (hDoneLocal : base.get 24 = some (.i64 0))
     (hCarryOid : base.get 34 = some (.i64 taker.oid))
     (hCarryTrader : base.get 35 = some (.i64 taker.otrader))
     (hCarrySide : base.get 36 = some (.i64 taker.oside))
@@ -177,6 +179,8 @@ theorem fullTradeUpdateProg_spec
   have hOldTradesTrackerAt : base.locals[11]? =
       some (.i64 oldTradesTracker) := by
     simpa [Locals.get, hParams, hLocals] using hOldTradesTracker
+  have hDoneAt : base.locals[15]? = some (.i64 0) := by
+    simpa [Locals.get, hParams, hLocals] using hDoneLocal
   have hCarryOidAt : base.locals[25]? = some (.i64 taker.oid) := by
     simpa [Locals.get, hParams, hLocals] using hCarryOid
   have hCarryTraderAt : base.locals[26]? = some (.i64 taker.otrader) := by
@@ -193,6 +197,8 @@ theorem fullTradeUpdateProg_spec
     (List.getElem?_eq_some_iff.mp hOldBookTrackerAt).2
   have hOldTradesTrackerElem : base.locals[11] = .i64 oldTradesTracker :=
     (List.getElem?_eq_some_iff.mp hOldTradesTrackerAt).2
+  have hDoneElem : base.locals[15] = .i64 0 :=
+    (List.getElem?_eq_some_iff.mp hDoneAt).2
   have hCarryOidElem : base.locals[25] = .i64 taker.oid :=
     (List.getElem?_eq_some_iff.mp hCarryOidAt).2
   have hCarryTraderElem : base.locals[26] = .i64 taker.otrader :=
@@ -397,6 +403,7 @@ theorem fullTradeUpdateProg_spec
           TradeAllocAppend.fitFrame, TradeAllocSearch.tradeAllocSearchFrame,
           FullTradePrepare.fullTradePrepareFrame, Locals.get, hParams,
           hLocals, hFuelElem, hOldBookTrackerElem, hOldTradesTrackerElem,
+          hDoneElem,
           hCarryOidElem, hCarryTraderElem, hCarrySideElem, hCarryPriceElem,
           hCarryQtyElem]
       · refine ⟨choice.previous, choice.node.root, choice.next,
@@ -573,6 +580,7 @@ theorem fullTradeUpdateProg_spec
           TradeAllocAppend.bumpFrame, TradeAllocSearch.tradeAllocSearchFrame,
           FullTradePrepare.fullTradePrepareFrame, Locals.get, hParams,
           hLocals, hFuelElem, hOldBookTrackerElem, hOldTradesTrackerElem,
+          hDoneElem,
           hCarryOidElem, hCarryTraderElem, hCarrySideElem, hCarryPriceElem,
           hCarryQtyElem, target]
       · refine ⟨previous, 0,

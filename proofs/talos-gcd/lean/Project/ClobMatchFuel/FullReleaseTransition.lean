@@ -31,7 +31,7 @@ theorem fullReleaseTransitionProg_none
         remaining 0 0) env) :
     wp «module» (fullReleaseTransitionProg ++ rest) Q st base env := by
   rcases hResult with ⟨hParams, hLocals, hValues, hFuel, hOldBookTracker,
-    hOldTradesTracker, hOid, hTrader, hSide, hPrice, hQty, hNewBookOwner,
+    hOldTradesTracker, _, hOid, hTrader, hSide, hPrice, hQty, hNewBookOwner,
     hNewBookPointer, hNewTradesOwner, hNewTradesPointer, hRemaining⟩
   unfold fullReleaseTransitionProg
   rw [List.append_assoc]
@@ -99,7 +99,7 @@ theorem fullReleaseTransitionProg_trade
           remaining 0 oldTrades) env) :
     wp «module» (fullReleaseTransitionProg ++ rest) Q st base env := by
   rcases hResult with ⟨hParams, hLocals, hValues, hFuel, hOldBookTracker,
-    hOldTradesTracker, hOid, hTrader, hSide, hPrice, hQty, hNewBookOwner,
+    hOldTradesTracker, _, hOid, hTrader, hSide, hPrice, hQty, hNewBookOwner,
     hNewBookPointer, hNewTradesOwner, hNewTradesPointer, hRemaining⟩
   unfold fullReleaseTransitionProg
   rw [List.append_assoc]
