@@ -25,7 +25,7 @@ set_option Elab.async false in
 theorem loopProg_spec (env : HostEnv Unit) (ctx : Context) (st : Store Unit)
     (base : Locals) (hInvariant : Invariant ctx st base)
     (Q : Assertion Unit) (rest : Wasm.Program)
-    (hDone : ∀ st1 s1, Invariant ctx st1 s1 →
+    (hDone : ∀ st1 s1, ExitAt ctx st1 s1 →
       wp «module» rest Q st1 s1 env) :
     wp «module» (loopProg ++ rest) Q st base env := by
   have hBaseValues := hInvariant.values
@@ -52,7 +52,7 @@ theorem loopProg_spec (env : HostEnv Unit) (ctx : Context) (st : Store Unit)
         apply LoopControl.loopGuard_zero_fuel_spec env st1 s1 hParams hLocals
           hValues hFuelLocalZero
         simpa [wp_simp, hBaseValues, hValues, hS1] using
-          hDone st1 s1 (Or.inl ⟨data, facts⟩)
+          hDone st1 s1 (Or.inr ⟨data, facts, hFuelZero⟩)
       · unfold bodyProg
         apply LoopControl.loopGuard_running_spec env st1 s1 data.fuel hParams
           hLocals hValues hFuelLocal hFuelZero hRunningFlag
@@ -73,6 +73,6 @@ theorem loopProg_spec (env : HostEnv Unit) (ctx : Context) (st : Store Unit)
       apply LoopControl.loopGuard_done_spec env st1 s1 data.fuel hParams hLocals
         hValues facts.fuelLocal hDoneGet
       simpa [wp_simp, hBaseValues, hValues, hS1] using
-        hDone st1 s1 (Or.inr ⟨data, facts⟩)
+        hDone st1 s1 (Or.inl ⟨data, facts⟩)
 
 end Project.ClobMatchFuel.Loop
