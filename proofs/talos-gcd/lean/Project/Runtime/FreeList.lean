@@ -238,6 +238,19 @@ theorem takeFirstFitFrom_some_decompose {previous need : UInt64}
                 omega
               · exact hsmall other htail
 
+theorem takeFirstFitFrom_some_remaining_mem {previous need : UInt64}
+    {nodes : List FreeNode} {choice : FreeChoice}
+    (h : takeFirstFitFrom previous need nodes = some choice)
+    {node : FreeNode} (hNode : node ∈ choice.remaining) :
+    node ∈ nodes := by
+  obtain ⟨skipped, tail, hNodes, _, _, hRemaining, _⟩ :=
+    takeFirstFitFrom_some_decompose h
+  rw [hRemaining] at hNode
+  rw [hNodes]
+  rcases List.mem_append.mp hNode with hSkipped | hTail
+  · exact List.mem_append_left _ hSkipped
+  · exact List.mem_append_right _ (List.mem_cons_of_mem _ hTail)
+
 def FreeNode.region (node : FreeNode) : Nat × Nat :=
   (node.root.toNat - 48, 48 + node.capacity.toNat)
 
