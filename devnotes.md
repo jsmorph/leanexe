@@ -5026,3 +5026,7 @@ The partial-fill book copy now carries the same frame through its length store a
 `BookErasePrefix.erasePrefixProg_spec` now gives its continuation the completed-prefix equality directly.  `BookAllocErase.bookCopiesProg_spec` uses that fact to compose the prefix and shifted-suffix loops, preserving one outside-payload frame and reconstructing `OrdersAt (os.eraseIdx i)` at the returned target.  The warning-failing constrained composition target completes in 1.9 seconds after its dependencies are current.
 
 `BookAllocErase.bookAllocEraseProg_spec` places the full-fill stride-five allocator before the shared two-loop theorem.  Both allocator outcomes derive the exact target bounds and separation, preserve the refcount-one source book, and return the erased book representation while retaining fit or bump outcome data.  The warning-failing constrained target completes in 5.3 seconds after its dependencies are current.
+
+## 2026-07-15: Final Store Frames
+
+`BookReplaceFinish.replaceFinishProg_spec` now preserves byte equality outside the complete destination book payload through its five replacement stores.  `TradeAppendFinish.tradeFinishProg_spec` preserves the analogous frame through its four appended-trade stores.  Warning-failing constrained builds complete the book target in 4.0 seconds and the trade target in 4.7 seconds after their changed dependencies are current.

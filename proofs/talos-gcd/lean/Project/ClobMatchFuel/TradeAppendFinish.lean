@@ -114,12 +114,15 @@ theorem tradeFinishProg_spec
           (ts ++ [trade]) →
         FreshTradeArrayAt (appendTradeStore st1 target ts.length trade)
           target arrayCapacity →
+        MemEqOutsideFlatWords st0
+          (appendTradeStore st1 target ts.length trade) target
+          ((ts.length + 1) * 4) →
         wp «module» rest Q (appendTradeStore st1 target ts.length trade)
           (tradeResultFrame base target (ts.length * 4)) env) :
     wp «module» (tradeFinishProg ++ rest) Q st1
       (tradeCopyFrame base target (ts.length * 4)) env := by
-  obtain ⟨word, hword, hFrame, hPages, _, hFresh, hLength, _, hCopied⟩ :=
-    hInv
+  obtain ⟨word, hword, hFrame, hPages, _, hFresh, hLength, _, hOutside,
+    hCopied⟩ := hInv
   have hTotal64 : ts.length * 4 < UInt64.size := by
     change ts.length * 4 < 18446744073709551616
     omega
@@ -201,7 +204,23 @@ theorem tradeFinishProg_spec
       omega)
   have hFreshFinal := freshTradeArrayAt_appendTradeStore st1 target
     arrayCapacity ts.length trade hTarget48 hTarget32 hFresh
+  have hOutside1 := MemEqOutsideFlatWords.write64
+    (slot := ts.length * 4 + 1) (value := trade.ttakerId) hTarget32
+      (by omega) hOutside
+  have hOutside2 := MemEqOutsideFlatWords.write64
+    (slot := ts.length * 4 + 2) (value := trade.tmakerId) hTarget32
+      (by omega) hOutside1
+  have hOutside3 := MemEqOutsideFlatWords.write64
+    (slot := ts.length * 4 + 3) (value := trade.tprice) hTarget32
+      (by omega) hOutside2
+  have hOutside4 := MemEqOutsideFlatWords.write64
+    (slot := ts.length * 4 + 4) (value := trade.tqty) hTarget32
+      (by omega) hOutside3
+  have hOutsideFinal : MemEqOutsideFlatWords st0
+      (appendTradeStore st1 target ts.length trade) target
+      ((ts.length + 1) * 4) := by
+    simpa only [appendTradeStore] using hOutside4
   simpa only [appendTradeStore, tradeResultFrame, tradeCopyFrame,
-    hTotalEq] using hDone hTradesFinal hFreshFinal
+    hTotalEq] using hDone hTradesFinal hFreshFinal hOutsideFinal
 
 end Project.ClobMatchFuel.TradeAppendFinish
