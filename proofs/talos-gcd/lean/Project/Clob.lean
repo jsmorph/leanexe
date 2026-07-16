@@ -324,6 +324,39 @@ theorem TradesAt.tradeWord_eq {st : Store Unit} {ptr : UInt64}
   · simpa [TradeL.word] using h3.1
   · simpa [TradeL.word] using h4.1
 
+theorem TradesAt.tradeWord_bound {st : Store Unit} {ptr : UInt64}
+    {ts : List TradeL} (hTrades : TradesAt st ptr ts) (j field : Nat)
+    (hj : j < ts.length) (hfield : field < 4) :
+    (ptr.toNat + (j * 4 + field + 1) * 8) % 4294967296 + 8 ≤
+      st.mem.pages * 65536 := by
+  obtain ⟨h1, h2, h3, h4⟩ := hTrades.2 j hj
+  interval_cases field
+  · simpa using h1.2
+  · simpa using h2.2
+  · simpa using h3.2
+  · simpa using h4.2
+
+theorem TradesAt.tradeWord_eq_flat {st : Store Unit} {ptr : UInt64}
+    {ts : List TradeL} (hTrades : TradesAt st ptr ts) (word : Nat)
+    (hword : word < ts.length * 4) :
+    tradeWord st ptr word = ts[word / 4]!.word (word % 4) := by
+  have hfield : word % 4 < 4 := Nat.mod_lt _ (by decide)
+  have hindex : word / 4 < ts.length :=
+    (Nat.div_lt_iff_lt_mul (by decide)).2 hword
+  have h := hTrades.tradeWord_eq (word / 4) (word % 4) hindex hfield
+  simpa only [Nat.div_add_mod'] using h
+
+theorem TradesAt.tradeWord_bound_flat {st : Store Unit} {ptr : UInt64}
+    {ts : List TradeL} (hTrades : TradesAt st ptr ts) (word : Nat)
+    (hword : word < ts.length * 4) :
+    (ptr.toNat + (word + 1) * 8) % 4294967296 + 8 ≤
+      st.mem.pages * 65536 := by
+  have hfield : word % 4 < 4 := Nat.mod_lt _ (by decide)
+  have hindex : word / 4 < ts.length :=
+    (Nat.div_lt_iff_lt_mul (by decide)).2 hword
+  have h := hTrades.tradeWord_bound (word / 4) (word % 4) hindex hfield
+  simpa only [Nat.div_add_mod'] using h
+
 theorem TradesAt.ofFlatWords {st : Store Unit} {ptr : UInt64}
     {ts : List TradeL}
     (hLength : st.mem.read64 (UInt32.ofNat (ptr.toNat % 4294967296)) =
