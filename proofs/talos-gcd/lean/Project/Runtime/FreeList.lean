@@ -38,6 +38,10 @@ structure FreeChoice where
   next : UInt64
   remaining : List FreeNode
 
+def previousRoot (initial : UInt64) : List FreeNode → UInt64
+  | [] => initial
+  | node :: rest => previousRoot node.root rest
+
 def takeFirstFitFrom (previous need : UInt64) : List FreeNode →
     Option FreeChoice
   | [] => none
@@ -184,6 +188,48 @@ theorem takeFirstFitFrom_some_length {previous need : UInt64}
     (Option.map fun choice : FreeChoice => (choice.node, choice.remaining)) h
   rw [takeFirstFitFrom_project] at hproject
   exact takeFirstFit_some_length hproject
+
+theorem takeFirstFitFrom_some_decompose {previous need : UInt64}
+    {nodes : List FreeNode} {choice : FreeChoice}
+    (h : takeFirstFitFrom previous need nodes = some choice) :
+    ∃ skipped tail : List FreeNode,
+      nodes = skipped ++ (choice.node :: tail) ∧
+      choice.previous = previousRoot previous skipped ∧
+      choice.next = freeHead tail ∧
+      choice.remaining = skipped ++ tail ∧
+      ∀ node ∈ skipped, node.capacity < need := by
+  induction nodes generalizing previous choice with
+  | nil => simp [takeFirstFitFrom] at h
+  | cons node rest ih =>
+      simp only [takeFirstFitFrom] at h
+      split at h
+      · have hchoice :
+            { previous := previous, node := node, next := freeHead rest,
+              remaining := rest } = choice := Option.some.inj h
+        subst choice
+        exact ⟨[], rest, by simp [previousRoot]⟩
+      · rename_i hnotFit
+        cases hrest : takeFirstFitFrom node.root need rest with
+        | none => simp [hrest] at h
+        | some restChoice =>
+            simp only [hrest] at h
+            have hchoice :
+                { restChoice with remaining := node :: restChoice.remaining } =
+                  choice := Option.some.inj h
+            subst choice
+            obtain ⟨skipped, tail, hnodes, hprevious, hnext, hremaining,
+              hsmall⟩ := ih hrest
+            refine ⟨node :: skipped, tail, ?_, ?_, ?_, ?_, ?_⟩
+            · simp [hnodes]
+            · simpa [previousRoot] using hprevious
+            · exact hnext
+            · simp [hremaining]
+            · intro other hmem
+              rcases List.mem_cons.mp hmem with rfl | htail
+              · rw [UInt64.lt_iff_toNat_lt]
+                rw [UInt64.le_iff_toNat_le] at hnotFit
+                omega
+              · exact hsmall other htail
 
 def FreeNode.region (node : FreeNode) : Nat × Nat :=
   (node.root.toNat - 48, 48 + node.capacity.toNat)
