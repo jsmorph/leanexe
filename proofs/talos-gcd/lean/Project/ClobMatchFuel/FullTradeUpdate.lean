@@ -43,7 +43,7 @@ set_option Elab.async false in
 theorem fullTradeUpdateProg_spec
     (env : HostEnv Unit) (st : Store Unit) (base : Locals)
     (fuel newBook newBookCapacity oldBook oldBookCapacity : UInt64)
-    (oldTrades oldTradesCapacity remaining g0 g2 capacity next : UInt64)
+    (oldTrades oldTradesCapacity remaining g0 g2 g4 g5 capacity next : UInt64)
     (oldBookTracker oldTradesTracker : UInt64)
     (taker : OrderL) (os newOrders : List OrderL)
     (ts : List TradeL) (i : Nat) (nodes : List FreeNode)
@@ -112,6 +112,8 @@ theorem fullTradeUpdateProg_spec
     (hg0 : st.globals.globals[0]? = some (.i64 g0))
     (hg1 : st.globals.globals[1]? = some (.i64 (freeHead nodes)))
     (hg2 : st.globals.globals[2]? = some (.i64 g2))
+    (hg4 : st.globals.globals[4]? = some (.i64 g4))
+    (hg5 : st.globals.globals[5]? = some (.i64 g5))
     (hList : FreeListAt st.mem nodes)
     (Q : Assertion Unit) (rest : Wasm.Program)
     (hDone : ∀ st1 s newTrades newTradesCapacity nodes1 g0Final,
@@ -126,6 +128,8 @@ theorem fullTradeUpdateProg_spec
       st1.globals.globals[0]? = some (.i64 g0Final) →
       st1.globals.globals[1]? = some (.i64 (freeHead nodes1)) →
       st1.globals.globals[2]? = some (.i64 (g2 + 1)) →
+      st1.globals.globals[4]? = some (.i64 g4) →
+      st1.globals.globals[5]? = some (.i64 g5) →
       wp «module» rest Q st1 s env) :
     wp «module» (fullTradeUpdateProg ++ rest) Q st base env := by
   let trade := Model.fillTradeL taker os[i]! os[i]!.oqty
@@ -279,6 +283,16 @@ theorem fullTradeUpdateProg_spec
         (List.getElem?_eq_some_iff.mp hAllocG2).1
       rw [hFinalGlobals]
       simp [hAllocLength]
+    have hFinalG4 : finalStore.globals.globals[4]? = some (.i64 g4) := by
+      have hAllocG4 := fixedArrayAllocFitStore_global_of_ne_one st choice 4
+        4 (.i64 g4) (by decide) hg4
+      rw [hFinalGlobals]
+      simpa [List.getElem?_set] using hAllocG4
+    have hFinalG5 : finalStore.globals.globals[5]? = some (.i64 g5) := by
+      have hAllocG5 := fixedArrayAllocFitStore_global_of_ne_one st choice 4
+        5 (.i64 g5) (by decide) hg5
+      rw [hFinalGlobals]
+      simpa [List.getElem?_set] using hAllocG5
     apply FullTradeFinish.fullTradeFinishProg_spec env finalStore
       (TradeAppendFinish.tradeResultFrame
         (TradeAllocAppend.fitFrame
@@ -327,6 +341,8 @@ theorem fullTradeUpdateProg_spec
       · exact hFinalG0
       · exact hFinalG1
       · exact hFinalG2
+      · exact hFinalG4
+      · exact hFinalG5
   · intro previous st1 hTarget48 hTarget32 hTargetFit hOldTradesAlloc
       hNewTradesOwned hNewBookOwned1 hOutside hFinalPages hFinalGlobals
       hFinalList hFinalG0 hFinalG1
@@ -380,6 +396,16 @@ theorem fullTradeUpdateProg_spec
           trade).globals.globals[2]? = some (.i64 (g2 + 1))
       rw [hFinalGlobals]
       simp [hAllocLength]
+    have hFinalG4 : finalStore.globals.globals[4]? = some (.i64 g4) := by
+      have hAllocG4 := fixedArrayAllocBumpStore_global_of_ne_zero st g0
+        (tradeArrayBytesU (ts.length + 1)) 4 4 (.i64 g4) (by decide) hg4
+      rw [hFinalGlobals]
+      simpa [List.getElem?_set] using hAllocG4
+    have hFinalG5 : finalStore.globals.globals[5]? = some (.i64 g5) := by
+      have hAllocG5 := fixedArrayAllocBumpStore_global_of_ne_zero st g0
+        (tradeArrayBytesU (ts.length + 1)) 4 5 (.i64 g5) (by decide) hg5
+      rw [hFinalGlobals]
+      simpa [List.getElem?_set] using hAllocG5
     apply FullTradeFinish.fullTradeFinishProg_spec env finalStore
       (TradeAppendFinish.tradeResultFrame
         (TradeAllocAppend.bumpFrame
@@ -428,5 +454,7 @@ theorem fullTradeUpdateProg_spec
       · exact hFinalG0
       · exact hFinalG1
       · exact hFinalG2
+      · exact hFinalG4
+      · exact hFinalG5
 
 end Project.ClobMatchFuel.FullTradeUpdate
