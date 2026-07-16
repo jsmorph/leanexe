@@ -53,6 +53,12 @@ def tradeWord (st : Store Unit) (ptr : UInt64) (word : Nat) : UInt64 :=
   st.mem.read64
     (UInt32.ofNat ((ptr.toNat + (word + 1) * 8) % 4294967296))
 
+def flatWordsRegion (ptr : UInt64) (words : Nat) : Nat × Nat :=
+  (ptr.toNat, (words + 1) * 8)
+
+def flatWordsDisjoint (a b : Nat × Nat) : Prop :=
+  a.1 + a.2 ≤ b.1 ∨ b.1 + b.2 ≤ a.1
+
 def OrdersAt (st : Store Unit) (ptr : UInt64) (os : List OrderL) : Prop :=
   (st.mem.read64 (UInt32.ofNat (ptr.toNat % 4294967296)) =
       UInt64.ofNat os.length ∧
@@ -124,6 +130,19 @@ theorem OrdersAt.orderWord_eq {st : Store Unit} {ptr : UInt64}
   · simpa [OrderL.word] using h4.1
   · simpa [OrderL.word] using h5.1
 
+theorem OrdersAt.orderWord_bound {st : Store Unit} {ptr : UInt64}
+    {os : List OrderL} (hOrders : OrdersAt st ptr os) (j field : Nat)
+    (hj : j < os.length) (hfield : field < 5) :
+    (ptr.toNat + (j * 5 + field + 1) * 8) % 4294967296 + 8 ≤
+      st.mem.pages * 65536 := by
+  obtain ⟨h1, h2, h3, h4, h5⟩ := hOrders.2 j hj
+  interval_cases field
+  · simpa using h1.2
+  · simpa using h2.2
+  · simpa using h3.2
+  · simpa using h4.2
+  · simpa using h5.2
+
 theorem OrdersAt.ofFlatWords {st : Store Unit} {ptr : UInt64}
     {os : List OrderL}
     (hLength : st.mem.read64 (UInt32.ofNat (ptr.toNat % 4294967296)) =
@@ -163,6 +182,56 @@ theorem OrdersAt.ofFlatWords {st : Store Unit} {ptr : UInt64}
   · simpa using hFieldBound 3 (by omega)
   · simpa [OrderL.word] using hRead 4 (by omega)
   · simpa using hFieldBound 4 (by omega)
+
+theorem OrdersAt.frame_write64_flatWordsDisjoint
+    {st : Store Unit} {sourcePtr targetPtr : UInt64}
+    {os : List OrderL} {targetWords word : Nat} {value : UInt64}
+    (hSource32 :
+      sourcePtr.toNat + (os.length * 5 + 1) * 8 < 4294967296)
+    (hTarget32 :
+      targetPtr.toNat + (targetWords + 1) * 8 < 4294967296)
+    (hWord : word < targetWords)
+    (hsep : flatWordsDisjoint (flatWordsRegion targetPtr targetWords)
+      (flatWordsRegion sourcePtr (os.length * 5)))
+    (hOrders : OrdersAt st sourcePtr os) :
+    OrdersAt
+      { st with mem := (st.mem.write64
+        (UInt32.ofNat
+          ((targetPtr.toNat + (word + 1) * 8) % 4294967296)) value) }
+      sourcePtr os := by
+  have hAddressSep (sourceOffset : Nat)
+      (hSourceOffset : sourceOffset ≤ os.length * 5 * 8) :
+      sourcePtr.toNat + sourceOffset + 8 ≤
+          targetPtr.toNat + (word + 1) * 8 ∨
+        targetPtr.toNat + (word + 1) * 8 + 8 ≤
+          sourcePtr.toNat + sourceOffset := by
+    unfold flatWordsDisjoint flatWordsRegion at hsep
+    omega
+  have hLengthRead :
+      (st.mem.write64
+          (UInt32.ofNat
+            ((targetPtr.toNat + (word + 1) * 8) % 4294967296))
+          value).read64
+          (UInt32.ofNat (sourcePtr.toNat % 4294967296)) =
+        st.mem.read64
+          (UInt32.ofNat (sourcePtr.toNat % 4294967296)) := by
+    apply Project.Common.read64_write64_ne
+    simp only [Project.Common.toUInt32_ofNat_mod_toNat]
+    rw [Nat.mod_eq_of_lt (by omega), Nat.mod_eq_of_lt (by omega)]
+    exact hAddressSep 0 (by omega)
+  apply OrdersAt.ofFlatWords
+  · exact hLengthRead.trans hOrders.1.1
+  · exact hOrders.1.2
+  · intro j hj field hfield
+    unfold orderWord
+    rw [Project.Common.read64_write64_ne]
+    · exact hOrders.orderWord_eq j field hj hfield
+    · simp only [Project.Common.toUInt32_ofNat_mod_toNat]
+      rw [Nat.mod_eq_of_lt (by omega), Nat.mod_eq_of_lt (by omega)]
+      apply hAddressSep ((j * 5 + field + 1) * 8)
+      omega
+  · intro j hj field hfield
+    exact hOrders.orderWord_bound j field hj hfield
 
 theorem OrdersAt.eraseIdx_ofFlatWords
     {source target : Store Unit} {sourcePtr targetPtr : UInt64}
