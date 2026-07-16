@@ -21,7 +21,7 @@ set_option Elab.async false in
 theorem fullBranchProg_spec
     (env : HostEnv Unit) (st : Store Unit) (base : Locals)
     (fuel book bookCapacity oldTrades oldTradesCapacity remaining : UInt64)
-    (g0 g2 capacity next tradeNext oldBookTracker oldTradesTracker : UInt64)
+    (g0 g2 g4 g5 capacity next tradeNext oldBookTracker oldTradesTracker : UInt64)
     (taker : OrderL) (os : List OrderL) (ts : List TradeL) (i : Nat)
     (nodes : List FreeNode)
     (hParams : base.params.length = 9)
@@ -106,6 +106,8 @@ theorem fullBranchProg_spec
     (hg0 : st.globals.globals[0]? = some (.i64 g0))
     (hg1 : st.globals.globals[1]? = some (.i64 (freeHead nodes)))
     (hg2 : st.globals.globals[2]? = some (.i64 g2))
+    (hg4 : st.globals.globals[4]? = some (.i64 g4))
+    (hg5 : st.globals.globals[5]? = some (.i64 g5))
     (hList : FreeListAt st.mem nodes)
     (Q : Assertion Unit) (rest : Wasm.Program)
     (hDone : ∀ st1 s newBook newBookCapacity newTrades
@@ -121,6 +123,8 @@ theorem fullBranchProg_spec
       st1.globals.globals[0]? = some (.i64 g0Final) →
       st1.globals.globals[1]? = some (.i64 (freeHead nodes1)) →
       st1.globals.globals[2]? = some (.i64 (g2 + 2)) →
+      st1.globals.globals[4]? = some (.i64 g4) →
+      st1.globals.globals[5]? = some (.i64 g5) →
       wp «module» rest Q st1 s env) :
     wp «module» (fullBranchProg ++ rest) Q st base env := by
   have hg2Next : g2 + 1 + 1 = g2 + 2 := by
@@ -175,13 +179,23 @@ theorem fullBranchProg_spec
         node.root.toNat + node.capacity.toNat ≤ g0.toNat := by
       intro node hNode
       exact hNodesBelow node (takeFirstFitFrom_some_remaining_mem hTake hNode)
+    have hCurrentG4 : st1.globals.globals[4]? = some (.i64 g4) := by
+      have hAllocG4 := fixedArrayAllocFitStore_global_of_ne_one st choice 5
+        4 (.i64 g4) (by decide) hg4
+      rw [hFinalGlobals]
+      simpa [List.getElem?_set] using hAllocG4
+    have hCurrentG5 : st1.globals.globals[5]? = some (.i64 g5) := by
+      have hAllocG5 := fixedArrayAllocFitStore_global_of_ne_one st choice 5
+        5 (.i64 g5) (by decide) hg5
+      rw [hFinalGlobals]
+      simpa [List.getElem?_set] using hAllocG5
     apply FullTradeUpdate.fullTradeUpdateProg_spec env st1
       (BookEraseSuffix.eraseResultFrame base
         (orderArrayBytesU (os.length - 1)) choice.previous choice.node.root
         choice.node.capacity choice.next choice.node.root
         ((os.length - 1 - i) * 5)) fuel choice.node.root
       choice.node.capacity book bookCapacity oldTrades oldTradesCapacity
-      remaining g0 (g2 + 1) choice.node.root
+      remaining g0 (g2 + 1) g4 g5 choice.node.root
       tradeNext oldBookTracker oldTradesTracker taker os (os.eraseIdx i) ts i
       choice.remaining
     · simpa [BookEraseSuffix.eraseResultFrame,
@@ -272,14 +286,18 @@ theorem fullBranchProg_spec
     · exact hFinalG0
     · exact hFinalG1
     · exact hFinalG2
+    · exact hCurrentG4
+    · exact hCurrentG5
     · exact hFinalList
     · intro st2 s newTrades newTradesCapacity nodes2 g0Final hResult
         hNewBookFinal hNewTradesFinal hOldTradesFinal hBookFinal hList2 hG0
-        hG1 hG2
+        hG1 hG2 hG4 hG5
       apply hDone st2 s choice.node.root choice.node.capacity newTrades
         newTradesCapacity nodes2 g0Final hResult hNewBookFinal hNewTradesFinal
         hOldTradesFinal hBookFinal hList2 hG0 hG1
-      simpa only [hg2Next] using hG2
+      · simpa only [hg2Next] using hG2
+      · exact hG4
+      · exact hG5
   · intro previous st1 hTarget48 hTarget32 hNewBookOwned hBookOwned1
       hOldTradesOwned1 hOutside hFinalPages hFinalGlobals hFinalList hFinalG0
       hFinalG1 hFinalG2
@@ -332,13 +350,23 @@ theorem fullBranchProg_spec
         g0AfterBook.toNat := by
       rw [hG0AfterBookNat]
       omega
+    have hCurrentG4 : st1.globals.globals[4]? = some (.i64 g4) := by
+      have hAllocG4 := fixedArrayAllocBumpStore_global_of_ne_zero st g0
+        bookNeed 5 4 (.i64 g4) (by decide) hg4
+      rw [hFinalGlobals]
+      simpa [List.getElem?_set] using hAllocG4
+    have hCurrentG5 : st1.globals.globals[5]? = some (.i64 g5) := by
+      have hAllocG5 := fixedArrayAllocBumpStore_global_of_ne_zero st g0
+        bookNeed 5 5 (.i64 g5) (by decide) hg5
+      rw [hFinalGlobals]
+      simpa [List.getElem?_set] using hAllocG5
     apply FullTradeUpdate.fullTradeUpdateProg_spec env st1
       (BookEraseSuffix.eraseResultFrame base bookNeed previous 0 g0AfterBook
         ((g0AfterBook - 1) / 65536 + 1) newBook
         ((os.length - 1 - i) * 5)) fuel newBook bookNeed book bookCapacity
-      oldTrades oldTradesCapacity remaining g0AfterBook (g2 + 1) newBook
-      tradeNext oldBookTracker oldTradesTracker taker os (os.eraseIdx i) ts i
-      nodes
+      oldTrades oldTradesCapacity remaining g0AfterBook (g2 + 1) g4 g5
+      newBook tradeNext oldBookTracker oldTradesTracker taker os (os.eraseIdx i)
+      ts i nodes
     · simpa [BookEraseSuffix.eraseResultFrame,
         BookErasePrefix.eraseCopyFrame, BookAllocSearch.bookAllocSearchFrame]
         using hParams
@@ -429,10 +457,12 @@ theorem fullBranchProg_spec
     · simpa [g0AfterBook, bookNeed] using hFinalG0
     · exact hFinalG1
     · exact hFinalG2
+    · exact hCurrentG4
+    · exact hCurrentG5
     · exact hFinalList
     · intro st2 s newTrades newTradesCapacity nodes2 g0Final hResult
         hNewBookFinal hNewTradesFinal hOldTradesFinal hBookFinal hList2 hG0
-        hG1 hG2
+        hG1 hG2 hG4 hG5
       apply hDone st2 s newBook bookNeed newTrades newTradesCapacity nodes2
         g0Final hResult
       · simpa [newBook, bookNeed] using hNewBookFinal
@@ -443,5 +473,7 @@ theorem fullBranchProg_spec
       · exact hG0
       · exact hG1
       · simpa only [hg2Next] using hG2
+      · exact hG4
+      · exact hG5
 
 end Project.ClobMatchFuel.FullBranch
