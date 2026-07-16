@@ -195,14 +195,15 @@ theorem resultEpilogue_completed_spec
 set_option Elab.async false in
 theorem resultEpilogue_done_spec
     (env : HostEnv Unit) (st : Store Unit) (base : Locals)
-    (book trades : UInt64)
-    (hResult : PartialTradeUpdate.PartialResultAt base book trades)
+    (book trades fuel : UInt64)
+    (hResult : PartialTradeUpdate.PartialResultAt base book trades fuel)
     (Q : Assertion Unit) (rest : Wasm.Program)
     (hDone : wp «module» rest Q st (resultFrame base book trades 0) env) :
     wp «module» (resultEpilogueProg ++ rest) Q st base env := by
   apply resultEpilogue_completed_spec env st base book trades 0
-  · simpa [CompletedResultAt, PartialTradeUpdate.PartialResultAt] using
-      hResult
+  · rcases hResult with
+      ⟨hBook, hTrades, hRemaining, hDone, hParams, hLocals, hValues, hFuel⟩
+    exact ⟨hBook, hTrades, hRemaining, hDone, hParams, hLocals, hValues⟩
   · exact hDone
 
 set_option Elab.async false in

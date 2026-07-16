@@ -40,13 +40,14 @@ theorem dispatch_spec (env : HostEnv Unit) (ctx : Context) (st : Store Unit)
     unfold fixedArrayBytes at h
     omega
   have bounds := LoopBounds.of_running ctx st base data facts hFuel
-  apply Iteration.dispatchProg_spec env st base data.bookOwner data.book
-    data.trades data.remaining ctx.taker data.orders hParams hLocals hValues hOid
-    hTrader hSide hPrice hQty hBookOwner hBook hTrades hRemaining hLength32
-    facts.bookOwned.2
-  · intro s1 hStop hResult
+  apply Iteration.dispatchProg_spec env st base data.fuel data.bookOwner data.book
+    data.trades data.remaining ctx.taker data.orders hParams hLocals hValues
+    hFuelLocal hOid hTrader hSide hPrice hQty hBookOwner hBook hTrades hRemaining
+    hLength32 facts.bookOwned.2
+  · intro s1 hStop hResult hFuelResult
     have hCompleted :=
       LoopCompletion.of_stop ctx st base data facts hFuel hStop s1 hResult
+        hFuelResult
     apply hDone st s1 (Or.inr hCompleted)
     rw [measure_completed hCompleted, measure_running facts]
     omega

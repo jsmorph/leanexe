@@ -24,12 +24,13 @@ set_option Elab.async false in
 theorem partialBranchProg_spec
     (env : HostEnv Unit) (st : Store Unit) (base : Locals)
     (book bookCapacity oldTrades oldTradesCapacity : UInt64)
-    (remaining g0 g2 g4 g5 capacity next : UInt64)
+    (remaining fuel g0 g2 g4 g5 capacity next : UInt64)
     (taker : OrderL) (os : List OrderL) (ts : List TradeL) (i : Nat)
     (nodes : List FreeNode)
     (hParams : base.params.length = 9)
     (hLocals : base.locals.length = 76)
     (hValues : base.values = [])
+    (hFuelLocal : base.get 0 = some (.i64 fuel))
     (hTakerLocal : base.locals[0]? = some (.i64 taker.oid))
     (hBookLocal : base.locals[6]? = some (.i64 book))
     (hTradesLocal : base.locals[8]? = some (.i64 oldTrades))
@@ -100,7 +101,7 @@ theorem partialBranchProg_spec
     (Q : Assertion Unit) (rest : Wasm.Program)
     (hDone : ∀ st1 s newBook newBookCapacity newTrades
         newTradesCapacity nodes1 g0Final,
-      PartialTradeUpdate.PartialResultAt s newBook newTrades →
+      PartialTradeUpdate.PartialResultAt s newBook newTrades fuel →
       OwnedOrderArrayAt st1 newBook newBookCapacity
         (Model.setQtyL os i (os[i]!.oqty - remaining)) →
       OwnedTradeArrayAt st1 newTrades newTradesCapacity
@@ -283,7 +284,7 @@ theorem partialBranchProg_spec
           (PartialBookPrepare.partialBookPrepareFrame base book remaining os i)
           os.length choice) choice.node.root (os.length * 5))
       choice.node.root choice.node.capacity book oldTrades oldTradesCapacity
-      remaining g0 (g2 + 1) g4 g5 choice.node.root choice.node.capacity taker
+      remaining fuel g0 (g2 + 1) g4 g5 choice.node.root choice.node.capacity taker
       os ts i newOrders choice.remaining
     · simpa [BookReplaceFinish.replaceResultFrame,
         BookReplaceCopy.replaceCopyFrame, PartialBookAllocCopy.fitFrame,
@@ -296,6 +297,11 @@ theorem partialBranchProg_spec
         PartialBookPrepare.partialBookPrepareLocals, List.length_set] using
         hLocals
     · simp [BookReplaceFinish.replaceResultFrame]
+    · simpa [BookReplaceFinish.replaceResultFrame,
+        BookReplaceCopy.replaceCopyFrame, PartialBookAllocCopy.fitFrame,
+        PartialBookAllocSearch.bookAllocSearchFrame,
+        PartialBookPrepare.partialBookPrepareFrame, Locals.get, hParams,
+        hLocals] using hFuelLocal
     · simpa [BookReplaceFinish.replaceResultFrame,
         BookReplaceCopy.replaceCopyFrame, PartialBookAllocCopy.fitFrame,
         PartialBookAllocSearch.bookAllocSearchFrame,
@@ -484,7 +490,7 @@ theorem partialBranchProg_spec
         (PartialBookAllocCopy.bumpFrame
           (PartialBookPrepare.partialBookPrepareFrame base book remaining os i)
           os.length g0 previous) newBook (os.length * 5))
-      newBook bookNeed book oldTrades oldTradesCapacity remaining g0AfterBook
+      newBook bookNeed book oldTrades oldTradesCapacity remaining fuel g0AfterBook
       (g2 + 1) g4 g5 0 g0AfterBook taker os ts i newOrders nodes
     · simpa [BookReplaceFinish.replaceResultFrame,
         BookReplaceCopy.replaceCopyFrame, PartialBookAllocCopy.bumpFrame,
@@ -497,6 +503,11 @@ theorem partialBranchProg_spec
         PartialBookPrepare.partialBookPrepareLocals, List.length_set] using
         hLocals
     · simp [BookReplaceFinish.replaceResultFrame]
+    · simpa [BookReplaceFinish.replaceResultFrame,
+        BookReplaceCopy.replaceCopyFrame, PartialBookAllocCopy.bumpFrame,
+        PartialBookAllocSearch.bookAllocSearchFrame,
+        PartialBookPrepare.partialBookPrepareFrame, Locals.get, hParams,
+        hLocals] using hFuelLocal
     · simpa [BookReplaceFinish.replaceResultFrame,
         BookReplaceCopy.replaceCopyFrame, PartialBookAllocCopy.bumpFrame,
         PartialBookAllocSearch.bookAllocSearchFrame,
