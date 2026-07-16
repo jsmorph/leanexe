@@ -106,11 +106,16 @@ def bookAllocBumpProg : Wasm.Program :=
   ] []
 ]
 
-def bookAllocBumpStore (st : Store Unit) (g0 need : UInt64) : Store Unit :=
+def fixedArrayAllocBumpStore (st : Store Unit) (g0 need stride : UInt64) :
+    Store Unit :=
   { st with
     globals := { globals :=
       (st.globals.globals.set 0 (.i64 (g0 + 48 + need))) }
-    mem := fixedArrayHeaderMem st.mem g0 need 5 }
+    mem := fixedArrayHeaderMem st.mem g0 need stride }
+
+abbrev bookAllocBumpStore (st : Store Unit) (g0 need : UInt64) :
+    Store Unit :=
+  fixedArrayAllocBumpStore st g0 need 5
 
 set_option Elab.async false in
 theorem bookAllocBumpProg_spec
@@ -266,9 +271,20 @@ theorem bookAllocBumpProg_spec
       simp [List.getElem?_set, h72, h71]
     · simp [List.getElem?_set, h72, h71, h70]
   rw [hFinalFrame]
-  simpa only [bookAllocBumpStore, fixedArrayHeaderMem,
+  simpa only [bookAllocBumpStore, fixedArrayAllocBumpStore,
+    fixedArrayHeaderMem,
     toUInt32_eq_ofNat, hsub48, hsub40, hsub32, hsub24, hsub16, hsub8]
     using hNext
+
+theorem freshFixedArrayAt_fixedArrayAllocBumpStore
+    (st : Store Unit) (g0 need stride : UInt64)
+    (hNeed8 : 8 ≤ need.toNat)
+    (hFit32 : g0.toNat + 48 + need.toNat < 4294967296) :
+    FreshFixedArrayAt (fixedArrayAllocBumpStore st g0 need stride)
+      (g0 + 48) need stride := by
+  have hHeader := fixedArrayHeaderMem_spec st g0 need stride (by omega)
+  unfold FreshFixedArrayAt at hHeader ⊢
+  simpa only [fixedArrayAllocBumpStore] using hHeader
 
 theorem freshOrderArrayAt_bookAllocBumpStore
     (st : Store Unit) (g0 need : UInt64)
@@ -276,17 +292,16 @@ theorem freshOrderArrayAt_bookAllocBumpStore
     (hFit32 : g0.toNat + 48 + need.toNat < 4294967296) :
     Allocation.FreshOrderArrayAt (bookAllocBumpStore st g0 need)
       (g0 + 48) need := by
-  have hHeader := fixedArrayHeaderMem_spec st g0 need 5 (by omega)
-  unfold Allocation.FreshOrderArrayAt FreshFixedArrayAt at hHeader ⊢
-  simpa only [bookAllocBumpStore] using hHeader
+  exact freshFixedArrayAt_fixedArrayAllocBumpStore st g0 need 5 hNeed8
+    hFit32
 
-theorem freeListAt_bookAllocBumpStore
-    (st : Store Unit) (g0 need : UInt64) (nodes : List FreeNode)
+theorem freeListAt_fixedArrayAllocBumpStore
+    (st : Store Unit) (g0 need stride : UInt64) (nodes : List FreeNode)
     (hFit32 : g0.toNat + 48 + need.toNat < 4294967296)
     (hBelow : ∀ node ∈ nodes,
       node.root.toNat + node.capacity.toNat ≤ g0.toNat)
     (hList : FreeListAt st.mem nodes) :
-    FreeListAt (bookAllocBumpStore st g0 need).mem nodes := by
+    FreeListAt (fixedArrayAllocBumpStore st g0 need stride).mem nodes := by
   let fresh : FreeNode := { root := g0 + 48, capacity := need }
   have hRootNat : fresh.root.toNat = g0.toNat + 48 := by
     unfold fresh
@@ -324,7 +339,7 @@ theorem freeListAt_bookAllocBumpStore
     (writer := fresh) (writeOffset := 24) (value := 2)
     hFresh48 hFresh32 (by decide) (by decide) hsep
   have h5 := h4.frame_write64_disjoint
-    (writer := fresh) (writeOffset := 16) (value := 5)
+    (writer := fresh) (writeOffset := 16) (value := stride)
     hFresh48 hFresh32 (by decide) (by decide) hsep
   have h6 := h5.frame_write64_disjoint
     (writer := fresh) (writeOffset := 8) (value := 0)
@@ -351,9 +366,19 @@ theorem freeListAt_bookAllocBumpStore
   have hsub8 : (g0 + 48 - 8).toNat = g0.toNat + 40 := by
     rw [hsub 8 (by decide)]
     rfl
-  simpa only [bookAllocBumpStore, fixedArrayHeaderMem, fresh,
+  simpa only [fixedArrayAllocBumpStore, fixedArrayHeaderMem, fresh,
     toUInt32_eq_ofNat, hsub48, hsub40, hsub32, hsub24, hsub16, hsub8]
     using h6
+
+theorem freeListAt_bookAllocBumpStore
+    (st : Store Unit) (g0 need : UInt64) (nodes : List FreeNode)
+    (hFit32 : g0.toNat + 48 + need.toNat < 4294967296)
+    (hBelow : ∀ node ∈ nodes,
+      node.root.toNat + node.capacity.toNat ≤ g0.toNat)
+    (hList : FreeListAt st.mem nodes) :
+    FreeListAt (bookAllocBumpStore st g0 need).mem nodes := by
+  exact freeListAt_fixedArrayAllocBumpStore st g0 need 5 nodes hFit32
+    hBelow hList
 
 def bookAllocNoFitProg : Wasm.Program :=
   BookAllocSearch.bookAllocSearchProg ++ bookAllocBumpProg
