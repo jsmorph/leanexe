@@ -59,6 +59,28 @@ def flatWordsRegion (ptr : UInt64) (words : Nat) : Nat × Nat :=
 def flatWordsDisjoint (a b : Nat × Nat) : Prop :=
   a.1 + a.2 ≤ b.1 ∨ b.1 + b.2 ≤ a.1
 
+def MemEqOutsideFlatWords (before after : Store Unit) (ptr : UInt64)
+    (words : Nat) : Prop :=
+  ∀ a : Nat, a < ptr.toNat ∨ ptr.toNat + (words + 1) * 8 ≤ a →
+    after.mem.bytes a = before.mem.bytes a
+
+theorem MemEqOutsideFlatWords.write64
+    {before current : Store Unit} {ptr : UInt64} {words slot : Nat}
+    {value : UInt64}
+    (hTarget32 : ptr.toNat + (words + 1) * 8 < 4294967296)
+    (hSlot : slot ≤ words)
+    (hFrame : MemEqOutsideFlatWords before current ptr words) :
+    MemEqOutsideFlatWords before
+      ({ current with mem := (current.mem.write64
+        (UInt32.ofNat ((ptr.toNat + slot * 8) % 4294967296)) value) })
+      ptr words := by
+  intro a ha
+  rw [Project.Common.write64_bytes_ne]
+  · exact hFrame a ha
+  · simp only [Project.Common.toUInt32_ofNat_mod_toNat]
+    rw [Nat.mod_eq_of_lt (by omega)]
+    rcases ha with ha | ha <;> omega
+
 theorem flatWordsDisjoint_address
     {sourcePtr targetPtr : UInt64} {sourceWords targetWords slot offset : Nat}
     (hSlot : slot ≤ targetWords) (hOffset : offset ≤ sourceWords * 8)
