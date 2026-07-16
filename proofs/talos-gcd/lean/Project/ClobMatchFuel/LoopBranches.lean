@@ -24,6 +24,7 @@ theorem partial_spec (env : HostEnv Unit) (ctx : Context) (st : Store Unit)
     (hQty : ¬data.orders[i]!.oqty ≤ data.remaining)
     (Q : Assertion Unit) (rest : Wasm.Program)
     (hDone : ∀ st1 s1, CompletedAt ctx st1 s1 →
+      measure st1 s1 < measure st base →
       wp «module» rest Q st1 s1 env) :
     wp «module» (PartialBranch.partialBranchProg ++ rest) Q st
       (Iteration.quantityFrame base data.bookOwner data.book ctx.taker i) env := by
@@ -98,11 +99,13 @@ theorem partial_spec (env : HostEnv Unit) (ctx : Context) (st : Store Unit)
   · exact facts.freeList
   · intro st1 s1 newBook newBookCapacity newTrades newTradesCapacity nodes1
       g0Final hResult hBookOwned hTradesOwned hFreeList hG0 hG1 hG2 hG4 hG5
-    apply hDone st1 s1
-    exact LoopCompletion.of_partial ctx st base data facts hFuel i hRemaining
+    have hCompleted := LoopCompletion.of_partial ctx st base data facts hFuel i hRemaining
       hFind hQty st1 s1 newBook newBookCapacity newTrades newTradesCapacity
       g0Final nodes1 hResult hBookOwned hTradesOwned hFreeList hG0 hG1 hG2 hG4
       hG5
+    apply hDone st1 s1 hCompleted
+    rw [measure_completed hCompleted, measure_running facts]
+    omega
 
 set_option Elab.async false in
 theorem full_spec (env : HostEnv Unit) (ctx : Context) (st : Store Unit)
@@ -113,6 +116,7 @@ theorem full_spec (env : HostEnv Unit) (ctx : Context) (st : Store Unit)
     (hQty : data.orders[i]!.oqty ≤ data.remaining)
     (Q : Assertion Unit) (rest : Wasm.Program)
     (hDone : ∀ st1 s1, RunningAt ctx st1 s1 →
+      measure st1 s1 < measure st base →
       wp «module» rest Q st1 s1 env) :
     wp «module» ((Iteration.fullPrepareProg ++ FullStep.fullStepProg) ++ rest) Q
       st (Iteration.quantityFrame base data.bookOwner data.book ctx.taker i) env := by
@@ -274,20 +278,32 @@ theorem full_spec (env : HostEnv Unit) (ctx : Context) (st : Store Unit)
         hBookCapacity hTrades48 hTrades32 hTradesCapacity hBookBelow hTradesBelow
         hHeapMono hHeapUpper hBookFree hTradesFree hNodesBelow hFreeList hPages
         hG0 hG1 hG2 hG4 hG5
-      apply hDone st1
-        (FullTransition.fullTransitionFrame s1 data.fuel ctx.taker newBook
-          newTrades (data.remaining - data.orders[i]!.oqty) 0
-          data.oldTradesTracker)
-      refine ⟨LoopAdvance.nextData data ctx.taker i newBook newBookCapacity
-        newTrades newTradesCapacity g0Final nodes1, ?_⟩
-      exact LoopAdvance.of_full ctx st base data facts hFuel i hRemaining hFind
-        hQty st1
-        (FullTransition.fullTransitionFrame s1 data.fuel ctx.taker newBook
-          newTrades (data.remaining - data.orders[i]!.oqty) 0
-          data.oldTradesTracker)
-        newBook newBookCapacity newTrades newTradesCapacity g0Final nodes1
-        hRecursive hScratch hBookOwned hTradesOwned hBook48 hBook32 hBookCapacity
-        hTrades48 hTrades32 hTradesCapacity hBookBelow hTradesBelow hHeapUpper
-        hBookFree hTradesFree hNodesBelow hFreeList hPages hG0 hG1 hG2 hG4 hG5
+      let final := FullTransition.fullTransitionFrame s1 data.fuel ctx.taker
+        newBook newTrades (data.remaining - data.orders[i]!.oqty) 0
+        data.oldTradesTracker
+      let next := LoopAdvance.nextData data ctx.taker i newBook newBookCapacity
+        newTrades newTradesCapacity g0Final nodes1
+      have nextFacts : RunningFacts ctx st1 final next := by
+        dsimp only [final, next]
+        exact LoopAdvance.of_full ctx st base data facts hFuel i hRemaining hFind
+          hQty st1
+          (FullTransition.fullTransitionFrame s1 data.fuel ctx.taker newBook
+            newTrades (data.remaining - data.orders[i]!.oqty) 0
+            data.oldTradesTracker)
+          newBook newBookCapacity newTrades newTradesCapacity g0Final nodes1
+          hRecursive hScratch hBookOwned hTradesOwned hBook48 hBook32 hBookCapacity
+          hTrades48 hTrades32 hTradesCapacity hBookBelow hTradesBelow hHeapUpper
+          hBookFree hTradesFree hNodesBelow hFreeList hPages hG0 hG1 hG2 hG4 hG5
+      apply hDone st1 final ⟨next, nextFacts⟩
+      rw [measure_running nextFacts, measure_running facts]
+      simp only [next, LoopAdvance.nextData]
+      rw [Budget.fuel_sub_one_toNat data.fuel hFuel]
+      have hFuelPositive : 0 < data.fuel.toNat := by
+        by_contra h
+        have hZero : data.fuel.toNat = 0 := by omega
+        apply hFuel
+        apply UInt64.toNat.inj
+        simpa using hZero
+      omega
 
 end Project.ClobMatchFuel.LoopBranches
