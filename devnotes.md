@@ -4982,3 +4982,5 @@ The frame theorem now accepts every target flat-word slot from the length word t
 ## 2026-07-15: Matched-Trade Prefix Copy
 
 `Project.ClobMatchFuel.TradeAppendCopy.tradeCopyProg_spec` proves the generated allocation-counter update, output-length store, and complete copy of the existing trade words into a fresh array.  Its invariant preserves the source `TradesAt` predicate, destination header, destination length, and every copied flat word under explicit nonwrapping and separation assumptions.  The warning-failing constrained module build completes in 4.1 seconds after its imported targets are current.
+
+`Project.ClobMatchFuel.TradeAppendStore` defines the four-word append independently of generated local indices and proves its read behavior, extended `TradesAt` representation, and fixed-array-header frame.  `TradeAppendFinish.tradeFinishProg_spec` applies those results to the exact generated stores and supplies the fresh root to an arbitrary continuation.  Warning-failing constrained builds complete the semantic store module in 3.8 seconds and the instruction theorem in 5.4 seconds.
