@@ -24,6 +24,37 @@ def takeFirstFit (need : UInt64) : List FreeNode →
         | none => none
         | some (chosen, rest') => some (chosen, node :: rest')
 
+structure FreeChoice where
+  previous : UInt64
+  node : FreeNode
+  next : UInt64
+  remaining : List FreeNode
+
+def takeFirstFitFrom (previous need : UInt64) : List FreeNode →
+    Option FreeChoice
+  | [] => none
+  | node :: rest =>
+      if need ≤ node.capacity then
+        some { previous, node, next := freeHead rest, remaining := rest }
+      else
+        match takeFirstFitFrom node.root need rest with
+        | none => none
+        | some choice => some { choice with remaining := node :: choice.remaining }
+
+theorem takeFirstFitFrom_project (previous need : UInt64)
+    (nodes : List FreeNode) :
+    (takeFirstFitFrom previous need nodes).map
+        (fun choice => (choice.node, choice.remaining)) =
+      takeFirstFit need nodes := by
+  induction nodes generalizing previous with
+  | nil => rfl
+  | cons node rest ih =>
+      simp only [takeFirstFitFrom, takeFirstFit]
+      split
+      · rfl
+      · rw [← ih node.root]
+        cases takeFirstFitFrom node.root need rest <;> rfl
+
 theorem takeFirstFit_none_iff (need : UInt64) (nodes : List FreeNode) :
     takeFirstFit need nodes = none ↔
       ∀ node ∈ nodes, node.capacity < need := by
@@ -119,6 +150,33 @@ theorem takeFirstFit_some_length {need : UInt64} {nodes rest : List FreeNode}
           simp only [List.length_cons]
           omega
 
+theorem takeFirstFitFrom_some_capacity {previous need : UInt64}
+    {nodes : List FreeNode} {choice : FreeChoice}
+    (h : takeFirstFitFrom previous need nodes = some choice) :
+    need ≤ choice.node.capacity := by
+  have hproject := congrArg
+    (Option.map fun choice : FreeChoice => (choice.node, choice.remaining)) h
+  rw [takeFirstFitFrom_project] at hproject
+  exact takeFirstFit_some_capacity hproject
+
+theorem takeFirstFitFrom_some_mem {previous need : UInt64}
+    {nodes : List FreeNode} {choice : FreeChoice}
+    (h : takeFirstFitFrom previous need nodes = some choice) :
+    choice.node ∈ nodes := by
+  have hproject := congrArg
+    (Option.map fun choice : FreeChoice => (choice.node, choice.remaining)) h
+  rw [takeFirstFitFrom_project] at hproject
+  exact takeFirstFit_some_mem hproject
+
+theorem takeFirstFitFrom_some_length {previous need : UInt64}
+    {nodes : List FreeNode} {choice : FreeChoice}
+    (h : takeFirstFitFrom previous need nodes = some choice) :
+    choice.remaining.length + 1 = nodes.length := by
+  have hproject := congrArg
+    (Option.map fun choice : FreeChoice => (choice.node, choice.remaining)) h
+  rw [takeFirstFitFrom_project] at hproject
+  exact takeFirstFit_some_length hproject
+
 def FreeNode.region (node : FreeNode) : Nat × Nat :=
   (node.root.toNat - 48, 48 + node.capacity.toNat)
 
@@ -158,6 +216,34 @@ theorem FreeListAt.mem_bounds {mem : Mem} {nodes : List FreeNode}
       rcases List.mem_cons.mp hmem with rfl | htail
       · exact ⟨hp, h32, hfit⟩
       · exact ih htail
+
+theorem FreeListAt.roots_ne_zero {mem : Mem} {nodes : List FreeNode}
+    (h : FreeListAt mem nodes) :
+    ∀ node ∈ nodes, node.root ≠ 0 := by
+  intro node hmem
+  have hbound := h.mem_bounds hmem
+  intro hzero
+  have := congrArg UInt64.toNat hzero
+  simp at this
+  omega
+
+theorem FreeListAt.roots_nodup {mem : Mem} {nodes : List FreeNode}
+    (h : FreeListAt mem nodes) :
+    (nodes.map FreeNode.root).Nodup := by
+  induction nodes with
+  | nil => exact .nil
+  | cons node rest ih =>
+      cases h with
+      | cons hp h32 hfit hrc hcapacity hnext hsep htail =>
+          rw [List.map_cons]
+          apply List.Nodup.cons
+          · intro hmem
+            obtain ⟨other, hother, hroot⟩ := List.mem_map.mp hmem
+            have hdisjoint := hsep other hother
+            unfold regionsDisjoint FreeNode.region at hdisjoint
+            rw [← hroot] at hdisjoint
+            omega
+          · exact ih htail
 
 theorem FreeListAt.frame {mem mem' : Mem} {nodes : List FreeNode}
     (hpages : mem'.pages = mem.pages)
