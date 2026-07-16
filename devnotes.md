@@ -5043,6 +5043,8 @@ The partial-book and trade allocation-copy theorems now pass each target's lower
 
 `PartialBookUpdate.partialBookUpdateProg_spec` composes partial-book allocation, complete copying, and the five quantity-replacement stores for both allocator outcomes.  `TradeAllocAppend.tradeAllocAppendProg_spec` composes trade allocation, prefix copying, and the four appended-trade stores with the same outcome data.  Warning-failing constrained builds complete the new modules in 7.4 and 6.7 seconds after their changed dependencies are current.
 
+The partial-book and trade-update continuations now retain the final page count and exact global-list update already carried by their copy invariants.  These facts expose the post-allocation heap top, free-list head, and allocation counter needed by the following allocator and release block.  Warning-failing constrained builds complete `PartialBookUpdate` in 7.7 seconds and `TradeAllocAppend` in 6.9 seconds after their dependencies are current.
+
 ## 2026-07-15: Release Transformations
 
 `Allocation.fixedArrayReleaseMem` and `fixedArrayReleaseGlobals` name the exact memory and global-list results of freeing a refcount-one zero-mask fixed array.  `func18_frees_fixed_array_zero_mask` now states its existing runtime result with those definitions, without changing its assumptions or proof.  The warning-failing constrained `Allocation` build completes in 2.8 seconds.

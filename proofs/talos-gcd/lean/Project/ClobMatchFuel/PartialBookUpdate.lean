@@ -80,9 +80,16 @@ theorem partialBookUpdateProg_spec
             qty)
           choice.node.root choice.node.capacity (Model.setQtyL os i qty) →
         MemEqOutsideFlatWords (PartialBookAllocFit.bookAllocFitStore st choice)
-          (BookReplaceStore.replaceOrderStore st1 choice.node.root i os[i]!
+        (BookReplaceStore.replaceOrderStore st1 choice.node.root i os[i]!
             qty)
           choice.node.root (os.length * 5) →
+        (BookReplaceStore.replaceOrderStore st1 choice.node.root i os[i]!
+            qty).mem.pages =
+          (PartialBookAllocFit.bookAllocFitStore st choice).mem.pages →
+        (BookReplaceStore.replaceOrderStore st1 choice.node.root i os[i]!
+            qty).globals.globals =
+          (PartialBookAllocFit.bookAllocFitStore st choice).globals.globals.set
+            2 (.i64 (g2 + 1)) →
         wp «module» rest Q
           (BookReplaceStore.replaceOrderStore st1 choice.node.root i os[i]!
             qty)
@@ -106,6 +113,15 @@ theorem partialBookUpdateProg_spec
           (orderArrayBytesU os.length))
         (BookReplaceStore.replaceOrderStore st1 (g0 + 48) i os[i]! qty)
         (g0 + 48) (os.length * 5) →
+      (BookReplaceStore.replaceOrderStore st1 (g0 + 48) i os[i]!
+          qty).mem.pages =
+        (PartialBookAllocBump.bookAllocBumpStore st g0
+          (orderArrayBytesU os.length)).mem.pages →
+      (BookReplaceStore.replaceOrderStore st1 (g0 + 48) i os[i]!
+          qty).globals.globals =
+        (PartialBookAllocBump.bookAllocBumpStore st g0
+          (orderArrayBytesU os.length)).globals.globals.set
+            2 (.i64 (g2 + 1)) →
       wp «module» rest Q
         (BookReplaceStore.replaceOrderStore st1 (g0 + 48) i os[i]! qty)
         (BookReplaceFinish.replaceResultFrame
@@ -122,6 +138,8 @@ theorem partialBookUpdateProg_spec
     (BookReplaceFinish.replaceFinishProg ++ rest)
   · intro choice hTake st1 hTarget48 hTarget32 hTargetFit hOwnedSource hInv
       hTargetOrders
+    have hState := hInv
+    obtain ⟨_, _, _, hCopyPages, hCopyGlobals, _, _, _, _, _⟩ := hState
     apply BookReplaceFinish.replaceFinishProg_spec env
       (PartialBookAllocFit.bookAllocFitStore st choice) st1
       (PartialBookAllocCopy.fitFrame base os.length choice) choice.node.root
@@ -157,8 +175,12 @@ theorem partialBookUpdateProg_spec
     · intro hTargetFinal hFreshFinal hOutsideFinal
       exact hFitDone choice hTake st1 hTarget48 hTarget32 hTargetFit
         hOwnedSource ⟨hFreshFinal, hTargetFinal⟩ hOutsideFinal
+        (by simpa [BookReplaceStore.replaceOrderStore] using hCopyPages)
+        (by simpa [BookReplaceStore.replaceOrderStore] using hCopyGlobals)
   · intro previous st1 hTarget48 hTarget32 hTargetFit hOwnedSource hInv
       hTargetOrders
+    have hState := hInv
+    obtain ⟨_, _, _, hCopyPages, hCopyGlobals, _, _, _, _, _⟩ := hState
     apply BookReplaceFinish.replaceFinishProg_spec env
       (PartialBookAllocBump.bookAllocBumpStore st g0
         (orderArrayBytesU os.length)) st1
@@ -195,5 +217,7 @@ theorem partialBookUpdateProg_spec
     · intro hTargetFinal hFreshFinal hOutsideFinal
       exact hBumpDone previous st1 hTarget48 hTarget32 hTargetFit
         hOwnedSource ⟨hFreshFinal, hTargetFinal⟩ hOutsideFinal
+        (by simpa [BookReplaceStore.replaceOrderStore] using hCopyPages)
+        (by simpa [BookReplaceStore.replaceOrderStore] using hCopyGlobals)
 
 end Project.ClobMatchFuel.PartialBookUpdate
