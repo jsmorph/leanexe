@@ -41,12 +41,14 @@ theorem partial_spec (env : HostEnv Unit) (ctx : Context) (st : Store Unit)
   apply PartialBranch.partialBranchProg_spec env st
     (Iteration.quantityFrame base data.bookOwner data.book ctx.taker i)
     data.book data.bookCapacity data.trades data.tradesCapacity data.remaining
-    data.g0 data.g2 data.g4 data.g5 tradeNext tradeResult ctx.taker data.orders
-    data.tradeValues i data.nodes
+    data.fuel data.g0 data.g2 data.g4 data.g5 tradeNext tradeResult ctx.taker
+    data.orders data.tradeValues i data.nodes
   · simpa [Iteration.quantityFrame] using hParams
   · simpa [Iteration.quantityFrame, Iteration.searchLocals, List.length_set]
       using hLocals
   · simp [Iteration.quantityFrame]
+  · simpa [Iteration.quantityFrame, Iteration.searchLocals, Locals.get, hParams,
+      hLocals] using hFuelLocal
   · simpa [Iteration.quantityFrame, Iteration.searchLocals, hLocals] using
       hOidElem
   · simpa [Iteration.quantityFrame, Iteration.searchLocals, Locals.get, hParams,

@@ -19,23 +19,25 @@ def partialTradeUpdateProg : Wasm.Program :=
   PartialTradePrepare.partialTradePrepareProg ++
     TradeAllocAppend.tradeAllocAppendProg ++ PartialFinish.partialFinishProg
 
-def PartialResultAt (s : Locals) (book trades : UInt64) : Prop :=
+def PartialResultAt (s : Locals) (book trades fuel : UInt64) : Prop :=
   s.locals[12]? = some (.i64 book) ∧
   s.locals[13]? = some (.i64 trades) ∧
   s.locals[14]? = some (.i64 0) ∧
   s.locals[15]? = some (.i64 1) ∧
-  s.params.length = 9 ∧ s.locals.length = 76 ∧ s.values = []
+  s.params.length = 9 ∧ s.locals.length = 76 ∧ s.values = [] ∧
+  s.get 0 = some (.i64 fuel)
 
 set_option Elab.async false in
 theorem partialTradeUpdateProg_spec
     (env : HostEnv Unit) (st : Store Unit) (base : Locals)
     (newBook newBookCapacity oldBook oldTrades oldTradesCapacity : UInt64)
-    (remaining g0 g2 g4 g5 capacity next : UInt64)
+    (remaining fuel g0 g2 g4 g5 capacity next : UInt64)
     (taker : OrderL) (os : List OrderL) (ts : List TradeL) (i : Nat)
     (newOrders : List OrderL) (nodes : List FreeNode)
     (hParams : base.params.length = 9)
     (hLocals : base.locals.length = 76)
     (hValues : base.values = [.i64 newBook])
+    (hFuelLocal : base.get 0 = some (.i64 fuel))
     (hTakerLocal : base.locals[0]? = some (.i64 taker.oid))
     (hBookLocal : base.locals[6]? = some (.i64 oldBook))
     (hTradesLocal : base.locals[8]? = some (.i64 oldTrades))
@@ -89,7 +91,7 @@ theorem partialTradeUpdateProg_spec
     (hList : FreeListAt st.mem nodes)
     (Q : Assertion Unit) (rest : Wasm.Program)
     (hDone : ∀ st1 s newTrades newTradesCapacity nodes1 g0Final,
-      PartialResultAt s newBook newTrades →
+      PartialResultAt s newBook newTrades fuel →
       OwnedOrderArrayAt st1 newBook newBookCapacity newOrders →
       OwnedTradeArrayAt st1 newTrades newTradesCapacity
         (ts ++ [Model.fillTradeL taker os[i]! remaining]) →
@@ -102,6 +104,10 @@ theorem partialTradeUpdateProg_spec
       wp «module» rest Q st1 s env) :
     wp «module» (partialTradeUpdateProg ++ rest) Q st base env := by
   let trade := Model.fillTradeL taker os[i]! remaining
+  have hFuelParam : base.params[0]? = some (.i64 fuel) := by
+    simpa [Locals.get, hParams] using hFuelLocal
+  have hFuelElem : base.params[0] = .i64 fuel :=
+    (List.getElem?_eq_some_iff.mp hFuelParam).2
   unfold partialTradeUpdateProg
   rw [List.append_assoc, List.append_assoc]
   apply PartialTradePrepare.partialTradePrepareProg_spec env st base newBook
@@ -218,7 +224,8 @@ theorem partialTradeUpdateProg_spec
       · simp [PartialResultAt, PartialFinish.partialFinishFrame,
           TradeAppendFinish.tradeResultFrame, TradeAppendCopy.tradeCopyFrame,
           TradeAllocAppend.fitFrame, TradeAllocSearch.tradeAllocSearchFrame,
-          PartialTradePrepare.partialTradePrepareFrame, hParams, hLocals]
+          PartialTradePrepare.partialTradePrepareFrame, Locals.get, hParams,
+          hLocals, hFuelElem]
       · exact hNewBookOwned1
       · simpa [trade] using hNewTradesOwned
       · exact hFinalList
@@ -283,7 +290,8 @@ theorem partialTradeUpdateProg_spec
       · simp [PartialResultAt, PartialFinish.partialFinishFrame,
           TradeAppendFinish.tradeResultFrame, TradeAppendCopy.tradeCopyFrame,
           TradeAllocAppend.bumpFrame, TradeAllocSearch.tradeAllocSearchFrame,
-          PartialTradePrepare.partialTradePrepareFrame, hParams, hLocals]
+          PartialTradePrepare.partialTradePrepareFrame, Locals.get, hParams,
+          hLocals, hFuelElem]
       · exact hNewBookOwned1
       · simpa [trade] using hNewTradesOwned
       · exact hFinalList
