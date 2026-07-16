@@ -40,6 +40,7 @@ import Project.ClobMatchFuel.Loop
 import Project.ClobMatchFuel.LoopInitial
 import Project.ClobMatchFuel.LoopResult
 import Project.ClobMatchFuel.Entry
+import Project.ClobMatchFuel.Properties
 import Project.ClobMatchFuel.Correct
 
 /-!
@@ -50,4 +51,9 @@ order matching.  The primary theorem relates the recursive export to exact
 book, trade, and remaining-quantity results for every represented input.  It
 also states returned ownership, allocator counters, page preservation, and byte
 preservation above the reserved heap boundary.
+
+`Properties.matchFuelL_steps` decomposes every source result into exact full-
+or partial-fill steps.  `Properties.matchFuelL_quantity_conservation` proves
+maker and taker quantity conservation against the accumulated trade quantity.
+These source theorems apply directly to the artifact theorem's exact result.
 -/

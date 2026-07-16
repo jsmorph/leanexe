@@ -5172,3 +5172,11 @@ Lean 4.31 does not accept the prior direct-compiler `--wfail` option.  Focused L
 `MemoryFrame.BytesEqFrom` states byte equality at every address at or above a reserved heap boundary.  Reusable lemmas preserve it across selected-node allocation, bump allocation, flat payload writes, and fixed-array release, while `LoopBounds` proves that both allocation pairs remain below `ctx.limit`.  The running and completed invariants carry the relation from `ctx.initialMem` to the final store, so the public theorem preserves the complete memory region above the budgeted heap range.
 
 Focused warning-failing builds completed `PartialTradeUpdate` in 11 seconds, `PartialBranch` in 11 seconds, `FullTradeUpdate` in 18 seconds, `FullBranch` in 19 seconds, and `FullStep` in 18 seconds.  The rebuilt branch dispatcher completed in 2.4 seconds, the recursive loop in 1.4 seconds, and `Project.ClobMatchFuel.Correct` in 2.1 seconds after its dependencies were current.  Every Lean and Lake command ran serially under the repository cgroup, CPU, scheduler, I/O-priority, and timeout limits.
+
+## 2026-07-15: `matchFuel` Source Properties
+
+`ClobMatchFuel.Properties.MatchStepL` records the exact full-fill and partial-fill source transitions.  `matchFuelL_steps` proves that every recursive result follows the reflexive transitive closure of those transitions.  Each transition appends one trade, while named index lemmas describe the full-fill shift and the partial-fill preservation of every unselected order.
+
+`orderQtyTotal` and `tradeQtyTotal` interpret fixed-width quantities as natural numbers before summing them.  A full step subtracts only after proving that the maker quantity does not exceed the remainder, and a partial step subtracts only after proving the converse ordering.  The resulting step and recursive theorems conserve both maker inventory plus executed trades and taker remainder plus executed trades without an overflow premise.
+
+The focused warning-failing `Project.ClobMatchFuel.Properties` build completed in 1.5 seconds.  The proof uses the existing source branch equations, `findBestL_some_lt`, and small reusable list-total lemmas.  Every Lean invocation ran serially under the repository cgroup, CPU, scheduler, I/O-priority, and timeout limits.
