@@ -451,6 +451,50 @@ def fixedArrayBytes (n stride : Nat) : Nat :=
 def fixedArrayBytesU (n stride : Nat) : UInt64 :=
   8 + UInt64.ofNat n * UInt64.ofNat stride * 8
 
+theorem fixedArrayBytesU_toNat (n stride : Nat)
+    (hn : n < UInt64.size) (hstride : stride < UInt64.size)
+    (hbytes : fixedArrayBytes n stride < UInt64.size) :
+    (fixedArrayBytesU n stride).toNat = fixedArrayBytes n stride := by
+  unfold fixedArrayBytesU fixedArrayBytes
+  rw [UInt64.toNat_add, UInt64.toNat_mul, UInt64.toNat_mul,
+    Project.Common.toNat_ofNat_lt hn,
+    Project.Common.toNat_ofNat_lt hstride]
+  have h8 : (8 : UInt64).toNat = 8 := rfl
+  have hmul : n * stride < UInt64.size := by
+    unfold fixedArrayBytes at hbytes
+    omega
+  have hdata : n * stride * 8 < UInt64.size := by
+    unfold fixedArrayBytes at hbytes
+    omega
+  have htotal : 8 + n * stride * 8 < UInt64.size := by
+    simpa only [fixedArrayBytes] using hbytes
+  rw [h8, Nat.mod_eq_of_lt hmul, Nat.mod_eq_of_lt hdata,
+    Nat.mod_eq_of_lt htotal]
+
+theorem fixedArrayBytesU_round (n stride : Nat)
+    (hn : n < UInt64.size) (hstride : stride < UInt64.size)
+    (hbytes : fixedArrayBytes n stride + 7 < UInt64.size) :
+    (fixedArrayBytesU n stride + 7) / 8 * 8 =
+      fixedArrayBytesU n stride := by
+  have hbytesNat := fixedArrayBytesU_toNat n stride hn hstride (by omega)
+  have hadd7 : (fixedArrayBytesU n stride + 7).toNat =
+      fixedArrayBytes n stride + 7 := by
+    rw [UInt64.toNat_add, hbytesNat]
+    have h7 : (7 : UInt64).toNat = 7 := rfl
+    rw [h7, Nat.mod_eq_of_lt hbytes]
+  have hrounded : (fixedArrayBytes n stride + 7) / 8 * 8 =
+      fixedArrayBytes n stride := by
+    unfold fixedArrayBytes
+    omega
+  have hroundedSize : (fixedArrayBytes n stride + 7) / 8 * 8 <
+      UInt64.size := by
+    rw [hrounded]
+    omega
+  apply UInt64.toNat.inj
+  rw [UInt64.toNat_mul, UInt64.toNat_div, hadd7]
+  have h8 : (8 : UInt64).toNat = 8 := rfl
+  rw [h8, Nat.mod_eq_of_lt hroundedSize, hrounded, hbytesNat]
+
 def FreshFixedArrayAt (st : Store Unit) (ptr capacity stride : UInt64) : Prop :=
   st.mem.read64 ((ptr - 48).toUInt32) = 5501223100278326855 ∧
   st.mem.read64 ((ptr - 40).toUInt32) = 1 ∧
