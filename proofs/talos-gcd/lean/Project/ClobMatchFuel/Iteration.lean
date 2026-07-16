@@ -247,9 +247,9 @@ theorem fullPrepareProg_spec
   rw [hLengthSub, hPrefixEq, hSuffixErasedEq]
   simpa only [fullPrepareFrame, fullPrepareLocals] using hDone
 
-def searchLocals (base : Locals) (book : UInt64) (taker : OrderL)
-    (result : Option Nat) : List Value :=
-  let locals := base.locals.set 16 (.i64 0)
+def searchLocals (base : Locals) (bookOwner book : UInt64)
+    (taker : OrderL) (result : Option Nat) : List Value :=
+  let locals := base.locals.set 16 (.i64 bookOwner)
   let locals := locals.set 17 (.i64 book)
   let locals := locals.set 18 (.i64 taker.oid)
   let locals := locals.set 19 (.i64 taker.otrader)
@@ -259,14 +259,16 @@ def searchLocals (base : Locals) (book : UInt64) (taker : OrderL)
   let locals := locals.set 24 (.i64 (optionPayload result))
   locals.set 23 (.i64 (optionTag result))
 
-def searchFrame (base : Locals) (book : UInt64) (taker : OrderL)
+def searchFrame (base : Locals) (bookOwner book : UInt64) (taker : OrderL)
     (result : Option Nat) : Locals :=
-  { base with locals := searchLocals base book taker result, values := [] }
-
-def quantityFrame (base : Locals) (book : UInt64) (taker : OrderL)
-    (i : Nat) : Locals :=
   { base with
-    locals := ((searchLocals base book taker (some i)).set 57
+    locals := searchLocals base bookOwner book taker result
+    values := [] }
+
+def quantityFrame (base : Locals) (bookOwner book : UInt64)
+    (taker : OrderL) (i : Nat) : Locals :=
+  { base with
+    locals := ((searchLocals base bookOwner book taker (some i)).set 57
       (.i64 book)).set 58 (.i64 (UInt64.ofNat i))
     values := [] }
 
@@ -369,7 +371,8 @@ def dispatchProg : Wasm.Program :=
 set_option Elab.async false in
 theorem dispatchProg_spec
     (env : HostEnv Unit) (st : Store Unit) (base : Locals)
-    (book trades remaining : UInt64) (taker : OrderL) (os : List OrderL)
+    (bookOwner book trades remaining : UInt64) (taker : OrderL)
+    (os : List OrderL)
     (hParams : base.params.length = 9)
     (hLocals : base.locals.length = 76)
     (hValues : base.values = [])
@@ -378,7 +381,7 @@ theorem dispatchProg_spec
     (hSide : base.get 11 = some (.i64 taker.oside))
     (hPrice : base.get 12 = some (.i64 taker.oprice))
     (hQty : base.get 13 = some (.i64 taker.oqty))
-    (hZero : base.get 14 = some (.i64 0))
+    (hBookOwner : base.get 14 = some (.i64 bookOwner))
     (hBook : base.get 15 = some (.i64 book))
     (hTrades : base.get 17 = some (.i64 trades))
     (hRemaining : base.get 18 = some (.i64 remaining))
@@ -392,14 +395,14 @@ theorem dispatchProg_spec
       findBestL os taker = some i → os[i]!.oqty ≤ remaining →
       wp «module» (fullPrepareProg ++ FullStep.fullStepProg)
         (dispatchBranchPost env rest Q) st
-        (quantityFrame base book taker i) env)
+        (quantityFrame base bookOwner book taker i) env)
     (hPartial : ∀ i,
       findBestL os taker = some i → ¬os[i]!.oqty ≤ remaining →
       wp «module» PartialBranch.partialBranchProg
         (dispatchBranchPost env rest Q) st
-        (quantityFrame base book taker i) env) :
+        (quantityFrame base bookOwner book taker i) env) :
     wp «module» (dispatchProg ++ rest) Q st base env := by
-  simp only [Locals.get] at hOid hTrader hSide hPrice hQty hZero hBook hTrades hRemaining
+  simp only [Locals.get] at hOid hTrader hSide hPrice hQty hBookOwner hBook hTrades hRemaining
   have hOid' : base.locals[0] = .i64 taker.oid := by
     simpa [hParams, hLocals] using hOid
   have hTrader' : base.locals[1] = .i64 taker.otrader := by
@@ -410,8 +413,8 @@ theorem dispatchProg_spec
     simpa [hParams, hLocals] using hPrice
   have hQty' : base.locals[4] = .i64 taker.oqty := by
     simpa [hParams, hLocals] using hQty
-  have hZero' : base.locals[5] = .i64 0 := by
-    simpa [hParams, hLocals] using hZero
+  have hBookOwner' : base.locals[5] = .i64 bookOwner := by
+    simpa [hParams, hLocals] using hBookOwner
   have hBook' : base.locals[6] = .i64 book := by
     simpa [hParams, hLocals] using hBook
   have hTrades' : base.locals[8] = .i64 trades := by
@@ -446,9 +449,10 @@ theorem dispatchProg_spec
     rw [if_neg (by simp)]
     norm_num
     simp (config := { maxSteps := 10000000 }) [wp_simp, hParams, hLocals,
-      hValues, hOid', hTrader', hSide', hPrice', hQty', hZero', hBook']
+      hValues, hOid', hTrader', hSide', hPrice', hQty', hBookOwner', hBook']
     refine wp_call_tw
-      (FindBestWrapper.func9_spec env st book os taker hLength32 hOrders) ?_
+      (FindBestWrapper.func9_spec_owner env st bookOwner book os taker
+        hLength32 hOrders) ?_
     intro st1 vs hResult
     rcases hResult with ⟨hvs, hst⟩
     subst st1

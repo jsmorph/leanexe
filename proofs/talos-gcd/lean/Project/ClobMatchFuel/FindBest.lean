@@ -56,12 +56,12 @@ macro "mf_read_candidate_tail " hHead:ident hHeadB:ident hlt:ident
    refine ⟨$hb5, ?_⟩
    norm_num))
 
-private def mfFrame (fuel ptr : UInt64) (taker : OrderL) (k : Nat)
+private def mfFrame (fuel owner ptr : UInt64) (taker : OrderL) (k : Nat)
     (best : Option Nat) (rTag rPayload done
       s14 s15 s16 s17 s18 s19 s20 s21 s22 s23 s24 s25 s26 s27 s28 s29
       s30 s31 s32 s33 s34 s35 s36 s37 s38 s39 s40 s41 s42 s43 s44 s45
       s46 s47 s48 s49 s50 s51 s52 s53 s54 s55 s56 s57 : UInt64) : Locals :=
-  { params := [.i64 fuel, .i64 0, .i64 ptr, .i64 taker.oid,
+  { params := [.i64 fuel, .i64 owner, .i64 ptr, .i64 taker.oid,
       .i64 taker.otrader, .i64 taker.oside, .i64 taker.oprice,
       .i64 taker.oqty, .i64 (UInt64.ofNat k), .i64 (optionTag best),
       .i64 (optionPayload best)],
@@ -76,8 +76,8 @@ private def mfFrame (fuel ptr : UInt64) (taker : OrderL) (k : Nat)
       .i64 s56, .i64 s57],
     values := [] }
 
-private def mfInv (st0 : Store Unit) (ptr : UInt64) (os : List OrderL)
-    (taker : OrderL) : AssertionF Unit :=
+private def mfInv (st0 : Store Unit) (owner ptr : UInt64)
+    (os : List OrderL) (taker : OrderL) : AssertionF Unit :=
   fun st s =>
     st = st0 ∧
     ∃ k : Nat, k ≤ os.length ∧
@@ -85,7 +85,7 @@ private def mfInv (st0 : Store Unit) (ptr : UInt64) (os : List OrderL)
       s14 s15 s16 s17 s18 s19 s20 s21 s22 s23 s24 s25 s26 s27 s28 s29
       s30 s31 s32 s33 s34 s35 s36 s37 s38 s39 s40 s41 s42 s43 s44 s45
       s46 s47 s48 s49 s50 s51 s52 s53 s54 s55 s56 s57 : UInt64,
-      s = mfFrame fuel ptr taker k (bestPrefixL os taker k)
+      s = mfFrame fuel owner ptr taker k (bestPrefixL os taker k)
         rTag rPayload done s14 s15 s16 s17 s18 s19 s20 s21 s22 s23 s24
         s25 s26 s27 s28 s29 s30 s31 s32 s33 s34 s35 s36 s37 s38 s39
         s40 s41 s42 s43 s44 s45 s46 s47 s48 s49 s50 s51 s52 s53 s54
@@ -101,33 +101,33 @@ private def mfMeasure (_ : Store Unit) (s : Locals) : Nat :=
       2 * fuel.toNat + (if done = 0 then 1 else 0)
   | _, _ => 0
 
-private theorem mfInv_some_step (st : Store Unit) (ptr : UInt64)
+private theorem mfInv_some_step (st : Store Unit) (owner ptr : UInt64)
     (os : List OrderL) (taker : OrderL) (k selected lastRead : Nat)
     (candidate : OrderL)
     {rTag rPayload s22 s23 s24 s25 s26 s27 s28 s29 s30 s31 s32 : UInt64}
     (hk : k + 1 ≤ os.length)
     (hnext : bestPrefixL os taker (k + 1) = some selected) :
-    mfInv st ptr os taker st
-      (mfFrame (UInt64.ofNat (os.length + 1 - (k + 1))) ptr taker (k + 1)
+    mfInv st owner ptr os taker st
+      (mfFrame (UInt64.ofNat (os.length + 1 - (k + 1))) owner ptr taker (k + 1)
         (some selected) rTag rPayload 0
-        0 ptr taker.oid taker.otrader taker.oside taker.oprice taker.oqty
+        owner ptr taker.oid taker.otrader taker.oside taker.oprice taker.oqty
         (UInt64.ofNat (k + 1))
         s22 s23 s24 s25 s26 s27 s28 s29 s30 s31 s32
         taker.oid taker.otrader taker.oside taker.oprice taker.oqty
         candidate.oid candidate.otrader candidate.oside candidate.oprice
-        candidate.oqty 1 (UInt64.ofNat selected) 0 ptr taker.oid
+        candidate.oqty 1 (UInt64.ofNat selected) owner ptr taker.oid
         taker.otrader taker.oside taker.oprice taker.oqty
         (UInt64.ofNat (k + 1)) 1 (UInt64.ofNat selected) ptr
         (UInt64.ofNat lastRead) (UInt64.ofNat (k + 1))) := by
   unfold mfInv
   refine ⟨rfl, k + 1, hk,
     UInt64.ofNat (os.length + 1 - (k + 1)), rTag, rPayload, 0,
-    0, ptr, taker.oid, taker.otrader, taker.oside, taker.oprice, taker.oqty,
+    owner, ptr, taker.oid, taker.otrader, taker.oside, taker.oprice, taker.oqty,
     UInt64.ofNat (k + 1),
     s22, s23, s24, s25, s26, s27, s28, s29, s30, s31, s32,
     taker.oid, taker.otrader, taker.oside, taker.oprice, taker.oqty,
     candidate.oid, candidate.otrader, candidate.oside, candidate.oprice,
-    candidate.oqty, 1, UInt64.ofNat selected, 0, ptr, taker.oid,
+    candidate.oqty, 1, UInt64.ofNat selected, owner, ptr, taker.oid,
     taker.otrader, taker.oside, taker.oprice, taker.oqty,
     UInt64.ofNat (k + 1), 1, UInt64.ofNat selected, ptr,
     UInt64.ofNat lastRead, UInt64.ofNat (k + 1), ?_, Or.inl ⟨rfl, rfl⟩⟩
@@ -135,13 +135,13 @@ private theorem mfInv_some_step (st : Store Unit) (ptr : UInt64)
 
 /-- The generated matching artifact fuel loop returns the source search result and preserves the
 store. -/
-theorem func8_spec (env : HostEnv Unit) (st : Store Unit) (ptr : UInt64)
-    (os : List OrderL) (taker : OrderL)
+theorem func8_spec_owner (env : HostEnv Unit) (st : Store Unit)
+    (owner ptr : UInt64) (os : List OrderL) (taker : OrderL)
     (hlen : os.length < 4294967296) (hInput : OrdersAt st ptr os) :
     TerminatesWith (m := «module») (id := 8) (initial := st) (env := env)
       [.i64 0, .i64 0, .i64 0, .i64 taker.oqty, .i64 taker.oprice,
        .i64 taker.oside, .i64 taker.otrader, .i64 taker.oid, .i64 ptr,
-       .i64 0, .i64 (UInt64.ofNat (os.length + 1))]
+       .i64 owner, .i64 (UInt64.ofNat (os.length + 1))]
       (fun st' vs => vs = optionVals (findBestL os taker) ∧ st' = st) := by
   obtain ⟨⟨hHead, hHeadB⟩, hElems⟩ := hInput
   have hlenU : (UInt64.ofNat os.length).toNat = os.length :=
@@ -149,7 +149,7 @@ theorem func8_spec (env : HostEnv Unit) (st : Store Unit) (ptr : UInt64)
   apply TerminatesWith.of_wp_entry_for (f := func8Def)
   · simp [«module»]
   · change wp «module» func8 _ st
-      { params := [.i64 (UInt64.ofNat (os.length + 1)), .i64 0, .i64 ptr,
+      { params := [.i64 (UInt64.ofNat (os.length + 1)), .i64 owner, .i64 ptr,
           .i64 taker.oid, .i64 taker.otrader, .i64 taker.oside,
           .i64 taker.oprice, .i64 taker.oqty, .i64 0, .i64 0, .i64 0],
         locals := [.i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
@@ -163,7 +163,7 @@ theorem func8_spec (env : HostEnv Unit) (st : Store Unit) (ptr : UInt64)
     unfold func8
     wp_run
     apply wp_block_cons
-    apply wp_loop_cons (Inv := mfInv st ptr os taker) (μ := mfMeasure)
+    apply wp_loop_cons (Inv := mfInv st owner ptr os taker) (μ := mfMeasure)
     · refine ⟨rfl, 0, Nat.zero_le _, UInt64.ofNat (os.length + 1), 0, 0, 0, ?_⟩
       repeat' apply Exists.intro 0
       refine ⟨?_, Or.inl ⟨rfl, ?_⟩⟩
@@ -360,12 +360,12 @@ theorem func8_spec (env : HostEnv Unit) (st : Store Unit) (ptr : UInt64)
                   unfold mfInv
                   refine ⟨rfl, k + 1, by omega,
                     UInt64.ofNat (os.length + 1 - (k + 1)), rTag, rPayload, 0,
-                    0, ptr, taker.oid, taker.otrader, taker.oside,
+                    owner, ptr, taker.oid, taker.otrader, taker.oside,
                     taker.oprice, taker.oqty, UInt64.ofNat (k + 1),
                     taker.oid, taker.otrader, taker.oside, taker.oprice,
                     taker.oqty, maker.oid, maker.otrader, maker.oside,
                     maker.oprice, maker.oqty, 1, s33, s34, s35, s36, s37,
-                    s38, s39, s40, s41, s42, 1, UInt64.ofNat k, 0, ptr,
+                    s38, s39, s40, s41, s42, 1, UInt64.ofNat k, owner, ptr,
                     taker.oid, taker.otrader, taker.oside, taker.oprice,
                     taker.oqty, UInt64.ofNat (k + 1), 1, UInt64.ofNat k,
                     ptr, UInt64.ofNat k, UInt64.ofNat (k + 1), ?_,
@@ -437,12 +437,12 @@ theorem func8_spec (env : HostEnv Unit) (st : Store Unit) (ptr : UInt64)
                   unfold mfInv
                   refine ⟨rfl, k + 1, by omega,
                     UInt64.ofNat (os.length + 1 - (k + 1)), rTag, rPayload, 0,
-                    0, ptr, taker.oid, taker.otrader, taker.oside,
+                    owner, ptr, taker.oid, taker.otrader, taker.oside,
                     taker.oprice, taker.oqty, UInt64.ofNat (k + 1),
                     taker.oid, taker.otrader, taker.oside, taker.oprice,
                     taker.oqty, maker.oid, maker.otrader, maker.oside,
                     maker.oprice, maker.oqty, 0, s33, s34, s35, s36, s37,
-                    s38, s39, s40, s41, s42, 0, 0, 0, ptr, taker.oid,
+                    s38, s39, s40, s41, s42, 0, 0, owner, ptr, taker.oid,
                     taker.otrader, taker.oside, taker.oprice, taker.oqty,
                     UInt64.ofNat (k + 1), 0, 0, ptr, UInt64.ofNat k,
                     UInt64.ofNat (k + 1), ?_, Or.inl ⟨rfl, rfl⟩⟩
@@ -628,7 +628,7 @@ theorem func8_spec (env : HostEnv Unit) (st : Store Unit) (ptr : UInt64)
                     constructor
                     · rw [hfuel_next, hkadd]
                       simpa only [mfFrame, candidate, optionTag, optionPayload] using
-                        (mfInv_some_step st4 ptr os taker k k j candidate
+                        (mfInv_some_step st4 owner ptr os taker k k j candidate
                           (by omega) hnext)
                     · simp only [mfMeasure]
                       rw [hfuel_next, toNat_ofNat_lt, toNat_ofNat_lt]
@@ -715,7 +715,7 @@ theorem func8_spec (env : HostEnv Unit) (st : Store Unit) (ptr : UInt64)
                     constructor
                     · rw [hfuel_next, hkadd]
                       simpa only [mfFrame, candidate, optionTag, optionPayload] using
-                        (mfInv_some_step st4 ptr os taker k j j candidate
+                        (mfInv_some_step st4 owner ptr os taker k j j candidate
                           (by omega) hnext)
                     · simp only [mfMeasure]
                       rw [hfuel_next, toNat_ofNat_lt, toNat_ofNat_lt]
@@ -825,7 +825,7 @@ theorem func8_spec (env : HostEnv Unit) (st : Store Unit) (ptr : UInt64)
                     constructor
                     · rw [hfuel_next, hkadd]
                       simpa only [mfFrame, candidate, optionTag, optionPayload] using
-                        (mfInv_some_step st4 ptr os taker k k k candidate
+                        (mfInv_some_step st4 owner ptr os taker k k k candidate
                           (by omega) hnext)
                     · simp only [mfMeasure]
                       rw [hfuel_next, toNat_ofNat_lt, toNat_ofNat_lt]
@@ -912,7 +912,7 @@ theorem func8_spec (env : HostEnv Unit) (st : Store Unit) (ptr : UInt64)
                     constructor
                     · rw [hfuel_next, hkadd]
                       simpa only [mfFrame, candidate, optionTag, optionPayload] using
-                        (mfInv_some_step st4 ptr os taker k j k candidate
+                        (mfInv_some_step st4 owner ptr os taker k j k candidate
                           (by omega) hnext)
                     · simp only [mfMeasure]
                       rw [hfuel_next, toNat_ofNat_lt, toNat_ofNat_lt]
@@ -964,7 +964,7 @@ theorem func8_spec (env : HostEnv Unit) (st : Store Unit) (ptr : UInt64)
                 constructor
                 · rw [hfuel_next, hkadd]
                   simpa only [mfFrame, candidate, optionTag, optionPayload] using
-                    (mfInv_some_step st4 ptr os taker k j k candidate
+                    (mfInv_some_step st4 owner ptr os taker k j k candidate
                       (by omega) hnext)
                 · simp only [mfMeasure]
                   rw [hfuel_next, toNat_ofNat_lt, toNat_ofNat_lt]
@@ -988,5 +988,15 @@ theorem func8_spec (env : HostEnv Unit) (st : Store Unit) (ptr : UInt64)
           rw [if_neg (by simp)]
           wp_run
           simp [func8Def, optionVals, findBestL_eq_prefix]
+
+theorem func8_spec (env : HostEnv Unit) (st : Store Unit) (ptr : UInt64)
+    (os : List OrderL) (taker : OrderL)
+    (hlen : os.length < 4294967296) (hInput : OrdersAt st ptr os) :
+    TerminatesWith (m := «module») (id := 8) (initial := st) (env := env)
+      [.i64 0, .i64 0, .i64 0, .i64 taker.oqty, .i64 taker.oprice,
+       .i64 taker.oside, .i64 taker.otrader, .i64 taker.oid, .i64 ptr,
+       .i64 0, .i64 (UInt64.ofNat (os.length + 1))]
+      (fun st' vs => vs = optionVals (findBestL os taker) ∧ st' = st) :=
+  func8_spec_owner env st 0 ptr os taker hlen hInput
 
 end Project.ClobMatchFuel.FindBest
