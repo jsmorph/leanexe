@@ -17,6 +17,7 @@ namespace Project.ClobMatchFuel.PartialBranch
 open Wasm Project.Common Project.Runtime Project.Clob Project.ClobMatchFuel
   Project.ClobMatchFuel.Allocation
   Project.ClobMatchFuel.AllocatorFrame
+  Project.ClobMatchFuel.MemoryFrame
 
 def partialBranchProg : Wasm.Program :=
   PartialBookControl.partialBookBranchProg ++
@@ -28,7 +29,7 @@ theorem partialBranchProg_spec
     (book bookCapacity oldTrades oldTradesCapacity : UInt64)
     (remaining fuel g0 g2 g4 g5 capacity next : UInt64)
     (taker : OrderL) (os : List OrderL) (ts : List TradeL) (i : Nat)
-    (nodes : List FreeNode)
+    (nodes : List FreeNode) (initialMem : Mem) (limit : Nat)
     (hParams : base.params.length = 9)
     (hLocals : base.locals.length = 76)
     (hValues : base.values = [])
@@ -91,6 +92,9 @@ theorem partialBranchProg_spec
       FreeListSeparatedFromFixedArray nodes oldTrades oldTradesCapacity)
     (hNodesBelow : ∀ node ∈ nodes,
       node.root.toNat + node.capacity.toNat ≤ g0.toNat)
+    (hAllocationLimit : g0.toNat + 96 + orderArrayBytes os.length +
+      tradeArrayBytes (ts.length + 1) ≤ limit)
+    (hMemoryFrame : BytesEqFrom initialMem st.mem limit)
     (hBookOwned : OwnedOrderArrayAt st book bookCapacity os)
     (hOldTradesOwned :
       OwnedTradeArrayAt st oldTrades oldTradesCapacity ts)
@@ -109,6 +113,8 @@ theorem partialBranchProg_spec
       OwnedTradeArrayAt st1 newTrades newTradesCapacity
         (ts ++ [Model.fillTradeL taker os[i]! remaining]) →
       FreeListAt st1.mem nodes1 →
+      BytesEqFrom initialMem st1.mem limit →
+      st1.mem.pages = st.mem.pages →
       st1.globals.globals[0]? = some (.i64 g0Final) →
       st1.globals.globals[1]? = some (.i64 (freeHead nodes1)) →
       st1.globals.globals[2]? = some (.i64 (g2 + 2)) →
@@ -230,6 +236,22 @@ theorem partialBranchProg_spec
         hOldTradesAlloc
     have hCurrentPages : finalStore.mem.pages = st.mem.pages := by
       exact hFinalPages.trans (fixedArrayAllocFitStore_pages st choice 5)
+    have hAllocFrame : BytesEqFrom st.mem
+        (PartialBookAllocFit.bookAllocFitStore st choice).mem limit := by
+      apply fixedArrayAllocFitStore_bytesFrom hList hTake
+      intro node hNode
+      exact (hNodesBelow node hNode).trans (by omega)
+    have hPayloadEnd : choice.node.root.toNat +
+        (os.length * 5 + 1) * 8 ≤ limit := by
+      have hChoiceBelow := hNodesBelow choice.node hChoiceMem
+      unfold orderArrayBytes fixedArrayBytes at hChoiceCapacity
+      omega
+    have hCurrentMemoryFrame : BytesEqFrom initialMem finalStore.mem limit :=
+      (hMemoryFrame.trans hAllocFrame).trans
+        (BytesEqFrom.of_outsideFlatWords hPayloadEnd hOutside)
+    have hTradeAllocationLimit : g0.toNat + 48 +
+        tradeArrayBytes (ts.length + 1) ≤ limit := by
+      omega
     have hCurrentG2 : finalStore.globals.globals[2]? =
         some (.i64 (g2 + 1)) := by
       have hAllocG2 :
@@ -288,7 +310,7 @@ theorem partialBranchProg_spec
           os.length choice) choice.node.root (os.length * 5))
       choice.node.root choice.node.capacity book oldTrades oldTradesCapacity
       remaining fuel g0 (g2 + 1) g4 g5 choice.node.root choice.node.capacity taker
-      os ts i newOrders choice.remaining
+      os ts i newOrders choice.remaining initialMem limit
     · simpa [BookReplaceFinish.replaceResultFrame,
         BookReplaceCopy.replaceCopyFrame, PartialBookAllocCopy.fitFrame,
         PartialBookAllocSearch.bookAllocSearchFrame,
@@ -362,6 +384,8 @@ theorem partialBranchProg_spec
     · exact hNewBookBelow
     · exact hNewBookFree
     · exact hNodesBelow1
+    · exact hTradeAllocationLimit
+    · exact hCurrentMemoryFrame
     · exact hBookOwnedFinal.2
     · exact hOldTradesFinal
     · exact hNewBookOwned
@@ -372,13 +396,15 @@ theorem partialBranchProg_spec
     · exact hCurrentG5
     · exact hFinalList
     · intro st2 s newTrades newTradesCapacity nodes2 g0Final hResult
-        hNewBookFinal hNewTradesFinal hListFinal hG0Final hG1Final hG2Final
-        hG4Final hG5Final
+        hNewBookFinal hNewTradesFinal hListFinal hMemoryFrameFinal hPageFinal
+        hG0Final hG1Final hG2Final hG4Final hG5Final
       apply hDone st2 s choice.node.root choice.node.capacity newTrades
         newTradesCapacity nodes2 g0Final hResult
       · simpa [newOrders, qty] using hNewBookFinal
       · exact hNewTradesFinal
       · exact hListFinal
+      · exact hMemoryFrameFinal
+      · exact hPageFinal.trans hCurrentPages
       · exact hG0Final
       · exact hG1Final
       · simpa only [hg2Next] using hG2Final
@@ -429,6 +455,18 @@ theorem partialBranchProg_spec
     have hCurrentPages : finalStore.mem.pages = st.mem.pages := by
       exact hFinalPages.trans
         (fixedArrayAllocBumpStore_pages st g0 bookNeed 5)
+    have hAllocFrame : BytesEqFrom st.mem
+        (PartialBookAllocBump.bookAllocBumpStore st g0 bookNeed).mem limit := by
+      apply fixedArrayAllocBumpStore_bytesFrom st g0 bookNeed 5 limit hBookFit32
+      rw [hBookNeedNat]
+      omega
+    have hPayloadEnd : newBook.toNat + (os.length * 5 + 1) * 8 ≤ limit := by
+      rw [hNewBookNat]
+      unfold orderArrayBytes fixedArrayBytes at hAllocationLimit
+      omega
+    have hCurrentMemoryFrame : BytesEqFrom initialMem finalStore.mem limit :=
+      (hMemoryFrame.trans hAllocFrame).trans
+        (BytesEqFrom.of_outsideFlatWords hPayloadEnd hOutside)
     have hCurrentG2 : finalStore.globals.globals[2]? =
         some (.i64 (g2 + 1)) := by
       have hAllocG2 :
@@ -488,6 +526,10 @@ theorem partialBranchProg_spec
         g0AfterBook.toNat := by
       rw [hG0AfterBookNat]
       omega
+    have hTradeAllocationLimit : g0AfterBook.toNat + 48 +
+        tradeArrayBytes (ts.length + 1) ≤ limit := by
+      rw [hG0AfterBookNat, hBookNeedNat]
+      omega
     apply BranchPost.oneResultIffPost_of_wp env finalStore
     · simp [BookReplaceFinish.replaceResultFrame]
     apply PartialTradeUpdate.partialTradeUpdateProg_spec env finalStore
@@ -496,7 +538,8 @@ theorem partialBranchProg_spec
           (PartialBookPrepare.partialBookPrepareFrame base book remaining os i)
           os.length g0 previous) newBook (os.length * 5))
       newBook bookNeed book oldTrades oldTradesCapacity remaining fuel g0AfterBook
-      (g2 + 1) g4 g5 0 g0AfterBook taker os ts i newOrders nodes
+      (g2 + 1) g4 g5 0 g0AfterBook taker os ts i newOrders nodes initialMem
+      limit
     · simpa [BookReplaceFinish.replaceResultFrame,
         BookReplaceCopy.replaceCopyFrame, PartialBookAllocCopy.bumpFrame,
         PartialBookAllocSearch.bookAllocSearchFrame,
@@ -574,6 +617,8 @@ theorem partialBranchProg_spec
     · exact hNewBookBelow
     · exact hNewBookFree
     · exact hNodesBelow1
+    · exact hTradeAllocationLimit
+    · exact hCurrentMemoryFrame
     · exact hBookOwnedFinal.2
     · exact hOldTradesFinal
     · simpa only [newBook, bookNeed, newOrders] using hNewBookOwned
@@ -584,13 +629,15 @@ theorem partialBranchProg_spec
     · exact hCurrentG5
     · exact hFinalList
     · intro st2 s newTrades newTradesCapacity nodes2 g0Final hResult
-        hNewBookFinal hNewTradesFinal hListFinal hG0Final hG1Final hG2Final
-        hG4Final hG5Final
+        hNewBookFinal hNewTradesFinal hListFinal hMemoryFrameFinal hPageFinal
+        hG0Final hG1Final hG2Final hG4Final hG5Final
       apply hDone st2 s newBook bookNeed newTrades newTradesCapacity nodes2
         g0Final hResult
       · simpa [newOrders, qty] using hNewBookFinal
       · exact hNewTradesFinal
       · exact hListFinal
+      · exact hMemoryFrameFinal
+      · exact hPageFinal.trans hCurrentPages
       · exact hG0Final
       · exact hG1Final
       · simpa only [hg2Next] using hG2Final

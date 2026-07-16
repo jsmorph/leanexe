@@ -44,7 +44,7 @@ theorem partial_spec (env : HostEnv Unit) (ctx : Context) (st : Store Unit)
     (Iteration.quantityFrame base data.bookOwner data.book ctx.taker i)
     data.book data.bookCapacity data.trades data.tradesCapacity data.remaining
     data.fuel data.g0 data.g2 data.g4 data.g5 tradeNext tradeResult ctx.taker
-    data.orders data.tradeValues i data.nodes
+    data.orders data.tradeValues i data.nodes ctx.initialMem ctx.limit
   · simpa [Iteration.quantityFrame] using hParams
   · simpa [Iteration.quantityFrame, Iteration.searchLocals, List.length_set]
       using hLocals
@@ -93,6 +93,8 @@ theorem partial_spec (env : HostEnv Unit) (ctx : Context) (st : Store Unit)
   · exact facts.tradesBelow
   · exact facts.tradesFree
   · exact facts.nodesBelow
+  · exact bounds.partialAllocationLimit
+  · exact facts.memoryFrame
   · exact facts.bookOwned
   · exact facts.tradesOwned
   · exact facts.global0
@@ -102,11 +104,13 @@ theorem partial_spec (env : HostEnv Unit) (ctx : Context) (st : Store Unit)
   · exact facts.global5
   · exact facts.freeList
   · intro st1 s1 newBook newBookCapacity newTrades newTradesCapacity nodes1
-      g0Final hResult hBookOwned hTradesOwned hFreeList hG0 hG1 hG2 hG4 hG5
+      g0Final hResult hBookOwned hTradesOwned hFreeList hMemoryFrame hPages hG0
+      hG1 hG2 hG4 hG5
     have hCompleted := LoopCompletion.of_partial ctx st base data facts hFuel i hRemaining
       hFind hQty st1 s1 newBook newBookCapacity newTrades newTradesCapacity
-      g0Final nodes1 hResult hBookOwned hTradesOwned hFreeList hG0 hG1 hG2 hG4
-      hG5
+      g0Final nodes1 hResult hBookOwned hTradesOwned hFreeList hMemoryFrame hPages
+      hG0 hG1
+      hG2 hG4 hG5
     apply hDone st1 s1 hCompleted
     rw [measure_completed hCompleted, measure_running facts]
     omega
@@ -174,7 +178,7 @@ theorem full_spec (env : HostEnv Unit) (ctx : Context) (st : Store Unit)
       data.fuel data.book data.bookCapacity data.trades data.tradesCapacity
       data.remaining data.g0 data.g2 data.g4 data.g5 bookCapacity bookNext
       tradeNext data.oldTradesTracker ctx.taker data.orders data.tradeValues i
-      data.nodes
+      data.nodes ctx.initialMem ctx.limit
     · simpa [Iteration.fullPrepareFrame, Iteration.quantityFrame] using hParams
     · simpa [Iteration.fullPrepareFrame, Iteration.fullPrepareLocals,
         Iteration.quantityFrame, Iteration.searchLocals, List.length_set] using
@@ -269,6 +273,8 @@ theorem full_spec (env : HostEnv Unit) (ctx : Context) (st : Store Unit)
     · exact facts.tradesBelow
     · exact facts.tradesFree
     · exact facts.nodesBelow
+    · exact bounds.fullAllocationLimit
+    · exact facts.memoryFrame
     · exact facts.bookOwned
     · exact facts.tradesOwned
     · exact facts.global0
@@ -280,8 +286,8 @@ theorem full_spec (env : HostEnv Unit) (ctx : Context) (st : Store Unit)
     · intro st1 s1 newBook newBookCapacity newTrades newTradesCapacity nodes1
         g0Final hRecursive hScratch hBookOwned hTradesOwned hBook48 hBook32
         hBookCapacity hTrades48 hTrades32 hTradesCapacity hBookBelow hTradesBelow
-        hHeapMono hHeapUpper hBookFree hTradesFree hNodesBelow hFreeList hPages
-        hG0 hG1 hG2 hG4 hG5
+        hHeapMono hHeapUpper hBookFree hTradesFree hNodesBelow hFreeList
+        hMemoryFrame hPages hG0 hG1 hG2 hG4 hG5
       let final := FullTransition.fullTransitionFrame s1 data.fuel ctx.taker
         newBook newTrades (data.remaining - data.orders[i]!.oqty) 0
         data.oldTradesTracker
@@ -297,7 +303,8 @@ theorem full_spec (env : HostEnv Unit) (ctx : Context) (st : Store Unit)
           newBook newBookCapacity newTrades newTradesCapacity g0Final nodes1
           hRecursive hScratch hBookOwned hTradesOwned hBook48 hBook32 hBookCapacity
           hTrades48 hTrades32 hTradesCapacity hBookBelow hTradesBelow hHeapUpper
-          hBookFree hTradesFree hNodesBelow hFreeList hPages hG0 hG1 hG2 hG4 hG5
+          hBookFree hTradesFree hNodesBelow hFreeList hMemoryFrame hPages hG0 hG1
+          hG2 hG4 hG5
       have hMeasure : measure st1 final < measure st base := by
         rw [measure_running nextFacts, measure_running facts]
         simp only [next, LoopAdvance.nextData]

@@ -1,5 +1,6 @@
 import Project.ClobMatchFuel.Budget
 import Project.ClobMatchFuel.Initialization
+import Project.ClobMatchFuel.MemoryFrame
 
 /-!
 # Match-loop invariant
@@ -23,6 +24,7 @@ structure Context where
   initialG2 : UInt64
   initialG4 : UInt64
   initialG5 : UInt64
+  initialMem : Mem
   initialPages : Nat
   limit : Nat
 
@@ -138,6 +140,7 @@ structure RunningFacts (ctx : Context) (st : Store Unit) (s : Locals)
     data.g4 = ctx.initialG4 + UInt64.ofNat (data.steps - 1)
   releaseCounter5 :
     data.g5 = ctx.initialG5 + UInt64.ofNat (data.steps - 1)
+  memoryFrame : MemoryFrame.BytesEqFrom ctx.initialMem st.mem ctx.limit
   pages : st.mem.pages = ctx.initialPages
   pageLimit : st.mem.pages ≤ 65536
   addressLimit : ctx.limit < 4294967296
@@ -171,6 +174,8 @@ structure CompletedFacts (ctx : Context) (st : Store Unit) (s : Locals)
   tradesOwned :
     OwnedTradeArrayAt st data.trades data.tradesCapacity ctx.result.trades
   freeList : FreeListAt st.mem data.nodes
+  memoryFrame : MemoryFrame.BytesEqFrom ctx.initialMem st.mem ctx.limit
+  pages : st.mem.pages = ctx.initialPages
   global0 : st.globals.globals[0]? = some (.i64 data.g0)
   global1 :
     st.globals.globals[1]? = some (.i64 (freeHead data.nodes))

@@ -15,6 +15,7 @@ namespace Project.ClobMatchFuel.FullBranch
 open Wasm Project.Common Project.Runtime Project.Clob Project.ClobMatchFuel
   Project.ClobMatchFuel.Allocation
   Project.ClobMatchFuel.AllocatorFrame
+  Project.ClobMatchFuel.MemoryFrame
 
 set_option Elab.async false in
 theorem fullBookThenTrade_spec
@@ -22,7 +23,7 @@ theorem fullBookThenTrade_spec
     (fuel book bookCapacity oldTrades oldTradesCapacity remaining : UInt64)
     (g0 g2 g4 g5 capacity next tradeNext oldBookTracker oldTradesTracker : UInt64)
     (taker : OrderL) (os : List OrderL) (ts : List TradeL) (i : Nat)
-    (nodes : List FreeNode)
+    (nodes : List FreeNode) (initialMem : Mem) (limit : Nat)
     (hParams : base.params.length = 9)
     (hLocals : base.locals.length = 76)
     (hValues : base.values = [])
@@ -100,6 +101,10 @@ theorem fullBookThenTrade_spec
       FreeListSeparatedFromFixedArray nodes oldTrades oldTradesCapacity)
     (hNodesBelow : ∀ node ∈ nodes,
       node.root.toNat + node.capacity.toNat ≤ g0.toNat)
+    (hAllocationLimit : g0.toNat + 96 +
+      orderArrayBytes (os.length - 1) + tradeArrayBytes (ts.length + 1) ≤
+        limit)
+    (hMemoryFrame : BytesEqFrom initialMem st.mem limit)
     (hBookOwned : OwnedOrderArrayAt st book bookCapacity os)
     (hOldTradesOwned :
       OwnedTradeArrayAt st oldTrades oldTradesCapacity ts)
@@ -140,6 +145,7 @@ theorem fullBookThenTrade_spec
       (∀ node ∈ nodes1,
         node.root.toNat + node.capacity.toNat ≤ g0Final.toNat) →
       FreeListAt st1.mem nodes1 →
+      BytesEqFrom initialMem st1.mem limit →
       st1.mem.pages = st.mem.pages →
       regionsDisjoint (fixedArrayRegion oldTrades oldTradesCapacity)
         (fixedArrayRegion newBook newBookCapacity) →
@@ -212,6 +218,22 @@ theorem fullBookThenTrade_spec
         (fixedArrayRegion choice.node.root choice.node.capacity) := by
       simpa [fixedArrayRegion, FreeNode.region] using
         hOldTradesFree choice.node hChoiceMem
+    have hAllocFrame : BytesEqFrom st.mem
+        (BookAllocFit.bookAllocFitStore st choice).mem limit := by
+      apply fixedArrayAllocFitStore_bytesFrom hList hTake
+      intro node hNode
+      exact (hNodesBelow node hNode).trans (by omega)
+    have hPayloadEnd : choice.node.root.toNat +
+        ((os.length - 1) * 5 + 1) * 8 ≤ limit := by
+      have hChoiceBelow := hNodesBelow choice.node hChoiceMem
+      unfold orderArrayBytes fixedArrayBytes at hChoiceCapacity
+      omega
+    have hCurrentMemoryFrame : BytesEqFrom initialMem st1.mem limit :=
+      (hMemoryFrame.trans hAllocFrame).trans
+        (BytesEqFrom.of_outsideFlatWords hPayloadEnd hOutside)
+    have hTradeAllocationLimit : g0.toNat + 48 +
+        tradeArrayBytes (ts.length + 1) ≤ limit := by
+      omega
     have hCurrentG4 : st1.globals.globals[4]? = some (.i64 g4) := by
       have hAllocG4 := fixedArrayAllocFitStore_global_of_ne_one st choice 5
         4 (.i64 g4) (by decide) hg4
@@ -232,7 +254,7 @@ theorem fullBookThenTrade_spec
       choice.node.capacity book bookCapacity oldTrades oldTradesCapacity
       remaining g0 (g2 + 1) g4 g5 choice.node.root
       tradeNext oldBookTracker oldTradesTracker taker os (os.eraseIdx i) ts i
-      choice.remaining
+      choice.remaining initialMem limit
     · simpa [BookEraseSuffix.eraseResultFrame,
         BookErasePrefix.eraseCopyFrame, BookAllocSearch.bookAllocSearchFrame]
         using hParams
@@ -319,6 +341,8 @@ theorem fullBookThenTrade_spec
     · exact hBookFree1
     · exact hOldTradesNewBook
     · exact hNodesBelow1
+    · exact hTradeAllocationLimit
+    · exact hCurrentMemoryFrame
     · exact hOldTradesOwned1
     · exact hNewBookOwned
     · exact hBookOwned1
@@ -332,7 +356,7 @@ theorem fullBookThenTrade_spec
         hNewBookFinal hNewTradesFinal hOldTradesFinal hBookFinal hNewBook48
         hNewBook32 hNewBookCapacity hNewTrades48 hNewTrades32 hNewTradesCapacity
         hNewBookBelowFinal hNewTradesBelow hHeapMono hHeapUpper hNewBookFreeFinal
-        hNewTradesFreeFinal hNodesBelowFinal hList2 hPages2
+        hNewTradesFreeFinal hNodesBelowFinal hList2 hMemoryFrame2 hPages2
         hOldTradesNewBook2 hOldTradesNewTrades hOldTradesFree2 hG0 hG1 hG2 hG4
         hG5
       apply hDone st2 s choice.node.root choice.node.capacity newTrades
@@ -346,6 +370,7 @@ theorem fullBookThenTrade_spec
       · exact hNewTradesFreeFinal
       · exact hNodesBelowFinal
       · exact hList2
+      · exact hMemoryFrame2
       · exact hPages2.trans hFinalPages
       · exact hOldTradesNewBook2
       · exact hOldTradesNewTrades
@@ -413,6 +438,23 @@ theorem fullBookThenTrade_spec
       unfold regionsDisjoint fixedArrayRegion
       rw [hNewBookNat]
       omega
+    have hAllocFrame : BytesEqFrom st.mem
+        (BookAllocBump.bookAllocBumpStore st g0 bookNeed).mem limit := by
+      apply fixedArrayAllocBumpStore_bytesFrom st g0 bookNeed 5 limit hBookFit32
+      rw [hBookNeedNat]
+      omega
+    have hPayloadEnd : newBook.toNat +
+        ((os.length - 1) * 5 + 1) * 8 ≤ limit := by
+      rw [hNewBookNat]
+      unfold orderArrayBytes fixedArrayBytes at hAllocationLimit
+      omega
+    have hCurrentMemoryFrame : BytesEqFrom initialMem st1.mem limit :=
+      (hMemoryFrame.trans hAllocFrame).trans
+        (BytesEqFrom.of_outsideFlatWords hPayloadEnd hOutside)
+    have hTradeAllocationLimit : g0AfterBook.toNat + 48 +
+        tradeArrayBytes (ts.length + 1) ≤ limit := by
+      rw [hG0AfterBookNat, hBookNeedNat]
+      omega
     have hCurrentG4 : st1.globals.globals[4]? = some (.i64 g4) := by
       have hAllocG4 := fixedArrayAllocBumpStore_global_of_ne_zero st g0
         bookNeed 5 4 (.i64 g4) (by decide) hg4
@@ -431,7 +473,7 @@ theorem fullBookThenTrade_spec
         ((os.length - 1 - i) * 5)) fuel newBook bookNeed book bookCapacity
       oldTrades oldTradesCapacity remaining g0AfterBook (g2 + 1) g4 g5
       newBook tradeNext oldBookTracker oldTradesTracker taker os (os.eraseIdx i)
-      ts i nodes
+      ts i nodes initialMem limit
     · simpa [BookEraseSuffix.eraseResultFrame,
         BookErasePrefix.eraseCopyFrame, BookAllocSearch.bookAllocSearchFrame]
         using hParams
@@ -520,6 +562,8 @@ theorem fullBookThenTrade_spec
     · exact hBookFree
     · exact hOldTradesNewBook
     · exact hNodesBelow1
+    · exact hTradeAllocationLimit
+    · exact hCurrentMemoryFrame
     · exact hOldTradesOwned1
     · simpa [newBook, bookNeed] using hNewBookOwned
     · exact hBookOwned1
@@ -533,7 +577,7 @@ theorem fullBookThenTrade_spec
         hNewBookFinal hNewTradesFinal hOldTradesFinal hBookFinal hNewBook48
         hNewBook32 hNewBookCapacity hNewTrades48 hNewTrades32 hNewTradesCapacity
         hNewBookBelowFinal hNewTradesBelow hHeapMono hHeapUpper hNewBookFreeFinal
-        hNewTradesFreeFinal hNodesBelowFinal hList2 hPages2
+        hNewTradesFreeFinal hNodesBelowFinal hList2 hMemoryFrame2 hPages2
         hOldTradesNewBook2 hOldTradesNewTrades hOldTradesFree2 hG0 hG1 hG2 hG4
         hG5
       apply hDone st2 s newBook bookNeed newTrades newTradesCapacity nodes2
@@ -564,6 +608,7 @@ theorem fullBookThenTrade_spec
       · exact hNewTradesFreeFinal
       · exact hNodesBelowFinal
       · exact hList2
+      · exact hMemoryFrame2
       · exact hPages2.trans hFinalPages
       · exact hOldTradesNewBook2
       · exact hOldTradesNewTrades
