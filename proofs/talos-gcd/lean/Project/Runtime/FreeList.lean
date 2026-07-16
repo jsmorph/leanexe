@@ -42,6 +42,13 @@ def previousRoot (initial : UInt64) : List FreeNode → UInt64
   | [] => initial
   | node :: rest => previousRoot node.root rest
 
+theorem previousRoot_append_singleton (initial : UInt64)
+    (nodes : List FreeNode) (node : FreeNode) :
+    previousRoot initial (nodes ++ [node]) = node.root := by
+  induction nodes generalizing initial with
+  | nil => rfl
+  | cons head rest ih => exact ih head.root
+
 def takeFirstFitFrom (previous need : UInt64) : List FreeNode →
     Option FreeChoice
   | [] => none
@@ -271,6 +278,27 @@ theorem FreeListAt.mem_bounds {mem : Mem} {nodes : List FreeNode}
       · exact ⟨hp, h32, hfit⟩
       · exact ih htail
 
+theorem FreeNode.read64_write64_disjoint (mem : Mem)
+    (writer reader : FreeNode) (writeOffset readOffset value : UInt64)
+    (hWriter48 : 48 ≤ writer.root.toNat)
+    (hWriter32 : writer.root.toNat + writer.capacity.toNat < 4294967296)
+    (hReader48 : 48 ≤ reader.root.toNat)
+    (hReader32 : reader.root.toNat + reader.capacity.toNat < 4294967296)
+    (hWriteLow : 8 ≤ writeOffset.toNat)
+    (hWriteHigh : writeOffset.toNat ≤ 48)
+    (hReadLow : 8 ≤ readOffset.toNat)
+    (hReadHigh : readOffset.toNat ≤ 48)
+    (hsep : regionsDisjoint writer.region reader.region) :
+    (mem.write64 ((writer.root - writeOffset).toUInt32) value).read64
+        ((reader.root - readOffset).toUInt32) =
+      mem.read64 ((reader.root - readOffset).toUInt32) := by
+  apply read64_write64_ne
+  rw [toUInt32_toNat, toUInt32_toNat,
+    toNat_sub_le _ _ (by omega), toNat_sub_le _ _ (by omega),
+    Nat.mod_eq_of_lt (by omega), Nat.mod_eq_of_lt (by omega)]
+  unfold regionsDisjoint FreeNode.region at hsep
+  omega
+
 theorem FreeListAt.roots_ne_zero {mem : Mem} {nodes : List FreeNode}
     (h : FreeListAt mem nodes) :
     ∀ node ∈ nodes, node.root ≠ 0 := by
@@ -367,5 +395,201 @@ theorem FreeListAt.frame {mem mem' : Mem} {nodes : List FreeNode}
             · intro other hother offset hoffset
               exact hread other (List.mem_cons_of_mem _ hother) offset hoffset
             · exact htail
+
+theorem FreeListAt.frame_write64_disjoint {mem : Mem}
+    {nodes : List FreeNode} {writer : FreeNode} {writeOffset value : UInt64}
+    (hWriter48 : 48 ≤ writer.root.toNat)
+    (hWriter32 : writer.root.toNat + writer.capacity.toNat < 4294967296)
+    (hWriteLow : 8 ≤ writeOffset.toNat)
+    (hWriteHigh : writeOffset.toNat ≤ 48)
+    (hsep : ∀ node ∈ nodes, regionsDisjoint writer.region node.region)
+    (h : FreeListAt mem nodes) :
+    FreeListAt (mem.write64 ((writer.root - writeOffset).toUInt32) value)
+      nodes := by
+  refine FreeListAt.frame (mem := mem)
+    (mem' := mem.write64 ((writer.root - writeOffset).toUInt32) value)
+    rfl ?_ h
+  intro node hmem readOffset hRead
+  obtain ⟨hReader48, hReader32, _⟩ := h.mem_bounds hmem
+  rcases hRead with rfl | rfl | rfl
+  all_goals
+    apply writer.read64_write64_disjoint mem node <;>
+      first | assumption | decide | exact hsep node hmem
+
+theorem FreeListAt.selected_disjoint_after {mem : Mem}
+    {skipped tail : List FreeNode} {selected : FreeNode}
+    (h : FreeListAt mem (skipped ++ selected :: tail)) :
+    ∀ node ∈ skipped ++ tail,
+      regionsDisjoint selected.region node.region := by
+  induction skipped with
+  | nil =>
+      simp only [List.nil_append] at h ⊢
+      cases h with
+      | cons _ _ _ _ _ _ hsep _ => exact hsep
+  | cons head rest ih =>
+      simp only [List.cons_append] at h ⊢
+      cases h with
+      | cons _ _ _ _ _ _ hsep htail =>
+          intro node hmem
+          rcases List.mem_cons.mp hmem with rfl | hrest
+          · apply regionsDisjoint_symm
+            exact hsep selected
+              (List.mem_append_right rest List.mem_cons_self)
+          · exact ih htail node hrest
+
+private theorem FreeListAt.unlink_after {mem : Mem}
+    {prior tail : List FreeNode} {previous selected : FreeNode}
+    (h : FreeListAt mem (prior ++ previous :: selected :: tail)) :
+    FreeListAt
+      (mem.write64 ((previous.root - 8).toUInt32) (freeHead tail))
+      (prior ++ previous :: tail) := by
+  induction prior with
+  | nil =>
+      simp only [List.nil_append] at h ⊢
+      cases h with
+      | cons hp h32 hfit hrc hcapacity _ hsep hrest =>
+          cases hrest with
+          | cons _ _ _ _ _ _ _ htail =>
+              have htail' :
+                  FreeListAt
+                    (mem.write64 ((previous.root - 8).toUInt32)
+                      (freeHead tail)) tail :=
+                htail.frame_write64_disjoint
+                  (writer := previous) (writeOffset := 8)
+                  (value := freeHead tail) hp h32
+                  (by decide) (by decide)
+                  (fun node hmem =>
+                    hsep node (List.mem_cons_of_mem selected hmem))
+              refine .cons hp h32 ?_ ?_ ?_ ?_ ?_ htail'
+              · exact hfit
+              · rw [read64_write64_ne]
+                · exact hrc
+                · rw [toUInt32_toNat, toUInt32_toNat,
+                    toNat_sub_le _ _
+                      (by norm_num [UInt64.toNat_ofNat]; omega),
+                    toNat_sub_le _ _
+                      (by norm_num [UInt64.toNat_ofNat]; omega),
+                    Nat.mod_eq_of_lt (by omega),
+                    Nat.mod_eq_of_lt (by omega)]
+                  norm_num [UInt64.toNat_ofNat] at *
+                  omega
+              · rw [read64_write64_ne]
+                · exact hcapacity
+                · rw [toUInt32_toNat, toUInt32_toNat,
+                    toNat_sub_le _ _
+                      (by norm_num [UInt64.toNat_ofNat]; omega),
+                    toNat_sub_le _ _
+                      (by norm_num [UInt64.toNat_ofNat]; omega),
+                    Nat.mod_eq_of_lt (by omega),
+                    Nat.mod_eq_of_lt (by omega)]
+                  norm_num [UInt64.toNat_ofNat] at *
+                  omega
+              · exact Mem.read64_write64_same mem
+                  ((previous.root - 8).toUInt32) (freeHead tail)
+              · intro node hmem
+                exact hsep node (List.mem_cons_of_mem selected hmem)
+  | cons head prior ih =>
+      simp only [List.cons_append] at h ⊢
+      cases h with
+      | cons hp h32 hfit hrc hcapacity hnext hsep htail =>
+          have hPreviousMem :
+              previous ∈ prior ++ previous :: selected :: tail :=
+            List.mem_append_right prior List.mem_cons_self
+          obtain ⟨hPrevious48, hPrevious32, _⟩ :=
+            htail.mem_bounds hPreviousMem
+          have hPreviousHead :
+              regionsDisjoint previous.region head.region :=
+            regionsDisjoint_symm (hsep previous hPreviousMem)
+          have hFreeHead :
+              freeHead (prior ++ previous :: selected :: tail) =
+                freeHead (prior ++ previous :: tail) := by
+            cases prior <;> rfl
+          have hread (offset : UInt64)
+              (hLow : 8 ≤ offset.toNat) (hHigh : offset.toNat ≤ 48) :
+              (mem.write64 ((previous.root - 8).toUInt32)
+                  (freeHead tail)).read64
+                    ((head.root - offset).toUInt32) =
+                mem.read64 ((head.root - offset).toUInt32) :=
+            previous.read64_write64_disjoint mem head 8 offset
+              (freeHead tail) hPrevious48 hPrevious32 hp h32
+              (by decide) (by decide) hLow hHigh hPreviousHead
+          refine .cons hp h32 ?_ ?_ ?_ ?_ ?_ (ih htail)
+          · exact hfit
+          · rw [hread 40 (by decide) (by decide)]
+            exact hrc
+          · rw [hread 32 (by decide) (by decide)]
+            exact hcapacity
+          · rw [hread 8 (by decide) (by decide)]
+            rw [← hFreeHead]
+            exact hnext
+          · intro node hmem
+            apply hsep node
+            rcases List.mem_append.mp hmem with hprefix | htailMem
+            · exact List.mem_append_left _ hprefix
+            · rcases List.mem_cons.mp htailMem with rfl | htailMem
+              · exact List.mem_append_right prior List.mem_cons_self
+              · exact List.mem_append_right prior
+                  (List.mem_cons_of_mem previous
+                    (List.mem_cons_of_mem selected htailMem))
+
+def unlinkFreeChoice (mem : Mem) (choice : FreeChoice) : Mem :=
+  if choice.previous = 0 then
+    mem
+  else
+    mem.write64 ((choice.previous - 8).toUInt32) choice.next
+
+theorem FreeListAt.unlink_takeFirstFitFrom {mem : Mem}
+    {nodes : List FreeNode} {need : UInt64} {choice : FreeChoice}
+    (hList : FreeListAt mem nodes)
+    (hTake : takeFirstFitFrom 0 need nodes = some choice) :
+    FreeListAt (unlinkFreeChoice mem choice) choice.remaining := by
+  obtain ⟨skipped, tail, hnodes, hprevious, hnext, hremaining, _⟩ :=
+    takeFirstFitFrom_some_decompose hTake
+  subst nodes
+  by_cases hSkipped : skipped = []
+  · subst skipped
+    simp only [previousRoot] at hprevious
+    simp only [List.nil_append] at hList
+    cases hList with
+    | cons _ _ _ _ _ _ _ htail =>
+        simpa [unlinkFreeChoice, hprevious, hremaining] using htail
+  · let predecessor := skipped.getLast hSkipped
+    have hsplit : skipped.dropLast ++ [predecessor] = skipped :=
+      List.dropLast_append_getLast hSkipped
+    have hPrevious : choice.previous = predecessor.root := by
+      rw [hprevious, ← hsplit, previousRoot_append_singleton]
+    have hPredecessorMem : predecessor ∈ skipped ++ choice.node :: tail := by
+      rw [← hsplit]
+      simp
+    have hPreviousNonzero : choice.previous ≠ 0 := by
+      rw [hPrevious]
+      exact hList.roots_ne_zero predecessor hPredecessorMem
+    have hList' :
+        FreeListAt mem
+          (skipped.dropLast ++ predecessor :: choice.node :: tail) := by
+      rw [← hsplit] at hList
+      simpa [List.append_assoc] using hList
+    have hUnlinked := FreeListAt.unlink_after hList'
+    have hRemaining' :
+        choice.remaining = skipped.dropLast ++ predecessor :: tail := by
+      calc
+        choice.remaining = skipped ++ tail := hremaining
+        _ = (skipped.dropLast ++ [predecessor]) ++ tail := by rw [hsplit]
+        _ = skipped.dropLast ++ predecessor :: tail := by
+          simp [List.append_assoc]
+    rw [hRemaining', unlinkFreeChoice, if_neg hPreviousNonzero,
+      hPrevious, hnext]
+    exact hUnlinked
+
+theorem FreeListAt.takeFirstFitFrom_node_disjoint {mem : Mem}
+    {nodes : List FreeNode} {previous need : UInt64} {choice : FreeChoice}
+    (hList : FreeListAt mem nodes)
+    (hTake : takeFirstFitFrom previous need nodes = some choice) :
+    ∀ node ∈ choice.remaining,
+      regionsDisjoint choice.node.region node.region := by
+  obtain ⟨skipped, tail, hnodes, _, _, hremaining, _⟩ :=
+    takeFirstFitFrom_some_decompose hTake
+  subst nodes
+  simpa [hremaining] using hList.selected_disjoint_after
 
 end Project.Runtime
