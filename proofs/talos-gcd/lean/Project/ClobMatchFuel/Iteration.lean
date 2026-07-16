@@ -389,15 +389,18 @@ theorem dispatchProg_spec
     (hOrders : OrdersAt st book os)
     (Q : Assertion Unit) (rest : Wasm.Program)
     (hStop : ∀ s,
+      (remaining = 0 ∨ findBestL os taker = none) →
       LoopControl.CompletedResultAt s book trades remaining →
       wp «module» rest Q st s env)
     (hFull : ∀ i,
-      findBestL os taker = some i → os[i]!.oqty ≤ remaining →
+      remaining ≠ 0 → findBestL os taker = some i →
+      os[i]!.oqty ≤ remaining →
       wp «module» (fullPrepareProg ++ FullStep.fullStepProg)
         (dispatchBranchPost env rest Q) st
         (quantityFrame base bookOwner book taker i) env)
     (hPartial : ∀ i,
-      findBestL os taker = some i → ¬os[i]!.oqty ≤ remaining →
+      remaining ≠ 0 → findBestL os taker = some i →
+      ¬os[i]!.oqty ≤ remaining →
       wp «module» PartialBranch.partialBranchProg
         (dispatchBranchPost env rest Q) st
         (quantityFrame base bookOwner book taker i) env) :
@@ -439,6 +442,7 @@ theorem dispatchProg_spec
     simp (config := { maxSteps := 10000000 }) [completeProg, wp_simp,
       hParams, hLocals, hValues, hBook', hTrades', hRemaining']
     apply hStop
+    · exact Or.inl rfl
     simp [LoopControl.CompletedResultAt, hParams, hLocals]
   · rw [if_neg (by simp [hRemainingZero])]
     norm_num
@@ -468,6 +472,7 @@ theorem dispatchProg_spec
         simp (config := { maxSteps := 10000000 }) [completeProg, wp_simp,
           hParams, hLocals, hBook', hTrades', hRemaining']
         apply hStop
+        · exact Or.inr hFind
         simp [LoopControl.CompletedResultAt, hParams, hLocals]
     | some i =>
         have hi : i < os.length := findBestL_some_lt os taker i hFind
@@ -508,7 +513,7 @@ theorem dispatchProg_spec
         refine wp_iff_cons rfl ?_
         by_cases hMakerQty : os[i]!.oqty ≤ remaining
         · rw [if_pos hMakerQty]
-          refine wp.imp (hFull i hFind hMakerQty) ?_
+          refine wp.imp (hFull i hRemainingZero hFind hMakerQty) ?_
           intro c hc
           unfold dispatchBranchPost zeroIffPost at hc
           cases c <;> simp_all [wp_simp]
@@ -518,7 +523,7 @@ theorem dispatchProg_spec
               cases k <;> simp_all [wp_simp]
               case succ k => cases k <;> simp_all [wp_simp]
         · rw [if_neg hMakerQty]
-          refine wp.imp (hPartial i hFind hMakerQty) ?_
+          refine wp.imp (hPartial i hRemainingZero hFind hMakerQty) ?_
           intro c hc
           unfold dispatchBranchPost zeroIffPost at hc
           cases c <;> simp_all [wp_simp]
