@@ -1,5 +1,5 @@
 import Project.ClobMatchFuel.EarlyExit
-import Project.ClobMatchFuel.BookAllocBump
+import Project.ClobMatchFuel.BookErasePrefix
 
 /-!
 # The `matchFuel` theorem
