@@ -123,6 +123,131 @@ theorem FreeListAt.frame_outsideFlatWords
   unfold regionsDisjoint flatWordsRegion FreeNode.region at hNodeSep
   omega
 
+theorem takeFirstFitFrom_some_freeHead
+    {mem : Mem} {nodes : List FreeNode} {need : UInt64}
+    {choice : FreeChoice}
+    (hList : FreeListAt mem nodes)
+    (hTake : takeFirstFitFrom 0 need nodes = some choice) :
+    freeHead choice.remaining =
+      if choice.previous = 0 then choice.next else freeHead nodes := by
+  obtain ⟨skipped, tail, hNodes, hPrevious, hNext, hRemaining, _⟩ :=
+    takeFirstFitFrom_some_decompose hTake
+  subst nodes
+  rw [hRemaining]
+  cases skipped with
+  | nil =>
+      simp only [previousRoot] at hPrevious
+      simp [hPrevious, hNext]
+  | cons head rest =>
+      have hSkipped : head :: rest ≠ [] := by simp
+      let predecessor := (head :: rest).getLast hSkipped
+      have hSplit : (head :: rest).dropLast ++ [predecessor] = head :: rest :=
+        List.dropLast_append_getLast hSkipped
+      have hPreviousRoot : choice.previous = predecessor.root := by
+        rw [hPrevious, ← hSplit, previousRoot_append_singleton]
+      have hPredecessorMem :
+          predecessor ∈ (head :: rest) ++ choice.node :: tail := by
+        rw [← hSplit]
+        simp
+      have hPreviousNonzero : choice.previous ≠ 0 := by
+        rw [hPreviousRoot]
+        exact hList.roots_ne_zero predecessor hPredecessorMem
+      simp [hPreviousNonzero, freeHead]
+
+theorem fixedArrayAllocFitStore_global0
+    {st : Store Unit} {choice : FreeChoice} {stride g0 : UInt64}
+    (hg0 : st.globals.globals[0]? = some (.i64 g0)) :
+    (BookAllocFit.fixedArrayAllocFitStore st choice stride).globals.globals[0]? =
+      some (.i64 g0) := by
+  by_cases hPrevious : choice.previous = 0
+  · simp [BookAllocFit.fixedArrayAllocFitStore, hPrevious, hg0]
+  · simp [BookAllocFit.fixedArrayAllocFitStore, hPrevious, hg0]
+
+theorem fixedArrayAllocFitStore_global1
+    {st : Store Unit} {nodes : List FreeNode} {need stride : UInt64}
+    {choice : FreeChoice}
+    (hg1 : st.globals.globals[1]? = some (.i64 (freeHead nodes)))
+    (hList : FreeListAt st.mem nodes)
+    (hTake : takeFirstFitFrom 0 need nodes = some choice) :
+    (BookAllocFit.fixedArrayAllocFitStore st choice stride).globals.globals[1]? =
+      some (.i64 (freeHead choice.remaining)) := by
+  have hLength : 1 < st.globals.globals.length :=
+    (List.getElem?_eq_some_iff.mp hg1).1
+  rw [takeFirstFitFrom_some_freeHead hList hTake]
+  by_cases hPrevious : choice.previous = 0
+  · simp [BookAllocFit.fixedArrayAllocFitStore, hPrevious, hLength]
+  · simp [BookAllocFit.fixedArrayAllocFitStore, hPrevious, hg1]
+
+theorem fixedArrayAllocBumpStore_global0
+    (st : Store Unit) (g0 need stride : UInt64)
+    (hg0 : st.globals.globals[0]? = some (.i64 g0)) :
+    (BookAllocBump.fixedArrayAllocBumpStore st g0 need stride).globals.globals[0]? =
+      some (.i64 (g0 + 48 + need)) := by
+  have hLength : 0 < st.globals.globals.length :=
+    (List.getElem?_eq_some_iff.mp hg0).1
+  simp [BookAllocBump.fixedArrayAllocBumpStore, hLength]
+
+theorem fixedArrayAllocBumpStore_global1
+    (st : Store Unit) (g0 need stride head : UInt64)
+    (hg1 : st.globals.globals[1]? = some (.i64 head)) :
+    (BookAllocBump.fixedArrayAllocBumpStore st g0 need stride).globals.globals[1]? =
+      some (.i64 head) := by
+  simp [BookAllocBump.fixedArrayAllocBumpStore, hg1]
+
+theorem freeListAt_fixedArrayAllocFitStore_after
+    {before after : Store Unit} {nodes : List FreeNode}
+    {need stride : UInt64} {targetWords : Nat} {choice : FreeChoice}
+    (hList : FreeListAt before.mem nodes)
+    (hTake : takeFirstFitFrom 0 need nodes = some choice)
+    (hWordsFit : (targetWords + 1) * 8 ≤ choice.node.capacity.toNat)
+    (hPages : after.mem.pages =
+      (BookAllocFit.fixedArrayAllocFitStore before choice stride).mem.pages)
+    (hFrame : MemEqOutsideFlatWords
+      (BookAllocFit.fixedArrayAllocFitStore before choice stride) after
+      choice.node.root targetWords) :
+    FreeListAt after.mem choice.remaining := by
+  have hAllocList : FreeListAt
+      (BookAllocFit.fixedArrayAllocFitStore before choice stride).mem
+      choice.remaining := by
+    simpa [BookAllocFit.fixedArrayAllocFitStore] using
+      BookAllocFit.freeListAt_fixedArrayAllocFitMem stride hList hTake
+  apply FreeListAt.frame_outsideFlatWords hPages _ hFrame hAllocList
+  intro node hNode
+  have hDisjoint := hList.takeFirstFitFrom_node_disjoint hTake node hNode
+  obtain ⟨hChoice48, _, _⟩ :=
+    hList.mem_bounds (takeFirstFitFrom_some_mem hTake)
+  unfold regionsDisjoint FreeNode.region at hDisjoint
+  unfold regionsDisjoint flatWordsRegion FreeNode.region
+  omega
+
+theorem freeListAt_fixedArrayAllocBumpStore_after
+    {before after : Store Unit} {nodes : List FreeNode}
+    {g0 need stride : UInt64} {targetWords : Nat}
+    (hFit32 : g0.toNat + 48 + need.toNat < 4294967296)
+    (hBelow : ∀ node ∈ nodes,
+      node.root.toNat + node.capacity.toNat ≤ g0.toNat)
+    (hList : FreeListAt before.mem nodes)
+    (hPages : after.mem.pages =
+      (BookAllocBump.fixedArrayAllocBumpStore before g0 need stride).mem.pages)
+    (hFrame : MemEqOutsideFlatWords
+      (BookAllocBump.fixedArrayAllocBumpStore before g0 need stride) after
+      (g0 + 48) targetWords) :
+    FreeListAt after.mem nodes := by
+  have hAllocList := BookAllocBump.freeListAt_fixedArrayAllocBumpStore before
+    g0 need stride nodes hFit32 hBelow hList
+  have hTargetNat : (g0 + 48).toNat = g0.toNat + 48 := by
+    rw [UInt64.toNat_add]
+    have h48 : (48 : UInt64).toNat = 48 := rfl
+    rw [h48, Nat.mod_eq_of_lt (by omega)]
+  apply FreeListAt.frame_outsideFlatWords hPages _ hFrame hAllocList
+  intro node hNode
+  obtain ⟨hNode48, _, _⟩ := hList.mem_bounds hNode
+  have hNodeBelow := hBelow node hNode
+  unfold regionsDisjoint flatWordsRegion FreeNode.region
+  right
+  rw [hTargetNat]
+  omega
+
 theorem fixedArrayAllocFitMem_bytes
     {mem : Mem} {nodes : List FreeNode} {need : UInt64}
     {choice : FreeChoice} {source sourceCapacity stride : UInt64} {a : Nat}
