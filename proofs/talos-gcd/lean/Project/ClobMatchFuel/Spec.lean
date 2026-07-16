@@ -1,6 +1,6 @@
 import Project.ClobMatchFuel.EarlyExit
 import Project.ClobMatchFuel.BookEraseSuffix
-import Project.ClobMatchFuel.BookReplaceCopy
+import Project.ClobMatchFuel.BookReplaceFinish
 
 /-!
 # The `matchFuel` theorem
