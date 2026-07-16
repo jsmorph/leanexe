@@ -4998,3 +4998,7 @@ The successful-fit and bump allocation stores now take the fixed-array element s
 `TradeAlloc.tradeAllocProg_spec` composes trade capacity preparation with the complete first-fit search and bump fallback.  A case split on `takeFirstFitFrom` supplies the exact stride-four fit store and selected `FreeChoice`, or the exact bump store and final predecessor, to an arbitrary continuation.  The warning-failing constrained module build completes in 2.2 seconds.
 
 `BookAlloc.bookAllocProg_spec` and `PartialBookAlloc.partialBookAllocProg_spec` apply the same allocation composition to the two stride-five book layouts.  Their fit paths prove that the generated bump conditional skips on the selected nonzero root, while their no-fit paths execute the verified bump allocator.  Warning-failing constrained builds complete both composition modules in 2.2 and 2.0 seconds.
+
+## 2026-07-15: Fixed-Array Region Frames
+
+`fixedArrayRegion` covers the six-word allocation header and the payload capacity recorded in that header.  `FreshFixedArrayAt.frame_region`, `OrdersAt.frame_region`, and `TradesAt.frame_region` preserve the corresponding representations when memory pages agree and every byte in that region is unchanged.  The warning-failing constrained `Project.Clob` build completes in 4.8 seconds.
