@@ -71,6 +71,13 @@ theorem partialBookAllocCopyProg_spec
     (hFitDone : ∀ choice : FreeChoice,
       takeFirstFitFrom 0 (orderArrayBytesU os.length) nodes = some choice →
       ∀ st1,
+        48 ≤ choice.node.root.toNat →
+        choice.node.root.toNat + (os.length * 5 + 1) * 8 < 4294967296 →
+        choice.node.root.toNat + (os.length * 5 + 1) * 8 ≤
+          (PartialBookAllocFit.bookAllocFitStore st choice).mem.pages *
+            65536 →
+        OwnedOrderArrayAt (PartialBookAllocFit.bookAllocFitStore st choice)
+          source sourceCapacity os →
         BookReplaceCopy.replaceCopyInv
             (PartialBookAllocFit.bookAllocFitStore st choice)
             (fitFrame base os.length choice) choice.node.root source g2
@@ -82,6 +89,14 @@ theorem partialBookAllocCopyProg_spec
           (BookReplaceCopy.replaceCopyFrame (fitFrame base os.length choice)
             choice.node.root (os.length * 5)) env)
     (hBumpDone : ∀ previous : UInt64, ∀ st1,
+      48 ≤ (g0 + 48).toNat →
+      (g0 + 48).toNat + (os.length * 5 + 1) * 8 < 4294967296 →
+      (g0 + 48).toNat + (os.length * 5 + 1) * 8 ≤
+        (PartialBookAllocBump.bookAllocBumpStore st g0
+          (orderArrayBytesU os.length)).mem.pages * 65536 →
+      OwnedOrderArrayAt
+        (PartialBookAllocBump.bookAllocBumpStore st g0
+          (orderArrayBytesU os.length)) source sourceCapacity os →
       BookReplaceCopy.replaceCopyInv
           (PartialBookAllocBump.bookAllocBumpStore st g0
             (orderArrayBytesU os.length))
@@ -195,7 +210,8 @@ theorem partialBookAllocCopyProg_spec
         hList hTake
     · exact hOwnedFit.2
     · intro st1 hInv hTargetOrders
-      exact hFitDone choice hTake st1 hInv hTargetOrders
+      exact hFitDone choice hTake st1 hTarget48 hTarget32 hTargetFit
+        hOwnedFit hInv hTargetOrders
   · intro previous
     have hTargetNat : (g0 + 48).toNat = g0.toNat + 48 := by
       rw [UInt64.toNat_add]
@@ -269,6 +285,7 @@ theorem partialBookAllocCopyProg_spec
         (orderArrayBytesU os.length) 5 hNeed8 hFit32
     · exact hOwnedBump.2
     · intro st1 hInv hTargetOrders
-      exact hBumpDone previous st1 hInv hTargetOrders
+      exact hBumpDone previous st1 (by rw [hTargetNat]; omega) hTarget32
+        hTargetFit hOwnedBump hInv hTargetOrders
 
 end Project.ClobMatchFuel.PartialBookAllocCopy
