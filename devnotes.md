@@ -5044,3 +5044,5 @@ The partial-book and trade allocation-copy theorems now pass each target's lower
 ## 2026-07-15: Release Transformations
 
 `Allocation.fixedArrayReleaseMem` and `fixedArrayReleaseGlobals` name the exact memory and global-list results of freeing a refcount-one zero-mask fixed array.  `func18_frees_fixed_array_zero_mask` now states its existing runtime result with those definitions, without changing its assumptions or proof.  The warning-failing constrained `Allocation` build completes in 2.8 seconds.
+
+`ReleaseFrame.fixedArrayReleaseMem_bytes` proves that the two release header writes preserve every byte in a disjoint region.  Its ownership corollaries preserve complete order and trade arrays, while `freeListAt_fixedArrayReleaseMem` constructs the released node at the head of the retained free list.  The module also proves root inequality from disjoint allocation regions and from order-versus-trade stride headers, and its warning-failing constrained build completes in 2.2 seconds.
