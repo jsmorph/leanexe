@@ -45,6 +45,8 @@ theorem of_stop (ctx : Context) (st : Store Unit) (s : Locals)
     bookOwned := ?_
     tradesOwned := ?_
     freeList := facts.freeList
+    memoryFrame := facts.memoryFrame
+    pages := facts.pages
     global0 := facts.global0
     global1 := facts.global1
     global2 := ?_
@@ -76,6 +78,8 @@ theorem of_partial (ctx : Context) (st : Store Unit) (s : Locals)
       (data.tradeValues ++
         [Model.fillTradeL ctx.taker data.orders[i]! data.remaining]))
     (hFreeList : FreeListAt st1.mem nodes1)
+    (hMemoryFrame : MemoryFrame.BytesEqFrom ctx.initialMem st1.mem ctx.limit)
+    (hPages : st1.mem.pages = st.mem.pages)
     (hG0 : st1.globals.globals[0]? = some (.i64 g0Final))
     (hG1 : st1.globals.globals[1]? = some (.i64 (freeHead nodes1)))
     (hG2 : st1.globals.globals[2]? = some (.i64 (data.g2 + 2)))
@@ -111,6 +115,8 @@ theorem of_partial (ctx : Context) (st : Store Unit) (s : Locals)
     bookOwned := ?_
     tradesOwned := ?_
     freeList := hFreeList
+    memoryFrame := hMemoryFrame
+    pages := hPages.trans facts.pages
     global0 := hG0
     global1 := hG1
     global2 := ?_

@@ -15,6 +15,7 @@ open Wasm Project.Common Project.Runtime Project.Clob Project.ClobMatchFuel
   Project.ClobMatchFuel.Allocation
   Project.ClobMatchFuel.AllocatorFrame
   Project.ClobMatchFuel.ReleaseFrame
+  Project.ClobMatchFuel.MemoryFrame
 
 def releaseCount (tracker : UInt64) : UInt64 :=
   if tracker = 0 then 0 else 1
@@ -100,7 +101,7 @@ theorem fullBookThenStep_spec
     (fuel book bookCapacity oldTrades oldTradesCapacity remaining : UInt64)
     (g0 g2 g4 g5 capacity next tradeNext oldTradesTracker : UInt64)
     (taker : OrderL) (os : List OrderL) (ts : List TradeL) (i : Nat)
-    (nodes : List FreeNode)
+    (nodes : List FreeNode) (initialMem : Mem) (limit : Nat)
     (hParams : base.params.length = 9)
     (hLocals : base.locals.length = 76)
     (hValues : base.values = [])
@@ -179,6 +180,10 @@ theorem fullBookThenStep_spec
       FreeListSeparatedFromFixedArray nodes oldTrades oldTradesCapacity)
     (hNodesBelow : ∀ node ∈ nodes,
       node.root.toNat + node.capacity.toNat ≤ g0.toNat)
+    (hAllocationLimit : g0.toNat + 96 +
+      orderArrayBytes (os.length - 1) + tradeArrayBytes (ts.length + 1) ≤
+        limit)
+    (hMemoryFrame : BytesEqFrom initialMem st.mem limit)
     (hBookOwned : OwnedOrderArrayAt st book bookCapacity os)
     (hOldTradesOwned :
       OwnedTradeArrayAt st oldTrades oldTradesCapacity ts)
@@ -221,6 +226,7 @@ theorem fullBookThenStep_spec
       (∀ node ∈ nodes1,
         node.root.toNat + node.capacity.toNat ≤ g0Final.toNat) →
       FreeListAt st1.mem nodes1 →
+      BytesEqFrom initialMem st1.mem limit →
       st1.mem.pages = st.mem.pages →
       st1.globals.globals[0]? = some (.i64 g0Final) →
       st1.globals.globals[1]? = some (.i64 (freeHead nodes1)) →
@@ -239,7 +245,7 @@ theorem fullBookThenStep_spec
       st base env := by
   apply FullBranch.fullBookThenTrade_spec env st base fuel book bookCapacity
     oldTrades oldTradesCapacity remaining g0 g2 g4 g5 capacity next tradeNext 0
-    oldTradesTracker taker os ts i nodes hParams hLocals hValues hTakerLocal
+    oldTradesTracker taker os ts i nodes initialMem limit hParams hLocals hValues hTakerLocal
     hBookLocal hTradesLocal hRemainingLocal hIndexLocal hSourceLocal hPrefixLocal
     hSuffixLocal hLengthLocal hCapacityLocal hNextLocal hTradeNextLocal hFuel
     hOldBookTracker hOldTradesTracker hDoneLocal hCarryOid hCarryTrader hCarrySide
@@ -248,14 +254,16 @@ theorem fullBookThenStep_spec
     hTradeTotalU hTradeTotal64 hTradeTopAtG0 hTradeFit32AtG0 hTradeFitAtG0
     hTradeTopAfterBook hTradeFit32AfterBook hTradeFitAfterBook hPages hBook48
     hBook32 hBookCapacity hBookBelow hBookFree hOldTrades48 hOldTrades32
-    hOldTradesCapacity hOldTradesBelow hOldTradesFree hNodesBelow hBookOwned
+    hOldTradesCapacity hOldTradesBelow hOldTradesFree hNodesBelow hAllocationLimit
+    hMemoryFrame hBookOwned
     hOldTradesOwned hg0 hg1 hg2 hg4 hg5 hList Q
     (FullReleaseTransition.fullReleaseTransitionProg ++ rest)
   intro st1 s newBook newBookCapacity newTrades newTradesCapacity nodes1 g0Final
     hResult hScratch hNewBookOwned hNewTradesOwned hOldTradesOwned1 hBookOwned1
     hNewBook48 hNewBook32 hNewBookCapacity hNewTrades48 hNewTrades32
     hNewTradesCapacity hNewBookBelowFinal hNewTradesBelow hHeapMono hHeapUpper
-    hNewBookFreeFinal hNewTradesFreeFinal hNodesBelowFinal hList1 hPageEq
+    hNewBookFreeFinal hNewTradesFreeFinal hNodesBelowFinal hList1 hMemoryFrame1
+    hPageEq
     hOldTradesNewBook hOldTradesNewTrades hOldTradesNodes hG0 hG1 hG2 hG4 hG5
   rcases hTracker with hNoTracker | hTradeTracker
   · subst oldTradesTracker
@@ -291,6 +299,7 @@ theorem fullBookThenStep_spec
     · exact hNewTradesFreeFinal
     · exact hNodesBelowFinal
     · exact hList1
+    · exact hMemoryFrame1
     · exact hPageEq
     · exact hG0
     · exact hG1
@@ -341,6 +350,13 @@ theorem fullBookThenStep_spec
     have hPageAfter : st2.mem.pages = st.mem.pages := by
       rw [hMem]
       exact hPageEq
+    have hReleaseFrame : BytesEqFrom st1.mem st2.mem limit := by
+      rw [hMem]
+      apply fixedArrayReleaseMem_bytesFrom st1 oldTrades oldTradesCapacity
+        (freeHead nodes1) limit hOldTrades48 hOldTradesFull32
+      exact (hOldTradesBelow.trans hHeapMono).trans (by omega)
+    have hMemoryFrameAfter : BytesEqFrom initialMem st2.mem limit :=
+      hMemoryFrame1.trans hReleaseFrame
     have hNewBookFreeAfter : FreeListSeparatedFromFixedArray
         (releasedNode oldTrades oldTradesCapacity :: nodes1) newBook
         newBookCapacity :=
@@ -385,6 +401,7 @@ theorem fullBookThenStep_spec
     · exact hNewTradesFreeAfter
     · exact hNodesBelowAfter
     · exact hList2
+    · exact hMemoryFrameAfter
     · exact hPageAfter
     · exact hG0After
     · exact hG1After

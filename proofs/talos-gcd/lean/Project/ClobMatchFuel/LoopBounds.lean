@@ -82,6 +82,12 @@ structure StepBounds (ctx : Context) (st : Store Unit)
     (data.g0 + 48 + orderArrayBytesU data.orders.length).toNat + 48 +
       (tradeArrayBytesU (data.tradeValues.length + 1)).toNat ≤
         st.mem.pages * 65536
+  fullAllocationLimit : data.g0.toNat + 96 +
+    orderArrayBytes (data.orders.length - 1) +
+    tradeArrayBytes (data.tradeValues.length + 1) ≤ ctx.limit
+  partialAllocationLimit : data.g0.toNat + 96 +
+    orderArrayBytes data.orders.length +
+    tradeArrayBytes (data.tradeValues.length + 1) ≤ ctx.limit
 
 theorem of_running (ctx : Context) (st : Store Unit) (s : Locals)
     (data : RunningData) (facts : RunningFacts ctx st s data)
@@ -253,7 +259,9 @@ theorem of_running (ctx : Context) (st : Store Unit) (s : Locals)
     fullTradeFitAfterBook := ?_
     partialTradeTopAfterBook := by simpa [hTradeNeed] using hPartialTradeTop
     partialTradeFit32AfterBook := hPartialTradeFit32After
-    partialTradeFitAfterBook := ?_ }
+    partialTradeFitAfterBook := ?_
+    fullAllocationLimit := ?_
+    partialAllocationLimit := ?_ }
   · rw [UInt64.toNat_mul, toNat_ofNat_lt hOrdersLength64]
     change data.orders.length * 5 % UInt64.size = data.orders.length * 5
     exact Nat.mod_eq_of_lt hOrderWords64
@@ -283,5 +291,19 @@ theorem of_running (ctx : Context) (st : Store Unit) (s : Locals)
     unfold Budget.stepBytes orderArrayBytes tradeArrayBytes fixedArrayBytes at hFit
     unfold orderArrayBytes tradeArrayBytes fixedArrayBytes
     omega
+  · calc
+      data.g0.toNat + 96 + orderArrayBytes (data.orders.length - 1) +
+          tradeArrayBytes (data.tradeValues.length + 1) ≤
+          data.g0.toNat + Budget.stepBytes ctx.bookLimit ctx.tradeLimit := by
+        simpa [Nat.add_assoc] using Nat.add_le_add_left
+          (Budget.fullStepBytes_le hBookLength hTradeLength) data.g0.toNat
+      _ ≤ ctx.limit := hAvailable
+  · calc
+      data.g0.toNat + 96 + orderArrayBytes data.orders.length +
+          tradeArrayBytes (data.tradeValues.length + 1) ≤
+          data.g0.toNat + Budget.stepBytes ctx.bookLimit ctx.tradeLimit := by
+        simpa [Nat.add_assoc] using Nat.add_le_add_left
+          (Budget.partialStepBytes_le hBookLength hTradeLength) data.g0.toNat
+      _ ≤ ctx.limit := hAvailable
 
 end Project.ClobMatchFuel.LoopBounds

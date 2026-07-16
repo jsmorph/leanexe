@@ -28,6 +28,8 @@ structure OutputAt (ctx : Context) (st : Store Unit) (data : OutputData) : Prop 
   tradesOwned :
     OwnedTradeArrayAt st data.trades data.tradesCapacity ctx.result.trades
   freeList : FreeListAt st.mem data.nodes
+  memoryFrame : MemoryFrame.BytesEqFrom ctx.initialMem st.mem ctx.limit
+  pages : st.mem.pages = ctx.initialPages
   global0 : st.globals.globals[0]? = some (.i64 data.g0)
   global1 : st.globals.globals[1]? = some (.i64 (freeHead data.nodes))
   global2 : st.globals.globals[2]? = some (.i64 ctx.expectedG2)
@@ -62,6 +64,8 @@ theorem of_completed (facts : CompletedFacts ctx st s data) :
     bookOwned := facts.bookOwned
     tradesOwned := facts.tradesOwned
     freeList := facts.freeList
+    memoryFrame := facts.memoryFrame
+    pages := facts.pages
     global0 := facts.global0
     global1 := facts.global1
     global2 := facts.global2
@@ -89,6 +93,8 @@ theorem of_zero_running (facts : RunningFacts ctx st s data)
       simpa [runningOutputData, hSource, RunningData.sourceState] using
         facts.tradesOwned
     freeList := facts.freeList
+    memoryFrame := facts.memoryFrame
+    pages := facts.pages
     global0 := facts.global0
     global1 := facts.global1
     global2 := by

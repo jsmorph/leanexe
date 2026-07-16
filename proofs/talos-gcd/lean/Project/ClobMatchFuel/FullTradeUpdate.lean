@@ -1,5 +1,6 @@
 import Project.ClobMatchFuel.FullBookUpdate
 import Project.ClobMatchFuel.FullTradeFinish
+import Project.ClobMatchFuel.MemoryFrame
 
 /-!
 # Full-fill trade update
@@ -15,6 +16,7 @@ namespace Project.ClobMatchFuel.FullTradeUpdate
 open Wasm Project.Common Project.Runtime Project.Clob Project.ClobMatchFuel
   Project.ClobMatchFuel.Allocation
   Project.ClobMatchFuel.AllocatorFrame
+  Project.ClobMatchFuel.MemoryFrame
 
 def fullTradeUpdateProg : Wasm.Program :=
   FullTradePrepare.fullTradePrepareProg ++
@@ -55,6 +57,7 @@ theorem fullTradeUpdateProg_spec
     (oldBookTracker oldTradesTracker : UInt64)
     (taker : OrderL) (os newOrders : List OrderL)
     (ts : List TradeL) (i : Nat) (nodes : List FreeNode)
+    (initialMem : Mem) (limit : Nat)
     (hParams : base.params.length = 9)
     (hLocals : base.locals.length = 76)
     (hValues : base.values = [.i64 newBook])
@@ -116,6 +119,9 @@ theorem fullTradeUpdateProg_spec
       (fixedArrayRegion newBook newBookCapacity))
     (hNodesBelow : ∀ node ∈ nodes,
       node.root.toNat + node.capacity.toNat ≤ g0.toNat)
+    (hAllocationLimit : g0.toNat + 48 +
+      tradeArrayBytes (ts.length + 1) ≤ limit)
+    (hMemoryFrame : BytesEqFrom initialMem st.mem limit)
     (hOldTradesOwned :
       OwnedTradeArrayAt st oldTrades oldTradesCapacity ts)
     (hNewBookOwned :
@@ -157,6 +163,7 @@ theorem fullTradeUpdateProg_spec
       (∀ node ∈ nodes1,
         node.root.toNat + node.capacity.toNat ≤ g0Final.toNat) →
       FreeListAt st1.mem nodes1 →
+      BytesEqFrom initialMem st1.mem limit →
       st1.mem.pages = st.mem.pages →
       regionsDisjoint (fixedArrayRegion oldTrades oldTradesCapacity)
         (fixedArrayRegion newBook newBookCapacity) →
@@ -339,6 +346,19 @@ theorem fullTradeUpdateProg_spec
       hNodesBelow choice.node hChoiceMem
     have hPagesFinal : finalStore.mem.pages = st.mem.pages :=
       hFinalPages.trans (fixedArrayAllocFitStore_pages st choice 4)
+    have hAllocFrame : BytesEqFrom st.mem
+        (TradeAllocFit.tradeAllocFitStore st choice).mem limit := by
+      apply fixedArrayAllocFitStore_bytesFrom hList hTake
+      intro node hNode
+      exact (hNodesBelow node hNode).trans (by omega)
+    have hPayloadEnd : choice.node.root.toNat +
+        ((ts.length + 1) * 4 + 1) * 8 ≤ limit := by
+      have hChoiceBelow := hNodesBelow choice.node hChoiceMem
+      unfold tradeArrayBytes fixedArrayBytes at hChoiceCapacity
+      omega
+    have hFinalMemoryFrame : BytesEqFrom initialMem finalStore.mem limit :=
+      (hMemoryFrame.trans hAllocFrame).trans
+        (BytesEqFrom.of_outsideFlatWords hPayloadEnd hOutside)
     have hFinalG2 : finalStore.globals.globals[2]? =
         some (.i64 (g2 + 1)) := by
       have hAllocG2 :
@@ -433,6 +453,7 @@ theorem fullTradeUpdateProg_spec
       · exact hNewTradesFreeFinal
       · exact hNodesBelowFinal
       · exact hFinalList
+      · exact hFinalMemoryFrame
       · exact hPagesFinal
       · exact hOldTradesNewBook
       · exact hOldTradesNewTrades
@@ -515,6 +536,26 @@ theorem fullTradeUpdateProg_spec
     have hPagesFinal : finalStore.mem.pages = st.mem.pages :=
       hFinalPages.trans (fixedArrayAllocBumpStore_pages st g0
         (tradeArrayBytesU (ts.length + 1)) 4)
+    have hNeedNat : (tradeArrayBytesU (ts.length + 1)).toNat =
+        tradeArrayBytes (ts.length + 1) :=
+      fixedArrayBytesU_toNat (ts.length + 1) 4 hn (by decide) (by
+        change fixedArrayBytes (ts.length + 1) 4 + 7 < UInt64.size at hbytes
+        omega)
+    have hAllocFrame : BytesEqFrom st.mem
+        (TradeAllocBump.tradeAllocBumpStore st g0
+          (tradeArrayBytesU (ts.length + 1))).mem limit := by
+      apply fixedArrayAllocBumpStore_bytesFrom st g0
+        (tradeArrayBytesU (ts.length + 1)) 4 limit hFit32
+      rw [hNeedNat]
+      exact hAllocationLimit
+    have hPayloadEnd : target.toNat +
+        ((ts.length + 1) * 4 + 1) * 8 ≤ limit := by
+      rw [hTargetNat]
+      unfold tradeArrayBytes fixedArrayBytes at hAllocationLimit
+      omega
+    have hFinalMemoryFrame : BytesEqFrom initialMem finalStore.mem limit :=
+      (hMemoryFrame.trans hAllocFrame).trans
+        (BytesEqFrom.of_outsideFlatWords hPayloadEnd hOutside)
     have hFinalG2 : finalStore.globals.globals[2]? =
         some (.i64 (g2 + 1)) := by
       have hAllocG2 :
@@ -625,6 +666,7 @@ theorem fullTradeUpdateProg_spec
       · exact hNewTradesFreeFinal
       · exact hNodesBelowFinal
       · exact hFinalList
+      · exact hFinalMemoryFrame
       · exact hPagesFinal
       · exact hOldTradesNewBook
       · exact hOldTradesNewTrades
