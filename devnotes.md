@@ -5049,6 +5049,8 @@ The partial-book and trade-update continuations now retain the final page count 
 
 `FullTradePrepare.fullTradePrepareProg_spec` proves the generated bridge from the full-fill book result to the common trade allocator input.  It checks the book length, matched maker identifier, price, quantity, and old trade length before producing the exact trade-allocation locals.  The warning-failing constrained module build completes in 7.3 seconds after its dependencies are current.
 
+`FullTradeFinish.fullTradeFinishProg_spec` records the fresh trade root and checks the matched maker quantity before computing the next remaining quantity.  Its exact local frame ends at the first generated release guard with an empty value stack.  The warning-failing constrained module build completes in 3.6 seconds after its dependencies are current.
+
 ## 2026-07-15: Release Transformations
 
 `Allocation.fixedArrayReleaseMem` and `fixedArrayReleaseGlobals` name the exact memory and global-list results of freeing a refcount-one zero-mask fixed array.  `func18_frees_fixed_array_zero_mask` now states its existing runtime result with those definitions, without changing its assumptions or proof.  The warning-failing constrained `Allocation` build completes in 2.8 seconds.
