@@ -5020,3 +5020,7 @@ The partial-fill book copy now carries the same frame through its length store a
 ## 2026-07-15: Partial Book Allocation and Copy
 
 `PartialBookAllocCopy.partialBookAllocCopyProg_spec` composes the partial-fill stride-five allocator with the complete source-book copy at its generated local layout.  Its fit and bump outcomes supply the fresh target header, exact target `OrdersAt`, preserved refcount-one source book, outside-payload byte frame, and the allocator data required by later replacement and release steps.  The warning-failing constrained target completes in 3.8 seconds after its dependencies are current.
+
+## 2026-07-15: Erased-Book Copy Composition
+
+`BookErasePrefix.erasePrefixProg_spec` now gives its continuation the completed-prefix equality directly.  `BookAllocErase.bookCopiesProg_spec` uses that fact to compose the prefix and shifted-suffix loops, preserving one outside-payload frame and reconstructing `OrdersAt (os.eraseIdx i)` at the returned target.  The warning-failing constrained composition target completes in 1.9 seconds after its dependencies are current.

@@ -141,6 +141,8 @@ theorem erasePrefixProg_spec
           g2 arrayCapacity newLength os targetWords prefixWords st1
           (eraseCopyFrame base need previous current capacity next target
             prefixWords) →
+        (∀ copied : Nat, copied < prefixWords →
+          orderWord st1 target copied = orderWord st0 source copied) →
         wp «module» rest Q st1
           (eraseCopyFrame base need previous current capacity next target
             prefixWords) env) :
@@ -215,8 +217,9 @@ theorem erasePrefixProg_spec
       try simp
       subst word
       apply hDone
-      exact ⟨prefixWords, le_rfl, rfl, hPages, hGlobals, hFresh1,
-        hLength, hOrders1, hOutside, hCopied⟩
+      · exact ⟨prefixWords, le_rfl, rfl, hPages, hGlobals, hFresh1,
+          hLength, hOrders1, hOutside, hCopied⟩
+      · exact hCopied
     · have hnge : ¬ UInt64.ofNat word ≥ UInt64.ofNat prefixWords := by
         rw [ge_iff_le, UInt64.le_iff_toNat_le, hwordU, hPrefixU]
         omega
