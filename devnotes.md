@@ -5016,3 +5016,7 @@ The partial-fill book copy now carries the same frame through its length store a
 ## 2026-07-15: Trade Allocation and Copy Composition
 
 `TradeAllocCopy.tradeAllocCopyProg_spec` composes capacity preparation, first-fit search or bump allocation, and the complete old-trade prefix copy.  Each outcome derives the fresh target header, exact payload bounds, source-target separation, preserved refcount-one source trade array, and outside-payload byte frame before entering its own continuation.  The outcome-specific continuations retain either the selected `FreeChoice` or the bump predecessor, and the warning-failing constrained target completes in 4.1 seconds after its dependencies are current.
+
+## 2026-07-15: Partial Book Allocation and Copy
+
+`PartialBookAllocCopy.partialBookAllocCopyProg_spec` composes the partial-fill stride-five allocator with the complete source-book copy at its generated local layout.  Its fit and bump outcomes supply the fresh target header, exact target `OrdersAt`, preserved refcount-one source book, outside-payload byte frame, and the allocator data required by later replacement and release steps.  The warning-failing constrained target completes in 3.8 seconds after its dependencies are current.
