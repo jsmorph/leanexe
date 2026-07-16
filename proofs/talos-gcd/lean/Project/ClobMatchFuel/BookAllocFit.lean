@@ -2,7 +2,7 @@ import Project.ClobMatchFuel.BookAllocSearch
 
 namespace Project.ClobMatchFuel.BookAllocFit
 
-open Wasm Project.Common Project.Runtime Project.ClobMatchFuel
+open Wasm Project.Common Project.Runtime Project.Clob Project.ClobMatchFuel
 
 set_option maxHeartbeats 8000000
 set_option maxRecDepth 1048576
@@ -16,28 +16,40 @@ macro "wp_run_fit" "(" hParams:term "," hLocals:term "," hValues:term ")" : tact
     Nat.reduceAdd, Nat.reduceLT, Nat.reduceLeDiff, Nat.reduceSub,
     ValueType.zero, List.headD, ($hParams), ($hLocals), ($hValues)])
 
-def bookAllocFitMem (mem : Mem) (choice : FreeChoice) : Mem :=
+def fixedArrayAllocFitMem (mem : Mem) (choice : FreeChoice)
+    (stride : UInt64) : Mem :=
   ((((((unlinkFreeChoice mem choice).write64
       ((choice.node.root - 48).toUInt32) 5501223100278326855).write64
       ((choice.node.root - 40).toUInt32) 1).write64
       ((choice.node.root - 32).toUInt32) choice.node.capacity).write64
       ((choice.node.root - 24).toUInt32) 2).write64
-      ((choice.node.root - 16).toUInt32) 5).write64
+      ((choice.node.root - 16).toUInt32) stride).write64
       ((choice.node.root - 8).toUInt32) 0
 
-def bookAllocFitStore (st : Store Unit) (choice : FreeChoice) : Store Unit :=
+def fixedArrayAllocFitStore (st : Store Unit) (choice : FreeChoice)
+    (stride : UInt64) : Store Unit :=
   { st with
     globals := if choice.previous = 0 then
       { globals := st.globals.globals.set 1 (.i64 choice.next) }
     else
       st.globals
-    mem := bookAllocFitMem st.mem choice }
+    mem := fixedArrayAllocFitMem st.mem choice stride }
 
-theorem freeListAt_bookAllocFitMem {mem : Mem} {nodes : List FreeNode}
+abbrev bookAllocFitMem (mem : Mem) (choice : FreeChoice) : Mem :=
+  fixedArrayAllocFitMem mem choice 5
+
+abbrev bookAllocFitStore (st : Store Unit) (choice : FreeChoice) :
+    Store Unit :=
+  fixedArrayAllocFitStore st choice 5
+
+theorem freeListAt_fixedArrayAllocFitMem
+    {mem : Mem} {nodes : List FreeNode}
     {need : UInt64} {choice : FreeChoice}
+    (stride : UInt64)
     (hList : FreeListAt mem nodes)
     (hTake : takeFirstFitFrom 0 need nodes = some choice) :
-    FreeListAt (bookAllocFitMem mem choice) choice.remaining := by
+    FreeListAt (fixedArrayAllocFitMem mem choice stride)
+      choice.remaining := by
   have hChoiceMem : choice.node ∈ nodes :=
     takeFirstFitFrom_some_mem hTake
   obtain ⟨hNode48, hNode32, _⟩ := hList.mem_bounds hChoiceMem
@@ -58,12 +70,51 @@ theorem freeListAt_bookAllocFitMem {mem : Mem} {nodes : List FreeNode}
     (writer := choice.node) (writeOffset := 24) (value := 2)
     hNode48 hNode32 (by decide) (by decide) hsep
   have h5 := h4.frame_write64_disjoint
-    (writer := choice.node) (writeOffset := 16) (value := 5)
+    (writer := choice.node) (writeOffset := 16) (value := stride)
     hNode48 hNode32 (by decide) (by decide) hsep
   have h6 := h5.frame_write64_disjoint
     (writer := choice.node) (writeOffset := 8) (value := 0)
     hNode48 hNode32 (by decide) (by decide) hsep
   exact h6
+
+theorem freeListAt_bookAllocFitMem {mem : Mem} {nodes : List FreeNode}
+    {need : UInt64} {choice : FreeChoice}
+    (hList : FreeListAt mem nodes)
+    (hTake : takeFirstFitFrom 0 need nodes = some choice) :
+    FreeListAt (bookAllocFitMem mem choice) choice.remaining := by
+  exact freeListAt_fixedArrayAllocFitMem 5 hList hTake
+
+theorem freshFixedArrayAt_fixedArrayAllocFitStore
+    {st : Store Unit} {nodes : List FreeNode} {need : UInt64}
+    {choice : FreeChoice} (stride : UInt64)
+    (hList : FreeListAt st.mem nodes)
+    (hTake : takeFirstFitFrom 0 need nodes = some choice) :
+    FreshFixedArrayAt (fixedArrayAllocFitStore st choice stride)
+      choice.node.root choice.node.capacity stride := by
+  have hChoiceMem : choice.node ∈ nodes :=
+    takeFirstFitFrom_some_mem hTake
+  obtain ⟨hRoot48, hRoot32, _⟩ := hList.mem_bounds hChoiceMem
+  have hsub (offset : UInt64) (hLow : 8 ≤ offset.toNat)
+      (hHigh : offset.toNat ≤ 48) :
+      (choice.node.root - offset).toNat =
+        choice.node.root.toNat - offset.toNat :=
+    toNat_sub_le _ _ (by omega)
+  have hsub48 : (choice.node.root - 48).toNat =
+      choice.node.root.toNat - 48 := hsub 48 (by decide) (by decide)
+  have hsub40 : (choice.node.root - 40).toNat =
+      choice.node.root.toNat - 40 := hsub 40 (by decide) (by decide)
+  have hsub32 : (choice.node.root - 32).toNat =
+      choice.node.root.toNat - 32 := hsub 32 (by decide) (by decide)
+  have hsub24 : (choice.node.root - 24).toNat =
+      choice.node.root.toNat - 24 := hsub 24 (by decide) (by decide)
+  have hsub16 : (choice.node.root - 16).toNat =
+      choice.node.root.toNat - 16 := hsub 16 (by decide) (by decide)
+  have hsub8 : (choice.node.root - 8).toNat =
+      choice.node.root.toNat - 8 := hsub 8 (by decide) (by decide)
+  unfold fixedArrayAllocFitStore fixedArrayAllocFitMem FreshFixedArrayAt
+  simp only [toUInt32_eq_ofNat, hsub48, hsub40, hsub32, hsub24,
+    hsub16, hsub8]
+  refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩ <;> read_frames
 
 private def fitInv (st0 : Store Unit) (base : Locals) (need : UInt64)
     (skipped tail : List FreeNode) (choice : FreeChoice) :
@@ -340,9 +391,9 @@ theorem bookAllocSearchProg_fit
                   if_neg (Nat.not_lt.mpr
                     (hbound 8 (by decide) (by decide)))]
                 refine ⟨Or.inr ⟨?_, ?_⟩, ?_⟩
-                · simp only [bookAllocFitStore, bookAllocFitMem,
-                    unlinkFreeChoice, if_pos hPreviousZero, hnext,
-                    ← toUInt32_eq_ofNat]
+                · simp only [bookAllocFitStore, fixedArrayAllocFitStore,
+                    fixedArrayAllocFitMem, unlinkFreeChoice,
+                    if_pos hPreviousZero, hnext, ← toUInt32_eq_ofNat]
                 · simpa only [BookAllocSearch.bookAllocSearchFrame] using
                     hFinalFrame
                 · unfold fitMeasure
@@ -397,9 +448,9 @@ theorem bookAllocSearchProg_fit
                   if_neg (Nat.not_lt.mpr
                     (hbound 8 (by decide) (by decide)))]
                 refine ⟨Or.inr ⟨?_, ?_⟩, ?_⟩
-                · simp only [bookAllocFitStore, bookAllocFitMem,
-                    unlinkFreeChoice, if_neg hPreviousZero, hnext,
-                    ← toUInt32_eq_ofNat]
+                · simp only [bookAllocFitStore, fixedArrayAllocFitStore,
+                    fixedArrayAllocFitMem, unlinkFreeChoice,
+                    if_neg hPreviousZero, hnext, ← toUInt32_eq_ofNat]
                 · simpa only [BookAllocSearch.bookAllocSearchFrame,
                     hRuntimePrevious] using hFinalFrame
                 · unfold fitMeasure
