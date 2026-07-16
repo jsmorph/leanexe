@@ -12,6 +12,7 @@ import Project.ClobMatchFuel.TradeAllocAppend
 import Project.ClobMatchFuel.TradeAppendCopy
 import Project.ClobMatchFuel.TradeAppendFinish
 import Project.ClobMatchFuel.FullTradePrepare
+import Project.ClobMatchFuel.FullTradeFinish
 import Project.ClobMatchFuel.ReleaseOld
 
 /-!
