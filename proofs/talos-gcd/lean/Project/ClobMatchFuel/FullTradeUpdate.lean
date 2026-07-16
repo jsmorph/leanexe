@@ -120,6 +120,7 @@ theorem fullTradeUpdateProg_spec
       OwnedOrderArrayAt st1 newBook newBookCapacity newOrders →
       OwnedTradeArrayAt st1 newTrades newTradesCapacity
         (ts ++ [Model.fillTradeL taker os[i]! os[i]!.oqty]) →
+      OwnedTradeArrayAt st1 oldTrades oldTradesCapacity ts →
       OwnedOrderArrayAt st1 oldBook oldBookCapacity os →
       FreeListAt st1.mem nodes1 →
       st1.globals.globals[0]? = some (.i64 g0Final) →
@@ -246,10 +247,22 @@ theorem fullTradeUpdateProg_spec
       unfold regionsDisjoint flatWordsRegion fixedArrayRegion
       unfold tradeArrayBytes fixedArrayBytes at hChoiceCapacity
       omega
+    have hPayloadTradeSep : regionsDisjoint
+        (flatWordsRegion choice.node.root ((ts.length + 1) * 4))
+        (fixedArrayRegion oldTrades oldTradesCapacity) := by
+      have hSep := hOldTradesFree choice.node hChoiceMem
+      unfold regionsDisjoint fixedArrayRegion FreeNode.region at hSep
+      unfold regionsDisjoint flatWordsRegion fixedArrayRegion
+      unfold tradeArrayBytes fixedArrayBytes at hChoiceCapacity
+      omega
     have hOldBookFinal : OwnedOrderArrayAt finalStore oldBook oldBookCapacity
         os :=
       OwnedOrderArrayAt.frame_outsideFlatWords hOldBook48 hOldBook32
         hOldBookCapacity hFinalPages hPayloadBookSep hOutside hOldBookAlloc
+    have hOldTradesFinal : OwnedTradeArrayAt finalStore oldTrades
+        oldTradesCapacity ts :=
+      OwnedTradeArrayAt.frame_outsideFlatWords hOldTrades48 hOldTrades32
+        hOldTradesCapacity hFinalPages hPayloadTradeSep hOutside hOldTradesAlloc
     have hFinalG2 : finalStore.globals.globals[2]? =
         some (.i64 (g2 + 1)) := by
       have hAllocG2 :
@@ -308,6 +321,7 @@ theorem fullTradeUpdateProg_spec
           hCarryQtyElem]
       · exact hNewBookOwned1
       · simpa [finalStore, trade] using hNewTradesOwned
+      · exact hOldTradesFinal
       · exact hOldBookFinal
       · exact hFinalList
       · exact hFinalG0
@@ -335,10 +349,20 @@ theorem fullTradeUpdateProg_spec
       unfold regionsDisjoint flatWordsRegion fixedArrayRegion
       rw [hTargetNat]
       omega
+    have hPayloadTradeSep : regionsDisjoint
+        (flatWordsRegion target ((ts.length + 1) * 4))
+        (fixedArrayRegion oldTrades oldTradesCapacity) := by
+      unfold regionsDisjoint flatWordsRegion fixedArrayRegion
+      rw [hTargetNat]
+      omega
     have hOldBookFinal : OwnedOrderArrayAt finalStore oldBook oldBookCapacity
         os :=
       OwnedOrderArrayAt.frame_outsideFlatWords hOldBook48 hOldBook32
         hOldBookCapacity hFinalPages hPayloadBookSep hOutside hOldBookAlloc
+    have hOldTradesFinal : OwnedTradeArrayAt finalStore oldTrades
+        oldTradesCapacity ts :=
+      OwnedTradeArrayAt.frame_outsideFlatWords hOldTrades48 hOldTrades32
+        hOldTradesCapacity hFinalPages hPayloadTradeSep hOutside hOldTradesAlloc
     have hFinalG2 : finalStore.globals.globals[2]? =
         some (.i64 (g2 + 1)) := by
       have hAllocG2 :
@@ -398,6 +422,7 @@ theorem fullTradeUpdateProg_spec
           hCarryQtyElem, target]
       · exact hNewBookOwned1
       · simpa [finalStore, target, trade] using hNewTradesOwned
+      · exact hOldTradesFinal
       · exact hOldBookFinal
       · exact hFinalList
       · exact hFinalG0
