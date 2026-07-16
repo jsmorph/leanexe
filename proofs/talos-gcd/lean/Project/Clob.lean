@@ -448,6 +448,9 @@ theorem TradesAt.frame_write64_flatWordsDisjoint
 def fixedArrayBytes (n stride : Nat) : Nat :=
   8 + n * stride * 8
 
+def fixedArrayRegion (ptr capacity : UInt64) : Nat × Nat :=
+  (ptr.toNat - 48, 48 + capacity.toNat)
+
 def fixedArrayBytesU (n stride : Nat) : UInt64 :=
   8 + UInt64.ofNat n * UInt64.ofNat stride * 8
 
@@ -540,6 +543,114 @@ theorem FreshFixedArrayAt.write64_data {st : Store Unit}
   · rw [Project.Common.read64_write64_ne _ _ _ _
       (Or.inl (hDisjoint 8 (by change 8 ≤ ptr.toNat; omega) (by decide)))]
     exact h8
+
+theorem FreshFixedArrayAt.frame_region {st st' : Store Unit}
+    {ptr capacity stride : UInt64}
+    (hPtr32 : ptr.toNat < 4294967296)
+    (hHeader : 48 ≤ ptr.toNat)
+    (hBytes : ∀ a : Nat,
+      ptr.toNat - 48 ≤ a → a < ptr.toNat + capacity.toNat →
+        st'.mem.bytes a = st.mem.bytes a)
+    (hFresh : FreshFixedArrayAt st ptr capacity stride) :
+    FreshFixedArrayAt st' ptr capacity stride := by
+  have hRead (offset : UInt64) (hOffset : offset.toNat ≤ 48)
+      (hOffset8 : 8 ≤ offset.toNat) :
+      st'.mem.read64 ((ptr - offset).toUInt32) =
+        st.mem.read64 ((ptr - offset).toUInt32) := by
+    apply Project.Common.read64_congr
+    intro i hi
+    rw [Project.Common.toUInt32_toNat,
+      Project.Common.toNat_sub_le ptr offset (by omega),
+      Nat.mod_eq_of_lt (by omega)]
+    apply hBytes <;> omega
+  obtain ⟨h48, h40, h32, h24, h16, h8⟩ := hFresh
+  exact ⟨(hRead 48 (by decide) (by decide)).trans h48,
+    (hRead 40 (by decide) (by decide)).trans h40,
+    (hRead 32 (by decide) (by decide)).trans h32,
+    (hRead 24 (by decide) (by decide)).trans h24,
+    (hRead 16 (by decide) (by decide)).trans h16,
+    (hRead 8 (by decide) (by decide)).trans h8⟩
+
+theorem OrdersAt.frame_region {st st' : Store Unit}
+    {ptr capacity : UInt64} {os : List OrderL}
+    (hInput32 : ptr.toNat + fixedArrayBytes os.length 5 < 4294967296)
+    (hHeader : 48 ≤ ptr.toNat)
+    (hCapacity : fixedArrayBytes os.length 5 ≤ capacity.toNat)
+    (hPages : st'.mem.pages = st.mem.pages)
+    (hBytes : ∀ a : Nat,
+      ptr.toNat - 48 ≤ a → a < ptr.toNat + capacity.toNat →
+        st'.mem.bytes a = st.mem.bytes a)
+    (hInput : OrdersAt st ptr os) :
+    OrdersAt st' ptr os := by
+  obtain ⟨⟨hHead, hHeadBound⟩, hElems⟩ := hInput
+  have hRead (word : Nat) (hword : word ≤ os.length * 5) :
+      st'.mem.read64
+          (UInt32.ofNat ((ptr.toNat + word * 8) % 4294967296)) =
+        st.mem.read64
+          (UInt32.ofNat ((ptr.toNat + word * 8) % 4294967296)) := by
+    apply Project.Common.read64_congr
+    intro i hi
+    rw [Project.Common.toUInt32_ofNat_mod_toNat,
+      Nat.mod_eq_of_lt (by unfold fixedArrayBytes at hInput32; omega)]
+    apply hBytes <;> unfold fixedArrayBytes at hCapacity <;> omega
+  refine ⟨⟨(hRead 0 (by omega)).trans hHead, ?_⟩, ?_⟩
+  · rwa [hPages]
+  · intro j hj
+    obtain ⟨h1, h2, h3, h4, h5⟩ := hElems j hj
+    refine ⟨⟨(hRead (j * 5 + 1) (by omega)).trans h1.1, ?_⟩,
+      ⟨(hRead (j * 5 + 2) (by omega)).trans h2.1, ?_⟩,
+      ⟨(hRead (j * 5 + 3) (by omega)).trans h3.1, ?_⟩,
+      ⟨(hRead (j * 5 + 4) (by omega)).trans h4.1, ?_⟩,
+      ⟨(hRead (j * 5 + 5) (by omega)).trans h5.1, ?_⟩⟩
+    · rw [hPages]
+      exact h1.2
+    · rw [hPages]
+      exact h2.2
+    · rw [hPages]
+      exact h3.2
+    · rw [hPages]
+      exact h4.2
+    · rw [hPages]
+      exact h5.2
+
+theorem TradesAt.frame_region {st st' : Store Unit}
+    {ptr capacity : UInt64} {ts : List TradeL}
+    (hInput32 : ptr.toNat + fixedArrayBytes ts.length 4 < 4294967296)
+    (hHeader : 48 ≤ ptr.toNat)
+    (hCapacity : fixedArrayBytes ts.length 4 ≤ capacity.toNat)
+    (hPages : st'.mem.pages = st.mem.pages)
+    (hBytes : ∀ a : Nat,
+      ptr.toNat - 48 ≤ a → a < ptr.toNat + capacity.toNat →
+        st'.mem.bytes a = st.mem.bytes a)
+    (hInput : TradesAt st ptr ts) :
+    TradesAt st' ptr ts := by
+  obtain ⟨⟨hHead, hHeadBound⟩, hElems⟩ := hInput
+  have hRead (word : Nat) (hword : word ≤ ts.length * 4) :
+      st'.mem.read64
+          (UInt32.ofNat ((ptr.toNat + word * 8) % 4294967296)) =
+        st.mem.read64
+          (UInt32.ofNat ((ptr.toNat + word * 8) % 4294967296)) := by
+    apply Project.Common.read64_congr
+    intro i hi
+    rw [Project.Common.toUInt32_ofNat_mod_toNat,
+      Nat.mod_eq_of_lt (by unfold fixedArrayBytes at hInput32; omega)]
+    apply hBytes <;> unfold fixedArrayBytes at hCapacity <;> omega
+  refine ⟨⟨(hRead 0 (by omega)).trans hHead, ?_⟩, ?_⟩
+  · rwa [hPages]
+  · intro j hj
+    obtain ⟨h1, h2, h3, h4⟩ := hElems j hj
+    refine ⟨⟨(hRead (j * 4 + 1) (by omega)).trans h1.1, ?_⟩,
+      ⟨(hRead (j * 4 + 2) (by omega)).trans h2.1, ?_⟩,
+      ⟨(hRead (j * 4 + 3) (by omega)).trans h3.1, ?_⟩,
+      ⟨(hRead (j * 4 + 4) (by omega)).trans h4.1, ?_⟩⟩
+    · rw [hPages]
+      exact h1.2
+    · rw [hPages]
+      exact h2.2
+    · rw [hPages]
+      exact h3.2
+    · rw [hPages]
+      exact h4.2
 
 theorem FreshFixedArrayAt.frame {st st' : Store Unit}
     {ptr capacity stride base : UInt64}
