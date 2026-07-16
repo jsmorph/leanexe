@@ -8,6 +8,8 @@ import Project.ClobMatchFuel.PartialBookAlloc
 import Project.ClobMatchFuel.PartialBookAllocCopy
 import Project.ClobMatchFuel.PartialBookUpdate
 import Project.ClobMatchFuel.PartialBookPrepare
+import Project.ClobMatchFuel.BranchPost
+import Project.ClobMatchFuel.PartialBookControl
 import Project.ClobMatchFuel.TradeAlloc
 import Project.ClobMatchFuel.TradeAllocCopy
 import Project.ClobMatchFuel.TradeAllocAppend
@@ -37,6 +39,7 @@ import Project.ClobMatchFuel.LoopIteration
 import Project.ClobMatchFuel.Loop
 import Project.ClobMatchFuel.LoopInitial
 import Project.ClobMatchFuel.LoopResult
+import Project.ClobMatchFuel.Entry
 
 /-!
 # The `matchFuel` theorem

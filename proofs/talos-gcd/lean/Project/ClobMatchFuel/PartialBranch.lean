@@ -1,12 +1,15 @@
 import Project.ClobMatchFuel.PartialTradeUpdate
+import Project.ClobMatchFuel.BranchPost
+import Project.ClobMatchFuel.PartialBookControl
 
 /-!
 # Partial-fill branch
 
 The partial-fill branch replaces the matched maker with its reduced quantity,
-then appends the resulting trade and exits the loop.  This module composes both
-allocators across all four fit and bump combinations.  Its result retains the
-two owned output arrays and the allocator state needed by the exported theorem.
+then appends the resulting trade and exits the loop.  The book update executes
+inside the generated one-result bounds branch, while the trade update follows
+that branch.  This module composes all four allocator outcomes and retains the
+owned output arrays and allocator state needed by the exported theorem.
 -/
 
 namespace Project.ClobMatchFuel.PartialBranch
@@ -16,8 +19,7 @@ open Wasm Project.Common Project.Runtime Project.Clob Project.ClobMatchFuel
   Project.ClobMatchFuel.AllocatorFrame
 
 def partialBranchProg : Wasm.Program :=
-  PartialBookPrepare.partialBookPrepareProg ++
-    PartialBookUpdate.partialBookUpdateProg ++
+  PartialBookControl.partialBookBranchProg ++
     PartialTradeUpdate.partialTradeUpdateProg
 
 set_option Elab.async false in
@@ -127,12 +129,11 @@ theorem partialBranchProg_spec
       PartialBookPrepare.partialBookPrepareLocals, List.length_set] using
       hLocals
   unfold partialBranchProg
-  rw [List.append_assoc, List.append_assoc]
-  apply PartialBookPrepare.partialBookPrepareProg_spec env st base book
+  rw [List.append_assoc]
+  apply PartialBookControl.partialBookBranchProg_spec env st base book
     remaining os i hParams hLocals hValues hBookLocal hIndexLocal
     hRemainingLocal hi hOrdersLength64 hBookOwned.2 Q
-    (PartialBookUpdate.partialBookUpdateProg ++
-      PartialTradeUpdate.partialTradeUpdateProg ++ rest)
+    (PartialTradeUpdate.partialTradeUpdateProg ++ rest)
   apply PartialBookUpdate.partialBookUpdateProg_spec env st
     (PartialBookPrepare.partialBookPrepareFrame base book remaining os i)
     book bookCapacity g0 g2 capacity next qty os i nodes
@@ -278,6 +279,8 @@ theorem partialBranchProg_spec
       intro node hNode
       exact hNodesBelow node
         (takeFirstFitFrom_some_remaining_mem hTake hNode)
+    apply BranchPost.oneResultIffPost_of_wp env finalStore
+    · simp [BookReplaceFinish.replaceResultFrame]
     apply PartialTradeUpdate.partialTradeUpdateProg_spec env finalStore
       (BookReplaceFinish.replaceResultFrame
         (PartialBookAllocCopy.fitFrame
@@ -485,6 +488,8 @@ theorem partialBranchProg_spec
         g0AfterBook.toNat := by
       rw [hG0AfterBookNat]
       omega
+    apply BranchPost.oneResultIffPost_of_wp env finalStore
+    · simp [BookReplaceFinish.replaceResultFrame]
     apply PartialTradeUpdate.partialTradeUpdateProg_spec env finalStore
       (BookReplaceFinish.replaceResultFrame
         (PartialBookAllocCopy.bumpFrame
