@@ -57,6 +57,13 @@ def runningResultFrame (base : Locals) (book trades remaining : UInt64) :
       (.i64 remaining)
     values := [.i64 remaining, .i64 trades, .i64 book] }
 
+def CompletedResultAt (base : Locals) (book trades remaining : UInt64) : Prop :=
+  base.locals[12]? = some (.i64 book) ∧
+  base.locals[13]? = some (.i64 trades) ∧
+  base.locals[14]? = some (.i64 remaining) ∧
+  base.locals[15]? = some (.i64 1) ∧
+  base.params.length = 9 ∧ base.locals.length = 76 ∧ base.values = []
+
 set_option Elab.async false in
 theorem loopGuard_done_spec
     (env : HostEnv Unit) (st : Store Unit) (base : Locals) (fuel : UInt64)
@@ -142,12 +149,13 @@ theorem loopGuard_running_spec
   simpa [wp_simp, hValues, hBase] using hRest
 
 set_option Elab.async false in
-theorem resultEpilogue_done_spec
+theorem resultEpilogue_completed_spec
     (env : HostEnv Unit) (st : Store Unit) (base : Locals)
-    (book trades : UInt64)
-    (hResult : PartialTradeUpdate.PartialResultAt base book trades)
+    (book trades remaining : UInt64)
+    (hResult : CompletedResultAt base book trades remaining)
     (Q : Assertion Unit) (rest : Wasm.Program)
-    (hDone : wp «module» rest Q st (resultFrame base book trades 0) env) :
+    (hDone : wp «module» rest Q st
+      (resultFrame base book trades remaining) env) :
     wp «module» (resultEpilogueProg ++ rest) Q st base env := by
   rcases hResult with
     ⟨hBook, hTrades, hRemaining, hComplete, hParams, hLocals, hValues⟩
@@ -155,7 +163,7 @@ theorem resultEpilogue_done_spec
     (List.getElem?_eq_some_iff.mp hBook).2
   have hTrades' : base.locals[13] = .i64 trades :=
     (List.getElem?_eq_some_iff.mp hTrades).2
-  have hRemaining' : base.locals[14] = .i64 0 :=
+  have hRemaining' : base.locals[14] = .i64 remaining :=
     (List.getElem?_eq_some_iff.mp hRemaining).2
   have hComplete' : base.locals[15] = .i64 1 :=
     (List.getElem?_eq_some_iff.mp hComplete).2
@@ -163,7 +171,7 @@ theorem resultEpilogue_done_spec
     simp [Locals.get, hParams, hLocals, hBook']
   have hTradesGet : base.get 22 = some (.i64 trades) := by
     simp [Locals.get, hParams, hLocals, hTrades']
-  have hRemainingGet : base.get 23 = some (.i64 0) := by
+  have hRemainingGet : base.get 23 = some (.i64 remaining) := by
     simp [Locals.get, hParams, hLocals, hRemaining']
   have hCompleteGet : base.get 24 = some (.i64 1) := by
     simp [Locals.get, hParams, hLocals, hComplete']
@@ -183,6 +191,19 @@ theorem resultEpilogue_done_spec
   rw [hRemainingGet]
   wp_run
   simpa [resultFrame, hValues] using hDone
+
+set_option Elab.async false in
+theorem resultEpilogue_done_spec
+    (env : HostEnv Unit) (st : Store Unit) (base : Locals)
+    (book trades : UInt64)
+    (hResult : PartialTradeUpdate.PartialResultAt base book trades)
+    (Q : Assertion Unit) (rest : Wasm.Program)
+    (hDone : wp «module» rest Q st (resultFrame base book trades 0) env) :
+    wp «module» (resultEpilogueProg ++ rest) Q st base env := by
+  apply resultEpilogue_completed_spec env st base book trades 0
+  · simpa [CompletedResultAt, PartialTradeUpdate.PartialResultAt] using
+      hResult
+  · exact hDone
 
 set_option Elab.async false in
 theorem resultEpilogue_running_spec
