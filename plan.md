@@ -104,6 +104,8 @@ The expanded matrix exposed a compiler error before further proof work began.  E
 
 The `postOnly` step completed on 2026-07-15 with three input-generic theorems covering invalid, crossing, and successful append results.  The theorems state exact public values, borrowed or fresh book ownership, empty trade-array allocation, allocator globals and counters, and preservation below the prior heap top.  `Project.ClobPostOnly.Spec` passes `--wfail`, so `matchFuel` is the next CLOB export in dependency order.
 
+The `matchFuel` proof now has a list-level source model, shared trade-array representation, verified embedded `findBest`, and exact theorems for the zero-fuel, zero-remaining, and no-maker exits.  Its generated runtime suite matches the shared allocator, reset, retain, and release definitions.  A module-generic theorem proves that releasing a refcount-one kind-2 fixed array with a zero pointer mask terminates and produces the exact free-list and counter updates; the remaining work must prove the erase, quantity-replacement, and trade-append allocation slices before composing the recursive export theorem.
+
 ### 5. Consolidate Proof Machinery After Repetition
 
 The CLOB proofs will repeat fixed-width array reads, copy loops, allocation headers, and ownership frames.  Move a pattern into `Project/Common.lean` or the runtime library after two independent cases use the same statement shape and a third case would repeat it.  Keep generated `Program.lean` files untouched and keep artifact-specific address arithmetic near its artifact when no stable general statement exists.
