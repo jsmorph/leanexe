@@ -5040,3 +5040,7 @@ The partial-book and trade allocation-copy theorems now pass each target's lower
 `MemEqOutsideFlatWords.fixedArray_bytes` converts an outside-target-payload frame into byte equality on a disjoint fixed-array allocation region.  Order and trade ownership corollaries apply the existing header and content frame theorems, and the warning-failing constrained `AllocatorFrame` build completes in 1.7 seconds.  The result preserves a source or unrelated live array through completed destination writes without repeating byte-address arithmetic.
 
 `PartialBookUpdate.partialBookUpdateProg_spec` composes partial-book allocation, complete copying, and the five quantity-replacement stores for both allocator outcomes.  `TradeAllocAppend.tradeAllocAppendProg_spec` composes trade allocation, prefix copying, and the four appended-trade stores with the same outcome data.  Warning-failing constrained builds complete the new modules in 7.4 and 6.7 seconds after their changed dependencies are current.
+
+## 2026-07-15: Release Transformations
+
+`Allocation.fixedArrayReleaseMem` and `fixedArrayReleaseGlobals` name the exact memory and global-list results of freeing a refcount-one zero-mask fixed array.  `func18_frees_fixed_array_zero_mask` now states its existing runtime result with those definitions, without changing its assumptions or proof.  The warning-failing constrained `Allocation` build completes in 2.8 seconds.
