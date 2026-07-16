@@ -98,6 +98,31 @@ theorem OwnedTradeArrayAt.frame_outsideFlatWords
     TradesAt.frame_region hSource32 hSource48 hSourceCapacity hPages hBytes
       hOwned.2⟩
 
+theorem FreeListAt.frame_outsideFlatWords
+    {before after : Store Unit} {nodes : List FreeNode}
+    {target : UInt64} {targetWords : Nat}
+    (hPages : after.mem.pages = before.mem.pages)
+    (hsep : ∀ node ∈ nodes,
+      regionsDisjoint (flatWordsRegion target targetWords) node.region)
+    (hFrame : MemEqOutsideFlatWords before after target targetWords)
+    (hList : FreeListAt before.mem nodes) :
+    FreeListAt after.mem nodes := by
+  refine FreeListAt.frame hPages ?_ hList
+  intro node hNode offset hOffset
+  obtain ⟨hNode48, hNode32, _⟩ := hList.mem_bounds hNode
+  have hNodeSep := hsep node hNode
+  have hOffsetLow : 8 ≤ offset.toNat := by
+    rcases hOffset with rfl | rfl | rfl <;> decide
+  have hOffsetHigh : offset.toNat ≤ 48 := by
+    rcases hOffset with rfl | rfl | rfl <;> decide
+  apply read64_congr
+  intro i hi
+  apply hFrame
+  rw [toUInt32_toNat, toNat_sub_le _ _ (by omega),
+    Nat.mod_eq_of_lt (by omega)]
+  unfold regionsDisjoint flatWordsRegion FreeNode.region at hNodeSep
+  omega
+
 theorem fixedArrayAllocFitMem_bytes
     {mem : Mem} {nodes : List FreeNode} {need : UInt64}
     {choice : FreeChoice} {source sourceCapacity stride : UInt64} {a : Nat}
