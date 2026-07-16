@@ -2,6 +2,7 @@ import Project.ClobMatchFuel.EarlyExit
 import Project.ClobMatchFuel.BookEraseSuffix
 import Project.ClobMatchFuel.BookReplaceFinish
 import Project.ClobMatchFuel.TradeAppendCopy
+import Project.ClobMatchFuel.TradeAppendFinish
 
 /-!
 # The `matchFuel` theorem
