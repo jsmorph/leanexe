@@ -269,6 +269,27 @@ theorem bookAllocBumpProg_spec
     toUInt32_eq_ofNat, hsub48, hsub40, hsub32, hsub24, hsub16, hsub8]
     using hNext
 
+theorem bookAllocBumpProg_skip
+    (env : HostEnv Unit) (st : Store Unit) (base : Locals)
+    (need previous current capacity next result : UInt64)
+    (hParams : base.params.length = 9)
+    (hLocals : base.locals.length = 76)
+    (hValues : base.values = [])
+    (hResult : result ≠ 0)
+    (Q : Assertion Unit) (rest : Wasm.Program)
+    (hNext : wp «module» rest Q st
+      (PartialBookAllocSearch.bookAllocSearchFrame base need previous current
+        capacity next result) env) :
+    wp «module» (bookAllocBumpProg ++ rest) Q st
+      (PartialBookAllocSearch.bookAllocSearchFrame base need previous current
+        capacity next result) env := by
+  simp only [bookAllocBumpProg, List.cons_append, List.nil_append,
+    PartialBookAllocSearch.bookAllocSearchFrame]
+  wp_run_bump (hParams, hLocals, hValues)
+  refine wp_iff_cons rfl ?_
+  rw [if_neg (by simp [hResult])]
+  simpa [PartialBookAllocSearch.bookAllocSearchFrame, hValues] using hNext
+
 def bookAllocNoFitProg : Wasm.Program :=
   PartialBookAllocSearch.bookAllocSearchProg ++ bookAllocBumpProg
 
