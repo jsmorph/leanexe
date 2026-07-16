@@ -22,6 +22,25 @@ def fullStepProg : Wasm.Program :=
 def releaseCount (tracker : UInt64) : UInt64 :=
   if tracker = 0 then 0 else 1
 
+def RecursiveResultAt (s : Locals) (fuel : UInt64) (taker : OrderL)
+    (book trades remaining : UInt64) : Prop :=
+  s.params.length = 9 ∧
+  s.locals.length = 76 ∧
+  s.values = [] ∧
+  s.get 0 = some (.i64 (fuel - 1)) ∧
+  s.get 9 = some (.i64 taker.oid) ∧
+  s.get 10 = some (.i64 taker.otrader) ∧
+  s.get 11 = some (.i64 taker.oside) ∧
+  s.get 12 = some (.i64 taker.oprice) ∧
+  s.get 13 = some (.i64 taker.oqty) ∧
+  s.get 14 = some (.i64 book) ∧
+  s.get 15 = some (.i64 book) ∧
+  s.get 17 = some (.i64 trades) ∧
+  s.get 18 = some (.i64 remaining) ∧
+  s.get 19 = some (.i64 0) ∧
+  s.get 20 = some (.i64 trades) ∧
+  s.get 24 = some (.i64 0)
+
 theorem allocScratchAt_fullTransitionFrame
     (base : Locals) (fuel newBook newTrades remaining oldBookTracker
       oldTradesTracker : UInt64) (taker : OrderL)
@@ -57,6 +76,26 @@ theorem fullTransitionFrame_done
   simpa [FullTransition.fullTransitionFrame,
     FullTransition.fullTransitionLocals, Locals.get, hParams, hLocals] using
     hDone
+
+theorem recursiveResultAt_fullTransitionFrame
+    (base : Locals) (fuel newBook newTrades remaining oldTradesTracker : UInt64)
+    (taker : OrderL)
+    (hResult : FullTradeUpdate.FullResultAt base fuel taker 0 oldTradesTracker
+      newBook newTrades remaining)
+    (hOldBook : (FullTransition.fullTransitionFrame base fuel taker newBook
+      newTrades remaining 0 oldTradesTracker).get 19 = some (.i64 0)) :
+    RecursiveResultAt
+      (FullTransition.fullTransitionFrame base fuel taker newBook newTrades
+        remaining 0 oldTradesTracker) fuel taker newBook newTrades remaining := by
+  rcases hResult with ⟨hParams, hLocals, hValues, hFuel, _, _, hDone, hOid,
+    hTrader, hSide, hPrice, hQty, _, _, _, _, _⟩
+  refine ⟨?_, ?_, rfl, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, hOldBook,
+    ?_, ?_⟩
+  all_goals
+    simp [FullTransition.fullTransitionFrame,
+      FullTransition.fullTransitionLocals, Locals.get, hParams, hLocals]
+      at hFuel hDone hOid hTrader hSide hPrice hQty ⊢
+  all_goals assumption
 
 set_option Elab.async false in
 theorem fullStepProg_spec
@@ -155,15 +194,13 @@ theorem fullStepProg_spec
     (Q : Assertion Unit) (rest : Wasm.Program)
     (hDone : ∀ st1 s newBook newBookCapacity newTrades newTradesCapacity
         nodes1 g0Final,
+      RecursiveResultAt
+        (FullTransition.fullTransitionFrame s fuel taker newBook newTrades
+          (remaining - os[i]!.oqty) 0 oldTradesTracker)
+        fuel taker newBook newTrades (remaining - os[i]!.oqty) →
       FullTradeUpdate.AllocScratchAt
         (FullTransition.fullTransitionFrame s fuel taker newBook newTrades
           (remaining - os[i]!.oqty) 0 oldTradesTracker) →
-      (FullTransition.fullTransitionFrame s fuel taker newBook newTrades
-          (remaining - os[i]!.oqty) 0 oldTradesTracker).get 19 =
-        some (.i64 0) →
-      (FullTransition.fullTransitionFrame s fuel taker newBook newTrades
-          (remaining - os[i]!.oqty) 0 oldTradesTracker).get 24 =
-        some (.i64 0) →
       OwnedOrderArrayAt st1 newBook newBookCapacity (os.eraseIdx i) →
       OwnedTradeArrayAt st1 newTrades newTradesCapacity
         (ts ++ [Model.fillTradeL taker os[i]! os[i]!.oqty]) →
@@ -227,19 +264,18 @@ theorem fullStepProg_spec
       newBook newTrades (remaining - os[i]!.oqty) taker hResult Q rest
     apply hDone st1 s newBook newBookCapacity newTrades newTradesCapacity nodes1
       g0Final
+    · apply recursiveResultAt_fullTransitionFrame s fuel newBook newTrades
+        (remaining - os[i]!.oqty) 0 taker hResult
+      apply fullTransitionFrame_oldBookTracker_zero s fuel newBook newTrades
+        (remaining - os[i]!.oqty) 0 taker hResult.1 hResult.2.1
+      · intro h
+        subst newBook
+        simp at hNewBook48
+      · intro h
+        subst newBook
+        simp at hNewBook48
     · exact allocScratchAt_fullTransitionFrame s fuel newBook newTrades
         (remaining - os[i]!.oqty) 0 0 taker hScratch
-    · apply fullTransitionFrame_oldBookTracker_zero s fuel newBook newTrades
-        (remaining - os[i]!.oqty) 0 taker hResult.1 hResult.2.1
-      · intro h
-        subst newBook
-        simp at hNewBook48
-      · intro h
-        subst newBook
-        simp at hNewBook48
-    · apply fullTransitionFrame_done s fuel newBook newTrades
-        (remaining - os[i]!.oqty) 0 taker hResult.1 hResult.2.1
-      exact hResult.2.2.2.2.2.2.1
     · exact hNewBookOwned
     · exact hNewTradesOwned
     · exact hNewBook48
@@ -323,18 +359,17 @@ theorem fullStepProg_spec
         hNodesBelowFinal
     apply hDone st2 s newBook newBookCapacity newTrades newTradesCapacity
       (releasedNode oldTrades oldTradesCapacity :: nodes1) g0Final
-    · exact allocScratchAt_fullTransitionFrame s fuel newBook newTrades
-        (remaining - os[i]!.oqty) 0 oldTrades taker hScratch
-    · apply fullTransitionFrame_oldBookTracker_zero s fuel newBook newTrades
+    · apply recursiveResultAt_fullTransitionFrame s fuel newBook newTrades
+        (remaining - os[i]!.oqty) oldTrades taker hResult
+      apply fullTransitionFrame_oldBookTracker_zero s fuel newBook newTrades
         (remaining - os[i]!.oqty) oldTrades taker hResult.1 hResult.2.1
       · intro h
         subst newBook
         simp at hNewBook48
       · exact (fixedArrayRoots_ne_of_regionsDisjoint
           hOldTradesNewBook).symm
-    · apply fullTransitionFrame_done s fuel newBook newTrades
-        (remaining - os[i]!.oqty) oldTrades taker hResult.1 hResult.2.1
-      exact hResult.2.2.2.2.2.2.1
+    · exact allocScratchAt_fullTransitionFrame s fuel newBook newTrades
+        (remaining - os[i]!.oqty) 0 oldTrades taker hScratch
     · exact hNewBookOwned2
     · exact hNewTradesOwned2
     · exact hNewBook48
