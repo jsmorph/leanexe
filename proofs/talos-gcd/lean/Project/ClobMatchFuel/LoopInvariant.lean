@@ -157,6 +157,7 @@ structure CompletedData where
   bookCapacity : UInt64
   trades : UInt64
   tradesCapacity : UInt64
+  fuel : UInt64
   g0 : UInt64
   nodes : List FreeNode
 
@@ -164,6 +165,7 @@ structure CompletedFacts (ctx : Context) (st : Store Unit) (s : Locals)
     (data : CompletedData) : Prop where
   result : LoopControl.CompletedResultAt s data.book data.trades
     ctx.result.remaining
+  fuelLocal : s.get 0 = some (.i64 data.fuel)
   bookOwned :
     OwnedOrderArrayAt st data.book data.bookCapacity ctx.result.book
   tradesOwned :

@@ -371,11 +371,12 @@ def dispatchProg : Wasm.Program :=
 set_option Elab.async false in
 theorem dispatchProg_spec
     (env : HostEnv Unit) (st : Store Unit) (base : Locals)
-    (bookOwner book trades remaining : UInt64) (taker : OrderL)
+    (fuel bookOwner book trades remaining : UInt64) (taker : OrderL)
     (os : List OrderL)
     (hParams : base.params.length = 9)
     (hLocals : base.locals.length = 76)
     (hValues : base.values = [])
+    (hFuel : base.get 0 = some (.i64 fuel))
     (hOid : base.get 9 = some (.i64 taker.oid))
     (hTrader : base.get 10 = some (.i64 taker.otrader))
     (hSide : base.get 11 = some (.i64 taker.oside))
@@ -391,6 +392,7 @@ theorem dispatchProg_spec
     (hStop : ∀ s,
       (remaining = 0 ∨ findBestL os taker = none) →
       LoopControl.CompletedResultAt s book trades remaining →
+      s.get 0 = some (.i64 fuel) →
       wp «module» rest Q st s env)
     (hFull : ∀ i,
       remaining ≠ 0 → findBestL os taker = some i →
@@ -443,7 +445,8 @@ theorem dispatchProg_spec
       hParams, hLocals, hValues, hBook', hTrades', hRemaining']
     apply hStop
     · exact Or.inl rfl
-    simp [LoopControl.CompletedResultAt, hParams, hLocals]
+    · simp [LoopControl.CompletedResultAt, hParams, hLocals]
+    · simpa [completeFrame] using hFuel
   · rw [if_neg (by simp [hRemainingZero])]
     norm_num
     refine wp_iff_cons rfl ?_
@@ -473,7 +476,8 @@ theorem dispatchProg_spec
           hParams, hLocals, hBook', hTrades', hRemaining']
         apply hStop
         · exact Or.inr hFind
-        simp [LoopControl.CompletedResultAt, hParams, hLocals]
+        · simp [LoopControl.CompletedResultAt, hParams, hLocals]
+        · simpa [completeFrame] using hFuel
     | some i =>
         have hi : i < os.length := findBestL_some_lt os taker i hFind
         have hLength64 : os.length < UInt64.size := by

@@ -22,7 +22,9 @@ theorem of_stop (ctx : Context) (st : Store Unit) (s : Locals)
     (hStop : data.remaining = 0 ∨ findBestL data.orders ctx.taker = none)
     (s1 : Locals)
     (hResult : LoopControl.CompletedResultAt s1 data.book data.trades
-      data.remaining) : CompletedAt ctx st s1 := by
+      data.remaining)
+    (hFuelResult : s1.get 0 = some (.i64 data.fuel)) :
+    CompletedAt ctx st s1 := by
   obtain ⟨hSource, hFills⟩ := stopped_source ctx st s data facts hFuel hStop
   have hG2 := expectedG2_current ctx st s data facts (by
     rw [hSource]
@@ -34,10 +36,12 @@ theorem of_stop (ctx : Context) (st : Store Unit) (s : Locals)
     bookCapacity := data.bookCapacity
     trades := data.trades
     tradesCapacity := data.tradesCapacity
+    fuel := data.fuel
     g0 := data.g0
     nodes := data.nodes }, ?_⟩
   refine {
     result := ?_
+    fuelLocal := hFuelResult
     bookOwned := ?_
     tradesOwned := ?_
     freeList := facts.freeList
@@ -64,7 +68,7 @@ theorem of_partial (ctx : Context) (st : Store Unit) (s : Locals)
     (st1 : Store Unit) (s1 : Locals)
     (newBook newBookCapacity newTrades newTradesCapacity g0Final : UInt64)
     (nodes1 : List FreeNode)
-    (hResult : PartialTradeUpdate.PartialResultAt s1 newBook newTrades)
+    (hResult : PartialTradeUpdate.PartialResultAt s1 newBook newTrades data.fuel)
     (hBookOwned : OwnedOrderArrayAt st1 newBook newBookCapacity
       (Model.setQtyL data.orders i
         (data.orders[i]!.oqty - data.remaining)))
@@ -87,15 +91,23 @@ theorem of_partial (ctx : Context) (st : Store Unit) (s : Locals)
   have hExpectedG2 := expectedG2_after_append ctx st s data facts hResultTrades
   have hExpectedG4 := expectedG4_current ctx st s data facts hFills
   have hExpectedG5 := expectedG5_current ctx st s data facts hFills
+  rcases hResult with ⟨hResultBook, hResultTradesRoot, hResultRemaining,
+    hResultDone, hResultParams, hResultLocals, hResultValues, hResultFuel⟩
+  have hCompletedResult :
+      LoopControl.CompletedResultAt s1 newBook newTrades 0 :=
+    ⟨hResultBook, hResultTradesRoot, hResultRemaining, hResultDone,
+      hResultParams, hResultLocals, hResultValues⟩
   refine ⟨{
     book := newBook
     bookCapacity := newBookCapacity
     trades := newTrades
     tradesCapacity := newTradesCapacity
+    fuel := data.fuel
     g0 := g0Final
     nodes := nodes1 }, ?_⟩
   refine {
     result := ?_
+    fuelLocal := hResultFuel
     bookOwned := ?_
     tradesOwned := ?_
     freeList := hFreeList
@@ -104,8 +116,8 @@ theorem of_partial (ctx : Context) (st : Store Unit) (s : Locals)
     global2 := ?_
     global4 := ?_
     global5 := ?_ }
-  · simpa [LoopControl.CompletedResultAt, PartialTradeUpdate.PartialResultAt,
-      hSource, partialState] using hResult
+  · simpa [LoopControl.CompletedResultAt, hSource, partialState] using
+      hCompletedResult
   · simpa [hSource, partialState] using hBookOwned
   · simpa [hSource, partialState] using hTradesOwned
   · rw [← hExpectedG2]
