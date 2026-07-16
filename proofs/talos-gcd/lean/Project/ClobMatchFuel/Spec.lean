@@ -1,5 +1,5 @@
 import Project.ClobMatchFuel.EarlyExit
-import Project.ClobMatchFuel.Allocation
+import Project.ClobMatchFuel.BookAllocSearch
 
 /-!
 # The `matchFuel` theorem
