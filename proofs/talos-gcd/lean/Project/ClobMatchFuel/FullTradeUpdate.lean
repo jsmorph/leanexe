@@ -39,6 +39,13 @@ def FullResultAt (s : Locals) (fuel : UInt64) (taker : OrderL)
   s.get 47 = some (.i64 newTrades) ∧
   s.get 48 = some (.i64 remaining)
 
+def AllocScratchAt (s : Locals) : Prop :=
+  ∃ bookCapacity bookNext tradeNext tradeResult : UInt64,
+    s.locals[70]? = some (.i64 bookCapacity) ∧
+    s.locals[71]? = some (.i64 bookNext) ∧
+    s.locals[73]? = some (.i64 tradeNext) ∧
+    s.locals[74]? = some (.i64 tradeResult)
+
 set_option Elab.async false in
 theorem fullTradeUpdateProg_spec
     (env : HostEnv Unit) (st : Store Unit) (base : Locals)
@@ -122,6 +129,7 @@ theorem fullTradeUpdateProg_spec
     (hDone : ∀ st1 s newTrades newTradesCapacity nodes1 g0Final,
       FullResultAt s fuel taker oldBookTracker oldTradesTracker newBook
         newTrades (remaining - os[i]!.oqty) →
+      AllocScratchAt s →
       OwnedOrderArrayAt st1 newBook newBookCapacity newOrders →
       OwnedTradeArrayAt st1 newTrades newTradesCapacity
         (ts ++ [Model.fillTradeL taker os[i]! os[i]!.oqty]) →
@@ -391,6 +399,12 @@ theorem fullTradeUpdateProg_spec
           hLocals, hFuelElem, hOldBookTrackerElem, hOldTradesTrackerElem,
           hCarryOidElem, hCarryTraderElem, hCarrySideElem, hCarryPriceElem,
           hCarryQtyElem]
+      · refine ⟨choice.previous, choice.node.root, choice.next,
+          choice.node.root, ?_⟩
+        simp [FullTradeFinish.fullTradeFinishFrame,
+          TradeAppendFinish.tradeResultFrame, TradeAppendCopy.tradeCopyFrame,
+          TradeAllocAppend.fitFrame, TradeAllocSearch.tradeAllocSearchFrame,
+          FullTradePrepare.fullTradePrepareFrame, hLocals]
       · exact hNewBookOwned1
       · simpa [finalStore, trade] using hNewTradesOwned
       · exact hOldTradesFinal
@@ -561,6 +575,13 @@ theorem fullTradeUpdateProg_spec
           hLocals, hFuelElem, hOldBookTrackerElem, hOldTradesTrackerElem,
           hCarryOidElem, hCarryTraderElem, hCarrySideElem, hCarryPriceElem,
           hCarryQtyElem, target]
+      · refine ⟨previous, 0,
+          (g0 + 48 + tradeArrayBytesU (ts.length + 1) - 1) / 65536 + 1,
+          target, ?_⟩
+        simp [FullTradeFinish.fullTradeFinishFrame,
+          TradeAppendFinish.tradeResultFrame, TradeAppendCopy.tradeCopyFrame,
+          TradeAllocAppend.bumpFrame, TradeAllocSearch.tradeAllocSearchFrame,
+          FullTradePrepare.fullTradePrepareFrame, hLocals, target]
       · exact hNewBookOwned1
       · simpa [finalStore, target, trade] using hNewTradesOwned
       · exact hOldTradesFinal
