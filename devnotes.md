@@ -5010,3 +5010,5 @@ The successful-fit and bump allocation stores now take the fixed-array element s
 ## 2026-07-15: Copy Outside-Region Frame
 
 `MemEqOutsideFlatWords` states byte equality outside one fixed-width payload, and its write theorem preserves that equality for every declared payload slot.  The matched-trade copy invariant now carries this frame through the output-length store and every copied trade word, allowing later branch composition to recover unrelated live arrays.  The warning-failing constrained `TradeAppendCopy` build completes in 3.7 seconds after its dependencies are current.
+
+The partial-fill book copy now carries the same frame through its length store and complete five-word-order copy.  The full-fill prefix and shifted-suffix invariants preserve one frame relative to the allocator outcome store across both loops.  Warning-failing constrained builds complete `BookReplaceCopy` in 4.3 seconds, `BookErasePrefix` in 5.4 seconds, and `BookEraseSuffix` in 7.2 seconds after their dependencies are current.

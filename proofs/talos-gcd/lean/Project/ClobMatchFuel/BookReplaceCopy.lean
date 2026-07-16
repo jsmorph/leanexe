@@ -49,6 +49,7 @@ def replaceCopyInv (st0 : Store Unit) (base : Locals)
       FreshOrderArrayAt st target arrayCapacity ∧
       st.mem.read64 target.toUInt32 = UInt64.ofNat os.length ∧
       OrdersAt st source os ∧
+      MemEqOutsideFlatWords st0 st target (os.length * 5) ∧
       ∀ copied : Nat, copied < word →
         orderWord st target copied = orderWord st0 source copied
 
@@ -179,7 +180,7 @@ theorem replaceCopyProg_spec
   apply wp_loop_cons
     (Inv := replaceCopyInv st0 base target source g2 arrayCapacity os)
     (μ := replaceCopyMeasure (os.length * 5))
-  · refine ⟨0, Nat.zero_le _, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+  · refine ⟨0, Nat.zero_le _, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
     · simp [replaceCopyFrame]
     · exact Mem.write64_pages ..
     · rfl
@@ -190,11 +191,16 @@ theorem replaceCopyProg_spec
           hTarget32 (slot := 0) (value := UInt64.ofNat os.length)
           (by omega) hsep
       simpa only [OrdersAt, Nat.zero_mul, Nat.add_zero] using hFrame
+    · intro a ha
+      rw [write64_bytes_ne _ _ _ (by
+        simp only [toUInt32_ofNat_mod_toNat]
+        rw [Nat.mod_eq_of_lt (by omega)]
+        rcases ha with ha | ha <;> omega)]
     · intro copied hcopied
       omega
   · rintro st1 s1
       ⟨word, hword, rfl, hPages, hGlobals, hFresh1, hLength, hOrders1,
-        hCopied⟩
+        hOutside, hCopied⟩
     have hwordU : (UInt64.ofNat word).toNat = word :=
       toNat_ofNat_lt (by omega)
     simp only [replaceCopyBodyProg, replaceCopyFrame]
@@ -210,7 +216,7 @@ theorem replaceCopyProg_spec
       subst word
       apply hDone
       · exact ⟨os.length * 5, le_rfl, rfl, hPages, hGlobals,
-          hFresh1, hLength, hOrders1, hCopied⟩
+          hFresh1, hLength, hOrders1, hOutside, hCopied⟩
       · apply OrdersAt.ofFlatWords
         · simpa only [toUInt32_eq_ofNat] using hLength
         · rw [Nat.mod_eq_of_lt (by omega), hPages]
@@ -249,7 +255,7 @@ theorem replaceCopyProg_spec
           apply UInt64.toNat.inj
           rw [toNat_add_one (by rw [hwordU, size_eq]; omega), hwordU,
             toNat_ofNat_lt (by omega)]
-        refine ⟨word + 1, by omega, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+        refine ⟨word + 1, by omega, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
         · simp only [replaceCopyFrame, hwordNext]
         · rw [Mem.write64_pages, hPages]
         · exact hGlobals
@@ -268,6 +274,7 @@ theorem replaceCopyProg_spec
               (value := st1.mem.read64 (UInt32.ofNat
                 ((source.toNat + (word + 1) * 8) % 4294967296)))
               (by omega) hsep
+        · exact hOutside.write64 hTarget32 (by omega)
         · intro copied hcopied
           unfold orderWord
           by_cases hcopiedWord : copied = word
