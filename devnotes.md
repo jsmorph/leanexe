@@ -4978,3 +4978,7 @@ The frame theorem now accepts every target flat-word slot from the length word t
 `TradesAt.tradeWord_bound`, `tradeWord_eq_flat`, and `tradeWord_bound_flat` give trade arrays the same structured and arbitrary flat-index projections as order arrays.  The copy theorem can now derive each source load bound and recover its source field without duplicating quotient-and-remainder arithmetic.  The warning-failing constrained `Project.Clob` build completes in 3.0 seconds.
 
 `flatWordsDisjoint_address` extracts the byte-range consequence shared by separated order and trade arrays, and the existing order frame theorem now uses it.  `TradesAt.frame_write64_flatWordsDisjoint` preserves a complete source trade representation across every write within a separated target array.  The warning-failing constrained `Project.Clob` build completes in 4.2 seconds.
+
+## 2026-07-15: Matched-Trade Prefix Copy
+
+`Project.ClobMatchFuel.TradeAppendCopy.tradeCopyProg_spec` proves the generated allocation-counter update, output-length store, and complete copy of the existing trade words into a fresh array.  Its invariant preserves the source `TradesAt` predicate, destination header, destination length, and every copied flat word under explicit nonwrapping and separation assumptions.  The warning-failing constrained module build completes in 4.1 seconds after its imported targets are current.
