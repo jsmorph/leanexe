@@ -185,32 +185,32 @@ theorem OrdersAt.ofFlatWords {st : Store Unit} {ptr : UInt64}
 
 theorem OrdersAt.frame_write64_flatWordsDisjoint
     {st : Store Unit} {sourcePtr targetPtr : UInt64}
-    {os : List OrderL} {targetWords word : Nat} {value : UInt64}
+    {os : List OrderL} {targetWords slot : Nat} {value : UInt64}
     (hSource32 :
       sourcePtr.toNat + (os.length * 5 + 1) * 8 < 4294967296)
     (hTarget32 :
       targetPtr.toNat + (targetWords + 1) * 8 < 4294967296)
-    (hWord : word < targetWords)
+    (hSlot : slot ≤ targetWords)
     (hsep : flatWordsDisjoint (flatWordsRegion targetPtr targetWords)
       (flatWordsRegion sourcePtr (os.length * 5)))
     (hOrders : OrdersAt st sourcePtr os) :
     OrdersAt
       { st with mem := (st.mem.write64
         (UInt32.ofNat
-          ((targetPtr.toNat + (word + 1) * 8) % 4294967296)) value) }
+          ((targetPtr.toNat + slot * 8) % 4294967296)) value) }
       sourcePtr os := by
   have hAddressSep (sourceOffset : Nat)
       (hSourceOffset : sourceOffset ≤ os.length * 5 * 8) :
       sourcePtr.toNat + sourceOffset + 8 ≤
-          targetPtr.toNat + (word + 1) * 8 ∨
-        targetPtr.toNat + (word + 1) * 8 + 8 ≤
+          targetPtr.toNat + slot * 8 ∨
+        targetPtr.toNat + slot * 8 + 8 ≤
           sourcePtr.toNat + sourceOffset := by
     unfold flatWordsDisjoint flatWordsRegion at hsep
     omega
   have hLengthRead :
       (st.mem.write64
           (UInt32.ofNat
-            ((targetPtr.toNat + (word + 1) * 8) % 4294967296))
+            ((targetPtr.toNat + slot * 8) % 4294967296))
           value).read64
           (UInt32.ofNat (sourcePtr.toNat % 4294967296)) =
         st.mem.read64
