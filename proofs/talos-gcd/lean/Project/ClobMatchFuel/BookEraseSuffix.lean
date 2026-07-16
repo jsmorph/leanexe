@@ -32,7 +32,8 @@ macro "wp_run_suffix" "(" hParams:term "," hLocals:term ","
 
 def eraseSuffixInv (st0 : Store Unit) (base : Locals)
     (need previous current capacity next target source g2 arrayCapacity newLength : UInt64)
-    (os : List OrderL) (prefixWords suffixWords : Nat) : AssertionF Unit :=
+    (os : List OrderL) (targetWords prefixWords suffixWords : Nat) :
+    AssertionF Unit :=
   fun st s =>
     ∃ word : Nat, word ≤ suffixWords ∧
       s = eraseCopyFrame base need previous current capacity next target word ∧
@@ -42,6 +43,7 @@ def eraseSuffixInv (st0 : Store Unit) (base : Locals)
       FreshOrderArrayAt st target arrayCapacity ∧
       st.mem.read64 target.toUInt32 = newLength ∧
       OrdersAt st source os ∧
+      MemEqOutsideFlatWords st0 st target targetWords ∧
       (∀ copied : Nat, copied < prefixWords →
         orderWord st target copied = orderWord st0 source copied) ∧
       ∀ copied : Nat, copied < word →
@@ -140,12 +142,13 @@ theorem eraseSuffixProg_spec
     (hLength : st1.mem.read64 target.toUInt32 = newLength)
     (hOrders0 : OrdersAt st0 source os)
     (hOrders1 : OrdersAt st1 source os)
+    (hOutside : MemEqOutsideFlatWords st0 st1 target targetWords)
     (hPrefix : ∀ copied : Nat, copied < prefixWords →
       orderWord st1 target copied = orderWord st0 source copied)
     (Q : Assertion Unit) (rest : Wasm.Program)
     (hDone : ∀ st2,
       eraseSuffixInv st0 base need previous current capacity next target source
-          g2 arrayCapacity newLength os prefixWords suffixWords st2
+          g2 arrayCapacity newLength os targetWords prefixWords suffixWords st2
           (eraseCopyFrame base need previous current capacity next target
             suffixWords) →
         OrdersAt st2 target (os.eraseIdx i) →
@@ -182,15 +185,15 @@ theorem eraseSuffixProg_spec
   apply wp_block_cons
   apply wp_loop_cons
     (Inv := eraseSuffixInv st0 base need previous current capacity next target
-      source g2 arrayCapacity newLength os prefixWords suffixWords)
+      source g2 arrayCapacity newLength os targetWords prefixWords suffixWords)
     (μ := eraseSuffixMeasure suffixWords)
   · exact ⟨0, Nat.zero_le _, rfl, hPages, hGlobals, hFresh, hLength,
-      hOrders1, hPrefix, by
+      hOrders1, hOutside, hPrefix, by
         intro copied hcopied
         omega⟩
   · rintro st2 s2
       ⟨word, hword, rfl, hPages2, hGlobals2, hFresh2, hLength2,
-        hOrders2, hPrefix2, hSuffix2⟩
+        hOrders2, hOutside2, hPrefix2, hSuffix2⟩
     have hwordU : (UInt64.ofNat word).toNat = word :=
       toNat_ofNat_lt (by omega)
     simp only [eraseSuffixBodyProg, eraseCopyFrame,
@@ -206,7 +209,7 @@ theorem eraseSuffixProg_spec
       subst word
       apply hDone
       · exact ⟨suffixWords, le_rfl, rfl, hPages2, hGlobals2, hFresh2,
-          hLength2, hOrders2, hPrefix2, hSuffix2⟩
+          hLength2, hOrders2, hOutside2, hPrefix2, hSuffix2⟩
       · apply OrdersAt.eraseIdx_ofFlatWords hi hOrders0
         · simpa only [toUInt32_eq_ofNat, hNewLength] using hLength2
         · rw [Nat.mod_eq_of_lt (by omega), hPages2]
@@ -263,7 +266,7 @@ theorem eraseSuffixProg_spec
           apply UInt64.toNat.inj
           rw [toNat_add_one (by rw [hwordU, size_eq]; omega), hwordU,
             toNat_ofNat_lt (by omega)]
-        refine ⟨word + 1, by omega, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+        refine ⟨word + 1, by omega, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
         · simp only [eraseCopyFrame, BookAllocSearch.bookAllocSearchFrame,
             hwordNext]
         · rw [Mem.write64_pages, hPages2]
@@ -286,6 +289,9 @@ theorem eraseSuffixProg_spec
               (by
                 rw [hPrefixWords, hSuffixWords, hTargetWords] at *
                 omega) hsep
+        · exact hOutside2.write64 hTarget32 (by
+            rw [hPrefixWords, hSuffixWords, hTargetWords] at *
+            omega)
         · intro copied hcopied
           unfold orderWord
           rw [read64_write64_ne _ _ _ _ (by
