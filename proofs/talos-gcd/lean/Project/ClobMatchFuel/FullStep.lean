@@ -4,8 +4,9 @@ import Project.ClobMatchFuel.FullReleaseTransition
 # Complete full-fill step
 
 A full-fill step allocates both replacement arrays, releases the reachable
-tracked source allocation, and updates the recursive locals.  The postcondition
-contains the state needed by the next loop iteration.
+tracked source allocation, and updates the recursive locals.  The book update
+runs inside the generated bounds checks before the trade and release phases.
+The postcondition contains the state needed by the next loop iteration.
 -/
 
 namespace Project.ClobMatchFuel.FullStep
@@ -14,10 +15,6 @@ open Wasm Project.Common Project.Runtime Project.Clob Project.ClobMatchFuel
   Project.ClobMatchFuel.Allocation
   Project.ClobMatchFuel.AllocatorFrame
   Project.ClobMatchFuel.ReleaseFrame
-
-def fullStepProg : Wasm.Program :=
-  FullBranch.fullBranchProg ++
-    FullReleaseTransition.fullReleaseTransitionProg
 
 def releaseCount (tracker : UInt64) : UInt64 :=
   if tracker = 0 then 0 else 1
@@ -98,7 +95,7 @@ theorem recursiveResultAt_fullTransitionFrame
   all_goals assumption
 
 set_option Elab.async false in
-theorem fullStepProg_spec
+theorem fullBookThenStep_spec
     (env : HostEnv Unit) (st : Store Unit) (base : Locals)
     (fuel book bookCapacity oldTrades oldTradesCapacity remaining : UInt64)
     (g0 g2 g4 g5 capacity next tradeNext oldTradesTracker : UInt64)
@@ -235,10 +232,12 @@ theorem fullStepProg_spec
       wp «module» rest Q st1
         (FullTransition.fullTransitionFrame s fuel taker newBook newTrades
           (remaining - os[i]!.oqty) 0 oldTradesTracker) env) :
-    wp «module» (fullStepProg ++ rest) Q st base env := by
-  unfold fullStepProg
-  rw [List.append_assoc]
-  apply FullBranch.fullBranchProg_spec env st base fuel book bookCapacity
+    wp «module» FullBookUpdate.fullBookUpdateProg
+      (BranchPost.doubleResultIffPost env
+        (FullTradeUpdate.fullTradeUpdateProg ++
+          FullReleaseTransition.fullReleaseTransitionProg ++ rest) Q)
+      st base env := by
+  apply FullBranch.fullBookThenTrade_spec env st base fuel book bookCapacity
     oldTrades oldTradesCapacity remaining g0 g2 g4 g5 capacity next tradeNext 0
     oldTradesTracker taker os ts i nodes hParams hLocals hValues hTakerLocal
     hBookLocal hTradesLocal hRemainingLocal hIndexLocal hSourceLocal hPrefixLocal

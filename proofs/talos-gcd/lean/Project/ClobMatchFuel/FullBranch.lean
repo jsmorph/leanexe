@@ -1,11 +1,13 @@
 import Project.ClobMatchFuel.FullTradeUpdate
+import Project.ClobMatchFuel.BranchPost
 
 /-!
 # Full-fill branch
 
 The full-fill branch removes the matched maker, appends its trade, and records
-the recursive result.  This module composes both allocators while retaining the
-source arrays needed by the release block.
+the recursive result.  The erased-book update executes inside two generated
+one-result branches.  This module composes the following trade update through
+that exact continuation while retaining the source arrays used by release.
 -/
 
 namespace Project.ClobMatchFuel.FullBranch
@@ -14,11 +16,8 @@ open Wasm Project.Common Project.Runtime Project.Clob Project.ClobMatchFuel
   Project.ClobMatchFuel.Allocation
   Project.ClobMatchFuel.AllocatorFrame
 
-def fullBranchProg : Wasm.Program :=
-  FullBookUpdate.fullBookUpdateProg ++ FullTradeUpdate.fullTradeUpdateProg
-
 set_option Elab.async false in
-theorem fullBranchProg_spec
+theorem fullBookThenTrade_spec
     (env : HostEnv Unit) (st : Store Unit) (base : Locals)
     (fuel book bookCapacity oldTrades oldTradesCapacity remaining : UInt64)
     (g0 g2 g4 g5 capacity next tradeNext oldBookTracker oldTradesTracker : UInt64)
@@ -153,15 +152,15 @@ theorem fullBranchProg_spec
       st1.globals.globals[4]? = some (.i64 g4) →
       st1.globals.globals[5]? = some (.i64 g5) →
       wp «module» rest Q st1 s env) :
-    wp «module» (fullBranchProg ++ rest) Q st base env := by
+    wp «module» FullBookUpdate.fullBookUpdateProg
+      (BranchPost.doubleResultIffPost env
+        (FullTradeUpdate.fullTradeUpdateProg ++ rest) Q) st base env := by
   have hg2Next : g2 + 1 + 1 = g2 + 2 := by
     have h2 : (2 : UInt64) = 1 + 1 := by decide
     rw [h2]
     ac_rfl
   have hTradeNextElem : base.locals[73] = .i64 tradeNext :=
     (List.getElem?_eq_some_iff.mp hTradeNextLocal).2
-  unfold fullBranchProg
-  rw [List.append_assoc]
   apply FullBookUpdate.fullBookUpdateProg_spec env st base book bookCapacity
     oldTrades oldTradesCapacity g0 g2 capacity next os ts i nodes hParams
     hLocals hValues hSourceLocal hPrefixLocal hSuffixLocal hLengthLocal
@@ -169,7 +168,9 @@ theorem fullBranchProg_spec
     hBookTop hBookFit32 hBookFit hPages hBook48 hBook32 hBookCapacity
     hBookBelow hBookFree hOldTrades48 hOldTrades32 hOldTradesCapacity
     hOldTradesBelow hOldTradesFree hNodesBelow hBookOwned hOldTradesOwned hg0
-    hg1 hg2 hList Q (FullTradeUpdate.fullTradeUpdateProg ++ rest)
+    hg1 hg2 hList
+    (BranchPost.doubleResultIffPost env
+      (FullTradeUpdate.fullTradeUpdateProg ++ rest) Q) []
   · intro choice hTake st1 hTarget48 hTarget32 hNewBookOwned hBookOwned1
       hOldTradesOwned1 hOutside hFinalPages hFinalGlobals hFinalList hFinalG0
       hFinalG1 hFinalG2
@@ -221,6 +222,8 @@ theorem fullBranchProg_spec
         5 (.i64 g5) (by decide) hg5
       rw [hFinalGlobals]
       simpa [List.getElem?_set] using hAllocG5
+    apply BranchPost.doubleResultIffPost_of_wp env st1
+    · simp [BookEraseSuffix.eraseResultFrame]
     apply FullTradeUpdate.fullTradeUpdateProg_spec env st1
       (BookEraseSuffix.eraseResultFrame base
         (orderArrayBytesU (os.length - 1)) choice.previous choice.node.root
@@ -420,6 +423,8 @@ theorem fullBranchProg_spec
         bookNeed 5 5 (.i64 g5) (by decide) hg5
       rw [hFinalGlobals]
       simpa [List.getElem?_set] using hAllocG5
+    apply BranchPost.doubleResultIffPost_of_wp env st1
+    · simp [BookEraseSuffix.eraseResultFrame]
     apply FullTradeUpdate.fullTradeUpdateProg_spec env st1
       (BookEraseSuffix.eraseResultFrame base bookNeed previous 0 g0AfterBook
         ((g0AfterBook - 1) / 65536 + 1) newBook

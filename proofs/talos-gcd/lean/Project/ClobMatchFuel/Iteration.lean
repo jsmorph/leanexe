@@ -1,4 +1,5 @@
 import Project.ClobMatchFuel.FullStep
+import Project.ClobMatchFuel.BranchPost
 import Project.ClobMatchFuel.FindBestWrapper
 import Project.ClobMatchFuel.LoopControl
 import Project.ClobMatchFuel.PartialBranch
@@ -69,7 +70,7 @@ theorem completeProg_spec
     hValues, hBook', hTrades', hRemaining']
   simpa [completeFrame, completeLocals] using hDone
 
-def fullPrepareProg : Wasm.Program :=
+def fullBranchProg : Wasm.Program :=
   [
   .localGet 9,
   .localSet 34,
@@ -104,7 +105,7 @@ def fullPrepareProg : Wasm.Program :=
     .localGet 67,
     .localGet 68,
     .ltUI64,
-    .iff 0 1 [
+    .iff 0 1 ([
       .localGet 68,
       .constI64 1,
       .subI64,
@@ -119,13 +120,14 @@ def fullPrepareProg : Wasm.Program :=
       .constI64 5,
       .mulI64,
       .localSet 70
-    ] [
-      .unreachable
+    ] ++ FullBookUpdate.fullBookUpdateProg) [
+      .localGet 66
     ]
   ] [
     .unreachable
   ]
-  ]
+  ] ++ FullTradeUpdate.fullTradeUpdateProg ++
+    FullReleaseTransition.fullReleaseTransitionProg
 
 def fullPrepareLocals (base : Locals) (book : UInt64) (taker : OrderL)
     (os : List OrderL) (i : Nat) : List Value :=
@@ -148,7 +150,7 @@ def fullPrepareFrame (base : Locals) (book : UInt64) (taker : OrderL)
   { base with locals := fullPrepareLocals base book taker os i, values := [] }
 
 set_option Elab.async false in
-theorem fullPrepareProg_spec
+theorem fullBranchProg_spec
     (env : HostEnv Unit) (st : Store Unit) (base : Locals)
     (book : UInt64) (taker : OrderL) (os : List OrderL) (i : Nat)
     (hParams : base.params.length = 9)
@@ -166,9 +168,12 @@ theorem fullPrepareProg_spec
     (hOrderWords64 : os.length * 5 < UInt64.size)
     (hOrders : OrdersAt st book os)
     (Q : Assertion Unit) (rest : Wasm.Program)
-    (hDone : wp «module» rest Q st
-      (fullPrepareFrame base book taker os i) env) :
-    wp «module» (fullPrepareProg ++ rest) Q st base env := by
+    (hDone : wp «module» FullBookUpdate.fullBookUpdateProg
+      (BranchPost.doubleResultIffPost env
+        (FullTradeUpdate.fullTradeUpdateProg ++
+          FullReleaseTransition.fullReleaseTransitionProg ++ rest) Q)
+      st (fullPrepareFrame base book taker os i) env) :
+    wp «module» (fullBranchProg ++ rest) Q st base env := by
   simp only [Locals.get] at hOid hTrader hSide hPrice hQty hBook hIndex
   have hOid' : base.locals[0] = .i64 taker.oid := by
     simpa [hParams, hLocals] using hOid
@@ -233,7 +238,7 @@ theorem fullPrepareProg_spec
         UInt64.ofNat ((os.length - 1 - i) * 5) := by
     rw [← hLengthSub]
     exact hSuffixEq
-  simp only [fullPrepareProg, List.cons_append, List.nil_append]
+  simp only [fullBranchProg, List.cons_append, List.nil_append]
   simp (config := { maxSteps := 10000000 }) [wp_simp, hParams, hLocals,
     hValues, hOid', hTrader', hSide', hPrice', hQty', hBook', hIndex']
   rw [if_neg (Nat.not_lt.mpr hLengthBound), hLengthRead, if_pos hIndexLt]
@@ -245,7 +250,14 @@ theorem fullPrepareProg_spec
   rw [if_pos (by simp)]
   simp (config := { maxSteps := 10000000 }) [wp_simp, hParams, hLocals]
   rw [hLengthSub, hPrefixEq, hSuffixErasedEq]
-  simpa only [fullPrepareFrame, fullPrepareLocals] using hDone
+  refine wp.imp hDone ?_
+  intro c hc
+  unfold BranchPost.doubleResultIffPost BranchPost.oneResultIffPost at hc
+  cases c <;> try exact hc
+  case Break k _ _ =>
+    cases k with
+    | zero => exact hc
+    | succ k => cases k <;> exact hc
 
 def searchLocals (base : Locals) (bookOwner book : UInt64)
     (taker : OrderL) (result : Option Nat) : List Value :=
@@ -362,7 +374,7 @@ def dispatchProg : Wasm.Program :=
       ],
       .localGet 18,
       .leUI64,
-      .iff 0 0 (fullPrepareProg ++ FullStep.fullStepProg)
+      .iff 0 0 fullBranchProg
         PartialBranch.partialBranchProg
     ]
   ]
@@ -397,7 +409,7 @@ theorem dispatchProg_spec
     (hFull : ∀ i,
       remaining ≠ 0 → findBestL os taker = some i →
       os[i]!.oqty ≤ remaining →
-      wp «module» (fullPrepareProg ++ FullStep.fullStepProg)
+      wp «module» fullBranchProg
         (dispatchBranchPost env rest Q) st
         (quantityFrame base bookOwner book taker i) env)
     (hPartial : ∀ i,
