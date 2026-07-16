@@ -4,6 +4,7 @@ import Project.ClobMatchFuel.BookReplaceFinish
 import Project.ClobMatchFuel.BookAlloc
 import Project.ClobMatchFuel.PartialBookAlloc
 import Project.ClobMatchFuel.TradeAlloc
+import Project.ClobMatchFuel.TradeAllocCopy
 import Project.ClobMatchFuel.TradeAppendCopy
 import Project.ClobMatchFuel.TradeAppendFinish
 
