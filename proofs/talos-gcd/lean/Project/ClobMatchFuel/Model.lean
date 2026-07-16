@@ -88,6 +88,24 @@ def matchFuelL : Nat → OrderL → MatchStateL → MatchStateL
                   [fillTradeL taker maker state.remaining]
                 remaining := 0 }
 
+def fullFillCountL : Nat → OrderL → MatchStateL → Nat
+  | 0, _, _ => 0
+  | fuel + 1, taker, state =>
+      if state.remaining = 0 then
+        0
+      else
+        match findBestL state.book taker with
+        | none => 0
+        | some i =>
+            let maker := state.book[i]!
+            if maker.oqty ≤ state.remaining then
+              1 + fullFillCountL fuel taker
+                { book := state.book.eraseIdx i
+                  trades := state.trades ++ [fillTradeL taker maker maker.oqty]
+                  remaining := state.remaining - maker.oqty }
+            else
+              0
+
 @[simp]
 theorem matchFuelL_succ_zero (fuel : Nat) (taker : OrderL)
     (state : MatchStateL) (hRemaining : state.remaining = 0) :
@@ -127,6 +145,59 @@ theorem matchFuelL_succ_partial (fuel : Nat) (taker : OrderL)
   rw [matchFuelL, if_neg hRemaining, hFind]
   simp only
   rw [if_neg hQty]
+
+@[simp]
+theorem fullFillCountL_succ_zero (fuel : Nat) (taker : OrderL)
+    (state : MatchStateL) (hRemaining : state.remaining = 0) :
+    fullFillCountL (fuel + 1) taker state = 0 := by
+  simp [fullFillCountL, hRemaining]
+
+theorem fullFillCountL_succ_none (fuel : Nat) (taker : OrderL)
+    (state : MatchStateL) (hRemaining : state.remaining ≠ 0)
+    (hFind : findBestL state.book taker = none) :
+    fullFillCountL (fuel + 1) taker state = 0 := by
+  simp [fullFillCountL, hRemaining, hFind]
+
+theorem fullFillCountL_succ_full (fuel : Nat) (taker : OrderL)
+    (state : MatchStateL) (i : Nat) (hRemaining : state.remaining ≠ 0)
+    (hFind : findBestL state.book taker = some i)
+    (hQty : state.book[i]!.oqty ≤ state.remaining) :
+    fullFillCountL (fuel + 1) taker state =
+      1 + fullFillCountL fuel taker
+        { book := state.book.eraseIdx i
+          trades := state.trades ++
+            [fillTradeL taker state.book[i]! state.book[i]!.oqty]
+          remaining := state.remaining - state.book[i]!.oqty } := by
+  rw [fullFillCountL, if_neg hRemaining, hFind]
+  simp only
+  rw [if_pos hQty]
+
+theorem fullFillCountL_succ_partial (fuel : Nat) (taker : OrderL)
+    (state : MatchStateL) (i : Nat) (hRemaining : state.remaining ≠ 0)
+    (hFind : findBestL state.book taker = some i)
+    (hQty : ¬state.book[i]!.oqty ≤ state.remaining) :
+    fullFillCountL (fuel + 1) taker state = 0 := by
+  rw [fullFillCountL, if_neg hRemaining, hFind]
+  simp only
+  rw [if_neg hQty]
+
+theorem fullFillCountL_le (fuel : Nat) (taker : OrderL)
+    (state : MatchStateL) : fullFillCountL fuel taker state ≤ fuel := by
+  induction fuel generalizing state with
+  | zero => simp [fullFillCountL]
+  | succ fuel ih =>
+      by_cases hRemaining : state.remaining = 0
+      · simp [fullFillCountL, hRemaining]
+      · cases hFind : findBestL state.book taker with
+        | none => simp [fullFillCountL, hRemaining, hFind]
+        | some i =>
+            by_cases hQty : state.book[i]!.oqty ≤ state.remaining
+            · rw [fullFillCountL_succ_full fuel taker state i hRemaining
+                hFind hQty]
+              simpa [Nat.add_comm] using Nat.add_le_add_left (ih _) 1
+            · rw [fullFillCountL_succ_partial fuel taker state i hRemaining
+                hFind hQty]
+              omega
 
 theorem matchFuelL_length_bounds (fuel : Nat) (taker : OrderL)
     (state : MatchStateL) :
