@@ -5,8 +5,10 @@ import Project.ClobMatchFuel.BookAlloc
 import Project.ClobMatchFuel.BookAllocErase
 import Project.ClobMatchFuel.PartialBookAlloc
 import Project.ClobMatchFuel.PartialBookAllocCopy
+import Project.ClobMatchFuel.PartialBookUpdate
 import Project.ClobMatchFuel.TradeAlloc
 import Project.ClobMatchFuel.TradeAllocCopy
+import Project.ClobMatchFuel.TradeAllocAppend
 import Project.ClobMatchFuel.TradeAppendCopy
 import Project.ClobMatchFuel.TradeAppendFinish
 
