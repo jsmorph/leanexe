@@ -92,6 +92,13 @@ theorem tradeAllocAppendProg_spec
           (TradeAppendStore.appendTradeStore st1 choice.node.root ts.length
             trade)
           choice.node.root ((ts.length + 1) * 4) →
+        (TradeAppendStore.appendTradeStore st1 choice.node.root ts.length
+            trade).mem.pages =
+          (TradeAllocFit.tradeAllocFitStore st choice).mem.pages →
+        (TradeAppendStore.appendTradeStore st1 choice.node.root ts.length
+            trade).globals.globals =
+          (TradeAllocFit.tradeAllocFitStore st choice).globals.globals.set
+            2 (.i64 (g2 + 1)) →
         wp «module» rest Q
           (TradeAppendStore.appendTradeStore st1 choice.node.root ts.length
             trade)
@@ -114,6 +121,15 @@ theorem tradeAllocAppendProg_spec
           (tradeArrayBytesU (ts.length + 1)))
         (TradeAppendStore.appendTradeStore st1 (g0 + 48) ts.length trade)
         (g0 + 48) ((ts.length + 1) * 4) →
+      (TradeAppendStore.appendTradeStore st1 (g0 + 48) ts.length
+          trade).mem.pages =
+        (TradeAllocBump.tradeAllocBumpStore st g0
+          (tradeArrayBytesU (ts.length + 1))).mem.pages →
+      (TradeAppendStore.appendTradeStore st1 (g0 + 48) ts.length
+          trade).globals.globals =
+        (TradeAllocBump.tradeAllocBumpStore st g0
+          (tradeArrayBytesU (ts.length + 1))).globals.globals.set
+            2 (.i64 (g2 + 1)) →
       wp «module» rest Q
         (TradeAppendStore.appendTradeStore st1 (g0 + 48) ts.length trade)
         (TradeAppendFinish.tradeResultFrame
@@ -129,6 +145,8 @@ theorem tradeAllocAppendProg_spec
     hSourceCapacity hSourceBelow hSourceFree hOwned hg0 hg1 hg2 hList Q
     (TradeAppendFinish.tradeFinishProg ++ rest)
   · intro choice hTake st1 hTarget48 hTarget32 hTargetFit hOwnedSource hInv
+    have hState := hInv
+    obtain ⟨_, _, _, hCopyPages, hCopyGlobals, _, _, _, _, _⟩ := hState
     apply TradeAppendFinish.tradeFinishProg_spec env
       (TradeAllocFit.tradeAllocFitStore st choice) st1
       (fitFrame base ts.length choice) choice.node.root source g2
@@ -154,7 +172,11 @@ theorem tradeAllocAppendProg_spec
     · intro hTargetFinal hFreshFinal hOutsideFinal
       exact hFitDone choice hTake st1 hTarget48 hTarget32 hTargetFit
         hOwnedSource ⟨hFreshFinal, hTargetFinal⟩ hOutsideFinal
+        (by simpa [TradeAppendStore.appendTradeStore] using hCopyPages)
+        (by simpa [TradeAppendStore.appendTradeStore] using hCopyGlobals)
   · intro previous st1 hTarget48 hTarget32 hTargetFit hOwnedSource hInv
+    have hState := hInv
+    obtain ⟨_, _, _, hCopyPages, hCopyGlobals, _, _, _, _, _⟩ := hState
     apply TradeAppendFinish.tradeFinishProg_spec env
       (TradeAllocBump.tradeAllocBumpStore st g0
         (tradeArrayBytesU (ts.length + 1))) st1
@@ -181,5 +203,7 @@ theorem tradeAllocAppendProg_spec
     · intro hTargetFinal hFreshFinal hOutsideFinal
       exact hBumpDone previous st1 hTarget48 hTarget32 hTargetFit
         hOwnedSource ⟨hFreshFinal, hTargetFinal⟩ hOutsideFinal
+        (by simpa [TradeAppendStore.appendTradeStore] using hCopyPages)
+        (by simpa [TradeAppendStore.appendTradeStore] using hCopyGlobals)
 
 end Project.ClobMatchFuel.TradeAllocAppend
