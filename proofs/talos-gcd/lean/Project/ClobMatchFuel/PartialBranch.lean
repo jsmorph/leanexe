@@ -24,7 +24,7 @@ set_option Elab.async false in
 theorem partialBranchProg_spec
     (env : HostEnv Unit) (st : Store Unit) (base : Locals)
     (book bookCapacity oldTrades oldTradesCapacity : UInt64)
-    (remaining g0 g2 capacity next : UInt64)
+    (remaining g0 g2 g4 g5 capacity next : UInt64)
     (taker : OrderL) (os : List OrderL) (ts : List TradeL) (i : Nat)
     (nodes : List FreeNode)
     (hParams : base.params.length = 9)
@@ -94,6 +94,8 @@ theorem partialBranchProg_spec
     (hg0 : st.globals.globals[0]? = some (.i64 g0))
     (hg1 : st.globals.globals[1]? = some (.i64 (freeHead nodes)))
     (hg2 : st.globals.globals[2]? = some (.i64 g2))
+    (hg4 : st.globals.globals[4]? = some (.i64 g4))
+    (hg5 : st.globals.globals[5]? = some (.i64 g5))
     (hList : FreeListAt st.mem nodes)
     (Q : Assertion Unit) (rest : Wasm.Program)
     (hDone : ∀ st1 s newBook newBookCapacity newTrades
@@ -107,6 +109,8 @@ theorem partialBranchProg_spec
       st1.globals.globals[0]? = some (.i64 g0Final) →
       st1.globals.globals[1]? = some (.i64 (freeHead nodes1)) →
       st1.globals.globals[2]? = some (.i64 (g2 + 2)) →
+      st1.globals.globals[4]? = some (.i64 g4) →
+      st1.globals.globals[5]? = some (.i64 g5) →
       wp «module» rest Q st1 s env) :
     wp «module» (partialBranchProg ++ rest) Q st base env := by
   let qty := os[i]!.oqty - remaining
@@ -242,6 +246,16 @@ theorem partialBranchProg_spec
         (List.getElem?_eq_some_iff.mp hAllocG2).1
       rw [hFinalGlobals]
       simp [hAllocLength]
+    have hCurrentG4 : finalStore.globals.globals[4]? = some (.i64 g4) := by
+      have hAllocG4 := fixedArrayAllocFitStore_global_of_ne_one st choice 5
+        4 (.i64 g4) (by decide) hg4
+      rw [hFinalGlobals]
+      simpa [List.getElem?_set] using hAllocG4
+    have hCurrentG5 : finalStore.globals.globals[5]? = some (.i64 g5) := by
+      have hAllocG5 := fixedArrayAllocFitStore_global_of_ne_one st choice 5
+        5 (.i64 g5) (by decide) hg5
+      rw [hFinalGlobals]
+      simpa [List.getElem?_set] using hAllocG5
     have hNewBookCapacity : fixedArrayBytes newOrders.length 5 ≤
         choice.node.capacity.toNat := by
       simpa [newOrders, Model.setQtyL_length] using hChoiceCapacity
@@ -269,8 +283,8 @@ theorem partialBranchProg_spec
           (PartialBookPrepare.partialBookPrepareFrame base book remaining os i)
           os.length choice) choice.node.root (os.length * 5))
       choice.node.root choice.node.capacity book oldTrades oldTradesCapacity
-      remaining g0 (g2 + 1) choice.node.root choice.node.capacity taker os ts
-      i newOrders choice.remaining
+      remaining g0 (g2 + 1) g4 g5 choice.node.root choice.node.capacity taker
+      os ts i newOrders choice.remaining
     · simpa [BookReplaceFinish.replaceResultFrame,
         BookReplaceCopy.replaceCopyFrame, PartialBookAllocCopy.fitFrame,
         PartialBookAllocSearch.bookAllocSearchFrame,
@@ -345,9 +359,12 @@ theorem partialBranchProg_spec
     · exact hFinalG0
     · exact hFinalG1
     · exact hCurrentG2
+    · exact hCurrentG4
+    · exact hCurrentG5
     · exact hFinalList
     · intro st2 s newTrades newTradesCapacity nodes2 g0Final hResult
         hNewBookFinal hNewTradesFinal hListFinal hG0Final hG1Final hG2Final
+        hG4Final hG5Final
       apply hDone st2 s choice.node.root choice.node.capacity newTrades
         newTradesCapacity nodes2 g0Final hResult
       · simpa [newOrders, qty] using hNewBookFinal
@@ -356,6 +373,8 @@ theorem partialBranchProg_spec
       · exact hG0Final
       · exact hG1Final
       · simpa only [hg2Next] using hG2Final
+      · exact hG4Final
+      · exact hG5Final
   · intro previous st1 hTarget48 hTarget32 hTargetFit hBookOwnedAlloc
       hNewBookOwned hOutside hFinalPages hFinalGlobals hFinalList hFinalG0
       hFinalG1
@@ -419,6 +438,16 @@ theorem partialBranchProg_spec
           qty).globals.globals[2]? = some (.i64 (g2 + 1))
       rw [hFinalGlobals]
       simp [hAllocLength]
+    have hCurrentG4 : finalStore.globals.globals[4]? = some (.i64 g4) := by
+      have hAllocG4 := fixedArrayAllocBumpStore_global_of_ne_zero st g0
+        bookNeed 5 4 (.i64 g4) (by decide) hg4
+      rw [hFinalGlobals]
+      simpa [List.getElem?_set] using hAllocG4
+    have hCurrentG5 : finalStore.globals.globals[5]? = some (.i64 g5) := by
+      have hAllocG5 := fixedArrayAllocBumpStore_global_of_ne_zero st g0
+        bookNeed 5 5 (.i64 g5) (by decide) hg5
+      rw [hFinalGlobals]
+      simpa [List.getElem?_set] using hAllocG5
     have hG0AfterBookNat : g0AfterBook.toNat =
         g0.toNat + 48 + bookNeed.toNat := by
       simpa [g0AfterBook, bookNeed] using hBookTop
@@ -456,7 +485,7 @@ theorem partialBranchProg_spec
           (PartialBookPrepare.partialBookPrepareFrame base book remaining os i)
           os.length g0 previous) newBook (os.length * 5))
       newBook bookNeed book oldTrades oldTradesCapacity remaining g0AfterBook
-      (g2 + 1) 0 g0AfterBook taker os ts i newOrders nodes
+      (g2 + 1) g4 g5 0 g0AfterBook taker os ts i newOrders nodes
     · simpa [BookReplaceFinish.replaceResultFrame,
         BookReplaceCopy.replaceCopyFrame, PartialBookAllocCopy.bumpFrame,
         PartialBookAllocSearch.bookAllocSearchFrame,
@@ -535,9 +564,12 @@ theorem partialBranchProg_spec
     · simpa only [finalStore, newBook, g0AfterBook, bookNeed] using hFinalG0
     · exact hFinalG1
     · exact hCurrentG2
+    · exact hCurrentG4
+    · exact hCurrentG5
     · exact hFinalList
     · intro st2 s newTrades newTradesCapacity nodes2 g0Final hResult
         hNewBookFinal hNewTradesFinal hListFinal hG0Final hG1Final hG2Final
+        hG4Final hG5Final
       apply hDone st2 s newBook bookNeed newTrades newTradesCapacity nodes2
         g0Final hResult
       · simpa [newOrders, qty] using hNewBookFinal
@@ -546,5 +578,7 @@ theorem partialBranchProg_spec
       · exact hG0Final
       · exact hG1Final
       · simpa only [hg2Next] using hG2Final
+      · exact hG4Final
+      · exact hG5Final
 
 end Project.ClobMatchFuel.PartialBranch
