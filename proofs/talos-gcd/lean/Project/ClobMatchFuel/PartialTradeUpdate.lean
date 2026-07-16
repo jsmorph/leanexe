@@ -1,4 +1,5 @@
 import Project.ClobMatchFuel.PartialFinish
+import Project.ClobMatchFuel.MemoryFrame
 
 /-!
 # Partial-fill trade update
@@ -14,6 +15,7 @@ namespace Project.ClobMatchFuel.PartialTradeUpdate
 open Wasm Project.Common Project.Runtime Project.Clob Project.ClobMatchFuel
   Project.ClobMatchFuel.Allocation
   Project.ClobMatchFuel.AllocatorFrame
+  Project.ClobMatchFuel.MemoryFrame
 
 def partialTradeUpdateProg : Wasm.Program :=
   PartialTradePrepare.partialTradePrepareProg ++
@@ -34,6 +36,7 @@ theorem partialTradeUpdateProg_spec
     (remaining fuel g0 g2 g4 g5 capacity next : UInt64)
     (taker : OrderL) (os : List OrderL) (ts : List TradeL) (i : Nat)
     (newOrders : List OrderL) (nodes : List FreeNode)
+    (initialMem : Mem) (limit : Nat)
     (hParams : base.params.length = 9)
     (hLocals : base.locals.length = 76)
     (hValues : base.values = [.i64 newBook])
@@ -78,6 +81,9 @@ theorem partialTradeUpdateProg_spec
       FreeListSeparatedFromFixedArray nodes newBook newBookCapacity)
     (hNodesBelow : ∀ node ∈ nodes,
       node.root.toNat + node.capacity.toNat ≤ g0.toNat)
+    (hAllocationLimit : g0.toNat + 48 +
+      tradeArrayBytes (ts.length + 1) ≤ limit)
+    (hMemoryFrame : BytesEqFrom initialMem st.mem limit)
     (hOrders : OrdersAt st oldBook os)
     (hOldTradesOwned :
       OwnedTradeArrayAt st oldTrades oldTradesCapacity ts)
@@ -96,6 +102,8 @@ theorem partialTradeUpdateProg_spec
       OwnedTradeArrayAt st1 newTrades newTradesCapacity
         (ts ++ [Model.fillTradeL taker os[i]! remaining]) →
       FreeListAt st1.mem nodes1 →
+      BytesEqFrom initialMem st1.mem limit →
+      st1.mem.pages = st.mem.pages →
       st1.globals.globals[0]? = some (.i64 g0Final) →
       st1.globals.globals[1]? = some (.i64 (freeHead nodes1)) →
       st1.globals.globals[2]? = some (.i64 (g2 + 1)) →
@@ -169,6 +177,29 @@ theorem partialTradeUpdateProg_spec
   · intro choice hTake st1 hTarget48 hTarget32 hTargetFit hOldTradesAlloc
       hNewTradesOwned hNewBookOwned1 hOutside hFinalPages hFinalGlobals
       hFinalList hFinalG0 hFinalG1
+    have hChoiceMem : choice.node ∈ nodes := takeFirstFitFrom_some_mem hTake
+    have hChoiceCapacity := takeFirstFitFrom_some_capacity hTake
+    have hNeedNat : (tradeArrayBytesU (ts.length + 1)).toNat =
+        tradeArrayBytes (ts.length + 1) :=
+      fixedArrayBytesU_toNat (ts.length + 1) 4 hn (by decide) (by
+        change fixedArrayBytes (ts.length + 1) 4 + 7 < UInt64.size at hbytes
+        omega)
+    rw [UInt64.le_iff_toNat_le, hNeedNat] at hChoiceCapacity
+    have hAllocFrame : BytesEqFrom st.mem
+        (TradeAllocFit.tradeAllocFitStore st choice).mem limit := by
+      apply fixedArrayAllocFitStore_bytesFrom hList hTake
+      intro node hNode
+      exact (hNodesBelow node hNode).trans (by omega)
+    have hPayloadEnd : choice.node.root.toNat +
+        ((ts.length + 1) * 4 + 1) * 8 ≤ limit := by
+      have hChoiceBelow := hNodesBelow choice.node hChoiceMem
+      unfold tradeArrayBytes fixedArrayBytes at hChoiceCapacity
+      omega
+    have hFinalFrame : BytesEqFrom initialMem
+        (TradeAppendStore.appendTradeStore st1 choice.node.root ts.length
+          trade).mem limit :=
+      (hMemoryFrame.trans hAllocFrame).trans
+        (BytesEqFrom.of_outsideFlatWords hPayloadEnd hOutside)
     have hFinalG2 :
         (TradeAppendStore.appendTradeStore st1 choice.node.root ts.length
           trade).globals.globals[2]? = some (.i64 (g2 + 1)) := by
@@ -229,6 +260,10 @@ theorem partialTradeUpdateProg_spec
       · exact hNewBookOwned1
       · simpa [trade] using hNewTradesOwned
       · exact hFinalList
+      · exact hFinalFrame
+      · exact hFinalPages.trans (by
+          simpa [TradeAllocFit.tradeAllocFitStore] using
+            fixedArrayAllocFitStore_pages st choice 4)
       · exact hFinalG0
       · exact hFinalG1
       · exact hFinalG2
@@ -237,6 +272,32 @@ theorem partialTradeUpdateProg_spec
   · intro previous st1 hTarget48 hTarget32 hTargetFit hOldTradesAlloc
       hNewTradesOwned hNewBookOwned1 hOutside hFinalPages hFinalGlobals
       hFinalList hFinalG0 hFinalG1
+    have hNeedNat : (tradeArrayBytesU (ts.length + 1)).toNat =
+        tradeArrayBytes (ts.length + 1) :=
+      fixedArrayBytesU_toNat (ts.length + 1) 4 hn (by decide) (by
+        change fixedArrayBytes (ts.length + 1) 4 + 7 < UInt64.size at hbytes
+        omega)
+    have hAllocFrame : BytesEqFrom st.mem
+        (TradeAllocBump.tradeAllocBumpStore st g0
+          (tradeArrayBytesU (ts.length + 1))).mem limit := by
+      apply fixedArrayAllocBumpStore_bytesFrom st g0
+        (tradeArrayBytesU (ts.length + 1)) 4 limit hFit32
+      rw [hNeedNat]
+      exact hAllocationLimit
+    have hPayloadEnd : (g0 + 48).toNat +
+        ((ts.length + 1) * 4 + 1) * 8 ≤ limit := by
+      have hTargetNat : (g0 + 48).toNat = g0.toNat + 48 := by
+        rw [UInt64.toNat_add]
+        have h48 : (48 : UInt64).toNat = 48 := rfl
+        rw [h48, Nat.mod_eq_of_lt (by omega)]
+      rw [hTargetNat]
+      unfold tradeArrayBytes fixedArrayBytes at hAllocationLimit
+      omega
+    have hFinalFrame : BytesEqFrom initialMem
+        (TradeAppendStore.appendTradeStore st1 (g0 + 48) ts.length trade).mem
+          limit :=
+      (hMemoryFrame.trans hAllocFrame).trans
+        (BytesEqFrom.of_outsideFlatWords hPayloadEnd hOutside)
     have hFinalG2 :
         (TradeAppendStore.appendTradeStore st1 (g0 + 48) ts.length
           trade).globals.globals[2]? = some (.i64 (g2 + 1)) := by
@@ -295,6 +356,11 @@ theorem partialTradeUpdateProg_spec
       · exact hNewBookOwned1
       · simpa [trade] using hNewTradesOwned
       · exact hFinalList
+      · exact hFinalFrame
+      · exact hFinalPages.trans (by
+          simpa [TradeAllocBump.tradeAllocBumpStore] using
+            fixedArrayAllocBumpStore_pages st g0
+              (tradeArrayBytesU (ts.length + 1)) 4)
       · exact hFinalG0
       · exact hFinalG1
       · exact hFinalG2

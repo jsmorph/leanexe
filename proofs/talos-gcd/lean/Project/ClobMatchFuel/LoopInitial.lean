@@ -64,6 +64,7 @@ theorem of_initial (ctx : Context) (st : Store Unit) (s : Locals)
     (hG2 : st.globals.globals[2]? = some (.i64 ctx.initialG2))
     (hG4 : st.globals.globals[4]? = some (.i64 ctx.initialG4))
     (hG5 : st.globals.globals[5]? = some (.i64 ctx.initialG5))
+    (hMemoryFrame : MemoryFrame.BytesEqFrom ctx.initialMem st.mem ctx.limit)
     (hPages : st.mem.pages = ctx.initialPages)
     (hPageLimit : st.mem.pages ≤ 65536)
     (hAddressLimit : ctx.limit < 4294967296)
@@ -104,6 +105,7 @@ theorem of_initial (ctx : Context) (st : Store Unit) (s : Locals)
     allocationCounter := by simp [initialData]
     releaseCounter4 := by simp [initialData]
     releaseCounter5 := by simp [initialData]
+    memoryFrame := hMemoryFrame
     pages := hPages
     pageLimit := hPageLimit
     addressLimit := hAddressLimit

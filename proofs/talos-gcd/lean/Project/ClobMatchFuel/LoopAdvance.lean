@@ -78,6 +78,7 @@ theorem of_full (ctx : Context) (st : Store Unit) (s : Locals)
     (hNodesBelow : ∀ node ∈ nodes1,
       node.root.toNat + node.capacity.toNat ≤ g0Final.toNat)
     (hFreeList : FreeListAt st1.mem nodes1)
+    (hMemoryFrame : MemoryFrame.BytesEqFrom ctx.initialMem st1.mem ctx.limit)
     (hPages : st1.mem.pages = st.mem.pages)
     (hG0 : st1.globals.globals[0]? = some (.i64 g0Final))
     (hG1 : st1.globals.globals[1]? = some (.i64 (freeHead nodes1)))
@@ -155,6 +156,7 @@ theorem of_full (ctx : Context) (st : Store Unit) (s : Locals)
     allocationCounter := ?_
     releaseCounter4 := ?_
     releaseCounter5 := ?_
+    memoryFrame := hMemoryFrame
     pages := ?_
     pageLimit := ?_
     addressLimit := facts.addressLimit

@@ -40,13 +40,14 @@ import Project.ClobMatchFuel.Loop
 import Project.ClobMatchFuel.LoopInitial
 import Project.ClobMatchFuel.LoopResult
 import Project.ClobMatchFuel.Entry
+import Project.ClobMatchFuel.Correct
 
 /-!
 # The `matchFuel` theorem
 
 The generated artifact and its source model are the proof subjects for bounded
-order matching.  The primary theorem will relate the recursive export to exact
-book, trade, and remaining-quantity results for every represented input.  Its
-proof will state returned ownership, allocator counters, and preserved memory
-for each update branch.
+order matching.  The primary theorem relates the recursive export to exact
+book, trade, and remaining-quantity results for every represented input.  It
+also states returned ownership, allocator counters, page preservation, and byte
+preservation above the reserved heap boundary.
 -/
