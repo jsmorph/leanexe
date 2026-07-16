@@ -22,6 +22,20 @@ def fullStepProg : Wasm.Program :=
 def releaseCount (tracker : UInt64) : UInt64 :=
   if tracker = 0 then 0 else 1
 
+theorem allocScratchAt_fullTransitionFrame
+    (base : Locals) (fuel newBook newTrades remaining oldBookTracker
+      oldTradesTracker : UInt64) (taker : OrderL)
+    (hScratch : FullTradeUpdate.AllocScratchAt base) :
+    FullTradeUpdate.AllocScratchAt
+      (FullTransition.fullTransitionFrame base fuel taker newBook newTrades
+        remaining oldBookTracker oldTradesTracker) := by
+  rcases hScratch with
+    ⟨bookCapacity, bookNext, tradeNext, tradeResult, h70, h71, h73, h74⟩
+  refine ⟨bookCapacity, bookNext, tradeNext, tradeResult, ?_, ?_, ?_, ?_⟩
+  all_goals
+    simp [FullTransition.fullTransitionFrame,
+      FullTransition.fullTransitionLocals, *]
+
 set_option Elab.async false in
 theorem fullStepProg_spec
     (env : HostEnv Unit) (st : Store Unit) (base : Locals)
@@ -118,6 +132,9 @@ theorem fullStepProg_spec
     (Q : Assertion Unit) (rest : Wasm.Program)
     (hDone : ∀ st1 s newBook newBookCapacity newTrades newTradesCapacity
         nodes1 g0Final,
+      FullTradeUpdate.AllocScratchAt
+        (FullTransition.fullTransitionFrame s fuel taker newBook newTrades
+          (remaining - os[i]!.oqty) 0 oldTradesTracker) →
       OwnedOrderArrayAt st1 newBook newBookCapacity (os.eraseIdx i) →
       OwnedTradeArrayAt st1 newTrades newTradesCapacity
         (ts ++ [Model.fillTradeL taker os[i]! os[i]!.oqty]) →
@@ -170,7 +187,7 @@ theorem fullStepProg_spec
     hOldTradesOwned hg0 hg1 hg2 hg4 hg5 hList Q
     (FullReleaseTransition.fullReleaseTransitionProg ++ rest)
   intro st1 s newBook newBookCapacity newTrades newTradesCapacity nodes1 g0Final
-    hResult hNewBookOwned hNewTradesOwned hOldTradesOwned1 hBookOwned1
+    hResult hScratch hNewBookOwned hNewTradesOwned hOldTradesOwned1 hBookOwned1
     hNewBook48 hNewBook32 hNewBookCapacity hNewTrades48 hNewTrades32
     hNewTradesCapacity hNewBookBelowFinal hNewTradesBelow hHeapMono hHeapUpper
     hNewBookFreeFinal hNewTradesFreeFinal hNodesBelowFinal hList1 hPageEq
@@ -180,10 +197,29 @@ theorem fullStepProg_spec
     apply FullReleaseTransition.fullReleaseTransitionProg_none env st1 s fuel
       newBook newTrades (remaining - os[i]!.oqty) taker hResult Q rest
     apply hDone st1 s newBook newBookCapacity newTrades newTradesCapacity nodes1
-      g0Final hNewBookOwned hNewTradesOwned hNewBook48 hNewBook32
-      hNewBookCapacity hNewTrades48 hNewTrades32 hNewTradesCapacity
-      hNewBookBelowFinal hNewTradesBelow hHeapMono hHeapUpper hNewBookFreeFinal
-      hNewTradesFreeFinal hNodesBelowFinal hList1 hPageEq hG0 hG1 hG2
+      g0Final
+    · exact allocScratchAt_fullTransitionFrame s fuel newBook newTrades
+        (remaining - os[i]!.oqty) 0 0 taker hScratch
+    · exact hNewBookOwned
+    · exact hNewTradesOwned
+    · exact hNewBook48
+    · exact hNewBook32
+    · exact hNewBookCapacity
+    · exact hNewTrades48
+    · exact hNewTrades32
+    · exact hNewTradesCapacity
+    · exact hNewBookBelowFinal
+    · exact hNewTradesBelow
+    · exact hHeapMono
+    · exact hHeapUpper
+    · exact hNewBookFreeFinal
+    · exact hNewTradesFreeFinal
+    · exact hNodesBelowFinal
+    · exact hList1
+    · exact hPageEq
+    · exact hG0
+    · exact hG1
+    · exact hG2
     · simpa [releaseCount] using hG4
     · simpa [releaseCount] using hG5
   · subst oldTradesTracker
@@ -247,10 +283,28 @@ theorem fullStepProg_spec
         hNodesBelowFinal
     apply hDone st2 s newBook newBookCapacity newTrades newTradesCapacity
       (releasedNode oldTrades oldTradesCapacity :: nodes1) g0Final
-      hNewBookOwned2 hNewTradesOwned2 hNewBook48 hNewBook32 hNewBookCapacity
-      hNewTrades48 hNewTrades32 hNewTradesCapacity hNewBookBelowFinal
-      hNewTradesBelow hHeapMono hHeapUpper hNewBookFreeAfter hNewTradesFreeAfter
-      hNodesBelowAfter hList2 hPageAfter hG0After hG1After hG2After
+    · exact allocScratchAt_fullTransitionFrame s fuel newBook newTrades
+        (remaining - os[i]!.oqty) 0 oldTrades taker hScratch
+    · exact hNewBookOwned2
+    · exact hNewTradesOwned2
+    · exact hNewBook48
+    · exact hNewBook32
+    · exact hNewBookCapacity
+    · exact hNewTrades48
+    · exact hNewTrades32
+    · exact hNewTradesCapacity
+    · exact hNewBookBelowFinal
+    · exact hNewTradesBelow
+    · exact hHeapMono
+    · exact hHeapUpper
+    · exact hNewBookFreeAfter
+    · exact hNewTradesFreeAfter
+    · exact hNodesBelowAfter
+    · exact hList2
+    · exact hPageAfter
+    · exact hG0After
+    · exact hG1After
+    · exact hG2After
     · simpa [releaseCount, hOldTradesNe] using hG4After
     · simpa [releaseCount, hOldTradesNe] using hG5After
 
