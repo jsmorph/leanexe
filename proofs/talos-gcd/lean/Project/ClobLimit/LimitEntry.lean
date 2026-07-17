@@ -1,0 +1,141 @@
+import Project.ClobLimit.RunMatchCorrect
+
+/-!
+# Exported `limit` entry decomposition
+
+Function 21 checks validity, calls function 18 on the valid path, and then
+selects the filled or residual result.  These definitions keep each unselected
+generated branch opaque while later proofs execute the surrounding control.
+-/
+
+namespace Project.ClobLimit.LimitEntry
+
+open Wasm Project.ClobLimit
+
+private def outerBranch (takeValid : Bool) : Wasm.Program :=
+  match (func21[30]? : Option Wasm.Instruction) with
+  | some (Wasm.Instruction.iff _ _ valid invalid) =>
+      if takeValid then valid else invalid
+  | _ => []
+
+private def validResultBranch (takeFilled : Bool) : Wasm.Program :=
+  match ((outerBranch true)[43]? : Option Wasm.Instruction) with
+  | some (Wasm.Instruction.iff _ _ filled residual) =>
+      if takeFilled then filled else residual
+  | _ => []
+
+def invalidProg : Wasm.Program :=
+  outerBranch false
+
+def residualProg : Wasm.Program :=
+  validResultBranch false
+
+def filledProg : Wasm.Program :=
+  [
+  .call 19,
+  .localSet 31,
+  .localGet 31,
+  .localSet 37,
+  .localGet 27,
+  .localSet 38,
+  .localGet 29,
+  .localSet 39
+]
+
+def entryProg : Wasm.Program :=
+  [
+  .constI64 0,
+  .localSet 6,
+  .localGet 0,
+  .localSet 7,
+  .localGet 1,
+  .localSet 8,
+  .localGet 2,
+  .localSet 9,
+  .localGet 3,
+  .localSet 10,
+  .localGet 4,
+  .localSet 11,
+  .localGet 5,
+  .localSet 12,
+  .localGet 6,
+  .localGet 7,
+  .localGet 8,
+  .localGet 9,
+  .localGet 10,
+  .localGet 11,
+  .localGet 12,
+  .call 6,
+  .localSet 13,
+  .localGet 13,
+  .constI64 1,
+  .eqI64,
+  .iff 0 1 [.constI64 1] [.constI64 0],
+  .constI64 0,
+  .eqI64,
+  .eqz
+]
+
+def validProg : Wasm.Program :=
+  [
+  .constI64 0,
+  .localSet 14,
+  .localGet 0,
+  .localSet 15,
+  .localGet 1,
+  .localSet 16,
+  .localGet 2,
+  .localSet 17,
+  .localGet 3,
+  .localSet 18,
+  .localGet 4,
+  .localSet 19,
+  .localGet 5,
+  .localSet 20,
+  .localGet 14,
+  .localGet 15,
+  .localGet 16,
+  .localGet 17,
+  .localGet 18,
+  .localGet 19,
+  .localGet 20,
+  .call 18,
+  .localSet 25,
+  .localSet 24,
+  .localSet 23,
+  .localSet 22,
+  .localSet 21,
+  .localGet 22,
+  .localSet 27,
+  .localGet 24,
+  .localSet 29,
+  .localGet 25,
+  .localSet 30,
+  .localGet 30,
+  .constI64 0,
+  .eqI64,
+  .iff 0 1 [.constI64 1] [.constI64 0],
+  .constI64 1,
+  .eqI64,
+  .iff 0 1 [.constI64 1] [.constI64 0],
+  .constI64 0,
+  .eqI64,
+  .eqz,
+  .iff 0 0 filledProg residualProg
+]
+
+def resultProg : Wasm.Program :=
+  [
+  .localGet 37,
+  .localGet 38,
+  .localGet 39
+]
+
+set_option maxRecDepth 1048576 in
+theorem func21_decomposition :
+    func21 = entryProg ++ [.iff 0 0 validProg invalidProg] ++ resultProg := by
+  unfold func21 entryProg validProg filledProg residualProg invalidProg
+    validResultBranch outerBranch resultProg
+  rfl
+
+end Project.ClobLimit.LimitEntry
