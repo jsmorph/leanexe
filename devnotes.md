@@ -5304,3 +5304,11 @@ The focused warning-failing build completed in 5.2 seconds under the repository 
 The proof reuses `ClobMatchFuel.BookReplaceStore` for the memory transformation.  Those source-independent theorems establish the represented list update and fixed-array header preservation, while the adapter extends the copy theorem's outside-payload frame through each store.  No allocator or copy-loop instruction occurs in this module.
 
 The focused warning-failing build completed in 5.1 seconds under the repository resource limits.  The final local frame contains the replacement pointer as the branch's one result.  The next theorem will compose allocator, copy, and finalization results without reducing any of those instruction bodies.
+
+## 2026-07-15: Compose the Partial-Book Update
+
+`ClobLimit.InternalPartialBookUpdate.partialBookUpdateProg_spec` composes the exact allocator, copy, and finalization programs.  It derives target bounds and source-target separation from the source-capacity and below-heap premises.  The proof invokes each component theorem through its continuation and does not reduce any component instruction body.
+
+The result retains `OwnedOrderArrayAt` for the source book and the replacement book representing `setQtyL os i qty`.  It also provides byte equality outside the target payload from the semantic bump store, unchanged page count from the original store, and the exact global list after counter 2 increases.  `AllocatorFrame.ownedOrderArrayAt_fixedArrayAllocBumpStore` supplies source ownership after allocation, and `OwnedOrderArrayAt.frame_outsideFlatWords` carries it through the copy and maker stores.
+
+The focused warning-failing build completed in 6.8 seconds under the repository resource limits.  The first diagnostic build found only local bound conversions and a missing namespace; the edited theorem passed on the next run.  The following generated segment prepares and appends the partial-fill trade.
