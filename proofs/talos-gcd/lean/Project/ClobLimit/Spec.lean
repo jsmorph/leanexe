@@ -11,6 +11,7 @@ import Project.ClobLimit.InternalFullBookPrepare
 import Project.ClobLimit.InternalFullBookAllocPrepare
 import Project.ClobLimit.InternalFullBookAlloc
 import Project.ClobLimit.InternalFullBookPrefix
+import Project.ClobLimit.InternalFullBookSuffix
 import Project.ClobLimit.InternalTradeBump
 import Project.ClobLimit.InternalPartialBookPrepare
 import Project.ClobLimit.InternalPartialBookControl
@@ -70,7 +71,8 @@ book preparation proves both selected-index bounds checks and computes the
 erased length and exact prefix and suffix copy ranges.  Its allocator prefix
 computes the aligned stride-five capacity, then composes the empty free-list
 scan and bump fallback.  The following loop stores the smaller length and
-copies every word before the erased maker.  The proof remains outside
+copies every word before the erased maker, and the shifted-suffix loop
+reconstructs the represented erased book.  The proof remains outside
 `Project.lean` until the exported theorem is complete.
 -/
 

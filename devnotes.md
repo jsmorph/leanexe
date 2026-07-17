@@ -5416,3 +5416,11 @@ The focused warning-failing build completed in 2.2 seconds under the repository 
 The loop starts from `InternalFullBookBump.allocFrame` and records the target and cursor at local-list positions 51 and 52.  It reads the source, prefix word count, and erased length from positions 45, 48, and 50.  The postcondition provides the prefix fact consumed by `OrdersAt.eraseIdx_ofFlatWords` after the suffix loop.
 
 The first focused build reported that `FreshOrderArrayAt` was a matcher-specific alias absent from this module's namespace.  Replacing it with the shared `FreshFixedArrayAt st target arrayCapacity 5` predicate removed the unnecessary dependency, and the warning-failing build completed in 3.9 seconds.  The next module proves the shifted-suffix copy and reconstructs the represented erased order list.
+
+## 2026-07-16: Prove the Full-Book Suffix Copy
+
+`ClobLimit.InternalFullBookSuffix.fullBookSuffixProg_spec` proves the shifted-suffix loop and returns the replacement-book pointer.  The loop copies source word `prefix + 5 + k` to target word `prefix + k`, skipping the selected five-word maker.  Its invariant retains every completed prefix word while accumulating the shifted-suffix equality.
+
+At loop exit, the theorem applies the shared `OrdersAt.eraseIdx_ofFlatWords` reconstruction lemma.  The result is `OrdersAt st2 target (os.eraseIdx i)` with the original allocation store as the outside-payload frame reference.  The theorem also retains the fresh target header, represented source book, exact counter update, and unchanged page count.
+
+The focused warning-failing build completed in 6.4 seconds under the repository resource limits.  The theorem passed on its first build.  The next module composes the full-book allocator with both copy loops and promotes the represented arrays to owned arrays.
