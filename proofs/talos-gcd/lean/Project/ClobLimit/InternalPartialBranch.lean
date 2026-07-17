@@ -31,11 +31,12 @@ set_option Elab.async false in
 theorem partialBranchProg_spec
     (env : HostEnv Unit) (st : Store Unit) (base : Locals)
     (book bookCapacity oldTrades oldTradesCapacity : UInt64)
-    (remaining g0 g2 capacity next : UInt64)
+    (remaining fuel g0 g2 capacity next : UInt64)
     (taker : OrderL) (os : List OrderL) (ts : List TradeL) (i : Nat)
     (hParams : base.params.length = 11)
     (hLocals : base.locals.length = 64)
     (hValues : base.values = [])
+    (hFuel : base.get 0 = some (.i64 fuel))
     (hTakerLocal : base.params[1]? = some (.i64 taker.oid))
     (hBookLocal : base.params[7]? = some (.i64 book))
     (hTradesLocal : base.params[9]? = some (.i64 oldTrades))
@@ -92,7 +93,7 @@ theorem partialBranchProg_spec
     (Q : Assertion Unit) (rest : Wasm.Program)
     (hDone : ∀ st1 s,
       PartialResultAt s (g0 + 48)
-        (g0 + 48 + fixedArrayBytesU os.length 5 + 48) →
+        (g0 + 48 + fixedArrayBytesU os.length 5 + 48) fuel →
       OwnedOrderArrayAt st1 book bookCapacity os →
       OwnedOrderArrayAt st1 (g0 + 48) (fixedArrayBytesU os.length 5)
         (Project.ClobMatchFuel.Model.setQtyL os i
@@ -267,7 +268,7 @@ theorem partialBranchProg_spec
           (partialBookPrepareFrame base book remaining os i) os.length g0)
         newBook (os.length * 5))
       newBook bookNeed book bookCapacity oldTrades oldTradesCapacity remaining
-      g0AfterBook (g2 + 1) 0 g0AfterBook taker os newOrders ts i
+      fuel g0AfterBook (g2 + 1) 0 g0AfterBook taker os newOrders ts i
     · simpa [partialBookResultFrame, partialBookCopyFrame,
         partialBookAllocFrame, InternalBookBump.allocFrame,
         partialBookPrepareFrame] using hParams
@@ -276,6 +277,9 @@ theorem partialBranchProg_spec
         partialBookPrepareFrame, partialBookPrepareLocals,
         List.length_set] using hLocals
     · simp [partialBookResultFrame]
+    · simpa [partialBookResultFrame, partialBookCopyFrame,
+        partialBookAllocFrame, InternalBookBump.allocFrame,
+        partialBookPrepareFrame, Locals.get, hParams, hLocals] using hFuel
     · simpa [partialBookResultFrame, partialBookCopyFrame,
         partialBookAllocFrame, InternalBookBump.allocFrame,
         partialBookPrepareFrame] using hTakerLocal

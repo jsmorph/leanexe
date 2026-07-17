@@ -5520,3 +5520,11 @@ The first focused diagnostic completed in 1.5 seconds and found one malformed mu
 The module defines the semantic full and partial step states once for later invariant constructors.  Its counter lemmas derive the current or post-append expected global 2 from the invariant's trade length and step count.  These theorems keep source unfolding and modular counter arithmetic out of the physical branch compositions.
 
 The focused warning-failing build passed on its first run in 1.5 seconds under the repository resource limits.  The proof reuses the source recurrence and fuel-decrement theorems from `ClobMatchFuel.Model` and `ClobMatchFuel.Budget`.  Completed-state and next-running-state construction remain separate proof boundaries.
+
+## 2026-07-16: Strengthen the Partial-Fill Result Frame
+
+`ClobLimit.InternalPartialTradeBranch.PartialResultAt` now records the unchanged fuel at parameter 0.  The completed loop invariant requires that fact independently of the five semantic result values.  The corresponding `ClobMatchFuel` result predicate already uses the same interface.
+
+`partialTradeBranchProg_spec` accepts the input fuel fact and converts its optional parameter access to an element equality before simplifying the final frame.  `partialBranchProg_spec` preserves the fact through the preceding book allocation and supplies it to the trade continuation.  Neither program definition nor instruction theorem changed.
+
+The focused trade-branch build completed in 5.5 seconds, and the composed partial-branch build completed in 102 seconds under the repository resource limits.  Both warning-failing builds passed.  The next module constructs completed invariant states for stopped and partial-fill iterations.
