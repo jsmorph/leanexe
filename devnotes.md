@@ -5528,3 +5528,11 @@ The focused warning-failing build passed on its first run in 1.5 seconds under t
 `partialTradeBranchProg_spec` accepts the input fuel fact and converts its optional parameter access to an element equality before simplifying the final frame.  `partialBranchProg_spec` preserves the fact through the preceding book allocation and supplies it to the trade continuation.  Neither program definition nor instruction theorem changed.
 
 The focused trade-branch build completed in 5.5 seconds, and the composed partial-branch build completed in 102 seconds under the repository resource limits.  Both warning-failing builds passed.  The next module constructs completed invariant states for stopped and partial-fill iterations.
+
+## 2026-07-16: Construct Completed Internal Loop States
+
+`ClobLimit.InternalLoopCompletion.of_stop` turns a stopped running state into the completed invariant.  It identifies the source result with the current state and retains both owner-and-pointer pairs, array ownership, fuel, pages, heap pointer, and zero free-list head.  Its counter proof derives the expected global 2 from the unchanged trade length.
+
+`InternalLoopCompletion.of_partial` consumes the physical partial-branch result and both replacement arrays.  It identifies the source result with `partialState`, records equal owner-and-pointer values for each replacement array, and derives the expected counter after one appended trade.  Byte equality below the current heap top composes with the running invariant's equality below the initial heap top.
+
+The first focused diagnostic completed in 1.6 seconds and found the missing namespace for the owned-array predicates.  Adding `ClobMatchFuel.AllocatorFrame` allowed the warning-failing build to pass in 1.5 seconds under the repository resource limits.  The next proof boundary constructs the next running state after a full fill.
