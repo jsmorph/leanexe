@@ -12,7 +12,7 @@ namespace Project.ClobDepth.Entry
 
 open Wasm Project.ClobDepth
 
-private def branchAt (program : Wasm.Program) (index : Nat)
+def branchAt (program : Wasm.Program) (index : Nat)
     (takeThen : Bool) : Wasm.Program :=
   match (program[index]? : Option Wasm.Instruction) with
   | some (Wasm.Instruction.iff _ _ thenProg elseProg) =>
@@ -53,7 +53,108 @@ theorem func3_decomposition :
   rfl
 
 def missingPrepareProg : Wasm.Program :=
-  missingProg.take 44
+  [
+  .localGet 1,
+  .localSet 7,
+  .localGet 7,
+  .localSet 14,
+  .localGet 2,
+  .localSet 20,
+  .localGet 3,
+  .localSet 21,
+  .localGet 14,
+  .wrapI64,
+  .load64 0,
+  .localSet 15,
+  .localGet 15,
+  .constI64 2,
+  .mulI64,
+  .localSet 16,
+  .localGet 15,
+  .constI64 1,
+  .addI64,
+  .localSet 17,
+  .constI64 8,
+  .localGet 17,
+  .constI64 2,
+  .mulI64,
+  .constI64 8,
+  .mulI64,
+  .addI64,
+  .constI64 7,
+  .addI64,
+  .constI64 8,
+  .divUI64,
+  .constI64 8,
+  .mulI64,
+  .localSet 24,
+  .localGet 24,
+  .constI64 8,
+  .ltUI64,
+  .iff 0 0 [.constI64 8, .localSet 24] [],
+  .constI64 0,
+  .localSet 29,
+  .constI64 0,
+  .localSet 25,
+  .globalGet 1,
+  .localSet 26
+]
+
+def missingFieldsProg : Wasm.Program :=
+  [
+  .localGet 1,
+  .localSet 7,
+  .localGet 7,
+  .localSet 14,
+  .localGet 2,
+  .localSet 20,
+  .localGet 3,
+  .localSet 21,
+  .localGet 14,
+  .wrapI64,
+  .load64 0,
+  .localSet 15,
+  .localGet 15,
+  .constI64 2,
+  .mulI64,
+  .localSet 16,
+  .localGet 15,
+  .constI64 1,
+  .addI64,
+  .localSet 17
+]
+
+def missingAllocPrepareProg : Wasm.Program :=
+  [
+  .constI64 8,
+  .localGet 17,
+  .constI64 2,
+  .mulI64,
+  .constI64 8,
+  .mulI64,
+  .addI64,
+  .constI64 7,
+  .addI64,
+  .constI64 8,
+  .divUI64,
+  .constI64 8,
+  .mulI64,
+  .localSet 24,
+  .localGet 24,
+  .constI64 8,
+  .ltUI64,
+  .iff 0 0 [.constI64 8, .localSet 24] [],
+  .constI64 0,
+  .localSet 29,
+  .constI64 0,
+  .localSet 25,
+  .globalGet 1,
+  .localSet 26
+]
+
+theorem missingPrepareProg_decomposition :
+    missingPrepareProg = missingFieldsProg ++ missingAllocPrepareProg := by
+  rfl
 
 def missingSearchProg : Wasm.Program :=
   (missingProg.drop 44).take 1
