@@ -5616,3 +5616,11 @@ The first entry build left one existential zero-value witness after all finite-l
 `InternalCorrect.func17_correct` composes the exact entry decomposition, completion-flag initialization, initial running invariant, terminating loop, and result epilogue.  It proves that the returned remaining quantity and represented arrays equal `ClobMatchFuel.Model.matchFuelL`, while retaining the final heap pointer, zero free-list head, allocation counter, page count, and below-initial-heap memory frame.  No physical branch or loop body is unfolded in the final theorem.
 
 The first focused build reached the final postcondition and left only the length of the named eleven-element `internalArgs` list.  Adding that definition to the final simplification allowed the warning-failing build to pass in 1.7 seconds under the repository resource limits.  Function 18, `runMatch`, is the next proof boundary before the exported Limit branches.
+
+## 2026-07-16: Prove the Repeated `runMatch` Allocation
+
+`ClobLimit.RunMatchEmptyAlloc.allocProg` names the empty stride-four fixed-array allocation that function 18 executes twice.  `allocProg_spec` proves the complete empty-free-list path for an arbitrary compatible function 18 local frame.  Its result contains the zero-length array header, final scratch locals, unchanged page count, heap top `g0 + 56`, and allocation counter `g2 + 1`.
+
+The theorem treats the generated free-list loop and six header stores as one compiled boundary.  It accepts a continuation over the exact resulting store and frame, so the second allocation can consume the first allocation's result without unfolding either instruction block.  The proof uses the existing fixed-array arithmetic lemmas for the no-wrap, no-grow, address, and page obligations.
+
+`ClobLimit.RunMatchEntry.func18_decomposition` identifies both generated allocation regions with `allocProg`.  The allocation theorem passed its focused warning-failing build in 8.8 seconds, and the decomposition passed in 1.2 seconds under the repository resource limits.  The next theorem will prove the function 18 preparation frame, compose both allocations, and call `InternalCorrect.func17_correct`.
