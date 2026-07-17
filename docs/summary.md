@@ -69,7 +69,7 @@ The workspace organizes the artifacts around a shared proof library.  The four r
 
 ## Documentation
 
-The [Language Specification](spec.md) defines the accepted subset, ABI, memory management, numeric semantics, and unsupported behavior.  The [LeanExe User Manual](manual.md) teaches source patterns and diagnostics, while [Developing LeanExe](../DEVELOPING.md) defines setup, local gates, generated files, and troubleshooting.  [Talos Proofs](../proofs/talos-gcd/README.md) owns the current theorem inventory, [Verifying a Program](verifying.md) owns the proof procedure, the [Development Plan](../plan.md) owns future work, and the [Development Journal](../devnotes.md) owns history and test records.  The old [Development Agenda](../agenda.md) is archived, and the two `leanexe-talos` documents are marked as historical experiments.
+The [Language Specification](spec.md) defines the accepted subset, ABI, memory management, numeric semantics, and unsupported behavior.  The [LeanExe User Manual](manual.md) teaches source patterns and diagnostics, while [Developing LeanExe](../DEVELOPING.md) defines setup, local gates, generated files, and troubleshooting.  [Talos Proofs](../proofs/talos-gcd/README.md) owns the current theorem inventory, [Verifying a Program](verifying.md) owns the proof procedure, the [Development Plan](../plan.md) owns future work, and the [Development Journal](../devnotes.md) owns history and test records.  The old [Development Agenda](history/agenda.md) is archived, and the two `leanexe-talos` documents are marked as historical experiments.
 
 ## Current State and Observations
 
