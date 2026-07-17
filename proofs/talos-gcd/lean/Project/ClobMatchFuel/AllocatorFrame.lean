@@ -38,9 +38,8 @@ theorem fixedArrayAllocFitStore_pages
 theorem fixedArrayAllocBumpStore_pages
     (st : Store Unit) (g0 need stride : UInt64) :
     (BookAllocBump.fixedArrayAllocBumpStore st g0 need stride).mem.pages =
-      st.mem.pages := by
-    simp [BookAllocBump.fixedArrayAllocBumpStore, fixedArrayHeaderMem,
-      Mem.write64_pages]
+      st.mem.pages :=
+  Project.Clob.fixedArrayAllocBumpStore_pages st g0 need stride
 
 theorem fixedArrayAllocFitStore_global_of_ne_one
     (st : Store Unit) (choice : FreeChoice) (stride : UInt64)
@@ -58,9 +57,9 @@ theorem fixedArrayAllocBumpStore_global_of_ne_zero
     (i : Nat) (value : Value) (hi : i ≠ 0)
     (hValue : st.globals.globals[i]? = some value) :
     (BookAllocBump.fixedArrayAllocBumpStore st g0 need stride).globals.globals[i]? =
-      some value := by
-  have hi' : 0 ≠ i := Ne.symm hi
-  simp [BookAllocBump.fixedArrayAllocBumpStore, hi', hValue]
+      some value :=
+  Project.Clob.fixedArrayAllocBumpStore_global_of_ne_zero st g0 need stride i
+    value hi hValue
 
 theorem flatWordsDisjoint_of_fixedArrayRegions
     {aPtr aCapacity bPtr bCapacity : UInt64} {aWords bWords : Nat}
@@ -218,17 +217,16 @@ theorem fixedArrayAllocBumpStore_global0
     (st : Store Unit) (g0 need stride : UInt64)
     (hg0 : st.globals.globals[0]? = some (.i64 g0)) :
     (BookAllocBump.fixedArrayAllocBumpStore st g0 need stride).globals.globals[0]? =
-      some (.i64 (g0 + 48 + need)) := by
-  have hLength : 0 < st.globals.globals.length :=
-    (List.getElem?_eq_some_iff.mp hg0).1
-  simp [BookAllocBump.fixedArrayAllocBumpStore, hLength]
+      some (.i64 (g0 + 48 + need)) :=
+  Project.Clob.fixedArrayAllocBumpStore_global0 st g0 need stride (.i64 g0) hg0
 
 theorem fixedArrayAllocBumpStore_global1
     (st : Store Unit) (g0 need stride head : UInt64)
     (hg1 : st.globals.globals[1]? = some (.i64 head)) :
     (BookAllocBump.fixedArrayAllocBumpStore st g0 need stride).globals.globals[1]? =
-      some (.i64 head) := by
-  simp [BookAllocBump.fixedArrayAllocBumpStore, hg1]
+      some (.i64 head) :=
+  Project.Clob.fixedArrayAllocBumpStore_global_of_ne_zero st g0 need stride 1
+    (.i64 head) (by decide) hg1
 
 theorem freeListAt_fixedArrayAllocFitStore_after
     {before after : Store Unit} {nodes : List FreeNode}

@@ -454,7 +454,7 @@ theorem partialBranchProg_spec
         hOldTradesAlloc
     have hCurrentPages : finalStore.mem.pages = st.mem.pages := by
       exact hFinalPages.trans
-        (fixedArrayAllocBumpStore_pages st g0 bookNeed 5)
+        (AllocatorFrame.fixedArrayAllocBumpStore_pages st g0 bookNeed 5)
     have hAllocFrame : BytesEqFrom st.mem
         (PartialBookAllocBump.bookAllocBumpStore st g0 bookNeed).mem limit := by
       apply fixedArrayAllocBumpStore_bytesFrom st g0 bookNeed 5 limit hBookFit32
@@ -475,7 +475,8 @@ theorem partialBranchProg_spec
               some (.i64 g2) := by
         simp [PartialBookAllocBump.bookAllocBumpStore,
           BookAllocBump.bookAllocBumpStore,
-          BookAllocBump.fixedArrayAllocBumpStore, hg2]
+          BookAllocBump.fixedArrayAllocBumpStore,
+          Project.Clob.fixedArrayAllocBumpStore, hg2]
       have hAllocLength : 2 <
           (PartialBookAllocBump.bookAllocBumpStore st g0
             (orderArrayBytesU os.length)).globals.globals.length :=
@@ -486,12 +487,12 @@ theorem partialBranchProg_spec
       rw [hFinalGlobals]
       simp [hAllocLength]
     have hCurrentG4 : finalStore.globals.globals[4]? = some (.i64 g4) := by
-      have hAllocG4 := fixedArrayAllocBumpStore_global_of_ne_zero st g0
+      have hAllocG4 := AllocatorFrame.fixedArrayAllocBumpStore_global_of_ne_zero st g0
         bookNeed 5 4 (.i64 g4) (by decide) hg4
       rw [hFinalGlobals]
       simpa [List.getElem?_set] using hAllocG4
     have hCurrentG5 : finalStore.globals.globals[5]? = some (.i64 g5) := by
-      have hAllocG5 := fixedArrayAllocBumpStore_global_of_ne_zero st g0
+      have hAllocG5 := AllocatorFrame.fixedArrayAllocBumpStore_global_of_ne_zero st g0
         bookNeed 5 5 (.i64 g5) (by decide) hg5
       rw [hFinalGlobals]
       simpa [List.getElem?_set] using hAllocG5

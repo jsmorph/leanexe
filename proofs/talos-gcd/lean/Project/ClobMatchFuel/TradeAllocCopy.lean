@@ -270,7 +270,8 @@ theorem tradeAllocCopyProg_spec
           (tradeArrayBytesU (ts.length + 1))).globals.globals[2]? =
             some (.i64 g2) := by
       simp [TradeAllocBump.tradeAllocBumpStore,
-        BookAllocBump.fixedArrayAllocBumpStore, hg2]
+        BookAllocBump.fixedArrayAllocBumpStore,
+        Project.Clob.fixedArrayAllocBumpStore, hg2]
     apply TradeAppendCopy.tradeCopyProg_spec env
       (TradeAllocBump.tradeAllocBumpStore st g0
         (tradeArrayBytesU (ts.length + 1))) allocBase (g0 + 48) source g2

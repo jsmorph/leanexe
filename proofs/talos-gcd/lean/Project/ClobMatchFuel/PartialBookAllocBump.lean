@@ -266,6 +266,7 @@ theorem bookAllocBumpProg_spec
   rw [hFinalFrame]
   simpa only [bookAllocBumpStore, BookAllocBump.bookAllocBumpStore,
     BookAllocBump.fixedArrayAllocBumpStore, fixedArrayHeaderMem,
+    Project.Clob.fixedArrayAllocBumpStore,
     toUInt32_eq_ofNat, hsub48, hsub40, hsub32, hsub24, hsub16, hsub8]
     using hNext
 

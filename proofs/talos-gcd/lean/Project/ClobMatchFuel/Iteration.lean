@@ -252,7 +252,9 @@ theorem fullBranchProg_spec
   rw [hLengthSub, hPrefixEq, hSuffixErasedEq]
   refine wp.imp hDone ?_
   intro c hc
-  unfold BranchPost.doubleResultIffPost BranchPost.oneResultIffPost at hc
+  unfold BranchPost.doubleResultIffPost at hc
+  unfold Project.BranchPost.doubleResultIffPost
+    Project.BranchPost.oneResultIffPost at hc
   cases c <;> try exact hc
   case Break k _ _ =>
     cases k with

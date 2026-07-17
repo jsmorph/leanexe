@@ -119,6 +119,7 @@ This phase is numbered for accountability but runs during Phases 3 and 4 when th
 - [x] Generalize flat order-word reads and reconstruction of `OrdersAt` after cancel and `postOnly` established the repeated representation.
 - [ ] Generalize copy-loop and fresh-array postconditions used by `eraseIdx!`, `push`, and later matching updates.
 - [x] Divide the successful `postOnly` branch into separately compiled first-allocation, copy, order-store, and trade-allocation theorems before another append build.
+- [x] Generalize one-result branch continuations before a third matcher artifact repeats them.
 - [ ] Extend `release_frees_tree` to array-kind nodes, then to shared interior nodes and aliased shared leaves.
 - [ ] Reprove `pair_free` and `box_free` as applications of the general teardown library and remove duplicated walk proofs.
 - [ ] Add normalizing lemmas or tactics only for address and invariant forms that recur across artifact modules.
@@ -128,6 +129,8 @@ This phase is numbered for accountability but runs during Phases 3 and 4 when th
 `OrderL.word`, `orderWord`, `OrdersAt.orderWord_eq`, and `OrdersAt.ofFlatWords` state the shared relation between flat five-word copies and structured orders.  The cancel proof supplies one indexed field equality for each prefix or suffix branch, while `AppendOrderFinish` reconstructs the appended book from the completed flat prefix and five final stores.  No new tactic is justified while `omega`, `simp`, and `read_frames` discharge the remaining address and read-over-write obligations.
 
 `FixedArrayAllocation` now supplies the shared bump-store transformation and its page, global, and fresh-header facts, together with the recurring bump-root, header-offset, top-minus-one, required-page, memory-size, and no-growth normalizations.  Earlier allocation proofs repeated these calculations for each generated scratch-local layout.  The old `ClobMatchFuel` store name remains an abbreviation, while the Limit proof can depend on the common operation and retain small numeric-layout instruction adapters.
+
+`Project.BranchPost` parameterizes the one-result and nested-result continuation rules by a WASM module.  The completed `matchFuel` proof retains its qualified names through compatibility specializations, while Limit and later artifacts can use the shared definitions directly.  A source rebuild also replaced stale matcher simplifications of the moved bump-store definition with named shared facts or explicit common-definition reductions.
 
 The successful append theorem now contains 229 lines and composes separately compiled allocation, copy, order-finalization, and trade-allocation theorems.  Focused warning-failing builds complete the copy phase in 2.3 seconds, the first allocation in 6.3 seconds, order finalization in 9.4 seconds, the trade phase in 1.7 seconds, and the composed theorem in 14 seconds.  The aggregate `Project.ClobPostOnly.Spec` build also passes after rebuilding the invalid and crossing branches.
 
