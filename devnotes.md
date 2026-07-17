@@ -5196,3 +5196,11 @@ The constrained generator completed in 7.0 seconds, the focused source-model bui
 ## 2026-07-15: Prove the Invalid `limit` Branch
 
 `ClobLimit.Invalid.limit_invalid` proves the exported invalid-order branch for every represented input book under an empty free list and a bounded bump allocation.  The theorem returns the borrowed book and a fresh empty trade array, fixes the heap-top and allocation-counter changes, preserves the page count, and frames every byte below the old heap top.  `ClobLimit.Allocation` isolates the two generated status helpers and the shared fixed-array allocation theorem supplies the empty trade-array header; the warning-failing invalid target completed in 18 seconds under the repository resource limits.
+
+## 2026-07-15: Transport the Embedded Search Region
+
+`Project.FunctionRegion` defines a portable subset of the interpreter syntax and a finite function-region renaming relation.  Its semantic theorem proves exact `run` equality at every fuel and transports `TerminatesWith` specifications between modules.  The proof uses the interpreter's `execOne.eq_def` and `execOne_loop_succ` lemmas, which reduce the one-instruction build from repeated multi-minute elaboration to less than one second.
+
+`ClobLimit.SearchRegion.searchShift` certifies the exact six-function mapping from matching functions 2, 5, 6, 7, 8, and 9 to limit functions 8, 10, 11, 12, 13, and 14.  `prove_portable` constructs the closed-syntax certificate while the artifact module discharges its finite call-domain facts.  The Limit loop and wrapper now inherit the owner-aware source specifications without a copied weakest-precondition proof.
+
+Warning-failing constrained builds completed `Project.FunctionRegion.NoTail` in 3.2 seconds, `Project.FunctionRegion.Exec` in 0.40 seconds, and the six-function certificate in 4.3 seconds.  The transported `Project.ClobLimit.FindBest` and `FindBestWrapper` targets completed in 1.9 and 1.5 seconds.  Every Lean and Lake invocation ran serially under the repository cgroup, CPU, scheduler, I/O-priority, and timeout limits.
