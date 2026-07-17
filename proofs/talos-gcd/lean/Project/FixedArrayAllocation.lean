@@ -22,6 +22,13 @@ def fixedArrayHeaderMem (mem : Mem) (base capacity stride : UInt64) : Mem :=
     (UInt32.ofNat ((base.toNat + 32) % 4294967296)) stride).write64
     (UInt32.ofNat ((base.toNat + 40) % 4294967296)) 0
 
+def fixedArrayAllocBumpStore (st : Store Unit) (base capacity stride : UInt64) :
+    Store Unit :=
+  { st with
+    globals := { globals :=
+      st.globals.globals.set 0 (.i64 (base + 48 + capacity)) }
+    mem := fixedArrayHeaderMem st.mem base capacity stride }
+
 def fixedArrayMem (mem : Mem) (base capacity stride length : UInt64) : Mem :=
   (fixedArrayHeaderMem mem base capacity stride).write64
     (UInt32.ofNat ((base.toNat + 48) % 4294967296)) length
@@ -66,6 +73,38 @@ theorem fixedArrayHeaderMem_spec (st : Store Unit)
   simp only [toUInt32_eq_ofNat, hsub48, hsub40, hsub32, hsub24,
     hsub16, hsub8]
   refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩ <;> read_frames
+
+theorem fixedArrayAllocBumpStore_spec (st : Store Unit)
+    (base capacity stride : UInt64)
+    (hCapacity : 8 ≤ capacity.toNat)
+    (hFit32 : base.toNat + 48 + capacity.toNat < 4294967296) :
+    FreshFixedArrayAt (fixedArrayAllocBumpStore st base capacity stride)
+      (base + 48) capacity stride := by
+  have hHeader := fixedArrayHeaderMem_spec st base capacity stride (by omega)
+  unfold FreshFixedArrayAt at hHeader ⊢
+  simpa only [fixedArrayAllocBumpStore] using hHeader
+
+theorem fixedArrayAllocBumpStore_pages (st : Store Unit)
+    (base capacity stride : UInt64) :
+    (fixedArrayAllocBumpStore st base capacity stride).mem.pages =
+      st.mem.pages := by
+  simp [fixedArrayAllocBumpStore, fixedArrayHeaderMem, Mem.write64_pages]
+
+theorem fixedArrayAllocBumpStore_global0 (st : Store Unit)
+    (base capacity stride : UInt64) (value : Value)
+    (hGlobal0 : st.globals.globals[0]? = some value) :
+    (fixedArrayAllocBumpStore st base capacity stride).globals.globals[0]? =
+      some (.i64 (base + 48 + capacity)) := by
+  have hLength := (List.getElem?_eq_some_iff.mp hGlobal0).1
+  simp [fixedArrayAllocBumpStore, hLength]
+
+theorem fixedArrayAllocBumpStore_global_of_ne_zero (st : Store Unit)
+    (base capacity stride : UInt64) (i : Nat) (value : Value)
+    (hi : i ≠ 0) (hValue : st.globals.globals[i]? = some value) :
+    (fixedArrayAllocBumpStore st base capacity stride).globals.globals[i]? =
+      some value := by
+  have hi' : 0 ≠ i := Ne.symm hi
+  simp [fixedArrayAllocBumpStore, hi', hValue]
 
 theorem emptyFixedArrayMem_spec (st : Store Unit) (base capacity stride : UInt64)
     (hFit32 : base.toNat + 56 < 4294967296) :

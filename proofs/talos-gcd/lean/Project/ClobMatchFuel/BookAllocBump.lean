@@ -106,12 +106,7 @@ def bookAllocBumpProg : Wasm.Program :=
   ] []
 ]
 
-def fixedArrayAllocBumpStore (st : Store Unit) (g0 need stride : UInt64) :
-    Store Unit :=
-  { st with
-    globals := { globals :=
-      (st.globals.globals.set 0 (.i64 (g0 + 48 + need))) }
-    mem := fixedArrayHeaderMem st.mem g0 need stride }
+abbrev fixedArrayAllocBumpStore := Project.Clob.fixedArrayAllocBumpStore
 
 abbrev bookAllocBumpStore (st : Store Unit) (g0 need : UInt64) :
     Store Unit :=
@@ -272,7 +267,7 @@ theorem bookAllocBumpProg_spec
     · simp [List.getElem?_set, h72, h71, h70]
   rw [hFinalFrame]
   simpa only [bookAllocBumpStore, fixedArrayAllocBumpStore,
-    fixedArrayHeaderMem,
+    Project.Clob.fixedArrayAllocBumpStore, fixedArrayHeaderMem,
     toUInt32_eq_ofNat, hsub48, hsub40, hsub32, hsub24, hsub16, hsub8]
     using hNext
 
@@ -303,9 +298,8 @@ theorem freshFixedArrayAt_fixedArrayAllocBumpStore
     (hFit32 : g0.toNat + 48 + need.toNat < 4294967296) :
     FreshFixedArrayAt (fixedArrayAllocBumpStore st g0 need stride)
       (g0 + 48) need stride := by
-  have hHeader := fixedArrayHeaderMem_spec st g0 need stride (by omega)
-  unfold FreshFixedArrayAt at hHeader ⊢
-  simpa only [fixedArrayAllocBumpStore] using hHeader
+  exact Project.Clob.fixedArrayAllocBumpStore_spec st g0 need stride hNeed8
+    hFit32
 
 theorem freshOrderArrayAt_bookAllocBumpStore
     (st : Store Unit) (g0 need : UInt64)
@@ -387,7 +381,8 @@ theorem freeListAt_fixedArrayAllocBumpStore
   have hsub8 : (g0 + 48 - 8).toNat = g0.toNat + 40 := by
     rw [hsub 8 (by decide)]
     rfl
-  simpa only [fixedArrayAllocBumpStore, fixedArrayHeaderMem, fresh,
+  simpa only [fixedArrayAllocBumpStore,
+    Project.Clob.fixedArrayAllocBumpStore, fixedArrayHeaderMem, fresh,
     toUInt32_eq_ofNat, hsub48, hsub40, hsub32, hsub24, hsub16, hsub8]
     using h6
 
