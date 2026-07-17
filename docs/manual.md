@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This manual explains how to write Lean source code that LeanExe can compile to WASM.  The [Language Specification](spec.md) defines the accepted language, ABI, and semantics.  [Developing LeanExe](DEVELOPING.md) covers repository setup, compiler development, test gates, proof artifacts, and tool failures.
+This manual explains how to write Lean source code that LeanExe can compile to WASM.  The [Language Specification](spec.md) defines the accepted language, ABI, and semantics.  [Developing LeanExe](../DEVELOPING.md) covers repository setup, compiler development, test gates, proof artifacts, and tool failures.
 
 The main rule is simple: write concrete, first-order Lean.  Let Lean type-check the program, then let LeanExe reject anything outside its executable subset.  When a concise Lean expression compiles to a generated helper shape that LeanExe does not support, rewrite the source into one of the stable shapes shown here.
 
@@ -738,9 +738,9 @@ Use `dump-ir` after `report` accepts an entry when evaluation order, lowered con
   --entry LeanExe.Examples.MyProgram.entry
 ```
 
-Tool and build failures have different remedies from source rejections.  A missing checked declaration usually means its module has not been built, while missing Wasmtime, the C host, or `wasm-tools` indicates an incomplete developer setup.  The troubleshooting table in [Developing LeanExe](DEVELOPING.md) covers those failures, proof artifact mismatches, verifier setup, and cold proof builds.
+Tool and build failures have different remedies from source rejections.  A missing checked declaration usually means its module has not been built, while missing Wasmtime, the C host, or `wasm-tools` indicates an incomplete developer setup.  The troubleshooting table in [Developing LeanExe](../DEVELOPING.md) covers those failures, proof artifact mismatches, verifier setup, and cold proof builds.
 
-A failed `lean-wasm` command writes its diagnostic to stderr with a `lean-wasm: <category>:` prefix and command context.  Status `2` identifies command use or invalid bounds, status `3` identifies source or project input that cannot compile, status `4` identifies an I/O failure, and status `5` identifies an internal inconsistency.  The [CLI Failure Interface](DEVELOPING.md#cli-failure-interface) defines the complete format and test requirements.
+A failed `lean-wasm` command writes its diagnostic to stderr with a `lean-wasm: <category>:` prefix and command context.  Status `2` identifies command use or invalid bounds, status `3` identifies source or project input that cannot compile, status `4` identifies an I/O failure, and status `5` identifies an internal inconsistency.  The [CLI Failure Interface](../DEVELOPING.md#cli-failure-interface) defines the complete format and test requirements.
 
 Common rejections and source fixes:
 
@@ -833,17 +833,17 @@ Use existing examples as templates:
 
 | Need | Example |
 |------|---------|
-| Scalar arithmetic | [Collatz Example](LeanExe/Examples/Collatz.lean), [Prime Example](LeanExe/Examples/Prime.lean) |
-| Compile-time strings and byte arrays | [ByteArray Programs](LeanExe/Examples/ByteArrayPrograms.lean) |
-| ASCII validation and text processing | [ASCII String Programs](LeanExe/Examples/AsciiStringPrograms.lean) |
-| Open-addressed table structure | [Integer Map Example](LeanExe/Examples/IntMap.lean) |
-| Range-based JSON field lookup | [JSON Double Example](LeanExe/Examples/JsonDouble.lean), [JSON Add Example](LeanExe/Examples/JsonAdd.lean) |
-| Typed JSON AST decoding | [JSON Typed Decode Example](LeanExe/Examples/JsonTypedDecode.lean), [JSON Object Array Decode Example](LeanExe/Examples/JsonObjectArrayDecode.lean) |
-| JSON AST parsing and rendering | [JSON Tree Command](LeanExe/Examples/JsonTreeCommand.lean) |
-| WASI stdin `Except` command | [JSON GCD Example](LeanExe/Examples/JsonGcd.lean) |
+| Scalar arithmetic | [Collatz Example](../LeanExe/Examples/Collatz.lean), [Prime Example](../LeanExe/Examples/Prime.lean) |
+| Compile-time strings and byte arrays | [ByteArray Programs](../LeanExe/Examples/ByteArrayPrograms.lean) |
+| ASCII validation and text processing | [ASCII String Programs](../LeanExe/Examples/AsciiStringPrograms.lean) |
+| Open-addressed table structure | [Integer Map Example](../LeanExe/Examples/IntMap.lean) |
+| Range-based JSON field lookup | [JSON Double Example](../LeanExe/Examples/JsonDouble.lean), [JSON Add Example](../LeanExe/Examples/JsonAdd.lean) |
+| Typed JSON AST decoding | [JSON Typed Decode Example](../LeanExe/Examples/JsonTypedDecode.lean), [JSON Object Array Decode Example](../LeanExe/Examples/JsonObjectArrayDecode.lean) |
+| JSON AST parsing and rendering | [JSON Tree Command](../LeanExe/Examples/JsonTreeCommand.lean) |
+| WASI stdin `Except` command | [JSON GCD Example](../LeanExe/Examples/JsonGcd.lean) |
 | End-to-end WASI pipeline | [JSON Tree WASI Demo](demo.md) |
-| Source-level release and GC counters | [Correctness Examples](LeanExe/Examples/Correctness.lean), [ByteArray Programs](LeanExe/Examples/ByteArrayPrograms.lean) |
-| Deferred ownership analysis | [JSON Merge Tree Command](LeanExe/Examples/JsonMergeTreeCommand.lean), [JSON GC Tree Rewrite Example](LeanExe/Examples/JsonGcTreeRewrite.lean) |
-| Broad compiler fixtures | [Correctness Examples](LeanExe/Examples/Correctness.lean) |
+| Source-level release and GC counters | [Correctness Examples](../LeanExe/Examples/Correctness.lean), [ByteArray Programs](../LeanExe/Examples/ByteArrayPrograms.lean) |
+| Deferred ownership analysis | [JSON Merge Tree Command](../LeanExe/Examples/JsonMergeTreeCommand.lean), [JSON GC Tree Rewrite Example](../LeanExe/Examples/JsonGcTreeRewrite.lean) |
+| Broad compiler fixtures | [Correctness Examples](../LeanExe/Examples/Correctness.lean) |
 
 The examples are executable tests as well as documentation.  If a new source pattern matters, add a small example and run the test harness.  The safest authoring practice is to make each new feature compile in isolation before combining it with JSON, WASI, recursive data, or structured accumulators.

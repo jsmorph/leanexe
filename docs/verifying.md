@@ -4,11 +4,11 @@ This guide covers a new verified program: a Lean function, its compiled WASM art
 
 The pipeline has three trusted-base components: the Lean kernel, the Talos WASM model, and the Talos decoder.  The compiler is not trusted.  Each verified program is translation validation: the theorem is about the decoded instruction stream, and a byte comparison pins that stream to the artifact the compiler ships.
 
-Complete the proof-workspace setup in [Developing LeanExe](DEVELOPING.md) before adding a case.  The compiler and proof workspaces use Lean 4.31.0, while the proof workspace adds pinned Talos dependencies.  `tools/setup-talos.sh` owns the potentially large build, and an artifact update also requires the separately built Talos verifier emitter.
+Complete the proof-workspace setup in [Developing LeanExe](../DEVELOPING.md) before adding a case.  The compiler and proof workspaces use Lean 4.31.0, while the proof workspace adds pinned Talos dependencies.  `tools/setup-talos.sh` owns the potentially large build, and an artifact update also requires the separately built Talos verifier emitter.
 
 ## 1. Write the Function
 
-Write an ordinary Lean definition inside the accepted subset ([Language Specification](spec.md), [LeanExe User Manual](manual.md)).  The example lives in [`LeanExe/Examples/ByteArrayPrograms.lean`](LeanExe/Examples/ByteArrayPrograms.lean):
+Write an ordinary Lean definition inside the accepted subset ([Language Specification](spec.md), [LeanExe User Manual](manual.md)).  The example lives in [`LeanExe/Examples/ByteArrayPrograms.lean`](../LeanExe/Examples/ByteArrayPrograms.lean):
 
 ```lean
 def foldSum (input : ByteArray) : Nat :=
@@ -36,7 +36,7 @@ Update mode compiles the entry, checks in the WASM and WAT under `proofs/talos-g
 
 ## 3. Pin the Runtime
 
-Every generated module ends with the shared runtime suite: allocate, reset, retain, and release, in that order, after the user functions.  Add four `rfl` examples to [`lean/Project/Runtime/Checks.lean`](proofs/talos-gcd/lean/Project/Runtime/Checks.lean) identifying the new module's runtime functions with the shared definitions:
+Every generated module ends with the shared runtime suite: allocate, reset, retain, and release, in that order, after the user functions.  Add four `rfl` examples to [`lean/Project/Runtime/Checks.lean`](../proofs/talos-gcd/lean/Project/Runtime/Checks.lean) identifying the new module's runtime functions with the shared definitions:
 
 ```lean
 example : Project.FoldSum.func1Def = allocFuncDef := rfl
@@ -73,9 +73,9 @@ The pieces: `BytesAt` states what the host wrote into linear memory at the input
 
 The proof enters through `TerminatesWith.of_wp_entry_for`, changes to a `wp` goal over the entry's instruction stream, and steps with `wp_run` plus branch rewrites.  The shared machinery carries the weight:
 
-- **Runtime behavior** comes from [`Runtime/Spec.lean`](proofs/talos-gcd/lean/Project/Runtime/Spec.lean): `retain_spec`, `release_null`, `release_decrements`, and `release_frees_fresh_raw`, each generic over the module and consumed through `wp_call_tw` with the lookup hypothesis discharged by `rfl`.
-- **Recursive teardown** comes from `release_frees_tree` in [`Runtime/TreeSpec.lean`](proofs/talos-gcd/lean/Project/Runtime/TreeSpec.lean): exhibit the ownership tree with `TreeAt`, its footprint disjointness, and a page bound, and the theorem returns the exact memory, free list, and counters after the recursive release.
-- **Memory reads over write chains** close with the `read_frames` tactic from [`Common.lean`](proofs/talos-gcd/lean/Project/Common.lean); address normal forms bridge with `toNat_sub_le`, `toUInt32_toNat`, and the other `Common` lemmas, all `omega`-friendly.
+- **Runtime behavior** comes from [`Runtime/Spec.lean`](../proofs/talos-gcd/lean/Project/Runtime/Spec.lean): `retain_spec`, `release_null`, `release_decrements`, and `release_frees_fresh_raw`, each generic over the module and consumed through `wp_call_tw` with the lookup hypothesis discharged by `rfl`.
+- **Recursive teardown** comes from `release_frees_tree` in [`Runtime/TreeSpec.lean`](../proofs/talos-gcd/lean/Project/Runtime/TreeSpec.lean): exhibit the ownership tree with `TreeAt`, its footprint disjointness, and a page bound, and the theorem returns the exact memory, free list, and counters after the recursive release.
+- **Memory reads over write chains** close with the `read_frames` tactic from [`Common.lean`](../proofs/talos-gcd/lean/Project/Common.lean); address normal forms bridge with `toNat_sub_le`, `toUInt32_toNat`, and the other `Common` lemmas, all `omega`-friendly.
 - **Loops** use `wp_loop_cons` with an invariant and a measure.  An input-consuming loop's invariant relates the accumulator to the source function on the consumed prefix; `fold_sum`'s invariant carries `List.foldl` over `bytes.take k`, with two ordinary list lemmas connecting the prefix to the whole.
 
 Iterate against the goal states: put `trace_state` before an unfinished step, build, read the goal, write the step.  Keep elaboration cheap: prefer `rw` with equation lemmas over `simp` on large terms, evaluate `UInt64` literal `toNat`s with `show ... from rfl` before `omega`, and if a single theorem's elaboration grows past memory, cut it at a `wp` boundary into a helper theorem over an explicit instruction suffix (see `BoxFree/Spec.lean` for the pattern, including composing across the cut with `wp.imp`).
