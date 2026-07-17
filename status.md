@@ -99,7 +99,7 @@ The first proof attempt treated the forty-four-instruction preparation as one si
 
 ### Remaining Depth Work
 
-The missing branch is complete under its stated allocator and memory premises.  The found branch requires same-length allocation, copying, and replacement of the first matching quantity, with exact ownership, allocator counters, page preservation, and source frames.  The found proof should reuse the level flat-word API and disjoint-write theorem while adding only the target-length and indexed-replacement facts that differ from append.
+The missing branch is complete under its stated allocator and memory premises.  The found branch requires same-length allocation, copying, and replacement of the first matching quantity, with exact ownership, allocator counters, page preservation, and source frames.  The found proof can reuse `LevelCopyInvariant.CopyState.advance`, the level flat-word API, and disjoint-write preservation while adding only its generated-local adapter and indexed-replacement facts.
 
 Function 6 then needs a loop invariant for the per-side aggregation.  The invariant must relate the consumed order prefix to the source side filter, the first-occurrence price sequence, the represented level array, and the accumulated modular quantities.  Function 7 must compose the two side folds, return both owned arrays in the export ABI, and preserve the input book and allocator facts across both calls.
 
