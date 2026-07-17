@@ -1,5 +1,6 @@
 import Project.ClobLimit.InternalFullTradeFinish
 import Project.ClobLimit.InternalPartialTradeUpdate
+import Project.ClobLimit.InternalIteration
 
 /-!
 # Complete full-trade update
@@ -37,7 +38,8 @@ def FullTradeResultAt (s : Locals) (fuel : UInt64) (taker : OrderL)
   s.get 37 = some (.i64 book) ∧
   s.get 38 = some (.i64 trades) ∧
   s.get 39 = some (.i64 trades) ∧
-  s.get 40 = some (.i64 remaining)
+  s.get 40 = some (.i64 remaining) ∧
+  InternalIteration.AllocScratchAt s
 
 set_option Elab.async false in
 theorem fullTradeUpdateProg_spec
@@ -245,7 +247,7 @@ theorem fullTradeUpdateProg_spec
           partialTradeAllocFrame, InternalTradeBump.allocFrame,
           fullTradePrepareFrame, Locals.get, hParams, hLocals, hFuelElem,
           hCarryOidElem, hCarryTraderElem, hCarrySideElem, hCarryPriceElem,
-          hCarryQtyElem]
+          hCarryQtyElem, InternalIteration.AllocScratchAt]
       · exact hOldBookFinal
       · exact hNewBookFinal
       · exact hOldTradesFinal

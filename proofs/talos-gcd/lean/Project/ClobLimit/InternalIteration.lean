@@ -59,6 +59,13 @@ def CompletedResultAt (base : Locals) (bookOwner book tradesOwner trades
   base.locals[5]? = some (.i64 1) ∧
   base.params.length = 11 ∧ base.locals.length = 64 ∧ base.values = []
 
+def AllocScratchAt (s : Locals) : Prop :=
+  ∃ bookCapacity bookNext tradeNext partialNext : UInt64,
+    s.locals[58]? = some (.i64 bookCapacity) ∧
+    s.locals[59]? = some (.i64 bookNext) ∧
+    s.locals[61]? = some (.i64 tradeNext) ∧
+    s.locals[62]? = some (.i64 partialNext)
+
 def searchLocals (base : Locals) (bookOwner book : UInt64)
     (taker : OrderL) (result : Option Nat) : List Value :=
   let locals := base.locals.set 6 (.i64 bookOwner)

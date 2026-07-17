@@ -106,6 +106,8 @@ running state.  Source-progress theorems normalize stopped, partial-fill, and
 full-fill outcomes against the residual list model and its allocation counter.
 Completed-state constructors establish the invariant after stopped and
 partial-fill outcomes while retaining exact memory and allocator facts.
+The full-fill result and recursive transition also retain the four typed
+allocator scratch locals required by the next iteration.
 The proof remains outside `Project.lean` until the exported theorem is complete.
 -/
 
