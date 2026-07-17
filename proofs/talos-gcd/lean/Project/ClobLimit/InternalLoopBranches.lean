@@ -199,7 +199,12 @@ theorem partial_spec (env : HostEnv Unit) (ctx : Context) (st : Store Unit)
         tradeArrayBytesU (data.tradeValues.length + 1))
       hResult hNewBookOwned hNewTradesOwned hNewBook48 hNewBook32
       hNewBookCapacity hNewBookBelow hNewTrades48 hNewTrades32
-      hNewTradesCapacity hNewTradesBelow hPages hG0 hG1 hG2 hHeapLimit hBelow
+      hNewTradesCapacity hNewTradesBelow hPages hG0 hG1 hG2 hHeapLimit
+      (by
+        rw [bounds.partialTradeTopAfterBook, bounds.partialBookTop,
+          hBookNeed, hTradeNeed]
+        omega)
+      hBelow
     apply hDone st1 s1 hCompleted
     rw [measure_completed hCompleted, measure_running facts]
     omega

@@ -57,6 +57,11 @@ import Project.ClobLimit.LimitResidualAllocCopy
 import Project.ClobLimit.LimitResidualFinishFacts
 import Project.ClobLimit.LimitResidualFinish
 import Project.ClobLimit.LimitResidualBook
+import Project.ClobLimit.LimitResidualResult
+import Project.ClobLimit.LimitResidualBranch
+import Project.ClobLimit.LimitResult
+import Project.ClobLimit.LimitResidualExport
+import Project.ClobLimit.LimitResidual
 import Project.ClobLimit.LimitFilled
 import Project.ClobLimit.InternalTradeBump
 import Project.ClobLimit.InternalPartialBookPrepare
@@ -181,8 +186,13 @@ prepare the appended order without normalizing the complete 53-local frame.
 The allocator prefix computes the aligned stride-five capacity and initializes
 the empty free-list search facts in another projection predicate.
 The internal matcher result retains its final heap bound and the page, address,
-and memory limits needed by the residual allocator.
-The proof remains outside `Project.lean` until the exported theorem is complete.
+and memory limits needed by the residual allocator.  Its output also retains
+heap monotonicity, which connects the matcher and exported memory frames.
+The complete valid residual theorem returns the exact appended source book and
+matcher trades with both arrays owned, exact allocator globals, unchanged
+pages, and bytes below the caller's heap top preserved.  The invalid, filled,
+and residual branches remain to be combined before adding this artifact to
+`Project.lean`.
 -/
 
 end Project.ClobLimit
