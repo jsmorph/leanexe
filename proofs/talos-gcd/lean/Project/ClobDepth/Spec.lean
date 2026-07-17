@@ -1,3 +1,4 @@
+import Project.ClobDepth.Entry
 import Project.ClobDepth.Model
 import Project.ClobDepth.Properties
 import Project.ClobDepth.Program
