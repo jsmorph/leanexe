@@ -10,6 +10,7 @@ import Project.AssocList.Program
 import Project.BoxFree.Program
 import Project.ClobCancel.Program
 import Project.ClobFindBest.Program
+import Project.ClobLimit.Program
 import Project.ClobMatchFuel.Program
 import Project.ClobPostOnly.Program
 import Project.ClobQuote.Program
@@ -99,6 +100,11 @@ example : Project.ClobFindBest.func9Def = allocFuncDef := rfl
 example : Project.ClobFindBest.func10Def = resetFuncDef := rfl
 example : Project.ClobFindBest.func11Def = retainFuncDef := rfl
 example : Project.ClobFindBest.func12Def = releaseFuncDef 12 := rfl
+
+example : Project.ClobLimit.func22Def = allocFuncDef := rfl
+example : Project.ClobLimit.func23Def = resetFuncDef := rfl
+example : Project.ClobLimit.func24Def = retainFuncDef := rfl
+example : Project.ClobLimit.func25Def = releaseFuncDef 25 := rfl
 
 example : Project.ClobMatchFuel.func15Def = allocFuncDef := rfl
 example : Project.ClobMatchFuel.func16Def = resetFuncDef := rfl
