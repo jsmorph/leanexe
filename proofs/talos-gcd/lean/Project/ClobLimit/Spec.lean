@@ -14,6 +14,7 @@ import Project.ClobLimit.InternalPartialBookAllocPrepare
 import Project.ClobLimit.InternalPartialBookAlloc
 import Project.ClobLimit.InternalPartialBookCopy
 import Project.ClobLimit.InternalPartialBookFinish
+import Project.ClobLimit.InternalPartialBookUpdate
 
 /-!
 # Specification for `clob_limit`
@@ -37,7 +38,9 @@ aligned capacity and initializes its free-list scan, and the empty-list
 composition returns the exact bump store and result frame.  This module
 also proves the replacement-book length initialization and complete payload
 copy, followed by the five maker-field stores and returned replacement pointer.
-It remains outside `Project.lean` until the exported theorem is complete.
+Their composition retains ownership of the source and replacement books and
+the allocator memory frame.  It remains outside `Project.lean` until the
+exported theorem is complete.
 -/
 
 end Project.ClobLimit
