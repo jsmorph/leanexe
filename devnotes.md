@@ -5688,3 +5688,9 @@ The semantic transition, control theorem, allocator facts, initializer, and allo
 `LimitResidualCopyInvariant.CopyInvariant.at_end` recovers the completed semantic state from the existential loop invariant and exact counter frame.  `LimitResidualFinish.residualFinishProg_spec` executes every guarded store and assigns status zero, the new book pointer, and the unchanged trades pointer.  The continuation receives both the owned appended book and an exact 53-local result frame.
 
 The explicit residual-program decomposition, semantic finalization, completed-invariant eliminator, and final instruction theorem pass focused warning-failing builds in 1.7, 2.4, 1.5, and 3.4 seconds under the repository resource limits.  Both finalization theorems pass at the default heartbeat limit.  The next boundary completes the input-generic residual branch and composes the exported function.
+
+## 2026-07-16: Compose the Residual Book Program
+
+`LimitResidualBounds.Facts` collects the normalized allocation size, copy count, target address, page fit, and source separation used by allocation, copying, and finalization.  Its derivation passed a focused warning-failing build in 3.2 seconds, and the existing allocation-copy theorem now consumes those shared facts.  This removes a duplicate arithmetic proof from the next composition boundary.
+
+`LimitResidualBook.residualBookProg_spec` composes allocation, flat-word copying, five appended-order stores, and result-local assignments.  Its continuation receives the represented appended book and the exact status, book, and trades locals.  The focused warning-failing build passed in 1.2 seconds under the repository resource limits.
