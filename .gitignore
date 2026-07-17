@@ -3,6 +3,8 @@
 **/.lake/
 /build/
 /LeanExe/StandardCompare/
+/proofs/talos/.generated/
+/proofs/talos/lean/Project/*/Program.lean
 *.olean
 *.ilean
 *.olean.hash
