@@ -384,7 +384,38 @@ def missingCopyProg : Wasm.Program :=
   [.block 0 0 [.loop 0 0 missingCopyBodyProg]]
 
 def missingStoreProg : Wasm.Program :=
-  missingProg.drop 62
+  [
+  .localGet 18,
+  .localGet 15,
+  .constI64 2,
+  .mulI64,
+  .constI64 1,
+  .addI64,
+  .constI64 8,
+  .mulI64,
+  .addI64,
+  .wrapI64,
+  .localGet 20,
+  .store64 0,
+  .localGet 18,
+  .localGet 15,
+  .constI64 2,
+  .mulI64,
+  .constI64 2,
+  .addI64,
+  .constI64 8,
+  .mulI64,
+  .addI64,
+  .wrapI64,
+  .localGet 21,
+  .store64 0,
+  .localGet 18,
+  .localSet 8,
+  .localGet 8,
+  .localSet 12,
+  .localGet 8,
+  .localSet 13
+]
 
 set_option maxRecDepth 1048576 in
 theorem missingProg_decomposition :
