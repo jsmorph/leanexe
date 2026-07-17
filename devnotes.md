@@ -5204,3 +5204,9 @@ The constrained generator completed in 7.0 seconds, the focused source-model bui
 `ClobLimit.SearchRegion.searchShift` certifies the exact six-function mapping from matching functions 2, 5, 6, 7, 8, and 9 to limit functions 8, 10, 11, 12, 13, and 14.  `prove_portable` constructs the closed-syntax certificate while the artifact module discharges its finite call-domain facts.  The Limit loop and wrapper now inherit the owner-aware source specifications without a copied weakest-precondition proof.
 
 Warning-failing constrained builds completed `Project.FunctionRegion.NoTail` in 3.2 seconds, `Project.FunctionRegion.Exec` in 0.40 seconds, and the six-function certificate in 4.3 seconds.  The transported `Project.ClobLimit.FindBest` and `FindBestWrapper` targets completed in 1.9 and 1.5 seconds.  Every Lean and Lake invocation ran serially under the repository cgroup, CPU, scheduler, I/O-priority, and timeout limits.
+
+## 2026-07-15: Prove Internal Matcher Early Exits
+
+`ClobLimit.InternalEarlyExit` proves exact termination of function 17 when its fuel or remaining quantity is zero.  Both theorems return the unchanged remaining quantity and both owner-and-pointer pairs in generated result order.  The complete store remains unchanged because neither path searches, allocates, writes memory, nor updates a runtime counter.
+
+The proof retains both expanded `Locals.get` hypotheses and exact raw-list facts.  The interpreter guard reductions consume the expanded getter equalities, while the epilogue calculation uses the raw parameter and local equalities.  The changed theorem and aggregate Limit specification completed warning-failing builds in 10 and 1.6 seconds under the repository resource limits.
