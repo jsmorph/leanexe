@@ -23,6 +23,7 @@ import Project.ClobLimit.InternalLoopControl
 import Project.ClobLimit.InternalLoopInvariant
 import Project.ClobLimit.InternalLoopBounds
 import Project.ClobLimit.InternalLoopProgress
+import Project.ClobLimit.InternalLoopCompletion
 import Project.ClobLimit.InternalTradeBump
 import Project.ClobLimit.InternalPartialBookPrepare
 import Project.ClobLimit.InternalPartialBookControl
@@ -103,6 +104,8 @@ running and completed states.  Its bound theorem derives every branch length,
 byte, no-wrap, page-fit, and two-allocation budget premise from one nonzero-fuel
 running state.  Source-progress theorems normalize stopped, partial-fill, and
 full-fill outcomes against the residual list model and its allocation counter.
+Completed-state constructors establish the invariant after stopped and
+partial-fill outcomes while retaining exact memory and allocator facts.
 The proof remains outside `Project.lean` until the exported theorem is complete.
 -/
 
