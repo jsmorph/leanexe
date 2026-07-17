@@ -5608,3 +5608,11 @@ The first focused run found two malformed multiline `simp only ... at` commands 
 `ClobLimit.InternalEntry.func17_decomposition` proves that the generated function body equals initialization followed by the verified loop and result epilogue.  `initialized_loop_locals` reduces the concrete `func17Def.toLocals` frame to `LoopLocalsAt` for `initialData`, including the zero-initialized allocator scratch locals.  The decomposition and frame theorem remain independent of physical memory premises.
 
 The first entry build left one existential zero-value witness after all finite-list reductions.  Supplying the `UInt64` value zero allowed the warning-failing build to pass in 1.3 seconds under the repository resource limits.  The next theorem composes these boundaries into input-generic termination and correctness for function 17.
+
+## 2026-07-16: Prove the Complete Internal Matcher
+
+`ClobLimit.InternalCorrect.InternalMatchSpec` states input-generic correctness for function 17.  Its premises cover both owner-and-pointer pairs, array capacities and ownership, initial heap and memory identities, allocator globals, pages, address bounds, and the fixed fuel budget.  Its postcondition is the common five-value `InternalLoopResult.Postcondition`.
+
+`InternalCorrect.func17_correct` composes the exact entry decomposition, completion-flag initialization, initial running invariant, terminating loop, and result epilogue.  It proves that the returned remaining quantity and represented arrays equal `ClobMatchFuel.Model.matchFuelL`, while retaining the final heap pointer, zero free-list head, allocation counter, page count, and below-initial-heap memory frame.  No physical branch or loop body is unfolded in the final theorem.
+
+The first focused build reached the final postcondition and left only the length of the named eleven-element `internalArgs` list.  Adding that definition to the final simplification allowed the warning-failing build to pass in 1.7 seconds under the repository resource limits.  Function 18, `runMatch`, is the next proof boundary before the exported Limit branches.
