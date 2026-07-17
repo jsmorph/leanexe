@@ -18,6 +18,7 @@ import Project.ClobLimit.InternalPartialBookUpdate
 import Project.ClobLimit.InternalPartialTradePrepare
 import Project.ClobLimit.InternalPartialTradeAllocPrepare
 import Project.ClobLimit.InternalPartialTradeAlloc
+import Project.ClobLimit.InternalPartialTradeCopy
 
 /-!
 # Specification for `clob_limit`
@@ -46,8 +47,9 @@ the allocator memory frame.  The following trade prefix records the replacement
 book, reads the maker trade fields, and computes the appended trade length.  It
 also computes the aligned stride-four capacity and initializes the trade
 free-list scan.  Its empty-list composition returns the exact stride-four bump
-store and result frame.  The proof remains outside `Project.lean` until the
-exported theorem is complete.
+store and result frame.  The post-allocation loop initializes the extended
+length and copies every old trade word.  The proof remains outside `Project.lean`
+until the exported theorem is complete.
 -/
 
 end Project.ClobLimit
