@@ -5272,3 +5272,11 @@ Focused warning-failing builds completed the generic branch helper in 2.2 second
 `partialBookBranchProg_spec` composes the field-read prefix with the generated one-result bounds branch.  It uses `Project.BranchPost.trueOneResultIff` at the Limit module, then passes the opaque update body the shared one-result continuation.  This establishes the control frame required to add the physical replacement-book theorem without re-elaborating the maker reads.
 
 The focused warning-failing module build completed in 2.4 seconds under the repository resource limits.  The proof imports the shared branch helper directly and adds no Limit-specific continuation copy.  Allocation, payload copy, maker replacement, and the later trade update remain open.
+
+## 2026-07-15: Prove Partial-Book Allocator Preparation
+
+`ClobLimit.InternalPartialBookAllocPrepare.partialBookAllocPrepareProg_spec` proves the generated aligned-capacity calculation and free-list scratch initialization.  The theorem identifies the capacity as `fixedArrayBytesU n 5` by using the shared rounding and natural-value lemmas in `Project.Clob`.  Its final state is the exact `InternalBookBump.allocFrame` consumed by the previously proved empty-free-list allocator.
+
+The theorem keeps the two untouched allocator scratch values as premises because the generated prefix does not initialize those locals.  The empty-list scan does not read either value, and the bump body overwrites both before returning.  Keeping them explicit preserves an exact frame without adding an artificial write to the artifact program.
+
+The focused warning-failing build completed in 3.7 seconds under the repository resource limits.  The module contains the generated 27-instruction prefix and no allocation, copy, or maker-store instructions.  The next composition will join this frame to the empty-list bump result and derive the fresh replacement-array facts required by the copy loop.
