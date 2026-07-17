@@ -34,20 +34,22 @@ def RecursiveResultAt (s : Locals) (fuel : UInt64) (taker : OrderL)
   s.get 8 = some (.i64 trades) ∧
   s.get 9 = some (.i64 trades) ∧
   s.get 10 = some (.i64 remaining) ∧
+  s.get 16 = some (.i64 0) ∧
   InternalIteration.AllocScratchAt s
 
 theorem recursiveResultAt_fullTransitionFrame
     (base : Locals) (fuel newBook newTrades remaining : UInt64)
     (taker : OrderL) (hParams : base.params.length = 11)
     (hLocals : base.locals.length = 64)
+    (hRunning : base.get 16 = some (.i64 0))
     (hScratch : InternalIteration.AllocScratchAt base) :
     RecursiveResultAt
       (fullTransitionFrame base fuel taker newBook newTrades remaining)
       fuel taker newBook newTrades remaining := by
   simp [RecursiveResultAt, fullTransitionFrame, fullTransitionParams,
     fullTransitionLocals, Locals.get, hParams, hLocals,
-    InternalIteration.AllocScratchAt] at hScratch ⊢
-  exact hScratch
+    InternalIteration.AllocScratchAt] at hRunning hScratch ⊢
+  exact ⟨hRunning, hScratch⟩
 
 set_option Elab.async false in
 theorem fullBranchProg_spec
@@ -59,6 +61,7 @@ theorem fullBranchProg_spec
     (hLocals : base.locals.length = 64)
     (hValues : base.values = [])
     (hFuel : base.get 0 = some (.i64 fuel))
+    (hRunning : base.get 16 = some (.i64 0))
     (hOid : base.get 1 = some (.i64 taker.oid))
     (hTrader : base.get 2 = some (.i64 taker.otrader))
     (hSide : base.get 3 = some (.i64 taker.oside))
@@ -145,8 +148,8 @@ theorem fullBranchProg_spec
   rw [List.append_assoc]
   apply fullBookTradeProg_spec env st base book bookCapacity oldTrades
     oldTradesCapacity fuel remaining g0 g2 capacity next tradeNext taker os ts i
-    hParams hLocals hValues hFuel hOid hTrader hSide hPrice hQty hBookLocal
-    hTradesLocal hRemainingLocal hIndexLocal hCapacityLocal hNextLocal
+    hParams hLocals hValues hFuel hRunning hOid hTrader hSide hPrice hQty
+    hBookLocal hTradesLocal hRemainingLocal hIndexLocal hCapacityLocal hNextLocal
     hTradeNextLocal hi hOrdersLength64 hErasedLength64 hOrderWords64 hBookBytes
     hBookTop hBookFit32 hBookFit hTradeLength64 hTradeBytes hTradeTotalU
     hTradeTotal64 hTradeTop hTradeFit32 hTradeFit hPages hBook48 hBook32
@@ -156,8 +159,8 @@ theorem fullBranchProg_spec
   intro st1 s hResult hBookFinal hNewBookFinal hOldTradesFinal hNewTradesFinal
     hFinalPages hFinalG0 hFinalG1 hFinalG2 hBelow
   rcases hResult with ⟨hResultParams, hResultLocals, hResultValues, hResultFuel,
-    hResultOid, hResultTrader, hResultSide, hResultPrice, hResultQty,
-    hResultBookOwner, hResultBookPointer, hResultTradesOwner,
+    hResultRunning, hResultOid, hResultTrader, hResultSide, hResultPrice,
+    hResultQty, hResultBookOwner, hResultBookPointer, hResultTradesOwner,
     hResultTradesPointer, hResultRemaining, hResultScratch⟩
   apply fullTransitionProg_spec env st1 s fuel (g0 + 48)
     (g0 + 48 + fixedArrayBytesU (os.length - 1) 5 + 48)
@@ -172,7 +175,7 @@ theorem fullBranchProg_spec
   · exact recursiveResultAt_fullTransitionFrame s fuel (g0 + 48)
       (g0 + 48 + fixedArrayBytesU (os.length - 1) 5 + 48)
       (remaining - os[i]!.oqty) taker hResultParams hResultLocals
-      hResultScratch
+      hResultRunning hResultScratch
   · exact hBookFinal
   · exact hNewBookFinal
   · exact hOldTradesFinal
