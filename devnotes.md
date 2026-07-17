@@ -2,7 +2,7 @@
 
 ## 2026-06-19: Talos Proof for Generated GCD WASM
 
-`LeanExe.Examples.TalosGcd.gcd` is a small Euclidean GCD program written in the supported Lean subset.  The LeanExe compiler emits the WASM artifact stored at `proofs/talos-gcd/rust/build/gcd/program.wasm`; `wasm-tools print` produces the WAT that Talos decodes into `Project.Gcd.Program`.  The proof in `proofs/talos-gcd/lean/Project/Gcd/Spec.lean` states that exported function `0` terminates for all `UInt64` inputs and returns `UInt64.ofNat (Nat.gcd a.toNat b.toNat)`.
+`LeanExe.Examples.TalosGcd.gcd` is a small Euclidean GCD program written in the supported Lean subset.  The LeanExe compiler emits the WASM artifact stored at `proofs/talos/rust/build/gcd/program.wasm`; `wasm-tools print` produces the WAT that Talos decodes into `Project.Gcd.Program`.  The proof in `proofs/talos/lean/Project/Gcd/Spec.lean` states that exported function `0` terminates for all `UInt64` inputs and returns `UInt64.ofNat (Nat.gcd a.toNat b.toNat)`.
 
 The proof follows the generated WASM, including the compiler’s Boolean-normalization blocks, rather than a hand-written WAT model.  Its loop invariant names the generated local frame, treats WASM locals `4` and `5` as the Euclidean state, leaves scratch locals unconstrained, and uses `y.toNat` as the decreasing measure.  The generated module includes LeanExe runtime exports, but the `gcd` export itself does not touch memory or call runtime functions, so the spec is store-parametric.
 
@@ -10,10 +10,10 @@ The proof follows the generated WASM, including the compiler’s Boolean-normali
 
 Checks run:
 
-- [x] `bash tools/check-talos-gcd.sh` rebuilt `LeanExe.Examples.TalosGcd`, compared regenerated WASM and WAT against `proofs/talos-gcd/rust/build/gcd/`, and built the Talos proof project.
-- [x] `build/tools/wasmtime/current/wasmtime --invoke gcd proofs/talos-gcd/rust/build/gcd/program.wasm 48 18` returned `6`.
-- [x] `build/tools/wasmtime/current/wasmtime --invoke gcd proofs/talos-gcd/rust/build/gcd/program.wasm 270 192` returned `6`.
-- [x] `build/tools/wasmtime/current/wasmtime --invoke gcd proofs/talos-gcd/rust/build/gcd/program.wasm 17 0` returned `17`.
+- [x] `bash tools/check-talos-gcd.sh` rebuilt `LeanExe.Examples.TalosGcd`, compared regenerated WASM and WAT against `proofs/talos/rust/build/gcd/`, and built the Talos proof project.
+- [x] `build/tools/wasmtime/current/wasmtime --invoke gcd proofs/talos/rust/build/gcd/program.wasm 48 18` returned `6`.
+- [x] `build/tools/wasmtime/current/wasmtime --invoke gcd proofs/talos/rust/build/gcd/program.wasm 270 192` returned `6`.
+- [x] `build/tools/wasmtime/current/wasmtime --invoke gcd proofs/talos/rust/build/gcd/program.wasm 17 0` returned `17`.
 
 ## 2026-06-16: Helper Result Owner Aliases
 
@@ -4046,7 +4046,7 @@ Checks run:
 
 ## 2026-06-19: Order-book Talos proof
 
-The Talos proof project includes an `order_book` slice generated from the LeanExe WASM for `LeanExe.Examples.OrderBook.matchBook`.  `proofs/talos-gcd/lean/Project/OrderBook/Program.lean` is emitted from `proofs/talos-gcd/rust/build/order_book/program.wat`, and `Project.OrderBook.Spec` proves a quantified theorem about the exported `matchBook` function.  The theorem covers all seven scalar inputs: bid quantity, bid price, ask quantity, ask price, side flag, order quantity, and order limit price.
+The Talos proof project includes an `order_book` slice generated from the LeanExe WASM for `LeanExe.Examples.OrderBook.matchBook`.  `proofs/talos/lean/Project/OrderBook/Program.lean` is emitted from `proofs/talos/rust/build/order_book/program.wat`, and `Project.OrderBook.Spec` proves a quantified theorem about the exported `matchBook` function.  The theorem covers all seven scalar inputs: bid quantity, bid price, ask quantity, ask price, side flag, order quantity, and order limit price.
 
 The theorem `matchBook_correct` states that the decoded WASM export terminates for every supplied one-level book and incoming order, returning exactly the expected option tag, trade quantity, and trade price.  Talos represents the WASM value stack with the top at the head of the list, so the proof names `tradeStackResult tag quantity price` as `[price, quantity, tag]`.  This is the reverse of Wasmtime's printed multi-result order, but it is the direct representation consumed by Talos's `TerminatesWith` predicate.
 
@@ -4054,9 +4054,9 @@ The proof follows the generated export `func1` and uses a separate lemma for the
 
 Checks run:
 
-- [x] `.lake/build/bin/lean-wasm compile --module LeanExe.Examples.OrderBook --entry LeanExe.Examples.OrderBook.matchBook --out proofs/talos-gcd/rust/build/order_book/program.wasm`
-- [x] `$HOME/.cargo/bin/wasm-tools print proofs/talos-gcd/rust/build/order_book/program.wasm -o proofs/talos-gcd/rust/build/order_book/program.wat`
-- [x] `proofs/talos-gcd/lean/.lake/packages/CodeLib/verifier/.lake/build/bin/verifier emit --force-emit order_book`
+- [x] `.lake/build/bin/lean-wasm compile --module LeanExe.Examples.OrderBook --entry LeanExe.Examples.OrderBook.matchBook --out proofs/talos/rust/build/order_book/program.wasm`
+- [x] `$HOME/.cargo/bin/wasm-tools print proofs/talos/rust/build/order_book/program.wasm -o proofs/talos/rust/build/order_book/program.wat`
+- [x] `proofs/talos/lean/.lake/packages/CodeLib/verifier/.lake/build/bin/verifier emit --force-emit order_book`
 - [x] `lake build Project.OrderBook.Spec`
 - [x] `tools/check-talos-order-book.sh`
 - [x] `lake build Project`
@@ -4065,7 +4065,7 @@ Checks run:
 
 The top-level README now has a `Verification With Talos` section that explains the artifact proof path: LeanExe emits WASM, `wasm-tools print` renders WAT, Talos decodes the generated WAT into Lean, and the handwritten proof establishes a property of that decoded module.  The section links to the proof workspace, the Lean sources, the proof specs, and the per-case check scripts for GCD, association-list lookup, and order-book matching.  It also points users to `tools/check-talos.sh` as the combined artifact check.
 
-`proofs/talos-gcd/README.md` now describes the proof workspace layout, the pinned Talos revision, the generated `Program.lean` files, the handwritten `Spec.lean` files, the checked-in WASM/WAT proof inputs, the current theorem scopes, the proof boundary, and the command path for regenerating `Program.lean` from an updated WAT artifact.  `spec.md` and `plan.md` now cross-reference the Talos artifact proofs while preserving the distinction between selected artifact proofs and the broader compiler-correctness theorem.  The GCD and association-list check scripts now use the same `wasm-tools print -o` form as the order-book script, and GCD now builds `Project.Gcd.Spec` instead of the whole proof project.  The combined `tools/check-talos.sh` script runs all three per-case checks and then builds the aggregate `Project` import.
+`proofs/talos/README.md` now describes the proof workspace layout, the pinned Talos revision, the generated `Program.lean` files, the handwritten `Spec.lean` files, the checked-in WASM/WAT proof inputs, the current theorem scopes, the proof boundary, and the command path for regenerating `Program.lean` from an updated WAT artifact.  `spec.md` and `plan.md` now cross-reference the Talos artifact proofs while preserving the distinction between selected artifact proofs and the broader compiler-correctness theorem.  The GCD and association-list check scripts now use the same `wasm-tools print -o` form as the order-book script, and GCD now builds `Project.Gcd.Spec` instead of the whole proof project.  The combined `tools/check-talos.sh` script runs all three per-case checks and then builds the aggregate `Project` import.
 
 Checks run:
 
@@ -4079,7 +4079,7 @@ Checks run:
 
 ## 2026-07-06: Talos check script update mode
 
-The three per-case check scripts are now thin wrappers over `tools/check-talos-case.sh`, which takes the case name, source module, entry, and proof spec target as flags.  The new `--update` flag replaces the checked-in proof inputs under `proofs/talos-gcd/rust/build` with fresh compiler output, regenerates the matching `Program.lean` through the Talos verifier emitter at `lean/.lake/packages/CodeLib/verifier/.lake/build/bin/verifier`, and rebuilds the proof.  Default mode keeps the byte-for-byte comparison.  `tools/check-talos.sh` forwards its arguments to all three cases.
+The three per-case check scripts are now thin wrappers over `tools/check-talos-case.sh`, which takes the case name, source module, entry, and proof spec target as flags.  The new `--update` flag replaces the checked-in proof inputs under `proofs/talos/rust/build` with fresh compiler output, regenerates the matching `Program.lean` through the Talos verifier emitter at `lean/.lake/packages/CodeLib/verifier/.lake/build/bin/verifier`, and rebuilds the proof.  Default mode keeps the byte-for-byte comparison.  `tools/check-talos.sh` forwards its arguments to all three cases.
 
 Checks run:
 
@@ -4447,13 +4447,13 @@ The repository review covered the tracked source, extraction pipeline, IR interp
 
 The replacement plan starts with two concrete compiler issues.  Source-level `LeanExe.Runtime.release` still relies on an unchecked ownership precondition, and CLOB `cancel` repeats one `findIdx?` scan three times while flattening its result.  The work order checks explicit-release ownership, evaluates matched values once, regenerates and proves complete `cancel`, then proves `postOnly`, `limit`, and `market` while extracting shared proof lemmas only from repeated cases.
 
-The review also found documentation and tool gaps.  [Repository Overview](README.md), [Talos Proofs](proofs/talos-gcd/README.md), [Technical Summary](docs/summary.md), and [Development Agenda](docs/history/agenda.md) describe eleven artifacts, while the aggregate script now checks fourteen; CLI help omits `dump-ir` and `compile-wat` and retains a prototype-era scope sentence.  The root workspace pins Lean 4.29.1, the proof workspace pins Lean 4.31.0 and Talos commit `bb3277e21c9786e3133d5c1601e34ebdc0bea4df`, and Wasmtime defaults to 44.0.0, while `wasm-tools` and Node have no recorded versions and the Wasmtime download script does not verify archive checksums.  The plan schedules version checks and archive verification after the active semantic work.
+The review also found documentation and tool gaps.  [Repository Overview](README.md), [Talos Proofs](proofs/talos/README.md), [Technical Summary](docs/summary.md), and [Development Agenda](docs/history/agenda.md) describe eleven artifacts, while the aggregate script now checks fourteen; CLI help omits `dump-ir` and `compile-wat` and retains a prototype-era scope sentence.  The root workspace pins Lean 4.29.1, the proof workspace pins Lean 4.31.0 and Talos commit `bb3277e21c9786e3133d5c1601e34ebdc0bea4df`, and Wasmtime defaults to 44.0.0, while `wasm-tools` and Node have no recorded versions and the Wasmtime download script does not verify archive checksums.  The plan schedules version checks and archive verification after the active semantic work.
 
 The ordinary execution gate passed.  `node test/run_all.js` reported 114 classification cases, 8 ownership-report cases, 784 accepted cases, 34 rejections, 13 traps, 38 reference-counting cases, 70 byte-array allocation cases, 23 ASCII-string cases, 4 integer-map cases, 48 JSON cases, 35 WASI cases with 2 traps, 7 rejections, and 19 compile-only checks, 63 self-emitted LEB128 cases, 301 standard-Lean comparison cases, 58 IR-interpreter comparison cases, and 56 fuzz cases.  One leak-accounting fixture intentionally retains blocks, while the other six reported leak-free behavior.
 
 The artifact gate also passed.  `tools/check-talos.sh` compared all fourteen regenerated WASM and WAT artifacts with their checked-in proof inputs and rebuilt the aggregate `Project` library.  The cold proof workspace first built 3,003 dependency jobs, and the final aggregate build completed 3,048 jobs; Lean reported unused `simp` arguments and variables in handwritten source and proof files, but no artifact mismatch, proof error, `sorry`, or new axiom.
 
-Review references are [Language Specification](docs/spec.md), [User Manual](docs/manual.md), [Verifying a Program](docs/verifying.md), [Talos Proofs](proofs/talos-gcd/README.md), [Core IR](LeanExe/IR/Core.lean), [Structured WASM Instructions](LeanExe/Wasm/Instr.lean), [Compiler CLI](LeanExe/CLI.lean), and [CLOB Source](LeanExe/Examples/Clob.lean).  These repository files define the current implementation and claimed behavior.  The replacement plan keeps their roles separate and schedules a factual consistency pass.
+Review references are [Language Specification](docs/spec.md), [User Manual](docs/manual.md), [Verifying a Program](docs/verifying.md), [Talos Proofs](proofs/talos/README.md), [Core IR](LeanExe/IR/Core.lean), [Structured WASM Instructions](LeanExe/Wasm/Instr.lean), [Compiler CLI](LeanExe/CLI.lean), and [CLOB Source](LeanExe/Examples/Clob.lean).  These repository files define the current implementation and claimed behavior.  The replacement plan keeps their roles separate and schedules a factual consistency pass.
 
 - [x] Review the tracked repository and recent development history.
 - [x] Run the complete execution suite.

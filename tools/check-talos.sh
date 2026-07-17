@@ -49,7 +49,7 @@ if [[ "$mode" == "update" ]]; then
     "$script" --update
   done
 
-  cd "$repo_root/proofs/talos-gcd/lean"
+  cd "$repo_root/proofs/talos/lean"
   lake --no-ansi build Project
   echo "Talos update passed: 19 artifacts and the complete proof library"
   exit 0
@@ -64,7 +64,7 @@ if [[ "$mode" == "artifacts" ]]; then
   exit 0
 fi
 
-cd "$repo_root/proofs/talos-gcd/lean"
+cd "$repo_root/proofs/talos/lean"
 if ! lake --no-ansi --quiet --log-level=error --no-build build Project; then
   echo "Talos proof outputs are missing or out of date." >&2
   echo "Build them first with tools/setup-talos.sh from the repository root." >&2

@@ -29,7 +29,7 @@ node test/run_all.js
 | `LeanExe/Wasm` | WASM module model, binary encoder, WAT printer, and interpreter support used by tests. |
 | `LeanExe/Examples` | Example Lean programs that exercise the supported subset. |
 | `test` | Node and Lean tests that compare Lean execution with generated WASM behavior. |
-| `proofs/talos-gcd` | Talos proof workspace: nineteen completed artifact proofs, the runtime lemma library, and the generic teardown theorem. |
+| `proofs/talos` | Talos proof workspace: nineteen completed artifact proofs, the runtime lemma library, and the generic teardown theorem. |
 | `DEVELOPING.md` | Developer setup, diagnostics, test gates, proof artifacts, and troubleshooting. |
 | [Documentation](docs/README.md) | User, reference, verification, design, project-status, and historical documentation. |
 | `docs/verifying.md` | End-to-end recipe for verifying a new program. |
@@ -316,7 +316,7 @@ node tools/compare-standard.js --self-test
 
 The standard comparison suite checks generated WASM against standard Lean execution over selected inputs.  The Talos proof workspace adds artifact-level theorems about selected generated modules.  LeanExe emits WASM, `wasm-tools print` renders that WASM as WAT, Talos decodes the generated WAT into a Lean model, and a handwritten proof establishes a property of that decoded module — the theorem is about the instruction stream that ships.
 
-Seventeen verified artifacts live in [Talos Proofs](proofs/talos-gcd/README.md), which holds the authoritative theorem inventory.  The artifacts cover scalar algorithms, recursive data, byte processing and allocation, the compiler's own unsigned LEB128 encoder, CLOB quote, cancel, best-order selection, post-only insertion, bounded matching, and exact runtime accounting.  The workspace proves shared runtime behavior once and uses a generic teardown theorem for recursive ownership trees, while [Verifying a Program](docs/verifying.md) gives the end-to-end procedure for adding a case.
+Seventeen verified artifacts live in [Talos Proofs](proofs/talos/README.md), which holds the authoritative theorem inventory.  The artifacts cover scalar algorithms, recursive data, byte processing and allocation, the compiler's own unsigned LEB128 encoder, CLOB quote, cancel, best-order selection, post-only insertion, bounded matching, and exact runtime accounting.  The workspace proves shared runtime behavior once and uses a generic teardown theorem for recursive ownership trees, while [Verifying a Program](docs/verifying.md) gives the end-to-end procedure for adding a case.
 
 Initialize the proof outputs after cloning the repository or deleting the proof cache.  The setup command may perform a large cold build, so run it through the resource-limited process form.  Later aggregate checks keep that build output separate from artifact comparison results.
 
@@ -325,7 +325,7 @@ tools/setup-talos.sh
 tools/check-talos.sh
 ```
 
-Each per-case script rebuilds the relevant Lean module and `lean-wasm`, recompiles the source entry to a fresh temporary WASM file, prints fresh WAT, compares both files against the checked-in proof inputs under `proofs/talos-gcd/rust/build`, and rebuilds the corresponding Lean proof.  `tools/check-talos.sh --artifacts-only` compares every artifact without entering the proof build, while the default aggregate checks every artifact first and then requires current proof outputs.  After an intentional compiler change, per-case `--update` replaces the proof inputs with fresh output, regenerates the Talos `Program.lean` model through the verifier emitter, and rebuilds the proof.
+Each per-case script rebuilds the relevant Lean module and `lean-wasm`, recompiles the source entry to a fresh temporary WASM file, prints fresh WAT, compares both files against the checked-in proof inputs under `proofs/talos/rust/build`, and rebuilds the corresponding Lean proof.  `tools/check-talos.sh --artifacts-only` compares every artifact without entering the proof build, while the default aggregate checks every artifact first and then requires current proof outputs.  After an intentional compiler change, per-case `--update` replaces the proof inputs with fresh output, regenerates the Talos `Program.lean` model through the verifier emitter, and rebuilds the proof.
 
 The broader compiler-correctness theorem remains a target in the [Development Plan](plan.md).  [Developing LeanExe](DEVELOPING.md) defines the local gates and artifact-update rules.  The old development agenda is archived because the plan now owns the current work queue.
 
