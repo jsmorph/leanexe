@@ -5672,3 +5672,11 @@ The first preparation proof combined field copies, the length read, and arithmet
 `ClobLimit.LimitEntry` now names the residual allocator's search body, enclosing loop, bump fallback, and finish instructions.  `LimitResidualBump` proves that the zero free-list head exits the search on its first check and that the fallback writes the shared stride-five fixed-array header.  `LimitResidualAlloc.residualAllocProg_spec` composes those proofs with the global-2 increment, appended-length store, and zero copy counter, returning one semantic allocation store and an exact copy frame.
 
 The focused warning-failing bump and complete-allocation builds passed in 5.8 and 2.7 seconds under the repository resource limits.  The aggregate `Project.ClobLimit.Spec` build passed 3,109 targets in 6.2 seconds under the same limits.  The next boundary proves the residual flat-word copy loop before the five appended-order stores reconstruct the represented book.
+
+## 2026-07-16: Prove the Residual Book Copy
+
+The first combined copy theorem reached its 120-second constrained timeout without a diagnostic.  The proof was not rerun unchanged.  `LimitResidualCopyInvariant.CopyState.advance` now isolates one semantic target write, preserving the fresh header, source book, outside-payload memory, and copied prefix in a separately compiled module.
+
+`LimitResidualCopy.residualCopyProg_spec` handles only the generated block, loop guard, memory guards, and decreasing word counter.  `LimitResidualAllocFacts` states the allocator result's pages, globals, fresh header, stored length, below-heap frame, and preservation of both matcher arrays.  The copy initializer and `LimitResidualAllocCopy.residualAllocCopyProg_spec` use those facts to compose allocation and copying without an assumed initial invariant.
+
+The semantic transition, control theorem, allocator facts, initializer, and allocation-copy composition pass focused warning-failing builds in 1.4, 2.3, 1.4, 1.4, and 1.4 seconds under the repository resource limits.  The composition derives the copy count, target address and page bounds, and source separation from the allocation premises and retained matcher bounds.  The five appended-order stores are the next proof boundary.

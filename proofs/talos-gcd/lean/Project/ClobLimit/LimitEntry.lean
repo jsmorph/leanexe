@@ -443,8 +443,39 @@ def residualAllocFinishProg : Wasm.Program :=
 def residualAllocProg : Wasm.Program :=
   residualAllocSearchProg ++ residualAllocBumpProg ++ residualAllocFinishProg
 
+def residualCopyBodyProg : Wasm.Program :=
+  [
+  .localGet 45,
+  .localGet 42,
+  .geUI64,
+  .br_if 1,
+  .localGet 44,
+  .localGet 45,
+  .constI64 1,
+  .addI64,
+  .constI64 8,
+  .mulI64,
+  .addI64,
+  .wrapI64,
+  .localGet 40,
+  .localGet 45,
+  .constI64 1,
+  .addI64,
+  .constI64 8,
+  .mulI64,
+  .addI64,
+  .wrapI64,
+  .load64 0,
+  .store64 0,
+  .localGet 45,
+  .constI64 1,
+  .addI64,
+  .localSet 45,
+  .br 0
+]
+
 def residualCopyProg : Wasm.Program :=
-  (residualProg.drop 71).take 1
+  [.block 0 0 [.loop 0 0 residualCopyBodyProg]]
 
 def residualFinishProg : Wasm.Program :=
   residualProg.drop 72
@@ -457,8 +488,8 @@ theorem residualProg_decomposition :
     residualOrderPrepareProg residualAllocPrepareProg residualAllocProg
     residualAllocSearchProg residualAllocSearchBodyProg residualAllocBumpProg
     residualAllocFinishProg residualOrderFieldsProg residualLengthProg
-    residualCopyProg residualFinishProg residualProg validResultBranch
-    outerBranch func21
+    residualCopyProg residualCopyBodyProg residualFinishProg residualProg
+    validResultBranch outerBranch func21
   rfl
 
 end Project.ClobLimit.LimitEntry
