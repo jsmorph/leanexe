@@ -26,6 +26,7 @@ import Project.ClobLimit.InternalLoopProgress
 import Project.ClobLimit.InternalLoopCompletion
 import Project.ClobLimit.InternalLoopAdvance
 import Project.ClobLimit.InternalLoopBranches
+import Project.ClobLimit.InternalLoopIteration
 import Project.ClobLimit.InternalTradeBump
 import Project.ClobLimit.InternalPartialBookPrepare
 import Project.ClobLimit.InternalPartialBookControl
@@ -115,6 +116,8 @@ The full-fill successor constructor establishes the complete running invariant,
 including source progress, heap monotonicity, counters, and remaining budget.
 Branch-composition theorems connect both allocation-bearing dispatcher paths to
 their completed or next-running invariant and prove strict measure decrease.
+The complete dispatcher composition preserves the invariant through stopped,
+partial-fill, and full-fill outcomes with the same decrease.
 The proof remains outside `Project.lean` until the exported theorem is complete.
 -/
 

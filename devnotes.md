@@ -5568,3 +5568,11 @@ The first focused diagnostic completed in 1.7 seconds and found that the trade-l
 `InternalLoopBranches.full_spec` connects the same selected-maker frame to `InternalFullBranch.fullBranchProg_spec`.  It derives exact natural values for the fresh book root, fresh trade root, and final heap top, then proves the replacement array bounds and heap-growth premises consumed by `InternalLoopAdvance.of_full`.  The successor measure decreases because the branch decrements nonzero fuel.
 
 The partial-only module first passed in 1.7 seconds.  Three focused diagnostics on the full theorem identified the byte-bound margin, two structure projections needed by no-wrap arithmetic, and the need to unfold `nextData` before measure normalization.  The complete warning-failing build passed in 1.9 seconds under the repository resource limits, and the next boundary composes these paths with the iteration dispatcher.
+
+## 2026-07-16: Compose the Internal Loop Dispatcher
+
+`ClobLimit.InternalLoopIteration.dispatchBranchPost_of_wp` reduces the generated dispatcher's three nested zero-arity branch posts to an ordinary suffix when the local operand stack is empty.  The lemma matches the generated continuation structure without unfolding either allocation branch.  Completed and running invariant values supply its empty-stack premise.
+
+`InternalLoopIteration.dispatch_spec` derives `StepBounds` once from the nonzero-fuel running invariant.  Zero remaining quantity and missing-maker outcomes feed `InternalLoopCompletion.of_stop`, while selected-maker outcomes use `InternalLoopBranches.full_spec` or `partial_spec`.  Each continuation returns the invariant and preserves the strict measure decrease proved by the lower layer.
+
+The focused warning-failing build passed on its first run in 1.3 seconds under the repository resource limits.  The theorem contains no new address or allocator arithmetic.  The next boundary proves the generated guard-dispatch loop by well-founded induction on the established measure.
