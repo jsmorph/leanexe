@@ -5210,3 +5210,9 @@ Warning-failing constrained builds completed `Project.FunctionRegion.NoTail` in 
 `ClobLimit.InternalEarlyExit` proves exact termination of function 17 when its fuel or remaining quantity is zero.  A third theorem covers a nonzero state whose owner-aware embedded search returns no maker.  All three theorems return the unchanged remaining quantity and both owner-and-pointer pairs in generated result order while preserving the complete store.
 
 The proof retains both expanded `Locals.get` hypotheses and exact raw-list facts.  The interpreter guard reductions consume the expanded getter equalities, while the call frame and epilogue calculation use the raw parameter and local equalities.  The no-maker theorem invokes the transported function 14 owner-aware specification instead of repeating the search proof.  Its focused warning-failing build completed in 18 seconds, and the aggregate Limit specification completed in 2.1 seconds under the repository resource limits.
+
+## 2026-07-15: Prove Internal Iteration Control
+
+`ClobLimit.InternalIteration.dispatchProg_spec` proves the non-allocation portion of one function 17 iteration.  It checks the remaining quantity, invokes the transported owner-aware search theorem, reads the selected maker quantity from the represented book, and chooses a caller-supplied full or partial branch.  Its callbacks receive either the complete five-value result frame or the selected index and exact search scratch frame.
+
+The full and partial programs remain theorem parameters, which prevents either allocation body from entering this module's elaboration boundary.  The theorem retains the three nested zero-result branch continuations required by the generated control structure.  Its focused warning-failing build completed in 12 seconds, and the aggregate Limit specification completed in 2.4 seconds under the repository resource limits.
