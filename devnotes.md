@@ -5344,3 +5344,11 @@ The focused warning-failing build completed in 1.9 seconds under the repository 
 The adapter uses source, old-word total, new length, and allocator result at local-list positions 45, 47, 48, and 62.  It records target and cursor at positions 49 and 50.  The loop proof reuses the shared trade-word framing and fixed-array header lemmas.
 
 The focused warning-failing build completed in 4.6 seconds under the repository resource limits.  The module contains generated lines 3358 through 3400 and no appended-field stores.  The next proof will identify the four generated stores with the shared append-trade memory transformation.
+
+## 2026-07-15: Prove Partial-Trade Finalization
+
+`ClobLimit.InternalPartialTradeFinish.partialTradeFinishProg_spec` proves the four generated append stores and returned trade-array pointer.  It reads the old length and prepared trade fields from local-list positions 46 and 51 through 54.  The final store represents `ts ++ [trade]`.
+
+The proof reuses `ClobMatchFuel.TradeAppendStore` for the memory transformation.  Those source-independent theorems reconstruct `TradesAt` and preserve the fixed-array header, while the Limit adapter extends the copy theorem's outside-payload frame through each store.  The module contains no allocation or copy-loop instructions.
+
+The focused warning-failing build completed in 5.4 seconds under the repository resource limits.  The final frame returns the new trade pointer as one value.  The following composition will retain both live arrays, exact allocator state, and the semantic appended trade.
