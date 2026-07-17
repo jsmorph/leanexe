@@ -5408,3 +5408,11 @@ The focused warning-failing build completed in 3.6 seconds under the repository 
 The proof derives the allocator's eight-byte minimum from `fixedArrayBytesU_toNat`.  It invokes `fullBookSearchProg_empty` and `fullBookBumpProg_spec` after the setup theorem without unfolding their instruction bodies.  The final frame records target `g0 + 48`, the new heap top, and the generated page target.
 
 The focused warning-failing build completed in 2.2 seconds under the repository resource limits.  The theorem passed on its first build.  The next modules prove the replacement-book length store and the prefix and shifted-suffix copy loops.
+
+## 2026-07-16: Prove the Full-Book Prefix Copy
+
+`ClobLimit.InternalFullBookPrefix.fullBookPrefixProg_spec` proves the counter increment, replacement-book length store, and copy loop before the selected maker.  Its invariant retains the fresh stride-five target header and represented source book.  It records equality for every copied flat word and equality outside the complete target payload.
+
+The loop starts from `InternalFullBookBump.allocFrame` and records the target and cursor at local-list positions 51 and 52.  It reads the source, prefix word count, and erased length from positions 45, 48, and 50.  The postcondition provides the prefix fact consumed by `OrdersAt.eraseIdx_ofFlatWords` after the suffix loop.
+
+The first focused build reported that `FreshOrderArrayAt` was a matcher-specific alias absent from this module's namespace.  Replacing it with the shared `FreshFixedArrayAt st target arrayCapacity 5` predicate removed the unnecessary dependency, and the warning-failing build completed in 3.9 seconds.  The next module proves the shifted-suffix copy and reconstructs the represented erased order list.
