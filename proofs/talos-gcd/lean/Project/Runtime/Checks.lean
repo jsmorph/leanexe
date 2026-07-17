@@ -9,6 +9,7 @@ import Project.AppendBang.Program
 import Project.AssocList.Program
 import Project.BoxFree.Program
 import Project.ClobCancel.Program
+import Project.ClobDepth.Program
 import Project.ClobFindBest.Program
 import Project.ClobLimit.Program
 import Project.ClobMarket.Program
@@ -91,6 +92,11 @@ example : Project.ClobCancel.func4Def = allocFuncDef := rfl
 example : Project.ClobCancel.func5Def = resetFuncDef := rfl
 example : Project.ClobCancel.func6Def = retainFuncDef := rfl
 example : Project.ClobCancel.func7Def = releaseFuncDef 7 := rfl
+
+example : Project.ClobDepth.func8Def = allocFuncDef := rfl
+example : Project.ClobDepth.func9Def = resetFuncDef := rfl
+example : Project.ClobDepth.func10Def = retainFuncDef := rfl
+example : Project.ClobDepth.func11Def = releaseFuncDef 11 := rfl
 
 example : Project.ClobQuote.func11Def = allocFuncDef := rfl
 example : Project.ClobQuote.func12Def = resetFuncDef := rfl

@@ -112,6 +112,8 @@ The proof divides generated control at call, branch, allocation, copy, and final
 
 The `market` step completed on 2026-07-16.  `ClobMarket.Correct.func21_correct` proves that every represented valid or invalid input returns pointers representing the exact source `marketL` status, book, and trades.  Region certificates transport the complete matcher, validity, and status-helper theorems from `clob_limit`, while separate exported branch theorems prove the unlimited-price valid result and the invalid empty-trade allocation.  The outcome predicate retains owned matcher results or the invalid branch's borrowed book, owned empty trades, exact allocator globals, unchanged pages, and below-heap memory frame.
 
+The `clob_depth` artifact is registered outside the aggregate gate while its proof is in progress.  Its exported function calls one side-fold function twice, and that fold calls a first-price level update or append function for matching orders.  `ClobDepth.Model.depthL` states the exact input-order fold with modular `UInt64` quantity addition, while the remaining proof must establish both owned output arrays, first-price order, and the bounded natural-number total theorem.
+
 ### 5. Consolidate Proof Machinery After Repetition
 
 The CLOB proofs will repeat fixed-width array reads, copy loops, allocation headers, and ownership frames.  Move a pattern into `Project/Common.lean` or the runtime library after two independent cases use the same statement shape and a third case would repeat it.  Keep generated `Program.lean` files untouched and keep artifact-specific address arithmetic near its artifact when no stable general statement exists.
