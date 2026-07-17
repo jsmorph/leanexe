@@ -120,6 +120,25 @@ theorem initial
     · intro _ h
       omega
 
+theorem CopyInvariant.at_end
+    {st0 st : Store Unit} {base : Locals} {target source capacity : UInt64}
+    {os : List OrderL}
+    (hInvariant : CopyInvariant st0 base target source capacity os st
+      (copyLoopFrame base (os.length * 5)))
+    (hLocals : base.locals.length = 53)
+    (hTotalU : (UInt64.ofNat os.length * 5).toNat = os.length * 5)
+    (hTotal64 : os.length * 5 < UInt64.size) :
+    CopyState st0 st target source capacity os (os.length * 5) := by
+  obtain ⟨word, hWord, hFrame, hState⟩ := hInvariant
+  have hCounter := congrArg (fun s : Locals => s.locals[39]?) hFrame
+  have hWordEq : UInt64.ofNat os.length * 5 = UInt64.ofNat word := by
+    simpa [copyLoopFrame, hLocals] using hCounter
+  have hWordNat : word < UInt64.size := by omega
+  have hEq := congrArg UInt64.toNat hWordEq
+  rw [hTotalU, toNat_ofNat_lt hWordNat] at hEq
+  subst word
+  exact hState
+
 theorem CopyState.advance
     {st0 st : Store Unit} {target source capacity : UInt64}
     {os : List OrderL} {word : Nat}
