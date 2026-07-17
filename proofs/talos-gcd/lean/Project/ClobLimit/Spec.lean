@@ -22,6 +22,7 @@ import Project.ClobLimit.InternalPartialTradeCopy
 import Project.ClobLimit.InternalPartialTradeFinish
 import Project.ClobLimit.InternalPartialTradeUpdate
 import Project.ClobLimit.InternalPartialFinish
+import Project.ClobLimit.InternalPartialTradeBranch
 
 /-!
 # Specification for `clob_limit`
@@ -55,8 +56,10 @@ length and copies every old trade word, and the four append stores return the
 represented extended array.  Their composition retains the old book, new book,
 old trades, and new trades with exact allocator state.  The final partial-fill
 assignments record the new trade pointer, zero remaining quantity, and a
-completed result in the recursive locals.  The proof remains outside
-`Project.lean` until the exported theorem is complete.
+completed result in the recursive locals.  Their composition with trade
+preparation proves the complete continuation after replacement-book
+construction.  The proof remains outside `Project.lean` until the exported
+theorem is complete.
 -/
 
 end Project.ClobLimit
