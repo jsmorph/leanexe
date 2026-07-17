@@ -5512,3 +5512,11 @@ The measure is zero for a completed state and `2 * fuel.toNat + 1` for a running
 `InternalLoopBounds.of_running` derives the record from a nonzero-fuel `RunningFacts`.  It reuses `ClobMatchFuel.Budget.one_step_available`, `allocationTop_toNat`, `fullStepBytes_le`, and `partialStepBytes_le`.  The theorem keeps all modular arithmetic outside the later dispatcher and state-constructor proofs.
 
 The first focused diagnostic completed in 1.5 seconds and found one malformed multiline `change ... at` command.  Moving the target onto the command line allowed the complete warning-failing build to pass in 2.7 seconds under the repository resource limits.  No generalized bound record was added because the existing matcher and Limit invariants have different data types and no third consumer currently repeats the adapter.
+
+## 2026-07-16: Prove Internal Loop Source Progress
+
+`ClobLimit.InternalLoopProgress` relates each dispatcher outcome to the residual `matchFuelL` computation stored in the invariant.  A stopped state equals the current source state, and a partial fill equals its completed source state.  A full fill exposes the recursive source computation at decremented fuel over the erased book and appended trade.
+
+The module defines the semantic full and partial step states once for later invariant constructors.  Its counter lemmas derive the current or post-append expected global 2 from the invariant's trade length and step count.  These theorems keep source unfolding and modular counter arithmetic out of the physical branch compositions.
+
+The focused warning-failing build passed on its first run in 1.5 seconds under the repository resource limits.  The proof reuses the source recurrence and fuel-decrement theorems from `ClobMatchFuel.Model` and `ClobMatchFuel.Budget`.  Completed-state and next-running-state construction remain separate proof boundaries.
