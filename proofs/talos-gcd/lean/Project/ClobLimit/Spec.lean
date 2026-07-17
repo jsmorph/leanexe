@@ -47,6 +47,8 @@ import Project.ClobLimit.LimitRunMatchResult
 import Project.ClobLimit.LimitResidualStatus
 import Project.ClobLimit.LimitResidualPrepare
 import Project.ClobLimit.LimitResidualAllocPrepare
+import Project.ClobLimit.LimitResidualBump
+import Project.ClobLimit.LimitResidualAlloc
 import Project.ClobLimit.LimitFilled
 import Project.ClobLimit.InternalTradeBump
 import Project.ClobLimit.InternalPartialBookPrepare

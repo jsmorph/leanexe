@@ -246,8 +246,202 @@ def residualArrayPrepareProg : Wasm.Program :=
 def residualPrepareProg : Wasm.Program :=
   residualStatusProg ++ residualArrayPrepareProg
 
+def residualAllocSearchBodyProg : Wasm.Program :=
+  [
+  .localGet 55,
+  .constI64 0,
+  .eqI64,
+  .br_if 1,
+  .localGet 58,
+  .constI64 0,
+  .neI64,
+  .br_if 1,
+  .localGet 55,
+  .constI64 32,
+  .subI64,
+  .wrapI64,
+  .load64 0,
+  .localSet 56,
+  .localGet 55,
+  .constI64 8,
+  .subI64,
+  .wrapI64,
+  .load64 0,
+  .localSet 57,
+  .localGet 56,
+  .localGet 53,
+  .geUI64,
+  .iff 0 0 [
+    .localGet 54,
+    .constI64 0,
+    .eqI64,
+    .iff 0 0 [
+      .localGet 57,
+      .globalSet 1
+    ] [
+      .localGet 54,
+      .constI64 8,
+      .subI64,
+      .wrapI64,
+      .localGet 57,
+      .store64 0
+    ],
+    .localGet 55,
+    .constI64 48,
+    .subI64,
+    .wrapI64,
+    .constI64 5501223100278326855,
+    .store64 0,
+    .localGet 55,
+    .constI64 40,
+    .subI64,
+    .wrapI64,
+    .constI64 1,
+    .store64 0,
+    .localGet 55,
+    .constI64 32,
+    .subI64,
+    .wrapI64,
+    .localGet 56,
+    .store64 0,
+    .localGet 55,
+    .constI64 24,
+    .subI64,
+    .wrapI64,
+    .constI64 2,
+    .store64 0,
+    .localGet 55,
+    .constI64 16,
+    .subI64,
+    .wrapI64,
+    .constI64 5,
+    .store64 0,
+    .localGet 55,
+    .constI64 8,
+    .subI64,
+    .wrapI64,
+    .constI64 0,
+    .store64 0,
+    .localGet 55,
+    .localSet 58
+  ] [
+    .localGet 55,
+    .localSet 54,
+    .localGet 57,
+    .localSet 55
+  ],
+  .br 0
+]
+
+def residualAllocSearchProg : Wasm.Program :=
+  [.block 0 0 [.loop 0 0 residualAllocSearchBodyProg]]
+
+def residualAllocBumpProg : Wasm.Program :=
+  [
+  .localGet 58,
+  .constI64 0,
+  .eqI64,
+  .iff 0 0 [
+    .globalGet 0,
+    .constI64 48,
+    .addI64,
+    .localGet 53,
+    .addI64,
+    .localSet 56,
+    .localGet 56,
+    .globalGet 0,
+    .ltUI64,
+    .iff 0 0 [
+      .unreachable
+    ] [],
+    .localGet 56,
+    .constI64 1,
+    .subI64,
+    .constI64 65536,
+    .divUI64,
+    .constI64 1,
+    .addI64,
+    .localSet 57,
+    .memorySize,
+    .extendUI32,
+    .localGet 57,
+    .ltUI64,
+    .iff 0 0 [
+      .localGet 57,
+      .memorySize,
+      .extendUI32,
+      .subI64,
+      .wrapI64,
+      .memoryGrow,
+      .const 4294967295,
+      .eq,
+      .iff 0 0 [
+        .unreachable
+      ] []
+    ] [],
+    .globalGet 0,
+    .constI64 48,
+    .addI64,
+    .localSet 58,
+    .localGet 56,
+    .globalSet 0,
+    .localGet 58,
+    .constI64 48,
+    .subI64,
+    .wrapI64,
+    .constI64 5501223100278326855,
+    .store64 0,
+    .localGet 58,
+    .constI64 40,
+    .subI64,
+    .wrapI64,
+    .constI64 1,
+    .store64 0,
+    .localGet 58,
+    .constI64 32,
+    .subI64,
+    .wrapI64,
+    .localGet 53,
+    .store64 0,
+    .localGet 58,
+    .constI64 24,
+    .subI64,
+    .wrapI64,
+    .constI64 2,
+    .store64 0,
+    .localGet 58,
+    .constI64 16,
+    .subI64,
+    .wrapI64,
+    .constI64 5,
+    .store64 0,
+    .localGet 58,
+    .constI64 8,
+    .subI64,
+    .wrapI64,
+    .constI64 0,
+    .store64 0
+  ] []
+]
+
+def residualAllocFinishProg : Wasm.Program :=
+  [
+  .globalGet 2,
+  .constI64 1,
+  .addI64,
+  .globalSet 2,
+  .localGet 58,
+  .localSet 44,
+  .localGet 44,
+  .wrapI64,
+  .localGet 43,
+  .store64 0,
+  .constI64 0,
+  .localSet 45
+]
+
 def residualAllocProg : Wasm.Program :=
-  (residualProg.drop 54).take 17
+  residualAllocSearchProg ++ residualAllocBumpProg ++ residualAllocFinishProg
 
 def residualCopyProg : Wasm.Program :=
   (residualProg.drop 71).take 1
@@ -261,8 +455,10 @@ theorem residualProg_decomposition :
       residualCopyProg ++ residualFinishProg := by
   unfold residualPrepareProg residualStatusProg residualArrayPrepareProg
     residualOrderPrepareProg residualAllocPrepareProg residualAllocProg
-    residualOrderFieldsProg residualLengthProg residualCopyProg
-    residualFinishProg residualProg validResultBranch outerBranch func21
+    residualAllocSearchProg residualAllocSearchBodyProg residualAllocBumpProg
+    residualAllocFinishProg residualOrderFieldsProg residualLengthProg
+    residualCopyProg residualFinishProg residualProg validResultBranch
+    outerBranch func21
   rfl
 
 end Project.ClobLimit.LimitEntry
