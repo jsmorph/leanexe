@@ -5207,6 +5207,6 @@ Warning-failing constrained builds completed `Project.FunctionRegion.NoTail` in 
 
 ## 2026-07-15: Prove Internal Matcher Early Exits
 
-`ClobLimit.InternalEarlyExit` proves exact termination of function 17 when its fuel or remaining quantity is zero.  Both theorems return the unchanged remaining quantity and both owner-and-pointer pairs in generated result order.  The complete store remains unchanged because neither path searches, allocates, writes memory, nor updates a runtime counter.
+`ClobLimit.InternalEarlyExit` proves exact termination of function 17 when its fuel or remaining quantity is zero.  A third theorem covers a nonzero state whose owner-aware embedded search returns no maker.  All three theorems return the unchanged remaining quantity and both owner-and-pointer pairs in generated result order while preserving the complete store.
 
-The proof retains both expanded `Locals.get` hypotheses and exact raw-list facts.  The interpreter guard reductions consume the expanded getter equalities, while the epilogue calculation uses the raw parameter and local equalities.  The changed theorem and aggregate Limit specification completed warning-failing builds in 10 and 1.6 seconds under the repository resource limits.
+The proof retains both expanded `Locals.get` hypotheses and exact raw-list facts.  The interpreter guard reductions consume the expanded getter equalities, while the call frame and epilogue calculation use the raw parameter and local equalities.  The no-maker theorem invokes the transported function 14 owner-aware specification instead of repeating the search proof.  Its focused warning-failing build completed in 18 seconds, and the aggregate Limit specification completed in 2.1 seconds under the repository resource limits.
