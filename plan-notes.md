@@ -45,7 +45,7 @@ The missing-price preparation is divided into a twenty-instruction field phase a
 
 The existing limit preparation proof supplied the exact repair pattern.  The completed depth proof names an equality whose left side is the complete expression emitted by the instruction sequence and whose right side is `fixedArrayBytesU (levels.length + 1) 2`, proves it through `fixedArrayBytesU_round`, and rewrites before selecting the false branch of the minimum-capacity conditional.  A second explicit reduction selects the empty generated branch before the final global read, and the focused warning-failing build passes in 1.4 seconds without a larger simplifier or resource budget.
 
-The missing branch now has independently compiled search, bump, allocation-finish, copy, and final-store theorems.  Its semantic final state states the owned extended level array, exact contents, page and global equality, preserved source representation, and writes confined to the destination array.  The next composition must connect those predicates to the scan and allocator frames before the found branch repeats the allocation division for a same-length target and one indexed quantity replacement.
+The missing branch has independently compiled search, bump, allocation-finish, copy, and final-store theorems.  `MissingBranch.missingProg_spec` connects their frames and returns the owned extended level array, exact contents, allocator globals, page equality, owned source, and below-heap byte frame.  The found branch is now the active boundary and must repeat the allocation division for a same-length target and one indexed quantity replacement.
 
 | Depth proof unit | Existing support | Current state | Next semantic result |
 |------------------|------------------|---------------|----------------------|
@@ -55,6 +55,7 @@ The missing branch now has independently compiled search, bump, allocation-finis
 | Missing bump branch | Generic bump store and market bump example | Complete; 6.7-second focused build | Fresh stride-two target with exact heap state. |
 | Missing allocation finish | Fresh-header, counter, and address facts | Complete; 2.0-second focused build | Target length initialized and allocation count incremented. |
 | Missing copy and stores | Depth copy invariant, disjoint-write preservation, and level reconstruction | Complete; 2.0-second final instruction build | `OwnedLevelArrayAt` for `levels ++ [{ price, qty }]`. |
+| Missing branch composition | Completed phase theorems and `MissingBranchFacts.ResultState` | Complete; 2.7-second warning-failing build | Exact appended result, allocator globals, owned source, pages, and below-heap frame. |
 | Found preparation and allocation | Same allocator assets | Structurally divided | Fresh same-length stride-two target. |
 | Found copy and replacement | Replacement-copy examples and `LevelsAt` word API | Not started | Exact list with the first matching level's quantity updated. |
 | Per-side fold | Source aggregation properties and completed level update | Not started | Represented levels equal the source fold for one side. |
