@@ -334,7 +334,20 @@ def missingBumpProg : Wasm.Program :=
 ]
 
 def missingAllocFinishProg : Wasm.Program :=
-  (missingProg.drop 49).take 12
+  [
+  .globalGet 2,
+  .constI64 1,
+  .addI64,
+  .globalSet 2,
+  .localGet 29,
+  .localSet 18,
+  .localGet 18,
+  .wrapI64,
+  .localGet 17,
+  .store64 0,
+  .constI64 0,
+  .localSet 19
+]
 
 def missingCopyProg : Wasm.Program :=
   (missingProg.drop 61).take 1
