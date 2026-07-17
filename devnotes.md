@@ -5782,3 +5782,15 @@ The focused warning-failing entry decomposition and bump theorem builds pass in 
 `ClobDepth.Entry.missingAllocFinishProg` is now an explicit twelve-instruction region.  `ClobDepth.MissingFinish.missingAllocFinishProg_spec` is generic over the allocator result and proves the global-two increment, target-root propagation, bounded target-length write, and zero copy cursor.  Its postcondition names one `finishStore` memory transformation and one exact `finishFrame`.
 
 The entry decomposition and focused warning-failing finalization builds pass in 1.8 and 2.0 seconds under the repository resource limits.  The only semantic adapter beyond generated local reduction is the shared equality between `UInt64.toUInt32` and the explicit modulo address used by Talos memory writes.  The missing-price copy loop and its fresh stride-two array facts form the next proof boundary.
+
+## 2026-07-17: Prove the Missing-Price Copy
+
+`ClobDepth.Entry` now names the generated copy body and block-loop program explicitly.  `LevelsAt.frame_write64_flatWordsDisjoint` preserves a represented source level array after one write into a disjoint flat-word destination.  Their focused builds pass in 1.7 and 1.9 seconds under the repository resource limits.
+
+`ClobDepth.MissingCopyInvariant` records unchanged pages and globals, the fresh target header, initialized target length, initial and current source representations, writes confined to the target, and equality of the copied prefix.  Its one-step theorem advances that state after one checked word write, while `ClobDepth.MissingCopy.missingCopyProg_spec` proves the generated loop terminates with all `levels.length * 2` source words copied.  The focused copy theorem and specification builds pass in 2.7 and 1.1 seconds.
+
+## 2026-07-17: Prove the Missing-Price Final Stores
+
+`ClobDepth.MissingStoreFacts.finish` proves that the two appended-field writes preserve the fresh target header and source representation, stay inside the target frame, and reconstruct `LevelsAt` for `levels ++ [{ lprice := price, lqty := qty }]`.  The final state combines that representation with `FreshFixedArrayAt` as an owned level array and retains page and global equality.  The semantic facts module passes its focused build in 2.9 seconds.
+
+`ClobDepth.MissingStore.missingStoreProg_spec` proves the generated 30-instruction store and result-assignment region.  Its continuation receives the semantic final state and exact target values in the working, owner, and pointer locals.  The focused warning-failing theorem and specification builds pass in 2.0 and 1.1 seconds, and end-to-end missing-branch composition is the next proof boundary.
