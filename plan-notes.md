@@ -16,7 +16,7 @@ Prefer explicit equalities and directed rewriting over broad simplification.  A 
 
 ## Current Asset Inventory
 
-The existing library covers every major semantic obligation in a fixed-array allocation.  Some theorems are parameterized by stride and apply to depth directly, while order- and trade-specific preservation theorems provide small patterns for level-specific wrappers.  The generated search, bump, and copy programs still need depth adapters because their modules and local indices differ.
+The existing library covers every major semantic obligation in a fixed-array allocation.  Some theorems are parameterized by stride and apply to depth directly, while order- and trade-specific preservation theorems provide small patterns for level-specific wrappers.  The missing-price branch now has depth adapters for search, bump allocation, copying, and appended stores, while the found branch still needs its generated-local adapters.
 
 | Obligation | Existing asset | Reuse classification | Depth use |
 |------------|----------------|----------------------|-----------|
@@ -28,8 +28,8 @@ The existing library covers every major semantic obligation in a fixed-array all
 | Bump allocation memory | [`fixedArrayAllocBumpStore` and its facts](proofs/talos-gcd/lean/Project/FixedArrayAllocation.lean) | Direct | Establish the fresh header, new heap top, unchanged pages, preserved globals, and bytes below the old heap top. |
 | Bump instructions | [Book bump allocation](proofs/talos-gcd/lean/Project/ClobMatchFuel/BookAllocBump.lean) | Adapter required | Reuse the proof sequence with depth's locals and a stride-two header store. |
 | Fresh header preservation | [`FreshFixedArrayAt.write64_data` and frame theorems](proofs/talos-gcd/lean/Project/Clob.lean) | Direct | Preserve the six metadata words while writing length and level data. |
-| Level representation | [Depth level-array representation](proofs/talos-gcd/lean/Project/ClobDepth/Representation.lean) | Direct | Read flat level words, prove their bounds, reconstruct `LevelsAt`, and frame an owned input region. |
-| Append copy | [Post-only order append copy](proofs/talos-gcd/lean/Project/ClobPostOnly/AppendOrderCopy.lean) and [trade append copy](proofs/talos-gcd/lean/Project/ClobMatchFuel/TradeAppendCopy.lean) | Close example | Copy all old level words, preserve the input, and reconstruct `levels ++ [newLevel]` after two final stores. |
+| Level representation | [Depth level-array representation](proofs/talos-gcd/lean/Project/ClobDepth/Representation.lean) | Direct | Read flat level words, prove their bounds, reconstruct `LevelsAt`, frame an owned input region, and preserve a source representation across disjoint target writes. |
+| Append copy | [Missing-price copy invariant](proofs/talos-gcd/lean/Project/ClobDepth/MissingCopyInvariant.lean), [instruction loop](proofs/talos-gcd/lean/Project/ClobDepth/MissingCopy.lean), and [final-store facts](proofs/talos-gcd/lean/Project/ClobDepth/MissingStoreFacts.lean) | Implemented depth adapter | Copy all old level words, preserve the source and fresh target header, frame writes, and reconstruct `levels ++ [newLevel]`. |
 | Same-length copy | [Book replacement copy](proofs/talos-gcd/lean/Project/ClobMatchFuel/BookReplaceCopy.lean) | Close example | Copy every level word and reconstruct the original level list before changing the matched quantity. |
 | Field replacement | [Book replacement stores](proofs/talos-gcd/lean/Project/ClobMatchFuel/BookReplaceStore.lean) | Close example | Preserve prices and unrelated quantities while replacing one quantity word. |
 | Input memory frame | `fixedArrayHeaderMem_bytes_before`, `fixedArrayAllocFitMem_bytes`, and `LevelsAt.frame_region` | Mostly direct | Preserve the input level array across either allocation result and all writes to a disjoint target. |
@@ -37,7 +37,7 @@ The existing library covers every major semantic obligation in a fixed-array all
 | Allocation counter | Completed `postOnly`, `matchFuel`, and `limit` allocation branches | Close example | Prove the generated global-two increment after either fit or bump allocation. |
 | Read-over-write normalization | [`read_frames` and memory arithmetic](proofs/talos-gcd/lean/Project/Common.lean) | Direct | Close disjoint header, source, and target read obligations after their addresses are normalized. |
 
-The direct assets settle allocator meaning independently of the depth artifact.  The adapters must still prove that the generated depth instructions implement those semantic transformations with the current module, function, and local layout.  The copy proofs also need a stride-two invariant and `LevelsAt.ofFlatWords`, but their termination, source preservation, target-write, and reconstruction structure already exists in completed proofs.
+The direct assets settle allocator meaning independently of the depth artifact.  The missing append adapter now proves that the generated loop terminates after `levels.length * 2` writes and that the final stores reconstruct the extended represented list.  The found adapter can reuse `LevelsAt.levelWord_eq_flat`, `levelWord_bound_flat`, `ofFlatWords`, and `frame_write64_flatWordsDisjoint`, but it needs a same-length target invariant and an indexed quantity-replacement theorem.
 
 ## Immediate Depth Application
 
@@ -45,7 +45,7 @@ The missing-price preparation is divided into a twenty-instruction field phase a
 
 The existing limit preparation proof supplied the exact repair pattern.  The completed depth proof names an equality whose left side is the complete expression emitted by the instruction sequence and whose right side is `fixedArrayBytesU (levels.length + 1) 2`, proves it through `fixedArrayBytesU_round`, and rewrites before selecting the false branch of the minimum-capacity conditional.  A second explicit reduction selects the empty generated branch before the final global read, and the focused warning-failing build passes in 1.4 seconds without a larger simplifier or resource budget.
 
-After preparation, the missing branch should proceed through independently compiled search, bump, allocation-finish, copy, and final-store theorems.  The found branch should follow the same allocation division, then use a complete same-length copy and one indexed quantity replacement.  Compose each branch only after its semantic result predicate states the owned level array, exact contents, free list or heap top, counter increment, page equality, and preserved input region.
+The missing branch now has independently compiled search, bump, allocation-finish, copy, and final-store theorems.  Its semantic final state states the owned extended level array, exact contents, page and global equality, preserved source representation, and writes confined to the destination array.  The next composition must connect those predicates to the scan and allocator frames before the found branch repeats the allocation division for a same-length target and one indexed quantity replacement.
 
 | Depth proof unit | Existing support | Current state | Next semantic result |
 |------------------|------------------|---------------|----------------------|
@@ -54,7 +54,7 @@ After preparation, the missing branch should proceed through independently compi
 | Missing free-list search | Generic free-list model and empty-search examples | Complete for the stated empty free-list premise; 1.4-second focused build | No-fit state with the prepared frame unchanged. |
 | Missing bump branch | Generic bump store and market bump example | Complete; 6.7-second focused build | Fresh stride-two target with exact heap state. |
 | Missing allocation finish | Fresh-header, counter, and address facts | Complete; 2.0-second focused build | Target length initialized and allocation count incremented. |
-| Missing copy and stores | Append-copy examples and level reconstruction | Not started | `OwnedLevelArrayAt` for `levels ++ [{ price, qty }]`. |
+| Missing copy and stores | Depth copy invariant, disjoint-write preservation, and level reconstruction | Complete; 2.0-second final instruction build | `OwnedLevelArrayAt` for `levels ++ [{ price, qty }]`. |
 | Found preparation and allocation | Same allocator assets | Structurally divided | Fresh same-length stride-two target. |
 | Found copy and replacement | Replacement-copy examples and `LevelsAt` word API | Not started | Exact list with the first matching level's quantity updated. |
 | Per-side fold | Source aggregation properties and completed level update | Not started | Represented levels equal the source fold for one side. |
@@ -64,9 +64,9 @@ After preparation, the missing branch should proceed through independently compi
 
 Add two level-specific allocator preservation wrappers when the first depth allocation needs them.  One wrapper should preserve `OwnedLevelArrayAt` across a free-list fit allocation using `fixedArrayAllocFitMem_bytes` and `OwnedLevelArrayAt.frame_region`.  The other should preserve it across a bump allocation using `fixedArrayHeaderMem_bytes_before` and the same level frame theorem.
 
-A shared flat-word copy theorem now has enough independent evidence to justify its design.  Order append, order replacement, trade append, and depth all copy a fixed-array payload one word at a time while preserving the header and a disjoint source.  The shared theorem should describe the semantic loop state and copied-word relation while leaving the generated local indices, instruction body, and element reconstruction function to a small artifact adapter.
+A shared flat-word copy theorem now has enough independent evidence to justify its design.  Order append, order replacement, trade append, and depth all copy a fixed-array payload one word at a time while preserving the header and a disjoint source.  `MissingCopyInvariant.CopyState.advance` confirms the useful semantic fields for stride two, but the general theorem should wait until the found same-length path establishes which target-length and initialized-header parameters remove real duplication.
 
-The useful abstraction boundary is a fresh target header, a represented source flat-word function, a disjoint source and target, a word count, and a relation stating that the first `k` target words equal the source words.  At completion, the theorem should return the copied-word relation, unchanged pages and relevant globals, preserved source representation, preserved target header, and bytes outside the target payload.  The artifact-specific theorem should then reconstruct `OrdersAt`, `TradesAt`, or `LevelsAt` through the corresponding `ofFlatWords` lemma.
+The useful abstraction boundary is a fresh target header, a represented source flat-word function, a disjoint source and target, a source word count, a target payload size, and a relation stating that the first `k` target words equal the source words.  At completion, the theorem should return the copied-word relation, unchanged pages and relevant globals, preserved source representation, preserved target header, and bytes outside the target payload.  The artifact-specific theorem should then reconstruct `OrdersAt`, `TradesAt`, or `LevelsAt` through the corresponding `ofFlatWords` lemma.
 
 Do not parameterize a shared theorem by arbitrary generated local indices or arbitrary instruction lists.  Such a statement would move elaboration-heavy local manipulation into the common library without removing it.  Keep a small `wp` loop adapter beside each artifact and share the semantic invariant transitions that carry the difficult memory facts.
 
