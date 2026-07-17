@@ -15,6 +15,7 @@ import Project.ClobLimit.InternalPartialBookAlloc
 import Project.ClobLimit.InternalPartialBookCopy
 import Project.ClobLimit.InternalPartialBookFinish
 import Project.ClobLimit.InternalPartialBookUpdate
+import Project.ClobLimit.InternalPartialTradePrepare
 
 /-!
 # Specification for `clob_limit`
@@ -39,8 +40,9 @@ composition returns the exact bump store and result frame.  This module
 also proves the replacement-book length initialization and complete payload
 copy, followed by the five maker-field stores and returned replacement pointer.
 Their composition retains ownership of the source and replacement books and
-the allocator memory frame.  It remains outside `Project.lean` until the
-exported theorem is complete.
+the allocator memory frame.  The following trade prefix records the replacement
+book, reads the maker trade fields, and computes the appended trade length.  It
+remains outside `Project.lean` until the exported theorem is complete.
 -/
 
 end Project.ClobLimit
