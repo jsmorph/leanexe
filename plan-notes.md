@@ -41,16 +41,16 @@ The direct assets settle allocator meaning independently of the depth artifact. 
 
 ## Immediate Depth Application
 
-The missing-price preparation is divided into a twenty-instruction field phase and a twenty-four-instruction allocation phase.  `MissingFields.missingFieldsProg_spec` proves the field phase and its target-length arithmetic.  `MissingPrepare.missingPrepareProg_spec` currently stops where the raw emitted rounded-capacity expression must become `fixedArrayBytesU (levels.length + 1) 2`.
+The missing-price preparation is divided into a twenty-instruction field phase and a twenty-four-instruction allocation phase.  `MissingFields.missingFieldsProg_spec` proves the field phase and its target-length arithmetic.  `MissingPrepare.missingPrepareProg_spec` proves the allocation phase, including the rounded capacity, minimum-capacity branch, zeroed scratch locals, and initial free-list cursor.
 
-The existing limit preparation proof gives the exact repair pattern.  Introduce an equality whose left side is the complete expression emitted by the instruction sequence and whose right side is `fixedArrayBytesU (levels.length + 1) 2`, prove it by changing the goal to `fixedArrayBytesU_round`, and rewrite with that equality before selecting the false branch of the minimum-capacity conditional.  Use the same equality when comparing the final generated locals with `prepareFrame`; enlarging the simplifier or resource limits is unnecessary.
+The existing limit preparation proof supplied the exact repair pattern.  The completed depth proof names an equality whose left side is the complete expression emitted by the instruction sequence and whose right side is `fixedArrayBytesU (levels.length + 1) 2`, proves it through `fixedArrayBytesU_round`, and rewrites before selecting the false branch of the minimum-capacity conditional.  A second explicit reduction selects the empty generated branch before the final global read, and the focused warning-failing build passes in 1.4 seconds without a larger simplifier or resource budget.
 
 After preparation, the missing branch should proceed through independently compiled search, bump, allocation-finish, copy, and final-store theorems.  The found branch should follow the same allocation division, then use a complete same-length copy and one indexed quantity replacement.  Compose each branch only after its semantic result predicate states the owned level array, exact contents, free list or heap top, counter increment, page equality, and preserved input region.
 
 | Depth proof unit | Existing support | Current state | Next semantic result |
 |------------------|------------------|---------------|----------------------|
-| Missing field preparation | Depth scan and representation | Proved locally | Exact target length and word counts. |
-| Missing allocation preparation | Capacity arithmetic and prior preparation examples | Two explicit rewrite mismatches | Exact need, scratch locals, and free-list cursor. |
+| Missing field preparation | Depth scan and representation | Complete; 1.4-second focused build | Exact target length and word counts. |
+| Missing allocation preparation | Capacity arithmetic and prior preparation examples | Complete; 1.4-second focused build | Exact need, scratch locals, and free-list cursor. |
 | Missing free-list search | Generic free-list model and book search example | Not started | Either selected fit choice or no-fit state. |
 | Missing bump branch | Generic bump store and book bump example | Not started | Fresh stride-two target with exact heap state. |
 | Missing allocation finish | Fresh-header and counter facts | Not started | Target length initialized and allocation count incremented. |
