@@ -31,7 +31,7 @@ node test/run_all.js
 | `test` | Node and Lean tests that compare Lean execution with generated WASM behavior. |
 | `proofs/talos-gcd` | Talos proof workspace: nineteen completed artifact proofs, the runtime lemma library, and the generic teardown theorem. |
 | `DEVELOPING.md` | Developer setup, diagnostics, test gates, proof artifacts, and troubleshooting. |
-| `docs` | User, reference, verification, design, and project-status documentation. |
+| [Documentation](docs/README.md) | User, reference, verification, design, project-status, and historical documentation. |
 | `docs/verifying.md` | End-to-end recipe for verifying a new program. |
 | `docs/manual.md` | Practical guide to writing Lean source that LeanExe can compile. |
 | `docs/spec.md` | The accepted Lean subset, ABI, semantics, and known unsupported features. |
