@@ -44,6 +44,8 @@ import Project.ClobLimit.LimitEntry
 import Project.ClobLimit.LimitValidEntry
 import Project.ClobLimit.LimitRunMatchCall
 import Project.ClobLimit.LimitRunMatchResult
+import Project.ClobLimit.LimitResidualStatus
+import Project.ClobLimit.LimitResidualPrepare
 import Project.ClobLimit.LimitFilled
 import Project.ClobLimit.InternalTradeBump
 import Project.ClobLimit.InternalPartialBookPrepare
@@ -162,6 +164,11 @@ Function 21 has an exact branch decomposition whose large unselected paths
 remain opaque during elaboration.  Separate entry, matcher-call, result-store,
 and result-condition theorems prove the complete valid filled branch without
 expanding function 18 or the residual allocation.
+The residual result condition and status-zero call use the same opaque
+continuation boundaries.  Separate field-copy and represented-length theorems
+prepare the appended order without normalizing the complete 53-local frame.
+The internal matcher result retains its final heap bound and the page, address,
+and memory limits needed by the residual allocator.
 The proof remains outside `Project.lean` until the exported theorem is complete.
 -/
 

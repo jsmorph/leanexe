@@ -31,6 +31,10 @@ def filledConditionFrame (book : UInt64) (order : OrderL)
     (ctx : Context) (data : InternalLoopResult.OutputData) : Locals :=
   { resultFrame book order ctx data with values := [.i32 1] }
 
+def residualConditionFrame (book : UInt64) (order : OrderL)
+    (ctx : Context) (data : InternalLoopResult.OutputData) : Locals :=
+  { resultFrame book order ctx data with values := [.i32 0] }
+
 set_option maxRecDepth 1048576
 
 set_option Elab.async false in
@@ -73,6 +77,28 @@ theorem validConditionProg_filled_spec
   simpa [filledConditionFrame, resultFrame, hRemaining] using hNext
 
 set_option Elab.async false in
+theorem validConditionProg_residual_spec
+    (env : HostEnv Unit) (st : Store Unit)
+    (book : UInt64) (order : OrderL) (ctx : Context)
+    (data : InternalLoopResult.OutputData)
+    (hRemaining : ctx.result.remaining ≠ 0)
+    (Q : Assertion Unit) (rest : Wasm.Program)
+    (hNext : wp «module» rest Q st
+      (residualConditionFrame book order ctx data) env) :
+    wp «module» (LimitEntry.validConditionProg ++ rest) Q st
+      (resultFrame book order ctx data) env := by
+  simp only [LimitEntry.validConditionProg, List.cons_append, List.nil_append]
+  wp_run
+  refine wp_iff_cons rfl ?_
+  rw [if_neg (by simp [hRemaining])]
+  wp_run
+  simp
+  refine wp_iff_cons rfl ?_
+  rw [if_neg (by simp)]
+  wp_run
+  simpa [residualConditionFrame, resultFrame, hRemaining] using hNext
+
+set_option Elab.async false in
 theorem validResultPrefixProg_filled_spec
     (env : HostEnv Unit) (st : Store Unit)
     (book : UInt64) (order : OrderL) (ctx : Context)
@@ -87,6 +113,23 @@ theorem validResultPrefixProg_filled_spec
   simp only [LimitEntry.validResultPrefixProg, List.append_assoc]
   apply validResultStoreProg_spec env st book order ctx data values hValues
   exact validConditionProg_filled_spec env st book order ctx data hRemaining
+    Q rest hNext
+
+set_option Elab.async false in
+theorem validResultPrefixProg_residual_spec
+    (env : HostEnv Unit) (st : Store Unit)
+    (book : UInt64) (order : OrderL) (ctx : Context)
+    (data : InternalLoopResult.OutputData) (values : List Value)
+    (hValues : values = InternalLoopResult.outputValues ctx data)
+    (hRemaining : ctx.result.remaining ≠ 0)
+    (Q : Assertion Unit) (rest : Wasm.Program)
+    (hNext : wp «module» rest Q st
+      (residualConditionFrame book order ctx data) env) :
+    wp «module» (LimitEntry.validResultPrefixProg ++ rest) Q st
+      { LimitRunMatchCall.callFrame book order with values := values } env := by
+  simp only [LimitEntry.validResultPrefixProg, List.append_assoc]
+  apply validResultStoreProg_spec env st book order ctx data values hValues
+  exact validConditionProg_residual_spec env st book order ctx data hRemaining
     Q rest hNext
 
 end Project.ClobLimit.LimitRunMatchResult

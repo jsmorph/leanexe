@@ -97,6 +97,30 @@ theorem partial_spec (env : HostEnv Unit) (ctx : Context) (st : Store Unit)
   · exact facts.global2
   · intro st1 s1 hResult hBookOwned hNewBookOwned hTradesOwned hNewTradesOwned
       hPages hG0 hG1 hG2 hBelow
+    have hBookNeed :
+        (orderArrayBytesU data.orders.length).toNat =
+          orderArrayBytes data.orders.length :=
+      fixedArrayBytesU_toNat data.orders.length 5 bounds.ordersLength64
+        (by decide) (by
+          have hBytes := bounds.partialBookBytes
+          change fixedArrayBytes data.orders.length 5 + 7 < UInt64.size at hBytes
+          omega)
+    have hTradeNeed :
+        (tradeArrayBytesU (data.tradeValues.length + 1)).toNat =
+          tradeArrayBytes (data.tradeValues.length + 1) :=
+      fixedArrayBytesU_toNat (data.tradeValues.length + 1) 4
+        bounds.tradeLength64 (by decide) (by
+          have hBytes := bounds.tradeBytes
+          change fixedArrayBytes (data.tradeValues.length + 1) 4 + 7 <
+            UInt64.size at hBytes
+          omega)
+    have hHeapLimit :
+        (data.g0 + 48 + orderArrayBytesU data.orders.length + 48 +
+          tradeArrayBytesU (data.tradeValues.length + 1)).toNat ≤ ctx.limit := by
+      rw [bounds.partialTradeTopAfterBook, bounds.partialBookTop, hBookNeed,
+        hTradeNeed]
+      have hLimit := bounds.partialAllocationLimit
+      omega
     have hCompleted := InternalLoopCompletion.of_partial ctx st base data facts
       hFuel i hRemaining hFind hQty st1 s1 (data.g0 + 48)
       (orderArrayBytesU data.orders.length)
@@ -104,7 +128,8 @@ theorem partial_spec (env : HostEnv Unit) (ctx : Context) (st : Store Unit)
       (tradeArrayBytesU (data.tradeValues.length + 1))
       (data.g0 + 48 + orderArrayBytesU data.orders.length + 48 +
         tradeArrayBytesU (data.tradeValues.length + 1))
-      hResult hNewBookOwned hNewTradesOwned hPages hG0 hG1 hG2 hBelow
+      hResult hNewBookOwned hNewTradesOwned hPages hG0 hG1 hG2 hHeapLimit
+      hBelow
     apply hDone st1 s1 hCompleted
     rw [measure_completed hCompleted, measure_running facts]
     omega

@@ -34,6 +34,10 @@ structure OutputAt (ctx : Context) (st : Store Unit) (data : OutputData) :
   global0 : st.globals.globals[0]? = some (.i64 data.g0)
   global1 : st.globals.globals[1]? = some (.i64 0)
   global2 : st.globals.globals[2]? = some (.i64 ctx.expectedG2)
+  heapLimit : data.g0.toNat ≤ ctx.limit
+  pageLimit : st.mem.pages ≤ 65536
+  addressLimit : ctx.limit < 4294967296
+  memoryLimit : ctx.limit ≤ st.mem.pages * 65536
 
 def outputValues (ctx : Context) (data : OutputData) : List Value :=
   [.i64 ctx.result.remaining, .i64 data.trades, .i64 data.tradesOwner,
@@ -70,7 +74,11 @@ theorem of_completed (facts : CompletedFacts ctx st s data) :
     pages := facts.pages
     global0 := facts.global0
     global1 := facts.global1
-    global2 := facts.global2 }
+    global2 := facts.global2
+    heapLimit := facts.heapLimit
+    pageLimit := facts.pageLimit
+    addressLimit := facts.addressLimit
+    memoryLimit := facts.memoryLimit }
 
 theorem of_zero_running (facts : RunningFacts ctx st s data)
     (hFuel : data.fuel = 0) : OutputAt ctx st (runningOutputData data) := by
@@ -95,7 +103,14 @@ theorem of_zero_running (facts : RunningFacts ctx st s data)
     global1 := facts.global1
     global2 := by
       rw [← hExpectedG2]
-      exact facts.global2 }
+      exact facts.global2
+    heapLimit := by
+      have hBudget := facts.budget
+      simp [hFuel] at hBudget
+      exact hBudget
+    pageLimit := facts.pageLimit
+    addressLimit := facts.addressLimit
+    memoryLimit := facts.memoryLimit }
 
 set_option Elab.async false in
 theorem resultEpilogueProg_spec (env : HostEnv Unit) (ctx : Context)

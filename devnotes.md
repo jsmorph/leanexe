@@ -5654,3 +5654,11 @@ The decomposition derives both large lists from their exact positions in the gen
 `ClobLimit.LimitRunMatchCall.validCallProg_spec` prepares function 18's seven arguments and applies an arbitrary function 18 theorem without reducing its continuation.  `LimitRunMatchResult` divides the returned-value handling into a pure store phase and a two-condition normalization phase.  The call and result modules passed their focused warning-failing builds in 1.2 and 1.4 seconds under the repository resource limits.
 
 The initial combined proof reached the default heartbeat limit at the validity call, and the first call split moved that limit to result-condition normalization.  Dividing at both generated call boundaries and between result storage and condition testing removed those reductions rather than increasing the heartbeat allowance.  `ClobLimit.LimitFilled.func21_filled` now proves the complete valid zero-remaining branch in 4.2 seconds, returning status zero and the exact owned arrays from `Model.runMatchL` without a further allocation.
+
+## 2026-07-16: Prepare the Exported Residual Branch
+
+The residual append requires the final matcher heap pointer to remain below the context limit.  `InternalLoopInvariant.CompletedFacts` and `InternalLoopResult.OutputAt` now retain that heap bound together with the page, address, and memory limits.  The stopped, partial-fill, completed, and zero-fuel constructors preserve or derive all four facts.
+
+`ClobLimit.LimitEntry` divides the residual path into status, order-field, represented-length, allocator-preparation, allocation, copy, and finish regions.  `LimitResidualStatus.residualStatusProg_spec` proves the status-zero call and matched-book pointer copy.  `LimitRunMatchResult` supplies the residual condition theorem needed to enter that region.
+
+The first preparation proof combined field copies, the length read, and arithmetic over one explicit 53-local frame, reaching the default heartbeat limit.  Dividing it into a field predicate and a generic represented-length phase reduced the warning-failing build to 2.5 seconds under the repository resource limits.  `Project.ClobLimit.InternalCorrect` also rebuilt after the stronger result predicate, so the next phase can derive the residual allocation premises from proved output facts.
