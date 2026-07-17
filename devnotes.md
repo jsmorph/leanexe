@@ -5600,3 +5600,11 @@ The focused warning-failing build passed on its first run in 1.8 seconds under t
 `of_completed` projects the output predicate from `CompletedFacts`.  `of_zero_running` reduces the residual source computation at zero fuel, transports both represented arrays to the context result, and derives the expected allocation counter from the unchanged final trade length.  `resultEpilogueProg_spec` applies the generated completed or running epilogue theorem and returns the same output predicate for both exit forms.
 
 The first focused run found two malformed multiline `simp only ... at` commands before elaboration.  Joining each command with its target allowed the warning-failing build to pass in 1.5 seconds under the repository resource limits.  The next boundary proves function 17's initialization, body decomposition, and complete internal matcher theorem.
+
+## 2026-07-16: Prove the Internal Matcher Entry Frame
+
+`ClobLimit.InternalInitialization.initProg` contains function 17's two initialization instructions, which set the completion flag to zero.  `initProg_spec` proves the exact resulting local frame while preserving the store and all parameters.  Its focused warning-failing build passed in 1.3 seconds under the repository resource limits.
+
+`ClobLimit.InternalEntry.func17_decomposition` proves that the generated function body equals initialization followed by the verified loop and result epilogue.  `initialized_loop_locals` reduces the concrete `func17Def.toLocals` frame to `LoopLocalsAt` for `initialData`, including the zero-initialized allocator scratch locals.  The decomposition and frame theorem remain independent of physical memory premises.
+
+The first entry build left one existential zero-value witness after all finite-list reductions.  Supplying the `UInt64` value zero allowed the warning-failing build to pass in 1.3 seconds under the repository resource limits.  The next theorem composes these boundaries into input-generic termination and correctness for function 17.
