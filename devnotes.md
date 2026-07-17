@@ -5496,3 +5496,11 @@ The focused warning-failing build passed on its first run in 4.3 seconds under t
 The result epilogue selects parameters 6 through 10 when the loop exits without a completed branch.  A completed state already occupies local-list positions 0 through 4, with its flag at position 5.  Both paths return the five owner-and-pointer values in the generated operand-stack order.
 
 The first focused diagnostic completed in 2.8 seconds and exposed the missing direct import of `InternalIteration`.  The second diagnostic completed in 2.3 seconds and identified two malformed multiline tactic target lists.  Correcting those local errors produced a warning-failing build in 3.8 seconds under the repository resource limits.
+
+## 2026-07-16: Define the Internal Loop Invariant
+
+`ClobLimit.InternalLoopInvariant` defines running, completed, and exit states for function 17.  A running state records the exact recursive parameters, allocation scratch values, residual source computation, represented arrays, and allocator globals.  A completed state records the semantic result and the five owner-and-pointer values consumed by the epilogue.
+
+The invariant omits free-list nodes and release counters because the proved Limit path keeps global 1 equal to zero and uses bump allocation.  It retains global 0, global 2, page count, heap monotonicity, and equality below the initial heap top.  Its budget reuses `ClobMatchFuel.Budget.stepBytes`, which already bounds one replacement book and one appended trade array.
+
+The measure is zero for a completed state and `2 * fuel.toNat + 1` for a running state.  The first focused diagnostic completed in 2.3 seconds and found one incorrect conjunction projection in the completed-value lemma.  Correcting that projection produced a warning-failing build in 2.0 seconds under the repository resource limits.
