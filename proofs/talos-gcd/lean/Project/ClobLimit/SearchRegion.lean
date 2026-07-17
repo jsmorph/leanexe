@@ -31,6 +31,7 @@ theorem searchShift : Shift Project.ClobMatchFuel.«module»
   refine
     { sourceImports := rfl
       targetImports := rfl
+      memory := rfl
       functions := ?_ }
   intro id hDomain
   rcases hDomain with rfl | rfl | rfl | rfl | rfl | rfl
