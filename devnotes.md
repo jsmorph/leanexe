@@ -5180,3 +5180,11 @@ Focused warning-failing builds completed `PartialTradeUpdate` in 11 seconds, `Pa
 `orderQtyTotal` and `tradeQtyTotal` interpret fixed-width quantities as natural numbers before summing them.  A full step subtracts only after proving that the maker quantity does not exceed the remainder, and a partial step subtracts only after proving the converse ordering.  The resulting step and recursive theorems conserve both maker inventory plus executed trades and taker remainder plus executed trades without an overflow premise.
 
 The focused warning-failing `Project.ClobMatchFuel.Properties` build completed in 1.5 seconds.  The proof uses the existing source branch equations, `findBestL_some_lt`, and small reusable list-total lemmas.  Every Lean invocation ran serially under the repository cgroup, CPU, scheduler, I/O-priority, and timeout limits.
+
+## 2026-07-15: Register the `limit` Artifact
+
+The `clob_limit` case now has checked WASM and WAT inputs plus an emitted `Project.ClobLimit.Program`.  The artifact is 9,330 bytes of WASM and 121,746 bytes of WAT.  Exported function 21 calls `runMatch` at function 18, which calls the recursive matcher at function 17, while functions 22 through 25 implement the shared runtime suite.
+
+`ClobLimit.Model.limitL` composes the existing validity predicate and `matchFuelL` model.  Named equations state the invalid, fully filled, and residual-order branches.  `runMatchL_quantity_conservation` specializes the source matcher theorem to an empty initial trade list and the order's initial quantity.
+
+The constrained generator completed in 7.0 seconds, the focused source-model build completed in 1.2 seconds, and the shared runtime checks completed in 1.2 seconds.  A separate constrained artifact-only run reproduced the checked WASM and WAT byte-for-byte.  The case remains outside `Project.lean`, `tools/check-talos.sh`, and the completed-proof inventory until its input-generic artifact theorem is complete.
