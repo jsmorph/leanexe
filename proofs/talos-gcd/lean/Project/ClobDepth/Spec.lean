@@ -1,5 +1,7 @@
 import Project.ClobDepth.Entry
 import Project.ClobDepth.MissingBump
+import Project.ClobDepth.MissingBranch
+import Project.ClobDepth.MissingBranchFacts
 import Project.ClobDepth.MissingCopy
 import Project.ClobDepth.MissingCopyInvariant
 import Project.ClobDepth.MissingFields
