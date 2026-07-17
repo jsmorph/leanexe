@@ -5285,9 +5285,9 @@ The focused warning-failing build completed in 3.7 seconds under the repository 
 
 `ClobLimit.InternalPartialBookAlloc.partialBookAllocProg_spec` composes the aligned-capacity prefix with the complete generated search and bump fallback.  The current Limit theorem assumes global 1 contains zero, so the scan exits before reading a free-node header.  The resulting store is `fixedArrayAllocBumpStore st g0 (fixedArrayBytesU n 5) 5`, and the result local contains `g0 + 48`.
 
-The proof derives the allocator's minimum-capacity premise from the shared `fixedArrayBytesU_toNat` theorem.  It passes the existing top, 32-bit fit, memory fit, and page-count premises unchanged to `InternalBookBump.partialBookNoFitProg_spec`.  This separation prevents the later copy theorem from reducing the allocator body.
+The proof derives the allocator's minimum-capacity premise from the shared `fixedArrayBytesU_toNat` theorem.  It composes `partialBookSearchProg_empty` with `partialBookBumpProg_spec`, passing the existing top, 32-bit fit, memory fit, and page-count premises to the bump theorem.  The first committed definition appended the standalone no-fit program and therefore duplicated its six-instruction search initialization after the setup prefix.  The corrected definition appends the search and bump programs directly, matching the generated slice.
 
-The focused warning-failing build completed in 3.2 seconds under the repository resource limits.  The composition adds no new arithmetic or memory semantics.  The next module starts with the semantic bump store and proves the generated counter, length initialization, and complete payload copy.
+The corrected focused warning-failing build completed in 2.8 seconds under the repository resource limits.  The aggregate rebuild recompiled both downstream partial-book modules and passed the Limit specification.  The composition adds no new arithmetic or memory semantics.
 
 ## 2026-07-15: Prove the Partial-Book Copy
 

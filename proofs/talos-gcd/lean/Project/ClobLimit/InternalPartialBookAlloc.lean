@@ -13,7 +13,8 @@ open Wasm Project.Clob Project.ClobLimit
 
 def partialBookAllocProg : Wasm.Program :=
   InternalPartialBookAllocPrepare.partialBookAllocPrepareProg ++
-    InternalBookBump.partialBookNoFitProg
+    InternalBookBump.partialBookSearchProg ++
+    InternalBookBump.partialBookBumpProg
 
 set_option Elab.async false in
 theorem partialBookAllocProg_spec
@@ -49,13 +50,17 @@ theorem partialBookAllocProg_spec
     unfold fixedArrayBytes
     omega
   unfold partialBookAllocProg
-  rw [List.append_assoc]
+  rw [List.append_assoc, List.append_assoc]
   apply InternalPartialBookAllocPrepare.partialBookAllocPrepareProg_spec env st
     base n 0 capacity next hParams hLocals hValues hLengthLocal
     hCapacityLocal hNextLocal hn hbytes hg1 Q
-      (InternalBookBump.partialBookNoFitProg ++ rest)
-  exact InternalBookBump.partialBookNoFitProg_spec env st base g0
-    (fixedArrayBytesU n 5) 0 0 capacity next 0 hParams hLocals hValues
-    hNeed8 hTop hFit32 hFit hPages hg0 hg1 Q rest hDone
+      (InternalBookBump.partialBookSearchProg ++
+        InternalBookBump.partialBookBumpProg ++ rest)
+  have hBump := InternalBookBump.partialBookBumpProg_spec env st base g0
+    (fixedArrayBytesU n 5) 0 capacity next hParams hLocals hValues hNeed8
+    hTop hFit32 hFit hPages hg0 Q rest hDone
+  exact InternalBookBump.partialBookSearchProg_empty env st base
+    (fixedArrayBytesU n 5) 0 capacity next hParams hLocals hValues Q
+    (InternalBookBump.partialBookBumpProg ++ rest) hBump
 
 end Project.ClobLimit.InternalPartialBookAlloc
