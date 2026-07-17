@@ -48,7 +48,14 @@ theorem of_stop (ctx : Context) (st : Store Unit) (s : Locals)
     pages := facts.pages
     global0 := facts.global0
     global1 := facts.global1
-    global2 := ?_ }
+    global2 := ?_
+    heapLimit := by
+      change data.g0.toNat ≤ ctx.limit
+      have hBudget := facts.budget
+      omega
+    pageLimit := facts.pageLimit
+    addressLimit := facts.addressLimit
+    memoryLimit := facts.memoryLimit }
   · simpa [hSource, RunningData.sourceState] using hResult
   · simpa [hSource, RunningData.sourceState] using facts.bookOwned
   · simpa [hSource, RunningData.sourceState] using facts.tradesOwned
@@ -74,6 +81,7 @@ theorem of_partial (ctx : Context) (st : Store Unit) (s : Locals)
     (hG0 : st1.globals.globals[0]? = some (.i64 g0Final))
     (hG1 : st1.globals.globals[1]? = some (.i64 0))
     (hG2 : st1.globals.globals[2]? = some (.i64 (data.g2 + 2)))
+    (hHeapLimit : g0Final.toNat ≤ ctx.limit)
     (hBelow : ∀ a : Nat, a < data.g0.toNat →
       st1.mem.bytes a = st.mem.bytes a) :
     CompletedAt ctx st1 s1 := by
@@ -114,7 +122,11 @@ theorem of_partial (ctx : Context) (st : Store Unit) (s : Locals)
     pages := hPages.trans facts.pages
     global0 := hG0
     global1 := hG1
-    global2 := ?_ }
+    global2 := ?_
+    heapLimit := hHeapLimit
+    pageLimit := by rw [hPages]; exact facts.pageLimit
+    addressLimit := facts.addressLimit
+    memoryLimit := by rw [hPages]; exact facts.memoryLimit }
   · simpa [InternalIteration.CompletedResultAt, hSource, partialState] using
       hCompletedResult
   · simpa [hSource, partialState] using hBookOwned
