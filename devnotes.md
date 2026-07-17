@@ -5424,3 +5424,11 @@ The first focused build reported that `FreshOrderArrayAt` was a matcher-specific
 At loop exit, the theorem applies the shared `OrdersAt.eraseIdx_ofFlatWords` reconstruction lemma.  The result is `OrdersAt st2 target (os.eraseIdx i)` with the original allocation store as the outside-payload frame reference.  The theorem also retains the fresh target header, represented source book, exact counter update, and unchanged page count.
 
 The focused warning-failing build completed in 6.4 seconds under the repository resource limits.  The theorem passed on its first build.  The next module composes the full-book allocator with both copy loops and promotes the represented arrays to owned arrays.
+
+## 2026-07-16: Compose the Full-Book Update
+
+`ClobLimit.InternalFullBookUpdate.fullBookUpdateProg_spec` composes the empty-list allocator with both erased-book copy loops.  It derives target bounds and source-target separation from the source-capacity and below-heap premises.  The continuation receives owned source and replacement books, the allocation-to-final outside-payload frame, unchanged pages, and the exact global-list update.
+
+The proof keeps all component instruction theorems opaque.  It uses `ownedOrderArrayAt_fixedArrayAllocBumpStore` to preserve the source through allocation and `OwnedOrderArrayAt.frame_outsideFlatWords` to preserve it through both loops.  The target ownership pairs the allocator's fresh stride-five header with the suffix theorem's `OrdersAt st2 target (os.eraseIdx i)` result.
+
+The first diagnostic found an implicit byte conversion and incorrectly aligned continuation bullets, and the second found two explicit natural-byte identities and a result frame that wrapped the allocator frame twice.  The corrected warning-failing build completed in 3.9 seconds under the repository resource limits.  The next generated segment prepares the maker trade and the stride-four append allocation.

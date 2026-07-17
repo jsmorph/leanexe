@@ -12,6 +12,7 @@ import Project.ClobLimit.InternalFullBookAllocPrepare
 import Project.ClobLimit.InternalFullBookAlloc
 import Project.ClobLimit.InternalFullBookPrefix
 import Project.ClobLimit.InternalFullBookSuffix
+import Project.ClobLimit.InternalFullBookUpdate
 import Project.ClobLimit.InternalTradeBump
 import Project.ClobLimit.InternalPartialBookPrepare
 import Project.ClobLimit.InternalPartialBookControl
@@ -72,7 +73,8 @@ erased length and exact prefix and suffix copy ranges.  Its allocator prefix
 computes the aligned stride-five capacity, then composes the empty free-list
 scan and bump fallback.  The following loop stores the smaller length and
 copies every word before the erased maker, and the shifted-suffix loop
-reconstructs the represented erased book.  The proof remains outside
+reconstructs the represented erased book.  Their composition retains both
+owned books and the exact allocator state.  The proof remains outside
 `Project.lean` until the exported theorem is complete.
 -/
 
