@@ -35,6 +35,8 @@ import Project.ClobLimit.InternalEntry
 import Project.ClobLimit.InternalCorrect
 import Project.ClobLimit.RunMatchEmptyAlloc
 import Project.ClobLimit.RunMatchEntry
+import Project.ClobLimit.RunMatchPrepare
+import Project.ClobLimit.RunMatchAllocations
 import Project.ClobLimit.InternalTradeBump
 import Project.ClobLimit.InternalPartialBookPrepare
 import Project.ClobLimit.InternalPartialBookControl
@@ -140,6 +142,10 @@ Function 18 contains two identical empty stride-four fixed-array allocations.
 `RunMatchEmptyAlloc.allocProg_spec` proves their exact store and local-frame
 effect once, and `RunMatchEntry.func18_decomposition` identifies both generated
 regions with that proved instruction block.
+The preparation theorem derives fuel from the represented book length and
+discharges the generated overflow check.  The two-allocation composition
+returns the exact owner and data roots, preserved book ownership, allocator
+globals, pages, and below-heap memory frame consumed by function 17.
 The proof remains outside `Project.lean` until the exported theorem is complete.
 -/
 
