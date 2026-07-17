@@ -5448,3 +5448,11 @@ The focused warning-failing build completed in 5.9 seconds under the repository 
 The theorem leaves memory and globals unchanged.  It ends before the generated release block and recursive-state assignments.  The source book and selected index remain available through parameter positions 7 and local-list position 14 while the instruction scratch values use positions 45 and 46.
 
 The first focused build exposed a local-index translation copied from the nine-parameter matcher frame.  Correcting the scratch positions from 57 and 58 to 45 and 46 produced a warning-failing build in 2.2 seconds under the repository resource limits.  The next module composes full-trade preparation, the shared trade update, and this finalization theorem.
+
+## 2026-07-16: Compose the Full-Trade Update
+
+`ClobLimit.InternalFullTradeUpdate.fullTradeUpdateProg_spec` composes the full-trade preparation, shared trade-array update, and full-trade finalization programs.  The appended value is `ClobMatchFuel.Model.fillTradeL taker oldOrders[i]! oldOrders[i]!.oqty`.  The resulting locals contain the replacement book, appended trade array, and `remaining - oldOrders[i]!.oqty`.
+
+The proof reuses `InternalPartialTradeUpdate.partialTradeUpdateProg_spec` without unfolding its allocator, copy loop, or append stores.  Its continuation retains ownership of the source and replacement books and the source and appended trade arrays.  It also states the allocator-to-final outside-payload frame, unchanged page count, and exact globals after the trade-allocation counter increment.
+
+The first focused diagnostic completed in 4.8 seconds and exposed a missing allocator-frame namespace plus continuation bullets aligned at the wrong proof level.  Correcting those structural errors produced a warning-failing build in 5.1 seconds under the repository resource limits.  The next proof boundary assigns the full-fill result to the recursive-state parameters and decrements the fuel parameter.
