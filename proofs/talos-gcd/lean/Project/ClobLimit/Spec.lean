@@ -28,6 +28,7 @@ import Project.ClobLimit.InternalLoopAdvance
 import Project.ClobLimit.InternalLoopBranches
 import Project.ClobLimit.InternalLoopIteration
 import Project.ClobLimit.InternalLoop
+import Project.ClobLimit.InternalLoopInitial
 import Project.ClobLimit.InternalTradeBump
 import Project.ClobLimit.InternalPartialBookPrepare
 import Project.ClobLimit.InternalPartialBookControl
@@ -121,6 +122,8 @@ The complete dispatcher composition preserves the invariant through stopped,
 partial-fill, and full-fill outcomes with the same decrease.
 The generated guard-dispatch loop terminates by well-founded induction with a
 completed result or a zero-fuel running state.
+The initial-state constructor establishes the running invariant from the public
+array, allocator, memory, page, heap, and budget premises.
 The proof remains outside `Project.lean` until the exported theorem is complete.
 -/
 
