@@ -156,8 +156,95 @@ theorem missingPrepareProg_decomposition :
     missingPrepareProg = missingFieldsProg ++ missingAllocPrepareProg := by
   rfl
 
+def missingSearchBodyProg : Wasm.Program :=
+  [
+  .localGet 26,
+  .constI64 0,
+  .eqI64,
+  .br_if 1,
+  .localGet 29,
+  .constI64 0,
+  .neI64,
+  .br_if 1,
+  .localGet 26,
+  .constI64 32,
+  .subI64,
+  .wrapI64,
+  .load64 0,
+  .localSet 27,
+  .localGet 26,
+  .constI64 8,
+  .subI64,
+  .wrapI64,
+  .load64 0,
+  .localSet 28,
+  .localGet 27,
+  .localGet 24,
+  .geUI64,
+  .iff 0 0 [
+    .localGet 25,
+    .constI64 0,
+    .eqI64,
+    .iff 0 0 [
+      .localGet 28,
+      .globalSet 1
+    ] [
+      .localGet 25,
+      .constI64 8,
+      .subI64,
+      .wrapI64,
+      .localGet 28,
+      .store64 0
+    ],
+    .localGet 26,
+    .constI64 48,
+    .subI64,
+    .wrapI64,
+    .constI64 5501223100278326855,
+    .store64 0,
+    .localGet 26,
+    .constI64 40,
+    .subI64,
+    .wrapI64,
+    .constI64 1,
+    .store64 0,
+    .localGet 26,
+    .constI64 32,
+    .subI64,
+    .wrapI64,
+    .localGet 27,
+    .store64 0,
+    .localGet 26,
+    .constI64 24,
+    .subI64,
+    .wrapI64,
+    .constI64 2,
+    .store64 0,
+    .localGet 26,
+    .constI64 16,
+    .subI64,
+    .wrapI64,
+    .constI64 2,
+    .store64 0,
+    .localGet 26,
+    .constI64 8,
+    .subI64,
+    .wrapI64,
+    .constI64 0,
+    .store64 0,
+    .localGet 26,
+    .localSet 29
+  ] [
+    .localGet 26,
+    .localSet 25,
+    .localGet 28,
+    .localSet 26
+  ],
+  .br 0
+]
+
 def missingSearchProg : Wasm.Program :=
-  (missingProg.drop 44).take 1
+  [.block 0 0 [.loop 0 0 missingSearchBodyProg]]
 
 def missingBumpProg : Wasm.Program :=
   (missingProg.drop 45).take 4
@@ -176,7 +263,8 @@ theorem missingProg_decomposition :
     missingProg = missingPrepareProg ++ missingSearchProg ++
       missingBumpProg ++ missingAllocFinishProg ++ missingCopyProg ++
       missingStoreProg := by
-  unfold missingPrepareProg missingSearchProg missingBumpProg
+  unfold missingPrepareProg missingSearchProg missingSearchBodyProg
+    missingBumpProg
     missingAllocFinishProg missingCopyProg missingStoreProg missingProg
     branchAt func3
   rfl
