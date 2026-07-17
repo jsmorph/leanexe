@@ -25,6 +25,9 @@ def sidePriceStep (side : UInt64) (prices : List UInt64)
 def sidePrices (book : List OrderL) (side : UInt64) : List UInt64 :=
   book.foldl (sidePriceStep side) []
 
+def priceIdx (levels : List LevelL) (price : UInt64) : Option Nat :=
+  levels.findIdx? (fun level => level.lprice == price)
+
 def levelQtyAt : List LevelL → UInt64 → UInt64
   | [], _ => 0
   | level :: levels, price =>
@@ -42,6 +45,57 @@ def orderQtyAtNat : List OrderL → UInt64 → UInt64 → Nat
   | order :: orders, side, price =>
       (if order.oside = side ∧ order.oprice = price then order.oqty.toNat else 0) +
         orderQtyAtNat orders side price
+
+theorem priceIdx_of_first (levels : List LevelL) (price : UInt64) (k : Nat)
+    (hk : k < levels.length)
+    (hClean : ∀ j, j < k → (levels[j]!.lprice == price) = false)
+    (hHit : (levels[k]!.lprice == price) = true) :
+    priceIdx levels price = some k := by
+  unfold priceIdx
+  induction levels generalizing k with
+  | nil => simp at hk
+  | cons level levels ih =>
+      cases k with
+      | zero =>
+          have h := hHit
+          rw [Project.Common.getBang_eq hk, List.getElem_cons_zero] at h
+          simp [List.findIdx?_cons, h]
+      | succ k =>
+          have hk' : k < levels.length := by simpa using hk
+          have hHead : (level.lprice == price) = false := by
+            have h := hClean 0 (Nat.succ_pos k)
+            rwa [Project.Common.getBang_eq
+              (by simp : (0 : Nat) < (level :: levels).length),
+              List.getElem_cons_zero] at h
+          have hClean' :
+              ∀ j, j < k → (levels[j]!.lprice == price) = false := by
+            intro j hj
+            have h := hClean (j + 1) (by simp; omega)
+            rw [Project.Common.getBang_eq (by simp; omega),
+              List.getElem_cons_succ] at h
+            rwa [Project.Common.getBang_eq (by omega : j < levels.length)]
+          have hHit' : (levels[k]!.lprice == price) = true := by
+            have h := hHit
+            rw [Project.Common.getBang_eq hk, List.getElem_cons_succ] at h
+            rwa [Project.Common.getBang_eq hk']
+          simp [List.findIdx?_cons, hHead]
+          exact ih k hk' hClean' hHit'
+
+theorem priceIdx_none_of_clean (levels : List LevelL) (price : UInt64)
+    (hClean :
+      ∀ j, j < levels.length → (levels[j]!.lprice == price) = false) :
+    priceIdx levels price = none := by
+  unfold priceIdx
+  rw [List.findIdx?_eq_none_iff]
+  intro level hLevel
+  obtain ⟨j, hj, rfl⟩ := List.mem_iff_getElem.mp hLevel
+  have h := hClean j hj
+  rwa [Project.Common.getBang_eq hj] at h
+
+theorem priceIdx_some_lt {levels : List LevelL} {price : UInt64} {i : Nat}
+    (hIndex : priceIdx levels price = some i) : i < levels.length := by
+  unfold priceIdx at hIndex
+  exact (List.findIdx?_eq_some_iff_findIdx_eq.mp hIndex).1
 
 @[simp]
 theorem levelPrices_addLevelL (levels : List LevelL) (price qty : UInt64) :
