@@ -5624,3 +5624,11 @@ The first focused build reached the final postcondition and left only the length
 The theorem treats the generated free-list loop and six header stores as one compiled boundary.  It accepts a continuation over the exact resulting store and frame, so the second allocation can consume the first allocation's result without unfolding either instruction block.  The proof uses the existing fixed-array arithmetic lemmas for the no-wrap, no-grow, address, and page obligations.
 
 `ClobLimit.RunMatchEntry.func18_decomposition` identifies both generated allocation regions with `allocProg`.  The allocation theorem passed its focused warning-failing build in 8.8 seconds, and the decomposition passed in 1.2 seconds under the repository resource limits.  The next theorem will prove the function 18 preparation frame, compose both allocations, and call `InternalCorrect.func17_correct`.
+
+## 2026-07-16: Compose `runMatch` Initialization
+
+`ClobLimit.RunMatchPrepare.prepareProg_spec` reads the represented book length and sets function 17's initial fuel to `UInt64.ofNat (os.length + 1)`.  It proves the generated overflow branch unreachable from the 32-bit book-length premise.  The final frame records all taker fields and the book owner-and-pointer pair without changing the store.
+
+`ClobLimit.RunMatchAllocations.allocationsProg_spec` composes both empty-array allocations and the generated owner and data-root assignments.  Two small generic assignment theorems prevent the proof from normalizing the complete 35-local frame while applying the second allocator.  The final instruction frame contains owner root `g0 + 48`, data root `g0 + 104`, remaining quantity `taker.oqty`, and heap top `g0 + 112`.
+
+`allocationsStore_facts` proves that both empty roots remain owned, the input book remains owned, global 1 remains zero, global 2 advances by two, pages remain unchanged, and bytes below the original heap top remain equal.  The preparation build passed in 2.4 seconds, and the complete allocation module passed in 3.1 seconds under the repository resource limits.  The next theorem will apply `InternalCorrect.func17_correct` to this state and prove function 18's result epilogue.

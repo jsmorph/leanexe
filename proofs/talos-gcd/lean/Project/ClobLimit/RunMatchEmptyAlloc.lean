@@ -1,5 +1,6 @@
 import Project.ClobLimit.Program
 import Project.FixedArrayAllocation
+import Project.ClobMatchFuel.AllocatorFrame
 import Interpreter.Wasm.Wp.Tactic
 
 /-!
@@ -13,6 +14,7 @@ block once and records its exact store and local frame for both uses.
 namespace Project.ClobLimit.RunMatchEmptyAlloc
 
 open Wasm Project.Common Project.Clob Project.ClobLimit
+  Project.ClobMatchFuel.AllocatorFrame
 
 set_option maxHeartbeats 8000000
 set_option maxRecDepth 1048576
@@ -273,6 +275,104 @@ def allocFrame (base : Locals) (g0 : UInt64) : Locals :=
       (.i64 ((g0 + 56 - 1) / 65536 + 1))).set 34
       (.i64 (g0 + 48))).set 22 (.i64 (g0 + 48))).set 6
       (.i64 (g0 + 48))) }
+
+theorem allocStore_pages (st : Store Unit) (g0 g2 : UInt64) :
+    (allocStore st g0 g2).mem.pages = st.mem.pages := by
+  simp [allocStore, emptyFixedArrayMem, fixedArrayMem, fixedArrayHeaderMem,
+    Mem.write64_pages]
+
+theorem allocStore_global0
+    (st : Store Unit) (g0 g2 : UInt64) (value : Value)
+    (hGlobal0 : st.globals.globals[0]? = some value) :
+    (allocStore st g0 g2).globals.globals[0]? =
+      some (.i64 (g0 + 56)) := by
+  have hLength := (List.getElem?_eq_some_iff.mp hGlobal0).1
+  simp [allocStore, hLength]
+
+theorem allocStore_global1
+    (st : Store Unit) (g0 g2 value : UInt64)
+    (hGlobal1 : st.globals.globals[1]? = some (.i64 value)) :
+    (allocStore st g0 g2).globals.globals[1]? = some (.i64 value) := by
+  have hLength := (List.getElem?_eq_some_iff.mp hGlobal1).1
+  have hValue := (List.getElem?_eq_some_iff.mp hGlobal1).2
+  simp [allocStore, hLength, hValue]
+
+theorem allocStore_global2
+    (st : Store Unit) (g0 g2 : UInt64) (value : Value)
+    (hGlobal2 : st.globals.globals[2]? = some value) :
+    (allocStore st g0 g2).globals.globals[2]? =
+      some (.i64 (g2 + 1)) := by
+  have hLength := (List.getElem?_eq_some_iff.mp hGlobal2).1
+  simp [allocStore, hLength]
+
+theorem allocStore_bytes_before
+    (st : Store Unit) (g0 g2 : UInt64) (a : Nat)
+    (hFit32 : g0.toNat + 56 < 4294967296) (ha : a < g0.toNat) :
+    (allocStore st g0 g2).mem.bytes a = st.mem.bytes a := by
+  exact emptyFixedArrayMem_bytes_before st.mem g0 8 4 a hFit32 ha
+
+theorem allocStore_empty_trade
+    (st : Store Unit) (g0 g2 : UInt64)
+    (hFit32 : g0.toNat + 56 < 4294967296)
+    (hFit : g0.toNat + 56 ≤ st.mem.pages * 65536) :
+    OwnedTradeArrayAt (allocStore st g0 g2) (g0 + 48) 8 [] := by
+  have hRoot : (g0 + 48).toNat = g0.toNat + 48 :=
+    fixedArrayBumpRoot_toNat g0 (by
+      have hSize : UInt64.size = 18446744073709551616 := rfl
+      rw [hSize]
+      omega)
+  have hAlloc := emptyFixedArrayMem_spec st g0 8 4 hFit32
+  refine ⟨?_, ?_⟩
+  · change FreshFixedArrayAt (allocStore st g0 g2) (g0 + 48) 8 4
+    have hFresh := hAlloc.1
+    unfold FreshFixedArrayAt at hFresh ⊢
+    simpa [allocStore] using hFresh
+  · unfold TradesAt
+    refine ⟨⟨?_, ?_⟩, ?_⟩
+    · rw [← toUInt32_eq_ofNat]
+      simpa [allocStore] using hAlloc.2
+    · rw [allocStore_pages, hRoot, Nat.mod_eq_of_lt (by omega)]
+      omega
+    · intro j hj
+      simp at hj
+
+theorem ownedOrderArrayAt_allocStore
+    {st : Store Unit} {g0 g2 source sourceCapacity : UInt64}
+    {os : List OrderL}
+    (hFit32 : g0.toNat + 56 < 4294967296)
+    (hSource48 : 48 ≤ source.toNat)
+    (hSource32 : source.toNat + fixedArrayBytes os.length 5 < 4294967296)
+    (hCapacity : fixedArrayBytes os.length 5 ≤ sourceCapacity.toNat)
+    (hBelow : source.toNat + sourceCapacity.toNat ≤ g0.toNat)
+    (hOwned : OwnedOrderArrayAt st source sourceCapacity os) :
+    OwnedOrderArrayAt (allocStore st g0 g2) source sourceCapacity os := by
+  have hBytes : ∀ a : Nat,
+      source.toNat - 48 ≤ a → a < source.toNat + sourceCapacity.toNat →
+        (allocStore st g0 g2).mem.bytes a = st.mem.bytes a := by
+    intro a _ haHigh
+    exact allocStore_bytes_before st g0 g2 a hFit32 (by omega)
+  exact ⟨hOwned.1.frame_region (by omega) hSource48 hBytes,
+    OrdersAt.frame_region hSource32 hSource48 hCapacity
+      (allocStore_pages st g0 g2) hBytes hOwned.2⟩
+
+theorem ownedTradeArrayAt_allocStore
+    {st : Store Unit} {g0 g2 source sourceCapacity : UInt64}
+    {ts : List TradeL}
+    (hFit32 : g0.toNat + 56 < 4294967296)
+    (hSource48 : 48 ≤ source.toNat)
+    (hSource32 : source.toNat + fixedArrayBytes ts.length 4 < 4294967296)
+    (hCapacity : fixedArrayBytes ts.length 4 ≤ sourceCapacity.toNat)
+    (hBelow : source.toNat + sourceCapacity.toNat ≤ g0.toNat)
+    (hOwned : OwnedTradeArrayAt st source sourceCapacity ts) :
+    OwnedTradeArrayAt (allocStore st g0 g2) source sourceCapacity ts := by
+  have hBytes : ∀ a : Nat,
+      source.toNat - 48 ≤ a → a < source.toNat + sourceCapacity.toNat →
+        (allocStore st g0 g2).mem.bytes a = st.mem.bytes a := by
+    intro a _ haHigh
+    exact allocStore_bytes_before st g0 g2 a hFit32 (by omega)
+  exact ⟨hOwned.1.frame_region (by omega) hSource48 hBytes,
+    TradesAt.frame_region hSource32 hSource48 hCapacity
+      (allocStore_pages st g0 g2) hBytes hOwned.2⟩
 
 set_option Elab.async false in
 theorem allocProg_spec
