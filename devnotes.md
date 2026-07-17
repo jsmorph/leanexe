@@ -5504,3 +5504,11 @@ The first focused diagnostic completed in 2.8 seconds and exposed the missing di
 The invariant omits free-list nodes and release counters because the proved Limit path keeps global 1 equal to zero and uses bump allocation.  It retains global 0, global 2, page count, heap monotonicity, and equality below the initial heap top.  Its budget reuses `ClobMatchFuel.Budget.stepBytes`, which already bounds one replacement book and one appended trade array.
 
 The measure is zero for a completed state and `2 * fuel.toNat + 1` for a running state.  The first focused diagnostic completed in 2.3 seconds and found one incorrect conjunction projection in the completed-value lemma.  Correcting that projection produced a warning-failing build in 2.0 seconds under the repository resource limits.
+
+## 2026-07-16: Derive Internal Loop Step Bounds
+
+`ClobLimit.InternalLoopBounds.StepBounds` collects the numeric premises consumed by both allocation-bearing branch theorems.  It covers source lengths, flat-word totals, aligned allocation sizes, exact `UInt64.toNat` allocation tops, 32-bit address limits, and page fits.  It also bounds each complete two-allocation branch by the invariant's fixed step budget.
+
+`InternalLoopBounds.of_running` derives the record from a nonzero-fuel `RunningFacts`.  It reuses `ClobMatchFuel.Budget.one_step_available`, `allocationTop_toNat`, `fullStepBytes_le`, and `partialStepBytes_le`.  The theorem keeps all modular arithmetic outside the later dispatcher and state-constructor proofs.
+
+The first focused diagnostic completed in 1.5 seconds and found one malformed multiline `change ... at` command.  Moving the target onto the command line allowed the complete warning-failing build to pass in 2.7 seconds under the repository resource limits.  No generalized bound record was added because the existing matcher and Limit invariants have different data types and no third consumer currently repeats the adapter.
