@@ -5730,3 +5730,7 @@ The first aggregate market build reached its 60-second timeout while rebuilding 
 `ClobMarket.ExportRegion` transports the shared validity function and both status constants from the limit artifact.  `ClobMarket.Entry` divides function 21 into its validity prefix, valid path, invalid allocation, and final result reads.  The region certificate, helper wrappers, and decomposition each pass focused warning-failing builds in about one second.
 
 The valid path has separate theorems for validity entry, both unlimited-price cases, matcher argument preparation, function 18 result storage, and the three-value epilogue.  `ClobMarket.Valid.func21_valid` composes them into an input-generic theorem returning the exact matcher book and trades with status zero.  Every boundary passes a focused warning-failing build in one to two seconds while preserving the transported ownership, allocator, page, budget, and memory facts.
+
+## 2026-07-16: Divide the Invalid `market` Allocation
+
+`ClobMarket.Entry` now divides the generated invalid program into preparation, free-list search, bump allocation, and finalization phases.  The invalid entry and preparation theorems prove status one, the borrowed input book, capacity eight, and a zero free-list head, while the search theorem proves immediate exit without reading memory.  The frame-generic bump theorem uses the shared fixed-array arithmetic and store definition to prove all six header writes and the heap-top update; its focused warning-failing build passes in 7.4 seconds under the required process limits.
