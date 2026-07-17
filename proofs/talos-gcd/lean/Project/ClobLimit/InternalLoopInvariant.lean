@@ -161,6 +161,10 @@ structure CompletedFacts (ctx : Context) (st : Store Unit) (s : Locals)
   global0 : st.globals.globals[0]? = some (.i64 data.g0)
   global1 : st.globals.globals[1]? = some (.i64 0)
   global2 : st.globals.globals[2]? = some (.i64 ctx.expectedG2)
+  heapLimit : data.g0.toNat ≤ ctx.limit
+  pageLimit : st.mem.pages ≤ 65536
+  addressLimit : ctx.limit < 4294967296
+  memoryLimit : ctx.limit ≤ st.mem.pages * 65536
 
 def CompletedAt (ctx : Context) (st : Store Unit) (s : Locals) : Prop :=
   ∃ data, CompletedFacts ctx st s data

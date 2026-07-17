@@ -164,4 +164,105 @@ theorem func21_decomposition :
     residualProg invalidProg validResultBranch outerBranch resultProg
   rfl
 
+def residualStatusProg : Wasm.Program :=
+  [
+  .call 19,
+  .localSet 32,
+  .localGet 32,
+  .localSet 37,
+  .localGet 27,
+  .localSet 33,
+  .localGet 33,
+  .localSet 40
+]
+
+def residualOrderFieldsProg : Wasm.Program :=
+  [
+  .localGet 1,
+  .localSet 46,
+  .localGet 2,
+  .localSet 47,
+  .localGet 3,
+  .localSet 48,
+  .localGet 4,
+  .localSet 49,
+  .localGet 30,
+  .localSet 50
+]
+
+def residualLengthProg : Wasm.Program :=
+  [
+  .localGet 40,
+  .wrapI64,
+  .load64 0,
+  .localSet 41,
+  .localGet 41,
+  .constI64 5,
+  .mulI64,
+  .localSet 42,
+  .localGet 41,
+  .constI64 1,
+  .addI64,
+  .localSet 43
+]
+
+def residualOrderPrepareProg : Wasm.Program :=
+  residualOrderFieldsProg ++ residualLengthProg
+
+def residualAllocPrepareProg : Wasm.Program :=
+  [
+  .constI64 8,
+  .localGet 43,
+  .constI64 5,
+  .mulI64,
+  .constI64 8,
+  .mulI64,
+  .addI64,
+  .constI64 7,
+  .addI64,
+  .constI64 8,
+  .divUI64,
+  .constI64 8,
+  .mulI64,
+  .localSet 53,
+  .localGet 53,
+  .constI64 8,
+  .ltUI64,
+  .iff 0 0 [
+    .constI64 8,
+    .localSet 53
+  ] [],
+  .constI64 0,
+  .localSet 58,
+  .constI64 0,
+  .localSet 54,
+  .globalGet 1,
+  .localSet 55
+]
+
+def residualArrayPrepareProg : Wasm.Program :=
+  residualOrderPrepareProg ++ residualAllocPrepareProg
+
+def residualPrepareProg : Wasm.Program :=
+  residualStatusProg ++ residualArrayPrepareProg
+
+def residualAllocProg : Wasm.Program :=
+  (residualProg.drop 54).take 17
+
+def residualCopyProg : Wasm.Program :=
+  (residualProg.drop 71).take 1
+
+def residualFinishProg : Wasm.Program :=
+  residualProg.drop 72
+
+set_option maxRecDepth 1048576 in
+theorem residualProg_decomposition :
+    residualProg = residualPrepareProg ++ residualAllocProg ++
+      residualCopyProg ++ residualFinishProg := by
+  unfold residualPrepareProg residualStatusProg residualArrayPrepareProg
+    residualOrderPrepareProg residualAllocPrepareProg residualAllocProg
+    residualOrderFieldsProg residualLengthProg residualCopyProg
+    residualFinishProg residualProg validResultBranch outerBranch func21
+  rfl
+
 end Project.ClobLimit.LimitEntry
