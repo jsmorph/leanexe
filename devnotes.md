@@ -5694,3 +5694,11 @@ The explicit residual-program decomposition, semantic finalization, completed-in
 `LimitResidualBounds.Facts` collects the normalized allocation size, copy count, target address, page fit, and source separation used by allocation, copying, and finalization.  Its derivation passed a focused warning-failing build in 3.2 seconds, and the existing allocation-copy theorem now consumes those shared facts.  This removes a duplicate arithmetic proof from the next composition boundary.
 
 `LimitResidualBook.residualBookProg_spec` composes allocation, flat-word copying, five appended-order stores, and result-local assignments.  Its continuation receives the represented appended book and the exact status, book, and trades locals.  The focused warning-failing build passed in 1.2 seconds under the repository resource limits.
+
+## 2026-07-16: Prove the Valid Residual Branch
+
+`InternalLoopResult.OutputAt` now retains the heap-monotonicity fact already carried by the running invariant.  The stopped, partial-fill, completed, and zero-fuel paths preserve it, which permits the final memory proof to connect the matcher frame with the caller's original heap boundary.  The focused dependency chain through `InternalLoopResult` rebuilt under the repository resource limits.
+
+`LimitResidualResult` preserves the matcher trade array, pages, globals, and below-heap bytes through the appended-book writes.  `LimitResidualExport` then composes the matcher's initial-allocation memory frame and states the owned arrays, exact allocator globals, unchanged pages, and bytes below the caller's original heap top.  Their focused warning-failing builds passed in 1.2 and 2.9 seconds.
+
+`LimitResidual.func21_residual` composes the complete matcher, residual condition, residual allocation and append, and three-result epilogue.  A public reserve premise covers the one final stride-five allocation above the matcher heap limit, from which the proof derives every address and page bound.  The theorem passed a focused warning-failing build in 3.2 seconds, and the complete three-branch exported theorem is the next boundary.

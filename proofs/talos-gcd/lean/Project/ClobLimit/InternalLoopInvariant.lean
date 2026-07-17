@@ -174,6 +174,7 @@ structure CompletedFacts (ctx : Context) (st : Store Unit) (s : Locals)
   global0 : st.globals.globals[0]? = some (.i64 data.g0)
   global1 : st.globals.globals[1]? = some (.i64 0)
   global2 : st.globals.globals[2]? = some (.i64 ctx.expectedG2)
+  heapMono : ctx.initialG0.toNat <= data.g0.toNat
   heapLimit : data.g0.toNat ≤ ctx.limit
   pageLimit : st.mem.pages ≤ 65536
   addressLimit : ctx.limit < 4294967296

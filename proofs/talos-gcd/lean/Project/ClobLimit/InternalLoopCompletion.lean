@@ -60,6 +60,7 @@ theorem of_stop (ctx : Context) (st : Store Unit) (s : Locals)
     global0 := facts.global0
     global1 := facts.global1
     global2 := ?_
+    heapMono := facts.heapMono
     heapLimit := by
       change data.g0.toNat ≤ ctx.limit
       have hBudget := facts.budget
@@ -113,6 +114,7 @@ theorem of_partial (ctx : Context) (st : Store Unit) (s : Locals)
     (hG1 : st1.globals.globals[1]? = some (.i64 0))
     (hG2 : st1.globals.globals[2]? = some (.i64 (data.g2 + 2)))
     (hHeapLimit : g0Final.toNat ≤ ctx.limit)
+    (hHeapMono : data.g0.toNat <= g0Final.toNat)
     (hBelow : ∀ a : Nat, a < data.g0.toNat →
       st1.mem.bytes a = st.mem.bytes a) :
     CompletedAt ctx st1 s1 := by
@@ -162,6 +164,7 @@ theorem of_partial (ctx : Context) (st : Store Unit) (s : Locals)
     global0 := hG0
     global1 := hG1
     global2 := ?_
+    heapMono := facts.heapMono.trans hHeapMono
     heapLimit := hHeapLimit
     pageLimit := by rw [hPages]; exact facts.pageLimit
     addressLimit := facts.addressLimit
