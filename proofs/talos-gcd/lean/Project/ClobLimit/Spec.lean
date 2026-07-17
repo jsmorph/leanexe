@@ -29,6 +29,7 @@ import Project.ClobLimit.InternalLoopBranches
 import Project.ClobLimit.InternalLoopIteration
 import Project.ClobLimit.InternalLoop
 import Project.ClobLimit.InternalLoopInitial
+import Project.ClobLimit.InternalLoopResult
 import Project.ClobLimit.InternalTradeBump
 import Project.ClobLimit.InternalPartialBookPrepare
 import Project.ClobLimit.InternalPartialBookControl
@@ -124,6 +125,8 @@ The generated guard-dispatch loop terminates by well-founded induction with a
 completed result or a zero-fuel running state.
 The initial-state constructor establishes the running invariant from the public
 array, allocator, memory, page, heap, and budget premises.
+A common output predicate covers completed and zero-fuel exits, and the result
+epilogue returns the exact five owner, pointer, and remaining values.
 The proof remains outside `Project.lean` until the exported theorem is complete.
 -/
 
