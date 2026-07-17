@@ -5480,3 +5480,11 @@ The first transition composition review found that `FullTradeResultAt` omitted t
 `fullTradeUpdateProg_spec` accepts the six preserved input facts and returns them with the semantic array result.  It converts optional `Locals.get` facts to list-element equalities once before simplifying the final frame.  `fullBookTradeProg_spec` supplies the taker facts from `fullBookPrepareFrame`, where the generated full-fill branch copied them before allocation.
 
 The first focused diagnostic completed in 5.0 seconds and identified the optional-access conversion.  The corrected trade-update build completed in 6.1 seconds, and the dependent book-and-trade build completed in 5.1 seconds under the repository resource limits.  The strengthened boundary now contains every premise required by the separately compiled transition theorem.
+
+## 2026-07-16: Compose the Complete Full-Fill Branch
+
+`ClobLimit.InternalFullBranch.fullBranchProg_spec` composes the book-and-trade update with the recursive transition.  Its semantic state contains `os.eraseIdx i`, the appended complete-maker trade, and `remaining - os[i]!.oqty`.  The transition writes equal owner-and-pointer parameters for both replacement arrays and decrements fuel.
+
+`InternalFullBranch.RecursiveResultAt` states the exact eleven recursive parameters, local-list length, and empty operand stack.  `recursiveResultAt_fullTransitionFrame` proves that the explicit transition frame satisfies this predicate from only the input frame lengths.  The branch continuation also retains both source arrays, both replacement arrays, exact allocator globals, unchanged pages, and byte equality below the original heap top.
+
+The focused warning-failing build passed on its first run in 4.3 seconds under the repository resource limits.  The proof invokes the separately compiled book-and-trade and transition theorems without unfolding either instruction sequence.  The next composition connects both allocation-bearing branch theorems to the iteration dispatcher and loop invariant.
