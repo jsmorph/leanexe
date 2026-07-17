@@ -7,6 +7,7 @@ import Project.FunctionRegion.NoTail
 A closed portable function region has the same interpreter behavior after its
 function indices and direct calls are renamed.  The final theorem transports
 fuel-free `TerminatesWith` specifications between the two modules.
+Memory-observing instructions use the declaration equality recorded by `Shift`.
 -/
 
 namespace Project.FunctionRegion
@@ -92,7 +93,7 @@ private theorem semantics_eq_aux (hShift : Shift source target rename domain) :
       exact ⟨hOne, hExec, run_eq_of_exec hShift hExec⟩
   | succ fuel ih =>
       obtain ⟨ihOne, ihExec, ihRun⟩ := ih
-      have hOne := execOne_succ ihOne ihExec ihRun
+      have hOne := execOne_succ hShift.memory ihOne ihExec ihRun
       have hExec := exec_eq_of_one hOne
       exact ⟨hOne, hExec, run_eq_of_exec hShift hExec⟩
 
