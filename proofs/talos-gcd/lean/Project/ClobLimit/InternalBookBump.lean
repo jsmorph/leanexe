@@ -33,6 +33,106 @@ def allocFrame (base : Locals) (need previous current capacity next result :
       (.i64 previous)).set 60 (.i64 current)).set 61
       (.i64 capacity)).set 62 (.i64 next)).set 63 (.i64 result)) }
 
+def partialBookSearchBodyProg : Wasm.Program :=
+  [
+  .localGet 71,
+  .constI64 0,
+  .eqI64,
+  .br_if 1,
+  .localGet 74,
+  .constI64 0,
+  .neI64,
+  .br_if 1,
+  .localGet 71,
+  .constI64 32,
+  .subI64,
+  .wrapI64,
+  .load64 0,
+  .localSet 72,
+  .localGet 71,
+  .constI64 8,
+  .subI64,
+  .wrapI64,
+  .load64 0,
+  .localSet 73,
+  .localGet 72,
+  .localGet 69,
+  .geUI64,
+  .iff 0 0 [
+    .localGet 70,
+    .constI64 0,
+    .eqI64,
+    .iff 0 0 [
+      .localGet 73,
+      .globalSet 1
+    ] [
+      .localGet 70,
+      .constI64 8,
+      .subI64,
+      .wrapI64,
+      .localGet 73,
+      .store64 0
+    ],
+    .localGet 71,
+    .constI64 48,
+    .subI64,
+    .wrapI64,
+    .constI64 5501223100278326855,
+    .store64 0,
+    .localGet 71,
+    .constI64 40,
+    .subI64,
+    .wrapI64,
+    .constI64 1,
+    .store64 0,
+    .localGet 71,
+    .constI64 32,
+    .subI64,
+    .wrapI64,
+    .localGet 72,
+    .store64 0,
+    .localGet 71,
+    .constI64 24,
+    .subI64,
+    .wrapI64,
+    .constI64 2,
+    .store64 0,
+    .localGet 71,
+    .constI64 16,
+    .subI64,
+    .wrapI64,
+    .constI64 5,
+    .store64 0,
+    .localGet 71,
+    .constI64 8,
+    .subI64,
+    .wrapI64,
+    .constI64 0,
+    .store64 0,
+    .localGet 71,
+    .localSet 74
+  ] [
+    .localGet 71,
+    .localSet 70,
+    .localGet 73,
+    .localSet 71
+  ],
+  .br 0
+]
+
+def partialBookSearchProg : Wasm.Program :=
+  [.block 0 0 [.loop 0 0 partialBookSearchBodyProg]]
+
+def partialBookSearchInitProg : Wasm.Program :=
+  [
+  .constI64 0,
+  .localSet 74,
+  .constI64 0,
+  .localSet 70,
+  .globalGet 1,
+  .localSet 71
+  ]
+
 def partialBookBumpProg : Wasm.Program :=
   [
   .localGet 74,
@@ -120,6 +220,33 @@ def partialBookBumpProg : Wasm.Program :=
     .store64 0
   ] []
 ]
+
+def partialBookNoFitProg : Wasm.Program :=
+  partialBookSearchInitProg ++ partialBookSearchProg ++ partialBookBumpProg
+
+set_option Elab.async false in
+theorem partialBookSearchProg_empty
+    (env : HostEnv Unit) (st : Store Unit) (base : Locals)
+    (need previous capacity next : UInt64)
+    (hParams : base.params.length = 11)
+    (hLocals : base.locals.length = 64)
+    (hValues : base.values = [])
+    (Q : Assertion Unit) (rest : Wasm.Program)
+    (hNext : wp «module» rest Q st
+      (allocFrame base need previous 0 capacity next 0) env) :
+    wp «module» (partialBookSearchProg ++ rest) Q st
+      (allocFrame base need previous 0 capacity next 0) env := by
+  simp only [partialBookSearchProg, List.cons_append, List.nil_append]
+  apply wp_block_cons
+  apply wp_loop_cons
+    (Inv := fun st' s =>
+      st' = st ∧ s = allocFrame base need previous 0 capacity next 0)
+    (μ := fun _ _ => 0)
+  · exact ⟨rfl, rfl⟩
+  · rintro st' s ⟨rfl, rfl⟩
+    simp only [partialBookSearchBodyProg, allocFrame]
+    wp_run_bump (hParams, hLocals, hValues)
+    simpa only [allocFrame, hValues] using hNext
 
 set_option Elab.async false in
 theorem partialBookBumpProg_spec
@@ -241,5 +368,60 @@ theorem partialBookBumpProg_spec
   simpa only [fixedArrayAllocBumpStore, fixedArrayHeaderMem,
     toUInt32_eq_ofNat, hsub48, hsub40, hsub32, hsub24, hsub16, hsub8]
     using hNext
+
+set_option Elab.async false in
+theorem partialBookNoFitProg_spec
+    (env : HostEnv Unit) (st : Store Unit) (base : Locals)
+    (g0 need previous current capacity next result : UInt64)
+    (hParams : base.params.length = 11)
+    (hLocals : base.locals.length = 64)
+    (hValues : base.values = [])
+    (hNeed8 : 8 ≤ need.toNat)
+    (hTop : (g0 + 48 + need).toNat =
+      g0.toNat + 48 + need.toNat)
+    (hFit32 : g0.toNat + 48 + need.toNat < 4294967296)
+    (hFit : g0.toNat + 48 + need.toNat ≤ st.mem.pages * 65536)
+    (hPages : st.mem.pages ≤ 65536)
+    (hg0 : st.globals.globals[0]? = some (.i64 g0))
+    (hg1 : st.globals.globals[1]? = some (.i64 0))
+    (Q : Assertion Unit) (rest : Wasm.Program)
+    (hNext : wp «module» rest Q
+      (fixedArrayAllocBumpStore st g0 need 5)
+      (allocFrame base need 0 0 (g0 + 48 + need)
+        ((g0 + 48 + need - 1) / 65536 + 1) (g0 + 48)) env) :
+    wp «module» (partialBookNoFitProg ++ rest) Q st
+      (allocFrame base need previous current capacity next result) env := by
+  have hBump := partialBookBumpProg_spec env st base g0 need 0 capacity next
+    hParams hLocals hValues hNeed8 hTop hFit32 hFit hPages hg0 Q rest hNext
+  have hSearch := partialBookSearchProg_empty env st base need 0 capacity next
+    hParams hLocals hValues Q (partialBookBumpProg ++ rest) hBump
+  unfold partialBookNoFitProg
+  rw [List.append_assoc]
+  simp only [partialBookSearchInitProg, List.cons_append, List.nil_append,
+    allocFrame]
+  wp_run_bump (hParams, hLocals, hValues)
+  simp only [hg1]
+  have hOverwrite :
+      ((((((((base.locals.set 58 (.i64 need)).set 59
+        (.i64 previous)).set 60 (.i64 current)).set 61
+        (.i64 capacity)).set 62 (.i64 next)).set 63 (.i64 0)).set 59
+        (.i64 0)).set 60 (.i64 0)) =
+      (((((base.locals.set 58 (.i64 need)).set 59 (.i64 0)).set 60
+        (.i64 0)).set 61 (.i64 capacity)).set 62 (.i64 next)).set 63
+        (.i64 0) := by
+    apply List.ext_getElem?
+    intro i
+    by_cases h60 : 60 = i
+    · subst i
+      simp [List.getElem?_set]
+    by_cases h59 : 59 = i
+    · subst i
+      simp [List.getElem?_set, h60]
+    by_cases h63 : 63 = i
+    · subst i
+      simp [List.getElem?_set, h60, h59]
+    · simp [List.getElem?_set, h60, h59, h63]
+  rw [hOverwrite]
+  simpa only [allocFrame, hValues] using hSearch
 
 end Project.ClobLimit.InternalBookBump

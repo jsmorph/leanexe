@@ -5225,8 +5225,10 @@ The Limit matcher uses three scratch-local layouts across four inline allocation
 
 `fixedArrayAllocBumpStore` now belongs to `Project.Clob` beside the header transformation that defines its memory.  The shared module also proves its page, global, and fresh-header facts.  `ClobMatchFuel.BookAllocBump` retains its old qualified name as an abbreviation and completed its warning-failing compatibility build in 7.3 seconds.  The dependent Limit invalid branch and aggregate specification rebuilt in 19 and 1.0 seconds.
 
-## 2026-07-15: Prove the Internal Book Bump Body
+## 2026-07-15: Prove the Internal Book Bump Allocator
 
 `ClobLimit.InternalBookBump.partialBookBumpProg_spec` proves the generated partial-book bump body after an unsuccessful free-list search.  It covers the heap-top update, page calculation, no-growth branch, six fixed-array header writes, and exact scratch-local result frame.  The semantic result uses the common `fixedArrayAllocBumpStore` with stride five.
 
-The adapter uses the shared bump arithmetic and store facts while retaining the concrete function 17 indices 69 through 74.  Its module excludes the preceding search, allocation counter, payload copy, maker replacement, and trade update.  The focused warning-failing build completed in 7.1 seconds, and the aggregate Limit specification completed in 2.3 seconds under the repository resource limits.
+`partialBookNoFitProg_spec` adds the generated scratch initialization and complete free-list scan.  Under global 1 equal to zero, the first loop guard exits before any free-node read and composes directly with the bump theorem.  The module still excludes the allocation counter, payload copy, maker replacement, and trade update.
+
+The adapter uses the shared bump arithmetic and store facts while retaining the concrete function 17 indices 69 through 74.  The focused warning-failing build completed in 7.4 seconds, and the aggregate Limit specification completed in 1.2 seconds under the repository resource limits.  Every Lean process used the repository cgroup, CPU, scheduler, I/O-priority, and timeout limits.
