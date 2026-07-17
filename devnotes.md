@@ -5584,3 +5584,11 @@ The focused warning-failing build passed on its first run in 1.3 seconds under t
 `InternalLoop.loopProg_spec` applies the interpreter's well-founded loop rule with `Invariant` and `measure`.  A completed state exits through the done guard, a zero-fuel running state exits through the fuel guard, and a nonzero-fuel running state invokes `InternalLoopIteration.dispatch_spec`.  The theorem returns `ExitAt` after the enclosing block exits.
 
 The focused warning-failing build passed on its first run in 1.7 seconds under the repository resource limits.  Neither the dispatcher nor either allocation branch was unfolded.  The next boundary constructs the initial running invariant from function 17's public input frame and allocator premises.
+
+## 2026-07-16: Construct the Initial Internal Running State
+
+`ClobLimit.InternalLoopInitial.initialData` records function 17's starting owners, pointers, capacities, fuel, remaining quantity, heap pointer, allocation counter, book, and trades.  Its step count is zero, so the residual source computation is the context result by definition.  The initial trade-length and allocation-counter equations reduce directly.
+
+`InternalLoopInitial.of_initial` constructs `RunningFacts` from an initialized `LoopLocalsAt` frame and explicit physical premises.  It retains both represented arrays, zero free-list head, globals 0 and 2, heap monotonicity, memory equality below the initial heap top, page facts, address bounds, and the full fuel budget.  The theorem leaves the concrete function-local calculation to the entry module.
+
+The focused warning-failing build passed on its first run in 1.8 seconds under the repository resource limits.  The constructor contains no instruction execution or address arithmetic.  The next boundary unifies completed and zero-fuel exits and proves the generated five-value result epilogue.
