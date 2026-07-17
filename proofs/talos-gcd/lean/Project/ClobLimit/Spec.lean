@@ -46,6 +46,7 @@ import Project.ClobLimit.LimitRunMatchCall
 import Project.ClobLimit.LimitRunMatchResult
 import Project.ClobLimit.LimitResidualStatus
 import Project.ClobLimit.LimitResidualPrepare
+import Project.ClobLimit.LimitResidualAllocPrepare
 import Project.ClobLimit.LimitFilled
 import Project.ClobLimit.InternalTradeBump
 import Project.ClobLimit.InternalPartialBookPrepare
@@ -167,6 +168,8 @@ expanding function 18 or the residual allocation.
 The residual result condition and status-zero call use the same opaque
 continuation boundaries.  Separate field-copy and represented-length theorems
 prepare the appended order without normalizing the complete 53-local frame.
+The allocator prefix computes the aligned stride-five capacity and initializes
+the empty free-list search facts in another projection predicate.
 The internal matcher result retains its final heap bound and the page, address,
 and memory limits needed by the residual allocator.
 The proof remains outside `Project.lean` until the exported theorem is complete.
