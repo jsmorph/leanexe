@@ -41,6 +41,7 @@ case_scripts=(
   tools/check-talos-clob-post-only.sh
   tools/check-talos-clob-match-fuel.sh
   tools/check-talos-clob-limit.sh
+  tools/check-talos-clob-market.sh
 )
 
 if [[ "$mode" == "update" ]]; then
@@ -50,7 +51,7 @@ if [[ "$mode" == "update" ]]; then
 
   cd "$repo_root/proofs/talos-gcd/lean"
   lake --no-ansi build Project
-  echo "Talos update passed: 18 artifacts and the complete proof library"
+  echo "Talos update passed: 19 artifacts and the complete proof library"
   exit 0
 fi
 
@@ -59,7 +60,7 @@ for script in "${case_scripts[@]}"; do
 done
 
 if [[ "$mode" == "artifacts" ]]; then
-  echo "Talos artifact gate passed: 18 WASM and WAT pairs match"
+  echo "Talos artifact gate passed: 19 WASM and WAT pairs match"
   exit 0
 fi
 
@@ -69,4 +70,4 @@ if ! lake --no-ansi --quiet --log-level=error --no-build build Project; then
   echo "Build them first with tools/setup-talos.sh from the repository root." >&2
   exit 1
 fi
-echo "Talos gate passed: 18 artifacts match and the proof library is up to date"
+echo "Talos gate passed: 19 artifacts match and the proof library is up to date"
