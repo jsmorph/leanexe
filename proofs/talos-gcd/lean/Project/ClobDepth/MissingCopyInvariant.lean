@@ -1,4 +1,5 @@
 import Project.ClobDepth.MissingFinish
+import Project.ClobDepth.LevelCopyInvariant
 
 /-!
 # Missing-price copy invariant
@@ -12,23 +13,17 @@ namespace Project.ClobDepth.MissingCopyInvariant
 
 open Wasm Project.Common Project.Clob Project.ClobDepth
   Project.ClobDepth.Model Project.ClobDepth.Representation
+  Project.ClobDepth.LevelCopyInvariant
 
 def copyLoopFrame (base : Locals) (word : Nat) : Locals :=
   { base with
     locals := base.locals.set 15 (.i64 (UInt64.ofNat word))
     values := [] }
 
-structure CopyState (st0 st : Store Unit) (target source capacity : UInt64)
-    (levels : List LevelL) (word : Nat) : Prop where
-  pages : st.mem.pages = st0.mem.pages
-  globals : st.globals.globals = st0.globals.globals
-  fresh : FreshFixedArrayAt st target capacity 2
-  length : st.mem.read64 target.toUInt32 = UInt64.ofNat (levels.length + 1)
-  sourceInitial : LevelsAt st0 source levels
-  sourceCurrent : LevelsAt st source levels
-  outside : MemEqOutsideFlatWords st0 st target ((levels.length + 1) * 2)
-  copied : ∀ copied : Nat, copied < word →
-    levelWord st target copied = levelWord st0 source copied
+abbrev CopyState (st0 st : Store Unit) (target source capacity : UInt64)
+    (levels : List LevelL) (word : Nat) : Prop :=
+  LevelCopyInvariant.CopyState st0 st target source capacity levels
+    (levels.length + 1) ((levels.length + 1) * 2) word
 
 def CopyInvariant (st0 : Store Unit) (base : Locals)
     (target source capacity : UInt64) (levels : List LevelL) :
@@ -45,11 +40,7 @@ def copyMeasure (total : Nat) (_ : Store Unit) (s : Locals) : Nat :=
 
 def copyWriteStore (st : Store Unit) (target source : UInt64)
     (word : Nat) : Store Unit :=
-  { st with
-    mem := st.mem.write64
-      (UInt32.ofNat ((target.toNat + (word + 1) * 8) % 4294967296))
-      (st.mem.read64
-        (UInt32.ofNat ((source.toNat + (word + 1) * 8) % 4294967296))) }
+  LevelCopyInvariant.copyWriteStore st target source word
 
 theorem copyLoopFrame_zero
     (base : Locals)
@@ -82,15 +73,7 @@ theorem initial
     CopyInvariant st base target source capacity levels st base := by
   refine ⟨0, Nat.zero_le _, ?_, ?_⟩
   · exact (copyLoopFrame_zero base hLocals hValues hCounter).symm
-  · exact {
-      pages := rfl
-      globals := rfl
-      fresh := hFresh
-      length := hLength
-      sourceInitial := hSource
-      sourceCurrent := hSource
-      outside := by intro _ _; rfl
-      copied := by intro _ h; omega }
+  · exact LevelCopyInvariant.CopyState.initial hFresh hLength hSource
 
 theorem CopyInvariant.at_end
     {st0 st : Store Unit} {base : Locals} {target source capacity : UInt64}
@@ -127,50 +110,8 @@ theorem CopyState.advance
       (flatWordsRegion source (levels.length * 2))) :
     CopyState st0 (copyWriteStore st target source word) target source
       capacity levels (word + 1) := by
-  have hTargetLt : target.toNat + (word + 1) * 8 < 4294967296 := by
-    omega
-  refine {
-    pages := by simp [copyWriteStore, hState.pages]
-    globals := hState.globals
-    fresh := ?_
-    length := ?_
-    sourceInitial := hState.sourceInitial
-    sourceCurrent := ?_
-    outside := ?_
-    copied := ?_ }
-  · refine FreshFixedArrayAt.write64_data hState.fresh hTarget48 ?_
-    rw [toUInt32_ofNat_mod_toNat, Nat.mod_eq_of_lt hTargetLt]
-    omega
-  · simp only [copyWriteStore]
-    rw [read64_write64_ne _ _ _ _ (by
-      simp only [toUInt32_eq_ofNat, toUInt32_ofNat_mod_toNat]
-      rw [Nat.mod_eq_of_lt (by omega), Nat.mod_eq_of_lt hTargetLt]
-      omega)]
-    exact hState.length
-  · simpa only [copyWriteStore] using
-      hState.sourceCurrent.frame_write64_flatWordsDisjoint hSource32
-        hTarget32 (slot := word + 1)
-        (value := st.mem.read64 (UInt32.ofNat
-          ((source.toNat + (word + 1) * 8) % 4294967296)))
-        (by omega) hsep
-  · exact hState.outside.write64 hTarget32 (by omega)
-  · intro copied hCopied
-    unfold levelWord
-    by_cases hCurrent : copied = word
-    · subst copied
-      simp only [copyWriteStore]
-      rw [Mem.read64_write64_same]
-      have hSourceCurrent := hState.sourceCurrent.levelWord_eq_flat word hWord
-      have hSourceInitial := hState.sourceInitial.levelWord_eq_flat word hWord
-      unfold levelWord at hSourceCurrent hSourceInitial
-      exact hSourceCurrent.trans hSourceInitial.symm
-    · simp only [copyWriteStore]
-      rw [read64_write64_ne _ _ _ _ (by
-        simp only [toUInt32_ofNat_mod_toNat]
-        rw [Nat.mod_eq_of_lt (by omega), Nat.mod_eq_of_lt hTargetLt]
-        omega)]
-      have hPrevious := hState.copied copied (by omega)
-      unfold levelWord at hPrevious
-      exact hPrevious
+  simpa only [copyWriteStore] using
+    LevelCopyInvariant.CopyState.advance hState hWord (by omega) hTarget48
+      hSource32 hTarget32 hsep
 
 end Project.ClobDepth.MissingCopyInvariant

@@ -131,7 +131,7 @@ theorem missingCopyProg_spec
             toNat_ofNat_lt (by omega)]
         refine ⟨word + 1, by omega, ?_, ?_⟩
         · simp only [copyLoopFrame, hWordNext]
-        · simpa only [copyWriteStore] using
+        · simpa only [copyWriteStore, LevelCopyInvariant.copyWriteStore] using
             hState.advance hWordLt hTarget48 hSource32 hTarget32 hsep
       · simp [copyMeasure, hLocals, hWordU]
         rw [Nat.mod_eq_of_lt (by omega)]
