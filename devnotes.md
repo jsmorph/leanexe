@@ -5544,3 +5544,11 @@ The running invariant requires four allocator scratch locals with `i64` values a
 `InternalIteration.AllocScratchAt` now defines the shared local predicate at the iteration ABI boundary.  `FullTradeResultAt` proves it from the concrete trade-allocation frame, and `RecursiveResultAt` preserves it through `fullTransitionFrame`.  `InternalLoopInvariant` consumes the same predicate directly.
 
 The focused iteration, trade-update, book-and-trade, full-branch, and dependent completion builds all passed with warnings treated as errors.  Their final theorem times ranged from 1.3 to 6.4 seconds under the repository resource limits.  The next-running constructor can now recover every local premise from `RecursiveResultAt`.
+
+## 2026-07-16: Retain the Full-Fill Running Flag
+
+The next-running review found that `RecursiveResultAt` omitted the zero completion flag at combined local index 16.  The full-fill program preserves that flag while updating the recursive parameters.  Without the fact, the successor constructor could not establish the complete `LoopLocalsAt` predicate.
+
+`FullTradeResultAt` now carries the flag through the allocation and append frames.  `fullBookTradeProg_spec` supplies the original running fact across the book frames, and `recursiveResultAt_fullTransitionFrame` preserves it through the parameter transition.  The resulting recursive predicate contains every local fact consumed by the running invariant.
+
+The trade-update, book-and-trade, and full-branch warning-failing builds completed in 6.9, 5.2, and 3.4 seconds under the repository resource limits.  One diagnostic identified the need to unfold `fullBookPrepareLocals` when transporting the combined local access.  The next proof boundary is confined to source progress, lengths, heap bounds, counters, memory equality, and the remaining allocation budget.
