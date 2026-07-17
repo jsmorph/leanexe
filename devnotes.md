@@ -5296,3 +5296,11 @@ The focused warning-failing build completed in 3.2 seconds under the repository 
 The module adapts the established structured copy argument to the Limit function's local indices.  It uses the shared `FreshFixedArrayAt.write64_data`, source framing, flat-word separation, and outside-payload write lemmas.  No allocator instructions or selected-maker replacement stores occur in its elaboration boundary.
 
 The focused warning-failing build completed in 5.2 seconds under the repository resource limits.  The proof records the target and cursor at local-list positions 49 and 50 while preserving the allocator result at position 63.  The next theorem will apply the five generated maker-field stores to the represented target book.
+
+## 2026-07-15: Prove Partial-Book Finalization
+
+`ClobLimit.InternalPartialBookFinish.partialBookFinishProg_spec` proves the five generated stores at the selected maker slot and the returned replacement pointer.  The instruction adapter uses maker fields from local-list positions 51 through 55 and the selected index from position 46.  Its final book represents `ClobMatchFuel.Model.setQtyL os i qty`.
+
+The proof reuses `ClobMatchFuel.BookReplaceStore` for the memory transformation.  Those source-independent theorems establish the represented list update and fixed-array header preservation, while the adapter extends the copy theorem's outside-payload frame through each store.  No allocator or copy-loop instruction occurs in this module.
+
+The focused warning-failing build completed in 5.1 seconds under the repository resource limits.  The final local frame contains the replacement pointer as the branch's one result.  The next theorem will compose allocator, copy, and finalization results without reducing any of those instruction bodies.
