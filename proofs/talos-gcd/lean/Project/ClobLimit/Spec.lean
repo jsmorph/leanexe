@@ -11,6 +11,7 @@ import Project.ClobLimit.InternalTradeBump
 import Project.ClobLimit.InternalPartialBookPrepare
 import Project.ClobLimit.InternalPartialBookControl
 import Project.ClobLimit.InternalPartialBookAllocPrepare
+import Project.ClobLimit.InternalPartialBookAlloc
 
 /-!
 # Specification for `clob_limit`
@@ -30,8 +31,9 @@ quantity dispatch, and all three empty-free-list allocator layouts have exact
 store theorems.  The partial-fill book prefix proves the maker reads and
 replacement-book bounds guard, and its control theorem enters the opaque
 one-result update branch.  The partial-book allocator prefix computes the
-aligned capacity and initializes its free-list scan.  This module remains
-outside `Project.lean` until the exported theorem is complete.
+aligned capacity and initializes its free-list scan, and the empty-list
+composition returns the exact bump store and result frame.  This module
+remains outside `Project.lean` until the exported theorem is complete.
 -/
 
 end Project.ClobLimit
