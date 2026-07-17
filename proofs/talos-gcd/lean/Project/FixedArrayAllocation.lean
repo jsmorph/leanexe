@@ -152,4 +152,62 @@ theorem emptyFixedArrayMem_bytes_before (mem : Mem)
     (emptyFixedArrayMem mem base capacity stride).bytes a = mem.bytes a := by
   exact fixedArrayMem_bytes_before mem base capacity stride 0 a hFit32 ha
 
+theorem fixedArrayBumpRoot_toNat (base : UInt64)
+    (hBound : base.toNat + 48 < UInt64.size) :
+    (base + 48).toNat = base.toNat + 48 := by
+  rw [UInt64.toNat_add]
+  exact Nat.mod_eq_of_lt hBound
+
+theorem fixedArrayBumpRoot_sub_toNat (base offset : UInt64)
+    (hRoot : (base + 48).toNat = base.toNat + 48)
+    (hOffset : offset.toNat ≤ 48) :
+    (base + 48 - offset).toNat = base.toNat + 48 - offset.toNat := by
+  rw [toNat_sub_le _ _ (by rw [hRoot]; omega), hRoot]
+
+theorem fixedArrayBumpTop_sub_one_toNat (base need : UInt64)
+    (hTop : (base + 48 + need).toNat =
+      base.toNat + 48 + need.toNat) :
+    (base + 48 + need - 1).toNat =
+      base.toNat + 48 + need.toNat - 1 := by
+  rw [toNat_sub_le _ _ (by rw [hTop]; simp; omega), hTop]
+  rfl
+
+theorem fixedArrayBumpPages_toNat (base need : UInt64)
+    (hTop : (base + 48 + need).toNat =
+      base.toNat + 48 + need.toNat)
+    (hBound : base.toNat + 48 + need.toNat < UInt64.size) :
+    ((base + 48 + need - 1) / 65536 + 1).toNat =
+      (base.toNat + 48 + need.toNat - 1) / 65536 + 1 := by
+  rw [UInt64.toNat_add, UInt64.toNat_div,
+    fixedArrayBumpTop_sub_one_toNat base need hTop]
+  have h65536 : (65536 : UInt64).toNat = 65536 := rfl
+  have h1 : (1 : UInt64).toNat = 1 := rfl
+  have hSize : UInt64.size = 18446744073709551616 := rfl
+  rw [hSize] at hBound
+  rw [h65536, h1]
+  omega
+
+theorem fixedArrayMemorySize_toNat (pages : Nat) (hPages : pages ≤ 65536) :
+    ((UInt32.ofNat pages).toUInt64).toNat = pages := by
+  have hlt : pages < UInt32.size := by
+    have hSize : UInt32.size = 4294967296 := rfl
+    omega
+  have hnat : (UInt32.ofNat pages).toNat = pages :=
+    UInt32.toNat_ofNat_of_lt' hlt
+  simp [hnat]
+
+theorem fixedArrayBump_no_grow (base need : UInt64) (pages : Nat)
+    (hTop : (base + 48 + need).toNat =
+      base.toNat + 48 + need.toNat)
+    (hFit : base.toNat + 48 + need.toNat ≤ pages * 65536)
+    (hPages : pages ≤ 65536) :
+    ¬((UInt32.ofNat pages).toUInt64 <
+      (base + 48 + need - 1) / 65536 + 1) := by
+  have hBound : base.toNat + 48 + need.toNat < UInt64.size := by
+    have hSize : UInt64.size = 18446744073709551616 := rfl
+    omega
+  rw [UInt64.lt_iff_toNat_lt, fixedArrayMemorySize_toNat pages hPages,
+    fixedArrayBumpPages_toNat base need hTop hBound]
+  omega
+
 end Project.Clob

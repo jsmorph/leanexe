@@ -5216,3 +5216,9 @@ The proof retains both expanded `Locals.get` hypotheses and exact raw-list facts
 `ClobLimit.InternalIteration.dispatchProg_spec` proves the non-allocation portion of one function 17 iteration.  It checks the remaining quantity, invokes the transported owner-aware search theorem, reads the selected maker quantity from the represented book, and chooses a caller-supplied full or partial branch.  Its callbacks receive either the complete five-value result frame or the selected index and exact search scratch frame.
 
 The full and partial programs remain theorem parameters, which prevents either allocation body from entering this module's elaboration boundary.  The theorem retains the three nested zero-result branch continuations required by the generated control structure.  Its focused warning-failing build completed in 12 seconds, and the aggregate Limit specification completed in 2.4 seconds under the repository resource limits.
+
+## 2026-07-15: Consolidate Bump Arithmetic
+
+`FixedArrayAllocation` now proves the unsigned normalizations shared by generated bump allocators.  The lemmas cover the data root, metadata offsets, top minus one, required pages, the encoded memory size, and the conclusion that a bounded allocation needs no memory growth.  Their premises state each no-wrap, page-fit, and maximum-page fact explicitly.
+
+The Limit matcher uses three scratch-local layouts across four inline allocations, while earlier CLOB artifacts repeated the same arithmetic in each layout-specific proof.  The shared lemmas leave those adapters responsible only for instruction execution and their final local frame.  The focused warning-failing build completed in 2.3 seconds under the repository resource limits.  The dependent invalid branch and aggregate Limit specification rebuilt in 18 and 1.8 seconds.
