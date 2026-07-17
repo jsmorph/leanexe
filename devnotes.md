@@ -5232,3 +5232,11 @@ The Limit matcher uses three scratch-local layouts across four inline allocation
 `partialBookNoFitProg_spec` adds the generated scratch initialization and complete free-list scan.  Under global 1 equal to zero, the first loop guard exits before any free-node read and composes directly with the bump theorem.  The module still excludes the allocation counter, payload copy, maker replacement, and trade update.
 
 The adapter uses the shared bump arithmetic and store facts while retaining the concrete function 17 indices 69 through 74.  The focused warning-failing build completed in 7.4 seconds, and the aggregate Limit specification completed in 1.2 seconds under the repository resource limits.  Every Lean process used the repository cgroup, CPU, scheduler, I/O-priority, and timeout limits.
+
+## 2026-07-15: Prove the Internal Trade Bump Allocator
+
+`ClobLimit.InternalTradeBump.tradeBumpProg_spec` proves the generated trade bump body after an unsuccessful free-list search.  It covers the heap-top update, page calculation, no-growth branch, six fixed-array header writes, and exact scratch-local result frame.  The semantic result uses the common `fixedArrayAllocBumpStore` with stride four.
+
+`tradeNoFitProg_spec` adds the generated scratch initialization and complete free-list scan.  Under global 1 equal to zero, the first loop guard exits before any free-node read and composes with the bump theorem.  The same instruction sequence and local layout occur in the full- and partial-fill branches, so this theorem covers both trade-allocation sites.
+
+The adapter retains the concrete function 17 indices 68 through 73.  Its scope excludes the allocation counter, payload copy, and appended trade stores, which later branch modules must compose around the allocator.  The focused warning-failing build completed in 7.3 seconds under the repository resource limits.
