@@ -5560,3 +5560,11 @@ The trade-update, book-and-trade, and full-branch warning-failing builds complet
 The constructor combines `full_source` with the exact recursive locals and represented replacement arrays.  It proves the new source and length equations, fuel accounting, allocation counter, heap monotonicity, below-initial-heap memory equality, page and address limits, and the remaining fixed-step budget.  The physical pointer, capacity, heap lower bound, and heap upper bound remain explicit premises for the later branch composition.
 
 The first focused diagnostic completed in 1.7 seconds and found that the trade-limit arithmetic had not introduced `facts.fuelSpent`.  Adding that named equality allowed the warning-failing build to pass in 1.7 seconds under the repository resource limits.  The next module composes the physical partial and full branches with the completion and advancement constructors.
+
+## 2026-07-16: Compose Internal Loop Branches
+
+`ClobLimit.InternalLoopBranches.partial_spec` connects the selected-maker frame to `InternalPartialBranch.partialBranchProg_spec`.  It supplies every allocation premise from `StepBounds` and every represented input from `RunningFacts`.  The physical result feeds `InternalLoopCompletion.of_partial`, and the completed measure is zero.
+
+`InternalLoopBranches.full_spec` connects the same selected-maker frame to `InternalFullBranch.fullBranchProg_spec`.  It derives exact natural values for the fresh book root, fresh trade root, and final heap top, then proves the replacement array bounds and heap-growth premises consumed by `InternalLoopAdvance.of_full`.  The successor measure decreases because the branch decrements nonzero fuel.
+
+The partial-only module first passed in 1.7 seconds.  Three focused diagnostics on the full theorem identified the byte-bound margin, two structure projections needed by no-wrap arithmetic, and the need to unfold `nextData` before measure normalization.  The complete warning-failing build passed in 1.9 seconds under the repository resource limits, and the next boundary composes these paths with the iteration dispatcher.
