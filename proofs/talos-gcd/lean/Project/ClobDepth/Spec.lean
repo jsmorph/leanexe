@@ -1,4 +1,5 @@
 import Project.ClobDepth.Entry
+import Project.ClobDepth.MissingBump
 import Project.ClobDepth.MissingFields
 import Project.ClobDepth.MissingPrepare
 import Project.ClobDepth.MissingSearch
