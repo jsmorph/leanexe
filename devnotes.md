@@ -5750,3 +5750,7 @@ The focused artifact comparison passed in 1.3 seconds, and the aggregate artifac
 ## 2026-07-16: State the `depth` Source Properties
 
 `ClobDepth.Representation` defines the stride-two level layout, flat-word reads, reconstruction theorem, owned fixed-array predicate, and region frame used by later allocation and copy proofs.  `ClobDepth.Properties` identifies the output price sequence, proves membership and uniqueness, states how new and repeated prices affect first-occurrence order, and proves exact per-price modular quantity aggregation with a natural-number corollary under an explicit `UInt64` bound.  Their constrained warning-failing builds pass in 1.7 and 2.4 seconds, and function 3's search, allocation, copy, and final-store regions form the next proof boundary.
+
+## 2026-07-16: Divide the `depth` Level Update
+
+`ClobDepth.Entry` certifies function 3's top-level scan, missing-price branch, found-price branch, and result reads by definitional equality.  Each allocation branch has separate preparation, free-list search, bump fallback, allocation finalization, copy loop, and final-store regions, while the found branch also isolates its bounds guard.  The constrained warning-failing build passes in 1.5 seconds, and the first-price scan is the next semantic theorem.
