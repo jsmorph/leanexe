@@ -9,6 +9,7 @@ import Project.ClobLimit.InternalBookBump
 import Project.ClobLimit.InternalFullBookBump
 import Project.ClobLimit.InternalTradeBump
 import Project.ClobLimit.InternalPartialBookPrepare
+import Project.ClobLimit.InternalPartialBookControl
 
 /-!
 # Specification for `clob_limit`
@@ -26,8 +27,9 @@ invalid-result, embedded search, and internal early-exit subsystems are
 complete.  The internal iteration control is proved through selected-maker
 quantity dispatch, and all three empty-free-list allocator layouts have exact
 store theorems.  The partial-fill book prefix proves the maker reads and
-replacement-book bounds guard.  This module remains outside `Project.lean`
-until the exported theorem is complete.
+replacement-book bounds guard, and its control theorem enters the opaque
+one-result update branch.  This module remains outside `Project.lean` until the
+exported theorem is complete.
 -/
 
 end Project.ClobLimit
