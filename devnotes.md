@@ -5376,3 +5376,11 @@ The focused warning-failing build completed in 2.3 seconds under the repository 
 The theorem preserves the old book, replacement book, old trade array, and appended trade array.  Its other postconditions state the exact page count, allocator globals after the trade counter increment, and allocator-to-final outside-payload memory frame.  The semantic appended value is `ClobMatchFuel.Model.fillTradeL taker maker remaining`.
 
 The focused warning-failing build completed in 5.7 seconds under the repository resource limits.  The first diagnostic pass exposed an omitted ownership namespace and an explicit trade-quantity equality, and the second exposed a frame namespace and parameter-length simplification.  Each diagnostic completed in less than seven seconds, and the successful build retained the intended component boundaries.
+
+## 2026-07-16: Compose the Partial-Fill Branch
+
+`ClobLimit.InternalPartialBranch.partialBranchProg_spec` composes the bounds-checked replacement-book branch with the complete trade continuation.  Its semantic result contains the selected maker with quantity reduced by the taker remainder and one appended `fillTradeL`.  The result locals contain equal owner-and-pointer values for both new arrays, zero remaining quantity, and completion.
+
+The proof preserves ownership of the source book and old trade array across both bump allocations and both payload updates.  It states the final heap pointer, zero free-list head, allocation counter `g2 + 2`, unchanged page count, and byte equality below the original heap top.  The shared bump-allocation and outside-payload frame theorems supply the cross-allocation preservation facts.
+
+The focused warning-failing build passed in 106 seconds under the repository resource limits.  Earlier passes exposed missing namespaces, explicit `List.set` bounds, and a modular-addition goal that required associativity instead of `omega`.  Larger loop proofs must import this theorem opaquely because expanding its dependent frame expressions would repeat that elaboration cost.
