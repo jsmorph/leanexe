@@ -5432,3 +5432,11 @@ The focused warning-failing build completed in 6.4 seconds under the repository 
 The proof keeps all component instruction theorems opaque.  It uses `ownedOrderArrayAt_fixedArrayAllocBumpStore` to preserve the source through allocation and `OwnedOrderArrayAt.frame_outsideFlatWords` to preserve it through both loops.  The target ownership pairs the allocator's fresh stride-five header with the suffix theorem's `OrdersAt st2 target (os.eraseIdx i)` result.
 
 The first diagnostic found an implicit byte conversion and incorrectly aligned continuation bullets, and the second found two explicit natural-byte identities and a result frame that wrapped the allocator frame twice.  The corrected warning-failing build completed in 3.9 seconds under the repository resource limits.  The next generated segment prepares the maker trade and the stride-four append allocation.
+
+## 2026-07-16: Prove Full-Trade Preparation
+
+`ClobLimit.InternalFullTradePrepare.fullTradePrepareProg_spec` proves the generated bridge after the erased-book branch returns.  It records the replacement book, retains the old trade-array pointer, and reads the matched maker identifier, price, and full quantity from the source book.  It also computes the old flat-word count and appended trade length.
+
+The final local frame matches the input of `InternalPartialTradeUpdate`.  The full-fill and partial-fill branches differ only in the prepared quantity at position 54, so the stride-four allocation, copy, and append-store theorem needs no duplicate.  The replacement book remains in positions 25 and 26 for the later recursive transition.
+
+The focused warning-failing build completed in 5.9 seconds under the repository resource limits.  The theorem passed on its first build.  The next composition reuses the shared trade update with quantity `os[i]!.oqty`.
