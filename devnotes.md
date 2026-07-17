@@ -5360,3 +5360,11 @@ The focused warning-failing build completed in 5.4 seconds under the repository 
 The proof preserves ownership of the old book, replacement book, old trade array, and new trade array.  It also preserves the page count, states the exact allocator globals after the trade counter increment, and carries the allocator-to-final outside-payload memory frame.  Shared allocator-frame theorems preserve each live source array across the bump allocation and subsequent target writes.
 
 The first focused warning-failing build passed in 7.1 seconds under the repository resource limits.  The successful first build confirms that the component boundaries keep this elaboration step small.  The next proof covers generated lines 3450 through 3456, which assign the completed branch result locals.
+
+## 2026-07-15: Prove Partial-Fill Result Assignments
+
+`ClobLimit.InternalPartialFinish.partialFinishProg_spec` proves generated lines 3450 through 3456.  The instructions consume the new trade pointer, store it in local-list positions 2 and 3, and leave an empty operand stack.  They also store zero remaining quantity at position 4 and the completion flag at position 5.
+
+Function 17 has eleven parameters, so combined local indices 13 through 16 correspond to those four local-list positions.  The theorem states the exact resulting frame and leaves the store unchanged.  It requires only the parameter length, local length, and one-value input stack.
+
+The focused warning-failing build completed in 2.3 seconds under the repository resource limits.  This pattern also occurs in `ClobMatchFuel.PartialFinish`, but the local indices and frame shapes differ.  A common parameterized theorem should wait until a third artifact needs the same assignment pattern.
