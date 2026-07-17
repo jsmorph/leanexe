@@ -5472,3 +5472,11 @@ The result frame states the exact scratch locals and recursive parameters.  The 
 The proof states the final heap pointer, zero free-list head, allocation counter `g2 + 2`, unchanged page count, and byte equality below the original heap top.  It preserves the old trade array across the book allocation through `ownedTradeArrayAt_fixedArrayAllocBumpStore` and `OwnedTradeArrayAt.frame_outsideFlatWords`.  The generated two-level result branch uses `BranchPost.doubleResultIffPost_of_wp` before the trade update.
 
 Three focused diagnostics completed in 5.4, 4.6, and 4.0 seconds.  They identified an explicit no-wrap comparison, the prepared frame's local-list length, and one unused simplifier argument.  The corrected warning-failing build completed in 4.9 seconds under the repository resource limits, and the recursive transition remains a separate compiled boundary.
+
+## 2026-07-16: Strengthen the Full-Trade Result Frame
+
+The first transition composition review found that `FullTradeResultAt` omitted the unchanged fuel and taker fields read by `fullTransitionProg`.  The concrete frame preserved those values, but the theorem interface did not expose them.  The predicate now states fuel at index 0, the five taker fields at indices 26 through 30, and the replacement state at indices 36 through 40.
+
+`fullTradeUpdateProg_spec` accepts the six preserved input facts and returns them with the semantic array result.  It converts optional `Locals.get` facts to list-element equalities once before simplifying the final frame.  `fullBookTradeProg_spec` supplies the taker facts from `fullBookPrepareFrame`, where the generated full-fill branch copied them before allocation.
+
+The first focused diagnostic completed in 5.0 seconds and identified the optional-access conversion.  The corrected trade-update build completed in 6.1 seconds, and the dependent book-and-trade build completed in 5.1 seconds under the repository resource limits.  The strengthened boundary now contains every premise required by the separately compiled transition theorem.
