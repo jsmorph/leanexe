@@ -5710,3 +5710,9 @@ The explicit residual-program decomposition, semantic finalization, completed-in
 The constrained `clob_limit` artifact check reproduced both checked inputs with `wasm-tools` 1.251.0 in 1.6 seconds.  `Project.lean` now imports `Project.ClobLimit.Spec`, and the aggregate script includes `tools/check-talos-clob-limit.sh` as its eighteenth case.  The constrained aggregate artifact gate matched all eighteen WASM and WAT pairs in 13 seconds.
 
 The artifact gate refreshed shared compiler objects, so the following proof build found eleven stale targets.  It reached its 300-second constrained timeout without a diagnostic while rebuilding `Project.Validate.Spec`; a no-build diagnostic then named that target, `Project.SharedPair.Spec`, both LEB iteration proofs, and seven bounded CLOB targets.  The first four have recorded no-diagnostic timeouts and require the proof divisions specified in `plan.md`, so the unchanged aggregate target will not run again until those divisions restore its missing objects.
+
+## 2026-07-16: Register the `market` Artifact
+
+`Project.ClobMarket.Model.marketL` applies the completed list matcher to an order whose price is the unsigned maximum for side zero and zero for the other side.  Its valid result omits the matcher's remaining taker, while its invalid result returns the input book and empty trades.  A source lemma proves that the price transformation preserves quantity and transfers the matcher's natural-number conservation theorem.
+
+The constrained warning-failing model build passed in 1.2 seconds.  The update gate generated an 8,761-byte WASM input, its WAT rendering, and a 4,912-line Talos program, then built the initial specification in 1.1 seconds.  Functions 0 through 20 are definitionally equal to the `clob_limit` functions, so a closed function-region certificate can transport the complete function 18 theorem without another generated matcher proof.
