@@ -48,13 +48,6 @@ theorem BytesEqBelow.trans {before middle after : Mem} {limit : Nat}
   intro a ha
   exact (hAfter a ha).trans (hBefore a ha)
 
-def AllocScratchAt (s : Locals) : Prop :=
-  ∃ bookCapacity bookNext tradeNext partialNext : UInt64,
-    s.locals[58]? = some (.i64 bookCapacity) ∧
-    s.locals[59]? = some (.i64 bookNext) ∧
-    s.locals[61]? = some (.i64 tradeNext) ∧
-    s.locals[62]? = some (.i64 partialNext)
-
 structure RunningData where
   steps : Nat
   fuel : UInt64
@@ -92,7 +85,7 @@ def LoopLocalsAt (ctx : Context) (data : RunningData) (s : Locals) : Prop :=
   s.get 9 = some (.i64 data.trades) ∧
   s.get 10 = some (.i64 data.remaining) ∧
   s.get 16 = some (.i64 0) ∧
-  AllocScratchAt s
+  InternalIteration.AllocScratchAt s
 
 structure RunningFacts (ctx : Context) (st : Store Unit) (s : Locals)
     (data : RunningData) : Prop where

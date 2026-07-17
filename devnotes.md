@@ -5536,3 +5536,11 @@ The focused trade-branch build completed in 5.5 seconds, and the composed partia
 `InternalLoopCompletion.of_partial` consumes the physical partial-branch result and both replacement arrays.  It identifies the source result with `partialState`, records equal owner-and-pointer values for each replacement array, and derives the expected counter after one appended trade.  Byte equality below the current heap top composes with the running invariant's equality below the initial heap top.
 
 The first focused diagnostic completed in 1.6 seconds and found the missing namespace for the owned-array predicates.  Adding `ClobMatchFuel.AllocatorFrame` allowed the warning-failing build to pass in 1.5 seconds under the repository resource limits.  The next proof boundary constructs the next running state after a full fill.
+
+## 2026-07-16: Retain Internal Allocator Scratch Locals
+
+The running invariant requires four allocator scratch locals with `i64` values at positions 58, 59, 61, and 62.  The complete full-fill theorem previously returned the recursive parameters but omitted those local facts.  That interface could not establish the next `LoopLocalsAt` state.
+
+`InternalIteration.AllocScratchAt` now defines the shared local predicate at the iteration ABI boundary.  `FullTradeResultAt` proves it from the concrete trade-allocation frame, and `RecursiveResultAt` preserves it through `fullTransitionFrame`.  `InternalLoopInvariant` consumes the same predicate directly.
+
+The focused iteration, trade-update, book-and-trade, full-branch, and dependent completion builds all passed with warnings treated as errors.  Their final theorem times ranged from 1.3 to 6.4 seconds under the repository resource limits.  The next-running constructor can now recover every local premise from `RecursiveResultAt`.
