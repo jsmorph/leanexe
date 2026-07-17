@@ -5456,3 +5456,11 @@ The first focused build exposed a local-index translation copied from the nine-p
 The proof reuses `InternalPartialTradeUpdate.partialTradeUpdateProg_spec` without unfolding its allocator, copy loop, or append stores.  Its continuation retains ownership of the source and replacement books and the source and appended trade arrays.  It also states the allocator-to-final outside-payload frame, unchanged page count, and exact globals after the trade-allocation counter increment.
 
 The first focused diagnostic completed in 4.8 seconds and exposed a missing allocator-frame namespace plus continuation bullets aligned at the wrong proof level.  Correcting those structural errors produced a warning-failing build in 5.1 seconds under the repository resource limits.  The next proof boundary assigns the full-fill result to the recursive-state parameters and decrements the fuel parameter.
+
+## 2026-07-16: Prove the Full-Fill Transition
+
+`ClobLimit.InternalFullTransition.fullTransitionProg_spec` proves generated lines 2590 through 2633.  The program copies the taker and full-fill result through ten scratch locals before assigning parameters 1 through 10.  Its final instruction decrements the fuel in parameter 0.
+
+The result frame states the exact scratch locals and recursive parameters.  The new book and trade owner-and-pointer pairs remain equal, and the reduced remaining quantity becomes parameter 10.  The frame leaves memory and globals unchanged.
+
+`ClobMatchFuel.FullTransition` supplied the proof pattern, but its nine-parameter ABI and conditional owner-tracker calculation differ from the Limit program.  A common theorem would need program indices and tracker behavior as parameters while saving one short direct proof.  The Limit-specific warning-failing build passed on its first run in 1.6 seconds under the repository resource limits.
