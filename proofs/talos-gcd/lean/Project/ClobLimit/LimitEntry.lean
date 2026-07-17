@@ -12,6 +12,13 @@ namespace Project.ClobLimit.LimitEntry
 
 open Wasm Project.ClobLimit
 
+def limitArgs (book : UInt64) (order : Project.Clob.OrderL) : List Value :=
+  [.i64 order.oqty, .i64 order.oprice, .i64 order.oside,
+    .i64 order.otrader, .i64 order.oid, .i64 book]
+
+def entryFrame (book : UInt64) (order : Project.Clob.OrderL) : Locals :=
+  func21Def.toLocals (limitArgs book order).reverse
+
 private def outerBranch (takeValid : Bool) : Wasm.Program :=
   match (func21[30]? : Option Wasm.Instruction) with
   | some (Wasm.Instruction.iff _ _ valid invalid) =>
@@ -76,7 +83,7 @@ def entryProg : Wasm.Program :=
   .eqz
 ]
 
-def validProg : Wasm.Program :=
+def validCallProg : Wasm.Program :=
   [
   .constI64 0,
   .localSet 14,
@@ -99,7 +106,11 @@ def validProg : Wasm.Program :=
   .localGet 18,
   .localGet 19,
   .localGet 20,
-  .call 18,
+  .call 18
+]
+
+def validResultStoreProg : Wasm.Program :=
+  [
   .localSet 25,
   .localSet 24,
   .localSet 23,
@@ -110,7 +121,11 @@ def validProg : Wasm.Program :=
   .localGet 24,
   .localSet 29,
   .localGet 25,
-  .localSet 30,
+  .localSet 30
+]
+
+def validConditionProg : Wasm.Program :=
+  [
   .localGet 30,
   .constI64 0,
   .eqI64,
@@ -120,7 +135,17 @@ def validProg : Wasm.Program :=
   .iff 0 1 [.constI64 1] [.constI64 0],
   .constI64 0,
   .eqI64,
-  .eqz,
+  .eqz
+]
+
+def validResultPrefixProg : Wasm.Program :=
+  validResultStoreProg ++ validConditionProg
+
+def validPrefixProg : Wasm.Program :=
+  validCallProg ++ validResultPrefixProg
+
+def validProg : Wasm.Program :=
+  validPrefixProg ++ [
   .iff 0 0 filledProg residualProg
 ]
 
@@ -134,8 +159,9 @@ def resultProg : Wasm.Program :=
 set_option maxRecDepth 1048576 in
 theorem func21_decomposition :
     func21 = entryProg ++ [.iff 0 0 validProg invalidProg] ++ resultProg := by
-  unfold func21 entryProg validProg filledProg residualProg invalidProg
-    validResultBranch outerBranch resultProg
+  unfold func21 entryProg validProg validPrefixProg validCallProg
+    validResultPrefixProg validResultStoreProg validConditionProg filledProg
+    residualProg invalidProg validResultBranch outerBranch resultProg
   rfl
 
 end Project.ClobLimit.LimitEntry
