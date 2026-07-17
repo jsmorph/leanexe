@@ -1,0 +1,331 @@
+import Project.ClobLimit.InternalFullBookPrefix
+import Interpreter.Wasm.Wp.Block
+import Interpreter.Wasm.Wp.Loop
+
+/-!
+# Full-fill book suffix copy
+
+The second full-fill copy loop skips the matched five-word order and copies the
+remaining source words into the smaller target.  Its invariant retains the
+completed prefix and adds the shifted-suffix equality.  The loop exit uses the
+shared erased-array theorem to reconstruct `os.eraseIdx i`.
+-/
+
+namespace Project.ClobLimit.InternalFullBookSuffix
+
+open Wasm Project.Common Project.Clob Project.ClobLimit
+  Project.ClobLimit.InternalFullBookPrefix
+
+set_option maxHeartbeats 8000000
+set_option maxRecDepth 1048576
+
+macro "wp_run_suffix" "(" hParams:term "," hLocals:term ","
+    hSource:term "," hPrefix:term "," hSuffix:term ")" : tactic => `(tactic|
+  simp (config := { maxSteps := 10000000 }) [wp_simp,
+    Locals.get, Locals.set?, Locals.validIndex,
+    Function.toLocals, Function.numParams, Function.numLocals,
+    List.take, List.drop, List.replicate, List.length, List.map,
+    List.length_set, List.getElem?_set,
+    Nat.reduceAdd, Nat.reduceLT, Nat.reduceLeDiff, Nat.reduceSub,
+    ValueType.zero, List.headD, ($hParams), ($hLocals),
+    ($hSource), ($hPrefix), ($hSuffix)])
+
+def suffixCopyInv (st0 : Store Unit) (base : Locals)
+    (need previous current capacity next target source g2 arrayCapacity
+      newLength : UInt64)
+    (os : List OrderL) (targetWords prefixWords suffixWords : Nat) :
+    AssertionF Unit :=
+  fun st s =>
+    ∃ word : Nat, word ≤ suffixWords ∧
+      s = prefixCopyFrame base need previous current capacity next target
+        word ∧
+      st.mem.pages = st0.mem.pages ∧
+      st.globals.globals =
+        st0.globals.globals.set 2 (.i64 (g2 + 1)) ∧
+      FreshFixedArrayAt st target arrayCapacity 5 ∧
+      st.mem.read64 target.toUInt32 = newLength ∧
+      OrdersAt st source os ∧
+      MemEqOutsideFlatWords st0 st target targetWords ∧
+      (∀ copied : Nat, copied < prefixWords →
+        orderWord st target copied = orderWord st0 source copied) ∧
+      ∀ copied : Nat, copied < word →
+        orderWord st target (prefixWords + copied) =
+          orderWord st0 source (prefixWords + 5 + copied)
+
+def suffixCopyMeasure (total : Nat) (_ : Store Unit) (s : Locals) : Nat :=
+  match s.locals[52]? with
+  | some (Value.i64 word) => total - word.toNat
+  | _ => 0
+
+def suffixResultFrame (base : Locals)
+    (need previous current capacity next target : UInt64)
+    (suffixWords : Nat) : Locals :=
+  { prefixCopyFrame base need previous current capacity next target suffixWords
+      with values := [.i64 target] }
+
+def fullBookSuffixBodyProg : Wasm.Program :=
+  [
+  .localGet 63,
+  .localGet 60,
+  .geUI64,
+  .br_if 1,
+  .localGet 62,
+  .localGet 59,
+  .localGet 63,
+  .addI64,
+  .constI64 1,
+  .addI64,
+  .constI64 8,
+  .mulI64,
+  .addI64,
+  .wrapI64,
+  .localGet 56,
+  .localGet 59,
+  .constI64 5,
+  .addI64,
+  .localGet 63,
+  .addI64,
+  .constI64 1,
+  .addI64,
+  .constI64 8,
+  .mulI64,
+  .addI64,
+  .wrapI64,
+  .load64 0,
+  .store64 0,
+  .localGet 63,
+  .constI64 1,
+  .addI64,
+  .localSet 63,
+  .br 0
+  ]
+
+def fullBookSuffixProg : Wasm.Program :=
+  [
+  .constI64 0,
+  .localSet 63,
+  .block 0 0 [
+    .loop 0 0 fullBookSuffixBodyProg
+  ],
+  .localGet 62
+  ]
+
+set_option Elab.async false in
+theorem fullBookSuffixProg_spec
+    (env : HostEnv Unit) (st0 st1 : Store Unit) (base : Locals)
+    (need previous current capacity next target source g2 arrayCapacity
+      newLength : UInt64)
+    (os : List OrderL) (i targetWords prefixWords suffixWords : Nat)
+    (hParams : base.params.length = 11)
+    (hLocals : base.locals.length = 64)
+    (hSourceLocal : base.locals[45]? = some (.i64 source))
+    (hPrefixLocal : base.locals[48]? =
+      some (.i64 (UInt64.ofNat prefixWords)))
+    (hSuffixLocal : base.locals[49]? =
+      some (.i64 (UInt64.ofNat suffixWords)))
+    (hPrefixU : (UInt64.ofNat prefixWords).toNat = prefixWords)
+    (hSuffixU : (UInt64.ofNat suffixWords).toNat = suffixWords)
+    (hSuffix64 : suffixWords < UInt64.size)
+    (hi : i < os.length)
+    (hPrefixWords : prefixWords = i * 5)
+    (hSuffixWords : suffixWords = (os.length - 1 - i) * 5)
+    (hTargetWords : targetWords = (os.length - 1) * 5)
+    (hNewLength : newLength = UInt64.ofNat (os.length - 1))
+    (hTarget48 : 48 ≤ target.toNat)
+    (hSource32 : source.toNat + (os.length * 5 + 1) * 8 < 4294967296)
+    (hTarget32 : target.toNat + (targetWords + 1) * 8 < 4294967296)
+    (hTargetFit : target.toNat + (targetWords + 1) * 8 ≤
+      st0.mem.pages * 65536)
+    (hsep : flatWordsDisjoint (flatWordsRegion target targetWords)
+      (flatWordsRegion source (os.length * 5)))
+    (hPages : st1.mem.pages = st0.mem.pages)
+    (hGlobals : st1.globals.globals =
+      st0.globals.globals.set 2 (.i64 (g2 + 1)))
+    (hFresh : FreshFixedArrayAt st1 target arrayCapacity 5)
+    (hLength : st1.mem.read64 target.toUInt32 = newLength)
+    (hOrders0 : OrdersAt st0 source os)
+    (hOrders1 : OrdersAt st1 source os)
+    (hOutside : MemEqOutsideFlatWords st0 st1 target targetWords)
+    (hPrefix : ∀ copied : Nat, copied < prefixWords →
+      orderWord st1 target copied = orderWord st0 source copied)
+    (Q : Assertion Unit) (rest : Wasm.Program)
+    (hDone : ∀ st2,
+      suffixCopyInv st0 base need previous current capacity next target source
+          g2 arrayCapacity newLength os targetWords prefixWords suffixWords st2
+          (prefixCopyFrame base need previous current capacity next target
+            suffixWords) →
+        OrdersAt st2 target (os.eraseIdx i) →
+        wp «module» rest Q st2
+          (suffixResultFrame base need previous current capacity next target
+            suffixWords) env) :
+    wp «module» (fullBookSuffixProg ++ rest) Q st1
+      (prefixCopyFrame base need previous current capacity next target
+        prefixWords) env := by
+  have hSourceGet : base.locals[45] = .i64 source := by
+    apply Option.some.inj
+    calc
+      some base.locals[45] = base.locals[45]? :=
+        (List.getElem?_eq_getElem (by omega)).symm
+      _ = some (.i64 source) := hSourceLocal
+  have hPrefixGet : base.locals[48] =
+      .i64 (UInt64.ofNat prefixWords) := by
+    apply Option.some.inj
+    calc
+      some base.locals[48] = base.locals[48]? :=
+        (List.getElem?_eq_getElem (by omega)).symm
+      _ = some (.i64 (UInt64.ofNat prefixWords)) := hPrefixLocal
+  have hSuffixGet : base.locals[49] =
+      .i64 (UInt64.ofNat suffixWords) := by
+    apply Option.some.inj
+    calc
+      some base.locals[49] = base.locals[49]? :=
+        (List.getElem?_eq_getElem (by omega)).symm
+      _ = some (.i64 (UInt64.ofNat suffixWords)) := hSuffixLocal
+  simp only [fullBookSuffixProg, List.cons_append, List.nil_append,
+    prefixCopyFrame, InternalFullBookBump.allocFrame]
+  wp_run_suffix (hParams, hLocals, hSourceGet, hPrefixGet, hSuffixGet)
+  apply wp_block_cons
+  apply wp_loop_cons
+    (Inv := suffixCopyInv st0 base need previous current capacity next target
+      source g2 arrayCapacity newLength os targetWords prefixWords suffixWords)
+    (μ := suffixCopyMeasure suffixWords)
+  · exact ⟨0, Nat.zero_le _, rfl, hPages, hGlobals, hFresh, hLength,
+      hOrders1, hOutside, hPrefix, by
+        intro copied hcopied
+        omega⟩
+  · rintro st2 s2
+      ⟨word, hword, rfl, hPages2, hGlobals2, hFresh2, hLength2,
+        hOrders2, hOutside2, hPrefix2, hSuffix2⟩
+    have hwordU : (UInt64.ofNat word).toNat = word :=
+      toNat_ofNat_lt (by omega)
+    simp only [fullBookSuffixBodyProg, prefixCopyFrame,
+      InternalFullBookBump.allocFrame]
+    wp_run_suffix (hParams, hLocals, hSourceGet, hPrefixGet, hSuffixGet)
+    by_cases hwordEnd : word = suffixWords
+    · have hge : UInt64.ofNat word ≥ UInt64.ofNat suffixWords := by
+        rw [ge_iff_le, UInt64.le_iff_toNat_le, hwordU, hSuffixU]
+        omega
+      rw [if_pos hge]
+      try simp
+      subst word
+      apply hDone
+      · exact ⟨suffixWords, le_rfl, rfl, hPages2, hGlobals2, hFresh2,
+          hLength2, hOrders2, hOutside2, hPrefix2, hSuffix2⟩
+      · apply OrdersAt.eraseIdx_ofFlatWords hi hOrders0
+        · simpa only [toUInt32_eq_ofNat, hNewLength] using hLength2
+        · rw [Nat.mod_eq_of_lt (by omega), hPages2]
+          omega
+        · intro j hj field hfield
+          have hcopy := hPrefix2 (j * 5 + field) (by
+            rw [hPrefixWords]
+            omega)
+          exact hcopy
+        · intro j hji hj field hfield
+          have hcopy := hSuffix2 ((j - i) * 5 + field) (by
+            rw [hSuffixWords]
+            omega)
+          have hdst : i * 5 + ((j - i) * 5 + field) =
+              j * 5 + field := by omega
+          have hsrc : i * 5 + 5 + ((j - i) * 5 + field) =
+              (j + 1) * 5 + field := by omega
+          rw [hPrefixWords, hdst, hsrc] at hcopy
+          exact hcopy
+        · intro j hj field hfield
+          rw [Nat.mod_eq_of_lt (by
+            rw [hTargetWords] at hTarget32
+            omega), hPages2]
+          rw [hTargetWords] at hTargetFit
+          omega
+    · have hnge : ¬ UInt64.ofNat word ≥ UInt64.ofNat suffixWords := by
+        rw [ge_iff_le, UInt64.le_iff_toNat_le, hwordU, hSuffixU]
+        omega
+      rw [if_neg hnge]
+      try simp
+      have hwordLt : word < suffixWords :=
+        Nat.lt_of_le_of_ne hword hwordEnd
+      have hsourceWord : prefixWords + 5 + word < os.length * 5 := by
+        rw [hSuffixWords] at hwordLt
+        rw [hPrefixWords]
+        omega
+      have hsourceBound :=
+        hOrders2.orderWord_bound_flat (prefixWords + 5 + word) hsourceWord
+      have htargetLt :
+          target.toNat + (prefixWords + word + 1) * 8 < 4294967296 := by
+        rw [hPrefixWords, hSuffixWords, hTargetWords] at *
+        omega
+      have htargetBound :
+          (target.toNat + (prefixWords + word + 1) * 8) %
+              4294967296 + 8 ≤ st2.mem.pages * 65536 := by
+        rw [Nat.mod_eq_of_lt htargetLt, hPages2]
+        rw [hPrefixWords, hSuffixWords, hTargetWords] at *
+        omega
+      rw [if_neg (Nat.not_lt.mpr hsourceBound),
+        if_neg (Nat.not_lt.mpr htargetBound)]
+      refine ⟨?_, ?_⟩
+      · have hwordNext : UInt64.ofNat word + 1 =
+            UInt64.ofNat (word + 1) := by
+          apply UInt64.toNat.inj
+          rw [toNat_add_one (by rw [hwordU, size_eq]; omega), hwordU,
+            toNat_ofNat_lt (by omega)]
+        refine ⟨word + 1, by omega, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+        · simp only [prefixCopyFrame, InternalFullBookBump.allocFrame,
+            hwordNext]
+        · rw [Mem.write64_pages, hPages2]
+        · exact hGlobals2
+        · refine FreshFixedArrayAt.write64_data hFresh2 hTarget48 ?_
+          rw [toUInt32_ofNat_mod_toNat, Nat.mod_eq_of_lt htargetLt]
+          omega
+        · rw [read64_write64_ne _ _ _ _ (by
+              simp only [toUInt32_eq_ofNat, toUInt32_ofNat_mod_toNat]
+              rw [Nat.mod_eq_of_lt (by omega),
+                Nat.mod_eq_of_lt htargetLt]
+              omega)]
+          exact hLength2
+        · simpa only using
+            hOrders2.frame_write64_flatWordsDisjoint hSource32 hTarget32
+              (slot := prefixWords + word + 1)
+              (value := st2.mem.read64 (UInt32.ofNat
+                ((source.toNat + (prefixWords + 5 + word + 1) * 8) %
+                  4294967296)))
+              (by
+                rw [hPrefixWords, hSuffixWords, hTargetWords] at *
+                omega) hsep
+        · exact hOutside2.write64 hTarget32 (by
+            rw [hPrefixWords, hSuffixWords, hTargetWords] at *
+            omega)
+        · intro copied hcopied
+          unfold orderWord
+          rw [read64_write64_ne _ _ _ _ (by
+            simp only [toUInt32_ofNat_mod_toNat]
+            rw [Nat.mod_eq_of_lt (by
+                rw [hPrefixWords, hSuffixWords, hTargetWords] at *
+                omega), Nat.mod_eq_of_lt htargetLt]
+            omega)]
+          have hPrevious := hPrefix2 copied hcopied
+          unfold orderWord at hPrevious
+          exact hPrevious
+        · intro copied hcopied
+          unfold orderWord
+          by_cases hcopiedWord : copied = word
+          · subst copied
+            rw [Mem.read64_write64_same]
+            have hCurrent := hOrders2.orderWord_eq_flat
+              (prefixWords + 5 + word) hsourceWord
+            have hInitial := hOrders0.orderWord_eq_flat
+              (prefixWords + 5 + word) hsourceWord
+            unfold orderWord at hCurrent hInitial
+            exact hCurrent.trans hInitial.symm
+          · rw [read64_write64_ne _ _ _ _ (by
+                simp only [toUInt32_ofNat_mod_toNat]
+                rw [Nat.mod_eq_of_lt (by
+                    rw [hPrefixWords, hSuffixWords, hTargetWords] at *
+                    omega), Nat.mod_eq_of_lt htargetLt]
+                omega)]
+            have hPrevious := hSuffix2 copied (by omega)
+            unfold orderWord at hPrevious
+            exact hPrevious
+      · simp [suffixCopyMeasure, hLocals, hwordU]
+        rw [Nat.mod_eq_of_lt (by omega)]
+        omega
+
+end Project.ClobLimit.InternalFullBookSuffix
