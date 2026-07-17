@@ -3,7 +3,7 @@ set -euo pipefail
 
 usage() {
   echo "usage: check-talos-case.sh --case <name> --module <module> --entry <entry> --spec <target> --program <path> [--artifacts-only | --update]" >&2
-  echo "  --program names the generated model file relative to proofs/talos-gcd/lean." >&2
+  echo "  --program names the generated model file relative to proofs/talos/lean." >&2
   echo "  --artifacts-only compares WASM and WAT without building a proof." >&2
   echo "  --update replaces the checked-in proof inputs with fresh compiler output," >&2
   echo "  regenerates the Talos Program.lean model, and rebuilds the proof; on any" >&2
@@ -39,9 +39,9 @@ fi
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 wasm_tmp="$repo_root/.lake/build/talos-check/$case_name/program.wasm"
 wat_tmp="$repo_root/.lake/build/talos-check/$case_name/program.wat"
-wasm_ref="$repo_root/proofs/talos-gcd/rust/build/$case_name/program.wasm"
-wat_ref="$repo_root/proofs/talos-gcd/rust/build/$case_name/program.wat"
-verifier="$repo_root/proofs/talos-gcd/lean/.lake/packages/CodeLib/verifier/.lake/build/bin/verifier"
+wasm_ref="$repo_root/proofs/talos/rust/build/$case_name/program.wasm"
+wat_ref="$repo_root/proofs/talos/rust/build/$case_name/program.wat"
+verifier="$repo_root/proofs/talos/lean/.lake/packages/CodeLib/verifier/.lake/build/bin/verifier"
 wasm_tools="${WASM_TOOLS:-}"
 
 if [[ -z "$wasm_tools" ]]; then
@@ -75,11 +75,11 @@ mkdir -p "$(dirname "$wasm_tmp")"
 if [[ "$update" -eq 1 ]]; then
   if [[ ! -x "$verifier" ]]; then
     echo "Talos verifier not found at $verifier." >&2
-    echo "Build it with: cd proofs/talos-gcd/lean/.lake/packages/CodeLib/verifier && lake build" >&2
+    echo "Build it with: cd proofs/talos/lean/.lake/packages/CodeLib/verifier && lake build" >&2
     exit 127
   fi
   backup_dir="$(mktemp -d)"
-  program_ref="$repo_root/proofs/talos-gcd/lean/$program_path"
+  program_ref="$repo_root/proofs/talos/lean/$program_path"
   restore() {
     for file in "$wasm_ref" "$wat_ref" "$program_ref"; do
       local name
@@ -102,8 +102,8 @@ if [[ "$update" -eq 1 ]]; then
   mkdir -p "$(dirname "$wasm_ref")"
   cp "$wasm_tmp" "$wasm_ref"
   cp "$wat_tmp" "$wat_ref"
-  (cd "$repo_root/proofs/talos-gcd" && "$verifier" emit --force-emit "$case_name")
-  (cd "$repo_root/proofs/talos-gcd/lean" && lake --no-ansi build "$spec")
+  (cd "$repo_root/proofs/talos" && "$verifier" emit --force-emit "$case_name")
+  (cd "$repo_root/proofs/talos/lean" && lake --no-ansi build "$spec")
   trap - ERR
   rm -rf "$backup_dir"
   echo "Talos inputs updated and proof passed: $case_name"
@@ -113,7 +113,7 @@ else
   if [[ "$artifacts_only" -eq 1 ]]; then
     echo "Talos artifacts match: $case_name"
   else
-    (cd "$repo_root/proofs/talos-gcd/lean" && lake --no-ansi build "$spec")
+    (cd "$repo_root/proofs/talos/lean" && lake --no-ansi build "$spec")
     echo "Talos case passed: $case_name"
   fi
 fi
