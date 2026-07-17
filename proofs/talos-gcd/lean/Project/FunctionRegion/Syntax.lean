@@ -6,6 +6,7 @@ import Interpreter.Wasm.Spec.Defs
 Generated modules may contain the same closed helper-function region at
 different indices.  These definitions rename direct calls while restricting
 the instruction forms that may observe a module.
+Memory instructions require equal source and target memory declarations.
 -/
 
 namespace Project.FunctionRegion
@@ -37,17 +38,27 @@ mutual
   inductive PortableInstruction (domain : Nat → Prop) : Instruction → Prop
     | localGet (i : Nat) : PortableInstruction domain (.localGet i)
     | localSet (i : Nat) : PortableInstruction domain (.localSet i)
+    | globalGet (i : Nat) : PortableInstruction domain (.globalGet i)
+    | globalSet (i : Nat) : PortableInstruction domain (.globalSet i)
     | const32 (value : UInt32) : PortableInstruction domain (.const value)
     | const64 (value : UInt64) : PortableInstruction domain (.constI64 value)
+    | eqI32 : PortableInstruction domain .eq
     | addI64 : PortableInstruction domain .addI64
     | subI64 : PortableInstruction domain .subI64
     | mulI64 : PortableInstruction domain .mulI64
+    | divUI64 : PortableInstruction domain .divUI64
     | eqI64 : PortableInstruction domain .eqI64
+    | neI64 : PortableInstruction domain .neI64
     | eqz : PortableInstruction domain .eqz
     | leUI64 : PortableInstruction domain .leUI64
     | ltUI64 : PortableInstruction domain .ltUI64
+    | geUI64 : PortableInstruction domain .geUI64
     | wrapI64 : PortableInstruction domain .wrapI64
+    | extendUI32 : PortableInstruction domain .extendUI32
     | load64 (offset : UInt32) : PortableInstruction domain (.load64 offset)
+    | store64 (offset : UInt32) : PortableInstruction domain (.store64 offset)
+    | memorySize : PortableInstruction domain .memorySize
+    | memoryGrow : PortableInstruction domain .memoryGrow
     | unreachable : PortableInstruction domain .unreachable
     | br (label : Nat) : PortableInstruction domain (.br label)
     | brIf (label : Nat) : PortableInstruction domain (.br_if label)
@@ -75,17 +86,27 @@ macro "prove_portable" : tactic => `(tactic|
     | apply PortableProgram.cons
     | apply PortableInstruction.localGet
     | apply PortableInstruction.localSet
+    | apply PortableInstruction.globalGet
+    | apply PortableInstruction.globalSet
     | apply PortableInstruction.const32
     | apply PortableInstruction.const64
+    | apply PortableInstruction.eqI32
     | apply PortableInstruction.addI64
     | apply PortableInstruction.subI64
     | apply PortableInstruction.mulI64
+    | apply PortableInstruction.divUI64
     | apply PortableInstruction.eqI64
+    | apply PortableInstruction.neI64
     | apply PortableInstruction.eqz
     | apply PortableInstruction.leUI64
     | apply PortableInstruction.ltUI64
+    | apply PortableInstruction.geUI64
     | apply PortableInstruction.wrapI64
+    | apply PortableInstruction.extendUI32
     | apply PortableInstruction.load64
+    | apply PortableInstruction.store64
+    | apply PortableInstruction.memorySize
+    | apply PortableInstruction.memoryGrow
     | apply PortableInstruction.unreachable
     | apply PortableInstruction.br
     | apply PortableInstruction.brIf
@@ -98,6 +119,7 @@ structure Shift (source target : Module) (rename : Nat → Nat)
     (domain : Nat → Prop) : Prop where
   sourceImports : source.imports = []
   targetImports : target.imports = []
+  memory : source.memory = target.memory
   functions : ∀ id, domain id →
     ∃ f,
       source.funcs[id]? = some f ∧

@@ -7,6 +7,7 @@ import Interpreter.Wasm.Semantics.Lemmas
 The function-region syntax excludes the three tail-call instructions.  The
 interpreter can therefore never return a `ReturnCall` continuation while it
 executes a portable instruction or program.
+The included store and memory operations complete as ordinary atomic steps.
 -/
 
 namespace Project.FunctionRegion
@@ -47,17 +48,27 @@ private theorem noReturnCall_aux : ∀ fuel,
         cases hPortable with
         | localGet => no_return_call_atomic
         | localSet => no_return_call_atomic
+        | globalGet => no_return_call_atomic
+        | globalSet => no_return_call_atomic
         | const32 => no_return_call_atomic
         | const64 => no_return_call_atomic
+        | eqI32 => no_return_call_atomic
         | addI64 => no_return_call_atomic
         | subI64 => no_return_call_atomic
         | mulI64 => no_return_call_atomic
+        | divUI64 => no_return_call_atomic
         | eqI64 => no_return_call_atomic
+        | neI64 => no_return_call_atomic
         | eqz => no_return_call_atomic
         | leUI64 => no_return_call_atomic
         | ltUI64 => no_return_call_atomic
+        | geUI64 => no_return_call_atomic
         | wrapI64 => no_return_call_atomic
+        | extendUI32 => no_return_call_atomic
         | load64 => no_return_call_atomic
+        | store64 => no_return_call_atomic
+        | memorySize => no_return_call_atomic
+        | memoryGrow => no_return_call_atomic
         | unreachable => no_return_call_atomic
         | br => no_return_call_atomic
         | brIf => no_return_call_atomic

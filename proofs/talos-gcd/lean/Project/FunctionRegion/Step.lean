@@ -7,6 +7,7 @@ import Interpreter.Wasm.Semantics.Lemmas
 The successor-fuel instruction theorem consumes lower-fuel simulations for
 nested programs, loop restarts, and direct calls.  Module-independent atomic
 instructions reduce by definition.
+Memory size and growth use the required memory-declaration equality.
 -/
 
 namespace Project.FunctionRegion
@@ -14,6 +15,7 @@ namespace Project.FunctionRegion
 open Wasm
 
 theorem execOne_succ
+    (hMemory : source.memory = target.memory)
     (hOne : ∀ (env : HostEnv α) st s inst,
       PortableInstruction domain inst →
       execOne fuel target st s (renameInstruction rename inst) env =
@@ -33,17 +35,31 @@ theorem execOne_succ
   cases hPortable with
   | localGet => simp only [renameInstruction, execOne.eq_def]
   | localSet => simp only [renameInstruction, execOne.eq_def]
+  | globalGet => simp only [renameInstruction, execOne.eq_def]
+  | globalSet => simp only [renameInstruction, execOne.eq_def]
   | const32 => simp only [renameInstruction, execOne.eq_def]
   | const64 => simp only [renameInstruction, execOne.eq_def]
+  | eqI32 => simp only [renameInstruction, execOne.eq_def]
   | addI64 => simp only [renameInstruction, execOne.eq_def]
   | subI64 => simp only [renameInstruction, execOne.eq_def]
   | mulI64 => simp only [renameInstruction, execOne.eq_def]
+  | divUI64 => simp only [renameInstruction, execOne.eq_def]
   | eqI64 => simp only [renameInstruction, execOne.eq_def]
+  | neI64 => simp only [renameInstruction, execOne.eq_def]
   | eqz => simp only [renameInstruction, execOne.eq_def]
   | leUI64 => simp only [renameInstruction, execOne.eq_def]
   | ltUI64 => simp only [renameInstruction, execOne.eq_def]
+  | geUI64 => simp only [renameInstruction, execOne.eq_def]
   | wrapI64 => simp only [renameInstruction, execOne.eq_def]
+  | extendUI32 => simp only [renameInstruction, execOne.eq_def]
   | load64 => simp only [renameInstruction, execOne.eq_def]
+  | store64 => simp only [renameInstruction, execOne.eq_def]
+  | memorySize =>
+      simp only [renameInstruction, execOne.eq_def, Module.memIs64]
+      rw [hMemory]
+  | memoryGrow =>
+      simp only [renameInstruction, execOne.eq_def, Module.memoryCap]
+      rw [hMemory]
   | unreachable => simp only [renameInstruction, execOne.eq_def]
   | br => simp only [renameInstruction, execOne.eq_def]
   | brIf => simp only [renameInstruction, execOne.eq_def]
