@@ -5702,3 +5702,11 @@ The explicit residual-program decomposition, semantic finalization, completed-in
 `LimitResidualResult` preserves the matcher trade array, pages, globals, and below-heap bytes through the appended-book writes.  `LimitResidualExport` then composes the matcher's initial-allocation memory frame and states the owned arrays, exact allocator globals, unchanged pages, and bytes below the caller's original heap top.  Their focused warning-failing builds passed in 1.2 and 2.9 seconds.
 
 `LimitResidual.func21_residual` composes the complete matcher, residual condition, residual allocation and append, and three-result epilogue.  A public reserve premise covers the one final stride-five allocation above the matcher heap limit, from which the proof derives every address and page bound.  The theorem passed a focused warning-failing build in 3.2 seconds, and the complete three-branch exported theorem is the next boundary.
+
+## 2026-07-16: Complete the Exported `limit` Theorem
+
+`LimitCorrect.func21_correct` splits on order validity and the source matcher's remaining quantity, then applies the three completed branch theorems.  Its common `SourceResultAt` predicate states that the returned pointers represent the exact `Model.limitL` status, book, and trades, while `OutcomeAt` retains each branch's ownership and allocator facts.  The focused warning-failing build passed in 2.8 seconds under the repository resource limits.
+
+The constrained `clob_limit` artifact check reproduced both checked inputs with `wasm-tools` 1.251.0 in 1.6 seconds.  `Project.lean` now imports `Project.ClobLimit.Spec`, and the aggregate script includes `tools/check-talos-clob-limit.sh` as its eighteenth case.  The constrained aggregate artifact gate matched all eighteen WASM and WAT pairs in 13 seconds.
+
+The artifact gate refreshed shared compiler objects, so the following proof build found eleven stale targets.  It reached its 300-second constrained timeout without a diagnostic while rebuilding `Project.Validate.Spec`; a no-build diagnostic then named that target, `Project.SharedPair.Spec`, both LEB iteration proofs, and seven bounded CLOB targets.  The first four have recorded no-diagnostic timeouts and require the proof divisions specified in `plan.md`, so the unchanged aggregate target will not run again until those divisions restore its missing objects.
