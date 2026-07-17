@@ -5320,3 +5320,11 @@ The focused warning-failing build completed in 6.8 seconds under the repository 
 The theorem adapts the completed `ClobMatchFuel.PartialTradePrepare` argument to the Limit ABI.  Parameters hold the taker identifier, old book, old trades, and remaining quantity, while the selected index remains at local-list position 14.  The final frame places the prepared trade fields and lengths at the exact positions consumed by the stride-four allocator and append loop.
 
 The focused warning-failing build completed in 4.8 seconds under the repository resource limits.  The module ends before the aligned-capacity calculation at generated line 3160.  Trade allocation, payload copy, append stores, and partial-result finalization remain separate proof boundaries.
+
+## 2026-07-15: Prove Partial-Trade Allocator Preparation
+
+`ClobLimit.InternalPartialTradeAllocPrepare.partialTradeAllocPrepareProg_spec` proves the generated stride-four capacity calculation and allocator initialization.  It identifies the capacity as `fixedArrayBytesU n 4` through the shared fixed-array rounding theorems.  Its final state is the exact `InternalTradeBump.allocFrame` consumed by the trade search.
+
+The generated prefix preserves the old capacity and next-node scratch values at local-list positions 60 and 61.  The theorem keeps those values as premises while setting need, predecessor, current node, and result at positions 57, 58, 59, and 62.  This frame states every allocator scratch value without adding instructions to the artifact program.
+
+The focused warning-failing build completed in 2.6 seconds under the repository resource limits.  The module contains the capacity calculation and the sole search initialization.  The next composition will append the search and bump programs directly.
