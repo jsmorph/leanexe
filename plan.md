@@ -4,6 +4,8 @@
 
 LeanExe should compile useful first-order Lean programs into small WebAssembly artifacts whose behavior can be checked against the source and proved for the code that ships.  The current application target is the central-limit-order-book kernel in `LeanExe/Examples/Clob.lean`, because it exercises scalar logic, arrays of structures, search, allocation, copying, ownership, and multi-result ABIs in one program.  New language support should follow a concrete need from this target or another program selected in discussion.
 
+The [proof engineering notes](plan-notes.md) record reusable lemmas, instruction-proof patterns, elaboration boundaries, and candidate tactics for this work.  The plan owns required results and work order, while the notes own techniques for establishing those results.  Review both documents when beginning or completing a substantial proof boundary.
+
 Correctness has three layers.  Differential tests compare standard Lean, the IR interpreter where it applies, and Wasmtime; artifact checks compare regenerated WASM and WAT byte-for-byte with proof inputs; Talos proves quantified properties of decoded shipped instructions.  Each claim must identify its layer and retain the trusted-base boundary described in [Verifying a Program](verifying.md).
 
 LeanExe runtime intrinsics require a separate semantic statement.  Ordinary Lean evaluates `LeanExe.Runtime.release` and the runtime counters as stubs, while generated WASM gives them memory-management behavior.  Programs that use those intrinsics cannot claim ordinary Lean equivalence for the intrinsic observations; they require the extended runtime semantics defined in Phase 1 and artifact-level evidence for the emitted implementation.
