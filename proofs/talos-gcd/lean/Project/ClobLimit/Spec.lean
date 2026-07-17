@@ -62,6 +62,7 @@ import Project.ClobLimit.LimitResidualBranch
 import Project.ClobLimit.LimitResult
 import Project.ClobLimit.LimitResidualExport
 import Project.ClobLimit.LimitResidual
+import Project.ClobLimit.LimitCorrect
 import Project.ClobLimit.LimitFilled
 import Project.ClobLimit.InternalTradeBump
 import Project.ClobLimit.InternalPartialBookPrepare
@@ -190,9 +191,10 @@ and memory limits needed by the residual allocator.  Its output also retains
 heap monotonicity, which connects the matcher and exported memory frames.
 The complete valid residual theorem returns the exact appended source book and
 matcher trades with both arrays owned, exact allocator globals, unchanged
-pages, and bytes below the caller's heap top preserved.  The invalid, filled,
-and residual branches remain to be combined before adding this artifact to
-`Project.lean`.
+pages, and bytes below the caller's heap top preserved.  The primary theorem
+combines all three branches and states that the returned pointers represent
+the exact source `Model.limitL` result while retaining each branch's stronger
+physical facts.  `Project.lean` imports this specification.
 -/
 
 end Project.ClobLimit
