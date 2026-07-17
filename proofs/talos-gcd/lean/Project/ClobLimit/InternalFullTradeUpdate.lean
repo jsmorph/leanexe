@@ -24,24 +24,37 @@ open Wasm Project.Common Project.Clob Project.ClobLimit
 def fullTradeUpdateProg : Wasm.Program :=
   fullTradePrepareProg ++ partialTradeUpdateProg ++ fullTradeFinishProg
 
-def FullTradeResultAt (s : Locals) (book trades remaining : UInt64) : Prop :=
-  s.locals[25]? = some (.i64 book) ∧
-  s.locals[26]? = some (.i64 book) ∧
-  s.locals[27]? = some (.i64 trades) ∧
-  s.locals[28]? = some (.i64 trades) ∧
-  s.locals[29]? = some (.i64 remaining) ∧
-  s.params.length = 11 ∧ s.locals.length = 64 ∧ s.values = []
+def FullTradeResultAt (s : Locals) (fuel : UInt64) (taker : OrderL)
+    (book trades remaining : UInt64) : Prop :=
+  s.params.length = 11 ∧ s.locals.length = 64 ∧ s.values = [] ∧
+  s.get 0 = some (.i64 fuel) ∧
+  s.get 26 = some (.i64 taker.oid) ∧
+  s.get 27 = some (.i64 taker.otrader) ∧
+  s.get 28 = some (.i64 taker.oside) ∧
+  s.get 29 = some (.i64 taker.oprice) ∧
+  s.get 30 = some (.i64 taker.oqty) ∧
+  s.get 36 = some (.i64 book) ∧
+  s.get 37 = some (.i64 book) ∧
+  s.get 38 = some (.i64 trades) ∧
+  s.get 39 = some (.i64 trades) ∧
+  s.get 40 = some (.i64 remaining)
 
 set_option Elab.async false in
 theorem fullTradeUpdateProg_spec
     (env : HostEnv Unit) (st : Store Unit) (base : Locals)
-    (newBook newBookCapacity oldBook oldBookCapacity : UInt64)
+    (fuel newBook newBookCapacity oldBook oldBookCapacity : UInt64)
     (oldTrades oldTradesCapacity remaining g0 g2 capacity next : UInt64)
     (taker : OrderL) (oldOrders newOrders : List OrderL)
     (ts : List TradeL) (i : Nat)
     (hParams : base.params.length = 11)
     (hLocals : base.locals.length = 64)
     (hValues : base.values = [.i64 newBook])
+    (hFuel : base.get 0 = some (.i64 fuel))
+    (hCarryOid : base.get 26 = some (.i64 taker.oid))
+    (hCarryTrader : base.get 27 = some (.i64 taker.otrader))
+    (hCarrySide : base.get 28 = some (.i64 taker.oside))
+    (hCarryPrice : base.get 29 = some (.i64 taker.oprice))
+    (hCarryQty : base.get 30 = some (.i64 taker.oqty))
     (hTakerLocal : base.params[1]? = some (.i64 taker.oid))
     (hBookLocal : base.params[7]? = some (.i64 oldBook))
     (hTradesLocal : base.params[9]? = some (.i64 oldTrades))
@@ -93,7 +106,7 @@ theorem fullTradeUpdateProg_spec
     (hg2 : st.globals.globals[2]? = some (.i64 g2))
     (Q : Assertion Unit) (rest : Wasm.Program)
     (hDone : ∀ st1 s,
-      FullTradeResultAt s newBook (g0 + 48)
+      FullTradeResultAt s fuel taker newBook (g0 + 48)
         (remaining - oldOrders[i]!.oqty) →
       OwnedOrderArrayAt st1 oldBook oldBookCapacity oldOrders →
       OwnedOrderArrayAt st1 newBook newBookCapacity newOrders →
@@ -113,6 +126,30 @@ theorem fullTradeUpdateProg_spec
     wp «module» (fullTradeUpdateProg ++ rest) Q st base env := by
   let trade := Project.ClobMatchFuel.Model.fillTradeL
     taker oldOrders[i]! oldOrders[i]!.oqty
+  have hFuelAt : base.params[0]? = some (.i64 fuel) := by
+    simpa [Locals.get, hParams] using hFuel
+  have hCarryOidAt : base.locals[15]? = some (.i64 taker.oid) := by
+    simpa [Locals.get, hParams, hLocals] using hCarryOid
+  have hCarryTraderAt : base.locals[16]? = some (.i64 taker.otrader) := by
+    simpa [Locals.get, hParams, hLocals] using hCarryTrader
+  have hCarrySideAt : base.locals[17]? = some (.i64 taker.oside) := by
+    simpa [Locals.get, hParams, hLocals] using hCarrySide
+  have hCarryPriceAt : base.locals[18]? = some (.i64 taker.oprice) := by
+    simpa [Locals.get, hParams, hLocals] using hCarryPrice
+  have hCarryQtyAt : base.locals[19]? = some (.i64 taker.oqty) := by
+    simpa [Locals.get, hParams, hLocals] using hCarryQty
+  have hFuelElem : base.params[0] = .i64 fuel :=
+    (List.getElem?_eq_some_iff.mp hFuelAt).2
+  have hCarryOidElem : base.locals[15] = .i64 taker.oid :=
+    (List.getElem?_eq_some_iff.mp hCarryOidAt).2
+  have hCarryTraderElem : base.locals[16] = .i64 taker.otrader :=
+    (List.getElem?_eq_some_iff.mp hCarryTraderAt).2
+  have hCarrySideElem : base.locals[17] = .i64 taker.oside :=
+    (List.getElem?_eq_some_iff.mp hCarrySideAt).2
+  have hCarryPriceElem : base.locals[18] = .i64 taker.oprice :=
+    (List.getElem?_eq_some_iff.mp hCarryPriceAt).2
+  have hCarryQtyElem : base.locals[19] = .i64 taker.oqty :=
+    (List.getElem?_eq_some_iff.mp hCarryQtyAt).2
   unfold fullTradeUpdateProg
   rw [List.append_assoc, List.append_assoc]
   apply fullTradePrepareProg_spec env st base newBook oldBook oldTrades taker
@@ -206,7 +243,9 @@ theorem fullTradeUpdateProg_spec
       · simp [FullTradeResultAt, fullTradeFinishFrame, resultBase,
           partialTradeResultFrame, partialTradeCopyFrame,
           partialTradeAllocFrame, InternalTradeBump.allocFrame,
-          fullTradePrepareFrame, hParams, hLocals]
+          fullTradePrepareFrame, Locals.get, hParams, hLocals, hFuelElem,
+          hCarryOidElem, hCarryTraderElem, hCarrySideElem, hCarryPriceElem,
+          hCarryQtyElem]
       · exact hOldBookFinal
       · exact hNewBookFinal
       · exact hOldTradesFinal
