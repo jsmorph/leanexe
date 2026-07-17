@@ -6,6 +6,8 @@ import Project.ClobDepth.MissingFields
 import Project.ClobDepth.MissingFinish
 import Project.ClobDepth.MissingPrepare
 import Project.ClobDepth.MissingSearch
+import Project.ClobDepth.MissingStore
+import Project.ClobDepth.MissingStoreFacts
 import Project.ClobDepth.Model
 import Project.ClobDepth.Properties
 import Project.ClobDepth.Program
