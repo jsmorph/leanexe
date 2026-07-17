@@ -53,6 +53,8 @@ import Project.ClobLimit.LimitResidualAllocFacts
 import Project.ClobLimit.LimitResidualCopyInvariant
 import Project.ClobLimit.LimitResidualCopy
 import Project.ClobLimit.LimitResidualAllocCopy
+import Project.ClobLimit.LimitResidualFinishFacts
+import Project.ClobLimit.LimitResidualFinish
 import Project.ClobLimit.LimitFilled
 import Project.ClobLimit.InternalTradeBump
 import Project.ClobLimit.InternalPartialBookPrepare
