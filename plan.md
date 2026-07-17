@@ -127,6 +127,8 @@ This phase is numbered for accountability but runs during Phases 3 and 4 when th
 
 `OrderL.word`, `orderWord`, `OrdersAt.orderWord_eq`, and `OrdersAt.ofFlatWords` state the shared relation between flat five-word copies and structured orders.  The cancel proof supplies one indexed field equality for each prefix or suffix branch, while `AppendOrderFinish` reconstructs the appended book from the completed flat prefix and five final stores.  No new tactic is justified while `omega`, `simp`, and `read_frames` discharge the remaining address and read-over-write obligations.
 
+`FixedArrayAllocation` now supplies the recurring bump-root, header-offset, top-minus-one, required-page, memory-size, and no-growth normalizations.  Earlier allocation proofs repeated these calculations for each generated scratch-local layout.  The Limit proof will use the shared results while retaining small numeric-layout instruction adapters.
+
 The successful append theorem now contains 229 lines and composes separately compiled allocation, copy, order-finalization, and trade-allocation theorems.  Focused warning-failing builds complete the copy phase in 2.3 seconds, the first allocation in 6.3 seconds, order finalization in 9.4 seconds, the trade phase in 1.7 seconds, and the composed theorem in 14 seconds.  The aggregate `Project.ClobPostOnly.Spec` build also passes after rebuilding the invalid and crossing branches.
 
 This phase ends when allocation-bearing CLOB proofs consume shared semantic lemmas instead of copied instruction walks.  The theorem statements, proof size, and build time provide the acceptance evidence.  A refactor must preserve every artifact theorem and the aggregate proof build.
