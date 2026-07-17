@@ -5794,3 +5794,9 @@ The entry decomposition and focused warning-failing finalization builds pass in 
 `ClobDepth.MissingStoreFacts.finish` proves that the two appended-field writes preserve the fresh target header and source representation, stay inside the target frame, and reconstruct `LevelsAt` for `levels ++ [{ lprice := price, lqty := qty }]`.  The final state combines that representation with `FreshFixedArrayAt` as an owned level array and retains page and global equality.  The semantic facts module passes its focused build in 2.9 seconds.
 
 `ClobDepth.MissingStore.missingStoreProg_spec` proves the generated 30-instruction store and result-assignment region.  Its continuation receives the semantic final state and exact target values in the working, owner, and pointer locals.  The focused warning-failing theorem and specification builds pass in 2.0 and 1.1 seconds, and end-to-end missing-branch composition is the next proof boundary.
+
+## 2026-07-17: Compose the Missing-Price Branch
+
+`ClobDepth.MissingBranchFacts` connects bump allocation and length initialization to the copy invariant.  It proves the fresh target, initialized length, preserved owned source, exact allocator globals, unchanged pages, and byte preservation below the old heap top.  Its focused warning-failing build passes in 1.5 seconds.
+
+`ClobDepth.MissingBranch.missingProg_spec` composes every generated missing-price phase from the scan outcome through the final result locals.  The theorem returns an owned array for `levels ++ [{ lprice := price, lqty := qty }]`, preserves the owned source, updates global zero to the new heap top and global two by one, and retains pages and bytes below the old heap top.  The branch theorem and specification pass warning-failing builds in 2.7 and 1.1 seconds, and the found-price replacement branch is the next proof boundary.

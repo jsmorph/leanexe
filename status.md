@@ -6,18 +6,18 @@ This report records the repository state on 2026-07-17.  It distinguishes comple
 
 LeanExe has completed the runtime-ownership, single-evaluation, and CLOB `cancel` phases of the current plan.  Input-generic Talos proofs cover `findBest`, `postOnly`, `matchFuel`, `limit`, and `market`, in addition to the earlier artifacts.  The remaining input-generic CLOB export is `depth`, whose source model, representation, source properties, control-flow decomposition, price scan, and missing-price append phases now have separately compiled theorems.
 
-Measured by planned milestones, the next stable point is about 82 percent complete.  That estimate counts three completed plan phases, five completed exports in the remaining CLOB phase, and one proved level-update path inside `depth`.  The estimate does not predict elapsed time because the found update path, per-side fold, exported two-call composition, and aggregate-proof refresh contain most of the remaining semantic integration.
+Measured by planned milestones, the next stable point is about 83 percent complete.  That estimate counts three completed plan phases, five completed exports in the remaining CLOB phase, and one complete generated level-update branch inside `depth`.  The estimate does not predict elapsed time because the found update path, per-side fold, exported two-call composition, and aggregate-proof refresh contain most of the remaining semantic integration.
 
-The missing-price append path has verified preparation, the stated empty-free-list search, bump allocation, allocation finalization, word copying, appended-field stores, owned-array reconstruction, and exact result locals.  These theorems compile individually and through `Project.ClobDepth.Spec`, but an end-to-end branch theorem still must connect their frames and allocator premises.  No failing proof is committed, and the aggregate proof object remains stale after artifact regeneration and cache removal.
+The missing-price append path has a complete theorem from its scan frame through its owned appended-array result.  It verifies preparation, the stated empty-free-list search, bump allocation, finalization, word copying, stores, result locals, allocator globals, source ownership, pages, and the below-heap byte frame.  No failing proof is committed, and the aggregate proof object remains stale after artifact regeneration and cache removal.
 
 ## Repository State
 
-The repository is on `main`, and the latest completed proof increment is `7a9605e` (`Prove depth missing-level stores`).  Both the compiler and proof workspaces select `leanprover/lean4:v4.31.0` through their respective `lean-toolchain` files.  The checked-in depth artifact exists and is pinned, while its complete exported correctness theorem remains open.
+The repository is on `main`, and the latest completed proof increment is `1ba780c` (`Prove depth missing-price branch`).  Both the compiler and proof workspaces select `leanprover/lean4:v4.31.0` through their respective `lean-toolchain` files.  The checked-in depth artifact exists and is pinned, while its complete exported correctness theorem remains open.
 
 | Item | Current state | Evidence |
 |------|---------------|----------|
 | Branch | `main` | Current Git branch |
-| Latest proof increment | `7a9605e Prove depth missing-level stores` | Committed 2026-07-17 proof increment |
+| Latest proof increment | `1ba780c Prove depth missing-price branch` | Committed 2026-07-17 proof increment |
 | Compiler Lean | Lean 4.31.0 | Root `lean-toolchain` |
 | Talos proof Lean | Lean 4.31.0 | `proofs/talos-gcd/lean/lean-toolchain` |
 | Depth artifact | Registered and tracked | 3,602-byte WASM and checked-in WAT |
@@ -45,6 +45,8 @@ The recent commits divide the depth proof at meaningful semantic boundaries.  Ea
 | `ffbebbe` | Prove depth missing-level copy | Proved the generated old-level copy loop and its decreasing termination measure. |
 | `eefcc84` | Prove depth append-store facts | Reconstructed the exact appended level list after the final two stores. |
 | `7a9605e` | Prove depth missing-level stores | Proved the generated final stores and exact result-local assignments. |
+| `873a04d` | Prove depth missing-branch facts | Connected allocation finalization to copy initialization and transported the final semantic state to the input allocator state. |
+| `1ba780c` | Prove depth missing-price branch | Composed the complete generated branch with exact ownership, allocator, page, byte-frame, and result-local facts. |
 
 ## Completed Work
 
@@ -93,11 +95,11 @@ The first proof attempt treated the forty-four-instruction preparation as one si
 
 `Project.ClobDepth.MissingStoreFacts.finish` reconstructs `LevelsAt` for the old list followed by the new level.  It combines that representation with the preserved fresh header as `OwnedLevelArrayAt` and retains the source representation and outside-target frame after both writes.  `MissingStore.missingStoreProg_spec` proves the generated stores and exposes the exact working, owner, and pointer locals to its continuation.
 
-The immediate open obligation is branch composition.  The composition must instantiate the copy invariant from the post-allocation store, carry the source and allocator frames through the loop, and connect the final owned array and result locals to the missing scan outcome.  The current empty-free-list premise remains explicit because generated function 6 performs no release and therefore preserves an initially empty free list throughout its fold.
+`Project.ClobDepth.MissingBranch.missingProg_spec` completes branch composition.  It instantiates the copy invariant from the post-allocation store, carries the source and allocator frames through the loop, and connects the final owned array and result locals to the missing scan outcome.  Its empty-free-list premise remains explicit because generated function 6 performs no release and therefore preserves an initially empty free list throughout its fold.
 
 ### Remaining Depth Work
 
-The missing branch requires one end-to-end theorem connecting its completed phase theorems.  The found branch still requires same-length allocation, copying, and replacement of the first matching quantity, with exact ownership, allocator counters, page preservation, and source frames.  The found proof should reuse the level flat-word API and disjoint-write theorem while adding only the target-length and indexed-replacement facts that differ from append.
+The missing branch is complete under its stated allocator and memory premises.  The found branch requires same-length allocation, copying, and replacement of the first matching quantity, with exact ownership, allocator counters, page preservation, and source frames.  The found proof should reuse the level flat-word API and disjoint-write theorem while adding only the target-length and indexed-replacement facts that differ from append.
 
 Function 6 then needs a loop invariant for the per-side aggregation.  The invariant must relate the consumed order prefix to the source side filter, the first-occurrence price sequence, the represented level array, and the accumulated modular quantities.  Function 7 must compose the two side folds, return both owned arrays in the export ABI, and preserve the input book and allocator facts across both calls.
 
@@ -180,7 +182,7 @@ Do not substitute `ulimit -v`, `prlimit --as`, a background process, or an unbou
 
 ## Next Order of Work
 
-The immediate task is to compose the complete missing-price branch from its scan frame through its owned appended-array result.  The next task is the found-price branch: prepare a same-length allocation, copy all level words, replace the first matching quantity with modular addition, and return the exact updated list.  Each increment requires a focused resource-limited warning-failing build and a journal entry before commit.
+The immediate task is the found-price branch: prepare a same-length allocation, copy all level words, replace the first matching quantity with modular addition, and return the exact updated list.  Function 3 composition follows by selecting the missing or found theorem from the scan outcome and returning the shared result predicate.  Each increment requires a focused resource-limited warning-failing build and a journal entry before commit.
 
 After both update branches are proved, the per-side depth fold becomes the central proof task.  Its theorem should state exact first-price order and modular aggregation without adding an unstated no-overflow assumption, then derive the natural-number result under the explicit bound already present in the source properties.  The exported theorem should compose the two side arrays and state their ownership, contents, allocator effects, page bound, and input-memory frame.
 
