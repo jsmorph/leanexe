@@ -5640,3 +5640,9 @@ The theorem treats the generated free-list loop and six header stores as one com
 `ClobLimit.RunMatchResult.resultProg_spec` proves that the generated result epilogue returns function 17's five values unchanged after copying them through locals.  Its interface accepts the source frame and returned values separately, avoiding elaboration of a large record update at the caller.  The focused warning-failing call and result builds completed in 2.7 and 1.2 seconds under the repository resource limits.
 
 `ClobLimit.RunMatchCorrect.func18_correct` composes preparation, both empty-array allocations, function 17, and the result epilogue.  `runMatchContext_result` identifies its source result with `Model.runMatchL`, while the physical postcondition retains represented result arrays, allocator globals, pages, and the post-initialization memory frame.  The focused warning-failing build completed in 1.8 seconds under the repository resource limits, and exported function 21's valid branches are the next proof boundary.
+
+## 2026-07-16: Divide the Exported `limit` Control
+
+`ClobLimit.LimitEntry.func21_decomposition` separates function 21 into its validity prefix, valid branch, invalid branch, and result epilogue.  The valid branch has a second exact division between its function 18 prefix and its filled and residual results.  The large residual and invalid instruction lists remain opaque unless a proof selects them.
+
+The decomposition derives both large lists from their exact positions in the generated function and verifies the complete reconstruction by definitional equality.  Later branch proofs can execute calls and scalar tests without elaborating either allocation body.  The focused warning-failing build passed in 1.3 seconds under the repository resource limits.

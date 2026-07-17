@@ -40,6 +40,7 @@ import Project.ClobLimit.RunMatchAllocations
 import Project.ClobLimit.RunMatchCall
 import Project.ClobLimit.RunMatchResult
 import Project.ClobLimit.RunMatchCorrect
+import Project.ClobLimit.LimitEntry
 import Project.ClobLimit.InternalTradeBump
 import Project.ClobLimit.InternalPartialBookPrepare
 import Project.ClobLimit.InternalPartialBookControl
