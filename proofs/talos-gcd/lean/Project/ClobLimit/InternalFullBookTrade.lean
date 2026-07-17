@@ -30,11 +30,12 @@ set_option Elab.async false in
 theorem fullBookTradeProg_spec
     (env : HostEnv Unit) (st : Store Unit) (base : Locals)
     (book bookCapacity oldTrades oldTradesCapacity : UInt64)
-    (remaining g0 g2 capacity next tradeNext : UInt64)
+    (fuel remaining g0 g2 capacity next tradeNext : UInt64)
     (taker : OrderL) (os : List OrderL) (ts : List TradeL) (i : Nat)
     (hParams : base.params.length = 11)
     (hLocals : base.locals.length = 64)
     (hValues : base.values = [])
+    (hFuel : base.get 0 = some (.i64 fuel))
     (hOid : base.get 1 = some (.i64 taker.oid))
     (hTrader : base.get 2 = some (.i64 taker.otrader))
     (hSide : base.get 3 = some (.i64 taker.oside))
@@ -96,7 +97,7 @@ theorem fullBookTradeProg_spec
     (hg2 : st.globals.globals[2]? = some (.i64 g2))
     (Q : Assertion Unit) (rest : Wasm.Program)
     (hDone : ∀ st1 s,
-      FullTradeResultAt s (g0 + 48)
+      FullTradeResultAt s fuel taker (g0 + 48)
         (g0 + 48 + fixedArrayBytesU (os.length - 1) 5 + 48)
         (remaining - os[i]!.oqty) →
       OwnedOrderArrayAt st1 book bookCapacity os →
@@ -261,15 +262,33 @@ theorem fullBookTradeProg_spec
       ((os.length - 1 - i) * 5)
     apply Project.BranchPost.doubleResultIffPost_of_wp «module» env st1
     · simp [suffixResultFrame]
-    apply fullTradeUpdateProg_spec env st1 bookResult newBook bookNeed book
-      bookCapacity oldTrades oldTradesCapacity remaining g0AfterBook (g2 + 1)
-      newBook tradeNext taker os (os.eraseIdx i) ts i
+    apply fullTradeUpdateProg_spec env st1 bookResult fuel newBook bookNeed
+      book bookCapacity oldTrades oldTradesCapacity remaining g0AfterBook
+      (g2 + 1) newBook tradeNext taker os (os.eraseIdx i) ts i
     · simpa [bookResult, suffixResultFrame, prefixCopyFrame,
         InternalFullBookBump.allocFrame, fullBookPrepareFrame] using hParams
     · simpa [bookResult, suffixResultFrame, prefixCopyFrame,
         InternalFullBookBump.allocFrame, fullBookPrepareFrame,
         fullBookPrepareLocals, List.length_set] using hLocals
     · simp [bookResult, suffixResultFrame]
+    · simpa [bookResult, suffixResultFrame, prefixCopyFrame,
+        InternalFullBookBump.allocFrame, fullBookPrepareFrame,
+        Locals.get, hParams, hLocals] using hFuel
+    · simp [bookResult, suffixResultFrame, prefixCopyFrame,
+        InternalFullBookBump.allocFrame, fullBookPrepareFrame,
+        fullBookPrepareLocals, Locals.get, hParams, hLocals]
+    · simp [bookResult, suffixResultFrame, prefixCopyFrame,
+        InternalFullBookBump.allocFrame, fullBookPrepareFrame,
+        fullBookPrepareLocals, Locals.get, hParams, hLocals]
+    · simp [bookResult, suffixResultFrame, prefixCopyFrame,
+        InternalFullBookBump.allocFrame, fullBookPrepareFrame,
+        fullBookPrepareLocals, Locals.get, hParams, hLocals]
+    · simp [bookResult, suffixResultFrame, prefixCopyFrame,
+        InternalFullBookBump.allocFrame, fullBookPrepareFrame,
+        fullBookPrepareLocals, Locals.get, hParams, hLocals]
+    · simp [bookResult, suffixResultFrame, prefixCopyFrame,
+        InternalFullBookBump.allocFrame, fullBookPrepareFrame,
+        fullBookPrepareLocals, Locals.get, hParams, hLocals]
     · simpa [bookResult, suffixResultFrame, prefixCopyFrame,
         InternalFullBookBump.allocFrame, fullBookPrepareFrame,
         Locals.get, hParams, hLocals] using hOid
