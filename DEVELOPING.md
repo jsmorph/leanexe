@@ -1,6 +1,6 @@
 # Developing LeanExe
 
-This guide defines the repository setup, development workflow, test gates, generated-file rules, and failure diagnostics.  The [Repository Overview](README.md) introduces the compiler, the [LeanExe User Manual](manual.md) explains source authoring, and the [Language Specification](spec.md) defines accepted behavior.  The [Development Plan](plan.md) is the current work queue, while the [Development Journal](devnotes.md) preserves decisions and test results.
+This guide defines the repository setup, development workflow, test gates, generated-file rules, and failure diagnostics.  The [Repository Overview](README.md) introduces the compiler, the [LeanExe User Manual](docs/manual.md) explains source authoring, and the [Language Specification](docs/spec.md) defines accepted behavior.  The [Development Plan](plan.md) is the current work queue, while the [Development Journal](devnotes.md) preserves decisions and test results.
 
 ## Prerequisites
 
@@ -120,7 +120,7 @@ Use `--update` only after deciding that changed compiler output is intended.  Th
 tools/check-talos-clob-cancel.sh --update
 ```
 
-The [Verifying a Program](verifying.md) guide covers registration, runtime pins, theorem statements, and proof construction.  The [Talos Proofs](proofs/talos-gcd/README.md) document lists every current theorem and its scope.  A new proof case is incomplete until both documents reflect it and the aggregate script includes it.
+The [Verifying a Program](docs/verifying.md) guide covers registration, runtime pins, theorem statements, and proof construction.  The [Talos Proofs](proofs/talos-gcd/README.md) document lists every current theorem and its scope.  A new proof case is incomplete until both documents reflect it and the aggregate script includes it.
 
 ## Generated Files and Dependencies
 

@@ -8,7 +8,7 @@ The shape mirrors an ordinary command pipeline: `make-tree` transforms one JSON 
 
 ## Source Program
 
-The source lives in the [JSON tree command](LeanExe/Examples/JsonTreeCommand.lean).  It defines a recursive `Tree` type with `empty` and `node` constructors, inserts input numbers into that tree, renders the tree through the JSON AST renderer, decodes the tree back from JSON, and searches it structurally.  The public entries are `LeanExe.Examples.JsonTreeCommand.makeTree` and `LeanExe.Examples.JsonTreeCommand.searchTree`.
+The source lives in the [JSON tree command](../LeanExe/Examples/JsonTreeCommand.lean).  It defines a recursive `Tree` type with `empty` and `node` constructors, inserts input numbers into that tree, renders the tree through the JSON AST renderer, decodes the tree back from JSON, and searches it structurally.  The public entries are `LeanExe.Examples.JsonTreeCommand.makeTree` and `LeanExe.Examples.JsonTreeCommand.searchTree`.
 
 `makeTree : ByteArray -> Except ByteArray ByteArray` parses stdin with `LeanExe.Ascii.Json.parseBytes`, accepts only a top-level JSON array of unsigned `UInt64` numbers, and returns `Except.ok` containing the rendered tree JSON.  `searchTree : ByteArray -> Array ByteArray -> Except ByteArray ByteArray` parses the tree JSON from stdin, decodes it into the source-level `Tree`, parses one decimal argv value, and returns `{"found":true}` or `{"found":false}`.  Both entries return `Except.error {"error":1}` for malformed input or unsupported shapes.
 
