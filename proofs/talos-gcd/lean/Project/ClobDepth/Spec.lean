@@ -3,6 +3,7 @@ import Project.ClobDepth.Model
 import Project.ClobDepth.Properties
 import Project.ClobDepth.Program
 import Project.ClobDepth.Representation
+import Project.ClobDepth.Scan
 
 /-!
 # Specification for `clob_depth`

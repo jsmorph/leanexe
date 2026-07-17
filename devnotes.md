@@ -5754,3 +5754,7 @@ The focused artifact comparison passed in 1.3 seconds, and the aggregate artifac
 ## 2026-07-16: Divide the `depth` Level Update
 
 `ClobDepth.Entry` certifies function 3's top-level scan, missing-price branch, found-price branch, and result reads by definitional equality.  Each allocation branch has separate preparation, free-list search, bump fallback, allocation finalization, copy loop, and final-store regions, while the found branch also isolates its bounds guard.  The constrained warning-failing build passes in 1.5 seconds, and the first-price scan is the next semantic theorem.
+
+## 2026-07-16: Prove the `depth` Price Scan
+
+`ClobDepth.Scan.scanProg_spec` proves that function 3 records zero for a missing price and the first matching index plus one otherwise.  Its found outcome retains the exact price and quantity loaded from the represented stride-two level array, while both outcomes preserve the store and expose the generated branch condition.  The source index lemmas, divided scan module, and complete constrained warning-failing scan build pass in 1.9, 1.9, and 3.4 seconds; the missing-price allocation is the next proof boundary.
