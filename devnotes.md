@@ -5312,3 +5312,11 @@ The focused warning-failing build completed in 5.1 seconds under the repository 
 The result retains `OwnedOrderArrayAt` for the source book and the replacement book representing `setQtyL os i qty`.  It also provides byte equality outside the target payload from the semantic bump store, unchanged page count from the original store, and the exact global list after counter 2 increases.  `AllocatorFrame.ownedOrderArrayAt_fixedArrayAllocBumpStore` supplies source ownership after allocation, and `OwnedOrderArrayAt.frame_outsideFlatWords` carries it through the copy and maker stores.
 
 The focused warning-failing build completed in 6.8 seconds under the repository resource limits.  The first diagnostic build found only local bound conversions and a missing namespace; the edited theorem passed on the next run.  The following generated segment prepares and appends the partial-fill trade.
+
+## 2026-07-15: Prove Partial-Trade Preparation
+
+`ClobLimit.InternalPartialTradePrepare.partialTradePrepareProg_spec` proves the generated prefix after the replacement-book branch returns.  It consumes the new book pointer, records the old trades, reads the selected maker identifier and price from the old book, and uses the remaining taker quantity as the fill quantity.  It also reads the old trade length and computes both the old flat-word count and appended length.
+
+The theorem adapts the completed `ClobMatchFuel.PartialTradePrepare` argument to the Limit ABI.  Parameters hold the taker identifier, old book, old trades, and remaining quantity, while the selected index remains at local-list position 14.  The final frame places the prepared trade fields and lengths at the exact positions consumed by the stride-four allocator and append loop.
+
+The focused warning-failing build completed in 4.8 seconds under the repository resource limits.  The module ends before the aligned-capacity calculation at generated line 3160.  Trade allocation, payload copy, append stores, and partial-result finalization remain separate proof boundaries.
