@@ -21,6 +21,7 @@ import Project.ClobLimit.InternalFullTransition
 import Project.ClobLimit.InternalFullBranch
 import Project.ClobLimit.InternalLoopControl
 import Project.ClobLimit.InternalLoopInvariant
+import Project.ClobLimit.InternalLoopBounds
 import Project.ClobLimit.InternalTradeBump
 import Project.ClobLimit.InternalPartialBookPrepare
 import Project.ClobLimit.InternalPartialBookControl
@@ -97,8 +98,10 @@ memory frame.  The outer loop guard and five-result epilogue have exact theorems
 for completed and zero-fuel exits.  A separately compiled invariant states
 source progress, owner-and-pointer locals, array ownership, exact allocator
 globals, pages, below-initial-heap equality, and a fixed per-step budget for
-running and completed states.  The proof remains outside `Project.lean` until
-the exported theorem is complete.
+running and completed states.  Its bound theorem derives every branch length,
+byte, no-wrap, page-fit, and two-allocation budget premise from one nonzero-fuel
+running state.  The proof remains outside `Project.lean` until the exported
+theorem is complete.
 -/
 
 end Project.ClobLimit
