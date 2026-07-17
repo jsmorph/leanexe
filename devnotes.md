@@ -5776,3 +5776,9 @@ The capacity proof follows the established limit allocation pattern by naming th
 `ClobDepth.Entry` now names the generated bump branch explicitly while retaining a definitional decomposition against function 3.  `ClobDepth.MissingBump.missingBumpProg_spec` is frame-generic over the allocation need and proves the no-wrap and no-growth branches, all six stride-two header writes, the new heap top, unchanged pages, and the exact scratch frame.  The theorem identifies the result store with the common `fixedArrayAllocBumpStore` transformation.
 
 The focused warning-failing entry decomposition and bump theorem builds pass in 1.6 and 6.7 seconds under the repository resource limits.  The proof reuses the common fixed-array address and page lemmas and changes only the depth local indices and stride.  Allocation finalization, including the length store and allocation-counter increment, is the next proof boundary.
+
+## 2026-07-17: Prove Missing Allocation Finalization
+
+`ClobDepth.Entry.missingAllocFinishProg` is now an explicit twelve-instruction region.  `ClobDepth.MissingFinish.missingAllocFinishProg_spec` is generic over the allocator result and proves the global-two increment, target-root propagation, bounded target-length write, and zero copy cursor.  Its postcondition names one `finishStore` memory transformation and one exact `finishFrame`.
+
+The entry decomposition and focused warning-failing finalization builds pass in 1.8 and 2.0 seconds under the repository resource limits.  The only semantic adapter beyond generated local reduction is the shared equality between `UInt64.toUInt32` and the explicit modulo address used by Talos memory writes.  The missing-price copy loop and its fresh stride-two array facts form the next proof boundary.

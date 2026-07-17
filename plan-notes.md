@@ -53,7 +53,7 @@ After preparation, the missing branch should proceed through independently compi
 | Missing allocation preparation | Capacity arithmetic and prior preparation examples | Complete; 1.4-second focused build | Exact need, scratch locals, and free-list cursor. |
 | Missing free-list search | Generic free-list model and empty-search examples | Complete for the stated empty free-list premise; 1.4-second focused build | No-fit state with the prepared frame unchanged. |
 | Missing bump branch | Generic bump store and market bump example | Complete; 6.7-second focused build | Fresh stride-two target with exact heap state. |
-| Missing allocation finish | Fresh-header and counter facts | Not started | Target length initialized and allocation count incremented. |
+| Missing allocation finish | Fresh-header, counter, and address facts | Complete; 2.0-second focused build | Target length initialized and allocation count incremented. |
 | Missing copy and stores | Append-copy examples and level reconstruction | Not started | `OwnedLevelArrayAt` for `levels ++ [{ price, qty }]`. |
 | Found preparation and allocation | Same allocator assets | Structurally divided | Fresh same-length stride-two target. |
 | Found copy and replacement | Replacement-copy examples and `LevelsAt` word API | Not started | Exact list with the first matching level's quantity updated. |
