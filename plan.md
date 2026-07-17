@@ -110,6 +110,8 @@ The `limit` step completed on 2026-07-16.  `ClobLimit.LimitCorrect.func21_correc
 
 The proof divides generated control at call, branch, allocation, copy, and final-result boundaries and keeps source progress, ownership, and memory facts in separately compiled predicates.  Shared fixed-array allocation, copy-state, outside-region, and arithmetic lemmas replace repeated instruction-level reasoning.  `Project.ClobLimit.Spec` passes `--wfail`, the byte-pinned artifact reproduces exactly, and `market` is the next CLOB proof.
 
+The `clob_market` case is registered outside the aggregate artifact gate while its proof is in progress.  Its byte-pinned input exports function 21, retains the shared runtime at functions 22 through 25, and has function definitions 0 through 20 identical to `clob_limit`.  The first proof boundary will certify the closed matcher region and transport `ClobLimit.RunMatchCorrect.func18_correct`; the exported theorem then needs only validity, unlimited-price preparation, invalid allocation, and final result composition.
+
 ### 5. Consolidate Proof Machinery After Repetition
 
 The CLOB proofs will repeat fixed-width array reads, copy loops, allocation headers, and ownership frames.  Move a pattern into `Project/Common.lean` or the runtime library after two independent cases use the same statement shape and a third case would repeat it.  Keep generated `Program.lean` files untouched and keep artifact-specific address arithmetic near its artifact when no stable general statement exists.
