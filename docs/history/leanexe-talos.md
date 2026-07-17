@@ -1,6 +1,6 @@
 # Verifying Generated LeanExe WASM with Talos
 
-This document records the original GCD proof experiment.  The current proof architecture, artifact inventory, and commands live in [Talos Proofs](../../proofs/talos-gcd/README.md), while [Verifying a Program](../verifying.md) defines the maintained procedure.  Historical commands and file descriptions below may differ from the current shared proof library.
+This document records the original GCD proof experiment.  The current proof architecture, artifact inventory, and commands live in [Talos Proofs](../../proofs/talos/README.md), while [Verifying a Program](../verifying.md) defines the maintained procedure.  Historical commands and file descriptions below may differ from the current shared proof library.
 
 This experiment connects [LeanExe](https://github.com/jsmorph/leanexe)-generated WASM to a [Talos](https://github.com/cajal-technologies/talos) proof.  The source program is ordinary Lean code inside the LeanExe supported subset.  LeanExe emits WASM, Talos decodes the generated WAT into a Lean model, and a Lean proof establishes the behavior of that decoded module.
 
@@ -43,16 +43,16 @@ LeanExe compiles the source function with the normal `lean-wasm` executable.  Th
 .lake/build/bin/lean-wasm compile \
   --module LeanExe.Examples.TalosGcd \
   --entry LeanExe.Examples.TalosGcd.gcd \
-  --out proofs/talos-gcd/rust/build/gcd/program.wasm
+  --out proofs/talos/rust/build/gcd/program.wasm
 ```
 
 The generated WASM file in this experiment is 1,195 bytes.  The WAT printed from that WASM file is 11,882 bytes.  The module contains the exported `gcd` function and LeanExe runtime exports such as `alloc`, `retain`, and `release`, while the `gcd` export performs only local scalar computation.
 
-Talos uses WAT in this proof.  `wasm-tools print` renders the generated WASM into `proofs/talos-gcd/rust/build/gcd/program.wat`.  Talos’s verifier emitter decodes that WAT into `proofs/talos-gcd/lean/Project/Gcd/Program.lean`, which contains a `Wasm.Module` value and a `func0` body corresponding to the exported `gcd` function.
+Talos uses WAT in this proof.  `wasm-tools print` renders the generated WASM into `proofs/talos/rust/build/gcd/program.wat`.  Talos’s verifier emitter decodes that WAT into `proofs/talos/lean/Project/Gcd/Program.lean`, which contains a `Wasm.Module` value and a `func0` body corresponding to the exported `gcd` function.
 
 ## Talos Proof
 
-The proof project is in `proofs/talos-gcd/lean`.  Its Lake file pins Talos through the `CodeLib` dependency at revision `bb3277e21c9786e3133d5c1601e34ebdc0bea4df`.  The proof imports `Project.Gcd.Program`, which is the Talos-generated Lean representation of the decoded WAT.
+The proof project is in `proofs/talos/lean`.  Its Lake file pins Talos through the `CodeLib` dependency at revision `bb3277e21c9786e3133d5c1601e34ebdc0bea4df`.  The proof imports `Project.Gcd.Program`, which is the Talos-generated Lean representation of the decoded WAT.
 
 The core specification names the Lean source symbol and states the behavior of function index `0` in the decoded WASM module.  The postcondition inspects the returned WASM value stack and requires a single `i64` result.  This specification is the boundary between the generated artifact and the mathematical statement that the proof establishes.
 
@@ -68,7 +68,7 @@ The argument order in the stack list follows Talos’s WASM calling convention. 
 
 The proof uses Talos’s weakest-precondition rules for straight-line instructions, blocks, and loops.  The generated function has an outer block and an inner loop because the loop exits through a branch from generated WASM control flow.  The proof names the generated local frame, treats WASM locals `4` and `5` as the Euclidean state `(x, y)`, leaves compiler scratch locals unconstrained, and uses `y.toNat` as the loop measure.
 
-The proof is in `proofs/talos-gcd/lean/Project/Gcd/Spec.lean`.  It handles the two loop cases explicitly: when `y = 0`, the function exits and returns `x`, and when `y ≠ 0`, the generated code updates the state to `(y, x % y)` and branches back to the loop.  The arithmetic step uses `Nat.gcd_rec`, `Nat.gcd_comm`, `UInt64.toNat_mod`, and `Nat.mod_lt`.
+The proof is in `proofs/talos/lean/Project/Gcd/Spec.lean`.  It handles the two loop cases explicitly: when `y = 0`, the function exits and returns `x`, and when `y ≠ 0`, the generated code updates the state to `(y, x % y)` and branches back to the loop.  The arithmetic step uses `Nat.gcd_rec`, `Nat.gcd_comm`, `UInt64.toNat_mod`, and `Nat.mod_lt`.
 
 ## Artifact Check
 
@@ -77,8 +77,8 @@ The proof input must remain tied to the source and compiler.  The repository inc
 1. Builds `LeanExe.Examples.TalosGcd` and the `lean-wasm` compiler.
 2. Compiles `LeanExe.Examples.TalosGcd.gcd` to a fresh temporary WASM file.
 3. Prints a fresh temporary WAT file with `wasm-tools print`.
-4. Compares the fresh WASM file with `proofs/talos-gcd/rust/build/gcd/program.wasm`.
-5. Compares the fresh WAT file with `proofs/talos-gcd/rust/build/gcd/program.wat`.
+4. Compares the fresh WASM file with `proofs/talos/rust/build/gcd/program.wasm`.
+5. Compares the fresh WAT file with `proofs/talos/rust/build/gcd/program.wat`.
 6. Builds the Talos Lean proof project with `lake build`.
 
 The script accepts `WASM_TOOLS` when the `wasm-tools` binary is outside `PATH`.  It also checks `$HOME/.cargo/bin/wasm-tools`, which matches the installation used for this experiment.  A mismatch in the regenerated WASM or WAT causes `cmp` to fail before the script builds the proof project.
@@ -97,13 +97,13 @@ Wasmtime provides independent execution tests for selected inputs.  The Talos pr
 
 ```sh
 build/tools/wasmtime/current/wasmtime \
-  --invoke gcd proofs/talos-gcd/rust/build/gcd/program.wasm 48 18
+  --invoke gcd proofs/talos/rust/build/gcd/program.wasm 48 18
 
 build/tools/wasmtime/current/wasmtime \
-  --invoke gcd proofs/talos-gcd/rust/build/gcd/program.wasm 270 192
+  --invoke gcd proofs/talos/rust/build/gcd/program.wasm 270 192
 
 build/tools/wasmtime/current/wasmtime \
-  --invoke gcd proofs/talos-gcd/rust/build/gcd/program.wasm 17 0
+  --invoke gcd proofs/talos/rust/build/gcd/program.wasm 17 0
 ```
 
 Wasmtime returned `6`, `6`, and `17`.  These cases cover an ordinary nontrivial GCD, another nontrivial pair, and the zero second operand case.  The universal correctness claim comes from the Talos proof, not from these sample executions.

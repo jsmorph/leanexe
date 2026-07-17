@@ -19,7 +19,7 @@ The repository is on `main`, and the latest completed proof increment is `1ba780
 | Branch | `main` | Current Git branch |
 | Latest proof increment | `1ba780c Prove depth missing-price branch` | Committed 2026-07-17 proof increment |
 | Compiler Lean | Lean 4.31.0 | Root `lean-toolchain` |
-| Talos proof Lean | Lean 4.31.0 | `proofs/talos-gcd/lean/lean-toolchain` |
+| Talos proof Lean | Lean 4.31.0 | `proofs/talos/lean/lean-toolchain` |
 | Depth artifact | Registered and tracked | 3,602-byte WASM and checked-in WAT |
 | Aggregate Talos proof object | Stale | Requires a planned, divided rebuild |
 | Unrelated directory | `leanclob/` is untracked and separate | Nested Git repository; excluded from this work |
@@ -50,7 +50,7 @@ The recent commits divide the depth proof at meaningful semantic boundaries.  Ea
 
 ## Completed Work
 
-The current plan requires three kinds of evidence: differential execution tests, byte-pinned artifacts, and Talos theorems over decoded WASM.  The compiler remains outside the Talos trusted base because each theorem proves a decoded generated artifact and the check script compares that artifact byte-for-byte with the checked-in WASM and WAT.  The [verification guide](verifying.md) describes this boundary and the [Talos proof inventory](../proofs/talos-gcd/README.md) records the completed theorem scopes.
+The current plan requires three kinds of evidence: differential execution tests, byte-pinned artifacts, and Talos theorems over decoded WASM.  The compiler remains outside the Talos trusted base because each theorem proves a decoded generated artifact and the check script compares that artifact byte-for-byte with the checked-in WASM and WAT.  The [verification guide](verifying.md) describes this boundary and the [Talos proof inventory](../proofs/talos/README.md) records the completed theorem scopes.
 
 ### Plan Phases
 
@@ -69,7 +69,7 @@ Nineteen byte-pinned Talos cases are complete before `depth`.  They include the 
 
 ### Documentation and Developer Guidance
 
-The documentation has clear ownership by subject.  [Developing LeanExe](../DEVELOPING.md) defines setup, versions, the development workflow, test gates, generated-file rules, failure diagnostics, and the required resource policy.  The [user manual](manual.md) defines source authoring, the [language specification](spec.md) defines accepted behavior, the [verification guide](verifying.md) defines the proof procedure, and the [Talos proof inventory](../proofs/talos-gcd/README.md) identifies checked cases and theorem scope.
+The documentation has clear ownership by subject.  [Developing LeanExe](../DEVELOPING.md) defines setup, versions, the development workflow, test gates, generated-file rules, failure diagnostics, and the required resource policy.  The [user manual](manual.md) defines source authoring, the [language specification](spec.md) defines accepted behavior, the [verification guide](verifying.md) defines the proof procedure, and the [Talos proof inventory](../proofs/talos/README.md) identifies checked cases and theorem scope.
 
 The developer guide names the pinned versions: Lean 4.31.0, Node 24.13.0, `wasm-tools` 1.251.0, and Wasmtime 44.0.0.  It documents the ordinary build, the separate Talos setup, the focused and aggregate proof gates, CLI statuses and stderr format, generated-file ownership, and troubleshooting.  It also makes the resource-limited `systemd-run` invocation mandatory for commands that invoke Lean, Lake, `lean-wasm`, or scripts that start them.
 
@@ -77,7 +77,7 @@ The documentation still needs ordinary maintenance as the depth proof becomes co
 
 ## Depth Proof
 
-The generated `clob_depth` artifact is registered under `proofs/talos-gcd`.  Its WASM file is 3,602 bytes, its WAT is checked in, and `Project/ClobDepth/Program.lean` contains the generated Talos model.  Function 3 updates or appends one depth level, function 6 folds one side of the order book, function 7 implements the export, and the shared runtime functions follow those program functions.
+The generated `clob_depth` artifact is registered under `proofs/talos`.  Its WASM file is 3,602 bytes, its WAT is checked in, and `Project/ClobDepth/Program.lean` contains the generated Talos model.  Function 3 updates or appends one depth level, function 6 folds one side of the order book, function 7 implements the export, and the shared runtime functions follow those program functions.
 
 The source proof work has established the data representation before entering the instruction proof.  `Project.ClobDepth.Representation` defines the stride-two layout for price and quantity levels and the owned fixed-array predicate.  `Project.ClobDepth.Properties` proves side filtering, first-occurrence price order, price uniqueness, exact modular per-price aggregation, and a natural-number interpretation when the stated no-overflow bound holds.
 
@@ -119,7 +119,7 @@ No external blocker prevents the next depth proof step.  The main technical risk
 
 Every `lean`, `lake`, Lean compiler, `lean-wasm`, or script that starts one of those commands must run in a resource-limited transient user scope.  This includes `tools/setup-talos.sh`, `tools/check-talos.sh`, and `node test/run_all.js` when they invoke Lean or Lake.  Do not run two such jobs concurrently, including from separate terminals, because the policy limits one scope but cannot protect the machine from several scopes competing for memory and CPU.
 
-Run the command from the directory that owns the relevant Lake workspace.  The proof workspace is `proofs/talos-gcd/lean`, while ordinary compiler builds run from the repository root.  The `timeout` must bound commands whose runtime is not intrinsically bounded, and a timeout without a diagnostic requires proof or module division before another attempt.
+Run the command from the directory that owns the relevant Lake workspace.  The proof workspace is `proofs/talos/lean`, while ordinary compiler builds run from the repository root.  The `timeout` must bound commands whose runtime is not intrinsically bounded, and a timeout without a diagnostic requires proof or module division before another attempt.
 
 ```sh
 systemd-run --user --scope --quiet --collect \
@@ -140,7 +140,7 @@ systemd-run --user --scope --quiet --collect \
 The focused proof command starts from the proof workspace because its `lakefile.toml` owns the Talos project.  The command below builds one bounded module and fails on warnings, which makes it appropriate for an in-progress theorem.  Wait for this scope to exit before starting any other Lean or Lake command.
 
 ```sh
-cd proofs/talos-gcd/lean
+cd proofs/talos/lean
 systemd-run --user --scope --quiet --collect \
   -p MemoryHigh=4G \
   -p MemoryMax=6G \

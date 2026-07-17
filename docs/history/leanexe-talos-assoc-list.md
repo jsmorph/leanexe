@@ -1,6 +1,6 @@
 # Verifying Generated LeanExe List Lookup WASM with Talos
 
-This document records the original association-list proof experiment.  The current proof architecture, artifact inventory, and commands live in [Talos Proofs](../../proofs/talos-gcd/README.md), while [Verifying a Program](../verifying.md) defines the maintained procedure.  Historical commands and file descriptions below may differ from the current shared proof library.
+This document records the original association-list proof experiment.  The current proof architecture, artifact inventory, and commands live in [Talos Proofs](../../proofs/talos/README.md), while [Verifying a Program](../verifying.md) defines the maintained procedure.  Historical commands and file descriptions below may differ from the current shared proof library.
 
 This experiment connects [LeanExe](https://github.com/jsmorph/leanexe)-generated WASM to a [Talos](https://github.com/cajal-technologies/talos) proof for a small recursive-data example.  The source program is ordinary Lean code inside the LeanExe supported subset.  LeanExe emits WASM, Talos decodes the generated WAT into a Lean model, and a Lean proof establishes the behavior of that decoded module.
 
@@ -50,12 +50,12 @@ LeanExe compiles the source function with the normal `lean-wasm` executable.  Th
 .lake/build/bin/lean-wasm compile \
   --module LeanExe.Examples.TalosAssocList \
   --entry LeanExe.Examples.TalosAssocList.lookupDemo \
-  --out proofs/talos-gcd/rust/build/assoc_list/program.wasm
+  --out proofs/talos/rust/build/assoc_list/program.wasm
 ```
 
 The generated WASM file in this experiment is 3,498 bytes.  The WAT printed from that WASM file is 34,541 bytes.  The module contains the exported `lookupDemo` function and LeanExe runtime exports such as `alloc`, `retain`, and `release`.
 
-Talos uses WAT in this proof.  `wasm-tools print` renders the generated WASM into `proofs/talos-gcd/rust/build/assoc_list/program.wat`.  Talos’s verifier emitter decodes that WAT into `proofs/talos-gcd/lean/Project/AssocList/Program.lean`, which contains a `Wasm.Module` value and generated function bodies for list construction, recursive lookup, and the exported wrapper.  The proof imports that generated module as the semantic object under verification.
+Talos uses WAT in this proof.  `wasm-tools print` renders the generated WASM into `proofs/talos/rust/build/assoc_list/program.wat`.  Talos’s verifier emitter decodes that WAT into `proofs/talos/lean/Project/AssocList/Program.lean`, which contains a `Wasm.Module` value and generated function bodies for list construction, recursive lookup, and the exported wrapper.  The proof imports that generated module as the semantic object under verification.
 
 ## Generated Layout
 
@@ -88,7 +88,7 @@ This predicate belongs to the proof of the generated artifact.  It gives the pro
 
 ## Talos Proof
 
-The proof project is in `proofs/talos-gcd/lean`.  Its Lake file pins Talos through the `CodeLib` dependency at revision `bb3277e21c9786e3133d5c1601e34ebdc0bea4df`.  The proof imports `Project.AssocList.Program`, which is the Talos-generated Lean representation of the decoded WAT.  The proof file `Project/AssocList/Spec.lean` states and proves the behavior of the decoded module.
+The proof project is in `proofs/talos/lean`.  Its Lake file pins Talos through the `CodeLib` dependency at revision `bb3277e21c9786e3133d5c1601e34ebdc0bea4df`.  The proof imports `Project.AssocList.Program`, which is the Talos-generated Lean representation of the decoded WAT.  The proof file `Project/AssocList/Spec.lean` states and proves the behavior of the decoded module.
 
 The core specification names the Lean source symbol and states the behavior of function index `2` in the decoded WASM module.  The postcondition inspects the returned WASM value stack and requires a single `i64` result.  The theorem quantifies over every `UInt64` key.
 
@@ -117,8 +117,8 @@ The script performs these steps in order:
 1. Builds `LeanExe.Examples.TalosAssocList` and the `lean-wasm` compiler.
 2. Compiles `LeanExe.Examples.TalosAssocList.lookupDemo` to a fresh temporary WASM file.
 3. Prints a fresh temporary WAT file with `wasm-tools print`.
-4. Compares the fresh WASM file with `proofs/talos-gcd/rust/build/assoc_list/program.wasm`.
-5. Compares the fresh WAT file with `proofs/talos-gcd/rust/build/assoc_list/program.wat`.
+4. Compares the fresh WASM file with `proofs/talos/rust/build/assoc_list/program.wasm`.
+5. Compares the fresh WAT file with `proofs/talos/rust/build/assoc_list/program.wat`.
 6. Builds the Talos Lean proof project with `lake build Project.AssocList.Spec`.
 
 The script accepts `WASM_TOOLS` when the `wasm-tools` binary is outside `PATH`.  It also checks `$HOME/.cargo/bin/wasm-tools`, which matches the installation used for this experiment.  A mismatch in the regenerated WASM or WAT causes `cmp` to fail before the script builds the proof project.
@@ -137,16 +137,16 @@ Wasmtime provides independent execution tests for selected inputs.  The Talos pr
 
 ```sh
 build/tools/wasmtime/current/wasmtime \
-  --invoke lookupDemo proofs/talos-gcd/rust/build/assoc_list/program.wasm 7
+  --invoke lookupDemo proofs/talos/rust/build/assoc_list/program.wasm 7
 
 build/tools/wasmtime/current/wasmtime \
-  --invoke lookupDemo proofs/talos-gcd/rust/build/assoc_list/program.wasm 2
+  --invoke lookupDemo proofs/talos/rust/build/assoc_list/program.wasm 2
 
 build/tools/wasmtime/current/wasmtime \
-  --invoke lookupDemo proofs/talos-gcd/rust/build/assoc_list/program.wasm 9
+  --invoke lookupDemo proofs/talos/rust/build/assoc_list/program.wasm 9
 
 build/tools/wasmtime/current/wasmtime \
-  --invoke lookupDemo proofs/talos-gcd/rust/build/assoc_list/program.wasm 5
+  --invoke lookupDemo proofs/talos/rust/build/assoc_list/program.wasm 5
 ```
 
 Wasmtime returned `70`, `20`, `90`, and `0`.  These cases cover a hit at the head, a hit where an earlier duplicate must win, a later hit, and a miss.  The Talos proof supplies the universal correctness claim.
