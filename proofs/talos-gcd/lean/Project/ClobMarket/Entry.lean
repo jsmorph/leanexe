@@ -21,7 +21,7 @@ def marketArgs (book : UInt64) (order : OrderL) : List Value :=
 def entryFrame (book : UInt64) (order : OrderL) : Locals :=
   func21Def.toLocals (marketArgs book order).reverse
 
-private def outerBranch (takeValid : Bool) : Wasm.Program :=
+def outerBranch (takeValid : Bool) : Wasm.Program :=
   match (func21[30]? : Option Wasm.Instruction) with
   | some (Wasm.Instruction.iff _ _ valid invalid) =>
       if takeValid then valid else invalid
@@ -29,6 +29,26 @@ private def outerBranch (takeValid : Bool) : Wasm.Program :=
 
 def invalidProg : Wasm.Program :=
   outerBranch false
+
+def invalidPrepareProg : Wasm.Program :=
+  invalidProg.take 30
+
+def invalidSearchProg : Wasm.Program :=
+  (invalidProg.drop 30).take 1
+
+def invalidBumpProg : Wasm.Program :=
+  (invalidProg.drop 31).take 4
+
+def invalidFinishProg : Wasm.Program :=
+  invalidProg.drop 35
+
+set_option maxRecDepth 1048576 in
+theorem invalidProg_decomposition :
+    invalidProg = invalidPrepareProg ++ invalidSearchProg ++
+      invalidBumpProg ++ invalidFinishProg := by
+  unfold invalidPrepareProg invalidSearchProg invalidBumpProg
+    invalidFinishProg invalidProg outerBranch func21
+  rfl
 
 def entryProg : Wasm.Program :=
   [
