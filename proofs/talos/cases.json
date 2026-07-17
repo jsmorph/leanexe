@@ -1,0 +1,165 @@
+{
+  "version": 1,
+  "cases": [
+    {
+      "name": "gcd",
+      "module": "LeanExe.Examples.TalosGcd",
+      "entry": "LeanExe.Examples.TalosGcd.gcd",
+      "leanModule": "Gcd",
+      "specTarget": "Project.Gcd.Spec",
+      "complete": true
+    },
+    {
+      "name": "assoc_list",
+      "module": "LeanExe.Examples.TalosAssocList",
+      "entry": "LeanExe.Examples.TalosAssocList.lookupDemo",
+      "leanModule": "AssocList",
+      "specTarget": "Project.AssocList.Spec",
+      "complete": true
+    },
+    {
+      "name": "order_book",
+      "module": "LeanExe.Examples.OrderBook",
+      "entry": "LeanExe.Examples.OrderBook.matchBook",
+      "leanModule": "OrderBook",
+      "specTarget": "Project.OrderBook.Spec",
+      "complete": true
+    },
+    {
+      "name": "validate",
+      "module": "LeanExe.Examples.AsciiDigits",
+      "entry": "LeanExe.Examples.AsciiDigits.validateGeneric",
+      "leanModule": "Validate",
+      "specTarget": "Project.Validate.Spec",
+      "complete": true
+    },
+    {
+      "name": "append_bang",
+      "module": "LeanExe.Examples.ByteArrayPrograms",
+      "entry": "LeanExe.Examples.ByteArrayPrograms.appendBang",
+      "leanModule": "AppendBang",
+      "specTarget": "Project.AppendBang.Spec",
+      "complete": true
+    },
+    {
+      "name": "push_size",
+      "module": "LeanExe.Examples.ByteArrayPrograms",
+      "entry": "LeanExe.Examples.ByteArrayPrograms.pushBangSize",
+      "leanModule": "PushSize",
+      "specTarget": "Project.PushSize.Spec",
+      "complete": true
+    },
+    {
+      "name": "push_twice",
+      "module": "LeanExe.Examples.ByteArrayPrograms",
+      "entry": "LeanExe.Examples.ByteArrayPrograms.pushTwiceSizes",
+      "leanModule": "PushTwice",
+      "specTarget": "Project.PushTwice.Spec",
+      "complete": true
+    },
+    {
+      "name": "shared_pair",
+      "module": "LeanExe.Examples.ByteArrayPrograms",
+      "entry": "LeanExe.Examples.ByteArrayPrograms.sharedPushPair",
+      "leanModule": "SharedPair",
+      "specTarget": "Project.SharedPair.Spec",
+      "complete": true
+    },
+    {
+      "name": "pair_free",
+      "module": "LeanExe.Examples.ByteArrayPrograms",
+      "entry": "LeanExe.Examples.ByteArrayPrograms.sharedPairFreeStats",
+      "leanModule": "PairFree",
+      "specTarget": "Project.PairFree.Spec",
+      "complete": true
+    },
+    {
+      "name": "box_free",
+      "module": "LeanExe.Examples.ByteArrayPrograms",
+      "entry": "LeanExe.Examples.ByteArrayPrograms.boxFreeStats",
+      "leanModule": "BoxFree",
+      "specTarget": "Project.BoxFree.Spec",
+      "complete": true
+    },
+    {
+      "name": "fold_sum",
+      "module": "LeanExe.Examples.ByteArrayPrograms",
+      "entry": "LeanExe.Examples.ByteArrayPrograms.foldSum",
+      "leanModule": "FoldSum",
+      "specTarget": "Project.FoldSum.Spec",
+      "complete": true
+    },
+    {
+      "name": "leb_u32",
+      "module": "LeanExe.Wasm.Leb",
+      "entry": "LeanExe.Wasm.Leb.u32lebU64",
+      "leanModule": "LebU32",
+      "specTarget": "Project.LebU32.Spec",
+      "complete": true
+    },
+    {
+      "name": "clob_quote",
+      "module": "LeanExe.Examples.Clob",
+      "entry": "LeanExe.Examples.Clob.quote",
+      "leanModule": "ClobQuote",
+      "specTarget": "Project.ClobQuote.Spec",
+      "complete": true
+    },
+    {
+      "name": "clob_cancel",
+      "module": "LeanExe.Examples.Clob",
+      "entry": "LeanExe.Examples.Clob.cancel",
+      "leanModule": "ClobCancel",
+      "specTarget": "Project.ClobCancel.Spec",
+      "complete": true
+    },
+    {
+      "name": "clob_find_best",
+      "module": "LeanExe.Examples.Clob",
+      "entry": "LeanExe.Examples.Clob.findBest",
+      "leanModule": "ClobFindBest",
+      "specTarget": "Project.ClobFindBest.Spec",
+      "complete": true
+    },
+    {
+      "name": "clob_post_only",
+      "module": "LeanExe.Examples.Clob",
+      "entry": "LeanExe.Examples.Clob.postOnly",
+      "leanModule": "ClobPostOnly",
+      "specTarget": "Project.ClobPostOnly.Spec",
+      "complete": true
+    },
+    {
+      "name": "clob_match_fuel",
+      "module": "LeanExe.Examples.Clob",
+      "entry": "LeanExe.Examples.Clob.matchFuel",
+      "leanModule": "ClobMatchFuel",
+      "specTarget": "Project.ClobMatchFuel.Spec",
+      "complete": true
+    },
+    {
+      "name": "clob_limit",
+      "module": "LeanExe.Examples.Clob",
+      "entry": "LeanExe.Examples.Clob.limit",
+      "leanModule": "ClobLimit",
+      "specTarget": "Project.ClobLimit.Spec",
+      "complete": true
+    },
+    {
+      "name": "clob_market",
+      "module": "LeanExe.Examples.Clob",
+      "entry": "LeanExe.Examples.Clob.market",
+      "leanModule": "ClobMarket",
+      "specTarget": "Project.ClobMarket.Spec",
+      "complete": true
+    },
+    {
+      "name": "clob_depth",
+      "module": "LeanExe.Examples.Clob",
+      "entry": "LeanExe.Examples.Clob.depth",
+      "leanModule": "ClobDepth",
+      "specTarget": "Project.ClobDepth.Spec",
+      "complete": false
+    }
+  ]
+}
