@@ -5384,3 +5384,11 @@ The focused warning-failing build completed in 5.7 seconds under the repository 
 The proof preserves ownership of the source book and old trade array across both bump allocations and both payload updates.  It states the final heap pointer, zero free-list head, allocation counter `g2 + 2`, unchanged page count, and byte equality below the original heap top.  The shared bump-allocation and outside-payload frame theorems supply the cross-allocation preservation facts.
 
 The focused warning-failing build passed in 106 seconds under the repository resource limits.  Earlier passes exposed missing namespaces, explicit `List.set` bounds, and a modular-addition goal that required associativity instead of `omega`.  Larger loop proofs must import this theorem opaquely because expanding its dependent frame expressions would repeat that elaboration cost.
+
+## 2026-07-16: Prove Full-Book Preparation
+
+`ClobLimit.InternalFullBookPrepare.fullBookBranchProg_spec` proves the generated full-fill entry through both selected-index bounds checks.  It copies the taker fields, source book, and selected index into the working locals.  Its final frame records the erased length and exact prefix and suffix word counts.
+
+The theorem treats the allocation-and-copy body as an arbitrary program returning one result.  `BranchPost.doubleResultIffPost` accounts for the two nested generated branches without expanding the continuation.  The proof uses the represented source book for both length reads and converts every `UInt64` subtraction and multiplication to the corresponding natural-number range.
+
+The focused warning-failing build completed in 4.3 seconds under the repository resource limits.  The theorem passed on its first build.  The next phase computes the aligned stride-five allocation size and initializes the empty free-list search.

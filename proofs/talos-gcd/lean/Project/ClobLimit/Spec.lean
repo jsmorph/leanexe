@@ -7,6 +7,7 @@ import Project.ClobLimit.InternalEarlyExit
 import Project.ClobLimit.InternalIteration
 import Project.ClobLimit.InternalBookBump
 import Project.ClobLimit.InternalFullBookBump
+import Project.ClobLimit.InternalFullBookPrepare
 import Project.ClobLimit.InternalTradeBump
 import Project.ClobLimit.InternalPartialBookPrepare
 import Project.ClobLimit.InternalPartialBookControl
@@ -61,8 +62,10 @@ completed result in the recursive locals.  Their composition with trade
 preparation proves the complete continuation after replacement-book
 construction.  The complete partial-fill branch preserves both source arrays,
 returns the semantic replacement book and appended trades, and states the
-two-allocation heap, counter, page, and below-heap memory facts.  The proof
-remains outside `Project.lean` until the exported theorem is complete.
+two-allocation heap, counter, page, and below-heap memory facts.  The full-fill
+book preparation proves both selected-index bounds checks and computes the
+erased length and exact prefix and suffix copy ranges.  The proof remains
+outside `Project.lean` until the exported theorem is complete.
 -/
 
 end Project.ClobLimit
