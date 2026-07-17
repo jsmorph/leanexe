@@ -32,6 +32,7 @@ import Project.ClobLimit.InternalLoopInitial
 import Project.ClobLimit.InternalLoopResult
 import Project.ClobLimit.InternalInitialization
 import Project.ClobLimit.InternalEntry
+import Project.ClobLimit.InternalCorrect
 import Project.ClobLimit.InternalTradeBump
 import Project.ClobLimit.InternalPartialBookPrepare
 import Project.ClobLimit.InternalPartialBookControl
@@ -131,6 +132,8 @@ A common output predicate covers completed and zero-fuel exits, and the result
 epilogue returns the exact five owner, pointer, and remaining values.
 Function 17 decomposes exactly into completion-flag initialization, the
 verified loop, and the result epilogue, with a proved initial local frame.
+`InternalCorrect.func17_correct` proves input-generic termination and exact
+source-model correctness for that complete recursive matcher.
 The proof remains outside `Project.lean` until the exported theorem is complete.
 -/
 
