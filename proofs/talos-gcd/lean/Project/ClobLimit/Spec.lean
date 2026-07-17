@@ -20,6 +20,7 @@ import Project.ClobLimit.InternalPartialTradeAllocPrepare
 import Project.ClobLimit.InternalPartialTradeAlloc
 import Project.ClobLimit.InternalPartialTradeCopy
 import Project.ClobLimit.InternalPartialTradeFinish
+import Project.ClobLimit.InternalPartialTradeUpdate
 
 /-!
 # Specification for `clob_limit`
@@ -50,8 +51,9 @@ also computes the aligned stride-four capacity and initializes the trade
 free-list scan.  Its empty-list composition returns the exact stride-four bump
 store and result frame.  The post-allocation loop initializes the extended
 length and copies every old trade word, and the four append stores return the
-represented extended array.  The proof remains outside `Project.lean` until the
-exported theorem is complete.
+represented extended array.  Their composition retains the old book, new book,
+old trades, and new trades with exact allocator state.  The proof remains
+outside `Project.lean` until the exported theorem is complete.
 -/
 
 end Project.ClobLimit
