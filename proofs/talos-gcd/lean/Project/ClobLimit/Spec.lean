@@ -8,6 +8,7 @@ import Project.ClobLimit.InternalIteration
 import Project.ClobLimit.InternalBookBump
 import Project.ClobLimit.InternalFullBookBump
 import Project.ClobLimit.InternalFullBookPrepare
+import Project.ClobLimit.InternalFullBookAllocPrepare
 import Project.ClobLimit.InternalTradeBump
 import Project.ClobLimit.InternalPartialBookPrepare
 import Project.ClobLimit.InternalPartialBookControl
@@ -64,8 +65,9 @@ construction.  The complete partial-fill branch preserves both source arrays,
 returns the semantic replacement book and appended trades, and states the
 two-allocation heap, counter, page, and below-heap memory facts.  The full-fill
 book preparation proves both selected-index bounds checks and computes the
-erased length and exact prefix and suffix copy ranges.  The proof remains
-outside `Project.lean` until the exported theorem is complete.
+erased length and exact prefix and suffix copy ranges.  Its allocator prefix
+computes the aligned stride-five capacity and initializes the free-list scan.
+The proof remains outside `Project.lean` until the exported theorem is complete.
 -/
 
 end Project.ClobLimit
