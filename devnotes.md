@@ -5576,3 +5576,11 @@ The partial-only module first passed in 1.7 seconds.  Three focused diagnostics 
 `InternalLoopIteration.dispatch_spec` derives `StepBounds` once from the nonzero-fuel running invariant.  Zero remaining quantity and missing-maker outcomes feed `InternalLoopCompletion.of_stop`, while selected-maker outcomes use `InternalLoopBranches.full_spec` or `partial_spec`.  Each continuation returns the invariant and preserves the strict measure decrease proved by the lower layer.
 
 The focused warning-failing build passed on its first run in 1.3 seconds under the repository resource limits.  The theorem contains no new address or allocator arithmetic.  The next boundary proves the generated guard-dispatch loop by well-founded induction on the established measure.
+
+## 2026-07-16: Prove the Generated Internal Match Loop
+
+`ClobLimit.InternalLoop.bodyProg` is the exact guard, dispatcher, and trailing re-entry branch used by the recursive matcher.  `loopProg` places that body in the generated zero-arity loop and enclosing zero-arity block.  The definitions retain the full and partial branch programs as opaque components.
+
+`InternalLoop.loopProg_spec` applies the interpreter's well-founded loop rule with `Invariant` and `measure`.  A completed state exits through the done guard, a zero-fuel running state exits through the fuel guard, and a nonzero-fuel running state invokes `InternalLoopIteration.dispatch_spec`.  The theorem returns `ExitAt` after the enclosing block exits.
+
+The focused warning-failing build passed on its first run in 1.7 seconds under the repository resource limits.  Neither the dispatcher nor either allocation branch was unfolded.  The next boundary constructs the initial running invariant from function 17's public input frame and allocator premises.
