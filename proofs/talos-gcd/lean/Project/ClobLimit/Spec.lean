@@ -6,6 +6,7 @@ import Project.ClobLimit.FindBestWrapper
 import Project.ClobLimit.InternalEarlyExit
 import Project.ClobLimit.InternalIteration
 import Project.ClobLimit.InternalBookBump
+import Project.ClobLimit.InternalTradeBump
 
 /-!
 # Specification for `clob_limit`
@@ -21,9 +22,9 @@ represented input.  Its branch theorems will state result ownership, allocator
 counters, page preservation, and a budgeted memory frame.  The validity,
 invalid-result, embedded search, and internal early-exit subsystems are
 complete.  The internal iteration control is proved through selected-maker
-quantity dispatch, and the partial-book empty-free-list allocator has an exact
-store theorem.  This module remains outside `Project.lean` until the exported
-theorem is complete.
+quantity dispatch, and the partial-book and shared trade empty-free-list
+allocators have exact store theorems.  This module remains outside
+`Project.lean` until the exported theorem is complete.
 -/
 
 end Project.ClobLimit
