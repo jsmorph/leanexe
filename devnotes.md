@@ -5680,3 +5680,11 @@ The first combined copy theorem reached its 120-second constrained timeout witho
 `LimitResidualCopy.residualCopyProg_spec` handles only the generated block, loop guard, memory guards, and decreasing word counter.  `LimitResidualAllocFacts` states the allocator result's pages, globals, fresh header, stored length, below-heap frame, and preservation of both matcher arrays.  The copy initializer and `LimitResidualAllocCopy.residualAllocCopyProg_spec` use those facts to compose allocation and copying without an assumed initial invariant.
 
 The semantic transition, control theorem, allocator facts, initializer, and allocation-copy composition pass focused warning-failing builds in 1.4, 2.3, 1.4, 1.4, and 1.4 seconds under the repository resource limits.  The composition derives the copy count, target address and page bounds, and source separation from the allocation premises and retained matcher bounds.  The five appended-order stores are the next proof boundary.
+
+## 2026-07-16: Finish the Residual Book
+
+`ClobLimit.LimitEntry` now names the five appended-order stores and the six final result assignments separately.  `LimitResidualFinishFacts.finish` reuses `ClobPostOnly.AppendStore` to reconstruct `book ++ [{ order with oqty := remaining }]`.  Its postcondition retains the fresh header, exact allocator pages and globals, and memory equality outside the new payload.
+
+`LimitResidualCopyInvariant.CopyInvariant.at_end` recovers the completed semantic state from the existential loop invariant and exact counter frame.  `LimitResidualFinish.residualFinishProg_spec` executes every guarded store and assigns status zero, the new book pointer, and the unchanged trades pointer.  The continuation receives both the owned appended book and an exact 53-local result frame.
+
+The explicit residual-program decomposition, semantic finalization, completed-invariant eliminator, and final instruction theorem pass focused warning-failing builds in 1.7, 2.4, 1.5, and 3.4 seconds under the repository resource limits.  Both finalization theorems pass at the default heartbeat limit.  The next boundary completes the input-generic residual branch and composes the exported function.

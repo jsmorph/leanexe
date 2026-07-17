@@ -477,8 +477,82 @@ def residualCopyBodyProg : Wasm.Program :=
 def residualCopyProg : Wasm.Program :=
   [.block 0 0 [.loop 0 0 residualCopyBodyProg]]
 
+def residualStoreProg : Wasm.Program :=
+  [
+  .localGet 44,
+  .localGet 41,
+  .constI64 5,
+  .mulI64,
+  .constI64 1,
+  .addI64,
+  .constI64 8,
+  .mulI64,
+  .addI64,
+  .wrapI64,
+  .localGet 46,
+  .store64 0,
+  .localGet 44,
+  .localGet 41,
+  .constI64 5,
+  .mulI64,
+  .constI64 2,
+  .addI64,
+  .constI64 8,
+  .mulI64,
+  .addI64,
+  .wrapI64,
+  .localGet 47,
+  .store64 0,
+  .localGet 44,
+  .localGet 41,
+  .constI64 5,
+  .mulI64,
+  .constI64 3,
+  .addI64,
+  .constI64 8,
+  .mulI64,
+  .addI64,
+  .wrapI64,
+  .localGet 48,
+  .store64 0,
+  .localGet 44,
+  .localGet 41,
+  .constI64 5,
+  .mulI64,
+  .constI64 4,
+  .addI64,
+  .constI64 8,
+  .mulI64,
+  .addI64,
+  .wrapI64,
+  .localGet 49,
+  .store64 0,
+  .localGet 44,
+  .localGet 41,
+  .constI64 5,
+  .mulI64,
+  .constI64 5,
+  .addI64,
+  .constI64 8,
+  .mulI64,
+  .addI64,
+  .wrapI64,
+  .localGet 50,
+  .store64 0
+]
+
+def residualResultProg : Wasm.Program :=
+  [
+  .localGet 44,
+  .localSet 34,
+  .localGet 34,
+  .localSet 38,
+  .localGet 29,
+  .localSet 39
+]
+
 def residualFinishProg : Wasm.Program :=
-  residualProg.drop 72
+  residualStoreProg ++ residualResultProg
 
 set_option maxRecDepth 1048576 in
 theorem residualProg_decomposition :
@@ -488,8 +562,9 @@ theorem residualProg_decomposition :
     residualOrderPrepareProg residualAllocPrepareProg residualAllocProg
     residualAllocSearchProg residualAllocSearchBodyProg residualAllocBumpProg
     residualAllocFinishProg residualOrderFieldsProg residualLengthProg
-    residualCopyProg residualCopyBodyProg residualFinishProg residualProg
-    validResultBranch outerBranch func21
+    residualCopyProg residualCopyBodyProg residualFinishProg
+    residualStoreProg residualResultProg residualProg validResultBranch
+    outerBranch func21
   rfl
 
 end Project.ClobLimit.LimitEntry
