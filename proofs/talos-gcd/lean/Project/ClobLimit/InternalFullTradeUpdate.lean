@@ -29,6 +29,7 @@ def FullTradeResultAt (s : Locals) (fuel : UInt64) (taker : OrderL)
     (book trades remaining : UInt64) : Prop :=
   s.params.length = 11 ∧ s.locals.length = 64 ∧ s.values = [] ∧
   s.get 0 = some (.i64 fuel) ∧
+  s.get 16 = some (.i64 0) ∧
   s.get 26 = some (.i64 taker.oid) ∧
   s.get 27 = some (.i64 taker.otrader) ∧
   s.get 28 = some (.i64 taker.oside) ∧
@@ -52,6 +53,7 @@ theorem fullTradeUpdateProg_spec
     (hLocals : base.locals.length = 64)
     (hValues : base.values = [.i64 newBook])
     (hFuel : base.get 0 = some (.i64 fuel))
+    (hRunning : base.get 16 = some (.i64 0))
     (hCarryOid : base.get 26 = some (.i64 taker.oid))
     (hCarryTrader : base.get 27 = some (.i64 taker.otrader))
     (hCarrySide : base.get 28 = some (.i64 taker.oside))
@@ -142,6 +144,10 @@ theorem fullTradeUpdateProg_spec
     simpa [Locals.get, hParams, hLocals] using hCarryQty
   have hFuelElem : base.params[0] = .i64 fuel :=
     (List.getElem?_eq_some_iff.mp hFuelAt).2
+  have hRunningAt : base.locals[5]? = some (.i64 0) := by
+    simpa [Locals.get, hParams, hLocals] using hRunning
+  have hRunningElem : base.locals[5] = .i64 0 :=
+    (List.getElem?_eq_some_iff.mp hRunningAt).2
   have hCarryOidElem : base.locals[15] = .i64 taker.oid :=
     (List.getElem?_eq_some_iff.mp hCarryOidAt).2
   have hCarryTraderElem : base.locals[16] = .i64 taker.otrader :=
@@ -246,8 +252,8 @@ theorem fullTradeUpdateProg_spec
           partialTradeResultFrame, partialTradeCopyFrame,
           partialTradeAllocFrame, InternalTradeBump.allocFrame,
           fullTradePrepareFrame, Locals.get, hParams, hLocals, hFuelElem,
-          hCarryOidElem, hCarryTraderElem, hCarrySideElem, hCarryPriceElem,
-          hCarryQtyElem, InternalIteration.AllocScratchAt]
+          hRunningElem, hCarryOidElem, hCarryTraderElem, hCarrySideElem,
+          hCarryPriceElem, hCarryQtyElem, InternalIteration.AllocScratchAt]
       · exact hOldBookFinal
       · exact hNewBookFinal
       · exact hOldTradesFinal

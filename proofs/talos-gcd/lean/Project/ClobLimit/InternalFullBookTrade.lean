@@ -36,6 +36,7 @@ theorem fullBookTradeProg_spec
     (hLocals : base.locals.length = 64)
     (hValues : base.values = [])
     (hFuel : base.get 0 = some (.i64 fuel))
+    (hRunning : base.get 16 = some (.i64 0))
     (hOid : base.get 1 = some (.i64 taker.oid))
     (hTrader : base.get 2 = some (.i64 taker.otrader))
     (hSide : base.get 3 = some (.i64 taker.oside))
@@ -274,6 +275,10 @@ theorem fullBookTradeProg_spec
     · simpa [bookResult, suffixResultFrame, prefixCopyFrame,
         InternalFullBookBump.allocFrame, fullBookPrepareFrame,
         Locals.get, hParams, hLocals] using hFuel
+    · simpa [bookResult, suffixResultFrame, prefixCopyFrame,
+        InternalFullBookBump.allocFrame, fullBookPrepareFrame,
+        fullBookPrepareLocals, Locals.get, hParams, hLocals,
+        List.length_set] using hRunning
     · simp [bookResult, suffixResultFrame, prefixCopyFrame,
         InternalFullBookBump.allocFrame, fullBookPrepareFrame,
         fullBookPrepareLocals, Locals.get, hParams, hLocals]
