@@ -5240,3 +5240,11 @@ The adapter uses the shared bump arithmetic and store facts while retaining the 
 `tradeNoFitProg_spec` adds the generated scratch initialization and complete free-list scan.  Under global 1 equal to zero, the first loop guard exits before any free-node read and composes with the bump theorem.  The same instruction sequence and local layout occur in the full- and partial-fill branches, so this theorem covers both trade-allocation sites.
 
 The adapter retains the concrete function 17 indices 68 through 73.  Its scope excludes the allocation counter, payload copy, and appended trade stores, which later branch modules must compose around the allocator.  The focused warning-failing build completed in 7.3 seconds under the repository resource limits.
+
+## 2026-07-15: Prove the Internal Full-Book Allocator
+
+`ClobLimit.InternalFullBookBump.fullBookBumpProg_spec` proves the generated full-fill replacement-book bump body.  It covers the same stride-five store transformation as the partial-book theorem while retaining the full branch's distinct scratch frame.  The result records the heap-top update, page calculation, no-growth branch, six header writes, and final allocator locals.
+
+`fullBookNoFitProg_spec` composes the generated scratch initialization, free-list scan, and bump body when global 1 is zero.  The full-book layout uses instruction locals 66 through 71 and local-list positions 55 through 60.  Together with the partial-book and shared trade adapters, this theorem completes the three numeric allocator layouts in function 17.
+
+The module excludes the allocation counter, erased-book copy, and later trade update.  Those operations require separate semantic postconditions around the allocator result.  The focused warning-failing build completed in 7.5 seconds under the repository resource limits.
