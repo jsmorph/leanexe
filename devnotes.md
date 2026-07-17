@@ -5368,3 +5368,11 @@ The first focused warning-failing build passed in 7.1 seconds under the reposito
 Function 17 has eleven parameters, so combined local indices 13 through 16 correspond to those four local-list positions.  The theorem states the exact resulting frame and leaves the store unchanged.  It requires only the parameter length, local length, and one-value input stack.
 
 The focused warning-failing build completed in 2.3 seconds under the repository resource limits.  This pattern also occurs in `ClobMatchFuel.PartialFinish`, but the local indices and frame shapes differ.  A common parameterized theorem should wait until a third artifact needs the same assignment pattern.
+
+## 2026-07-15: Compose the Partial-Trade Branch
+
+`ClobLimit.InternalPartialTradeBranch.partialTradeBranchProg_spec` composes generated lines 3087 through 3456 after the replacement-book result reaches the operand stack.  It invokes the trade preparation, allocation and update, and result-assignment theorems without unfolding their instruction proofs.  The final frame records equal owner-and-pointer values for both result arrays, zero remaining quantity, and completion.
+
+The theorem preserves the old book, replacement book, old trade array, and appended trade array.  Its other postconditions state the exact page count, allocator globals after the trade counter increment, and allocator-to-final outside-payload memory frame.  The semantic appended value is `ClobMatchFuel.Model.fillTradeL taker maker remaining`.
+
+The focused warning-failing build completed in 5.7 seconds under the repository resource limits.  The first diagnostic pass exposed an omitted ownership namespace and an explicit trade-quantity equality, and the second exposed a frame namespace and parameter-length simplification.  Each diagnostic completed in less than seven seconds, and the successful build retained the intended component boundaries.
