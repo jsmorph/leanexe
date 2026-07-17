@@ -246,8 +246,92 @@ def missingSearchBodyProg : Wasm.Program :=
 def missingSearchProg : Wasm.Program :=
   [.block 0 0 [.loop 0 0 missingSearchBodyProg]]
 
+def missingBumpBranchProg : Wasm.Program :=
+  [
+  .globalGet 0,
+  .constI64 48,
+  .addI64,
+  .localGet 24,
+  .addI64,
+  .localSet 27,
+  .localGet 27,
+  .globalGet 0,
+  .ltUI64,
+  .iff 0 0 [.unreachable] [],
+  .localGet 27,
+  .constI64 1,
+  .subI64,
+  .constI64 65536,
+  .divUI64,
+  .constI64 1,
+  .addI64,
+  .localSet 28,
+  .memorySize,
+  .extendUI32,
+  .localGet 28,
+  .ltUI64,
+  .iff 0 0 [
+    .localGet 28,
+    .memorySize,
+    .extendUI32,
+    .subI64,
+    .wrapI64,
+    .memoryGrow,
+    .const 4294967295,
+    .eq,
+    .iff 0 0 [.unreachable] []
+  ] [],
+  .globalGet 0,
+  .constI64 48,
+  .addI64,
+  .localSet 29,
+  .localGet 27,
+  .globalSet 0,
+  .localGet 29,
+  .constI64 48,
+  .subI64,
+  .wrapI64,
+  .constI64 5501223100278326855,
+  .store64 0,
+  .localGet 29,
+  .constI64 40,
+  .subI64,
+  .wrapI64,
+  .constI64 1,
+  .store64 0,
+  .localGet 29,
+  .constI64 32,
+  .subI64,
+  .wrapI64,
+  .localGet 24,
+  .store64 0,
+  .localGet 29,
+  .constI64 24,
+  .subI64,
+  .wrapI64,
+  .constI64 2,
+  .store64 0,
+  .localGet 29,
+  .constI64 16,
+  .subI64,
+  .wrapI64,
+  .constI64 2,
+  .store64 0,
+  .localGet 29,
+  .constI64 8,
+  .subI64,
+  .wrapI64,
+  .constI64 0,
+  .store64 0
+]
+
 def missingBumpProg : Wasm.Program :=
-  (missingProg.drop 45).take 4
+  [
+  .localGet 29,
+  .constI64 0,
+  .eqI64,
+  .iff 0 0 missingBumpBranchProg []
+]
 
 def missingAllocFinishProg : Wasm.Program :=
   (missingProg.drop 49).take 12
@@ -264,7 +348,7 @@ theorem missingProg_decomposition :
       missingBumpProg ++ missingAllocFinishProg ++ missingCopyProg ++
       missingStoreProg := by
   unfold missingPrepareProg missingSearchProg missingSearchBodyProg
-    missingBumpProg
+    missingBumpProg missingBumpBranchProg
     missingAllocFinishProg missingCopyProg missingStoreProg missingProg
     branchAt func3
   rfl

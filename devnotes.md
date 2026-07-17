@@ -5770,3 +5770,9 @@ The capacity proof follows the established limit allocation pattern by naming th
 `ClobDepth.Entry` now gives the generated free-list search loop an explicit instruction body, avoiding repeated normalization of `drop` and `take` over the complete level-update function.  Its decomposition against generated function 3 remains definitional.  The focused warning-failing entry build passes in 1.5 seconds under the repository resource limits.
 
 `ClobDepth.MissingSearch.missingSearchProg_empty` proves that the loop exits on its first condition when the prepared free-list cursor is zero.  It preserves the store and exact preparation frame without reading a free-node header or payload address.  The focused warning-failing theorem build passes in 1.4 seconds, and the missing-price bump allocator is the next proof boundary.
+
+## 2026-07-17: Prove the Missing-Price Bump Allocation
+
+`ClobDepth.Entry` now names the generated bump branch explicitly while retaining a definitional decomposition against function 3.  `ClobDepth.MissingBump.missingBumpProg_spec` is frame-generic over the allocation need and proves the no-wrap and no-growth branches, all six stride-two header writes, the new heap top, unchanged pages, and the exact scratch frame.  The theorem identifies the result store with the common `fixedArrayAllocBumpStore` transformation.
+
+The focused warning-failing entry decomposition and bump theorem builds pass in 1.6 and 6.7 seconds under the repository resource limits.  The proof reuses the common fixed-array address and page lemmas and changes only the depth local indices and stride.  Allocation finalization, including the length store and allocation-counter increment, is the next proof boundary.
