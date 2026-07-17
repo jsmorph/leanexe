@@ -21,25 +21,27 @@ open Wasm Project.Common Project.Clob Project.ClobLimit
 def partialTradeBranchProg : Wasm.Program :=
   partialTradePrepareProg ++ partialTradeUpdateProg ++ partialFinishProg
 
-def PartialResultAt (s : Locals) (book trades : UInt64) : Prop :=
+def PartialResultAt (s : Locals) (book trades fuel : UInt64) : Prop :=
   s.locals[0]? = some (.i64 book) ∧
   s.locals[1]? = some (.i64 book) ∧
   s.locals[2]? = some (.i64 trades) ∧
   s.locals[3]? = some (.i64 trades) ∧
   s.locals[4]? = some (.i64 0) ∧
   s.locals[5]? = some (.i64 1) ∧
-  s.params.length = 11 ∧ s.locals.length = 64 ∧ s.values = []
+  s.params.length = 11 ∧ s.locals.length = 64 ∧ s.values = [] ∧
+  s.get 0 = some (.i64 fuel)
 
 set_option Elab.async false in
 theorem partialTradeBranchProg_spec
     (env : HostEnv Unit) (st : Store Unit) (base : Locals)
     (newBook newBookCapacity oldBook oldBookCapacity : UInt64)
-    (oldTrades oldTradesCapacity remaining g0 g2 capacity next : UInt64)
+    (oldTrades oldTradesCapacity remaining fuel g0 g2 capacity next : UInt64)
     (taker : OrderL) (oldOrders newOrders : List OrderL)
     (ts : List TradeL) (i : Nat)
     (hParams : base.params.length = 11)
     (hLocals : base.locals.length = 64)
     (hValues : base.values = [.i64 newBook])
+    (hFuel : base.get 0 = some (.i64 fuel))
     (hTakerLocal : base.params[1]? = some (.i64 taker.oid))
     (hBookLocal : base.params[7]? = some (.i64 oldBook))
     (hTradesLocal : base.params[9]? = some (.i64 oldTrades))
@@ -90,7 +92,7 @@ theorem partialTradeBranchProg_spec
     (hg2 : st.globals.globals[2]? = some (.i64 g2))
     (Q : Assertion Unit) (rest : Wasm.Program)
     (hDone : ∀ st1 s,
-      PartialResultAt s newBook (g0 + 48) →
+      PartialResultAt s newBook (g0 + 48) fuel →
       OwnedOrderArrayAt st1 oldBook oldBookCapacity oldOrders →
       OwnedOrderArrayAt st1 newBook newBookCapacity newOrders →
       OwnedTradeArrayAt st1 oldTrades oldTradesCapacity ts →
@@ -109,6 +111,10 @@ theorem partialTradeBranchProg_spec
     wp «module» (partialTradeBranchProg ++ rest) Q st base env := by
   let trade := Project.ClobMatchFuel.Model.fillTradeL
     taker oldOrders[i]! remaining
+  have hFuelAt : base.params[0]? = some (.i64 fuel) := by
+    simpa [Locals.get, hParams] using hFuel
+  have hFuelElem : base.params[0] = .i64 fuel :=
+    (List.getElem?_eq_some_iff.mp hFuelAt).2
   unfold partialTradeBranchProg
   rw [List.append_assoc, List.append_assoc]
   apply partialTradePrepareProg_spec env st base newBook oldBook oldTrades
@@ -188,7 +194,7 @@ theorem partialTradeBranchProg_spec
       · simp [PartialResultAt, partialFinishFrame, partialTradeResultFrame,
           partialTradeCopyFrame, partialTradeAllocFrame,
           InternalTradeBump.allocFrame, partialTradePrepareFrame, hParams,
-          hLocals]
+          hLocals, Locals.get, hFuelElem]
       · exact hOldBookFinal
       · exact hNewBookFinal
       · exact hOldTradesFinal
