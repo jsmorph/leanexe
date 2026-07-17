@@ -41,6 +41,10 @@ import Project.ClobLimit.RunMatchCall
 import Project.ClobLimit.RunMatchResult
 import Project.ClobLimit.RunMatchCorrect
 import Project.ClobLimit.LimitEntry
+import Project.ClobLimit.LimitValidEntry
+import Project.ClobLimit.LimitRunMatchCall
+import Project.ClobLimit.LimitRunMatchResult
+import Project.ClobLimit.LimitFilled
 import Project.ClobLimit.InternalTradeBump
 import Project.ClobLimit.InternalPartialBookPrepare
 import Project.ClobLimit.InternalPartialBookControl
@@ -154,6 +158,10 @@ The call-site theorem supplies all eleven internal arguments from that frame,
 and the result epilogue returns function 17's five values unchanged.
 `RunMatchCorrect.func18_correct` proves complete input-generic termination and
 correctness for `Model.runMatchL` under the stated allocation budget.
+Function 21 has an exact branch decomposition whose large unselected paths
+remain opaque during elaboration.  Separate entry, matcher-call, result-store,
+and result-condition theorems prove the complete valid filled branch without
+expanding function 18 or the residual allocation.
 The proof remains outside `Project.lean` until the exported theorem is complete.
 -/
 
