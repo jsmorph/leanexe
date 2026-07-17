@@ -5280,3 +5280,11 @@ The focused warning-failing module build completed in 2.4 seconds under the repo
 The theorem keeps the two untouched allocator scratch values as premises because the generated prefix does not initialize those locals.  The empty-list scan does not read either value, and the bump body overwrites both before returning.  Keeping them explicit preserves an exact frame without adding an artificial write to the artifact program.
 
 The focused warning-failing build completed in 3.7 seconds under the repository resource limits.  The module contains the generated 27-instruction prefix and no allocation, copy, or maker-store instructions.  The next composition will join this frame to the empty-list bump result and derive the fresh replacement-array facts required by the copy loop.
+
+## 2026-07-15: Compose the Partial-Book Allocator
+
+`ClobLimit.InternalPartialBookAlloc.partialBookAllocProg_spec` composes the aligned-capacity prefix with the complete generated search and bump fallback.  The current Limit theorem assumes global 1 contains zero, so the scan exits before reading a free-node header.  The resulting store is `fixedArrayAllocBumpStore st g0 (fixedArrayBytesU n 5) 5`, and the result local contains `g0 + 48`.
+
+The proof derives the allocator's minimum-capacity premise from the shared `fixedArrayBytesU_toNat` theorem.  It passes the existing top, 32-bit fit, memory fit, and page-count premises unchanged to `InternalBookBump.partialBookNoFitProg_spec`.  This separation prevents the later copy theorem from reducing the allocator body.
+
+The focused warning-failing build completed in 3.2 seconds under the repository resource limits.  The composition adds no new arithmetic or memory semantics.  The next module starts with the semantic bump store and proves the generated counter, length initialization, and complete payload copy.
