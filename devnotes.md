@@ -5248,3 +5248,11 @@ The adapter retains the concrete function 17 indices 68 through 73.  Its scope e
 `fullBookNoFitProg_spec` composes the generated scratch initialization, free-list scan, and bump body when global 1 is zero.  The full-book layout uses instruction locals 66 through 71 and local-list positions 55 through 60.  Together with the partial-book and shared trade adapters, this theorem completes the three numeric allocator layouts in function 17.
 
 The module excludes the allocation counter, erased-book copy, and later trade update.  Those operations require separate semantic postconditions around the allocator result.  The focused warning-failing build completed in 7.5 seconds under the repository resource limits.
+
+## 2026-07-15: Prove Partial-Book Preparation
+
+`ClobLimit.InternalPartialBookPrepare.partialBookPrefixProg_spec` proves the partial-fill prefix through the replacement-book bounds guard.  It reads all five fields of the selected maker from a represented order array and computes the maker quantity after subtracting the taker remainder.  It also reads the source length and retains the generated source, index, field, and scratch locals.
+
+The proof specializes the established `matchFuel` argument to function 17's eleven-parameter, sixty-four-local frame.  The source book and remaining quantity are parameters 7 and 10, while the selected index occupies local-list position 14.  The shared `OrdersAt` lemmas discharge the same field-read and address-bound obligations without adding another memory abstraction.
+
+The module ends before the four instructions that multiply the book length by five and before allocation.  This boundary keeps the generated one-result bounds branch out of the field-read theorem.  The focused warning-failing build completed in 16 seconds under the repository resource limits.
