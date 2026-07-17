@@ -1,6 +1,6 @@
 # Lean String Support
 
-This document is an unimplemented design proposal.  Runtime Lean `String` remains outside the accepted subset, and the [Development Plan](plan.md) determines whether this work enters the active queue.  The [Language Specification](spec.md) and [LeanExe User Manual](manual.md) define the current text boundary.
+This document is an unimplemented design proposal.  Runtime Lean `String` remains outside the accepted subset, and the [Development Plan](../plan.md) determines whether this work enters the active queue.  The [Language Specification](spec.md) and [LeanExe User Manual](manual.md) define the current text boundary.
 
 ## Current Boundary
 

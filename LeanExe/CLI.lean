@@ -33,7 +33,7 @@ def usage : String :=
     "  lean-wasm collatz-eval --input <n>",
     "  lean-wasm collatz-bench --input <n> --iters <n>",
     "",
-    "LeanExe compiles checked declarations in the subset documented in spec.md."
+    "LeanExe compiles checked declarations in the subset documented in docs/spec.md."
   ]
 
 def ensureParent (path : System.FilePath) : IO Unit := do

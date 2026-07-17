@@ -6,7 +6,7 @@ LeanExe should compile useful first-order Lean programs into small WebAssembly a
 
 The [proof engineering notes](plan-notes.md) record reusable lemmas, instruction-proof patterns, elaboration boundaries, and candidate tactics for this work.  The plan owns required results and work order, while the notes own techniques for establishing those results.  Review both documents when beginning or completing a substantial proof boundary.
 
-Correctness has three layers.  Differential tests compare standard Lean, the IR interpreter where it applies, and Wasmtime; artifact checks compare regenerated WASM and WAT byte-for-byte with proof inputs; Talos proves quantified properties of decoded shipped instructions.  Each claim must identify its layer and retain the trusted-base boundary described in [Verifying a Program](verifying.md).
+Correctness has three layers.  Differential tests compare standard Lean, the IR interpreter where it applies, and Wasmtime; artifact checks compare regenerated WASM and WAT byte-for-byte with proof inputs; Talos proves quantified properties of decoded shipped instructions.  Each claim must identify its layer and retain the trusted-base boundary described in [Verifying a Program](docs/verifying.md).
 
 LeanExe runtime intrinsics require a separate semantic statement.  Ordinary Lean evaluates `LeanExe.Runtime.release` and the runtime counters as stubs, while generated WASM gives them memory-management behavior.  Programs that use those intrinsics cannot claim ordinary Lean equivalence for the intrinsic observations; they require the extended runtime semantics defined in Phase 1 and artifact-level evidence for the emitted implementation.
 

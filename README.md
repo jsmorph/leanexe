@@ -1,6 +1,6 @@
 # LeanExe
 
-LeanExe compiles a restricted Lean 4 program to a standalone WebAssembly module.  Lean remains the type checker and source language; the compiler loads a checked declaration from a Lean module and emits WASM for the executable subset described in [Language Specification](spec.md).  The supported subset covers first-order pure programs over scalar values, byte arrays, fixed-width arrays, structures, inductive values, bounded recursion, and internal recursive data structures.
+LeanExe compiles a restricted Lean 4 program to a standalone WebAssembly module.  Lean remains the type checker and source language; the compiler loads a checked declaration from a Lean module and emits WASM for the executable subset described in [Language Specification](docs/spec.md).  The supported subset covers first-order pure programs over scalar values, byte arrays, fixed-width arrays, structures, inductive values, bounded recursion, and internal recursive data structures.
 
 The default generated module exports a plain WASM function for the selected Lean declaration.  Scalar programs can run directly with Wasmtime.  Programs that pass or return byte arrays, structures, variants, or arrays use the ABI described below, so a host program must provide flattened values or memory values in the expected form.  WASI command modes provide stdout output, bounded stdin input, and an error-aware byte transform without compiling Lean `IO`.
 
@@ -31,15 +31,16 @@ node test/run_all.js
 | `test` | Node and Lean tests that compare Lean execution with generated WASM behavior. |
 | `proofs/talos-gcd` | Talos proof workspace: nineteen completed artifact proofs, the runtime lemma library, and the generic teardown theorem. |
 | `DEVELOPING.md` | Developer setup, diagnostics, test gates, proof artifacts, and troubleshooting. |
-| `verifying.md` | End-to-end recipe for verifying a new program. |
-| `manual.md` | Practical guide to writing Lean source that LeanExe can compile. |
-| `spec.md` | The accepted Lean subset, ABI, semantics, and known unsupported features. |
+| `docs` | User, reference, verification, design, and project-status documentation. |
+| `docs/verifying.md` | End-to-end recipe for verifying a new program. |
+| `docs/manual.md` | Practical guide to writing Lean source that LeanExe can compile. |
+| `docs/spec.md` | The accepted Lean subset, ABI, semantics, and known unsupported features. |
 | `plan.md` | Development plan for expanding the compiler. |
 | `devnotes.md` | Development notes and references. |
 
 ## Write a Program
 
-Write ordinary Lean definitions inside a Lake module.  The selected entry declaration must be pure, monomorphically specialized at runtime, first-order, and accepted by the subset in [Language Specification](spec.md).  Use [LeanExe User Manual](manual.md) for source templates and practical authoring rules.  Use concrete types such as `UInt64`, `Nat`, `Bool`, `ByteArray`, arrays, structures, and inductives; parametric structures and inductives may appear at concrete supported instantiations.  Simple polymorphic helpers and type-class-constrained helpers can be useful when each call site fixes concrete supported types and evidence specializes away, while runtime dictionaries, function values, `IO`, `unsafe`, and `partial` remain outside the accepted subset.
+Write ordinary Lean definitions inside a Lake module.  The selected entry declaration must be pure, monomorphically specialized at runtime, first-order, and accepted by the subset in [Language Specification](docs/spec.md).  Use [LeanExe User Manual](docs/manual.md) for source templates and practical authoring rules.  Use concrete types such as `UInt64`, `Nat`, `Bool`, `ByteArray`, arrays, structures, and inductives; parametric structures and inductives may appear at concrete supported instantiations.  Simple polymorphic helpers and type-class-constrained helpers can be useful when each call site fixes concrete supported types and evidence specializes away, while runtime dictionaries, function values, `IO`, `unsafe`, and `partial` remain outside the accepted subset.
 
 This scalar example compiles to an exported WASM function that Wasmtime can call directly:
 
@@ -315,7 +316,7 @@ node tools/compare-standard.js --self-test
 
 The standard comparison suite checks generated WASM against standard Lean execution over selected inputs.  The Talos proof workspace adds artifact-level theorems about selected generated modules.  LeanExe emits WASM, `wasm-tools print` renders that WASM as WAT, Talos decodes the generated WAT into a Lean model, and a handwritten proof establishes a property of that decoded module — the theorem is about the instruction stream that ships.
 
-Seventeen verified artifacts live in [Talos Proofs](proofs/talos-gcd/README.md), which holds the authoritative theorem inventory.  The artifacts cover scalar algorithms, recursive data, byte processing and allocation, the compiler's own unsigned LEB128 encoder, CLOB quote, cancel, best-order selection, post-only insertion, bounded matching, and exact runtime accounting.  The workspace proves shared runtime behavior once and uses a generic teardown theorem for recursive ownership trees, while [Verifying a Program](verifying.md) gives the end-to-end procedure for adding a case.
+Seventeen verified artifacts live in [Talos Proofs](proofs/talos-gcd/README.md), which holds the authoritative theorem inventory.  The artifacts cover scalar algorithms, recursive data, byte processing and allocation, the compiler's own unsigned LEB128 encoder, CLOB quote, cancel, best-order selection, post-only insertion, bounded matching, and exact runtime accounting.  The workspace proves shared runtime behavior once and uses a generic teardown theorem for recursive ownership trees, while [Verifying a Program](docs/verifying.md) gives the end-to-end procedure for adding a case.
 
 Initialize the proof outputs after cloning the repository or deleting the proof cache.  The setup command may perform a large cold build, so run it through the resource-limited process form.  Later aggregate checks keep that build output separate from artifact comparison results.
 
@@ -356,7 +357,7 @@ The compiler emits `release` for local heap temporaries only when the released o
 
 Compiled Lean code can read runtime counters with `LeanExe.Runtime.allocCount`, `retainCount`, `releaseCount`, and `freeCount`.  Source code can call `LeanExe.Runtime.release value` for a monomorphic recursive-inductive root or an array value when the program transfers one owned root reference at its final use.  Array and recursive-value release follows recursive-inductive child pointers, `ByteArray` owner slots, and nested `Array` owner slots in fixed-width layouts, while a statically borrowed array owner of `0` makes the call a no-op.  The compiler rejects releases whose root provenance, final use, or lack of escape cannot be established by the direct-handoff checker.
 
-Ordinary Lean and the reference IR interpreter evaluate these intrinsics as zero-valued stubs.  Generated WASM implements allocator counters and recursive release, so intrinsic-observing entries use the extended semantics in [Language Specification](spec.md) and Wasmtime execution rather than ordinary Lean equivalence.  The byte-pinned Talos runtime theorems cover the emitted retain and release implementation.
+Ordinary Lean and the reference IR interpreter evaluate these intrinsics as zero-valued stubs.  Generated WASM implements allocator counters and recursive release, so intrinsic-observing entries use the extended semantics in [Language Specification](docs/spec.md) and Wasmtime execution rather than ordinary Lean equivalence.  The byte-pinned Talos runtime theorems cover the emitted retain and release implementation.
 
 Fixed-width arrays use the compiler's heap layout.  Scalar values occupy one slot, `ByteArray` elements occupy owner, pointer, and length slots, nested `Array` elements occupy owner and pointer slots, products and fixed-width structures or tagged values occupy their flattened slot count, and recursive inductive values occupy one pointer slot.  Public entry arrays use the same fixed-width layout for scalar elements, byte arrays, nested arrays, structures, and tagged values, but they exclude recursive inductive values.  Structure values flatten field-by-field at the ABI boundary, while nonrecursive inductive values flatten to a constructor tag followed by payload slots.  Recursive inductive values are supported as internal values, including recursive pointer fields inside internal fixed-width structures and tagged values, mutual-family pointers, monomorphic `List` construction, matching, direct traversal over one or more direct recursive fields, product element layouts such as `List (UInt64 × UInt64)`, product destructuring in constructor arms, mutual structural traversal over recursive-family members, source-defined list builders such as append and reverse, generated array-child traversal, explicit-accumulator `List.foldl` helpers, top-level closed `List.foldl` bodies with one hidden accumulator, closed structural predicates such as direct `List.any` and `List.all`, direct expression-position `List.length`, list append notation through `++`, `List.concat`, `List.reverse`, `List.map`, `List.filter`, and `List.foldr` with closed direct-lambda callbacks, expression-position structural recursion that captures supported first-order surrounding values, and limited direct-lambda helper calls to `List.map`, `List.filter`, `List.find?`, `List.foldl`, `List.any`, and `List.all`, but entry parameters and entry results cannot expose recursive data through the host ABI.
 
@@ -384,7 +385,7 @@ Supported control flow includes `let`, direct calls, `if`, pattern matching, pur
 | Nonrecursive inductive | Constructor tag followed by payload slots. |
 | Recursive inductive | Internal heap value only. |
 
-The entry declaration name must not collide with runtime exports such as `memory`, `alloc`, `reset`, `retain`, `release`, `free`, or the counter globals `allocCount`, `retainCount`, `releaseCount`, and `freeCount`.  The host may call `release()` for individual returned heap objects or `reset()` when no old pointer remains live.  Integer overflow and invalid memory access trap according to the semantics in [Language Specification](spec.md).
+The entry declaration name must not collide with runtime exports such as `memory`, `alloc`, `reset`, `retain`, `release`, `free`, or the counter globals `allocCount`, `retainCount`, `releaseCount`, and `freeCount`.  The host may call `release()` for individual returned heap objects or `reset()` when no old pointer remains live.  Integer overflow and invalid memory access trap according to the semantics in [Language Specification](docs/spec.md).
 
 ## Examples
 
