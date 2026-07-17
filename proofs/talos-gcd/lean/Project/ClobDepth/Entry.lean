@@ -22,6 +22,21 @@ private def branchAt (program : Wasm.Program) (index : Nat)
 def scanProg : Wasm.Program :=
   func3.take 20
 
+def scanPrepareProg : Wasm.Program :=
+  scanProg.take 10
+
+def scanLoopProg : Wasm.Program :=
+  (scanProg.drop 10).take 1
+
+def scanFinishProg : Wasm.Program :=
+  scanProg.drop 11
+
+set_option maxRecDepth 1048576 in
+theorem scanProg_decomposition :
+    scanProg = scanPrepareProg ++ scanLoopProg ++ scanFinishProg := by
+  unfold scanPrepareProg scanLoopProg scanFinishProg scanProg func3
+  rfl
+
 def missingProg : Wasm.Program :=
   branchAt func3 20 true
 
