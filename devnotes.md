@@ -5632,3 +5632,11 @@ The theorem treats the generated free-list loop and six header stores as one com
 `ClobLimit.RunMatchAllocations.allocationsProg_spec` composes both empty-array allocations and the generated owner and data-root assignments.  Two small generic assignment theorems prevent the proof from normalizing the complete 35-local frame while applying the second allocator.  The final instruction frame contains owner root `g0 + 48`, data root `g0 + 104`, remaining quantity `taker.oqty`, and heap top `g0 + 112`.
 
 `allocationsStore_facts` proves that both empty roots remain owned, the input book remains owned, global 1 remains zero, global 2 advances by two, pages remain unchanged, and bytes below the original heap top remain equal.  The preparation build passed in 2.4 seconds, and the complete allocation module passed in 3.1 seconds under the repository resource limits.  The next theorem will apply `InternalCorrect.func17_correct` to this state and prove function 18's result epilogue.
+
+## 2026-07-16: Prove Complete `runMatch`
+
+`ClobLimit.RunMatchCall.CallLocalsAt` states the eleven values consumed by function 17 at the function 18 call site.  `callProg_spec` applies any matching function 17 termination theorem without unfolding its body.  The concrete final allocation frame supplies fuel, taker fields, both book values, both trade values, and the initial remaining quantity.
+
+`ClobLimit.RunMatchResult.resultProg_spec` proves that the generated result epilogue returns function 17's five values unchanged after copying them through locals.  Its interface accepts the source frame and returned values separately, avoiding elaboration of a large record update at the caller.  The focused warning-failing call and result builds completed in 2.7 and 1.2 seconds under the repository resource limits.
+
+`ClobLimit.RunMatchCorrect.func18_correct` composes preparation, both empty-array allocations, function 17, and the result epilogue.  `runMatchContext_result` identifies its source result with `Model.runMatchL`, while the physical postcondition retains represented result arrays, allocator globals, pages, and the post-initialization memory frame.  The focused warning-failing build completed in 1.8 seconds under the repository resource limits, and exported function 21's valid branches are the next proof boundary.

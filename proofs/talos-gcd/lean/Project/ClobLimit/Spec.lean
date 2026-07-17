@@ -37,6 +37,9 @@ import Project.ClobLimit.RunMatchEmptyAlloc
 import Project.ClobLimit.RunMatchEntry
 import Project.ClobLimit.RunMatchPrepare
 import Project.ClobLimit.RunMatchAllocations
+import Project.ClobLimit.RunMatchCall
+import Project.ClobLimit.RunMatchResult
+import Project.ClobLimit.RunMatchCorrect
 import Project.ClobLimit.InternalTradeBump
 import Project.ClobLimit.InternalPartialBookPrepare
 import Project.ClobLimit.InternalPartialBookControl
@@ -146,6 +149,10 @@ The preparation theorem derives fuel from the represented book length and
 discharges the generated overflow check.  The two-allocation composition
 returns the exact owner and data roots, preserved book ownership, allocator
 globals, pages, and below-heap memory frame consumed by function 17.
+The call-site theorem supplies all eleven internal arguments from that frame,
+and the result epilogue returns function 17's five values unchanged.
+`RunMatchCorrect.func18_correct` proves complete input-generic termination and
+correctness for `Model.runMatchL` under the stated allocation budget.
 The proof remains outside `Project.lean` until the exported theorem is complete.
 -/
 
