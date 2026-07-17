@@ -1,5 +1,7 @@
 import Project.ClobDepth.Model
+import Project.ClobDepth.Properties
 import Project.ClobDepth.Program
+import Project.ClobDepth.Representation
 
 /-!
 # Specification for `clob_depth`
@@ -7,8 +9,8 @@ import Project.ClobDepth.Program
 The artifact proof will relate both returned level arrays to `Model.depthL`
 for every represented order book.  It will state array ownership, allocator
 counters, page preservation, and the memory region preserved from the input.
-The source properties will cover side filtering, first-price order, and
-modular and bounded natural-number quantity totals.
+The source theorems establish side filtering, first-price order, unique output
+prices, exact modular aggregation, and bounded natural-number quantities.
 -/
 
 namespace Project.ClobDepth

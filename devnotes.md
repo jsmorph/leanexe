@@ -5746,3 +5746,7 @@ The focused artifact comparison passed in 1.3 seconds, and the aggregate artifac
 ## 2026-07-16: Register the `depth` Artifact
 
 `Project.ClobDepth.Model` defines the input-order level fold for each side, updating the first matching price or appending a new level with modular `UInt64` quantity addition.  The constrained update generated a 3,602-byte WASM input, a 37,649-byte WAT rendering, and a 1,971-line Talos program; function 3 implements level update or append, function 6 folds one side, and exported function 7 calls it for sides zero and one.  Runtime functions 8 through 11 equal the shared allocate, reset, retain, and release definitions, and their focused warning-failing check passes in 2.2 seconds.
+
+## 2026-07-16: State the `depth` Source Properties
+
+`ClobDepth.Representation` defines the stride-two level layout, flat-word reads, reconstruction theorem, owned fixed-array predicate, and region frame used by later allocation and copy proofs.  `ClobDepth.Properties` identifies the output price sequence, proves membership and uniqueness, states how new and repeated prices affect first-occurrence order, and proves exact per-price modular quantity aggregation with a natural-number corollary under an explicit `UInt64` bound.  Their constrained warning-failing builds pass in 1.7 and 2.4 seconds, and function 3's search, allocation, copy, and final-store regions form the next proof boundary.

@@ -15,7 +15,7 @@ open Project.Clob
 structure LevelL where
   lprice : UInt64
   lqty : UInt64
-  deriving DecidableEq, Repr
+  deriving DecidableEq, Inhabited, Repr
 
 structure DepthL where
   bids : List LevelL
