@@ -42,6 +42,17 @@ theorem of_stop (ctx : Context) (st : Store Unit) (s : Locals)
   refine {
     result := ?_
     fuelLocal := hFuelResult
+    book48 := facts.book48
+    book32 := by simpa [hSource, RunningData.sourceState] using facts.book32
+    bookCapacity := by
+      simpa [hSource, RunningData.sourceState] using facts.bookCapacity
+    bookBelow := facts.bookBelow
+    trades48 := facts.trades48
+    trades32 := by
+      simpa [hSource, RunningData.sourceState] using facts.trades32
+    tradesCapacity := by
+      simpa [hSource, RunningData.sourceState] using facts.tradesCapacity
+    tradesBelow := facts.tradesBelow
     bookOwned := ?_
     tradesOwned := ?_
     memoryBelow := facts.memoryBelow
@@ -77,6 +88,26 @@ theorem of_partial (ctx : Context) (st : Store Unit) (s : Locals)
       (data.tradeValues ++
         [Project.ClobMatchFuel.Model.fillTradeL ctx.taker data.orders[i]!
           data.remaining]))
+    (hBook48 : 48 ≤ newBook.toNat)
+    (hBook32 : newBook.toNat + fixedArrayBytes
+      (Project.ClobMatchFuel.Model.setQtyL data.orders i
+        (data.orders[i]!.oqty - data.remaining)).length 5 < 4294967296)
+    (hBookCapacity : fixedArrayBytes
+      (Project.ClobMatchFuel.Model.setQtyL data.orders i
+        (data.orders[i]!.oqty - data.remaining)).length 5 ≤
+        newBookCapacity.toNat)
+    (hBookBelow : newBook.toNat + newBookCapacity.toNat ≤ g0Final.toNat)
+    (hTrades48 : 48 ≤ newTrades.toNat)
+    (hTrades32 : newTrades.toNat + fixedArrayBytes
+      (data.tradeValues ++
+        [Project.ClobMatchFuel.Model.fillTradeL ctx.taker data.orders[i]!
+          data.remaining]).length 4 < 4294967296)
+    (hTradesCapacity : fixedArrayBytes
+      (data.tradeValues ++
+        [Project.ClobMatchFuel.Model.fillTradeL ctx.taker data.orders[i]!
+          data.remaining]).length 4 ≤ newTradesCapacity.toNat)
+    (hTradesBelow :
+      newTrades.toNat + newTradesCapacity.toNat ≤ g0Final.toNat)
     (hPages : st1.mem.pages = st.mem.pages)
     (hG0 : st1.globals.globals[0]? = some (.i64 g0Final))
     (hG1 : st1.globals.globals[1]? = some (.i64 0))
@@ -116,6 +147,14 @@ theorem of_partial (ctx : Context) (st : Store Unit) (s : Locals)
   refine {
     result := ?_
     fuelLocal := hResultFuel
+    book48 := hBook48
+    book32 := by simpa [hSource, partialState] using hBook32
+    bookCapacity := by simpa [hSource, partialState] using hBookCapacity
+    bookBelow := hBookBelow
+    trades48 := hTrades48
+    trades32 := by simpa [hSource, partialState] using hTrades32
+    tradesCapacity := by simpa [hSource, partialState] using hTradesCapacity
+    tradesBelow := hTradesBelow
     bookOwned := ?_
     tradesOwned := ?_
     memoryBelow := facts.memoryBelow.trans hStepBelow

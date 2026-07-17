@@ -26,6 +26,19 @@ structure OutputData where
 
 structure OutputAt (ctx : Context) (st : Store Unit) (data : OutputData) :
     Prop where
+  book48 : 48 ≤ data.book.toNat
+  book32 : data.book.toNat +
+    fixedArrayBytes ctx.result.book.length 5 < 4294967296
+  bookCapacity :
+    fixedArrayBytes ctx.result.book.length 5 ≤ data.bookCapacity.toNat
+  bookBelow : data.book.toNat + data.bookCapacity.toNat ≤ data.g0.toNat
+  trades48 : 48 ≤ data.trades.toNat
+  trades32 : data.trades.toNat +
+    fixedArrayBytes ctx.result.trades.length 4 < 4294967296
+  tradesCapacity :
+    fixedArrayBytes ctx.result.trades.length 4 ≤ data.tradesCapacity.toNat
+  tradesBelow :
+    data.trades.toNat + data.tradesCapacity.toNat ≤ data.g0.toNat
   bookOwned : OwnedOrderArrayAt st data.book data.bookCapacity ctx.result.book
   tradesOwned :
     OwnedTradeArrayAt st data.trades data.tradesCapacity ctx.result.trades
@@ -68,6 +81,14 @@ def runningOutputData (data : RunningData) : OutputData :=
 theorem of_completed (facts : CompletedFacts ctx st s data) :
     OutputAt ctx st (completedOutputData data) := by
   exact {
+    book48 := facts.book48
+    book32 := facts.book32
+    bookCapacity := facts.bookCapacity
+    bookBelow := facts.bookBelow
+    trades48 := facts.trades48
+    trades32 := facts.trades32
+    tradesCapacity := facts.tradesCapacity
+    tradesBelow := facts.tradesBelow
     bookOwned := facts.bookOwned
     tradesOwned := facts.tradesOwned
     memoryBelow := facts.memoryBelow
@@ -91,6 +112,22 @@ theorem of_zero_running (facts : RunningFacts ctx st s data)
   have hExpectedG2 := InternalLoopProgress.expectedG2_current ctx st s data
     facts hTradeLength
   exact {
+    book48 := facts.book48
+    book32 := by
+      simpa [runningOutputData, hSource, RunningData.sourceState] using
+        facts.book32
+    bookCapacity := by
+      simpa [runningOutputData, hSource, RunningData.sourceState] using
+        facts.bookCapacity
+    bookBelow := facts.bookBelow
+    trades48 := facts.trades48
+    trades32 := by
+      simpa [runningOutputData, hSource, RunningData.sourceState] using
+        facts.trades32
+    tradesCapacity := by
+      simpa [runningOutputData, hSource, RunningData.sourceState] using
+        facts.tradesCapacity
+    tradesBelow := facts.tradesBelow
     bookOwned := by
       simpa [runningOutputData, hSource, RunningData.sourceState] using
         facts.bookOwned

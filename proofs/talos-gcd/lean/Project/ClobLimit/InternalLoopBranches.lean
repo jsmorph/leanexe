@@ -114,6 +114,75 @@ theorem partial_spec (env : HostEnv Unit) (ctx : Context) (st : Store Unit)
           change fixedArrayBytes (data.tradeValues.length + 1) 4 + 7 <
             UInt64.size at hBytes
           omega)
+    have hBookRoot : (data.g0 + 48).toNat = data.g0.toNat + 48 := by
+      rw [UInt64.toNat_add]
+      have h48 : (48 : UInt64).toNat = 48 := rfl
+      rw [h48, Nat.mod_eq_of_lt (by
+        have hFit := bounds.partialBookFit32
+        rw [hBookNeed] at hFit
+        omega)]
+    have hTradeRoot :
+        (data.g0 + 48 + orderArrayBytesU data.orders.length + 48).toNat =
+          (data.g0 + 48 +
+            orderArrayBytesU data.orders.length).toNat + 48 := by
+      rw [UInt64.toNat_add]
+      have h48 : (48 : UInt64).toNat = 48 := rfl
+      rw [h48, Nat.mod_eq_of_lt (by
+        have hFit := bounds.partialTradeFit32AfterBook
+        rw [hTradeNeed] at hFit
+        omega)]
+    have hNewBook48 : 48 ≤ (data.g0 + 48).toNat := by
+      rw [hBookRoot]
+      omega
+    have hNewBook32 :
+        (data.g0 + 48).toNat + fixedArrayBytes
+          (Project.ClobMatchFuel.Model.setQtyL data.orders i
+            (data.orders[i]!.oqty - data.remaining)).length 5 <
+          4294967296 := by
+      rw [Project.ClobMatchFuel.Model.setQtyL_length, hBookRoot]
+      have hFit := bounds.partialBookFit32
+      rw [hBookNeed] at hFit
+      exact hFit
+    have hNewBookCapacity : fixedArrayBytes
+        (Project.ClobMatchFuel.Model.setQtyL data.orders i
+          (data.orders[i]!.oqty - data.remaining)).length 5 ≤
+        (orderArrayBytesU data.orders.length).toNat := by
+      rw [Project.ClobMatchFuel.Model.setQtyL_length, hBookNeed]
+    have hNewBookBelow :
+        (data.g0 + 48).toNat +
+            (orderArrayBytesU data.orders.length).toNat ≤
+          (data.g0 + 48 + orderArrayBytesU data.orders.length + 48 +
+            tradeArrayBytesU (data.tradeValues.length + 1)).toNat := by
+      rw [hBookRoot, bounds.partialTradeTopAfterBook,
+        bounds.partialBookTop]
+      omega
+    have hNewTrades48 : 48 ≤
+        (data.g0 + 48 + orderArrayBytesU data.orders.length + 48).toNat := by
+      rw [hTradeRoot, bounds.partialBookTop]
+      omega
+    have hNewTrades32 :
+        (data.g0 + 48 + orderArrayBytesU data.orders.length + 48).toNat +
+            fixedArrayBytes (data.tradeValues ++
+              [Project.ClobMatchFuel.Model.fillTradeL ctx.taker
+                data.orders[i]! data.remaining]).length 4 <
+          4294967296 := by
+      simp only [List.length_append, List.length_singleton]
+      rw [hTradeRoot]
+      have hFit := bounds.partialTradeFit32AfterBook
+      rw [hTradeNeed] at hFit
+      exact hFit
+    have hNewTradesCapacity : fixedArrayBytes (data.tradeValues ++
+        [Project.ClobMatchFuel.Model.fillTradeL ctx.taker data.orders[i]!
+          data.remaining]).length 4 ≤
+        (tradeArrayBytesU (data.tradeValues.length + 1)).toNat := by
+      simp only [List.length_append, List.length_singleton]
+      rw [hTradeNeed]
+    have hNewTradesBelow :
+        (data.g0 + 48 + orderArrayBytesU data.orders.length + 48).toNat +
+            (tradeArrayBytesU (data.tradeValues.length + 1)).toNat ≤
+          (data.g0 + 48 + orderArrayBytesU data.orders.length + 48 +
+            tradeArrayBytesU (data.tradeValues.length + 1)).toNat := by
+      rw [hTradeRoot, bounds.partialTradeTopAfterBook]
     have hHeapLimit :
         (data.g0 + 48 + orderArrayBytesU data.orders.length + 48 +
           tradeArrayBytesU (data.tradeValues.length + 1)).toNat ≤ ctx.limit := by
@@ -128,8 +197,9 @@ theorem partial_spec (env : HostEnv Unit) (ctx : Context) (st : Store Unit)
       (tradeArrayBytesU (data.tradeValues.length + 1))
       (data.g0 + 48 + orderArrayBytesU data.orders.length + 48 +
         tradeArrayBytesU (data.tradeValues.length + 1))
-      hResult hNewBookOwned hNewTradesOwned hPages hG0 hG1 hG2 hHeapLimit
-      hBelow
+      hResult hNewBookOwned hNewTradesOwned hNewBook48 hNewBook32
+      hNewBookCapacity hNewBookBelow hNewTrades48 hNewTrades32
+      hNewTradesCapacity hNewTradesBelow hPages hG0 hG1 hG2 hHeapLimit hBelow
     apply hDone st1 s1 hCompleted
     rw [measure_completed hCompleted, measure_running facts]
     omega

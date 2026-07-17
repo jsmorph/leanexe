@@ -152,6 +152,19 @@ structure CompletedFacts (ctx : Context) (st : Store Unit) (s : Locals)
   result : InternalIteration.CompletedResultAt s data.bookOwner data.book
     data.tradesOwner data.trades ctx.result.remaining
   fuelLocal : s.get 0 = some (.i64 data.fuel)
+  book48 : 48 ≤ data.book.toNat
+  book32 : data.book.toNat +
+    fixedArrayBytes ctx.result.book.length 5 < 4294967296
+  bookCapacity :
+    fixedArrayBytes ctx.result.book.length 5 ≤ data.bookCapacity.toNat
+  bookBelow : data.book.toNat + data.bookCapacity.toNat ≤ data.g0.toNat
+  trades48 : 48 ≤ data.trades.toNat
+  trades32 : data.trades.toNat +
+    fixedArrayBytes ctx.result.trades.length 4 < 4294967296
+  tradesCapacity :
+    fixedArrayBytes ctx.result.trades.length 4 ≤ data.tradesCapacity.toNat
+  tradesBelow :
+    data.trades.toNat + data.tradesCapacity.toNat ≤ data.g0.toNat
   bookOwned :
     OwnedOrderArrayAt st data.book data.bookCapacity ctx.result.book
   tradesOwned :
