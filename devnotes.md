@@ -5328,3 +5328,11 @@ The focused warning-failing build completed in 4.8 seconds under the repository 
 The generated prefix preserves the old capacity and next-node scratch values at local-list positions 60 and 61.  The theorem keeps those values as premises while setting need, predecessor, current node, and result at positions 57, 58, 59, and 62.  This frame states every allocator scratch value without adding instructions to the artifact program.
 
 The focused warning-failing build completed in 2.6 seconds under the repository resource limits.  The module contains the capacity calculation and the sole search initialization.  The next composition will append the search and bump programs directly.
+
+## 2026-07-15: Compose the Partial-Trade Allocator
+
+`ClobLimit.InternalPartialTradeAlloc.partialTradeAllocProg_spec` composes the stride-four setup with the generated search and bump programs.  Global 1 contains zero under the current Limit invariant, so the search exits without reading a free-node header.  The resulting store is `fixedArrayAllocBumpStore st g0 (fixedArrayBytesU n 4) 4`, and the result local contains `g0 + 48`.
+
+The proof derives the minimum-capacity premise through `fixedArrayBytesU_toNat`.  It invokes `tradeSearchProg_empty` and `tradeBumpProg_spec` directly after the setup theorem.  This composition includes the generated search initialization exactly once.
+
+The focused warning-failing build completed in 1.9 seconds under the repository resource limits.  The theorem keeps the capacity and page bounds as explicit premises for later heap-budget composition.  The next module starts from the semantic bump store and copies the old trades before appending the new trade.
