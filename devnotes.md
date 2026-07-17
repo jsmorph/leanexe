@@ -5646,3 +5646,11 @@ The theorem treats the generated free-list loop and six header stores as one com
 `ClobLimit.LimitEntry.func21_decomposition` separates function 21 into its validity prefix, valid branch, invalid branch, and result epilogue.  The valid branch has a second exact division between its function 18 prefix and its filled and residual results.  The large residual and invalid instruction lists remain opaque unless a proof selects them.
 
 The decomposition derives both large lists from their exact positions in the generated function and verifies the complete reconstruction by definitional equality.  Later branch proofs can execute calls and scalar tests without elaborating either allocation body.  The focused warning-failing build passed in 1.3 seconds under the repository resource limits.
+
+## 2026-07-16: Prove the Exported Filled Branch
+
+`ClobLimit.LimitValidEntry.entryProg_valid_spec` executes the parameter copies and validity call against an abstract continuation.  It returns the exact 53-local frame with the valid condition on the operand stack.  Its focused warning-failing build passed in 1.5 seconds under the repository resource limits.
+
+`ClobLimit.LimitRunMatchCall.validCallProg_spec` prepares function 18's seven arguments and applies an arbitrary function 18 theorem without reducing its continuation.  `LimitRunMatchResult` divides the returned-value handling into a pure store phase and a two-condition normalization phase.  The call and result modules passed their focused warning-failing builds in 1.2 and 1.4 seconds under the repository resource limits.
+
+The initial combined proof reached the default heartbeat limit at the validity call, and the first call split moved that limit to result-condition normalization.  Dividing at both generated call boundaries and between result storage and condition testing removed those reductions rather than increasing the heartbeat allowance.  `ClobLimit.LimitFilled.func21_filled` now proves the complete valid zero-remaining branch in 4.2 seconds, returning status zero and the exact owned arrays from `Model.runMatchL` without a further allocation.
