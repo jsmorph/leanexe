@@ -5488,3 +5488,11 @@ The first focused diagnostic completed in 5.0 seconds and identified the optiona
 `InternalFullBranch.RecursiveResultAt` states the exact eleven recursive parameters, local-list length, and empty operand stack.  `recursiveResultAt_fullTransitionFrame` proves that the explicit transition frame satisfies this predicate from only the input frame lengths.  The branch continuation also retains both source arrays, both replacement arrays, exact allocator globals, unchanged pages, and byte equality below the original heap top.
 
 The focused warning-failing build passed on its first run in 4.3 seconds under the repository resource limits.  The proof invokes the separately compiled book-and-trade and transition theorems without unfolding either instruction sequence.  The next composition connects both allocation-bearing branch theorems to the iteration dispatcher and loop invariant.
+
+## 2026-07-16: Prove Internal Loop Control
+
+`ClobLimit.InternalLoopControl` proves the generated outer guard for a completed state, zero fuel, and a running state.  Fuel resides at parameter 0, while the completion flag resides at combined index 16.  Each theorem preserves the store and exact local frame.
+
+The result epilogue selects parameters 6 through 10 when the loop exits without a completed branch.  A completed state already occupies local-list positions 0 through 4, with its flag at position 5.  Both paths return the five owner-and-pointer values in the generated operand-stack order.
+
+The first focused diagnostic completed in 2.8 seconds and exposed the missing direct import of `InternalIteration`.  The second diagnostic completed in 2.3 seconds and identified two malformed multiline tactic target lists.  Correcting those local errors produced a warning-failing build in 3.8 seconds under the repository resource limits.
