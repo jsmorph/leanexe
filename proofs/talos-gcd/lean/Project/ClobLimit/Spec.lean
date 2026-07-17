@@ -23,6 +23,7 @@ import Project.ClobLimit.InternalPartialTradeFinish
 import Project.ClobLimit.InternalPartialTradeUpdate
 import Project.ClobLimit.InternalPartialFinish
 import Project.ClobLimit.InternalPartialTradeBranch
+import Project.ClobLimit.InternalPartialBranch
 
 /-!
 # Specification for `clob_limit`
@@ -58,8 +59,10 @@ old trades, and new trades with exact allocator state.  The final partial-fill
 assignments record the new trade pointer, zero remaining quantity, and a
 completed result in the recursive locals.  Their composition with trade
 preparation proves the complete continuation after replacement-book
-construction.  The proof remains outside `Project.lean` until the exported
-theorem is complete.
+construction.  The complete partial-fill branch preserves both source arrays,
+returns the semantic replacement book and appended trades, and states the
+two-allocation heap, counter, page, and below-heap memory facts.  The proof
+remains outside `Project.lean` until the exported theorem is complete.
 -/
 
 end Project.ClobLimit
