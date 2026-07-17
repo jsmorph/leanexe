@@ -33,6 +33,8 @@ import Project.ClobLimit.InternalLoopResult
 import Project.ClobLimit.InternalInitialization
 import Project.ClobLimit.InternalEntry
 import Project.ClobLimit.InternalCorrect
+import Project.ClobLimit.RunMatchEmptyAlloc
+import Project.ClobLimit.RunMatchEntry
 import Project.ClobLimit.InternalTradeBump
 import Project.ClobLimit.InternalPartialBookPrepare
 import Project.ClobLimit.InternalPartialBookControl
@@ -134,6 +136,10 @@ Function 17 decomposes exactly into completion-flag initialization, the
 verified loop, and the result epilogue, with a proved initial local frame.
 `InternalCorrect.func17_correct` proves input-generic termination and exact
 source-model correctness for that complete recursive matcher.
+Function 18 contains two identical empty stride-four fixed-array allocations.
+`RunMatchEmptyAlloc.allocProg_spec` proves their exact store and local-frame
+effect once, and `RunMatchEntry.func18_decomposition` identifies both generated
+regions with that proved instruction block.
 The proof remains outside `Project.lean` until the exported theorem is complete.
 -/
 
