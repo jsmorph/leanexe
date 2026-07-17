@@ -5352,3 +5352,11 @@ The focused warning-failing build completed in 4.6 seconds under the repository 
 The proof reuses `ClobMatchFuel.TradeAppendStore` for the memory transformation.  Those source-independent theorems reconstruct `TradesAt` and preserve the fixed-array header, while the Limit adapter extends the copy theorem's outside-payload frame through each store.  The module contains no allocation or copy-loop instructions.
 
 The focused warning-failing build completed in 5.4 seconds under the repository resource limits.  The final frame returns the new trade pointer as one value.  The following composition will retain both live arrays, exact allocator state, and the semantic appended trade.
+
+## 2026-07-15: Compose the Partial-Trade Update
+
+`ClobLimit.InternalPartialTradeUpdate.partialTradeUpdateProg_spec` composes generated lines 3160 through 3449.  It invokes the allocation, copy, and finalization theorems without unfolding their instruction proofs.  The resulting theorem returns the extended trade array and retains the exact generated frame.
+
+The proof preserves ownership of the old book, replacement book, old trade array, and new trade array.  It also preserves the page count, states the exact allocator globals after the trade counter increment, and carries the allocator-to-final outside-payload memory frame.  Shared allocator-frame theorems preserve each live source array across the bump allocation and subsequent target writes.
+
+The first focused warning-failing build passed in 7.1 seconds under the repository resource limits.  The successful first build confirms that the component boundaries keep this elaboration step small.  The next proof covers generated lines 3450 through 3456, which assign the completed branch result locals.
