@@ -5464,3 +5464,11 @@ The first focused diagnostic completed in 4.8 seconds and exposed a missing allo
 The result frame states the exact scratch locals and recursive parameters.  The new book and trade owner-and-pointer pairs remain equal, and the reduced remaining quantity becomes parameter 10.  The frame leaves memory and globals unchanged.
 
 `ClobMatchFuel.FullTransition` supplied the proof pattern, but its nine-parameter ABI and conditional owner-tracker calculation differ from the Limit program.  A common theorem would need program indices and tracker behavior as parameters while saving one short direct proof.  The Limit-specific warning-failing build passed on its first run in 1.6 seconds under the repository resource limits.
+
+## 2026-07-16: Compose Full-Fill Book and Trade Updates
+
+`ClobLimit.InternalFullBookTrade.fullBookTradeProg_spec` composes the nested full-book branch with the complete full-trade update.  Its semantic result contains `os.eraseIdx i` and one appended trade for the erased maker's complete quantity.  The theorem retains ownership of the source book, replacement book, old trades, and appended trades.
+
+The proof states the final heap pointer, zero free-list head, allocation counter `g2 + 2`, unchanged page count, and byte equality below the original heap top.  It preserves the old trade array across the book allocation through `ownedTradeArrayAt_fixedArrayAllocBumpStore` and `OwnedTradeArrayAt.frame_outsideFlatWords`.  The generated two-level result branch uses `BranchPost.doubleResultIffPost_of_wp` before the trade update.
+
+Three focused diagnostics completed in 5.4, 4.6, and 4.0 seconds.  They identified an explicit no-wrap comparison, the prepared frame's local-list length, and one unused simplifier argument.  The corrected warning-failing build completed in 4.9 seconds under the repository resource limits, and the recursive transition remains a separate compiled boundary.
