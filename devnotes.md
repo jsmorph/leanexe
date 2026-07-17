@@ -5552,3 +5552,11 @@ The next-running review found that `RecursiveResultAt` omitted the zero completi
 `FullTradeResultAt` now carries the flag through the allocation and append frames.  `fullBookTradeProg_spec` supplies the original running fact across the book frames, and `recursiveResultAt_fullTransitionFrame` preserves it through the parameter transition.  The resulting recursive predicate contains every local fact consumed by the running invariant.
 
 The trade-update, book-and-trade, and full-branch warning-failing builds completed in 6.9, 5.2, and 3.4 seconds under the repository resource limits.  One diagnostic identified the need to unfold `fullBookPrepareLocals` when transporting the combined local access.  The next proof boundary is confined to source progress, lengths, heap bounds, counters, memory equality, and the remaining allocation budget.
+
+## 2026-07-16: Construct the Next Internal Running State
+
+`ClobLimit.InternalLoopAdvance.nextData` defines the state after a complete maker fill.  It increments the step count, decrements fuel, installs equal owner-and-pointer values for both replacement arrays, erases the selected maker, appends its trade, and advances global 2 by two.  `InternalLoopAdvance.of_full` proves `RunningFacts` for that data from the physical branch result.
+
+The constructor combines `full_source` with the exact recursive locals and represented replacement arrays.  It proves the new source and length equations, fuel accounting, allocation counter, heap monotonicity, below-initial-heap memory equality, page and address limits, and the remaining fixed-step budget.  The physical pointer, capacity, heap lower bound, and heap upper bound remain explicit premises for the later branch composition.
+
+The first focused diagnostic completed in 1.7 seconds and found that the trade-limit arithmetic had not introduced `facts.fuelSpent`.  Adding that named equality allowed the warning-failing build to pass in 1.7 seconds under the repository resource limits.  The next module composes the physical partial and full branches with the completion and advancement constructors.
