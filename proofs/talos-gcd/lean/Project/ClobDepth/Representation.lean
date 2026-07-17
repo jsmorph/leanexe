@@ -118,6 +118,55 @@ theorem LevelsAt.ofFlatWords {st : Store Unit} {ptr : UInt64}
   · simpa [LevelL.word] using hRead 1 (by omega)
   · simpa using hFieldBound 1 (by omega)
 
+theorem LevelsAt.frame_write64_flatWordsDisjoint
+    {st : Store Unit} {sourcePtr targetPtr : UInt64}
+    {levels : List LevelL} {targetWords slot : Nat} {value : UInt64}
+    (hSource32 :
+      sourcePtr.toNat + (levels.length * 2 + 1) * 8 < 4294967296)
+    (hTarget32 :
+      targetPtr.toNat + (targetWords + 1) * 8 < 4294967296)
+    (hSlot : slot ≤ targetWords)
+    (hsep : flatWordsDisjoint (flatWordsRegion targetPtr targetWords)
+      (flatWordsRegion sourcePtr (levels.length * 2)))
+    (hLevels : LevelsAt st sourcePtr levels) :
+    LevelsAt
+      { st with mem := (st.mem.write64
+        (UInt32.ofNat
+          ((targetPtr.toNat + slot * 8) % 4294967296)) value) }
+      sourcePtr levels := by
+  have hAddressSep (sourceOffset : Nat)
+      (hSourceOffset : sourceOffset ≤ levels.length * 2 * 8) :
+      sourcePtr.toNat + sourceOffset + 8 ≤
+          targetPtr.toNat + slot * 8 ∨
+        targetPtr.toNat + slot * 8 + 8 ≤
+          sourcePtr.toNat + sourceOffset := by
+    exact flatWordsDisjoint_address hSlot hSourceOffset hsep
+  have hLengthRead :
+      (st.mem.write64
+          (UInt32.ofNat
+            ((targetPtr.toNat + slot * 8) % 4294967296))
+          value).read64
+          (UInt32.ofNat (sourcePtr.toNat % 4294967296)) =
+        st.mem.read64
+          (UInt32.ofNat (sourcePtr.toNat % 4294967296)) := by
+    apply Project.Common.read64_write64_ne
+    simp only [Project.Common.toUInt32_ofNat_mod_toNat]
+    rw [Nat.mod_eq_of_lt (by omega), Nat.mod_eq_of_lt (by omega)]
+    exact hAddressSep 0 (by omega)
+  apply LevelsAt.ofFlatWords
+  · exact hLengthRead.trans hLevels.1.1
+  · exact hLevels.1.2
+  · intro j hj field hfield
+    unfold levelWord
+    rw [Project.Common.read64_write64_ne]
+    · exact hLevels.levelWord_eq j field hj hfield
+    · simp only [Project.Common.toUInt32_ofNat_mod_toNat]
+      rw [Nat.mod_eq_of_lt (by omega), Nat.mod_eq_of_lt (by omega)]
+      apply hAddressSep ((j * 2 + field + 1) * 8)
+      omega
+  · intro j hj field hfield
+    exact hLevels.levelWord_bound j field hj hfield
+
 theorem LevelsAt.frame_region {st st' : Store Unit}
     {ptr capacity : UInt64} {levels : List LevelL}
     (hInput32 : ptr.toNat + fixedArrayBytes levels.length 2 < 4294967296)

@@ -349,8 +349,39 @@ def missingAllocFinishProg : Wasm.Program :=
   .localSet 19
 ]
 
+def missingCopyBodyProg : Wasm.Program :=
+  [
+  .localGet 19,
+  .localGet 16,
+  .geUI64,
+  .br_if 1,
+  .localGet 18,
+  .localGet 19,
+  .constI64 1,
+  .addI64,
+  .constI64 8,
+  .mulI64,
+  .addI64,
+  .wrapI64,
+  .localGet 14,
+  .localGet 19,
+  .constI64 1,
+  .addI64,
+  .constI64 8,
+  .mulI64,
+  .addI64,
+  .wrapI64,
+  .load64 0,
+  .store64 0,
+  .localGet 19,
+  .constI64 1,
+  .addI64,
+  .localSet 19,
+  .br 0
+]
+
 def missingCopyProg : Wasm.Program :=
-  (missingProg.drop 61).take 1
+  [.block 0 0 [.loop 0 0 missingCopyBodyProg]]
 
 def missingStoreProg : Wasm.Program :=
   missingProg.drop 62
@@ -362,8 +393,8 @@ theorem missingProg_decomposition :
       missingStoreProg := by
   unfold missingPrepareProg missingSearchProg missingSearchBodyProg
     missingBumpProg missingBumpBranchProg
-    missingAllocFinishProg missingCopyProg missingStoreProg missingProg
-    branchAt func3
+    missingAllocFinishProg missingCopyProg missingCopyBodyProg
+    missingStoreProg missingProg branchAt func3
   rfl
 
 def foundPrepareProg : Wasm.Program :=
