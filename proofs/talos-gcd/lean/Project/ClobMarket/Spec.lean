@@ -10,6 +10,11 @@ import Project.ClobMarket.InvalidEntry
 import Project.ClobMarket.InvalidPrepare
 import Project.ClobMarket.InvalidSearch
 import Project.ClobMarket.InvalidBump
+import Project.ClobMarket.InvalidFinish
+import Project.ClobMarket.InvalidPost
+import Project.ClobMarket.InvalidProgram
+import Project.ClobMarket.InvalidResult
+import Project.ClobMarket.Invalid
 import Project.ClobMarket.Price
 import Project.ClobMarket.Call
 import Project.ClobMarket.ValidResult
@@ -30,9 +35,9 @@ remaining proof covers exported function 21 only.
 
 The valid exported branch proves the exact unlimited-price transformation,
 transports function 18, and returns its represented book and trades with status
-zero.  The invalid branch now proves validity entry, allocator preparation,
-empty free-list search, and the fixed-array header and heap-top writes.  The
-length store, counter update, branch theorem, and primary theorem remain.
+zero.  The invalid branch proves the exact status, borrowed book, owned empty
+trade array, allocator globals, page count, and memory frame.  The primary
+theorem remains to relate both branches to `Model.marketL`.
 -/
 
 namespace Project.ClobMarket
