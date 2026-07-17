@@ -1,5 +1,6 @@
 import Project.ClobLimit.Model
 import Project.ClobLimit.Program
+import Project.ClobLimit.ValidOrder
 
 /-!
 # Specification for `clob_limit`

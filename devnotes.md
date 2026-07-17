@@ -5188,3 +5188,7 @@ The `clob_limit` case now has checked WASM and WAT inputs plus an emitted `Proje
 `ClobLimit.Model.limitL` composes the existing validity predicate and `matchFuelL` model.  Named equations state the invalid, fully filled, and residual-order branches.  `runMatchL_quantity_conservation` specializes the source matcher theorem to an empty initial trade list and the order's initial quantity.
 
 The constrained generator completed in 7.0 seconds, the focused source-model build completed in 1.2 seconds, and the shared runtime checks completed in 1.2 seconds.  A separate constrained artifact-only run reproduced the checked WASM and WAT byte-for-byte.  The case remains outside `Project.lean`, `tools/check-talos.sh`, and the completed-proof inventory until its input-generic artifact theorem is complete.
+
+## 2026-07-15: Prove `limit` Order Validity
+
+`ClobLimit.ValidOrder` proves the generated side validator, identifier scan, and combined order-validity function for every represented input book.  The seven generated validity functions are definitionally equal to the corresponding `postOnly` functions, and the theorem states the same `validOrderL` result at the `limit` module's function 6.  The focused target itself completed in 8.0 seconds after a 103-second first build of its previously stale `ClobPostOnly.SearchHelpers` dependency.
