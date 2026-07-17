@@ -5288,3 +5288,11 @@ The focused warning-failing build completed in 3.7 seconds under the repository 
 The proof derives the allocator's minimum-capacity premise from the shared `fixedArrayBytesU_toNat` theorem.  It passes the existing top, 32-bit fit, memory fit, and page-count premises unchanged to `InternalBookBump.partialBookNoFitProg_spec`.  This separation prevents the later copy theorem from reducing the allocator body.
 
 The focused warning-failing build completed in 3.2 seconds under the repository resource limits.  The composition adds no new arithmetic or memory semantics.  The next module starts with the semantic bump store and proves the generated counter, length initialization, and complete payload copy.
+
+## 2026-07-15: Prove the Partial-Book Copy
+
+`ClobLimit.InternalPartialBookCopy.partialBookCopyProg_spec` proves the generated global-2 increment, target assignment, length initialization, and complete flat-word copy.  Its loop invariant retains the fresh stride-five allocation header, the represented source book, the exact target length, and byte equality outside the target payload.  At loop exit, `OrdersAt.ofFlatWords` reconstructs the represented target book from the copied words.
+
+The module adapts the established structured copy argument to the Limit function's local indices.  It uses the shared `FreshFixedArrayAt.write64_data`, source framing, flat-word separation, and outside-payload write lemmas.  No allocator instructions or selected-maker replacement stores occur in its elaboration boundary.
+
+The focused warning-failing build completed in 5.2 seconds under the repository resource limits.  The proof records the target and cursor at local-list positions 49 and 50 while preserving the allocator result at position 63.  The next theorem will apply the five generated maker-field stores to the represented target book.
