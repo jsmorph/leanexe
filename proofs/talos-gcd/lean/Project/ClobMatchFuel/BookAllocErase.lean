@@ -300,7 +300,8 @@ theorem bookAllocEraseProg_spec
           (orderArrayBytesU (os.length - 1))).globals.globals[2]? =
             some (.i64 g2) := by
       simp [BookAllocBump.bookAllocBumpStore,
-        BookAllocBump.fixedArrayAllocBumpStore, hg2]
+        BookAllocBump.fixedArrayAllocBumpStore,
+        Project.Clob.fixedArrayAllocBumpStore, hg2]
     apply bookCopiesProg_spec env
       (BookAllocBump.bookAllocBumpStore st g0
         (orderArrayBytesU (os.length - 1))) base

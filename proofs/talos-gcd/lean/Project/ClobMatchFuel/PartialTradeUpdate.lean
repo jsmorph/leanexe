@@ -306,7 +306,8 @@ theorem partialTradeUpdateProg_spec
             (tradeArrayBytesU (ts.length + 1))).globals.globals[2]? =
               some (.i64 g2) := by
         simp [TradeAllocBump.tradeAllocBumpStore,
-          BookAllocBump.fixedArrayAllocBumpStore, hg2]
+          BookAllocBump.fixedArrayAllocBumpStore,
+          Project.Clob.fixedArrayAllocBumpStore, hg2]
       have hAllocLength : 2 <
           (TradeAllocBump.tradeAllocBumpStore st g0
             (tradeArrayBytesU (ts.length + 1))).globals.globals.length :=
@@ -316,14 +317,14 @@ theorem partialTradeUpdateProg_spec
     have hFinalG4 :
         (TradeAppendStore.appendTradeStore st1 (g0 + 48) ts.length
           trade).globals.globals[4]? = some (.i64 g4) := by
-      have hAllocG4 := fixedArrayAllocBumpStore_global_of_ne_zero st g0
+      have hAllocG4 := AllocatorFrame.fixedArrayAllocBumpStore_global_of_ne_zero st g0
         (tradeArrayBytesU (ts.length + 1)) 4 4 (.i64 g4) (by decide) hg4
       rw [hFinalGlobals]
       simpa [List.getElem?_set] using hAllocG4
     have hFinalG5 :
         (TradeAppendStore.appendTradeStore st1 (g0 + 48) ts.length
           trade).globals.globals[5]? = some (.i64 g5) := by
-      have hAllocG5 := fixedArrayAllocBumpStore_global_of_ne_zero st g0
+      have hAllocG5 := AllocatorFrame.fixedArrayAllocBumpStore_global_of_ne_zero st g0
         (tradeArrayBytesU (ts.length + 1)) 4 5 (.i64 g5) (by decide) hg5
       rw [hFinalGlobals]
       simpa [List.getElem?_set] using hAllocG5
@@ -359,7 +360,7 @@ theorem partialTradeUpdateProg_spec
       · exact hFinalFrame
       · exact hFinalPages.trans (by
           simpa [TradeAllocBump.tradeAllocBumpStore] using
-            fixedArrayAllocBumpStore_pages st g0
+            AllocatorFrame.fixedArrayAllocBumpStore_pages st g0
               (tradeArrayBytesU (ts.length + 1)) 4)
       · exact hFinalG0
       · exact hFinalG1

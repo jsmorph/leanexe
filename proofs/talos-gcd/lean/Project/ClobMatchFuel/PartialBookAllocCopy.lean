@@ -253,7 +253,8 @@ theorem partialBookAllocCopyProg_spec
             some (.i64 g2) := by
       simp [PartialBookAllocBump.bookAllocBumpStore,
         BookAllocBump.bookAllocBumpStore,
-        BookAllocBump.fixedArrayAllocBumpStore, hg2]
+        BookAllocBump.fixedArrayAllocBumpStore,
+        Project.Clob.fixedArrayAllocBumpStore, hg2]
     apply BookReplaceCopy.replaceCopyProg_spec env
       (PartialBookAllocBump.bookAllocBumpStore st g0
         (orderArrayBytesU os.length)) (bumpFrame base os.length g0 previous)

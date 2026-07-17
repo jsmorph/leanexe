@@ -5256,3 +5256,11 @@ The module excludes the allocation counter, erased-book copy, and later trade up
 The proof specializes the established `matchFuel` argument to function 17's eleven-parameter, sixty-four-local frame.  The source book and remaining quantity are parameters 7 and 10, while the selected index occupies local-list position 14.  The shared `OrdersAt` lemmas discharge the same field-read and address-bound obligations without adding another memory abstraction.
 
 The module ends before the four instructions that multiply the book length by five and before allocation.  This boundary keeps the generated one-result bounds branch out of the field-read theorem.  The focused warning-failing build completed in 16 seconds under the repository resource limits.
+
+## 2026-07-15: Generalize Branch Continuations
+
+`Project.BranchPost` defines one-result and nested-result branch postconditions for an explicit `Wasm.Module`.  It also proves the true-branch composition and empty-program continuation lemmas once.  `ClobMatchFuel.BranchPost` now provides compatibility specializations with every existing matcher theorem name and statement preserved.
+
+The first completed matcher rebuild exposed stale source proofs from the earlier bump-store move.  `AllocatorFrame` now delegates page and global preservation to `Project.Clob`, and the bump adapters explicitly reduce the common store definition at their final continuation.  Downstream matcher modules qualify the compatibility facts and reduce the common definition when reading unchanged global 2.
+
+Focused warning-failing builds completed the generic branch helper in 2.2 seconds, its matcher specialization in 1.3 seconds, `AllocatorFrame` in 3.6 seconds, both bump adapters in 6.1 and 5.0 seconds, and `Iteration` in 15 seconds.  The complete `Project.ClobMatchFuel.Spec` source rebuild then passed through the recursive loop and public correctness theorem.  Every Lean process ran serially under the repository cgroup, CPU, scheduler, I/O-priority, and timeout limits.

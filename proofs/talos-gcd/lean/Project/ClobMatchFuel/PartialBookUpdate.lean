@@ -289,9 +289,9 @@ theorem partialBookUpdateProg_spec
             qty).mem nodes :=
         freeListAt_fixedArrayAllocBumpStore_after hFit32 hNodesBelow hList
           hFinalPages hOutsideFinal
-      have hAllocG0 := fixedArrayAllocBumpStore_global0 st g0
+      have hAllocG0 := AllocatorFrame.fixedArrayAllocBumpStore_global0 st g0
         (orderArrayBytesU os.length) 5 hg0
-      have hAllocG1 := fixedArrayAllocBumpStore_global1 st g0
+      have hAllocG1 := AllocatorFrame.fixedArrayAllocBumpStore_global1 st g0
         (orderArrayBytesU os.length) 5 (freeHead nodes) hg1
       have hFinalG0 :
           (BookReplaceStore.replaceOrderStore st1 (g0 + 48) i os[i]!
