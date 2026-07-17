@@ -5400,3 +5400,11 @@ The focused warning-failing build completed in 4.3 seconds under the repository 
 The theorem initializes predecessor, current node, and allocation result at the exact positions consumed by `InternalFullBookBump`.  It retains the existing capacity and next-node scratch values because the empty-list path does not read them.  The final state is `InternalFullBookBump.allocFrame base (fixedArrayBytesU n 5) 0 g1 capacity next 0`.
 
 The focused warning-failing build completed in 3.6 seconds under the repository resource limits.  The theorem passed on its first build.  The next composition appends the existing empty free-list scan and bump allocator without duplicating either initialization.
+
+## 2026-07-16: Compose the Full-Book Allocator
+
+`ClobLimit.InternalFullBookAlloc.fullBookAllocProg_spec` composes the full-book setup, empty free-list scan, and bump fallback.  Its program contains the search initialization exactly once in the setup prefix.  The resulting store is `fixedArrayAllocBumpStore st g0 (fixedArrayBytesU n 5) 5`.
+
+The proof derives the allocator's eight-byte minimum from `fixedArrayBytesU_toNat`.  It invokes `fullBookSearchProg_empty` and `fullBookBumpProg_spec` after the setup theorem without unfolding their instruction bodies.  The final frame records target `g0 + 48`, the new heap top, and the generated page target.
+
+The focused warning-failing build completed in 2.2 seconds under the repository resource limits.  The theorem passed on its first build.  The next modules prove the replacement-book length store and the prefix and shifted-suffix copy loops.
