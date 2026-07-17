@@ -27,6 +27,7 @@ import Project.ClobLimit.InternalLoopCompletion
 import Project.ClobLimit.InternalLoopAdvance
 import Project.ClobLimit.InternalLoopBranches
 import Project.ClobLimit.InternalLoopIteration
+import Project.ClobLimit.InternalLoop
 import Project.ClobLimit.InternalTradeBump
 import Project.ClobLimit.InternalPartialBookPrepare
 import Project.ClobLimit.InternalPartialBookControl
@@ -118,6 +119,8 @@ Branch-composition theorems connect both allocation-bearing dispatcher paths to
 their completed or next-running invariant and prove strict measure decrease.
 The complete dispatcher composition preserves the invariant through stopped,
 partial-fill, and full-fill outcomes with the same decrease.
+The generated guard-dispatch loop terminates by well-founded induction with a
+completed result or a zero-fuel running state.
 The proof remains outside `Project.lean` until the exported theorem is complete.
 -/
 
