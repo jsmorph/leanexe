@@ -5192,3 +5192,7 @@ The constrained generator completed in 7.0 seconds, the focused source-model bui
 ## 2026-07-15: Prove `limit` Order Validity
 
 `ClobLimit.ValidOrder` proves the generated side validator, identifier scan, and combined order-validity function for every represented input book.  The seven generated validity functions are definitionally equal to the corresponding `postOnly` functions, and the theorem states the same `validOrderL` result at the `limit` module's function 6.  The focused target itself completed in 8.0 seconds after a 103-second first build of its previously stale `ClobPostOnly.SearchHelpers` dependency.
+
+## 2026-07-15: Prove the Invalid `limit` Branch
+
+`ClobLimit.Invalid.limit_invalid` proves the exported invalid-order branch for every represented input book under an empty free list and a bounded bump allocation.  The theorem returns the borrowed book and a fresh empty trade array, fixes the heap-top and allocation-counter changes, preserves the page count, and frames every byte below the old heap top.  `ClobLimit.Allocation` isolates the two generated status helpers and the shared fixed-array allocation theorem supplies the empty trade-array header; the warning-failing invalid target completed in 18 seconds under the repository resource limits.
