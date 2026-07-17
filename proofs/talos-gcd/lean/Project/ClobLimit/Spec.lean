@@ -24,6 +24,7 @@ import Project.ClobLimit.InternalLoopInvariant
 import Project.ClobLimit.InternalLoopBounds
 import Project.ClobLimit.InternalLoopProgress
 import Project.ClobLimit.InternalLoopCompletion
+import Project.ClobLimit.InternalLoopAdvance
 import Project.ClobLimit.InternalTradeBump
 import Project.ClobLimit.InternalPartialBookPrepare
 import Project.ClobLimit.InternalPartialBookControl
@@ -109,6 +110,8 @@ partial-fill outcomes while retaining exact memory and allocator facts.
 The full-fill result and recursive transition also retain the four typed
 allocator scratch locals and zero completion flag required by the next
 iteration.
+The full-fill successor constructor establishes the complete running invariant,
+including source progress, heap monotonicity, counters, and remaining budget.
 The proof remains outside `Project.lean` until the exported theorem is complete.
 -/
 
