@@ -261,14 +261,14 @@ theorem fullBookUpdateProg_spec
       hOldTrades48 hOldTrades32 hOldTradesCapacity hFinalPagesAlloc
       hTradePayloadSep hOutside hOldTradesAlloc
     have hFinalPages : st1.mem.pages = st.mem.pages :=
-      hFinalPagesAlloc.trans (fixedArrayAllocBumpStore_pages st g0
+      hFinalPagesAlloc.trans (AllocatorFrame.fixedArrayAllocBumpStore_pages st g0
         (orderArrayBytesU (os.length - 1)) 5)
     have hFinalList : FreeListAt st1.mem nodes :=
       freeListAt_fixedArrayAllocBumpStore_after hFit32 hNodesBelow hList
         hFinalPagesAlloc hOutside
-    have hAllocG0 := fixedArrayAllocBumpStore_global0 st g0
+    have hAllocG0 := AllocatorFrame.fixedArrayAllocBumpStore_global0 st g0
       (orderArrayBytesU (os.length - 1)) 5 hg0
-    have hAllocG1 := fixedArrayAllocBumpStore_global1 st g0
+    have hAllocG1 := AllocatorFrame.fixedArrayAllocBumpStore_global1 st g0
       (orderArrayBytesU (os.length - 1)) 5 (freeHead nodes) hg1
     have hFinalG0 : st1.globals.globals[0]? =
         some (.i64 (g0 + 48 + orderArrayBytesU (os.length - 1))) := by
@@ -283,7 +283,8 @@ theorem fullBookUpdateProg_spec
           (orderArrayBytesU (os.length - 1))).globals.globals[2]? =
             some (.i64 g2) := by
       simp [BookAllocBump.bookAllocBumpStore,
-        BookAllocBump.fixedArrayAllocBumpStore, hg2]
+        BookAllocBump.fixedArrayAllocBumpStore,
+        Project.Clob.fixedArrayAllocBumpStore, hg2]
     have hAllocLength : 2 <
         (BookAllocBump.bookAllocBumpStore st g0
           (orderArrayBytesU (os.length - 1))).globals.globals.length :=
