@@ -5592,3 +5592,11 @@ The focused warning-failing build passed on its first run in 1.7 seconds under t
 `InternalLoopInitial.of_initial` constructs `RunningFacts` from an initialized `LoopLocalsAt` frame and explicit physical premises.  It retains both represented arrays, zero free-list head, globals 0 and 2, heap monotonicity, memory equality below the initial heap top, page facts, address bounds, and the full fuel budget.  The theorem leaves the concrete function-local calculation to the entry module.
 
 The focused warning-failing build passed on its first run in 1.8 seconds under the repository resource limits.  The constructor contains no instruction execution or address arithmetic.  The next boundary unifies completed and zero-fuel exits and proves the generated five-value result epilogue.
+
+## 2026-07-16: Prove the Internal Loop Result
+
+`ClobLimit.InternalLoopResult.OutputData` records both owner-and-pointer pairs, array capacities, and the final heap pointer.  `OutputAt` states ownership of the source result arrays, memory equality below the initial heap top, unchanged pages, zero free-list head, and exact globals 0 and 2.  `outputValues` matches function 17's five-value stack order.
+
+`of_completed` projects the output predicate from `CompletedFacts`.  `of_zero_running` reduces the residual source computation at zero fuel, transports both represented arrays to the context result, and derives the expected allocation counter from the unchanged final trade length.  `resultEpilogueProg_spec` applies the generated completed or running epilogue theorem and returns the same output predicate for both exit forms.
+
+The first focused run found two malformed multiline `simp only ... at` commands before elaboration.  Joining each command with its target allowed the warning-failing build to pass in 1.5 seconds under the repository resource limits.  The next boundary proves function 17's initialization, body decomposition, and complete internal matcher theorem.
