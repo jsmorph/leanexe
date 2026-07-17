@@ -5336,3 +5336,11 @@ The focused warning-failing build completed in 2.6 seconds under the repository 
 The proof derives the minimum-capacity premise through `fixedArrayBytesU_toNat`.  It invokes `tradeSearchProg_empty` and `tradeBumpProg_spec` directly after the setup theorem.  This composition includes the generated search initialization exactly once.
 
 The focused warning-failing build completed in 1.9 seconds under the repository resource limits.  The theorem keeps the capacity and page bounds as explicit premises for later heap-budget composition.  The next module starts from the semantic bump store and copies the old trades before appending the new trade.
+
+## 2026-07-15: Prove the Partial-Trade Copy
+
+`ClobLimit.InternalPartialTradeCopy.partialTradeCopyProg_spec` proves the generated counter increment, target assignment, extended-length store, and complete old-trade prefix copy.  Its invariant retains the source `TradesAt`, fresh stride-four target header, and copied flat-word equality.  The memory frame covers the complete target payload for `ts ++ [trade]`, including the four words that the next module will write.
+
+The adapter uses source, old-word total, new length, and allocator result at local-list positions 45, 47, 48, and 62.  It records target and cursor at positions 49 and 50.  The loop proof reuses the shared trade-word framing and fixed-array header lemmas.
+
+The focused warning-failing build completed in 4.6 seconds under the repository resource limits.  The module contains generated lines 3358 through 3400 and no appended-field stores.  The next proof will identify the four generated stores with the shared append-trade memory transformation.
