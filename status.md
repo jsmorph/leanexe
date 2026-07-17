@@ -1,30 +1,30 @@
 # Development Status
 
-This report records the repository state on 2026-07-17.  It distinguishes completed and committed work from the unfinished `clob_depth` proof currently present in the worktree.  The [development plan](plan.md) remains the authoritative work queue, while the [development journal](devnotes.md) records dated design decisions and individual test results.
+This report records the repository state on 2026-07-17.  It distinguishes completed and committed work from the remaining `clob_depth` proof obligations.  The [development plan](plan.md) remains the authoritative work queue, while the [development journal](devnotes.md) records dated design decisions and individual test results.
 
 ## Summary
 
-LeanExe has completed the runtime-ownership, single-evaluation, and CLOB `cancel` phases of the current plan.  Input-generic Talos proofs now cover `findBest`, `postOnly`, `matchFuel`, `limit`, and `market`, in addition to the earlier artifacts.  The remaining input-generic CLOB export is `depth`, whose proof has begun with the artifact, source model, representation, source properties, control-flow decomposition, and price-scan theorem in place.
+LeanExe has completed the runtime-ownership, single-evaluation, and CLOB `cancel` phases of the current plan.  Input-generic Talos proofs cover `findBest`, `postOnly`, `matchFuel`, `limit`, and `market`, in addition to the earlier artifacts.  The remaining input-generic CLOB export is `depth`, whose source model, representation, source properties, control-flow decomposition, price scan, and missing-price append phases now have separately compiled theorems.
 
-Measured by planned milestones, the next stable point is about 80 percent complete.  That estimate counts three completed plan phases, five completed exports in the remaining CLOB phase, and substantial proof-library work already reused by those exports.  It is not a schedule estimate: `depth` contains allocation, two copy paths, a per-side fold, and ownership obligations that can consume a disproportionate share of the remaining proof effort.
+Measured by planned milestones, the next stable point is about 82 percent complete.  That estimate counts three completed plan phases, five completed exports in the remaining CLOB phase, and one proved level-update path inside `depth`.  The estimate does not predict elapsed time because the found update path, per-side fold, exported two-call composition, and aggregate-proof refresh contain most of the remaining semantic integration.
 
-The current worktree contains a deliberately incomplete split of the missing-price allocation path.  Its first module compiles under the required resource limits, while the second has two specific type mismatches around capacity normalization.  No failing proof has been committed, and the full aggregate proof gate remains stale after artifact regeneration and cache removal.
+The missing-price append path has verified preparation, the stated empty-free-list search, bump allocation, allocation finalization, word copying, appended-field stores, owned-array reconstruction, and exact result locals.  These theorems compile individually and through `Project.ClobDepth.Spec`, but an end-to-end branch theorem still must connect their frames and allocator premises.  No failing proof is committed, and the aggregate proof object remains stale after artifact regeneration and cache removal.
 
 ## Repository State
 
-The repository is on `main` at committed proof revision `f891009` (`Prove depth price scan`).  Both the compiler and proof workspaces select `leanprover/lean4:v4.31.0` through their respective `lean-toolchain` files.  The checked-in depth artifact exists and is pinned, but its handwritten specification is not yet complete.
+The repository is on `main`, and the latest completed proof increment is `7a9605e` (`Prove depth missing-level stores`).  Both the compiler and proof workspaces select `leanprover/lean4:v4.31.0` through their respective `lean-toolchain` files.  The checked-in depth artifact exists and is pinned, while its complete exported correctness theorem remains open.
 
 | Item | Current state | Evidence |
 |------|---------------|----------|
 | Branch | `main` | Current Git branch |
-| Last committed change | `f891009 Prove depth price scan` | Committed 2026-07-16 proof increment |
+| Latest proof increment | `7a9605e Prove depth missing-level stores` | Committed 2026-07-17 proof increment |
 | Compiler Lean | Lean 4.31.0 | Root `lean-toolchain` |
 | Talos proof Lean | Lean 4.31.0 | `proofs/talos-gcd/lean/lean-toolchain` |
 | Depth artifact | Registered and tracked | 3,602-byte WASM and checked-in WAT |
 | Aggregate Talos proof object | Stale | Requires a planned, divided rebuild |
 | Unrelated directory | `leanclob/` is untracked and separate | Nested Git repository; excluded from this work |
 
-The current proof edits are not committed.  `Project/ClobDepth/Entry.lean` modifies the generated-control decomposition, and `Project/ClobDepth/MissingFields.lean` and `Project/ClobDepth/MissingPrepare.lean` are new handwritten proof modules.  This status report is intended to be committed separately from those in-progress proof files so that the current diagnosis remains available without treating the incomplete theorem as finished.
+All proof edits through the missing-price final stores are committed.  The unrelated `leanclob/` nested repository remains untracked and excluded from this work.  No incomplete Lean theorem or failing proof file is present in the worktree.
 
 ### Recent Committed Increments
 
@@ -36,6 +36,15 @@ The recent commits divide the depth proof at meaningful semantic boundaries.  Ea
 | `631e00a` | Prove depth source properties | Added the stride-two level representation, ownership predicate, first-price order facts, exact modular aggregation, and bounded natural-number corollary. |
 | `d0d073e` | Divide depth level update | Split generated function 3 into the scan, missing, found, allocation, copy, store, and result regions. |
 | `f891009` | Prove depth price scan | Proved the input-generic first-price scan and exact frames for both found and missing outcomes. |
+| `cba8190` | Prove depth allocation preparation | Proved field extraction, length arithmetic, capacity rounding, allocator scratch initialization, and free-list-head loading. |
+| `91bece9` | Prove depth empty allocator search | Proved immediate free-list search exit under the stated zero-head premise. |
+| `801c472` | Prove depth bump allocation | Proved the stride-two header writes, heap-top update, page conditions, and exact allocator store. |
+| `db818b3` | Prove depth allocation finish | Proved allocation-counter increment, target propagation, length initialization, and zero copy cursor. |
+| `9047fc7` | Prepare depth copy proof | Named the generated loop and proved source representation preservation across disjoint target writes. |
+| `d5dca0e` | Prove depth copy invariant | Proved the semantic copied-prefix transition and target/source frame facts. |
+| `ffbebbe` | Prove depth missing-level copy | Proved the generated old-level copy loop and its decreasing termination measure. |
+| `eefcc84` | Prove depth append-store facts | Reconstructed the exact appended level list after the final two stores. |
+| `7a9605e` | Prove depth missing-level stores | Proved the generated final stores and exact result-local assignments. |
 
 ## Completed Work
 
@@ -76,19 +85,19 @@ The generated function 3 now has a documented decomposition in `Project.ClobDept
 
 ### Current Missing-Price Branch
 
-The missing-price branch appends a new `(price, quantity)` level to a stride-two fixed array.  It must first copy the fields from the scan result, read the represented length, compute the target length and rounded allocation capacity, choose a free-list or bump allocation, initialize the new header, copy old levels, store the new pair, and return an owned array.  The final theorem must also preserve the input array, allocator counters, relevant globals, page bound, and the memory frame required by the exported depth result.
+The missing-price branch appends a new `(price, quantity)` level to a stride-two fixed array.  Its proved phases copy the scan fields, compute the target length and rounded capacity, exit an empty free-list search, allocate by bump, initialize the length and allocation counter, copy every old word, store the new pair, and assign the result locals.  The semantic final state records an owned array representing the exact appended list, a preserved source representation, unchanged pages and relevant globals during copying, and byte equality outside the target region.
 
-The first forty-four instructions of this branch previously formed one preparation theorem.  A broad `simp` over that sequence exhausted the default heartbeat and then exceeded recursion depth when enlarged, so it did not provide a useful proof boundary.  The preparation is now divided at instruction 20 into `missingFieldsProg` and `missingAllocPrepareProg`, each written as an explicit instruction list whose concatenation is proved by `rfl`.
+The first proof attempt treated the forty-four-instruction preparation as one simplification boundary and exhausted the default heartbeat before later exceeding recursion depth.  The completed proof divides preparation into twenty- and twenty-four-instruction regions, then gives search, bump allocation, finalization, copy, and stores their own explicit programs and theorems.  Each decomposition remains definitionally equal to the generated function, so the smaller boundaries do not weaken the artifact claim.
 
-`Project.ClobDepth.MissingFields.missingFieldsProg_spec` is complete and compiles in 1.4 seconds under the required cgroup limits.  It transforms the missing scan frame into the field frame by copying the price and quantity, reading the represented length, and computing the source and target word counts.  Its only arithmetic bridge proves that `UInt64.ofNat levels.length + 1` equals `UInt64.ofNat (levels.length + 1)` below the established `2^32` length bound.
+`Project.ClobDepth.MissingCopyInvariant.CopyState.advance` contains the memory reasoning for one copy iteration.  `LevelsAt.frame_write64_flatWordsDisjoint` preserves the source representation, while the invariant preserves the fresh header, initialized length, copied prefix, pages, globals, and outside-target bytes.  `MissingCopy.missingCopyProg_spec` applies that transition to the generated loop with a strictly decreasing word-count measure.
 
-`Project.ClobDepth.MissingPrepare.missingPrepareProg_spec` currently targets only `missingAllocPrepareProg`, not the full forty-four-instruction prefix.  It derives the exact rounded stride-two capacity, proves that the new array needs at least the minimum eight bytes, and prepares the allocator scratch locals and free-list cursor.  The latest focused build stopped with two type mismatches, both caused by a presentation difference between the raw rounded `UInt64` expression emitted by the instructions and `fixedArrayBytesU (levels.length + 1) 2` used by the local frame.
+`Project.ClobDepth.MissingStoreFacts.finish` reconstructs `LevelsAt` for the old list followed by the new level.  It combines that representation with the preserved fresh header as `OwnedLevelArrayAt` and retains the source representation and outside-target frame after both writes.  `MissingStore.missingStoreProg_spec` proves the generated stores and exposes the exact working, owner, and pointer locals to its continuation.
 
-The next proof step is narrow.  The capacity-rounding equality should be rewritten explicitly at the false branch of the minimum-capacity conditional before applying the lower-bound fact, and again before the final frame is compared with `prepareFrame`.  The current `simp [hRound]` does not perform that rewrite at either required boundary, so the theorem should use the equality directly rather than increase heartbeats, recursion depth, or simplifier scope.
+The immediate open obligation is branch composition.  The composition must instantiate the copy invariant from the post-allocation store, carry the source and allocator frames through the loop, and connect the final owned array and result locals to the missing scan outcome.  The current empty-free-list premise remains explicit because generated function 6 performs no release and therefore preserves an initially empty free list throughout its fold.
 
 ### Remaining Depth Work
 
-The missing branch requires the empty free-list search, the bump allocation branch, allocator finalization, the old-level copy loop, and the two final stores after allocation preparation.  The found branch has the analogous same-length allocation and copy work, followed by replacement of the matched quantity.  Each branch must establish a precise fresh-array predicate, borrowed-versus-owned result status, allocator globals and counters, page preservation, and the input memory frame.
+The missing branch requires one end-to-end theorem connecting its completed phase theorems.  The found branch still requires same-length allocation, copying, and replacement of the first matching quantity, with exact ownership, allocator counters, page preservation, and source frames.  The found proof should reuse the level flat-word API and disjoint-write theorem while adding only the target-length and indexed-replacement facts that differ from append.
 
 Function 6 then needs a loop invariant for the per-side aggregation.  The invariant must relate the consumed order prefix to the source side filter, the first-occurrence price sequence, the represented level array, and the accumulated modular quantities.  Function 7 must compose the two side folds, return both owned arrays in the export ABI, and preserve the input book and allocator facts across both calls.
 
@@ -96,13 +105,13 @@ The source properties already identify reusable statements likely to reduce this
 
 ## Verification Status and Risks
 
-Focused depth modules have been built one at a time under the required cgroup policy.  The representation build completed in 1.7 seconds, source properties in 2.4 seconds, the initial entry decomposition in 1.5 seconds, scan in 3.4 seconds, and the new missing-fields theorem in 1.4 seconds.  The current allocation-preparation build failed in 1.6 seconds with the two diagnostic mismatches described above, which is useful progress because it exposes a bounded local proof obligation rather than an unbounded elaboration failure.
+Focused depth modules have been built one at a time under the required cgroup policy.  Recent focused builds completed in 1.9 seconds for the representation lemma, 2.7 seconds for the copy loop, 2.9 seconds for semantic final-store facts, 2.0 seconds for the final instruction theorem, and 1.1 seconds for `Project.ClobDepth.Spec`; the final two used `--wfail`.  No current focused depth target fails or approaches its 90-second diagnostic limit.
 
 The aggregate `Project` proof object is stale.  The planned divisions include `Project.Validate.Spec`, `Project.SharedPair.Spec`, `Project.LebU32.Iter`, and `Project.LebU32.NegIter`, with several shorter dependencies also needing refresh.  Earlier constrained builds of the long targets reached their diagnostic time limits, so they must be divided at instruction or theorem boundaries before another aggregate proof rebuild is attempted.
 
 Mathlib cache removal freed disk space but means a cold proof setup can rebuild a large dependency graph.  A cold build is acceptable only through the constrained user scope and with no concurrent Lean or Lake activity.  The focused modules used for the current depth work have continued to build, so there is no evidence of a missing dependency or toolchain incompatibility at this boundary.
 
-No external blocker prevents the next depth proof step.  The current problem has a known cause, a small typed proof boundary, and an explicit equality that bridges the two forms of the capacity expression.  The main risk is time spent on repeated elaboration rather than semantic proof work, which the decomposition and resource policy address directly.
+No external blocker prevents the next depth proof step.  The main technical risk is preserving the complete allocator and source-ownership state while composing the small theorems, followed by the larger function 6 loop invariant.  The explicit semantic predicates and short instruction adapters keep those obligations separate from generated-program normalization.
 
 ## Required Lean and Lake Resource Policy
 
@@ -171,7 +180,7 @@ Do not substitute `ulimit -v`, `prlimit --as`, a background process, or an unbou
 
 ## Next Order of Work
 
-The immediate task is to complete `missingAllocPrepareProg_spec` with the explicit capacity rewrite.  The next commits should then add the free-list search and bump-allocation theorems, each at its own `wp` boundary, before composing them with the complete missing-price allocation path.  Each increment should receive a focused resource-limited build and a journal entry before it is committed.
+The immediate task is to compose the complete missing-price branch from its scan frame through its owned appended-array result.  The next task is the found-price branch: prepare a same-length allocation, copy all level words, replace the first matching quantity with modular addition, and return the exact updated list.  Each increment requires a focused resource-limited warning-failing build and a journal entry before commit.
 
 After both update branches are proved, the per-side depth fold becomes the central proof task.  Its theorem should state exact first-price order and modular aggregation without adding an unstated no-overflow assumption, then derive the natural-number result under the explicit bound already present in the source properties.  The exported theorem should compose the two side arrays and state their ownership, contents, allocator effects, page bound, and input-memory frame.
 
