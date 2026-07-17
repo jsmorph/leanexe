@@ -1,6 +1,6 @@
 # Development Status
 
-This report records the repository state on 2026-07-17.  It distinguishes completed and committed work from the remaining `clob_depth` proof obligations.  The [development plan](plan.md) remains the authoritative work queue, while the [development journal](devnotes.md) records dated design decisions and individual test results.
+This report records the repository state on 2026-07-17.  It distinguishes completed and committed work from the remaining `clob_depth` proof obligations.  The [development plan](../plan.md) remains the authoritative work queue, while the [development journal](../devnotes.md) records dated design decisions and individual test results.
 
 ## Summary
 
@@ -50,7 +50,7 @@ The recent commits divide the depth proof at meaningful semantic boundaries.  Ea
 
 ## Completed Work
 
-The current plan requires three kinds of evidence: differential execution tests, byte-pinned artifacts, and Talos theorems over decoded WASM.  The compiler remains outside the Talos trusted base because each theorem proves a decoded generated artifact and the check script compares that artifact byte-for-byte with the checked-in WASM and WAT.  The [verification guide](docs/verifying.md) describes this boundary and the [Talos proof inventory](proofs/talos-gcd/README.md) records the completed theorem scopes.
+The current plan requires three kinds of evidence: differential execution tests, byte-pinned artifacts, and Talos theorems over decoded WASM.  The compiler remains outside the Talos trusted base because each theorem proves a decoded generated artifact and the check script compares that artifact byte-for-byte with the checked-in WASM and WAT.  The [verification guide](verifying.md) describes this boundary and the [Talos proof inventory](../proofs/talos-gcd/README.md) records the completed theorem scopes.
 
 ### Plan Phases
 
@@ -69,7 +69,7 @@ Nineteen byte-pinned Talos cases are complete before `depth`.  They include the 
 
 ### Documentation and Developer Guidance
 
-The documentation has clear ownership by subject.  [Developing LeanExe](DEVELOPING.md) defines setup, versions, the development workflow, test gates, generated-file rules, failure diagnostics, and the required resource policy.  The [user manual](docs/manual.md) defines source authoring, the [language specification](docs/spec.md) defines accepted behavior, the [verification guide](docs/verifying.md) defines the proof procedure, and the [Talos proof inventory](proofs/talos-gcd/README.md) identifies checked cases and theorem scope.
+The documentation has clear ownership by subject.  [Developing LeanExe](../DEVELOPING.md) defines setup, versions, the development workflow, test gates, generated-file rules, failure diagnostics, and the required resource policy.  The [user manual](manual.md) defines source authoring, the [language specification](spec.md) defines accepted behavior, the [verification guide](verifying.md) defines the proof procedure, and the [Talos proof inventory](../proofs/talos-gcd/README.md) identifies checked cases and theorem scope.
 
 The developer guide names the pinned versions: Lean 4.31.0, Node 24.13.0, `wasm-tools` 1.251.0, and Wasmtime 44.0.0.  It documents the ordinary build, the separate Talos setup, the focused and aggregate proof gates, CLI statuses and stderr format, generated-file ownership, and troubleshooting.  It also makes the resource-limited `systemd-run` invocation mandatory for commands that invoke Lean, Lake, `lean-wasm`, or scripts that start them.
 
