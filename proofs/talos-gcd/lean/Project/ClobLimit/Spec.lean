@@ -15,6 +15,7 @@ import Project.ClobLimit.InternalFullBookSuffix
 import Project.ClobLimit.InternalFullBookUpdate
 import Project.ClobLimit.InternalFullTradePrepare
 import Project.ClobLimit.InternalFullTradeFinish
+import Project.ClobLimit.InternalFullTradeUpdate
 import Project.ClobLimit.InternalTradeBump
 import Project.ClobLimit.InternalPartialBookPrepare
 import Project.ClobLimit.InternalPartialBookControl
@@ -78,8 +79,10 @@ copies every word before the erased maker, and the shifted-suffix loop
 reconstructs the represented erased book.  Their composition retains both
 owned books and the exact allocator state.  The following prefix reads the
 full maker trade and prepares the shared trade append frame, and the following
-suffix records the new trades and next remaining quantity.  The proof remains
-outside `Project.lean` until the exported theorem is complete.
+suffix records the new trades and next remaining quantity.  Their composition
+retains both books and both trade arrays while returning the semantic full-fill
+trade, exact allocator state, and reduced remaining quantity.  The proof
+remains outside `Project.lean` until the exported theorem is complete.
 -/
 
 end Project.ClobLimit
