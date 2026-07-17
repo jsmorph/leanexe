@@ -5440,3 +5440,11 @@ The first diagnostic found an implicit byte conversion and incorrectly aligned c
 The final local frame matches the input of `InternalPartialTradeUpdate`.  The full-fill and partial-fill branches differ only in the prepared quantity at position 54, so the stride-four allocation, copy, and append-store theorem needs no duplicate.  The replacement book remains in positions 25 and 26 for the later recursive transition.
 
 The focused warning-failing build completed in 5.9 seconds under the repository resource limits.  The theorem passed on its first build.  The next composition reuses the shared trade update with quantity `os[i]!.oqty`.
+
+## 2026-07-16: Prove Full-Trade Finalization
+
+`ClobLimit.InternalFullTradeFinish.fullTradeFinishProg_spec` proves generated lines 2560 through 2589.  It records equal owner-and-pointer values for the new trade array and reads the selected maker quantity from the source book.  The final frame contains `remaining - os[i]!.oqty` at local-list position 29.
+
+The theorem leaves memory and globals unchanged.  It ends before the generated release block and recursive-state assignments.  The source book and selected index remain available through parameter positions 7 and local-list position 14 while the instruction scratch values use positions 45 and 46.
+
+The first focused build exposed a local-index translation copied from the nine-parameter matcher frame.  Correcting the scratch positions from 57 and 58 to 45 and 46 produced a warning-failing build in 2.2 seconds under the repository resource limits.  The next module composes full-trade preparation, the shared trade update, and this finalization theorem.
