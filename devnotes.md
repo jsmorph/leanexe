@@ -5392,3 +5392,11 @@ The focused warning-failing build passed in 106 seconds under the repository res
 The theorem treats the allocation-and-copy body as an arbitrary program returning one result.  `BranchPost.doubleResultIffPost` accounts for the two nested generated branches without expanding the continuation.  The proof uses the represented source book for both length reads and converts every `UInt64` subtraction and multiplication to the corresponding natural-number range.
 
 The focused warning-failing build completed in 4.3 seconds under the repository resource limits.  The theorem passed on its first build.  The next phase computes the aligned stride-five allocation size and initializes the empty free-list search.
+
+## 2026-07-16: Prove Full-Book Allocator Preparation
+
+`ClobLimit.InternalFullBookAllocPrepare.fullBookAllocPrepareProg_spec` proves the generated aligned-capacity calculation for the erased order array.  It identifies the result as `fixedArrayBytesU n 5` through the shared fixed-array rounding theorems.  The minimum-capacity branch leaves that value unchanged because every fixed-array allocation includes its eight-byte length word.
+
+The theorem initializes predecessor, current node, and allocation result at the exact positions consumed by `InternalFullBookBump`.  It retains the existing capacity and next-node scratch values because the empty-list path does not read them.  The final state is `InternalFullBookBump.allocFrame base (fixedArrayBytesU n 5) 0 g1 capacity next 0`.
+
+The focused warning-failing build completed in 3.6 seconds under the repository resource limits.  The theorem passed on its first build.  The next composition appends the existing empty free-list scan and bump allocator without duplicating either initialization.
