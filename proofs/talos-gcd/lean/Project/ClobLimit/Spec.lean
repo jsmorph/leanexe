@@ -20,6 +20,7 @@ import Project.ClobLimit.InternalFullBookTrade
 import Project.ClobLimit.InternalFullTransition
 import Project.ClobLimit.InternalFullBranch
 import Project.ClobLimit.InternalLoopControl
+import Project.ClobLimit.InternalLoopInvariant
 import Project.ClobLimit.InternalTradeBump
 import Project.ClobLimit.InternalPartialBookPrepare
 import Project.ClobLimit.InternalPartialBookControl
@@ -93,8 +94,11 @@ the fuel parameter.  The complete full-fill branch composes those boundaries
 and returns the recursive state with both semantic replacement arrays, both
 source arrays, exact allocator counters, unchanged pages, and the below-heap
 memory frame.  The outer loop guard and five-result epilogue have exact theorems
-for completed and zero-fuel exits.  The proof remains outside `Project.lean`
-until the exported theorem is complete.
+for completed and zero-fuel exits.  A separately compiled invariant states
+source progress, owner-and-pointer locals, array ownership, exact allocator
+globals, pages, below-initial-heap equality, and a fixed per-step budget for
+running and completed states.  The proof remains outside `Project.lean` until
+the exported theorem is complete.
 -/
 
 end Project.ClobLimit
