@@ -5264,3 +5264,11 @@ The module ends before the four instructions that multiply the book length by fi
 The first completed matcher rebuild exposed stale source proofs from the earlier bump-store move.  `AllocatorFrame` now delegates page and global preservation to `Project.Clob`, and the bump adapters explicitly reduce the common store definition at their final continuation.  Downstream matcher modules qualify the compatibility facts and reduce the common definition when reading unchanged global 2.
 
 Focused warning-failing builds completed the generic branch helper in 2.2 seconds, its matcher specialization in 1.3 seconds, `AllocatorFrame` in 3.6 seconds, both bump adapters in 6.1 and 5.0 seconds, and `Iteration` in 15 seconds.  The complete `Project.ClobMatchFuel.Spec` source rebuild then passed through the recursive loop and public correctness theorem.  Every Lean process ran serially under the repository cgroup, CPU, scheduler, I/O-priority, and timeout limits.
+
+## 2026-07-15: Prove Partial-Book Control
+
+`ClobLimit.InternalPartialBookControl.partialBookSuccessProg_spec` proves the four generated instructions that multiply the represented source length by the order stride and store the flat-word count.  Its update body is a program parameter with an exact prepared local frame.  The theorem therefore excludes every allocation, copy, and replacement instruction from its elaboration boundary.
+
+`partialBookBranchProg_spec` composes the field-read prefix with the generated one-result bounds branch.  It uses `Project.BranchPost.trueOneResultIff` at the Limit module, then passes the opaque update body the shared one-result continuation.  This establishes the control frame required to add the physical replacement-book theorem without re-elaborating the maker reads.
+
+The focused warning-failing module build completed in 2.4 seconds under the repository resource limits.  The proof imports the shared branch helper directly and adds no Limit-specific continuation copy.  Allocation, payload copy, maker replacement, and the later trade update remain open.
