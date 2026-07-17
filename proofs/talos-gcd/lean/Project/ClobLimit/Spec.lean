@@ -18,6 +18,7 @@ import Project.ClobLimit.InternalFullTradeFinish
 import Project.ClobLimit.InternalFullTradeUpdate
 import Project.ClobLimit.InternalFullBookTrade
 import Project.ClobLimit.InternalFullTransition
+import Project.ClobLimit.InternalFullBranch
 import Project.ClobLimit.InternalTradeBump
 import Project.ClobLimit.InternalPartialBookPrepare
 import Project.ClobLimit.InternalPartialBookControl
@@ -87,7 +88,10 @@ trade, exact allocator state, and reduced remaining quantity.  The complete
 book-and-trade composition carries both bump allocations through the generated
 nested result branches and preserves bytes below the old heap top.  The
 recursive transition copies that state into the loop parameters and decrements
-the fuel parameter.  The proof remains outside `Project.lean` until the exported
+the fuel parameter.  The complete full-fill branch composes those boundaries
+and returns the recursive state with both semantic replacement arrays, both
+source arrays, exact allocator counters, unchanged pages, and the below-heap
+memory frame.  The proof remains outside `Project.lean` until the exported
 theorem is complete.
 -/
 
