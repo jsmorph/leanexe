@@ -16,7 +16,7 @@ This document lists the guarantees a user of a compiled module should get, state
 | Exact final heap top | Proved | Stated in each artifact theorem's allocator globals. |
 | Peak heap bound | Implied | The no-grow fit premise under fixed pages is a peak bound; a compiler-computed budget function is planned. |
 | Stack depth bound | Not stateable | The model does not count call frames; needs model instrumentation. |
-| Worst-case step count per call | Latent | Fuel is a step count; making the bound explicit is planned. |
+| Worst-case step count per call | Not stateable | Fuel is a recursion budget (control entries, loop iterations, calls), so step and frame counts need the planned cost instrumentation. |
 | Defined behavior on invalid input | Not covered | Theorems cover success paths only; planned as defined rejection or a modeled trap with confinement. |
 | Constant memory across repeated calls | False today | Bump-only programs leak by design; requires a compiler change (reset or reuse), then a steady-state theorem. |
 | Domain properties (conservation, price-time priority, book invariants) | Partly proved | Conservation for `matchFuel`, first-index priority for `findBest`; per program. |
