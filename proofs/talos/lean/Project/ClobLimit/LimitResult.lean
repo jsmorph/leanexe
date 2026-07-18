@@ -30,24 +30,9 @@ theorem resultProg_spec
     wp «module» (LimitEntry.resultProg ++ rest) Q st base env := by
   rcases hResult with
     ⟨hParams, hLocals, hValues, hStatus, hBook, hTrades⟩
-  have hStatusValue : base.locals[31] = .i64 0 := by
-    apply Option.some.inj
-    calc
-      some base.locals[31] = base.locals[31]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 0) := hStatus
-  have hBookValue : base.locals[32] = .i64 (data.g0 + 48) := by
-    apply Option.some.inj
-    calc
-      some base.locals[32] = base.locals[32]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 (data.g0 + 48)) := hBook
-  have hTradesValue : base.locals[33] = .i64 data.trades := by
-    apply Option.some.inj
-    calc
-      some base.locals[33] = base.locals[33]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 data.trades) := hTrades
+  have hStatusValue : base.locals[31] = .i64 0 := getElem_of_some hStatus
+  have hBookValue : base.locals[32] = .i64 (data.g0 + 48) := getElem_of_some hBook
+  have hTradesValue : base.locals[33] = .i64 data.trades := getElem_of_some hTrades
   simp only [LimitEntry.resultProg, List.cons_append, List.nil_append]
   simp (config := { maxSteps := 10000000 })
     [wp_simp, Locals.get, hParams, hLocals, hValues, hStatusValue,

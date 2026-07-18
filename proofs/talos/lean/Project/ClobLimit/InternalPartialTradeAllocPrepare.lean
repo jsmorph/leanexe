@@ -77,24 +77,9 @@ theorem partialTradeAllocPrepareProg_spec
       (InternalTradeBump.allocFrame base (fixedArrayBytesU n 4) 0 g1
         capacity next 0) env) :
     wp «module» (partialTradeAllocPrepareProg ++ rest) Q st base env := by
-  have hLengthGet : base.locals[48] = .i64 (UInt64.ofNat n) := by
-    apply Option.some.inj
-    calc
-      some base.locals[48] = base.locals[48]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 (UInt64.ofNat n)) := hLengthLocal
-  have hCapacityGet : base.locals[60] = .i64 capacity := by
-    apply Option.some.inj
-    calc
-      some base.locals[60] = base.locals[60]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 capacity) := hCapacityLocal
-  have hNextGet : base.locals[61] = .i64 next := by
-    apply Option.some.inj
-    calc
-      some base.locals[61] = base.locals[61]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 next) := hNextLocal
+  have hLengthGet : base.locals[48] = .i64 (UInt64.ofNat n) := getElem_of_some hLengthLocal
+  have hCapacityGet : base.locals[60] = .i64 capacity := getElem_of_some hCapacityLocal
+  have hNextGet : base.locals[61] = .i64 next := getElem_of_some hNextLocal
   have hRound : (fixedArrayBytesU n 4 + 7) / 8 * 8 =
       fixedArrayBytesU n 4 :=
     fixedArrayBytesU_round n 4 hn (by decide) hbytes

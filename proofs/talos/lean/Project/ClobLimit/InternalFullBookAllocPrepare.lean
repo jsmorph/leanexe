@@ -77,24 +77,9 @@ theorem fullBookAllocPrepareProg_spec
       (InternalFullBookBump.allocFrame base (fixedArrayBytesU n 5) 0 g1
         capacity next 0) env) :
     wp «module» (fullBookAllocPrepareProg ++ rest) Q st base env := by
-  have hLengthGet : base.locals[50] = .i64 (UInt64.ofNat n) := by
-    apply Option.some.inj
-    calc
-      some base.locals[50] = base.locals[50]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 (UInt64.ofNat n)) := hLengthLocal
-  have hCapacityGet : base.locals[58] = .i64 capacity := by
-    apply Option.some.inj
-    calc
-      some base.locals[58] = base.locals[58]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 capacity) := hCapacityLocal
-  have hNextGet : base.locals[59] = .i64 next := by
-    apply Option.some.inj
-    calc
-      some base.locals[59] = base.locals[59]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 next) := hNextLocal
+  have hLengthGet : base.locals[50] = .i64 (UInt64.ofNat n) := getElem_of_some hLengthLocal
+  have hCapacityGet : base.locals[58] = .i64 capacity := getElem_of_some hCapacityLocal
+  have hNextGet : base.locals[59] = .i64 next := getElem_of_some hNextLocal
   have hRound : (fixedArrayBytesU n 5 + 7) / 8 * 8 =
       fixedArrayBytesU n 5 :=
     fixedArrayBytesU_round n 5 hn (by decide) hbytes

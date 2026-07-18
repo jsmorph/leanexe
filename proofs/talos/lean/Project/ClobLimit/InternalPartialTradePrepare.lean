@@ -141,36 +141,11 @@ theorem partialTradePrepareProg_spec
       (partialTradePrepareFrame base newBook oldBook oldTrades taker os[i]!
         remaining i ts) env) :
     wp «module» (partialTradePrepareProg ++ rest) Q st base env := by
-  have hTakerGet : base.params[1] = .i64 taker.oid := by
-    apply Option.some.inj
-    calc
-      some base.params[1] = base.params[1]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 taker.oid) := hTakerLocal
-  have hBookGet : base.params[7] = .i64 oldBook := by
-    apply Option.some.inj
-    calc
-      some base.params[7] = base.params[7]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 oldBook) := hBookLocal
-  have hTradesGet : base.params[9] = .i64 oldTrades := by
-    apply Option.some.inj
-    calc
-      some base.params[9] = base.params[9]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 oldTrades) := hTradesLocal
-  have hRemainingGet : base.params[10] = .i64 remaining := by
-    apply Option.some.inj
-    calc
-      some base.params[10] = base.params[10]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 remaining) := hRemainingLocal
-  have hIndexGet : base.locals[14] = .i64 (UInt64.ofNat i) := by
-    apply Option.some.inj
-    calc
-      some base.locals[14] = base.locals[14]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 (UInt64.ofNat i)) := hIndexLocal
+  have hTakerGet : base.params[1] = .i64 taker.oid := getElem_of_some hTakerLocal
+  have hBookGet : base.params[7] = .i64 oldBook := getElem_of_some hBookLocal
+  have hTradesGet : base.params[9] = .i64 oldTrades := getElem_of_some hTradesLocal
+  have hRemainingGet : base.params[10] = .i64 remaining := getElem_of_some hRemainingLocal
+  have hIndexGet : base.locals[14] = .i64 (UInt64.ofNat i) := getElem_of_some hIndexLocal
   have hBookLengthRead :
       st.mem.read64 (UInt32.ofNat (oldBook.toNat % 4294967296)) =
         UInt64.ofNat os.length := hOrders.1.1

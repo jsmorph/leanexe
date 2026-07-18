@@ -141,32 +141,12 @@ theorem replaceCopyProg_spec
         wp «module» rest Q st1
           (replaceCopyFrame base target (os.length * 5)) env) :
     wp «module» (replaceCopyProg ++ rest) Q st0 base env := by
-  have hSourceGet : base.locals[57] = .i64 source := by
-    apply Option.some.inj
-    calc
-      some base.locals[57] = base.locals[57]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 source) := hSourceLocal
+  have hSourceGet : base.locals[57] = .i64 source := getElem_of_some hSourceLocal
   have hLengthGet : base.locals[59] =
-      .i64 (UInt64.ofNat os.length) := by
-    apply Option.some.inj
-    calc
-      some base.locals[59] = base.locals[59]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 (UInt64.ofNat os.length)) := hLengthLocal
+      .i64 (UInt64.ofNat os.length) := getElem_of_some hLengthLocal
   have hTotalGet : base.locals[60] =
-      .i64 (UInt64.ofNat os.length * 5) := by
-    apply Option.some.inj
-    calc
-      some base.locals[60] = base.locals[60]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 (UInt64.ofNat os.length * 5)) := hTotalLocal
-  have hTargetGet : base.locals[75] = .i64 target := by
-    apply Option.some.inj
-    calc
-      some base.locals[75] = base.locals[75]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 target) := hTargetLocal
+      .i64 (UInt64.ofNat os.length * 5) := getElem_of_some hTotalLocal
+  have hTargetGet : base.locals[75] = .i64 target := getElem_of_some hTargetLocal
   simp only [replaceCopyProg, List.cons_append, List.nil_append]
   wp_run_replace (hParams, hLocals, hValues, hSourceGet, hLengthGet, hTotalGet,
     hTargetGet)

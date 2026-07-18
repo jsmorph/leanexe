@@ -110,36 +110,11 @@ theorem residualFinishProg_spec
         (List.getElem?_eq_getElem (by omega)).symm
       _ = some (.i64 (UInt64.ofNat ctx.result.book.length)) :=
         hCopy.orderLocals.length
-  have hTarget : base.locals[38] = .i64 (data.g0 + 48) := by
-    apply Option.some.inj
-    calc
-      some base.locals[38] = base.locals[38]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 (data.g0 + 48)) := hCopy.target
-  have hOid : base.locals[40] = .i64 order.oid := by
-    apply Option.some.inj
-    calc
-      some base.locals[40] = base.locals[40]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 order.oid) := hCopy.orderLocals.fields.oid
-  have hTrader : base.locals[41] = .i64 order.otrader := by
-    apply Option.some.inj
-    calc
-      some base.locals[41] = base.locals[41]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 order.otrader) := hCopy.orderLocals.fields.trader
-  have hSide : base.locals[42] = .i64 order.oside := by
-    apply Option.some.inj
-    calc
-      some base.locals[42] = base.locals[42]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 order.oside) := hCopy.orderLocals.fields.side
-  have hPrice : base.locals[43] = .i64 order.oprice := by
-    apply Option.some.inj
-    calc
-      some base.locals[43] = base.locals[43]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 order.oprice) := hCopy.orderLocals.fields.price
+  have hTarget : base.locals[38] = .i64 (data.g0 + 48) := getElem_of_some hCopy.target
+  have hOid : base.locals[40] = .i64 order.oid := getElem_of_some hCopy.orderLocals.fields.oid
+  have hTrader : base.locals[41] = .i64 order.otrader := getElem_of_some hCopy.orderLocals.fields.trader
+  have hSide : base.locals[42] = .i64 order.oside := getElem_of_some hCopy.orderLocals.fields.side
+  have hPrice : base.locals[43] = .i64 order.oprice := getElem_of_some hCopy.orderLocals.fields.price
   have hRemaining : base.locals[44] = .i64 ctx.result.remaining := by
     apply Option.some.inj
     calc
@@ -147,12 +122,7 @@ theorem residualFinishProg_spec
         (List.getElem?_eq_getElem (by omega)).symm
       _ = some (.i64 ctx.result.remaining) :=
         hCopy.orderLocals.fields.remaining
-  have hTrades : base.locals[23] = .i64 data.trades := by
-    apply Option.some.inj
-    calc
-      some base.locals[23] = base.locals[23]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 data.trades) := hCopy.orderLocals.fields.tradesResult
+  have hTrades : base.locals[23] = .i64 data.trades := getElem_of_some hCopy.orderLocals.fields.tradesResult
   have hLengthNat : (UInt64.ofNat ctx.result.book.length).toNat =
       ctx.result.book.length := toNat_ofNat_lt (by omega)
   simp only [LimitEntry.residualFinishProg, LimitEntry.residualStoreProg,

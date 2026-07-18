@@ -84,12 +84,7 @@ theorem residualAllocPrepareProg_spec
   have hLocals := hOrder.fields.locals
   have hValues := hOrder.fields.values
   have hAppendLength : base.locals[37] =
-      .i64 (UInt64.ofNat (n + 1)) := by
-    apply Option.some.inj
-    calc
-      some base.locals[37] = base.locals[37]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 (UInt64.ofNat (n + 1))) := hOrder.appendLength
+      .i64 (UInt64.ofNat (n + 1)) := getElem_of_some hOrder.appendLength
   have hLength' : n + 1 < UInt64.size := by simpa [n] using hLength
   have hBytes' : orderArrayBytes (n + 1) + 7 < UInt64.size := by
     simpa [n] using hBytes

@@ -96,30 +96,10 @@ theorem missingStoreProg_spec
   have hValues' : base.values = [] := by
     exact hValues
   have hLength' : base.locals[11] =
-      .i64 (UInt64.ofNat levels.length) := by
-    apply Option.some.inj
-    calc
-      some base.locals[11] = base.locals[11]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 (UInt64.ofNat levels.length)) := hLength
-  have hTarget' : base.locals[14] = .i64 target := by
-    apply Option.some.inj
-    calc
-      some base.locals[14] = base.locals[14]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 target) := hTarget
-  have hPrice' : base.locals[16] = .i64 price := by
-    apply Option.some.inj
-    calc
-      some base.locals[16] = base.locals[16]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 price) := hPrice
-  have hQty' : base.locals[17] = .i64 qty := by
-    apply Option.some.inj
-    calc
-      some base.locals[17] = base.locals[17]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 qty) := hQty
+      .i64 (UInt64.ofNat levels.length) := getElem_of_some hLength
+  have hTarget' : base.locals[14] = .i64 target := getElem_of_some hTarget
+  have hPrice' : base.locals[16] = .i64 price := getElem_of_some hPrice
+  have hQty' : base.locals[17] = .i64 qty := getElem_of_some hQty
   have hLengthNat : (UInt64.ofNat levels.length).toNat = levels.length :=
     toNat_ofNat_lt (by omega)
   simp only [Entry.missingStoreProg, copyLoopFrame, List.cons_append,

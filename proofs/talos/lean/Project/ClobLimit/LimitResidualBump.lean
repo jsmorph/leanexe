@@ -51,12 +51,7 @@ theorem residualAllocSearchProg_empty
   have hParams := hAlloc.orderLocals.fields.params
   have hLocals := hAlloc.orderLocals.fields.locals
   have hValues := hAlloc.orderLocals.fields.values
-  have hCurrent : base.locals[49] = .i64 0 := by
-    apply Option.some.inj
-    calc
-      some base.locals[49] = base.locals[49]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 0) := hAlloc.current
+  have hCurrent : base.locals[49] = .i64 0 := getElem_of_some hAlloc.current
   simp only [LimitEntry.residualAllocSearchProg, List.cons_append,
     List.nil_append]
   apply wp_block_cons
@@ -104,18 +99,8 @@ theorem residualAllocBumpProg_spec
   have hParams := hAlloc.orderLocals.fields.params
   have hLocals := hAlloc.orderLocals.fields.locals
   have hValues := hAlloc.orderLocals.fields.values
-  have hNeed : base.locals[47] = .i64 need := by
-    apply Option.some.inj
-    calc
-      some base.locals[47] = base.locals[47]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 need) := hAlloc.need
-  have hResult : base.locals[52] = .i64 0 := by
-    apply Option.some.inj
-    calc
-      some base.locals[52] = base.locals[52]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 0) := hAlloc.result
+  have hNeed : base.locals[47] = .i64 need := getElem_of_some hAlloc.need
+  have hResult : base.locals[52] = .i64 0 := getElem_of_some hAlloc.result
   simp only [LimitEntry.residualAllocBumpProg, List.cons_append,
     List.nil_append]
   wp_run_bump (hParams, hLocals, hValues, hNeed, hResult)

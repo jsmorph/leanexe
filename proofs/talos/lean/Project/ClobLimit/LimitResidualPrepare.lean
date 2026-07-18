@@ -125,12 +125,7 @@ theorem residualLengthProg_spec
   have hParams := hFields.params
   have hLocals := hFields.locals
   have hValues := hFields.values
-  have hSource : base.locals[34] = .i64 data.book := by
-    apply Option.some.inj
-    calc
-      some base.locals[34] = base.locals[34]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 data.book) := hFields.source
+  have hSource : base.locals[34] = .i64 data.book := getElem_of_some hFields.source
   have hLengthRead := hOutput.bookOwned.2.1.1
   have hLengthBound := hOutput.bookOwned.2.1.2
   simp only [LimitEntry.residualLengthProg, List.cons_append,

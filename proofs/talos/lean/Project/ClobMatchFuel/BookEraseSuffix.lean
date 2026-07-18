@@ -158,26 +158,11 @@ theorem eraseSuffixProg_spec
     wp «module» (eraseSuffixProg ++ rest) Q st1
       (eraseCopyFrame base need previous current capacity next target
         prefixWords) env := by
-  have hSourceGet : base.locals[57] = .i64 source := by
-    apply Option.some.inj
-    calc
-      some base.locals[57] = base.locals[57]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 source) := hSourceLocal
+  have hSourceGet : base.locals[57] = .i64 source := getElem_of_some hSourceLocal
   have hPrefixGet : base.locals[60] =
-      .i64 (UInt64.ofNat prefixWords) := by
-    apply Option.some.inj
-    calc
-      some base.locals[60] = base.locals[60]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 (UInt64.ofNat prefixWords)) := hPrefixLocal
+      .i64 (UInt64.ofNat prefixWords) := getElem_of_some hPrefixLocal
   have hSuffixGet : base.locals[61] =
-      .i64 (UInt64.ofNat suffixWords) := by
-    apply Option.some.inj
-    calc
-      some base.locals[61] = base.locals[61]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 (UInt64.ofNat suffixWords)) := hSuffixLocal
+      .i64 (UInt64.ofNat suffixWords) := getElem_of_some hSuffixLocal
   simp only [eraseSuffixProg, List.cons_append, List.nil_append,
     eraseCopyFrame, BookAllocSearch.bookAllocSearchFrame]
   wp_run_suffix (hParams, hLocals, hSourceGet, hPrefixGet,

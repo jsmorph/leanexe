@@ -252,24 +252,9 @@ theorem partialBookPrefixProg_spec
     (hDone : wp «module» rest Q st
       (partialBookGuardFrame base book remaining os i) env) :
     wp «module» (partialBookPrefixProg ++ rest) Q st base env := by
-  have hBookGet : base.params[7] = .i64 book := by
-    apply Option.some.inj
-    calc
-      some base.params[7] = base.params[7]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 book) := hBookLocal
-  have hIndexGet : base.locals[14] = .i64 (UInt64.ofNat i) := by
-    apply Option.some.inj
-    calc
-      some base.locals[14] = base.locals[14]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 (UInt64.ofNat i)) := hIndexLocal
-  have hRemainingGet : base.params[10] = .i64 remaining := by
-    apply Option.some.inj
-    calc
-      some base.params[10] = base.params[10]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 remaining) := hRemainingLocal
+  have hBookGet : base.params[7] = .i64 book := getElem_of_some hBookLocal
+  have hIndexGet : base.locals[14] = .i64 (UInt64.ofNat i) := getElem_of_some hIndexLocal
+  have hRemainingGet : base.params[10] = .i64 remaining := getElem_of_some hRemainingLocal
   have hLengthRead :
       st.mem.read64 (UInt32.ofNat (book.toNat % 4294967296)) =
         UInt64.ofNat os.length := hOrders.1.1

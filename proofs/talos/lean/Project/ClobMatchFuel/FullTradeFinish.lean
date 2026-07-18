@@ -89,24 +89,9 @@ theorem fullTradeFinishProg_spec
       (fullTradeFinishFrame base newTrades oldBook i remaining os[i]!.oqty)
       env) :
     wp «module» (fullTradeFinishProg ++ rest) Q st base env := by
-  have hRemainingGet : base.locals[9] = .i64 remaining := by
-    apply Option.some.inj
-    calc
-      some base.locals[9] = base.locals[9]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 remaining) := hRemainingLocal
-  have hBookGet : base.locals[6] = .i64 oldBook := by
-    apply Option.some.inj
-    calc
-      some base.locals[6] = base.locals[6]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 oldBook) := hBookLocal
-  have hIndexGet : base.locals[24] = .i64 (UInt64.ofNat i) := by
-    apply Option.some.inj
-    calc
-      some base.locals[24] = base.locals[24]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 (UInt64.ofNat i)) := hIndexLocal
+  have hRemainingGet : base.locals[9] = .i64 remaining := getElem_of_some hRemainingLocal
+  have hBookGet : base.locals[6] = .i64 oldBook := getElem_of_some hBookLocal
+  have hIndexGet : base.locals[24] = .i64 (UInt64.ofNat i) := getElem_of_some hIndexLocal
   have hBookLengthRead :
       st.mem.read64 (UInt32.ofNat (oldBook.toNat % 4294967296)) =
         UInt64.ofNat os.length := hOrders.1.1

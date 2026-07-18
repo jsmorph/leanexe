@@ -150,19 +150,9 @@ theorem func3_spec
     intro st1 hResult final hLocals
     have hFinalLen : final.locals.length = 26 := hLocals.locals
     have hOwner' : final.locals[8] =
-        .i64 (MissingBranchFacts.target g0) := by
-      apply Option.some.inj
-      calc
-        some final.locals[8] = final.locals[8]? :=
-          (List.getElem?_eq_getElem (by omega)).symm
-        _ = some (.i64 (MissingBranchFacts.target g0)) := hLocals.owner
+        .i64 (MissingBranchFacts.target g0) := getElem_of_some hLocals.owner
     have hPointer' : final.locals[9] =
-        .i64 (MissingBranchFacts.target g0) := by
-      apply Option.some.inj
-      calc
-        some final.locals[9] = final.locals[9]? :=
-          (List.getElem?_eq_getElem (by omega)).symm
-        _ = some (.i64 (MissingBranchFacts.target g0)) := hLocals.pointer
+        .i64 (MissingBranchFacts.target g0) := getElem_of_some hLocals.pointer
     simp (config := { maxSteps := 10000000 }) [wp_simp,
       hLocals.params, hLocals.locals, hOwner', hPointer',
       Locals.get, List.take, List.drop]
@@ -181,19 +171,9 @@ theorem func3_spec
     intro st1 hResult final hLocals
     have hFinalLen : final.locals.length = 26 := hLocals.locals
     have hOwner' : final.locals[8] =
-        .i64 (FoundBranchFacts.target g0) := by
-      apply Option.some.inj
-      calc
-        some final.locals[8] = final.locals[8]? :=
-          (List.getElem?_eq_getElem (by omega)).symm
-        _ = some (.i64 (FoundBranchFacts.target g0)) := hLocals.owner
+        .i64 (FoundBranchFacts.target g0) := getElem_of_some hLocals.owner
     have hPointer' : final.locals[9] =
-        .i64 (FoundBranchFacts.target g0) := by
-      apply Option.some.inj
-      calc
-        some final.locals[9] = final.locals[9]? :=
-          (List.getElem?_eq_getElem (by omega)).symm
-        _ = some (.i64 (FoundBranchFacts.target g0)) := hLocals.pointer
+        .i64 (FoundBranchFacts.target g0) := getElem_of_some hLocals.pointer
     simp (config := { maxSteps := 10000000 }) [wp_simp,
       hLocals.params, hLocals.locals, hOwner', hPointer',
       Locals.get, List.take, List.drop]

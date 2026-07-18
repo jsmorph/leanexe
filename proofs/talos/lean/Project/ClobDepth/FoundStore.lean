@@ -75,30 +75,10 @@ theorem foundStoreProg_spec
   have hState := hInvariant.at_end hLocals hTotalU hTotal64
   have hValues' : base.values = [] := by
     exact hValues
-  have hIndex' : base.locals[11] = .i64 (UInt64.ofNat i) := by
-    apply Option.some.inj
-    calc
-      some base.locals[11] = base.locals[11]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 (UInt64.ofNat i)) := hIndex
-  have hTarget' : base.locals[14] = .i64 target := by
-    apply Option.some.inj
-    calc
-      some base.locals[14] = base.locals[14]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 target) := hTarget
-  have hPrice' : base.locals[16] = .i64 price := by
-    apply Option.some.inj
-    calc
-      some base.locals[16] = base.locals[16]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 price) := hPrice
-  have hQty' : base.locals[17] = .i64 newQty := by
-    apply Option.some.inj
-    calc
-      some base.locals[17] = base.locals[17]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 newQty) := hQty
+  have hIndex' : base.locals[11] = .i64 (UInt64.ofNat i) := getElem_of_some hIndex
+  have hTarget' : base.locals[14] = .i64 target := getElem_of_some hTarget
+  have hPrice' : base.locals[16] = .i64 price := getElem_of_some hPrice
+  have hQty' : base.locals[17] = .i64 newQty := getElem_of_some hQty
   have hIndexNat : (UInt64.ofNat i).toNat = i :=
     toNat_ofNat_lt (by omega)
   simp only [Entry.foundStoreProg, copyLoopFrame, List.cons_append,
