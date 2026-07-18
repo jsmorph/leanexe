@@ -29,12 +29,50 @@ Each phase pays on its own, and the project can stop after any of them.
 | Phase | Work | Gate |
 |-------|------|------|
 | 0 | Finish the proof-infrastructure overhaul: shared instruction-theorem library, clone consolidation, slow-module divisions, all gates green. | Aggregate proof and execution gates. |
-| 1 | Promote the IR evaluator to a specification (fuel-based relational semantics or a blessed evaluation function), add a well-formedness predicate, settle the `nat` semantics. | The 62 IR comparison cases restated as Lean examples against the specification. |
+| 0.5 | Restructure the emitter: `emit : IR.Module → Wasm.Module` with serialization split off, validated by byte-identical output for all twenty cases; add the per-module `rfl` round-trip gate. | Byte-identical regeneration plus the new gate on all cases. |
+| 1 | Author the IR semantics: keep the scalar evaluator, add the executable heap interpreter with the value domain, refcount ghost state, and per-constructor ownership conventions; add well-formedness; settle `nat`. | The 62 scalar comparisons as Lean examples, and the heap interpreter validated against the Wasmtime differential suite. |
 | 2 | Define one `represents` relation by recursion on `Ty`, covering products, sums, structs, variants, and recursive variants; state the ownership discipline as one invariant.  The recursive case builds on the `RelTree` ownership-tree work. | Prove `OrdersAt`, `LevelsAt`, and `TradesAt` equivalent to instances of the generic relation. |
 | 3 | Restate the shared theorems over IR constructors: allocator, copy loops, folds, searches, and the calling convention through `TerminatesWith`; one emitter template per constructor, scalars first, loop intrinsics in dependency order. | Focused warning-failing build per template. |
 | 4 | The back-end theorem: structural induction over `Expr` and `Stmt` gluing the templates, with a module-level budget function.  Module division discipline applies from the first file, because the elaboration cost of the induction is the known engineering hazard. | Focused build of the induction modules; the theorem statement reviewed against the scope qualifications. |
 | 5 | Front-end certificates: compile-time generation of `evalIR (extract f) = f` by reflection, wired into the Talos tools as a third gate, with a recorded fallback to differential testing where kernel reduction is too slow. | Certificates for all twenty registered cases. |
 | 6 | Re-derive the twenty artifact theorems from the compiler theorem plus their source-property modules; retire the per-artifact instruction proofs. | Aggregate gate over the re-derived theorems. |
+
+## Detailed Design Findings
+
+Reading the pipeline in depth changes three parts of the plan.
+
+### The IR has no heap semantics yet
+
+The existing IR evaluator is scalar-only.  `LeanExe.Extract.Eval` gates evaluation behind `scalarModule`, and the evaluation state in `LeanExe.IR.Core` is `Store` over `Array UInt64` local slots.  The scalar constructs — arithmetic, conditionals, lets, calls, `while`, `seq`, and the range and loop folds — evaluate today, and the 62 IR comparison cases cover exactly this fragment.  Every heap construct (the array and byte-array families, `heapAllocSlots`, `release`) has no IR-level meaning.  Phase 1 is therefore authorship, and its content is larger than the original plan implied: an executable heap interpreter over a deep value domain (scalars, arrays, structs, variants), refcount ghost state, and the per-constructor ownership conventions — which values each construct consumes and which it borrows.  Those conventions exist operationally in `Extract.OwnershipReport` and `Extract.ReleaseCheck` and must be transcribed into the semantics.  The adequacy risk concentrates here: if a convention in the semantics disagrees with what the emitter implements, the mismatch surfaces late, in phase 3 templates.  Mitigation: run the heap interpreter against the Wasmtime differential suite as soon as it exists, before any proof depends on it.
+
+### The emitter needs restructuring before proof
+
+`LeanExe.Wasm.Binary.encode : IR.Module → Except String ByteArray` fuses code generation with binary serialization in 3,652 lines, and the verification pipeline reads the module back through `wasm-tools print` and the Talos decoder — an external tool inside the semantic path.  The back-end theorem should instead be stated over an explicit `emit : IR.Module → Wasm.Module` targeting the Talos module type, with `encode = serialize ∘ emit`.  The proof then lives inside Lean, and the external round trip becomes a per-module gate check: at artifact-generation time, compare the Talos-decoded model against `emit`'s output by `rfl`.  That check removes `wasm-tools` and the decoder from the semantic trusted base, leaving them only in the byte-serialization path.  The restructuring is a compiler refactor and must be validated the way the workflow migration was: byte-identical output for all twenty registered cases before any proof work starts.  This is a new phase between 0 and 1.
+
+### Simulation shape
+
+The IR statement layer is imperative (`assign`, `seq`, `ite`, `while`, fused fold-assigns), so the back-end proof is a forward simulation, and the simulation relation carries the compiler's slot map: IR local slot to WASM local index, plus the representation relation for heap slots and the allocator state.  Stating the IR semantics fuel-based and big-step, in the style of `TerminatesWith`, lets each template lemma discharge its obligation with the existing `wp` machinery — the loop templates are `wp_loop_cons` invariant proofs where the invariant is the simulation relation at the loop head, exactly the shape of the depth fold proof.  No per-program invariants appear anywhere; program-specific reasoning ends at phase 5 certificates.
+
+### Template inventory
+
+| Constructor class | Count | Proof shape | Existing asset |
+|-------------------|-------|-------------|----------------|
+| Scalar expressions and conditions (`u64Bin`, `ite`, `eqU64`, `ltU64`, `leU64`, `not`, `and`, `or`, literals, locals) | 15 | Direct `wp` stepping | The instruction simp set |
+| Lets, calls, statements (`letE`, `letCall`, `letLets`, `assign`, `seq`, `ite`, `skip`, `call`) | 8 | Frame plumbing plus `wp_call_tw` | Function 3 and 6 call compositions |
+| `while`, range and loop folds | 5 | Loop simulation invariant | The depth fold loop and copy loops |
+| Allocation and release (`heapAllocSlots`, `arrayAllocSlots`, `release`, replicate) | 4 | Allocator templates | `FixedArrayAllocation`, the empty-allocation adapter, `release_frees_tree` |
+| Array intrinsics (get, set, push, pop, append, extract, map, fold, find, filter, insert, erase, swap, reverse, eq, any, size, literal) | 18 | Loop simulation with allocation | Copy invariants, append and replace store facts |
+| Byte-array intrinsics | 9 | Same, byte-granularity | `BytesAt`, validate and LEB proofs |
+
+The array and byte-array rows are the mass, as estimated; the new information is that each fused intrinsic also fixes an ownership convention that phase 1 must state and phase 3 must match.
+
+### Certificates for heap-typed entries
+
+Scalar entries certify as `evalIR (extract f) args = f args` by reflection today.  Heap-typed entries need encode and decode functions per `Ty` between Lean values and the interpreter's value domain, and the certificate becomes `decode (evalIRHeap (extract f) (encode args)) = f args`.  Both sides stay executable, so `decide`-style checking remains available; kernel-reduction performance on large inputs is the open question, and the recorded fallback is the differential suite.  The `nat` overflow policy applies at the encode boundary: certificates for `Nat`-using entries state their no-overflow side conditions there, in one place.
+
+### Budget function
+
+Each allocating template contributes a byte cost; the budget is the composition over the program structure, computed by a total function `B : IRFunc → Nat → Nat` from input sizes.  The depth analysis shows what coarseness costs: bounding distinct-price counts by order counts made the artifact budget quadratic where the tight bound is data-dependent.  The compiler-level budget inherits this: budgets are worst-case over the type structure, and consumers needing tight bounds state them per program.  The `memoryGrow` path stays excluded until a consumer requires unbounded growth; the templates assert the fit premise exactly as the artifact proofs do.
 
 ## Decision Points
 
