@@ -39,8 +39,6 @@ const limitedPrefix = [
   "MemorySwapMax=1G",
   "-p",
   "CPUQuota=100%",
-  "-p",
-  "AllowedCPUs=0",
   "nice",
   "-n",
   "10",
@@ -67,11 +65,14 @@ function run(stage, command, args, options = {}) {
 }
 
 function runLimited(stage, timeout, command, args, cwd) {
+  // LEAN_NUM_THREADS=1 serializes Lake's job scheduling: Lake runs
+  // builds on Lean's task pool, and several multi-gibibyte workers in
+  // one constrained scope thrash against the memory threshold.
   run(
     stage,
     "systemd-run",
     [...limitedPrefix, "timeout", timeout, command, ...args],
-    { cwd },
+    { cwd, env: { ...process.env, LEAN_NUM_THREADS: "1" } },
   );
 }
 
