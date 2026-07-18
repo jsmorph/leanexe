@@ -59,8 +59,7 @@ theorem negIterLemma (env : HostEnv Unit) (st stL : Store Unit)
         (UInt64.ofNat k) 0 0 0 0 e) :
     wp «module» negProg POST stL sL env := by
   subst hsL
-  have hkU : (UInt64.ofNat k).toNat = k :=
-    toNat_ofNat_lt (by rw [size_eq]; omega)
+  have hkU : (UInt64.ofNat k).toNat = k := by u64_omega
   have hcap8 : (UInt64.ofNat k + 1 + 7) / 8 * 8 = (8 : UInt64) := by
     apply UInt64.toNat.inj
     rw [UInt64.toNat_mul, UInt64.toNat_div, UInt64.toNat_add,
@@ -200,8 +199,7 @@ theorem negIterLemma (env : HostEnv Unit) (st stL : Store Unit)
   try wp_run
   try simp
   have hcap : ¬ ((UInt64.ofNat k + 1 + 7) / 8 * 8 < (8 : UInt64)) := by
-    have hkU : (UInt64.ofNat k).toNat = k :=
-      toNat_ofNat_lt (by rw [size_eq]; omega)
+    have hkU : (UInt64.ofNat k).toNat = k := by u64_omega
     rw [UInt64.lt_iff_toNat_lt, UInt64.toNat_mul, UInt64.toNat_div,
       UInt64.toNat_add, UInt64.toNat_add, hkU]
     rw [show (1 : UInt64).toNat = 1 from rfl,
@@ -349,8 +347,7 @@ theorem negIterLemma (env : HostEnv Unit) (st stL : Store Unit)
             omega)]
         exact hloL a ha
     · rintro stC sC ⟨j, hjk, rfl, hglC, hpgC, hdst, hsrc, hloC⟩
-      have hjU : (UInt64.ofNat j).toNat = j :=
-        toNat_ofNat_lt (by rw [size_eq]; omega)
+      have hjU : (UInt64.ofNat j).toNat = j := by u64_omega
       by_cases hjend : j = k
       · subst hjend
         simp only [cFrameNeg]
