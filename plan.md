@@ -6,7 +6,7 @@ LeanExe should compile useful first-order Lean programs into small WebAssembly a
 
 The [proof engineering notes](docs/plan-notes.md) record reusable lemmas, instruction-proof patterns, elaboration boundaries, and candidate tactics for this work.  The plan owns required results and work order, while the notes own techniques for establishing those results.  Review both documents when beginning or completing a substantial proof boundary.
 
-Correctness has three layers.  Differential tests compare standard Lean, the IR interpreter where it applies, and Wasmtime; artifact checks compare regenerated WASM and WAT byte-for-byte with proof inputs; Talos proves quantified properties of decoded shipped instructions.  Each claim must identify its layer and retain the trusted-base boundary described in [Verifying a Program](docs/verifying.md).
+Correctness has three layers.  Differential tests compare standard Lean, the IR interpreter where it applies, and Wasmtime; artifact generation derives a Talos model from current source and compiler output; Talos proves quantified properties of those decoded instructions.  Each claim must identify its layer and retain the trusted-base boundary described in [Verifying a Program](docs/verifying.md).
 
 LeanExe runtime intrinsics require a separate semantic statement.  Ordinary Lean evaluates `LeanExe.Runtime.release` and the runtime counters as stubs, while generated WASM gives them memory-management behavior.  Programs that use those intrinsics cannot claim ordinary Lean equivalence for the intrinsic observations; they require the extended runtime semantics defined in Phase 1 and artifact-level evidence for the emitted implementation.
 
@@ -17,7 +17,7 @@ LeanExe runtime intrinsics require a separate semantic statement.  Ordinary Lean
 | Accepted language | First-order pure programs over scalars, byte arrays, fixed-width arrays, structures, tagged values, internal recursive values, supported loops, and selected specialized helpers.  Runtime intrinsics have separate ordinary-Lean and generated-WASM semantics, and every accepted explicit release has a compiler-produced direct-handoff judgment. | Branch-dependent roots, conditionally owned arrays, consuming parameters, structure fields, and loop-carried release roots remain deferred until a focused ownership analysis proves them. |
 | Compiler | Checked-environment extraction, a typed first-order IR with an interpreter, ownership summaries, a reference-counted heap, and one structured WASM instruction stream serialized as binary or WAT.  Array search matches bind one encoded scan result before projecting the tag and payload.  Exported natural-number recursion initializes its internal carried state from the public ABI, materializes aggregate state once, and tracks only loop-created owners. | The remaining CLOB export requiring an input-generic proof is `depth`. |
 | Execution tests | The complete gate passes 791 accepted cases, 45 rejections, 14 traps, 340 standard-Lean comparisons, 62 IR comparisons, 41 reference-counting cases, 9 CLI failure cases, 3 process-launch error cases, and the matched-value IR and WAT assertions. | The IR interpreter does not model heap allocation, release, or runtime counters. |
-| Artifact proofs | Nineteen completed byte-pinned proof cases exist, including the self-compiled LEB128 encoder and exact CLOB quote, cancel, `findBest`, `postOnly`, `matchFuel`, `limit`, and `market` behavior.  The source matcher has exact step and natural-number quantity-conservation theorems. | `depth` remains unproved. |
+| Artifact proofs | Nineteen completed proof cases regenerate their current WASM models before checking, including the self-compiled LEB128 encoder and exact CLOB quote, cancel, `findBest`, `postOnly`, `matchFuel`, `limit`, and `market` behavior.  The source matcher has exact step and natural-number quantity-conservation theorems. | `depth` remains unproved. |
 | Documentation and tools | The current documents identify all nineteen checked proof cases as complete.  The compiler and proof workspaces pin Lean 4.31.0, Node pins 24.13.0, `wasm-tools` pins 1.251.0, Wasmtime 44.0.0 archives have checked hashes, repository instructions constrain every Lean process, CLI failures use tested statuses and contextual stderr records, and Talos artifact comparisons run before a separate proof-freshness check. | Artifact regeneration left the aggregate proof object stale.  `Validate.Spec`, `SharedPair.Spec`, and both LEB iteration targets require the planned proof divisions before another build; several shorter transitive targets also need refreshes. |
 
 The baseline was checked on 2026-07-16.  The untracked `leanclob/` directory is a separate nested Git repository and remains outside this plan.  Update this table in the same change that alters a stated fact.
@@ -28,7 +28,7 @@ Keep one representation and one implementation for each semantic operation.  The
 
 Accepted programs must fail closed.  An unsupported source form must stop compilation with a message that identifies the command, entry, relevant declaration or expression, and violated restriction.  Memory ownership, evaluation order, ABI layout, traps, and integer bounds are semantic behavior and require focused tests whenever they change.
 
-Keep changes narrow.  A compiler change should include its smallest source fixture, an IR or ownership assertion, an execution comparison, a rejection case when applicable, a documentation edit, and review of affected artifact bytes.  Discuss dependencies, trusted-base changes, and representation choices before implementation.
+Keep changes narrow.  A compiler change should include its smallest source fixture, an IR or ownership assertion, an execution comparison, a rejection case when applicable, a documentation edit, and review of affected generated instructions.  Discuss dependencies, trusted-base changes, and representation choices before implementation.
 
 ## Work Order
 
@@ -67,7 +67,7 @@ The change should target repeated value extraction rather than add a general com
 - [x] Confirm through `dump-ir` and WAT that CLOB `cancel` contains one identifier scan.
 - [x] Review every changed Talos artifact before updating a proof input.
 
-This phase completed on 2026-07-13.  The full execution suite and aggregate Talos gate pass, including the WAT assertions and every affected byte-pinned artifact.  The reviewed cancel diff removes two scan loops, adds one encoded-index local, and retains the found-branch allocation and copy loops with renumbered locals; the related statement-level branch change also reduced the quote artifact after its proof was updated.
+This phase completed on 2026-07-13.  The full execution suite and aggregate Talos gate passed at completion, including the WAT assertions and every affected artifact proof.  The reviewed cancel diff removes two scan loops, adds one encoded-index local, and retains the found-branch allocation and copy loops with renumbered locals; the related statement-level branch change also reduced the quote artifact after its proof was updated.
 
 ### 3. Prove Complete Cancel Behavior
 
@@ -77,9 +77,9 @@ Regenerate the CLOB cancel artifact after the single-evaluation fix, then prove 
 - [x] Add the index-recording scan lemma needed by the found branch.
 - [x] Prove the inline allocation, header initialization, and both element-copy loops for `eraseIdx!`.
 - [x] State the returned owner, array length, elements, runtime counters, and unchanged-memory region for each branch.
-- [x] Run `tools/check-talos-clob-cancel.sh`, `tools/check-talos.sh`, and `node test/run_all.js`.
+- [x] Run the focused cancel proof gate, aggregate Talos gate, and `node test/run_all.js`.
 
-This phase completed on 2026-07-13 with one `cancel_correct` theorem covering found and missing identifiers.  The proof uses only the standard axioms already present in the workspace and contains no `sorry`, new axiom, or unchecked artifact replacement.  The proof README names the complete theorem, and the focused cancel check, aggregate proof build, and complete execution suite pass.
+This phase completed on 2026-07-13 with one `cancel_correct` theorem covering found and missing identifiers.  The proof uses only the standard axioms already present in the workspace and contains no `sorry`, new axiom, or edited generated model.  The proof README names the complete theorem, and the focused cancel check, aggregate proof build, and complete execution suite passed at completion.
 
 ### 4. Prove the Remaining CLOB Kernel
 
@@ -110,7 +110,7 @@ The `matchFuel` proof now has a list-level source model, a source-defined full-f
 
 The `limit` step completed on 2026-07-16.  `ClobLimit.LimitCorrect.func21_correct` covers invalid, fully filled, partially filled, and unfilled inputs and proves that the three returned pointers and status represent `Model.limitL` exactly.  Its outcome cases retain borrowed or owned array distinctions, allocator globals and counters, unchanged pages, and the relevant memory frames.  The residual branch uses a stated reserve for its final stride-five allocation above the matcher heap limit.
 
-The proof divides generated control at call, branch, allocation, copy, and final-result boundaries and keeps source progress, ownership, and memory facts in separately compiled predicates.  Shared fixed-array allocation, copy-state, outside-region, and arithmetic lemmas replace repeated instruction-level reasoning.  `Project.ClobLimit.Spec` passes `--wfail`, the byte-pinned artifact reproduces exactly, and `market` is the next CLOB proof.
+The proof divides generated control at call, branch, allocation, copy, and final-result boundaries and keeps source progress, ownership, and memory facts in separately compiled predicates.  Shared fixed-array allocation, copy-state, outside-region, and arithmetic lemmas replace repeated instruction-level reasoning.  `Project.ClobLimit.Spec` passes `--wfail`, its focused artifact generation reproduces the proved model, and `market` is the next CLOB proof.
 
 The `market` step completed on 2026-07-16.  `ClobMarket.Correct.func21_correct` proves that every represented valid or invalid input returns pointers representing the exact source `marketL` status, book, and trades.  Region certificates transport the complete matcher, validity, and status-helper theorems from `clob_limit`, while separate exported branch theorems prove the unlimited-price valid result and the invalid empty-trade allocation.  The outcome predicate retains owned matcher results or the invalid branch's borrowed book, owned empty trades, exact allocator globals, unchanged pages, and below-heap memory frame.
 
@@ -153,7 +153,7 @@ Pin every tool that can change generated or decoded artifacts.  Record and enfor
 - [x] Define and test CLI failure categories, exit statuses, stdout use, and stderr context.
 - [x] Pin and check Node and `wasm-tools` without adding a package dependency solely for version checking.
 - [x] Add checked Wasmtime archive hashes for every supported release artifact and platform.
-- [x] Separate cold dependency setup from concise gate summaries so build volume cannot hide a failed comparison.
+- [x] Make the Talos tools fetch and build the pinned verifier when absent, then report each generation or proof stage by case.
 - [x] Remove the known `AsciiDigits.lean` warning in a focused change that preserves behavior.
 - [x] Preserve command, launch, status, signal, and output context when JavaScript test processes fail.
 - [ ] Remove proof warnings during substantive proof rebuilds, using focused checks that preserve behavior; defer warning-only elaboration when it exceeds the resource-limited diagnostic timeout.
@@ -167,8 +167,8 @@ Pin every tool that can change generated or decoded artifacts.  Record and enfor
 | Documentation only | `git diff --check`, local-link review, and command review for every changed example. |
 | Source example | Targeted Lake build, the relevant execution test, and a standard-Lean comparison when the entry has ordinary source semantics. |
 | Diagnostic behavior | Targeted status and stderr assertions, report-classification tests, and `lake build lean-wasm`. |
-| Extraction, IR, ownership, ABI, or WASM emission | Targeted fixtures, `node test/run_all.js`, `tools/check-wat.sh`, and `tools/check-talos.sh`. |
-| Artifact proof | The per-case script during iteration, `tools/check-talos.sh` before completion, and the source entry's execution test. |
+| Extraction, IR, ownership, ABI, or WASM emission | Targeted fixtures, `node test/run_all.js`, `tools/check-wat.sh`, and `tools/talos-proof.js check --all`. |
+| Artifact proof | `tools/talos-proof.js check <case>` during iteration, `tools/talos-proof.js check --all` before completion, and the source entry's execution test. |
 | Toolchain or artifact-producing tool | Full execution and proof gates, artifact-byte review, documented versions and checksums, and trusted-base review. |
 
 The standard comparison runner should gain a quiet summary mode and timing by entry.  Reuse one compiled artifact for repeated inputs only after a trace proves that the cache key includes the module, entry, adapter mode, compiler binary, and ABI bounds.  This maintenance remains secondary unless test duration blocks semantic work.
@@ -177,8 +177,8 @@ The standard comparison runner should gain a quiet summary mode and timing by en
 
 After the next stable point and after the CLOB helper boundaries stabilize, prove lowering correctness for the scalar fragment shared by `gcd`, `order_book`, CLOB scans, and CLOB decision logic.  The fragment should cover locals, calls, 64-bit operations, conditionals, lets, structured loops, and traps, relating IR evaluation to the Talos execution model.  Existing artifact theorems remain the shipping guarantee while this theorem reduces repeated instruction proofs.
 
-The representation choice requires discussion before implementation.  A direct translation from the compiler's structured `Wasm.Instr` and module values to Talos values permits a universally quantified theorem, while byte-pinned artifact checks continue to connect generated binaries to decoded shipped code.  The proposal must state the additional trusted code, agreement with Talos decoding, and exact supported fragment before adding the boundary.
+The representation choice requires discussion before implementation.  A direct translation from the compiler's structured `Wasm.Instr` and module values to Talos values permits a universally quantified theorem, while the proof gate continues to regenerate the binary and Talos model from the current source.  The proposal must state the additional trusted code, agreement with Talos decoding, and exact supported fragment before adding the boundary.
 
 ## Completion Criteria
 
-This plan reaches its next stable point when runtime-intrinsic semantics are explicit, every accepted release has a checked direct-handoff justification, matched values evaluate once, and CLOB `cancel`, `findBest`, `postOnly`, `matchFuel`, `limit`, `market`, and `depth` have input-generic Talos theorems tied to shipped bytes.  The execution suite, WAT round trip, ownership checks, CLI failure tests, and all artifact proofs must pass with enforced Node, `wasm-tools`, Lean, Talos, and Wasmtime versions.  The specification, manual, developer guide, proof inventory, plan, and journal must agree with the implementation and state the evidence supporting each claim.
+This plan reaches its next stable point when runtime-intrinsic semantics are explicit, every accepted release has a checked direct-handoff justification, matched values evaluate once, and CLOB `cancel`, `findBest`, `postOnly`, `matchFuel`, `limit`, `market`, and `depth` have input-generic Talos theorems over current generated artifacts.  The execution suite, WAT round trip, ownership checks, CLI failure tests, and all artifact proofs must pass with enforced Node, `wasm-tools`, Lean, Talos, and Wasmtime versions.  The specification, manual, developer guide, proof inventory, plan, and journal must agree with the implementation and state the evidence supporting each claim.
