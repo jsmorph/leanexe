@@ -188,12 +188,9 @@ theorem cancel_found
   have hi : i < os.length := by
     unfold idIdx at hFound
     exact (List.findIdx?_eq_some_iff_findIdx_eq.mp hFound).1
-  have hiU : (UInt64.ofNat i).toNat = i :=
-    toNat_ofNat_lt (by rw [size_eq]; omega)
-  have hlenU : (UInt64.ofNat os.length).toNat = os.length :=
-    toNat_ofNat_lt (by rw [size_eq]; omega)
-  have houtU : (UInt64.ofNat (os.length - 1)).toNat = os.length - 1 :=
-    toNat_ofNat_lt (by rw [size_eq]; omega)
+  have hiU : (UInt64.ofNat i).toNat = i := by u64_omega
+  have hlenU : (UInt64.ofNat os.length).toNat = os.length := by u64_omega
+  have houtU : (UInt64.ofNat (os.length - 1)).toNat = os.length - 1 := by u64_omega
   have hlenSub : UInt64.ofNat os.length - 1 =
       UInt64.ofNat (os.length - 1) := by
     apply UInt64.toNat.inj
@@ -503,8 +500,7 @@ theorem cancel_found
             omega
         · rintro st3 s3
             ⟨k, hk, rfl, hpg, hgl, hfresh, hlength, hlo, hfixed, hcurrent⟩
-          have hkU : (UInt64.ofNat k).toNat = k :=
-            toNat_ofNat_lt (by rw [size_eq]; omega)
+          have hkU : (UInt64.ofNat k).toNat = k := by u64_omega
           simp only [cCopyFrame]
           wp_run
           try simp
@@ -530,8 +526,7 @@ theorem cancel_found
             · rintro st4 s4
                 ⟨k, hk, rfl, hpg4, hgl4, hfresh4, hlength4, hlo4, hprefix,
                   hsuffix⟩
-              have hkU : (UInt64.ofNat k).toNat = k :=
-                toNat_ofNat_lt (by rw [size_eq]; omega)
+              have hkU : (UInt64.ofNat k).toNat = k := by u64_omega
               simp only [cCopyFrame]
               wp_run
               try simp

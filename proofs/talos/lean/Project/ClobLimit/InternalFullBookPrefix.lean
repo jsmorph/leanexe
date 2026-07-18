@@ -18,17 +18,6 @@ open Wasm Project.Common Project.Clob Project.ClobLimit
 set_option maxHeartbeats 8000000
 set_option maxRecDepth 1048576
 
-macro "wp_run_prefix" "(" hParams:term "," hLocals:term ","
-    hValues:term "," hSource:term "," hPrefix:term ","
-    hLength:term ")" : tactic => `(tactic|
-  simp (config := { maxSteps := 10000000 }) [wp_simp,
-    Locals.get, Locals.set?, Locals.validIndex,
-    Function.toLocals, Function.numParams, Function.numLocals,
-    List.take, List.drop, List.replicate, List.length, List.map,
-    List.length_set, List.getElem?_set,
-    Nat.reduceAdd, Nat.reduceLT, Nat.reduceLeDiff, Nat.reduceSub,
-    ValueType.zero, List.headD, ($hParams), ($hLocals), ($hValues),
-    ($hSource), ($hPrefix), ($hLength)])
 
 def prefixCopyFrame (base : Locals)
     (need previous current capacity next target : UInt64)
@@ -159,8 +148,7 @@ theorem fullBookPrefixProg_spec
   have hLengthGet : base.locals[50] = .i64 newLength := getElem_of_some hLengthLocal
   simp only [fullBookPrefixProg, List.cons_append, List.nil_append,
     InternalFullBookBump.allocFrame]
-  wp_run_prefix (hParams, hLocals, hValues, hSourceGet, hPrefixGet,
-    hLengthGet)
+  wp_run_with [hParams, hLocals, hValues, hSourceGet, hPrefixGet, hLengthGet]
   simp only [hg2]
   have hLengthBound : target.toNat % 4294967296 + 8 ≤
       st0.mem.pages * 65536 := by
@@ -196,8 +184,7 @@ theorem fullBookPrefixProg_spec
       toNat_ofNat_lt (by omega)
     simp only [fullBookPrefixBodyProg, prefixCopyFrame,
       InternalFullBookBump.allocFrame]
-    wp_run_prefix (hParams, hLocals, hValues, hSourceGet, hPrefixGet,
-      hLengthGet)
+    wp_run_with [hParams, hLocals, hValues, hSourceGet, hPrefixGet, hLengthGet]
     by_cases hwordEnd : word = prefixWords
     · have hge : UInt64.ofNat word ≥ UInt64.ofNat prefixWords := by
         rw [ge_iff_le, UInt64.le_iff_toNat_le, hwordU, hPrefixU]

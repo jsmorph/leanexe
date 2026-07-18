@@ -154,8 +154,7 @@ theorem pushBangSize_correct : PushSizeSpec := by
   have hszN_ge8 : 8 ≤ allocSize (bytes.length + 1) := by
     unfold allocSize
     omega
-  have hlenU : (UInt64.ofNat bytes.length).toNat = bytes.length :=
-    toNat_ofNat_lt (by rw [size_eq]; omega)
+  have hlenU : (UInt64.ofNat bytes.length).toNat = bytes.length := by u64_omega
   have hadd17 : (UInt64.ofNat bytes.length + 1 + 7).toNat = bytes.length + 8 := by
     rw [UInt64.toNat_add, UInt64.toNat_add, hlenU]
     have h1 : (1 : UInt64).toNat = 1 := rfl
@@ -341,8 +340,7 @@ theorem pushBangSize_correct : PushSizeSpec := by
             read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
             Mem.read64_write64_same]
       · rintro st2 s2 ⟨k, hk, rfl, hpg, hgl, hlo, hpref, hh0, hh8, hh16, hh24⟩
-        have hkU : (UInt64.ofNat k).toNat = k :=
-          toNat_ofNat_lt (by rw [size_eq]; omega)
+        have hkU : (UInt64.ofNat k).toNat = k := by u64_omega
         simp only [vFrame]
         wp_run
         try simp
@@ -408,15 +406,15 @@ theorem pushBangSize_correct : PushSizeSpec := by
             exact hh24
           · dsimp only
             rw [hgl]
-            simp [List.getElem?_set, hgnil, hg0len, hg1len, hg2len, hg4len, hglen]
+            simp [hg1len]
             exact (List.getElem?_eq_some_iff.mp hg1).choose_spec
           · dsimp only
             rw [hgl]
-            simp [List.getElem?_set, hgnil, hg0len, hg1len, hg2len, hg4len, hglen]
+            simp [hg4len]
             exact (List.getElem?_eq_some_iff.mp hg4).choose_spec
           · dsimp only
             rw [hgl]
-            simp [List.getElem?_set, hgnil, hg0len, hg1len, hg2len, hg4len, hglen]
+            simp [hglen]
             exact (List.getElem?_eq_some_iff.mp hg5).choose_spec
           rintro st3 vs ⟨rfl, hmem3, hgl3⟩
           rw [hb40, hb8] at hmem3
@@ -427,17 +425,17 @@ theorem pushBangSize_correct : PushSizeSpec := by
           refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
           · simp [func0Def]
           · rw [hgl3]
-            simp [List.getElem?_set, hgnil, hg0len, hg1len, hg2len, hg4len, hglen]
+            simp [hg0len]
           · rw [hgl3]
-            simp [List.getElem?_set, hgnil, hg0len, hg1len, hg2len, hg4len, hglen]
+            simp [hg1len]
           · rw [hgl3]
-            simp [List.getElem?_set, hg2, hgnil, hg0len, hg1len, hg2len, hg4len, hglen]
+            simp [hg2len]
           · rw [hgl3]
-            simp [List.getElem?_set, hgnil, hg0len, hg1len, hg2len, hg4len, hglen]
+            simp
           · rw [hgl3]
-            simp [List.getElem?_set, hg4, hgnil, hg0len, hg1len, hg2len, hg4len, hglen]
+            simp [hg4len]
           · rw [hgl3]
-            simp [List.getElem?_set, hg5, hgnil, hg0len, hg1len, hg2len, hg4len, hglen]
+            simp [hglen]
           · rw [hmem3]
             rw [read64_write64_ne _ _ _ _
               (by simp only [toUInt32_ofNat_mod_toNat]; omega),

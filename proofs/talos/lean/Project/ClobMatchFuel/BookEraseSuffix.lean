@@ -18,17 +18,6 @@ open Wasm Project.Common Project.Clob Project.ClobMatchFuel
 set_option maxHeartbeats 8000000
 set_option maxRecDepth 1048576
 
-macro "wp_run_suffix" "(" hParams:term "," hLocals:term ","
-    hSource:term "," hPrefix:term ","
-    hSuffix:term ")" : tactic => `(tactic|
-  simp (config := { maxSteps := 10000000 }) [wp_simp,
-    Locals.get, Locals.set?, Locals.validIndex,
-    Function.toLocals, Function.numParams, Function.numLocals,
-    List.take, List.drop, List.replicate, List.length, List.map,
-    List.length_set, List.getElem?_set,
-    Nat.reduceAdd, Nat.reduceLT, Nat.reduceLeDiff, Nat.reduceSub,
-    ValueType.zero, List.headD, ($hParams), ($hLocals),
-    ($hSource), ($hPrefix), ($hSuffix)])
 
 def eraseSuffixInv (st0 : Store Unit) (base : Locals)
     (need previous current capacity next target source g2 arrayCapacity newLength : UInt64)
@@ -165,8 +154,7 @@ theorem eraseSuffixProg_spec
       .i64 (UInt64.ofNat suffixWords) := getElem_of_some hSuffixLocal
   simp only [eraseSuffixProg, List.cons_append, List.nil_append,
     eraseCopyFrame, BookAllocSearch.bookAllocSearchFrame]
-  wp_run_suffix (hParams, hLocals, hSourceGet, hPrefixGet,
-    hSuffixGet)
+  wp_run_with [hParams, hLocals, hSourceGet, hPrefixGet, hSuffixGet]
   apply wp_block_cons
   apply wp_loop_cons
     (Inv := eraseSuffixInv st0 base need previous current capacity next target
@@ -183,8 +171,7 @@ theorem eraseSuffixProg_spec
       toNat_ofNat_lt (by omega)
     simp only [eraseSuffixBodyProg, eraseCopyFrame,
       BookAllocSearch.bookAllocSearchFrame]
-    wp_run_suffix (hParams, hLocals, hSourceGet, hPrefixGet,
-      hSuffixGet)
+    wp_run_with [hParams, hLocals, hSourceGet, hPrefixGet, hSuffixGet]
     by_cases hwordEnd : word = suffixWords
     · have hge : UInt64.ofNat word ≥ UInt64.ofNat suffixWords := by
         rw [ge_iff_le, UInt64.le_iff_toNat_le, hwordU, hSuffixU]

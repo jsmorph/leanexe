@@ -70,8 +70,7 @@ theorem func5_spec (env : HostEnv Unit) (st : Store Unit) (ptr id : UInt64)
       [.i64 id, .i64 ptr, .i64 0]
       (fun st' vs => vs = [.i64 (boolWord (hasIdL os id))] ∧ st' = st) := by
   obtain ⟨⟨hHead, hHeadB⟩, hElems⟩ := hInput
-  have hlenU : (UInt64.ofNat os.length).toNat = os.length :=
-    toNat_ofNat_lt (by rw [size_eq]; omega)
+  have hlenU : (UInt64.ofNat os.length).toNat = os.length := by u64_omega
   apply TerminatesWith.of_wp_entry_for (f := func5Def)
   · simp [«module»]
   · change wp «module» func5 _ st
@@ -111,8 +110,7 @@ theorem func5_spec (env : HostEnv Unit) (st : Store Unit) (ptr id : UInt64)
         0, 0, 0, 0, 0, rfl⟩
     · rintro st2 s2 ⟨rfl, k, hk, hclean, f3, f4, f5, f6, f7, f8,
         g16, g17, g18, g19, g20, rfl⟩
-      have hkU : (UInt64.ofNat k).toNat = k :=
-        toNat_ofNat_lt (by rw [size_eq]; omega)
+      have hkU : (UInt64.ofNat k).toNat = k := by u64_omega
       wp_run
       try simp
       by_cases hkend : k = os.length

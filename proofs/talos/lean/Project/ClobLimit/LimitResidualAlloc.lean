@@ -136,13 +136,7 @@ theorem residualAllocFinishProg_spec
   have hLocals := hBump.orderLocals.fields.locals
   have hValues := hBump.orderLocals.fields.values
   have hLength : base.locals[37] =
-      .i64 (UInt64.ofNat (ctx.result.book.length + 1)) := by
-    apply Option.some.inj
-    calc
-      some base.locals[37] = base.locals[37]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 (UInt64.ofNat (ctx.result.book.length + 1))) :=
-        hBump.orderLocals.appendLength
+      .i64 (UInt64.ofNat (ctx.result.book.length + 1)) := getElem_of_some hBump.orderLocals.appendLength
   have hResult : base.locals[52] = .i64 (g0 + 48) := getElem_of_some hBump.result
   have hg2' : st1.globals.globals[2]? = some (.i64 g2) := by
     exact fixedArrayAllocBumpStore_global_of_ne_zero st g0 need 5 2

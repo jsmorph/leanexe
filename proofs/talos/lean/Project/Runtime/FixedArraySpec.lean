@@ -101,10 +101,8 @@ theorem release_frees_fixed_array_zero_mask
         omega)]
     rw [show (8 : UInt32).toNat = 8 from rfl, toUInt32_toNat]
     omega
-  have hlenU : (UInt64.ofNat len).toNat = len :=
-    toNat_ofNat_lt (by rw [size_eq]; omega)
-  have hstrideU : (UInt64.ofNat stride).toNat = stride :=
-    toNat_ofNat_lt (by rw [size_eq]; omega)
+  have hlenU : (UInt64.ofNat len).toNat = len := by u64_omega
+  have hstrideU : (UInt64.ofNat stride).toNat = stride := by u64_omega
   refine TerminatesWith.of_wp_entry_for hf ?_ hImp
   change wp m (releaseBody id) _ st
     { params := [.i64 p],
@@ -186,8 +184,7 @@ theorem release_frees_fixed_array_zero_mask
   · refine ⟨0, 0, Nat.zero_le _, ?_, rfl, rfl⟩
     simp [fixedFrame]
   · rintro stL sL ⟨i, j, hile, rfl, hmemL, hglobalsL⟩
-    have hiU : (UInt64.ofNat i).toNat = i :=
-      toNat_ofNat_lt (by rw [size_eq]; omega)
+    have hiU : (UInt64.ofNat i).toNat = i := by u64_omega
     simp only [fixedFrame]
     wp_run
     try simp
@@ -242,8 +239,7 @@ theorem release_frees_fixed_array_zero_mask
       · refine ⟨0, Nat.zero_le _, ?_, hmemL, hglobalsL⟩
         simp [fixedFrame]
       · rintro stI sI ⟨k, hkle, rfl, hmemI, hglobalsI⟩
-        have hkU : (UInt64.ofNat k).toNat = k :=
-          toNat_ofNat_lt (by rw [size_eq]; omega)
+        have hkU : (UInt64.ofNat k).toNat = k := by u64_omega
         simp only [fixedFrame]
         wp_run
         try simp
