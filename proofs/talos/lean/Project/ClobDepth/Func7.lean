@@ -71,8 +71,7 @@ theorem func7_terminates
   have hTop1_32 : foldTop os 0 g0.toNat os.length < 4294967296 := by
     omega
   have hT1 : (UInt64.ofNat (foldTop os 0 g0.toNat os.length)).toNat =
-      foldTop os 0 g0.toNat os.length :=
-    toNat_ofNat_lt (by rw [size_eq]; omega)
+      foldTop os 0 g0.toNat os.length := by u64_omega
   refine TerminatesWith.of_wp_entry_for (f := func7Def) ?_ ?_
   · simp [«module»]
   · change wp «module» Project.ClobDepth.func7 _ st
@@ -115,12 +114,10 @@ theorem func7_terminates
     have hCap0Bytes := foldCap_bytes os 0 os.length
     have hRoot0Nat :
         (UInt64.ofNat (foldRoot os 0 g0.toNat os.length)).toNat =
-        foldRoot os 0 g0.toNat os.length :=
-      toNat_ofNat_lt (by rw [size_eq]; omega)
+        foldRoot os 0 g0.toNat os.length := by u64_omega
     have hCap0Nat :
         (UInt64.ofNat (foldCap os 0 os.length)).toNat =
-        foldCap os 0 os.length :=
-      toNat_ofNat_lt (by rw [size_eq]; omega)
+        foldCap os 0 os.length := by u64_omega
     have hBidsBase : OwnedLevelArrayAt st1
         (UInt64.ofNat (foldRoot os 0 g0.toNat os.length))
         (UInt64.ofNat (foldCap os 0 os.length))
