@@ -8,11 +8,11 @@ LeanExe has completed the runtime-ownership, single-evaluation, and CLOB `cancel
 
 Measured by planned milestones, the next stable point is about 83 percent complete.  That estimate counts three completed plan phases, five completed exports in the remaining CLOB phase, and one complete generated level-update branch inside `depth`.  The estimate does not predict elapsed time because the found update path, per-side fold, exported two-call composition, and aggregate-proof refresh contain most of the remaining semantic integration.
 
-The missing-price append path has a complete theorem from its scan frame through its owned appended-array result.  It verifies preparation, the stated empty-free-list search, bump allocation, finalization, word copying, stores, result locals, allocator globals, source ownership, pages, and the below-heap byte frame.  No failing proof is committed, and the aggregate proof object remains stale after artifact regeneration and cache removal.
+The missing-price append path has a complete theorem from its scan frame through its owned appended-array result.  It verifies preparation, the stated empty-free-list search, bump allocation, finalization, word copying, stores, result locals, allocator globals, source ownership, pages, and the below-heap byte frame.  The new aggregate gate regenerates every artifact but currently exposes two stale `ClobPostOnly` helper proofs before it can finish the complete proof build.
 
 ## Repository State
 
-The repository is on `main`, and the latest completed proof increment is `1ba780c` (`Prove depth missing-price branch`).  Both the compiler and proof workspaces select `leanprover/lean4:v4.31.0` through their respective `lean-toolchain` files.  The checked-in depth artifact exists and is pinned, while its complete exported correctness theorem remains open.
+The repository is on `main`, and the latest completed proof increment is `1ba780c` (`Prove depth missing-price branch`).  Commits `0efee4a`, `89ae1e1`, `2230fac`, and `fec035e` renamed the proof workspace, added and refined the two-tool workflow, and removed tracked generated artifacts and Cargo scaffolding.  Both compiler and proof workspaces select `leanprover/lean4:v4.31.0`, while the complete depth theorem remains open.
 
 | Item | Current state | Evidence |
 |------|---------------|----------|
@@ -20,11 +20,11 @@ The repository is on `main`, and the latest completed proof increment is `1ba780
 | Latest proof increment | `1ba780c Prove depth missing-price branch` | Committed 2026-07-17 proof increment |
 | Compiler Lean | Lean 4.31.0 | Root `lean-toolchain` |
 | Talos proof Lean | Lean 4.31.0 | `proofs/talos/lean/lean-toolchain` |
-| Depth artifact | Registered and tracked | 3,602-byte WASM and checked-in WAT |
-| Aggregate Talos proof object | Stale | Requires a planned, divided rebuild |
+| Depth artifact | Registered; generated locally | `cases.json` plus ignored 3,602-byte WASM, WAT, and `Program.lean` |
+| Aggregate Talos proof object | Failing rebuild | Type mismatches in `ClobPostOnly.AppendTradeStore` and `ClobPostOnly.AppendOrderAlloc` |
 | Unrelated directory | `leanclob/` is untracked and separate | Nested Git repository; excluded from this work |
 
-All proof edits through the missing-price final stores are committed.  The unrelated `leanclob/` nested repository remains untracked and excluded from this work.  No incomplete Lean theorem or failing proof file is present in the worktree.
+All proof edits through the missing-price final stores are committed.  The unrelated `leanclob/` nested repository and the unfinished untracked `Project/ClobDepth/FoundPrepare.lean` remain excluded from this workflow migration.  The aggregate failures occur in tracked proof modules and require focused proof repair before the complete gate can pass.
 
 ### Recent Committed Increments
 
@@ -47,10 +47,14 @@ The recent commits divide the depth proof at meaningful semantic boundaries.  Ea
 | `7a9605e` | Prove depth missing-level stores | Proved the generated final stores and exact result-local assignments. |
 | `873a04d` | Prove depth missing-branch facts | Connected allocation finalization to copy initialization and transported the final semantic state to the input allocator state. |
 | `1ba780c` | Prove depth missing-price branch | Composed the complete generated branch with exact ownership, allocator, page, byte-frame, and result-local facts. |
+| `0efee4a` | Rename Talos proof workspace | Renamed `proofs/talos-gcd` to `proofs/talos` without changing theorem content. |
+| `89ae1e1` | Add Talos artifact and proof tools | Added the validated twenty-case registry and two internally constrained tools. |
+| `2230fac` | Remove tracked Talos build artifacts | Removed Cargo scaffolding, generated models, WASM, WAT, and obsolete case wrappers after byte-for-byte regeneration. |
+| `fec035e` | Harden Talos workflow checks | Improved verifier bootstrap and filesystem diagnostics while preserving the existing warning policy. |
 
 ## Completed Work
 
-The current plan requires three kinds of evidence: differential execution tests, byte-pinned artifacts, and Talos theorems over decoded WASM.  The compiler remains outside the Talos trusted base because each theorem proves a decoded generated artifact and the check script compares that artifact byte-for-byte with the checked-in WASM and WAT.  The [verification guide](verifying.md) describes this boundary and the [Talos proof inventory](../proofs/talos/README.md) records the completed theorem scopes.
+The current plan requires three kinds of evidence: differential execution tests, regenerated artifacts, and Talos theorems over decoded WASM.  The compiler remains outside the Talos trusted base because the proof tool regenerates the current WASM, WAT, and decoded model before Lean checks the handwritten theorem.  The [verification guide](verifying.md) describes this boundary and the [Talos proof inventory](../proofs/talos/README.md) records the completed theorem scopes.
 
 ### Plan Phases
 
@@ -65,19 +69,19 @@ The current plan requires three kinds of evidence: differential execution tests,
 
 The complete execution baseline recorded on 2026-07-16 passed 791 accepted cases, 45 rejections, 14 traps, 340 standard-Lean comparisons, 62 IR comparisons, 41 reference-counting cases, 9 CLI failure cases, and 3 process-launch error cases.  The same baseline includes matched-value IR and WAT assertions.  These are historical gate results, not a claim that the complete suite was rerun after the present depth allocation split.
 
-Nineteen byte-pinned Talos cases are complete before `depth`.  They include the self-compiled unsigned LEB128 encoder, runtime allocation and teardown cases, and exact CLOB behavior for `quote`, `cancel`, `findBest`, `postOnly`, `matchFuel`, `limit`, and `market`.  The aggregate script first verifies all artifact bytes and then checks whether the proof workspace is current, which keeps a changed binary from being mistaken for a proof failure.
+Nineteen Talos cases are complete before `depth`.  They include the self-compiled unsigned LEB128 encoder, runtime allocation and teardown cases, and exact CLOB behavior for `quote`, `cancel`, `findBest`, `postOnly`, `matchFuel`, `limit`, and `market`.  The proof tool regenerates every registered model before the aggregate Lake build, so the theorem target always follows the current source and compiler.
 
 ### Documentation and Developer Guidance
 
 The documentation has clear ownership by subject.  [Developing LeanExe](../DEVELOPING.md) defines setup, versions, the development workflow, test gates, generated-file rules, failure diagnostics, and the required resource policy.  The [user manual](manual.md) defines source authoring, the [language specification](spec.md) defines accepted behavior, the [verification guide](verifying.md) defines the proof procedure, and the [Talos proof inventory](../proofs/talos/README.md) identifies checked cases and theorem scope.
 
-The developer guide names the pinned versions: Lean 4.31.0, Node 24.13.0, `wasm-tools` 1.251.0, and Wasmtime 44.0.0.  It documents the ordinary build, the separate Talos setup, the focused and aggregate proof gates, CLI statuses and stderr format, generated-file ownership, and troubleshooting.  It also makes the resource-limited `systemd-run` invocation mandatory for commands that invoke Lean, Lake, `lean-wasm`, or scripts that start them.
+The developer guide names the pinned versions: Lean 4.31.0, Node 24.13.0, `wasm-tools` 1.251.0, and Wasmtime 44.0.0.  It documents ordinary builds, the internally constrained Talos tools, focused and aggregate proof gates, CLI statuses and stderr format, generated-file ownership, and troubleshooting.  It also makes the resource-limited `systemd-run` invocation mandatory for every direct command that invokes Lean, Lake, or `lean-wasm`.
 
 The documentation still needs ordinary maintenance as the depth proof becomes complete.  The proof inventory must add `clob_depth` only after its theorem and case gate are complete, and the development plan and journal must change in the same commit.  This report provides a current snapshot and does not replace those authoritative documents.
 
 ## Depth Proof
 
-The generated `clob_depth` artifact is registered under `proofs/talos`.  Its WASM file is 3,602 bytes, its WAT is checked in, and `Project/ClobDepth/Program.lean` contains the generated Talos model.  Function 3 updates or appends one depth level, function 6 folds one side of the order book, function 7 implements the export, and the shared runtime functions follow those program functions.
+The generated `clob_depth` artifact is registered under `proofs/talos`.  Its ignored WASM file is 3,602 bytes, while its ignored WAT and `Project/ClobDepth/Program.lean` provide the current Talos model.  Function 3 updates or appends one depth level, function 6 folds one side of the order book, function 7 implements the export, and the shared runtime functions follow those program functions.
 
 The source proof work has established the data representation before entering the instruction proof.  `Project.ClobDepth.Representation` defines the stride-two layout for price and quantity levels and the owned fixed-array predicate.  `Project.ClobDepth.Properties` proves side filtering, first-occurrence price order, price uniqueness, exact modular per-price aggregation, and a natural-number interpretation when the stated no-overflow bound holds.
 
@@ -109,7 +113,7 @@ The source properties already identify reusable statements likely to reduce this
 
 Focused depth modules have been built one at a time under the required cgroup policy.  Recent focused builds completed in 1.9 seconds for the representation lemma, 2.7 seconds for the copy loop, 2.9 seconds for semantic final-store facts, 2.0 seconds for the final instruction theorem, and 1.1 seconds for `Project.ClobDepth.Spec`; the final two used `--wfail`.  No current focused depth target fails or approaches its 90-second diagnostic limit.
 
-The aggregate `Project` proof object is stale.  The planned divisions include `Project.Validate.Spec`, `Project.SharedPair.Spec`, `Project.LebU32.Iter`, and `Project.LebU32.NegIter`, with several shorter dependencies also needing refresh.  Earlier constrained builds of the long targets reached their diagnostic time limits, so they must be divided at instruction or theorem boundaries before another aggregate proof rebuild is attempted.
+The aggregate `Project` proof object does not build.  The 2026-07-17 gate reached type mismatches in `Project.ClobPostOnly.AppendTradeStore` and `Project.ClobPostOnly.AppendOrderAlloc` after shared fixed-array definitions changed, then stopped to avoid spending resources on dependent targets.  The planned divisions still include `Project.Validate.Spec`, `Project.SharedPair.Spec`, `Project.LebU32.Iter`, and `Project.LebU32.NegIter`, whose earlier constrained builds reached their diagnostic time limits.
 
 Mathlib cache removal freed disk space but means a cold proof setup can rebuild a large dependency graph.  A cold build is acceptable only through the constrained user scope and with no concurrent Lean or Lake activity.  The focused modules used for the current depth work have continued to build, so there is no evidence of a missing dependency or toolchain incompatibility at this boundary.
 
@@ -117,7 +121,7 @@ No external blocker prevents the next depth proof step.  The main technical risk
 
 ## Required Lean and Lake Resource Policy
 
-Every `lean`, `lake`, Lean compiler, `lean-wasm`, or script that starts one of those commands must run in a resource-limited transient user scope.  This includes `tools/setup-talos.sh`, `tools/check-talos.sh`, and `node test/run_all.js` when they invoke Lean or Lake.  Do not run two such jobs concurrently, including from separate terminals, because the policy limits one scope but cannot protect the machine from several scopes competing for memory and CPU.
+Every direct `lean`, `lake`, Lean compiler, `lean-wasm`, or script that starts one of those commands must run in a resource-limited transient user scope.  The two Talos tools apply these limits to each Lean-based child internally, while `node test/run_all.js` still requires an outer scope.  Do not run two such jobs concurrently, including from separate terminals, because separate scopes can compete for memory and CPU.
 
 Run the command from the directory that owns the relevant Lake workspace.  The proof workspace is `proofs/talos/lean`, while ordinary compiler builds run from the repository root.  The `timeout` must bound commands whose runtime is not intrinsically bounded, and a timeout without a diagnostic requires proof or module division before another attempt.
 
@@ -150,33 +154,15 @@ systemd-run --user --scope --quiet --collect \
   timeout 90s lake build Project.ClobDepth.MissingFields --wfail
 ```
 
-Use the same wrapper around a direct Lean invocation or a script that starts Lake.  Repository-level scripts start from the repository root, and a cold Talos setup needs a longer diagnostic budget than a focused module build.  Select the timeout from the known behavior of the named job, record a new limit in the development journal when it becomes routine, and never remove the cgroup properties to make a command finish.
+Use the same wrapper around a direct Lean invocation or a script that starts Lake.  Repository-level scripts start from the repository root, while the two Talos entry points create the wrapper themselves.  Select the timeout from the known behavior of the named job, record a new limit in the development journal when it becomes routine, and never remove the cgroup properties to make a command finish.
 
 ```sh
 cd /media/hd2/src/leanexe
-systemd-run --user --scope --quiet --collect \
-  -p MemoryHigh=4G \
-  -p MemoryMax=6G \
-  -p MemorySwapMax=1G \
-  -p CPUQuota=100% \
-  nice -n 10 ionice -c 3 \
-  timeout 30m tools/setup-talos.sh
+tools/talos-proof.js check gcd
+tools/talos-proof.js check --all
 ```
 
-The setup command can rebuild many cached dependency outputs after cache removal.  It still runs as one CPU-limited, memory-limited scope, and it must run alone.  A timeout without a specific error requires inspection of the next compilation boundary rather than another identical cold setup.
-
-```sh
-cd /media/hd2/src/leanexe
-systemd-run --user --scope --quiet --collect \
-  -p MemoryHigh=4G \
-  -p MemoryMax=6G \
-  -p MemorySwapMax=1G \
-  -p CPUQuota=100% \
-  nice -n 10 ionice -c 3 \
-  timeout 20m tools/check-talos.sh
-```
-
-The aggregate check compares every pinned artifact before it tests proof freshness.  The current aggregate proof object is stale, so this command is expected to reveal that state until the planned proof divisions and rebuilds are complete.  Do not treat a stale aggregate result as evidence that the focused depth modules have failed.
+The focused command generates one current model and builds one specification, while the aggregate command generates all twenty models before building `Project`.  Each expensive child runs in its own constrained scope, and the tools never start two stages concurrently.  The current aggregate command reaches the two recorded `ClobPostOnly` proof errors, while the focused GCD command passes.
 
 Do not substitute `ulimit -v`, `prlimit --as`, a background process, or an unbounded bare `lake build` for this policy.  If `systemd-run --user --scope` or any required cgroup property is unavailable, stop rather than running Lean without an enforced memory limit.  If a target reaches its timeout with no useful diagnostic, first divide its instruction program or theorem, or prove a reusable lemma that reduces the elaboration boundary.
 
