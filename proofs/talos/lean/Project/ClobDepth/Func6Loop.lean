@@ -192,8 +192,7 @@ theorem FoldState.step_match
   have hTop32' : foldTop os side g0n (k + 1) < 4294967296 := by omega
   have hTopGe := foldTop_ge os side g0n k
   have hTopNat : (UInt64.ofNat (foldTop os side g0n k)).toNat =
-      foldTop os side g0n k :=
-    toNat_ofNat_lt (by rw [size_eq]; omega)
+      foldTop os side g0n k := by u64_omega
   have hLevels1 : foldLevels os side (k + 1) =
       addLevelL (foldLevels os side k) os[k]!.oprice os[k]!.oqty := by
     rw [foldLevels_succ os side k hkos, if_pos hSide]
@@ -284,8 +283,7 @@ theorem FoldState.step_match
     rw [hTarget, hBytesU, ← hLevels1, ← hCapSucc] at hOwned
     exact hOwned
   · obtain ⟨ordersCapacity, hCap, hBelow⟩ := hOrdersCap
-    have hCapU : (UInt64.ofNat ordersCapacity).toNat = ordersCapacity :=
-      toNat_ofNat_lt (by rw [size_eq]; omega)
+    have hCapU : (UInt64.ofNat ordersCapacity).toNat = ordersCapacity := by u64_omega
     apply OrdersAt.frame_region hOrders32 hOrders48
       (capacity := UInt64.ofNat ordersCapacity)
       (by rw [hCapU]; exact hCap) hUpdate.pages ?_ hState.ordersRep
@@ -380,10 +378,8 @@ theorem foldLoop_spec
     (μ := foldMeasure count)
   · exact hInv
   · rintro st1 s1 ⟨k, hkle, hParamsEq, hLocals, hState⟩
-    have hkU : (UInt64.ofNat k).toNat = k :=
-      toNat_ofNat_lt (by rw [size_eq]; omega)
-    have hCountU : (UInt64.ofNat count).toNat = count :=
-      toNat_ofNat_lt (by rw [size_eq]; omega)
+    have hkU : (UInt64.ofNat k).toNat = k := by u64_omega
+    have hCountU : (UInt64.ofNat count).toNat = count := by u64_omega
     have hP := hLocals.params
     have hL := hLocals.locals
     have hV := hLocals.values
@@ -448,14 +444,11 @@ theorem foldLoop_spec
         have h2 : stepBytes count = 56 + 16 * count := rfl
         omega
       have hTopNat : (UInt64.ofNat (foldTop os side g0n k)).toNat =
-          foldTop os side g0n k :=
-        toNat_ofNat_lt (by rw [size_eq]; omega)
+          foldTop os side g0n k := by u64_omega
       have hRootNat : (UInt64.ofNat (foldRoot os side g0n k)).toNat =
-          foldRoot os side g0n k :=
-        toNat_ofNat_lt (by rw [size_eq]; omega)
+          foldRoot os side g0n k := by u64_omega
       have hCapNat : (UInt64.ofNat (foldCap os side k)).toNat =
-          foldCap os side k :=
-        toNat_ofNat_lt (by rw [size_eq]; omega)
+          foldCap os side k := by u64_omega
       have hkAdd : UInt64.ofNat k + 1 = UInt64.ofNat (k + 1) := by
         apply UInt64.toNat.inj
         rw [toNat_add_one (by rw [hkU, size_eq]; omega), hkU,
@@ -578,8 +571,7 @@ theorem foldLoop_spec
           apply UInt64.toNat.inj
           rw [hTarget48Nat, hOwnerSucc,
             toNat_ofNat_lt (by rw [size_eq]; omega)]
-        have hk1U : (UInt64.ofNat (k + 1)).toNat = k + 1 :=
-          toNat_ofNat_lt (by rw [size_eq]; omega)
+        have hk1U : (UInt64.ofNat (k + 1)).toNat = k + 1 := by u64_omega
         have hStep := FoldState.step_match hState hklt hkos hcount
           hCount32 hMatch hBudget32 hOrders32 hOrders48 hOrdersCap hUpd
         refine ⟨⟨k + 1, by omega, hParamsEq, ?_, hStep⟩, ?_⟩
@@ -622,8 +614,7 @@ theorem foldLoop_spec
             foldRoot os side g0n k := by
           simp only [foldRoot]
           rw [if_neg hMatch]
-        have hk1U : (UInt64.ofNat (k + 1)).toNat = k + 1 :=
-          toNat_ofNat_lt (by rw [size_eq]; omega)
+        have hk1U : (UInt64.ofNat (k + 1)).toNat = k + 1 := by u64_omega
         have hStep := FoldState.step_skip hState hkos hMatch
         refine ⟨⟨k + 1, by omega, hParamsEq, ?_, hStep⟩, ?_⟩
         · refine ⟨hP, by simp (config := { maxSteps := 10000000 })

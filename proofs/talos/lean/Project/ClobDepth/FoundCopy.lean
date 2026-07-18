@@ -19,17 +19,6 @@ open Wasm Project.Common Project.Clob Project.ClobDepth
 set_option maxHeartbeats 8000000
 set_option maxRecDepth 1048576
 
-macro "wp_run_found_copy" "(" hParams:term "," hLocals:term ","
-    hValues:term "," hSource:term "," hTotal:term ","
-    hTarget:term ")" : tactic => `(tactic|
-  simp (config := { maxSteps := 10000000 }) [wp_simp,
-    Locals.get, Locals.set?, Locals.validIndex,
-    Function.toLocals, Function.numParams, Function.numLocals,
-    List.take, List.drop, List.replicate, List.length, List.map,
-    List.length_set, List.getElem?_set,
-    Nat.reduceAdd, Nat.reduceLT, Nat.reduceLeDiff, Nat.reduceSub,
-    ValueType.zero, List.headD, ($hParams), ($hLocals), ($hValues),
-    ($hSource), ($hTotal), ($hTarget)])
 
 set_option Elab.async false in
 theorem foundCopyProg_spec
@@ -78,8 +67,7 @@ theorem foundCopyProg_spec
       toNat_ofNat_lt (by omega)
     simp only [Entry.foundCopyBodyProg,
       MissingCopyInvariant.copyLoopFrame]
-    wp_run_found_copy
-      (hParams, hLocals, hValues, hSource', hTotal', hTarget')
+    wp_run_with [hParams, hLocals, hValues, hSource', hTotal', hTarget']
     by_cases hEnd : word = levels.length * 2
     · have hge : UInt64.ofNat word ≥
           UInt64.ofNat levels.length * 2 := by

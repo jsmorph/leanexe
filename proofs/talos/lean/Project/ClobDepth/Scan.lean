@@ -68,8 +68,7 @@ theorem scanLoop_spec {env : HostEnv Unit} {st : Store Unit}
       (loopFrame owner ptr price qty (UInt64.ofNat levels.length) 0 0 0 0)
       env := by
   obtain ⟨-, hElems⟩ := hLevels
-  have hLengthU : (UInt64.ofNat levels.length).toNat = levels.length :=
-    toNat_ofNat_lt (by rw [size_eq]; omega)
+  have hLengthU : (UInt64.ofNat levels.length).toNat = levels.length := by u64_omega
   unfold Entry.scanLoopProg Entry.scanProg Project.ClobDepth.func3
   apply wp_block_cons
   apply wp_loop_cons
@@ -87,8 +86,7 @@ theorem scanLoop_spec {env : HostEnv Unit} {st : Store Unit}
       | _ => 0)
   · exact ⟨rfl, 0, Nat.zero_le _, by omega, 0, 0, rfl⟩
   · rintro st2 s2 ⟨rfl, k, hk, hClean, f4, f5, rfl⟩
-    have hkU : (UInt64.ofNat k).toNat = k :=
-      toNat_ofNat_lt (by rw [size_eq]; omega)
+    have hkU : (UInt64.ofNat k).toNat = k := by u64_omega
     simp only [loopFrame]
     wp_run
     try simp
@@ -179,8 +177,7 @@ theorem scanProg_spec {env : HostEnv Unit} {st : Store Unit}
       hNone hIndex f4 f5
   · intro i hIndex
     have hi : i < levels.length := priceIdx_some_lt hIndex
-    have hiU : (UInt64.ofNat i).toNat = i :=
-      toNat_ofNat_lt (by rw [size_eq]; omega)
+    have hiU : (UInt64.ofNat i).toNat = i := by u64_omega
     have hEncoded : UInt64.ofNat i + 1 ≠ 0 := by
       intro hZero
       have hZeroNat := congrArg UInt64.toNat hZero

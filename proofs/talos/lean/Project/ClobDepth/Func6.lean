@@ -18,12 +18,6 @@ open Wasm Project.Common Project.Clob Project.ClobDepth
 set_option maxRecDepth 1048576
 set_option maxHeartbeats 8000000
 
-macro "wp_run_entry" : tactic => `(tactic|
-  simp (config := { maxSteps := 10000000 }) [wp_simp,
-    Func6Alloc.allocFrame, Locals.get, Locals.set?, Locals.validIndex,
-    List.take, List.drop, List.length, List.length_set,
-    List.getElem?_set, Nat.reduceAdd, Nat.reduceLT, Nat.reduceSub,
-    List.headD])
 
 set_option Elab.async false in
 theorem func6_terminates
@@ -74,12 +68,12 @@ theorem func6_terminates
     rw [Entry.func6_decomposition]
     simp only [List.append_assoc]
     simp only [Entry.func6EntryProg, List.cons_append, List.nil_append]
-    wp_run_entry
+    wp_run_with [Func6Alloc.allocFrame]
     refine ⟨hLenBound, ?_⟩
     rw [hLenRead]
     apply Func6Alloc.allocProg_spec env st _ g0 g2 rfl rfl rfl
       (by omega) (by omega) hPages hGlobal0 hGlobal1 hGlobal2
-    wp_run_entry
+    wp_run_with [Func6Alloc.allocFrame]
     apply Func6Alloc.allocProg_spec env _ _ (g0 + 56) (g2 + 1)
       rfl rfl rfl
       (by rw [h56]; omega)
@@ -88,12 +82,12 @@ theorem func6_terminates
       (Func6Alloc.allocStore_global0 st g0 g2 _ hGlobal0)
       (Func6Alloc.allocStore_global1 st g0 g2 0 hGlobal1)
       (Func6Alloc.allocStore_global2 st g0 g2 _ hGlobal2)
-    wp_run_entry
+    wp_run_with [Func6Alloc.allocFrame]
     simp only [Entry.func6MinProg, List.cons_append, List.nil_append]
-    wp_run_entry
+    wp_run_with [Func6Alloc.allocFrame]
     refine wp_iff_cons rfl ?_
     rw [if_neg (by simp)]
-    wp_run_entry
+    wp_run_with [Func6Alloc.allocFrame]
     apply foldLoop_spec env st
       (Func6Loop.initialStore st g0 g2) _ _ os side orders g0.toNat g2
       os.length (le_refl _) hLen32 hBudget32 hBudget hPages hOrders32
@@ -132,7 +126,7 @@ theorem func6_terminates
       simp (config := { maxSteps := 10000000 }) [wp_simp,
         Locals.get, Locals.set?,
         List.take, List.drop, List.length, List.length_set,
-        func6Def, Function.numParams,
+        func6Def,
         hLoc.params, hL, hLoc.values, hOwner', hRoot']
       exact hSt
 

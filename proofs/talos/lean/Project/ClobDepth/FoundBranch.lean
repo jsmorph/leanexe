@@ -103,8 +103,7 @@ theorem foundProg_spec
   have hTotal64 : levels.length * 2 < UInt64.size := by
     rw [size_eq]
     omega
-  have hLengthU : (UInt64.ofNat levels.length).toNat = levels.length :=
-    toNat_ofNat_lt (by rw [size_eq]; omega)
+  have hLengthU : (UInt64.ofNat levels.length).toNat = levels.length := by u64_omega
   have hTotalU : (UInt64.ofNat levels.length * 2).toNat =
       levels.length * 2 := by
     rw [UInt64.toNat_mul, hLengthU]

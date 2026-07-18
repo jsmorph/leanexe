@@ -43,8 +43,7 @@ theorem missingFieldsProg_spec
       (fieldFrame owner ptr price qty levels f4 f5) env) :
     wp «module» (Entry.missingFieldsProg ++ rest) Q st
       (branchFrame owner ptr price qty levels f4 f5) env := by
-  have hLengthU : (UInt64.ofNat levels.length).toNat = levels.length :=
-    toNat_ofNat_lt (by rw [size_eq]; omega)
+  have hLengthU : (UInt64.ofNat levels.length).toNat = levels.length := by u64_omega
   have hLengthOne : UInt64.ofNat levels.length + 1 =
       UInt64.ofNat (levels.length + 1) := by
     apply UInt64.toNat.inj

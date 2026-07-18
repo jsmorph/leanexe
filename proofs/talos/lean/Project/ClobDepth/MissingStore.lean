@@ -17,17 +17,6 @@ open Wasm Project.Common Project.Clob Project.ClobDepth
 
 set_option maxRecDepth 1048576
 
-macro "wp_run_missing_store" "(" hParams:term "," hLocals:term ","
-    hValues:term "," hLength:term "," hTarget:term ","
-    hPrice:term "," hQty:term ")" : tactic => `(tactic|
-  simp (config := { maxSteps := 10000000 }) [wp_simp,
-    Locals.get, Locals.set?, Locals.validIndex,
-    Function.toLocals, Function.numParams, Function.numLocals,
-    List.take, List.drop, List.replicate, List.length, List.map,
-    List.length_set, List.getElem?_set,
-    Nat.reduceAdd, Nat.reduceLT, Nat.reduceLeDiff, Nat.reduceSub,
-    ValueType.zero, List.headD, ($hParams), ($hLocals), ($hValues),
-    ($hLength), ($hTarget), ($hPrice), ($hQty)])
 
 structure ResultLocalsAt (final : Locals) (target : UInt64) : Prop where
   params : final.params.length = 4
@@ -104,8 +93,7 @@ theorem missingStoreProg_spec
     toNat_ofNat_lt (by omega)
   simp only [Entry.missingStoreProg, copyLoopFrame, List.cons_append,
     List.nil_append]
-  wp_run_missing_store
-    (hParams, hLocals, hValues', hLength', hTarget', hPrice', hQty')
+  wp_run_with [hParams, hLocals, hValues', hLength', hTarget', hPrice', hQty']
   try simp [hLengthNat, hTotalU]
   have hWriteBound (field : Nat) (hField1 : 1 ≤ field)
       (hField2 : field ≤ 2) :
