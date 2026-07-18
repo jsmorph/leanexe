@@ -1,129 +1,42 @@
 # Development Status
 
-This report records the repository state on 2026-07-17.  It distinguishes completed and committed work from the remaining `clob_depth` proof obligations.  The [development plan](../plan.md) remains the authoritative work queue, while the [development journal](../devnotes.md) records dated design decisions and individual test results.
+This report records the repository state on 2026-07-18.  The `clob_depth` proof is complete and the focused depth gate passes against a regenerated model.  The [development plan](../plan.md) remains the authoritative work queue, while the [development journal](../devnotes.md) records dated design decisions and individual test results.
 
 ## Summary
 
-LeanExe has completed the runtime-ownership, single-evaluation, and CLOB `cancel` phases of the current plan.  Input-generic Talos proofs cover `findBest`, `postOnly`, `matchFuel`, `limit`, and `market`, in addition to the earlier artifacts.  The remaining input-generic CLOB export is `depth`, whose source model, representation, source properties, control-flow decomposition, price scan, and missing-price append phases now have separately compiled theorems.
+LeanExe has completed the runtime-ownership, single-evaluation, and CLOB `cancel` phases of the current plan, and the remaining-CLOB phase now includes `depth`.  Input-generic Talos proofs cover `quote`, `cancel`, `findBest`, `postOnly`, `matchFuel`, `limit`, `market`, and `depth`, in addition to the earlier artifacts.  `ClobDepth.Func7.func7_terminates` proves that the exported depth function terminates for every represented order book under the stated allocator budget and returns two owned level arrays representing the exact source `depthL` bids and asks.
 
-Measured by planned milestones, the next stable point is about 83 percent complete.  That estimate counts three completed plan phases, five completed exports in the remaining CLOB phase, and one complete generated level-update branch inside `depth`.  The estimate does not predict elapsed time because the found update path, per-side fold, exported two-call composition, and aggregate-proof refresh contain most of the remaining semantic integration.
+The two proof failures recorded by the previous aggregate run are repaired.  Both were unfolding gaps after the shared allocation definitions moved their header writes into `fixedArrayHeaderMem`, and each needed one definition added to a closing simplification set.  The aggregate proof gate and the execution gate are the remaining stable-point evidence; their most recent results appear in the development journal.
 
-The missing-price append path has a complete theorem from its scan frame through its owned appended-array result.  It verifies preparation, the stated empty-free-list search, bump allocation, finalization, word copying, stores, result locals, allocator globals, source ownership, pages, and the below-heap byte frame.  The new aggregate gate regenerates every artifact but currently exposes two stale `ClobPostOnly` helper proofs before it can finish the complete proof build.
+## Current State
 
-## Repository State
+| Item | State | Evidence |
+|------|-------|----------|
+| Branch | `main` | Twenty-one depth proof commits since `0dea0bf`. |
+| Depth artifact | Complete | `cases.json` carries `complete: true`; `tools/talos-proof.js check clob_depth` passed on 2026-07-18. |
+| Aggregate imports | Current | `Project.lean` imports `Project.ClobDepth.Spec`. |
+| PostOnly repairs | Complete | Focused warning-failing builds pass in 12 and 7.1 seconds. |
+| Lean toolchain | `leanprover/lean4:v4.31.0` | Both compiler and proof workspaces. |
 
-The repository is on `main`, and the latest completed proof increment is `1ba780c` (`Prove depth missing-price branch`).  Commits `0efee4a`, `89ae1e1`, `2230fac`, and `fec035e` renamed the proof workspace, added and refined the two-tool workflow, and removed tracked generated artifacts and Cargo scaffolding.  Both compiler and proof workspaces select `leanprover/lean4:v4.31.0`, while the complete depth theorem remains open.
+## Depth Proof Structure
 
-| Item | Current state | Evidence |
-|------|---------------|----------|
-| Branch | `main` | Current Git branch |
-| Latest proof increment | `1ba780c Prove depth missing-price branch` | Committed 2026-07-17 proof increment |
-| Compiler Lean | Lean 4.31.0 | Root `lean-toolchain` |
-| Talos proof Lean | Lean 4.31.0 | `proofs/talos/lean/lean-toolchain` |
-| Depth artifact | Registered; generated locally | `cases.json` plus ignored 3,602-byte WASM, WAT, and `Program.lean` |
-| Aggregate Talos proof object | Failing rebuild | Type mismatches in `ClobPostOnly.AppendTradeStore` and `ClobPostOnly.AppendOrderAlloc` |
-| Unrelated directory | `leanclob/` is untracked and separate | Nested Git repository; excluded from this work |
+The proof divides generated function 3 at the scan, branch, allocation, copy, store, and result boundaries, with each region's theorem passing an exact local frame to the next.  The missing-price branch appends one level through bump allocation and a stride-two copy, while the found-price branch allocates a same-length array, copies every level word, and replaces the matched quantity with modular addition.  Both branches share the empty free-list search theorem, the generic bump theorem, the level-copy invariant, and the fixed-array allocation library, and `Func3.UpdateResult` states their one conclusion: the returned array represents `addLevelL levels price qty` with a capacity derived from the result length.
 
-All proof edits through the missing-price final stores are committed.  The unrelated `leanclob/` nested repository and the unfinished untracked `Project/ClobDepth/FoundPrepare.lean` remain excluded from this workflow migration.  The aggregate failures occur in tracked proof modules and require focused proof repair before the complete gate can pass.
+Function 6 reads the order count, allocates two empty level arrays through one shared adapter, and folds the orders on the selected side.  `Func6Fold` defines the represented levels, match count, heap top, result root, owner, and capacity after any order prefix, and bounds the heap top by `g0 + 112 + k * stepBytes count`.  `Func6Loop` carries the loop invariant with exact allocator globals, the owned result array, the preserved orders representation, and the byte frame below the initial heap top; its body theorem steps each order through `wp_call_tw` and the function 3 `TerminatesWith` wrapper, and one budget premise discharges every per-call fit.
 
-### Recent Committed Increments
-
-The recent commits divide the depth proof at meaningful semantic boundaries.  Each commit records a theorem or artifact registration that compiled in isolation before the next boundary was opened.  The sequence avoids committing a large monolithic theorem whose elaboration cost and failure point cannot be isolated.
-
-| Commit | Subject | Completed result |
-|--------|---------|------------------|
-| `bf687fc` | Register the depth artifact | Added `clob_depth` source model, generated program, pinned WASM and WAT, Rust case registration, runtime pins, and a focused check script. |
-| `631e00a` | Prove depth source properties | Added the stride-two level representation, ownership predicate, first-price order facts, exact modular aggregation, and bounded natural-number corollary. |
-| `d0d073e` | Divide depth level update | Split generated function 3 into the scan, missing, found, allocation, copy, store, and result regions. |
-| `f891009` | Prove depth price scan | Proved the input-generic first-price scan and exact frames for both found and missing outcomes. |
-| `cba8190` | Prove depth allocation preparation | Proved field extraction, length arithmetic, capacity rounding, allocator scratch initialization, and free-list-head loading. |
-| `91bece9` | Prove depth empty allocator search | Proved immediate free-list search exit under the stated zero-head premise. |
-| `801c472` | Prove depth bump allocation | Proved the stride-two header writes, heap-top update, page conditions, and exact allocator store. |
-| `db818b3` | Prove depth allocation finish | Proved allocation-counter increment, target propagation, length initialization, and zero copy cursor. |
-| `9047fc7` | Prepare depth copy proof | Named the generated loop and proved source representation preservation across disjoint target writes. |
-| `d5dca0e` | Prove depth copy invariant | Proved the semantic copied-prefix transition and target/source frame facts. |
-| `ffbebbe` | Prove depth missing-level copy | Proved the generated old-level copy loop and its decreasing termination measure. |
-| `eefcc84` | Prove depth append-store facts | Reconstructed the exact appended level list after the final two stores. |
-| `7a9605e` | Prove depth missing-level stores | Proved the generated final stores and exact result-local assignments. |
-| `873a04d` | Prove depth missing-branch facts | Connected allocation finalization to copy initialization and transported the final semantic state to the input allocator state. |
-| `1ba780c` | Prove depth missing-price branch | Composed the complete generated branch with exact ownership, allocator, page, byte-frame, and result-local facts. |
-| `0efee4a` | Rename Talos proof workspace | Renamed `proofs/talos-gcd` to `proofs/talos` without changing theorem content. |
-| `89ae1e1` | Add Talos artifact and proof tools | Added the validated twenty-case registry and two internally constrained tools. |
-| `2230fac` | Remove tracked Talos build artifacts | Removed Cargo scaffolding, generated models, WASM, WAT, and obsolete case wrappers after byte-for-byte regeneration. |
-| `fec035e` | Harden Talos workflow checks | Improved verifier bootstrap and filesystem diagnostics while preserving the existing warning policy. |
-
-## Completed Work
-
-The current plan requires three kinds of evidence: differential execution tests, regenerated artifacts, and Talos theorems over decoded WASM.  The compiler remains outside the Talos trusted base because the proof tool regenerates the current WASM, WAT, and decoded model before Lean checks the handwritten theorem.  The [verification guide](verifying.md) describes this boundary and the [Talos proof inventory](../proofs/talos/README.md) records the completed theorem scopes.
-
-### Plan Phases
-
-| Plan phase | State | Evidence retained in the repository |
-|------------|-------|-------------------------------------|
-| Runtime intrinsic semantics and direct handoffs | Complete | Extended runtime semantics, ownership-report diagnostics, rejection tests, Wasmtime counter tests, and Talos runtime theorems. |
-| Evaluate matched values once | Complete | Reduced fixtures, IR and WAT assertions, execution comparisons, and repaired affected artifacts. |
-| Complete CLOB `cancel` behavior | Complete | One input-generic theorem for found and missing identifiers, exact ownership and allocator facts, and the per-case gate. |
-| Remaining CLOB kernel | In progress | `findBest`, `postOnly`, `matchFuel`, `limit`, and `market` are complete.  `depth` remains. |
-| Consolidate proof machinery | Partly complete | Shared fixed-array, order-word, allocation, and branch-continuation lemmas are in use. |
-| Diagnostics and tool reproducibility | Substantially complete | Tested CLI error categories, pinned Node, `wasm-tools`, Wasmtime hashes, and documented resource limits. |
-
-The complete execution baseline recorded on 2026-07-16 passed 791 accepted cases, 45 rejections, 14 traps, 340 standard-Lean comparisons, 62 IR comparisons, 41 reference-counting cases, 9 CLI failure cases, and 3 process-launch error cases.  The same baseline includes matched-value IR and WAT assertions.  These are historical gate results, not a claim that the complete suite was rerun after the present depth allocation split.
-
-Nineteen Talos cases are complete before `depth`.  They include the self-compiled unsigned LEB128 encoder, runtime allocation and teardown cases, and exact CLOB behavior for `quote`, `cancel`, `findBest`, `postOnly`, `matchFuel`, `limit`, and `market`.  The proof tool regenerates every registered model before the aggregate Lake build, so the theorem target always follows the current source and compiler.
-
-### Documentation and Developer Guidance
-
-The documentation has clear ownership by subject.  [Developing LeanExe](../DEVELOPING.md) defines setup, versions, the development workflow, test gates, generated-file rules, failure diagnostics, and the required resource policy.  The [user manual](manual.md) defines source authoring, the [language specification](spec.md) defines accepted behavior, the [verification guide](verifying.md) defines the proof procedure, and the [Talos proof inventory](../proofs/talos/README.md) identifies checked cases and theorem scope.
-
-The developer guide names the pinned versions: Lean 4.31.0, Node 24.13.0, `wasm-tools` 1.251.0, and Wasmtime 44.0.0.  It documents ordinary builds, the internally constrained Talos tools, focused and aggregate proof gates, CLI statuses and stderr format, generated-file ownership, and troubleshooting.  It also makes the resource-limited `systemd-run` invocation mandatory for every direct command that invokes Lean, Lake, or `lean-wasm`.
-
-The documentation still needs ordinary maintenance as the depth proof becomes complete.  The proof inventory must add `clob_depth` only after its theorem and case gate are complete, and the development plan and journal must change in the same commit.  This report provides a current snapshot and does not replace those authoritative documents.
-
-## Depth Proof
-
-The generated `clob_depth` artifact is registered under `proofs/talos`.  Its ignored WASM file is 3,602 bytes, while its ignored WAT and `Project/ClobDepth/Program.lean` provide the current Talos model.  Function 3 updates or appends one depth level, function 6 folds one side of the order book, function 7 implements the export, and the shared runtime functions follow those program functions.
-
-The source proof work has established the data representation before entering the instruction proof.  `Project.ClobDepth.Representation` defines the stride-two layout for price and quantity levels and the owned fixed-array predicate.  `Project.ClobDepth.Properties` proves side filtering, first-occurrence price order, price uniqueness, exact modular per-price aggregation, and a natural-number interpretation when the stated no-overflow bound holds.
-
-The generated function 3 now has a documented decomposition in `Project.ClobDepth.Entry`.  The scan, missing branch, found branch, allocation search, bump path, allocation finish, copy loop, stores, and result epilogue have separate named program regions.  This structure permits a theorem to end at a `wp` boundary and pass a concise local frame to the theorem for the next region.
-
-`Project.ClobDepth.Scan` proves the first-price search at an input-generic boundary.  In the missing case, the theorem records the encoded zero index, the cursor at the array length, the condition flag, and the retained input fields.  In the found case, it records the one-based encoded index, the zero-based matching index, the matched price and quantity, the condition flag, and the remaining locals needed by the update branch.
-
-### Current Missing-Price Branch
-
-The missing-price branch appends a new `(price, quantity)` level to a stride-two fixed array.  Its proved phases copy the scan fields, compute the target length and rounded capacity, exit an empty free-list search, allocate by bump, initialize the length and allocation counter, copy every old word, store the new pair, and assign the result locals.  The semantic final state records an owned array representing the exact appended list, a preserved source representation, unchanged pages and relevant globals during copying, and byte equality outside the target region.
-
-The first proof attempt treated the forty-four-instruction preparation as one simplification boundary and exhausted the default heartbeat before later exceeding recursion depth.  The completed proof divides preparation into twenty- and twenty-four-instruction regions, then gives search, bump allocation, finalization, copy, and stores their own explicit programs and theorems.  Each decomposition remains definitionally equal to the generated function, so the smaller boundaries do not weaken the artifact claim.
-
-`Project.ClobDepth.MissingCopyInvariant.CopyState.advance` contains the memory reasoning for one copy iteration.  `LevelsAt.frame_write64_flatWordsDisjoint` preserves the source representation, while the invariant preserves the fresh header, initialized length, copied prefix, pages, globals, and outside-target bytes.  `MissingCopy.missingCopyProg_spec` applies that transition to the generated loop with a strictly decreasing word-count measure.
-
-`Project.ClobDepth.MissingStoreFacts.finish` reconstructs `LevelsAt` for the old list followed by the new level.  It combines that representation with the preserved fresh header as `OwnedLevelArrayAt` and retains the source representation and outside-target frame after both writes.  `MissingStore.missingStoreProg_spec` proves the generated stores and exposes the exact working, owner, and pointer locals to its continuation.
-
-`Project.ClobDepth.MissingBranch.missingProg_spec` completes branch composition.  It instantiates the copy invariant from the post-allocation store, carries the source and allocator frames through the loop, and connects the final owned array and result locals to the missing scan outcome.  Its empty-free-list premise remains explicit because generated function 6 performs no release and therefore preserves an initially empty free list throughout its fold.
-
-### Remaining Depth Work
-
-The missing branch is complete under its stated allocator and memory premises.  The found branch requires same-length allocation, copying, and replacement of the first matching quantity, with exact ownership, allocator counters, page preservation, and source frames.  The found proof can reuse `LevelCopyInvariant.CopyState.advance`, the level flat-word API, and disjoint-write preservation while adding only its generated-local adapter and indexed-replacement facts.
-
-Function 6 then needs a loop invariant for the per-side aggregation.  The invariant must relate the consumed order prefix to the source side filter, the first-occurrence price sequence, the represented level array, and the accumulated modular quantities.  Function 7 must compose the two side folds, return both owned arrays in the export ABI, and preserve the input book and allocator facts across both calls.
-
-The source properties already identify reusable statements likely to reduce this work.  The stride-two representation and exact aggregation theorems should be the semantic target of the copy and fold proofs, while existing fixed-array allocation, copy, branch-continuation, and frame lemmas should carry repeated instruction patterns.  A new general lemma or tactic is justified only after the same statement shape appears in independent depth branches or another artifact; no broad normalizer should be added to hide a single local capacity rewrite.
+Function 7 composes the two side folds.  The second fold runs at the first fold's exact heap top and counters, the first result array survives through the below-heap byte frame, and `Func7.Result` states ownership of both arrays with `depthSideL` contents, the preserved input orders array, the exact three allocator globals, page equality, and bytes below the initial heap top.  `Project.ClobDepth.Spec` restates the returned contents through `Model.depthL` and exposes exact modular per-price aggregation with its bounded natural-number interpretation.
 
 ## Verification Status and Risks
 
-Focused depth modules have been built one at a time under the required cgroup policy.  Recent focused builds completed in 1.9 seconds for the representation lemma, 2.7 seconds for the copy loop, 2.9 seconds for semantic final-store facts, 2.0 seconds for the final instruction theorem, and 1.1 seconds for `Project.ClobDepth.Spec`; the final two used `--wfail`.  No current focused depth target fails or approaches its 90-second diagnostic limit.
+Every depth module builds through the required constrained scope with `--wfail`.  The largest focused builds are the loop body at 10 seconds and the empty-allocation adapter at 9.1 seconds; every other depth module builds in under seven seconds.  The focused depth gate regenerates the model from the current source and compiler before building the registered specification, so the theorem follows the current artifact.
 
-The aggregate `Project` proof object does not build.  The 2026-07-17 gate reached type mismatches in `Project.ClobPostOnly.AppendTradeStore` and `Project.ClobPostOnly.AppendOrderAlloc` after shared fixed-array definitions changed, then stopped to avoid spending resources on dependent targets.  The planned divisions still include `Project.Validate.Spec`, `Project.SharedPair.Spec`, `Project.LebU32.Iter`, and `Project.LebU32.NegIter`, whose earlier constrained builds reached their diagnostic time limits.
+Earlier constrained builds of `Project.Validate.Spec`, `Project.SharedPair.Spec`, `Project.LebU32.Iter`, and `Project.LebU32.NegIter` recorded no-diagnostic timeouts, and the plan retains their division work in the consolidation phase.  A cold proof setup can rebuild a large dependency graph after Mathlib cache removal; run any such rebuild only through the constrained scope with no concurrent Lean activity.
 
-Mathlib cache removal freed disk space but means a cold proof setup can rebuild a large dependency graph.  A cold build is acceptable only through the constrained user scope and with no concurrent Lean or Lake activity.  The focused modules used for the current depth work have continued to build, so there is no evidence of a missing dependency or toolchain incompatibility at this boundary.
-
-No external blocker prevents the next depth proof step.  The main technical risk is preserving the complete allocator and source-ownership state while composing the small theorems, followed by the larger function 6 loop invariant.  The explicit semantic predicates and short instruction adapters keep those obligations separate from generated-program normalization.
+The aggregate proof gate regenerates all twenty models before building `Project`, and the execution gate runs `node test/run_all.js` under the outer resource scope.  The most recent aggregate and execution results, with dates, are in the development journal; declare the next stable point only when both gates pass and the plan, journal, verification inventory, and this report agree on the evidence.
 
 ## Required Lean and Lake Resource Policy
 
 Every direct `lean`, `lake`, Lean compiler, `lean-wasm`, or script that starts one of those commands must run in a resource-limited transient user scope.  The two Talos tools apply these limits to each Lean-based child internally, while `node test/run_all.js` still requires an outer scope.  Do not run two such jobs concurrently, including from separate terminals, because separate scopes can compete for memory and CPU.
-
-Run the command from the directory that owns the relevant Lake workspace.  The proof workspace is `proofs/talos/lean`, while ordinary compiler builds run from the repository root.  The `timeout` must bound commands whose runtime is not intrinsically bounded, and a timeout without a diagnostic requires proof or module division before another attempt.
 
 ```sh
 systemd-run --user --scope --quiet --collect \
@@ -135,41 +48,18 @@ systemd-run --user --scope --quiet --collect \
   timeout <duration> <lean-or-lake-command>
 ```
 
-`systemd-run --user` asks the per-user systemd manager to create the cgroup.  `--scope` runs the named process directly in that cgroup, `--quiet` suppresses the generated unit name, and `--collect` removes the transient scope after its processes exit.  These options ensure that Lake children remain inside the same scope and that completed diagnostic runs do not accumulate units.
+`MemoryHigh=4G` begins memory-pressure handling at four gibibytes, `MemoryMax=6G` enforces the hard limit, `MemorySwapMax=1G` bounds swap growth, and `CPUQuota=100%` limits the scope to one core in aggregate.  `nice -n 10` and `ionice -c 3` protect interactive work, and `timeout` bounds diagnostic runs.  A timeout without a diagnostic requires proof or module division before another attempt.
 
-`MemoryHigh=4G` begins memory-pressure handling when the scope exceeds four gibibytes.  `MemoryMax=6G` enforces the hard cgroup memory limit, and `MemorySwapMax=1G` prevents unlimited swap growth from making the workstation unusable.  `CPUQuota=100%` limits all processes in the scope to one CPU core in aggregate, which is required because Lake 5.0.0 has no job-count option.
-
-`nice -n 10` lowers CPU scheduling priority relative to interactive work.  `ionice -c 3` gives the process idle I/O priority, so compiler reads and writes yield to interactive I/O.  `timeout` stops a diagnostic run at the stated duration, but it does not make an unchanged timed-out theorem appropriate to rerun.
-
-The focused proof command starts from the proof workspace because its `lakefile.toml` owns the Talos project.  The command below builds one bounded module and fails on warnings, which makes it appropriate for an in-progress theorem.  Wait for this scope to exit before starting any other Lean or Lake command.
-
-```sh
-cd proofs/talos/lean
-systemd-run --user --scope --quiet --collect \
-  -p MemoryHigh=4G \
-  -p MemoryMax=6G \
-  -p MemorySwapMax=1G \
-  -p CPUQuota=100% \
-  nice -n 10 ionice -c 3 \
-  timeout 90s lake build Project.ClobDepth.MissingFields --wfail
-```
-
-Use the same wrapper around a direct Lean invocation or a script that starts Lake.  Repository-level scripts start from the repository root, while the two Talos entry points create the wrapper themselves.  Select the timeout from the known behavior of the named job, record a new limit in the development journal when it becomes routine, and never remove the cgroup properties to make a command finish.
+The focused proof command starts from `proofs/talos/lean` because its `lakefile.toml` owns the Talos project.  Repository-level scripts start from the repository root, while the two Talos entry points create the wrapper themselves.
 
 ```sh
 cd /media/hd2/src/leanexe
-tools/talos-proof.js check gcd
+tools/talos-proof.js check clob_depth
 tools/talos-proof.js check --all
 ```
 
-The focused command generates one current model and builds one specification, while the aggregate command generates all twenty models before building `Project`.  Each expensive child runs in its own constrained scope, and the tools never start two stages concurrently.  The current aggregate command reaches the two recorded `ClobPostOnly` proof errors, while the focused GCD command passes.
-
-Do not substitute `ulimit -v`, `prlimit --as`, a background process, or an unbounded bare `lake build` for this policy.  If `systemd-run --user --scope` or any required cgroup property is unavailable, stop rather than running Lean without an enforced memory limit.  If a target reaches its timeout with no useful diagnostic, first divide its instruction program or theorem, or prove a reusable lemma that reduces the elaboration boundary.
+Do not substitute `ulimit -v`, `prlimit --as`, a background process, or an unbounded bare `lake build` for this policy.  If `systemd-run --user --scope` or any required cgroup property is unavailable, stop rather than running Lean without an enforced memory limit.
 
 ## Next Order of Work
 
-The immediate task is the found-price branch: prepare a same-length allocation, copy all level words, replace the first matching quantity with modular addition, and return the exact updated list.  Function 3 composition follows by selecting the missing or found theorem from the scan outcome and returning the shared result predicate.  Each increment requires a focused resource-limited warning-failing build and a journal entry before commit.
-
-After both update branches are proved, the per-side depth fold becomes the central proof task.  Its theorem should state exact first-price order and modular aggregation without adding an unstated no-overflow assumption, then derive the natural-number result under the explicit bound already present in the source properties.  The exported theorem should compose the two side arrays and state their ownership, contents, allocator effects, page bound, and input-memory frame.
-
-The stable-point work after `depth` remains finite but material.  It includes the planned aggregate-proof divisions, the remaining copy-loop and fresh-array library generalization, release-tree array-kind and shared-interior generalization, and cleanup of proof warnings encountered during substantive bounded rebuilds.  The next stable point cannot be declared until the depth case is in the proof inventory, the aggregate proof object is current, the complete execution and artifact gates pass, and the plan, journal, verification inventory, and this status report agree on the evidence.
+The stable-point work after `depth` remains finite but material.  It includes the planned aggregate-proof divisions for the recorded no-diagnostic timeouts, the remaining copy-loop and fresh-array library generalization, release-tree array-kind and shared-interior generalization, and cleanup of proof warnings encountered during substantive bounded rebuilds.  The next stable point requires the aggregate proof object, the complete execution and artifact gates, and agreement among the plan, journal, verification inventory, and this report.
