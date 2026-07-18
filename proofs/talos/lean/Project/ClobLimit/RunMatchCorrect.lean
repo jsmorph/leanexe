@@ -38,8 +38,7 @@ theorem runMatchContext_result
     (hLength : os.length < 4294967296) :
     (runMatchContext st os taker g0 g2 limit).result =
       Project.ClobLimit.Model.runMatchL os taker := by
-  have hFuel : (UInt64.ofNat (os.length + 1)).toNat = os.length + 1 :=
-    toNat_ofNat_lt (by rw [size_eq]; omega)
+  have hFuel : (UInt64.ofNat (os.length + 1)).toNat = os.length + 1 := by u64_omega
   unfold runMatchContext Context.result Project.ClobLimit.Model.runMatchL
   rw [hFuel]
 
@@ -86,8 +85,7 @@ theorem func18_correct : RunMatchSpec := by
     have h104 : (104 : UInt64).toNat = 104 := rfl
     rw [h104]
     omega
-  have hFuelNat : (UInt64.ofNat (os.length + 1)).toNat = os.length + 1 :=
-    toNat_ofNat_lt (by rw [size_eq]; omega)
+  have hFuelNat : (UInt64.ofNat (os.length + 1)).toNat = os.length + 1 := by u64_omega
   have hAlloc := RunMatchAllocations.allocationsStore_facts st book
     bookCapacity g0 g2 os hFit32 hFit hBook48 hBook32 hBookCapacity
     hBookBelow hBook hg0 hg1 hg2

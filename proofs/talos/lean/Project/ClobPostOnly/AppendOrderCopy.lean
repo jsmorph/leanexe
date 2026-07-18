@@ -136,8 +136,7 @@ theorem appendOrderCopyProg_spec (env : HostEnv Unit)
   · exact hInit
   · rintro st5 s5
       ⟨k, hk, rfl, hpg, hgl, hfresh, hlength, hlo, hcopied⟩
-    have hkU : (UInt64.ofNat k).toNat = k :=
-      toNat_ofNat_lt (by rw [size_eq]; omega)
+    have hkU : (UInt64.ofNat k).toNat = k := by u64_omega
     simp only [appendOrderCopyBodyProg, appendCopyFrame]
     wp_run_big
     try simp

@@ -16,17 +16,6 @@ open Wasm Project.Common Project.Clob Project.ClobLimit
 set_option maxHeartbeats 8000000
 set_option maxRecDepth 1048576
 
-macro "wp_run_finish" "(" hParams:term "," hLocals:term ","
-    hValues:term "," hRemaining:term "," hBook:term ","
-    hIndex:term ")" : tactic => `(tactic|
-  simp (config := { maxSteps := 10000000 }) [wp_simp,
-    Locals.get, Locals.set?, Locals.validIndex,
-    Function.toLocals, Function.numParams, Function.numLocals,
-    List.take, List.drop, List.replicate, List.length, List.map,
-    List.length_set, List.getElem?_set,
-    Nat.reduceAdd, Nat.reduceLT, Nat.reduceLeDiff, Nat.reduceSub,
-    ValueType.zero, List.headD, ($hParams), ($hLocals), ($hValues),
-    ($hRemaining), ($hBook), ($hIndex)])
 
 def fullTradeFinishProg : Wasm.Program :=
   [
@@ -114,14 +103,12 @@ theorem fullTradeFinishProg_spec
       toNat_ofNat_lt hOrdersLength64]
     exact hi
   simp only [fullTradeFinishProg, List.cons_append, List.nil_append]
-  wp_run_finish (hParams, hLocals, hValues, hRemainingGet, hBookGet,
-    hIndexGet)
+  wp_run_with [hParams, hLocals, hValues, hRemainingGet, hBookGet, hIndexGet]
   rw [if_neg (Nat.not_lt.mpr hBookLengthBound), hBookLengthRead,
     if_pos hIndexLt]
   refine wp_iff_cons rfl ?_
   rw [if_pos (by simp)]
-  wp_run_finish (hParams, hLocals, hValues, hRemainingGet, hBookGet,
-    hIndexGet)
+  wp_run_with [hParams, hLocals, hValues, hRemainingGet, hBookGet, hIndexGet]
   rw [if_neg (Nat.not_lt.mpr hQtyBound), hQtyRead]
   simpa only [fullTradeFinishFrame,
     List.getElem!_eq_getElem?_getD] using hDone

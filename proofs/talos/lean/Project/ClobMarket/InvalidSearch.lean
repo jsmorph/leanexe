@@ -1,4 +1,5 @@
 import Project.ClobMarket.InvalidPrepare
+import Project.Common
 import Interpreter.Wasm.Wp.Block
 import Interpreter.Wasm.Wp.Loop
 
@@ -12,7 +13,7 @@ or payload address enters the proof.
 
 namespace Project.ClobMarket.InvalidSearch
 
-open Wasm Project.Clob Project.ClobMarket
+open Wasm Project.Common Project.Clob Project.ClobMarket
 
 set_option maxRecDepth 1048576
 
@@ -34,14 +35,11 @@ theorem invalidSearchProg_empty
   have hValues : base.values = [] := by
     simp [base, InvalidPrepare.prepareFrame]
   have hIndex : 45 < base.locals.length := by omega
-  have hCurrent : base.locals[45]'hIndex = .i64 0 := by
-    apply Option.some.inj
-    calc
-      some (base.locals[45]'hIndex) = base.locals[45]? :=
-        (List.getElem?_eq_getElem hIndex).symm
-      _ = some (.i64 0) := by
-        simp [base, InvalidPrepare.prepareFrame,
-          InvalidPrepare.branchFrame, InvalidEntry.invalidFrame]
+  have hCurrent : base.locals[45]'hIndex = .i64 0 :=
+    getElem_of_some
+      (by simp [base, InvalidPrepare.prepareFrame,
+        InvalidPrepare.branchFrame, InvalidEntry.invalidFrame])
+      hIndex
   have hFrame : Locals.mk base.params base.locals base.values = base := by
     cases base
     rfl

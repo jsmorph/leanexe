@@ -16,17 +16,6 @@ open Wasm Project.Common Project.Clob Project.ClobMatchFuel
 set_option maxHeartbeats 8000000
 set_option maxRecDepth 1048576
 
-macro "wp_run_prepare" "(" hParams:term "," hLocals:term ","
-    hValues:term "," hTaker:term "," hBook:term "," hTrades:term ","
-    hIndex:term ")" : tactic => `(tactic|
-  simp (config := { maxSteps := 10000000 }) [wp_simp,
-    Locals.get, Locals.set?, Locals.validIndex,
-    Function.toLocals, Function.numParams, Function.numLocals,
-    List.take, List.drop, List.replicate, List.length, List.map,
-    List.length_set, List.getElem?_set,
-    Nat.reduceAdd, Nat.reduceLT, Nat.reduceLeDiff, Nat.reduceSub,
-    ValueType.zero, List.headD, ($hParams), ($hLocals), ($hValues),
-    ($hTaker), ($hBook), ($hTrades), ($hIndex)])
 
 def fullTradePrepareProg : Wasm.Program :=
   [
@@ -188,8 +177,7 @@ theorem fullTradePrepareProg_spec
         os[i]!.word field := by
     simpa only [orderWord] using hOrders.orderWord_eq i field hi hfield
   simp only [fullTradePrepareProg, List.cons_append, List.nil_append]
-  wp_run_prepare (hParams, hLocals, hValues, hTakerGet, hBookGet,
-    hTradesGet, hIndexGet)
+  wp_run_with [hParams, hLocals, hValues, hTakerGet, hBookGet, hTradesGet, hIndexGet]
   rw [if_neg (Nat.not_lt.mpr hBookLengthBound), hBookLengthRead]
   have hIndexLt : UInt64.ofNat i < UInt64.ofNat os.length := by
     rw [UInt64.lt_iff_toNat_lt, toNat_ofNat_lt (by omega),
@@ -198,35 +186,29 @@ theorem fullTradePrepareProg_spec
   rw [if_pos hIndexLt]
   refine wp_iff_cons rfl ?_
   rw [if_pos (by simp)]
-  wp_run_prepare (hParams, hLocals, hValues, hTakerGet, hBookGet,
-    hTradesGet, hIndexGet)
+  wp_run_with [hParams, hLocals, hValues, hTakerGet, hBookGet, hTradesGet, hIndexGet]
   rw [if_neg (Nat.not_lt.mpr (hFieldBound 0 (by omega))),
     hFieldRead 0 (by omega)]
   simp only [OrderL.word]
-  wp_run_prepare (hParams, hLocals, hValues, hTakerGet, hBookGet,
-    hTradesGet, hIndexGet)
+  wp_run_with [hParams, hLocals, hValues, hTakerGet, hBookGet, hTradesGet, hIndexGet]
   rw [if_neg (Nat.not_lt.mpr hBookLengthBound), hBookLengthRead,
     if_pos hIndexLt]
   refine wp_iff_cons rfl ?_
   rw [if_pos (by simp)]
-  wp_run_prepare (hParams, hLocals, hValues, hTakerGet, hBookGet,
-    hTradesGet, hIndexGet)
+  wp_run_with [hParams, hLocals, hValues, hTakerGet, hBookGet, hTradesGet, hIndexGet]
   rw [if_neg (Nat.not_lt.mpr (hFieldBound 3 (by omega))),
     hFieldRead 3 (by omega)]
   simp only [OrderL.word]
-  wp_run_prepare (hParams, hLocals, hValues, hTakerGet, hBookGet,
-    hTradesGet, hIndexGet)
+  wp_run_with [hParams, hLocals, hValues, hTakerGet, hBookGet, hTradesGet, hIndexGet]
   rw [if_neg (Nat.not_lt.mpr hBookLengthBound), hBookLengthRead,
     if_pos hIndexLt]
   refine wp_iff_cons rfl ?_
   rw [if_pos (by simp)]
-  wp_run_prepare (hParams, hLocals, hValues, hTakerGet, hBookGet,
-    hTradesGet, hIndexGet)
+  wp_run_with [hParams, hLocals, hValues, hTakerGet, hBookGet, hTradesGet, hIndexGet]
   rw [if_neg (Nat.not_lt.mpr (hFieldBound 4 (by omega))),
     hFieldRead 4 (by omega)]
   simp only [OrderL.word]
-  wp_run_prepare (hParams, hLocals, hValues, hTakerGet, hBookGet,
-    hTradesGet, hIndexGet)
+  wp_run_with [hParams, hLocals, hValues, hTakerGet, hBookGet, hTradesGet, hIndexGet]
   rw [if_neg (Nat.not_lt.mpr hTradesLengthBound), hTradesLengthRead]
   simpa only [fullTradePrepareFrame, List.getElem!_eq_getElem?_getD] using
     hDone

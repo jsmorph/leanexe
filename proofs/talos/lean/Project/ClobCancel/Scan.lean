@@ -209,8 +209,7 @@ theorem scanIndex_spec {env : HostEnv Unit} {st : Store Unit}
          values := [] } : Locals)
       env := by
   obtain ⟨-, hElems⟩ := hIn
-  have hlenU : (UInt64.ofNat os.length).toNat = os.length :=
-    toNat_ofNat_lt (by rw [size_eq]; omega)
+  have hlenU : (UInt64.ofNat os.length).toNat = os.length := by u64_omega
   apply wp_block_cons
   apply wp_loop_cons
     (Inv := fun st' s =>
@@ -233,8 +232,7 @@ theorem scanIndex_spec {env : HostEnv Unit} {st : Store Unit}
       | _ => 0)
   · exact ⟨rfl, 0, Nat.zero_le _, by omega, e2, e3, e4, e5, e6, rfl⟩
   · rintro st2 s2 ⟨rfl, k, hk, hclean, f2, f3, f4, f5, f6, rfl⟩
-    have hkU : (UInt64.ofNat k).toNat = k :=
-      toNat_ofNat_lt (by rw [size_eq]; omega)
+    have hkU : (UInt64.ofNat k).toNat = k := by u64_omega
     wp_run
     try simp
     by_cases hkend : k = os.length

@@ -144,8 +144,7 @@ theorem func8_spec_owner (env : HostEnv Unit) (st : Store Unit)
        .i64 owner, .i64 (UInt64.ofNat (os.length + 1))]
       (fun st' vs => vs = optionVals (findBestL os taker) ∧ st' = st) := by
   obtain ⟨⟨hHead, hHeadB⟩, hElems⟩ := hInput
-  have hlenU : (UInt64.ofNat os.length).toNat = os.length :=
-    toNat_ofNat_lt (by rw [size_eq]; omega)
+  have hlenU : (UInt64.ofNat os.length).toNat = os.length := by u64_omega
   apply TerminatesWith.of_wp_entry_for (f := func8Def)
   · simp [«module»]
   · change wp «module» func8 _ st
@@ -208,8 +207,7 @@ theorem func8_spec_owner (env : HostEnv Unit) (st : Store Unit)
           · simp [mfFrame]
           · simp [mfMeasure]
         · have hklt : k < os.length := Nat.lt_of_le_of_ne hk hkend
-          have hkU : (UInt64.ofNat k).toNat = k :=
-            toNat_ofNat_lt (by rw [size_eq]; omega)
+          have hkU : (UInt64.ofNat k).toNat = k := by u64_omega
           have hlt : UInt64.ofNat k < UInt64.ofNat os.length := by
             rw [UInt64.lt_iff_toNat_lt, hlenU,
               toNat_ofNat_lt (by rw [size_eq]; omega)]
@@ -459,8 +457,7 @@ theorem func8_spec_owner (env : HostEnv Unit) (st : Store Unit)
               norm_num
               have hjlt : j < k := bestPrefixL_some_lt os taker k j hbest
               have hjlen : j < os.length := lt_trans hjlt hklt
-              have hjU : (UInt64.ofNat j).toNat = j :=
-                toNat_ofNat_lt (by rw [size_eq]; omega)
+              have hjU : (UInt64.ofNat j).toNat = j := by u64_omega
               have hjltU : UInt64.ofNat j < UInt64.ofNat os.length := by
                 rw [UInt64.lt_iff_toNat_lt, hlenU, hjU]
                 exact hjlen

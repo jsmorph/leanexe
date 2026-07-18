@@ -10,14 +10,6 @@ open Wasm Project.Common Project.Runtime Project.ClobMatchFuel
 set_option maxHeartbeats 8000000
 set_option maxRecDepth 1048576
 
-macro "wp_run_big" "(" hParams:term "," hLocals:term "," hValues:term ")" : tactic => `(tactic|
-  simp (config := { maxSteps := 10000000 }) [wp_simp,
-    Locals.get, Locals.set?, Locals.validIndex,
-    Function.toLocals, Function.numParams, Function.numLocals,
-    List.take, List.drop, List.replicate, List.length, List.map,
-    List.length_set, List.getElem?_set,
-    Nat.reduceAdd, Nat.reduceLT, Nat.reduceLeDiff, Nat.reduceSub,
-    ValueType.zero, List.headD, ($hParams), ($hLocals), ($hValues)])
 
 def tradeAllocSearchFrame (base : Locals)
     (need previous current capacity next result : UInt64) : Locals :=
@@ -161,7 +153,7 @@ theorem tradeAllocSearchProg_no_fit
     cases remaining with
     | nil =>
         simp only [tradeAllocSearchBodyProg, tradeAllocSearchFrame, freeHead]
-        wp_run_big (hParams, hLocals, hValues)
+        wp_run_with [hParams, hLocals, hValues]
         simpa only [tradeAllocSearchFrame, hValues] using
           hNext previous currentCapacity currentNext
     | cons node tail =>
@@ -201,7 +193,7 @@ theorem tradeAllocSearchProg_no_fit
               rw [← toUInt32_eq_ofNat]
               exact hnext
             simp only [tradeAllocSearchBodyProg, tradeAllocSearchFrame, freeHead]
-            wp_run_big (hParams, hLocals, hValues)
+            wp_run_with [hParams, hLocals, hValues]
             simp only [if_neg hroot]
             rw [if_neg (by omega)]
             rw [if_neg (by omega)]
@@ -213,7 +205,7 @@ theorem tradeAllocSearchProg_no_fit
             simp only [if_neg hnotFit]
             refine wp_iff_cons rfl ?_
             rw [if_neg (by simp)]
-            wp_run_big (hParams, hLocals, hValues)
+            wp_run_with [hParams, hLocals, hValues]
             have hSplitNext :
                 nodes = (visited ++ [node]) ++ tail := by
               simpa [List.append_assoc] using hSplit

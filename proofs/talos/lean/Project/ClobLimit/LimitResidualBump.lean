@@ -20,16 +20,6 @@ open Wasm Project.Common Project.Clob Project.ClobLimit
 
 set_option maxRecDepth 1048576
 
-macro "wp_run_bump" "(" hParams:term "," hLocals:term ","
-    hValues:term "," hNeed:term "," hResult:term ")" : tactic => `(tactic|
-  simp (config := { maxSteps := 10000000 }) [wp_simp,
-    Locals.get, Locals.set?, Locals.validIndex,
-    Function.toLocals, Function.numParams, Function.numLocals,
-    List.take, List.drop, List.replicate, List.length, List.map,
-    List.length_set, List.getElem?_set,
-    Nat.reduceAdd, Nat.reduceLT, Nat.reduceLeDiff, Nat.reduceSub,
-    ValueType.zero, List.headD, ($hParams), ($hLocals), ($hValues),
-    ($hNeed), ($hResult)])
 
 def bumpFrame (base : Locals) (g0 need : UInt64) : Locals :=
   { base with
@@ -103,24 +93,24 @@ theorem residualAllocBumpProg_spec
   have hResult : base.locals[52] = .i64 0 := getElem_of_some hAlloc.result
   simp only [LimitEntry.residualAllocBumpProg, List.cons_append,
     List.nil_append]
-  wp_run_bump (hParams, hLocals, hValues, hNeed, hResult)
+  wp_run_with [hParams, hLocals, hValues, hNeed, hResult]
   refine wp_iff_cons rfl ?_
   rw [if_pos (by simp)]
-  wp_run_bump (hParams, hLocals, hValues, hNeed, hResult)
+  wp_run_with [hParams, hLocals, hValues, hNeed, hResult]
   simp only [hg0]
   have hNoWrap : ¬g0 + 48 + need < g0 := by
     rw [UInt64.lt_iff_toNat_lt, hTop]
     omega
   refine wp_iff_cons rfl ?_
   rw [if_neg (by simp [hNoWrap])]
-  wp_run_bump (hParams, hLocals, hValues, hNeed, hResult)
+  wp_run_with [hParams, hLocals, hValues, hNeed, hResult]
   have hNoGrow := fixedArrayBump_no_grow g0 need st.mem.pages hTop hFit
     hPages
   refine wp_iff_cons rfl ?_
   rw [if_neg (by simpa using hNoGrow)]
-  wp_run_bump (hParams, hLocals, hValues, hNeed, hResult)
+  wp_run_with [hParams, hLocals, hValues, hNeed, hResult]
   simp only [hg0]
-  try wp_run_bump (hParams, hLocals, hValues, hNeed, hResult)
+  try wp_run_with [hParams, hLocals, hValues, hNeed, hResult]
   try simp
   have hRoot : (g0 + 48).toNat = g0.toNat + 48 :=
     fixedArrayBumpRoot_toNat g0 (by

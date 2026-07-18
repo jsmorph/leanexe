@@ -91,8 +91,7 @@ def FoldSumSpec : Prop :=
 @[proves Project.FoldSum.Spec.FoldSumSpec]
 theorem foldSum_correct : FoldSumSpec := by
   intro env st ptr bytes hlen hfit hInput
-  have hlenU : (UInt64.ofNat bytes.length).toNat = bytes.length :=
-    toNat_ofNat_lt (by rw [size_eq]; omega)
+  have hlenU : (UInt64.ofNat bytes.length).toNat = bytes.length := by u64_omega
   apply TerminatesWith.of_wp_entry_for (f := func0Def)
   · simp [«module»]
   · change wp «module» func0 _ st
@@ -110,8 +109,7 @@ theorem foldSum_correct : FoldSumSpec := by
     · exact ⟨rfl, 0, Nat.zero_le _, 0, 0, 0, 0, 0, 0, 0,
         by simp [fFrame, sumTake]⟩
     · rintro st2 s2 ⟨rfl, k, hk, l3, l4, l11, l12, l13, l15, l16, rfl⟩
-      have hkU : (UInt64.ofNat k).toNat = k :=
-        toNat_ofNat_lt (by rw [size_eq]; omega)
+      have hkU : (UInt64.ofNat k).toNat = k := by u64_omega
       simp only [fFrame]
       wp_run
       try simp
@@ -157,8 +155,7 @@ theorem foldSum_correct : FoldSumSpec := by
         have hnowrap : ¬ (UInt64.ofNat (sumTake bytes k) +
             bytes[k]!.toUInt64 < UInt64.ofNat (sumTake bytes k)) := by
           rw [UInt64.lt_iff_toNat_lt, UInt64.toNat_add]
-          have hsu : (UInt64.ofNat (sumTake bytes k)).toNat = sumTake bytes k :=
-            toNat_ofNat_lt (by rw [size_eq]; omega)
+          have hsu : (UInt64.ofNat (sumTake bytes k)).toNat = sumTake bytes k := by u64_omega
           have hbu : (bytes[k]!.toUInt64).toNat = bytes[k]!.toNat := by
             rw [UInt8.toNat_toUInt64]
           rw [hsu, hbu]
@@ -169,8 +166,7 @@ theorem foldSum_correct : FoldSumSpec := by
         rw [if_neg (by simpa using hnowrap)]
         try wp_run
         try simp
-        have hsu : (UInt64.ofNat (sumTake bytes k)).toNat = sumTake bytes k :=
-          toNat_ofNat_lt (by rw [size_eq]; omega)
+        have hsu : (UInt64.ofNat (sumTake bytes k)).toNat = sumTake bytes k := by u64_omega
         have hkadd : UInt64.ofNat k + 1 = UInt64.ofNat (k + 1) := by
           apply UInt64.toNat.inj
           rw [toNat_add_one, hkU, toNat_ofNat_lt (by rw [size_eq]; omega)]

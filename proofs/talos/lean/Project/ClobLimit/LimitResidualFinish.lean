@@ -21,19 +21,6 @@ open Wasm Project.Common Project.Clob Project.ClobLimit
 
 set_option maxRecDepth 1048576
 
-macro "wp_run_finish" "(" hParams:term "," hLocals:term ","
-    hValues:term "," hLength:term "," hTarget:term ","
-    hOid:term "," hTrader:term "," hSide:term "," hPrice:term ","
-    hRemaining:term "," hTrades:term ")" : tactic => `(tactic|
-  simp (config := { maxSteps := 10000000 }) [wp_simp,
-    Locals.get, Locals.set?, Locals.validIndex,
-    Function.toLocals, Function.numParams, Function.numLocals,
-    List.take, List.drop, List.replicate, List.length, List.map,
-    List.length_set, List.getElem?_set,
-    Nat.reduceAdd, Nat.reduceLT, Nat.reduceLeDiff, Nat.reduceSub,
-    ValueType.zero, List.headD, ($hParams), ($hLocals), ($hValues),
-    ($hLength), ($hTarget), ($hOid), ($hTrader), ($hSide), ($hPrice),
-    ($hRemaining), ($hTrades)])
 
 structure ResultLocalsAt (final : Locals) (ctx : Context)
     (data : InternalLoopResult.OutputData) : Prop where
@@ -103,33 +90,20 @@ theorem residualFinishProg_spec
   have hLocals := hCopy.orderLocals.fields.locals
   have hValues := hCopy.orderLocals.fields.values
   have hLength : base.locals[35] =
-      .i64 (UInt64.ofNat ctx.result.book.length) := by
-    apply Option.some.inj
-    calc
-      some base.locals[35] = base.locals[35]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 (UInt64.ofNat ctx.result.book.length)) :=
-        hCopy.orderLocals.length
+      .i64 (UInt64.ofNat ctx.result.book.length) := getElem_of_some hCopy.orderLocals.length
   have hTarget : base.locals[38] = .i64 (data.g0 + 48) := getElem_of_some hCopy.target
   have hOid : base.locals[40] = .i64 order.oid := getElem_of_some hCopy.orderLocals.fields.oid
   have hTrader : base.locals[41] = .i64 order.otrader := getElem_of_some hCopy.orderLocals.fields.trader
   have hSide : base.locals[42] = .i64 order.oside := getElem_of_some hCopy.orderLocals.fields.side
   have hPrice : base.locals[43] = .i64 order.oprice := getElem_of_some hCopy.orderLocals.fields.price
-  have hRemaining : base.locals[44] = .i64 ctx.result.remaining := by
-    apply Option.some.inj
-    calc
-      some base.locals[44] = base.locals[44]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 ctx.result.remaining) :=
-        hCopy.orderLocals.fields.remaining
+  have hRemaining : base.locals[44] = .i64 ctx.result.remaining := getElem_of_some hCopy.orderLocals.fields.remaining
   have hTrades : base.locals[23] = .i64 data.trades := getElem_of_some hCopy.orderLocals.fields.tradesResult
   have hLengthNat : (UInt64.ofNat ctx.result.book.length).toNat =
       ctx.result.book.length := toNat_ofNat_lt (by omega)
   simp only [LimitEntry.residualFinishProg, LimitEntry.residualStoreProg,
     LimitEntry.residualResultProg, copyLoopFrame, List.cons_append,
     List.nil_append]
-  wp_run_finish (hParams, hLocals, hValues, hLength, hTarget, hOid,
-    hTrader, hSide, hPrice, hRemaining, hTrades)
+  wp_run_with [hParams, hLocals, hValues, hLength, hTarget, hOid, hTrader, hSide, hPrice, hRemaining, hTrades]
   try simp [hRoot, hLengthNat, hTotalU]
   have hWriteBound (field : Nat) (hField1 : 1 ≤ field)
       (hField5 : field ≤ 5) :

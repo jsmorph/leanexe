@@ -56,10 +56,8 @@ theorem prepareProg_spec
       (prepareFrame bookOwner book taker os) env) :
     wp «module» (RunMatchEntry.prepareProg ++ rest) Q st
       (entryFrame bookOwner book taker) env := by
-  have hLengthU : (UInt64.ofNat os.length).toNat = os.length :=
-    toNat_ofNat_lt (by rw [size_eq]; omega)
-  have hOutputU : (UInt64.ofNat (os.length + 1)).toNat = os.length + 1 :=
-    toNat_ofNat_lt (by rw [size_eq]; omega)
+  have hLengthU : (UInt64.ofNat os.length).toNat = os.length := by u64_omega
+  have hOutputU : (UInt64.ofNat (os.length + 1)).toNat = os.length + 1 := by u64_omega
   have hLengthAdd : UInt64.ofNat os.length + 1 =
       UInt64.ofNat (os.length + 1) := by
     apply UInt64.toNat.inj

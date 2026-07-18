@@ -410,10 +410,8 @@ private theorem release_tree_fuel (env : HostEnv Unit) (m : Module)
               simp only [if_neg (by omega : ¬ (4 = j))]
           · rintro stL sL ⟨k, l8v, hkle, rfl, hmemL, hlenL, h1L, h4L, h5L,
               hothL⟩
-            have hkU : (UInt64.ofNat k).toNat = k :=
-              toNat_ofNat_lt (by rw [size_eq]; omega)
-            have hlenU : (UInt64.ofNat slots.length).toNat = slots.length :=
-              toNat_ofNat_lt (by rw [size_eq]; omega)
+            have hkU : (UInt64.ofNat k).toNat = k := by u64_omega
+            have hlenU : (UInt64.ofNat slots.length).toNat = slots.length := by u64_omega
             have hpgL : stL.mem.pages = st.mem.pages := by
               rw [hmemL]
               exact applyEvents_pages ..
@@ -520,8 +518,7 @@ private theorem release_tree_fuel (env : HostEnv Unit) (m : Module)
                   toNat_ofNat_lt (by rw [size_eq]; omega)]
                 try rw [hkU, size_eq]
                 try omega
-              have hk1U : (UInt64.ofNat (k + 1)).toNat = k + 1 :=
-                toNat_ofNat_lt (by rw [size_eq]; omega)
+              have hk1U : (UInt64.ofNat (k + 1)).toNat = k + 1 := by u64_omega
               refine wp_iff_cons rfl ?_
               have hmod : (UInt64.ofNat k) % 64 = UInt64.ofNat k := by
                 apply UInt64.toNat.inj

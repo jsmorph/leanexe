@@ -19,17 +19,6 @@ open Wasm Project.Common Project.Clob Project.ClobMatchFuel
 set_option maxHeartbeats 8000000
 set_option maxRecDepth 1048576
 
-macro "wp_run_replace" "(" hParams:term "," hLocals:term ","
-    hValues:term "," hSource:term "," hLength:term "," hTotal:term ","
-    hTarget:term ")" : tactic => `(tactic|
-  simp (config := { maxSteps := 10000000 }) [wp_simp,
-    Locals.get, Locals.set?, Locals.validIndex,
-    Function.toLocals, Function.numParams, Function.numLocals,
-    List.take, List.drop, List.replicate, List.length, List.map,
-    List.length_set, List.getElem?_set,
-    Nat.reduceAdd, Nat.reduceLT, Nat.reduceLeDiff, Nat.reduceSub,
-    ValueType.zero, List.headD, ($hParams), ($hLocals), ($hValues), ($hSource),
-    ($hLength), ($hTotal), ($hTarget)])
 
 def replaceCopyFrame (base : Locals) (target : UInt64) (word : Nat) : Locals :=
   { params := base.params
@@ -148,8 +137,7 @@ theorem replaceCopyProg_spec
       .i64 (UInt64.ofNat os.length * 5) := getElem_of_some hTotalLocal
   have hTargetGet : base.locals[75] = .i64 target := getElem_of_some hTargetLocal
   simp only [replaceCopyProg, List.cons_append, List.nil_append]
-  wp_run_replace (hParams, hLocals, hValues, hSourceGet, hLengthGet, hTotalGet,
-    hTargetGet)
+  wp_run_with [hParams, hLocals, hValues, hSourceGet, hLengthGet, hTotalGet, hTargetGet]
   simp only [hg2]
   have hLengthBound : target.toNat % 4294967296 + 8 ≤
       st0.mem.pages * 65536 := by
@@ -184,8 +172,7 @@ theorem replaceCopyProg_spec
     have hwordU : (UInt64.ofNat word).toNat = word :=
       toNat_ofNat_lt (by omega)
     simp only [replaceCopyBodyProg, replaceCopyFrame]
-    wp_run_replace (hParams, hLocals, hValues, hSourceGet, hLengthGet, hTotalGet,
-      hTargetGet)
+    wp_run_with [hParams, hLocals, hValues, hSourceGet, hLengthGet, hTotalGet, hTargetGet]
     by_cases hwordEnd : word = os.length * 5
     · have hge : UInt64.ofNat word ≥
           (UInt64.ofNat os.length) * 5 := by

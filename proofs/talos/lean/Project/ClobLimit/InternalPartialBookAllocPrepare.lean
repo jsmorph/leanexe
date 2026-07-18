@@ -15,17 +15,6 @@ open Wasm Project.Common Project.Clob Project.ClobLimit
 set_option maxHeartbeats 8000000
 set_option maxRecDepth 1048576
 
-macro "wp_run_prepare" "(" hParams:term "," hLocals:term ","
-    hValues:term "," hLength:term "," hCapacity:term ","
-    hNext:term ")" : tactic => `(tactic|
-  simp (config := { maxSteps := 10000000 }) [wp_simp,
-    Locals.get, Locals.set?, Locals.validIndex,
-    Function.toLocals, Function.numParams, Function.numLocals,
-    List.take, List.drop, List.replicate, List.length, List.map,
-    List.length_set, List.getElem?_set,
-    Nat.reduceAdd, Nat.reduceLT, Nat.reduceLeDiff, Nat.reduceSub,
-    ValueType.zero, List.headD, ($hParams), ($hLocals), ($hValues),
-    ($hLength), ($hCapacity), ($hNext)])
 
 def partialBookAllocPrepareProg : Wasm.Program :=
   [
@@ -127,13 +116,11 @@ theorem partialBookAllocPrepareProg_spec
       simp [List.getElem?_set, h59, h60]
     · simp [h58, h59, h60, h61, h62, h63]
   simp only [partialBookAllocPrepareProg, List.cons_append, List.nil_append]
-  wp_run_prepare (hParams, hLocals, hValues, hLengthGet, hCapacityGet,
-    hNextGet)
+  wp_run_with [hParams, hLocals, hValues, hLengthGet, hCapacityGet, hNextGet]
   rw [hCapacity, if_neg hNotSmall]
   refine wp_iff_cons rfl ?_
   rw [if_neg (by simp)]
-  wp_run_prepare (hParams, hLocals, hValues, hLengthGet, hCapacityGet,
-    hNextGet)
+  wp_run_with [hParams, hLocals, hValues, hLengthGet, hCapacityGet, hNextGet]
   simpa only [hg1, hFinalFrame] using hDone
 
 end Project.ClobLimit.InternalPartialBookAllocPrepare

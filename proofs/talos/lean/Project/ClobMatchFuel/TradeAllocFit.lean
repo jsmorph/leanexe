@@ -8,14 +8,6 @@ open Wasm Project.Common Project.Runtime Project.Clob Project.ClobMatchFuel
 set_option maxHeartbeats 8000000
 set_option maxRecDepth 1048576
 
-macro "wp_run_fit" "(" hParams:term "," hLocals:term "," hValues:term ")" : tactic => `(tactic|
-  simp (config := { maxSteps := 10000000 }) [wp_simp,
-    Locals.get, Locals.set?, Locals.validIndex,
-    Function.toLocals, Function.numParams, Function.numLocals,
-    List.take, List.drop, List.replicate, List.length, List.map,
-    List.length_set, List.getElem?_set,
-    Nat.reduceAdd, Nat.reduceLT, Nat.reduceLeDiff, Nat.reduceSub,
-    ValueType.zero, List.headD, ($hParams), ($hLocals), ($hValues)])
 
 abbrev tradeAllocFitMem (mem : Mem) (choice : FreeChoice) : Mem :=
   BookAllocFit.fixedArrayAllocFitMem mem choice 4
@@ -135,7 +127,7 @@ theorem tradeAllocSearchProg_fit
                 exact hnodeNext
               simp only [TradeAllocSearch.tradeAllocSearchBodyProg,
                 TradeAllocSearch.tradeAllocSearchFrame, freeHead]
-              wp_run_fit (hParams, hLocals, hValues)
+              wp_run_with [hParams, hLocals, hValues]
               simp only [if_neg hroot]
               rw [if_neg (Nat.not_lt.mpr hcapBound),
                 if_neg (Nat.not_lt.mpr hnextBound)]
@@ -147,7 +139,7 @@ theorem tradeAllocSearchProg_fit
               simp only [if_neg hnotFit]
               refine wp_iff_cons rfl ?_
               rw [if_neg (by simp)]
-              wp_run_fit (hParams, hLocals, hValues)
+              wp_run_with [hParams, hLocals, hValues]
               have hSplitNext :
                   skipped = (visited ++ [node]) ++ remaining := by
                 simpa [List.append_assoc] using hSplit
@@ -272,7 +264,7 @@ theorem tradeAllocSearchProg_fit
                     hRuntimePrevious, hnext]
               simp only [TradeAllocSearch.tradeAllocSearchBodyProg,
                 TradeAllocSearch.tradeAllocSearchFrame, freeHead]
-              wp_run_fit (hParams, hLocals, hValues)
+              wp_run_with [hParams, hLocals, hValues]
               simp only [if_neg hChoiceRoot]
               rw [if_neg (Nat.not_lt.mpr
                   (hbound 32 (by decide) (by decide))),
@@ -280,11 +272,11 @@ theorem tradeAllocSearchProg_fit
                   (hbound 8 (by decide) (by decide)))]
               simp only [hcapacity', hnext', if_pos hChoiceFit]
               refine wp_iff_cons rfl ?_
-              wp_run_fit (hParams, hLocals, hValues)
+              wp_run_with [hParams, hLocals, hValues]
               by_cases hPreviousZero : choice.previous = 0
               · refine wp_iff_cons (c := 1) (vs := [])
                   (by simp [hRuntimePrevious, hPreviousZero]) ?_
-                wp_run_fit (hParams, hLocals, hValues)
+                wp_run_with [hParams, hLocals, hValues]
                 simp only [hGlobal1]
                 rw [if_neg (Nat.not_lt.mpr
                     (hbound 48 (by decide) (by decide))),
@@ -310,7 +302,7 @@ theorem tradeAllocSearchProg_fit
                     hScanPositive]
               · refine wp_iff_cons (c := 0) (vs := [])
                   (by simp [hRuntimePrevious, hPreviousZero]) ?_
-                wp_run_fit (hParams, hLocals, hValues)
+                wp_run_with [hParams, hLocals, hValues]
                 have hSkippedNonempty : skipped ≠ [] := by
                   intro hEmpty
                   rw [hEmpty] at hSplit
@@ -369,7 +361,7 @@ theorem tradeAllocSearchProg_fit
     · rcases hDone with ⟨rfl, rfl⟩
       simp only [TradeAllocSearch.tradeAllocSearchBodyProg,
         TradeAllocSearch.tradeAllocSearchFrame]
-      wp_run_fit (hParams, hLocals, hValues)
+      wp_run_with [hParams, hLocals, hValues]
       simp only [if_neg hChoiceRoot]
       simpa [TradeAllocSearch.tradeAllocSearchFrame, hValues] using hNext
 

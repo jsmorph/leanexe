@@ -61,10 +61,8 @@ theorem postOnly_appended
             (.i64 (g0 + 104 + orderArrayBytesU (os.length + 1)))).set 2
               (.i64 (g2 + 2))) ∧
         ∀ a : Nat, a < g0.toNat → st'.mem.bytes a = st.mem.bytes a) := by
-  have hlenU : (UInt64.ofNat os.length).toNat = os.length :=
-    toNat_ofNat_lt (by rw [size_eq]; omega)
-  have houtU : (UInt64.ofNat (os.length + 1)).toNat = os.length + 1 :=
-    toNat_ofNat_lt (by rw [size_eq]; omega)
+  have hlenU : (UInt64.ofNat os.length).toNat = os.length := by u64_omega
+  have houtU : (UInt64.ofNat (os.length + 1)).toNat = os.length + 1 := by u64_omega
   have hlenAdd : UInt64.ofNat os.length + 1 =
       UInt64.ofNat (os.length + 1) := by
     apply UInt64.toNat.inj

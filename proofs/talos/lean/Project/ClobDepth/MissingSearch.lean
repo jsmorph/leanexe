@@ -1,4 +1,5 @@
 import Project.ClobDepth.MissingPrepare
+import Project.Common
 import Interpreter.Wasm.Wp.Block
 import Interpreter.Wasm.Wp.Loop
 
@@ -13,7 +14,7 @@ frame abstractly.
 
 namespace Project.ClobDepth.MissingSearch
 
-open Wasm Project.ClobDepth Project.ClobDepth.Model
+open Wasm Project.Common Project.ClobDepth Project.ClobDepth.Model
 
 set_option maxRecDepth 1048576
 
@@ -28,12 +29,8 @@ theorem missingSearchProg_empty
     (hNext : wp «module» rest Q st base env) :
     wp «module» (Entry.missingSearchProg ++ rest) Q st base env := by
   have hIndex : 22 < base.locals.length := by omega
-  have hCurrent' : base.locals[22]'hIndex = .i64 0 := by
-    apply Option.some.inj
-    calc
-      some (base.locals[22]'hIndex) = base.locals[22]? :=
-        (List.getElem?_eq_getElem hIndex).symm
-      _ = some (.i64 0) := hCurrent
+  have hCurrent' : base.locals[22]'hIndex = .i64 0 :=
+    getElem_of_some hCurrent hIndex
   have hFrame : Locals.mk base.params base.locals [] = base := by
     rw [← hValues]
   simp only [Entry.missingSearchProg, List.cons_append, List.nil_append]
