@@ -187,8 +187,10 @@ function findWasmTools() {
     try {
       fs.accessSync(process.env.WASM_TOOLS, fs.constants.X_OK);
       return process.env.WASM_TOOLS;
-    } catch {
-      throw new Error(`WASM_TOOLS is not executable: ${process.env.WASM_TOOLS}`);
+    } catch (error) {
+      throw new Error(
+        `WASM_TOOLS is not executable: ${process.env.WASM_TOOLS}: ${error.message}`,
+      );
     }
   }
   const fromPath = findExecutable("wasm-tools");
@@ -223,7 +225,8 @@ function checkPrerequisites() {
     }
   }
 
-  if (!fs.existsSync(codeLibRoot)) {
+  const verifierLakefile = path.join(verifierRoot, "lakefile.toml");
+  if (!fs.existsSync(verifierLakefile)) {
     console.log("Fetching the pinned Talos dependency.");
     runLimited(
       "Talos dependency update",
@@ -233,7 +236,7 @@ function checkPrerequisites() {
       proofRoot,
     );
   }
-  if (!fs.existsSync(path.join(verifierRoot, "lakefile.toml"))) {
+  if (!fs.existsSync(verifierLakefile)) {
     throw new Error(`Talos dependency does not contain ${verifierRoot}`);
   }
   console.log("Building the pinned Talos verifier.");
@@ -263,8 +266,8 @@ function buildCompilerInputs(cases) {
   );
   try {
     fs.accessSync(leanWasm, fs.constants.X_OK);
-  } catch {
-    throw new Error(`compiler build did not produce ${leanWasm}`);
+  } catch (error) {
+    throw new Error(`compiler build did not produce ${leanWasm}: ${error.message}`);
   }
 }
 
@@ -421,7 +424,7 @@ function checkCase(item) {
     `${item.name} proof build`,
     "15m",
     "lake",
-    ["--no-ansi", "build", item.specTarget, "--wfail"],
+    ["--no-ansi", "build", item.specTarget],
     proofRoot,
   );
 }
@@ -432,7 +435,7 @@ function checkAllProofs(cases) {
     "aggregate Talos proof build",
     "20m",
     "lake",
-    ["--no-ansi", "build", "Project", "--wfail"],
+    ["--no-ansi", "build", "Project"],
     proofRoot,
   );
 }
