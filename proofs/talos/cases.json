@@ -159,7 +159,7 @@
       "entry": "LeanExe.Examples.Clob.depth",
       "leanModule": "ClobDepth",
       "specTarget": "Project.ClobDepth.Spec",
-      "complete": false
+      "complete": true
     }
   ]
 }

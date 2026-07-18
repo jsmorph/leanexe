@@ -17,5 +17,6 @@ import Project.ClobPostOnly.Spec
 import Project.ClobMatchFuel.Spec
 import Project.ClobLimit.Spec
 import Project.ClobMarket.Spec
+import Project.ClobDepth.Spec
 import Project.Runtime.Checks
 import Project.Runtime.Spec
