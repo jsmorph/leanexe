@@ -5832,3 +5832,7 @@ The aggregate proof command now validates registry completion flags, specificati
 The draft proof mismatched the generated decode in three ways.  `simp` rewrites the `ltUI64` guard `x < 1` to `x = 0`, so both decode sites now use `rw [if_neg hEncoded]` followed by `rw [if_neg (by simp)]`, the idiom from the missing preparation.  `simp` also cancels `i + 1 - 1` during instruction stepping, which made the named subtraction rewrite and its two supporting hypotheses dead.  The proof tail now follows the program's order: reload the level count at the source address, pass the index bound check through `wp_iff_cons`, then read the matched quantity.
 
 The generated locals proved `prepareFrame` wrong at two entries.  Scratch locals 26 and 27 keep the encoded index and the constant one after the second decode, so the frame now records `UInt64.ofNat i + 1` and `1` there.  Allocation preparation, the next depth boundary, consumes this corrected frame.
+
+## 2026-07-17: Prove Found-Price Allocation Preparation
+
+`FoundAllocPrepare.foundAllocPrepareProg_spec` passed its focused warning-failing build in 1.6 seconds on the first attempt.  The theorem follows the `MissingPrepare` capacity pattern with `fixedArrayBytesU levels.length 2` in place of the append capacity, and it keeps the empty free-list premise on global 1.  Its input state is the corrected `FoundPrepare.prepareFrame` with the branch flag consumed, so the found-branch composition can pass through the allocation conditional and continue with `allocFrame`.
