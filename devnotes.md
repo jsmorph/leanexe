@@ -5846,3 +5846,9 @@ The generated locals proved `prepareFrame` wrong at two entries.  Scratch locals
 ## 2026-07-17: Prove the Found-Price Same-Length Copy
 
 `FoundCopyInvariant` specializes the shared level-copy state to target length `levels.length` and payload `levels.length * 2`, and its advance theorem passes `le_rfl` for the source-fits bound.  The cursor frame, frame-zero theorem, and loop measure come from `MissingCopyInvariant` unchanged because both branches use cursor local 19.  `FoundCopy.foundCopyProg_spec` differs from the missing loop theorem in the total-holding local, 17 rather than 16, and in target bounds stated over the same-length payload.  Both modules passed their focused warning-failing builds on the first attempt, in 1.4 and 2.6 seconds.
+
+## 2026-07-17: Prove the Found-Price Quantity Replacement
+
+`FoundStoreFacts` reuses `MissingStoreFacts.appendLevelStore` with the matched index as its slot, because the two generated stores write the same relative words.  The new `replaceStore_read_other` lemma preserves any unwritten level word on either side of the replaced pair, which the append case never needed, and the `finish` theorem reconstructs `levels.set i level` through `List.getElem_set_self` and `List.getElem_set_ne`.  `ReplaceState` states ownership of the replaced array, the preserved source representation, and the same-length outside-region frame.
+
+`FoundStore.foundStoreProg_spec` steps the two stores from the completed copy frame and leaves the target pointer on the stack as the allocation-branch result, so its continuation frame is the copy frame with one stacked value.  The generated stores index by the matched-index local 15 where the missing branch uses the length local.  Both modules built in under three seconds, with two set-lemma argument fixes and the recorded `hValues` bridge for the unused-variable linter.
