@@ -2,6 +2,7 @@
 "use strict";
 
 const {
+  checkAggregateImports,
   checkAllProofs,
   checkCase,
   formatError,
@@ -19,8 +20,9 @@ function main() {
   if (process.argv.length !== 4 || process.argv[2] !== "check") usage();
   const cases = loadRegistry();
   if (process.argv[3] === "--all") {
+    checkAggregateImports(cases);
     prepareCases(cases);
-    checkAllProofs(cases);
+    checkAllProofs();
     const count = cases.filter((item) => item.complete).length;
     console.log(`Talos proof library passed: ${count} completed case(s)`);
     return;
