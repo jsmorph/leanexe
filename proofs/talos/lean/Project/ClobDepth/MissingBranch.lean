@@ -110,6 +110,8 @@ theorem missingProg_spec
     simp [prepared, MissingPrepare.prepareFrame, capacity]
   have hPreparedResult : prepared.locals[25]? = some (.i64 0) := by
     simp [prepared, MissingPrepare.prepareFrame]
+  have hPreparedCurrent : prepared.locals[22]? = some (.i64 0) := by
+    simp [prepared, MissingPrepare.prepareFrame]
   have hBumpedParams : bumped.params.length = 4 := by
     simp [bumped, MissingBump.bumpFrame, hPreparedParams]
   have hBumpedLocals : bumped.locals.length = 26 := by
@@ -171,8 +173,8 @@ theorem missingProg_spec
     levels f4 f5 hLength hOwned.2
   apply MissingPrepare.missingPrepareProg_spec env st owner source price qty
     levels f4 f5 hLength hGlobal1
-  apply MissingSearch.missingSearchProg_empty env st owner source price qty
-    levels f4 f5
+  apply MissingSearch.missingSearchProg_empty env st prepared
+    hPreparedParams hPreparedLocals hPreparedValues hPreparedCurrent
   apply MissingBump.missingBumpProg_spec env st prepared g0 (capacity levels)
     hPreparedParams hPreparedLocals hPreparedValues hPreparedNeed
     hPreparedResult hNeed8 hTop hFit32 hFit hPages hGlobal0

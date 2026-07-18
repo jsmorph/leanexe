@@ -5836,3 +5836,9 @@ The generated locals proved `prepareFrame` wrong at two entries.  Scratch locals
 ## 2026-07-17: Prove Found-Price Allocation Preparation
 
 `FoundAllocPrepare.foundAllocPrepareProg_spec` passed its focused warning-failing build in 1.6 seconds on the first attempt.  The theorem follows the `MissingPrepare` capacity pattern with `fixedArrayBytesU levels.length 2` in place of the append capacity, and it keeps the empty free-list premise on global 1.  Its input state is the corrected `FoundPrepare.prepareFrame` with the branch flag consumed, so the found-branch composition can pass through the allocation conditional and continue with `allocFrame`.
+
+## 2026-07-17: Adapt Search, Bump, and Finish for the Found Branch
+
+`MissingSearch.missingSearchProg_empty` now takes its local frame abstractly with length, empty-stack, and zero-head hypotheses, matching the style of the bump and finish theorems.  The `MissingBranch` composition passes its recorded `prepared` frame facts, and the missing chain rebuilt without further change: the search module in 1.4 seconds and the branch composition in 2.6 seconds.  One search theorem now serves both level-update branches because `foundSearchProg` and `foundBumpProg` equal their missing counterparts by definition.
+
+`FoundFinish.foundAllocFinishProg_spec` adapts the finalization to the found program, which stores the unchanged level count from local 16 where the missing program stores the extended length from local 17.  It reuses `MissingFinish.finishStore` and `MissingFinish.finishFrame`, and its focused build passed in 1.9 seconds on the first attempt.  With an abstract frame, `rintro` substitutes the frame hypothesis for the loop variable, and the final frame equality follows from structure eta once the empty value stack is rewritten.
