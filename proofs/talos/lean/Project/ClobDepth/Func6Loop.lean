@@ -330,15 +330,6 @@ theorem FoldState.step_skip
 
 
 
-macro "wp_run_fold" "(" a:term "," b:term "," c:term "," d:term ","
-    e:term "," f:term "," g:term "," h:term "," i:term ")" : tactic =>
-  `(tactic|
-  simp (config := { maxSteps := 10000000 }) [wp_simp,
-    Locals.get, Locals.set?, Locals.validIndex,
-    List.take, List.drop, List.length, List.length_set,
-    List.getElem?_set, Nat.reduceAdd, Nat.reduceLT, Nat.reduceSub,
-    List.headD, ($a), ($b), ($c), ($d), ($e), ($f), ($g), ($h), ($i)])
-
 set_option maxHeartbeats 8000000
 
 set_option Elab.async false in
@@ -392,8 +383,7 @@ theorem foldLoop_spec
     have hCursor' : s1.locals[20] = .i64 (UInt64.ofNat k) := getElem_of_some hLocals.cursor
     have hLimit' : s1.locals[22] = .i64 (UInt64.ofNat count) := getElem_of_some hLocals.limit
     simp only [Entry.func6BodyProg]
-    wp_run_fold (hP, hL, hV, hSide', hOrders', hOwner', hRoot', hCursor',
-      hLimit')
+    wp_run_with [hP, hL, hV, hSide', hOrders', hOwner', hRoot', hCursor', hLimit']
     try simp
     by_cases hEnd : k = count
     · have hge : UInt64.ofNat k ≥ UInt64.ofNat count := by
@@ -412,8 +402,7 @@ theorem foldLoop_spec
         rw [ge_iff_le, UInt64.le_iff_toNat_le, hkU, hCountU]
         omega
       rw [if_neg hnge]
-      wp_run_fold (hP, hL, hV, hSide', hOrders', hOwner', hRoot',
-        hCursor', hLimit')
+      wp_run_with [hP, hL, hV, hSide', hOrders', hOwner', hRoot', hCursor', hLimit']
       try simp
       obtain ⟨⟨hOidR, hOidB⟩, ⟨hTraderR, hTraderB⟩, ⟨hSideR, hSideB⟩,
         ⟨hPriceR, hPriceB⟩, ⟨hQtyR, hQtyB⟩⟩ := hState.ordersRep.2 k hkos
@@ -457,18 +446,15 @@ theorem foldLoop_spec
       · rw [if_pos hMatch]
         refine wp_iff_cons rfl ?_
         rw [if_pos (by simp)]
-        wp_run_fold (hP, hL, hV, hSide', hOrders', hOwner', hRoot',
-          hCursor', hLimit')
+        wp_run_with [hP, hL, hV, hSide', hOrders', hOwner', hRoot', hCursor', hLimit']
         try simp
         refine wp_iff_cons rfl ?_
         rw [if_pos (by simp)]
-        wp_run_fold (hP, hL, hV, hSide', hOrders', hOwner', hRoot',
-          hCursor', hLimit')
+        wp_run_with [hP, hL, hV, hSide', hOrders', hOwner', hRoot', hCursor', hLimit']
         try simp
         refine wp_iff_cons rfl ?_
         rw [if_pos (by simp)]
-        wp_run_fold (hP, hL, hV, hSide', hOrders', hOwner', hRoot',
-          hCursor', hLimit')
+        wp_run_with [hP, hL, hV, hSide', hOrders', hOwner', hRoot', hCursor', hLimit']
         try simp
         have hMissNat : (MissingBranchFacts.capacity
             (foldLevels os side k)).toNat =
@@ -548,8 +534,7 @@ theorem foldLoop_spec
         intro st2 vs hPost
         obtain ⟨hUpd, hvs⟩ := hPost
         subst hvs
-        wp_run_fold (hP, hL, hV, hSide', hOrders', hOwner', hRoot',
-          hCursor', hLimit')
+        wp_run_with [hP, hL, hV, hSide', hOrders', hOwner', hRoot', hCursor', hLimit']
         try simp
         have hOwnerSucc : foldOwner os side g0n (k + 1) =
             foldTop os side g0n k + 48 := by
@@ -593,18 +578,15 @@ theorem foldLoop_spec
       · rw [if_neg hMatch]
         refine wp_iff_cons rfl ?_
         rw [if_neg (by simp)]
-        wp_run_fold (hP, hL, hV, hSide', hOrders', hOwner', hRoot',
-          hCursor', hLimit')
+        wp_run_with [hP, hL, hV, hSide', hOrders', hOwner', hRoot', hCursor', hLimit']
         try simp
         refine wp_iff_cons rfl ?_
         rw [if_neg (by simp)]
-        wp_run_fold (hP, hL, hV, hSide', hOrders', hOwner', hRoot',
-          hCursor', hLimit')
+        wp_run_with [hP, hL, hV, hSide', hOrders', hOwner', hRoot', hCursor', hLimit']
         try simp
         refine wp_iff_cons rfl ?_
         rw [if_neg (by simp)]
-        wp_run_fold (hP, hL, hV, hSide', hOrders', hOwner', hRoot',
-          hCursor', hLimit')
+        wp_run_with [hP, hL, hV, hSide', hOrders', hOwner', hRoot', hCursor', hLimit']
         try simp
         have hOwnerSkip : foldOwner os side g0n (k + 1) =
             foldOwner os side g0n k := by
