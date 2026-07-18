@@ -82,6 +82,8 @@ Artifact-local `wp_run_*` macros provide useful records of the definitions requi
 
 Record focused module build time in `devnotes.md` after each completed theorem.  A sharp increase in time, a timeout without a diagnostic, or a simplifier recursion failure calls for a smaller program boundary or a semantic lemma before another build.  Every Lean or Lake invocation remains subject to the repository's cgroup, CPU, priority, timeout, and single-job rules.
 
+The `simp` normal form rewrites a `ltUI64` guard against one into an equality with zero, so a one-based index decode reduces with `rw [if_neg hEncoded]` on the equality test followed by `rw [if_neg (by simp)]` on the branch selector.  The same pass cancels the subtraction by one, which makes an explicit `x + 1 - 1 = x` rewrite dead.  After a bounds-checked `load64`, `wp_run` continues reducing beneath the produced guard, so a trailing read sequence needs only `if_neg` and read rewrites in execution order.  `FoundPrepare.foundPrepareProg_spec` and `MissingPrepare` both use this decode idiom.
+
 ## Failure Classification
 
 Classify a failed proof before changing its resource budget or tactic sequence.  The classification determines whether the next action belongs in a semantic library, representation module, arithmetic helper, or artifact adapter.  Record a new recurring class here when two independent proofs exhibit it.

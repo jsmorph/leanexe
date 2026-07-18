@@ -5824,3 +5824,11 @@ The GCD pilot generated WASM, WAT, and `Program.lean` byte-identical to the form
 The aggregate proof command regenerated all twenty cases successfully and then exposed tracked proof failures in `Project.ClobPostOnly.AppendTradeStore` and `Project.ClobPostOnly.AppendOrderAlloc`.  Both errors concern fixed-array memory expressions after shared-definition changes, which confirms the stale aggregate state recorded before this workflow work.  The run stopped after those diagnostics, and this migration does not alter either hard proof or the untracked unfinished `Project/ClobDepth/FoundPrepare.lean` file.
 
 The aggregate proof command now validates registry completion flags, specification imports, and runtime model imports before compiling any artifact.  A configuration mismatch therefore fails without starting Lake, `lean-wasm`, or the Talos verifier.  Valid aggregate runs retain the same serial generation and proof stages.
+
+## 2026-07-17: Prove Found-Price Preparation
+
+`FoundPrepare.foundPrepareProg_spec` now builds, and the focused warning-failing `Project.ClobDepth.FoundPrepare` target passes in about three seconds under the repository resource limits.  The theorem steps the generated found-branch preparation region from the scan outcome frame to the allocation continuation frame.  This closes the first entry in the remaining depth order.
+
+The draft proof mismatched the generated decode in three ways.  `simp` rewrites the `ltUI64` guard `x < 1` to `x = 0`, so both decode sites now use `rw [if_neg hEncoded]` followed by `rw [if_neg (by simp)]`, the idiom from the missing preparation.  `simp` also cancels `i + 1 - 1` during instruction stepping, which made the named subtraction rewrite and its two supporting hypotheses dead.  The proof tail now follows the program's order: reload the level count at the source address, pass the index bound check through `wp_iff_cons`, then read the matched quantity.
+
+The generated locals proved `prepareFrame` wrong at two entries.  Scratch locals 26 and 27 keep the encoded index and the constant one after the second decode, so the frame now records `UInt64.ofNat i + 1` and `1` there.  Allocation preparation, the next depth boundary, consumes this corrected frame.
