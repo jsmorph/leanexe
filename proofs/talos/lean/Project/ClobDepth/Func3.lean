@@ -200,4 +200,56 @@ theorem func3_spec
     refine hNext st1 (UpdateResult.of_found hIndex hResult) _ ?_
     exact ⟨hLocals.params, hLocals.locals, rfl⟩
 
+set_option Elab.async false in
+theorem func3_terminates
+    (env : HostEnv Unit) (st : Store Unit)
+    (owner source price qty sourceCapacity g0 g2 : UInt64)
+    (levels : List LevelL)
+    (hLength : levels.length < 4294967296)
+    (hSource32 :
+      source.toNat + fixedArrayBytes levels.length 2 < 4294967296)
+    (hSource48 : 48 ≤ source.toNat)
+    (hSourceCapacity :
+      fixedArrayBytes levels.length 2 ≤ sourceCapacity.toNat)
+    (hSourceBelow : source.toNat + sourceCapacity.toNat ≤ g0.toNat)
+    (hOwned : OwnedLevelArrayAt st source sourceCapacity levels)
+    (hGlobal0 : st.globals.globals[0]? = some (.i64 g0))
+    (hGlobal1 : st.globals.globals[1]? = some (.i64 0))
+    (hGlobal2 : st.globals.globals[2]? = some (.i64 g2))
+    (hPages : st.mem.pages ≤ 65536)
+    (hFit32 : g0.toNat + 48 +
+      (MissingBranchFacts.capacity levels).toNat < 4294967296)
+    (hFit : g0.toNat + 48 + (MissingBranchFacts.capacity levels).toNat ≤
+      st.mem.pages * 65536)
+    (hFoundFit32 : g0.toNat + 48 +
+      (FoundBranchFacts.capacity levels).toNat < 4294967296)
+    (hFoundFit : g0.toNat + 48 +
+      (FoundBranchFacts.capacity levels).toNat ≤ st.mem.pages * 65536)
+    (hsepMissing : flatWordsDisjoint
+      (flatWordsRegion (target g0) ((levels.length + 1) * 2))
+      (flatWordsRegion source (levels.length * 2)))
+    (hsepFound : flatWordsDisjoint
+      (flatWordsRegion (target g0) (levels.length * 2))
+      (flatWordsRegion source (levels.length * 2))) :
+    TerminatesWith (m := «module») (id := 3) (initial := st) (env := env)
+      [.i64 qty, .i64 price, .i64 source, .i64 owner]
+      (fun st1 vs =>
+        UpdateResult st st1 g0 g2 source sourceCapacity price qty levels ∧
+        vs = [.i64 (target g0), .i64 (target g0)]) := by
+  refine TerminatesWith.of_wp_entry_for (f := func3Def) ?_ ?_
+  · simp [«module»]
+  · change wp «module» Project.ClobDepth.func3 _ st
+      (Scan.entryFrame owner source price qty) env
+    rw [show Project.ClobDepth.func3 =
+      Project.ClobDepth.func3 ++ ([] : Wasm.Program)
+      from (List.append_nil _).symm]
+    apply func3_spec env st owner source price qty sourceCapacity g0 g2
+      levels hLength hSource32 hSource48 hSourceCapacity hSourceBelow
+      hOwned hGlobal0 hGlobal1 hGlobal2 hPages hFit32 hFit hFoundFit32
+      hFoundFit hsepMissing hsepFound
+    intro st1 hResult final hFinal
+    simp (config := { maxSteps := 10000000 }) [wp_simp, func3Def,
+      Function.numParams, hFinal.values]
+    exact hResult
+
 end Project.ClobDepth.Func3
