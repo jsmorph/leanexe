@@ -93,8 +93,16 @@ Classify a failed proof before changing its resource budget or tactic sequence. 
 | Arithmetic presentation gap | Two equivalent capacity, address, counter, or length forms prevent theorem application. | Name the exact equality and rewrite at the boundary. |
 | Instruction adapter gap | A semantic theorem exists, but the generated local frame or instruction slice does not match it. | Prove a short artifact-local `wp` theorem and explicit frame equality. |
 | Elaboration boundary failure | Lean spends substantial time reducing a long program without producing a local goal. | Divide the program or theorem before another run. |
-| Artifact change | A formerly exact instruction decomposition or byte comparison fails. | Inspect the compiler, IR, WASM, and generated-program differences before changing the proof. |
+| Artifact change | A formerly exact instruction decomposition or generated model changes. | Inspect the compiler, IR, WASM, and generated-program differences before changing the proof. |
 | Missing bound | An address, capacity, page, or modular fact cannot follow from current premises. | Derive it from the existing budget or state the necessary semantic precondition explicitly. |
+
+## Regenerated Artifact Workflow
+
+`tools/talos-artifact.js prepare <case>` now owns compilation and model generation.  It records WASM and WAT under the ignored `.generated` tree, gives Talos a temporary Cargo-shaped project, and replaces the ignored `Program.lean` only after generation succeeds.  Proof work should inspect those local outputs without editing or committing them.
+
+`tools/talos-proof.js check <case>` regenerates the selected model before building the handwritten specification.  A proof repair therefore starts from the current instruction stream and cannot pass because an old tracked `Program.lean` remained in the tree.  The aggregate form also checks that registry completion flags, `Project.lean` imports, and runtime model imports agree.
+
+The workflow separates artifact changes from proof-engineering failures by stage.  Source compilation, WAT rendering, Talos decoding, model compilation, runtime pins, and handwritten proof errors receive different stage names and exit statuses.  A failed aggregate build after successful generation belongs to the proof plan and should be divided at the named module rather than investigated as an artifact-copy problem.
 
 ## Maintenance Rules
 

@@ -1,42 +1,54 @@
 # Verifying a Program
 
-This guide covers a new verified program: a Lean function, its compiled WASM artifact, and a machine-checked theorem that the shipped binary computes the function.  The `fold_sum` case serves as the worked example throughout.  Its source, generated model, and proof show the maintained file structure.
+LeanExe uses two tools for Talos proofs.  The artifact tool compiles one registered Lean entry and generates the Talos model of its current WASM output.  The proof tool repeats that generation before asking Lean to check the handwritten specification, so a successful proof always concerns output from the current source and compiler.
 
-The pipeline has three trusted-base components: the Lean kernel, the Talos WASM model, and the Talos decoder.  The compiler is not trusted.  Each verified program is translation validation: the theorem is about the decoded instruction stream, and a byte comparison pins that stream to the artifact the compiler ships.
+The compiler remains outside the proof's trusted base.  The Lean kernel checks the theorem over Talos's WASM model, and the Talos decoder constructs that model from WAT rendered from the generated WASM.  A distributed artifact must come from the same source, compiler, and pinned artifact tools used by the gate, or its bytes must be compared with the gate's ignored `program.wasm` output.
 
-Complete the proof-workspace setup in [Developing LeanExe](../DEVELOPING.md) before adding a case.  The compiler and proof workspaces use Lean 4.31.0, while the proof workspace adds pinned Talos dependencies.  `tools/setup-talos.sh` owns the potentially large build, and an artifact update also requires the separately built Talos verifier emitter.
+## Inputs and Outputs
 
-## 1. Write the Function
+| Stage | Explicit inputs | Other inputs used by the stage | Outputs | Human work |
+|-------|-----------------|--------------------------------|---------|------------|
+| Write and test the program | A Lean source module and exported entry definition. | The accepted source subset, public ABI, compiler semantics, and ordinary test infrastructure. | Tracked Lean source and tests; checked declarations under the ignored root `.lake` tree. | Choose the computation, types, error behavior, and test cases. |
+| `talos-artifact.js prepare` | A case name and its entry in `proofs/talos/cases.json`. | Lean 4.31.0, the root Lake project, `lean-wasm`, `wasm-tools` 1.251.0, the pinned Talos revision, and the required systemd resource policy. | Ignored WASM and WAT under `proofs/talos/.generated/<case>/`; an ignored `lean/Project/<Case>/Program.lean`. | Inspect the generated instruction stream and decide what property warrants proof. |
+| Develop the specification | The source meaning, generated `Program.lean`, generated WAT, and the intended claim. | Talos semantics, the shared runtime theorems, representation predicates, arithmetic lemmas, and examples from completed cases. | Tracked `Spec.lean` and any tracked helper proof modules under `lean/Project/<Case>/`. | State adequate preconditions and postconditions, then construct the proof. |
+| `talos-proof.js check` | A case name or `--all`, the registry, current source, and handwritten proof modules. | Every artifact-stage dependency, the proof Lake project, its pinned manifest, runtime pins, and aggregate imports. | Ignored generated files and Lake outputs; a zero exit status only after the selected theorem builds. | Interpret a failure and change source, specification, or proof according to its cause. |
 
-Write an ordinary Lean definition inside the accepted subset ([Language Specification](spec.md), [LeanExe User Manual](manual.md)).  The example lives in [`LeanExe/Examples/ByteArrayPrograms.lean`](../LeanExe/Examples/ByteArrayPrograms.lean):
+The artifact stage creates Talos's required `rust/<case>/Cargo.toml` and `rust/build/<case>/` layout inside an operating-system temporary directory.  It deletes that directory after Talos emits `Program.lean`, and cleanup failures make the command fail.  The repository therefore contains no tracked Rust crate, Cargo workspace, WASM, WAT, or generated Lean model.
 
-```lean
-def foldSum (input : ByteArray) : Nat :=
-  input.foldl (fun acc byte => acc + byte.toNat) 0
+The persistent case consists of the source program, its tests, one registry entry, runtime pins, an aggregate import after completion, and handwritten proof modules.  A case may divide its proof among many files, with `Spec.lean` importing the final theorem.  The ignored `Program.lean` remains a local dependency that either tool can regenerate.
+
+## Resource Policy
+
+Both tools enforce the repository's cgroup policy for every Lake, Lean, `lean-wasm`, and Talos verifier process.  Each child receives `MemoryHigh=4G`, `MemoryMax=6G`, `MemorySwapMax=1G`, `CPUQuota=100%`, `nice -n 10`, `ionice -c 3`, and a stage-specific timeout.  The tools run stages serially and stop when systemd cannot create the required user scope.
+
+Do not wrap these two commands in a second `systemd-run` scope.  The tools create a separate limited scope for each expensive child, and an outer scope complicates diagnostics without strengthening the limits.  Do not run either tool while another Lean or Lake process is active.
+
+## Artifact Tool
+
+Register the source module and entry in [`proofs/talos/cases.json`](../proofs/talos/cases.json).  The registry requires a snake-case case name, the checked Lean module, the fully qualified entry, the Pascal-case proof module, the final specification target, and a completion flag.  Set `complete` to `false` until the case has its intended theorem and belongs in the aggregate proof library.
+
+```json
+{
+  "name": "fold_sum",
+  "module": "LeanExe.Examples.ByteArrayPrograms",
+  "entry": "LeanExe.Examples.ByteArrayPrograms.foldSum",
+  "leanModule": "FoldSum",
+  "specTarget": "Project.FoldSum.Spec",
+  "complete": true
+}
 ```
 
-Add ordinary execution tests to the Node suite first.  A function that fails differential testing is not ready to verify.
-
-## 2. Scaffold the Talos Case
-
-A case named `fold_sum` needs four registrations, each one line or one small file:
-
-1. `proofs/talos/rust/fold_sum/Cargo.toml`: a four-line package stub, and the package name added to the members list in `proofs/talos/rust/Cargo.toml`.
-2. `tools/check-talos-fold-sum.sh`: a wrapper naming the case, module, entry, spec module, and program path.  Copy an existing wrapper and edit the five arguments.
-3. A line in the `case_scripts` array in `tools/check-talos.sh` naming the new wrapper.
-4. An import of the future spec in `proofs/talos/lean/Project.lean`, and a stub `Spec.lean` that imports the (not yet generated) `Program.lean`.
-
-Then emit the artifact and its model:
+Generate one case from the repository root.  The tool validates the `wasm-tools` version, builds the compiler and source module, compiles the entry, renders WAT, invokes Talos through temporary Cargo-shaped input, and replaces local outputs only after every stage succeeds.  Content-identical outputs retain their timestamps, which prevents needless proof rebuilds.
 
 ```sh
-tools/check-talos-fold-sum.sh --update
+tools/talos-artifact.js prepare fold_sum
 ```
 
-Update mode compiles the entry, checks in the WASM and WAT under `proofs/talos/rust/build/fold_sum/`, and generates `lean/Project/FoldSum/Program.lean` through Talos's verifier emitter.  The generated model names each function `funcN` with its instruction stream; read the entry function once to plan the proof.
+The generated files support inspection and proof development.  Read `proofs/talos/.generated/fold_sum/program.wat` when function indices, control flow, or instruction boundaries require examination, and import `Project.FoldSum.Program` from handwritten proof modules.  Regenerate these files after changing the source, compiler, Talos pin, or `wasm-tools` pin.
 
-## 3. Pin the Runtime
+## Handwritten Proof
 
-Every generated module ends with the shared runtime suite: allocate, reset, retain, and release, in that order, after the user functions.  Add four `rfl` examples to [`lean/Project/Runtime/Checks.lean`](../proofs/talos/lean/Project/Runtime/Checks.lean) identifying the new module's runtime functions with the shared definitions:
+Add the generated module import and four runtime equalities to [`Project/Runtime/Checks.lean`](../proofs/talos/lean/Project/Runtime/Checks.lean).  The runtime function indices follow the user functions in the generated module, and release takes its own index because its body calls itself recursively.  A failed `rfl` identifies a generated runtime change that the shared runtime library must address.
 
 ```lean
 example : Project.FoldSum.func1Def = allocFuncDef := rfl
@@ -45,48 +57,30 @@ example : Project.FoldSum.func3Def = retainFuncDef := rfl
 example : Project.FoldSum.func4Def = releaseFuncDef 4 := rfl
 ```
 
-The release definition takes the function's own index, because its recursion calls itself.  If any `rfl` fails, the compiler's runtime emission changed and the shared library needs attention before the new proof.
+State the primary theorem over meaningful inputs and relate the WASM result to the source computation.  Include memory layout, address and page bounds, ownership, allocator state, counters, and frame conditions wherever the generated program depends on them.  A fixed example can test the proof machinery but does not establish an input-generic program theorem.
 
-## 4. State the Theorem
+The proof normally enters through `TerminatesWith.of_wp_entry_for`, changes to a `wp` goal over the generated function body, and composes bounded instruction regions.  [`Project/Common.lean`](../proofs/talos/lean/Project/Common.lean) supplies address and read-over-write tools, while [`Project/Runtime`](../proofs/talos/lean/Project/Runtime) supplies generic allocator, retain, release, free-list, and recursive teardown results.  [Proof Engineering Plan Notes](plan-notes.md) records reusable CLOB representations, allocation theorems, copy invariants, and elaboration boundaries.
 
-State the spec as a `Prop` with the `@[spec_of]` linkage to the source declaration, quantified over the program's inputs.  The strongest form relates the WASM result to the Lean function:
+Divide a generated function at calls, loops, branches, allocations, copy loops, final stores, and result construction.  Give each region an explicit instruction list or a small definitionally equal extraction, and state its semantic postcondition before proving the generated adapter.  A target that reaches its timeout without a diagnostic requires a smaller theorem or a reusable semantic lemma before another build.
 
-```lean
-@[spec_of "lean" "LeanExe.Examples.ByteArrayPrograms.foldSum"]
-def FoldSumSpec : Prop :=
-  ∀ (env : HostEnv Unit) (st : Store Unit) (ptr : UInt64)
-    (bytes : List UInt8),
-    bytes.length < 4294967296 →
-    ptr.toNat + bytes.length < 4294967296 →
-    BytesAt st ptr bytes →
-    TerminatesWith (m := «module») (id := 0) (initial := st) (env := env)
-      [.i64 (UInt64.ofNat bytes.length), .i64 ptr]
-      (fun st' vs =>
-        vs = [.i64 (UInt64.ofNat
-          (bytes.foldl (fun acc b => acc + b.toNat) 0))] ∧
-        st' = st)
-```
+## Proof Tool
 
-The pieces: `BytesAt` states what the host wrote into linear memory at the input pointer; the argument list is the export's ABI (here length then pointer); the postcondition gives the result as the source-level computation plus a frame condition (here the strongest one — the store is untouched, because the program never writes).  Programs that allocate state their frame as counter facts and an everything-below-the-old-heap-top clause; see `push_size` for that template.
-
-## 5. Prove It
-
-The proof enters through `TerminatesWith.of_wp_entry_for`, changes to a `wp` goal over the entry's instruction stream, and steps with `wp_run` plus branch rewrites.  The shared machinery carries the weight:
-
-- **Runtime behavior** comes from [`Runtime/Spec.lean`](../proofs/talos/lean/Project/Runtime/Spec.lean): `retain_spec`, `release_null`, `release_decrements`, and `release_frees_fresh_raw`, each generic over the module and consumed through `wp_call_tw` with the lookup hypothesis discharged by `rfl`.
-- **Recursive teardown** comes from `release_frees_tree` in [`Runtime/TreeSpec.lean`](../proofs/talos/lean/Project/Runtime/TreeSpec.lean): exhibit the ownership tree with `TreeAt`, its footprint disjointness, and a page bound, and the theorem returns the exact memory, free list, and counters after the recursive release.
-- **Memory reads over write chains** close with the `read_frames` tactic from [`Common.lean`](../proofs/talos/lean/Project/Common.lean); address normal forms bridge with `toNat_sub_le`, `toUInt32_toNat`, and the other `Common` lemmas, all `omega`-friendly.
-- **Loops** use `wp_loop_cons` with an invariant and a measure.  An input-consuming loop's invariant relates the accumulator to the source function on the consumed prefix; `fold_sum`'s invariant carries `List.foldl` over `bytes.take k`, with two ordinary list lemmas connecting the prefix to the whole.
-
-Iterate against the goal states: put `trace_state` before an unfinished step, build, read the goal, write the step.  Keep elaboration cheap: prefer `rw` with equation lemmas over `simp` on large terms, evaluate `UInt64` literal `toNat`s with `show ... from rfl` before `omega`, and if a single theorem's elaboration grows past memory, cut it at a `wp` boundary into a helper theorem over an explicit instruction suffix (see `BoxFree/Spec.lean` for the pattern, including composing across the cut with `wp.imp`).
-
-## 6. Gate It
+The focused gate regenerates the artifact and model before building the registered specification target.  It reports Lean warnings but fails on compilation, model generation, runtime-pin, or proof errors.  An incomplete case can use the same command, although its successful build does not count it among the completed proofs.
 
 ```sh
-tools/check-talos-fold-sum.sh   # byte comparison + proof build
-tools/setup-talos.sh            # build stale proof outputs
-tools/check-talos.sh            # all artifacts + proof freshness
-node test/run_all.js            # differential execution suite
+tools/talos-proof.js check fold_sum
 ```
 
-A complete case has: no `sorry`, no new axioms, byte-identical artifact files, a green suite, and a `devnotes.md` entry recording what the theorem says and any new proof techniques.
+After the theorem is complete, set `complete` to `true` and import `Project.<Case>.Spec` from [`Project.lean`](../proofs/talos/lean/Project.lean).  The aggregate gate verifies that completed registry entries match the specification imports and that every registered case appears in the runtime checks.  It then regenerates all registered cases serially and builds the complete `Project` target.
+
+```sh
+tools/talos-proof.js check --all
+```
+
+The final gate can fail because the source no longer compiles, `wasm-tools` has the wrong version, Talos rejects the WAT, the generated model does not compile, a runtime definition changed, a handwritten theorem no longer matches the current instruction stream, or the registry and aggregate imports disagree.  It also fails when a child exceeds its timeout, the cgroup manager rejects a required limit, a generated output cannot be replaced, or a temporary directory cannot be removed.  These failures preserve the stage name and child exit status so the next investigation starts at the first failed boundary.
+
+## Committed Files
+
+Commit the source module, tests, `cases.json`, runtime pins, `Project.lean` import after completion, `Spec.lean`, and every handwritten helper it imports.  Commit documentation that states the theorem's scope and any new reusable proof result.  `git status --ignored` may show local generated output, but ordinary `git status` must omit `.generated` artifacts and every `Project/<Case>/Program.lean`.
+
+Never edit `Program.lean`, and never recreate a persistent `proofs/talos/rust` tree.  Run the artifact tool again when the model needs to change, then repair the handwritten theorem against the new instruction stream.  Record focused and aggregate gate results in `devnotes.md` without treating an old cached build as current evidence.
