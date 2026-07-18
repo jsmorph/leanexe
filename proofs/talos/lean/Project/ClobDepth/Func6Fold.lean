@@ -138,6 +138,14 @@ theorem foldTop_mono (os : List OrderL) (side : UInt64) (g0 : Nat)
     omega
   · rw [if_neg h]
 
+theorem foldTop_ge (os : List OrderL) (side : UInt64) (g0 : Nat)
+    (k : Nat) : g0 + 112 ≤ foldTop os side g0 k := by
+  induction k with
+  | zero => simp [foldTop]
+  | succ k ih =>
+      have hMono := foldTop_mono os side g0 k
+      omega
+
 theorem foldRoot_le_top (os : List OrderL) (side : UInt64) (g0 : Nat)
     (k : Nat) :
     foldRoot os side g0 k ≤ foldTop os side g0 k := by

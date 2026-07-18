@@ -160,4 +160,174 @@ theorem foldState_initial
     intro a _ ha
     exact hBytes a (by omega)
 
+set_option Elab.async false in
+theorem FoldState.step_match
+    {st0 st st1 : Store Unit} {os : List OrderL}
+    {side orders : UInt64} {g0n : Nat} {g2 : UInt64} {k count : Nat}
+    (hState : FoldState st0 os side orders g0n g2 st k)
+    (hk : k < count) (hkos : k < os.length) (hcount : count ≤ os.length)
+    (hCount32 : count < 4294967296)
+    (hSide : os[k]!.oside = side)
+    (hBudget32 : g0n + 112 + count * stepBytes count < 4294967296)
+    (hOrders32 :
+      orders.toNat + fixedArrayBytes os.length 5 < 4294967296)
+    (hOrders48 : 48 ≤ orders.toNat)
+    (hOrdersCap : ∃ ordersCapacity : Nat,
+      fixedArrayBytes os.length 5 ≤ ordersCapacity ∧
+      orders.toNat + ordersCapacity ≤ g0n)
+    (hUpdate : Func3.UpdateResult st st1
+      (UInt64.ofNat (foldTop os side g0n k))
+      (g2 + 2 + UInt64.ofNat (matchCount os side k))
+      (UInt64.ofNat (foldRoot os side g0n k))
+      (UInt64.ofNat (foldCap os side k))
+      os[k]!.oprice os[k]!.oqty (foldLevels os side k)) :
+    FoldState st0 os side orders g0n g2 st1 (k + 1) := by
+  have hTopLe := foldTop_le os side g0n count k (by omega) hcount
+  have hTopLe1 := foldTop_le os side g0n count (k + 1) (by omega) hcount
+  have hStepLe : k * stepBytes count ≤ count * stepBytes count :=
+    Nat.mul_le_mul_right _ (by omega)
+  have hStepLe1 : (k + 1) * stepBytes count ≤ count * stepBytes count :=
+    Nat.mul_le_mul_right _ (by omega)
+  have hTop32 : foldTop os side g0n k < 4294967296 := by omega
+  have hTop32' : foldTop os side g0n (k + 1) < 4294967296 := by omega
+  have hTopGe := foldTop_ge os side g0n k
+  have hTopNat : (UInt64.ofNat (foldTop os side g0n k)).toNat =
+      foldTop os side g0n k :=
+    toNat_ofNat_lt (by rw [size_eq]; omega)
+  have hLevels1 : foldLevels os side (k + 1) =
+      addLevelL (foldLevels os side k) os[k]!.oprice os[k]!.oqty := by
+    rw [foldLevels_succ os side k hkos, if_pos hSide]
+  have hTopSucc : foldTop os side g0n (k + 1) =
+      foldTop os side g0n k + 48 +
+        fixedArrayBytes (foldLevels os side (k + 1)).length 2 := by
+    simp only [foldTop]
+    rw [if_pos hSide]
+  have hBytesLt :
+      fixedArrayBytes (foldLevels os side (k + 1)).length 2 <
+        4294967296 := by
+    omega
+  have hRootSucc : foldRoot os side g0n (k + 1) =
+      foldTop os side g0n k + 48 := by
+    simp only [foldRoot]
+    rw [if_pos hSide]
+  have hCapSucc : foldCap os side (k + 1) =
+      fixedArrayBytes (foldLevels os side (k + 1)).length 2 := by
+    simp only [foldCap]
+    rw [if_pos hSide]
+  have hBytesU : Func3.capacity (foldLevels os side k)
+      os[k]!.oprice os[k]!.oqty =
+      UInt64.ofNat
+        (fixedArrayBytes (foldLevels os side (k + 1)).length 2) := by
+    unfold Func3.capacity
+    rw [← hLevels1]
+    have hLenLt : (foldLevels os side (k + 1)).length < 4294967296 := by
+      have h := hBytesLt
+      unfold fixedArrayBytes at h
+      omega
+    apply UInt64.toNat.inj
+    rw [fixedArrayBytesU_toNat _ 2 (by rw [size_eq]; omega) (by decide)
+        (by rw [size_eq]; omega),
+      toNat_ofNat_lt (by rw [size_eq]; omega)]
+  have hTarget : Func3.target (UInt64.ofNat (foldTop os side g0n k)) =
+      UInt64.ofNat (foldRoot os side g0n (k + 1)) := by
+    unfold Func3.target
+    rw [hRootSucc]
+    apply UInt64.toNat.inj
+    rw [UInt64.toNat_add, hTopNat,
+      show (48 : UInt64).toNat = 48 from rfl,
+      toNat_ofNat_lt (by rw [size_eq]; omega)]
+    omega
+  have hTopValue : UInt64.ofNat (foldTop os side g0n k) + 48 +
+      Func3.capacity (foldLevels os side k) os[k]!.oprice os[k]!.oqty =
+      UInt64.ofNat (foldTop os side g0n (k + 1)) := by
+    rw [hBytesU]
+    apply UInt64.toNat.inj
+    rw [UInt64.toNat_add, UInt64.toNat_add, hTopNat,
+      show (48 : UInt64).toNat = 48 from rfl,
+      toNat_ofNat_lt (by rw [size_eq]; omega),
+      toNat_ofNat_lt (by rw [size_eq]; omega), hTopSucc]
+    omega
+  have hOfNat : UInt64.ofNat (matchCount os side k + 1) =
+      UInt64.ofNat (matchCount os side k) + 1 := by
+    have hM := matchCount_le os side k
+    apply UInt64.toNat.inj
+    rw [toNat_ofNat_lt (by rw [size_eq]; omega),
+      toNat_add_one (by
+        rw [toNat_ofNat_lt (by rw [size_eq]; omega), size_eq]
+        omega),
+      toNat_ofNat_lt (by rw [size_eq]; omega)]
+  have hCounter : g2 + 2 + UInt64.ofNat (matchCount os side k) + 1 =
+      g2 + 2 + UInt64.ofNat (matchCount os side (k + 1)) := by
+    rw [matchCount_succ os side k hkos, if_pos hSide, hOfNat,
+      UInt64.add_assoc]
+  have hLen0 : 0 < st.globals.globals.length := by
+    have := (List.getElem?_eq_some_iff.mp hState.global0).1
+    omega
+  have hLen2 : 2 < st.globals.globals.length := by
+    have := (List.getElem?_eq_some_iff.mp hState.global2).1
+    omega
+  refine {
+    pages := hUpdate.pages.trans hState.pages
+    global0 := ?_
+    global1 := ?_
+    global2 := ?_
+    resultOwned := ?_
+    ordersRep := ?_
+    bytesBefore := ?_ }
+  · rw [hUpdate.globals, ← hTopValue]
+    simp [hLen0]
+  · rw [hUpdate.globals]
+    simpa [List.getElem?_set] using hState.global1
+  · rw [hUpdate.globals, ← hCounter]
+    simp [List.length_set, hLen2]
+  · have hOwned := hUpdate.resultOwned
+    rw [hTarget, hBytesU, ← hLevels1, ← hCapSucc] at hOwned
+    exact hOwned
+  · obtain ⟨ordersCapacity, hCap, hBelow⟩ := hOrdersCap
+    have hCapU : (UInt64.ofNat ordersCapacity).toNat = ordersCapacity :=
+      toNat_ofNat_lt (by rw [size_eq]; omega)
+    apply OrdersAt.frame_region hOrders32 hOrders48
+      (capacity := UInt64.ofNat ordersCapacity)
+      (by rw [hCapU]; exact hCap) hUpdate.pages ?_ hState.ordersRep
+    intro a _ ha
+    apply hUpdate.bytesBefore
+    rw [hTopNat]
+    rw [hCapU] at ha
+    omega
+  · intro a ha
+    rw [hUpdate.bytesBefore a (by rw [hTopNat]; omega)]
+    exact hState.bytesBefore a ha
+
+theorem FoldState.step_skip
+    {st0 st : Store Unit} {os : List OrderL}
+    {side orders : UInt64} {g0n : Nat} {g2 : UInt64} {k : Nat}
+    (hState : FoldState st0 os side orders g0n g2 st k)
+    (hkos : k < os.length)
+    (hSide : ¬os[k]!.oside = side) :
+    FoldState st0 os side orders g0n g2 st (k + 1) := by
+  have hLevels : foldLevels os side (k + 1) = foldLevels os side k := by
+    rw [foldLevels_succ os side k hkos, if_neg hSide]
+  have hTop : foldTop os side g0n (k + 1) = foldTop os side g0n k := by
+    simp only [foldTop]
+    rw [if_neg hSide]
+  have hRoot : foldRoot os side g0n (k + 1) = foldRoot os side g0n k := by
+    simp only [foldRoot]
+    rw [if_neg hSide]
+  have hCap : foldCap os side (k + 1) = foldCap os side k := by
+    simp only [foldCap]
+    rw [if_neg hSide]
+  have hMatch : matchCount os side (k + 1) = matchCount os side k := by
+    rw [matchCount_succ os side k hkos, if_neg hSide]
+    omega
+  refine {
+    pages := hState.pages
+    global0 := by rw [hTop]; exact hState.global0
+    global1 := hState.global1
+    global2 := by rw [hMatch]; exact hState.global2
+    resultOwned := by
+      rw [hLevels, hRoot, hCap]
+      exact hState.resultOwned
+    ordersRep := hState.ordersRep
+    bytesBefore := hState.bytesBefore }
+
 end Project.ClobDepth.Func6Loop
