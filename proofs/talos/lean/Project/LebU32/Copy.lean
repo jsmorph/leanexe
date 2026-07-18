@@ -56,10 +56,8 @@ theorem copyStepPos (env : HostEnv Unit) (st stC : Store Unit)
        (∀ a : Nat, a < g0.toNat → st'.mem.bytes a = st.mem.bytes a)) →
       CPOST (.Break 0 st' s')) :
     wp «module» copyBody CPOST stC (cFramePos g0 v k j e) env := by
-  have hjU : (UInt64.ofNat j).toNat = j :=
-    toNat_ofNat_lt (by rw [size_eq]; omega)
-  have hkU : (UInt64.ofNat k).toNat = k :=
-    toNat_ofNat_lt (by rw [size_eq]; omega)
+  have hjU : (UInt64.ofNat j).toNat = j := by u64_omega
+  have hkU : (UInt64.ofNat k).toNat = k := by u64_omega
   unfold copyBody
   simp only [cFramePos]
   wp_run
@@ -157,10 +155,8 @@ theorem copyStepNeg (env : HostEnv Unit) (st stC : Store Unit)
        (∀ a : Nat, a < g0.toNat → st'.mem.bytes a = st.mem.bytes a)) →
       CPOST (.Break 0 st' s')) :
     wp «module» copyBody CPOST stC (cFrameNeg g0 v k j e) env := by
-  have hjU : (UInt64.ofNat j).toNat = j :=
-    toNat_ofNat_lt (by rw [size_eq]; omega)
-  have hkU : (UInt64.ofNat k).toNat = k :=
-    toNat_ofNat_lt (by rw [size_eq]; omega)
+  have hjU : (UInt64.ofNat j).toNat = j := by u64_omega
+  have hkU : (UInt64.ofNat k).toNat = k := by u64_omega
   unfold copyBody
   simp only [cFrameNeg]
   wp_run

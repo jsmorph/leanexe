@@ -81,8 +81,7 @@ theorem func0_encodes (env : HostEnv Unit) (st : Store Unit)
           have hlen' := congrArg List.length hsplit
           simp only [List.length_append] at hlen'
           omega
-        have hkU : (UInt64.ofNat k).toNat = k :=
-          toNat_ofNat_lt (by rw [size_eq]; omega)
+        have hkU : (UInt64.ofNat k).toNat = k := by u64_omega
         have hfuelne : UInt64.ofNat (10 - k) ≠ 0 := by
           intro h
           have h2 := congrArg UInt64.toNat h
@@ -111,8 +110,7 @@ theorem func0_encodes (env : HostEnv Unit) (st : Store Unit)
           try simp
           refine wp_iff_cons rfl ?_
           rw [if_pos (by decide)]
-          have hfU : (UInt64.ofNat (10 - k)).toNat = 10 - k :=
-            toNat_ofNat_lt (by rw [size_eq]; omega)
+          have hfU : (UInt64.ofNat (10 - k)).toNat = 10 - k := by u64_omega
           refine posIterLemma env st stL n g0 g2 k v written
             (fun i => if i = 25 then v else if i = 26 then 128 else e i)
             (lMeasure stL (lFrame (UInt64.ofNat (10 - k)) v (bufPtr g0 k)
@@ -136,8 +134,7 @@ theorem func0_encodes (env : HostEnv Unit) (st : Store Unit)
           try simp
           refine wp_iff_cons rfl ?_
           rw [if_neg (by decide)]
-          have hfU : (UInt64.ofNat (10 - k)).toNat = 10 - k :=
-            toNat_ofNat_lt (by rw [size_eq]; omega)
+          have hfU : (UInt64.ofNat (10 - k)).toNat = 10 - k := by u64_omega
           refine negIterLemma env st stL n g0 g2 k v written
             (fun i => if i = 25 then v else if i = 26 then 128 else e i)
             (lMeasure stL (lFrame (UInt64.ofNat (10 - k)) v (bufPtr g0 k)
