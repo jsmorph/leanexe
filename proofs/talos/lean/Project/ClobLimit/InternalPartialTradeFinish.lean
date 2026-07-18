@@ -147,36 +147,11 @@ theorem partialTradeFinishProg_spec
       toNat_ofNat_lt hLength64]
     have h4 : (4 : UInt64).toNat = 4 := rfl
     rw [h4, Nat.mod_eq_of_lt hTotal64]
-  have hLengthGet : base.locals[46] = .i64 (UInt64.ofNat ts.length) := by
-    apply Option.some.inj
-    calc
-      some base.locals[46] = base.locals[46]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 (UInt64.ofNat ts.length)) := hLengthLocal
-  have hTakerGet : base.locals[51] = .i64 trade.ttakerId := by
-    apply Option.some.inj
-    calc
-      some base.locals[51] = base.locals[51]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 trade.ttakerId) := hTakerLocal
-  have hMakerGet : base.locals[52] = .i64 trade.tmakerId := by
-    apply Option.some.inj
-    calc
-      some base.locals[52] = base.locals[52]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 trade.tmakerId) := hMakerLocal
-  have hPriceGet : base.locals[53] = .i64 trade.tprice := by
-    apply Option.some.inj
-    calc
-      some base.locals[53] = base.locals[53]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 trade.tprice) := hPriceLocal
-  have hQtyGet : base.locals[54] = .i64 trade.tqty := by
-    apply Option.some.inj
-    calc
-      some base.locals[54] = base.locals[54]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 trade.tqty) := hQtyLocal
+  have hLengthGet : base.locals[46] = .i64 (UInt64.ofNat ts.length) := getElem_of_some hLengthLocal
+  have hTakerGet : base.locals[51] = .i64 trade.ttakerId := getElem_of_some hTakerLocal
+  have hMakerGet : base.locals[52] = .i64 trade.tmakerId := getElem_of_some hMakerLocal
+  have hPriceGet : base.locals[53] = .i64 trade.tprice := getElem_of_some hPriceLocal
+  have hQtyGet : base.locals[54] = .i64 trade.tqty := getElem_of_some hQtyLocal
   simp only [partialTradeFinishProg, partialTradeCopyFrame, List.cons_append,
     List.nil_append]
   wp_run_finish (hParams, hLocals, hLengthGet, hTakerGet, hMakerGet,

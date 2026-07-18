@@ -59,12 +59,7 @@ theorem copyLoopFrame_zero
     copyLoopFrame base 0 = base := by
   have hLocals := hCopy.orderLocals.fields.locals
   have hValues := hCopy.orderLocals.fields.values
-  have hCounter : base.locals[39] = .i64 0 := by
-    apply Option.some.inj
-    calc
-      some base.locals[39] = base.locals[39]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 0) := hCopy.counter
+  have hCounter : base.locals[39] = .i64 0 := getElem_of_some hCopy.counter
   have hSet : base.locals.set 39 (.i64 0) = base.locals := by
     rw [← hCounter]
     exact List.set_getElem_self (by omega)

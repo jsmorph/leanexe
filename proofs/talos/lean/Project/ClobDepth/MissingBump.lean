@@ -54,18 +54,8 @@ theorem missingBumpProg_spec
       (fixedArrayAllocBumpStore st g0 need 2)
       (bumpFrame base g0 need) env) :
     wp «module» (Entry.missingBumpProg ++ rest) Q st base env := by
-  have hNeed' : base.locals[20] = .i64 need := by
-    apply Option.some.inj
-    calc
-      some base.locals[20] = base.locals[20]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 need) := hNeed
-  have hResult' : base.locals[25] = .i64 0 := by
-    apply Option.some.inj
-    calc
-      some base.locals[25] = base.locals[25]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 0) := hResult
+  have hNeed' : base.locals[20] = .i64 need := getElem_of_some hNeed
+  have hResult' : base.locals[25] = .i64 0 := getElem_of_some hResult
   simp only [Entry.missingBumpProg, List.cons_append, List.nil_append]
   wp_run_bump (hParams, hLocals, hValues, hNeed', hResult')
   refine wp_iff_cons rfl ?_

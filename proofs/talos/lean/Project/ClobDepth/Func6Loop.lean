@@ -387,44 +387,14 @@ theorem foldLoop_spec
     have hP := hLocals.params
     have hL := hLocals.locals
     have hV := hLocals.values
-    have hSide' : s1.params[2] = .i64 side := by
-      apply Option.some.inj
-      calc
-        some s1.params[2] = s1.params[2]? :=
-          (List.getElem?_eq_getElem (by omega)).symm
-        _ = some (.i64 side) := hLocals.side
-    have hOrders' : s1.locals[18] = .i64 orders := by
-      apply Option.some.inj
-      calc
-        some s1.locals[18] = s1.locals[18]? :=
-          (List.getElem?_eq_getElem (by omega)).symm
-        _ = some (.i64 orders) := hLocals.orders
+    have hSide' : s1.params[2] = .i64 side := getElem_of_some hLocals.side
+    have hOrders' : s1.locals[18] = .i64 orders := getElem_of_some hLocals.orders
     have hOwner' : s1.locals[1] =
-        .i64 (UInt64.ofNat (foldOwner os side g0n k)) := by
-      apply Option.some.inj
-      calc
-        some s1.locals[1] = s1.locals[1]? :=
-          (List.getElem?_eq_getElem (by omega)).symm
-        _ = _ := hLocals.owner
+        .i64 (UInt64.ofNat (foldOwner os side g0n k)) := getElem_of_some hLocals.owner
     have hRoot' : s1.locals[2] =
-        .i64 (UInt64.ofNat (foldRoot os side g0n k)) := by
-      apply Option.some.inj
-      calc
-        some s1.locals[2] = s1.locals[2]? :=
-          (List.getElem?_eq_getElem (by omega)).symm
-        _ = _ := hLocals.root
-    have hCursor' : s1.locals[20] = .i64 (UInt64.ofNat k) := by
-      apply Option.some.inj
-      calc
-        some s1.locals[20] = s1.locals[20]? :=
-          (List.getElem?_eq_getElem (by omega)).symm
-        _ = _ := hLocals.cursor
-    have hLimit' : s1.locals[22] = .i64 (UInt64.ofNat count) := by
-      apply Option.some.inj
-      calc
-        some s1.locals[22] = s1.locals[22]? :=
-          (List.getElem?_eq_getElem (by omega)).symm
-        _ = _ := hLocals.limit
+        .i64 (UInt64.ofNat (foldRoot os side g0n k)) := getElem_of_some hLocals.root
+    have hCursor' : s1.locals[20] = .i64 (UInt64.ofNat k) := getElem_of_some hLocals.cursor
+    have hLimit' : s1.locals[22] = .i64 (UInt64.ofNat count) := getElem_of_some hLocals.limit
     simp only [Entry.func6BodyProg]
     wp_run_fold (hP, hL, hV, hSide', hOrders', hOwner', hRoot', hCursor',
       hLimit')

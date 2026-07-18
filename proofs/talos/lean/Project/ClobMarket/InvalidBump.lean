@@ -52,18 +52,8 @@ theorem invalidBumpProg_spec
       (bumpFrame base g0) env) :
     wp Project.ClobMarket.«module» (Entry.invalidBumpProg ++ rest) Q st
       base env := by
-  have hNeed' : base.locals[43] = .i64 8 := by
-    apply Option.some.inj
-    calc
-      some base.locals[43] = base.locals[43]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 8) := hNeed
-  have hResult' : base.locals[48] = .i64 0 := by
-    apply Option.some.inj
-    calc
-      some base.locals[48] = base.locals[48]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 0) := hResult
+  have hNeed' : base.locals[43] = .i64 8 := getElem_of_some hNeed
+  have hResult' : base.locals[48] = .i64 0 := getElem_of_some hResult
   simp only [Entry.invalidBumpProg, Entry.invalidProg,
     Entry.outerBranch, func21]
   wp_run_bump (hParams, hLocals, hValues, hNeed', hResult')

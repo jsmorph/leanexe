@@ -145,42 +145,12 @@ theorem partialBookFinishProg_spec
       toNat_ofNat_lt hLength64]
     have h5 : (5 : UInt64).toNat = 5 := rfl
     rw [h5, Nat.mod_eq_of_lt hTotal64]
-  have hIndexGet : base.locals[46] = .i64 (UInt64.ofNat i) := by
-    apply Option.some.inj
-    calc
-      some base.locals[46] = base.locals[46]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 (UInt64.ofNat i)) := hIndexLocal
-  have hOidGet : base.locals[51] = .i64 os[i]!.oid := by
-    apply Option.some.inj
-    calc
-      some base.locals[51] = base.locals[51]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 os[i]!.oid) := hOidLocal
-  have hTraderGet : base.locals[52] = .i64 os[i]!.otrader := by
-    apply Option.some.inj
-    calc
-      some base.locals[52] = base.locals[52]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 os[i]!.otrader) := hTraderLocal
-  have hSideGet : base.locals[53] = .i64 os[i]!.oside := by
-    apply Option.some.inj
-    calc
-      some base.locals[53] = base.locals[53]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 os[i]!.oside) := hSideLocal
-  have hPriceGet : base.locals[54] = .i64 os[i]!.oprice := by
-    apply Option.some.inj
-    calc
-      some base.locals[54] = base.locals[54]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 os[i]!.oprice) := hPriceLocal
-  have hQtyGet : base.locals[55] = .i64 qty := by
-    apply Option.some.inj
-    calc
-      some base.locals[55] = base.locals[55]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 qty) := hQtyLocal
+  have hIndexGet : base.locals[46] = .i64 (UInt64.ofNat i) := getElem_of_some hIndexLocal
+  have hOidGet : base.locals[51] = .i64 os[i]!.oid := getElem_of_some hOidLocal
+  have hTraderGet : base.locals[52] = .i64 os[i]!.otrader := getElem_of_some hTraderLocal
+  have hSideGet : base.locals[53] = .i64 os[i]!.oside := getElem_of_some hSideLocal
+  have hPriceGet : base.locals[54] = .i64 os[i]!.oprice := getElem_of_some hPriceLocal
+  have hQtyGet : base.locals[55] = .i64 qty := getElem_of_some hQtyLocal
   simp only [partialBookFinishProg, partialBookCopyFrame, List.cons_append,
     List.nil_append]
   wp_run_finish (hParams, hLocals, hIndexGet, hOidGet, hTraderGet,

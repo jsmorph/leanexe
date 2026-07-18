@@ -63,25 +63,10 @@ theorem missingCopyProg_spec
       wp «module» rest Q st1
         (copyLoopFrame base (levels.length * 2)) env) :
     wp «module» (Entry.missingCopyProg ++ rest) Q st0 base env := by
-  have hSource' : base.locals[10] = .i64 source := by
-    apply Option.some.inj
-    calc
-      some base.locals[10] = base.locals[10]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 source) := hSource
+  have hSource' : base.locals[10] = .i64 source := getElem_of_some hSource
   have hTotal' : base.locals[12] =
-      .i64 (UInt64.ofNat levels.length * 2) := by
-    apply Option.some.inj
-    calc
-      some base.locals[12] = base.locals[12]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 (UInt64.ofNat levels.length * 2)) := hTotal
-  have hTarget' : base.locals[14] = .i64 target := by
-    apply Option.some.inj
-    calc
-      some base.locals[14] = base.locals[14]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 target) := hTarget
+      .i64 (UInt64.ofNat levels.length * 2) := getElem_of_some hTotal
+  have hTarget' : base.locals[14] = .i64 target := getElem_of_some hTarget
   simp only [Entry.missingCopyProg, List.cons_append, List.nil_append]
   apply wp_block_cons
   apply wp_loop_cons
