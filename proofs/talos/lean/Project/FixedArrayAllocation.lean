@@ -147,6 +147,75 @@ theorem emptyFixedArrayMem_spec (st : Store Unit) (base capacity stride : UInt64
   read_frames
   simp
 
+/-- The six header reads and the read frame, stated once so proofs
+consume the header through lemmas instead of unfolding its writes. -/
+theorem fixedArrayHeaderMem_read_magic (mem : Mem)
+    (base capacity stride : UInt64) :
+    (fixedArrayHeaderMem mem base capacity stride).read64
+      (UInt32.ofNat (base.toNat % 4294967296)) = 5501223100278326855 := by
+  unfold fixedArrayHeaderMem
+  read_frames
+
+theorem fixedArrayHeaderMem_read_refcount (mem : Mem)
+    (base capacity stride : UInt64) :
+    (fixedArrayHeaderMem mem base capacity stride).read64
+      (UInt32.ofNat ((base.toNat + 8) % 4294967296)) = 1 := by
+  unfold fixedArrayHeaderMem
+  read_frames
+
+theorem fixedArrayHeaderMem_read_capacity (mem : Mem)
+    (base capacity stride : UInt64) :
+    (fixedArrayHeaderMem mem base capacity stride).read64
+      (UInt32.ofNat ((base.toNat + 16) % 4294967296)) = capacity := by
+  unfold fixedArrayHeaderMem
+  read_frames
+
+theorem fixedArrayHeaderMem_read_kind (mem : Mem)
+    (base capacity stride : UInt64) :
+    (fixedArrayHeaderMem mem base capacity stride).read64
+      (UInt32.ofNat ((base.toNat + 24) % 4294967296)) = 2 := by
+  unfold fixedArrayHeaderMem
+  read_frames
+
+theorem fixedArrayHeaderMem_read_stride (mem : Mem)
+    (base capacity stride : UInt64) :
+    (fixedArrayHeaderMem mem base capacity stride).read64
+      (UInt32.ofNat ((base.toNat + 32) % 4294967296)) = stride := by
+  unfold fixedArrayHeaderMem
+  read_frames
+
+theorem fixedArrayHeaderMem_read_next (mem : Mem)
+    (base capacity stride : UInt64) :
+    (fixedArrayHeaderMem mem base capacity stride).read64
+      (UInt32.ofNat ((base.toNat + 40) % 4294967296)) = 0 := by
+  unfold fixedArrayHeaderMem
+  read_frames
+
+theorem fixedArrayHeaderMem_read_outside (mem : Mem)
+    (base capacity stride : UInt64) (b : UInt32)
+    (hFit32 : base.toNat + 48 < 4294967296)
+    (h : b.toNat + 8 ≤ base.toNat ∨ base.toNat + 48 ≤ b.toNat) :
+    (fixedArrayHeaderMem mem base capacity stride).read64 b =
+      mem.read64 b := by
+  unfold fixedArrayHeaderMem
+  rw [read64_write64_ne _ _ _ _
+      (by rw [toUInt32_ofNat_mod_toNat]; omega),
+    read64_write64_ne _ _ _ _
+      (by rw [toUInt32_ofNat_mod_toNat]; omega),
+    read64_write64_ne _ _ _ _
+      (by rw [toUInt32_ofNat_mod_toNat]; omega),
+    read64_write64_ne _ _ _ _
+      (by rw [toUInt32_ofNat_mod_toNat]; omega),
+    read64_write64_ne _ _ _ _
+      (by rw [toUInt32_ofNat_mod_toNat]; omega),
+    read64_write64_ne _ _ _ _
+      (by rw [toUInt32_ofNat_mod_toNat]; omega)]
+
+theorem fixedArrayHeaderMem_pages (mem : Mem)
+    (base capacity stride : UInt64) :
+    (fixedArrayHeaderMem mem base capacity stride).pages = mem.pages := by
+  simp [fixedArrayHeaderMem, Mem.write64_pages]
+
 theorem fixedArrayHeaderMem_bytes_before (mem : Mem)
     (base capacity stride : UInt64) (a : Nat)
     (hFit32 : base.toNat + 48 < 4294967296) (ha : a < base.toNat) :

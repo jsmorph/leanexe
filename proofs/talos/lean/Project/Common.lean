@@ -1,15 +1,39 @@
 import CodeLib
+import Project.Attr
 
 /-!
 # Shared lemmas for artifact proofs
 
 Arithmetic and list facts that every artifact proof needs when it reasons
 about generated `UInt64` code and byte or cell reads from linear memory.
+The `u64_omega` tactic closes `UInt64` equalities and inequalities by
+rewriting to `toNat` normal forms and calling `omega`, `getElem_of_some`
+converts an optional local fact to its proof-carrying form, and
+`wp_run_with` is the one instruction-stepping simplification macro.
 -/
 
 namespace Project.Common
 
-theorem size_eq : UInt64.size = 18446744073709551616 := rfl
+@[u64_toNat] theorem size_eq : UInt64.size = 18446744073709551616 := rfl
+
+attribute [u64_toNat] UInt64.toNat_add UInt64.toNat_sub UInt64.toNat_mul
+  UInt64.toNat_ofNat UInt32.toNat_ofNat UInt64.toNat_ofNat'
+  UInt32.toNat_ofNat'
+
+theorem u64_eq_iff {a b : UInt64} : a = b ↔ a.toNat = b.toNat :=
+  ⟨congrArg UInt64.toNat, UInt64.toNat.inj⟩
+
+theorem u32_eq_iff {a b : UInt32} : a = b ↔ a.toNat = b.toNat :=
+  ⟨congrArg UInt32.toNat, UInt32.toNat.inj⟩
+
+/-- Close a `UInt64` equality or inequality goal, including negated
+forms, by moving to `toNat` form and calling `omega`.  Bounds needed to
+remove the residual moduli must already be in context as `Nat` facts. -/
+macro "u64_omega" : tactic =>
+  `(tactic|
+    (simp only [ge_iff_le, gt_iff_lt, u64_eq_iff, u32_eq_iff,
+      UInt64.lt_iff_toNat_lt, UInt64.le_iff_toNat_le, u64_toNat]) <;>
+    omega)
 
 theorem toNat_ofNat_lt {n : Nat} (h : n < UInt64.size) :
     (UInt64.ofNat n).toNat = n :=
@@ -31,6 +55,14 @@ theorem toNat_add_one {x : UInt64} (h : x.toNat + 1 < UInt64.size) :
 theorem getBang_eq {α : Type _} [Inhabited α] {l : List α} {i : Nat}
     (hi : i < l.length) : l[i]! = l[i] := by
   rw [List.getElem!_eq_getElem?_getD, List.getElem?_eq_getElem hi, Option.getD_some]
+
+/-- Convert an optional element fact to its proof-carrying form.  The
+bound is an autoparam, so a context that knows the list length closes it
+without an explicit argument. -/
+theorem getElem_of_some {α : Type _} {l : List α} {i : Nat} {v : α}
+    (h : l[i]? = some v) (hi : i < l.length := by omega) : l[i] = v := by
+  rw [List.getElem?_eq_getElem hi] at h
+  exact Option.some.inj h
 
 theorem toUInt32_toNat (x : UInt64) : x.toUInt32.toNat = x.toNat % 4294967296 := by
   simp
@@ -146,5 +178,27 @@ theorem toNat_sub_le (p q : UInt64) (h : q.toNat ≤ p.toNat) :
   have hp : p.toNat < UInt64.size := p.toNat_lt_size
   have hq : q.toNat < UInt64.size := q.toNat_lt_size
   omega
+
+/-- Step generated instructions over the current frame.  The bracket list
+supplies the frame facts and definitions the reduction needs; every module
+uses this one macro instead of a local variant. -/
+macro "wp_run_with" "[" ts:Lean.Parser.Tactic.simpLemma,* "]" : tactic =>
+  `(tactic|
+    simp (config := { maxSteps := 10000000 }) [wp_simp,
+      Wasm.Locals.get, Wasm.Locals.set?, Wasm.Locals.validIndex,
+      Wasm.Function.toLocals, Wasm.Function.numParams,
+      Wasm.Function.numLocals,
+      List.take, List.drop, List.replicate, List.length, List.map,
+      List.length_set, List.getElem?_set,
+      Nat.reduceAdd, Nat.reduceLT, Nat.reduceLeDiff, Nat.reduceSub,
+      Wasm.ValueType.zero, List.headD, $ts,*])
+
+/-- Enter a generated conditional and select its positive branch. -/
+macro "wp_guard_pos" h:term : tactic =>
+  `(tactic| (refine Wasm.wp_iff_cons rfl ?_; rw [if_pos $h]))
+
+/-- Enter a generated conditional and select its negative branch. -/
+macro "wp_guard_neg" h:term : tactic =>
+  `(tactic| (refine Wasm.wp_iff_cons rfl ?_; rw [if_neg $h]))
 
 end Project.Common
