@@ -15,16 +15,6 @@ open Wasm Project.Common Project.ClobDepth
 
 set_option maxRecDepth 1048576
 
-macro "wp_run_found_finish" "(" hParams:term "," hLocals:term ","
-    hValues:term "," hTarget:term "," hLength:term ")" : tactic => `(tactic|
-  simp (config := { maxSteps := 10000000 }) [wp_simp,
-    Locals.get, Locals.set?, Locals.validIndex,
-    Function.toLocals, Function.numParams, Function.numLocals,
-    List.take, List.drop, List.replicate, List.length, List.map,
-    List.length_set, List.getElem?_set,
-    Nat.reduceAdd, Nat.reduceLT, Nat.reduceLeDiff, Nat.reduceSub,
-    ValueType.zero, List.headD, ($hParams), ($hLocals), ($hValues),
-    ($hTarget), ($hLength)])
 
 set_option Elab.async false in
 theorem foundAllocFinishProg_spec
@@ -47,7 +37,7 @@ theorem foundAllocFinishProg_spec
   have hLength' : base.locals[12] = .i64 length := getElem_of_some hLength
   simp only [Entry.foundAllocFinishProg, List.cons_append,
     List.nil_append]
-  wp_run_found_finish (hParams, hLocals, hValues, hTarget', hLength')
+  wp_run_with [hParams, hLocals, hValues, hTarget', hLength']
   simp only [hGlobal2]
   rw [if_neg (Nat.not_lt.mpr hTargetBound)]
   simpa only [MissingFinish.finishStore, MissingFinish.finishFrame,

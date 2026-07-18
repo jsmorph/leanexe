@@ -47,10 +47,8 @@ theorem foundPrepareProg_spec
     wp «module» (Entry.foundPrepareProg ++ rest) Q st
       (branchFrame owner source price qty levels i) env := by
   have hi : i < levels.length := priceIdx_some_lt hIndex
-  have hiU : (UInt64.ofNat i).toNat = i :=
-    toNat_ofNat_lt (by rw [size_eq]; omega)
-  have hLengthU : (UInt64.ofNat levels.length).toNat = levels.length :=
-    toNat_ofNat_lt (by rw [size_eq]; omega)
+  have hiU : (UInt64.ofNat i).toNat = i := by u64_omega
+  have hLengthU : (UInt64.ofNat levels.length).toNat = levels.length := by u64_omega
   have hEncoded : UInt64.ofNat i + 1 ≠ 0 := by
     intro hZero
     have hZeroNat := congrArg UInt64.toNat hZero
