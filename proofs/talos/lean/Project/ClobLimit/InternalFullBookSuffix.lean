@@ -161,26 +161,11 @@ theorem fullBookSuffixProg_spec
     wp «module» (fullBookSuffixProg ++ rest) Q st1
       (prefixCopyFrame base need previous current capacity next target
         prefixWords) env := by
-  have hSourceGet : base.locals[45] = .i64 source := by
-    apply Option.some.inj
-    calc
-      some base.locals[45] = base.locals[45]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 source) := hSourceLocal
+  have hSourceGet : base.locals[45] = .i64 source := getElem_of_some hSourceLocal
   have hPrefixGet : base.locals[48] =
-      .i64 (UInt64.ofNat prefixWords) := by
-    apply Option.some.inj
-    calc
-      some base.locals[48] = base.locals[48]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 (UInt64.ofNat prefixWords)) := hPrefixLocal
+      .i64 (UInt64.ofNat prefixWords) := getElem_of_some hPrefixLocal
   have hSuffixGet : base.locals[49] =
-      .i64 (UInt64.ofNat suffixWords) := by
-    apply Option.some.inj
-    calc
-      some base.locals[49] = base.locals[49]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 (UInt64.ofNat suffixWords)) := hSuffixLocal
+      .i64 (UInt64.ofNat suffixWords) := getElem_of_some hSuffixLocal
   simp only [fullBookSuffixProg, List.cons_append, List.nil_append,
     prefixCopyFrame, InternalFullBookBump.allocFrame]
   wp_run_suffix (hParams, hLocals, hSourceGet, hPrefixGet, hSuffixGet)

@@ -142,31 +142,11 @@ theorem partialTradeCopyProg_spec
         wp «module» rest Q st1
           (partialTradeCopyFrame base target (ts.length * 4)) env) :
     wp «module» (partialTradeCopyProg ++ rest) Q st0 base env := by
-  have hSourceGet : base.locals[45] = .i64 source := by
-    apply Option.some.inj
-    calc
-      some base.locals[45] = base.locals[45]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 source) := hSourceLocal
+  have hSourceGet : base.locals[45] = .i64 source := getElem_of_some hSourceLocal
   have hTotalGet : base.locals[47] =
-      .i64 (UInt64.ofNat ts.length * 4) := by
-    apply Option.some.inj
-    calc
-      some base.locals[47] = base.locals[47]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 (UInt64.ofNat ts.length * 4)) := hTotalLocal
-  have hLengthGet : base.locals[48] = .i64 newLength := by
-    apply Option.some.inj
-    calc
-      some base.locals[48] = base.locals[48]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 newLength) := hLengthLocal
-  have hTargetGet : base.locals[62] = .i64 target := by
-    apply Option.some.inj
-    calc
-      some base.locals[62] = base.locals[62]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 target) := hTargetLocal
+      .i64 (UInt64.ofNat ts.length * 4) := getElem_of_some hTotalLocal
+  have hLengthGet : base.locals[48] = .i64 newLength := getElem_of_some hLengthLocal
+  have hTargetGet : base.locals[62] = .i64 target := getElem_of_some hTargetLocal
   simp only [partialTradeCopyProg, List.cons_append, List.nil_append]
   wp_run_trade (hParams, hLocals, hValues, hSourceGet, hTotalGet,
     hLengthGet, hTargetGet)

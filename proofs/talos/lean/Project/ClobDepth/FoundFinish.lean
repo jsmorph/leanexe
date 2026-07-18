@@ -43,18 +43,8 @@ theorem foundAllocFinishProg_spec
       (MissingFinish.finishStore st target length g2)
       (MissingFinish.finishFrame base target) env) :
     wp «module» (Entry.foundAllocFinishProg ++ rest) Q st base env := by
-  have hTarget' : base.locals[25] = .i64 target := by
-    apply Option.some.inj
-    calc
-      some base.locals[25] = base.locals[25]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 target) := hTarget
-  have hLength' : base.locals[12] = .i64 length := by
-    apply Option.some.inj
-    calc
-      some base.locals[12] = base.locals[12]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 length) := hLength
+  have hTarget' : base.locals[25] = .i64 target := getElem_of_some hTarget
+  have hLength' : base.locals[12] = .i64 length := getElem_of_some hLength
   simp only [Entry.foundAllocFinishProg, List.cons_append,
     List.nil_append]
   wp_run_found_finish (hParams, hLocals, hValues, hTarget', hLength')

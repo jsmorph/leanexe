@@ -125,19 +125,9 @@ theorem func6_terminates
     · intro st1 s1 hPar hLoc hSt
       have hL := hLoc.locals
       have hOwner' : s1.locals[1] =
-          .i64 (UInt64.ofNat (foldOwner os side g0.toNat os.length)) := by
-        apply Option.some.inj
-        calc
-          some s1.locals[1] = s1.locals[1]? :=
-            (List.getElem?_eq_getElem (by omega)).symm
-          _ = _ := hLoc.owner
+          .i64 (UInt64.ofNat (foldOwner os side g0.toNat os.length)) := getElem_of_some hLoc.owner
       have hRoot' : s1.locals[2] =
-          .i64 (UInt64.ofNat (foldRoot os side g0.toNat os.length)) := by
-        apply Option.some.inj
-        calc
-          some s1.locals[2] = s1.locals[2]? :=
-            (List.getElem?_eq_getElem (by omega)).symm
-          _ = _ := hLoc.root
+          .i64 (UInt64.ofNat (foldRoot os side g0.toNat os.length)) := getElem_of_some hLoc.root
       simp only [Entry.func6ResultProg]
       simp (config := { maxSteps := 10000000 }) [wp_simp,
         Locals.get, Locals.set?,

@@ -149,25 +149,10 @@ theorem erasePrefixProg_spec
     wp «module» (erasePrefixProg ++ rest) Q st0
       (BookAllocSearch.bookAllocSearchFrame base need previous current capacity
         next target) env := by
-  have hSourceGet : base.locals[57] = .i64 source := by
-    apply Option.some.inj
-    calc
-      some base.locals[57] = base.locals[57]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 source) := hSourceLocal
+  have hSourceGet : base.locals[57] = .i64 source := getElem_of_some hSourceLocal
   have hPrefixGet : base.locals[60] =
-      .i64 (UInt64.ofNat prefixWords) := by
-    apply Option.some.inj
-    calc
-      some base.locals[60] = base.locals[60]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 (UInt64.ofNat prefixWords)) := hPrefixLocal
-  have hLengthGet : base.locals[62] = .i64 newLength := by
-    apply Option.some.inj
-    calc
-      some base.locals[62] = base.locals[62]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 newLength) := hLengthLocal
+      .i64 (UInt64.ofNat prefixWords) := getElem_of_some hPrefixLocal
+  have hLengthGet : base.locals[62] = .i64 newLength := getElem_of_some hLengthLocal
   simp only [erasePrefixProg, List.cons_append, List.nil_append,
     BookAllocSearch.bookAllocSearchFrame]
   wp_run_erase (hParams, hLocals, hValues, hSourceGet, hPrefixGet,

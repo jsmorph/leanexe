@@ -153,25 +153,10 @@ theorem fullBookPrefixProg_spec
     wp «module» (fullBookPrefixProg ++ rest) Q st0
       (InternalFullBookBump.allocFrame base need previous current capacity
         next target) env := by
-  have hSourceGet : base.locals[45] = .i64 source := by
-    apply Option.some.inj
-    calc
-      some base.locals[45] = base.locals[45]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 source) := hSourceLocal
+  have hSourceGet : base.locals[45] = .i64 source := getElem_of_some hSourceLocal
   have hPrefixGet : base.locals[48] =
-      .i64 (UInt64.ofNat prefixWords) := by
-    apply Option.some.inj
-    calc
-      some base.locals[48] = base.locals[48]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 (UInt64.ofNat prefixWords)) := hPrefixLocal
-  have hLengthGet : base.locals[50] = .i64 newLength := by
-    apply Option.some.inj
-    calc
-      some base.locals[50] = base.locals[50]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 newLength) := hLengthLocal
+      .i64 (UInt64.ofNat prefixWords) := getElem_of_some hPrefixLocal
+  have hLengthGet : base.locals[50] = .i64 newLength := getElem_of_some hLengthLocal
   simp only [fullBookPrefixProg, List.cons_append, List.nil_append,
     InternalFullBookBump.allocFrame]
   wp_run_prefix (hParams, hLocals, hValues, hSourceGet, hPrefixGet,

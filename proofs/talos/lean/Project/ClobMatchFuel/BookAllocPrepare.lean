@@ -78,24 +78,9 @@ theorem bookAllocPrepareProg_spec
       (BookAllocSearch.bookAllocSearchFrame base
         (orderArrayBytesU n) 0 g1 capacity next 0) env) :
     wp «module» (bookAllocPrepareProg ++ rest) Q st base env := by
-  have hLengthGet : base.locals[62] = .i64 (UInt64.ofNat n) := by
-    apply Option.some.inj
-    calc
-      some base.locals[62] = base.locals[62]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 (UInt64.ofNat n)) := hLengthLocal
-  have hCapacityGet : base.locals[70] = .i64 capacity := by
-    apply Option.some.inj
-    calc
-      some base.locals[70] = base.locals[70]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 capacity) := hCapacityLocal
-  have hNextGet : base.locals[71] = .i64 next := by
-    apply Option.some.inj
-    calc
-      some base.locals[71] = base.locals[71]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 next) := hNextLocal
+  have hLengthGet : base.locals[62] = .i64 (UInt64.ofNat n) := getElem_of_some hLengthLocal
+  have hCapacityGet : base.locals[70] = .i64 capacity := getElem_of_some hCapacityLocal
+  have hNextGet : base.locals[71] = .i64 next := getElem_of_some hNextLocal
   have hRound : (orderArrayBytesU n + 7) / 8 * 8 =
       orderArrayBytesU n :=
     fixedArrayBytesU_round n 5 hn (by decide) hbytes

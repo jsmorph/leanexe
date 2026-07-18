@@ -1,4 +1,5 @@
 import Project.Gcd.Program
+import Project.Common
 import Interpreter.Wasm.Wp.Tactic
 import Interpreter.Wasm.Wp.Block
 import Interpreter.Wasm.Wp.Loop
@@ -82,12 +83,8 @@ theorem gcd_correct : GcdSpec := by
       simp [gcdMeasure, Nat.gcd_zero_right] at hgcd ⊢
       wp_generated
       simp [← hgcd, UInt64.ofNat_toNat]
-    · have hypos : 0 < y.toNat :=
-        Nat.pos_of_ne_zero (by
-          intro h
-          apply hy
-          apply UInt64.toNat.inj
-          simpa using h)
+    · have hypos : 0 < y.toNat := by
+        u64_omega at hy ⊢
       try wp_peel
       try simp [hy, gcdMeasure]
       try wp_peel

@@ -78,24 +78,9 @@ theorem tradeAllocPrepareProg_spec
       (TradeAllocSearch.tradeAllocSearchFrame base
         (tradeArrayBytesU n) 0 g1 capacity next 0) env) :
     wp «module» (tradeAllocPrepareProg ++ rest) Q st base env := by
-  have hLengthGet : base.locals[60] = .i64 (UInt64.ofNat n) := by
-    apply Option.some.inj
-    calc
-      some base.locals[60] = base.locals[60]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 (UInt64.ofNat n)) := hLengthLocal
-  have hCapacityGet : base.locals[72] = .i64 capacity := by
-    apply Option.some.inj
-    calc
-      some base.locals[72] = base.locals[72]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 capacity) := hCapacityLocal
-  have hNextGet : base.locals[73] = .i64 next := by
-    apply Option.some.inj
-    calc
-      some base.locals[73] = base.locals[73]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 next) := hNextLocal
+  have hLengthGet : base.locals[60] = .i64 (UInt64.ofNat n) := getElem_of_some hLengthLocal
+  have hCapacityGet : base.locals[72] = .i64 capacity := getElem_of_some hCapacityLocal
+  have hNextGet : base.locals[73] = .i64 next := getElem_of_some hNextLocal
   have hRound : (tradeArrayBytesU n + 7) / 8 * 8 =
       tradeArrayBytesU n :=
     fixedArrayBytesU_round n 4 hn (by decide) hbytes

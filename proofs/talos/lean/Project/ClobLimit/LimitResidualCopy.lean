@@ -66,12 +66,7 @@ theorem residualCopyProg_spec
   have hParams := hCopy.orderLocals.fields.params
   have hLocals := hCopy.orderLocals.fields.locals
   have hValues := hCopy.orderLocals.fields.values
-  have hSource : base.locals[34] = .i64 data.book := by
-    apply Option.some.inj
-    calc
-      some base.locals[34] = base.locals[34]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 data.book) := hCopy.orderLocals.fields.source
+  have hSource : base.locals[34] = .i64 data.book := getElem_of_some hCopy.orderLocals.fields.source
   have hTotal : base.locals[36] =
       .i64 (UInt64.ofNat ctx.result.book.length * 5) := by
     apply Option.some.inj
@@ -80,12 +75,7 @@ theorem residualCopyProg_spec
         (List.getElem?_eq_getElem (by omega)).symm
       _ = some (.i64 (UInt64.ofNat ctx.result.book.length * 5)) :=
         hCopy.orderLocals.total
-  have hTarget : base.locals[38] = .i64 (g0 + 48) := by
-    apply Option.some.inj
-    calc
-      some base.locals[38] = base.locals[38]? :=
-        (List.getElem?_eq_getElem (by omega)).symm
-      _ = some (.i64 (g0 + 48)) := hCopy.target
+  have hTarget : base.locals[38] = .i64 (g0 + 48) := getElem_of_some hCopy.target
   simp only [LimitEntry.residualCopyProg, List.cons_append,
     List.nil_append]
   apply wp_block_cons
