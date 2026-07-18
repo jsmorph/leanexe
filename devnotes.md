@@ -5894,3 +5894,7 @@ Three elaboration findings from this proof: the stack values normalize to the `g
 ## 2026-07-18: Repair the Recorded PostOnly Failures
 
 Both recorded aggregate failures were unfolding gaps after the shared allocation definitions moved their header writes into `fixedArrayHeaderMem`.  The trade-store proof's fresh-array conversion and the order-allocation proof's below-array byte frame each needed that one definition added to their closing `simpa` sets.  The focused warning-failing builds pass in 12 and 7.1 seconds.
+
+## 2026-07-18: Aggregate Gate Reaches Its Stage Timeout
+
+The 2026-07-18 aggregate run regenerated all twenty artifacts and then hit the tool's twenty-minute aggregate-build cap: `systemd-run` exited with status 124 inside `tools/talos-proof.js check --all`.  The previous aggregate run failed fast at the two `ClobPostOnly` proofs, so this run is the first to proceed past them into the modules with recorded no-diagnostic timeouts.  The result is an unresolved gate rather than a proof failure.  The planned division of `Project.Validate.Spec`, `Project.SharedPair.Spec`, `Project.LebU32.Iter`, and `Project.LebU32.NegIter` is the recorded response, and it now folds into the proof-infrastructure overhaul.
