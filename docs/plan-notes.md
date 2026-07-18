@@ -16,7 +16,7 @@ Prefer explicit equalities and directed rewriting over broad simplification.  A 
 
 ## Current Asset Inventory
 
-The existing library covers every major semantic obligation in a fixed-array allocation.  Some theorems are parameterized by stride and apply to depth directly, while order- and trade-specific preservation theorems provide small patterns for level-specific wrappers.  The missing-price branch now has depth adapters for search, bump allocation, copying, and appended stores, while the found branch still needs its generated-local adapters.
+The existing library covers every major semantic obligation in a fixed-array allocation.  Some theorems are parameterized by stride and apply to depth directly, while order- and trade-specific preservation theorems provide small patterns for level-specific wrappers.  Both depth level-update branches, the level-update composition, the per-side fold, and the export composition now have compiled adapters and semantic modules.
 
 | Obligation | Existing asset | Reuse classification | Depth use |
 |------------|----------------|----------------------|-----------|
@@ -39,7 +39,7 @@ The existing library covers every major semantic obligation in a fixed-array all
 | Allocation counter | Completed `postOnly`, `matchFuel`, and `limit` allocation branches | Close example | Prove the generated global-two increment after either fit or bump allocation. |
 | Read-over-write normalization | [`read_frames` and memory arithmetic](../proofs/talos/lean/Project/Common.lean) | Direct | Close disjoint header, source, and target read obligations after their addresses are normalized. |
 
-The direct assets settle allocator meaning independently of the depth artifact.  The missing append adapter now proves that the generated loop terminates after `levels.length * 2` writes and that the final stores reconstruct the extended represented list.  The found adapter can reuse `LevelsAt.levelWord_eq_flat`, `levelWord_bound_flat`, `ofFlatWords`, and `frame_write64_flatWordsDisjoint`, but it needs a same-length target invariant and an indexed quantity-replacement theorem.
+The direct assets settle allocator meaning independently of the depth artifact.  Both branch adapters reconstruct their represented result lists, `Func3.UpdateResult` unifies them through the `addLevelL` bridge lemmas, and `Func6Fold` supplies the fold recursions whose single heap-budget premise discharges every per-call fit.  `Func6Loop` carries the loop invariant with the semantic step theorems, and `Func7` transports the first side's array through the second fold's below-heap frame.
 
 ## Immediate Depth Application
 
@@ -47,7 +47,7 @@ The missing-price preparation is divided into a twenty-instruction field phase a
 
 The existing limit preparation proof supplied the exact repair pattern.  The completed depth proof names an equality whose left side is the complete expression emitted by the instruction sequence and whose right side is `fixedArrayBytesU (levels.length + 1) 2`, proves it through `fixedArrayBytesU_round`, and rewrites before selecting the false branch of the minimum-capacity conditional.  A second explicit reduction selects the empty generated branch before the final global read, and the focused warning-failing build passes in 1.4 seconds without a larger simplifier or resource budget.
 
-The missing branch has independently compiled search, bump, allocation-finish, copy, and final-store theorems.  `MissingBranch.missingProg_spec` connects their frames and returns the owned extended level array, exact contents, allocator globals, page equality, owned source, and below-heap byte frame.  The found branch is now the active boundary and must repeat the allocation division for a same-length target and one indexed quantity replacement.
+Both branches have independently compiled search, bump, allocation-finish, copy, and final-store theorems, and both branch compositions return the owned result array, exact contents, allocator globals, page equality, owned source, and below-heap byte frame.  `Func3.func3_terminates` wraps the level update for call sites, `Func6.func6_terminates` wraps the per-side fold, and `Func7.func7_terminates` composes both sides into the export result.
 
 | Depth proof unit | Existing support | Current state | Next semantic result |
 |------------------|------------------|---------------|----------------------|
