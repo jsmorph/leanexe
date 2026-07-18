@@ -5890,3 +5890,7 @@ Three elaboration findings from this proof: the stack values normalize to the `g
 ## 2026-07-18: Complete the `clob_depth` Artifact
 
 `Project.ClobDepth.Spec` now imports the function 7 chain and restates the returned arrays through `Model.depthL`, beside the exact modular per-price aggregation and its bounded natural-number interpretation from the source properties.  The registry entry carries `complete: true`, and the aggregate `Project.lean` imports the depth specification.  The focused gate `tools/talos-proof.js check clob_depth` regenerated the model from the current source and compiler and passed the full specification build.
+
+## 2026-07-18: Repair the Recorded PostOnly Failures
+
+Both recorded aggregate failures were unfolding gaps after the shared allocation definitions moved their header writes into `fixedArrayHeaderMem`.  The trade-store proof's fresh-array conversion and the order-allocation proof's below-array byte frame each needed that one definition added to their closing `simpa` sets.  The focused warning-failing builds pass in 12 and 7.1 seconds.
