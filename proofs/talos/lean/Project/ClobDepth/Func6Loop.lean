@@ -330,4 +330,346 @@ theorem FoldState.step_skip
     ordersRep := hState.ordersRep
     bytesBefore := hState.bytesBefore }
 
+
+
+macro "wp_run_fold" "(" a:term "," b:term "," c:term "," d:term ","
+    e:term "," f:term "," g:term "," h:term "," i:term ")" : tactic =>
+  `(tactic|
+  simp (config := { maxSteps := 10000000 }) [wp_simp,
+    Locals.get, Locals.set?, Locals.validIndex,
+    List.take, List.drop, List.length, List.length_set,
+    List.getElem?_set, Nat.reduceAdd, Nat.reduceLT, Nat.reduceSub,
+    List.headD, ($a), ($b), ($c), ($d), ($e), ($f), ($g), ($h), ($i)])
+
+set_option maxHeartbeats 8000000
+
+set_option Elab.async false in
+theorem foldLoop_spec
+    (env : HostEnv Unit) (st0 stI : Store Unit) (base sI : Locals)
+    (os : List OrderL) (side orders : UInt64) (g0n : Nat) (g2 : UInt64)
+    (count : Nat)
+    (hcount : count ≤ os.length)
+    (hLen32 : os.length < 4294967296)
+    (hBudget32 : g0n + 112 + count * stepBytes count < 4294967296)
+    (hBudget : g0n + 112 + count * stepBytes count ≤
+      st0.mem.pages * 65536)
+    (hPages : st0.mem.pages ≤ 65536)
+    (hOrders32 : orders.toNat + fixedArrayBytes os.length 5 < 4294967296)
+    (hOrders48 : 48 ≤ orders.toNat)
+    (hOrdersCap : ∃ c : Nat,
+      fixedArrayBytes os.length 5 ≤ c ∧ orders.toNat + c ≤ g0n)
+    (Q : Assertion Unit) (rest : Wasm.Program)
+    (hInv : FoldInvariant st0 base os side orders g0n g2 count stI sI)
+    (hDone : ∀ (st1 : Store Unit) (s1 : Locals),
+      s1.params = base.params →
+      LoopLocalsAt s1 os side orders
+        (UInt64.ofNat (foldOwner os side g0n count))
+        (UInt64.ofNat (foldRoot os side g0n count)) count count →
+      FoldState st0 os side orders g0n g2 st1 count →
+      wp «module» rest Q st1 s1 env) :
+    wp «module»
+      (.block 0 0 [.loop 0 0 Entry.func6BodyProg] :: rest) Q stI sI
+      env := by
+  have hCount32 : count < 4294967296 := by omega
+  have hV0 : sI.values = [] := by
+    obtain ⟨_, _, _, hLoc0, _⟩ := hInv
+    exact hLoc0.values
+  apply wp_block_cons
+  apply wp_loop_cons
+    (Inv := FoldInvariant st0 base os side orders g0n g2 count)
+    (μ := foldMeasure count)
+  · exact hInv
+  · rintro st1 s1 ⟨k, hkle, hParamsEq, hLocals, hState⟩
+    have hkU : (UInt64.ofNat k).toNat = k :=
+      toNat_ofNat_lt (by rw [size_eq]; omega)
+    have hCountU : (UInt64.ofNat count).toNat = count :=
+      toNat_ofNat_lt (by rw [size_eq]; omega)
+    have hP := hLocals.params
+    have hL := hLocals.locals
+    have hV := hLocals.values
+    have hSide' : s1.params[2] = .i64 side := by
+      apply Option.some.inj
+      calc
+        some s1.params[2] = s1.params[2]? :=
+          (List.getElem?_eq_getElem (by omega)).symm
+        _ = some (.i64 side) := hLocals.side
+    have hOrders' : s1.locals[18] = .i64 orders := by
+      apply Option.some.inj
+      calc
+        some s1.locals[18] = s1.locals[18]? :=
+          (List.getElem?_eq_getElem (by omega)).symm
+        _ = some (.i64 orders) := hLocals.orders
+    have hOwner' : s1.locals[1] =
+        .i64 (UInt64.ofNat (foldOwner os side g0n k)) := by
+      apply Option.some.inj
+      calc
+        some s1.locals[1] = s1.locals[1]? :=
+          (List.getElem?_eq_getElem (by omega)).symm
+        _ = _ := hLocals.owner
+    have hRoot' : s1.locals[2] =
+        .i64 (UInt64.ofNat (foldRoot os side g0n k)) := by
+      apply Option.some.inj
+      calc
+        some s1.locals[2] = s1.locals[2]? :=
+          (List.getElem?_eq_getElem (by omega)).symm
+        _ = _ := hLocals.root
+    have hCursor' : s1.locals[20] = .i64 (UInt64.ofNat k) := by
+      apply Option.some.inj
+      calc
+        some s1.locals[20] = s1.locals[20]? :=
+          (List.getElem?_eq_getElem (by omega)).symm
+        _ = _ := hLocals.cursor
+    have hLimit' : s1.locals[22] = .i64 (UInt64.ofNat count) := by
+      apply Option.some.inj
+      calc
+        some s1.locals[22] = s1.locals[22]? :=
+          (List.getElem?_eq_getElem (by omega)).symm
+        _ = _ := hLocals.limit
+    simp only [Entry.func6BodyProg]
+    wp_run_fold (hP, hL, hV, hSide', hOrders', hOwner', hRoot', hCursor',
+      hLimit')
+    try simp
+    by_cases hEnd : k = count
+    · have hge : UInt64.ofNat k ≥ UInt64.ofNat count := by
+        rw [ge_iff_le, UInt64.le_iff_toNat_le, hkU, hCountU]
+        omega
+      rw [if_pos hge]
+      try simp
+      subst k
+      rw [hV0]
+      exact hDone st1 ⟨s1.params, s1.locals, []⟩ hParamsEq
+        ⟨hP, hL, rfl, hLocals.side, hLocals.orders, hLocals.owner,
+          hLocals.root, hLocals.cursor, hLocals.limit⟩ hState
+    · have hklt : k < count := Nat.lt_of_le_of_ne hkle hEnd
+      have hkos : k < os.length := by omega
+      have hnge : ¬(UInt64.ofNat k ≥ UInt64.ofNat count) := by
+        rw [ge_iff_le, UInt64.le_iff_toNat_le, hkU, hCountU]
+        omega
+      rw [if_neg hnge]
+      wp_run_fold (hP, hL, hV, hSide', hOrders', hOwner', hRoot',
+        hCursor', hLimit')
+      try simp
+      obtain ⟨⟨hOidR, hOidB⟩, ⟨hTraderR, hTraderB⟩, ⟨hSideR, hSideB⟩,
+        ⟨hPriceR, hPriceB⟩, ⟨hQtyR, hQtyB⟩⟩ := hState.ordersRep.2 k hkos
+      rw [if_neg (Nat.not_lt.mpr hOidB), hOidR,
+        if_neg (Nat.not_lt.mpr hTraderB), hTraderR,
+        if_neg (Nat.not_lt.mpr hSideB), hSideR,
+        if_neg (Nat.not_lt.mpr hPriceB), hPriceR,
+        if_neg (Nat.not_lt.mpr hQtyB), hQtyR]
+      have hLenLe : (foldLevels os side k).length ≤ k :=
+        le_trans (foldLevels_length_le os side k (by omega))
+          (matchCount_le os side k)
+      have hTopLe := foldTop_le os side g0n count k (by omega) hcount
+      have hStepLeK : k * stepBytes count ≤ count * stepBytes count :=
+        Nat.mul_le_mul_right _ (by omega)
+      have hStepLeK1 : (k + 1) * stepBytes count ≤
+          count * stepBytes count :=
+        Nat.mul_le_mul_right _ (by omega)
+      have hTop32 : foldTop os side g0n k < 4294967296 := by omega
+      have hTopGe := foldTop_ge os side g0n k
+      have hRootLe := foldRoot_le_top os side g0n k
+      have hRootCap := foldRoot_add_cap os side g0n k
+      have hRootGe := foldRoot_ge os side g0n k
+      have hCapBytes := foldCap_bytes os side k
+      have hRoom : foldTop os side g0n k + 56 + 16 * count ≤
+          g0n + 112 + count * stepBytes count := by
+        have h1 := hStepLeK1
+        rw [Nat.succ_mul] at h1
+        have h2 : stepBytes count = 56 + 16 * count := rfl
+        omega
+      have hTopNat : (UInt64.ofNat (foldTop os side g0n k)).toNat =
+          foldTop os side g0n k :=
+        toNat_ofNat_lt (by rw [size_eq]; omega)
+      have hRootNat : (UInt64.ofNat (foldRoot os side g0n k)).toNat =
+          foldRoot os side g0n k :=
+        toNat_ofNat_lt (by rw [size_eq]; omega)
+      have hCapNat : (UInt64.ofNat (foldCap os side k)).toNat =
+          foldCap os side k :=
+        toNat_ofNat_lt (by rw [size_eq]; omega)
+      have hkAdd : UInt64.ofNat k + 1 = UInt64.ofNat (k + 1) := by
+        apply UInt64.toNat.inj
+        rw [toNat_add_one (by rw [hkU, size_eq]; omega), hkU,
+          toNat_ofNat_lt (by rw [size_eq]; omega)]
+      by_cases hMatch : os[k]!.oside = side
+      · rw [if_pos hMatch]
+        refine wp_iff_cons rfl ?_
+        rw [if_pos (by simp)]
+        wp_run_fold (hP, hL, hV, hSide', hOrders', hOwner', hRoot',
+          hCursor', hLimit')
+        try simp
+        refine wp_iff_cons rfl ?_
+        rw [if_pos (by simp)]
+        wp_run_fold (hP, hL, hV, hSide', hOrders', hOwner', hRoot',
+          hCursor', hLimit')
+        try simp
+        refine wp_iff_cons rfl ?_
+        rw [if_pos (by simp)]
+        wp_run_fold (hP, hL, hV, hSide', hOrders', hOwner', hRoot',
+          hCursor', hLimit')
+        try simp
+        have hMissNat : (MissingBranchFacts.capacity
+            (foldLevels os side k)).toNat =
+            fixedArrayBytes ((foldLevels os side k).length + 1) 2 := by
+          apply fixedArrayBytesU_toNat
+          · rw [size_eq]
+            omega
+          · decide
+          · unfold fixedArrayBytes
+            rw [size_eq]
+            omega
+        have hFoundNat : (FoundBranchFacts.capacity
+            (foldLevels os side k)).toNat =
+            fixedArrayBytes (foldLevels os side k).length 2 := by
+          apply fixedArrayBytesU_toNat
+          · rw [size_eq]
+            omega
+          · decide
+          · unfold fixedArrayBytes
+            rw [size_eq]
+            omega
+        have hTarget48Nat : (Func3.target
+            (UInt64.ofNat (foldTop os side g0n k))).toNat =
+            foldTop os side g0n k + 48 := by
+          unfold Func3.target
+          rw [UInt64.toNat_add, hTopNat,
+            show (48 : UInt64).toNat = 48 from rfl,
+            Nat.mod_eq_of_lt (by omega)]
+        have hCall := Func3.func3_terminates env st1
+          (UInt64.ofNat (foldOwner os side g0n k))
+          (UInt64.ofNat (foldRoot os side g0n k))
+          os[k]!.oprice os[k]!.oqty
+          (UInt64.ofNat (foldCap os side k))
+          (UInt64.ofNat (foldTop os side g0n k))
+          (g2 + 2 + UInt64.ofNat (matchCount os side k))
+          (foldLevels os side k)
+          (by omega)
+          (by rw [hRootNat]
+              have h := hCapBytes
+              unfold fixedArrayBytes at h ⊢
+              omega)
+          (by rw [hRootNat]
+              omega)
+          (by rw [hCapNat]
+              exact hCapBytes)
+          (by rw [hRootNat, hCapNat, hTopNat]
+              exact hRootCap)
+          hState.resultOwned hState.global0 hState.global1 hState.global2
+          (by rw [hState.pages]
+              exact hPages)
+          (by rw [hTopNat, hMissNat]
+              unfold fixedArrayBytes
+              omega)
+          (by rw [hTopNat, hMissNat, hState.pages]
+              unfold fixedArrayBytes
+              omega)
+          (by rw [hTopNat, hFoundNat]
+              unfold fixedArrayBytes
+              omega)
+          (by rw [hTopNat, hFoundNat, hState.pages]
+              unfold fixedArrayBytes
+              omega)
+          (by unfold flatWordsDisjoint flatWordsRegion
+              refine Or.inr ?_
+              rw [hRootNat, hTarget48Nat]
+              have h := hCapBytes
+              unfold fixedArrayBytes at h
+              omega)
+          (by unfold flatWordsDisjoint flatWordsRegion
+              refine Or.inr ?_
+              rw [hRootNat, hTarget48Nat]
+              have h := hCapBytes
+              unfold fixedArrayBytes at h
+              omega)
+        simp only [← List.getElem!_eq_getElem?_getD]
+        refine wp_call_tw hCall ?_
+        intro st2 vs hPost
+        obtain ⟨hUpd, hvs⟩ := hPost
+        subst hvs
+        wp_run_fold (hP, hL, hV, hSide', hOrders', hOwner', hRoot',
+          hCursor', hLimit')
+        try simp
+        have hOwnerSucc : foldOwner os side g0n (k + 1) =
+            foldTop os side g0n k + 48 := by
+          simp only [foldOwner]
+          rw [if_pos hMatch]
+        have hRootSucc : foldRoot os side g0n (k + 1) =
+            foldTop os side g0n k + 48 := by
+          simp only [foldRoot]
+          rw [if_pos hMatch]
+        have hTargetRoot : Func3.target
+            (UInt64.ofNat (foldTop os side g0n k)) =
+            UInt64.ofNat (foldRoot os side g0n (k + 1)) := by
+          apply UInt64.toNat.inj
+          rw [hTarget48Nat, hRootSucc,
+            toNat_ofNat_lt (by rw [size_eq]; omega)]
+        have hTargetOwner : Func3.target
+            (UInt64.ofNat (foldTop os side g0n k)) =
+            UInt64.ofNat (foldOwner os side g0n (k + 1)) := by
+          apply UInt64.toNat.inj
+          rw [hTarget48Nat, hOwnerSucc,
+            toNat_ofNat_lt (by rw [size_eq]; omega)]
+        have hk1U : (UInt64.ofNat (k + 1)).toNat = k + 1 :=
+          toNat_ofNat_lt (by rw [size_eq]; omega)
+        have hStep := FoldState.step_match hState hklt hkos hcount
+          hCount32 hMatch hBudget32 hOrders32 hOrders48 hOrdersCap hUpd
+        refine ⟨⟨k + 1, by omega, hParamsEq, ?_, hStep⟩, ?_⟩
+        · refine ⟨hP, by simp (config := { maxSteps := 10000000 })
+              [List.length_set, hL], rfl, hLocals.side,
+            by simp (config := { maxSteps := 10000000 })
+              [List.length_set, hL, hOrders'],
+            by simp (config := { maxSteps := 10000000 })
+              [List.length_set, hL, hTargetOwner],
+            by simp (config := { maxSteps := 10000000 })
+              [List.length_set, hL, hTargetRoot],
+            by simp (config := { maxSteps := 10000000 })
+              [List.length_set, hL],
+            by simp (config := { maxSteps := 10000000 })
+              [List.length_set, hL, hLimit']⟩
+        · simp (config := { maxSteps := 10000000 })
+            [foldMeasure, List.length_set, hL, hCursor']
+          omega
+      · rw [if_neg hMatch]
+        refine wp_iff_cons rfl ?_
+        rw [if_neg (by simp)]
+        wp_run_fold (hP, hL, hV, hSide', hOrders', hOwner', hRoot',
+          hCursor', hLimit')
+        try simp
+        refine wp_iff_cons rfl ?_
+        rw [if_neg (by simp)]
+        wp_run_fold (hP, hL, hV, hSide', hOrders', hOwner', hRoot',
+          hCursor', hLimit')
+        try simp
+        refine wp_iff_cons rfl ?_
+        rw [if_neg (by simp)]
+        wp_run_fold (hP, hL, hV, hSide', hOrders', hOwner', hRoot',
+          hCursor', hLimit')
+        try simp
+        have hOwnerSkip : foldOwner os side g0n (k + 1) =
+            foldOwner os side g0n k := by
+          simp only [foldOwner]
+          rw [if_neg hMatch]
+        have hRootSkip : foldRoot os side g0n (k + 1) =
+            foldRoot os side g0n k := by
+          simp only [foldRoot]
+          rw [if_neg hMatch]
+        have hk1U : (UInt64.ofNat (k + 1)).toNat = k + 1 :=
+          toNat_ofNat_lt (by rw [size_eq]; omega)
+        have hStep := FoldState.step_skip hState hkos hMatch
+        refine ⟨⟨k + 1, by omega, hParamsEq, ?_, hStep⟩, ?_⟩
+        · refine ⟨hP, by simp (config := { maxSteps := 10000000 })
+              [List.length_set, hL], rfl, hLocals.side,
+            by simp (config := { maxSteps := 10000000 })
+              [List.length_set, hL, hOrders'],
+            by simp (config := { maxSteps := 10000000 })
+              [List.length_set, hL, hOwnerSkip],
+            by simp (config := { maxSteps := 10000000 })
+              [List.length_set, hL, hRootSkip],
+            by simp (config := { maxSteps := 10000000 })
+              [List.length_set, hL],
+            by simp (config := { maxSteps := 10000000 })
+              [List.length_set, hL, hLimit']⟩
+        · simp (config := { maxSteps := 10000000 })
+            [foldMeasure, List.length_set, hL, hCursor']
+          omega
+
 end Project.ClobDepth.Func6Loop
