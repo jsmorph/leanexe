@@ -97,6 +97,54 @@ theorem priceIdx_some_lt {levels : List LevelL} {price : UInt64} {i : Nat}
   unfold priceIdx at hIndex
   exact (List.findIdx?_eq_some_iff_findIdx_eq.mp hIndex).1
 
+theorem addLevelL_of_priceIdx_none (levels : List LevelL)
+    (price qty : UInt64)
+    (hIndex : priceIdx levels price = none) :
+    addLevelL levels price qty =
+      levels ++ [{ lprice := price, lqty := qty }] := by
+  unfold priceIdx at hIndex
+  induction levels with
+  | nil => simp [addLevelL]
+  | cons level levels ih =>
+      rw [List.findIdx?_cons] at hIndex
+      by_cases hHead : level.lprice = price
+      · simp [hHead] at hIndex
+      · have hTail : levels.findIdx?
+            (fun level => level.lprice == price) = none := by
+          simpa [hHead] using hIndex
+        rw [show addLevelL (level :: levels) price qty =
+            level :: addLevelL levels price qty by
+          simp [addLevelL, hHead], ih hTail]
+        simp
+
+theorem addLevelL_of_priceIdx_some (levels : List LevelL)
+    (price qty : UInt64) (i : Nat)
+    (hIndex : priceIdx levels price = some i) :
+    addLevelL levels price qty =
+      levels.set i { lprice := price, lqty := levels[i]!.lqty + qty } := by
+  unfold priceIdx at hIndex
+  induction levels generalizing i with
+  | nil => simp at hIndex
+  | cons level levels ih =>
+      rw [List.findIdx?_cons] at hIndex
+      by_cases hHead : level.lprice = price
+      · have hZero : i = 0 := by
+          simp [hHead] at hIndex
+          omega
+        subst i
+        rw [show addLevelL (level :: levels) price qty =
+            { lprice := price, lqty := level.lqty + qty } :: levels by
+          simp [addLevelL, hHead]]
+        simp
+      · obtain ⟨j, hj, hji⟩ : ∃ j, levels.findIdx?
+            (fun level => level.lprice == price) = some j ∧ j + 1 = i := by
+          simpa [hHead] using hIndex
+        subst hji
+        rw [show addLevelL (level :: levels) price qty =
+            level :: addLevelL levels price qty by
+          simp [addLevelL, hHead], ih j hj]
+        simp
+
 @[simp]
 theorem levelPrices_addLevelL (levels : List LevelL) (price qty : UInt64) :
     levelPrices (addLevelL levels price qty) =
