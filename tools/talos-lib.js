@@ -11,12 +11,15 @@ const proofRoot = path.join(talosRoot, "lean");
 const registryPath = path.join(talosRoot, "cases.json");
 const generatedRoot = path.join(talosRoot, ".generated");
 const leanWasm = path.join(repoRoot, ".lake", "build", "bin", "lean-wasm");
-const verifier = path.join(
+const codeLibRoot = path.join(
   proofRoot,
   ".lake",
   "packages",
   "CodeLib",
-  "verifier",
+);
+const verifierRoot = path.join(codeLibRoot, "verifier");
+const verifier = path.join(
+  verifierRoot,
   ".lake",
   "build",
   "bin",
@@ -213,10 +216,38 @@ function checkPrerequisites() {
   );
   try {
     fs.accessSync(verifier, fs.constants.X_OK);
-  } catch {
-    throw new Error(
-      `Talos verifier not found at ${verifier}; run tools/setup-talos.sh from the repository root`,
+    return wasmTools;
+  } catch (error) {
+    if (error.code !== "ENOENT" && error.code !== "ENOTDIR" && error.code !== "EACCES") {
+      throw error;
+    }
+  }
+
+  if (!fs.existsSync(codeLibRoot)) {
+    console.log("Fetching the pinned Talos dependency.");
+    runLimited(
+      "Talos dependency update",
+      "15m",
+      "lake",
+      ["--no-ansi", "update"],
+      proofRoot,
     );
+  }
+  if (!fs.existsSync(path.join(verifierRoot, "lakefile.toml"))) {
+    throw new Error(`Talos dependency does not contain ${verifierRoot}`);
+  }
+  console.log("Building the pinned Talos verifier.");
+  runLimited(
+    "Talos verifier build",
+    "20m",
+    "lake",
+    ["--no-ansi", "build"],
+    verifierRoot,
+  );
+  try {
+    fs.accessSync(verifier, fs.constants.X_OK);
+  } catch (error) {
+    throw new Error(`Talos verifier build did not produce ${verifier}: ${error.message}`);
   }
   return wasmTools;
 }
