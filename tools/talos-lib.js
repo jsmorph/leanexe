@@ -429,8 +429,7 @@ function checkCase(item) {
   );
 }
 
-function checkAllProofs(cases) {
-  checkAggregateImports(cases);
+function checkAllProofs() {
   runLimited(
     "aggregate Talos proof build",
     "20m",
