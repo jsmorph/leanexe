@@ -29,10 +29,11 @@ theorem u32_eq_iff {a b : UInt32} : a = b ↔ a.toNat = b.toNat :=
 /-- Close a `UInt64` equality or inequality goal, including negated
 forms, by moving to `toNat` form and calling `omega`.  Bounds needed to
 remove the residual moduli must already be in context as `Nat` facts. -/
-macro "u64_omega" : tactic =>
+macro "u64_omega" loc:(Lean.Parser.Tactic.location)? : tactic =>
   `(tactic|
-    (simp only [ge_iff_le, gt_iff_lt, u64_eq_iff, u32_eq_iff,
-      UInt64.lt_iff_toNat_lt, UInt64.le_iff_toNat_le, u64_toNat]) <;>
+    (simp only [ge_iff_le, gt_iff_lt, ne_eq, u64_eq_iff, u32_eq_iff,
+      UInt64.lt_iff_toNat_lt, UInt64.le_iff_toNat_le, u64_toNat]
+      $[$loc]?) <;>
     omega)
 
 theorem toNat_ofNat_lt {n : Nat} (h : n < UInt64.size) :
