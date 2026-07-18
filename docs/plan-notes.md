@@ -105,6 +105,8 @@ Classify a failed proof before changing its resource budget or tactic sequence. 
 
 `tools/talos-proof.js check <case>` regenerates the selected model before building the handwritten specification.  A proof repair therefore starts from the current instruction stream and cannot pass because an old tracked `Program.lean` remained in the tree.  The aggregate form also checks that registry completion flags, `Project.lean` imports, and runtime model imports agree.
 
+Six modules need division or solo scheduling before aggregate-scale builds fit their limits: the four recorded no-diagnostic modules (`Validate.Spec`, `SharedPair.Spec`, `LebU32.Iter`, `LebU32.NegIter`) and the two six-minute-solo giants (`ClobMatchFuel.FindBest`, `ClobPostOnly.FindBest`), which also must never share the constrained scope because Lake's scheduler has no job-count control.
+
 The workflow separates artifact changes from proof-engineering failures by stage.  Source compilation, WAT rendering, Talos decoding, model compilation, runtime pins, and handwritten proof errors receive different stage names and exit statuses.  A failed aggregate build after successful generation belongs to the proof plan and should be divided at the named module rather than investigated as an artifact-copy problem.
 
 ## Maintenance Rules
