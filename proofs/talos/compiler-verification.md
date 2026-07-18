@@ -18,7 +18,7 @@ The front end, Lean to IR, cannot receive a once-and-for-all proof, because that
 
 ## Feasibility
 
-The estimate is one to two person-years for the qualified claim, with three scope qualifications: the theorem anchors at the IR; the first version excludes the `memoryGrow` path and uses coarse budgets, as every artifact proof does today; and the Talos model is the semantics, with fidelity to real WASM resting on differential execution.
+The estimate is one to two person-years for the qualified claim, with three scope qualifications: the theorem anchors at the IR; the first version excludes the `memoryGrow` path and uses coarse budgets, as every artifact proof does today; and the Talos model is the semantics — third-party code in the Talos repository at a pinned commit — with fidelity to real WASM resting on differential execution.
 
 The grounds: the IR is small in structure, and the shared proof assets built for the artifacts are the reusable half of the job.  The mass sits in roughly 18 loop-shaped fused intrinsics (`arrayMapSlots`, `arrayFoldMultiSlot`, `arrayFilterSlots`, the append, extract, and byte-array families).  Each compiles to a loop with allocation and needs an invariant and template theorem comparable to one depth branch phase, which with the shared library is days of work each.  Scalar and control constructors are cheap.  One known wrinkle: the IR represents `nat` in 64 bits (`natAdd` evaluates as `UInt64` addition), so front-end certificates for `Nat`-using programs carry no-overflow side conditions, matching the bounded-interpretation caveat the artifact proofs already state.
 

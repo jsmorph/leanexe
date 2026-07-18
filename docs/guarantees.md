@@ -25,9 +25,9 @@ This document lists the guarantees a user of a compiled module should get, state
 ## Order of Work
 
 1. Finish the proof-infrastructure overhaul and close the aggregate and execution gates.  In progress.
-2. Resolve ownership of the interpreter package.  Every resource claim needs the semantics instrumented, and instrumentation needs the right to change the model.  If `CodeLib` is ours, move the model types into a package this repository controls; if not, fork or replace it.  This decision blocks steps 4 and 6.
+2. The interpreter package is third-party: it lives in the Talos repository, pinned by commit.  The model therefore cannot be instrumented in place.  The plan of record is a shadow interpreter in the proof workspace: a fuel-based variant of the Talos `run` that additionally counts frame depth and a heap watermark, with one agreement theorem proving it returns what `run` returns.  Cost claims attach to the shadow; the pinned dependency never changes.  A maintained fork is the fallback if the agreement proof proves infeasible.
 3. Do the [emitter restructuring](emitter.md).  The structured output is the input for every static analysis: stack depth, operand depth, call graph, allocation costs.
-4. Instrument the model once with a cost semantics: step count, frame depth, and a heap watermark.  One reviewed change serving the time, stack, and heap rows together.
+4. Build the shadow interpreter and its agreement theorem: step count, frame depth, and a heap watermark in one cost semantics serving the time, stack, and heap rows together.
 5. In parallel, state the cheap guarantees that need no new machinery: confinement, no imports, determinism, no division trap.  These are restatements or small additions to existing theorems.
 6. Run the compiler-verification phases with cost fields in the emitter templates from the start.  After this, every new program receives the full guarantee set automatically.
 7. Change the allocator to reset or reuse between calls, then prove the steady-state theorem.  The current leak is a fact about the generated code, and no theorem improves it.
