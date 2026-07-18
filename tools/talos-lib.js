@@ -39,6 +39,8 @@ const limitedPrefix = [
   "MemorySwapMax=1G",
   "-p",
   "CPUQuota=100%",
+  "-p",
+  "AllowedCPUs=0",
   "nice",
   "-n",
   "10",

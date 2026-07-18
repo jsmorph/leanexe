@@ -44,11 +44,12 @@ systemd-run --user --scope --quiet --collect \
   -p MemoryMax=6G \
   -p MemorySwapMax=1G \
   -p CPUQuota=100% \
+  -p AllowedCPUs=0 \
   nice -n 10 ionice -c 3 \
   timeout <duration> <lean-or-lake-command>
 ```
 
-`MemoryHigh=4G` begins memory-pressure handling at four gibibytes, `MemoryMax=6G` enforces the hard limit, `MemorySwapMax=1G` bounds swap growth, and `CPUQuota=100%` limits the scope to one core in aggregate.  `nice -n 10` and `ionice -c 3` protect interactive work, and `timeout` bounds diagnostic runs.  A timeout without a diagnostic requires proof or module division before another attempt.
+`MemoryHigh=4G` begins memory-pressure handling at four gibibytes, `MemoryMax=6G` enforces the hard limit, `MemorySwapMax=1G` bounds swap growth, and `CPUQuota=100%` limits the scope to one core in aggregate.  `AllowedCPUs=0` pins the scope to one CPU, which Lake's scheduler reads as its concurrency, so it runs one worker at a time; without it Lake spawns several multi-gibibyte workers into the one scope and they thrash against the memory threshold.  `nice -n 10` and `ionice -c 3` protect interactive work, and `timeout` bounds diagnostic runs.  A timeout without a diagnostic requires proof or module division before another attempt.
 
 The focused proof command starts from `proofs/talos/lean` because its `lakefile.toml` owns the Talos project.  Repository-level scripts start from the repository root, while the two Talos entry points create the wrapper themselves.
 
