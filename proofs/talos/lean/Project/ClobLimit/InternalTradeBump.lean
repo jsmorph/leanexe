@@ -18,14 +18,6 @@ open Wasm Project.Common Project.Clob Project.ClobLimit
 set_option maxHeartbeats 8000000
 set_option maxRecDepth 1048576
 
-macro "wp_run_bump" "(" hParams:term "," hLocals:term "," hValues:term ")" : tactic => `(tactic|
-  simp (config := { maxSteps := 10000000 }) [wp_simp,
-    Locals.get, Locals.set?, Locals.validIndex,
-    Function.toLocals, Function.numParams, Function.numLocals,
-    List.take, List.drop, List.replicate, List.length, List.map,
-    List.length_set, List.getElem?_set,
-    Nat.reduceAdd, Nat.reduceLT, Nat.reduceLeDiff, Nat.reduceSub,
-    ValueType.zero, List.headD, ($hParams), ($hLocals), ($hValues)])
 
 def allocFrame (base : Locals) (need previous current capacity next result :
     UInt64) : Locals :=
@@ -246,7 +238,7 @@ theorem tradeSearchProg_empty
   · exact ⟨rfl, rfl⟩
   · rintro st' s ⟨rfl, rfl⟩
     simp only [tradeSearchBodyProg, allocFrame]
-    wp_run_bump (hParams, hLocals, hValues)
+    wp_run_with [hParams, hLocals, hValues]
     simpa only [allocFrame, hValues] using hNext
 
 set_option Elab.async false in
@@ -271,23 +263,23 @@ theorem tradeBumpProg_spec
     wp «module» (tradeBumpProg ++ rest) Q st
       (allocFrame base need previous 0 capacity next 0) env := by
   simp only [tradeBumpProg, List.cons_append, List.nil_append, allocFrame]
-  wp_run_bump (hParams, hLocals, hValues)
+  wp_run_with [hParams, hLocals, hValues]
   refine wp_iff_cons rfl ?_
   rw [if_pos (by simp)]
-  wp_run_bump (hParams, hLocals, hValues)
+  wp_run_with [hParams, hLocals, hValues]
   simp only [hg0]
   have hNoWrap : ¬g0 + 48 + need < g0 := by
     rw [UInt64.lt_iff_toNat_lt, hTop]
     omega
   refine wp_iff_cons rfl ?_
   rw [if_neg (by simp [hNoWrap])]
-  wp_run_bump (hParams, hLocals, hValues)
+  wp_run_with [hParams, hLocals, hValues]
   have hNoGrow := fixedArrayBump_no_grow g0 need st.mem.pages hTop hFit hPages
   refine wp_iff_cons rfl ?_
   rw [if_neg (by simpa using hNoGrow)]
-  wp_run_bump (hParams, hLocals, hValues)
+  wp_run_with [hParams, hLocals, hValues]
   simp only [hg0]
-  try wp_run_bump (hParams, hLocals, hValues)
+  try wp_run_with [hParams, hLocals, hValues]
   try simp
   have hRoot : (g0 + 48).toNat = g0.toNat + 48 :=
     fixedArrayBumpRoot_toNat g0 (by
@@ -400,7 +392,7 @@ theorem tradeNoFitProg_spec
   rw [List.append_assoc]
   simp only [tradeSearchInitProg, List.cons_append, List.nil_append,
     allocFrame]
-  wp_run_bump (hParams, hLocals, hValues)
+  wp_run_with [hParams, hLocals, hValues]
   simp only [hg1]
   have hOverwrite :
       ((((((((base.locals.set 57 (.i64 need)).set 58

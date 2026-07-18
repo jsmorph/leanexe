@@ -1,4 +1,5 @@
 import Project.ClobLimit.LimitResidualFinish
+import Project.Common
 
 /-!
 # Exported `limit` result epilogue
@@ -10,7 +11,7 @@ of the exported branch compositions.
 
 namespace Project.ClobLimit.LimitResult
 
-open Wasm Project.ClobLimit
+open Wasm Project.Common Project.ClobLimit
 
 def outputFrame (base : Locals)
     (data : InternalLoopResult.OutputData) : Locals :=

@@ -17,16 +17,6 @@ open Wasm Project.Common Project.Clob Project.ClobMarket
 set_option maxRecDepth 1048576
 set_option maxHeartbeats 8000000
 
-macro "wp_run_bump" "(" hParams:term "," hLocals:term ","
-    hValues:term "," hNeed:term "," hResult:term ")" : tactic => `(tactic|
-  simp (config := { maxSteps := 10000000 }) [wp_simp,
-    Locals.get, Locals.set?, Locals.validIndex,
-    Function.toLocals, Function.numParams, Function.numLocals,
-    List.take, List.drop, List.replicate, List.length, List.map,
-    List.length_set, List.getElem?_set,
-    Nat.reduceAdd, Nat.reduceLT, Nat.reduceLeDiff, Nat.reduceSub,
-    ValueType.zero, List.headD, ($hParams), ($hLocals), ($hValues),
-    ($hNeed), ($hResult)])
 
 def bumpFrame (base : Locals) (g0 : UInt64) : Locals :=
   { base with
@@ -56,10 +46,10 @@ theorem invalidBumpProg_spec
   have hResult' : base.locals[48] = .i64 0 := getElem_of_some hResult
   simp only [Entry.invalidBumpProg, Entry.invalidProg,
     Entry.outerBranch, func21]
-  wp_run_bump (hParams, hLocals, hValues, hNeed', hResult')
+  wp_run_with [hParams, hLocals, hValues, hNeed', hResult']
   refine wp_iff_cons rfl ?_
   rw [if_pos (by simp)]
-  wp_run_bump (hParams, hLocals, hValues, hNeed', hResult')
+  wp_run_with [hParams, hLocals, hValues, hNeed', hResult']
   simp only [hg0]
   have hTop : (g0 + 48 + 8).toNat = g0.toNat + 56 := by
     rw [UInt64.toNat_add, UInt64.toNat_add]
@@ -72,14 +62,14 @@ theorem invalidBumpProg_spec
     omega
   refine wp_iff_cons rfl ?_
   rw [if_neg (by simp [hNoWrap])]
-  wp_run_bump (hParams, hLocals, hValues, hNeed', hResult')
+  wp_run_with [hParams, hLocals, hValues, hNeed', hResult']
   have hNoGrow := fixedArrayBump_no_grow g0 8 st.mem.pages
     (by simpa using hTop) (by simpa using hFit) hPages
   refine wp_iff_cons rfl ?_
   rw [if_neg (by simpa using hNoGrow)]
-  wp_run_bump (hParams, hLocals, hValues, hNeed', hResult')
+  wp_run_with [hParams, hLocals, hValues, hNeed', hResult']
   simp only [hg0]
-  try wp_run_bump (hParams, hLocals, hValues, hNeed', hResult')
+  try wp_run_with [hParams, hLocals, hValues, hNeed', hResult']
   try simp
   have hRoot : (g0 + 48).toNat = g0.toNat + 48 :=
     fixedArrayBumpRoot_toNat g0 (by

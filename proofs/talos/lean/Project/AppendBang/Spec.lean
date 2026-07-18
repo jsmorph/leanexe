@@ -103,8 +103,7 @@ theorem appendBang_correct : AppendBangSpec := by
   have hszN_ge8 : 8 ≤ allocSize (bytes.length + 1) := by
     unfold allocSize
     omega
-  have hlenU : (UInt64.ofNat bytes.length).toNat = bytes.length :=
-    toNat_ofNat_lt (by rw [size_eq]; omega)
+  have hlenU : (UInt64.ofNat bytes.length).toNat = bytes.length := by u64_omega
   have hadd17 : (UInt64.ofNat bytes.length + 1 + 7).toNat = bytes.length + 8 := by
     rw [UInt64.toNat_add, UInt64.toNat_add, hlenU]
     have h1 : (1 : UInt64).toNat = 1 := rfl
@@ -266,8 +265,7 @@ theorem appendBang_correct : AppendBangSpec := by
         · intro i hi
           omega
       · rintro st2 s2 ⟨k, hk, rfl, hpg, hgl, hlo, hpref⟩
-        have hkU : (UInt64.ofNat k).toNat = k :=
-          toNat_ofNat_lt (by rw [size_eq]; omega)
+        have hkU : (UInt64.ofNat k).toNat = k := by u64_omega
         simp only [vFrame]
         wp_run
         try simp

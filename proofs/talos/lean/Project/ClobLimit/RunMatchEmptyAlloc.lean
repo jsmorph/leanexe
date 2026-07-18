@@ -19,14 +19,6 @@ open Wasm Project.Common Project.Clob Project.ClobLimit
 set_option maxHeartbeats 8000000
 set_option maxRecDepth 1048576
 
-macro "wp_run_alloc" "(" hParams:term "," hLocals:term "," hValues:term ")" : tactic => `(tactic|
-  simp (config := { maxSteps := 10000000 }) [wp_simp,
-    Locals.get, Locals.set?, Locals.validIndex,
-    Function.toLocals, Function.numParams, Function.numLocals,
-    List.take, List.drop, List.replicate, List.length, List.map,
-    List.length_set, List.getElem?_set,
-    Nat.reduceAdd, Nat.reduceLT, Nat.reduceLeDiff, Nat.reduceSub,
-    ValueType.zero, List.headD, ($hParams), ($hLocals), ($hValues)])
 
 def prepareProg : Wasm.Program :=
   [
@@ -393,10 +385,10 @@ theorem allocProg_spec
     wp «module» (allocProg ++ rest) Q st base env := by
   simp only [allocProg, prepareProg, searchProg, bumpProg,
     finishProg, List.cons_append, List.nil_append]
-  wp_run_alloc (hParams, hLocals, hValues)
+  wp_run_with [hParams, hLocals, hValues]
   refine wp_iff_cons rfl ?_
   rw [if_neg (by simp)]
-  wp_run_alloc (hParams, hLocals, hValues)
+  wp_run_with [hParams, hLocals, hValues]
   simp only [hg1]
   apply wp_block_cons
   apply wp_loop_cons
@@ -408,10 +400,10 @@ theorem allocProg_spec
     subst st1
     subst s1
     simp only [searchBodyProg, prepareFrame]
-    wp_run_alloc (hParams, hLocals, hValues)
+    wp_run_with [hParams, hLocals, hValues]
     refine wp_iff_cons rfl ?_
     rw [if_pos (by simp)]
-    wp_run_alloc (hParams, hLocals, hValues)
+    wp_run_with [hParams, hLocals, hValues]
     simp only [hg0]
     have hTop : (g0 + 48 + 8).toNat = g0.toNat + 56 := by
       rw [UInt64.toNat_add, UInt64.toNat_add]
@@ -424,14 +416,14 @@ theorem allocProg_spec
       omega
     refine wp_iff_cons rfl ?_
     rw [if_neg (by simp [hNoWrap])]
-    wp_run_alloc (hParams, hLocals, hValues)
+    wp_run_with [hParams, hLocals, hValues]
     have hNoGrow := fixedArrayBump_no_grow g0 8 st.mem.pages
       (by simpa using hTop) (by simpa using hFit) hPages
     refine wp_iff_cons rfl ?_
     rw [if_neg (by simpa using hNoGrow)]
-    wp_run_alloc (hParams, hLocals, hValues)
+    wp_run_with [hParams, hLocals, hValues]
     simp only [hg0]
-    try wp_run_alloc (hParams, hLocals, hValues)
+    try wp_run_with [hParams, hLocals, hValues]
     try simp
     have hRoot : (g0 + 48).toNat = g0.toNat + 48 :=
       fixedArrayBumpRoot_toNat g0 (by

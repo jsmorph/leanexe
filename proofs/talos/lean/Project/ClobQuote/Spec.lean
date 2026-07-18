@@ -93,8 +93,7 @@ def ClobQuoteSpec : Prop :=
 theorem quote_correct : ClobQuoteSpec := by
   intro env st ptr os hlen hInput
   obtain ⟨⟨hHead, hHeadB⟩, hElems⟩ := hInput
-  have hlenU : (UInt64.ofNat os.length).toNat = os.length :=
-    toNat_ofNat_lt (by rw [size_eq]; omega)
+  have hlenU : (UInt64.ofNat os.length).toNat = os.length := by u64_omega
   apply TerminatesWith.of_wp_entry_for (f := func10Def)
   · simp [«module»]
   · change wp «module» func10 _ st
@@ -130,8 +129,7 @@ theorem quote_correct : ClobQuoteSpec := by
         s15, s16, s17, s18, s19, s20, s21, s22, s23, s24, s25, s26, s27,
         s28, s29, s30, s31, s32, s33, s34, s46, s47, s48, s49, s50, s51,
         s52, s53, rfl⟩
-      have hkU : (UInt64.ofNat k).toNat = k :=
-        toNat_ofNat_lt (by rw [size_eq]; omega)
+      have hkU : (UInt64.ofNat k).toNat = k := by u64_omega
       simp only [qFrame]
       wp_run
       try simp

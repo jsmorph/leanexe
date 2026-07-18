@@ -18,17 +18,6 @@ open Wasm Project.Common Project.Clob Project.ClobLimit
 set_option maxHeartbeats 8000000
 set_option maxRecDepth 1048576
 
-macro "wp_run_prepare" "(" hParams:term "," hLocals:term ","
-    hValues:term "," hBook:term "," hIndex:term ","
-    hRemaining:term ")" : tactic => `(tactic|
-  simp (config := { maxSteps := 10000000 }) [wp_simp,
-    Locals.get, Locals.set?, Locals.validIndex,
-    Function.toLocals, Function.numParams, Function.numLocals,
-    List.take, List.drop, List.replicate, List.length, List.map,
-    List.length_set, List.getElem?_set,
-    Nat.reduceAdd, Nat.reduceLT, Nat.reduceLeDiff, Nat.reduceSub,
-    ValueType.zero, List.headD, ($hParams), ($hLocals), ($hValues),
-    ($hBook), ($hIndex), ($hRemaining)])
 
 def partialBookPrefixProg : Wasm.Program :=
   [
@@ -274,58 +263,47 @@ theorem partialBookPrefixProg_spec
       toNat_ofNat_lt hOrdersLength64]
     exact hi
   simp only [partialBookPrefixProg, List.cons_append, List.nil_append]
-  wp_run_prepare (hParams, hLocals, hValues, hBookGet, hIndexGet,
-    hRemainingGet)
+  wp_run_with [hParams, hLocals, hValues, hBookGet, hIndexGet, hRemainingGet]
   rw [if_neg (Nat.not_lt.mpr hLengthBound), hLengthRead, if_pos hIndexLt]
   refine wp_iff_cons rfl ?_
   rw [if_pos (by simp)]
-  wp_run_prepare (hParams, hLocals, hValues, hBookGet, hIndexGet,
-    hRemainingGet)
+  wp_run_with [hParams, hLocals, hValues, hBookGet, hIndexGet, hRemainingGet]
   rw [if_neg (Nat.not_lt.mpr (hFieldBound 0 (by omega))),
     hFieldRead 0 (by omega)]
   simp only [OrderL.word]
-  wp_run_prepare (hParams, hLocals, hValues, hBookGet, hIndexGet,
-    hRemainingGet)
+  wp_run_with [hParams, hLocals, hValues, hBookGet, hIndexGet, hRemainingGet]
   rw [if_neg (Nat.not_lt.mpr hLengthBound), hLengthRead, if_pos hIndexLt]
   refine wp_iff_cons rfl ?_
   rw [if_pos (by simp)]
-  wp_run_prepare (hParams, hLocals, hValues, hBookGet, hIndexGet,
-    hRemainingGet)
+  wp_run_with [hParams, hLocals, hValues, hBookGet, hIndexGet, hRemainingGet]
   rw [if_neg (Nat.not_lt.mpr (hFieldBound 1 (by omega))),
     hFieldRead 1 (by omega)]
   simp only [OrderL.word]
-  wp_run_prepare (hParams, hLocals, hValues, hBookGet, hIndexGet,
-    hRemainingGet)
+  wp_run_with [hParams, hLocals, hValues, hBookGet, hIndexGet, hRemainingGet]
   rw [if_neg (Nat.not_lt.mpr hLengthBound), hLengthRead, if_pos hIndexLt]
   refine wp_iff_cons rfl ?_
   rw [if_pos (by simp)]
-  wp_run_prepare (hParams, hLocals, hValues, hBookGet, hIndexGet,
-    hRemainingGet)
+  wp_run_with [hParams, hLocals, hValues, hBookGet, hIndexGet, hRemainingGet]
   rw [if_neg (Nat.not_lt.mpr (hFieldBound 2 (by omega))),
     hFieldRead 2 (by omega)]
   simp only [OrderL.word]
-  wp_run_prepare (hParams, hLocals, hValues, hBookGet, hIndexGet,
-    hRemainingGet)
+  wp_run_with [hParams, hLocals, hValues, hBookGet, hIndexGet, hRemainingGet]
   rw [if_neg (Nat.not_lt.mpr hLengthBound), hLengthRead, if_pos hIndexLt]
   refine wp_iff_cons rfl ?_
   rw [if_pos (by simp)]
-  wp_run_prepare (hParams, hLocals, hValues, hBookGet, hIndexGet,
-    hRemainingGet)
+  wp_run_with [hParams, hLocals, hValues, hBookGet, hIndexGet, hRemainingGet]
   rw [if_neg (Nat.not_lt.mpr (hFieldBound 3 (by omega))),
     hFieldRead 3 (by omega)]
   simp only [OrderL.word]
-  wp_run_prepare (hParams, hLocals, hValues, hBookGet, hIndexGet,
-    hRemainingGet)
+  wp_run_with [hParams, hLocals, hValues, hBookGet, hIndexGet, hRemainingGet]
   rw [if_neg (Nat.not_lt.mpr hLengthBound), hLengthRead, if_pos hIndexLt]
   refine wp_iff_cons rfl ?_
   rw [if_pos (by simp)]
-  wp_run_prepare (hParams, hLocals, hValues, hBookGet, hIndexGet,
-    hRemainingGet)
+  wp_run_with [hParams, hLocals, hValues, hBookGet, hIndexGet, hRemainingGet]
   rw [if_neg (Nat.not_lt.mpr (hFieldBound 4 (by omega))),
     hFieldRead 4 (by omega)]
   simp only [OrderL.word]
-  wp_run_prepare (hParams, hLocals, hValues, hBookGet, hIndexGet,
-    hRemainingGet)
+  wp_run_with [hParams, hLocals, hValues, hBookGet, hIndexGet, hRemainingGet]
   rw [if_neg (Nat.not_lt.mpr hLengthBound), hLengthRead, if_pos hIndexLt]
   simpa only [partialBookGuardFrame, partialBookGuardLocals,
     List.getElem!_eq_getElem?_getD] using hDone

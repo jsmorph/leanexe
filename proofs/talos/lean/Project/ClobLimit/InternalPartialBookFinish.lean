@@ -18,17 +18,6 @@ open Wasm Project.Common Project.Clob Project.ClobLimit
 set_option maxHeartbeats 8000000
 set_option maxRecDepth 1048576
 
-macro "wp_run_finish" "(" hParams:term "," hLocals:term ","
-    hIndex:term "," hOid:term "," hTrader:term "," hSide:term ","
-    hPrice:term "," hQty:term ")" : tactic => `(tactic|
-  simp (config := { maxSteps := 10000000 }) [wp_simp,
-    Locals.get, Locals.set?, Locals.validIndex,
-    Function.toLocals, Function.numParams, Function.numLocals,
-    List.take, List.drop, List.replicate, List.length, List.map,
-    List.length_set, List.getElem?_set,
-    Nat.reduceAdd, Nat.reduceLT, Nat.reduceLeDiff, Nat.reduceSub,
-    ValueType.zero, List.headD, ($hParams), ($hLocals), ($hIndex),
-    ($hOid), ($hTrader), ($hSide), ($hPrice), ($hQty)])
 
 def partialBookResultFrame (base : Locals) (target : UInt64)
     (totalWords : Nat) : Locals :=
@@ -153,8 +142,7 @@ theorem partialBookFinishProg_spec
   have hQtyGet : base.locals[55] = .i64 qty := getElem_of_some hQtyLocal
   simp only [partialBookFinishProg, partialBookCopyFrame, List.cons_append,
     List.nil_append]
-  wp_run_finish (hParams, hLocals, hIndexGet, hOidGet, hTraderGet,
-    hSideGet, hPriceGet, hQtyGet)
+  wp_run_with [hParams, hLocals, hIndexGet, hOidGet, hTraderGet, hSideGet, hPriceGet, hQtyGet]
   try simp
   have hBound (field : Nat) (hfield : field < 5) :
       (target.toNat + (i * 5 + field + 1) * 8) % 4294967296 + 8 ≤
