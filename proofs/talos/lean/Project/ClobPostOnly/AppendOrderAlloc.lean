@@ -415,8 +415,8 @@ theorem appendOrderAllocProg_spec (env : HostEnv Unit) (st0 : Store Unit)
       have hLow := fixedArrayMem_bytes_before st0.mem g0
         (orderArrayBytesU (os.length + 1)) 5
         (UInt64.ofNat os.length + 1) a (by omega) ha
-      simpa only [fixedArrayMem, hsub40, hsub32, hsub24, hsub16, hsub8,
-        hnewNat] using hLow
+      simpa only [fixedArrayMem, fixedArrayHeaderMem, hsub40, hsub32,
+        hsub24, hsub16, hsub8, hnewNat] using hLow
     · intro w hw
       omega
 
