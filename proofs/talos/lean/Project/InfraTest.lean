@@ -17,8 +17,10 @@ example (k count : Nat) (hk : k < count) (hc : count < 4294967296) :
     ¬(UInt64.ofNat k ≥ UInt64.ofNat count) := by u64_omega
 
 example (a b : UInt64) (h : a.toNat + 8 ≤ b.toNat) : a ≠ b := by
-  simp only [ne_eq]
   u64_omega
+
+example (y : UInt64) (hy : y ≠ 0) : 0 < y.toNat := by
+  u64_omega at hy ⊢
 
 example (l : List Value) (h : l.length = 26)
     (hv : l[3]? = some (.i64 7)) : l[3] = .i64 7 :=
