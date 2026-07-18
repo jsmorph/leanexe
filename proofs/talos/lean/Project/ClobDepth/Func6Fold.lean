@@ -117,6 +117,11 @@ theorem foldLevels_length_le (os : List OrderL) (side : UInt64) (k : Nat)
       · rw [if_neg h, if_neg h]
         omega
 
+theorem foldLevels_full (os : List OrderL) (side : UInt64) :
+    foldLevels os side os.length = depthSideL os side := by
+  unfold foldLevels
+  rw [List.take_of_length_le (le_refl _)]
+
 theorem foldRoot_add_cap (os : List OrderL) (side : UInt64) (g0 : Nat)
     (k : Nat) :
     foldRoot os side g0 k + foldCap os side k ≤ foldTop os side g0 k := by
