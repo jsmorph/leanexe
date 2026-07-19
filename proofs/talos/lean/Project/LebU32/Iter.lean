@@ -14,6 +14,206 @@ set_option maxRecDepth 1048576
 namespace Project.LebU32.Spec
 
 open Wasm Project.Common Project.Runtime
+/-- Bytes below the heap base survive the six header writes of the
+final-byte allocation.  Stated separately so the invariant proof closes
+this fact with one term application. -/
+private theorem posWritesLo (m : Mem) (g0 : UInt64) (k a : Nat)
+    (ha : a < g0.toNat)
+    (hs40m : (g0 + 56 * UInt64.ofNat k + 48 - 40).toNat % 4294967296 =
+      g0.toNat + 56 * k + 8)
+    (hs32m : (g0 + 56 * UInt64.ofNat k + 48 - 32).toNat % 4294967296 =
+      g0.toNat + 56 * k + 16)
+    (hs24m : (g0 + 56 * UInt64.ofNat k + 48 - 24).toNat % 4294967296 =
+      g0.toNat + 56 * k + 24)
+    (hs16m : (g0 + 56 * UInt64.ofNat k + 48 - 16).toNat % 4294967296 =
+      g0.toNat + 56 * k + 32)
+    (hs8m : (g0 + 56 * UInt64.ofNat k + 48 - 8).toNat % 4294967296 =
+      g0.toNat + 56 * k + 40)
+    (hs0m : (g0.toNat + 56 * k) % 4294967296 = g0.toNat + 56 * k) :
+    ((((((m.write64
+      (UInt32.ofNat ((g0.toNat + 56 * k) % 4294967296))
+      5501223100278326855).write64
+      (UInt32.ofNat ((g0 + 56 * UInt64.ofNat k + 48 - 40).toNat % 4294967296))
+      1).write64
+      (UInt32.ofNat ((g0 + 56 * UInt64.ofNat k + 48 - 32).toNat % 4294967296))
+      8).write64
+      (UInt32.ofNat ((g0 + 56 * UInt64.ofNat k + 48 - 24).toNat % 4294967296))
+      0).write64
+      (UInt32.ofNat ((g0 + 56 * UInt64.ofNat k + 48 - 16).toNat % 4294967296))
+      0).write64
+      (UInt32.ofNat ((g0 + 56 * UInt64.ofNat k + 48 - 8).toNat % 4294967296))
+      0).bytes a = m.bytes a := by
+  rw [write64_bytes_lo _ _ _ (by
+      rw [toUInt32_ofNat_mod_toNat, hs8m]; omega),
+    write64_bytes_lo _ _ _ (by
+      rw [toUInt32_ofNat_mod_toNat, hs16m]; omega),
+    write64_bytes_lo _ _ _ (by
+      rw [toUInt32_ofNat_mod_toNat, hs24m]; omega),
+    write64_bytes_lo _ _ _ (by
+      rw [toUInt32_ofNat_mod_toNat, hs32m]; omega),
+    write64_bytes_lo _ _ _ (by
+      rw [toUInt32_ofNat_mod_toNat, hs40m]; omega),
+    write64_bytes_lo _ _ _ (by
+      rw [toUInt32_ofNat_mod_toNat, hs0m]; omega)]
+
+/-- The buffer pointer at the next index in terms of the current base.
+Stated separately because the loop-body context cannot afford local
+facts; the body applies this with ambient hypotheses as arguments. -/
+private theorem posBuf1 (g0 : UInt64) (j k : Nat) (n : UInt64)
+    (hFit32 : g0.toNat + 560 < 4294967296)
+    (hL5 : (lebList 10 n).length ≤ 5)
+    (hkL : k < (lebList 10 n).length)
+    (hjk : j ≤ k) :
+    bufPtr g0 (j + 1) = g0 + 56 * UInt64.ofNat j + 48 := by
+  have hbaseN : (g0 + 56 * UInt64.ofNat j + 48).toNat =
+      g0.toNat + 56 * j + 48 := by
+    simp only [UInt64.toNat_add, UInt64.toNat_mul, UInt64.toNat_ofNat',
+      show (48 : UInt64).toNat = 48 from rfl,
+      show (56 : UInt64).toNat = 56 from rfl]
+    have hs : (2 : Nat) ^ 64 = 18446744073709551616 := by norm_num
+    omega
+  unfold bufPtr objBase
+  rw [if_neg (by omega), Nat.add_sub_cancel]
+  apply UInt64.toNat.inj
+  rw [hbaseN, toNat_ofNat_lt (n := g0.toNat + 56 * j + 48)
+    (by rw [size_eq]; omega)]
+
+private theorem posKadd (j k : Nat) (n : UInt64)
+    (hL5 : (lebList 10 n).length ≤ 5)
+    (hkL : k < (lebList 10 n).length)
+    (hjk : j ≤ k) :
+    UInt64.ofNat j + 1 = UInt64.ofNat (j + 1) := by
+  have hjU : (UInt64.ofNat j).toNat = j := by u64_omega
+  apply UInt64.toNat.inj
+  rw [toNat_add_one, hjU,
+    toNat_ofNat_lt (by rw [size_eq]; omega)]
+  try rw [hjU, size_eq]
+  try omega
+
+private theorem posNw (g0 : UInt64) (j k : Nat) (n : UInt64)
+    (hFit32 : g0.toNat + 560 < 4294967296)
+    (hL5 : (lebList 10 n).length ≤ 5)
+    (hkL : k < (lebList 10 n).length)
+    (hjk : j ≤ k) :
+    g0.toNat + 56 * j + 48 + j < 4294967296 := by
+  omega
+
+private theorem posByte (v : UInt64) :
+    UInt8.ofNat ((v.toNat % 128 &&& 255) % 4294967296) = (v % 128).toUInt8 := by
+  have hb : (v.toNat % 128 &&& 255) % 4294967296 = v.toNat % 128 := by
+    rw [show (255 : Nat) = 2 ^ 8 - 1 from rfl,
+      Nat.and_two_pow_sub_one_eq_mod]
+    omega
+  apply UInt8.toNat.inj
+  rw [hb]
+  simp only [UInt8.toNat_ofNat', UInt64.toUInt8, UInt64.toNat_mod,
+    show (128 : UInt64).toNat = 128 from rfl]
+  try omega
+
+private theorem posFinal (j k : Nat) (n v : UInt64)
+    (hrest : v / 128 = 0)
+    (hL5 : (lebList 10 n).length ≤ 5)
+    (hkL : k < (lebList 10 n).length)
+    (hjk : j ≤ k) :
+    lebList (10 - j) v = [(v % 128).toUInt8] := by
+  rw [show 10 - j = (9 - j) + 1 from by omega]
+  exact lebList_final _ _ hrest
+
+/-- The seven global-state conjuncts of the loop invariant at the next
+index, packed so the invariant discharge passes them as projections and
+never focuses those goals in the loop-body context. -/
+private theorem posGlobals (stC st1 st : Store Unit) (g0 g2 : UInt64)
+    (j k : Nat) (n : UInt64)
+    (hFit32 : g0.toNat + 560 < 4294967296)
+    (hL5 : (lebList 10 n).length ≤ 5)
+    (hkL : k < (lebList 10 n).length)
+    (hjk : j ≤ k)
+    (hglC : stC.globals.globals =
+      (st1.globals.globals.set 0
+        (.i64 (g0 + 56 * UInt64.ofNat j + 48 + 8))).set 2
+        (.i64 (g2 + UInt64.ofNat j + 1)))
+    (hlen : st1.globals.globals.length = st.globals.globals.length)
+    (h0L : st1.globals.globals[0]? = some (.i64 (g0 + UInt64.ofNat (56 * j))))
+    (h1L : st1.globals.globals[1]? = some (.i64 0))
+    (h2L : st1.globals.globals[2]? = some (.i64 (g2 + UInt64.ofNat j)))
+    (h3L : st1.globals.globals[3]? = st.globals.globals[3]?)
+    (h4L : st1.globals.globals[4]? = st.globals.globals[4]?)
+    (h5L : st1.globals.globals[5]? = st.globals.globals[5]?) :
+    stC.globals.globals.length = st.globals.globals.length ∧
+    stC.globals.globals[0]? =
+      some (.i64 (g0 + UInt64.ofNat (56 * (j + 1)))) ∧
+    stC.globals.globals[1]? = some (.i64 0) ∧
+    stC.globals.globals[2]? = some (.i64 (g2 + UInt64.ofNat (j + 1))) ∧
+    stC.globals.globals[3]? = st.globals.globals[3]? ∧
+    stC.globals.globals[4]? = st.globals.globals[4]? ∧
+    stC.globals.globals[5]? = st.globals.globals[5]? := by
+  refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+  · rw [hglC]
+    simp only [List.length_set]
+    exact hlen
+  · rw [hglC]
+    rw [List.getElem?_set]
+    simp only [if_neg (by omega : ¬ (2 = 0))]
+    rw [List.getElem?_set]
+    have hl0 : 0 < st1.globals.globals.length :=
+      (List.getElem?_eq_some_iff.mp h0L).choose
+    simp only [if_pos rfl, hl0, decide_true, Nat.lt_irrefl,
+      ite_true, Option.some.injEq, Value.i64.injEq]
+    apply UInt64.toNat.inj
+    simp only [UInt64.toNat_add, UInt64.toNat_mul, UInt64.toNat_ofNat',
+      show (48 : UInt64).toNat = 48 from rfl,
+      show (8 : UInt64).toNat = 8 from rfl,
+      show (56 : UInt64).toNat = 56 from rfl]
+    have hs : (2 : Nat) ^ 64 = 18446744073709551616 := by norm_num
+    omega
+  · rw [hglC]
+    rw [List.getElem?_set]
+    simp only [if_neg (by omega : ¬ (2 = 1))]
+    rw [List.getElem?_set]
+    simp only [if_neg (by omega : ¬ (0 = 1))]
+    exact h1L
+  · rw [hglC]
+    rw [List.getElem?_set]
+    have hl2 : 2 < st1.globals.globals.length :=
+      (List.getElem?_eq_some_iff.mp h2L).choose
+    simp [hl2]
+    apply UInt64.toNat.inj
+    simp only [UInt64.toNat_add, UInt64.toNat_ofNat',
+      show (1 : UInt64).toNat = 1 from rfl]
+    have hs : (2 : Nat) ^ 64 = 18446744073709551616 := by norm_num
+    omega
+  · rw [hglC]
+    rw [List.getElem?_set]
+    simp only [if_neg (by omega : ¬ (2 = 3))]
+    rw [List.getElem?_set]
+    simp only [if_neg (by omega : ¬ (0 = 3))]
+    exact h3L
+  · rw [hglC]
+    rw [List.getElem?_set]
+    simp only [if_neg (by omega : ¬ (2 = 4))]
+    rw [List.getElem?_set]
+    simp only [if_neg (by omega : ¬ (0 = 4))]
+    exact h4L
+  · rw [hglC]
+    rw [List.getElem?_set]
+    simp only [if_neg (by omega : ¬ (2 = 5))]
+    rw [List.getElem?_set]
+    simp only [if_neg (by omega : ¬ (0 = 5))]
+    exact h5L
+
+private theorem getlAppend (written : List UInt8) (x : UInt8) (j : Nat)
+    (hw : written.length = j) (i : Nat) (hi : i < j) :
+    (written ++ [x])[i]! = written[i]! := by
+  rw [getElem_bang _ _ (by simp; omega),
+    getElem_bang _ _ (by omega)]
+  exact List.getElem_append_left (by omega)
+
+private theorem getkAppend (written : List UInt8) (x : UInt8) (j : Nat)
+    (hw : written.length = j) :
+    (written ++ [x])[j]! = x := by
+  rw [getElem_bang _ _ (by simp; omega)]
+  exact List.getElem_concat_length hw.symm _
+
 set_option maxHeartbeats 4000000 in
 set_option Elab.async false in
 /-- One final-byte iteration of the compiled fuel loop: pushes the last
@@ -186,6 +386,18 @@ theorem posIterLemma (env : HostEnv Unit) (st stL : Store Unit)
   have hs0m : (g0.toNat + 56 * k) % 4294967296 =
       g0.toNat + 56 * k :=
     Nat.mod_eq_of_lt (by omega)
+  have hb1 : (g0.toNat + 56 * k) % 4294967296 + 8 ≤
+      st.mem.pages * 65536 := by omega
+  have hb2 : (g0 + 56 * UInt64.ofNat k + 48 - 40).toNat % 4294967296 + 8 ≤
+      st.mem.pages * 65536 := by rw [hs40m]; omega
+  have hb3 : (g0 + 56 * UInt64.ofNat k + 48 - 32).toNat % 4294967296 + 8 ≤
+      st.mem.pages * 65536 := by rw [hs32m]; omega
+  have hb4 : (g0 + 56 * UInt64.ofNat k + 48 - 24).toNat % 4294967296 + 8 ≤
+      st.mem.pages * 65536 := by rw [hs24m]; omega
+  have hb5 : (g0 + 56 * UInt64.ofNat k + 48 - 16).toNat % 4294967296 + 8 ≤
+      st.mem.pages * 65536 := by rw [hs16m]; omega
+  have hb6 : (g0 + 56 * UInt64.ofNat k + 48 - 8).toNat % 4294967296 + 8 ≤
+      st.mem.pages * 65536 := by rw [hs8m]; omega
   unfold posProg
   simp only [lFrame]
   wp_run
@@ -252,9 +464,8 @@ theorem posIterLemma (env : HostEnv Unit) (st stL : Store Unit)
     try simp only [h0L]
     try wp_run
     try simp [hTrap]
-    refine ⟨by omega, by rw [hs40]; omega, by rw [hs32]; omega,
-      by rw [hs24]; omega, by rw [hs16]; omega,
-      by rw [hs8]; omega, ?_⟩
+    simp only [h2L, hpgL]
+    refine and6_and ⟨hb1, hb2, hb3, hb4, hb5, hb6⟩ ?_
     try simp only [h2L]
     try wp_run
     try simp [hTrap]
@@ -317,30 +528,7 @@ theorem posIterLemma (env : HostEnv Unit) (st stL : Store Unit)
         exact hbytes i hi
       · intro a ha
         dsimp only
-        rw [write64_bytes_lo _ _ _ (by
-            rw [toUInt32_ofNat_mod_toNat, hs8m]
-            try simp only [objBase]
-            omega),
-          write64_bytes_lo _ _ _ (by
-            rw [toUInt32_ofNat_mod_toNat, hs16m]
-            try simp only [objBase]
-            omega),
-          write64_bytes_lo _ _ _ (by
-            rw [toUInt32_ofNat_mod_toNat, hs24m]
-            try simp only [objBase]
-            omega),
-          write64_bytes_lo _ _ _ (by
-            rw [toUInt32_ofNat_mod_toNat, hs32m]
-            try simp only [objBase]
-            omega),
-          write64_bytes_lo _ _ _ (by
-            rw [toUInt32_ofNat_mod_toNat, hs40m]
-            try simp only [objBase]
-            omega),
-          write64_bytes_lo _ _ _ (by
-            rw [toUInt32_ofNat_mod_toNat, hs0m]
-            try simp only [objBase]
-            omega)]
+        rw [posWritesLo _ g0 k a ha hs40m hs32m hs24m hs16m hs8m hs0m]
         exact hloL a ha
     · rintro stC sC ⟨j, hjk, rfl, hglC, hpgC, hdst, hsrc, hloC⟩
       have hjU : (UInt64.ofNat j).toNat = j := by u64_omega
@@ -349,57 +537,9 @@ theorem posIterLemma (env : HostEnv Unit) (st stL : Store Unit)
         simp only [cFramePos]
         wp_run
         try simp [hTrap]
-        have hk9 : j ≤ 9 := by omega
-        have hg0b : g0.toNat < 4294967296 := by omega
-        have hpgCL : stC.mem.pages = st.mem.pages := hpgC.trans hpgL
-        have hbaseN : (g0 + 56 * UInt64.ofNat j + 48).toNat =
-            g0.toNat + 56 * j + 48 := by
-          simp only [UInt64.toNat_add, UInt64.toNat_mul, UInt64.toNat_ofNat',
-            show (48 : UInt64).toNat = 48 from rfl,
-            show (56 : UInt64).toNat = 56 from rfl]
-          have hs : (2 : Nat) ^ 64 = 18446744073709551616 := by norm_num
-          omega
-        have hnw : g0.toNat + 56 * j + 48 + j < 4294967296 := by omega
-        have hbuf1 : bufPtr g0 (j + 1) = g0 + 56 * UInt64.ofNat j + 48 := by
-          unfold bufPtr objBase
-          rw [if_neg (by omega), Nat.add_sub_cancel]
-          apply UInt64.toNat.inj
-          rw [hbaseN, toNat_ofNat_lt (n := g0.toNat + 56 * j + 48)
-            (by rw [size_eq]; omega)]
-        have hkadd : UInt64.ofNat j + 1 = UInt64.ofNat (j + 1) := by
-          apply UInt64.toNat.inj
-          rw [toNat_add_one, hkU,
-            toNat_ofNat_lt (by rw [size_eq]; omega)]
-          try rw [hkU, size_eq]
-          try omega
-        have hbyte : UInt8.ofNat ((v.toNat % 128 &&& 255) % 4294967296) =
-            (v % 128).toUInt8 := by
-          have hb : (v.toNat % 128 &&& 255) % 4294967296 = v.toNat % 128 := by
-            rw [show (255 : Nat) = 2 ^ 8 - 1 from rfl,
-              Nat.and_two_pow_sub_one_eq_mod]
-            omega
-          apply UInt8.toNat.inj
-          rw [hb]
-          simp only [UInt8.toNat_ofNat', UInt64.toUInt8, UInt64.toNat_mod,
-            show (128 : UInt64).toNat = 128 from rfl]
-          try omega
-        have hfinal : lebList (10 - j) v = [(v % 128).toUInt8] := by
-          rw [show 10 - j = (9 - j) + 1 from by omega]
-          exact lebList_final _ _ hrest
-        have hgetl : ∀ i : Nat, i < j →
-            (written ++ [(v % 128).toUInt8])[i]! = written[i]! := by
-          intro i hi
-          rw [getElem_bang _ _ (by simp; omega),
-            getElem_bang _ _ (by omega)]
-          exact List.getElem_append_left (by omega)
-        have hgetk : (written ++ [(v % 128).toUInt8])[j]! =
-            (v % 128).toUInt8 := by
-          rw [getElem_bang _ _ (by simp; omega)]
-          exact List.getElem_concat_length hwlen.symm _
-        have hnw : g0.toNat + 56 * j + 48 + j < 4294967296 := by omega
         refine ⟨by
-          rw [Nat.mod_eq_of_lt hnw]
-          rw [show stC.mem.pages = st.mem.pages from hpgCL]
+          rw [Nat.mod_eq_of_lt (posNw g0 j j n hFit32 hL5 hkL (Nat.le_refl j))]
+          rw [show stC.mem.pages = st.mem.pages from hpgC.trans hpgL]
           omega, ?_⟩
         apply hFT
         constructor
@@ -428,85 +568,52 @@ theorem posIterLemma (env : HostEnv Unit) (st stL : Store Unit)
               else if i = 36 then g0 + 56 * UInt64.ofNat j + 48
               else e i),
             ?_, ?_, by omega, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
-          · rw [hsplit, hfinal]
+          on_goal 6 => exact (posGlobals stC st1 st g0 g2 j j n hFit32 hL5 hkL (Nat.le_refl j)
+              hglC hlen h0L h1L h2L h3L h4L h5L).1
+          on_goal 6 => exact (posGlobals stC st1 st g0 g2 j j n hFit32 hL5 hkL (Nat.le_refl j)
+              hglC hlen h0L h1L h2L h3L h4L h5L).2.1
+          on_goal 6 => exact (posGlobals stC st1 st g0 g2 j j n hFit32 hL5 hkL (Nat.le_refl j)
+              hglC hlen h0L h1L h2L h3L h4L h5L).2.2.1
+          on_goal 6 => exact (posGlobals stC st1 st g0 g2 j j n hFit32 hL5 hkL (Nat.le_refl j)
+              hglC hlen h0L h1L h2L h3L h4L h5L).2.2.2.1
+          on_goal 6 => exact (posGlobals stC st1 st g0 g2 j j n hFit32 hL5 hkL (Nat.le_refl j)
+              hglC hlen h0L h1L h2L h3L h4L h5L).2.2.2.2.1
+          on_goal 6 => exact (posGlobals stC st1 st g0 g2 j j n hFit32 hL5 hkL (Nat.le_refl j)
+              hglC hlen h0L h1L h2L h3L h4L h5L).2.2.2.2.2.1
+          on_goal 6 => exact (posGlobals stC st1 st g0 g2 j j n hFit32 hL5 hkL (Nat.le_refl j)
+              hglC hlen h0L h1L h2L h3L h4L h5L).2.2.2.2.2.2
+          · rw [hsplit, posFinal j j n v hrest hL5 hkL (Nat.le_refl j)]
             simp
           · simp [hwlen]
           · rw [show (11 : Nat) - (j + 1) = 10 - j from by omega]
-            simp only [lFrame, hbuf1, hkadd, cFramePos, if_true,
+            simp only [lFrame, posBuf1 g0 j j n hFit32 hL5 hkL (Nat.le_refl j),
+              posKadd j j n hL5 hkL (Nat.le_refl j), cFramePos, if_true,
               List.take_zero, List.drop_zero]
             norm_num
           · intro i hi
             simp only [objBase]
-            rw [show j + 1 - 1 = j from by omega]
+            rw [Nat.add_sub_cancel]
             by_cases hik : i = j
             · subst hik
               rw [write8_bytes_same' _ _ _ (by
                 rw [toUInt32_ofNat_mod_toNat]
-                exact (Nat.mod_eq_of_lt (by omega)).symm)]
-              rw [hgetk]
-              exact hbyte
+                exact (Nat.mod_eq_of_lt
+                  (posNw g0 i i n hFit32 hL5 hkL (Nat.le_refl i))).symm)]
+              rw [getkAppend written _ i hwlen]
+              exact posByte v
             · rw [write8_bytes_ne _ _ _ (by
                 rw [toUInt32_ofNat_mod_toNat]
-                rw [Nat.mod_eq_of_lt hnw]
+                rw [Nat.mod_eq_of_lt
+                  (posNw g0 j j n hFit32 hL5 hkL (Nat.le_refl j))]
                 omega)]
-              rw [hgetl i (by omega)]
+              rw [getlAppend written _ j hwlen i (by omega)]
               exact hdst i (by omega)
-          · rw [hglC]
-            simp [hlen]
-          · rw [hglC]
-            rw [List.getElem?_set]
-            simp only [if_neg (by omega : ¬ (2 = 0))]
-            rw [List.getElem?_set]
-            have hl0 : 0 < st1.globals.globals.length :=
-              (List.getElem?_eq_some_iff.mp h0L).choose
-            simp only [if_pos rfl, hl0, decide_true, Nat.lt_irrefl,
-              ite_true, Option.some.injEq, Value.i64.injEq]
-            apply UInt64.toNat.inj
-            simp only [UInt64.toNat_add, UInt64.toNat_mul, UInt64.toNat_ofNat',
-              show (48 : UInt64).toNat = 48 from rfl,
-              show (8 : UInt64).toNat = 8 from rfl,
-              show (56 : UInt64).toNat = 56 from rfl]
-            have hs : (2 : Nat) ^ 64 = 18446744073709551616 := by norm_num
-            omega
-          · rw [hglC]
-            rw [List.getElem?_set]
-            simp only [if_neg (by omega : ¬ (2 = 1))]
-            rw [List.getElem?_set]
-            simp only [if_neg (by omega : ¬ (0 = 1))]
-            exact h1L
-          · rw [hglC]
-            rw [List.getElem?_set]
-            have hl2 : 2 < st1.globals.globals.length :=
-              (List.getElem?_eq_some_iff.mp h2L).choose
-            simp [hl2]
-            apply UInt64.toNat.inj
-            simp only [UInt64.toNat_add, UInt64.toNat_ofNat',
-              show (1 : UInt64).toNat = 1 from rfl]
-            have hs : (2 : Nat) ^ 64 = 18446744073709551616 := by norm_num
-            omega
-          · rw [hglC]
-            rw [List.getElem?_set]
-            simp only [if_neg (by omega : ¬ (2 = 3))]
-            rw [List.getElem?_set]
-            simp only [if_neg (by omega : ¬ (0 = 3))]
-            exact h3L
-          · rw [hglC]
-            rw [List.getElem?_set]
-            simp only [if_neg (by omega : ¬ (2 = 4))]
-            rw [List.getElem?_set]
-            simp only [if_neg (by omega : ¬ (0 = 4))]
-            exact h4L
-          · rw [hglC]
-            rw [List.getElem?_set]
-            simp only [if_neg (by omega : ¬ (2 = 5))]
-            rw [List.getElem?_set]
-            simp only [if_neg (by omega : ¬ (0 = 5))]
-            exact h5L
           · rw [write8_pages, hpgC, hpgL]
           · intro a ha
             rw [write8_bytes_ne _ _ _ (by
               rw [toUInt32_ofNat_mod_toNat]
-              rw [Nat.mod_eq_of_lt hnw]
+              rw [Nat.mod_eq_of_lt
+                (posNw g0 j j n hFit32 hL5 hkL (Nat.le_refl j))]
               omega)]
             exact hloC a ha
         · simp only [lMeasure, show ((1 : UInt64) = 0) = False from by simp,
