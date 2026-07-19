@@ -15,6 +15,245 @@ open Project.Common
 set_option maxHeartbeats 400000000
 set_option maxRecDepth 1048576
 
+/-- Every conjunct of the construction's final package after the pair
+stores, over a memory bound to the fourteen-write chain by equation.
+The closing discharge applies this as one term, so none of these
+conjuncts is ever focused as a goal in the loop context. -/
+private theorem buildsFinal (M : Mem) (stB st1 : Store Unit)
+    (ptr g0 g2 g3 g4 g5 : UInt64) (bytes : List UInt8)
+    (hM : M =
+      (((((((((((((stB.mem.write64
+        (UInt32.ofNat ((g0.toNat + 48 +
+          (allocSizeU (UInt64.ofNat bytes.length)).toNat) % 4294967296))
+        5501223100278326855).write64
+        (UInt32.ofNat ((g0.toNat + 96 + allocSize (bytes.length + 1) - 40) %
+          4294967296)) 1).write64
+        (UInt32.ofNat ((g0.toNat + 96 + allocSize (bytes.length + 1) - 32) %
+          4294967296)) 56).write64
+        (UInt32.ofNat ((g0.toNat + 96 + allocSize (bytes.length + 1) - 24) %
+          4294967296)) 2).write64
+        (UInt32.ofNat ((g0.toNat + 96 + allocSize (bytes.length + 1) - 16) %
+          4294967296)) 3).write64
+        (UInt32.ofNat ((g0.toNat + 96 + allocSize (bytes.length + 1) - 8) %
+          4294967296)) 1).write64
+        (UInt32.ofNat ((g0.toNat + 48 +
+          (allocSizeU (UInt64.ofNat bytes.length)).toNat + 48) % 4294967296))
+        2).write64
+        (UInt32.ofNat ((g0.toNat + 48 +
+          (allocSizeU (UInt64.ofNat bytes.length)).toNat + 48 + 8) %
+          4294967296)) (g0 + 48)).write64
+        (UInt32.ofNat ((g0.toNat + 48 +
+          (allocSizeU (UInt64.ofNat bytes.length)).toNat + 48 + 16) %
+          4294967296)) (g0 + 48)).write64
+        (UInt32.ofNat ((g0.toNat + 48 +
+          (allocSizeU (UInt64.ofNat bytes.length)).toNat + 48 + 24) %
+          4294967296)) (UInt64.ofNat bytes.length + 1)).write64
+        (UInt32.ofNat ((g0.toNat + 48 +
+          (allocSizeU (UInt64.ofNat bytes.length)).toNat + 48 + 32) %
+          4294967296)) (g0 + 48)).write64
+        (UInt32.ofNat ((g0.toNat + 48 +
+          (allocSizeU (UInt64.ofNat bytes.length)).toNat + 48 + 40) %
+          4294967296)) (g0 + 48)).write64
+        (UInt32.ofNat ((g0.toNat + 48 +
+          (allocSizeU (UInt64.ofNat bytes.length)).toNat + 48 + 48) %
+          4294967296)) (UInt64.ofNat bytes.length + 1)).write64
+        (UInt32.ofNat ((g0 + 48 - 40).toNat % 4294967296)) 2)
+    (hFit32 : g0.toNat + 152 + allocSize (bytes.length + 1) < 4294967296)
+    (hszU : (allocSizeU (UInt64.ofNat bytes.length)).toNat =
+      allocSize (bytes.length + 1))
+    (hg0_32 : g0.toNat < 4294967296)
+    (hsub40 : (g0 + 48 - 40).toNat = g0.toNat + 8)
+    (hpgB : stB.mem.pages = st1.mem.pages)
+    (h0B : 0 < stB.globals.globals.length)
+    (h2B : 2 < stB.globals.globals.length)
+    (h3B : 3 < stB.globals.globals.length)
+    (hg1B : stB.globals.globals[1]? = some (.i64 0))
+    (hg4B : stB.globals.globals[4]? = some (.i64 g4))
+    (hg5B : stB.globals.globals[5]? = some (.i64 g5))
+    (hh0e : stB.mem.read64 (UInt32.ofNat (g0.toNat % 4294967296)) =
+      5501223100278326855)
+    (hh24e : stB.mem.read64 (UInt32.ofNat ((g0.toNat + 24) % 4294967296)) =
+      0) :
+    (List.take func0Def.results.length
+        [Value.i64 (g0 + 48 + allocSizeU (UInt64.ofNat bytes.length) + 48),
+          Value.i64 (g0 + 48 + allocSizeU (UInt64.ofNat bytes.length) + 48)] ++
+      List.drop func0Def.params.length
+        [Value.i64 (UInt64.ofNat bytes.length), Value.i64 ptr, Value.i64 0] =
+      [Value.i64 (g0 + 48 + allocSizeU (UInt64.ofNat bytes.length) + 48),
+        Value.i64 (g0 + 48 + allocSizeU (UInt64.ofNat bytes.length) + 48)]) ∧
+    stB.mem.pages = st1.mem.pages ∧
+    (stB.globals.globals.set 0
+      (Value.i64 (g0 + 48 + allocSizeU (UInt64.ofNat bytes.length) + 48 +
+        56)))[0]? =
+      some (Value.i64 (g0 + 48 + allocSizeU (UInt64.ofNat bytes.length) + 48 +
+        56)) ∧
+    stB.globals.globals[1]? = some (Value.i64 0) ∧
+    ((stB.globals.globals.set 0
+      (Value.i64 (g0 + 48 + allocSizeU (UInt64.ofNat bytes.length) + 48 +
+        56))).set 2 (Value.i64 (g2 + 1 + 1)))[2]? =
+      some (Value.i64 (g2 + 1 + 1)) ∧
+    (((stB.globals.globals.set 0
+      (Value.i64 (g0 + 48 + allocSizeU (UInt64.ofNat bytes.length) + 48 +
+        56))).set 2 (Value.i64 (g2 + 1 + 1))).set 3
+      (Value.i64 (g3 + 1)))[3]? = some (Value.i64 (g3 + 1)) ∧
+    stB.globals.globals[4]? = some (Value.i64 g4) ∧
+    stB.globals.globals[5]? = some (Value.i64 g5) ∧
+    M.read64 (UInt32.ofNat ((g0.toNat + 48 +
+      (allocSizeU (UInt64.ofNat bytes.length)).toNat) % 4294967296)) =
+      5501223100278326855 ∧
+    M.read64 (UInt32.ofNat ((g0.toNat + 96 + allocSize (bytes.length + 1) -
+      40) % 4294967296)) = 1 ∧
+    M.read64 (UInt32.ofNat ((g0.toNat + 96 + allocSize (bytes.length + 1) -
+      24) % 4294967296)) = 2 ∧
+    M.read64 (UInt32.ofNat ((g0.toNat + 96 + allocSize (bytes.length + 1) -
+      16) % 4294967296)) = 3 ∧
+    M.read64 (UInt32.ofNat ((g0.toNat + 96 + allocSize (bytes.length + 1) -
+      8) % 4294967296)) = 1 ∧
+    M.read64 (UInt32.ofNat ((g0.toNat + 48 +
+      (allocSizeU (UInt64.ofNat bytes.length)).toNat + 48) % 4294967296)) =
+      2 ∧
+    M.read64 (UInt32.ofNat ((g0.toNat + 48 +
+      (allocSizeU (UInt64.ofNat bytes.length)).toNat + 48 + 8) %
+      4294967296)) = g0 + 48 ∧
+    M.read64 (UInt32.ofNat ((g0.toNat + 48 +
+      (allocSizeU (UInt64.ofNat bytes.length)).toNat + 48 + 32) %
+      4294967296)) = g0 + 48 ∧
+    M.read64 (UInt32.ofNat (g0.toNat % 4294967296)) = 5501223100278326855 ∧
+    M.read64 (UInt32.ofNat ((g0.toNat + 8) % 4294967296)) = 2 ∧
+    M.read64 (UInt32.ofNat ((g0.toNat + 24) % 4294967296)) = 0 := by
+  subst hM
+  have haddr40 : (UInt32.ofNat ((g0 + 48 - 40).toNat % 4294967296)) =
+      (UInt32.ofNat ((g0.toNat + 8) % 4294967296)) := by
+    rw [hsub40]
+  refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_,
+    ?_, ?_, ?_⟩
+  · simp [func0Def]
+  · exact hpgB
+  · simp [h0B]
+  · exact hg1B
+  · simp [h2B]
+  · simp [h3B]
+  · exact hg4B
+  · exact hg5B
+  · rw [read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      Mem.read64_write64_same]
+  · rw [read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      Mem.read64_write64_same]
+  · rw [read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      Mem.read64_write64_same]
+  · rw [read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      Mem.read64_write64_same]
+  · rw [read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      Mem.read64_write64_same]
+  · rw [read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      Mem.read64_write64_same]
+  · rw [read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      Mem.read64_write64_same]
+  · rw [read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      Mem.read64_write64_same]
+  · rw [read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      hh0e]
+  · rw [haddr40, Mem.read64_write64_same]
+  · rw [read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
+      hh24e]
+
+
+private theorem buildsNotLe (bytes : List UInt8) (k : Nat)
+    (hLen : bytes.length + 1 < 4294967296)
+    (hklt : k < bytes.length) :
+    ¬ (UInt64.ofNat k ≥ UInt64.ofNat bytes.length) := by
+  have hkU : (UInt64.ofNat k).toNat = k := by u64_omega
+  have hlenU : (UInt64.ofNat bytes.length).toNat = bytes.length := by
+    u64_omega
+  rw [ge_iff_le, UInt64.le_iff_toNat_le, hkU, hlenU]
+  omega
+
 /-- The compiled `sharedPushPair` helper: builds the temporary, the pair
 array aliasing it twice, and retains the shared child once.  The
 postcondition exposes every header and cell fact the release function's
@@ -269,6 +508,66 @@ theorem func0_builds
         wp_run
         try simp
         by_cases hkend : k = bytes.length
+        swap
+        · -- copy one byte and continue
+          simp only [if_neg
+            (buildsNotLe bytes k hLen (Nat.lt_of_le_of_ne hk hkend))]
+          try simp
+          have hklt : k < bytes.length := Nat.lt_of_le_of_ne hk hkend
+          obtain ⟨hread, hbound⟩ := hInput k hklt
+          have hsrcN : (ptr + UInt64.ofNat k).toNat = ptr.toNat + k := by
+            rw [UInt64.toNat_add, hkU]
+            have hs : (18446744073709551616 : Nat) = UInt64.size := rfl
+            omega
+          have hsrc32 : (ptr + UInt64.ofNat k).toUInt32 =
+              UInt32.ofNat ((ptr.toNat + k) % 4294967296) := by
+            rw [toUInt32_eq_ofNat, hsrcN]
+          rw [hsrc32] at hread hbound
+          rw [toUInt32_ofNat_mod_toNat] at hbound
+          have hkadd : (UInt64.ofNat k + 1) = UInt64.ofNat (k + 1) := by
+            apply UInt64.toNat.inj
+            rw [toNat_add_one, hkU, toNat_ofNat_lt (by rw [size_eq]; omega)]
+            rw [hkU]
+            rw [size_eq]
+            omega
+          have hreadval : st2.mem.read8
+              (UInt32.ofNat ((ptr.toNat + k) % 4294967296)) = bytes[k]! := by
+            rw [Mem.read8, toUInt32_ofNat_mod_toNat]
+            rw [Nat.mod_eq_of_lt (by omega)]
+            rw [hlo (ptr.toNat + k) (by omega)]
+            have hthis := hread
+            rw [Mem.read8, toUInt32_ofNat_mod_toNat,
+              Nat.mod_eq_of_lt (by omega)] at hthis
+            exact hthis
+          rw [hreadval]
+          refine ⟨by omega, by omega,
+            ⟨k + 1, hklt, ?_, hpg, hgl, ?_, ?_, ?_, ?_, ?_, ?_⟩, ?_⟩
+          · rw [← hkadd]
+            simp only [vFrame]
+          · intro a ha
+            rw [write8_bytes_ne _ _ _ (by rw [toUInt32_ofNat_mod_toNat]; omega)]
+            exact hlo a ha
+          · intro i hi
+            by_cases hieq : i = k
+            · subst hieq
+              rw [write8_bytes_hit _ _ _ (by rw [toUInt32_ofNat_mod_toNat]; omega)]
+            · rw [write8_bytes_ne _ _ _ (by rw [toUInt32_ofNat_mod_toNat]; omega)]
+              exact hpref i (by omega)
+          · rw [read64_write8_ne _ _ _ _
+              (by simp only [toUInt32_ofNat_mod_toNat]; omega)]
+            exact hh0
+          · rw [read64_write8_ne _ _ _ _
+              (by simp only [toUInt32_ofNat_mod_toNat]; omega)]
+            exact hh8
+          · rw [read64_write8_ne _ _ _ _
+              (by simp only [toUInt32_ofNat_mod_toNat]; omega)]
+            exact hh16
+          · rw [read64_write8_ne _ _ _ _
+              (by simp only [toUInt32_ofNat_mod_toNat]; omega)]
+            exact hh24
+          · simp [vMeasure]
+            omega
+
         · -- all bytes copied: exit, store the bang, then phase two
           have hle : (UInt64.ofNat bytes.length) ≤ (UInt64.ofNat k) := by
             rw [UInt64.le_iff_toNat_le, hkU, hlenU]
@@ -623,194 +922,23 @@ theorem func0_builds
               rw [read64_write8_ne _ _ _ _
                 (by simp only [toUInt32_ofNat_mod_toNat]; omega)]
               exact hh24
-            refine ⟨by omega, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_,
-              ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
-            · simp [func0Def]
-            · exact hpgB
-            · simp [List.getElem?_set, h0B]
-            · rw [hstB]
+            have hg1B : stB.globals.globals[1]? = some (.i64 0) := by
+              rw [hstB]
               dsimp only
               exact hg1S
-            · simp [List.getElem?_set, h2B]
-            · simp [List.getElem?_set, h3B]
-            · rw [hstB]
+            have hg4B : stB.globals.globals[4]? = some (.i64 g4) := by
+              rw [hstB]
               dsimp only
               rw [hgl]
               simp [List.getElem?_set, hglen]
               exact hg4
-            · rw [hstB]
+            have hg5B : stB.globals.globals[5]? = some (.i64 g5) := by
+              rw [hstB]
               dsimp only
               rw [hgl]
               simp [List.getElem?_set, hglen]
               exact hg5
-            · rw [read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                Mem.read64_write64_same]
-            · rw [read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                Mem.read64_write64_same]
-            · rw [read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                Mem.read64_write64_same]
-            · rw [read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                Mem.read64_write64_same]
-            · rw [read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                Mem.read64_write64_same]
-            · rw [read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                Mem.read64_write64_same]
-            · rw [read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                Mem.read64_write64_same]
-            · rw [read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                Mem.read64_write64_same]
-            · rw [read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                hh0e]
-            · rw [haddr40, Mem.read64_write64_same]
-            · rw [read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
-                hh24e]
-
-        · -- copy one byte and continue
-          have hklt : k < bytes.length := Nat.lt_of_le_of_ne hk hkend
-          have hnotle : ¬ ((UInt64.ofNat bytes.length) ≤ (UInt64.ofNat k)) := by
-            rw [UInt64.le_iff_toNat_le, hkU, hlenU]
-            omega
-          have hnge : ¬ (UInt64.ofNat k ≥ UInt64.ofNat bytes.length) := hnotle
-          rw [if_neg hnge]
-          try simp
-          obtain ⟨hread, hbound⟩ := hInput k hklt
-          have hsrcN : (ptr + UInt64.ofNat k).toNat = ptr.toNat + k := by
-            rw [UInt64.toNat_add, hkU]
-            have hs : (18446744073709551616 : Nat) = UInt64.size := rfl
-            omega
-          have hsrc32 : (ptr + UInt64.ofNat k).toUInt32 =
-              UInt32.ofNat ((ptr.toNat + k) % 4294967296) := by
-            rw [toUInt32_eq_ofNat, hsrcN]
-          rw [hsrc32] at hread hbound
-          rw [toUInt32_ofNat_mod_toNat] at hbound
-          have hkadd : (UInt64.ofNat k + 1) = UInt64.ofNat (k + 1) := by
-            apply UInt64.toNat.inj
-            rw [toNat_add_one, hkU, toNat_ofNat_lt (by rw [size_eq]; omega)]
-            rw [hkU]
-            rw [size_eq]
-            omega
-          have hreadval : st2.mem.read8
-              (UInt32.ofNat ((ptr.toNat + k) % 4294967296)) = bytes[k]! := by
-            rw [Mem.read8, toUInt32_ofNat_mod_toNat]
-            rw [Nat.mod_eq_of_lt (by omega)]
-            rw [hlo (ptr.toNat + k) (by omega)]
-            have hthis := hread
-            rw [Mem.read8, toUInt32_ofNat_mod_toNat,
-              Nat.mod_eq_of_lt (by omega)] at hthis
-            exact hthis
-          rw [hreadval]
-          refine ⟨by omega, by omega,
-            ⟨k + 1, hklt, ?_, hpg, hgl, ?_, ?_, ?_, ?_, ?_, ?_⟩, ?_⟩
-          · rw [← hkadd]
-            simp only [vFrame]
-          · intro a ha
-            rw [write8_bytes_ne _ _ _ (by rw [toUInt32_ofNat_mod_toNat]; omega)]
-            exact hlo a ha
-          · intro i hi
-            by_cases hieq : i = k
-            · subst hieq
-              rw [write8_bytes_hit _ _ _ (by rw [toUInt32_ofNat_mod_toNat]; omega)]
-            · rw [write8_bytes_ne _ _ _ (by rw [toUInt32_ofNat_mod_toNat]; omega)]
-              exact hpref i (by omega)
-          · rw [read64_write8_ne _ _ _ _
-              (by simp only [toUInt32_ofNat_mod_toNat]; omega)]
-            exact hh0
-          · rw [read64_write8_ne _ _ _ _
-              (by simp only [toUInt32_ofNat_mod_toNat]; omega)]
-            exact hh8
-          · rw [read64_write8_ne _ _ _ _
-              (by simp only [toUInt32_ofNat_mod_toNat]; omega)]
-            exact hh16
-          · rw [read64_write8_ne _ _ _ _
-              (by simp only [toUInt32_ofNat_mod_toNat]; omega)]
-            exact hh24
-          · simp [vMeasure]
-            omega
-
+            exact ⟨by omega, buildsFinal _ stB st1 ptr g0 g2 g3 g4 g5 bytes
+              rfl hFit32 hszU hg0_32 hsub40 hpgB h0B h2B h3B hg1B hg4B
+              hg5B hh0e hh24e⟩
 end Project.PairFree.Spec
