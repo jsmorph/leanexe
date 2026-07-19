@@ -65,6 +65,16 @@ theorem getElem_of_some {α : Type _} {l : List α} {i : Nat} {v : α}
   rw [List.getElem?_eq_getElem hi] at h
   exact Option.some.inj h
 
+/-- Prepend a six-part conjunction pack onto a tail in one step.  The
+instruction proofs use this where the goal carries a `wp` term behind
+side conditions: splitting such a goal with more than two live
+components stalls the elaborator, while one application of this lemma
+with a prepacked left side stays cheap. -/
+theorem and6_and {A₁ A₂ A₃ A₄ A₅ A₆ B : Prop}
+    (h : A₁ ∧ A₂ ∧ A₃ ∧ A₄ ∧ A₅ ∧ A₆) (hb : B) :
+    A₁ ∧ A₂ ∧ A₃ ∧ A₄ ∧ A₅ ∧ A₆ ∧ B :=
+  ⟨h.1, h.2.1, h.2.2.1, h.2.2.2.1, h.2.2.2.2.1, h.2.2.2.2.2, hb⟩
+
 theorem toUInt32_toNat (x : UInt64) : x.toUInt32.toNat = x.toNat % 4294967296 := by
   simp
 
