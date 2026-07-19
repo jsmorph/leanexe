@@ -216,8 +216,20 @@ theorem func0_builds
         have hs : (18446744073709551616 : Nat) = UInt64.size := rfl
         omega
       rw [hsub40, hsub32, hsub24, hsub16, hsub8]
-      refine ⟨by omega, by omega, by omega, by omega, by omega, by omega, ?_⟩
+      have hb1 : g0.toNat % 4294967296 + 8 ≤ st1.mem.pages * 65536 := by
+        omega
+      have hb2 : (g0.toNat + 8) % 4294967296 + 8 ≤ st1.mem.pages * 65536 := by
+        omega
+      have hb3 : (g0.toNat + 16) % 4294967296 + 8 ≤ st1.mem.pages * 65536 := by
+        omega
+      have hb4 : (g0.toNat + 24) % 4294967296 + 8 ≤ st1.mem.pages * 65536 := by
+        omega
+      have hb5 : (g0.toNat + 32) % 4294967296 + 8 ≤ st1.mem.pages * 65536 := by
+        omega
+      have hb6 : (g0.toNat + 40) % 4294967296 + 8 ≤ st1.mem.pages * 65536 := by
+        omega
       simp only [hg2]
+      refine and6_and ⟨hb1, hb2, hb3, hb4, hb5, hb6⟩ ?_
       apply wp_block_cons
       apply wp_loop_cons (Inv := vInv st1 ptr g0 g2 bytes) (μ := vMeasure bytes)
       · refine ⟨0, Nat.zero_le _, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
