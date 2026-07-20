@@ -1,3 +1,4 @@
+import Project.FrameAttr
 import Interpreter.Wasm.Wp.Defs
 import Interpreter.Wasm.Wp.Loop
 
@@ -67,6 +68,48 @@ theorem wp_loop_body_intro {α : Type} {m : Module} {env : HostEnv α}
     exact h
   · intro k st' s' h
     exact h
+
+/-- Local reads see through operand-stack updates, so a folded frame
+definition survives value traffic during stepping. -/
+@[simp] theorem Locals.get_values (s : Locals) (vs : List Value) (i : Nat) :
+    Wasm.Locals.get { s with values := vs } i = Wasm.Locals.get s i := rfl
+
+@[simp] theorem Locals.validIndex_values (s : Locals) (vs : List Value)
+    (i : Nat) :
+    Wasm.Locals.validIndex { s with values := vs } i ↔
+      Wasm.Locals.validIndex s i := Iff.rfl
+
+@[simp] theorem Locals.values_values (s : Locals) (a b : List Value) :
+    ({ { s with values := a } with values := b } : Locals) =
+      { s with values := b } := rfl
+
+/-- Local writes see through operand-stack updates and keep the stack. -/
+@[simp] theorem Locals.set?_values (s : Locals) (vs : List Value) (i : Nat)
+    (v : Value) :
+    Wasm.Locals.set? { s with values := vs } i v =
+      (Wasm.Locals.set? s i v).map (fun r => { r with values := vs }) := by
+  simp only [Wasm.Locals.set?]
+  by_cases h1 : i < s.params.length
+  · simp [h1]
+  · by_cases h2 : i < s.params.length + s.locals.length <;> simp [h1, h2]
+
+/-- Step generated instructions with the frame kept folded behind its
+definition: the bracket list supplies the frame's generated access and
+update lemmas, and the raw `Locals` operations stay out of the set so
+the definition never unfolds. -/
+macro "wp_run_folded" "[" ts:Lean.Parser.Tactic.simpLemma,* "]" : tactic =>
+  `(tactic|
+    simp (config := { maxSteps := 10000000 }) only [wp_simp, frame_step,
+      Wasm.Function.toLocals, Wasm.Function.numParams,
+      Wasm.Function.numLocals,
+      Project.Common.Locals.get_values, Project.Common.Locals.set?_values,
+      Project.Common.Locals.validIndex_values,
+      Project.Common.Locals.values_values,
+      List.take, List.drop, List.replicate, List.length, List.map,
+      List.headD, Option.map, List.nil_append, List.append_nil,
+      List.cons_append, List.set, reduceIte, if_true, if_false,
+      Nat.reduceAdd, Nat.reduceLT, Nat.reduceLeDiff, Nat.reduceSub,
+      Wasm.ValueType.zero, $ts,*])
 
 /-- Peel byte-level frame facts through a chain of word and byte
 writes: a byte below every write survives, and a byte outside a byte
