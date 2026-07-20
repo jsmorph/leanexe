@@ -395,6 +395,29 @@ private theorem buildsBody (env : HostEnv Unit) (st1 st2 : Store Unit)
 private def pairAfterProg : Wasm.Program :=
   [Instruction.iff 0 0 [Instruction.constI64 8, Instruction.localSet 19] [], Instruction.constI64 0, Instruction.localSet 24, Instruction.constI64 0, Instruction.localSet 20, Instruction.globalGet 1, Instruction.localSet 21, Instruction.block 0 0 [Instruction.loop 0 0 [Instruction.localGet 21, Instruction.constI64 0, Instruction.eqI64, Instruction.br_if 1, Instruction.localGet 24, Instruction.constI64 0, Instruction.neI64, Instruction.br_if 1, Instruction.localGet 21, Instruction.constI64 32, Instruction.subI64, Instruction.wrapI64, Instruction.load64 0, Instruction.localSet 22, Instruction.localGet 21, Instruction.constI64 8, Instruction.subI64, Instruction.wrapI64, Instruction.load64 0, Instruction.localSet 23, Instruction.localGet 22, Instruction.localGet 19, Instruction.geUI64, Instruction.iff 0 0 [Instruction.localGet 20, Instruction.constI64 0, Instruction.eqI64, Instruction.iff 0 0 [Instruction.localGet 23, Instruction.globalSet 1] [Instruction.localGet 20, Instruction.constI64 8, Instruction.subI64, Instruction.wrapI64, Instruction.localGet 23, Instruction.store64 0], Instruction.localGet 21, Instruction.constI64 48, Instruction.subI64, Instruction.wrapI64, Instruction.constI64 5501223100278326855, Instruction.store64 0, Instruction.localGet 21, Instruction.constI64 40, Instruction.subI64, Instruction.wrapI64, Instruction.constI64 1, Instruction.store64 0, Instruction.localGet 21, Instruction.constI64 32, Instruction.subI64, Instruction.wrapI64, Instruction.localGet 22, Instruction.store64 0, Instruction.localGet 21, Instruction.constI64 24, Instruction.subI64, Instruction.wrapI64, Instruction.constI64 2, Instruction.store64 0, Instruction.localGet 21, Instruction.constI64 16, Instruction.subI64, Instruction.wrapI64, Instruction.constI64 3, Instruction.store64 0, Instruction.localGet 21, Instruction.constI64 8, Instruction.subI64, Instruction.wrapI64, Instruction.constI64 1, Instruction.store64 0, Instruction.localGet 21, Instruction.localSet 24] [Instruction.localGet 21, Instruction.localSet 20, Instruction.localGet 23, Instruction.localSet 21], Instruction.br 0]], Instruction.localGet 24, Instruction.constI64 0, Instruction.eqI64, Instruction.iff 0 0 [Instruction.globalGet 0, Instruction.constI64 48, Instruction.addI64, Instruction.localGet 19, Instruction.addI64, Instruction.localSet 22, Instruction.localGet 22, Instruction.globalGet 0, Instruction.ltUI64, Instruction.iff 0 0 [Instruction.unreachable] [], Instruction.localGet 22, Instruction.constI64 1, Instruction.subI64, Instruction.constI64 65536, Instruction.divUI64, Instruction.constI64 1, Instruction.addI64, Instruction.localSet 23, Instruction.memorySize, Instruction.extendUI32, Instruction.localGet 23, Instruction.ltUI64, Instruction.iff 0 0 [Instruction.localGet 23, Instruction.memorySize, Instruction.extendUI32, Instruction.subI64, Instruction.wrapI64, Instruction.memoryGrow, Instruction.const 4294967295, Instruction.eq, Instruction.iff 0 0 [Instruction.unreachable] []] [], Instruction.globalGet 0, Instruction.constI64 48, Instruction.addI64, Instruction.localSet 24, Instruction.localGet 22, Instruction.globalSet 0, Instruction.localGet 24, Instruction.constI64 48, Instruction.subI64, Instruction.wrapI64, Instruction.constI64 5501223100278326855, Instruction.store64 0, Instruction.localGet 24, Instruction.constI64 40, Instruction.subI64, Instruction.wrapI64, Instruction.constI64 1, Instruction.store64 0, Instruction.localGet 24, Instruction.constI64 32, Instruction.subI64, Instruction.wrapI64, Instruction.localGet 19, Instruction.store64 0, Instruction.localGet 24, Instruction.constI64 24, Instruction.subI64, Instruction.wrapI64, Instruction.constI64 2, Instruction.store64 0, Instruction.localGet 24, Instruction.constI64 16, Instruction.subI64, Instruction.wrapI64, Instruction.constI64 3, Instruction.store64 0, Instruction.localGet 24, Instruction.constI64 8, Instruction.subI64, Instruction.wrapI64, Instruction.constI64 1, Instruction.store64 0] [], Instruction.globalGet 2, Instruction.constI64 1, Instruction.addI64, Instruction.globalSet 2, Instruction.localGet 24, Instruction.localSet 13, Instruction.localGet 13, Instruction.wrapI64, Instruction.constI64 2, Instruction.store64 0, Instruction.localGet 7, Instruction.localSet 16, Instruction.localGet 8, Instruction.localSet 17, Instruction.localGet 9, Instruction.localSet 18, Instruction.localGet 13, Instruction.constI64 0, Instruction.constI64 3, Instruction.mulI64, Instruction.constI64 1, Instruction.addI64, Instruction.constI64 8, Instruction.mulI64, Instruction.addI64, Instruction.wrapI64, Instruction.localGet 16, Instruction.store64 0, Instruction.localGet 13, Instruction.constI64 0, Instruction.constI64 3, Instruction.mulI64, Instruction.constI64 2, Instruction.addI64, Instruction.constI64 8, Instruction.mulI64, Instruction.addI64, Instruction.wrapI64, Instruction.localGet 17, Instruction.store64 0, Instruction.localGet 13, Instruction.constI64 0, Instruction.constI64 3, Instruction.mulI64, Instruction.constI64 3, Instruction.addI64, Instruction.constI64 8, Instruction.mulI64, Instruction.addI64, Instruction.wrapI64, Instruction.localGet 18, Instruction.store64 0, Instruction.localGet 7, Instruction.localSet 16, Instruction.localGet 8, Instruction.localSet 17, Instruction.localGet 9, Instruction.localSet 18, Instruction.localGet 13, Instruction.constI64 1, Instruction.constI64 3, Instruction.mulI64, Instruction.constI64 1, Instruction.addI64, Instruction.constI64 8, Instruction.mulI64, Instruction.addI64, Instruction.wrapI64, Instruction.localGet 16, Instruction.store64 0, Instruction.localGet 13, Instruction.constI64 1, Instruction.constI64 3, Instruction.mulI64, Instruction.constI64 2, Instruction.addI64, Instruction.constI64 8, Instruction.mulI64, Instruction.addI64, Instruction.wrapI64, Instruction.localGet 17, Instruction.store64 0, Instruction.localGet 13, Instruction.constI64 1, Instruction.constI64 3, Instruction.mulI64, Instruction.constI64 3, Instruction.addI64, Instruction.constI64 8, Instruction.mulI64, Instruction.addI64, Instruction.wrapI64, Instruction.localGet 18, Instruction.store64 0, Instruction.localGet 13, Instruction.constI64 1, Instruction.constI64 3, Instruction.mulI64, Instruction.constI64 1, Instruction.addI64, Instruction.constI64 8, Instruction.mulI64, Instruction.addI64, Instruction.wrapI64, Instruction.load64 0, Instruction.localSet 14, Instruction.localGet 14, Instruction.constI64 0, Instruction.neI64, Instruction.iff 0 0 [Instruction.localGet 14, Instruction.constI64 48, Instruction.subI64, Instruction.wrapI64, Instruction.load64 0, Instruction.constI64 5501223100278326855, Instruction.neI64, Instruction.iff 0 0 [Instruction.unreachable] [], Instruction.localGet 14, Instruction.constI64 40, Instruction.subI64, Instruction.wrapI64, Instruction.load64 0, Instruction.localSet 15, Instruction.localGet 15, Instruction.constI64 0, Instruction.eqI64, Instruction.iff 0 0 [Instruction.unreachable] [], Instruction.globalGet 3, Instruction.constI64 1, Instruction.addI64, Instruction.globalSet 3, Instruction.localGet 14, Instruction.constI64 40, Instruction.subI64, Instruction.wrapI64, Instruction.localGet 15, Instruction.constI64 1, Instruction.addI64, Instruction.store64 0] [], Instruction.localGet 13, Instruction.localSet 10, Instruction.localGet 10, Instruction.localSet 11, Instruction.localGet 10, Instruction.localSet 12, Instruction.localGet 11, Instruction.localGet 12]
 
+private theorem buildsMods (g0 : UInt64) (bytes : List UInt8)
+    (hFit32 : g0.toNat + 152 + allocSize (bytes.length + 1) < 4294967296)
+    (hszU : (allocSizeU (UInt64.ofNat bytes.length)).toNat =
+      allocSize (bytes.length + 1))
+    (hszN_ge8 : 8 ≤ allocSize (bytes.length + 1)) :
+    (g0.toNat) % 4294967296 = g0.toNat ∧
+    (g0.toNat + 8) % 4294967296 = g0.toNat + 8 ∧
+    (g0.toNat + 48 + (allocSizeU (UInt64.ofNat bytes.length)).toNat) % 4294967296 = g0.toNat + 48 + (allocSizeU (UInt64.ofNat bytes.length)).toNat ∧
+    (g0.toNat + 96 + allocSize (bytes.length + 1) - 40) % 4294967296 = g0.toNat + 96 + allocSize (bytes.length + 1) - 40 ∧
+    (g0.toNat + 96 + allocSize (bytes.length + 1) - 32) % 4294967296 = g0.toNat + 96 + allocSize (bytes.length + 1) - 32 ∧
+    (g0.toNat + 96 + allocSize (bytes.length + 1) - 24) % 4294967296 = g0.toNat + 96 + allocSize (bytes.length + 1) - 24 ∧
+    (g0.toNat + 96 + allocSize (bytes.length + 1) - 16) % 4294967296 = g0.toNat + 96 + allocSize (bytes.length + 1) - 16 ∧
+    (g0.toNat + 96 + allocSize (bytes.length + 1) - 8) % 4294967296 = g0.toNat + 96 + allocSize (bytes.length + 1) - 8 ∧
+    (g0.toNat + 48 + (allocSizeU (UInt64.ofNat bytes.length)).toNat + 48) % 4294967296 = g0.toNat + 48 + (allocSizeU (UInt64.ofNat bytes.length)).toNat + 48 ∧
+    (g0.toNat + 48 + (allocSizeU (UInt64.ofNat bytes.length)).toNat + 48 + 8) % 4294967296 = g0.toNat + 48 + (allocSizeU (UInt64.ofNat bytes.length)).toNat + 48 + 8 ∧
+    (g0.toNat + 48 + (allocSizeU (UInt64.ofNat bytes.length)).toNat + 48 + 16) % 4294967296 = g0.toNat + 48 + (allocSizeU (UInt64.ofNat bytes.length)).toNat + 48 + 16 ∧
+    (g0.toNat + 48 + (allocSizeU (UInt64.ofNat bytes.length)).toNat + 48 + 24) % 4294967296 = g0.toNat + 48 + (allocSizeU (UInt64.ofNat bytes.length)).toNat + 48 + 24 ∧
+    (g0.toNat + 48 + (allocSizeU (UInt64.ofNat bytes.length)).toNat + 48 + 32) % 4294967296 = g0.toNat + 48 + (allocSizeU (UInt64.ofNat bytes.length)).toNat + 48 + 32 ∧
+    (g0.toNat + 48 + (allocSizeU (UInt64.ofNat bytes.length)).toNat + 48 + 40) % 4294967296 = g0.toNat + 48 + (allocSizeU (UInt64.ofNat bytes.length)).toNat + 48 + 40 ∧
+    (g0.toNat + 48 + (allocSizeU (UInt64.ofNat bytes.length)).toNat + 48 + 48) % 4294967296 = g0.toNat + 48 + (allocSizeU (UInt64.ofNat bytes.length)).toNat + 48 + 48 := by
+  refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩ <;>
+    exact Nat.mod_eq_of_lt (by omega)
+
 /-- The bang store and second-allocation phase from the copy loop's
 exit, generic over the loop context's postcondition.  The done premise
 takes the export's postcondition facts, furnished by the result pack. -/
@@ -691,36 +714,6 @@ private theorem buildsPhase2 (env : HostEnv Unit) (st1 st2 : Store Unit)
           (allocSizeU (UInt64.ofNat bytes.length)).toNat :=
       Nat.mod_eq_of_lt (by omega)
     simp only [hXmod]
-    have hM0 : (g0.toNat) % 4294967296 = g0.toNat :=
-      Nat.mod_eq_of_lt (by omega)
-    have hM8 : (g0.toNat + 8) % 4294967296 = g0.toNat + 8 :=
-      Nat.mod_eq_of_lt (by omega)
-    have hMg : (g0.toNat + 48 + (allocSizeU (UInt64.ofNat bytes.length)).toNat) % 4294967296 = g0.toNat + 48 + (allocSizeU (UInt64.ofNat bytes.length)).toNat :=
-      Nat.mod_eq_of_lt (by omega)
-    have hMh40 : (g0.toNat + 96 + allocSize (bytes.length + 1) - 40) % 4294967296 = g0.toNat + 96 + allocSize (bytes.length + 1) - 40 :=
-      Nat.mod_eq_of_lt (by omega)
-    have hMh32 : (g0.toNat + 96 + allocSize (bytes.length + 1) - 32) % 4294967296 = g0.toNat + 96 + allocSize (bytes.length + 1) - 32 :=
-      Nat.mod_eq_of_lt (by omega)
-    have hMh24 : (g0.toNat + 96 + allocSize (bytes.length + 1) - 24) % 4294967296 = g0.toNat + 96 + allocSize (bytes.length + 1) - 24 :=
-      Nat.mod_eq_of_lt (by omega)
-    have hMh16 : (g0.toNat + 96 + allocSize (bytes.length + 1) - 16) % 4294967296 = g0.toNat + 96 + allocSize (bytes.length + 1) - 16 :=
-      Nat.mod_eq_of_lt (by omega)
-    have hMh8 : (g0.toNat + 96 + allocSize (bytes.length + 1) - 8) % 4294967296 = g0.toNat + 96 + allocSize (bytes.length + 1) - 8 :=
-      Nat.mod_eq_of_lt (by omega)
-    have hMc0 : (g0.toNat + 48 + (allocSizeU (UInt64.ofNat bytes.length)).toNat + 48) % 4294967296 = g0.toNat + 48 + (allocSizeU (UInt64.ofNat bytes.length)).toNat + 48 :=
-      Nat.mod_eq_of_lt (by omega)
-    have hMc8 : (g0.toNat + 48 + (allocSizeU (UInt64.ofNat bytes.length)).toNat + 48 + 8) % 4294967296 = g0.toNat + 48 + (allocSizeU (UInt64.ofNat bytes.length)).toNat + 48 + 8 :=
-      Nat.mod_eq_of_lt (by omega)
-    have hMc16 : (g0.toNat + 48 + (allocSizeU (UInt64.ofNat bytes.length)).toNat + 48 + 16) % 4294967296 = g0.toNat + 48 + (allocSizeU (UInt64.ofNat bytes.length)).toNat + 48 + 16 :=
-      Nat.mod_eq_of_lt (by omega)
-    have hMc24 : (g0.toNat + 48 + (allocSizeU (UInt64.ofNat bytes.length)).toNat + 48 + 24) % 4294967296 = g0.toNat + 48 + (allocSizeU (UInt64.ofNat bytes.length)).toNat + 48 + 24 :=
-      Nat.mod_eq_of_lt (by omega)
-    have hMc32 : (g0.toNat + 48 + (allocSizeU (UInt64.ofNat bytes.length)).toNat + 48 + 32) % 4294967296 = g0.toNat + 48 + (allocSizeU (UInt64.ofNat bytes.length)).toNat + 48 + 32 :=
-      Nat.mod_eq_of_lt (by omega)
-    have hMc40 : (g0.toNat + 48 + (allocSizeU (UInt64.ofNat bytes.length)).toNat + 48 + 40) % 4294967296 = g0.toNat + 48 + (allocSizeU (UInt64.ofNat bytes.length)).toNat + 48 + 40 :=
-      Nat.mod_eq_of_lt (by omega)
-    have hMc48 : (g0.toNat + 48 + (allocSizeU (UInt64.ofNat bytes.length)).toNat + 48 + 48) % 4294967296 = g0.toNat + 48 + (allocSizeU (UInt64.ofNat bytes.length)).toNat + 48 + 48 :=
-      Nat.mod_eq_of_lt (by omega)
     have hpne : ¬ ((g0 + 48 : UInt64) = 0) := by
       intro h
       have := congrArg UInt64.toNat h
