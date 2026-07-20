@@ -657,6 +657,7 @@ theorem func0_builds
           obtain ⟨hkeq, hst', hs'⟩ := hx
           subst hkeq
           rw [hst', hs']
+          simp only [vFrame]
           wp_run
           try simp
           refine ⟨by omega, ?_⟩
