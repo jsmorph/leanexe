@@ -6018,3 +6018,28 @@ chains of word and byte writes; and `read_frames8` extends the existing
 discipline: rewrite-class discharge and single-term application in
 stuck-match goals.  The scaffold builds in 103 seconds in its own file,
 so consumers pay no `Common` invalidation.
+
+## 2026-07-20: Folded Frames Cut Validate.Loop From 1560 to 15 Seconds
+
+Stepping cost is simp search times term size, and the term size came
+from the frame: `wp_run` unfolds every local read and write into walks
+over the 24-element frame literal.  The fix keeps the frame folded
+behind its definition.  `tools/gen-frame-lemmas.py` generates, per
+frame, `@[frame_step]` lemmas for get, set?, validIndex, lengths, bare
+projections, and record-form set-refolds; `Project.FrameAttr` registers
+the simp set; and `wp_run_folded` in `Project.WpScaffold` steps with
+`wp_simp` plus `frame_step` while omitting the raw `Locals` operations,
+so the definition never opens.  Values-transparency lemmas
+(`get_values`, `set?_values`, `validIndex_values`, `values_values`) let
+the folded frame survive operand-stack traffic.  On
+`Project.Validate.Loop` the module went from 1560 seconds to 15, with
+`Validate.Spec` and `Validate.Read` unaffected.  Two rules from the
+iteration: a refold lemma whose right side is a record of projections
+matches itself and loops simp, so set-refolds must demand a `.set` on
+the left; and boundary goals — measures and invariant packs — reduce
+through the bare projection lemmas plus `List.length`, `List.set`, and
+a `decide := true` simp config for literal scrutinee conditions, with
+`toNat_ofNat_lt` equations stated as haves for omega.  Rollout targets:
+the shared 23-argument `vFrame` in `PairFree.Base` serving `Builds`,
+`PushTwice`, and `SharedPair`, and the `lFrame`/`cFramePos` frames in
+`Iter` and `NegIter`.

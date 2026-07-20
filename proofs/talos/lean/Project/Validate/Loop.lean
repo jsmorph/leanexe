@@ -1,6 +1,8 @@
 import Project.Validate.Digit
 import Project.Validate.Read
 import Project.Validate.Invariant
+import Project.Validate.Frame
+import Project.WpScaffold
 import Interpreter.Wasm.Wp.Block
 import Interpreter.Wasm.Wp.Loop
 import Interpreter.Wasm.Wp.Call
@@ -59,31 +61,30 @@ theorem func2_terminates (env : HostEnv Unit) (st : Store Unit)
           have h0 : (0 : UInt64).toNat = 0 := rfl
           rw [h0] at this
           omega
-        simp only [vFrame]
-        wp_run
+        wp_run_folded []
         refine wp_iff_cons rfl ?_
         rw [if_pos (by simp [hfuel_ne])]
-        wp_run
+        wp_run_folded []
         refine wp_iff_cons rfl ?_
         by_cases hi : i = bytes.length
         · -- cursor at the end: set the result to 1 and the done flag
           rw [if_pos (by simp [hi])]
-          wp_run
+          wp_run_folded []
           refine wp_iff_cons rfl ?_
           rw [if_pos (by simp)]
-          wp_run
+          wp_run_folded []
           refine wp_iff_cons rfl ?_
           rw [if_pos (by simp)]
-          wp_run
+          wp_run_folded []
           refine wp_iff_cons rfl ?_
           rw [if_pos (by simp)]
-          wp_run
+          wp_run_folded []
           refine wp_iff_cons rfl ?_
           rw [if_pos (by simp)]
-          wp_run
+          wp_run_folded []
           refine wp_iff_cons rfl ?_
           rw [if_pos (by simp [hi])]
-          wp_run
+          wp_run_folded []
           refine ⟨⟨rfl, UInt64.ofNat (bytes.length + 1 - i), UInt64.ofNat i, 1, 1,
             l7, l8, l9, l10, l11, l12, l13, l14, l15, l16, l17, l18, l19, l20,
             l21, l22, l23, ?_, Or.inr ⟨rfl, ?_⟩⟩, ?_⟩
@@ -91,17 +92,17 @@ theorem func2_terminates (env : HostEnv Unit) (st : Store Unit)
           · unfold validateExpected
             rw [all_of_prefix (hi ▸ hpref)]
             simp
-          · simp [vMeasure]
+          · simp (config := { decide := true }) only [frame_step, vMeasure, List.length, List.set, if_false, Nat.reduceSub, Nat.reduceAdd]
             try omega
         · have hilt : i < bytes.length := Nat.lt_of_le_of_ne hile hi
           have hne : UInt64.ofNat i ≠ UInt64.ofNat bytes.length := by
             intro h
             exact hi (ofNat_inj (by omega) (by omega) h)
           rw [if_neg (by simp [hne])]
-          wp_run
+          wp_run_folded []
           refine wp_iff_cons rfl ?_
           rw [if_neg (by simp)]
-          wp_run
+          wp_run_folded []
           have hidx : (UInt64.ofNat i).toNat < bytes.length := by
             rw [toNat_ofNat_lt (by omega)]
             exact hilt
@@ -109,7 +110,7 @@ theorem func2_terminates (env : HostEnv Unit) (st : Store Unit)
             (func1_terminates env st2 owner ptr (UInt64.ofNat bytes.length)
               (UInt64.ofNat i) bytes rfl hSize hBytes hidx)
           rintro st3 vs ⟨rfl, rfl⟩
-          wp_run
+          wp_run_folded []
           apply wp_call_tw
             (func0_terminates env st3 (bytes[(UInt64.ofNat i).toNat]!).toUInt64)
           rintro st3 vs ⟨rfl, rfl⟩
@@ -142,19 +143,19 @@ theorem func2_terminates (env : HostEnv Unit) (st : Store Unit)
           by_cases hd : isAsciiDigit bytes[i]! = true
           · -- digit: advance the cursor and burn one unit of fuel
             rw [hd]
-            wp_run
+            wp_run_folded []
             refine wp_iff_cons rfl ?_
             rw [if_neg (by simp)]
-            wp_run
+            wp_run_folded []
             refine wp_iff_cons rfl ?_
             rw [if_neg (by simp)]
-            wp_run
+            wp_run_folded []
             refine wp_iff_cons rfl ?_
             rw [if_neg (by simp)]
-            wp_run
+            wp_run_folded []
             refine wp_iff_cons rfl ?_
             rw [if_neg (by simp [hsucc_no_wrap])]
-            wp_run
+            wp_run_folded []
             refine ⟨⟨rfl, UInt64.ofNat (bytes.length + 1 - i) - 1,
               UInt64.ofNat i + 1, l5, 0, owner, ptr, UInt64.ofNat bytes.length,
               UInt64.ofNat i, bytes[i]!.toUInt64, bytes[i]!.toUInt64, owner, ptr,
@@ -167,11 +168,17 @@ theorem func2_terminates (env : HostEnv Unit) (st : Store Unit)
               rcases Nat.lt_succ_iff_lt_or_eq.mp hj with hj' | rfl
               · exact hpref j hj'
               · exact hd
-            · simp [vMeasure]
+            · simp (config := { decide := true }) only [frame_step, vMeasure, List.length, List.set, if_true, Nat.reduceSub, Nat.reduceAdd]
               have hLen' : bytes.length + 1 < 18446744073709551616 := by
                 rw [size_eq] at hLen
                 exact hLen
-              rw [hfuel_next, toNat_ofNat_lt (by omega)]
+              rw [hfuel_next]
+              have hf1 : (UInt64.ofNat (bytes.length + 1 - (i + 1))).toNat =
+                  bytes.length + 1 - (i + 1) :=
+                toNat_ofNat_lt (by rw [size_eq]; omega)
+              have hf2 : (UInt64.ofNat (bytes.length + 1 - i)).toNat =
+                  bytes.length + 1 - i :=
+                toNat_ofNat_lt (by rw [size_eq]; omega)
               omega
           · -- non-digit byte: set the result to 0 and the done flag
             have hd0 : isAsciiDigit bytes[i]! = false := by
@@ -179,19 +186,19 @@ theorem func2_terminates (env : HostEnv Unit) (st : Store Unit)
               · rfl
               · exact absurd hval hd
             rw [hd0]
-            wp_run
+            wp_run_folded []
             refine wp_iff_cons rfl ?_
             rw [if_pos (by simp)]
-            wp_run
+            wp_run_folded []
             refine wp_iff_cons rfl ?_
             rw [if_pos (by simp)]
-            wp_run
+            wp_run_folded []
             refine wp_iff_cons rfl ?_
             rw [if_pos (by simp)]
-            wp_run
+            wp_run_folded []
             refine wp_iff_cons rfl ?_
             rw [if_neg (by simp [hne])]
-            wp_run
+            wp_run_folded []
             refine ⟨⟨rfl, UInt64.ofNat (bytes.length + 1 - i), UInt64.ofNat i,
               0, 1, owner, ptr, UInt64.ofNat bytes.length, UInt64.ofNat i,
               bytes[i]!.toUInt64, bytes[i]!.toUInt64, l13, l14, l15, l16, l17,
@@ -200,24 +207,23 @@ theorem func2_terminates (env : HostEnv Unit) (st : Store Unit)
             · unfold validateExpected
               rw [not_all_of_witness hilt hd0]
               simp
-            · simp [vMeasure]
+            · simp (config := { decide := true }) only [frame_step, vMeasure, List.length, List.set, if_false, Nat.reduceSub, Nat.reduceAdd]
               try omega
       · -- done arm: the loop exits and the answer is already in the result local
-        simp only [vFrame]
-        wp_run
+        wp_run_folded []
         refine wp_iff_cons rfl ?_
         by_cases hfz : fuel = 0
         · rw [if_neg (by simp [hfz])]
-          wp_run
+          wp_run_folded []
           refine wp_iff_cons rfl ?_
           rw [if_neg (by simp)]
-          wp_run
+          wp_run_folded []
           simp [func2Def, hres]
         · rw [if_pos (by simp [hfz])]
-          wp_run
+          wp_run_folded []
           refine wp_iff_cons rfl ?_
           rw [if_neg (by simp)]
-          wp_run
+          wp_run_folded []
           simp [func2Def, hres]
 
 end Project.Validate.Spec
