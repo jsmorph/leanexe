@@ -254,6 +254,144 @@ private theorem buildsNotLe (bytes : List UInt8) (k : Nat)
   rw [ge_iff_le, UInt64.le_iff_toNat_le, hkU, hlenU]
   omega
 
+private def pairCopyBody : Wasm.Program :=
+  [.localGet 18, .localGet 14, .geUI64, .br_if 1, .localGet 16,
+    .localGet 18, .addI64, .wrapI64, .localGet 13,
+    .localGet 18, .addI64, .wrapI64, .load8U 0, .store8 0,
+    .localGet 18, .constI64 1, .addI64, .localSet 18, .br 0]
+
+/-- The copy-loop body obligation, generic over the loop rule's
+postcondition so no continuation appears in any statement.  The
+repeat premise takes the re-established invariant and measure
+decrease; the exit premise takes the exit state by equation. -/
+private theorem buildsBody (env : HostEnv Unit) (st1 st2 : Store Unit)
+    (ptr g0 g2 : UInt64) (bytes : List UInt8) (k : Nat)
+    (POST : Assertion Unit) (m0 : Nat)
+    (hLen : bytes.length + 1 < 4294967296)
+    (hPtr32 : ptr.toNat + bytes.length < 4294967296)
+    (hBelow : ptr.toNat + bytes.length ≤ g0.toNat)
+    (hFit32 : g0.toNat + 152 + allocSize (bytes.length + 1) < 4294967296)
+    (hg0_32 : g0.toNat < 4294967296)
+    (hlenU : (UInt64.ofNat bytes.length).toNat = bytes.length)
+    (hFit : g0.toNat + 152 + allocSize (bytes.length + 1) ≤
+      st1.mem.pages * 65536)
+    (hPages : st1.mem.pages ≤ 65536)
+    (hszU : (allocSizeU (UInt64.ofNat bytes.length)).toNat =
+      allocSize (bytes.length + 1))
+    (hszN_ge : bytes.length + 1 ≤ allocSize (bytes.length + 1))
+    (hszN_ge8 : 8 ≤ allocSize (bytes.length + 1))
+    (hInput : BytesAt st1 ptr bytes)
+    (hk : k ≤ bytes.length)
+    (hpg : st2.mem.pages = st1.mem.pages)
+    (hgl : st2.globals.globals =
+      (st1.globals.globals.set 0
+        (.i64 (g0 + 48 + allocSizeU (UInt64.ofNat bytes.length)))).set 2
+        (.i64 (g2 + 1)))
+    (hlo : ∀ a < g0.toNat, st2.mem.bytes a = st1.mem.bytes a)
+    (hpref : ∀ i < k, st2.mem.bytes (g0.toNat + 48 + i) = bytes[i]!)
+    (hh0 : st2.mem.read64 (UInt32.ofNat (g0.toNat % 4294967296)) =
+      5501223100278326855)
+    (hh8 : st2.mem.read64 (UInt32.ofNat ((g0.toNat + 8) % 4294967296)) = 1)
+    (hh16 : st2.mem.read64 (UInt32.ofNat ((g0.toNat + 16) % 4294967296)) =
+      allocSizeU (UInt64.ofNat bytes.length))
+    (hh24 : st2.mem.read64 (UInt32.ofNat ((g0.toNat + 24) % 4294967296)) =
+      0)
+    (hm0 : bytes.length - k = m0)
+    (hTrap : ∀ (st' : Store Unit) (msg : String),
+      POST (.Trap st' msg) = False)
+    (hRepeat : ∀ (st' : Store Unit) (s' : Locals),
+      vInv st1 ptr g0 g2 bytes st'
+        { s' with values := s'.values.take 0 ++ ([] : List Value).drop 0 } ∧
+      vMeasure bytes st'
+        { s' with values := s'.values.take 0 ++ ([] : List Value).drop 0 } <
+        m0 →
+      POST (.Break 0 st' s'))
+    (hExit : ∀ (st' : Store Unit) (s' : Locals),
+      k = bytes.length ∧ st' = st2 ∧
+      s' = vFrame 0 ptr (UInt64.ofNat bytes.length) 33 ptr (UInt64.ofNat bytes.length) 0 0 0 0 0 0 0 ptr (UInt64.ofNat bytes.length) 33 (g0 + 48) (UInt64.ofNat bytes.length + 1) (UInt64.ofNat k) (allocSizeU (UInt64.ofNat bytes.length)) 0 0 (g0 + 48 + allocSizeU (UInt64.ofNat bytes.length)) ((g0 + 48 + allocSizeU (UInt64.ofNat bytes.length) - 1) / 65536 + 1) (g0 + 48) →
+      POST (.Break 1 st' s'))
+    (sB : Locals)
+    (hsB : sB = vFrame 0 ptr (UInt64.ofNat bytes.length) 33 ptr (UInt64.ofNat bytes.length) 0 0 0 0 0 0 0 ptr (UInt64.ofNat bytes.length) 33 (g0 + 48) (UInt64.ofNat bytes.length + 1) (UInt64.ofNat k) (allocSizeU (UInt64.ofNat bytes.length)) 0 0 (g0 + 48 + allocSizeU (UInt64.ofNat bytes.length)) ((g0 + 48 + allocSizeU (UInt64.ofNat bytes.length) - 1) / 65536 + 1) (g0 + 48)) :
+    wp «module» pairCopyBody POST st2 sB env := by
+  subst hsB
+  have hkU : (UInt64.ofNat k).toNat = k := by u64_omega
+  simp only [pairCopyBody, vFrame]
+  wp_run
+  try simp only [hTrap, if_false, false_and, and_false]
+  try simp
+  try simp only [hTrap, if_false, false_and, and_false]
+  by_cases hkend : k = bytes.length
+  swap
+  · -- copy one byte and continue
+    simp only [if_neg
+      (buildsNotLe bytes k hLen (Nat.lt_of_le_of_ne hk hkend))]
+    try simp
+    try simp only [hTrap, if_false, false_and, and_false]
+    have hklt : k < bytes.length := Nat.lt_of_le_of_ne hk hkend
+    obtain ⟨hread, hbound⟩ := hInput k hklt
+    have hsrcN : (ptr + UInt64.ofNat k).toNat = ptr.toNat + k := by
+      rw [UInt64.toNat_add, hkU]
+      have hs : (18446744073709551616 : Nat) = UInt64.size := rfl
+      omega
+    have hsrc32 : (ptr + UInt64.ofNat k).toUInt32 =
+        UInt32.ofNat ((ptr.toNat + k) % 4294967296) := by
+      rw [toUInt32_eq_ofNat, hsrcN]
+    rw [hsrc32] at hread hbound
+    rw [toUInt32_ofNat_mod_toNat] at hbound
+    have hkadd : (UInt64.ofNat k + 1) = UInt64.ofNat (k + 1) := by
+      apply UInt64.toNat.inj
+      rw [toNat_add_one, hkU, toNat_ofNat_lt (by rw [size_eq]; omega)]
+      rw [hkU]
+      rw [size_eq]
+      omega
+    have hreadval : st2.mem.read8
+        (UInt32.ofNat ((ptr.toNat + k) % 4294967296)) = bytes[k]! := by
+      rw [Mem.read8, toUInt32_ofNat_mod_toNat]
+      rw [Nat.mod_eq_of_lt (by omega)]
+      rw [hlo (ptr.toNat + k) (by omega)]
+      have hthis := hread
+      rw [Mem.read8, toUInt32_ofNat_mod_toNat,
+        Nat.mod_eq_of_lt (by omega)] at hthis
+      exact hthis
+    rw [hreadval]
+    refine ⟨by omega, by omega,
+      hRepeat _ _ ⟨⟨k + 1, hklt, ?_, hpg, hgl, ?_, ?_, ?_, ?_, ?_, ?_⟩, ?_⟩⟩
+    · rw [← hkadd]
+      simp only [vFrame]
+    · intro a ha
+      rw [write8_bytes_ne _ _ _ (by rw [toUInt32_ofNat_mod_toNat]; omega)]
+      exact hlo a ha
+    · intro i hi
+      by_cases hieq : i = k
+      · subst hieq
+        rw [write8_bytes_hit _ _ _ (by rw [toUInt32_ofNat_mod_toNat]; omega)]
+      · rw [write8_bytes_ne _ _ _ (by rw [toUInt32_ofNat_mod_toNat]; omega)]
+        exact hpref i (by omega)
+    · rw [read64_write8_ne _ _ _ _
+        (by simp only [toUInt32_ofNat_mod_toNat]; omega)]
+      exact hh0
+    · rw [read64_write8_ne _ _ _ _
+        (by simp only [toUInt32_ofNat_mod_toNat]; omega)]
+      exact hh8
+    · rw [read64_write8_ne _ _ _ _
+        (by simp only [toUInt32_ofNat_mod_toNat]; omega)]
+      exact hh16
+    · rw [read64_write8_ne _ _ _ _
+        (by simp only [toUInt32_ofNat_mod_toNat]; omega)]
+      exact hh24
+    · simp [vMeasure]
+      omega
+
+  · -- all bytes copied: take the exit branch
+    have hle : (UInt64.ofNat bytes.length) ≤ (UInt64.ofNat k) := by
+      rw [UInt64.le_iff_toNat_le, hkU, hlenU]
+      omega
+    have hge : UInt64.ofNat k ≥ UInt64.ofNat bytes.length := hle
+    rw [if_pos hge]
+    try simp
+    try simp only [hTrap, if_false, false_and, and_false]
+    exact hExit _ _ ⟨hkend, rfl, rfl⟩
+
 /-- The compiled `sharedPushPair` helper: builds the temporary, the pair
 array aliasing it twice, and retains the shared child once.  The
 postcondition exposes every header and cell fact the release function's
@@ -503,80 +641,26 @@ theorem func0_builds
             read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
             Mem.read64_write64_same]
       · rintro st2 s2 ⟨k, hk, rfl, hpg, hgl, hlo, hpref, hh0, hh8, hh16, hh24⟩
-        have hkU : (UInt64.ofNat k).toNat = k := by u64_omega
-        simp only [vFrame]
-        wp_run
-        try simp
-        by_cases hkend : k = bytes.length
-        swap
-        · -- copy one byte and continue
-          simp only [if_neg
-            (buildsNotLe bytes k hLen (Nat.lt_of_le_of_ne hk hkend))]
+        refine buildsBody env st1 st2 ptr g0 g2 bytes k _
+          (bytes.length - k) hLen hPtr32 hBelow hFit32 hg0_32 hlenU hFit
+          hPages hszU hszN_ge hszN_ge8 hInput hk hpg hgl hlo hpref hh0 hh8
+          hh16 hh24 rfl ?_ ?_ ?_ _ rfl
+        · intro st' msg
+          rfl
+        · intro st' s' h
+          wp_run
+          exact ⟨h.1, by
+            have := h.2
+            simp only [vMeasure, vFrame] at this ⊢
+            omega⟩
+        · intro st' s' hx
+          obtain ⟨hkeq, hst', hs'⟩ := hx
+          subst hkeq
+          rw [hst', hs']
+          wp_run
           try simp
-          have hklt : k < bytes.length := Nat.lt_of_le_of_ne hk hkend
-          obtain ⟨hread, hbound⟩ := hInput k hklt
-          have hsrcN : (ptr + UInt64.ofNat k).toNat = ptr.toNat + k := by
-            rw [UInt64.toNat_add, hkU]
-            have hs : (18446744073709551616 : Nat) = UInt64.size := rfl
-            omega
-          have hsrc32 : (ptr + UInt64.ofNat k).toUInt32 =
-              UInt32.ofNat ((ptr.toNat + k) % 4294967296) := by
-            rw [toUInt32_eq_ofNat, hsrcN]
-          rw [hsrc32] at hread hbound
-          rw [toUInt32_ofNat_mod_toNat] at hbound
-          have hkadd : (UInt64.ofNat k + 1) = UInt64.ofNat (k + 1) := by
-            apply UInt64.toNat.inj
-            rw [toNat_add_one, hkU, toNat_ofNat_lt (by rw [size_eq]; omega)]
-            rw [hkU]
-            rw [size_eq]
-            omega
-          have hreadval : st2.mem.read8
-              (UInt32.ofNat ((ptr.toNat + k) % 4294967296)) = bytes[k]! := by
-            rw [Mem.read8, toUInt32_ofNat_mod_toNat]
-            rw [Nat.mod_eq_of_lt (by omega)]
-            rw [hlo (ptr.toNat + k) (by omega)]
-            have hthis := hread
-            rw [Mem.read8, toUInt32_ofNat_mod_toNat,
-              Nat.mod_eq_of_lt (by omega)] at hthis
-            exact hthis
-          rw [hreadval]
-          refine ⟨by omega, by omega,
-            ⟨k + 1, hklt, ?_, hpg, hgl, ?_, ?_, ?_, ?_, ?_, ?_⟩, ?_⟩
-          · rw [← hkadd]
-            simp only [vFrame]
-          · intro a ha
-            rw [write8_bytes_ne _ _ _ (by rw [toUInt32_ofNat_mod_toNat]; omega)]
-            exact hlo a ha
-          · intro i hi
-            by_cases hieq : i = k
-            · subst hieq
-              rw [write8_bytes_hit _ _ _ (by rw [toUInt32_ofNat_mod_toNat]; omega)]
-            · rw [write8_bytes_ne _ _ _ (by rw [toUInt32_ofNat_mod_toNat]; omega)]
-              exact hpref i (by omega)
-          · rw [read64_write8_ne _ _ _ _
-              (by simp only [toUInt32_ofNat_mod_toNat]; omega)]
-            exact hh0
-          · rw [read64_write8_ne _ _ _ _
-              (by simp only [toUInt32_ofNat_mod_toNat]; omega)]
-            exact hh8
-          · rw [read64_write8_ne _ _ _ _
-              (by simp only [toUInt32_ofNat_mod_toNat]; omega)]
-            exact hh16
-          · rw [read64_write8_ne _ _ _ _
-              (by simp only [toUInt32_ofNat_mod_toNat]; omega)]
-            exact hh24
-          · simp [vMeasure]
-            omega
-
-        · -- all bytes copied: exit, store the bang, then phase two
-          have hle : (UInt64.ofNat bytes.length) ≤ (UInt64.ofNat k) := by
-            rw [UInt64.le_iff_toNat_le, hkU, hlenU]
-            omega
-          have hge : UInt64.ofNat k ≥ UInt64.ofNat bytes.length := hle
-          rw [if_pos hge]
-          try simp
-          subst hkend
           refine ⟨by omega, ?_⟩
+          try wp_run
           try wp_run
           try simp
           refine wp_iff_cons rfl ?_
