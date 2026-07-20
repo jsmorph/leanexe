@@ -6006,3 +6006,15 @@ The re-ladder after the modulus pack shows the same profile, and the region view
 ## 2026-07-20: Phase-Two Drain List
 
 Thirty-three top-level haves sit in phase two's hostile zone: fifteen store facts over the banged store (`hg0S`, `hpgB`, `hg2S`, `hmagic2e`, `hrc2e`, `hg3S`, `hlenB`, `h0B`, `h2B`, `h3B`, `hh0e`, `hh24e`, `hg1B`, `hg4B`, `hg5B`) and eighteen arithmetic facts over the theorem variables (`h48` through `hpne`, including the six `hsubB` header offsets and `haddr40`).  The consolidation is two pack lemmas — the store facts over `st2` with the banged store inline, premised on the copy-loop facts, and the arithmetic facts premised on the size bounds — with every use becoming a projection and the two cell-pack premises supplied from the store pack.  Internal ordering inside the packs is free since fresh contexts admit haves.  The inventory script and line numbers are reproducible from this journal's date entry.
+
+## 2026-07-20: Loop-Body Scaffold and Frame Macros
+
+`Project.WpScaffold` is built and verified: `wp_loop_body_intro` turns a
+postcondition-generic body lemma — trap, repeat, fallthrough, and break
+premises — into the loop rule's body obligation, so no proof writes a
+match continuation again; `bytes_frames` peels byte-preservation through
+chains of word and byte writes; and `read_frames8` extends the existing
+`read_frames` over byte writes.  All three follow the measured
+discipline: rewrite-class discharge and single-term application in
+stuck-match goals.  The scaffold builds in 103 seconds in its own file,
+so consumers pay no `Common` invalidation.

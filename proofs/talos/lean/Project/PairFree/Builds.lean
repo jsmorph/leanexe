@@ -426,6 +426,9 @@ private theorem buildsCells (M : Mem) (stB : Store Unit)
     (hszN_ge : bytes.length + 1 ≤ allocSize (bytes.length + 1))
     (hszN_ge8 : 8 ≤ allocSize (bytes.length + 1))
     (hg0_32 : g0.toNat < 4294967296)
+    (hB0 : stB.mem.read64 (UInt32.ofNat (g0.toNat % 4294967296)) =
+      5501223100278326855)
+    (hB8 : stB.mem.read64 (UInt32.ofNat ((g0.toNat + 8) % 4294967296)) = 1)
     (hM : M = (((((((((((((stB.mem.write64 (UInt32.ofNat ((g0.toNat + 48 + (allocSizeU (UInt64.ofNat bytes.length)).toNat) % 4294967296)) 5501223100278326855).write64 (UInt32.ofNat ((g0.toNat + 96 + allocSize (bytes.length + 1) - 40) % 4294967296)) 1).write64 (UInt32.ofNat ((g0.toNat + 96 + allocSize (bytes.length + 1) - 32) % 4294967296)) 56).write64 (UInt32.ofNat ((g0.toNat + 96 + allocSize (bytes.length + 1) - 24) % 4294967296)) 2).write64 (UInt32.ofNat ((g0.toNat + 96 + allocSize (bytes.length + 1) - 16) % 4294967296)) 3).write64 (UInt32.ofNat ((g0.toNat + 96 + allocSize (bytes.length + 1) - 8) % 4294967296)) 1).write64 (UInt32.ofNat ((g0.toNat + 48 + (allocSizeU (UInt64.ofNat bytes.length)).toNat + 48) % 4294967296)) 2).write64 (UInt32.ofNat ((g0.toNat + 48 + (allocSizeU (UInt64.ofNat bytes.length)).toNat + 48 + 8) % 4294967296)) (g0 + 48)).write64 (UInt32.ofNat ((g0.toNat + 48 + (allocSizeU (UInt64.ofNat bytes.length)).toNat + 48 + 16) % 4294967296)) (g0 + 48)).write64 (UInt32.ofNat ((g0.toNat + 48 + (allocSizeU (UInt64.ofNat bytes.length)).toNat + 48 + 24) % 4294967296)) (UInt64.ofNat bytes.length + 1)).write64 (UInt32.ofNat ((g0.toNat + 48 + (allocSizeU (UInt64.ofNat bytes.length)).toNat + 48 + 32) % 4294967296)) (g0 + 48)).write64 (UInt32.ofNat ((g0.toNat + 48 + (allocSizeU (UInt64.ofNat bytes.length)).toNat + 48 + 40) % 4294967296)) (g0 + 48)).write64 (UInt32.ofNat ((g0.toNat + 48 + (allocSizeU (UInt64.ofNat bytes.length)).toNat + 48 + 48) % 4294967296)) (UInt64.ofNat bytes.length + 1))) :
     M.read64 (UInt32.ofNat ((g0.toNat + 48 + (allocSizeU (UInt64.ofNat bytes.length)).toNat + 48 + 32) % 4294967296)) = g0 + 48 ∧
     M.read64 (UInt32.ofNat (g0.toNat % 4294967296)) = 5501223100278326855 ∧
@@ -448,11 +451,7 @@ private theorem buildsCells (M : Mem) (stB : Store Unit)
     read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
     read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
     read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega)]
-    rw [hstB]
-    dsimp only
-    rw [read64_write8_ne _ _ _ _
-    (by simp only [toUInt32_ofNat_mod_toNat]; omega)]
-    exact hh0
+    exact hB0
   · rw [read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
     read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
     read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
@@ -466,11 +465,261 @@ private theorem buildsCells (M : Mem) (stB : Store Unit)
     read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
     read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega),
     read64_write64_ne _ _ _ _ (by simp only [toUInt32_ofNat_mod_toNat]; omega)]
+    exact hB8
+
+private theorem buildsArith (st1 : Store Unit) (g0 : UInt64) (bytes : List UInt8)
+    (hFit32 : g0.toNat + 152 + allocSize (bytes.length + 1) < 4294967296)
+    (h17 : (g0 + 48 + allocSizeU (UInt64.ofNat bytes.length)).toNat =
+      g0.toNat + 48 + allocSize (bytes.length + 1))
+    (hsub40 : (g0 + 48 - 40).toNat = g0.toNat + 8)
+    (hg0_32 : g0.toNat < 4294967296)
+    (hlenU : (UInt64.ofNat bytes.length).toNat = bytes.length)
+    (hszU : (allocSizeU (UInt64.ofNat bytes.length)).toNat =
+      allocSize (bytes.length + 1))
+    (hszN_ge : bytes.length + 1 ≤ allocSize (bytes.length + 1))
+    (hszN_ge8 : 8 ≤ allocSize (bytes.length + 1))
+    (hFit : g0.toNat + 152 + allocSize (bytes.length + 1) ≤
+      st1.mem.pages * 65536)
+    (hPages : st1.mem.pages ≤ 65536) :
+    (48 : UInt64).toNat = 48 ∧
+    (18446744073709551616 : Nat) = UInt64.size ∧
+    ¬ (g0 + 48 + allocSizeU (UInt64.ofNat bytes.length) + 48 + 56 < g0 + 48 + allocSizeU (UInt64.ofNat bytes.length)) ∧
+    (g0 + 48 + allocSizeU (UInt64.ofNat bytes.length) + 48 + 56).toNat = g0.toNat + 152 + allocSize (bytes.length + 1) ∧
+    (g0 + 48 + allocSizeU (UInt64.ofNat bytes.length) + 48 + 56 - 1).toNat = g0.toNat + 152 + allocSize (bytes.length + 1) - 1 ∧
+    ((g0 + 48 + allocSizeU (UInt64.ofNat bytes.length) + 48 + 56 - 1) / 65536 + 1).toNat = (g0.toNat + 152 + allocSize (bytes.length + 1) - 1) / 65536 + 1 ∧
+    ((UInt32.ofNat st1.mem.pages).toUInt64).toNat = st1.mem.pages ∧
+    (g0 + 48 + allocSizeU (UInt64.ofNat bytes.length) + 48 + 56 - 1) / 65536 + 1 ≤ UInt64.ofNat (st1.mem.pages % 4294967296) ∧
+    (g0 + 48 + allocSizeU (UInt64.ofNat bytes.length) + 48).toNat = g0.toNat + 96 + allocSize (bytes.length + 1) ∧
+    (g0 + 48 + allocSizeU (UInt64.ofNat bytes.length) + 48 - 40).toNat = g0.toNat + 96 + allocSize (bytes.length + 1) - 40 ∧
+    (g0 + 48 + allocSizeU (UInt64.ofNat bytes.length) + 48 - 32).toNat = g0.toNat + 96 + allocSize (bytes.length + 1) - 32 ∧
+    (g0 + 48 + allocSizeU (UInt64.ofNat bytes.length) + 48 - 24).toNat = g0.toNat + 96 + allocSize (bytes.length + 1) - 24 ∧
+    (g0 + 48 + allocSizeU (UInt64.ofNat bytes.length) + 48 - 16).toNat = g0.toNat + 96 + allocSize (bytes.length + 1) - 16 ∧
+    (g0 + 48 + allocSizeU (UInt64.ofNat bytes.length) + 48 - 8).toNat = g0.toNat + 96 + allocSize (bytes.length + 1) - 8 ∧
+    (g0.toNat + 48 + (allocSizeU (UInt64.ofNat bytes.length)).toNat) % 18446744073709551616 = g0.toNat + 48 + (allocSizeU (UInt64.ofNat bytes.length)).toNat ∧
+    ¬ ((g0 + 48 : UInt64) = 0) ∧
+    (UInt32.ofNat ((g0 + 48 - 40).toNat % 4294967296)) = (UInt32.ofNat ((g0.toNat + 8) % 4294967296)) := by
+  have h48 : (48 : UInt64).toNat = 48 :=
+    rfl
+  have hs : (18446744073709551616 : Nat) = UInt64.size :=
+    rfl
+  have hno_wrap2 : ¬ (g0 + 48 + allocSizeU (UInt64.ofNat bytes.length) + 48 + 56 < g0 + 48 + allocSizeU (UInt64.ofNat bytes.length)) := by
+    rw [UInt64.lt_iff_toNat_lt, UInt64.toNat_add, UInt64.toNat_add, h17]
+    have ha : (48 : UInt64).toNat = 48 := rfl
+    have hb : (56 : UInt64).toNat = 56 := rfl
+    rw [ha, hb]
+    have hs : (18446744073709551616 : Nat) = UInt64.size := rfl
+    omega
+  have h17b : (g0 + 48 + allocSizeU (UInt64.ofNat bytes.length) + 48 + 56).toNat = g0.toNat + 152 + allocSize (bytes.length + 1) := by
+    rw [UInt64.toNat_add, UInt64.toNat_add, h17]
+    have ha : (48 : UInt64).toNat = 48 := rfl
+    have hb : (56 : UInt64).toNat = 56 := rfl
+    rw [ha, hb]
+    have hs : (18446744073709551616 : Nat) = UInt64.size := rfl
+    omega
+  have hsub1b : (g0 + 48 + allocSizeU (UInt64.ofNat bytes.length) + 48 + 56 - 1).toNat = g0.toNat + 152 + allocSize (bytes.length + 1) - 1 := by
+    rw [UInt64.toNat_sub, h17b]
+    have h1 : (1 : UInt64).toNat = 1 := rfl
+    rw [h1]
+    omega
+  have hpn2 : ((g0 + 48 + allocSizeU (UInt64.ofNat bytes.length) + 48 + 56 - 1) / 65536 + 1).toNat = (g0.toNat + 152 + allocSize (bytes.length + 1) - 1) / 65536 + 1 := by
+    rw [UInt64.toNat_add, UInt64.toNat_div, hsub1b]
+    have h65536 : (65536 : UInt64).toNat = 65536 := rfl
+    have h1 : (1 : UInt64).toNat = 1 := rfl
+    rw [h65536, h1]
+    omega
+  have hp32b : ((UInt32.ofNat st1.mem.pages).toUInt64).toNat = st1.mem.pages := by
+    have hlt : st1.mem.pages < UInt32.size := by
+      have hs : UInt32.size = 4294967296 := rfl
+      omega
+    have h1 : (UInt32.ofNat st1.mem.pages).toNat = st1.mem.pages :=
+      UInt32.toNat_ofNat_of_lt' hlt
+    simp [h1]
+  have hgeM : (g0 + 48 + allocSizeU (UInt64.ofNat bytes.length) + 48 + 56 - 1) / 65536 + 1 ≤ UInt64.ofNat (st1.mem.pages % 4294967296) := by
+    rw [UInt64.le_iff_toNat_le, hpn2,
+      toNat_ofNat_lt (by rw [size_eq]; omega)]
+    omega
+  have hB48 : (g0 + 48 + allocSizeU (UInt64.ofNat bytes.length) + 48).toNat = g0.toNat + 96 + allocSize (bytes.length + 1) := by
+    rw [UInt64.toNat_add, h17]
+    have ha : (48 : UInt64).toNat = 48 := rfl
+    rw [ha]
+    have hs : (18446744073709551616 : Nat) = UInt64.size := rfl
+    omega
+  have hsubB40 : (g0 + 48 + allocSizeU (UInt64.ofNat bytes.length) + 48 - 40).toNat = g0.toNat + 96 + allocSize (bytes.length + 1) - 40 := by
+    rw [UInt64.toNat_sub, hB48]
+    have hb : (40 : UInt64).toNat = 40 := rfl
+    rw [hb]
+    have hs : (18446744073709551616 : Nat) = UInt64.size := rfl
+    omega
+  have hsubB32 : (g0 + 48 + allocSizeU (UInt64.ofNat bytes.length) + 48 - 32).toNat = g0.toNat + 96 + allocSize (bytes.length + 1) - 32 := by
+    rw [UInt64.toNat_sub, hB48]
+    have hb : (32 : UInt64).toNat = 32 := rfl
+    rw [hb]
+    have hs : (18446744073709551616 : Nat) = UInt64.size := rfl
+    omega
+  have hsubB24 : (g0 + 48 + allocSizeU (UInt64.ofNat bytes.length) + 48 - 24).toNat = g0.toNat + 96 + allocSize (bytes.length + 1) - 24 := by
+    rw [UInt64.toNat_sub, hB48]
+    have hb : (24 : UInt64).toNat = 24 := rfl
+    rw [hb]
+    have hs : (18446744073709551616 : Nat) = UInt64.size := rfl
+    omega
+  have hsubB16 : (g0 + 48 + allocSizeU (UInt64.ofNat bytes.length) + 48 - 16).toNat = g0.toNat + 96 + allocSize (bytes.length + 1) - 16 := by
+    rw [UInt64.toNat_sub, hB48]
+    have hb : (16 : UInt64).toNat = 16 := rfl
+    rw [hb]
+    have hs : (18446744073709551616 : Nat) = UInt64.size := rfl
+    omega
+  have hsubB8 : (g0 + 48 + allocSizeU (UInt64.ofNat bytes.length) + 48 - 8).toNat = g0.toNat + 96 + allocSize (bytes.length + 1) - 8 := by
+    rw [UInt64.toNat_sub, hB48]
+    have hb : (8 : UInt64).toNat = 8 := rfl
+    rw [hb]
+    have hs : (18446744073709551616 : Nat) = UInt64.size := rfl
+    omega
+  have hXmod : (g0.toNat + 48 + (allocSizeU (UInt64.ofNat bytes.length)).toNat) % 18446744073709551616 = g0.toNat + 48 + (allocSizeU (UInt64.ofNat bytes.length)).toNat :=
+    Nat.mod_eq_of_lt (by omega)
+  have hpne : ¬ ((g0 + 48 : UInt64) = 0) := by
+    intro h
+    have := congrArg UInt64.toNat h
+    rw [UInt64.toNat_add] at this
+    have hc : (48 : UInt64).toNat = 48 := rfl
+    have h0 : (0 : UInt64).toNat = 0 := rfl
+    rw [hc, h0] at this
+    have hs : (18446744073709551616 : Nat) = UInt64.size := rfl
+    omega
+  have haddr40 : (UInt32.ofNat ((g0 + 48 - 40).toNat % 4294967296)) = (UInt32.ofNat ((g0.toNat + 8) % 4294967296)) := by
+    rw [hsub40]
+  exact ⟨h48, hs, hno_wrap2, h17b, hsub1b, hpn2, hp32b, hgeM, hB48, hsubB40, hsubB32, hsubB24, hsubB16, hsubB8, hXmod, hpne, haddr40⟩
+
+private theorem buildsStB (env : HostEnv Unit) (st1 st2 stB : Store Unit)
+    (ptr g0 g2 g3 g4 g5 : UInt64) (bytes : List UInt8)
+    (hLen : bytes.length + 1 < 4294967296)
+    (hPtr32 : ptr.toNat + bytes.length < 4294967296)
+    (hBelow : ptr.toNat + bytes.length ≤ g0.toNat)
+    (hFit32 : g0.toNat + 152 + allocSize (bytes.length + 1) < 4294967296)
+    (hg0_32 : g0.toNat < 4294967296)
+    (hlenU : (UInt64.ofNat bytes.length).toNat = bytes.length)
+    (hszU : (allocSizeU (UInt64.ofNat bytes.length)).toNat =
+      allocSize (bytes.length + 1))
+    (hszN_ge : bytes.length + 1 ≤ allocSize (bytes.length + 1))
+    (hszN_ge8 : 8 ≤ allocSize (bytes.length + 1))
+    (hFit : g0.toNat + 152 + allocSize (bytes.length + 1) ≤
+      st1.mem.pages * 65536)
+    (hPages : st1.mem.pages ≤ 65536)
+    (hg1 : st1.globals.globals[1]? = some (.i64 0))
+    (hg2 : st1.globals.globals[2]? = some (.i64 g2))
+    (hg3 : st1.globals.globals[3]? = some (.i64 g3))
+    (hg4 : st1.globals.globals[4]? = some (.i64 g4))
+    (hg5 : st1.globals.globals[5]? = some (.i64 g5))
+    (hpg : st2.mem.pages = st1.mem.pages)
+    (hgl : st2.globals.globals =
+      (st1.globals.globals.set 0
+        (.i64 (g0 + 48 + allocSizeU (UInt64.ofNat bytes.length)))).set 2
+        (.i64 (g2 + 1)))
+    (hh0 : st2.mem.read64 (UInt32.ofNat (g0.toNat % 4294967296)) =
+      5501223100278326855)
+    (hh8 : st2.mem.read64 (UInt32.ofNat ((g0.toNat + 8) % 4294967296)) = 1)
+    (hh24 : st2.mem.read64 (UInt32.ofNat ((g0.toNat + 24) % 4294967296)) =
+      0)
+    (hsub40 : (g0 + 48 - 40).toNat = g0.toNat + 8)
+    (hsub32 : (g0 + 48 - 32).toNat = g0.toNat + 16)
+    (hsub24 : (g0 + 48 - 24).toNat = g0.toNat + 24)
+    (hsub16 : (g0 + 48 - 16).toNat = g0.toNat + 32)
+    (hsub8 : (g0 + 48 - 8).toNat = g0.toNat + 40)
+    (hglen : 3 < st1.globals.globals.length)
+    (hstB : stB = { st2 with mem := (st2.mem.write8
+      (UInt32.ofNat ((g0.toNat + 48 + bytes.length) % 4294967296))
+      33) }) :
+    stB.globals.globals[0]? = some (.i64 (g0 + 48 + allocSizeU (UInt64.ofNat bytes.length))) ∧
+    stB.mem.pages = st1.mem.pages ∧
+    stB.globals.globals[2]? = some (.i64 (g2 + 1)) ∧
+    ((stB.globals.globals.set 0 (Value.i64 (g0 + 48 + allocSizeU (UInt64.ofNat bytes.length) + 48 + 56))).set 2 (Value.i64 (g2 + 1 + 1)))[3]? = some (Value.i64 g3) ∧
+    stB.globals.globals.length = st1.globals.globals.length ∧
+    0 < stB.globals.globals.length ∧
+    2 < stB.globals.globals.length ∧
+    3 < stB.globals.globals.length ∧
+    stB.mem.read64 (UInt32.ofNat (g0.toNat % 4294967296)) = 5501223100278326855 ∧
+    stB.mem.read64 (UInt32.ofNat ((g0.toNat + 24) % 4294967296)) = 0 ∧
+    stB.globals.globals[1]? = some (.i64 0) ∧
+    stB.globals.globals[4]? = some (.i64 g4) ∧
+    stB.globals.globals[5]? = some (.i64 g5) ∧
+    stB.mem.read64 (UInt32.ofNat ((g0.toNat + 8) % 4294967296)) = 1 := by
+  have hg0len : 0 < st1.globals.globals.length := by omega
+  have hg1len : 1 < st1.globals.globals.length := by omega
+  have hg2len : 2 < st1.globals.globals.length := by omega
+  have hgnil : ¬ st1.globals.globals = [] := by
+    intro h
+    rw [h] at hglen
+    simp at hglen
+  have hh0e : stB.mem.read64 (UInt32.ofNat (g0.toNat % 4294967296)) = 5501223100278326855 := by
     rw [hstB]
     dsimp only
     rw [read64_write8_ne _ _ _ _
-    (by simp only [toUInt32_ofNat_mod_toNat]; omega)]
+      (by simp only [toUInt32_ofNat_mod_toNat]; omega)]
+    exact hh0
+  have hh8e : stB.mem.read64
+      (UInt32.ofNat ((g0.toNat + 8) % 4294967296)) = 1 := by
+    rw [hstB]
+    dsimp only
+    rw [read64_write8_ne _ _ _ _
+      (by simp only [toUInt32_ofNat_mod_toNat]; omega)]
     exact hh8
+  have hg0S : stB.globals.globals[0]? = some (.i64 (g0 + 48 + allocSizeU (UInt64.ofNat bytes.length))) := by
+    rw [hstB]
+    dsimp only
+    rw [hgl]
+    rw [List.getElem?_set, List.getElem?_set]
+    simp only [if_neg (by omega : ¬ (2 = 0)),
+      if_pos (rfl : (0 : Nat) = 0)]
+    simp [hg0len]
+  have hpgB : stB.mem.pages = st1.mem.pages := by
+    rw [hstB]
+    dsimp only
+    rw [write8_pages, hpg]
+  have hg2S : stB.globals.globals[2]? = some (.i64 (g2 + 1)) := by
+    rw [hstB]
+    dsimp only
+    rw [hgl]
+    rw [List.getElem?_set]
+    simp [hg2len]
+  have hg3S : ((stB.globals.globals.set 0 (Value.i64 (g0 + 48 + allocSizeU (UInt64.ofNat bytes.length) + 48 + 56))).set 2 (Value.i64 (g2 + 1 + 1)))[3]? = some (Value.i64 g3) := by
+    rw [hstB]
+    dsimp only
+    rw [hgl]
+    simp [List.getElem?_set, hglen]
+    exact (List.getElem?_eq_some_iff.mp hg3).choose_spec
+  have hlenB : stB.globals.globals.length = st1.globals.globals.length := by
+    rw [hstB]
+    dsimp only
+    rw [hgl]
+    simp
+  have h0B : 0 < stB.globals.globals.length := by omega
+  have h2B : 2 < stB.globals.globals.length := by omega
+  have h3B : 3 < stB.globals.globals.length := by omega
+  have hh24e : stB.mem.read64 (UInt32.ofNat ((g0.toNat + 24) % 4294967296)) = 0 := by
+    rw [hstB]
+    dsimp only
+    rw [read64_write8_ne _ _ _ _
+      (by simp only [toUInt32_ofNat_mod_toNat]; omega)]
+    exact hh24
+  have hg1B : stB.globals.globals[1]? = some (.i64 0) := by
+    rw [hstB]
+    dsimp only
+    rw [hgl]
+    rw [List.getElem?_set, List.getElem?_set]
+    simp only [if_neg (by omega : ¬ (2 = 1)), if_neg (by omega : ¬ (0 = 1))]
+    exact hg1
+  have hg4B : stB.globals.globals[4]? = some (.i64 g4) := by
+    rw [hstB]
+    dsimp only
+    rw [hgl]
+    simp [List.getElem?_set, hglen]
+    exact hg4
+  have hg5B : stB.globals.globals[5]? = some (.i64 g5) := by
+    rw [hstB]
+    dsimp only
+    rw [hgl]
+    simp [List.getElem?_set, hglen]
+    exact hg5
+  exact ⟨hg0S, hpgB, hg2S, hg3S, hlenB, h0B, h2B, h3B, hh0e, hh24e, hg1B, hg4B, hg5B, hh8e⟩
 
 /-- The bang store and second-allocation phase from the copy loop's
 exit, generic over the loop context's postcondition.  The done premise
@@ -500,6 +749,9 @@ private theorem buildsPhase2 (env : HostEnv Unit) (st1 st2 : Store Unit)
     (hsub24 : (g0 + 48 - 24).toNat = g0.toNat + 24)
     (hsub16 : (g0 + 48 - 16).toNat = g0.toNat + 32)
     (hsub8 : (g0 + 48 - 8).toNat = g0.toNat + 40)
+    (h17 : (g0 + 48 + allocSizeU (UInt64.ofNat bytes.length)).toNat =
+      g0.toNat + 48 + allocSize (bytes.length + 1))
+    (hglen : 3 < st1.globals.globals.length)
     (hpg : st2.mem.pages = st1.mem.pages)
     (hgl : st2.globals.globals =
       (st1.globals.globals.set 0
@@ -560,6 +812,8 @@ private theorem buildsPhase2 (env : HostEnv Unit) (st1 st2 : Store Unit)
       sP env := by
   subst hsP
   simp only [pairAfterProg]
+  have PA := buildsArith st1 g0 bytes hFit32 h17 hsub40 hg0_32 hlenU hszU
+    hszN_ge hszN_ge8 hFit hPages
   refine wp_iff_cons rfl ?_
   rw [if_neg (by decide)]
   have hglen : 3 < st1.globals.globals.length := by
@@ -587,9 +841,7 @@ private theorem buildsPhase2 (env : HostEnv Unit) (st1 st2 : Store Unit)
   have h17 : (g0 + 48 + allocSizeU (UInt64.ofNat bytes.length)).toNat =
       g0.toNat + 48 + allocSize (bytes.length + 1) := by
     rw [UInt64.toNat_add, UInt64.toNat_add, hszU]
-    have h48 : (48 : UInt64).toNat = 48 := rfl
-    rw [h48]
-    have hs : (18446744073709551616 : Nat) = UInt64.size := rfl
+    rw [PA.1]
     omega
   apply wp_block_cons
   apply wp_loop_cons
@@ -610,184 +862,61 @@ private theorem buildsPhase2 (env : HostEnv Unit) (st1 st2 : Store Unit)
     set stB : Store Unit := { st2 with mem := (st2.mem.write8
       (UInt32.ofNat ((g0.toNat + 48 + bytes.length) % 4294967296))
       33) } with hstB
-    have hg0S : stB.globals.globals[0]? =
-        some (.i64 (g0 + 48 + allocSizeU (UInt64.ofNat bytes.length))) := by
-      rw [hstB]
-      dsimp only
-      rw [hgl]
-      rw [List.getElem?_set, List.getElem?_set]
-      simp only [if_neg (by omega : ¬ (2 = 0)),
-        if_pos (rfl : (0 : Nat) = 0)]
-      simp [hg0len]
+    have PB := buildsStB env st1 st2 stB ptr g0 g2 g3 g4 g5 bytes hLen
+      hPtr32 hBelow hFit32 hg0_32 hlenU hszU hszN_ge hszN_ge8 hFit hPages
+      hg1 hg2 hg3 hg4 hg5 hpg hgl hh0 hh8 hh24 hsub40 hsub32 hsub24 hsub16
+      hsub8 hglen hstB
+    have PC := (buildsCells _ stB g0 bytes hFit32 hszU hszN_ge hszN_ge8 hg0_32 PB.2.2.2.2.2.2.2.2.1 PB.2.2.2.2.2.2.2.2.2.2.2.2.2 rfl)
     wp_run_big
     try simp only [hTrap, if_false, false_and, and_false]
-    try simp only [hg0S]
-    try wp_run_big
-    try simp only [hTrap, if_false, false_and, and_false]
-    have hno_wrap2 :
-        ¬ (g0 + 48 + allocSizeU (UInt64.ofNat bytes.length) + 48 + 56 <
-          g0 + 48 + allocSizeU (UInt64.ofNat bytes.length)) := by
-      rw [UInt64.lt_iff_toNat_lt, UInt64.toNat_add, UInt64.toNat_add, h17]
-      have ha : (48 : UInt64).toNat = 48 := rfl
-      have hb : (56 : UInt64).toNat = 56 := rfl
-      rw [ha, hb]
-      have hs : (18446744073709551616 : Nat) = UInt64.size := rfl
-      omega
-    refine wp_iff_cons rfl ?_
-    rw [if_neg (by simp [hno_wrap2])]
-    wp_run_big
-    try simp only [hTrap, if_false, false_and, and_false]
-    try simp
-    try simp only [hTrap, if_false, false_and, and_false]
-    have h17b : (g0 + 48 + allocSizeU (UInt64.ofNat bytes.length) + 48 +
-        56).toNat = g0.toNat + 152 + allocSize (bytes.length + 1) := by
-      rw [UInt64.toNat_add, UInt64.toNat_add, h17]
-      have ha : (48 : UInt64).toNat = 48 := rfl
-      have hb : (56 : UInt64).toNat = 56 := rfl
-      rw [ha, hb]
-      have hs : (18446744073709551616 : Nat) = UInt64.size := rfl
-      omega
-    have hsub1b : (g0 + 48 + allocSizeU (UInt64.ofNat bytes.length) + 48 +
-        56 - 1).toNat =
-        g0.toNat + 152 + allocSize (bytes.length + 1) - 1 := by
-      rw [UInt64.toNat_sub, h17b]
-      have h1 : (1 : UInt64).toNat = 1 := rfl
-      rw [h1]
-      omega
-    have hpn2 : ((g0 + 48 + allocSizeU (UInt64.ofNat bytes.length) + 48 +
-        56 - 1) / 65536 + 1).toNat =
-        (g0.toNat + 152 + allocSize (bytes.length + 1) - 1) / 65536 +
-          1 := by
-      rw [UInt64.toNat_add, UInt64.toNat_div, hsub1b]
-      have h65536 : (65536 : UInt64).toNat = 65536 := rfl
-      have h1 : (1 : UInt64).toNat = 1 := rfl
-      rw [h65536, h1]
-      omega
-    have hpgB : stB.mem.pages = st1.mem.pages := by
-      rw [hstB]
-      dsimp only
-      rw [write8_pages, hpg]
-    have hp32b : ((UInt32.ofNat st1.mem.pages).toUInt64).toNat =
-        st1.mem.pages := by
-      have hlt : st1.mem.pages < UInt32.size := by
-        have hs : UInt32.size = 4294967296 := rfl
-        omega
-      have h1 : (UInt32.ofNat st1.mem.pages).toNat = st1.mem.pages :=
-        UInt32.toNat_ofNat_of_lt' hlt
-      simp [h1]
-    have hgeM : (g0 + 48 + allocSizeU (UInt64.ofNat bytes.length) + 48 +
-        56 - 1) / 65536 + 1 ≤
-        UInt64.ofNat (st1.mem.pages % 4294967296) := by
-      rw [UInt64.le_iff_toNat_le, hpn2,
-        toNat_ofNat_lt (by rw [size_eq]; omega)]
-      omega
-    try simp only [hpgB]
+    try simp only [PB.1]
     try wp_run_big
     try simp only [hTrap, if_false, false_and, and_false]
     refine wp_iff_cons rfl ?_
-    rw [if_neg (by simp [hgeM])]
+    rw [if_neg (by simp [PA.2.2.1])]
     wp_run_big
     try simp only [hTrap, if_false, false_and, and_false]
-    try simp only [hg0S]
+    try simp
+    try simp only [hTrap, if_false, false_and, and_false]
+    try simp only [PB.2.1]
+    try wp_run_big
+    try simp only [hTrap, if_false, false_and, and_false]
+    refine wp_iff_cons rfl ?_
+    rw [if_neg (by simp [PA.2.2.2.2.2.2.2.1])]
+    wp_run_big
+    try simp only [hTrap, if_false, false_and, and_false]
+    try simp only [PB.1]
     try wp_run_big
     try simp only [hTrap, if_false, false_and, and_false]
     try simp
     try simp only [hTrap, if_false, false_and, and_false]
-    try simp only [hg0S]
+    try simp only [PB.1]
     try wp_run_big
     try simp only [hTrap, if_false, false_and, and_false]
     try simp
     try simp only [hTrap, if_false, false_and, and_false]
-    have hB48 : (g0 + 48 + allocSizeU (UInt64.ofNat bytes.length) +
-        48).toNat = g0.toNat + 96 + allocSize (bytes.length + 1) := by
-      rw [UInt64.toNat_add, h17]
-      have ha : (48 : UInt64).toNat = 48 := rfl
-      rw [ha]
-      have hs : (18446744073709551616 : Nat) = UInt64.size := rfl
-      omega
-    have hsubB40 : (g0 + 48 + allocSizeU (UInt64.ofNat bytes.length) +
-        48 - 40).toNat =
-        g0.toNat + 96 + allocSize (bytes.length + 1) - 40 := by
-      rw [UInt64.toNat_sub, hB48]
-      have hb : (40 : UInt64).toNat = 40 := rfl
-      rw [hb]
-      have hs : (18446744073709551616 : Nat) = UInt64.size := rfl
-      omega
-    have hsubB32 : (g0 + 48 + allocSizeU (UInt64.ofNat bytes.length) +
-        48 - 32).toNat =
-        g0.toNat + 96 + allocSize (bytes.length + 1) - 32 := by
-      rw [UInt64.toNat_sub, hB48]
-      have hb : (32 : UInt64).toNat = 32 := rfl
-      rw [hb]
-      have hs : (18446744073709551616 : Nat) = UInt64.size := rfl
-      omega
-    have hsubB24 : (g0 + 48 + allocSizeU (UInt64.ofNat bytes.length) +
-        48 - 24).toNat =
-        g0.toNat + 96 + allocSize (bytes.length + 1) - 24 := by
-      rw [UInt64.toNat_sub, hB48]
-      have hb : (24 : UInt64).toNat = 24 := rfl
-      rw [hb]
-      have hs : (18446744073709551616 : Nat) = UInt64.size := rfl
-      omega
-    have hsubB16 : (g0 + 48 + allocSizeU (UInt64.ofNat bytes.length) +
-        48 - 16).toNat =
-        g0.toNat + 96 + allocSize (bytes.length + 1) - 16 := by
-      rw [UInt64.toNat_sub, hB48]
-      have hb : (16 : UInt64).toNat = 16 := rfl
-      rw [hb]
-      have hs : (18446744073709551616 : Nat) = UInt64.size := rfl
-      omega
-    have hsubB8 : (g0 + 48 + allocSizeU (UInt64.ofNat bytes.length) +
-        48 - 8).toNat =
-        g0.toNat + 96 + allocSize (bytes.length + 1) - 8 := by
-      rw [UInt64.toNat_sub, hB48]
-      have hb : (8 : UInt64).toNat = 8 := rfl
-      rw [hb]
-      have hs : (18446744073709551616 : Nat) = UInt64.size := rfl
-      omega
-    rw [hsubB40, hsubB32, hsubB24, hsubB16, hsubB8]
+    rw [PA.2.2.2.2.2.2.2.2.2.1, PA.2.2.2.2.2.2.2.2.2.2.1, PA.2.2.2.2.2.2.2.2.2.2.2.1, PA.2.2.2.2.2.2.2.2.2.2.2.2.1, PA.2.2.2.2.2.2.2.2.2.2.2.2.2.1]
     refine ⟨by omega, by omega, by omega, by omega, by omega, by omega,
       ?_⟩
-    have hg2S : stB.globals.globals[2]? = some (.i64 (g2 + 1)) := by
-      rw [hstB]
-      dsimp only
-      rw [hgl]
-      rw [List.getElem?_set]
-      simp [hg2len]
-    simp only [hg2S]
+    simp only [PB.2.2.1]
     try wp_run_big
     try simp only [hTrap, if_false, false_and, and_false]
     try simp
     try simp only [hTrap, if_false, false_and, and_false]
     refine ⟨by omega, by omega, by omega, by omega, by omega,
       by omega, by omega, by omega, ?_⟩
-    have hXmod : (g0.toNat + 48 +
-        (allocSizeU (UInt64.ofNat bytes.length)).toNat) %
-        18446744073709551616 =
-        g0.toNat + 48 +
-          (allocSizeU (UInt64.ofNat bytes.length)).toNat :=
-      Nat.mod_eq_of_lt (by omega)
-    simp only [hXmod]
-    have hpne : ¬ ((g0 + 48 : UInt64) = 0) := by
-      intro h
-      have := congrArg UInt64.toNat h
-      rw [UInt64.toNat_add] at this
-      have hc : (48 : UInt64).toNat = 48 := rfl
-      have h0 : (0 : UInt64).toNat = 0 := rfl
-      rw [hc, h0] at this
-      have hs : (18446744073709551616 : Nat) = UInt64.size := rfl
-      omega
-    simp only [(buildsCells _ stB g0 bytes hFit32 hszU hszN_ge hszN_ge8 hg0_32 rfl).1]
+    simp only [PA.2.2.2.2.2.2.2.2.2.2.2.2.2.2.1]
+    simp only [PC.1]
     refine wp_iff_cons rfl ?_
-    rw [if_pos (by simp [hpne])]
+    rw [if_pos (by simp [PA.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.1])]
     wp_run_big
     try simp only [hTrap, if_false, false_and, and_false]
     try simp
     try simp only [hTrap, if_false, false_and, and_false]
-    have hmagic2e := (buildsCells _ stB g0 bytes hFit32 hszU hszN_ge hszN_ge8 hg0_32 rfl).2.1
+    have hmagic2e := PC.2.1
     rw [hstB] at hmagic2e
     dsimp only at hmagic2e
-    try simp only [(buildsCells _ stB g0 bytes hFit32 hszU hszN_ge hszN_ge8 hg0_32 rfl).2.1, hmagic2e]
+    try simp only [PC.2.1, hmagic2e]
     try wp_run_big
     try simp only [hTrap, if_false, false_and, and_false]
     try simp
@@ -800,7 +929,7 @@ private theorem buildsPhase2 (env : HostEnv Unit) (st1 st2 : Store Unit)
     try simp
     try simp only [hTrap, if_false, false_and, and_false]
     refine ⟨by omega, ?_⟩
-    have hrc2e := (buildsCells _ stB g0 bytes hFit32 hszU hszN_ge hszN_ge8 hg0_32 rfl).2.2
+    have hrc2e := PC.2.2
     rw [show (UInt32.ofNat ((g0.toNat + 8) % 4294967296)) =
         (UInt32.ofNat ((g0 + 48 - 40).toNat % 4294967296)) from by
       rw [hsub40]] at hrc2e
@@ -816,66 +945,15 @@ private theorem buildsPhase2 (env : HostEnv Unit) (st1 st2 : Store Unit)
     rw [if_neg (by decide)]
     wp_run_big
     try simp only [hTrap, if_false, false_and, and_false]
-    have hg3S : ((stB.globals.globals.set 0
-        (Value.i64 (g0 + 48 + allocSizeU (UInt64.ofNat bytes.length) +
-          48 + 56))).set 2 (Value.i64 (g2 + 1 + 1)))[3]? =
-        some (Value.i64 g3) := by
-      rw [hstB]
-      dsimp only
-      rw [hgl]
-      simp [List.getElem?_set, hglen]
-      exact (List.getElem?_eq_some_iff.mp hg3).choose_spec
-    try simp only [hg3S]
+    try simp only [PB.2.2.2.1]
     try wp_run_big
     try simp only [hTrap, if_false, false_and, and_false]
     try simp
     try simp only [hTrap, if_false, false_and, and_false]
-    have hlenB : stB.globals.globals.length =
-        st1.globals.globals.length := by
-      rw [hstB]
-      dsimp only
-      rw [hgl]
-      simp
-    have h0B : 0 < stB.globals.globals.length := by omega
-    have h2B : 2 < stB.globals.globals.length := by omega
-    have h3B : 3 < stB.globals.globals.length := by omega
-    have haddr40 : (UInt32.ofNat ((g0 + 48 - 40).toNat % 4294967296)) =
-        (UInt32.ofNat ((g0.toNat + 8) % 4294967296)) := by
-      rw [hsub40]
-    have hh0e : stB.mem.read64 (UInt32.ofNat (g0.toNat % 4294967296)) =
-        5501223100278326855 := by
-      rw [hstB]
-      dsimp only
-      rw [read64_write8_ne _ _ _ _
-        (by simp only [toUInt32_ofNat_mod_toNat]; omega)]
-      exact hh0
-    have hh24e : stB.mem.read64
-        (UInt32.ofNat ((g0.toNat + 24) % 4294967296)) = 0 := by
-      rw [hstB]
-      dsimp only
-      rw [read64_write8_ne _ _ _ _
-        (by simp only [toUInt32_ofNat_mod_toNat]; omega)]
-      exact hh24
-    have hg1B : stB.globals.globals[1]? = some (.i64 0) := by
-      rw [hstB]
-      dsimp only
-      exact hg1S
-    have hg4B : stB.globals.globals[4]? = some (.i64 g4) := by
-      rw [hstB]
-      dsimp only
-      rw [hgl]
-      simp [List.getElem?_set, hglen]
-      exact hg4
-    have hg5B : stB.globals.globals[5]? = some (.i64 g5) := by
-      rw [hstB]
-      dsimp only
-      rw [hgl]
-      simp [List.getElem?_set, hglen]
-      exact hg5
     refine hDone _ _ ?_
     have P := buildsFinal _ stB st1 ptr g0 g2 g3 g4 g5 bytes
-      rfl hFit32 hszU hg0_32 hsub40 hpgB h0B h2B h3B hg1B hg4B
-      hg5B hh0e hh24e
+      rfl hFit32 hszU hg0_32 hsub40 PB.2.1 PB.2.2.2.2.2.1 PB.2.2.2.2.2.2.1 PB.2.2.2.2.2.2.2.1 PB.2.2.2.2.2.2.2.2.2.2.1 PB.2.2.2.2.2.2.2.2.2.2.2.1
+      PB.2.2.2.2.2.2.2.2.2.2.2.2 PB.2.2.2.2.2.2.2.2.1 PB.2.2.2.2.2.2.2.2.2.1
     refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
     · exact P.1
     · exact P.2.1
@@ -1173,7 +1251,9 @@ theorem func0_builds
           refine buildsPhase2 env st1 st2 ptr g0 g2 g3 g4 g5 bytes
             hLen hPtr32 hBelow hFit32 hg0_32 hlenU hszU hszN_ge hszN_ge8
             hFit hPages hg1 hg2 hg3 hg4 hg5 hsub40 hsub32 hsub24 hsub16
-            hsub8 hpg hgl hlo hpref hh0 hh8 hh16 hh24 _ ?_ ?_ _ rfl
+            hsub8 h17 (by
+              obtain ⟨h, -⟩ := List.getElem?_eq_some_iff.mp hg3
+              exact h) hpg hgl hlo hpref hh0 hh8 hh16 hh24 _ ?_ ?_ _ rfl
           · intro stt msg
             rfl
           · intro stt ss h
