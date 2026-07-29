@@ -14,3 +14,6 @@ path = "../../.."
 
 [[lean_lib]]
 name = "Project"
+
+[[lean_lib]]
+name = "Examples"
