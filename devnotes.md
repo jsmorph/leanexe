@@ -6043,3 +6043,45 @@ a `decide := true` simp config for literal scrutinee conditions, with
 the shared 23-argument `vFrame` in `PairFree.Base` serving `Builds`,
 `PushTwice`, and `SharedPair`, and the `lFrame`/`cFramePos` frames in
 `Iter` and `NegIter`.
+
+## 2026-07-20: A Kernel Unsoundness, and What the Execution Gate Catches
+
+The CollatzLean development
+([repository](https://github.com/xrchz/CollatzLean)) derives
+`¬ Collatz.Conjecture` through a command elaborator that builds kernel
+expressions by hand.  Retargeting that machinery at a `Bool`-indexed
+family whose `false` index is empty derives `False` with no axioms and
+no `sorry`, so the development establishes nothing about Collatz.  The
+reproduction is `Examples/KernelUnsoundness.lean`, self-contained and
+free of Collatz content; it builds on Lean 4.27.0, 4.29.1, 4.31.0, and
+4.32.0, so our own toolchain is affected.
+
+Two ingredients combine, and both are load-bearing by measurement.  The
+first is `addDecl` with a hand-built `.inductDecl` whose constructor type
+carries the projection `orbit.1.1`, reading a `Bool` out of a value whose
+constructor holds a `Prop`; the surface elaborator rejects that
+projection, and so does the kernel when checking a definition containing
+one, but the inductive declaration path admits it.  The second is a hash
+collision: the parity summaries `(fun _stage => false) 78670` and
+`(fun _stage => true) 24083` agree on `Expr.hash` and
+`Expr.approxDepth`, and replacing them with non-colliding literals makes
+the kernel reject the final declaration with "invalid projection".  Hash
+equality between structurally distinct terms is defeating a kernel
+check; identifying the exact cache requires reading the Lean kernel
+source, which this entry does not do.
+
+`Examples/BogusArtifactClaim.lean` states, in the shape of
+`u32lebU64_correct`, that the compiled LEB128 encoder returns length 1
+for input 300, and proves it from the derived `False`.  Its axiom audit
+shows only `propext`, `Classical.choice`, and `Quot.sound`, so nothing
+looks unusual.  `test/kernel_unsoundness_exhibit.js` runs the same
+artifact and reports length 2 with bytes `0xac 0x02`.  The proof gate
+accepts the theorem; execution refutes it.  The limit of that
+protection: a false theorem about behavior no test exercises survives
+both gates.
+
+`Examples` is a separate `lean_lib` outside `defaultTargets`, nothing in
+`Project` imports it, and importing it makes every statement in the
+importing module provable.  Two items remain open: reporting the defect
+upstream, and deciding whether the proof gate should replay oleans
+through an external checker.
