@@ -6044,44 +6044,46 @@ the shared 23-argument `vFrame` in `PairFree.Base` serving `Builds`,
 `PushTwice`, and `SharedPair`, and the `lFrame`/`cFramePos` frames in
 `Iter` and `NegIter`.
 
-## 2026-07-20: A Kernel Unsoundness, and What the Execution Gate Catches
+## 2026-07-20: A Kernel Unsoundness in Our Own Toolchain
 
 The CollatzLean development
-([repository](https://github.com/xrchz/CollatzLean)) derives
-`¬ Collatz.Conjecture` through a command elaborator that builds kernel
-expressions by hand.  Retargeting that machinery at a `Bool`-indexed
-family whose `false` index is empty derives `False` with no axioms and
-no `sorry`, so the development establishes nothing about Collatz.  The
-reproduction is `Examples/KernelUnsoundness.lean`, self-contained and
-free of Collatz content; it builds on Lean 4.27.0, 4.29.1, 4.31.0, and
-4.32.0, so our own toolchain is affected.
+([repository](https://github.com/xrchz/CollatzLean/tree/main/Collatz))
+derives `¬ Collatz.Conjecture` through a command elaborator that builds
+kernel expressions by hand rather than by tactics.  Aiming that same
+machinery at a `Bool`-indexed family whose `false` index is empty derives
+`False` with no axioms and no `sorry`, so the development carries no
+information about the Collatz conjecture.  A self-contained reproduction,
+free of Collatz content, builds on Lean 4.27.0, 4.29.1, 4.31.0, and
+4.32.0: our proof gate runs 4.31.0 and is affected.  The defect is
+already known to the Lean developers.
 
-Two ingredients combine, and both are load-bearing by measurement.  The
+Two ingredients combine, and measurement shows each is required.  The
 first is `addDecl` with a hand-built `.inductDecl` whose constructor type
 carries the projection `orbit.1.1`, reading a `Bool` out of a value whose
 constructor holds a `Prop`; the surface elaborator rejects that
 projection, and so does the kernel when checking a definition containing
-one, but the inductive declaration path admits it.  The second is a hash
+one, yet the inductive declaration path admits it.  The second is a hash
 collision: the parity summaries `(fun _stage => false) 78670` and
-`(fun _stage => true) 24083` agree on `Expr.hash` and
-`Expr.approxDepth`, and replacing them with non-colliding literals makes
-the kernel reject the final declaration with "invalid projection".  Hash
-equality between structurally distinct terms is defeating a kernel
-check; identifying the exact cache requires reading the Lean kernel
-source, which this entry does not do.
+`(fun _stage => true) 24083` agree on `Expr.hash` and `Expr.approxDepth`,
+and replacing them with non-colliding literals makes the kernel reject
+the final declaration with "invalid projection".  Hash equality between
+structurally distinct terms defeats a check that otherwise fires;
+identifying the exact cache requires reading the Lean kernel source,
+which this entry does not do.
 
-`Examples/BogusArtifactClaim.lean` states, in the shape of
-`u32lebU64_correct`, that the compiled LEB128 encoder returns length 1
-for input 300, and proves it from the derived `False`.  Its axiom audit
-shows only `propext`, `Classical.choice`, and `Quot.sound`, so nothing
-looks unusual.  `test/kernel_unsoundness_exhibit.js` runs the same
-artifact and reports length 2 with bytes `0xac 0x02`.  The proof gate
-accepts the theorem; execution refutes it.  The limit of that
-protection: a false theorem about behavior no test exercises survives
-both gates.
+The demonstration built on top of this — a kernel-checked false claim
+about the compiled LEB128 encoder, refuted by running the artifact — was
+removed at the user's direction, along with the isolated `Examples`
+library that held it.  Its outcome was certain in advance: once the
+construction proves `False`, the artifact claim is `False.elim` and the
+execution result is what anyone would expect.  The scenario also
+overstated the protection, since the execution gate catches a false
+theorem only when a test covers the input the theorem misstates.
 
-`Examples` is a separate `lean_lib` outside `defaultTargets`, nothing in
-`Project` imports it, and importing it makes every statement in the
-importing module provable.  Two items remain open: reporting the defect
-upstream, and deciding whether the proof gate should replay oleans
-through an external checker.
+One correction to the reasoning recorded earlier the same day: replaying
+oleans through an independent checker may buy less than claimed, because
+the CollatzLean README reports that Nanoda checked the same construction.
+Either that report is untested or an independent checker accepts the term
+as well, and we do not know which.  Testing a checker against the
+reproduction would settle it, and until then the value of adding such a
+stage to the proof gate is open.
