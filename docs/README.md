@@ -22,6 +22,7 @@ LeanExe documentation separates current behavior, development work, design recor
 |----------|---------|
 | [Development Status](status.md) | Current completion report, open proof obligations, risks, and next work. |
 | [Proof Engineering Plan Notes](plan-notes.md) | Reusable proof assets, elaboration boundaries, failed approaches, and candidate lemmas. |
+| [Reusable WASM Proof Library Plan](wasm-proofs.md) | Curated lemmas and tactics, distillation rules, Pi discovery, dependency controls, pilots, and validation gates. |
 | [Development Journal](../devnotes.md) | Dated decisions, implementation records, references, and test results. |
 
 ## Design Records

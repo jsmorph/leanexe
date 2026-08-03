@@ -1,0 +1,42 @@
+--- proof.lean
++++ proof-with-kit.lean
+@@ -3,6 +3,7 @@
+ import Interpreter.Wasm.Wp.Tactic
+ import Interpreter.Wasm.Wp.Loop
+ import Interpreter.Wasm.Wp.Call
++import Project.ProofKit.Control
+
+ namespace LeanExeGen.GeneratedRc8c2d9f87deb0758.Behavior
+
+@@ -113,9 +114,7 @@
+       initial [.i64 0, .i64 2, .i64 n, .i64 n]
+       (fun _ results =>
+         results = [.i64 (LeanExeGen.GeneratedRc8c2d9f87deb0758.FormalSpec.expected n)]) := by
+-  apply TerminatesWith.of_wp_entry
+-    (f := LeanExeGen.GeneratedRc8c2d9f87deb0758.func0Def) rfl
+-  intro initial'
++  wp_entry LeanExeGen.GeneratedRc8c2d9f87deb0758.func0Def as initial'
+   unfold LeanExeGen.GeneratedRc8c2d9f87deb0758.func0Def
+     LeanExeGen.GeneratedRc8c2d9f87deb0758.func0
+   wp_run
+@@ -314,16 +313,9 @@
+       LeanExeGen.GeneratedRc8c2d9f87deb0758.«module» := by
+   refine ⟨1, rfl, ?_⟩
+   intro env initial n
+-  apply Wasm.TerminatesWith.of_wp_entry
+-    (f := LeanExeGen.GeneratedRc8c2d9f87deb0758.func1Def) rfl
+-  intro initial'
+-  unfold LeanExeGen.GeneratedRc8c2d9f87deb0758.func1Def
+-    LeanExeGen.GeneratedRc8c2d9f87deb0758.func1
+-  wp_run
+-  simp
+-  apply wp_call_tw (helper_correct env initial' n)
+-  rintro st' _ rfl
+-  wp_run
+-  simp
++  wp_entry_single_call LeanExeGen.GeneratedRc8c2d9f87deb0758.func1Def
++    unfolding LeanExeGen.GeneratedRc8c2d9f87deb0758.func1
++    as initial'
++    using helper_correct env initial' n
+
+ end LeanExeGen.GeneratedRc8c2d9f87deb0758.Behavior

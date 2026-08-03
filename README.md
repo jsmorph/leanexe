@@ -22,15 +22,17 @@ node test/run_all.js
 
 ## Prose-to-artifact proof orchestration
 
-`tools/leanexegen` invokes the installed Codex CLI in headless mode to generate a formal specification, a Lean program, and an exact-artifact behavioral proof in three fresh tasks.  Outer-process Lean and LeanExe diagnostics run through `tools/leanrun`, and rejected candidates return to new Codex tasks under a fixed attempt bound.  The proof task receives the frozen formal specification and deterministic artifact model but receives neither Source nor the compiler.
+`tools/leanexegen` invokes the installed Codex CLI in headless mode to generate a formal specification, a Lean program, and an exact-artifact behavioral proof in three fresh tasks.  Each task runs as one ephemeral session that edits its candidate and repeats real Lean or compiler checks until they pass.  The entire session runs inside one `tools/leanrun` scope and machine-wide lock, while the outer process repeats the final checks independently.  The proof task receives the frozen formal specification and deterministic artifact model but receives neither Source nor the compiler.
 
 ```sh
 tools/leanexegen -o myprogram.wasm myprogram.txt
 
+tools/leanexegen reprove -o revised.wasm myprogram.proof
+
 tools/leanexegen verify myprogram.proof
 ```
 
-The [headless Codex orchestrator reference](docs/leanexegen.md) defines all seven stages, fixed unary interface, structured task outcomes, sidecar reports, warnings, dependency pins, and current limitations.  The orchestrator fixes `FormalSpec.ArtifactSpec : Wasm.Module → Prop`, appends its unary `TerminatesWith` definition, and uses that exact declaration in the final artifact theorem.  An existing sidecar can be verified without Codex or the LeanExe compiler.
+The [headless Codex orchestrator reference](docs/leanexegen.md) defines all eight stages, fixed unary interface, controlled reproof mode, structured task outcomes, sidecar reports, warnings, dependency pins, and current limitations.  The orchestrator fixes `FormalSpec.ArtifactSpec : Wasm.Module → Prop`, appends its unary `TerminatesWith` definition, and uses that exact declaration in the final artifact theorem.  An existing sidecar can be verified without Codex or the LeanExe compiler.
 
 ## Repository Layout
 

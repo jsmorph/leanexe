@@ -1,0 +1,73 @@
+--- proof-with-entry-kit.lean
++++ proof-with-loop-kit.lean
+@@ -1,8 +1,5 @@
+ import LeanExeGen.GeneratedRc8c2d9f87deb0758.FormalSpec
+ import LeanExeGen.GeneratedRc8c2d9f87deb0758.Program
+-import Interpreter.Wasm.Wp.Tactic
+-import Interpreter.Wasm.Wp.Loop
+-import Interpreter.Wasm.Wp.Call
+ import Project.ProofKit.Control
+
+ namespace LeanExeGen.GeneratedRc8c2d9f87deb0758.Behavior
+@@ -15,7 +12,7 @@
+   rcases r with _ | _ | k
+   · omega
+   · omega
+-  · convert Nat.primeFactorsList_add_two k using 1 <;> omega
++  · exact Nat.primeFactorsList_add_two k
+
+ private theorem primeFactorsList_nil_of_le_one {r : Nat} (hr : r ≤ 1) :
+     r.primeFactorsList = [] := by
+@@ -25,7 +22,7 @@
+     (hle : d ≤ r.minFac) (hdvd : d ∣ r) : d = r.minFac := by
+   exact Nat.le_antisymm hle (Nat.minFac_le_of_dvd hd hdvd)
+
+-private theorem divisor_le_minFac_div {r d : Nat} (hr : 1 < r)
++private theorem divisor_le_minFac_div {r d : Nat} (_hr : 1 < r)
+     (hd : 2 ≤ d) (hle : d ≤ r.minFac) (hdvd : d ∣ r)
+     (hq : 1 < r / d) : d ≤ (r / d).minFac := by
+   have heq := divisor_eq_minFac hd hle hdvd
+@@ -114,12 +111,10 @@
+       initial [.i64 0, .i64 2, .i64 n, .i64 n]
+       (fun _ results =>
+         results = [.i64 (LeanExeGen.GeneratedRc8c2d9f87deb0758.FormalSpec.expected n)]) := by
+-  wp_entry LeanExeGen.GeneratedRc8c2d9f87deb0758.func0Def as initial'
+-  unfold LeanExeGen.GeneratedRc8c2d9f87deb0758.func0Def
+-    LeanExeGen.GeneratedRc8c2d9f87deb0758.func0
+-  wp_run
+-  apply wp_block_cons
+-  apply wp_loop_cons
++  wp_entry_to_loop LeanExeGen.GeneratedRc8c2d9f87deb0758.func0Def
++    unfolding LeanExeGen.GeneratedRc8c2d9f87deb0758.func0
++    as initial'
++  apply Wasm.wp_loop_cons
+     (Inv := factorInv initial'
+       (LeanExeGen.GeneratedRc8c2d9f87deb0758.FormalSpec.expected n))
+     (μ := factorMeasure)
+@@ -159,7 +154,7 @@
+           rw [primeFactorsList_nil_of_le_one hrem] at hcount
+           simpa using hcount
+         wp_peel
+-        simp [hfuel, factorFrame, factorMeasure, hresult]
++        simp [hfuel, factorMeasure, hresult]
+         wp_peel
+       · have hfuelPos : 0 < fuel.toNat := by
+           apply Nat.pos_of_ne_zero
+@@ -178,7 +173,7 @@
+             rw [primeFactorsList_nil_of_le_one hrem] at hcount
+             simpa using hcount
+           wp_peel
+-          simp [hremU, factorFrame, factorMeasure, hresult]
++          simp [hremU, factorMeasure, hresult]
+           refine ⟨rfl, fuel, rem, divisor,
+             LeanExeGen.GeneratedRc8c2d9f87deb0758.FormalSpec.expected n,
+             LeanExeGen.GeneratedRc8c2d9f87deb0758.FormalSpec.expected n, 1,
+@@ -208,7 +203,7 @@
+               (LeanExeGen.GeneratedRc8c2d9f87deb0758.FormalSpec.expected n)
+               hprime hcount
+             wp_peel
+-            simp [hquotU, factorFrame, factorMeasure]
++            simp [hquotU, factorMeasure]
+             refine ⟨rfl, fuel, rem, divisor, count, count + 1, 1,
+               l6, l7, l8, l9, l10, l11, l12, l13, l14, l15, l16, l17,
+               rem, divisor, rfl, Or.inr ⟨rfl, hresult⟩⟩

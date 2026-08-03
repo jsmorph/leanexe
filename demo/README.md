@@ -2,7 +2,7 @@
 
 ## Summary
 
-`leanexegen` turns a prose request into a WASM program accompanied by a Lean proof about that WASM program.
+`leanexegen` turns a prose request into a WASM program accompanied by a Lean proof about that WASM program.  Its `reprove` command can later regenerate only the behavioral proof while holding the specification, source, WASM, and artifact model fixed.  This walkthrough includes both the original generation and a controlled proof-library experiment on the resulting artifact.
 
 In the example below, the request asks for a function that counts prime factors with multiplicity, so the program maps `12` to `3` because `12 = 2 · 2 · 3`.  The result consists of an executable `prime-factors.wasm` and a proof directory that an independent command can check.
 
@@ -138,6 +138,61 @@ theorem artifact_behavior :
 
 end LeanExeGen.Generated.Behavior
 ```
+
+### Proof-kit refactoring
+
+The [checked proof-kit refactoring](proof-kit.diff) preserves the generated proof above as its baseline.  Its diff consists of one import and two proof-opening changes.  The entry-only tactic shortens the helper theorem's initial conversion, while `wp_entry_single_call` reduces the public wrapper from nine mechanical proof commands to one structured invocation.  The number-theoretic lemmas, loop invariant, decreasing measure, `helper_correct` theorem, formal specification, and artifact theorem remain unchanged.
+
+```lean
+theorem artifact_behavior :
+    LeanExeGen.Generated.FormalSpec.ArtifactSpec
+      LeanExeGen.Generated.«module» := by
+  refine ⟨1, rfl, ?_⟩
+  intro env initial n
+  wp_entry_single_call LeanExeGen.Generated.func1Def
+    unfolding LeanExeGen.Generated.func1
+    as initial'
+    using helper_correct env initial' n
+```
+
+The [generic control-flow tactic](../proofs/talos/lean/Project/ProofKit/Control.lean) depends on the wrapper definition, its unfolded body, the initial-store name, and a callee theorem accepted by `Wasm.wp_call_tw`.  Its implementation refers to the Talos control-flow rules and carries no program declaration as a constant.  Lean rejects the invocation unless symbolic execution finds the expected straight-line wrapper, one direct call, and a return continuation discharged by the supplied theorem.
+
+The refactored proof was checked in a source-free copy of the retained proof package under Lean 4.31.0.  The exact `LeanExeGen.GeneratedRc8c2d9f87deb0758.ArtifactResult` target rebuilt the changed behavior module in 11 seconds and the artifact result in 1.6 seconds.  The workspace omitted `Source.lean` and the LeanExe compiler, so this check exercised the same artifact-level proof boundary described by the walkthrough.
+
+### Live proof-kit generation
+
+A second from-scratch run gave Codex the proof-kit catalog and permitted the `Project.ProofKit.Control` import.  The generated proof imported that module, used `wp_entry` for the helper theorem, and used `wp_entry_single_call` for the exported wrapper.  Its changes from the baseline proof exactly match the retained [proof-kit diff](proof-kit.diff): the proof fell from 329 to 321 lines, while the loop invariant and number-theoretic argument remained unchanged.
+
+The [proof-kit run's standard output](stdout-with-proof-kit.txt) and [standard error](stderr-with-proof-kit.txt) retain the complete process streams.  Stage 5 took 4 minutes 13.925 seconds, compared with 3 minutes 58.557 seconds in the baseline run, so this run supplies no evidence that the tactic reduced Codex's proof-generation time.  The eight-line reduction affects a small wrapper around a 300-line loop proof, and normal Codex and Lean runtime variation exceeded that reduction.
+
+The run compiled the same 1,348-byte WASM artifact as the baseline, with SHA-256 digest `8ef01d38a73edaca6c9098876af4212bf037ff1a14ba69e186b96a884c54cdcf`.  `tools/leanexegen verify` then checked the published proof package independently in 36.6 seconds and accepted `LeanExeGen.GeneratedRc8c2d9f87deb0758.Artifact.artifact_correct`.  The result demonstrates proof-library discovery and use, along with a smaller generated proof, but a more substantial reusable theorem or tactic must remove work from the loop proof before an end-to-end timing reduction becomes measurable.
+
+### Controlled proof-only generation
+
+The next experiment added two structural tactics to `Project.ProofKit.Control`.  `wp_block_loop invariant inv decreasing measure` packages the repeated Talos block and loop rule pair, while `wp_entry_to_loop functionDef unfolding functionBody as initial'` performs the entry conversion, unfolds the generated function, executes its straight-line prefix, and exposes the loop-rule goal.  Neither tactic contains prime-factor definitions, generated function constants, or application mathematics.
+
+`leanexegen reprove` received the preceding proof package as its input.  The command accepted a changed proof-library digest but required the Lean, Talos, verifier, artifact support, Node, Wasmtime, and `wasm-tools` identities to remain fixed.  It omitted stages two through four, withheld Source and the old Behavior module from Codex, and generated a replacement Behavior proof against the frozen artifact modules.
+
+```sh
+tools/leanexegen reprove \
+  -o /tmp/leanexegen-reprove-loop-20260803/prime-factors.wasm \
+  /tmp/leanexegen-prime-factors-proofkit-20260803/prime-factors.proof
+```
+
+Codex read the revised catalog and used `wp_entry_to_loop` for the trial-division helper.  The tactic replaces the entry conversion, function unfolding, straight-line symbolic execution, and block-rule application, after which the proof states the same invariant and measure in its application of `Wasm.wp_loop_cons`.  The exported wrapper continues to use `wp_entry_single_call` with `helper_correct` as its explicit semantic premise.
+
+```lean
+wp_entry_to_loop LeanExeGen.Generated.func0Def
+  unfolding LeanExeGen.Generated.func0
+  as initial'
+apply Wasm.wp_loop_cons
+  (Inv := factorInv initial' (FormalSpec.expected n))
+  (μ := factorMeasure)
+```
+
+The [controlled reproof diff](controlled-reproof.diff) records every change from the preceding 321-line proof.  The result has 316 lines: the loop opening is two lines shorter, three imports become unnecessary through `Project.ProofKit.Control`, and the remaining edits remove unused simplifier arguments or use equivalent library statements.  The formal specification, Source, Program, deterministic artifact modules, and all 1,348 WASM bytes matched the input package byte-for-byte.
+
+Controlled stage five took 390.849 seconds, compared with 253.925 seconds for the preceding proof-kit run.  The experiment therefore establishes that Codex can discover and use a reusable loop abstraction under fixed proof inputs, and that the resulting proof is smaller; it supplies no evidence of faster proof generation.  Independent `leanexegen verify` accepted the new package and the same artifact theorem for SHA-256 `8ef01d38a73edaca6c9098876af4212bf037ff1a14ba69e186b96a884c54cdcf`.
 
 The final theorem connects that behavioral result to the embedded WASM bytes.  Lean's decoder and validator produce a validated module, and the translation theorem identifies its Talos form with the module used by `artifact_behavior`.  The conclusion states the same `FormalSpec.ArtifactSpec` for the module recovered from the binary artifact.
 
