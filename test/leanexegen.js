@@ -10,6 +10,7 @@ const {
   currentToolPins,
   kernelAuditFindings,
   makeJob,
+  moduleFile,
   programExportIndex,
   rewriteProgramNamespace,
   sha256,
@@ -24,18 +25,27 @@ const {
   auditAxioms,
   codexCommandArgs,
   codexOutcomeSchema,
+  parseCodexVersion,
   formalSpecificationCheckSources,
   formalSpecificationSource,
+  formalTaskContext,
+  fromWasmtimeI64,
   generationResult,
   parseArgs,
   proofPackagePath,
   proofTaskContext,
+  readPackageSources,
+  requireFrozenProofKitIsolation,
+  reprovePinsMatch,
+  reproveSourceSets,
   programPrompt,
   programTaskContext,
   proofPrompt,
   publish,
   runCodexOutcome,
-  runTaskIterations,
+  runTaskSession,
+  stageHeading,
+  toWasmtimeI64,
   verificationCheckSources,
   warnings,
 } = require("../tools/leanexegen");
@@ -102,15 +112,26 @@ function testArguments() {
   const verified = parseArgs(["verify", "-s", "x.proof"]);
   assert(verified.command === "verify" && verified.silent,
     "verification arguments were parsed incorrectly");
+  const reproved = parseArgs(["reprove", "-s", "-o", "new.wasm", "x.proof"]);
+  assert(reproved.command === "reprove" && reproved.silent &&
+    reproved.outputPath.endsWith("/new.wasm") && reproved.packagePath.endsWith("/x.proof"),
+  "reproof arguments were parsed incorrectly");
   assert(proofPackagePath("/tmp/x.wasm") === "/tmp/x.proof",
     "proof package path was derived incorrectly");
   expectFailure(() => parseArgs(["-o", "x.wasm"]), /usage:/);
   assert(generationResult(true, [{ arguments: ["1"], stdout: "1" }], ["wasmtime"]) === "",
     "silent generation produced standard output");
+  assert(stageHeading(3, "Lean program", new Date("2026-08-03T12:34:57.000Z")) ===
+    "2026-08-03T12:34:57.000Z Stage 3: Lean program\n\n",
+    "stage heading did not contain the UTC start time");
 }
 
 function testCodexProtocol() {
   const job = makeJob("compute one unsigned integer\n");
+  assert(parseCodexVersion({
+    stdout: "codex-cli 0.146.0\n",
+    stderr: "WARNING: could not create PATH aliases\n",
+  }) === "codex-cli 0.146.0", "Codex identity included an unrelated warning");
   assert(JSON.stringify(job) === JSON.stringify(makeJob("compute one unsigned integer\n")),
     "job identity was not deterministic");
   assert(job.formalSpecDefinition === `${job.namespace}.FormalSpec.ArtifactSpec` &&
@@ -144,7 +165,32 @@ function testCodexProtocol() {
     samples: [{ arguments: ["42"], expectedStdout: "42\n" }],
   });
   expectFailure(() => validateCodexTaskOutcome(invalidSample, "lean-program"),
-    /expectedStdout must be an unsigned decimal/);
+    /expectedStdout must be a UInt64 decimal/);
+  const excessiveSample = outcome("lean-program", formalRaw, {
+    samples: [{ arguments: ["18446744073709551616"], expectedStdout: "0" }],
+  });
+  expectFailure(() => validateCodexTaskOutcome(excessiveSample, "lean-program"),
+    /arguments\[0\] must be a UInt64 decimal/);
+  const wideSample = outcome("lean-program", formalRaw, {
+    samples: [{ arguments: ["1", "2"], expectedStdout: "3" }],
+  });
+  expectFailure(() => validateCodexTaskOutcome(wideSample, "lean-program"),
+    /must contain exactly one UInt64/);
+  const programProblem = outcome("lean-program", "candidate", {
+    samples: [{ arguments: ["1"], expectedStdout: "1" }],
+  });
+  programProblem.outcome = "problems";
+  programProblem.problems = ["compiler rejected the candidate"];
+  programProblem.source = "";
+  assert(validateCodexTaskOutcome(programProblem, "lean-program") === programProblem,
+    "problem outcomes rejected irrelevant generated-result metadata");
+  assert(toWasmtimeI64("0") === "0" &&
+    toWasmtimeI64("9223372036854775808") === "-9223372036854775808" &&
+    toWasmtimeI64("18446744073709551615") === "-1" &&
+    fromWasmtimeI64("-1") === "18446744073709551615" &&
+    fromWasmtimeI64("-9223372036854775808") === "9223372036854775808" &&
+    fromWasmtimeI64("9223372036854775808") === null,
+  "UInt64 and Wasmtime i64 decimal conversion disagreed");
 
   const formalSource = formalSpecificationSource(job, formalRaw);
   assert(formalSource.includes("def ArtifactSpec (module_ : Wasm.Module) : Prop :=") &&
@@ -157,20 +203,29 @@ function testCodexProtocol() {
   assert(checkSource.includes(`#check (${job.expectedDefinition} : UInt64 → UInt64)`) &&
     checkSource.includes(`#check (${job.formalSpecDefinition} : ${job.formalSpecType})`),
   "formal declaration checks did not name both fixed declarations and types");
+  const formalContext = formalTaskContext("request\n", job);
+  assert(formalContext.get("request.txt") === "request\n" &&
+    formalContext.get(moduleFile(`${job.namespace}.FormalSessionCheck`))
+      .includes(job.expectedDefinition),
+  "formal task did not receive its request and declaration check");
   const programContext = programTaskContext("request\n", job, formalSource);
-  const prompt = programPrompt("request\n", job, 1, null);
+  const prompt = programPrompt("request\n", job);
   assert(programContext.get(`LeanExeGen/${job.leanModule}/FormalSpec.lean`) === formalSource &&
     prompt.includes(job.formalSpecDefinition) &&
     prompt.includes("do not import it from Source") &&
-    (prompt.match(/This is attempt/g) || []).length === 1,
+    prompt.includes("tools/leanrun") &&
+    prompt.includes("continue until all three commands succeed"),
   "program task did not receive or target the frozen formal specification");
-  const artifactPrompt = proofPrompt("request\n", job, 3, 1, null);
+  const artifactPrompt = proofPrompt("request\n", job, 3);
   assert(artifactPrompt.includes("refine ⟨3, rfl, ?_⟩") &&
     artifactPrompt.includes("intro env initial n") &&
-    artifactPrompt.includes(`(f := ${job.namespace}.func3Def) rfl`) &&
-    artifactPrompt.includes("intro initial'") &&
+    artifactPrompt.includes("Read PROOF_LIBRARY.md") &&
+    artifactPrompt.includes("import Project.ProofKit.Control") &&
+    artifactPrompt.includes(`wp_entry ${job.namespace}.func3Def as initial'`) &&
+    artifactPrompt.includes("wp_entry_to_loop <functionDef>") &&
+    artifactPrompt.includes(`wp_entry_single_call ${job.namespace}.func3Def`) &&
     artifactPrompt.includes("Use read-only commands to inspect FormalSpec, Program"),
-  "artifact-proof task did not receive the required generic WP opening");
+  "artifact-proof task did not receive the proof-kit catalog or tactics");
   expectFailure(() => validateProgramImports(
     job, `import ${job.formalSpecModule}\n\ndef compute (n : UInt64) := n\n`),
   /must not import/);
@@ -180,33 +235,47 @@ function testCodexProtocol() {
     module: job.behaviorModule,
     source: behaviorSource,
   }]), /unsupported proof dependency/);
+  validateProofImports(job, [{
+    module: job.behaviorModule,
+    source: "import Project.ProofKit.Control\n",
+  }]);
+  expectFailure(() => validateProofImports(job, [{
+    module: job.behaviorModule,
+    source: "import Project.Common\n",
+  }]), /unsupported proof dependency/);
   return { job, formalSource };
 }
 
 function testMockedCodex(job) {
   const taskRoot = path.join(temporaryRoot, "mock-codex");
   fs.mkdirSync(taskRoot);
-  const generated = outcome("lean-program",
-    `namespace ${job.namespace}.Source\n\ndef compute (n : UInt64) := n\n` , {
-      samples: [{ arguments: ["7"], expectedStdout: "7" }],
-    });
+  const candidateSource =
+    `namespace ${job.namespace}.Source\n\ndef compute (n : UInt64) := n\n`;
+  const generated = outcome("lean-program", "", {
+    samples: [{ arguments: ["7"], expectedStdout: "7" }],
+  });
   let recorded = null;
   const response = runCodexOutcome({
     codex: "/usr/bin/codex",
     task: "lean-program",
     stage: 3,
-    attempt: 1,
     taskRoot,
     contextFiles: new Map([["request.txt", "identity\n"]]),
+    candidateFile: moduleFile(job.sourceModule),
+    timeout: 1000,
     prompt: "mock prompt",
     execute: (args, options) => {
       recorded = { args, options };
+      const candidate = path.join(taskRoot, moduleFile(job.sourceModule));
+      fs.mkdirSync(path.dirname(candidate), { recursive: true });
+      fs.writeFileSync(candidate, candidateSource);
       const output = args[args.indexOf("-o") + 1];
       fs.writeFileSync(output, `${JSON.stringify(generated)}\n`);
       return { stdout: "", stderr: "" };
     },
   });
-  assert(response.task === "lean-program" && recorded.options.input === "mock prompt",
+  assert(response.task === "lean-program" && response.source === candidateSource &&
+    recorded.options.input === "mock prompt",
     "mocked Codex outcome was not returned");
   for (const flag of [
     "-C", "--sandbox", "--skip-git-repo-check", "--ephemeral", "--json",
@@ -215,8 +284,10 @@ function testMockedCodex(job) {
     assert(recorded.args.includes(flag), `Codex invocation omitted ${flag}`);
   }
   assert(recorded.args[recorded.args.length - 1] === "-" &&
+    recorded.args[0].endsWith("/tools/leanrun") &&
     recorded.args[recorded.args.indexOf("--sandbox") + 1] === "workspace-write" &&
-    fs.readFileSync(path.join(taskRoot, "attempt-1", "request.txt"), "utf8") === "identity\n",
+    fs.readFileSync(path.join(taskRoot, "request.txt"), "utf8") === "identity\n" &&
+    fs.existsSync(path.join(taskRoot, "lakefile.toml")),
   "Codex invocation did not use stdin, the requested sandbox, or isolated context");
   const schema = codexOutcomeSchema();
   assert(codexCommandArgs("codex", "/tmp/job", "/tmp/schema", "/tmp/out").includes("--ephemeral") &&
@@ -224,36 +295,43 @@ function testMockedCodex(job) {
     schema.properties.schemaVersion.type === "integer" &&
     schema.properties.task.type === "string" &&
     schema.properties.outcome.type === "string" &&
+    schema.properties.samples.items.properties.arguments.maxItems === 1 &&
     schema.properties.samples.items.properties.expectedStdout.pattern ===
       "^(?:0|[1-9][0-9]*)$",
   "Codex command or schema was not deterministic");
 
   let invocations = 0;
-  const prompts = [];
-  const iterative = runTaskIterations({
+  const session = runTaskSession({
     task: "lean-program",
     stage: 3,
     stageName: "Lean program",
     sourceModule: job.sourceModule,
-    maximumAttempts: 2,
-    invoke: (_attempt, prompt) => {
-      prompts.push(prompt);
+    invoke: (prompt) => {
+      assert(prompt === "one iterative session", "task session received the wrong prompt");
       invocations += 1;
-      return outcome("lean-program", invocations === 1 ? "bad" : "good", {
+      return outcome("lean-program", "good", {
         samples: [{ arguments: ["7"], expectedStdout: "7" }],
       });
     },
-    prompt: (attempt, feedback) => `attempt ${attempt}\n${feedback?.diagnostic || "none"}`,
+    prompt: "one iterative session",
     materialize: (source) => source,
-    diagnose: (source) => {
-      if (source === "bad") throw new Error("unknown declaration bad");
-      return "outer diagnostic accepted source";
-    },
+    diagnose: () => "outer diagnostic accepted source",
   });
-  assert(invocations === 2 && prompts[1].includes("unknown declaration bad") &&
-    iterative.stageReport.report.attempts[0].outcome === "rejected" &&
-    iterative.stageReport.report.attempts[1].outcome === "accepted",
-  "bounded fresh-task diagnostics did not feed rejection into the next task");
+  assert(invocations === 1 && session.stageReport.report.attempts.length === 1 &&
+    session.stageReport.report.attempts[0].outcome === "accepted",
+  "task orchestration invoked more than one Codex session");
+  expectFailure(() => runTaskSession({
+    task: "lean-program",
+    stage: 3,
+    stageName: "Lean program",
+    sourceModule: job.sourceModule,
+    invoke: () => outcome("lean-program", "bad", {
+      samples: [{ arguments: ["7"], expectedStdout: "7" }],
+    }),
+    prompt: "one iterative session",
+    materialize: (source) => source,
+    diagnose: () => { throw new Error("unknown declaration bad"); },
+  }), /independent outer check rejected.*unknown declaration bad/s);
 }
 
 function testArtifactPackage(job, formalSource) {
@@ -273,8 +351,9 @@ function testArtifactPackage(job, formalSource) {
   "artifact result did not use the fixed formal declaration");
   const proofContext = proofTaskContext("request\n", job, formalSource, generated.sources);
   assert(proofContext.has(`LeanExeGen/${job.leanModule}/Program.lean`) &&
+    proofContext.get("PROOF_LIBRARY.md").includes("wp_entry_single_call") &&
     !proofContext.has(`LeanExeGen/${job.leanModule}/Source.lean`),
-  "proof task context did not contain Program or exposed Source");
+  "proof task context omitted the catalog or Program, or exposed Source");
   const programSource = `namespace ${job.namespace}.Source\n\ndef compute (n : UInt64) := n\n`;
   const behaviorSource = `import ${job.programModule}\nimport ${job.formalSpecModule}\n\n` +
     `namespace ${job.namespace}.Behavior\n\ntheorem artifact_behavior : ` +
@@ -320,6 +399,9 @@ function testArtifactPackage(job, formalSource) {
     hostAssumptions: ["The module imports no host functions."],
     stageReports,
     toolPins: currentToolPins(repoRoot),
+    proofLibraryCatalog: fs.readFileSync(
+      path.join(repoRoot, "proofs", "talos", "lean", "Project", "ProofKit", "README.md"),
+      "utf8"),
     wasmBytes: wasm,
     sources,
     job,
@@ -334,6 +416,26 @@ function testArtifactPackage(job, formalSource) {
   assert(checked.artifact.sha256 === generated.artifact.sha256 &&
     checked.stageReports.tasks.leanProgram.sourceSha256 === sha256(Buffer.from(programSource)),
   "validated package returned the wrong artifact or stage report");
+  const packageSources = readPackageSources(packageRoot);
+  const sourceSets = reproveSourceSets(packageSources, job);
+  assert(sourceSets.frozen.get(job.sourceModule) === programSource &&
+    !sourceSets.frozen.has(job.behaviorModule) &&
+    !sourceSets.proofContext.has(job.sourceModule) &&
+    !sourceSets.proofContext.has(job.formalSpecModule) &&
+    sourceSets.proofContext.get(job.programModule) === talosProgram,
+  "reproof source selection did not freeze the artifact inputs or exclude Source");
+  const currentPins = currentToolPins(repoRoot);
+  const changedKitPins = { ...currentPins, proofKitSourceSha256: "0".repeat(64) };
+  assert(reprovePinsMatch(changedKitPins, currentPins),
+    "reproof rejected a proof-library-only pin change");
+  const changedTalosPins = { ...currentPins, talosRevision: "0".repeat(40) };
+  assert(!reprovePinsMatch(changedTalosPins, currentPins),
+    "reproof accepted a semantic dependency pin change");
+  requireFrozenProofKitIsolation(sourceSets.frozen);
+  expectFailure(() => requireFrozenProofKitIsolation(new Map([[
+    job.programModule,
+    "import Project.ProofKit.Control\n",
+  ]])), /frozen module.*imports mutable proof-library module/);
   const tamperedReports = structuredClone(stageReports);
   tamperedReports.tasks.artifactProof.report.summary = "changed";
   expectFailure(() => validateStageReports(tamperedReports, packageRoot, job),

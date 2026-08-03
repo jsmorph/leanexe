@@ -11,9 +11,11 @@ const {
   createPackage,
   currentToolPins,
   installSources,
+  imports,
   kernelAuditFindings,
   makeJob,
   moduleFile,
+  proofKitModules,
   programExportIndex,
   rewriteProgramNamespace,
   sha256,
@@ -35,7 +37,8 @@ const verifierRoot = path.join(
 );
 const verifier = path.join(verifierRoot, ".lake", "build", "bin", "verifier");
 const dumpRaw = path.join(projectRoot, "Artifact", "Binary", "DumpRaw.lean");
-const maximumTaskAttempts = 5;
+const proofKitCatalogPath = path.join(projectRoot, "ProofKit", "README.md");
+const maximumTaskSessions = 1;
 const allowedAxioms = new Set([
   "propext",
   "Classical.choice",
@@ -44,6 +47,9 @@ const allowedAxioms = new Set([
 ]);
 const generatedDecisionAxiom =
   /^[A-Za-z0-9_.]+\._native\.(?:native_decide|bv_decide)\.ax_[0-9_]+$/;
+const uint64Modulus = 1n << 64n;
+const int64Minimum = -(1n << 63n);
+const int64Maximum = (1n << 63n) - 1n;
 
 const warnings = [
   "The formal specification is a generated interpretation of the prose request.",
@@ -63,6 +69,7 @@ class StageError extends Error {
 function usage() {
   return [
     "usage: leanexegen [-s] -o <program.wasm> <request.txt>",
+    "       leanexegen reprove [-s] -o <program.wasm> <proof-package>",
     "       leanexegen verify [-s] <proof-package>",
   ].join("\n");
 }
@@ -78,10 +85,11 @@ function parseArgs(args) {
     if (rest.length !== 1) throw new Error(usage());
     return { command: "verify", silent, packagePath: path.resolve(rest[0]) };
   }
+  const reprove = args[0] === "reprove";
   let silent = false;
   let output = null;
   const positional = [];
-  for (let index = 0; index < args.length; index += 1) {
+  for (let index = reprove ? 1 : 0; index < args.length; index += 1) {
     const argument = args[index];
     if (argument === "-s") {
       silent = true;
@@ -97,15 +105,19 @@ function parseArgs(args) {
   }
   if (output === null || positional.length !== 1) throw new Error(usage());
   return {
-    command: "generate",
+    command: reprove ? "reprove" : "generate",
     silent,
     outputPath: path.resolve(output),
-    requestPath: path.resolve(positional[0]),
+    [reprove ? "packagePath" : "requestPath"]: path.resolve(positional[0]),
   };
 }
 
+function stageHeading(stage, title, startedAt = new Date()) {
+  return `${startedAt.toISOString()} Stage ${stage}: ${title}\n\n`;
+}
+
 function progress(silent, stage, title) {
-  if (!silent) process.stdout.write(`## Stage ${stage}: ${title}\n\n`);
+  if (!silent) process.stdout.write(stageHeading(stage, title));
 }
 
 function generationResult(silent, samples, invocation) {
@@ -134,6 +146,16 @@ function commandFailure(result) {
     ? `terminated by ${result.signal}`
     : `exited with status ${result.status}`;
   return output.length === 0 ? termination : `${termination}:\n${output}`;
+}
+
+function parseCodexVersion(result) {
+  const lines = `${outputText(result.stdout)}\n${outputText(result.stderr)}`
+    .split(/\r?\n/).map((line) => line.trim()).filter((line) => line.length > 0);
+  const identities = lines.filter((line) => /^codex-cli [^\s]+$/.test(line));
+  if (identities.length !== 1) {
+    throw new StageError(1, "job setup", "Codex returned no unique version identity");
+  }
+  return identities[0];
 }
 
 function run(stage, name, args, options = {}) {
@@ -200,7 +222,9 @@ function codexOutcomeSchema() {
           additionalProperties: false,
           required: ["arguments", "expectedStdout"],
           properties: {
-            arguments: { type: "array", items: { type: "string" }, minItems: 1 },
+            arguments: {
+              type: "array", items: { type: "string" }, minItems: 1, maxItems: 1,
+            },
             expectedStdout: { type: "string", pattern: "^(?:0|[1-9][0-9]*)$" },
           },
         },
@@ -227,26 +251,39 @@ function codexCommandArgs(codex, workspace, schemaFile, outputFile) {
 }
 
 function runCodexOutcome(options) {
-  const attemptRoot = path.join(options.taskRoot, `attempt-${options.attempt}`);
-  fs.mkdirSync(attemptRoot, { recursive: true });
+  createWorkspace(options.taskRoot);
   for (const [relative, bytes] of options.contextFiles) {
-    writeAtomic(path.join(attemptRoot, ...relative.split("/")), Buffer.from(bytes));
+    writeAtomic(path.join(options.taskRoot, ...relative.split("/")), Buffer.from(bytes));
   }
-  const schemaFile = path.join(attemptRoot, ".leanexegen-output-schema.json");
-  const outputFile = path.join(attemptRoot, ".leanexegen-outcome.json");
+  const schemaFile = path.join(options.taskRoot, ".leanexegen-output-schema.json");
+  const outputFile = path.join(options.taskRoot, ".leanexegen-outcome.json");
   writeAtomic(schemaFile, Buffer.from(`${JSON.stringify(codexOutcomeSchema(), null, 2)}\n`));
-  const args = codexCommandArgs(options.codex, attemptRoot, schemaFile, outputFile);
+  const codexArgs = codexCommandArgs(
+    options.codex, options.taskRoot, schemaFile, outputFile);
+  const args = [
+    leanrun,
+    "--timeout", `${Math.ceil(options.timeout / 1000)}s`,
+    ...codexArgs,
+  ];
   const execute = options.execute || ((command, runOptions) =>
     run(options.stage, `${options.task} Codex task`, command, runOptions));
   execute(args, {
-    cwd: attemptRoot,
+    cwd: options.taskRoot,
     input: options.prompt,
-    timeout: 30 * 60 * 1000,
+    timeout: options.timeout + 60 * 1000,
     maxBuffer: 64 * 1024 * 1024,
   });
   let response;
   try {
     response = JSON.parse(fs.readFileSync(outputFile, "utf8"));
+    if (response.outcome === "generated") {
+      const candidate = path.join(options.taskRoot, ...options.candidateFile.split("/"));
+      const stat = fs.lstatSync(candidate);
+      if (!stat.isFile() || stat.isSymbolicLink()) {
+        throw new Error(`${options.candidateFile} is not a regular file`);
+      }
+      response.source = fs.readFileSync(candidate, "utf8");
+    }
     return validateCodexTaskOutcome(response, options.task);
   } catch (error) {
     throw new StageError(options.stage, options.task, `invalid Codex outcome: ${error.message}`);
@@ -257,68 +294,49 @@ function reportDigest(report) {
   return sha256(Buffer.from(`${JSON.stringify(report, null, 2)}\n`));
 }
 
-function runTaskIterations(options) {
-  const attempts = [];
-  let feedback = null;
-  for (let attempt = 1; attempt <= options.maximumAttempts; attempt += 1) {
-    const outcome = options.invoke(attempt, options.prompt(attempt, feedback));
-    if (outcome.outcome !== "generated") {
-      const detail = outcome.outcome === "questions" ? outcome.questions : outcome.problems;
-      throw new StageError(options.stage, options.stageName, detail.join("\n"));
-    }
-    const source = options.materialize(outcome.source);
-    let accepted = false;
-    let diagnostic;
-    try {
-      diagnostic = options.diagnose(source, outcome);
-      accepted = true;
-    } catch (error) {
-      diagnostic = formatError(error);
-    }
-    if (typeof diagnostic !== "string" || diagnostic.length === 0) {
-      throw new StageError(options.stage, options.stageName, "diagnostic report was empty");
-    }
-    const sourceSha256 = sha256(Buffer.from(source));
-    attempts.push({
-      number: attempt,
-      outcome: accepted ? "accepted" : "rejected",
+function runTaskSession(options) {
+  const outcome = options.invoke(options.prompt);
+  if (outcome.outcome !== "generated") {
+    const detail = outcome.outcome === "questions" ? outcome.questions : outcome.problems;
+    throw new StageError(options.stage, options.stageName, detail.join("\n"));
+  }
+  const source = options.materialize(outcome.source);
+  let diagnostic;
+  try {
+    diagnostic = options.diagnose(source, outcome);
+  } catch (error) {
+    throw new StageError(
+      options.stage,
+      options.stageName,
+      `the independent outer check rejected the Codex session result:\n${formatError(error)}`,
+    );
+  }
+  if (typeof diagnostic !== "string" || diagnostic.length === 0) {
+    throw new StageError(options.stage, options.stageName, "diagnostic report was empty");
+  }
+  const sourceSha256 = sha256(Buffer.from(source));
+  const report = {
+    summary: outcome.summary,
+    decisions: outcome.decisions,
+    attempts: [{
+      number: 1,
+      outcome: "accepted",
       sourceSha256,
       diagnosticSha256: sha256(Buffer.from(diagnostic)),
       diagnostic,
-    });
-    if (accepted) {
-      const report = {
-        summary: outcome.summary,
-        decisions: outcome.decisions,
-        attempts,
-      };
-      return {
-        outcome,
-        source,
-        stageReport: {
-          task: options.task,
-          sourceModule: options.sourceModule,
-          sourceSha256,
-          reportSha256: reportDigest(report),
-          report,
-        },
-      };
-    }
-    feedback = { source: outcome.source, diagnostic };
-  }
-  throw new StageError(
-    options.stage,
-    options.stageName,
-    `failed after ${options.maximumAttempts} Codex attempts:\n` +
-      `Last candidate:\n\n${feedback.source}\n\n` +
-      `Verifier diagnostic:\n\n${feedback.diagnostic}`,
-  );
-}
-
-function feedbackPrompt(feedback) {
-  if (feedback === null) return "";
-  return `\nThe previous candidate was rejected by the outer verifier.\n\n` +
-    `Previous source:\n\n${feedback.source}\n\nVerifier diagnostic:\n\n${feedback.diagnostic}\n`;
+    }],
+  };
+  return {
+    outcome,
+    source,
+    stageReport: {
+      task: options.task,
+      sourceModule: options.sourceModule,
+      sourceSha256,
+      reportSha256: reportDigest(report),
+      report,
+    },
+  };
 }
 
 function formalSpecificationSource(job, generatedSource) {
@@ -355,74 +373,129 @@ function createWorkspace(root) {
   writeAtomic(path.join(root, "lean-toolchain"), toolchain);
 }
 
-function formalPrompt(request, job, attempt, feedback) {
+function formalPrompt(request, job) {
+  const candidate = moduleFile(job.formalSpecModule);
+  const checkTarget = `${job.namespace}.FormalSessionCheck`;
+  const check = formatCommand([
+    leanrun, "--timeout", "15m", "lake", "-d", ".", "--no-ansi", "build", checkTarget,
+  ]);
   return `You are performing independent task 1 of 3 for leanexegen.  Produce the formal ` +
     `specification for this request:\n\n${request}\n\n` +
-    `Return only the JSON object required by the output schema.  Set task to ` +
-    `"formal-specification".  For a generated outcome, source must be a complete Lean module ` +
-    `${job.formalSpecModule} that imports CodeLib and defines exactly ` +
-    `${job.expectedDefinition} : UInt64 → UInt64.  Do not define ArtifactSpec; the ` +
-    `orchestrator appends the fixed module predicate after your source.  Put semantic and ABI ` +
-    `assumptions in hostAssumptions, and leave samples empty.  Use questions or problems when ` +
-    `the request cannot be specified.  Do not run commands or edit files; the outer process ` +
-    `runs Lean diagnostics.  This is attempt ${attempt} of ${maximumTaskAttempts}.\n` +
-    feedbackPrompt(feedback);
+    `Work in this session until the candidate passes real Lean.  Write the complete candidate ` +
+    `module to ${candidate}; it must import CodeLib and define exactly ` +
+    `${job.expectedDefinition} : UInt64 → UInt64.  Do not define ArtifactSpec because the ` +
+    `orchestrator appends that fixed predicate after this task.  After each edit, run this exact ` +
+    `check command:\n\n${check}\n\nDo not invoke Lean or Lake by another route, and do not run ` +
+    `checks concurrently.  Inspect request.txt and the Lean diagnostics, revise the candidate, ` +
+    `and continue until the command succeeds.  After the final edit, run the command once more as ` +
+    `your last action before returning JSON, and do not edit the candidate after it succeeds.  ` +
+    `Then return only the JSON object required by the ` +
+    `output schema, set task to "formal-specification" and outcome to "generated", and leave ` +
+    `source empty because the orchestrator reads ${candidate}.  Put semantic and ABI assumptions ` +
+    `in hostAssumptions, and leave samples empty.  Use questions or problems only when the request ` +
+    `cannot be specified.`;
 }
 
-function programPrompt(request, job, attempt, feedback) {
+function programPrompt(request, job) {
+  const candidate = moduleFile(job.sourceModule);
+  const checkTarget = `${job.namespace}.SourceCheck`;
+  const build = formatCommand([
+    leanrun, "--timeout", "15m", "lake", "-d", ".", "--no-ansi", "build", checkTarget,
+  ]);
+  const report = formatCommand([
+    leanrun, "--timeout", "10m", "lake", "-d", ".", "env", compiler,
+    "report", "--module", job.sourceModule, "--entry", job.sourceEntry,
+  ]);
+  const compile = formatCommand([
+    leanrun, "--timeout", "10m", "lake", "-d", ".", "env", compiler,
+    "compile", "--module", job.sourceModule, "--entry", job.sourceEntry,
+    "--out", "candidate.wasm",
+  ]);
   return `You are performing independent task 2 of 3 for leanexegen.  Produce the Lean program ` +
     `for this request:\n\n${request}\n\n` +
-    `Return only the JSON object required by the output schema.  Set task to "lean-program".  ` +
-    `For a generated outcome, source must be a complete Lean module ${job.sourceModule} that ` +
-    `defines exactly ${job.sourceEntry} : UInt64 → UInt64.  The public WebAssembly export is ` +
+    `Work in this session until one candidate passes Lean and the LeanExe compiler.  Write the ` +
+    `complete candidate module to ${candidate}; it must ` +
+    `define exactly ${job.sourceEntry} : UInt64 → UInt64.  The public WebAssembly export is ` +
     `${job.exportName}.  The working directory contains the frozen formal specification; ` +
     `implement compute so the eventual artifact can satisfy ${job.formalSpecDefinition}.  ` +
-    `Use that file as specification context, but do not import it from Source.  No source theorem ` +
-    `or compiler-correctness certificate is required.  Provide at least one sample whose ` +
-    `arguments and expectedStdout are unsigned decimal strings without line endings, and leave hostAssumptions ` +
-    `empty.  You may use read-only commands to inspect request.txt and the frozen FormalSpec ` +
-    `module.  Do not edit files or run Lean, Lake, or the compiler; the outer process runs ` +
-    `LeanExe diagnostics.  ` +
-    `This is attempt ${attempt} of ${maximumTaskAttempts}.\n` +
-    feedbackPrompt(feedback);
+    `Use that file as specification context, but do not import it from Source.  Run these exact ` +
+    `commands after each edit, in order:\n\n${build}\n${report}\n${compile}\n\nDo not invoke ` +
+    `Lean, Lake, or the compiler by another route, and do not run checks concurrently.  Inspect ` +
+    `the diagnostics, revise ${candidate}, and continue until all three commands succeed.  After ` +
+    `the final edit, run all three commands once more as your last actions before returning JSON, ` +
+    `and do not edit the candidate after they succeed.  Then ` +
+    `return only the JSON object required by the output schema, set task to "lean-program" and ` +
+    `outcome to "generated", and leave source empty because the orchestrator reads ${candidate}.  ` +
+    `No source theorem or compiler-correctness certificate is required.  Provide at least one ` +
+    `sample with exactly one UInt64 argument and one UInt64 expectedStdout, both unsigned decimal ` +
+    `strings no greater than 18446744073709551615 and without line endings.  Leave ` +
+    `hostAssumptions empty.`;
 }
 
-function proofPrompt(request, job, entryIndex, attempt, feedback) {
+function proofPrompt(request, job, entryIndex) {
+  const candidate = moduleFile(job.behaviorModule);
+  const check = formatCommand([
+    leanrun, "--timeout", "60m", "lake", "-d", ".", "--no-ansi", "build",
+    job.artifactTarget,
+  ]);
   return `You are performing independent task 3 of 3 for leanexegen.  Prove the exact compiled ` +
     `artifact for this request:\n\n${request}\n\n` +
     `The working directory contains only the request, the frozen formal specification, the ` +
     `WAT-derived Talos Program module, and deterministic exact-artifact support modules.  It ` +
-    `contains no Source module.  Return only the JSON object required by the output schema and ` +
-    `set task to "artifact-proof".  For a generated outcome, source must be the complete Lean ` +
-    `module ${job.behaviorModule} and prove exactly ` +
+    `contains no Source module.  Write the complete candidate module to ${candidate} and prove exactly ` +
     `${job.behaviorTheorem} : ${job.formalSpecDefinition} ${job.namespace}.«module».  ` +
     `You may import ${job.formalSpecModule}, ${job.programModule}, generated artifact-support ` +
-    `modules, CodeLib, Interpreter, Std, Init, or Mathlib.  Do not import Source, inspect source ` +
+    `modules, Project.ProofKit.Control, CodeLib, Interpreter, Std, Init, or Mathlib.  Read ` +
+    `PROOF_LIBRARY.md before writing the proof, import Project.ProofKit.Control, and use its ` +
+    `cataloged tactics whenever the generated control flow matches their documented shape.  ` +
+    `For a function that executes directly to a block-wrapped loop, use ` +
+    `\`wp_entry_to_loop <functionDef> unfolding <functionBody> as initial'\`, then apply ` +
+    `\`Wasm.wp_loop_cons\` with an explicit invariant and decreasing measure.  After proving a ` +
+    `callee used by a straight-line ` +
+    `entry wrapper, use ` +
+    `\`wp_entry_single_call ${job.namespace}.func${entryIndex}Def unfolding ` +
+    `${job.namespace}.func${entryIndex} as initial' using <callee theorem>\`.  ` +
+    `Do not import Source, inspect source ` +
     `code, invoke the compiler, add axioms, or use sorry.  Leave samples and hostAssumptions ` +
     `empty.  ArtifactSpec resolves the ${job.exportName} export to function ${entryIndex}, then ` +
-    `quantifies over env, initial, and n.  The generic opening is ` +
+    `quantifies over env, initial, and n.  The generic proof-kit opening is ` +
     `\`refine ⟨${entryIndex}, rfl, ?_⟩\`, then \`intro env initial n\`, then ` +
-    `\`apply Wasm.TerminatesWith.of_wp_entry ` +
-    `(f := ${job.namespace}.func${entryIndex}Def) rfl\`, then ` +
-    `\`intro initial'\`.  Straight-line scalar proofs usually import ` +
+    `\`wp_entry ${job.namespace}.func${entryIndex}Def as initial'\`.  ` +
+    `Straight-line scalar proofs usually import ` +
     `Interpreter.Wasm.Wp.Tactic, unfold ${job.namespace}.func${entryIndex}, use wp_run, and simplify ` +
     `expected.  Use read-only commands to inspect FormalSpec, Program, and the artifact-support ` +
-    `modules for the exact definitions and locals.  Do not edit files or run Lean, Lake, or the ` +
-    `compiler; the outer process runs all diagnostics.  This is attempt ${attempt} of ` +
-    `${maximumTaskAttempts}.\n` +
-    feedbackPrompt(feedback);
+    `modules for the exact definitions and locals.  After each edit, run this exact check ` +
+    `command:\n\n${check}\n\nDo not invoke Lean or Lake by another route, and do not run checks ` +
+    `concurrently.  Inspect the diagnostics, revise ${candidate}, and continue until the command ` +
+    `succeeds.  After the final edit, run the command once more as your last action before ` +
+    `returning JSON, and do not edit the candidate after it succeeds.  Then return only the JSON ` +
+    `object required by the output schema, set task to ` +
+    `"artifact-proof" and outcome to "generated", and leave source empty because the orchestrator ` +
+    `reads ${candidate}.`;
+}
+
+function formalTaskContext(request, job) {
+  const checkTarget = `${job.namespace}.FormalSessionCheck`;
+  return new Map([
+    ["request.txt", request],
+    [moduleFile(checkTarget), `import ${job.formalSpecModule}\n\n` +
+      `#check (${job.expectedDefinition} : UInt64 → UInt64)\n`],
+  ]);
 }
 
 function programTaskContext(request, job, formalSource) {
   return new Map([
     ["request.txt", request],
     [moduleFile(job.formalSpecModule), formalSource],
+    [moduleFile(`${job.namespace}.SourceCheck`), `import ${job.sourceModule}\n\n` +
+      `#check (${job.sourceEntry} : UInt64 → UInt64)\n`],
   ]);
 }
 
 function proofTaskContext(request, job, formalSource, generatedSources) {
   const context = new Map([
     ["request.txt", request],
+    ["PROOF_LIBRARY.md", fs.readFileSync(proofKitCatalogPath, "utf8")],
     [moduleFile(job.formalSpecModule), formalSource],
     ...[...generatedSources].map(([moduleName, source]) => [moduleFile(moduleName), source]),
   ]);
@@ -703,6 +776,18 @@ function formatCommand(args) {
   return args.map(shellQuote).join(" ");
 }
 
+function toWasmtimeI64(decimal) {
+  const value = BigInt(decimal);
+  return (value <= int64Maximum ? value : value - uint64Modulus).toString();
+}
+
+function fromWasmtimeI64(decimal) {
+  if (!/^(?:0|[1-9][0-9]*|-[1-9][0-9]*)$/.test(decimal)) return null;
+  const value = BigInt(decimal);
+  if (value < int64Minimum || value > int64Maximum) return null;
+  return (value < 0n ? value + uint64Modulus : value).toString();
+}
+
 function runSamples(samplesToRun, exportName, wasm, toolPins) {
   const wasmtime = findWasmtime();
   const version = run(6, "Wasmtime version", [wasmtime, "--version"]).stdout.trim();
@@ -721,11 +806,20 @@ function runSamples(samplesToRun, exportName, wasm, toolPins) {
       "--invoke",
       exportName,
       wasm,
-      ...sample.arguments,
+      ...sample.arguments.map(toWasmtimeI64),
     ];
     const result = run(6, "sample execution", invocation);
     if (result.stderr.length > 0) process.stderr.write(result.stderr);
-    const stdout = result.stdout.trimEnd();
+    const rawStdout = result.stdout.trimEnd();
+    const stdout = fromWasmtimeI64(rawStdout);
+    if (stdout === null) {
+      throw new StageError(
+        6,
+        "sample execution",
+        `input ${sample.arguments.join(" ")} produced a non-i64 result ` +
+          `${JSON.stringify(rawStdout)}`,
+      );
+    }
     if (stdout !== sample.expectedStdout) {
       throw new StageError(
         6,
@@ -801,11 +895,77 @@ function copyPackageProof(packageRoot, workspace) {
   }
 }
 
+function readPackageSources(packageRoot) {
+  const sources = new Map();
+  const proofRootPath = path.join(packageRoot, "proof");
+  for (const relative of collectFiles(proofRootPath)) {
+    if (!relative.endsWith(".lean")) {
+      throw new StageError(5, "artifact proof", `unexpected proof file: ${relative}`);
+    }
+    const moduleName = relative.slice(0, -5).split("/").join(".");
+    sources.set(moduleName, fs.readFileSync(
+      path.join(proofRootPath, ...relative.split("/")), "utf8"));
+  }
+  return sources;
+}
+
+function reproveSourceSets(sources, job) {
+  const frozen = new Map(sources);
+  frozen.delete(job.behaviorModule);
+  const proofContext = new Map(frozen);
+  proofContext.delete(job.formalSpecModule);
+  proofContext.delete(job.sourceModule);
+  return { frozen, proofContext };
+}
+
+function requireFrozenProofKitIsolation(sources) {
+  for (const [moduleName, source] of sources) {
+    const dependency = imports(source).find((imported) => proofKitModules.includes(imported));
+    if (dependency !== undefined) {
+      throw new StageError(
+        5,
+        "artifact proof",
+        `frozen module ${moduleName} imports mutable proof-library module ${dependency}`,
+      );
+    }
+  }
+}
+
+function comparableReprovePins(toolPins) {
+  const comparable = structuredClone(toolPins);
+  delete comparable.proofKitSourceSha256;
+  return comparable;
+}
+
+function reprovePinsMatch(recorded, current) {
+  return JSON.stringify(comparableReprovePins(recorded)) ===
+    JSON.stringify(comparableReprovePins(current));
+}
+
+function requireReprovePins(packageRoot) {
+  const recorded = JSON.parse(fs.readFileSync(path.join(packageRoot, "tool-pins.json"), "utf8"));
+  const current = currentToolPins(repoRoot);
+  if (!reprovePinsMatch(recorded, current)) {
+    throw new StageError(
+      5,
+      "artifact proof",
+      "tool pins other than the proof-library source differ from this checkout",
+    );
+  }
+  requireMaterializedPins(current);
+  return current;
+}
+
 function requirePins(packageRoot) {
   const recorded = JSON.parse(fs.readFileSync(path.join(packageRoot, "tool-pins.json"), "utf8"));
   const current = currentToolPins(repoRoot);
   if (JSON.stringify(recorded) !== JSON.stringify(current)) {
     throw new StageError(5, "artifact proof", "tool pins differ from this checkout");
+  }
+  const packagedCatalog = fs.readFileSync(path.join(packageRoot, "proof-library.md"));
+  const currentCatalog = fs.readFileSync(proofKitCatalogPath);
+  if (!packagedCatalog.equals(currentCatalog)) {
+    throw new StageError(5, "artifact proof", "proof-library catalog differs from this checkout");
   }
   requireMaterializedPins(current);
   return current;
@@ -874,6 +1034,13 @@ function requireKernelAudit(sources, toolPins) {
   }
 }
 
+function proofKitSources() {
+  return new Map(proofKitModules.map((moduleName) => [
+    moduleName,
+    fs.readFileSync(path.join(proofRoot, moduleFile(moduleName)), "utf8"),
+  ]));
+}
+
 function verify(command) {
   progress(command.silent, 5, "Direct artifact proof");
   let checked;
@@ -881,15 +1048,14 @@ function verify(command) {
   try {
     checked = validatePackage(command.packagePath);
     toolPins = requirePins(command.packagePath);
-    const packageSources = new Map();
-    const proofRootPath = path.join(command.packagePath, "proof");
-    for (const relative of collectFiles(proofRootPath)) {
-      if (!relative.endsWith(".lean")) continue;
-      const moduleName = relative.slice(0, -5).split("/").join(".");
-      packageSources.set(moduleName, fs.readFileSync(
-        path.join(proofRootPath, ...relative.split("/")), "utf8"));
-    }
+    const packageSources = readPackageSources(command.packagePath);
     requireKernelAudit(packageSources, toolPins);
+    const kitSources = proofKitSources();
+    validateProofImports(checked.job, [...kitSources].map(([module, source]) => ({
+      module,
+      source,
+    })));
+    requireKernelAudit(kitSources, toolPins);
   } catch (error) {
     if (error instanceof StageError) throw error;
     throw new StageError(5, "artifact proof", error.message);
@@ -939,16 +1105,205 @@ function verify(command) {
   if (operationError) throw operationError;
 }
 
+function reprove(command) {
+  progress(command.silent, 1, "Job setup");
+  let checked;
+  let request;
+  let interpretation;
+  let hostAssumptions;
+  let priorSamples;
+  let packageSources;
+  let sourceSets;
+  let toolPins;
+  let codex;
+  let codexVersion;
+  try {
+    checked = validatePackage(command.packagePath);
+    request = fs.readFileSync(path.join(command.packagePath, "request.txt"), "utf8");
+    interpretation = JSON.parse(fs.readFileSync(
+      path.join(command.packagePath, "interpretation.json"), "utf8"));
+    hostAssumptions = JSON.parse(fs.readFileSync(
+      path.join(command.packagePath, "host-assumptions.json"), "utf8")).hostAssumptions;
+    priorSamples = JSON.parse(fs.readFileSync(
+      path.join(command.packagePath, "samples.json"), "utf8"));
+    packageSources = readPackageSources(command.packagePath);
+    sourceSets = reproveSourceSets(packageSources, checked.job);
+    toolPins = requireReprovePins(command.packagePath);
+    requireFrozenProofKitIsolation(sourceSets.frozen);
+    requireKernelAudit(sourceSets.frozen, toolPins);
+    validateProgramImports(checked.job, sourceSets.frozen.get(checked.job.sourceModule));
+    const kitSources = proofKitSources();
+    validateProofImports(checked.job, [...kitSources].map(([module, source]) => ({
+      module,
+      source,
+    })));
+    requireKernelAudit(kitSources, toolPins);
+    codex = findCodex();
+    codexVersion = parseCodexVersion(run(1, "Codex identity", [codex, "--version"]));
+    if (codexVersion !== checked.stageReports.codexVersion) {
+      throw new StageError(
+        1,
+        "job setup",
+        `Codex identity differs from the frozen stage reports: expected ` +
+          `${checked.stageReports.codexVersion}, found ${codexVersion || "an empty identity"}`,
+      );
+    }
+  } catch (error) {
+    if (error instanceof StageError) throw error;
+    throw new StageError(1, "job setup", error.message);
+  }
+
+  const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), "leanexegen-reprove-"));
+  let operationError = null;
+  try {
+    progress(command.silent, 5, "Direct artifact proof");
+    const proofWorkspace = path.join(temporaryRoot, "proof-workspace");
+    const proofTaskRoot = path.join(temporaryRoot, "proof-codex");
+    fs.mkdirSync(proofWorkspace);
+    fs.mkdirSync(proofTaskRoot);
+    createWorkspace(proofWorkspace);
+    const formalSource = sourceSets.frozen.get(checked.job.formalSpecModule);
+    const sourceModule = sourceSets.frozen.get(checked.job.sourceModule);
+    const programSource = sourceSets.proofContext.get(checked.job.programModule);
+    if (formalSource === undefined || sourceModule === undefined || programSource === undefined) {
+      throw new StageError(5, "artifact proof", "proof package lacks a frozen core source");
+    }
+    installSources(proofWorkspace, new Map([
+      [checked.job.formalSpecModule, formalSource],
+      ...sourceSets.proofContext,
+    ]));
+    checkFormalSpecification(
+      proofWorkspace, checked.job, formalSource, 5, "ReproveFormalSpecCheck");
+    const entryIndex = programExportIndex(programSource, checked.job.exportName);
+    const proofContext = proofTaskContext(
+      request, checked.job, formalSource, sourceSets.proofContext);
+    const proof = runTaskSession({
+      task: "artifact-proof",
+      stage: 5,
+      stageName: "artifact proof",
+      sourceModule: checked.job.behaviorModule,
+      invoke: (prompt) => runCodexOutcome({
+        codex,
+        task: "artifact-proof",
+        stage: 5,
+        taskRoot: proofTaskRoot,
+        contextFiles: proofContext,
+        candidateFile: moduleFile(checked.job.behaviorModule),
+        timeout: 2 * 60 * 60 * 1000,
+        prompt,
+      }),
+      prompt: proofPrompt(request, checked.job, entryIndex),
+      materialize: (source) => source,
+      diagnose: (source) => {
+        validateProofImports(checked.job, [{
+          module: checked.job.behaviorModule,
+          source,
+        }]);
+        requireKernelAudit(new Map([[checked.job.behaviorModule, source]]), toolPins);
+        installSources(proofWorkspace, new Map([[checked.job.behaviorModule, source]]));
+        checkProof(
+          proofWorkspace,
+          checked.job,
+          checked.artifact,
+          path.join(command.packagePath, "program.wasm"),
+          toolPins,
+        );
+        return `Lean accepted ${checked.job.behaviorTheorem} and ` +
+          `${checked.artifact.artifactTheorem}.`;
+      },
+    });
+
+    progress(command.silent, 6, "Sample execution");
+    const samplesToRun = priorSamples.map((sample) => ({
+      arguments: sample.arguments,
+      expectedStdout: sample.stdout,
+    }));
+    const fixedWasm = path.join(command.packagePath, "program.wasm");
+    const sampleResult = runSamples(
+      samplesToRun, checked.job.exportName, fixedWasm, toolPins);
+
+    progress(command.silent, 7, "Publication");
+    const packagePath = proofPackagePath(command.outputPath);
+    const wasmBytes = fs.readFileSync(fixedWasm);
+    const allSources = new Map(sourceSets.frozen);
+    allSources.set(checked.job.behaviorModule, proof.source);
+    const stageReports = {
+      schemaVersion: 1,
+      codexVersion,
+      maximumAttempts: maximumTaskSessions,
+      tasks: {
+        formalSpecification: checked.stageReports.tasks.formalSpecification,
+        leanProgram: checked.stageReports.tasks.leanProgram,
+        artifactProof: proof.stageReport,
+      },
+    };
+    const proofLibraryCatalog = fs.readFileSync(proofKitCatalogPath, "utf8");
+    publish(command.outputPath, packagePath, wasmBytes, (stageRoot) => {
+      createPackage(stageRoot, {
+        request,
+        interpretation: {
+          formalSpecification: interpretation.formalSpecification,
+          leanProgram: interpretation.leanProgram,
+          artifactProof: {
+            summary: proof.outcome.summary,
+            decisions: proof.outcome.decisions,
+          },
+        },
+        artifact: checked.artifact,
+        samples: sampleResult.samples,
+        hostAssumptions,
+        stageReports,
+        toolPins,
+        proofLibraryCatalog,
+        wasmBytes,
+        sources: allSources,
+        job: checked.job,
+        formalSpecification: checked.manifest.formalSpecification,
+        warnings,
+      });
+      const published = validatePackage(stageRoot);
+      if (!published.wasm.equals(checked.wasm) ||
+          JSON.stringify(published.artifact) !== JSON.stringify(checked.artifact)) {
+        throw new Error("reproof changed the frozen artifact");
+      }
+      const publishedSources = readPackageSources(stageRoot);
+      for (const [moduleName, source] of sourceSets.frozen) {
+        if (publishedSources.get(moduleName) !== source) {
+          throw new Error(`reproof changed frozen module ${moduleName}`);
+        }
+      }
+    });
+    const invocation = [...sampleResult.samples[0].invocation];
+    invocation[4] = command.outputPath;
+    progress(command.silent, 8, "Results");
+    process.stdout.write(generationResult(command.silent, sampleResult.samples, invocation));
+    process.stderr.write(warnings.map((warning) => `leanexegen: warning: ${warning}\n`).join(""));
+  } catch (error) {
+    operationError = error;
+  }
+  try {
+    fs.rmSync(temporaryRoot, { recursive: true });
+  } catch (cleanupError) {
+    if (operationError) {
+      throw new StageError(
+        operationError.stage || 7,
+        operationError.stageName || "cleanup",
+        formatError(new AggregateError(
+          [operationError, cleanupError], "reproof cleanup failed",
+        )),
+      );
+    }
+    throw new StageError(7, "publication", cleanupError.message);
+  }
+  if (operationError) throw operationError;
+}
+
 function generate(command) {
+  progress(command.silent, 1, "Job setup");
   const request = readRequest(command.requestPath);
   const job = makeJob(request);
-  progress(command.silent, 1, "Job setup");
   const codex = findCodex();
-  const codexIdentity = run(1, "Codex identity", [codex, "--version"]);
-  const codexVersion = `${codexIdentity.stdout}\n${codexIdentity.stderr}`.trim();
-  if (codexVersion.length === 0) {
-    throw new StageError(1, "job setup", "Codex returned an empty version");
-  }
+  const codexVersion = parseCodexVersion(run(1, "Codex identity", [codex, "--version"]));
   let toolPins;
   try {
     toolPins = currentToolPins(repoRoot);
@@ -956,6 +1311,10 @@ function generate(command) {
     if (error instanceof StageError) throw error;
     throw new StageError(5, "artifact proof", error.message);
   }
+  const proofLibraryCatalog = fs.readFileSync(proofKitCatalogPath, "utf8");
+  const kitSources = proofKitSources();
+  validateProofImports(job, [...kitSources].map(([module, source]) => ({ module, source })));
+  requireKernelAudit(kitSources, toolPins);
 
   const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), "leanexegen-"));
   let operationError = null;
@@ -966,23 +1325,23 @@ function generate(command) {
     fs.mkdirSync(formalWorkspace);
     fs.mkdirSync(formalTaskRoot);
     createWorkspace(formalWorkspace);
-    const formalContext = new Map([["request.txt", request]]);
-    const formal = runTaskIterations({
+    const formalContext = formalTaskContext(request, job);
+    const formal = runTaskSession({
       task: "formal-specification",
       stage: 2,
       stageName: "formal specification",
       sourceModule: job.formalSpecModule,
-      maximumAttempts: maximumTaskAttempts,
-      invoke: (attempt, prompt) => runCodexOutcome({
+      invoke: (prompt) => runCodexOutcome({
         codex,
         task: "formal-specification",
         stage: 2,
-        attempt,
         taskRoot: formalTaskRoot,
         contextFiles: formalContext,
+        candidateFile: moduleFile(job.formalSpecModule),
+        timeout: 45 * 60 * 1000,
         prompt,
       }),
-      prompt: (attempt, feedback) => formalPrompt(request, job, attempt, feedback),
+      prompt: formalPrompt(request, job),
       materialize: (source) => formalSpecificationSource(job, source),
       diagnose: (source) => {
         validateProofImports(job, [{ module: job.formalSpecModule, source }]);
@@ -1003,22 +1362,22 @@ function generate(command) {
     runLean(3, "LeanExe compiler build", "15m",
       ["lake", "--no-ansi", "build", "lean-wasm"]);
     const programContext = programTaskContext(request, job, formal.source);
-    const programTask = runTaskIterations({
+    const programTask = runTaskSession({
       task: "lean-program",
       stage: 3,
       stageName: "Lean program",
       sourceModule: job.sourceModule,
-      maximumAttempts: maximumTaskAttempts,
-      invoke: (attempt, prompt) => runCodexOutcome({
+      invoke: (prompt) => runCodexOutcome({
         codex,
         task: "lean-program",
         stage: 3,
-        attempt,
         taskRoot: programTaskRoot,
         contextFiles: programContext,
+        candidateFile: moduleFile(job.sourceModule),
+        timeout: 60 * 60 * 1000,
         prompt,
       }),
-      prompt: (attempt, feedback) => programPrompt(request, job, attempt, feedback),
+      prompt: programPrompt(request, job),
       materialize: (source) => source,
       diagnose: (source) => {
         validateProgramImports(job, source);
@@ -1072,23 +1431,22 @@ function generate(command) {
       proofWorkspace, job, formal.source, 5, "ProofFormalSpecCheck");
     const proofContext = proofTaskContext(
       request, job, formal.source, generated.sources);
-    const proof = runTaskIterations({
+    const proof = runTaskSession({
       task: "artifact-proof",
       stage: 5,
       stageName: "artifact proof",
       sourceModule: job.behaviorModule,
-      maximumAttempts: maximumTaskAttempts,
-      invoke: (attempt, prompt) => runCodexOutcome({
+      invoke: (prompt) => runCodexOutcome({
         codex,
         task: "artifact-proof",
         stage: 5,
-        attempt,
         taskRoot: proofTaskRoot,
         contextFiles: proofContext,
+        candidateFile: moduleFile(job.behaviorModule),
+        timeout: 2 * 60 * 60 * 1000,
         prompt,
       }),
-      prompt: (attempt, feedback) => proofPrompt(
-        request, job, entryIndex, attempt, feedback),
+      prompt: proofPrompt(request, job, entryIndex),
       materialize: (source) => source,
       diagnose: (source) => {
         validateProofImports(job, [{ module: job.behaviorModule, source }]);
@@ -1127,7 +1485,7 @@ function generate(command) {
     const stageReports = {
       schemaVersion: 1,
       codexVersion,
-      maximumAttempts: maximumTaskAttempts,
+      maximumAttempts: maximumTaskSessions,
       tasks: {
         formalSpecification: formal.stageReport,
         leanProgram: programTask.stageReport,
@@ -1156,6 +1514,7 @@ function generate(command) {
         hostAssumptions: formal.outcome.hostAssumptions,
         stageReports,
         toolPins,
+        proofLibraryCatalog,
         wasmBytes,
         sources: allSources,
         job,
@@ -1167,14 +1526,9 @@ function generate(command) {
         warnings,
       });
     });
-    const invocation = [
-      sampleResult.wasmtime,
-      "run",
-      "--invoke",
-      job.exportName,
-      command.outputPath,
-      ...programTask.outcome.samples[0].arguments,
-    ];
+    const invocation = [...sampleResult.samples[0].invocation];
+    invocation[4] = command.outputPath;
+    progress(command.silent, 8, "Results");
     process.stdout.write(generationResult(command.silent, sampleResult.samples, invocation));
     process.stderr.write(warnings.map((warning) => `leanexegen: warning: ${warning}\n`).join(""));
   } catch (error) {
@@ -1218,6 +1572,7 @@ function main() {
   }
   try {
     if (command.command === "verify") verify(command);
+    else if (command.command === "reprove") reprove(command);
     else generate(command);
   } catch (error) {
     if (error instanceof StageError) {
@@ -1239,8 +1594,10 @@ module.exports = {
   auditAxioms,
   codexCommandArgs,
   codexOutcomeSchema,
+  parseCodexVersion,
   formalSpecificationCheckSources,
   formalSpecificationSource,
+  formalTaskContext,
   formatCommand,
   generationResult,
   parseArgs,
@@ -1250,8 +1607,15 @@ module.exports = {
   proofPrompt,
   proofPackagePath,
   proofTaskContext,
+  readPackageSources,
+  requireFrozenProofKitIsolation,
+  reprovePinsMatch,
+  reproveSourceSets,
+  fromWasmtimeI64,
   runCodexOutcome,
-  runTaskIterations,
+  runTaskSession,
+  stageHeading,
+  toWasmtimeI64,
   verificationCheckSources,
   warnings,
 };
