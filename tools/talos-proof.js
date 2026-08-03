@@ -21,7 +21,7 @@ function main() {
   const cases = loadRegistry();
   if (process.argv[3] === "--all") {
     checkAggregateImports(cases);
-    prepareCases(cases);
+    prepareCases(cases, "check");
     checkAllProofs();
     const count = cases.filter((item) => item.complete).length;
     console.log(`Talos proof library passed: ${count} completed case(s)`);
@@ -29,7 +29,7 @@ function main() {
   }
 
   const selected = selectCase(cases, process.argv[3]);
-  prepareCases([selected]);
+  prepareCases([selected], "check");
   checkCase(selected);
   if (selected.complete) {
     console.log(`Talos proof passed: ${selected.name}`);

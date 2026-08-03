@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 3,
+  "case": "push_twice",
+  "sha256": "d62f015137837e6e4bd6c2cffda2d082b3e3268dc18f9ca2e4da52b07984af81",
+  "byteLength": 1590,
+  "binaryFormatVersion": 1,
+  "validationProfile": "leanexe-core-v1",
+  "artifactBytesModule": "Project.PushTwice.ArtifactBytes",
+  "artifactBytesDefinition": "Project.PushTwice.Artifact.artifactBytes",
+  "rawModuleDefinition": "Project.PushTwice.Artifact.Cache.raw",
+  "cachedProgramModule": "Project.PushTwice.Program",
+  "cachedProgramDefinition": "Project.PushTwice.module",
+  "specModule": "Project.PushTwice.Spec",
+  "proofTarget": "Project.PushTwice.ArtifactTranslation",
+  "identityTheorem": "Project.PushTwice.Artifact.decode_eq_cache",
+  "decodeTheorem": "Wasm.Binary.Proof.decode_sound",
+  "validationTheorem": "Wasm.Binary.Proof.validate_sound",
+  "cacheEqualityTheorem": "Project.PushTwice.Artifact.translation_cache_eq",
+  "artifactCorrectnessTheorem": "Project.PushTwice.Artifact.artifact_module_eq_cache",
+  "behaviorTheorems": [
+    "Project.PushTwice.Spec.pushTwiceSizes_correct"
+  ],
+  "leanToolchain": "leanprover/lean4:v4.31.0",
+  "talosRevision": "bb3277e21c9786e3133d5c1601e34ebdc0bea4df",
+  "verifierSourceSha256": "25aeb7d50d9ce4768b855e78d8ffb94606d02647386de9ca7b75fa026c34d802",
+  "hostAssumptions": []
+}

@@ -120,9 +120,11 @@ theorem func0_encodes (env : HostEnv Unit) (st : Store Unit)
           · simp [lMeasure, lFrame, hfU]
           · intro st' msg
             rfl
-          · intro st' s' h
+          · intro st' s' k' v' written' done' e' c1 c2 c3 c4 c5 c6 c7 c8 c9
+              c10 c11 c12 c13 c14 c15
             wp_run
-            exact h
+            exact ⟨⟨k', v', written', done', e', c1, c2, c3, c4, c5, c6, c7,
+              c8, c9, c10, c11, c12, c13, c14⟩, c15⟩
           · rfl
         · refine wp_iff_cons rfl ?_
           rw [if_neg (by simp [hrest])]

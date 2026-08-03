@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 3,
+  "case": "clob_cancel",
+  "sha256": "b9e304af59b8511a24be491d5e17e0c47f8d0f4a8d89b7471a9b49751ac9cf7e",
+  "byteLength": 1930,
+  "binaryFormatVersion": 1,
+  "validationProfile": "leanexe-core-v1",
+  "artifactBytesModule": "Project.ClobCancel.ArtifactBytes",
+  "artifactBytesDefinition": "Project.ClobCancel.Artifact.artifactBytes",
+  "rawModuleDefinition": "Project.ClobCancel.Artifact.Cache.raw",
+  "cachedProgramModule": "Project.ClobCancel.Program",
+  "cachedProgramDefinition": "Project.ClobCancel.module",
+  "specModule": "Project.ClobCancel.Spec",
+  "proofTarget": "Project.ClobCancel.ArtifactTranslation",
+  "identityTheorem": "Project.ClobCancel.Artifact.decode_eq_cache",
+  "decodeTheorem": "Wasm.Binary.Proof.decode_sound",
+  "validationTheorem": "Wasm.Binary.Proof.validate_sound",
+  "cacheEqualityTheorem": "Project.ClobCancel.Artifact.translation_cache_eq",
+  "artifactCorrectnessTheorem": "Project.ClobCancel.Artifact.artifact_module_eq_cache",
+  "behaviorTheorems": [
+    "Project.ClobCancel.Spec.cancel_correct"
+  ],
+  "leanToolchain": "leanprover/lean4:v4.31.0",
+  "talosRevision": "bb3277e21c9786e3133d5c1601e34ebdc0bea4df",
+  "verifierSourceSha256": "25aeb7d50d9ce4768b855e78d8ffb94606d02647386de9ca7b75fa026c34d802",
+  "hostAssumptions": []
+}

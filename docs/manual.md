@@ -16,13 +16,13 @@ The main rule is simple: write concrete, first-order Lean.  Let Lean type-check 
 6. If compilation fails, simplify the source shape before adding compiler features.
 
 ```sh
-lake build LeanExe.Examples.MyProgram
+tools/leanrun lake build LeanExe.Examples.MyProgram
 
-.lake/build/bin/lean-wasm report \
+tools/leanrun .lake/build/bin/lean-wasm report \
   --module LeanExe.Examples.MyProgram \
   --entry LeanExe.Examples.MyProgram.entry
 
-.lake/build/bin/lean-wasm compile \
+tools/leanrun .lake/build/bin/lean-wasm compile \
   --module LeanExe.Examples.MyProgram \
   --entry LeanExe.Examples.MyProgram.entry \
   --out build/my-program.wasm
@@ -116,7 +116,7 @@ end LeanExe.Examples.ManualScalar
 Compile and run:
 
 ```sh
-.lake/build/bin/lean-wasm compile \
+tools/leanrun .lake/build/bin/lean-wasm compile \
   --module LeanExe.Examples.ManualScalar \
   --entry LeanExe.Examples.ManualScalar.choose \
   --out build/choose.wasm
@@ -290,7 +290,7 @@ The supported `Option` and `Except` combinators include direct `map` and `bind`,
 Compile a stdin command:
 
 ```sh
-.lake/build/bin/lean-wasm compile-wasi-stdin-except \
+tools/leanrun .lake/build/bin/lean-wasm compile-wasi-stdin-except \
   --max-input-bytes 65536 \
   --module LeanExe.Examples.ManualExcept \
   --entry LeanExe.Examples.ManualExcept.bangOrError \
@@ -717,7 +717,7 @@ The accepted compile-time string operations are restricted ASCII `String.toUTF8`
 Use the report command before changing the compiler.  The most useful information is usually the first rejected declaration or the first unsupported external dependency.  Read the dependency name carefully; it often tells you which Lean source form generated the unsupported shape.
 
 ```sh
-.lake/build/bin/lean-wasm report \
+tools/leanrun .lake/build/bin/lean-wasm report \
   --module LeanExe.Examples.MyProgram \
   --entry LeanExe.Examples.MyProgram.entry
 ```
@@ -725,7 +725,7 @@ Use the report command before changing the compiler.  The most useful informatio
 Use `ownership-report` when an accepted program's allocation or release behavior needs inspection.  The command compiles the same checked entry, then prints ownership data from the extracted IR: result owner offsets, helper fresh-result summaries, compiler-emitted releases, returned owner expressions, fold accumulator release offsets, and explicit `LeanExe.Runtime.release` expressions.  This report is meant for compiler development and for source-level ownership boundaries; ordinary source rejection should still start with `report`.
 
 ```sh
-.lake/build/bin/lean-wasm ownership-report \
+tools/leanrun .lake/build/bin/lean-wasm ownership-report \
   --module LeanExe.Examples.MyProgram \
   --entry LeanExe.Examples.MyProgram.entry
 ```
@@ -733,7 +733,7 @@ Use `ownership-report` when an accepted program's allocation or release behavior
 Use `dump-ir` after `report` accepts an entry when evaluation order, lowered control flow, calls, traps, or release placement remains in question.  The command prints the complete extracted IR for the checked entry and its compiled helpers.  It is a compiler diagnostic, so source authors should prefer the rejection report unless the accepted output behaves unexpectedly.
 
 ```sh
-.lake/build/bin/lean-wasm dump-ir \
+tools/leanrun .lake/build/bin/lean-wasm dump-ir \
   --module LeanExe.Examples.MyProgram \
   --entry LeanExe.Examples.MyProgram.entry
 ```

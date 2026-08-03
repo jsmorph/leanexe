@@ -1,27 +1,29 @@
 # Verifying a Program
 
-LeanExe uses two tools for Talos proofs.  The artifact tool compiles one registered Lean entry and generates the Talos model of its current WASM output.  The proof tool repeats that generation before asking Lean to check the handwritten specification, so a successful proof always concerns output from the current source and compiler.
+LeanExe uses four tools for source-driven proof, exact-artifact proof, and empirical semantic comparison.  The source artifact tool compiles one registered Lean entry and generates the Talos model of its current WASM output, while the source proof tool repeats that generation before checking the handwritten specification.  The exact-artifact tool starts from a frozen binary package, and the conformance tool runs a pinned official WebAssembly corpus slice through Talos and Wasmtime.
 
-The compiler remains outside the proof's trusted base.  The Lean kernel checks the theorem over Talos's WASM model, and the Talos decoder constructs that model from WAT rendered from the generated WASM.  A distributed artifact must come from the same source, compiler, and pinned artifact tools used by the gate, or its bytes must be compared with the gate's ignored `program.wasm` output.
+The compiler remains outside both proofs' trusted base.  The source-driven gate checks the Talos model decoded from generated WAT, while the exact-artifact theorem checks the Talos translation of a validated module decoded from embedded binary bytes.  A distributed binary receives the artifact theorem only when its complete byte sequence equals the frozen package and Lean's embedded value.
 
 ## Inputs and Outputs
 
 | Stage | Explicit inputs | Other inputs used by the stage | Outputs | Human work |
 |-------|-----------------|--------------------------------|---------|------------|
 | Write and test the program | A Lean source module and exported entry definition. | The accepted source subset, public ABI, compiler semantics, and ordinary test infrastructure. | Tracked Lean source and tests; checked declarations under the ignored root `.lake` tree. | Choose the computation, types, error behavior, and test cases. |
-| `talos-artifact.js prepare` | A case name and its entry in `proofs/talos/cases.json`. | Lean 4.31.0, the root Lake project, `lean-wasm`, `wasm-tools` 1.251.0, the pinned Talos revision, and the required systemd resource policy. | Ignored WASM and WAT under `proofs/talos/.generated/<case>/`; an ignored `lean/Project/<Case>/Program.lean`. | Inspect the generated instruction stream and decide what property warrants proof. |
+| `talos-artifact.js prepare` | A case name and its entry in `proofs/talos/cases.json`. | Lean 4.31.0, the root Lake project, `lean-wasm`, `wasm-tools` 1.251.0, the pinned Talos revision, and the required systemd resource policy. | Ignored WASM and WAT under `proofs/talos/.generated/<case>/`; a tracked `lean/Project/<Case>/Program.lean` proof cache. | Inspect any changed instruction stream and decide what property warrants proof. |
 | Develop the specification | The source meaning, generated `Program.lean`, generated WAT, and the intended claim. | Talos semantics, the shared runtime theorems, representation predicates, arithmetic lemmas, and examples from completed cases. | Tracked `Spec.lean` and any tracked helper proof modules under `lean/Project/<Case>/`. | State adequate preconditions and postconditions, then construct the proof. |
 | `talos-proof.js check` | A case name or `--all`, the registry, current source, and handwritten proof modules. | Every artifact-stage dependency, the proof Lake project, its pinned manifest, runtime pins, and aggregate imports. | Ignored generated files and Lake outputs; a zero exit status only after the selected theorem builds. | Interpret a failure and change source, specification, or proof according to its cause. |
+| `artifact-proof.js check` | An exact `program.wasm` path and registered artifact proof target. | The content-addressed package, strict manifest and registry, embedded bytes, binary verifier, Talos semantics, and behavioral proof modules. | Lake outputs; a zero exit status only after identity, formal artifact, behavior, and manifest-declaration checks pass. | Review the manifest, trusted revisions, host assumptions, and behavioral statement. |
+| `artifact-conformance.js check` | The pinned conformance configuration and exact official `.wast` files and command lines. | Pinned CodeLib and testsuite revisions, `wasm-tools` 1.251.0, Talos, and Wasmtime 44.0.0 with the recorded feature settings. | Exact decoder or validator classifications, per-file Talos counts, and Wasmtime outcomes; a zero exit status only when every configured result matches. | Review invalid-module classifications, coverage labels, skipped command kinds, and every semantic discrepancy. |
 
-The artifact stage creates Talos's required `rust/<case>/Cargo.toml` and `rust/build/<case>/` layout inside an operating-system temporary directory.  It deletes that directory after Talos emits `Program.lean`, and cleanup failures make the command fail.  The repository therefore contains no tracked Rust crate, Cargo workspace, WASM, WAT, or generated Lean model.
+The source artifact stage creates Talos's required `rust/<case>/Cargo.toml` and `rust/build/<case>/` layout inside an operating-system temporary directory.  It deletes that directory after Talos emits `Program.lean`, and cleanup failures make the command fail.  The source-driven tree retains no generated WASM or WAT, while it tracks each generated Lean model as an untrusted proof cache required by artifact-only and cold-checkout verification.
 
-The persistent case consists of the source program, its tests, one registry entry, runtime pins, an aggregate import after completion, and handwritten proof modules.  A case may divide its proof among many files, with `Spec.lean` importing the final theorem.  The ignored `Program.lean` remains a local dependency that either tool can regenerate.
+The persistent source-driven case consists of the source program, its tests, one registry entry, runtime pins, an aggregate import after completion, the generated `Program.lean` cache, and handwritten proof modules.  A case may divide its proof among many files, with `Spec.lean` importing the final theorem.  Either source-driven tool can regenerate the cache, and a byte change marks a changed proof subject that must pass the exact-artifact equality and behavioral gates.
 
 ## Resource Policy
 
-Both tools enforce the repository's cgroup policy for every Lake, Lean, `lean-wasm`, and Talos verifier process.  Each child receives `MemoryHigh=4G`, `MemoryMax=6G`, `MemorySwapMax=1G`, `CPUQuota=100%`, `nice -n 10`, `ionice -c 3`, and a stage-specific timeout.  The tools run stages serially and stop when systemd cannot create the required user scope.
+All four tools call `tools/leanrun` for every Lake, Lean, `lean-wasm`, and Talos verifier process.  Each child receives `MemoryHigh=4G`, `MemoryMax=6G`, `MemorySwapMax=1G`, `CPUQuota=100%`, `nice -n 10`, `ionice -c 3`, `LEAN_NUM_THREADS=1`, and a stage-specific timeout.  The runner shares the same-user `../vq` lock, and the tools stop when they cannot acquire that lock or create the required user scope.
 
-Do not wrap these two commands in a second `systemd-run` scope.  The tools create a separate limited scope for each expensive child, and an outer scope complicates diagnostics without strengthening the limits.  Do not run either tool while another Lean or Lake process is active.
+Do not wrap these commands in a second resource scope.  The tools create a separate limited scope for each expensive child, and the shared lock queues behind any participating Lean or Lake process.  The Node drivers use signal-aware process groups, so `SIGINT` or `SIGTERM` reaches the active runner, timeout process, Lake process, and Lean child before the driver exits.
 
 ## Artifact Tool
 
@@ -77,10 +79,49 @@ After the theorem is complete, set `complete` to `true` and import `Project.<Cas
 tools/talos-proof.js check --all
 ```
 
-The final gate can fail because the source no longer compiles, `wasm-tools` has the wrong version, Talos rejects the WAT, the generated model does not compile, a runtime definition changed, a handwritten theorem no longer matches the current instruction stream, or the registry and aggregate imports disagree.  It also fails when a child exceeds its timeout, the cgroup manager rejects a required limit, a generated output cannot be replaced, or a temporary directory cannot be removed.  These failures preserve the stage name and child exit status so the next investigation starts at the first failed boundary.
+The final gate can fail because the source no longer compiles, `wasm-tools` has the wrong version, Talos rejects the WAT, the generated model differs from the tracked cache, the cached model does not compile, a runtime definition changed, a handwritten theorem no longer matches the current instruction stream, or the registry and aggregate imports disagree.  It also fails when a child exceeds its timeout, the cgroup manager rejects a required limit, a generated ignored output cannot be replaced, or a temporary directory cannot be removed.  These failures preserve the stage name and child status so the next investigation starts at the first failed boundary.
+
+## Exact-Artifact Tool
+
+An exact-artifact package has the path `proofs/artifacts/<case>/<sha256>/` and contains `program.wasm` and `manifest.json`.  The separate artifact registry maps its case, digest, manifest, and proof target, while `Project.<Case>.ArtifactBytes` embeds the complete byte sequence in Lean.  Schema three names the embedded bytes, decoded raw module, cached execution module, closed module-equality theorem, and concrete source behavioral theorems, while recording both Lean pins, the Talos revision, the normative verifier-source digest, and host assumptions.
+
+Check an external binary by passing its path and the registered artifact target.  The command rejects an unregistered target, a manifest mismatch, a changed digest or length, any byte difference from the immutable package, or any difference from Lean's embedded byte value.  It then builds the exact artifact theorem and behavioral specification, checks the expected theorem types, and rejects `sorryAx` or an axiom outside the standard logical axioms and generated decision-certificate families recorded by the artifact format.
+
+```sh
+tools/artifact-proof.js check \
+  proofs/artifacts/fold_sum/b599860eb8fe3937148455c27c8cfca5473f967001e563530b4790c43017e3b5/program.wasm \
+  Project.FoldSum.ArtifactTranslation
+```
+
+`check-artifacts` performs the identity, embedded-byte, and exact-artifact theorem stages for all twenty packages.  `check-all` adds every behavioral specification and the aggregate manifest-declaration check.  Neither aggregate mode invokes LeanExe, reads a source program, or invokes `wasm-tools`.
+
+## Semantic Conformance Tool
+
+The conformance configuration pins the CodeLib and official WebAssembly testsuite revisions, Wasmtime version and feature options, twenty-five exact execution files with coverage labels, and fifteen invalid-module commands identified by file, assertion kind, and source line.  The command verifies those revisions and executable versions, builds the pinned Talos testsuite executable and the artifact classifier, and runs each operation serially.  A temporary one-file corpus selects each execution filename exactly, avoiding the Talos harness's substring matching.
+
+```sh
+tools/artifact-conformance.js check
+```
+
+The invalid-module stage extracts each configured official module and requires the exact decoder or validator error constructor recorded in the configuration.  `wasm-tools` adds custom name sections when encoding text-origin `assert_invalid` modules, so the command strips custom sections from those cases before classification.  It preserves raw `assert_malformed` binary modules byte-for-byte, and the 2026-08-03 run matched all fifteen classifications, including truncation, version, section, integer-width, alignment, stack, and memory-limit failures.
+
+Talos executes supported assertions and reports unsupported command kinds as skips, so the invalid-module stage supplies separate evidence for the artifact decoder and validator.  The 2026-08-03 execution run produced 3,853 passes, six known assertion failures, and 627 skips in Talos, while Wasmtime passed all twenty-five files with `function-references=y`.  The command warns only when the failures exactly match the six imported-memory rows recorded for `memory_grow.wast`; an upstream repair removes the warning, while any changed or additional failure stops the gate.
+
+## Release Evidence Tool
+
+The release file binds the artifact registry hash, every package-manifest hash, exact theorem names, verifier and release-input digests, tool pins, and machine-produced gate receipts.  The release-input digest includes every project proof source, tracked Talos execution cache, recursive local `LeanExe` import, Lake definition, selected binary, manifest, pin, and verification driver used by the two gates.  Its status follows the immutable source revision, accepted kernel disposition, matching aggregate and conformance receipts, and a successful cold-checkout receipt; removing a blocker string without satisfying its corresponding field makes validation fail.
+
+```sh
+tools/artifact-release.js inspect
+tools/artifact-release.js refresh
+tools/artifact-release.js check-ready
+tools/artifact-release.js check-cold <revision>
+```
+
+`inspect` validates the draft without claiming release readiness, while `refresh` reconstructs package records and consumes matching receipts from `build/evidence`.  `check-ready` returns a failure until every derived condition holds.  `check-cold` compares the current and cloned release inputs before setup, checks the exact Lean and dependency revisions, rejects tracked mutations after setup or either gate, reruns both gates, and writes the cold receipt before removing its temporary checkout.
 
 ## Committed Files
 
-Commit the source module, tests, `cases.json`, runtime pins, `Project.lean` import after completion, `Spec.lean`, and every handwritten helper it imports.  Commit documentation that states the theorem's scope and any new reusable proof result.  `git status --ignored` may show local generated output, but ordinary `git status` must omit `.generated` artifacts and every `Project/<Case>/Program.lean`.
+Commit the source module, tests, `cases.json`, runtime pins, `Project.lean` import after completion, generated `Program.lean` proof cache, `Spec.lean`, and every handwritten helper it imports.  An exact-artifact migration also commits the content-addressed binary and manifest, artifact registry entry, embedded bytes, decoded caches, and exact translation theorem modules.  A conformance change commits `proofs/talos/conformance.json`, the driver or parser tests it changes, and documentation of the pinned revisions and observed result.  Every proof change also records the theorem's scope, host assumptions, and new reusable results.
 
-Never edit `Program.lean`, and never recreate a persistent `proofs/talos/rust` tree.  Run the artifact tool again when the model needs to change, then repair the handwritten theorem against the new instruction stream.  Record focused and aggregate gate results in `devnotes.md` without treating an old cached build as current evidence.
+Never edit `Program.lean` by hand, and never recreate a persistent `proofs/talos/rust` tree.  Run the artifact tool when the model needs to change, review the tracked cache diff, then repair the handwritten theorem against the new instruction stream.  Record focused and aggregate gate results in `devnotes.md` without treating an old object file as current evidence.

@@ -17,16 +17,16 @@ The source lives in the [JSON tree command](../LeanExe/Examples/JsonTreeCommand.
 Build the compiler before compiling the demo entries.  The commands below place the generated WASM modules in `build/demo`.  The byte and argv limits are explicit because the WASI adapters allocate bounded input regions inside the generated module.
 
 ```sh
-lake build lean-wasm
+tools/leanrun lake build lean-wasm
 mkdir -p build/demo
 
-.lake/build/bin/lean-wasm compile-wasi-stdin-except \
+tools/leanrun .lake/build/bin/lean-wasm compile-wasi-stdin-except \
   --max-input-bytes 4096 \
   --module LeanExe.Examples.JsonTreeCommand \
   --entry LeanExe.Examples.JsonTreeCommand.makeTree \
   --out build/demo/make-tree.wasm
 
-.lake/build/bin/lean-wasm compile-wasi-stdin-argv-except \
+tools/leanrun .lake/build/bin/lean-wasm compile-wasi-stdin-argv-except \
   --max-input-bytes 8192 \
   --max-args 8 \
   --max-argv-bytes 256 \
