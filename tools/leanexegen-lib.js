@@ -7,9 +7,15 @@ const { expectedTalosRevision } = require("./artifact-manifest");
 const { verifierSourceSha256 } = require("./artifact-source");
 
 const codexTaskSchemaVersion = 1;
-const packageSchemaVersion = 1;
+const packageSchemaVersion = 2;
 const caseNamePattern = /^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$/;
 const decimalPattern = /^(?:0|[1-9][0-9]*)$/;
+const uint64Maximum = 18446744073709551615n;
+const proofKitModules = Object.freeze(["Project.ProofKit.Control"]);
+const proofKitRelativeFiles = Object.freeze([
+  "proofs/talos/lean/Project/ProofKit/Control.lean",
+  "proofs/talos/lean/Project/ProofKit/README.md",
+]);
 
 function fail(message) {
   throw new Error(message);
@@ -98,13 +104,15 @@ function validateProofImports(job, modules) {
   for (const item of modules) {
     for (const imported of imports(item.source)) {
       const allowedDependency = imported === "CodeLib" ||
+        imported.startsWith("CodeLib.") ||
         imported.startsWith("Init.") ||
         imported.startsWith("Std.") ||
         imported.startsWith("Mathlib.") ||
         imported.startsWith("Interpreter.");
+      const allowedProofKit = proofKitModules.includes(imported);
       const allowedGenerated = imported.startsWith(generatedPrefix) &&
         imported !== job.sourceModule;
-      if (!allowedDependency && !allowedGenerated) {
+      if (!allowedDependency && !allowedProofKit && !allowedGenerated) {
         fail(`${item.module} imports unsupported proof dependency ${imported}`);
       }
     }
@@ -123,17 +131,19 @@ function validateSamples(samples, allowEmpty) {
   }
   for (const [index, sample] of samples.entries()) {
     exactKeys(sample, ["arguments", "expectedStdout"], `samples[${index}]`);
-    if (!Array.isArray(sample.arguments) || sample.arguments.length === 0) {
-      fail(`samples[${index}].arguments must be a nonempty array`);
+    if (!Array.isArray(sample.arguments) || sample.arguments.length !== 1) {
+      fail(`samples[${index}].arguments must contain exactly one UInt64`);
     }
     for (const [argumentIndex, argument] of sample.arguments.entries()) {
-      if (typeof argument !== "string" || !decimalPattern.test(argument)) {
-        fail(`samples[${index}].arguments[${argumentIndex}] must be an unsigned decimal`);
+      if (typeof argument !== "string" || !decimalPattern.test(argument) ||
+          BigInt(argument) > uint64Maximum) {
+        fail(`samples[${index}].arguments[${argumentIndex}] must be a UInt64 decimal`);
       }
     }
     if (typeof sample.expectedStdout !== "string" ||
-        !decimalPattern.test(sample.expectedStdout)) {
-      fail(`samples[${index}].expectedStdout must be an unsigned decimal`);
+        !decimalPattern.test(sample.expectedStdout) ||
+        BigInt(sample.expectedStdout) > uint64Maximum) {
+      fail(`samples[${index}].expectedStdout must be a UInt64 decimal`);
     }
   }
   return samples;
@@ -163,6 +173,7 @@ function validateCodexTaskOutcome(response, task) {
   requireStringArray(response.decisions, "decisions");
   requireStringArray(response.questions, "questions");
   requireStringArray(response.problems, "problems");
+  requireStringArray(response.hostAssumptions, "hostAssumptions");
   if (response.outcome === "generated") {
     requireSource(response.source, "source");
     if (response.questions.length !== 0 || response.problems.length !== 0) {
@@ -175,13 +186,13 @@ function validateCodexTaskOutcome(response, task) {
     if (selected.length === 0 || other.length !== 0) {
       fail(`${response.outcome} Codex outcome has inconsistent detail arrays`);
     }
+    return response;
   }
   const programGenerated = task === "lean-program" && response.outcome === "generated";
   validateSamples(response.samples, !programGenerated);
   if (!programGenerated && response.samples.length !== 0) {
     fail(`${task} outcome must not contain samples`);
   }
-  requireStringArray(response.hostAssumptions, "hostAssumptions");
   const formalGenerated = task === "formal-specification" && response.outcome === "generated";
   if (!formalGenerated && response.hostAssumptions.length !== 0) {
     fail(`${task} outcome must not contain host assumptions`);
@@ -561,6 +572,18 @@ function currentToolPins(repoRoot) {
   const release = JSON.parse(fs.readFileSync(
     path.join(repoRoot, "proofs", "artifacts", "release.json"), "utf8"));
   const leanToolchain = fs.readFileSync(path.join(repoRoot, "lean-toolchain"), "utf8").trim();
+  const proofKitHash = crypto.createHash("sha256");
+  proofKitHash.update("leanexe-proof-kit-v1\0");
+  for (const relative of proofKitRelativeFiles) {
+    const absolute = path.join(repoRoot, ...relative.split("/"));
+    const stat = fs.lstatSync(absolute);
+    if (!stat.isFile() || stat.isSymbolicLink()) {
+      fail(`invalid proof-kit file: ${relative}`);
+    }
+    const contents = fs.readFileSync(absolute);
+    proofKitHash.update(`${relative}\0${contents.length}\0`);
+    proofKitHash.update(contents);
+  }
   if (!release.kernelReview || release.kernelReview.selectedToolchain !== leanToolchain ||
       !/^[0-9a-f]{40}$/.test(release.kernelReview.candidateCommit) ||
       !/^[0-9a-f]{64}$/.test(release.kernelReview.reproductionSha256) ||
@@ -576,6 +599,7 @@ function currentToolPins(repoRoot) {
     leanCommit: release.kernelReview.candidateCommit,
     talosRevision: expectedTalosRevision(repoRoot),
     proofLakeManifestSha256: sha256(lakeManifest),
+    proofKitSourceSha256: proofKitHash.digest("hex"),
     verifierSourceSha256: verifierSourceSha256(repoRoot),
     nodeVersion: fs.readFileSync(path.join(repoRoot, ".node-version"), "utf8").trim(),
     wasmToolsVersion: fs.readFileSync(
@@ -696,6 +720,7 @@ function createPackage(stageRoot, values) {
   }));
   writeAtomic(path.join(stageRoot, "stage-reports.json"), jsonBytes(values.stageReports));
   writeAtomic(path.join(stageRoot, "tool-pins.json"), jsonBytes(values.toolPins));
+  writeAtomic(path.join(stageRoot, "proof-library.md"), Buffer.from(values.proofLibraryCatalog));
   writeAtomic(path.join(stageRoot, "program.wasm"), values.wasmBytes);
   installSources(path.join(stageRoot, "proof"), values.sources);
   const manifest = {
@@ -861,6 +886,7 @@ function validatePackage(packageRoot) {
     "host-assumptions.json",
     "stage-reports.json",
     "tool-pins.json",
+    "proof-library.md",
     "program.wasm",
     `proof/${moduleFile(job.sourceModule)}`,
     `proof/${moduleFile(job.formalSpecModule)}`,
@@ -880,14 +906,16 @@ function validatePackage(packageRoot) {
     const source = fs.readFileSync(path.join(proofRoot, ...relative.split("/")), "utf8");
     for (const imported of imports(source)) {
       const allowedDependency = imported === "CodeLib" ||
+        imported.startsWith("CodeLib.") ||
         imported.startsWith("Init.") ||
         imported.startsWith("Std.") ||
         imported.startsWith("Mathlib.") ||
         imported.startsWith("Interpreter.") ||
         imported.startsWith("Project.Artifact.Binary.");
+      const allowedProofKit = proofKitModules.includes(imported);
       const allowedGenerated = imported.startsWith(`${job.namespace}.`) &&
         imported !== job.sourceModule;
-      if (!allowedDependency && !allowedGenerated) {
+      if (!allowedDependency && !allowedProofKit && !allowedGenerated) {
         fail(`${moduleName} imports unsupported proof dependency ${imported}`);
       }
     }
@@ -903,11 +931,13 @@ module.exports = {
   currentToolPins,
   exactKeys,
   installSources,
+  imports,
   kernelAuditFindings,
   makeJob,
   moduleFile,
   packageSchemaVersion,
   programExportIndex,
+  proofKitModules,
   rewriteProgramNamespace,
   sha256,
   validateCodexTaskOutcome,

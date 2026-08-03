@@ -72,6 +72,20 @@ LEAN_NUM_THREADS=1
 NO_COLOR=1
 export PATH LEAN_NUM_THREADS NO_COLOR
 
+if [ "${LEANRUN_IN_SCOPE:-}" = "1" ]; then
+  cgroup_path="$(sed -n 's/^0:://p' /proc/self/cgroup)"
+  cgroup_dir="/sys/fs/cgroup$cgroup_path"
+  if [ ! -d "$cgroup_dir" ] ||
+     [ "$(cat "$cgroup_dir/memory.high")" != "4294967296" ] ||
+     [ "$(cat "$cgroup_dir/memory.max")" != "6442450944" ] ||
+     [ "$(cat "$cgroup_dir/memory.swap.max")" != "1073741824" ] ||
+     [ "$(cat "$cgroup_dir/cpu.max")" != "100000 100000" ]; then
+    echo "leanrun: inherited scope does not have the required resource limits" >&2
+    exit 1
+  fi
+  exec ionice -c 3 timeout "$run_timeout" "$@"
+fi
+
 mkdir -p "$lock_dir"
 exec 9>"$lock_dir/1"
 if ! flock -w "$lock_timeout" 9; then
@@ -84,5 +98,5 @@ exec systemd-run --user --scope --quiet --collect \
   -p MemoryMax=6G \
   -p MemorySwapMax=1G \
   -p CPUQuota=100% \
-  nice -n 10 ionice -c 3 \
+  env LEANRUN_IN_SCOPE=1 nice -n 10 ionice -c 3 \
   timeout "$run_timeout" "$@"

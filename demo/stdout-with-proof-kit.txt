@@ -1,0 +1,22 @@
+2026-08-03T20:25:07.314Z Stage 1: Job setup
+
+2026-08-03T20:25:07.345Z Stage 2: Formal specification
+
+2026-08-03T20:27:13.923Z Stage 3: Lean program
+
+2026-08-03T20:29:39.332Z Stage 4: WASM compilation and freezing
+
+2026-08-03T20:29:39.870Z Stage 5: Direct artifact proof
+
+2026-08-03T20:33:53.795Z Stage 6: Sample execution
+
+2026-08-03T20:33:53.827Z Stage 7: Publication
+
+2026-08-03T20:33:53.833Z Stage 8: Results
+
+Input: 360
+Output: 6
+
+Run:
+
+`/media/hd2/src/leanexe/build/tools/wasmtime/current/wasmtime run --invoke compute /tmp/leanexegen-prime-factors-proofkit-20260803/prime-factors.wasm 360`
