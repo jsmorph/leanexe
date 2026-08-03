@@ -16,7 +16,7 @@ All three AI tasks iterate using real Lean checks, and the program job also iter
 
 The final proof starts from the emitted WASM bytes, decodes and validates them in Lean, translates the validated module into the [Talos](https://github.com/cajal-technologies/talos) execution model, and proves the formal specification for that module.  The proof task receives the formal specification and the artifact model, while the source program and compiler remain outside its workspace.  `tools/leanexegen verify` checks the resulting theorem without running Codex or recompiling the source.
 
-The Lean excerpts below explain the structure of the resulting proof.  A from-scratch run on 2026-08-03 completed generation in 7 minutes 39 seconds and independent verification in about 60 seconds.  The retained [standard output](stdout.txt) and [standard error](stderr.txt) are the complete streams from that generation process.  The exact generated [formal specification](spec.lean), [Lean program](program.lean), and [behavioral proof](proof.lean) are stored beside this walkthrough.
+The Lean excerpts below explain the structure of the resulting proof.  A from-scratch run on 2026-08-03 completed generation in 7 minutes 39 seconds and independent verification in about 60 seconds.  The retained [standard output](stdout.txt) and [standard error](stderr.txt) are the complete streams from that generation process.  The exact generated [formal specification](spec.lean), [Lean program](program.lean), [compiled WASM](program.wasm), [rendered WAT](program.wat), and [behavioral proof](proof.lean) are stored beside this walkthrough.
 
 ## 1. Describe the program
 
@@ -95,7 +95,7 @@ The AI session type-checks `Source.compute : UInt64 → UInt64`, runs the LeanEx
 
 ## 4. Compile and exercise the program
 
-LeanExe compiles the accepted source into `prime-factors.wasm`, and the orchestrator freezes those bytes for the rest of the job.  It also renders the module as WAT so Talos can produce a Lean definition of every WebAssembly function and the complete module.  Proof generation therefore concerns the program that will be published, rather than a later compilation of the Lean source.
+LeanExe compiles the accepted source into the retained 1,348-byte [WASM module](program.wasm), and the orchestrator freezes those bytes for the rest of the job.  The retained 13,421-byte [WAT rendering](program.wat) lets Talos produce a Lean definition of every WebAssembly function and the complete module.  Proof generation therefore concerns the program that was published, rather than a later compilation of the Lean source.
 
 The program task proposes sample inputs and outputs, which the orchestrator runs against the compiled WASM.  The [captured standard output](stdout.txt) records every stage's start time, the checked sample, and the final Wasmtime command.  The [captured standard error](stderr.txt) records Wasmtime's `--invoke` notices and the four `leanexegen` trust-boundary warnings.  The retained sample checks multiplicity counting on a composite input.
 
@@ -109,7 +109,7 @@ The resulting function can also run directly under Wasmtime.  Values through `2^
 ```sh
 build/tools/wasmtime/current/wasmtime run \
   --invoke compute \
-  /tmp/leanexegen-prime-factors-timestamped/prime-factors.wasm \
+  demo/program.wasm \
   60
 ```
 
