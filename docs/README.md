@@ -12,7 +12,7 @@ LeanExe documentation separates current behavior, development work, design recor
 | [Verifying a Program](verifying.md) | Procedure for registering, proving, and checking a Talos artifact. |
 | [Artifact Verification Format](artifact-format.md) | Restricted WebAssembly binary profile, formal boundaries, artifact packages, manifests, and release evidence. |
 | [`leanexegen` Headless Codex Orchestrator](leanexegen.md) | CLI stages, isolated Codex tasks, fixed formal interface, proof package, trust boundary, and current limitations. |
-| [Prime-Factor Artifact Walkthrough](leanexegen-demo.md) | Step-by-step prose request, generated Lean shapes, artifact theorem, samples, package identities, and independent verification. |
+| [Prime-Factor Artifact Walkthrough](../demo/README.md) | Step-by-step prose request, generated Lean sources, artifact theorem, samples, and independent verification. |
 | [Talos Imported-Memory Defect](telos-bug.md) | Reproduction, provenance, semantic cause, artifact-profile effect, and repair boundary for the imported-memory conformance failure. |
 | [JSON Tree WASI Demo](demo.md) | End-to-end source, build, execution, and verification example. |
 
