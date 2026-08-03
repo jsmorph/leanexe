@@ -13,6 +13,12 @@ function run(args) {
 function main() {
   run([process.execPath, path.join("tools", "check-node-version.js")]);
   run([process.execPath, path.join("test", "run_process.js")]);
+  run([process.execPath, path.join("test", "artifact_conformance.js")]);
+  run([process.execPath, path.join("test", "artifact_identity.js")]);
+  run([process.execPath, path.join("test", "artifact_migrate.js")]);
+  run([process.execPath, path.join("test", "artifact_release.js")]);
+  run([process.execPath, path.join("test", "talos_cache.js")]);
+  run([process.execPath, path.join("test", "leanexegen.js")]);
   run(["lake", "build"]);
   run(["lake", "build", "LeanExe"]);
   run(["lake", "build", "LeanExe.Examples.Correctness"]);

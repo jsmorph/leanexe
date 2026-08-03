@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 3,
+  "case": "clob_match_fuel",
+  "sha256": "971deb775adf62fb4db34ffe353053b8660b4460a13c870341eba84626410e8a",
+  "byteLength": 6881,
+  "binaryFormatVersion": 1,
+  "validationProfile": "leanexe-core-v1",
+  "artifactBytesModule": "Project.ClobMatchFuel.ArtifactBytes",
+  "artifactBytesDefinition": "Project.ClobMatchFuel.Artifact.artifactBytes",
+  "rawModuleDefinition": "Project.ClobMatchFuel.Artifact.Cache.raw",
+  "cachedProgramModule": "Project.ClobMatchFuel.Program",
+  "cachedProgramDefinition": "Project.ClobMatchFuel.module",
+  "specModule": "Project.ClobMatchFuel.Spec",
+  "proofTarget": "Project.ClobMatchFuel.ArtifactTranslation",
+  "identityTheorem": "Project.ClobMatchFuel.Artifact.decode_eq_cache",
+  "decodeTheorem": "Wasm.Binary.Proof.decode_sound",
+  "validationTheorem": "Wasm.Binary.Proof.validate_sound",
+  "cacheEqualityTheorem": "Project.ClobMatchFuel.Artifact.translation_cache_eq",
+  "artifactCorrectnessTheorem": "Project.ClobMatchFuel.Artifact.artifact_module_eq_cache",
+  "behaviorTheorems": [
+    "Project.ClobMatchFuel.Correct.matchFuel_correct"
+  ],
+  "leanToolchain": "leanprover/lean4:v4.31.0",
+  "talosRevision": "bb3277e21c9786e3133d5c1601e34ebdc0bea4df",
+  "verifierSourceSha256": "25aeb7d50d9ce4768b855e78d8ffb94606d02647386de9ca7b75fa026c34d802",
+  "hostAssumptions": []
+}

@@ -11,6 +11,7 @@ const proofRoot = path.join(talosRoot, "lean");
 const registryPath = path.join(talosRoot, "cases.json");
 const generatedRoot = path.join(talosRoot, ".generated");
 const leanWasm = path.join(repoRoot, ".lake", "build", "bin", "lean-wasm");
+const leanrun = path.join(repoRoot, "tools", "leanrun");
 const codeLibRoot = path.join(
   proofRoot,
   ".lake",
@@ -25,27 +26,6 @@ const verifier = path.join(
   "bin",
   "verifier",
 );
-
-const limitedPrefix = [
-  "--user",
-  "--scope",
-  "--quiet",
-  "--collect",
-  "-p",
-  "MemoryHigh=4G",
-  "-p",
-  "MemoryMax=6G",
-  "-p",
-  "MemorySwapMax=1G",
-  "-p",
-  "CPUQuota=100%",
-  "nice",
-  "-n",
-  "10",
-  "ionice",
-  "-c",
-  "3",
-];
 
 function run(stage, command, args, options = {}) {
   const result = childProcess.spawnSync(command, args, {
@@ -65,14 +45,11 @@ function run(stage, command, args, options = {}) {
 }
 
 function runLimited(stage, timeout, command, args, cwd) {
-  // LEAN_NUM_THREADS=1 serializes Lake's job scheduling: Lake runs
-  // builds on Lean's task pool, and several multi-gibibyte workers in
-  // one constrained scope thrash against the memory threshold.
   run(
     stage,
-    "systemd-run",
-    [...limitedPrefix, "timeout", timeout, command, ...args],
-    { cwd, env: { ...process.env, LEAN_NUM_THREADS: "1" } },
+    leanrun,
+    [command, ...args],
+    { cwd, env: { ...process.env, LEANRUN_TIMEOUT: timeout } },
   );
 }
 
@@ -120,7 +97,15 @@ function loadRegistry() {
     }
     expectedKeys(
       item,
-      ["name", "module", "entry", "leanModule", "specTarget", "complete"],
+      [
+        "name",
+        "module",
+        "entry",
+        "leanModule",
+        "specTarget",
+        "behaviorTheorems",
+        "complete",
+      ],
       description,
     );
     for (const field of ["name", "module", "entry", "leanModule", "specTarget"]) {
@@ -146,6 +131,12 @@ function loadRegistry() {
     }
     if (typeof item.complete !== "boolean") {
       throw new Error(`${description}.complete must be a boolean`);
+    }
+    if (!Array.isArray(item.behaviorTheorems) || item.behaviorTheorems.length === 0 ||
+        item.behaviorTheorems.some((theorem) =>
+          typeof theorem !== "string" ||
+          !/^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*$/.test(theorem))) {
+      throw new Error(`${description}.behaviorTheorems must contain Lean declaration names`);
     }
     if (names.has(item.name)) {
       throw new Error(`${registryPath}: duplicate case name ${item.name}`);
@@ -300,7 +291,29 @@ function replaceIfChanged(source, destination) {
   return true;
 }
 
-function prepareCase(item, wasmTools) {
+function installProgramCache(item, generated, mode, root = proofRoot) {
+  const destination = path.join(root, "Project", item.leanModule, "Program.lean");
+  if (mode === "refresh") {
+    replaceIfChanged(generated, destination);
+    return;
+  }
+  if (mode !== "check") throw new Error(`unsupported Talos cache mode: ${mode}`);
+  let expected;
+  try {
+    expected = fs.readFileSync(destination);
+  } catch (error) {
+    throw new Error(`${item.name}: could not read tracked program cache: ${error.message}`);
+  }
+  const found = fs.readFileSync(generated);
+  if (!expected.equals(found)) {
+    throw new Error(
+      `${item.name}: generated program differs from the tracked cache; ` +
+      `run tools/talos-artifact.js prepare ${item.name} to refresh it`,
+    );
+  }
+}
+
+function prepareCase(item, wasmTools, programMode) {
   console.log(`Preparing Talos artifact: ${item.name}`);
   const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), "leanexe-talos-"));
   let operationError = null;
@@ -356,10 +369,7 @@ function prepareCase(item, wasmTools) {
     const artifactRoot = path.join(generatedRoot, item.name);
     replaceIfChanged(wasm, path.join(artifactRoot, "program.wasm"));
     replaceIfChanged(wat, path.join(artifactRoot, "program.wat"));
-    replaceIfChanged(
-      program,
-      path.join(proofRoot, "Project", item.leanModule, "Program.lean"),
-    );
+    installProgramCache(item, program, programMode);
   } catch (error) {
     operationError = error;
   }
@@ -381,10 +391,10 @@ function prepareCase(item, wasmTools) {
   console.log(`Prepared Talos artifact: ${item.name}`);
 }
 
-function prepareCases(cases) {
+function prepareCases(cases, programMode) {
   const wasmTools = checkPrerequisites();
   buildCompilerInputs(cases);
-  for (const item of cases) prepareCase(item, wasmTools);
+  for (const item of cases) prepareCase(item, wasmTools, programMode);
 }
 
 function importedModules(file, suffix) {
@@ -454,6 +464,7 @@ module.exports = {
   checkAllProofs,
   checkCase,
   formatError,
+  installProgramCache,
   loadRegistry,
   prepareCases,
   selectCase,

@@ -1,5 +1,137 @@
 # Development Journal
 
+## 2026-08-03: `leanexegen` Headless Codex Orchestration
+
+`tools/leanexegen` now owns generation through three tasks using Codex's [noninteractive mode](https://learn.chatgpt.com/docs/non-interactive-mode.md): formal specification, Lean program, and exact-artifact behavioral proof.  Each attempt uses a new temporary workspace, an ephemeral `codex exec` session, and a JSON output schema.  The outer process runs Lean, Lake, and LeanExe diagnostics through `tools/leanrun`, then supplies a rejected candidate and its diagnostic to a fresh task under a five-attempt bound.
+
+The formal task sees the request and defines `expected : UInt64 → UInt64`.  The program task sees the request and frozen formal module, while the proof task sees the request, formal module, WAT-derived Talos `Program`, and deterministic artifact-support modules.  The program workspace and every task outcome containing Source are removed after WASM freezes, so the proof task receives neither Source nor the compiler.
+
+The orchestrator appends `${namespace}.FormalSpec.ArtifactSpec : Wasm.Module → Prop` with a fixed unary `TerminatesWith` definition.  Generated Lean check modules require both `expected : UInt64 → UInt64` and the exact artifact-specification type before accepting the formal task.  `ArtifactResult.artifact_correct` applies that exact declaration directly to the independently decoded, validated, and translated bytes.
+
+Successful packages retain the three accepted sources, Codex version, task summaries and decisions, bounded attempt reports, diagnostics, source hashes, and report hashes.  Independent verification recomputes those hashes, checks the fixed formal declaration, compares the packaged file with the embedded bytes, rebuilds the artifact theorem, and audits its declarations without invoking Codex or LeanExe.  The package also retains the request, samples, host assumptions, tool pins, deterministic artifact support, and its own copy of the WASM bytes.
+
+The proof workspace continues to use Lake 4.31.0's root-workspace `packagesDir` option to share the pinned dependency directory.  The successful dependency diagnostic completed 3,014 jobs through `tools/leanrun`; the earlier incomplete clone without that option consumed 5.5 GB before removal.  A focused Lean diagnostic accepted the fixed `expected` and `ArtifactSpec` declarations with their exact types.
+
+Focused JavaScript tests cover the stable Codex arguments, strict output schema, two-attempt diagnostic feedback, formal-to-program context, proof-context Source exclusion, deterministic artifact result, task-report hashing, package validation, publication rollback, and existing kernel and axiom screens.  The tests also require explicit JSON types for the schema version, task, and outcome fields after the first live Codex call rejected the initial schema.  The earlier external-backend identity smoke tested a superseded path and does not test the current headless implementation.
+
+A live headless identity run completed all seven stages on 2026-08-03.  The formal and program tasks passed on their first candidates, while the artifact-proof task used one Lean rejection to correct the generated function's unfolding order and passed on its second candidate.  The run published 1,042 bytes at SHA-256 `5561719e6bd6b2b56f2ca932ae16a5f6f518b615053bb766d8e473c4add0a725`, observed sample `42 → 42`, and passed a separate `tools/leanexegen verify` rebuild of `LeanExeGen.GeneratedRd3267f0041708ae6.Artifact.artifact_correct` without Codex or the compiler.
+
+The first live prime-factor run exposed a difference between LeanExe's `report` and `compile` commands.  `report` accepted the generated entry, but `compile` later rejected its local `countFactors` helper as an unsupported declaration, after the program-task iteration loop had ended.  Program candidate checking now performs a scratch compilation after `report`, so a compiler extraction or emission failure returns to the next Codex program attempt before stage four freezes any bytes.
+
+The corrected prime-factor program passed scratch compilation and froze its WASM, but the proof task returned a `problems` outcome before producing source.  Its prompt required inspection of `FormalSpec.lean` and `Program.lean` while prohibiting every command, and headless Codex needs read-only shell commands to examine those files.  Program and proof tasks now allow read-only inspection of their isolated context while continuing to prohibit file edits and direct Lean, Lake, or compiler execution.
+
+## 2026-08-03: Clean-Checkout Artifact Proof Inputs
+
+The warm artifact gate depended on twenty ignored `Project/<Case>/Program.lean` files that every translation target and behavioral specification imports.  Those files could not exist in a clone, so the warm result did not establish the documented cold-checkout capability.  The repository no longer ignores those files, tracks all twenty generated execution caches, and requires `cases.json` to correspond bijectively to those cache paths.
+
+The canonical release identity now covers every Lean source under `proofs/talos/lean/Project`, `Project.lean`, the recursive local `LeanExe` import closure, root and proof Lake files, `.gitignore`, all package manifests and binaries, conformance configuration, tool pins, and the twelve local verification drivers.  The collector also requires directly invoked drivers to be executable regular files and rejects a missing or additional `Program.lean` cache.  The kernel scope audit now scans the proof tree and its two local `LeanExe` imports, and the cold command repeats that audit in the detached checkout before setup.
+
+`tools/talos-proof.js check` generates a temporary Talos model and compares it byte-for-byte with the tracked cache before building the specification.  It does not replace a changed cache; `tools/talos-artifact.js prepare` remains the explicit refresh command.  `test/talos_cache.js` checks nonmutating comparison, changed-cache rejection, and explicit refresh, while `test/artifact_identity.js` checks all proof sources, the exact local import closure, twenty program caches, drivers, and canonical hashing.
+
+The expanded identity invalidated the 2026-08-02 warm receipts as intended.  Fresh artifact and conformance gates passed on 2026-08-03 and recorded release-input SHA-256 `3c10b4bef4505c12ab20d9aed037e288940861f45077bf6340d7a8b79f350c4c` over 565 files.  The artifact receipt covers twenty packages, while the conformance receipt covers fifteen invalid modules and twenty-five execution files with the configured imported-memory warning.
+
+`tools/artifact-release.js refresh` consumed both receipts and derived exactly two blockers: the current inputs have no immutable source revision, and no cold-checkout receipt can identify that revision.  The kernel scope audit passed for the proof tree and its two local imports, and `node test/run_all.js` passed 791 accepted cases, 45 expected rejections, 14 expected traps, 340 standard-Lean comparisons, 62 IR comparisons, and 56 fuzz cases.  The clean-checkout run requires a committed source revision containing every tracked cache and proof input.
+
+## 2026-08-02: Verification Command Boundaries
+
+Repository verification commands define the reusable approval boundaries.  Direct Lean diagnostics start with `tools/leanrun`, source-driven proof work starts with `tools/talos-artifact.js` or `tools/talos-proof.js`, exact-artifact proofs start with `tools/artifact-proof.js`, official-corpus checks start with `tools/artifact-conformance.js`, and release checks start with `tools/artifact-release.js`.  An approval for one of those command prefixes covers its supported subcommands and future configured cases.
+
+Official execution files, invalid modules, assertion lines, and expected classifications belong in `proofs/talos/conformance.json`, which `tools/artifact-conformance.js check` validates and consumes.  Direct shell expansion of corpus filenames bypasses that boundary and causes the approval system to record an expanded one-off command.  Cold-checkout setup and both release gates remain inside `tools/artifact-release.js check-cold <revision>`, so the later network and temporary-checkout operation needs one repository-tool approval rather than approvals for its internal Git, download, Lake, proof, and conformance commands.
+
+## 2026-08-02: Schema-Three Artifact and Release Evidence
+
+All twenty artifact manifests now use schema three and name the embedded bytes, decoded raw cache, execution cache, closed artifact theorem, and concrete behavioral theorems.  Each generated `artifact_module_eq_cache` theorem contains decode and validation witnesses, a `CoreValid` proof, and equality between the validated translation and the execution cache.  The aggregate artifact gate checked the exact declaration types and printed the axiom dependencies for every manifest theorem in addition to rebuilding all twenty behavioral specifications.
+
+The declaration audit rejects `sorryAx` and accepts only `propext`, `Classical.choice`, `Quot.sound`, `Lean.ofReduceBool`, and theorem-local certificate axioms generated by `native_decide` or `bv_decide`.  The verifier-source digest covers seventeen named normative files, while the canonical release-input digest also covers toolchain pins, registries, manifests, binaries, conformance configuration, and proof-workspace inputs.  The successful aggregate receipt records twenty artifacts and release-input SHA-256 `5a9545ec3788a95a0cd3a6c73a419748ff1c4fed46d49821d85c880fbd05abaa`.
+
+Both Lean workspaces pin 4.31.0 at commit `68218e876d2a38b1985b8590fff244a83c321783`, and that kernel accepts the archived reproduction at source `e7c533e752bf4a4cc9e0170cc0972824c46ef755:proofs/talos/lean/Examples/KernelUnsoundness.lean`.  The owner accepts this known defect for the artifact release after `tools/artifact-release.js audit-kernel-scope` found no literal `addDecl` or `inductDecl` references in `proofs/talos/lean/Project` or its two local imports, `LeanExe/Examples/AsciiDigits.lean` and `LeanExe/Examples/TalosAssocList.lean`.  This lexical audit does not cover dependencies, aliases, compiled declarations, elaborator internals, other environment-mutation APIs, or the kernel defect itself, and the release record preserves that limitation.
+
+`tools/artifact-release.js refresh` reconstructs the package records and consumes only warm receipts whose canonical input digest matches the current repository.  The current draft has exactly two derived blockers: no immutable source revision records the implementation, and no cold-checkout receipt can identify that revision.  `check-cold <revision>` compares canonical inputs before setup and after both gates, verifies the exact Lean and dependency revisions, rejects tracked mutations, and writes a receipt only after success.
+
+Checks run:
+
+- [x] `tools/artifact-proof.js check-all` passed twenty schema-three packages and wrote the matching artifact receipt.
+- [x] `tools/artifact-conformance.js check` passed with the exact imported-memory warning and wrote the matching conformance receipt.
+- [x] `tools/artifact-release.js audit-kernel-scope` passed for the proof tree, its two local imports, and both forbidden identifiers.
+- [x] `tools/artifact-release.js refresh` consumed both warm receipts and reported two blockers.
+- [x] `node test/artifact_identity.js` checked the verifier membership and canonical digest vectors.
+- [x] `node test/artifact_migrate.js` checked transactional migration and frozen-file identity.
+- [x] `node test/artifact_release.js` checked identities, receipts, pins, results, and blocker derivation.
+- [x] `node test/run_all.js` passed 791 accepted cases, 45 expected rejections, 14 expected traps, 340 standard-Lean comparisons, 62 IR comparisons, and 56 fuzz cases after the JavaScript execution guard was corrected to distinguish identifiers from strings and comments.
+
+## 2026-08-02: Official Corpus Conformance Gate
+
+`tools/artifact-conformance.js check` now verifies and executes a pinned official WebAssembly corpus slice.  The configuration records CodeLib revision `bb3277e21c9786e3133d5c1601e34ebdc0bea4df`, testsuite revision `9233a0a8d5920a8d32358ee915a3662ff3385029`, Wasmtime 44.0.0, and the `function-references=y` option.  The driver also checks `wasm-tools` 1.251.0, stages each exact file in a one-file temporary corpus, and runs every Lean-based build or Talos execution serially through `tools/leanrun`.
+
+The configuration also pins fifteen official invalid modules by file, assertion kind, source line, expected classification stage, and exact error constructor.  The driver extracts those commands with `wasm-tools json-from-wast`, strips encoder-added custom sections from text-origin `assert_invalid` modules, preserves raw `assert_malformed` binaries, and classifies all staged modules in one resource-limited Lean process.  All fifteen matched, covering malformed headers and sections, integer overflow, invalid alignment and memory limits, stack underflow, and stack-height mismatches.
+
+The selected slice contains twenty-five files covering the accepted integer, control, call, local, memory, conversion, function, label, and expression forms.  Talos reported 3,853 passes, six known assertion failures, 627 skips, and no cascades, decoder errors, interpreter errors, or fuel exhaustion.  Wasmtime passed all twenty-five files, and every Talos failure occurred in `memory_grow.wast`.
+
+The failing assertions import a memory exported with maximum five pages through a declaration that permits six pages.  Talos copies the memory value into the importer and computes `memory.grow` capacity from the import declaration, so the imported memory grows from five to six pages when the official semantics require `-1` and a retained size of five.  The accepted artifact-verification profile contains no imports, so the gate treats the exact six-row fingerprint as an upstream warning, removes the warning at zero failures, and rejects every changed or additional failure.
+
+Building the pinned testsuite from a cold dependency tree required dividing the import closure before the executable target.  `Mathlib.Tactic.NormNum.LegendreSymbol`, `Mathlib.Tactic`, `Interpreter.Wasm`, `Interpreter.Testsuite.Exec`, and `Interpreter.Testsuite` built in sequence before `testsuite`, whose final build completed 5,960 jobs.  The executable's large closure comes from `Interpreter.Testsuite.Exec` importing the `Interpreter.Wasm` umbrella, which includes weakest-precondition modules and `Mathlib.Tactic`.
+
+The asynchronous process helper now drains captured stdout and stderr and includes both streams in failure messages.  Unit tests cover output capture, async error detail, exact file selection, totals parsing, detailed failure parsing, known-issue classification, Lean command routing, and signal forwarding.  Wasmtime executions run under a five-minute timeout, while Talos executions retain the ten-minute `tools/leanrun` limit.
+
+Checks run:
+
+- [x] `node --check tools/artifact-conformance.js`
+- [x] `node --check tools/run-process.js`
+- [x] `node --check test/artifact_conformance.js`
+- [x] `node --check test/run_process.js`
+- [x] `node test/artifact_conformance.js` returned `checked conformance parsing, known issues, official validator cases, and file selection`.
+- [x] `node test/run_process.js` returned `checked sync and async process errors, output capture, Lean command routing, and signal forwarding`.
+- [x] `tools/artifact-conformance.js check` classified all fifteen official invalid modules, reported all twenty-five Talos and Wasmtime results, and passed with one warning for the exact six imported-memory failures.
+
+## 2026-08-02: Complete Aggregate Artifact Gate
+
+`tools/artifact-proof.js check-all` passed all twenty registered artifacts under the standard `tools/leanrun` resource policy.  The command checked each frozen file's SHA-256, length, package identity, and equality with its embedded Lean byte value, then built every decode, validation, exact translation, artifact-correctness, and behavioral target.  The final generated declaration module checked every theorem name recorded by the manifests and reported `Aggregate artifact proof passed: 20 artifacts`.
+
+The LEB128 proof reached this result after division into reusable positive and negative iteration, completion, allocation, and prefix lemmas.  `Project.LebU32.NegFreshAlloc` states the exact fresh-allocation header writes and allocation prelude with an arbitrary postcondition, while `NegAfterFree`, `NegPrefix`, `NegIter`, and `Main` compose those results at the generated instruction boundaries.  The aggregate then passed every CLOB target; the largest measured modules were `Project.ClobCancel.Spec` at 1,092 seconds, `Project.ClobMatchFuel.FindBest` at 696 seconds, and `Project.ClobMatchFuel.Helpers` at 384 seconds.
+
+The artifact driver now uses the shared asynchronous process helper instead of blocking in `spawnSync`.  The helper starts each child in a process group, forwards `SIGINT` and `SIGTERM`, waits for the child to close, and prevents an interrupted Node driver from leaving its runner, Lake process, or Lean child behind.  The focused process test confirmed that `SIGTERM` reaches a grandchild, and `tools/artifact-proof.js check-artifacts` then passed all twenty exact artifact targets through the revised command path.
+
+Checks run:
+
+- [x] `tools/artifact-proof.js check-all` returned `Aggregate artifact proof passed: 20 artifacts`.
+- [x] `node --check tools/run-process.js`
+- [x] `node --check tools/artifact-proof.js`
+- [x] `node --check test/run_process.js`
+- [x] `node test/run_process.js` returned `checked sync and async process errors, output capture, Lean command routing, and signal forwarding`.
+- [x] `tools/artifact-proof.js check-artifacts` returned `Aggregate artifact theorem pass completed: 20 artifacts` through the signal-aware driver.
+
+## 2026-08-01: Binary Decoder Soundness
+
+The binary proof now defines exact cursor consumption and proves soundness for fixed bytes, bounded parsers, vectors, names, unsigned and signed LEB128, every accepted instruction, expressions, code bodies, sections, and complete modules.  The independent grammar now requires strict section ordering and uniqueness through increasing section ranks.  The theorem `Wasm.Binary.Proof.decode_sound` proves that every successful `decode` result satisfies `Grammar.Encodes` for the complete input `ByteArray`.
+
+The section-loop proof tracks bytes consumed by each section, agreement between assigned fields and the final module, and preservation of empty fields for absent sections.  The decoder uses named opcode classification and a named section-step parser so the execution proof composes at stable parser boundaries.  `tools/leanrun --timeout 300 lake -d proofs/talos/lean env lean proofs/talos/lean/Project/Artifact/Binary/Proof/Decode.lean` completed successfully under the shared cgroup and machine-wide Lean lock.
+
+## 2026-08-01: Artifact Decoder, Validator, and Talos Translation
+
+The artifact-verification implementation now has a repository-owned raw WebAssembly syntax, bounded byte cursor, unsigned and signed LEB128 parsers, UTF-8 name parser, structured instruction decoder, restricted module decoder, executable validator, and Talos translation.  The accepted profile covers the type, function, memory, global, export, and code sections and every opcode emitted by the current compiler artifacts.  `docs/artifact-format.md` records the profile, trusted base, raw representation, package layout, and manifest fields against the WebAssembly Core 3.0 binary and validation specifications.
+
+All twenty current `.generated` binaries decode, validate, and translate in one Lean process under `tools/leanrun`.  A separate comparison imports the twenty WAT-derived Talos caches and matches every translated module on functions, types, function exports, memory, and globals.  Focused primitive, corruption, and invalid-module tests cover LEB width boundaries, permitted overlong forms, truncation, trailing bytes, invalid UTF-8, section errors, type-index errors, memory limits, stack underflow, branch depth, local indices, immutable globals, alignment, and duplicate exports.
+
+`Project.Artifact.Binary.Grammar` defines an independent declarative grammar over byte lists, including non-canonical LEB encodings permitted by the specification.  Decoder soundness against that grammar and validator soundness against an independent `CoreValid` relation remain unproved, so the current executable results do not constitute artifact-level verification.  The permanent decoder location in a pinned Talos fork and the Lean kernel build also remain unresolved design gates.
+
+The GCD pilot embeds all 1,249 artifact bytes and records SHA-256 `51801200954786e42d28caf3ba8806d613ab31ec4abe9b5d4b672e28d953b3ae`.  Its generated raw cache builds separately, and a generic evidence lemma turns a successful computed `verifiedModule?` certificate into explicit decode and validation witnesses.  The GCD artifact target builds through this boundary, while its Boolean raw-cache comparison remains a test until a proved equality procedure or grammar-unambiguity theorem connects that result to propositional equality.
+
+Whole-module kernel reduction does not provide a usable cache-equality boundary.  A direct theorem combining decode, validation, translation, and equality with `Project.Gcd.Program.module` reached a 300-second no-diagnostic timeout, a function-level theorem that still unfolded the whole decoder reached a 180-second no-diagnostic timeout, and isolated `decode artifactBytes = .ok cachedRaw` reached a 300-second no-diagnostic timeout.  The next proof work must use compositional parser soundness, grammar unambiguity, and small generated certificates rather than rerunning any of those unchanged terms.
+
+The PairFree proof division produced a stable `Project.PairFree.BuildCore` target that built in 19 seconds.  `Project.PairFree.BuildTail` first produced a final-store bound diagnostic after 276 seconds, then reached a 360-second no-diagnostic timeout after that bound was added.  A smaller allocation-prefix probe also reached a 300-second no-diagnostic timeout, so the unchanged proof slices must remain unrun until another reusable lemma or module boundary reduces elaboration.
+
+Checks run:
+
+- [x] `tools/leanrun --timeout 180 lake --dir proofs/talos/lean --no-ansi build Project.Artifact.Binary.PrimitivesTests`
+- [x] `tools/leanrun --timeout 180 lake --dir proofs/talos/lean --no-ansi build Project.Artifact.Binary.DecodeTests`
+- [x] `tools/leanrun --timeout 180 lake --dir proofs/talos/lean --no-ansi build Project.Artifact.Binary.ValidateTests`
+- [x] One `ValidateFile` run decoded and validated all twenty current artifacts.
+- [x] One `TranslateFile` run decoded, validated, and translated all twenty current artifacts.
+- [x] One `CompareCaches` run returned `matched` for all twenty current WAT-derived Talos caches.
+- [x] `tools/leanrun --timeout 240 lake --dir proofs/talos/lean --no-ansi build Project.Artifact.Binary.Grammar`
+- [x] `tools/leanrun --timeout 120 lake --dir proofs/talos/lean --no-ansi build Project.Artifact.Binary.Evidence`
+- [x] `tools/leanrun --timeout 120 lake --dir proofs/talos/lean --no-ansi build Project.Gcd.Artifact`
+
 ## 2026-06-19: Talos Proof for Generated GCD WASM
 
 `LeanExe.Examples.TalosGcd.gcd` is a small Euclidean GCD program written in the supported Lean subset.  The LeanExe compiler emits the WASM artifact stored at `proofs/talos/rust/build/gcd/program.wasm`; `wasm-tools print` produces the WAT that Talos decodes into `Project.Gcd.Program`.  The proof in `proofs/talos/lean/Project/Gcd/Spec.lean` states that exported function `0` terminates for all `UInt64` inputs and returns `UInt64.ofNat (Nat.gcd a.toNat b.toNat)`.
@@ -6087,3 +6219,35 @@ Either that report is untested or an independent checker accepts the term
 as well, and we do not know which.  Testing a checker against the
 reproduction would settle it, and until then the value of adding such a
 stage to the proof gate is open.
+
+## 2026-08-01: Machine-Serialized Lean Execution
+
+`tools/leanrun` now owns LeanExe's Lean process boundary.  It selects the root `lean-toolchain` without asking `elan` to download a missing toolchain, sets `LEAN_NUM_THREADS=1`, and enforces the repository's cgroup, priority, I/O, execution-time, and lock-wait limits.  Its default lock is `/tmp/vq-leanrun.<uid>/1`, matching `../vq/tools/leanrun` and preventing simultaneous Lean jobs across the two repositories.
+
+The shared Node process helper routes `lean`, `lake`, `lean-wasm`, `leanc`, `leanchecker`, and `leanmake` through the runner while preserving the original command in diagnostics.  The Talos tools and `check-wat.sh` now invoke the runner directly, so repository-owned compiler, model-generation, proof, execution-test, and WAT-test paths use the same lock.  Active documentation and repository instructions name the runner instead of a hand-written `systemd-run` command.
+
+Shell and JavaScript syntax checks passed for the changed launchers.  `node test/run_process.js` passed its three process-error cases and the new routing checks, and `tools/leanrun true` created the constrained user scope successfully.  Concurrent one-second runner payloads completed in 0.89 and 1.95 seconds, confirming serialization on the shared lock.  `tools/leanrun lean --version` reported Lean 4.31.0 at commit `68218e876d2a38b1985b8590fff244a83c321783`.
+
+## 2026-08-01: PairFree Focused Boundary Under the Shared Runner
+
+`tools/leanrun lake --dir proofs/talos/lean --no-ansi build Project.PairFree.Builds` held the machine-wide Lean slot and reached its 900-second execution limit with status 124 and no diagnostic.  The shared runner excludes concurrent Lean work as the cause, while the verified outer `buildsBody` decomposition and earlier measurements locate the remaining cost inside `buildsPhase2`.  The unchanged target will not run again before a smaller lemma isolates the pair-literal fill loop and its store and read facts.
+
+## 2026-08-01: Stable Runner Command Interface
+
+Interactive timeout overrides formerly required an environment assignment before `tools/leanrun`.  That command shape prevented Codex's approval mechanism from matching the approved runner prefix, causing a new permission request for each duration and target.  The runner now accepts `--timeout`, `--lock-timeout`, and `--toolchain`, and repository instructions keep `tools/leanrun` as the first command token.
+
+The environment variables remain available to repository drivers whose process APIs pass an environment separately.  Shell syntax, missing-option-value handling, invalid lock-timeout handling, and `tools/leanrun --lock-timeout 0 --timeout 10 true` passed.  The last command used the existing runner approval without another permission request.
+
+## 2026-08-01: PairFree Tail Module Boundary
+
+The first division named the post-loop result predicate and moved the post-loop Wasm suffix into `buildsTail`.  That changed the silent 900-second failure into diagnostics in 79 seconds and 83 seconds, revealing a copy-loop measure simplification error and a malformed record update.  Restoring the verified `vMeasure` simplification and correcting the record update removed both errors.
+
+`buildsPhase2` now uses `wp_loop_body_intro`, proving the loop body under a generic postcondition and supplying `buildsTail` as the enclosing block's exit continuation.  `Project.PairFree.BuildTail` gives Lake a module cache boundary between the suffix helpers and the exported construction proof.  A focused build of the new module reached its 300-second limit without a diagnostic, so `buildsTail` still requires a smaller semantic division before another unchanged check.
+
+## 2026-08-01: Binary Validator Soundness
+
+`Project.Artifact.Binary.Validity` defines `CoreValid` independently of the executable validator.  Its judgments cover section order and presence, memory limits, globals, exports, resolved function types, local lookup, every accepted instruction's stack effect, structured-control frames, and function results.  The definition does not characterize validity as successful execution of the validator.
+
+`Project.Artifact.Binary.Proof.Validate` proves soundness from the primitive stack operations through every instruction and the complete module validator.  During that proof, nested `block` and `loop` validation revealed that the executable checker used the enclosing frame base and could consume values below the structured-control entry height; both instructions now use the entry stack height.  The validator also rejects out-of-range instruction constants, matching the signed-width restriction already applied to global initializers.
+
+The soundness module and validator tests pass through `tools/leanrun` without warnings.  New tests reject block and loop bodies that pop below their entry height and reject i32 and i64 constants at the positive signed bound.  One serialized `ValidateFile` process decoded and validated all twenty registered binaries after these changes.

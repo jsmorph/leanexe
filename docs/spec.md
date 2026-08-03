@@ -15,7 +15,7 @@ Proofs may appear in source files and in proof fields of supported structures or
 The command-line entry point for generic compilation is:
 
 ```sh
-.lake/build/bin/lean-wasm compile \
+tools/leanrun .lake/build/bin/lean-wasm compile \
   --module Module.Name \
   --entry Module.Name.entry \
   --out build/entry.wasm
@@ -264,13 +264,13 @@ Unsupported features should produce a rejection during `report` or `compile`.  T
 The report command classifies the entry point and its reachable declarations.  It marks known primitives, erased proofs, supported source-defined structures and inductives, rejected executable dependencies, and external frontier items.  The first useful diagnostic for a failed compile is:
 
 ```sh
-.lake/build/bin/lean-wasm report --module Module.Name --entry Module.Name.entry
+tools/leanrun .lake/build/bin/lean-wasm report --module Module.Name --entry Module.Name.entry
 ```
 
 The compiler command returns status `2` for command-use and bound errors, `3` for source or project input that cannot compile, `4` for I/O failures, and `5` for internal inconsistencies.  A handled failure writes `lean-wasm: <category>:` followed by the command and available module, entry, and output-path context to stderr.  Stdout remains reserved for requested reports and values, and the [developer guide](../DEVELOPING.md#cli-failure-interface) defines the tested process interface.
 
 The compiler's user-facing correctness claim is semantic agreement for accepted pure programs under the bounded numeric and memory model stated here.  Tests compare generated WASM behavior with Lean execution for the supported examples and correctness fixtures.  The generic compiler does not claim a complete mechanized proof of source-to-WASM equivalence.
 
-The repository also contains [Talos artifact proofs](../proofs/talos/README.md) for selected generated WASM modules.  Those proofs establish properties of the decoded generated WAT for specific examples, while the general compiler-correctness theorem remains future work.  They complement the Lean-versus-Wasmtime comparison tests by proving universal statements for selected artifacts.
+The repository contains [Talos proofs](../proofs/talos/README.md) for twenty registered modules.  The source-driven path proves properties of models regenerated from compiler output, while the exact-artifact path proves sound decoding, restricted-profile validity, exact Talos translation, and behavior for frozen binary bytes.  The general compiler-correctness theorem remains future work because neither path proves source-to-WASM refinement for every accepted program.
 
 Traps are part of the modeled behavior for operations that Lean would panic on in ordinary execution, such as bang indexing out of bounds.  The compiler must preserve observable evaluation order for accepted pure code, including lazy field projection and short-circuiting boolean operations.  Host behavior outside the ABI, including reading stale pointers after `reset` or passing malformed flattened values, is outside the Lean source semantics.

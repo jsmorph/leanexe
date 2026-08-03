@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 3,
+  "case": "shared_pair",
+  "sha256": "f1cf88bd4fbad114cab41ed10a1f1f43ac1fa49e2ed2e9e13f8d7df6872c741f",
+  "byteLength": 2138,
+  "binaryFormatVersion": 1,
+  "validationProfile": "leanexe-core-v1",
+  "artifactBytesModule": "Project.SharedPair.ArtifactBytes",
+  "artifactBytesDefinition": "Project.SharedPair.Artifact.artifactBytes",
+  "rawModuleDefinition": "Project.SharedPair.Artifact.Cache.raw",
+  "cachedProgramModule": "Project.SharedPair.Program",
+  "cachedProgramDefinition": "Project.SharedPair.module",
+  "specModule": "Project.SharedPair.Spec",
+  "proofTarget": "Project.SharedPair.ArtifactTranslation",
+  "identityTheorem": "Project.SharedPair.Artifact.decode_eq_cache",
+  "decodeTheorem": "Wasm.Binary.Proof.decode_sound",
+  "validationTheorem": "Wasm.Binary.Proof.validate_sound",
+  "cacheEqualityTheorem": "Project.SharedPair.Artifact.translation_cache_eq",
+  "artifactCorrectnessTheorem": "Project.SharedPair.Artifact.artifact_module_eq_cache",
+  "behaviorTheorems": [
+    "Project.SharedPair.Spec.sharedPushPair_correct"
+  ],
+  "leanToolchain": "leanprover/lean4:v4.31.0",
+  "talosRevision": "bb3277e21c9786e3133d5c1601e34ebdc0bea4df",
+  "verifierSourceSha256": "25aeb7d50d9ce4768b855e78d8ffb94606d02647386de9ca7b75fa026c34d802",
+  "hostAssumptions": []
+}

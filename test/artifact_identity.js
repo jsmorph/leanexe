@@ -1,0 +1,112 @@
+#!/usr/bin/env node
+"use strict";
+
+const path = require("node:path");
+const {
+  collectReleaseInputs,
+  directExecutables,
+  digestEntries,
+  fixedInputs,
+  localLeanImportClosure,
+  proofSourceRoots,
+  verificationDriverInputs,
+} = require("../tools/artifact-identity");
+const { currentLocalDate } = require("../tools/date");
+const {
+  leanSourcesUnder,
+  verifierRelativeSources,
+  verifierSourceSha256,
+} = require("../tools/artifact-source");
+
+const expectedSources = [
+  "Syntax.lean",
+  "Cursor.lean",
+  "Leb.lean",
+  "Primitives.lean",
+  "Decode.lean",
+  "Grammar.lean",
+  "Validity.lean",
+  "Validate.lean",
+  "Translate.lean",
+  "Equality.lean",
+  "Evidence.lean",
+  "Proof/Cursor.lean",
+  "Proof/Leb.lean",
+  "Proof/Primitives.lean",
+  "Proof/Decode.lean",
+  "Proof/Validate.lean",
+  "Proof/Translate.lean",
+];
+if (JSON.stringify(verifierRelativeSources) !== JSON.stringify(expectedSources)) {
+  throw new Error("the normative verifier source list changed without updating its test vector");
+}
+
+const repoRoot = path.resolve(__dirname, "..");
+const expectedVerifierDigest = "25aeb7d50d9ce4768b855e78d8ffb94606d02647386de9ca7b75fa026c34d802";
+if (verifierSourceSha256(repoRoot) !== expectedVerifierDigest) {
+  throw new Error("the normative verifier source digest changed without updating its test vector");
+}
+
+const entries = [
+  { path: "b", bytes: Buffer.from("two") },
+  { path: "a", bytes: Buffer.from("one") },
+];
+const expectedInputDigest = "8c9297a2b8fa8c929395d1202313fb1b5e28fa06dfdf6180500a5c95d7192ada";
+if (digestEntries(entries) !== expectedInputDigest ||
+    digestEntries([...entries].reverse()) !== expectedInputDigest) {
+  throw new Error("release input hashing is not canonical");
+}
+
+const releaseInputs = collectReleaseInputs(repoRoot);
+const releasePaths = new Set(releaseInputs.files.map((file) => file.path));
+for (const required of [...fixedInputs, ...verificationDriverInputs]) {
+  if (!releasePaths.has(required)) {
+    throw new Error(`release identity omits ${required}`);
+  }
+}
+for (const executable of directExecutables) {
+  if (!releasePaths.has(executable)) {
+    throw new Error(`release identity omits executable ${executable}`);
+  }
+}
+const proofSources = leanSourcesUnder(repoRoot, proofSourceRoots);
+for (const source of proofSources) {
+  if (!releasePaths.has(source.relative)) {
+    throw new Error(`release identity omits ${source.relative}`);
+  }
+}
+const programSources = proofSources.filter((source) => source.relative.endsWith("/Program.lean"));
+if (programSources.length !== 20) {
+  throw new Error(`release identity found ${programSources.length} cached Talos programs`);
+}
+const localImports = localLeanImportClosure(repoRoot, [
+  "proofs/talos/lean/Project.lean",
+  ...proofSources.map((source) => source.relative),
+]);
+const expectedLocalImports = [
+  "LeanExe/Examples/AsciiDigits.lean",
+  "LeanExe/Examples/TalosAssocList.lean",
+];
+if (JSON.stringify(localImports) !== JSON.stringify(expectedLocalImports)) {
+  throw new Error("the artifact proof's root-package import closure changed");
+}
+for (const imported of localImports) {
+  if (!releasePaths.has(imported)) throw new Error(`release identity omits ${imported}`);
+}
+
+const proofMutation = releaseInputs.files.map((file) => ({
+  path: file.path,
+  bytes: Buffer.from(file.sha256, "hex"),
+}));
+const beforeMutation = digestEntries(proofMutation);
+const programIndex = proofMutation.findIndex((entry) => entry.path.endsWith("/Program.lean"));
+proofMutation[programIndex].bytes[0] ^= 1;
+if (digestEntries(proofMutation) === beforeMutation) {
+  throw new Error("release identity ignored a cached Talos program mutation");
+}
+
+if (currentLocalDate(new Date(2026, 7, 2, 23, 59, 59)) !== "2026-08-02") {
+  throw new Error("receipt dates do not use the machine's local calendar date");
+}
+
+process.stdout.write("checked verifier source membership and canonical input digests\n");

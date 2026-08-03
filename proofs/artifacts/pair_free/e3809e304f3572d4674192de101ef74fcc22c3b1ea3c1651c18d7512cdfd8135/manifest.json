@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 3,
+  "case": "pair_free",
+  "sha256": "e3809e304f3572d4674192de101ef74fcc22c3b1ea3c1651c18d7512cdfd8135",
+  "byteLength": 2259,
+  "binaryFormatVersion": 1,
+  "validationProfile": "leanexe-core-v1",
+  "artifactBytesModule": "Project.PairFree.ArtifactBytes",
+  "artifactBytesDefinition": "Project.PairFree.Artifact.artifactBytes",
+  "rawModuleDefinition": "Project.PairFree.Artifact.Cache.raw",
+  "cachedProgramModule": "Project.PairFree.Program",
+  "cachedProgramDefinition": "Project.PairFree.module",
+  "specModule": "Project.PairFree.Spec",
+  "proofTarget": "Project.PairFree.ArtifactTranslation",
+  "identityTheorem": "Project.PairFree.Artifact.decode_eq_cache",
+  "decodeTheorem": "Wasm.Binary.Proof.decode_sound",
+  "validationTheorem": "Wasm.Binary.Proof.validate_sound",
+  "cacheEqualityTheorem": "Project.PairFree.Artifact.translation_cache_eq",
+  "artifactCorrectnessTheorem": "Project.PairFree.Artifact.artifact_module_eq_cache",
+  "behaviorTheorems": [
+    "Project.PairFree.Spec.sharedPairFreeStats_correct"
+  ],
+  "leanToolchain": "leanprover/lean4:v4.31.0",
+  "talosRevision": "bb3277e21c9786e3133d5c1601e34ebdc0bea4df",
+  "verifierSourceSha256": "25aeb7d50d9ce4768b855e78d8ffb94606d02647386de9ca7b75fa026c34d802",
+  "hostAssumptions": []
+}

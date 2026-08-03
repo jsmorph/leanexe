@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 3,
+  "case": "clob_post_only",
+  "sha256": "0407b872a87be0337399c414affdd82400fae45ac00a1ca3928e5db20489cf1b",
+  "byteLength": 5915,
+  "binaryFormatVersion": 1,
+  "validationProfile": "leanexe-core-v1",
+  "artifactBytesModule": "Project.ClobPostOnly.ArtifactBytes",
+  "artifactBytesDefinition": "Project.ClobPostOnly.Artifact.artifactBytes",
+  "rawModuleDefinition": "Project.ClobPostOnly.Artifact.Cache.raw",
+  "cachedProgramModule": "Project.ClobPostOnly.Program",
+  "cachedProgramDefinition": "Project.ClobPostOnly.module",
+  "specModule": "Project.ClobPostOnly.Spec",
+  "proofTarget": "Project.ClobPostOnly.ArtifactTranslation",
+  "identityTheorem": "Project.ClobPostOnly.Artifact.decode_eq_cache",
+  "decodeTheorem": "Wasm.Binary.Proof.decode_sound",
+  "validationTheorem": "Wasm.Binary.Proof.validate_sound",
+  "cacheEqualityTheorem": "Project.ClobPostOnly.Artifact.translation_cache_eq",
+  "artifactCorrectnessTheorem": "Project.ClobPostOnly.Artifact.artifact_module_eq_cache",
+  "behaviorTheorems": [
+    "Project.ClobPostOnly.Invalid.postOnly_invalid",
+    "Project.ClobPostOnly.Crossing.postOnly_crossing",
+    "Project.ClobPostOnly.Append.postOnly_appended"
+  ],
+  "leanToolchain": "leanprover/lean4:v4.31.0",
+  "talosRevision": "bb3277e21c9786e3133d5c1601e34ebdc0bea4df",
+  "verifierSourceSha256": "25aeb7d50d9ce4768b855e78d8ffb94606d02647386de9ca7b75fa026c34d802",
+  "hostAssumptions": []
+}

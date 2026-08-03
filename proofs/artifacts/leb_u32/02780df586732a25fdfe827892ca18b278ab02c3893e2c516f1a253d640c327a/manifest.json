@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 3,
+  "case": "leb_u32",
+  "sha256": "02780df586732a25fdfe827892ca18b278ab02c3893e2c516f1a253d640c327a",
+  "byteLength": 2287,
+  "binaryFormatVersion": 1,
+  "validationProfile": "leanexe-core-v1",
+  "artifactBytesModule": "Project.LebU32.ArtifactBytes",
+  "artifactBytesDefinition": "Project.LebU32.Artifact.artifactBytes",
+  "rawModuleDefinition": "Project.LebU32.Artifact.Cache.raw",
+  "cachedProgramModule": "Project.LebU32.Program",
+  "cachedProgramDefinition": "Project.LebU32.module",
+  "specModule": "Project.LebU32.Spec",
+  "proofTarget": "Project.LebU32.ArtifactTranslation",
+  "identityTheorem": "Project.LebU32.Artifact.decode_eq_cache",
+  "decodeTheorem": "Wasm.Binary.Proof.decode_sound",
+  "validationTheorem": "Wasm.Binary.Proof.validate_sound",
+  "cacheEqualityTheorem": "Project.LebU32.Artifact.translation_cache_eq",
+  "artifactCorrectnessTheorem": "Project.LebU32.Artifact.artifact_module_eq_cache",
+  "behaviorTheorems": [
+    "Project.LebU32.Spec.u32lebU64_correct"
+  ],
+  "leanToolchain": "leanprover/lean4:v4.31.0",
+  "talosRevision": "bb3277e21c9786e3133d5c1601e34ebdc0bea4df",
+  "verifierSourceSha256": "25aeb7d50d9ce4768b855e78d8ffb94606d02647386de9ca7b75fa026c34d802",
+  "hostAssumptions": []
+}

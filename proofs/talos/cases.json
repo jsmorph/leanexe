@@ -7,6 +7,7 @@
       "entry": "LeanExe.Examples.TalosGcd.gcd",
       "leanModule": "Gcd",
       "specTarget": "Project.Gcd.Spec",
+      "behaviorTheorems": ["Project.Gcd.Spec.gcd_correct"],
       "complete": true
     },
     {
@@ -15,6 +16,7 @@
       "entry": "LeanExe.Examples.TalosAssocList.lookupDemo",
       "leanModule": "AssocList",
       "specTarget": "Project.AssocList.Spec",
+      "behaviorTheorems": ["Project.AssocList.Spec.lookupDemo_correct"],
       "complete": true
     },
     {
@@ -23,6 +25,7 @@
       "entry": "LeanExe.Examples.OrderBook.matchBook",
       "leanModule": "OrderBook",
       "specTarget": "Project.OrderBook.Spec",
+      "behaviorTheorems": ["Project.OrderBook.Spec.matchBook_correct"],
       "complete": true
     },
     {
@@ -31,6 +34,7 @@
       "entry": "LeanExe.Examples.AsciiDigits.validateGeneric",
       "leanModule": "Validate",
       "specTarget": "Project.Validate.Spec",
+      "behaviorTheorems": ["Project.Validate.Spec.validateGeneric_correct"],
       "complete": true
     },
     {
@@ -39,6 +43,7 @@
       "entry": "LeanExe.Examples.ByteArrayPrograms.appendBang",
       "leanModule": "AppendBang",
       "specTarget": "Project.AppendBang.Spec",
+      "behaviorTheorems": ["Project.AppendBang.Spec.appendBang_correct"],
       "complete": true
     },
     {
@@ -47,6 +52,7 @@
       "entry": "LeanExe.Examples.ByteArrayPrograms.pushBangSize",
       "leanModule": "PushSize",
       "specTarget": "Project.PushSize.Spec",
+      "behaviorTheorems": ["Project.PushSize.Spec.pushBangSize_correct"],
       "complete": true
     },
     {
@@ -55,6 +61,7 @@
       "entry": "LeanExe.Examples.ByteArrayPrograms.pushTwiceSizes",
       "leanModule": "PushTwice",
       "specTarget": "Project.PushTwice.Spec",
+      "behaviorTheorems": ["Project.PushTwice.Spec.pushTwiceSizes_correct"],
       "complete": true
     },
     {
@@ -63,6 +70,7 @@
       "entry": "LeanExe.Examples.ByteArrayPrograms.sharedPushPair",
       "leanModule": "SharedPair",
       "specTarget": "Project.SharedPair.Spec",
+      "behaviorTheorems": ["Project.SharedPair.Spec.sharedPushPair_correct"],
       "complete": true
     },
     {
@@ -71,6 +79,7 @@
       "entry": "LeanExe.Examples.ByteArrayPrograms.sharedPairFreeStats",
       "leanModule": "PairFree",
       "specTarget": "Project.PairFree.Spec",
+      "behaviorTheorems": ["Project.PairFree.Spec.sharedPairFreeStats_correct"],
       "complete": true
     },
     {
@@ -79,6 +88,7 @@
       "entry": "LeanExe.Examples.ByteArrayPrograms.boxFreeStats",
       "leanModule": "BoxFree",
       "specTarget": "Project.BoxFree.Spec",
+      "behaviorTheorems": ["Project.BoxFree.Spec.boxFreeStats_correct"],
       "complete": true
     },
     {
@@ -87,6 +97,7 @@
       "entry": "LeanExe.Examples.ByteArrayPrograms.foldSum",
       "leanModule": "FoldSum",
       "specTarget": "Project.FoldSum.Spec",
+      "behaviorTheorems": ["Project.FoldSum.Spec.foldSum_correct"],
       "complete": true
     },
     {
@@ -95,6 +106,7 @@
       "entry": "LeanExe.Wasm.Leb.u32lebU64",
       "leanModule": "LebU32",
       "specTarget": "Project.LebU32.Spec",
+      "behaviorTheorems": ["Project.LebU32.Spec.u32lebU64_correct"],
       "complete": true
     },
     {
@@ -103,6 +115,7 @@
       "entry": "LeanExe.Examples.Clob.quote",
       "leanModule": "ClobQuote",
       "specTarget": "Project.ClobQuote.Spec",
+      "behaviorTheorems": ["Project.ClobQuote.Spec.quote_correct"],
       "complete": true
     },
     {
@@ -111,6 +124,7 @@
       "entry": "LeanExe.Examples.Clob.cancel",
       "leanModule": "ClobCancel",
       "specTarget": "Project.ClobCancel.Spec",
+      "behaviorTheorems": ["Project.ClobCancel.Spec.cancel_correct"],
       "complete": true
     },
     {
@@ -119,6 +133,7 @@
       "entry": "LeanExe.Examples.Clob.findBest",
       "leanModule": "ClobFindBest",
       "specTarget": "Project.ClobFindBest.Spec",
+      "behaviorTheorems": ["Project.ClobFindBest.Spec.findBest_correct"],
       "complete": true
     },
     {
@@ -127,6 +142,11 @@
       "entry": "LeanExe.Examples.Clob.postOnly",
       "leanModule": "ClobPostOnly",
       "specTarget": "Project.ClobPostOnly.Spec",
+      "behaviorTheorems": [
+        "Project.ClobPostOnly.Invalid.postOnly_invalid",
+        "Project.ClobPostOnly.Crossing.postOnly_crossing",
+        "Project.ClobPostOnly.Append.postOnly_appended"
+      ],
       "complete": true
     },
     {
@@ -135,6 +155,7 @@
       "entry": "LeanExe.Examples.Clob.matchFuel",
       "leanModule": "ClobMatchFuel",
       "specTarget": "Project.ClobMatchFuel.Spec",
+      "behaviorTheorems": ["Project.ClobMatchFuel.Correct.matchFuel_correct"],
       "complete": true
     },
     {
@@ -143,6 +164,7 @@
       "entry": "LeanExe.Examples.Clob.limit",
       "leanModule": "ClobLimit",
       "specTarget": "Project.ClobLimit.Spec",
+      "behaviorTheorems": ["Project.ClobLimit.LimitCorrect.func21_correct"],
       "complete": true
     },
     {
@@ -151,6 +173,7 @@
       "entry": "LeanExe.Examples.Clob.market",
       "leanModule": "ClobMarket",
       "specTarget": "Project.ClobMarket.Spec",
+      "behaviorTheorems": ["Project.ClobMarket.Correct.func21_correct"],
       "complete": true
     },
     {
@@ -159,6 +182,7 @@
       "entry": "LeanExe.Examples.Clob.depth",
       "leanModule": "ClobDepth",
       "specTarget": "Project.ClobDepth.Spec",
+      "behaviorTheorems": ["Project.ClobDepth.Func7.func7_terminates"],
       "complete": true
     }
   ]

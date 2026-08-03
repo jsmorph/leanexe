@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 3,
+  "case": "validate",
+  "sha256": "d408c2db3af861b170cda77077ce4f5ba3d9137008db5a21c6acc433d1398c7a",
+  "byteLength": 1448,
+  "binaryFormatVersion": 1,
+  "validationProfile": "leanexe-core-v1",
+  "artifactBytesModule": "Project.Validate.ArtifactBytes",
+  "artifactBytesDefinition": "Project.Validate.Artifact.artifactBytes",
+  "rawModuleDefinition": "Project.Validate.Artifact.Cache.raw",
+  "cachedProgramModule": "Project.Validate.Program",
+  "cachedProgramDefinition": "Project.Validate.module",
+  "specModule": "Project.Validate.Spec",
+  "proofTarget": "Project.Validate.ArtifactTranslation",
+  "identityTheorem": "Project.Validate.Artifact.decode_eq_cache",
+  "decodeTheorem": "Wasm.Binary.Proof.decode_sound",
+  "validationTheorem": "Wasm.Binary.Proof.validate_sound",
+  "cacheEqualityTheorem": "Project.Validate.Artifact.translation_cache_eq",
+  "artifactCorrectnessTheorem": "Project.Validate.Artifact.artifact_module_eq_cache",
+  "behaviorTheorems": [
+    "Project.Validate.Spec.validateGeneric_correct"
+  ],
+  "leanToolchain": "leanprover/lean4:v4.31.0",
+  "talosRevision": "bb3277e21c9786e3133d5c1601e34ebdc0bea4df",
+  "verifierSourceSha256": "25aeb7d50d9ce4768b855e78d8ffb94606d02647386de9ca7b75fa026c34d802",
+  "hostAssumptions": []
+}

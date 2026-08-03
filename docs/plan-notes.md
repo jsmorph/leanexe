@@ -2,7 +2,7 @@
 
 This document records techniques and candidate lemmas that can reduce the cost of the proof work in the [development plan](../plan.md).  It is a working companion to the plan rather than a second work queue: `plan.md` owns required results and their order, while this document owns proof structure, reusable assets, failed approaches, and proposed improvements.  Update it when a proof confirms a reusable pattern, reveals that an apparent pattern differs materially, or establishes a better elaboration boundary.
 
-The current emphasis is the input-generic `clob_depth` artifact proof.  Its two level-update allocation branches repeat allocator and copy behavior already proved for order and trade arrays, but use stride-two level data and different generated local indices.  The notes below distinguish direct theorem reuse from examples that still need an artifact-specific adapter.
+The current emphasis is rebuildability of all artifact behavioral proofs under the standard resource limits.  The `clob_depth` proof is complete, and its allocation and representation assets remain documented below for later reuse.  Folded local frames and postcondition-generic control-flow lemmas have closed the earlier `Validate`, `PushTwice`, `SharedPair`, and `PairFree` elaboration failures, leaving the LEB128 iteration proof as the active measured boundary.
 
 ## General Method
 
@@ -77,6 +77,12 @@ An allocation-result structure may become useful after the two depth branches ar
 
 ## Tactics and Elaboration
 
+`Project.WpScaffold` now contains the reusable control-flow and memory tactics extracted from the heavy-proof work.  `wp_loop_body_intro` accepts a loop-body theorem generic over its postcondition and supplies the loop rule's match continuation without placing that continuation in an artifact theorem statement.  `bytes_frames` and `read_frames8` discharge repeated byte and word frame chains through the same small rewrite vocabulary used by the established `read_frames` tactic.
+
+`wp_run_folded` steps generated instructions while keeping a named local frame folded.  Per-frame access, update, length, and record-refolding lemmas carry the `frame_step` attribute, which prevents repeated reduction of large literal local arrays.  This change reduced `Project.Validate.Loop` from 1,560 seconds to 15 seconds and forms the default stepping method for another proof with a large generated frame.
+
+The PairFree repair adds a second reusable proof pattern beside those tactics.  A compact intermediate assertion isolates a generated block and loop from the large theorem postcondition, `wp.conseq` proves the continuation mapping once, and explicit parameters instantiate irreducible `wp` arguments at the loop-body boundary.  Named instruction suffixes and `change` statements then refold the frame and program before applying a semantic tail theorem.
+
 `read_frames` is the preferred tactic for a finite chain of disjoint memory reads and writes after address equalities are available.  `omega` handles natural-number bounds after `UInt64.toNat` and modular expressions have been rewritten with named no-wrap facts.  `rw` should perform the representation-changing step, while `simp only` should reduce a small, enumerated set of local-frame definitions.
 
 Artifact-local `wp_run_*` macros provide useful records of the definitions required to reduce a generated instruction region.  Their local indices and large simplifier configurations prevent direct reuse, and copying them unchanged can recreate the elaboration problem seen in the initial missing-price preparation theorem.  New depth macros should cover one short region and list only the frame facts required for that region.
@@ -101,11 +107,11 @@ Classify a failed proof before changing its resource budget or tactic sequence. 
 
 ## Regenerated Artifact Workflow
 
-`tools/talos-artifact.js prepare <case>` now owns compilation and model generation.  It records WASM and WAT under the ignored `.generated` tree, gives Talos a temporary Cargo-shaped project, and replaces the ignored `Program.lean` only after generation succeeds.  Proof work should inspect those local outputs without editing or committing them.
+`tools/talos-artifact.js prepare <case>` now owns compilation and model generation.  It records WASM and WAT under the ignored `.generated` tree, gives Talos a temporary Cargo-shaped project, and replaces the tracked `Program.lean` proof cache only after generation succeeds.  Proof work should inspect any cache diff without editing the generated file by hand.
 
-`tools/talos-proof.js check <case>` regenerates the selected model before building the handwritten specification.  A proof repair therefore starts from the current instruction stream and cannot pass because an old tracked `Program.lean` remained in the tree.  The aggregate form also checks that registry completion flags, `Project.lean` imports, and runtime model imports agree.
+`tools/talos-proof.js check <case>` regenerates the selected model into a temporary candidate and requires byte equality with the tracked cache before building the handwritten specification.  A changed model stops the check and names `tools/talos-artifact.js prepare <case>` as the explicit refresh operation.  The aggregate form also checks that registry completion flags, `Project.lean` imports, and runtime model imports agree.
 
-Eight modules need division or solo scheduling before aggregate-scale builds fit their limits: the recorded no-diagnostic modules (`Validate.Spec`, `SharedPair.Spec`, `LebU32.Iter`, `LebU32.NegIter`, `PairFree.Spec`, `PushTwice.Spec`) and the two six-minute-solo modules (`ClobMatchFuel.FindBest`, `ClobPostOnly.FindBest`), which also must never share the constrained scope because Lake's scheduler has no job-count control.  `LEAN_NUM_THREADS=1` now serializes wide builds, so the sharing rule is enforced by the standard policy.
+The proof divisions for `Validate.Spec`, `PushTwice.Spec`, `SharedPair.Spec`, and `PairFree.Spec` now build under the standard scope.  `PairFree.Builds` completes in 40 seconds after its generated block and loop continuation moved behind a compact assertion and its semantic suffix remained behind the existing tail-module boundary.  The current aggregate has reached `LebU32.Iter`, whose sustained memory-pressure reclaim determines whether that proof needs the same compact-continuation treatment before another aggregate attempt.
 
 The workflow separates artifact changes from proof-engineering failures by stage.  Source compilation, WAT rendering, Talos decoding, model compilation, runtime pins, and handwritten proof errors receive different stage names and exit statuses.  A failed aggregate build after successful generation belongs to the proof plan and should be divided at the named module rather than investigated as an artifact-copy problem.
 
