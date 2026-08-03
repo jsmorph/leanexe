@@ -2,21 +2,21 @@
 
 ## Lean Process Limits
 
-- Run every `lean`, `lake`, and Lean compiler command under an enforced cgroup memory limit.  Use `MemoryHigh=4G`, `MemoryMax=6G`, and `MemorySwapMax=1G` unless the user approves different limits.
-- Run those commands with `nice -n 10` and `ionice -c 3`.
-- Set `CPUQuota=100%` on the cgroup so all child processes share at most one CPU core.  Lake 5.0.0 has no job-count option.  Never run Lean or Lake processes concurrently.
+- Run every `lean`, `lake`, and Lean compiler command through `tools/leanrun`.  The runner enforces `MemoryHigh=4G`, `MemoryMax=6G`, `MemorySwapMax=1G`, `CPUQuota=100%`, `nice -n 10`, and `ionice -c 3`.
+- The runner acquires the same machine-wide lock as `../vq/tools/leanrun` and sets `LEAN_NUM_THREADS=1`.  Never bypass the runner or run Lean or Lake processes concurrently.
 - Add a reasonable `timeout` to diagnostic commands whose runtime is not intrinsically bounded.
 - After a target reaches its timeout without a diagnostic, do not run the unchanged target again.  First divide the proof or module, or add a verified reusable lemma that reduces the elaboration boundary.
-- Use `systemd-run --user --scope --quiet --collect` to create the resource-limited scope.  If user scopes or the required cgroup properties are unavailable, stop and ask the user.  Do not run the command without a memory limit, and do not substitute an address-space limit such as `ulimit -v` or `prlimit --as`.
+- Pass `--timeout` for a command-specific limit and `--lock-timeout` when the default 900-second lock wait is unsuitable.  Keep `tools/leanrun` as the first command token so one approval covers every Lean target.  If the runner cannot create its user scope or enforce the required cgroup properties, stop and ask the user.
+- Do not wrap `tools/leanrun` in another resource scope.  Do not substitute an address-space limit such as `ulimit -v` or `prlimit --as`.
 
 The standard command form is:
 
 ```bash
-systemd-run --user --scope --quiet --collect \
-  -p MemoryHigh=4G \
-  -p MemoryMax=6G \
-  -p MemorySwapMax=1G \
-  -p CPUQuota=100% \
-  nice -n 10 ionice -c 3 \
-  timeout <duration> <lean-or-lake-command>
+tools/leanrun --timeout <duration> <lean-or-lake-command>
 ```
+
+## Approval Boundaries
+
+- Keep the repository tool as the first command token for verification runs: `tools/talos-artifact.js`, `tools/talos-proof.js`, `tools/artifact-proof.js`, `tools/artifact-conformance.js`, or `tools/artifact-release.js`.  Request approval for that tool prefix rather than one subcommand, artifact, corpus file, temporary path, or internal child command.
+- Put repeatable corpus membership and expected results in the tool's checked configuration.  Do not place globs, brace expansions, generated file lists, pipes, or shell wrappers around a repository verification command.
+- Use direct `tools/leanrun` commands only for focused diagnostics that do not belong in an existing repository gate.  Keep `tools/leanrun` as the first token and pass file paths as ordinary arguments without shell expansion.

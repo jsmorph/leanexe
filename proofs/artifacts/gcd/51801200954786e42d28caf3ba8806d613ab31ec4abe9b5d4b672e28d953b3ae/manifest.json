@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 3,
+  "case": "gcd",
+  "sha256": "51801200954786e42d28caf3ba8806d613ab31ec4abe9b5d4b672e28d953b3ae",
+  "byteLength": 1249,
+  "binaryFormatVersion": 1,
+  "validationProfile": "leanexe-core-v1",
+  "artifactBytesModule": "Project.Gcd.ArtifactBytes",
+  "artifactBytesDefinition": "Project.Gcd.Artifact.artifactBytes",
+  "rawModuleDefinition": "Project.Gcd.Artifact.Cache.raw",
+  "cachedProgramModule": "Project.Gcd.Program",
+  "cachedProgramDefinition": "Project.Gcd.module",
+  "specModule": "Project.Gcd.Spec",
+  "proofTarget": "Project.Gcd.ArtifactTranslation",
+  "identityTheorem": "Project.Gcd.Artifact.decode_eq_cache",
+  "decodeTheorem": "Wasm.Binary.Proof.decode_sound",
+  "validationTheorem": "Wasm.Binary.Proof.validate_sound",
+  "cacheEqualityTheorem": "Project.Gcd.Artifact.translation_cache_eq",
+  "artifactCorrectnessTheorem": "Project.Gcd.Artifact.artifact_module_eq_cache",
+  "behaviorTheorems": [
+    "Project.Gcd.Spec.gcd_correct"
+  ],
+  "leanToolchain": "leanprover/lean4:v4.31.0",
+  "talosRevision": "bb3277e21c9786e3133d5c1601e34ebdc0bea4df",
+  "verifierSourceSha256": "25aeb7d50d9ce4768b855e78d8ffb94606d02647386de9ca7b75fa026c34d802",
+  "hostAssumptions": [
+    "The GCD entry uses HostEnv Unit and makes no host calls."
+  ]
+}

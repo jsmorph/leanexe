@@ -19,7 +19,7 @@ function main() {
   const selected = process.argv[3] === "--all"
     ? cases
     : [selectCase(cases, process.argv[3])];
-  prepareCases(selected);
+  prepareCases(selected, "refresh");
   console.log(`Talos artifact generation passed: ${selected.length} case(s)`);
 }
 

@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 3,
+  "case": "box_free",
+  "sha256": "d2701846048e1079da8416f5c2fefeaec39f749b7e1567b8b9c0e7ae175590f5",
+  "byteLength": 2006,
+  "binaryFormatVersion": 1,
+  "validationProfile": "leanexe-core-v1",
+  "artifactBytesModule": "Project.BoxFree.ArtifactBytes",
+  "artifactBytesDefinition": "Project.BoxFree.Artifact.artifactBytes",
+  "rawModuleDefinition": "Project.BoxFree.Artifact.Cache.raw",
+  "cachedProgramModule": "Project.BoxFree.Program",
+  "cachedProgramDefinition": "Project.BoxFree.module",
+  "specModule": "Project.BoxFree.Spec",
+  "proofTarget": "Project.BoxFree.ArtifactTranslation",
+  "identityTheorem": "Project.BoxFree.Artifact.decode_eq_cache",
+  "decodeTheorem": "Wasm.Binary.Proof.decode_sound",
+  "validationTheorem": "Wasm.Binary.Proof.validate_sound",
+  "cacheEqualityTheorem": "Project.BoxFree.Artifact.translation_cache_eq",
+  "artifactCorrectnessTheorem": "Project.BoxFree.Artifact.artifact_module_eq_cache",
+  "behaviorTheorems": [
+    "Project.BoxFree.Spec.boxFreeStats_correct"
+  ],
+  "leanToolchain": "leanprover/lean4:v4.31.0",
+  "talosRevision": "bb3277e21c9786e3133d5c1601e34ebdc0bea4df",
+  "verifierSourceSha256": "25aeb7d50d9ce4768b855e78d8ffb94606d02647386de9ca7b75fa026c34d802",
+  "hostAssumptions": []
+}

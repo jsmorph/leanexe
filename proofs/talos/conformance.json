@@ -1,0 +1,287 @@
+{
+  "schemaVersion": 1,
+  "codeLibRevision": "bb3277e21c9786e3133d5c1601e34ebdc0bea4df",
+  "testsuiteRevision": "9233a0a8d5920a8d32358ee915a3662ff3385029",
+  "wasmtimeVersion": "44.0.0",
+  "wasmtimeWasmOptions": [
+    "function-references=y"
+  ],
+  "knownIssues": [
+    {
+      "id": "talos-imported-memory-instance",
+      "file": "memory_grow.wast",
+      "scope": "outside-artifact-profile",
+      "document": "docs/telos-bug.md",
+      "failures": [
+        {
+          "line": 49,
+          "command": "assert_return",
+          "expected": "[i32:-1]",
+          "actual": "[i32:5]"
+        },
+        {
+          "line": 50,
+          "command": "assert_return",
+          "expected": "[i32:5]",
+          "actual": "[i32:6]"
+        },
+        {
+          "line": 56,
+          "command": "assert_return",
+          "expected": "[i32:5]",
+          "actual": "[i32:6]"
+        },
+        {
+          "line": 62,
+          "command": "assert_return",
+          "expected": "[i32:5]",
+          "actual": "[i32:6]"
+        },
+        {
+          "line": 68,
+          "command": "assert_return",
+          "expected": "[i32:5]",
+          "actual": "[i32:6]"
+        },
+        {
+          "line": 75,
+          "command": "assert_return",
+          "expected": "[i32:5]",
+          "actual": "[i32:6]"
+        }
+      ]
+    }
+  ],
+  "profileCoverageGaps": [
+    {
+      "feature": "global.get and global.set",
+      "officialFile": "global.wast",
+      "reason": "The official file combines local globals with imported spectest globals and a later table form, so its failures do not isolate the no-import artifact profile.",
+      "otherEvidence": "All twenty exact artifact translations and their differential execution tests cover the compiler's mutable scalar runtime globals."
+    }
+  ],
+  "validatorCases": [
+    {
+      "id": "binary-empty",
+      "file": "binary.wast",
+      "line": 6,
+      "command": "assert_malformed",
+      "expectedStage": "decode",
+      "expectedKind": "Wasm.Binary.ErrorKind.unexpectedEnd"
+    },
+    {
+      "id": "binary-truncated-version",
+      "file": "binary.wast",
+      "line": 37,
+      "command": "assert_malformed",
+      "expectedStage": "decode",
+      "expectedKind": "Wasm.Binary.ErrorKind.unexpectedEnd"
+    },
+    {
+      "id": "binary-wrong-version",
+      "file": "binary.wast",
+      "line": 40,
+      "command": "assert_malformed",
+      "expectedStage": "decode",
+      "expectedKind": "Wasm.Binary.ErrorKind.expectedByte 1 0"
+    },
+    {
+      "id": "binary-invalid-section-id",
+      "file": "binary.wast",
+      "line": 48,
+      "command": "assert_malformed",
+      "expectedStage": "decode",
+      "expectedKind": "Wasm.Binary.ErrorKind.unsupportedSection 14"
+    },
+    {
+      "id": "binary-oversized-local-vector",
+      "file": "binary.wast",
+      "line": 126,
+      "command": "assert_malformed",
+      "expectedStage": "decode",
+      "expectedKind": "Wasm.Binary.ErrorKind.integerOverflow 32"
+    },
+    {
+      "id": "align-i32-load8-u",
+      "file": "align.wast",
+      "line": 310,
+      "command": "assert_invalid",
+      "expectedStage": "validation",
+      "expectedKind": "Wasm.Binary.ValidationErrorKind.invalidAlignment 1 0"
+    },
+    {
+      "id": "align-i32-load",
+      "file": "align.wast",
+      "line": 322,
+      "command": "assert_invalid",
+      "expectedStage": "validation",
+      "expectedKind": "Wasm.Binary.ValidationErrorKind.invalidAlignment 3 2"
+    },
+    {
+      "id": "align-i64-load",
+      "file": "align.wast",
+      "line": 350,
+      "command": "assert_invalid",
+      "expectedStage": "validation",
+      "expectedKind": "Wasm.Binary.ValidationErrorKind.invalidAlignment 4 3"
+    },
+    {
+      "id": "load-i32-unused-result",
+      "file": "load.wast",
+      "line": 312,
+      "command": "assert_invalid",
+      "expectedStage": "validation",
+      "expectedKind": "Wasm.Binary.ValidationErrorKind.stackHeightMismatch 0 1"
+    },
+    {
+      "id": "load-i64-unused-result",
+      "file": "load.wast",
+      "line": 332,
+      "command": "assert_invalid",
+      "expectedStage": "validation",
+      "expectedKind": "Wasm.Binary.ValidationErrorKind.stackHeightMismatch 0 1"
+    },
+    {
+      "id": "store-i32-missing-result",
+      "file": "store.wast",
+      "line": 112,
+      "command": "assert_invalid",
+      "expectedStage": "validation",
+      "expectedKind": "Wasm.Binary.ValidationErrorKind.stackUnderflow (some (Wasm.Binary.ValType.i32))"
+    },
+    {
+      "id": "store-i32-missing-address",
+      "file": "store.wast",
+      "line": 150,
+      "command": "assert_invalid",
+      "expectedStage": "validation",
+      "expectedKind": "Wasm.Binary.ValidationErrorKind.stackUnderflow (some (Wasm.Binary.ValType.i32))"
+    },
+    {
+      "id": "memory-minimum-above-maximum",
+      "file": "memory.wast",
+      "line": 49,
+      "command": "assert_invalid",
+      "expectedStage": "validation",
+      "expectedKind": "Wasm.Binary.ValidationErrorKind.invalidMemoryLimits"
+    },
+    {
+      "id": "memory-minimum-above-page-limit",
+      "file": "memory.wast",
+      "line": 53,
+      "command": "assert_invalid",
+      "expectedStage": "validation",
+      "expectedKind": "Wasm.Binary.ValidationErrorKind.invalidMemoryLimits"
+    },
+    {
+      "id": "memory-size-unused-result",
+      "file": "memory_size.wast",
+      "line": 69,
+      "command": "assert_invalid",
+      "expectedStage": "validation",
+      "expectedKind": "Wasm.Binary.ValidationErrorKind.stackHeightMismatch 0 1"
+    }
+  ],
+  "files": [
+    {
+      "name": "i32.wast",
+      "covers": ["i32 integer operations"]
+    },
+    {
+      "name": "i64.wast",
+      "covers": ["i64 integer operations"]
+    },
+    {
+      "name": "block.wast",
+      "covers": ["block"]
+    },
+    {
+      "name": "br.wast",
+      "covers": ["br"]
+    },
+    {
+      "name": "br_if.wast",
+      "covers": ["br_if"]
+    },
+    {
+      "name": "loop.wast",
+      "covers": ["loop"]
+    },
+    {
+      "name": "local_get.wast",
+      "covers": ["local.get"]
+    },
+    {
+      "name": "local_set.wast",
+      "covers": ["local.set"]
+    },
+    {
+      "name": "local_tee.wast",
+      "covers": ["local.tee"]
+    },
+    {
+      "name": "return.wast",
+      "covers": ["return"]
+    },
+    {
+      "name": "unreachable.wast",
+      "covers": ["unreachable"]
+    },
+    {
+      "name": "memory_size.wast",
+      "covers": ["memory.size"]
+    },
+    {
+      "name": "memory_grow.wast",
+      "covers": ["memory.grow", "imported memory limits"]
+    },
+    {
+      "name": "const.wast",
+      "covers": ["i32.const", "i64.const"]
+    },
+    {
+      "name": "call.wast",
+      "covers": ["direct call"]
+    },
+    {
+      "name": "if.wast",
+      "covers": ["if", "i32 and i64 block results"]
+    },
+    {
+      "name": "load.wast",
+      "covers": ["i32.load", "i64.load", "i32.load8_u"]
+    },
+    {
+      "name": "store.wast",
+      "covers": ["i32.store", "i64.store", "i32.store8"]
+    },
+    {
+      "name": "align.wast",
+      "covers": ["memory alignment immediates"]
+    },
+    {
+      "name": "memory_trap.wast",
+      "covers": ["out-of-bounds memory traps"]
+    },
+    {
+      "name": "endianness.wast",
+      "covers": ["little-endian memory operations"]
+    },
+    {
+      "name": "conversions.wast",
+      "covers": ["i32.wrap_i64", "i64.extend_i32_u"]
+    },
+    {
+      "name": "func.wast",
+      "covers": ["function parameters and results", "drop"]
+    },
+    {
+      "name": "labels.wast",
+      "covers": ["branch labels and nested control"]
+    },
+    {
+      "name": "int_exprs.wast",
+      "covers": ["composed integer expressions"]
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 3,
+  "case": "order_book",
+  "sha256": "6faa6ae292bd217814d66e31ee241687974acfed74403543e8482540cfc95558",
+  "byteLength": 1261,
+  "binaryFormatVersion": 1,
+  "validationProfile": "leanexe-core-v1",
+  "artifactBytesModule": "Project.OrderBook.ArtifactBytes",
+  "artifactBytesDefinition": "Project.OrderBook.Artifact.artifactBytes",
+  "rawModuleDefinition": "Project.OrderBook.Artifact.Cache.raw",
+  "cachedProgramModule": "Project.OrderBook.Program",
+  "cachedProgramDefinition": "Project.OrderBook.module",
+  "specModule": "Project.OrderBook.Spec",
+  "proofTarget": "Project.OrderBook.ArtifactTranslation",
+  "identityTheorem": "Project.OrderBook.Artifact.decode_eq_cache",
+  "decodeTheorem": "Wasm.Binary.Proof.decode_sound",
+  "validationTheorem": "Wasm.Binary.Proof.validate_sound",
+  "cacheEqualityTheorem": "Project.OrderBook.Artifact.translation_cache_eq",
+  "artifactCorrectnessTheorem": "Project.OrderBook.Artifact.artifact_module_eq_cache",
+  "behaviorTheorems": [
+    "Project.OrderBook.Spec.matchBook_correct"
+  ],
+  "leanToolchain": "leanprover/lean4:v4.31.0",
+  "talosRevision": "bb3277e21c9786e3133d5c1601e34ebdc0bea4df",
+  "verifierSourceSha256": "25aeb7d50d9ce4768b855e78d8ffb94606d02647386de9ca7b75fa026c34d802",
+  "hostAssumptions": []
+}

@@ -1,22 +1,46 @@
 # Development Status
 
-This report records the repository state on 2026-07-18.  The `clob_depth` proof is complete and the focused depth gate passes against a regenerated model.  The [development plan](../plan.md) remains the authoritative work queue, while the [development journal](../devnotes.md) records dated design decisions and individual test results.
+This report records the repository state on 2026-08-03.  The source-driven Talos proof set covers all twenty registered artifacts, while the artifact verifier checks their exact binary WebAssembly files through decoding, validation, Talos translation, and behavior.  The [development plan](../plan.md), [artifact-verification plan](../plans/artifact-verification.md), and [development journal](../devnotes.md) record the remaining work and the evidence for completed checks.
 
 ## Summary
 
-LeanExe has completed the runtime-ownership, single-evaluation, and CLOB `cancel` phases of the current plan, and the remaining-CLOB phase now includes `depth`.  Input-generic Talos proofs cover `quote`, `cancel`, `findBest`, `postOnly`, `matchFuel`, `limit`, `market`, and `depth`, in addition to the earlier artifacts.  `ClobDepth.Func7.func7_terminates` proves that the exported depth function terminates for every represented order book under the stated allocator budget and returns two owned level arrays representing the exact source `depthL` bids and asks.
+LeanExe has completed the runtime-ownership, single-evaluation, and CLOB proof phases of the source-driven plan.  Input-generic Talos proofs cover `quote`, `cancel`, `findBest`, `postOnly`, `matchFuel`, `limit`, `market`, and `depth`, in addition to the earlier artifacts.  `ClobDepth.Func7.func7_terminates` proves that the exported depth function terminates for every represented order book under the stated allocator budget and returns two owned level arrays representing the exact source `depthL` bids and asks.
 
-The two proof failures recorded by the previous aggregate run are repaired.  Both were unfolding gaps after the shared allocation definitions moved their header writes into `fixedArrayHeaderMem`, and each needed one definition added to a closing simplification set.  The aggregate proof gate and the execution gate are the remaining stable-point evidence; their most recent results appear in the development journal.
+The artifact verifier has a faithful raw syntax, bounded binary parser, LEB128 and primitive decoders, a restricted Core 3.0 module decoder, a profile validator, and translation to the Talos module representation.  Theorems prove decoder soundness against the independent binary grammar and validator soundness against the independent `CoreValid` judgment.  All twenty registered binaries now have frozen packages, exact embedded bytes, checked translations to their Talos execution models, and artifact-level correctness theorems that reuse their existing behavioral specifications.
+
+## Artifact Verifier
+
+The accepted profile covers the type, function, memory, global, export, and code sections and the instruction forms emitted by the current compiler.  The decoder rejects unsupported sections and opcodes, enforces section order and sizes, parses structured control, and requires complete input consumption.  The validator checks the profile's indices, types, stack effects, branches, mutability, memory operations, exports, and function-body agreement before translation.
+
+`Wasm.Binary.Grammar.Encodes` gives an independent declarative grammar for the accepted bytes.  `Wasm.Binary.Proof.decode_sound` proves that every successful complete-file decode satisfies that grammar, including section order and the absence of unparsed profile fields.  `Wasm.Binary.Proof.validate_sound` proves that every successful validator result satisfies `CoreValid`, covering the accepted instruction stack effects, indices, globals, exports, memory, and function/code agreement.
+
+Each artifact target proves successful decoding and validation of its embedded bytes.  Generated raw-module caches avoid repeated whole-file reduction, while checked decode equalities and translation equalities prevent another cache from entering the proof.  Each closed `artifact_module_eq_cache` theorem identifies the validated artifact's Talos module with the execution module named by the registered behavioral theorem.
+
+| Boundary | Current evidence | Formal status |
+|----------|------------------|---------------|
+| Exact bytes | Twenty content-addressed packages contain `program.wasm` and strict manifests; Lean modules embed every byte. | The aggregate gate checks file digest, length, package equality, and embedded-byte equality. |
+| Binary decoding | Primitive and corruption tests pass; all twenty current binaries decode. | `decode_sound` connects successful decoding to the declarative grammar. |
+| Validation | Repository fixtures reject, fifteen pinned official invalid modules match exact decoder or validator errors, and all twenty artifact modules validate. | `CoreValid` is independent of the executable validator, and `validate_sound` builds without warnings. |
+| Talos translation | All twenty translations match their cached execution models. | Per-function and module cache-equality theorems pass for all twenty packages. |
+| Behavior | Every manifest records the concrete source behavior theorem for the cached execution module, and the closed artifact theorem proves equality with that module. | Schema-three `check-all` passed all twenty behavioral specifications and exact declaration checks on 2026-08-03. |
+| Artifact command | `tools/artifact-proof.js` checks one registered package or all packages without LeanExe or `wasm-tools`. | Every Lean child runs through the shared, resource-limited `tools/leanrun` path, and driver signals reach the active child process group. |
+| Trusted kernel | Both workspaces pin Lean 4.31.0 at commit `68218e876d2a38b1985b8590fff244a83c321783`. | Lean 4.31.0 accepts the archived reproduction; the owner accepts the defect after the exact local lexical audit recorded by the release evidence. |
 
 ## Current State
 
 | Item | State | Evidence |
 |------|-------|----------|
-| Branch | `main` | Twenty-one depth proof commits since `0dea0bf`. |
 | Depth artifact | Complete | `cases.json` carries `complete: true`; `tools/talos-proof.js check clob_depth` passed on 2026-07-18. |
 | Aggregate imports | Current | `Project.lean` imports `Project.ClobDepth.Spec`. |
 | PostOnly repairs | Complete | Focused warning-failing builds pass in 12 and 7.1 seconds. |
-| Lean toolchain | `leanprover/lean4:v4.31.0` | Both compiler and proof workspaces. |
+| Artifact executable path | Twenty artifacts pass | Identity, embedded-byte, decode, validation, translation, and generated-cache comparison checks pass under the constrained runner. |
+| Artifact formal path | Twenty artifacts pass | Decoder and validator soundness plus every exact translation and artifact-correctness target build. |
+| Behavioral aggregate | Twenty artifacts pass | `tools/artifact-proof.js check-all` passed every specification and the manifest theorem check on 2026-08-03. |
+| Repository execution | Complete gate passes | `node test/run_all.js` passed 791 accepted cases, 45 expected rejections, 14 expected traps, 340 standard-Lean comparisons, 62 IR comparisons, and 56 fuzz cases on 2026-08-03. |
+| Semantic conformance | Twenty-five selected official files pass with one known upstream warning | Talos produced 3,853 passes, six configured assertion failures, and 627 skips; Wasmtime passed every selected file. |
+| Decoder and validator conformance | Fifteen official invalid modules match | Each pinned file, assertion kind, line, classification stage, and error constructor matched on 2026-08-03. |
+| Lean toolchain | Lean 4.31.0 pinned in both workspaces | The selected release accepts the archived reproduction; the local audit covers literal `addDecl` and `inductDecl` references in the artifact proof tree and its two local `LeanExe` imports. |
+| Release evidence | Draft with matching warm gate receipts | The immutable source revision and matching cold-checkout receipt remain unavailable until this implementation is committed. |
 
 ## Depth Proof Structure
 
@@ -28,29 +52,23 @@ Function 7 composes the two side folds.  The second fold runs at the first fold'
 
 ## Verification Status and Risks
 
-Every depth module builds through the required constrained scope with `--wfail`.  The largest focused builds are the loop body at 10 seconds and the empty-allocation adapter at 9.1 seconds; every other depth module builds in under seven seconds.  The focused depth gate regenerates the model from the current source and compiler before building the registered specification, so the theorem follows the current artifact.
+Every depth module builds through the required constrained scope with `--wfail`.  The largest focused builds are the loop body at 10 seconds and the empty-allocation adapter at 9.1 seconds; every other depth module builds in under seven seconds.  The source-driven focused gate still tests regeneration, while the separate frozen package now establishes exact-byte identity, decoding, validation, translation equality, and the depth specification without invoking the compiler.
 
-Earlier constrained builds of `Project.Validate.Spec`, `Project.SharedPair.Spec`, `Project.LebU32.Iter`, and `Project.LebU32.NegIter` recorded no-diagnostic timeouts, and the plan retains their division work in the consolidation phase.  A cold proof setup can rebuild a large dependency graph after Mathlib cache removal; run any such rebuild only through the constrained scope with no concurrent Lean activity.
+Folded-frame lemmas, `wp_run_folded`, reusable block and loop scaffolds, and smaller module boundaries closed the earlier `Validate`, `PushTwice`, `SharedPair`, and `PairFree` elaboration failures.  The LEB128 proof now composes reusable positive and negative allocation, iteration, completion, and prefix lemmas; its complete specification passed before the gate continued through all eight CLOB artifacts.  The largest observed modules in the successful aggregate were `Project.ClobCancel.Spec` at 1,092 seconds and `Project.ClobMatchFuel.FindBest` at 696 seconds, both within the standard limits.
 
-The aggregate proof gate regenerates all twenty models before building `Project`, and the execution gate runs `node test/run_all.js` under the outer resource scope.  The most recent aggregate and execution results, with dates, are in the development journal; declare the next stable point only when both gates pass and the plan, journal, verification inventory, and this report agree on the evidence.
+The source-driven proof gate regenerates all twenty models before building `Project`, while the artifact gate starts from frozen bytes and does not read source or invoke the compiler.  Both tools route every Lean-based child through the repository runner, but they establish different facts: compiler-workflow consistency versus correctness of an identified binary.  The development journal records current aggregate, execution, decoder, validator, and translation results with their limitations.
 
 ## Required Lean and Lake Resource Policy
 
-Every direct `lean`, `lake`, Lean compiler, `lean-wasm`, or script that starts one of those commands must run in a resource-limited transient user scope.  The two Talos tools apply these limits to each Lean-based child internally, while `node test/run_all.js` still requires an outer scope.  Do not run two such jobs concurrently, including from separate terminals, because separate scopes can compete for memory and CPU.
+Every direct `lean`, `lake`, Lean compiler, or `lean-wasm` command must run through `tools/leanrun`.  Repository Node drivers and verification tools route their Lean-based children through that runner.  The runner shares `/tmp/vq-leanrun.<uid>/1` with `../vq/tools/leanrun`, preventing concurrent Lean jobs from separate terminals in either repository for the same user.
 
 ```sh
-systemd-run --user --scope --quiet --collect \
-  -p MemoryHigh=4G \
-  -p MemoryMax=6G \
-  -p MemorySwapMax=1G \
-  -p CPUQuota=100% \
-  nice -n 10 ionice -c 3 \
-  timeout <duration> env LEAN_NUM_THREADS=1 <lean-or-lake-command>
+tools/leanrun --timeout <duration> <lean-or-lake-command>
 ```
 
-`MemoryHigh=4G` begins memory-pressure handling at four gibibytes, `MemoryMax=6G` enforces the hard limit, `MemorySwapMax=1G` bounds swap growth, and `CPUQuota=100%` limits the scope to one core in aggregate.  `LEAN_NUM_THREADS=1` serializes Lake's job scheduling: Lake runs builds on Lean's task pool, sized by that variable, and without the cap it places several multi-gibibyte workers into the one scope, where they thrash against the memory threshold.  A CPU-affinity pin does not bound the pool; that was tested and rejected.  `nice -n 10` and `ionice -c 3` protect interactive work, and `timeout` bounds diagnostic runs.  A timeout without a diagnostic requires proof or module division before another attempt.
+`MemoryHigh=4G` begins memory-pressure handling at four gibibytes, `MemoryMax=6G` enforces the hard limit, `MemorySwapMax=1G` bounds swap growth, and `CPUQuota=100%` limits the scope to one core in aggregate.  The runner sets `LEAN_NUM_THREADS=1`, `nice -n 10`, and `ionice -c 3`, then applies the requested execution timeout after it acquires the lock.  A timeout without a diagnostic requires proof or module division before another attempt.
 
-The focused proof command starts from `proofs/talos/lean` because its `lakefile.toml` owns the Talos project.  Repository-level scripts start from the repository root, while the two Talos entry points create the wrapper themselves.
+The focused proof command starts from `proofs/talos/lean` because its `lakefile.toml` owns the Talos project.  Repository-level scripts start from the repository root, while the Talos and artifact entry points call the runner for each child.  Signal-aware process-group execution ensures that interrupting a Node driver terminates its active runner and descendants.
 
 ```sh
 cd /media/hd2/src/leanexe
@@ -58,8 +76,10 @@ tools/talos-proof.js check clob_depth
 tools/talos-proof.js check --all
 ```
 
-Do not substitute `ulimit -v`, `prlimit --as`, a background process, or an unbounded bare `lake build` for this policy.  If `systemd-run --user --scope` or any required cgroup property is unavailable, stop rather than running Lean without an enforced memory limit.
+Do not substitute `ulimit -v`, `prlimit --as`, a background process, or an unbounded bare `lake build` for this policy.  Do not wrap the runner or repository drivers in a second resource scope.  If the runner cannot acquire its lock or create the required user scope, stop rather than running Lean without the enforced boundary.
 
 ## Next Order of Work
 
-The stable-point work after `depth` remains finite but material.  It includes the planned aggregate-proof divisions for the recorded no-diagnostic timeouts, the remaining copy-loop and fresh-array library generalization, release-tree array-kind and shared-interior generalization, and cleanup of proof warnings encountered during substantive bounded rebuilds.  The next stable point requires the aggregate proof object, the complete execution and artifact gates, and agreement among the plan, journal, verification inventory, and this report.
+The official-corpus gate now pins CodeLib, the WebAssembly testsuite, `wasm-tools`, and Wasmtime, then runs twenty-five exact `.wast` files through Talos and Wasmtime.  Talos reports 3,853 passes, six configured assertion failures, and 627 skips without cascades, decoder errors, interpreter errors, or fuel exhaustion, while Wasmtime passes every selected file.  The gate accepts the exact imported-memory discrepancy as an upstream warning, removes the warning when it disappears, and rejects every changed or additional failure; the [Talos imported-memory defect report](telos-bug.md) records its provenance and scope.
+
+The selected corpus now covers the accepted integer, control, call, local, memory, conversion, and expression forms, with `global.wast` recorded as a profile-coverage gap because that file mixes local globals with imported globals and a table form.  Fifteen separately pinned official invalid modules reach the artifact decoder or validator and match exact error constructors.  The draft release record binds all artifact identities, theorem names, pins, input digests, and observed results; completion requires an immutable revision and its matching cold-checkout receipt.

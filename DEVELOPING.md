@@ -4,17 +4,17 @@ This guide defines the repository setup, development workflow, test gates, gener
 
 ## Prerequisites
 
-LeanExe develops and tests on Linux.  The Wasmtime download script supports `x86_64` and `aarch64`; another platform requires a compatible Wasmtime CLI and C API supplied through the environment variables below.  A first proof build needs network access for the pinned Talos and Mathlib dependencies.
+LeanExe develops and tests on Linux.  The Wasmtime download script supports `x86_64` and `aarch64`; another platform requires a compatible Wasmtime CLI and C API supplied through the environment variables below.  A first proof build needs network access for the pinned Talos and Mathlib dependencies, and the semantic conformance gate needs CodeLib's pinned official WebAssembly testsuite submodule.
 
 | Tool | Repository requirement |
 |------|------------------------|
-| Lean and Lake | Install through `elan`.  The compiler and proof workspaces pin Lean 4.31.0. |
+| Lean and Lake | Install through `elan`.  Both workspaces pin Lean 4.31.0 at commit `68218e876d2a38b1985b8590fff244a83c321783`. |
 | Proof Lean and Lake | The proof workspace records its matching pin in `proofs/talos/lean/lean-toolchain`.  `elan` selects it after entering that directory. |
 | Wasmtime | `tools/download-wasmtime.sh` installs the default 44.0.0 CLI and C API under `build/tools/wasmtime` after checking the published SHA-256 hashes. |
 | C compiler | A C11 compiler available as `cc` builds the Wasmtime host runner. |
 | Node.js | Node 24.13.0 runs the test drivers.  `.node-version` records the exact version, and the complete runner checks it before building. |
-| `wasm-tools` | Version 1.251.0 renders WAT for round-trip and Talos checks.  `.wasm-tools-version` records the exact version, and both artifact gates check the selected executable. |
-| System tools | The repository uses Bash or POSIX `sh`, `curl`, `sha256sum`, `tar`, `systemd-run`, `nice`, `ionice`, `timeout`, and ordinary Unix file tools. |
+| `wasm-tools` | Version 1.251.0 renders WAT for round-trip and Talos checks.  `.wasm-tools-version` records the exact version, and the source artifact and conformance gates check the selected executable. |
+| System tools | The repository uses Bash or POSIX `sh`, `curl`, `sha256sum`, `tar`, `flock`, `systemd-run`, `nice`, `ionice`, `timeout`, and ordinary Unix file tools. |
 
 The Talos revision is pinned in `proofs/talos/lean/lakefile.toml`, and its transitive Lean dependencies are pinned in the adjacent manifest.  `tools/check-node-version.js` enforces the Node pin, while `tools/check-wasm-tools-version.sh` enforces the `wasm-tools` pin selected through `WASM_TOOLS`, `PATH`, or `$HOME/.cargo/bin`.  The Wasmtime downloader checks both cached and downloaded archives before extraction and replaces a cached file only after its downloaded replacement passes verification.
 
@@ -31,26 +31,23 @@ These environment variables configure local executables and the Wasmtime downloa
 | `WASMTIME_C_API_SHA256` | Expected C API archive hash.  Required with an override that has no checked built-in hash. |
 | `LEANEXE_WASMTIME_HOST` | Compiled C host runner used by ABI tests. |
 | `LEAN_WASM_EXE` | `lean-wasm` executable used by Node tests. |
+| `tools/leanrun --timeout` | Time limit for one Lean, Lake, compiler, or verifier process.  The default is 900 seconds. |
+| `tools/leanrun --lock-timeout` | Time limit in seconds for acquiring the machine-wide Lean slot.  The default is 900. |
+| `LEANRUN_TOOLCHAIN` | Explicit Lean toolchain directory.  The default comes from the root `lean-toolchain` pin. |
 | `WASM_TOOLS` | `wasm-tools` executable used by WAT and Talos checks. |
 | `LEANEXE_FUZZ_CASES` | Case count for the ASCII validator fuzz test.  The default is 50. |
 
 ## Lean Process Limits
 
-Lean and Lake can consume enough memory and CPU to make a workstation unresponsive, especially during a cold Mathlib build.  Run every direct `lean`, `lake`, or `lean-wasm` command in one resource-limited user scope, including a script such as `test/run_all.js` that starts those commands.  Never run two Lean or Lake processes concurrently.
+Lean and Lake can consume enough memory and CPU to make a workstation unresponsive, especially during a cold Mathlib build.  `tools/leanrun` places every direct `lean`, `lake`, `lean-wasm`, and Talos verifier command in the required user scope.  It also acquires the default `../vq` lock at `/tmp/vq-leanrun.<uid>/1`, which serializes Lean work across both repositories.
 
 ```sh
-systemd-run --user --scope --quiet --collect \
-  -p MemoryHigh=4G \
-  -p MemoryMax=6G \
-  -p MemorySwapMax=1G \
-  -p CPUQuota=100% \
-  nice -n 10 ionice -c 3 \
-  timeout <duration> <command>
+tools/leanrun --timeout <duration> <lean-or-lake-command>
 ```
 
-Choose a duration that bounds the named test or build without terminating expected work.  `CPUQuota=100%` limits the complete scope to one CPU core because Lake 5.0.0 has no job-count option.  Stop if the user scope or required cgroup properties are unavailable, because an address-space limit does not provide the same memory control.
+The runner enforces `MemoryHigh=4G`, `MemoryMax=6G`, `MemorySwapMax=1G`, `CPUQuota=100%`, `nice -n 10`, `ionice -c 3`, and `LEAN_NUM_THREADS=1`.  `--timeout` bounds execution after lock acquisition, while `--lock-timeout` bounds the queue wait in seconds.  The corresponding `LEANRUN_TIMEOUT` and `LEANRUN_LOCK_TIMEOUT` environment variables remain available to repository drivers, but interactive commands use flags so `tools/leanrun` remains the stable approved prefix.  Stop if the user scope, lock, pinned toolchain, or required cgroup properties are unavailable, because another limit does not provide the same process boundary.
 
-The two Talos tools create this scope for each Lean-based child and run their stages serially.  Invoke `tools/talos-artifact.js` and `tools/talos-proof.js` directly rather than placing them inside another scope.  Every other command shown below that starts Lean or Lake remains a payload for the wrapper above.
+Repository Node drivers route Lean commands through `tools/leanrun`, and the Talos tools use the same runner for every Lean-based child.  Invoke `tools/talos-artifact.js`, `tools/talos-proof.js`, and `node test/run_all.js` directly because their children acquire the machine-wide slot.  A direct Lean or Lake command must name `tools/leanrun` as shown above.
 
 ## First Build
 
@@ -58,7 +55,7 @@ Install the runtime tools, build the compiler, build the native ABI runner, and 
 
 ```sh
 tools/download-wasmtime.sh
-lake build
+tools/leanrun lake build
 tools/build-wasmtime-host.sh
 node test/run_all.js
 ```
@@ -94,30 +91,48 @@ Run the smallest relevant test during development, then run every gate required 
 | Documentation only | `git diff --check`, local-link review, and command review for every changed example. |
 | Source example | Targeted `lake build`, the relevant Node test, and a standard-Lean comparison when the entry has an observable reference result. |
 | Extraction, IR, ownership, ABI, or WASM emission | Targeted fixture, `node test/run_all.js`, `tools/check-wat.sh`, and `tools/talos-proof.js check --all`. |
-| Artifact proof | `tools/talos-proof.js check <case>`, `tools/talos-proof.js check --all`, and the execution test for the source entry. |
+| Source-driven proof | `tools/talos-proof.js check <case>`, `tools/talos-proof.js check --all`, and the execution test for the source entry. |
+| Exact-artifact proof | `tools/artifact-proof.js check <binary> <target>` and `tools/artifact-proof.js check-all`. |
+| Talos semantics or conformance configuration | `node test/artifact_conformance.js` and `tools/artifact-conformance.js check`. |
 | Toolchain or artifact-producing tool | Full execution and proof gates, artifact-byte review, version and checksum documentation, and trusted-base review. |
 
 `node test/run_all.js` is the full execution gate.  It covers report classification, ownership reports, Wasmtime-only execution, core semantics, reference counting, allocation, ASCII strings, integer maps, JSON, WASI adapters, self-emission, standard Lean comparisons, IR comparisons, and fuzz cases.  `tools/check-wat.sh` checks that parsing compiler-emitted WAT produces the same bytes as direct binary emission.
 
 ## Proof Artifacts
 
-The proof workspace has twenty registered source entries and nineteen completed specifications, including the CLOB `matchFuel`, `limit`, and `market` theorems.  `proofs/talos/cases.json` maps each source entry to its generated module and handwritten specification target.  The unfinished `clob_depth` case remains registered with `complete` set to `false` so its model and runtime pins participate without adding an unfinished theorem to `Project.lean`.
+The proof workspace has twenty registered source entries and twenty completed specifications, including all eight CLOB exports through `depth`.  `proofs/talos/cases.json` maps each source entry to its generated module and handwritten specification target, while `proofs/artifacts/registry.json` maps each frozen package to its exact-artifact proof target.  `tools/artifact-proof.js check-all` passed every frozen artifact theorem, behavioral specification, and manifest declaration on 2026-08-03.
 
-`tools/talos-artifact.js prepare <case>` builds the source and compiler, emits ignored WASM and WAT, and asks the pinned Talos verifier to emit an ignored `Project/<Case>/Program.lean`.  The tool gives Talos a disposable `rust/<case>/Cargo.toml` and artifact tree under the operating-system temporary directory.  It replaces the three local outputs only after generation succeeds and never edits handwritten proof modules.
+`tools/talos-artifact.js prepare <case>` builds the source and compiler, emits ignored WASM and WAT, and asks the pinned Talos verifier to refresh the tracked `Project/<Case>/Program.lean` proof cache.  The tool gives Talos a disposable `rust/<case>/Cargo.toml` and artifact tree under the operating-system temporary directory.  It replaces the three outputs only after generation succeeds, leaves a byte-identical cache untouched, and never edits handwritten proof modules.
 
-`tools/talos-proof.js check <case>` performs the same generation before building the registered specification target.  `tools/talos-proof.js check --all` generates all registered cases, compares the registry with `Project.lean` and `Project.Runtime.Checks`, and builds the complete proof library.  Both commands enforce the Lean process limits internally and report the failed stage and child status.
+`tools/talos-proof.js check <case>` performs the same generation into a temporary candidate, requires byte equality with the tracked program cache, then builds the registered specification target.  `tools/talos-proof.js check --all` checks all registered caches, compares the registry with `Project.lean` and `Project.Runtime.Checks`, and builds the complete proof library.  Neither check mode changes tracked cache files; `tools/talos-artifact.js prepare` provides the explicit refresh operation.
 
 ```sh
 tools/talos-artifact.js prepare clob_cancel
 tools/talos-proof.js check clob_cancel
 tools/talos-proof.js check --all
+tools/artifact-proof.js check-all
 ```
 
 The [Verifying a Program](docs/verifying.md) guide covers stage inputs and outputs, registration, runtime pins, theorem statements, proof construction, and final-gate failures.  The [Talos Proofs](proofs/talos/README.md) document lists every completed theorem and its scope.  A new proof case is complete only when its registry flag, aggregate import, proof inventory, and recorded gate evidence agree.
 
+After Lake fetches CodeLib, initialize the official testsuite pinned by that dependency.  The conformance command verifies the CodeLib revision, testsuite revision, `wasm-tools` version, Wasmtime version, exact filenames, and feature settings before execution.  It does not fetch or update third-party checkouts.
+
+```sh
+git -C proofs/talos/lean/.lake/packages/CodeLib submodule update --init vendor/testsuite
+tools/artifact-conformance.js check
+```
+
+The current conformance command reports 3,853 Talos passes, six known assertion failures, and 627 skipped commands across twenty-five files.  Wasmtime passes all twenty-five selected files, while Talos's six failures come from imported-memory limit handling in `memory_grow.wast`.  The command accepts only the six configured rows as an upstream warning; no rows remove the warning, and any changed or additional failure stops the gate.
+
+The same command extracts fifteen exact `assert_invalid` and `assert_malformed` modules from the pinned official corpus and checks their precise artifact decoder or validator errors.  It removes custom sections that `wasm-tools` adds while encoding text-origin `assert_invalid` modules because the accepted artifact profile rejects custom sections before reaching the intended validation rule.  It preserves raw `assert_malformed` binary modules byte-for-byte, and any missing command, changed line, changed classification stage, or changed error constructor stops the gate.
+
+`proofs/artifacts/release.json` binds the artifact registry, each package manifest, every recorded theorem name, the tool pins, and the artifact and conformance results.  `tools/artifact-release.js inspect` validates those identities and derives the unresolved release conditions from the record.  `check-ready` fails while any condition remains.
+
+`tools/artifact-release.js check-cold <revision>` clones the recorded source revision into a temporary directory, compares its release inputs byte-for-byte with the recorded input identity, checks the external tools and exact Lean commit, fetches the pinned proof dependencies, initializes the official testsuite, and runs both release gates.  It rejects tracked changes after dependency setup or either gate, rechecks the input identity, and writes a machine-readable receipt after success.  The command requires an immutable source revision and the recorded owner acceptance of the Lean 4.31.0 kernel defect, so the current draft cannot run it until this implementation has a commit.
+
 ## Generated Files and Dependencies
 
-Root `.lake`, nested `.lake`, `build`, `proofs/talos/.generated`, and `Project/<Case>/Program.lean` paths contain ignored local output.  A Talos proof commit contains the source, tests, registry entry, runtime pins, aggregate import after completion, and handwritten proof modules.  Inspect `git status` before and after generation so no unrelated local file enters the change.
+Root `.lake`, nested `.lake`, `build`, and `proofs/talos/.generated` contain ignored local output.  The repository tracks the twenty generated `Project/<Case>/Program.lean` proof caches because artifact-only verification and cold checkouts require the execution modules used by the behavioral theorems; Lean proves each cache equal to the translation of the decoded binary.  The nested official testsuite checkout lives below CodeLib's ignored `.lake` dependency tree, while `proofs/talos/conformance.json` records its required revision.  A Talos proof commit contains the source, tests, registry entry, runtime pins, aggregate import, generated program cache, and handwritten proof modules.  Inspect `git status` before and after generation: a changed `Program.lean` records a changed proof subject and requires artifact and proof review.
 
 Keep third-party dependencies to a minimum and discuss a new dependency before adding it.  Pin a dependency or artifact-producing tool to an immutable version, record its purpose and trusted-base effect, and add the required gate.  An update to Talos, Lean, Wasmtime, or `wasm-tools` requires review of generated bytes and proof assumptions.
 

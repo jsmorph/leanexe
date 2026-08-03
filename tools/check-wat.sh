@@ -7,6 +7,7 @@ set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
+leanrun="$repo_root/tools/leanrun"
 
 wasm_tools="${WASM_TOOLS:-}"
 if [[ -z "$wasm_tools" ]]; then
@@ -21,7 +22,7 @@ if [[ -z "$wasm_tools" ]]; then
 fi
 WASM_TOOLS="$wasm_tools" "$repo_root/tools/check-wasm-tools-version.sh"
 
-lake build lean-wasm
+LEANRUN_TIMEOUT=10m "$leanrun" lake build lean-wasm
 
 out_dir="$repo_root/.lake/build/wat-check"
 mkdir -p "$out_dir"
@@ -41,10 +42,12 @@ cases=(
 for case in "${cases[@]}"; do
   read -r module entry <<< "$case"
   name="${entry##*.}"
-  lake build "$module" >/dev/null
-  .lake/build/bin/lean-wasm compile --module "$module" --entry "$entry" \
+  LEANRUN_TIMEOUT=10m "$leanrun" lake build "$module" >/dev/null
+  LEANRUN_TIMEOUT=10m "$leanrun" .lake/build/bin/lean-wasm \
+    compile --module "$module" --entry "$entry" \
     --out "$out_dir/$name.wasm"
-  .lake/build/bin/lean-wasm compile-wat --module "$module" --entry "$entry" \
+  LEANRUN_TIMEOUT=10m "$leanrun" .lake/build/bin/lean-wasm \
+    compile-wat --module "$module" --entry "$entry" \
     --out "$out_dir/$name.wat"
   "$wasm_tools" parse "$out_dir/$name.wat" -o "$out_dir/$name.from-wat.wasm"
   if ! cmp -s "$out_dir/$name.wasm" "$out_dir/$name.from-wat.wasm"; then

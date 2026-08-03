@@ -6,11 +6,11 @@ The default generated module exports a plain WASM function for the selected Lean
 
 ## Requirements
 
-This repository uses Lean through `elan` and Lake.  The compiler and Talos proof workspaces both pin Lean 4.31.0.  Wasmtime runs generated modules, and a small C host runner handles library-mode ABI tests that need memory writes and inspection.  Run every Lean or Lake command, including a script that starts either tool, through the [resource-limited process form](DEVELOPING.md#lean-process-limits).
+This repository uses Lean through `elan` and Lake.  The compiler and Talos proof workspaces pin Lean 4.31.0 at commit `68218e876d2a38b1985b8590fff244a83c321783`, which accepts the archived kernel-unsoundness reproduction recorded by the release evidence.  The project owner accepts that known defect after a checked lexical audit found neither `addDecl` nor `inductDecl` in the artifact proof tree or its two local `LeanExe` source imports; the audit does not cover dependencies or repair the kernel.  Wasmtime runs generated modules, and a small C host runner handles library-mode ABI tests that need memory writes and inspection.  Run every direct Lean or Lake command through the [machine-serialized runner](DEVELOPING.md#lean-process-limits).
 
 ```sh
 tools/download-wasmtime.sh
-lake build
+tools/leanrun lake build
 tools/build-wasmtime-host.sh
 ```
 
@@ -19,6 +19,18 @@ tools/build-wasmtime-host.sh
 ```sh
 node test/run_all.js
 ```
+
+## Prose-to-artifact proof orchestration
+
+`tools/leanexegen` invokes the installed Codex CLI in headless mode to generate a formal specification, a Lean program, and an exact-artifact behavioral proof in three fresh tasks.  Outer-process Lean and LeanExe diagnostics run through `tools/leanrun`, and rejected candidates return to new Codex tasks under a fixed attempt bound.  The proof task receives the frozen formal specification and deterministic artifact model but receives neither Source nor the compiler.
+
+```sh
+tools/leanexegen -o myprogram.wasm myprogram.txt
+
+tools/leanexegen verify myprogram.proof
+```
+
+The [headless Codex orchestrator reference](docs/leanexegen.md) defines all seven stages, fixed unary interface, structured task outcomes, sidecar reports, warnings, dependency pins, and current limitations.  The orchestrator fixes `FormalSpec.ArtifactSpec : Wasm.Module → Prop`, appends its unary `TerminatesWith` definition, and uses that exact declaration in the final artifact theorem.  An existing sidecar can be verified without Codex or the LeanExe compiler.
 
 ## Repository Layout
 
@@ -29,7 +41,7 @@ node test/run_all.js
 | `LeanExe/Wasm` | WASM module model, binary encoder, WAT printer, and interpreter support used by tests. |
 | `LeanExe/Examples` | Example Lean programs that exercise the supported subset. |
 | `test` | Node and Lean tests that compare Lean execution with generated WASM behavior. |
-| `proofs/talos` | Talos proof workspace: nineteen completed artifact proofs, the runtime lemma library, and the generic teardown theorem. |
+| `proofs/talos` | Talos proof workspace: twenty completed artifact proofs, the binary verifier, the runtime lemma library, and the generic teardown theorem. |
 | `DEVELOPING.md` | Developer setup, diagnostics, test gates, proof artifacts, and troubleshooting. |
 | [Documentation](docs/README.md) | User, reference, verification, design, project-status, and historical documentation. |
 | `docs/verifying.md` | End-to-end recipe for verifying a new program. |
@@ -56,7 +68,7 @@ end LeanExe.Examples.ReadmeDemo
 Store the file at `LeanExe/Examples/ReadmeDemo.lean`, then build the module:
 
 ```sh
-lake build LeanExe.Examples.ReadmeDemo
+tools/leanrun lake build LeanExe.Examples.ReadmeDemo
 ```
 
 The compiler input is the checked Lean declaration loaded from the built module.  The command names the module and the fully qualified entry declaration, and the compiler rejects declarations outside the supported subset.  A rejected program should be treated as outside the language accepted by LeanExe, even if Lean itself can evaluate it.
@@ -116,7 +128,7 @@ end LeanExe.Examples.ReadmeData
 Use `compile` to write a WASM binary.  The exported entry name is the final component of the Lean declaration name, so `LeanExe.Examples.ReadmeDemo.choose` exports `choose`.  The module also exports `memory`, `alloc`, `reset`, `retain`, `release`, and `free` for host-side allocation, repeated execution, and reference-counted result lifetime, plus the runtime counter globals `allocCount`, `retainCount`, `releaseCount`, and `freeCount` for host-side leak accounting.
 
 ```sh
-.lake/build/bin/lean-wasm compile \
+tools/leanrun .lake/build/bin/lean-wasm compile \
   --module LeanExe.Examples.ReadmeDemo \
   --entry LeanExe.Examples.ReadmeDemo.choose \
   --out build/choose.wasm
@@ -125,20 +137,20 @@ Use `compile` to write a WASM binary.  The exported entry name is the final comp
 Inspect a generated module as WAT with `compile-wat`, which serializes the same lowering as `compile` from the same structured instructions; `tools/check-wat.sh` verifies that `wasm-tools parse` of the text reproduces the compiled binary byte for byte.  Printing the compiled binary with `wasm-tools print` remains an independent view of the module that ships.  Use `report` to classify the entry and its dependencies, `dump-ir` to inspect accepted lowering, and `ownership-report` to inspect result owners, fresh-result summaries, emitted releases, returned owners, fold accumulator releases, and explicit source-level releases.
 
 ```sh
-.lake/build/bin/lean-wasm compile-wat \
+tools/leanrun .lake/build/bin/lean-wasm compile-wat \
   --module LeanExe.Examples.Arithmetic \
   --entry LeanExe.Examples.Arithmetic.choose \
   --out build/choose.wat
 
-.lake/build/bin/lean-wasm report \
+tools/leanrun .lake/build/bin/lean-wasm report \
   --module LeanExe.Examples.ReadmeDemo \
   --entry LeanExe.Examples.ReadmeDemo.choose
 
-.lake/build/bin/lean-wasm dump-ir \
+tools/leanrun .lake/build/bin/lean-wasm dump-ir \
   --module LeanExe.Examples.ReadmeDemo \
   --entry LeanExe.Examples.ReadmeDemo.choose
 
-.lake/build/bin/lean-wasm ownership-report \
+tools/leanrun .lake/build/bin/lean-wasm ownership-report \
   --module LeanExe.Examples.ReadmeDemo \
   --entry LeanExe.Examples.ReadmeDemo.choose
 ```
@@ -146,7 +158,7 @@ Inspect a generated module as WAT with `compile-wat`, which serializes the same 
 Use `compile-wasi` for a command-style module whose selected entry takes no parameters and returns `ByteArray`.  The generated module imports WASI Preview 1 `fd_write`, exports `_start`, and writes the returned bytes to stdout.  This mode does not compile Lean `IO`; the Lean entry remains a pure function.
 
 ```sh
-.lake/build/bin/lean-wasm compile-wasi \
+tools/leanrun .lake/build/bin/lean-wasm compile-wasi \
   --module LeanExe.Examples.Correctness \
   --entry LeanExe.Examples.Correctness.byteArrayStringConstReturn \
   --out build/stdout.wasm
@@ -155,7 +167,7 @@ Use `compile-wasi` for a command-style module whose selected entry takes no para
 Use `compile-wasi-stdin` for a bounded stdin-to-stdout transform.  The selected entry must have type `ByteArray -> ByteArray`.  The generated `_start` reads stdin through WASI `fd_read` until EOF, traps if input exceeds `--max-input-bytes`, calls the pure Lean entry, and writes the returned bytes to stdout.
 
 ```sh
-.lake/build/bin/lean-wasm compile-wasi-stdin \
+tools/leanrun .lake/build/bin/lean-wasm compile-wasi-stdin \
   --max-input-bytes 65536 \
   --module LeanExe.Examples.ByteArrayPrograms \
   --entry LeanExe.Examples.ByteArrayPrograms.appendBang \
@@ -165,7 +177,7 @@ Use `compile-wasi-stdin` for a bounded stdin-to-stdout transform.  The selected 
 Use `compile-wasi-stdin-except` when the pure entry reports failure explicitly.  The selected entry must have type `ByteArray -> Except ByteArray ByteArray`.  The generated `_start` reads bounded stdin, calls the Lean entry, writes `Except.ok` bytes to stdout with exit status `0`, and writes `Except.error` bytes to stderr before calling WASI `proc_exit 1`.
 
 ```sh
-.lake/build/bin/lean-wasm compile-wasi-stdin-except \
+tools/leanrun .lake/build/bin/lean-wasm compile-wasi-stdin-except \
   --max-input-bytes 65536 \
   --module LeanExe.Examples.Correctness \
   --entry LeanExe.Examples.Correctness.byteArrayExceptBangOrError \
@@ -175,7 +187,7 @@ Use `compile-wasi-stdin-except` when the pure entry reports failure explicitly. 
 Use `compile-wasi-argv-except` for command arguments.  The selected entry must have type `Array ByteArray -> Except ByteArray ByteArray`.  The generated `_start` reads WASI arguments through `args_sizes_get` and `args_get`, skips `argv[0]`, builds an internal `Array ByteArray` containing the user arguments, and applies the same stdout, stderr, and exit-status rules as `compile-wasi-stdin-except`.  `--max-args` limits user arguments.  `--max-argv-bytes` limits the WASI argument buffer, including `argv[0]` and NUL terminators.
 
 ```sh
-.lake/build/bin/lean-wasm compile-wasi-argv-except \
+tools/leanrun .lake/build/bin/lean-wasm compile-wasi-argv-except \
   --max-args 16 \
   --max-argv-bytes 4096 \
   --module LeanExe.Examples.ByteArrayPrograms \
@@ -186,7 +198,7 @@ Use `compile-wasi-argv-except` for command arguments.  The selected entry must h
 Use `compile-wasi-stdin-argv-except` when a command needs both stdin and arguments.  The selected entry must have type `ByteArray -> Array ByteArray -> Except ByteArray ByteArray`.  The generated `_start` reads bounded stdin, reads bounded WASI argv, skips `argv[0]`, and applies the same stdout, stderr, and exit-status rules as `compile-wasi-stdin-except`.  The stdin bound and argv bounds reserve fixed memory regions before the Lean entry runs.
 
 ```sh
-.lake/build/bin/lean-wasm compile-wasi-stdin-argv-except \
+tools/leanrun .lake/build/bin/lean-wasm compile-wasi-stdin-argv-except \
   --max-input-bytes 8192 \
   --max-args 8 \
   --max-argv-bytes 256 \
@@ -212,7 +224,7 @@ The expected output is:
 The repository examples can be compiled the same way.  `LeanExe.Examples.Collatz.steps` accepts one `UInt64` and returns the number of Collatz steps.  `LeanExe.Examples.Prime.next` accepts one `UInt64` and returns the smallest prime number greater than the input.
 
 ```sh
-.lake/build/bin/lean-wasm compile \
+tools/leanrun .lake/build/bin/lean-wasm compile \
   --module LeanExe.Examples.Collatz \
   --entry LeanExe.Examples.Collatz.steps \
   --out build/collatz.wasm
@@ -301,7 +313,7 @@ node tools/compare-standard.js \
 Pure mode adds a third executable semantics.  The `eval-ir` command compiles the entry to the core IR and evaluates it with the reference interpreter in `LeanExe/IR/Core.lean`, so the harness can compare standard Lean, the IR interpreter, and Wasmtime on the same inputs.  A mismatch then localizes to extraction (standard Lean versus IR) or emission (IR versus WASM).  The interpreter covers the scalar IR fragment only; when the compiled module contains heap constructs, `eval-ir` exits with status 3 and the harness skips the comparison.
 
 ```sh
-.lake/build/bin/lean-wasm eval-ir \
+tools/leanrun .lake/build/bin/lean-wasm eval-ir \
   --module LeanExe.Examples.Collatz \
   --entry LeanExe.Examples.Collatz.steps 27
 ```
@@ -314,19 +326,25 @@ node tools/compare-standard.js --self-test
 
 ## Verification With Talos
 
-The standard comparison suite checks generated WASM against standard Lean execution over selected inputs.  The Talos proof workspace adds artifact-level theorems about selected generated modules.  LeanExe emits WASM, `wasm-tools print` renders that WASM as WAT, Talos decodes the generated WAT into a Lean model, and a handwritten proof establishes a property of that decoded module.
+The standard comparison suite checks generated WASM against standard Lean execution over selected inputs.  The source-driven Talos gate emits WASM, renders it as WAT, decodes the WAT into a Talos model, and rebuilds the handwritten specification.  The artifact gate instead starts from a frozen binary and proves byte identity, decoding, WebAssembly-profile validity, exact Talos translation, and the same behavioral specification without reading source or invoking the compiler.
 
 The completed artifacts live in [Talos Proofs](proofs/talos/README.md), which holds the authoritative theorem inventory.  They cover scalar algorithms, recursive data, byte processing and allocation, the compiler's unsigned LEB128 encoder, CLOB operations, and exact runtime accounting.  The workspace proves shared runtime behavior once and uses a generic teardown theorem for recursive ownership trees.
 
-Two tools implement the proof workflow.  The artifact tool generates ignored WASM, WAT, and `Program.lean` files while creating Talos's required Cargo-shaped input only in a temporary directory.  The proof tool repeats generation before checking one handwritten specification or the complete proof library.
+Four tools cover the source-driven proof, exact-artifact proof, and semantic comparison paths.  `talos-artifact.js` generates ignored WASM and WAT and updates the tracked `Program.lean` proof cache, while `talos-proof.js` regenerates a temporary candidate, requires byte equality with the tracked cache, and checks one handwritten specification or the complete proof library.  `artifact-proof.js` checks one content-addressed binary package or the aggregate exact-artifact registry, while `artifact-conformance.js` runs a pinned official WebAssembly corpus slice through Talos and Wasmtime.
 
 ```sh
 tools/talos-artifact.js prepare gcd
 tools/talos-proof.js check gcd
 tools/talos-proof.js check --all
+tools/artifact-proof.js check-artifacts
+tools/artifact-proof.js check-all
+tools/artifact-conformance.js check
+tools/artifact-release.js inspect
 ```
 
-Both tools enforce the repository's systemd memory, CPU, priority, I/O, timeout, and serial-execution policy for every Lean-based child.  A clean checkout needs the pinned `wasm-tools`; the artifact tool fetches the pinned Talos dependency and builds its verifier when absent.  [Verifying a Program](docs/verifying.md) defines every stage's inputs, outputs, human decisions, and failure modes.
+All five tools send every Lean-based child through the repository's machine-wide lock and resource policy.  The complete artifact proof gate passed all twenty registered packages on 2026-08-03.  The conformance gate classified fifteen pinned official invalid modules at their exact decoder or validator errors and passed twenty-five selected execution files with one warning for the six imported-memory assertions documented in `docs/telos-bug.md`.  Wasmtime passed every selected execution file.  Both receipts bind the same expanded release-input digest, and the release remains blocked on an immutable source revision and a cold run of those gates from that revision.
+
+A clean source-driven checkout needs the pinned `wasm-tools`, while artifact verification needs the frozen packages, proof workspace, and pinned Lean and Talos dependencies.  Semantic conformance also needs the pinned official testsuite submodule and Wasmtime.  [Verifying a Program](docs/verifying.md) defines all three paths, and the [Artifact Verification Format](docs/artifact-format.md) defines the exact-binary path.
 
 The broader compiler-correctness theorem remains a target in the [Development Plan](plan.md).  [Developing LeanExe](DEVELOPING.md) defines the local gates and artifact-update rules.  The old development agenda is archived because the plan now owns the current work queue.
 
@@ -335,7 +353,7 @@ The broader compiler-correctness theorem remains a target in the [Development Pl
 `ByteArray` and arrays use the module memory.  The module exports `alloc(len : i64) : i64`; a host calls `alloc`, writes bytes into the exported memory, and passes the returned pointer plus a length when the entry expects a `ByteArray`.  The allocator grows WASM memory when no free block and no current heap range can satisfy a request.  Returned byte arrays use a pointer and length result pair at the public ABI, while compiled code carries an internal owner slot so stored byte-array slices can keep their allocation root alive.  The module also exports `retain(ptr : i64) : i64`, `release(ptr : i64)`, and `free(ptr : i64)` for reference-counted heap objects.
 
 ```sh
-.lake/build/bin/lean-wasm compile \
+tools/leanrun .lake/build/bin/lean-wasm compile \
   --module LeanExe.Examples.AsciiDigits \
   --entry LeanExe.Examples.AsciiDigits.validateGeneric \
   --out build/bytes.wasm

@@ -1,0 +1,88 @@
+#!/bin/sh
+set -eu
+
+script_dir="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+repo_root="$(CDPATH= cd -- "$script_dir/.." && pwd)"
+toolchain_name="$(sed -n '1p' "$repo_root/lean-toolchain")"
+toolchain_key="$(printf '%s' "$toolchain_name" | sed 's,/,--,g; s,:,---,g')"
+elan_root="${ELAN_HOME:-$HOME/.elan}"
+toolchain="${LEANRUN_TOOLCHAIN:-$elan_root/toolchains/$toolchain_key}"
+run_timeout="${LEANRUN_TIMEOUT:-900}"
+lock_timeout="${LEANRUN_LOCK_TIMEOUT:-900}"
+lock_dir="${LEANRUN_LOCKDIR:-${VQ_LOCKDIR:-${TMPDIR:-/tmp}/vq-leanrun.$(id -u)}}"
+
+usage() {
+  echo "usage: tools/leanrun [--timeout DURATION] [--lock-timeout SECONDS] [--toolchain DIR] <command> [args]" >&2
+  exit 2
+}
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --timeout)
+      [ "$#" -ge 2 ] || usage
+      run_timeout="$2"
+      shift 2
+      ;;
+    --lock-timeout)
+      [ "$#" -ge 2 ] || usage
+      lock_timeout="$2"
+      shift 2
+      ;;
+    --toolchain)
+      [ "$#" -ge 2 ] || usage
+      toolchain="$2"
+      shift 2
+      ;;
+    --)
+      shift
+      break
+      ;;
+    -*)
+      usage
+      ;;
+    *)
+      break
+      ;;
+  esac
+done
+
+if [ "$#" -eq 0 ]; then
+  usage
+fi
+
+case "$lock_timeout" in
+  ''|*[!0-9]*)
+    echo "leanrun: --lock-timeout must be a nonnegative integer" >&2
+    exit 2
+    ;;
+esac
+
+if [ -z "$run_timeout" ]; then
+  echo "leanrun: --timeout must not be empty" >&2
+  exit 2
+fi
+
+if [ ! -x "$toolchain/bin/lean" ]; then
+  echo "leanrun: no Lean toolchain at $toolchain" >&2
+  exit 2
+fi
+
+PATH="$toolchain/bin:$PATH"
+LEAN_NUM_THREADS=1
+NO_COLOR=1
+export PATH LEAN_NUM_THREADS NO_COLOR
+
+mkdir -p "$lock_dir"
+exec 9>"$lock_dir/1"
+if ! flock -w "$lock_timeout" 9; then
+  echo "leanrun: timed out waiting for the machine-wide Lean slot" >&2
+  exit 75
+fi
+
+exec systemd-run --user --scope --quiet --collect \
+  -p MemoryHigh=4G \
+  -p MemoryMax=6G \
+  -p MemorySwapMax=1G \
+  -p CPUQuota=100% \
+  nice -n 10 ionice -c 3 \
+  timeout "$run_timeout" "$@"

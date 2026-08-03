@@ -55,7 +55,7 @@ Step 4 delivers the trust reduction; step 5 removes the external tools from the 
 The refactor must not change behavior.  Validation follows the pattern the two-tool workflow migration used:
 
 1. Byte-identical `encode` output for all twenty registered cases against the pre-refactor compiler.
-2. The full differential execution suite under its outer resource scope.
+2. The full differential execution suite, whose Lean children use the machine-serialized runner.
 3. The new round-trip gate on all twenty cases: `decode (print (serialize (emit m))) = emit m`.
 4. The aggregate proof gate, which must be unaffected because the generated models are unchanged.
 

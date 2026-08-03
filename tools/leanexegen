@@ -1,0 +1,1257 @@
+#!/usr/bin/env node
+"use strict";
+
+const fs = require("node:fs");
+const os = require("node:os");
+const path = require("node:path");
+const {
+  artifactSources,
+  codexTaskSchemaVersion,
+  collectFiles,
+  createPackage,
+  currentToolPins,
+  installSources,
+  kernelAuditFindings,
+  makeJob,
+  moduleFile,
+  programExportIndex,
+  rewriteProgramNamespace,
+  sha256,
+  validateCodexTaskOutcome,
+  validatePackage,
+  validateProgramImports,
+  validateProofImports,
+  writeAtomic,
+} = require("./leanexegen-lib");
+const { spawnResult } = require("./run-process");
+
+const repoRoot = path.resolve(__dirname, "..");
+const proofRoot = path.join(repoRoot, "proofs", "talos", "lean");
+const projectRoot = path.join(proofRoot, "Project");
+const leanrun = path.join(repoRoot, "tools", "leanrun");
+const compiler = path.join(repoRoot, ".lake", "build", "bin", "lean-wasm");
+const verifierRoot = path.join(
+  proofRoot, ".lake", "packages", "CodeLib", "verifier",
+);
+const verifier = path.join(verifierRoot, ".lake", "build", "bin", "verifier");
+const dumpRaw = path.join(projectRoot, "Artifact", "Binary", "DumpRaw.lean");
+const maximumTaskAttempts = 5;
+const allowedAxioms = new Set([
+  "propext",
+  "Classical.choice",
+  "Quot.sound",
+  "Lean.ofReduceBool",
+]);
+const generatedDecisionAxiom =
+  /^[A-Za-z0-9_.]+\._native\.(?:native_decide|bv_decide)\.ax_[0-9_]+$/;
+
+const warnings = [
+  "The formal specification is a generated interpretation of the prose request.",
+  "No theorem connects the generated Lean source to the formal specification.",
+  "The artifact theorem applies to one exact SHA-256 digest under the pinned Lean and Talos semantics.",
+  "Codex generation and the LeanExe compiler are outside the trusted artifact proof.",
+];
+
+class StageError extends Error {
+  constructor(stage, name, message) {
+    super(message);
+    this.stage = stage;
+    this.stageName = name;
+  }
+}
+
+function usage() {
+  return [
+    "usage: leanexegen [-s] -o <program.wasm> <request.txt>",
+    "       leanexegen verify [-s] <proof-package>",
+  ].join("\n");
+}
+
+function parseArgs(args) {
+  if (args[0] === "verify") {
+    let silent = false;
+    const rest = [];
+    for (const argument of args.slice(1)) {
+      if (argument === "-s") silent = true;
+      else rest.push(argument);
+    }
+    if (rest.length !== 1) throw new Error(usage());
+    return { command: "verify", silent, packagePath: path.resolve(rest[0]) };
+  }
+  let silent = false;
+  let output = null;
+  const positional = [];
+  for (let index = 0; index < args.length; index += 1) {
+    const argument = args[index];
+    if (argument === "-s") {
+      silent = true;
+    } else if (argument === "-o") {
+      index += 1;
+      if (index >= args.length || output !== null) throw new Error(usage());
+      output = args[index];
+    } else if (argument.startsWith("-")) {
+      throw new Error(usage());
+    } else {
+      positional.push(argument);
+    }
+  }
+  if (output === null || positional.length !== 1) throw new Error(usage());
+  return {
+    command: "generate",
+    silent,
+    outputPath: path.resolve(output),
+    requestPath: path.resolve(positional[0]),
+  };
+}
+
+function progress(silent, stage, title) {
+  if (!silent) process.stdout.write(`## Stage ${stage}: ${title}\n\n`);
+}
+
+function generationResult(silent, samples, invocation) {
+  if (silent) return "";
+  const sampleText = samples.map((sample) =>
+    `Input: ${sample.arguments.join(" ")}\nOutput: ${sample.stdout}\n`).join("");
+  return `${sampleText}\nRun:\n\n\`${formatCommand(invocation)}\`\n`;
+}
+
+function outputText(value) {
+  if (value === undefined || value === null) return "";
+  return Buffer.isBuffer(value) ? value.toString("utf8") : String(value);
+}
+
+function formatError(error) {
+  if (error instanceof AggregateError) {
+    return [error.message, ...error.errors.map((item) => formatError(item))].join("\n");
+  }
+  return error instanceof Error ? error.message : String(error);
+}
+
+function commandFailure(result) {
+  const output = [outputText(result.stderr).trim(), outputText(result.stdout).trim()]
+    .filter((part) => part.length > 0).join("\n");
+  const termination = result.signal
+    ? `terminated by ${result.signal}`
+    : `exited with status ${result.status}`;
+  return output.length === 0 ? termination : `${termination}:\n${output}`;
+}
+
+function run(stage, name, args, options = {}) {
+  let result;
+  try {
+    result = spawnResult(args, {
+      cwd: options.cwd || repoRoot,
+      env: options.env || process.env,
+      input: options.input,
+      timeout: options.timeout,
+      maxBuffer: options.maxBuffer || 64 * 1024 * 1024,
+    });
+  } catch (error) {
+    throw new StageError(stage, name, error.message);
+  }
+  if (result.status !== 0) throw new StageError(stage, name, commandFailure(result));
+  return {
+    stdout: outputText(result.stdout),
+    stderr: outputText(result.stderr),
+  };
+}
+
+function runLean(stage, name, timeout, args, options = {}) {
+  return run(stage, name, [leanrun, "--timeout", timeout, ...args], options);
+}
+
+function readRequest(file) {
+  let request;
+  try {
+    request = fs.readFileSync(file, "utf8");
+  } catch (error) {
+    throw new StageError(1, "interpretation", `could not read ${file}: ${error.message}`);
+  }
+  if (request.trim().length === 0) {
+    throw new StageError(1, "interpretation", "request file is empty");
+  }
+  return request;
+}
+
+function codexOutcomeSchema() {
+  return {
+    type: "object",
+    additionalProperties: false,
+    required: [
+      "schemaVersion", "task", "outcome", "summary", "decisions",
+      "questions", "problems", "source", "samples", "hostAssumptions",
+    ],
+    properties: {
+      schemaVersion: { type: "integer", enum: [codexTaskSchemaVersion] },
+      task: {
+        type: "string",
+        enum: ["formal-specification", "lean-program", "artifact-proof"],
+      },
+      outcome: { type: "string", enum: ["generated", "questions", "problems"] },
+      summary: { type: "string", minLength: 1 },
+      decisions: { type: "array", items: { type: "string", minLength: 1 } },
+      questions: { type: "array", items: { type: "string", minLength: 1 } },
+      problems: { type: "array", items: { type: "string", minLength: 1 } },
+      source: { type: "string" },
+      samples: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["arguments", "expectedStdout"],
+          properties: {
+            arguments: { type: "array", items: { type: "string" }, minItems: 1 },
+            expectedStdout: { type: "string", pattern: "^(?:0|[1-9][0-9]*)$" },
+          },
+        },
+      },
+      hostAssumptions: { type: "array", items: { type: "string", minLength: 1 } },
+    },
+  };
+}
+
+function codexCommandArgs(codex, workspace, schemaFile, outputFile) {
+  return [
+    codex,
+    "exec",
+    "-C", workspace,
+    "--sandbox", "workspace-write",
+    "--skip-git-repo-check",
+    "--ephemeral",
+    "--json",
+    "--output-schema", schemaFile,
+    "-o", outputFile,
+    "--color", "never",
+    "-",
+  ];
+}
+
+function runCodexOutcome(options) {
+  const attemptRoot = path.join(options.taskRoot, `attempt-${options.attempt}`);
+  fs.mkdirSync(attemptRoot, { recursive: true });
+  for (const [relative, bytes] of options.contextFiles) {
+    writeAtomic(path.join(attemptRoot, ...relative.split("/")), Buffer.from(bytes));
+  }
+  const schemaFile = path.join(attemptRoot, ".leanexegen-output-schema.json");
+  const outputFile = path.join(attemptRoot, ".leanexegen-outcome.json");
+  writeAtomic(schemaFile, Buffer.from(`${JSON.stringify(codexOutcomeSchema(), null, 2)}\n`));
+  const args = codexCommandArgs(options.codex, attemptRoot, schemaFile, outputFile);
+  const execute = options.execute || ((command, runOptions) =>
+    run(options.stage, `${options.task} Codex task`, command, runOptions));
+  execute(args, {
+    cwd: attemptRoot,
+    input: options.prompt,
+    timeout: 30 * 60 * 1000,
+    maxBuffer: 64 * 1024 * 1024,
+  });
+  let response;
+  try {
+    response = JSON.parse(fs.readFileSync(outputFile, "utf8"));
+    return validateCodexTaskOutcome(response, options.task);
+  } catch (error) {
+    throw new StageError(options.stage, options.task, `invalid Codex outcome: ${error.message}`);
+  }
+}
+
+function reportDigest(report) {
+  return sha256(Buffer.from(`${JSON.stringify(report, null, 2)}\n`));
+}
+
+function runTaskIterations(options) {
+  const attempts = [];
+  let feedback = null;
+  for (let attempt = 1; attempt <= options.maximumAttempts; attempt += 1) {
+    const outcome = options.invoke(attempt, options.prompt(attempt, feedback));
+    if (outcome.outcome !== "generated") {
+      const detail = outcome.outcome === "questions" ? outcome.questions : outcome.problems;
+      throw new StageError(options.stage, options.stageName, detail.join("\n"));
+    }
+    const source = options.materialize(outcome.source);
+    let accepted = false;
+    let diagnostic;
+    try {
+      diagnostic = options.diagnose(source, outcome);
+      accepted = true;
+    } catch (error) {
+      diagnostic = formatError(error);
+    }
+    if (typeof diagnostic !== "string" || diagnostic.length === 0) {
+      throw new StageError(options.stage, options.stageName, "diagnostic report was empty");
+    }
+    const sourceSha256 = sha256(Buffer.from(source));
+    attempts.push({
+      number: attempt,
+      outcome: accepted ? "accepted" : "rejected",
+      sourceSha256,
+      diagnosticSha256: sha256(Buffer.from(diagnostic)),
+      diagnostic,
+    });
+    if (accepted) {
+      const report = {
+        summary: outcome.summary,
+        decisions: outcome.decisions,
+        attempts,
+      };
+      return {
+        outcome,
+        source,
+        stageReport: {
+          task: options.task,
+          sourceModule: options.sourceModule,
+          sourceSha256,
+          reportSha256: reportDigest(report),
+          report,
+        },
+      };
+    }
+    feedback = { source: outcome.source, diagnostic };
+  }
+  throw new StageError(
+    options.stage,
+    options.stageName,
+    `failed after ${options.maximumAttempts} Codex attempts:\n` +
+      `Last candidate:\n\n${feedback.source}\n\n` +
+      `Verifier diagnostic:\n\n${feedback.diagnostic}`,
+  );
+}
+
+function feedbackPrompt(feedback) {
+  if (feedback === null) return "";
+  return `\nThe previous candidate was rejected by the outer verifier.\n\n` +
+    `Previous source:\n\n${feedback.source}\n\nVerifier diagnostic:\n\n${feedback.diagnostic}\n`;
+}
+
+function formalSpecificationSource(job, generatedSource) {
+  return `${generatedSource.trimEnd()}\n\nnamespace ${job.namespace}.FormalSpec\n\n` +
+    `def ArtifactSpec (module_ : Wasm.Module) : Prop :=\n` +
+    `  ∃ entry, module_.findExport ${JSON.stringify(job.exportName)} = some entry ∧\n` +
+    `    ∀ (env : Wasm.HostEnv Unit) (initial : Wasm.Store Unit) (n : UInt64),\n` +
+    `      Wasm.TerminatesWith env module_ entry initial [.i64 n] ` +
+    `(fun _ results => results = [.i64 (expected n)])\n\n` +
+    `end ${job.namespace}.FormalSpec\n`;
+}
+
+function formalSpecificationCheckSources(job, suffix) {
+  const target = `${job.namespace}.${suffix}`;
+  return {
+    target,
+    sources: new Map([[target, `import ${job.formalSpecModule}\n\n` +
+      `#check (${job.expectedDefinition} : UInt64 → UInt64)\n` +
+      `#check (${job.formalSpecDefinition} : ${job.formalSpecType})\n`]]),
+  };
+}
+
+function tomlString(value) {
+  return JSON.stringify(value);
+}
+
+function createWorkspace(root) {
+  const lakefile = `name = "leanexegen-proof"\nversion = "0.1.0"\n\n` +
+    `packagesDir = ${tomlString(path.join(proofRoot, ".lake", "packages"))}\n\n` +
+    `[[require]]\nname = "Project"\npath = ${tomlString(proofRoot)}\n\n` +
+    `[[lean_lib]]\nname = "LeanExeGen"\n`;
+  writeAtomic(path.join(root, "lakefile.toml"), Buffer.from(lakefile));
+  const toolchain = fs.readFileSync(path.join(repoRoot, "lean-toolchain"));
+  writeAtomic(path.join(root, "lean-toolchain"), toolchain);
+}
+
+function formalPrompt(request, job, attempt, feedback) {
+  return `You are performing independent task 1 of 3 for leanexegen.  Produce the formal ` +
+    `specification for this request:\n\n${request}\n\n` +
+    `Return only the JSON object required by the output schema.  Set task to ` +
+    `"formal-specification".  For a generated outcome, source must be a complete Lean module ` +
+    `${job.formalSpecModule} that imports CodeLib and defines exactly ` +
+    `${job.expectedDefinition} : UInt64 → UInt64.  Do not define ArtifactSpec; the ` +
+    `orchestrator appends the fixed module predicate after your source.  Put semantic and ABI ` +
+    `assumptions in hostAssumptions, and leave samples empty.  Use questions or problems when ` +
+    `the request cannot be specified.  Do not run commands or edit files; the outer process ` +
+    `runs Lean diagnostics.  This is attempt ${attempt} of ${maximumTaskAttempts}.\n` +
+    feedbackPrompt(feedback);
+}
+
+function programPrompt(request, job, attempt, feedback) {
+  return `You are performing independent task 2 of 3 for leanexegen.  Produce the Lean program ` +
+    `for this request:\n\n${request}\n\n` +
+    `Return only the JSON object required by the output schema.  Set task to "lean-program".  ` +
+    `For a generated outcome, source must be a complete Lean module ${job.sourceModule} that ` +
+    `defines exactly ${job.sourceEntry} : UInt64 → UInt64.  The public WebAssembly export is ` +
+    `${job.exportName}.  The working directory contains the frozen formal specification; ` +
+    `implement compute so the eventual artifact can satisfy ${job.formalSpecDefinition}.  ` +
+    `Use that file as specification context, but do not import it from Source.  No source theorem ` +
+    `or compiler-correctness certificate is required.  Provide at least one sample whose ` +
+    `arguments and expectedStdout are unsigned decimal strings without line endings, and leave hostAssumptions ` +
+    `empty.  You may use read-only commands to inspect request.txt and the frozen FormalSpec ` +
+    `module.  Do not edit files or run Lean, Lake, or the compiler; the outer process runs ` +
+    `LeanExe diagnostics.  ` +
+    `This is attempt ${attempt} of ${maximumTaskAttempts}.\n` +
+    feedbackPrompt(feedback);
+}
+
+function proofPrompt(request, job, entryIndex, attempt, feedback) {
+  return `You are performing independent task 3 of 3 for leanexegen.  Prove the exact compiled ` +
+    `artifact for this request:\n\n${request}\n\n` +
+    `The working directory contains only the request, the frozen formal specification, the ` +
+    `WAT-derived Talos Program module, and deterministic exact-artifact support modules.  It ` +
+    `contains no Source module.  Return only the JSON object required by the output schema and ` +
+    `set task to "artifact-proof".  For a generated outcome, source must be the complete Lean ` +
+    `module ${job.behaviorModule} and prove exactly ` +
+    `${job.behaviorTheorem} : ${job.formalSpecDefinition} ${job.namespace}.«module».  ` +
+    `You may import ${job.formalSpecModule}, ${job.programModule}, generated artifact-support ` +
+    `modules, CodeLib, Interpreter, Std, Init, or Mathlib.  Do not import Source, inspect source ` +
+    `code, invoke the compiler, add axioms, or use sorry.  Leave samples and hostAssumptions ` +
+    `empty.  ArtifactSpec resolves the ${job.exportName} export to function ${entryIndex}, then ` +
+    `quantifies over env, initial, and n.  The generic opening is ` +
+    `\`refine ⟨${entryIndex}, rfl, ?_⟩\`, then \`intro env initial n\`, then ` +
+    `\`apply Wasm.TerminatesWith.of_wp_entry ` +
+    `(f := ${job.namespace}.func${entryIndex}Def) rfl\`, then ` +
+    `\`intro initial'\`.  Straight-line scalar proofs usually import ` +
+    `Interpreter.Wasm.Wp.Tactic, unfold ${job.namespace}.func${entryIndex}, use wp_run, and simplify ` +
+    `expected.  Use read-only commands to inspect FormalSpec, Program, and the artifact-support ` +
+    `modules for the exact definitions and locals.  Do not edit files or run Lean, Lake, or the ` +
+    `compiler; the outer process runs all diagnostics.  This is attempt ${attempt} of ` +
+    `${maximumTaskAttempts}.\n` +
+    feedbackPrompt(feedback);
+}
+
+function programTaskContext(request, job, formalSource) {
+  return new Map([
+    ["request.txt", request],
+    [moduleFile(job.formalSpecModule), formalSource],
+  ]);
+}
+
+function proofTaskContext(request, job, formalSource, generatedSources) {
+  const context = new Map([
+    ["request.txt", request],
+    [moduleFile(job.formalSpecModule), formalSource],
+    ...[...generatedSources].map(([moduleName, source]) => [moduleFile(moduleName), source]),
+  ]);
+  if (context.has(moduleFile(job.sourceModule))) {
+    throw new StageError(5, "artifact proof", "proof task context contains Source");
+  }
+  return context;
+}
+
+function checkFormalSpecification(workspace, job, source, stage, suffix) {
+  installSources(workspace, new Map([[job.formalSpecModule, source]]));
+  const checks = formalSpecificationCheckSources(job, suffix);
+  installSources(workspace, checks.sources);
+  runLean(stage, "formal specification module", "15m", [
+    "lake", "-d", workspace, "--no-ansi", "build", job.formalSpecModule,
+  ]);
+  runLean(stage, "formal specification declarations", "15m", [
+    "lake", "-d", workspace, "--no-ansi", "build", checks.target,
+  ]);
+  return `Lean accepted ${job.expectedDefinition} : UInt64 → UInt64 and ` +
+    `${job.formalSpecDefinition} : ${job.formalSpecType}.`;
+}
+
+function checkProgramCandidate(workspace, job, source) {
+  installSources(workspace, new Map([
+    [job.sourceModule, source],
+    [`${job.namespace}.SourceCheck`, `import ${job.sourceModule}\n\n` +
+      `#check (${job.sourceEntry} : UInt64 → UInt64)\n`],
+  ]));
+  runLean(3, "Lean source typecheck", "15m", [
+    "lake", "-d", workspace, "--no-ansi", "build", `${job.namespace}.SourceCheck`,
+  ]);
+  runLean(3, "LeanExe acceptance", "10m", [
+    "lake", "-d", workspace, "env", compiler,
+    "report", "--module", job.sourceModule, "--entry", job.sourceEntry,
+  ]);
+  const candidate = path.join(
+    workspace, `candidate-${sha256(Buffer.from(source)).slice(0, 16)}.wasm`);
+  runLean(3, "LeanExe candidate compilation", "10m", [
+    "lake", "-d", workspace, "env", compiler,
+    "compile", "--module", job.sourceModule, "--entry", job.sourceEntry,
+    "--out", candidate,
+  ]);
+  return `Lean and LeanExe accepted and compiled ${job.sourceEntry} : UInt64 → UInt64.`;
+}
+
+function removeTaskWorkspace(root, stage, name) {
+  try {
+    fs.rmSync(root, { recursive: true });
+  } catch (error) {
+    throw new StageError(stage, name, `could not remove isolated workspace: ${error.message}`);
+  }
+}
+
+function findExecutable(name) {
+  for (const directory of (process.env.PATH || "").split(path.delimiter)) {
+    if (!directory) continue;
+    const candidate = path.join(directory, name);
+    try {
+      fs.accessSync(candidate, fs.constants.X_OK);
+      return candidate;
+    } catch (error) {
+      if (!["ENOENT", "ENOTDIR", "EACCES"].includes(error.code)) throw error;
+    }
+  }
+  return null;
+}
+
+function findCodex() {
+  const codex = findExecutable("codex");
+  if (codex === null) {
+    throw new StageError(1, "job setup", "the Codex CLI was not found on PATH");
+  }
+  return codex;
+}
+
+function findWasmTools() {
+  const candidates = [
+    process.env.WASM_TOOLS,
+    findExecutable("wasm-tools"),
+    path.join(os.homedir(), ".cargo", "bin", "wasm-tools"),
+  ].filter(Boolean);
+  for (const candidate of candidates) {
+    try {
+      fs.accessSync(candidate, fs.constants.X_OK);
+      return path.resolve(candidate);
+    } catch (error) {
+      if (!["ENOENT", "ENOTDIR", "EACCES"].includes(error.code)) throw error;
+    }
+  }
+  throw new StageError(4, "WASM compilation", "wasm-tools was not found");
+}
+
+function findWasmtime() {
+  const candidates = [
+    process.env.WASMTIME,
+    findExecutable("wasmtime"),
+    path.join(repoRoot, "build", "tools", "wasmtime", "current", "wasmtime"),
+  ].filter(Boolean);
+  for (const candidate of candidates) {
+    try {
+      fs.accessSync(candidate, fs.constants.X_OK);
+      return path.resolve(candidate);
+    } catch (error) {
+      if (!["ENOENT", "ENOTDIR", "EACCES"].includes(error.code)) throw error;
+    }
+  }
+  throw new StageError(6, "sample execution", "Wasmtime was not found");
+}
+
+function ensureVerifier() {
+  try {
+    fs.accessSync(verifier, fs.constants.X_OK);
+    return;
+  } catch (error) {
+    if (!["ENOENT", "ENOTDIR", "EACCES"].includes(error.code)) throw error;
+  }
+  if (!fs.existsSync(path.join(verifierRoot, "lakefile.toml"))) {
+    runLean(5, "Talos dependency update", "15m",
+      ["lake", "-d", proofRoot, "--no-ansi", "update"]);
+  }
+  runLean(5, "Talos verifier build", "20m",
+    ["lake", "-d", verifierRoot, "--no-ansi", "build"]);
+  try {
+    fs.accessSync(verifier, fs.constants.X_OK);
+  } catch (error) {
+    throw new StageError(5, "artifact proof", `Talos verifier is unavailable: ${error.message}`);
+  }
+}
+
+function buildCrateInput(root, job, wasm, wat) {
+  const crateRoot = path.join(root, "rust", job.caseName);
+  const buildRoot = path.join(root, "rust", "build", job.caseName);
+  fs.mkdirSync(crateRoot, { recursive: true });
+  fs.mkdirSync(buildRoot, { recursive: true });
+  writeAtomic(path.join(crateRoot, "Cargo.toml"), Buffer.from(
+    `[package]\nname = "${job.caseName}"\nversion = "0.0.0"\nedition = "2021"\n`,
+  ));
+  fs.copyFileSync(wasm, path.join(buildRoot, "program.wasm"));
+  fs.copyFileSync(wat, path.join(buildRoot, "program.wat"));
+}
+
+function emitTalosProgram(job, wasm, wat, temporaryRoot) {
+  ensureVerifier();
+  buildCrateInput(temporaryRoot, job, wasm, wat);
+  runLean(5, "Talos model generation", "10m",
+    [verifier, "emit", "--force-emit", job.caseName], { cwd: temporaryRoot });
+  const generated = path.join(
+    temporaryRoot, "lean", "Project", job.leanModule, "Program.lean",
+  );
+  if (!fs.existsSync(generated)) {
+    throw new StageError(5, "artifact proof", `Talos did not generate ${generated}`);
+  }
+  return rewriteProgramNamespace(fs.readFileSync(generated, "utf8"), job);
+}
+
+function dumpRawModule(wasm) {
+  const result = runLean(5, "artifact decoder", "5m", [
+    "lake", "-d", proofRoot, "env", "lean", "--run", dumpRaw, wasm,
+  ]);
+  const raw = result.stdout.trim();
+  if (!raw.startsWith("{") || !raw.endsWith("}")) {
+    throw new StageError(5, "artifact proof", "artifact decoder returned invalid output");
+  }
+  return raw;
+}
+
+function auditAxioms(output) {
+  if (/\bsorryAx\b/.test(output)) {
+    throw new StageError(5, "artifact proof", "declaration audit found sorryAx");
+  }
+  const unexpected = new Set();
+  for (const report of output.matchAll(/depends on axioms:\s*\[([^\]]*)\]/g)) {
+    for (const printed of report[1].split(",").map((item) => item.trim()).filter(Boolean)) {
+      const name = printed.replace(/✝+$/, "");
+      if (!allowedAxioms.has(name) && !generatedDecisionAxiom.test(name)) {
+        unexpected.add(printed);
+      }
+    }
+  }
+  if (unexpected.size > 0) {
+    throw new StageError(
+      5,
+      "artifact proof",
+      `declaration audit found unsupported axioms: ${[...unexpected].join(", ")}`,
+    );
+  }
+  const reports = (output.match(/(?:depends on axioms|does not depend on any axioms)/g) || [])
+    .length;
+  if (reports !== 7) {
+    throw new StageError(
+      5,
+      "artifact proof",
+      `declaration audit produced ${reports} axiom reports; expected 7`,
+    );
+  }
+}
+
+function verificationCheckSources(job, artifact) {
+  const prefix = job.namespace;
+  const fileTarget = `${prefix}.VerifierCheckFile`;
+  const declarationTarget = `${prefix}.VerifierCheckDeclarations`;
+  const artifactNamespace = `${prefix}.Artifact`;
+  return {
+    fileTarget,
+    declarationTarget,
+    sources: new Map([
+      [fileTarget, `import ${prefix}.ArtifactBytes
+
+def main (args : List String) : IO UInt32 := do
+  let [file] := args
+    | IO.eprintln "usage: VerifierCheckFile <program.wasm>"
+      return 2
+  let found ← IO.FS.readBinFile file
+  if found == ${artifact.artifactBytesDefinition} then
+    IO.println s!"embedded bytes matched: {found.size} bytes"
+    return 0
+  IO.eprintln s!"embedded bytes differ: {file}"
+  return 1
+`],
+      [declarationTarget, `import ${artifact.proofTarget}
+import Project.Artifact.Binary.Proof.Decode
+import Project.Artifact.Binary.Proof.Validate
+
+open Wasm.Binary
+
+example : decode ${artifact.artifactBytesDefinition} =
+    .ok ${artifact.rawModuleDefinition} :=
+  ${artifactNamespace}.decode_eq_cache
+
+example : Translation.module ${artifact.rawModuleDefinition} =
+    ${job.namespace}.«module» := by
+  exact ${artifactNamespace}.translation_cache_eq
+
+example :
+    ∃ raw validated,
+      decode ${artifact.artifactBytesDefinition} = .ok raw ∧
+      validate raw = .ok validated ∧
+      CoreValid raw ∧
+      ${artifact.property} validated.toTalos :=
+  ${artifact.artifactTheorem}
+
+#print axioms Wasm.Binary.Proof.decode_sound
+#print axioms Wasm.Binary.Proof.validate_sound
+#print axioms ${artifactNamespace}.decode_eq_cache
+#print axioms ${artifactNamespace}.translation_cache_eq
+#print axioms ${artifactNamespace}.artifact_module_eq_cache
+#print axioms ${artifact.behaviorTheorem}
+#print axioms ${artifact.artifactTheorem}
+`],
+    ]),
+  };
+}
+
+function checkProof(workspace, job, artifact, wasm, toolPins) {
+  const checks = verificationCheckSources(job, artifact);
+  requireKernelAudit(checks.sources, toolPins);
+  installSources(workspace, checks.sources);
+  runLean(5, "artifact theorem", "60m",
+    ["lake", "-d", workspace, "--no-ansi", "build", artifact.proofTarget]);
+  runLean(5, "embedded byte checker", "15m",
+    ["lake", "-d", workspace, "--no-ansi", "build", checks.fileTarget]);
+  runLean(5, "embedded byte comparison", "15m", [
+    "lake", "-d", workspace, "env", "lean", "--run",
+    path.join(workspace, moduleFile(checks.fileTarget)), wasm,
+  ]);
+  const declaration = runLean(5, "declaration audit", "15m",
+    ["lake", "-d", workspace, "--no-ansi", "build", checks.declarationTarget]);
+  auditAxioms(`${declaration.stdout}\n${declaration.stderr}`);
+}
+
+function shellQuote(argument) {
+  if (/^[A-Za-z0-9_./:=+-]+$/.test(argument)) return argument;
+  return `'${argument.replaceAll("'", `'"'"'`)}'`;
+}
+
+function formatCommand(args) {
+  return args.map(shellQuote).join(" ");
+}
+
+function runSamples(samplesToRun, exportName, wasm, toolPins) {
+  const wasmtime = findWasmtime();
+  const version = run(6, "Wasmtime version", [wasmtime, "--version"]).stdout.trim();
+  if (!version.startsWith(`wasmtime ${toolPins.wasmtimeVersion} `)) {
+    throw new StageError(
+      6,
+      "sample execution",
+      `expected Wasmtime ${toolPins.wasmtimeVersion}, found ${version}`,
+    );
+  }
+  const samples = [];
+  for (const sample of samplesToRun) {
+    const invocation = [
+      wasmtime,
+      "run",
+      "--invoke",
+      exportName,
+      wasm,
+      ...sample.arguments,
+    ];
+    const result = run(6, "sample execution", invocation);
+    if (result.stderr.length > 0) process.stderr.write(result.stderr);
+    const stdout = result.stdout.trimEnd();
+    if (stdout !== sample.expectedStdout) {
+      throw new StageError(
+        6,
+        "sample execution",
+        `input ${sample.arguments.join(" ")} produced ${JSON.stringify(stdout)}; ` +
+          `expected ${JSON.stringify(sample.expectedStdout)}`,
+      );
+    }
+    samples.push({ arguments: sample.arguments, stdout, invocation });
+  }
+  return { wasmtime, samples };
+}
+
+function proofPackagePath(outputPath) {
+  return outputPath.endsWith(".wasm")
+    ? `${outputPath.slice(0, -5)}.proof`
+    : `${outputPath}.proof`;
+}
+
+function publish(outputPath, packagePath, wasmBytes, buildPackage) {
+  if (fs.existsSync(outputPath)) throw new StageError(7, "publication", `${outputPath} exists`);
+  if (fs.existsSync(packagePath)) throw new StageError(7, "publication", `${packagePath} exists`);
+  fs.mkdirSync(path.dirname(outputPath), { recursive: true });
+  fs.mkdirSync(path.dirname(packagePath), { recursive: true });
+  const nonce = `${process.pid}-${Date.now()}`;
+  const stagedWasm = path.join(path.dirname(outputPath), `.${path.basename(outputPath)}.${nonce}`);
+  const stagedPackage = path.join(
+    path.dirname(packagePath), `.${path.basename(packagePath)}.${nonce}`,
+  );
+  let installedPackage = false;
+  let installedWasm = false;
+  try {
+    fs.mkdirSync(stagedPackage, { recursive: true });
+    buildPackage(stagedPackage);
+    fs.writeFileSync(stagedWasm, wasmBytes, { flag: "wx" });
+    fs.renameSync(stagedPackage, packagePath);
+    installedPackage = true;
+    fs.renameSync(stagedWasm, outputPath);
+    installedWasm = true;
+  } catch (error) {
+    const cleanupErrors = [];
+    for (const target of [
+      installedWasm ? outputPath : stagedWasm,
+      installedPackage ? packagePath : stagedPackage,
+    ]) {
+      try {
+        fs.rmSync(target, { recursive: true, force: true });
+      } catch (cleanupError) {
+        cleanupErrors.push(cleanupError);
+      }
+    }
+    if (cleanupErrors.length > 0) {
+      throw new StageError(
+        7,
+        "publication",
+        formatError(new AggregateError(
+          [error, ...cleanupErrors], "publication rollback failed",
+        )),
+      );
+    }
+    throw new StageError(7, "publication", error.message);
+  }
+}
+
+function copyPackageProof(packageRoot, workspace) {
+  const proof = path.join(packageRoot, "proof");
+  for (const relative of collectFiles(proof)) {
+    if (!relative.endsWith(".lean")) {
+      throw new StageError(5, "artifact proof", `unexpected proof file: ${relative}`);
+    }
+    const source = path.join(proof, ...relative.split("/"));
+    writeAtomic(path.join(workspace, ...relative.split("/")), fs.readFileSync(source));
+  }
+}
+
+function requirePins(packageRoot) {
+  const recorded = JSON.parse(fs.readFileSync(path.join(packageRoot, "tool-pins.json"), "utf8"));
+  const current = currentToolPins(repoRoot);
+  if (JSON.stringify(recorded) !== JSON.stringify(current)) {
+    throw new StageError(5, "artifact proof", "tool pins differ from this checkout");
+  }
+  requireMaterializedPins(current);
+  return current;
+}
+
+function requireMaterializedPins(toolPins) {
+  if (process.versions.node !== toolPins.nodeVersion) {
+    throw new StageError(
+      5,
+      "artifact proof",
+      `Node version mismatch: expected ${toolPins.nodeVersion}, found ${process.versions.node}`,
+    );
+  }
+  const manifest = JSON.parse(fs.readFileSync(
+    path.join(proofRoot, "lake-manifest.json"), "utf8"));
+  if (!Array.isArray(manifest.packages)) {
+    throw new StageError(5, "artifact proof", "proof Lake manifest has no package array");
+  }
+  const gitPackages = manifest.packages.filter((item) => item.type === "git");
+  if (gitPackages.length === 0) {
+    throw new StageError(5, "artifact proof", "proof Lake manifest has no Git packages");
+  }
+  for (const item of gitPackages) {
+    if (typeof item.name !== "string" || !/^[0-9a-f]{40}$/.test(item.rev)) {
+      throw new StageError(5, "artifact proof", "proof Lake manifest has an invalid Git package");
+    }
+    const checkout = path.join(proofRoot, ".lake", "packages", item.name);
+    const head = run(5, `${item.name} revision`, ["git", "rev-parse", "HEAD"], {
+      cwd: checkout,
+    }).stdout.trim();
+    if (head !== item.rev) {
+      throw new StageError(
+        5,
+        "artifact proof",
+        `${item.name} revision mismatch: expected ${item.rev}, found ${head || "unavailable"}`,
+      );
+    }
+    const changes = run(5, `${item.name} checkout`, [
+      "git", "status", "--porcelain=v1", "--untracked-files=no", "--ignore-submodules=none",
+    ], { cwd: checkout }).stdout.trim();
+    if (changes !== "") {
+      throw new StageError(
+        5,
+        "artifact proof",
+        `${item.name} checkout has tracked changes:\n${changes}`,
+      );
+    }
+  }
+  const lean = runLean(5, "Lean identity", "2m", ["lean", "--version"]);
+  const identity = `${lean.stdout}\n${lean.stderr}`;
+  const version = toolPins.leanToolchain.split(":v")[1];
+  if (!identity.includes(`version ${version}`) ||
+      !identity.includes(`commit ${toolPins.leanCommit}`)) {
+    throw new StageError(5, "artifact proof", `Lean identity mismatch: ${identity.trim()}`);
+  }
+}
+
+function requireKernelAudit(sources, toolPins) {
+  const findings = kernelAuditFindings(sources, toolPins.kernelReview);
+  if (findings.length > 0) {
+    throw new StageError(
+      5,
+      "artifact proof",
+      `kernel scope audit found forbidden identifiers:\n${findings.join("\n")}`,
+    );
+  }
+}
+
+function verify(command) {
+  progress(command.silent, 5, "Direct artifact proof");
+  let checked;
+  let toolPins;
+  try {
+    checked = validatePackage(command.packagePath);
+    toolPins = requirePins(command.packagePath);
+    const packageSources = new Map();
+    const proofRootPath = path.join(command.packagePath, "proof");
+    for (const relative of collectFiles(proofRootPath)) {
+      if (!relative.endsWith(".lean")) continue;
+      const moduleName = relative.slice(0, -5).split("/").join(".");
+      packageSources.set(moduleName, fs.readFileSync(
+        path.join(proofRootPath, ...relative.split("/")), "utf8"));
+    }
+    requireKernelAudit(packageSources, toolPins);
+  } catch (error) {
+    if (error instanceof StageError) throw error;
+    throw new StageError(5, "artifact proof", error.message);
+  }
+  const workspace = fs.mkdtempSync(path.join(os.tmpdir(), "leanexegen-verify-"));
+  let operationError = null;
+  try {
+    createWorkspace(workspace);
+    copyPackageProof(command.packagePath, workspace);
+    checkFormalSpecification(
+      workspace,
+      checked.job,
+      fs.readFileSync(path.join(
+        command.packagePath, "proof", moduleFile(checked.job.formalSpecModule)), "utf8"),
+      5,
+      "VerifierFormalSpecCheck",
+    );
+    checkProof(
+      workspace,
+      checked.job,
+      checked.artifact,
+      path.join(command.packagePath, "program.wasm"),
+      toolPins,
+    );
+    if (!command.silent) {
+      process.stdout.write(
+        `Verified ${checked.artifact.sha256} with theorem ${checked.artifact.artifactTheorem}\n`,
+      );
+    }
+  } catch (error) {
+    operationError = error;
+  }
+  try {
+    fs.rmSync(workspace, { recursive: true });
+  } catch (cleanupError) {
+    if (operationError) {
+      throw new StageError(
+        5,
+        "artifact proof",
+        formatError(new AggregateError(
+          [operationError, cleanupError], "verification cleanup failed",
+        )),
+      );
+    }
+    throw new StageError(5, "artifact proof", cleanupError.message);
+  }
+  if (operationError) throw operationError;
+}
+
+function generate(command) {
+  const request = readRequest(command.requestPath);
+  const job = makeJob(request);
+  progress(command.silent, 1, "Job setup");
+  const codex = findCodex();
+  const codexIdentity = run(1, "Codex identity", [codex, "--version"]);
+  const codexVersion = `${codexIdentity.stdout}\n${codexIdentity.stderr}`.trim();
+  if (codexVersion.length === 0) {
+    throw new StageError(1, "job setup", "Codex returned an empty version");
+  }
+  let toolPins;
+  try {
+    toolPins = currentToolPins(repoRoot);
+  } catch (error) {
+    if (error instanceof StageError) throw error;
+    throw new StageError(5, "artifact proof", error.message);
+  }
+
+  const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), "leanexegen-"));
+  let operationError = null;
+  try {
+    progress(command.silent, 2, "Formal specification");
+    const formalWorkspace = path.join(temporaryRoot, "formal-workspace");
+    const formalTaskRoot = path.join(temporaryRoot, "formal-codex");
+    fs.mkdirSync(formalWorkspace);
+    fs.mkdirSync(formalTaskRoot);
+    createWorkspace(formalWorkspace);
+    const formalContext = new Map([["request.txt", request]]);
+    const formal = runTaskIterations({
+      task: "formal-specification",
+      stage: 2,
+      stageName: "formal specification",
+      sourceModule: job.formalSpecModule,
+      maximumAttempts: maximumTaskAttempts,
+      invoke: (attempt, prompt) => runCodexOutcome({
+        codex,
+        task: "formal-specification",
+        stage: 2,
+        attempt,
+        taskRoot: formalTaskRoot,
+        contextFiles: formalContext,
+        prompt,
+      }),
+      prompt: (attempt, feedback) => formalPrompt(request, job, attempt, feedback),
+      materialize: (source) => formalSpecificationSource(job, source),
+      diagnose: (source) => {
+        validateProofImports(job, [{ module: job.formalSpecModule, source }]);
+        requireKernelAudit(new Map([[job.formalSpecModule, source]]), toolPins);
+        return checkFormalSpecification(
+          formalWorkspace, job, source, 2, "FormalSpecCheck");
+      },
+    });
+    removeTaskWorkspace(formalWorkspace, 2, "formal specification");
+    removeTaskWorkspace(formalTaskRoot, 2, "formal specification");
+
+    progress(command.silent, 3, "Lean program");
+    const programWorkspace = path.join(temporaryRoot, "program-workspace");
+    const programTaskRoot = path.join(temporaryRoot, "program-codex");
+    fs.mkdirSync(programWorkspace);
+    fs.mkdirSync(programTaskRoot);
+    createWorkspace(programWorkspace);
+    runLean(3, "LeanExe compiler build", "15m",
+      ["lake", "--no-ansi", "build", "lean-wasm"]);
+    const programContext = programTaskContext(request, job, formal.source);
+    const programTask = runTaskIterations({
+      task: "lean-program",
+      stage: 3,
+      stageName: "Lean program",
+      sourceModule: job.sourceModule,
+      maximumAttempts: maximumTaskAttempts,
+      invoke: (attempt, prompt) => runCodexOutcome({
+        codex,
+        task: "lean-program",
+        stage: 3,
+        attempt,
+        taskRoot: programTaskRoot,
+        contextFiles: programContext,
+        prompt,
+      }),
+      prompt: (attempt, feedback) => programPrompt(request, job, attempt, feedback),
+      materialize: (source) => source,
+      diagnose: (source) => {
+        validateProgramImports(job, source);
+        requireKernelAudit(new Map([[job.sourceModule, source]]), toolPins);
+        return checkProgramCandidate(programWorkspace, job, source);
+      },
+    });
+
+    progress(command.silent, 4, "WASM compilation and freezing");
+    const compiledWasm = path.join(programWorkspace, "program.wasm");
+    const compiledWat = path.join(programWorkspace, "program.wat");
+    runLean(4, "WASM compilation", "10m", [
+      "lake", "-d", programWorkspace, "env", compiler,
+      "compile", "--module", job.sourceModule, "--entry", job.sourceEntry,
+      "--out", compiledWasm,
+    ]);
+    const wasmTools = findWasmTools();
+    run(4, "wasm-tools version", [path.join(repoRoot, "tools", "check-wasm-tools-version.sh")], {
+      env: { ...process.env, WASM_TOOLS: wasmTools },
+    });
+    run(4, "WAT rendering", [wasmTools, "print", compiledWasm, "-o", compiledWat]);
+    const artifactRoot = path.join(temporaryRoot, "frozen-artifact");
+    fs.mkdirSync(artifactRoot);
+    const wasm = path.join(artifactRoot, "program.wasm");
+    const wat = path.join(artifactRoot, "program.wat");
+    fs.copyFileSync(compiledWasm, wasm, fs.constants.COPYFILE_EXCL);
+    fs.copyFileSync(compiledWat, wat, fs.constants.COPYFILE_EXCL);
+    const wasmBytes = fs.readFileSync(wasm);
+    removeTaskWorkspace(programWorkspace, 4, "WASM compilation");
+    removeTaskWorkspace(programTaskRoot, 4, "WASM compilation");
+
+    progress(command.silent, 5, "Direct artifact proof");
+    requireMaterializedPins(toolPins);
+    const proofWorkspace = path.join(temporaryRoot, "proof-workspace");
+    const proofTaskRoot = path.join(temporaryRoot, "proof-codex");
+    const talosRoot = path.join(temporaryRoot, "talos");
+    fs.mkdirSync(proofWorkspace);
+    fs.mkdirSync(proofTaskRoot);
+    fs.mkdirSync(talosRoot);
+    createWorkspace(proofWorkspace);
+    const talosProgram = emitTalosProgram(job, wasm, wat, talosRoot);
+    const entryIndex = programExportIndex(talosProgram, job.exportName);
+    const raw = dumpRawModule(wasm);
+    const generated = artifactSources(job, wasmBytes, raw, talosProgram);
+    requireKernelAudit(generated.sources, toolPins);
+    installSources(proofWorkspace, new Map([
+      [job.formalSpecModule, formal.source],
+      ...generated.sources,
+    ]));
+    checkFormalSpecification(
+      proofWorkspace, job, formal.source, 5, "ProofFormalSpecCheck");
+    const proofContext = proofTaskContext(
+      request, job, formal.source, generated.sources);
+    const proof = runTaskIterations({
+      task: "artifact-proof",
+      stage: 5,
+      stageName: "artifact proof",
+      sourceModule: job.behaviorModule,
+      maximumAttempts: maximumTaskAttempts,
+      invoke: (attempt, prompt) => runCodexOutcome({
+        codex,
+        task: "artifact-proof",
+        stage: 5,
+        attempt,
+        taskRoot: proofTaskRoot,
+        contextFiles: proofContext,
+        prompt,
+      }),
+      prompt: (attempt, feedback) => proofPrompt(
+        request, job, entryIndex, attempt, feedback),
+      materialize: (source) => source,
+      diagnose: (source) => {
+        validateProofImports(job, [{ module: job.behaviorModule, source }]);
+        requireKernelAudit(new Map([[job.behaviorModule, source]]), toolPins);
+        installSources(proofWorkspace, new Map([[job.behaviorModule, source]]));
+        checkProof(proofWorkspace, job, generated.artifact, wasm, toolPins);
+        return `Lean accepted ${job.behaviorTheorem} and ` +
+          `${generated.artifact.artifactTheorem}.`;
+      },
+    });
+
+    progress(command.silent, 6, "Sample execution");
+    const sampleResult = runSamples(
+      programTask.outcome.samples, job.exportName, wasm, toolPins);
+    progress(command.silent, 7, "Publication");
+    const packagePath = proofPackagePath(command.outputPath);
+    const allSources = new Map([
+      [job.formalSpecModule, formal.source],
+      [job.sourceModule, programTask.source],
+      [job.behaviorModule, proof.source],
+    ]);
+    for (const [moduleName, source] of generated.sources) allSources.set(moduleName, source);
+    const artifact = {
+      ...generated.artifact,
+      export: job.exportName,
+      invocation: [
+        sampleResult.wasmtime,
+        "run",
+        "--invoke",
+        job.exportName,
+        "<program.wasm>",
+        ...programTask.outcome.samples[0].arguments.map(
+          (_, index) => `<argument-${index + 1}>`),
+      ],
+    };
+    const stageReports = {
+      schemaVersion: 1,
+      codexVersion,
+      maximumAttempts: maximumTaskAttempts,
+      tasks: {
+        formalSpecification: formal.stageReport,
+        leanProgram: programTask.stageReport,
+        artifactProof: proof.stageReport,
+      },
+    };
+    publish(command.outputPath, packagePath, wasmBytes, (stageRoot) => {
+      createPackage(stageRoot, {
+        request,
+        interpretation: {
+          formalSpecification: {
+            summary: formal.outcome.summary,
+            decisions: formal.outcome.decisions,
+          },
+          leanProgram: {
+            summary: programTask.outcome.summary,
+            decisions: programTask.outcome.decisions,
+          },
+          artifactProof: {
+            summary: proof.outcome.summary,
+            decisions: proof.outcome.decisions,
+          },
+        },
+        artifact,
+        samples: sampleResult.samples,
+        hostAssumptions: formal.outcome.hostAssumptions,
+        stageReports,
+        toolPins,
+        wasmBytes,
+        sources: allSources,
+        job,
+        formalSpecification: {
+          module: job.formalSpecModule,
+          definition: job.formalSpecDefinition,
+          type: job.formalSpecType,
+        },
+        warnings,
+      });
+    });
+    const invocation = [
+      sampleResult.wasmtime,
+      "run",
+      "--invoke",
+      job.exportName,
+      command.outputPath,
+      ...programTask.outcome.samples[0].arguments,
+    ];
+    process.stdout.write(generationResult(command.silent, sampleResult.samples, invocation));
+    process.stderr.write(warnings.map((warning) => `leanexegen: warning: ${warning}\n`).join(""));
+  } catch (error) {
+    operationError = error;
+  }
+  const cleanupErrors = [];
+  try {
+    fs.rmSync(temporaryRoot, { recursive: true });
+  } catch (error) {
+    cleanupErrors.push(error);
+  }
+  if (operationError && cleanupErrors.length > 0) {
+    throw new StageError(
+      operationError.stage || 7,
+      operationError.stageName || "cleanup",
+      formatError(new AggregateError(
+        [operationError, ...cleanupErrors], "operation cleanup failed",
+      )),
+    );
+  }
+  if (operationError) throw operationError;
+  if (cleanupErrors.length > 0) {
+    throw new StageError(
+      7,
+      "publication",
+      formatError(new AggregateError(
+        cleanupErrors, "temporary-directory cleanup failed",
+      )),
+    );
+  }
+}
+
+function main() {
+  let command;
+  try {
+    command = parseArgs(process.argv.slice(2));
+  } catch (error) {
+    process.stderr.write(`${error.message}\n`);
+    process.exitCode = 64;
+    return;
+  }
+  try {
+    if (command.command === "verify") verify(command);
+    else generate(command);
+  } catch (error) {
+    if (error instanceof StageError) {
+      process.stderr.write(
+        `leanexegen: stage ${error.stage} (${error.stageName}): ${error.message}\n`,
+      );
+      process.exitCode = error.stage;
+      return;
+    }
+    process.stderr.write(`leanexegen: internal error: ${error.message}\n`);
+    process.exitCode = 70;
+  }
+}
+
+if (require.main === module) main();
+
+module.exports = {
+  StageError,
+  auditAxioms,
+  codexCommandArgs,
+  codexOutcomeSchema,
+  formalSpecificationCheckSources,
+  formalSpecificationSource,
+  formatCommand,
+  generationResult,
+  parseArgs,
+  publish,
+  programPrompt,
+  programTaskContext,
+  proofPrompt,
+  proofPackagePath,
+  proofTaskContext,
+  runCodexOutcome,
+  runTaskIterations,
+  verificationCheckSources,
+  warnings,
+};

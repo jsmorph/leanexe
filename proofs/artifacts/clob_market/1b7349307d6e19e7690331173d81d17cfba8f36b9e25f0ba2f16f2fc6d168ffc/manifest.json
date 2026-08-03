@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 3,
+  "case": "clob_market",
+  "sha256": "1b7349307d6e19e7690331173d81d17cfba8f36b9e25f0ba2f16f2fc6d168ffc",
+  "byteLength": 8761,
+  "binaryFormatVersion": 1,
+  "validationProfile": "leanexe-core-v1",
+  "artifactBytesModule": "Project.ClobMarket.ArtifactBytes",
+  "artifactBytesDefinition": "Project.ClobMarket.Artifact.artifactBytes",
+  "rawModuleDefinition": "Project.ClobMarket.Artifact.Cache.raw",
+  "cachedProgramModule": "Project.ClobMarket.Program",
+  "cachedProgramDefinition": "Project.ClobMarket.module",
+  "specModule": "Project.ClobMarket.Spec",
+  "proofTarget": "Project.ClobMarket.ArtifactTranslation",
+  "identityTheorem": "Project.ClobMarket.Artifact.decode_eq_cache",
+  "decodeTheorem": "Wasm.Binary.Proof.decode_sound",
+  "validationTheorem": "Wasm.Binary.Proof.validate_sound",
+  "cacheEqualityTheorem": "Project.ClobMarket.Artifact.translation_cache_eq",
+  "artifactCorrectnessTheorem": "Project.ClobMarket.Artifact.artifact_module_eq_cache",
+  "behaviorTheorems": [
+    "Project.ClobMarket.Correct.func21_correct"
+  ],
+  "leanToolchain": "leanprover/lean4:v4.31.0",
+  "talosRevision": "bb3277e21c9786e3133d5c1601e34ebdc0bea4df",
+  "verifierSourceSha256": "25aeb7d50d9ce4768b855e78d8ffb94606d02647386de9ca7b75fa026c34d802",
+  "hostAssumptions": []
+}
