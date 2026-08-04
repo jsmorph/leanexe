@@ -109,7 +109,7 @@ The resulting function can also run directly under Wasmtime.  Values through `2^
 ```sh
 build/tools/wasmtime/current/wasmtime run \
   --invoke compute \
-  demo/program.wasm \
+  demos/demo-1/program.wasm \
   60
 ```
 
@@ -155,7 +155,7 @@ theorem artifact_behavior :
     using helper_correct env initial' n
 ```
 
-The [generic control-flow tactic](../proofs/talos/lean/Project/ProofKit/Control.lean) depends on the wrapper definition, its unfolded body, the initial-store name, and a callee theorem accepted by `Wasm.wp_call_tw`.  Its implementation refers to the Talos control-flow rules and carries no program declaration as a constant.  Lean rejects the invocation unless symbolic execution finds the expected straight-line wrapper, one direct call, and a return continuation discharged by the supplied theorem.
+The [generic control-flow tactic](../../proofs/talos/lean/Project/ProofKit/Control.lean) depends on the wrapper definition, its unfolded body, the initial-store name, and a callee theorem accepted by `Wasm.wp_call_tw`.  Its implementation refers to the Talos control-flow rules and carries no program declaration as a constant.  Lean rejects the invocation unless symbolic execution finds the expected straight-line wrapper, one direct call, and a return continuation discharged by the supplied theorem.
 
 The refactored proof was checked in a source-free copy of the retained proof package under Lean 4.31.0.  The exact `LeanExeGen.GeneratedRc8c2d9f87deb0758.ArtifactResult` target rebuilt the changed behavior module in 11 seconds and the artifact result in 1.6 seconds.  The workspace omitted `Source.lean` and the LeanExe compiler, so this check exercised the same artifact-level proof boundary described by the walkthrough.
 
