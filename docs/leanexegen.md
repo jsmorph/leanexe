@@ -19,7 +19,7 @@ tools/leanexegen -o myprogram.wasm myprogram.txt
 | 3 | Lean program | Give a fresh Codex task the request and frozen formal specification; the task iterates through type-check, report, and scratch-compile commands before the outer process repeats them. |
 | 4 | WASM compilation and freezing | Compile the accepted `compute` again, retain the exact bytes, check `wasm-tools`, render WAT, and remove the program task workspace. |
 | 5 | Direct artifact proof | Generate deterministic artifact support, give a fresh Codex task the frozen specification and artifact model without Source, let it iterate with Lean, and repeat the artifact check outside the task. |
-| 6 | Sample execution | Convert each unsigned sample to Wasmtime's signed `i64` command-line representation, run it with pinned Wasmtime, convert the result back to `UInt64`, and compare it with the expected result. |
+| 6 | Sample execution | Allocate each input array through the Wasmtime host runner, invoke `compute`, decode the returned array, and compare every element with the expected output. |
 | 7 | Publication | Construct the content-hashed sidecar and install the sidecar and WASM through destination-local renames. |
 | 8 | Results | Print the checked sample inputs and outputs, followed by a command that runs the published WASM file. |
 
@@ -47,27 +47,63 @@ Codex returns one schema-validated `generated`, `questions`, or `problems` objec
 
 | Task | Inputs visible to Codex | Required generated source |
 |------|-------------------------|---------------------------|
-| Formal specification | Request | A complete `FormalSpec` module defining `expected : UInt64 → UInt64`; the orchestrator appends `ArtifactSpec`. |
-| Lean program | Request and frozen `FormalSpec` | A complete `Source` module defining `compute : UInt64 → UInt64`, plus unsigned-decimal samples. |
-| Artifact proof | Request, frozen `FormalSpec`, generated Talos `Program`, deterministic artifact-support modules, and `PROOF_LIBRARY.md` | A complete `Behavior` module proving `artifact_behavior`; Source and the compiler are absent. |
+| Formal specification | Request | A complete `FormalSpec` module defining `expected : Array UInt64 → Array UInt64`; the orchestrator appends the representation and artifact predicates. |
+| Lean program | Request and frozen `FormalSpec` | A complete `Source` module defining `compute : Array UInt64 → Array UInt64`, plus input-array and expected-output samples. |
+| Artifact proof | Request, frozen `FormalSpec`, generated Talos `Program`, deterministic artifact-support modules, selected `PROOF_STRATEGIES.md`, structural `PROOF_TASK_FEATURES.json`, and the optional `PROOF_LIBRARY.md` | A complete `Behavior` module proving `artifact_behavior`; Source and the compiler are absent. |
 
 The program task uses the formal file as specification context but does not import it into Source.  After compilation, the orchestrator copies the WASM and WAT into a frozen-artifact directory and removes the complete program workspace and every program-task outcome.  The artifact-proof task therefore receives no source file, source build object, or compiler output other than the frozen artifact model.
 
-The proof catalog advertises the checked `Project.ProofKit.Control` tactics and their structural requirements.  The proof prompt directs Codex to use `wp_entry` for the generic entry conversion, `wp_entry_to_loop` for a generated entry that reaches a block-wrapped loop, and `wp_entry_single_call` for a straight-line wrapper that makes one direct call and returns its result.  Import validation permits that exact proof-kit module while continuing to reject other repository-owned `Project` modules.
+The proof catalog advertises checked memory, `Array UInt64`, fixed-array allocation, and control-flow support through `Project.ProofKit.Memory`, `Project.ProofKit.Array`, `Project.ProofKit.Allocation`, and `Project.ProofKit.Control`.  Every proof task receives the catalog and the selected strategy guide, while import validation continues to reject repository-owned `Project` modules outside that allowlist.  The verifier hashes the complete proof kit, audits its sources, and compares the packaged catalog with the current checkout.
 
-## Fixed unary interface
+The [artifact-proof strategy notes](proof-strategies.md) describe proof structures distilled from accepted Talos proofs.  Leanexegen computes the export-reachable call graph from the frozen `Program`, records per-function instruction, local, loop, memory, arithmetic, and allocation features, and supplies only the matching marked sections.  The notes grant no imports and discharge no theorem; the generated `Behavior` module must contain every checked proof term used by the artifact theorem.
 
-The initial interface accepts and returns one `UInt64`, and the compiled export is `compute`.  The formal Codex task defines `${namespace}.FormalSpec.expected : UInt64 → UInt64`; the orchestrator then appends the following fixed declaration.  A generated Lean check module names and checks both declarations before the formal source can freeze.
+## Fixed array interface
+
+The interface accepts and returns `Array UInt64`, and the compiled export is `compute`.  The formal Codex task defines `${namespace}.FormalSpec.expected : Array UInt64 → Array UInt64`; the orchestrator then appends the array representation, runtime precondition, and artifact property.  A generated Lean check module names and checks both public declarations before the formal source can freeze.
 
 ```lean
+def UInt64ArrayAt (store : Wasm.Store Unit) (ptr : UInt64)
+    (values : Array UInt64) : Prop :=
+  ptr.toNat + 8 * (values.size + 1) ≤ 4294967296 ∧
+  ptr.toNat + 8 * (values.size + 1) ≤ store.mem.pages * 65536 ∧
+  store.mem.read64 ptr.toUInt32 = UInt64.ofNat values.size ∧
+  ∀ (i : Nat), (h : i < values.size) →
+    store.mem.read64
+      (ptr + UInt64.ofNat (8 * (i + 1))).toUInt32 = values[i]
+
+def RuntimeReady (initial : Wasm.Store Unit) (inputPtr : UInt64)
+    (input : Array UInt64) : Prop :=
+  UInt64ArrayAt initial inputPtr input ∧
+  ∃ heapTop allocs retains releases frees : UInt64,
+    initial.globals.globals =
+      [.i64 heapTop, .i64 0, .i64 allocs, .i64 retains,
+       .i64 releases, .i64 frees] ∧
+    inputPtr.toNat + 8 * (input.size + 1) ≤ heapTop.toNat ∧
+    heapTop.toNat + 48 + 8 * ((expected input).size + 1) ≤ 4294967296 ∧
+    heapTop.toNat + 48 + 8 * ((expected input).size + 1) ≤
+      initial.mem.pages * 65536 ∧
+    initial.mem.pages ≤ 65536
+
 def ArtifactSpec (module_ : Wasm.Module) : Prop :=
   ∃ entry, module_.findExport "compute" = some entry ∧
-    ∀ (env : Wasm.HostEnv Unit) (initial : Wasm.Store Unit) (n : UInt64),
-      Wasm.TerminatesWith env module_ entry initial [.i64 n]
-        (fun _ results => results = [.i64 (expected n)])
+    ∀ (env : Wasm.HostEnv Unit) (initial : Wasm.Store Unit)
+      (inputPtr : UInt64) (input : Array UInt64),
+      RuntimeReady initial inputPtr input →
+      Wasm.TerminatesWith env module_ entry initial [.i64 inputPtr]
+        (fun final results => ∃ outputPtr,
+          results = [.i64 outputPtr] ∧
+          UInt64ArrayAt final outputPtr (expected input))
 ```
 
+An array occupies one eight-byte length word followed by one eight-byte word per element.  `RuntimeReady` identifies the input array, fixes the allocator globals expected by generated LeanExe modules, places the bump pointer above the input, bounds the page count by WebAssembly's 65,536-page limit, and requires enough address space and existing memory for the result.  The result predicate permits any output pointer whose final-memory representation equals `expected input`, so the theorem does not depend on a chosen allocation address.
+
 The proof task must prove `${namespace}.Behavior.artifact_behavior : ${namespace}.FormalSpec.ArtifactSpec ${namespace}.module`.  Deterministic `ArtifactResult` source applies `artifact_correct_of` to that exact formal declaration and behavior theorem.  Neither a source theorem nor a compiler-lowering certificate participates in the resulting artifact theorem.
+
+The `run` command provides the matching host interface.  It accepts zero or more unsigned decimal elements, allocates their array representation, invokes `compute`, and prints the decoded result array.  Generation records this command form in the proof package and uses the same host runner for checked samples.
+
+```sh
+tools/leanexegen run myprogram.wasm 10 20 30
+```
 
 ## Proof package and independent verification
 
@@ -81,8 +117,10 @@ A successful command publishes `myprogram.wasm` and `myprogram.proof/`.  The sid
 | `request.txt` | The original prose request, including its original whitespace. |
 | `interpretation.json` | The accepted summary and decisions from each of the three Codex tasks. |
 | `stage-reports.json` | Codex version, one-session bound, accepted source hashes, outer diagnostics, and a hash of each task report. |
-| `samples.json` | Arguments, observed outputs, and the Wasmtime argument arrays used during generation. |
+| `samples.json` | Input arrays, observed output arrays, and host-runner invocations used during generation. |
 | `proof-library.md` | The proof-kit catalog supplied to the artifact-proof task. |
+| `proof-strategies.md` | The optional strategy sections selected for the frozen Talos program. |
+| `proof-task-features.json` | The reachable call graph, structural features, selection reasons, extractor version, and strategy-source digest. |
 | `tool-pins.json` | Lean, Talos, proof-workspace, proof-kit-source, verifier-source, Node, `wasm-tools`, Wasmtime, and kernel-review identities. |
 | `host-assumptions.json` | Host calls, store conditions, ABI expectations, or other assumptions recorded by the formal task. |
 | `proof/LeanExeGen/...` | Formal specification, Source, Talos program, Behavior, deterministic artifact proof modules, byte checker, and axiom audit. |
@@ -109,4 +147,4 @@ The final theorem states the fixed formal property of the validated Talos transl
 
 Every successful generation prints four warnings: Codex interpreted the prose, no theorem connects Source to the formal specification, the theorem covers one exact digest under pinned semantics, and Codex generation and compilation remain outside the artifact proof.  These warnings also appear in `package.json`.  `-s` suppresses standard output but does not suppress warnings on standard error.
 
-The current interface handles one unsigned 64-bit input and output.  Structured ABIs, multiple exports, interactive question resolution, and source certificates remain future work.  Generation can stop on Codex authentication, schema, stage timeout, compiler-acceptance, internal check, outer check, or proof failures; independent verification of an existing sidecar has no Codex or compiler dependency.
+The current interface handles flat arrays of unsigned 64-bit words.  Richer element types, multiple exports, interactive question resolution, and source certificates remain future work.  Generation can stop on Codex authentication, schema, stage timeout, compiler acceptance, internal check, outer check, or proof failures; independent verification of an existing sidecar has no Codex or compiler dependency.

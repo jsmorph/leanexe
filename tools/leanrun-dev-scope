@@ -1,0 +1,28 @@
+#!/bin/sh
+set -eu
+
+expected_toolchain="/mnt/vq/elan/toolchains/leanprover--lean4---v4.31.0"
+cgroup_path="$(sed -n 's/^0:://p' /proc/self/cgroup)"
+cgroup_dir="/sys/fs/cgroup$cgroup_path"
+
+if [ ! -d "$cgroup_dir" ] ||
+   [ "$(cat "$cgroup_dir/memory.high")" != "25769803776" ] ||
+   [ "$(cat "$cgroup_dir/memory.max")" != "25769803776" ] ||
+   [ "$(cat "$cgroup_dir/memory.swap.max")" != "0" ] ||
+   [ "$(cat "$cgroup_dir/cpu.max")" != "1600000 100000" ]; then
+  echo "leanrun-dev: remote scope does not have the required resource limits" >&2
+  exit 1
+fi
+
+if [ "${VQ_JOBS:-}" != "1" ] ||
+   [ "${VQ_LOCKDIR:-}" != "/mnt/vq/leanrun-locks" ]; then
+  echo "leanrun-dev: remote semaphore configuration is invalid" >&2
+  exit 1
+fi
+
+if [ "$(command -v lean)" != "$expected_toolchain/bin/lean" ]; then
+  echo "leanrun-dev: remote Lean toolchain is invalid" >&2
+  exit 1
+fi
+
+exec "$@"

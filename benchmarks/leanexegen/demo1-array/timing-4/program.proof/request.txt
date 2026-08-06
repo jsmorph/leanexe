@@ -1,0 +1,5 @@
+The public interface is Array UInt64 -> Array UInt64.  For a singleton input
+array #[x], return a singleton array containing the number of prime factors of
+x, counted with multiplicity.  Define the count for every UInt64, with zero
+and one both producing zero.  Return the input array unchanged when its length
+is not one.

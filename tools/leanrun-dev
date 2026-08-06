@@ -1,0 +1,125 @@
+#!/bin/sh
+set -eu
+
+script_dir="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+repo_root="$(CDPATH= cd -- "$script_dir/.." && pwd)"
+remote_host="${LEANRUN_DEV_HOST:-dev}"
+remote_root="/mnt/vq/leanexe"
+remote_runner="/mnt/vq/sol/tools/leanrun"
+remote_lock_dir="/mnt/vq/leanrun-locks"
+remote_elan="/mnt/vq/elan"
+run_timeout="${LEANRUN_DEV_TIMEOUT:-900}"
+
+usage() {
+  echo "usage: tools/leanrun-dev sync" >&2
+  echo "       tools/leanrun-dev check" >&2
+  echo "       tools/leanrun-dev [--timeout DURATION] <command> [args]" >&2
+  exit 2
+}
+
+sync_tree() {
+  rsync "$@" \
+    --exclude='/.git/' \
+    --exclude='**/.git/***' \
+    --exclude='/.lake/' \
+    --exclude='**/.lake/***' \
+    --exclude='/.tmp/' \
+    --exclude='/build/' \
+    --exclude='**/build/***' \
+    --exclude='/leanclob/' \
+    --exclude='*.o' \
+    --exclude='*.a' \
+    --exclude='*.so' \
+    --exclude='*.olean' \
+    --exclude='*.ilean' \
+    --exclude='*.cmi' \
+    --exclude='*.cmx' \
+    "$repo_root/" "$remote_host:$remote_root/"
+}
+
+toolchain_name="$(sed -n '1p' "$repo_root/lean-toolchain")"
+if [ "$toolchain_name" != "leanprover/lean4:v4.31.0" ]; then
+  echo "leanrun-dev: unsupported toolchain $toolchain_name" >&2
+  exit 2
+fi
+toolchain_key="$(printf '%s' "$toolchain_name" | sed 's,/,--,g; s,:,---,g')"
+remote_toolchain="$remote_elan/toolchains/$toolchain_key"
+
+preflight_remote() {
+  ssh "$remote_host" \
+    "test -d '$remote_root' && test -x '$remote_runner' && test -d '$remote_lock_dir' && test -w '$remote_lock_dir' && test -x '$remote_toolchain/bin/lean' && test \"\$(sed -n '1p' '$remote_root/lean-toolchain')\" = '$toolchain_name'"
+}
+
+check_source() {
+  diff_file="$(mktemp)"
+  trap 'rm -f "$diff_file"' EXIT HUP INT TERM
+  sync_tree -ani --checksum --no-times --delete \
+    --out-format='%i %n%L' >"$diff_file"
+  if [ -s "$diff_file" ]; then
+    echo "leanrun-dev: remote source differs from the local tree" >&2
+    cat "$diff_file" >&2
+    echo "leanrun-dev: run tools/leanrun-dev sync after reviewing the differences" >&2
+    exit 3
+  fi
+  rm -f "$diff_file"
+  trap - EXIT HUP INT TERM
+}
+
+quote_remote() {
+  escaped="$(printf '%s' "$1" | sed "s/'/'\\\\''/g")"
+  printf "'%s'" "$escaped"
+}
+
+if [ "${1:-}" = "sync" ]; then
+  [ "$#" -eq 1 ] || usage
+  preflight_remote
+  sync_tree -a --delete-delay --stats
+  exit 0
+fi
+
+if [ "${1:-}" = "check" ]; then
+  [ "$#" -eq 1 ] || usage
+  preflight_remote
+  check_source
+  exit 0
+fi
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --timeout)
+      [ "$#" -ge 2 ] || usage
+      run_timeout="$2"
+      shift 2
+      ;;
+    --)
+      shift
+      break
+      ;;
+    -*)
+      usage
+      ;;
+    *)
+      break
+      ;;
+  esac
+done
+
+[ "$#" -gt 0 ] || usage
+[ -n "$run_timeout" ] || usage
+
+preflight_remote
+check_source
+
+remote_command=". /home/ec2-user/vq-limits.env"
+remote_command="$remote_command; export VQ_TOOLCHAIN=$(quote_remote "$remote_toolchain")"
+remote_command="$remote_command VQ_TIMEOUT=$(quote_remote "$run_timeout")"
+remote_command="$remote_command VQ_JOBS=1"
+remote_command="$remote_command VQ_LOCKDIR=$(quote_remote "$remote_lock_dir")"
+remote_command="$remote_command NO_COLOR=1"
+remote_command="$remote_command; cd $(quote_remote "$remote_root")"
+remote_command="$remote_command; exec $(quote_remote "$remote_runner") $(quote_remote "$remote_root/tools/leanrun-dev-scope")"
+for arg in "$@"; do
+  remote_command="$remote_command $(quote_remote "$arg")"
+done
+
+exec ssh "$remote_host" "$remote_command"

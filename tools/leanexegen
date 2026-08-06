@@ -25,6 +25,12 @@ const {
   validateProofImports,
   writeAtomic,
 } = require("./leanexegen-lib");
+const { createStage5Telemetry } = require("./leanexegen-telemetry");
+const {
+  checkBenchmark,
+  comparePackage,
+  defaultBenchmark,
+} = require("./leanexegen-benchmark");
 const { spawnResult } = require("./run-process");
 
 const repoRoot = path.resolve(__dirname, "..");
@@ -32,12 +38,16 @@ const proofRoot = path.join(repoRoot, "proofs", "talos", "lean");
 const projectRoot = path.join(proofRoot, "Project");
 const leanrun = path.join(repoRoot, "tools", "leanrun");
 const compiler = path.join(repoRoot, ".lake", "build", "bin", "lean-wasm");
+const wasmtimeHost = path.join(repoRoot, "build", "tools", "leanexe-wasmtime-host");
 const verifierRoot = path.join(
   proofRoot, ".lake", "packages", "CodeLib", "verifier",
 );
 const verifier = path.join(verifierRoot, ".lake", "build", "bin", "verifier");
 const dumpRaw = path.join(projectRoot, "Artifact", "Binary", "DumpRaw.lean");
 const proofKitCatalogPath = path.join(projectRoot, "ProofKit", "README.md");
+const proofStrategiesPath = path.join(repoRoot, "docs", "proof-strategies.md");
+const strategyExtractorVersion = 1;
+const artifactProofTaskTimeoutMs = 4 * 60 * 60 * 1000;
 const maximumTaskSessions = 1;
 const allowedAxioms = new Set([
   "propext",
@@ -48,8 +58,6 @@ const allowedAxioms = new Set([
 const generatedDecisionAxiom =
   /^[A-Za-z0-9_.]+\._native\.(?:native_decide|bv_decide)\.ax_[0-9_]+$/;
 const uint64Modulus = 1n << 64n;
-const int64Minimum = -(1n << 63n);
-const int64Maximum = (1n << 63n) - 1n;
 
 const warnings = [
   "The formal specification is a generated interpretation of the prose request.",
@@ -71,10 +79,42 @@ function usage() {
     "usage: leanexegen [-s] -o <program.wasm> <request.txt>",
     "       leanexegen reprove [-s] -o <program.wasm> <proof-package>",
     "       leanexegen verify [-s] <proof-package>",
+    "       leanexegen benchmark -o <program.wasm> [benchmark-directory]",
+    "       leanexegen run <program.wasm> [UInt64 ...]",
   ].join("\n");
 }
 
 function parseArgs(args) {
+  if (args[0] === "benchmark") {
+    let output = null;
+    const positional = [];
+    for (let index = 1; index < args.length; index += 1) {
+      const argument = args[index];
+      if (argument === "-o") {
+        index += 1;
+        if (index >= args.length || output !== null) throw new Error(usage());
+        output = args[index];
+      } else if (argument.startsWith("-")) {
+        throw new Error(usage());
+      } else {
+        positional.push(argument);
+      }
+    }
+    if (output === null || positional.length > 1) throw new Error(usage());
+    return {
+      command: "benchmark",
+      outputPath: path.resolve(output),
+      benchmarkRoot: path.resolve(positional[0] || defaultBenchmark),
+    };
+  }
+  if (args[0] === "run") {
+    if (args.length < 2) throw new Error(usage());
+    return {
+      command: "run",
+      wasmPath: path.resolve(args[1]),
+      input: args.slice(2),
+    };
+  }
   if (args[0] === "verify") {
     let silent = false;
     const rest = [];
@@ -116,14 +156,15 @@ function stageHeading(stage, title, startedAt = new Date()) {
   return `${startedAt.toISOString()} Stage ${stage}: ${title}\n\n`;
 }
 
-function progress(silent, stage, title) {
-  if (!silent) process.stdout.write(stageHeading(stage, title));
+function progress(silent, stage, title, startedAt = new Date()) {
+  if (!silent) process.stdout.write(stageHeading(stage, title, startedAt));
 }
 
 function generationResult(silent, samples, invocation) {
   if (silent) return "";
   const sampleText = samples.map((sample) =>
-    `Input: ${sample.arguments.join(" ")}\nOutput: ${sample.stdout}\n`).join("");
+    `Input: ${formatUInt64Array(sample.input)}\n` +
+    `Output: ${formatUInt64Array(sample.output)}\n`).join("");
   return `${sampleText}\nRun:\n\n\`${formatCommand(invocation)}\`\n`;
 }
 
@@ -220,12 +261,18 @@ function codexOutcomeSchema() {
         items: {
           type: "object",
           additionalProperties: false,
-          required: ["arguments", "expectedStdout"],
+          required: ["input", "expectedOutput"],
           properties: {
-            arguments: {
-              type: "array", items: { type: "string" }, minItems: 1, maxItems: 1,
+            input: {
+              type: "array",
+              maxItems: 256,
+              items: { type: "string", pattern: "^(?:0|[1-9][0-9]*)$" },
             },
-            expectedStdout: { type: "string", pattern: "^(?:0|[1-9][0-9]*)$" },
+            expectedOutput: {
+              type: "array",
+              maxItems: 256,
+              items: { type: "string", pattern: "^(?:0|[1-9][0-9]*)$" },
+            },
           },
         },
       },
@@ -295,7 +342,10 @@ function reportDigest(report) {
 }
 
 function runTaskSession(options) {
-  const outcome = options.invoke(options.prompt);
+  const invoke = () => options.invoke(options.prompt);
+  const outcome = options.telemetry
+    ? options.telemetry.measureCodexSession(invoke)
+    : invoke();
   if (outcome.outcome !== "generated") {
     const detail = outcome.outcome === "questions" ? outcome.questions : outcome.problems;
     throw new StageError(options.stage, options.stageName, detail.join("\n"));
@@ -303,7 +353,10 @@ function runTaskSession(options) {
   const source = options.materialize(outcome.source);
   let diagnostic;
   try {
-    diagnostic = options.diagnose(source, outcome);
+    const diagnose = () => options.diagnose(source, outcome);
+    diagnostic = options.telemetry
+      ? options.telemetry.measureOuterAcceptance(diagnose)
+      : diagnose();
   } catch (error) {
     throw new StageError(
       options.stage,
@@ -315,6 +368,9 @@ function runTaskSession(options) {
     throw new StageError(options.stage, options.stageName, "diagnostic report was empty");
   }
   const sourceSha256 = sha256(Buffer.from(source));
+  const proofTelemetry = options.telemetry
+    ? options.telemetry.accept(sourceSha256)
+    : null;
   const report = {
     summary: outcome.summary,
     decisions: outcome.decisions,
@@ -329,6 +385,7 @@ function runTaskSession(options) {
   return {
     outcome,
     source,
+    proofTelemetry,
     stageReport: {
       task: options.task,
       sourceModule: options.sourceModule,
@@ -341,11 +398,34 @@ function runTaskSession(options) {
 
 function formalSpecificationSource(job, generatedSource) {
   return `${generatedSource.trimEnd()}\n\nnamespace ${job.namespace}.FormalSpec\n\n` +
+    `def UInt64ArrayAt (store : Wasm.Store Unit) (ptr : UInt64) ` +
+    `(values : Array UInt64) : Prop :=\n` +
+    `  ptr.toNat + 8 * (values.size + 1) ≤ 4294967296 ∧\n` +
+    `  ptr.toNat + 8 * (values.size + 1) ≤ store.mem.pages * 65536 ∧\n` +
+    `  store.mem.read64 ptr.toUInt32 = UInt64.ofNat values.size ∧\n` +
+    `  ∀ (i : Nat), (h : i < values.size) →\n` +
+    `    store.mem.read64\n` +
+    `      (ptr + UInt64.ofNat (8 * (i + 1))).toUInt32 = values[i]\n\n` +
+    `def RuntimeReady (initial : Wasm.Store Unit) (inputPtr : UInt64) ` +
+    `(input : Array UInt64) : Prop :=\n` +
+    `  UInt64ArrayAt initial inputPtr input ∧\n` +
+    `  ∃ heapTop allocs retains releases frees : UInt64,\n` +
+    `    initial.globals.globals = [.i64 heapTop, .i64 0, .i64 allocs, .i64 retains,\n` +
+    `      .i64 releases, .i64 frees] ∧\n` +
+    `    inputPtr.toNat + 8 * (input.size + 1) ≤ heapTop.toNat ∧\n` +
+    `    heapTop.toNat + 48 + 8 * ((expected input).size + 1) ≤ 4294967296 ∧\n` +
+    `    heapTop.toNat + 48 + 8 * ((expected input).size + 1) ≤\n` +
+    `      initial.mem.pages * 65536 ∧\n` +
+    `    initial.mem.pages ≤ 65536\n\n` +
     `def ArtifactSpec (module_ : Wasm.Module) : Prop :=\n` +
     `  ∃ entry, module_.findExport ${JSON.stringify(job.exportName)} = some entry ∧\n` +
-    `    ∀ (env : Wasm.HostEnv Unit) (initial : Wasm.Store Unit) (n : UInt64),\n` +
-    `      Wasm.TerminatesWith env module_ entry initial [.i64 n] ` +
-    `(fun _ results => results = [.i64 (expected n)])\n\n` +
+    `    ∀ (env : Wasm.HostEnv Unit) (initial : Wasm.Store Unit)\n` +
+    `      (inputPtr : UInt64) (input : Array UInt64),\n` +
+    `      RuntimeReady initial inputPtr input →\n` +
+    `      Wasm.TerminatesWith env module_ entry initial [.i64 inputPtr]\n` +
+    `        (fun final results => ∃ outputPtr,\n` +
+    `          results = [.i64 outputPtr] ∧\n` +
+    `          UInt64ArrayAt final outputPtr (expected input))\n\n` +
     `end ${job.namespace}.FormalSpec\n`;
 }
 
@@ -354,7 +434,7 @@ function formalSpecificationCheckSources(job, suffix) {
   return {
     target,
     sources: new Map([[target, `import ${job.formalSpecModule}\n\n` +
-      `#check (${job.expectedDefinition} : UInt64 → UInt64)\n` +
+      `#check (${job.expectedDefinition} : Array UInt64 → Array UInt64)\n` +
       `#check (${job.formalSpecDefinition} : ${job.formalSpecType})\n`]]),
   };
 }
@@ -383,7 +463,8 @@ function formalPrompt(request, job) {
     `specification for this request:\n\n${request}\n\n` +
     `Work in this session until the candidate passes real Lean.  Write the complete candidate ` +
     `module to ${candidate}; it must import CodeLib and define exactly ` +
-    `${job.expectedDefinition} : UInt64 → UInt64.  Do not define ArtifactSpec because the ` +
+    `${job.expectedDefinition} : Array UInt64 → Array UInt64.  Do not define UInt64ArrayAt, ` +
+    `RuntimeReady, or ArtifactSpec because the ` +
     `orchestrator appends that fixed predicate after this task.  After each edit, run this exact ` +
     `check command:\n\n${check}\n\nDo not invoke Lean or Lake by another route, and do not run ` +
     `checks concurrently.  Inspect request.txt and the Lean diagnostics, revise the candidate, ` +
@@ -415,7 +496,8 @@ function programPrompt(request, job) {
     `for this request:\n\n${request}\n\n` +
     `Work in this session until one candidate passes Lean and the LeanExe compiler.  Write the ` +
     `complete candidate module to ${candidate}; it must ` +
-    `define exactly ${job.sourceEntry} : UInt64 → UInt64.  The public WebAssembly export is ` +
+    `define exactly ${job.sourceEntry} : Array UInt64 → Array UInt64.  The public WebAssembly ` +
+    `export is ` +
     `${job.exportName}.  The working directory contains the frozen formal specification; ` +
     `implement compute so the eventual artifact can satisfy ${job.formalSpecDefinition}.  ` +
     `Use that file as specification context, but do not import it from Source.  Run these exact ` +
@@ -427,8 +509,8 @@ function programPrompt(request, job) {
     `return only the JSON object required by the output schema, set task to "lean-program" and ` +
     `outcome to "generated", and leave source empty because the orchestrator reads ${candidate}.  ` +
     `No source theorem or compiler-correctness certificate is required.  Provide at least one ` +
-    `sample with exactly one UInt64 argument and one UInt64 expectedStdout, both unsigned decimal ` +
-    `strings no greater than 18446744073709551615 and without line endings.  Leave ` +
+    `sample with input and expectedOutput arrays.  Each element must be an unsigned UInt64 decimal ` +
+    `string no greater than 18446744073709551615.  Leave ` +
     `hostAssumptions empty.`;
 }
 
@@ -438,6 +520,36 @@ function proofPrompt(request, job, entryIndex) {
     leanrun, "--timeout", "60m", "lake", "-d", ".", "--no-ansi", "build",
     job.artifactTarget,
   ]);
+  const library = `PROOF_LIBRARY.md catalogs checked proof abstractions available in every task.  ` +
+    `Import the smallest listed Project.ProofKit modules whose declarations match the artifact.  ` +
+    `Import Project.ProofKit.Array for the Array UInt64 ABI, change the generated ` +
+    `UInt64ArrayAt predicate to ` +
+    `Project.ProofKit.UInt64Array.At, use its checked address, bound, frame, singleton, and pair ` +
+    `lemmas, including encodedSize_eq_one, and use word_reads for nested word writes.  Import ` +
+    `Project.ProofKit.Allocation when the program reaches the fixed-array allocator; derive one ` +
+    `bumpFacts value from the result-region memory bound and page limit, then use its rootToNat, ` +
+    `topToNat, noOverflow, noGrow, and headerOffsets fields instead of reproving allocator ` +
+    `arithmetic.  Use BumpFacts.wordAddress and wordAddress_toNat for the result length and payload ` +
+    `store addresses instead of expanding nested UInt64 and UInt32 modulo expressions.  Import ` +
+    `Project.ProofKit.FixedArrayAllocator when the entry wrapper uses the cataloged one-parameter, ` +
+    `fourteen-local allocator layout.  Its region_spec theorem replaces the empty-free-list ` +
+    `search, no-grow bump path, six header stores, allocation-counter update, and returned-root ` +
+    `assignment after capacity normalization.  Match the exact instruction suffix to ` +
+    `FixedArrayAllocator.region <stride>, then supply the existing capacity local, memory-fit, page, ` +
+    `and allocator-global facts and continue from allocStore and allocFrame.  Import ` +
+    `Project.ProofKit.FixedArraySingleton instead when that allocator region is immediately followed ` +
+    `by the cataloged singleton Array UInt64 result suffix.  Its region_result_spec theorem covers ` +
+    `the allocator, length and payload stores, result-local assignments, address bounds, and final ` +
+    `UInt64Array.At proof for an arbitrary scalar value.  Match the exact combined suffix to ` +
+    `FixedArrayAllocator.region 1 ++ FixedArraySingleton.resultSuffix, supply the scalar result in ` +
+    `local 2, and use the theorem's array fact in the continuation.  Import ` +
+    `Project.ProofKit.Control when a ` +
+    `function executes directly to a block-wrapped loop, then use ` +
+    `\`wp_entry_to_loop <functionDef> unfolding <functionBody> as initial'\`, then apply ` +
+    `\`Wasm.wp_loop_cons\` with an explicit invariant and decreasing measure.  After proving a ` +
+    `callee used by a straight-line entry wrapper, use ` +
+    `\`wp_entry_single_call ${job.namespace}.func${entryIndex}Def unfolding ` +
+    `${job.namespace}.func${entryIndex} as initial' using <callee theorem>\`.  `;
   return `You are performing independent task 3 of 3 for leanexegen.  Prove the exact compiled ` +
     `artifact for this request:\n\n${request}\n\n` +
     `The working directory contains only the request, the frozen formal specification, the ` +
@@ -445,25 +557,21 @@ function proofPrompt(request, job, entryIndex) {
     `contains no Source module.  Write the complete candidate module to ${candidate} and prove exactly ` +
     `${job.behaviorTheorem} : ${job.formalSpecDefinition} ${job.namespace}.«module».  ` +
     `You may import ${job.formalSpecModule}, ${job.programModule}, generated artifact-support ` +
-    `modules, Project.ProofKit.Control, CodeLib, Interpreter, Std, Init, or Mathlib.  Read ` +
-    `PROOF_LIBRARY.md before writing the proof, import Project.ProofKit.Control, and use its ` +
-    `cataloged tactics whenever the generated control flow matches their documented shape.  ` +
-    `For a function that executes directly to a block-wrapped loop, use ` +
-    `\`wp_entry_to_loop <functionDef> unfolding <functionBody> as initial'\`, then apply ` +
-    `\`Wasm.wp_loop_cons\` with an explicit invariant and decreasing measure.  After proving a ` +
-    `callee used by a straight-line ` +
-    `entry wrapper, use ` +
-    `\`wp_entry_single_call ${job.namespace}.func${entryIndex}Def unfolding ` +
-    `${job.namespace}.func${entryIndex} as initial' using <callee theorem>\`.  ` +
+    `modules, CodeLib, Interpreter, Std, Init, or Mathlib.  ${library}` +
+    `PROOF_STRATEGIES.md contains optional proof-organization guidance selected from the frozen ` +
+    `Program, and PROOF_TASK_FEATURES.json records the structural facts used for that selection.  ` +
+    `These files grant no additional Lean imports.  ` +
     `Do not import Source, inspect source ` +
     `code, invoke the compiler, add axioms, or use sorry.  Leave samples and hostAssumptions ` +
     `empty.  ArtifactSpec resolves the ${job.exportName} export to function ${entryIndex}, then ` +
-    `quantifies over env, initial, and n.  The generic proof-kit opening is ` +
-    `\`refine ⟨${entryIndex}, rfl, ?_⟩\`, then \`intro env initial n\`, then ` +
-    `\`wp_entry ${job.namespace}.func${entryIndex}Def as initial'\`.  ` +
-    `Straight-line scalar proofs usually import ` +
-    `Interpreter.Wasm.Wp.Tactic, unfold ${job.namespace}.func${entryIndex}, use wp_run, and simplify ` +
-    `expected.  Use read-only commands to inspect FormalSpec, Program, and the artifact-support ` +
+    `quantifies over env, initial, inputPtr, and input under RuntimeReady.  RuntimeReady supplies ` +
+    `UInt64ArrayAt for the input, six allocator globals with an empty free list, a disjoint bump ` +
+    `region, enough existing memory for the expected result array, and a page count within the ` +
+    `WebAssembly limit.  Its postcondition ` +
+    `requires one result pointer and UInt64ArrayAt for expected input in the final memory.  Start ` +
+    `the public theorem with \`refine ⟨${entryIndex}, rfl, ?_⟩\` and ` +
+    `\`intro env initial inputPtr input hInput\`.  Use read-only commands to inspect FormalSpec, ` +
+    `Program, and the artifact-support ` +
     `modules for the exact definitions and locals.  After each edit, run this exact check ` +
     `command:\n\n${check}\n\nDo not invoke Lean or Lake by another route, and do not run checks ` +
     `concurrently.  Inspect the diagnostics, revise ${candidate}, and continue until the command ` +
@@ -479,7 +587,7 @@ function formalTaskContext(request, job) {
   return new Map([
     ["request.txt", request],
     [moduleFile(checkTarget), `import ${job.formalSpecModule}\n\n` +
-      `#check (${job.expectedDefinition} : UInt64 → UInt64)\n`],
+      `#check (${job.expectedDefinition} : Array UInt64 → Array UInt64)\n`],
   ]);
 }
 
@@ -488,17 +596,162 @@ function programTaskContext(request, job, formalSource) {
     ["request.txt", request],
     [moduleFile(job.formalSpecModule), formalSource],
     [moduleFile(`${job.namespace}.SourceCheck`), `import ${job.sourceModule}\n\n` +
-      `#check (${job.sourceEntry} : UInt64 → UInt64)\n`],
+      `#check (${job.sourceEntry} : Array UInt64 → Array UInt64)\n`],
   ]);
 }
 
-function proofTaskContext(request, job, formalSource, generatedSources) {
+function parseProofStrategySections(source) {
+  const marker = /<!-- leanexegen-section:([a-z][a-z0-9.]*) begin -->\n/g;
+  const sections = new Map();
+  for (const match of source.matchAll(marker)) {
+    const id = match[1];
+    if (sections.has(id)) throw new Error(`duplicate proof-strategy section ${id}`);
+    const start = match.index + match[0].length;
+    const endMarker = `<!-- leanexegen-section:${id} end -->`;
+    const end = source.indexOf(endMarker, start);
+    if (end < 0) throw new Error(`proof-strategy section ${id} has no end marker`);
+    const text = source.slice(start, end).trim();
+    const escaped = id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    if (!new RegExp(`^(?:<a[^>]*></a>\\n)?### \`${escaped}\`:`).test(text)) {
+      throw new Error(`proof-strategy section ${id} has a mismatched heading`);
+    }
+    sections.set(id, `${text}\n`);
+  }
+  const endMarkers = [...source.matchAll(
+    /<!-- leanexegen-section:([a-z][a-z0-9.]*) end -->/g)];
+  if (sections.size === 0 || endMarkers.length !== sections.size ||
+      endMarkers.some((match) => !sections.has(match[1]))) {
+    throw new Error("proof-strategy section markers do not match");
+  }
+  return sections;
+}
+
+function programFunctionFeatures(program) {
+  const starts = [...program.matchAll(/^def func([0-9]+) : Wasm\.Program :=\n/gm)];
+  if (starts.length === 0) throw new Error("Talos program has no instruction bodies");
+  const functions = [];
+  for (let position = 0; position < starts.length; position += 1) {
+    const match = starts[position];
+    const index = Number(match[1]);
+    if (index !== position) throw new Error("Talos instruction bodies are not contiguous");
+    const bodyStart = match.index + match[0].length;
+    const bodyEndMarker = `\n\ndef func${index}Def : Wasm.Function :=`;
+    const bodyEnd = program.indexOf(bodyEndMarker, bodyStart);
+    if (bodyEnd < 0) throw new Error(`Talos func${index} has no function definition`);
+    const nextStart = starts[position + 1]?.index ?? program.length;
+    if (bodyEnd >= nextStart) throw new Error(`Talos func${index} body crosses a definition`);
+    const definitionEnd = position + 1 < starts.length ? nextStart : program.indexOf("\n\ndef «module»", bodyEnd);
+    if (definitionEnd < 0) throw new Error(`Talos func${index} definition has no end`);
+    const definition = program.slice(bodyEnd, definitionEnd);
+    const localsMatch = definition.match(/locals := \[([^\]]*)\], body :=/s);
+    if (localsMatch === null) throw new Error(`Talos func${index} has no local declaration`);
+    const body = program.slice(bodyStart, bodyEnd);
+    const calls = [...body.matchAll(/^\s+\.call\s+([0-9]+),?$/gm)]
+      .map((call) => Number(call[1]));
+    const instructionCount = [...body.matchAll(/^\s+\.[A-Za-z_][A-Za-z0-9_]*(?:\s|,|\()/gm)]
+      .length;
+    const loopCount = [...body.matchAll(/^\s+\.loop\b/gm)].length;
+    const localCount = [...localsMatch[1].matchAll(/\.(?:i32|i64|f32|f64)\b/g)].length;
+    const hasMemory = /^\s+\.(?:load|store)[A-Za-z0-9_]*\b/m.test(body);
+    const hasArithmetic = /^\s+\.(?:add|sub|mul|div|rem|lt|le|gt|ge)[A-Za-z0-9_]*\b/m
+      .test(body);
+    const hasAllocation = /\.(?:memorySize|memoryGrow)\b/.test(body) ||
+      (/\.globalGet\s+0\b/.test(body) && /^\s+\.store64\b/m.test(body));
+    functions.push({
+      index,
+      instructionCount,
+      localCount,
+      calls: [...new Set(calls)].sort((left, right) => left - right),
+      loopCount,
+      hasMemory,
+      hasArithmetic,
+      hasAllocation,
+    });
+  }
+  return functions;
+}
+
+function proofStrategyBundle(program, exportIndex, source = null) {
+  const guide = source ?? fs.readFileSync(proofStrategiesPath, "utf8");
+  const sections = parseProofStrategySections(guide);
+  const functions = programFunctionFeatures(program);
+  if (!functions.some((item) => item.index === exportIndex)) {
+    throw new Error(`proof-strategy export index ${exportIndex} has no function body`);
+  }
+  const reachable = new Set();
+  const pending = [exportIndex];
+  while (pending.length > 0) {
+    const index = pending.pop();
+    if (reachable.has(index)) continue;
+    const function_ = functions[index];
+    if (function_ === undefined) throw new Error(`Talos call targets missing function ${index}`);
+    reachable.add(index);
+    for (const target of function_.calls) pending.push(target);
+  }
+  const selectedFunctions = functions.filter((item) => reachable.has(item.index));
+  const selections = new Map([
+    ["strategy.core", "selected for every artifact proof"],
+    ["strategy.arrays", "selected for the fixed Array UInt64 public interface"],
+    ["strategy.diagnostics", "selected for every artifact proof"],
+  ]);
+  const add = (id, reason, condition) => {
+    if (condition) selections.set(id, reason);
+  };
+  add("strategy.calls", "an export-reachable function contains a direct call",
+    selectedFunctions.some((item) => item.calls.length > 0));
+  add("strategy.loops", "an export-reachable function contains a loop",
+    selectedFunctions.some((item) => item.loopCount > 0));
+  add("strategy.frames", "a reachable function contains a loop or at least 16 locals",
+    selectedFunctions.some((item) => item.loopCount > 0 || item.localCount >= 16));
+  add("strategy.arithmetic", "an export-reachable function contains machine arithmetic",
+    selectedFunctions.some((item) => item.hasArithmetic));
+  add("strategy.memory", "an export-reachable function contains a load or store",
+    selectedFunctions.some((item) => item.hasMemory));
+  add("strategy.allocation", "an export-reachable function contains allocator operations",
+    selectedFunctions.some((item) => item.hasAllocation));
+  add("strategy.elaboration",
+    "a reachable function exceeds 200 instructions, has at least 32 locals, or has multiple loops",
+    selectedFunctions.some((item) => item.instructionCount > 200 ||
+      item.localCount >= 32 || item.loopCount > 1));
+  const selectedSections = [...sections]
+    .filter(([id]) => selections.has(id))
+    .map(([id, text]) => ({ id, reason: selections.get(id), text }));
+  for (const id of selections.keys()) {
+    if (!sections.has(id)) throw new Error(`proof-strategy guide omits selected section ${id}`);
+  }
+  const notes = `# Selected Talos Artifact-Proof Strategies\n\n` +
+    `These optional notes describe proof organization observed in accepted artifact proofs.  ` +
+    `Modules cited as examples may be imported only when the prompt and PROOF_LIBRARY.md allow them.  ` +
+    `They grant no Lean imports and discharge no proof obligation.  ` +
+    `PROOF_TASK_FEATURES.json records the frozen Program facts that selected each section.\n\n` +
+    selectedSections.map((item) => item.text).join("\n");
+  const features = {
+    schemaVersion: 1,
+    extractorVersion: strategyExtractorVersion,
+    sourceSha256: sha256(Buffer.from(guide)),
+    exportIndex,
+    reachableFunctions: selectedFunctions,
+    selectedSections: selectedSections.map(({ id, reason }) => ({ id, reason })),
+  };
+  return { notes, features };
+}
+
+function proofTaskContext(
+    request, job, formalSource, generatedSources, strategies = null) {
   const context = new Map([
     ["request.txt", request],
-    ["PROOF_LIBRARY.md", fs.readFileSync(proofKitCatalogPath, "utf8")],
     [moduleFile(job.formalSpecModule), formalSource],
     ...[...generatedSources].map(([moduleName, source]) => [moduleFile(moduleName), source]),
   ]);
+  const program = generatedSources.get(job.programModule);
+  if (program === undefined) {
+    throw new StageError(5, "artifact proof", "proof task context has no Program module");
+  }
+  const bundle = strategies ?? proofStrategyBundle(
+    program, programExportIndex(program, job.exportName));
+  context.set("PROOF_STRATEGIES.md", bundle.notes);
+  context.set("PROOF_TASK_FEATURES.json", `${JSON.stringify(bundle.features, null, 2)}\n`);
+  context.set("PROOF_LIBRARY.md", fs.readFileSync(proofKitCatalogPath, "utf8"));
   if (context.has(moduleFile(job.sourceModule))) {
     throw new StageError(5, "artifact proof", "proof task context contains Source");
   }
@@ -515,7 +768,7 @@ function checkFormalSpecification(workspace, job, source, stage, suffix) {
   runLean(stage, "formal specification declarations", "15m", [
     "lake", "-d", workspace, "--no-ansi", "build", checks.target,
   ]);
-  return `Lean accepted ${job.expectedDefinition} : UInt64 → UInt64 and ` +
+  return `Lean accepted ${job.expectedDefinition} : Array UInt64 → Array UInt64 and ` +
     `${job.formalSpecDefinition} : ${job.formalSpecType}.`;
 }
 
@@ -523,7 +776,7 @@ function checkProgramCandidate(workspace, job, source) {
   installSources(workspace, new Map([
     [job.sourceModule, source],
     [`${job.namespace}.SourceCheck`, `import ${job.sourceModule}\n\n` +
-      `#check (${job.sourceEntry} : UInt64 → UInt64)\n`],
+      `#check (${job.sourceEntry} : Array UInt64 → Array UInt64)\n`],
   ]));
   runLean(3, "Lean source typecheck", "15m", [
     "lake", "-d", workspace, "--no-ansi", "build", `${job.namespace}.SourceCheck`,
@@ -539,7 +792,8 @@ function checkProgramCandidate(workspace, job, source) {
     "compile", "--module", job.sourceModule, "--entry", job.sourceEntry,
     "--out", candidate,
   ]);
-  return `Lean and LeanExe accepted and compiled ${job.sourceEntry} : UInt64 → UInt64.`;
+  return `Lean and LeanExe accepted and compiled ` +
+    `${job.sourceEntry} : Array UInt64 → Array UInt64.`;
 }
 
 function removeTaskWorkspace(root, stage, name) {
@@ -776,16 +1030,64 @@ function formatCommand(args) {
   return args.map(shellQuote).join(" ");
 }
 
-function toWasmtimeI64(decimal) {
-  const value = BigInt(decimal);
-  return (value <= int64Maximum ? value : value - uint64Modulus).toString();
+function validateUInt64Decimal(value, description) {
+  if (!/^(?:0|[1-9][0-9]*)$/.test(value) || BigInt(value) >= uint64Modulus) {
+    throw new Error(`${description} must be an unsigned UInt64 decimal`);
+  }
+  return value;
 }
 
-function fromWasmtimeI64(decimal) {
-  if (!/^(?:0|[1-9][0-9]*|-[1-9][0-9]*)$/.test(decimal)) return null;
-  const value = BigInt(decimal);
-  if (value < int64Minimum || value > int64Maximum) return null;
-  return (value < 0n ? value + uint64Modulus : value).toString();
+function formatUInt64Array(values) {
+  return `[${values.join(", ")}]`;
+}
+
+function parseUInt64Array(text) {
+  const match = text.match(/^\[([0-9, ]*)\]$/);
+  if (match === null) return null;
+  if (match[1] === "") return [];
+  const values = match[1].split(", ");
+  try {
+    values.forEach((value, index) =>
+      validateUInt64Decimal(value, `result[${index}]`));
+  } catch (_error) {
+    return null;
+  }
+  return values;
+}
+
+function requireWasmtimeHost() {
+  try {
+    fs.accessSync(wasmtimeHost, fs.constants.X_OK);
+  } catch (error) {
+    throw new StageError(
+      6,
+      "sample execution",
+      `Wasmtime host runner is unavailable at ${wasmtimeHost}: ${error.message}`,
+    );
+  }
+  return wasmtimeHost;
+}
+
+function runArrayWasm(wasm, exportName, input) {
+  const host = requireWasmtimeHost();
+  const result = run(6, "sample execution", [
+    host,
+    "call",
+    wasm,
+    exportName,
+    "array-u64",
+    `array-u64:${input.join(",")}`,
+  ]);
+  const raw = result.stdout.trimEnd();
+  const output = parseUInt64Array(raw);
+  if (output === null) {
+    throw new StageError(
+      6,
+      "sample execution",
+      `the Wasmtime host returned an invalid Array UInt64 value: ${JSON.stringify(raw)}`,
+    );
+  }
+  return output;
 }
 
 function runSamples(samplesToRun, exportName, wasm, toolPins) {
@@ -798,39 +1100,27 @@ function runSamples(samplesToRun, exportName, wasm, toolPins) {
       `expected Wasmtime ${toolPins.wasmtimeVersion}, found ${version}`,
     );
   }
+  requireWasmtimeHost();
   const samples = [];
   for (const sample of samplesToRun) {
     const invocation = [
-      wasmtime,
+      path.join(repoRoot, "tools", "leanexegen"),
       "run",
-      "--invoke",
-      exportName,
       wasm,
-      ...sample.arguments.map(toWasmtimeI64),
+      ...sample.input,
     ];
-    const result = run(6, "sample execution", invocation);
-    if (result.stderr.length > 0) process.stderr.write(result.stderr);
-    const rawStdout = result.stdout.trimEnd();
-    const stdout = fromWasmtimeI64(rawStdout);
-    if (stdout === null) {
+    const output = runArrayWasm(wasm, exportName, sample.input);
+    if (JSON.stringify(output) !== JSON.stringify(sample.expectedOutput)) {
       throw new StageError(
         6,
         "sample execution",
-        `input ${sample.arguments.join(" ")} produced a non-i64 result ` +
-          `${JSON.stringify(rawStdout)}`,
+        `input ${formatUInt64Array(sample.input)} produced ${formatUInt64Array(output)}; ` +
+          `expected ${formatUInt64Array(sample.expectedOutput)}`,
       );
     }
-    if (stdout !== sample.expectedStdout) {
-      throw new StageError(
-        6,
-        "sample execution",
-        `input ${sample.arguments.join(" ")} produced ${JSON.stringify(stdout)}; ` +
-          `expected ${JSON.stringify(sample.expectedStdout)}`,
-      );
-    }
-    samples.push({ arguments: sample.arguments, stdout, invocation });
+    samples.push({ input: sample.input, output, invocation });
   }
-  return { wasmtime, samples };
+  return { wasmtime, wasmtimeHost, samples };
 }
 
 function proofPackagePath(outputPath) {
@@ -1156,7 +1446,9 @@ function reprove(command) {
   const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), "leanexegen-reprove-"));
   let operationError = null;
   try {
-    progress(command.silent, 5, "Direct artifact proof");
+    const stage5Telemetry = createStage5Telemetry();
+    progress(command.silent, 5, "Direct artifact proof",
+      new Date(stage5Telemetry.stageStartedAt));
     const proofWorkspace = path.join(temporaryRoot, "proof-workspace");
     const proofTaskRoot = path.join(temporaryRoot, "proof-codex");
     fs.mkdirSync(proofWorkspace);
@@ -1175,13 +1467,15 @@ function reprove(command) {
     checkFormalSpecification(
       proofWorkspace, checked.job, formalSource, 5, "ReproveFormalSpecCheck");
     const entryIndex = programExportIndex(programSource, checked.job.exportName);
+    const strategies = proofStrategyBundle(programSource, entryIndex);
     const proofContext = proofTaskContext(
-      request, checked.job, formalSource, sourceSets.proofContext);
+      request, checked.job, formalSource, sourceSets.proofContext, strategies);
     const proof = runTaskSession({
       task: "artifact-proof",
       stage: 5,
       stageName: "artifact proof",
       sourceModule: checked.job.behaviorModule,
+      telemetry: stage5Telemetry,
       invoke: (prompt) => runCodexOutcome({
         codex,
         task: "artifact-proof",
@@ -1189,7 +1483,7 @@ function reprove(command) {
         taskRoot: proofTaskRoot,
         contextFiles: proofContext,
         candidateFile: moduleFile(checked.job.behaviorModule),
-        timeout: 2 * 60 * 60 * 1000,
+        timeout: artifactProofTaskTimeoutMs,
         prompt,
       }),
       prompt: proofPrompt(request, checked.job, entryIndex),
@@ -1215,8 +1509,8 @@ function reprove(command) {
 
     progress(command.silent, 6, "Sample execution");
     const samplesToRun = priorSamples.map((sample) => ({
-      arguments: sample.arguments,
-      expectedStdout: sample.stdout,
+      input: sample.input,
+      expectedOutput: sample.output,
     }));
     const fixedWasm = path.join(command.packagePath, "program.wasm");
     const sampleResult = runSamples(
@@ -1253,8 +1547,11 @@ function reprove(command) {
         samples: sampleResult.samples,
         hostAssumptions,
         stageReports,
+        proofTelemetry: proof.proofTelemetry,
         toolPins,
         proofLibraryCatalog,
+        proofStrategies: strategies.notes,
+        proofTaskFeatures: strategies.features,
         wasmBytes,
         sources: allSources,
         job: checked.job,
@@ -1274,7 +1571,7 @@ function reprove(command) {
       }
     });
     const invocation = [...sampleResult.samples[0].invocation];
-    invocation[4] = command.outputPath;
+    invocation[2] = command.outputPath;
     progress(command.silent, 8, "Results");
     process.stdout.write(generationResult(command.silent, sampleResult.samples, invocation));
     process.stderr.write(warnings.map((warning) => `leanexegen: warning: ${warning}\n`).join(""));
@@ -1296,6 +1593,22 @@ function reprove(command) {
     throw new StageError(7, "publication", cleanupError.message);
   }
   if (operationError) throw operationError;
+}
+
+function benchmark(command) {
+  const definition = checkBenchmark(command.benchmarkRoot);
+  const reference = definition.runs.find((run) => run.id === definition.referenceRun);
+  const referencePackage = path.join(
+    command.benchmarkRoot, reference.path, "program.proof");
+  reprove({
+    command: "reprove",
+    silent: false,
+    outputPath: command.outputPath,
+    packagePath: referencePackage,
+  });
+  const packagePath = proofPackagePath(command.outputPath);
+  comparePackage(command.benchmarkRoot, packagePath);
+  verify({ command: "verify", silent: false, packagePath });
 }
 
 function generate(command) {
@@ -1409,7 +1722,9 @@ function generate(command) {
     removeTaskWorkspace(programWorkspace, 4, "WASM compilation");
     removeTaskWorkspace(programTaskRoot, 4, "WASM compilation");
 
-    progress(command.silent, 5, "Direct artifact proof");
+    const stage5Telemetry = createStage5Telemetry();
+    progress(command.silent, 5, "Direct artifact proof",
+      new Date(stage5Telemetry.stageStartedAt));
     requireMaterializedPins(toolPins);
     const proofWorkspace = path.join(temporaryRoot, "proof-workspace");
     const proofTaskRoot = path.join(temporaryRoot, "proof-codex");
@@ -1420,6 +1735,7 @@ function generate(command) {
     createWorkspace(proofWorkspace);
     const talosProgram = emitTalosProgram(job, wasm, wat, talosRoot);
     const entryIndex = programExportIndex(talosProgram, job.exportName);
+    const strategies = proofStrategyBundle(talosProgram, entryIndex);
     const raw = dumpRawModule(wasm);
     const generated = artifactSources(job, wasmBytes, raw, talosProgram);
     requireKernelAudit(generated.sources, toolPins);
@@ -1430,12 +1746,13 @@ function generate(command) {
     checkFormalSpecification(
       proofWorkspace, job, formal.source, 5, "ProofFormalSpecCheck");
     const proofContext = proofTaskContext(
-      request, job, formal.source, generated.sources);
+      request, job, formal.source, generated.sources, strategies);
     const proof = runTaskSession({
       task: "artifact-proof",
       stage: 5,
       stageName: "artifact proof",
       sourceModule: job.behaviorModule,
+      telemetry: stage5Telemetry,
       invoke: (prompt) => runCodexOutcome({
         codex,
         task: "artifact-proof",
@@ -1443,7 +1760,7 @@ function generate(command) {
         taskRoot: proofTaskRoot,
         contextFiles: proofContext,
         candidateFile: moduleFile(job.behaviorModule),
-        timeout: 2 * 60 * 60 * 1000,
+        timeout: artifactProofTaskTimeoutMs,
         prompt,
       }),
       prompt: proofPrompt(request, job, entryIndex),
@@ -1473,13 +1790,10 @@ function generate(command) {
       ...generated.artifact,
       export: job.exportName,
       invocation: [
-        sampleResult.wasmtime,
+        path.join(repoRoot, "tools", "leanexegen"),
         "run",
-        "--invoke",
-        job.exportName,
         "<program.wasm>",
-        ...programTask.outcome.samples[0].arguments.map(
-          (_, index) => `<argument-${index + 1}>`),
+        "<UInt64>...",
       ],
     };
     const stageReports = {
@@ -1513,8 +1827,11 @@ function generate(command) {
         samples: sampleResult.samples,
         hostAssumptions: formal.outcome.hostAssumptions,
         stageReports,
+        proofTelemetry: proof.proofTelemetry,
         toolPins,
         proofLibraryCatalog,
+        proofStrategies: strategies.notes,
+        proofTaskFeatures: strategies.features,
         wasmBytes,
         sources: allSources,
         job,
@@ -1527,7 +1844,7 @@ function generate(command) {
       });
     });
     const invocation = [...sampleResult.samples[0].invocation];
-    invocation[4] = command.outputPath;
+    invocation[2] = command.outputPath;
     progress(command.silent, 8, "Results");
     process.stdout.write(generationResult(command.silent, sampleResult.samples, invocation));
     process.stderr.write(warnings.map((warning) => `leanexegen: warning: ${warning}\n`).join(""));
@@ -1561,6 +1878,20 @@ function generate(command) {
   }
 }
 
+function runArtifact(command) {
+  if (command.input.length > 256) {
+    throw new StageError(6, "sample execution", "input contains more than 256 UInt64 values");
+  }
+  try {
+    command.input.forEach((value, index) =>
+      validateUInt64Decimal(value, `input[${index}]`));
+  } catch (error) {
+    throw new StageError(6, "sample execution", error.message);
+  }
+  const output = runArrayWasm(command.wasmPath, "compute", command.input);
+  process.stdout.write(`${formatUInt64Array(output)}\n`);
+}
+
 function main() {
   let command;
   try {
@@ -1571,7 +1902,10 @@ function main() {
     return;
   }
   try {
-    if (command.command === "verify") verify(command);
+    if (command.command === "benchmark") {
+      benchmark(command);
+    } else if (command.command === "run") runArtifact(command);
+    else if (command.command === "verify") verify(command);
     else if (command.command === "reprove") reprove(command);
     else generate(command);
   } catch (error) {
@@ -1606,16 +1940,16 @@ module.exports = {
   programTaskContext,
   proofPrompt,
   proofPackagePath,
+  proofStrategyBundle,
   proofTaskContext,
   readPackageSources,
   requireFrozenProofKitIsolation,
   reprovePinsMatch,
   reproveSourceSets,
-  fromWasmtimeI64,
   runCodexOutcome,
   runTaskSession,
   stageHeading,
-  toWasmtimeI64,
+  parseProofStrategySections,
   verificationCheckSources,
   warnings,
 };

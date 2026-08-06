@@ -409,6 +409,9 @@ static size_t result_count_from_kind(const char *kind) {
   if (strcmp(kind, "bytes") == 0) {
     return 2;
   }
+  if (strcmp(kind, "array-u64") == 0) {
+    return 1;
+  }
   if (strncmp(kind, "slots:", 6) == 0) {
     uint64_t count = parse_u64(kind + 6);
     if (count > 128) {
@@ -469,6 +472,31 @@ static void call_export(Runtime *runtime, const char *func_name, const char *res
       printf("%02x", memory[ptr + i]);
     }
     printf("\n");
+    return;
+  }
+
+  if (strcmp(result_kind, "array-u64") == 0) {
+    if (!runtime->has_memory) {
+      die("Array UInt64 result requires exported memory");
+    }
+    uint64_t ptr = (uint64_t)results[0].of.i64;
+    uint64_t len = read_u64_at(runtime, ptr);
+    if (len > (SIZE_MAX - 8) / 8) {
+      die("Array UInt64 result length is too large");
+    }
+    size_t byte_len = 8 + (size_t)len * 8;
+    size_t memory_len = wasmtime_memory_data_size(runtime->context, &runtime->memory);
+    if (ptr > memory_len || byte_len > memory_len - (size_t)ptr) {
+      die("Array UInt64 result is outside memory");
+    }
+    printf("[");
+    for (uint64_t i = 0; i < len; i++) {
+      if (i != 0) {
+        printf(", ");
+      }
+      printf("%" PRIu64, read_u64_at(runtime, ptr + 8 + i * 8));
+    }
+    printf("]\n");
     return;
   }
 
@@ -973,7 +1001,8 @@ static void command_script(Runtime *runtime, int argc, char **argv) {
 
 static void usage(void) {
   fprintf(stderr,
-          "usage: wasmtime-host call|call-stats <module.wasm> <function> <i64|bytes|slots:N> "
+          "usage: wasmtime-host call|call-stats <module.wasm> <function> "
+          "<i64|bytes|array-u64|slots:N> "
           "[i64:N|bytes:HEX|array-u64:N,N ...]\n");
   exit(1);
 }
