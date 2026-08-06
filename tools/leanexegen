@@ -46,7 +46,7 @@ const verifier = path.join(verifierRoot, ".lake", "build", "bin", "verifier");
 const dumpRaw = path.join(projectRoot, "Artifact", "Binary", "DumpRaw.lean");
 const proofKitCatalogPath = path.join(projectRoot, "ProofKit", "README.md");
 const proofStrategiesPath = path.join(repoRoot, "docs", "proof-strategies.md");
-const strategyExtractorVersion = 1;
+const strategyExtractorVersion = 5;
 const artifactProofTaskTimeoutMs = 4 * 60 * 60 * 1000;
 const maximumTaskSessions = 1;
 const allowedAxioms = new Set([
@@ -525,7 +525,8 @@ function proofPrompt(request, job, entryIndex) {
     `Import Project.ProofKit.Array for the Array UInt64 ABI, change the generated ` +
     `UInt64ArrayAt predicate to ` +
     `Project.ProofKit.UInt64Array.At, use its checked address, bound, frame, singleton, and pair ` +
-    `lemmas, including encodedSize_eq_one, and use word_reads for nested word writes.  Import ` +
+    `lemmas, including encodedSize_eq_one, generatedLengthBound, generatedElement, and ` +
+    `firstElementRead_add, and use word_reads for nested word writes.  Import ` +
     `Project.ProofKit.Allocation when the program reaches the fixed-array allocator; derive one ` +
     `bumpFacts value from the result-region memory bound and page limit, then use its rootToNat, ` +
     `topToNat, noOverflow, noGrow, and headerOffsets fields instead of reproving allocator ` +
@@ -537,6 +538,57 @@ function proofPrompt(request, job, entryIndex) {
     `assignment after capacity normalization.  Match the exact instruction suffix to ` +
     `FixedArrayAllocator.region <stride>, then supply the existing capacity local, memory-fit, page, ` +
     `and allocator-global facts and continue from allocStore and allocFrame.  Import ` +
+    `Project.ProofKit.FixedArrayAllocatorWindow when the same allocator occupies a shifted local ` +
+    `window.  Its region offset stride and region_spec theorem cover combined locals offset+5, ` +
+    `offset+9 through offset+14, and a frame with offset+14 internal locals.  Use offset 0 for the ` +
+    `fourteen-local wrapper and offset 10 for the twenty-four-local wrapper.  Select this theorem ` +
+    `before unfolding or symbolically executing the allocator.  Import ` +
+    `Project.ProofKit.FixedArrayInput when the artifact uses the standard checked indexed element ` +
+    `loader.  Its program offset index and program_spec theorem copy the input pointer through ` +
+    `locals offset+9, store the index in offset+10, perform the length-guarded payload load, and ` +
+    `leave the value in offset+8.  Use offset 10 for the twenty-four-local wrappers in the bounded ` +
+    `list and tree artifacts, and apply the theorem instead of reproving array bounds and address ` +
+    `normalization.  Import ` +
+    `Project.ProofKit.FixedArrayEqNode for an unrolled search node that uses the traversal loader, ` +
+    `compares the loaded word with a saved key local, normalizes the equality Boolean, and selects ` +
+    `two supplied branches.  Its program_spec theorem leaves only the equal-branch and unequal-branch ` +
+    `proofs under branchPost.  For a loaded-first node, run wp_fixed_array_eq_node <offset>, ` +
+    `<index>, <keyLocal>.  For a key-first node, where the saved key is already on the operand stack ` +
+    `before the load, run wp_fixed_array_key_eq_node with the same arguments.  Both tactics infer ` +
+    `the branch programs and remainder.  The theorems preserve the artifact's branch structure and ` +
+    `search order.  Prefer a complete node theorem over reducing the loader and comparison ` +
+    `separately.  Use wp_fixed_array_search_key <offset>, <index>, <keyLocal> for a detected ` +
+    `fixedArraySearchKeys region that loads and saves the comparison key before these nodes.  ` +
+    `Import Project.ProofKit.FixedArrayLengthDispatch when the exported wrapper begins with the ` +
+    `standard fixed-array length comparison and compiler Boolean normalization.  Run ` +
+    `wp_fixed_array_length_dispatch <inputLocal>, <expectedSize>; it infers the valid and invalid ` +
+    `branches and leaves one semantic proof for each.  Apply this dispatch tactic before broad ` +
+    `symbolic execution of the entry function.  ` +
+    `Import ` +
+    `Project.ProofKit.FixedArrayTraversalInput when the search traversal uses the standard checked ` +
+    `indexed loader that stores the input pointer and index in combined locals offset+5 and ` +
+    `offset+6 and leaves the value on the operand stack.  Its program_spec theorem accepts an ` +
+    `arbitrary continuation; offset 10 matches the twenty-four-local bounded list and tree ` +
+    `traversals.  Use it only when the complete FixedArrayEqNode shape does not match and the current ` +
+    `remainder already decomposes into program ++ rest; do not restructure a nested search solely ` +
+    `to apply it, because exact decompositions can cost more proof-search time than the load facts ` +
+    `save.  Import ` +
+    `Project.ProofKit.FixedArrayPairResult when a twenty-four-local wrapper returns either two ` +
+    `constants or [input[index], 1] through the standard offset-ten allocator and pair-result ` +
+    `sequence.  Match the exact suffix to constResultProgram or inputResultProgram, then apply ` +
+    `constResultProgram_spec or inputResultProgram_spec before unfolding the allocator, input ` +
+    `loader, stores, or pairPost.  These theorems establish pairPost for arbitrary pair values, ` +
+    `input arrays, indices, and result-local destinations.  The composed ` +
+    `constResultProgram_result_spec and inputResultProgram_result_spec theorems are available when ` +
+    `the current continuation already matches resultContinuation; do not restructure an unrolled ` +
+    `branch proof or symbolically execute the whole function only to use that continuation.  ` +
+    `Import ` +
+    `Project.ProofKit.FixedArrayResult for standard fixed-array length and payload stores.  Its ` +
+    `continuation-generic lengthStore_spec and payloadStore_spec theorems accept arbitrary root and ` +
+    `scratch combined-local indices, while singletonStore_at and pairStore_at establish the final ` +
+    `Array UInt64 representation after the corresponding memory transformer.  Apply these theorems ` +
+    `around application-specific value production instead of expanding address arithmetic and ` +
+    `read-over-write obligations.  Import ` +
     `Project.ProofKit.FixedArraySingleton instead when that allocator region is immediately followed ` +
     `by the cataloged singleton Array UInt64 result suffix.  Its region_result_spec theorem covers ` +
     `the allocator, length and payload stores, result-local assignments, address bounds, and final ` +
@@ -552,14 +604,23 @@ function proofPrompt(request, job, entryIndex) {
     `${job.namespace}.func${entryIndex} as initial' using <callee theorem>\`.  `;
   return `You are performing independent task 3 of 3 for leanexegen.  Prove the exact compiled ` +
     `artifact for this request:\n\n${request}\n\n` +
-    `The working directory contains only the request, the frozen formal specification, the ` +
-    `WAT-derived Talos Program module, and deterministic exact-artifact support modules.  It ` +
-    `contains no Source module.  Write the complete candidate module to ${candidate} and prove exactly ` +
+    `The working directory contains the request, the frozen formal specification, the ` +
+    `WAT-derived Talos Program module, deterministic exact-artifact support modules, and the ` +
+    `candidate starter.  It contains no Source module.  ${candidate} contains a deterministic ` +
+    `theorem starter with the ` +
+    `RuntimeReady decomposition and common array facts.  Edit that file immediately, run its Lean ` +
+    `check before planning the complete proof, and prove exactly ` +
     `${job.behaviorTheorem} : ${job.formalSpecDefinition} ${job.namespace}.«module».  ` +
     `You may import ${job.formalSpecModule}, ${job.programModule}, generated artifact-support ` +
     `modules, CodeLib, Interpreter, Std, Init, or Mathlib.  ${library}` +
     `PROOF_STRATEGIES.md contains optional proof-organization guidance selected from the frozen ` +
     `Program, and PROOF_TASK_FEATURES.json records the structural facts used for that selection.  ` +
+    `Each fixedArrayEqNodes entry gives the function, local-window offset, input index, saved-key ` +
+    `local, and operand order for an exact Project.ProofKit.FixedArrayEqNode match.  Use ` +
+    `wp_fixed_array_eq_node for loaded-first entries and wp_fixed_array_key_eq_node for key-first ` +
+    `entries instead of rediscovering the nodes in Program.  Each fixedArraySearchKeys entry gives ` +
+    `the corresponding arguments for wp_fixed_array_search_key.  Each fixedArrayLengthDispatches ` +
+    `entry gives the arguments for wp_fixed_array_length_dispatch.  ` +
     `These files grant no additional Lean imports.  ` +
     `Do not import Source, inspect source ` +
     `code, invoke the compiler, add axioms, or use sorry.  Leave samples and hostAssumptions ` +
@@ -626,6 +687,150 @@ function parseProofStrategySections(source) {
   return sections;
 }
 
+function fixedArraySearchFeatures(body) {
+  const lines = body.split("\n").map((line) => line.trim());
+  const nodes = [];
+  const searchKeys = [];
+  const local = (line, instruction) => {
+    if (typeof line !== "string") return null;
+    const match = line.match(new RegExp(`^\\.${instruction} ([0-9]+),$`));
+    return match === null ? null : Number(match[1]);
+  };
+  const constant = (line) => {
+    if (typeof line !== "string") return null;
+    const match = line.match(/^\.constI64 \(([0-9]+) : UInt64\),$/);
+    return match === null ? null : Number(match[1]);
+  };
+  const loaderAt = (start) => {
+    if (lines[start] !== ".localGet 0,") return null;
+    const pointerLocal = local(lines[start + 1], "localSet");
+    const index = constant(lines[start + 2]);
+    const indexLocal = local(lines[start + 3], "localSet");
+    if (pointerLocal === null || index === null || indexLocal === null ||
+        pointerLocal < 5 || indexLocal !== pointerLocal + 1) return null;
+    const expected = [
+      [4, `.localGet ${indexLocal},`],
+      [5, `.localGet ${pointerLocal},`],
+      [6, ".wrapI64,"],
+      [7, ".load64 (0 : UInt32),"],
+      [8, ".ltUI64,"],
+      [9, ".iff 0 1 ["],
+      [10, `.localGet ${pointerLocal},`],
+      [11, `.localGet ${indexLocal},`],
+      [12, ".constI64 (1 : UInt64),"],
+      [13, ".mulI64,"],
+      [14, ".constI64 (1 : UInt64),"],
+      [15, ".addI64,"],
+      [16, ".constI64 (8 : UInt64),"],
+      [17, ".mulI64,"],
+      [18, ".addI64,"],
+      [19, ".wrapI64,"],
+      [20, ".load64 (0 : UInt32)"],
+      [21, "] ["],
+      [22, ".unreachable"],
+      [23, "],"],
+    ];
+    if (expected.some(([offset, text]) => lines[start + offset] !== text)) return null;
+    return { offset: pointerLocal - 5, index, after: start + 24 };
+  };
+  const normalizationAt = (start) => [
+    ".eqI64,",
+    ".iff 0 1 [",
+    ".constI64 (1 : UInt64)",
+    "] [",
+    ".constI64 (0 : UInt64)",
+    "],",
+    ".constI64 (0 : UInt64),",
+    ".eqI64,",
+    ".eqz,",
+    ".iff 0 0 [",
+  ].every((text, offset) => lines[start + offset] === text);
+  for (let start = 0; start < lines.length; start += 1) {
+    const loadedFirst = loaderAt(start);
+    if (loadedFirst !== null) {
+      const destination = local(lines[loadedFirst.after], "localSet");
+      if (destination !== null) {
+        searchKeys.push({
+          offset: loadedFirst.offset,
+          index: loadedFirst.index,
+          keyLocal: destination,
+        });
+      }
+      const keyLocal = local(lines[loadedFirst.after], "localGet");
+      if (keyLocal !== null && normalizationAt(loadedFirst.after + 1)) {
+        nodes.push({
+          offset: loadedFirst.offset,
+          index: loadedFirst.index,
+          keyLocal,
+          order: "loaded-first",
+        });
+      }
+    }
+    const keyLocal = local(lines[start], "localGet");
+    const keyFirst = loaderAt(start + 1);
+    if (keyLocal !== null && keyFirst !== null && normalizationAt(keyFirst.after)) {
+      nodes.push({
+        offset: keyFirst.offset,
+        index: keyFirst.index,
+        keyLocal,
+        order: "key-first",
+      });
+    }
+  }
+  return { nodes, searchKeys };
+}
+
+function fixedArrayEqNodeFeatures(body) {
+  return fixedArraySearchFeatures(body).nodes;
+}
+
+function fixedArrayLengthDispatchFeatures(body) {
+  const lines = body.split("\n").map((line) => line.trim());
+  const dispatches = [];
+  for (let start = 0; start + 31 < lines.length; start += 1) {
+    if (lines[start] !== ".localGet 0,") continue;
+    const localMatch = lines[start + 1].match(/^\.localSet ([0-9]+),$/);
+    const sizeMatch = lines[start + 5].match(
+      /^\.constI64 \(([0-9]+) : UInt64\),$/);
+    if (localMatch === null || sizeMatch === null) continue;
+    const inputLocal = Number(localMatch[1]);
+    const expected = [
+      [2, `.localGet ${inputLocal},`],
+      [3, ".wrapI64,"],
+      [4, ".load64 (0 : UInt32),"],
+      [6, ".eqI64,"],
+      [7, ".iff 0 1 ["],
+      [8, ".constI64 (1 : UInt64)"],
+      [9, "] ["],
+      [10, ".constI64 (0 : UInt64)"],
+      [11, "],"],
+      [12, ".constI64 (0 : UInt64),"],
+      [13, ".eqI64,"],
+      [14, ".eqz,"],
+      [15, ".eqz,"],
+      [16, ".iff 0 1 ["],
+      [17, ".constI64 (1 : UInt64)"],
+      [18, "] ["],
+      [19, ".constI64 (0 : UInt64)"],
+      [20, "],"],
+      [21, ".constI64 (1 : UInt64),"],
+      [22, ".eqI64,"],
+      [23, ".iff 0 1 ["],
+      [24, ".constI64 (1 : UInt64)"],
+      [25, "] ["],
+      [26, ".constI64 (0 : UInt64)"],
+      [27, "],"],
+      [28, ".constI64 (0 : UInt64),"],
+      [29, ".eqI64,"],
+      [30, ".eqz,"],
+      [31, ".iff 0 0 ["],
+    ];
+    if (expected.some(([offset, text]) => lines[start + offset] !== text)) continue;
+    dispatches.push({ inputLocal, expectedSize: Number(sizeMatch[1]) });
+  }
+  return dispatches;
+}
+
 function programFunctionFeatures(program) {
   const starts = [...program.matchAll(/^def func([0-9]+) : Wasm\.Program :=\n/gm)];
   if (starts.length === 0) throw new Error("Talos program has no instruction bodies");
@@ -657,6 +862,7 @@ function programFunctionFeatures(program) {
       .test(body);
     const hasAllocation = /\.(?:memorySize|memoryGrow)\b/.test(body) ||
       (/\.globalGet\s+0\b/.test(body) && /^\s+\.store64\b/m.test(body));
+    const fixedArraySearch = fixedArraySearchFeatures(body);
     functions.push({
       index,
       instructionCount,
@@ -666,6 +872,11 @@ function programFunctionFeatures(program) {
       hasMemory,
       hasArithmetic,
       hasAllocation,
+      fixedArrayEqNodes: fixedArraySearch.nodes.filter(
+        (node) => node.offset + 14 === localCount),
+      fixedArraySearchKeys: fixedArraySearch.searchKeys.filter(
+        (key) => key.offset + 14 === localCount),
+      fixedArrayLengthDispatches: fixedArrayLengthDispatchFeatures(body),
     });
   }
   return functions;
@@ -736,6 +947,48 @@ function proofStrategyBundle(program, exportIndex, source = null) {
   return { notes, features };
 }
 
+function artifactProofStarter(job, entryIndex) {
+  const prefix = `${job.behaviorModule}.`;
+  if (!job.behaviorTheorem.startsWith(prefix)) {
+    throw new Error("artifact behavior theorem is outside its module");
+  }
+  const theoremName = job.behaviorTheorem.slice(prefix.length);
+  return `import ${job.formalSpecModule}
+import ${job.programModule}
+import Project.ProofKit.Array
+import Project.ProofKit.FixedArrayEqNode
+import Project.ProofKit.FixedArrayLengthDispatch
+import Project.ProofKit.FixedArrayPairResult
+
+set_option maxRecDepth 1048576
+set_option maxHeartbeats 1000000
+
+namespace ${job.behaviorModule}
+
+open Wasm Project.ProofKit
+
+theorem ${theoremName} :
+    ${job.formalSpecDefinition} ${job.namespace}.«module» := by
+  refine ⟨${entryIndex}, rfl, ?_⟩
+  intro env initial inputPtr input hInput
+  rcases hInput with
+    ⟨hArray, heapTop, allocs, retains, releases, frees, hGlobals,
+      hInputBelow, hFit32, hFitMemory, hPages⟩
+  change UInt64Array.At initial inputPtr input at hArray
+  have hLengthRead := hArray.lengthRead
+  have hLengthBound := hArray.generatedLengthBound
+  have hInputAddress := hArray.pointerAddress_eq
+  have hHeapTop : initial.globals.globals[0]? = some (.i64 heapTop) := by
+    simp [hGlobals]
+  have hFreeList : initial.globals.globals[1]? = some (.i64 0) := by
+    simp [hGlobals]
+  have hAllocs : initial.globals.globals[2]? = some (.i64 allocs) := by
+    simp [hGlobals]
+
+end ${job.behaviorModule}
+`;
+}
+
 function proofTaskContext(
     request, job, formalSource, generatedSources, strategies = null) {
   const context = new Map([
@@ -752,6 +1005,8 @@ function proofTaskContext(
   context.set("PROOF_STRATEGIES.md", bundle.notes);
   context.set("PROOF_TASK_FEATURES.json", `${JSON.stringify(bundle.features, null, 2)}\n`);
   context.set("PROOF_LIBRARY.md", fs.readFileSync(proofKitCatalogPath, "utf8"));
+  context.set(moduleFile(job.behaviorModule),
+    artifactProofStarter(job, bundle.features.exportIndex));
   if (context.has(moduleFile(job.sourceModule))) {
     throw new StageError(5, "artifact proof", "proof task context contains Source");
   }
@@ -1925,9 +2180,11 @@ if (require.main === module) main();
 
 module.exports = {
   StageError,
+  artifactProofStarter,
   auditAxioms,
   codexCommandArgs,
   codexOutcomeSchema,
+  fixedArrayEqNodeFeatures,
   parseCodexVersion,
   formalSpecificationCheckSources,
   formalSpecificationSource,

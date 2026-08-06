@@ -89,6 +89,42 @@ theorem At.elementBound {store : Store Unit} {ptr : UInt64}
   rw [h.elementAddress_toNat i hi]
   omega
 
+theorem At.generatedLengthBound {store : Store Unit} {ptr : UInt64}
+    {values : Array UInt64} (h : At store ptr values) :
+    ptr.toNat % 4294967296 + 8 ≤ store.mem.pages * 65536 := by
+  simpa [toUInt32_toNat] using h.lengthBound
+
+theorem At.generatedElement {store : Store Unit} {ptr : UInt64}
+    {values : Array UInt64} (h : At store ptr values) (i : Nat)
+    (hi : i < values.size) :
+    (ptr.toNat + (i + 1) * 8) % 4294967296 + 8 ≤
+        store.mem.pages * 65536 ∧
+      store.mem.read64
+        (UInt32.ofNat ((ptr.toNat + 8 * (i + 1)) % 4294967296)) =
+        values[i] := by
+  have hAddress := h.elementAddress_eq i hi
+  constructor
+  · have hBound :
+        (UInt32.ofNat ((ptr.toNat + 8 * (i + 1)) %
+          4294967296)).toNat + 8 ≤ store.mem.pages * 65536 := by
+      rw [hAddress]
+      exact h.elementBound i hi
+    simpa [Nat.mul_comm] using hBound
+  · rw [hAddress]
+    exact h.elementRead i hi
+
+theorem At.firstElementRead_add {store : Store Unit} {ptr : UInt64}
+    {values : Array UInt64} (h : At store ptr values)
+    (hNonempty : 0 < values.size) :
+    store.mem.read64 (ptr.toUInt32 + 8) = values[0] := by
+  have hAddress := h.elementAddress_eq 0 hNonempty
+  have hGeneratedAddress :
+      UInt32.ofNat ((ptr.toNat + 8) % 4294967296) = ptr.toUInt32 + 8 := by
+    apply UInt32.toNat.inj
+    simp
+  rw [← hGeneratedAddress, hAddress]
+  exact h.elementRead 0 hNonempty
+
 theorem At.size_lt {store : Store Unit} {ptr : UInt64}
     {values : Array UInt64} (h : At store ptr values) :
     values.size < UInt64.size := by

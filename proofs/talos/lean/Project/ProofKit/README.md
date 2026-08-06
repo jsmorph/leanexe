@@ -8,7 +8,14 @@ Every `leanexegen` artifact-proof task receives this catalog and may import the 
 | `Project.ProofKit.Array` | The public `Array UInt64` representation, encoded-size and address normalization, load bounds, region preservation, and singleton or pair output construction. |
 | `Project.ProofKit.Allocation` | Fixed-array bump-allocation addresses, header offsets, overflow exclusion, and the no-growth branch. |
 | `Project.ProofKit.FixedArrayAllocator` | Complete empty-list search and bump-allocation semantics for the emitted one-parameter array-wrapper layout. |
+| `Project.ProofKit.FixedArrayAllocatorWindow` | The fixed-array allocator semantics parameterized by a uniform shift of its combined-local operands. |
+| `Project.ProofKit.FixedArrayEqNode` | One indexed array load, equality normalization, and two-way branch for an unrolled search. |
+| `Project.ProofKit.FixedArrayInput` | The standard length-guarded indexed input loader parameterized by a uniform local-window shift. |
+| `Project.ProofKit.FixedArrayLengthDispatch` | The standard fixed-array length comparison, Boolean normalization, and valid or invalid branch. |
+| `Project.ProofKit.FixedArrayPairResult` | Complete allocation and two-word result semantics for the emitted twenty-four-local wrapper. |
+| `Project.ProofKit.FixedArrayResult` | Continuation-generic length and payload stores plus singleton and pair representation theorems. |
 | `Project.ProofKit.FixedArraySingleton` | Complete allocation and singleton `Array UInt64` result semantics for the emitted one-parameter array-wrapper layout. |
+| `Project.ProofKit.FixedArrayTraversalInput` | The checked indexed loader that leaves a traversal value on the operand stack. |
 | `Project.ProofKit.Control` | Function entry, block-wrapped loop entry, and one-call wrapper tactics. |
 
 ## `Array UInt64` representations
@@ -26,7 +33,12 @@ have hSizeEncode := hArray.encodedSize_eq_one
 have hValue := hArray.elementRead 0 hSingletonIndex
 have hValueBound := hArray.elementBound 0 hSingletonIndex
 have hValueAddress := hArray.elementAddress_eq 0 hSingletonIndex
+have hGeneratedLengthBound := hArray.generatedLengthBound
+have hGeneratedElement := hArray.generatedElement 0 hSingletonIndex
+have hFirstRead := hArray.firstElementRead_add hSingletonIndex
 ```
+
+`generatedLengthBound` and `generatedElement` expose the modulo-address forms produced by Talos symbolic execution of the emitted loader.  The element theorem returns both the checked eight-byte bound and the exact memory read for any logical index.  `firstElementRead_add` supplies the direct `ptr.toUInt32 + 8` read used when the wrapper first loads its query word.
 
 Use `At.frameBefore` when the artifact writes only at or above a cutoff after reading its input.  The theorem needs the complete represented input below that cutoff, unchanged page count, and byte equality below the cutoff.  `At.write64After` handles one word write and can preserve the predicate through a short sequence of stores.
 
@@ -106,6 +118,171 @@ apply Project.ProofKit.FixedArrayAllocator.region_spec
 · exact hFreeList
 · exact hAllocs
 · exact hNext
+```
+
+## Shifted fixed-array allocator region
+
+Import `Project.ProofKit.FixedArrayAllocatorWindow` when the same allocator instruction region appears after a uniform shift of its combined-local operands.  `region offset stride` uses combined locals `offset + 5`, `offset + 9`, and `offset + 10` through `offset + 14`; `region_spec` requires `offset + 14` internal locals and the capacity in internal local `offset + 8`.  Offset zero covers the fourteen-local wrapper, while offset ten covers the twenty-four-local wrappers in Demos 2 and 3.
+
+The theorem produces `FixedArrayAllocator.allocStore` and `FixedArrayAllocatorWindow.allocFrame`, preserving the semantic memory and global-state definitions used by the canonical allocator theorem.  The caller proves an exact instruction-suffix equality before applying the theorem and supplies the shifted capacity-local fact.  The continuation receives the state after the allocator-global updates and the shifted returned-root assignment.
+
+```lean
+import Project.ProofKit.FixedArrayAllocatorWindow
+
+change wp module_
+  (Project.ProofKit.FixedArrayAllocatorWindow.region offset stride ++ rest)
+  Q initial frame env
+apply Project.ProofKit.FixedArrayAllocatorWindow.region_spec
+  offset module_ env initial frame heapTop capacity stride allocs
+· exact hParams
+· exact hLocals
+· exact hValues
+· exact hCapacityLocal
+· exact hCapacity
+· exact hFitMemory
+· exact hPages
+· exact hMemory32
+· exact hHeapTop
+· exact hFreeList
+· exact hAllocs
+· exact hNext
+```
+
+## Indexed fixed-array input loader
+
+Import `Project.ProofKit.FixedArrayInput` when the artifact copies its input pointer to combined local `offset + 9`, stores an encoded element index in `offset + 10`, and leaves the loaded value in `offset + 8`.  `program offset index` includes the emitted length load, unsigned index comparison, payload-address calculation, checked element load, and unreachable failure arm.  `program_spec` proves the complete region for any valid logical element and any following program or postcondition.
+
+The theorem requires one input parameter, `offset + 14` internal locals, an empty operand stack, and a checked `UInt64Array.At` representation.  Its `resultFrame` records the input pointer, encoded index, and loaded value in the three internal local slots selected by the offset.  Offset ten matches the twenty-four-local wrappers used by Demos 2 and 3.
+
+```lean
+import Project.ProofKit.FixedArrayInput
+
+change wp module_
+  (Project.ProofKit.FixedArrayInput.program offset index ++ rest)
+  Q st frame env
+apply Project.ProofKit.FixedArrayInput.program_spec
+  offset module_ env st frame inputPtr input index
+· exact hParamsValue
+· exact hLocals
+· exact hValues
+· exact hInput
+· exact hIndex
+· exact hNext
+```
+
+## Traversal input loader
+
+Import `Project.ProofKit.FixedArrayTraversalInput` when an unrolled search loads an indexed input element for an immediate comparison.  `program offset index` stores the input pointer and encoded index in combined locals `offset + 5` and `offset + 6`, checks the index against the represented length, and leaves the loaded word on the operand stack.  `program_spec` proves that region for an arbitrary valid index and following program.
+
+The result frame preserves the one input parameter, updates the two internal scratch locals, and sets the operand stack to the loaded `UInt64` value.  `program_stacked_spec` preserves an arbitrary operand-stack tail below that loaded value, supporting comparisons whose other operand was pushed before the load.  Offset ten matches the twenty-four-local search traversals in Demos 2 and 3, while `FixedArrayInput.program_spec` covers the result-wrapper region that stores the loaded word in combined local `offset + 8` and leaves an empty stack.
+
+```lean
+import Project.ProofKit.FixedArrayTraversalInput
+
+change wp module_
+  (Project.ProofKit.FixedArrayTraversalInput.program offset index ++ rest)
+  Q st frame env
+apply Project.ProofKit.FixedArrayTraversalInput.program_spec
+  offset module_ env st frame inputPtr input index
+· exact hParamsValue
+· exact hLocals
+· exact hValues
+· exact hInput
+· exact hIndex
+· exact hNext
+```
+
+## Fixed-length dispatch
+
+Import `Project.ProofKit.FixedArrayLengthDispatch` when a wrapper begins by storing its input pointer, reading the represented array length, comparing that length with a fixed size, and passing the result through the emitted Boolean-normalization instructions.  `program inputLocal expectedSize invalidBranch validBranch` retains both artifact branches and the following program as parameters.  `program_spec` proves the length read, memory bound, encoded-size equivalence, normalization, and final branch selection.
+
+The valid and invalid premises use `FixedArrayEqNode.branchPost`, preserving the enclosing `if` behavior for fallthrough and break continuations.  `branchFrame` records the stored input pointer and empty operand stack at either branch entry.  `wp_fixed_array_length_dispatch inputLocal, expectedSize` infers both branch programs and the remainder from the current goal.
+
+```lean
+import Project.ProofKit.FixedArrayLengthDispatch
+
+wp_fixed_array_length_dispatch inputLocal, expectedSize
+· exact hParams
+· exact hValues
+· exact hInputLocalPositive
+· exact hInputLocalBound
+· exact hExpectedSizeBound
+· exact hInput
+· intro hInvalidSize
+  exact hInvalidBranch
+· intro hValidSize
+  exact hValidBranch
+```
+
+## Equality search node
+
+Import `Project.ProofKit.FixedArrayEqNode` when an unrolled search node uses the traversal loader, compares its result with a saved `UInt64` key, normalizes the comparison through the emitted Boolean instructions, and enters one of two branches.  `program` and `program_spec` cover the loaded-first instruction order used by Demo 2, while `keyFirstProgram` and `keyFirstProgram_spec` cover Demo 3's key-first order through the stack-preserving loader theorem.  Both forms retain the artifact's branch programs and search order as parameters, proving the load, address bounds, comparison, Boolean normalization, and branch selection.
+
+The branch obligations use `branchPost module_ env rest Q`, which implements the break and fallthrough behavior of the enclosing WebAssembly `if`.  The initial frame for either obligation is `branchFrame`, containing the traversal loader's scratch-local updates and an empty operand stack.  `wp_fixed_array_eq_node offset, index, keyLocal` handles loaded-first code, and `wp_fixed_array_key_eq_node offset, index, keyLocal` handles key-first code.  Each tactic infers the branch programs and remainder, leaving the semantic array and frame facts followed by the equal and unequal branch proofs.
+
+`loadKeyProgram offset index keyLocal` covers the checked load that initializes a saved search key before the first comparison node.  Its theorem produces `keyFrame`, and `keyFrame_get_key` exposes the saved value through `Locals.get`.  `wp_fixed_array_search_key offset, index, keyLocal` infers the following search program and applies this theorem.
+
+```lean
+import Project.ProofKit.FixedArrayEqNode
+
+wp_fixed_array_search_key 10, 0, keyLocal
+
+wp_fixed_array_eq_node 10, index, keyLocal
+· exact hParamsValue
+· exact hLocals
+· exact hValues
+· exact hInput
+· exact hIndex
+· exact hKeyLocal
+· intro hEqual
+  exact hEqualBranch
+· intro hUnequal
+  exact hUnequalBranch
+```
+
+## Complete pair-result wrapper
+
+Import `Project.ProofKit.FixedArrayPairResult` when a twenty-four-local wrapper uses the offset-ten fixed-array allocator and returns two words.  `constResultProgram first second destination` covers a pair of computed constants, while `inputResultProgram index destination` reloads `input[index]` after allocation and returns `[input[index], 1]`.  Their semantic theorems finish at `pairPost`, which exposes the returned pointer and `UInt64Array.At` representation without referring to an application specification.
+
+The input theorem transports the original array representation across the allocator header writes and output-length store before it invokes `FixedArrayInput.program_spec`.  Both theorems prove capacity normalization, empty-list allocation, result bounds, both payload stores, destination-local assignment, and the returned-root assignment.  `constResultProgram_result_spec` and `inputResultProgram_result_spec` compose those results with `pairPost_conseq`, producing the generic `resultContinuation` for a caller-supplied expected array.
+
+`publicPost` states the returned-array condition for fallthrough and return continuations, while `fallthroughPost` and `resultContinuation` handle the generated local-14 return and surrounding block depths.  An artifact proof can use `publicPost (FormalSpec.expected input)` as its public assertion and prove one equality between the formal result and the pair at each semantic branch.  The composed theorem removes `pairPost` elimination when the current continuation already matches `resultContinuation`; forcing the entry proof into that shape can increase branch-discovery time.
+
+```lean
+import Project.ProofKit.FixedArrayPairResult
+
+change wp module_
+  (Project.ProofKit.FixedArrayPairResult.inputResultProgram index destination)
+  (Project.ProofKit.FixedArrayPairResult.pairPost input[index] 1)
+  initial frame env
+exact Project.ProofKit.FixedArrayPairResult.inputResultProgram_result_spec
+  module_ env initial frame heapTop allocs inputPtr input index destination
+  hIndex expected hExpected hParamsValue hLocals hValues
+  hDestinationPositive hDestination
+  hInput hInputBelow hFitMemory hPages hMemory32
+  hHeapTop hFreeList hAllocs
+```
+
+## Fixed-array result stores
+
+Import `Project.ProofKit.FixedArrayResult` for the standard fixed-array length store and payload-address sequence.  `lengthStore_spec` and `payloadStore_spec` accept arbitrary combined-local indices, remaining programs, and postconditions, which lets an artifact proof place application-specific value computation between shared store proofs.  The definitions `writeLength` and `writePayload` name the resulting stores so later obligations do not expand a nested byte-write term.
+
+`singletonStore_at` and `pairStore_at` reconstruct the public `UInt64Array.At` representation from those named memory transformers.  Their premises require the complete result region to fit in 32-bit address space and current memory.  The theorems cover arrays of one and two `UInt64` values without fixing an allocator layout or an application function.
+
+```lean
+import Project.ProofKit.FixedArrayResult
+
+apply Project.ProofKit.FixedArrayResult.lengthStore_spec
+  module_ env st frame root 2 rootLocal hValues hRoot hLengthBound
+apply Project.ProofKit.FixedArrayResult.payloadStore_spec
+  module_ env _ _ root first rootLocal scratchLocal 0
+  hRoot hFirst hFirstBound
+apply Project.ProofKit.FixedArrayResult.payloadStore_spec
+  module_ env _ _ root second rootLocal scratchLocal 1
+  hRoot hSecond hSecondBound
+
+have hResult := Project.ProofKit.FixedArrayResult.pairStore_at
+  st root first second hFit32 hFitMemory
 ```
 
 ## Complete singleton-array result region
