@@ -30,9 +30,11 @@ tools/leanexegen -o myprogram.wasm myprogram.txt
 tools/leanexegen reprove -o revised.wasm myprogram.proof
 
 tools/leanexegen verify myprogram.proof
+
+tools/leanexegen run myprogram.wasm 10 20 30
 ```
 
-The [headless Codex orchestrator reference](docs/leanexegen.md) defines all eight stages, fixed unary interface, controlled reproof mode, structured task outcomes, sidecar reports, warnings, dependency pins, and current limitations.  The orchestrator fixes `FormalSpec.ArtifactSpec : Wasm.Module → Prop`, appends its unary `TerminatesWith` definition, and uses that exact declaration in the final artifact theorem.  An existing sidecar can be verified without Codex or the LeanExe compiler.
+The [headless Codex orchestrator reference](docs/leanexegen.md) defines all eight stages, the fixed `Array UInt64 → Array UInt64` interface, controlled reproof mode, structured task outcomes, sidecar reports, warnings, dependency pins, and current limitations.  The orchestrator fixes `FormalSpec.ArtifactSpec : Wasm.Module → Prop`, including the array-memory representation and allocator precondition, and uses that exact declaration in the final artifact theorem.  An existing sidecar can be verified without Codex or the LeanExe compiler.
 
 ## Repository Layout
 

@@ -1,0 +1,265 @@
+#!/usr/bin/env node
+"use strict";
+
+const crypto = require("node:crypto");
+const fs = require("node:fs");
+const path = require("node:path");
+const { validatePackage } = require("./leanexegen-lib");
+const { stage5Metric } = require("./leanexegen-telemetry");
+
+const repoRoot = path.resolve(__dirname, "..");
+const defaultBenchmark = path.join(
+  repoRoot, "benchmarks", "leanexegen", "demo1-array");
+
+function fail(message) {
+  throw new Error(message);
+}
+
+function usage() {
+  return [
+    "usage: leanexegen-benchmark check [benchmark-directory]",
+    "       leanexegen-benchmark compare [benchmark-directory] <proof-package>",
+  ].join("\n");
+}
+
+function readJson(file) {
+  return JSON.parse(fs.readFileSync(file, "utf8"));
+}
+
+function sha256(file) {
+  return crypto.createHash("sha256").update(fs.readFileSync(file)).digest("hex");
+}
+
+function canonical(value) {
+  if (Array.isArray(value)) return value.map(canonical);
+  if (value !== null && typeof value === "object") {
+    return Object.fromEntries(Object.keys(value).sort().map((key) =>
+      [key, canonical(value[key])]));
+  }
+  return value;
+}
+
+function equal(left, right) {
+  return JSON.stringify(canonical(left)) === JSON.stringify(canonical(right));
+}
+
+function semanticToolPins(toolPins) {
+  const result = structuredClone(toolPins);
+  delete result.proofKitSourceSha256;
+  return result;
+}
+
+function requireDirectory(root, relative, description) {
+  if (typeof relative !== "string" || relative.length === 0 || path.isAbsolute(relative)) {
+    fail(`${description} has an invalid path`);
+  }
+  const resolved = path.resolve(root, relative);
+  if (path.relative(root, resolved).startsWith("..")) {
+    fail(`${description} escapes the benchmark directory`);
+  }
+  const stat = fs.lstatSync(resolved);
+  if (!stat.isDirectory() || stat.isSymbolicLink()) {
+    fail(`${description} is not a regular directory`);
+  }
+  return resolved;
+}
+
+function requireFrozenFiles(packageRoot, benchmark) {
+  const records = benchmark.identity.frozenFiles;
+  if (!Array.isArray(records) || records.length === 0) fail("frozenFiles is empty");
+  const seen = new Set();
+  for (const record of records) {
+    if (record === null || typeof record !== "object" ||
+        typeof record.path !== "string" || !/^[0-9a-f]{64}$/.test(record.sha256) ||
+        seen.has(record.path)) {
+      fail("frozenFiles contains an invalid record");
+    }
+    seen.add(record.path);
+    const file = path.resolve(packageRoot, record.path);
+    if (path.relative(packageRoot, file).startsWith("..")) {
+      fail(`frozen file escapes the proof package: ${record.path}`);
+    }
+    const stat = fs.lstatSync(file);
+    if (!stat.isFile() || stat.isSymbolicLink() || sha256(file) !== record.sha256) {
+      fail(`frozen file identity differs: ${record.path}`);
+    }
+  }
+}
+
+function requirePackageIdentity(packageRoot, benchmark) {
+  const checked = validatePackage(packageRoot);
+  const identity = benchmark.identity;
+  if (checked.artifact.sha256 !== identity.artifact.sha256 ||
+      checked.artifact.byteLength !== identity.artifact.byteLength ||
+      checked.manifest.requestSha256 !== identity.requestSha256) {
+    fail(`${packageRoot} has a different artifact or request identity`);
+  }
+  requireFrozenFiles(packageRoot, benchmark);
+  const pins = readJson(path.join(packageRoot, "tool-pins.json"));
+  if (!equal(semanticToolPins(pins), identity.semanticToolPins)) {
+    fail(`${packageRoot} has different semantic tool pins`);
+  }
+  if (checked.stageReports.codexVersion !== identity.codex.version) {
+    fail(`${packageRoot} has a different Codex version`);
+  }
+  return { checked, pins };
+}
+
+function requireMeasurement(measurement, telemetry) {
+  const started = new Date(measurement.stageStartedAt);
+  const accepted = new Date(measurement.firstAcceptedAt);
+  if (!Number.isFinite(started.valueOf()) || !Number.isFinite(accepted.valueOf()) ||
+      started.toISOString() !== measurement.stageStartedAt ||
+      accepted.toISOString() !== measurement.firstAcceptedAt ||
+      Math.abs(accepted.valueOf() - started.valueOf() - measurement.totalMilliseconds) > 1 ||
+      !["recorded stage headings", "proof-telemetry.json"].includes(measurement.source)) {
+    fail("historical measurement is inconsistent");
+  }
+  if (measurement.source === "proof-telemetry.json" &&
+      (telemetry === null ||
+       telemetry.stageStartedAt !== measurement.stageStartedAt ||
+       telemetry.firstAcceptedAt !== measurement.firstAcceptedAt ||
+       telemetry.totalMilliseconds !== measurement.totalMilliseconds)) {
+    fail("historical measurement differs from proof telemetry");
+  }
+}
+
+function checkHistoricalRun(root, benchmark, run) {
+  const runRoot = requireDirectory(root, run.path, `run ${run.id}`);
+  const packageRoot = requireDirectory(runRoot, "program.proof", `run ${run.id} package`);
+  const { checked, pins } = requirePackageIdentity(packageRoot, benchmark);
+  const outerWasm = path.join(runRoot, "program.wasm");
+  const packagedWasm = path.join(packageRoot, "program.wasm");
+  if (sha256(outerWasm) !== benchmark.identity.artifact.sha256 ||
+      !fs.readFileSync(outerWasm).equals(fs.readFileSync(packagedWasm))) {
+    fail(`run ${run.id} has a different outer WASM artifact`);
+  }
+  if (checked.manifest.schemaVersion !== run.packageSchemaVersion ||
+      pins.proofKitSourceSha256 !== run.proofKitSourceSha256 ||
+      checked.stageReports.tasks.artifactProof.sourceSha256 !==
+        run.acceptedSourceSha256) {
+    fail(`run ${run.id} has a different proof-package identity`);
+  }
+  requireMeasurement(run.measurement, checked.proofTelemetry);
+  return run.measurement.totalMilliseconds;
+}
+
+function loadBenchmark(root) {
+  const benchmark = readJson(path.join(root, "benchmark.json"));
+  const baseline = benchmark.comparison?.baselineVariant;
+  const candidate = benchmark.comparison?.candidateVariant;
+  const variants = new Set(benchmark.runs?.map((run) => run.variant));
+  if (benchmark.schemaVersion !== 2 || benchmark.metric !== stage5Metric ||
+      typeof benchmark.name !== "string" || !Array.isArray(benchmark.runs) ||
+      benchmark.runs.length < 2 ||
+      !benchmark.runs.some((run) => run.id === benchmark.referenceRun) ||
+      typeof baseline !== "string" || typeof candidate !== "string" ||
+      baseline === candidate || !variants.has(baseline) || !variants.has(candidate) ||
+      benchmark.runs.some((run) => typeof run.variant !== "string") ||
+      benchmark.identity?.codex?.model !== "unrecorded" ||
+      benchmark.identity?.codex?.reasoningEffort !== "unrecorded") {
+    fail("benchmark.json has an unsupported benchmark definition");
+  }
+  return benchmark;
+}
+
+function median(values) {
+  const sorted = [...values].sort((left, right) => left - right);
+  const middle = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 0 ?
+    (sorted[middle - 1] + sorted[middle]) / 2 : sorted[middle];
+}
+
+function summarizeVariants(benchmark, timings) {
+  const groups = new Map();
+  for (const run of benchmark.runs) {
+    if (!groups.has(run.variant)) groups.set(run.variant, []);
+    groups.get(run.variant).push(timings.get(run.id));
+  }
+  const summaries = new Map([...groups].map(([variant, values]) => [variant, {
+    count: values.length,
+    medianMilliseconds: median(values),
+    rangeMilliseconds: Math.max(...values) - Math.min(...values),
+  }]));
+  return summaries;
+}
+
+function checkBenchmark(root) {
+  const benchmark = loadBenchmark(root);
+  const timings = new Map();
+  for (const run of benchmark.runs) {
+    if (timings.has(run.id)) fail(`duplicate run identity: ${run.id}`);
+    timings.set(run.id, checkHistoricalRun(root, benchmark, run));
+  }
+  const summaries = summarizeVariants(benchmark, timings);
+  const lines = [...summaries].map(([variant, summary]) =>
+    `${variant}: n=${summary.count}, median ` +
+    `${(summary.medianMilliseconds / 1000).toFixed(3)}s, range ` +
+    `${(summary.rangeMilliseconds / 1000).toFixed(3)}s`);
+  const baseline = summaries.get(benchmark.comparison.baselineVariant);
+  const candidate = summaries.get(benchmark.comparison.candidateVariant);
+  const delta = candidate.medianMilliseconds - baseline.medianMilliseconds;
+  const percent = 100 * delta / baseline.medianMilliseconds;
+  lines.push(`${benchmark.comparison.candidateVariant} versus ` +
+    `${benchmark.comparison.baselineVariant}: ${(delta / 1000).toFixed(3)}s ` +
+    `(${percent.toFixed(1)}%)`);
+  process.stdout.write(`Checked ${benchmark.name}:\n${lines.map((line) =>
+    `  ${line}`).join("\n")}\n`);
+  process.stderr.write(
+    "leanexegen-benchmark: warning: historical Codex model and reasoning settings " +
+    "were not recorded\n",
+  );
+  return benchmark;
+}
+
+function comparePackage(root, packageRoot) {
+  const benchmark = loadBenchmark(root);
+  const { checked } = requirePackageIdentity(packageRoot, benchmark);
+  if (checked.proofTelemetry === null) {
+    fail(`${packageRoot} has no proof-telemetry.json`);
+  }
+  const milliseconds = checked.proofTelemetry.totalMilliseconds;
+  process.stdout.write(
+    `Accepted ${benchmark.name} proof in ${(milliseconds / 1000).toFixed(3)}s: ` +
+    `Codex ${(checked.proofTelemetry.codexSessionMilliseconds / 1000).toFixed(3)}s, ` +
+    `outer acceptance ` +
+    `${(checked.proofTelemetry.outerAcceptanceMilliseconds / 1000).toFixed(3)}s\n`,
+  );
+  process.stderr.write(
+    "leanexegen-benchmark: warning: the historical reference lacks recorded Codex model " +
+    "and reasoning settings\n",
+  );
+  return checked.proofTelemetry;
+}
+
+function main(args) {
+  const command = args[0];
+  if (command === "check" && args.length <= 2) {
+    checkBenchmark(path.resolve(args[1] || defaultBenchmark));
+    return;
+  }
+  if (command === "compare" && (args.length === 2 || args.length === 3)) {
+    const root = args.length === 3 ? path.resolve(args[1]) : defaultBenchmark;
+    const packageRoot = path.resolve(args[args.length - 1]);
+    comparePackage(root, packageRoot);
+    return;
+  }
+  fail(usage());
+}
+
+if (require.main === module) {
+  try {
+    main(process.argv.slice(2));
+  } catch (error) {
+    process.stderr.write(`leanexegen-benchmark: ${error.message}\n`);
+    process.exitCode = 1;
+  }
+}
+
+module.exports = {
+  checkBenchmark,
+  comparePackage,
+  defaultBenchmark,
+  loadBenchmark,
+  summarizeVariants,
+};

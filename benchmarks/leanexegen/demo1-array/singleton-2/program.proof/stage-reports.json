@@ -1,0 +1,74 @@
+{
+  "schemaVersion": 1,
+  "codexVersion": "codex-cli 0.146.0",
+  "maximumAttempts": 1,
+  "tasks": {
+    "formalSpecification": {
+      "task": "formal-specification",
+      "sourceModule": "LeanExeGen.GeneratedRbade8cb1a4e3a423.FormalSpec",
+      "sourceSha256": "528dce8b47e24499c7086de04d3fe03d3ee8e2fae6ba19b9e8731d7b7a1daea8",
+      "reportSha256": "19300f2dc05bfe75dea5b202ac1d48bcfac9b630109fd86253f154bd7998f189",
+      "report": {
+        "summary": "Defined and verified the required singleton prime-factor-count function. The required Lean build succeeds.",
+        "decisions": [
+          "Used `Nat.primeFactorsList.length` to count prime factors with multiplicity.",
+          "Matched on `input.toList` and returned the original array for every non-singleton input."
+        ],
+        "attempts": [
+          {
+            "number": 1,
+            "outcome": "accepted",
+            "sourceSha256": "528dce8b47e24499c7086de04d3fe03d3ee8e2fae6ba19b9e8731d7b7a1daea8",
+            "diagnosticSha256": "3c2c1fe40c1117b0f3e992ded372abdd3beb1577477402eaa874685f4b6b944e",
+            "diagnostic": "Lean accepted LeanExeGen.GeneratedRbade8cb1a4e3a423.FormalSpec.expected : Array UInt64 → Array UInt64 and LeanExeGen.GeneratedRbade8cb1a4e3a423.FormalSpec.ArtifactSpec : Wasm.Module → Prop."
+          }
+        ]
+      }
+    },
+    "leanProgram": {
+      "task": "lean-program",
+      "sourceModule": "LeanExeGen.GeneratedRbade8cb1a4e3a423.Source",
+      "sourceSha256": "7d643794bbd1733119a3e4d16106f4ee25a8b0df9b3abf56f9c9d36c6139d8c3",
+      "reportSha256": "b8a712d56f69ed48859c15de11b8ee95bb8f035c47d3372e01bd106ba199cc83",
+      "report": {
+        "summary": "Generated and validated the Lean module and WebAssembly candidate.",
+        "decisions": [
+          "Used fuel-bounded trial division with repeated factor removal.",
+          "Used division for the stopping condition to avoid UInt64 multiplication overflow.",
+          "Returned the original array for every non-singleton input."
+        ],
+        "attempts": [
+          {
+            "number": 1,
+            "outcome": "accepted",
+            "sourceSha256": "7d643794bbd1733119a3e4d16106f4ee25a8b0df9b3abf56f9c9d36c6139d8c3",
+            "diagnosticSha256": "44efa18b2575a6cdf2a0aa8cef543218bd7cb3de9249cf63d4c33a3c0901887b",
+            "diagnostic": "Lean and LeanExe accepted and compiled LeanExeGen.GeneratedRbade8cb1a4e3a423.Source.compute : Array UInt64 → Array UInt64."
+          }
+        ]
+      }
+    },
+    "artifactProof": {
+      "task": "artifact-proof",
+      "sourceModule": "LeanExeGen.GeneratedRbade8cb1a4e3a423.Behavior",
+      "sourceSha256": "6606bbfdb0560daac97a95c7eb722ed0d6977179f5c331270d7066b9da1b2e07",
+      "reportSha256": "184664db21359db7b70802886be8a1ab85a7ff1f800637c12ead535ac7be6d1e",
+      "report": {
+        "summary": "Proved the exact compiled artifact. The prescribed ArtifactResult build succeeds.",
+        "decisions": [
+          "Used the checked Array ABI predicates and FixedArraySingleton region theorem.",
+          "Proved the trial-division loop with a decreasing measure and number-theoretic invariant."
+        ],
+        "attempts": [
+          {
+            "number": 1,
+            "outcome": "accepted",
+            "sourceSha256": "6606bbfdb0560daac97a95c7eb722ed0d6977179f5c331270d7066b9da1b2e07",
+            "diagnosticSha256": "22d090104b0f8b7450abf89e5b603a56cb681933704d5d7e150d04e682b21d27",
+            "diagnostic": "Lean accepted LeanExeGen.GeneratedRbade8cb1a4e3a423.Behavior.artifact_behavior and LeanExeGen.GeneratedRbade8cb1a4e3a423.Artifact.artifact_correct."
+          }
+        ]
+      }
+    }
+  }
+}
