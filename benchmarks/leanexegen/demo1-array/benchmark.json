@@ -1,0 +1,266 @@
+{
+  "schemaVersion": 2,
+  "name": "demo1-array",
+  "description": "A fixed Array UInt64 to Array UInt64 artifact proof benchmark.",
+  "metric": "stage-5-start-to-first-accepted-proof",
+  "referenceRun": "timing-2",
+  "comparison": {
+    "baselineVariant": "fixed-array-allocator",
+    "candidateVariant": "fixed-array-singleton"
+  },
+  "identity": {
+    "artifact": {
+      "sha256": "dbced77ae7a692ce49e98cb58721cb3c05a3712925e31685c4fd08dba4181be7",
+      "byteLength": 1938
+    },
+    "requestSha256": "bade8cb1a4e3a423ae6405a4f5b6a1804048e0108140d31df69ddc3ed8836e44",
+    "frozenFiles": [
+      {
+        "path": "artifact.json",
+        "sha256": "6195ffa1bcde8467168e20cd5833bf2f5f55acac4cd881ad08fcb9d0b2f3e972"
+      },
+      {
+        "path": "host-assumptions.json",
+        "sha256": "ba966e70dfe9b1b125de68e3a16a1441186fe2edc29856e607485af18fddd5a3"
+      },
+      {
+        "path": "program.wasm",
+        "sha256": "dbced77ae7a692ce49e98cb58721cb3c05a3712925e31685c4fd08dba4181be7"
+      },
+      {
+        "path": "proof/LeanExeGen/GeneratedRbade8cb1a4e3a423/ArtifactBytes.lean",
+        "sha256": "d71df64333f29044e307d6a4d4ca286ae084b1c2c998a0f7d9d7d1aa8f03ed94"
+      },
+      {
+        "path": "proof/LeanExeGen/GeneratedRbade8cb1a4e3a423/ArtifactCache.lean",
+        "sha256": "b572b43bdee347770bc979c422ad4eb7d446fac390a27ea528d6d95ab6dccb73"
+      },
+      {
+        "path": "proof/LeanExeGen/GeneratedRbade8cb1a4e3a423/ArtifactDecode.lean",
+        "sha256": "98bd44c269d122e73782afab7b43daf9aebceac212ac381b202054179016c4a0"
+      },
+      {
+        "path": "proof/LeanExeGen/GeneratedRbade8cb1a4e3a423/ArtifactDecoded.lean",
+        "sha256": "937de1f92164b0afdb86469171e38c2f80edf727cd4ef8488f1b0d902ddc89f6"
+      },
+      {
+        "path": "proof/LeanExeGen/GeneratedRbade8cb1a4e3a423/ArtifactRawCache.lean",
+        "sha256": "833e019ce70ebeeb1bf3cecd9f15272fbf3866726551085aac3168e81a4dcee0"
+      },
+      {
+        "path": "proof/LeanExeGen/GeneratedRbade8cb1a4e3a423/ArtifactResult.lean",
+        "sha256": "b782401a4580122621493b4c1607448ce9c5ed8bdd97c0938855605d0eee257d"
+      },
+      {
+        "path": "proof/LeanExeGen/GeneratedRbade8cb1a4e3a423/ArtifactTranslation.lean",
+        "sha256": "d5c96ce481f648a106dd000adebe5cd870765710ab1379ee8f16a4cc5b8d7037"
+      },
+      {
+        "path": "proof/LeanExeGen/GeneratedRbade8cb1a4e3a423/ArtifactValidation.lean",
+        "sha256": "82f44664b6b1bc5415c10aaef44380a14d5f702ce64ac98178ede7412bd941b1"
+      },
+      {
+        "path": "proof/LeanExeGen/GeneratedRbade8cb1a4e3a423/CheckDeclarations.lean",
+        "sha256": "b4e35b5d0e7731811fc6afa54f40d27e57e90ef62b8e5c3b712121ac2a24a410"
+      },
+      {
+        "path": "proof/LeanExeGen/GeneratedRbade8cb1a4e3a423/CheckFile.lean",
+        "sha256": "495c00ee82e19e9cd1e182e1f97c9154d10ad40a48429686b13eb308dfd6bbed"
+      },
+      {
+        "path": "proof/LeanExeGen/GeneratedRbade8cb1a4e3a423/FormalSpec.lean",
+        "sha256": "528dce8b47e24499c7086de04d3fe03d3ee8e2fae6ba19b9e8731d7b7a1daea8"
+      },
+      {
+        "path": "proof/LeanExeGen/GeneratedRbade8cb1a4e3a423/Program.lean",
+        "sha256": "a2d295ac2b0672e99c46976b1bc44a95814dd8da6fcbc742c6a0a23e96fc29a3"
+      },
+      {
+        "path": "proof/LeanExeGen/GeneratedRbade8cb1a4e3a423/Source.lean",
+        "sha256": "7d643794bbd1733119a3e4d16106f4ee25a8b0df9b3abf56f9c9d36c6139d8c3"
+      },
+      {
+        "path": "request.txt",
+        "sha256": "bade8cb1a4e3a423ae6405a4f5b6a1804048e0108140d31df69ddc3ed8836e44"
+      }
+    ],
+    "semanticToolPins": {
+      "leanToolchain": "leanprover/lean4:v4.31.0",
+      "leanCommit": "68218e876d2a38b1985b8590fff244a83c321783",
+      "talosRevision": "bb3277e21c9786e3133d5c1601e34ebdc0bea4df",
+      "proofLakeManifestSha256": "8a6ee1e12afb1b2de16da60b29a42d40e7a3e26bdda45b9990a8f68bc4726685",
+      "verifierSourceSha256": "25aeb7d50d9ce4768b855e78d8ffb94606d02647386de9ca7b75fa026c34d802",
+      "wasmToolsVersion": "1.251.0",
+      "wasmtimeVersion": "44.0.0",
+      "nodeVersion": "24.13.0",
+      "kernelReview": {
+        "candidateCommit": "68218e876d2a38b1985b8590fff244a83c321783",
+        "reproductionSha256": "bea3200a8941e34fcbd5ef71061cec5ea5124b65cc598390ee3bc24a0433d2da",
+        "selectedResult": "affected-accepted-after-source-audit",
+        "forbiddenIdentifiers": [
+          "addDecl",
+          "inductDecl"
+        ]
+      }
+    },
+    "codex": {
+      "version": "codex-cli 0.146.0",
+      "model": "unrecorded",
+      "reasoningEffort": "unrecorded"
+    },
+    "resourceProfile": {
+      "runner": "tools/leanrun",
+      "memoryHigh": "4G",
+      "memoryMax": "6G",
+      "memorySwapMax": "1G",
+      "cpuQuota": "100%",
+      "leanNumThreads": 1,
+      "nice": 10,
+      "ioSchedulingClass": "idle",
+      "machineWideSemaphore": "shared with ../vq/tools/leanrun"
+    },
+    "cachePolicy": "Shared dependency and proof-project caches may be warm.  Each artifact-proof task uses new proof and Codex workspaces with no prior Behavior module."
+  },
+  "runs": [
+    {
+      "id": "timing-1",
+      "path": "timing-1",
+      "variant": "initial-proof-kit",
+      "packageSchemaVersion": 4,
+      "proofKitSourceSha256": "65c1d05d6c8d72d5767e33bc4f5072bcb969a53ce5316bd037de536800cb54a5",
+      "acceptedSourceSha256": "1eeaa6397de1fe759b646ee8725d7adcb5b9f752e50881720b7652225bcd6fd3",
+      "measurement": {
+        "stageStartedAt": "2026-08-05T15:23:01.431Z",
+        "firstAcceptedAt": "2026-08-05T16:21:38.206Z",
+        "totalMilliseconds": 3516775,
+        "source": "recorded stage headings"
+      }
+    },
+    {
+      "id": "timing-2",
+      "path": "timing-2",
+      "variant": "word-address",
+      "packageSchemaVersion": 4,
+      "proofKitSourceSha256": "9bb8000f533e53938923f1602220e7ee4f1036f30291f79e9a0ee913c971df90",
+      "acceptedSourceSha256": "6cf8a159590a1c16e19d6c4edc0dcdd035fa70bf35de23f416ae14c448484a1d",
+      "measurement": {
+        "stageStartedAt": "2026-08-05T16:27:07.492Z",
+        "firstAcceptedAt": "2026-08-05T16:59:51.622Z",
+        "totalMilliseconds": 1964130,
+        "source": "recorded stage headings"
+      }
+    },
+    {
+      "id": "timing-3",
+      "path": "timing-3",
+      "variant": "word-address",
+      "packageSchemaVersion": 4,
+      "proofKitSourceSha256": "9bb8000f533e53938923f1602220e7ee4f1036f30291f79e9a0ee913c971df90",
+      "acceptedSourceSha256": "6cf8a159590a1c16e19d6c4edc0dcdd035fa70bf35de23f416ae14c448484a1d",
+      "measurement": {
+        "stageStartedAt": "2026-08-05T20:28:28.704Z",
+        "firstAcceptedAt": "2026-08-05T20:34:28.848Z",
+        "totalMilliseconds": 360143.636,
+        "source": "proof-telemetry.json"
+      }
+    },
+    {
+      "id": "timing-4",
+      "path": "timing-4",
+      "variant": "word-address",
+      "packageSchemaVersion": 4,
+      "proofKitSourceSha256": "9bb8000f533e53938923f1602220e7ee4f1036f30291f79e9a0ee913c971df90",
+      "acceptedSourceSha256": "d91ad35a92ee807c61f04bc269a9236098ac177d233f2b7b47baa42d6bf01a2b",
+      "measurement": {
+        "stageStartedAt": "2026-08-05T20:35:32.881Z",
+        "firstAcceptedAt": "2026-08-05T21:13:02.325Z",
+        "totalMilliseconds": 2249443.304,
+        "source": "proof-telemetry.json"
+      }
+    },
+    {
+      "id": "allocator-1",
+      "path": "allocator-1",
+      "variant": "fixed-array-allocator",
+      "packageSchemaVersion": 4,
+      "proofKitSourceSha256": "df05067363b54a07d7ee3b8d33df7c2077c297fbac611dd17d6e7b475995fb2a",
+      "acceptedSourceSha256": "fc797929eb7046e36c7d0e474398b1fb35469490252dfd8ddd509ae9cfb75809",
+      "measurement": {
+        "stageStartedAt": "2026-08-05T21:25:39.091Z",
+        "firstAcceptedAt": "2026-08-05T22:08:15.903Z",
+        "totalMilliseconds": 2556812.481,
+        "source": "proof-telemetry.json"
+      }
+    },
+    {
+      "id": "allocator-2",
+      "path": "allocator-2",
+      "variant": "fixed-array-allocator",
+      "packageSchemaVersion": 4,
+      "proofKitSourceSha256": "df05067363b54a07d7ee3b8d33df7c2077c297fbac611dd17d6e7b475995fb2a",
+      "acceptedSourceSha256": "5523360fb3bd73bcbb036acd01a43e32467155c0941470dbe0ec6f1063dc59a8",
+      "measurement": {
+        "stageStartedAt": "2026-08-05T22:09:26.334Z",
+        "firstAcceptedAt": "2026-08-05T22:28:20.342Z",
+        "totalMilliseconds": 1134008.098,
+        "source": "proof-telemetry.json"
+      }
+    },
+    {
+      "id": "allocator-3",
+      "path": "allocator-3",
+      "variant": "fixed-array-allocator",
+      "packageSchemaVersion": 4,
+      "proofKitSourceSha256": "df05067363b54a07d7ee3b8d33df7c2077c297fbac611dd17d6e7b475995fb2a",
+      "acceptedSourceSha256": "3b9333c41e8aa7c003366ea5f7e5b298505b9eaa9444485113f4484dbb6e5407",
+      "measurement": {
+        "stageStartedAt": "2026-08-05T22:29:25.326Z",
+        "firstAcceptedAt": "2026-08-05T22:45:06.820Z",
+        "totalMilliseconds": 941493.81,
+        "source": "proof-telemetry.json"
+      }
+    },
+    {
+      "id": "singleton-1",
+      "path": "singleton-1",
+      "variant": "fixed-array-singleton",
+      "packageSchemaVersion": 4,
+      "proofKitSourceSha256": "c9abe00d8971198e25497352ca7df3b4f7b9da6b14d2307ba59706dbe0e5dc67",
+      "acceptedSourceSha256": "5ac6feb68147829dee69f0ebb08468f1d5b503f506547b4e8cbe9828f53d7d71",
+      "measurement": {
+        "stageStartedAt": "2026-08-05T23:02:23.724Z",
+        "firstAcceptedAt": "2026-08-05T23:13:44.119Z",
+        "totalMilliseconds": 680395.648,
+        "source": "proof-telemetry.json"
+      }
+    },
+    {
+      "id": "singleton-2",
+      "path": "singleton-2",
+      "variant": "fixed-array-singleton",
+      "packageSchemaVersion": 4,
+      "proofKitSourceSha256": "c9abe00d8971198e25497352ca7df3b4f7b9da6b14d2307ba59706dbe0e5dc67",
+      "acceptedSourceSha256": "6606bbfdb0560daac97a95c7eb722ed0d6977179f5c331270d7066b9da1b2e07",
+      "measurement": {
+        "stageStartedAt": "2026-08-05T23:14:44.781Z",
+        "firstAcceptedAt": "2026-08-05T23:22:01.183Z",
+        "totalMilliseconds": 436402.513,
+        "source": "proof-telemetry.json"
+      }
+    },
+    {
+      "id": "singleton-3",
+      "path": "singleton-3",
+      "variant": "fixed-array-singleton",
+      "packageSchemaVersion": 4,
+      "proofKitSourceSha256": "c9abe00d8971198e25497352ca7df3b4f7b9da6b14d2307ba59706dbe0e5dc67",
+      "acceptedSourceSha256": "ddce88feccb5b074bf8951189dd5f538ed286201cbe2c0d96d229e61815f38a1",
+      "measurement": {
+        "stageStartedAt": "2026-08-05T23:23:04.087Z",
+        "firstAcceptedAt": "2026-08-05T23:31:14.081Z",
+        "totalMilliseconds": 489993.419,
+        "source": "proof-telemetry.json"
+      }
+    }
+  ]
+}

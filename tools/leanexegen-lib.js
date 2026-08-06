@@ -5,14 +5,28 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { expectedTalosRevision } = require("./artifact-manifest");
 const { verifierSourceSha256 } = require("./artifact-source");
+const { validateStage5Telemetry } = require("./leanexegen-telemetry");
 
-const codexTaskSchemaVersion = 1;
-const packageSchemaVersion = 2;
+const codexTaskSchemaVersion = 2;
+const packageSchemaVersion = 4;
+const legacyPackageSchemaVersion = 3;
 const caseNamePattern = /^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$/;
 const decimalPattern = /^(?:0|[1-9][0-9]*)$/;
 const uint64Maximum = 18446744073709551615n;
-const proofKitModules = Object.freeze(["Project.ProofKit.Control"]);
+const proofKitModules = Object.freeze([
+  "Project.ProofKit.Memory",
+  "Project.ProofKit.Array",
+  "Project.ProofKit.Allocation",
+  "Project.ProofKit.FixedArrayAllocator",
+  "Project.ProofKit.FixedArraySingleton",
+  "Project.ProofKit.Control",
+]);
 const proofKitRelativeFiles = Object.freeze([
+  "proofs/talos/lean/Project/ProofKit/Memory.lean",
+  "proofs/talos/lean/Project/ProofKit/Array.lean",
+  "proofs/talos/lean/Project/ProofKit/Allocation.lean",
+  "proofs/talos/lean/Project/ProofKit/FixedArrayAllocator.lean",
+  "proofs/talos/lean/Project/ProofKit/FixedArraySingleton.lean",
   "proofs/talos/lean/Project/ProofKit/Control.lean",
   "proofs/talos/lean/Project/ProofKit/README.md",
 ]);
@@ -130,20 +144,23 @@ function validateSamples(samples, allowEmpty) {
     fail(`samples must be ${allowEmpty ? "an" : "a nonempty"} array`);
   }
   for (const [index, sample] of samples.entries()) {
-    exactKeys(sample, ["arguments", "expectedStdout"], `samples[${index}]`);
-    if (!Array.isArray(sample.arguments) || sample.arguments.length !== 1) {
-      fail(`samples[${index}].arguments must contain exactly one UInt64`);
+    exactKeys(sample, ["input", "expectedOutput"], `samples[${index}]`);
+    if (!Array.isArray(sample.input) || sample.input.length > 256) {
+      fail(`samples[${index}].input must contain at most 256 UInt64 values`);
     }
-    for (const [argumentIndex, argument] of sample.arguments.entries()) {
-      if (typeof argument !== "string" || !decimalPattern.test(argument) ||
-          BigInt(argument) > uint64Maximum) {
-        fail(`samples[${index}].arguments[${argumentIndex}] must be a UInt64 decimal`);
+    if (!Array.isArray(sample.expectedOutput) || sample.expectedOutput.length > 256) {
+      fail(`samples[${index}].expectedOutput must contain at most 256 UInt64 values`);
+    }
+    for (const [field, values] of [
+      ["input", sample.input],
+      ["expectedOutput", sample.expectedOutput],
+    ]) {
+      for (const [valueIndex, value] of values.entries()) {
+        if (typeof value !== "string" || !decimalPattern.test(value) ||
+            BigInt(value) > uint64Maximum) {
+          fail(`samples[${index}].${field}[${valueIndex}] must be a UInt64 decimal`);
+        }
       }
-    }
-    if (typeof sample.expectedStdout !== "string" ||
-        !decimalPattern.test(sample.expectedStdout) ||
-        BigInt(sample.expectedStdout) > uint64Maximum) {
-      fail(`samples[${index}].expectedStdout must be a UInt64 decimal`);
     }
   }
   return samples;
@@ -719,8 +736,19 @@ function createPackage(stageRoot, values) {
     hostAssumptions: values.hostAssumptions,
   }));
   writeAtomic(path.join(stageRoot, "stage-reports.json"), jsonBytes(values.stageReports));
+  if (values.proofTelemetry !== undefined) {
+    validateStage5Telemetry(
+      values.proofTelemetry,
+      values.stageReports.tasks.artifactProof.sourceSha256,
+    );
+    writeAtomic(path.join(stageRoot, "proof-telemetry.json"),
+      jsonBytes(values.proofTelemetry));
+  }
   writeAtomic(path.join(stageRoot, "tool-pins.json"), jsonBytes(values.toolPins));
   writeAtomic(path.join(stageRoot, "proof-library.md"), Buffer.from(values.proofLibraryCatalog));
+  writeAtomic(path.join(stageRoot, "proof-strategies.md"), Buffer.from(values.proofStrategies));
+  writeAtomic(path.join(stageRoot, "proof-task-features.json"),
+    jsonBytes(values.proofTaskFeatures));
   writeAtomic(path.join(stageRoot, "program.wasm"), values.wasmBytes);
   installSources(path.join(stageRoot, "proof"), values.sources);
   const manifest = {
@@ -768,7 +796,9 @@ function validatePackage(packageRoot) {
     "verificationCommand",
     "files",
   ], "package.json");
-  if (manifest.schemaVersion !== packageSchemaVersion) fail("unsupported package schema");
+  if (![legacyPackageSchemaVersion, packageSchemaVersion].includes(manifest.schemaVersion)) {
+    fail("unsupported package schema");
+  }
   if (!/^[0-9a-f]{64}$/.test(manifest.requestSha256)) fail("invalid request SHA-256");
   if (!caseNamePattern.test(manifest.case) || snakeToPascal(manifest.case) !== manifest.leanModule) {
     fail("invalid package case identity");
@@ -834,7 +864,7 @@ function validatePackage(packageRoot) {
     fail("artifact.export must be a WebAssembly identifier");
   }
   if (!Array.isArray(manifest.artifact.invocation) ||
-      manifest.artifact.invocation.length < 5 ||
+      manifest.artifact.invocation.length < 3 ||
       manifest.artifact.invocation.some((item) => typeof item !== "string")) {
     fail("artifact.invocation must be a command argument array");
   }
@@ -878,6 +908,11 @@ function validatePackage(packageRoot) {
     path.join(packageRoot, "proof", moduleFile(job.sourceModule)), "utf8"));
   const stageReports = validateStageReports(JSON.parse(fs.readFileSync(
     path.join(packageRoot, "stage-reports.json"), "utf8")), packageRoot, job);
+  const proofTelemetry = seen.has("proof-telemetry.json")
+    ? validateStage5Telemetry(JSON.parse(fs.readFileSync(
+      path.join(packageRoot, "proof-telemetry.json"), "utf8")),
+    stageReports.tasks.artifactProof.sourceSha256)
+    : null;
   const requiredFiles = [
     "request.txt",
     "interpretation.json",
@@ -895,6 +930,49 @@ function validatePackage(packageRoot) {
     `proof/${moduleFile(manifest.artifact.checkFileTarget)}`,
     `proof/${moduleFile(manifest.artifact.declarationTarget)}`,
   ];
+  if (manifest.schemaVersion >= 4) {
+    requiredFiles.push("proof-strategies.md", "proof-task-features.json");
+    const strategyNotes = fs.readFileSync(
+      path.join(packageRoot, "proof-strategies.md"), "utf8");
+    if (!strategyNotes.startsWith("# Selected Talos Artifact-Proof Strategies\n\n")) {
+      fail("proof-strategies.md has an invalid heading");
+    }
+    const features = JSON.parse(fs.readFileSync(
+      path.join(packageRoot, "proof-task-features.json"), "utf8"));
+    exactKeys(features, [
+      "schemaVersion",
+      "extractorVersion",
+      "sourceSha256",
+      "exportIndex",
+      "reachableFunctions",
+      "selectedSections",
+    ], "proof-task-features.json");
+    if (features.schemaVersion !== 1 || features.extractorVersion !== 1 ||
+        !/^[0-9a-f]{64}$/.test(features.sourceSha256) ||
+        features.exportIndex !== programExportIndex(fs.readFileSync(
+          path.join(packageRoot, "proof", moduleFile(job.programModule)), "utf8"),
+        job.exportName)) {
+      fail("proof-task-features.json has an invalid identity");
+    }
+    if (!Array.isArray(features.reachableFunctions) ||
+        features.reachableFunctions.length === 0 ||
+        !features.reachableFunctions.some((item) => item?.index === features.exportIndex)) {
+      fail("proof-task-features.json has invalid reachable functions");
+    }
+    if (!Array.isArray(features.selectedSections) || features.selectedSections.length === 0) {
+      fail("proof-task-features.json has no selected sections");
+    }
+    const selected = new Set();
+    for (const [index, item] of features.selectedSections.entries()) {
+      exactKeys(item, ["id", "reason"], `proof-task-features.json.selectedSections[${index}]`);
+      if (typeof item.id !== "string" || !/^strategy\.[a-z]+$/.test(item.id) ||
+          selected.has(item.id) || typeof item.reason !== "string" || item.reason.length === 0 ||
+          !strategyNotes.includes(`### \`${item.id}\``)) {
+        fail(`proof-task-features.json has invalid selected section ${index}`);
+      }
+      selected.add(item.id);
+    }
+  }
   for (const required of requiredFiles) {
     if (!seen.has(required)) fail(`package is missing ${required}`);
   }
@@ -920,7 +998,7 @@ function validatePackage(packageRoot) {
       }
     }
   }
-  return { manifest, job, artifact, wasm, stageReports };
+  return { manifest, job, artifact, wasm, stageReports, proofTelemetry };
 }
 
 module.exports = {

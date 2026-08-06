@@ -10,6 +10,7 @@ toolchain="${LEANRUN_TOOLCHAIN:-$elan_root/toolchains/$toolchain_key}"
 run_timeout="${LEANRUN_TIMEOUT:-900}"
 lock_timeout="${LEANRUN_LOCK_TIMEOUT:-900}"
 lock_dir="${LEANRUN_LOCKDIR:-${VQ_LOCKDIR:-${TMPDIR:-/tmp}/vq-leanrun.$(id -u)}}"
+cache_dir="${LEANRUN_CACHE_HOME:-$repo_root/.lake/cache}"
 
 usage() {
   echo "usage: tools/leanrun [--timeout DURATION] [--lock-timeout SECONDS] [--toolchain DIR] <command> [args]" >&2
@@ -70,7 +71,9 @@ fi
 PATH="$toolchain/bin:$PATH"
 LEAN_NUM_THREADS=1
 NO_COLOR=1
-export PATH LEAN_NUM_THREADS NO_COLOR
+XDG_CACHE_HOME="$cache_dir"
+mkdir -p "$XDG_CACHE_HOME"
+export PATH LEAN_NUM_THREADS NO_COLOR XDG_CACHE_HOME
 
 if [ "${LEANRUN_IN_SCOPE:-}" = "1" ]; then
   cgroup_path="$(sed -n 's/^0:://p' /proc/self/cgroup)"

@@ -1,0 +1,84 @@
+{
+  "schemaVersion": 1,
+  "extractorVersion": 1,
+  "sourceSha256": "7862f821c3e59da92eef06f914a39e51ccceeaf3c6b115a10ca22a66e73f3167",
+  "exportIndex": 2,
+  "reachableFunctions": [
+    {
+      "index": 0,
+      "instructionCount": 160,
+      "localCount": 16,
+      "calls": [],
+      "loopCount": 1,
+      "hasMemory": false,
+      "hasArithmetic": true,
+      "hasAllocation": false
+    },
+    {
+      "index": 1,
+      "instructionCount": 23,
+      "localCount": 6,
+      "calls": [
+        0
+      ],
+      "loopCount": 0,
+      "hasMemory": false,
+      "hasArithmetic": true,
+      "hasAllocation": false
+    },
+    {
+      "index": 2,
+      "instructionCount": 263,
+      "localCount": 14,
+      "calls": [
+        1
+      ],
+      "loopCount": 1,
+      "hasMemory": true,
+      "hasArithmetic": true,
+      "hasAllocation": true
+    }
+  ],
+  "selectedSections": [
+    {
+      "id": "strategy.core",
+      "reason": "selected for every artifact proof"
+    },
+    {
+      "id": "strategy.calls",
+      "reason": "an export-reachable function contains a direct call"
+    },
+    {
+      "id": "strategy.loops",
+      "reason": "an export-reachable function contains a loop"
+    },
+    {
+      "id": "strategy.frames",
+      "reason": "a reachable function contains a loop or at least 16 locals"
+    },
+    {
+      "id": "strategy.arrays",
+      "reason": "selected for the fixed Array UInt64 public interface"
+    },
+    {
+      "id": "strategy.arithmetic",
+      "reason": "an export-reachable function contains machine arithmetic"
+    },
+    {
+      "id": "strategy.memory",
+      "reason": "an export-reachable function contains a load or store"
+    },
+    {
+      "id": "strategy.allocation",
+      "reason": "an export-reachable function contains allocator operations"
+    },
+    {
+      "id": "strategy.elaboration",
+      "reason": "a reachable function exceeds 200 instructions, has at least 32 locals, or has multiple loops"
+    },
+    {
+      "id": "strategy.diagnostics",
+      "reason": "selected for every artifact proof"
+    }
+  ]
+}
