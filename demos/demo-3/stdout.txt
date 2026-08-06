@@ -1,0 +1,22 @@
+2026-08-06T03:10:55.640Z Stage 1: Job setup
+
+2026-08-06T03:10:55.669Z Stage 2: Formal specification
+
+2026-08-06T03:12:51.044Z Stage 3: Lean program
+
+2026-08-06T03:14:24.331Z Stage 4: WASM compilation and freezing
+
+2026-08-06T03:14:24.840Z Stage 5: Direct artifact proof
+
+2026-08-06T03:54:52.217Z Stage 6: Sample execution
+
+2026-08-06T03:54:52.263Z Stage 7: Publication
+
+2026-08-06T03:54:52.272Z Stage 8: Results
+
+Input: [12, 10, 100, 5, 50, 15, 150, 3, 30, 7, 70, 12, 120, 18, 180]
+Output: [120, 1]
+
+Run:
+
+`/home/somebody/src/leanexe/tools/leanexegen run /home/somebody/src/leanexe/.lake/leanexegen-runs/demo3-baseline/program.wasm 12 10 100 5 50 15 150 3 30 7 70 12 120 18 180`

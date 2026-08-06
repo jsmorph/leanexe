@@ -22,9 +22,11 @@ const {
 } = require("../tools/leanexegen-lib");
 const {
   StageError,
+  artifactProofStarter,
   auditAxioms,
   codexCommandArgs,
   codexOutcomeSchema,
+  fixedArrayEqNodeFeatures,
   parseCodexVersion,
   formalSpecificationCheckSources,
   formalSpecificationSource,
@@ -265,14 +267,36 @@ function testCodexProtocol() {
     artifactPrompt.includes("wordAddress_toNat") &&
     artifactPrompt.includes("Project.ProofKit.FixedArrayAllocator") &&
     artifactPrompt.includes("region_spec") &&
+    artifactPrompt.includes("Project.ProofKit.FixedArrayAllocatorWindow") &&
+    artifactPrompt.includes("offset 10") &&
+    artifactPrompt.includes("Project.ProofKit.FixedArrayInput") &&
+    artifactPrompt.includes("standard checked indexed element") &&
+    artifactPrompt.includes("Project.ProofKit.FixedArrayEqNode") &&
+    artifactPrompt.includes("complete node theorem") &&
+    artifactPrompt.includes("wp_fixed_array_eq_node") &&
+    artifactPrompt.includes("wp_fixed_array_key_eq_node") &&
+    artifactPrompt.includes("wp_fixed_array_search_key") &&
+    artifactPrompt.includes("Project.ProofKit.FixedArrayLengthDispatch") &&
+    artifactPrompt.includes("wp_fixed_array_length_dispatch") &&
+    artifactPrompt.includes("Project.ProofKit.FixedArrayTraversalInput") &&
+    artifactPrompt.includes("leaves the value on the operand stack") &&
+    artifactPrompt.includes("Project.ProofKit.FixedArrayPairResult") &&
+    artifactPrompt.includes("inputResultProgram_spec") &&
+    artifactPrompt.includes("inputResultProgram_result_spec") &&
+    artifactPrompt.includes("Project.ProofKit.FixedArrayResult") &&
+    artifactPrompt.includes("payloadStore_spec") &&
+    artifactPrompt.includes("pairStore_at") &&
     artifactPrompt.includes("Project.ProofKit.FixedArraySingleton") &&
     artifactPrompt.includes("region_result_spec") &&
     artifactPrompt.includes("Project.ProofKit.UInt64Array.At") &&
+    artifactPrompt.includes("generatedElement") &&
+    artifactPrompt.includes("firstElementRead_add") &&
     artifactPrompt.includes("word_reads") &&
     artifactPrompt.includes("wp_entry_to_loop <functionDef>") &&
     artifactPrompt.includes(`wp_entry_single_call ${job.namespace}.func3Def`) &&
     artifactPrompt.includes("PROOF_STRATEGIES.md contains optional") &&
     artifactPrompt.includes("PROOF_TASK_FEATURES.json") &&
+    artifactPrompt.includes("deterministic theorem starter") &&
     artifactPrompt.includes("Use read-only commands to inspect FormalSpec, Program"),
   "artifact-proof task did not receive the proof-kit catalog or tactics");
   expectFailure(() => validateProgramImports(
@@ -299,6 +323,34 @@ function testCodexProtocol() {
   validateProofImports(job, [{
     module: job.behaviorModule,
     source: "import Project.ProofKit.FixedArrayAllocator\n",
+  }]);
+  validateProofImports(job, [{
+    module: job.behaviorModule,
+    source: "import Project.ProofKit.FixedArrayAllocatorWindow\n",
+  }]);
+  validateProofImports(job, [{
+    module: job.behaviorModule,
+    source: "import Project.ProofKit.FixedArrayInput\n",
+  }]);
+  validateProofImports(job, [{
+    module: job.behaviorModule,
+    source: "import Project.ProofKit.FixedArrayEqNode\n",
+  }]);
+  validateProofImports(job, [{
+    module: job.behaviorModule,
+    source: "import Project.ProofKit.FixedArrayLengthDispatch\n",
+  }]);
+  validateProofImports(job, [{
+    module: job.behaviorModule,
+    source: "import Project.ProofKit.FixedArrayTraversalInput\n",
+  }]);
+  validateProofImports(job, [{
+    module: job.behaviorModule,
+    source: "import Project.ProofKit.FixedArrayPairResult\n",
+  }]);
+  validateProofImports(job, [{
+    module: job.behaviorModule,
+    source: "import Project.ProofKit.FixedArrayResult\n",
   }]);
   validateProofImports(job, [{
     module: job.behaviorModule,
@@ -416,6 +468,86 @@ function testMockedCodex(job) {
   }), /independent outer check rejected.*unknown declaration bad/s);
 }
 
+function testFixedArrayEqNodeFeatures() {
+  const body = `
+    .localGet 0,
+    .localSet 15,
+    .constI64 (3 : UInt64),
+    .localSet 16,
+    .localGet 16,
+    .localGet 15,
+    .wrapI64,
+    .load64 (0 : UInt32),
+    .ltUI64,
+    .iff 0 1 [
+      .localGet 15,
+      .localGet 16,
+      .constI64 (1 : UInt64),
+      .mulI64,
+      .constI64 (1 : UInt64),
+      .addI64,
+      .constI64 (8 : UInt64),
+      .mulI64,
+      .addI64,
+      .wrapI64,
+      .load64 (0 : UInt32)
+    ] [
+      .unreachable
+    ],
+    .localGet 2,
+    .eqI64,
+    .iff 0 1 [
+      .constI64 (1 : UInt64)
+    ] [
+      .constI64 (0 : UInt64)
+    ],
+    .constI64 (0 : UInt64),
+    .eqI64,
+    .eqz,
+    .iff 0 0 [
+      .localGet 2,
+      .localGet 0,
+      .localSet 15,
+      .constI64 (5 : UInt64),
+      .localSet 16,
+      .localGet 16,
+      .localGet 15,
+      .wrapI64,
+      .load64 (0 : UInt32),
+      .ltUI64,
+      .iff 0 1 [
+        .localGet 15,
+        .localGet 16,
+        .constI64 (1 : UInt64),
+        .mulI64,
+        .constI64 (1 : UInt64),
+        .addI64,
+        .constI64 (8 : UInt64),
+        .mulI64,
+        .addI64,
+        .wrapI64,
+        .load64 (0 : UInt32)
+      ] [
+        .unreachable
+      ],
+      .eqI64,
+      .iff 0 1 [
+        .constI64 (1 : UInt64)
+      ] [
+        .constI64 (0 : UInt64)
+      ],
+      .constI64 (0 : UInt64),
+      .eqI64,
+      .eqz,
+      .iff 0 0 [
+  `;
+  const nodes = fixedArrayEqNodeFeatures(body);
+  assert(JSON.stringify(nodes) === JSON.stringify([
+    { offset: 10, index: 3, keyLocal: 2, order: "loaded-first" },
+    { offset: 10, index: 5, keyLocal: 2, order: "key-first" },
+  ]), "fixed-array equality-node extraction lost an exact emitted node");
+}
+
 function testArtifactPackage(job, formalSource) {
   const raw = "{ functionTypeIndices := [0] }";
   const emitted = `namespace Project.${job.leanModule}\n\n` +
@@ -436,6 +568,7 @@ function testArtifactPackage(job, formalSource) {
   "artifact result did not use the fixed formal declaration");
   const proofContext = proofTaskContext("request\n", job, formalSource, generated.sources);
   assert(proofContext.has(`LeanExeGen/${job.leanModule}/Program.lean`) &&
+    proofContext.get(moduleFile(job.behaviorModule)) === artifactProofStarter(job, 0) &&
     proofContext.get("PROOF_LIBRARY.md").includes("wp_entry_single_call") &&
     proofContext.get("PROOF_LIBRARY.md").includes("bumpFacts") &&
     proofContext.get("PROOF_STRATEGIES.md").includes("strategy.core") &&
@@ -620,6 +753,7 @@ function testKernelAudit() {
 try {
   testArguments();
   testStage5Telemetry();
+  testFixedArrayEqNodeFeatures();
   const { job, formalSource } = testCodexProtocol();
   testMockedCodex(job);
   testArtifactPackage(job, formalSource);

@@ -1,0 +1,16 @@
+The public interface is Array UInt64 -> Array UInt64.  A well-formed input has
+exactly 15 elements and encodes a complete binary search tree with seven nodes
+in breadth-first order:
+
+#[query,
+  rootKey, rootValue,
+  leftKey, leftValue, rightKey, rightValue,
+  leftLeftKey, leftLeftValue, leftRightKey, leftRightValue,
+  rightLeftKey, rightLeftValue, rightRightKey, rightRightValue].
+
+At each node, compare query with that node's key.  Return #[value, 1] when they
+are equal.  Otherwise descend to the left child when query is less than the
+key and to the right child when query is greater than the key.  Return #[0, 0]
+after a leaf comparison finds no match.  This traversal defines the result for
+every 15-element input without separately validating the binary-search-tree
+ordering.  Return #[0, 0] for every input whose length is not 15.
