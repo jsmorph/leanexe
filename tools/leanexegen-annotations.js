@@ -1024,26 +1024,33 @@ function proofRecipePlan(
       }
     }
   }
+  const compositionPlan = (composition, kind, moduleName, typeName) => {
+    const result = {
+      compositionVersion: composition.wrapper === null ? 1 : 2,
+      kind,
+      functionIndex: composition.functionIndex,
+      descriptor: `${annotationNamespace}.${composition.name}`,
+      regionEquality: `${annotationNamespace}.${composition.name}_eq`,
+      direct: {
+        module: moduleName,
+        theorem: `${moduleName}.${typeName}.` +
+          `${composition.wrapper === null ? "program_spec" : "wrapperProgram_spec"}`,
+      },
+    };
+    if (composition.wrapper !== null) result.wrapper = composition.wrapper;
+    return result;
+  };
   return {
     schemaVersion: 1,
     attemptOrder: ["direct", "composition", "tactic", "focused-guidance"],
-    compositions: fixedArraySearchTreeCompositions(document, program).map((composition) => {
-      const result = {
-        compositionVersion: composition.wrapper === null ? 1 : 2,
-        kind: "fixed-array-search-tree-v1",
-        functionIndex: composition.functionIndex,
-        descriptor: `${annotationNamespace}.${composition.name}`,
-        regionEquality: `${annotationNamespace}.${composition.name}_eq`,
-        direct: {
-          module: "Project.ProofKit.FixedArraySearchTree",
-          theorem: composition.wrapper === null
-            ? "Project.ProofKit.FixedArraySearchTree.Tree.program_spec"
-            : "Project.ProofKit.FixedArraySearchTree.Tree.wrapperProgram_spec",
-        },
-      };
-      if (composition.wrapper !== null) result.wrapper = composition.wrapper;
-      return result;
-    }),
+    compositions: [
+      ...fixedArraySearchTreeCompositions(document, program).map((composition) =>
+        compositionPlan(composition, "fixed-array-search-tree-v1",
+          "Project.ProofKit.FixedArraySearchTree", "Tree")),
+      ...fixedArraySearchChainCompositions(document, program).map((composition) =>
+        compositionPlan(composition, "fixed-array-search-chain-v1",
+          "Project.ProofKit.FixedArraySearchChain", "Chain")),
+    ],
     recipes,
   };
 }
@@ -1106,7 +1113,8 @@ function validateProofRecipePlan(plan, document) {
     if (composition.compositionVersion === 2) compositionKeys.push("wrapper");
     exactKeys(composition, compositionKeys, description);
     if (![1, 2].includes(composition.compositionVersion) ||
-        composition.kind !== "fixed-array-search-tree-v1") {
+        !["fixed-array-search-chain-v1", "fixed-array-search-tree-v1"].includes(
+          composition.kind)) {
       fail(`${description} has an unsupported identity`);
     }
     natural(composition.functionIndex, `${description}.functionIndex`);
@@ -1119,10 +1127,13 @@ function validateProofRecipePlan(plan, document) {
     }
     compositionDescriptors.add(composition.descriptor);
     exactKeys(composition.direct, ["module", "theorem"], `${description}.direct`);
-    const expectedTheorem = composition.compositionVersion === 1
-      ? "Project.ProofKit.FixedArraySearchTree.Tree.program_spec"
-      : "Project.ProofKit.FixedArraySearchTree.Tree.wrapperProgram_spec";
-    if (composition.direct.module !== "Project.ProofKit.FixedArraySearchTree" ||
+    const chain = composition.kind === "fixed-array-search-chain-v1";
+    const expectedModule = chain
+      ? "Project.ProofKit.FixedArraySearchChain"
+      : "Project.ProofKit.FixedArraySearchTree";
+    const expectedTheorem = `${expectedModule}.${chain ? "Chain" : "Tree"}.` +
+      `${composition.compositionVersion === 1 ? "program_spec" : "wrapperProgram_spec"}`;
+    if (composition.direct.module !== expectedModule ||
         composition.direct.theorem !== expectedTheorem) {
       fail(`${description}.direct is unsupported`);
     }
@@ -1290,6 +1301,54 @@ function annotationPathStartsWith(listPath, prefix) {
       step.field === listPath[index].field);
 }
 
+function fixedArraySearchWrapper(function_, root, program) {
+  if (program === null) return null;
+  const length = function_.regions.find((region) =>
+    region.kind === "leanexe.array.length-dispatch.v1" &&
+    region.parameters.encoding === "ne-normalized-v1" &&
+    region.location.listPath.length === 0 && region.location.startIndex === 0);
+  if (length === undefined) return null;
+  const branchIndex = length.location.endIndex - 1;
+  const validPath = annotationChildPath([], branchIndex,
+    length.parameters.validBranch);
+  const invalidPath = annotationChildPath([], branchIndex,
+    length.parameters.invalidBranch);
+  const searchKey = function_.regions.find((region) =>
+    region.kind === "leanexe.array.search-key.v1" &&
+    annotationPathKey(region.location.listPath) === annotationPathKey(validPath) &&
+    region.location.startIndex === 0 &&
+    region.location.endIndex === root.location.startIndex &&
+    region.parameters.offset === root.parameters.offset &&
+    region.parameters.keyLocal === root.parameters.keyLocal);
+  const invalidResult = function_.regions.find((region) =>
+    region.kind === "leanexe.array.pair-result.v1" &&
+    annotationPathKey(region.location.listPath) === annotationPathKey(invalidPath) &&
+    region.location.startIndex === 0 &&
+    region.parameters.mode === "constants-v1" &&
+    region.parameters.firstValue === "0" &&
+    region.parameters.secondValue === "0" &&
+    region.parameters.offset === root.parameters.offset);
+  const body = programFunctionBody(program, function_.wasmIndex);
+  const topInstructions = resolveInstructionList(body, []);
+  const validInstructions = resolveInstructionList(body, validPath);
+  const invalidInstructions = resolveInstructionList(body, invalidPath);
+  if (searchKey === undefined || invalidResult === undefined ||
+      root.location.listPath.length !== 1 ||
+      annotationPathKey(root.location.listPath) !== annotationPathKey(validPath) ||
+      root.location.endIndex !== validInstructions.length ||
+      invalidResult.location.endIndex !== invalidInstructions.length ||
+      length.location.endIndex !== topInstructions.length - 1 ||
+      normalizeInstructions(topInstructions).at(-1) !== ".localGet 14") return null;
+  return {
+    expectedSize: length.parameters.expectedSize,
+    inputLocal: length.parameters.inputLocal,
+    invalidDestination: invalidResult.parameters.destination,
+    keyIndex: searchKey.parameters.index,
+    keyLocal: searchKey.parameters.keyLocal,
+    offset: searchKey.parameters.offset,
+  };
+}
+
 function fixedArraySearchTreeCompositions(document, program = null) {
   const compositions = [];
   for (const function_ of document.functions) {
@@ -1358,55 +1417,7 @@ function fixedArraySearchTreeCompositions(document, program = null) {
     for (const root of roots) {
       const tree = build(root, new Set());
       if (tree === null || root.parameters.offset + 14 !== 24) continue;
-      let wrapper = null;
-      if (program !== null) {
-        const length = function_.regions.find((region) =>
-          region.kind === "leanexe.array.length-dispatch.v1" &&
-          region.parameters.encoding === "ne-normalized-v1" &&
-          region.location.listPath.length === 0 && region.location.startIndex === 0);
-        if (length !== undefined) {
-          const branchIndex = length.location.endIndex - 1;
-          const validPath = annotationChildPath([], branchIndex,
-            length.parameters.validBranch);
-          const invalidPath = annotationChildPath([], branchIndex,
-            length.parameters.invalidBranch);
-          const searchKey = function_.regions.find((region) =>
-            region.kind === "leanexe.array.search-key.v1" &&
-            annotationPathKey(region.location.listPath) === annotationPathKey(validPath) &&
-            region.location.startIndex === 0 &&
-            region.location.endIndex === root.location.startIndex &&
-            region.parameters.offset === root.parameters.offset &&
-            region.parameters.keyLocal === root.parameters.keyLocal);
-          const invalidResult = function_.regions.find((region) =>
-            region.kind === "leanexe.array.pair-result.v1" &&
-            annotationPathKey(region.location.listPath) === annotationPathKey(invalidPath) &&
-            region.location.startIndex === 0 &&
-            region.parameters.mode === "constants-v1" &&
-            region.parameters.firstValue === "0" &&
-            region.parameters.secondValue === "0" &&
-            region.parameters.offset === root.parameters.offset);
-          const body = programFunctionBody(program, function_.wasmIndex);
-          const topInstructions = resolveInstructionList(body, []);
-          const validInstructions = resolveInstructionList(body, validPath);
-          const invalidInstructions = resolveInstructionList(body, invalidPath);
-          if (searchKey !== undefined && invalidResult !== undefined &&
-              root.location.listPath.length === 1 &&
-              annotationPathKey(root.location.listPath) === annotationPathKey(validPath) &&
-              root.location.endIndex === validInstructions.length &&
-              invalidResult.location.endIndex === invalidInstructions.length &&
-              length.location.endIndex === topInstructions.length - 1 &&
-              normalizeInstructions(topInstructions).at(-1) === ".localGet 14") {
-            wrapper = {
-              expectedSize: length.parameters.expectedSize,
-              inputLocal: length.parameters.inputLocal,
-              invalidDestination: invalidResult.parameters.destination,
-              keyIndex: searchKey.parameters.index,
-              keyLocal: searchKey.parameters.keyLocal,
-              offset: searchKey.parameters.offset,
-            };
-          }
-        }
-      }
+      const wrapper = fixedArraySearchWrapper(function_, root, program);
       const name = `function_${function_.wasmIndex}_search_tree_${compositionIndex}`;
       compositionIndex += 1;
       compositions.push({
@@ -1417,6 +1428,73 @@ function fixedArraySearchTreeCompositions(document, program = null) {
         offset: root.parameters.offset,
         tree,
         wrapper,
+      });
+    }
+  }
+  return compositions;
+}
+
+function fixedArraySearchChainCompositions(document, program = null) {
+  const compositions = [];
+  for (const function_ of document.functions) {
+    const equalityNodes = function_.regions.filter((region) =>
+      region.kind === "leanexe.array.eq-node.v1" &&
+      region.parameters.operandOrder === "loaded-first");
+    const equalityByPath = new Map(equalityNodes.map((region) =>
+      [annotationPathKey(region.location.listPath), region]));
+    const resultByPath = new Map(function_.regions.filter((region) =>
+      region.kind === "leanexe.array.pair-result.v1").map((region) =>
+      [annotationPathKey(region.location.listPath), region]));
+
+    const build = (equality, visiting) => {
+      if (visiting.has(equality.id)) return null;
+      const nextVisiting = new Set(visiting);
+      nextVisiting.add(equality.id);
+      const branchIndex = equality.location.startIndex + 16;
+      const equalPath = annotationChildPath(
+        equality.location.listPath, branchIndex, "then");
+      const unequalPath = annotationChildPath(
+        equality.location.listPath, branchIndex, "else");
+      const found = resultByPath.get(annotationPathKey(equalPath));
+      if (found === undefined || found.parameters.mode !== "input-index-and-one-v1" ||
+          found.parameters.secondValue !== "1" ||
+          found.parameters.offset !== equality.parameters.offset) return null;
+      const next = equalityByPath.get(annotationPathKey(unequalPath));
+      if (next !== undefined) {
+        const tail = build(next, nextVisiting);
+        if (tail === null) return null;
+        return `.next ${equality.parameters.index} ${found.parameters.inputIndex} ` +
+          `${found.parameters.destination} (${tail})`;
+      }
+      const missing = resultByPath.get(annotationPathKey(unequalPath));
+      if (missing === undefined || missing.parameters.mode !== "constants-v1" ||
+          missing.parameters.firstValue !== "0" ||
+          missing.parameters.secondValue !== "0" ||
+          missing.parameters.offset !== equality.parameters.offset) return null;
+      return `.last ${equality.parameters.index} ${found.parameters.inputIndex} ` +
+        `${found.parameters.destination} ${missing.parameters.destination}`;
+    };
+
+    const roots = equalityNodes.filter((candidate) => !equalityNodes.some((parent) => {
+      if (candidate.id === parent.id) return false;
+      const elsePath = annotationChildPath(parent.location.listPath,
+        parent.location.startIndex + 16, "else");
+      return annotationPathStartsWith(candidate.location.listPath, elsePath);
+    }));
+    let compositionIndex = 0;
+    for (const root of roots) {
+      const chain = build(root, new Set());
+      if (chain === null || root.parameters.offset + 14 !== 24) continue;
+      const name = `function_${function_.wasmIndex}_search_chain_${compositionIndex}`;
+      compositionIndex += 1;
+      compositions.push({
+        chain,
+        functionIndex: function_.wasmIndex,
+        keyLocal: root.parameters.keyLocal,
+        location: root.location,
+        name,
+        offset: root.parameters.offset,
+        wrapper: fixedArraySearchWrapper(function_, root, program),
       });
     }
   }
@@ -1454,11 +1532,25 @@ theorem ${composition.name}_eq :
         some (${composition.name}.program ${composition.offset} ${composition.keyLocal}) := by
   rfl`);
   }
+  const chainCompositions = fixedArraySearchChainCompositions(document);
+  for (const composition of chainCompositions) {
+    declarations.push(`def ${composition.name} :
+    Project.ProofKit.FixedArraySearchChain.Chain :=
+  ${composition.chain}
+
+theorem ${composition.name}_eq :
+    Project.ProofKit.Annotation.region ${job.namespace}.func${composition.functionIndex}
+      ${leanAnnotationPath(composition.location.listPath)}
+      ${composition.location.startIndex} ${composition.location.endIndex} =
+        some (${composition.name}.program ${composition.offset} ${composition.keyLocal}) := by
+  rfl`);
+  }
   return {
     module: `${job.namespace}.AnnotationMatches`,
     source: `import ${job.programModule}
 import Project.ProofKit.Annotation
 import Project.ProofKit.FixedArrayPairResult
+${chainCompositions.length > 0 ? "import Project.ProofKit.FixedArraySearchChain\n" : ""}
 ${treeCompositions.length > 0 ? "import Project.ProofKit.FixedArraySearchTree\n" : ""}
 
 namespace ${job.namespace}.AnnotationMatches
@@ -1478,6 +1570,7 @@ module.exports = {
   fixedArrayLtNodeRecipe,
   fixedArrayPairResultRecipe,
   fixedArraySearchKeyRecipe,
+  fixedArraySearchChainCompositions,
   fixedArraySearchTreeCompositions,
   matchAnnotationDocument,
   matchDirectCallRegion,
