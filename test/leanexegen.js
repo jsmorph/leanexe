@@ -1008,6 +1008,80 @@ def func0Def : Wasm.Function :=
   expectFailure(() => proofRecipePlan(document, truncated), /boundary does not match/);
 }
 
+function testFilterLtAnnotationRecipe() {
+  const wasm = fs.readFileSync(path.join(repoRoot, "demos/demo-5/program.wasm"));
+  const program = `def func0 : Wasm.Program :=
+  [
+  .localGet 0,
+  .iff 0 0 [] [],
+  .localGet 4
+  ]
+
+def func0Def : Wasm.Function :=
+  { params := [.i64], locals := [.i64], body := func0, results := [.i64] }
+`;
+  const document = {
+    schemaVersion: 1,
+    artifact: { byteLength: wasm.length },
+    functions: [{
+      wasmIndex: 0,
+      definedFunction: 0,
+      sourceName: "Example.compute",
+      exports: ["compute"],
+      parameters: 1,
+      results: 1,
+      locals: 21,
+      regions: [{
+        id: "function-0.filter-lt-0",
+        kind: "leanexe.array.filter-lt.v1",
+        location: { listPath: [], startIndex: 0, endIndex: 3 },
+        parameters: {
+          maximumSize: 8,
+          threshold: "100",
+          continuation: "function-return",
+        },
+        generatedBy: ["LeanExe.Wasm.Binary.CoreWasm.emitFuncAnnotated"],
+      }],
+    }],
+  };
+  validateAnnotationDocument(document, wasm);
+  const plan = proofRecipePlan(document, program, [
+    "strategy.arrays", "strategy.loops", "strategy.allocation", "strategy.frames",
+  ], "Example.Generated.AnnotationMatches");
+  validateProofRecipePlan(plan, document);
+  assert(plan.recipes.length === 1 &&
+    plan.recipes[0].direct.module === "Project.ProofKit.FixedArrayFilterLt" &&
+    plan.recipes[0].direct.theorem.endsWith("wrapperProgram_spec") &&
+    plan.recipes[0].direct.program.endsWith("wrapperProgram 8 100"),
+  "filter-lt annotation did not select the complete wrapper theorem");
+  const source = annotationMatchesSource(document, {
+    namespace: "Example.Generated",
+    programModule: "Example.Generated.Program",
+  }).source;
+  assert(source.includes("import Project.ProofKit.FixedArrayFilterLt") &&
+    source.includes("FixedArrayFilterLt.wrapperProgram\n          8 100"),
+  "annotation matches omitted the checked filter-lt wrapper equality");
+  const job = makeJob("bounded stable filter\n");
+  const starter = artifactProofStarter(job, 0, true, plan);
+  assert(starter.includes("FixedArrayFilterLt.wrapperProgram_spec 8 100") &&
+    starter.includes("FixedArrayFilterLt.expected 8 100 input") &&
+    starter.includes("FixedArrayFilterLt.heapReserveBytes 8 input") &&
+    starter.includes("function_0_filter_lt_0_eq") &&
+    !starter.includes("have hLengthRead"),
+  "filter-lt recipe did not select the complete semantic starter");
+  const legacyStarter = artifactProofStarter(job, 0, true, plan, 1);
+  assert(!legacyStarter.includes("FixedArrayFilterLt.wrapperProgram_spec") &&
+    legacyStarter.includes("have hLengthRead"),
+  "filter-lt recipe bypassed the schema-6 resource precondition");
+
+  const invalidThreshold = structuredClone(document);
+  invalidThreshold.functions[0].regions[0].parameters.threshold = "0100";
+  expectFailure(() => validateAnnotationDocument(invalidThreshold, wasm),
+    /canonical UInt64 decimal/);
+  const truncated = program.replace("  .localGet 4\n  ]", "  .localGet 3\n  ]");
+  expectFailure(() => proofRecipePlan(document, truncated), /boundary does not match/);
+}
+
 function testLessThanNodeAnnotationRecipes() {
   const wasm = Buffer.from([0, 97, 115, 109, 1, 0, 0, 0]);
   const document = {
@@ -1674,6 +1748,7 @@ try {
   testAnnotationRecipePlan();
   testLengthDispatchAnnotationRecipes();
   testMapAddAnnotationRecipe();
+  testFilterLtAnnotationRecipe();
   testLessThanNodeAnnotationRecipes();
   testSearchTreeComposition();
   testPairResultAnnotationRecipes();
