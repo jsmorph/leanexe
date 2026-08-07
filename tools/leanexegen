@@ -608,6 +608,11 @@ function proofPrompt(request, job, entryIndex) {
     `fixedArraySearchKeys region that loads and saves the comparison key before these nodes.  The ` +
     `tactic proves the two numeric key-local bounds, so the following goals contain three frame ` +
     `facts and the continuation.  ` +
+    `Import Project.ProofKit.FixedArraySearchChain when a fixed first-match search consists of ` +
+    `key-first equality nodes and standard pair results.  Chain.next records another comparison, ` +
+    `Chain.last records the final comparison and missing result, and Chain.program_spec composes ` +
+    `the complete checked chain.  Chain.wrapperProgram_spec adds the fixed-length dispatch, invalid ` +
+    `result, saved-key load, and public return around that search.  ` +
     `Import Project.ProofKit.FixedArraySearchTree when a fixed binary search tree consists of ` +
     `key-first equality nodes, unsigned less-than nodes, and standard pair results.  Describe the ` +
     `tree with Tree.branch and Tree.leaf, prove Tree.Valid from the input-size fact, and apply ` +
@@ -683,13 +688,14 @@ function proofPrompt(request, job, entryIndex) {
     `expected postcondition, and focused guidance selected for each matched region.  Attempt the ` +
     `direct recipe before general symbolic execution, then use its supporting declarations and ` +
     `guidance only for the remaining goals.  ` +
-    `Its compositions array lists any complete fixed-array search-tree descriptor, its ` +
-    `Lean-checked region equality, and the selected Tree composition theorem.  A version-two ` +
+    `Its compositions array lists any complete fixed-array search descriptor, its ` +
+    `Lean-checked region equality, and the selected composition theorem.  A version-two ` +
     `composition also records a checked complete-wrapper shape, and its deterministic starter ` +
-    `has already applied Tree.wrapperProgram_spec.  Solve the remaining semantic goals before ` +
+    `has already applied the descriptor's wrapperProgram_spec.  Solve the remaining semantic ` +
+    `goals before ` +
     `replacing that starter with node-level proof.  Attempt a version-one complete composition ` +
-    `before its individual node recipes, and unfold the named descriptor when proving Tree.Valid ` +
-    `and the equation for Tree.result.  ` +
+    `before its individual node recipes, and unfold the named descriptor when proving its Valid ` +
+    `predicate and result equation.  ` +
     `Each fixedArrayEqNodes entry gives the function, local-window offset, input index, saved-key ` +
     `local, and operand order for an exact Project.ProofKit.FixedArrayEqNode match.  Use ` +
     `wp_fixed_array_eq_node for loaded-first entries and wp_fixed_array_key_eq_node for key-first ` +
@@ -712,11 +718,11 @@ function proofPrompt(request, job, entryIndex) {
     `one shared PairResultContext, the complete result program, and the remaining branchN ` +
     `continuation; construct that context once from the input, allocator, and memory facts, and ` +
     `do not define local node or result adapters.  ` +
-    `When AnnotationMatches contains a fixed-array search-tree descriptor and region equality, ` +
+    `When AnnotationMatches contains a fixed-array search descriptor and region equality, ` +
     `change the complete-region goal to the descriptor's program and apply ` +
-    `Project.ProofKit.FixedArraySearchTree.Tree.program_spec instead of composing its nodes ` +
+    `its program_spec theorem instead of composing its nodes ` +
     `individually.  The region equality independently certifies the same exact match.  ` +
-    `${annotationMatchesModule(job)} contains Lean-checked tree descriptors and equalities, plus ` +
+    `${annotationMatchesModule(job)} contains Lean-checked search descriptors and equalities, plus ` +
     `equalities between annotated pair-result regions of the decoded Program and the selected ` +
     `FixedArrayPairResult program.  Use the ` +
     `regionEquality named by each pair-result recipe before applying its semantic theorem.  ` +
@@ -1064,6 +1070,7 @@ function artifactProofStarter(job, entryIndex, annotated = false, proofRecipes =
       "Project.ProofKit.FixedArrayLtNode",
       "Project.ProofKit.FixedArrayPairResult",
       "Project.ProofKit.FixedArraySearch",
+      "Project.ProofKit.FixedArraySearchChain",
       "Project.ProofKit.FixedArraySearchTree",
     ]) modules.add(moduleName);
   } else {
@@ -1095,15 +1102,20 @@ function artifactProofStarter(job, entryIndex, annotated = false, proofRecipes =
     `import ${moduleName}`).join("\n");
   const wrapperCompositions = (proofRecipes?.compositions ?? []).filter((composition) =>
     composition.compositionVersion === 2 &&
-      composition.kind === "fixed-array-search-tree-v1" &&
+      ["fixed-array-search-chain-v1", "fixed-array-search-tree-v1"].includes(
+        composition.kind) &&
       composition.functionIndex === entryIndex);
   if (annotated && wrapperCompositions.length === 1) {
     const composition = wrapperCompositions[0];
     const wrapper = composition.wrapper;
+    const chain = composition.kind === "fixed-array-search-chain-v1";
+    const descriptorType = chain
+      ? "FixedArraySearchChain.Chain"
+      : "FixedArraySearchTree.Tree";
     return `import ${job.formalSpecModule}
 import ${job.programModule}
 import ${annotationMatchesModule(job)}
-import Project.ProofKit.FixedArraySearchTree
+import ${composition.direct.module}
 
 set_option maxRecDepth 1048576
 set_option maxHeartbeats 1000000
@@ -1146,13 +1158,13 @@ theorem ${theoremName} :
   · intro continuation hPost
     cases continuation <;> simp_all [FixedArrayPairResult.publicPost]
   unfold ${job.namespace}.func${entryIndex}
-  let tree := ${composition.descriptor}
+  let search := ${composition.descriptor}
   change wp ${job.namespace}.«module»
-    (tree.wrapperProgram ${wrapper.inputLocal} ${wrapper.expectedSize} ${wrapper.offset}
+    (search.wrapperProgram ${wrapper.inputLocal} ${wrapper.expectedSize} ${wrapper.offset}
       ${wrapper.keyIndex} ${wrapper.keyLocal} ${wrapper.invalidDestination})
     (FixedArrayPairResult.publicPost (${job.expectedDefinition} input))
     initial _ env
-  refine tree.wrapperProgram_spec
+  refine search.wrapperProgram_spec
     (inputLocal := ${wrapper.inputLocal})
     (expectedSize := ${wrapper.expectedSize})
     (offset := ${wrapper.offset})
@@ -1170,11 +1182,10 @@ theorem ${theoremName} :
   · intro hSize
     simp [${job.expectedDefinition}, hSize]
   · intro hSize
-    simp [tree, ${composition.descriptor},
-      FixedArraySearchTree.Tree.Valid, hSize]
+    simp [search, ${composition.descriptor}, ${descriptorType}.Valid, hSize]
   · intro hSize
-    simp [${job.expectedDefinition}, tree, ${composition.descriptor},
-      FixedArraySearchTree.Tree.result, hSize, eq_comm]
+    simp [${job.expectedDefinition}, search, ${composition.descriptor},
+      ${descriptorType}.result, hSize, eq_comm]
 
 end ${job.behaviorModule}
 `;

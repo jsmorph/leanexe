@@ -385,6 +385,8 @@ The complete semantic starter now supplies those three simplification proofs and
 
 Three complete-starter runs finished Stage 5 in 109.607, 121.976, and 131.413 seconds, giving a 121.976-second median and a 21.806-second range.  Every journal reports that the initial build succeeded and that Codex left the same 77-line candidate unchanged; the accepted source had SHA-256 `18c1d84f94723f6db76d5ad701c951472fcc80c5c76acade4d91f558d9f4ee2a`, and independent verification accepted the first package.  The median is 62.6 percent below the 326.320-second complete-tree median and 56.2 percent below the 278.656-second historical pair-result result.
 
+Demo 2's journals expose the same wrapper around a different search graph: ten loaded-first equality nodes form a linear first-match chain.  `FixedArraySearch.wrapperProgram_spec` now contains the wrapper proof shared by tree and chain descriptors, while `FixedArraySearchChain.Chain.program_spec` proves an arbitrary equality chain by induction.  The annotation planner derives a version-two chain composition from exact nested unequal branches and result regions; the generic module and JavaScript tests pass, while a fresh Demo 2 proof-time result remains pending.
+
 ## Completion criteria
 
 The first complete increment emits a validated sidecar for every ordinary library-mode compilation requested by `leanexegen`.  Demos 1, 2, and 3 prove the same specifications over the same WASM bytes through an annotation-driven deterministic proof plan.  The retained evidence records proof-generation timings, annotation validation, region coverage, and independent Lean acceptance.
