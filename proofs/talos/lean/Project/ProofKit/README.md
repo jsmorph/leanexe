@@ -197,9 +197,9 @@ apply Project.ProofKit.FixedArrayTraversalInput.program_spec
 
 ## Fixed-length dispatch
 
-Import `Project.ProofKit.FixedArrayLengthDispatch` when a wrapper begins by storing its input pointer, reading the represented array length, comparing that length with a fixed size, and passing the result through emitted Boolean-normalization instructions.  `program inputLocal expectedSize invalidBranch validBranch` matches the normalized inequality encoding, while `eqProgram` matches the shorter normalized equality encoding.  `program_spec` and `eqProgram_spec` prove the length read, memory bound, encoded-size equivalence, normalization, and final branch selection for their respective encodings.
+Import `Project.ProofKit.FixedArrayLengthDispatch` when a wrapper begins by storing its input pointer, reading the represented array length, and comparing that length with a fixed size.  `program` and `eqProgram` match the normalized inequality and equality encodings, while `leProgram` matches a direct unsigned upper-bound comparison.  Their corresponding specification theorems prove the length read, memory bound, encoded-size relation, any Boolean normalization, and final branch selection.
 
-The valid and invalid premises use `FixedArrayEqNode.branchPost`, preserving the enclosing `if` behavior for fallthrough and break continuations.  `branchFrame` records the stored input pointer and empty operand stack at either branch entry.  Use `wp_fixed_array_length_dispatch inputLocal, expectedSize` for an inequality recipe and `wp_fixed_array_length_eq_dispatch inputLocal, expectedSize` for an equality recipe; both tactics infer the branch programs and remainder from the current goal.
+The valid and invalid premises use `FixedArrayEqNode.branchPost`, preserving the enclosing `if` behavior for fallthrough and break continuations.  `branchFrame` records the stored input pointer and empty operand stack at either branch entry.  Use `wp_fixed_array_length_dispatch inputLocal, expectedSize` for a normalized inequality recipe, `wp_fixed_array_length_eq_dispatch inputLocal, expectedSize` for equality, and `wp_fixed_array_length_le_dispatch inputLocal, maximumSize` for an unsigned upper bound; all three tactics infer the branch programs and remainder from the current goal.
 
 ```lean
 import Project.ProofKit.FixedArrayLengthDispatch

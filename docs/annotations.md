@@ -411,6 +411,14 @@ A controlled reproof preserved Demo 4's formal specification, source, 1,913-byte
 
 The controlled journal attributes the remaining work to three compiler templates.  Ten checks handled the unsigned bounded-length dispatch, capacity normalization, and entry into the successful allocator, while seven more handled the array-map loop after allocation.  The next iteration will add checked annotations and generic theorems for those templates, then reprove this same frozen artifact before screening the shared changes on the earlier demos.
 
+## 2026-08-07: Bounded-length dispatch
+
+`FixedArrayLengthDispatch.leProgram_spec` proves the direct unsigned upper-bound encoding used by Demo 4.  Its tactic converts the emitted pointer save, length load, `leUI64`, and branch into semantic premises for `input.size ≤ maximumSize` and its negation.  The existing equality and normalized-inequality theorems remain unchanged.
+
+The compiler emits `le-unsigned-v1` through the existing fixed-array length-dispatch region kind when its IR condition compares an input array's size with a constant upper bound.  The JavaScript consumer validates the exact eight-instruction decoded prefix before selecting `leProgram_spec` and `wp_fixed_array_length_le_dispatch`.  Unit tests reject a changed bound or comparison opcode and accept all three length-dispatch encodings.
+
+Annotating the frozen Demo 4 package recompiled the source to the same WASM digest and produced one bounded-length region at top-level instructions zero through eight.  Its checked recipe names input local five, maximum size eight, the valid then branch, and the invalid else branch.  The proof-kit module, compiler emitter, consumer tests, and byte-identity annotation run all pass under the repository toolchain.
+
 ## Completion criteria
 
 The first complete increment emits a validated sidecar for every ordinary library-mode compilation requested by `leanexegen`.  Demos 1, 2, and 3 prove the same specifications over the same WASM bytes through an annotation-driven deterministic proof plan.  The retained evidence records proof-generation timings, annotation validation, region coverage, and independent Lean acceptance.
