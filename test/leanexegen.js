@@ -325,6 +325,7 @@ function testCodexProtocol() {
     artifactPrompt.includes("Attempt the direct recipe") &&
     artifactPrompt.includes("deterministic theorem starter") &&
     artifactPrompt.includes("before editing") &&
+    artifactPrompt.includes("If that check succeeds") &&
     artifactPrompt.includes("Use read-only commands to inspect FormalSpec, Program"),
   "artifact-proof task did not receive the proof-kit catalog or tactics");
   const wrapperStarter = artifactProofStarter(job, 3, true, {
@@ -355,6 +356,8 @@ function testCodexProtocol() {
     wrapperStarter.includes("2 1)") &&
     wrapperStarter.includes("tree.wrapperProgram_spec") &&
     wrapperStarter.includes("?_ ?_ ?_") &&
+    wrapperStarter.includes("FixedArraySearchTree.Tree.result") &&
+    !wrapperStarter.includes("import Project.ProofKit.FixedArrayLtNode") &&
     !wrapperStarter.includes("have hLengthRead"),
   "complete search-tree composition did not select the semantic-goal starter");
   expectFailure(() => validateProgramImports(
