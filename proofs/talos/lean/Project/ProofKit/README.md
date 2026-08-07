@@ -14,6 +14,7 @@ Every `leanexegen` artifact-proof task receives this catalog and may import the 
 | `Project.ProofKit.FixedArrayInput` | The standard length-guarded indexed input loader parameterized by a uniform local-window shift. |
 | `Project.ProofKit.FixedArrayLengthDispatch` | The standard fixed-array length comparison, Boolean normalization, and valid or invalid branch. |
 | `Project.ProofKit.FixedArrayLtNode` | One key-first indexed array load, unsigned less-than comparison, and two-way branch for an unrolled search tree. |
+| `Project.ProofKit.FixedArrayMapAdd` | A bounded one-word fixed-array map with wrapping addition, allocation, loop, and empty-result semantics. |
 | `Project.ProofKit.FixedArrayPairResult` | Complete allocation and two-word result semantics for the emitted twenty-four-local wrapper. |
 | `Project.ProofKit.FixedArrayResult` | Continuation-generic length and payload stores plus singleton and pair representation theorems. |
 | `Project.ProofKit.FixedArraySearch` | Nested search-branch composition for standard pair results. |
@@ -218,6 +219,20 @@ wp_fixed_array_length_dispatch inputLocal, expectedSize
 ```
 
 The equality tactic presents the same premises in the same order.  Its program boundary places the valid branch first in the final WebAssembly `if`, matching the compiler's equality encoding.  The checked annotation recipe identifies the encoding and names the corresponding tactic.
+
+## Bounded wrapping-add map
+
+Import `Project.ProofKit.FixedArrayMapAdd` when the decoded function matches the compiler's canonical `if input.size ≤ maximumSize then input.map (fun element ⇒ element + addend) else #[]` wrapper.  `wrapperProgram maximumSize addend` describes the complete emitted function, including capacity normalization, both allocator paths, the dynamic result-length store, the block-wrapped map loop, and the final result local.  The theorem remains parameterized by the upper bound, wrapping `UInt64` addend, input contents, heap position, allocation count, and memory size.
+
+`wrapperProgram_spec` proves the transformed-prefix loop invariant inside the checked library and returns `FixedArrayPairResult.publicPost` for `expected maximumSize addend input`.  A `leanexe.array.map-add.v1` annotation covers the whole decoded function, and its generated `AnnotationMatches` theorem establishes exact equality with `wrapperProgram`.  Apply the complete theorem before any length-dispatch, capacity, allocator, or loop-level recipe when that equality exists.
+
+```lean
+import Project.ProofKit.FixedArrayMapAdd
+
+rw [hArtifactProgram, hExpected]
+apply Project.ProofKit.FixedArrayMapAdd.wrapperProgram_spec
+  maximumSize addend module_ env initial inputPtr input heapTop allocs
+```
 
 ## Equality search node
 
