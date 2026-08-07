@@ -286,6 +286,10 @@ function testCodexProtocol() {
     artifactPrompt.includes("complete node theorem") &&
     artifactPrompt.includes("wp_fixed_array_eq_node") &&
     artifactPrompt.includes("wp_fixed_array_key_eq_node") &&
+    artifactPrompt.includes("SearchFrame.program_spec") &&
+    artifactPrompt.includes("inputResultProgram_branchN_spec") &&
+    artifactPrompt.includes("one shared PairResultContext") &&
+    artifactPrompt.includes("do not define local node or result adapters") &&
     artifactPrompt.includes("wp_fixed_array_search_key") &&
     artifactPrompt.includes("wp_fixed_array_lt_node") &&
     artifactPrompt.includes("Project.ProofKit.FixedArrayLengthDispatch") &&

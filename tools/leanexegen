@@ -602,7 +602,9 @@ function proofPrompt(request, job, entryIndex) {
     `before the load, run wp_fixed_array_key_eq_node with the same arguments.  Both tactics infer ` +
     `the branch programs and remainder.  The theorems preserve the artifact's branch structure and ` +
     `search order.  Prefer a complete node theorem over reducing the loader and comparison ` +
-    `separately.  Use wp_fixed_array_search_key <offset>, <index>, <keyLocal> for a detected ` +
+    `separately.  When a SearchFrame is available, apply SearchFrame.program_spec or ` +
+    `SearchFrame.keyFirstProgram_spec directly instead of defining a local node adapter.  Use ` +
+    `wp_fixed_array_search_key <offset>, <index>, <keyLocal> for a detected ` +
     `fixedArraySearchKeys region that loads and saves the comparison key before these nodes.  ` +
     `Import Project.ProofKit.FixedArrayLengthDispatch when the exported wrapper begins with the ` +
     `standard fixed-array length comparison and compiler Boolean normalization.  Run ` +
@@ -680,9 +682,13 @@ function proofPrompt(request, job, entryIndex) {
     `search-key, equality-node, and less-than-node recipes in their listed order.  The planner ` +
     `interleaves comparison recipes according to the structured Program traversal.  Use ` +
     `Project.ProofKit.FixedArrayEqNode.SearchFrame to preserve the saved key, ` +
-    `SearchFrame.afterLoad and SearchFrame.branch for the node premises, and branchN with ` +
-    `Project.ProofKit.FixedArraySearch.pairPost_branchN_conseq when nested search branches end in ` +
-    `a standard pair result.  ` +
+    `SearchFrame.program_spec or SearchFrame.keyFirstProgram_spec for each node, and ` +
+    `SearchFrame.branch for either child.  When nested search branches end in a standard pair ` +
+    `result, use Project.ProofKit.FixedArraySearch.inputResultProgram_branchN_spec or ` +
+    `constResultProgram_branchN_spec after the checked region equality.  These theorems combine ` +
+    `one shared PairResultContext, the complete result program, and the remaining branchN ` +
+    `continuation; construct that context once from the input, allocator, and memory facts, and ` +
+    `do not define local node or result adapters.  ` +
     `${annotationMatchesModule(job)} contains Lean-checked equalities between annotated ` +
     `pair-result ` +
     `regions of the decoded Program and the selected FixedArrayPairResult program.  Use the ` +
