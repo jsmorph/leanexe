@@ -27,6 +27,10 @@ const {
 } = require("./leanexegen-lib");
 const { createStage5Telemetry } = require("./leanexegen-telemetry");
 const {
+  proofRecipePlan,
+  validateAnnotationDocument,
+} = require("./leanexegen-annotations");
+const {
   checkBenchmark,
   comparePackage,
   defaultBenchmark,
@@ -78,6 +82,7 @@ function usage() {
   return [
     "usage: leanexegen [-s] -o <program.wasm> <request.txt>",
     "       leanexegen reprove [-s] -o <program.wasm> <proof-package>",
+    "       leanexegen annotate -o <annotated-proof-package> <proof-package>",
     "       leanexegen verify [-s] <proof-package>",
     "       leanexegen benchmark -o <program.wasm> [benchmark-directory]",
     "       leanexegen run <program.wasm> [UInt64 ...]",
@@ -85,6 +90,28 @@ function usage() {
 }
 
 function parseArgs(args) {
+  if (args[0] === "annotate") {
+    let output = null;
+    const positional = [];
+    for (let index = 1; index < args.length; index += 1) {
+      const argument = args[index];
+      if (argument === "-o") {
+        index += 1;
+        if (index >= args.length || output !== null) throw new Error(usage());
+        output = args[index];
+      } else if (argument.startsWith("-")) {
+        throw new Error(usage());
+      } else {
+        positional.push(argument);
+      }
+    }
+    if (output === null || positional.length !== 1) throw new Error(usage());
+    return {
+      command: "annotate",
+      outputPath: path.resolve(output),
+      packagePath: path.resolve(positional[0]),
+    };
+  }
   if (args[0] === "benchmark") {
     let output = null;
     const positional = [];
@@ -490,7 +517,7 @@ function programPrompt(request, job) {
   const compile = formatCommand([
     leanrun, "--timeout", "10m", "lake", "-d", ".", "env", compiler,
     "compile", "--module", job.sourceModule, "--entry", job.sourceEntry,
-    "--out", "candidate.wasm",
+    "--out", "candidate.wasm", "--annotations", "candidate.annotations.json",
   ]);
   return `You are performing independent task 2 of 3 for leanexegen.  Produce the Lean program ` +
     `for this request:\n\n${request}\n\n` +
@@ -561,8 +588,11 @@ function proofPrompt(request, job, entryIndex) {
     `fixedArraySearchKeys region that loads and saves the comparison key before these nodes.  ` +
     `Import Project.ProofKit.FixedArrayLengthDispatch when the exported wrapper begins with the ` +
     `standard fixed-array length comparison and compiler Boolean normalization.  Run ` +
-    `wp_fixed_array_length_dispatch <inputLocal>, <expectedSize>; it infers the valid and invalid ` +
-    `branches and leaves one semantic proof for each.  Apply this dispatch tactic before broad ` +
+    `wp_fixed_array_length_dispatch <inputLocal>, <expectedSize> for the normalized inequality ` +
+    `encoding, or wp_fixed_array_length_eq_dispatch <inputLocal>, <expectedSize> for the normalized ` +
+    `equality encoding.  The tactic infers the valid and invalid branches and leaves one semantic ` +
+    `proof for each.  Select the encoding named by the matched PROOF_RECIPES.json entry, and apply ` +
+    `the dispatch tactic before broad ` +
     `symbolic execution of the entry function.  ` +
     `Import ` +
     `Project.ProofKit.FixedArrayTraversalInput when the search traversal uses the standard checked ` +
@@ -615,12 +645,26 @@ function proofPrompt(request, job, entryIndex) {
     `modules, CodeLib, Interpreter, Std, Init, or Mathlib.  ${library}` +
     `PROOF_STRATEGIES.md contains optional proof-organization guidance selected from the frozen ` +
     `Program, and PROOF_TASK_FEATURES.json records the structural facts used for that selection.  ` +
+    `When present, PROGRAM_ANNOTATIONS.json contains compiler-reported regions checked against ` +
+    `the artifact, while PROOF_RECIPES.json lists the direct theorem or tactic, supporting lemmas, ` +
+    `expected postcondition, and focused guidance selected for each matched region.  Attempt the ` +
+    `direct recipe before general symbolic execution, then use its supporting declarations and ` +
+    `guidance only for the remaining goals.  ` +
     `Each fixedArrayEqNodes entry gives the function, local-window offset, input index, saved-key ` +
     `local, and operand order for an exact Project.ProofKit.FixedArrayEqNode match.  Use ` +
     `wp_fixed_array_eq_node for loaded-first entries and wp_fixed_array_key_eq_node for key-first ` +
-    `entries instead of rediscovering the nodes in Program.  Each fixedArraySearchKeys entry gives ` +
+    `entries instead of rediscovering the nodes in Program.  Each fixedArrayLtNodes entry selects ` +
+    `wp_fixed_array_lt_node for an exact key-first checked load and unsigned less-than decision.  ` +
+    `Each fixedArraySearchKeys entry gives ` +
     `the corresponding arguments for wp_fixed_array_search_key.  Each fixedArrayLengthDispatches ` +
-    `entry gives the arguments for wp_fixed_array_length_dispatch.  ` +
+    `entry gives the length-dispatch arguments.  When compiler annotations are present, use the ` +
+    `exact equality or inequality tactic selected in PROOF_RECIPES.json.  Follow annotated ` +
+    `search-key, equality-node, and less-than-node recipes in their listed order.  The planner ` +
+    `interleaves comparison recipes according to the structured Program traversal.  Use ` +
+    `Project.ProofKit.FixedArrayEqNode.SearchFrame to preserve the saved key, ` +
+    `SearchFrame.afterLoad and SearchFrame.branch for the node premises, and branchN with ` +
+    `Project.ProofKit.FixedArraySearch.pairPost_branchN_conseq when nested search branches end in ` +
+    `a standard pair result.  ` +
     `These files grant no additional Lean imports.  ` +
     `Do not import Source, inspect source ` +
     `code, invoke the compiler, add axioms, or use sorry.  Leave samples and hostAssumptions ` +
@@ -958,7 +1002,9 @@ import ${job.programModule}
 import Project.ProofKit.Array
 import Project.ProofKit.FixedArrayEqNode
 import Project.ProofKit.FixedArrayLengthDispatch
+import Project.ProofKit.FixedArrayLtNode
 import Project.ProofKit.FixedArrayPairResult
+import Project.ProofKit.FixedArraySearch
 
 set_option maxRecDepth 1048576
 set_option maxHeartbeats 1000000
@@ -1004,6 +1050,14 @@ function proofTaskContext(
     program, programExportIndex(program, job.exportName));
   context.set("PROOF_STRATEGIES.md", bundle.notes);
   context.set("PROOF_TASK_FEATURES.json", `${JSON.stringify(bundle.features, null, 2)}\n`);
+  if ((bundle.compilerAnnotations === undefined) !== (bundle.proofRecipes === undefined)) {
+    throw new StageError(5, "artifact proof", "annotation and recipe context must appear together");
+  }
+  if (bundle.compilerAnnotations !== undefined) {
+    context.set("PROGRAM_ANNOTATIONS.json",
+      `${JSON.stringify(bundle.compilerAnnotations, null, 2)}\n`);
+    context.set("PROOF_RECIPES.json", `${JSON.stringify(bundle.proofRecipes, null, 2)}\n`);
+  }
   context.set("PROOF_LIBRARY.md", fs.readFileSync(proofKitCatalogPath, "utf8"));
   context.set(moduleFile(job.behaviorModule),
     artifactProofStarter(job, bundle.features.exportIndex));
@@ -1045,8 +1099,11 @@ function checkProgramCandidate(workspace, job, source) {
   runLean(3, "LeanExe candidate compilation", "10m", [
     "lake", "-d", workspace, "env", compiler,
     "compile", "--module", job.sourceModule, "--entry", job.sourceEntry,
-    "--out", candidate,
+    "--out", candidate, "--annotations", `${candidate}.annotations.json`,
   ]);
+  const candidateBytes = fs.readFileSync(candidate);
+  validateAnnotationDocument(JSON.parse(
+    fs.readFileSync(`${candidate}.annotations.json`, "utf8")), candidateBytes);
   return `Lean and LeanExe accepted and compiled ` +
     `${job.sourceEntry} : Array UInt64 → Array UInt64.`;
 }
@@ -1723,6 +1780,14 @@ function reprove(command) {
       proofWorkspace, checked.job, formalSource, 5, "ReproveFormalSpecCheck");
     const entryIndex = programExportIndex(programSource, checked.job.exportName);
     const strategies = proofStrategyBundle(programSource, entryIndex);
+    if (checked.compilerAnnotations !== null) {
+      strategies.compilerAnnotations = checked.compilerAnnotations;
+      strategies.proofRecipes = proofRecipePlan(
+        checked.compilerAnnotations,
+        programSource,
+        strategies.features.selectedSections.map((section) => section.id),
+      );
+    }
     const proofContext = proofTaskContext(
       request, checked.job, formalSource, sourceSets.proofContext, strategies);
     const proof = runTaskSession({
@@ -1807,6 +1872,8 @@ function reprove(command) {
         proofLibraryCatalog,
         proofStrategies: strategies.notes,
         proofTaskFeatures: strategies.features,
+        compilerAnnotations: strategies.compilerAnnotations,
+        proofRecipes: strategies.proofRecipes,
         wasmBytes,
         sources: allSources,
         job: checked.job,
@@ -1848,6 +1915,131 @@ function reprove(command) {
     throw new StageError(7, "publication", cleanupError.message);
   }
   if (operationError) throw operationError;
+}
+
+function annotatePackage(command) {
+  if (fs.existsSync(command.outputPath)) {
+    throw new StageError(4, "WASM annotations", `${command.outputPath} exists`);
+  }
+  let checked;
+  let packageSources;
+  let toolPins;
+  try {
+    checked = validatePackage(command.packagePath);
+    packageSources = readPackageSources(command.packagePath);
+    toolPins = requireReprovePins(command.packagePath);
+  } catch (error) {
+    if (error instanceof StageError) throw error;
+    throw new StageError(4, "WASM annotations", error.message);
+  }
+
+  const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), "leanexegen-annotate-"));
+  let stagedOutput = null;
+  let installed = false;
+  let operationError = null;
+  try {
+    const workspace = path.join(temporaryRoot, "workspace");
+    fs.mkdirSync(workspace);
+    createWorkspace(workspace);
+    const source = packageSources.get(checked.job.sourceModule);
+    const program = packageSources.get(checked.job.programModule);
+    if (source === undefined || program === undefined) {
+      throw new StageError(4, "WASM annotations", "proof package lacks Source or Program");
+    }
+    installSources(workspace, new Map([[checked.job.sourceModule, source]]));
+    runLean(4, "LeanExe compiler build", "15m",
+      ["lake", "--no-ansi", "build", "lean-wasm"]);
+    runLean(4, "frozen Source build", "15m", [
+      "lake", "-d", workspace, "--no-ansi", "build", checked.job.sourceModule,
+    ]);
+    const compiledWasm = path.join(temporaryRoot, "program.wasm");
+    const compiledAnnotations = path.join(temporaryRoot, "program.annotations.json");
+    runLean(4, "annotation compilation", "10m", [
+      "lake", "-d", workspace, "env", compiler,
+      "compile", "--module", checked.job.sourceModule, "--entry", checked.job.sourceEntry,
+      "--out", compiledWasm, "--annotations", compiledAnnotations,
+    ]);
+    const compiledBytes = fs.readFileSync(compiledWasm);
+    if (!compiledBytes.equals(checked.wasm)) {
+      throw new StageError(
+        4,
+        "WASM annotations",
+        `current compiler produced ${sha256(compiledBytes)} instead of the frozen ` +
+          `${checked.artifact.sha256}`,
+      );
+    }
+    const compilerAnnotations = validateAnnotationDocument(JSON.parse(
+      fs.readFileSync(compiledAnnotations, "utf8")), checked.wasm);
+    const entryIndex = programExportIndex(program, checked.job.exportName);
+    const strategies = proofStrategyBundle(program, entryIndex);
+    const proofRecipes = proofRecipePlan(
+      compilerAnnotations,
+      program,
+      strategies.features.selectedSections.map((section) => section.id),
+    );
+    const request = fs.readFileSync(path.join(command.packagePath, "request.txt"), "utf8");
+    const interpretation = JSON.parse(fs.readFileSync(
+      path.join(command.packagePath, "interpretation.json"), "utf8"));
+    const samples = JSON.parse(fs.readFileSync(
+      path.join(command.packagePath, "samples.json"), "utf8"));
+    const hostAssumptions = JSON.parse(fs.readFileSync(
+      path.join(command.packagePath, "host-assumptions.json"), "utf8")).hostAssumptions;
+    const proofLibraryCatalog = fs.readFileSync(proofKitCatalogPath, "utf8");
+    fs.mkdirSync(path.dirname(command.outputPath), { recursive: true });
+    stagedOutput = path.join(
+      path.dirname(command.outputPath),
+      `.${path.basename(command.outputPath)}.${process.pid}-${Date.now()}`,
+    );
+    createPackage(stagedOutput, {
+      request,
+      interpretation,
+      artifact: checked.artifact,
+      samples,
+      hostAssumptions,
+      stageReports: checked.stageReports,
+      proofTelemetry: checked.proofTelemetry === null ? undefined : checked.proofTelemetry,
+      toolPins,
+      proofLibraryCatalog,
+      proofStrategies: strategies.notes,
+      proofTaskFeatures: strategies.features,
+      compilerAnnotations,
+      proofRecipes,
+      wasmBytes: checked.wasm,
+      sources: packageSources,
+      job: checked.job,
+      formalSpecification: checked.manifest.formalSpecification,
+      warnings: checked.manifest.warnings,
+    });
+    validatePackage(stagedOutput);
+    fs.renameSync(stagedOutput, command.outputPath);
+    installed = true;
+    process.stdout.write(
+      `Annotated ${checked.artifact.sha256} in ${command.outputPath}\n`,
+    );
+  } catch (error) {
+    operationError = error;
+  }
+  const cleanupErrors = [];
+  if (stagedOutput !== null && !installed) {
+    try {
+      fs.rmSync(stagedOutput, { recursive: true, force: true });
+    } catch (error) {
+      cleanupErrors.push(error);
+    }
+  }
+  try {
+    fs.rmSync(temporaryRoot, { recursive: true });
+  } catch (error) {
+    cleanupErrors.push(error);
+  }
+  if (operationError !== null || cleanupErrors.length > 0) {
+    const errors = operationError === null ? cleanupErrors : [operationError, ...cleanupErrors];
+    throw new StageError(
+      4,
+      "WASM annotations",
+      formatError(new AggregateError(errors, "annotation package creation failed")),
+    );
+  }
 }
 
 function benchmark(command) {
@@ -1957,10 +2149,11 @@ function generate(command) {
     progress(command.silent, 4, "WASM compilation and freezing");
     const compiledWasm = path.join(programWorkspace, "program.wasm");
     const compiledWat = path.join(programWorkspace, "program.wat");
+    const compiledAnnotations = path.join(programWorkspace, "program.annotations.json");
     runLean(4, "WASM compilation", "10m", [
       "lake", "-d", programWorkspace, "env", compiler,
       "compile", "--module", job.sourceModule, "--entry", job.sourceEntry,
-      "--out", compiledWasm,
+      "--out", compiledWasm, "--annotations", compiledAnnotations,
     ]);
     const wasmTools = findWasmTools();
     run(4, "wasm-tools version", [path.join(repoRoot, "tools", "check-wasm-tools-version.sh")], {
@@ -1971,9 +2164,13 @@ function generate(command) {
     fs.mkdirSync(artifactRoot);
     const wasm = path.join(artifactRoot, "program.wasm");
     const wat = path.join(artifactRoot, "program.wat");
+    const annotationsPath = path.join(artifactRoot, "program.annotations.json");
     fs.copyFileSync(compiledWasm, wasm, fs.constants.COPYFILE_EXCL);
     fs.copyFileSync(compiledWat, wat, fs.constants.COPYFILE_EXCL);
+    fs.copyFileSync(compiledAnnotations, annotationsPath, fs.constants.COPYFILE_EXCL);
     const wasmBytes = fs.readFileSync(wasm);
+    const compilerAnnotations = validateAnnotationDocument(
+      JSON.parse(fs.readFileSync(annotationsPath, "utf8")), wasmBytes);
     removeTaskWorkspace(programWorkspace, 4, "WASM compilation");
     removeTaskWorkspace(programTaskRoot, 4, "WASM compilation");
 
@@ -1991,6 +2188,12 @@ function generate(command) {
     const talosProgram = emitTalosProgram(job, wasm, wat, talosRoot);
     const entryIndex = programExportIndex(talosProgram, job.exportName);
     const strategies = proofStrategyBundle(talosProgram, entryIndex);
+    strategies.compilerAnnotations = compilerAnnotations;
+    strategies.proofRecipes = proofRecipePlan(
+      compilerAnnotations,
+      talosProgram,
+      strategies.features.selectedSections.map((section) => section.id),
+    );
     const raw = dumpRawModule(wasm);
     const generated = artifactSources(job, wasmBytes, raw, talosProgram);
     requireKernelAudit(generated.sources, toolPins);
@@ -2087,6 +2290,8 @@ function generate(command) {
         proofLibraryCatalog,
         proofStrategies: strategies.notes,
         proofTaskFeatures: strategies.features,
+        compilerAnnotations: strategies.compilerAnnotations,
+        proofRecipes: strategies.proofRecipes,
         wasmBytes,
         sources: allSources,
         job,
@@ -2162,6 +2367,7 @@ function main() {
     } else if (command.command === "run") runArtifact(command);
     else if (command.command === "verify") verify(command);
     else if (command.command === "reprove") reprove(command);
+    else if (command.command === "annotate") annotatePackage(command);
     else generate(command);
   } catch (error) {
     if (error instanceof StageError) {

@@ -5,11 +5,16 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { expectedTalosRevision } = require("./artifact-manifest");
 const { verifierSourceSha256 } = require("./artifact-source");
+const {
+  matchAnnotationDocument,
+  validateAnnotationDocument,
+  validateProofRecipePlan,
+} = require("./leanexegen-annotations");
 const { validateStage5Telemetry } = require("./leanexegen-telemetry");
 
 const codexTaskSchemaVersion = 2;
-const packageSchemaVersion = 4;
-const legacyPackageSchemaVersion = 3;
+const packageSchemaVersion = 5;
+const supportedPackageSchemaVersions = new Set([3, 4, packageSchemaVersion]);
 const caseNamePattern = /^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$/;
 const decimalPattern = /^(?:0|[1-9][0-9]*)$/;
 const uint64Maximum = 18446744073709551615n;
@@ -22,8 +27,10 @@ const proofKitModules = Object.freeze([
   "Project.ProofKit.FixedArrayEqNode",
   "Project.ProofKit.FixedArrayInput",
   "Project.ProofKit.FixedArrayLengthDispatch",
+  "Project.ProofKit.FixedArrayLtNode",
   "Project.ProofKit.FixedArrayPairResult",
   "Project.ProofKit.FixedArrayResult",
+  "Project.ProofKit.FixedArraySearch",
   "Project.ProofKit.FixedArraySingleton",
   "Project.ProofKit.FixedArrayTraversalInput",
   "Project.ProofKit.Control",
@@ -37,8 +44,10 @@ const proofKitRelativeFiles = Object.freeze([
   "proofs/talos/lean/Project/ProofKit/FixedArrayEqNode.lean",
   "proofs/talos/lean/Project/ProofKit/FixedArrayInput.lean",
   "proofs/talos/lean/Project/ProofKit/FixedArrayLengthDispatch.lean",
+  "proofs/talos/lean/Project/ProofKit/FixedArrayLtNode.lean",
   "proofs/talos/lean/Project/ProofKit/FixedArrayPairResult.lean",
   "proofs/talos/lean/Project/ProofKit/FixedArrayResult.lean",
+  "proofs/talos/lean/Project/ProofKit/FixedArraySearch.lean",
   "proofs/talos/lean/Project/ProofKit/FixedArraySingleton.lean",
   "proofs/talos/lean/Project/ProofKit/FixedArrayTraversalInput.lean",
   "proofs/talos/lean/Project/ProofKit/Control.lean",
@@ -763,10 +772,20 @@ function createPackage(stageRoot, values) {
   writeAtomic(path.join(stageRoot, "proof-strategies.md"), Buffer.from(values.proofStrategies));
   writeAtomic(path.join(stageRoot, "proof-task-features.json"),
     jsonBytes(values.proofTaskFeatures));
+  if ((values.compilerAnnotations === undefined) !== (values.proofRecipes === undefined)) {
+    fail("compiler annotations and proof recipes must appear together");
+  }
+  const annotated = values.compilerAnnotations !== undefined;
+  if (annotated) {
+    writeAtomic(path.join(stageRoot, "program.annotations.json"),
+      jsonBytes(values.compilerAnnotations));
+    writeAtomic(path.join(stageRoot, "proof-recipes.json"),
+      jsonBytes(values.proofRecipes));
+  }
   writeAtomic(path.join(stageRoot, "program.wasm"), values.wasmBytes);
   installSources(path.join(stageRoot, "proof"), values.sources);
   const manifest = {
-    schemaVersion: packageSchemaVersion,
+    schemaVersion: annotated ? packageSchemaVersion : 4,
     requestSha256: sha256(Buffer.from(values.request)),
     case: values.job.caseName,
     leanModule: values.job.leanModule,
@@ -810,7 +829,7 @@ function validatePackage(packageRoot) {
     "verificationCommand",
     "files",
   ], "package.json");
-  if (![legacyPackageSchemaVersion, packageSchemaVersion].includes(manifest.schemaVersion)) {
+  if (!supportedPackageSchemaVersions.has(manifest.schemaVersion)) {
     fail("unsupported package schema");
   }
   if (!/^[0-9a-f]{64}$/.test(manifest.requestSha256)) fail("invalid request SHA-256");
@@ -1042,6 +1061,18 @@ function validatePackage(packageRoot) {
       selected.add(item.id);
     }
   }
+  let compilerAnnotations = null;
+  let proofRecipes = null;
+  if (manifest.schemaVersion >= 5) {
+    requiredFiles.push("program.annotations.json", "proof-recipes.json");
+    compilerAnnotations = validateAnnotationDocument(JSON.parse(fs.readFileSync(
+      path.join(packageRoot, "program.annotations.json"), "utf8")), wasm);
+    const programSource = fs.readFileSync(
+      path.join(packageRoot, "proof", moduleFile(job.programModule)), "utf8");
+    matchAnnotationDocument(compilerAnnotations, programSource);
+    proofRecipes = validateProofRecipePlan(JSON.parse(fs.readFileSync(
+      path.join(packageRoot, "proof-recipes.json"), "utf8")), compilerAnnotations);
+  }
   for (const required of requiredFiles) {
     if (!seen.has(required)) fail(`package is missing ${required}`);
   }
@@ -1067,7 +1098,16 @@ function validatePackage(packageRoot) {
       }
     }
   }
-  return { manifest, job, artifact, wasm, stageReports, proofTelemetry };
+  return {
+    manifest,
+    job,
+    artifact,
+    wasm,
+    stageReports,
+    proofTelemetry,
+    compilerAnnotations,
+    proofRecipes,
+  };
 }
 
 module.exports = {

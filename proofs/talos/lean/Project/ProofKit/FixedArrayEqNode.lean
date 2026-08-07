@@ -123,6 +123,54 @@ def branchPost (module_ : Wasm.Module) (env : HostEnv Unit)
     | .Break (index + 1) final frame => Q (.Break index final frame)
     | other => Q other
 
+def SearchFrame (offset keyLocal : Nat) (frame : Locals)
+    (inputPtr key : UInt64) : Prop :=
+  frame.params = [.i64 inputPtr] ∧
+  frame.locals.length = offset + 14 ∧
+  frame.values = [] ∧
+  frame.get keyLocal = some (.i64 key)
+
+theorem SearchFrame.afterLoad
+    {offset keyLocal : Nat} {frame : Locals} {inputPtr key value : UInt64}
+    {index : Nat} (h : SearchFrame offset keyLocal frame inputPtr key)
+    (hKeyPositive : 0 < keyLocal) (hKeyBeforeScratch : keyLocal < offset + 5) :
+    (FixedArrayTraversalInput.resultFrame offset frame inputPtr index value).get
+        keyLocal = some (.i64 key) := by
+  rcases h with ⟨hParams, hLocals, hValues, hKey⟩
+  have hNotParam : ¬keyLocal < frame.params.length := by
+    rw [hParams]
+    simp
+    omega
+  have hValid : keyLocal < frame.params.length + frame.locals.length := by
+    rw [hParams, hLocals]
+    simp
+    omega
+  have hLocalIndex : keyLocal - frame.params.length = keyLocal - 1 := by
+    simp [hParams]
+  have hPointerIndex : keyLocal - 1 ≠ offset + 4 := by omega
+  have hIndexIndex : keyLocal - 1 ≠ offset + 5 := by omega
+  simpa [FixedArrayTraversalInput.resultFrame, Wasm.Locals.get,
+    hParams, hLocals, hNotParam, hValid, hLocalIndex, hPointerIndex,
+    hPointerIndex.symm, hIndexIndex, hIndexIndex.symm] using hKey
+
+theorem SearchFrame.branch
+    {offset keyLocal : Nat} {frame : Locals} {inputPtr key value : UInt64}
+    {index : Nat} (h : SearchFrame offset keyLocal frame inputPtr key)
+    (hKeyPositive : 0 < keyLocal) (hKeyBeforeScratch : keyLocal < offset + 5) :
+    SearchFrame offset keyLocal
+      (branchFrame offset frame inputPtr index value) inputPtr key := by
+  rcases h with ⟨hParams, hLocals, hValues, hKey⟩
+  refine ⟨hParams, ?_, rfl, ?_⟩
+  · simpa [branchFrame, FixedArrayTraversalInput.resultFrame] using hLocals
+  · simpa [branchFrame] using
+      (SearchFrame.afterLoad
+        ⟨hParams, hLocals, hValues, hKey⟩ hKeyPositive hKeyBeforeScratch)
+
+def branchN (module_ : Wasm.Module) (env : HostEnv Unit) :
+    Nat → Assertion Unit → Assertion Unit
+  | 0, Q => Q
+  | n + 1, Q => branchPost module_ env [] (branchN module_ env n Q)
+
 set_option maxHeartbeats 1000000 in
 set_option Elab.async false in
 theorem loadKeyProgram_spec
