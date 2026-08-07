@@ -147,6 +147,7 @@ function validateProofImports(job, modules) {
         imported.startsWith("Init.") ||
         imported.startsWith("Std.") ||
         imported.startsWith("Mathlib.") ||
+        imported === "Interpreter" ||
         imported.startsWith("Interpreter.");
       const allowedProofKit = proofKitModules.includes(imported);
       const allowedGenerated = imported.startsWith(generatedPrefix) &&

@@ -60,12 +60,23 @@ structure FixedArrayLtNodeParameters where
   continuation : String
   deriving Repr, Lean.ToJson
 
+structure FixedArrayPairResultParameters where
+  offset : Nat
+  mode : String
+  firstValue : Option String
+  secondValue : String
+  inputIndex : Option Nat
+  destination : Nat
+  continuation : String
+  deriving Repr, Lean.ToJson
+
 inductive RegionParameters where
   | directCall (parameters : DirectCallParameters)
   | fixedArrayLengthDispatch (parameters : FixedArrayLengthDispatchParameters)
   | fixedArraySearchKey (parameters : FixedArraySearchKeyParameters)
   | fixedArrayEqNode (parameters : FixedArrayEqNodeParameters)
   | fixedArrayLtNode (parameters : FixedArrayLtNodeParameters)
+  | fixedArrayPairResult (parameters : FixedArrayPairResultParameters)
   deriving Repr
 
 instance : Lean.ToJson RegionParameters where
@@ -75,6 +86,7 @@ instance : Lean.ToJson RegionParameters where
     | .fixedArraySearchKey parameters => Lean.toJson parameters
     | .fixedArrayEqNode parameters => Lean.toJson parameters
     | .fixedArrayLtNode parameters => Lean.toJson parameters
+    | .fixedArrayPairResult parameters => Lean.toJson parameters
 
 structure Region where
   id : String
@@ -171,14 +183,29 @@ structure RelativeFixedArrayLtNode where
   generatedBy : Array String
   deriving Repr
 
+structure RelativeFixedArrayPairResult where
+  listPath : Array PathStep
+  startIndex : Nat
+  endIndex : Nat
+  offset : Nat
+  mode : String
+  firstValue : Option String
+  secondValue : String
+  inputIndex : Option Nat
+  destination : Nat
+  continuation : String
+  generatedBy : Array String
+  deriving Repr
+
 structure Emitted where
   code : List LeanExe.Wasm.Instr
   directCalls : Array RelativeDirectCall
   lengthDispatches : Array RelativeFixedArrayLengthDispatch
+  pairResults : Array RelativeFixedArrayPairResult
   deriving Repr, Inhabited
 
 def Emitted.ofCode (code : List LeanExe.Wasm.Instr) : Emitted :=
-  { code, directCalls := #[], lengthDispatches := #[] }
+  { code, directCalls := #[], lengthDispatches := #[], pairResults := #[] }
 
 def Emitted.append (left right : Emitted) : Emitted :=
   let offset := left.code.length
@@ -203,6 +230,16 @@ def Emitted.append (left right : Emitted) : Emitted :=
         let step := dispatch.listPath[0]
         { dispatch with
           listPath := dispatch.listPath.set 0
+            { step with instructionIndex := offset + step.instructionIndex } }
+    pairResults := left.pairResults ++ right.pairResults.map fun result =>
+      if h : result.listPath.size = 0 then
+        { result with
+          startIndex := offset + result.startIndex
+          endIndex := offset + result.endIndex }
+      else
+        let step := result.listPath[0]
+        { result with
+          listPath := result.listPath.set 0
             { step with instructionIndex := offset + step.instructionIndex } } }
 
 def render (document : Document) : String :=
