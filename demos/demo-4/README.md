@@ -30,6 +30,14 @@ The [proof journal](proof-journal.md) records 27 edited Lean checks before accep
 
 The accepted proof contains 457 lines and has SHA-256 digest `6bd050aab0f4e1124e9ed2a2ef6e75a6020e7ab7b90ce82d2315dc0668b08488`.  The [proof telemetry](proof-telemetry.json) records the precise Stage 5 intervals, and the [stage reports](stage-reports.json) record the accepted declarations and source digests for all three generated tasks.  Independent acceptance proved `Artifact.artifact_correct` from the embedded bytes after Codex completed the behavior theorem.
 
+## Allocator-window iteration
+
+The first LTG iteration generalized `FixedArrayAllocatorWindow.region_spec` to accept unused locals after its allocator scratch window.  A controlled `leanexegen reprove` run held the specification, source, WASM, decoded Program, and artifact theorem fixed while exposing the revised proof kit and guidance to a new Codex session.  The resulting [allocator-window proof](allocator-proof.lean) applies the shared theorem to both the successful map allocation and the oversized-input empty-result allocation.
+
+Stage 5 fell from 2,364.735 seconds to 1,191.695 seconds, a reduction of 1,173.040 seconds, or 49.6 percent.  Codex time fell from 2,255.687 seconds to 1,154.873 seconds, while independent outer acceptance fell from 98.593 seconds to 25.963 seconds.  The [iteration telemetry](allocator-proof-telemetry.json) records the measured intervals, and the [iteration journal](allocator-proof-journal.md) records nineteen edited checks before acceptance.
+
+The journal shows that the new theorem removed the direct proof of the invalid branch's allocator, which occupied the last ten baseline iterations.  The controlled run still spent ten checks reaching the successful allocator and seven checks establishing the map loop and its transformed-prefix invariant.  Those remaining compiler templates motivate the bounded-dispatch, capacity, map-loop, and annotation work in the next iteration.
+
 ## Execution
 
 The first retained sample checks ordinary wrapping behavior, including `UInt64.max + 1 = 0`.  The second sample contains nine elements and checks the oversized-input branch.  The compiled artifact returned both expected arrays.
@@ -55,6 +63,9 @@ Every retained file either fixes the experiment, records the proof inputs, or re
 | [WASM module](program.wasm) | The exact executable artifact covered by the proof. |
 | [WAT rendering](program.wat) | The textual instruction representation used for the Talos model. |
 | [Behavioral proof](proof.lean) | The accepted direct proof of the generated WASM behavior. |
+| [Allocator-window proof](allocator-proof.lean) | The controlled proof generated with the generalized allocator theorem. |
+| [Allocator-window journal](allocator-proof-journal.md) | The controlled agent's chronological account of nineteen edited checks. |
+| [Allocator-window telemetry](allocator-proof-telemetry.json) | The controlled run's measured proof-session and outer-acceptance intervals. |
 | [Compiler annotations](program.annotations.json) | The empty region set emitted before loop-oriented annotations existed. |
 | [Proof recipe plan](proof-recipes.json) | The empty checked recipe plan supplied to the baseline agent. |
 | [Selected strategy notes](proof-strategies.md) | The program-feature-selected proof guidance. |
