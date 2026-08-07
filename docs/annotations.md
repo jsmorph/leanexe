@@ -419,6 +419,14 @@ The compiler emits `le-unsigned-v1` through the existing fixed-array length-disp
 
 Annotating the frozen Demo 4 package recompiled the source to the same WASM digest and produced one bounded-length region at top-level instructions zero through eight.  Its checked recipe names input local five, maximum size eight, the valid then branch, and the invalid else branch.  The proof-kit module, compiler emitter, consumer tests, and byte-identity annotation run all pass under the repository toolchain.
 
+## Bounded map composition
+
+The held-out Demo 4 journal identified the complete bounded map wrapper as the remaining proof boundary after the allocator-window and length-dispatch increments.  `Project.ProofKit.FixedArrayMapAdd.wrapperProgram_spec` now proves the canonical wrapper for arbitrary `maximumSize`, wrapping `UInt64` `addend`, input contents, heap position, allocation count, and memory size.  The checked proof contains the dynamic capacity arithmetic, both allocator continuations, result-length store, transformed-prefix loop invariant, wrapping payload stores, and empty-result construction.
+
+The compiler recognizes the exact extracted IR form `if input.size ≤ n then input.map (fun element ⇒ element + c) else #[]`.  It emits one `leanexe.array.map-add.v1` whole-function region containing `n`, `c`, and the function-return continuation while retaining the nested length-dispatch region.  The consumer verifies that the region covers the decoded top-level function and generates an `AnnotationMatches` equality between the selected artifact region and `FixedArrayMapAdd.wrapperProgram n c`; Lean accepted that equality for the frozen Demo 4 artifact.
+
+The proof planner selects `wrapperProgram_spec` from that equality and generates a complete artifact-behavior starter.  A focused check of the generated 67-line proof took 2.5 seconds after its generated dependencies were available, but this diagnostic excludes headless-agent and outer-acceptance time.  A controlled `leanexegen reprove` run over the frozen package will provide the comparable Stage 5 measurement against the 2,364.735-second baseline and 1,191.695-second allocator iteration.
+
 ## Completion criteria
 
 The first complete increment emits a validated sidecar for every ordinary library-mode compilation requested by `leanexegen`.  Demos 1, 2, and 3 prove the same specifications over the same WASM bytes through an annotation-driven deterministic proof plan.  The retained evidence records proof-generation timings, annotation validation, region coverage, and independent Lean acceptance.
