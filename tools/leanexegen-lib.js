@@ -13,8 +13,8 @@ const {
 const { validateStage5Telemetry } = require("./leanexegen-telemetry");
 
 const codexTaskSchemaVersion = 2;
-const packageSchemaVersion = 5;
-const supportedPackageSchemaVersions = new Set([3, 4, packageSchemaVersion]);
+const packageSchemaVersion = 6;
+const supportedPackageSchemaVersions = new Set([3, 4, 5, packageSchemaVersion]);
 const caseNamePattern = /^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$/;
 const decimalPattern = /^(?:0|[1-9][0-9]*)$/;
 const uint64Maximum = 18446744073709551615n;
@@ -135,6 +135,7 @@ function makeJob(request) {
     sourceModule: `${prefix}.Source`,
     formalSpecModule: `${prefix}.FormalSpec`,
     expectedDefinition: `${prefix}.FormalSpec.expected`,
+    heapReserveDefinition: `${prefix}.FormalSpec.heapReserveBytes`,
     formalSpecDefinition: `${prefix}.FormalSpec.ArtifactSpec`,
     formalSpecType: "Wasm.Module → Prop",
     sourceEntry: `${prefix}.Source.compute`,
@@ -800,6 +801,13 @@ function createPackage(stageRoot, values) {
     fail("compiler annotations and proof recipes must appear together");
   }
   const annotated = values.compilerAnnotations !== undefined;
+  const formalInterfaceVersion = values.formalInterfaceVersion ?? (annotated ? 2 : 1);
+  if (![1, 2].includes(formalInterfaceVersion)) {
+    fail("formal interface version must be 1 or 2");
+  }
+  if (!annotated && formalInterfaceVersion !== 1) {
+    fail("formal interface version 2 requires an annotated package");
+  }
   if (annotated) {
     writeAtomic(path.join(stageRoot, "program.annotations.json"),
       jsonBytes(values.compilerAnnotations));
@@ -809,7 +817,7 @@ function createPackage(stageRoot, values) {
   writeAtomic(path.join(stageRoot, "program.wasm"), values.wasmBytes);
   installSources(path.join(stageRoot, "proof"), values.sources);
   const manifest = {
-    schemaVersion: annotated ? packageSchemaVersion : 4,
+    schemaVersion: annotated ? (formalInterfaceVersion === 2 ? packageSchemaVersion : 5) : 4,
     requestSha256: sha256(Buffer.from(values.request)),
     case: values.job.caseName,
     leanModule: values.job.leanModule,

@@ -461,6 +461,8 @@ function formalSpecificationSource(job, generatedSource) {
     `    heapTop.toNat + 48 + 8 * ((expected input).size + 1) ≤ 4294967296 ∧\n` +
     `    heapTop.toNat + 48 + 8 * ((expected input).size + 1) ≤\n` +
     `      initial.mem.pages * 65536 ∧\n` +
+    `    heapTop.toNat + heapReserveBytes input ≤ 4294967296 ∧\n` +
+    `    heapTop.toNat + heapReserveBytes input ≤ initial.mem.pages * 65536 ∧\n` +
     `    initial.mem.pages ≤ 65536\n\n` +
     `def ArtifactSpec (module_ : Wasm.Module) : Prop :=\n` +
     `  ∃ entry, module_.findExport ${JSON.stringify(job.exportName)} = some entry ∧\n` +
@@ -474,12 +476,15 @@ function formalSpecificationSource(job, generatedSource) {
     `end ${job.namespace}.FormalSpec\n`;
 }
 
-function formalSpecificationCheckSources(job, suffix) {
+function formalSpecificationCheckSources(job, suffix, requireHeapReserve = true) {
   const target = `${job.namespace}.${suffix}`;
   return {
     target,
     sources: new Map([[target, `import ${job.formalSpecModule}\n\n` +
       `#check (${job.expectedDefinition} : Array UInt64 → Array UInt64)\n` +
+      (requireHeapReserve
+        ? `#check (${job.heapReserveDefinition} : Array UInt64 → Nat)\n`
+        : "") +
       `#check (${job.formalSpecDefinition} : ${job.formalSpecType})\n`]]),
   };
 }
@@ -507,8 +512,15 @@ function formalPrompt(request, job) {
   return `You are performing independent task 1 of 3 for leanexegen.  Produce the formal ` +
     `specification for this request:\n\n${request}\n\n` +
     `Work in this session until the candidate passes real Lean.  Write the complete candidate ` +
-    `module to ${candidate}; it must import CodeLib and define exactly ` +
-    `${job.expectedDefinition} : Array UInt64 → Array UInt64.  Do not define UInt64ArrayAt, ` +
+    `module to ${candidate}; it must import CodeLib and define ` +
+    `${job.expectedDefinition} : Array UInt64 → Array UInt64 and ` +
+    `${job.heapReserveDefinition} : Array UInt64 → Nat.  heapReserveBytes input must conservatively ` +
+    `bound all bump-heap bytes consumed above the initial heap top while computing that input, ` +
+    `including allocation headers, reserved capacity, final output storage, intermediate allocations, ` +
+    `and allocations retained at return.  State the bound from the requested computation; the later ` +
+    `source-free artifact proof checks it against the exact compiled program.  A conservative bound ` +
+    `is valid, while a bound based only on final output length is insufficient for operations such ` +
+    `as filter that reserve input-sized capacity.  Do not define UInt64ArrayAt, ` +
     `RuntimeReady, or ArtifactSpec because the ` +
     `orchestrator appends that fixed predicate after this task.  After each edit, run this exact ` +
     `check command:\n\n${check}\n\nDo not invoke Lean or Lake by another route, and do not run ` +
@@ -743,8 +755,11 @@ function proofPrompt(request, job, entryIndex) {
     `empty.  ArtifactSpec resolves the ${job.exportName} export to function ${entryIndex}, then ` +
     `quantifies over env, initial, inputPtr, and input under RuntimeReady.  RuntimeReady supplies ` +
     `UInt64ArrayAt for the input, six allocator globals with an empty free list, a disjoint bump ` +
-    `region, enough existing memory for the expected result array, and a page count within the ` +
-    `WebAssembly limit.  Its postcondition ` +
+    `region, enough existing memory for the expected result array and the formal ` +
+    `heapReserveBytes bound, and a page count within the WebAssembly limit.  The heap reserve covers ` +
+    `allocation headers, reserved capacity, intermediate allocations, and retained allocations; ` +
+    `unfold its formal definition when deriving the exact capacity inequalities required by the ` +
+    `artifact.  Its postcondition ` +
     `requires one result pointer and UInt64ArrayAt for expected input in the final memory.  Start ` +
     `the public theorem with \`refine ⟨${entryIndex}, rfl, ?_⟩\` and ` +
     `\`intro env initial inputPtr input hInput\`.  Use read-only commands to inspect FormalSpec, ` +
@@ -764,7 +779,8 @@ function formalTaskContext(request, job) {
   return new Map([
     ["request.txt", request],
     [moduleFile(checkTarget), `import ${job.formalSpecModule}\n\n` +
-      `#check (${job.expectedDefinition} : Array UInt64 → Array UInt64)\n`],
+      `#check (${job.expectedDefinition} : Array UInt64 → Array UInt64)\n` +
+      `#check (${job.heapReserveDefinition} : Array UInt64 → Nat)\n`],
   ]);
 }
 
@@ -1063,12 +1079,20 @@ function proofStrategyBundle(program, exportIndex, source = null) {
   return { notes, features };
 }
 
-function artifactProofStarter(job, entryIndex, annotated = false, proofRecipes = null) {
+function artifactProofStarter(
+    job, entryIndex, annotated = false, proofRecipes = null,
+    formalInterfaceVersion = 2) {
   const prefix = `${job.behaviorModule}.`;
   if (!job.behaviorTheorem.startsWith(prefix)) {
     throw new Error("artifact behavior theorem is outside its module");
   }
   const theoremName = job.behaviorTheorem.slice(prefix.length);
+  const runtimeReadyFields = formalInterfaceVersion >= 2
+    ? `hInputBelow, hOutputFit32, hOutputFitMemory,
+      hHeapFit32, hHeapFitMemory, hPages`
+    : "hInputBelow, hFit32, hFitMemory, hPages";
+  const outputFit32 = formalInterfaceVersion >= 2 ? "hOutputFit32" : "hFit32";
+  const outputFitMemory = formalInterfaceVersion >= 2 ? "hOutputFitMemory" : "hFitMemory";
   const modules = new Set(["Project.ProofKit.Array"]);
   if (proofRecipes === null) {
     for (const moduleName of [
@@ -1137,7 +1161,7 @@ theorem ${theoremName} :
   intro env initial inputPtr input hInput
   rcases hInput with
     ⟨hArray, heapTop, allocs, retains, releases, frees, hGlobals,
-      hInputBelow, hFit32, hFitMemory, hPages⟩
+      ${runtimeReadyFields}⟩
   change UInt64Array.At initial inputPtr input at hArray
   have hHeapTop : initial.globals.globals[0]? = some (.i64 heapTop) := by
     simp [hGlobals]
@@ -1176,8 +1200,8 @@ theorem ${theoremName} :
   · norm_num [UInt64.size]
   · exact hArray
   · exact hInputBelow
-  · exact hFit32
-  · exact hFitMemory
+  · exact ${outputFit32}
+  · exact ${outputFitMemory}
   · exact hPages
   · rfl
   · exact hHeapTop
@@ -1217,7 +1241,7 @@ theorem ${theoremName} :
   intro env initial inputPtr input hInput
   rcases hInput with
     ⟨hArray, heapTop, allocs, retains, releases, frees, hGlobals,
-      hInputBelow, hFit32, hFitMemory, hPages⟩
+      ${runtimeReadyFields}⟩
   change UInt64Array.At initial inputPtr input at hArray
   have hHeapTop : initial.globals.globals[0]? = some (.i64 heapTop) := by
     simp [hGlobals]
@@ -1228,7 +1252,7 @@ theorem ${theoremName} :
   have hContext : FixedArraySearch.PairResultContext
       ${job.namespace}.«module» initial heapTop allocs inputPtr input
       (${job.expectedDefinition} input) :=
-    ⟨hArray, hInputBelow, hFitMemory, hPages, rfl, hHeapTop, hFreeList,
+    ⟨hArray, hInputBelow, ${outputFitMemory}, hPages, rfl, hHeapTop, hFreeList,
       hAllocs⟩
   have hAtIff (st : Store Unit) (ptr : UInt64) (values : Array UInt64) :
       ${job.formalSpecModule}.UInt64ArrayAt st ptr values ↔
@@ -1294,7 +1318,7 @@ theorem ${theoremName} :
   intro env initial inputPtr input hInput
   rcases hInput with
     ⟨hArray, heapTop, allocs, retains, releases, frees, hGlobals,
-      hInputBelow, hFit32, hFitMemory, hPages⟩
+      ${runtimeReadyFields}⟩
   change UInt64Array.At initial inputPtr input at hArray
   have hLengthRead := hArray.lengthRead
   have hLengthBound := hArray.generatedLengthBound
@@ -1311,7 +1335,8 @@ end ${job.behaviorModule}
 }
 
 function proofTaskContext(
-    request, job, formalSource, generatedSources, strategies = null) {
+    request, job, formalSource, generatedSources, strategies = null,
+    formalInterfaceVersion = 2) {
   const context = new Map([
     ["request.txt", request],
     [moduleFile(job.formalSpecModule), formalSource],
@@ -1340,16 +1365,17 @@ function proofTaskContext(
   context.set(moduleFile(job.behaviorModule),
     artifactProofStarter(
       job, bundle.features.exportIndex, bundle.compilerAnnotations !== undefined,
-      bundle.proofRecipes ?? null));
+      bundle.proofRecipes ?? null, formalInterfaceVersion));
   if (context.has(moduleFile(job.sourceModule))) {
     throw new StageError(5, "artifact proof", "proof task context contains Source");
   }
   return context;
 }
 
-function checkFormalSpecification(workspace, job, source, stage, suffix) {
+function checkFormalSpecification(
+    workspace, job, source, stage, suffix, requireHeapReserve = true) {
   installSources(workspace, new Map([[job.formalSpecModule, source]]));
-  const checks = formalSpecificationCheckSources(job, suffix);
+  const checks = formalSpecificationCheckSources(job, suffix, requireHeapReserve);
   installSources(workspace, checks.sources);
   runLean(stage, "formal specification module", "15m", [
     "lake", "-d", workspace, "--no-ansi", "build", job.formalSpecModule,
@@ -1358,6 +1384,7 @@ function checkFormalSpecification(workspace, job, source, stage, suffix) {
     "lake", "-d", workspace, "--no-ansi", "build", checks.target,
   ]);
   return `Lean accepted ${job.expectedDefinition} : Array UInt64 → Array UInt64 and ` +
+    (requireHeapReserve ? `${job.heapReserveDefinition} : Array UInt64 → Nat and ` : "") +
     `${job.formalSpecDefinition} : ${job.formalSpecType}.`;
 }
 
@@ -1955,6 +1982,7 @@ function verify(command) {
         command.packagePath, "proof", moduleFile(checked.job.formalSpecModule)), "utf8"),
       5,
       "VerifierFormalSpecCheck",
+      checked.manifest.schemaVersion >= 6,
     );
     checkProof(
       workspace,
@@ -2000,8 +2028,10 @@ function reprove(command) {
   let toolPins;
   let codex;
   let codexVersion;
+  let formalInterfaceVersion;
   try {
     checked = validatePackage(command.packagePath);
+    formalInterfaceVersion = checked.manifest.schemaVersion >= 6 ? 2 : 1;
     request = fs.readFileSync(path.join(command.packagePath, "request.txt"), "utf8");
     interpretation = JSON.parse(fs.readFileSync(
       path.join(command.packagePath, "interpretation.json"), "utf8"));
@@ -2058,7 +2088,8 @@ function reprove(command) {
       ...sourceSets.proofContext,
     ]));
     checkFormalSpecification(
-      proofWorkspace, checked.job, formalSource, 5, "ReproveFormalSpecCheck");
+      proofWorkspace, checked.job, formalSource, 5, "ReproveFormalSpecCheck",
+      formalInterfaceVersion >= 2);
     const entryIndex = programExportIndex(programSource, checked.job.exportName);
     const strategies = proofStrategyBundle(programSource, entryIndex);
     if (checked.compilerAnnotations !== null) {
@@ -2076,7 +2107,8 @@ function reprove(command) {
         new Map([[annotationMatches.module, annotationMatches.source]]));
     }
     const proofContext = proofTaskContext(
-      request, checked.job, formalSource, sourceSets.proofContext, strategies);
+      request, checked.job, formalSource, sourceSets.proofContext, strategies,
+      formalInterfaceVersion);
     const proof = runTaskSession({
       task: "artifact-proof",
       stage: 5,
@@ -2171,6 +2203,7 @@ function reprove(command) {
         wasmBytes,
         sources: allSources,
         job: checked.job,
+        formalInterfaceVersion,
         formalSpecification: checked.manifest.formalSpecification,
         warnings,
       });
@@ -2312,6 +2345,7 @@ function annotatePackage(command) {
       wasmBytes: checked.wasm,
       sources: packageSources,
       job: checked.job,
+      formalInterfaceVersion: checked.manifest.schemaVersion >= 6 ? 2 : 1,
       formalSpecification: checked.manifest.formalSpecification,
       warnings: checked.manifest.warnings,
     });

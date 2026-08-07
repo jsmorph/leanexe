@@ -198,12 +198,15 @@ function testCodexProtocol() {
   assert(JSON.stringify(job) === JSON.stringify(makeJob("compute one unsigned integer array\n")),
     "job identity was not deterministic");
   assert(job.formalSpecDefinition === `${job.namespace}.FormalSpec.ArtifactSpec` &&
+    job.heapReserveDefinition === `${job.namespace}.FormalSpec.heapReserveBytes` &&
     job.formalSpecType === "Wasm.Module → Prop" &&
     job.sourceEntry === `${job.namespace}.Source.compute` && job.exportName === "compute",
   "job did not fix the array formal and program interfaces");
 
   const formalRaw = `import CodeLib\n\nnamespace ${job.namespace}.FormalSpec\n\n` +
     `def expected (values : Array UInt64) : Array UInt64 := values\n\n` +
+    `def heapReserveBytes (values : Array UInt64) : Nat :=\n` +
+    `  48 + 8 * (values.size + 1)\n\n` +
     `end ${job.namespace}.FormalSpec\n`;
   const formalOutcome = outcome("formal-specification", formalRaw, {
     hostAssumptions: ["The module imports no host functions."],
@@ -246,6 +249,9 @@ function testCodexProtocol() {
   const formalSource = formalSpecificationSource(job, formalRaw);
   assert(formalSource.includes("def UInt64ArrayAt") &&
     formalSource.includes("def RuntimeReady") &&
+    formalSource.includes("heapTop.toNat + heapReserveBytes input ≤ 4294967296") &&
+    formalSource.includes(
+      "heapTop.toNat + heapReserveBytes input ≤ initial.mem.pages * 65536") &&
     formalSource.includes("initial.mem.pages ≤ 65536") &&
     formalSource.includes("def ArtifactSpec (module_ : Wasm.Module) : Prop :=") &&
     formalSource.includes('module_.findExport "compute" = some entry') &&
@@ -255,12 +261,18 @@ function testCodexProtocol() {
   const checks = formalSpecificationCheckSources(job, "FormalSpecCheck");
   const checkSource = checks.sources.get(checks.target);
   assert(checkSource.includes(`#check (${job.expectedDefinition} : Array UInt64 → Array UInt64)`) &&
+    checkSource.includes(`#check (${job.heapReserveDefinition} : Array UInt64 → Nat)`) &&
     checkSource.includes(`#check (${job.formalSpecDefinition} : ${job.formalSpecType})`),
-  "formal declaration checks did not name both fixed declarations and types");
+  "formal declaration checks did not name the fixed declarations and types");
+  const legacyChecks = formalSpecificationCheckSources(job, "LegacyFormalSpecCheck", false);
+  assert(!legacyChecks.sources.get(legacyChecks.target).includes(job.heapReserveDefinition),
+    "legacy formal declaration checks required the schema-6 heap reserve");
   const formalContext = formalTaskContext("request\n", job);
   assert(formalContext.get("request.txt") === "request\n" &&
     formalContext.get(moduleFile(`${job.namespace}.FormalSessionCheck`))
-      .includes(job.expectedDefinition),
+      .includes(job.expectedDefinition) &&
+    formalContext.get(moduleFile(`${job.namespace}.FormalSessionCheck`))
+      .includes(job.heapReserveDefinition),
   "formal task did not receive its request and declaration check");
   const programContext = programTaskContext("request\n", job, formalSource);
   const prompt = programPrompt("request\n", job);
@@ -329,6 +341,7 @@ function testCodexProtocol() {
     artifactPrompt.includes("before editing") &&
     artifactPrompt.includes("If that check succeeds") &&
     artifactPrompt.includes("without repeating the same check") &&
+    artifactPrompt.includes("heapReserveBytes bound") &&
     artifactPrompt.includes("Use read-only commands to inspect FormalSpec, Program"),
   "artifact-proof task did not receive the proof-kit catalog or tactics");
   const wrapperStarter = artifactProofStarter(job, 3, true, {
@@ -1403,6 +1416,10 @@ function testArtifactPackage(job, formalSource) {
     JSON.parse(proofContext.get("PROOF_TASK_FEATURES.json")).exportIndex === 0 &&
     !proofContext.has(`LeanExeGen/${job.leanModule}/Source.lean`),
   "proof task context omitted proof guidance or Program, or exposed Source");
+  const legacyStarter = artifactProofStarter(job, 0, false, null, 1);
+  assert(legacyStarter.includes("hInputBelow, hFit32, hFitMemory, hPages") &&
+    !legacyStarter.includes("hHeapFit32"),
+  "schema-5 artifact-proof starter did not retain the old RuntimeReady fields");
   const strategyBundle = proofStrategyBundle(talosProgram, 0);
   assert(strategyBundle.features.selectedSections.some((item) => item.id === "strategy.core") &&
     strategyBundle.features.selectedSections.some((item) => item.id === "strategy.arrays") &&
@@ -1543,7 +1560,7 @@ function testArtifactPackage(job, formalSource) {
     checked.stageReports.tasks.leanProgram.sourceSha256 === sha256(Buffer.from(programSource)) &&
     checked.proofTelemetry.totalMilliseconds === 3000 &&
     checked.proofJournal.includes("checked array lemmas") &&
-    checked.manifest.schemaVersion === 5 &&
+    checked.manifest.schemaVersion === 6 &&
     checked.compilerAnnotations.artifact.byteLength === wasm.length &&
     checked.proofRecipes.recipes.length === 0,
   "validated package returned the wrong artifact or stage report");
