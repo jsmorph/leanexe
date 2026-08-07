@@ -1027,6 +1027,17 @@ function proofRecipePlan(
   return {
     schemaVersion: 1,
     attemptOrder: ["direct", "composition", "tactic", "focused-guidance"],
+    compositions: fixedArraySearchTreeCompositions(document).map((composition) => ({
+      compositionVersion: 1,
+      kind: "fixed-array-search-tree-v1",
+      functionIndex: composition.functionIndex,
+      descriptor: `${annotationNamespace}.${composition.name}`,
+      regionEquality: `${annotationNamespace}.${composition.name}_eq`,
+      direct: {
+        module: "Project.ProofKit.FixedArraySearchTree",
+        theorem: "Project.ProofKit.FixedArraySearchTree.Tree.program_spec",
+      },
+    })),
     recipes,
   };
 }
@@ -1064,11 +1075,47 @@ function matchAnnotationDocument(document, program) {
 }
 
 function validateProofRecipePlan(plan, document) {
-  exactKeys(plan, ["attemptOrder", "recipes", "schemaVersion"], "proof recipes");
+  const planKeys = Object.keys(plan).sort();
+  const legacyKeys = ["attemptOrder", "recipes", "schemaVersion"];
+  const currentKeys = ["attemptOrder", "compositions", "recipes", "schemaVersion"];
+  if (JSON.stringify(planKeys) !== JSON.stringify(legacyKeys) &&
+      JSON.stringify(planKeys) !== JSON.stringify(currentKeys)) {
+    fail("proof recipes has unsupported fields");
+  }
   if (plan.schemaVersion !== 1) fail("unsupported proof-recipe schema");
   const expectedOrder = ["direct", "composition", "tactic", "focused-guidance"];
   if (JSON.stringify(plan.attemptOrder) !== JSON.stringify(expectedOrder)) {
     fail("proof recipes have an unsupported attempt order");
+  }
+  const annotatedFunctions = new Set(document.functions.map((function_) =>
+    function_.wasmIndex));
+  const compositionDescriptors = new Set();
+  for (const [index, composition] of array(
+    plan.compositions ?? [], "proof recipes.compositions").entries()) {
+    const description = `proof recipes.compositions[${index}]`;
+    exactKeys(composition, [
+      "compositionVersion", "descriptor", "direct", "functionIndex", "kind",
+      "regionEquality",
+    ], description);
+    if (composition.compositionVersion !== 1 ||
+        composition.kind !== "fixed-array-search-tree-v1") {
+      fail(`${description} has an unsupported identity`);
+    }
+    natural(composition.functionIndex, `${description}.functionIndex`);
+    string(composition.descriptor, `${description}.descriptor`);
+    string(composition.regionEquality, `${description}.regionEquality`);
+    if (!annotatedFunctions.has(composition.functionIndex) ||
+        compositionDescriptors.has(composition.descriptor) ||
+        composition.regionEquality !== `${composition.descriptor}_eq`) {
+      fail(`${description} has an invalid artifact identity`);
+    }
+    compositionDescriptors.add(composition.descriptor);
+    exactKeys(composition.direct, ["module", "theorem"], `${description}.direct`);
+    if (composition.direct.module !== "Project.ProofKit.FixedArraySearchTree" ||
+        composition.direct.theorem !==
+          "Project.ProofKit.FixedArraySearchTree.Tree.program_spec") {
+      fail(`${description}.direct is unsupported`);
+    }
   }
   const regions = new Map(document.functions.flatMap((function_) =>
     function_.regions.map((region) => [region.id, {
@@ -1203,6 +1250,103 @@ function leanAnnotationPath(listPath) {
     .join(", ")}]`;
 }
 
+function annotationPathKey(listPath) {
+  return JSON.stringify(listPath.map((step) => [step.instructionIndex, step.field]));
+}
+
+function annotationChildPath(listPath, instructionIndex, field) {
+  return [...listPath, { instructionIndex, field }];
+}
+
+function annotationPathStartsWith(listPath, prefix) {
+  return prefix.length <= listPath.length && prefix.every((step, index) =>
+    step.instructionIndex === listPath[index].instructionIndex &&
+      step.field === listPath[index].field);
+}
+
+function fixedArraySearchTreeCompositions(document) {
+  const compositions = [];
+  for (const function_ of document.functions) {
+    const equalityNodes = function_.regions.filter((region) =>
+      region.kind === "leanexe.array.eq-node.v1" &&
+      region.parameters.operandOrder === "key-first");
+    const equalityByPath = new Map(equalityNodes.map((region) =>
+      [annotationPathKey(region.location.listPath), region]));
+    const lessThanByPath = new Map(function_.regions.filter((region) =>
+      region.kind === "leanexe.array.lt-node.v1").map((region) =>
+      [annotationPathKey(region.location.listPath), region]));
+    const resultByPath = new Map(function_.regions.filter((region) =>
+      region.kind === "leanexe.array.pair-result.v1").map((region) =>
+      [annotationPathKey(region.location.listPath), region]));
+
+    const build = (equality, visiting) => {
+      if (visiting.has(equality.id)) return null;
+      const nextVisiting = new Set(visiting);
+      nextVisiting.add(equality.id);
+      const branchIndex = equality.location.startIndex + 16;
+      const equalPath = annotationChildPath(
+        equality.location.listPath, branchIndex, "then");
+      const unequalPath = annotationChildPath(
+        equality.location.listPath, branchIndex, "else");
+      const found = resultByPath.get(annotationPathKey(equalPath));
+      if (found === undefined || found.parameters.mode !== "input-index-and-one-v1" ||
+          found.parameters.secondValue !== "1" ||
+          found.parameters.offset !== equality.parameters.offset) return null;
+      const lessThan = lessThanByPath.get(annotationPathKey(unequalPath));
+      if (lessThan === undefined) {
+        const missing = resultByPath.get(annotationPathKey(unequalPath));
+        if (missing === undefined || missing.parameters.mode !== "constants-v1" ||
+            missing.parameters.firstValue !== "0" ||
+            missing.parameters.secondValue !== "0" ||
+            missing.parameters.offset !== equality.parameters.offset) return null;
+        return `.leaf ${equality.parameters.index} ${found.parameters.inputIndex} ` +
+          `${found.parameters.destination} ${missing.parameters.destination}`;
+      }
+      if (lessThan.parameters.offset !== equality.parameters.offset ||
+          lessThan.parameters.index !== equality.parameters.index ||
+          lessThan.parameters.keyLocal !== equality.parameters.keyLocal) return null;
+      const leftPath = annotationChildPath(
+        unequalPath, lessThan.location.startIndex + 12, "then");
+      const rightPath = annotationChildPath(
+        unequalPath, lessThan.location.startIndex + 12, "else");
+      const left = equalityByPath.get(annotationPathKey(leftPath));
+      const right = equalityByPath.get(annotationPathKey(rightPath));
+      if (left === undefined || right === undefined) return null;
+      const leftTree = build(left, nextVisiting);
+      const rightTree = build(right, nextVisiting);
+      if (leftTree === null || rightTree === null) return null;
+      return `.branch ${equality.parameters.index} ${found.parameters.inputIndex} ` +
+        `${found.parameters.destination} (${leftTree}) (${rightTree})`;
+    };
+
+    const roots = equalityNodes.filter((candidate) => !equalityNodes.some((parent) => {
+      if (candidate.id === parent.id) return false;
+      const thenPath = annotationChildPath(parent.location.listPath,
+        parent.location.startIndex + 16, "then");
+      const elsePath = annotationChildPath(parent.location.listPath,
+        parent.location.startIndex + 16, "else");
+      return annotationPathStartsWith(candidate.location.listPath, thenPath) ||
+        annotationPathStartsWith(candidate.location.listPath, elsePath);
+    }));
+    let compositionIndex = 0;
+    for (const root of roots) {
+      const tree = build(root, new Set());
+      if (tree === null || root.parameters.offset + 14 !== 24) continue;
+      const name = `function_${function_.wasmIndex}_search_tree_${compositionIndex}`;
+      compositionIndex += 1;
+      compositions.push({
+        functionIndex: function_.wasmIndex,
+        keyLocal: root.parameters.keyLocal,
+        location: root.location,
+        name,
+        offset: root.parameters.offset,
+        tree,
+      });
+    }
+  }
+  return compositions;
+}
+
 function annotationMatchesSource(document, job) {
   const declarations = [];
   for (const function_ of document.functions) {
@@ -1221,11 +1365,25 @@ function annotationMatchesSource(document, job) {
   rfl`);
     }
   }
+  const treeCompositions = fixedArraySearchTreeCompositions(document);
+  for (const composition of treeCompositions) {
+    declarations.push(`def ${composition.name} :
+    Project.ProofKit.FixedArraySearchTree.Tree :=
+  ${composition.tree}
+
+theorem ${composition.name}_eq :
+    Project.ProofKit.Annotation.region ${job.namespace}.func${composition.functionIndex}
+      ${leanAnnotationPath(composition.location.listPath)}
+      ${composition.location.startIndex} ${composition.location.endIndex} =
+        some (${composition.name}.program ${composition.offset} ${composition.keyLocal}) := by
+  rfl`);
+  }
   return {
     module: `${job.namespace}.AnnotationMatches`,
     source: `import ${job.programModule}
 import Project.ProofKit.Annotation
 import Project.ProofKit.FixedArrayPairResult
+${treeCompositions.length > 0 ? "import Project.ProofKit.FixedArraySearchTree\n" : ""}
 
 namespace ${job.namespace}.AnnotationMatches
 
@@ -1244,6 +1402,7 @@ module.exports = {
   fixedArrayLtNodeRecipe,
   fixedArrayPairResultRecipe,
   fixedArraySearchKeyRecipe,
+  fixedArraySearchTreeCompositions,
   matchAnnotationDocument,
   matchDirectCallRegion,
   matchFixedArrayEqNodeRegion,
