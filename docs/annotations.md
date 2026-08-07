@@ -55,7 +55,8 @@ The first vocabulary should cover the regions already responsible for most of th
 | `leanexe.runtime.retain.v1` | Pointer location, runtime function index, and continuation. | Apply the retain theorem at the emitted ownership boundary. |
 | `leanexe.runtime.release.v1` | Pointer location, runtime function index, and continuation. | Apply the release theorem at the emitted ownership boundary. |
 | `leanexe.call.direct.v1` | Callee index, argument locations, result locations, and continuation. | Apply a previously proved function theorem and restore the caller frame. |
-| `leanexe.loop.counted.v1` | Index local, initial value, bound, step, direction, accumulator locals, body, exit, and continuation. | Construct the loop invariant and decreasing measure from compiler-known structure. |
+| `leanexe.loop.while.v1` | Structured region, IR condition and body, scratch-local start, and continuation. | Recover the machine-state transition map before selecting an invariant and measure. |
+| `leanexe.loop.fold.v1` | Accumulator locals, initial and next-state expressions, body lets, done expression, staging locals, release offsets, results, and continuation. | Construct the loop invariant and decreasing measure from compiler-known structure. |
 
 The sidecar should record the compiler revision when the build can identify one, together with whether the compiler tree contained uncommitted changes.  A stable, fully qualified compiler definition such as `LeanExe.Wasm.Binary.CoreWasm.emitArrayGetSlot` is more useful than a source line number, which changes during unrelated edits.  A generator chain may name several definitions when one semantic region combines expression emission, comparison normalization, and branch construction, while proof generation must remain independent of this diagnostic provenance.
 
@@ -440,6 +441,14 @@ The held-out Demo 5 baseline left the complete stable-filter loop outside the an
 The compiler recognizes the exact extracted `arrayFilterSlots` form and emits a `leanexe.array.filter-lt.v1` whole-function region containing `maximumSize`, `threshold`, and the function-return continuation.  The consumer validates the complete top-level boundary and generates a Lean equality between the decoded artifact region and `FixedArrayFilterLt.wrapperProgram maximumSize threshold`.  The deterministic starter checks equality with both the formal result and the schema-6 heap reserve before applying `wrapperProgram_spec`.
 
 Recompiling the frozen Demo 5 source produced the same 1,975-byte WASM digest and added the filter region beside the existing length dispatch.  Three controlled reproofs preserved every frozen source and artifact input, accepted the unchanged 70-line starter on each first check, and completed Stage 5 in 86.795, 90.745, and 95.718 seconds.  Their 90.745-second median reduces the measured baseline by 1,544.934 seconds, or 94.5 percent, while their range is 8.923 seconds and independent verification accepted the first and third final packages.
+
+## Scalar-loop annotations
+
+The compiler now emits `leanexe.loop.while.v1` for every extracted `Stmt.while` region and `leanexe.loop.fold.v1` for a top-level `loopFoldMultiSlotAssign`.  A while annotation contains the IR condition, IR body statement, scratch-local start, structured instruction location, continuation, and generator chain.  A loop-fold annotation adds accumulator locals, initial and staged next-state expressions, body lets, done expression, release offsets, staging locals, and result targets.
+
+The consumer validates each structured location against the frozen decoded Program before retaining its recipe.  A while region must resolve to one block containing one loop with an exit branch and back edge, while a loop-fold region must also match its accumulator copies, scratch layout, done test, and result copies.  The IR expressions remain untrusted guidance because the artifact matcher checks the emitted control boundary rather than reconstructing the compiler's expression-lowering proof.
+
+Recompiling Demo 1's frozen source produced the same 1,938-byte artifact and SHA-256 digest `dbced77ae7a692ce49e98cb58721cb3c05a3712925e31685c4fd08dba4181be7`.  Function zero now carries one while region at top-level instruction interval two through three, with scratch locals beginning at 18 and a complete IR statement for the trial-division branches.  The proof plan selects `Wasm.wp_loop_cons`, `wp_block_loop`, `wp_entry_to_loop`, and the loop, frame, and arithmetic guidance sections; a controlled reproof will determine whether the state-transition map reduces Stage 5 time.
 
 ## Completion criteria
 
