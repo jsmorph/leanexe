@@ -1,0 +1,74 @@
+{
+  "schemaVersion": 1,
+  "codexVersion": "codex-cli 0.146.0",
+  "maximumAttempts": 1,
+  "tasks": {
+    "formalSpecification": {
+      "task": "formal-specification",
+      "sourceModule": "LeanExeGen.GeneratedRc77513211b55010d.FormalSpec",
+      "sourceSha256": "dfa9342154edf210e513856b39420136e7102af80246df017ca74b8cfc338a5b",
+      "reportSha256": "19efde5294d2a582366d75e824a53a4db5651d530f9608cc1e4d6d8af0d56b06",
+      "report": {
+        "summary": "Defined the requested bounded Array.map transformation. The prescribed Lean build succeeded.",
+        "decisions": [
+          "Inputs of length eight or less map each UInt64 value to value + 1.",
+          "Inputs longer than eight return an empty array.",
+          "Array.map preserves the input length and compiles to an element loop."
+        ],
+        "attempts": [
+          {
+            "number": 1,
+            "outcome": "accepted",
+            "sourceSha256": "dfa9342154edf210e513856b39420136e7102af80246df017ca74b8cfc338a5b",
+            "diagnosticSha256": "c02b8dc633c837ee827089d3099cb94c670792d299f7b6a79b0b388a52812c00",
+            "diagnostic": "Lean accepted LeanExeGen.GeneratedRc77513211b55010d.FormalSpec.expected : Array UInt64 → Array UInt64 and LeanExeGen.GeneratedRc77513211b55010d.FormalSpec.ArtifactSpec : Wasm.Module → Prop."
+          }
+        ]
+      }
+    },
+    "leanProgram": {
+      "task": "lean-program",
+      "sourceModule": "LeanExeGen.GeneratedRc77513211b55010d.Source",
+      "sourceSha256": "44f732df4ddaa7e2039959a74a8e524aaa6abc236bfc1f41dbfff8490d4acc6c",
+      "reportSha256": "b02f50a1af04aba7c8835d05cfa35601355e55f2bfd7d9c3c01b5380a234bf0a",
+      "report": {
+        "summary": "Implemented compute with the required length check, Array.map loop, and wrapping UInt64 addition. The final Lean build, compiler report, and WebAssembly compilation succeeded.",
+        "decisions": [
+          "Inputs of at most eight elements are processed with Array.map.",
+          "Inputs longer than eight elements return an empty array."
+        ],
+        "attempts": [
+          {
+            "number": 1,
+            "outcome": "accepted",
+            "sourceSha256": "44f732df4ddaa7e2039959a74a8e524aaa6abc236bfc1f41dbfff8490d4acc6c",
+            "diagnosticSha256": "27f42d287e1346d77005eccaa55cb0e09c65649f15c09868965542dc6d366834",
+            "diagnostic": "Lean and LeanExe accepted and compiled LeanExeGen.GeneratedRc77513211b55010d.Source.compute : Array UInt64 → Array UInt64."
+          }
+        ]
+      }
+    },
+    "artifactProof": {
+      "task": "artifact-proof",
+      "sourceModule": "LeanExeGen.GeneratedRc77513211b55010d.Behavior",
+      "sourceSha256": "bf07793985539b6c0a7e9076c97f836050c859b47b13ab3f70a3383270b29d56",
+      "reportSha256": "28eb9701ddac2c08fb68c87f0603c37c7b366cdd44e62b71d6f11e3d0ec4953c",
+      "report": {
+        "summary": "The deterministic starter already proves the exact compiled artifact. The required build succeeded, and the result was recorded in PROOF_JOURNAL.md.",
+        "decisions": [
+          "Left Behavior.lean unchanged because the initial prescribed check succeeded.",
+          "Did not repeat the successful check, as instructed."
+        ],
+        "attempts": [
+          {
+            "number": 1,
+            "outcome": "accepted",
+            "sourceSha256": "bf07793985539b6c0a7e9076c97f836050c859b47b13ab3f70a3383270b29d56",
+            "diagnosticSha256": "894d88f43a6fcb28fa3e3ff39bd9a96b42d1900bc615dae23947cf42842c10d7",
+            "diagnostic": "Lean accepted LeanExeGen.GeneratedRc77513211b55010d.Behavior.artifact_behavior and LeanExeGen.GeneratedRc77513211b55010d.Artifact.artifact_correct."
+          }
+        ]
+      }
+    }
+  }
+}

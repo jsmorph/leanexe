@@ -8,6 +8,8 @@ The generated artifact contains one reachable 456-instruction function with 16 l
 
 The preexisting annotation and proof-kit system received this artifact without any Demo 4-derived change.  It found no matched proof region or checked composition, so Codex constructed the complete artifact proof from the generic ABI, allocator, memory, and loop guidance.  Stage 5 took 2,364.735 seconds, including 2,255.687 seconds in Codex and 98.593 seconds in independent outer acceptance.
 
+Two LTG iterations preserved the specification, source, decoded Program, WASM bytes, and artifact theorem.  Generalizing the allocator window reduced Stage 5 to 1,191.695 seconds, after which a parameterized whole-wrapper theorem and exact compiler annotation reduced it to 103.123 seconds.  The final deterministic starter passed its first Lean check unchanged and independent package verification accepted the result.
+
 ## Program and theorem
 
 The [generation request](request.txt) defines the complete behavior and the required loop implementation.  The [formal specification](spec.lean) uses `Array.map` in its successful branch, and the [generated Lean program](program.lean) implements the same function without importing the specification.  Both generated tasks passed their first outer acceptance checks.
@@ -24,7 +26,7 @@ The [behavioral proof](proof.lean) proves the formal specification directly for 
 
 ## Held-out baseline
 
-The [compiler annotations](program.annotations.json) contain no regions for this function, and the [proof recipe plan](proof-recipes.json) is empty.  The [selected strategy notes](proof-strategies.md) and [program feature report](proof-task-features.json) identify loops, memory, allocation, arithmetic, and a large elaboration boundary, but they provide no checked decomposition of the emitted map.  This makes the retained run a baseline for later annotation and proof-kit iterations rather than a result influenced by Demo 4-specific LTG.
+The [baseline compiler annotations](baseline-program.annotations.json) contain no regions for this function, and the [baseline proof recipe plan](baseline-proof-recipes.json) is empty.  The [baseline strategy notes](baseline-proof-strategies.md) and [baseline program feature report](baseline-proof-task-features.json) identify loops, memory, allocation, arithmetic, and a large elaboration boundary, but they provide no checked decomposition of the emitted map.  This makes the retained run a baseline for later annotation and proof-kit iterations rather than a result influenced by Demo 4-derived LTG.
 
 The [proof journal](proof-journal.md) records 27 edited Lean checks before acceptance.  It identifies five repeated boundaries: bounded-length dispatch, dynamic capacity normalization, an allocator inside a larger local frame, a dynamic result-length store, and the transformed-prefix loop invariant.  Those observations determine the next general LTG work while preserving the specification, source, and artifact as fixed test inputs.
 
@@ -37,6 +39,16 @@ The first LTG iteration generalized `FixedArrayAllocatorWindow.region_spec` to a
 Stage 5 fell from 2,364.735 seconds to 1,191.695 seconds, a reduction of 1,173.040 seconds, or 49.6 percent.  Codex time fell from 2,255.687 seconds to 1,154.873 seconds, while independent outer acceptance fell from 98.593 seconds to 25.963 seconds.  The [iteration telemetry](allocator-proof-telemetry.json) records the measured intervals, and the [iteration journal](allocator-proof-journal.md) records nineteen edited checks before acceptance.
 
 The journal shows that the new theorem removed the direct proof of the invalid branch's allocator, which occupied the last ten baseline iterations.  The controlled run still spent ten checks reaching the successful allocator and seven checks establishing the map loop and its transformed-prefix invariant.  Those remaining compiler templates motivate the bounded-dispatch, capacity, map-loop, and annotation work in the next iteration.
+
+## Complete map-wrapper iteration
+
+`FixedArrayMapAdd.wrapperProgram_spec` proves the compiler's canonical bounded wrapping-add map for arbitrary maximum size and addend.  Its checked body contains the bounded-length dispatch, capacity normalization, both allocations, dynamic result-length store, transformed-prefix loop invariant, payload stores, and public return.  The compiler emits a whole-function `leanexe.array.map-add.v1` region only for the exact corresponding extracted IR shape.
+
+The current [compiler annotations](program.annotations.json) record the complete map wrapper and its nested bounded-length dispatch.  The [proof recipe plan](proof-recipes.json) names `wrapperProgram_spec` and a generated `AnnotationMatches` theorem that Lean reduced to equality with `wrapperProgram 8 1`.  The current [selected strategy notes](proof-strategies.md) and [program feature report](proof-task-features.json) accompanied this checked recipe in the controlled proof task.
+
+The accepted [map-wrapper proof](map-proof.lean) contains 66 lines and has SHA-256 digest `bf07793985539b6c0a7e9076c97f836050c859b47b13ab3f70a3383270b29d56`.  Its [journal](map-proof-journal.md) records one successful initial check, no proof edit, and no repeated in-session check, while its [telemetry](map-proof-telemetry.json) records 66.734 seconds in Codex, 27.688 seconds in outer acceptance, and 103.123 seconds from Stage 5 start to first acceptance.  The [map run stage reports](map-stage-reports.json) identify the accepted declarations and confirm that the deterministic starter remained unchanged.
+
+The final Stage 5 time is 2,261.612 seconds, or 95.6 percent, below the held-out baseline and 1,088.572 seconds, or 91.3 percent, below the allocator-window iteration.  The proof is 391 lines, or 85.6 percent, shorter than the baseline, although proof length remains secondary to completed proof time.  Independent `leanexegen verify` accepted the final package, and both retained WASM copies have digest `c538d40936b426ba875b3dae1913e62ff00a44b34adff2adcd70922e5a4c95ff`.
 
 ## Execution
 
@@ -53,7 +65,7 @@ The [captured standard output](stdout.txt) records every stage boundary and both
 
 ## Retained files
 
-Every retained file either fixes the experiment, records the proof inputs, or records an accepted result.  The annotation, recipe, strategy, feature, and journal files preserve what the baseline agent knew and how it proceeded.  Later iterations can therefore compare both time and proof structure against the same artifact.
+Every retained file either fixes the experiment, records the proof inputs, or records an accepted result.  Files with a `baseline-` prefix preserve what the first agent knew, while the unprefixed annotation and guidance files describe the final whole-wrapper run.  The three accepted proofs and their measurements permit direct comparison against the same artifact.
 
 | File | Contents |
 |---|---|
@@ -66,10 +78,18 @@ Every retained file either fixes the experiment, records the proof inputs, or re
 | [Allocator-window proof](allocator-proof.lean) | The controlled proof generated with the generalized allocator theorem. |
 | [Allocator-window journal](allocator-proof-journal.md) | The controlled agent's chronological account of nineteen edited checks. |
 | [Allocator-window telemetry](allocator-proof-telemetry.json) | The controlled run's measured proof-session and outer-acceptance intervals. |
-| [Compiler annotations](program.annotations.json) | The empty region set emitted before loop-oriented annotations existed. |
-| [Proof recipe plan](proof-recipes.json) | The empty checked recipe plan supplied to the baseline agent. |
-| [Selected strategy notes](proof-strategies.md) | The program-feature-selected proof guidance. |
-| [Program feature report](proof-task-features.json) | The reachable instruction, local, loop, memory, arithmetic, and allocation facts. |
+| [Map-wrapper proof](map-proof.lean) | The unchanged deterministic proof using the complete checked theorem. |
+| [Map-wrapper journal](map-proof-journal.md) | The final agent's record of its successful first check. |
+| [Map-wrapper telemetry](map-proof-telemetry.json) | The final run's Stage 5, Codex, and outer-acceptance intervals. |
+| [Map-wrapper stage reports](map-stage-reports.json) | The accepted task report and source identities for the final run. |
+| [Baseline compiler annotations](baseline-program.annotations.json) | The empty region set emitted before loop-oriented annotations existed. |
+| [Baseline proof recipe plan](baseline-proof-recipes.json) | The empty checked recipe plan supplied to the baseline agent. |
+| [Baseline strategy notes](baseline-proof-strategies.md) | The feature-selected guidance supplied to the baseline agent. |
+| [Baseline feature report](baseline-proof-task-features.json) | The structural facts and guidance identity supplied to the baseline agent. |
+| [Compiler annotations](program.annotations.json) | The checked whole-map and bounded-dispatch regions used in the final run. |
+| [Proof recipe plan](proof-recipes.json) | The complete wrapper theorem and nested dispatch recipe. |
+| [Selected strategy notes](proof-strategies.md) | The final program-feature-selected proof guidance. |
+| [Program feature report](proof-task-features.json) | The final reachable instruction, local, loop, memory, arithmetic, and allocation facts. |
 | [Proof journal](proof-journal.md) | The agent's chronological account of 27 edited proof checks. |
 | [Proof telemetry](proof-telemetry.json) | The measured proof-session and outer-acceptance intervals. |
 | [Stage reports](stage-reports.json) | The accepted reports for specification, source, and artifact-proof generation. |
