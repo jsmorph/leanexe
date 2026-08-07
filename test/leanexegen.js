@@ -312,6 +312,7 @@ function testCodexProtocol() {
     artifactPrompt.includes("PROOF_RECIPES.json") &&
     artifactPrompt.includes("AnnotationMatches") &&
     artifactPrompt.includes("Keep PROOF_JOURNAL.md as a prose Markdown account") &&
+    artifactPrompt.includes("including after each Lean check") &&
     artifactPrompt.includes("Attempt the direct recipe") &&
     artifactPrompt.includes("deterministic theorem starter") &&
     artifactPrompt.includes("Use read-only commands to inspect FormalSpec, Program"),

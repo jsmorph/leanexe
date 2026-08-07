@@ -6400,4 +6400,4 @@ Leanexegen generates an artifact-specific `AnnotationMatches` module whose theor
 
 ## 2026-08-06: Proving-agent journal
 
-Leanexegen now gives each artifact-proof session a plain `PROOF_JOURNAL.md` file and asks Codex to record its reasoning, Lean results, and changes of direction in prose.  A successful session must add content beneath the heading, and publication retains the account as `proof-journal.md` under the proof package's existing content index.  Package verification checks its identity and basic Markdown shape, while Lean never imports it or uses it to establish the artifact theorem.
+Leanexegen now gives each artifact-proof session a plain `PROOF_JOURNAL.md` file and asks Codex to record its reasoning, Lean results, and changes of direction in prose after each Lean check and significant change in approach.  A successful session must add content beneath the heading, and publication retains the account as `proof-journal.md` under the proof package's existing content index.  Package verification checks its identity and basic Markdown shape, while Lean never imports it or uses it to establish the artifact theorem.
