@@ -57,6 +57,7 @@ const {
 } = require("../tools/leanexegen-telemetry");
 const {
   annotationMatchesSource,
+  fixedArraySearchTreeCompositions,
   proofRecipePlan,
   validateAnnotationDocument,
   validateProofRecipePlan,
@@ -997,6 +998,70 @@ def func0Def : Wasm.Function :=
     /do not match the less-than-node annotation/);
 }
 
+function testSearchTreeComposition() {
+  const document = {
+    schemaVersion: 1,
+    artifact: { byteLength: 8 },
+    functions: [{
+      wasmIndex: 0,
+      regions: [{
+        id: "function-0.eq-node-0",
+        kind: "leanexe.array.eq-node.v1",
+        location: { listPath: [], startIndex: 0, endIndex: 17 },
+        parameters: {
+          offset: 10,
+          index: 1,
+          keyLocal: 2,
+          operandOrder: "key-first",
+        },
+      }, {
+        id: "function-0.pair-result-0",
+        kind: "leanexe.array.pair-result.v1",
+        location: {
+          listPath: [{ instructionIndex: 16, field: "then" }],
+          startIndex: 0,
+          endIndex: 80,
+        },
+        parameters: {
+          destination: 3,
+          inputIndex: 2,
+          mode: "input-index-and-one-v1",
+          offset: 10,
+          secondValue: "1",
+        },
+      }, {
+        id: "function-0.pair-result-1",
+        kind: "leanexe.array.pair-result.v1",
+        location: {
+          listPath: [{ instructionIndex: 16, field: "else" }],
+          startIndex: 0,
+          endIndex: 71,
+        },
+        parameters: {
+          destination: 4,
+          firstValue: "0",
+          mode: "constants-v1",
+          offset: 10,
+          secondValue: "0",
+        },
+      }],
+    }],
+  };
+  const compositions = fixedArraySearchTreeCompositions(document);
+  assert(compositions.length === 1 &&
+    compositions[0].tree === ".leaf 1 2 3 4" &&
+    compositions[0].name === "function_0_search_tree_0",
+  "fixed search-tree composition did not recover a complete leaf");
+  const source = annotationMatchesSource(document, {
+    namespace: "Example.Generated",
+    programModule: "Example.Generated.Program",
+  }).source;
+  assert(source.includes("import Project.ProofKit.FixedArraySearchTree") &&
+    source.includes("def function_0_search_tree_0") &&
+    source.includes("function_0_search_tree_0.program 10 2"),
+  "annotation matches omitted the checked fixed search-tree descriptor");
+}
+
 function testPairResultAnnotationRecipes() {
   const wasm = Buffer.from([0, 97, 115, 109, 1, 0, 0, 0]);
   const document = {
@@ -1133,13 +1198,11 @@ function testArtifactPackage(job, formalSource) {
     !selectedStarter.includes("import Project.ProofKit.FixedArrayLtNode") &&
     !selectedStarter.includes("import Project.ProofKit.FixedArraySearchTree"),
   "artifact-proof starter did not select imports from checked recipes");
-  const treeStarter = artifactProofStarter(job, 0, true, { recipes: [{
-    regionKind: "leanexe.array.lt-node.v1",
-    direct: { module: "Project.ProofKit.FixedArrayLtNode" },
-    supporting: [],
-  }] });
-  assert(treeStarter.includes("import Project.ProofKit.FixedArrayLtNode") &&
-    treeStarter.includes("import Project.ProofKit.FixedArraySearchTree"),
+  const treeStarter = artifactProofStarter(job, 0, true, {
+    compositions: [{ direct: { module: "Project.ProofKit.FixedArraySearchTree" } }],
+    recipes: [],
+  });
+  assert(treeStarter.includes("import Project.ProofKit.FixedArraySearchTree"),
   "artifact-proof starter did not offer tree composition for a checked tree");
   expectFailure(() => parseProofStrategySections(
     "<!-- leanexegen-section:strategy.core begin -->\n" +
@@ -1351,6 +1414,7 @@ try {
   testAnnotationRecipePlan();
   testLengthDispatchAnnotationRecipes();
   testLessThanNodeAnnotationRecipes();
+  testSearchTreeComposition();
   testPairResultAnnotationRecipes();
   const { job, formalSource } = testCodexProtocol();
   testMockedCodex(job);
