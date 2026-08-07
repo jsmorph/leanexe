@@ -243,12 +243,12 @@ def allocFrame (offset : Nat) (base : Locals)
 
 set_option maxHeartbeats 1000000 in
 set_option Elab.async false in
-theorem region_spec
-    (offset : Nat)
+theorem region_spec_withTail
+    (offset tail : Nat)
     (module_ : Wasm.Module) (env : HostEnv Unit) (st : Store Unit) (frame : Locals)
     (heapTop capacity stride allocs : UInt64)
     (hParams : frame.params.length = 1)
-    (hLocals : frame.locals.length = offset + 14)
+    (hLocals : frame.locals.length = offset + 14 + tail)
     (hValues : frame.values = [])
     (hCapacityLocal : frame.locals[offset + 8]? = some (.i64 capacity))
     (hCapacity : 8 ≤ capacity.toNat)
@@ -270,13 +270,20 @@ theorem region_spec
   have hNot12 : ¬offset + 12 < 1 := by omega
   have hNot13 : ¬offset + 13 < 1 := by omega
   have hNot14 : ¬offset + 14 < 1 := by omega
-  have hValid5 : offset + 5 < 1 + (offset + 14) := by omega
-  have hValid9 : offset + 9 < 1 + (offset + 14) := by omega
-  have hValid10 : offset + 10 < 1 + (offset + 14) := by omega
-  have hValid11 : offset + 11 < 1 + (offset + 14) := by omega
-  have hValid12 : offset + 12 < 1 + (offset + 14) := by omega
-  have hValid13 : offset + 13 < 1 + (offset + 14) := by omega
-  have hValid14 : offset + 14 < 1 + (offset + 14) := by omega
+  have hValid5 : offset + 5 < 1 + (offset + 14 + tail) := by omega
+  have hValid9 : offset + 9 < 1 + (offset + 14 + tail) := by omega
+  have hValid10 : offset + 10 < 1 + (offset + 14 + tail) := by omega
+  have hValid11 : offset + 11 < 1 + (offset + 14 + tail) := by omega
+  have hValid12 : offset + 12 < 1 + (offset + 14 + tail) := by omega
+  have hValid13 : offset + 13 < 1 + (offset + 14 + tail) := by omega
+  have hValid14 : offset + 14 < 1 + (offset + 14 + tail) := by omega
+  have hLocal4 : offset + 4 < offset + 14 + tail := by omega
+  have hLocal8 : offset + 8 < offset + 14 + tail := by omega
+  have hLocal9 : offset + 9 < offset + 14 + tail := by omega
+  have hLocal10 : offset + 10 < offset + 14 + tail := by omega
+  have hLocal11 : offset + 11 < offset + 14 + tail := by omega
+  have hLocal12 : offset + 12 < offset + 14 + tail := by omega
+  have hLocal13 : offset + 13 < offset + 14 + tail := by omega
   have hCapacityGet : frame.locals[offset + 8] = .i64 capacity := by
     have h := hCapacityLocal
     rw [List.getElem?_eq_getElem (by omega)] at h
@@ -284,7 +291,8 @@ theorem region_spec
   simp only [region, search, bump, finish, List.cons_append, List.nil_append]
   wp_alloc_window [hParams, hLocals, hValues, hCapacityGet,
     hNot5, hNot9, hNot10, hNot11, hNot12, hNot13, hNot14,
-    hValid5, hValid9, hValid10, hValid11, hValid12, hValid13, hValid14]
+    hValid5, hValid9, hValid10, hValid11, hValid12, hValid13, hValid14,
+    hLocal4, hLocal8, hLocal9, hLocal10, hLocal11, hLocal12, hLocal13]
   simp only [hFreeList]
   apply wp_block_cons
   apply wp_loop_cons
@@ -298,12 +306,14 @@ theorem region_spec
     simp only [searchBody, searchFrame]
     wp_alloc_window [hParams, hLocals, hValues, hCapacityGet,
       hNot5, hNot9, hNot10, hNot11, hNot12, hNot13, hNot14,
-      hValid5, hValid9, hValid10, hValid11, hValid12, hValid13, hValid14]
+      hValid5, hValid9, hValid10, hValid11, hValid12, hValid13, hValid14,
+      hLocal4, hLocal8, hLocal9, hLocal10, hLocal11, hLocal12, hLocal13]
     refine wp_iff_cons rfl ?_
     rw [if_pos (by simp)]
     wp_alloc_window [hParams, hLocals, hValues, hCapacityGet,
       hNot5, hNot9, hNot10, hNot11, hNot12, hNot13, hNot14,
-      hValid5, hValid9, hValid10, hValid11, hValid12, hValid13, hValid14]
+      hValid5, hValid9, hValid10, hValid11, hValid12, hValid13, hValid14,
+      hLocal4, hLocal8, hLocal9, hLocal10, hLocal11, hLocal12, hLocal13]
     simp only [hHeapTop]
     have hFacts := Allocation.bumpFacts heapTop capacity
       st.mem.pages hFitMemory hPages
@@ -311,7 +321,8 @@ theorem region_spec
     rw [if_neg (by simpa using hFacts.noOverflow)]
     wp_alloc_window [hParams, hLocals, hValues, hCapacityGet,
       hNot5, hNot9, hNot10, hNot11, hNot12, hNot13, hNot14,
-      hValid5, hValid9, hValid10, hValid11, hValid12, hValid13, hValid14]
+      hValid5, hValid9, hValid10, hValid11, hValid12, hValid13, hValid14,
+      hLocal4, hLocal8, hLocal9, hLocal10, hLocal11, hLocal12, hLocal13]
     rw [hMemory32]
     refine wp_iff_cons rfl ?_
     rw [if_neg (by simpa using hFacts.noGrow)]
@@ -376,12 +387,14 @@ theorem region_spec
       hCapacityLocal, hCapacityGet,
       hNot5, hNot9, hNot10, hNot11, hNot12, hNot13, hNot14,
       hValid5, hValid9, hValid10, hValid11, hValid12, hValid13, hValid14,
+      hLocal4, hLocal8, hLocal9, hLocal10, hLocal11, hLocal12, hLocal13,
       hHeader0ToNat]
     simp only [wp_store64_cons, hTwo32, UInt32.toNat_zero, Nat.add_zero]
     rw [if_neg (Nat.not_lt.mpr hBaseBound32)]
     wp_alloc_to_store [hParams, hLocals, hValues, hCapacityLocal, hCapacityGet,
       hNot5, hNot9, hNot10, hNot11, hNot12, hNot13, hNot14,
       hValid5, hValid9, hValid10, hValid11, hValid12, hValid13, hValid14,
+      hLocal4, hLocal8, hLocal9, hLocal10, hLocal11, hLocal12, hLocal13,
       hFacts.header40ToNat]
     simp only [wp_store64_cons, hTwo32, UInt32.toNat_zero, Nat.add_zero,
       Mem.write64_pages]
@@ -389,6 +402,7 @@ theorem region_spec
     wp_alloc_to_store [hParams, hLocals, hValues, hCapacityLocal, hCapacityGet,
       hNot5, hNot9, hNot10, hNot11, hNot12, hNot13, hNot14,
       hValid5, hValid9, hValid10, hValid11, hValid12, hValid13, hValid14,
+      hLocal4, hLocal8, hLocal9, hLocal10, hLocal11, hLocal12, hLocal13,
       hFacts.header32ToNat]
     simp only [wp_store64_cons, hTwo32, UInt32.toNat_zero, Nat.add_zero,
       Mem.write64_pages]
@@ -396,6 +410,7 @@ theorem region_spec
     wp_alloc_to_store [hParams, hLocals, hValues, hCapacityLocal, hCapacityGet,
       hNot5, hNot9, hNot10, hNot11, hNot12, hNot13, hNot14,
       hValid5, hValid9, hValid10, hValid11, hValid12, hValid13, hValid14,
+      hLocal4, hLocal8, hLocal9, hLocal10, hLocal11, hLocal12, hLocal13,
       hFacts.header24ToNat]
     simp only [wp_store64_cons, hTwo32, UInt32.toNat_zero, Nat.add_zero,
       Mem.write64_pages]
@@ -403,6 +418,7 @@ theorem region_spec
     wp_alloc_to_store [hParams, hLocals, hValues, hCapacityLocal, hCapacityGet,
       hNot5, hNot9, hNot10, hNot11, hNot12, hNot13, hNot14,
       hValid5, hValid9, hValid10, hValid11, hValid12, hValid13, hValid14,
+      hLocal4, hLocal8, hLocal9, hLocal10, hLocal11, hLocal12, hLocal13,
       hFacts.header16ToNat]
     simp only [wp_store64_cons, hTwo32, UInt32.toNat_zero, Nat.add_zero,
       Mem.write64_pages]
@@ -410,6 +426,7 @@ theorem region_spec
     wp_alloc_to_store [hParams, hLocals, hValues, hCapacityLocal, hCapacityGet,
       hNot5, hNot9, hNot10, hNot11, hNot12, hNot13, hNot14,
       hValid5, hValid9, hValid10, hValid11, hValid12, hValid13, hValid14,
+      hLocal4, hLocal8, hLocal9, hLocal10, hLocal11, hLocal12, hLocal13,
       hFacts.header8ToNat]
     simp only [wp_store64_cons, hTwo32, UInt32.toNat_zero, Nat.add_zero,
       Mem.write64_pages]
@@ -417,11 +434,36 @@ theorem region_spec
     rw [wp_nil]
     wp_alloc_window [hAllocs, hParams, hLocals, hValues, hCapacityGet,
       hNot5, hNot9, hNot10, hNot11, hNot12, hNot13, hNot14,
-      hValid5, hValid9, hValid10, hValid11, hValid12, hValid13, hValid14]
+      hValid5, hValid9, hValid10, hValid11, hValid12, hValid13, hValid14,
+      hLocal4, hLocal8, hLocal9, hLocal10, hLocal11, hLocal12, hLocal13]
     simpa only [FixedArrayAllocator.allocStore, allocFrame,
       FixedArrayAllocator.headerMem,
       Memory.toUInt32_eq_ofNat, hFacts.rootToNat,
       hFacts.header40ToNat, hFacts.header32ToNat, hFacts.header24ToNat,
       hFacts.header16ToNat, hFacts.header8ToNat, hValues] using hNext
+
+theorem region_spec
+    (offset : Nat)
+    (module_ : Wasm.Module) (env : HostEnv Unit) (st : Store Unit) (frame : Locals)
+    (heapTop capacity stride allocs : UInt64)
+    (hParams : frame.params.length = 1)
+    (hLocals : frame.locals.length = offset + 14)
+    (hValues : frame.values = [])
+    (hCapacityLocal : frame.locals[offset + 8]? = some (.i64 capacity))
+    (hCapacity : 8 ≤ capacity.toNat)
+    (hFitMemory : heapTop.toNat + 48 + capacity.toNat ≤ st.mem.pages * 65536)
+    (hPages : st.mem.pages ≤ 65536)
+    (hMemory32 : module_.memIs64 = false)
+    (hHeapTop : st.globals.globals[0]? = some (.i64 heapTop))
+    (hFreeList : st.globals.globals[1]? = some (.i64 0))
+    (hAllocs : st.globals.globals[2]? = some (.i64 allocs))
+    (Q : Assertion Unit) (rest : Wasm.Program)
+    (hNext : wp module_ rest Q
+      (FixedArrayAllocator.allocStore st heapTop capacity stride allocs)
+      (allocFrame offset frame heapTop capacity) env) :
+    wp module_ (region offset stride ++ rest) Q st frame env := by
+  exact region_spec_withTail offset 0 module_ env st frame heapTop capacity stride allocs
+    hParams (by simpa using hLocals) hValues hCapacityLocal hCapacity hFitMemory hPages
+    hMemory32 hHeapTop hFreeList hAllocs Q rest hNext
 
 end Project.ProofKit.FixedArrayAllocatorWindow

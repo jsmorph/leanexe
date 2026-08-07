@@ -584,9 +584,9 @@ function proofPrompt(request, job, entryIndex) {
     `FixedArrayAllocator.region <stride>, then supply the existing capacity local, memory-fit, page, ` +
     `and allocator-global facts and continue from allocStore and allocFrame.  Import ` +
     `Project.ProofKit.FixedArrayAllocatorWindow when the same allocator occupies a shifted local ` +
-    `window.  Its region offset stride and region_spec theorem cover combined locals offset+5, ` +
-    `offset+9 through offset+14, and a frame with offset+14 internal locals.  Use offset 0 for the ` +
-    `fourteen-local wrapper and offset 10 for the twenty-four-local wrapper.  Select this theorem ` +
+    `window.  Its region offset stride and region_spec_withTail theorem cover combined locals ` +
+    `offset+5, offset+9 through offset+14, and a frame with offset+14+tail internal locals.  Use ` +
+    `region_spec for the exact offset+14 specialization.  Select one of these theorems ` +
     `before unfolding or symbolically executing the allocator.  Import ` +
     `Project.ProofKit.FixedArrayInput when the artifact uses the standard checked indexed element ` +
     `loader.  Its program offset index and program_spec theorem copy the input pointer through ` +
