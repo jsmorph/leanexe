@@ -296,6 +296,7 @@ function testCodexProtocol() {
     artifactPrompt.includes("wp_fixed_array_lt_node") &&
     artifactPrompt.includes("using hSearch, hInput, hIndex") &&
     artifactPrompt.includes("FixedArraySearchTree.Tree.program_spec") &&
+    artifactPrompt.includes("Tree.wrapperProgram_spec") &&
     artifactPrompt.includes("Project.ProofKit.FixedArrayLengthDispatch") &&
     artifactPrompt.includes("wp_fixed_array_length_dispatch") &&
     artifactPrompt.includes("Project.ProofKit.FixedArrayTraversalInput") &&
@@ -326,6 +327,36 @@ function testCodexProtocol() {
     artifactPrompt.includes("before editing") &&
     artifactPrompt.includes("Use read-only commands to inspect FormalSpec, Program"),
   "artifact-proof task did not receive the proof-kit catalog or tactics");
+  const wrapperStarter = artifactProofStarter(job, 3, true, {
+    schemaVersion: 1,
+    attemptOrder: ["direct", "composition", "tactic", "focused-guidance"],
+    compositions: [{
+      compositionVersion: 2,
+      kind: "fixed-array-search-tree-v1",
+      functionIndex: 3,
+      descriptor: `${job.namespace}.AnnotationMatches.function_3_search_tree_0`,
+      regionEquality: `${job.namespace}.AnnotationMatches.function_3_search_tree_0_eq`,
+      direct: {
+        module: "Project.ProofKit.FixedArraySearchTree",
+        theorem: "Project.ProofKit.FixedArraySearchTree.Tree.wrapperProgram_spec",
+      },
+      wrapper: {
+        expectedSize: 15,
+        inputLocal: 15,
+        invalidDestination: 1,
+        keyIndex: 0,
+        keyLocal: 2,
+        offset: 10,
+      },
+    }],
+    recipes: [],
+  });
+  assert(wrapperStarter.includes("tree.wrapperProgram 15 15 10") &&
+    wrapperStarter.includes("2 1)") &&
+    wrapperStarter.includes("tree.wrapperProgram_spec") &&
+    wrapperStarter.includes("?_ ?_ ?_") &&
+    !wrapperStarter.includes("have hLengthRead"),
+  "complete search-tree composition did not select the semantic-goal starter");
   expectFailure(() => validateProgramImports(
     job, `import ${job.formalSpecModule}\n\ndef compute (a : Array UInt64) := a\n`),
   /must not import/);
@@ -1060,6 +1091,91 @@ function testSearchTreeComposition() {
     source.includes("def function_0_search_tree_0") &&
     source.includes("function_0_search_tree_0.program 10 2"),
   "annotation matches omitted the checked fixed search-tree descriptor");
+
+  const wrapperDocument = structuredClone(document);
+  const validPath = [{ instructionIndex: 19, field: "else" }];
+  wrapperDocument.functions[0].regions[0].location = {
+    listPath: validPath,
+    startIndex: 11,
+    endIndex: 28,
+  };
+  wrapperDocument.functions[0].regions[1].location.listPath = [
+    ...validPath, { instructionIndex: 27, field: "then" },
+  ];
+  wrapperDocument.functions[0].regions[2].location.listPath = [
+    ...validPath, { instructionIndex: 27, field: "else" },
+  ];
+  wrapperDocument.functions[0].regions.unshift({
+    id: "function-0.length-dispatch-0",
+    kind: "leanexe.array.length-dispatch.v1",
+    location: { listPath: [], startIndex: 0, endIndex: 20 },
+    parameters: {
+      continuation: "fallthrough",
+      encoding: "ne-normalized-v1",
+      expectedSize: 3,
+      inputLocal: 15,
+      invalidBranch: "then",
+      validBranch: "else",
+    },
+  }, {
+    id: "function-0.search-key-0",
+    kind: "leanexe.array.search-key.v1",
+    location: { listPath: validPath, startIndex: 0, endIndex: 11 },
+    parameters: {
+      continuation: "fallthrough",
+      index: 0,
+      keyLocal: 2,
+      offset: 10,
+    },
+  }, {
+    id: "function-0.pair-result-invalid",
+    kind: "leanexe.array.pair-result.v1",
+    location: {
+      listPath: [{ instructionIndex: 19, field: "then" }],
+      startIndex: 0,
+      endIndex: 71,
+    },
+    parameters: {
+      destination: 1,
+      firstValue: "0",
+      mode: "constants-v1",
+      offset: 10,
+      secondValue: "0",
+    },
+  });
+  const instructions = (count, indentation) => Array.from(
+    { length: count }, () => `${indentation}.constI64 (0 : UInt64),`).join("\n");
+  const wrapperProgram = `def func0 : Wasm.Program :=
+  [
+${instructions(19, "  ")}
+  .iff 0 0 [
+${instructions(71, "    ")}
+  ] [
+${instructions(27, "    ")}
+    .iff 0 0 [
+      .constI64 (0 : UInt64)
+    ] [
+      .constI64 (0 : UInt64)
+    ]
+  ],
+  .localGet 14
+  ]
+
+def func0Def : Wasm.Function :=
+  { params := [.i64], locals := [], body := func0, results := [.i64] }
+`;
+  const wrapperCompositions = fixedArraySearchTreeCompositions(
+    wrapperDocument, wrapperProgram);
+  assert(wrapperCompositions.length === 1 &&
+    JSON.stringify(wrapperCompositions[0].wrapper) === JSON.stringify({
+      expectedSize: 3,
+      inputLocal: 15,
+      invalidDestination: 1,
+      keyIndex: 0,
+      keyLocal: 2,
+      offset: 10,
+    }),
+  "complete fixed search wrapper did not produce wrapper parameters");
 }
 
 function testPairResultAnnotationRecipes() {

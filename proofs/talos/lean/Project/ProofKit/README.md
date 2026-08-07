@@ -276,6 +276,8 @@ Import `Project.ProofKit.FixedArraySearchTree` when a fixed binary search tree c
 
 `Tree.program_spec` proves the complete tree by induction from one `SearchFrame`, one `PairResultContext`, the descriptor's `Tree.Valid` bounds, and one equation between the public expected result and `Tree.result`.  The theorem applies `FixedArrayEqNode`, `FixedArrayLtNode`, and the pair-result composition theorems at every node and carries the nested branch continuations internally.  A generated `AnnotationMatches` theorem establishes that the decoded artifact region equals `Tree.program`, leaving Lean to check the complete composition.
 
+`Tree.wrapperProgram` adds the compiler's fixed-length dispatch, invalid zero pair, saved-key load, and public result local around a tree.  `Tree.wrapperProgram_spec` proves that complete exported-function body from the entry frame and runtime array context.  Its remaining application-specific premises state the invalid-size result, descriptor bounds under the valid size, and equality between the formal result and `Tree.result`.
+
 ```lean
 let tree := AnnotationMatches.function_0_search_tree_0
 

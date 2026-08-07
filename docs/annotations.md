@@ -377,6 +377,8 @@ Demo 3's complete seven-node search program is definitionally equal to one descr
 
 Three fresh composition runs produced the same 144-line proof and completed Stage 5 in 405.385, 326.320, and 303.478 seconds, giving a 326.320-second median.  The preceding journal-guided node proof took 770.948 seconds and 421 lines, while the historical pair-result reference took 278.656 seconds and 672 lines.  Every journal confirms that the agent selected the composition first and passed its first build after one proof edit, establishing a stable proof method while leaving headless-agent latency as the largest remaining cost.
 
+Those three journals also show that Codex reconstructed the same outer proof around the tree: fixed-length dispatch, invalid pair allocation, saved-key load, search-frame construction, and public return.  `Tree.wrapperProgram_spec` now proves that composition generically, and the recipe planner recognizes the complete decoded wrapper only when the annotated branches cover the function body through its final result-local read.  A version-two composition causes the deterministic starter to apply this theorem and leave three semantic goals concerning invalid input, descriptor validity, and agreement with the formal result; a fresh timing run must determine whether this reduction lowers total proof-generation time.
+
 ## Completion criteria
 
 The first complete increment emits a validated sidecar for every ordinary library-mode compilation requested by `leanexegen`.  Demos 1, 2, and 3 prove the same specifications over the same WASM bytes through an annotation-driven deterministic proof plan.  The retained evidence records proof-generation timings, annotation validation, region coverage, and independent Lean acceptance.

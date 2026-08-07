@@ -130,6 +130,22 @@ def SearchFrame (offset keyLocal : Nat) (frame : Locals)
   frame.values = [] ∧
   frame.get keyLocal = some (.i64 key)
 
+theorem keyFrame_searchFrame
+    (offset index keyLocal : Nat) (frame : Locals) (inputPtr value : UInt64)
+    (hParams : frame.params = [.i64 inputPtr])
+    (hLocals : frame.locals.length = offset + 14)
+    (hKeyPositive : 0 < keyLocal)
+    (hKey : keyLocal < offset + 15) :
+    SearchFrame offset keyLocal
+      (keyFrame offset keyLocal frame inputPtr index value) inputPtr value := by
+  refine ⟨?_, ?_, rfl, ?_⟩
+  · rw [keyFrame_params]
+    exact hParams
+  · rw [keyFrame_locals_length]
+    exact hLocals
+  · exact keyFrame_get_key offset keyLocal frame inputPtr index value
+      (by simp [hParams]) hLocals hKeyPositive hKey
+
 theorem SearchFrame.afterLoad
     {offset keyLocal : Nat} {frame : Locals} {inputPtr key value : UInt64}
     {index : Nat} (h : SearchFrame offset keyLocal frame inputPtr key)
