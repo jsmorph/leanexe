@@ -126,6 +126,8 @@ A successful command publishes `myprogram.wasm` and `myprogram.proof/`.  The sid
 | `host-assumptions.json` | Host calls, store conditions, ABI expectations, or other assumptions recorded by the formal task. |
 | `proof/LeanExeGen/...` | Formal specification, Source, Talos program, Behavior, deterministic artifact proof modules, byte checker, and axiom audit. |
 
+The artifact-proof task starts with `PROOF_JOURNAL.md` containing only its heading.  Its prompt asks Codex to update the prose after each Lean check and each significant change in approach, while leaving the form and organization to Codex.  Publication renames the file to `proof-journal.md`, includes its digest in `package.json`, and excludes it from every Lean import and theorem dependency.
+
 Verification validates the complete file set and every digest, recomputes every task-report and accepted-source hash, checks dependency pins, and checks the fixed formal declaration identity.  It compares the packaged proof catalog with the checkout, checks the digest covering the catalog and allowed proof-kit module, and audits that module's imports and forbidden identifiers.  It then creates a fresh formal declaration checker, byte-comparison module, and declaration-audit module before rebuilding the exact artifact theorem, checking each Git dependency and the Lean binary along the way.
 
 ```sh
