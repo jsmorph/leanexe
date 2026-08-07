@@ -328,6 +328,8 @@ function testCodexProtocol() {
     artifactPrompt.includes("firstElementRead_add") &&
     artifactPrompt.includes("word_reads") &&
     artifactPrompt.includes("wp_entry_to_loop <functionDef>") &&
+    artifactPrompt.includes("leanexe.loop.while.v1 annotation") &&
+    artifactPrompt.includes("leanexe.loop.fold.v1") &&
     artifactPrompt.includes(`wp_entry_single_call ${job.namespace}.func3Def`) &&
     artifactPrompt.includes("PROOF_STRATEGIES.md contains optional") &&
     artifactPrompt.includes("PROOF_TASK_FEATURES.json") &&
@@ -1082,6 +1084,141 @@ def func0Def : Wasm.Function :=
   expectFailure(() => proofRecipePlan(document, truncated), /boundary does not match/);
 }
 
+function testLoopAnnotationRecipes() {
+  const wasm = Buffer.from([0, 97, 115, 109, 1, 0, 0, 0]);
+  const whileProgram = `def func0 : Wasm.Program :=
+  [
+  .constI64 (0 : UInt64),
+  .localSet 5,
+  .block 0 0 [
+    .loop 0 0 [
+      .localGet 0,
+      .eqz,
+      .br_if 1,
+      .localGet 1,
+      .localSet 2,
+      .br 0
+    ]
+  ],
+  .localGet 2
+]
+
+def func0Def : Wasm.Function :=
+  { params := [.i64], locals := [.i64, .i64, .i64], body := func0, results := [.i64] }
+`;
+  const whileDocument = {
+    schemaVersion: 1,
+    artifact: { byteLength: wasm.length },
+    functions: [{
+      wasmIndex: 0,
+      definedFunction: 0,
+      sourceName: "Example.loop",
+      exports: [],
+      parameters: 1,
+      results: 1,
+      locals: 3,
+      regions: [{
+        id: "function-0.while-loop-0",
+        kind: "leanexe.loop.while.v1",
+        location: { listPath: [], startIndex: 2, endIndex: 3 },
+        parameters: {
+          condition: "Cond.not (Cond.eqU64 (Expr.local 0) (Expr.u64 0))",
+          body: "Stmt.assign 2 (Expr.local 1)",
+          scratchStart: 4,
+          continuation: "fallthrough",
+        },
+        generatedBy: ["LeanExe.Wasm.Binary.CoreWasm.emitStmtAnnotated"],
+      }],
+    }],
+  };
+  validateAnnotationDocument(whileDocument, wasm);
+  const whilePlan = proofRecipePlan(whileDocument, whileProgram, [
+    "strategy.loops", "strategy.frames", "strategy.arithmetic",
+  ]);
+  validateProofRecipePlan(whilePlan, whileDocument);
+  assert(whilePlan.recipes.length === 1 &&
+    whilePlan.recipes[0].direct.theorem === "Wasm.wp_loop_cons" &&
+    whilePlan.recipes[0].guidance.length === 3,
+  "while annotation did not select the generic loop recipe");
+  expectFailure(() => proofRecipePlan(
+    whileDocument, whileProgram.replace("      .br 0", "      .br 1")), /back edge/);
+
+  const foldProgram = `def func0 : Wasm.Program :=
+  [
+  .constI64 (7 : UInt64),
+  .localSet 1,
+  .constI64 (0 : UInt64),
+  .localSet 6,
+  .block 0 0 [
+    .loop 0 0 [
+      .localGet 1,
+      .localSet 5,
+      .localGet 5,
+      .localSet 1,
+      .constI64 (1 : UInt64),
+      .localSet 6,
+      .localGet 4,
+      .constI64 (0 : UInt64),
+      .eqI64,
+      .eqz,
+      .br_if 1,
+      .br 0
+    ]
+  ],
+  .localGet 1,
+  .localSet 7,
+  .localGet 7
+]
+
+def func0Def : Wasm.Function :=
+  { params := [.i64], locals := [.i64, .i64, .i64], body := func0, results := [.i64] }
+`;
+  const foldDocument = {
+    schemaVersion: 1,
+    artifact: { byteLength: wasm.length },
+    functions: [{
+      wasmIndex: 0,
+      definedFunction: 0,
+      sourceName: "Example.fold",
+      exports: [],
+      parameters: 1,
+      results: 1,
+      locals: 7,
+      regions: [{
+        id: "function-0.loop-fold-0",
+        kind: "leanexe.loop.fold.v1",
+        location: { listPath: [], startIndex: 0, endIndex: 7 },
+        parameters: {
+          resultWidth: 1,
+          accumulatorStart: 1,
+          accumulatorLocals: [1],
+          initialValues: ["Expr.u64 7"],
+          bodyValues: ["Expr.local 1"],
+          bodyLets: [],
+          doneValue: "Expr.local 4",
+          releaseOffsets: [],
+          scratchStart: 4,
+          doneLocal: 4,
+          stagedValueStart: 5,
+          releaseReadyLocal: 6,
+          resultLocals: [7],
+          continuation: "function-results",
+        },
+        generatedBy: ["LeanExe.Wasm.Binary.CoreWasm.emitLoopFoldMultiSlotAssign"],
+      }],
+    }],
+  };
+  validateAnnotationDocument(foldDocument, wasm);
+  const foldPlan = proofRecipePlan(foldDocument, foldProgram, ["strategy.loops"]);
+  validateProofRecipePlan(foldPlan, foldDocument);
+  assert(foldPlan.recipes.length === 1 &&
+    foldPlan.recipes[0].direct.module === "Project.ProofKit.Control",
+  "loop-fold annotation did not select the generic loop recipe");
+  const wrongAccumulator = structuredClone(foldDocument);
+  wrongAccumulator.functions[0].regions[0].parameters.accumulatorLocals = [2];
+  expectFailure(() => validateAnnotationDocument(wrongAccumulator, wasm), /must be consecutive/);
+}
+
 function testLessThanNodeAnnotationRecipes() {
   const wasm = Buffer.from([0, 97, 115, 109, 1, 0, 0, 0]);
   const document = {
@@ -1749,6 +1886,7 @@ try {
   testLengthDispatchAnnotationRecipes();
   testMapAddAnnotationRecipe();
   testFilterLtAnnotationRecipe();
+  testLoopAnnotationRecipes();
   testLessThanNodeAnnotationRecipes();
   testSearchTreeComposition();
   testPairResultAnnotationRecipes();

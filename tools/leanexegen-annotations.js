@@ -370,6 +370,106 @@ function validateFixedArrayFilterLt(region, description) {
   }
 }
 
+function validateRegionLocation(region, description) {
+  exactKeys(region.location, ["endIndex", "listPath", "startIndex"],
+    `${description}.location`);
+  natural(region.location.startIndex, `${description}.location.startIndex`);
+  natural(region.location.endIndex, `${description}.location.endIndex`);
+  if (region.location.startIndex >= region.location.endIndex) {
+    fail(`${description}.location must be nonempty`);
+  }
+  for (const [index, step] of array(
+    region.location.listPath, `${description}.location.listPath`).entries()) {
+    exactKeys(step, ["field", "instructionIndex"],
+      `${description}.location.listPath[${index}]`);
+    natural(step.instructionIndex,
+      `${description}.location.listPath[${index}].instructionIndex`);
+    if (!["block", "loop", "then", "else"].includes(step.field)) {
+      fail(`${description}.location.listPath[${index}].field is unsupported`);
+    }
+  }
+}
+
+function validateLoopFold(region, description) {
+  exactKeys(region, ["generatedBy", "id", "kind", "location", "parameters"], description);
+  string(region.id, `${description}.id`);
+  if (region.kind !== "leanexe.loop.fold.v1") fail(`${description}.kind is unsupported`);
+  validateRegionLocation(region, description);
+  if (region.location.listPath.length !== 0 || region.location.startIndex !== 0) {
+    fail(`${description}.location must begin at the top-level function body`);
+  }
+  exactKeys(region.parameters, [
+    "accumulatorLocals", "accumulatorStart", "bodyLets", "bodyValues",
+    "continuation", "doneLocal", "doneValue", "initialValues", "releaseOffsets",
+    "releaseReadyLocal", "resultLocals", "resultWidth", "scratchStart",
+    "stagedValueStart",
+  ], `${description}.parameters`);
+  const parameters = region.parameters;
+  natural(parameters.resultWidth, `${description}.parameters.resultWidth`);
+  if (parameters.resultWidth === 0) fail(`${description}.parameters.resultWidth must be positive`);
+  natural(parameters.accumulatorStart, `${description}.parameters.accumulatorStart`);
+  natural(parameters.scratchStart, `${description}.parameters.scratchStart`);
+  natural(parameters.doneLocal, `${description}.parameters.doneLocal`);
+  natural(parameters.stagedValueStart, `${description}.parameters.stagedValueStart`);
+  natural(parameters.releaseReadyLocal, `${description}.parameters.releaseReadyLocal`);
+  const accumulatorLocals = array(
+    parameters.accumulatorLocals, `${description}.parameters.accumulatorLocals`);
+  const initialValues = array(parameters.initialValues, `${description}.parameters.initialValues`);
+  const bodyValues = array(parameters.bodyValues, `${description}.parameters.bodyValues`);
+  const resultLocals = array(parameters.resultLocals, `${description}.parameters.resultLocals`);
+  if ([accumulatorLocals, initialValues, bodyValues, resultLocals]
+    .some((values) => values.length !== parameters.resultWidth)) {
+    fail(`${description}.parameters result-width arrays differ in length`);
+  }
+  accumulatorLocals.forEach((local, index) => {
+    if (natural(local, `${description}.parameters.accumulatorLocals[${index}]`) !==
+        parameters.accumulatorStart + index) {
+      fail(`${description}.parameters.accumulatorLocals must be consecutive`);
+    }
+  });
+  initialValues.forEach((value, index) =>
+    string(value, `${description}.parameters.initialValues[${index}]`));
+  bodyValues.forEach((value, index) =>
+    string(value, `${description}.parameters.bodyValues[${index}]`));
+  array(parameters.bodyLets, `${description}.parameters.bodyLets`).forEach((value, index) =>
+    string(value, `${description}.parameters.bodyLets[${index}]`));
+  string(parameters.doneValue, `${description}.parameters.doneValue`);
+  array(parameters.releaseOffsets, `${description}.parameters.releaseOffsets`)
+    .forEach((offset, index) => {
+      if (natural(offset, `${description}.parameters.releaseOffsets[${index}]`) >=
+          parameters.resultWidth) {
+        fail(`${description}.parameters.releaseOffsets[${index}] exceeds the result width`);
+      }
+    });
+  resultLocals.forEach((local, index) =>
+    natural(local, `${description}.parameters.resultLocals[${index}]`));
+  if (parameters.doneLocal < parameters.scratchStart ||
+      parameters.stagedValueStart !== parameters.doneLocal + 1 ||
+      parameters.releaseReadyLocal !== parameters.stagedValueStart + parameters.resultWidth ||
+      parameters.continuation !== "function-results") {
+    fail(`${description}.parameters has an invalid scratch layout or continuation`);
+  }
+  array(region.generatedBy, `${description}.generatedBy`).forEach((generator, index) =>
+    string(generator, `${description}.generatedBy[${index}]`));
+}
+
+function validateWhileLoop(region, description) {
+  exactKeys(region, ["generatedBy", "id", "kind", "location", "parameters"], description);
+  string(region.id, `${description}.id`);
+  if (region.kind !== "leanexe.loop.while.v1") fail(`${description}.kind is unsupported`);
+  validateRegionLocation(region, description);
+  exactKeys(region.parameters, ["body", "condition", "continuation", "scratchStart"],
+    `${description}.parameters`);
+  string(region.parameters.condition, `${description}.parameters.condition`);
+  string(region.parameters.body, `${description}.parameters.body`);
+  natural(region.parameters.scratchStart, `${description}.parameters.scratchStart`);
+  if (region.parameters.continuation !== "fallthrough") {
+    fail(`${description}.parameters has an unsupported continuation`);
+  }
+  array(region.generatedBy, `${description}.generatedBy`).forEach((generator, index) =>
+    string(generator, `${description}.generatedBy[${index}]`));
+}
+
 function validateAnnotationDocument(document, wasmBytes) {
   exactKeys(document, ["artifact", "functions", "schemaVersion"], "annotations");
   if (document.schemaVersion !== 1) fail("unsupported annotation schema");
@@ -421,6 +521,10 @@ function validateAnnotationDocument(document, wasmBytes) {
         validateFixedArrayMapAdd(region, `${description}.regions[${regionIndex}]`);
       } else if (region?.kind === "leanexe.array.filter-lt.v1") {
         validateFixedArrayFilterLt(region, `${description}.regions[${regionIndex}]`);
+      } else if (region?.kind === "leanexe.loop.fold.v1") {
+        validateLoopFold(region, `${description}.regions[${regionIndex}]`);
+      } else if (region?.kind === "leanexe.loop.while.v1") {
+        validateWhileLoop(region, `${description}.regions[${regionIndex}]`);
       } else {
         fail(`${description}.regions[${regionIndex}].kind is unsupported`);
       }
@@ -828,6 +932,123 @@ function matchFixedArrayFilterLtRegion(program, function_, region) {
   };
 }
 
+function matchLoopFoldRegion(program, function_, region) {
+  const body = programFunctionBody(program, function_.wasmIndex);
+  const instructions = resolveInstructionList(body, region.location.listPath);
+  const selected = instructions.slice(region.location.startIndex, region.location.endIndex);
+  if (selected.length !== region.location.endIndex - region.location.startIndex) {
+    fail(`${region.id}: decoded loop-fold region is truncated`);
+  }
+  const normalized = normalizeInstructions(selected);
+  const blockIndex = normalized.findIndex((instruction) => instruction.startsWith(".block "));
+  if (blockIndex < 2 || normalized.slice(0, blockIndex)
+    .slice(-2).join("\n") !==
+      `.constI64 (0 : UInt64)\n.localSet ${region.parameters.releaseReadyLocal}`) {
+    fail(`${region.id}: decoded loop-fold initialization boundary does not match`);
+  }
+  const expectedTargets = region.parameters.accumulatorLocals.flatMap((local, index) => [
+    `.localGet ${local}`,
+    `.localSet ${region.parameters.resultLocals[index]}`,
+  ]);
+  if (JSON.stringify(normalized.slice(blockIndex + 1)) !== JSON.stringify(expectedTargets)) {
+    fail(`${region.id}: decoded loop-fold result copies do not match`);
+  }
+  const blockPath = [
+    ...region.location.listPath,
+    { instructionIndex: region.location.startIndex + blockIndex, field: "block" },
+  ];
+  const block = normalizeInstructions(resolveInstructionList(body, blockPath));
+  if (block.length !== 1 || !block[0].startsWith(".loop ")) {
+    fail(`${region.id}: decoded loop-fold block does not contain one loop`);
+  }
+  const loop = normalizeInstructions(resolveInstructionList(body, [
+    ...blockPath,
+    { instructionIndex: 0, field: "loop" },
+  ]));
+  const expectedSuffix = [
+    ...region.parameters.accumulatorLocals.flatMap((local, index) => [
+      `.localGet ${region.parameters.stagedValueStart + index}`,
+      `.localSet ${local}`,
+    ]),
+    ".constI64 (1 : UInt64)",
+    `.localSet ${region.parameters.releaseReadyLocal}`,
+    `.localGet ${region.parameters.doneLocal}`,
+    ".constI64 (0 : UInt64)",
+    ".eqI64",
+    ".eqz",
+    ".br_if 1",
+    ".br 0",
+  ];
+  if (JSON.stringify(loop.slice(-expectedSuffix.length)) !== JSON.stringify(expectedSuffix)) {
+    fail(`${region.id}: decoded loop-fold back edge does not match`);
+  }
+  return {
+    functionIndex: function_.wasmIndex,
+    regionId: region.id,
+    regionKind: region.kind,
+    parameters: region.parameters,
+  };
+}
+
+function matchWhileLoopRegion(program, function_, region) {
+  const body = programFunctionBody(program, function_.wasmIndex);
+  const instructions = resolveInstructionList(body, region.location.listPath);
+  const selected = normalizeInstructions(
+    instructions.slice(region.location.startIndex, region.location.endIndex));
+  if (selected.length !== 1 || !selected[0].startsWith(".block ")) {
+    fail(`${region.id}: decoded while-loop region is not one structured block`);
+  }
+  const blockPath = [
+    ...region.location.listPath,
+    { instructionIndex: region.location.startIndex, field: "block" },
+  ];
+  const block = normalizeInstructions(resolveInstructionList(body, blockPath));
+  if (block.length !== 1 || !block[0].startsWith(".loop ")) {
+    fail(`${region.id}: decoded while-loop block does not contain one loop`);
+  }
+  const loop = normalizeInstructions(resolveInstructionList(body, [
+    ...blockPath,
+    { instructionIndex: 0, field: "loop" },
+  ]));
+  const exitIndex = loop.indexOf(".br_if 1");
+  if (exitIndex < 1 || loop[exitIndex - 1] !== ".eqz" || loop.at(-1) !== ".br 0") {
+    fail(`${region.id}: decoded while-loop guard or back edge does not match`);
+  }
+  return {
+    functionIndex: function_.wasmIndex,
+    regionId: region.id,
+    regionKind: region.kind,
+    parameters: region.parameters,
+  };
+}
+
+function loopRecipe(match, selectedSections = []) {
+  return {
+    recipeVersion: 1,
+    functionIndex: match.functionIndex,
+    regionId: match.regionId,
+    regionKind: match.regionKind,
+    applicability: "exact decoded instruction match",
+    direct: {
+      module: "Project.ProofKit.Control",
+      theorem: "Wasm.wp_loop_cons",
+    },
+    supporting: [
+      {
+        declaration: "Project.ProofKit.wp_block_loop",
+        purpose: "apply the block and loop rules after reaching the annotated region",
+      },
+      {
+        declaration: "Project.ProofKit.wp_entry_to_loop",
+        purpose: "reach a block-wrapped loop from a matching function entry",
+      },
+    ],
+    expectedPostcondition: "an invariant-preserving transition with a decreasing measure",
+    guidance: ["strategy.loops", "strategy.frames", "strategy.arithmetic"]
+      .filter((section) => selectedSections.includes(section)),
+  };
+}
+
 function directCallRecipe(match, selectedSections = [], tacticEligible = false) {
   const guidance = ["strategy.calls", "strategy.frames"]
     .filter((section) => selectedSections.includes(section));
@@ -1202,6 +1423,8 @@ function proofRecipePlan(
       } else if (region.kind === "leanexe.array.filter-lt.v1") {
         recipes.push(fixedArrayFilterLtRecipe(
           matches.get(region.id), selectedSections, annotationNamespace));
+      } else if (["leanexe.loop.fold.v1", "leanexe.loop.while.v1"].includes(region.kind)) {
+        recipes.push(loopRecipe(matches.get(region.id), selectedSections));
       } else {
         recipes.push(fixedArrayPairResultRecipe(
           matches.get(region.id), selectedSections, annotationNamespace));
@@ -1267,6 +1490,10 @@ function matchAnnotationDocument(document, program) {
         matches.push(matchFixedArrayMapAddRegion(program, function_, region));
       } else if (region.kind === "leanexe.array.filter-lt.v1") {
         matches.push(matchFixedArrayFilterLtRegion(program, function_, region));
+      } else if (region.kind === "leanexe.loop.fold.v1") {
+        matches.push(matchLoopFoldRegion(program, function_, region));
+      } else if (region.kind === "leanexe.loop.while.v1") {
+        matches.push(matchWhileLoopRegion(program, function_, region));
       } else {
         matches.push(matchFixedArrayPairResultRegion(program, function_, region));
       }
@@ -1455,6 +1682,11 @@ function validateProofRecipePlan(plan, document) {
             `.${recipe.regionId.replace(/[^A-Za-z0-9_]/g, "_")}_eq`) ||
           recipe.direct.program !== `Project.ProofKit.FixedArrayFilterLt.wrapperProgram ` +
             `${region.parameters.maximumSize} ${region.parameters.threshold}`) {
+        fail(`${description}.direct is unsupported`);
+      }
+    } else if (["leanexe.loop.fold.v1", "leanexe.loop.while.v1"].includes(region.kind)) {
+      if (recipe.direct.module !== "Project.ProofKit.Control" ||
+          recipe.direct.theorem !== "Wasm.wp_loop_cons") {
         fail(`${description}.direct is unsupported`);
       }
     } else if (recipe.direct.module !== "Project.ProofKit.FixedArrayPairResult" ||
@@ -1819,6 +2051,7 @@ module.exports = {
   fixedArraySearchKeyRecipe,
   fixedArraySearchChainCompositions,
   fixedArraySearchTreeCompositions,
+  loopRecipe,
   matchAnnotationDocument,
   matchDirectCallRegion,
   matchFixedArrayEqNodeRegion,
@@ -1828,6 +2061,8 @@ module.exports = {
   matchFixedArrayMapAddRegion,
   matchFixedArrayPairResultRegion,
   matchFixedArraySearchKeyRegion,
+  matchLoopFoldRegion,
+  matchWhileLoopRegion,
   proofRecipePlan,
   resolveInstructionList,
   validateAnnotationDocument,

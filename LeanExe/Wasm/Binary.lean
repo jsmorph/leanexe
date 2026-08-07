@@ -3174,7 +3174,7 @@ def emitResultAnnotated (releaseIndex scratch : Nat) (result : Expr) : Annotatio
               "LeanExe.Wasm.Binary.CoreWasm.emitFuncInstrs"
             ] }]
     | _ => #[]
-  { code, directCalls, lengthDispatches := #[], pairResults := #[] }
+  { code, directCalls, lengthDispatches := #[], pairResults := #[], whileLoops := #[] }
 
 def fixedArrayPairResult?
     (scratch : Nat) (stmt : Stmt) (code : List Instr) :
@@ -3242,7 +3242,8 @@ partial def emitStmtAnnotated
             ] }
         ]
         lengthDispatches := #[]
-        pairResults := #[] }
+        pairResults := #[]
+        whileLoops := #[] }
   | .seq first second =>
       let emitted := (emitStmtAnnotated releaseIndex scratch first).append
         (emitStmtAnnotated releaseIndex scratch second)
@@ -3269,6 +3270,11 @@ partial def emitStmtAnnotated
           Annotations.RelativeFixedArrayPairResult :=
         { result with
           listPath := #[{ instructionIndex := branchIndex, field }] ++ result.listPath }
+      let prefixWhileLoop
+          (field : String) (loop : Annotations.RelativeWhileLoop) :
+          Annotations.RelativeWhileLoop :=
+        { loop with
+          listPath := #[{ instructionIndex := branchIndex, field }] ++ loop.listPath }
       let currentDispatches :=
         match fixedArrayLengthDispatch? cond code with
         | some dispatch => #[dispatch]
@@ -3281,7 +3287,63 @@ partial def emitStmtAnnotated
           thenEmission.lengthDispatches.map (prefixDispatch "then") ++
             elseEmission.lengthDispatches.map (prefixDispatch "else")
         pairResults := thenEmission.pairResults.map (prefixPairResult "then") ++
-          elseEmission.pairResults.map (prefixPairResult "else") }
+          elseEmission.pairResults.map (prefixPairResult "else")
+        whileLoops := thenEmission.whileLoops.map (prefixWhileLoop "then") ++
+          elseEmission.whileLoops.map (prefixWhileLoop "else") }
+  | .while cond body =>
+      let bodyEmission := emitStmtAnnotated releaseIndex scratch body
+      let condCode := emitCond scratch cond
+      let guardLength := condCode.length + 2
+      let code :=
+        [Instr.block [Instr.loop
+          (condCode ++ [Instr.eqzI32, Instr.brIf 1] ++ bodyEmission.code ++ [Instr.br 0])]]
+      let prefixPath (path : Array Annotations.PathStep) : Array Annotations.PathStep :=
+        if h : path.size = 0 then
+          #[{ instructionIndex := 0, field := "block" },
+            { instructionIndex := 0, field := "loop" }]
+        else
+          let step := path[0]
+          #[{ instructionIndex := 0, field := "block" },
+            { instructionIndex := 0, field := "loop" }] ++
+            path.set 0 { step with instructionIndex := guardLength + step.instructionIndex }
+      let shiftStart (path : Array Annotations.PathStep) (value : Nat) : Nat :=
+        if path.size = 0 then guardLength + value else value
+      let shiftEnd (path : Array Annotations.PathStep) (value : Nat) : Nat :=
+        if path.size = 0 then guardLength + value else value
+      { code
+        directCalls := bodyEmission.directCalls.map fun call =>
+          { call with
+            listPath := prefixPath call.listPath
+            startIndex := shiftStart call.listPath call.startIndex
+            callIndex := shiftStart call.listPath call.callIndex
+            endIndex := shiftEnd call.listPath call.endIndex }
+        lengthDispatches := bodyEmission.lengthDispatches.map fun dispatch =>
+          { dispatch with
+            listPath := prefixPath dispatch.listPath
+            startIndex := shiftStart dispatch.listPath dispatch.startIndex
+            endIndex := shiftEnd dispatch.listPath dispatch.endIndex }
+        pairResults := bodyEmission.pairResults.map fun result =>
+          { result with
+            listPath := prefixPath result.listPath
+            startIndex := shiftStart result.listPath result.startIndex
+            endIndex := shiftEnd result.listPath result.endIndex }
+        whileLoops := #[{
+          listPath := #[]
+          startIndex := 0
+          endIndex := 1
+          condition := reprStr cond
+          body := reprStr body
+          scratchStart := scratch
+          continuation := "fallthrough"
+          generatedBy := #[
+            "LeanExe.Wasm.Binary.CoreWasm.emitStmt",
+            "LeanExe.Wasm.Binary.CoreWasm.emitStmtAnnotated"
+          ]
+        }] ++ bodyEmission.whileLoops.map fun loop =>
+          { loop with
+            listPath := prefixPath loop.listPath
+            startIndex := shiftStart loop.listPath loop.startIndex
+            endIndex := shiftEnd loop.listPath loop.endIndex } }
   | _ => Annotations.Emitted.ofCode (emitStmt releaseIndex scratch stmt)
 
 def emitFuncAnnotated (releaseIndex : Nat) (func : Func) : Annotations.Emitted :=
@@ -3334,6 +3396,39 @@ def fixedArrayFilterLt?
     else
       none
   | _, _ => none
+
+def loopFold?
+    (func : Func) (code : List Instr) : Option Annotations.LoopFoldParameters :=
+  match func.body with
+  | .loopFoldMultiSlotAssign resultWidth initValues accStart bodyValues bodyLets bodyDone
+      releaseOffsets targets =>
+    if code.length = 0 || initValues.length != resultWidth ||
+        bodyValues.length != resultWidth || targets.length != resultWidth then
+      none
+    else
+      let letScratch := bodyLets.foldl (fun n item => max n (localLetScratch item)) 0
+      let bodyScratch :=
+        max letScratch <|
+          max (exprScratch bodyDone) (bodyValues.foldl (fun n value => max n (exprScratch value)) 0)
+      let doneLocal := func.locals + bodyScratch
+      let stagedValueStart := doneLocal + 1
+      some {
+        resultWidth
+        accumulatorStart := accStart
+        accumulatorLocals := (List.range resultWidth).map (accStart + ·) |>.toArray
+        initialValues := initValues.map reprStr |>.toArray
+        bodyValues := bodyValues.map reprStr |>.toArray
+        bodyLets := bodyLets.map reprStr |>.toArray
+        doneValue := reprStr bodyDone
+        releaseOffsets := releaseOffsets.toArray
+        scratchStart := func.locals
+        doneLocal
+        stagedValueStart
+        releaseReadyLocal := stagedValueStart + resultWidth
+        resultLocals := targets.toArray
+        continuation := "function-results"
+      }
+  | _ => none
 
 def directCallLocalGet? : Instr → Option Nat
   | .localGet index => some index
@@ -3770,6 +3865,7 @@ def annotationDocument (module_ : Module) (bytes : ByteArray) : Annotations.Docu
       let functionIndex := item.fst
       let func := item.snd
       let emitted := emitFuncAnnotated releaseIndex func
+      let bodyEmitted := emitStmtAnnotated releaseIndex func.locals func.body
       let combinedLocals := func.locals - func.params + funcScratch func
       let directCalls := mergeDirectCallAnnotations emitted.directCalls
         (annotateDirectCalls module_.funcs emitted.code)
@@ -3835,6 +3931,38 @@ def annotationDocument (module_ : Module) (bytes : ByteArray) : Annotations.Docu
                "LeanExe.Wasm.Binary.CoreWasm.emitStmtAnnotated",
                "LeanExe.Wasm.Binary.CoreWasm.emitFuncAnnotated"
              ] }]
+      let loopFoldRegions : List Annotations.Region :=
+        match loopFold? func bodyEmitted.code with
+        | none => []
+        | some parameters =>
+          [{ id := s!"function-{functionIndex}.loop-fold-0"
+             kind := "leanexe.loop.fold.v1"
+             location :=
+               { listPath := #[]
+                 startIndex := 0
+                 endIndex := bodyEmitted.code.length }
+             parameters := .loopFold parameters
+             generatedBy := #[
+               "LeanExe.Wasm.Binary.CoreWasm.emitLoopFoldMultiSlotAssign",
+               "LeanExe.Wasm.Binary.CoreWasm.emitStmtAnnotated",
+               "LeanExe.Wasm.Binary.CoreWasm.emitFuncAnnotated"
+             ] }]
+      let whileLoopRegions : List Annotations.Region :=
+        (enumerate emitted.whileLoops.toList).map fun regionItem =>
+          let regionIndex := regionItem.fst
+          let loop := regionItem.snd
+          { id := s!"function-{functionIndex}.while-loop-{regionIndex}"
+            kind := "leanexe.loop.while.v1"
+            location :=
+              { listPath := loop.listPath
+                startIndex := loop.startIndex
+                endIndex := loop.endIndex }
+            parameters := .whileLoop
+              { condition := loop.condition
+                body := loop.body
+                scratchStart := loop.scratchStart
+                continuation := loop.continuation }
+            generatedBy := loop.generatedBy }
       let lengthRegions : List Annotations.Region :=
         (enumerate emitted.lengthDispatches.toList).map fun regionItem =>
           let regionIndex := regionItem.fst
@@ -3940,7 +4068,8 @@ def annotationDocument (module_ : Module) (bytes : ByteArray) : Annotations.Docu
         parameters := func.params
         results := func.results.length
         locals := combinedLocals
-        regions := (mapAddRegions ++ filterLtRegions ++ lengthRegions ++ searchKeyRegions ++
+        regions := (mapAddRegions ++ filterLtRegions ++ loopFoldRegions ++ whileLoopRegions ++
+          lengthRegions ++ searchKeyRegions ++
           eqNodeRegions ++ ltNodeRegions ++ pairResultRegions ++ directCallRegions).toArray }
   { schemaVersion := 1
     artifact := { byteLength := bytes.size }
