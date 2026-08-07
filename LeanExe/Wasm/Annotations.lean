@@ -82,6 +82,30 @@ structure FixedArrayFilterLtParameters where
   continuation : String
   deriving Repr, Lean.ToJson
 
+structure LoopFoldParameters where
+  resultWidth : Nat
+  accumulatorStart : Nat
+  accumulatorLocals : Array Nat
+  initialValues : Array String
+  bodyValues : Array String
+  bodyLets : Array String
+  doneValue : String
+  releaseOffsets : Array Nat
+  scratchStart : Nat
+  doneLocal : Nat
+  stagedValueStart : Nat
+  releaseReadyLocal : Nat
+  resultLocals : Array Nat
+  continuation : String
+  deriving Repr, Lean.ToJson
+
+structure WhileLoopParameters where
+  condition : String
+  body : String
+  scratchStart : Nat
+  continuation : String
+  deriving Repr, Lean.ToJson
+
 inductive RegionParameters where
   | directCall (parameters : DirectCallParameters)
   | fixedArrayLengthDispatch (parameters : FixedArrayLengthDispatchParameters)
@@ -91,6 +115,8 @@ inductive RegionParameters where
   | fixedArrayPairResult (parameters : FixedArrayPairResultParameters)
   | fixedArrayMapAdd (parameters : FixedArrayMapAddParameters)
   | fixedArrayFilterLt (parameters : FixedArrayFilterLtParameters)
+  | loopFold (parameters : LoopFoldParameters)
+  | whileLoop (parameters : WhileLoopParameters)
   deriving Repr
 
 instance : Lean.ToJson RegionParameters where
@@ -103,6 +129,8 @@ instance : Lean.ToJson RegionParameters where
     | .fixedArrayPairResult parameters => Lean.toJson parameters
     | .fixedArrayMapAdd parameters => Lean.toJson parameters
     | .fixedArrayFilterLt parameters => Lean.toJson parameters
+    | .loopFold parameters => Lean.toJson parameters
+    | .whileLoop parameters => Lean.toJson parameters
 
 structure Region where
   id : String
@@ -213,15 +241,27 @@ structure RelativeFixedArrayPairResult where
   generatedBy : Array String
   deriving Repr
 
+structure RelativeWhileLoop where
+  listPath : Array PathStep
+  startIndex : Nat
+  endIndex : Nat
+  condition : String
+  body : String
+  scratchStart : Nat
+  continuation : String
+  generatedBy : Array String
+  deriving Repr
+
 structure Emitted where
   code : List LeanExe.Wasm.Instr
   directCalls : Array RelativeDirectCall
   lengthDispatches : Array RelativeFixedArrayLengthDispatch
   pairResults : Array RelativeFixedArrayPairResult
+  whileLoops : Array RelativeWhileLoop
   deriving Repr, Inhabited
 
 def Emitted.ofCode (code : List LeanExe.Wasm.Instr) : Emitted :=
-  { code, directCalls := #[], lengthDispatches := #[], pairResults := #[] }
+  { code, directCalls := #[], lengthDispatches := #[], pairResults := #[], whileLoops := #[] }
 
 def Emitted.append (left right : Emitted) : Emitted :=
   let offset := left.code.length
@@ -256,6 +296,16 @@ def Emitted.append (left right : Emitted) : Emitted :=
         let step := result.listPath[0]
         { result with
           listPath := result.listPath.set 0
+            { step with instructionIndex := offset + step.instructionIndex } }
+    whileLoops := left.whileLoops ++ right.whileLoops.map fun loop =>
+      if h : loop.listPath.size = 0 then
+        { loop with
+          startIndex := offset + loop.startIndex
+          endIndex := offset + loop.endIndex }
+      else
+        let step := loop.listPath[0]
+        { loop with
+          listPath := loop.listPath.set 0
             { step with instructionIndex := offset + step.instructionIndex } } }
 
 def render (document : Document) : String :=
