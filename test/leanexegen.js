@@ -1099,6 +1099,7 @@ function testSearchTreeComposition() {
     programModule: "Example.Generated.Program",
   }).source;
   assert(source.includes("import Project.ProofKit.FixedArraySearchTree") &&
+    source.includes("set_option maxRecDepth 1048576") &&
     source.includes("def function_0_search_tree_0") &&
     source.includes("function_0_search_tree_0.program 10 2"),
   "annotation matches omitted the checked fixed search-tree descriptor");
