@@ -13,25 +13,6 @@
       "regions": [
         {
           "generatedBy": [
-            "LeanExe.Wasm.Binary.CoreWasm.emitArrayFilterSlots",
-            "LeanExe.Wasm.Binary.CoreWasm.emitStmtAnnotated",
-            "LeanExe.Wasm.Binary.CoreWasm.emitFuncAnnotated"
-          ],
-          "id": "function-0.filter-lt-0",
-          "kind": "leanexe.array.filter-lt.v1",
-          "location": {
-            "endIndex": 9,
-            "listPath": [],
-            "startIndex": 0
-          },
-          "parameters": {
-            "continuation": "function-return",
-            "maximumSize": 8,
-            "threshold": "100"
-          }
-        },
-        {
-          "generatedBy": [
             "LeanExe.Wasm.Binary.CoreWasm.emitCondWithRelease",
             "LeanExe.Wasm.Binary.CoreWasm.emitStmtAnnotated"
           ],

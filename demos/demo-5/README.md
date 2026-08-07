@@ -8,6 +8,8 @@ The 1,975-byte WASM module has SHA-256 digest `7c05b423d0cb42b5e8b92fecbefdfc408
 
 Stage 5 took 1,635.679 seconds, including 1,580.641 seconds in Codex and 44.738 seconds in independent outer acceptance.  The proving agent made fourteen edited Lean checks after the deterministic starter failed, then passed its required final build.  The complete generation run took 1,949.512 seconds from stage one through stage eight.
 
+A controlled LTG iteration preserved the specification, source, decoded Program, WASM bytes, artifact theorem, and heap-reserve boundary.  A parameterized filter theorem and exact whole-function annotation reduced Stage 5 to 86.795 seconds, a 94.7 percent reduction, and reduced the generated proof from 969 lines to 70.  The deterministic starter passed its first Lean check unchanged, and independent package verification accepted the result.
+
 ## Program and theorem
 
 The [generation request](request.txt) defines the bound, predicate, stable order, oversized-input behavior, and loop requirement.  The [formal specification](spec.lean) defines the mathematical result and a branch-sensitive heap-reserve bound.  The [generated Lean program](program.lean) implements the same array function without importing the formal specification.
@@ -38,11 +40,21 @@ Package schema 6 identifies this expanded formal interface.  The verifier contin
 
 ## Baseline proof context
 
-The [compiler annotations](program.annotations.json) contain one exact unsigned length-at-most-eight dispatch.  The [proof recipe plan](proof-recipes.json) therefore offers only `wp_fixed_array_length_le_dispatch 5, 8`; it contains no filter-loop region or whole-wrapper theorem.  The [selected strategy notes](proof-strategies.md) and [program feature report](proof-task-features.json) identify the loop, memory, allocation, arithmetic, and large elaboration boundary without supplying a checked filter abstraction.
+The [baseline compiler annotations](baseline-program.annotations.json) contain one exact unsigned length-at-most-eight dispatch.  The [baseline proof recipe plan](baseline-proof-recipes.json) therefore offers only `wp_fixed_array_length_le_dispatch 5, 8`; it contains no filter-loop region or whole-wrapper theorem.  The [baseline strategy notes](baseline-proof-strategies.md) and [baseline program feature report](baseline-proof-task-features.json) identify the loop, memory, allocation, arithmetic, and large elaboration boundary without supplying a checked filter abstraction.
 
 The [proof journal](proof-journal.md) records the agent's progress through exact wrapper decomposition, allocator specialization, loop entry, predicate branching, frame normalization, address bounds, and prefix updates.  Several steps duplicate structure that a parameterized bounded-filter theorem could prove once, including capacity allocation, the output-count invariant, accepted and rejected prefix lemmas, dynamic result-length storage, and empty-result allocation.  These observations provide the baseline for a compiler filter annotation and a deterministic theorem starter while the specification, source, and artifact remain fixed.
 
 The [proof telemetry](proof-telemetry.json) records the measured Stage 5 intervals and accepted proof digest.  The [stage reports](stage-reports.json) retain the accepted source identities, task decisions, and outer diagnostics for all three generated tasks.  Together with the exact proof and WASM, these records support controlled reproof timing after the shared filter support exists.
+
+## Complete filter-wrapper iteration
+
+`Project.ProofKit.FixedArrayFilterLt.wrapperProgram_spec` proves the compiler's canonical bounded stable filter for arbitrary maximum size and unsigned threshold.  The checked theorem contains the bounded-length dispatch, input-sized capacity calculation, valid and empty allocations, predicate decisions, conditional payload stores, filtered-prefix loop invariant, dynamic result-length store, and public return.  Its `heapReserveBytes` function matches the branch-sensitive allocation bound required by the schema-6 artifact specification.
+
+The compiler recognizes the exact extracted form `if input.size ≤ n then input.filter (fun element ⇒ element < t) else #[]`.  The current [compiler annotations](program.annotations.json) cover the complete decoded function with `leanexe.array.filter-lt.v1` and retain the nested bounded-length dispatch.  The current [proof recipe plan](proof-recipes.json) names `wrapperProgram_spec` and the generated `AnnotationMatches` equality that Lean reduced to `wrapperProgram 8 100` for this artifact.
+
+The accepted [filter-composition proof](filter-proof.lean) contains 70 lines and has SHA-256 digest `9664bb3f113379d95a4dc64c010db7b5ac3ae139795da82d9bca0d366bc03667`.  Its [journal](filter-proof-journal.md) records a successful initial check with no edit or repeated check, while its [telemetry](filter-proof-telemetry.json) reports 53.260 seconds in Codex, 24.483 seconds in outer acceptance, and 86.795 seconds from Stage 5 start to first acceptance.  The [filter run stage reports](filter-stage-reports.json) retain the accepted source identity and diagnostic for the controlled proof task.
+
+The [timing comparison](filter-proof-comparison.json) records a 1,548.884-second reduction from the 1,635.679-second baseline, or 94.7 percent.  It also records an 899-line reduction, or 92.8 percent, although completed proof time remains the primary measure.  Both packages retain the 1,975-byte artifact with digest `7c05b423d0cb42b5e8b92fecbefdfc408a2314f2dea7f74bfcbc1674ff96b8de`, and independent `leanexegen verify` accepted each theorem.
 
 ## Execution
 
@@ -59,7 +71,7 @@ The [captured standard output](stdout.txt) records every stage boundary, both sa
 
 ## Retained files
 
-Every retained file fixes an experiment input, records the proof context, or preserves an accepted result.  The annotations and recipe plan show what checked assistance the baseline agent received.  The proof, journal, telemetry, and stage reports record what remained for the agent and how long acceptance took.
+Every retained file fixes an experiment input, records one of the two proof contexts, or preserves an accepted result.  Files with a `baseline-` prefix show what checked assistance the first agent received, while the unprefixed annotation and guidance files describe the complete filter-wrapper run.  The two accepted proofs, journals, measurements, and shared artifact permit direct comparison.
 
 | File | Contents |
 |---|---|
@@ -69,12 +81,21 @@ Every retained file fixes an experiment input, records the proof context, or pre
 | [WASM module](program.wasm) | The exact executable artifact covered by the proof. |
 | [WAT rendering](program.wat) | The textual instruction representation used for the Talos model. |
 | [Behavioral proof](proof.lean) | The accepted direct proof of the generated WASM behavior. |
-| [Compiler annotations](program.annotations.json) | The exact bounded-length dispatch emitted for the artifact. |
-| [Proof recipe plan](proof-recipes.json) | The checked dispatch tactic offered to the proving agent. |
-| [Selected strategy notes](proof-strategies.md) | The feature-selected proof guidance supplied to the proving agent. |
-| [Program feature report](proof-task-features.json) | The reachable instruction, local, loop, memory, arithmetic, allocation, and annotation facts. |
+| [Filter-composition proof](filter-proof.lean) | The unchanged deterministic proof using the complete filter theorem. |
+| [Baseline compiler annotations](baseline-program.annotations.json) | The bounded-length dispatch and absence of a filter region in the first run. |
+| [Baseline proof recipe plan](baseline-proof-recipes.json) | The dispatch-only checked plan supplied to the first proving agent. |
+| [Baseline strategy notes](baseline-proof-strategies.md) | The feature-selected guidance supplied to the first proving agent. |
+| [Baseline feature report](baseline-proof-task-features.json) | The structural facts and guidance identity supplied to the first proving agent. |
+| [Compiler annotations](program.annotations.json) | The complete filter wrapper and nested bounded-length dispatch. |
+| [Proof recipe plan](proof-recipes.json) | The complete wrapper theorem and nested dispatch recipe. |
+| [Selected strategy notes](proof-strategies.md) | The final feature-selected guidance supplied with the checked recipe. |
+| [Program feature report](proof-task-features.json) | The final reachable instruction, local, loop, memory, arithmetic, allocation, and annotation facts. |
 | [Proof journal](proof-journal.md) | The agent's chronological account of fourteen edited proof checks. |
 | [Proof telemetry](proof-telemetry.json) | The measured proof-session and outer-acceptance intervals. |
 | [Stage reports](stage-reports.json) | The accepted reports for specification, source, and artifact-proof generation. |
+| [Filter-composition journal](filter-proof-journal.md) | The controlled agent's successful first-check record. |
+| [Filter-composition telemetry](filter-proof-telemetry.json) | The controlled run's Stage 5, Codex, and outer-acceptance intervals. |
+| [Filter-composition stage reports](filter-stage-reports.json) | The accepted task report and source identity for the controlled run. |
+| [Timing comparison](filter-proof-comparison.json) | The fixed-artifact baseline, complete theorem result, and measured reductions. |
 | [Standard output](stdout.txt) | The stage boundaries, sample results, and run command. |
 | [Standard error](stderr.txt) | The generated trust-boundary warnings. |

@@ -49,6 +49,8 @@ The first vocabulary should cover the regions already responsible for most of th
 | `leanexe.array.eq-node.v1` | Local-window offset, element index, key local, operand order, branch roles, and continuation. | Select the equality-node theorem and preserve branch continuations. |
 | `leanexe.array.lt-node.v1` | Local-window offset, element index, key local, unsigned comparison, branch roles, and continuation. | Prove one binary-search decision without rediscovering the checked load. |
 | `leanexe.array.pair-result.v1` | Constant or indexed-input value form, allocator window, destination local, and continuation. | Apply the complete two-word allocation and represented-result theorem. |
+| `leanexe.array.map-add.v1` | Maximum input size, wrapping addend, complete function boundary, and return continuation. | Apply the complete bounded-map wrapper theorem. |
+| `leanexe.array.filter-lt.v1` | Maximum input size, unsigned threshold, complete function boundary, and return continuation. | Apply the complete bounded-filter wrapper theorem and its heap-reserve model. |
 | `leanexe.runtime.allocate.v1` | Size expression, allocator locals, globals, memory-growth branch, and destination. | Select the allocator theorem and establish its post-frame. |
 | `leanexe.runtime.retain.v1` | Pointer location, runtime function index, and continuation. | Apply the retain theorem at the emitted ownership boundary. |
 | `leanexe.runtime.release.v1` | Pointer location, runtime function index, and continuation. | Apply the release theorem at the emitted ownership boundary. |
@@ -333,7 +335,7 @@ The future compiler-verification theorem may use region boundaries to organize l
 
 ## Implemented iterations and evidence
 
-The compiler now emits `leanexe.call.direct.v1`, `leanexe.array.length-dispatch.v1`, `leanexe.array.search-key.v1`, `leanexe.array.eq-node.v1`, `leanexe.array.lt-node.v1`, and `leanexe.array.pair-result.v1` regions through `lean-wasm compile --annotations`.  Annotated emission remains the canonical instruction-emission path, and each corpus migration requires the recompiled bytes to equal the frozen WASM before accepting a sidecar.  The JavaScript consumer checks the structured location, exact top-level instruction sequence, checked-loader branches, Boolean-normalization branches, local window, operand order, branch roles, and continuation before selecting a proof recipe.
+The compiler now emits `leanexe.call.direct.v1`, `leanexe.array.length-dispatch.v1`, `leanexe.array.search-key.v1`, `leanexe.array.eq-node.v1`, `leanexe.array.lt-node.v1`, `leanexe.array.pair-result.v1`, `leanexe.array.map-add.v1`, and `leanexe.array.filter-lt.v1` regions through `lean-wasm compile --annotations`.  Annotated emission remains the canonical instruction-emission path, and each corpus migration requires the recompiled bytes to equal the frozen WASM before accepting a sidecar.  The JavaScript consumer checks the structured location, exact top-level instruction sequence, checked-loader branches, Boolean-normalization branches, local window, operand order, branch roles, and continuation before selecting a proof recipe.
 
 Package schema 5 retains `program.annotations.json` and `proof-recipes.json` under the package manifest's file digests.  `leanexegen annotate` converts an older package by recompiling its frozen Source, requiring byte-for-byte equality with the frozen WASM, matching the new sidecar against the frozen Program, and writing a separate annotated package.  A subsequent `reprove` regenerates recipes from the frozen annotations and omits Source and the compiler from the proof task.
 
@@ -428,6 +430,16 @@ The compiler recognizes the exact extracted IR form `if input.size ≤ n then in
 The proof planner selects `wrapperProgram_spec` from that equality and generates a complete artifact-behavior starter.  Three controlled `leanexegen reprove` runs accepted the unchanged 66-line starter on their first checks and completed Stage 5 in 103.123, 144.173, and 109.165 seconds, giving a 109.165-second median and a 41.050-second range.  The median reduces total time by 95.4 percent from the 2,364.735-second held-out baseline and by 90.8 percent from the 1,191.695-second allocator iteration.
 
 All three packages retain the same 1,913-byte WASM artifact and SHA-256 digest `c538d40936b426ba875b3dae1913e62ff00a44b34adff2adcd70922e5a4c95ff`.  Their proof sources have SHA-256 digest `bf07793985539b6c0a7e9076c97f836050c859b47b13ab3f70a3383270b29d56`, and every journal records no proof edit or repeated in-session check.  Independent `leanexegen verify` runs accepted each packaged specification, decoded artifact, annotation equality, behavior theorem, and final artifact theorem.
+
+## Bounded filter composition
+
+The held-out Demo 5 baseline left the complete stable-filter loop outside the annotation vocabulary.  Its length-dispatch recipe did not cover input-sized capacity allocation, the value-dependent output counter, the retained and rejected predicate branches, the final length store, or the empty-result allocation.  Codex needed fourteen edited Lean checks and 1,635.679 seconds to prove those boundaries for one artifact.
+
+`Project.ProofKit.FixedArrayFilterLt.wrapperProgram_spec` now proves the canonical wrapper `if input.size ≤ maximumSize then input.filter (fun element ⇒ element < threshold) else #[]` for arbitrary bounds and unsigned thresholds.  Its checked program contains the exact allocator window and filter loop emitted by LeanExe, while its invariant represents the output payload as the filtered processed prefix.  The theorem uses `FixedArrayFilterLt.heapReserveBytes` to account for input-sized reserved capacity even when the final filtered result is smaller.
+
+The compiler recognizes the exact extracted `arrayFilterSlots` form and emits a `leanexe.array.filter-lt.v1` whole-function region containing `maximumSize`, `threshold`, and the function-return continuation.  The consumer validates the complete top-level boundary and generates a Lean equality between the decoded artifact region and `FixedArrayFilterLt.wrapperProgram maximumSize threshold`.  The deterministic starter checks equality with both the formal result and the schema-6 heap reserve before applying `wrapperProgram_spec`.
+
+Recompiling the frozen Demo 5 source produced the same 1,975-byte WASM digest and added the filter region beside the existing length dispatch.  A controlled reproof preserved every frozen source and artifact input, accepted the unchanged 70-line starter on its first check, and completed Stage 5 in 86.795 seconds.  This reduces the measured baseline by 1,548.884 seconds, or 94.7 percent, and independent verification accepted the resulting exact-artifact theorem.
 
 ## Completion criteria
 

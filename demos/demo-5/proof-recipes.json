@@ -39,6 +39,40 @@
         "strategy.arrays",
         "strategy.frames"
       ]
+    },
+    {
+      "recipeVersion": 1,
+      "functionIndex": 0,
+      "regionId": "function-0.filter-lt-0",
+      "regionKind": "leanexe.array.filter-lt.v1",
+      "applicability": "Lean-checked equality over the decoded instruction region",
+      "direct": {
+        "module": "Project.ProofKit.FixedArrayFilterLt",
+        "theorem": "Project.ProofKit.FixedArrayFilterLt.wrapperProgram_spec",
+        "regionEquality": "LeanExeGen.GeneratedRc28a1499719cbaa0.AnnotationMatches.function_0_filter_lt_0_eq",
+        "program": "Project.ProofKit.FixedArrayFilterLt.wrapperProgram 8 100"
+      },
+      "supporting": [
+        {
+          "declaration": "Project.ProofKit.FixedArrayLengthDispatch.leProgram_spec",
+          "purpose": "select the bounded input-length branch"
+        },
+        {
+          "declaration": "Project.ProofKit.FixedArrayAllocatorWindow.region_spec_withTail",
+          "purpose": "prove the empty-result allocation"
+        },
+        {
+          "declaration": "Project.ProofKit.FixedArrayFilterLt.wrapperProgram_spec",
+          "purpose": "prove allocation, filtering, dynamic length, and the public result"
+        }
+      ],
+      "expectedPostcondition": "the bounded stable filter result",
+      "guidance": [
+        "strategy.arrays",
+        "strategy.loops",
+        "strategy.allocation",
+        "strategy.frames"
+      ]
     }
   ]
 }
