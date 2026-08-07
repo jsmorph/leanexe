@@ -612,7 +612,10 @@ function proofPrompt(request, job, entryIndex) {
     `key-first equality nodes, unsigned less-than nodes, and standard pair results.  Describe the ` +
     `tree with Tree.branch and Tree.leaf, prove Tree.Valid from the input-size fact, and apply ` +
     `Tree.program_spec to compose the complete checked tree.  Its Tree.result function leaves one ` +
-    `equation relating the formal specification to the descriptor's lookup result.  ` +
+    `equation relating the formal specification to the descriptor's lookup result.  When the ` +
+    `length dispatch, invalid result, saved-key load, tree, and public return form the complete ` +
+    `wrapper, Tree.wrapperProgram_spec proves that wrapper and leaves only its invalid-result, ` +
+    `descriptor-validity, and semantic-result obligations.  ` +
     `Import Project.ProofKit.FixedArrayLengthDispatch when the exported wrapper begins with the ` +
     `standard fixed-array length comparison and compiler Boolean normalization.  Run ` +
     `wp_fixed_array_length_dispatch <inputLocal>, <expectedSize> for the normalized inequality ` +
@@ -679,7 +682,10 @@ function proofPrompt(request, job, entryIndex) {
     `direct recipe before general symbolic execution, then use its supporting declarations and ` +
     `guidance only for the remaining goals.  ` +
     `Its compositions array lists any complete fixed-array search-tree descriptor, its ` +
-    `Lean-checked region equality, and Tree.program_spec.  Attempt that complete composition ` +
+    `Lean-checked region equality, and the selected Tree composition theorem.  A version-two ` +
+    `composition also records a checked complete-wrapper shape, and its deterministic starter ` +
+    `has already applied Tree.wrapperProgram_spec.  Solve the remaining semantic goals before ` +
+    `replacing that starter with node-level proof.  Attempt a version-one complete composition ` +
     `before its individual node recipes, and unfold the named descriptor when proving Tree.Valid ` +
     `and the equation for Tree.result.  ` +
     `Each fixedArrayEqNodes entry gives the function, local-window offset, input index, saved-key ` +
@@ -1085,6 +1091,78 @@ function artifactProofStarter(job, entryIndex, annotated = false, proofRecipes =
   }
   const proofImports = [...modules].sort().map((moduleName) =>
     `import ${moduleName}`).join("\n");
+  const wrapperCompositions = (proofRecipes?.compositions ?? []).filter((composition) =>
+    composition.compositionVersion === 2 &&
+      composition.kind === "fixed-array-search-tree-v1" &&
+      composition.functionIndex === entryIndex);
+  if (annotated && wrapperCompositions.length === 1) {
+    const composition = wrapperCompositions[0];
+    const wrapper = composition.wrapper;
+    return `import ${job.formalSpecModule}
+import ${job.programModule}
+import ${annotationMatchesModule(job)}
+${proofImports}
+
+set_option maxRecDepth 1048576
+set_option maxHeartbeats 1000000
+
+namespace ${job.behaviorModule}
+
+open Wasm Project.ProofKit
+
+theorem ${theoremName} :
+    ${job.formalSpecDefinition} ${job.namespace}.«module» := by
+  refine ⟨${entryIndex}, rfl, ?_⟩
+  intro env initial inputPtr input hInput
+  rcases hInput with
+    ⟨hArray, heapTop, allocs, retains, releases, frees, hGlobals,
+      hInputBelow, hFit32, hFitMemory, hPages⟩
+  change UInt64Array.At initial inputPtr input at hArray
+  have hHeapTop : initial.globals.globals[0]? = some (.i64 heapTop) := by
+    simp [hGlobals]
+  have hFreeList : initial.globals.globals[1]? = some (.i64 0) := by
+    simp [hGlobals]
+  have hAllocs : initial.globals.globals[2]? = some (.i64 allocs) := by
+    simp [hGlobals]
+  have hContext : FixedArraySearch.PairResultContext
+      ${job.namespace}.«module» initial heapTop allocs inputPtr input
+      (${job.expectedDefinition} input) :=
+    ⟨hArray, hInputBelow, hFitMemory, hPages, rfl, hHeapTop, hFreeList,
+      hAllocs⟩
+  have hAtIff (st : Store Unit) (ptr : UInt64) (values : Array UInt64) :
+      ${job.formalSpecModule}.UInt64ArrayAt st ptr values ↔
+        UInt64Array.At st ptr values := by
+    rfl
+  apply Wasm.TerminatesWith.of_wp_entry_for
+    (f := ${job.namespace}.func${entryIndex}Def) rfl
+  unfold ${job.namespace}.func${entryIndex}Def
+  simp only [Wasm.Function.numParams, List.length, List.drop,
+    Nat.zero_add, List.append_nil]
+  simp only [hAtIff]
+  apply Wasm.wp.conseq (Q :=
+    FixedArrayPairResult.publicPost (${job.expectedDefinition} input))
+  · intro continuation hPost
+    cases continuation <;> simp_all [FixedArrayPairResult.publicPost]
+  unfold ${job.namespace}.func${entryIndex}
+  let tree := ${composition.descriptor}
+  change wp ${job.namespace}.«module»
+    (tree.wrapperProgram ${wrapper.inputLocal} ${wrapper.expectedSize} ${wrapper.offset}
+      ${wrapper.keyIndex} ${wrapper.keyLocal} ${wrapper.invalidDestination})
+    (FixedArrayPairResult.publicPost (${job.expectedDefinition} input))
+    initial _ env
+  refine tree.wrapperProgram_spec
+    (hParams := by rfl)
+    (hLocals := by rfl)
+    (hValues := by rfl)
+    (hInputLocalPositive := by decide)
+    (hInputLocal := by simp [Wasm.Function.toLocals])
+    (hExpectedSizeBound := by norm_num [UInt64.size])
+    hArray hContext (by decide) (by decide) (by omega) (by decide)
+    (by decide) (by decide) (by decide) ?_ ?_ ?_
+
+end ${job.behaviorModule}
+`;
+  }
   return `import ${job.formalSpecModule}
 import ${job.programModule}
 ${annotated ? `import ${annotationMatchesModule(job)}\n` : ""}${proofImports}

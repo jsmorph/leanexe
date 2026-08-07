@@ -1027,17 +1027,23 @@ function proofRecipePlan(
   return {
     schemaVersion: 1,
     attemptOrder: ["direct", "composition", "tactic", "focused-guidance"],
-    compositions: fixedArraySearchTreeCompositions(document).map((composition) => ({
-      compositionVersion: 1,
-      kind: "fixed-array-search-tree-v1",
-      functionIndex: composition.functionIndex,
-      descriptor: `${annotationNamespace}.${composition.name}`,
-      regionEquality: `${annotationNamespace}.${composition.name}_eq`,
-      direct: {
-        module: "Project.ProofKit.FixedArraySearchTree",
-        theorem: "Project.ProofKit.FixedArraySearchTree.Tree.program_spec",
-      },
-    })),
+    compositions: fixedArraySearchTreeCompositions(document, program).map((composition) => {
+      const result = {
+        compositionVersion: composition.wrapper === null ? 1 : 2,
+        kind: "fixed-array-search-tree-v1",
+        functionIndex: composition.functionIndex,
+        descriptor: `${annotationNamespace}.${composition.name}`,
+        regionEquality: `${annotationNamespace}.${composition.name}_eq`,
+        direct: {
+          module: "Project.ProofKit.FixedArraySearchTree",
+          theorem: composition.wrapper === null
+            ? "Project.ProofKit.FixedArraySearchTree.Tree.program_spec"
+            : "Project.ProofKit.FixedArraySearchTree.Tree.wrapperProgram_spec",
+        },
+      };
+      if (composition.wrapper !== null) result.wrapper = composition.wrapper;
+      return result;
+    }),
     recipes,
   };
 }
@@ -1093,11 +1099,13 @@ function validateProofRecipePlan(plan, document) {
   for (const [index, composition] of array(
     plan.compositions ?? [], "proof recipes.compositions").entries()) {
     const description = `proof recipes.compositions[${index}]`;
-    exactKeys(composition, [
+    const compositionKeys = [
       "compositionVersion", "descriptor", "direct", "functionIndex", "kind",
       "regionEquality",
-    ], description);
-    if (composition.compositionVersion !== 1 ||
+    ];
+    if (composition.compositionVersion === 2) compositionKeys.push("wrapper");
+    exactKeys(composition, compositionKeys, description);
+    if (![1, 2].includes(composition.compositionVersion) ||
         composition.kind !== "fixed-array-search-tree-v1") {
       fail(`${description} has an unsupported identity`);
     }
@@ -1111,10 +1119,28 @@ function validateProofRecipePlan(plan, document) {
     }
     compositionDescriptors.add(composition.descriptor);
     exactKeys(composition.direct, ["module", "theorem"], `${description}.direct`);
+    const expectedTheorem = composition.compositionVersion === 1
+      ? "Project.ProofKit.FixedArraySearchTree.Tree.program_spec"
+      : "Project.ProofKit.FixedArraySearchTree.Tree.wrapperProgram_spec";
     if (composition.direct.module !== "Project.ProofKit.FixedArraySearchTree" ||
-        composition.direct.theorem !==
-          "Project.ProofKit.FixedArraySearchTree.Tree.program_spec") {
+        composition.direct.theorem !== expectedTheorem) {
       fail(`${description}.direct is unsupported`);
+    }
+    if (composition.compositionVersion === 2) {
+      exactKeys(composition.wrapper, [
+        "expectedSize", "inputLocal", "invalidDestination", "keyIndex", "keyLocal",
+        "offset",
+      ], `${description}.wrapper`);
+      for (const field of [
+        "expectedSize", "inputLocal", "invalidDestination", "keyIndex", "keyLocal",
+        "offset",
+      ]) natural(composition.wrapper[field], `${description}.wrapper.${field}`);
+      if (composition.wrapper.offset + 14 !== 24 ||
+          composition.wrapper.keyLocal >= composition.wrapper.offset + 5 ||
+          composition.wrapper.invalidDestination === 0 ||
+          composition.wrapper.invalidDestination >= 25) {
+        fail(`${description}.wrapper has invalid fixed-array parameters`);
+      }
     }
   }
   const regions = new Map(document.functions.flatMap((function_) =>
@@ -1264,7 +1290,7 @@ function annotationPathStartsWith(listPath, prefix) {
       step.field === listPath[index].field);
 }
 
-function fixedArraySearchTreeCompositions(document) {
+function fixedArraySearchTreeCompositions(document, program = null) {
   const compositions = [];
   for (const function_ of document.functions) {
     const equalityNodes = function_.regions.filter((region) =>
@@ -1332,6 +1358,55 @@ function fixedArraySearchTreeCompositions(document) {
     for (const root of roots) {
       const tree = build(root, new Set());
       if (tree === null || root.parameters.offset + 14 !== 24) continue;
+      let wrapper = null;
+      if (program !== null) {
+        const length = function_.regions.find((region) =>
+          region.kind === "leanexe.array.length-dispatch.v1" &&
+          region.parameters.encoding === "ne-normalized-v1" &&
+          region.location.listPath.length === 0 && region.location.startIndex === 0);
+        if (length !== undefined) {
+          const branchIndex = length.location.endIndex - 1;
+          const validPath = annotationChildPath([], branchIndex,
+            length.parameters.validBranch);
+          const invalidPath = annotationChildPath([], branchIndex,
+            length.parameters.invalidBranch);
+          const searchKey = function_.regions.find((region) =>
+            region.kind === "leanexe.array.search-key.v1" &&
+            annotationPathKey(region.location.listPath) === annotationPathKey(validPath) &&
+            region.location.startIndex === 0 &&
+            region.location.endIndex === root.location.startIndex &&
+            region.parameters.offset === root.parameters.offset &&
+            region.parameters.keyLocal === root.parameters.keyLocal);
+          const invalidResult = function_.regions.find((region) =>
+            region.kind === "leanexe.array.pair-result.v1" &&
+            annotationPathKey(region.location.listPath) === annotationPathKey(invalidPath) &&
+            region.location.startIndex === 0 &&
+            region.parameters.mode === "constants-v1" &&
+            region.parameters.firstValue === "0" &&
+            region.parameters.secondValue === "0" &&
+            region.parameters.offset === root.parameters.offset);
+          const body = programFunctionBody(program, function_.wasmIndex);
+          const topInstructions = resolveInstructionList(body, []);
+          const validInstructions = resolveInstructionList(body, validPath);
+          const invalidInstructions = resolveInstructionList(body, invalidPath);
+          if (searchKey !== undefined && invalidResult !== undefined &&
+              root.location.listPath.length === 1 &&
+              annotationPathKey(root.location.listPath) === annotationPathKey(validPath) &&
+              root.location.endIndex === validInstructions.length &&
+              invalidResult.location.endIndex === invalidInstructions.length &&
+              length.location.endIndex === topInstructions.length - 1 &&
+              normalizeInstructions(topInstructions).at(-1) === ".localGet 14") {
+            wrapper = {
+              expectedSize: length.parameters.expectedSize,
+              inputLocal: length.parameters.inputLocal,
+              invalidDestination: invalidResult.parameters.destination,
+              keyIndex: searchKey.parameters.index,
+              keyLocal: searchKey.parameters.keyLocal,
+              offset: searchKey.parameters.offset,
+            };
+          }
+        }
+      }
       const name = `function_${function_.wasmIndex}_search_tree_${compositionIndex}`;
       compositionIndex += 1;
       compositions.push({
@@ -1341,6 +1416,7 @@ function fixedArraySearchTreeCompositions(document) {
         name,
         offset: root.parameters.offset,
         tree,
+        wrapper,
       });
     }
   }
