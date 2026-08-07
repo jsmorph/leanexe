@@ -6387,3 +6387,7 @@ Fresh proof screens did not improve Stage 5 time.  Length recipes reduced Demo 1
 Recompilation with current annotation emission preserved the frozen WASM digests for Demos 1, 2, and 3.  Exact decoded-program matching accepted one length region and two calls in Demo 1, one length region, one key load, and ten equality nodes in Demo 2, and one length region, one key load, seven equality nodes, and three less-than nodes in Demo 3.  Independent verification accepted all three newly annotated packages under `tools/leanrun`.
 
 The cross-demo run found that the search-key recognizer classified Demo 1's ordinary input load from shape alone.  The compiler now requires a matching equality or less-than consumer with the same local window and key local, which removes that region from Demo 1 and retains the intended regions in Demos 2 and 3.  A fresh complete-tree reproof could not start after two attempts because headless Codex reported an account usage limit until August 10, 2026.
+
+## 2026-08-06: Checked Annotation Coordinates
+
+`Project.ProofKit.Annotation` resolves structured block, loop, then-branch, and else-branch paths over a decoded Talos `Program`.  Its `region` function selects the sidecar's exact half-open instruction interval after resolving the nested list.  The module built successfully under Lean 4.31.0 through `tools/leanrun` and is available to generated artifact proofs through the checked proof-kit allowlist.

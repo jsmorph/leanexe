@@ -324,6 +324,10 @@ function testCodexProtocol() {
   }]), /unsupported proof dependency/);
   validateProofImports(job, [{
     module: job.behaviorModule,
+    source: "import Project.ProofKit.Annotation\n",
+  }]);
+  validateProofImports(job, [{
+    module: job.behaviorModule,
     source: "import Project.ProofKit.Control\n",
   }]);
   validateProofImports(job, [{
