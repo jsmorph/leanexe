@@ -1,0 +1,20 @@
+{
+  "artifact": {
+    "byteLength": 1913
+  },
+  "functions": [
+    {
+      "definedFunction": 0,
+      "exports": [
+        "compute"
+      ],
+      "locals": 16,
+      "parameters": 1,
+      "regions": [],
+      "results": 1,
+      "sourceName": "LeanExeGen.GeneratedRc77513211b55010d.Source.compute",
+      "wasmIndex": 0
+    }
+  ],
+  "schemaVersion": 1
+}
