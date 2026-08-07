@@ -391,6 +391,8 @@ The first fresh chain run stopped while compiling generated annotation support b
 
 Three corrected Demo 2 chain runs finished Stage 5 in 110.332, 110.165, and 110.711 seconds, giving a 110.332-second median and a 0.547-second range.  Every initial build succeeded, Codex made no proof edit, and each package contained the same 76-line proof with SHA-256 `7f47dc8d68291f4e3c08b565478119cfa1b33f230cb4a0ffc572a8cc08f60f2c`; independent verification accepted the first package.  The median is 78.5 percent below the 512.488-second journal-derived reference, and the proof is 81.3 percent shorter than that reference's 406 lines.
 
+Those three journals also report two identical in-session builds despite making no candidate edit.  The proof prompt now returns after the successful initial check and journal update in that case, leaving the existing outer-acceptance build as the independent final check.  Proofs that require a candidate edit retain the required post-edit build before Codex returns.
+
 ## Completion criteria
 
 The first complete increment emits a validated sidecar for every ordinary library-mode compilation requested by `leanexegen`.  Demos 1, 2, and 3 prove the same specifications over the same WASM bytes through an annotation-driven deterministic proof plan.  The retained evidence records proof-generation timings, annotation validation, region coverage, and independent Lean acceptance.

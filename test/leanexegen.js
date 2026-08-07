@@ -328,6 +328,7 @@ function testCodexProtocol() {
     artifactPrompt.includes("deterministic theorem starter") &&
     artifactPrompt.includes("before editing") &&
     artifactPrompt.includes("If that check succeeds") &&
+    artifactPrompt.includes("without repeating the same check") &&
     artifactPrompt.includes("Use read-only commands to inspect FormalSpec, Program"),
   "artifact-proof task did not receive the proof-kit catalog or tactics");
   const wrapperStarter = artifactProofStarter(job, 3, true, {
