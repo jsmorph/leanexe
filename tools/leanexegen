@@ -608,6 +608,11 @@ function proofPrompt(request, job, entryIndex) {
     `fixedArraySearchKeys region that loads and saves the comparison key before these nodes.  The ` +
     `tactic proves the two numeric key-local bounds, so the following goals contain three frame ` +
     `facts and the continuation.  ` +
+    `Import Project.ProofKit.FixedArraySearchTree when a fixed binary search tree consists of ` +
+    `key-first equality nodes, unsigned less-than nodes, and standard pair results.  Describe the ` +
+    `tree with Tree.branch and Tree.leaf, prove Tree.Valid from the input-size fact, and apply ` +
+    `Tree.program_spec to compose the complete checked tree.  Its Tree.result function leaves one ` +
+    `equation relating the formal specification to the descriptor's lookup result.  ` +
     `Import Project.ProofKit.FixedArrayLengthDispatch when the exported wrapper begins with the ` +
     `standard fixed-array length comparison and compiler Boolean normalization.  Run ` +
     `wp_fixed_array_length_dispatch <inputLocal>, <expectedSize> for the normalized inequality ` +
@@ -695,6 +700,10 @@ function proofPrompt(request, job, entryIndex) {
     `one shared PairResultContext, the complete result program, and the remaining branchN ` +
     `continuation; construct that context once from the input, allocator, and memory facts, and ` +
     `do not define local node or result adapters.  ` +
+    `When AnnotationMatches contains a fixed-array search-tree descriptor and region equality, ` +
+    `rewrite the complete region with that equality and apply ` +
+    `Project.ProofKit.FixedArraySearchTree.Tree.program_spec instead of composing its nodes ` +
+    `individually.  ` +
     `${annotationMatchesModule(job)} contains Lean-checked equalities between annotated ` +
     `pair-result ` +
     `regions of the decoded Program and the selected FixedArrayPairResult program.  Use the ` +
@@ -1043,6 +1052,7 @@ function artifactProofStarter(job, entryIndex, annotated = false, proofRecipes =
       "Project.ProofKit.FixedArrayLtNode",
       "Project.ProofKit.FixedArrayPairResult",
       "Project.ProofKit.FixedArraySearch",
+      "Project.ProofKit.FixedArraySearchTree",
     ]) modules.add(moduleName);
   } else {
     for (const recipe of proofRecipes.recipes) {
@@ -1060,6 +1070,10 @@ function artifactProofStarter(job, entryIndex, annotated = false, proofRecipes =
       "leanexe.array.search-key.v1",
     ].includes(recipe.regionKind))) {
       modules.add("Project.ProofKit.FixedArraySearch");
+    }
+    if (proofRecipes.recipes.some((recipe) =>
+      recipe.regionKind === "leanexe.array.lt-node.v1")) {
+      modules.add("Project.ProofKit.FixedArraySearchTree");
     }
   }
   const proofImports = [...modules].sort().map((moduleName) =>
