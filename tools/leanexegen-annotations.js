@@ -121,12 +121,13 @@ function validateFixedArrayLengthDispatch(region, description) {
   ], `${description}.parameters`);
   natural(region.parameters.inputLocal, `${description}.parameters.inputLocal`);
   natural(region.parameters.expectedSize, `${description}.parameters.expectedSize`);
-  if (!["eq-normalized-v1", "ne-normalized-v1"].includes(region.parameters.encoding)) {
+  if (!["eq-normalized-v1", "ne-normalized-v1", "le-unsigned-v1"]
+    .includes(region.parameters.encoding)) {
     fail(`${description}.parameters.encoding is unsupported`);
   }
-  const expectedBranches = region.parameters.encoding === "eq-normalized-v1"
-    ? { invalidBranch: "else", validBranch: "then" }
-    : { invalidBranch: "then", validBranch: "else" };
+  const expectedBranches = region.parameters.encoding === "ne-normalized-v1"
+    ? { invalidBranch: "then", validBranch: "else" }
+    : { invalidBranch: "else", validBranch: "then" };
   if (region.parameters.invalidBranch !== expectedBranches.invalidBranch ||
       region.parameters.validBranch !== expectedBranches.validBranch ||
       region.parameters.continuation !== "fallthrough") {
@@ -500,18 +501,22 @@ function matchFixedArrayLengthDispatchRegion(program, function_, region) {
   const instructions = resolveInstructionList(body, region.location.listPath);
   const selected = instructions.slice(region.location.startIndex, region.location.endIndex);
   const parameters = region.parameters;
-  const common = [
+  const prefix = [
     ".localGet 0,",
     `.localSet ${parameters.inputLocal},`,
     `.localGet ${parameters.inputLocal},`,
     ".wrapI64,",
     ".load64 (0 : UInt32),",
     `.constI64 (${parameters.expectedSize} : UInt64),`,
+  ];
+  const expected = parameters.encoding === "le-unsigned-v1" ? [
+    ...prefix,
+    ".leUI64,",
+    ".iff 0 0 [",
+  ] : parameters.encoding === "eq-normalized-v1" ? [
+    ...prefix,
     ".eqI64,",
     ".iff 0 1 [",
-  ];
-  const expected = parameters.encoding === "eq-normalized-v1" ? [
-    ...common,
     ".constI64 (1 : UInt64),",
     ".eqI64,",
     ".iff 0 1 [",
@@ -520,7 +525,9 @@ function matchFixedArrayLengthDispatchRegion(program, function_, region) {
     ".eqz,",
     ".iff 0 0 [",
   ] : [
-    ...common,
+    ...prefix,
+    ".eqI64,",
+    ".iff 0 1 [",
     ".constI64 (0 : UInt64),",
     ".eqI64,",
     ".eqz,",
@@ -538,7 +545,8 @@ function matchFixedArrayLengthDispatchRegion(program, function_, region) {
       JSON.stringify(normalizeInstructions(expected))) {
     fail(`${region.id}: decoded instructions do not match the length-dispatch annotation`);
   }
-  const booleanIfs = parameters.encoding === "eq-normalized-v1" ? [7, 10] : [7, 12, 15];
+  const booleanIfs = parameters.encoding === "le-unsigned-v1" ? [] :
+    parameters.encoding === "eq-normalized-v1" ? [7, 10] : [7, 12, 15];
   for (const instructionIndex of booleanIfs) {
     for (const [field, value] of [["then", 1], ["else", 0]]) {
       const branch = resolveInstructionList(body, [
@@ -764,6 +772,7 @@ function directCallRecipe(match, selectedSections = [], tacticEligible = false) 
 
 function fixedArrayLengthDispatchRecipe(match, selectedSections = []) {
   const equality = match.parameters.encoding === "eq-normalized-v1";
+  const bounded = match.parameters.encoding === "le-unsigned-v1";
   return {
     recipeVersion: 1,
     functionIndex: match.functionIndex,
@@ -772,17 +781,24 @@ function fixedArrayLengthDispatchRecipe(match, selectedSections = []) {
     applicability: "exact decoded instruction match",
     direct: {
       module: "Project.ProofKit.FixedArrayLengthDispatch",
-      theorem: equality
-        ? "Project.ProofKit.FixedArrayLengthDispatch.eqProgram_spec"
-        : "Project.ProofKit.FixedArrayLengthDispatch.program_spec",
-      tactic: equality
-        ? "wp_fixed_array_length_eq_dispatch"
-        : "wp_fixed_array_length_dispatch",
-      invocation: equality
-        ? `wp_fixed_array_length_eq_dispatch ${match.parameters.inputLocal}, ` +
+      theorem: bounded
+        ? "Project.ProofKit.FixedArrayLengthDispatch.leProgram_spec"
+        : equality
+          ? "Project.ProofKit.FixedArrayLengthDispatch.eqProgram_spec"
+          : "Project.ProofKit.FixedArrayLengthDispatch.program_spec",
+      tactic: bounded
+        ? "wp_fixed_array_length_le_dispatch"
+        : equality
+          ? "wp_fixed_array_length_eq_dispatch"
+          : "wp_fixed_array_length_dispatch",
+      invocation: bounded
+        ? `wp_fixed_array_length_le_dispatch ${match.parameters.inputLocal}, ` +
           `${match.parameters.expectedSize}`
-        : `wp_fixed_array_length_dispatch ${match.parameters.inputLocal}, ` +
-          `${match.parameters.expectedSize}`,
+        : equality
+          ? `wp_fixed_array_length_eq_dispatch ${match.parameters.inputLocal}, ` +
+            `${match.parameters.expectedSize}`
+          : `wp_fixed_array_length_dispatch ${match.parameters.inputLocal}, ` +
+            `${match.parameters.expectedSize}`,
     },
     supporting: [
       {
@@ -1204,12 +1220,17 @@ function validateProofRecipePlan(plan, document) {
       }
     } else if (region.kind === "leanexe.array.length-dispatch.v1") {
       const equality = region.parameters.encoding === "eq-normalized-v1";
-      const theorem = equality
-        ? "Project.ProofKit.FixedArrayLengthDispatch.eqProgram_spec"
-        : "Project.ProofKit.FixedArrayLengthDispatch.program_spec";
-      const tactic = equality
-        ? "wp_fixed_array_length_eq_dispatch"
-        : "wp_fixed_array_length_dispatch";
+      const bounded = region.parameters.encoding === "le-unsigned-v1";
+      const theorem = bounded
+        ? "Project.ProofKit.FixedArrayLengthDispatch.leProgram_spec"
+        : equality
+          ? "Project.ProofKit.FixedArrayLengthDispatch.eqProgram_spec"
+          : "Project.ProofKit.FixedArrayLengthDispatch.program_spec";
+      const tactic = bounded
+        ? "wp_fixed_array_length_le_dispatch"
+        : equality
+          ? "wp_fixed_array_length_eq_dispatch"
+          : "wp_fixed_array_length_dispatch";
       if (recipe.direct.module !== "Project.ProofKit.FixedArrayLengthDispatch" ||
           recipe.direct.theorem !== theorem || recipe.direct.tactic !== tactic ||
           typeof recipe.direct.invocation !== "string") {

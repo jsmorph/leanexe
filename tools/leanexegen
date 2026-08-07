@@ -622,10 +622,11 @@ function proofPrompt(request, job, entryIndex) {
     `wrapper, Tree.wrapperProgram_spec proves that wrapper and leaves only its invalid-result, ` +
     `descriptor-validity, and semantic-result obligations.  ` +
     `Import Project.ProofKit.FixedArrayLengthDispatch when the exported wrapper begins with the ` +
-    `standard fixed-array length comparison and compiler Boolean normalization.  Run ` +
+    `standard fixed-array length comparison.  Run ` +
     `wp_fixed_array_length_dispatch <inputLocal>, <expectedSize> for the normalized inequality ` +
     `encoding, or wp_fixed_array_length_eq_dispatch <inputLocal>, <expectedSize> for the normalized ` +
-    `equality encoding.  The tactic infers the valid and invalid branches and leaves one semantic ` +
+    `equality encoding.  Run wp_fixed_array_length_le_dispatch <inputLocal>, <maximumSize> for a ` +
+    `direct unsigned upper-bound comparison.  The tactic infers the valid and invalid branches and leaves one semantic ` +
     `proof for each.  Select the encoding named by the matched PROOF_RECIPES.json entry, and apply ` +
     `the dispatch tactic before broad ` +
     `symbolic execution of the entry function.  ` +

@@ -3060,6 +3060,8 @@ def directCallArgumentLocal : Expr → Option Nat
 mutual
   partial def fixedArrayLengthComparison? : Cond → Option (Nat × Nat)
     | .not cond => fixedArrayLengthComparison? cond
+    | .leU64 (.arraySize (.local inputLocal)) (.u64 maximumSize) =>
+        some (inputLocal, maximumSize)
     | .eqU64 (.arraySize (.local inputLocal)) (.u64 expectedSize) =>
         some (inputLocal, expectedSize)
     | .eqU64 (.u64 expectedSize) (.arraySize (.local inputLocal)) =>
@@ -3078,6 +3080,27 @@ def fixedArrayLengthDispatch?
     Option Annotations.RelativeFixedArrayLengthDispatch := do
   let (semanticInput, semanticExpected) ← fixedArrayLengthComparison? cond
   match code with
+  | .localGet 0 :: .localSet inputLocal :: .localGet inputReadLocal ::
+      .wrapI64 :: .load64 :: .constI64 maximumSize :: .leUI64 ::
+      .iff false _ (some _) :: _ =>
+      if inputLocal = inputReadLocal && semanticInput = 0 &&
+          maximumSize = semanticExpected then
+        some
+          { listPath := #[]
+            startIndex := 0
+            endIndex := 8
+            inputLocal
+            expectedSize := maximumSize
+            encoding := "le-unsigned-v1"
+            invalidBranch := "else"
+            validBranch := "then"
+            continuation := "fallthrough"
+            generatedBy := #[
+              "LeanExe.Wasm.Binary.CoreWasm.emitCondWithRelease",
+              "LeanExe.Wasm.Binary.CoreWasm.emitStmtAnnotated"
+            ] }
+      else
+        none
   | .localGet 0 :: .localSet inputLocal :: .localGet inputReadLocal ::
       .wrapI64 :: .load64 :: .constI64 expectedSize :: .eqI64 ::
       .iff true [.constI64 1] (some [.constI64 0]) ::

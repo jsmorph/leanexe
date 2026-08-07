@@ -765,6 +765,28 @@ def func1Def : Wasm.Function :=
 }
 
 function lengthDispatchProgram(encoding, expectedSize = 21) {
+  if (encoding === "le-unsigned-v1") {
+    return `def func0 : Wasm.Program :=
+  [
+  .localGet 0,
+  .localSet 10,
+  .localGet 10,
+  .wrapI64,
+  .load64 (0 : UInt32),
+  .constI64 (${expectedSize} : UInt64),
+  .leUI64,
+  .iff 0 0 [
+    .constI64 (0 : UInt64)
+  ] [
+    .constI64 (1 : UInt64)
+  ],
+  .localGet 0
+  ]
+
+def func0Def : Wasm.Function :=
+  { params := [.i64], locals := [.i64], body := func0, results := [.i64] }
+`;
+  }
   const normalized = encoding === "eq-normalized-v1" ? `
   .constI64 (1 : UInt64),
   .eqI64,
@@ -824,6 +846,7 @@ def func0Def : Wasm.Function :=
 
 function lengthDispatchDocument(wasm, encoding) {
   const equality = encoding === "eq-normalized-v1";
+  const bounded = encoding === "le-unsigned-v1";
   return {
     schemaVersion: 1,
     artifact: { byteLength: wasm.length },
@@ -838,13 +861,17 @@ function lengthDispatchDocument(wasm, encoding) {
       regions: [{
         id: "function-0.length-dispatch-0",
         kind: "leanexe.array.length-dispatch.v1",
-        location: { listPath: [], startIndex: 0, endIndex: equality ? 15 : 20 },
+        location: {
+          listPath: [],
+          startIndex: 0,
+          endIndex: bounded ? 8 : equality ? 15 : 20,
+        },
         parameters: {
           inputLocal: 10,
           expectedSize: 21,
           encoding,
-          invalidBranch: equality ? "else" : "then",
-          validBranch: equality ? "then" : "else",
+          invalidBranch: equality || bounded ? "else" : "then",
+          validBranch: equality || bounded ? "then" : "else",
           continuation: "fallthrough",
         },
         generatedBy: [
@@ -858,17 +885,23 @@ function lengthDispatchDocument(wasm, encoding) {
 
 function testLengthDispatchAnnotationRecipes() {
   const wasm = Buffer.from([0, 97, 115, 109, 1, 0, 0, 0]);
-  for (const encoding of ["eq-normalized-v1", "ne-normalized-v1"]) {
+  for (const encoding of [
+    "eq-normalized-v1", "ne-normalized-v1", "le-unsigned-v1",
+  ]) {
     const document = lengthDispatchDocument(wasm, encoding);
     const program = lengthDispatchProgram(encoding);
     validateAnnotationDocument(document, wasm);
     const plan = proofRecipePlan(document, program, ["strategy.arrays", "strategy.frames"]);
     validateProofRecipePlan(plan, document);
     const equality = encoding === "eq-normalized-v1";
+    const bounded = encoding === "le-unsigned-v1";
+    const expectedTheorem = bounded ? "leProgram_spec" :
+      equality ? "eqProgram_spec" : "program_spec";
+    const expectedTactic = bounded ? "wp_fixed_array_length_le_dispatch" :
+      equality ? "wp_fixed_array_length_eq_dispatch" : "wp_fixed_array_length_dispatch";
     assert(plan.recipes.length === 1 &&
-      plan.recipes[0].direct.theorem.endsWith(equality ? "eqProgram_spec" : "program_spec") &&
-      plan.recipes[0].direct.tactic ===
-        (equality ? "wp_fixed_array_length_eq_dispatch" : "wp_fixed_array_length_dispatch") &&
+      plan.recipes[0].direct.theorem.endsWith(expectedTheorem) &&
+      plan.recipes[0].direct.tactic === expectedTactic &&
       JSON.stringify(plan.recipes[0].guidance) ===
         JSON.stringify(["strategy.arrays", "strategy.frames"]),
     `${encoding} did not select its exact length-dispatch recipe`);
@@ -877,11 +910,16 @@ function testLengthDispatchAnnotationRecipes() {
     wrongSize.functions[0].regions[0].parameters.expectedSize = 15;
     expectFailure(() => proofRecipePlan(wrongSize, program), /do not match/);
 
-    const wrongBooleanBranch = program.replace(
-      ".constI64 (1 : UInt64)\n  ] [",
-      ".constI64 (2 : UInt64)\n  ] [");
-    expectFailure(() => proofRecipePlan(document, wrongBooleanBranch),
-      /Boolean-normalization then branch does not match/);
+    if (bounded) {
+      const wrongComparison = program.replace(".leUI64,", ".ltUI64,");
+      expectFailure(() => proofRecipePlan(document, wrongComparison), /do not match/);
+    } else {
+      const wrongBooleanBranch = program.replace(
+        ".constI64 (1 : UInt64)\n  ] [",
+        ".constI64 (2 : UInt64)\n  ] [");
+      expectFailure(() => proofRecipePlan(document, wrongBooleanBranch),
+        /Boolean-normalization then branch does not match/);
+    }
   }
   const invalidEncoding = lengthDispatchDocument(wasm, "eq-normalized-v1");
   invalidEncoding.functions[0].regions[0].parameters.encoding = "unknown";

@@ -78,6 +78,19 @@ def eqProgram (inputLocal expectedSize : Nat)
   .iff 0 0 validBranch invalidBranch
   ]
 
+def leProgram (inputLocal maximumSize : Nat)
+    (validBranch invalidBranch : Wasm.Program) : Wasm.Program :=
+  [
+  .localGet 0,
+  .localSet inputLocal,
+  .localGet inputLocal,
+  .wrapI64,
+  .load64 0,
+  .constI64 (UInt64.ofNat maximumSize),
+  .leUI64,
+  .iff 0 0 validBranch invalidBranch
+  ]
+
 def branchFrame (inputLocal : Nat) (frame : Locals)
     (inputPtr : UInt64) : Locals :=
   { frame with
@@ -258,6 +271,75 @@ theorem eqProgram_spec
       all_goals simpa [FixedArrayEqNode.branchPost] using hBranch
     · simpa [branchFrame, hParams, hValues] using hInvalid hSize
 
+set_option maxHeartbeats 1000000 in
+set_option Elab.async false in
+theorem leProgram_spec
+    (inputLocal maximumSize : Nat)
+    (validBranch invalidBranch rest : Wasm.Program)
+    (module_ : Wasm.Module) (env : HostEnv Unit) (st : Store Unit)
+    (frame : Locals) (inputPtr : UInt64) (input : Array UInt64)
+    (hParams : frame.params = [.i64 inputPtr])
+    (hValues : frame.values = [])
+    (hInputLocalPositive : 0 < inputLocal)
+    (hInputLocal : inputLocal < 1 + frame.locals.length)
+    (hMaximumSize : maximumSize < UInt64.size)
+    (hInput : UInt64Array.At st inputPtr input)
+    (Q : Assertion Unit)
+    (hValid : input.size ≤ maximumSize ->
+      wp module_ validBranch
+        (FixedArrayEqNode.branchPost module_ env rest Q) st
+        (branchFrame inputLocal frame inputPtr) env)
+    (hInvalid : ¬input.size ≤ maximumSize ->
+      wp module_ invalidBranch
+        (FixedArrayEqNode.branchPost module_ env rest Q) st
+        (branchFrame inputLocal frame inputPtr) env) :
+    wp module_
+      (leProgram inputLocal maximumSize validBranch invalidBranch ++ rest)
+      Q st frame env := by
+  have hNotParam : ¬inputLocal < frame.params.length := by
+    rw [hParams]
+    simp
+    omega
+  have hLocalValid : inputLocal < frame.params.length + frame.locals.length := by
+    rw [hParams]
+    simp
+    exact hInputLocal
+  have hLengthRead := hInput.lengthRead
+  have hLengthBound := hInput.generatedLengthBound
+  have hInputAddress := hInput.pointerAddress_eq
+  have hEncoded :
+      UInt64.ofNat input.size ≤ UInt64.ofNat maximumSize ↔
+        input.size ≤ maximumSize := by
+    rw [UInt64.le_iff_toNat_le,
+      UInt64.toNat_ofNat_of_lt' hInput.size_lt,
+      UInt64.toNat_ofNat_of_lt' hMaximumSize]
+  unfold leProgram
+  simp only [List.cons_append, List.nil_append]
+  wp_length_dispatch [hParams, hValues, hNotParam, hLocalValid,
+    hInputLocalPositive.ne', hInputLocal]
+  rw [if_neg (Nat.not_lt.mpr hLengthBound)]
+  rw [hInputAddress, hLengthRead]
+  refine wp_iff_cons rfl ?_
+  by_cases hSize : input.size ≤ maximumSize
+  · rw [if_pos (by simpa [hEncoded] using hSize)]
+    apply Wasm.wp.conseq
+      (Q := FixedArrayEqNode.branchPost module_ env rest Q)
+    · intro continuation hBranch
+      cases continuation
+      case Break depth final branchFrame' =>
+        cases depth <;> simpa [FixedArrayEqNode.branchPost] using hBranch
+      all_goals simpa [FixedArrayEqNode.branchPost] using hBranch
+    · simpa [branchFrame, hParams, hValues] using hValid hSize
+  · rw [if_neg (by simpa [hEncoded] using hSize)]
+    apply Wasm.wp.conseq
+      (Q := FixedArrayEqNode.branchPost module_ env rest Q)
+    · intro continuation hBranch
+      cases continuation
+      case Break depth final branchFrame' =>
+        cases depth <;> simpa [FixedArrayEqNode.branchPost] using hBranch
+      all_goals simpa [FixedArrayEqNode.branchPost] using hBranch
+    · simpa [branchFrame, hParams, hValues] using hInvalid hSize
+
 macro "wp_fixed_array_length_dispatch " inputLocal:term ", " expectedSize:term : tactic =>
   `(tactic|
     (change wp _
@@ -269,5 +351,11 @@ macro "wp_fixed_array_length_eq_dispatch " inputLocal:term ", " expectedSize:ter
     (change wp _
       (eqProgram $inputLocal $expectedSize _ _ ++ _) _ _ _ _
      apply eqProgram_spec))
+
+macro "wp_fixed_array_length_le_dispatch " inputLocal:term ", " maximumSize:term : tactic =>
+  `(tactic|
+    (change wp _
+      (leProgram $inputLocal $maximumSize _ _ ++ _) _ _ _ _
+     apply leProgram_spec))
 
 end Project.ProofKit.FixedArrayLengthDispatch
