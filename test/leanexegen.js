@@ -1187,7 +1187,7 @@ function testArtifactPackage(job, formalSource) {
     hostAssumptions: ["The module imports no host functions."],
     stageReports,
     proofTelemetry,
-    proofJournal: "# Proof Journal\n\nI reduced the artifact theorem with the checked array lemmas.\n",
+    proofJournal: "# Proof journal\n\nI reduced the artifact theorem with the checked array lemmas.\n",
     toolPins: currentToolPins(repoRoot),
     proofLibraryCatalog: fs.readFileSync(
       path.join(repoRoot, "proofs", "talos", "lean", "Project", "ProofKit", "README.md"),
