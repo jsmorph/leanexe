@@ -375,6 +375,8 @@ The first composition theorem now exists as `FixedArraySearchTree.Tree.program_s
 
 Demo 3's complete seven-node search program is definitionally equal to one descriptor after the checked search-key load.  The annotation consumer now derives that descriptor from the parent-child paths, emits an `rfl` region equality in `AnnotationMatches`, and names the descriptor, equality, and composition theorem in `PROOF_RECIPES.json`.  A transformed 155-line proof using the generated descriptor builds through `ArtifactResult`, leaving a fresh Codex run to measure the complete proof time.
 
+The first fresh composition run produced a 144-line proof and completed Stage 5 in 405.385 seconds.  The preceding journal-guided node proof took 770.948 seconds and 421 lines, while the historical pair-result reference took 278.656 seconds and 672 lines.  The journal confirms that the agent selected the composition first and passed its first build after one proof edit, but repeated unchanged trials remain necessary before the timing evidence can determine retention.
+
 ## Completion criteria
 
 The first complete increment emits a validated sidecar for every ordinary library-mode compilation requested by `leanexegen`.  Demos 1, 2, and 3 prove the same specifications over the same WASM bytes through an annotation-driven deterministic proof plan.  The retained evidence records proof-generation timings, annotation validation, region coverage, and independent Lean acceptance.
