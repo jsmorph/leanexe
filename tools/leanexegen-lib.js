@@ -19,6 +19,7 @@ const caseNamePattern = /^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$/;
 const decimalPattern = /^(?:0|[1-9][0-9]*)$/;
 const uint64Maximum = 18446744073709551615n;
 const proofKitModules = Object.freeze([
+  "Project.ProofKit.Annotation",
   "Project.ProofKit.Memory",
   "Project.ProofKit.Array",
   "Project.ProofKit.Allocation",
@@ -36,6 +37,7 @@ const proofKitModules = Object.freeze([
   "Project.ProofKit.Control",
 ]);
 const proofKitRelativeFiles = Object.freeze([
+  "proofs/talos/lean/Project/ProofKit/Annotation.lean",
   "proofs/talos/lean/Project/ProofKit/Memory.lean",
   "proofs/talos/lean/Project/ProofKit/Array.lean",
   "proofs/talos/lean/Project/ProofKit/Allocation.lean",
