@@ -15,7 +15,7 @@ tools/leanexegen -o myprogram.wasm myprogram.txt
 | Status | Stage | Checked operation |
 |--------|-------|-------------------|
 | 1 | Job setup | Read the request, locate Codex, record its version, and derive deterministic module names from the request digest. |
-| 2 | Formal specification | Ask a fresh Codex task for `expected`; the task iterates with Lean, then the outer process appends the fixed `ArtifactSpec` and checks both exact declarations and types. |
+| 2 | Formal specification | Ask a fresh Codex task for `expected` and `heapReserveBytes`; the task iterates with Lean, then the outer process appends the fixed `ArtifactSpec` and checks all exact declarations and types. |
 | 3 | Lean program | Give a fresh Codex task the request and frozen formal specification; the task iterates through type-check, report, and scratch-compile commands before the outer process repeats them. |
 | 4 | WASM compilation and freezing | Compile the accepted `compute` again, retain the exact bytes, check `wasm-tools`, render WAT, and remove the program task workspace. |
 | 5 | Direct artifact proof | Generate deterministic artifact support, give a fresh Codex task the frozen specification and artifact model without Source, let it iterate with Lean, and repeat the artifact check outside the task. |
@@ -47,7 +47,7 @@ Codex returns one schema-validated `generated`, `questions`, or `problems` objec
 
 | Task | Inputs visible to Codex | Required generated source |
 |------|-------------------------|---------------------------|
-| Formal specification | Request | A complete `FormalSpec` module defining `expected : Array UInt64 → Array UInt64`; the orchestrator appends the representation and artifact predicates. |
+| Formal specification | Request | A complete `FormalSpec` module defining `expected : Array UInt64 → Array UInt64` and `heapReserveBytes : Array UInt64 → Nat`; the orchestrator appends the representation and artifact predicates. |
 | Lean program | Request and frozen `FormalSpec` | A complete `Source` module defining `compute : Array UInt64 → Array UInt64`, plus input-array and expected-output samples. |
 | Artifact proof | Request, frozen `FormalSpec`, generated Talos `Program`, deterministic artifact-support modules, selected `PROOF_STRATEGIES.md`, structural `PROOF_TASK_FEATURES.json`, and the optional `PROOF_LIBRARY.md` | A complete `Behavior` module proving `artifact_behavior`; Source and the compiler are absent. |
 
@@ -59,7 +59,7 @@ The [artifact-proof strategy notes](proof-strategies.md) describe proof structur
 
 ## Fixed array interface
 
-The interface accepts and returns `Array UInt64`, and the compiled export is `compute`.  The formal Codex task defines `${namespace}.FormalSpec.expected : Array UInt64 → Array UInt64`; the orchestrator then appends the array representation, runtime precondition, and artifact property.  A generated Lean check module names and checks both public declarations before the formal source can freeze.
+The interface accepts and returns `Array UInt64`, and the compiled export is `compute`.  The formal Codex task defines `${namespace}.FormalSpec.expected : Array UInt64 → Array UInt64` and `${namespace}.FormalSpec.heapReserveBytes : Array UInt64 → Nat`; the latter bounds every bump-heap byte consumed above the initial heap top, including allocation headers, reserved capacity, intermediate allocations, and allocations retained at return.  The orchestrator appends the array representation, runtime precondition, and artifact property, then checks all three declarations before the formal source can freeze.
 
 ```lean
 def UInt64ArrayAt (store : Wasm.Store Unit) (ptr : UInt64)
@@ -82,6 +82,8 @@ def RuntimeReady (initial : Wasm.Store Unit) (inputPtr : UInt64)
     heapTop.toNat + 48 + 8 * ((expected input).size + 1) ≤ 4294967296 ∧
     heapTop.toNat + 48 + 8 * ((expected input).size + 1) ≤
       initial.mem.pages * 65536 ∧
+    heapTop.toNat + heapReserveBytes input ≤ 4294967296 ∧
+    heapTop.toNat + heapReserveBytes input ≤ initial.mem.pages * 65536 ∧
     initial.mem.pages ≤ 65536
 
 def ArtifactSpec (module_ : Wasm.Module) : Prop :=
@@ -95,7 +97,9 @@ def ArtifactSpec (module_ : Wasm.Module) : Prop :=
           UInt64ArrayAt final outputPtr (expected input))
 ```
 
-An array occupies one eight-byte length word followed by one eight-byte word per element.  `RuntimeReady` identifies the input array, fixes the allocator globals expected by generated LeanExe modules, places the bump pointer above the input, bounds the page count by WebAssembly's 65,536-page limit, and requires enough address space and existing memory for the result.  The result predicate permits any output pointer whose final-memory representation equals `expected input`, so the theorem does not depend on a chosen allocation address.
+An array occupies one eight-byte length word followed by one eight-byte word per element.  `RuntimeReady` identifies the input array, fixes the allocator globals expected by generated LeanExe modules, places the bump pointer above the input, bounds the page count by WebAssembly's 65,536-page limit, and requires enough address space and existing memory for both the result representation and `heapReserveBytes input`.  The result predicate permits any output pointer whose final-memory representation equals `expected input`, while the source-free artifact proof must derive each allocation-capacity inequality from the formal reserve bound.
+
+The reserve function forms part of the reviewed formal specification and may conservatively overestimate consumption.  Underestimating the artifact's allocation behavior makes the proof fail, as occurs when a filter reserves input-sized capacity but the bound accounts only for its smaller final result.  Neither the generated source nor a compiler assertion establishes the reserve: the theorem about the decoded artifact must prove that the stated precondition suffices.
 
 The proof task must prove `${namespace}.Behavior.artifact_behavior : ${namespace}.FormalSpec.ArtifactSpec ${namespace}.module`.  Deterministic `ArtifactResult` source applies `artifact_correct_of` to that exact formal declaration and behavior theorem.  Neither a source theorem nor a compiler-lowering certificate participates in the resulting artifact theorem.
 
@@ -108,6 +112,8 @@ tools/leanexegen run myprogram.wasm 10 20 30
 ## Proof package and independent verification
 
 A successful command publishes `myprogram.wasm` and `myprogram.proof/`.  The sidecar contains its own `program.wasm`, the request, all three generated sources, deterministic artifact support, samples, host assumptions, tool pins, task reports, and a content index.  The generated Source appears for inspection and provenance, while the verification command builds only the formal specification, Talos program, artifact modules, behavioral proof, embedded-byte checker, and declaration audit.
+
+Current annotated packages use schema 6, which identifies the `heapReserveBytes` formal interface and its expanded `RuntimeReady` fields.  The verifier also accepts schemas 3 through 5 and uses their previous formal declaration check and theorem starter.  Controlled reproof preserves the input package's formal-interface version, so a proof-library experiment does not change a frozen specification boundary.
 
 | Path | Contents |
 |------|----------|
