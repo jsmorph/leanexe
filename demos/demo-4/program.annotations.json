@@ -10,7 +10,48 @@
       ],
       "locals": 16,
       "parameters": 1,
-      "regions": [],
+      "regions": [
+        {
+          "generatedBy": [
+            "LeanExe.Wasm.Binary.CoreWasm.emitArrayMapSlots",
+            "LeanExe.Wasm.Binary.CoreWasm.emitStmtAnnotated",
+            "LeanExe.Wasm.Binary.CoreWasm.emitFuncAnnotated"
+          ],
+          "id": "function-0.map-add-0",
+          "kind": "leanexe.array.map-add.v1",
+          "location": {
+            "endIndex": 9,
+            "listPath": [],
+            "startIndex": 0
+          },
+          "parameters": {
+            "addend": "1",
+            "continuation": "function-return",
+            "maximumSize": 8
+          }
+        },
+        {
+          "generatedBy": [
+            "LeanExe.Wasm.Binary.CoreWasm.emitCondWithRelease",
+            "LeanExe.Wasm.Binary.CoreWasm.emitStmtAnnotated"
+          ],
+          "id": "function-0.length-dispatch-0",
+          "kind": "leanexe.array.length-dispatch.v1",
+          "location": {
+            "endIndex": 8,
+            "listPath": [],
+            "startIndex": 0
+          },
+          "parameters": {
+            "continuation": "fallthrough",
+            "encoding": "le-unsigned-v1",
+            "expectedSize": 8,
+            "inputLocal": 5,
+            "invalidBranch": "else",
+            "validBranch": "then"
+          }
+        }
+      ],
       "results": 1,
       "sourceName": "LeanExeGen.GeneratedRc77513211b55010d.Source.compute",
       "wasmIndex": 0

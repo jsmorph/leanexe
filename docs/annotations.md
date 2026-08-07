@@ -425,7 +425,9 @@ The held-out Demo 4 journal identified the complete bounded map wrapper as the r
 
 The compiler recognizes the exact extracted IR form `if input.size ≤ n then input.map (fun element ⇒ element + c) else #[]`.  It emits one `leanexe.array.map-add.v1` whole-function region containing `n`, `c`, and the function-return continuation while retaining the nested length-dispatch region.  The consumer verifies that the region covers the decoded top-level function and generates an `AnnotationMatches` equality between the selected artifact region and `FixedArrayMapAdd.wrapperProgram n c`; Lean accepted that equality for the frozen Demo 4 artifact.
 
-The proof planner selects `wrapperProgram_spec` from that equality and generates a complete artifact-behavior starter.  A focused check of the generated 67-line proof took 2.5 seconds after its generated dependencies were available, but this diagnostic excludes headless-agent and outer-acceptance time.  A controlled `leanexegen reprove` run over the frozen package will provide the comparable Stage 5 measurement against the 2,364.735-second baseline and 1,191.695-second allocator iteration.
+The proof planner selects `wrapperProgram_spec` from that equality and generates a complete artifact-behavior starter.  The controlled `leanexegen reprove` run accepted the unchanged 66-line starter on its first check and completed Stage 5 in 103.123 seconds, including 66.734 seconds in Codex and 27.688 seconds in outer acceptance.  This result reduces total time by 95.6 percent from the 2,364.735-second held-out baseline and by 91.3 percent from the 1,191.695-second allocator iteration.
+
+The final package retains the same 1,913-byte WASM artifact and SHA-256 digest `c538d40936b426ba875b3dae1913e62ff00a44b34adff2adcd70922e5a4c95ff`.  Its proof source has SHA-256 digest `bf07793985539b6c0a7e9076c97f836050c859b47b13ab3f70a3383270b29d56`, and the journal records no proof edit or repeated in-session check.  An independent `leanexegen verify` run accepted the packaged specification, decoded artifact, annotation equality, behavior theorem, and final artifact theorem.
 
 ## Completion criteria
 
