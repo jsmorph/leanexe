@@ -6479,3 +6479,11 @@ Demo 4 fixes `input.map (fun element => element + 1)` for arrays of at most eigh
 The held-out proof took 2,364.735 seconds from Stage 5 start to first acceptance, with 2,255.687 seconds in Codex and 98.593 seconds in outer acceptance.  Codex produced a 457-line proof at SHA-256 `6bd050aab0f4e1124e9ed2a2ef6e75a6020e7ab7b90ce82d2315dc0668b08488` after 27 journaled edited checks.  Independent acceptance proved the final embedded-byte theorem, and sample execution checked wrapping addition and the overlength empty result.
 
 The journal separates the proof cost into bounded-length dispatch, dynamic capacity normalization, an allocator region with unused trailing locals, a dynamic result-length store, the transformed-prefix map loop, and final empty-array construction.  The valid branch reused `FixedArrayAllocatorWindow.region_spec` at offset two, while the invalid branch proved the same allocator directly because its offset-zero window sat inside a 16-local frame.  The first LTG iteration will generalize those boundaries before deriving a complete map-wrapper composition.
+
+## 2026-08-07: General allocator-window theorem
+
+`Project.ProofKit.FixedArrayAllocatorWindow.region_spec_withTail` accepts an explicit count of unused locals following the allocator scratch window.  The existing `region_spec` theorem remains as the tail-zero specialization, preserving current callers.  Focused builds accepted the generalized module and `Project.ProofKit.FixedArrayPairResult` under Lean 4.31.0.
+
+The controlled Demo 4 reproof used the new theorem for the offset-zero allocator in a sixteen-local frame.  Stage 5 completed in 1,191.695 seconds, compared with the 2,364.735-second held-out baseline, and the journaled edit count fell from 27 to 19.  The specification, source, WASM bytes, decoded Program, and artifact theorem remained fixed.
+
+The journal assigns the remaining cost to bounded unsigned length dispatch, generated capacity arithmetic, and the map loop's prefix invariant.  The next proof-kit increment will represent these as compiler-template theorems and add exact artifact-checked annotations and recipes.  Demo 4 will receive another controlled reproof before the earlier demos receive compatibility checks.
