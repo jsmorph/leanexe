@@ -225,7 +225,7 @@ Import `Project.ProofKit.FixedArrayEqNode` when an unrolled search node uses the
 
 The branch obligations use `branchPost module_ env rest Q`, which implements the break and fallthrough behavior of the enclosing WebAssembly `if`.  The initial frame for either obligation is `branchFrame`, containing the traversal loader's scratch-local updates and an empty operand stack.  `wp_fixed_array_eq_node offset, index, keyLocal` handles loaded-first code, and `wp_fixed_array_key_eq_node offset, index, keyLocal` handles key-first code.  Each tactic infers the branch programs and remainder, leaving the semantic array and frame facts followed by the equal and unequal branch proofs.
 
-`loadKeyProgram offset index keyLocal` covers the checked load that initializes a saved search key before the first comparison node.  Its theorem produces `keyFrame`, and `keyFrame_get_key` exposes the saved value through `Locals.get`.  `wp_fixed_array_search_key offset, index, keyLocal` infers the following search program and applies this theorem.
+`loadKeyProgram offset index keyLocal` covers the checked load that initializes a saved search key before the first comparison node.  Its theorem produces `keyFrame`, and `keyFrame_get_key` exposes the saved value through `Locals.get`.  Use `wp_fixed_array_search_key offset, index, keyLocal using hInput, hIndex` to supply the array representation and indexed-array bound, prove the two numeric key-local bounds with `omega`, and leave the three frame premises followed by the continuation.  The three-argument form remains available when a proof needs to establish every theorem premise separately.
 
 `SearchFrame offset keyLocal frame inputPtr key` records the four facts shared by every node: the input parameter, local-list length, empty operand stack, and saved key.  `SearchFrame.afterLoad` discharges a node's saved-key premise when the key local precedes the traversal scratch window, while `SearchFrame.branch` produces the same invariant for either branch frame.  `SearchFrame.program_spec` and `SearchFrame.keyFirstProgram_spec` apply the complete equality-node theorems from this invariant, eliminating the local node adapter that the journaled Demo 2 proof had introduced.
 
@@ -235,7 +235,11 @@ The branch obligations use `branchPost module_ env rest Q`, which implements the
 import Project.ProofKit.FixedArrayEqNode
 import Project.ProofKit.FixedArraySearch
 
-wp_fixed_array_search_key 10, 0, keyLocal
+wp_fixed_array_search_key 10, 0, keyLocal using hInput, hIndex
+· exact hParams
+· exact hLocals
+· exact hValues
+· exact hSearchContinuation
 
 wp_fixed_array_eq_node 10, index, keyLocal
 · exact hParamsValue
@@ -254,15 +258,12 @@ wp_fixed_array_eq_node 10, index, keyLocal
 
 Import `Project.ProofKit.FixedArrayLtNode` when a search tree pushes its saved key, loads an indexed array element through the traversal loader, performs an unsigned less-than comparison, and selects two branch programs.  `program offset index keyLocal lessBranch notLessBranch` preserves both branch programs and the following continuation as parameters.  `program_spec` proves the checked load, memory bounds, comparison, and branch selection while retaining `FixedArrayEqNode.SearchFrame` across either child.
 
-Use `wp_fixed_array_lt_node offset, index, keyLocal` after the preceding equality node has established inequality.  The tactic leaves separate obligations under `key < input[index]` and `¬ key < input[index]`, allowing the application proof to select the left or right subtree.  Checked recipes interleave equality and less-than nodes in their structured instruction order, so a proof follows the generated tree without reconstructing its traversal from the complete function.
+Use `wp_fixed_array_lt_node offset, index, keyLocal using hSearch, hInput, hIndex` after the preceding equality node has established inequality.  Supplying the saved search frame, input representation, and indexed-array bound leaves only the less-than and not-less-than branch obligations, so elaboration cannot postpone the bound behind either subtree.  The three-argument form remains available when a proof needs to establish these premises as separate goals.
 
 ```lean
 import Project.ProofKit.FixedArrayLtNode
 
-wp_fixed_array_lt_node 10, index, keyLocal
-· exact hSearch
-· exact hInput
-· exact hIndex
+wp_fixed_array_lt_node 10, index, keyLocal using hSearch, hInput, hIndex
 · intro hLess
   exact hLessBranch
 · intro hNotLess
