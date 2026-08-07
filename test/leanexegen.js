@@ -311,6 +311,7 @@ function testCodexProtocol() {
     artifactPrompt.includes("PROGRAM_ANNOTATIONS.json") &&
     artifactPrompt.includes("PROOF_RECIPES.json") &&
     artifactPrompt.includes("AnnotationMatches") &&
+    artifactPrompt.includes("Keep PROOF_JOURNAL.md as a prose Markdown account") &&
     artifactPrompt.includes("Attempt the direct recipe") &&
     artifactPrompt.includes("deterministic theorem starter") &&
     artifactPrompt.includes("Use read-only commands to inspect FormalSpec, Program"),
@@ -444,6 +445,34 @@ function testMockedCodex(job) {
     schema.properties.samples.items.properties.expectedOutput.items.pattern ===
       "^(?:0|[1-9][0-9]*)$",
   "Codex command or schema was not deterministic");
+
+  const proofTaskRoot = path.join(temporaryRoot, "mock-proof-journal");
+  fs.mkdirSync(proofTaskRoot);
+  const proofSource = `namespace ${job.namespace}.Behavior\n\ntheorem placeholder : True := by trivial\n`;
+  const proofResponse = runCodexOutcome({
+    codex: "/usr/bin/codex",
+    task: "artifact-proof",
+    stage: 5,
+    taskRoot: proofTaskRoot,
+    contextFiles: new Map([["PROOF_JOURNAL.md", "# Proof Journal\n\n"]]),
+    candidateFile: moduleFile(job.behaviorModule),
+    journalFile: "PROOF_JOURNAL.md",
+    timeout: 1000,
+    prompt: "mock proof prompt",
+    execute: (args) => {
+      const candidate = path.join(proofTaskRoot, moduleFile(job.behaviorModule));
+      fs.mkdirSync(path.dirname(candidate), { recursive: true });
+      fs.writeFileSync(candidate, proofSource);
+      fs.writeFileSync(path.join(proofTaskRoot, "PROOF_JOURNAL.md"),
+        "# Proof Journal\n\nLean accepted the direct region theorem.\n");
+      const output = args[args.indexOf("-o") + 1];
+      fs.writeFileSync(output, `${JSON.stringify(outcome("artifact-proof", ""))}\n`);
+      return { stdout: "", stderr: "" };
+    },
+  });
+  assert(proofResponse.source === proofSource &&
+    proofResponse.proofJournal.includes("direct region theorem"),
+  "mocked artifact-proof task did not return its journal");
 
   let invocations = 0;
   const telemetryCalls = [];
@@ -1053,6 +1082,7 @@ function testArtifactPackage(job, formalSource) {
     proofContext.get("PROOF_LIBRARY.md").includes("bumpFacts") &&
     proofContext.get("PROOF_STRATEGIES.md").includes("strategy.core") &&
     proofContext.get("PROOF_STRATEGIES.md").includes("strategy.arrays") &&
+    proofContext.get("PROOF_JOURNAL.md") === "# Proof Journal\n\n" &&
     JSON.parse(proofContext.get("PROOF_TASK_FEATURES.json")).exportIndex === 0 &&
     !proofContext.has(`LeanExeGen/${job.leanModule}/Source.lean`),
   "proof task context omitted proof guidance or Program, or exposed Source");
@@ -1152,6 +1182,7 @@ function testArtifactPackage(job, formalSource) {
     hostAssumptions: ["The module imports no host functions."],
     stageReports,
     proofTelemetry,
+    proofJournal: "# Proof Journal\n\nI reduced the artifact theorem with the checked array lemmas.\n",
     toolPins: currentToolPins(repoRoot),
     proofLibraryCatalog: fs.readFileSync(
       path.join(repoRoot, "proofs", "talos", "lean", "Project", "ProofKit", "README.md"),
@@ -1174,6 +1205,7 @@ function testArtifactPackage(job, formalSource) {
   assert(checked.artifact.sha256 === generated.artifact.sha256 &&
     checked.stageReports.tasks.leanProgram.sourceSha256 === sha256(Buffer.from(programSource)) &&
     checked.proofTelemetry.totalMilliseconds === 3000 &&
+    checked.proofJournal.includes("checked array lemmas") &&
     checked.manifest.schemaVersion === 5 &&
     checked.compilerAnnotations.artifact.byteLength === wasm.length &&
     checked.proofRecipes.recipes.length === 0,
@@ -1186,6 +1218,9 @@ function testArtifactPackage(job, formalSource) {
   assert(fs.existsSync(path.join(packageRoot, "program.annotations.json")) &&
     fs.existsSync(path.join(packageRoot, "proof-recipes.json")),
   "proof package did not archive annotations and proof recipes");
+  assert(fs.readFileSync(path.join(packageRoot, "proof-journal.md"), "utf8") ===
+    checked.proofJournal,
+  "proof package did not archive the proving-agent journal");
   const schema4Root = path.join(temporaryRoot, "schema-4-package");
   fs.cpSync(packageRoot, schema4Root, { recursive: true });
   fs.unlinkSync(path.join(schema4Root, "program.annotations.json"));

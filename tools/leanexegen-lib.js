@@ -90,6 +90,15 @@ function requireSource(value, description) {
   return value;
 }
 
+function validateProofJournal(value, description = "proof journal") {
+  if (typeof value !== "string" || value.includes("\0") ||
+      !value.startsWith("# Proof Journal\n\n") ||
+      value.slice("# Proof Journal\n\n".length).trim().length === 0) {
+    fail(`${description} must contain prose beneath the Proof Journal heading`);
+  }
+  return value;
+}
+
 function requireStringArray(value, description, allowEmpty = true) {
   if (!Array.isArray(value) || (!allowEmpty && value.length === 0)) {
     fail(`${description} must be ${allowEmpty ? "an" : "a nonempty"} array`);
@@ -770,6 +779,10 @@ function createPackage(stageRoot, values) {
     writeAtomic(path.join(stageRoot, "proof-telemetry.json"),
       jsonBytes(values.proofTelemetry));
   }
+  if (values.proofJournal !== undefined) {
+    writeAtomic(path.join(stageRoot, "proof-journal.md"),
+      Buffer.from(validateProofJournal(values.proofJournal)));
+  }
   writeAtomic(path.join(stageRoot, "tool-pins.json"), jsonBytes(values.toolPins));
   writeAtomic(path.join(stageRoot, "proof-library.md"), Buffer.from(values.proofLibraryCatalog));
   writeAtomic(path.join(stageRoot, "proof-strategies.md"), Buffer.from(values.proofStrategies));
@@ -949,6 +962,10 @@ function validatePackage(packageRoot) {
       path.join(packageRoot, "proof-telemetry.json"), "utf8")),
     stageReports.tasks.artifactProof.sourceSha256)
     : null;
+  const proofJournal = seen.has("proof-journal.md")
+    ? validateProofJournal(fs.readFileSync(
+      path.join(packageRoot, "proof-journal.md"), "utf8"), "proof-journal.md")
+    : null;
   const requiredFiles = [
     "request.txt",
     "interpretation.json",
@@ -1108,6 +1125,7 @@ function validatePackage(packageRoot) {
     wasm,
     stageReports,
     proofTelemetry,
+    proofJournal,
     compilerAnnotations,
     proofRecipes,
   };
@@ -1132,6 +1150,7 @@ module.exports = {
   sha256,
   validateCodexTaskOutcome,
   validatePackage,
+  validateProofJournal,
   validateProgramImports,
   validateProofImports,
   validateStageReports,

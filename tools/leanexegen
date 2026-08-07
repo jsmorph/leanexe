@@ -21,6 +21,7 @@ const {
   sha256,
   validateCodexTaskOutcome,
   validatePackage,
+  validateProofJournal,
   validateProgramImports,
   validateProofImports,
   writeAtomic,
@@ -363,7 +364,18 @@ function runCodexOutcome(options) {
       }
       response.source = fs.readFileSync(candidate, "utf8");
     }
-    return validateCodexTaskOutcome(response, options.task);
+    const validated = validateCodexTaskOutcome(response, options.task);
+    if (validated.outcome === "generated" && options.journalFile !== undefined) {
+      const journalPath = path.join(
+        options.taskRoot, ...options.journalFile.split("/"));
+      const journalStat = fs.lstatSync(journalPath);
+      if (!journalStat.isFile() || journalStat.isSymbolicLink()) {
+        throw new Error(`${options.journalFile} is not a regular file`);
+      }
+      validated.proofJournal = validateProofJournal(
+        fs.readFileSync(journalPath, "utf8"), options.journalFile);
+    }
+    return validated;
   } catch (error) {
     throw new StageError(options.stage, options.task, `invalid Codex outcome: ${error.message}`);
   }
@@ -417,6 +429,7 @@ function runTaskSession(options) {
   return {
     outcome,
     source,
+    proofJournal: outcome.proofJournal,
     proofTelemetry,
     stageReport: {
       task: options.task,
@@ -675,6 +688,9 @@ function proofPrompt(request, job, entryIndex) {
     `regions of the decoded Program and the selected FixedArrayPairResult program.  Use the ` +
     `regionEquality named by each pair-result recipe before applying its semantic theorem.  ` +
     `These files grant no additional Lean imports.  ` +
+    `Keep PROOF_JOURNAL.md as a prose Markdown account of your work.  Update it during the ` +
+    `session with your reasoning, Lean results, and changes of direction.  Write naturally; it ` +
+    `has no prescribed schema and does not participate in the proof.  ` +
     `Do not import Source, inspect source ` +
     `code, invoke the compiler, add axioms, or use sorry.  Leave samples and hostAssumptions ` +
     `empty.  ArtifactSpec resolves the ${job.exportName} export to function ${entryIndex}, then ` +
@@ -1070,6 +1086,7 @@ function proofTaskContext(
     context.set("PROOF_RECIPES.json", `${JSON.stringify(bundle.proofRecipes, null, 2)}\n`);
   }
   context.set("PROOF_LIBRARY.md", fs.readFileSync(proofKitCatalogPath, "utf8"));
+  context.set("PROOF_JOURNAL.md", "# Proof Journal\n\n");
   context.set(moduleFile(job.behaviorModule),
     artifactProofStarter(
       job, bundle.features.exportIndex, bundle.compilerAnnotations !== undefined));
@@ -1822,6 +1839,7 @@ function reprove(command) {
         taskRoot: proofTaskRoot,
         contextFiles: proofContext,
         candidateFile: moduleFile(checked.job.behaviorModule),
+        journalFile: "PROOF_JOURNAL.md",
         timeout: artifactProofTaskTimeoutMs,
         prompt,
       }),
@@ -1892,6 +1910,7 @@ function reprove(command) {
         hostAssumptions,
         stageReports,
         proofTelemetry: proof.proofTelemetry,
+        proofJournal: proof.proofJournal,
         toolPins,
         proofLibraryCatalog,
         proofStrategies: strategies.notes,
@@ -2032,6 +2051,7 @@ function annotatePackage(command) {
       hostAssumptions,
       stageReports: checked.stageReports,
       proofTelemetry: checked.proofTelemetry === null ? undefined : checked.proofTelemetry,
+      proofJournal: checked.proofJournal === null ? undefined : checked.proofJournal,
       toolPins,
       proofLibraryCatalog,
       proofStrategies: strategies.notes,
@@ -2255,6 +2275,7 @@ function generate(command) {
         taskRoot: proofTaskRoot,
         contextFiles: proofContext,
         candidateFile: moduleFile(job.behaviorModule),
+        journalFile: "PROOF_JOURNAL.md",
         timeout: artifactProofTaskTimeoutMs,
         prompt,
       }),
@@ -2323,6 +2344,7 @@ function generate(command) {
         hostAssumptions: formal.outcome.hostAssumptions,
         stageReports,
         proofTelemetry: proof.proofTelemetry,
+        proofJournal: proof.proofJournal,
         toolPins,
         proofLibraryCatalog,
         proofStrategies: strategies.notes,
