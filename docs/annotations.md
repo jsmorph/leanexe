@@ -383,6 +383,8 @@ The first version-two run completed Stage 5 in 253.644 seconds, including 215.38
 
 The complete semantic starter now supplies those three simplification proofs and fixes all wrapper parameters by name.  Its focused Demo 3 copy builds through `ArtifactResult`, and its import set contains only the generated specification, decoded Program, checked annotation module, and `FixedArraySearchTree`.  The proof prompt instructs Codex to leave a starter unchanged when the initial check succeeds, record that result in the journal, and perform the required final check.
 
+The first run with that complete starter finished Stage 5 in 109.607 seconds, including 72.398 seconds in Codex and 27.589 seconds in outer acceptance.  The journal reports that the initial build succeeded and that Codex left the 77-line candidate unchanged; independent package verification also succeeded.  This run is 66.4 percent below the 326.320-second complete-tree median and 60.7 percent below the 278.656-second historical pair-result result, while two more complete-starter runs remain necessary for a comparable median.
+
 ## Completion criteria
 
 The first complete increment emits a validated sidecar for every ordinary library-mode compilation requested by `leanexegen`.  Demos 1, 2, and 3 prove the same specifications over the same WASM bytes through an annotation-driven deterministic proof plan.  The retained evidence records proof-generation timings, annotation validation, region coverage, and independent Lean acceptance.
