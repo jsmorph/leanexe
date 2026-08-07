@@ -255,6 +255,31 @@ theorem program_spec
       all_goals simpa [branchPost] using hBranch
     · simpa [branchFrame] using hUnequal hEq
 
+theorem SearchFrame.program_spec
+    {offset index keyLocal : Nat}
+    {equalBranch unequalBranch rest : Wasm.Program}
+    {module_ : Wasm.Module} {env : HostEnv Unit} {st : Store Unit}
+    {frame : Locals} {inputPtr key : UInt64} {input : Array UInt64}
+    {Q : Assertion Unit}
+    (hFrame : SearchFrame offset keyLocal frame inputPtr key)
+    (hInput : UInt64Array.At st inputPtr input)
+    (hIndex : index < input.size)
+    (hKeyPositive : 0 < keyLocal)
+    (hKeyBeforeScratch : keyLocal < offset + 5)
+    (hEqual : input[index] = key ->
+      wp module_ equalBranch (branchPost module_ env rest Q) st
+        (branchFrame offset frame inputPtr index input[index]) env)
+    (hUnequal : input[index] ≠ key ->
+      wp module_ unequalBranch (branchPost module_ env rest Q) st
+        (branchFrame offset frame inputPtr index input[index]) env) :
+    wp module_
+      (program offset index keyLocal equalBranch unequalBranch ++ rest)
+      Q st frame env := by
+  exact Project.ProofKit.FixedArrayEqNode.program_spec
+    offset index keyLocal equalBranch unequalBranch rest module_ env st frame
+    inputPtr key input hFrame.1 hFrame.2.1 hFrame.2.2.1 hInput hIndex
+    (hFrame.afterLoad hKeyPositive hKeyBeforeScratch) Q hEqual hUnequal
+
 set_option maxHeartbeats 1000000 in
 set_option Elab.async false in
 theorem keyFirstProgram_spec
@@ -313,6 +338,29 @@ theorem keyFirstProgram_spec
       all_goals simpa [branchPost] using hBranch
     · simpa [branchFrame, FixedArrayTraversalInput.resultFrame,
         FixedArrayTraversalInput.stackedResultFrame] using hUnequal hEq
+
+theorem SearchFrame.keyFirstProgram_spec
+    {offset index keyLocal : Nat}
+    {equalBranch unequalBranch rest : Wasm.Program}
+    {module_ : Wasm.Module} {env : HostEnv Unit} {st : Store Unit}
+    {frame : Locals} {inputPtr key : UInt64} {input : Array UInt64}
+    {Q : Assertion Unit}
+    (hFrame : SearchFrame offset keyLocal frame inputPtr key)
+    (hInput : UInt64Array.At st inputPtr input)
+    (hIndex : index < input.size)
+    (hEqual : input[index] = key ->
+      wp module_ equalBranch (branchPost module_ env rest Q) st
+        (branchFrame offset frame inputPtr index input[index]) env)
+    (hUnequal : input[index] ≠ key ->
+      wp module_ unequalBranch (branchPost module_ env rest Q) st
+        (branchFrame offset frame inputPtr index input[index]) env) :
+    wp module_
+      (keyFirstProgram offset index keyLocal equalBranch unequalBranch ++ rest)
+      Q st frame env := by
+  exact Project.ProofKit.FixedArrayEqNode.keyFirstProgram_spec
+    offset index keyLocal equalBranch unequalBranch rest module_ env st frame
+    inputPtr key input hFrame.1 hFrame.2.1 hFrame.2.2.1 hInput hIndex
+    hFrame.2.2.2 Q hEqual hUnequal
 
 macro "wp_fixed_array_eq_node " offset:term ", " index:term ", " keyLocal:term : tactic =>
   `(tactic|
