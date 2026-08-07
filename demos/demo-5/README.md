@@ -8,7 +8,7 @@ The 1,975-byte WASM module has SHA-256 digest `7c05b423d0cb42b5e8b92fecbefdfc408
 
 Stage 5 took 1,635.679 seconds, including 1,580.641 seconds in Codex and 44.738 seconds in independent outer acceptance.  The proving agent made fourteen edited Lean checks after the deterministic starter failed, then passed its required final build.  The complete generation run took 1,949.512 seconds from stage one through stage eight.
 
-A controlled LTG iteration preserved the specification, source, decoded Program, WASM bytes, artifact theorem, and heap-reserve boundary.  A parameterized filter theorem and exact whole-function annotation reduced Stage 5 to 86.795 seconds, a 94.7 percent reduction, and reduced the generated proof from 969 lines to 70.  The deterministic starter passed its first Lean check unchanged, and independent package verification accepted the result.
+A controlled LTG iteration preserved the specification, source, decoded Program, WASM bytes, artifact theorem, and heap-reserve boundary.  A parameterized filter theorem and exact whole-function annotation produced a three-run Stage 5 median of 90.745 seconds, a 94.5 percent reduction, and reduced the generated proof from 969 lines to 70.  Every deterministic starter passed its first Lean check unchanged, and independent package verification accepted the retained results.
 
 ## Program and theorem
 
@@ -52,9 +52,11 @@ The [proof telemetry](proof-telemetry.json) records the measured Stage 5 interva
 
 The compiler recognizes the exact extracted form `if input.size ≤ n then input.filter (fun element ⇒ element < t) else #[]`.  The current [compiler annotations](program.annotations.json) cover the complete decoded function with `leanexe.array.filter-lt.v1` and retain the nested bounded-length dispatch.  The current [proof recipe plan](proof-recipes.json) names `wrapperProgram_spec` and the generated `AnnotationMatches` equality that Lean reduced to `wrapperProgram 8 100` for this artifact.
 
-The accepted [filter-composition proof](filter-proof.lean) contains 70 lines and has SHA-256 digest `9664bb3f113379d95a4dc64c010db7b5ac3ae139795da82d9bca0d366bc03667`.  Its [journal](filter-proof-journal.md) records a successful initial check with no edit or repeated check, while its [telemetry](filter-proof-telemetry.json) reports 53.260 seconds in Codex, 24.483 seconds in outer acceptance, and 86.795 seconds from Stage 5 start to first acceptance.  The [filter run stage reports](filter-stage-reports.json) retain the accepted source identity and diagnostic for the controlled proof task.
+The accepted [filter-composition proof](filter-proof.lean) contains 70 lines and has SHA-256 digest `9664bb3f113379d95a4dc64c010db7b5ac3ae139795da82d9bca0d366bc03667`.  Its first [journal](filter-proof-journal.md) and [telemetry](filter-proof-telemetry.json) record a successful initial check with no edit or repeated check, 53.260 seconds in Codex, 24.483 seconds in outer acceptance, and 86.795 seconds from Stage 5 start to first acceptance.  The [filter run stage reports](filter-stage-reports.json) retain the accepted source identity and diagnostic for that controlled proof task.
 
-The [timing comparison](filter-proof-comparison.json) records a 1,548.884-second reduction from the 1,635.679-second baseline, or 94.7 percent.  It also records an 899-line reduction, or 92.8 percent, although completed proof time remains the primary measure.  Both packages retain the 1,975-byte artifact with digest `7c05b423d0cb42b5e8b92fecbefdfc408a2314f2dea7f74bfcbc1674ff96b8de`, and independent `leanexegen verify` accepted each theorem.
+Two further runs produced the same proof and artifact digests.  Their [second journal](filter-proof-r2-journal.md) and [third journal](filter-proof-r3-journal.md) again record successful unchanged starters, while their [second telemetry](filter-proof-r2-telemetry.json) and [third telemetry](filter-proof-r3-telemetry.json) report 90.745 and 95.718 seconds.  The three-run median is 90.745 seconds, and the range is 8.923 seconds.
+
+The [timing comparison](filter-proof-comparison.json) records a 1,544.934-second reduction from the 1,635.679-second baseline to the three-run median, or 94.5 percent.  It also records an 899-line reduction, or 92.8 percent, although completed proof time remains the primary measure.  Every retained run uses the 1,975-byte artifact with digest `7c05b423d0cb42b5e8b92fecbefdfc408a2314f2dea7f74bfcbc1674ff96b8de`, and independent `leanexegen verify` accepted the first and third final packages.
 
 ## Execution
 
@@ -96,6 +98,10 @@ Every retained file fixes an experiment input, records one of the two proof cont
 | [Filter-composition journal](filter-proof-journal.md) | The controlled agent's successful first-check record. |
 | [Filter-composition telemetry](filter-proof-telemetry.json) | The controlled run's Stage 5, Codex, and outer-acceptance intervals. |
 | [Filter-composition stage reports](filter-stage-reports.json) | The accepted task report and source identity for the controlled run. |
+| [Second filter journal](filter-proof-r2-journal.md) | The second final-configuration agent's unchanged-starter record. |
+| [Second filter telemetry](filter-proof-r2-telemetry.json) | The second final-configuration Stage 5 intervals. |
+| [Third filter journal](filter-proof-r3-journal.md) | The third final-configuration agent's unchanged-starter record. |
+| [Third filter telemetry](filter-proof-r3-telemetry.json) | The third final-configuration Stage 5 intervals. |
 | [Timing comparison](filter-proof-comparison.json) | The fixed-artifact baseline, complete theorem result, and measured reductions. |
 | [Standard output](stdout.txt) | The stage boundaries, sample results, and run command. |
 | [Standard error](stderr.txt) | The generated trust-boundary warnings. |

@@ -439,7 +439,7 @@ The held-out Demo 5 baseline left the complete stable-filter loop outside the an
 
 The compiler recognizes the exact extracted `arrayFilterSlots` form and emits a `leanexe.array.filter-lt.v1` whole-function region containing `maximumSize`, `threshold`, and the function-return continuation.  The consumer validates the complete top-level boundary and generates a Lean equality between the decoded artifact region and `FixedArrayFilterLt.wrapperProgram maximumSize threshold`.  The deterministic starter checks equality with both the formal result and the schema-6 heap reserve before applying `wrapperProgram_spec`.
 
-Recompiling the frozen Demo 5 source produced the same 1,975-byte WASM digest and added the filter region beside the existing length dispatch.  A controlled reproof preserved every frozen source and artifact input, accepted the unchanged 70-line starter on its first check, and completed Stage 5 in 86.795 seconds.  This reduces the measured baseline by 1,548.884 seconds, or 94.7 percent, and independent verification accepted the resulting exact-artifact theorem.
+Recompiling the frozen Demo 5 source produced the same 1,975-byte WASM digest and added the filter region beside the existing length dispatch.  Three controlled reproofs preserved every frozen source and artifact input, accepted the unchanged 70-line starter on each first check, and completed Stage 5 in 86.795, 90.745, and 95.718 seconds.  Their 90.745-second median reduces the measured baseline by 1,544.934 seconds, or 94.5 percent, while their range is 8.923 seconds and independent verification accepted the first and third final packages.
 
 ## Completion criteria
 
