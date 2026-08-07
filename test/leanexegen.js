@@ -294,6 +294,7 @@ function testCodexProtocol() {
     artifactPrompt.includes("using hInput, hIndex") &&
     artifactPrompt.includes("wp_fixed_array_lt_node") &&
     artifactPrompt.includes("using hSearch, hInput, hIndex") &&
+    artifactPrompt.includes("FixedArraySearchTree.Tree.program_spec") &&
     artifactPrompt.includes("Project.ProofKit.FixedArrayLengthDispatch") &&
     artifactPrompt.includes("wp_fixed_array_length_dispatch") &&
     artifactPrompt.includes("Project.ProofKit.FixedArrayTraversalInput") &&
@@ -1129,8 +1130,17 @@ function testArtifactPackage(job, formalSource) {
   }] });
   assert(selectedStarter.includes("import Project.ProofKit.FixedArrayEqNode") &&
     selectedStarter.includes("import Project.ProofKit.FixedArraySearch") &&
-    !selectedStarter.includes("import Project.ProofKit.FixedArrayLtNode"),
+    !selectedStarter.includes("import Project.ProofKit.FixedArrayLtNode") &&
+    !selectedStarter.includes("import Project.ProofKit.FixedArraySearchTree"),
   "artifact-proof starter did not select imports from checked recipes");
+  const treeStarter = artifactProofStarter(job, 0, true, { recipes: [{
+    regionKind: "leanexe.array.lt-node.v1",
+    direct: { module: "Project.ProofKit.FixedArrayLtNode" },
+    supporting: [],
+  }] });
+  assert(treeStarter.includes("import Project.ProofKit.FixedArrayLtNode") &&
+    treeStarter.includes("import Project.ProofKit.FixedArraySearchTree"),
+  "artifact-proof starter did not offer tree composition for a checked tree");
   expectFailure(() => parseProofStrategySections(
     "<!-- leanexegen-section:strategy.core begin -->\n" +
     "### `strategy.other`: wrong\n" +
