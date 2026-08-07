@@ -57,6 +57,7 @@ const {
 } = require("../tools/leanexegen-telemetry");
 const {
   annotationMatchesSource,
+  fixedArraySearchChainCompositions,
   fixedArraySearchTreeCompositions,
   proofRecipePlan,
   validateAnnotationDocument,
@@ -295,8 +296,9 @@ function testCodexProtocol() {
     artifactPrompt.includes("using hInput, hIndex") &&
     artifactPrompt.includes("wp_fixed_array_lt_node") &&
     artifactPrompt.includes("using hSearch, hInput, hIndex") &&
-    artifactPrompt.includes("FixedArraySearchTree.Tree.program_spec") &&
+    artifactPrompt.includes("Tree.program_spec") &&
     artifactPrompt.includes("Tree.wrapperProgram_spec") &&
+    artifactPrompt.includes("FixedArraySearchChain") &&
     artifactPrompt.includes("Project.ProofKit.FixedArrayLengthDispatch") &&
     artifactPrompt.includes("wp_fixed_array_length_dispatch") &&
     artifactPrompt.includes("Project.ProofKit.FixedArrayTraversalInput") &&
@@ -352,9 +354,9 @@ function testCodexProtocol() {
     }],
     recipes: [],
   });
-  assert(wrapperStarter.includes("tree.wrapperProgram 15 15 10") &&
+  assert(wrapperStarter.includes("search.wrapperProgram 15 15 10") &&
     wrapperStarter.includes("2 1)") &&
-    wrapperStarter.includes("tree.wrapperProgram_spec") &&
+    wrapperStarter.includes("search.wrapperProgram_spec") &&
     wrapperStarter.includes("?_ ?_ ?_") &&
     wrapperStarter.includes("FixedArraySearchTree.Tree.result") &&
     !wrapperStarter.includes("import Project.ProofKit.FixedArrayLtNode") &&
@@ -1086,6 +1088,12 @@ function testSearchTreeComposition() {
     compositions[0].tree === ".leaf 1 2 3 4" &&
     compositions[0].name === "function_0_search_tree_0",
   "fixed search-tree composition did not recover a complete leaf");
+  const chainDocument = structuredClone(document);
+  chainDocument.functions[0].regions[0].parameters.operandOrder = "loaded-first";
+  const chains = fixedArraySearchChainCompositions(chainDocument);
+  assert(chains.length === 1 && chains[0].chain === ".last 1 2 3 4" &&
+    chains[0].name === "function_0_search_chain_0",
+  "fixed search-chain composition did not recover a complete last node");
   const source = annotationMatchesSource(document, {
     namespace: "Example.Generated",
     programModule: "Example.Generated.Program",
@@ -1094,6 +1102,14 @@ function testSearchTreeComposition() {
     source.includes("def function_0_search_tree_0") &&
     source.includes("function_0_search_tree_0.program 10 2"),
   "annotation matches omitted the checked fixed search-tree descriptor");
+  const chainSource = annotationMatchesSource(chainDocument, {
+    namespace: "Example.Generated",
+    programModule: "Example.Generated.Program",
+  }).source;
+  assert(chainSource.includes("import Project.ProofKit.FixedArraySearchChain") &&
+    chainSource.includes("def function_0_search_chain_0") &&
+    chainSource.includes("function_0_search_chain_0.program 10 2"),
+  "annotation matches omitted the checked fixed search-chain descriptor");
 
   const wrapperDocument = structuredClone(document);
   const validPath = [{ instructionIndex: 19, field: "else" }];

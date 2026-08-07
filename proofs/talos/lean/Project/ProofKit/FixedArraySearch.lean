@@ -1,4 +1,5 @@
 import Project.ProofKit.FixedArrayEqNode
+import Project.ProofKit.FixedArrayLengthDispatch
 import Project.ProofKit.FixedArrayPairResult
 
 namespace Project.ProofKit.FixedArraySearch
@@ -116,5 +117,96 @@ theorem constResultProgram_branchN_spec
       hFrame.2.2.1 hDestinationPositive hDestination
       (by simpa using hFitMemory) hContext.pages hContext.memory32
       hContext.heapTopGlobal hContext.freeListGlobal hContext.allocsGlobal
+
+def wrapperProgram (searchProgram : Wasm.Program) (inputLocal expectedSize
+    offset keyIndex keyLocal invalidDestination : Nat) : Wasm.Program :=
+  FixedArrayLengthDispatch.program inputLocal expectedSize
+    (FixedArrayPairResult.constResultProgram 0 0 invalidDestination)
+    (FixedArrayEqNode.loadKeyProgram offset keyIndex keyLocal ++
+      searchProgram) ++
+    [.localGet 14]
+
+set_option maxHeartbeats 1000000 in
+set_option maxRecDepth 1048576 in
+theorem wrapperProgram_spec
+    {module_ : Wasm.Module} {env : HostEnv Unit} {st : Store Unit}
+    {frame : Locals} {heapTop allocs inputPtr : UInt64}
+    {input expected : Array UInt64} {searchProgram : Wasm.Program}
+    {inputLocal expectedSize offset keyIndex keyLocal invalidDestination : Nat}
+    (hParams : frame.params = [.i64 inputPtr])
+    (hLocals : frame.locals.length = offset + 14)
+    (hValues : frame.values = [])
+    (hInputLocalPositive : 0 < inputLocal)
+    (hInputLocal : inputLocal < 1 + frame.locals.length)
+    (hExpectedSizeBound : expectedSize < UInt64.size)
+    (hInput : UInt64Array.At st inputPtr input)
+    (hContext : PairResultContext module_ st heapTop allocs inputPtr input
+      expected)
+    (hInvalidDestinationPositive : 0 < invalidDestination)
+    (hInvalidDestination : invalidDestination < 25)
+    (hKeyIndex : input.size = expectedSize → keyIndex < input.size)
+    (hKeyPositive : 0 < keyLocal)
+    (hKey : keyLocal < offset + 15)
+    (hLocalWindow : offset + 14 = 24)
+    (hInvalidExpected : input.size ≠ expectedSize → expected = #[0, 0])
+    (hSearch : ∀ _hSize : input.size = expectedSize, ∀ searchFrame,
+      FixedArrayEqNode.SearchFrame offset keyLocal searchFrame inputPtr
+          input[keyIndex]! →
+        wp module_ searchProgram (finalPost module_ env expected) st
+          searchFrame env) :
+    wp module_
+      (wrapperProgram searchProgram inputLocal expectedSize offset keyIndex
+        keyLocal invalidDestination)
+      (FixedArrayPairResult.publicPost expected) st frame env := by
+  unfold wrapperProgram
+  apply FixedArrayLengthDispatch.program_spec inputLocal expectedSize _ _ _
+    module_ env st frame inputPtr input hParams hValues hInputLocalPositive
+    hInputLocal hExpectedSizeBound hInput
+  · intro hSize
+    have hExpected := hInvalidExpected hSize
+    apply Wasm.wp.conseq (Q := FixedArrayPairResult.pairPost 0 0)
+    · exact pairPost_branchN_conseq module_ env expected 0 0 hExpected 0
+    · apply FixedArrayPairResult.constResultProgram_spec module_ env st _
+        heapTop allocs 0 0 invalidDestination
+      · simp [FixedArrayLengthDispatch.branchFrame, hParams]
+      · rw [FixedArrayLengthDispatch.branchFrame_locals_length, hLocals,
+          hLocalWindow]
+      · exact FixedArrayLengthDispatch.branchFrame_values
+          inputLocal frame inputPtr
+      · exact hInvalidDestinationPositive
+      · exact hInvalidDestination
+      · have hFit := hContext.fitExpected
+        rw [hExpected] at hFit
+        simpa using hFit
+      · exact hContext.pages
+      · exact hContext.memory32
+      · exact hContext.heapTopGlobal
+      · exact hContext.freeListGlobal
+      · exact hContext.allocsGlobal
+  · intro hSize
+    let lengthFrame := FixedArrayLengthDispatch.branchFrame inputLocal frame
+      inputPtr
+    have hLengthParams : lengthFrame.params = [.i64 inputPtr] := by
+      change (FixedArrayLengthDispatch.branchFrame inputLocal frame
+        inputPtr).params = [.i64 inputPtr]
+      rw [FixedArrayLengthDispatch.branchFrame_params]
+      exact hParams
+    have hLengthLocals : lengthFrame.locals.length = offset + 14 := by
+      change (FixedArrayLengthDispatch.branchFrame inputLocal frame
+        inputPtr).locals.length = offset + 14
+      rw [FixedArrayLengthDispatch.branchFrame_locals_length]
+      exact hLocals
+    have hLengthValues : lengthFrame.values = [] := by
+      rfl
+    have hKeyIndex' := hKeyIndex hSize
+    apply FixedArrayEqNode.loadKeyProgram_spec offset keyIndex keyLocal
+      module_ env st lengthFrame inputPtr input hLengthParams hLengthLocals
+      hLengthValues hInput hKeyIndex' hKeyPositive hKey
+    change wp module_ searchProgram (finalPost module_ env expected) st _ env
+    apply hSearch hSize
+    simpa [getElem!_pos input keyIndex hKeyIndex'] using
+      FixedArrayEqNode.keyFrame_searchFrame offset keyIndex keyLocal
+        lengthFrame inputPtr input[keyIndex] hLengthParams hLengthLocals
+        hKeyPositive hKey
 
 end Project.ProofKit.FixedArraySearch

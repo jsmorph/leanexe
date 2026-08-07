@@ -270,6 +270,12 @@ wp_fixed_array_lt_node 10, index, keyLocal using hSearch, hInput, hIndex
   exact hNotLessBranch
 ```
 
+## Fixed search chain
+
+Import `Project.ProofKit.FixedArraySearchChain` when a fixed first-match search consists of loaded-first equality nodes and standard two-word result programs.  `Chain.next` records a key index, value index, found-result destination, and following comparison, while `Chain.last` records the final comparison and missing-result destination.  `Chain.program` gives the descriptor an exact Talos program, and `Chain.result` gives it the corresponding first-match array semantics.
+
+`Chain.program_spec` proves the complete equality chain from one `SearchFrame`, one `PairResultContext`, descriptor bounds, and one result equation.  `Chain.wrapperProgram_spec` composes the compiler's fixed-length dispatch, invalid zero pair, query load, chain, and public return.  The annotation consumer derives both the descriptor and complete-wrapper parameters from exact decoded coverage, allowing the generated starter to contain the checked structural proof.
+
 ## Fixed search tree
 
 Import `Project.ProofKit.FixedArraySearchTree` when a fixed binary search tree consists of key-first equality nodes, unsigned less-than nodes, and standard two-word result programs.  `Tree.leaf` records a key index, value index, found-result destination, and missing-result destination, while `Tree.branch` records a key index, value index, found-result destination, and two child trees.  `Tree.program` gives this descriptor an exact Talos program, and `Tree.result` gives it an `Array UInt64` lookup result.

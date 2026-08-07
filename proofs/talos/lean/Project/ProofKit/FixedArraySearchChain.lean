@@ -1,75 +1,68 @@
-import Project.ProofKit.FixedArrayLtNode
 import Project.ProofKit.FixedArraySearch
 
-namespace Project.ProofKit.FixedArraySearchTree
+namespace Project.ProofKit.FixedArraySearchChain
 
 open Wasm
 
-inductive Tree where
-  | leaf (keyIndex valueIndex foundDestination missDestination : Nat)
-  | branch (keyIndex valueIndex foundDestination : Nat)
-      (less notLess : Tree)
+inductive Chain where
+  | last (keyIndex valueIndex foundDestination missDestination : Nat)
+  | next (keyIndex valueIndex foundDestination : Nat) (tail : Chain)
   deriving Repr
 
-def Tree.result : Tree → Array UInt64 → UInt64 → Array UInt64
-  | .leaf keyIndex valueIndex _ _, input, key =>
+def Chain.result : Chain → Array UInt64 → UInt64 → Array UInt64
+  | .last keyIndex valueIndex _ _, input, key =>
       if input[keyIndex]! = key then #[input[valueIndex]!, 1] else #[0, 0]
-  | .branch keyIndex valueIndex _ less notLess, input, key =>
-      if input[keyIndex]! = key then
-        #[input[valueIndex]!, 1]
-      else if key < input[keyIndex]! then
-        less.result input key
-      else
-        notLess.result input key
+  | .next keyIndex valueIndex _ tail, input, key =>
+      if input[keyIndex]! = key then #[input[valueIndex]!, 1]
+      else tail.result input key
 
-def Tree.Valid (input : Array UInt64) : Tree → Prop
-  | .leaf keyIndex valueIndex foundDestination missDestination =>
+def Chain.Valid (input : Array UInt64) : Chain → Prop
+  | .last keyIndex valueIndex foundDestination missDestination =>
       keyIndex < input.size ∧ valueIndex < input.size ∧
         0 < foundDestination ∧ foundDestination < 25 ∧
         0 < missDestination ∧ missDestination < 25
-  | .branch keyIndex valueIndex foundDestination less notLess =>
+  | .next keyIndex valueIndex foundDestination tail =>
       keyIndex < input.size ∧ valueIndex < input.size ∧
-        0 < foundDestination ∧ foundDestination < 25 ∧
-        less.Valid input ∧ notLess.Valid input
+        0 < foundDestination ∧ foundDestination < 25 ∧ tail.Valid input
 
-def Tree.program (offset keyLocal : Nat) : Tree → Wasm.Program
-  | .leaf keyIndex valueIndex foundDestination missDestination =>
-      FixedArrayEqNode.keyFirstProgram offset keyIndex keyLocal
+def Chain.program (offset keyLocal : Nat) : Chain → Wasm.Program
+  | .last keyIndex valueIndex foundDestination missDestination =>
+      FixedArrayEqNode.program offset keyIndex keyLocal
         (FixedArrayPairResult.inputResultProgram valueIndex foundDestination)
         (FixedArrayPairResult.constResultProgram 0 0 missDestination)
-  | .branch keyIndex valueIndex foundDestination less notLess =>
-      FixedArrayEqNode.keyFirstProgram offset keyIndex keyLocal
+  | .next keyIndex valueIndex foundDestination tail =>
+      FixedArrayEqNode.program offset keyIndex keyLocal
         (FixedArrayPairResult.inputResultProgram valueIndex foundDestination)
-        (FixedArrayLtNode.program offset keyIndex keyLocal
-          (less.program offset keyLocal) (notLess.program offset keyLocal))
+        (tail.program offset keyLocal)
 
 set_option maxHeartbeats 1000000 in
 set_option maxRecDepth 1048576 in
-theorem Tree.program_spec
+theorem Chain.program_spec
     {module_ : Wasm.Module} {env : HostEnv Unit} {st : Store Unit}
     {frame : Locals} {heapTop allocs inputPtr key : UInt64}
     {input expected : Array UInt64} {offset keyLocal branches : Nat}
-    (tree : Tree)
+    (chain : Chain)
     (hFrame : FixedArrayEqNode.SearchFrame offset keyLocal frame inputPtr key)
-    (hValid : tree.Valid input)
+    (hValid : chain.Valid input)
     (hKeyPositive : 0 < keyLocal)
     (hKeyBeforeScratch : keyLocal < offset + 5)
     (hLocalWindow : offset + 14 = 24)
     (hContext : FixedArraySearch.PairResultContext module_ st heapTop allocs
       inputPtr input expected)
-    (hExpected : expected = tree.result input key) :
-    wp module_ (tree.program offset keyLocal)
+    (hExpected : expected = chain.result input key) :
+    wp module_ (chain.program offset keyLocal)
       (FixedArrayEqNode.branchN module_ env branches
         (FixedArraySearch.finalPost module_ env expected)) st frame env := by
-  induction tree generalizing frame branches with
-  | leaf keyIndex valueIndex foundDestination missDestination =>
+  induction chain generalizing frame branches with
+  | last keyIndex valueIndex foundDestination missDestination =>
       rcases hValid with
         ⟨hKeyIndex, hValueIndex, hFoundPositive, hFoundBound,
           hMissPositive, hMissBound⟩
       change wp module_
-        (FixedArrayEqNode.keyFirstProgram offset keyIndex keyLocal _ _ ++ [])
+        (FixedArrayEqNode.program offset keyIndex keyLocal _ _ ++ [])
         _ st frame env
-      refine hFrame.keyFirstProgram_spec hContext.inputAt hKeyIndex ?_ ?_
+      refine hFrame.program_spec hContext.inputAt hKeyIndex hKeyPositive
+        hKeyBeforeScratch ?_ ?_
       · intro hEqual
         change wp module_
           (FixedArrayPairResult.inputResultProgram valueIndex foundDestination)
@@ -79,7 +72,7 @@ theorem Tree.program_spec
           (hFrame.branch hKeyPositive hKeyBeforeScratch) hLocalWindow
           hFoundPositive hFoundBound hValueIndex hContext (by
             rw [hExpected]
-            simp [Tree.result, getElem!_pos input keyIndex hKeyIndex,
+            simp [Chain.result, getElem!_pos input keyIndex hKeyIndex,
               getElem!_pos input valueIndex hValueIndex, hEqual])
       · intro hUnequal
         change wp module_
@@ -90,16 +83,16 @@ theorem Tree.program_spec
           (hFrame.branch hKeyPositive hKeyBeforeScratch) hLocalWindow
           hMissPositive hMissBound hContext (by
             rw [hExpected]
-            simp [Tree.result, getElem!_pos input keyIndex hKeyIndex,
+            simp [Chain.result, getElem!_pos input keyIndex hKeyIndex,
               hUnequal])
-  | branch keyIndex valueIndex foundDestination less notLess ihLess ihNotLess =>
+  | next keyIndex valueIndex foundDestination tail ih =>
       rcases hValid with
-        ⟨hKeyIndex, hValueIndex, hFoundPositive, hFoundBound,
-          hLessValid, hNotLessValid⟩
+        ⟨hKeyIndex, hValueIndex, hFoundPositive, hFoundBound, hTailValid⟩
       change wp module_
-        (FixedArrayEqNode.keyFirstProgram offset keyIndex keyLocal _ _ ++ [])
+        (FixedArrayEqNode.program offset keyIndex keyLocal _ _ ++ [])
         _ st frame env
-      refine hFrame.keyFirstProgram_spec hContext.inputAt hKeyIndex ?_ ?_
+      refine hFrame.program_spec hContext.inputAt hKeyIndex hKeyPositive
+        hKeyBeforeScratch ?_ ?_
       · intro hEqual
         change wp module_
           (FixedArrayPairResult.inputResultProgram valueIndex foundDestination)
@@ -109,58 +102,29 @@ theorem Tree.program_spec
           (hFrame.branch hKeyPositive hKeyBeforeScratch) hLocalWindow
           hFoundPositive hFoundBound hValueIndex hContext (by
             rw [hExpected]
-            simp [Tree.result, getElem!_pos input keyIndex hKeyIndex,
+            simp [Chain.result, getElem!_pos input keyIndex hKeyIndex,
               getElem!_pos input valueIndex hValueIndex, hEqual])
       · intro hUnequal
-        have hNodeFrame : FixedArrayEqNode.SearchFrame offset keyLocal
-            (FixedArrayEqNode.branchFrame offset frame inputPtr keyIndex
-              input[keyIndex]) inputPtr key :=
-          hFrame.branch hKeyPositive hKeyBeforeScratch
-        change wp module_
-          (FixedArrayLtNode.program offset keyIndex keyLocal _ _ ++ [])
-          (FixedArrayEqNode.branchN module_ env (branches + 1)
-            (FixedArraySearch.finalPost module_ env expected)) st _ env
-        refine FixedArrayLtNode.program_spec offset keyIndex keyLocal _ _ []
-          module_ env st _ inputPtr key input hNodeFrame hContext.inputAt
-          hKeyIndex _ ?_ ?_
-        · intro hIsLess
-          have hExpectedLess : expected = less.result input key := by
-            rw [hExpected]
-            simp [Tree.result, getElem!_pos input keyIndex hKeyIndex,
-              hUnequal, hIsLess]
-          exact ihLess
-            (frame := FixedArrayEqNode.branchFrame offset
-              (FixedArrayEqNode.branchFrame offset frame inputPtr keyIndex
-                input[keyIndex]) inputPtr keyIndex input[keyIndex])
-            (branches := branches + 2)
-            (hNodeFrame.branch hKeyPositive hKeyBeforeScratch)
-            hLessValid hExpectedLess
-        · intro hNotIsLess
-          have hExpectedNotLess : expected = notLess.result input key := by
-            rw [hExpected]
-            simp [Tree.result, getElem!_pos input keyIndex hKeyIndex,
-              hUnequal, hNotIsLess]
-          exact ihNotLess
-            (frame := FixedArrayEqNode.branchFrame offset
-              (FixedArrayEqNode.branchFrame offset frame inputPtr keyIndex
-                input[keyIndex]) inputPtr keyIndex input[keyIndex])
-            (branches := branches + 2)
-            (hNodeFrame.branch hKeyPositive hKeyBeforeScratch)
-            hNotLessValid hExpectedNotLess
+        have hExpectedTail : expected = tail.result input key := by
+          rw [hExpected]
+          simp [Chain.result, getElem!_pos input keyIndex hKeyIndex, hUnequal]
+        exact ih (frame := FixedArrayEqNode.branchFrame offset frame inputPtr
+          keyIndex input[keyIndex]) (branches := branches + 1)
+          (hFrame.branch hKeyPositive hKeyBeforeScratch) hTailValid hExpectedTail
 
-def Tree.wrapperProgram (tree : Tree) (inputLocal expectedSize offset
+def Chain.wrapperProgram (chain : Chain) (inputLocal expectedSize offset
     keyIndex keyLocal invalidDestination : Nat) : Wasm.Program :=
-  FixedArraySearch.wrapperProgram (tree.program offset keyLocal) inputLocal
+  FixedArraySearch.wrapperProgram (chain.program offset keyLocal) inputLocal
     expectedSize offset keyIndex keyLocal invalidDestination
 
 set_option maxHeartbeats 1000000 in
 set_option maxRecDepth 1048576 in
-theorem Tree.wrapperProgram_spec
+theorem Chain.wrapperProgram_spec
     {module_ : Wasm.Module} {env : HostEnv Unit} {st : Store Unit}
     {frame : Locals} {heapTop allocs inputPtr : UInt64}
     {input expected : Array UInt64}
     {inputLocal expectedSize offset keyIndex keyLocal invalidDestination : Nat}
-    (tree : Tree)
+    (chain : Chain)
     (hParams : frame.params = [.i64 inputPtr])
     (hLocals : frame.locals.length = offset + 14)
     (hValues : frame.values = [])
@@ -178,21 +142,21 @@ theorem Tree.wrapperProgram_spec
     (hKey : keyLocal < offset + 15)
     (hLocalWindow : offset + 14 = 24)
     (hInvalidExpected : input.size ≠ expectedSize → expected = #[0, 0])
-    (hTreeValid : input.size = expectedSize → tree.Valid input)
+    (hChainValid : input.size = expectedSize → chain.Valid input)
     (hValidExpected : input.size = expectedSize →
-      expected = tree.result input input[keyIndex]!) :
+      expected = chain.result input input[keyIndex]!) :
     wp module_
-      (tree.wrapperProgram inputLocal expectedSize offset keyIndex keyLocal
+      (chain.wrapperProgram inputLocal expectedSize offset keyIndex keyLocal
         invalidDestination)
       (FixedArrayPairResult.publicPost expected) st frame env := by
-  unfold Tree.wrapperProgram
+  unfold Chain.wrapperProgram
   apply FixedArraySearch.wrapperProgram_spec hParams hLocals hValues
     hInputLocalPositive hInputLocal hExpectedSizeBound hInput hContext
     hInvalidDestinationPositive hInvalidDestination hKeyIndex hKeyPositive
     hKey hLocalWindow hInvalidExpected
   intro hSize searchFrame hSearch
-  exact tree.program_spec (env := env) (branches := 0) hSearch
-    (hTreeValid hSize) hKeyPositive hKeyBeforeScratch hLocalWindow hContext
+  exact chain.program_spec (env := env) (branches := 0) hSearch
+    (hChainValid hSize) hKeyPositive hKeyBeforeScratch hLocalWindow hContext
     (hValidExpected hSize)
 
-end Project.ProofKit.FixedArraySearchTree
+end Project.ProofKit.FixedArraySearchChain
