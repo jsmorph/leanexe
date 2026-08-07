@@ -11,6 +11,7 @@ Every `leanexegen` artifact-proof task receives this catalog and may import the 
 | `Project.ProofKit.FixedArrayAllocator` | Complete empty-list search and bump-allocation semantics for the emitted one-parameter array-wrapper layout. |
 | `Project.ProofKit.FixedArrayAllocatorWindow` | The fixed-array allocator semantics parameterized by a uniform shift of its combined-local operands. |
 | `Project.ProofKit.FixedArrayEqNode` | One indexed array load, equality normalization, and two-way branch for an unrolled search. |
+| `Project.ProofKit.FixedArrayFilterLt` | A bounded stable filter by an unsigned threshold, including allocation, conditional stores, dynamic length, and empty-result semantics. |
 | `Project.ProofKit.FixedArrayInput` | The standard length-guarded indexed input loader parameterized by a uniform local-window shift. |
 | `Project.ProofKit.FixedArrayLengthDispatch` | The standard fixed-array length comparison, Boolean normalization, and valid or invalid branch. |
 | `Project.ProofKit.FixedArrayLtNode` | One key-first indexed array load, unsigned less-than comparison, and two-way branch for an unrolled search tree. |
@@ -232,6 +233,20 @@ import Project.ProofKit.FixedArrayMapAdd
 rw [hArtifactProgram, hExpected]
 apply Project.ProofKit.FixedArrayMapAdd.wrapperProgram_spec
   maximumSize addend module_ env initial inputPtr input heapTop allocs
+```
+
+## Bounded unsigned filter
+
+Import `Project.ProofKit.FixedArrayFilterLt` when the decoded function matches the compiler's canonical `if input.size ≤ maximumSize then input.filter (fun element ⇒ element < threshold) else #[]` wrapper.  `wrapperProgram maximumSize threshold` describes the complete emitted function, including input-sized capacity allocation, both predicate branches, conditional payload stores, the dynamic result-length store, and the oversized-input empty result.  The theorem accepts arbitrary bounds, unsigned thresholds, input contents, heap positions, allocation counts, and memory sizes.
+
+`heapReserveBytes maximumSize input` states the branch-sensitive allocation bound consumed by this template.  `wrapperProgram_spec` proves the filtered-prefix invariant and returns `FixedArrayPairResult.publicPost` for `expected maximumSize threshold input`, deriving all allocator facts from that reserve.  A `leanexe.array.filter-lt.v1` whole-function annotation and its generated `AnnotationMatches` theorem connect the decoded artifact to this checked program before the deterministic starter applies the semantic theorem.
+
+```lean
+import Project.ProofKit.FixedArrayFilterLt
+
+rw [hArtifactProgram, hExpected]
+apply Project.ProofKit.FixedArrayFilterLt.wrapperProgram_spec
+  maximumSize threshold module_ env initial inputPtr input heapTop allocs
 ```
 
 ## Equality search node

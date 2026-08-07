@@ -344,6 +344,32 @@ function validateFixedArrayMapAdd(region, description) {
   }
 }
 
+function validateFixedArrayFilterLt(region, description) {
+  exactKeys(region, ["generatedBy", "id", "kind", "location", "parameters"], description);
+  string(region.id, `${description}.id`);
+  if (region.kind !== "leanexe.array.filter-lt.v1") {
+    fail(`${description}.kind is unsupported`);
+  }
+  exactKeys(region.location, ["endIndex", "listPath", "startIndex"],
+    `${description}.location`);
+  if (array(region.location.listPath, `${description}.location.listPath`).length !== 0 ||
+      natural(region.location.startIndex, `${description}.location.startIndex`) !== 0 ||
+      natural(region.location.endIndex, `${description}.location.endIndex`) === 0) {
+    fail(`${description}.location must cover a nonempty top-level function body`);
+  }
+  exactKeys(region.parameters, ["continuation", "maximumSize", "threshold"],
+    `${description}.parameters`);
+  natural(region.parameters.maximumSize, `${description}.parameters.maximumSize`);
+  uint64String(region.parameters.threshold, `${description}.parameters.threshold`);
+  if (region.parameters.continuation !== "function-return") {
+    fail(`${description}.parameters has an unsupported continuation`);
+  }
+  for (const [index, generator] of array(
+    region.generatedBy, `${description}.generatedBy`).entries()) {
+    string(generator, `${description}.generatedBy[${index}]`);
+  }
+}
+
 function validateAnnotationDocument(document, wasmBytes) {
   exactKeys(document, ["artifact", "functions", "schemaVersion"], "annotations");
   if (document.schemaVersion !== 1) fail("unsupported annotation schema");
@@ -393,6 +419,8 @@ function validateAnnotationDocument(document, wasmBytes) {
         validateFixedArrayPairResult(region, `${description}.regions[${regionIndex}]`);
       } else if (region?.kind === "leanexe.array.map-add.v1") {
         validateFixedArrayMapAdd(region, `${description}.regions[${regionIndex}]`);
+      } else if (region?.kind === "leanexe.array.filter-lt.v1") {
+        validateFixedArrayFilterLt(region, `${description}.regions[${regionIndex}]`);
       } else {
         fail(`${description}.regions[${regionIndex}].kind is unsupported`);
       }
@@ -782,6 +810,24 @@ function matchFixedArrayMapAddRegion(program, function_, region) {
   };
 }
 
+function matchFixedArrayFilterLtRegion(program, function_, region) {
+  const body = programFunctionBody(program, function_.wasmIndex);
+  const instructions = resolveInstructionList(body, region.location.listPath);
+  const selected = instructions.slice(region.location.startIndex, region.location.endIndex);
+  if (selected.length !== instructions.length ||
+      selected.length !== region.location.endIndex - region.location.startIndex ||
+      normalizeInstructions(selected)[0] !== ".localGet 0" ||
+      normalizeInstructions(selected).at(-1) !== ".localGet 4") {
+    fail(`${region.id}: decoded filter-lt wrapper boundary does not match`);
+  }
+  return {
+    functionIndex: function_.wasmIndex,
+    regionId: region.id,
+    regionKind: region.kind,
+    parameters: region.parameters,
+  };
+}
+
 function directCallRecipe(match, selectedSections = [], tacticEligible = false) {
   const guidance = ["strategy.calls", "strategy.frames"]
     .filter((section) => selectedSections.includes(section));
@@ -1056,6 +1102,41 @@ function fixedArrayMapAddRecipe(
   };
 }
 
+function fixedArrayFilterLtRecipe(
+    match, selectedSections = [], annotationNamespace = "Project.AnnotationMatches") {
+  return {
+    recipeVersion: 1,
+    functionIndex: match.functionIndex,
+    regionId: match.regionId,
+    regionKind: match.regionKind,
+    applicability: "Lean-checked equality over the decoded instruction region",
+    direct: {
+      module: "Project.ProofKit.FixedArrayFilterLt",
+      theorem: "Project.ProofKit.FixedArrayFilterLt.wrapperProgram_spec",
+      regionEquality: annotationMatchTheoremName(match.regionId, annotationNamespace),
+      program: `Project.ProofKit.FixedArrayFilterLt.wrapperProgram ` +
+        `${match.parameters.maximumSize} ${match.parameters.threshold}`,
+    },
+    supporting: [
+      {
+        declaration: "Project.ProofKit.FixedArrayLengthDispatch.leProgram_spec",
+        purpose: "select the bounded input-length branch",
+      },
+      {
+        declaration: "Project.ProofKit.FixedArrayAllocatorWindow.region_spec_withTail",
+        purpose: "prove the empty-result allocation",
+      },
+      {
+        declaration: "Project.ProofKit.FixedArrayFilterLt.wrapperProgram_spec",
+        purpose: "prove allocation, filtering, dynamic length, and the public result",
+      },
+    ],
+    expectedPostcondition: "the bounded stable filter result",
+    guidance: ["strategy.arrays", "strategy.loops", "strategy.allocation", "strategy.frames"]
+      .filter((section) => selectedSections.includes(section)),
+  };
+}
+
 function locationFieldOrder(field) {
   return field === "else" ? 1 : 0;
 }
@@ -1117,6 +1198,9 @@ function proofRecipePlan(
           matches.get(region.id), selectedSections));
       } else if (region.kind === "leanexe.array.map-add.v1") {
         recipes.push(fixedArrayMapAddRecipe(
+          matches.get(region.id), selectedSections, annotationNamespace));
+      } else if (region.kind === "leanexe.array.filter-lt.v1") {
+        recipes.push(fixedArrayFilterLtRecipe(
           matches.get(region.id), selectedSections, annotationNamespace));
       } else {
         recipes.push(fixedArrayPairResultRecipe(
@@ -1181,6 +1265,8 @@ function matchAnnotationDocument(document, program) {
         matches.push(matchFixedArrayLtNodeRegion(program, function_, region));
       } else if (region.kind === "leanexe.array.map-add.v1") {
         matches.push(matchFixedArrayMapAddRegion(program, function_, region));
+      } else if (region.kind === "leanexe.array.filter-lt.v1") {
+        matches.push(matchFixedArrayFilterLtRegion(program, function_, region));
       } else {
         matches.push(matchFixedArrayPairResultRegion(program, function_, region));
       }
@@ -1279,6 +1365,7 @@ function validateProofRecipePlan(plan, document) {
     const region = regions.get(recipe.regionId);
     const expectedApplicability = [
       "leanexe.array.pair-result.v1", "leanexe.array.map-add.v1",
+      "leanexe.array.filter-lt.v1",
     ].includes(region.kind)
       ? "Lean-checked equality over the decoded instruction region"
       : "exact decoded instruction match";
@@ -1358,6 +1445,16 @@ function validateProofRecipePlan(plan, document) {
             `.${recipe.regionId.replace(/[^A-Za-z0-9_]/g, "_")}_eq`) ||
           recipe.direct.program !== `Project.ProofKit.FixedArrayMapAdd.wrapperProgram ` +
             `${region.parameters.maximumSize} ${region.parameters.addend}`) {
+        fail(`${description}.direct is unsupported`);
+      }
+    } else if (region.kind === "leanexe.array.filter-lt.v1") {
+      if (recipe.direct.module !== "Project.ProofKit.FixedArrayFilterLt" ||
+          recipe.direct.theorem !==
+            "Project.ProofKit.FixedArrayFilterLt.wrapperProgram_spec" ||
+          !recipe.direct.regionEquality.endsWith(
+            `.${recipe.regionId.replace(/[^A-Za-z0-9_]/g, "_")}_eq`) ||
+          recipe.direct.program !== `Project.ProofKit.FixedArrayFilterLt.wrapperProgram ` +
+            `${region.parameters.maximumSize} ${region.parameters.threshold}`) {
         fail(`${description}.direct is unsupported`);
       }
     } else if (recipe.direct.module !== "Project.ProofKit.FixedArrayPairResult" ||
@@ -1635,6 +1732,17 @@ function annotationMatchesSource(document, job) {
   rfl`);
         continue;
       }
+      if (region.kind === "leanexe.array.filter-lt.v1") {
+        const parameters = region.parameters;
+        declarations.push(`theorem ${region.id.replace(/[^A-Za-z0-9_]/g, "_")}_eq :
+    Project.ProofKit.Annotation.region ${job.namespace}.func${function_.wasmIndex}
+      ${leanAnnotationPath(region.location.listPath)} ${region.location.startIndex}
+      ${region.location.endIndex} = some
+        (Project.ProofKit.FixedArrayFilterLt.wrapperProgram
+          ${parameters.maximumSize} ${parameters.threshold}) := by
+  rfl`);
+        continue;
+      }
       if (region.kind !== "leanexe.array.pair-result.v1") continue;
       const parameters = region.parameters;
       const expected = parameters.mode === "constants-v1"
@@ -1683,6 +1791,9 @@ import Project.ProofKit.FixedArrayPairResult
 ${document.functions.some((function_) => function_.regions.some((region) =>
     region.kind === "leanexe.array.map-add.v1"))
     ? "import Project.ProofKit.FixedArrayMapAdd\n" : ""}
+${document.functions.some((function_) => function_.regions.some((region) =>
+    region.kind === "leanexe.array.filter-lt.v1"))
+    ? "import Project.ProofKit.FixedArrayFilterLt\n" : ""}
 ${chainCompositions.length > 0 ? "import Project.ProofKit.FixedArraySearchChain\n" : ""}
 ${treeCompositions.length > 0 ? "import Project.ProofKit.FixedArraySearchTree\n" : ""}
 set_option maxRecDepth 1048576
@@ -1702,6 +1813,7 @@ module.exports = {
   fixedArrayEqNodeRecipe,
   fixedArrayLengthDispatchRecipe,
   fixedArrayLtNodeRecipe,
+  fixedArrayFilterLtRecipe,
   fixedArrayMapAddRecipe,
   fixedArrayPairResultRecipe,
   fixedArraySearchKeyRecipe,
@@ -1712,6 +1824,7 @@ module.exports = {
   matchFixedArrayEqNodeRegion,
   matchFixedArrayLengthDispatchRegion,
   matchFixedArrayLtNodeRegion,
+  matchFixedArrayFilterLtRegion,
   matchFixedArrayMapAddRegion,
   matchFixedArrayPairResultRegion,
   matchFixedArraySearchKeyRegion,

@@ -3314,6 +3314,27 @@ def fixedArrayMapAdd?
       none
   | _, _ => none
 
+def fixedArrayFilterLt?
+    (func : Func) (code : List Instr) : Option Annotations.FixedArrayFilterLtParameters :=
+  match func.body, func.results with
+  | .ite
+      (.leU64 (.arraySize (.local 0)) (.u64 maximumSize))
+      (.seq
+        (.assign 2
+          (.arrayFilterSlots 1 0 (.local 0) (.u64 0) (.arraySize (.local 0)) 1
+            (.ite (.ltU64 (.local 1) (.u64 threshold)) (.u64 1) (.u64 0))))
+        (.assign 4 (.local 2)))
+      (.seq
+        (.assign 3 (.arrayLiteralSlots 1 0 []))
+        (.assign 4 (.local 3))),
+      [.local 4] =>
+    if func.params = 1 && func.locals = 5 && code.length > 0 then
+      some (Annotations.FixedArrayFilterLtParameters.mk
+        maximumSize (toString threshold) "function-return")
+    else
+      none
+  | _, _ => none
+
 def directCallLocalGet? : Instr → Option Nat
   | .localGet index => some index
   | _ => none
@@ -3798,6 +3819,22 @@ def annotationDocument (module_ : Module) (bytes : ByteArray) : Annotations.Docu
                "LeanExe.Wasm.Binary.CoreWasm.emitStmtAnnotated",
                "LeanExe.Wasm.Binary.CoreWasm.emitFuncAnnotated"
              ] }]
+      let filterLtRegions : List Annotations.Region :=
+        match fixedArrayFilterLt? func emitted.code with
+        | none => []
+        | some parameters =>
+          [{ id := s!"function-{functionIndex}.filter-lt-0"
+             kind := "leanexe.array.filter-lt.v1"
+             location :=
+               { listPath := #[]
+                 startIndex := 0
+                 endIndex := emitted.code.length }
+             parameters := .fixedArrayFilterLt parameters
+             generatedBy := #[
+               "LeanExe.Wasm.Binary.CoreWasm.emitArrayFilterSlots",
+               "LeanExe.Wasm.Binary.CoreWasm.emitStmtAnnotated",
+               "LeanExe.Wasm.Binary.CoreWasm.emitFuncAnnotated"
+             ] }]
       let lengthRegions : List Annotations.Region :=
         (enumerate emitted.lengthDispatches.toList).map fun regionItem =>
           let regionIndex := regionItem.fst
@@ -3903,8 +3940,8 @@ def annotationDocument (module_ : Module) (bytes : ByteArray) : Annotations.Docu
         parameters := func.params
         results := func.results.length
         locals := combinedLocals
-        regions := (mapAddRegions ++ lengthRegions ++ searchKeyRegions ++ eqNodeRegions ++
-          ltNodeRegions ++ pairResultRegions ++ directCallRegions).toArray }
+        regions := (mapAddRegions ++ filterLtRegions ++ lengthRegions ++ searchKeyRegions ++
+          eqNodeRegions ++ ltNodeRegions ++ pairResultRegions ++ directCallRegions).toArray }
   { schemaVersion := 1
     artifact := { byteLength := bytes.size }
     functions := functions.toArray }
