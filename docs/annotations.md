@@ -403,6 +403,14 @@ The baseline artifact proof took 2,364.735 seconds, including 2,255.687 seconds 
 
 The journal identifies five candidate reusable boundaries.  A bounded-length dispatch theorem should expose the semantic size cases, a dynamic capacity theorem should normalize the emitted allocation expression, and the allocator-window theorem should accept unused trailing locals.  A dynamic length-store theorem and a parameterized word-map loop theorem should cover the remaining repeated instruction and invariant work before a complete wrapper composition is attempted.
 
+## 2026-08-07: Demo 4 allocator-window iteration
+
+`FixedArrayAllocatorWindow.region_spec_withTail` generalizes the allocator theorem from exactly `offset + 14` internal locals to `offset + 14 + tail` locals.  Its compatibility theorem retains the former exact-frame statement, and both the defining module and its downstream pair-result module build under Lean 4.31.0.  The proof prompt and catalog now direct the agent to select the generalized theorem before symbolic execution when an allocator has unused trailing locals.
+
+A controlled reproof preserved Demo 4's formal specification, source, 1,913-byte WASM artifact, decoded Program, and artifact theorem.  Stage 5 fell from 2,364.735 seconds to 1,191.695 seconds, a 49.6 percent reduction, while the number of journaled edited checks fell from 27 to 19.  The generated proof applies the shared allocator theorem at offset two with no tail and at offset zero with a tail of two.
+
+The controlled journal attributes the remaining work to three compiler templates.  Ten checks handled the unsigned bounded-length dispatch, capacity normalization, and entry into the successful allocator, while seven more handled the array-map loop after allocation.  The next iteration will add checked annotations and generic theorems for those templates, then reprove this same frozen artifact before screening the shared changes on the earlier demos.
+
 ## Completion criteria
 
 The first complete increment emits a validated sidecar for every ordinary library-mode compilation requested by `leanexegen`.  Demos 1, 2, and 3 prove the same specifications over the same WASM bytes through an annotation-driven deterministic proof plan.  The retained evidence records proof-generation timings, annotation validation, region coverage, and independent Lean acceptance.
