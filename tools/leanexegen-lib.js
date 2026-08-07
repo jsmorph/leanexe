@@ -91,10 +91,12 @@ function requireSource(value, description) {
 }
 
 function validateProofJournal(value, description = "proof journal") {
-  if (typeof value !== "string" || value.includes("\0") ||
-      !value.startsWith("# Proof Journal\n\n") ||
-      value.slice("# Proof Journal\n\n".length).trim().length === 0) {
-    fail(`${description} must contain prose beneath the Proof Journal heading`);
+  const prose = typeof value === "string"
+    ? value.split(/\r?\n/).filter((line) =>
+      !/^\s{0,3}#{1,6}(?:\s|$)/.test(line)).join("\n").trim()
+    : "";
+  if (typeof value !== "string" || value.includes("\0") || prose.length === 0) {
+    fail(`${description} must contain substantive text without NUL bytes`);
   }
   return value;
 }
