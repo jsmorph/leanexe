@@ -1,5 +1,13 @@
 # Development Journal
 
+## 2026-08-07: Bounded Filter Composition
+
+The [Demo 5 baseline](demos/demo-5/README.md) took 1,635.679 seconds in Stage 5 and produced a 969-line direct proof after fourteen edited checks.  Its only checked compiler region was the bounded-length dispatch, leaving Codex to derive the input-capacity allocator, filtered-prefix loop invariant, conditional output store, dynamic result length, and empty branch.  The proof journal supplied the exact emitted program decomposition and invariant used to define the shared theorem.
+
+`Project.ProofKit.FixedArrayFilterLt.wrapperProgram_spec` proves the canonical bounded stable filter for arbitrary maximum size and `UInt64` threshold.  The compiler recognizes the corresponding extracted IR and emits `leanexe.array.filter-lt.v1` over the complete function while preserving the nested length-dispatch region.  The JavaScript consumer validates the parameters and function boundary, constructs a checked equality with `wrapperProgram`, selects the semantic theorem, and generates the complete schema-6 artifact starter.
+
+A controlled reproof retained the formal specification, source, 1,975-byte WASM, decoded Program, artifact theorem, and heap-reserve boundary.  The deterministic 70-line starter passed its first Lean check unchanged and completed Stage 5 in 86.795 seconds, a reduction of 1,548.884 seconds, or 94.7 percent.  Independent `leanexegen verify` accepted the package, and the retained comparison records both proof digests and timing components.
+
 ## 2026-08-07: Artifact Heap-Reserve Precondition
 
 The bounded filter in [Demo 5](demos/demo-5/README.md) exposed a counterexample to the former `RuntimeReady` precondition.  For input `[100]`, the final output is empty, but the compiled `Array.filter` reserves input-sized capacity before testing the element.  At a bump pointer of `2^32 - 56` with 65,536 memory pages, the former final-output bound held while the allocator failed and the artifact trapped.
