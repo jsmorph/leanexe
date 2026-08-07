@@ -76,6 +76,12 @@ structure FixedArrayMapAddParameters where
   continuation : String
   deriving Repr, Lean.ToJson
 
+structure FixedArrayFilterLtParameters where
+  maximumSize : Nat
+  threshold : String
+  continuation : String
+  deriving Repr, Lean.ToJson
+
 inductive RegionParameters where
   | directCall (parameters : DirectCallParameters)
   | fixedArrayLengthDispatch (parameters : FixedArrayLengthDispatchParameters)
@@ -84,6 +90,7 @@ inductive RegionParameters where
   | fixedArrayLtNode (parameters : FixedArrayLtNodeParameters)
   | fixedArrayPairResult (parameters : FixedArrayPairResultParameters)
   | fixedArrayMapAdd (parameters : FixedArrayMapAddParameters)
+  | fixedArrayFilterLt (parameters : FixedArrayFilterLtParameters)
   deriving Repr
 
 instance : Lean.ToJson RegionParameters where
@@ -95,6 +102,7 @@ instance : Lean.ToJson RegionParameters where
     | .fixedArrayLtNode parameters => Lean.toJson parameters
     | .fixedArrayPairResult parameters => Lean.toJson parameters
     | .fixedArrayMapAdd parameters => Lean.toJson parameters
+    | .fixedArrayFilterLt parameters => Lean.toJson parameters
 
 structure Region where
   id : String

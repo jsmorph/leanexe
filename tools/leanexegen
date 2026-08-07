@@ -647,6 +647,13 @@ function proofPrompt(request, job, entryIndex) {
     `dispatch, capacity calculation, both allocations, dynamic result length, map loop, payload ` +
     `stores, and final return for arbitrary bounds and addends.  Retain a compiling deterministic ` +
     `starter that applies this theorem instead of unfolding one of its internal regions.  ` +
+    `Import Project.ProofKit.FixedArrayFilterLt when a whole-function annotation identifies the ` +
+    `canonical bounded stable filter by an unsigned threshold.  Its wrapperProgram_spec theorem ` +
+    `proves the length dispatch, input-sized capacity allocation, predicate loop, conditional ` +
+    `payload stores, dynamic result length, empty allocation, and final return for arbitrary ` +
+    `bounds and thresholds.  The theorem consumes the checked heapReserveBytes bound from the ` +
+    `schema-6 formal interface.  Retain a compiling deterministic starter that applies this ` +
+    `theorem instead of unfolding the filter loop.  ` +
     `Import ` +
     `Project.ProofKit.FixedArrayTraversalInput when the search traversal uses the standard checked ` +
     `indexed loader that stores the input pointer and index in combined locals offset+5 and ` +
@@ -1134,6 +1141,90 @@ function artifactProofStarter(
   const mapAddRecipes = (proofRecipes?.recipes ?? []).filter((recipe) =>
     recipe.regionKind === "leanexe.array.map-add.v1" &&
       recipe.functionIndex === entryIndex);
+  const filterLtRecipes = (proofRecipes?.recipes ?? []).filter((recipe) =>
+    recipe.regionKind === "leanexe.array.filter-lt.v1" &&
+      recipe.functionIndex === entryIndex);
+  if (annotated && formalInterfaceVersion >= 2 && filterLtRecipes.length === 1) {
+    const recipe = filterLtRecipes[0];
+    const parameters =
+      /^Project\.ProofKit\.FixedArrayFilterLt\.wrapperProgram ([0-9]+) ([0-9]+)$/
+        .exec(recipe.direct.program);
+    if (parameters === null) {
+      throw new Error("fixed-array filter-lt recipe has an invalid program");
+    }
+    const maximumSize = parameters[1];
+    const threshold = parameters[2];
+    return `import ${job.formalSpecModule}
+import ${job.programModule}
+import ${annotationMatchesModule(job)}
+import Project.ProofKit.FixedArrayFilterLt
+
+set_option maxRecDepth 1048576
+set_option maxHeartbeats 1000000
+
+namespace ${job.behaviorModule}
+
+open Wasm Project.ProofKit
+
+theorem ${theoremName} :
+    ${job.formalSpecDefinition} ${job.namespace}.«module» := by
+  refine ⟨${entryIndex}, rfl, ?_⟩
+  intro env initial inputPtr input hInput
+  rcases hInput with
+    ⟨hArray, heapTop, allocs, retains, releases, frees, hGlobals,
+      ${runtimeReadyFields}⟩
+  change UInt64Array.At initial inputPtr input at hArray
+  have hHeapTop : initial.globals.globals[0]? = some (.i64 heapTop) := by
+    simp [hGlobals]
+  have hFreeList : initial.globals.globals[1]? = some (.i64 0) := by
+    simp [hGlobals]
+  have hAllocs : initial.globals.globals[2]? = some (.i64 allocs) := by
+    simp [hGlobals]
+  have hAtIff (st : Store Unit) (ptr : UInt64) (values : Array UInt64) :
+      ${job.formalSpecModule}.UInt64ArrayAt st ptr values ↔
+        UInt64Array.At st ptr values := by
+    rfl
+  apply Wasm.TerminatesWith.of_wp_entry_for
+    (f := ${job.namespace}.func${entryIndex}Def) rfl
+  unfold ${job.namespace}.func${entryIndex}Def
+  simp only [Wasm.Function.numParams, List.length, List.drop,
+    Nat.zero_add, List.append_nil]
+  simp only [hAtIff]
+  apply Wasm.wp.conseq (Q :=
+    FixedArrayPairResult.publicPost (${job.expectedDefinition} input))
+  · intro continuation hPost
+    cases continuation <;> simp_all [FixedArrayPairResult.publicPost]
+  have hProgram : ${job.namespace}.func${entryIndex} =
+      FixedArrayFilterLt.wrapperProgram ${maximumSize} ${threshold} := by
+    simpa [Annotation.region, Annotation.resolve,
+      ${job.namespace}.func${entryIndex}] using
+      ${recipe.direct.regionEquality}
+  have hExpected : ${job.expectedDefinition} input =
+      FixedArrayFilterLt.expected ${maximumSize} ${threshold} input := by
+    rfl
+  have hReserve : ${job.heapReserveDefinition} input =
+      FixedArrayFilterLt.heapReserveBytes ${maximumSize} input := by
+    rfl
+  rw [hReserve] at hHeapFitMemory
+  change wp ${job.namespace}.«module» ${job.namespace}.func${entryIndex}
+    (FixedArrayPairResult.publicPost (${job.expectedDefinition} input))
+    initial (FixedArrayFilterLt.entryFrame inputPtr) env
+  rw [hProgram, hExpected]
+  apply FixedArrayFilterLt.wrapperProgram_spec ${maximumSize} ${threshold}
+    ${job.namespace}.«module» env initial inputPtr input heapTop allocs
+  · norm_num [UInt64.size]
+  · exact hArray
+  · exact hInputBelow
+  · exact hHeapFitMemory
+  · exact hPages
+  · rfl
+  · exact hHeapTop
+  · exact hFreeList
+  · exact hAllocs
+
+end ${job.behaviorModule}
+`;
+  }
   if (annotated && mapAddRecipes.length === 1) {
     const recipe = mapAddRecipes[0];
     const parameters = /^Project\.ProofKit\.FixedArrayMapAdd\.wrapperProgram ([0-9]+) ([0-9]+)$/
