@@ -48,7 +48,7 @@ The first vocabulary should cover the regions already responsible for most of th
 | `leanexe.array.get.checked.v1` | Array local, index, result local or stack result, element width, slot, and scratch window. | Apply a checked indexed-load theorem with the correct frame. |
 | `leanexe.array.eq-node.v1` | Local-window offset, element index, key local, operand order, branch roles, and continuation. | Select the equality-node theorem and preserve branch continuations. |
 | `leanexe.array.lt-node.v1` | Local-window offset, element index, key local, unsigned comparison, branch roles, and continuation. | Prove one binary-search decision without rediscovering the checked load. |
-| `leanexe.array.result.v1` | Length, element-producing regions, allocator window, destination local, and continuation. | Compose allocation, stores, and the final represented-array fact. |
+| `leanexe.array.pair-result.v1` | Constant or indexed-input value form, allocator window, destination local, and continuation. | Apply the complete two-word allocation and represented-result theorem. |
 | `leanexe.runtime.allocate.v1` | Size expression, allocator locals, globals, memory-growth branch, and destination. | Select the allocator theorem and establish its post-frame. |
 | `leanexe.runtime.retain.v1` | Pointer location, runtime function index, and continuation. | Apply the retain theorem at the emitted ownership boundary. |
 | `leanexe.runtime.release.v1` | Pointer location, runtime function index, and continuation. | Apply the release theorem at the emitted ownership boundary. |
@@ -333,9 +333,11 @@ The future compiler-verification theorem may use region boundaries to organize l
 
 ## Implemented iterations and evidence
 
-The compiler now emits `leanexe.call.direct.v1`, `leanexe.array.length-dispatch.v1`, `leanexe.array.search-key.v1`, `leanexe.array.eq-node.v1`, and `leanexe.array.lt-node.v1` regions through `lean-wasm compile --annotations`.  Annotated emission remains the canonical instruction-emission path, and each corpus migration requires the recompiled bytes to equal the frozen WASM before accepting a sidecar.  The JavaScript consumer checks the structured location, exact top-level instruction sequence, checked-loader branches, Boolean-normalization branches, local window, operand order, branch roles, and continuation before selecting a proof recipe.
+The compiler now emits `leanexe.call.direct.v1`, `leanexe.array.length-dispatch.v1`, `leanexe.array.search-key.v1`, `leanexe.array.eq-node.v1`, `leanexe.array.lt-node.v1`, and `leanexe.array.pair-result.v1` regions through `lean-wasm compile --annotations`.  Annotated emission remains the canonical instruction-emission path, and each corpus migration requires the recompiled bytes to equal the frozen WASM before accepting a sidecar.  The JavaScript consumer checks the structured location, exact top-level instruction sequence, checked-loader branches, Boolean-normalization branches, local window, operand order, branch roles, and continuation before selecting a proof recipe.
 
 Package schema 5 retains `program.annotations.json` and `proof-recipes.json` under the package manifest's file digests.  `leanexegen annotate` converts an older package by recompiling its frozen Source, requiring byte-for-byte equality with the frozen WASM, matching the new sidecar against the frozen Program, and writing a separate annotated package.  A subsequent `reprove` regenerates recipes from the frozen annotations and omits Source and the compiler from the proof task.
+
+Pair-result regions receive an additional checked module under the artifact's generated namespace.  Each theorem resolves the annotation's structured path and half-open interval through `Project.ProofKit.Annotation.region`, then proves by `rfl` that the resulting decoded program equals `FixedArrayPairResult.constResultProgram` or `inputResultProgram` with the reported values, input index, and destination local.  The proving agent receives the theorem name in the recipe, and independent package verification rebuilds the same equality from the frozen Program.
 
 The direct-call slice found two Demo 1 calls and selected `Wasm.wp_call_tw`, with `wp_entry_single_call` available for a single top-level call.  Its first annotated reproof took 279.110 seconds, compared with 372.474 seconds for the retained reference, but both sessions produced the same 532-line Behavior source.  The single timing difference does not establish a causal improvement.
 
@@ -354,14 +356,14 @@ The current compiler was run from scratch over the retained Demo 1, Demo 2, and 
 | Demo | Frozen WASM SHA-256 | Matched regions |
 |---|---|---|
 | 1 | `dbced77ae7a692ce49e98cb58721cb3c05a3712925e31685c4fd08dba4181be7` | One length dispatch and two direct calls. |
-| 2 | `ceb37cd3d61158e7f4162c97cac9b79022518a4e67f895d45a3619c7b5a29712` | One length dispatch, one search-key load, and ten equality nodes. |
-| 3 | `1a93ec55974666ad54fad73d321b8b9e1f7d67970b272c13bcc77055c8e7631d` | One length dispatch, one search-key load, seven equality nodes, and three less-than nodes. |
+| 2 | `ceb37cd3d61158e7f4162c97cac9b79022518a4e67f895d45a3619c7b5a29712` | One length dispatch, one search-key load, ten equality nodes, and twelve pair results. |
+| 3 | `1a93ec55974666ad54fad73d321b8b9e1f7d67970b272c13bcc77055c8e7631d` | One length dispatch, one search-key load, seven equality nodes, three less-than nodes, and twelve pair results. |
 
 Cross-demo validation exposed an overbroad search-key recognizer: Demo 1's ordinary load of its single input initially matched the loader shape.  The compiler now requires a search-key candidate's local window and saved local to match an equality or less-than consumer in the same function, removing the Demo 1 false classification while preserving Demos 2 and 3.  The proof consumer still treats this classification as untrusted guidance and checks every selected instruction region independently.
 
 A fresh Demo 3 reproof with the complete tree recipe set could not start because headless Codex reported an account usage limit until August 10, 2026.  Two attempts failed before proof generation or Lean execution, so they provide no timing result.  The package, annotation, recipe, proof-kit, and independent theorem checks completed without that service.
 
-The next result-region slice should annotate the complete allocator, pair stores, destination assignment, and return continuation only after the consumer can match that whole sequence against `FixedArrayPairResult.constResultProgram` or `inputResultProgram`.  The compiler can identify the array-literal assignment from its IR, but a label over that source operation does not validate the corresponding decoded suffix.  The implementation needs either a shared generated instruction-template description or a checked decomposition equality, avoiding a second hand-maintained copy of the allocator template in JavaScript.
+The next slice should compose the checked entry, search, and pair-result boundaries into one artifact-specific structural theorem.  Its generated proof should follow the complete branch tree and leave only equations relating comparison facts to `FormalSpec.expected`, avoiding the partial starter's requirement that Codex reconstruct the remaining continuations.  Demos 2 and 3 will screen this composition independently before any similar generator handles loops.
 
 ## Completion criteria
 

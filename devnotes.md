@@ -6391,3 +6391,9 @@ The cross-demo run found that the search-key recognizer classified Demo 1's ordi
 ## 2026-08-06: Checked Annotation Coordinates
 
 `Project.ProofKit.Annotation` resolves structured block, loop, then-branch, and else-branch paths over a decoded Talos `Program`.  Its `region` function selects the sidecar's exact half-open instruction interval after resolving the nested list.  The module built successfully under Lean 4.31.0 through `tools/leanrun` and is available to generated artifact proofs through the checked proof-kit allowlist.
+
+## 2026-08-06: Checked Pair-Result Regions
+
+The compiler emits `leanexe.array.pair-result.v1` for the complete two-word array-literal assignment and its transfer to the wrapper return local.  Constant results record both words, while indexed results record the represented input index and fixed found flag; both forms retain the destination local and structured branch path.  Demo 2 and Demo 3 each contain twelve matched pair-result regions, while Demo 1 contains none.
+
+Leanexegen generates an artifact-specific `AnnotationMatches` module whose theorems resolve each pair-result interval from the decoded `Program`.  All twenty-four Demo 2 and Demo 3 equalities close by `rfl` against `FixedArrayPairResult.constResultProgram` or `inputResultProgram`, avoiding another allocator-template implementation in JavaScript.  Fresh annotated packages preserved the frozen WASM digests and passed independent artifact verification under the managed Lean runner.
