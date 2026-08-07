@@ -274,15 +274,12 @@ wp_fixed_array_lt_node 10, index, keyLocal using hSearch, hInput, hIndex
 
 Import `Project.ProofKit.FixedArraySearchTree` when a fixed binary search tree consists of key-first equality nodes, unsigned less-than nodes, and standard two-word result programs.  `Tree.leaf` records a key index, value index, found-result destination, and missing-result destination, while `Tree.branch` records a key index, value index, found-result destination, and two child trees.  `Tree.program` gives this descriptor an exact Talos program, and `Tree.result` gives it an `Array UInt64` lookup result.
 
-`Tree.program_spec` proves the complete tree by induction from one `SearchFrame`, one `PairResultContext`, the descriptor's `Tree.Valid` bounds, and one equation between the public expected result and `Tree.result`.  The theorem applies `FixedArrayEqNode`, `FixedArrayLtNode`, and the pair-result composition theorems at every node and carries the nested branch continuations internally.  A generated `AnnotationMatches` theorem can establish that a decoded artifact region equals `Tree.program`, leaving Lean to check the complete composition.
+`Tree.program_spec` proves the complete tree by induction from one `SearchFrame`, one `PairResultContext`, the descriptor's `Tree.Valid` bounds, and one equation between the public expected result and `Tree.result`.  The theorem applies `FixedArrayEqNode`, `FixedArrayLtNode`, and the pair-result composition theorems at every node and carries the nested branch continuations internally.  A generated `AnnotationMatches` theorem establishes that the decoded artifact region equals `Tree.program`, leaving Lean to check the complete composition.
 
 ```lean
-let tree : FixedArraySearchTree.Tree :=
-  .branch 1 2 3
-    (.leaf 3 4 4 5)
-    (.leaf 5 6 6 7)
+let tree := AnnotationMatches.function_0_search_tree_0
 
-rw [AnnotationMatches.function_0_search_tree_0_eq]
+change wp module_ (tree.program offset keyLocal) finalPost initial frame env
 exact tree.program_spec hSearch hValid (by decide) (by decide) (by decide)
   hResultContext hExpected
 ```

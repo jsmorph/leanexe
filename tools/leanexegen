@@ -678,6 +678,10 @@ function proofPrompt(request, job, entryIndex) {
     `expected postcondition, and focused guidance selected for each matched region.  Attempt the ` +
     `direct recipe before general symbolic execution, then use its supporting declarations and ` +
     `guidance only for the remaining goals.  ` +
+    `Its compositions array lists any complete fixed-array search-tree descriptor, its ` +
+    `Lean-checked region equality, and Tree.program_spec.  Attempt that complete composition ` +
+    `before its individual node recipes, and unfold the named descriptor when proving Tree.Valid ` +
+    `and the equation for Tree.result.  ` +
     `Each fixedArrayEqNodes entry gives the function, local-window offset, input index, saved-key ` +
     `local, and operand order for an exact Project.ProofKit.FixedArrayEqNode match.  Use ` +
     `wp_fixed_array_eq_node for loaded-first entries and wp_fixed_array_key_eq_node for key-first ` +
@@ -701,12 +705,12 @@ function proofPrompt(request, job, entryIndex) {
     `continuation; construct that context once from the input, allocator, and memory facts, and ` +
     `do not define local node or result adapters.  ` +
     `When AnnotationMatches contains a fixed-array search-tree descriptor and region equality, ` +
-    `rewrite the complete region with that equality and apply ` +
+    `change the complete-region goal to the descriptor's program and apply ` +
     `Project.ProofKit.FixedArraySearchTree.Tree.program_spec instead of composing its nodes ` +
-    `individually.  ` +
-    `${annotationMatchesModule(job)} contains Lean-checked equalities between annotated ` +
-    `pair-result ` +
-    `regions of the decoded Program and the selected FixedArrayPairResult program.  Use the ` +
+    `individually.  The region equality independently certifies the same exact match.  ` +
+    `${annotationMatchesModule(job)} contains Lean-checked tree descriptors and equalities, plus ` +
+    `equalities between annotated pair-result regions of the decoded Program and the selected ` +
+    `FixedArrayPairResult program.  Use the ` +
     `regionEquality named by each pair-result recipe before applying its semantic theorem.  ` +
     `These files grant no additional Lean imports.  ` +
     `Keep PROOF_JOURNAL.md as a prose Markdown account of your work.  Update it frequently as ` +
@@ -1055,6 +1059,9 @@ function artifactProofStarter(job, entryIndex, annotated = false, proofRecipes =
       "Project.ProofKit.FixedArraySearchTree",
     ]) modules.add(moduleName);
   } else {
+    for (const composition of proofRecipes.compositions ?? []) {
+      modules.add(composition.direct.module);
+    }
     for (const recipe of proofRecipes.recipes) {
       modules.add(recipe.direct.module);
       for (const item of recipe.supporting) {
