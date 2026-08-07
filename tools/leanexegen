@@ -712,6 +712,11 @@ function proofPrompt(request, job, entryIndex) {
     `edit the file and ` +
     `prove exactly ` +
     `${job.behaviorTheorem} : ${job.formalSpecDefinition} ${job.namespace}.«module».  ` +
+    `Do not search for or read artifact proofs outside this working directory, including demos, ` +
+    `benchmarks, archived proof packages, or another generated namespace.  Those files can contain ` +
+    `a proof of this exact artifact and would invalidate proof-generation measurement.  Read ` +
+    `dependency source outside the working directory only when necessary to confirm a declaration ` +
+    `listed in PROOF_LIBRARY.md or PROOF_STRATEGIES.md.  ` +
     `You may import ${job.formalSpecModule}, ${job.programModule}, generated artifact-support ` +
     `modules, CodeLib, Interpreter, Std, Init, or Mathlib.  ${library}` +
     `PROOF_STRATEGIES.md contains optional proof-organization guidance selected from the frozen ` +
