@@ -371,6 +371,10 @@ The proof kit now provides explicit-premise forms for the search-key and less-th
 
 The next composition experiment should produce a Lean theorem whose statement contains the exact checked branch graph and whose premises contain one semantic equation for each result leaf.  The generated theorem may depend on `AnnotationMatches`, `SearchFrame`, `PairResultContext`, and the registered node theorems, but it must derive its program equality from the frozen decoded artifact.  A Demo 2 and Demo 3 timing screen will determine whether moving graph reconstruction out of the Codex session reduces total proof-generation time.
 
+The first composition theorem now exists as `FixedArraySearchTree.Tree.program_spec`.  A generic `Tree` descriptor determines the exact equality, less-than, found-result, and missing-result program and defines the corresponding array lookup semantics.  Its proof composes the existing node and pair-result theorems by induction without importing a generated program or formal specification.
+
+Demo 3's complete seven-node search program is definitionally equal to one descriptor after the checked search-key load.  A transformed proof applies the theorem once, reduces the active `Behavior` source from 421 to 155 lines, and builds through `ArtifactResult`.  The next generator change will derive that descriptor from the checked annotation paths and emit a region equality in `AnnotationMatches`, after which a fresh Codex run can measure the complete proof time.
+
 ## Completion criteria
 
 The first complete increment emits a validated sidecar for every ordinary library-mode compilation requested by `leanexegen`.  Demos 1, 2, and 3 prove the same specifications over the same WASM bytes through an annotation-driven deterministic proof plan.  The retained evidence records proof-generation timings, annotation validation, region coverage, and independent Lean acceptance.
