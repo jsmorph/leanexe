@@ -675,8 +675,9 @@ function proofPrompt(request, job, entryIndex) {
     `theorem starter with the ` +
     `RuntimeReady decomposition and common array facts.  Run its Lean check immediately before ` +
     `editing so that the first diagnostic exposes the exact starter goal.  If that check succeeds, ` +
-    `leave the candidate unchanged, record the result in the journal, run the required final check, ` +
-    `and return.  Otherwise, edit the file and ` +
+    `leave the candidate unchanged, record the result in the journal, and return without repeating ` +
+    `the same check; outer acceptance rebuilds the unchanged candidate independently.  Otherwise, ` +
+    `edit the file and ` +
     `prove exactly ` +
     `${job.behaviorTheorem} : ${job.formalSpecDefinition} ${job.namespace}.«module».  ` +
     `You may import ${job.formalSpecModule}, ${job.programModule}, generated artifact-support ` +
