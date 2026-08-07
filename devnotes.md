@@ -1,5 +1,13 @@
 # Development Journal
 
+## 2026-08-07: Artifact Heap-Reserve Precondition
+
+The bounded filter in [Demo 5](demos/demo-5/README.md) exposed a counterexample to the former `RuntimeReady` precondition.  For input `[100]`, the final output is empty, but the compiled `Array.filter` reserves input-sized capacity before testing the element.  At a bump pointer of `2^32 - 56` with 65,536 memory pages, the former final-output bound held while the allocator failed and the artifact trapped.
+
+The formal task now defines `heapReserveBytes : Array UInt64 → Nat` beside `expected`.  `RuntimeReady` retains its final-output representation bounds and adds separate address-space and existing-memory bounds for the stated heap reserve.  The direct artifact proof must establish each allocation premise from this reserve, which keeps the resource assumption reviewable and tied to exact emitted behavior.
+
+Proof-package schema 6 records the expanded formal interface, while verification and controlled reproof preserve the previous declaration checks and proof starter for schemas 3 through 5.  JavaScript protocol tests cover both starter forms, an existing schema-5 Demo 4 package passes independent verification, and the schema-6 Demo 5 package passes the same verification path.  The retained Demo 5 baseline took 1,635.679 seconds in Stage 5 and identifies bounded filter allocation and loop invariants as the next shared proof target.
+
 ## 2026-08-03: Reusable WASM Proof Library Plan
 
 The [WASM proof library plan](docs/wasm-proofs.md) inventories the shared arithmetic, memory, control-flow, runtime, and function-portability support already used by the artifact proofs.  It records the current `leanexegen` access gap: generated proof sessions cannot import repository-owned shared modules and receive no checked declaration catalog.  The ordered work adds a stable facade, dependency and identity audits, a checked catalog, feature-directed Pi context, scalar-loop and memory-runtime pilots, and an ongoing two-consumer distillation rule.

@@ -1,0 +1,4 @@
+leanexegen: warning: The formal specification is a generated interpretation of the prose request.
+leanexegen: warning: No theorem connects the generated Lean source to the formal specification.
+leanexegen: warning: The artifact theorem applies to one exact SHA-256 digest under the pinned Lean and Talos semantics.
+leanexegen: warning: Codex generation and the LeanExe compiler are outside the trusted artifact proof.

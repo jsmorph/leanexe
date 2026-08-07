@@ -1,0 +1,74 @@
+{
+  "schemaVersion": 1,
+  "codexVersion": "codex-cli 0.146.0",
+  "maximumAttempts": 1,
+  "tasks": {
+    "formalSpecification": {
+      "task": "formal-specification",
+      "sourceModule": "LeanExeGen.GeneratedRc28a1499719cbaa0.FormalSpec",
+      "sourceSha256": "7b2fd2f6c94b2f2ed89547eeb23ecc29dbabbf05ce3db30ad37b34fee9a680dc",
+      "reportSha256": "5d3b1000a4c1ace08ae7100b6800d2f64d41a258e7716c2d0a3e95fa98944d39",
+      "report": {
+        "summary": "Defined the bounded stable UInt64 filter and a conservative branch-sensitive bump-heap reserve. The required Lean build passed twice, including the final check.",
+        "decisions": [
+          "Used Array.filter with the predicate element < (100 : UInt64).",
+          "Returned #[] when input.size exceeds eight.",
+          "Bounded the filter allocation by 48 + 8 * (input.size + 1) bytes, accounting for metadata, the length word, and input-sized reserved capacity.",
+          "Bounded the oversize empty-array allocation by 56 bytes."
+        ],
+        "attempts": [
+          {
+            "number": 1,
+            "outcome": "accepted",
+            "sourceSha256": "7b2fd2f6c94b2f2ed89547eeb23ecc29dbabbf05ce3db30ad37b34fee9a680dc",
+            "diagnosticSha256": "db524449f968529f02292c9b2bc3948c4c8cc091bdac6dc7ad0373e9a83923ae",
+            "diagnostic": "Lean accepted LeanExeGen.GeneratedRc28a1499719cbaa0.FormalSpec.expected : Array UInt64 → Array UInt64 and LeanExeGen.GeneratedRc28a1499719cbaa0.FormalSpec.heapReserveBytes : Array UInt64 → Nat and LeanExeGen.GeneratedRc28a1499719cbaa0.FormalSpec.ArtifactSpec : Wasm.Module → Prop."
+          }
+        ]
+      }
+    },
+    "leanProgram": {
+      "task": "lean-program",
+      "sourceModule": "LeanExeGen.GeneratedRc28a1499719cbaa0.Source",
+      "sourceSha256": "5f7aba268fb52fcd7d52de6d0749230206b8e09d3f9e1e26f59fa7b1e9dc0931",
+      "reportSha256": "3d3a8e77065ff89ed2fee2578b179777a2f6764f156dada5c6442ccf4854bb43",
+      "report": {
+        "summary": "Candidate passed the Lean build, LeanExe report, and WebAssembly compilation.",
+        "decisions": [
+          "Used Array.filter with an unsigned comparison against 100.",
+          "Returned an empty array when the input length exceeds eight."
+        ],
+        "attempts": [
+          {
+            "number": 1,
+            "outcome": "accepted",
+            "sourceSha256": "5f7aba268fb52fcd7d52de6d0749230206b8e09d3f9e1e26f59fa7b1e9dc0931",
+            "diagnosticSha256": "6f0e47b8e5688f26213420b0b26114172a8504580ff6ca48faf8a64aea7336a2",
+            "diagnostic": "Lean and LeanExe accepted and compiled LeanExeGen.GeneratedRc28a1499719cbaa0.Source.compute : Array UInt64 → Array UInt64."
+          }
+        ]
+      }
+    },
+    "artifactProof": {
+      "task": "artifact-proof",
+      "sourceModule": "LeanExeGen.GeneratedRc28a1499719cbaa0.Behavior",
+      "sourceSha256": "a65e9018ce92e01f3fd8b82e117a237571d0ae88512a682819c2a9fe6c2a4822",
+      "reportSha256": "8a823c029306773bf48becf7239854b8941fd856b0fe427c82c276e34ade3786",
+      "report": {
+        "summary": "Proved artifact_behavior. The required final ArtifactResult build succeeded.",
+        "decisions": [
+          "Used a loop invariant relating the generated output count and payload to the filtered input prefix."
+        ],
+        "attempts": [
+          {
+            "number": 1,
+            "outcome": "accepted",
+            "sourceSha256": "a65e9018ce92e01f3fd8b82e117a237571d0ae88512a682819c2a9fe6c2a4822",
+            "diagnosticSha256": "0e6261cb993771928265f1301b5e5e30310b9757238ac43532ce8b4adf5aaf00",
+            "diagnostic": "Lean accepted LeanExeGen.GeneratedRc28a1499719cbaa0.Behavior.artifact_behavior and LeanExeGen.GeneratedRc28a1499719cbaa0.Artifact.artifact_correct."
+          }
+        ]
+      }
+    }
+  }
+}

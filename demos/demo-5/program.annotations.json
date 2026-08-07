@@ -1,0 +1,42 @@
+{
+  "artifact": {
+    "byteLength": 1975
+  },
+  "functions": [
+    {
+      "definedFunction": 0,
+      "exports": [
+        "compute"
+      ],
+      "locals": 21,
+      "parameters": 1,
+      "regions": [
+        {
+          "generatedBy": [
+            "LeanExe.Wasm.Binary.CoreWasm.emitCondWithRelease",
+            "LeanExe.Wasm.Binary.CoreWasm.emitStmtAnnotated"
+          ],
+          "id": "function-0.length-dispatch-0",
+          "kind": "leanexe.array.length-dispatch.v1",
+          "location": {
+            "endIndex": 8,
+            "listPath": [],
+            "startIndex": 0
+          },
+          "parameters": {
+            "continuation": "fallthrough",
+            "encoding": "le-unsigned-v1",
+            "expectedSize": 8,
+            "inputLocal": 5,
+            "invalidBranch": "else",
+            "validBranch": "then"
+          }
+        }
+      ],
+      "results": 1,
+      "sourceName": "LeanExeGen.GeneratedRc28a1499719cbaa0.Source.compute",
+      "wasmIndex": 0
+    }
+  ],
+  "schemaVersion": 1
+}
