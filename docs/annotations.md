@@ -393,6 +393,8 @@ Three corrected Demo 2 chain runs finished Stage 5 in 110.332, 110.165, and 110.
 
 Those three journals also report two identical in-session builds despite making no candidate edit.  The proof prompt now returns after the successful initial check and journal update in that case, leaving the existing outer-acceptance build as the independent final check.  Proofs that require a candidate edit retain the required post-edit build before Codex returns.
 
+Three runs under the single-check prompt finished Stage 5 in 107.144, 114.390, and 124.539 seconds, giving a 114.390-second median and a 17.395-second range.  Each journal records one successful in-session check, no proof edit, and no repeated in-session check; outer acceptance rebuilt the unchanged proof independently.  The median is 4.058 seconds above the preceding 110.332-second result, so removing the redundant incremental check produced no measured reduction in total Stage 5 time.
+
 ## Completion criteria
 
 The first complete increment emits a validated sidecar for every ordinary library-mode compilation requested by `leanexegen`.  Demos 1, 2, and 3 prove the same specifications over the same WASM bytes through an annotation-driven deterministic proof plan.  The retained evidence records proof-generation timings, annotation validation, region coverage, and independent Lean acceptance.
