@@ -30,6 +30,15 @@ function string(value, description) {
   return value;
 }
 
+function uint64String(value, description) {
+  string(value, description);
+  if (!/^(?:0|[1-9][0-9]*)$/.test(value) ||
+      BigInt(value) > 18446744073709551615n) {
+    fail(`${description} must be a canonical UInt64 decimal`);
+  }
+  return value;
+}
+
 function array(value, description) {
   if (!Array.isArray(value)) fail(`${description} must be an array`);
   return value;
@@ -254,6 +263,60 @@ function validateFixedArrayLtNode(region, description) {
   }
 }
 
+function validateFixedArrayPairResult(region, description) {
+  exactKeys(region, ["generatedBy", "id", "kind", "location", "parameters"], description);
+  string(region.id, `${description}.id`);
+  if (region.kind !== "leanexe.array.pair-result.v1") {
+    fail(`${description}.kind is unsupported`);
+  }
+  exactKeys(region.location, ["endIndex", "listPath", "startIndex"],
+    `${description}.location`);
+  natural(region.location.startIndex, `${description}.location.startIndex`);
+  natural(region.location.endIndex, `${description}.location.endIndex`);
+  if (region.location.startIndex >= region.location.endIndex) {
+    fail(`${description}.location must be nonempty`);
+  }
+  for (const [index, step] of array(
+    region.location.listPath, `${description}.location.listPath`).entries()) {
+    exactKeys(step, ["field", "instructionIndex"],
+      `${description}.location.listPath[${index}]`);
+    natural(step.instructionIndex,
+      `${description}.location.listPath[${index}].instructionIndex`);
+    if (!["block", "loop", "then", "else"].includes(step.field)) {
+      fail(`${description}.location.listPath[${index}].field is unsupported`);
+    }
+  }
+  exactKeys(region.parameters, [
+    "continuation", "destination", "firstValue", "inputIndex", "mode", "offset",
+    "secondValue",
+  ], `${description}.parameters`);
+  natural(region.parameters.offset, `${description}.parameters.offset`);
+  natural(region.parameters.destination, `${description}.parameters.destination`);
+  uint64String(region.parameters.secondValue, `${description}.parameters.secondValue`);
+  if (region.parameters.offset !== 10 || region.parameters.destination === 0 ||
+      region.parameters.destination >= 25 ||
+      region.parameters.continuation !== "fallthrough") {
+    fail(`${description}.parameters has an unsupported result frame`);
+  }
+  if (region.parameters.mode === "constants-v1") {
+    uint64String(region.parameters.firstValue, `${description}.parameters.firstValue`);
+    if (region.parameters.inputIndex !== null) {
+      fail(`${description}.parameters.inputIndex must be null for constants-v1`);
+    }
+  } else if (region.parameters.mode === "input-index-and-one-v1") {
+    if (region.parameters.firstValue !== null || region.parameters.secondValue !== "1") {
+      fail(`${description}.parameters has an invalid input-index-and-one value shape`);
+    }
+    natural(region.parameters.inputIndex, `${description}.parameters.inputIndex`);
+  } else {
+    fail(`${description}.parameters.mode is unsupported`);
+  }
+  for (const [index, generator] of array(
+    region.generatedBy, `${description}.generatedBy`).entries()) {
+    string(generator, `${description}.generatedBy[${index}]`);
+  }
+}
+
 function validateAnnotationDocument(document, wasmBytes) {
   exactKeys(document, ["artifact", "functions", "schemaVersion"], "annotations");
   if (document.schemaVersion !== 1) fail("unsupported annotation schema");
@@ -299,6 +362,8 @@ function validateAnnotationDocument(document, wasmBytes) {
         validateFixedArrayEqNode(region, `${description}.regions[${regionIndex}]`);
       } else if (region?.kind === "leanexe.array.lt-node.v1") {
         validateFixedArrayLtNode(region, `${description}.regions[${regionIndex}]`);
+      } else if (region?.kind === "leanexe.array.pair-result.v1") {
+        validateFixedArrayPairResult(region, `${description}.regions[${regionIndex}]`);
       } else {
         fail(`${description}.regions[${regionIndex}].kind is unsupported`);
       }
@@ -644,6 +709,25 @@ function matchFixedArrayLtNodeRegion(program, function_, region) {
   };
 }
 
+function matchFixedArrayPairResultRegion(program, function_, region) {
+  const body = programFunctionBody(program, function_.wasmIndex);
+  const instructions = resolveInstructionList(body, region.location.listPath);
+  const selected = instructions.slice(region.location.startIndex, region.location.endIndex);
+  if (selected.length !== region.location.endIndex - region.location.startIndex) {
+    fail(`${region.id}: decoded pair-result region is truncated`);
+  }
+  if (normalizeInstructions(selected)[0] !== ".constI64 (8 : UInt64)" ||
+      normalizeInstructions(selected).at(-1) !== `.localSet 14`) {
+    fail(`${region.id}: decoded pair-result boundary does not match`);
+  }
+  return {
+    functionIndex: function_.wasmIndex,
+    regionId: region.id,
+    regionKind: region.kind,
+    parameters: region.parameters,
+  };
+}
+
 function directCallRecipe(match, selectedSections = [], tacticEligible = false) {
   const guidance = ["strategy.calls", "strategy.frames"]
     .filter((section) => selectedSections.includes(section));
@@ -830,6 +914,51 @@ function fixedArrayLtNodeRecipe(match, selectedSections = []) {
   };
 }
 
+function annotationMatchTheoremName(
+    regionId, annotationNamespace = "Project.AnnotationMatches") {
+  return `${annotationNamespace}.${regionId.replace(/[^A-Za-z0-9_]/g, "_")}_eq`;
+}
+
+function fixedArrayPairResultRecipe(
+    match, selectedSections = [], annotationNamespace = "Project.AnnotationMatches") {
+  const constants = match.parameters.mode === "constants-v1";
+  const theorem = constants
+    ? "Project.ProofKit.FixedArrayPairResult.constResultProgram_spec"
+    : "Project.ProofKit.FixedArrayPairResult.inputResultProgram_spec";
+  const program = constants
+    ? `Project.ProofKit.FixedArrayPairResult.constResultProgram ` +
+      `${match.parameters.firstValue} ${match.parameters.secondValue} ` +
+      `${match.parameters.destination}`
+    : `Project.ProofKit.FixedArrayPairResult.inputResultProgram ` +
+      `${match.parameters.inputIndex} ${match.parameters.destination}`;
+  return {
+    recipeVersion: 1,
+    functionIndex: match.functionIndex,
+    regionId: match.regionId,
+    regionKind: match.regionKind,
+    applicability: "Lean-checked equality over the decoded instruction region",
+    direct: {
+      module: "Project.ProofKit.FixedArrayPairResult",
+      theorem,
+      regionEquality: annotationMatchTheoremName(match.regionId, annotationNamespace),
+      program,
+    },
+    supporting: [
+      {
+        declaration: "Project.ProofKit.Annotation.region",
+        purpose: "select the exact structured instruction region",
+      },
+      {
+        declaration: "Project.ProofKit.FixedArrayPairResult.pairPost_conseq",
+        purpose: "connect the represented pair to the public result continuation",
+      },
+    ],
+    expectedPostcondition: "a represented two-word Array UInt64 result",
+    guidance: ["strategy.arrays", "strategy.allocation", "strategy.frames"]
+      .filter((section) => selectedSections.includes(section)),
+  };
+}
+
 function locationFieldOrder(field) {
   return field === "else" ? 1 : 0;
 }
@@ -859,7 +988,9 @@ function compareRegionLocations(left, right) {
   return difference === 0 ? 1 : difference;
 }
 
-function proofRecipePlan(document, program, selectedSections = []) {
+function proofRecipePlan(
+    document, program, selectedSections = [],
+    annotationNamespace = "Project.AnnotationMatches") {
   const matches = new Map(matchAnnotationDocument(document, program)
     .map((match) => [match.regionId, match]));
   const recipes = [];
@@ -884,9 +1015,12 @@ function proofRecipePlan(document, program, selectedSections = []) {
       } else if (region.kind === "leanexe.array.eq-node.v1") {
         recipes.push(fixedArrayEqNodeRecipe(
           matches.get(region.id), selectedSections));
-      } else {
+      } else if (region.kind === "leanexe.array.lt-node.v1") {
         recipes.push(fixedArrayLtNodeRecipe(
           matches.get(region.id), selectedSections));
+      } else {
+        recipes.push(fixedArrayPairResultRecipe(
+          matches.get(region.id), selectedSections, annotationNamespace));
       }
     }
   }
@@ -919,8 +1053,10 @@ function matchAnnotationDocument(document, program) {
         matches.push(matchFixedArraySearchKeyRegion(program, function_, region));
       } else if (region.kind === "leanexe.array.eq-node.v1") {
         matches.push(matchFixedArrayEqNodeRegion(program, function_, region));
-      } else {
+      } else if (region.kind === "leanexe.array.lt-node.v1") {
         matches.push(matchFixedArrayLtNodeRegion(program, function_, region));
+      } else {
+        matches.push(matchFixedArrayPairResultRegion(program, function_, region));
       }
     }
   }
@@ -951,9 +1087,15 @@ function validateProofRecipePlan(plan, document) {
     if (recipe.recipeVersion !== 1 ||
         !regions.has(recipe.regionId) || found.has(recipe.regionId) ||
         recipe.functionIndex !== regions.get(recipe.regionId).functionIndex ||
-        recipe.regionKind !== regions.get(recipe.regionId).kind ||
-        recipe.applicability !== "exact decoded instruction match") {
+        recipe.regionKind !== regions.get(recipe.regionId).kind) {
       fail(`${description} has an invalid identity`);
+    }
+    const region = regions.get(recipe.regionId);
+    const expectedApplicability = region.kind === "leanexe.array.pair-result.v1"
+      ? "Lean-checked equality over the decoded instruction region"
+      : "exact decoded instruction match";
+    if (recipe.applicability !== expectedApplicability) {
+      fail(`${description} has an invalid applicability check`);
     }
     found.add(recipe.regionId);
     if (recipe.direct === null || typeof recipe.direct !== "object" ||
@@ -963,10 +1105,11 @@ function validateProofRecipePlan(plan, document) {
     const directKeys = Object.keys(recipe.direct).sort();
     if (JSON.stringify(directKeys) !== JSON.stringify(["module", "theorem"]) &&
         JSON.stringify(directKeys) !==
-          JSON.stringify(["invocation", "module", "tactic", "theorem"])) {
+          JSON.stringify(["invocation", "module", "tactic", "theorem"]) &&
+        JSON.stringify(directKeys) !==
+          JSON.stringify(["module", "program", "regionEquality", "theorem"])) {
       fail(`${description}.direct has unsupported fields`);
     }
-    const region = regions.get(recipe.regionId);
     if (region.kind === "leanexe.call.direct.v1") {
       if (recipe.direct.module !== "Project.ProofKit.Control" ||
           recipe.direct.theorem !== "Wasm.wp_call_tw" ||
@@ -1007,13 +1150,22 @@ function validateProofRecipePlan(plan, document) {
           typeof recipe.direct.invocation !== "string") {
         fail(`${description}.direct is unsupported`);
       }
-    } else {
+    } else if (region.kind === "leanexe.array.lt-node.v1") {
       if (recipe.direct.module !== "Project.ProofKit.FixedArrayLtNode" ||
           recipe.direct.theorem !== "Project.ProofKit.FixedArrayLtNode.program_spec" ||
           recipe.direct.tactic !== "wp_fixed_array_lt_node" ||
           typeof recipe.direct.invocation !== "string") {
         fail(`${description}.direct is unsupported`);
       }
+    } else if (recipe.direct.module !== "Project.ProofKit.FixedArrayPairResult" ||
+        ![
+          "Project.ProofKit.FixedArrayPairResult.constResultProgram_spec",
+          "Project.ProofKit.FixedArrayPairResult.inputResultProgram_spec",
+        ].includes(recipe.direct.theorem) ||
+        !recipe.direct.regionEquality.endsWith(
+          `.${recipe.regionId.replace(/[^A-Za-z0-9_]/g, "_")}_eq`) ||
+        typeof recipe.direct.program !== "string") {
+      fail(`${description}.direct is unsupported`);
     }
     for (const [supportingIndex, supporting] of array(
       recipe.supporting, `${description}.supporting`).entries()) {
@@ -1039,17 +1191,65 @@ function validateProofRecipePlan(plan, document) {
   return plan;
 }
 
+function leanAnnotationPath(listPath) {
+  const fields = {
+    block: "block",
+    loop: "loop",
+    then: "thenBranch",
+    else: "elseBranch",
+  };
+  return `[${listPath.map((step) =>
+    `{ instructionIndex := ${step.instructionIndex}, field := .${fields[step.field]} }`)
+    .join(", ")}]`;
+}
+
+function annotationMatchesSource(document, job) {
+  const declarations = [];
+  for (const function_ of document.functions) {
+    for (const region of function_.regions) {
+      if (region.kind !== "leanexe.array.pair-result.v1") continue;
+      const parameters = region.parameters;
+      const expected = parameters.mode === "constants-v1"
+        ? `Project.ProofKit.FixedArrayPairResult.constResultProgram ` +
+          `${parameters.firstValue} ${parameters.secondValue} ${parameters.destination}`
+        : `Project.ProofKit.FixedArrayPairResult.inputResultProgram ` +
+          `${parameters.inputIndex} ${parameters.destination}`;
+      declarations.push(`theorem ${region.id.replace(/[^A-Za-z0-9_]/g, "_")}_eq :
+    Project.ProofKit.Annotation.region ${job.namespace}.func${function_.wasmIndex}
+      ${leanAnnotationPath(region.location.listPath)} ${region.location.startIndex}
+      ${region.location.endIndex} = some (${expected}) := by
+  rfl`);
+    }
+  }
+  return {
+    module: `${job.namespace}.AnnotationMatches`,
+    source: `import ${job.programModule}
+import Project.ProofKit.Annotation
+import Project.ProofKit.FixedArrayPairResult
+
+namespace ${job.namespace}.AnnotationMatches
+
+${declarations.join("\n\n")}
+
+end ${job.namespace}.AnnotationMatches
+`,
+  };
+}
+
 module.exports = {
+  annotationMatchesSource,
   directCallRecipe,
   fixedArrayEqNodeRecipe,
   fixedArrayLengthDispatchRecipe,
   fixedArrayLtNodeRecipe,
+  fixedArrayPairResultRecipe,
   fixedArraySearchKeyRecipe,
   matchAnnotationDocument,
   matchDirectCallRegion,
   matchFixedArrayEqNodeRegion,
   matchFixedArrayLengthDispatchRegion,
   matchFixedArrayLtNodeRegion,
+  matchFixedArrayPairResultRegion,
   matchFixedArraySearchKeyRegion,
   proofRecipePlan,
   resolveInstructionList,

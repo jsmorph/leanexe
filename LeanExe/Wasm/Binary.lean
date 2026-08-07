@@ -3151,7 +3151,51 @@ def emitResultAnnotated (releaseIndex scratch : Nat) (result : Expr) : Annotatio
               "LeanExe.Wasm.Binary.CoreWasm.emitFuncInstrs"
             ] }]
     | _ => #[]
-  { code, directCalls, lengthDispatches := #[] }
+  { code, directCalls, lengthDispatches := #[], pairResults := #[] }
+
+def fixedArrayPairResult?
+    (scratch : Nat) (stmt : Stmt) (code : List Instr) :
+    Option Annotations.RelativeFixedArrayPairResult :=
+  if scratch != 15 then
+    none
+  else
+    let result
+        (mode : String) (firstValue : Option String) (secondValue : String)
+        (inputIndex : Option Nat) (destination : Nat) :
+        Annotations.RelativeFixedArrayPairResult :=
+      { listPath := #[]
+        startIndex := 0
+        endIndex := code.length
+        offset := 10
+        mode
+        firstValue
+        secondValue
+        inputIndex
+        destination
+        continuation := "fallthrough"
+        generatedBy := #[
+          "LeanExe.Wasm.Binary.CoreWasm.emitArrayLiteralSlots",
+          "LeanExe.Wasm.Binary.CoreWasm.emitStmtAnnotated"
+        ] }
+    match stmt with
+    | .seq
+        (.assign destination (.arrayLiteralSlots 1 0
+          [(_, [.u64 first]), (_, [.u64 second])]))
+        (.assign 14 (.local resultLocal)) =>
+        if resultLocal = destination then
+          some (result "constants-v1" (some (toString first)) (toString second)
+            none destination)
+        else
+          none
+    | .seq
+        (.assign destination (.arrayLiteralSlots 1 0
+          [(_, [.arrayGetSlot 1 0 (.local 0) (.u64 index)]), (_, [.u64 1])]))
+        (.assign 14 (.local resultLocal)) =>
+        if resultLocal = destination then
+          some (result "input-index-and-one-v1" none "1" (some index) destination)
+        else
+          none
+    | _ => none
 
 partial def emitStmtAnnotated
     (releaseIndex scratch : Nat) (stmt : Stmt) : Annotations.Emitted :=
@@ -3174,10 +3218,14 @@ partial def emitStmtAnnotated
               "LeanExe.Wasm.Binary.CoreWasm.emitFuncInstrs"
             ] }
         ]
-        lengthDispatches := #[] }
+        lengthDispatches := #[]
+        pairResults := #[] }
   | .seq first second =>
-      (emitStmtAnnotated releaseIndex scratch first).append
+      let emitted := (emitStmtAnnotated releaseIndex scratch first).append
         (emitStmtAnnotated releaseIndex scratch second)
+      match fixedArrayPairResult? scratch stmt emitted.code with
+      | some result => { emitted with pairResults := emitted.pairResults.push result }
+      | none => emitted
   | .ite cond thenStmt elseStmt =>
       let condCode := emitCondWithRelease releaseIndex scratch cond
       let thenEmission := emitStmtAnnotated releaseIndex scratch thenStmt
@@ -3193,6 +3241,11 @@ partial def emitStmtAnnotated
           Annotations.RelativeFixedArrayLengthDispatch :=
         { dispatch with
           listPath := #[{ instructionIndex := branchIndex, field }] ++ dispatch.listPath }
+      let prefixPairResult
+          (field : String) (result : Annotations.RelativeFixedArrayPairResult) :
+          Annotations.RelativeFixedArrayPairResult :=
+        { result with
+          listPath := #[{ instructionIndex := branchIndex, field }] ++ result.listPath }
       let currentDispatches :=
         match fixedArrayLengthDispatch? cond code with
         | some dispatch => #[dispatch]
@@ -3203,7 +3256,9 @@ partial def emitStmtAnnotated
             elseEmission.directCalls.map (prefixCall "else")
         lengthDispatches := currentDispatches ++
           thenEmission.lengthDispatches.map (prefixDispatch "then") ++
-            elseEmission.lengthDispatches.map (prefixDispatch "else") }
+            elseEmission.lengthDispatches.map (prefixDispatch "else")
+        pairResults := thenEmission.pairResults.map (prefixPairResult "then") ++
+          elseEmission.pairResults.map (prefixPairResult "else") }
   | _ => Annotations.Emitted.ofCode (emitStmt releaseIndex scratch stmt)
 
 def emitFuncAnnotated (releaseIndex : Nat) (func : Func) : Annotations.Emitted :=
@@ -3760,6 +3815,28 @@ def annotationDocument (module_ : Module) (bytes : ByteArray) : Annotations.Docu
                   notLessBranch := node.notLessBranch
                   continuation := node.continuation }
               generatedBy := node.generatedBy }
+      let pairResultRegions : List Annotations.Region :=
+        let pairResults := emitted.pairResults.filter
+          fun result => result.offset + 14 = combinedLocals
+        (enumerate pairResults.toList).map
+          fun regionItem =>
+            let regionIndex := regionItem.fst
+            let result := regionItem.snd
+            { id := s!"function-{functionIndex}.pair-result-{regionIndex}"
+              kind := "leanexe.array.pair-result.v1"
+              location :=
+                { listPath := result.listPath
+                  startIndex := result.startIndex
+                  endIndex := result.endIndex }
+              parameters := .fixedArrayPairResult
+                { offset := result.offset
+                  mode := result.mode
+                  firstValue := result.firstValue
+                  secondValue := result.secondValue
+                  inputIndex := result.inputIndex
+                  destination := result.destination
+                  continuation := result.continuation }
+              generatedBy := result.generatedBy }
       { wasmIndex := functionIndex
         definedFunction := functionIndex
         sourceName := func.sourceName.toString
@@ -3768,7 +3845,7 @@ def annotationDocument (module_ : Module) (bytes : ByteArray) : Annotations.Docu
         results := func.results.length
         locals := combinedLocals
         regions := (lengthRegions ++ searchKeyRegions ++ eqNodeRegions ++
-          ltNodeRegions ++ directCallRegions).toArray }
+          ltNodeRegions ++ pairResultRegions ++ directCallRegions).toArray }
   { schemaVersion := 1
     artifact := { byteLength := bytes.size }
     functions := functions.toArray }

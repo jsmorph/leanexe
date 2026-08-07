@@ -56,6 +56,7 @@ const {
   validateStage5Telemetry,
 } = require("../tools/leanexegen-telemetry");
 const {
+  annotationMatchesSource,
   proofRecipePlan,
   validateAnnotationDocument,
   validateProofRecipePlan,
@@ -309,6 +310,7 @@ function testCodexProtocol() {
     artifactPrompt.includes("PROOF_TASK_FEATURES.json") &&
     artifactPrompt.includes("PROGRAM_ANNOTATIONS.json") &&
     artifactPrompt.includes("PROOF_RECIPES.json") &&
+    artifactPrompt.includes("AnnotationMatches") &&
     artifactPrompt.includes("Attempt the direct recipe") &&
     artifactPrompt.includes("deterministic theorem starter") &&
     artifactPrompt.includes("Use read-only commands to inspect FormalSpec, Program"),
@@ -957,6 +959,75 @@ def func0Def : Wasm.Function :=
     /do not match the less-than-node annotation/);
 }
 
+function testPairResultAnnotationRecipes() {
+  const wasm = Buffer.from([0, 97, 115, 109, 1, 0, 0, 0]);
+  const document = {
+    schemaVersion: 1,
+    artifact: { byteLength: wasm.length },
+    functions: [{
+      wasmIndex: 0,
+      definedFunction: 0,
+      sourceName: "Example.compute",
+      exports: ["compute"],
+      parameters: 1,
+      results: 1,
+      locals: 24,
+      regions: [{
+        id: "function-0.pair-result-0",
+        kind: "leanexe.array.pair-result.v1",
+        location: { listPath: [], startIndex: 0, endIndex: 2 },
+        parameters: {
+          offset: 10,
+          mode: "constants-v1",
+          firstValue: "0",
+          secondValue: "0",
+          inputIndex: null,
+          destination: 3,
+          continuation: "fallthrough",
+        },
+        generatedBy: ["LeanExe.Wasm.Binary.CoreWasm.emitStmtAnnotated"],
+      }],
+    }],
+  };
+  const program = `def func0 : Wasm.Program :=
+  [
+  .constI64 (8 : UInt64),
+  .localSet 14
+  ]
+
+def func0Def : Wasm.Function :=
+  { params := [.i64], locals := [.i64], body := func0, results := [.i64] }
+`;
+  validateAnnotationDocument(document, wasm);
+  const namespace = "LeanExeGen.GeneratedTest.AnnotationMatches";
+  const plan = proofRecipePlan(
+    document, program, ["strategy.arrays", "strategy.frames"], namespace);
+  validateProofRecipePlan(plan, document);
+  assert(plan.recipes[0].direct.theorem ===
+      "Project.ProofKit.FixedArrayPairResult.constResultProgram_spec" &&
+    plan.recipes[0].direct.regionEquality ===
+      `${namespace}.function_0_pair_result_0_eq`,
+  "pair-result annotation did not select its checked theorem and region equality");
+  const job = {
+    namespace: "LeanExeGen.GeneratedTest",
+    programModule: "LeanExeGen.GeneratedTest.Program",
+  };
+  const matches = annotationMatchesSource(document, job);
+  assert(matches.module === namespace &&
+    matches.source.includes("constResultProgram 0 0 3") &&
+    matches.source.includes("function_0_pair_result_0_eq") &&
+    matches.source.includes("  rfl"),
+  "pair-result annotation did not generate its checked Lean equality");
+
+  const invalid = structuredClone(document);
+  invalid.functions[0].regions[0].parameters.firstValue = null;
+  expectFailure(() => validateAnnotationDocument(invalid, wasm),
+    /firstValue must be a trimmed/);
+  expectFailure(() => proofRecipePlan(document,
+    program.replace(".localSet 14", ".localSet 13"), [], namespace),
+  /pair-result boundary does not match/);
+}
+
 function testArtifactPackage(job, formalSource) {
   const raw = "{ functionTypeIndices := [0] }";
   const emitted = `namespace Project.${job.leanModule}\n\n` +
@@ -1004,7 +1075,10 @@ function testArtifactPackage(job, formalSource) {
   const annotatedContext = proofTaskContext(
     "request\n", job, formalSource, generated.sources, strategyBundle);
   assert(JSON.parse(annotatedContext.get("PROGRAM_ANNOTATIONS.json")).schemaVersion === 1 &&
-    JSON.parse(annotatedContext.get("PROOF_RECIPES.json")).schemaVersion === 1,
+    JSON.parse(annotatedContext.get("PROOF_RECIPES.json")).schemaVersion === 1 &&
+    annotatedContext.has(moduleFile(`${job.namespace}.AnnotationMatches`)) &&
+    annotatedContext.get(moduleFile(job.behaviorModule))
+      .includes(`import ${job.namespace}.AnnotationMatches`),
   "proof task omitted the compiler annotation and proof-recipe context");
   expectFailure(() => parseProofStrategySections(
     "<!-- leanexegen-section:strategy.core begin -->\n" +
@@ -1211,6 +1285,7 @@ try {
   testAnnotationRecipePlan();
   testLengthDispatchAnnotationRecipes();
   testLessThanNodeAnnotationRecipes();
+  testPairResultAnnotationRecipes();
   const { job, formalSource } = testCodexProtocol();
   testMockedCodex(job);
   testArtifactPackage(job, formalSource);

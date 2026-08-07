@@ -27,6 +27,7 @@ const {
 } = require("./leanexegen-lib");
 const { createStage5Telemetry } = require("./leanexegen-telemetry");
 const {
+  annotationMatchesSource,
   proofRecipePlan,
   validateAnnotationDocument,
 } = require("./leanexegen-annotations");
@@ -43,6 +44,10 @@ const projectRoot = path.join(proofRoot, "Project");
 const leanrun = path.join(repoRoot, "tools", "leanrun");
 const compiler = path.join(repoRoot, ".lake", "build", "bin", "lean-wasm");
 const wasmtimeHost = path.join(repoRoot, "build", "tools", "leanexe-wasmtime-host");
+
+function annotationMatchesModule(job) {
+  return `${job.namespace}.AnnotationMatches`;
+}
 const verifierRoot = path.join(
   proofRoot, ".lake", "packages", "CodeLib", "verifier",
 );
@@ -665,6 +670,10 @@ function proofPrompt(request, job, entryIndex) {
     `SearchFrame.afterLoad and SearchFrame.branch for the node premises, and branchN with ` +
     `Project.ProofKit.FixedArraySearch.pairPost_branchN_conseq when nested search branches end in ` +
     `a standard pair result.  ` +
+    `${annotationMatchesModule(job)} contains Lean-checked equalities between annotated ` +
+    `pair-result ` +
+    `regions of the decoded Program and the selected FixedArrayPairResult program.  Use the ` +
+    `regionEquality named by each pair-result recipe before applying its semantic theorem.  ` +
     `These files grant no additional Lean imports.  ` +
     `Do not import Source, inspect source ` +
     `code, invoke the compiler, add axioms, or use sorry.  Leave samples and hostAssumptions ` +
@@ -991,7 +1000,7 @@ function proofStrategyBundle(program, exportIndex, source = null) {
   return { notes, features };
 }
 
-function artifactProofStarter(job, entryIndex) {
+function artifactProofStarter(job, entryIndex, annotated = false) {
   const prefix = `${job.behaviorModule}.`;
   if (!job.behaviorTheorem.startsWith(prefix)) {
     throw new Error("artifact behavior theorem is outside its module");
@@ -999,7 +1008,7 @@ function artifactProofStarter(job, entryIndex) {
   const theoremName = job.behaviorTheorem.slice(prefix.length);
   return `import ${job.formalSpecModule}
 import ${job.programModule}
-import Project.ProofKit.Array
+${annotated ? `import ${annotationMatchesModule(job)}\n` : ""}import Project.ProofKit.Array
 import Project.ProofKit.FixedArrayEqNode
 import Project.ProofKit.FixedArrayLengthDispatch
 import Project.ProofKit.FixedArrayLtNode
@@ -1054,13 +1063,16 @@ function proofTaskContext(
     throw new StageError(5, "artifact proof", "annotation and recipe context must appear together");
   }
   if (bundle.compilerAnnotations !== undefined) {
+    const annotationMatches = annotationMatchesSource(bundle.compilerAnnotations, job);
+    context.set(moduleFile(annotationMatches.module), annotationMatches.source);
     context.set("PROGRAM_ANNOTATIONS.json",
       `${JSON.stringify(bundle.compilerAnnotations, null, 2)}\n`);
     context.set("PROOF_RECIPES.json", `${JSON.stringify(bundle.proofRecipes, null, 2)}\n`);
   }
   context.set("PROOF_LIBRARY.md", fs.readFileSync(proofKitCatalogPath, "utf8"));
   context.set(moduleFile(job.behaviorModule),
-    artifactProofStarter(job, bundle.features.exportIndex));
+    artifactProofStarter(
+      job, bundle.features.exportIndex, bundle.compilerAnnotations !== undefined));
   if (context.has(moduleFile(job.sourceModule))) {
     throw new StageError(5, "artifact proof", "proof task context contains Source");
   }
@@ -1514,6 +1526,7 @@ function readPackageSources(packageRoot) {
 function reproveSourceSets(sources, job) {
   const frozen = new Map(sources);
   frozen.delete(job.behaviorModule);
+  frozen.delete(annotationMatchesModule(job));
   const proofContext = new Map(frozen);
   proofContext.delete(job.formalSpecModule);
   proofContext.delete(job.sourceModule);
@@ -1786,7 +1799,13 @@ function reprove(command) {
         checked.compilerAnnotations,
         programSource,
         strategies.features.selectedSections.map((section) => section.id),
+        annotationMatchesModule(checked.job),
       );
+      const annotationMatches = annotationMatchesSource(
+        checked.compilerAnnotations, checked.job);
+      sourceSets.proofContext.set(annotationMatches.module, annotationMatches.source);
+      installSources(proofWorkspace,
+        new Map([[annotationMatches.module, annotationMatches.source]]));
     }
     const proofContext = proofTaskContext(
       request, checked.job, formalSource, sourceSets.proofContext, strategies);
@@ -1840,6 +1859,11 @@ function reprove(command) {
     const packagePath = proofPackagePath(command.outputPath);
     const wasmBytes = fs.readFileSync(fixedWasm);
     const allSources = new Map(sourceSets.frozen);
+    if (sourceSets.proofContext.has(annotationMatchesModule(checked.job))) {
+      allSources.set(
+        annotationMatchesModule(checked.job),
+        sourceSets.proofContext.get(annotationMatchesModule(checked.job)));
+    }
     allSources.set(checked.job.behaviorModule, proof.source);
     const stageReports = {
       schemaVersion: 1,
@@ -1976,7 +2000,17 @@ function annotatePackage(command) {
       compilerAnnotations,
       program,
       strategies.features.selectedSections.map((section) => section.id),
+      annotationMatchesModule(checked.job),
     );
+    const annotationMatches = annotationMatchesSource(compilerAnnotations, checked.job);
+    packageSources.set(annotationMatches.module, annotationMatches.source);
+    installSources(workspace, new Map([
+      [checked.job.programModule, program],
+      [annotationMatches.module, annotationMatches.source],
+    ]));
+    runLean(4, "checked annotation regions", "15m", [
+      "lake", "-d", workspace, "--no-ansi", "build", annotationMatches.module,
+    ]);
     const request = fs.readFileSync(path.join(command.packagePath, "request.txt"), "utf8");
     const interpretation = JSON.parse(fs.readFileSync(
       path.join(command.packagePath, "interpretation.json"), "utf8"));
@@ -2193,9 +2227,12 @@ function generate(command) {
       compilerAnnotations,
       talosProgram,
       strategies.features.selectedSections.map((section) => section.id),
+      annotationMatchesModule(job),
     );
     const raw = dumpRawModule(wasm);
     const generated = artifactSources(job, wasmBytes, raw, talosProgram);
+    const annotationMatches = annotationMatchesSource(compilerAnnotations, job);
+    generated.sources.set(annotationMatches.module, annotationMatches.source);
     requireKernelAudit(generated.sources, toolPins);
     installSources(proofWorkspace, new Map([
       [job.formalSpecModule, formal.source],
