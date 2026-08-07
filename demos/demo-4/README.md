@@ -8,7 +8,7 @@ The generated artifact contains one reachable 456-instruction function with 16 l
 
 The preexisting annotation and proof-kit system received this artifact without any Demo 4-derived change.  It found no matched proof region or checked composition, so Codex constructed the complete artifact proof from the generic ABI, allocator, memory, and loop guidance.  Stage 5 took 2,364.735 seconds, including 2,255.687 seconds in Codex and 98.593 seconds in independent outer acceptance.
 
-Two LTG iterations preserved the specification, source, decoded Program, WASM bytes, and artifact theorem.  Generalizing the allocator window reduced Stage 5 to 1,191.695 seconds, after which a parameterized whole-wrapper theorem and exact compiler annotation reduced it to 103.123 seconds.  The final deterministic starter passed its first Lean check unchanged and independent package verification accepted the result.
+Two LTG iterations preserved the specification, source, decoded Program, WASM bytes, and artifact theorem.  Generalizing the allocator window reduced Stage 5 to 1,191.695 seconds, after which a parameterized whole-wrapper theorem and exact compiler annotation produced a three-run median of 109.165 seconds.  Every deterministic-starter run passed its first Lean check unchanged, and independent package verification accepted all three results.
 
 ## Program and theorem
 
@@ -46,9 +46,11 @@ The journal shows that the new theorem removed the direct proof of the invalid b
 
 The current [compiler annotations](program.annotations.json) record the complete map wrapper and its nested bounded-length dispatch.  The [proof recipe plan](proof-recipes.json) names `wrapperProgram_spec` and a generated `AnnotationMatches` theorem that Lean reduced to equality with `wrapperProgram 8 1`.  The current [selected strategy notes](proof-strategies.md) and [program feature report](proof-task-features.json) accompanied this checked recipe in the controlled proof task.
 
-The accepted [map-wrapper proof](map-proof.lean) contains 66 lines and has SHA-256 digest `bf07793985539b6c0a7e9076c97f836050c859b47b13ab3f70a3383270b29d56`.  Its [journal](map-proof-journal.md) records one successful initial check, no proof edit, and no repeated in-session check, while its [telemetry](map-proof-telemetry.json) records 66.734 seconds in Codex, 27.688 seconds in outer acceptance, and 103.123 seconds from Stage 5 start to first acceptance.  The [map run stage reports](map-stage-reports.json) identify the accepted declarations and confirm that the deterministic starter remained unchanged.
+The accepted [map-wrapper proof](map-proof.lean) contains 66 lines and has SHA-256 digest `bf07793985539b6c0a7e9076c97f836050c859b47b13ab3f70a3383270b29d56`.  The first [journal](map-proof-journal.md) and [telemetry](map-proof-telemetry.json) record one successful initial check, no proof edit, 66.734 seconds in Codex, 27.688 seconds in outer acceptance, and 103.123 seconds from Stage 5 start to first acceptance.  The [map run stage reports](map-stage-reports.json) identify the accepted declarations and confirm that the deterministic starter remained unchanged.
 
-The final Stage 5 time is 2,261.612 seconds, or 95.6 percent, below the held-out baseline and 1,088.572 seconds, or 91.3 percent, below the allocator-window iteration.  The proof is 391 lines, or 85.6 percent, shorter than the baseline, although proof length remains secondary to completed proof time.  Independent `leanexegen verify` accepted the final package, and both retained WASM copies have digest `c538d40936b426ba875b3dae1913e62ff00a44b34adff2adcd70922e5a4c95ff`.
+Two further fixed-artifact runs retained the same WASM and proof digests.  Their [journals](map-proof-r2-journal.md) and [second journal](map-proof-r3-journal.md) record the same successful first-check outcome, while their [second-run telemetry](map-proof-r2-telemetry.json) and [third-run telemetry](map-proof-r3-telemetry.json) report 144.173 and 109.165 seconds.  The [aggregate timing record](map-proof-timings.json) gives a 109.165-second median and a 41.050-second range across the three independently verified packages.
+
+The final Stage 5 median is 2,255.570 seconds, or 95.4 percent, below the held-out baseline and 1,082.530 seconds, or 90.8 percent, below the allocator-window iteration.  The proof is 391 lines, or 85.6 percent, shorter than the baseline, although proof length remains secondary to completed proof time.  Independent `leanexegen verify` accepted all three final packages, and every retained WASM copy has digest `c538d40936b426ba875b3dae1913e62ff00a44b34adff2adcd70922e5a4c95ff`.
 
 ## Execution
 
@@ -82,6 +84,11 @@ Every retained file either fixes the experiment, records the proof inputs, or re
 | [Map-wrapper journal](map-proof-journal.md) | The final agent's record of its successful first check. |
 | [Map-wrapper telemetry](map-proof-telemetry.json) | The final run's Stage 5, Codex, and outer-acceptance intervals. |
 | [Map-wrapper stage reports](map-stage-reports.json) | The accepted task report and source identities for the final run. |
+| [Second map journal](map-proof-r2-journal.md) | The second final-configuration agent's unchanged-starter record. |
+| [Second map telemetry](map-proof-r2-telemetry.json) | The second final-configuration Stage 5 intervals. |
+| [Third map journal](map-proof-r3-journal.md) | The third final-configuration agent's unchanged-starter record. |
+| [Third map telemetry](map-proof-r3-telemetry.json) | The third final-configuration Stage 5 intervals. |
+| [Map timing distribution](map-proof-timings.json) | The identities, verification results, median, and range for all three final runs. |
 | [Baseline compiler annotations](baseline-program.annotations.json) | The empty region set emitted before loop-oriented annotations existed. |
 | [Baseline proof recipe plan](baseline-proof-recipes.json) | The empty checked recipe plan supplied to the baseline agent. |
 | [Baseline strategy notes](baseline-proof-strategies.md) | The feature-selected guidance supplied to the baseline agent. |
