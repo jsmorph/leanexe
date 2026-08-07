@@ -389,6 +389,8 @@ Demo 2's journals expose the same wrapper around a different search graph: ten l
 
 The first fresh chain run stopped while compiling generated annotation support because the ten-node descriptor equality exceeded Lean's default recursion depth.  Generated `AnnotationMatches` modules now use the same `maxRecDepth 1048576` setting as behavior proofs, allowing Lean to elaborate the exact nested descriptor and `rfl` region equality.  The interrupted run reached no artifact-behavior candidate and supplies no timing result.
 
+Three corrected Demo 2 chain runs finished Stage 5 in 110.332, 110.165, and 110.711 seconds, giving a 110.332-second median and a 0.547-second range.  Every initial build succeeded, Codex made no proof edit, and each package contained the same 76-line proof with SHA-256 `7f47dc8d68291f4e3c08b565478119cfa1b33f230cb4a0ffc572a8cc08f60f2c`; independent verification accepted the first package.  The median is 78.5 percent below the 512.488-second journal-derived reference, and the proof is 81.3 percent shorter than that reference's 406 lines.
+
 ## Completion criteria
 
 The first complete increment emits a validated sidecar for every ordinary library-mode compilation requested by `leanexegen`.  Demos 1, 2, and 3 prove the same specifications over the same WASM bytes through an annotation-driven deterministic proof plan.  The retained evidence records proof-generation timings, annotation validation, region coverage, and independent Lean acceptance.
