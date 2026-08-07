@@ -1,0 +1,8 @@
+The public interface is Array UInt64 -> Array UInt64.  When the input contains
+at most eight elements, return an array of the same length in which each
+element is replaced by that element plus one using UInt64 wrapping arithmetic.
+When the input contains more than eight elements, return the empty array.
+
+Implement the successful case with Array.map or an equivalent index-controlled
+loop.  Do not express it as eight separately written element cases; the
+compiled artifact must contain a loop over the input elements.
