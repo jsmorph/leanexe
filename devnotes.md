@@ -6487,3 +6487,11 @@ The journal separates the proof cost into bounded-length dispatch, dynamic capac
 The controlled Demo 4 reproof used the new theorem for the offset-zero allocator in a sixteen-local frame.  Stage 5 completed in 1,191.695 seconds, compared with the 2,364.735-second held-out baseline, and the journaled edit count fell from 27 to 19.  The specification, source, WASM bytes, decoded Program, and artifact theorem remained fixed.
 
 The journal assigns the remaining cost to bounded unsigned length dispatch, generated capacity arithmetic, and the map loop's prefix invariant.  The next proof-kit increment will represent these as compiler-template theorems and add exact artifact-checked annotations and recipes.  Demo 4 will receive another controlled reproof before the earlier demos receive compatibility checks.
+
+## 2026-08-07: Bounded-length annotation and theorem
+
+`FixedArrayLengthDispatch.leProgram_spec` proves the eight-instruction unsigned upper-bound prefix and leaves semantic valid and invalid size cases.  `wp_fixed_array_length_le_dispatch` selects that theorem from an exact current program suffix.  The module builds under Lean 4.31.0.
+
+The compiler recognizes the corresponding IR condition and emits a `le-unsigned-v1` fixed-array length-dispatch region.  The consumer checks the decoded `leUI64` prefix, branch roles, and bound before selecting the new theorem and tactic.  Node tests cover the direct upper-bound form alongside both existing normalized encodings.
+
+`tools/leanexegen annotate` recompiled the frozen Demo 4 source, reproduced the artifact digest, and produced the checked invocation `wp_fixed_array_length_le_dispatch 5, 8`.  The region covers top-level instruction indices zero through eight and records the valid then branch and invalid else branch.  This annotation removes the entry-dispatch discovery work from the next controlled proof session.
