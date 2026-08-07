@@ -55,6 +55,11 @@ const {
   createStage5Telemetry,
   validateStage5Telemetry,
 } = require("../tools/leanexegen-telemetry");
+const {
+  proofRecipePlan,
+  validateAnnotationDocument,
+  validateProofRecipePlan,
+} = require("../tools/leanexegen-annotations");
 
 const repoRoot = path.resolve(__dirname, "..");
 const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), "leanexegen-test-"));
@@ -124,6 +129,11 @@ function testArguments() {
   assert(reproved.command === "reprove" && reproved.silent &&
     reproved.outputPath.endsWith("/new.wasm") && reproved.packagePath.endsWith("/x.proof"),
   "reproof arguments were parsed incorrectly");
+  const annotated = parseArgs(["annotate", "-o", "new.proof", "x.proof"]);
+  assert(annotated.command === "annotate" &&
+    annotated.outputPath.endsWith("/new.proof") &&
+    annotated.packagePath.endsWith("/x.proof"),
+  "annotation arguments were parsed incorrectly");
   const run = parseArgs(["run", "x.wasm", "1", "2"]);
   assert(run.command === "run" && run.wasmPath.endsWith("/x.wasm") &&
     JSON.stringify(run.input) === JSON.stringify(["1", "2"]),
@@ -276,6 +286,7 @@ function testCodexProtocol() {
     artifactPrompt.includes("wp_fixed_array_eq_node") &&
     artifactPrompt.includes("wp_fixed_array_key_eq_node") &&
     artifactPrompt.includes("wp_fixed_array_search_key") &&
+    artifactPrompt.includes("wp_fixed_array_lt_node") &&
     artifactPrompt.includes("Project.ProofKit.FixedArrayLengthDispatch") &&
     artifactPrompt.includes("wp_fixed_array_length_dispatch") &&
     artifactPrompt.includes("Project.ProofKit.FixedArrayTraversalInput") &&
@@ -296,6 +307,9 @@ function testCodexProtocol() {
     artifactPrompt.includes(`wp_entry_single_call ${job.namespace}.func3Def`) &&
     artifactPrompt.includes("PROOF_STRATEGIES.md contains optional") &&
     artifactPrompt.includes("PROOF_TASK_FEATURES.json") &&
+    artifactPrompt.includes("PROGRAM_ANNOTATIONS.json") &&
+    artifactPrompt.includes("PROOF_RECIPES.json") &&
+    artifactPrompt.includes("Attempt the direct recipe") &&
     artifactPrompt.includes("deterministic theorem starter") &&
     artifactPrompt.includes("Use read-only commands to inspect FormalSpec, Program"),
   "artifact-proof task did not receive the proof-kit catalog or tactics");
@@ -342,6 +356,10 @@ function testCodexProtocol() {
   }]);
   validateProofImports(job, [{
     module: job.behaviorModule,
+    source: "import Project.ProofKit.FixedArrayLtNode\n",
+  }]);
+  validateProofImports(job, [{
+    module: job.behaviorModule,
     source: "import Project.ProofKit.FixedArrayTraversalInput\n",
   }]);
   validateProofImports(job, [{
@@ -351,6 +369,10 @@ function testCodexProtocol() {
   validateProofImports(job, [{
     module: job.behaviorModule,
     source: "import Project.ProofKit.FixedArrayResult\n",
+  }]);
+  validateProofImports(job, [{
+    module: job.behaviorModule,
+    source: "import Project.ProofKit.FixedArraySearch\n",
   }]);
   validateProofImports(job, [{
     module: job.behaviorModule,
@@ -548,6 +570,389 @@ function testFixedArrayEqNodeFeatures() {
   ]), "fixed-array equality-node extraction lost an exact emitted node");
 }
 
+function testAnnotationRecipePlan() {
+  const wasm = Buffer.from([0, 97, 115, 109, 1, 0, 0, 0]);
+  const document = {
+    schemaVersion: 1,
+    artifact: { byteLength: wasm.length },
+    functions: [{
+      wasmIndex: 0,
+      definedFunction: 0,
+      sourceName: "Example.callee",
+      exports: [],
+      parameters: 2,
+      results: 1,
+      locals: 0,
+      regions: [],
+    }, {
+      wasmIndex: 1,
+      definedFunction: 1,
+      sourceName: "Example.wrapper",
+      exports: ["compute"],
+      parameters: 1,
+      results: 1,
+      locals: 6,
+      regions: [{
+        id: "function-1.direct-call-0",
+        kind: "leanexe.call.direct.v1",
+        location: { listPath: [], startIndex: 0, endIndex: 4 },
+        parameters: {
+          calleeIndex: 0,
+          argumentLocals: [2, 4],
+          resultLocals: [5],
+          resultPlacement: "locals",
+          continuation: "fallthrough",
+        },
+        generatedBy: [
+          "LeanExe.Wasm.Binary.CoreWasm.emitStmt",
+          "LeanExe.Wasm.Binary.CoreWasm.emitFuncInstrs",
+        ],
+      }],
+    }],
+  };
+  const program = `def func0 : Wasm.Program :=
+  [
+  .localGet 0
+]
+
+def func0Def : Wasm.Function :=
+  { params := [.i64, .i64], locals := [], body := func0, results := [.i64] }
+
+def func1 : Wasm.Program :=
+  [
+  .localGet 2,
+  .localGet 4,
+  .call 0,
+  .localSet 5,
+  .localGet 5
+]
+
+def func1Def : Wasm.Function :=
+  { params := [.i64], locals := [.i64], body := func1, results := [.i64] }
+`;
+  validateAnnotationDocument(document, wasm);
+  const plan = proofRecipePlan(document, program, ["strategy.calls", "strategy.frames"]);
+  assert(plan.recipes.length === 1 &&
+    plan.recipes[0].direct.module === "Project.ProofKit.Control" &&
+    plan.recipes[0].direct.tactic === "wp_entry_single_call" &&
+    plan.recipes[0].direct.invocation.includes("func1Def") &&
+    plan.recipes[0].supporting.some((item) => item.declaration === "Wasm.wp_call_tw") &&
+    JSON.stringify(plan.recipes[0].guidance) ===
+      JSON.stringify(["strategy.calls", "strategy.frames"]),
+  "direct-call annotation did not select its direct and indirect proof recipe");
+  const wrongLength = structuredClone(document);
+  wrongLength.artifact.byteLength += 1;
+  expectFailure(() => validateAnnotationDocument(wrongLength, wasm), /byte length differs/);
+  const wrongCall = structuredClone(document);
+  wrongCall.functions[1].regions[0].parameters.calleeIndex = 2;
+  expectFailure(() => validateAnnotationDocument(wrongCall, wasm), /callee is outside/);
+
+  const nested = structuredClone(document);
+  nested.functions[1].regions[0].location = {
+    listPath: [{ instructionIndex: 1, field: "else" }],
+    startIndex: 0,
+    endIndex: 4,
+  };
+  const nestedProgram = `def func0 : Wasm.Program :=
+  [
+  .localGet 0
+]
+
+def func0Def : Wasm.Function :=
+  { params := [.i64, .i64], locals := [], body := func0, results := [.i64] }
+
+def func1 : Wasm.Program :=
+  [
+  .constI64 (1 : UInt64),
+  .iff 0 0 [
+    .constI64 (0 : UInt64)
+  ] [
+    .localGet 2,
+    .localGet 4,
+    .call 0,
+    .localSet 5
+  ],
+  .localGet 5
+]
+
+def func1Def : Wasm.Function :=
+  { params := [.i64], locals := [.i64], body := func1, results := [.i64] }
+`;
+  assert(proofRecipePlan(nested, nestedProgram).recipes.length === 1,
+    "nested direct-call annotation did not match the decoded else branch");
+}
+
+function lengthDispatchProgram(encoding, expectedSize = 21) {
+  const normalized = encoding === "eq-normalized-v1" ? `
+  .constI64 (1 : UInt64),
+  .eqI64,
+  .iff 0 1 [
+    .constI64 (1 : UInt64)
+  ] [
+    .constI64 (0 : UInt64)
+  ],
+  .constI64 (0 : UInt64),
+  .eqI64,
+  .eqz,` : `
+  .constI64 (0 : UInt64),
+  .eqI64,
+  .eqz,
+  .eqz,
+  .iff 0 1 [
+    .constI64 (1 : UInt64)
+  ] [
+    .constI64 (0 : UInt64)
+  ],
+  .constI64 (1 : UInt64),
+  .eqI64,
+  .iff 0 1 [
+    .constI64 (1 : UInt64)
+  ] [
+    .constI64 (0 : UInt64)
+  ],
+  .constI64 (0 : UInt64),
+  .eqI64,
+  .eqz,`;
+  return `def func0 : Wasm.Program :=
+  [
+  .localGet 0,
+  .localSet 10,
+  .localGet 10,
+  .wrapI64,
+  .load64 (0 : UInt32),
+  .constI64 (${expectedSize} : UInt64),
+  .eqI64,
+  .iff 0 1 [
+    .constI64 (1 : UInt64)
+  ] [
+    .constI64 (0 : UInt64)
+  ],${normalized}
+  .iff 0 0 [
+    .constI64 (0 : UInt64)
+  ] [
+    .constI64 (1 : UInt64)
+  ],
+  .localGet 0
+  ]
+
+def func0Def : Wasm.Function :=
+  { params := [.i64], locals := [.i64], body := func0, results := [.i64] }
+`;
+}
+
+function lengthDispatchDocument(wasm, encoding) {
+  const equality = encoding === "eq-normalized-v1";
+  return {
+    schemaVersion: 1,
+    artifact: { byteLength: wasm.length },
+    functions: [{
+      wasmIndex: 0,
+      definedFunction: 0,
+      sourceName: "Example.compute",
+      exports: ["compute"],
+      parameters: 1,
+      results: 1,
+      locals: 1,
+      regions: [{
+        id: "function-0.length-dispatch-0",
+        kind: "leanexe.array.length-dispatch.v1",
+        location: { listPath: [], startIndex: 0, endIndex: equality ? 15 : 20 },
+        parameters: {
+          inputLocal: 10,
+          expectedSize: 21,
+          encoding,
+          invalidBranch: equality ? "else" : "then",
+          validBranch: equality ? "then" : "else",
+          continuation: "fallthrough",
+        },
+        generatedBy: [
+          "LeanExe.Wasm.Binary.CoreWasm.emitCondWithRelease",
+          "LeanExe.Wasm.Binary.CoreWasm.emitStmtAnnotated",
+        ],
+      }],
+    }],
+  };
+}
+
+function testLengthDispatchAnnotationRecipes() {
+  const wasm = Buffer.from([0, 97, 115, 109, 1, 0, 0, 0]);
+  for (const encoding of ["eq-normalized-v1", "ne-normalized-v1"]) {
+    const document = lengthDispatchDocument(wasm, encoding);
+    const program = lengthDispatchProgram(encoding);
+    validateAnnotationDocument(document, wasm);
+    const plan = proofRecipePlan(document, program, ["strategy.arrays", "strategy.frames"]);
+    validateProofRecipePlan(plan, document);
+    const equality = encoding === "eq-normalized-v1";
+    assert(plan.recipes.length === 1 &&
+      plan.recipes[0].direct.theorem.endsWith(equality ? "eqProgram_spec" : "program_spec") &&
+      plan.recipes[0].direct.tactic ===
+        (equality ? "wp_fixed_array_length_eq_dispatch" : "wp_fixed_array_length_dispatch") &&
+      JSON.stringify(plan.recipes[0].guidance) ===
+        JSON.stringify(["strategy.arrays", "strategy.frames"]),
+    `${encoding} did not select its exact length-dispatch recipe`);
+
+    const wrongSize = structuredClone(document);
+    wrongSize.functions[0].regions[0].parameters.expectedSize = 15;
+    expectFailure(() => proofRecipePlan(wrongSize, program), /do not match/);
+
+    const wrongBooleanBranch = program.replace(
+      ".constI64 (1 : UInt64)\n  ] [",
+      ".constI64 (2 : UInt64)\n  ] [");
+    expectFailure(() => proofRecipePlan(document, wrongBooleanBranch),
+      /Boolean-normalization then branch does not match/);
+  }
+  const invalidEncoding = lengthDispatchDocument(wasm, "eq-normalized-v1");
+  invalidEncoding.functions[0].regions[0].parameters.encoding = "unknown";
+  expectFailure(() => validateAnnotationDocument(invalidEncoding, wasm),
+    /encoding is unsupported/);
+}
+
+function testLessThanNodeAnnotationRecipes() {
+  const wasm = Buffer.from([0, 97, 115, 109, 1, 0, 0, 0]);
+  const document = {
+    schemaVersion: 1,
+    artifact: { byteLength: wasm.length },
+    functions: [{
+      wasmIndex: 0,
+      definedFunction: 0,
+      sourceName: "Example.compute",
+      exports: ["compute"],
+      parameters: 1,
+      results: 1,
+      locals: 24,
+      regions: [{
+        id: "function-0.lt-node-0",
+        kind: "leanexe.array.lt-node.v1",
+        location: {
+          listPath: [{ instructionIndex: 16, field: "else" }],
+          startIndex: 0,
+          endIndex: 13,
+        },
+        parameters: {
+          offset: 10,
+          index: 3,
+          keyLocal: 2,
+          operandOrder: "key-first",
+          comparison: "key-lt-element-v1",
+          lessBranch: "then",
+          notLessBranch: "else",
+          continuation: "fallthrough",
+        },
+        generatedBy: ["LeanExe.Wasm.Binary.CoreWasm.annotateFixedArrayLtNodesInList"],
+      }, {
+        id: "function-0.eq-node-0",
+        kind: "leanexe.array.eq-node.v1",
+        location: { listPath: [], startIndex: 0, endIndex: 17 },
+        parameters: {
+          offset: 10,
+          index: 1,
+          keyLocal: 2,
+          operandOrder: "key-first",
+          equalBranch: "then",
+          unequalBranch: "else",
+          continuation: "fallthrough",
+        },
+        generatedBy: ["LeanExe.Wasm.Binary.CoreWasm.annotateFixedArrayEqNodesInList"],
+      }],
+    }],
+  };
+  const program = `def func0 : Wasm.Program :=
+  [
+  .localGet 2,
+  .localGet 0,
+  .localSet 15,
+  .constI64 (1 : UInt64),
+  .localSet 16,
+  .localGet 16,
+  .localGet 15,
+  .wrapI64,
+  .load64 (0 : UInt32),
+  .ltUI64,
+  .iff 0 1 [
+    .localGet 15,
+    .localGet 16,
+    .constI64 (1 : UInt64),
+    .mulI64,
+    .constI64 (1 : UInt64),
+    .addI64,
+    .constI64 (8 : UInt64),
+    .mulI64,
+    .addI64,
+    .wrapI64,
+    .load64 (0 : UInt32)
+  ] [
+    .unreachable
+  ],
+  .eqI64,
+  .iff 0 1 [
+    .constI64 (1 : UInt64)
+  ] [
+    .constI64 (0 : UInt64)
+  ],
+  .constI64 (0 : UInt64),
+  .eqI64,
+  .eqz,
+  .iff 0 0 [
+    .constI64 (1 : UInt64)
+  ] [
+    .localGet 2,
+    .localGet 0,
+    .localSet 15,
+    .constI64 (3 : UInt64),
+    .localSet 16,
+    .localGet 16,
+    .localGet 15,
+    .wrapI64,
+    .load64 (0 : UInt32),
+    .ltUI64,
+    .iff 0 1 [
+      .localGet 15,
+      .localGet 16,
+      .constI64 (1 : UInt64),
+      .mulI64,
+      .constI64 (1 : UInt64),
+      .addI64,
+      .constI64 (8 : UInt64),
+      .mulI64,
+      .addI64,
+      .wrapI64,
+      .load64 (0 : UInt32)
+    ] [
+      .unreachable
+    ],
+    .ltUI64,
+    .iff 0 0 [
+      .constI64 (2 : UInt64)
+    ] [
+      .constI64 (3 : UInt64)
+    ]
+  ]
+  ]
+
+def func0Def : Wasm.Function :=
+  { params := [.i64], locals := [.i64], body := func0, results := [.i64] }
+`;
+  validateAnnotationDocument(document, wasm);
+  const plan = proofRecipePlan(document, program, ["strategy.arrays", "strategy.frames"]);
+  validateProofRecipePlan(plan, document);
+  assert(JSON.stringify(plan.recipes.map((recipe) => recipe.regionId)) ===
+      JSON.stringify(["function-0.eq-node-0", "function-0.lt-node-0"]) &&
+    plan.recipes[1].direct.theorem ===
+      "Project.ProofKit.FixedArrayLtNode.program_spec" &&
+    plan.recipes[1].direct.tactic === "wp_fixed_array_lt_node",
+  "nested comparison annotations did not produce structural recipe order");
+
+  const wrongShape = structuredClone(document);
+  wrongShape.functions[0].regions[0].parameters.comparison = "element-lt-key-v1";
+  expectFailure(() => validateAnnotationDocument(wrongShape, wasm),
+    /invalid less-than-node shape/);
+  const wrongProgram = program.replace(
+    "    .ltUI64,\n    .iff 0 0 [",
+    "    .eqI64,\n    .iff 0 0 [");
+  expectFailure(() => proofRecipePlan(document, wrongProgram),
+    /do not match the less-than-node annotation/);
+}
+
 function testArtifactPackage(job, formalSource) {
   const raw = "{ functionTypeIndices := [0] }";
   const emitted = `namespace Project.${job.leanModule}\n\n` +
@@ -582,6 +987,21 @@ function testArtifactPackage(job, formalSource) {
     strategyBundle.features.selectedSections.some((item) => item.id === "strategy.diagnostics") &&
     !strategyBundle.features.selectedSections.some((item) => item.id === "strategy.loops"),
   "proof-strategy selection disagreed with the synthetic Program");
+  strategyBundle.compilerAnnotations = {
+    schemaVersion: 1,
+    artifact: { byteLength: wasm.length },
+    functions: [],
+  };
+  strategyBundle.proofRecipes = {
+    schemaVersion: 1,
+    attemptOrder: ["direct", "composition", "tactic", "focused-guidance"],
+    recipes: [],
+  };
+  const annotatedContext = proofTaskContext(
+    "request\n", job, formalSource, generated.sources, strategyBundle);
+  assert(JSON.parse(annotatedContext.get("PROGRAM_ANNOTATIONS.json")).schemaVersion === 1 &&
+    JSON.parse(annotatedContext.get("PROOF_RECIPES.json")).schemaVersion === 1,
+  "proof task omitted the compiler annotation and proof-recipe context");
   expectFailure(() => parseProofStrategySections(
     "<!-- leanexegen-section:strategy.core begin -->\n" +
     "### `strategy.other`: wrong\n" +
@@ -632,6 +1052,16 @@ function testArtifactPackage(job, formalSource) {
     acceptedSourceSha256: stageReports.tasks.artifactProof.sourceSha256,
   };
   const packageRoot = path.join(temporaryRoot, "package");
+  const compilerAnnotations = {
+    schemaVersion: 1,
+    artifact: { byteLength: wasm.length },
+    functions: [],
+  };
+  const proofRecipes = {
+    schemaVersion: 1,
+    attemptOrder: ["direct", "composition", "tactic", "focused-guidance"],
+    recipes: [],
+  };
   createPackage(packageRoot, {
     request: "compute one unsigned integer array\n",
     interpretation: {
@@ -650,6 +1080,8 @@ function testArtifactPackage(job, formalSource) {
       "utf8"),
     proofStrategies: strategyBundle.notes,
     proofTaskFeatures: strategyBundle.features,
+    compilerAnnotations,
+    proofRecipes,
     wasmBytes: wasm,
     sources,
     job,
@@ -663,15 +1095,33 @@ function testArtifactPackage(job, formalSource) {
   const checked = validatePackage(packageRoot);
   assert(checked.artifact.sha256 === generated.artifact.sha256 &&
     checked.stageReports.tasks.leanProgram.sourceSha256 === sha256(Buffer.from(programSource)) &&
-    checked.proofTelemetry.totalMilliseconds === 3000,
+    checked.proofTelemetry.totalMilliseconds === 3000 &&
+    checked.manifest.schemaVersion === 5 &&
+    checked.compilerAnnotations.artifact.byteLength === wasm.length &&
+    checked.proofRecipes.recipes.length === 0,
   "validated package returned the wrong artifact or stage report");
   assert(fs.readFileSync(path.join(packageRoot, "proof-strategies.md"), "utf8") ===
     strategyBundle.notes &&
     JSON.parse(fs.readFileSync(path.join(packageRoot, "proof-task-features.json"), "utf8"))
       .sourceSha256 === strategyBundle.features.sourceSha256,
   "proof package did not archive its selected strategy context");
+  assert(fs.existsSync(path.join(packageRoot, "program.annotations.json")) &&
+    fs.existsSync(path.join(packageRoot, "proof-recipes.json")),
+  "proof package did not archive annotations and proof recipes");
+  const schema4Root = path.join(temporaryRoot, "schema-4-package");
+  fs.cpSync(packageRoot, schema4Root, { recursive: true });
+  fs.unlinkSync(path.join(schema4Root, "program.annotations.json"));
+  fs.unlinkSync(path.join(schema4Root, "proof-recipes.json"));
+  const schema4ManifestPath = path.join(schema4Root, "package.json");
+  const schema4Manifest = JSON.parse(fs.readFileSync(schema4ManifestPath, "utf8"));
+  schema4Manifest.schemaVersion = 4;
+  schema4Manifest.files = schema4Manifest.files.filter((record) =>
+    !["program.annotations.json", "proof-recipes.json"].includes(record.path));
+  fs.writeFileSync(schema4ManifestPath, `${JSON.stringify(schema4Manifest, null, 2)}\n`);
+  assert(validatePackage(schema4Root).manifest.schemaVersion === 4,
+    "package validation rejected a schema-4 package without annotations");
   const legacyRoot = path.join(temporaryRoot, "legacy-package");
-  fs.cpSync(packageRoot, legacyRoot, { recursive: true });
+  fs.cpSync(schema4Root, legacyRoot, { recursive: true });
   fs.unlinkSync(path.join(legacyRoot, "proof-strategies.md"));
   fs.unlinkSync(path.join(legacyRoot, "proof-task-features.json"));
   fs.unlinkSync(path.join(legacyRoot, "proof-telemetry.json"));
@@ -754,6 +1204,9 @@ try {
   testArguments();
   testStage5Telemetry();
   testFixedArrayEqNodeFeatures();
+  testAnnotationRecipePlan();
+  testLengthDispatchAnnotationRecipes();
+  testLessThanNodeAnnotationRecipes();
   const { job, formalSource } = testCodexProtocol();
   testMockedCodex(job);
   testArtifactPackage(job, formalSource);

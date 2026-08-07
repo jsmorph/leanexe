@@ -24,6 +24,7 @@ def usage : String :=
     "  lean-wasm eval --hex <hex-bytes>",
     "  lean-wasm eval-ir --module <module> --entry <name> [arg ...]",
     "  lean-wasm compile --module <module> --entry <name> --out <path>",
+    "  lean-wasm compile --module <module> --entry <name> --out <path> --annotations <path>",
     "  lean-wasm compile-wat --module <module> --entry <name> --out <path>",
     "  lean-wasm compile-wasi --module <module> --entry <name> --out <path>",
     "  lean-wasm compile-wasi-stdin --max-input-bytes <n> --module <module> --entry <name> --out <path>",
@@ -206,6 +207,23 @@ def compileBytesResult
       | .error detail => fail .internal context detail
       | .ok bytes => writeBytesResult context out bytes
 
+def compileAnnotatedResult
+    (context out annotationsOut : String)
+    (compileAction : IO LeanExe.IR.Module) : IO UInt32 := do
+  if out = annotationsOut then
+    fail .usage context "WASM and annotation outputs must differ"
+  else
+    match ← captureError .source context compileAction with
+    | .error error => reportError error
+    | .ok module_ =>
+        let bytes := LeanExe.Wasm.Binary.CoreWasm.moduleBytes module_
+        let annotations := LeanExe.Wasm.Binary.CoreWasm.annotationsJson module_ bytes
+        match ← captureError .io context do
+            writeBytes out bytes
+            writeText annotationsOut annotations with
+        | .ok _ => return 0
+        | .error error => reportError error
+
 def sourcePrintResult (context : String) (action : IO String) : IO UInt32 := do
   match ← captureError .source context action with
   | .error error => reportError error
@@ -299,6 +317,14 @@ def dispatch : List String → IO UInt32
         out
         (LeanExe.Extract.Core.compile moduleName entryName)
         (fun module_ => .ok (LeanExe.Wasm.Binary.CoreWasm.moduleBytes module_))
+  | ["compile", "--module", moduleName, "--entry", entryName, "--out", out,
+      "--annotations", annotationsOut] =>
+      compileAnnotatedResult
+        (commandContext "compile"
+          [("module", moduleName), ("entry", entryName), ("output", out),
+            ("annotations", annotationsOut)])
+        out annotationsOut
+        (LeanExe.Extract.Core.compile moduleName entryName)
   | ["compile-wat", "--module", moduleName, "--entry", entryName, "--out", out] =>
       sourceWriteTextResult
         (commandContext "compile-wat"

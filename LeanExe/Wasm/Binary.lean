@@ -1,5 +1,6 @@
 import LeanExe.Core
 import LeanExe.IR.Core
+import LeanExe.Wasm.Annotations
 import LeanExe.Wasm.Instr
 import LeanExe.Wasm.Leb
 
@@ -3052,10 +3053,447 @@ def localDecls (func : Func) : List UInt8 :=
   else
     u32leb 1 ++ u32leb extra ++ ofNats [126]
 
+def directCallArgumentLocal : Expr → Option Nat
+  | .local index => some index
+  | _ => none
+
+mutual
+  partial def fixedArrayLengthComparison? : Cond → Option (Nat × Nat)
+    | .not cond => fixedArrayLengthComparison? cond
+    | .eqU64 (.arraySize (.local inputLocal)) (.u64 expectedSize) =>
+        some (inputLocal, expectedSize)
+    | .eqU64 (.u64 expectedSize) (.arraySize (.local inputLocal)) =>
+        some (inputLocal, expectedSize)
+    | .eqU64 left right =>
+        fixedArrayLengthBooleanExpr? left <|> fixedArrayLengthBooleanExpr? right
+    | _ => none
+
+  partial def fixedArrayLengthBooleanExpr? : Expr → Option (Nat × Nat)
+    | .ite cond (.u64 1) (.u64 0) => fixedArrayLengthComparison? cond
+    | _ => none
+end
+
+def fixedArrayLengthDispatch?
+    (cond : Cond) (code : List Instr) :
+    Option Annotations.RelativeFixedArrayLengthDispatch := do
+  let (semanticInput, semanticExpected) ← fixedArrayLengthComparison? cond
+  match code with
+  | .localGet 0 :: .localSet inputLocal :: .localGet inputReadLocal ::
+      .wrapI64 :: .load64 :: .constI64 expectedSize :: .eqI64 ::
+      .iff true [.constI64 1] (some [.constI64 0]) ::
+      .constI64 1 :: .eqI64 ::
+      .iff true [.constI64 1] (some [.constI64 0]) ::
+      .constI64 0 :: .eqI64 :: .eqzI32 ::
+      .iff false _ (some _) :: _ =>
+      if inputLocal = inputReadLocal && semanticInput = 0 &&
+          expectedSize = semanticExpected then
+        some
+          { listPath := #[]
+            startIndex := 0
+            endIndex := 15
+            inputLocal
+            expectedSize
+            encoding := "eq-normalized-v1"
+            invalidBranch := "else"
+            validBranch := "then"
+            continuation := "fallthrough"
+            generatedBy := #[
+              "LeanExe.Wasm.Binary.CoreWasm.emitCondWithRelease",
+              "LeanExe.Wasm.Binary.CoreWasm.emitStmtAnnotated"
+            ] }
+      else
+        none
+  | .localGet 0 :: .localSet inputLocal :: .localGet inputReadLocal ::
+      .wrapI64 :: .load64 :: .constI64 expectedSize :: .eqI64 ::
+      .iff true [.constI64 1] (some [.constI64 0]) ::
+      .constI64 0 :: .eqI64 :: .eqzI32 :: .eqzI32 ::
+      .iff true [.constI64 1] (some [.constI64 0]) ::
+      .constI64 1 :: .eqI64 ::
+      .iff true [.constI64 1] (some [.constI64 0]) ::
+      .constI64 0 :: .eqI64 :: .eqzI32 ::
+      .iff false _ (some _) :: _ =>
+      if inputLocal = inputReadLocal && semanticInput = 0 &&
+          expectedSize = semanticExpected then
+        some
+          { listPath := #[]
+            startIndex := 0
+            endIndex := 20
+            inputLocal
+            expectedSize
+            encoding := "ne-normalized-v1"
+            invalidBranch := "then"
+            validBranch := "else"
+            continuation := "fallthrough"
+            generatedBy := #[
+              "LeanExe.Wasm.Binary.CoreWasm.emitCondWithRelease",
+              "LeanExe.Wasm.Binary.CoreWasm.emitStmtAnnotated"
+            ] }
+      else
+        none
+  | _ => none
+
+def emitResultAnnotated (releaseIndex scratch : Nat) (result : Expr) : Annotations.Emitted :=
+  let code := emitExprWithRelease releaseIndex scratch result
+  let directCalls :=
+    match result with
+    | .call calleeIndex arguments =>
+        #[{ startIndex := 0
+            callIndex := code.length - 1
+            listPath := #[]
+            endIndex := code.length
+            calleeIndex
+            argumentLocals := arguments.toArray.map directCallArgumentLocal
+            resultLocals := #[]
+            resultPlacement := "function-results"
+            continuation := "function-return"
+            generatedBy := #[
+              "LeanExe.Wasm.Binary.CoreWasm.emitExprWithRelease",
+              "LeanExe.Wasm.Binary.CoreWasm.emitFuncInstrs"
+            ] }]
+    | _ => #[]
+  { code, directCalls, lengthDispatches := #[] }
+
+partial def emitStmtAnnotated
+    (releaseIndex scratch : Nat) (stmt : Stmt) : Annotations.Emitted :=
+  match stmt with
+  | .call slots calleeIndex arguments =>
+      let code := emitStmt releaseIndex scratch stmt
+      { code
+        directCalls := #[
+          { startIndex := 0
+            callIndex := code.length - slots.length - 1
+            listPath := #[]
+            endIndex := code.length
+            calleeIndex
+            argumentLocals := arguments.toArray.map directCallArgumentLocal
+            resultLocals := slots.toArray
+            resultPlacement := "locals"
+            continuation := "fallthrough"
+            generatedBy := #[
+              "LeanExe.Wasm.Binary.CoreWasm.emitStmt",
+              "LeanExe.Wasm.Binary.CoreWasm.emitFuncInstrs"
+            ] }
+        ]
+        lengthDispatches := #[] }
+  | .seq first second =>
+      (emitStmtAnnotated releaseIndex scratch first).append
+        (emitStmtAnnotated releaseIndex scratch second)
+  | .ite cond thenStmt elseStmt =>
+      let condCode := emitCondWithRelease releaseIndex scratch cond
+      let thenEmission := emitStmtAnnotated releaseIndex scratch thenStmt
+      let elseEmission := emitStmtAnnotated releaseIndex scratch elseStmt
+      let branchIndex := condCode.length
+      let prefixCall (field : String) (call : Annotations.RelativeDirectCall) :
+          Annotations.RelativeDirectCall :=
+        { call with
+          listPath := #[{ instructionIndex := branchIndex, field }] ++ call.listPath }
+      let code := condCode ++ [Instr.iff false thenEmission.code (some elseEmission.code)]
+      let prefixDispatch
+          (field : String) (dispatch : Annotations.RelativeFixedArrayLengthDispatch) :
+          Annotations.RelativeFixedArrayLengthDispatch :=
+        { dispatch with
+          listPath := #[{ instructionIndex := branchIndex, field }] ++ dispatch.listPath }
+      let currentDispatches :=
+        match fixedArrayLengthDispatch? cond code with
+        | some dispatch => #[dispatch]
+        | none => #[]
+      { code
+        directCalls :=
+          thenEmission.directCalls.map (prefixCall "then") ++
+            elseEmission.directCalls.map (prefixCall "else")
+        lengthDispatches := currentDispatches ++
+          thenEmission.lengthDispatches.map (prefixDispatch "then") ++
+            elseEmission.lengthDispatches.map (prefixDispatch "else") }
+  | _ => Annotations.Emitted.ofCode (emitStmt releaseIndex scratch stmt)
+
+def emitFuncAnnotated (releaseIndex : Nat) (func : Func) : Annotations.Emitted :=
+  let initial := emitStmtAnnotated releaseIndex func.locals func.body
+  func.results.foldl
+    (fun emitted result =>
+      emitted.append (emitResultAnnotated releaseIndex func.locals result))
+    initial
+
 def emitFuncInstrs (releaseIndex : Nat) (func : Func) : List Instr :=
-  let scratch := func.locals
-  emitStmt releaseIndex scratch func.body ++
-    func.results.flatMap (emitExprWithRelease releaseIndex scratch)
+  (emitFuncAnnotated releaseIndex func).code
+
+def directCallLocalGet? : Instr → Option Nat
+  | .localGet index => some index
+  | _ => none
+
+def directCallLocalSet? : Instr → Option Nat
+  | .localSet index => some index
+  | _ => none
+
+def directCallArguments
+    (funcs : Array Func) (code : List Instr) (callIndex calleeIndex : Nat) :
+    Nat × Array (Option Nat) :=
+  if h : calleeIndex < funcs.size then
+    let parameterCount := funcs[calleeIndex].params
+    if parameterCount ≤ callIndex then
+      let candidates := (code.drop (callIndex - parameterCount)).take parameterCount
+      match candidates.mapM directCallLocalGet? with
+      | some locals => (callIndex - parameterCount, locals.toArray.map some)
+      | none => (callIndex, Array.replicate parameterCount none)
+    else
+      (callIndex, Array.replicate parameterCount none)
+  else
+    (callIndex, #[])
+
+def directCallResults
+    (funcs : Array Func) (code : List Instr) (callIndex calleeIndex : Nat) :
+    Nat × Array Nat × String :=
+  if h : calleeIndex < funcs.size then
+    let resultCount := funcs[calleeIndex].results.length
+    if resultCount = 0 then
+      (callIndex + 1, #[], "stack")
+    else
+      let candidates := (code.drop (callIndex + 1)).take resultCount
+      match candidates.mapM directCallLocalSet? with
+      | some locals => (callIndex + 1 + resultCount, locals.reverse.toArray, "locals")
+      | none => (callIndex + 1, #[], "stack")
+  else
+    (callIndex + 1, #[], "stack")
+
+partial def annotateDirectCallsInList
+    (funcs : Array Func) (listPath : Array Annotations.PathStep)
+    (code : List Instr) : Array Annotations.RelativeDirectCall :=
+  (enumerate code).foldl (init := #[]) fun calls item =>
+    let instructionIndex := item.fst
+    let instruction := item.snd
+    let nested (field : String) (body : List Instr) :=
+      annotateDirectCallsInList funcs
+        (listPath.push { instructionIndex, field }) body
+    match instruction with
+    | .call calleeIndex =>
+        if calleeIndex < funcs.size then
+          let arguments := directCallArguments funcs code instructionIndex calleeIndex
+          let results := directCallResults funcs code instructionIndex calleeIndex
+          calls.push
+            { listPath
+              startIndex := arguments.fst
+              callIndex := instructionIndex
+              endIndex := results.fst
+              calleeIndex
+              argumentLocals := arguments.snd
+              resultLocals := results.snd.fst
+              resultPlacement := results.snd.snd
+              continuation := "fallthrough"
+              generatedBy := #[
+                "LeanExe.Wasm.Binary.CoreWasm.annotateDirectCallsInList",
+                "LeanExe.Wasm.Binary.CoreWasm.emitFuncInstrs"
+              ] }
+        else
+          calls
+    | .block body => calls ++ nested "block" body
+    | .loop body => calls ++ nested "loop" body
+    | .iff _ thenBody elseBody =>
+        let withThen := calls ++ nested "then" thenBody
+        match elseBody with
+        | some body => withThen ++ nested "else" body
+        | none => withThen
+    | .iffI32 thenBody elseBody =>
+        let withThen := calls ++ nested "then" thenBody
+        match elseBody with
+        | some body => withThen ++ nested "else" body
+        | none => withThen
+    | _ => calls
+
+def annotateDirectCalls (funcs : Array Func) (code : List Instr) :
+    Array Annotations.RelativeDirectCall :=
+  annotateDirectCallsInList funcs #[] code
+
+def mergeDirectCallAnnotations
+    (reported discovered : Array Annotations.RelativeDirectCall) :
+    Array Annotations.RelativeDirectCall :=
+  discovered.map fun call =>
+    (reported.find? fun candidate =>
+      candidate.listPath == call.listPath &&
+        candidate.startIndex = call.startIndex &&
+        candidate.callIndex = call.callIndex &&
+        candidate.endIndex = call.endIndex &&
+        candidate.calleeIndex = call.calleeIndex).getD call
+
+def fixedArrayTraversalLoader? (code : List Instr) : Option (Nat × Nat) :=
+  match code with
+  | .localGet 0 :: .localSet pointerLocal :: .constI64 index ::
+      .localSet indexLocal :: .localGet indexReadLocal ::
+      .localGet pointerReadLocal :: .wrapI64 :: .load64 :: .ltUI64 ::
+      .iff true thenBody (some [.unreachable]) :: _ =>
+      let expectedThen :=
+        [.localGet pointerLocal, .localGet indexLocal, .constI64 1, .mulI64,
+         .constI64 1, .addI64, .constI64 8, .mulI64, .addI64, .wrapI64,
+         .load64]
+      if 5 ≤ pointerLocal && indexLocal = pointerLocal + 1 &&
+          indexReadLocal = indexLocal && pointerReadLocal = pointerLocal &&
+          thenBody == expectedThen then
+        some (pointerLocal - 5, index)
+      else
+        none
+  | _ => none
+
+def fixedArrayEqNormalization? (code : List Instr) : Bool :=
+  match code with
+  | .eqI64 :: .iff true [.constI64 1] (some [.constI64 0]) ::
+      .constI64 0 :: .eqI64 :: .eqzI32 :: .iff false _ (some _) :: _ => true
+  | _ => false
+
+def fixedArraySearchKeyAt?
+    (listPath : Array Annotations.PathStep) (startIndex : Nat)
+    (code : List Instr) : Option Annotations.RelativeFixedArraySearchKey :=
+  match fixedArrayTraversalLoader? code, code[10]?.bind directCallLocalSet? with
+  | some (offset, index), some keyLocal =>
+      some
+        { listPath
+          startIndex
+          endIndex := startIndex + 11
+          offset
+          index
+          keyLocal
+          continuation := "fallthrough"
+          generatedBy := #[
+            "LeanExe.Wasm.Binary.CoreWasm.fixedArrayTraversalLoader?",
+            "LeanExe.Wasm.Binary.CoreWasm.annotateFixedArraySearchKeysInList",
+            "LeanExe.Wasm.Binary.CoreWasm.emitFuncInstrs"
+          ] }
+  | _, _ => none
+
+def fixedArrayEqNodeAt?
+    (listPath : Array Annotations.PathStep) (startIndex : Nat)
+    (code : List Instr) : Option Annotations.RelativeFixedArrayEqNode :=
+  let loadedFirst :=
+    match fixedArrayTraversalLoader? code, code[10]?.bind directCallLocalGet? with
+    | some (offset, index), some keyLocal =>
+        if fixedArrayEqNormalization? (code.drop 11) then
+          some (offset, index, keyLocal, "loaded-first")
+        else
+          none
+    | _, _ => none
+  let keyFirst :=
+    match code[0]?.bind directCallLocalGet?,
+        fixedArrayTraversalLoader? (code.drop 1) with
+    | some keyLocal, some (offset, index) =>
+        if fixedArrayEqNormalization? (code.drop 11) then
+          some (offset, index, keyLocal, "key-first")
+        else
+          none
+    | _, _ => none
+  match loadedFirst <|> keyFirst with
+  | some (offset, index, keyLocal, operandOrder) =>
+      some
+        { listPath
+          startIndex
+          endIndex := startIndex + 17
+          offset
+          index
+          keyLocal
+          operandOrder
+          equalBranch := "then"
+          unequalBranch := "else"
+          continuation := "fallthrough"
+          generatedBy := #[
+            "LeanExe.Wasm.Binary.CoreWasm.fixedArrayTraversalLoader?",
+            "LeanExe.Wasm.Binary.CoreWasm.fixedArrayEqNormalization?",
+            "LeanExe.Wasm.Binary.CoreWasm.annotateFixedArrayEqNodesInList",
+            "LeanExe.Wasm.Binary.CoreWasm.emitFuncInstrs"
+          ] }
+  | none => none
+
+def fixedArrayLtNodeAt?
+    (listPath : Array Annotations.PathStep) (startIndex : Nat)
+    (code : List Instr) : Option Annotations.RelativeFixedArrayLtNode :=
+  match code[0]?.bind directCallLocalGet?,
+      fixedArrayTraversalLoader? (code.drop 1) with
+  | some keyLocal, some (offset, index) =>
+      match code.drop 11 with
+      | .ltUI64 :: .iff false _ (some _) :: _ =>
+          some
+            { listPath
+              startIndex
+              endIndex := startIndex + 13
+              offset
+              index
+              keyLocal
+              operandOrder := "key-first"
+              comparison := "key-lt-element-v1"
+              lessBranch := "then"
+              notLessBranch := "else"
+              continuation := "fallthrough"
+              generatedBy := #[
+                "LeanExe.Wasm.Binary.CoreWasm.fixedArrayTraversalLoader?",
+                "LeanExe.Wasm.Binary.CoreWasm.annotateFixedArrayLtNodesInList",
+                "LeanExe.Wasm.Binary.CoreWasm.emitFuncInstrs"
+              ] }
+      | _ => none
+  | _, _ => none
+
+partial def annotateFixedArraySearchKeysInList
+    (listPath : Array Annotations.PathStep) (code : List Instr) :
+    Array Annotations.RelativeFixedArraySearchKey :=
+  (enumerate code).foldl (init := #[]) fun regions item =>
+    let instructionIndex := item.fst
+    let instruction := item.snd
+    let regions := match fixedArraySearchKeyAt? listPath instructionIndex
+        (code.drop instructionIndex) with
+      | some region => regions.push region
+      | none => regions
+    let nested (field : String) (body : List Instr) :=
+      annotateFixedArraySearchKeysInList
+        (listPath.push { instructionIndex, field }) body
+    match instruction with
+    | .block body => regions ++ nested "block" body
+    | .loop body => regions ++ nested "loop" body
+    | .iff _ thenBody elseBody | .iffI32 thenBody elseBody =>
+        let withThen := regions ++ nested "then" thenBody
+        match elseBody with
+        | some body => withThen ++ nested "else" body
+        | none => withThen
+    | _ => regions
+
+partial def annotateFixedArrayEqNodesInList
+    (listPath : Array Annotations.PathStep) (code : List Instr) :
+    Array Annotations.RelativeFixedArrayEqNode :=
+  (enumerate code).foldl (init := #[]) fun regions item =>
+    let instructionIndex := item.fst
+    let instruction := item.snd
+    let regions := match fixedArrayEqNodeAt? listPath instructionIndex
+        (code.drop instructionIndex) with
+      | some region => regions.push region
+      | none => regions
+    let nested (field : String) (body : List Instr) :=
+      annotateFixedArrayEqNodesInList
+        (listPath.push { instructionIndex, field }) body
+    match instruction with
+    | .block body => regions ++ nested "block" body
+    | .loop body => regions ++ nested "loop" body
+    | .iff _ thenBody elseBody | .iffI32 thenBody elseBody =>
+        let withThen := regions ++ nested "then" thenBody
+        match elseBody with
+        | some body => withThen ++ nested "else" body
+        | none => withThen
+    | _ => regions
+
+partial def annotateFixedArrayLtNodesInList
+    (listPath : Array Annotations.PathStep) (code : List Instr) :
+    Array Annotations.RelativeFixedArrayLtNode :=
+  (enumerate code).foldl (init := #[]) fun regions item =>
+    let instructionIndex := item.fst
+    let instruction := item.snd
+    let regions := match fixedArrayLtNodeAt? listPath instructionIndex
+        (code.drop instructionIndex) with
+      | some region => regions.push region
+      | none => regions
+    let nested (field : String) (body : List Instr) :=
+      annotateFixedArrayLtNodesInList
+        (listPath.push { instructionIndex, field }) body
+    match instruction with
+    | .block body => regions ++ nested "block" body
+    | .loop body => regions ++ nested "loop" body
+    | .iff _ thenBody elseBody | .iffI32 thenBody elseBody =>
+        let withThen := regions ++ nested "then" thenBody
+        match elseBody with
+        | some body => withThen ++ nested "else" body
+        | none => withThen
+    | _ => regions
 
 def emitFuncBody (releaseIndex : Nat) (func : Func) : List UInt8 :=
   body (localDecls func) (encodeInstrs (emitFuncInstrs releaseIndex func))
@@ -3205,6 +3643,138 @@ def moduleBytes (module_ : Module) : ByteArray :=
     ++ coreGlobalSection
     ++ exportSection module_
     ++ codeSection module_).toArray
+
+def annotationDocument (module_ : Module) (bytes : ByteArray) : Annotations.Document :=
+  let releaseIndex := module_.funcs.size + 3
+  let functions : List Annotations.Function :=
+    (enumerate module_.funcs.toList).map fun item =>
+      let functionIndex := item.fst
+      let func := item.snd
+      let emitted := emitFuncAnnotated releaseIndex func
+      let combinedLocals := func.locals - func.params + funcScratch func
+      let directCalls := mergeDirectCallAnnotations emitted.directCalls
+        (annotateDirectCalls module_.funcs emitted.code)
+      let eqNodes := (annotateFixedArrayEqNodesInList #[] emitted.code).filter
+        fun node => node.offset + 14 = combinedLocals &&
+          node.keyLocal < node.offset + 5
+      let ltNodes := (annotateFixedArrayLtNodesInList #[] emitted.code).filter
+        fun node => node.offset + 14 = combinedLocals &&
+          node.keyLocal < node.offset + 5
+      let searchKeys := (annotateFixedArraySearchKeysInList #[] emitted.code).filter
+        fun searchKey => searchKey.offset + 14 = combinedLocals &&
+          searchKey.keyLocal < searchKey.offset + 5 &&
+          (eqNodes.any fun node => node.offset = searchKey.offset &&
+              node.keyLocal = searchKey.keyLocal) ||
+            (ltNodes.any fun node => node.offset = searchKey.offset &&
+              node.keyLocal = searchKey.keyLocal)
+      let directCallRegions : List Annotations.Region :=
+        (enumerate directCalls.toList).map fun regionItem =>
+          let regionIndex := regionItem.fst
+          let call := regionItem.snd
+          { id := s!"function-{functionIndex}.direct-call-{regionIndex}"
+            kind := "leanexe.call.direct.v1"
+            location :=
+              { listPath := call.listPath
+                startIndex := call.startIndex
+                endIndex := call.endIndex }
+            parameters := .directCall
+              { calleeIndex := call.calleeIndex
+                argumentLocals := call.argumentLocals
+                resultLocals := call.resultLocals
+                resultPlacement := call.resultPlacement
+                continuation := call.continuation }
+            generatedBy := call.generatedBy }
+      let lengthRegions : List Annotations.Region :=
+        (enumerate emitted.lengthDispatches.toList).map fun regionItem =>
+          let regionIndex := regionItem.fst
+          let dispatch := regionItem.snd
+          { id := s!"function-{functionIndex}.length-dispatch-{regionIndex}"
+            kind := "leanexe.array.length-dispatch.v1"
+            location :=
+              { listPath := dispatch.listPath
+                startIndex := dispatch.startIndex
+                endIndex := dispatch.endIndex }
+            parameters := .fixedArrayLengthDispatch
+              { inputLocal := dispatch.inputLocal
+                expectedSize := dispatch.expectedSize
+                encoding := dispatch.encoding
+                invalidBranch := dispatch.invalidBranch
+                validBranch := dispatch.validBranch
+                continuation := dispatch.continuation }
+            generatedBy := dispatch.generatedBy }
+      let searchKeyRegions : List Annotations.Region :=
+        (enumerate searchKeys.toList).map
+          fun regionItem =>
+            let regionIndex := regionItem.fst
+            let searchKey := regionItem.snd
+            { id := s!"function-{functionIndex}.search-key-{regionIndex}"
+              kind := "leanexe.array.search-key.v1"
+              location :=
+                { listPath := searchKey.listPath
+                  startIndex := searchKey.startIndex
+                  endIndex := searchKey.endIndex }
+              parameters := .fixedArraySearchKey
+                { offset := searchKey.offset
+                  index := searchKey.index
+                  keyLocal := searchKey.keyLocal
+                  continuation := searchKey.continuation }
+              generatedBy := searchKey.generatedBy }
+      let eqNodeRegions : List Annotations.Region :=
+        (enumerate eqNodes.toList).map
+          fun regionItem =>
+            let regionIndex := regionItem.fst
+            let node := regionItem.snd
+            { id := s!"function-{functionIndex}.eq-node-{regionIndex}"
+              kind := "leanexe.array.eq-node.v1"
+              location :=
+                { listPath := node.listPath
+                  startIndex := node.startIndex
+                  endIndex := node.endIndex }
+              parameters := .fixedArrayEqNode
+                { offset := node.offset
+                  index := node.index
+                  keyLocal := node.keyLocal
+                  operandOrder := node.operandOrder
+                  equalBranch := node.equalBranch
+                  unequalBranch := node.unequalBranch
+                  continuation := node.continuation }
+              generatedBy := node.generatedBy }
+      let ltNodeRegions : List Annotations.Region :=
+        (enumerate ltNodes.toList).map
+          fun regionItem =>
+            let regionIndex := regionItem.fst
+            let node := regionItem.snd
+            { id := s!"function-{functionIndex}.lt-node-{regionIndex}"
+              kind := "leanexe.array.lt-node.v1"
+              location :=
+                { listPath := node.listPath
+                  startIndex := node.startIndex
+                  endIndex := node.endIndex }
+              parameters := .fixedArrayLtNode
+                { offset := node.offset
+                  index := node.index
+                  keyLocal := node.keyLocal
+                  operandOrder := node.operandOrder
+                  comparison := node.comparison
+                  lessBranch := node.lessBranch
+                  notLessBranch := node.notLessBranch
+                  continuation := node.continuation }
+              generatedBy := node.generatedBy }
+      { wasmIndex := functionIndex
+        definedFunction := functionIndex
+        sourceName := func.sourceName.toString
+        exports := func.exportName.toList.toArray
+        parameters := func.params
+        results := func.results.length
+        locals := combinedLocals
+        regions := (lengthRegions ++ searchKeyRegions ++ eqNodeRegions ++
+          ltNodeRegions ++ directCallRegions).toArray }
+  { schemaVersion := 1
+    artifact := { byteLength := bytes.size }
+    functions := functions.toArray }
+
+def annotationsJson (module_ : Module) (bytes : ByteArray) : String :=
+  Annotations.render (annotationDocument module_ bytes)
 
 def importEntry (moduleName fieldName : String) (typeIndex : Nat) : List UInt8 :=
   name moduleName ++ name fieldName ++ ofNats [0] ++ u32leb typeIndex

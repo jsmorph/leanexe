@@ -12,8 +12,10 @@ Every `leanexegen` artifact-proof task receives this catalog and may import the 
 | `Project.ProofKit.FixedArrayEqNode` | One indexed array load, equality normalization, and two-way branch for an unrolled search. |
 | `Project.ProofKit.FixedArrayInput` | The standard length-guarded indexed input loader parameterized by a uniform local-window shift. |
 | `Project.ProofKit.FixedArrayLengthDispatch` | The standard fixed-array length comparison, Boolean normalization, and valid or invalid branch. |
+| `Project.ProofKit.FixedArrayLtNode` | One key-first indexed array load, unsigned less-than comparison, and two-way branch for an unrolled search tree. |
 | `Project.ProofKit.FixedArrayPairResult` | Complete allocation and two-word result semantics for the emitted twenty-four-local wrapper. |
 | `Project.ProofKit.FixedArrayResult` | Continuation-generic length and payload stores plus singleton and pair representation theorems. |
+| `Project.ProofKit.FixedArraySearch` | Nested search-branch composition for standard pair results. |
 | `Project.ProofKit.FixedArraySingleton` | Complete allocation and singleton `Array UInt64` result semantics for the emitted one-parameter array-wrapper layout. |
 | `Project.ProofKit.FixedArrayTraversalInput` | The checked indexed loader that leaves a traversal value on the operand stack. |
 | `Project.ProofKit.Control` | Function entry, block-wrapped loop entry, and one-call wrapper tactics. |
@@ -194,9 +196,9 @@ apply Project.ProofKit.FixedArrayTraversalInput.program_spec
 
 ## Fixed-length dispatch
 
-Import `Project.ProofKit.FixedArrayLengthDispatch` when a wrapper begins by storing its input pointer, reading the represented array length, comparing that length with a fixed size, and passing the result through the emitted Boolean-normalization instructions.  `program inputLocal expectedSize invalidBranch validBranch` retains both artifact branches and the following program as parameters.  `program_spec` proves the length read, memory bound, encoded-size equivalence, normalization, and final branch selection.
+Import `Project.ProofKit.FixedArrayLengthDispatch` when a wrapper begins by storing its input pointer, reading the represented array length, comparing that length with a fixed size, and passing the result through emitted Boolean-normalization instructions.  `program inputLocal expectedSize invalidBranch validBranch` matches the normalized inequality encoding, while `eqProgram` matches the shorter normalized equality encoding.  `program_spec` and `eqProgram_spec` prove the length read, memory bound, encoded-size equivalence, normalization, and final branch selection for their respective encodings.
 
-The valid and invalid premises use `FixedArrayEqNode.branchPost`, preserving the enclosing `if` behavior for fallthrough and break continuations.  `branchFrame` records the stored input pointer and empty operand stack at either branch entry.  `wp_fixed_array_length_dispatch inputLocal, expectedSize` infers both branch programs and the remainder from the current goal.
+The valid and invalid premises use `FixedArrayEqNode.branchPost`, preserving the enclosing `if` behavior for fallthrough and break continuations.  `branchFrame` records the stored input pointer and empty operand stack at either branch entry.  Use `wp_fixed_array_length_dispatch inputLocal, expectedSize` for an inequality recipe and `wp_fixed_array_length_eq_dispatch inputLocal, expectedSize` for an equality recipe; both tactics infer the branch programs and remainder from the current goal.
 
 ```lean
 import Project.ProofKit.FixedArrayLengthDispatch
@@ -214,6 +216,8 @@ wp_fixed_array_length_dispatch inputLocal, expectedSize
   exact hValidBranch
 ```
 
+The equality tactic presents the same premises in the same order.  Its program boundary places the valid branch first in the final WebAssembly `if`, matching the compiler's equality encoding.  The checked annotation recipe identifies the encoding and names the corresponding tactic.
+
 ## Equality search node
 
 Import `Project.ProofKit.FixedArrayEqNode` when an unrolled search node uses the traversal loader, compares its result with a saved `UInt64` key, normalizes the comparison through the emitted Boolean instructions, and enters one of two branches.  `program` and `program_spec` cover the loaded-first instruction order used by Demo 2, while `keyFirstProgram` and `keyFirstProgram_spec` cover Demo 3's key-first order through the stack-preserving loader theorem.  Both forms retain the artifact's branch programs and search order as parameters, proving the load, address bounds, comparison, Boolean normalization, and branch selection.
@@ -222,8 +226,13 @@ The branch obligations use `branchPost module_ env rest Q`, which implements the
 
 `loadKeyProgram offset index keyLocal` covers the checked load that initializes a saved search key before the first comparison node.  Its theorem produces `keyFrame`, and `keyFrame_get_key` exposes the saved value through `Locals.get`.  `wp_fixed_array_search_key offset, index, keyLocal` infers the following search program and applies this theorem.
 
+`SearchFrame offset keyLocal frame inputPtr key` records the four facts shared by every node: the input parameter, local-list length, empty operand stack, and saved key.  `SearchFrame.afterLoad` discharges a node's saved-key premise when the key local precedes the traversal scratch window, while `SearchFrame.branch` produces the same invariant for either branch frame.  These lemmas replace a program-specific frame predicate and its two preservation proofs.
+
+`branchN module_ env count Q` represents `count` enclosing equality-node continuations without spelling out nested `branchPost` expressions.  Import `Project.ProofKit.FixedArraySearch` when those branches end in a standard pair result; `pairPost_branchN_conseq` composes `FixedArrayPairResult.pairPost` through the remaining count into the public pair-result continuation.  A compiler recipe orders the search-key and equality-node regions and supplies the exact offset, index, key local, and operand order for each tactic.
+
 ```lean
 import Project.ProofKit.FixedArrayEqNode
+import Project.ProofKit.FixedArraySearch
 
 wp_fixed_array_search_key 10, 0, keyLocal
 
@@ -238,6 +247,25 @@ wp_fixed_array_eq_node 10, index, keyLocal
   exact hEqualBranch
 · intro hUnequal
   exact hUnequalBranch
+```
+
+## Less-than search node
+
+Import `Project.ProofKit.FixedArrayLtNode` when a search tree pushes its saved key, loads an indexed array element through the traversal loader, performs an unsigned less-than comparison, and selects two branch programs.  `program offset index keyLocal lessBranch notLessBranch` preserves both branch programs and the following continuation as parameters.  `program_spec` proves the checked load, memory bounds, comparison, and branch selection while retaining `FixedArrayEqNode.SearchFrame` across either child.
+
+Use `wp_fixed_array_lt_node offset, index, keyLocal` after the preceding equality node has established inequality.  The tactic leaves separate obligations under `key < input[index]` and `¬ key < input[index]`, allowing the application proof to select the left or right subtree.  Checked recipes interleave equality and less-than nodes in their structured instruction order, so a proof follows the generated tree without reconstructing its traversal from the complete function.
+
+```lean
+import Project.ProofKit.FixedArrayLtNode
+
+wp_fixed_array_lt_node 10, index, keyLocal
+· exact hSearch
+· exact hInput
+· exact hIndex
+· intro hLess
+  exact hLessBranch
+· intro hNotLess
+  exact hNotLessBranch
 ```
 
 ## Complete pair-result wrapper
