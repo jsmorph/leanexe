@@ -1,0 +1,3 @@
+The public interface is Array UInt64 -> Array UInt64.  When the input contains at most eight elements, return the elements whose unsigned value is less than 100, preserving their original order.  When the input contains more than eight elements, return the empty array.
+
+Implement the successful case with `Array.filter` or an equivalent loop that tests each input element.  Do not express the result as eight separately written element cases.  The compiled artifact must contain a predicate loop whose result length depends on the input values.
