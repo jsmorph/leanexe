@@ -1552,6 +1552,7 @@ import Project.ProofKit.Annotation
 import Project.ProofKit.FixedArrayPairResult
 ${chainCompositions.length > 0 ? "import Project.ProofKit.FixedArraySearchChain\n" : ""}
 ${treeCompositions.length > 0 ? "import Project.ProofKit.FixedArraySearchTree\n" : ""}
+set_option maxRecDepth 1048576
 
 namespace ${job.namespace}.AnnotationMatches
 
