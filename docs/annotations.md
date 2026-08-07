@@ -387,6 +387,8 @@ Three complete-starter runs finished Stage 5 in 109.607, 121.976, and 131.413 se
 
 Demo 2's journals expose the same wrapper around a different search graph: ten loaded-first equality nodes form a linear first-match chain.  `FixedArraySearch.wrapperProgram_spec` now contains the wrapper proof shared by tree and chain descriptors, while `FixedArraySearchChain.Chain.program_spec` proves an arbitrary equality chain by induction.  The annotation planner derives a version-two chain composition from exact nested unequal branches and result regions; the generic module and JavaScript tests pass, while a fresh Demo 2 proof-time result remains pending.
 
+The first fresh chain run stopped while compiling generated annotation support because the ten-node descriptor equality exceeded Lean's default recursion depth.  Generated `AnnotationMatches` modules now use the same `maxRecDepth 1048576` setting as behavior proofs, allowing Lean to elaborate the exact nested descriptor and `rfl` region equality.  The interrupted run reached no artifact-behavior candidate and supplies no timing result.
+
 ## Completion criteria
 
 The first complete increment emits a validated sidecar for every ordinary library-mode compilation requested by `leanexegen`.  Demos 1, 2, and 3 prove the same specifications over the same WASM bytes through an annotation-driven deterministic proof plan.  The retained evidence records proof-generation timings, annotation validation, region coverage, and independent Lean acceptance.
