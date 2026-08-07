@@ -375,7 +375,7 @@ The first composition theorem now exists as `FixedArraySearchTree.Tree.program_s
 
 Demo 3's complete seven-node search program is definitionally equal to one descriptor after the checked search-key load.  The annotation consumer now derives that descriptor from the parent-child paths, emits an `rfl` region equality in `AnnotationMatches`, and names the descriptor, equality, and composition theorem in `PROOF_RECIPES.json`.  A transformed 155-line proof using the generated descriptor builds through `ArtifactResult`, leaving a fresh Codex run to measure the complete proof time.
 
-The first fresh composition run produced a 144-line proof and completed Stage 5 in 405.385 seconds.  The preceding journal-guided node proof took 770.948 seconds and 421 lines, while the historical pair-result reference took 278.656 seconds and 672 lines.  The journal confirms that the agent selected the composition first and passed its first build after one proof edit, but repeated unchanged trials remain necessary before the timing evidence can determine retention.
+Three fresh composition runs produced the same 144-line proof and completed Stage 5 in 405.385, 326.320, and 303.478 seconds, giving a 326.320-second median.  The preceding journal-guided node proof took 770.948 seconds and 421 lines, while the historical pair-result reference took 278.656 seconds and 672 lines.  Every journal confirms that the agent selected the composition first and passed its first build after one proof edit, establishing a stable proof method while leaving headless-agent latency as the largest remaining cost.
 
 ## Completion criteria
 
