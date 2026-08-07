@@ -688,9 +688,10 @@ function proofPrompt(request, job, entryIndex) {
     `regions of the decoded Program and the selected FixedArrayPairResult program.  Use the ` +
     `regionEquality named by each pair-result recipe before applying its semantic theorem.  ` +
     `These files grant no additional Lean imports.  ` +
-    `Keep PROOF_JOURNAL.md as a prose Markdown account of your work.  Update it during the ` +
-    `session with your reasoning, Lean results, and changes of direction.  Write naturally; it ` +
-    `has no prescribed schema and does not participate in the proof.  ` +
+    `Keep PROOF_JOURNAL.md as a prose Markdown account of your work.  Update it frequently as ` +
+    `you work, including after each Lean check and each significant change in approach, with ` +
+    `your current thinking and observations.  Write naturally; it has no prescribed schema and ` +
+    `does not participate in the proof.  ` +
     `Do not import Source, inspect source ` +
     `code, invoke the compiler, add axioms, or use sorry.  Leave samples and hostAssumptions ` +
     `empty.  ArtifactSpec resolves the ${job.exportName} export to function ${entryIndex}, then ` +
