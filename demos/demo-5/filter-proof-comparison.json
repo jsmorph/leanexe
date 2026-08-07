@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "metric": "stage-5-start-to-first-accepted-proof",
+  "artifactSha256": "7c05b423d0cb42b5e8b92fecbefdfc408a2314f2dea7f74bfcbc1674ff96b8de",
+  "baseline": {
+    "telemetry": "proof-telemetry.json",
+    "acceptedSourceSha256": "a65e9018ce92e01f3fd8b82e117a237571d0ae88512a682819c2a9fe6c2a4822",
+    "proofLines": 969,
+    "totalMilliseconds": 1635679.391,
+    "codexSessionMilliseconds": 1580641.091,
+    "outerAcceptanceMilliseconds": 44737.905,
+    "independentlyVerified": true
+  },
+  "filterComposition": {
+    "telemetry": "filter-proof-telemetry.json",
+    "acceptedSourceSha256": "9664bb3f113379d95a4dc64c010db7b5ac3ae139795da82d9bca0d366bc03667",
+    "proofLines": 70,
+    "totalMilliseconds": 86794.951,
+    "codexSessionMilliseconds": 53259.664,
+    "outerAcceptanceMilliseconds": 24482.622,
+    "independentlyVerified": true
+  },
+  "reduction": {
+    "totalMilliseconds": 1548884.44,
+    "totalPercent": 94.69364525361314,
+    "proofLines": 899,
+    "proofLinesPercent": 92.77605779153767
+  }
+}
