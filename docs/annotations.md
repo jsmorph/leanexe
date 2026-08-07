@@ -450,6 +450,10 @@ The consumer validates each structured location against the frozen decoded Progr
 
 Recompiling Demo 1's frozen source produced the same 1,938-byte artifact and SHA-256 digest `dbced77ae7a692ce49e98cb58721cb3c05a3712925e31685c4fd08dba4181be7`.  Function zero now carries one while region at top-level instruction interval two through three, with scratch locals beginning at 18 and a complete IR statement for the trial-division branches.  The proof plan selects `Wasm.wp_loop_cons`, `wp_block_loop`, `wp_entry_to_loop`, and the loop, frame, and arithmetic guidance sections; a controlled reproof will determine whether the state-transition map reduces Stage 5 time.
 
+The first controlled invocation completed Stage 5 in 276.795 seconds and passed independent package verification, but its journal records that Codex found the retained singleton-3 proof in the repository and copied it.  The accepted 532-line source is byte-identical to that prior proof, with SHA-256 digest `ddce88feccb5b074bf8951189dd5f538ed286201cbe2c0d96d229e61815f38a1`.  This result constitutes a censored benchmark-integrity failure rather than evidence that the loop annotation reduced proof time.
+
+Artifact-proof tasks now prohibit reading demos, benchmarks, archived packages, or proofs from another generated namespace.  The task may still read dependency source when it needs to confirm a declaration named by the supplied proof-kit catalog or strategy guide.  The next Demo 1 run must produce its proof from the frozen task context, generic proof assets, and checked annotations before entering a timing comparison.
+
 ## Completion criteria
 
 The first complete increment emits a validated sidecar for every ordinary library-mode compilation requested by `leanexegen`.  Demos 1, 2, and 3 prove the same specifications over the same WASM bytes through an annotation-driven deterministic proof plan.  The retained evidence records proof-generation timings, annotation validation, region coverage, and independent Lean acceptance.
