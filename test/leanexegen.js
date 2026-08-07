@@ -927,6 +927,74 @@ function testLengthDispatchAnnotationRecipes() {
     /encoding is unsupported/);
 }
 
+function testMapAddAnnotationRecipe() {
+  const wasm = fs.readFileSync(path.join(repoRoot, "demos/demo-4/program.wasm"));
+  const program = `def func0 : Wasm.Program :=
+  [
+  .localGet 0,
+  .iff 0 0 [] [],
+  .localGet 4
+  ]
+
+def func0Def : Wasm.Function :=
+  { params := [.i64], locals := [.i64], body := func0, results := [.i64] }
+`;
+  const document = {
+    schemaVersion: 1,
+    artifact: { byteLength: wasm.length },
+    functions: [{
+      wasmIndex: 0,
+      definedFunction: 0,
+      sourceName: "Example.compute",
+      exports: ["compute"],
+      parameters: 1,
+      results: 1,
+      locals: 16,
+      regions: [{
+        id: "function-0.map-add-0",
+        kind: "leanexe.array.map-add.v1",
+        location: { listPath: [], startIndex: 0, endIndex: 3 },
+        parameters: {
+          maximumSize: 8,
+          addend: "1",
+          continuation: "function-return",
+        },
+        generatedBy: ["LeanExe.Wasm.Binary.CoreWasm.emitFuncAnnotated"],
+      }],
+    }],
+  };
+  validateAnnotationDocument(document, wasm);
+  const plan = proofRecipePlan(document, program, [
+    "strategy.arrays", "strategy.loops", "strategy.allocation", "strategy.frames",
+  ], "Example.Generated.AnnotationMatches");
+  validateProofRecipePlan(plan, document);
+  assert(plan.recipes.length === 1 &&
+    plan.recipes[0].direct.module === "Project.ProofKit.FixedArrayMapAdd" &&
+    plan.recipes[0].direct.theorem.endsWith("wrapperProgram_spec") &&
+    plan.recipes[0].direct.program.endsWith("wrapperProgram 8 1"),
+  "map-add annotation did not select the complete wrapper theorem");
+  const source = annotationMatchesSource(document, {
+    namespace: "Example.Generated",
+    programModule: "Example.Generated.Program",
+  }).source;
+  assert(source.includes("import Project.ProofKit.FixedArrayMapAdd") &&
+    source.includes("FixedArrayMapAdd.wrapperProgram\n          8 1"),
+  "annotation matches omitted the checked map-add wrapper equality");
+  const starter = artifactProofStarter(makeJob("bounded wrapping map\n"), 0, true, plan);
+  assert(starter.includes("FixedArrayMapAdd.wrapperProgram_spec 8 1") &&
+    starter.includes("FixedArrayMapAdd.expected 8 1 input") &&
+    starter.includes("function_0_map_add_0_eq") &&
+    !starter.includes("have hLengthRead"),
+  "map-add recipe did not select the complete semantic starter");
+
+  const invalidAddend = structuredClone(document);
+  invalidAddend.functions[0].regions[0].parameters.addend = "01";
+  expectFailure(() => validateAnnotationDocument(invalidAddend, wasm),
+    /canonical UInt64 decimal/);
+  const truncated = program.replace("  .localGet 4\n  ]", "  .localGet 3\n  ]");
+  expectFailure(() => proofRecipePlan(document, truncated), /boundary does not match/);
+}
+
 function testLessThanNodeAnnotationRecipes() {
   const wasm = Buffer.from([0, 97, 115, 109, 1, 0, 0, 0]);
   const document = {
@@ -1588,6 +1656,7 @@ try {
   testFixedArrayEqNodeFeatures();
   testAnnotationRecipePlan();
   testLengthDispatchAnnotationRecipes();
+  testMapAddAnnotationRecipe();
   testLessThanNodeAnnotationRecipes();
   testSearchTreeComposition();
   testPairResultAnnotationRecipes();
