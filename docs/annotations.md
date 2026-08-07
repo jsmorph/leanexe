@@ -365,6 +365,12 @@ A fresh Demo 3 reproof with the complete tree recipe set could not start because
 
 The next slice should compose the checked entry, search, and pair-result boundaries into one artifact-specific structural theorem.  Its generated proof should follow the complete branch tree and leave only equations relating comparison facts to `FormalSpec.expected`, avoiding the partial starter's requirement that Codex reconstruct the remaining continuations.  Demos 2 and 3 will screen this composition independently before any similar generator handles loops.
 
+A later journaled Demo 3 run used the shared search-frame and pair-result declarations throughout its accepted 421-line proof.  The proof was 251 lines shorter than the 672-line pair-result reference, but Stage 5 increased from 278.656 to 770.948 seconds.  The journal attributes two failed builds to unstable tactic premises and records about seven minutes spent reconstructing the annotated tree's continuation graph before writing the first complete body.
+
+The proof kit now provides explicit-premise forms for the search-key and less-than tactics.  These forms remove numeric key-local goals and bind the less-than frame, input, and index facts before either subtree, and a transformed 403-line proof builds through `ArtifactResult`.  This change removes two recorded failure modes while retaining the complete tree-composition step as the larger target.
+
+The next composition experiment should produce a Lean theorem whose statement contains the exact checked branch graph and whose premises contain one semantic equation for each result leaf.  The generated theorem may depend on `AnnotationMatches`, `SearchFrame`, `PairResultContext`, and the registered node theorems, but it must derive its program equality from the frozen decoded artifact.  A Demo 2 and Demo 3 timing screen will determine whether moving graph reconstruction out of the Codex session reduces total proof-generation time.
+
 ## Completion criteria
 
 The first complete increment emits a validated sidecar for every ordinary library-mode compilation requested by `leanexegen`.  Demos 1, 2, and 3 prove the same specifications over the same WASM bytes through an annotation-driven deterministic proof plan.  The retained evidence records proof-generation timings, annotation validation, region coverage, and independent Lean acceptance.
