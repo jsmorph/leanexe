@@ -67,4 +67,13 @@ macro "wp_fixed_array_lt_node " offset:term ", " index:term ", " keyLocal:term :
     (change wp _ (program $offset $index $keyLocal _ _ ++ _) _ _ _ _
      apply program_spec))
 
+macro "wp_fixed_array_lt_node " offset:term ", " index:term ", " keyLocal:term
+    " using " hSearch:term ", " hInput:term ", " hIndex:term : tactic =>
+  `(tactic|
+    (change wp _ (program $offset $index $keyLocal _ _ ++ _) _ _ _ _
+     refine program_spec
+       (offset := $offset) (index := $index) (keyLocal := $keyLocal)
+       (hSearch := $hSearch) (hInput := $hInput) (hIndex := $hIndex)
+       (hLess := ?_) (hNotLess := ?_)))
+
 end Project.ProofKit.FixedArrayLtNode

@@ -380,4 +380,18 @@ macro "wp_fixed_array_search_key " offset:term ", " index:term ", " keyLocal:ter
       (loadKeyProgram $offset $index $keyLocal ++ _) _ _ _ _
      apply loadKeyProgram_spec))
 
+macro "wp_fixed_array_search_key " offset:term ", " index:term ", " keyLocal:term
+    " using " hInput:term ", " hIndex:term : tactic =>
+  `(tactic|
+    (change wp _
+      (loadKeyProgram $offset $index $keyLocal ++ _) _ _ _ _
+     have hKeyPositive : 0 < $keyLocal := by omega
+     have hKeyBound : $keyLocal < $offset + 15 := by omega
+     refine loadKeyProgram_spec
+       (offset := $offset) (index := $index) (keyLocal := $keyLocal)
+       (hParams := ?_) (hLocals := ?_) (hValues := ?_)
+       (hInput := $hInput) (hIndex := $hIndex)
+       (hKeyPositive := hKeyPositive) (hKey := hKeyBound)
+       (hNext := ?_)))
+
 end Project.ProofKit.FixedArrayEqNode

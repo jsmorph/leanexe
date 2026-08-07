@@ -291,7 +291,9 @@ function testCodexProtocol() {
     artifactPrompt.includes("one shared PairResultContext") &&
     artifactPrompt.includes("do not define local node or result adapters") &&
     artifactPrompt.includes("wp_fixed_array_search_key") &&
+    artifactPrompt.includes("using hInput, hIndex") &&
     artifactPrompt.includes("wp_fixed_array_lt_node") &&
+    artifactPrompt.includes("using hSearch, hInput, hIndex") &&
     artifactPrompt.includes("Project.ProofKit.FixedArrayLengthDispatch") &&
     artifactPrompt.includes("wp_fixed_array_length_dispatch") &&
     artifactPrompt.includes("Project.ProofKit.FixedArrayTraversalInput") &&
@@ -319,6 +321,7 @@ function testCodexProtocol() {
     artifactPrompt.includes("including after each Lean check") &&
     artifactPrompt.includes("Attempt the direct recipe") &&
     artifactPrompt.includes("deterministic theorem starter") &&
+    artifactPrompt.includes("before editing") &&
     artifactPrompt.includes("Use read-only commands to inspect FormalSpec, Program"),
   "artifact-proof task did not receive the proof-kit catalog or tactics");
   expectFailure(() => validateProgramImports(

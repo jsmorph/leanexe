@@ -604,8 +604,10 @@ function proofPrompt(request, job, entryIndex) {
     `search order.  Prefer a complete node theorem over reducing the loader and comparison ` +
     `separately.  When a SearchFrame is available, apply SearchFrame.program_spec or ` +
     `SearchFrame.keyFirstProgram_spec directly instead of defining a local node adapter.  Use ` +
-    `wp_fixed_array_search_key <offset>, <index>, <keyLocal> for a detected ` +
-    `fixedArraySearchKeys region that loads and saves the comparison key before these nodes.  ` +
+    `wp_fixed_array_search_key <offset>, <index>, <keyLocal> using hInput, hIndex for a detected ` +
+    `fixedArraySearchKeys region that loads and saves the comparison key before these nodes.  The ` +
+    `tactic proves the two numeric key-local bounds, so the following goals contain three frame ` +
+    `facts and the continuation.  ` +
     `Import Project.ProofKit.FixedArrayLengthDispatch when the exported wrapper begins with the ` +
     `standard fixed-array length comparison and compiler Boolean normalization.  Run ` +
     `wp_fixed_array_length_dispatch <inputLocal>, <expectedSize> for the normalized inequality ` +
@@ -658,8 +660,9 @@ function proofPrompt(request, job, entryIndex) {
     `WAT-derived Talos Program module, deterministic exact-artifact support modules, and the ` +
     `candidate starter.  It contains no Source module.  ${candidate} contains a deterministic ` +
     `theorem starter with the ` +
-    `RuntimeReady decomposition and common array facts.  Edit that file immediately, run its Lean ` +
-    `check before planning the complete proof, and prove exactly ` +
+    `RuntimeReady decomposition and common array facts.  Run its Lean check immediately before ` +
+    `editing so that the first diagnostic exposes the exact starter goal.  Then edit the file and ` +
+    `prove exactly ` +
     `${job.behaviorTheorem} : ${job.formalSpecDefinition} ${job.namespace}.«module».  ` +
     `You may import ${job.formalSpecModule}, ${job.programModule}, generated artifact-support ` +
     `modules, CodeLib, Interpreter, Std, Init, or Mathlib.  ${library}` +
@@ -675,6 +678,9 @@ function proofPrompt(request, job, entryIndex) {
     `wp_fixed_array_eq_node for loaded-first entries and wp_fixed_array_key_eq_node for key-first ` +
     `entries instead of rediscovering the nodes in Program.  Each fixedArrayLtNodes entry selects ` +
     `wp_fixed_array_lt_node for an exact key-first checked load and unsigned less-than decision.  ` +
+    `When the frame, input representation, and index bound are available, use ` +
+    `\`wp_fixed_array_lt_node <offset>, <index>, <keyLocal> using hSearch, hInput, hIndex\` so the ` +
+    `tactic leaves only the two semantic branch goals.  ` +
     `Each fixedArraySearchKeys entry gives ` +
     `the corresponding arguments for wp_fixed_array_search_key.  Each fixedArrayLengthDispatches ` +
     `entry gives the length-dispatch arguments.  When compiler annotations are present, use the ` +
