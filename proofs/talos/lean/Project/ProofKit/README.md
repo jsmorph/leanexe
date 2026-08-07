@@ -125,9 +125,9 @@ apply Project.ProofKit.FixedArrayAllocator.region_spec
 
 ## Shifted fixed-array allocator region
 
-Import `Project.ProofKit.FixedArrayAllocatorWindow` when the same allocator instruction region appears after a uniform shift of its combined-local operands.  `region offset stride` uses combined locals `offset + 5`, `offset + 9`, and `offset + 10` through `offset + 14`; `region_spec` requires `offset + 14` internal locals and the capacity in internal local `offset + 8`.  Offset zero covers the fourteen-local wrapper, while offset ten covers the twenty-four-local wrappers in Demos 2 and 3.
+Import `Project.ProofKit.FixedArrayAllocatorWindow` when the same allocator instruction region appears after a uniform shift of its combined-local operands.  `region offset stride` uses combined locals `offset + 5`, `offset + 9`, and `offset + 10` through `offset + 14`.  `region_spec_withTail` accepts `offset + 14 + tail` internal locals, while `region_spec` retains the exact `offset + 14` specialization.  Offset zero and tail two cover the sixteen-local wrapper in Demo 4; offset ten and tail zero cover the twenty-four-local wrappers in Demos 2 and 3.
 
-The theorem produces `FixedArrayAllocator.allocStore` and `FixedArrayAllocatorWindow.allocFrame`, preserving the semantic memory and global-state definitions used by the canonical allocator theorem.  The caller proves an exact instruction-suffix equality before applying the theorem and supplies the shifted capacity-local fact.  The continuation receives the state after the allocator-global updates and the shifted returned-root assignment.
+Both theorems produce `FixedArrayAllocator.allocStore` and `FixedArrayAllocatorWindow.allocFrame`, preserving the semantic memory and global-state definitions used by the canonical allocator theorem.  The caller proves an exact instruction-suffix equality before applying the appropriate theorem and supplies the shifted capacity-local fact.  The continuation receives the state after the allocator-global updates and the shifted returned-root assignment.
 
 ```lean
 import Project.ProofKit.FixedArrayAllocatorWindow
@@ -135,8 +135,8 @@ import Project.ProofKit.FixedArrayAllocatorWindow
 change wp module_
   (Project.ProofKit.FixedArrayAllocatorWindow.region offset stride ++ rest)
   Q initial frame env
-apply Project.ProofKit.FixedArrayAllocatorWindow.region_spec
-  offset module_ env initial frame heapTop capacity stride allocs
+apply Project.ProofKit.FixedArrayAllocatorWindow.region_spec_withTail
+  offset tail module_ env initial frame heapTop capacity stride allocs
 · exact hParams
 · exact hLocals
 · exact hValues
