@@ -1113,8 +1113,21 @@ function testArtifactPackage(job, formalSource) {
     JSON.parse(annotatedContext.get("PROOF_RECIPES.json")).schemaVersion === 1 &&
     annotatedContext.has(moduleFile(`${job.namespace}.AnnotationMatches`)) &&
     annotatedContext.get(moduleFile(job.behaviorModule))
-      .includes(`import ${job.namespace}.AnnotationMatches`),
+      .includes(`import ${job.namespace}.AnnotationMatches`) &&
+    !annotatedContext.get(moduleFile(job.behaviorModule))
+      .includes("Project.ProofKit.FixedArrayLtNode"),
   "proof task omitted the compiler annotation and proof-recipe context");
+  const selectedStarter = artifactProofStarter(job, 0, true, { recipes: [{
+    regionKind: "leanexe.array.eq-node.v1",
+    direct: { module: "Project.ProofKit.FixedArrayEqNode" },
+    supporting: [{
+      declaration: "Project.ProofKit.FixedArraySearch.pairPost_branchN_conseq",
+    }],
+  }] });
+  assert(selectedStarter.includes("import Project.ProofKit.FixedArrayEqNode") &&
+    selectedStarter.includes("import Project.ProofKit.FixedArraySearch") &&
+    !selectedStarter.includes("import Project.ProofKit.FixedArrayLtNode"),
+  "artifact-proof starter did not select imports from checked recipes");
   expectFailure(() => parseProofStrategySections(
     "<!-- leanexegen-section:strategy.core begin -->\n" +
     "### `strategy.other`: wrong\n" +

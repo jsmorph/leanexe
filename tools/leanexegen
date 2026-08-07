@@ -1023,20 +1023,44 @@ function proofStrategyBundle(program, exportIndex, source = null) {
   return { notes, features };
 }
 
-function artifactProofStarter(job, entryIndex, annotated = false) {
+function artifactProofStarter(job, entryIndex, annotated = false, proofRecipes = null) {
   const prefix = `${job.behaviorModule}.`;
   if (!job.behaviorTheorem.startsWith(prefix)) {
     throw new Error("artifact behavior theorem is outside its module");
   }
   const theoremName = job.behaviorTheorem.slice(prefix.length);
+  const modules = new Set(["Project.ProofKit.Array"]);
+  if (proofRecipes === null) {
+    for (const moduleName of [
+      "Project.ProofKit.FixedArrayEqNode",
+      "Project.ProofKit.FixedArrayLengthDispatch",
+      "Project.ProofKit.FixedArrayLtNode",
+      "Project.ProofKit.FixedArrayPairResult",
+      "Project.ProofKit.FixedArraySearch",
+    ]) modules.add(moduleName);
+  } else {
+    for (const recipe of proofRecipes.recipes) {
+      modules.add(recipe.direct.module);
+      for (const item of recipe.supporting) {
+        const moduleName = proofKitModules.find((candidate) =>
+          item.declaration === candidate || item.declaration.startsWith(`${candidate}.`));
+        if (moduleName !== undefined) modules.add(moduleName);
+      }
+    }
+    if (proofRecipes.recipes.some((recipe) => [
+      "leanexe.array.eq-node.v1",
+      "leanexe.array.lt-node.v1",
+      "leanexe.array.pair-result.v1",
+      "leanexe.array.search-key.v1",
+    ].includes(recipe.regionKind))) {
+      modules.add("Project.ProofKit.FixedArraySearch");
+    }
+  }
+  const proofImports = [...modules].sort().map((moduleName) =>
+    `import ${moduleName}`).join("\n");
   return `import ${job.formalSpecModule}
 import ${job.programModule}
-${annotated ? `import ${annotationMatchesModule(job)}\n` : ""}import Project.ProofKit.Array
-import Project.ProofKit.FixedArrayEqNode
-import Project.ProofKit.FixedArrayLengthDispatch
-import Project.ProofKit.FixedArrayLtNode
-import Project.ProofKit.FixedArrayPairResult
-import Project.ProofKit.FixedArraySearch
+${annotated ? `import ${annotationMatchesModule(job)}\n` : ""}${proofImports}
 
 set_option maxRecDepth 1048576
 set_option maxHeartbeats 1000000
@@ -1096,7 +1120,8 @@ function proofTaskContext(
   context.set("PROOF_JOURNAL.md", "# Proof Journal\n\n");
   context.set(moduleFile(job.behaviorModule),
     artifactProofStarter(
-      job, bundle.features.exportIndex, bundle.compilerAnnotations !== undefined));
+      job, bundle.features.exportIndex, bundle.compilerAnnotations !== undefined,
+      bundle.proofRecipes ?? null));
   if (context.has(moduleFile(job.sourceModule))) {
     throw new StageError(5, "artifact proof", "proof task context contains Source");
   }
