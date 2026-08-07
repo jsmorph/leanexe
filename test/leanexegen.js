@@ -343,6 +343,8 @@ function testCodexProtocol() {
     artifactPrompt.includes("before editing") &&
     artifactPrompt.includes("If that check succeeds") &&
     artifactPrompt.includes("without repeating the same check") &&
+    artifactPrompt.includes("Do not search for or read artifact proofs outside") &&
+    artifactPrompt.includes("would invalidate proof-generation measurement") &&
     artifactPrompt.includes("heapReserveBytes bound") &&
     artifactPrompt.includes("Use read-only commands to inspect FormalSpec, Program"),
   "artifact-proof task did not receive the proof-kit catalog or tactics");
