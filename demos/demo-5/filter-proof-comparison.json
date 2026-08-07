@@ -11,18 +11,47 @@
     "outerAcceptanceMilliseconds": 44737.905,
     "independentlyVerified": true
   },
-  "filterComposition": {
-    "telemetry": "filter-proof-telemetry.json",
-    "acceptedSourceSha256": "9664bb3f113379d95a4dc64c010db7b5ac3ae139795da82d9bca0d366bc03667",
-    "proofLines": 70,
-    "totalMilliseconds": 86794.951,
-    "codexSessionMilliseconds": 53259.664,
-    "outerAcceptanceMilliseconds": 24482.622,
-    "independentlyVerified": true
+  "filterCompositionRuns": [
+    {
+      "telemetry": "filter-proof-telemetry.json",
+      "acceptedSourceSha256": "9664bb3f113379d95a4dc64c010db7b5ac3ae139795da82d9bca0d366bc03667",
+      "proofLines": 70,
+      "totalMilliseconds": 86794.951,
+      "codexSessionMilliseconds": 53259.664,
+      "outerAcceptanceMilliseconds": 24482.622,
+      "independentlyVerified": true
+    },
+    {
+      "telemetry": "filter-proof-r2-telemetry.json",
+      "acceptedSourceSha256": "9664bb3f113379d95a4dc64c010db7b5ac3ae139795da82d9bca0d366bc03667",
+      "proofLines": 70,
+      "totalMilliseconds": 90745.28,
+      "codexSessionMilliseconds": 55812.375,
+      "outerAcceptanceMilliseconds": 25633.74,
+      "independentlyVerified": true
+    },
+    {
+      "telemetry": "filter-proof-r3-telemetry.json",
+      "acceptedSourceSha256": "9664bb3f113379d95a4dc64c010db7b5ac3ae139795da82d9bca0d366bc03667",
+      "proofLines": 70,
+      "totalMilliseconds": 95718.291,
+      "codexSessionMilliseconds": 63134.363,
+      "outerAcceptanceMilliseconds": 24218.011,
+      "independentlyVerified": true
+    }
+  ],
+  "filterCompositionDistribution": {
+    "sampleSize": 3,
+    "medianMilliseconds": 90745.28,
+    "rangeMilliseconds": 8923.34,
+    "codexMedianMilliseconds": 55812.375,
+    "codexRangeMilliseconds": 9874.699,
+    "outerAcceptanceMedianMilliseconds": 24482.622,
+    "outerAcceptanceRangeMilliseconds": 1415.729
   },
   "reduction": {
-    "totalMilliseconds": 1548884.44,
-    "totalPercent": 94.69364525361314,
+    "totalMilliseconds": 1544934.111,
+    "totalPercent": 94.45213527178322,
     "proofLines": 899,
     "proofLinesPercent": 92.77605779153767
   }
