@@ -6,7 +6,7 @@ The [Demo 5 baseline](demos/demo-5/README.md) took 1,635.679 seconds in Stage 5 
 
 `Project.ProofKit.FixedArrayFilterLt.wrapperProgram_spec` proves the canonical bounded stable filter for arbitrary maximum size and `UInt64` threshold.  The compiler recognizes the corresponding extracted IR and emits `leanexe.array.filter-lt.v1` over the complete function while preserving the nested length-dispatch region.  The JavaScript consumer validates the parameters and function boundary, constructs a checked equality with `wrapperProgram`, selects the semantic theorem, and generates the complete schema-6 artifact starter.
 
-A controlled reproof retained the formal specification, source, 1,975-byte WASM, decoded Program, artifact theorem, and heap-reserve boundary.  The deterministic 70-line starter passed its first Lean check unchanged and completed Stage 5 in 86.795 seconds, a reduction of 1,548.884 seconds, or 94.7 percent.  Independent `leanexegen verify` accepted the package, and the retained comparison records both proof digests and timing components.
+Three controlled reproofs retained the formal specification, source, 1,975-byte WASM, decoded Program, artifact theorem, and heap-reserve boundary.  The deterministic 70-line starter passed its first Lean check unchanged in every run and produced Stage 5 times of 86.795, 90.745, and 95.718 seconds, giving a 90.745-second median and an 8.923-second range.  The median reduces the baseline by 1,544.934 seconds, or 94.5 percent, and independent `leanexegen verify` accepted the first and third final packages.
 
 ## 2026-08-07: Artifact Heap-Reserve Precondition
 
