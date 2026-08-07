@@ -6397,3 +6397,7 @@ The cross-demo run found that the search-key recognizer classified Demo 1's ordi
 The compiler emits `leanexe.array.pair-result.v1` for the complete two-word array-literal assignment and its transfer to the wrapper return local.  Constant results record both words, while indexed results record the represented input index and fixed found flag; both forms retain the destination local and structured branch path.  Demo 2 and Demo 3 each contain twelve matched pair-result regions, while Demo 1 contains none.
 
 Leanexegen generates an artifact-specific `AnnotationMatches` module whose theorems resolve each pair-result interval from the decoded `Program`.  All twenty-four Demo 2 and Demo 3 equalities close by `rfl` against `FixedArrayPairResult.constResultProgram` or `inputResultProgram`, avoiding another allocator-template implementation in JavaScript.  Fresh annotated packages preserved the frozen WASM digests and passed independent artifact verification under the managed Lean runner.
+
+## 2026-08-06: Proving-agent journal
+
+Leanexegen now gives each artifact-proof session a plain `PROOF_JOURNAL.md` file and asks Codex to record its reasoning, Lean results, and changes of direction in prose.  A successful session must add content beneath the heading, and publication retains the account as `proof-journal.md` under the proof package's existing content index.  Package verification checks its identity and basic Markdown shape, while Lean never imports it or uses it to establish the artifact theorem.

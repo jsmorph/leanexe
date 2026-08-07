@@ -117,6 +117,7 @@ A successful command publishes `myprogram.wasm` and `myprogram.proof/`.  The sid
 | `request.txt` | The original prose request, including its original whitespace. |
 | `interpretation.json` | The accepted summary and decisions from each of the three Codex tasks. |
 | `stage-reports.json` | Codex version, one-session bound, accepted source hashes, outer diagnostics, and a hash of each task report. |
+| `proof-journal.md` | The artifact-proof agent's prose account of its reasoning, Lean results, and changes of direction.  The journal is diagnostic evidence and does not participate in the Lean proof. |
 | `samples.json` | Input arrays, observed output arrays, and host-runner invocations used during generation. |
 | `proof-library.md` | The proof-kit catalog supplied to the artifact-proof task. |
 | `proof-strategies.md` | The optional strategy sections selected for the frozen Talos program. |
