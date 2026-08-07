@@ -395,6 +395,14 @@ Those three journals also report two identical in-session builds despite making 
 
 Three runs under the single-check prompt finished Stage 5 in 107.144, 114.390, and 124.539 seconds, giving a 114.390-second median and a 17.395-second range.  Each journal records one successful in-session check, no proof edit, and no repeated in-session check; outer acceptance rebuilt the unchanged proof independently.  The median is 4.058 seconds above the preceding 110.332-second result, so removing the redundant incremental check produced no measured reduction in total Stage 5 time.
 
+### Held-out loop baseline
+
+Demo 4 froze a bounded `Array UInt64` map before any loop-oriented annotation or proof-kit change.  Its 1,913-byte artifact has SHA-256 digest `c538d40936b426ba875b3dae1913e62ff00a44b34adff2adcd70922e5a4c95ff` and contains one reachable 456-instruction function with 16 locals and three loops.  The compiler emitted no regions for that function, leaving both `compositions` and `recipes` empty in the checked proof plan.
+
+The baseline artifact proof took 2,364.735 seconds, including 2,255.687 seconds in Codex and 98.593 seconds in independent outer acceptance.  Its accepted 457-line source has SHA-256 digest `6bd050aab0f4e1124e9ed2a2ef6e75a6020e7ab7b90ce82d2315dc0668b08488`.  The journal records 27 edited checks and a complete proof of bounded-length dispatch, dynamic capacity calculation, result allocation, a transformed-prefix map loop, wrapping payload stores, and empty-array allocation.
+
+The journal identifies five candidate reusable boundaries.  A bounded-length dispatch theorem should expose the semantic size cases, a dynamic capacity theorem should normalize the emitted allocation expression, and the allocator-window theorem should accept unused trailing locals.  A dynamic length-store theorem and a parameterized word-map loop theorem should cover the remaining repeated instruction and invariant work before a complete wrapper composition is attempted.
+
 ## Completion criteria
 
 The first complete increment emits a validated sidecar for every ordinary library-mode compilation requested by `leanexegen`.  Demos 1, 2, and 3 prove the same specifications over the same WASM bytes through an annotation-driven deterministic proof plan.  The retained evidence records proof-generation timings, annotation validation, region coverage, and independent Lean acceptance.
