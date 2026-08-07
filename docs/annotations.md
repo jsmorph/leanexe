@@ -381,6 +381,8 @@ Those three journals also show that Codex reconstructed the same outer proof aro
 
 The first version-two run completed Stage 5 in 253.644 seconds, including 215.383 seconds in Codex and 29.284 seconds in outer acceptance, and independent package verification succeeded.  Its 76-line proof preserved the 7,186-byte artifact and exact digest, reducing time by 22.3 percent from the 326.320-second composition median and by 9.0 percent from the 278.656-second historical pair-result result.  The journal records one avoidable failed build caused by removing the starter's three elaboration holes, so later runs must test a complete semantic starter before treating this single timing result as representative.
 
+The complete semantic starter now supplies those three simplification proofs and fixes all wrapper parameters by name.  Its focused Demo 3 copy builds through `ArtifactResult`, and its import set contains only the generated specification, decoded Program, checked annotation module, and `FixedArraySearchTree`.  The proof prompt instructs Codex to leave a starter unchanged when the initial check succeeds, record that result in the journal, and perform the required final check.
+
 ## Completion criteria
 
 The first complete increment emits a validated sidecar for every ordinary library-mode compilation requested by `leanexegen`.  Demos 1, 2, and 3 prove the same specifications over the same WASM bytes through an annotation-driven deterministic proof plan.  The retained evidence records proof-generation timings, annotation validation, region coverage, and independent Lean acceptance.

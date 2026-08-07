@@ -669,7 +669,9 @@ function proofPrompt(request, job, entryIndex) {
     `candidate starter.  It contains no Source module.  ${candidate} contains a deterministic ` +
     `theorem starter with the ` +
     `RuntimeReady decomposition and common array facts.  Run its Lean check immediately before ` +
-    `editing so that the first diagnostic exposes the exact starter goal.  Then edit the file and ` +
+    `editing so that the first diagnostic exposes the exact starter goal.  If that check succeeds, ` +
+    `leave the candidate unchanged, record the result in the journal, run the required final check, ` +
+    `and return.  Otherwise, edit the file and ` +
     `prove exactly ` +
     `${job.behaviorTheorem} : ${job.formalSpecDefinition} ${job.namespace}.«module».  ` +
     `You may import ${job.formalSpecModule}, ${job.programModule}, generated artifact-support ` +
@@ -1101,7 +1103,7 @@ function artifactProofStarter(job, entryIndex, annotated = false, proofRecipes =
     return `import ${job.formalSpecModule}
 import ${job.programModule}
 import ${annotationMatchesModule(job)}
-${proofImports}
+import Project.ProofKit.FixedArraySearchTree
 
 set_option maxRecDepth 1048576
 set_option maxHeartbeats 1000000
@@ -1151,6 +1153,12 @@ theorem ${theoremName} :
     (FixedArrayPairResult.publicPost (${job.expectedDefinition} input))
     initial _ env
   refine tree.wrapperProgram_spec
+    (inputLocal := ${wrapper.inputLocal})
+    (expectedSize := ${wrapper.expectedSize})
+    (offset := ${wrapper.offset})
+    (keyIndex := ${wrapper.keyIndex})
+    (keyLocal := ${wrapper.keyLocal})
+    (invalidDestination := ${wrapper.invalidDestination})
     (hParams := by rfl)
     (hLocals := by rfl)
     (hValues := by rfl)
@@ -1159,6 +1167,14 @@ theorem ${theoremName} :
     (hExpectedSizeBound := by norm_num [UInt64.size])
     hArray hContext (by decide) (by decide) (by omega) (by decide)
     (by decide) (by decide) (by decide) ?_ ?_ ?_
+  · intro hSize
+    simp [${job.expectedDefinition}, hSize]
+  · intro hSize
+    simp [tree, ${composition.descriptor},
+      FixedArraySearchTree.Tree.Valid, hSize]
+  · intro hSize
+    simp [${job.expectedDefinition}, tree, ${composition.descriptor},
+      FixedArraySearchTree.Tree.result, hSize, eq_comm]
 
 end ${job.behaviorModule}
 `;
