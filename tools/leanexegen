@@ -589,6 +589,9 @@ function programPrompt(request, job) {
 
 function proofPrompt(request, job, entryIndex) {
   const candidate = moduleFile(job.behaviorModule);
+  const importCheck = formatCommand([
+    "node", "PROOF_IMPORT_CHECK.js", candidate,
+  ]);
   const check = formatCommand([
     leanrun, "--timeout", "60m", "lake", "-d", ".", "--no-ansi", "build",
     job.artifactTarget,
@@ -799,14 +802,51 @@ function proofPrompt(request, job, entryIndex) {
     `the public theorem with \`refine ⟨${entryIndex}, rfl, ?_⟩\` and ` +
     `\`intro env initial inputPtr input hInput\`.  Use read-only commands to inspect FormalSpec, ` +
     `Program, and the artifact-support ` +
-    `modules for the exact definitions and locals.  After each edit, run this exact check ` +
-    `command:\n\n${check}\n\nDo not invoke Lean or Lake by another route, and do not run checks ` +
+    `modules for the exact definitions and locals.  After each edit, run these exact check ` +
+    `commands in order:\n\n${importCheck}\n${check}\n\nDo not invoke Lean or Lake by another ` +
+    `route, and do not run checks ` +
     `concurrently.  Inspect the diagnostics, revise ${candidate}, and continue until the command ` +
-    `succeeds.  After the final edit, run the command once more as your last action before ` +
+    `succeeds.  After the final edit, run both commands once more as your last actions before ` +
     `returning JSON, and do not edit the candidate after it succeeds.  Then return only the JSON ` +
     `object required by the output schema, set task to ` +
     `"artifact-proof" and outcome to "generated", and leave source empty because the orchestrator ` +
     `reads ${candidate}.`;
+}
+
+function proofImportCheckSource(job) {
+  return `"use strict";
+
+const fs = require("node:fs");
+const proofKitModules = new Set(${JSON.stringify(proofKitModules)});
+const generatedPrefix = ${JSON.stringify(`${job.namespace}.`)};
+const sourceModule = ${JSON.stringify(job.sourceModule)};
+const file = process.argv[2];
+
+if (process.argv.length !== 3) {
+  fs.writeSync(2, "usage: node PROOF_IMPORT_CHECK.js <Behavior.lean>\\n");
+  process.exit(2);
+}
+
+const source = fs.readFileSync(file, "utf8");
+const imports = [...source.matchAll(
+  /^import[ \\t]+([A-Za-z_][A-Za-z0-9_.]*)[ \\t]*(?:--.*)?$/gm,
+)].map((match) => match[1]);
+const unsupported = imports.filter((imported) => {
+  const dependency = imported === "CodeLib" || imported.startsWith("CodeLib.") ||
+    imported.startsWith("Init.") || imported.startsWith("Std.") ||
+    imported.startsWith("Mathlib.") || imported === "Interpreter" ||
+    imported.startsWith("Interpreter.");
+  const proofKit = proofKitModules.has(imported);
+  const generated = imported.startsWith(generatedPrefix) && imported !== sourceModule;
+  return !dependency && !proofKit && !generated;
+});
+if (unsupported.length !== 0) {
+  for (const imported of unsupported) {
+    fs.writeSync(2, \`unsupported proof dependency: \${imported}\\n\`);
+  }
+  process.exit(1);
+}
+`;
 }
 
 function formalTaskContext(request, job) {
@@ -1480,6 +1520,7 @@ function proofTaskContext(
     context.set("PROOF_RECIPES.json", `${JSON.stringify(bundle.proofRecipes, null, 2)}\n`);
   }
   context.set("PROOF_LIBRARY.md", fs.readFileSync(proofKitCatalogPath, "utf8"));
+  context.set("PROOF_IMPORT_CHECK.js", proofImportCheckSource(job));
   context.set("PROOF_JOURNAL.md", "# Proof Journal\n\n");
   context.set(moduleFile(job.behaviorModule),
     artifactProofStarter(

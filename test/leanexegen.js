@@ -4,6 +4,7 @@
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
+const { spawnSync } = require("node:child_process");
 const {
   artifactSources,
   createPackage,
@@ -314,6 +315,7 @@ function testCodexProtocol() {
   assert(artifactPrompt.includes("refine ⟨3, rfl, ?_⟩") &&
     artifactPrompt.includes("intro env initial inputPtr input hInput") &&
     artifactPrompt.includes("PROOF_LIBRARY.md catalogs checked proof abstractions") &&
+    artifactPrompt.includes("node PROOF_IMPORT_CHECK.js") &&
     artifactPrompt.includes("Project.ProofKit.Control") &&
     artifactPrompt.includes("Project.ProofKit.Allocation") &&
     artifactPrompt.includes("bumpFacts") &&
@@ -1703,10 +1705,31 @@ function testArtifactPackage(job, formalSource) {
     proofContext.get("PROOF_LIBRARY.md").includes("bumpFacts") &&
     proofContext.get("PROOF_STRATEGIES.md").includes("strategy.core") &&
     proofContext.get("PROOF_STRATEGIES.md").includes("strategy.arrays") &&
+    proofContext.get("PROOF_IMPORT_CHECK.js").includes("unsupported proof dependency") &&
+    !proofContext.get("PROOF_IMPORT_CHECK.js").includes('"Project.Common"') &&
     proofContext.get("PROOF_JOURNAL.md") === "# Proof Journal\n\n" &&
     JSON.parse(proofContext.get("PROOF_TASK_FEATURES.json")).exportIndex === 0 &&
     !proofContext.has(`LeanExeGen/${job.leanModule}/Source.lean`),
   "proof task context omitted proof guidance or Program, or exposed Source");
+  const importCheckRoot = path.join(temporaryRoot, "proof-import-check");
+  fs.mkdirSync(importCheckRoot);
+  const importCheckFile = path.join(importCheckRoot, "PROOF_IMPORT_CHECK.js");
+  const importCandidate = path.join(importCheckRoot, "Behavior.lean");
+  fs.writeFileSync(importCheckFile, proofContext.get("PROOF_IMPORT_CHECK.js"));
+  fs.writeFileSync(importCandidate, "import Project.ProofKit.Control\n");
+  const acceptedImports = spawnSync(process.execPath, [importCheckFile, importCandidate], {
+    encoding: "utf8",
+  });
+  assert(acceptedImports.status === 0,
+    "proof-task import check rejected an allowed proof-kit module");
+  fs.writeFileSync(importCandidate, "import Project.Common\n");
+  const rejectedImports = spawnSync(process.execPath, [importCheckFile, importCandidate], {
+    encoding: "utf8",
+  });
+  assert(rejectedImports.status === 1 &&
+    rejectedImports.stderr.includes("unsupported proof dependency: Project.Common"),
+  `proof-task import check accepted an unsupported Project module: ` +
+    `status ${rejectedImports.status}, stderr ${JSON.stringify(rejectedImports.stderr)}`);
   const legacyStarter = artifactProofStarter(job, 0, false, null, 1);
   assert(legacyStarter.includes("hInputBelow, hFit32, hFitMemory, hPages") &&
     !legacyStarter.includes("hHeapFit32"),
