@@ -723,7 +723,11 @@ function proofPrompt(request, job, entryIndex) {
     `the frozen Program.  When the scalar recipe names generated condition_eval and body_eval ` +
     `theorems, rewrite with those theorems before reducing Expr.eval or Stmt.eval.  They state the ` +
     `complete fixed-frame transition and summarize the compiler's intermediate scratch-local ` +
-    `updates.  After proving a ` +
+    `updates.  When the recipe names a generated entry_to_loop theorem, apply ` +
+    `TerminatesWith.of_wp_entry_for and rewrite the resulting body wp with that theorem before ` +
+    `stating the application invariant.  It fixes argument order, zero-initialized locals, the ` +
+    `checked initialization prefix, the compact U64State, and the exact post-loop suffix.  After ` +
+    `proving a ` +
     `callee used by a straight-line entry wrapper, use ` +
     `\`wp_entry_single_call ${job.namespace}.func${entryIndex}Def unfolding ` +
     `${job.namespace}.func${entryIndex} as initial' using <callee theorem>\`.  `;
