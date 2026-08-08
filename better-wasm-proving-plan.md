@@ -43,6 +43,36 @@ Each machine serializes Lean commands through its own runner and semaphore.  One
 
 The measurement stream owns `tools/leanexegen` and `tools/leanexegen-lib.js` while telemetry and package schemas change.  The artifact-workbench stream owns new `Project.ProofWorkbench` modules and generated structural files.  Runtime and source-assistance streams use new modules so they can proceed without overlapping orchestration edits.
 
+## Compiler theorems for WAT proof generation
+
+Compiler theorems can reduce WAT proof work without entering the retained artifact theorem.  The compiler proves that a supported IR fragment emits a canonical neutral descriptor, while the artifact package independently proves that the descriptor program equals an exact interval of the decoded Talos `Program`.  The artifact proof then applies semantics proved for the neutral descriptor, retaining its independence from Source, extraction, compiler IR, and emitter declarations.
+
+The [compiler-theorem analysis](docs/compiler-theorem-bridge.md) defines the first restricted theorem boundary and records the current compiler inventory.  Its scalar reification increment now covers Demo 1's guard and complete loop body, proves production emission agreement, emits versioned descriptor data, and generates an exact decoded-region equality.  The remaining experiments add semantic information only when a neutral artifact-side checker or theorem can verify the same information against the descriptor and exact WAT-derived program.
+
+| Experiment | Compiler theorem or analysis | Artifact-side result | Proof work removed | Acceptance test |
+|---|---|---|---|---|
+| Scalar emission | Successful IR reification emits the descriptor program | Exact region equality and `ScalarTransition.whileProgram_spec` | Instruction decoding, checked division expansion, branch shape, assignment order, and scratch handling | Completed on Demo 1; measure a matched timing series |
+| Effects and frames | Descriptor reads, writes, and scratch interval bound all local changes | Recomputed frame certificate and preservation lemmas | Local-frame reconstruction and unchanged-local proofs | Lower median Demo 1 time, with mutation rejection |
+| One-step semantics | IR evaluation agrees with descriptor evaluation for one loop step | Closed descriptor transition equations | Branch update algebra and local-numbering discovery | Lower median time on Demo 1 and a held-out scalar loop |
+| Annotation locations | Annotated composition preserves path and interval coordinates | Exact coverage and non-overlap certificate | Region navigation, decomposition, and continuation reconstruction | Every coordinate mutation fails before behavior proving |
+| Cut-point graph | Emitted fragments compose into loop-head, call, allocation, and return transitions | Checked graph over exact decoded regions | Control-flow discovery and repeated composition scripts | Proof obligations contain application predicates rather than instruction lists |
+| Range facts | Abstract interpretation proves intervals, nonzero divisors, and representation bounds | Neutral checker validates each fact over descriptor transfer | Repeated fixed-width normalization and range searches | Total proof time falls on two structurally different artifacts |
+| Source-proof projection | Proven source relations map to IR slots and cut points | Candidate invariant or source-free semantic capsule rechecked over the descriptor | Invariant discovery and mathematical lemma selection | Artifact closure excludes compiler declarations and combined generation time falls |
+
+The experiments proceed in table order because each row supplies evidence and theorem structure needed by the next.  A compiler-side proof alone does not qualify an experiment: exact decoded-region agreement, compiler-free artifact closure, emitter byte compatibility, and independent package verification remain required.  The timing gate compares complete Stage 5 duration under one Codex version, reasoning level, machine profile, cache policy, formal specification, and WASM artifact.
+
+The next fixed-artifact series measures the completed scalar-emission row before adding frame data.  The following iteration adds generic read, write, and scratch computations to the descriptor and exposes their artifact-side preservation theorems, then repeats the same series.  A held-out Euclidean algorithm loop tests the promoted combination before location composition or cut-point certificates expand the compiler theorem boundary.
+
+- [x] Reify Demo 1's scalar IR into a neutral descriptor and prove production emission agreement.
+- [x] Generate and Lean-check exact descriptor equality against Demo 1's decoded WAT region.
+- [x] Preserve Demo 1's frozen WASM bytes and pass execution, serializer, and aggregate Talos gates.
+- [ ] Record a matched Codex-version baseline and three scalar-descriptor trials.
+- [ ] Add descriptor effect sets and generic artifact-side frame theorems.
+- [ ] Generate closed one-step transition equations and test whether Codex uses them.
+- [ ] Freeze a held-out scalar-loop demo before exposing descriptor data.
+- [ ] Add checked annotation-location composition after the semantic rows pass their timing gates.
+- [ ] Pilot a checked cut-point graph on two artifacts with different control-flow structure.
+
 ## Phase 0: Preserve the case and measure the process
 
 The timing packages should be copied from `.lake` into a checked benchmark fixture before cache cleanup or another reboot can remove them.  The fixture is small enough to retain both timing-1 and timing-2, their exact WASM, and a benchmark manifest.  The manifest must record every identity that can invalidate a timing comparison.
