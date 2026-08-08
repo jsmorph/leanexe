@@ -1,6 +1,7 @@
 import Lean.Data.Json.Printer
 import LeanExe.IR.Core
 import LeanExe.Wasm.Instr
+import LeanExe.Wasm.ScalarDescriptor
 
 namespace LeanExe.Wasm.Annotations
 
@@ -102,6 +103,8 @@ structure LoopFoldParameters where
 structure WhileLoopParameters where
   condition : String
   body : String
+  descriptorVersion : Nat
+  descriptor : Option ScalarDescriptor.While
   scratchStart : Nat
   continuation : String
   deriving Repr, Lean.ToJson
@@ -247,6 +250,8 @@ structure RelativeWhileLoop where
   endIndex : Nat
   condition : String
   body : String
+  descriptorVersion : Nat
+  descriptor : Option ScalarDescriptor.While
   scratchStart : Nat
   continuation : String
   generatedBy : Array String
