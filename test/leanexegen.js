@@ -49,6 +49,7 @@ const {
   publish,
   runCodexOutcome,
   runTaskSession,
+  selectAnnotationRegions,
   stageHeading,
   verificationCheckSources,
   warnings,
@@ -149,9 +150,21 @@ function testArguments() {
   ]), /usage:/);
   const annotated = parseArgs(["annotate", "-o", "new.proof", "x.proof"]);
   assert(annotated.command === "annotate" &&
+    annotated.selectedRegions.length === 0 &&
     annotated.outputPath.endsWith("/new.proof") &&
     annotated.packagePath.endsWith("/x.proof"),
   "annotation arguments were parsed incorrectly");
+  const selectedAnnotation = parseArgs([
+    "annotate", "--only-region", "function-0.while-loop-0",
+    "--only-region", "function-1.direct-call-0", "-o", "new.proof", "x.proof",
+  ]);
+  assert(JSON.stringify(selectedAnnotation.selectedRegions) === JSON.stringify([
+    "function-0.while-loop-0", "function-1.direct-call-0",
+  ]), "selected annotation regions were parsed incorrectly");
+  expectFailure(() => parseArgs([
+    "annotate", "--only-region", "same", "--only-region", "same",
+    "-o", "new.proof", "x.proof",
+  ]), /usage:/);
   const run = parseArgs(["run", "x.wasm", "1", "2"]);
   assert(run.command === "run" && run.wasmPath.endsWith("/x.wasm") &&
     JSON.stringify(run.input) === JSON.stringify(["1", "2"]),
@@ -1163,6 +1176,14 @@ def func0Def : Wasm.Function :=
       }],
     }],
   };
+  const selectedWhile = selectAnnotationRegions(
+    whileDocument, ["function-0.while-loop-0"]);
+  assert(selectedWhile.functions[0].regions.length === 1 &&
+    selectedWhile.functions[0].regions[0].id === "function-0.while-loop-0" &&
+    selectedWhile !== whileDocument,
+  "annotation region selection did not preserve the requested region");
+  expectFailure(() => selectAnnotationRegions(whileDocument, ["missing"]),
+    /does not exist/);
   validateAnnotationDocument(whileDocument, wasm);
   const whilePlan = proofRecipePlan(whileDocument, whileProgram, [
     "strategy.loops", "strategy.frames", "strategy.arithmetic",

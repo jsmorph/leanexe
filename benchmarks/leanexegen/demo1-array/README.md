@@ -11,7 +11,7 @@ This directory preserves twelve complete proof packages measured on 2026-08-05 a
 | Fixed-array allocator | 3 | 1,134.008 s | 1,615.319 s |
 | Fixed-array singleton result | 3 | 489.993 s | 243.993 s |
 | Codex 0.147.0 scalar baseline | 1 | 2,017.931 s | 0.000 s |
-| Codex 0.147.0 scalar descriptor | 1 | 3,692.913 s | 0.000 s |
+| Codex 0.147.0 full annotations with scalar descriptor | 1 | 3,692.913 s | 0.000 s |
 
 The fixed-array allocator median is 830.122 seconds, or 42.3 percent, below the word-address median.  Its individual times are 2,556.812, 1,134.008, and 941.494 seconds.  Each accepted proof imports `Project.ProofKit.FixedArrayAllocator` and applies `region_spec` to the exact emitted allocator suffix.
 
@@ -19,7 +19,7 @@ The fixed-array singleton median is 489.993 seconds, which is 644.015 seconds, o
 
 The large earlier ranges come from Codex search rather than outer acceptance.  The singleton Codex intervals are 637.892, 394.336, and 447.849 seconds, while their outer-acceptance intervals are 32.874, 35.225, and 35.312 seconds.  The combined theorem reduced both the median and range, though three observations do not establish the complete timing distribution.
 
-The first matched scalar-descriptor run increased Stage 5 by 1,674.982 seconds, or 83.0 percent, from the 2,017.931-second baseline.  Codex time increased from 1,953.883 to 3,565.493 seconds, while outer acceptance increased from 57.008 to 112.292 seconds.  The descriptor proof used the exact decoded-region equality and `ScalarTransition.whileProgram_spec`, but its journal records additional work on descriptor-evaluator equalities, scratch-local states, and conversion between descriptor state and WASM locals.
+The first annotated run increased Stage 5 by 1,674.982 seconds, or 83.0 percent, from the 2,017.931-second unannotated baseline.  Codex time increased from 1,953.883 to 3,565.493 seconds, while outer acceptance increased from 57.008 to 112.292 seconds.  The package combined the scalar descriptor with length-dispatch and direct-call recipes, and its journal records substantial work on the wrapper recipe as well as descriptor evaluation, so this pair measures the complete annotation package rather than the scalar theorem alone.
 
 ## Measurement and controls
 
