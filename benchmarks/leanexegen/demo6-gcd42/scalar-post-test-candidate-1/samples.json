@@ -1,0 +1,33 @@
+[
+  {
+    "input": [
+      "84"
+    ],
+    "output": [
+      "42"
+    ],
+    "invocation": [
+      "/home/somebody/src/leanexe/tools/leanexegen",
+      "run",
+      "/tmp/leanexe-demo6-gcd42-annotated-20260808.proof/program.wasm",
+      "84"
+    ]
+  },
+  {
+    "input": [
+      "7",
+      "12"
+    ],
+    "output": [
+      "7",
+      "12"
+    ],
+    "invocation": [
+      "/home/somebody/src/leanexe/tools/leanexegen",
+      "run",
+      "/tmp/leanexe-demo6-gcd42-annotated-20260808.proof/program.wasm",
+      "7",
+      "12"
+    ]
+  }
+]

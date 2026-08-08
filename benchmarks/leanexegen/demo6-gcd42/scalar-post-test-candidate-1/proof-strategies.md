@@ -1,22 +1,7 @@
-# Strategies for Talos Artifact Proofs
+# Selected Talos Artifact-Proof Strategies
 
-These notes describe proof strategies that recur in the checked Talos artifact proofs.  They concern the `Program` produced from exact WASM bytes and the `Wasm.TerminatesWith` or weakest-precondition theorem proved about that program.  The [proof-engineering journal](plan-notes.md), the [proof-library plan](wasm-proofs.md), and the checked modules cited below supply the evidence for each recommendation.
+These optional notes describe proof organization observed in accepted artifact proofs.  Modules cited as examples may be imported only when the prompt and PROOF_LIBRARY.md allow them.  They grant no Lean imports and discharge no proof obligation.  PROOF_TASK_FEATURES.json records the frozen Program facts that selected each section.
 
-The document serves two readers.  A person can read it as a guide to the proof architecture, while `leanexegen` can select marked sections as optional context for its artifact-proof task.  The section text supplies strategies and examples, but the generated Lean proof and every imported Lean declaration remain subject to kernel checking.
-
-## Scope and evidence
-
-The strongest evidence comes from completed proofs with different control-flow and memory shapes.  [`Project.Validate`](../proofs/talos/lean/Project/Validate/Spec.lean) proves a byte-scanning loop with calls and a folded 24-slot local frame, [`Project.ClobFindBest`](../proofs/talos/lean/Project/ClobFindBest/Spec.lean) proves a search over a represented order array, and [`Project.ClobMatchFuel`](../proofs/talos/lean/Project/ClobMatchFuel/Correct.lean) proves a stateful matching loop with allocation, release, ownership, free-list, and counter obligations.  [`Project.ClobDepth`](../proofs/talos/lean/Project/ClobDepth/Spec.lean) adds stride-two array reconstruction, copy invariants, and reusable allocation adapters, while [`Project.LebU32`](../proofs/talos/lean/Project/LebU32/Spec.lean) records the cost of dividing a large encoder proof at loops and allocation phases.
-
-The two frozen `leanexegen` demos add acceptance evidence for the generated array ABI.  The [Demo 1 proof](../benchmarks/leanexegen/demo1-array/singleton-1/program.proof/proof/LeanExeGen/GeneratedRbade8cb1a4e3a423/Behavior.lean) proves a scalar computation and then applies `FixedArraySingleton.region_result_spec` to the complete allocator-and-result suffix.  The [Demo 2 proof](../demos/demo-2/proof.lean) proves a ten-node unrolled association-list search and a two-word result, while exposing repeated work around a ten-local shift of the allocator template, input preservation across output allocation, and branch-result continuation.
-
-Three categories must remain distinct.  A strategy note tells the proof agent how to organize a proof and contributes no Lean declaration.  Application mathematics, such as a theorem about prime-factor counts or order-book priority, belongs in the generated behavior module or a frozen formal module and enters the theorem through that checked source.  A shared lemma or tactic, such as `Project.ProofKit.Control.wp_entry` or `Project.Common.read64_write64_ne`, enters the Lean import closure and therefore requires the repository's import, identity, and axiom checks.
-
-The current `leanexegen` allowlist admits `Project.ProofKit.Memory`, `Project.ProofKit.Array`, `Project.ProofKit.Allocation`, `Project.ProofKit.FixedArrayAllocator`, `Project.ProofKit.FixedArrayAllocatorWindow`, `Project.ProofKit.FixedArrayEqNode`, `Project.ProofKit.FixedArrayFilterLt`, `Project.ProofKit.FixedArrayInput`, `Project.ProofKit.FixedArrayLengthDispatch`, `Project.ProofKit.FixedArrayMapAdd`, `Project.ProofKit.FixedArrayPairResult`, `Project.ProofKit.FixedArrayResult`, `Project.ProofKit.FixedArraySingleton`, `Project.ProofKit.FixedArrayTraversalInput`, and `Project.ProofKit.Control`, but excludes the other `Project` modules cited here.  Those citations document successful proof shapes and candidate shared results, rather than granting the generated proof permission to import them.  Codex must prove every remaining case-local fact from the generated modules or permitted Talos, Mathlib, or core declarations.
-
-## Selection from `Program`
-
-<!-- leanexegen-section:strategy.core begin -->
 <a id="strategy-core"></a>
 ### `strategy.core`: choose the proof architecture from the artifact
 
@@ -31,27 +16,7 @@ Prove leaf functions before callers, loop bodies before wrappers, and semantic s
 State a strong postcondition at every division.  The postcondition should name the returned values, store changes, preserved regions, and local values needed by the next region.  Include a represented input array when later code reads it, and include a represented result array when several control-flow branches share the same return continuation.
 
 The final public proof should contain little discovery.  It resolves the export, introduces the quantified host, store, pointer, input, and precondition, then composes the function theorems already proved.  The [CLOB matcher entry proof](../proofs/talos/lean/Project/ClobMatchFuel/Entry.lean) and [final correctness composition](../proofs/talos/lean/Project/ClobMatchFuel/Correct.lean) show this bottom-up order at a larger scale.
-<!-- leanexegen-section:strategy.core end -->
 
-The routing table gives each marked section a stable identifier.  A selector should match features over the export-reachable call graph, since unreachable helper functions should not enlarge the task context.  Selection may include extra advice when classification remains uncertain, but it must record the feature and rule that selected every section.
-
-| Program or theorem feature | Select | Reason |
-|---|---|---|
-| Every artifact proof | `strategy.core`, `strategy.diagnostics` | Establish the decomposition order and bounded iteration process. |
-| Direct or indirect `.call` | `strategy.calls` | Prove callees once and compose their termination theorems. |
-| `.loop`, back-edge `.br`, or a block-wrapped loop | `strategy.loops` | Supply invariant, measure, body, and exit design. |
-| At least 16 locals, repeated `localGet`/`localSet`, or a loop | `strategy.frames` | Keep generated local arrays folded and expose semantic fields. |
-| `addI64`, `subI64`, `mulI64`, division, remainder, or unsigned comparison | `strategy.arithmetic` | Stage wrap bounds and convert machine arithmetic to `Nat`. |
-| The fixed `Array UInt64` interface or indexed payload loads | `strategy.arrays` | Relate length-prefixed memory to logical arrays. |
-| Reachable allocator template, `memoryGrow`, allocator globals, or fixed-array header stores | `strategy.allocation` | Separate bump, fit, growth, free-list, and release cases. |
-| Any load or store | `strategy.memory` | Prove access bounds, address normalization, and read/write frames. |
-| A reachable function exceeds 200 instructions, uses at least 32 locals, contains nested loops, or a proof attempt stalls | `strategy.elaboration` | Reduce the theorem boundary before repeating an expensive check. |
-
-The selector should scan instruction constructors rather than WAT text.  It should compute a call graph from the frozen `Program`, attach instruction counts and local counts to each reachable function, and emit the facts used for routing.  Template recognition for allocation should remain conservative and versioned because raw function indices and generated local indices can change between artifacts.
-
-## Control flow
-
-<!-- leanexegen-section:strategy.calls begin -->
 <a id="strategy-calls"></a>
 ### `strategy.calls`: helper functions and call boundaries
 
@@ -62,9 +27,7 @@ At a call site, execute only to the call, apply the callee's `TerminatesWith` th
 A wrapper that performs straight-line setup, makes one call, and returns the call result has a stable shape.  The checked [`wp_entry_single_call`](../proofs/talos/lean/Project/ProofKit/Control.lean) tactic handles that shape when its structural reductions match, while the [proof-kit catalog](../proofs/talos/lean/Project/ProofKit/README.md) states its syntax and obligations.  If the tactic fails to match, use the explicit `wp_call_tw` sequence because a failed structural tactic says nothing about the callee theorem.
 
 Recursive or mutually dependent generated helpers require a different boundary.  Look for an emitted fuel parameter or another well-founded state, state the helper theorem by induction on that value, and expose a call theorem whose postcondition no longer mentions the recursive instruction body.  Avoid unfolding a proved helper in its callers, since that duplicates both semantic work and elaboration cost.
-<!-- leanexegen-section:strategy.calls end -->
 
-<!-- leanexegen-section:strategy.loops begin -->
 <a id="strategy-loops"></a>
 ### `strategy.loops`: invariants, measures, and exits
 
@@ -82,14 +45,8 @@ Use a postcondition-generic loop-body theorem when Talos exposes a large match c
 
 Operational trace relations can help when generated code runs the same deterministic loop more than once.  Define an inductive relation with one constructor per loop branch, prove that two runs from the same start have the same result, and connect each instruction branch to one constructor.  Use this additional relation when it replaces a duplicated semantic proof, since a single deterministic run needs only its invariant and transition lemmas.
 
-A checked `leanexe.loop.scalar-post-test.v1` recipe describes a body-first scalar loop produced by a multi-slot loop-fold expression.  Apply its generated `terminates_with_of_loop` theorem at the scalar call boundary, then apply `ScalarTransition.postTestProgram_spec` with the application invariant and measure.  Rewrite the generated `body_eval` equation before the `condition_eval` equation because the artifact updates and stages its accumulators before testing the exit guard.  Keep the exact decoded suffix folded until the exit case, then unfold the generated function only if the remaining local transfer cannot reduce through the compact state constructor.
-
 The checked proof kit can remove the entry and block boilerplate without choosing an invariant.  [`wp_entry_to_loop`](../proofs/talos/lean/Project/ProofKit/Control.lean) reaches the block-wrapped loop, and `wp_block_loop` applies the block and loop rules with caller-supplied invariant and measure.  These tactics help only when `Program` has the documented shape, and the generated proof retains every invariant, preservation, decrease, and exit obligation.
-<!-- leanexegen-section:strategy.loops end -->
 
-## State representation
-
-<!-- leanexegen-section:strategy.frames begin -->
 <a id="strategy-frames"></a>
 ### `strategy.frames`: locals and operand stacks
 
@@ -108,9 +65,7 @@ Separate operand-stack traffic from persistent local state.  Talos updates `Loca
 State exact frame equalities at region boundaries.  A theorem that takes an abstract `base : Locals` should require its parameter length, local length, empty value stack, and the few indexed values it reads.  The [empty free-list search adapter](../proofs/talos/lean/Project/ClobDepth/MissingSearch.lean) follows this pattern and works for both branches that share the same generated search sequence.
 
 Use `change`, `show`, or a small `suffices` statement to refold a frame after executing a region.  Broad simplification of a record and its full local list can destroy the abstraction just before the next theorem expects it.  The boundary equality should mention the exact record update or frame constructor that the following theorem accepts.
-<!-- leanexegen-section:strategy.frames end -->
 
-<!-- leanexegen-section:strategy.arrays begin -->
 <a id="strategy-arrays"></a>
 ### `strategy.arrays`: fixed arrays and the public ABI
 
@@ -157,11 +112,7 @@ Prefer `Project.ProofKit.FixedArrayPairResult` when the entire twenty-four-local
 When no complete region theorem matches, identify the output pointer after allocation, prove the length word, and prove each result element.  Use `uint64_array_singleton` or `uint64_array_pair` for fixed results, followed by `word_reads` when the final memory is a nested sequence of word writes.  For a variable-size result or a copy, use a prefix invariant and reconstruct the array representation at loop exit.
 
 Preserve the represented input across output construction at a region boundary.  If `RuntimeReady` places the complete input below `heapTop`, allocator header stores begin at `heapTop`, and output stores begin at `heapTop + 48`, one `UInt64Array.At.frameBefore` theorem should cover the allocator transformer.  Apply `write64After` or another region-frame theorem to subsequent output stores, then derive later input loads from the transported `At` fact instead of replaying six header-store equalities.
-<!-- leanexegen-section:strategy.arrays end -->
 
-## Arithmetic and memory
-
-<!-- leanexegen-section:strategy.arithmetic begin -->
 <a id="strategy-arithmetic"></a>
 ### `strategy.arithmetic`: stage machine arithmetic before execution
 
@@ -176,9 +127,7 @@ Name the exact equality that connects an emitted expression to a semantic quanti
 Stage address arithmetic in the same way.  Prove subtraction, addition, and modulo equalities in `Nat`, establish that an address lies below `2^32`, then rewrite the `UInt32` address used by the load or store.  The [validator read theorem](../proofs/talos/lean/Project/Validate/Read.lean) separates the logical byte equation, the bounds check, and the `UInt32` address equality before completing symbolic execution.
 
 Unsigned division and remainder need nonzero-divisor facts before instruction reduction.  Establish those facts from the semantic invariant, rewrite `UInt64.toNat_div` or `UInt64.toNat_mod`, and then use the corresponding `Nat` theorem.  Mixing the divisor proof, generated branch selection, and mathematical transition in one simplifier call makes failures hard to classify.
-<!-- leanexegen-section:strategy.arithmetic end -->
 
-<!-- leanexegen-section:strategy.memory begin -->
 <a id="strategy-memory"></a>
 ### `strategy.memory`: loads, stores, and frames
 
@@ -191,11 +140,7 @@ Prove separation at the level of regions rather than repeating pairwise address 
 Track page equality and byte equality separately.  Ordinary writes preserve `mem.pages`, while allocation or memory growth can change it under a distinct theorem.  A representation theorem should transport its access bounds through page equality and its contents through byte equality, rather than asserting whole-store equality after a write.
 
 Keep memory transformers named when a region performs several stores.  A definition such as `fixedArrayHeaderMem` or `copyWriteStore` gives later lemmas one stable normal form and prevents the store chain from expanding in unrelated goals.  Prove read-back and outside-region theorems once for that transformer, then use those results in instruction adapters.
-<!-- leanexegen-section:strategy.memory end -->
 
-## Allocation and ownership
-
-<!-- leanexegen-section:strategy.allocation begin -->
 <a id="strategy-allocation"></a>
 ### `strategy.allocation`: bump, fit, free-list, and release cases
 
@@ -216,11 +161,7 @@ Allocation branches should converge on one semantic result shape.  Both fit and 
 Release changes ownership, free-list links, and counters together.  The wrapper theorem [`func18_frees_fixed_array_zero_mask`](../proofs/talos/lean/Project/ClobMatchFuel/Allocation.lean) instantiates the shared runtime release theorem for an artifact function and states exact memory and global transformers.  Keep the refcount test, payload destruction policy, free-list insertion, and global counter changes explicit because later allocation may depend on each one.
 
 Budget arithmetic belongs in the loop invariant when every iteration allocates.  The matcher invariant bounds the heap top plus remaining fuel times a per-step byte budget, which discharges each later bump allocation without rebuilding a global estimate.  A fixed-size result needs a smaller premise: enough room for one header and its fixed payload, already provided by `RuntimeReady` in current `leanexegen` specifications.
-<!-- leanexegen-section:strategy.allocation end -->
 
-## Proof construction and diagnosis
-
-<!-- leanexegen-section:strategy.elaboration begin -->
 <a id="strategy-elaboration"></a>
 ### `strategy.elaboration`: control theorem size
 
@@ -235,9 +176,7 @@ Avoid large conjunction construction in a goal that still contains an expensive 
 Prefer `simp only` with named frame facts to broad `simp`, and use directed `rw` for representation changes.  A local `wp_run_*` macro should cover one short instruction region and list only the definitions needed for that region.  Demo 2's broad `wp_alloc_run24` appears throughout allocation, input dispatch, branch traversal, and result continuations, so a new proof should replace those uses with region-specific theorems before increasing simplifier limits.
 
 Control asynchronous elaboration for modules whose proofs retain large terms.  Several established heavy modules use `set_option Elab.async false in` around one theorem so resource behavior remains predictable under the repository's single-process Lean runner.  Apply this only after the theorem has a semantic boundary, since serialization does not reduce its term size.
-<!-- leanexegen-section:strategy.elaboration end -->
 
-<!-- leanexegen-section:strategy.diagnostics begin -->
 <a id="strategy-diagnostics"></a>
 ### `strategy.diagnostics`: iterate from the first semantic mismatch
 
@@ -254,42 +193,3 @@ Stop extending a public proof after the same instruction or continuation proof a
 An artifact change invalidates `rfl` decompositions and local-index assumptions.  Compare the frozen `Program`, function table, call graph, and instruction regions before editing semantic proofs.  Do not weaken an exact decomposition to accommodate two different artifacts, since each artifact theorem concerns one decoded byte sequence.
 
 Use temporary `#check` or `#print` commands only inside the prescribed proof workspace and remove diagnostic declarations from the final behavior module.  Confirm unfamiliar checked lemmas against their current signatures, especially implicit module, function index, store, and continuation parameters.  The outer `leanexegen` check remains authoritative after the proof agent reports success.
-<!-- leanexegen-section:strategy.diagnostics end -->
-
-## What belongs where
-
-Reusable strategy concerns the order and shape of proof work.  It includes call-graph order, continuation-generic region theorems, four-part loop invariants, folded frames, staged arithmetic, representation reconstruction, and failure classification.  These ideas may appear in task notes without changing the theorem's Lean dependencies.
-
-Application mathematics states why the algorithm computes the requested function.  Prime-factor list transitions, best-order properties, association-list lookup semantics, and matching-state transitions belong with the generated case unless two independent artifacts use the same theorem.  The proof agent must prove or import these facts in Lean, and prose advice cannot discharge them.
-
-Checked library material implements semantic facts or mechanical proof steps.  [`Project.ProofKit.Control`](../proofs/talos/lean/Project/ProofKit/Control.lean) contains small structural tactics, [`Project.Common`](../proofs/talos/lean/Project/Common.lean) contains arithmetic and memory lemmas, and the [runtime modules](../proofs/talos/lean/Project/Runtime/Spec.lean) contain allocator, retain, release, and ownership results.  Importing one of these modules changes the theorem dependency closure and requires an explicit allowlist plus transitive source identity.
-
-Promote a case-local theorem only when its statement depends on stable semantics rather than one generated local layout.  The existing policy asks for two independent consumers unless the theorem states a direct fact about pinned Talos semantics.  Tactics should normalize repeated syntax, while ownership, allocation meaning, application transitions, and invariant premises remain visible in theorem statements.
-
-## Supplying optional notes to `leanexegen`
-
-The marked sections support deterministic extraction.  Each block begins with `leanexegen-section:<id> begin` and ends with the matching marker, and the routing table defines its feature predicate.  Leanexegen rejects duplicate identifiers, unmatched markers, and a block whose heading identifier differs from its marker.
-
-The proof-task workspace receives two context files.  `PROOF_STRATEGIES.md` contains an import warning followed by the feature-selected sections in document order.  `PROOF_TASK_FEATURES.json` contains the export index, reachable call graph, per-function instruction and local counts, selected identifiers, and the rule that selected each identifier, while the prompt identifies the notes as optional guidance.
-
-The selector includes `strategy.arrays` for the fixed public ABI, `strategy.allocation` for a reachable memory-growth instruction or the current allocator-global and store signature, and `strategy.memory` for any load or store.  Call, loop, frame, arithmetic, and elaboration selection follows the routing table.  Classification reads only the frozen `Program`; it does not consult the prose request or generated Source.
-
-Selection distinguishes generation provenance from theorem dependencies.  Package schema 4 archives the extracted notes, feature manifest, source-document digest, and extractor version, allowing a later audit to reconstruct the proof agent's context.  Independent Lean verification does not import these files or require the checkout's prose to match, because the accepted `Behavior.lean` contains every proof term that reaches the theorem.
-
-`PROOF_LIBRARY.md` has a different role.  It catalogs checked declarations that Codex may import, and an imported proof-kit tactic contributes to elaboration of the checked proof and to the verifier-source identity.  Leanexegen presents the library catalog and strategy notes as separate files, and the retained `Behavior.lean` records which allowed modules the final proof imported.
-
-A controlled `reprove` experiment can measure whether the notes help.  Hold the formal specification, `Program`, WASM bytes, deterministic artifact modules, toolchain, and proof-kit availability fixed, then regenerate only `Behavior.lean` with and without selected strategy sections.  Compare acceptance, proof text, imported modules, stage-five duration, failed build count, and the semantic decomposition used, while treating one run as evidence for that artifact rather than a general performance result.
-
-## Limitations and failure modes
-
-Program-feature routing cannot infer the application invariant.  It can identify a loop with division and remainder, but it cannot decide that prime-factor list length is the right accumulator relation.  Codex still has to connect the frozen formal specification to the artifact's machine state through checked mathematics.
-
-Generated syntax changes can invalidate structural tactics, instruction slices, and local-frame lemmas while preserving broad algorithm behavior.  A proof strategy should fail at an exact `rfl`, call, or frame boundary in that case.  A permissive tactic that continues after the mismatch risks spending substantial time on the wrong control-flow shape.
-
-Memory and allocation advice depends on explicit preconditions.  An empty free-list and sufficient existing pages justify the bump-only path, while a weaker `RuntimeReady` would require fit, no-fit, and growth cases.  Reusing an allocator theorem without its separation, bounds, page, global, or ownership premises leaves a real semantic gap.
-
-Fixed-array advice currently covers flat `UInt64` payloads and the established LeanExe header model.  The checked allocator-window theorem covers a uniform shift of the canonical allocator operands, while the fixed-result store theorems cover result lengths one and two at arbitrary root and scratch local indices.  Nested arrays, variable-width elements, aliases, shared ownership, and host references require additional representation predicates and frame theorems.
-
-Large selected contexts can hinder proof generation.  The selector should prefer the smallest closed set of relevant sections, while selecting the elaboration section before the session when the static complexity rule matches.  Controlled reproofs that hold the artifact and all checked inputs fixed should evaluate selection quality.
-
-The notes can become stale as Talos, LeanExe, or the checked proof library changes.  Local links and cited declarations should receive a documentation test, and the extractor should bind each generated context to the source-document digest.  Lean's kernel, the import audit, the axiom audit, and exact-artifact validation remain the acceptance mechanisms even when every strategy recommendation is current.
