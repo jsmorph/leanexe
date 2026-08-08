@@ -704,6 +704,12 @@ function proofPrompt(request, job, entryIndex) {
     `UInt64Array.At proof for an arbitrary scalar value.  Match the exact combined suffix to ` +
     `FixedArrayAllocator.region 1 ++ FixedArraySingleton.resultSuffix, supply the scalar result in ` +
     `local 2, and use the theorem's array fact in the continuation.  Import ` +
+    `Project.ProofKit.FixedArraySingletonWrapper when the complete public function accepts a ` +
+    `singleton array, loads its first element, calls a store-preserving scalar function, and returns ` +
+    `a newly allocated singleton array.  Its wrapperProgram_spec theorem proves the length ` +
+    `dispatch, checked input load, scalar-call boundary, capacity calculation, allocation, result ` +
+    `stores, and public return.  Supply the scalar callee theorem and the two equations connecting ` +
+    `the formal array result to the scalar transform instead of expanding the wrapper.  Import ` +
     `Project.ProofKit.Control when a ` +
     `function executes directly to a block-wrapped loop, then use ` +
     `\`wp_entry_to_loop <functionDef> unfolding <functionBody> as initial'\`, then apply ` +
@@ -747,8 +753,11 @@ function proofPrompt(request, job, entryIndex) {
     `shape does not match or its residual goals are worse than the current proof boundary, record ` +
     `that result and do not restructure unrelated code solely to force the recipe.  Use its ` +
     `supporting declarations and guidance only for the remaining goals.  ` +
-    `Its compositions array lists any complete fixed-array search descriptor, its ` +
-    `Lean-checked region equality, and the selected composition theorem.  A version-two ` +
+    `Its compositions array lists complete fixed-array structures, their Lean-checked equalities, ` +
+    `and the selected composition theorems.  A fixed-array-singleton-wrapper composition covers ` +
+    `the complete public array boundary around a store-preserving scalar callee.  Prove the scalar ` +
+    `callee once, then apply the wrapper theorem instead of expanding the length dispatch, input ` +
+    `load, allocation, stores, and public return.  A version-two search ` +
     `composition also records a checked complete-wrapper shape, and its deterministic starter ` +
     `has already applied the descriptor's wrapperProgram_spec.  Solve the remaining semantic ` +
     `goals before ` +
@@ -1380,6 +1389,60 @@ end ${job.behaviorModule}
       ["fixed-array-search-chain-v1", "fixed-array-search-tree-v1"].includes(
         composition.kind) &&
       composition.functionIndex === entryIndex);
+  const singletonWrapperCompositions = (proofRecipes?.compositions ?? []).filter(
+    (composition) => composition.compositionVersion === 1 &&
+      composition.kind === "fixed-array-singleton-wrapper-v1" &&
+      composition.functionIndex === entryIndex);
+  if (annotated && singletonWrapperCompositions.length === 1) {
+    const composition = singletonWrapperCompositions[0];
+    return `import ${job.formalSpecModule}
+import ${job.programModule}
+import ${annotationMatchesModule(job)}
+import Project.ProofKit.FixedArraySingletonWrapper
+
+set_option maxRecDepth 1048576
+set_option maxHeartbeats 1000000
+
+namespace ${job.behaviorModule}
+
+open Wasm Project.ProofKit
+
+theorem ${theoremName} :
+    ${job.formalSpecDefinition} ${job.namespace}.«module» := by
+  refine ⟨${entryIndex}, rfl, ?_⟩
+  intro env initial inputPtr input hInput
+  rcases hInput with
+    ⟨hArray, heapTop, allocs, retains, releases, frees, hGlobals,
+      ${runtimeReadyFields}⟩
+  change UInt64Array.At initial inputPtr input at hArray
+  have hHeapTop : initial.globals.globals[0]? = some (.i64 heapTop) := by
+    simp [hGlobals]
+  have hFreeList : initial.globals.globals[1]? = some (.i64 0) := by
+    simp [hGlobals]
+  have hAllocs : initial.globals.globals[2]? = some (.i64 allocs) := by
+    simp [hGlobals]
+  have hAtIff (st : Store Unit) (ptr : UInt64) (values : Array UInt64) :
+      ${job.formalSpecModule}.UInt64ArrayAt st ptr values ↔
+        UInt64Array.At st ptr values := by
+    rfl
+  apply Wasm.TerminatesWith.of_wp_entry_for
+    (f := ${job.namespace}.func${entryIndex}Def) rfl
+  unfold ${job.namespace}.func${entryIndex}Def
+  simp only [Wasm.Function.numParams, List.length, List.drop,
+    Nat.zero_add, List.append_nil]
+  simp only [hAtIff]
+  apply Wasm.wp.conseq (Q :=
+    FixedArrayPairResult.publicPost (${job.expectedDefinition} input))
+  · intro continuation hPost
+    cases continuation <;> simp_all [FixedArrayPairResult.publicPost]
+  change wp ${job.namespace}.«module» ${job.namespace}.func${entryIndex}
+    (FixedArrayPairResult.publicPost (${job.expectedDefinition} input))
+    initial (FixedArraySingletonWrapper.entryFrame inputPtr) env
+  rw [${composition.regionEquality}]
+
+end ${job.behaviorModule}
+`;
+  }
   if (annotated && wrapperCompositions.length === 1) {
     const composition = wrapperCompositions[0];
     const wrapper = composition.wrapper;
@@ -1518,7 +1581,7 @@ function proofTaskContext(
     throw new StageError(5, "artifact proof", "annotation and recipe context must appear together");
   }
   if (bundle.compilerAnnotations !== undefined) {
-    const annotationMatches = annotationMatchesSource(bundle.compilerAnnotations, job);
+    const annotationMatches = annotationMatchesSource(bundle.compilerAnnotations, job, program);
     context.set(moduleFile(annotationMatches.module), annotationMatches.source);
     context.set("PROGRAM_ANNOTATIONS.json",
       `${JSON.stringify(bundle.compilerAnnotations, null, 2)}\n`);
@@ -2277,7 +2340,7 @@ function reprove(command) {
         annotationMatchesModule(checked.job),
       );
       const annotationMatches = annotationMatchesSource(
-        checked.compilerAnnotations, checked.job);
+        checked.compilerAnnotations, checked.job, programSource);
       sourceSets.proofContext.set(annotationMatches.module, annotationMatches.source);
       installSources(proofWorkspace,
         new Map([[annotationMatches.module, annotationMatches.source]]));
@@ -2500,7 +2563,8 @@ function annotatePackage(command) {
       strategies.features.selectedSections.map((section) => section.id),
       annotationMatchesModule(checked.job),
     );
-    const annotationMatches = annotationMatchesSource(compilerAnnotations, checked.job);
+    const annotationMatches = annotationMatchesSource(
+      compilerAnnotations, checked.job, program);
     packageSources.set(annotationMatches.module, annotationMatches.source);
     installSources(workspace, new Map([
       [checked.job.programModule, program],
@@ -2757,7 +2821,7 @@ function generate(command) {
     );
     const raw = dumpRawModule(wasm);
     const generated = artifactSources(job, wasmBytes, raw, talosProgram);
-    const annotationMatches = annotationMatchesSource(compilerAnnotations, job);
+    const annotationMatches = annotationMatchesSource(compilerAnnotations, job, talosProgram);
     generated.sources.set(annotationMatches.module, annotationMatches.source);
     requireKernelAudit(generated.sources, toolPins);
     installSources(proofWorkspace, new Map([

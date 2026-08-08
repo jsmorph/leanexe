@@ -1,0 +1,103 @@
+{
+  "artifact": {
+    "byteLength": 1938
+  },
+  "functions": [
+    {
+      "definedFunction": 0,
+      "exports": [],
+      "locals": 16,
+      "parameters": 4,
+      "regions": [],
+      "results": 1,
+      "sourceName": "LeanExeGen.GeneratedRbade8cb1a4e3a423.Source.countFactorsFuel",
+      "wasmIndex": 0
+    },
+    {
+      "definedFunction": 1,
+      "exports": [],
+      "locals": 6,
+      "parameters": 1,
+      "regions": [
+        {
+          "generatedBy": [
+            "LeanExe.Wasm.Binary.CoreWasm.emitStmt",
+            "LeanExe.Wasm.Binary.CoreWasm.emitFuncInstrs"
+          ],
+          "id": "function-1.direct-call-0",
+          "kind": "leanexe.call.direct.v1",
+          "location": {
+            "endIndex": 14,
+            "listPath": [
+              {
+                "field": "else",
+                "instructionIndex": 3
+              }
+            ],
+            "startIndex": 8
+          },
+          "parameters": {
+            "argumentLocals": [
+              1,
+              2,
+              3,
+              4
+            ],
+            "calleeIndex": 0,
+            "continuation": "fallthrough",
+            "resultLocals": [
+              5
+            ],
+            "resultPlacement": "locals"
+          }
+        }
+      ],
+      "results": 1,
+      "sourceName": "LeanExeGen.GeneratedRbade8cb1a4e3a423.Source.countFactors",
+      "wasmIndex": 1
+    },
+    {
+      "definedFunction": 2,
+      "exports": [
+        "compute"
+      ],
+      "locals": 14,
+      "parameters": 1,
+      "regions": [
+        {
+          "generatedBy": [
+            "LeanExe.Wasm.Binary.CoreWasm.annotateDirectCallsInList",
+            "LeanExe.Wasm.Binary.CoreWasm.emitFuncInstrs"
+          ],
+          "id": "function-2.direct-call-0",
+          "kind": "leanexe.call.direct.v1",
+          "location": {
+            "endIndex": 14,
+            "listPath": [
+              {
+                "field": "then",
+                "instructionIndex": 14
+              }
+            ],
+            "startIndex": 11
+          },
+          "parameters": {
+            "argumentLocals": [
+              1
+            ],
+            "calleeIndex": 1,
+            "continuation": "fallthrough",
+            "resultLocals": [
+              2
+            ],
+            "resultPlacement": "locals"
+          }
+        }
+      ],
+      "results": 1,
+      "sourceName": "LeanExeGen.GeneratedRbade8cb1a4e3a423.Source.compute",
+      "wasmIndex": 2
+    }
+  ],
+  "schemaVersion": 1
+}

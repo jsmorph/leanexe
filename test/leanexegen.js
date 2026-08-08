@@ -61,6 +61,7 @@ const {
 } = require("../tools/leanexegen-telemetry");
 const {
   annotationMatchesSource,
+  fixedArraySingletonWrapperCompositions,
   fixedArraySearchChainCompositions,
   fixedArraySearchTreeCompositions,
   proofRecipePlan,
@@ -353,6 +354,8 @@ function testCodexProtocol() {
     artifactPrompt.includes("pairStore_at") &&
     artifactPrompt.includes("Project.ProofKit.FixedArraySingleton") &&
     artifactPrompt.includes("region_result_spec") &&
+    artifactPrompt.includes("Project.ProofKit.FixedArraySingletonWrapper") &&
+    artifactPrompt.includes("wrapperProgram_spec") &&
     artifactPrompt.includes("Project.ProofKit.UInt64Array.At") &&
     artifactPrompt.includes("generatedElement") &&
     artifactPrompt.includes("firstElementRead_add") &&
@@ -414,6 +417,29 @@ function testCodexProtocol() {
     !wrapperStarter.includes("import Project.ProofKit.FixedArrayLtNode") &&
     !wrapperStarter.includes("have hLengthRead"),
   "complete search-tree composition did not select the semantic-goal starter");
+  const singletonStarter = artifactProofStarter(job, 3, true, {
+    schemaVersion: 1,
+    attemptOrder: ["direct", "composition", "tactic", "focused-guidance"],
+    compositions: [{
+      compositionVersion: 1,
+      kind: "fixed-array-singleton-wrapper-v1",
+      functionIndex: 3,
+      descriptor: `${job.namespace}.AnnotationMatches.function_3_singleton_wrapper_0`,
+      regionEquality:
+        `${job.namespace}.AnnotationMatches.function_3_singleton_wrapper_0_eq`,
+      direct: {
+        module: "Project.ProofKit.FixedArraySingletonWrapper",
+        theorem: "Project.ProofKit.FixedArraySingletonWrapper.wrapperProgram_spec",
+      },
+    }],
+    recipes: [],
+  });
+  assert(singletonStarter.includes("import Project.ProofKit.FixedArraySingletonWrapper") &&
+    singletonStarter.includes("FixedArraySingletonWrapper.entryFrame inputPtr") &&
+    singletonStarter.includes("function_3_singleton_wrapper_0_eq") &&
+    singletonStarter.includes("FixedArrayPairResult.publicPost") &&
+    !singletonStarter.includes("have hLengthRead"),
+  "complete singleton-wrapper composition did not select the wrapper-boundary starter");
   expectFailure(() => validateProgramImports(
     job, `import ${job.formalSpecModule}\n\ndef compute (a : Array UInt64) := a\n`),
   /must not import/);
@@ -482,6 +508,10 @@ function testCodexProtocol() {
   validateProofImports(job, [{
     module: job.behaviorModule,
     source: "import Project.ProofKit.FixedArraySingleton\n",
+  }]);
+  validateProofImports(job, [{
+    module: job.behaviorModule,
+    source: "import Project.ProofKit.FixedArraySingletonWrapper\n",
   }]);
   expectFailure(() => validateProofImports(job, [{
     module: job.behaviorModule,
@@ -1684,6 +1714,43 @@ def func0Def : Wasm.Function :=
   /pair-result boundary does not match/);
 }
 
+function testSingletonWrapperComposition() {
+  const packageRoot = path.join(
+    repoRoot, "benchmarks", "leanexegen", "demo1-array", "scalar-calls-control-1",
+    "program.proof");
+  const document = JSON.parse(fs.readFileSync(
+    path.join(packageRoot, "program.annotations.json"), "utf8"));
+  const program = fs.readFileSync(path.join(
+    packageRoot, "proof", "LeanExeGen", "GeneratedRbade8cb1a4e3a423", "Program.lean"),
+  "utf8");
+  const compositions = fixedArraySingletonWrapperCompositions(document, program);
+  assert(compositions.length === 1 &&
+    compositions[0].functionIndex === 2 && compositions[0].calleeIndex === 1,
+  "singleton wrapper composition did not match the frozen Demo 1 entry function");
+  const namespace = "LeanExeGen.GeneratedRbade8cb1a4e3a423.AnnotationMatches";
+  const plan = proofRecipePlan(document, program, [], namespace);
+  validateProofRecipePlan(plan, document);
+  assert(plan.compositions.length === 1 &&
+    plan.compositions[0].kind === "fixed-array-singleton-wrapper-v1" &&
+    plan.compositions[0].direct.theorem ===
+      "Project.ProofKit.FixedArraySingletonWrapper.wrapperProgram_spec",
+  "singleton wrapper composition did not select the complete theorem");
+  const source = annotationMatchesSource(document, {
+    namespace: "LeanExeGen.GeneratedRbade8cb1a4e3a423",
+    programModule: "LeanExeGen.GeneratedRbade8cb1a4e3a423.Program",
+  }, program).source;
+  assert(source.includes("import Project.ProofKit.FixedArraySingletonWrapper") &&
+    source.includes("function_2_singleton_wrapper_0_eq") &&
+    source.includes("FixedArraySingletonWrapper.wrapperProgram\n    1"),
+  "annotation matches omitted the singleton wrapper equality");
+  const changed = program.replace(
+    "    .localGet 3,\n    .localSet 4\n  ] [",
+    "    .localGet 3,\n    .localSet 3\n  ] [");
+  assert(changed !== program &&
+    fixedArraySingletonWrapperCompositions(document, changed).length === 0,
+  "singleton wrapper composition accepted a changed result-local assignment");
+}
+
 function testArtifactPackage(job, formalSource) {
   const raw = "{ functionTypeIndices := [0] }";
   const emitted = `namespace Project.${job.leanModule}\n\n` +
@@ -2019,6 +2086,7 @@ try {
   testLoopAnnotationRecipes();
   testLessThanNodeAnnotationRecipes();
   testSearchTreeComposition();
+  testSingletonWrapperComposition();
   testPairResultAnnotationRecipes();
   const { job, formalSource } = testCodexProtocol();
   testMockedCodex(job);

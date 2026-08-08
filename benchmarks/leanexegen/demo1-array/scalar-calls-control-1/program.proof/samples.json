@@ -1,0 +1,47 @@
+[
+  {
+    "input": [
+      "12"
+    ],
+    "output": [
+      "3"
+    ],
+    "invocation": [
+      "/home/somebody/src/leanexe/tools/leanexegen",
+      "run",
+      "/tmp/leanexe-codex147-demo1-calls-only-input.proof/program.wasm",
+      "12"
+    ]
+  },
+  {
+    "input": [
+      "0"
+    ],
+    "output": [
+      "0"
+    ],
+    "invocation": [
+      "/home/somebody/src/leanexe/tools/leanexegen",
+      "run",
+      "/tmp/leanexe-codex147-demo1-calls-only-input.proof/program.wasm",
+      "0"
+    ]
+  },
+  {
+    "input": [
+      "8",
+      "9"
+    ],
+    "output": [
+      "8",
+      "9"
+    ],
+    "invocation": [
+      "/home/somebody/src/leanexe/tools/leanexegen",
+      "run",
+      "/tmp/leanexe-codex147-demo1-calls-only-input.proof/program.wasm",
+      "8",
+      "9"
+    ]
+  }
+]

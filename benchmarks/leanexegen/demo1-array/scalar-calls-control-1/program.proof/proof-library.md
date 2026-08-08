@@ -21,7 +21,6 @@ Every `leanexegen` artifact-proof task receives this catalog and may import the 
 | `Project.ProofKit.FixedArrayResult` | Continuation-generic length and payload stores plus singleton and pair representation theorems. |
 | `Project.ProofKit.FixedArraySearch` | Nested search-branch composition for standard pair results. |
 | `Project.ProofKit.FixedArraySingleton` | Complete allocation and singleton `Array UInt64` result semantics for the emitted one-parameter array-wrapper layout. |
-| `Project.ProofKit.FixedArraySingletonWrapper` | Complete singleton-array public wrapper semantics parameterized by a store-preserving scalar callee. |
 | `Project.ProofKit.FixedArrayTraversalInput` | The checked indexed loader that leaves a traversal value on the operand stack. |
 | `Project.ProofKit.Control` | Function entry, block-wrapped loop entry, and one-call wrapper tactics. |
 
@@ -405,27 +404,6 @@ apply Project.ProofKit.FixedArraySingleton.region_result_spec
 · exact hAllocs
 · intro hResultArray
   exact hNext hResultArray
-```
-
-## Complete singleton-array wrapper
-
-Import `Project.ProofKit.FixedArraySingletonWrapper` when the complete public function has the cataloged singleton-array shape.  `wrapperProgram callee` checks for length one, returns the input unchanged on an invalid length, loads the first element, calls `callee`, allocates a singleton result, stores the scalar result, and returns the new root.  `wrapperProgram_spec` proves this complete instruction list while treating the scalar transformation as a parameter.
-
-The scalar callee theorem states that every call preserves the store and returns `transform value`.  Two equations relate the formal array function to invalid inputs and singleton inputs.  The remaining premises provide the input representation and the allocator state and bounds required by the generated wrapper.
-
-```lean
-import Project.ProofKit.FixedArraySingletonWrapper
-
-change wp module_
-  (Project.ProofKit.FixedArraySingletonWrapper.wrapperProgram callee)
-  (Project.ProofKit.FixedArrayPairResult.publicPost (expected input))
-  initial
-  (Project.ProofKit.FixedArraySingletonWrapper.entryFrame inputPtr)
-  env
-apply Project.ProofKit.FixedArraySingletonWrapper.wrapperProgram_spec
-  callee transform expected module_ env initial inputPtr input heapTop allocs
-  hInput hFitMemory hPages hMemory32 hHeapTop hFreeList hAllocs
-  hCallee hInvalid hValid
 ```
 
 ## Function entry and loops
