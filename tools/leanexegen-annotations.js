@@ -1129,6 +1129,14 @@ function loopRecipe(
       },
       supporting: [
         {
+          declaration: `${annotationNamespace}.${name}_condition_eval`,
+          purpose: "use the checked condition transition without reducing the scalar evaluator",
+        },
+        {
+          declaration: `${annotationNamespace}.${name}_body_eval`,
+          purpose: "use the checked body transition without exposing scratch-local updates",
+        },
+        {
           declaration: "Project.ProofKit.ScalarTransition.Expr.program_spec",
           purpose: "prove each typed scalar guard expression",
         },
@@ -2243,6 +2251,359 @@ function scalarStmtLean(statement) {
     `(${scalarStmtLean(statement.then)}) (${scalarStmtLean(statement.else)})`;
 }
 
+function scalarTransitionLeaf(value) {
+  return { kind: "leaf", value };
+}
+
+function scalarTransitionIte(condition, thenTree, elseTree) {
+  return { kind: "ite", condition, thenTree, elseTree };
+}
+
+function scalarValue(type, value, known = null) {
+  return { type, value, known };
+}
+
+function scalarValueIte(condition, thenTree, elseTree) {
+  if (condition.known === true) return thenTree;
+  if (condition.known === false) return elseTree;
+  return scalarTransitionIte(condition.value, thenTree, elseTree);
+}
+
+function scalarTransitionBind(tree, next) {
+  if (tree.kind === "leaf") return next(tree.value);
+  return scalarTransitionIte(
+    tree.condition,
+    scalarTransitionBind(tree.thenTree, next),
+    scalarTransitionBind(tree.elseTree, next),
+  );
+}
+
+function scalarStateSet(state, index, value) {
+  if (!Number.isInteger(index) || index < 0 || index >= state.length) {
+    fail(`scalar transition writes unavailable combined local ${index}`);
+  }
+  const next = [...state];
+  next[index] = value;
+  return next;
+}
+
+function scalarOperationTerm(operation, left, right) {
+  const constructor = ({
+    "add": ".add",
+    "sub": ".sub",
+    "mul": ".mul",
+    "div-u": ".divU",
+    "rem-u": ".remU",
+    "bit-and": ".bitAnd",
+    "bit-or": ".bitOr",
+    "bit-xor": ".bitXor",
+    "shift-left": ".shiftLeft",
+    "shift-right": ".shiftRight",
+  })[operation];
+  return `Project.ProofKit.ScalarTransition.U64Op.apply ${constructor} ` +
+    `(${left}) (${right})`;
+}
+
+function scalarExpressionTransition(expression, scratch, state) {
+  if (expression.kind === "get") {
+    if (expression.index >= state.length) {
+      fail(`scalar transition reads unavailable combined local ${expression.index}`);
+    }
+    return scalarTransitionLeaf({
+      value: scalarValue("u64", state[expression.index]), state,
+    });
+  }
+  if (expression.kind === "const") {
+    return scalarTransitionLeaf({
+      value: scalarValue("u64", `(${expression.value} : UInt64)`, BigInt(expression.value)),
+      state,
+    });
+  }
+  if (expression.kind === "bin") {
+    const staged = ["div-u", "rem-u"].includes(expression.operation);
+    const childScratch = staged ? scratch + 2 : scratch;
+    return scalarTransitionBind(
+      scalarExpressionTransition(expression.left, childScratch, state),
+      (left) => {
+        const afterLeft = staged
+          ? scalarStateSet(left.state, scratch, left.value.value)
+          : left.state;
+        return scalarTransitionBind(
+          scalarExpressionTransition(expression.right, childScratch, afterLeft),
+          (right) => scalarTransitionLeaf({
+            value: scalarValue("u64", scalarOperationTerm(
+              expression.operation, left.value.value, right.value.value)),
+            state: staged
+              ? scalarStateSet(right.state, scratch + 1, right.value.value)
+              : right.state,
+          }),
+        );
+      },
+    );
+  }
+  if (["eq", "lt-u", "le-u"].includes(expression.kind)) {
+    return scalarTransitionBind(
+      scalarExpressionTransition(expression.left, scratch, state),
+      (left) => scalarTransitionBind(
+        scalarExpressionTransition(expression.right, scratch, left.state),
+        (right) => {
+          let known = null;
+          if (typeof left.value.known === "bigint" &&
+              typeof right.value.known === "bigint") {
+            known = expression.kind === "eq"
+              ? left.value.known === right.value.known
+              : expression.kind === "lt-u"
+                ? left.value.known < right.value.known
+                : left.value.known <= right.value.known;
+          }
+          return scalarTransitionLeaf({
+            value: scalarValue("bool", expression.kind === "eq"
+              ? `((${left.value.value}) == (${right.value.value}))`
+              : expression.kind === "lt-u"
+                ? `(decide ((${left.value.value}) < (${right.value.value})))`
+                : `(decide ((${left.value.value}) ≤ (${right.value.value})))`, known),
+            state: right.state,
+          });
+        },
+      ),
+    );
+  }
+  if (expression.kind === "true" || expression.kind === "false") {
+    const known = expression.kind === "true";
+    return scalarTransitionLeaf({
+      value: scalarValue("bool", expression.kind, known), state,
+    });
+  }
+  if (expression.kind === "not") {
+    return scalarTransitionBind(
+      scalarExpressionTransition(expression.condition, scratch, state),
+      (result) => scalarTransitionLeaf({
+        value: scalarValue("bool", `(!(${result.value.value}))`,
+          typeof result.value.known === "boolean" ? !result.value.known : null),
+        state: result.state,
+      }),
+    );
+  }
+  if (expression.kind === "and" || expression.kind === "or") {
+    return scalarTransitionBind(
+      scalarExpressionTransition(expression.left, scratch, state),
+      (left) => {
+        if (expression.kind === "and" && left.value.known === false) {
+          return scalarTransitionLeaf({
+            value: scalarValue("bool", "false", false), state: left.state,
+          });
+        }
+        if (expression.kind === "or" && left.value.known === true) {
+          return scalarTransitionLeaf({
+            value: scalarValue("bool", "true", true), state: left.state,
+          });
+        }
+        const right = scalarExpressionTransition(expression.right, scratch, left.state);
+        return expression.kind === "and"
+          ? scalarValueIte(
+            left.value, right,
+            scalarTransitionLeaf({
+              value: scalarValue("bool", "false", false), state: left.state,
+            }),
+          )
+          : scalarValueIte(
+            left.value,
+            scalarTransitionLeaf({
+              value: scalarValue("bool", "true", true), state: left.state,
+            }), right,
+          );
+      },
+    );
+  }
+  if (expression.kind === "ite") {
+    return scalarTransitionBind(
+      scalarExpressionTransition(expression.condition, scratch, state),
+      (condition) => scalarValueIte(
+        condition.value,
+        scalarExpressionTransition(expression.then, scratch, condition.state),
+        scalarExpressionTransition(expression.else, scratch, condition.state),
+      ),
+    );
+  }
+  fail(`unsupported scalar transition expression ${expression.kind}`);
+}
+
+function scalarStatementTransition(statement, scratch, state) {
+  if (statement.kind === "skip") return scalarTransitionLeaf(state);
+  if (statement.kind === "assign") {
+    return scalarTransitionBind(
+      scalarExpressionTransition(statement.value, scratch, state),
+      (result) => scalarTransitionLeaf(
+        scalarStateSet(result.state, statement.index, result.value.value)),
+    );
+  }
+  if (statement.kind === "seq") {
+    return scalarTransitionBind(
+      scalarStatementTransition(statement.first, scratch, state),
+      (afterFirst) => scalarStatementTransition(statement.second, scratch, afterFirst),
+    );
+  }
+  if (statement.kind === "ite") {
+    return scalarTransitionBind(
+      scalarExpressionTransition(statement.condition, scratch, state),
+      (condition) => scalarValueIte(
+        condition.value,
+        scalarStatementTransition(statement.then, scratch, condition.state),
+        scalarStatementTransition(statement.else, scratch, condition.state),
+      ),
+    );
+  }
+  fail(`unsupported scalar transition statement ${statement.kind}`);
+}
+
+function scalarStateTerm(stateName, state) {
+  return `${stateName} ${state.map((value) => `(${value})`).join(" ")}`;
+}
+
+function scalarTransitionTerm(tree, leaf) {
+  if (tree.kind === "leaf") return leaf(tree.value);
+  return `(if ${tree.condition} then\n      ${scalarTransitionTerm(tree.thenTree, leaf)} ` +
+    `else\n      ${scalarTransitionTerm(tree.elseTree, leaf)})`;
+}
+
+function scalarTransitionProof(tree, simpDeclarations, depth = 0, hypotheses = []) {
+  if (tree.kind === "leaf") {
+    return `simp (config := { maxSteps := 1000000 }) only [` +
+      `${[...simpDeclarations, ...hypotheses].join(", ")}]`;
+  }
+  const hypothesis = `h${depth}`;
+  const branchHypotheses = [...hypotheses, hypothesis];
+  const thenProof = scalarTransitionProof(
+    tree.thenTree, simpDeclarations, depth + 1, branchHypotheses)
+    .replaceAll("\n", "\n  ");
+  const elseProof = scalarTransitionProof(
+    tree.elseTree, simpDeclarations, depth + 1, branchHypotheses)
+    .replaceAll("\n", "\n  ");
+  return `by_cases ${hypothesis} : (${tree.condition}) = true\n` +
+    `· ${thenProof}\n` +
+    `· ${elseProof}`;
+}
+
+function scalarTransitionSimpDeclarations(base, transition, syntax, statement = false) {
+  const encoded = JSON.stringify(syntax);
+  const declarations = [
+    `${base}_${statement ? "body" : "condition"}`,
+    `${base}_state`,
+    transition,
+    ...(statement ? ["Project.ProofKit.ScalarTransition.Stmt.evalU64"] : []),
+    "Project.ProofKit.ScalarTransition.Expr.evalU64",
+  ];
+  declarations.push("Project.ProofKit.ScalarTransition.U64State.get");
+  if (encoded.includes('"operation":"div-u"') ||
+      encoded.includes('"operation":"rem-u"') || statement) {
+    declarations.push("Project.ProofKit.ScalarTransition.U64State.set?");
+  }
+  declarations.push(
+    "Option.bind",
+    "Option.pure_def",
+    "Option.bind_eq_bind",
+    "Option.bind_some",
+    "Option.bind_none",
+    "Option.map",
+    "List.length",
+    "List.getElem?_cons_zero",
+    "List.getElem?_cons_succ",
+    "List.set",
+    "Nat.reduceAdd",
+    "Nat.reduceLT",
+    "Nat.reduceSub",
+    "reduceCtorEq",
+    "or_true",
+    "true_or",
+    "or_false",
+    "false_or",
+    "Bool.false_eq_true",
+    "Bool.not_eq_true'",
+    "Bool.not_true",
+    "Bool.not_false",
+    "beq_self_eq_true",
+    "Project.ProofKit.ScalarTransition.u64_one_beq_zero",
+    "Project.ProofKit.ScalarTransition.u64_zero_beq_one",
+    "decide_true",
+    "decide_false",
+    "if_true",
+    "if_false",
+  );
+  return declarations;
+}
+
+function scalarTransitionDeclarations(function_, region) {
+  const descriptor = region.parameters.descriptor;
+  if (descriptor === null) return null;
+  const count = function_.parameters + function_.locals;
+  const variables = Array.from({ length: count }, (_, index) => `v${index}`);
+  const stateName = `${region.id.replace(/[^A-Za-z0-9_]/g, "_")}_state`;
+  const conditionName = `${region.id.replace(/[^A-Za-z0-9_]/g, "_")}_conditionTransition`;
+  const bodyName = `${region.id.replace(/[^A-Za-z0-9_]/g, "_")}_bodyTransition`;
+  const initial = [...variables];
+  const condition = scalarExpressionTransition(
+    descriptor.condition, region.parameters.scratchStart, initial);
+  const body = scalarStatementTransition(
+    descriptor.body, region.parameters.scratchStart, initial);
+  const stateTerm = (state) => scalarStateTerm(stateName, state);
+  const conditionTerm = scalarTransitionTerm(condition, (result) =>
+    `some (${result.value.value}, ${stateTerm(result.state)})`);
+  const bodyTerm = scalarTransitionTerm(body, (state) => `some (${stateTerm(state)})`);
+  const binders = `(${variables.join(" ")} : UInt64)`;
+  const stateArguments = variables.join(" ");
+  const parameters = variables.slice(0, function_.parameters).join(", ");
+  const locals = variables.slice(function_.parameters).join(", ");
+  const base = region.id.replace(/[^A-Za-z0-9_]/g, "_");
+  const conditionProof = scalarTransitionProof(condition,
+    scalarTransitionSimpDeclarations(
+      base, conditionName, descriptor.condition));
+  const bodyProof = scalarTransitionProof(body,
+    scalarTransitionSimpDeclarations(base, bodyName, descriptor.body, true));
+  return {
+    conditionTheorem: `${base}_condition_eval`,
+    bodyTheorem: `${base}_body_eval`,
+    source: `def ${stateName} ${binders} :
+    Project.ProofKit.ScalarTransition.U64State :=
+  { params := [${parameters}], locals := [${locals}] }
+
+def ${conditionName} ${binders} :
+    Option (Bool × Project.ProofKit.ScalarTransition.U64State) :=
+  ${conditionTerm}
+
+def ${bodyName} ${binders} :
+    Option Project.ProofKit.ScalarTransition.U64State :=
+  ${bodyTerm}
+
+set_option linter.unusedSimpArgs false in
+theorem ${base}_condition_evalU64 ${binders} :
+    ${base}_condition.evalU64 ${region.parameters.scratchStart}
+      (${stateName} ${stateArguments}) = ${conditionName} ${stateArguments} := by
+  ${conditionProof.replaceAll("\n", "\n  ")}
+
+set_option linter.unusedSimpArgs false in
+theorem ${base}_body_evalU64 ${binders} :
+    ${base}_body.evalU64 ${region.parameters.scratchStart}
+      (${stateName} ${stateArguments}) = ${bodyName} ${stateArguments} := by
+  ${bodyProof.replaceAll("\n", "\n  ")}
+
+theorem ${base}_condition_eval ${binders} :
+    ${base}_condition.eval ${region.parameters.scratchStart}
+      (${stateName} ${stateArguments}).toState =
+        (${conditionName} ${stateArguments}).map fun result =>
+          (result.1, result.2.toState) := by
+  rw [Project.ProofKit.ScalarTransition.Expr.eval_toState,
+    ${base}_condition_evalU64]
+
+theorem ${base}_body_eval ${binders} :
+    ${base}_body.eval ${region.parameters.scratchStart}
+      (${stateName} ${stateArguments}).toState =
+        (${bodyName} ${stateArguments}).map
+          Project.ProofKit.ScalarTransition.U64State.toState := by
+  rw [Project.ProofKit.ScalarTransition.Stmt.eval_toState,
+    ${base}_body_evalU64]`,
+  };
+}
+
 function annotationMatchesSource(document, job, program = null) {
   const declarations = [];
   for (const function_ of document.functions) {
@@ -2266,6 +2627,8 @@ theorem ${name}_eq :
       ${leanAnnotationPath(region.location.listPath)} ${region.location.startIndex}
       ${region.location.endIndex} = some ${name}_program := by
   rfl`);
+        const transitions = scalarTransitionDeclarations(function_, region);
+        declarations.push(transitions.source);
         continue;
       }
       if (region.kind === "leanexe.array.map-add.v1") {
@@ -2347,7 +2710,8 @@ import Project.ProofKit.Annotation
 import Project.ProofKit.FixedArrayPairResult
 ${document.functions.some((function_) => function_.regions.some((region) =>
     region.kind === "leanexe.loop.while.v1" && region.parameters.descriptor !== null))
-    ? "import Project.ProofKit.ScalarTransition\n" : ""}
+    ? "import Project.ProofKit.ScalarTransition\n" +
+      "import Project.ProofKit.ScalarTransitionU64\n" : ""}
 ${document.functions.some((function_) => function_.regions.some((region) =>
     region.kind === "leanexe.array.map-add.v1"))
     ? "import Project.ProofKit.FixedArrayMapAdd\n" : ""}
@@ -2359,6 +2723,7 @@ ${treeCompositions.length > 0 ? "import Project.ProofKit.FixedArraySearchTree\n"
 ${singletonCompositions.length > 0
     ? "import Project.ProofKit.FixedArraySingletonWrapper\n" : ""}
 set_option maxRecDepth 1048576
+set_option maxHeartbeats 8000000
 
 namespace ${job.namespace}.AnnotationMatches
 

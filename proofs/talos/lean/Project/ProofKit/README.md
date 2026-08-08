@@ -7,6 +7,7 @@ Every `leanexegen` artifact-proof task receives this catalog and may import the 
 | `Project.ProofKit.Annotation` | Structured instruction-path resolution and exact half-open regions over a decoded Talos program. |
 | `Project.ProofKit.Memory` | Word-read congruence, disjoint read-over-write facts, and the `word_reads` tactic for nested `write64` expressions. |
 | `Project.ProofKit.ScalarTransition` | Typed scalar expression and statement evaluation, exact Talos instruction generation, weakest-precondition composition, and scratch-local preservation. |
+| `Project.ProofKit.ScalarTransitionU64` | Compact `UInt64` state evaluation and checked correspondence with the typed scalar evaluator. |
 | `Project.ProofKit.Array` | The public `Array UInt64` representation, encoded-size and address normalization, load bounds, region preservation, and singleton or pair output construction. |
 | `Project.ProofKit.Allocation` | Fixed-array bump-allocation addresses, header offsets, overflow exclusion, and the no-growth branch. |
 | `Project.ProofKit.FixedArrayAllocator` | Complete empty-list search and bump-allocation semantics for the emitted one-parameter array-wrapper layout. |
@@ -31,7 +32,9 @@ Import `Project.ProofKit.ScalarTransition` when a checked annotation describes a
 
 The expression language covers local reads, `UInt64` constants, wrapping arithmetic, checked unsigned division and remainder, bitwise operators, shifts, comparisons, short-circuit Boolean operations, and scalar conditionals.  Checked division and remainder match the compiler's zero-divisor branches and scratch-local saves, rather than the trapping WebAssembly operations in isolation.  `Expr.eval_preserves_below` establishes that evaluation with scratch start `scratch` preserves every combined local below that index.
 
-An artifact proof still needs an exact equality between the decoded instruction region and `Expr.program` or `Stmt.program`.  The descriptor and semantic theorem do not trust an annotation or compiler claim.  The planned scalar certificate checker will derive this equality from the exact decoded region before applying either theorem.
+Import `Project.ProofKit.ScalarTransitionU64` when generated annotation support provides named condition and body transitions.  `Expr.evalU64` and `Stmt.evalU64` evaluate the same descriptor over lists of `UInt64`, avoiding repeated reductions through `Wasm.Value` conversions and combined-local access.  `Expr.eval_toState` and `Stmt.eval_toState` lift each compact result to the typed scalar evaluator, so an artifact proof can use the generated transition equations without reducing each intermediate scratch-local update.
+
+An artifact proof still needs an exact equality between the decoded instruction region and `Expr.program` or `Stmt.program`.  The descriptor and semantic theorem do not trust an annotation or compiler claim.  The generated region equality derives this fact from the exact decoded instructions before either semantic theorem applies.
 
 ## `Array UInt64` representations
 

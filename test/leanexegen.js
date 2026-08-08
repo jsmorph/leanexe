@@ -362,6 +362,7 @@ function testCodexProtocol() {
     artifactPrompt.includes("word_reads") &&
     artifactPrompt.includes("wp_entry_to_loop <functionDef>") &&
     artifactPrompt.includes("leanexe.loop.while.v1 annotation") &&
+    artifactPrompt.includes("condition_eval and body_eval") &&
     artifactPrompt.includes("leanexe.loop.fold.v1") &&
     artifactPrompt.includes(`wp_entry_single_call ${job.namespace}.func3Def`) &&
     artifactPrompt.includes("PROOF_STRATEGIES.md contains optional") &&
@@ -512,6 +513,10 @@ function testCodexProtocol() {
   validateProofImports(job, [{
     module: job.behaviorModule,
     source: "import Project.ProofKit.FixedArraySingletonWrapper\n",
+  }]);
+  validateProofImports(job, [{
+    module: job.behaviorModule,
+    source: "import Project.ProofKit.ScalarTransitionU64\n",
   }]);
   expectFailure(() => validateProofImports(job, [{
     module: job.behaviorModule,
@@ -1240,6 +1245,11 @@ def func0Def : Wasm.Function :=
   });
   assert(whileMatches.source.includes("def function_0_while_loop_0_condition") &&
     whileMatches.source.includes("ScalarTransition.whileProgram") &&
+    whileMatches.source.includes("import Project.ProofKit.ScalarTransitionU64") &&
+    whileMatches.source.includes("function_0_while_loop_0_condition_evalU64") &&
+    whileMatches.source.includes("function_0_while_loop_0_body_evalU64") &&
+    whileMatches.source.includes("function_0_while_loop_0_condition_eval") &&
+    whileMatches.source.includes("function_0_while_loop_0_body_eval") &&
     whileMatches.source.includes("    4 function_0_while_loop_0_condition") &&
     whileMatches.source.includes("theorem function_0_while_loop_0_eq"),
   "while descriptor did not produce the checked region equality");
@@ -1751,6 +1761,23 @@ function testSingletonWrapperComposition() {
   "singleton wrapper composition accepted a changed result-local assignment");
 }
 
+function testScalarTransitionSpecialization() {
+  const packageRoot = path.join(
+    repoRoot, "benchmarks", "leanexegen", "demo1-array", "scalar-only-1",
+    "program.proof");
+  const document = JSON.parse(fs.readFileSync(
+    path.join(packageRoot, "program.annotations.json"), "utf8"));
+  const selected = selectAnnotationRegions(document, ["function-0.while-loop-0"]);
+  const source = annotationMatchesSource(selected, {
+    namespace: "LeanExeGen.GeneratedRbade8cb1a4e3a423",
+    programModule: "LeanExeGen.GeneratedRbade8cb1a4e3a423.Program",
+  }).source;
+  assert((source.match(/\bby_cases\b/g) ?? []).length === 5 &&
+    source.includes("function_0_while_loop_0_bodyTransition") &&
+    source.includes("U64Op.apply .remU (v1) (v2)"),
+  "scalar transition specialization did not retain Demo 1's five semantic tests");
+}
+
 function testArtifactPackage(job, formalSource) {
   const raw = "{ functionTypeIndices := [0] }";
   const emitted = `namespace Project.${job.leanModule}\n\n` +
@@ -2087,6 +2114,7 @@ try {
   testLessThanNodeAnnotationRecipes();
   testSearchTreeComposition();
   testSingletonWrapperComposition();
+  testScalarTransitionSpecialization();
   testPairResultAnnotationRecipes();
   const { job, formalSource } = testCodexProtocol();
   testMockedCodex(job);

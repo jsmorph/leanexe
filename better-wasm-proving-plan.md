@@ -9,7 +9,7 @@
 | Retained baseline | `.lake/leanexegen-runs/demo1-timing-1` |
 | First faster result | `.lake/leanexegen-runs/demo1-timing-2` |
 
-Stage-5 elapsed time to the first accepted proof is the primary optimization metric, and accepted proof structure and size are secondary metrics.  Line count, syntax volume, local scaffolding, and shared theorem use describe proof complexity; raw byte count and identifier length do not.  A smaller proof can justify another refinement or reveal a useful structural boundary, but proof size alone cannot promote a variant whose proving time regresses.  Independent verification remains a correctness gate rather than a performance metric.
+Stage-5 elapsed time to the first accepted proof is the primary optimization metric, and accepted proof structure and size are secondary metrics.  Line count, explicit syntax, local scaffolding, repeated derivations, and shared theorem use describe proof complexity; raw byte count, word length, and identifier length do not.  A long declaration name can indicate that the proof reused a checked abstraction instead of rebuilding its argument.  A smaller proof can justify another refinement or reveal a useful structural boundary, but proof size alone cannot promote a variant whose proving time regresses.  Independent verification remains a correctness gate rather than a performance metric.
 
 The [technical analysis](better-wasm-proving.md) describes the available mechanisms and their logical boundaries.  This plan orders experiments by expected effect on proof time, beginning with measurement and complete semantic regions rather than additional leaf arithmetic.  Every promoted method must concern the same frozen formal specification, `Program`, WASM, Codex identity, model settings, toolchain, machine profile, and cache policy.
 
@@ -54,7 +54,7 @@ The [compiler-theorem analysis](docs/compiler-theorem-bridge.md) defines the fir
 |---|---|---|---|---|
 | Scalar emission | Successful IR reification emits the descriptor program | Exact region equality and `ScalarTransition.whileProgram_spec` | Instruction decoding, checked division expansion, branch shape, assignment order, and scratch handling | Isolated screen was 47.202 percent slower, with 6.648 percent fewer lines and 4.710 percent fewer words |
 | Effects and frames | Descriptor reads, writes, and scratch interval bound all local changes | Recomputed frame certificate and preservation lemmas | Local-frame reconstruction and unchanged-local proofs | Mutation rejection and lower time where descriptors retain untouched locals |
-| One-step semantics | IR evaluation agrees with descriptor evaluation for one loop step | Closed transition equations over application locals that hide scratch state | Descriptor evaluation, branch update algebra, scratch-state equality, and local-numbering discovery | Lower median time on Demo 1 and a held-out scalar loop |
+| One-step semantics | IR evaluation agrees with descriptor evaluation for one loop step | Closed transition equations over the fixed local frame that summarize scratch staging | Descriptor evaluation, branch update algebra, scratch-state equality, and local-numbering discovery | Lower median time on Demo 1 and a held-out scalar loop |
 | Annotation locations | Annotated composition preserves path and interval coordinates | Exact coverage and non-overlap certificate | Region navigation, decomposition, and continuation reconstruction | Every coordinate mutation fails before behavior proving |
 | Cut-point graph | Emitted fragments compose into loop-head, call, allocation, and return transitions | Checked graph over exact decoded regions | Control-flow discovery and repeated composition scripts | Proof obligations contain application predicates rather than instruction lists |
 | Range facts | Abstract interpretation proves intervals, nonzero divisors, and representation bounds | Neutral checker validates each fact over descriptor transfer | Repeated fixed-width normalization and range searches | Total proof time falls on two structurally different artifacts |
@@ -64,7 +64,9 @@ The experiments proceed in table order because each row supplies evidence and th
 
 The first fixed-artifact annotated trial increased Demo 1 Stage 5 from 2,017.931 to 3,692.913 seconds.  A later isolated comparison retained the same direct-call recipes and changed only the scalar-loop region: the calls-only control took 2,645.818 seconds, while the scalar candidate took 3,894.697 seconds.  The candidate used the generated descriptor equality and loop theorem, reduced accepted source from 722 to 674 lines and from 3,418 to 3,257 whitespace-delimited words, and failed the proving-time screen despite that structural reduction.
 
-The matched journals show that the control reconstructed the neutral descriptor early, after which both agents faced the same semantic invariant and fixed-width arithmetic.  The candidate also spent substantial time aligning the public singleton wrapper and allocator theorem, so the next matched experiment must use a shared wrapper composition in both configurations.  Checked, scratch-hiding application-local transition equations remain the next compiler-theorem increment because the current descriptor exposes evaluator and local-state details that dominate the residual scalar proof.
+The matched journals show that the control reconstructed the neutral descriptor early, after which both agents faced the same semantic invariant and fixed-width arithmetic.  The candidate also spent substantial time aligning the public singleton wrapper and allocator theorem, so the next matched experiment must use a shared wrapper composition in both configurations.  Checked fixed-frame transition equations now summarize intermediate scratch staging because the raw descriptor exposed evaluator and local-state details that dominated the residual scalar proof.
+
+The compact transition increment is implemented.  `ScalarTransitionU64` proves generic correspondence with the typed evaluator, while generated annotation support states the complete condition and body transitions over a fixed `UInt64` frame.  Demo 1 produces five semantic body branches, and independent package verification accepts the generated equations; the matched Stage 5 screen remains open.
 
 - [x] Reify Demo 1's scalar IR into a neutral descriptor and prove production emission agreement.
 - [x] Generate and Lean-check exact descriptor equality against Demo 1's decoded WAT region.
@@ -72,7 +74,8 @@ The matched journals show that the control reconstructed the neutral descriptor 
 - [x] Record and preserve a matched Codex-version calls-only control and isolated scalar-descriptor screen.
 - [x] Reject repeat scalar-descriptor trials after the isolated screen regressed proving time.
 - [x] Add descriptor effect sets and generic artifact-side frame theorems.
-- [ ] Generate closed one-step transition equations and test whether Codex uses them.
+- [x] Generate closed one-step transition equations and verify them against Demo 1's exact artifact.
+- [ ] Test whether Codex uses the transition equations and measure the matched Stage 5 result.
 - [ ] Freeze a held-out scalar-loop demo before exposing descriptor data.
 - [ ] Add checked annotation-location composition after the semantic rows pass their timing gates.
 - [ ] Pilot a checked cut-point graph on two artifacts with different control-flow structure.
