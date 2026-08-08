@@ -1,0 +1,23 @@
+{
+  "formalSpecification": {
+    "summary": "Created the requested FormalSpec module. The prescribed Lean build succeeded.",
+    "decisions": [
+      "Defined singleton behavior using Nat.gcd and exact UInt64 conversion.",
+      "Bound singleton allocation by 64 bytes and non-singleton allocation by zero bytes."
+    ]
+  },
+  "leanProgram": {
+    "summary": "The candidate passed SourceCheck, LeanExe reporting, and WebAssembly compilation.",
+    "decisions": [
+      "Implemented gcdWith42 using an imperative UInt64 Euclidean remainder loop.",
+      "compute calls gcdWith42 for singleton arrays and otherwise returns the input unchanged."
+    ]
+  },
+  "artifactProof": {
+    "summary": "Proved the exact compiled artifact. The final import-policy check and ArtifactResult build succeeded.",
+    "decisions": [
+      "Proved function 0 with a terminating Euclidean remainder-loop invariant.",
+      "Applied FixedArraySingletonWrapper.wrapperProgram_spec to function 1."
+    ]
+  }
+}

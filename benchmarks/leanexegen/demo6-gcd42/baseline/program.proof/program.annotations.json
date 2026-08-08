@@ -1,0 +1,81 @@
+{
+  "artifact": {
+    "byteLength": 1770
+  },
+  "functions": [
+    {
+      "definedFunction": 0,
+      "exports": [],
+      "locals": 18,
+      "parameters": 1,
+      "regions": [],
+      "results": 1,
+      "sourceName": "LeanExeGen.GeneratedR4337040846e16beb.Source.gcdWith42",
+      "wasmIndex": 0
+    },
+    {
+      "definedFunction": 1,
+      "exports": [
+        "compute"
+      ],
+      "locals": 14,
+      "parameters": 1,
+      "regions": [
+        {
+          "generatedBy": [
+            "LeanExe.Wasm.Binary.CoreWasm.emitCondWithRelease",
+            "LeanExe.Wasm.Binary.CoreWasm.emitStmtAnnotated"
+          ],
+          "id": "function-1.length-dispatch-0",
+          "kind": "leanexe.array.length-dispatch.v1",
+          "location": {
+            "endIndex": 15,
+            "listPath": [],
+            "startIndex": 0
+          },
+          "parameters": {
+            "continuation": "fallthrough",
+            "encoding": "eq-normalized-v1",
+            "expectedSize": 1,
+            "inputLocal": 5,
+            "invalidBranch": "else",
+            "validBranch": "then"
+          }
+        },
+        {
+          "generatedBy": [
+            "LeanExe.Wasm.Binary.CoreWasm.annotateDirectCallsInList",
+            "LeanExe.Wasm.Binary.CoreWasm.emitFuncInstrs"
+          ],
+          "id": "function-1.direct-call-0",
+          "kind": "leanexe.call.direct.v1",
+          "location": {
+            "endIndex": 14,
+            "listPath": [
+              {
+                "field": "then",
+                "instructionIndex": 14
+              }
+            ],
+            "startIndex": 11
+          },
+          "parameters": {
+            "argumentLocals": [
+              1
+            ],
+            "calleeIndex": 0,
+            "continuation": "fallthrough",
+            "resultLocals": [
+              2
+            ],
+            "resultPlacement": "locals"
+          }
+        }
+      ],
+      "results": 1,
+      "sourceName": "LeanExeGen.GeneratedR4337040846e16beb.Source.compute",
+      "wasmIndex": 1
+    }
+  ],
+  "schemaVersion": 1
+}
