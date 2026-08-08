@@ -1268,7 +1268,7 @@ def func0Def : Wasm.Function :=
   expectFailure(() => proofRecipePlan(
     whileDocument, whileProgram.replace("      .br 0", "      .br 1")), /back edge/);
   const malformedWhile = structuredClone(whileDocument);
-  malformedWhile.functions[0].regions[0].parameters.descriptor.condition.kind = "ne";
+  malformedWhile.functions[0].regions[0].parameters.descriptor.condition.kind = "gt-u";
   expectFailure(() => validateAnnotationDocument(malformedWhile, wasm), /unsupported/);
   const wrongDescriptorVersion = structuredClone(whileDocument);
   wrongDescriptorVersion.functions[0].regions[0].parameters.descriptorVersion = 2;
@@ -1280,6 +1280,106 @@ def func0Def : Wasm.Function :=
   validateProofRecipePlan(unreifiedPlan, unreifiedWhile);
   assert(unreifiedPlan.recipes[0].direct.theorem === "Wasm.wp_loop_cons",
     "unreified while did not retain the generic loop recipe");
+
+  const postTestProgram = `def func0 : Wasm.Program :=
+  [
+  .localGet 0,
+  .localSet 1,
+  .constI64 (0 : UInt64),
+  .localSet 5,
+  .block 0 0 [
+    .loop 0 0 [
+      .localGet 1,
+      .constI64 (1 : UInt64),
+      .addI64,
+      .localSet 1,
+      .localGet 1,
+      .constI64 (5 : UInt64),
+      .neI64,
+      .br_if 1,
+      .br 0
+    ]
+  ],
+  .localGet 1,
+  .localSet 2,
+  .localGet 2
+]
+
+def func0Def : Wasm.Function :=
+  { params := [.i64], locals := [.i64, .i64, .i64, .i64, .i64], body := func0,
+    results := [.i64] }
+`;
+  const postTestDocument = {
+    schemaVersion: 1,
+    artifact: { byteLength: wasm.length },
+    functions: [{
+      wasmIndex: 0,
+      definedFunction: 0,
+      sourceName: "Example.postTest",
+      exports: [],
+      parameters: 1,
+      results: 1,
+      locals: 5,
+      regions: [{
+        id: "function-0.scalar-post-test-loop-0",
+        kind: "leanexe.loop.scalar-post-test.v1",
+        location: { listPath: [], startIndex: 4, endIndex: 5 },
+        parameters: {
+          resultWidth: 1,
+          accumulatorStart: 1,
+          accumulatorLocals: [1],
+          initialValues: ["LeanExe.IR.Expr.local 0"],
+          resultSlot: 0,
+          destination: 2,
+          releaseOffsets: [],
+          descriptorVersion: 1,
+          descriptor: {
+            condition: {
+              kind: "ne",
+              left: { kind: "get", index: 1 },
+              right: { kind: "const", value: "5" },
+            },
+            body: {
+              kind: "assign",
+              index: 1,
+              value: {
+                kind: "bin",
+                operation: "add",
+                left: { kind: "get", index: 1 },
+                right: { kind: "const", value: "1" },
+              },
+            },
+          },
+          scratchStart: 5,
+          continuation: "fallthrough",
+        },
+        generatedBy: ["LeanExe.Wasm.Binary.CoreWasm.scalarPostTestLoopInStmt?"],
+      }],
+    }],
+  };
+  validateAnnotationDocument(postTestDocument, wasm);
+  const postTestPlan = proofRecipePlan(
+    postTestDocument, postTestProgram, ["strategy.loops", "strategy.frames"]);
+  validateProofRecipePlan(postTestPlan, postTestDocument);
+  assert(postTestPlan.recipes[0].direct.theorem ===
+      "Project.ProofKit.ScalarTransition.postTestProgram_spec" &&
+    postTestPlan.recipes[0].supporting.some((entry) => entry.declaration ===
+      "Project.ProofKit.ScalarTransition.postTestProgram_spec") &&
+    !postTestPlan.recipes[0].supporting.some((entry) => entry.declaration ===
+      "Project.ProofKit.ScalarTransition.whileProgram_spec"),
+  "scalar post-test annotation did not select its checked composition theorem");
+  const postTestMatches = annotationMatchesSource(postTestDocument, {
+    namespace: "Example.Generated",
+    programModule: "Example.Generated.Artifact",
+  }, postTestProgram);
+  assert(postTestMatches.source.includes("ScalarTransition.postTestProgram") &&
+    postTestMatches.source.includes(".ne (.get 1) (.const (5 : UInt64))") &&
+    postTestMatches.source.includes("function_0_scalar_post_test_loop_0_entry_to_loop") &&
+    postTestMatches.source.includes("function_0_scalar_post_test_loop_0_body_eval") &&
+    postTestMatches.source.includes("function_0_scalar_post_test_loop_0_eq"),
+  "scalar post-test descriptor did not produce checked generated declarations");
+  expectFailure(() => proofRecipePlan(postTestDocument,
+    postTestProgram.replace("      .br_if 1", "      .br_if 2")), /back edge/);
 
   const foldProgram = `def func0 : Wasm.Program :=
   [

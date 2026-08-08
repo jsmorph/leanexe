@@ -109,6 +109,20 @@ structure WhileLoopParameters where
   continuation : String
   deriving Repr, Lean.ToJson
 
+structure ScalarPostTestLoopParameters where
+  resultWidth : Nat
+  accumulatorStart : Nat
+  accumulatorLocals : Array Nat
+  initialValues : Array String
+  resultSlot : Nat
+  destination : Nat
+  releaseOffsets : Array Nat
+  descriptorVersion : Nat
+  descriptor : Option ScalarDescriptor.PostTest
+  scratchStart : Nat
+  continuation : String
+  deriving Repr, Lean.ToJson
+
 inductive RegionParameters where
   | directCall (parameters : DirectCallParameters)
   | fixedArrayLengthDispatch (parameters : FixedArrayLengthDispatchParameters)
@@ -120,6 +134,7 @@ inductive RegionParameters where
   | fixedArrayFilterLt (parameters : FixedArrayFilterLtParameters)
   | loopFold (parameters : LoopFoldParameters)
   | whileLoop (parameters : WhileLoopParameters)
+  | scalarPostTestLoop (parameters : ScalarPostTestLoopParameters)
   deriving Repr
 
 instance : Lean.ToJson RegionParameters where
@@ -134,6 +149,7 @@ instance : Lean.ToJson RegionParameters where
     | .fixedArrayFilterLt parameters => Lean.toJson parameters
     | .loopFold parameters => Lean.toJson parameters
     | .whileLoop parameters => Lean.toJson parameters
+    | .scalarPostTestLoop parameters => Lean.toJson parameters
 
 structure Region where
   id : String

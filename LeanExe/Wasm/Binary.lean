@@ -3377,6 +3377,64 @@ def emitFuncAnnotated (releaseIndex : Nat) (func : Func) : Annotations.Emitted :
 def emitFuncInstrs (releaseIndex : Nat) (func : Func) : List Instr :=
   (emitFuncAnnotated releaseIndex func).code
 
+structure ScalarPostTestLoopMatch where
+  startIndex : Nat
+  endIndex : Nat
+  parameters : Annotations.ScalarPostTestLoopParameters
+
+partial def scalarPostTestLoopInStmt?
+    (releaseIndex scratch offset : Nat) : Stmt → Option ScalarPostTestLoopMatch
+  | .seq first second =>
+      scalarPostTestLoopInStmt? releaseIndex scratch offset first <|>
+        scalarPostTestLoopInStmt? releaseIndex scratch
+          (offset + (emitStmt releaseIndex scratch first).length) second
+  | .assign destination expression@(.loopFoldMultiSlot resultWidth initValues
+      accumulatorStart bodyValues bodyLets doneValue releaseOffsets resultSlot) => do
+      if resultWidth = 0 || initValues.length != resultWidth ||
+          bodyValues.length != resultWidth || resultSlot >= resultWidth ||
+          !releaseOffsets.isEmpty then
+        none
+      else
+        let letScratch := bodyLets.foldl (fun n item => max n (localLetScratch item)) 0
+        let bodyScratch :=
+          max letScratch <|
+            max (exprScratch doneValue)
+              (bodyValues.foldl (fun n value => max n (exprScratch value)) 0)
+        let doneLocal := scratch + bodyScratch
+        let stagedValueStart := doneLocal + 1
+        let releaseReadyLocal := stagedValueStart + resultWidth
+        let descriptor ← ScalarDescriptor.PostTest.ofIR accumulatorStart doneLocal
+          stagedValueStart releaseReadyLocal bodyValues bodyLets doneValue
+        let expressionCode := emitExprWithRelease releaseIndex scratch expression
+        if expressionCode.length < 2 then none else
+          let blockIndex := expressionCode.length - 2
+          match expressionCode[blockIndex]? with
+          | some (.block _) =>
+              some {
+                startIndex := offset + blockIndex
+                endIndex := offset + blockIndex + 1
+                parameters := {
+                  resultWidth
+                  accumulatorStart
+                  accumulatorLocals :=
+                    (List.range resultWidth).map (accumulatorStart + ·) |>.toArray
+                  initialValues := initValues.map reprStr |>.toArray
+                  resultSlot
+                  destination
+                  releaseOffsets := releaseOffsets.toArray
+                  descriptorVersion := 1
+                  descriptor := some descriptor
+                  scratchStart := scratch
+                  continuation := "fallthrough"
+                }
+              }
+          | _ => none
+  | _ => none
+
+def scalarPostTestLoop? (releaseIndex : Nat) (func : Func) :
+    Option ScalarPostTestLoopMatch :=
+  scalarPostTestLoopInStmt? releaseIndex func.locals 0 func.body
+
 def fixedArrayMapAdd?
     (func : Func) (code : List Instr) : Option Annotations.FixedArrayMapAddParameters :=
   match func.body, func.results with
@@ -3986,6 +4044,22 @@ def annotationDocument (module_ : Module) (bytes : ByteArray) : Annotations.Docu
                 scratchStart := loop.scratchStart
                 continuation := loop.continuation }
             generatedBy := loop.generatedBy }
+      let scalarPostTestLoopRegions : List Annotations.Region :=
+        match scalarPostTestLoop? releaseIndex func with
+        | none => []
+        | some loop =>
+          [{ id := s!"function-{functionIndex}.scalar-post-test-loop-0"
+             kind := "leanexe.loop.scalar-post-test.v1"
+             location :=
+               { listPath := #[]
+                 startIndex := loop.startIndex
+                 endIndex := loop.endIndex }
+             parameters := .scalarPostTestLoop loop.parameters
+             generatedBy := #[
+               "LeanExe.Wasm.Binary.CoreWasm.emitLoopFoldMultiSlot",
+               "LeanExe.Wasm.Binary.CoreWasm.scalarPostTestLoopInStmt?",
+               "LeanExe.Wasm.Binary.CoreWasm.annotationDocument"
+             ] }]
       let lengthRegions : List Annotations.Region :=
         (enumerate emitted.lengthDispatches.toList).map fun regionItem =>
           let regionIndex := regionItem.fst
@@ -4092,7 +4166,7 @@ def annotationDocument (module_ : Module) (bytes : ByteArray) : Annotations.Docu
         results := func.results.length
         locals := combinedLocals
         regions := (mapAddRegions ++ filterLtRegions ++ loopFoldRegions ++ whileLoopRegions ++
-          lengthRegions ++ searchKeyRegions ++
+          scalarPostTestLoopRegions ++ lengthRegions ++ searchKeyRegions ++
           eqNodeRegions ++ ltNodeRegions ++ pairResultRegions ++ directCallRegions).toArray }
   { schemaVersion := 1
     artifact := { byteLength := bytes.size }

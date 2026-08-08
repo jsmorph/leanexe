@@ -1,0 +1,192 @@
+{
+  "schemaVersion": 6,
+  "requestSha256": "4337040846e16beb647b3d5ddef2dca1940d2e92e2268282f3f490498dc8b403",
+  "case": "generated_r4337040846e16beb",
+  "leanModule": "GeneratedR4337040846e16beb",
+  "sourceModule": "LeanExeGen.GeneratedR4337040846e16beb.Source",
+  "formalSpecModule": "LeanExeGen.GeneratedR4337040846e16beb.FormalSpec",
+  "formalSpecification": {
+    "module": "LeanExeGen.GeneratedR4337040846e16beb.FormalSpec",
+    "definition": "LeanExeGen.GeneratedR4337040846e16beb.FormalSpec.ArtifactSpec",
+    "type": "Wasm.Module → Prop"
+  },
+  "artifact": {
+    "sha256": "8126a2d03d514dd1335250b05fc9a1f9b89b84b55cc5b4d3e5a019c0ca6599cf",
+    "byteLength": 1770,
+    "artifactBytesDefinition": "LeanExeGen.GeneratedR4337040846e16beb.Artifact.artifactBytes",
+    "rawModuleDefinition": "LeanExeGen.GeneratedR4337040846e16beb.Artifact.Cache.raw",
+    "programDefinition": "LeanExeGen.GeneratedR4337040846e16beb.module",
+    "property": "LeanExeGen.GeneratedR4337040846e16beb.FormalSpec.ArtifactSpec",
+    "behaviorTheorem": "LeanExeGen.GeneratedR4337040846e16beb.Behavior.artifact_behavior",
+    "artifactTheorem": "LeanExeGen.GeneratedR4337040846e16beb.Artifact.artifact_correct",
+    "proofTarget": "LeanExeGen.GeneratedR4337040846e16beb.ArtifactResult",
+    "checkFileTarget": "LeanExeGen.GeneratedR4337040846e16beb.CheckFile",
+    "declarationTarget": "LeanExeGen.GeneratedR4337040846e16beb.CheckDeclarations",
+    "export": "compute",
+    "invocation": [
+      "/home/somebody/src/leanexe/tools/leanexegen",
+      "run",
+      "<program.wasm>",
+      "<UInt64>..."
+    ]
+  },
+  "warnings": [
+    "The formal specification is a generated interpretation of the prose request.",
+    "No theorem connects the generated Lean source to the formal specification.",
+    "The artifact theorem applies to one exact SHA-256 digest under the pinned Lean and Talos semantics.",
+    "Codex generation and the LeanExe compiler are outside the trusted artifact proof."
+  ],
+  "verificationCommand": "tools/leanexegen verify <proof-package>",
+  "files": [
+    {
+      "path": "artifact.json",
+      "sha256": "3eeb215791bd5e86251f1af512b4927f8dbba4de9137010c5fb095d508e58cc3",
+      "byteLength": 985
+    },
+    {
+      "path": "host-assumptions.json",
+      "sha256": "5f0c9c75bdd54ec3eb09850d6115f38d15cae3975dc2b1ee2a7b0b07c47848d5",
+      "byteLength": 442
+    },
+    {
+      "path": "interpretation.json",
+      "sha256": "2886e07d5b7e68d0f7f00f3cdb2c5b442bfffed4b93e3aa2e52ad13ccd02c9f1",
+      "byteLength": 978
+    },
+    {
+      "path": "program.annotations.json",
+      "sha256": "2e65b573efd7265afa2ccfa4da54a998ad54e8a7ffb0aaa9f81f1cf088a34bf6",
+      "byteLength": 16415
+    },
+    {
+      "path": "program.wasm",
+      "sha256": "8126a2d03d514dd1335250b05fc9a1f9b89b84b55cc5b4d3e5a019c0ca6599cf",
+      "byteLength": 1770
+    },
+    {
+      "path": "proof-journal.md",
+      "sha256": "5b02af6930d3b136fc516015028cf469c8c70f242b78ca6755eac5dbcc16be1e",
+      "byteLength": 3070
+    },
+    {
+      "path": "proof-library.md",
+      "sha256": "dca58564972dff06af5ff4d4de373fd9c50414946feabd9f01aa44751c7486be",
+      "byteLength": 36373
+    },
+    {
+      "path": "proof-recipes.json",
+      "sha256": "11d8938f3a94c83918eb7395ab961c6c660435b7e1a5da4a754e59bc4f946408",
+      "byteLength": 4144
+    },
+    {
+      "path": "proof-strategies.md",
+      "sha256": "a60d807a9de50f6b219b3ed1a33caf57073ae1c6dfce6a6a8998891b065784e7",
+      "byteLength": 39729
+    },
+    {
+      "path": "proof-task-features.json",
+      "sha256": "1d84bce2f7ae5a8bc361bfcaffed0a198b8b1748b08b2bd79f6eb61be81ce722",
+      "byteLength": 2131
+    },
+    {
+      "path": "proof-telemetry.json",
+      "sha256": "455ba3224f902e0a971741bfbee3db5453f278dac2deb582c7e625cf8fc8bdc5",
+      "byteLength": 444
+    },
+    {
+      "path": "proof/LeanExeGen/GeneratedR4337040846e16beb/AnnotationMatches.lean",
+      "sha256": "6d38fa43180ce35945b6c1d1e33f83851482bde5e1c8236949584ab6abc1e95a",
+      "byteLength": 14477
+    },
+    {
+      "path": "proof/LeanExeGen/GeneratedR4337040846e16beb/ArtifactBytes.lean",
+      "sha256": "bf9b02229f7ac33476f727afb834d9cff2bed1fbee7934296c3aeb4a04e5fd9d",
+      "byteLength": 7554
+    },
+    {
+      "path": "proof/LeanExeGen/GeneratedR4337040846e16beb/ArtifactCache.lean",
+      "sha256": "72e8bf982e108bbf7f8844bca8a658cc4986b4c95aa0333dc4d7c4a698efb9a5",
+      "byteLength": 54053
+    },
+    {
+      "path": "proof/LeanExeGen/GeneratedR4337040846e16beb/ArtifactDecode.lean",
+      "sha256": "07ec07bc081a06405280304377c35e55f5d73010893c9e8e5e67ad5e2b8a6ad1",
+      "byteLength": 370
+    },
+    {
+      "path": "proof/LeanExeGen/GeneratedR4337040846e16beb/ArtifactDecoded.lean",
+      "sha256": "ab0d697adaa4e5732e0fcce7effa177b8cd4cae1c65fd7c9571854b709897205",
+      "byteLength": 843
+    },
+    {
+      "path": "proof/LeanExeGen/GeneratedR4337040846e16beb/ArtifactRawCache.lean",
+      "sha256": "3a3718224e771ab035faabf5ca97d1aa4ab4f2781084c8af4adc756e3118598a",
+      "byteLength": 584
+    },
+    {
+      "path": "proof/LeanExeGen/GeneratedR4337040846e16beb/ArtifactResult.lean",
+      "sha256": "1aacda3dfd4ed55c47b8059b25140bfeb45cd3f809cfe8870fd4a0332dd47709",
+      "byteLength": 736
+    },
+    {
+      "path": "proof/LeanExeGen/GeneratedR4337040846e16beb/ArtifactTranslation.lean",
+      "sha256": "005612e91cd242068b7a1b7290be661b188c0d5f7f35f69ab0c9ef95c350d343",
+      "byteLength": 3422
+    },
+    {
+      "path": "proof/LeanExeGen/GeneratedR4337040846e16beb/ArtifactValidation.lean",
+      "sha256": "e8f477e1be3205518e81ca484d0ec4b5314bc5b456d68e24473a0492f033c257",
+      "byteLength": 548
+    },
+    {
+      "path": "proof/LeanExeGen/GeneratedR4337040846e16beb/Behavior.lean",
+      "sha256": "5d42bc7379bcd86ae5d47fcf727b138f7a60521dc66c50d2a22763912a5bccbc",
+      "byteLength": 7647
+    },
+    {
+      "path": "proof/LeanExeGen/GeneratedR4337040846e16beb/CheckDeclarations.lean",
+      "sha256": "6acfb5a52dd4b9e22b3a6f476eef348ea20bea006d361758a8d2c299ffbf4efc",
+      "byteLength": 1437
+    },
+    {
+      "path": "proof/LeanExeGen/GeneratedR4337040846e16beb/CheckFile.lean",
+      "sha256": "18d1ff5be6aee538aef185e2cda48d4e2c2cb1a80ec430da999a54b99eac48f7",
+      "byteLength": 449
+    },
+    {
+      "path": "proof/LeanExeGen/GeneratedR4337040846e16beb/FormalSpec.lean",
+      "sha256": "7c9f233b8a72cf3491e3acd6f154541c6eb09f906f94290da3aa45ffbd798946",
+      "byteLength": 2088
+    },
+    {
+      "path": "proof/LeanExeGen/GeneratedR4337040846e16beb/Program.lean",
+      "sha256": "75dbebaad181290196600673e4c594ef5fc065052d1245d71d234ec2b99593f2",
+      "byteLength": 19586
+    },
+    {
+      "path": "proof/LeanExeGen/GeneratedR4337040846e16beb/Source.lean",
+      "sha256": "a54ce2b83eb0c2bd6b9a4d4415c8e273b8f8a04a9d2427107f5d2e04ffc00c1d",
+      "byteLength": 417
+    },
+    {
+      "path": "request.txt",
+      "sha256": "4337040846e16beb647b3d5ddef2dca1940d2e92e2268282f3f490498dc8b403",
+      "byteLength": 649
+    },
+    {
+      "path": "samples.json",
+      "sha256": "91fc3907d02a85860e47b9538840e8f36302f2475352c6e99789a5c60626ebb4",
+      "byteLength": 538
+    },
+    {
+      "path": "stage-reports.json",
+      "sha256": "3c4acaebb9dafcdf28c283ee79e8bc0fe05c44ea23becf25183ad05259b6ef7d",
+      "byteLength": 3669
+    },
+    {
+      "path": "tool-pins.json",
+      "sha256": "dab5d3bf5a176c6161d225b15a52dd0b7ee0b35a7d6103c2216a7026270dee67",
+      "byteLength": 870
+    }
+  ]
+}

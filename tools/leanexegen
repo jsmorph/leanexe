@@ -715,7 +715,11 @@ function proofPrompt(request, job, entryIndex) {
     `\`wp_entry_to_loop <functionDef> unfolding <functionBody> as initial'\`, then apply ` +
     `\`Wasm.wp_loop_cons\` with an explicit invariant and decreasing measure.  A matched ` +
     `leanexe.loop.while.v1 annotation records the compiler IR condition, body statement, and ` +
-    `scratch-local start for the exact structured block.  A matched leanexe.loop.fold.v1 ` +
+    `scratch-local start for the exact structured block.  A matched ` +
+    `leanexe.loop.scalar-post-test.v1 annotation records a body-first scalar loop produced by ` +
+    `a multi-slot loop-fold expression.  Apply its postTestProgram_spec recipe because its ` +
+    `transition executes the generated body before testing the exit guard.  A matched ` +
+    `leanexe.loop.fold.v1 ` +
     `annotation also records accumulator locals, initial and next-state expressions, done ` +
     `expression, staging locals, release offsets, and result locals.  Use those fields to name ` +
     `the semantic state and branch transitions before symbolic execution; the fields are ` +
