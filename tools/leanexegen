@@ -743,8 +743,10 @@ function proofPrompt(request, job, entryIndex) {
     `When present, PROGRAM_ANNOTATIONS.json contains compiler-reported regions checked against ` +
     `the artifact, while PROOF_RECIPES.json lists the direct theorem or tactic, supporting lemmas, ` +
     `expected postcondition, and focused guidance selected for each matched region.  Attempt the ` +
-    `direct recipe before general symbolic execution, then use its supporting declarations and ` +
-    `guidance only for the remaining goals.  ` +
+    `direct recipe against the reported region before general symbolic execution.  If its exact ` +
+    `shape does not match or its residual goals are worse than the current proof boundary, record ` +
+    `that result and do not restructure unrelated code solely to force the recipe.  Use its ` +
+    `supporting declarations and guidance only for the remaining goals.  ` +
     `Its compositions array lists any complete fixed-array search descriptor, its ` +
     `Lean-checked region equality, and the selected composition theorem.  A version-two ` +
     `composition also records a checked complete-wrapper shape, and its deterministic starter ` +
@@ -787,7 +789,10 @@ function proofPrompt(request, job, entryIndex) {
     `Keep PROOF_JOURNAL.md as a prose Markdown account of your work.  Update it frequently as ` +
     `you work, including after each Lean check and each significant change in approach, with ` +
     `your current thinking and observations.  Write naturally; it has no prescribed schema and ` +
-    `does not participate in the proof.  ` +
+    `does not participate in the proof.  Name each supplied recipe, theorem, tactic, or annotation ` +
+    `that you try, state how it changed the goal or why you abandoned it, and record any missing ` +
+    `general annotation, lemma, tactic, or guidance suggested by a diagnostic.  Record these ` +
+    `observations while working rather than reconstructing them at the end.  ` +
     `Do not import Source, inspect source ` +
     `code, invoke the compiler, add axioms, or use sorry.  Leave samples and hostAssumptions ` +
     `empty.  ArtifactSpec resolves the ${job.exportName} export to function ${entryIndex}, then ` +

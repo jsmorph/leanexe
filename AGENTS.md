@@ -20,3 +20,9 @@ tools/leanrun --timeout <duration> <lean-or-lake-command>
 - Keep the repository tool as the first command token for verification runs: `tools/talos-artifact.js`, `tools/talos-proof.js`, `tools/artifact-proof.js`, `tools/artifact-conformance.js`, or `tools/artifact-release.js`.  Request approval for that tool prefix rather than one subcommand, artifact, corpus file, temporary path, or internal child command.
 - Put repeatable corpus membership and expected results in the tool's checked configuration.  Do not place globs, brace expansions, generated file lists, pipes, or shell wrappers around a repository verification command.
 - Use direct `tools/leanrun` commands only for focused diagnostics that do not belong in an existing repository gate.  Keep `tools/leanrun` as the first token and pass file paths as ordinary arguments without shell expansion.
+
+## Artifact-Proof Iteration
+
+Treat proving time as the primary metric.  After every proof run, review the journal, accepted proof, and telemetry together.  Use that evidence to consider changes to compiler annotations, shared lemmas, tactics, and guidance, as well as the instructions that govern proof generation and journaling.
+
+Keep journals as frequent, natural prose.  They should identify supplied help that worked or failed, explain changes of approach, and note missing general abstractions.  Test changes on fixed artifacts, preserve failures, and use diverse or held-out demos to avoid problem-specific optimization.
