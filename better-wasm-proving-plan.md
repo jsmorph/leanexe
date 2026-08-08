@@ -67,7 +67,7 @@ The first fixed-artifact scalar-emission trial increased Demo 1 Stage 5 from 2,0
 - [x] Generate and Lean-check exact descriptor equality against Demo 1's decoded WAT region.
 - [x] Preserve Demo 1's frozen WASM bytes and pass execution, serializer, and aggregate Talos gates.
 - [ ] Record a matched Codex-version baseline and three scalar-descriptor trials; the baseline and first slower trial are retained.
-- [ ] Add descriptor effect sets and generic artifact-side frame theorems.
+- [x] Add descriptor effect sets and generic artifact-side frame theorems.
 - [ ] Generate closed one-step transition equations and test whether Codex uses them.
 - [ ] Freeze a held-out scalar-loop demo before exposing descriptor data.
 - [ ] Add checked annotation-location composition after the semantic rows pass their timing gates.

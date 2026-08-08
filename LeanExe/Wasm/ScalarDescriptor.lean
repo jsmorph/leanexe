@@ -78,6 +78,73 @@ structure While where
 
 mutual
 
+  def Expr.reads : Expr → List Nat
+    | .get index => [index]
+    | .const _ => []
+    | .bin _ left right => left.reads ++ right.reads
+    | .ite condition thenValue elseValue =>
+        condition.reads ++ thenValue.reads ++ elseValue.reads
+
+  def Cond.reads : Cond → List Nat
+    | .true | .false => []
+    | .eq left right | .ltU left right | .leU left right =>
+        left.reads ++ right.reads
+    | .not condition => condition.reads
+    | .and left right | .or left right => left.reads ++ right.reads
+
+end
+
+mutual
+
+  def Expr.scratchWidth : Expr → Nat
+    | .get _ | .const _ => 0
+    | .bin operation left right =>
+        let childWidth := max left.scratchWidth right.scratchWidth
+        if operation == .divU || operation == .remU then childWidth + 2 else childWidth
+    | .ite condition thenValue elseValue =>
+        max condition.scratchWidth (max thenValue.scratchWidth elseValue.scratchWidth)
+
+  def Cond.scratchWidth : Cond → Nat
+    | .true | .false => 0
+    | .eq left right | .ltU left right | .leU left right =>
+        max left.scratchWidth right.scratchWidth
+    | .not condition => condition.scratchWidth
+    | .and left right | .or left right =>
+        max left.scratchWidth right.scratchWidth
+
+end
+
+
+def Stmt.reads : Stmt → List Nat
+  | .skip => []
+  | .assign _ value => value.reads
+  | .seq first second => first.reads ++ second.reads
+  | .ite condition thenStmt elseStmt =>
+      condition.reads ++ thenStmt.reads ++ elseStmt.reads
+
+def Stmt.writes : Stmt → List Nat
+  | .skip => []
+  | .assign index _ => [index]
+  | .seq first second => first.writes ++ second.writes
+  | .ite _ thenStmt elseStmt => thenStmt.writes ++ elseStmt.writes
+
+def Stmt.scratchWidth : Stmt → Nat
+  | .skip => 0
+  | .assign _ value => value.scratchWidth
+  | .seq first second => max first.scratchWidth second.scratchWidth
+  | .ite condition thenStmt elseStmt =>
+      max condition.scratchWidth (max thenStmt.scratchWidth elseStmt.scratchWidth)
+
+def While.reads (descriptor : While) : List Nat :=
+  descriptor.condition.reads ++ descriptor.body.reads
+
+def While.writes (descriptor : While) : List Nat := descriptor.body.writes
+
+def While.scratchWidth (descriptor : While) : Nat :=
+  max descriptor.condition.scratchWidth descriptor.body.scratchWidth
+
+mutual
+
   def Expr.ofIR : LeanExe.IR.Expr → Option Expr
     | .local index => some (.get index)
     | .u64 value => some (.const value)
