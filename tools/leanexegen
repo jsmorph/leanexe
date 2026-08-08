@@ -19,6 +19,8 @@ const {
   programExportIndex,
   rewriteProgramNamespace,
   sha256,
+  stageReportCodexVersion,
+  stageReportCodexVersions,
   validateCodexTaskOutcome,
   validatePackage,
   validateProofJournal,
@@ -87,7 +89,7 @@ class StageError extends Error {
 function usage() {
   return [
     "usage: leanexegen [-s] -o <program.wasm> <request.txt>",
-    "       leanexegen reprove [-s] -o <program.wasm> <proof-package>",
+    "       leanexegen reprove [-s] [--new-codex-series] -o <program.wasm> <proof-package>",
     "       leanexegen annotate -o <annotated-proof-package> <proof-package>",
     "       leanexegen verify [-s] <proof-package>",
     "       leanexegen benchmark -o <program.wasm> [benchmark-directory]",
@@ -160,12 +162,15 @@ function parseArgs(args) {
   }
   const reprove = args[0] === "reprove";
   let silent = false;
+  let newCodexSeries = false;
   let output = null;
   const positional = [];
   for (let index = reprove ? 1 : 0; index < args.length; index += 1) {
     const argument = args[index];
     if (argument === "-s") {
       silent = true;
+    } else if (argument === "--new-codex-series" && reprove && !newCodexSeries) {
+      newCodexSeries = true;
     } else if (argument === "-o") {
       index += 1;
       if (index >= args.length || output !== null) throw new Error(usage());
@@ -180,6 +185,7 @@ function parseArgs(args) {
   return {
     command: reprove ? "reprove" : "generate",
     silent,
+    ...(reprove ? { newCodexSeries } : {}),
     outputPath: path.resolve(output),
     [reprove ? "packagePath" : "requestPath"]: path.resolve(positional[0]),
   };
@@ -2156,12 +2162,23 @@ function reprove(command) {
     requireKernelAudit(kitSources, toolPins);
     codex = findCodex();
     codexVersion = parseCodexVersion(run(1, "Codex identity", [codex, "--version"]));
-    if (codexVersion !== checked.stageReports.codexVersion) {
+    const recordedCodexVersion = stageReportCodexVersion(
+      checked.stageReports, "artifactProof");
+    if (codexVersion === recordedCodexVersion && command.newCodexSeries) {
+      throw new StageError(
+        1,
+        "job setup",
+        `--new-codex-series requires a Codex identity change; both identities are ` +
+          `${codexVersion}`,
+      );
+    }
+    if (codexVersion !== recordedCodexVersion && !command.newCodexSeries) {
       throw new StageError(
         1,
         "job setup",
         `Codex identity differs from the frozen stage reports: expected ` +
-          `${checked.stageReports.codexVersion}, found ${codexVersion || "an empty identity"}`,
+          `${recordedCodexVersion}, found ${codexVersion || "an empty identity"}; ` +
+          `use --new-codex-series to begin a new matched timing series`,
       );
     }
   } catch (error) {
@@ -2269,16 +2286,32 @@ function reprove(command) {
         sourceSets.proofContext.get(annotationMatchesModule(checked.job)));
     }
     allSources.set(checked.job.behaviorModule, proof.source);
-    const stageReports = {
-      schemaVersion: 1,
-      codexVersion,
-      maximumAttempts: maximumTaskSessions,
-      tasks: {
-        formalSpecification: checked.stageReports.tasks.formalSpecification,
-        leanProgram: checked.stageReports.tasks.leanProgram,
-        artifactProof: proof.stageReport,
-      },
-    };
+    const priorCodexVersions = stageReportCodexVersions(checked.stageReports);
+    const stageReports = checked.stageReports.schemaVersion === 2 || command.newCodexSeries
+      ? {
+          schemaVersion: 2,
+          codexVersions: {
+            formalSpecification: priorCodexVersions.formalSpecification,
+            leanProgram: priorCodexVersions.leanProgram,
+            artifactProof: codexVersion,
+          },
+          maximumAttempts: maximumTaskSessions,
+          tasks: {
+            formalSpecification: checked.stageReports.tasks.formalSpecification,
+            leanProgram: checked.stageReports.tasks.leanProgram,
+            artifactProof: proof.stageReport,
+          },
+        }
+      : {
+          schemaVersion: 1,
+          codexVersion,
+          maximumAttempts: maximumTaskSessions,
+          tasks: {
+            formalSpecification: checked.stageReports.tasks.formalSpecification,
+            leanProgram: checked.stageReports.tasks.leanProgram,
+            artifactProof: proof.stageReport,
+          },
+        };
     const proofLibraryCatalog = fs.readFileSync(proofKitCatalogPath, "utf8");
     publish(command.outputPath, packagePath, wasmBytes, (stageRoot) => {
       createPackage(stageRoot, {

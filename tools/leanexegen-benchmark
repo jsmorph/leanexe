@@ -4,7 +4,10 @@
 const crypto = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
-const { validatePackage } = require("./leanexegen-lib");
+const {
+  stageReportCodexVersion,
+  validatePackage,
+} = require("./leanexegen-lib");
 const { stage5Metric } = require("./leanexegen-telemetry");
 
 const repoRoot = path.resolve(__dirname, "..");
@@ -99,7 +102,8 @@ function requirePackageIdentity(packageRoot, benchmark) {
   if (!equal(semanticToolPins(pins), identity.semanticToolPins)) {
     fail(`${packageRoot} has different semantic tool pins`);
   }
-  if (checked.stageReports.codexVersion !== identity.codex.version) {
+  if (stageReportCodexVersion(checked.stageReports, "artifactProof") !==
+      identity.codex.version) {
     fail(`${packageRoot} has a different Codex version`);
   }
   return { checked, pins };

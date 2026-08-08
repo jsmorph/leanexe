@@ -14,6 +14,8 @@ const {
   programExportIndex,
   rewriteProgramNamespace,
   sha256,
+  stageReportCodexVersion,
+  stageReportCodexVersions,
   validateCodexTaskOutcome,
   validatePackage,
   validateProgramImports,
@@ -130,8 +132,21 @@ function testArguments() {
     "verification arguments were parsed incorrectly");
   const reproved = parseArgs(["reprove", "-s", "-o", "new.wasm", "x.proof"]);
   assert(reproved.command === "reprove" && reproved.silent &&
+    !reproved.newCodexSeries &&
     reproved.outputPath.endsWith("/new.wasm") && reproved.packagePath.endsWith("/x.proof"),
   "reproof arguments were parsed incorrectly");
+  const newSeries = parseArgs([
+    "reprove", "--new-codex-series", "-o", "new.wasm", "x.proof",
+  ]);
+  assert(newSeries.command === "reprove" && newSeries.newCodexSeries,
+    "new Codex series arguments were parsed incorrectly");
+  expectFailure(() => parseArgs([
+    "reprove", "--new-codex-series", "--new-codex-series",
+    "-o", "new.wasm", "x.proof",
+  ]), /usage:/);
+  expectFailure(() => parseArgs([
+    "--new-codex-series", "-o", "new.wasm", "request.txt",
+  ]), /usage:/);
   const annotated = parseArgs(["annotate", "-o", "new.proof", "x.proof"]);
   assert(annotated.command === "annotate" &&
     annotated.outputPath.endsWith("/new.proof") &&
@@ -1874,6 +1889,29 @@ function testArtifactPackage(job, formalSource) {
     job.programModule,
     "import Project.ProofKit.Control\n",
   ]])), /frozen module.*imports mutable proof-library module/);
+  const splitCodexReports = {
+    schemaVersion: 2,
+    codexVersions: {
+      formalSpecification: "codex-cli 0.146.0",
+      leanProgram: "codex-cli 0.146.0",
+      artifactProof: "codex-cli 0.147.0",
+    },
+    maximumAttempts: stageReports.maximumAttempts,
+    tasks: stageReports.tasks,
+  };
+  validateStageReports(splitCodexReports, packageRoot, job);
+  assert(stageReportCodexVersion(splitCodexReports, "artifactProof") ===
+      "codex-cli 0.147.0" &&
+    JSON.stringify(stageReportCodexVersions(stageReports)) === JSON.stringify({
+      formalSpecification: "codex-cli test",
+      leanProgram: "codex-cli test",
+      artifactProof: "codex-cli test",
+    }),
+  "stage reports did not preserve per-task Codex identities");
+  const malformedSplitReports = structuredClone(splitCodexReports);
+  delete malformedSplitReports.codexVersions.leanProgram;
+  expectFailure(() => validateStageReports(malformedSplitReports, packageRoot, job),
+    /codexVersions must contain exactly/);
   const tamperedReports = structuredClone(stageReports);
   tamperedReports.tasks.artifactProof.report.summary = "changed";
   expectFailure(() => validateStageReports(tamperedReports, packageRoot, job),

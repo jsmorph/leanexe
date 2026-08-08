@@ -37,6 +37,15 @@ tools/leanexegen reprove -o revised.wasm myprogram.proof
 
 The command permits `proofKitSourceSha256` to differ between the input package and the current checkout.  Every other tool pin must match, the Codex CLI identity must match the identity recorded by the package, and no frozen module may import the mutable proof-kit module.  Publication validates the new package, compares the output WASM and artifact record with the input, and compares every frozen Lean module byte-for-byte before installing either output.
 
+`--new-codex-series` permits one explicit Codex CLI identity change when starting a new timing series.  The option requires the installed identity to differ from the input package's artifact-proof identity, preserves the formal and program task identities, and records all three task identities separately in stage-report schema two.  Later reproofs from the resulting package use the ordinary command and require the recorded artifact-proof identity again.
+
+```sh
+tools/leanexegen reprove --new-codex-series \
+  -o revised.wasm myprogram.proof
+```
+
+The option changes no frozen source, formal specification, compiler output, decoded program, or tool pin.  Comparisons across the identity boundary remain invalid, so a new series requires both its baseline and experimental variants under the new identity.  Package validation retains the earlier formal and program identities instead of attributing those tasks to the replacement CLI.
+
 ## Headless Codex tasks
 
 Each stage starts one ephemeral `codex exec` session in its own temporary directory.  The invocation uses `-C`, `--sandbox workspace-write`, `--skip-git-repo-check`, `--ephemeral`, `--json`, `--output-schema`, and `-o`, with the prompt supplied on standard input.  Codex can inspect and edit files inside that stage's workspace, but it cannot write elsewhere.
@@ -122,7 +131,7 @@ Current annotated packages use schema 6, which identifies the `heapReserveBytes`
 | `program.wasm` | The exact bytes embedded and proved by the generated Lean modules. |
 | `request.txt` | The original prose request, including its original whitespace. |
 | `interpretation.json` | The accepted summary and decisions from each of the three Codex tasks. |
-| `stage-reports.json` | Codex version, one-session bound, accepted source hashes, outer diagnostics, and a hash of each task report. |
+| `stage-reports.json` | Per-task Codex versions, one-session bound, accepted source hashes, outer diagnostics, and a hash of each task report. |
 | `proof-journal.md` | The artifact-proof agent's prose account of its reasoning, Lean results, and changes of direction.  The journal is diagnostic evidence and does not participate in the Lean proof. |
 | `samples.json` | Input arrays, observed output arrays, and host-runner invocations used during generation. |
 | `proof-library.md` | The proof-kit catalog supplied to the artifact-proof task. |
