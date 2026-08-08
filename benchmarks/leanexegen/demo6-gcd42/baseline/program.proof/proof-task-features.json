@@ -1,0 +1,84 @@
+{
+  "schemaVersion": 1,
+  "extractorVersion": 5,
+  "sourceSha256": "956e2b209ab3e1917aebda5d39e4b7b5b6cdcd423ef57febb94e32469f95adfc",
+  "exportIndex": 1,
+  "reachableFunctions": [
+    {
+      "index": 0,
+      "instructionCount": 106,
+      "localCount": 18,
+      "calls": [],
+      "loopCount": 1,
+      "hasMemory": false,
+      "hasArithmetic": true,
+      "hasAllocation": false,
+      "fixedArrayEqNodes": [],
+      "fixedArraySearchKeys": [],
+      "fixedArrayLengthDispatches": []
+    },
+    {
+      "index": 1,
+      "instructionCount": 263,
+      "localCount": 14,
+      "calls": [
+        0
+      ],
+      "loopCount": 1,
+      "hasMemory": true,
+      "hasArithmetic": true,
+      "hasAllocation": true,
+      "fixedArrayEqNodes": [],
+      "fixedArraySearchKeys": [
+        {
+          "offset": 0,
+          "index": 0,
+          "keyLocal": 1
+        }
+      ],
+      "fixedArrayLengthDispatches": []
+    }
+  ],
+  "selectedSections": [
+    {
+      "id": "strategy.core",
+      "reason": "selected for every artifact proof"
+    },
+    {
+      "id": "strategy.calls",
+      "reason": "an export-reachable function contains a direct call"
+    },
+    {
+      "id": "strategy.loops",
+      "reason": "an export-reachable function contains a loop"
+    },
+    {
+      "id": "strategy.frames",
+      "reason": "a reachable function contains a loop or at least 16 locals"
+    },
+    {
+      "id": "strategy.arrays",
+      "reason": "selected for the fixed Array UInt64 public interface"
+    },
+    {
+      "id": "strategy.arithmetic",
+      "reason": "an export-reachable function contains machine arithmetic"
+    },
+    {
+      "id": "strategy.memory",
+      "reason": "an export-reachable function contains a load or store"
+    },
+    {
+      "id": "strategy.allocation",
+      "reason": "an export-reachable function contains allocator operations"
+    },
+    {
+      "id": "strategy.elaboration",
+      "reason": "a reachable function exceeds 200 instructions, has at least 32 locals, or has multiple loops"
+    },
+    {
+      "id": "strategy.diagnostics",
+      "reason": "selected for every artifact proof"
+    }
+  ]
+}
