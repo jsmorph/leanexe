@@ -81,6 +81,10 @@ mutual
         let (leftValue, afterLeft) ← left.evalU64 scratch state
         let (rightValue, afterRight) ← right.evalU64 scratch afterLeft
         pure (leftValue == rightValue, afterRight)
+    | .bool, .ne left right, scratch, state => do
+        let (leftValue, afterLeft) ← left.evalU64 scratch state
+        let (rightValue, afterRight) ← right.evalU64 scratch afterLeft
+        pure (leftValue != rightValue, afterRight)
     | .bool, .ltU left right, scratch, state => do
         let (leftValue, afterLeft) ← left.evalU64 scratch state
         let (rightValue, afterRight) ← right.evalU64 scratch afterLeft
@@ -137,6 +141,7 @@ theorem Expr.eval_toState
       cases operation <;>
         simp [Expr.eval, Expr.evalU64, leftProof, rightProof, Option.bind_map]
   | eq left right leftProof rightProof
+  | ne left right leftProof rightProof
   | ltU left right leftProof rightProof
   | leU left right leftProof rightProof =>
       simp [Expr.eval, Expr.evalU64, leftProof, rightProof, Option.bind_map]

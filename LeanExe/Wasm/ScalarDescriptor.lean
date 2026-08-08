@@ -55,6 +55,7 @@ mutual
     | true
     | false
     | eq (left right : Expr)
+    | ne (left right : Expr)
     | ltU (left right : Expr)
     | leU (left right : Expr)
     | not (condition : Cond)
@@ -76,6 +77,11 @@ structure While where
   body : Stmt
   deriving Repr, BEq
 
+structure PostTest where
+  condition : Cond
+  body : Stmt
+  deriving Repr, BEq
+
 mutual
 
   def Expr.reads : Expr → List Nat
@@ -87,7 +93,7 @@ mutual
 
   def Cond.reads : Cond → List Nat
     | .true | .false => []
-    | .eq left right | .ltU left right | .leU left right =>
+    | .eq left right | .ne left right | .ltU left right | .leU left right =>
         left.reads ++ right.reads
     | .not condition => condition.reads
     | .and left right | .or left right => left.reads ++ right.reads
@@ -106,7 +112,7 @@ mutual
 
   def Cond.scratchWidth : Cond → Nat
     | .true | .false => 0
-    | .eq left right | .ltU left right | .leU left right =>
+    | .eq left right | .ne left right | .ltU left right | .leU left right =>
         max left.scratchWidth right.scratchWidth
     | .not condition => condition.scratchWidth
     | .and left right | .or left right =>
@@ -141,6 +147,9 @@ def While.reads (descriptor : While) : List Nat :=
 def While.writes (descriptor : While) : List Nat := descriptor.body.writes
 
 def While.scratchWidth (descriptor : While) : Nat :=
+  max descriptor.condition.scratchWidth descriptor.body.scratchWidth
+
+def PostTest.scratchWidth (descriptor : PostTest) : Nat :=
   max descriptor.condition.scratchWidth descriptor.body.scratchWidth
 
 mutual
@@ -194,6 +203,47 @@ def While.ofIR : LeanExe.IR.Stmt → Option While
   | .while condition body => return ⟨← Cond.ofIR condition, ← Stmt.ofIR body⟩
   | _ => none
 
+def Stmt.seqList : List Stmt → Stmt
+  | [] => .skip
+  | statement :: statements => statements.foldl Stmt.seq statement
+
+mutual
+
+  def Stmt.ofLocalLet : LeanExe.IR.LocalLet → Option Stmt
+    | .expr slot value => return .assign slot (← Expr.ofIR value)
+    | .call _ _ _ => none
+    | .slots slots values => do
+        if slots.length != values.length then none else
+          let statements ← (slots.zip values).mapM fun item => do
+            pure (Stmt.assign item.fst (← Expr.ofIR item.snd))
+          pure (Stmt.seqList statements)
+    | .branch condition thenLets elseLets =>
+        return .ite (← Cond.ofIR condition) (← Stmt.ofLocalLets thenLets)
+          (← Stmt.ofLocalLets elseLets)
+
+  def Stmt.ofLocalLets : List LeanExe.IR.LocalLet → Option Stmt
+    | lets => return Stmt.seqList (← lets.mapM Stmt.ofLocalLet)
+
+end
+
+def PostTest.ofIR
+    (accumulatorStart doneLocal stagedValueStart releaseReadyLocal : Nat)
+    (bodyValues : List LeanExe.IR.Expr)
+    (bodyLets : List LeanExe.IR.LocalLet)
+    (doneValue : LeanExe.IR.Expr) : Option PostTest := do
+  let lets ← Stmt.ofLocalLets bodyLets
+  let stages ← (List.range bodyValues.length |>.zip bodyValues).mapM fun item => do
+    pure (Stmt.assign (stagedValueStart + item.fst) (← Expr.ofIR item.snd))
+  let done ← Expr.ofIR doneValue
+  let copies := (List.range bodyValues.length).map fun offset =>
+    Stmt.assign (accumulatorStart + offset) (.get (stagedValueStart + offset))
+  pure {
+    body := Stmt.seqList <|
+      [lets, Stmt.seqList stages, .assign doneLocal done,
+        Stmt.seqList copies, .assign releaseReadyLocal (.const 1)]
+    condition := .ne (.get doneLocal) (.const 0)
+  }
+
 mutual
 
   def Expr.emit : Expr → Nat → List Instr
@@ -218,6 +268,7 @@ mutual
     | .true, _ => [.constI32 1]
     | .false, _ => [.constI32 0]
     | .eq left right, scratch => left.emit scratch ++ right.emit scratch ++ [.eqI64]
+    | .ne left right, scratch => left.emit scratch ++ right.emit scratch ++ [.neI64]
     | .ltU left right, scratch => left.emit scratch ++ right.emit scratch ++ [.ltUI64]
     | .leU left right, scratch => left.emit scratch ++ right.emit scratch ++ [.leUI64]
     | .not condition, scratch => condition.emit scratch ++ [.eqzI32]
@@ -275,6 +326,8 @@ mutual
     | .false => Lean.Json.mkObj [("kind", "false")]
     | .eq left right => Lean.Json.mkObj [
         ("kind", "eq"), ("left", left.toJson), ("right", right.toJson)]
+    | .ne left right => Lean.Json.mkObj [
+        ("kind", "ne"), ("left", left.toJson), ("right", right.toJson)]
     | .ltU left right => Lean.Json.mkObj [
         ("kind", "lt-u"), ("left", left.toJson), ("right", right.toJson)]
     | .leU left right => Lean.Json.mkObj [
@@ -308,6 +361,10 @@ instance : Lean.ToJson Stmt where
   toJson := Stmt.toJson
 
 instance : Lean.ToJson While where
+  toJson descriptor := Lean.Json.mkObj [
+    ("condition", descriptor.condition.toJson), ("body", descriptor.body.toJson)]
+
+instance : Lean.ToJson PostTest where
   toJson descriptor := Lean.Json.mkObj [
     ("condition", descriptor.condition.toJson), ("body", descriptor.body.toJson)]
 

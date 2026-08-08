@@ -82,6 +82,8 @@ Use a postcondition-generic loop-body theorem when Talos exposes a large match c
 
 Operational trace relations can help when generated code runs the same deterministic loop more than once.  Define an inductive relation with one constructor per loop branch, prove that two runs from the same start have the same result, and connect each instruction branch to one constructor.  Use this additional relation when it replaces a duplicated semantic proof, since a single deterministic run needs only its invariant and transition lemmas.
 
+A checked `leanexe.loop.scalar-post-test.v1` recipe describes a body-first scalar loop produced by a multi-slot loop-fold expression.  Apply its generated `terminates_with_of_loop` theorem at the scalar call boundary, then apply `ScalarTransition.postTestProgram_spec` with the application invariant and measure.  Rewrite the generated `body_eval` equation before the `condition_eval` equation because the artifact updates and stages its accumulators before testing the exit guard.  Keep the exact decoded suffix folded until the exit case, then unfold the generated function only if the remaining local transfer cannot reduce through the compact state constructor.
+
 The checked proof kit can remove the entry and block boilerplate without choosing an invariant.  [`wp_entry_to_loop`](../proofs/talos/lean/Project/ProofKit/Control.lean) reaches the block-wrapped loop, and `wp_block_loop` applies the block and loop rules with caller-supplied invariant and measure.  These tactics help only when `Program` has the documented shape, and the generated proof retains every invariant, preservation, decrease, and exit obligation.
 <!-- leanexegen-section:strategy.loops end -->
 

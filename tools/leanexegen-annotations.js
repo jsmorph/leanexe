@@ -426,7 +426,7 @@ function validateScalarCond(condition, description) {
   string(condition.kind, `${description}.kind`);
   if (["true", "false"].includes(condition.kind)) {
     exactKeys(condition, ["kind"], description);
-  } else if (["eq", "lt-u", "le-u"].includes(condition.kind)) {
+  } else if (["eq", "ne", "lt-u", "le-u"].includes(condition.kind)) {
     exactKeys(condition, ["kind", "left", "right"], description);
     validateScalarExpr(condition.left, `${description}.left`);
     validateScalarExpr(condition.right, `${description}.right`);
@@ -559,6 +559,70 @@ function validateWhileLoop(region, description) {
     string(generator, `${description}.generatedBy[${index}]`));
 }
 
+function validateScalarPostTestLoop(region, description) {
+  exactKeys(region, ["generatedBy", "id", "kind", "location", "parameters"], description);
+  string(region.id, `${description}.id`);
+  if (region.kind !== "leanexe.loop.scalar-post-test.v1") {
+    fail(`${description}.kind is unsupported`);
+  }
+  validateRegionLocation(region, description);
+  if (region.location.listPath.length !== 0 ||
+      region.location.endIndex !== region.location.startIndex + 1) {
+    fail(`${description}.location must select one top-level block`);
+  }
+  exactKeys(region.parameters, [
+    "accumulatorLocals", "accumulatorStart", "continuation", "descriptor",
+    "descriptorVersion", "destination", "initialValues", "releaseOffsets",
+    "resultSlot", "resultWidth", "scratchStart",
+  ], `${description}.parameters`);
+  const parameters = region.parameters;
+  natural(parameters.resultWidth, `${description}.parameters.resultWidth`);
+  if (parameters.resultWidth === 0) {
+    fail(`${description}.parameters.resultWidth must be positive`);
+  }
+  natural(parameters.accumulatorStart, `${description}.parameters.accumulatorStart`);
+  natural(parameters.resultSlot, `${description}.parameters.resultSlot`);
+  natural(parameters.destination, `${description}.parameters.destination`);
+  natural(parameters.scratchStart, `${description}.parameters.scratchStart`);
+  if (parameters.resultSlot >= parameters.resultWidth) {
+    fail(`${description}.parameters.resultSlot exceeds the result width`);
+  }
+  const accumulatorLocals = array(
+    parameters.accumulatorLocals, `${description}.parameters.accumulatorLocals`);
+  const initialValues = array(
+    parameters.initialValues, `${description}.parameters.initialValues`);
+  if (accumulatorLocals.length !== parameters.resultWidth ||
+      initialValues.length !== parameters.resultWidth) {
+    fail(`${description}.parameters result-width arrays differ in length`);
+  }
+  accumulatorLocals.forEach((local, index) => {
+    if (natural(local, `${description}.parameters.accumulatorLocals[${index}]`) !==
+        parameters.accumulatorStart + index) {
+      fail(`${description}.parameters.accumulatorLocals must be consecutive`);
+    }
+  });
+  initialValues.forEach((value, index) =>
+    string(value, `${description}.parameters.initialValues[${index}]`));
+  if (array(parameters.releaseOffsets,
+    `${description}.parameters.releaseOffsets`).length !== 0) {
+    fail(`${description}.parameters.releaseOffsets must be empty`);
+  }
+  if (parameters.descriptorVersion !== 1 || parameters.descriptor === null) {
+    fail(`${description}.parameters descriptor is unsupported`);
+  }
+  exactKeys(parameters.descriptor, ["body", "condition"],
+    `${description}.parameters.descriptor`);
+  validateScalarCond(parameters.descriptor.condition,
+    `${description}.parameters.descriptor.condition`);
+  validateScalarStmt(parameters.descriptor.body,
+    `${description}.parameters.descriptor.body`);
+  if (parameters.continuation !== "fallthrough") {
+    fail(`${description}.parameters has an unsupported continuation`);
+  }
+  array(region.generatedBy, `${description}.generatedBy`).forEach((generator, index) =>
+    string(generator, `${description}.generatedBy[${index}]`));
+}
+
 function validateAnnotationDocument(document, wasmBytes) {
   exactKeys(document, ["artifact", "functions", "schemaVersion"], "annotations");
   if (document.schemaVersion !== 1) fail("unsupported annotation schema");
@@ -614,6 +678,8 @@ function validateAnnotationDocument(document, wasmBytes) {
         validateLoopFold(region, `${description}.regions[${regionIndex}]`);
       } else if (region?.kind === "leanexe.loop.while.v1") {
         validateWhileLoop(region, `${description}.regions[${regionIndex}]`);
+      } else if (region?.kind === "leanexe.loop.scalar-post-test.v1") {
+        validateScalarPostTestLoop(region, `${description}.regions[${regionIndex}]`);
       } else {
         fail(`${description}.regions[${regionIndex}].kind is unsupported`);
       }
@@ -1112,10 +1178,46 @@ function matchWhileLoopRegion(program, function_, region) {
   };
 }
 
+function matchScalarPostTestLoopRegion(program, function_, region) {
+  const body = programFunctionBody(program, function_.wasmIndex);
+  const instructions = resolveInstructionList(body, region.location.listPath);
+  const selected = normalizeInstructions(
+    instructions.slice(region.location.startIndex, region.location.endIndex));
+  if (selected.length !== 1 || !selected[0].startsWith(".block ")) {
+    fail(`${region.id}: decoded scalar post-test region is not one structured block`);
+  }
+  const blockPath = [
+    ...region.location.listPath,
+    { instructionIndex: region.location.startIndex, field: "block" },
+  ];
+  const block = normalizeInstructions(resolveInstructionList(body, blockPath));
+  if (block.length !== 1 || !block[0].startsWith(".loop ")) {
+    fail(`${region.id}: decoded scalar post-test block does not contain one loop`);
+  }
+  const loop = normalizeInstructions(resolveInstructionList(body, [
+    ...blockPath,
+    { instructionIndex: 0, field: "loop" },
+  ]));
+  if (loop.length < 2 || loop.at(-2) !== ".br_if 1" || loop.at(-1) !== ".br 0") {
+    fail(`${region.id}: decoded scalar post-test back edge does not match`);
+  }
+  return {
+    functionIndex: function_.wasmIndex,
+    regionId: region.id,
+    regionKind: region.kind,
+    parameters: region.parameters,
+    entryEligible: scalarEntryState(function_, region, program) !== null,
+  };
+}
+
 function loopRecipe(
     match, selectedSections = [], annotationNamespace = "Project.AnnotationMatches") {
-  if (match.regionKind === "leanexe.loop.while.v1" && match.parameters.descriptor !== null) {
+  const checkedScalarLoop = [
+    "leanexe.loop.while.v1", "leanexe.loop.scalar-post-test.v1",
+  ].includes(match.regionKind) && match.parameters.descriptor !== null;
+  if (checkedScalarLoop) {
     const name = match.regionId.replace(/[^A-Za-z0-9_]/g, "_");
+    const postTest = match.regionKind === "leanexe.loop.scalar-post-test.v1";
     return {
       recipeVersion: 1,
       functionIndex: match.functionIndex,
@@ -1124,7 +1226,9 @@ function loopRecipe(
       applicability: "Lean-checked equality over the decoded instruction region",
       direct: {
         module: "Project.ProofKit.ScalarTransition",
-        theorem: "Project.ProofKit.ScalarTransition.whileProgram_spec",
+        theorem: postTest
+          ? "Project.ProofKit.ScalarTransition.postTestProgram_spec"
+          : "Project.ProofKit.ScalarTransition.whileProgram_spec",
         regionEquality: annotationMatchTheoremName(match.regionId, annotationNamespace),
         program: `${annotationNamespace}.${name}_program`,
       },
@@ -1157,8 +1261,12 @@ function loopRecipe(
           purpose: "preserve each application local below scratch that the body does not write",
         },
         {
-          declaration: "Project.ProofKit.ScalarTransition.whileProgram_spec",
-          purpose: "compose the checked transition with the invariant and measure",
+          declaration: postTest
+            ? "Project.ProofKit.ScalarTransition.postTestProgram_spec"
+            : "Project.ProofKit.ScalarTransition.whileProgram_spec",
+          purpose: postTest
+            ? "compose a checked post-test transition with the invariant and measure"
+            : "compose the checked transition with the invariant and measure",
         },
       ],
       expectedPostcondition: "an invariant-preserving transition with a decreasing measure",
@@ -1566,7 +1674,10 @@ function proofRecipePlan(
       } else if (region.kind === "leanexe.array.filter-lt.v1") {
         recipes.push(fixedArrayFilterLtRecipe(
           matches.get(region.id), selectedSections, annotationNamespace));
-      } else if (["leanexe.loop.fold.v1", "leanexe.loop.while.v1"].includes(region.kind)) {
+      } else if ([
+        "leanexe.loop.fold.v1", "leanexe.loop.while.v1",
+        "leanexe.loop.scalar-post-test.v1",
+      ].includes(region.kind)) {
         recipes.push(loopRecipe(
           matches.get(region.id), selectedSections, annotationNamespace));
       } else {
@@ -1649,6 +1760,8 @@ function matchAnnotationDocument(document, program) {
         matches.push(matchLoopFoldRegion(program, function_, region));
       } else if (region.kind === "leanexe.loop.while.v1") {
         matches.push(matchWhileLoopRegion(program, function_, region));
+      } else if (region.kind === "leanexe.loop.scalar-post-test.v1") {
+        matches.push(matchScalarPostTestLoopRegion(program, function_, region));
       } else {
         matches.push(matchFixedArrayPairResultRegion(program, function_, region));
       }
@@ -1754,12 +1867,13 @@ function validateProofRecipePlan(plan, document) {
       fail(`${description} has an invalid identity`);
     }
     const region = regions.get(recipe.regionId);
-    const checkedScalarWhile = region.kind === "leanexe.loop.while.v1" &&
-      region.parameters.descriptor !== null;
+    const checkedScalarLoop = [
+      "leanexe.loop.while.v1", "leanexe.loop.scalar-post-test.v1",
+    ].includes(region.kind) && region.parameters.descriptor !== null;
     const expectedApplicability = [
       "leanexe.array.pair-result.v1", "leanexe.array.map-add.v1",
       "leanexe.array.filter-lt.v1",
-    ].includes(region.kind) || checkedScalarWhile
+    ].includes(region.kind) || checkedScalarLoop
       ? "Lean-checked equality over the decoded instruction region"
       : "exact decoded instruction match";
     if (recipe.applicability !== expectedApplicability) {
@@ -1850,16 +1964,21 @@ function validateProofRecipePlan(plan, document) {
             `${region.parameters.maximumSize} ${region.parameters.threshold}`) {
         fail(`${description}.direct is unsupported`);
       }
-    } else if (checkedScalarWhile) {
+    } else if (checkedScalarLoop) {
       const name = recipe.regionId.replace(/[^A-Za-z0-9_]/g, "_");
+      const expectedTheorem = region.kind === "leanexe.loop.scalar-post-test.v1"
+        ? "Project.ProofKit.ScalarTransition.postTestProgram_spec"
+        : "Project.ProofKit.ScalarTransition.whileProgram_spec";
       if (recipe.direct.module !== "Project.ProofKit.ScalarTransition" ||
-          recipe.direct.theorem !==
-            "Project.ProofKit.ScalarTransition.whileProgram_spec" ||
+          recipe.direct.theorem !== expectedTheorem ||
           !recipe.direct.regionEquality.endsWith(`.${name}_eq`) ||
           !recipe.direct.program.endsWith(`.${name}_program`)) {
         fail(`${description}.direct is unsupported`);
       }
-    } else if (["leanexe.loop.fold.v1", "leanexe.loop.while.v1"].includes(region.kind)) {
+    } else if ([
+      "leanexe.loop.fold.v1", "leanexe.loop.while.v1",
+      "leanexe.loop.scalar-post-test.v1",
+    ].includes(region.kind)) {
       if (recipe.direct.module !== "Project.ProofKit.Control" ||
           recipe.direct.theorem !== "Wasm.wp_loop_cons") {
         fail(`${description}.direct is unsupported`);
@@ -2235,8 +2354,8 @@ function scalarExprLean(expression) {
 function scalarCondLean(condition) {
   if (condition.kind === "true") return ".bconst true";
   if (condition.kind === "false") return ".bconst false";
-  if (["eq", "lt-u", "le-u"].includes(condition.kind)) {
-    const constructor = ({ "eq": ".eq", "lt-u": ".ltU", "le-u": ".leU" })[
+  if (["eq", "ne", "lt-u", "le-u"].includes(condition.kind)) {
+    const constructor = ({ "eq": ".eq", "ne": ".ne", "lt-u": ".ltU", "le-u": ".leU" })[
       condition.kind];
     return `${constructor} (${scalarExprLean(condition.left)}) ` +
       `(${scalarExprLean(condition.right)})`;
@@ -2349,7 +2468,7 @@ function scalarExpressionTransition(expression, scratch, state) {
       },
     );
   }
-  if (["eq", "lt-u", "le-u"].includes(expression.kind)) {
+  if (["eq", "ne", "lt-u", "le-u"].includes(expression.kind)) {
     return scalarTransitionBind(
       scalarExpressionTransition(expression.left, scratch, state),
       (left) => scalarTransitionBind(
@@ -2360,6 +2479,8 @@ function scalarExpressionTransition(expression, scratch, state) {
               typeof right.value.known === "bigint") {
             known = expression.kind === "eq"
               ? left.value.known === right.value.known
+              : expression.kind === "ne"
+                ? left.value.known !== right.value.known
               : expression.kind === "lt-u"
                 ? left.value.known < right.value.known
                 : left.value.known <= right.value.known;
@@ -2367,6 +2488,8 @@ function scalarExpressionTransition(expression, scratch, state) {
           return scalarTransitionLeaf({
             value: scalarValue("bool", expression.kind === "eq"
               ? `((${left.value.value}) == (${right.value.value}))`
+              : expression.kind === "ne"
+                ? `((${left.value.value}) != (${right.value.value}))`
               : expression.kind === "lt-u"
                 ? `(decide ((${left.value.value}) < (${right.value.value})))`
                 : `(decide ((${left.value.value}) ≤ (${right.value.value})))`, known),
@@ -2743,9 +2866,14 @@ function annotationMatchesSource(document, job, program = null) {
   const declarations = [];
   for (const function_ of document.functions) {
     for (const region of function_.regions) {
-      if (region.kind === "leanexe.loop.while.v1" && region.parameters.descriptor !== null) {
+      if ([
+        "leanexe.loop.while.v1", "leanexe.loop.scalar-post-test.v1",
+      ].includes(region.kind) && region.parameters.descriptor !== null) {
         const descriptor = region.parameters.descriptor;
         const name = region.id.replace(/[^A-Za-z0-9_]/g, "_");
+        const programConstructor = region.kind === "leanexe.loop.scalar-post-test.v1"
+          ? "postTestProgram"
+          : "whileProgram";
         declarations.push(`def ${name}_condition :
     Project.ProofKit.ScalarTransition.Expr .bool :=
   ${scalarCondLean(descriptor.condition)}
@@ -2754,7 +2882,7 @@ def ${name}_body : Project.ProofKit.ScalarTransition.Stmt :=
   ${scalarStmtLean(descriptor.body)}
 
 def ${name}_program : Wasm.Program :=
-  Project.ProofKit.ScalarTransition.whileProgram
+  Project.ProofKit.ScalarTransition.${programConstructor}
     ${region.parameters.scratchStart} ${name}_condition ${name}_body
 
 theorem ${name}_eq :
@@ -2846,7 +2974,8 @@ theorem ${composition.name}_eq :
 import Project.ProofKit.Annotation
 import Project.ProofKit.FixedArrayPairResult
 ${document.functions.some((function_) => function_.regions.some((region) =>
-    region.kind === "leanexe.loop.while.v1" && region.parameters.descriptor !== null))
+    ["leanexe.loop.while.v1", "leanexe.loop.scalar-post-test.v1"].includes(region.kind) &&
+      region.parameters.descriptor !== null))
     ? "import Project.ProofKit.ScalarTransition\n" +
       "import Project.ProofKit.ScalarTransitionU64\n" : ""}
 ${document.functions.some((function_) => function_.regions.some((region) =>
@@ -2895,6 +3024,7 @@ module.exports = {
   matchFixedArrayPairResultRegion,
   matchFixedArraySearchKeyRegion,
   matchLoopFoldRegion,
+  matchScalarPostTestLoopRegion,
   matchWhileLoopRegion,
   proofRecipePlan,
   resolveInstructionList,

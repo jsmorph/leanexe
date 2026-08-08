@@ -179,6 +179,7 @@ inductive Expr : ScalarType → Type where
   | bconst (value : Bool) : Expr .bool
   | bin (op : U64Op) (left right : Expr .u64) : Expr .u64
   | eq (left right : Expr .u64) : Expr .bool
+  | ne (left right : Expr .u64) : Expr .bool
   | ltU (left right : Expr .u64) : Expr .bool
   | leU (left right : Expr .u64) : Expr .bool
   | not (condition : Expr .bool) : Expr .bool
@@ -213,6 +214,10 @@ mutual
         let (leftValue, afterLeft) ← left.eval scratch state
         let (rightValue, afterRight) ← right.eval scratch afterLeft
         pure (leftValue == rightValue, afterRight)
+    | .bool, .ne left right, scratch, state => do
+        let (leftValue, afterLeft) ← left.eval scratch state
+        let (rightValue, afterRight) ← right.eval scratch afterLeft
+        pure (leftValue != rightValue, afterRight)
     | .bool, .ltU left right, scratch, state => do
         let (leftValue, afterLeft) ← left.eval scratch state
         let (rightValue, afterRight) ← right.eval scratch afterLeft
@@ -254,6 +259,8 @@ mutual
           left.program scratch ++ right.program scratch ++ [op.instruction]
     | .bool, .eq left right, scratch =>
         left.program scratch ++ right.program scratch ++ [.eqI64]
+    | .bool, .ne left right, scratch =>
+        left.program scratch ++ right.program scratch ++ [.neI64]
     | .bool, .ltU left right, scratch =>
         left.program scratch ++ right.program scratch ++ [.ltUI64]
     | .bool, .leU left right, scratch =>
@@ -279,7 +286,7 @@ inductive Stmt where
 def Expr.reads : {type : ScalarType} → Expr type → List Nat
   | _, .get index => [index]
   | _, .const _ | _, .bconst _ => []
-  | _, .bin _ left right | _, .eq left right | _, .ltU left right
+  | _, .bin _ left right | _, .eq left right | _, .ne left right | _, .ltU left right
   | _, .leU left right => left.reads ++ right.reads
   | _, .not condition => condition.reads
   | _, .and left right | _, .or left right => left.reads ++ right.reads
@@ -291,7 +298,7 @@ def Expr.scratchWidth : {type : ScalarType} → Expr type → Nat
   | _, .bin operation left right =>
       let childWidth := max left.scratchWidth right.scratchWidth
       if operation = .divU ∨ operation = .remU then childWidth + 2 else childWidth
-  | _, .eq left right | _, .ltU left right | _, .leU left right
+  | _, .eq left right | _, .ne left right | _, .ltU left right | _, .leU left right
   | _, .and left right | _, .or left right =>
       max left.scratchWidth right.scratchWidth
   | _, .not condition => condition.scratchWidth
@@ -345,6 +352,10 @@ def whileProgram (scratch : Nat) (condition : Expr .bool) (body : Stmt) : Progra
   [.block 0 0 [.loop 0 0
     (condition.program scratch ++ [.eqz, .br_if 1] ++
       body.program scratch ++ [.br 0])]]
+
+def postTestProgram (scratch : Nat) (condition : Expr .bool) (body : Stmt) : Program :=
+  [.block 0 0 [.loop 0 0
+    (body.program scratch ++ condition.program scratch ++ [.br_if 1, .br 0])]]
 
 theorem Expr.eval_preserves_below
     {type : ScalarType} (expression : Expr type) (scratch : Nat)
@@ -404,6 +415,7 @@ theorem Expr.eval_preserves_below
               leftPreserves (scratch + 2) state afterLeft leftValue index
                 hLeft (by omega)
   | eq left right leftPreserves rightPreserves
+  | ne left right leftPreserves rightPreserves
   | ltU left right leftPreserves rightPreserves
   | leU left right leftPreserves rightPreserves =>
       simp only [Expr.eval] at hEval
@@ -732,6 +744,22 @@ theorem Expr.program_spec
         (next := afterRight) (result := rightValue)
         (values := .i64 leftValue :: values) (rest := _) (Q := _) hRight
       simpa [Expr.program, ScalarType.value, wp_simp] using hNext
+  | ne left right leftSpec rightSpec =>
+      simp only [Expr.eval] at hEval
+      simp only [Expr.program, List.append_assoc]
+      rcases hLeft : left.eval scratch state with _ | ⟨leftValue, afterLeft⟩
+      · simp [hLeft] at hEval
+      rcases hRight : right.eval scratch afterLeft with _ | ⟨rightValue, afterRight⟩
+      · simp [hLeft, hRight] at hEval
+      simp [hLeft, hRight] at hEval
+      obtain ⟨rfl, rfl⟩ := hEval
+      apply leftSpec (scratch := scratch) (state := state)
+        (next := afterLeft) (result := leftValue) (values := values)
+        (rest := _) (Q := _) hLeft
+      apply rightSpec (scratch := scratch) (state := afterLeft)
+        (next := afterRight) (result := rightValue)
+        (values := .i64 leftValue :: values) (rest := _) (Q := _) hRight
+      simpa [Expr.program, ScalarType.value, wp_simp] using hNext
   | ltU left right leftSpec rightSpec =>
       simp only [Expr.eval] at hEval
       simp only [Expr.program, List.append_assoc]
@@ -997,5 +1025,52 @@ theorem whileProgram_spec
       constructor
       · exact ⟨rfl, afterBody, rfl, hBodyInv⟩
       · simpa [loopMeasure, State.ofLocals, State.toLocals] using hDecrease
+
+set_option maxHeartbeats 1000000 in
+theorem postTestProgram_spec
+    (condition : Expr .bool) (body : Stmt) (scratch : Nat)
+    (initial : State) (values : List Value)
+    (module_ : Module) (env : HostEnv α) (store : Store α)
+    (rest : Program) (Q : Assertion α)
+    (Inv : State → Prop) (measure : State → Nat)
+    (hInit : Inv initial)
+    (hStep : ∀ current, Inv current →
+      ∃ afterBody,
+        body.eval scratch current = some afterBody ∧
+        ∃ result afterCondition,
+          condition.eval scratch afterBody = some (result, afterCondition) ∧
+          if result then
+            wp module_ rest Q store (afterCondition.toLocals values) env
+          else
+            Inv afterCondition ∧ measure afterCondition < measure current) :
+    wp module_ (postTestProgram scratch condition body ++ rest) Q store
+      (initial.toLocals values) env := by
+  let loopInv : AssertionF α := fun currentStore locals =>
+    currentStore = store ∧
+      ∃ current, locals = current.toLocals values ∧ Inv current
+  let loopMeasure : Store α → Locals → Nat := fun _ locals =>
+    measure (State.ofLocals locals)
+  simp only [postTestProgram, List.singleton_append]
+  apply Wasm.wp_block_cons
+  apply Wasm.wp_loop_cons (Inv := loopInv) (μ := loopMeasure)
+  · exact ⟨rfl, initial, rfl, hInit⟩
+  · intro currentStore locals hInv
+    rcases hInv with ⟨hStore, current, hLocals, hCurrent⟩
+    subst currentStore
+    subst locals
+    rcases hStep current hCurrent with
+      ⟨afterBody, hBody, result, afterCondition, hCondition, hResult⟩
+    simp only [List.append_assoc]
+    apply Stmt.program_spec body scratch current afterBody values
+      module_ env store
+        (condition.program scratch ++ [Instruction.br_if 1, Instruction.br 0]) _ hBody
+    apply Expr.program_spec condition scratch afterBody afterCondition result values
+      module_ env store [Instruction.br_if 1, Instruction.br 0] _ hCondition
+    cases result
+    · simp [wp_simp, State.toLocals, ScalarType.value]
+      constructor
+      · exact ⟨rfl, afterCondition, rfl, hResult.1⟩
+      · simpa [loopMeasure, State.ofLocals, State.toLocals] using hResult.2
+    · simpa [wp_simp, State.toLocals, ScalarType.value] using hResult
 
 end Project.ProofKit.ScalarTransition
