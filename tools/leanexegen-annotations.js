@@ -1108,6 +1108,7 @@ function matchWhileLoopRegion(program, function_, region) {
     regionId: region.id,
     regionKind: region.kind,
     parameters: region.parameters,
+    entryEligible: scalarEntryState(function_, region, program) !== null,
   };
 }
 
@@ -1128,6 +1129,10 @@ function loopRecipe(
         program: `${annotationNamespace}.${name}_program`,
       },
       supporting: [
+        ...(match.entryEligible ? [{
+          declaration: `${annotationNamespace}.${name}_entry_to_loop`,
+          purpose: "carry arbitrary i64 arguments through the checked function-entry prefix",
+        }] : []),
         {
           declaration: `${annotationNamespace}.${name}_condition_eval`,
           purpose: "use the checked condition transition without reducing the scalar evaluator",
@@ -2604,6 +2609,107 @@ theorem ${base}_body_eval ${binders} :
   };
 }
 
+function programFunctionDefinition(program, functionIndex) {
+  const marker = `def func${functionIndex}Def : Wasm.Function :=\n`;
+  const start = program.indexOf(marker);
+  if (start < 0) return null;
+  const bodyStart = start + marker.length;
+  const end = program.indexOf("\n\ndef ", bodyStart);
+  return program.slice(bodyStart, end < 0 ? program.length : end);
+}
+
+function functionI64Types(program, function_) {
+  const definition = programFunctionDefinition(program, function_.wasmIndex);
+  if (definition === null) return false;
+  const types = (field) => {
+    const match = definition.match(new RegExp(`${field} := \\[([^\\]]*)\\]`));
+    if (match === null) return null;
+    const contents = match[1].trim();
+    return contents === "" ? [] : contents.split(",").map((type) => type.trim());
+  };
+  const parameters = types("params");
+  const locals = types("locals");
+  return parameters !== null && locals !== null &&
+    parameters.length === function_.parameters && locals.length === function_.locals &&
+    [...parameters, ...locals].every((type) => type === ".i64");
+}
+
+function scalarEntryState(function_, region, program) {
+  if (region.location.listPath.length !== 0 || !functionI64Types(program, function_)) {
+    return null;
+  }
+  const instructions = normalizeInstructions(resolveInstructionList(
+    programFunctionBody(program, function_.wasmIndex), []));
+  const prefix = instructions.slice(0, region.location.startIndex);
+  if (prefix.length !== region.location.startIndex) return null;
+  const state = Array.from(
+    { length: function_.parameters + function_.locals },
+    (_, index) => index < function_.parameters ? `v${index}` : "(0 : UInt64)");
+  const stack = [];
+  for (const instruction of prefix) {
+    let match = instruction.match(/^\.constI64 \(([0-9]+) : UInt64\)$/);
+    if (match !== null) {
+      stack.unshift(`(${match[1]} : UInt64)`);
+      continue;
+    }
+    match = instruction.match(/^\.constI64 ([0-9]+)$/);
+    if (match !== null) {
+      stack.unshift(`(${match[1]} : UInt64)`);
+      continue;
+    }
+    match = instruction.match(/^\.localGet ([0-9]+)$/);
+    if (match !== null && Number(match[1]) < state.length) {
+      stack.unshift(state[Number(match[1])]);
+      continue;
+    }
+    match = instruction.match(/^\.localSet ([0-9]+)$/);
+    if (match !== null && Number(match[1]) < state.length && stack.length > 0) {
+      state[Number(match[1])] = stack.shift();
+      continue;
+    }
+    return null;
+  }
+  return stack.length === 0 ? state : null;
+}
+
+function scalarEntryDeclaration(function_, region, job, program) {
+  if (program === null) return null;
+  const state = scalarEntryState(function_, region, program);
+  if (state === null) return null;
+  const base = region.id.replace(/[^A-Za-z0-9_]/g, "_");
+  const variables = Array.from(
+    { length: function_.parameters }, (_, index) => `v${index}`);
+  const binders = variables.length === 0 ? "" : ` (${variables.join(" ")} : UInt64)`;
+  const argumentValues = `[${variables.map((variable) => `.i64 ${variable}`).join(", ")}]`;
+  const stateArguments = state.map((value) => `(${value})`).join(" ");
+  return {
+    theorem: `${base}_entry_to_loop`,
+    source: `theorem ${base}_loop_tail_eq :
+    ${job.namespace}.func${function_.wasmIndex}.drop ${region.location.startIndex} =
+      ${base}_program ++
+        ${job.namespace}.func${function_.wasmIndex}.drop ${region.location.endIndex} := by
+  rfl
+
+theorem ${base}_entry_to_loop {α : Type}
+    (module : Wasm.Module) (Q : Wasm.Assertion α)
+    (initial : Wasm.Store α) (env : Wasm.HostEnv α)${binders} :
+    Wasm.wp module ${job.namespace}.func${function_.wasmIndex} Q initial
+      (${job.namespace}.func${function_.wasmIndex}Def.toLocals ${argumentValues}) env ↔
+    Wasm.wp module
+      (${base}_program ++
+        ${job.namespace}.func${function_.wasmIndex}.drop ${region.location.endIndex})
+      Q initial
+      ((${base}_state ${stateArguments}).toState.toLocals []) env := by
+  rw [← ${base}_loop_tail_eq]
+  unfold ${job.namespace}.func${function_.wasmIndex}Def
+  unfold ${job.namespace}.func${function_.wasmIndex}
+  unfold ${base}_state
+  wp_run
+  simp [Project.ProofKit.ScalarTransition.U64State.toState,
+    Project.ProofKit.ScalarTransition.State.toLocals]`,
+  };
+}
+
 function annotationMatchesSource(document, job, program = null) {
   const declarations = [];
   for (const function_ of document.functions) {
@@ -2629,6 +2735,8 @@ theorem ${name}_eq :
   rfl`);
         const transitions = scalarTransitionDeclarations(function_, region);
         declarations.push(transitions.source);
+        const entry = scalarEntryDeclaration(function_, region, job, program);
+        if (entry !== null) declarations.push(entry.source);
         continue;
       }
       if (region.kind === "leanexe.array.map-add.v1") {
