@@ -203,6 +203,8 @@ The descriptor definitions now compute local reads, explicit statement writes, a
 
 `leanexegen annotate --only-region` now supports the required isolation.  The command validates the complete compiler sidecar, retains the named semantic region plus mandatory direct-call coverage, and generates recipes and checked declarations from that subset.  The verified Demo 1 control has two direct-call recipes, while the candidate has the same recipes plus the scalar loop and contains no length-dispatch recipe.
 
+The first calls-only proof session ended as a censored failure after approximately sixty-five minutes because its candidate imported unsupported module `Project.Common`.  The task's Lean build accepted the available module, while the independent publication audit enforced the artifact-proof allowlist and rejected it.  The task now runs an in-workspace import checker generated from that same allowlist before every prescribed Lean build, so the repeated control can correct the dependency during its own iteration.
+
 ## Further experiments
 
 A compiler-generated cut-point graph can divide one function into transitions at loop heads, calls, allocation boundaries, and returns.  The compiler can prove that its graph covers the emitted structured code, while an artifact-side checker independently reconstructs coverage from exact regions.  Codex would then prove relations between cut-point states instead of discovering the graph and instruction boundaries.
