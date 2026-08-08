@@ -23,6 +23,6 @@ tools/leanrun --timeout <duration> <lean-or-lake-command>
 
 ## Artifact-Proof Iteration
 
-Treat proving time as the primary metric.  After every proof run, review the journal, accepted proof, and telemetry together.  Use that evidence to consider changes to compiler annotations, shared lemmas, tactics, and guidance, as well as the instructions that govern proof generation and journaling.
+Treat proving time as the primary metric and accepted proof structure and size as secondary metrics.  Do not treat raw source bytes or identifier length as proof complexity; consider lines, syntax, local scaffolding, and shared theorem use.  After every proof run, review the journal, accepted proof, and telemetry together.  Use that evidence to consider changes to compiler annotations, shared lemmas, tactics, and guidance, as well as the instructions that govern proof generation and journaling.
 
 Keep journals as frequent, natural prose.  They should identify supplied help that worked or failed, explain changes of approach, and note missing general abstractions.  Test changes on fixed artifacts, preserve failures, and use diverse or held-out demos to avoid problem-specific optimization.

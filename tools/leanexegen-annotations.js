@@ -1579,6 +1579,17 @@ function proofRecipePlan(
     schemaVersion: 1,
     attemptOrder: ["direct", "composition", "tactic", "focused-guidance"],
     compositions: [
+      ...fixedArraySingletonWrapperCompositions(document, program).map((composition) => ({
+        compositionVersion: 1,
+        kind: "fixed-array-singleton-wrapper-v1",
+        functionIndex: composition.functionIndex,
+        descriptor: `${annotationNamespace}.${composition.name}`,
+        regionEquality: `${annotationNamespace}.${composition.name}_eq`,
+        direct: {
+          module: "Project.ProofKit.FixedArraySingletonWrapper",
+          theorem: "Project.ProofKit.FixedArraySingletonWrapper.wrapperProgram_spec",
+        },
+      })),
       ...fixedArraySearchTreeCompositions(document, program).map((composition) =>
         compositionPlan(composition, "fixed-array-search-tree-v1",
           "Project.ProofKit.FixedArraySearchTree", "Tree")),
@@ -1656,8 +1667,12 @@ function validateProofRecipePlan(plan, document) {
     if (composition.compositionVersion === 2) compositionKeys.push("wrapper");
     exactKeys(composition, compositionKeys, description);
     if (![1, 2].includes(composition.compositionVersion) ||
-        !["fixed-array-search-chain-v1", "fixed-array-search-tree-v1"].includes(
-          composition.kind)) {
+        ![
+          "fixed-array-search-chain-v1", "fixed-array-search-tree-v1",
+          "fixed-array-singleton-wrapper-v1",
+        ].includes(composition.kind) ||
+        (composition.kind === "fixed-array-singleton-wrapper-v1" &&
+          composition.compositionVersion !== 1)) {
       fail(`${description} has an unsupported identity`);
     }
     natural(composition.functionIndex, `${description}.functionIndex`);
@@ -1671,11 +1686,16 @@ function validateProofRecipePlan(plan, document) {
     compositionDescriptors.add(composition.descriptor);
     exactKeys(composition.direct, ["module", "theorem"], `${description}.direct`);
     const chain = composition.kind === "fixed-array-search-chain-v1";
-    const expectedModule = chain
-      ? "Project.ProofKit.FixedArraySearchChain"
-      : "Project.ProofKit.FixedArraySearchTree";
-    const expectedTheorem = `${expectedModule}.${chain ? "Chain" : "Tree"}.` +
-      `${composition.compositionVersion === 1 ? "program_spec" : "wrapperProgram_spec"}`;
+    const singleton = composition.kind === "fixed-array-singleton-wrapper-v1";
+    const expectedModule = singleton
+      ? "Project.ProofKit.FixedArraySingletonWrapper"
+      : chain
+        ? "Project.ProofKit.FixedArraySearchChain"
+        : "Project.ProofKit.FixedArraySearchTree";
+    const expectedTheorem = singleton
+      ? `${expectedModule}.wrapperProgram_spec`
+      : `${expectedModule}.${chain ? "Chain" : "Tree"}.` +
+        `${composition.compositionVersion === 1 ? "program_spec" : "wrapperProgram_spec"}`;
     if (composition.direct.module !== expectedModule ||
         composition.direct.theorem !== expectedTheorem) {
       fail(`${description}.direct is unsupported`);
@@ -1886,6 +1906,88 @@ function annotationPathStartsWith(listPath, prefix) {
   return prefix.length <= listPath.length && prefix.every((step, index) =>
     step.instructionIndex === listPath[index].instructionIndex &&
       step.field === listPath[index].field);
+}
+
+function sameInstructions(found, expected) {
+  return JSON.stringify(normalizeInstructions(found)) ===
+    JSON.stringify(normalizeInstructions(expected));
+}
+
+function fixedArraySingletonWrapperCompositions(document, program = null) {
+  if (program === null) return [];
+  const compositions = [];
+  for (const function_ of document.functions) {
+    const calls = function_.regions.filter((region) =>
+      region.kind === "leanexe.call.direct.v1");
+    if (function_.parameters !== 1 || function_.results !== 1 ||
+        function_.locals !== 14 || calls.length !== 1) continue;
+    const call = calls[0];
+    if (call.location.listPath.length !== 1 ||
+        call.location.listPath[0].instructionIndex !== 14 ||
+        call.location.listPath[0].field !== "then" ||
+        call.location.startIndex !== 11 || call.location.endIndex !== 14 ||
+        JSON.stringify(call.parameters.argumentLocals) !== "[1]" ||
+        JSON.stringify(call.parameters.resultLocals) !== "[2]" ||
+        call.parameters.resultPlacement !== "locals") continue;
+    const body = programFunctionBody(program, function_.wasmIndex);
+    const top = resolveInstructionList(body, []);
+    const validPath = [{ instructionIndex: 14, field: "then" }];
+    const invalidPath = [{ instructionIndex: 14, field: "else" }];
+    const valid = resolveInstructionList(body, validPath);
+    const invalid = resolveInstructionList(body, invalidPath);
+    const expectedTop = [
+      ".localGet 0", ".localSet 5", ".localGet 5", ".wrapI64",
+      ".load64 (0 : UInt32)", ".constI64 (1 : UInt64)", ".eqI64",
+      ".iff 0 1 [", ".constI64 (1 : UInt64)", ".eqI64", ".iff 0 1 [",
+      ".constI64 (0 : UInt64)", ".eqI64", ".eqz", ".iff 0 0 [",
+      ".localGet 4",
+    ];
+    const expectedPrefix = [
+      ".localGet 0", ".localSet 5", ".constI64 (0 : UInt64)", ".localSet 6",
+      ".localGet 6", ".localGet 5", ".wrapI64", ".load64 (0 : UInt32)",
+      ".ltUI64", ".iff 0 1 [", ".localSet 1", ".localGet 1",
+      `.call ${call.parameters.calleeIndex}`, ".localSet 2",
+      ".constI64 (8 : UInt64)", ".constI64 (1 : UInt64)",
+      ".constI64 (1 : UInt64)", ".mulI64", ".constI64 (8 : UInt64)",
+      ".mulI64", ".addI64", ".constI64 (7 : UInt64)", ".addI64",
+      ".constI64 (8 : UInt64)", ".divUI64", ".constI64 (8 : UInt64)",
+      ".mulI64", ".localSet 9", ".localGet 9", ".constI64 (8 : UInt64)",
+      ".ltUI64", ".iff 0 0 [",
+    ];
+    const expectedTail = [
+      ".constI64 (0 : UInt64)", ".localSet 14", ".constI64 (0 : UInt64)",
+      ".localSet 10", ".globalGet 1", ".localSet 11", ".block 0 0 [",
+      ".localGet 14", ".constI64 (0 : UInt64)", ".eqI64", ".iff 0 0 [",
+      ".globalGet 2", ".constI64 (1 : UInt64)", ".addI64", ".globalSet 2",
+      ".localGet 14", ".localSet 5", ".localGet 5", ".wrapI64",
+      ".constI64 (1 : UInt64)", ".store64 (0 : UInt32)", ".localGet 2",
+      ".localSet 8", ".localGet 5", ".constI64 (0 : UInt64)",
+      ".constI64 (1 : UInt64)", ".mulI64", ".constI64 (1 : UInt64)",
+      ".addI64", ".constI64 (8 : UInt64)", ".mulI64", ".addI64", ".wrapI64",
+      ".localGet 8", ".store64 (0 : UInt32)", ".localGet 5", ".localSet 3",
+      ".localGet 3", ".localSet 4",
+    ];
+    const loadThen = resolveInstructionList(body,
+      [...validPath, { instructionIndex: 9, field: "then" }]);
+    const loadElse = resolveInstructionList(body,
+      [...validPath, { instructionIndex: 9, field: "else" }]);
+    if (!sameInstructions(top, expectedTop) ||
+        !sameInstructions(invalid, [".localGet 0", ".localSet 4"]) ||
+        valid.length !== expectedPrefix.length + expectedTail.length ||
+        !sameInstructions(valid.slice(0, expectedPrefix.length), expectedPrefix) ||
+        !sameInstructions(valid.slice(expectedPrefix.length), expectedTail) ||
+        !sameInstructions(loadThen, [
+          ".localGet 5", ".localGet 6", ".constI64 (1 : UInt64)", ".mulI64",
+          ".constI64 (1 : UInt64)", ".addI64", ".constI64 (8 : UInt64)",
+          ".mulI64", ".addI64", ".wrapI64", ".load64 (0 : UInt32)",
+        ]) || !sameInstructions(loadElse, [".unreachable"])) continue;
+    compositions.push({
+      functionIndex: function_.wasmIndex,
+      name: `function_${function_.wasmIndex}_singleton_wrapper_0`,
+      calleeIndex: call.parameters.calleeIndex,
+    });
+  }
+  return compositions;
 }
 
 function fixedArraySearchWrapper(function_, root, program) {
@@ -2141,7 +2243,7 @@ function scalarStmtLean(statement) {
     `(${scalarStmtLean(statement.then)}) (${scalarStmtLean(statement.else)})`;
 }
 
-function annotationMatchesSource(document, job) {
+function annotationMatchesSource(document, job, program = null) {
   const declarations = [];
   for (const function_ of document.functions) {
     for (const region of function_.regions) {
@@ -2228,6 +2330,16 @@ theorem ${composition.name}_eq :
         some (${composition.name}.program ${composition.offset} ${composition.keyLocal}) := by
   rfl`);
   }
+  const singletonCompositions = fixedArraySingletonWrapperCompositions(document, program);
+  for (const composition of singletonCompositions) {
+    declarations.push(`def ${composition.name} : Wasm.Program :=
+  Project.ProofKit.FixedArraySingletonWrapper.wrapperProgram
+    ${composition.calleeIndex}
+
+theorem ${composition.name}_eq :
+    ${job.namespace}.func${composition.functionIndex} = ${composition.name} := by
+  rfl`);
+  }
   return {
     module: `${job.namespace}.AnnotationMatches`,
     source: `import ${job.programModule}
@@ -2244,6 +2356,8 @@ ${document.functions.some((function_) => function_.regions.some((region) =>
     ? "import Project.ProofKit.FixedArrayFilterLt\n" : ""}
 ${chainCompositions.length > 0 ? "import Project.ProofKit.FixedArraySearchChain\n" : ""}
 ${treeCompositions.length > 0 ? "import Project.ProofKit.FixedArraySearchTree\n" : ""}
+${singletonCompositions.length > 0
+    ? "import Project.ProofKit.FixedArraySingletonWrapper\n" : ""}
 set_option maxRecDepth 1048576
 
 namespace ${job.namespace}.AnnotationMatches
@@ -2265,6 +2379,7 @@ module.exports = {
   fixedArrayMapAddRecipe,
   fixedArrayPairResultRecipe,
   fixedArraySearchKeyRecipe,
+  fixedArraySingletonWrapperCompositions,
   fixedArraySearchChainCompositions,
   fixedArraySearchTreeCompositions,
   loopRecipe,

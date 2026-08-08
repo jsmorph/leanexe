@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "attemptOrder": [
+    "direct",
+    "composition",
+    "tactic",
+    "focused-guidance"
+  ],
+  "compositions": [],
+  "recipes": [
+    {
+      "recipeVersion": 1,
+      "functionIndex": 1,
+      "regionId": "function-1.direct-call-0",
+      "regionKind": "leanexe.call.direct.v1",
+      "applicability": "exact decoded instruction match",
+      "direct": {
+        "module": "Project.ProofKit.Control",
+        "theorem": "Wasm.wp_call_tw"
+      },
+      "supporting": [
+        {
+          "declaration": "Wasm.wp_call_tw",
+          "purpose": "apply the callee theorem to the exact direct call"
+        },
+        {
+          "declaration": "Project.ProofKit.wp_entry",
+          "purpose": "establish the entry frame before the call"
+        }
+      ],
+      "expectedPostcondition": "the callee result restored into the caller continuation",
+      "guidance": [
+        "strategy.calls",
+        "strategy.frames"
+      ]
+    },
+    {
+      "recipeVersion": 1,
+      "functionIndex": 2,
+      "regionId": "function-2.direct-call-0",
+      "regionKind": "leanexe.call.direct.v1",
+      "applicability": "exact decoded instruction match",
+      "direct": {
+        "module": "Project.ProofKit.Control",
+        "theorem": "Wasm.wp_call_tw"
+      },
+      "supporting": [
+        {
+          "declaration": "Wasm.wp_call_tw",
+          "purpose": "apply the callee theorem to the exact direct call"
+        },
+        {
+          "declaration": "Project.ProofKit.wp_entry",
+          "purpose": "establish the entry frame before the call"
+        }
+      ],
+      "expectedPostcondition": "the callee result restored into the caller continuation",
+      "guidance": [
+        "strategy.calls",
+        "strategy.frames"
+      ]
+    }
+  ]
+}
