@@ -26,7 +26,7 @@ Every `leanexegen` artifact-proof task receives this catalog and may import the 
 
 ## Scalar transitions
 
-Import `Project.ProofKit.ScalarTransition` when a checked annotation describes a scalar expression, assignment, sequence, or conditional.  `Expr.program_spec` proves that the descriptor's evaluator agrees with its exact Talos instruction program for arbitrary continuations and postconditions.  `Stmt.program_spec` composes those results through local assignments, statement sequences, and conditional branches.
+Import `Project.ProofKit.ScalarTransition` when a checked annotation describes a scalar expression, assignment, sequence, conditional, or block-wrapped while loop.  `Expr.program_spec` proves that the descriptor's evaluator agrees with its exact Talos instruction program for arbitrary continuations and postconditions.  `Stmt.program_spec` composes those results through local assignments, statement sequences, and conditional branches.  `whileProgram_spec` applies an artifact-defined invariant and decreasing measure to the canonical compiler loop.
 
 The expression language covers local reads, `UInt64` constants, wrapping arithmetic, checked unsigned division and remainder, bitwise operators, shifts, comparisons, short-circuit Boolean operations, and scalar conditionals.  Checked division and remainder match the compiler's zero-divisor branches and scratch-local saves, rather than the trapping WebAssembly operations in isolation.  `Expr.eval_preserves_below` establishes that evaluation with scratch start `scratch` preserves every combined local below that index.
 
