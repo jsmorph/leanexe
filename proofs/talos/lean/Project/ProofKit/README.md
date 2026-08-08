@@ -6,6 +6,7 @@ Every `leanexegen` artifact-proof task receives this catalog and may import the 
 |---|---|
 | `Project.ProofKit.Annotation` | Structured instruction-path resolution and exact half-open regions over a decoded Talos program. |
 | `Project.ProofKit.Memory` | Word-read congruence, disjoint read-over-write facts, and the `word_reads` tactic for nested `write64` expressions. |
+| `Project.ProofKit.ScalarTransition` | Typed scalar expression and statement evaluation, exact Talos instruction generation, weakest-precondition composition, and scratch-local preservation. |
 | `Project.ProofKit.Array` | The public `Array UInt64` representation, encoded-size and address normalization, load bounds, region preservation, and singleton or pair output construction. |
 | `Project.ProofKit.Allocation` | Fixed-array bump-allocation addresses, header offsets, overflow exclusion, and the no-growth branch. |
 | `Project.ProofKit.FixedArrayAllocator` | Complete empty-list search and bump-allocation semantics for the emitted one-parameter array-wrapper layout. |
@@ -22,6 +23,14 @@ Every `leanexegen` artifact-proof task receives this catalog and may import the 
 | `Project.ProofKit.FixedArraySingleton` | Complete allocation and singleton `Array UInt64` result semantics for the emitted one-parameter array-wrapper layout. |
 | `Project.ProofKit.FixedArrayTraversalInput` | The checked indexed loader that leaves a traversal value on the operand stack. |
 | `Project.ProofKit.Control` | Function entry, block-wrapped loop entry, and one-call wrapper tactics. |
+
+## Scalar transitions
+
+Import `Project.ProofKit.ScalarTransition` when a checked annotation describes a scalar expression, assignment, sequence, or conditional.  `Expr.program_spec` proves that the descriptor's evaluator agrees with its exact Talos instruction program for arbitrary continuations and postconditions.  `Stmt.program_spec` composes those results through local assignments, statement sequences, and conditional branches.
+
+The expression language covers local reads, `UInt64` constants, wrapping arithmetic, checked unsigned division and remainder, bitwise operators, shifts, comparisons, short-circuit Boolean operations, and scalar conditionals.  Checked division and remainder match the compiler's zero-divisor branches and scratch-local saves, rather than the trapping WebAssembly operations in isolation.  `Expr.eval_preserves_below` establishes that evaluation with scratch start `scratch` preserves every combined local below that index.
+
+An artifact proof still needs an exact equality between the decoded instruction region and `Expr.program` or `Stmt.program`.  The descriptor and semantic theorem do not trust an annotation or compiler claim.  The planned scalar certificate checker will derive this equality from the exact decoded region before applying either theorem.
 
 ## `Array UInt64` representations
 
