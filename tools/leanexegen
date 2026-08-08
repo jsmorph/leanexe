@@ -720,7 +720,10 @@ function proofPrompt(request, job, entryIndex) {
     `expression, staging locals, release offsets, and result locals.  Use those fields to name ` +
     `the semantic state and branch transitions before symbolic execution; the fields are ` +
     `untrusted guidance, while the recipe has matched the reported block and back edge against ` +
-    `the frozen Program.  After proving a ` +
+    `the frozen Program.  When the scalar recipe names generated condition_eval and body_eval ` +
+    `theorems, rewrite with those theorems before reducing Expr.eval or Stmt.eval.  They state the ` +
+    `complete fixed-frame transition and summarize the compiler's intermediate scratch-local ` +
+    `updates.  After proving a ` +
     `callee used by a straight-line entry wrapper, use ` +
     `\`wp_entry_single_call ${job.namespace}.func${entryIndex}Def unfolding ` +
     `${job.namespace}.func${entryIndex} as initial' using <callee theorem>\`.  `;
