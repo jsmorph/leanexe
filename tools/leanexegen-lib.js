@@ -704,12 +704,41 @@ function installSources(root, sources) {
   }
 }
 
+function stageReportCodexVersions(stageReports) {
+  if (stageReports.schemaVersion === 1) {
+    return {
+      formalSpecification: stageReports.codexVersion,
+      leanProgram: stageReports.codexVersion,
+      artifactProof: stageReports.codexVersion,
+    };
+  }
+  return structuredClone(stageReports.codexVersions);
+}
+
+function stageReportCodexVersion(stageReports, task) {
+  return stageReportCodexVersions(stageReports)[task];
+}
+
 function validateStageReports(stageReports, packageRoot, job) {
-  exactKeys(stageReports,
-    ["schemaVersion", "codexVersion", "maximumAttempts", "tasks"],
-    "stage-reports.json");
-  if (stageReports.schemaVersion !== 1) fail("unsupported stage report schema");
-  requireString(stageReports.codexVersion, "stage-reports.json.codexVersion");
+  if (stageReports.schemaVersion === 1) {
+    exactKeys(stageReports,
+      ["schemaVersion", "codexVersion", "maximumAttempts", "tasks"],
+      "stage-reports.json");
+    requireString(stageReports.codexVersion, "stage-reports.json.codexVersion");
+  } else if (stageReports.schemaVersion === 2) {
+    exactKeys(stageReports,
+      ["schemaVersion", "codexVersions", "maximumAttempts", "tasks"],
+      "stage-reports.json");
+    exactKeys(stageReports.codexVersions,
+      ["artifactProof", "formalSpecification", "leanProgram"],
+      "stage-reports.json.codexVersions");
+    for (const task of ["formalSpecification", "leanProgram", "artifactProof"]) {
+      requireString(stageReports.codexVersions[task],
+        `stage-reports.json.codexVersions.${task}`);
+    }
+  } else {
+    fail("unsupported stage report schema");
+  }
   if (!Number.isSafeInteger(stageReports.maximumAttempts) ||
       stageReports.maximumAttempts < 1 || stageReports.maximumAttempts > 10) {
     fail("stage-reports.json.maximumAttempts must be between 1 and 10");
@@ -1168,6 +1197,8 @@ module.exports = {
   proofKitModules,
   rewriteProgramNamespace,
   sha256,
+  stageReportCodexVersion,
+  stageReportCodexVersions,
   validateCodexTaskOutcome,
   validatePackage,
   validateProofJournal,
