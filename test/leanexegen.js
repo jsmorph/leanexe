@@ -364,6 +364,8 @@ function testCodexProtocol() {
     artifactPrompt.includes("wp_entry_to_loop <functionDef>") &&
     artifactPrompt.includes("leanexe.loop.while.v1 annotation") &&
     artifactPrompt.includes("condition_eval and body_eval") &&
+    artifactPrompt.includes("generated entry_to_loop theorem") &&
+    artifactPrompt.includes("fixes argument order, zero-initialized locals") &&
     artifactPrompt.includes("leanexe.loop.fold.v1") &&
     artifactPrompt.includes(`wp_entry_single_call ${job.namespace}.func3Def`) &&
     artifactPrompt.includes("PROOF_STRATEGIES.md contains optional") &&
@@ -1161,7 +1163,7 @@ function testLoopAnnotationRecipes() {
   const whileProgram = `def func0 : Wasm.Program :=
   [
   .constI64 (0 : UInt64),
-  .localSet 5,
+  .localSet 3,
   .block 0 0 [
     .loop 0 0 [
       .localGet 0,
@@ -1237,13 +1239,15 @@ def func0Def : Wasm.Function :=
     whilePlan.recipes[0].direct.regionEquality ===
       "Project.AnnotationMatches.function_0_while_loop_0_eq" &&
     whilePlan.recipes[0].supporting.some((entry) => entry.declaration ===
+      "Project.AnnotationMatches.function_0_while_loop_0_entry_to_loop") &&
+    whilePlan.recipes[0].supporting.some((entry) => entry.declaration ===
       "Project.ProofKit.ScalarTransition.Stmt.eval_preserves_below") &&
     whilePlan.recipes[0].guidance.length === 3,
   "while descriptor did not select the checked scalar loop recipe");
   const whileMatches = annotationMatchesSource(whileDocument, {
     namespace: "Example.Generated",
     programModule: "Example.Generated.Artifact",
-  });
+  }, whileProgram);
   assert(whileMatches.source.includes("def function_0_while_loop_0_condition") &&
     whileMatches.source.includes("ScalarTransition.whileProgram") &&
     whileMatches.source.includes("import Project.ProofKit.ScalarTransitionU64") &&
@@ -1251,6 +1255,8 @@ def func0Def : Wasm.Function :=
     whileMatches.source.includes("function_0_while_loop_0_body_evalU64") &&
     whileMatches.source.includes("function_0_while_loop_0_condition_eval") &&
     whileMatches.source.includes("function_0_while_loop_0_body_eval") &&
+    whileMatches.source.includes("theorem function_0_while_loop_0_entry_to_loop") &&
+    whileMatches.source.includes("function_0_while_loop_0_state (v0) ((0 : UInt64))") &&
     whileMatches.source.includes("    4 function_0_while_loop_0_condition") &&
     whileMatches.source.includes("theorem function_0_while_loop_0_eq"),
   "while descriptor did not produce the checked region equality");
@@ -1768,14 +1774,19 @@ function testScalarTransitionSpecialization() {
     "program.proof");
   const document = JSON.parse(fs.readFileSync(
     path.join(packageRoot, "program.annotations.json"), "utf8"));
+  const program = fs.readFileSync(path.join(
+    packageRoot, "proof", "LeanExeGen", "GeneratedRbade8cb1a4e3a423", "Program.lean"),
+  "utf8");
   const selected = selectAnnotationRegions(document, ["function-0.while-loop-0"]);
   const source = annotationMatchesSource(selected, {
     namespace: "LeanExeGen.GeneratedRbade8cb1a4e3a423",
     programModule: "LeanExeGen.GeneratedRbade8cb1a4e3a423.Program",
-  }).source;
+  }, program).source;
   assert((source.match(/\bby_cases\b/g) ?? []).length === 5 &&
     source.includes("function_0_while_loop_0_bodyTransition") &&
-    source.includes("U64Op.apply .remU (v1) (v2)"),
+    source.includes("U64Op.apply .remU (v1) (v2)") &&
+    source.includes("theorem function_0_while_loop_0_entry_to_loop") &&
+    source.includes("func0Def.toLocals [.i64 v0, .i64 v1, .i64 v2, .i64 v3]"),
   "scalar transition specialization did not retain Demo 1's five semantic tests");
 }
 

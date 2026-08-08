@@ -502,6 +502,10 @@ The candidate rewrites with the generated condition equation three times and the
 
 Both journals still spend checks converting the function-entry frame into the loop-head state.  A generated entry-to-loop adapter can state the argument order, fixed-store form, exact generated `U64State`, and post-loop continuation before the proving session.  This boundary should receive a fixed-artifact screen before the method moves to a held-out scalar loop.
 
+The annotation consumer now emits that adapter for a top-level scalar loop whose function parameters and locals are all `i64` and whose entry prefix consists of constant loads and local transfers.  It symbolically computes the loop-head values, proves the exact decomposition from the decoded function tail to the named scalar-loop program, and states a `wp` equivalence for arbitrary module, host state, postcondition, and scalar arguments.  The recipe names the generated `entry_to_loop` theorem before the condition and body equations, and the proof prompt directs the agent to use it immediately after `TerminatesWith.of_wp_entry_for`.
+
+The first implementation check used the fixed 1,938-byte Demo 1 artifact.  `tools/leanexegen annotate` built the generated tail equality and entry theorem, and `tools/leanexegen verify` independently accepted the resulting package and final exact-byte theorem.  A controlled reproof remains necessary to determine whether removing this frame conversion reduces the complete Stage 5 interval.
+
 Every later proof-time iteration reviews the journal, accepted source, and telemetry before changing the annotation vocabulary or LTG.  The proof prompt now asks the agent to name each supplied recipe, theorem, tactic, and annotation it tried, describe its effect or reason for abandonment, and identify missing general assistance suggested by diagnostics.  It also permits abandoning a direct recipe whose exact shape does not match or whose residual goals are worse, without restructuring unrelated code to force the application.
 
 ## Completion criteria
