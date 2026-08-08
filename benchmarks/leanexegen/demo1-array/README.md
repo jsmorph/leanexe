@@ -1,6 +1,6 @@
 # Demo 1 artifact-proof benchmark
 
-This directory preserves nineteen complete proof packages measured on 2026-08-05 and 2026-08-08.  Every package binds the same request and the same 1,938-byte WASM module with SHA-256 digest `dbced77ae7a692ce49e98cb58721cb3c05a3712925e31685c4fd08dba4181be7`.  The retained runs cover the initial proof kit, three-run series for word-address lemmas, the complete fixed-array allocator theorem, the complete singleton-array result theorem, the first complete annotation comparison, the isolated scalar-descriptor comparison, the matched compact-transition comparison, and the checked scalar-entry distribution.
+This directory preserves twenty complete proof packages measured on 2026-08-05 and 2026-08-08.  Every package binds the same request and the same 1,938-byte WASM module with SHA-256 digest `dbced77ae7a692ce49e98cb58721cb3c05a3712925e31685c4fd08dba4181be7`.  The retained runs cover the initial proof kit, three-run series for word-address lemmas, the complete fixed-array allocator theorem, the complete singleton-array result theorem, the first complete annotation comparison, the isolated scalar-descriptor comparison, the matched compact-transition comparison, the checked scalar-entry distribution, and the stronger `TerminatesWith` screen.
 
 ## Results
 
@@ -17,6 +17,7 @@ This directory preserves nineteen complete proof packages measured on 2026-08-05
 | Codex 0.147.0 shared-wrapper transition control | 1 | 2,262.084 s | 0.000 s |
 | Codex 0.147.0 checked compact transitions | 1 | 1,965.454 s | 0.000 s |
 | Codex 0.147.0 checked scalar entry | 3 | 1,421.556 s | 318.935 s |
+| Codex 0.147.0 stronger `TerminatesWith` adapter | 1 | 1,418.100 s | 0.000 s |
 
 The fixed-array allocator median is 830.122 seconds, or 42.3 percent, below the word-address median.  Its individual times are 2,556.812, 1,134.008, and 941.494 seconds.  Each accepted proof imports `Project.ProofKit.FixedArrayAllocator` and applies `region_spec` to the exact emitted allocator suffix.
 
@@ -48,13 +49,17 @@ All three journals record discovery of the same WebAssembly operand-stack revers
 
 The second journal also records a lengthy reconstruction of `(fuel - 1).toNat = fuel.toNat - 1`, while the first and third proofs use `UInt64.toNat_sub_of_le`.  The selected arithmetic guidance now names that theorem, the corresponding `Project.ProofKit.Memory` theorem, and the required conversion from `UInt64` order to natural-number order.  These changes will receive a new fixed-artifact timing screen before a held-out scalar loop.
 
+The stronger-adapter screen completed Stage 5 in 1,418.100 seconds, 3.456 seconds below the preceding three-run median.  Codex took 1,326.745 seconds and outer acceptance took 79.367 seconds, so the total remains inside the observed entry-series range and supplies no evidence of a proving-time reduction.  The accepted proof fell from the prior medians of 572 lines and 10 `wp_run` applications to 541 lines and five applications, while applying the stronger adapter once and the checked condition and body equations two and four times.
+
+The journal records direct selection of the stronger adapter, the complete singleton wrapper, and the compact transition equations.  It then spends its revisions on the application invariant, natural-number facts about prime factors, and conversions between `UInt64` arithmetic and natural arithmetic; the supplied subtraction guidance avoided the earlier modular-arithmetic reconstruction.  This result retains the stronger theorem for its structural benefit but directs the next timing experiment to a semantically different scalar loop and the next general LTG work to machine-word arithmetic adapters.
+
 ## Measurement and controls
 
-The primary performance metric is elapsed time from the Stage 5 heading to the first proof accepted by the independent outer check, measured through `process.hrtime.bigint`.  Accepted proof lines, explicit syntax, local scaffolding, repeated derivations, and shared theorem applications provide secondary structural evidence; raw source bytes, word length, and identifier length do not measure proof complexity.  `benchmark.json` records and checks the ten Codex 0.146.0 packages, while the six scalar directories retain the Codex 0.147.0 packages with schema-two task identities and complete telemetry.
+The primary performance metric is elapsed time from the Stage 5 heading to the first proof accepted by the independent outer check, measured through `process.hrtime.bigint`.  Accepted proof lines, explicit syntax, local scaffolding, repeated derivations, and shared theorem applications provide secondary structural evidence; raw source bytes, word length, and identifier length do not measure proof complexity.  `benchmark.json` records and checks the ten Codex 0.146.0 packages, while the retained scalar directories contain the Codex 0.147.0 packages with schema-two task identities and complete telemetry.
 
 The host wall clock changed during both isolated runs.  The calls-only control's UTC timestamps span about two hours while its monotonic total is 2,645.818 seconds, and the scalar candidate's timestamps span nearly four hours while its monotonic total is 3,894.697 seconds.  The comparison therefore uses `totalMilliseconds`, `codexSessionMilliseconds`, and `outerAcceptanceMilliseconds`, rather than subtracting the recorded UTC timestamps.
 
-The historical packages record Codex CLI version `0.146.0`, while the nine scalar packages record artifact-proof CLI version `0.147.0` and preserve the earlier task identities under stage-report schema two.  The first two historical packages did not record the Codex model or reasoning setting, and the checker reports that limitation on every comparison.  Proof packages generated after telemetry was added contain `proof-telemetry.json`, which separates Codex-session time and outer-acceptance time while retaining the Stage 5 total as the authoritative metric.
+The historical packages record Codex CLI version `0.146.0`, while the ten scalar packages record artifact-proof CLI version `0.147.0` and preserve the earlier task identities under stage-report schema two.  The first two historical packages did not record the Codex model or reasoning setting, and the checker reports that limitation on every comparison.  Proof packages generated after telemetry was added contain `proof-telemetry.json`, which separates Codex-session time and outer-acceptance time while retaining the Stage 5 total as the authoritative metric.
 
 The telemetry schema does not record individual Codex Lean commands.  Command-level attribution requires a stable event protocol or a traced runner that preserves the repository execution boundary.  The present evidence therefore establishes the end-to-end timing change and locates its variance in the Codex interval, but it does not count failed Lean checks or assign time to individual proof obligations.
 
