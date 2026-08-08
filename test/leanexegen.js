@@ -1173,6 +1173,8 @@ def func0Def : Wasm.Function :=
       "Project.ProofKit.ScalarTransition.whileProgram_spec" &&
     whilePlan.recipes[0].direct.regionEquality ===
       "Project.AnnotationMatches.function_0_while_loop_0_eq" &&
+    whilePlan.recipes[0].supporting.some((entry) => entry.declaration ===
+      "Project.ProofKit.ScalarTransition.Stmt.eval_preserves_below") &&
     whilePlan.recipes[0].guidance.length === 3,
   "while descriptor did not select the checked scalar loop recipe");
   const whileMatches = annotationMatchesSource(whileDocument, {

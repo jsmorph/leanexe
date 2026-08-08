@@ -199,6 +199,8 @@ The first matched Codex 0.147.0 experiment compared an unannotated baseline with
 
 This result rejects the current semantic boundary as a proof-time improvement.  The next increment must provide checked branch-transition equations that hide scratch-local implementation state and present application locals directly, rather than stop at the generic descriptor evaluator.  Generic effect theorems remain useful for other descriptors, but Demo 1 writes or uses almost every combined local during one body evaluation, so an outside-write preservation theorem cannot address its measured bottleneck by itself.
 
+The descriptor definitions now compute local reads, explicit statement writes, and required scratch width.  The neutral proof kit computes the same analyses and proves `Stmt.eval_preserves_below`, which preserves every local below the scratch boundary that does not occur in the statement's write set.  The scalar-loop proof recipe names that theorem, allowing a proving task to use the checked frame result without deriving it from assignments or WASM instructions.
+
 ## Further experiments
 
 A compiler-generated cut-point graph can divide one function into transitions at loop heads, calls, allocation boundaries, and returns.  The compiler can prove that its graph covers the emitted structured code, while an artifact-side checker independently reconstructs coverage from exact regions.  Codex would then prove relations between cut-point states instead of discovering the graph and instruction boundaries.

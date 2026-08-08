@@ -276,6 +276,48 @@ inductive Stmt where
   | ite (condition : Expr .bool) (thenStmt elseStmt : Stmt)
   deriving Repr
 
+def Expr.reads : {type : ScalarType} → Expr type → List Nat
+  | _, .get index => [index]
+  | _, .const _ | _, .bconst _ => []
+  | _, .bin _ left right | _, .eq left right | _, .ltU left right
+  | _, .leU left right => left.reads ++ right.reads
+  | _, .not condition => condition.reads
+  | _, .and left right | _, .or left right => left.reads ++ right.reads
+  | _, .ite condition thenValue elseValue =>
+      condition.reads ++ thenValue.reads ++ elseValue.reads
+
+def Expr.scratchWidth : {type : ScalarType} → Expr type → Nat
+  | _, .get _ | _, .const _ | _, .bconst _ => 0
+  | _, .bin operation left right =>
+      let childWidth := max left.scratchWidth right.scratchWidth
+      if operation = .divU ∨ operation = .remU then childWidth + 2 else childWidth
+  | _, .eq left right | _, .ltU left right | _, .leU left right
+  | _, .and left right | _, .or left right =>
+      max left.scratchWidth right.scratchWidth
+  | _, .not condition => condition.scratchWidth
+  | _, .ite condition thenValue elseValue =>
+      max condition.scratchWidth (max thenValue.scratchWidth elseValue.scratchWidth)
+
+def Stmt.reads : Stmt → List Nat
+  | .skip => []
+  | .assign _ value => value.reads
+  | .seq first second => first.reads ++ second.reads
+  | .ite condition thenStmt elseStmt =>
+      condition.reads ++ thenStmt.reads ++ elseStmt.reads
+
+def Stmt.writes : Stmt → List Nat
+  | .skip => []
+  | .assign index _ => [index]
+  | .seq first second => first.writes ++ second.writes
+  | .ite _ thenStmt elseStmt => thenStmt.writes ++ elseStmt.writes
+
+def Stmt.scratchWidth : Stmt → Nat
+  | .skip => 0
+  | .assign _ value => value.scratchWidth
+  | .seq first second => max first.scratchWidth second.scratchWidth
+  | .ite condition thenStmt elseStmt =>
+      max condition.scratchWidth (max thenStmt.scratchWidth elseStmt.scratchWidth)
+
 def Stmt.eval : Stmt → Nat → State → Option State
   | .skip, _, state => some state
   | .assign index value, scratch, state => do
@@ -434,6 +476,60 @@ theorem Expr.eval_preserves_below
           hThen hIndex).trans
             (conditionPreserves scratch state afterCondition true index
               hCondition hIndex)
+
+theorem Stmt.eval_preserves_below
+    (statement : Stmt) (scratch : Nat) (state next : State) (index : Nat)
+    (hEval : statement.eval scratch state = some next)
+    (hIndex : index < scratch) (hNotWritten : index ∉ statement.writes) :
+    next.get index = state.get index := by
+  induction statement generalizing state next with
+  | skip =>
+      obtain rfl := Option.some.inj hEval
+      rfl
+  | assign writeIndex value =>
+      simp only [Stmt.eval] at hEval
+      rcases hValue : value.eval scratch state with _ | ⟨result, afterValue⟩
+      · simp [hValue] at hEval
+      rcases hSet : afterValue.set? writeIndex (.i64 result) with _ | afterSet
+      · simp [hValue, hSet] at hEval
+      simp [hValue, hSet] at hEval
+      subst next
+      have hNe : index ≠ writeIndex := by
+        simpa [Stmt.writes] using hNotWritten
+      calc
+        afterSet.get index = afterValue.get index := State.get_set?_ne hNe hSet
+        _ = state.get index :=
+          Expr.eval_preserves_below value scratch state afterValue result index
+            hValue hIndex
+  | seq first second firstPreserves secondPreserves =>
+      simp only [Stmt.eval] at hEval
+      rcases hFirst : first.eval scratch state with _ | afterFirst
+      · simp [hFirst] at hEval
+      have hSecond : second.eval scratch afterFirst = some next := by
+        simpa [hFirst] using hEval
+      have hNot : index ∉ first.writes ∧ index ∉ second.writes := by
+        simpa [Stmt.writes] using hNotWritten
+      exact (secondPreserves afterFirst next hSecond hNot.2).trans
+        (firstPreserves state afterFirst hFirst hNot.1)
+  | ite condition thenStmt elseStmt thenPreserves elsePreserves =>
+      simp only [Stmt.eval] at hEval
+      rcases hCondition : condition.eval scratch state with
+        _ | ⟨conditionValue, afterCondition⟩
+      · simp [hCondition] at hEval
+      have hConditionPreserves : afterCondition.get index = state.get index :=
+        Expr.eval_preserves_below condition scratch state afterCondition
+          conditionValue index hCondition hIndex
+      have hNot : index ∉ thenStmt.writes ∧ index ∉ elseStmt.writes := by
+        simpa [Stmt.writes] using hNotWritten
+      cases conditionValue
+      · have hElse : elseStmt.eval scratch afterCondition = some next := by
+          simpa [hCondition] using hEval
+        exact (elsePreserves afterCondition next hElse hNot.2).trans
+          hConditionPreserves
+      · have hThen : thenStmt.eval scratch afterCondition = some next := by
+          simpa [hCondition] using hEval
+        exact (thenPreserves afterCondition next hThen hNot.1).trans
+          hConditionPreserves
 
 set_option maxHeartbeats 1000000 in
 theorem Expr.program_spec

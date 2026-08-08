@@ -1137,6 +1137,10 @@ function loopRecipe(
           purpose: "prove each typed scalar loop-body transition",
         },
         {
+          declaration: "Project.ProofKit.ScalarTransition.Stmt.eval_preserves_below",
+          purpose: "preserve each application local below scratch that the body does not write",
+        },
+        {
           declaration: "Project.ProofKit.ScalarTransition.whileProgram_spec",
           purpose: "compose the checked transition with the invariant and measure",
         },

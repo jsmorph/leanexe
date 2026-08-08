@@ -472,6 +472,8 @@ The checked descriptor removes instruction decoding, branch reconstruction, chec
 
 The first matched trial under Codex 0.147.0 found that this boundary increases proof time.  The unannotated package completed Stage 5 in 2,017.931 seconds, while the descriptor package completed in 3,692.913 seconds, and independent verification accepted both results.  The accepted descriptor proof invoked the intended region equality and loop theorem, but its journal records repeated work on concrete descriptor evaluation, scratch-local updates, and state conversion, so the next annotation form must provide checked application-local transition equations that remove those obligations.
 
+Scalar descriptors now compute read sets, explicit statement write sets, and scratch width.  `ScalarTransition.Stmt.eval_preserves_below` proves that evaluating a statement preserves each application local below the scratch boundary that the write set excludes, and the generated loop recipe names this theorem.  This effect certificate applies to scalar loops with untouched frame locals, while Demo 1's dense write set leaves scratch-hiding branch equations as the next measured requirement.
+
 ## Completion criteria
 
 The first complete increment emits a validated sidecar for every ordinary library-mode compilation requested by `leanexegen`.  Demos 1, 2, and 3 prove the same specifications over the same WASM bytes through an annotation-driven deterministic proof plan.  The retained evidence records proof-generation timings, annotation validation, region coverage, and independent Lean acceptance.
