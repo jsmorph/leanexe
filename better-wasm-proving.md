@@ -204,10 +204,11 @@ The fixed comparison case should remain the exact package at `.lake/leanexegen-r
 | Final outer-check time | Measures retained proof cost independently of search |
 | Peak memory and timeout count | Detects tactics or theorem boundaries that do not scale |
 | Success rate over repeated fixed runs | Prevents one fast failure-prone method from appearing better |
+| Accepted proof structure | Secondary evidence from lines, syntax volume, local scaffolding, and shared theorem use |
 
 One run can reject an approach that fails or becomes much slower, but it cannot establish a stable timing improvement.  Promising variants should receive at least three fixed reproofs with the same cache policy, followed by comparison of their medians and ranges.  Cold verifier time should be measured separately from warm proof-generation time because they answer different questions.
 
-Proof lines, bytes, and theorem count remain diagnostic measures.  They help identify where an abstraction applied and whether a model copied boilerplate, but they are not optimization objectives.  An accepted proof may grow if the added structure reduces search, failed iterations, or elaboration time.
+Accepted proof structure is a secondary optimization objective.  Fewer proof steps, less local scaffolding, and greater use of shared theorems can justify refinement even when the first timing screen regresses, while proving time remains primary.  Raw source bytes and identifier length do not measure proof complexity, and a proof may contain longer names because it applies more shared declarations.
 
 ## Concrete experiments
 

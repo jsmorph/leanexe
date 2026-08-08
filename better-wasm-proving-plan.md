@@ -3,12 +3,13 @@
 | Field | Value |
 |---|---|
 | Date | 2026-08-05 |
-| Optimization metric | Median wall-clock time from stage 5 start to its first accepted proof |
+| Primary metric | Median elapsed time from Stage 5 start to its first accepted proof |
+| Secondary metrics | Accepted proof lines, syntax volume, local scaffolding, and shared theorem use |
 | Fixed artifact | SHA-256 `dbced77ae7a692ce49e98cb58721cb3c05a3712925e31685c4fd08dba4181be7` |
 | Retained baseline | `.lake/leanexegen-runs/demo1-timing-1` |
 | First faster result | `.lake/leanexegen-runs/demo1-timing-2` |
 
-Stage-5 wall-clock time to the first accepted proof is the sole optimization metric.  Proof size, theorem count, verifier duration, library size, and intermediate command counts may explain a timing result, but none can promote a variant.  Independent verification remains a correctness gate rather than a performance metric.
+Stage-5 elapsed time to the first accepted proof is the primary optimization metric, and accepted proof structure and size are secondary metrics.  Line count, syntax volume, local scaffolding, and shared theorem use describe proof complexity; raw byte count and identifier length do not.  A smaller proof can justify another refinement or reveal a useful structural boundary, but proof size alone cannot promote a variant whose proving time regresses.  Independent verification remains a correctness gate rather than a performance metric.
 
 The [technical analysis](better-wasm-proving.md) describes the available mechanisms and their logical boundaries.  This plan orders experiments by expected effect on proof time, beginning with measurement and complete semantic regions rather than additional leaf arithmetic.  Every promoted method must concern the same frozen formal specification, `Program`, WASM, Codex identity, model settings, toolchain, machine profile, and cache policy.
 
@@ -16,7 +17,7 @@ The [technical analysis](better-wasm-proving.md) describes the available mechani
 
 The retained timing-1 package took 3,516.775 seconds in stage 5.  The controlled timing-2 reproof changed only the proof kit and guidance, used the same WASM bytes, and took 1,964.130 seconds.  The 1,552.645-second reduction equals 44.15 percent, although one run does not establish a stable distribution.
 
-Timing-1 produced a 579-line proof, while the faster timing-2 run produced 591 lines.  This result confirms that proof length cannot select an optimization.  The immediate task is to reproduce the timing reduction, then replace complete discovery and execution regions so later phases can make larger reductions.
+Timing-1 produced a 579-line proof, while the faster timing-2 run produced 591 lines.  This result shows that proof time and proof size can move in different directions, so every comparison must report both.  The immediate task is to reproduce the timing reduction, then replace complete discovery and execution regions so later phases can improve one metric without concealing a regression in the other.
 
 The unchanged word-address series took 1,964.130, 360.144, and 2,249.443 seconds, for a median of 1,964.130 seconds and a range of 1,889.300 seconds.  Three proofs using `Project.ProofKit.FixedArrayAllocator.region_spec` took 2,556.812, 1,134.008, and 941.494 seconds.  Their 1,134.008-second median passes the 1,758-second semantic-workbench gate and is 42.3 percent below the word-address median.
 
@@ -51,7 +52,7 @@ The [compiler-theorem analysis](docs/compiler-theorem-bridge.md) defines the fir
 
 | Experiment | Compiler theorem or analysis | Artifact-side result | Proof work removed | Acceptance test |
 |---|---|---|---|---|
-| Scalar emission | Successful IR reification emits the descriptor program | Exact region equality and `ScalarTransition.whileProgram_spec` | Instruction decoding, checked division expansion, branch shape, assignment order, and scratch handling | Full annotation trial was 83.0 percent slower; scalar-only result pending |
+| Scalar emission | Successful IR reification emits the descriptor program | Exact region equality and `ScalarTransition.whileProgram_spec` | Instruction decoding, checked division expansion, branch shape, assignment order, and scratch handling | Isolated screen was 47.202 percent slower, with 6.648 percent fewer lines and 4.710 percent fewer words |
 | Effects and frames | Descriptor reads, writes, and scratch interval bound all local changes | Recomputed frame certificate and preservation lemmas | Local-frame reconstruction and unchanged-local proofs | Mutation rejection and lower time where descriptors retain untouched locals |
 | One-step semantics | IR evaluation agrees with descriptor evaluation for one loop step | Closed transition equations over application locals that hide scratch state | Descriptor evaluation, branch update algebra, scratch-state equality, and local-numbering discovery | Lower median time on Demo 1 and a held-out scalar loop |
 | Annotation locations | Annotated composition preserves path and interval coordinates | Exact coverage and non-overlap certificate | Region navigation, decomposition, and continuation reconstruction | Every coordinate mutation fails before behavior proving |
@@ -61,12 +62,15 @@ The [compiler-theorem analysis](docs/compiler-theorem-bridge.md) defines the fir
 
 The experiments proceed in table order because each row supplies evidence and theorem structure needed by the next.  A compiler-side proof alone does not qualify an experiment: exact decoded-region agreement, compiler-free artifact closure, emitter byte compatibility, and independent package verification remain required.  The timing gate compares complete Stage 5 duration under one Codex version, reasoning level, machine profile, cache policy, formal specification, and WASM artifact.
 
-The first fixed-artifact annotated trial increased Demo 1 Stage 5 from 2,017.931 to 3,692.913 seconds.  The package combined the scalar descriptor with length-dispatch and direct-call recipes, and its journal records substantial wrapper-proof work alongside descriptor-evaluator and scratch-state obligations.  A scalar-only annotation package must run before this result can accept or reject the scalar-emission row, while checked, scratch-hiding transition equations remain the next implementation if that isolated result is neutral or slow.
+The first fixed-artifact annotated trial increased Demo 1 Stage 5 from 2,017.931 to 3,692.913 seconds.  A later isolated comparison retained the same direct-call recipes and changed only the scalar-loop region: the calls-only control took 2,645.818 seconds, while the scalar candidate took 3,894.697 seconds.  The candidate used the generated descriptor equality and loop theorem, reduced accepted source from 722 to 674 lines and from 3,418 to 3,257 whitespace-delimited words, and failed the proving-time screen despite that structural reduction.
+
+The matched journals show that the control reconstructed the neutral descriptor early, after which both agents faced the same semantic invariant and fixed-width arithmetic.  The candidate also spent substantial time aligning the public singleton wrapper and allocator theorem, so the next matched experiment must use a shared wrapper composition in both configurations.  Checked, scratch-hiding application-local transition equations remain the next compiler-theorem increment because the current descriptor exposes evaluator and local-state details that dominate the residual scalar proof.
 
 - [x] Reify Demo 1's scalar IR into a neutral descriptor and prove production emission agreement.
 - [x] Generate and Lean-check exact descriptor equality against Demo 1's decoded WAT region.
 - [x] Preserve Demo 1's frozen WASM bytes and pass execution, serializer, and aggregate Talos gates.
-- [ ] Record a matched Codex-version baseline and three scalar-only descriptor trials; the baseline and first confounded full-annotation trial are retained.
+- [x] Record and preserve a matched Codex-version calls-only control and isolated scalar-descriptor screen.
+- [x] Reject repeat scalar-descriptor trials after the isolated screen regressed proving time.
 - [x] Add descriptor effect sets and generic artifact-side frame theorems.
 - [ ] Generate closed one-step transition equations and test whether Codex uses them.
 - [ ] Freeze a held-out scalar-loop demo before exposing descriptor data.
@@ -122,10 +126,13 @@ The following theorem should cover the complete singleton-array ABI wrapper.  It
 - [ ] Bundle memory, global, page, pointer, frame, and representation premises into small records.
 - [ ] Add a checked adapter for the existing CLOB consumer.
 - [x] Apply the theorem to demo-1 through an exact region equality.
-- [x] Add the parameterized singleton-wrapper theorem and demo-1 adapter.
+- [x] Add the parameterized singleton allocator-and-result-region theorem and demo-1 adapter.
+- [x] Add a complete public singleton-wrapper theorem parameterized by a scalar callee summary.
 - [ ] Use demo-2 as the second consumer before declaring the wrapper API stable.
 
-The demo-1 Phase 2 timing and proof-coverage gates have passed.  The accepted singleton proofs no longer symbolically execute the free-list loop, no-growth branch, header stores, allocator-counter update, returned-root assignment, output stores, or output-array reconstruction.  Demo-2 remains the required second consumer before treating the fixed wrapper interface as stable.
+The Demo 1 allocator-and-result-region timing and proof-coverage gates have passed.  `FixedArraySingletonWrapper.wrapperProgram_spec` now covers the public length dispatch, checked element load, scalar call, capacity calculation, allocator, result stores, and public return while accepting a store-preserving scalar callee summary.  The annotation consumer recognizes Demo 1's exact entry shape, generates a whole-function equality checked by `rfl`, selects the complete theorem, and starts the proof at that wrapper boundary.
+
+`tools/leanexegen annotate` reproduced the 1,938-byte Demo 1 artifact and built the generated whole-function equality.  The protocol test rejects a changed result-local assignment, and the focused proof-kit build accepts the generic theorem under Lean 4.31.0.  Demo 2 remains the required second consumer before treating the complete wrapper interface as stable, while a fixed-artifact timing screen must determine whether the wrapper removes the journaled entry-proof cost.
 
 ## Phase 3: Supply exact proof-library selections
 

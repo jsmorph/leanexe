@@ -181,11 +181,11 @@ The implementation touches six existing areas and one new compiler module.  `Lea
 
 The proof data should flow through four checked boundaries.  Successful compiler reification proves agreement with the emitter and writes a descriptor.  Leanexegen parses that descriptor, the generated package proves equality with the exact decoded loop region, the generic descriptor theorem proves its Talos transition, and the application proof supplies the invariant and termination facts.
 
-Demo 1 supplies the in-sample performance test.  Its isolated scalar-loop baseline has three retained proof-generation times of approximately 436, 490, and 680 seconds, while the annotation-only screen produced no proof after approximately 1,082 seconds.  Three fixed reproofs with the descriptor should use the same WASM, formal specification, model, reasoning level, cache policy, and proof-isolation rules.  Failures and timeouts remain part of the result.
+Demo 1 supplies the in-sample performance test.  The corrected calls-only control took 2,645.818 seconds, while the matched descriptor candidate took 3,894.697 seconds with the same WASM, formal specification, model, reasoning level, cache policy, proof kit, and proof-isolation rules.  The failed time screen receives no repeat trials, and both verified packages remain part of the retained result.
 
 Demos 2 through 5 should run their existing annotation and package tests to detect parser or emitter regressions.  They do not provide an independent scalar-loop performance sample because their current gains come from array search, map, and filter composition theorems.  Before promoting scalar certificates as a general proof-time method, freeze a held-out Demo 6 such as a two-element input array whose scalar helper computes Euclid's algorithm and returns a singleton result, record its annotation-free baseline, and then expose the scalar descriptor without changing its source, specification, or WASM.
 
-The proof of concept succeeds only if the descriptor remains generic and lowers median Stage 5 time.  A shorter proof, a better journal, or successful first-check elaboration does not compensate for a slower complete proving session under the project's current objective.  Demo 6 should confirm that any improvement survives a different loop invariant, branch shape, and arithmetic operation before the method expands to array-loop bodies.
+The proof of concept succeeds only if the descriptor remains generic and lowers median Stage 5 time.  Accepted proof structure remains secondary evidence: the current candidate's reductions from 722 to 674 lines and from 3,418 to 3,257 whitespace-delimited words justify refining the boundary, but they do not promote a configuration whose proving time regressed.  Demo 6 should confirm that a later improvement survives a different loop invariant, branch shape, and arithmetic operation before the method expands to array-loop bodies.
 
 ## Implemented first increment
 
@@ -205,6 +205,16 @@ The descriptor definitions now compute local reads, explicit statement writes, a
 
 The first calls-only proof session ended as a censored failure after approximately sixty-five minutes because its candidate imported unsupported module `Project.Common`.  The task's Lean build accepted the available module, while the independent publication audit enforced the artifact-proof allowlist and rejected it.  The task now runs an in-workspace import checker generated from that same allowlist before every prescribed Lean build, so the repeated control can correct the dependency during its own iteration.
 
+The corrected calls-only control completed Stage 5 in 2,645.818 seconds, including 2,558.659 seconds in Codex and 75.772 seconds in outer acceptance.  The isolated candidate added only the scalar-loop region and completed in 3,894.697 seconds, including 3,811.538 seconds in Codex and 73.440 seconds in outer acceptance.  Independent verification accepted both packages over the same 1,938-byte WASM digest.
+
+The candidate uses the generated descriptor equality and `ScalarTransition.whileProgram_spec`, but does not use `Stmt.eval_preserves_below`.  Its accepted proof contains 48 fewer lines and 161 fewer whitespace-delimited words, providing secondary evidence that compiler-certified structure removed local scaffolding.  The 47.202-percent proving-time regression rejects the present recipe and shows that raw descriptor evaluation leaves too much semantic and representation work inside the agent session.
+
+The matched journals identify two next boundaries.  Checked one-step equations should expose application-local values for each loop branch while hiding compiler scratch locals and repeated descriptor-evaluator simplification, and a shared singleton-wrapper theorem should remove entry and allocator alignment from both comparison configurations.  The next fixed-artifact screen will test those changes before freezing or exposing the held-out scalar demo.
+
+`Project.ProofKit.FixedArraySingletonWrapper` now supplies the second boundary.  Its complete theorem accepts an arbitrary scalar transform and store-preserving callee summary, then proves Demo 1's singleton length dispatch, checked load, scalar call, allocation, output stores, and public return.  The artifact-side consumer recognizes the canonical entry layout and generates a whole-function `rfl` equality to the neutral wrapper program, which `tools/leanexegen annotate` checked against the unchanged 1,938-byte artifact.
+
+This theorem removes the wrapper instructions from the proving agent's semantic search, but it has no timing result yet.  The deterministic starter reaches the checked wrapper boundary and leaves the scalar callee theorem plus the two formal-result equations.  The next compiler-theorem work still targets scratch-hidden application-local transition equations, after which the matched Demo 1 screen can measure both changes together.
+
 ## Further experiments
 
 A compiler-generated cut-point graph can divide one function into transitions at loop heads, calls, allocation boundaries, and returns.  The compiler can prove that its graph covers the emitted structured code, while an artifact-side checker independently reconstructs coverage from exact regions.  Codex would then prove relations between cut-point states instead of discovering the graph and instruction boundaries.
@@ -223,8 +233,8 @@ A whole-back-end simulation should also wait for evidence from the scalar descri
 
 Serializer correctness has value for compiler assurance and artifact production, but it does not address the measured Stage 5 bottleneck.  The current exact-byte decoder, validator, translation, and package equality already establish the retained artifact identity.  Serializer work should proceed when it supports theorem transport or eliminates production cost, rather than displace the transition-certificate experiment.
 
-## Decision after the pilot
+## Decision after the isolated pilot
 
-The measured pilot determines the next compiler-theorem investment.  A substantial reduction on Demo 1 and the held-out demo justifies extending the descriptor and certificate checker to array-loop scalar bodies, calls, and allocation cut points.  A neutral or slower result means the remaining time lies in invariant mathematics, agent planning, or Lean elaboration, and telemetry should identify which part before adding more compiler theorems.
+The isolated pilot rejects the raw scalar descriptor as a proof-time improvement.  Its journal and accepted source locate the remaining work in application invariants, descriptor evaluator cases, fixed-width representation, and wrapper alignment rather than WAT branch discovery.  The next compiler-theorem investment is therefore scratch-hidden application-local transition equations, followed by another Demo 1 screen before any extension to array-loop bodies, calls, or allocation cut points.
 
 Both outcomes preserve the artifact boundary.  Compiler theorems may explain emission, validate certificate generation, and provide candidate mathematics.  The retained proof rests on exact decoded-region checks and neutral semantic theorems when it establishes that the WASM satisfies its specification.
