@@ -64,9 +64,13 @@ The experiments proceed in table order because each row supplies evidence and th
 
 The first fixed-artifact annotated trial increased Demo 1 Stage 5 from 2,017.931 to 3,692.913 seconds.  A later isolated comparison retained the same direct-call recipes and changed only the scalar-loop region: the calls-only control took 2,645.818 seconds, while the scalar candidate took 3,894.697 seconds.  The candidate used the generated descriptor equality and loop theorem, reduced accepted source from 722 to 674 lines and from 3,418 to 3,257 whitespace-delimited words, and failed the proving-time screen despite that structural reduction.
 
-The matched journals show that the control reconstructed the neutral descriptor early, after which both agents faced the same semantic invariant and fixed-width arithmetic.  The candidate also spent substantial time aligning the public singleton wrapper and allocator theorem, so the next matched experiment must use a shared wrapper composition in both configurations.  Checked fixed-frame transition equations now summarize intermediate scratch staging because the raw descriptor exposed evaluator and local-state details that dominated the residual scalar proof.
+The matched journals show that the control reconstructed the neutral descriptor early, after which both agents faced the same semantic invariant and fixed-width arithmetic.  The candidate also spent substantial time aligning the public singleton wrapper and allocator theorem, so the later compact-transition comparison used a shared wrapper composition in both configurations.  Checked fixed-frame transition equations summarize intermediate scratch staging because the raw descriptor exposed evaluator and local-state details that dominated the residual scalar proof.
 
-The compact transition increment is implemented.  `ScalarTransitionU64` proves generic correspondence with the typed evaluator, while generated annotation support states the complete condition and body transitions over a fixed `UInt64` frame.  Demo 1 produces five semantic body branches, and independent package verification accepts the generated equations; the matched Stage 5 screen remains open.
+The compact transition increment passes its matched Demo 1 screen.  `ScalarTransitionU64` proves generic correspondence with the typed evaluator, while generated annotation support states the complete condition and body transitions over a fixed `UInt64` frame.  The control retained length dispatch, mandatory calls, and the complete singleton wrapper but omitted the scalar-loop region; the candidate added only that region, and independent package verification accepted both.
+
+The control completed Stage 5 in 2,262.084 seconds, while the candidate completed in 1,965.454 seconds.  The transition equations reduced total proving time by 296.630 seconds, or 13.113 percent, and Codex-session time by 323.088 seconds, or 14.945 percent.  The candidate used three condition-equation rewrites and five body-equation rewrites, reduced `wp_run` applications from 36 to 12, and reduced accepted source from 643 to 635 lines.
+
+The journals identify function-entry normalization as the next general boundary.  Both agents spent checks establishing argument order, fixed-store quantification, and the exact local frame at the loop head, while the candidate also needed to align that frame with generated `U64State`.  A checked entry-to-loop adapter should remove this work before the compact transition method reaches a held-out scalar artifact.
 
 - [x] Reify Demo 1's scalar IR into a neutral descriptor and prove production emission agreement.
 - [x] Generate and Lean-check exact descriptor equality against Demo 1's decoded WAT region.
@@ -75,7 +79,8 @@ The compact transition increment is implemented.  `ScalarTransitionU64` proves g
 - [x] Reject repeat scalar-descriptor trials after the isolated screen regressed proving time.
 - [x] Add descriptor effect sets and generic artifact-side frame theorems.
 - [x] Generate closed one-step transition equations and verify them against Demo 1's exact artifact.
-- [ ] Test whether Codex uses the transition equations and measure the matched Stage 5 result.
+- [x] Test whether Codex uses the transition equations and measure the matched Stage 5 result.
+- [ ] Generate a checked function-entry-to-scalar-loop adapter and screen it on fixed Demo 1.
 - [ ] Freeze a held-out scalar-loop demo before exposing descriptor data.
 - [ ] Add checked annotation-location composition after the semantic rows pass their timing gates.
 - [ ] Pilot a checked cut-point graph on two artifacts with different control-flow structure.

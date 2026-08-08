@@ -1,6 +1,6 @@
 # Demo 1 artifact-proof benchmark
 
-This directory preserves fourteen complete proof packages measured on 2026-08-05 and 2026-08-08.  Every package binds the same request and the same 1,938-byte WASM module with SHA-256 digest `dbced77ae7a692ce49e98cb58721cb3c05a3712925e31685c4fd08dba4181be7`.  The retained runs cover the initial proof kit, three-run series for word-address lemmas, the complete fixed-array allocator theorem, the complete singleton-array result theorem, the first complete annotation comparison, and the isolated scalar-descriptor comparison.
+This directory preserves sixteen complete proof packages measured on 2026-08-05 and 2026-08-08.  Every package binds the same request and the same 1,938-byte WASM module with SHA-256 digest `dbced77ae7a692ce49e98cb58721cb3c05a3712925e31685c4fd08dba4181be7`.  The retained runs cover the initial proof kit, three-run series for word-address lemmas, the complete fixed-array allocator theorem, the complete singleton-array result theorem, the first complete annotation comparison, the isolated scalar-descriptor comparison, and the matched compact-transition comparison.
 
 ## Results
 
@@ -14,6 +14,8 @@ This directory preserves fourteen complete proof packages measured on 2026-08-05
 | Codex 0.147.0 full annotations with scalar descriptor | 1 | 3,692.913 s | 0.000 s |
 | Codex 0.147.0 calls-only scalar control | 1 | 2,645.818 s | 0.000 s |
 | Codex 0.147.0 isolated scalar descriptor | 1 | 3,894.697 s | 0.000 s |
+| Codex 0.147.0 shared-wrapper transition control | 1 | 2,262.084 s | 0.000 s |
+| Codex 0.147.0 checked compact transitions | 1 | 1,965.454 s | 0.000 s |
 
 The fixed-array allocator median is 830.122 seconds, or 42.3 percent, below the word-address median.  Its individual times are 2,556.812, 1,134.008, and 941.494 seconds.  Each accepted proof imports `Project.ProofKit.FixedArrayAllocator` and applies `region_spec` to the exact emitted allocator suffix.
 
@@ -27,13 +29,19 @@ The isolated comparison retains the same two direct-call recipes in both package
 
 The annotated proof has 674 lines and 3,257 whitespace-delimited words, compared with 722 lines and 3,418 words in the control.  Lines fell by 6.648 percent and words fell by 4.710 percent, providing secondary evidence that the checked descriptor and shared loop theorem reduce local proof structure.  Raw byte length increased because the candidate repeatedly uses long generated and qualified declaration names; identifier spelling does not count against the proof, but the proving-time regression still rejects this version of the scalar descriptor as a promoted recipe.
 
-The control journal records that Codex reconstructed the neutral scalar descriptor and reached its semantic cases during its first few edited checks.  The candidate used the generated descriptor equality and `ScalarTransition.whileProgram_spec`, but did not use `Stmt.eval_preserves_below`; both runs spent most of their work on the trial-division invariant, scalar evaluator cases, fixed-width arithmetic, and public array wrapper.  The next scalar experiment will use checked application-local transition equations that hide scratch state and a shared wrapper composition that removes unrelated entry-proof variance.
+The control journal records that Codex reconstructed the neutral scalar descriptor and reached its semantic cases during its first few edited checks.  The candidate used the generated descriptor equality and `ScalarTransition.whileProgram_spec`, but did not use `Stmt.eval_preserves_below`; both runs spent most of their work on the trial-division invariant, scalar evaluator cases, fixed-width arithmetic, and public array wrapper.  Those observations led to checked fixed-frame transition equations that summarize scratch staging and a shared wrapper composition that removes unrelated entry-proof variance.
 
-The shared wrapper composition now has a checked implementation, but no timing observation appears in this table yet.  Its generic theorem treats the scalar callee as a parameter and covers the complete singleton-array entry function, while the generated Demo 1 equality identifies the frozen entry program with that template by `rfl`.  The next matched run will provide this same wrapper composition to both scalar configurations so the comparison continues to isolate the scalar-transition assistance.
+The matched transition comparison gives both packages the same length-dispatch and direct-call recipes and the same complete singleton-wrapper composition.  The candidate adds only `function-0.while-loop-0`, whose generated declarations include checked condition and body transition equations.  Both packages preserve the same artifact, proof-kit identity, tool pins, formal specification, source, Codex identity, and task settings, and independent verification accepts both.
+
+The checked-transition candidate completed Stage 5 in 1,965.454 seconds, compared with 2,262.084 seconds for the control.  The reduction is 296.630 seconds, or 13.113 percent; Codex-session time fell by 323.088 seconds, or 14.945 percent, while outer acceptance took 26.755 seconds longer.  This one matched observation promotes the compact transition equations for further testing but does not establish their timing distribution.
+
+The candidate proof has 635 lines and 12 `wp_run` applications, while the control has 643 lines and 36 `wp_run` applications.  The candidate instead rewrites with the generated condition equation three times and the generated body equation five times.  These counts show that the annotation removed repeated instruction-level symbolic execution; declaration spelling, identifier length, and raw source bytes have no negative weight.
+
+Both journals identify the function-entry frame as the next general boundary.  The candidate still spent several checks converting `Function.toLocals` into the generated `U64State` before `whileProgram_spec` applied, while the control also derived entry argument order and fixed-store quantification.  A generated, checked entry-to-loop adapter should address this repeated work before the transition method moves to a held-out scalar artifact.
 
 ## Measurement and controls
 
-The primary performance metric is elapsed time from the Stage 5 heading to the first proof accepted by the independent outer check, measured through `process.hrtime.bigint`.  Accepted proof lines, syntax volume, local scaffolding, and shared theorem applications provide secondary structural evidence; raw source bytes identify content but do not measure proof complexity.  `benchmark.json` records and checks the ten Codex 0.146.0 packages, while the four scalar directories retain the Codex 0.147.0 packages with schema-two task identities and complete telemetry.
+The primary performance metric is elapsed time from the Stage 5 heading to the first proof accepted by the independent outer check, measured through `process.hrtime.bigint`.  Accepted proof lines, explicit syntax, local scaffolding, repeated derivations, and shared theorem applications provide secondary structural evidence; raw source bytes, word length, and identifier length do not measure proof complexity.  `benchmark.json` records and checks the ten Codex 0.146.0 packages, while the six scalar directories retain the Codex 0.147.0 packages with schema-two task identities and complete telemetry.
 
 The host wall clock changed during both isolated runs.  The calls-only control's UTC timestamps span about two hours while its monotonic total is 2,645.818 seconds, and the scalar candidate's timestamps span nearly four hours while its monotonic total is 3,894.697 seconds.  The comparison therefore uses `totalMilliseconds`, `codexSessionMilliseconds`, and `outerAcceptanceMilliseconds`, rather than subtracting the recorded UTC timestamps.
 
