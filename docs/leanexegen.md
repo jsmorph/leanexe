@@ -46,6 +46,16 @@ tools/leanexegen reprove --new-codex-series \
 
 The option changes no frozen source, formal specification, compiler output, decoded program, or tool pin.  Comparisons across the identity boundary remain invalid, so a new series requires both its baseline and experimental variants under the new identity.  Package validation retains the earlier formal and program identities instead of attributing those tasks to the replacement CLI.
 
+### Controlled annotation
+
+The `annotate` command recompiles a frozen package's `Source` with the current compiler, requires byte-for-byte equality with the frozen WASM, validates the complete compiler sidecar against the decoded program, and generates checked region equalities.  `--only-region` then retains one named semantic region, along with every direct-call region required for complete call coverage, and may occur more than once.  An unknown, duplicate, or ambiguous region name fails package creation, while a calls-only baseline can name the required direct-call regions without selecting another semantic region.
+
+```sh
+tools/leanexegen annotate \
+  --only-region function-0.while-loop-0 \
+  -o scalar-only.proof myprogram.proof
+```
+
 ## Headless Codex tasks
 
 Each stage starts one ephemeral `codex exec` session in its own temporary directory.  The invocation uses `-C`, `--sandbox workspace-write`, `--skip-git-repo-check`, `--ephemeral`, `--json`, `--output-schema`, and `-o`, with the prompt supplied on standard input.  Codex can inspect and edit files inside that stage's workspace, but it cannot write elsewhere.

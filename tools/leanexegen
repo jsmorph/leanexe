@@ -90,7 +90,8 @@ function usage() {
   return [
     "usage: leanexegen [-s] -o <program.wasm> <request.txt>",
     "       leanexegen reprove [-s] [--new-codex-series] -o <program.wasm> <proof-package>",
-    "       leanexegen annotate -o <annotated-proof-package> <proof-package>",
+    "       leanexegen annotate [--only-region <region-id>]... " +
+      "-o <annotated-proof-package> <proof-package>",
     "       leanexegen verify [-s] <proof-package>",
     "       leanexegen benchmark -o <program.wasm> [benchmark-directory]",
     "       leanexegen run <program.wasm> [UInt64 ...]",
@@ -100,6 +101,7 @@ function usage() {
 function parseArgs(args) {
   if (args[0] === "annotate") {
     let output = null;
+    const selectedRegions = [];
     const positional = [];
     for (let index = 1; index < args.length; index += 1) {
       const argument = args[index];
@@ -107,6 +109,13 @@ function parseArgs(args) {
         index += 1;
         if (index >= args.length || output !== null) throw new Error(usage());
         output = args[index];
+      } else if (argument === "--only-region") {
+        index += 1;
+        if (index >= args.length || args[index].startsWith("-") ||
+            selectedRegions.includes(args[index])) {
+          throw new Error(usage());
+        }
+        selectedRegions.push(args[index]);
       } else if (argument.startsWith("-")) {
         throw new Error(usage());
       } else {
@@ -118,6 +127,7 @@ function parseArgs(args) {
       command: "annotate",
       outputPath: path.resolve(output),
       packagePath: path.resolve(positional[0]),
+      selectedRegions,
     };
   }
   if (args[0] === "benchmark") {
@@ -2431,8 +2441,11 @@ function annotatePackage(command) {
           `${checked.artifact.sha256}`,
       );
     }
-    const compilerAnnotations = validateAnnotationDocument(JSON.parse(
+    const completeAnnotations = validateAnnotationDocument(JSON.parse(
       fs.readFileSync(compiledAnnotations, "utf8")), checked.wasm);
+    const compilerAnnotations = selectAnnotationRegions(
+      completeAnnotations, command.selectedRegions);
+    validateAnnotationDocument(compilerAnnotations, checked.wasm);
     const entryIndex = programExportIndex(program, checked.job.exportName);
     const strategies = proofStrategyBundle(program, entryIndex);
     const proofRecipes = proofRecipePlan(
@@ -2515,6 +2528,32 @@ function annotatePackage(command) {
       formatError(new AggregateError(errors, "annotation package creation failed")),
     );
   }
+}
+
+function selectAnnotationRegions(document, selectedRegions) {
+  if (selectedRegions.length === 0) return document;
+  const counts = new Map();
+  for (const function_ of document.functions) {
+    for (const region of function_.regions) {
+      counts.set(region.id, (counts.get(region.id) || 0) + 1);
+    }
+  }
+  for (const regionId of selectedRegions) {
+    const count = counts.get(regionId) || 0;
+    if (count === 0) throw new Error(`annotation region does not exist: ${regionId}`);
+    if (count !== 1) throw new Error(`annotation region is ambiguous: ${regionId}`);
+  }
+  const selected = new Set(selectedRegions);
+  for (const function_ of document.functions) {
+    for (const region of function_.regions) {
+      if (region.kind === "leanexe.call.direct.v1") selected.add(region.id);
+    }
+  }
+  const result = structuredClone(document);
+  for (const function_ of result.functions) {
+    function_.regions = function_.regions.filter((region) => selected.has(region.id));
+  }
+  return result;
 }
 
 function benchmark(command) {
@@ -2891,6 +2930,7 @@ module.exports = {
   reproveSourceSets,
   runCodexOutcome,
   runTaskSession,
+  selectAnnotationRegions,
   stageHeading,
   parseProofStrategySections,
   verificationCheckSources,
