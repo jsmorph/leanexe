@@ -60,6 +60,8 @@ tools/leanexegen annotate \
 
 Each stage starts one ephemeral `codex exec` session in its own temporary directory.  The invocation uses `-C`, `--sandbox workspace-write`, `--skip-git-repo-check`, `--ephemeral`, `--json`, `--output-schema`, and `-o`, with the prompt supplied on standard input.  Codex can inspect and edit files inside that stage's workspace, but it cannot write elsewhere.
 
+The artifact-proof workspace includes `PROOF_IMPORT_CHECK.js`, generated from the same proof-kit and generated-module allowlist used by outer acceptance.  Codex runs this check before every prescribed Lean build, so an unsupported direct import becomes an in-session diagnostic rather than a publication-time rejection.  Outer acceptance repeats the import audit independently on the returned source.
+
 The outer process starts the complete Codex session through `tools/leanrun`, which holds the machine-wide Lean lock and places Codex and every child in one constrained cgroup.  A nested `tools/leanrun` invocation verifies the inherited memory and CPU limits before running Lean, Lake, or LeanExe, so it does not need another systemd scope.  The formal and proof sessions repeat one prescribed Lean build after each edit, while the program session repeats its Lean build, LeanExe report, and scratch compilation in sequence.
 
 Codex returns one schema-validated `generated`, `questions`, or `problems` object after its internal work.  For `generated`, the orchestrator reads the candidate from the isolated workspace and repeats every final Lean or compiler check in a separate outer workspace.  An outer rejection stops the stage with its diagnostic rather than starting another Codex session.
