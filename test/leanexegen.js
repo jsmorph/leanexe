@@ -42,6 +42,7 @@ const {
   proofTaskContext,
   readPackageSources,
   requireFrozenProofKitIsolation,
+  requirePublicationTargetsAvailable,
   reprovePinsMatch,
   reproveSourceSets,
   programPrompt,
@@ -2074,6 +2075,17 @@ function testPublication() {
   assert(fs.readFileSync(output).equals(bytes) &&
     fs.readFileSync(path.join(proof, "complete"), "utf8") === "yes\n",
   "publication did not install both outputs");
+  const collision = expectFailure(
+    () => requirePublicationTargetsAvailable(output), /program\.wasm exists/);
+  assert(collision instanceof StageError && collision.stage === 1,
+    "publication preflight did not reject an existing output during job setup");
+  const proofOnlyOutput = path.join(temporaryRoot, "proof-only", "program.wasm");
+  const proofOnlyPackage = proofPackagePath(proofOnlyOutput);
+  fs.mkdirSync(proofOnlyPackage, { recursive: true });
+  const proofCollision = expectFailure(
+    () => requirePublicationTargetsAvailable(proofOnlyOutput), /program\.proof exists/);
+  assert(proofCollision instanceof StageError && proofCollision.stage === 1,
+    "publication preflight did not reject an existing proof package during job setup");
   const failedOutput = path.join(temporaryRoot, "failed", "program.wasm");
   const failedProof = path.join(temporaryRoot, "failed", "program.proof");
   const error = expectFailure(() => publish(failedOutput, failedProof, bytes, () => {
