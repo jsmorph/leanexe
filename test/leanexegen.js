@@ -368,7 +368,11 @@ function testCodexProtocol() {
     artifactPrompt.includes("AnnotationMatches") &&
     artifactPrompt.includes("Keep PROOF_JOURNAL.md as a prose Markdown account") &&
     artifactPrompt.includes("including after each Lean check") &&
-    artifactPrompt.includes("Attempt the direct recipe") &&
+    artifactPrompt.includes("Name each supplied recipe, theorem, tactic, or annotation") &&
+    artifactPrompt.includes("missing general annotation, lemma, tactic, or guidance") &&
+    artifactPrompt.includes("rather than reconstructing them at the end") &&
+    artifactPrompt.includes("Attempt the direct recipe against the reported region") &&
+    artifactPrompt.includes("do not restructure unrelated code solely to force the recipe") &&
     artifactPrompt.includes("deterministic theorem starter") &&
     artifactPrompt.includes("before editing") &&
     artifactPrompt.includes("If that check succeeds") &&
