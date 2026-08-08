@@ -165,7 +165,9 @@ Preserve the represented input across output construction at a region boundary. 
 
 Separate application mathematics from machine arithmetic.  First prove the mathematical transition over `Nat`, lists, or a domain structure, then prove the `UInt64` expression implements that transition under explicit no-wrap bounds.  Demo 1 follows this order with `primeFactorsList_step`, `factor_length_div`, `count_after_div`, and `count_after_prime` before proving the generated loop.
 
-Convert `UInt64` comparisons to `toNat` form only after recording the bounds that remove modular arithmetic.  [`Project.Common`](../proofs/talos/lean/Project/Common.lean) supplies `u64_eq_iff`, `toNat_add_one`, `toNat_sub_le`, and the `u64_omega` tactic for this sequence.  `u64_omega` expects the relevant `Nat` bounds in context and does not invent a no-wrap premise.
+Convert `UInt64` comparisons to `toNat` form only after recording the bounds that remove modular arithmetic.  Use `UInt64.toNat_sub_of_le value offset h` when `h : offset ≤ value`; [`Project.ProofKit.Memory.toNat_sub_of_le`](../proofs/talos/lean/Project/ProofKit/Memory.lean) accepts the corresponding `toNat` inequality.  These theorems avoid expanding subtraction into addition and reduction modulo `2^64`.
+
+Rewrite unsigned order through `UInt64.lt_iff_toNat_lt` or `UInt64.le_iff_toNat_le` before applying generic natural-number order lemmas.  A negated `UInt64` comparison produced by a branch may already have the exact form required by the generated evaluator, so retain it when possible.  Generic lemmas such as `not_lt_of_ge` may select an incompatible order instance if applied directly to `UInt64`.
 
 Name the exact equality that connects an emitted expression to a semantic quantity.  The [depth allocation preparation theorem](../proofs/talos/lean/Project/ClobDepth/MissingPrepare.lean) proves the complete rounded-capacity expression equal to `fixedArrayBytesU (levels.length + 1) 2`, rewrites once, and then selects the generated branch.  This directed rewrite is more stable than adding capacity definitions to a large simplifier invocation.
 

@@ -5,7 +5,7 @@ Every `leanexegen` artifact-proof task receives this catalog and may import the 
 | Module | Checked support |
 |---|---|
 | `Project.ProofKit.Annotation` | Structured instruction-path resolution and exact half-open regions over a decoded Talos program. |
-| `Project.ProofKit.Memory` | Word-read congruence, disjoint read-over-write facts, and the `word_reads` tactic for nested `write64` expressions. |
+| `Project.ProofKit.Memory` | Fixed-width subtraction normalization, word-read congruence, disjoint read-over-write facts, and the `word_reads` tactic for nested `write64` expressions. |
 | `Project.ProofKit.ScalarTransition` | Typed scalar expression and statement evaluation, exact Talos instruction generation, weakest-precondition composition, and scratch-local preservation. |
 | `Project.ProofKit.ScalarTransitionU64` | Compact `UInt64` state evaluation and checked correspondence with the typed scalar evaluator. |
 | `Project.ProofKit.Array` | The public `Array UInt64` representation, encoded-size and address normalization, load bounds, region preservation, and singleton or pair output construction. |

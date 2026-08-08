@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "metric": "stage-5-start-to-first-accepted-proof",
+  "artifactSha256": "dbced77ae7a692ce49e98cb58721cb3c05a3712925e31685c4fd08dba4181be7",
+  "baseline": {
+    "package": "scalar-transition-candidate-1/program.proof",
+    "totalMilliseconds": 1965454.082,
+    "codexSessionMilliseconds": 1838812.738,
+    "outerAcceptanceMilliseconds": 114900.137,
+    "proofLines": 635,
+    "wpRunApplications": 12
+  },
+  "runs": [
+    {
+      "package": "scalar-entry-candidate-1/program.proof",
+      "acceptedSourceSha256": "56070129d21396ab8da2945ad766e1f083b58816eae5b7d05ac301d07595940b",
+      "totalMilliseconds": 1282710.984,
+      "codexSessionMilliseconds": 1182402.319,
+      "outerAcceptanceMilliseconds": 85874.952,
+      "proofLines": 548,
+      "wpRunApplications": 9,
+      "independentlyVerified": true
+    },
+    {
+      "package": "scalar-entry-candidate-2/program.proof",
+      "acceptedSourceSha256": "127bc3dceac60a9106801ef3b7b4970c0f2743ae189ee1acbef200ccb54fe464",
+      "totalMilliseconds": 1601646.189,
+      "codexSessionMilliseconds": 1519051.92,
+      "outerAcceptanceMilliseconds": 67023.657,
+      "proofLines": 596,
+      "wpRunApplications": 10,
+      "independentlyVerified": true
+    },
+    {
+      "package": "scalar-entry-candidate-3/program.proof",
+      "acceptedSourceSha256": "0da93980ff3414c69fc4b3e4f9bd4a266354adfe0d862bc9e80e835baa95e18f",
+      "totalMilliseconds": 1421555.829,
+      "codexSessionMilliseconds": 1345306.088,
+      "outerAcceptanceMilliseconds": 60609.346,
+      "proofLines": 572,
+      "wpRunApplications": 12,
+      "independentlyVerified": true
+    }
+  ],
+  "distribution": {
+    "sampleSize": 3,
+    "medianMilliseconds": 1421555.829,
+    "rangeMilliseconds": 318935.205,
+    "codexMedianMilliseconds": 1345306.088,
+    "codexRangeMilliseconds": 336649.601,
+    "outerAcceptanceMedianMilliseconds": 67023.657,
+    "outerAcceptanceRangeMilliseconds": 25265.606,
+    "proofLineMedian": 572,
+    "proofLineRange": 48,
+    "wpRunMedian": 10,
+    "wpRunRange": 3
+  }
+}
