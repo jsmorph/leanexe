@@ -51,7 +51,7 @@ The [compiler-theorem analysis](docs/compiler-theorem-bridge.md) defines the fir
 
 | Experiment | Compiler theorem or analysis | Artifact-side result | Proof work removed | Acceptance test |
 |---|---|---|---|---|
-| Scalar emission | Successful IR reification emits the descriptor program | Exact region equality and `ScalarTransition.whileProgram_spec` | Instruction decoding, checked division expansion, branch shape, assignment order, and scratch handling | First matched Demo 1 trial was 83.0 percent slower |
+| Scalar emission | Successful IR reification emits the descriptor program | Exact region equality and `ScalarTransition.whileProgram_spec` | Instruction decoding, checked division expansion, branch shape, assignment order, and scratch handling | Full annotation trial was 83.0 percent slower; scalar-only result pending |
 | Effects and frames | Descriptor reads, writes, and scratch interval bound all local changes | Recomputed frame certificate and preservation lemmas | Local-frame reconstruction and unchanged-local proofs | Mutation rejection and lower time where descriptors retain untouched locals |
 | One-step semantics | IR evaluation agrees with descriptor evaluation for one loop step | Closed transition equations over application locals that hide scratch state | Descriptor evaluation, branch update algebra, scratch-state equality, and local-numbering discovery | Lower median time on Demo 1 and a held-out scalar loop |
 | Annotation locations | Annotated composition preserves path and interval coordinates | Exact coverage and non-overlap certificate | Region navigation, decomposition, and continuation reconstruction | Every coordinate mutation fails before behavior proving |
@@ -61,12 +61,12 @@ The [compiler-theorem analysis](docs/compiler-theorem-bridge.md) defines the fir
 
 The experiments proceed in table order because each row supplies evidence and theorem structure needed by the next.  A compiler-side proof alone does not qualify an experiment: exact decoded-region agreement, compiler-free artifact closure, emitter byte compatibility, and independent package verification remain required.  The timing gate compares complete Stage 5 duration under one Codex version, reasoning level, machine profile, cache policy, formal specification, and WASM artifact.
 
-The first fixed-artifact scalar-emission trial increased Demo 1 Stage 5 from 2,017.931 to 3,692.913 seconds.  Its journal attributes the increase to exact descriptor-evaluator and scratch-state obligations, while the accepted proof confirms that Codex used the intended equality and loop theorem.  The next iteration therefore adds generic effects for completeness but makes checked, scratch-hiding transition equations the timing-critical result before another full series.
+The first fixed-artifact annotated trial increased Demo 1 Stage 5 from 2,017.931 to 3,692.913 seconds.  The package combined the scalar descriptor with length-dispatch and direct-call recipes, and its journal records substantial wrapper-proof work alongside descriptor-evaluator and scratch-state obligations.  A scalar-only annotation package must run before this result can accept or reject the scalar-emission row, while checked, scratch-hiding transition equations remain the next implementation if that isolated result is neutral or slow.
 
 - [x] Reify Demo 1's scalar IR into a neutral descriptor and prove production emission agreement.
 - [x] Generate and Lean-check exact descriptor equality against Demo 1's decoded WAT region.
 - [x] Preserve Demo 1's frozen WASM bytes and pass execution, serializer, and aggregate Talos gates.
-- [ ] Record a matched Codex-version baseline and three scalar-descriptor trials; the baseline and first slower trial are retained.
+- [ ] Record a matched Codex-version baseline and three scalar-only descriptor trials; the baseline and first confounded full-annotation trial are retained.
 - [x] Add descriptor effect sets and generic artifact-side frame theorems.
 - [ ] Generate closed one-step transition equations and test whether Codex uses them.
 - [ ] Freeze a held-out scalar-loop demo before exposing descriptor data.
