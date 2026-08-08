@@ -1130,6 +1130,9 @@ function loopRecipe(
       },
       supporting: [
         ...(match.entryEligible ? [{
+          declaration: `${annotationNamespace}.${name}_terminates_with_of_loop`,
+          purpose: "enter the checked loop from TerminatesWith with the exact WebAssembly argument order",
+        }, {
           declaration: `${annotationNamespace}.${name}_entry_to_loop`,
           purpose: "carry arbitrary i64 arguments through the checked function-entry prefix",
         }] : []),
@@ -2681,6 +2684,8 @@ function scalarEntryDeclaration(function_, region, job, program) {
     { length: function_.parameters }, (_, index) => `v${index}`);
   const binders = variables.length === 0 ? "" : ` (${variables.join(" ")} : UInt64)`;
   const argumentValues = `[${variables.map((variable) => `.i64 ${variable}`).join(", ")}]`;
+  const callArguments =
+    `[${variables.slice().reverse().map((variable) => `.i64 ${variable}`).join(", ")}]`;
   const stateArguments = state.map((value) => `(${value})`).join(" ");
   return {
     theorem: `${base}_entry_to_loop`,
@@ -2706,7 +2711,31 @@ theorem ${base}_entry_to_loop {α : Type}
   unfold ${base}_state
   wp_run
   simp [Project.ProofKit.ScalarTransition.U64State.toState,
-    Project.ProofKit.ScalarTransition.State.toLocals]`,
+    Project.ProofKit.ScalarTransition.State.toLocals]
+
+theorem ${base}_terminates_with_of_loop {α : Type}
+    (env : Wasm.HostEnv α) (initial : Wasm.Store α)
+    (P : Wasm.Store α → List Wasm.Value → Prop)${binders}
+    (hLoop : Wasm.wp ${job.namespace}.«module»
+      (${base}_program ++
+        ${job.namespace}.func${function_.wasmIndex}.drop ${region.location.endIndex})
+      (fun c => match c with
+        | .Fallthrough st' s' => P st' (s'.values.take ${function_.results})
+        | .Return st' vs => P st' (vs.take ${function_.results})
+        | _ => False)
+      initial
+      ((${base}_state ${stateArguments}).toState.toLocals []) env) :
+    Wasm.TerminatesWith env ${job.namespace}.«module» ${function_.wasmIndex}
+      initial ${callArguments} P := by
+  apply Wasm.TerminatesWith.of_wp_entry_for
+    (f := ${job.namespace}.func${function_.wasmIndex}Def) rfl
+  unfold ${job.namespace}.func${function_.wasmIndex}Def
+  simp only [Wasm.Function.numParams, List.length, List.take, List.reverse_cons,
+    List.reverse_nil, List.drop, Nat.zero_add, List.append_nil]
+  change Wasm.wp ${job.namespace}.«module» ${job.namespace}.func${function_.wasmIndex}
+    _ initial (${job.namespace}.func${function_.wasmIndex}Def.toLocals ${argumentValues}) env
+  rw [${base}_entry_to_loop]
+  exact hLoop`,
   };
 }
 

@@ -1,0 +1,7 @@
+{
+  "hostAssumptions": [
+    "`UInt64.toNat` interprets each element as its unsigned value in the range 0 through 2^64−1.",
+    "`UInt64.ofNat` preserves the factor count because a UInt64 value has at most 64 prime factors counted with multiplicity.",
+    "The orchestrator-provided predicate defines the array ABI and connects it to `expected`."
+  ]
+}
