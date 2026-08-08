@@ -1,0 +1,73 @@
+{
+  "schemaVersion": 1,
+  "codexVersion": "codex-cli 0.147.0",
+  "maximumAttempts": 1,
+  "tasks": {
+    "formalSpecification": {
+      "task": "formal-specification",
+      "sourceModule": "LeanExeGen.GeneratedR4337040846e16beb.FormalSpec",
+      "sourceSha256": "7c9f233b8a72cf3491e3acd6f154541c6eb09f906f94290da3aa45ffbd798946",
+      "reportSha256": "5afdceda0006bdda6f3f8701bdcee4b38177b247f66d82d114c85eebe9f4c74c",
+      "report": {
+        "summary": "Created the requested FormalSpec module. The prescribed Lean build succeeded.",
+        "decisions": [
+          "Defined singleton behavior using Nat.gcd and exact UInt64 conversion.",
+          "Bound singleton allocation by 64 bytes and non-singleton allocation by zero bytes."
+        ],
+        "attempts": [
+          {
+            "number": 1,
+            "outcome": "accepted",
+            "sourceSha256": "7c9f233b8a72cf3491e3acd6f154541c6eb09f906f94290da3aa45ffbd798946",
+            "diagnosticSha256": "8f6c4c5a9949c4541e8265d9f8789ab0fdcdb391f717df12a226e129ad9cfe76",
+            "diagnostic": "Lean accepted LeanExeGen.GeneratedR4337040846e16beb.FormalSpec.expected : Array UInt64 → Array UInt64 and LeanExeGen.GeneratedR4337040846e16beb.FormalSpec.heapReserveBytes : Array UInt64 → Nat and LeanExeGen.GeneratedR4337040846e16beb.FormalSpec.ArtifactSpec : Wasm.Module → Prop."
+          }
+        ]
+      }
+    },
+    "leanProgram": {
+      "task": "lean-program",
+      "sourceModule": "LeanExeGen.GeneratedR4337040846e16beb.Source",
+      "sourceSha256": "a54ce2b83eb0c2bd6b9a4d4415c8e273b8f8a04a9d2427107f5d2e04ffc00c1d",
+      "reportSha256": "5665f9712e5d64e1e1575eccec7046bd1e2e99882e47ff015f372147e568c19e",
+      "report": {
+        "summary": "The candidate passed SourceCheck, LeanExe reporting, and WebAssembly compilation.",
+        "decisions": [
+          "Implemented gcdWith42 using an imperative UInt64 Euclidean remainder loop.",
+          "compute calls gcdWith42 for singleton arrays and otherwise returns the input unchanged."
+        ],
+        "attempts": [
+          {
+            "number": 1,
+            "outcome": "accepted",
+            "sourceSha256": "a54ce2b83eb0c2bd6b9a4d4415c8e273b8f8a04a9d2427107f5d2e04ffc00c1d",
+            "diagnosticSha256": "fc4d20163c4006bfbde9b6ffefc9c226683b5386d149c38e6f32593a4bfdd8c8",
+            "diagnostic": "Lean and LeanExe accepted and compiled LeanExeGen.GeneratedR4337040846e16beb.Source.compute : Array UInt64 → Array UInt64."
+          }
+        ]
+      }
+    },
+    "artifactProof": {
+      "task": "artifact-proof",
+      "sourceModule": "LeanExeGen.GeneratedR4337040846e16beb.Behavior",
+      "sourceSha256": "5d42bc7379bcd86ae5d47fcf727b138f7a60521dc66c50d2a22763912a5bccbc",
+      "reportSha256": "5bef8051242158b30d8efef5cbafa40c8410f0412f7360fbdb119b8d5a96b20f",
+      "report": {
+        "summary": "Proved the exact compiled artifact. The final import check and ArtifactResult build succeeded.",
+        "decisions": [
+          "Proved the Euclidean scalar loop with the generated post-test transition theorem.",
+          "Applied the complete fixed-array singleton wrapper theorem."
+        ],
+        "attempts": [
+          {
+            "number": 1,
+            "outcome": "accepted",
+            "sourceSha256": "5d42bc7379bcd86ae5d47fcf727b138f7a60521dc66c50d2a22763912a5bccbc",
+            "diagnosticSha256": "d2f424b8da5cae1d5731b46ae555fb8ccd1e1db08cc7006aaad5cc7ec186f8b0",
+            "diagnostic": "Lean accepted LeanExeGen.GeneratedR4337040846e16beb.Behavior.artifact_behavior and LeanExeGen.GeneratedR4337040846e16beb.Artifact.artifact_correct."
+          }
+        ]
+      }
+    }
+  }
+}

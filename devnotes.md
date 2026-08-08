@@ -6696,6 +6696,8 @@ The first controlled reproof completed Stage 5 in 495.497 seconds, including 446
 
 The accepted proof contains 155 lines, compared with 191 in the baseline, and the journal records three edited candidates instead of nine.  It applies the generated `terminates_with_of_loop` theorem, `postTestProgram_spec`, `body_eval`, and `condition_eval`, retaining one `wp_run` while eliminating the baseline's raw `wp_loop_cons` and seventeen explicit `wp_iff_cons` applications.  Its remaining revisions cover the exact exit suffix and terminal compact-state normalization, and the journal reports no reconstruction of the checked remainder branch, staged accumulators, done flag, loop guard, or external operand order.
 
+Two repeats of the retained configuration completed in 520.301 and 510.885 seconds.  The three accepted totals have a 510.885-second median and 24.804-second range, yielding a median reduction of 545.187 seconds or 51.6 percent from the held-out baseline.  Their proofs contain 155, 157, and 171 lines and require three, two, and two edited candidates, while every journal uses the checked scalar boundaries and concentrates on the Euclidean invariant and Lean presentation.
+
 ## 2026-08-08: Rejected scalar-exit adapter
 
 The first post-test journal suggested a generated theorem for the exact result-copy suffix after the loop.  An experimental `exit_wp` theorem reduced the frozen three-instruction suffix from any compact scalar state and exposed the selected accumulator as the returned word.  Its generated proof, exact program match, recipe entry, annotation package, and independent verification all passed.
@@ -6703,3 +6705,9 @@ The first post-test journal suggested a generated theorem for the exact result-c
 The controlled reproof used `exit_wp` in its zero-divisor branch and eliminated the candidate's remaining `wp_run`.  Stage 5 nevertheless increased from 495.497 to 633.288 seconds, including 580.715 seconds in Codex and 37.749 seconds in outer acceptance, while the accepted proof grew from 155 to 159 lines.  The journal records four edited candidates and new work determining explicit theorem arguments and retaining the folded compact state at the rewrite boundary.
 
 The experiment remains 40.0 percent faster than the 1,056.072-second unannotated baseline, which confirms that the scalar post-test descriptor remains effective.  Both the primary time metric and secondary proof structure regress relative to the active candidate, so the exit theorem and its guidance were removed from the generator and recipe.  The independently verified experimental package remains under `benchmarks/leanexegen/demo6-gcd42/scalar-exit-candidate-2` for later analysis.
+
+## 2026-08-08: Demo 6 compatibility and evidence
+
+The repository-wide artifact conformance check accepted all 25 official execution files and all 15 official invalid modules.  Talos passed 3,853 cases, skipped 627 unsupported cases, and retained the six documented `memory_grow.wast` failures and the known imported-memory warning.  Wasmtime accepted every official file.
+
+The aggregate artifact-proof check accepted all 20 artifact identities, embedded-byte comparisons, artifact theorem targets, behavioral specifications, axiom audits, and receipt results.  The public `demos/demo-6` package copies the exact accepted specification, source, WASM artifact, proof, annotations, generated annotation theorems, recipe, selected guidance, journal, telemetry, stage reports, and three-run timing record.  Its WAT rendering and direct samples expose the executable behavior without changing the proved artifact.

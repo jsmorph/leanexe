@@ -1,0 +1,9 @@
+The public interface is Array UInt64 -> Array UInt64.  For a singleton input
+array #[x], return a singleton array containing the greatest common divisor of
+x and 42.  Return the input array unchanged when its length is not one.  The
+generated Lean source must define a separate scalar helper of type UInt64 ->
+UInt64 that computes the greatest common divisor with 42 using an imperative
+Euclidean remainder loop.  The array function must call that helper in its
+singleton branch.  The source must not call a library greatest-common-divisor
+function, while the formal specification may use a standard mathematical
+greatest-common-divisor definition.
