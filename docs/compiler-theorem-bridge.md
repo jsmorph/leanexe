@@ -187,6 +187,14 @@ Demos 2 through 5 should run their existing annotation and package tests to dete
 
 The proof of concept succeeds only if the descriptor remains generic and lowers median Stage 5 time.  A shorter proof, a better journal, or successful first-check elaboration does not compensate for a slower complete proving session under the project's current objective.  Demo 6 should confirm that any improvement survives a different loop invariant, branch shape, and arithmetic operation before the method expands to array-loop bodies.
 
+## Implemented first increment
+
+The production emitter now uses `LeanExe.Wasm.ScalarDescriptor` for every expression, condition, statement, or while loop that reifies into the supported scalar subset.  Its former partial definitions remain fallback emitters for unsupported syntax, while the total public entry points select descriptor emission after successful reification.  `LeanExe.Wasm.ScalarCertificate` proves agreement for expressions, conditions, statements, and complete while loops by reducing those public entry points through the successful reification equation.
+
+Version-one while annotations contain the neutral syntax tree in JSON, with `UInt64` constants encoded as decimal strings.  The consumer validates the complete tree, renders it as `Project.ProofKit.ScalarTransition` data, and generates an exact theorem over the selected decoded instruction interval.  Recipe validation accepts the scalar-loop theorem only when the descriptor exists and the recipe names both that exact equality and the generated program.
+
+The current array-wrapper Demo 1 passed the production `leanexegen annotate` path without changing its 1,938-byte WASM artifact.  Lean checked the generated equality for function zero's top-level interval two through three, and package verification accepted the resulting exact-artifact theorem.  This completes the structural bridge while leaving the proof-generation timing experiment and held-out scalar demo open.
+
 ## Further experiments
 
 A compiler-generated cut-point graph can divide one function into transitions at loop heads, calls, allocation boundaries, and returns.  The compiler can prove that its graph covers the emitted structured code, while an artifact-side checker independently reconstructs coverage from exact regions.  Codex would then prove relations between cut-point states instead of discovering the graph and instruction boundaries.

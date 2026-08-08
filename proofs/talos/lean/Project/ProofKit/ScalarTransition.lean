@@ -176,6 +176,7 @@ def U64Op.instruction : U64Op → Instruction
 inductive Expr : ScalarType → Type where
   | get (index : Nat) : Expr .u64
   | const (value : UInt64) : Expr .u64
+  | bconst (value : Bool) : Expr .bool
   | bin (op : U64Op) (left right : Expr .u64) : Expr .u64
   | eq (left right : Expr .u64) : Expr .bool
   | ltU (left right : Expr .u64) : Expr .bool
@@ -194,6 +195,7 @@ mutual
         let .i64 value ← state.get index | none
         pure (value, state)
     | .u64, .const value, _, state => pure (value, state)
+    | .bool, .bconst value, _, state => pure (value, state)
     | .u64, .bin op left right, scratch, state => do
         let childScratch := if op = .divU ∨ op = .remU then scratch + 2 else scratch
         let (leftValue, afterLeft) ← left.eval childScratch state
@@ -238,6 +240,7 @@ mutual
   def Expr.program : {type : ScalarType} → Expr type → Nat → Program
     | .u64, .get index, _ => [.localGet index]
     | .u64, .const value, _ => [.constI64 value]
+    | .bool, .bconst value, _ => [.const (if value then 1 else 0)]
     | .u64, .bin op left right, scratch =>
         if op = .divU ∨ op = .remU then
           let childScratch := scratch + 2
@@ -318,6 +321,9 @@ theorem Expr.eval_preserves_below
             obtain ⟨rfl, rfl⟩ := hEval
             rfl
   | const value =>
+      obtain ⟨rfl, rfl⟩ := Option.some.inj hEval
+      rfl
+  | bconst value =>
       obtain ⟨rfl, rfl⟩ := Option.some.inj hEval
       rfl
   | bin op left right leftPreserves rightPreserves =>
@@ -457,6 +463,10 @@ theorem Expr.program_spec
       simp only [Expr.program, List.cons_append, List.nil_append,
         Wasm.wp_constI64_cons]
       exact hNext
+  | bconst value =>
+      obtain ⟨rfl, rfl⟩ := Option.some.inj hEval
+      cases value <;>
+        simpa [Expr.program, ScalarType.value, wp_simp] using hNext
   | bin op left right leftSpec rightSpec =>
       cases op with
       | add =>

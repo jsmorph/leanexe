@@ -1095,6 +1095,8 @@ function testLoopAnnotationRecipes() {
   .block 0 0 [
     .loop 0 0 [
       .localGet 0,
+      .constI64 (0 : UInt64),
+      .eqI64,
       .eqz,
       .br_if 1,
       .localGet 1,
@@ -1124,8 +1126,21 @@ def func0Def : Wasm.Function :=
         kind: "leanexe.loop.while.v1",
         location: { listPath: [], startIndex: 2, endIndex: 3 },
         parameters: {
-          condition: "Cond.not (Cond.eqU64 (Expr.local 0) (Expr.u64 0))",
+          condition: "Cond.eqU64 (Expr.local 0) (Expr.u64 0)",
           body: "Stmt.assign 2 (Expr.local 1)",
+          descriptorVersion: 1,
+          descriptor: {
+            condition: {
+              kind: "eq",
+              left: { kind: "get", index: 0 },
+              right: { kind: "const", value: "0" },
+            },
+            body: {
+              kind: "assign",
+              index: 2,
+              value: { kind: "get", index: 1 },
+            },
+          },
           scratchStart: 4,
           continuation: "fallthrough",
         },
@@ -1139,11 +1154,36 @@ def func0Def : Wasm.Function :=
   ]);
   validateProofRecipePlan(whilePlan, whileDocument);
   assert(whilePlan.recipes.length === 1 &&
-    whilePlan.recipes[0].direct.theorem === "Wasm.wp_loop_cons" &&
+    whilePlan.recipes[0].direct.theorem ===
+      "Project.ProofKit.ScalarTransition.whileProgram_spec" &&
+    whilePlan.recipes[0].direct.regionEquality ===
+      "Project.AnnotationMatches.function_0_while_loop_0_eq" &&
     whilePlan.recipes[0].guidance.length === 3,
-  "while annotation did not select the generic loop recipe");
+  "while descriptor did not select the checked scalar loop recipe");
+  const whileMatches = annotationMatchesSource(whileDocument, {
+    namespace: "Example.Generated",
+    programModule: "Example.Generated.Artifact",
+  });
+  assert(whileMatches.source.includes("def function_0_while_loop_0_condition") &&
+    whileMatches.source.includes("ScalarTransition.whileProgram") &&
+    whileMatches.source.includes("    4 function_0_while_loop_0_condition") &&
+    whileMatches.source.includes("theorem function_0_while_loop_0_eq"),
+  "while descriptor did not produce the checked region equality");
   expectFailure(() => proofRecipePlan(
     whileDocument, whileProgram.replace("      .br 0", "      .br 1")), /back edge/);
+  const malformedWhile = structuredClone(whileDocument);
+  malformedWhile.functions[0].regions[0].parameters.descriptor.condition.kind = "ne";
+  expectFailure(() => validateAnnotationDocument(malformedWhile, wasm), /unsupported/);
+  const wrongDescriptorVersion = structuredClone(whileDocument);
+  wrongDescriptorVersion.functions[0].regions[0].parameters.descriptorVersion = 2;
+  expectFailure(() => validateAnnotationDocument(wrongDescriptorVersion, wasm), /unsupported/);
+  const unreifiedWhile = structuredClone(whileDocument);
+  unreifiedWhile.functions[0].regions[0].parameters.descriptor = null;
+  validateAnnotationDocument(unreifiedWhile, wasm);
+  const unreifiedPlan = proofRecipePlan(unreifiedWhile, whileProgram);
+  validateProofRecipePlan(unreifiedPlan, unreifiedWhile);
+  assert(unreifiedPlan.recipes[0].direct.theorem === "Wasm.wp_loop_cons",
+    "unreified while did not retain the generic loop recipe");
 
   const foldProgram = `def func0 : Wasm.Program :=
   [

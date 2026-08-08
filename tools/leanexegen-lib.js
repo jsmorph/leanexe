@@ -39,6 +39,7 @@ const proofKitModules = Object.freeze([
   "Project.ProofKit.FixedArraySingleton",
   "Project.ProofKit.FixedArrayTraversalInput",
   "Project.ProofKit.Control",
+  "Project.ProofKit.ScalarTransition",
 ]);
 const proofKitRelativeFiles = Object.freeze([
   "proofs/talos/lean/Project/ProofKit/Annotation.lean",
@@ -61,6 +62,7 @@ const proofKitRelativeFiles = Object.freeze([
   "proofs/talos/lean/Project/ProofKit/FixedArraySingleton.lean",
   "proofs/talos/lean/Project/ProofKit/FixedArrayTraversalInput.lean",
   "proofs/talos/lean/Project/ProofKit/Control.lean",
+  "proofs/talos/lean/Project/ProofKit/ScalarTransition.lean",
   "proofs/talos/lean/Project/ProofKit/README.md",
 ]);
 
