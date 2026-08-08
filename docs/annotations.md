@@ -470,6 +470,8 @@ The complete package path passed on the current array-wrapper Demo 1.  `tools/le
 
 The checked descriptor removes instruction decoding, branch reconstruction, checked-divisor expansion, assignment ordering, and scratch-local preservation from the proving task.  The remaining Demo 1 work consists of the trial-division invariant, its preservation through the descriptor evaluator, measure decrease, and the terminal prime-factor equation.  Fixed-artifact proof-generation trials will determine whether this division lowers total Stage 5 time.
 
+The first matched trial under Codex 0.147.0 found that this boundary increases proof time.  The unannotated package completed Stage 5 in 2,017.931 seconds, while the descriptor package completed in 3,692.913 seconds, and independent verification accepted both results.  The accepted descriptor proof invoked the intended region equality and loop theorem, but its journal records repeated work on concrete descriptor evaluation, scratch-local updates, and state conversion, so the next annotation form must provide checked application-local transition equations that remove those obligations.
+
 ## Completion criteria
 
 The first complete increment emits a validated sidecar for every ordinary library-mode compilation requested by `leanexegen`.  Demos 1, 2, and 3 prove the same specifications over the same WASM bytes through an annotation-driven deterministic proof plan.  The retained evidence records proof-generation timings, annotation validation, region coverage, and independent Lean acceptance.
