@@ -1,0 +1,7 @@
+{
+  "hostAssumptions": [
+    "UInt64.toNat denotes the unsigned 64-bit value. Nat.gcd x.toNat 42 is at most 42, so UInt64.ofNat converts it exactly.",
+    "The array ABI stores an eight-byte length followed by eight bytes per element. A singleton output requires 48 allocator/header bytes and 16 storage bytes.",
+    "The non-singleton branch returns the input allocation, and the scalar Euclidean loop allocates no bump-heap storage."
+  ]
+}
