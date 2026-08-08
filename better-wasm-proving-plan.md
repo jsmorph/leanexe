@@ -51,9 +51,9 @@ The [compiler-theorem analysis](docs/compiler-theorem-bridge.md) defines the fir
 
 | Experiment | Compiler theorem or analysis | Artifact-side result | Proof work removed | Acceptance test |
 |---|---|---|---|---|
-| Scalar emission | Successful IR reification emits the descriptor program | Exact region equality and `ScalarTransition.whileProgram_spec` | Instruction decoding, checked division expansion, branch shape, assignment order, and scratch handling | Completed on Demo 1; measure a matched timing series |
-| Effects and frames | Descriptor reads, writes, and scratch interval bound all local changes | Recomputed frame certificate and preservation lemmas | Local-frame reconstruction and unchanged-local proofs | Lower median Demo 1 time, with mutation rejection |
-| One-step semantics | IR evaluation agrees with descriptor evaluation for one loop step | Closed descriptor transition equations | Branch update algebra and local-numbering discovery | Lower median time on Demo 1 and a held-out scalar loop |
+| Scalar emission | Successful IR reification emits the descriptor program | Exact region equality and `ScalarTransition.whileProgram_spec` | Instruction decoding, checked division expansion, branch shape, assignment order, and scratch handling | First matched Demo 1 trial was 83.0 percent slower |
+| Effects and frames | Descriptor reads, writes, and scratch interval bound all local changes | Recomputed frame certificate and preservation lemmas | Local-frame reconstruction and unchanged-local proofs | Mutation rejection and lower time where descriptors retain untouched locals |
+| One-step semantics | IR evaluation agrees with descriptor evaluation for one loop step | Closed transition equations over application locals that hide scratch state | Descriptor evaluation, branch update algebra, scratch-state equality, and local-numbering discovery | Lower median time on Demo 1 and a held-out scalar loop |
 | Annotation locations | Annotated composition preserves path and interval coordinates | Exact coverage and non-overlap certificate | Region navigation, decomposition, and continuation reconstruction | Every coordinate mutation fails before behavior proving |
 | Cut-point graph | Emitted fragments compose into loop-head, call, allocation, and return transitions | Checked graph over exact decoded regions | Control-flow discovery and repeated composition scripts | Proof obligations contain application predicates rather than instruction lists |
 | Range facts | Abstract interpretation proves intervals, nonzero divisors, and representation bounds | Neutral checker validates each fact over descriptor transfer | Repeated fixed-width normalization and range searches | Total proof time falls on two structurally different artifacts |
@@ -61,12 +61,12 @@ The [compiler-theorem analysis](docs/compiler-theorem-bridge.md) defines the fir
 
 The experiments proceed in table order because each row supplies evidence and theorem structure needed by the next.  A compiler-side proof alone does not qualify an experiment: exact decoded-region agreement, compiler-free artifact closure, emitter byte compatibility, and independent package verification remain required.  The timing gate compares complete Stage 5 duration under one Codex version, reasoning level, machine profile, cache policy, formal specification, and WASM artifact.
 
-The next fixed-artifact series measures the completed scalar-emission row before adding frame data.  The following iteration adds generic read, write, and scratch computations to the descriptor and exposes their artifact-side preservation theorems, then repeats the same series.  A held-out Euclidean algorithm loop tests the promoted combination before location composition or cut-point certificates expand the compiler theorem boundary.
+The first fixed-artifact scalar-emission trial increased Demo 1 Stage 5 from 2,017.931 to 3,692.913 seconds.  Its journal attributes the increase to exact descriptor-evaluator and scratch-state obligations, while the accepted proof confirms that Codex used the intended equality and loop theorem.  The next iteration therefore adds generic effects for completeness but makes checked, scratch-hiding transition equations the timing-critical result before another full series.
 
 - [x] Reify Demo 1's scalar IR into a neutral descriptor and prove production emission agreement.
 - [x] Generate and Lean-check exact descriptor equality against Demo 1's decoded WAT region.
 - [x] Preserve Demo 1's frozen WASM bytes and pass execution, serializer, and aggregate Talos gates.
-- [ ] Record a matched Codex-version baseline and three scalar-descriptor trials.
+- [ ] Record a matched Codex-version baseline and three scalar-descriptor trials; the baseline and first slower trial are retained.
 - [ ] Add descriptor effect sets and generic artifact-side frame theorems.
 - [ ] Generate closed one-step transition equations and test whether Codex uses them.
 - [ ] Freeze a held-out scalar-loop demo before exposing descriptor data.
