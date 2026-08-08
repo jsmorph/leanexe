@@ -390,6 +390,83 @@ function validateRegionLocation(region, description) {
   }
 }
 
+function validateScalarExpr(expression, description) {
+  if (expression === null || typeof expression !== "object" || Array.isArray(expression)) {
+    fail(`${description} must be an object`);
+  }
+  string(expression.kind, `${description}.kind`);
+  if (expression.kind === "get") {
+    exactKeys(expression, ["index", "kind"], description);
+    natural(expression.index, `${description}.index`);
+  } else if (expression.kind === "const") {
+    exactKeys(expression, ["kind", "value"], description);
+    uint64String(expression.value, `${description}.value`);
+  } else if (expression.kind === "bin") {
+    exactKeys(expression, ["kind", "left", "operation", "right"], description);
+    if (!["add", "sub", "mul", "div-u", "rem-u", "bit-and", "bit-or", "bit-xor",
+      "shift-left", "shift-right"].includes(expression.operation)) {
+      fail(`${description}.operation is unsupported`);
+    }
+    validateScalarExpr(expression.left, `${description}.left`);
+    validateScalarExpr(expression.right, `${description}.right`);
+  } else if (expression.kind === "ite") {
+    exactKeys(expression, ["condition", "else", "kind", "then"], description);
+    validateScalarCond(expression.condition, `${description}.condition`);
+    validateScalarExpr(expression.then, `${description}.then`);
+    validateScalarExpr(expression.else, `${description}.else`);
+  } else {
+    fail(`${description}.kind is unsupported`);
+  }
+}
+
+function validateScalarCond(condition, description) {
+  if (condition === null || typeof condition !== "object" || Array.isArray(condition)) {
+    fail(`${description} must be an object`);
+  }
+  string(condition.kind, `${description}.kind`);
+  if (["true", "false"].includes(condition.kind)) {
+    exactKeys(condition, ["kind"], description);
+  } else if (["eq", "lt-u", "le-u"].includes(condition.kind)) {
+    exactKeys(condition, ["kind", "left", "right"], description);
+    validateScalarExpr(condition.left, `${description}.left`);
+    validateScalarExpr(condition.right, `${description}.right`);
+  } else if (condition.kind === "not") {
+    exactKeys(condition, ["condition", "kind"], description);
+    validateScalarCond(condition.condition, `${description}.condition`);
+  } else if (["and", "or"].includes(condition.kind)) {
+    exactKeys(condition, ["kind", "left", "right"], description);
+    validateScalarCond(condition.left, `${description}.left`);
+    validateScalarCond(condition.right, `${description}.right`);
+  } else {
+    fail(`${description}.kind is unsupported`);
+  }
+}
+
+function validateScalarStmt(statement, description) {
+  if (statement === null || typeof statement !== "object" || Array.isArray(statement)) {
+    fail(`${description} must be an object`);
+  }
+  string(statement.kind, `${description}.kind`);
+  if (statement.kind === "skip") {
+    exactKeys(statement, ["kind"], description);
+  } else if (statement.kind === "assign") {
+    exactKeys(statement, ["index", "kind", "value"], description);
+    natural(statement.index, `${description}.index`);
+    validateScalarExpr(statement.value, `${description}.value`);
+  } else if (statement.kind === "seq") {
+    exactKeys(statement, ["first", "kind", "second"], description);
+    validateScalarStmt(statement.first, `${description}.first`);
+    validateScalarStmt(statement.second, `${description}.second`);
+  } else if (statement.kind === "ite") {
+    exactKeys(statement, ["condition", "else", "kind", "then"], description);
+    validateScalarCond(statement.condition, `${description}.condition`);
+    validateScalarStmt(statement.then, `${description}.then`);
+    validateScalarStmt(statement.else, `${description}.else`);
+  } else {
+    fail(`${description}.kind is unsupported`);
+  }
+}
+
 function validateLoopFold(region, description) {
   exactKeys(region, ["generatedBy", "id", "kind", "location", "parameters"], description);
   string(region.id, `${description}.id`);
@@ -458,10 +535,22 @@ function validateWhileLoop(region, description) {
   string(region.id, `${description}.id`);
   if (region.kind !== "leanexe.loop.while.v1") fail(`${description}.kind is unsupported`);
   validateRegionLocation(region, description);
-  exactKeys(region.parameters, ["body", "condition", "continuation", "scratchStart"],
-    `${description}.parameters`);
+  exactKeys(region.parameters, [
+    "body", "condition", "continuation", "descriptor", "descriptorVersion", "scratchStart",
+  ], `${description}.parameters`);
   string(region.parameters.condition, `${description}.parameters.condition`);
   string(region.parameters.body, `${description}.parameters.body`);
+  if (region.parameters.descriptorVersion !== 1) {
+    fail(`${description}.parameters.descriptorVersion is unsupported`);
+  }
+  if (region.parameters.descriptor !== null) {
+    exactKeys(region.parameters.descriptor, ["body", "condition"],
+      `${description}.parameters.descriptor`);
+    validateScalarCond(region.parameters.descriptor.condition,
+      `${description}.parameters.descriptor.condition`);
+    validateScalarStmt(region.parameters.descriptor.body,
+      `${description}.parameters.descriptor.body`);
+  }
   natural(region.parameters.scratchStart, `${description}.parameters.scratchStart`);
   if (region.parameters.continuation !== "fallthrough") {
     fail(`${description}.parameters has an unsupported continuation`);
@@ -1022,7 +1111,41 @@ function matchWhileLoopRegion(program, function_, region) {
   };
 }
 
-function loopRecipe(match, selectedSections = []) {
+function loopRecipe(
+    match, selectedSections = [], annotationNamespace = "Project.AnnotationMatches") {
+  if (match.regionKind === "leanexe.loop.while.v1" && match.parameters.descriptor !== null) {
+    const name = match.regionId.replace(/[^A-Za-z0-9_]/g, "_");
+    return {
+      recipeVersion: 1,
+      functionIndex: match.functionIndex,
+      regionId: match.regionId,
+      regionKind: match.regionKind,
+      applicability: "Lean-checked equality over the decoded instruction region",
+      direct: {
+        module: "Project.ProofKit.ScalarTransition",
+        theorem: "Project.ProofKit.ScalarTransition.whileProgram_spec",
+        regionEquality: annotationMatchTheoremName(match.regionId, annotationNamespace),
+        program: `${annotationNamespace}.${name}_program`,
+      },
+      supporting: [
+        {
+          declaration: "Project.ProofKit.ScalarTransition.Expr.program_spec",
+          purpose: "prove each typed scalar guard expression",
+        },
+        {
+          declaration: "Project.ProofKit.ScalarTransition.Stmt.program_spec",
+          purpose: "prove each typed scalar loop-body transition",
+        },
+        {
+          declaration: "Project.ProofKit.ScalarTransition.whileProgram_spec",
+          purpose: "compose the checked transition with the invariant and measure",
+        },
+      ],
+      expectedPostcondition: "an invariant-preserving transition with a decreasing measure",
+      guidance: ["strategy.loops", "strategy.frames", "strategy.arithmetic"]
+        .filter((section) => selectedSections.includes(section)),
+    };
+  }
   return {
     recipeVersion: 1,
     functionIndex: match.functionIndex,
@@ -1424,7 +1547,8 @@ function proofRecipePlan(
         recipes.push(fixedArrayFilterLtRecipe(
           matches.get(region.id), selectedSections, annotationNamespace));
       } else if (["leanexe.loop.fold.v1", "leanexe.loop.while.v1"].includes(region.kind)) {
-        recipes.push(loopRecipe(matches.get(region.id), selectedSections));
+        recipes.push(loopRecipe(
+          matches.get(region.id), selectedSections, annotationNamespace));
       } else {
         recipes.push(fixedArrayPairResultRecipe(
           matches.get(region.id), selectedSections, annotationNamespace));
@@ -1590,10 +1714,12 @@ function validateProofRecipePlan(plan, document) {
       fail(`${description} has an invalid identity`);
     }
     const region = regions.get(recipe.regionId);
+    const checkedScalarWhile = region.kind === "leanexe.loop.while.v1" &&
+      region.parameters.descriptor !== null;
     const expectedApplicability = [
       "leanexe.array.pair-result.v1", "leanexe.array.map-add.v1",
       "leanexe.array.filter-lt.v1",
-    ].includes(region.kind)
+    ].includes(region.kind) || checkedScalarWhile
       ? "Lean-checked equality over the decoded instruction region"
       : "exact decoded instruction match";
     if (recipe.applicability !== expectedApplicability) {
@@ -1682,6 +1808,15 @@ function validateProofRecipePlan(plan, document) {
             `.${recipe.regionId.replace(/[^A-Za-z0-9_]/g, "_")}_eq`) ||
           recipe.direct.program !== `Project.ProofKit.FixedArrayFilterLt.wrapperProgram ` +
             `${region.parameters.maximumSize} ${region.parameters.threshold}`) {
+        fail(`${description}.direct is unsupported`);
+      }
+    } else if (checkedScalarWhile) {
+      const name = recipe.regionId.replace(/[^A-Za-z0-9_]/g, "_");
+      if (recipe.direct.module !== "Project.ProofKit.ScalarTransition" ||
+          recipe.direct.theorem !==
+            "Project.ProofKit.ScalarTransition.whileProgram_spec" ||
+          !recipe.direct.regionEquality.endsWith(`.${name}_eq`) ||
+          !recipe.direct.program.endsWith(`.${name}_program`)) {
         fail(`${description}.direct is unsupported`);
       }
     } else if (["leanexe.loop.fold.v1", "leanexe.loop.while.v1"].includes(region.kind)) {
@@ -1949,10 +2084,84 @@ function fixedArraySearchChainCompositions(document, program = null) {
   return compositions;
 }
 
+function scalarOperationLean(operation) {
+  return ({
+    "add": ".add",
+    "sub": ".sub",
+    "mul": ".mul",
+    "div-u": ".divU",
+    "rem-u": ".remU",
+    "bit-and": ".bitAnd",
+    "bit-or": ".bitOr",
+    "bit-xor": ".bitXor",
+    "shift-left": ".shiftLeft",
+    "shift-right": ".shiftRight",
+  })[operation];
+}
+
+function scalarExprLean(expression) {
+  if (expression.kind === "get") return `.get ${expression.index}`;
+  if (expression.kind === "const") return `.const (${expression.value} : UInt64)`;
+  if (expression.kind === "bin") {
+    return `.bin ${scalarOperationLean(expression.operation)} ` +
+      `(${scalarExprLean(expression.left)}) (${scalarExprLean(expression.right)})`;
+  }
+  return `.ite (${scalarCondLean(expression.condition)}) ` +
+    `(${scalarExprLean(expression.then)}) (${scalarExprLean(expression.else)})`;
+}
+
+function scalarCondLean(condition) {
+  if (condition.kind === "true") return ".bconst true";
+  if (condition.kind === "false") return ".bconst false";
+  if (["eq", "lt-u", "le-u"].includes(condition.kind)) {
+    const constructor = ({ "eq": ".eq", "lt-u": ".ltU", "le-u": ".leU" })[
+      condition.kind];
+    return `${constructor} (${scalarExprLean(condition.left)}) ` +
+      `(${scalarExprLean(condition.right)})`;
+  }
+  if (condition.kind === "not") return `.not (${scalarCondLean(condition.condition)})`;
+  const constructor = condition.kind === "and" ? ".and" : ".or";
+  return `${constructor} (${scalarCondLean(condition.left)}) ` +
+    `(${scalarCondLean(condition.right)})`;
+}
+
+function scalarStmtLean(statement) {
+  if (statement.kind === "skip") return ".skip";
+  if (statement.kind === "assign") {
+    return `.assign ${statement.index} (${scalarExprLean(statement.value)})`;
+  }
+  if (statement.kind === "seq") {
+    return `.seq (${scalarStmtLean(statement.first)}) (${scalarStmtLean(statement.second)})`;
+  }
+  return `.ite (${scalarCondLean(statement.condition)}) ` +
+    `(${scalarStmtLean(statement.then)}) (${scalarStmtLean(statement.else)})`;
+}
+
 function annotationMatchesSource(document, job) {
   const declarations = [];
   for (const function_ of document.functions) {
     for (const region of function_.regions) {
+      if (region.kind === "leanexe.loop.while.v1" && region.parameters.descriptor !== null) {
+        const descriptor = region.parameters.descriptor;
+        const name = region.id.replace(/[^A-Za-z0-9_]/g, "_");
+        declarations.push(`def ${name}_condition :
+    Project.ProofKit.ScalarTransition.Expr .bool :=
+  ${scalarCondLean(descriptor.condition)}
+
+def ${name}_body : Project.ProofKit.ScalarTransition.Stmt :=
+  ${scalarStmtLean(descriptor.body)}
+
+def ${name}_program : Wasm.Program :=
+  Project.ProofKit.ScalarTransition.whileProgram
+    ${region.parameters.scratchStart} ${name}_condition ${name}_body
+
+theorem ${name}_eq :
+    Project.ProofKit.Annotation.region ${job.namespace}.func${function_.wasmIndex}
+      ${leanAnnotationPath(region.location.listPath)} ${region.location.startIndex}
+      ${region.location.endIndex} = some ${name}_program := by
+  rfl`);
+        continue;
+      }
       if (region.kind === "leanexe.array.map-add.v1") {
         const parameters = region.parameters;
         declarations.push(`theorem ${region.id.replace(/[^A-Za-z0-9_]/g, "_")}_eq :
@@ -2020,6 +2229,9 @@ theorem ${composition.name}_eq :
     source: `import ${job.programModule}
 import Project.ProofKit.Annotation
 import Project.ProofKit.FixedArrayPairResult
+${document.functions.some((function_) => function_.regions.some((region) =>
+    region.kind === "leanexe.loop.while.v1" && region.parameters.descriptor !== null))
+    ? "import Project.ProofKit.ScalarTransition\n" : ""}
 ${document.functions.some((function_) => function_.regions.some((region) =>
     region.kind === "leanexe.array.map-add.v1"))
     ? "import Project.ProofKit.FixedArrayMapAdd\n" : ""}

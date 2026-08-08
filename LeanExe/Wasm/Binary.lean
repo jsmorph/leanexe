@@ -3,6 +3,7 @@ import LeanExe.IR.Core
 import LeanExe.Wasm.Annotations
 import LeanExe.Wasm.Instr
 import LeanExe.Wasm.Leb
+import LeanExe.Wasm.ScalarDescriptor
 
 namespace LeanExe.Wasm.Binary
 
@@ -2808,7 +2809,7 @@ mutual
 end
 
 mutual
-partial def emitExprWithRelease (releaseIndex scratch : Nat) : Expr → List Instr
+partial def emitExprWithReleaseFallback (releaseIndex scratch : Nat) : Expr → List Instr
   | .local index => localGet index
   | .trap => unreachable
   | .u64 value => i64Const value
@@ -2823,22 +2824,22 @@ partial def emitExprWithRelease (releaseIndex scratch : Nat) : Expr → List Ins
   | .u64Bin .modU left right =>
       emitCheckedDivModWithRelease releaseIndex scratch .modU left right
   | .u64Bin op left right =>
-      emitExprWithRelease releaseIndex scratch left ++
-        emitExprWithRelease releaseIndex scratch right ++ emitU64Op op
+      emitExprWithReleaseFallback releaseIndex scratch left ++
+        emitExprWithReleaseFallback releaseIndex scratch right ++ emitU64Op op
   | .ite cond thenValue elseValue =>
-      emitCondWithRelease releaseIndex scratch cond ++ ([Instr.iff true (emitExprWithRelease releaseIndex scratch thenValue) (some (emitExprWithRelease releaseIndex scratch elseValue))])
+      emitCondWithReleaseFallback releaseIndex scratch cond ++ ([Instr.iff true (emitExprWithReleaseFallback releaseIndex scratch thenValue) (some (emitExprWithReleaseFallback releaseIndex scratch elseValue))])
   | .letE slot value body =>
-      emitExprWithRelease releaseIndex scratch value ++ localSet slot ++
-        emitExprWithRelease releaseIndex scratch body
+      emitExprWithReleaseFallback releaseIndex scratch value ++ localSet slot ++
+        emitExprWithReleaseFallback releaseIndex scratch body
   | .letCall slots index args body =>
-      args.flatMap (emitExprWithRelease releaseIndex scratch) ++ call index ++
-        slots.reverse.flatMap localSet ++ emitExprWithRelease releaseIndex scratch body
+      args.flatMap (emitExprWithReleaseFallback releaseIndex scratch) ++ call index ++
+        slots.reverse.flatMap localSet ++ emitExprWithReleaseFallback releaseIndex scratch body
   | .letLets lets body =>
       lets.flatMap (emitLocalLetWithRelease releaseIndex scratch) ++
-        emitExprWithRelease releaseIndex scratch body
+        emitExprWithReleaseFallback releaseIndex scratch body
   | .runtimeStat stat => globalGet (runtimeStatGlobal stat)
   | .release ptr =>
-      emitExprWithRelease releaseIndex scratch ptr ++ call releaseIndex ++
+      emitExprWithReleaseFallback releaseIndex scratch ptr ++ call releaseIndex ++
         globalGet (runtimeStatGlobal .frees)
   | .arrayFoldMultiSlot sourceWidth resultWidth reverse array start stop initValues accStart itemStart
       bodyValues bodyLets bodyDone releaseOffsets resultSlot =>
@@ -2858,23 +2859,23 @@ partial def emitExprWithRelease (releaseIndex scratch : Nat) : Expr → List Ins
         bodyDone releaseOffsets resultSlot
   | expr => emitExpr scratch expr
 
-partial def emitCondWithRelease (releaseIndex scratch : Nat) : Cond → List Instr
+partial def emitCondWithReleaseFallback (releaseIndex scratch : Nat) : Cond → List Instr
   | .true => [Instr.constI32 1]
   | .false => [Instr.constI32 0]
   | .eqU64 left right =>
-      emitExprWithRelease releaseIndex scratch left ++
-        emitExprWithRelease releaseIndex scratch right ++ [Instr.eqI64]
+      emitExprWithReleaseFallback releaseIndex scratch left ++
+        emitExprWithReleaseFallback releaseIndex scratch right ++ [Instr.eqI64]
   | .ltU64 left right =>
-      emitExprWithRelease releaseIndex scratch left ++
-        emitExprWithRelease releaseIndex scratch right ++ i64LtU
+      emitExprWithReleaseFallback releaseIndex scratch left ++
+        emitExprWithReleaseFallback releaseIndex scratch right ++ i64LtU
   | .leU64 left right =>
-      emitExprWithRelease releaseIndex scratch left ++
-        emitExprWithRelease releaseIndex scratch right ++ i64LeU
-  | .not cond => emitCondWithRelease releaseIndex scratch cond ++ [Instr.eqzI32]
+      emitExprWithReleaseFallback releaseIndex scratch left ++
+        emitExprWithReleaseFallback releaseIndex scratch right ++ i64LeU
+  | .not cond => emitCondWithReleaseFallback releaseIndex scratch cond ++ [Instr.eqzI32]
   | .and left right =>
-      emitCondWithRelease releaseIndex scratch left ++ ([Instr.iffI32 (emitCondWithRelease releaseIndex scratch right) (some ([Instr.constI32 0]))])
+      emitCondWithReleaseFallback releaseIndex scratch left ++ ([Instr.iffI32 (emitCondWithReleaseFallback releaseIndex scratch right) (some ([Instr.constI32 0]))])
   | .or left right =>
-      emitCondWithRelease releaseIndex scratch left ++ ([Instr.iffI32 ([Instr.constI32 1]) (some (emitCondWithRelease releaseIndex scratch right))])
+      emitCondWithReleaseFallback releaseIndex scratch left ++ ([Instr.iffI32 ([Instr.constI32 1]) (some (emitCondWithReleaseFallback releaseIndex scratch right))])
 
 partial def emitSlotsAssignWithRelease
     (releaseIndex scratch : Nat) (slots : List Nat) (values : List Expr) : List Instr :=
@@ -2892,10 +2893,10 @@ partial def emitSlotsAssignWithRelease
             start stop initValues accStart itemStart bodyValues bodyLets bodyDone releaseOffsets slots
         else
           (slots.zip values).flatMap fun item =>
-            emitExprWithRelease releaseIndex scratch item.snd ++ localSet item.fst
+            emitExprWithReleaseFallback releaseIndex scratch item.snd ++ localSet item.fst
       else
         (slots.zip values).flatMap fun item =>
-          emitExprWithRelease releaseIndex scratch item.snd ++ localSet item.fst
+          emitExprWithReleaseFallback releaseIndex scratch item.snd ++ localSet item.fst
   | .byteArrayFoldMultiSlot resultWidth ptr len start stop initValues accStart byteSlot
       bodyValues bodyLets bodyDone releaseOffsets _ :: _ =>
       if slots.length == resultWidth && values.length == resultWidth then
@@ -2909,10 +2910,10 @@ partial def emitSlotsAssignWithRelease
             initValues accStart byteSlot bodyValues bodyLets bodyDone releaseOffsets slots
         else
           (slots.zip values).flatMap fun item =>
-            emitExprWithRelease releaseIndex scratch item.snd ++ localSet item.fst
+            emitExprWithReleaseFallback releaseIndex scratch item.snd ++ localSet item.fst
       else
         (slots.zip values).flatMap fun item =>
-          emitExprWithRelease releaseIndex scratch item.snd ++ localSet item.fst
+          emitExprWithReleaseFallback releaseIndex scratch item.snd ++ localSet item.fst
   | .rangeFoldMultiSlot resultWidth start stop step initValues accStart itemSlot bodyValues
       bodyLets bodyDone releaseOffsets _ :: _ =>
       if slots.length == resultWidth && values.length == resultWidth then
@@ -2926,10 +2927,10 @@ partial def emitSlotsAssignWithRelease
             accStart itemSlot bodyValues bodyLets bodyDone releaseOffsets slots
         else
           (slots.zip values).flatMap fun item =>
-            emitExprWithRelease releaseIndex scratch item.snd ++ localSet item.fst
+            emitExprWithReleaseFallback releaseIndex scratch item.snd ++ localSet item.fst
       else
         (slots.zip values).flatMap fun item =>
-          emitExprWithRelease releaseIndex scratch item.snd ++ localSet item.fst
+          emitExprWithReleaseFallback releaseIndex scratch item.snd ++ localSet item.fst
   | .loopFoldMultiSlot resultWidth initValues accStart bodyValues bodyLets bodyDone
       releaseOffsets _ :: _ =>
       if slots.length == resultWidth && values.length == resultWidth then
@@ -2943,22 +2944,22 @@ partial def emitSlotsAssignWithRelease
             bodyValues bodyLets bodyDone releaseOffsets slots
         else
           (slots.zip values).flatMap fun item =>
-            emitExprWithRelease releaseIndex scratch item.snd ++ localSet item.fst
+            emitExprWithReleaseFallback releaseIndex scratch item.snd ++ localSet item.fst
       else
         (slots.zip values).flatMap fun item =>
-          emitExprWithRelease releaseIndex scratch item.snd ++ localSet item.fst
+          emitExprWithReleaseFallback releaseIndex scratch item.snd ++ localSet item.fst
   | _ =>
       (slots.zip values).flatMap fun item =>
-        emitExprWithRelease releaseIndex scratch item.snd ++ localSet item.fst
+        emitExprWithReleaseFallback releaseIndex scratch item.snd ++ localSet item.fst
 
 partial def emitLocalLetWithRelease (releaseIndex scratch : Nat) : LocalLet → List Instr
-  | .expr slot value => emitExprWithRelease releaseIndex scratch value ++ localSet slot
+  | .expr slot value => emitExprWithReleaseFallback releaseIndex scratch value ++ localSet slot
   | .call slots index args =>
-      args.flatMap (emitExprWithRelease releaseIndex scratch) ++ call index ++
+      args.flatMap (emitExprWithReleaseFallback releaseIndex scratch) ++ call index ++
         slots.reverse.flatMap localSet
   | .slots slots values => emitSlotsAssignWithRelease releaseIndex scratch slots values
   | .branch cond thenLets elseLets =>
-      emitCondWithRelease releaseIndex scratch cond ++ ([Instr.iff false (thenLets.flatMap (emitLocalLetWithRelease releaseIndex scratch)) (some (elseLets.flatMap (emitLocalLetWithRelease releaseIndex scratch)))])
+      emitCondWithReleaseFallback releaseIndex scratch cond ++ ([Instr.iff false (thenLets.flatMap (emitLocalLetWithRelease releaseIndex scratch)) (some (elseLets.flatMap (emitLocalLetWithRelease releaseIndex scratch)))])
 
 partial def emitCheckedDivModWithRelease
     (releaseIndex scratch : Nat)
@@ -2972,8 +2973,8 @@ partial def emitCheckedDivModWithRelease
     | .divU => i64Const 0
     | .modU => localGet leftLocal
     | _ => i64Const 0
-  emitExprWithRelease releaseIndex childScratch left ++ localSet leftLocal ++
-    emitExprWithRelease releaseIndex childScratch right ++ localSet rightLocal ++
+  emitExprWithReleaseFallback releaseIndex childScratch left ++ localSet leftLocal ++
+    emitExprWithReleaseFallback releaseIndex childScratch right ++ localSet rightLocal ++
     localGet rightLocal ++ i64Const 0 ++ [Instr.eqI64] ++
     ([Instr.iff true (zeroValue) (some (localGet leftLocal ++ localGet rightLocal ++ emitU64Op op))])
 
@@ -2984,8 +2985,8 @@ partial def emitNatAddWithRelease
   let rightLocal := scratch + 1
   let resultLocal := scratch + 2
   let childScratch := scratch + 3
-  emitExprWithRelease releaseIndex childScratch left ++ localSet leftLocal ++
-    emitExprWithRelease releaseIndex childScratch right ++ localSet rightLocal ++
+  emitExprWithReleaseFallback releaseIndex childScratch left ++ localSet leftLocal ++
+    emitExprWithReleaseFallback releaseIndex childScratch right ++ localSet rightLocal ++
     localGet leftLocal ++ localGet rightLocal ++ [Instr.addI64] ++ localTee resultLocal ++
     localGet leftLocal ++ i64LtU ++
     ([Instr.iff true ([Instr.unreachable]) (some (localGet resultLocal))])
@@ -2996,8 +2997,8 @@ partial def emitNatMulWithRelease
   let leftLocal := scratch
   let rightLocal := scratch + 1
   let childScratch := scratch + 2
-  emitExprWithRelease releaseIndex childScratch left ++ localSet leftLocal ++
-    emitExprWithRelease releaseIndex childScratch right ++ localSet rightLocal ++
+  emitExprWithReleaseFallback releaseIndex childScratch left ++ localSet leftLocal ++
+    emitExprWithReleaseFallback releaseIndex childScratch right ++ localSet rightLocal ++
     localGet rightLocal ++ i64Const 0 ++ [Instr.eqI64] ++
     ([Instr.iff true (i64Const 0) (some (i64Const (2 ^ 64 - 1) ++ localGet rightLocal ++ [Instr.divUI64] ++
         localGet leftLocal ++ i64LtU ++
@@ -3009,13 +3010,23 @@ partial def emitNatSubWithRelease
   let leftLocal := scratch
   let rightLocal := scratch + 1
   let childScratch := scratch + 2
-  emitExprWithRelease releaseIndex childScratch left ++ localSet leftLocal ++
-    emitExprWithRelease releaseIndex childScratch right ++ localSet rightLocal ++
+  emitExprWithReleaseFallback releaseIndex childScratch left ++ localSet leftLocal ++
+    emitExprWithReleaseFallback releaseIndex childScratch right ++ localSet rightLocal ++
     localGet leftLocal ++ localGet rightLocal ++ i64LtU ++
     ([Instr.iff true (i64Const 0) (some (localGet leftLocal ++ localGet rightLocal ++ [Instr.subI64]))])
 end
 
-partial def emitStmt (releaseIndex scratch : Nat) : Stmt → List Instr
+def emitExprWithRelease (releaseIndex scratch : Nat) (expression : Expr) : List Instr :=
+  match ScalarDescriptor.Expr.ofIR expression with
+  | some descriptor => descriptor.emit scratch
+  | none => emitExprWithReleaseFallback releaseIndex scratch expression
+
+def emitCondWithRelease (releaseIndex scratch : Nat) (condition : Cond) : List Instr :=
+  match ScalarDescriptor.Cond.ofIR condition with
+  | some descriptor => descriptor.emit scratch
+  | none => emitCondWithReleaseFallback releaseIndex scratch condition
+
+partial def emitStmtFallback (releaseIndex scratch : Nat) : Stmt → List Instr
   | .skip => []
   | .assign index value => emitExprWithRelease releaseIndex scratch value ++ localSet index
   | .call slots index args =>
@@ -3039,12 +3050,20 @@ partial def emitStmt (releaseIndex scratch : Nat) : Stmt → List Instr
       emitLoopFoldMultiSlotAssign releaseIndex scratch resultWidth initValues accStart bodyValues
         bodyLets bodyDone releaseOffsets targets
   | .ite cond thenStmt elseStmt =>
-      emitCondWithRelease releaseIndex scratch cond ++ ([Instr.iff false (emitStmt releaseIndex scratch thenStmt) (some (emitStmt releaseIndex scratch elseStmt))])
-  | .seq first second => emitStmt releaseIndex scratch first ++ emitStmt releaseIndex scratch second
+      emitCondWithRelease releaseIndex scratch cond ++ ([Instr.iff false (emitStmtFallback releaseIndex scratch thenStmt) (some (emitStmtFallback releaseIndex scratch elseStmt))])
+  | .seq first second => emitStmtFallback releaseIndex scratch first ++ emitStmtFallback releaseIndex scratch second
   | .while cond loopBody =>
       ([Instr.block [Instr.loop (emitCond scratch cond ++ [Instr.eqzI32, Instr.brIf 1] ++
-      emitStmt releaseIndex scratch loopBody ++
+      emitStmtFallback releaseIndex scratch loopBody ++
       [Instr.br 0])]])
+
+def emitStmt (releaseIndex scratch : Nat) (statement : Stmt) : List Instr :=
+  match ScalarDescriptor.While.ofIR statement with
+  | some descriptor => descriptor.emit scratch
+  | none =>
+      match ScalarDescriptor.Stmt.ofIR statement with
+      | some descriptor => descriptor.emit scratch
+      | none => emitStmtFallback releaseIndex scratch statement
 
 def localDecls (func : Func) : List UInt8 :=
   let extra := func.locals - func.params + funcScratch func
@@ -3333,6 +3352,8 @@ partial def emitStmtAnnotated
           endIndex := 1
           condition := reprStr cond
           body := reprStr body
+          descriptorVersion := 1
+          descriptor := ScalarDescriptor.While.ofIR (.while cond body)
           scratchStart := scratch
           continuation := "fallthrough"
           generatedBy := #[
@@ -3960,6 +3981,8 @@ def annotationDocument (module_ : Module) (bytes : ByteArray) : Annotations.Docu
             parameters := .whileLoop
               { condition := loop.condition
                 body := loop.body
+                descriptorVersion := loop.descriptorVersion
+                descriptor := loop.descriptor
                 scratchStart := loop.scratchStart
                 continuation := loop.continuation }
             generatedBy := loop.generatedBy }
