@@ -1,0 +1,87 @@
+{
+  "schemaVersion": 1,
+  "metric": "stage-5-start-to-first-accepted-proof",
+  "artifactSha256": "8126a2d03d514dd1335250b05fc9a1f9b89b84b55cc5b4d3e5a019c0ca6599cf",
+  "baseline": {
+    "package": "baseline/program.proof",
+    "acceptedSourceSha256": "0181e03ac3a2795e6049f9760c6d52e13427afdf993ef7fa314a4265fdfae7f5",
+    "totalMilliseconds": 1056071.798,
+    "codexSessionMilliseconds": 954784.639,
+    "outerAcceptanceMilliseconds": 88669.714,
+    "proofLines": 191,
+    "wpRunApplications": 1,
+    "wpIffConsApplications": 17,
+    "wpLoopConsApplications": 1,
+    "editedCandidates": 9,
+    "independentlyVerified": true
+  },
+  "runs": [
+    {
+      "package": "scalar-post-test-candidate-1-current",
+      "acceptedSourceSha256": "5d42bc7379bcd86ae5d47fcf727b138f7a60521dc66c50d2a22763912a5bccbc",
+      "totalMilliseconds": 495497.269,
+      "codexSessionMilliseconds": 446254.854,
+      "outerAcceptanceMilliseconds": 35786.412,
+      "proofLines": 155,
+      "wpRunApplications": 1,
+      "wpIffConsApplications": 0,
+      "wpLoopConsApplications": 0,
+      "editedCandidates": 3,
+      "independentlyVerified": true
+    },
+    {
+      "package": "scalar-post-test-repeat-2",
+      "acceptedSourceSha256": "2d8edc56c577865a57b3e344bf920d50e0a329c3c148364d0286e00fa587f82d",
+      "totalMilliseconds": 520301.221,
+      "codexSessionMilliseconds": 389860.096,
+      "outerAcceptanceMilliseconds": 118103.481,
+      "proofLines": 157,
+      "wpRunApplications": 1,
+      "wpIffConsApplications": 0,
+      "wpLoopConsApplications": 0,
+      "editedCandidates": 2,
+      "independentlyVerified": true
+    },
+    {
+      "package": "scalar-post-test-repeat-3",
+      "acceptedSourceSha256": "87e5271e8757f946bf7a27559cfd18014bd3ac6863aa3078d3ab7f9ca3204c26",
+      "totalMilliseconds": 510884.882,
+      "codexSessionMilliseconds": 458271.081,
+      "outerAcceptanceMilliseconds": 36543.566,
+      "proofLines": 171,
+      "wpRunApplications": 1,
+      "wpIffConsApplications": 0,
+      "wpLoopConsApplications": 0,
+      "editedCandidates": 2,
+      "independentlyVerified": true
+    }
+  ],
+  "distribution": {
+    "sampleSize": 3,
+    "medianMilliseconds": 510884.882,
+    "rangeMilliseconds": 24803.952,
+    "medianReductionFromBaselineMilliseconds": 545186.916,
+    "medianReductionFromBaselinePercent": 51.624,
+    "codexMedianMilliseconds": 446254.854,
+    "codexRangeMilliseconds": 68410.985,
+    "outerAcceptanceMedianMilliseconds": 36543.566,
+    "outerAcceptanceRangeMilliseconds": 82317.069,
+    "proofLineMedian": 157,
+    "proofLineRange": 16,
+    "wpRunMedian": 1,
+    "wpRunRange": 0,
+    "editedCandidateMedian": 2,
+    "editedCandidateRange": 1
+  },
+  "rejectedExitScreen": {
+    "package": "scalar-exit-candidate-2",
+    "acceptedSourceSha256": "c7e003ac0223fa92a27c11c6c154c869037d20ff724c2608121eaa9e45131d16",
+    "totalMilliseconds": 633288.254,
+    "codexSessionMilliseconds": 580715.499,
+    "outerAcceptanceMilliseconds": 37749.086,
+    "proofLines": 159,
+    "wpRunApplications": 0,
+    "editedCandidates": 4,
+    "independentlyVerified": true
+  }
+}
