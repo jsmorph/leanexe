@@ -1,0 +1,24 @@
+{
+  "formalSpecification": {
+    "summary": "Defined and verified the required singleton prime-factor-count function. The required Lean build succeeds.",
+    "decisions": [
+      "Used `Nat.primeFactorsList.length` to count prime factors with multiplicity.",
+      "Matched on `input.toList` and returned the original array for every non-singleton input."
+    ]
+  },
+  "leanProgram": {
+    "summary": "Generated and validated the Lean module and WebAssembly candidate.",
+    "decisions": [
+      "Used fuel-bounded trial division with repeated factor removal.",
+      "Used division for the stopping condition to avoid UInt64 multiplication overflow.",
+      "Returned the original array for every non-singleton input."
+    ]
+  },
+  "artifactProof": {
+    "summary": "Proved the exact compiled artifact. The final import check and ArtifactResult build succeeded.",
+    "decisions": [
+      "Used the checked ScalarTransition loop annotations for the scalar prime-factor counter.",
+      "Used FixedArraySingletonWrapper.wrapperProgram_spec for the complete public Array UInt64 interface."
+    ]
+  }
+}

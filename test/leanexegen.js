@@ -364,8 +364,9 @@ function testCodexProtocol() {
     artifactPrompt.includes("wp_entry_to_loop <functionDef>") &&
     artifactPrompt.includes("leanexe.loop.while.v1 annotation") &&
     artifactPrompt.includes("condition_eval and body_eval") &&
-    artifactPrompt.includes("generated entry_to_loop theorem") &&
-    artifactPrompt.includes("fixes argument order, zero-initialized locals") &&
+    artifactPrompt.includes("generated terminates_with_of_loop theorem") &&
+    artifactPrompt.includes("external operand stack in WebAssembly order") &&
+    artifactPrompt.includes("lower-level entry_to_loop theorem") &&
     artifactPrompt.includes("leanexe.loop.fold.v1") &&
     artifactPrompt.includes(`wp_entry_single_call ${job.namespace}.func3Def`) &&
     artifactPrompt.includes("PROOF_STRATEGIES.md contains optional") &&
@@ -1239,6 +1240,8 @@ def func0Def : Wasm.Function :=
     whilePlan.recipes[0].direct.regionEquality ===
       "Project.AnnotationMatches.function_0_while_loop_0_eq" &&
     whilePlan.recipes[0].supporting.some((entry) => entry.declaration ===
+      "Project.AnnotationMatches.function_0_while_loop_0_terminates_with_of_loop") &&
+    whilePlan.recipes[0].supporting.some((entry) => entry.declaration ===
       "Project.AnnotationMatches.function_0_while_loop_0_entry_to_loop") &&
     whilePlan.recipes[0].supporting.some((entry) => entry.declaration ===
       "Project.ProofKit.ScalarTransition.Stmt.eval_preserves_below") &&
@@ -1256,6 +1259,8 @@ def func0Def : Wasm.Function :=
     whileMatches.source.includes("function_0_while_loop_0_condition_eval") &&
     whileMatches.source.includes("function_0_while_loop_0_body_eval") &&
     whileMatches.source.includes("theorem function_0_while_loop_0_entry_to_loop") &&
+    whileMatches.source.includes("theorem function_0_while_loop_0_terminates_with_of_loop") &&
+    whileMatches.source.includes("initial [.i64 v0] P") &&
     whileMatches.source.includes("function_0_while_loop_0_state (v0) ((0 : UInt64))") &&
     whileMatches.source.includes("    4 function_0_while_loop_0_condition") &&
     whileMatches.source.includes("theorem function_0_while_loop_0_eq"),
@@ -1786,6 +1791,8 @@ function testScalarTransitionSpecialization() {
     source.includes("function_0_while_loop_0_bodyTransition") &&
     source.includes("U64Op.apply .remU (v1) (v2)") &&
     source.includes("theorem function_0_while_loop_0_entry_to_loop") &&
+    source.includes("theorem function_0_while_loop_0_terminates_with_of_loop") &&
+    source.includes("initial [.i64 v3, .i64 v2, .i64 v1, .i64 v0] P") &&
     source.includes("func0Def.toLocals [.i64 v0, .i64 v1, .i64 v2, .i64 v3]"),
   "scalar transition specialization did not retain Demo 1's five semantic tests");
 }
