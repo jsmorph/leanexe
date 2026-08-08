@@ -54,5 +54,18 @@
     "proofLineRange": 48,
     "wpRunMedian": 10,
     "wpRunRange": 3
+  },
+  "successorScreen": {
+    "package": "scalar-terminates-candidate-1/program.proof",
+    "acceptedSourceSha256": "b84395e256a64816a9149c55ad0c81108786817d67133df4345943845e50f95d",
+    "totalMilliseconds": 1418099.74,
+    "codexSessionMilliseconds": 1326745.411,
+    "outerAcceptanceMilliseconds": 79366.673,
+    "proofLines": 541,
+    "wpRunApplications": 5,
+    "conditionEquationApplications": 2,
+    "bodyEquationApplications": 4,
+    "terminatesWithAdapterApplications": 1,
+    "independentlyVerified": true
   }
 }
