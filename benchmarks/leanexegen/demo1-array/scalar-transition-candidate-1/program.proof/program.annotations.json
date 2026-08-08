@@ -1,0 +1,629 @@
+{
+  "artifact": {
+    "byteLength": 1938
+  },
+  "functions": [
+    {
+      "definedFunction": 0,
+      "exports": [],
+      "locals": 16,
+      "parameters": 4,
+      "regions": [
+        {
+          "generatedBy": [
+            "LeanExe.Wasm.Binary.CoreWasm.emitStmt",
+            "LeanExe.Wasm.Binary.CoreWasm.emitStmtAnnotated"
+          ],
+          "id": "function-0.while-loop-0",
+          "kind": "leanexe.loop.while.v1",
+          "location": {
+            "endIndex": 3,
+            "listPath": [],
+            "startIndex": 2
+          },
+          "parameters": {
+            "body": "LeanExe.IR.Stmt.ite\n  (LeanExe.IR.Cond.leU64 (LeanExe.IR.Expr.local 1) (LeanExe.IR.Expr.u64 1))\n  (LeanExe.IR.Stmt.seq\n    (LeanExe.IR.Stmt.assign 4 (LeanExe.IR.Expr.local 3))\n    (LeanExe.IR.Stmt.assign 5 (LeanExe.IR.Expr.u64 1)))\n  (LeanExe.IR.Stmt.ite\n    (LeanExe.IR.Cond.ltU64\n      (LeanExe.IR.Expr.u64Bin (LeanExe.IR.U64Op.divU) (LeanExe.IR.Expr.local 1) (LeanExe.IR.Expr.local 2))\n      (LeanExe.IR.Expr.local 2))\n    (LeanExe.IR.Stmt.seq\n      (LeanExe.IR.Stmt.assign\n        4\n        (LeanExe.IR.Expr.u64Bin (LeanExe.IR.U64Op.add) (LeanExe.IR.Expr.local 3) (LeanExe.IR.Expr.u64 1)))\n      (LeanExe.IR.Stmt.assign 5 (LeanExe.IR.Expr.u64 1)))\n    (LeanExe.IR.Stmt.ite\n      (LeanExe.IR.Cond.not\n        (LeanExe.IR.Cond.eqU64\n          (LeanExe.IR.Expr.ite\n            (LeanExe.IR.Cond.eqU64\n              (LeanExe.IR.Expr.ite\n                (LeanExe.IR.Cond.eqU64\n                  (LeanExe.IR.Expr.u64Bin (LeanExe.IR.U64Op.modU) (LeanExe.IR.Expr.local 1) (LeanExe.IR.Expr.local 2))\n                  (LeanExe.IR.Expr.u64 0))\n                (LeanExe.IR.Expr.u64 1)\n                (LeanExe.IR.Expr.u64 0))\n              (LeanExe.IR.Expr.u64 1))\n            (LeanExe.IR.Expr.u64 1)\n            (LeanExe.IR.Expr.u64 0))\n          (LeanExe.IR.Expr.u64 0)))\n      (LeanExe.IR.Stmt.seq\n        (LeanExe.IR.Stmt.seq\n          (LeanExe.IR.Stmt.seq\n            (LeanExe.IR.Stmt.seq\n              (LeanExe.IR.Stmt.assign\n                6\n                (LeanExe.IR.Expr.u64Bin (LeanExe.IR.U64Op.divU) (LeanExe.IR.Expr.local 1) (LeanExe.IR.Expr.local 2)))\n              (LeanExe.IR.Stmt.assign 7 (LeanExe.IR.Expr.local 2)))\n            (LeanExe.IR.Stmt.assign\n              8\n              (LeanExe.IR.Expr.u64Bin (LeanExe.IR.U64Op.add) (LeanExe.IR.Expr.local 3) (LeanExe.IR.Expr.u64 1))))\n          (LeanExe.IR.Stmt.seq\n            (LeanExe.IR.Stmt.seq\n              (LeanExe.IR.Stmt.seq\n                (LeanExe.IR.Stmt.seq\n                  (LeanExe.IR.Stmt.seq\n                    (LeanExe.IR.Stmt.assign 9 (LeanExe.IR.Expr.local 6))\n                    (LeanExe.IR.Stmt.assign 10 (LeanExe.IR.Expr.local 7)))\n                  (LeanExe.IR.Stmt.assign 11 (LeanExe.IR.Expr.local 8)))\n                (LeanExe.IR.Stmt.assign 1 (LeanExe.IR.Expr.local 9)))\n              (LeanExe.IR.Stmt.assign 2 (LeanExe.IR.Expr.local 10)))\n            (LeanExe.IR.Stmt.assign 3 (LeanExe.IR.Expr.local 11))))\n        (LeanExe.IR.Stmt.assign\n          0\n          (LeanExe.IR.Expr.u64Bin (LeanExe.IR.U64Op.sub) (LeanExe.IR.Expr.local 0) (LeanExe.IR.Expr.u64 1))))\n      (LeanExe.IR.Stmt.seq\n        (LeanExe.IR.Stmt.seq\n          (LeanExe.IR.Stmt.seq\n            (LeanExe.IR.Stmt.seq\n              (LeanExe.IR.Stmt.assign 12 (LeanExe.IR.Expr.local 1))\n              (LeanExe.IR.Stmt.assign\n                13\n                (LeanExe.IR.Expr.ite\n                  (LeanExe.IR.Cond.not\n                    (LeanExe.IR.Cond.eqU64\n                      (LeanExe.IR.Expr.ite\n                        (LeanExe.IR.Cond.eqU64\n                          (LeanExe.IR.Expr.ite\n                            (LeanExe.IR.Cond.eqU64 (LeanExe.IR.Expr.local 2) (LeanExe.IR.Expr.u64 2))\n                            (LeanExe.IR.Expr.u64 1)\n                            (LeanExe.IR.Expr.u64 0))\n                          (LeanExe.IR.Expr.u64 1))\n                        (LeanExe.IR.Expr.u64 1)\n                        (LeanExe.IR.Expr.u64 0))\n                      (LeanExe.IR.Expr.u64 0)))\n                  (LeanExe.IR.Expr.u64 3)\n                  (LeanExe.IR.Expr.u64Bin (LeanExe.IR.U64Op.add) (LeanExe.IR.Expr.local 2) (LeanExe.IR.Expr.u64 2)))))\n            (LeanExe.IR.Stmt.assign 14 (LeanExe.IR.Expr.local 3)))\n          (LeanExe.IR.Stmt.seq\n            (LeanExe.IR.Stmt.seq\n              (LeanExe.IR.Stmt.seq\n                (LeanExe.IR.Stmt.seq\n                  (LeanExe.IR.Stmt.seq\n                    (LeanExe.IR.Stmt.assign 15 (LeanExe.IR.Expr.local 12))\n                    (LeanExe.IR.Stmt.assign 16 (LeanExe.IR.Expr.local 13)))\n                  (LeanExe.IR.Stmt.assign 17 (LeanExe.IR.Expr.local 14)))\n                (LeanExe.IR.Stmt.assign 1 (LeanExe.IR.Expr.local 15)))\n              (LeanExe.IR.Stmt.assign 2 (LeanExe.IR.Expr.local 16)))\n            (LeanExe.IR.Stmt.assign 3 (LeanExe.IR.Expr.local 17))))\n        (LeanExe.IR.Stmt.assign\n          0\n          (LeanExe.IR.Expr.u64Bin (LeanExe.IR.U64Op.sub) (LeanExe.IR.Expr.local 0) (LeanExe.IR.Expr.u64 1))))))",
+            "condition": "LeanExe.IR.Cond.and\n  (LeanExe.IR.Cond.not (LeanExe.IR.Cond.eqU64 (LeanExe.IR.Expr.local 0) (LeanExe.IR.Expr.u64 0)))\n  (LeanExe.IR.Cond.eqU64 (LeanExe.IR.Expr.local 5) (LeanExe.IR.Expr.u64 0))",
+            "continuation": "fallthrough",
+            "descriptor": {
+              "body": {
+                "condition": {
+                  "kind": "le-u",
+                  "left": {
+                    "index": 1,
+                    "kind": "get"
+                  },
+                  "right": {
+                    "kind": "const",
+                    "value": "1"
+                  }
+                },
+                "else": {
+                  "condition": {
+                    "kind": "lt-u",
+                    "left": {
+                      "kind": "bin",
+                      "left": {
+                        "index": 1,
+                        "kind": "get"
+                      },
+                      "operation": "div-u",
+                      "right": {
+                        "index": 2,
+                        "kind": "get"
+                      }
+                    },
+                    "right": {
+                      "index": 2,
+                      "kind": "get"
+                    }
+                  },
+                  "else": {
+                    "condition": {
+                      "condition": {
+                        "kind": "eq",
+                        "left": {
+                          "condition": {
+                            "kind": "eq",
+                            "left": {
+                              "condition": {
+                                "kind": "eq",
+                                "left": {
+                                  "kind": "bin",
+                                  "left": {
+                                    "index": 1,
+                                    "kind": "get"
+                                  },
+                                  "operation": "rem-u",
+                                  "right": {
+                                    "index": 2,
+                                    "kind": "get"
+                                  }
+                                },
+                                "right": {
+                                  "kind": "const",
+                                  "value": "0"
+                                }
+                              },
+                              "else": {
+                                "kind": "const",
+                                "value": "0"
+                              },
+                              "kind": "ite",
+                              "then": {
+                                "kind": "const",
+                                "value": "1"
+                              }
+                            },
+                            "right": {
+                              "kind": "const",
+                              "value": "1"
+                            }
+                          },
+                          "else": {
+                            "kind": "const",
+                            "value": "0"
+                          },
+                          "kind": "ite",
+                          "then": {
+                            "kind": "const",
+                            "value": "1"
+                          }
+                        },
+                        "right": {
+                          "kind": "const",
+                          "value": "0"
+                        }
+                      },
+                      "kind": "not"
+                    },
+                    "else": {
+                      "first": {
+                        "first": {
+                          "first": {
+                            "first": {
+                              "index": 12,
+                              "kind": "assign",
+                              "value": {
+                                "index": 1,
+                                "kind": "get"
+                              }
+                            },
+                            "kind": "seq",
+                            "second": {
+                              "index": 13,
+                              "kind": "assign",
+                              "value": {
+                                "condition": {
+                                  "condition": {
+                                    "kind": "eq",
+                                    "left": {
+                                      "condition": {
+                                        "kind": "eq",
+                                        "left": {
+                                          "condition": {
+                                            "kind": "eq",
+                                            "left": {
+                                              "index": 2,
+                                              "kind": "get"
+                                            },
+                                            "right": {
+                                              "kind": "const",
+                                              "value": "2"
+                                            }
+                                          },
+                                          "else": {
+                                            "kind": "const",
+                                            "value": "0"
+                                          },
+                                          "kind": "ite",
+                                          "then": {
+                                            "kind": "const",
+                                            "value": "1"
+                                          }
+                                        },
+                                        "right": {
+                                          "kind": "const",
+                                          "value": "1"
+                                        }
+                                      },
+                                      "else": {
+                                        "kind": "const",
+                                        "value": "0"
+                                      },
+                                      "kind": "ite",
+                                      "then": {
+                                        "kind": "const",
+                                        "value": "1"
+                                      }
+                                    },
+                                    "right": {
+                                      "kind": "const",
+                                      "value": "0"
+                                    }
+                                  },
+                                  "kind": "not"
+                                },
+                                "else": {
+                                  "kind": "bin",
+                                  "left": {
+                                    "index": 2,
+                                    "kind": "get"
+                                  },
+                                  "operation": "add",
+                                  "right": {
+                                    "kind": "const",
+                                    "value": "2"
+                                  }
+                                },
+                                "kind": "ite",
+                                "then": {
+                                  "kind": "const",
+                                  "value": "3"
+                                }
+                              }
+                            }
+                          },
+                          "kind": "seq",
+                          "second": {
+                            "index": 14,
+                            "kind": "assign",
+                            "value": {
+                              "index": 3,
+                              "kind": "get"
+                            }
+                          }
+                        },
+                        "kind": "seq",
+                        "second": {
+                          "first": {
+                            "first": {
+                              "first": {
+                                "first": {
+                                  "first": {
+                                    "index": 15,
+                                    "kind": "assign",
+                                    "value": {
+                                      "index": 12,
+                                      "kind": "get"
+                                    }
+                                  },
+                                  "kind": "seq",
+                                  "second": {
+                                    "index": 16,
+                                    "kind": "assign",
+                                    "value": {
+                                      "index": 13,
+                                      "kind": "get"
+                                    }
+                                  }
+                                },
+                                "kind": "seq",
+                                "second": {
+                                  "index": 17,
+                                  "kind": "assign",
+                                  "value": {
+                                    "index": 14,
+                                    "kind": "get"
+                                  }
+                                }
+                              },
+                              "kind": "seq",
+                              "second": {
+                                "index": 1,
+                                "kind": "assign",
+                                "value": {
+                                  "index": 15,
+                                  "kind": "get"
+                                }
+                              }
+                            },
+                            "kind": "seq",
+                            "second": {
+                              "index": 2,
+                              "kind": "assign",
+                              "value": {
+                                "index": 16,
+                                "kind": "get"
+                              }
+                            }
+                          },
+                          "kind": "seq",
+                          "second": {
+                            "index": 3,
+                            "kind": "assign",
+                            "value": {
+                              "index": 17,
+                              "kind": "get"
+                            }
+                          }
+                        }
+                      },
+                      "kind": "seq",
+                      "second": {
+                        "index": 0,
+                        "kind": "assign",
+                        "value": {
+                          "kind": "bin",
+                          "left": {
+                            "index": 0,
+                            "kind": "get"
+                          },
+                          "operation": "sub",
+                          "right": {
+                            "kind": "const",
+                            "value": "1"
+                          }
+                        }
+                      }
+                    },
+                    "kind": "ite",
+                    "then": {
+                      "first": {
+                        "first": {
+                          "first": {
+                            "first": {
+                              "index": 6,
+                              "kind": "assign",
+                              "value": {
+                                "kind": "bin",
+                                "left": {
+                                  "index": 1,
+                                  "kind": "get"
+                                },
+                                "operation": "div-u",
+                                "right": {
+                                  "index": 2,
+                                  "kind": "get"
+                                }
+                              }
+                            },
+                            "kind": "seq",
+                            "second": {
+                              "index": 7,
+                              "kind": "assign",
+                              "value": {
+                                "index": 2,
+                                "kind": "get"
+                              }
+                            }
+                          },
+                          "kind": "seq",
+                          "second": {
+                            "index": 8,
+                            "kind": "assign",
+                            "value": {
+                              "kind": "bin",
+                              "left": {
+                                "index": 3,
+                                "kind": "get"
+                              },
+                              "operation": "add",
+                              "right": {
+                                "kind": "const",
+                                "value": "1"
+                              }
+                            }
+                          }
+                        },
+                        "kind": "seq",
+                        "second": {
+                          "first": {
+                            "first": {
+                              "first": {
+                                "first": {
+                                  "first": {
+                                    "index": 9,
+                                    "kind": "assign",
+                                    "value": {
+                                      "index": 6,
+                                      "kind": "get"
+                                    }
+                                  },
+                                  "kind": "seq",
+                                  "second": {
+                                    "index": 10,
+                                    "kind": "assign",
+                                    "value": {
+                                      "index": 7,
+                                      "kind": "get"
+                                    }
+                                  }
+                                },
+                                "kind": "seq",
+                                "second": {
+                                  "index": 11,
+                                  "kind": "assign",
+                                  "value": {
+                                    "index": 8,
+                                    "kind": "get"
+                                  }
+                                }
+                              },
+                              "kind": "seq",
+                              "second": {
+                                "index": 1,
+                                "kind": "assign",
+                                "value": {
+                                  "index": 9,
+                                  "kind": "get"
+                                }
+                              }
+                            },
+                            "kind": "seq",
+                            "second": {
+                              "index": 2,
+                              "kind": "assign",
+                              "value": {
+                                "index": 10,
+                                "kind": "get"
+                              }
+                            }
+                          },
+                          "kind": "seq",
+                          "second": {
+                            "index": 3,
+                            "kind": "assign",
+                            "value": {
+                              "index": 11,
+                              "kind": "get"
+                            }
+                          }
+                        }
+                      },
+                      "kind": "seq",
+                      "second": {
+                        "index": 0,
+                        "kind": "assign",
+                        "value": {
+                          "kind": "bin",
+                          "left": {
+                            "index": 0,
+                            "kind": "get"
+                          },
+                          "operation": "sub",
+                          "right": {
+                            "kind": "const",
+                            "value": "1"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "kind": "ite",
+                  "then": {
+                    "first": {
+                      "index": 4,
+                      "kind": "assign",
+                      "value": {
+                        "kind": "bin",
+                        "left": {
+                          "index": 3,
+                          "kind": "get"
+                        },
+                        "operation": "add",
+                        "right": {
+                          "kind": "const",
+                          "value": "1"
+                        }
+                      }
+                    },
+                    "kind": "seq",
+                    "second": {
+                      "index": 5,
+                      "kind": "assign",
+                      "value": {
+                        "kind": "const",
+                        "value": "1"
+                      }
+                    }
+                  }
+                },
+                "kind": "ite",
+                "then": {
+                  "first": {
+                    "index": 4,
+                    "kind": "assign",
+                    "value": {
+                      "index": 3,
+                      "kind": "get"
+                    }
+                  },
+                  "kind": "seq",
+                  "second": {
+                    "index": 5,
+                    "kind": "assign",
+                    "value": {
+                      "kind": "const",
+                      "value": "1"
+                    }
+                  }
+                }
+              },
+              "condition": {
+                "kind": "and",
+                "left": {
+                  "condition": {
+                    "kind": "eq",
+                    "left": {
+                      "index": 0,
+                      "kind": "get"
+                    },
+                    "right": {
+                      "kind": "const",
+                      "value": "0"
+                    }
+                  },
+                  "kind": "not"
+                },
+                "right": {
+                  "kind": "eq",
+                  "left": {
+                    "index": 5,
+                    "kind": "get"
+                  },
+                  "right": {
+                    "kind": "const",
+                    "value": "0"
+                  }
+                }
+              }
+            },
+            "descriptorVersion": 1,
+            "scratchStart": 18
+          }
+        }
+      ],
+      "results": 1,
+      "sourceName": "LeanExeGen.GeneratedRbade8cb1a4e3a423.Source.countFactorsFuel",
+      "wasmIndex": 0
+    },
+    {
+      "definedFunction": 1,
+      "exports": [],
+      "locals": 6,
+      "parameters": 1,
+      "regions": [
+        {
+          "generatedBy": [
+            "LeanExe.Wasm.Binary.CoreWasm.emitStmt",
+            "LeanExe.Wasm.Binary.CoreWasm.emitFuncInstrs"
+          ],
+          "id": "function-1.direct-call-0",
+          "kind": "leanexe.call.direct.v1",
+          "location": {
+            "endIndex": 14,
+            "listPath": [
+              {
+                "field": "else",
+                "instructionIndex": 3
+              }
+            ],
+            "startIndex": 8
+          },
+          "parameters": {
+            "argumentLocals": [
+              1,
+              2,
+              3,
+              4
+            ],
+            "calleeIndex": 0,
+            "continuation": "fallthrough",
+            "resultLocals": [
+              5
+            ],
+            "resultPlacement": "locals"
+          }
+        }
+      ],
+      "results": 1,
+      "sourceName": "LeanExeGen.GeneratedRbade8cb1a4e3a423.Source.countFactors",
+      "wasmIndex": 1
+    },
+    {
+      "definedFunction": 2,
+      "exports": [
+        "compute"
+      ],
+      "locals": 14,
+      "parameters": 1,
+      "regions": [
+        {
+          "generatedBy": [
+            "LeanExe.Wasm.Binary.CoreWasm.emitCondWithRelease",
+            "LeanExe.Wasm.Binary.CoreWasm.emitStmtAnnotated"
+          ],
+          "id": "function-2.length-dispatch-0",
+          "kind": "leanexe.array.length-dispatch.v1",
+          "location": {
+            "endIndex": 15,
+            "listPath": [],
+            "startIndex": 0
+          },
+          "parameters": {
+            "continuation": "fallthrough",
+            "encoding": "eq-normalized-v1",
+            "expectedSize": 1,
+            "inputLocal": 5,
+            "invalidBranch": "else",
+            "validBranch": "then"
+          }
+        },
+        {
+          "generatedBy": [
+            "LeanExe.Wasm.Binary.CoreWasm.annotateDirectCallsInList",
+            "LeanExe.Wasm.Binary.CoreWasm.emitFuncInstrs"
+          ],
+          "id": "function-2.direct-call-0",
+          "kind": "leanexe.call.direct.v1",
+          "location": {
+            "endIndex": 14,
+            "listPath": [
+              {
+                "field": "then",
+                "instructionIndex": 14
+              }
+            ],
+            "startIndex": 11
+          },
+          "parameters": {
+            "argumentLocals": [
+              1
+            ],
+            "calleeIndex": 1,
+            "continuation": "fallthrough",
+            "resultLocals": [
+              2
+            ],
+            "resultPlacement": "locals"
+          }
+        }
+      ],
+      "results": 1,
+      "sourceName": "LeanExeGen.GeneratedRbade8cb1a4e3a423.Source.compute",
+      "wasmIndex": 2
+    }
+  ],
+  "schemaVersion": 1
+}

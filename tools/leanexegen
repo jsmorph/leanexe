@@ -1979,6 +1979,17 @@ function proofPackagePath(outputPath) {
     : `${outputPath}.proof`;
 }
 
+function requirePublicationTargetsAvailable(outputPath) {
+  const packagePath = proofPackagePath(outputPath);
+  if (fs.existsSync(outputPath)) {
+    throw new StageError(1, "job setup", `${outputPath} exists`);
+  }
+  if (fs.existsSync(packagePath)) {
+    throw new StageError(1, "job setup", `${packagePath} exists`);
+  }
+  return packagePath;
+}
+
 function publish(outputPath, packagePath, wasmBytes, buildPackage) {
   if (fs.existsSync(outputPath)) throw new StageError(7, "publication", `${outputPath} exists`);
   if (fs.existsSync(packagePath)) throw new StageError(7, "publication", `${packagePath} exists`);
@@ -2248,6 +2259,7 @@ function verify(command) {
 }
 
 function reprove(command) {
+  const packagePath = requirePublicationTargetsAvailable(command.outputPath);
   progress(command.silent, 1, "Job setup");
   let checked;
   let request;
@@ -2399,7 +2411,6 @@ function reprove(command) {
       samplesToRun, checked.job.exportName, fixedWasm, toolPins);
 
     progress(command.silent, 7, "Publication");
-    const packagePath = proofPackagePath(command.outputPath);
     const wasmBytes = fs.readFileSync(fixedWasm);
     const allSources = new Map(sourceSets.frozen);
     if (sourceSets.proofContext.has(annotationMatchesModule(checked.job))) {
@@ -2686,6 +2697,7 @@ function benchmark(command) {
 }
 
 function generate(command) {
+  const packagePath = requirePublicationTargetsAvailable(command.outputPath);
   progress(command.silent, 1, "Job setup");
   const request = readRequest(command.requestPath);
   const job = makeJob(request);
@@ -2868,7 +2880,6 @@ function generate(command) {
     const sampleResult = runSamples(
       programTask.outcome.samples, job.exportName, wasm, toolPins);
     progress(command.silent, 7, "Publication");
-    const packagePath = proofPackagePath(command.outputPath);
     const allSources = new Map([
       [job.formalSpecModule, formal.source],
       [job.sourceModule, programTask.source],
@@ -3035,6 +3046,7 @@ module.exports = {
   programTaskContext,
   proofPrompt,
   proofPackagePath,
+  requirePublicationTargetsAvailable,
   proofStrategyBundle,
   proofTaskContext,
   readPackageSources,
