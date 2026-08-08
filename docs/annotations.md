@@ -454,6 +454,10 @@ The first controlled invocation completed Stage 5 in 276.795 seconds and passed 
 
 Artifact-proof tasks now prohibit reading demos, benchmarks, archived packages, or proofs from another generated namespace.  The task may still read dependency source when it needs to confirm a declaration named by the supplied proof-kit catalog or strategy guide.  The next Demo 1 run must produce its proof from the frozen task context, generic proof assets, and checked annotations before entering a timing comparison.
 
+The isolated replacement ran for approximately 1,082 seconds without producing an accepted proof or a Lean diagnostic, after which the owned Codex process was interrupted.  This censored observation exceeds the 680.396-second slowest retained singleton run and the plan's 900-second scalar-loop threshold.  The annotation-only recipe therefore fails promotion and will not receive repeat trials.
+
+The next increment will convert the typed scalar transition map into a checked artifact-specific composition before the proving session.  A generic scalar statement descriptor will represent local reads, constants, unsigned arithmetic, conditions, assignments, sequences, and branches, while its proof theorem will establish the emitted Talos weakest-precondition transition for any matching descriptor.  Generated `AnnotationMatches` code must prove that Demo 1's exact loop body equals the descriptor's program, leaving Codex the application invariant, decrease facts, and number-theoretic transition equations rather than instruction and local-frame reconstruction.
+
 ## Completion criteria
 
 The first complete increment emits a validated sidecar for every ordinary library-mode compilation requested by `leanexegen`.  Demos 1, 2, and 3 prove the same specifications over the same WASM bytes through an annotation-driven deterministic proof plan.  The retained evidence records proof-generation timings, annotation validation, region coverage, and independent Lean acceptance.
