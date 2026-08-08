@@ -23,6 +23,9 @@ structure State where
   locals : List Value
   deriving Repr
 
+def State.ofLocals (locals : Locals) : State :=
+  { params := locals.params, locals := locals.locals }
+
 @[simp]
 def State.toLocals (state : State) (values : List Value := []) : Locals :=
   { params := state.params, locals := state.locals, values }
@@ -835,5 +838,58 @@ theorem Stmt.program_spec
         apply thenSpec (state := afterCondition) (next := next) (values := values)
           (rest := []) (Q := _) hThen
         simpa [wp_simp, State.toLocals] using hNext
+
+set_option maxHeartbeats 1000000 in
+theorem whileProgram_spec
+    (condition : Expr .bool) (body : Stmt) (scratch : Nat)
+    (initial : State) (values : List Value)
+    (module_ : Module) (env : HostEnv α) (store : Store α)
+    (rest : Program) (Q : Assertion α)
+    (Inv : State → Prop) (measure : State → Nat)
+    (hInit : Inv initial)
+    (hStep : ∀ current, Inv current →
+      ∃ result afterCondition,
+        condition.eval scratch current = some (result, afterCondition) ∧
+        if result then
+          ∃ afterBody,
+            body.eval scratch afterCondition = some afterBody ∧
+            Inv afterBody ∧ measure afterBody < measure current
+        else
+          wp module_ rest Q store (afterCondition.toLocals values) env) :
+    wp module_ (whileProgram scratch condition body ++ rest) Q store
+      (initial.toLocals values) env := by
+  let loopInv : AssertionF α := fun currentStore locals =>
+    currentStore = store ∧
+      ∃ current, locals = current.toLocals values ∧ Inv current
+  let loopMeasure : Store α → Locals → Nat := fun _ locals =>
+    measure (State.ofLocals locals)
+  simp only [whileProgram, List.singleton_append]
+  apply Wasm.wp_block_cons
+  apply Wasm.wp_loop_cons (Inv := loopInv) (μ := loopMeasure)
+  · exact ⟨rfl, initial, rfl, hInit⟩
+  · intro currentStore locals hInv
+    rcases hInv with ⟨hStore, current, hLocals, hCurrent⟩
+    subst currentStore
+    subst locals
+    rcases hStep current hCurrent with
+      ⟨result, afterCondition, hCondition, hResult⟩
+    simp only [List.append_assoc]
+    refine Expr.program_spec (expression := condition) (scratch := scratch)
+      (state := current) (next := afterCondition) (result := result)
+      (values := values) (module_ := module_) (env := env) (store := store)
+      (rest := [Instruction.eqz, Instruction.br_if 1] ++
+        (body.program scratch ++ [Instruction.br 0]))
+      (Q := _) hCondition ?_
+    cases result
+    · simpa [wp_simp, State.toLocals, ScalarType.value] using hResult
+    · rcases hResult with ⟨afterBody, hBody, hBodyInv, hDecrease⟩
+      simp only [List.cons_append, List.nil_append, Wasm.wp_eqz_cons,
+        Wasm.wp_br_if_cons, ScalarType.value]
+      apply Stmt.program_spec body scratch afterCondition afterBody values
+        module_ env store [.br 0] _ hBody
+      simp only [Wasm.wp_br_cons]
+      constructor
+      · exact ⟨rfl, afterBody, rfl, hBodyInv⟩
+      · simpa [loopMeasure, State.ofLocals, State.toLocals] using hDecrease
 
 end Project.ProofKit.ScalarTransition
