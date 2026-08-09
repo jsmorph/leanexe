@@ -530,6 +530,105 @@ function validateLoopFold(region, description) {
     string(generator, `${description}.generatedBy[${index}]`));
 }
 
+function validateArrayFold(region, description) {
+  exactKeys(region, ["generatedBy", "id", "kind", "location", "parameters"], description);
+  string(region.id, `${description}.id`);
+  if (region.kind !== "leanexe.array.fold.v1") fail(`${description}.kind is unsupported`);
+  validateRegionLocation(region, description);
+  exactKeys(region.parameters, [
+    "accumulatorLocals", "accumulatorStart", "array", "arrayLocal", "bodyLets",
+    "bodyValues", "continuation", "doneLocal", "doneValue", "effectiveStopLocal",
+    "indexLocal", "initialValues", "itemLocals", "itemStart", "lengthLocal",
+    "releaseOffsets", "releaseReadyLocal", "resultLocals", "resultSlots", "resultWidth",
+    "reverse", "scratchStart", "sourceWidth", "stagedValueStart", "start", "stop",
+    "stopLocal",
+  ], `${description}.parameters`);
+  const parameters = region.parameters;
+  natural(parameters.sourceWidth, `${description}.parameters.sourceWidth`);
+  natural(parameters.resultWidth, `${description}.parameters.resultWidth`);
+  if (parameters.sourceWidth === 0 || parameters.resultWidth === 0) {
+    fail(`${description}.parameters fold widths must be positive`);
+  }
+  if (typeof parameters.reverse !== "boolean") {
+    fail(`${description}.parameters.reverse must be a Boolean`);
+  }
+  ["array", "start", "stop", "doneValue"].forEach((field) =>
+    string(parameters[field], `${description}.parameters.${field}`));
+  [
+    "accumulatorStart", "itemStart", "scratchStart", "arrayLocal", "lengthLocal",
+    "indexLocal", "stopLocal", "effectiveStopLocal", "doneLocal", "stagedValueStart",
+    "releaseReadyLocal",
+  ].forEach((field) => natural(parameters[field], `${description}.parameters.${field}`));
+  const accumulatorLocals = array(
+    parameters.accumulatorLocals, `${description}.parameters.accumulatorLocals`);
+  const itemLocals = array(parameters.itemLocals, `${description}.parameters.itemLocals`);
+  const initialValues = array(
+    parameters.initialValues, `${description}.parameters.initialValues`);
+  const bodyValues = array(parameters.bodyValues, `${description}.parameters.bodyValues`);
+  if (accumulatorLocals.length !== parameters.resultWidth ||
+      itemLocals.length !== parameters.sourceWidth ||
+      initialValues.length !== parameters.resultWidth ||
+      bodyValues.length !== parameters.resultWidth) {
+    fail(`${description}.parameters width-indexed arrays differ in length`);
+  }
+  accumulatorLocals.forEach((local, index) => {
+    if (natural(local, `${description}.parameters.accumulatorLocals[${index}]`) !==
+        parameters.accumulatorStart + index) {
+      fail(`${description}.parameters.accumulatorLocals must be consecutive`);
+    }
+  });
+  itemLocals.forEach((local, index) => {
+    if (natural(local, `${description}.parameters.itemLocals[${index}]`) !==
+        parameters.itemStart + index) {
+      fail(`${description}.parameters.itemLocals must be consecutive`);
+    }
+  });
+  initialValues.forEach((value, index) =>
+    string(value, `${description}.parameters.initialValues[${index}]`));
+  bodyValues.forEach((value, index) =>
+    string(value, `${description}.parameters.bodyValues[${index}]`));
+  array(parameters.bodyLets, `${description}.parameters.bodyLets`).forEach((value, index) =>
+    string(value, `${description}.parameters.bodyLets[${index}]`));
+  array(parameters.releaseOffsets, `${description}.parameters.releaseOffsets`)
+    .forEach((offset, index) => {
+      if (natural(offset, `${description}.parameters.releaseOffsets[${index}]`) >=
+          parameters.resultWidth) {
+        fail(`${description}.parameters.releaseOffsets[${index}] exceeds the result width`);
+      }
+    });
+  const resultSlots = array(parameters.resultSlots, `${description}.parameters.resultSlots`);
+  const resultLocals = array(parameters.resultLocals, `${description}.parameters.resultLocals`);
+  if (resultSlots.length !== resultLocals.length ||
+      (resultSlots.length !== 1 && resultSlots.length !== parameters.resultWidth)) {
+    fail(`${description}.parameters result placement has an unsupported width`);
+  }
+  resultSlots.forEach((slot, index) => {
+    if (natural(slot, `${description}.parameters.resultSlots[${index}]`) >=
+        parameters.resultWidth) {
+      fail(`${description}.parameters.resultSlots[${index}] exceeds the result width`);
+    }
+  });
+  resultLocals.forEach((local, index) =>
+    natural(local, `${description}.parameters.resultLocals[${index}]`));
+  if (resultSlots.length === parameters.resultWidth &&
+      resultSlots.some((slot, index) => slot !== index)) {
+    fail(`${description}.parameters full result placement must preserve slot order`);
+  }
+  if (parameters.arrayLocal !== parameters.scratchStart ||
+      parameters.lengthLocal !== parameters.scratchStart + 1 ||
+      parameters.indexLocal !== parameters.scratchStart + 2 ||
+      parameters.stopLocal !== parameters.scratchStart + 3 ||
+      parameters.effectiveStopLocal !== parameters.scratchStart + 4 ||
+      parameters.doneLocal < parameters.scratchStart + 5 ||
+      parameters.stagedValueStart !== parameters.doneLocal + 1 ||
+      parameters.releaseReadyLocal !== parameters.stagedValueStart + parameters.resultWidth ||
+      parameters.continuation !== "fallthrough") {
+    fail(`${description}.parameters has an invalid scratch layout or continuation`);
+  }
+  array(region.generatedBy, `${description}.generatedBy`).forEach((generator, index) =>
+    string(generator, `${description}.generatedBy[${index}]`));
+}
+
 function validateWhileLoop(region, description) {
   exactKeys(region, ["generatedBy", "id", "kind", "location", "parameters"], description);
   string(region.id, `${description}.id`);
@@ -676,6 +775,8 @@ function validateAnnotationDocument(document, wasmBytes) {
         validateFixedArrayFilterLt(region, `${description}.regions[${regionIndex}]`);
       } else if (region?.kind === "leanexe.loop.fold.v1") {
         validateLoopFold(region, `${description}.regions[${regionIndex}]`);
+      } else if (region?.kind === "leanexe.array.fold.v1") {
+        validateArrayFold(region, `${description}.regions[${regionIndex}]`);
       } else if (region?.kind === "leanexe.loop.while.v1") {
         validateWhileLoop(region, `${description}.regions[${regionIndex}]`);
       } else if (region?.kind === "leanexe.loop.scalar-post-test.v1") {
@@ -1145,6 +1246,106 @@ function matchLoopFoldRegion(program, function_, region) {
   };
 }
 
+function matchArrayFoldRegion(program, function_, region) {
+  const body = programFunctionBody(program, function_.wasmIndex);
+  const instructions = resolveInstructionList(body, region.location.listPath);
+  const selected = instructions.slice(region.location.startIndex, region.location.endIndex);
+  if (selected.length !== region.location.endIndex - region.location.startIndex) {
+    fail(`${region.id}: decoded array-fold region is truncated`);
+  }
+  const parameters = region.parameters;
+  const normalized = normalizeInstructions(selected);
+  const blockIndex = normalized.findIndex((instruction) => instruction.startsWith(".block "));
+  const releaseInitialization = normalized.findIndex((instruction, index) =>
+    instruction === ".constI64 (0 : UInt64)" &&
+      normalized[index + 1] === `.localSet ${parameters.releaseReadyLocal}`);
+  const boundaryLocal = parameters.reverse
+    ? parameters.indexLocal : parameters.effectiveStopLocal;
+  if (blockIndex < 2 || releaseInitialization < 0 ||
+      normalized[blockIndex - 1] !== `.localSet ${boundaryLocal}`) {
+    fail(`${region.id}: decoded array-fold initialization boundary does not match`);
+  }
+  const initializedLocals = [
+    parameters.arrayLocal,
+    parameters.lengthLocal,
+    parameters.indexLocal,
+    parameters.stopLocal,
+    ...parameters.accumulatorLocals,
+    parameters.effectiveStopLocal,
+    parameters.releaseReadyLocal,
+  ];
+  const prefix = new Set(normalized.slice(0, blockIndex));
+  if (initializedLocals.some((local) => !prefix.has(`.localSet ${local}`))) {
+    fail(`${region.id}: decoded array-fold initialization locals do not match`);
+  }
+  const expectedResults = parameters.resultSlots.flatMap((slot, index) => [
+    `.localGet ${parameters.accumulatorStart + slot}`,
+    `.localSet ${parameters.resultLocals[index]}`,
+  ]);
+  if (JSON.stringify(normalized.slice(blockIndex + 1)) !== JSON.stringify(expectedResults)) {
+    fail(`${region.id}: decoded array-fold result placement does not match`);
+  }
+  const blockPath = [
+    ...region.location.listPath,
+    { instructionIndex: region.location.startIndex + blockIndex, field: "block" },
+  ];
+  const block = normalizeInstructions(resolveInstructionList(body, blockPath));
+  if (block.length !== 1 || !block[0].startsWith(".loop ")) {
+    fail(`${region.id}: decoded array-fold block does not contain one loop`);
+  }
+  const loop = normalizeInstructions(resolveInstructionList(body, [
+    ...blockPath,
+    { instructionIndex: 0, field: "loop" },
+  ]));
+  const expectedGuard = parameters.reverse ? [
+    `.localGet ${parameters.indexLocal}`,
+    `.localGet ${parameters.stopLocal}`,
+    ".leUI64",
+    ".br_if 1",
+    `.localGet ${parameters.indexLocal}`,
+    ".constI64 (1 : UInt64)",
+    ".subI64",
+    `.localSet ${parameters.indexLocal}`,
+  ] : [
+    `.localGet ${parameters.indexLocal}`,
+    `.localGet ${parameters.effectiveStopLocal}`,
+    ".geUI64",
+    ".br_if 1",
+  ];
+  if (JSON.stringify(loop.slice(0, expectedGuard.length)) !== JSON.stringify(expectedGuard)) {
+    fail(`${region.id}: decoded array-fold guard does not match`);
+  }
+  const transitionSuffix = [
+    ...parameters.accumulatorLocals.flatMap((local, index) => [
+      `.localGet ${parameters.stagedValueStart + index}`,
+      `.localSet ${local}`,
+    ]),
+    ".constI64 (1 : UInt64)",
+    `.localSet ${parameters.releaseReadyLocal}`,
+    `.localGet ${parameters.doneLocal}`,
+    ".constI64 (0 : UInt64)",
+    ".neI64",
+    ".br_if 1",
+    ...(!parameters.reverse ? [
+      `.localGet ${parameters.indexLocal}`,
+      ".constI64 (1 : UInt64)",
+      ".addI64",
+      `.localSet ${parameters.indexLocal}`,
+    ] : []),
+    ".br 0",
+  ];
+  if (JSON.stringify(loop.slice(-transitionSuffix.length)) !==
+      JSON.stringify(transitionSuffix)) {
+    fail(`${region.id}: decoded array-fold transition does not match`);
+  }
+  return {
+    functionIndex: function_.wasmIndex,
+    regionId: region.id,
+    regionKind: region.kind,
+    parameters,
+  };
+}
+
 function matchWhileLoopRegion(program, function_, region) {
   const body = programFunctionBody(program, function_.wasmIndex);
   const instructions = resolveInstructionList(body, region.location.listPath);
@@ -1326,6 +1527,7 @@ function loopRecipe(
         .filter((section) => selectedSections.includes(section)),
     };
   }
+  const arrayFold = match.regionKind === "leanexe.array.fold.v1";
   return {
     recipeVersion: 1,
     functionIndex: match.functionIndex,
@@ -1337,6 +1539,16 @@ function loopRecipe(
       theorem: "Wasm.wp_loop_cons",
     },
     supporting: [
+      ...(arrayFold ? [{
+        declaration: "Project.ProofKit.ArrayFold.foldPrefix",
+        purpose: "state the loop invariant as the fold over the consumed input prefix",
+      }, {
+        declaration: "Project.ProofKit.ArrayFold.foldPrefix_succ",
+        purpose: "rewrite the continuing branch as one fold step at the current element",
+      }, {
+        declaration: "Project.ProofKit.ArrayFold.foldPrefix_size",
+        purpose: "rewrite the exit accumulator as the complete Array.foldl result",
+      }] : []),
       {
         declaration: "Project.ProofKit.wp_block_loop",
         purpose: "apply the block and loop rules after reaching the annotated region",
@@ -1347,7 +1559,10 @@ function loopRecipe(
       },
     ],
     expectedPostcondition: "an invariant-preserving transition with a decreasing measure",
-    guidance: ["strategy.loops", "strategy.frames", "strategy.arithmetic"]
+    guidance: [
+      ...(arrayFold ? ["strategy.arrays"] : []),
+      "strategy.loops", "strategy.frames", "strategy.arithmetic",
+    ]
       .filter((section) => selectedSections.includes(section)),
   };
 }
@@ -1727,7 +1942,7 @@ function proofRecipePlan(
         recipes.push(fixedArrayFilterLtRecipe(
           matches.get(region.id), selectedSections, annotationNamespace));
       } else if ([
-        "leanexe.loop.fold.v1", "leanexe.loop.while.v1",
+        "leanexe.array.fold.v1", "leanexe.loop.fold.v1", "leanexe.loop.while.v1",
         "leanexe.loop.scalar-post-test.v1",
       ].includes(region.kind)) {
         recipes.push(loopRecipe(
@@ -1811,6 +2026,8 @@ function matchAnnotationDocument(document, program) {
         matches.push(matchFixedArrayFilterLtRegion(program, function_, region));
       } else if (region.kind === "leanexe.loop.fold.v1") {
         matches.push(matchLoopFoldRegion(program, function_, region));
+      } else if (region.kind === "leanexe.array.fold.v1") {
+        matches.push(matchArrayFoldRegion(program, function_, region));
       } else if (region.kind === "leanexe.loop.while.v1") {
         matches.push(matchWhileLoopRegion(program, function_, region));
       } else if (region.kind === "leanexe.loop.scalar-post-test.v1") {
@@ -2044,7 +2261,7 @@ function validateProofRecipePlan(plan, document) {
         fail(`${description}.direct is unsupported`);
       }
     } else if ([
-      "leanexe.loop.fold.v1", "leanexe.loop.while.v1",
+      "leanexe.array.fold.v1", "leanexe.loop.fold.v1", "leanexe.loop.while.v1",
       "leanexe.loop.scalar-post-test.v1",
     ].includes(region.kind)) {
       if (recipe.direct.module !== "Project.ProofKit.Control" ||
@@ -3294,6 +3511,7 @@ module.exports = {
   fixedArraySearchTreeCompositions,
   loopRecipe,
   matchAnnotationDocument,
+  matchArrayFoldRegion,
   matchDirectCallRegion,
   matchFixedArrayEqNodeRegion,
   matchFixedArrayLengthDispatchRegion,

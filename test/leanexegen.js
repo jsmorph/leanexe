@@ -1504,6 +1504,139 @@ def func0Def : Wasm.Function :=
   const wrongAccumulator = structuredClone(foldDocument);
   wrongAccumulator.functions[0].regions[0].parameters.accumulatorLocals = [2];
   expectFailure(() => validateAnnotationDocument(wrongAccumulator, wasm), /must be consecutive/);
+
+  const arrayFoldProgram = `def func0 : Wasm.Program :=
+  [
+  .iff 0 0 [
+    .localGet 0,
+    .localSet 4,
+    .localGet 4,
+    .wrapI64,
+    .load64 (0 : UInt32),
+    .localSet 5,
+    .constI64 (0 : UInt64),
+    .localSet 6,
+    .constI64 (10 : UInt64),
+    .localSet 7,
+    .constI64 (0 : UInt64),
+    .localSet 1,
+    .constI64 (0 : UInt64),
+    .localSet 11,
+    .localGet 7,
+    .localGet 5,
+    .ltUI64,
+    .iff 0 1 [
+      .localGet 7
+    ] [
+      .localGet 5
+    ],
+    .localSet 8,
+    .block 0 0 [
+      .loop 0 0 [
+        .localGet 6,
+        .localGet 8,
+        .geUI64,
+        .br_if 1,
+        .localGet 1,
+        .localGet 3,
+        .addI64,
+        .localSet 10,
+        .constI64 (0 : UInt64),
+        .localSet 9,
+        .localGet 10,
+        .localSet 1,
+        .constI64 (1 : UInt64),
+        .localSet 11,
+        .localGet 9,
+        .constI64 (0 : UInt64),
+        .neI64,
+        .br_if 1,
+        .localGet 6,
+        .constI64 (1 : UInt64),
+        .addI64,
+        .localSet 6,
+        .br 0
+      ]
+    ],
+    .localGet 1,
+    .localSet 2
+  ] [
+  ],
+  .localGet 2
+]
+
+def func0Def : Wasm.Function :=
+  { params := [.i64], locals := [.i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64,
+      .i64, .i64, .i64], body := func0, results := [.i64] }
+`;
+  const arrayFoldDocument = {
+    schemaVersion: 1,
+    artifact: { byteLength: wasm.length },
+    functions: [{
+      wasmIndex: 0,
+      definedFunction: 0,
+      sourceName: "Example.arrayFold",
+      exports: [],
+      parameters: 1,
+      results: 1,
+      locals: 12,
+      regions: [{
+        id: "function-0.array-fold-0",
+        kind: "leanexe.array.fold.v1",
+        location: {
+          listPath: [{ instructionIndex: 0, field: "then" }],
+          startIndex: 0,
+          endIndex: 22,
+        },
+        parameters: {
+          sourceWidth: 1,
+          resultWidth: 1,
+          reverse: false,
+          array: "Expr.local 0",
+          start: "Expr.u64 0",
+          stop: "Expr.u64 10",
+          accumulatorStart: 1,
+          accumulatorLocals: [1],
+          itemStart: 3,
+          itemLocals: [3],
+          initialValues: ["Expr.u64 0"],
+          bodyValues: ["Expr.u64Bin U64Op.add (Expr.local 1) (Expr.local 3)"],
+          bodyLets: [],
+          doneValue: "Expr.u64 0",
+          releaseOffsets: [],
+          scratchStart: 4,
+          arrayLocal: 4,
+          lengthLocal: 5,
+          indexLocal: 6,
+          stopLocal: 7,
+          effectiveStopLocal: 8,
+          doneLocal: 9,
+          stagedValueStart: 10,
+          releaseReadyLocal: 11,
+          resultSlots: [0],
+          resultLocals: [2],
+          continuation: "fallthrough",
+        },
+        generatedBy: ["LeanExe.Wasm.Binary.CoreWasm.emitArrayFoldMultiSlot"],
+      }],
+    }],
+  };
+  validateAnnotationDocument(arrayFoldDocument, wasm);
+  const arrayFoldPlan = proofRecipePlan(
+    arrayFoldDocument, arrayFoldProgram, ["strategy.arrays", "strategy.loops"]);
+  validateProofRecipePlan(arrayFoldPlan, arrayFoldDocument);
+  assert(arrayFoldPlan.recipes.length === 1 &&
+    arrayFoldPlan.recipes[0].supporting.some((entry) => entry.declaration ===
+      "Project.ProofKit.ArrayFold.foldPrefix_succ") &&
+    JSON.stringify(arrayFoldPlan.recipes[0].guidance) ===
+      JSON.stringify(["strategy.arrays", "strategy.loops"]),
+  "array-fold annotation did not select prefix-fold support and array-loop guidance");
+  expectFailure(() => proofRecipePlan(arrayFoldDocument,
+    arrayFoldProgram.replace("        .localGet 8,", "        .localGet 7,")), /guard/);
+  const wrongArrayFoldScratch = structuredClone(arrayFoldDocument);
+  wrongArrayFoldScratch.functions[0].regions[0].parameters.lengthLocal = 6;
+  expectFailure(() => validateAnnotationDocument(wrongArrayFoldScratch, wasm),
+    /invalid scratch layout/);
 }
 
 function testLessThanNodeAnnotationRecipes() {
