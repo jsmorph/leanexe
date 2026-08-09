@@ -1976,6 +1976,38 @@ function testCounterTransferIdentitySummary() {
   "counter-transfer summary accepted an inverted loop condition");
 }
 
+function testThreeAccumulatorCounterTransferSummary() {
+  const fixtureRoot = path.join(
+    repoRoot, "test", "fixtures", "counter-transfer-three-accumulator");
+  const document = JSON.parse(fs.readFileSync(
+    path.join(fixtureRoot, "program.annotations.json"), "utf8"));
+  const program = fs.readFileSync(path.join(fixtureRoot, "Program.lean"), "utf8");
+  validateAnnotationDocument(
+    document, fs.readFileSync(path.join(fixtureRoot, "program.wasm")));
+  const namespace = "Project.CounterLayout.AnnotationMatches";
+  const theorem = `${namespace}.function_0_scalar_post_test_loop_0_` +
+    "terminates_with_counter_transfer_identity";
+  const plan = proofRecipePlan(document, program, [], namespace);
+  validateProofRecipePlan(plan, document);
+  assert(plan.recipes[0].supporting.some((entry) => entry.declaration === theorem),
+    "three-accumulator counter transfer omitted its complete identity theorem");
+  const source = annotationMatchesSource(document, {
+    namespace: "Project.CounterLayout",
+    programModule: "Project.CounterLayout.Program",
+  }, program).source;
+  assert(source.includes("theorem function_0_scalar_post_test_loop_0_" +
+      "terminates_with_counter_transfer_identity") &&
+    source.includes("∃ v1 v2 v3 v4 v7") &&
+    source.includes("U64Op.apply .add (v4) ((2 : UInt64))"),
+  "three-accumulator summary did not preserve the independent audit transition");
+  const changedResult = structuredClone(document);
+  changedResult.functions[0].regions[0].parameters.resultSlot = 1;
+  assert(!proofRecipePlan(
+    changedResult, program, [], namespace).recipes[0].supporting.some(
+      (entry) => entry.declaration === theorem),
+  "three-accumulator summary accepted the remaining counter as its result");
+}
+
 function testArtifactPackage(job, formalSource) {
   const raw = "{ functionTypeIndices := [0] }";
   const emitted = `namespace Project.${job.leanModule}\n\n` +
@@ -2325,6 +2357,7 @@ try {
   testSingletonWrapperComposition();
   testScalarTransitionSpecialization();
   testCounterTransferIdentitySummary();
+  testThreeAccumulatorCounterTransferSummary();
   testPairResultAnnotationRecipes();
   const { job, formalSource } = testCodexProtocol();
   testMockedCodex(job);
