@@ -1528,18 +1528,31 @@ function loopRecipe(
     };
   }
   const arrayFold = match.regionKind === "leanexe.array.fold.v1";
+  const name = match.regionId.replace(/[^A-Za-z0-9_]/g, "_");
   return {
     recipeVersion: 1,
     functionIndex: match.functionIndex,
     regionId: match.regionId,
     regionKind: match.regionKind,
-    applicability: "exact decoded instruction match",
+    applicability: arrayFold
+      ? "Lean-checked equality over the decoded instruction region"
+      : "exact decoded instruction match",
     direct: {
       module: "Project.ProofKit.Control",
       theorem: "Wasm.wp_loop_cons",
+      ...(arrayFold ? {
+        regionEquality: annotationMatchTheoremName(match.regionId, annotationNamespace),
+        program: `${annotationNamespace}.${name}_program`,
+      } : {}),
     },
     supporting: [
       ...(arrayFold ? [{
+        declaration: `${annotationNamespace}.${name}_eq`,
+        purpose: "rewrite the selected decoded interval to its named exact program",
+      }, {
+        declaration: `${annotationNamespace}.${name}_program`,
+        purpose: "name the complete checked fold interval, including initialization and result placement",
+      }, {
         declaration: "Project.ProofKit.ArrayFold.foldPrefix",
         purpose: "state the loop invariant as the fold over the consumed input prefix",
       }, {
@@ -2155,10 +2168,13 @@ function validateProofRecipePlan(plan, document) {
     const checkedScalarLoop = [
       "leanexe.loop.while.v1", "leanexe.loop.scalar-post-test.v1",
     ].includes(region.kind) && region.parameters.descriptor !== null;
+    const checkedArrayFold = region.kind === "leanexe.array.fold.v1" &&
+      recipe.direct.regionEquality !== undefined &&
+      recipe.direct.program !== undefined;
     const expectedApplicability = [
       "leanexe.array.pair-result.v1", "leanexe.array.map-add.v1",
       "leanexe.array.filter-lt.v1",
-    ].includes(region.kind) || checkedScalarLoop
+    ].includes(region.kind) || checkedScalarLoop || checkedArrayFold
       ? "Lean-checked equality over the decoded instruction region"
       : "exact decoded instruction match";
     if (recipe.applicability !== expectedApplicability) {
@@ -2264,8 +2280,15 @@ function validateProofRecipePlan(plan, document) {
       "leanexe.array.fold.v1", "leanexe.loop.fold.v1", "leanexe.loop.while.v1",
       "leanexe.loop.scalar-post-test.v1",
     ].includes(region.kind)) {
+      const arrayFoldDirectInvalid = region.kind === "leanexe.array.fold.v1" &&
+        checkedArrayFold &&
+        (!recipe.direct.regionEquality.endsWith(
+          `.${recipe.regionId.replace(/[^A-Za-z0-9_]/g, "_")}_eq`) ||
+         !recipe.direct.program.endsWith(
+           `.${recipe.regionId.replace(/[^A-Za-z0-9_]/g, "_")}_program`));
       if (recipe.direct.module !== "Project.ProofKit.Control" ||
-          recipe.direct.theorem !== "Wasm.wp_loop_cons") {
+          recipe.direct.theorem !== "Wasm.wp_loop_cons" ||
+          arrayFoldDirectInvalid) {
         fail(`${description}.direct is unsupported`);
       }
     } else if (recipe.direct.module !== "Project.ProofKit.FixedArrayPairResult" ||
@@ -3411,6 +3434,20 @@ theorem ${name}_eq :
       ${region.location.endIndex} = some
         (Project.ProofKit.FixedArrayFilterLt.wrapperProgram
           ${parameters.maximumSize} ${parameters.threshold}) := by
+  rfl`);
+        continue;
+      }
+      if (region.kind === "leanexe.array.fold.v1") {
+        const name = region.id.replace(/[^A-Za-z0-9_]/g, "_");
+        const selected = `Project.ProofKit.Annotation.region ` +
+          `${job.namespace}.func${function_.wasmIndex} ` +
+          `${leanAnnotationPath(region.location.listPath)} ` +
+          `${region.location.startIndex} ${region.location.endIndex}`;
+        declarations.push(`def ${name}_program : Wasm.Program :=
+  (${selected}).getD []
+
+theorem ${name}_eq :
+    ${selected} = some ${name}_program := by
   rfl`);
         continue;
       }
