@@ -1207,6 +1207,8 @@ function matchScalarPostTestLoopRegion(program, function_, region) {
     regionKind: region.kind,
     parameters: region.parameters,
     entryEligible: scalarEntryState(function_, region, program) !== null,
+    counterTransferIdentityEligible:
+      scalarCounterTransferSummary(function_, region, program) !== null,
   };
 }
 
@@ -1260,6 +1262,11 @@ function loopRecipe(
         program: `${annotationNamespace}.${name}_program`,
       },
       supporting: [
+        ...(match.counterTransferIdentityEligible ? [{
+          declaration:
+            `${annotationNamespace}.${name}_terminates_with_counter_transfer_identity`,
+          purpose: "prove the complete store-preserving identity function from its checked counter-transfer loop",
+        }] : []),
         ...(match.entryEligible ? [{
           declaration: `${annotationNamespace}.${name}_terminates_with_of_loop`,
           purpose: "enter the checked loop from TerminatesWith with the exact WebAssembly argument order",
@@ -2843,6 +2850,206 @@ function scalarEntryState(function_, region, program) {
   return stack.length === 0 ? state : null;
 }
 
+function scalarTransitionUnder(tree, condition, result) {
+  if (tree.kind === "leaf") return tree.value;
+  if (tree.condition !== condition) return null;
+  return scalarTransitionUnder(result ? tree.thenTree : tree.elseTree, condition, result);
+}
+
+function scalarKnownU64(expression, state) {
+  if (expression.kind === "const") return BigInt(expression.value);
+  if (expression.kind !== "get") return null;
+  const match = /^\(([0-9]+) : UInt64\)$/.exec(state[expression.index] ?? "");
+  return match === null ? null : BigInt(match[1]);
+}
+
+function scalarKnownCondition(condition, state) {
+  if (condition.kind === "true") return true;
+  if (condition.kind === "false") return false;
+  if (["eq", "ne", "lt-u", "le-u"].includes(condition.kind)) {
+    const left = scalarKnownU64(condition.left, state);
+    const right = scalarKnownU64(condition.right, state);
+    if (left === null || right === null) return null;
+    if (condition.kind === "eq") return left === right;
+    if (condition.kind === "ne") return left !== right;
+    if (condition.kind === "lt-u") return left < right;
+    return left <= right;
+  }
+  if (condition.kind === "not") {
+    const result = scalarKnownCondition(condition.condition, state);
+    return result === null ? null : !result;
+  }
+  const left = scalarKnownCondition(condition.left, state);
+  if (left === null) return null;
+  if (condition.kind === "and") {
+    return left ? scalarKnownCondition(condition.right, state) : false;
+  }
+  return left ? true : scalarKnownCondition(condition.right, state);
+}
+
+function scalarCounterTransferSummary(function_, region, program) {
+  if (program === null || region.kind !== "leanexe.loop.scalar-post-test.v1" ||
+      function_.parameters !== 1 || function_.results !== 1 ||
+      region.parameters.resultWidth !== 2 || region.parameters.resultSlot !== 1 ||
+      region.parameters.accumulatorLocals.length !== 2 ||
+      region.parameters.releaseOffsets.length !== 0 ||
+      region.parameters.continuation !== "fallthrough") {
+    return null;
+  }
+  const [remainingIndex, resultIndex] = region.parameters.accumulatorLocals;
+  const count = function_.parameters + function_.locals;
+  if (remainingIndex === resultIndex || remainingIndex >= count || resultIndex >= count) {
+    return null;
+  }
+  const entryState = scalarEntryState(function_, region, program);
+  if (entryState === null || entryState[0] !== "v0" ||
+      entryState[remainingIndex] !== "v0" ||
+      entryState[resultIndex] !== "(0 : UInt64)") {
+    return null;
+  }
+  const instructions = normalizeInstructions(resolveInstructionList(
+    programFunctionBody(program, function_.wasmIndex), []));
+  const expectedSuffix = [
+    `.localGet ${resultIndex}`,
+    `.localSet ${region.parameters.destination}`,
+    `.localGet ${region.parameters.destination}`,
+  ];
+  if (JSON.stringify(instructions.slice(region.location.endIndex)) !==
+      JSON.stringify(expectedSuffix)) {
+    return null;
+  }
+  const variables = Array.from({ length: count }, (_, index) => `v${index}`);
+  variables[0] = "input";
+  variables[remainingIndex] = "remaining";
+  variables[resultIndex] = "result";
+  const body = scalarStatementTransition(
+    region.parameters.descriptor.body, region.parameters.scratchStart, variables);
+  const zeroTest = "((remaining) == ((0 : UInt64)))";
+  const zero = scalarTransitionUnder(body, zeroTest, true);
+  const next = scalarTransitionUnder(body, zeroTest, false);
+  const nextRemaining = scalarOperationTerm(
+    "sub", "remaining", "(1 : UInt64)");
+  const nextResult = scalarOperationTerm("add", "result", "(1 : UInt64)");
+  if (zero === null || next === null || !Array.isArray(zero) || !Array.isArray(next) ||
+      zero[0] !== "input" || next[0] !== "input" ||
+      zero[remainingIndex] !== "remaining" || zero[resultIndex] !== "result" ||
+      next[remainingIndex] !== nextRemaining || next[resultIndex] !== nextResult) {
+    return null;
+  }
+  const zeroCondition = scalarExpressionTransition(
+    region.parameters.descriptor.condition, region.parameters.scratchStart, zero);
+  const nextCondition = scalarExpressionTransition(
+    region.parameters.descriptor.condition, region.parameters.scratchStart, next);
+  if (zeroCondition.kind !== "leaf" || nextCondition.kind !== "leaf" ||
+      scalarKnownCondition(region.parameters.descriptor.condition, zero) !== true ||
+      scalarKnownCondition(region.parameters.descriptor.condition, next) !== false ||
+      JSON.stringify(zeroCondition.value.state) !== JSON.stringify(zero) ||
+      JSON.stringify(nextCondition.value.state) !== JSON.stringify(next)) {
+    return null;
+  }
+  return {
+    remainingIndex,
+    resultIndex,
+    entryState: entryState.map((value) => value === "v0" ? "input" : value),
+    variables,
+    zeroState: zero,
+    nextState: next,
+    nextRemaining,
+    nextResult,
+  };
+}
+
+function scalarCounterTransferDeclaration(function_, region, job, program) {
+  const summary = scalarCounterTransferSummary(function_, region, program);
+  if (summary === null) return null;
+  const base = region.id.replace(/[^A-Za-z0-9_]/g, "_");
+  const stateName = `${base}_state`;
+  const indices = Array.from(
+    { length: function_.parameters + function_.locals }, (_, index) => index);
+  const existentialIndices = indices.filter((index) =>
+    ![0, summary.remainingIndex, summary.resultIndex].includes(index));
+  if (existentialIndices.length === 0) return null;
+  const existentialNames = existentialIndices.map((index) => `v${index}`);
+  const state = (values) => scalarStateTerm(stateName, values);
+  const replace = (term, substitutions) => Object.entries(substitutions)
+    .reduce((result, [from, to]) => result.replaceAll(from, to), term);
+  const replaceState = (values, substitutions) =>
+    values.map((value) => replace(value, substitutions));
+  const zeroState = replaceState(summary.zeroState, {
+    remaining: "(0 : UInt64)",
+    result: "input",
+  });
+  const nextState = replaceState(summary.nextState, {
+    [summary.nextRemaining]: "remaining'",
+    [summary.nextResult]: "result'",
+  });
+  const initialWitnesses = existentialIndices.map((index) => summary.entryState[index]);
+  const nextWitnesses = existentialIndices.map((index) => nextState[index]);
+  const localIndex = summary.remainingIndex - function_.parameters;
+  const viewTerm = state(summary.variables);
+  const initialTerm = state(summary.entryState);
+  const zeroTerm = state(zeroState);
+  const nextTerm = state(nextState);
+  return {
+    theorem: `${base}_terminates_with_counter_transfer_identity`,
+    source: `theorem ${base}_terminates_with_counter_transfer_identity {α : Type}
+    (env : Wasm.HostEnv α) (initial : Wasm.Store α) (input : UInt64) :
+    Wasm.TerminatesWith env ${job.namespace}.«module» ${function_.wasmIndex}
+      initial [.i64 input]
+      (fun final results => final = initial ∧ results = [.i64 input]) := by
+  apply ${base}_terminates_with_of_loop
+  let View : Project.ProofKit.ScalarTransition.State → UInt64 → UInt64 → Prop :=
+    fun current remaining result =>
+      ∃ ${existentialNames.join(" ")} : UInt64,
+        current = (${viewTerm}).toState
+  let remainingOf : Project.ProofKit.ScalarTransition.State → UInt64 := fun current =>
+    match current.locals[${localIndex}]? with
+    | some (Wasm.Value.i64 remaining) => remaining
+    | _ => 0
+  unfold ${base}_program
+  apply Project.ProofKit.ScalarTransition.CounterTransition.postTestProgram_spec
+    (remainingOf := remainingOf) (View := View)
+    (initialRemaining := input) (initialResult := 0) (expected := input)
+  · intro current remaining result hView
+    rcases hView with ⟨${existentialNames.join(", ")}, rfl⟩
+    simp [remainingOf, ${stateName},
+      Project.ProofKit.ScalarTransition.U64State.toState]
+  · dsimp [View]
+    exact ⟨${initialWitnesses.join(", ")}, rfl⟩
+  · simp
+  · intro current remaining result hView hZero hResult
+    rcases hView with ⟨${existentialNames.join(", ")}, rfl⟩
+    subst remaining
+    subst result
+    let after := (${zeroTerm}).toState
+    refine ⟨after, after, ?_, ?_, ?_⟩
+    · rw [${base}_body_eval]
+      simp [${base}_bodyTransition,
+        Project.ProofKit.ScalarTransition.U64Op.apply, after]
+    · rw [${base}_condition_eval]
+      simp [${base}_conditionTransition, after]
+    · unfold ${job.namespace}.func${function_.wasmIndex}
+      wp_run
+      simp [after, ${stateName},
+        Project.ProofKit.ScalarTransition.U64State.toState,
+        Project.ProofKit.ScalarTransition.State.toLocals]
+  · intro current remaining result hView hZero
+    rcases hView with ⟨${existentialNames.join(", ")}, rfl⟩
+    let remaining' := Project.ProofKit.ScalarTransition.U64Op.apply .sub remaining 1
+    let result' := Project.ProofKit.ScalarTransition.U64Op.apply .add result 1
+    let after := (${nextTerm}).toState
+    refine ⟨after, after, ?_, ?_, ?_⟩
+    · rw [${base}_body_eval]
+      simp [${base}_bodyTransition,
+        Project.ProofKit.ScalarTransition.U64Op.apply,
+        hZero, remaining', result', after]
+    · rw [${base}_condition_eval]
+      simp [${base}_conditionTransition, after]
+    · dsimp [View]
+      exact ⟨${nextWitnesses.join(", ")}, rfl⟩`,
+  };
+}
+
 function scalarEntryDeclaration(function_, region, job, program) {
   if (program === null) return null;
   const state = scalarEntryState(function_, region, program);
@@ -2939,6 +3146,9 @@ theorem ${name}_eq :
         declarations.push(transitions.source);
         const entry = scalarEntryDeclaration(function_, region, job, program);
         if (entry !== null) declarations.push(entry.source);
+        const counterTransfer = scalarCounterTransferDeclaration(
+          function_, region, job, program);
+        if (counterTransfer !== null) declarations.push(counterTransfer.source);
         continue;
       }
       if (region.kind === "leanexe.array.map-add.v1") {

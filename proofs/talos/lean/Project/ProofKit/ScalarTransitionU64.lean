@@ -38,6 +38,58 @@ theorem decrement_toNat_lt {remaining : UInt64} (hRemaining : remaining ≠ 0) :
   exact UInt64.lt_iff_toNat_lt.mp
     (UInt64.sub_lt UInt64.zero_lt_one hOneLe)
 
+set_option maxHeartbeats 1000000 in
+theorem postTestProgram_spec
+    (condition : Expr .bool) (body : Stmt) (scratch : Nat)
+    (initial : State) (values : List Value)
+    (module_ : Module) (env : HostEnv α) (store : Store α)
+    (rest : Program) (Q : Assertion α)
+    (remainingOf : State → UInt64)
+    (View : State → UInt64 → UInt64 → Prop)
+    (initialRemaining initialResult expected : UInt64)
+    (hRemaining : ∀ current remaining result,
+      View current remaining result → remainingOf current = remaining)
+    (hInitial : View initial initialRemaining initialResult)
+    (hInitialSum : initialRemaining + initialResult = expected)
+    (hZero : ∀ current remaining result,
+      View current remaining result → remaining = 0 → result = expected →
+      ∃ afterBody afterCondition,
+        body.eval scratch current = some afterBody ∧
+        condition.eval scratch afterBody = some (true, afterCondition) ∧
+        wp module_ rest Q store (afterCondition.toLocals values) env)
+    (hNext : ∀ current remaining result,
+      View current remaining result → remaining ≠ 0 →
+      ∃ afterBody afterCondition,
+        body.eval scratch current = some afterBody ∧
+        condition.eval scratch afterBody = some (false, afterCondition) ∧
+        View afterCondition (remaining - 1) (result + 1)) :
+    wp module_ (postTestProgram scratch condition body ++ rest) Q store
+      (initial.toLocals values) env := by
+  let Inv : State → Prop := fun current =>
+    ∃ remaining result,
+      View current remaining result ∧ remaining + result = expected
+  let measure : State → Nat := fun current => (remainingOf current).toNat
+  apply Project.ProofKit.ScalarTransition.postTestProgram_spec
+    (Inv := Inv) (measure := measure)
+  · exact ⟨initialRemaining, initialResult, hInitial, hInitialSum⟩
+  · intro current hCurrent
+    rcases hCurrent with ⟨remaining, result, hView, hSum⟩
+    by_cases hRemainingZero : remaining = 0
+    · have hResult : result = expected := by
+        simpa [hRemainingZero] using hSum
+      rcases hZero current remaining result hView hRemainingZero hResult with
+        ⟨afterBody, afterCondition, hBody, hCondition, hExit⟩
+      exact ⟨afterBody, hBody, true, afterCondition, hCondition, hExit⟩
+    · rcases hNext current remaining result hView hRemainingZero with
+        ⟨afterBody, afterCondition, hBody, hCondition, hAfter⟩
+      refine ⟨afterBody, hBody, false, afterCondition, hCondition, ?_, ?_⟩
+      · exact ⟨remaining - 1, result + 1, hAfter,
+          (decrement_add_increment remaining result).trans hSum⟩
+      · dsimp [measure]
+        rw [hRemaining current remaining result hView,
+          hRemaining afterCondition (remaining - 1) (result + 1) hAfter]
+        exact decrement_toNat_lt hRemainingZero
+
 end CounterTransition
 
 @[simp]
