@@ -1762,6 +1762,7 @@ function proofRecipePlan(
         compositionVersion: 1,
         kind: "fixed-array-singleton-wrapper-v1",
         functionIndex: composition.functionIndex,
+        calleeIndex: composition.calleeIndex,
         descriptor: `${annotationNamespace}.${composition.name}`,
         regionEquality: `${annotationNamespace}.${composition.name}_eq`,
         direct: {
@@ -1845,6 +1846,8 @@ function validateProofRecipePlan(plan, document) {
       "compositionVersion", "descriptor", "direct", "functionIndex", "kind",
       "regionEquality",
     ];
+    if (composition.kind === "fixed-array-singleton-wrapper-v1" &&
+        composition.calleeIndex !== undefined) compositionKeys.push("calleeIndex");
     if (composition.compositionVersion === 2) compositionKeys.push("wrapper");
     exactKeys(composition, compositionKeys, description);
     if (![1, 2].includes(composition.compositionVersion) ||
@@ -1857,6 +1860,9 @@ function validateProofRecipePlan(plan, document) {
       fail(`${description} has an unsupported identity`);
     }
     natural(composition.functionIndex, `${description}.functionIndex`);
+    if (composition.calleeIndex !== undefined) {
+      natural(composition.calleeIndex, `${description}.calleeIndex`);
+    }
     string(composition.descriptor, `${description}.descriptor`);
     string(composition.regionEquality, `${description}.regionEquality`);
     if (!annotatedFunctions.has(composition.functionIndex) ||
@@ -1880,6 +1886,16 @@ function validateProofRecipePlan(plan, document) {
     if (composition.direct.module !== expectedModule ||
         composition.direct.theorem !== expectedTheorem) {
       fail(`${description}.direct is unsupported`);
+    }
+    if (singleton && composition.calleeIndex !== undefined) {
+      const function_ = document.functions.find((candidate) =>
+        candidate.wasmIndex === composition.functionIndex);
+      const callees = function_.regions.filter((region) =>
+        region.kind === "leanexe.call.direct.v1").map((region) =>
+        region.parameters.calleeIndex);
+      if (callees.length !== 1 || callees[0] !== composition.calleeIndex) {
+        fail(`${description}.calleeIndex does not identify the checked wrapper call`);
+      }
     }
     if (composition.compositionVersion === 2) {
       exactKeys(composition.wrapper, [

@@ -1407,6 +1407,30 @@ end ${job.behaviorModule}
       composition.functionIndex === entryIndex);
   if (annotated && singletonWrapperCompositions.length === 1) {
     const composition = singletonWrapperCompositions[0];
+    const counterTransferSummaries = [...new Set((proofRecipes?.recipes ?? [])
+      .filter((recipe) => recipe.functionIndex === composition.calleeIndex)
+      .flatMap((recipe) => recipe.supporting)
+      .map((item) => item.declaration)
+      .filter((declaration) =>
+        declaration.endsWith("_terminates_with_counter_transfer_identity")))];
+    const completeStarter = counterTransferSummaries.length === 1
+      ? `  apply FixedArraySingletonWrapper.wrapperProgram_spec
+    (callee := ${composition.calleeIndex}) (transform := fun value => value)
+    (expected := ${job.expectedDefinition})
+    (module_ := ${job.namespace}.«module»)
+    (env := env) (initial := initial) (inputPtr := inputPtr) (input := input)
+    (heapTop := heapTop) (allocs := allocs)
+  · exact hArray
+  · exact ${outputFitMemory}
+  · exact hPages
+  · rfl
+  · exact hHeapTop
+  · exact hFreeList
+  · exact hAllocs
+  · intro value
+    exact ${counterTransferSummaries[0]} env initial value
+`
+      : "";
     return `import ${job.formalSpecModule}
 import ${job.programModule}
 import ${annotationMatchesModule(job)}
@@ -1451,7 +1475,7 @@ theorem ${theoremName} :
     (FixedArrayPairResult.publicPost (${job.expectedDefinition} input))
     initial (FixedArraySingletonWrapper.entryFrame inputPtr) env
   rw [${composition.regionEquality}]
-
+${completeStarter}
 end ${job.behaviorModule}
 `;
   }
