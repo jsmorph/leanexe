@@ -85,6 +85,16 @@ The journals identify function-entry normalization as the next general boundary.
 - [x] Add and screen checked annotation-location composition after the semantic rows pass their timing gates.
 - [ ] Pilot a checked cut-point graph on two artifacts with different control-flow structure.
 
+## 2026-08-09 continuation
+
+Structured LTG retrieval is now the canonical proof-library interface.  A proof task starts from the category index, searches bounded JSONL summaries, opens selected canonical entries, and records its searches and decisions in the journal.  Each experiment must review that retrieval record with the accepted proof and telemetry, then update catalog aliases, entry relationships, theorem support, annotations, or journal instructions when the evidence identifies a defect.
+
+Demo 9 introduces a bounded wrapping sum over `Array UInt64`.  It exercises an input-traversal fold, a loop-carried accumulator, singleton-result allocation, and the compiler's existing `leanexe.loop.fold.v1` annotation.  The current artifact-side recipe checks the fold's control skeleton but supplies only generic block and loop rules, making this demo the first test of semantic fold annotations and fold-oriented LTG.
+
+The first Demo 9 run freezes the specification, source, WASM, decoded Program, annotations, journal, and telemetry before any fold-specific support enters LTG.  The journal determines whether the next increment should reify the element load and accumulator transition, prove an exact neutral fold-program equality, add a reusable traversal theorem, or improve retrieval and guidance.  A controlled reproof then keeps the artifact fixed and compares proof acceptance, retrieval, revisions, proof structure and size, shared abstraction use, compiler-derived evidence use, applicability, and time.
+
+Further demos should separate development cases from nearby and distant held-out cases.  A second reduction with a different accumulator layout can test whether fold support generalizes without changing the array traversal, while a later demo should exercise a missing control or memory motif rather than another reduction.  The compiler acceptance report and the preceding journals determine the exact program shapes before each request freezes.
+
 ## Phase 0: Preserve the case and measure the process
 
 The timing packages should be copied from `.lake` into a checked benchmark fixture before cache cleanup or another reboot can remove them.  The fixture is small enough to retain both timing-1 and timing-2, their exact WASM, and a benchmark manifest.  The manifest must record every identity that can invalidate a timing comparison.
