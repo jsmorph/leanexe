@@ -42,6 +42,8 @@ An artifact proof still needs an exact equality between the decoded instruction 
 
 `Project.ProofKit.UInt64Array.At` has the same definition as the generated `FormalSpec.UInt64ArrayAt` predicate.  A proof can change either a hypothesis or a goal to the shared predicate without adding an assumption.  Its projection lemmas expose the header read, an indexed element read, and the corresponding WebAssembly load bounds.
 
+`Project.ProofKit.ArrayFold.foldPrefix` defines the mathematical accumulator after consuming an array prefix.  `foldPrefix_succ` reduces one continuing traversal step to the indexed element, and `foldPrefix_size` identifies the completed prefix with `Array.foldl`.  The declarations carry no WebAssembly frame or arithmetic assumption, so an artifact proof can combine them with the checked traversal, memory, and loop rules appropriate to its emitted program.
+
 ```lean
 import Project.ProofKit.Array
 
