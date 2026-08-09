@@ -83,5 +83,41 @@
     "wpRunApplications": 0,
     "editedCandidates": 4,
     "independentlyVerified": true
-  }
+  },
+  "structuredLtgExperiments": [
+    {
+      "package": "structured-ltg-1",
+      "acceptedSourceSha256": "f37f3f6a5af356b34c49190009fda09719061cb7cad2620317dec39d4978df83",
+      "totalMilliseconds": 880514.109,
+      "codexSessionMilliseconds": 783491.563,
+      "outerAcceptanceMilliseconds": 59078.45,
+      "proofLines": 141,
+      "proofWords": 651,
+      "wpRunApplications": 1,
+      "editedCandidates": 3,
+      "independentlyVerified": true,
+      "increaseFromRetainedMedianMilliseconds": 369629.227,
+      "increaseFromRetainedMedianPercent": 72.351,
+      "lineReductionFromRetainedMedian": 16,
+      "lineReductionFromRetainedMedianPercent": 10.191
+    },
+    {
+      "package": "structured-ltg-2",
+      "acceptedSourceSha256": "8b74764d5669797d139a41f2fd841806b9edd7d674680dd47128f2eefd0c8082",
+      "totalMilliseconds": 649556.914,
+      "codexSessionMilliseconds": 548746.38,
+      "outerAcceptanceMilliseconds": 67292.474,
+      "proofLines": 153,
+      "proofWords": 769,
+      "wpRunApplications": 1,
+      "editedCandidates": 2,
+      "independentlyVerified": true,
+      "increaseFromRetainedMedianMilliseconds": 138672.032,
+      "increaseFromRetainedMedianPercent": 27.143,
+      "lineReductionFromRetainedMedian": 4,
+      "lineReductionFromRetainedMedianPercent": 2.548,
+      "reductionFromFirstStructuredMilliseconds": 230957.195,
+      "reductionFromFirstStructuredPercent": 26.23
+    }
+  ]
 }

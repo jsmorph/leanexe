@@ -1,0 +1,112 @@
+{
+  "schemaVersion": 1,
+  "attemptOrder": [
+    "direct",
+    "composition",
+    "tactic",
+    "focused-guidance"
+  ],
+  "compositions": [
+    {
+      "compositionVersion": 1,
+      "kind": "fixed-array-singleton-wrapper-v1",
+      "functionIndex": 1,
+      "calleeIndex": 0,
+      "descriptor": "LeanExeGen.GeneratedR4337040846e16beb.AnnotationMatches.function_1_singleton_wrapper_0",
+      "regionEquality": "LeanExeGen.GeneratedR4337040846e16beb.AnnotationMatches.function_1_singleton_wrapper_0_eq",
+      "direct": {
+        "module": "Project.ProofKit.FixedArraySingletonWrapper",
+        "theorem": "Project.ProofKit.FixedArraySingletonWrapper.wrapperProgram_spec"
+      }
+    }
+  ],
+  "recipes": [
+    {
+      "recipeVersion": 1,
+      "functionIndex": 0,
+      "regionId": "function-0.scalar-post-test-loop-0",
+      "regionKind": "leanexe.loop.scalar-post-test.v1",
+      "applicability": "Lean-checked equality over the decoded instruction region",
+      "direct": {
+        "module": "Project.ProofKit.ScalarTransition",
+        "theorem": "Project.ProofKit.ScalarTransition.postTestProgram_spec",
+        "regionEquality": "LeanExeGen.GeneratedR4337040846e16beb.AnnotationMatches.function_0_scalar_post_test_loop_0_eq",
+        "program": "LeanExeGen.GeneratedR4337040846e16beb.AnnotationMatches.function_0_scalar_post_test_loop_0_program"
+      },
+      "supporting": [
+        {
+          "declaration": "LeanExeGen.GeneratedR4337040846e16beb.AnnotationMatches.function_0_scalar_post_test_loop_0_terminates_with_of_loop",
+          "purpose": "enter the checked loop from TerminatesWith with the exact WebAssembly argument order"
+        },
+        {
+          "declaration": "LeanExeGen.GeneratedR4337040846e16beb.AnnotationMatches.function_0_scalar_post_test_loop_0_entry_to_loop",
+          "purpose": "carry arbitrary i64 arguments through the checked function-entry prefix"
+        },
+        {
+          "declaration": "LeanExeGen.GeneratedR4337040846e16beb.AnnotationMatches.function_0_scalar_post_test_loop_0_condition_eval",
+          "purpose": "use the checked condition transition without reducing the scalar evaluator"
+        },
+        {
+          "declaration": "LeanExeGen.GeneratedR4337040846e16beb.AnnotationMatches.function_0_scalar_post_test_loop_0_body_eval",
+          "purpose": "use the checked body transition without exposing scratch-local updates"
+        },
+        {
+          "declaration": "Project.ProofKit.ScalarTransition.Expr.program_spec",
+          "purpose": "prove each typed scalar guard expression"
+        },
+        {
+          "declaration": "Project.ProofKit.ScalarTransition.Stmt.program_spec",
+          "purpose": "prove each typed scalar loop-body transition"
+        },
+        {
+          "declaration": "Project.ProofKit.ScalarTransition.Stmt.eval_preserves_below",
+          "purpose": "preserve each application local below scratch that the body does not write"
+        },
+        {
+          "declaration": "Project.ProofKit.ScalarTransition.State.localU64ToNat",
+          "purpose": "define a natural-number loop measure from an i64 local without a Value pattern"
+        },
+        {
+          "declaration": "Project.ProofKit.ScalarTransition.U64Op.apply",
+          "purpose": "reduce descriptor operations to ordinary UInt64 operations after a generated transition equation"
+        },
+        {
+          "declaration": "Project.ProofKit.ScalarTransition.postTestProgram_spec",
+          "purpose": "compose a checked post-test transition with the invariant and measure"
+        }
+      ],
+      "expectedPostcondition": "an invariant-preserving transition with a decreasing measure",
+      "guidance": [
+        "strategy.loops",
+        "strategy.frames",
+        "strategy.arithmetic"
+      ]
+    },
+    {
+      "recipeVersion": 1,
+      "functionIndex": 1,
+      "regionId": "function-1.direct-call-0",
+      "regionKind": "leanexe.call.direct.v1",
+      "applicability": "exact decoded instruction match",
+      "direct": {
+        "module": "Project.ProofKit.Control",
+        "theorem": "Wasm.wp_call_tw"
+      },
+      "supporting": [
+        {
+          "declaration": "Wasm.wp_call_tw",
+          "purpose": "apply the callee theorem to the exact direct call"
+        },
+        {
+          "declaration": "Project.ProofKit.wp_entry",
+          "purpose": "establish the entry frame before the call"
+        }
+      ],
+      "expectedPostcondition": "the callee result restored into the caller continuation",
+      "guidance": [
+        "strategy.calls",
+        "strategy.frames"
+      ]
+    }
+  ]
+}

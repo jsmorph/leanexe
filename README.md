@@ -34,7 +34,7 @@ tools/leanexegen verify myprogram.proof
 tools/leanexegen run myprogram.wasm 10 20 30
 ```
 
-The [headless Codex orchestrator reference](docs/leanexegen.md) defines all eight stages, the fixed `Array UInt64 → Array UInt64` interface, controlled reproof mode, structured task outcomes, sidecar reports, warnings, dependency pins, and current limitations.  The orchestrator fixes `FormalSpec.ArtifactSpec : Wasm.Module → Prop`, including the array-memory representation and allocator precondition, and uses that exact declaration in the final artifact theorem.  An existing sidecar can be verified without Codex or the LeanExe compiler.
+The [headless Codex orchestrator reference](docs/leanexegen.md) defines all eight stages, the fixed `Array UInt64 → Array UInt64` interface, controlled reproof mode, structured task outcomes, sidecar reports, warnings, dependency pins, and current limitations.  The [structured LTG catalog](docs/ltg.md) organizes checked proof assets, compiler-motif support, guidance, and worked examples for file-based proof-agent retrieval.  The orchestrator fixes `FormalSpec.ArtifactSpec : Wasm.Module → Prop`, including the array-memory representation and allocator precondition, and uses that exact declaration in the final artifact theorem.  An existing sidecar can be verified without Codex or the LeanExe compiler.
 
 ## Repository Layout
 

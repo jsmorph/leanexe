@@ -18,6 +18,7 @@ const {
   stageReportCodexVersion,
   stageReportCodexVersions,
   validateCodexTaskOutcome,
+  validateLtgTask,
   validatePackage,
   validateProgramImports,
   validateProofImports,
@@ -36,6 +37,7 @@ const {
   formalSpecificationSource,
   formalTaskContext,
   generationResult,
+  ltgTaskBundle,
   parseProofStrategySections,
   parseArgs,
   proofPackagePath,
@@ -71,6 +73,7 @@ const {
   validateAnnotationDocument,
   validateProofRecipePlan,
 } = require("../tools/leanexegen-annotations");
+const { catalogDigest } = require("../tools/ltg-lib");
 
 const repoRoot = path.resolve(__dirname, "..");
 const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), "leanexegen-test-"));
@@ -336,80 +339,28 @@ function testCodexProtocol() {
   const artifactPrompt = proofPrompt("request\n", job, 3);
   assert(artifactPrompt.includes("refine ⟨3, rfl, ?_⟩") &&
     artifactPrompt.includes("intro env initial inputPtr input hInput") &&
-    artifactPrompt.includes("PROOF_LIBRARY.md catalogs checked proof abstractions") &&
-    artifactPrompt.includes("node PROOF_IMPORT_CHECK.js") &&
-    artifactPrompt.includes("Project.ProofKit.Control") &&
-    artifactPrompt.includes("Project.ProofKit.Allocation") &&
-    artifactPrompt.includes("bumpFacts") &&
-    artifactPrompt.includes("wordAddress_toNat") &&
-    artifactPrompt.includes("Project.ProofKit.FixedArrayAllocator") &&
-    artifactPrompt.includes("region_spec") &&
-    artifactPrompt.includes("Project.ProofKit.FixedArrayAllocatorWindow") &&
-    artifactPrompt.includes("offset 10") &&
-    artifactPrompt.includes("Project.ProofKit.FixedArrayInput") &&
-    artifactPrompt.includes("standard checked indexed element") &&
-    artifactPrompt.includes("Project.ProofKit.FixedArrayEqNode") &&
-    artifactPrompt.includes("complete node theorem") &&
-    artifactPrompt.includes("wp_fixed_array_eq_node") &&
-    artifactPrompt.includes("wp_fixed_array_key_eq_node") &&
-    artifactPrompt.includes("SearchFrame.program_spec") &&
-    artifactPrompt.includes("inputResultProgram_branchN_spec") &&
-    artifactPrompt.includes("one shared PairResultContext") &&
-    artifactPrompt.includes("do not define local node or result adapters") &&
-    artifactPrompt.includes("wp_fixed_array_search_key") &&
-    artifactPrompt.includes("using hInput, hIndex") &&
-    artifactPrompt.includes("wp_fixed_array_lt_node") &&
-    artifactPrompt.includes("using hSearch, hInput, hIndex") &&
-    artifactPrompt.includes("Tree.program_spec") &&
-    artifactPrompt.includes("Tree.wrapperProgram_spec") &&
-    artifactPrompt.includes("FixedArraySearchChain") &&
-    artifactPrompt.includes("Project.ProofKit.FixedArrayLengthDispatch") &&
-    artifactPrompt.includes("wp_fixed_array_length_dispatch") &&
-    artifactPrompt.includes("Project.ProofKit.FixedArrayTraversalInput") &&
-    artifactPrompt.includes("leaves the value on the operand stack") &&
-    artifactPrompt.includes("Project.ProofKit.FixedArrayPairResult") &&
-    artifactPrompt.includes("inputResultProgram_spec") &&
-    artifactPrompt.includes("inputResultProgram_result_spec") &&
-    artifactPrompt.includes("Project.ProofKit.FixedArrayResult") &&
-    artifactPrompt.includes("payloadStore_spec") &&
-    artifactPrompt.includes("pairStore_at") &&
-    artifactPrompt.includes("Project.ProofKit.FixedArraySingleton") &&
-    artifactPrompt.includes("region_result_spec") &&
-    artifactPrompt.includes("Project.ProofKit.FixedArraySingletonWrapper") &&
-    artifactPrompt.includes("wrapperProgram_spec") &&
-    artifactPrompt.includes("Project.ProofKit.UInt64Array.At") &&
-    artifactPrompt.includes("generatedElement") &&
-    artifactPrompt.includes("firstElementRead_add") &&
-    artifactPrompt.includes("word_reads") &&
-    artifactPrompt.includes("wp_entry_to_loop <functionDef>") &&
-    artifactPrompt.includes("leanexe.loop.while.v1 annotation") &&
-    artifactPrompt.includes("condition_eval and body_eval") &&
-    artifactPrompt.includes("generated terminates_with_of_loop theorem") &&
-    artifactPrompt.includes("external operand stack in WebAssembly order") &&
-    artifactPrompt.includes("lower-level entry_to_loop theorem") &&
-    artifactPrompt.includes("leanexe.loop.fold.v1") &&
-    artifactPrompt.includes(`wp_entry_single_call ${job.namespace}.func3Def`) &&
-    artifactPrompt.includes("PROOF_STRATEGIES.md contains optional") &&
+    artifactPrompt.includes("LTG/categories.json") &&
+    artifactPrompt.includes("tools.jsonl files with rg") &&
+    artifactPrompt.includes("Open only the entry.json and README.md") &&
+    artifactPrompt.includes("do not read the complete LTG tree") &&
+    artifactPrompt.includes("Record each search query, entry inspected, entry used") &&
+    artifactPrompt.includes("PROOF_STRATEGIES.md contains optional guidance") &&
     artifactPrompt.includes("PROOF_TASK_FEATURES.json") &&
     artifactPrompt.includes("PROGRAM_ANNOTATIONS.json") &&
     artifactPrompt.includes("PROOF_RECIPES.json") &&
-    artifactPrompt.includes("AnnotationMatches") &&
-    artifactPrompt.includes("Keep PROOF_JOURNAL.md as a prose Markdown account") &&
-    artifactPrompt.includes("including after each Lean check") &&
-    artifactPrompt.includes("Name each supplied recipe, theorem, tactic, or annotation") &&
-    artifactPrompt.includes("missing general annotation, lemma, tactic, or guidance") &&
-    artifactPrompt.includes("rather than reconstructing them at the end") &&
-    artifactPrompt.includes("Attempt the direct recipe against the reported region") &&
-    artifactPrompt.includes("do not restructure unrelated code solely to force the recipe") &&
-    artifactPrompt.includes("deterministic theorem starter") &&
-    artifactPrompt.includes("before editing") &&
-    artifactPrompt.includes("If that check succeeds") &&
-    artifactPrompt.includes("without repeating the same check") &&
+    artifactPrompt.includes("Attempt an exact direct recipe or complete composition") &&
     artifactPrompt.includes("Do not search for or read artifact proofs outside") &&
-    artifactPrompt.includes("would invalidate proof-generation measurement") &&
-    artifactPrompt.includes("heapReserveBytes bound") &&
-    artifactPrompt.includes("Use read-only commands to inspect FormalSpec, Program"),
-  "artifact-proof task did not receive the proof-kit catalog or tactics");
+    artifactPrompt.includes("omits worked examples excluded for this exact artifact") &&
+    artifactPrompt.includes("Keep PROOF_JOURNAL.md as frequent, natural Markdown prose") &&
+    artifactPrompt.includes("after each Lean check") &&
+    artifactPrompt.includes("missing general annotation, lemma, tactic, guidance") &&
+    artifactPrompt.includes("node PROOF_IMPORT_CHECK.js") &&
+    artifactPrompt.includes("deterministic theorem starter") &&
+    artifactPrompt.includes("Use read-only commands to inspect FormalSpec") &&
+    !artifactPrompt.includes("PROOF_LIBRARY.md") &&
+    !artifactPrompt.includes("bumpFacts") &&
+    Buffer.byteLength(artifactPrompt) < 9000,
+  "artifact-proof task did not receive the compact LTG retrieval protocol");
   const wrapperStarter = artifactProofStarter(job, 3, true, {
     schemaVersion: 1,
     attemptOrder: ["direct", "composition", "tactic", "focused-guidance"],
@@ -2123,11 +2074,19 @@ function testArtifactPackage(job, formalSource) {
   assert(generated.sources.get(job.artifactTarget).includes(job.formalSpecDefinition) &&
     generated.artifact.property === job.formalSpecDefinition,
   "artifact result did not use the fixed formal declaration");
-  const proofContext = proofTaskContext("request\n", job, formalSource, generated.sources);
+  const completeLtgTask = ltgTaskBundle();
+  const proofContext = proofTaskContext(
+    "request\n", job, formalSource, generated.sources, null, 2, null, completeLtgTask);
   assert(proofContext.has(`LeanExeGen/${job.leanModule}/Program.lean`) &&
     proofContext.get(moduleFile(job.behaviorModule)) === artifactProofStarter(job, 0) &&
-    proofContext.get("PROOF_LIBRARY.md").includes("wp_entry_single_call") &&
-    proofContext.get("PROOF_LIBRARY.md").includes("bumpFacts") &&
+    proofContext.get("LTG/README.md").includes("categories.json") &&
+    JSON.parse(proofContext.get("LTG/categories.json")).categories.length === 7 &&
+    proofContext.get("LTG/categories/arrays/tools.jsonl")
+      .includes('"id":"fixed-array-map-add"') &&
+    proofContext.has("LTG/entries/fixed-array-map-add/entry.json") &&
+    JSON.parse(proofContext.get("LTG_TASK.json")).entries ===
+      completeLtgTask.manifest.entries &&
+    proofContext.get("PROOF_LIBRARY.md").startsWith("# Artifact Proof Kit\n") &&
     proofContext.get("PROOF_STRATEGIES.md").includes("strategy.core") &&
     proofContext.get("PROOF_STRATEGIES.md").includes("strategy.arrays") &&
     proofContext.get("PROOF_IMPORT_CHECK.js").includes("unsupported proof dependency") &&
@@ -2136,6 +2095,25 @@ function testArtifactPackage(job, formalSource) {
     JSON.parse(proofContext.get("PROOF_TASK_FEATURES.json")).exportIndex === 0 &&
     !proofContext.has(`LeanExeGen/${job.leanModule}/Source.lean`),
   "proof task context omitted proof guidance or Program, or exposed Source");
+  const excludedExampleContext = proofTaskContext(
+    "request\n", job, formalSource, generated.sources, null, 2,
+    "c538d40936b426ba875b3dae1913e62ff00a44b34adff2adcd70922e5a4c95ff");
+  assert(!excludedExampleContext.has("LTG/entries/demo4-map-proof-example/entry.json") &&
+    excludedExampleContext.has("LTG/entries/fixed-array-map-add/entry.json") &&
+    JSON.parse(excludedExampleContext.get("LTG_TASK.json")).excludedEntries === 1,
+  "proof task context exposed an exact-artifact example or removed canonical support");
+  const demo4Artifact =
+    "c538d40936b426ba875b3dae1913e62ff00a44b34adff2adcd70922e5a4c95ff";
+  const filteredLtg = ltgTaskBundle(demo4Artifact);
+  validateLtgTask(filteredLtg.manifest, filteredLtg.files, demo4Artifact);
+  const exposedLtg = {
+    manifest: structuredClone(filteredLtg.manifest),
+    files: new Map(filteredLtg.files),
+  };
+  exposedLtg.files.set("entries/demo4-map-proof-example/entry.json", Buffer.from("{}\n"));
+  exposedLtg.manifest.sha256 = catalogDigest(exposedLtg.files);
+  expectFailure(() => validateLtgTask(
+    exposedLtg.manifest, exposedLtg.files, demo4Artifact), /unindexed path/);
   const importCheckRoot = path.join(temporaryRoot, "proof-import-check");
   fs.mkdirSync(importCheckRoot);
   const importCheckFile = path.join(importCheckRoot, "PROOF_IMPORT_CHECK.js");
@@ -2282,6 +2260,7 @@ function testArtifactPackage(job, formalSource) {
       "utf8"),
     proofStrategies: strategyBundle.notes,
     proofTaskFeatures: strategyBundle.features,
+    ltgTask: ltgTaskBundle(artifact.sha256),
     compilerAnnotations,
     proofRecipes,
     wasmBytes: wasm,
@@ -2299,9 +2278,11 @@ function testArtifactPackage(job, formalSource) {
     checked.stageReports.tasks.leanProgram.sourceSha256 === sha256(Buffer.from(programSource)) &&
     checked.proofTelemetry.totalMilliseconds === 3000 &&
     checked.proofJournal.includes("checked array lemmas") &&
-    checked.manifest.schemaVersion === 6 &&
+    checked.manifest.schemaVersion === 7 &&
     checked.compilerAnnotations.artifact.byteLength === wasm.length &&
-    checked.proofRecipes.recipes.length === 0,
+    checked.proofRecipes.recipes.length === 0 &&
+    checked.ltgTask.manifest.artifactSha256 === artifact.sha256 &&
+    checked.ltgTask.manifest.entries === ltgTaskBundle(artifact.sha256).manifest.entries,
   "validated package returned the wrong artifact or stage report");
   assert(fs.readFileSync(path.join(packageRoot, "proof-strategies.md"), "utf8") ===
     strategyBundle.notes &&
@@ -2309,8 +2290,10 @@ function testArtifactPackage(job, formalSource) {
       .sourceSha256 === strategyBundle.features.sourceSha256,
   "proof package did not archive its selected strategy context");
   assert(fs.existsSync(path.join(packageRoot, "program.annotations.json")) &&
-    fs.existsSync(path.join(packageRoot, "proof-recipes.json")),
-  "proof package did not archive annotations and proof recipes");
+    fs.existsSync(path.join(packageRoot, "proof-recipes.json")) &&
+    fs.existsSync(path.join(packageRoot, "ltg-task.json")) &&
+    fs.existsSync(path.join(packageRoot, "ltg", "categories", "loops", "tools.jsonl")),
+  "proof package did not archive annotations, proof recipes, and structured LTG");
   assert(fs.readFileSync(path.join(packageRoot, "proof-journal.md"), "utf8") ===
     checked.proofJournal,
   "proof package did not archive the proving-agent journal");

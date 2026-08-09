@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "fixed-array-allocation",
+  "title": "Fixed-array allocation",
+  "summary": "Discharges the emitted empty-free-list bump allocator, shifted local windows, header writes, and result-address arithmetic.",
+  "roles": ["checked-proof-asset", "guidance"],
+  "categories": ["allocation", "arrays", "compiler-motifs", "memory"],
+  "scope": "compiler-runtime-motif",
+  "evidenceStatus": "promoted",
+  "features": ["allocator", "array", "bump-allocation", "local-window", "memory-store"],
+  "annotationKinds": ["leanexe.array.allocator-window.v1", "leanexe.array.allocator.v1"],
+  "modules": ["Project.ProofKit.Allocation", "Project.ProofKit.FixedArrayAllocator", "Project.ProofKit.FixedArrayAllocatorWindow"],
+  "declarations": ["Project.ProofKit.Allocation.bumpFacts", "Project.ProofKit.FixedArrayAllocator.region_spec", "Project.ProofKit.FixedArrayAllocatorWindow.region_spec", "Project.ProofKit.FixedArrayAllocatorWindow.region_spec_withTail"],
+  "premises": ["Exact allocator-region equality", "Existing-memory fit", "Page bound", "Allocator globals", "Capacity-local value"],
+  "result": "A continuation from the checked allocation store and local frame, with heap and allocation globals updated.",
+  "consumers": ["demo-1", "demo-2", "demo-3", "demo-4", "demo-5"],
+  "relatedEntries": ["fixed-array-filter-lt", "fixed-array-map-add", "fixed-array-singleton-wrapper"],
+  "exclusion": null
+}

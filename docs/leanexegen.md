@@ -70,11 +70,11 @@ Codex returns one schema-validated `generated`, `questions`, or `problems` objec
 |------|-------------------------|---------------------------|
 | Formal specification | Request | A complete `FormalSpec` module defining `expected : Array UInt64 → Array UInt64` and `heapReserveBytes : Array UInt64 → Nat`; the orchestrator appends the representation and artifact predicates. |
 | Lean program | Request and frozen `FormalSpec` | A complete `Source` module defining `compute : Array UInt64 → Array UInt64`, plus input-array and expected-output samples. |
-| Artifact proof | Request, frozen `FormalSpec`, generated Talos `Program`, deterministic artifact-support modules, selected `PROOF_STRATEGIES.md`, structural `PROOF_TASK_FEATURES.json`, and the optional `PROOF_LIBRARY.md` | A complete `Behavior` module proving `artifact_behavior`; Source and the compiler are absent. |
+| Artifact proof | Request, frozen `FormalSpec`, generated Talos `Program`, deterministic artifact-support modules, selected `PROOF_STRATEGIES.md`, structural `PROOF_TASK_FEATURES.json`, the task-filtered `LTG/` catalog, and the human `PROOF_LIBRARY.md` reference | A complete `Behavior` module proving `artifact_behavior`; Source and the compiler are absent. |
 
 The program task uses the formal file as specification context but does not import it into Source.  After compilation, the orchestrator copies the WASM and WAT into a frozen-artifact directory and removes the complete program workspace and every program-task outcome.  The artifact-proof task therefore receives no source file, source build object, or compiler output other than the frozen artifact model.
 
-The proof catalog advertises checked memory, `Array UInt64`, fixed-array allocation, and control-flow support through `Project.ProofKit.Memory`, `Project.ProofKit.Array`, `Project.ProofKit.Allocation`, and `Project.ProofKit.Control`.  Every proof task receives the catalog and the selected strategy guide, while import validation continues to reject repository-owned `Project` modules outside that allowlist.  The verifier hashes the complete proof kit, audits its sources, and compares the packaged catalog with the current checkout.
+The [structured LTG catalog](ltg.md) advertises checked proof assets, compiler-motif support, guidance, proof-generation methods, and worked examples through category JSONL indexes and canonical entries.  Every proof task receives an artifact-filtered catalog view and the selected strategy guide, while import validation continues to reject repository-owned `Project` modules outside the proof-kit allowlist.  The verifier hashes and audits the complete proof kit, while schema-7 packages preserve the exact LTG view available during proof generation.
 
 The [artifact-proof strategy notes](proof-strategies.md) describe proof structures distilled from accepted Talos proofs.  Leanexegen computes the export-reachable call graph from the frozen `Program`, records per-function instruction, local, loop, memory, arithmetic, and allocation features, and supplies only the matching marked sections.  The notes grant no imports and discharge no theorem; the generated `Behavior` module must contain every checked proof term used by the artifact theorem.
 
@@ -134,7 +134,7 @@ tools/leanexegen run myprogram.wasm 10 20 30
 
 A successful command publishes `myprogram.wasm` and `myprogram.proof/`.  The sidecar contains its own `program.wasm`, the request, all three generated sources, deterministic artifact support, samples, host assumptions, tool pins, task reports, and a content index.  The generated Source appears for inspection and provenance, while the verification command builds only the formal specification, Talos program, artifact modules, behavioral proof, embedded-byte checker, and declaration audit.
 
-Current annotated packages use schema 6, which identifies the `heapReserveBytes` formal interface and its expanded `RuntimeReady` fields.  The verifier also accepts schemas 3 through 5 and uses their previous formal declaration check and theorem starter.  Controlled reproof preserves the input package's formal-interface version, so a proof-library experiment does not change a frozen specification boundary.
+Current generation and reproof of schema-6 packages publish schema 7, which archives the artifact-filtered structured LTG view supplied to the proof task.  Schema 6 introduced the `heapReserveBytes` formal interface and its expanded `RuntimeReady` fields without the LTG archive, while the verifier continues to accept schemas 3 through 6.  Controlled reproof of a schema-3 through schema-5 package uses structured LTG during generation but retains its earlier formal interface and package schema, so that output lacks the schema-7 LTG archive.
 
 | Path | Contents |
 |------|----------|
@@ -146,16 +146,18 @@ Current annotated packages use schema 6, which identifies the `heapReserveBytes`
 | `stage-reports.json` | Per-task Codex versions, session bound, accepted source hashes, outer diagnostics, and a hash of each task report. |
 | `proof-journal.md` | The artifact-proof agent's prose account, or the direct path's acceptance record.  The journal is diagnostic evidence and does not participate in the Lean proof. |
 | `samples.json` | Input arrays, observed output arrays, and host-runner invocations used during generation. |
-| `proof-library.md` | The proof-kit catalog supplied to the artifact-proof task. |
+| `proof-library.md` | Human proof-kit documentation retained as part of the checked proof-kit source identity. |
 | `proof-strategies.md` | The optional strategy sections selected for the frozen Talos program. |
 | `proof-task-features.json` | The reachable call graph, structural features, selection reasons, extractor version, and strategy-source digest. |
+| `ltg-task.json` | Artifact and derivative filters, included and excluded entry IDs, counts, and the digest of the archived LTG view. |
+| `ltg/` | The category indexes and canonical entries available to the artifact-proof task. |
 | `tool-pins.json` | Lean, Talos, proof-workspace, proof-kit-source, verifier-source, Node, `wasm-tools`, Wasmtime, and kernel-review identities. |
 | `host-assumptions.json` | Host calls, store conditions, ABI expectations, or other assumptions recorded by the formal task. |
 | `proof/LeanExeGen/...` | Formal specification, Source, Talos program, Behavior, deterministic artifact proof modules, byte checker, and axiom audit. |
 
 An artifact-proof Codex task starts with `PROOF_JOURNAL.md` containing only its heading.  Its prompt asks Codex to update the prose after each Lean check and each significant change in approach, while leaving the form and organization to Codex.  Direct acceptance records the selected deterministic composition and successful checks instead; publication includes either journal's digest and excludes it from every Lean import and theorem dependency.
 
-Verification validates the complete file set and every digest, recomputes every task-report and accepted-source hash, checks dependency pins, and checks the fixed formal declaration identity.  It compares the packaged proof catalog with the checkout, checks the digest covering the catalog and allowed proof-kit module, and audits that module's imports and forbidden identifiers.  It then creates a fresh formal declaration checker, byte-comparison module, and declaration-audit module before rebuilding the exact artifact theorem, checking each Git dependency and the Lean binary along the way.
+Verification validates the complete file set and every digest, recomputes every task-report and accepted-source hash, checks dependency pins, and checks the fixed formal declaration identity.  It checks the archived LTG's digest, category references, included bodies, and exclusions, then compares the proof-kit documentation and source identity with the checkout and audits the allowed modules.  It creates a fresh formal declaration checker, byte-comparison module, and declaration-audit module before rebuilding the exact artifact theorem, checking each Git dependency and the Lean binary along the way.
 
 ```sh
 tools/leanexegen verify myprogram.proof
