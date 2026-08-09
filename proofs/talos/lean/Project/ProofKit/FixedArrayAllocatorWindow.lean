@@ -16,6 +16,7 @@ macro "wp_alloc_window" "[" ts:Lean.Parser.Tactic.simpLemma,* "]" : tactic =>
       Wasm.Function.numLocals,
       List.take, List.drop, List.replicate, List.length, List.map,
       List.length_set, List.getElem?_set,
+      List.getElem?_cons_zero, List.getElem?_cons_succ,
       Nat.reduceAdd, Nat.reduceLT, Nat.reduceLeDiff, Nat.reduceSub,
       Wasm.ValueType.zero, List.headD, $ts,*])
 
@@ -26,7 +27,9 @@ macro "wp_alloc_to_store" "[" ts:Lean.Parser.Tactic.simpLemma,* "]" : tactic =>
       wp_localGet_cons, wp_localSet_cons,
       wp_constI64_cons, wp_addI64_cons, wp_subI64_cons, wp_wrapI64_cons,
       Wasm.Locals.get, Wasm.Locals.set?, Wasm.Locals.validIndex,
-      List.length_set, List.getElem?_set, Nat.reduceAdd, Nat.reduceLT,
+      List.length, List.length_set, List.getElem?_set,
+      List.getElem?_cons_zero, List.getElem?_cons_succ,
+      Nat.reduceAdd, Nat.reduceLT,
       Nat.reduceLeDiff, Nat.reduceSub, add_succ_sub_one,
       Nat.add_left_cancel_iff, Nat.add_lt_add_iff_left, Nat.reduceEqDiff,
       if_true, if_false, $ts,*])
