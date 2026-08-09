@@ -2017,7 +2017,70 @@ function requirePublicationTargetsAvailable(outputPath) {
   if (fs.existsSync(packagePath)) {
     throw new StageError(1, "job setup", `${packagePath} exists`);
   }
+  if (fs.existsSync(`${packagePath}.failure`)) {
+    throw new StageError(1, "job setup", `${packagePath}.failure exists`);
+  }
   return packagePath;
+}
+
+function preserveReproveFailure(packagePath, proofTaskRoot, job, error) {
+  const failurePath = `${packagePath}.failure`;
+  if (fs.existsSync(failurePath)) {
+    throw new Error(`${failurePath} exists`);
+  }
+  fs.mkdirSync(path.dirname(failurePath), { recursive: true });
+  const nonce = `${process.pid}-${Date.now()}`;
+  const staged = path.join(
+    path.dirname(failurePath), `.${path.basename(failurePath)}.${nonce}`,
+  );
+  const sources = [
+    [moduleFile(job.behaviorModule), "candidate.lean"],
+    ["PROOF_JOURNAL.md", "proof-journal.md"],
+    [".leanexegen-outcome.json", "outcome.json"],
+    ["LTG_TASK.json", "ltg-task.json"],
+    ["PROGRAM_ANNOTATIONS.json", "program.annotations.json"],
+    ["PROOF_RECIPES.json", "proof-recipes.json"],
+    ["PROOF_STRATEGIES.md", "proof-strategies.md"],
+    ["PROOF_TASK_FEATURES.json", "proof-task-features.json"],
+  ];
+  try {
+    fs.mkdirSync(staged);
+    const files = [];
+    for (const [source, destination] of sources) {
+      const sourcePath = path.join(proofTaskRoot, ...source.split("/"));
+      if (!fs.existsSync(sourcePath)) continue;
+      const stat = fs.lstatSync(sourcePath);
+      if (!stat.isFile() || stat.isSymbolicLink()) {
+        throw new Error(`${sourcePath} is not a regular file`);
+      }
+      const bytes = fs.readFileSync(sourcePath);
+      fs.writeFileSync(path.join(staged, destination), bytes, { flag: "wx" });
+      files.push({ path: destination, sha256: sha256(bytes) });
+    }
+    if (!files.some((file) => file.path === "candidate.lean") ||
+        !files.some((file) => file.path === "proof-journal.md")) {
+      throw new Error("failed artifact proof has no candidate or journal");
+    }
+    const record = {
+      schemaVersion: 1,
+      failedAt: new Date().toISOString(),
+      stage: error instanceof StageError ? error.stage : null,
+      stageName: error instanceof StageError ? error.stageName : null,
+      sourceModule: job.behaviorModule,
+      error: formatError(error),
+      files,
+    };
+    fs.writeFileSync(
+      path.join(staged, "failure.json"),
+      `${JSON.stringify(record, null, 2)}\n`,
+      { flag: "wx" },
+    );
+    fs.renameSync(staged, failurePath);
+  } catch (preservationError) {
+    fs.rmSync(staged, { recursive: true, force: true });
+    throw preservationError;
+  }
+  return failurePath;
 }
 
 function publish(outputPath, packagePath, wasmBytes, buildPackage) {
@@ -2354,12 +2417,13 @@ function reprove(command) {
 
   const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), "leanexegen-reprove-"));
   let operationError = null;
+  let proofTaskRoot = null;
   try {
     const stage5Telemetry = createStage5Telemetry();
     progress(command.silent, 5, "Direct artifact proof",
       new Date(stage5Telemetry.stageStartedAt));
     const proofWorkspace = path.join(temporaryRoot, "proof-workspace");
-    const proofTaskRoot = path.join(temporaryRoot, "proof-codex");
+    proofTaskRoot = path.join(temporaryRoot, "proof-codex");
     fs.mkdirSync(proofWorkspace);
     fs.mkdirSync(proofTaskRoot);
     createWorkspace(proofWorkspace);
@@ -2506,6 +2570,20 @@ function reprove(command) {
     process.stderr.write(warnings.map((warning) => `leanexegen: warning: ${warning}\n`).join(""));
   } catch (error) {
     operationError = error;
+    if (proofTaskRoot !== null && error instanceof StageError && error.stage === 5 &&
+        fs.existsSync(proofTaskRoot)) {
+      try {
+        preserveReproveFailure(packagePath, proofTaskRoot, checked.job, error);
+      } catch (preservationError) {
+        operationError = new StageError(
+          error.stage,
+          error.stageName,
+          formatError(new AggregateError(
+            [error, preservationError], "artifact-proof failure preservation failed",
+          )),
+        );
+      }
+    }
   }
   try {
     fs.rmSync(temporaryRoot, { recursive: true });
@@ -3049,6 +3127,7 @@ module.exports = {
   programTaskContext,
   proofPrompt,
   proofPackagePath,
+  preserveReproveFailure,
   requirePublicationTargetsAvailable,
   proofStrategyBundle,
   proofTaskContext,
