@@ -30,6 +30,7 @@ const {
   codexCommandArgs,
   codexOutcomeSchema,
   fixedArrayEqNodeFeatures,
+  focusedProofStrategyBundle,
   parseCodexVersion,
   formalSpecificationCheckSources,
   formalSpecificationSource,
@@ -38,6 +39,7 @@ const {
   parseProofStrategySections,
   parseArgs,
   proofPackagePath,
+  proofRecipeModules,
   proofStrategyBundle,
   proofTaskContext,
   readPackageSources,
@@ -52,6 +54,7 @@ const {
   runCodexOutcome,
   runTaskSession,
   selectAnnotationRegions,
+  selectedProofLibrary,
   stageHeading,
   verificationCheckSources,
   warnings,
@@ -316,80 +319,23 @@ function testCodexProtocol() {
   const artifactPrompt = proofPrompt("request\n", job, 3);
   assert(artifactPrompt.includes("refine ⟨3, rfl, ?_⟩") &&
     artifactPrompt.includes("intro env initial inputPtr input hInput") &&
-    artifactPrompt.includes("PROOF_LIBRARY.md catalogs checked proof abstractions") &&
+    artifactPrompt.includes("PROOF_LIBRARY.md begins with the modules selected") &&
+    artifactPrompt.includes("fallback list names every other permitted proof-kit module") &&
     artifactPrompt.includes("node PROOF_IMPORT_CHECK.js") &&
-    artifactPrompt.includes("Project.ProofKit.Control") &&
-    artifactPrompt.includes("Project.ProofKit.Allocation") &&
-    artifactPrompt.includes("bumpFacts") &&
-    artifactPrompt.includes("wordAddress_toNat") &&
-    artifactPrompt.includes("Project.ProofKit.FixedArrayAllocator") &&
-    artifactPrompt.includes("region_spec") &&
-    artifactPrompt.includes("Project.ProofKit.FixedArrayAllocatorWindow") &&
-    artifactPrompt.includes("offset 10") &&
-    artifactPrompt.includes("Project.ProofKit.FixedArrayInput") &&
-    artifactPrompt.includes("standard checked indexed element") &&
-    artifactPrompt.includes("Project.ProofKit.FixedArrayEqNode") &&
-    artifactPrompt.includes("complete node theorem") &&
-    artifactPrompt.includes("wp_fixed_array_eq_node") &&
-    artifactPrompt.includes("wp_fixed_array_key_eq_node") &&
-    artifactPrompt.includes("SearchFrame.program_spec") &&
-    artifactPrompt.includes("inputResultProgram_branchN_spec") &&
-    artifactPrompt.includes("one shared PairResultContext") &&
-    artifactPrompt.includes("do not define local node or result adapters") &&
-    artifactPrompt.includes("wp_fixed_array_search_key") &&
-    artifactPrompt.includes("using hInput, hIndex") &&
-    artifactPrompt.includes("wp_fixed_array_lt_node") &&
-    artifactPrompt.includes("using hSearch, hInput, hIndex") &&
-    artifactPrompt.includes("Tree.program_spec") &&
-    artifactPrompt.includes("Tree.wrapperProgram_spec") &&
-    artifactPrompt.includes("FixedArraySearchChain") &&
-    artifactPrompt.includes("Project.ProofKit.FixedArrayLengthDispatch") &&
-    artifactPrompt.includes("wp_fixed_array_length_dispatch") &&
-    artifactPrompt.includes("Project.ProofKit.FixedArrayTraversalInput") &&
-    artifactPrompt.includes("leaves the value on the operand stack") &&
-    artifactPrompt.includes("Project.ProofKit.FixedArrayPairResult") &&
-    artifactPrompt.includes("inputResultProgram_spec") &&
-    artifactPrompt.includes("inputResultProgram_result_spec") &&
-    artifactPrompt.includes("Project.ProofKit.FixedArrayResult") &&
-    artifactPrompt.includes("payloadStore_spec") &&
-    artifactPrompt.includes("pairStore_at") &&
-    artifactPrompt.includes("Project.ProofKit.FixedArraySingleton") &&
-    artifactPrompt.includes("region_result_spec") &&
-    artifactPrompt.includes("Project.ProofKit.FixedArraySingletonWrapper") &&
-    artifactPrompt.includes("wrapperProgram_spec") &&
-    artifactPrompt.includes("Project.ProofKit.UInt64Array.At") &&
-    artifactPrompt.includes("generatedElement") &&
-    artifactPrompt.includes("firstElementRead_add") &&
-    artifactPrompt.includes("word_reads") &&
-    artifactPrompt.includes("wp_entry_to_loop <functionDef>") &&
-    artifactPrompt.includes("leanexe.loop.while.v1 annotation") &&
-    artifactPrompt.includes("condition_eval and body_eval") &&
-    artifactPrompt.includes("generated terminates_with_of_loop theorem") &&
-    artifactPrompt.includes("external operand stack in WebAssembly order") &&
-    artifactPrompt.includes("lower-level entry_to_loop theorem") &&
-    artifactPrompt.includes("leanexe.loop.fold.v1") &&
-    artifactPrompt.includes(`wp_entry_single_call ${job.namespace}.func3Def`) &&
     artifactPrompt.includes("PROOF_STRATEGIES.md contains optional") &&
     artifactPrompt.includes("PROOF_TASK_FEATURES.json") &&
     artifactPrompt.includes("PROGRAM_ANNOTATIONS.json") &&
     artifactPrompt.includes("PROOF_RECIPES.json") &&
-    artifactPrompt.includes("AnnotationMatches") &&
     artifactPrompt.includes("Keep PROOF_JOURNAL.md as a prose Markdown account") &&
     artifactPrompt.includes("including after each Lean check") &&
-    artifactPrompt.includes("Name each supplied recipe, theorem, tactic, or annotation") &&
     artifactPrompt.includes("missing general annotation, lemma, tactic, or guidance") &&
-    artifactPrompt.includes("rather than reconstructing them at the end") &&
     artifactPrompt.includes("Attempt the direct recipe against the reported region") &&
-    artifactPrompt.includes("do not restructure unrelated code solely to force the recipe") &&
+    artifactPrompt.includes("Try a complete composition before lower-level recipes") &&
     artifactPrompt.includes("deterministic theorem starter") &&
-    artifactPrompt.includes("before editing") &&
-    artifactPrompt.includes("If that check succeeds") &&
-    artifactPrompt.includes("without repeating the same check") &&
     artifactPrompt.includes("Do not search for or read artifact proofs outside") &&
-    artifactPrompt.includes("would invalidate proof-generation measurement") &&
     artifactPrompt.includes("heapReserveBytes bound") &&
-    artifactPrompt.includes("Use read-only commands to inspect FormalSpec, Program"),
-  "artifact-proof task did not receive the proof-kit catalog or tactics");
+    !artifactPrompt.includes("Project.ProofKit.FixedArrayAllocatorWindow"),
+  "artifact-proof task did not receive focused proof instructions");
   const wrapperStarter = artifactProofStarter(job, 3, true, {
     schemaVersion: 1,
     attemptOrder: ["direct", "composition", "tactic", "focused-guidance"],
@@ -1922,6 +1868,55 @@ function testScalarTransitionSpecialization() {
   "scalar transition specialization did not retain Demo 1's five semantic tests");
 }
 
+function testFocusedProofSelection() {
+  const packageRoot = path.join(
+    repoRoot, "benchmarks", "leanexegen", "demo7-counter-transfer", "ltg-final-1");
+  const request = fs.readFileSync(path.join(packageRoot, "request.txt"), "utf8");
+  const job = makeJob(request);
+  const program = fs.readFileSync(path.join(
+    packageRoot, "proof", moduleFile(job.programModule)), "utf8");
+  const annotations = JSON.parse(fs.readFileSync(
+    path.join(packageRoot, "program.annotations.json"), "utf8"));
+  const entryIndex = programExportIndex(program, job.exportName);
+  const base = proofStrategyBundle(program, entryIndex);
+  const recipes = proofRecipePlan(
+    annotations,
+    program,
+    base.features.selectedSections.map(({ id }) => id),
+    `${job.namespace}.AnnotationMatches`,
+  );
+  const modules = proofRecipeModules(recipes);
+  assert(modules !== null && JSON.stringify([...modules].sort()) === JSON.stringify([
+    "Project.ProofKit.Array",
+    "Project.ProofKit.FixedArraySingletonWrapper",
+    "Project.ProofKit.ScalarTransition",
+  ]), "proof-library selection did not suppress recipes inside Demo 7's complete wrapper");
+  const focused = focusedProofStrategyBundle(base, recipes);
+  assert(JSON.stringify(focused.features.selectedSections.map(({ id }) => id)) ===
+      JSON.stringify([
+        "strategy.core",
+        "strategy.loops",
+        "strategy.frames",
+        "strategy.arrays",
+        "strategy.arithmetic",
+        "strategy.diagnostics",
+      ]) &&
+    !focused.notes.includes("strategy.allocation") &&
+    !focused.notes.includes("strategy.memory"),
+  "proof-strategy focus retained advice for a function covered by a complete composition");
+  const fullCatalog = fs.readFileSync(path.join(
+    repoRoot, "proofs", "talos", "lean", "Project", "ProofKit", "README.md"), "utf8");
+  const selectedCatalog = selectedProofLibrary(recipes, fullCatalog);
+  assert(selectedCatalog.startsWith("# Selected Artifact Proof Kit\n\n") &&
+    selectedCatalog.includes("## Scalar transitions") &&
+    selectedCatalog.includes("## `Array UInt64` representations") &&
+    selectedCatalog.includes("## Complete singleton-array wrapper") &&
+    selectedCatalog.includes("`Project.ProofKit.FixedArrayLengthDispatch`") &&
+    !selectedCatalog.includes("## Fixed-length dispatch") &&
+    Buffer.byteLength(selectedCatalog) < Buffer.byteLength(fullCatalog),
+  "selected proof-library catalog omitted relevant detail or retained unrelated detail");
+}
+
 function testArtifactPackage(job, formalSource) {
   const raw = "{ functionTypeIndices := [0] }";
   const emitted = `namespace Project.${job.leanModule}\n\n` +
@@ -2270,6 +2265,7 @@ try {
   testSearchTreeComposition();
   testSingletonWrapperComposition();
   testScalarTransitionSpecialization();
+  testFocusedProofSelection();
   testPairResultAnnotationRecipes();
   const { job, formalSource } = testCodexProtocol();
   testMockedCodex(job);
