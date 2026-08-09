@@ -1,0 +1,5 @@
+# Proof Journal
+
+The required initial build of the unchanged candidate failed in `Behavior.lean` after the deterministic starter applied `FixedArraySingletonWrapper.wrapperProgram_spec`.  The theorem discharged the public wrapper, checked input load, scalar-call boundary, allocator, result stores, and return, while `function_0_scalar_post_test_loop_0_terminates_with_counter_transfer_identity` discharged the compiled counter-transfer loop.  Lean left two semantic equations: `input.size ≠ 1 → FormalSpec.expected input = input` and `∀ hSize : input.size = 1, FormalSpec.expected input = #[input[0]]`.
+
+I retained the complete `FixedArraySingletonWrapper.wrapperProgram_spec` proof and added only its two semantic premises.  The invalid-length premise follows by reduction of `FormalSpec.expected`, while the singleton premise uses `Array.size_eq_one_iff` to express the input as `#[value]` before reduction.  `PROOF_IMPORT_CHECK.js` accepted the imports, and the resource-limited build completed `LeanExeGen.GeneratedR1b9b2027715ddee5.ArtifactResult` successfully.

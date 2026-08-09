@@ -244,5 +244,57 @@
     "editedCandidateMedian": 1,
     "editedCandidateRange": 2,
     "retained": true
+  },
+  "promotedCompleteCompositionStarter": {
+    "runs": [
+      {
+        "package": "complete-starter-1",
+        "acceptedSourceSha256": "90dfe159bf06ac1127e3ca45ba02f81da2076ab8a7c5af467d0777d08809625d",
+        "totalMilliseconds": 232164.38,
+        "codexSessionMilliseconds": 173985.106,
+        "outerAcceptanceMilliseconds": 47198.648,
+        "proofLines": 73,
+        "proofWords": 268,
+        "editedCandidates": 1,
+        "independentlyVerified": true
+      },
+      {
+        "package": "complete-starter-2",
+        "acceptedSourceSha256": "8c2ff44e2392042accd439f6c043d55a038d139635925fc9ae2f680da9b80a51",
+        "totalMilliseconds": 201366.204,
+        "codexSessionMilliseconds": 158208.751,
+        "outerAcceptanceMilliseconds": 32243.09,
+        "proofLines": 67,
+        "proofWords": 247,
+        "editedCandidates": 1,
+        "independentlyVerified": true
+      },
+      {
+        "package": "complete-starter-3",
+        "acceptedSourceSha256": "b52363cd0d6c02b333b762e2c357a05453319995a978f6728839db5eddf99706",
+        "totalMilliseconds": 204537.082,
+        "codexSessionMilliseconds": 154803.643,
+        "outerAcceptanceMilliseconds": 38974.598,
+        "proofLines": 72,
+        "proofWords": 264,
+        "editedCandidates": 1,
+        "independentlyVerified": true
+      }
+    ],
+    "medianMilliseconds": 204537.082,
+    "rangeMilliseconds": 30798.176,
+    "codexMedianMilliseconds": 158208.751,
+    "codexRangeMilliseconds": 19181.463,
+    "outerAcceptanceMedianMilliseconds": 38974.598,
+    "outerAcceptanceRangeMilliseconds": 14955.558,
+    "medianReductionFromCheckedSummaryMilliseconds": 166705.775,
+    "medianReductionFromCheckedSummaryPercent": 44.905,
+    "medianReductionFromReferenceMilliseconds": 372502.067,
+    "medianReductionFromReferencePercent": 64.554,
+    "proofLineMedian": 72,
+    "proofLineRange": 6,
+    "editedCandidateMedian": 1,
+    "editedCandidateRange": 0,
+    "retained": true
   }
 }
