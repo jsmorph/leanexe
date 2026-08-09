@@ -346,16 +346,37 @@ macro "wp_fixed_array_length_dispatch " inputLocal:term ", " expectedSize:term :
       (program $inputLocal $expectedSize _ _ ++ _) _ _ _ _
      apply program_spec))
 
+macro "wp_fixed_array_length_dispatch_from " hInput:term
+    " at " inputLocal:term ", " expectedSize:term : tactic =>
+  `(tactic|
+    (change wp _
+      (program $inputLocal $expectedSize _ _ ++ _) _ _ _ _
+     apply program_spec (hInput := $hInput)))
+
 macro "wp_fixed_array_length_eq_dispatch " inputLocal:term ", " expectedSize:term : tactic =>
   `(tactic|
     (change wp _
       (eqProgram $inputLocal $expectedSize _ _ ++ _) _ _ _ _
      apply eqProgram_spec))
 
+macro "wp_fixed_array_length_eq_dispatch_from " hInput:term
+    " at " inputLocal:term ", " expectedSize:term : tactic =>
+  `(tactic|
+    (change wp _
+      (eqProgram $inputLocal $expectedSize _ _ ++ _) _ _ _ _
+     apply eqProgram_spec (hInput := $hInput)))
+
 macro "wp_fixed_array_length_le_dispatch " inputLocal:term ", " maximumSize:term : tactic =>
   `(tactic|
     (change wp _
       (leProgram $inputLocal $maximumSize _ _ ++ _) _ _ _ _
      apply leProgram_spec))
+
+macro "wp_fixed_array_length_le_dispatch_from " hInput:term
+    " at " inputLocal:term ", " maximumSize:term : tactic =>
+  `(tactic|
+    (change wp _
+      (leProgram $inputLocal $maximumSize _ _ ++ _) _ _ _ _
+     apply leProgram_spec (hInput := $hInput)))
 
 end Project.ProofKit.FixedArrayLengthDispatch
