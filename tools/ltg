@@ -2,6 +2,7 @@
 "use strict";
 
 const {
+  catalogMetrics,
   catalogDigest,
   checkCatalog,
   rebuildCatalog,
@@ -9,17 +10,22 @@ const {
 } = require("./ltg-lib");
 
 function usage() {
-  return "usage: tools/ltg <rebuild|check|stats>\n";
+  return "usage: tools/ltg <rebuild|check|metrics|stats>\n";
 }
 
 function main(argv) {
-  if (argv.length !== 1 || !["rebuild", "check", "stats"].includes(argv[0])) {
+  if (argv.length !== 1 ||
+      !["rebuild", "check", "metrics", "stats"].includes(argv[0])) {
     process.stderr.write(usage());
     process.exitCode = 2;
     return;
   }
   const command = argv[0];
   const catalog = command === "rebuild" ? rebuildCatalog() : checkCatalog();
+  if (command === "metrics") {
+    process.stdout.write(`${JSON.stringify(catalogMetrics(catalog), null, 2)}\n`);
+    return;
+  }
   if (command === "stats") {
     const task = taskCatalogFiles();
     const byteLength = [...task.files.values()].reduce(
