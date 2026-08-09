@@ -587,7 +587,9 @@ This composition closes the public length dispatch, checked input read, scalar c
 
 Three fixed-artifact Demo 7 runs completed Stage 5 in 232.164, 201.366, and 204.537 seconds.  Their 204.537-second median is 166.706 seconds, or 44.9 percent, below the checked-summary median, while the range is 30.798 seconds.  Every first edited candidate passed, the median proof has 72 lines, and separate verification accepted all three packages over the unchanged 1,750-byte artifact.
 
-The component covers singleton-array wrappers whose exact scalar callee satisfies the checked counter-transfer schema.  Demo 8 establishes that the scalar recognizer tolerates a different local layout and an independent audit accumulator, while the wrapper theorem and starter depend on compiler structure rather than either demo's formal identity equation.  Other wrapper forms and loop summaries require their own checked composition rules and held-out timing evidence.
+The component covers singleton-array wrappers whose exact scalar callee satisfies the checked counter-transfer schema.  A fixed-artifact Demo 8 run received the same complete starter, used the generated three-accumulator theorem, changed only the two formal-result equations, and passed on its first edited candidate.  The accepted proof confirms structural transfer across a different local layout and an independent audit accumulator.
+
+The Demo 8 run took 477.180 seconds, 52.3 percent longer than its earlier 313.253-second proof, and produced 72 lines instead of 70.  One run cannot separate agent variance from a configuration effect, but it supplies no timing improvement on this artifact.  The Demo 7 distribution remains the proof-time evidence for retaining the starter, while Demo 8 supplies independent applicability evidence and a preserved negative timing result.
 
 ## Completion criteria
 
