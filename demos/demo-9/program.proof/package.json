@@ -275,8 +275,8 @@
     },
     {
       "path": "proof-recipes.json",
-      "sha256": "c4ef118db6bd50fc45d197613183efe18eb245ede643bef24152c23fd8120ad0",
-      "byteLength": 3538
+      "sha256": "1d1c379b612e73efe8e41a258ffbb802c52eaaf39e3453f33eb8a46d75fd413b",
+      "byteLength": 4443
     },
     {
       "path": "proof-strategies.md",
@@ -295,8 +295,8 @@
     },
     {
       "path": "proof/LeanExeGen/GeneratedR23fa7efc3fb0298b/AnnotationMatches.lean",
-      "sha256": "a213fefb5b9ea42afb78d2a0899c60e62736ba538960a70381349c2876eef297",
-      "byteLength": 761
+      "sha256": "69cb8eec9a68dc837899e89735bd03fdc5f968d0b668b86bf769540dcb49635c",
+      "byteLength": 1309
     },
     {
       "path": "proof/LeanExeGen/GeneratedR23fa7efc3fb0298b/ArtifactBytes.lean",
@@ -385,7 +385,7 @@
     },
     {
       "path": "tool-pins.json",
-      "sha256": "e2054cdca3e7792b2181f8fe498c8c17b04047beb00833486768fd5f1cf69a82",
+      "sha256": "b2a22bf922477f642fd3392803ffec2c26ee88fbe60b877470b114162386fa06",
       "byteLength": 870
     }
   ]

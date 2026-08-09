@@ -1537,6 +1537,18 @@ def func0Def : Wasm.Function :=
         .localGet 8,
         .geUI64,
         .br_if 1,
+        .localGet 4,
+        .localGet 6,
+        .constI64 (1 : UInt64),
+        .mulI64,
+        .constI64 (1 : UInt64),
+        .addI64,
+        .constI64 (8 : UInt64),
+        .mulI64,
+        .addI64,
+        .wrapI64,
+        .load64 (0 : UInt32),
+        .localSet 3,
         .localGet 1,
         .localGet 3,
         .addI64,
@@ -1632,6 +1644,10 @@ def func0Def : Wasm.Function :=
       "Project.AnnotationMatches.function_0_array_fold_0_program" &&
     arrayFoldPlan.recipes[0].supporting.some((entry) => entry.declaration ===
       "Project.ProofKit.ArrayFold.foldPrefix_succ") &&
+    arrayFoldPlan.recipes[0].supporting.some((entry) => entry.declaration ===
+      "Project.AnnotationMatches.function_0_array_fold_0_continuing_eq") &&
+    arrayFoldPlan.recipes[0].supporting.some((entry) => entry.declaration ===
+      "Project.ProofKit.FixedArrayTraversalInput.continuingProgram_spec") &&
     JSON.stringify(arrayFoldPlan.recipes[0].guidance) ===
       JSON.stringify(["strategy.arrays", "strategy.loops"]),
   "array-fold annotation did not select prefix-fold support and array-loop guidance");
@@ -1641,8 +1657,19 @@ def func0Def : Wasm.Function :=
   }, arrayFoldProgram);
   assert(arrayFoldMatches.source.includes("def function_0_array_fold_0_program") &&
     arrayFoldMatches.source.includes("theorem function_0_array_fold_0_eq") &&
+    arrayFoldMatches.source.includes(
+      "def function_0_array_fold_0_continuing_program") &&
+    arrayFoldMatches.source.includes(
+      "theorem function_0_array_fold_0_continuing_eq") &&
+    arrayFoldMatches.source.includes(
+      "Project.ProofKit.FixedArrayTraversalInput.continuingProgram\n    4 6\n    8 3") &&
     arrayFoldMatches.source.includes("Project.ProofKit.Annotation.region") &&
-    arrayFoldMatches.source.includes("{ instructionIndex := 0, field := .thenBranch }"),
+    arrayFoldMatches.source.includes("{ instructionIndex := 0, field := .thenBranch }") &&
+    arrayFoldMatches.source.includes(
+      "{ instructionIndex := 0, field := .thenBranch }, " +
+      "{ instructionIndex := 19, field := .block }, " +
+      "{ instructionIndex := 0, field := .loop }") &&
+    arrayFoldMatches.source.includes("] 0 16 ="),
   "array-fold annotation did not produce its checked region program and equality");
   const legacyArrayFoldPlan = structuredClone(arrayFoldPlan);
   legacyArrayFoldPlan.recipes[0].applicability = "exact decoded instruction match";
@@ -1651,6 +1678,32 @@ def func0Def : Wasm.Function :=
   legacyArrayFoldPlan.recipes[0].supporting =
     legacyArrayFoldPlan.recipes[0].supporting.slice(2);
   validateProofRecipePlan(legacyArrayFoldPlan, arrayFoldDocument);
+  const arrayFoldWithoutDynamicPrefix = arrayFoldProgram.replace(
+    `        .localGet 4,
+        .localGet 6,
+        .constI64 (1 : UInt64),
+        .mulI64,
+        .constI64 (1 : UInt64),
+        .addI64,
+        .constI64 (8 : UInt64),
+        .mulI64,
+        .addI64,
+        .wrapI64,
+        .load64 (0 : UInt32),
+        .localSet 3,
+`, "");
+  const arrayFoldWithoutDynamicPlan = proofRecipePlan(
+    arrayFoldDocument, arrayFoldWithoutDynamicPrefix, ["strategy.arrays"]);
+  assert(!arrayFoldWithoutDynamicPlan.recipes[0].supporting.some((entry) =>
+    entry.declaration.includes("FixedArrayTraversalInput")),
+  "array-fold recipe advertised dynamic traversal support without an exact prefix");
+  const arrayFoldWithoutDynamicMatches = annotationMatchesSource(arrayFoldDocument, {
+    namespace: "Example.Generated",
+    programModule: "Example.Generated.Artifact",
+  }, arrayFoldWithoutDynamicPrefix);
+  assert(!arrayFoldWithoutDynamicMatches.source.includes("_continuing_") &&
+    !arrayFoldWithoutDynamicMatches.source.includes("FixedArrayTraversalInput"),
+  "array-fold annotation generated a traversal equality without an exact prefix");
   expectFailure(() => proofRecipePlan(arrayFoldDocument,
     arrayFoldProgram.replace("        .localGet 8,", "        .localGet 7,")), /guard/);
   const wrongArrayFoldScratch = structuredClone(arrayFoldDocument);
