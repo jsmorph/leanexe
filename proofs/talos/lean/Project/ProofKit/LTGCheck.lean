@@ -38,6 +38,7 @@ import Project.ProofKit.ScalarTransitionU64
 #check Project.ProofKit.ScalarTransition.CounterTransition.postTestProgram_spec
 #check Project.ProofKit.ScalarTransition.postTestProgram_spec
 #check Project.ProofKit.UInt64Array.At.frameBefore
+#check Project.ProofKit.UInt64Array.At.generatedElement
 #check Project.ProofKit.UInt64Array.At.write64After
 #check UInt64.toNat_mod
 #check Wasm.TerminatesWith.of_wp_entry_for
