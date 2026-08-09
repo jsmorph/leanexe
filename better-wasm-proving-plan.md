@@ -1,17 +1,17 @@
-# Plan for Faster Direct WASM Proof Generation
+# Plan for Better Direct WASM Proof Generation
 
 | Field | Value |
 |---|---|
-| Date | 2026-08-05 |
-| Primary metric | Median elapsed time from Stage 5 start to its first accepted proof |
-| Secondary metrics | Accepted proof lines, syntax volume, local scaffolding, and shared theorem use |
+| Date | 2026-08-05; evaluation policy revised 2026-08-09 |
+| Correctness gates | Accepted artifact theorem and independent package verification |
+| Evaluation dimensions | LTG retrieval, agent revisions, proof structure and size, shared abstraction use, compiler-derived evidence use, applicability, and Stage 5 time |
 | Fixed artifact | SHA-256 `dbced77ae7a692ce49e98cb58721cb3c05a3712925e31685c4fd08dba4181be7` |
 | Retained baseline | `.lake/leanexegen-runs/demo1-timing-1` |
 | First faster result | `.lake/leanexegen-runs/demo1-timing-2` |
 
-Stage-5 elapsed time to the first accepted proof is the primary optimization metric, and accepted proof structure and size are secondary metrics.  Line count, explicit syntax, local scaffolding, repeated derivations, and shared theorem use describe proof complexity; raw byte count, word length, and identifier length do not.  A long declaration name can indicate that the proof reused a checked abstraction instead of rebuilding its argument.  A smaller proof can justify another refinement or reveal a useful structural boundary, but proof size alone cannot promote a variant whose proving time regresses.  Independent verification remains a correctness gate rather than a performance metric.
+Accepted artifact theorems and independent package verification are mandatory gates.  Each accepted iteration receives a scorecard covering LTG search and selection, agent revisions, proof structure and size, shared theorem or tactic use, compiler-derived evidence use, applicability beyond the measured program, and Stage 5 time.  No single scorecard dimension determines retention or promotion.  Line count, explicit syntax, local scaffolding, repeated derivations, and shared theorem use describe proof complexity; raw byte count, word length, and identifier length do not.  A long declaration name can indicate that the proof reused a checked abstraction instead of rebuilding its argument.
 
-The [technical analysis](better-wasm-proving.md) describes the available mechanisms and their logical boundaries.  This plan orders experiments by expected effect on proof time, beginning with measurement and complete semantic regions rather than additional leaf arithmetic.  Every promoted method must concern the same frozen formal specification, `Program`, WASM, Codex identity, model settings, toolchain, machine profile, and cache policy.
+The [technical analysis](better-wasm-proving.md) describes the available mechanisms and their logical boundaries.  This plan begins with measurement and complete semantic regions rather than additional leaf arithmetic because those changes affect several scorecard dimensions.  Every controlled comparison must concern the same frozen formal specification, `Program`, WASM, Codex identity, model settings, toolchain, machine profile, and cache policy.
 
 ## Evidence and target
 
@@ -53,14 +53,14 @@ The [compiler-theorem analysis](docs/compiler-theorem-bridge.md) defines the fir
 | Experiment | Compiler theorem or analysis | Artifact-side result | Proof work removed | Acceptance test |
 |---|---|---|---|---|
 | Scalar emission | Successful IR reification emits the descriptor program | Exact region equality and `ScalarTransition.whileProgram_spec` | Instruction decoding, checked division expansion, branch shape, assignment order, and scratch handling | Isolated screen was 47.202 percent slower, with 6.648 percent fewer lines and 4.710 percent fewer words |
-| Effects and frames | Descriptor reads, writes, and scratch interval bound all local changes | Recomputed frame certificate and preservation lemmas | Local-frame reconstruction and unchanged-local proofs | Mutation rejection and lower time where descriptors retain untouched locals |
-| One-step semantics | IR evaluation agrees with descriptor evaluation for one loop step | Closed transition equations over the fixed local frame that summarize scratch staging | Descriptor evaluation, branch update algebra, scratch-state equality, and local-numbering discovery | Lower median time on Demo 1 and a held-out scalar loop |
+| Effects and frames | Descriptor reads, writes, and scratch interval bound all local changes | Recomputed frame certificate and preservation lemmas | Local-frame reconstruction and unchanged-local proofs | Mutation rejection plus evidence of reuse, fewer revisions, simpler proof structure, or lower time |
+| One-step semantics | IR evaluation agrees with descriptor evaluation for one loop step | Closed transition equations over the fixed local frame that summarize scratch staging | Descriptor evaluation, branch update algebra, scratch-state equality, and local-numbering discovery | Scorecard improvement on Demo 1 and a held-out scalar loop |
 | Annotation locations | Annotated composition preserves path and interval coordinates | Exact coverage and non-overlap certificate | Region navigation, decomposition, and continuation reconstruction | Every coordinate mutation fails before behavior proving |
 | Cut-point graph | Emitted fragments compose into loop-head, call, allocation, and return transitions | Checked graph over exact decoded regions | Control-flow discovery and repeated composition scripts | Proof obligations contain application predicates rather than instruction lists |
-| Range facts | Abstract interpretation proves intervals, nonzero divisors, and representation bounds | Neutral checker validates each fact over descriptor transfer | Repeated fixed-width normalization and range searches | Total proof time falls on two structurally different artifacts |
-| Source-proof projection | Proven source relations map to IR slots and cut points | Candidate invariant or source-free semantic capsule rechecked over the descriptor | Invariant discovery and mathematical lemma selection | Artifact closure excludes compiler declarations and combined generation time falls |
+| Range facts | Abstract interpretation proves intervals, nonzero divisors, and representation bounds | Neutral checker validates each fact over descriptor transfer | Repeated fixed-width normalization and range searches | Useful checked facts appear in two structurally different artifact proofs, with time recorded |
+| Source-proof projection | Proven source relations map to IR slots and cut points | Candidate invariant or source-free semantic capsule rechecked over the descriptor | Invariant discovery and mathematical lemma selection | Artifact closure excludes compiler declarations and the scorecard records whether projection reduced discovery work |
 
-The experiments proceed in table order because each row supplies evidence and theorem structure needed by the next.  A compiler-side proof alone does not qualify an experiment: exact decoded-region agreement, compiler-free artifact closure, emitter byte compatibility, and independent package verification remain required.  The timing gate compares complete Stage 5 duration under one Codex version, reasoning level, machine profile, cache policy, formal specification, and WASM artifact.
+The experiments proceed in table order because each row supplies evidence and theorem structure needed by the next.  A compiler-side proof alone does not qualify an experiment: exact decoded-region agreement, compiler-free artifact closure, emitter byte compatibility, and independent package verification remain required.  Timing comparisons use complete Stage 5 duration under one Codex version, reasoning level, machine profile, cache policy, formal specification, and WASM artifact.
 
 The first fixed-artifact annotated trial increased Demo 1 Stage 5 from 2,017.931 to 3,692.913 seconds.  A later isolated comparison retained the same direct-call recipes and changed only the scalar-loop region: the calls-only control took 2,645.818 seconds, while the scalar candidate took 3,894.697 seconds.  The candidate used the generated descriptor equality and loop theorem, reduced accepted source from 722 to 674 lines and from 3,418 to 3,257 whitespace-delimited words, and failed the proving-time screen despite that structural reduction.
 
@@ -120,7 +120,7 @@ Demo-1 should split into `Behavior.Math`, `Behavior.Func0`, `Behavior.Func1`, `B
 - [ ] Generate split proof units and record a stage report for each unit.
 - [ ] Resume an interrupted proof at the first incomplete unit without regenerating accepted units.
 
-Phase 1 passes when a one-instruction mutation rejects the old structural module, a focused `Entry` edit does not rebuild `Func0`, and three fixed reproofs have a lower median than the promoted Phase 0 variant.  If additional Codex sessions cost more time than module checkpoints save, adjacent units should merge while their checked interfaces remain.  Proof splitting remains useful only when stage-5 time falls.
+Phase 1 passes when a one-instruction mutation rejects the old structural module, a focused `Entry` edit does not rebuild `Func0`, and three fixed reproofs establish the scorecard effects of the split.  If additional Codex sessions cost more time than module checkpoints save, that cost weighs against the gains in checkpointing, proof structure, and diagnostic isolation.  Adjacent units may merge while their checked interfaces remain when the combined evidence favors that form.
 
 ## Phase 2: Replace complete runtime regions
 
@@ -202,7 +202,7 @@ The current `Behavior.lean` already identifies the division.  Number-theoretic l
 - [ ] Measure capsule-generation time, target-proof time, and their sum.
 - [ ] Reject any transitive dependency on Source, IR, extraction, emission, or lowering declarations.
 
-Phase 5 passes when the artifact-only package verifies after generation-only files are removed and the complete capsule-plus-target process lowers median proving time.  The target agent must use capsule transitions directly rather than reproving the same mathematics.  A checked capsule that only moves proof text without reducing time remains a worked example but does not enter the default imported kit.
+Phase 5 passes when the artifact-only package verifies after generation-only files are removed and the target agent uses capsule transitions directly rather than reproving the same mathematics.  The scorecard must distinguish invariant discovery, capsule construction, target-proof work, proof structure, reuse, and total time.  A checked capsule may remain a worked example after one use, while repeated successful use supports promotion to the default imported kit.
 
 ## Phase 6: Add target certificates and a VCG
 
