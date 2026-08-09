@@ -37,5 +37,37 @@
     "independentlyVerified": true,
     "timingImprovement": false,
     "structuralImprovement": true
+  },
+  "arrayFoldAnnotationRun": {
+    "package": "array-fold-annotation-1",
+    "acceptedSourceSha256": "9fa35c5b520bf0ab7246cf215924fbb3d7d836ca2e330ffd47327c4b7ade2e0a",
+    "totalMilliseconds": 3188251,
+    "codexSessionMilliseconds": 3119978.523,
+    "outerAcceptanceMilliseconds": 34321.363,
+    "reductionFromBaselineMilliseconds": 243618.816,
+    "reductionFromBaselinePercent": 7.099,
+    "reductionFromFoldPrefixMilliseconds": 867513.666,
+    "reductionFromFoldPrefixPercent": 21.390,
+    "proofLines": 416,
+    "proofWords": 1848,
+    "proofBytes": 17797,
+    "lineReductionFromBaseline": 77,
+    "lineReductionFromBaselinePercent": 15.619,
+    "sharedAssets": [
+      "Project.ProofKit.ArrayFold.foldPrefix",
+      "Project.ProofKit.ArrayFold.foldPrefix_size",
+      "Project.ProofKit.ArrayFold.foldPrefix_succ",
+      "Project.ProofKit.FixedArrayLengthDispatch.leProgram_spec",
+      "Project.ProofKit.FixedArrayAllocatorWindow.region_spec_withTail",
+      "Project.ProofKit.FixedArrayPairResult.input_preserved_by_alloc",
+      "Project.ProofKit.UInt64Array.At.generatedElement"
+    ],
+    "compilerDerivedEvidence": [
+      "LeanExeGen.GeneratedR23fa7efc3fb0298b.AnnotationMatches.function_0_array_fold_0_eq",
+      "LeanExeGen.GeneratedR23fa7efc3fb0298b.AnnotationMatches.function_0_array_fold_0_program"
+    ],
+    "independentlyVerified": true,
+    "timingImprovement": true,
+    "structuralImprovement": true
   }
 }

@@ -39,6 +39,56 @@
         "strategy.arrays",
         "strategy.frames"
       ]
+    },
+    {
+      "recipeVersion": 1,
+      "functionIndex": 0,
+      "regionId": "function-0.array-fold-0",
+      "regionKind": "leanexe.array.fold.v1",
+      "applicability": "Lean-checked equality over the decoded instruction region",
+      "direct": {
+        "module": "Project.ProofKit.Control",
+        "theorem": "Wasm.wp_loop_cons",
+        "regionEquality": "LeanExeGen.GeneratedR23fa7efc3fb0298b.AnnotationMatches.function_0_array_fold_0_eq",
+        "program": "LeanExeGen.GeneratedR23fa7efc3fb0298b.AnnotationMatches.function_0_array_fold_0_program"
+      },
+      "supporting": [
+        {
+          "declaration": "LeanExeGen.GeneratedR23fa7efc3fb0298b.AnnotationMatches.function_0_array_fold_0_eq",
+          "purpose": "rewrite the selected decoded interval to its named exact program"
+        },
+        {
+          "declaration": "LeanExeGen.GeneratedR23fa7efc3fb0298b.AnnotationMatches.function_0_array_fold_0_program",
+          "purpose": "name the complete checked fold interval, including initialization and result placement"
+        },
+        {
+          "declaration": "Project.ProofKit.ArrayFold.foldPrefix",
+          "purpose": "state the loop invariant as the fold over the consumed input prefix"
+        },
+        {
+          "declaration": "Project.ProofKit.ArrayFold.foldPrefix_succ",
+          "purpose": "rewrite the continuing branch as one fold step at the current element"
+        },
+        {
+          "declaration": "Project.ProofKit.ArrayFold.foldPrefix_size",
+          "purpose": "rewrite the exit accumulator as the complete Array.foldl result"
+        },
+        {
+          "declaration": "Project.ProofKit.wp_block_loop",
+          "purpose": "apply the block and loop rules after reaching the annotated region"
+        },
+        {
+          "declaration": "Project.ProofKit.wp_entry_to_loop",
+          "purpose": "reach a block-wrapped loop from a matching function entry"
+        }
+      ],
+      "expectedPostcondition": "an invariant-preserving transition with a decreasing measure",
+      "guidance": [
+        "strategy.arrays",
+        "strategy.loops",
+        "strategy.frames",
+        "strategy.arithmetic"
+      ]
     }
   ]
 }

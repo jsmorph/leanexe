@@ -14,9 +14,10 @@
     ]
   },
   "artifactProof": {
-    "summary": "Proved the exact compiled artifact. The import check and ArtifactResult build both succeed.",
+    "summary": "Proved artifact_behavior. The import check and ArtifactResult build succeed.",
     "decisions": [
-      "Used a fold-prefix invariant for the input-traversal loop and its loop-carried wrapping UInt64 sum."
+      "Used a loop invariant based on ArrayFold.foldPrefix with a decreasing input-index measure.",
+      "Proved both the empty invalid result and singleton wrapping-sum representation."
     ]
   }
 }

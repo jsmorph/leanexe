@@ -1626,11 +1626,31 @@ def func0Def : Wasm.Function :=
     arrayFoldDocument, arrayFoldProgram, ["strategy.arrays", "strategy.loops"]);
   validateProofRecipePlan(arrayFoldPlan, arrayFoldDocument);
   assert(arrayFoldPlan.recipes.length === 1 &&
+    arrayFoldPlan.recipes[0].direct.regionEquality ===
+      "Project.AnnotationMatches.function_0_array_fold_0_eq" &&
+    arrayFoldPlan.recipes[0].direct.program ===
+      "Project.AnnotationMatches.function_0_array_fold_0_program" &&
     arrayFoldPlan.recipes[0].supporting.some((entry) => entry.declaration ===
       "Project.ProofKit.ArrayFold.foldPrefix_succ") &&
     JSON.stringify(arrayFoldPlan.recipes[0].guidance) ===
       JSON.stringify(["strategy.arrays", "strategy.loops"]),
   "array-fold annotation did not select prefix-fold support and array-loop guidance");
+  const arrayFoldMatches = annotationMatchesSource(arrayFoldDocument, {
+    namespace: "Example.Generated",
+    programModule: "Example.Generated.Artifact",
+  }, arrayFoldProgram);
+  assert(arrayFoldMatches.source.includes("def function_0_array_fold_0_program") &&
+    arrayFoldMatches.source.includes("theorem function_0_array_fold_0_eq") &&
+    arrayFoldMatches.source.includes("Project.ProofKit.Annotation.region") &&
+    arrayFoldMatches.source.includes("{ instructionIndex := 0, field := .thenBranch }"),
+  "array-fold annotation did not produce its checked region program and equality");
+  const legacyArrayFoldPlan = structuredClone(arrayFoldPlan);
+  legacyArrayFoldPlan.recipes[0].applicability = "exact decoded instruction match";
+  delete legacyArrayFoldPlan.recipes[0].direct.regionEquality;
+  delete legacyArrayFoldPlan.recipes[0].direct.program;
+  legacyArrayFoldPlan.recipes[0].supporting =
+    legacyArrayFoldPlan.recipes[0].supporting.slice(2);
+  validateProofRecipePlan(legacyArrayFoldPlan, arrayFoldDocument);
   expectFailure(() => proofRecipePlan(arrayFoldDocument,
     arrayFoldProgram.replace("        .localGet 8,", "        .localGet 7,")), /guard/);
   const wrongArrayFoldScratch = structuredClone(arrayFoldDocument);
