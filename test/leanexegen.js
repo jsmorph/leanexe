@@ -40,6 +40,7 @@ const {
   ltgTaskBundle,
   parseProofStrategySections,
   parseArgs,
+  preserveReproveFailure,
   proofPackagePath,
   proofStrategyBundle,
   proofTaskContext,
@@ -2402,6 +2403,35 @@ function testPublication() {
   }), /package failure/);
   assert(error instanceof StageError && !fs.existsSync(failedOutput) && !fs.existsSync(failedProof),
     "failed publication left an output");
+
+  const failureOutput = path.join(temporaryRoot, "reprove-failure", "program.wasm");
+  const failureProof = proofPackagePath(failureOutput);
+  const failureTask = path.join(temporaryRoot, "reprove-failure-task");
+  const failureJob = makeJob("preserve one failed proof\n");
+  const candidate = moduleFile(failureJob.behaviorModule);
+  fs.mkdirSync(path.dirname(path.join(failureTask, candidate)), { recursive: true });
+  fs.writeFileSync(path.join(failureTask, candidate), "theorem candidate : True := by trivial\n");
+  fs.writeFileSync(path.join(failureTask, "PROOF_JOURNAL.md"),
+    "# Proof Journal\n\nThe outer check exceeded its heartbeat limit.\n");
+  fs.writeFileSync(path.join(failureTask, ".leanexegen-outcome.json"),
+    `${JSON.stringify({ outcome: "generated" })}\n`);
+  const failurePath = preserveReproveFailure(
+    failureProof, failureTask, failureJob,
+    new StageError(5, "artifact proof", "outer check failed"),
+  );
+  const failureRecord = JSON.parse(fs.readFileSync(
+    path.join(failurePath, "failure.json"), "utf8"));
+  assert(failurePath === `${failureProof}.failure` &&
+    fs.readFileSync(path.join(failurePath, "candidate.lean"), "utf8").includes("candidate") &&
+    fs.readFileSync(path.join(failurePath, "proof-journal.md"), "utf8")
+      .includes("heartbeat") &&
+    failureRecord.stage === 5 && failureRecord.error === "outer check failed" &&
+    failureRecord.files.every((file) => /^[0-9a-f]{64}$/.test(file.sha256)),
+  "artifact-proof failure record omitted its candidate, journal, diagnostic, or hashes");
+  const failureCollision = expectFailure(
+    () => requirePublicationTargetsAvailable(failureOutput), /program\.proof\.failure exists/);
+  assert(failureCollision instanceof StageError && failureCollision.stage === 1,
+    "publication preflight did not preserve an existing failure record");
 }
 
 function testAxiomAudit() {
