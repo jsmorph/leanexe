@@ -208,7 +208,7 @@ The fixed comparison case should remain the exact package at `.lake/leanexegen-r
 
 One run can reject an approach that fails or becomes much slower, but it cannot establish a stable timing improvement.  Promising variants should receive at least three fixed reproofs with the same cache policy, followed by comparison of their medians and ranges.  Cold verifier time should be measured separately from warm proof-generation time because they answer different questions.
 
-Accepted proof structure is a secondary optimization objective.  Fewer proof steps, less local scaffolding, and greater use of shared theorems can justify refinement even when the first timing screen regresses, while proving time remains primary.  Raw source bytes and identifier length do not measure proof complexity, and a proof may contain longer names because it applies more shared declarations.
+Accepted proof structure and proof-generation time are separate evaluation dimensions.  Fewer proof steps, less local scaffolding, greater use of shared theorems, better retrieval, and fewer agent revisions can justify refinement when elapsed time increases.  Raw source bytes and identifier length do not measure proof complexity, and a proof may contain longer names because it applies more shared declarations.
 
 ## Concrete experiments
 
@@ -262,7 +262,7 @@ Library generalization can also consume substantial development time without imp
 
 ## Success criteria
 
-The primary result is a lower median stage-5 wall time for fixed reproofs of the exact demo-1 package.  The proof must still build `Behavior.artifact_behavior`, `Artifact.artifact_correct`, the embedded-byte comparison, and the declaration and axiom audits.  The published artifact-only package must verify without Source, compiler, source hints, generator state, or a prior Lake cache.
+The result is a fixed-artifact scorecard for repeated reproofs of the exact Demo 1 package.  The proof must still build `Behavior.artifact_behavior`, `Artifact.artifact_correct`, the embedded-byte comparison, and the declaration and axiom audits.  The scorecard records retrieval, revisions, proof structure, shared and compiler-derived evidence use, applicability, and Stage 5 wall time.  The published artifact-only package must verify without Source, compiler, source hints, generator state, or a prior Lake cache.
 
 The work should also explain the reduction.  Telemetry should show whether the winning method reduced planning delay, Lean invocation count, cumulative Lean time, failed candidates, or several of those quantities.  A shorter proof without a measured reduction does not satisfy the optimization goal.
 
