@@ -1,0 +1,7 @@
+{
+  "hostAssumptions": [
+    "UInt64 arithmetic follows modulo-2^64 semantics; the requested decrement/increment loop returns its initial argument.",
+    "The scalar helper uses unboxed counters and consumes no bump-heap storage.",
+    "The singleton branch allocates one UInt64 array using at most 64 bytes, including allocation metadata, length storage, and element storage; the non-singleton branch returns the input allocation unchanged."
+  ]
+}

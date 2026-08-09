@@ -38,6 +38,8 @@ The [behavioral proof](proof.lean) proves the formal specification over the Talo
 
 The [selected strategy notes](proof-strategies.md) and [program feature report](proof-task-features.json) record the guidance and reachable artifact features supplied to the proof agent.  The [proof journal](proof-journal.md) records the representative run's candidate revisions and use of the supplied assistance.  The [proof telemetry](proof-telemetry.json), [timing record](proof-timings.json), and [stage reports](stage-reports.json) separate measured proof generation from artifact identities and acceptance decisions.
 
+The timing record also preserves two later rejected experiments against these bytes.  A deterministic semantic cut-point starter took 936.788 seconds, while a three-run combined-local measure screen had a 577.172-second median.  Both exceed the retained 520.815-second median, so the public proof and active LTG remain unchanged.
+
 ## Execution
 
 The first sample exercises the scalar loop and singleton allocation.  The second sample exercises the nonsingleton identity branch.  Direct execution of the retained WASM produced these results:
@@ -68,5 +70,5 @@ Every retained file fixes an experiment input, records the proof context, or pre
 | [Program feature report](proof-task-features.json) | The reachable functions, instructions, locals, operations, and guidance identities. |
 | [Proof journal](proof-journal.md) | The representative agent's chronological account of proof construction. |
 | [Proof telemetry](proof-telemetry.json) | The representative run's measured Stage 5 intervals and proof identity. |
-| [Timing record](proof-timings.json) | The reference, retained distribution, and rejected composition screen. |
+| [Timing record](proof-timings.json) | The reference, retained distribution, and rejected composition, cut-point, and coordinate screens. |
 | [Stage reports](stage-reports.json) | The accepted task reports and frozen source identities. |

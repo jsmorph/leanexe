@@ -1,0 +1,33 @@
+[
+  {
+    "input": [
+      "7"
+    ],
+    "output": [
+      "7"
+    ],
+    "invocation": [
+      "/home/somebody/src/leanexe/tools/leanexegen",
+      "run",
+      "/home/somebody/src/leanexe/benchmarks/leanexegen/demo7-counter-transfer/ltg-final-1/program.wasm",
+      "7"
+    ]
+  },
+  {
+    "input": [
+      "2",
+      "9"
+    ],
+    "output": [
+      "2",
+      "9"
+    ],
+    "invocation": [
+      "/home/somebody/src/leanexe/tools/leanexegen",
+      "run",
+      "/home/somebody/src/leanexe/benchmarks/leanexegen/demo7-counter-transfer/ltg-final-1/program.wasm",
+      "2",
+      "9"
+    ]
+  }
+]
