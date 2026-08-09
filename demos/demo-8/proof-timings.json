@@ -12,5 +12,49 @@
     "proofWords": 235,
     "editedCandidates": 1,
     "independentlyVerified": true
+  },
+  "completeCompositionStarterRun": {
+    "package": "complete-starter-1",
+    "acceptedSourceSha256": "70fc4600623dc2667d307c78775c0fef56297b4bc93626c599ca7a81be56baa4",
+    "totalMilliseconds": 477179.762,
+    "codexSessionMilliseconds": 329820.587,
+    "outerAcceptanceMilliseconds": 93210.196,
+    "increaseFromPriorMilliseconds": 163926.596,
+    "increaseFromPriorPercent": 52.33,
+    "proofLines": 72,
+    "proofWords": 265,
+    "editedCandidates": 1,
+    "independentlyVerified": true,
+    "timingImprovement": false
+  },
+  "residualNormalizationRun": {
+    "package": "normalized-starter-1",
+    "acceptedSourceSha256": "a68d112a9ad360de8c59015e53ef931e6e9e8fdf4bbac6653a102a172ffa13b7",
+    "totalMilliseconds": 219561.078,
+    "codexSessionMilliseconds": 114709.164,
+    "outerAcceptanceMilliseconds": 66370.728,
+    "reductionFromInitialMilliseconds": 93692.088,
+    "reductionFromInitialPercent": 29.909,
+    "proofLines": 67,
+    "proofWords": 250,
+    "editedCandidates": 0,
+    "independentlyVerified": true,
+    "retainedAsAutomaticStarter": false,
+    "retainedAsWorkedExample": true,
+    "laterPromotedWithDirectAcceptance": true
+  },
+  "directStarterAcceptanceRun": {
+    "package": "direct-starter-1",
+    "acceptedSourceSha256": "825e110effe214dcc3b252675af1a949c634f0b2674c5c6386ba3ceaa7a1d543",
+    "totalMilliseconds": 212727.456,
+    "codexSessionMilliseconds": 0,
+    "outerAcceptanceMilliseconds": 185912.457,
+    "reductionFromInitialMilliseconds": 100525.71,
+    "reductionFromInitialPercent": 32.091,
+    "proofLines": 67,
+    "proofWords": 249,
+    "editedCandidates": 0,
+    "independentlyVerified": true,
+    "retained": true
   }
 }

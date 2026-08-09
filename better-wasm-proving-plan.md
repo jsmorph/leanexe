@@ -172,7 +172,9 @@ A fixed-artifact Demo 8 trial used the same complete starter and generated three
 
 The Demo 7 distribution promotes the composition mechanism, while the identity-producing counter-transfer recognizer remains motif support.  The shared `CounterTransition.postTestProgram_spec` theorem is independent of a generated function, and Demos 7 and 8 exercise different local layouts, but the semantic motif remains narrower than general scalar-loop verification.  Further loop summaries should share the checked composition mechanism without expanding this theorem to include their application semantics.
 
-A residual-normalization screen unfolded the generated expected function and reduced size-one arrays after complete composition.  Demo 8 accepted an untouched 67-line starter in 219.561 seconds, 29.9 percent below its initial run, while two Demo 7 runs accepted the same proof in 242.798 and 211.558 seconds.  A third Demo 7 run could not lower the three-run median below 211.558 seconds, which exceeds the retained 204.537-second median, so the active starter omits normalization and the accepted packages remain worked examples.
+A residual-normalization screen unfolded the generated expected function and reduced size-one arrays after complete composition.  Demo 8 accepted an untouched 67-line starter in 219.561 seconds, while two Demo 7 Codex runs accepted the same proof in 242.798 and 211.558 seconds.  The isolated Demo 7 screen could not beat the retained median, so those accepted packages remain worked examples.
+
+Direct starter acceptance changed the execution cost of that proof structure.  Leanexegen now runs the full outer proof check before Codex when checked composition predicts a complete starter, accepts a successful check directly, and falls back only after an ordinary proof failure at the first Lean target.  Three Demo 7 runs took 112.152, 125.103, and 156.268 seconds, giving a 125.103-second median that is 38.8 percent below the prior complete-starter median, while an independent Demo 8 run took 212.727 seconds with zero Codex time.
 
 ## Phase 4: Test source-proof guidance
 
@@ -200,7 +202,7 @@ The current `Behavior.lean` already identifies the division.  Number-theoretic l
 - [ ] Measure capsule-generation time, target-proof time, and their sum.
 - [ ] Reject any transitive dependency on Source, IR, extraction, emission, or lowering declarations.
 
-Phase 5 passes when the artifact-only package verifies after generation-only files are removed and the complete capsule-plus-target process lowers median proving time.  The target agent must use capsule transitions directly rather than reproving the same mathematics.  A capsule that only moves proof text without reducing time should be removed.
+Phase 5 passes when the artifact-only package verifies after generation-only files are removed and the complete capsule-plus-target process lowers median proving time.  The target agent must use capsule transitions directly rather than reproving the same mathematics.  A checked capsule that only moves proof text without reducing time remains a worked example but does not enter the default imported kit.
 
 ## Phase 6: Add target certificates and a VCG
 

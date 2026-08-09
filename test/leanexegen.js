@@ -26,6 +26,7 @@ const {
 const {
   StageError,
   artifactProofStarter,
+  artifactProofStarterExpectedComplete,
   auditAxioms,
   codexCommandArgs,
   codexOutcomeSchema,
@@ -50,6 +51,7 @@ const {
   proofPrompt,
   publish,
   runCodexOutcome,
+  runDeterministicTaskSession,
   runTaskSession,
   selectAnnotationRegions,
   stageHeading,
@@ -218,6 +220,24 @@ function testStage5Telemetry() {
   invalid.totalMilliseconds = 4000;
   expectFailure(() => validateStage5Telemetry(invalid),
     /components exceed totalMilliseconds/);
+
+  const directClockValues = [0n, 1000000000n, 3000000000n, 4000000000n];
+  const directDates = [
+    new Date("2026-08-05T16:00:00.000Z"),
+    new Date("2026-08-05T16:00:04.000Z"),
+  ];
+  const direct = createStage5Telemetry({
+    clock: () => directClockValues.shift(),
+    now: () => directDates.shift(),
+  });
+  direct.skipCodexSession();
+  assert(direct.measureOuterAcceptance(() => "accepted") === "accepted",
+    "direct stage-5 telemetry changed the acceptance result");
+  const directReport = direct.accept("b".repeat(64));
+  assert(directReport.codexSessionMilliseconds === 0 &&
+    directReport.outerAcceptanceMilliseconds === 2000 &&
+    directReport.totalMilliseconds === 4000,
+  "direct stage-5 telemetry recorded incorrect intervals");
 }
 
 function testCodexProtocol() {
@@ -649,6 +669,57 @@ function testMockedCodex(job) {
     telemetryCalls.join(",") === "codex,outer,accepted" &&
     session.proofTelemetry.acceptedSourceSha256 === session.stageReport.sourceSha256,
   "task orchestration invoked more than one Codex session");
+  const directTelemetryCalls = [];
+  const directSession = runDeterministicTaskSession({
+    task: "artifact-proof",
+    stage: 5,
+    stageName: "artifact proof",
+    sourceModule: job.behaviorModule,
+    outcome: {
+      ...outcome("artifact-proof", "checked source"),
+      proofJournal: "# Proof Journal\n\nDirect check accepted.\n",
+    },
+    materialize: (source) => source,
+    diagnose: () => "outer diagnostic accepted source",
+    telemetry: {
+      skipCodexSession: () => directTelemetryCalls.push("skip"),
+      measureOuterAcceptance: (action) => {
+        directTelemetryCalls.push("outer");
+        return action();
+      },
+      accept: (sourceSha256) => {
+        directTelemetryCalls.push("accepted");
+        return { acceptedSourceSha256: sourceSha256 };
+      },
+    },
+  });
+  assert(directTelemetryCalls.join(",") === "outer,skip,accepted" &&
+    directSession.source === "checked source" &&
+    directSession.proofJournal.includes("Direct check accepted"),
+  "deterministic task session did not skip Codex before outer acceptance");
+  const fallbackTelemetryCalls = [];
+  const fallbackSession = runDeterministicTaskSession({
+    task: "artifact-proof",
+    stage: 5,
+    stageName: "artifact proof",
+    sourceModule: job.behaviorModule,
+    outcome: {
+      ...outcome("artifact-proof", "incomplete source"),
+      proofJournal: "# Proof Journal\n\n",
+    },
+    materialize: (source) => source,
+    diagnose: () => null,
+    telemetry: {
+      skipCodexSession: () => fallbackTelemetryCalls.push("skip"),
+      measureOuterAcceptance: (action) => {
+        fallbackTelemetryCalls.push("outer");
+        return action();
+      },
+      accept: () => fallbackTelemetryCalls.push("accepted"),
+    },
+  });
+  assert(fallbackSession === null && fallbackTelemetryCalls.join(",") === "outer",
+    "incomplete deterministic starter did not return control to Codex");
   expectFailure(() => runTaskSession({
     task: "lean-program",
     stage: 3,
@@ -1951,8 +2022,18 @@ function testCounterTransferIdentitySummary() {
   assert(starter.includes("FixedArraySingletonWrapper.wrapperProgram_spec") &&
     starter.includes("(callee := 0) (transform := fun value => value)") &&
     starter.includes(`${theorem} env initial value`) &&
+    starter.includes("simp_all") &&
+    starter.includes("Array.size_eq_one_iff.mp hSize") &&
     starter.trimEnd().endsWith("end LeanExeGen.GeneratedR1b9b2027715ddee5.Behavior"),
-  "counter-transfer composition did not close the checked operational premises");
+  "counter-transfer composition did not close every deterministic premise");
+  assert(artifactProofStarterExpectedComplete(plan, 1),
+    "counter-transfer composition did not select deterministic preflight");
+  assert(!artifactProofStarterExpectedComplete(
+    { compositions: plan.compositions, recipes: [] }, 1),
+  "singleton wrapper without a checked scalar summary selected deterministic preflight");
+  assert(!artifactProofStarterExpectedComplete(
+    { compositions: [], recipes: plan.recipes }, 1),
+  "checked scalar summary without a singleton wrapper selected deterministic preflight");
   const source = annotationMatchesSource(document, {
     namespace: "LeanExeGen.GeneratedR1b9b2027715ddee5",
     programModule: "LeanExeGen.GeneratedR1b9b2027715ddee5.Program",

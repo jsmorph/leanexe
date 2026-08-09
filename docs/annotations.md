@@ -593,9 +593,13 @@ The Demo 8 run took 477.180 seconds, 52.3 percent longer than its earlier 313.25
 
 ### Residual specification normalization example
 
-A deterministic follow-up unfolded `FormalSpec.expected` after complete checked composition and reduced the size-one array through `Array.size_eq_one_iff`.  This rule depends on the residual theorem shape rather than a generated function or specification body, and it closes definitional specifications while leaving harder semantic equations available for proof generation.  Demo 8 accepted the untouched 67-line starter in 219.561 seconds, 29.9 percent below its initial run.
+A deterministic follow-up unfolded `FormalSpec.expected` after complete checked composition and reduced the size-one array through `Array.size_eq_one_iff`.  This rule depends on the residual theorem shape rather than a generated function or specification body, and it closes definitional specifications while leaving harder semantic equations available for proof generation.  Demo 8 accepted the untouched 67-line starter through Codex in 219.561 seconds, 29.9 percent below its initial run.
 
-Two fixed Demo 7 runs accepted the same untouched 67-line starter in 242.798 and 211.558 seconds.  Even a zero-time third run would leave a 211.558-second median, 3.4 percent above the retained complete-starter median, so the active generator omits the normalizer.  The accepted packages and journals remain worked examples of residual equation normalization, preserving the technique without asserting a proof-time gain.
+Two fixed Demo 7 Codex runs accepted the same untouched 67-line starter in 242.798 and 211.558 seconds.  This isolated screen could not beat the retained complete-starter median, so its accepted packages and journals remain worked examples.  The next iteration combined normalization with direct acceptance of a starter that passes the full artifact check, eliminating an unnecessary Codex session.
+
+An initial direct implementation built the artifact theorem twice and took 227.698 seconds.  The consolidated path uses the first full check for both completeness detection and package acceptance, falling back to Codex only when the first Lean target reports an ordinary proof failure.  Runner failures and failures in byte comparison, declaration audit, or later acceptance still stop the run.
+
+Three consolidated Demo 7 runs completed in 112.152, 125.103, and 156.268 seconds, giving a 125.103-second median that is 38.8 percent below the prior 204.537-second median.  All three accepted the same 67-line proof with zero Codex time and passed separate verification.  Demo 8 exercised the same path over its three-accumulator layout in 212.727 seconds, 32.1 percent below its initial run, and also passed separate verification.
 
 ## Completion criteria
 

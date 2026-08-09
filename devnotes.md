@@ -6789,3 +6789,15 @@ Demo 8 accepted the untouched 67-line, 250-word proof in 219.561 seconds, includ
 Two fixed Demo 7 trials then accepted the same untouched 67-line, 250-word proof in 242.798 and 211.558 seconds.  Even an arbitrarily fast third trial would leave the three-run median at 211.558 seconds, 7.021 seconds, or 3.4 percent, above the retained 204.537-second median.  Both packages passed separate verification, but the active generator restored the prior starter under the proof-time rule.
 
 The three accepted normalization packages remain worked examples.  They show how a deterministic proof can close definitional specification equations after checked artifact composition, and their journals document the zero-edit path.  Their timing status prevents automatic selection without erasing the technique or its evidence.
+
+## 2026-08-09: Direct deterministic proof acceptance
+
+The normalization journals show that Codex made no edit after receiving a complete starter.  Leanexegen now tries the complete checked counter-transfer starter in the outer proof workspace before starting the artifact-proof session.  An ordinary proof failure at the first artifact target starts Codex, while runner failures and failures in embedded-byte or declaration checks stop the run.
+
+The first implementation performed a starter build and then repeated the full outer acceptance suite.  It used no Codex time but took 227.698 seconds, exceeding the retained 204.537-second median, so `double-check-rejected-1` preserves that accepted design failure.  The revised path uses one full check for both completeness and acceptance.
+
+Three fixed Demo 7 runs of the consolidated path took 112.152, 125.103, and 156.268 seconds.  Their 125.103-second median is 79.435 seconds, or 38.8 percent, below the prior complete-starter median, and their range is 44.116 seconds.  Every run records zero Codex milliseconds, the same 67-line, 249-word proof, no edited candidate, and separate package verification.
+
+Demo 8 then accepted the same mechanism over its three-accumulator layout in 212.727 seconds, including 185.912 seconds in the single outer acceptance and zero Codex time.  This is 100.526 seconds, or 32.1 percent, below its initial 313.253-second run.  Separate verification accepted the exact 1,793-byte artifact package.
+
+The earlier residual-normalization packages remain worked examples because they record the proof technique and the cost of asking an agent to confirm an already complete proof.  The normalizer is now active only inside the checked counter-transfer wrapper starter, where the full Lean check determines whether it closes the generated specification.  A failed preflight does not discard the technique or conceal the diagnostic; it transfers the same starter to the normal artifact-proof session.
