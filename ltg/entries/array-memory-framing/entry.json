@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "array-memory-framing",
+  "title": "Array representation across disjoint writes",
+  "summary": "Preserves a represented UInt64 array across allocator writes and later stores above the input region without re-proving its length and element reads.",
+  "roles": ["checked-proof-asset", "guidance"],
+  "categories": ["allocation", "arrays", "memory", "proof-construction"],
+  "scope": "generic-semantics",
+  "evidenceStatus": "provisional",
+  "features": ["array", "disjoint-write", "frame", "memory", "representation-preservation"],
+  "annotationKinds": ["leanexe.array.allocator-window.v1", "leanexe.array.allocator.v1"],
+  "modules": ["Project.ProofKit.Array", "Project.ProofKit.FixedArrayPairResult"],
+  "declarations": ["Project.ProofKit.FixedArrayPairResult.input_preserved_by_alloc", "Project.ProofKit.UInt64Array.At.frameBefore", "Project.ProofKit.UInt64Array.At.write64After"],
+  "premises": ["A represented input array", "A cutoff above the complete input representation", "Unchanged pages and bytes below the cutoff, or the checked fixed-array allocator premises", "A later store whose address begins at or above the cutoff"],
+  "result": "The original input representation, including its length and indexed element reads, remains valid in the modified store.",
+  "consumers": ["demo-4", "demo-5", "demo-9"],
+  "relatedEntries": ["array-fold-prefix", "fixed-array-allocation", "fixed-array-filter-lt", "fixed-array-map-add"],
+  "exclusion": null
+}

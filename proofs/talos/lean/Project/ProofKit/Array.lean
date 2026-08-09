@@ -1,5 +1,25 @@
 import Project.ProofKit.Memory
 
+namespace Project.ProofKit.ArrayFold
+
+def foldPrefix (input : Array α) (step : β → α → β) (initial : β)
+    (index : Nat) : β :=
+  (input.extract 0 index).foldl step initial
+
+theorem foldPrefix_succ (input : Array α) (step : β → α → β) (initial : β)
+    (index : Nat) (hIndex : index < input.size) :
+    foldPrefix input step initial (index + 1) =
+      step (foldPrefix input step initial index) (input[index]'hIndex) := by
+  unfold foldPrefix
+  rw [Array.extract_succ_right (by omega) hIndex]
+  rw [Array.foldl_push]
+
+theorem foldPrefix_size (input : Array α) (step : β → α → β) (initial : β) :
+    foldPrefix input step initial input.size = input.foldl step initial := by
+  simp [foldPrefix, Array.extract_eq_self_of_le]
+
+end Project.ProofKit.ArrayFold
+
 namespace Project.ProofKit.UInt64Array
 
 open Wasm

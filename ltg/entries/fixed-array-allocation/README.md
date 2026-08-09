@@ -5,3 +5,5 @@ Use this entry when the decoded program contains LeanExe's fixed-array allocator
 Match the exact instruction region before applying a semantic theorem.  `FixedArrayAllocator.region_spec` covers the canonical fourteen-local layout, while `FixedArrayAllocatorWindow.region_spec_withTail` covers a uniform combined-local shift and unused trailing locals.  Continue from the theorem's named allocation store and frame instead of reducing allocator instructions again.
 
 Derive one `bumpFacts` value and reuse its projections for every capacity, address, and memory-bound obligation.  `wordAddress` and `wordAddress_toNat` match the generated result-length and payload addresses.  A failed exact-region match should remain in the journal because it may identify another allocator layout worth adding as a separate motif.
+
+Read the allocator header fields according to the checked `region` definition.  The element-type field and stride field are distinct, so an element width such as `2` does not determine the theorem's `stride` argument.  After applying a shifted-window theorem, invoke `wp_alloc_window` with its required square-bracket list of focused simplification facts.
