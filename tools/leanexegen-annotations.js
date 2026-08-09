@@ -2890,20 +2890,22 @@ function scalarKnownCondition(condition, state) {
 function scalarCounterTransferSummary(function_, region, program) {
   if (program === null || region.kind !== "leanexe.loop.scalar-post-test.v1" ||
       function_.parameters !== 1 || function_.results !== 1 ||
-      region.parameters.resultWidth !== 2 || region.parameters.resultSlot !== 1 ||
-      region.parameters.accumulatorLocals.length !== 2 ||
+      region.parameters.resultWidth < 2 ||
+      region.parameters.accumulatorLocals.length !== region.parameters.resultWidth ||
+      region.parameters.resultSlot < 0 ||
+      region.parameters.resultSlot >= region.parameters.accumulatorLocals.length ||
       region.parameters.releaseOffsets.length !== 0 ||
       region.parameters.continuation !== "fallthrough") {
     return null;
   }
-  const [remainingIndex, resultIndex] = region.parameters.accumulatorLocals;
+  const accumulatorLocals = region.parameters.accumulatorLocals;
+  const resultIndex = accumulatorLocals[region.parameters.resultSlot];
   const count = function_.parameters + function_.locals;
-  if (remainingIndex === resultIndex || remainingIndex >= count || resultIndex >= count) {
+  if (accumulatorLocals.some((index) => index >= count)) {
     return null;
   }
   const entryState = scalarEntryState(function_, region, program);
   if (entryState === null || entryState[0] !== "v0" ||
-      entryState[remainingIndex] !== "v0" ||
       entryState[resultIndex] !== "(0 : UInt64)") {
     return null;
   }
@@ -2918,45 +2920,52 @@ function scalarCounterTransferSummary(function_, region, program) {
       JSON.stringify(expectedSuffix)) {
     return null;
   }
-  const variables = Array.from({ length: count }, (_, index) => `v${index}`);
-  variables[0] = "input";
-  variables[remainingIndex] = "remaining";
-  variables[resultIndex] = "result";
-  const body = scalarStatementTransition(
-    region.parameters.descriptor.body, region.parameters.scratchStart, variables);
-  const zeroTest = "((remaining) == ((0 : UInt64)))";
-  const zero = scalarTransitionUnder(body, zeroTest, true);
-  const next = scalarTransitionUnder(body, zeroTest, false);
-  const nextRemaining = scalarOperationTerm(
-    "sub", "remaining", "(1 : UInt64)");
-  const nextResult = scalarOperationTerm("add", "result", "(1 : UInt64)");
-  if (zero === null || next === null || !Array.isArray(zero) || !Array.isArray(next) ||
-      zero[0] !== "input" || next[0] !== "input" ||
-      zero[remainingIndex] !== "remaining" || zero[resultIndex] !== "result" ||
-      next[remainingIndex] !== nextRemaining || next[resultIndex] !== nextResult) {
-    return null;
-  }
-  const zeroCondition = scalarExpressionTransition(
-    region.parameters.descriptor.condition, region.parameters.scratchStart, zero);
-  const nextCondition = scalarExpressionTransition(
-    region.parameters.descriptor.condition, region.parameters.scratchStart, next);
-  if (zeroCondition.kind !== "leaf" || nextCondition.kind !== "leaf" ||
-      scalarKnownCondition(region.parameters.descriptor.condition, zero) !== true ||
-      scalarKnownCondition(region.parameters.descriptor.condition, next) !== false ||
-      JSON.stringify(zeroCondition.value.state) !== JSON.stringify(zero) ||
-      JSON.stringify(nextCondition.value.state) !== JSON.stringify(next)) {
-    return null;
-  }
-  return {
-    remainingIndex,
-    resultIndex,
-    entryState: entryState.map((value) => value === "v0" ? "input" : value),
-    variables,
-    zeroState: zero,
-    nextState: next,
-    nextRemaining,
-    nextResult,
-  };
+  const summaries = accumulatorLocals
+    .filter((index) => index !== resultIndex && entryState[index] === "v0")
+    .map((remainingIndex) => {
+      const variables = Array.from({ length: count }, (_, index) => `v${index}`);
+      variables[0] = "input";
+      variables[remainingIndex] = "remaining";
+      variables[resultIndex] = "result";
+      const body = scalarStatementTransition(
+        region.parameters.descriptor.body, region.parameters.scratchStart, variables);
+      const zeroTest = "((remaining) == ((0 : UInt64)))";
+      const zero = scalarTransitionUnder(body, zeroTest, true);
+      const next = scalarTransitionUnder(body, zeroTest, false);
+      const nextRemaining = scalarOperationTerm(
+        "sub", "remaining", "(1 : UInt64)");
+      const nextResult = scalarOperationTerm("add", "result", "(1 : UInt64)");
+      if (zero === null || next === null ||
+          !Array.isArray(zero) || !Array.isArray(next) ||
+          zero[0] !== "input" || next[0] !== "input" ||
+          zero[remainingIndex] !== "remaining" || zero[resultIndex] !== "result" ||
+          next[remainingIndex] !== nextRemaining || next[resultIndex] !== nextResult) {
+        return null;
+      }
+      const zeroCondition = scalarExpressionTransition(
+        region.parameters.descriptor.condition, region.parameters.scratchStart, zero);
+      const nextCondition = scalarExpressionTransition(
+        region.parameters.descriptor.condition, region.parameters.scratchStart, next);
+      if (zeroCondition.kind !== "leaf" || nextCondition.kind !== "leaf" ||
+          scalarKnownCondition(region.parameters.descriptor.condition, zero) !== true ||
+          scalarKnownCondition(region.parameters.descriptor.condition, next) !== false ||
+          JSON.stringify(zeroCondition.value.state) !== JSON.stringify(zero) ||
+          JSON.stringify(nextCondition.value.state) !== JSON.stringify(next)) {
+        return null;
+      }
+      return {
+        remainingIndex,
+        resultIndex,
+        entryState: entryState.map((value) => value === "v0" ? "input" : value),
+        variables,
+        zeroState: zero,
+        nextState: next,
+        nextRemaining,
+        nextResult,
+      };
+    })
+    .filter((summary) => summary !== null);
+  return summaries.length === 1 ? summaries[0] : null;
 }
 
 function scalarCounterTransferDeclaration(function_, region, job, program) {
@@ -2987,7 +2996,6 @@ function scalarCounterTransferDeclaration(function_, region, job, program) {
   const nextWitnesses = existentialIndices.map((index) => nextState[index]);
   const localIndex = summary.remainingIndex - function_.parameters;
   const viewTerm = state(summary.variables);
-  const initialTerm = state(summary.entryState);
   const zeroTerm = state(zeroState);
   const nextTerm = state(nextState);
   return {

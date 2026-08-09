@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "metric": "stage-5-start-to-first-accepted-proof",
+  "artifactSha256": "932262dad153458571234372e49c4142d7a7ea82cff4d09e2f2fd5eb276e4151",
+  "outOfSampleRun": {
+    "package": "current-1",
+    "acceptedSourceSha256": "ca30fa10752b9629b44cb087d1057e58b80ea75990fbdb34de995f51c831320b",
+    "totalMilliseconds": 313253.166,
+    "codexSessionMilliseconds": 223241.501,
+    "outerAcceptanceMilliseconds": 75717.082,
+    "proofLines": 70,
+    "proofWords": 235,
+    "editedCandidates": 1,
+    "independentlyVerified": true
+  }
+}

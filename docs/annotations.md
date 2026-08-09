@@ -573,7 +573,11 @@ The annotation consumer recognizes this semantic schema only for a one-parameter
 
 The production annotation command built the generated theorem against Demo 7's unchanged 1,750-byte artifact, and separate verification accepted each proof package.  Three fixed-artifact screens completed Stage 5 in 386.828, 371.243, and 354.004 seconds, giving a 371.243-second median and a 32.824-second range.  The median is 28.7 percent below the prior retained median, while proof lines fell from a 135-line median to 68 and edited candidates fell from three to one.
 
-Every agent used the generated semantic summary directly as the scalar premise of `FixedArraySingletonWrapper.wrapperProgram_spec`.  None reconstructed the loop invariant, termination measure, hidden local frame, body transition, condition transition, or exit suffix.  The next validation should exercise the recognizer on a second compiler-generated counter-transfer function with a different local layout or public wrapper before broadening the schema.
+Every Demo 7 agent used the generated semantic summary directly as the scalar premise of `FixedArraySingletonWrapper.wrapperProgram_spec`.  None reconstructed the loop invariant, termination measure, hidden local frame, body transition, condition transition, or exit suffix.  This consistency selected an independent compiler-generated layout as the next validation.
+
+Demo 8 adds an audit accumulator that starts at the input and increases by two on every nonzero iteration.  The compiler emitted 23 locals, accumulator coordinates `[4, 5, 6]`, and result slot two, compared with Demo 7's 15 locals and two accumulators.  The generalized recognizer discovers the remaining-and-result pair by checking candidates against the initial state, zero transition, nonzero transition, condition outcomes, returned accumulator, and suffix.
+
+The fresh end-to-end run generated a new specification, source, 1,793-byte WASM artifact, annotations, and proof under namespace `GeneratedRf75664d74ca656b6`.  Stage 5 completed in 313.253 seconds, and the first edited candidate used the generated semantic summary in a 70-line proof.  Separate package verification accepted the result, providing out-of-sample evidence for the semantic recognizer without changing the Demo 7 timing comparison.
 
 ## Completion criteria
 
