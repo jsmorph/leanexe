@@ -192,5 +192,57 @@
     "editedCandidateRange": 1,
     "stoppedAfterTwoReason": "Even an arbitrarily fast third run leaves 777101.994 milliseconds as the three-run median.",
     "retained": false
+  },
+  "promotedCheckedSummary": {
+    "runs": [
+      {
+        "package": "checked-summary-1",
+        "acceptedSourceSha256": "8655c93a52053dc15d6de814e5e43b0f128e97e22b055a51a84776a60600ddab",
+        "totalMilliseconds": 386827.711,
+        "codexSessionMilliseconds": 311668.456,
+        "outerAcceptanceMilliseconds": 52434.17,
+        "proofLines": 72,
+        "proofWords": 245,
+        "editedCandidates": 1,
+        "independentlyVerified": true
+      },
+      {
+        "package": "checked-summary-2",
+        "acceptedSourceSha256": "3ca1faf664e93ba95f234a49fbb05368f04b770a23d0b1d6fc78e0c8ccbe64c5",
+        "totalMilliseconds": 371242.857,
+        "codexSessionMilliseconds": 310345.435,
+        "outerAcceptanceMilliseconds": 50116.998,
+        "proofLines": 68,
+        "proofWords": 247,
+        "editedCandidates": 1,
+        "independentlyVerified": true
+      },
+      {
+        "package": "checked-summary-3",
+        "acceptedSourceSha256": "4eeccdee38bd581f66f3a70d35ce24353479d4225a30d097891834326795030e",
+        "totalMilliseconds": 354003.798,
+        "codexSessionMilliseconds": 302513.37,
+        "outerAcceptanceMilliseconds": 31905.958,
+        "proofLines": 67,
+        "proofWords": 251,
+        "editedCandidates": 3,
+        "independentlyVerified": true
+      }
+    ],
+    "medianMilliseconds": 371242.857,
+    "rangeMilliseconds": 32823.913,
+    "codexMedianMilliseconds": 310345.435,
+    "codexRangeMilliseconds": 9155.086,
+    "outerAcceptanceMedianMilliseconds": 50116.998,
+    "outerAcceptanceRangeMilliseconds": 20528.212,
+    "medianReductionFromPriorRetainedMilliseconds": 149572.007,
+    "medianReductionFromPriorRetainedPercent": 28.719,
+    "medianReductionFromReferenceMilliseconds": 205796.292,
+    "medianReductionFromReferencePercent": 35.664,
+    "proofLineMedian": 68,
+    "proofLineRange": 5,
+    "editedCandidateMedian": 1,
+    "editedCandidateRange": 2,
+    "retained": true
   }
 }
