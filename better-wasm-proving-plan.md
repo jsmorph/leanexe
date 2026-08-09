@@ -172,6 +172,8 @@ A fixed-artifact Demo 8 trial used the same complete starter and generated three
 
 The Demo 7 distribution promotes the composition mechanism, while the identity-producing counter-transfer recognizer remains motif support.  The shared `CounterTransition.postTestProgram_spec` theorem is independent of a generated function, and Demos 7 and 8 exercise different local layouts, but the semantic motif remains narrower than general scalar-loop verification.  Further loop summaries should share the checked composition mechanism without expanding this theorem to include their application semantics.
 
+A residual-normalization screen unfolded the generated expected function and reduced size-one arrays after complete composition.  Demo 8 accepted an untouched 67-line starter in 219.561 seconds, 29.9 percent below its initial run, while two Demo 7 runs accepted the same proof in 242.798 and 211.558 seconds.  A third Demo 7 run could not lower the three-run median below 211.558 seconds, which exceeds the retained 204.537-second median, so the active starter omits normalization and the accepted packages remain worked examples.
+
 ## Phase 4: Test source-proof guidance
 
 The first source-assisted experiment should use ideal annotations written from a real source proof.  `SEMANTIC_HINTS.json` should name abstract state fields, invariant, rank, branch guards, state updates, terminal rule, mathematical dependencies, and a tentative source-to-target local map.  It must exclude target tactic scripts, accepted `Behavior.lean` excerpts, and `wp_peel` sequences.

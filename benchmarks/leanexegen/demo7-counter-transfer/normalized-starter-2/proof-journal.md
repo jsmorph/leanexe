@@ -1,0 +1,5 @@
+# Proof Journal
+
+The deterministic starter uses the `fixed-array-singleton-wrapper-v1` composition from `PROOF_RECIPES.json`.  It rewrites function 1 with `AnnotationMatches.function_1_singleton_wrapper_0_eq`, applies `FixedArraySingletonWrapper.wrapperProgram_spec`, and supplies `AnnotationMatches.function_0_scalar_post_test_loop_0_terminates_with_counter_transfer_identity` for the scalar callee.  This proves the wrapper through the checked array representation, singleton dispatch, scalar call, allocation, stores, and public return while retaining the scalar loop proof recorded by the generated annotation.
+
+The import check `node PROOF_IMPORT_CHECK.js LeanExeGen/GeneratedR1b9b2027715ddee5/Behavior.lean` succeeded.  The prescribed `leanrun` build of `LeanExeGen.GeneratedR1b9b2027715ddee5.ArtifactResult` then completed successfully with 3,078 jobs and no proof errors.  The only candidate diagnostic was an unused `hSize` simp argument, so the successful deterministic candidate remains unchanged as required by the early-success instruction.

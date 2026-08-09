@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 1,
+  "codexVersion": "codex-cli 0.147.0",
+  "maximumAttempts": 1,
+  "tasks": {
+    "formalSpecification": {
+      "task": "formal-specification",
+      "sourceModule": "LeanExeGen.GeneratedRf75664d74ca656b6.FormalSpec",
+      "sourceSha256": "eaf6ad4936c453f3ed7932102e9cbd5e66741f91c05d2e4ea3e0ea2a1c3ebb4f",
+      "reportSha256": "d6d1ae3ee33b8e19bc2bc7f09a4353eed79b8269b550995bc58a74addb9217ac",
+      "report": {
+        "summary": "Defined the public identity specification and a branch-sensitive bump-heap bound. The required Lean build succeeded twice, including the final unchanged check.",
+        "decisions": [
+          "expected returns its input directly.",
+          "heapReserveBytes returns 64 for singleton input and 0 otherwise."
+        ],
+        "attempts": [
+          {
+            "number": 1,
+            "outcome": "accepted",
+            "sourceSha256": "eaf6ad4936c453f3ed7932102e9cbd5e66741f91c05d2e4ea3e0ea2a1c3ebb4f",
+            "diagnosticSha256": "f50ade445190d339d29425951e94beb4dc4bc0d03b330482623c7e79a5d5cf4e",
+            "diagnostic": "Lean accepted LeanExeGen.GeneratedRf75664d74ca656b6.FormalSpec.expected : Array UInt64 → Array UInt64 and LeanExeGen.GeneratedRf75664d74ca656b6.FormalSpec.heapReserveBytes : Array UInt64 → Nat and LeanExeGen.GeneratedRf75664d74ca656b6.FormalSpec.ArtifactSpec : Wasm.Module → Prop."
+          }
+        ]
+      }
+    },
+    "leanProgram": {
+      "task": "lean-program",
+      "sourceModule": "LeanExeGen.GeneratedRf75664d74ca656b6.Source",
+      "sourceSha256": "72fcfef1483bfc41cfe25cce5c3c09b3da40d41ec08751a22054ac73ea94a1c5",
+      "reportSha256": "96e30d1a103af560c5f0148909db7edb009adc86445c9f55d05735fccd5f804a",
+      "report": {
+        "summary": "Generated the required module. The Lean build, LeanExe report, and WebAssembly compilation all succeeded in the final verification.",
+        "decisions": [
+          "Defined a separate scalar helper with the required counters, loop, and updates.",
+          "Called the helper only for singleton arrays and returned every other input unchanged."
+        ],
+        "attempts": [
+          {
+            "number": 1,
+            "outcome": "accepted",
+            "sourceSha256": "72fcfef1483bfc41cfe25cce5c3c09b3da40d41ec08751a22054ac73ea94a1c5",
+            "diagnosticSha256": "c3402ac45f5e51edfebf3c8ff92a3c535140d68374535d979b2cb416277af6f5",
+            "diagnostic": "Lean and LeanExe accepted and compiled LeanExeGen.GeneratedRf75664d74ca656b6.Source.compute : Array UInt64 → Array UInt64."
+          }
+        ]
+      }
+    },
+    "artifactProof": {
+      "task": "artifact-proof",
+      "sourceModule": "LeanExeGen.GeneratedRf75664d74ca656b6.Behavior",
+      "sourceSha256": "a68d112a9ad360de8c59015e53ef931e6e9e8fdf4bbac6653a102a172ffa13b7",
+      "reportSha256": "4b13dee8583db35435956dd2614498779427336793f0da8eab8246268d5199ec",
+      "report": {
+        "summary": "The untouched candidate passed the import check and ArtifactResult build. Recorded the result in PROOF_JOURNAL.md without repeating the successful check.",
+        "decisions": [
+          "Left Behavior.lean unchanged as instructed."
+        ],
+        "attempts": [
+          {
+            "number": 1,
+            "outcome": "accepted",
+            "sourceSha256": "a68d112a9ad360de8c59015e53ef931e6e9e8fdf4bbac6653a102a172ffa13b7",
+            "diagnosticSha256": "811aa8d8bb98b2988834084e74b4880c6226a0810d70ed0ed19db407b344f182",
+            "diagnostic": "Lean accepted LeanExeGen.GeneratedRf75664d74ca656b6.Behavior.artifact_behavior and LeanExeGen.GeneratedRf75664d74ca656b6.Artifact.artifact_correct."
+          }
+        ]
+      }
+    }
+  }
+}

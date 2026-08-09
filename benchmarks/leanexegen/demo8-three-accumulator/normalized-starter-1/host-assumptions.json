@@ -1,0 +1,7 @@
+{
+  "hostAssumptions": [
+    "UInt64 arithmetic wraps modulo 2^64. Decrementing remaining from x to zero while incrementing result from zero returns x; audit overflow cannot affect control flow or output.",
+    "The scalar helper allocates no bump-heap storage.",
+    "The singleton ABI branch allocates at most 64 bytes for one UInt64 result array, including allocation metadata, capacity, length, and element storage. The non-singleton branch returns the input allocation unchanged."
+  ]
+}
