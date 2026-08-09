@@ -12,5 +12,19 @@
     "proofWords": 235,
     "editedCandidates": 1,
     "independentlyVerified": true
+  },
+  "completeCompositionStarterRun": {
+    "package": "complete-starter-1",
+    "acceptedSourceSha256": "70fc4600623dc2667d307c78775c0fef56297b4bc93626c599ca7a81be56baa4",
+    "totalMilliseconds": 477179.762,
+    "codexSessionMilliseconds": 329820.587,
+    "outerAcceptanceMilliseconds": 93210.196,
+    "increaseFromPriorMilliseconds": 163926.596,
+    "increaseFromPriorPercent": 52.33,
+    "proofLines": 72,
+    "proofWords": 265,
+    "editedCandidates": 1,
+    "independentlyVerified": true,
+    "timingImprovement": false
   }
 }
