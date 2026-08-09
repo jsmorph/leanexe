@@ -1,0 +1,73 @@
+{
+  "schemaVersion": 1,
+  "codexVersion": "codex-cli 0.147.0",
+  "maximumAttempts": 1,
+  "tasks": {
+    "formalSpecification": {
+      "task": "formal-specification",
+      "sourceModule": "LeanExeGen.GeneratedR1b9b2027715ddee5.FormalSpec",
+      "sourceSha256": "bc9fc29402bea6c2bb4ad2541af042cefba22c7d18885e0d4bd62fcb4458c721",
+      "reportSha256": "d46d80c1a02df8910cd855f1c326680f10f758760ba20135ba1890629251c2e4",
+      "report": {
+        "summary": "Defined the public identity behavior and a branch-sensitive heap bound. The required Lean build succeeded twice, including the final unchanged check.",
+        "decisions": [
+          "Defined expected input as input directly.",
+          "Bound singleton execution by 64 bump-heap bytes and non-singleton execution by zero bytes."
+        ],
+        "attempts": [
+          {
+            "number": 1,
+            "outcome": "accepted",
+            "sourceSha256": "bc9fc29402bea6c2bb4ad2541af042cefba22c7d18885e0d4bd62fcb4458c721",
+            "diagnosticSha256": "2c894a6bfd806407c9a1553e2434e233029189d570af2ba197948b248cddc16b",
+            "diagnostic": "Lean accepted LeanExeGen.GeneratedR1b9b2027715ddee5.FormalSpec.expected : Array UInt64 → Array UInt64 and LeanExeGen.GeneratedR1b9b2027715ddee5.FormalSpec.heapReserveBytes : Array UInt64 → Nat and LeanExeGen.GeneratedR1b9b2027715ddee5.FormalSpec.ArtifactSpec : Wasm.Module → Prop."
+          }
+        ]
+      }
+    },
+    "leanProgram": {
+      "task": "lean-program",
+      "sourceModule": "LeanExeGen.GeneratedR1b9b2027715ddee5.Source",
+      "sourceSha256": "a375ad82a7c640ac043655be6efa5f84e484111cd8aeffa7aca2d8132629a8e2",
+      "reportSha256": "39986022db000e9839994eaefc6b6104ec87b555bd4cd0d02ee1819390b7ee2c",
+      "report": {
+        "summary": "Created the candidate module. SourceCheck, LeanExe report, and LeanExe compilation all succeeded in the final verification cycle.",
+        "decisions": [
+          "Defined `scalarIdentity : UInt64 → UInt64` with the required mutable decrement/increment loop.",
+          "Called the helper for singleton arrays and returned every non-singleton input unchanged."
+        ],
+        "attempts": [
+          {
+            "number": 1,
+            "outcome": "accepted",
+            "sourceSha256": "a375ad82a7c640ac043655be6efa5f84e484111cd8aeffa7aca2d8132629a8e2",
+            "diagnosticSha256": "9ab9147e5e62d59f9df1a7260bfc271aa05717907f6426090099dda3b84d9347",
+            "diagnostic": "Lean and LeanExe accepted and compiled LeanExeGen.GeneratedR1b9b2027715ddee5.Source.compute : Array UInt64 → Array UInt64."
+          }
+        ]
+      }
+    },
+    "artifactProof": {
+      "task": "artifact-proof",
+      "sourceModule": "LeanExeGen.GeneratedR1b9b2027715ddee5.Behavior",
+      "sourceSha256": "dafa475053c8d9f4300ef2529b943cea8dccf2032a6b4ecc1a54033f694e8da1",
+      "reportSha256": "a4cc78dc1506f17f5ea76dd99c84a6ed64e098dcf2127be3c17d2fc3a259c6fb",
+      "report": {
+        "summary": "Proved the exact compiled artifact. The final import check and ArtifactResult build succeeded.",
+        "decisions": [
+          "Proved the scalar helper with the annotated post-test loop, a wrapping-sum invariant, and a decreasing remaining-counter measure.",
+          "Applied FixedArraySingletonWrapper.wrapperProgram_spec to prove the public array identity behavior."
+        ],
+        "attempts": [
+          {
+            "number": 1,
+            "outcome": "accepted",
+            "sourceSha256": "dafa475053c8d9f4300ef2529b943cea8dccf2032a6b4ecc1a54033f694e8da1",
+            "diagnosticSha256": "6fb0e8d0c25e800bda67acb3b7fa38d5189464dfc7e4c5f352ec3ee2f11900b3",
+            "diagnostic": "Lean accepted LeanExeGen.GeneratedR1b9b2027715ddee5.Behavior.artifact_behavior and LeanExeGen.GeneratedR1b9b2027715ddee5.Artifact.artifact_correct."
+          }
+        ]
+      }
+    }
+  }
+}

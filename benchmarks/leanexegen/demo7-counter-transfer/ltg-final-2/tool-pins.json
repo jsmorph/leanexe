@@ -1,0 +1,20 @@
+{
+  "leanToolchain": "leanprover/lean4:v4.31.0",
+  "leanCommit": "68218e876d2a38b1985b8590fff244a83c321783",
+  "talosRevision": "bb3277e21c9786e3133d5c1601e34ebdc0bea4df",
+  "proofLakeManifestSha256": "8a6ee1e12afb1b2de16da60b29a42d40e7a3e26bdda45b9990a8f68bc4726685",
+  "proofKitSourceSha256": "0fb2c1f33ccbac01313579a6a6c1e20b5d885942c330afc2f1ed19876e90822e",
+  "verifierSourceSha256": "25aeb7d50d9ce4768b855e78d8ffb94606d02647386de9ca7b75fa026c34d802",
+  "nodeVersion": "24.13.0",
+  "wasmToolsVersion": "1.251.0",
+  "wasmtimeVersion": "44.0.0",
+  "kernelReview": {
+    "selectedResult": "affected-accepted-after-source-audit",
+    "candidateCommit": "68218e876d2a38b1985b8590fff244a83c321783",
+    "reproductionSha256": "bea3200a8941e34fcbd5ef71061cec5ea5124b65cc598390ee3bc24a0433d2da",
+    "forbiddenIdentifiers": [
+      "addDecl",
+      "inductDecl"
+    ]
+  }
+}
