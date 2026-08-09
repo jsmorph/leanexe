@@ -557,6 +557,14 @@ The cut-point journal also recorded that annotations use combined-local indices 
 
 The combined-coordinate helper and its automatic recipe entry were removed after the timing screen.  The journals establish that it improves index presentation, while the distribution shows no proof-time improvement under the current task structure.  The retained configuration remains the counter arithmetic LTG with the wrapper-boundary starter, and the failed packages remain available for later cut-point-graph work.
 
+### Rejected task-context selection
+
+A deterministic task-context selector treated a complete wrapper composition as covering its lower-level recipes, then retained detailed LTG catalog entries and strategy sections only for uncovered functions.  On Demo 7 it selected `Array`, `ScalarTransition`, and `FixedArraySingletonWrapper`, omitting detailed length-dispatch, direct-call, allocator, and memory material while preserving every permitted module in a compact fallback list.  This reduced the combined prompt and supplied guidance from about 13,500 words to about 6,800 words.
+
+Two fixed-artifact runs took 777.102 and 818.470 seconds, giving a two-run median of 797.786 seconds.  The result exceeds the retained 520.815-second median by 53.2 percent, and even an arbitrarily fast third run would leave a three-run median of 777.102 seconds.  Their accepted proofs contain 123 and 142 lines, so the shorter first proof provides secondary structural evidence but cannot retain the slower selector.
+
+Both journals used the selected wrapper composition, scalar transition recipe, and counter lemmas without consulting a fallback module.  The agents still spent several full edit-and-build cycles constructing the existential scalar invariant, normalizing compact states, and removing redundant presentation steps.  The active task therefore restores the full catalog and program-selected strategies; later retrieval work needs a checked proof skeleton or smaller elaboration unit that changes the work performed, rather than a prose reduction alone.
+
 ## Completion criteria
 
 The first complete increment emits a validated sidecar for every ordinary library-mode compilation requested by `leanexegen`.  Demos 1, 2, and 3 prove the same specifications over the same WASM bytes through an annotation-driven deterministic proof plan.  The retained evidence records proof-generation timings, annotation validation, region coverage, and independent Lean acceptance.

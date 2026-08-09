@@ -156,6 +156,10 @@ A machine-readable catalog should record declaration names, signatures, modules,
 
 Phase 3 passes only when the selected context reduces median stage-5 time.  A retrieval miss may fall back to the full checked catalog, but telemetry must record the miss.  Context size serves as an explanatory measure rather than an acceptance measure.
 
+The first context-only screen failed this gate on held-out Demo 7.  A checked-recipe selector reduced the combined prompt and supplied guidance from about 13,500 words to about 6,800 words, and both agents used the selected modules without a fallback, but two runs took 777.102 and 818.470 seconds.  Even an arbitrarily fast third run would leave a 777.102-second median, 49.2 percent above the retained 520.815-second median, so the selector was removed and its packages were preserved.
+
+The journals place the remaining cost in invariant construction, compact-state normalization, and repeated complete Lean checks rather than proof-library discovery.  Another Phase 3 attempt therefore depends on a smaller proof unit, a checked skeleton, or a goal-indexed declaration query that changes the proof work performed.  Reducing prose alone does not warrant another trial.
+
 ## Phase 4: Test source-proof guidance
 
 The first source-assisted experiment should use ideal annotations written from a real source proof.  `SEMANTIC_HINTS.json` should name abstract state fields, invariant, rank, branch guards, state updates, terminal rule, mathematical dependencies, and a tentative source-to-target local map.  It must exclude target tactic scripts, accepted `Behavior.lean` excerpts, and `wp_peel` sequences.
