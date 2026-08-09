@@ -8,7 +8,7 @@
   "scope": "generic-semantics",
   "evidenceStatus": "provisional",
   "features": ["accumulator", "array", "fold", "invariant", "prefix", "traversal"],
-  "annotationKinds": ["leanexe.loop.fold.v1"],
+  "annotationKinds": ["leanexe.array.fold.v1", "leanexe.loop.fold.v1"],
   "modules": ["Project.ProofKit.Array"],
   "declarations": ["Project.ProofKit.ArrayFold.foldPrefix", "Project.ProofKit.ArrayFold.foldPrefix_size", "Project.ProofKit.ArrayFold.foldPrefix_succ"],
   "premises": ["An array element type", "An accumulator type and step function", "A traversal index below the input size for the successor equation"],

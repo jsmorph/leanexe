@@ -6819,3 +6819,13 @@ A synthetic scale test placed the real scalar-loop and Euclidean entries among 9
 ## 2026-08-09: LTG metrics
 
 `tools/ltg metrics` now measures the validated catalog, generated indexes, and supplied proof-kit source under explicit counting rules documented in [LTG metrics](docs/ltg-metrics.md).  The initial snapshot contains 7 categories, 15 retrieval entries, 31 unique advertised declaration names, 22 distinct tactic commands, 39,642 canonical catalog bytes, and 430,185 bytes across the physical catalog and supplied proof kit.  Entries index 25 of 284 public named proof-kit declarations and have no structured tactic-name field, establishing declaration and tactic discoverability as measurable catalog-development work.
+
+## 2026-08-09: Nested fixed-array fold annotation
+
+Demo 9's wrapping-sum traversal lowers to an `arrayFoldMultiSlot` expression inside the sole value slot of `arrayLiteralSlots`, rather than to a top-level fold statement.  The new `leanexe.array.fold.v1` region tracks direct fold assignments and direct array-literal slot values through statement sequences, branches, and enclosing loops.  Its parameters record the widths, direction, bounds, accumulator and element roles, IR body, scratch layout, staged values, done state, release offsets, and result placement.
+
+The consumer validates every field before resolving the structured path in the decoded Talos `Program`.  It checks the initialization locals, effective-stop boundary, forward or reverse guard, staged accumulator transfer, done branch, index update, back edge, and result-local copy, while `AnnotationMatches` fixes the complete selected interval by Lean equality.  JavaScript tests cover a nested forward fold, recipe selection, changed guard, and inconsistent scratch layout.
+
+Recompiling Demo 9 preserved the 1,979-byte artifact and digest `aa263bbfa89c333f9fab497f1a2c370f476afc3419015d17b368cb7c8a6086d5`.  The emitted fold occupies instructions 39 through 65 of the valid branch at top-level instruction seven, and its recipe selects the three generic `ArrayFold.foldPrefix` declarations.  `tools/leanexegen verify -s` accepted the annotated package and its pre-existing exact-artifact proof under the current proof kit.
+
+That verification also found a compatibility failure in an allocator tactic change: new default list simplifiers made an accepted proof's following `simp only` report no progress.  The established tactics retain their former simplification sets, while `wp_alloc_window_lists` and `wp_alloc_to_store_lists` provide the larger list-normalizing sets as explicit choices.  This preserves existing proof behavior and gives future journals a selectable response to concrete local-list reduction costs.

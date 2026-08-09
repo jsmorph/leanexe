@@ -100,6 +100,36 @@ structure LoopFoldParameters where
   continuation : String
   deriving Repr, Lean.ToJson
 
+structure ArrayFoldParameters where
+  sourceWidth : Nat
+  resultWidth : Nat
+  reverse : Bool
+  array : String
+  start : String
+  stop : String
+  accumulatorStart : Nat
+  accumulatorLocals : Array Nat
+  itemStart : Nat
+  itemLocals : Array Nat
+  initialValues : Array String
+  bodyValues : Array String
+  bodyLets : Array String
+  doneValue : String
+  releaseOffsets : Array Nat
+  scratchStart : Nat
+  arrayLocal : Nat
+  lengthLocal : Nat
+  indexLocal : Nat
+  stopLocal : Nat
+  effectiveStopLocal : Nat
+  doneLocal : Nat
+  stagedValueStart : Nat
+  releaseReadyLocal : Nat
+  resultSlots : Array Nat
+  resultLocals : Array Nat
+  continuation : String
+  deriving Repr, Lean.ToJson
+
 structure WhileLoopParameters where
   condition : String
   body : String
@@ -133,6 +163,7 @@ inductive RegionParameters where
   | fixedArrayMapAdd (parameters : FixedArrayMapAddParameters)
   | fixedArrayFilterLt (parameters : FixedArrayFilterLtParameters)
   | loopFold (parameters : LoopFoldParameters)
+  | arrayFold (parameters : ArrayFoldParameters)
   | whileLoop (parameters : WhileLoopParameters)
   | scalarPostTestLoop (parameters : ScalarPostTestLoopParameters)
   deriving Repr
@@ -148,6 +179,7 @@ instance : Lean.ToJson RegionParameters where
     | .fixedArrayMapAdd parameters => Lean.toJson parameters
     | .fixedArrayFilterLt parameters => Lean.toJson parameters
     | .loopFold parameters => Lean.toJson parameters
+    | .arrayFold parameters => Lean.toJson parameters
     | .whileLoop parameters => Lean.toJson parameters
     | .scalarPostTestLoop parameters => Lean.toJson parameters
 
@@ -260,6 +292,40 @@ structure RelativeFixedArrayPairResult where
   generatedBy : Array String
   deriving Repr
 
+structure RelativeArrayFold where
+  listPath : Array PathStep
+  startIndex : Nat
+  endIndex : Nat
+  sourceWidth : Nat
+  resultWidth : Nat
+  reverse : Bool
+  array : String
+  start : String
+  stop : String
+  accumulatorStart : Nat
+  accumulatorLocals : Array Nat
+  itemStart : Nat
+  itemLocals : Array Nat
+  initialValues : Array String
+  bodyValues : Array String
+  bodyLets : Array String
+  doneValue : String
+  releaseOffsets : Array Nat
+  scratchStart : Nat
+  arrayLocal : Nat
+  lengthLocal : Nat
+  indexLocal : Nat
+  stopLocal : Nat
+  effectiveStopLocal : Nat
+  doneLocal : Nat
+  stagedValueStart : Nat
+  releaseReadyLocal : Nat
+  resultSlots : Array Nat
+  resultLocals : Array Nat
+  continuation : String
+  generatedBy : Array String
+  deriving Repr
+
 structure RelativeWhileLoop where
   listPath : Array PathStep
   startIndex : Nat
@@ -278,11 +344,17 @@ structure Emitted where
   directCalls : Array RelativeDirectCall
   lengthDispatches : Array RelativeFixedArrayLengthDispatch
   pairResults : Array RelativeFixedArrayPairResult
+  arrayFolds : Array RelativeArrayFold
   whileLoops : Array RelativeWhileLoop
   deriving Repr, Inhabited
 
 def Emitted.ofCode (code : List LeanExe.Wasm.Instr) : Emitted :=
-  { code, directCalls := #[], lengthDispatches := #[], pairResults := #[], whileLoops := #[] }
+  { code
+    directCalls := #[]
+    lengthDispatches := #[]
+    pairResults := #[]
+    arrayFolds := #[]
+    whileLoops := #[] }
 
 def Emitted.append (left right : Emitted) : Emitted :=
   let offset := left.code.length
@@ -317,6 +389,16 @@ def Emitted.append (left right : Emitted) : Emitted :=
         let step := result.listPath[0]
         { result with
           listPath := result.listPath.set 0
+            { step with instructionIndex := offset + step.instructionIndex } }
+    arrayFolds := left.arrayFolds ++ right.arrayFolds.map fun fold =>
+      if h : fold.listPath.size = 0 then
+        { fold with
+          startIndex := offset + fold.startIndex
+          endIndex := offset + fold.endIndex }
+      else
+        let step := fold.listPath[0]
+        { fold with
+          listPath := fold.listPath.set 0
             { step with instructionIndex := offset + step.instructionIndex } }
     whileLoops := left.whileLoops ++ right.whileLoops.map fun loop =>
       if h : loop.listPath.size = 0 then

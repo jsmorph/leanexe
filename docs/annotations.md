@@ -51,6 +51,7 @@ The first vocabulary should cover the regions already responsible for most of th
 | `leanexe.array.pair-result.v1` | Constant or indexed-input value form, allocator window, destination local, and continuation. | Apply the complete two-word allocation and represented-result theorem. |
 | `leanexe.array.map-add.v1` | Maximum input size, wrapping addend, complete function boundary, and return continuation. | Apply the complete bounded-map wrapper theorem. |
 | `leanexe.array.filter-lt.v1` | Maximum input size, unsigned threshold, complete function boundary, and return continuation. | Apply the complete bounded-filter wrapper theorem and its heap-reserve model. |
+| `leanexe.array.fold.v1` | Source and result widths, direction, bounds, accumulator and element locals, body expressions, scratch layout, exact structured path, and result placement. | State a prefix-fold invariant from compiler-known local roles and prove its application-specific transition. |
 | `leanexe.runtime.allocate.v1` | Size expression, allocator locals, globals, memory-growth branch, and destination. | Select the allocator theorem and establish its post-frame. |
 | `leanexe.runtime.retain.v1` | Pointer location, runtime function index, and continuation. | Apply the retain theorem at the emitted ownership boundary. |
 | `leanexe.runtime.release.v1` | Pointer location, runtime function index, and continuation. | Apply the release theorem at the emitted ownership boundary. |
@@ -442,6 +443,14 @@ The held-out Demo 5 baseline left the complete stable-filter loop outside the an
 The compiler recognizes the exact extracted `arrayFilterSlots` form and emits a `leanexe.array.filter-lt.v1` whole-function region containing `maximumSize`, `threshold`, and the function-return continuation.  The consumer validates the complete top-level boundary and generates a Lean equality between the decoded artifact region and `FixedArrayFilterLt.wrapperProgram maximumSize threshold`.  The deterministic starter checks equality with both the formal result and the schema-6 heap reserve before applying `wrapperProgram_spec`.
 
 Recompiling the frozen Demo 5 source produced the same 1,975-byte WASM digest and added the filter region beside the existing length dispatch.  Three controlled reproofs preserved every frozen source and artifact input, accepted the unchanged 70-line starter on each first check, and completed Stage 5 in 86.795, 90.745, and 95.718 seconds.  Their 90.745-second median reduces the measured baseline by 1,544.934 seconds, or 94.5 percent, while their range is 8.923 seconds and independent verification accepted the first and third final packages.
+
+## Fixed-array fold annotations
+
+The compiler emits `leanexe.array.fold.v1` for a direct fixed-array fold assignment and for a fold used as an array-literal slot value.  The annotation records the source and result widths, traversal direction, array and bound expressions, accumulator and element locals, initial and next values, body lets, done expression, release offsets, scratch layout, and selected result placement.  Its structured instruction path permits the fold to remain nested inside a length branch and result allocation.
+
+The consumer checks the scratch-local equations and rejects inconsistent widths, result slots, release offsets, and continuations.  It resolves the region in the decoded Talos `Program`, then checks the emitted initialization locals, effective bound, loop guard, staged accumulator copies, done branch, forward or reverse back edge, and result-local transfer.  The generated `AnnotationMatches` equality independently fixes the complete selected instruction interval used by the artifact proof.
+
+Demo 9 supplies the first fixed artifact for this region kind.  Recompilation preserved the 1,979-byte WASM digest `aa263bbfa89c333f9fab497f1a2c370f476afc3419015d17b368cb7c8a6086d5` and added a fold region at instructions 39 through 65 of the valid branch selected by top-level instruction seven.  The recipe names `ArrayFold.foldPrefix`, `foldPrefix_succ`, and `foldPrefix_size`, while the next controlled reproof will determine whether those checked local roles reduce proof search.
 
 ## Scalar-loop annotations
 
