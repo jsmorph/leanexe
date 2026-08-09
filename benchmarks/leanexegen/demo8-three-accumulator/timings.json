@@ -26,5 +26,20 @@
     "editedCandidates": 1,
     "independentlyVerified": true,
     "timingImprovement": false
+  },
+  "residualNormalizationRun": {
+    "package": "normalized-starter-1",
+    "acceptedSourceSha256": "a68d112a9ad360de8c59015e53ef931e6e9e8fdf4bbac6653a102a172ffa13b7",
+    "totalMilliseconds": 219561.078,
+    "codexSessionMilliseconds": 114709.164,
+    "outerAcceptanceMilliseconds": 66370.728,
+    "reductionFromInitialMilliseconds": 93692.088,
+    "reductionFromInitialPercent": 29.909,
+    "proofLines": 67,
+    "proofWords": 250,
+    "editedCandidates": 0,
+    "independentlyVerified": true,
+    "retainedAsAutomaticStarter": false,
+    "retainedAsWorkedExample": true
   }
 }
