@@ -9,6 +9,37 @@ structure U64State where
   locals : List UInt64
   deriving Repr
 
+def State.localU64ToNat (state : State) (index : Nat) : Nat :=
+  match state.locals[index]? with
+  | some (.i64 value) => value.toNat
+  | _ => 0
+
+namespace CounterTransition
+
+theorem decrement_add_increment (remaining result : UInt64) :
+    (remaining - 1) + (result + 1) = remaining + result := by
+  calc
+    (remaining - 1) + (result + 1) = (remaining - 1) + (1 + result) := by
+      rw [UInt64.add_comm result 1]
+    _ = ((remaining - 1) + 1) + result := by
+      rw [← UInt64.add_assoc]
+    _ = remaining + result := by
+      rw [UInt64.sub_add_cancel]
+
+theorem decrement_toNat_lt {remaining : UInt64} (hRemaining : remaining ≠ 0) :
+    (remaining - 1).toNat < remaining.toNat := by
+  have hOneLe : (1 : UInt64) ≤ remaining := by
+    have hPositive : (0 : UInt64) < remaining :=
+      UInt64.pos_iff_ne_zero.mpr hRemaining
+    rw [UInt64.le_iff_toNat_le]
+    have hPositiveNat := UInt64.lt_iff_toNat_lt.mp hPositive
+    simp only [UInt64.toNat_zero, UInt64.toNat_one] at hPositiveNat ⊢
+    omega
+  exact UInt64.lt_iff_toNat_lt.mp
+    (UInt64.sub_lt UInt64.zero_lt_one hOneLe)
+
+end CounterTransition
+
 @[simp]
 theorem u64_one_beq_zero : (((1 : UInt64) == (0 : UInt64)) = false) := by
   decide

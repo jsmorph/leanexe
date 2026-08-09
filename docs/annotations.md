@@ -537,6 +537,18 @@ A follow-up generated a checked `exit_wp` theorem for the exact three-instructio
 
 Every later proof-time iteration reviews the journal, accepted source, and telemetry before changing the annotation vocabulary or LTG.  The proof prompt now asks the agent to name each supplied recipe, theorem, tactic, and annotation it tried, describe its effect or reason for abandonment, and identify missing general assistance suggested by diagnostics.  It also permits abandoning a direct recipe whose exact shape does not match or whose residual goals are worse, without restructuring unrelated code to force the application.
 
+### Held-out counter-transfer result
+
+Demo 7 applies the existing scalar post-test annotation to a different two-accumulator transition: `(remaining, result)` changes to `(remaining - 1, result + 1)` until the first component reaches zero.  The reference proof received the exact scalar region, compact transition equations, scalar entry theorem, and singleton-wrapper composition, but it derived the fixed-width counter facts during the proof session.  Stage 5 took 577.039 seconds, produced 171 lines, and required four edited candidates.
+
+The retained LTG adds `State.localU64ToNat`, `CounterTransition.decrement_add_increment`, and `CounterTransition.decrement_toNat_lt`.  The recipe selects the two counter theorems only when the checked descriptor contains unit decrement and unit increment, while any scalar binary operation adds `U64Op.apply` as focused transition guidance.  The declarations mention scalar state and `UInt64` operations rather than Demo 7, its generated namespace, local count, wrapper, or specification.
+
+Three retained runs completed in 520.815, 405.284, and 816.771 seconds.  Their median is 520.815 seconds, 56.224 seconds or 9.7 percent below the reference, but their 411.486-second range records substantial proof-agent variance.  Median proof size fell from 171 to 135 lines, while the journals contain three, one, and ten edited candidates.
+
+The slow journal attributed most revisions to unifying `postTestProgram_spec` with the generated scalar-entry theorem after the invariant and measure were complete.  An experimental generated theorem composed those checked boundaries and passed exact-artifact verification, but its three screens took 387.160, 558.581, and 748.263 seconds.  The 558.581-second median is 7.3 percent above the retained configuration, and median proof size rose from 135 to 140 lines, so the active generator and recipe omit that composition theorem.
+
+Demo 7 therefore retains the operation-selected arithmetic lemmas and guidance while preserving the rejected composition packages for analysis.  The counter LTG improves the primary median and the secondary proof size on a held-out loop, although the timing distribution shows that application and presentation search still dominate some sessions.  Future changes must address a boundary repeated in another artifact or another Demo 7 distribution rather than specialize the theorem interface to this proof.
+
 ## Completion criteria
 
 The first complete increment emits a validated sidecar for every ordinary library-mode compilation requested by `leanexegen`.  Demos 1, 2, and 3 prove the same specifications over the same WASM bytes through an annotation-driven deterministic proof plan.  The retained evidence records proof-generation timings, annotation validation, region coverage, and independent Lean acceptance.

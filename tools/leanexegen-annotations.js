@@ -1210,6 +1210,27 @@ function matchScalarPostTestLoopRegion(program, function_, region) {
   };
 }
 
+function scalarDescriptorHasUnitOperation(value, operation) {
+  if (value === null || typeof value !== "object") return false;
+  if (Array.isArray(value)) {
+    return value.some((item) => scalarDescriptorHasUnitOperation(item, operation));
+  }
+  if (value.kind === "bin" && value.operation === operation &&
+      ((value.left?.kind === "const" && value.left.value === "1") ||
+       (value.right?.kind === "const" && value.right.value === "1"))) {
+    return true;
+  }
+  return Object.values(value)
+    .some((item) => scalarDescriptorHasUnitOperation(item, operation));
+}
+
+function scalarDescriptorHasBinaryOperation(value) {
+  if (value === null || typeof value !== "object") return false;
+  if (Array.isArray(value)) return value.some(scalarDescriptorHasBinaryOperation);
+  if (value.kind === "bin") return true;
+  return Object.values(value).some(scalarDescriptorHasBinaryOperation);
+}
+
 function loopRecipe(
     match, selectedSections = [], annotationNamespace = "Project.AnnotationMatches") {
   const checkedScalarLoop = [
@@ -1218,6 +1239,12 @@ function loopRecipe(
   if (checkedScalarLoop) {
     const name = match.regionId.replace(/[^A-Za-z0-9_]/g, "_");
     const postTest = match.regionKind === "leanexe.loop.scalar-post-test.v1";
+    const hasUnitDecrement = scalarDescriptorHasUnitOperation(
+      match.parameters.descriptor.body, "sub");
+    const hasUnitIncrement = scalarDescriptorHasUnitOperation(
+      match.parameters.descriptor.body, "add");
+    const hasBinaryOperation = scalarDescriptorHasBinaryOperation(
+      match.parameters.descriptor.body);
     return {
       recipeVersion: 1,
       functionIndex: match.functionIndex,
@@ -1260,6 +1287,24 @@ function loopRecipe(
           declaration: "Project.ProofKit.ScalarTransition.Stmt.eval_preserves_below",
           purpose: "preserve each application local below scratch that the body does not write",
         },
+        {
+          declaration: "Project.ProofKit.ScalarTransition.State.localU64ToNat",
+          purpose: "define a natural-number loop measure from an i64 local without a Value pattern",
+        },
+        ...(hasBinaryOperation ? [{
+          declaration: "Project.ProofKit.ScalarTransition.U64Op.apply",
+          purpose: "reduce descriptor operations to ordinary UInt64 operations after a generated transition equation",
+        }] : []),
+        ...(hasUnitDecrement ? [{
+          declaration:
+            "Project.ProofKit.ScalarTransition.CounterTransition.decrement_toNat_lt",
+          purpose: "prove strict natural-number decrease for a nonzero UInt64 decrement",
+        }] : []),
+        ...(hasUnitDecrement && hasUnitIncrement ? [{
+          declaration:
+            "Project.ProofKit.ScalarTransition.CounterTransition.decrement_add_increment",
+          purpose: "preserve a wrapping sum when one UInt64 counter decreases and another increases",
+        }] : []),
         {
           declaration: postTest
             ? "Project.ProofKit.ScalarTransition.postTestProgram_spec"

@@ -1,0 +1,147 @@
+{
+  "schemaVersion": 1,
+  "attemptOrder": [
+    "direct",
+    "composition",
+    "tactic",
+    "focused-guidance"
+  ],
+  "compositions": [
+    {
+      "compositionVersion": 1,
+      "kind": "fixed-array-singleton-wrapper-v1",
+      "functionIndex": 1,
+      "descriptor": "LeanExeGen.GeneratedR1b9b2027715ddee5.AnnotationMatches.function_1_singleton_wrapper_0",
+      "regionEquality": "LeanExeGen.GeneratedR1b9b2027715ddee5.AnnotationMatches.function_1_singleton_wrapper_0_eq",
+      "direct": {
+        "module": "Project.ProofKit.FixedArraySingletonWrapper",
+        "theorem": "Project.ProofKit.FixedArraySingletonWrapper.wrapperProgram_spec"
+      }
+    }
+  ],
+  "recipes": [
+    {
+      "recipeVersion": 1,
+      "functionIndex": 0,
+      "regionId": "function-0.scalar-post-test-loop-0",
+      "regionKind": "leanexe.loop.scalar-post-test.v1",
+      "applicability": "Lean-checked equality over the decoded instruction region",
+      "direct": {
+        "module": "Project.ProofKit.ScalarTransition",
+        "theorem": "Project.ProofKit.ScalarTransition.postTestProgram_spec",
+        "regionEquality": "LeanExeGen.GeneratedR1b9b2027715ddee5.AnnotationMatches.function_0_scalar_post_test_loop_0_eq",
+        "program": "LeanExeGen.GeneratedR1b9b2027715ddee5.AnnotationMatches.function_0_scalar_post_test_loop_0_program"
+      },
+      "supporting": [
+        {
+          "declaration": "LeanExeGen.GeneratedR1b9b2027715ddee5.AnnotationMatches.function_0_scalar_post_test_loop_0_terminates_with_of_loop",
+          "purpose": "enter the checked loop from TerminatesWith with the exact WebAssembly argument order"
+        },
+        {
+          "declaration": "LeanExeGen.GeneratedR1b9b2027715ddee5.AnnotationMatches.function_0_scalar_post_test_loop_0_entry_to_loop",
+          "purpose": "carry arbitrary i64 arguments through the checked function-entry prefix"
+        },
+        {
+          "declaration": "LeanExeGen.GeneratedR1b9b2027715ddee5.AnnotationMatches.function_0_scalar_post_test_loop_0_condition_eval",
+          "purpose": "use the checked condition transition without reducing the scalar evaluator"
+        },
+        {
+          "declaration": "LeanExeGen.GeneratedR1b9b2027715ddee5.AnnotationMatches.function_0_scalar_post_test_loop_0_body_eval",
+          "purpose": "use the checked body transition without exposing scratch-local updates"
+        },
+        {
+          "declaration": "Project.ProofKit.ScalarTransition.Expr.program_spec",
+          "purpose": "prove each typed scalar guard expression"
+        },
+        {
+          "declaration": "Project.ProofKit.ScalarTransition.Stmt.program_spec",
+          "purpose": "prove each typed scalar loop-body transition"
+        },
+        {
+          "declaration": "Project.ProofKit.ScalarTransition.Stmt.eval_preserves_below",
+          "purpose": "preserve each application local below scratch that the body does not write"
+        },
+        {
+          "declaration": "Project.ProofKit.ScalarTransition.State.localU64ToNat",
+          "purpose": "define a natural-number loop measure from an i64 local without a Value pattern"
+        },
+        {
+          "declaration": "Project.ProofKit.ScalarTransition.CounterTransition.decrement_toNat_lt",
+          "purpose": "prove strict natural-number decrease for a nonzero UInt64 decrement"
+        },
+        {
+          "declaration": "Project.ProofKit.ScalarTransition.CounterTransition.decrement_add_increment",
+          "purpose": "preserve a wrapping sum when one UInt64 counter decreases and another increases"
+        },
+        {
+          "declaration": "Project.ProofKit.ScalarTransition.postTestProgram_spec",
+          "purpose": "compose a checked post-test transition with the invariant and measure"
+        }
+      ],
+      "expectedPostcondition": "an invariant-preserving transition with a decreasing measure",
+      "guidance": [
+        "strategy.loops",
+        "strategy.frames",
+        "strategy.arithmetic"
+      ]
+    },
+    {
+      "recipeVersion": 1,
+      "functionIndex": 1,
+      "regionId": "function-1.length-dispatch-0",
+      "regionKind": "leanexe.array.length-dispatch.v1",
+      "applicability": "exact decoded instruction match",
+      "direct": {
+        "module": "Project.ProofKit.FixedArrayLengthDispatch",
+        "theorem": "Project.ProofKit.FixedArrayLengthDispatch.eqProgram_spec",
+        "tactic": "wp_fixed_array_length_eq_dispatch",
+        "invocation": "wp_fixed_array_length_eq_dispatch 5, 1"
+      },
+      "supporting": [
+        {
+          "declaration": "Project.ProofKit.UInt64Array.At.lengthRead",
+          "purpose": "identify the represented input length"
+        },
+        {
+          "declaration": "Project.ProofKit.UInt64Array.At.encodedSize_eq",
+          "purpose": "relate the encoded length word to the fixed logical size"
+        },
+        {
+          "declaration": "Project.ProofKit.FixedArrayEqNode.branchPost",
+          "purpose": "preserve the enclosing branch continuation"
+        }
+      ],
+      "expectedPostcondition": "valid and invalid input-size branch obligations",
+      "guidance": [
+        "strategy.arrays",
+        "strategy.frames"
+      ]
+    },
+    {
+      "recipeVersion": 1,
+      "functionIndex": 1,
+      "regionId": "function-1.direct-call-0",
+      "regionKind": "leanexe.call.direct.v1",
+      "applicability": "exact decoded instruction match",
+      "direct": {
+        "module": "Project.ProofKit.Control",
+        "theorem": "Wasm.wp_call_tw"
+      },
+      "supporting": [
+        {
+          "declaration": "Wasm.wp_call_tw",
+          "purpose": "apply the callee theorem to the exact direct call"
+        },
+        {
+          "declaration": "Project.ProofKit.wp_entry",
+          "purpose": "establish the entry frame before the call"
+        }
+      ],
+      "expectedPostcondition": "the callee result restored into the caller continuation",
+      "guidance": [
+        "strategy.calls",
+        "strategy.frames"
+      ]
+    }
+  ]
+}

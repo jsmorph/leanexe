@@ -1291,8 +1291,12 @@ def func0Def : Wasm.Function :=
     .loop 0 0 [
       .localGet 1,
       .constI64 (1 : UInt64),
-      .addI64,
+      .subI64,
       .localSet 1,
+      .localGet 2,
+      .constI64 (1 : UInt64),
+      .addI64,
+      .localSet 2,
       .localGet 1,
       .constI64 (5 : UInt64),
       .neI64,
@@ -1340,13 +1344,26 @@ def func0Def : Wasm.Function :=
               right: { kind: "const", value: "5" },
             },
             body: {
-              kind: "assign",
-              index: 1,
-              value: {
-                kind: "bin",
-                operation: "add",
-                left: { kind: "get", index: 1 },
-                right: { kind: "const", value: "1" },
+              kind: "seq",
+              first: {
+                kind: "assign",
+                index: 1,
+                value: {
+                  kind: "bin",
+                  operation: "sub",
+                  left: { kind: "get", index: 1 },
+                  right: { kind: "const", value: "1" },
+                },
+              },
+              second: {
+                kind: "assign",
+                index: 2,
+                value: {
+                  kind: "bin",
+                  operation: "add",
+                  left: { kind: "get", index: 2 },
+                  right: { kind: "const", value: "1" },
+                },
               },
             },
           },
@@ -1365,6 +1382,14 @@ def func0Def : Wasm.Function :=
       "Project.ProofKit.ScalarTransition.postTestProgram_spec" &&
     postTestPlan.recipes[0].supporting.some((entry) => entry.declaration ===
       "Project.ProofKit.ScalarTransition.postTestProgram_spec") &&
+    postTestPlan.recipes[0].supporting.some((entry) => entry.declaration ===
+      "Project.ProofKit.ScalarTransition.State.localU64ToNat") &&
+    postTestPlan.recipes[0].supporting.some((entry) => entry.declaration ===
+      "Project.ProofKit.ScalarTransition.U64Op.apply") &&
+    postTestPlan.recipes[0].supporting.some((entry) => entry.declaration ===
+      "Project.ProofKit.ScalarTransition.CounterTransition.decrement_toNat_lt") &&
+    postTestPlan.recipes[0].supporting.some((entry) => entry.declaration ===
+      "Project.ProofKit.ScalarTransition.CounterTransition.decrement_add_increment") &&
     !postTestPlan.recipes[0].supporting.some((entry) => entry.declaration ===
       "Project.ProofKit.ScalarTransition.whileProgram_spec"),
   "scalar post-test annotation did not select its checked composition theorem");
