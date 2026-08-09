@@ -1293,10 +1293,11 @@ function matchArrayFoldRegion(program, function_, region) {
   if (block.length !== 1 || !block[0].startsWith(".loop ")) {
     fail(`${region.id}: decoded array-fold block does not contain one loop`);
   }
-  const loop = normalizeInstructions(resolveInstructionList(body, [
+  const loopPath = [
     ...blockPath,
     { instructionIndex: 0, field: "loop" },
-  ]));
+  ];
+  const loop = normalizeInstructions(resolveInstructionList(body, loopPath));
   const expectedGuard = parameters.reverse ? [
     `.localGet ${parameters.indexLocal}`,
     `.localGet ${parameters.stopLocal}`,
@@ -1315,6 +1316,24 @@ function matchArrayFoldRegion(program, function_, region) {
   if (JSON.stringify(loop.slice(0, expectedGuard.length)) !== JSON.stringify(expectedGuard)) {
     fail(`${region.id}: decoded array-fold guard does not match`);
   }
+  const dynamicPrefix = [
+    `.localGet ${parameters.arrayLocal}`,
+    `.localGet ${parameters.indexLocal}`,
+    ".constI64 (1 : UInt64)",
+    ".mulI64",
+    ".constI64 (1 : UInt64)",
+    ".addI64",
+    ".constI64 (8 : UInt64)",
+    ".mulI64",
+    ".addI64",
+    ".wrapI64",
+    ".load64 (0 : UInt32)",
+    `.localSet ${parameters.itemLocals[0]}`,
+  ];
+  const dynamicTraversalEligible = !parameters.reverse &&
+    parameters.sourceWidth === 1 &&
+    JSON.stringify(loop.slice(expectedGuard.length,
+      expectedGuard.length + dynamicPrefix.length)) === JSON.stringify(dynamicPrefix);
   const transitionSuffix = [
     ...parameters.accumulatorLocals.flatMap((local, index) => [
       `.localGet ${parameters.stagedValueStart + index}`,
@@ -1343,6 +1362,11 @@ function matchArrayFoldRegion(program, function_, region) {
     regionId: region.id,
     regionKind: region.kind,
     parameters,
+    dynamicTraversalEligible,
+    ...(dynamicTraversalEligible ? {
+      continuingEndIndex: expectedGuard.length + dynamicPrefix.length,
+      loopPath,
+    } : {}),
   };
 }
 
@@ -1561,7 +1585,19 @@ function loopRecipe(
       }, {
         declaration: "Project.ProofKit.ArrayFold.foldPrefix_size",
         purpose: "rewrite the exit accumulator as the complete Array.foldl result",
-      }] : []),
+      }, ...(match.dynamicTraversalEligible ? [{
+        declaration: `${annotationNamespace}.${name}_continuing_eq`,
+        purpose: "rewrite the exact continuing guard and indexed element-load prefix",
+      }, {
+        declaration: `${annotationNamespace}.${name}_continuing_program`,
+        purpose: "name the compiler-matched continuing guard and indexed element-load prefix",
+      }, {
+        declaration: "Project.ProofKit.FixedArrayTraversalInput.continuingProgram_spec",
+        purpose: "execute the continuing guard and indexed element load from the annotated local roles",
+      }, {
+        declaration: "Project.ProofKit.FixedArrayTraversalInput.dynamicProgram_spec",
+        purpose: "execute an indexed element load after a separate loop-guard reduction",
+      }] : [])] : []),
       {
         declaration: "Project.ProofKit.wp_block_loop",
         purpose: "apply the block and loop rules after reaching the annotated region",
@@ -3443,12 +3479,26 @@ theorem ${name}_eq :
           `${job.namespace}.func${function_.wasmIndex} ` +
           `${leanAnnotationPath(region.location.listPath)} ` +
           `${region.location.startIndex} ${region.location.endIndex}`;
+        const match = program === null
+          ? null : matchArrayFoldRegion(program, function_, region);
+        const continuing = match?.dynamicTraversalEligible ? `
+
+def ${name}_continuing_program : Wasm.Program :=
+  Project.ProofKit.FixedArrayTraversalInput.continuingProgram
+    ${region.parameters.arrayLocal} ${region.parameters.indexLocal}
+    ${region.parameters.effectiveStopLocal} ${region.parameters.itemLocals[0]}
+
+theorem ${name}_continuing_eq :
+    Project.ProofKit.Annotation.region ${job.namespace}.func${function_.wasmIndex}
+      ${leanAnnotationPath(match.loopPath)} 0 ${match.continuingEndIndex} =
+        some ${name}_continuing_program := by
+  rfl` : "";
         declarations.push(`def ${name}_program : Wasm.Program :=
   (${selected}).getD []
 
 theorem ${name}_eq :
     ${selected} = some ${name}_program := by
-  rfl`);
+  rfl${continuing}`);
         continue;
       }
       if (region.kind !== "leanexe.array.pair-result.v1") continue;
@@ -3517,6 +3567,10 @@ ${document.functions.some((function_) => function_.regions.some((region) =>
 ${document.functions.some((function_) => function_.regions.some((region) =>
     region.kind === "leanexe.array.filter-lt.v1"))
     ? "import Project.ProofKit.FixedArrayFilterLt\n" : ""}
+${program !== null && document.functions.some((function_) => function_.regions.some((region) =>
+    region.kind === "leanexe.array.fold.v1" &&
+      matchArrayFoldRegion(program, function_, region).dynamicTraversalEligible))
+    ? "import Project.ProofKit.FixedArrayTraversalInput\n" : ""}
 ${chainCompositions.length > 0 ? "import Project.ProofKit.FixedArraySearchChain\n" : ""}
 ${treeCompositions.length > 0 ? "import Project.ProofKit.FixedArraySearchTree\n" : ""}
 ${singletonCompositions.length > 0

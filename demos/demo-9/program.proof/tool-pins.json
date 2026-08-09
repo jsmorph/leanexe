@@ -3,7 +3,7 @@
   "leanCommit": "68218e876d2a38b1985b8590fff244a83c321783",
   "talosRevision": "bb3277e21c9786e3133d5c1601e34ebdc0bea4df",
   "proofLakeManifestSha256": "8a6ee1e12afb1b2de16da60b29a42d40e7a3e26bdda45b9990a8f68bc4726685",
-  "proofKitSourceSha256": "07ab038f7b7445b1b5f7d7d3a47acbac9ce4a233179261d2dca019858aac3812",
+  "proofKitSourceSha256": "617a262c79c33caf557f4f752ce0a55e97ac0e7d79bce5abbc9e97c7a2b21617",
   "verifierSourceSha256": "25aeb7d50d9ce4768b855e78d8ffb94606d02647386de9ca7b75fa026c34d802",
   "nodeVersion": "24.13.0",
   "wasmToolsVersion": "1.251.0",
