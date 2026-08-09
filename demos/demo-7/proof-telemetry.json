@@ -3,10 +3,10 @@
   "metric": "stage-5-start-to-first-accepted-proof",
   "stage": 5,
   "stageName": "Direct artifact proof",
-  "stageStartedAt": "2026-08-09T06:16:16.889Z",
-  "firstAcceptedAt": "2026-08-09T06:51:33.036Z",
-  "codexSessionMilliseconds": 310345.435,
-  "outerAcceptanceMilliseconds": 50116.998,
-  "totalMilliseconds": 371242.857,
-  "acceptedSourceSha256": "3ca1faf664e93ba95f234a49fbb05368f04b770a23d0b1d6fc78e0c8ccbe64c5"
+  "stageStartedAt": "2026-08-09T12:32:30.074Z",
+  "firstAcceptedAt": "2026-08-09T12:35:54.611Z",
+  "codexSessionMilliseconds": 154803.643,
+  "outerAcceptanceMilliseconds": 38974.598,
+  "totalMilliseconds": 204537.082,
+  "acceptedSourceSha256": "b52363cd0d6c02b333b762e2c357a05453319995a978f6728839db5eddf99706"
 }

@@ -4,9 +4,9 @@
 
 This demo implements the identity function on `Array UInt64`.  A singleton value passes through a separate helper that starts with `(remaining, result) = (x, 0)`, repeatedly changes the pair to `(remaining - 1, result + 1)`, and returns `result` when `remaining` reaches zero.  Every other array length returns unchanged.
 
-The 1,750-byte WASM module has SHA-256 digest `f437ebc16e352391ff05ff79d957eb7ef5652424d6d28c3f279e782980eeb7a5`.  Independent `leanexegen verify -s` accepted each promoted proof over those exact bytes.  The selected representative is the median-time summary run, which completed Stage 5 in 371.243 seconds and produced a 68-line proof.
+The 1,750-byte WASM module has SHA-256 digest `f437ebc16e352391ff05ff79d957eb7ef5652424d6d28c3f279e782980eeb7a5`.  Independent `leanexegen verify -s` accepted each promoted proof over those exact bytes.  The selected representative is the median-time complete-composition run, which completed Stage 5 in 204.537 seconds and produced a 72-line proof.
 
-The reference proof took 577.039 seconds, contained 171 lines, and required four edited candidates.  The previous LTG runs have a 520.815-second median and a 135-line median proof, while the promoted runs have a 371.243-second median and a 68-line median proof.  The promoted median is 28.7 percent below the previous median and 35.7 percent below the reference.
+The reference proof took 577.039 seconds, contained 171 lines, and required four edited candidates.  The arithmetic LTG runs have a 520.815-second median, the checked-summary runs have a 371.243-second median, and the complete-composition runs have a 204.537-second median.  The current median is 44.9 percent below the checked-summary median and 64.6 percent below the reference, while its 72-line median proof remains close to the checked-summary median of 68 lines.
 
 ## Program and specification
 
@@ -34,11 +34,11 @@ The [WASM module](program.wasm) is the executable covered by the theorem, and th
 
 The selective [compiler annotations](program.annotations.json) contain the scalar post-test region, the public length dispatch, and the direct call.  The generated [annotation equalities and transitions](annotation-matches.lean) prove the exact scalar region, compact body and condition evaluations, scalar entry, complete singleton wrapper, and store-preserving scalar identity.  The [proof recipe plan](proof-recipes.json) selects the complete scalar theorem only after the annotation consumer confirms the counter-transfer transition, initial values, exit test, and returned accumulator.
 
-The [behavioral proof](proof.lean) proves the formal specification over the Talos module decoded from the exact WASM bytes.  It applies the generated scalar identity theorem as the callee premise of `FixedArraySingletonWrapper.wrapperProgram_spec`, leaving only the formal equations for invalid and singleton arrays.  The generated theorem uses the shared `CounterTransition.postTestProgram_spec` theorem internally, so the proving agent does not reconstruct the scalar invariant, hidden local frame, transition witnesses, or termination measure.
+The [behavioral proof](proof.lean) proves the formal specification over the Talos module decoded from the exact WASM bytes.  The deterministic starter applies the generated scalar identity theorem as the callee premise of `FixedArraySingletonWrapper.wrapperProgram_spec`, leaving only the formal equations for invalid and singleton arrays.  The generated theorem uses the shared `CounterTransition.postTestProgram_spec` theorem internally, so the proving agent does not reconstruct the scalar invariant, hidden local frame, transition witnesses, termination measure, or wrapper execution.
 
 The [selected strategy notes](proof-strategies.md) and [program feature report](proof-task-features.json) record the guidance and reachable artifact features supplied to the proof agent.  The [proof journal](proof-journal.md) records the representative run's candidate revisions and use of the supplied assistance.  The [proof telemetry](proof-telemetry.json), [timing record](proof-timings.json), and [stage reports](stage-reports.json) separate measured proof generation from artifact identities and acceptance decisions.
 
-The timing record preserves three rejected experiments against these bytes.  A deterministic semantic cut-point starter took 936.788 seconds, a three-run combined-local measure screen had a 577.172-second median, and a reduced task-context screen took 777.102 and 818.470 seconds.  The promoted semantic summary instead reduced the median to 371.243 seconds while every agent used the same complete checked scalar boundary.
+The timing record preserves three rejected experiments against these bytes.  A deterministic semantic cut-point starter that left the scalar proof open took 936.788 seconds, a three-run combined-local measure screen had a 577.172-second median, and a reduced task-context screen took 777.102 and 818.470 seconds.  The checked semantic summary reduced the median to 371.243 seconds, after which composing that summary with the checked public wrapper reduced it to 204.537 seconds.
 
 ## Execution
 
