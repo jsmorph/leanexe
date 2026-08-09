@@ -429,6 +429,7 @@ function testCodexProtocol() {
       compositionVersion: 1,
       kind: "fixed-array-singleton-wrapper-v1",
       functionIndex: 3,
+      calleeIndex: 2,
       descriptor: `${job.namespace}.AnnotationMatches.function_3_singleton_wrapper_0`,
       regionEquality:
         `${job.namespace}.AnnotationMatches.function_3_singleton_wrapper_0_eq`,
@@ -1879,9 +1880,14 @@ function testSingletonWrapperComposition() {
   validateProofRecipePlan(plan, document);
   assert(plan.compositions.length === 1 &&
     plan.compositions[0].kind === "fixed-array-singleton-wrapper-v1" &&
+    plan.compositions[0].calleeIndex === 1 &&
     plan.compositions[0].direct.theorem ===
       "Project.ProofKit.FixedArraySingletonWrapper.wrapperProgram_spec",
   "singleton wrapper composition did not select the complete theorem");
+  const changedCallee = structuredClone(plan);
+  changedCallee.compositions[0].calleeIndex = 0;
+  expectFailure(() => validateProofRecipePlan(changedCallee, document),
+    /calleeIndex does not identify the checked wrapper call/);
   const source = annotationMatchesSource(document, {
     namespace: "LeanExeGen.GeneratedRbade8cb1a4e3a423",
     programModule: "LeanExeGen.GeneratedRbade8cb1a4e3a423.Program",
@@ -1937,6 +1943,16 @@ function testCounterTransferIdentitySummary() {
     "terminates_with_counter_transfer_identity";
   assert(plan.recipes[0].supporting.some((entry) => entry.declaration === theorem),
     "counter-transfer recipe omitted its complete checked identity theorem");
+  assert(plan.compositions.length === 1 &&
+    plan.compositions[0].calleeIndex === 0,
+  "counter-transfer plan omitted the checked wrapper callee identity");
+  const request = fs.readFileSync(path.join(packageRoot, "request.txt"), "utf8");
+  const starter = artifactProofStarter(makeJob(request), 1, true, plan);
+  assert(starter.includes("FixedArraySingletonWrapper.wrapperProgram_spec") &&
+    starter.includes("(callee := 0) (transform := fun value => value)") &&
+    starter.includes(`${theorem} env initial value`) &&
+    starter.trimEnd().endsWith("end LeanExeGen.GeneratedR1b9b2027715ddee5.Behavior"),
+  "counter-transfer composition did not close the checked operational premises");
   const source = annotationMatchesSource(document, {
     namespace: "LeanExeGen.GeneratedR1b9b2027715ddee5",
     programModule: "LeanExeGen.GeneratedR1b9b2027715ddee5.Program",
