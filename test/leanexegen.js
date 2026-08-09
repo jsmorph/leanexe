@@ -1922,6 +1922,60 @@ function testScalarTransitionSpecialization() {
   "scalar transition specialization did not retain Demo 1's five semantic tests");
 }
 
+function testCounterTransferIdentitySummary() {
+  const packageRoot = path.join(
+    repoRoot, "benchmarks", "leanexegen", "demo7-counter-transfer", "ltg-final-1");
+  const document = JSON.parse(fs.readFileSync(
+    path.join(packageRoot, "program.annotations.json"), "utf8"));
+  const program = fs.readFileSync(path.join(
+    packageRoot, "proof", "LeanExeGen", "GeneratedR1b9b2027715ddee5", "Program.lean"),
+  "utf8");
+  const namespace = "LeanExeGen.GeneratedR1b9b2027715ddee5.AnnotationMatches";
+  const plan = proofRecipePlan(document, program, [], namespace);
+  validateProofRecipePlan(plan, document);
+  const theorem = `${namespace}.function_0_scalar_post_test_loop_0_` +
+    "terminates_with_counter_transfer_identity";
+  assert(plan.recipes[0].supporting.some((entry) => entry.declaration === theorem),
+    "counter-transfer recipe omitted its complete checked identity theorem");
+  const source = annotationMatchesSource(document, {
+    namespace: "LeanExeGen.GeneratedR1b9b2027715ddee5",
+    programModule: "LeanExeGen.GeneratedR1b9b2027715ddee5.Program",
+  }, program).source;
+  assert(source.includes("theorem function_0_scalar_post_test_loop_0_" +
+      "terminates_with_counter_transfer_identity") &&
+    source.includes("CounterTransition.postTestProgram_spec") &&
+    source.includes("fun final results => final = initial ∧ results = [.i64 input]"),
+  "counter-transfer annotation omitted its checked semantic summary");
+  const changed = program.replace(
+    "  .localGet 4,\n  .localSet 11,\n  .localGet 11\n]",
+    "  .localGet 3,\n  .localSet 11,\n  .localGet 11\n]");
+  assert(changed !== program, "counter-transfer suffix mutation did not change the Program");
+  const changedPlan = proofRecipePlan(document, changed, [], namespace);
+  assert(!changedPlan.recipes[0].supporting.some((entry) => entry.declaration === theorem),
+    "counter-transfer summary accepted a changed return accumulator");
+  const changedInitial = program.replace(
+    ".constI64 (0 : UInt64),\n  .localSet 2,",
+    ".constI64 (1 : UInt64),\n  .localSet 2,");
+  assert(changedInitial !== program && !proofRecipePlan(
+    document, changedInitial, [], namespace).recipes[0].supporting.some(
+      (entry) => entry.declaration === theorem),
+  "counter-transfer summary accepted a nonzero initial result");
+  const changedBody = structuredClone(document);
+  const encodedBody = JSON.stringify(changedBody);
+  const mutatedBody = JSON.parse(encodedBody.replace(
+    '"operation":"sub"', '"operation":"add"'));
+  assert(JSON.stringify(mutatedBody) !== encodedBody && !proofRecipePlan(
+    mutatedBody, program, [], namespace).recipes[0].supporting.some(
+      (entry) => entry.declaration === theorem),
+  "counter-transfer summary accepted a changed counter update");
+  const changedCondition = structuredClone(document);
+  changedCondition.functions[0].regions[0].parameters.descriptor.condition.kind = "eq";
+  assert(!proofRecipePlan(
+    changedCondition, program, [], namespace).recipes[0].supporting.some(
+      (entry) => entry.declaration === theorem),
+  "counter-transfer summary accepted an inverted loop condition");
+}
+
 function testArtifactPackage(job, formalSource) {
   const raw = "{ functionTypeIndices := [0] }";
   const emitted = `namespace Project.${job.leanModule}\n\n` +
@@ -2270,6 +2324,7 @@ try {
   testSearchTreeComposition();
   testSingletonWrapperComposition();
   testScalarTransitionSpecialization();
+  testCounterTransferIdentitySummary();
   testPairResultAnnotationRecipes();
   const { job, formalSource } = testCodexProtocol();
   testMockedCodex(job);
