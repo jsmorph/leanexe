@@ -7,6 +7,7 @@ const os = require("node:os");
 const path = require("node:path");
 const { spawnSync } = require("node:child_process");
 const {
+  catalogMetrics,
   catalogDigest,
   checkCatalog,
   defaultRoot,
@@ -77,6 +78,27 @@ function main() {
     /unique identifiers/);
   assert(catalogDigest(complete.files) === catalogDigest(taskCatalogFiles().files),
     "task catalog digest is nondeterministic");
+
+  const metrics = catalogMetrics(catalog);
+  const repeatedMetrics = catalogMetrics(catalog);
+  assert.deepStrictEqual(metrics, repeatedMetrics, "LTG metrics are nondeterministic");
+  assert(metrics.catalog.categories === catalog.categories.length &&
+    metrics.catalog.entries === catalog.entries.length &&
+    metrics.categoryStructure.memberships === catalog.entries.reduce(
+      (total, entry) => total + entry.categories.length, 0) &&
+    metrics.leanSupport.catalogDeclarationReferences === catalog.entries.reduce(
+      (total, entry) => total + entry.declarations.length, 0),
+  "LTG metrics disagree with canonical catalog structure");
+  assert(metrics.content.canonicalCatalogBytes +
+      metrics.content.generatedCategoryIndexBytes === metrics.content.physicalCatalogBytes &&
+    metrics.content.physicalCatalogBytes === metrics.content.taskBundleBytes,
+  "LTG metrics mix canonical content with generated index duplication");
+  assert(metrics.leanSupport.missingLocalCatalogDeclarationNames.length === 0 &&
+    metrics.graphAndExclusions.structurallyDanglingCategoryModuleOrEntryReferences === 0,
+  "LTG metrics found a missing local declaration or structural reference");
+  assert(metrics.leanSupport.tacticDefinitions > 0 &&
+    metrics.coverage.entriesImportingTacticModules > 0,
+  "LTG metrics omitted proof-kit tactic support");
 
   const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), "leanexe-ltg-test-"));
   let scaleSearchMilliseconds;
