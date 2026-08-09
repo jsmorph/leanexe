@@ -78,6 +78,30 @@ const warnings = [
   "Codex generation and the LeanExe compiler are outside the trusted artifact proof.",
 ];
 
+const proofLibrarySectionByModule = Object.freeze({
+  "Project.ProofKit.ScalarTransition": "Scalar transitions",
+  "Project.ProofKit.ScalarTransitionU64": "Scalar transitions",
+  "Project.ProofKit.Array": "`Array UInt64` representations",
+  "Project.ProofKit.Allocation": "Fixed-array bump allocation",
+  "Project.ProofKit.FixedArrayAllocator": "Complete fixed-array allocator region",
+  "Project.ProofKit.FixedArrayAllocatorWindow": "Shifted fixed-array allocator region",
+  "Project.ProofKit.FixedArrayInput": "Indexed fixed-array input loader",
+  "Project.ProofKit.FixedArrayTraversalInput": "Traversal input loader",
+  "Project.ProofKit.FixedArrayLengthDispatch": "Fixed-length dispatch",
+  "Project.ProofKit.FixedArrayMapAdd": "Bounded wrapping-add map",
+  "Project.ProofKit.FixedArrayFilterLt": "Bounded unsigned filter",
+  "Project.ProofKit.FixedArrayEqNode": "Equality search node",
+  "Project.ProofKit.FixedArraySearch": "Equality search node",
+  "Project.ProofKit.FixedArrayLtNode": "Less-than search node",
+  "Project.ProofKit.FixedArraySearchChain": "Fixed search chain",
+  "Project.ProofKit.FixedArraySearchTree": "Fixed search tree",
+  "Project.ProofKit.FixedArrayPairResult": "Complete pair-result wrapper",
+  "Project.ProofKit.FixedArrayResult": "Fixed-array result stores",
+  "Project.ProofKit.FixedArraySingleton": "Complete singleton-array result region",
+  "Project.ProofKit.FixedArraySingletonWrapper": "Complete singleton-array wrapper",
+  "Project.ProofKit.Control": "Function entry and loops",
+});
+
 class StageError extends Error {
   constructor(stage, name, message) {
     super(message);
@@ -596,146 +620,11 @@ function proofPrompt(request, job, entryIndex) {
     leanrun, "--timeout", "60m", "lake", "-d", ".", "--no-ansi", "build",
     job.artifactTarget,
   ]);
-  const library = `PROOF_LIBRARY.md catalogs checked proof abstractions available in every task.  ` +
-    `Import the smallest listed Project.ProofKit modules whose declarations match the artifact.  ` +
-    `Import Project.ProofKit.Array for the Array UInt64 ABI, change the generated ` +
-    `UInt64ArrayAt predicate to ` +
-    `Project.ProofKit.UInt64Array.At, use its checked address, bound, frame, singleton, and pair ` +
-    `lemmas, including encodedSize_eq_one, generatedLengthBound, generatedElement, and ` +
-    `firstElementRead_add, and use word_reads for nested word writes.  Import ` +
-    `Project.ProofKit.Allocation when the program reaches the fixed-array allocator; derive one ` +
-    `bumpFacts value from the result-region memory bound and page limit, then use its rootToNat, ` +
-    `topToNat, noOverflow, noGrow, and headerOffsets fields instead of reproving allocator ` +
-    `arithmetic.  Use BumpFacts.wordAddress and wordAddress_toNat for the result length and payload ` +
-    `store addresses instead of expanding nested UInt64 and UInt32 modulo expressions.  Import ` +
-    `Project.ProofKit.FixedArrayAllocator when the entry wrapper uses the cataloged one-parameter, ` +
-    `fourteen-local allocator layout.  Its region_spec theorem replaces the empty-free-list ` +
-    `search, no-grow bump path, six header stores, allocation-counter update, and returned-root ` +
-    `assignment after capacity normalization.  Match the exact instruction suffix to ` +
-    `FixedArrayAllocator.region <stride>, then supply the existing capacity local, memory-fit, page, ` +
-    `and allocator-global facts and continue from allocStore and allocFrame.  Import ` +
-    `Project.ProofKit.FixedArrayAllocatorWindow when the same allocator occupies a shifted local ` +
-    `window.  Its region offset stride and region_spec_withTail theorem cover combined locals ` +
-    `offset+5, offset+9 through offset+14, and a frame with offset+14+tail internal locals.  Use ` +
-    `region_spec for the exact offset+14 specialization.  Select one of these theorems ` +
-    `before unfolding or symbolically executing the allocator.  Import ` +
-    `Project.ProofKit.FixedArrayInput when the artifact uses the standard checked indexed element ` +
-    `loader.  Its program offset index and program_spec theorem copy the input pointer through ` +
-    `locals offset+9, store the index in offset+10, perform the length-guarded payload load, and ` +
-    `leave the value in offset+8.  Use offset 10 for the twenty-four-local wrappers in the bounded ` +
-    `list and tree artifacts, and apply the theorem instead of reproving array bounds and address ` +
-    `normalization.  Import ` +
-    `Project.ProofKit.FixedArrayEqNode for an unrolled search node that uses the traversal loader, ` +
-    `compares the loaded word with a saved key local, normalizes the equality Boolean, and selects ` +
-    `two supplied branches.  Its program_spec theorem leaves only the equal-branch and unequal-branch ` +
-    `proofs under branchPost.  For a loaded-first node, run wp_fixed_array_eq_node <offset>, ` +
-    `<index>, <keyLocal>.  For a key-first node, where the saved key is already on the operand stack ` +
-    `before the load, run wp_fixed_array_key_eq_node with the same arguments.  Both tactics infer ` +
-    `the branch programs and remainder.  The theorems preserve the artifact's branch structure and ` +
-    `search order.  Prefer a complete node theorem over reducing the loader and comparison ` +
-    `separately.  When a SearchFrame is available, apply SearchFrame.program_spec or ` +
-    `SearchFrame.keyFirstProgram_spec directly instead of defining a local node adapter.  Use ` +
-    `wp_fixed_array_search_key <offset>, <index>, <keyLocal> using hInput, hIndex for a detected ` +
-    `fixedArraySearchKeys region that loads and saves the comparison key before these nodes.  The ` +
-    `tactic proves the two numeric key-local bounds, so the following goals contain three frame ` +
-    `facts and the continuation.  ` +
-    `Import Project.ProofKit.FixedArraySearchChain when a fixed first-match search consists of ` +
-    `key-first equality nodes and standard pair results.  Chain.next records another comparison, ` +
-    `Chain.last records the final comparison and missing result, and Chain.program_spec composes ` +
-    `the complete checked chain.  Chain.wrapperProgram_spec adds the fixed-length dispatch, invalid ` +
-    `result, saved-key load, and public return around that search.  ` +
-    `Import Project.ProofKit.FixedArraySearchTree when a fixed binary search tree consists of ` +
-    `key-first equality nodes, unsigned less-than nodes, and standard pair results.  Describe the ` +
-    `tree with Tree.branch and Tree.leaf, prove Tree.Valid from the input-size fact, and apply ` +
-    `Tree.program_spec to compose the complete checked tree.  Its Tree.result function leaves one ` +
-    `equation relating the formal specification to the descriptor's lookup result.  When the ` +
-    `length dispatch, invalid result, saved-key load, tree, and public return form the complete ` +
-    `wrapper, Tree.wrapperProgram_spec proves that wrapper and leaves only its invalid-result, ` +
-    `descriptor-validity, and semantic-result obligations.  ` +
-    `Import Project.ProofKit.FixedArrayLengthDispatch when the exported wrapper begins with the ` +
-    `standard fixed-array length comparison.  Run ` +
-    `wp_fixed_array_length_dispatch <inputLocal>, <expectedSize> for the normalized inequality ` +
-    `encoding, or wp_fixed_array_length_eq_dispatch <inputLocal>, <expectedSize> for the normalized ` +
-    `equality encoding.  Run wp_fixed_array_length_le_dispatch <inputLocal>, <maximumSize> for a ` +
-    `direct unsigned upper-bound comparison.  The tactic infers the valid and invalid branches and leaves one semantic ` +
-    `proof for each.  Select the encoding named by the matched PROOF_RECIPES.json entry, and apply ` +
-    `the dispatch tactic before broad ` +
-    `symbolic execution of the entry function.  ` +
-    `Import Project.ProofKit.FixedArrayMapAdd when a whole-function annotation identifies the ` +
-    `canonical bounded wrapping-add map.  Its wrapperProgram_spec theorem proves the length ` +
-    `dispatch, capacity calculation, both allocations, dynamic result length, map loop, payload ` +
-    `stores, and final return for arbitrary bounds and addends.  Retain a compiling deterministic ` +
-    `starter that applies this theorem instead of unfolding one of its internal regions.  ` +
-    `Import Project.ProofKit.FixedArrayFilterLt when a whole-function annotation identifies the ` +
-    `canonical bounded stable filter by an unsigned threshold.  Its wrapperProgram_spec theorem ` +
-    `proves the length dispatch, input-sized capacity allocation, predicate loop, conditional ` +
-    `payload stores, dynamic result length, empty allocation, and final return for arbitrary ` +
-    `bounds and thresholds.  The theorem consumes the checked heapReserveBytes bound from the ` +
-    `schema-6 formal interface.  Retain a compiling deterministic starter that applies this ` +
-    `theorem instead of unfolding the filter loop.  ` +
-    `Import ` +
-    `Project.ProofKit.FixedArrayTraversalInput when the search traversal uses the standard checked ` +
-    `indexed loader that stores the input pointer and index in combined locals offset+5 and ` +
-    `offset+6 and leaves the value on the operand stack.  Its program_spec theorem accepts an ` +
-    `arbitrary continuation; offset 10 matches the twenty-four-local bounded list and tree ` +
-    `traversals.  Use it only when the complete FixedArrayEqNode shape does not match and the current ` +
-    `remainder already decomposes into program ++ rest; do not restructure a nested search solely ` +
-    `to apply it, because exact decompositions can cost more proof-search time than the load facts ` +
-    `save.  Import ` +
-    `Project.ProofKit.FixedArrayPairResult when a twenty-four-local wrapper returns either two ` +
-    `constants or [input[index], 1] through the standard offset-ten allocator and pair-result ` +
-    `sequence.  Match the exact suffix to constResultProgram or inputResultProgram, then apply ` +
-    `constResultProgram_spec or inputResultProgram_spec before unfolding the allocator, input ` +
-    `loader, stores, or pairPost.  These theorems establish pairPost for arbitrary pair values, ` +
-    `input arrays, indices, and result-local destinations.  The composed ` +
-    `constResultProgram_result_spec and inputResultProgram_result_spec theorems are available when ` +
-    `the current continuation already matches resultContinuation; do not restructure an unrolled ` +
-    `branch proof or symbolically execute the whole function only to use that continuation.  ` +
-    `Import ` +
-    `Project.ProofKit.FixedArrayResult for standard fixed-array length and payload stores.  Its ` +
-    `continuation-generic lengthStore_spec and payloadStore_spec theorems accept arbitrary root and ` +
-    `scratch combined-local indices, while singletonStore_at and pairStore_at establish the final ` +
-    `Array UInt64 representation after the corresponding memory transformer.  Apply these theorems ` +
-    `around application-specific value production instead of expanding address arithmetic and ` +
-    `read-over-write obligations.  Import ` +
-    `Project.ProofKit.FixedArraySingleton instead when that allocator region is immediately followed ` +
-    `by the cataloged singleton Array UInt64 result suffix.  Its region_result_spec theorem covers ` +
-    `the allocator, length and payload stores, result-local assignments, address bounds, and final ` +
-    `UInt64Array.At proof for an arbitrary scalar value.  Match the exact combined suffix to ` +
-    `FixedArrayAllocator.region 1 ++ FixedArraySingleton.resultSuffix, supply the scalar result in ` +
-    `local 2, and use the theorem's array fact in the continuation.  Import ` +
-    `Project.ProofKit.FixedArraySingletonWrapper when the complete public function accepts a ` +
-    `singleton array, loads its first element, calls a store-preserving scalar function, and returns ` +
-    `a newly allocated singleton array.  Its wrapperProgram_spec theorem proves the length ` +
-    `dispatch, checked input load, scalar-call boundary, capacity calculation, allocation, result ` +
-    `stores, and public return.  Supply the scalar callee theorem and the two equations connecting ` +
-    `the formal array result to the scalar transform instead of expanding the wrapper.  Import ` +
-    `Project.ProofKit.Control when a ` +
-    `function executes directly to a block-wrapped loop, then use ` +
-    `\`wp_entry_to_loop <functionDef> unfolding <functionBody> as initial'\`, then apply ` +
-    `\`Wasm.wp_loop_cons\` with an explicit invariant and decreasing measure.  A matched ` +
-    `leanexe.loop.while.v1 annotation records the compiler IR condition, body statement, and ` +
-    `scratch-local start for the exact structured block.  A matched ` +
-    `leanexe.loop.scalar-post-test.v1 annotation records a body-first scalar loop produced by ` +
-    `a multi-slot loop-fold expression.  Apply its postTestProgram_spec recipe because its ` +
-    `transition executes the generated body before testing the exit guard.  A matched ` +
-    `leanexe.loop.fold.v1 ` +
-    `annotation also records accumulator locals, initial and next-state expressions, done ` +
-    `expression, staging locals, release offsets, and result locals.  Use those fields to name ` +
-    `the semantic state and branch transitions before symbolic execution; the fields are ` +
-    `untrusted guidance, while the recipe has matched the reported block and back edge against ` +
-    `the frozen Program.  When the scalar recipe names generated condition_eval and body_eval ` +
-    `theorems, rewrite with those theorems before reducing Expr.eval or Stmt.eval.  They state the ` +
-    `complete fixed-frame transition and summarize the compiler's intermediate scratch-local ` +
-    `updates.  When the recipe names a generated terminates_with_of_loop theorem, apply it ` +
-    `directly at the scalar callee boundary.  Its conclusion states the external operand stack in ` +
-    `WebAssembly order, while its premise starts at the zero-initialized, checked loop-head ` +
-    `U64State and exact post-loop suffix.  The lower-level entry_to_loop theorem remains available ` +
-    `after TerminatesWith.of_wp_entry_for when the generated conclusion does not match the caller.  After ` +
-    `proving a ` +
-    `callee used by a straight-line entry wrapper, use ` +
-    `\`wp_entry_single_call ${job.namespace}.func${entryIndex}Def unfolding ` +
-    `${job.namespace}.func${entryIndex} as initial' using <callee theorem>\`.  `;
+  const library = `PROOF_LIBRARY.md begins with the modules selected by the checked annotation ` +
+    `plan and gives their detailed catalog entries.  Treat that selection as the first search ` +
+    `order.  Its fallback list names every other permitted proof-kit module; inspect one only when ` +
+    `a residual goal shows that the selection missed necessary support, and record that miss in the ` +
+    `journal.  Import the smallest module set that proves the artifact.  `;
   return `You are performing independent task 3 of 3 for leanexegen.  Prove the exact compiled ` +
     `artifact for this request:\n\n${request}\n\n` +
     `The working directory contains the request, the frozen formal specification, the ` +
@@ -765,48 +654,11 @@ function proofPrompt(request, job, entryIndex) {
     `shape does not match or its residual goals are worse than the current proof boundary, record ` +
     `that result and do not restructure unrelated code solely to force the recipe.  Use its ` +
     `supporting declarations and guidance only for the remaining goals.  ` +
-    `Its compositions array lists complete fixed-array structures, their Lean-checked equalities, ` +
-    `and the selected composition theorems.  A fixed-array-singleton-wrapper composition covers ` +
-    `the complete public array boundary around a store-preserving scalar callee.  Prove the scalar ` +
-    `callee once, then apply the wrapper theorem instead of expanding the length dispatch, input ` +
-    `load, allocation, stores, and public return.  A version-two search ` +
-    `composition also records a checked complete-wrapper shape, and its deterministic starter ` +
-    `has already applied the descriptor's wrapperProgram_spec.  Solve the remaining semantic ` +
-    `goals before ` +
-    `replacing that starter with node-level proof.  Attempt a version-one complete composition ` +
-    `before its individual node recipes, and unfold the named descriptor when proving its Valid ` +
-    `predicate and result equation.  ` +
-    `Each fixedArrayEqNodes entry gives the function, local-window offset, input index, saved-key ` +
-    `local, and operand order for an exact Project.ProofKit.FixedArrayEqNode match.  Use ` +
-    `wp_fixed_array_eq_node for loaded-first entries and wp_fixed_array_key_eq_node for key-first ` +
-    `entries instead of rediscovering the nodes in Program.  Each fixedArrayLtNodes entry selects ` +
-    `wp_fixed_array_lt_node for an exact key-first checked load and unsigned less-than decision.  ` +
-    `When the frame, input representation, and index bound are available, use ` +
-    `\`wp_fixed_array_lt_node <offset>, <index>, <keyLocal> using hSearch, hInput, hIndex\` so the ` +
-    `tactic leaves only the two semantic branch goals.  ` +
-    `Each fixedArraySearchKeys entry gives ` +
-    `the corresponding arguments for wp_fixed_array_search_key.  Each fixedArrayLengthDispatches ` +
-    `entry gives the length-dispatch arguments.  When compiler annotations are present, use the ` +
-    `exact equality or inequality tactic selected in PROOF_RECIPES.json.  Follow annotated ` +
-    `search-key, equality-node, and less-than-node recipes in their listed order.  The planner ` +
-    `interleaves comparison recipes according to the structured Program traversal.  Use ` +
-    `Project.ProofKit.FixedArrayEqNode.SearchFrame to preserve the saved key, ` +
-    `SearchFrame.program_spec or SearchFrame.keyFirstProgram_spec for each node, and ` +
-    `SearchFrame.branch for either child.  When nested search branches end in a standard pair ` +
-    `result, use Project.ProofKit.FixedArraySearch.inputResultProgram_branchN_spec or ` +
-    `constResultProgram_branchN_spec after the checked region equality.  These theorems combine ` +
-    `one shared PairResultContext, the complete result program, and the remaining branchN ` +
-    `continuation; construct that context once from the input, allocator, and memory facts, and ` +
-    `do not define local node or result adapters.  ` +
-    `When AnnotationMatches contains a fixed-array search descriptor and region equality, ` +
-    `change the complete-region goal to the descriptor's program and apply ` +
-    `its program_spec theorem instead of composing its nodes ` +
-    `individually.  The region equality independently certifies the same exact match.  ` +
-    `${annotationMatchesModule(job)} contains Lean-checked search descriptors and equalities, plus ` +
-    `equalities between annotated pair-result regions of the decoded Program and the selected ` +
-    `FixedArrayPairResult program.  Use the ` +
-    `regionEquality named by each pair-result recipe before applying its semantic theorem.  ` +
-    `These files grant no additional Lean imports.  ` +
+    `Try a complete composition before lower-level recipes for regions that it contains.  The ` +
+    `deterministic starter may already have applied the strongest composition, so preserve that ` +
+    `boundary while solving its residual semantic goals.  Keep every matched instruction region ` +
+    `folded behind its checked equality until the selected theorem has been attempted.  The ` +
+    `annotation and recipe files grant no additional Lean imports.  ` +
     `Keep PROOF_JOURNAL.md as a prose Markdown account of your work.  Update it frequently as ` +
     `you work, including after each Lean check and each significant change in approach, with ` +
     `your current thinking and observations.  Write naturally; it has no prescribed schema and ` +
@@ -918,6 +770,113 @@ function parseProofStrategySections(source) {
     throw new Error("proof-strategy section markers do not match");
   }
   return sections;
+}
+
+function proofRecipeCoverage(proofRecipes) {
+  const coveredFunctions = new Set();
+  for (const composition of proofRecipes?.compositions ?? []) {
+    if (composition.kind === "fixed-array-singleton-wrapper-v1" ||
+        composition.compositionVersion === 2) {
+      coveredFunctions.add(composition.functionIndex);
+    }
+  }
+  for (const recipe of proofRecipes?.recipes ?? []) {
+    if (["leanexe.array.map-add.v1", "leanexe.array.filter-lt.v1"]
+      .includes(recipe.regionKind)) {
+      coveredFunctions.add(recipe.functionIndex);
+    }
+  }
+  return coveredFunctions;
+}
+
+function declarationProofKitModule(declaration) {
+  return [...proofKitModules]
+    .sort((left, right) => right.length - left.length)
+    .find((candidate) =>
+      declaration === candidate || declaration.startsWith(`${candidate}.`));
+}
+
+function proofRecipeModules(proofRecipes) {
+  const compositions = proofRecipes?.compositions ?? [];
+  const recipes = proofRecipes?.recipes ?? [];
+  if (compositions.length === 0 && recipes.length === 0) return null;
+  const coveredFunctions = proofRecipeCoverage(proofRecipes);
+  const modules = new Set(["Project.ProofKit.Array"]);
+  for (const composition of compositions) modules.add(composition.direct.module);
+  for (const recipe of recipes) {
+    const wholeFunction = [
+      "leanexe.array.map-add.v1",
+      "leanexe.array.filter-lt.v1",
+    ].includes(recipe.regionKind);
+    if (coveredFunctions.has(recipe.functionIndex) && !wholeFunction) continue;
+    modules.add(recipe.direct.module);
+    for (const item of recipe.supporting) {
+      const moduleName = declarationProofKitModule(item.declaration);
+      if (moduleName !== undefined) modules.add(moduleName);
+    }
+    if ([
+      "leanexe.array.eq-node.v1",
+      "leanexe.array.lt-node.v1",
+      "leanexe.array.pair-result.v1",
+      "leanexe.array.search-key.v1",
+    ].includes(recipe.regionKind)) {
+      modules.add("Project.ProofKit.FixedArraySearch");
+    }
+    if (recipe.regionKind === "leanexe.array.lt-node.v1") {
+      modules.add("Project.ProofKit.FixedArraySearchTree");
+    }
+  }
+  return modules;
+}
+
+function parseProofLibrarySections(source) {
+  const matches = [...source.matchAll(/^## (.+)$/gm)];
+  const sections = new Map();
+  for (const [index, match] of matches.entries()) {
+    const start = match.index;
+    const end = index + 1 < matches.length ? matches[index + 1].index : source.length;
+    sections.set(match[1], source.slice(start, end).trim());
+  }
+  return sections;
+}
+
+function selectedProofLibrary(proofRecipes, source = null) {
+  const catalog = source ?? fs.readFileSync(proofKitCatalogPath, "utf8");
+  const modules = proofRecipeModules(proofRecipes);
+  if (modules === null) return catalog;
+  const tableRows = new Map([...catalog.matchAll(/^\| `([^`]+)` \|.*\|$/gm)]
+    .map((match) => [match[1], match[0]]));
+  const sections = parseProofLibrarySections(catalog);
+  const selectedModules = [...modules].sort();
+  for (const moduleName of selectedModules) {
+    if (!proofKitModules.includes(moduleName) || !tableRows.has(moduleName)) {
+      throw new Error(`proof-library selection contains unknown module ${moduleName}`);
+    }
+  }
+  const selectedHeadings = new Set(selectedModules
+    .map((moduleName) => proofLibrarySectionByModule[moduleName])
+    .filter((heading) => heading !== undefined));
+  for (const heading of selectedHeadings) {
+    if (!sections.has(heading)) {
+      throw new Error(`proof-library catalog omits section ${heading}`);
+    }
+  }
+  const fallbackModules = proofKitModules.filter((moduleName) => !modules.has(moduleName));
+  const detailedSections = [...sections]
+    .filter(([heading]) => selectedHeadings.has(heading))
+    .map(([, text]) => text).join("\n\n");
+  return `# Selected Artifact Proof Kit\n\n` +
+    `The checked annotation plan selected the modules in the table for this proof task.  ` +
+    `Their detailed catalog entries follow in source-document order.  ` +
+    `Every declaration remains ordinary Lean code checked with the artifact theorem.\n\n` +
+    `| Selected module | Checked support |\n|---|---|\n` +
+    selectedModules.map((moduleName) => tableRows.get(moduleName)).join("\n") +
+    `\n\n## Fallback modules\n\n` +
+    `The proof importer also permits the modules below if the checked selection leaves a ` +
+    `necessary residual goal.  Read their source only after recording the selection miss in ` +
+    `PROOF_JOURNAL.md.  A later LTG iteration can then extend the deterministic selector.\n\n` +
+    fallbackModules.map((moduleName) => `\`${moduleName}\``).join(", ") + `.\n\n` +
+    `${detailedSections}\n`;
 }
 
 function fixedArraySearchFeatures(body) {
@@ -1178,6 +1137,52 @@ function proofStrategyBundle(program, exportIndex, source = null) {
     selectedSections: selectedSections.map(({ id, reason }) => ({ id, reason })),
   };
   return { notes, features };
+}
+
+function focusedProofStrategyBundle(bundle, proofRecipes, source = null) {
+  if (proofRecipeModules(proofRecipes) === null) return bundle;
+  const guide = source ?? fs.readFileSync(proofStrategiesPath, "utf8");
+  const sections = parseProofStrategySections(guide);
+  const coveredFunctions = proofRecipeCoverage(proofRecipes);
+  const uncoveredFunctions = bundle.features.reachableFunctions
+    .filter((function_) => !coveredFunctions.has(function_.index));
+  const retained = new Set([
+    "strategy.core",
+    "strategy.arrays",
+    "strategy.diagnostics",
+  ]);
+  const add = (id, condition) => {
+    if (condition) retained.add(id);
+  };
+  add("strategy.calls", uncoveredFunctions.some((function_) => function_.calls.length > 0));
+  add("strategy.loops", uncoveredFunctions.some((function_) => function_.loopCount > 0));
+  add("strategy.frames", uncoveredFunctions.some((function_) =>
+    function_.loopCount > 0 || function_.localCount >= 16));
+  add("strategy.arithmetic", uncoveredFunctions.some((function_) => function_.hasArithmetic));
+  add("strategy.memory", uncoveredFunctions.some((function_) => function_.hasMemory));
+  add("strategy.allocation", uncoveredFunctions.some((function_) => function_.hasAllocation));
+  add("strategy.elaboration", uncoveredFunctions.some((function_) =>
+    function_.instructionCount > 200 || function_.localCount >= 32 ||
+      function_.loopCount > 1));
+  const selectedSections = bundle.features.selectedSections
+    .filter(({ id }) => retained.has(id));
+  const notes = `# Selected Talos Artifact-Proof Strategies\n\n` +
+    `These optional notes describe proof organization observed in accepted artifact proofs.  ` +
+    `Modules cited as examples may be imported only when the prompt and PROOF_LIBRARY.md allow ` +
+    `them.  They grant no Lean imports and discharge no proof obligation.  ` +
+    `PROOF_TASK_FEATURES.json records the frozen Program facts that selected each section.\n\n` +
+    selectedSections.map(({ id }) => {
+      const text = sections.get(id);
+      if (text === undefined) throw new Error(`proof-strategy guide omits selected section ${id}`);
+      return text;
+    }).join("\n");
+  return {
+    notes,
+    features: {
+      ...bundle.features,
+      selectedSections,
+    },
+  };
 }
 
 function artifactProofStarter(
@@ -1599,7 +1604,9 @@ function proofTaskContext(
       `${JSON.stringify(bundle.compilerAnnotations, null, 2)}\n`);
     context.set("PROOF_RECIPES.json", `${JSON.stringify(bundle.proofRecipes, null, 2)}\n`);
   }
-  context.set("PROOF_LIBRARY.md", fs.readFileSync(proofKitCatalogPath, "utf8"));
+  context.set("PROOF_LIBRARY.md", selectedProofLibrary(
+    bundle.proofRecipes ?? null,
+    fs.readFileSync(proofKitCatalogPath, "utf8")));
   context.set("PROOF_IMPORT_CHECK.js", proofImportCheckSource(job));
   context.set("PROOF_JOURNAL.md", "# Proof Journal\n\n");
   context.set(moduleFile(job.behaviorModule),
@@ -2363,6 +2370,9 @@ function reprove(command) {
         strategies.features.selectedSections.map((section) => section.id),
         annotationMatchesModule(checked.job),
       );
+      const focused = focusedProofStrategyBundle(strategies, strategies.proofRecipes);
+      strategies.notes = focused.notes;
+      strategies.features = focused.features;
       const annotationMatches = annotationMatchesSource(
         checked.compilerAnnotations, checked.job, programSource);
       sourceSets.proofContext.set(annotationMatches.module, annotationMatches.source);
@@ -2586,6 +2596,9 @@ function annotatePackage(command) {
       strategies.features.selectedSections.map((section) => section.id),
       annotationMatchesModule(checked.job),
     );
+    const focused = focusedProofStrategyBundle(strategies, proofRecipes);
+    strategies.notes = focused.notes;
+    strategies.features = focused.features;
     const annotationMatches = annotationMatchesSource(
       compilerAnnotations, checked.job, program);
     packageSources.set(annotationMatches.module, annotationMatches.source);
@@ -2843,6 +2856,9 @@ function generate(command) {
       strategies.features.selectedSections.map((section) => section.id),
       annotationMatchesModule(job),
     );
+    const focused = focusedProofStrategyBundle(strategies, strategies.proofRecipes);
+    strategies.notes = focused.notes;
+    strategies.features = focused.features;
     const raw = dumpRawModule(wasm);
     const generated = artifactSources(job, wasmBytes, raw, talosProgram);
     const annotationMatches = annotationMatchesSource(compilerAnnotations, job, talosProgram);
@@ -3055,7 +3071,9 @@ module.exports = {
   programTaskContext,
   proofPrompt,
   proofPackagePath,
+  focusedProofStrategyBundle,
   requirePublicationTargetsAvailable,
+  proofRecipeModules,
   proofStrategyBundle,
   proofTaskContext,
   readPackageSources,
@@ -3065,6 +3083,7 @@ module.exports = {
   runCodexOutcome,
   runTaskSession,
   selectAnnotationRegions,
+  selectedProofLibrary,
   stageHeading,
   parseProofStrategySections,
   verificationCheckSources,
