@@ -1,0 +1,7 @@
+# Checked dynamic array traversal input
+
+Use `FixedArrayTraversalInput.dynamicProgram_spec` when the goal begins at the standard dynamic `Array UInt64` element-address calculation and load.  The theorem accepts annotation-selected array, index, and item locals, together with the represented input and an in-bounds logical index.  It proves the generated modulo-address bound and memory read once, then reaches an arbitrary continuation with the loaded element stored in the item local.
+
+Use `FixedArrayTraversalInput.continuingProgram_spec` at the beginning of a continuing array-loop step.  This form also executes the unsigned `index ≥ effectiveStop` guard and its false `br_if 1` path before applying the dynamic loader theorem.  Rewrite the nested interval with the generated `<region>_continuing_eq`, whose checked local arguments identify the exact `continuingProgram arrayLocal indexLocal stopLocal itemLocal` instance.
+
+`FixedArrayTraversalInput.program_spec` covers the older constant-index loader used by unrolled search nodes, and `FixedArrayEqNode` composes that theorem with equality branches.  The dynamic theorems assume the emitted one-word stride and forward address formula, so a reverse traversal or wider source slot needs a distinct checked program.  Keep the fold, map, filter, or search invariant in its semantic entry and use this entry only for the guard, load, and item-local transition.

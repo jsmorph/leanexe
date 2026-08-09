@@ -24,9 +24,9 @@ The [WASM module](program.wasm) is the executable covered by the theorem.  The [
 
 ## Artifact proof
 
-The [compiler annotations](program.annotations.json) identify the bounded array-length dispatch and the nested array-fold region.  The [annotation equality](annotation-matches.lean) names the decoded fold interval at instructions 39 through 65 of the valid branch and proves by reduction that the selected interval exists with those exact instructions.  The consumer independently checks the reported accumulator, item, index, effective-stop, staging, scratch, guard, back-edge, and result-local roles against the decoded artifact.
+The [compiler annotations](program.annotations.json) identify the bounded array-length dispatch and the nested array-fold region.  The [annotation equality](annotation-matches.lean) names the decoded fold interval at instructions 39 through 65 of the valid branch, then identifies its 16-instruction continuing guard-and-load prefix with `FixedArrayTraversalInput.continuingProgram`.  Lean proves both equalities by reduction, while the consumer checks the reported accumulator, item, index, effective-stop, staging, scratch, guard, element-address load, back-edge, and result-local roles against the decoded artifact.
 
-The [proof recipe plan](proof-recipes.json) names `FixedArrayLengthDispatch.leProgram_spec`, the exact fold-region program and equality, and the generic fold-prefix declarations.  The [selected strategy notes](proof-strategies.md) and [program feature report](proof-task-features.json) provide the structured LTG catalog, allocator guidance, array-framing guidance, and fold invariant.  The proving agent retrieved four relevant entries through their category indexes and rejected scalar-loop, counter, map, filter, and singleton-wrapper entries whose checked shapes did not match this artifact.
+The [proof recipe plan](proof-recipes.json) names `FixedArrayLengthDispatch.leProgram_spec`, both exact fold-program equalities, `FixedArrayTraversalInput.continuingProgram_spec`, and the generic fold-prefix declarations.  The [selected strategy notes](proof-strategies.md) and [program feature report](proof-task-features.json) provide the structured LTG catalog, allocator guidance, array-framing guidance, and fold invariant.  The retained measured proof predates the traversal theorem, so its 7.1-percent time reduction does not measure that theorem; a later fixed-artifact reproof can test whether the smaller loop-step boundary reduces search.
 
 The [behavioral proof](proof.lean) uses `ArrayFold.foldPrefix` as the loop-carried mathematical coordinate.  It applies `foldPrefix_succ` at the back edge and `foldPrefix_size` at loop exit, while `input_preserved_by_alloc`, `write64After`, and `generatedElement` preserve and read the represented input through result allocation.  The proof also applies the shifted allocator theorem to both result branches and proves each load and store against the exact decoded program.
 
@@ -58,8 +58,8 @@ Every retained root file fixes a generation input, artifact, proof context, or m
 | [WAT rendering](program.wat) | The textual instruction representation of the artifact. |
 | [Behavioral proof](proof.lean) | The accepted proof using the shared fold and array support. |
 | [Compiler annotations](program.annotations.json) | The checked bounded-length region emitted by the compiler. |
-| [Annotation equality](annotation-matches.lean) | The generated equality for the decoded length-dispatch interval. |
-| [Proof recipe plan](proof-recipes.json) | The direct length-dispatch theorem and fallback order. |
+| [Annotation equality](annotation-matches.lean) | The generated equalities for the complete fold interval and its continuing guard-and-load prefix. |
+| [Proof recipe plan](proof-recipes.json) | The length dispatch, fold invariant, exact prefix, and dynamic traversal declarations. |
 | [Selected strategy notes](proof-strategies.md) | The feature-selected proof guidance supplied to the agent. |
 | [Program feature report](proof-task-features.json) | The instruction, local, operation, annotation, and LTG feature inventory. |
 | [Proof journal](proof-journal.md) | The agent's searches, failed checks, proof decisions, and final acceptance. |

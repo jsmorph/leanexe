@@ -74,6 +74,22 @@
           "purpose": "rewrite the exit accumulator as the complete Array.foldl result"
         },
         {
+          "declaration": "LeanExeGen.GeneratedR23fa7efc3fb0298b.AnnotationMatches.function_0_array_fold_0_continuing_eq",
+          "purpose": "rewrite the exact continuing guard and indexed element-load prefix"
+        },
+        {
+          "declaration": "LeanExeGen.GeneratedR23fa7efc3fb0298b.AnnotationMatches.function_0_array_fold_0_continuing_program",
+          "purpose": "name the compiler-matched continuing guard and indexed element-load prefix"
+        },
+        {
+          "declaration": "Project.ProofKit.FixedArrayTraversalInput.continuingProgram_spec",
+          "purpose": "execute the continuing guard and indexed element load from the annotated local roles"
+        },
+        {
+          "declaration": "Project.ProofKit.FixedArrayTraversalInput.dynamicProgram_spec",
+          "purpose": "execute an indexed element load after a separate loop-guard reduction"
+        },
+        {
           "declaration": "Project.ProofKit.wp_block_loop",
           "purpose": "apply the block and loop rules after reaching the annotated region"
         },
