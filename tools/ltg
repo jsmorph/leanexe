@@ -1,0 +1,46 @@
+#!/usr/bin/env node
+"use strict";
+
+const {
+  catalogDigest,
+  checkCatalog,
+  rebuildCatalog,
+  taskCatalogFiles,
+} = require("./ltg-lib");
+
+function usage() {
+  return "usage: tools/ltg <rebuild|check|stats>\n";
+}
+
+function main(argv) {
+  if (argv.length !== 1 || !["rebuild", "check", "stats"].includes(argv[0])) {
+    process.stderr.write(usage());
+    process.exitCode = 2;
+    return;
+  }
+  const command = argv[0];
+  const catalog = command === "rebuild" ? rebuildCatalog() : checkCatalog();
+  if (command === "stats") {
+    const task = taskCatalogFiles();
+    const byteLength = [...task.files.values()].reduce(
+      (total, source) => total + Buffer.byteLength(source), 0);
+    process.stdout.write(`${JSON.stringify({
+      schemaVersion: 1,
+      categories: catalog.categories.length,
+      entries: catalog.entries.length,
+      taskFiles: task.files.size,
+      taskBytes: byteLength,
+      taskSha256: catalogDigest(task.files),
+    }, null, 2)}\n`);
+    return;
+  }
+  process.stdout.write(`LTG ${command === "rebuild" ? "rebuilt" : "accepted"}: ` +
+    `${catalog.categories.length} categories, ${catalog.entries.length} entries\n`);
+}
+
+try {
+  main(process.argv.slice(2));
+} catch (error) {
+  process.stderr.write(`ltg: ${error.message}\n`);
+  process.exitCode = 1;
+}

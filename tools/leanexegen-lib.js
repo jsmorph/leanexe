@@ -13,9 +13,10 @@ const {
 const { validateStage5Telemetry } = require("./leanexegen-telemetry");
 
 const codexTaskSchemaVersion = 2;
-const packageSchemaVersion = 6;
-const supportedPackageSchemaVersions = new Set([3, 4, 5, packageSchemaVersion]);
+const packageSchemaVersion = 7;
+const supportedPackageSchemaVersions = new Set([3, 4, 5, 6, packageSchemaVersion]);
 const caseNamePattern = /^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$/;
+const ltgIdPattern = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
 const decimalPattern = /^(?:0|[1-9][0-9]*)$/;
 const uint64Maximum = 18446744073709551615n;
 const proofKitModules = Object.freeze([
@@ -76,6 +77,19 @@ function fail(message) {
 
 function sha256(bytes) {
   return crypto.createHash("sha256").update(bytes).digest("hex");
+}
+
+function ltgFilesDigest(files) {
+  const hash = crypto.createHash("sha256");
+  hash.update("leanexe-ltg-task-v1\0");
+  for (const [relative, source] of [...files].sort(([left], [right]) =>
+    left.localeCompare(right))) {
+    hash.update(relative);
+    hash.update("\0");
+    hash.update(source);
+    hash.update("\0");
+  }
+  return hash.digest("hex");
 }
 
 function exactKeys(value, keys, description) {
@@ -807,6 +821,126 @@ function validateStageReports(stageReports, packageRoot, job) {
   return stageReports;
 }
 
+function validateLtgTask(document, files, artifactSha256) {
+  exactKeys(document, [
+    "schemaVersion", "artifactSha256", "derivativeGroups", "entries", "entryIds",
+    "excludedEntries", "excludedEntryIds", "sha256",
+  ], "ltg-task.json");
+  if (document.schemaVersion !== 1 || document.artifactSha256 !== artifactSha256) {
+    fail("ltg-task.json has an invalid schema or artifact identity");
+  }
+  const derivativeGroups = requireStringArray(
+    document.derivativeGroups, "ltg-task.json.derivativeGroups");
+  const entryIds = requireStringArray(document.entryIds, "ltg-task.json.entryIds");
+  const excludedEntryIds = requireStringArray(
+    document.excludedEntryIds, "ltg-task.json.excludedEntryIds");
+  for (const [description, values] of [
+    ["derivativeGroups", derivativeGroups],
+    ["entryIds", entryIds],
+    ["excludedEntryIds", excludedEntryIds],
+  ]) {
+    if (values.some((value, index) => index > 0 && values[index - 1] > value)) {
+      fail(`ltg-task.json.${description} must be sorted`);
+    }
+  }
+  if (derivativeGroups.some((value) => !ltgIdPattern.test(value)) ||
+      entryIds.some((value) => !ltgIdPattern.test(value)) ||
+      excludedEntryIds.some((value) => !ltgIdPattern.test(value))) {
+    fail("ltg-task.json contains an invalid identifier");
+  }
+  const excludedEntryIdSet = new Set(excludedEntryIds);
+  if (entryIds.some((entryId) => excludedEntryIdSet.has(entryId)) ||
+      document.entries !== entryIds.length ||
+      document.excludedEntries !== excludedEntryIds.length) {
+    fail("ltg-task.json has inconsistent entry counts or exclusions");
+  }
+  const includedEntryIds = new Set(entryIds);
+  if (!(files instanceof Map) || files.size === 0 ||
+      !files.has("README.md") || !files.has("categories.json")) {
+    fail("archived LTG must contain README.md and categories.json");
+  }
+  for (const relative of files.keys()) {
+    if (typeof relative !== "string" || relative.length === 0 ||
+        path.isAbsolute(relative) || relative.includes("\\") ||
+        path.posix.normalize(relative) !== relative || relative.startsWith("../")) {
+      fail(`archived LTG has an invalid path: ${JSON.stringify(relative)}`);
+    }
+  }
+  if (!/^[0-9a-f]{64}$/.test(document.sha256) ||
+      document.sha256 !== ltgFilesDigest(files)) {
+    fail("ltg-task.json digest differs from the archived LTG");
+  }
+  let categories;
+  try {
+    categories = JSON.parse(files.get("categories.json").toString("utf8"));
+  } catch (error) {
+    fail(`archived LTG categories.json is invalid: ${error.message}`);
+  }
+  exactKeys(categories, ["schemaVersion", "categories"], "archived LTG categories.json");
+  if (categories.schemaVersion !== 1 || !Array.isArray(categories.categories) ||
+      categories.categories.length === 0) {
+    fail("archived LTG categories.json has an unsupported schema or no categories");
+  }
+  const categoryIds = [];
+  for (const [index, category] of categories.categories.entries()) {
+    exactKeys(category, ["id", "title", "summary"], `archived LTG category ${index}`);
+    if (!ltgIdPattern.test(category.id)) fail(`archived LTG category ${index} has an invalid id`);
+    requireString(category.title, `archived LTG category ${index} title`);
+    requireString(category.summary, `archived LTG category ${index} summary`);
+    categoryIds.push(category.id);
+  }
+  if (new Set(categoryIds).size !== categoryIds.length ||
+      categoryIds.some((value, index) => index > 0 && categoryIds[index - 1] > value)) {
+    fail("archived LTG categories must have unique sorted identifiers");
+  }
+  const categoryIdSet = new Set(categoryIds);
+  for (const relative of files.keys()) {
+    if (relative === "README.md" || relative === "categories.json") continue;
+    const categoryMatch = relative.match(/^categories\/([^/]+)\/tools\.jsonl$/);
+    if (categoryMatch !== null && categoryIdSet.has(categoryMatch[1])) continue;
+    const entryMatch = relative.match(/^entries\/([^/]+)\/.+$/);
+    if (entryMatch !== null && includedEntryIds.has(entryMatch[1])) continue;
+    fail(`archived LTG contains an unindexed path: ${relative}`);
+  }
+  const indexedEntries = new Set();
+  for (const [index, category] of categories.categories.entries()) {
+    const indexPath = `categories/${category.id}/tools.jsonl`;
+    if (!files.has(indexPath)) fail(`archived LTG is missing ${indexPath}`);
+    const lines = files.get(indexPath).toString("utf8").split("\n").filter(Boolean);
+    const categoryEntries = new Set();
+    for (const [lineIndex, line] of lines.entries()) {
+      let record;
+      try {
+        record = JSON.parse(line);
+      } catch (error) {
+        fail(`${indexPath}:${lineIndex + 1} is invalid JSON: ${error.message}`);
+      }
+      if (record === null || typeof record !== "object" ||
+          !includedEntryIds.has(record.id) ||
+          record.path !== `../../entries/${record.id}` ||
+          categoryEntries.has(record.id)) {
+        fail(`${indexPath}:${lineIndex + 1} has an invalid entry reference`);
+      }
+      categoryEntries.add(record.id);
+      indexedEntries.add(record.id);
+    }
+  }
+  for (const entryId of entryIds) {
+    if (!indexedEntries.has(entryId) ||
+        !files.has(`entries/${entryId}/entry.json`) ||
+        !files.has(`entries/${entryId}/README.md`)) {
+      fail(`archived LTG entry ${entryId} is incomplete or unindexed`);
+    }
+  }
+  const archivedPaths = [...files.keys()];
+  for (const entryId of excludedEntryIds) {
+    if (archivedPaths.some((relative) => relative.startsWith(`entries/${entryId}/`))) {
+      fail(`archived LTG contains excluded entry ${entryId}`);
+    }
+  }
+  return { manifest: structuredClone(document), files: new Map(files) };
+}
+
 function createPackage(stageRoot, values) {
   fs.mkdirSync(stageRoot, { recursive: true });
   writeAtomic(path.join(stageRoot, "request.txt"), Buffer.from(values.request));
@@ -834,6 +968,14 @@ function createPackage(stageRoot, values) {
   writeAtomic(path.join(stageRoot, "proof-strategies.md"), Buffer.from(values.proofStrategies));
   writeAtomic(path.join(stageRoot, "proof-task-features.json"),
     jsonBytes(values.proofTaskFeatures));
+  if (values.ltgTask !== undefined) {
+    const ltgTask = validateLtgTask(
+      values.ltgTask.manifest, values.ltgTask.files, values.artifact.sha256);
+    writeAtomic(path.join(stageRoot, "ltg-task.json"), jsonBytes(ltgTask.manifest));
+    for (const [relative, source] of ltgTask.files) {
+      writeAtomic(path.join(stageRoot, "ltg", ...relative.split("/")), Buffer.from(source));
+    }
+  }
   if ((values.compilerAnnotations === undefined) !== (values.proofRecipes === undefined)) {
     fail("compiler annotations and proof recipes must appear together");
   }
@@ -845,6 +987,9 @@ function createPackage(stageRoot, values) {
   if (!annotated && formalInterfaceVersion !== 1) {
     fail("formal interface version 2 requires an annotated package");
   }
+  if (values.ltgTask !== undefined && (!annotated || formalInterfaceVersion !== 2)) {
+    fail("structured LTG archival requires the annotated formal interface");
+  }
   if (annotated) {
     writeAtomic(path.join(stageRoot, "program.annotations.json"),
       jsonBytes(values.compilerAnnotations));
@@ -854,7 +999,9 @@ function createPackage(stageRoot, values) {
   writeAtomic(path.join(stageRoot, "program.wasm"), values.wasmBytes);
   installSources(path.join(stageRoot, "proof"), values.sources);
   const manifest = {
-    schemaVersion: annotated ? (formalInterfaceVersion === 2 ? packageSchemaVersion : 5) : 4,
+    schemaVersion: values.ltgTask !== undefined
+      ? packageSchemaVersion
+      : annotated ? (formalInterfaceVersion === 2 ? 6 : 5) : 4,
     requestSha256: sha256(Buffer.from(values.request)),
     case: values.job.caseName,
     leanModule: values.job.leanModule,
@@ -1146,6 +1293,17 @@ function validatePackage(packageRoot) {
     proofRecipes = validateProofRecipePlan(JSON.parse(fs.readFileSync(
       path.join(packageRoot, "proof-recipes.json"), "utf8")), compilerAnnotations);
   }
+  let ltgTask = null;
+  if (manifest.schemaVersion >= 7) {
+    requiredFiles.push("ltg-task.json", "ltg/README.md", "ltg/categories.json");
+    const ltgRoot = path.join(packageRoot, "ltg");
+    const ltgFiles = new Map(collectFiles(ltgRoot).map((relative) => [
+      relative,
+      fs.readFileSync(path.join(ltgRoot, ...relative.split("/"))),
+    ]));
+    ltgTask = validateLtgTask(JSON.parse(fs.readFileSync(
+      path.join(packageRoot, "ltg-task.json"), "utf8")), ltgFiles, artifact.sha256);
+  }
   for (const required of requiredFiles) {
     if (!seen.has(required)) fail(`package is missing ${required}`);
   }
@@ -1181,6 +1339,7 @@ function validatePackage(packageRoot) {
     proofJournal,
     compilerAnnotations,
     proofRecipes,
+    ltgTask,
   };
 }
 
@@ -1204,6 +1363,7 @@ module.exports = {
   stageReportCodexVersion,
   stageReportCodexVersions,
   validateCodexTaskOutcome,
+  validateLtgTask,
   validatePackage,
   validateProofJournal,
   validateProgramImports,
