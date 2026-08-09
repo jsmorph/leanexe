@@ -50,19 +50,20 @@
     "artifactProof": {
       "task": "artifact-proof",
       "sourceModule": "LeanExeGen.GeneratedR1b9b2027715ddee5.Behavior",
-      "sourceSha256": "cc58ae1e6f11d8fcc820db0203d7b4ab4344e39e290140c02e387106fbad3a4a",
-      "reportSha256": "f3601682e77c9d390c69f1b6b6f4284328a90cf3c63d1c50c2541eede2f10afc",
+      "sourceSha256": "3ca1faf664e93ba95f234a49fbb05368f04b770a23d0b1d6fc78e0c8ccbe64c5",
+      "reportSha256": "70ab9c27ad420d41e4580b5679fb876e63bb136072f12cf02f7aa8ca4b012058",
       "report": {
-        "summary": "Proved the exact compiled artifact. The final import check and ArtifactResult build succeeded.",
+        "summary": "Proved artifact_behavior. The final import check and ArtifactResult build succeeded.",
         "decisions": [
-          "Used the checked scalar post-test-loop transition theorem with a decreasing UInt64 counter measure.",
-          "Applied the complete fixed-array singleton-wrapper theorem to the public function."
+          "Applied FixedArraySingletonWrapper.wrapperProgram_spec to the checked complete-wrapper match.",
+          "Used the generated counter-transfer identity theorem for the scalar callee.",
+          "Proved the singleton identity equation with Array.size_eq_one_iff."
         ],
         "attempts": [
           {
             "number": 1,
             "outcome": "accepted",
-            "sourceSha256": "cc58ae1e6f11d8fcc820db0203d7b4ab4344e39e290140c02e387106fbad3a4a",
+            "sourceSha256": "3ca1faf664e93ba95f234a49fbb05368f04b770a23d0b1d6fc78e0c8ccbe64c5",
             "diagnosticSha256": "6fb0e8d0c25e800bda67acb3b7fa38d5189464dfc7e4c5f352ec3ee2f11900b3",
             "diagnostic": "Lean accepted LeanExeGen.GeneratedR1b9b2027715ddee5.Behavior.artifact_behavior and LeanExeGen.GeneratedR1b9b2027715ddee5.Artifact.artifact_correct."
           }

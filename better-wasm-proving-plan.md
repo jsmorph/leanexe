@@ -160,6 +160,10 @@ The first context-only screen failed this gate on held-out Demo 7.  A checked-re
 
 The journals place the remaining cost in invariant construction, compact-state normalization, and repeated complete Lean checks rather than proof-library discovery.  Another Phase 3 attempt therefore depends on a smaller proof unit, a checked skeleton, or a goal-indexed declaration query that changes the proof work performed.  Reducing prose alone does not warrant another trial.
 
+A checked semantic summary now provides the required smaller proof unit for Demo 7's counter-transfer helper.  The annotation consumer proves a complete store-preserving identity theorem after recognizing the initial pair, both counter transitions, exit condition, returned accumulator, and store-neutral suffix.  Three runs completed in 386.828, 371.243, and 354.004 seconds, giving a 371.243-second median that is 28.7 percent below the prior retained median.
+
+The promoted proofs contain 72, 68, and 67 lines, and every agent used the summary as the scalar premise of the complete singleton wrapper.  Their journals contain no target-side reconstruction of the loop invariant, hidden locals, transition witnesses, or termination measure.  This result validates checked proof summaries as the next development direction, while a second compiler-generated counter-transfer layout remains necessary before generalizing the recognizer.
+
 ## Phase 4: Test source-proof guidance
 
 The first source-assisted experiment should use ideal annotations written from a real source proof.  `SEMANTIC_HINTS.json` should name abstract state fields, invariant, rank, branch guards, state updates, terminal rule, mathematical dependencies, and a tentative source-to-target local map.  It must exclude target tactic scripts, accepted `Behavior.lean` excerpts, and `wp_peel` sequences.

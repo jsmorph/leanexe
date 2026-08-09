@@ -43,79 +43,22 @@ theorem artifact_behavior :
     (FixedArrayPairResult.publicPost (LeanExeGen.GeneratedR1b9b2027715ddee5.FormalSpec.expected input))
     initial (FixedArraySingletonWrapper.entryFrame inputPtr) env
   rw [LeanExeGen.GeneratedR1b9b2027715ddee5.AnnotationMatches.function_1_singleton_wrapper_0_eq]
-  have hCallee (value : UInt64) :
-      Wasm.TerminatesWith env LeanExeGen.GeneratedR1b9b2027715ddee5.«module» 0
-        initial [.i64 value]
-        (fun final results => final = initial ∧ results = [.i64 value]) := by
-    apply LeanExeGen.GeneratedR1b9b2027715ddee5.AnnotationMatches.function_0_scalar_post_test_loop_0_terminates_with_of_loop
-    let Inv : ScalarTransition.State → Prop := fun current =>
-      ∃ v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15 : UInt64,
-        current =
-          (LeanExeGen.GeneratedR1b9b2027715ddee5.AnnotationMatches.function_0_scalar_post_test_loop_0_state
-            value v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15).toState ∧
-        v3 + v4 = value
-    let measure : ScalarTransition.State → Nat := fun current =>
-      ScalarTransition.State.localU64ToNat current 2
-    apply ScalarTransition.postTestProgram_spec
-      (Inv := Inv) (measure := measure)
-    · dsimp [Inv]
-      refine ⟨value, 0, value, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, rfl, ?_⟩
-      simp
-    · intro current hCurrent
-      rcases hCurrent with
-        ⟨v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13,
-          v14, v15, rfl, hSum⟩
-      by_cases hZero : v3 = 0
-      · subst v3
-        have hResult : v4 = value := by simpa using hSum
-        subst v4
-        let after :=
-          (LeanExeGen.GeneratedR1b9b2027715ddee5.AnnotationMatches.function_0_scalar_post_test_loop_0_state
-            value v1 v2 0 value 0 value v7 v8 0 value v11 1 0 value 1).toState
-        refine ⟨after, ?_, true, after, ?_, ?_⟩
-        · rw [LeanExeGen.GeneratedR1b9b2027715ddee5.AnnotationMatches.function_0_scalar_post_test_loop_0_body_eval]
-          simp [LeanExeGen.GeneratedR1b9b2027715ddee5.AnnotationMatches.function_0_scalar_post_test_loop_0_bodyTransition,
-            after]
-        · rw [LeanExeGen.GeneratedR1b9b2027715ddee5.AnnotationMatches.function_0_scalar_post_test_loop_0_condition_eval]
-          simp [LeanExeGen.GeneratedR1b9b2027715ddee5.AnnotationMatches.function_0_scalar_post_test_loop_0_conditionTransition,
-            after]
-        · simp only [if_true]
-          unfold LeanExeGen.GeneratedR1b9b2027715ddee5.func0
-          wp_run
-          simp [after,
-            LeanExeGen.GeneratedR1b9b2027715ddee5.AnnotationMatches.function_0_scalar_post_test_loop_0_state,
-            ScalarTransition.U64State.toState, ScalarTransition.State.toLocals]
-      · let remaining' := ScalarTransition.U64Op.apply .sub v3 1
-        let result' := ScalarTransition.U64Op.apply .add v4 1
-        let after :=
-          (LeanExeGen.GeneratedR1b9b2027715ddee5.AnnotationMatches.function_0_scalar_post_test_loop_0_state
-            value v1 v2 remaining' result' v3 v4 remaining' result'
-              remaining' result' v11 0 remaining' result' 1).toState
-        refine ⟨after, ?_, false, after, ?_, ?_⟩
-        · rw [LeanExeGen.GeneratedR1b9b2027715ddee5.AnnotationMatches.function_0_scalar_post_test_loop_0_body_eval]
-          simp [LeanExeGen.GeneratedR1b9b2027715ddee5.AnnotationMatches.function_0_scalar_post_test_loop_0_bodyTransition,
-            hZero, remaining', result', after]
-        · rw [LeanExeGen.GeneratedR1b9b2027715ddee5.AnnotationMatches.function_0_scalar_post_test_loop_0_condition_eval]
-          simp [LeanExeGen.GeneratedR1b9b2027715ddee5.AnnotationMatches.function_0_scalar_post_test_loop_0_conditionTransition,
-            after]
-        · constructor
-          · dsimp [Inv]
-            refine ⟨v1, v2, remaining', result', v3, v4, remaining', result',
-              remaining', result', v11, 0, remaining', result', 1, rfl, ?_⟩
-            simpa [remaining', result', ScalarTransition.U64Op.apply] using
-              (ScalarTransition.CounterTransition.decrement_add_increment v3 v4).trans hSum
-          · simpa [measure, after, remaining',
-              LeanExeGen.GeneratedR1b9b2027715ddee5.AnnotationMatches.function_0_scalar_post_test_loop_0_state,
-              ScalarTransition.U64State.toState,
-              ScalarTransition.State.localU64ToNat,
-              ScalarTransition.U64Op.apply] using
-              ScalarTransition.CounterTransition.decrement_toNat_lt hZero
   apply FixedArraySingletonWrapper.wrapperProgram_spec
-    0 (fun value => value)
-    LeanExeGen.GeneratedR1b9b2027715ddee5.FormalSpec.expected
-    LeanExeGen.GeneratedR1b9b2027715ddee5.«module» env initial inputPtr input
-    heapTop allocs hArray hOutputFitMemory hPages rfl hHeapTop hFreeList hAllocs
-    hCallee
+    (callee := 0) (transform := fun value => value)
+    (expected := LeanExeGen.GeneratedR1b9b2027715ddee5.FormalSpec.expected)
+    (module_ := LeanExeGen.GeneratedR1b9b2027715ddee5.«module»)
+    (env := env) (initial := initial) (inputPtr := inputPtr) (input := input)
+    (heapTop := heapTop) (allocs := allocs)
+  · exact hArray
+  · exact hOutputFitMemory
+  · exact hPages
+  · rfl
+  · exact hHeapTop
+  · exact hFreeList
+  · exact hAllocs
+  · intro value
+    exact LeanExeGen.GeneratedR1b9b2027715ddee5.AnnotationMatches.function_0_scalar_post_test_loop_0_terminates_with_counter_transfer_identity
+      env initial value
   · intro _
     rfl
   · intro hSize

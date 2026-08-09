@@ -132,6 +132,62 @@ theorem function_0_scalar_post_test_loop_0_terminates_with_of_loop {α : Type}
   rw [function_0_scalar_post_test_loop_0_entry_to_loop]
   exact hLoop
 
+theorem function_0_scalar_post_test_loop_0_terminates_with_counter_transfer_identity {α : Type}
+    (env : Wasm.HostEnv α) (initial : Wasm.Store α) (input : UInt64) :
+    Wasm.TerminatesWith env LeanExeGen.GeneratedR1b9b2027715ddee5.«module» 0
+      initial [.i64 input]
+      (fun final results => final = initial ∧ results = [.i64 input]) := by
+  apply function_0_scalar_post_test_loop_0_terminates_with_of_loop
+  let View : Project.ProofKit.ScalarTransition.State → UInt64 → UInt64 → Prop :=
+    fun current remaining result =>
+      ∃ v1 v2 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15 : UInt64,
+        current = (function_0_scalar_post_test_loop_0_state (input) (v1) (v2) (remaining) (result) (v5) (v6) (v7) (v8) (v9) (v10) (v11) (v12) (v13) (v14) (v15)).toState
+  let remainingOf : Project.ProofKit.ScalarTransition.State → UInt64 := fun current =>
+    match current.locals[2]? with
+    | some (Wasm.Value.i64 remaining) => remaining
+    | _ => 0
+  unfold function_0_scalar_post_test_loop_0_program
+  apply Project.ProofKit.ScalarTransition.CounterTransition.postTestProgram_spec
+    (remainingOf := remainingOf) (View := View)
+    (initialRemaining := input) (initialResult := 0) (expected := input)
+  · intro current remaining result hView
+    rcases hView with ⟨v1, v2, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14, v15, rfl⟩
+    simp [remainingOf, function_0_scalar_post_test_loop_0_state,
+      Project.ProofKit.ScalarTransition.U64State.toState]
+  · dsimp [View]
+    exact ⟨input, (0 : UInt64), (0 : UInt64), (0 : UInt64), (0 : UInt64), (0 : UInt64), (0 : UInt64), (0 : UInt64), (0 : UInt64), (0 : UInt64), (0 : UInt64), (0 : UInt64), (0 : UInt64), rfl⟩
+  · simp
+  · intro current remaining result hView hZero hResult
+    rcases hView with ⟨v1, v2, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14, v15, rfl⟩
+    subst remaining
+    subst result
+    let after := (function_0_scalar_post_test_loop_0_state (input) (v1) (v2) ((0 : UInt64)) (input) ((0 : UInt64)) (input) (v7) (v8) ((0 : UInt64)) (input) (v11) ((1 : UInt64)) ((0 : UInt64)) (input) ((1 : UInt64))).toState
+    refine ⟨after, after, ?_, ?_, ?_⟩
+    · rw [function_0_scalar_post_test_loop_0_body_eval]
+      simp [function_0_scalar_post_test_loop_0_bodyTransition,
+        Project.ProofKit.ScalarTransition.U64Op.apply, after]
+    · rw [function_0_scalar_post_test_loop_0_condition_eval]
+      simp [function_0_scalar_post_test_loop_0_conditionTransition, after]
+    · unfold LeanExeGen.GeneratedR1b9b2027715ddee5.func0
+      wp_run
+      simp [after, function_0_scalar_post_test_loop_0_state,
+        Project.ProofKit.ScalarTransition.U64State.toState,
+        Project.ProofKit.ScalarTransition.State.toLocals]
+  · intro current remaining result hView hZero
+    rcases hView with ⟨v1, v2, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14, v15, rfl⟩
+    let remaining' := Project.ProofKit.ScalarTransition.U64Op.apply .sub remaining 1
+    let result' := Project.ProofKit.ScalarTransition.U64Op.apply .add result 1
+    let after := (function_0_scalar_post_test_loop_0_state (input) (v1) (v2) (remaining') (result') (remaining) (result) (remaining') (result') (remaining') (result') (v11) ((0 : UInt64)) (remaining') (result') ((1 : UInt64))).toState
+    refine ⟨after, after, ?_, ?_, ?_⟩
+    · rw [function_0_scalar_post_test_loop_0_body_eval]
+      simp [function_0_scalar_post_test_loop_0_bodyTransition,
+        Project.ProofKit.ScalarTransition.U64Op.apply,
+        hZero, remaining', result', after]
+    · rw [function_0_scalar_post_test_loop_0_condition_eval]
+      simp [function_0_scalar_post_test_loop_0_conditionTransition, after]
+    · dsimp [View]
+      exact ⟨v1, v2, remaining, result, remaining', result', remaining', result', v11, (0 : UInt64), remaining', result', (1 : UInt64), rfl⟩
+
 def function_1_singleton_wrapper_0 : Wasm.Program :=
   Project.ProofKit.FixedArraySingletonWrapper.wrapperProgram
     0

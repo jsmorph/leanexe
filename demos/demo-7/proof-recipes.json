@@ -34,6 +34,10 @@
       },
       "supporting": [
         {
+          "declaration": "LeanExeGen.GeneratedR1b9b2027715ddee5.AnnotationMatches.function_0_scalar_post_test_loop_0_terminates_with_counter_transfer_identity",
+          "purpose": "prove the complete store-preserving identity function from its checked counter-transfer loop"
+        },
+        {
           "declaration": "LeanExeGen.GeneratedR1b9b2027715ddee5.AnnotationMatches.function_0_scalar_post_test_loop_0_terminates_with_of_loop",
           "purpose": "enter the checked loop from TerminatesWith with the exact WebAssembly argument order"
         },
