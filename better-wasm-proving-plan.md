@@ -80,9 +80,9 @@ The journals identify function-entry normalization as the next general boundary.
 - [x] Add descriptor effect sets and generic artifact-side frame theorems.
 - [x] Generate closed one-step transition equations and verify them against Demo 1's exact artifact.
 - [x] Test whether Codex uses the transition equations and measure the matched Stage 5 result.
-- [ ] Generate a checked function-entry-to-scalar-loop adapter and screen it on fixed Demo 1.
-- [ ] Freeze a held-out scalar-loop demo before exposing descriptor data.
-- [ ] Add checked annotation-location composition after the semantic rows pass their timing gates.
+- [x] Generate a checked function-entry-to-scalar-loop adapter and screen it on fixed Demo 1.
+- [x] Freeze a held-out scalar-loop demo before exposing descriptor data.
+- [x] Add and screen checked annotation-location composition after the semantic rows pass their timing gates.
 - [ ] Pilot a checked cut-point graph on two artifacts with different control-flow structure.
 
 ## Phase 0: Preserve the case and measure the process
