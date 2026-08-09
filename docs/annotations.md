@@ -551,7 +551,7 @@ That screen retained the operation-selected arithmetic lemmas and guidance while
 
 ### Rejected cut-point and coordinate screens
 
-A deterministic singleton-wrapper starter defined the scalar result through the formal singleton output and applied `FixedArraySingletonWrapper.wrapperProgram_spec` before Codex began.  The resulting proof passed independent exact-artifact acceptance, but Stage 5 took 936.788 seconds, 79.9 percent above the retained median, and required four edited candidates.  The active starter therefore continues to stop at the checked wrapper boundary.
+A deterministic singleton-wrapper starter defined the scalar result through the formal singleton output and applied `FixedArraySingletonWrapper.wrapperProgram_spec` before Codex began.  The resulting proof passed independent exact-artifact acceptance, but Stage 5 took 936.788 seconds, 79.9 percent above the retained median, and required four edited candidates.  The generator removed that starter and preserved its package for comparison.
 
 The cut-point journal also recorded that annotations use combined-local indices while `State.localU64ToNat` indexes `State.locals`.  A candidate helper accepted a combined-local index directly, and three agents used it without coordinate errors in accepted 142-, 140-, and 141-line proofs.  Their Stage 5 times were 651.892, 577.172, and 521.718 seconds, giving a 577.172-second median that is 10.8 percent above the retained configuration despite reducing median edit count from three to one.
 
@@ -578,6 +578,16 @@ Every Demo 7 agent used the generated semantic summary directly as the scalar pr
 Demo 8 adds an audit accumulator that starts at the input and increases by two on every nonzero iteration.  The compiler emitted 23 locals, accumulator coordinates `[4, 5, 6]`, and result slot two, compared with Demo 7's 15 locals and two accumulators.  The generalized recognizer discovers the remaining-and-result pair by checking candidates against the initial state, zero transition, nonzero transition, condition outcomes, returned accumulator, and suffix.
 
 The fresh end-to-end run generated a new specification, source, 1,793-byte WASM artifact, annotations, and proof under namespace `GeneratedRf75664d74ca656b6`.  Stage 5 completed in 313.253 seconds, and the first edited candidate used the generated semantic summary in a 70-line proof.  Separate package verification accepted the result, providing out-of-sample evidence for the semantic recognizer without changing the Demo 7 timing comparison.
+
+### Promoted complete checked composition
+
+The singleton-wrapper composition now records the exact scalar callee identified by its checked direct-call region.  When that callee has exactly one generated counter-transfer identity theorem, the deterministic starter applies `FixedArraySingletonWrapper.wrapperProgram_spec` and supplies the generated theorem as its callee premise.  Recipe validation checks the callee identity against the wrapper annotation, and older stored recipes remain valid without selecting the stronger starter.
+
+This composition closes the public length dispatch, checked input read, scalar call, allocation, result stores, return, scalar invariant, and scalar termination before proof generation.  Codex receives two equations relating the wrapper result to the formal specification, so application semantics remain in the generated behavioral proof.  The earlier rejected cut-point left the scalar proof open; the checked summary supplies the premise that changes this decomposition.
+
+Three fixed-artifact Demo 7 runs completed Stage 5 in 232.164, 201.366, and 204.537 seconds.  Their 204.537-second median is 166.706 seconds, or 44.9 percent, below the checked-summary median, while the range is 30.798 seconds.  Every first edited candidate passed, the median proof has 72 lines, and separate verification accepted all three packages over the unchanged 1,750-byte artifact.
+
+The component covers singleton-array wrappers whose exact scalar callee satisfies the checked counter-transfer schema.  Demo 8 establishes that the scalar recognizer tolerates a different local layout and an independent audit accumulator, while the wrapper theorem and starter depend on compiler structure rather than either demo's formal identity equation.  Other wrapper forms and loop summaries require their own checked composition rules and held-out timing evidence.
 
 ## Completion criteria
 

@@ -1,0 +1,10 @@
+The public interface is Array UInt64 -> Array UInt64.  For a singleton input
+array #[x], return #[x].  Return the input array unchanged when its length is
+not one.  The generated Lean source must define a separate scalar helper of
+type UInt64 -> UInt64.  That helper must initialize a remaining counter to its
+argument and a result counter to zero, then use an imperative loop that
+subtracts one from the remaining counter and adds one to the result counter
+until the remaining counter is zero.  It must return the result counter.  The
+array function must call the helper in its singleton branch.  The helper must
+perform the loop rather than return its argument directly, while the formal
+specification should state the public identity behavior directly.

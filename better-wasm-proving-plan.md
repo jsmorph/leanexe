@@ -166,6 +166,10 @@ The promoted proofs contain 72, 68, and 67 lines, and every agent used the summa
 
 Demo 8 supplies the second compiler-generated layout.  Its helper carries an unrelated audit accumulator, has 23 locals and accumulator coordinates `[4, 5, 6]`, and returns slot two; the generalized recognizer discovers the remaining-and-result pair from checked transitions.  A fresh end-to-end run used the generated summary on the first proof edit, completed Stage 5 in 313.253 seconds, and produced a 70-line independently verified proof.
 
+The deterministic starter now composes a checked singleton-wrapper match with the generated summary for that wrapper's exact callee.  Three fixed Demo 7 runs completed in 232.164, 201.366, and 204.537 seconds, giving a 204.537-second median that is 44.9 percent below the checked-summary median.  Each agent received only the two formal-result equations, accepted its first edit, and passed separate exact-artifact verification.
+
+This result promotes the composition mechanism while retaining the identity-producing counter-transfer recognizer as motif support.  The shared `CounterTransition.postTestProgram_spec` theorem is independent of a generated function, and Demos 7 and 8 exercise different local layouts, but the semantic motif remains narrower than general scalar-loop verification.  Further loop summaries should share the checked composition mechanism without expanding this theorem to include their application semantics.
+
 ## Phase 4: Test source-proof guidance
 
 The first source-assisted experiment should use ideal annotations written from a real source proof.  `SEMANTIC_HINTS.json` should name abstract state fields, invariant, rank, branch guards, state updates, terminal rule, mathematical dependencies, and a tentative source-to-target local map.  It must exclude target tactic scripts, accepted `Behavior.lean` excerpts, and `wp_peel` sequences.
@@ -268,6 +272,8 @@ Each Lean host admits only the jobs allowed by its runner and semaphore.  Agents
 ## Promotion and stopping rules
 
 Every experimental variant receives three fixed reproofs before promotion.  Each trial runs until the first accepted proof or the declared timeout, and every failed attempt consumes its full measured time.  A variant wins only by lowering median stage-5 wall-clock time while preserving acceptance and the exact artifact identity.
+
+LTG review records role, scope, and evidence status separately.  Role is checked proof asset, annotation support, or worked example; scope is generic semantics, a compiler or runtime motif, or benchmark-local content; evidence status is promoted, provisional, or rejected.  Promotion requires two independent consumers of the same semantic statement unless the declaration states a direct theorem about the pinned Talos semantics, while a benchmark-local proof may remain as non-importable example guidance with source-artifact and derivative exclusions.
 
 A phase stops when median proving time rises by more than ten percent, success rate falls, target obligations remain as detailed as the current script, or logical dependencies cross the artifact-only boundary.  Checked lemmas may remain internal when they help other proofs, but they should not enlarge the default catalog without a measured proving-time gain.  Prompt changes and shorter proofs provide no promotion evidence.
 
