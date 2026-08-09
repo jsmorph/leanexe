@@ -1,0 +1,20 @@
+{
+  "sha256": "932262dad153458571234372e49c4142d7a7ea82cff4d09e2f2fd5eb276e4151",
+  "byteLength": 1793,
+  "artifactBytesDefinition": "LeanExeGen.GeneratedRf75664d74ca656b6.Artifact.artifactBytes",
+  "rawModuleDefinition": "LeanExeGen.GeneratedRf75664d74ca656b6.Artifact.Cache.raw",
+  "programDefinition": "LeanExeGen.GeneratedRf75664d74ca656b6.module",
+  "property": "LeanExeGen.GeneratedRf75664d74ca656b6.FormalSpec.ArtifactSpec",
+  "behaviorTheorem": "LeanExeGen.GeneratedRf75664d74ca656b6.Behavior.artifact_behavior",
+  "artifactTheorem": "LeanExeGen.GeneratedRf75664d74ca656b6.Artifact.artifact_correct",
+  "proofTarget": "LeanExeGen.GeneratedRf75664d74ca656b6.ArtifactResult",
+  "checkFileTarget": "LeanExeGen.GeneratedRf75664d74ca656b6.CheckFile",
+  "declarationTarget": "LeanExeGen.GeneratedRf75664d74ca656b6.CheckDeclarations",
+  "export": "compute",
+  "invocation": [
+    "/home/somebody/src/leanexe/tools/leanexegen",
+    "run",
+    "<program.wasm>",
+    "<UInt64>..."
+  ]
+}

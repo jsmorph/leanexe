@@ -1,0 +1,23 @@
+{
+  "formalSpecification": {
+    "summary": "Defined the public identity specification and a branch-sensitive bump-heap bound. The required Lean build succeeded twice, including the final unchanged check.",
+    "decisions": [
+      "expected returns its input directly.",
+      "heapReserveBytes returns 64 for singleton input and 0 otherwise."
+    ]
+  },
+  "leanProgram": {
+    "summary": "Generated the required module. The Lean build, LeanExe report, and WebAssembly compilation all succeeded in the final verification.",
+    "decisions": [
+      "Defined a separate scalar helper with the required counters, loop, and updates.",
+      "Called the helper only for singleton arrays and returned every other input unchanged."
+    ]
+  },
+  "artifactProof": {
+    "summary": "Proved artifact_behavior. The import check and ArtifactResult build succeeded.",
+    "decisions": [
+      "Applied FixedArraySingletonWrapper.wrapperProgram_spec to the exact wrapper region.",
+      "Used the generated scalar counter-transfer identity theorem for the helper call."
+    ]
+  }
+}
