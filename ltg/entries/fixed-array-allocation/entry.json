@@ -14,6 +14,6 @@
   "premises": ["Exact allocator-region equality", "Existing-memory fit", "Page bound", "Allocator globals", "Capacity-local value"],
   "result": "A continuation from the checked allocation store and local frame, with heap and allocation globals updated.",
   "consumers": ["demo-1", "demo-2", "demo-3", "demo-4", "demo-5"],
-  "relatedEntries": ["fixed-array-filter-lt", "fixed-array-map-add", "fixed-array-singleton-wrapper"],
+  "relatedEntries": ["array-memory-framing", "fixed-array-filter-lt", "fixed-array-map-add", "fixed-array-singleton-wrapper"],
   "exclusion": null
 }
