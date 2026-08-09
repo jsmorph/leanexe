@@ -100,5 +100,61 @@
     "proofLineMedian": 140,
     "editedCandidateMedian": 3,
     "retained": false
+  },
+  "rejectedCutPointStarter": {
+    "package": "cutpoint-rejected-1",
+    "acceptedSourceSha256": "638789e2bdf15343a031a382129e7477c6cd6d3bc8360717433749df0414c62b",
+    "totalMilliseconds": 936787.669,
+    "codexSessionMilliseconds": 681667.475,
+    "outerAcceptanceMilliseconds": 203555.482,
+    "increaseFromRetainedMedianMilliseconds": 415972.805,
+    "increaseFromRetainedMedianPercent": 79.87,
+    "proofLines": 155,
+    "editedCandidates": 4,
+    "retained": false
+  },
+  "rejectedCombinedMeasureSelection": {
+    "runs": [
+      {
+        "package": "combined-measure-1",
+        "acceptedSourceSha256": "3b29d4f0dc68e7d5b4a5863d6d025235c589ce01a522ebaecaed288af5494b8d",
+        "totalMilliseconds": 651892.232,
+        "codexSessionMilliseconds": 537096.136,
+        "outerAcceptanceMilliseconds": 74263.81,
+        "proofLines": 142,
+        "editedCandidates": 1
+      },
+      {
+        "package": "combined-measure-2",
+        "acceptedSourceSha256": "a19d2d68301fcb5a92e1aebafad9f80a33858048dd2d2672d796dd6de50c1f8a",
+        "totalMilliseconds": 577172.467,
+        "codexSessionMilliseconds": 477630.95,
+        "outerAcceptanceMilliseconds": 71896.887,
+        "proofLines": 140,
+        "editedCandidates": 2
+      },
+      {
+        "package": "combined-measure-3",
+        "acceptedSourceSha256": "ff7307e0998273af43959c1ed0c36959dcae518c22374f36d6bbc332b6a494d0",
+        "totalMilliseconds": 521718.287,
+        "codexSessionMilliseconds": 413317.712,
+        "outerAcceptanceMilliseconds": 75849.136,
+        "proofLines": 141,
+        "editedCandidates": 1
+      }
+    ],
+    "medianMilliseconds": 577172.467,
+    "rangeMilliseconds": 130173.945,
+    "codexMedianMilliseconds": 477630.95,
+    "codexRangeMilliseconds": 123778.424,
+    "outerAcceptanceMedianMilliseconds": 74263.81,
+    "outerAcceptanceRangeMilliseconds": 3952.249,
+    "medianIncreaseFromRetainedMilliseconds": 56357.603,
+    "medianIncreaseFromRetainedPercent": 10.821,
+    "proofLineMedian": 141,
+    "proofLineRange": 2,
+    "editedCandidateMedian": 1,
+    "editedCandidateRange": 1,
+    "retained": false
   }
 }

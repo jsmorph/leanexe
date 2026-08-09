@@ -549,6 +549,14 @@ The slow journal attributed most revisions to unifying `postTestProgram_spec` wi
 
 Demo 7 therefore retains the operation-selected arithmetic lemmas and guidance while preserving the rejected composition packages for analysis.  The counter LTG improves the primary median and the secondary proof size on a held-out loop, although the timing distribution shows that application and presentation search still dominate some sessions.  Future changes must address a boundary repeated in another artifact or another Demo 7 distribution rather than specialize the theorem interface to this proof.
 
+### Rejected cut-point and coordinate screens
+
+A deterministic singleton-wrapper starter defined the scalar result through the formal singleton output and applied `FixedArraySingletonWrapper.wrapperProgram_spec` before Codex began.  The resulting proof passed independent exact-artifact acceptance, but Stage 5 took 936.788 seconds, 79.9 percent above the retained median, and required four edited candidates.  The active starter therefore continues to stop at the checked wrapper boundary.
+
+The cut-point journal also recorded that annotations use combined-local indices while `State.localU64ToNat` indexes `State.locals`.  A candidate helper accepted a combined-local index directly, and three agents used it without coordinate errors in accepted 142-, 140-, and 141-line proofs.  Their Stage 5 times were 651.892, 577.172, and 521.718 seconds, giving a 577.172-second median that is 10.8 percent above the retained configuration despite reducing median edit count from three to one.
+
+The combined-coordinate helper and its automatic recipe entry were removed after the timing screen.  The journals establish that it improves index presentation, while the distribution shows no proof-time improvement under the current task structure.  The retained configuration remains the counter arithmetic LTG with the wrapper-boundary starter, and the failed packages remain available for later cut-point-graph work.
+
 ## Completion criteria
 
 The first complete increment emits a validated sidecar for every ordinary library-mode compilation requested by `leanexegen`.  Demos 1, 2, and 3 prove the same specifications over the same WASM bytes through an annotation-driven deterministic proof plan.  The retained evidence records proof-generation timings, annotation validation, region coverage, and independent Lean acceptance.
