@@ -1,0 +1,104 @@
+{
+  "schemaVersion": 1,
+  "metric": "stage-5-start-to-first-accepted-proof",
+  "artifactSha256": "f437ebc16e352391ff05ff79d957eb7ef5652424d6d28c3f279e782980eeb7a5",
+  "reference": {
+    "package": "scalar-current-1",
+    "acceptedSourceSha256": "9fd929394e831518cca0cfce7526c47d62c53089ce2562fdb09f3367377b2293",
+    "totalMilliseconds": 577039.149,
+    "codexSessionMilliseconds": 525078.452,
+    "outerAcceptanceMilliseconds": 34913.148,
+    "proofLines": 171,
+    "editedCandidates": 4,
+    "packageAccepted": true
+  },
+  "retainedRuns": [
+    {
+      "package": "ltg-final-1",
+      "acceptedSourceSha256": "cc58ae1e6f11d8fcc820db0203d7b4ab4344e39e290140c02e387106fbad3a4a",
+      "totalMilliseconds": 520814.864,
+      "codexSessionMilliseconds": 454939.41,
+      "outerAcceptanceMilliseconds": 45558.43,
+      "proofLines": 125,
+      "editedCandidates": 3,
+      "independentlyVerified": true
+    },
+    {
+      "package": "ltg-final-2",
+      "acceptedSourceSha256": "dafa475053c8d9f4300ef2529b943cea8dccf2032a6b4ecc1a54033f694e8da1",
+      "totalMilliseconds": 405284.431,
+      "codexSessionMilliseconds": 331384.252,
+      "outerAcceptanceMilliseconds": 59971.41,
+      "proofLines": 135,
+      "editedCandidates": 1,
+      "independentlyVerified": true
+    },
+    {
+      "package": "ltg-final-3",
+      "acceptedSourceSha256": "5a24134f6f7afa8ab504a18e39fd4f4f12abe8885b36200e32f54a9759f100f4",
+      "totalMilliseconds": 816770.788,
+      "codexSessionMilliseconds": 766373.2,
+      "outerAcceptanceMilliseconds": 38654.957,
+      "proofLines": 167,
+      "editedCandidates": 10,
+      "independentlyVerified": true
+    }
+  ],
+  "retainedDistribution": {
+    "sampleSize": 3,
+    "medianMilliseconds": 520814.864,
+    "rangeMilliseconds": 411486.357,
+    "medianReductionFromReferenceMilliseconds": 56224.285,
+    "medianReductionFromReferencePercent": 9.744,
+    "codexMedianMilliseconds": 454939.41,
+    "codexRangeMilliseconds": 434988.948,
+    "outerAcceptanceMedianMilliseconds": 45558.43,
+    "outerAcceptanceRangeMilliseconds": 21316.453,
+    "proofLineMedian": 135,
+    "proofLineRange": 42,
+    "editedCandidateMedian": 3,
+    "editedCandidateRange": 9
+  },
+  "earlierCandidate": {
+    "package": "ltg-candidate-1",
+    "acceptedSourceSha256": "450db9ec668466cf00d7fdf7ab65895bcd74ebf3cb0195f1910def5bcfe5ee59",
+    "totalMilliseconds": 492574.392,
+    "codexSessionMilliseconds": 435280.653,
+    "outerAcceptanceMilliseconds": 45407.577,
+    "proofLines": 144,
+    "editedCandidates": 2,
+    "packageAccepted": true
+  },
+  "rejectedPostTestComposition": {
+    "runs": [
+      {
+        "package": "composed-1",
+        "acceptedSourceSha256": "9998d24dfe3aab6ef69e82cc88c991a7806a6ce42d12f1904008ef91e30d4af0",
+        "totalMilliseconds": 387160.061,
+        "proofLines": 139,
+        "editedCandidates": 2
+      },
+      {
+        "package": "composed-2",
+        "acceptedSourceSha256": "8b3c71749f0af4a45e0f1bbe85a74313ce62229347501bb2539ab4451abe9c38",
+        "totalMilliseconds": 558581.29,
+        "proofLines": 140,
+        "editedCandidates": 5
+      },
+      {
+        "package": "composed-3",
+        "acceptedSourceSha256": "f7402f1901fc31a319fe975446fd69a820112ab27ff1c43a80a84989afaaaa35",
+        "totalMilliseconds": 748262.907,
+        "proofLines": 144,
+        "editedCandidates": 3
+      }
+    ],
+    "medianMilliseconds": 558581.29,
+    "rangeMilliseconds": 361102.846,
+    "medianIncreaseFromRetainedMilliseconds": 37766.426,
+    "medianIncreaseFromRetainedPercent": 7.251,
+    "proofLineMedian": 140,
+    "editedCandidateMedian": 3,
+    "retained": false
+  }
+}
