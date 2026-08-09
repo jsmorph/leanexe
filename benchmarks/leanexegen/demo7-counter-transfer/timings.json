@@ -296,5 +296,39 @@
     "editedCandidateMedian": 1,
     "editedCandidateRange": 0,
     "retained": true
+  },
+  "residualNormalizationScreen": {
+    "runs": [
+      {
+        "package": "normalized-starter-1",
+        "acceptedSourceSha256": "beab3fe42aa9f84dbc1cfc56b194551a7154152d3cad832e2f6123b760b424f6",
+        "totalMilliseconds": 242797.915,
+        "codexSessionMilliseconds": 139991.689,
+        "outerAcceptanceMilliseconds": 66654.785,
+        "proofLines": 67,
+        "proofWords": 250,
+        "editedCandidates": 0,
+        "independentlyVerified": true
+      },
+      {
+        "package": "normalized-starter-2",
+        "acceptedSourceSha256": "beab3fe42aa9f84dbc1cfc56b194551a7154152d3cad832e2f6123b760b424f6",
+        "totalMilliseconds": 211557.6,
+        "codexSessionMilliseconds": 130637.548,
+        "outerAcceptanceMilliseconds": 59407.922,
+        "proofLines": 67,
+        "proofWords": 250,
+        "editedCandidates": 0,
+        "independentlyVerified": true
+      }
+    ],
+    "twoRunMedianMilliseconds": 227177.758,
+    "rangeMilliseconds": 31240.315,
+    "bestPossibleThreeRunMedianMilliseconds": 211557.6,
+    "bestPossibleIncreaseFromRetainedMilliseconds": 7020.518,
+    "bestPossibleIncreaseFromRetainedPercent": 3.432,
+    "stoppedAfterTwoReason": "Even an arbitrarily fast third run leaves 211557.6 milliseconds as the three-run median.",
+    "retainedAsAutomaticStarter": false,
+    "retainedAsWorkedExample": true
   }
 }

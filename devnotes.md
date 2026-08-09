@@ -6779,3 +6779,13 @@ The unchanged complete-composition starter applied `FixedArraySingletonWrapper.w
 Stage 5 took 477.180 seconds, including 329.821 seconds in Codex and 93.210 seconds in outer acceptance.  The earlier Demo 8 run took 313.253 seconds, making this single trial 163.927 seconds, or 52.3 percent, slower.  Its accepted proof contains 72 lines and 265 words against the earlier proof's 70 lines and 235 words, and a separate `tools/leanexegen verify -s` run accepted the package over the unchanged artifact digest.
 
 The result confirms that the checked starter transfers across the three-accumulator layout, but it does not show a proof-time gain on Demo 8.  The retained Demo 7 three-run distribution remains the timing basis for the starter.  `benchmarks/leanexegen/demo8-three-accumulator/complete-starter-1` preserves this negative timing result, accepted proof, journal, recipes, and telemetry.
+
+## 2026-08-09: Residual specification normalization
+
+The next starter variant discharged the two remaining wrapper premises by simplifying `FormalSpec.expected` in the invalid-length case and using `Array.size_eq_one_iff` before simplifying the valid case.  This deterministic step uses the residual theorem interface and the generated formal specification, without reading the accepted proof or application source.  JavaScript tests confirmed its selection after the checked wrapper and scalar summary.
+
+Demo 8 accepted the untouched 67-line, 250-word proof in 219.561 seconds, including 114.709 seconds in Codex and 66.371 seconds in outer acceptance.  This run is 93.692 seconds, or 29.9 percent, below the initial 313.253-second Demo 8 proof.  A separate `tools/leanexegen verify -s` run accepted the package over the unchanged artifact digest.
+
+Two fixed Demo 7 trials then accepted the same untouched 67-line, 250-word proof in 242.798 and 211.558 seconds.  Even an arbitrarily fast third trial would leave the three-run median at 211.558 seconds, 7.021 seconds, or 3.4 percent, above the retained 204.537-second median.  Both packages passed separate verification, but the active generator restored the prior starter under the proof-time rule.
+
+The three accepted normalization packages remain worked examples.  They show how a deterministic proof can close definitional specification equations after checked artifact composition, and their journals document the zero-edit path.  Their timing status prevents automatic selection without erasing the technique or its evidence.

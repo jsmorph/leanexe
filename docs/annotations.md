@@ -591,6 +591,12 @@ The component covers singleton-array wrappers whose exact scalar callee satisfie
 
 The Demo 8 run took 477.180 seconds, 52.3 percent longer than its earlier 313.253-second proof, and produced 72 lines instead of 70.  One run cannot separate agent variance from a configuration effect, but it supplies no timing improvement on this artifact.  The Demo 7 distribution remains the proof-time evidence for retaining the starter, while Demo 8 supplies independent applicability evidence and a preserved negative timing result.
 
+### Residual specification normalization example
+
+A deterministic follow-up unfolded `FormalSpec.expected` after complete checked composition and reduced the size-one array through `Array.size_eq_one_iff`.  This rule depends on the residual theorem shape rather than a generated function or specification body, and it closes definitional specifications while leaving harder semantic equations available for proof generation.  Demo 8 accepted the untouched 67-line starter in 219.561 seconds, 29.9 percent below its initial run.
+
+Two fixed Demo 7 runs accepted the same untouched 67-line starter in 242.798 and 211.558 seconds.  Even a zero-time third run would leave a 211.558-second median, 3.4 percent above the retained complete-starter median, so the active generator omits the normalizer.  The accepted packages and journals remain worked examples of residual equation normalization, preserving the technique without asserting a proof-time gain.
+
 ## Completion criteria
 
 The first complete increment emits a validated sidecar for every ordinary library-mode compilation requested by `leanexegen`.  Demos 1, 2, and 3 prove the same specifications over the same WASM bytes through an annotation-driven deterministic proof plan.  The retained evidence records proof-generation timings, annotation validation, region coverage, and independent Lean acceptance.
