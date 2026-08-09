@@ -11,6 +11,7 @@
       "compositionVersion": 1,
       "kind": "fixed-array-singleton-wrapper-v1",
       "functionIndex": 1,
+      "calleeIndex": 0,
       "descriptor": "LeanExeGen.GeneratedRf75664d74ca656b6.AnnotationMatches.function_1_singleton_wrapper_0",
       "regionEquality": "LeanExeGen.GeneratedRf75664d74ca656b6.AnnotationMatches.function_1_singleton_wrapper_0_eq",
       "direct": {

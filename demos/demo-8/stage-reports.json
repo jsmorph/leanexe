@@ -50,19 +50,18 @@
     "artifactProof": {
       "task": "artifact-proof",
       "sourceModule": "LeanExeGen.GeneratedRf75664d74ca656b6.Behavior",
-      "sourceSha256": "ca30fa10752b9629b44cb087d1057e58b80ea75990fbdb34de995f51c831320b",
-      "reportSha256": "b26260ed980d4d0e5f8f3d9d74dfd3822ed89a49872212a081b5dad9c88fbaca",
+      "sourceSha256": "825e110effe214dcc3b252675af1a949c634f0b2674c5c6386ba3ceaa7a1d543",
+      "reportSha256": "d7bddffd3844a644860802fb7205655ecca4fd8b119192371fdc13c640c2a0cb",
       "report": {
-        "summary": "Proved artifact_behavior. The import check and ArtifactResult build succeeded.",
+        "summary": "The complete deterministic starter passed the artifact-proof checks.",
         "decisions": [
-          "Applied FixedArraySingletonWrapper.wrapperProgram_spec to the exact wrapper region.",
-          "Used the generated scalar counter-transfer identity theorem for the helper call."
+          "Used the checked wrapper composition and checked scalar summary without a Codex session."
         ],
         "attempts": [
           {
             "number": 1,
             "outcome": "accepted",
-            "sourceSha256": "ca30fa10752b9629b44cb087d1057e58b80ea75990fbdb34de995f51c831320b",
+            "sourceSha256": "825e110effe214dcc3b252675af1a949c634f0b2674c5c6386ba3ceaa7a1d543",
             "diagnosticSha256": "811aa8d8bb98b2988834084e74b4880c6226a0810d70ed0ed19db407b344f182",
             "diagnostic": "Lean accepted LeanExeGen.GeneratedRf75664d74ca656b6.Behavior.artifact_behavior and LeanExeGen.GeneratedRf75664d74ca656b6.Artifact.artifact_correct."
           }

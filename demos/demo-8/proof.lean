@@ -43,28 +43,25 @@ theorem artifact_behavior :
     (FixedArrayPairResult.publicPost (LeanExeGen.GeneratedRf75664d74ca656b6.FormalSpec.expected input))
     initial (FixedArraySingletonWrapper.entryFrame inputPtr) env
   rw [LeanExeGen.GeneratedRf75664d74ca656b6.AnnotationMatches.function_1_singleton_wrapper_0_eq]
-  change wp LeanExeGen.GeneratedRf75664d74ca656b6.«module»
-    (FixedArraySingletonWrapper.wrapperProgram 0)
-    (FixedArrayPairResult.publicPost
-      (LeanExeGen.GeneratedRf75664d74ca656b6.FormalSpec.expected input))
-    initial (FixedArraySingletonWrapper.entryFrame inputPtr) env
   apply FixedArraySingletonWrapper.wrapperProgram_spec
-    0 (fun value => value)
-    LeanExeGen.GeneratedRf75664d74ca656b6.FormalSpec.expected
-    LeanExeGen.GeneratedRf75664d74ca656b6.«module» env initial inputPtr input
-    heapTop allocs hArray hOutputFitMemory hPages
+    (callee := 0) (transform := fun value => value)
+    (expected := LeanExeGen.GeneratedRf75664d74ca656b6.FormalSpec.expected)
+    (module_ := LeanExeGen.GeneratedRf75664d74ca656b6.«module»)
+    (env := env) (initial := initial) (inputPtr := inputPtr) (input := input)
+    (heapTop := heapTop) (allocs := allocs)
+  · exact hArray
+  · exact hOutputFitMemory
+  · exact hPages
   · rfl
   · exact hHeapTop
   · exact hFreeList
   · exact hAllocs
   · intro value
-    exact LeanExeGen.GeneratedRf75664d74ca656b6.AnnotationMatches.function_0_scalar_post_test_loop_0_terminates_with_counter_transfer_identity
-      env initial value
-  · intro _
-    rfl
+    exact LeanExeGen.GeneratedRf75664d74ca656b6.AnnotationMatches.function_0_scalar_post_test_loop_0_terminates_with_counter_transfer_identity env initial value
   · intro hSize
-    rw [LeanExeGen.GeneratedRf75664d74ca656b6.FormalSpec.expected]
+    simp_all [LeanExeGen.GeneratedRf75664d74ca656b6.FormalSpec.expected]
+  · intro hSize
     rcases Array.size_eq_one_iff.mp hSize with ⟨value, rfl⟩
-    rfl
+    simp [LeanExeGen.GeneratedRf75664d74ca656b6.FormalSpec.expected]
 
 end LeanExeGen.GeneratedRf75664d74ca656b6.Behavior

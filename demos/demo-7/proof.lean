@@ -58,15 +58,10 @@ theorem artifact_behavior :
   · exact hAllocs
   · intro value
     exact LeanExeGen.GeneratedR1b9b2027715ddee5.AnnotationMatches.function_0_scalar_post_test_loop_0_terminates_with_counter_transfer_identity env initial value
-  · intro _
-    rfl
   · intro hSize
-    unfold LeanExeGen.GeneratedR1b9b2027715ddee5.FormalSpec.expected
-    apply Array.ext
-    · simp [hSize]
-    · intro i hInputIndex _
-      have hi : i = 0 := by omega
-      subst i
-      rfl
+    simp_all [LeanExeGen.GeneratedR1b9b2027715ddee5.FormalSpec.expected]
+  · intro hSize
+    rcases Array.size_eq_one_iff.mp hSize with ⟨value, rfl⟩
+    simp [LeanExeGen.GeneratedR1b9b2027715ddee5.FormalSpec.expected]
 
 end LeanExeGen.GeneratedR1b9b2027715ddee5.Behavior

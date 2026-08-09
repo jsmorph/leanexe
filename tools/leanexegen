@@ -406,10 +406,33 @@ function runTaskSession(options) {
   const outcome = options.telemetry
     ? options.telemetry.measureCodexSession(invoke)
     : invoke();
-  if (outcome.outcome !== "generated") {
-    const detail = outcome.outcome === "questions" ? outcome.questions : outcome.problems;
-    throw new StageError(options.stage, options.stageName, detail.join("\n"));
+  return acceptTaskOutcome(options, outcome);
+}
+
+function runDeterministicTaskSession(options) {
+  const outcome = options.outcome;
+  requireGeneratedOutcome(options, outcome);
+  const source = options.materialize(outcome.source);
+  let diagnostic;
+  try {
+    const diagnose = () => options.diagnose(source, outcome);
+    diagnostic = options.telemetry
+      ? options.telemetry.measureOuterAcceptance(diagnose)
+      : diagnose();
+  } catch (error) {
+    throw new StageError(
+      options.stage,
+      options.stageName,
+      `the independent outer check rejected the deterministic starter:\n${formatError(error)}`,
+    );
   }
+  if (diagnostic === null) return null;
+  if (options.telemetry) options.telemetry.skipCodexSession();
+  return acceptedTaskResult(options, outcome, source, diagnostic);
+}
+
+function acceptTaskOutcome(options, outcome) {
+  requireGeneratedOutcome(options, outcome);
   const source = options.materialize(outcome.source);
   let diagnostic;
   try {
@@ -424,6 +447,17 @@ function runTaskSession(options) {
       `the independent outer check rejected the Codex session result:\n${formatError(error)}`,
     );
   }
+  return acceptedTaskResult(options, outcome, source, diagnostic);
+}
+
+function requireGeneratedOutcome(options, outcome) {
+  if (outcome.outcome !== "generated") {
+    const detail = outcome.outcome === "questions" ? outcome.questions : outcome.problems;
+    throw new StageError(options.stage, options.stageName, detail.join("\n"));
+  }
+}
+
+function acceptedTaskResult(options, outcome, source, diagnostic) {
   if (typeof diagnostic !== "string" || diagnostic.length === 0) {
     throw new StageError(options.stage, options.stageName, "diagnostic report was empty");
   }
@@ -454,6 +488,31 @@ function runTaskSession(options) {
       reportSha256: reportDigest(report),
       report,
     },
+  };
+}
+
+function deterministicArtifactProofOutcome(proofContext, job) {
+  const source = proofContext.get(moduleFile(job.behaviorModule));
+  if (source === undefined) {
+    throw new StageError(5, "artifact proof", "proof context has no deterministic starter");
+  }
+  return {
+    schemaVersion: codexTaskSchemaVersion,
+    task: "artifact-proof",
+    outcome: "generated",
+    source,
+    summary: "The complete deterministic starter passed the artifact-proof checks.",
+    decisions: [
+      "Used the checked wrapper composition and checked scalar summary without a Codex session.",
+    ],
+    samples: [],
+    hostAssumptions: [],
+    questions: [],
+    problems: [],
+    proofJournal: "# Proof Journal\n\n" +
+      "Leanexegen selected a deterministic starter whose checked composition supplies every " +
+      "artifact-proof obligation.  The independent artifact theorem, embedded-byte, and axiom " +
+      "checks accepted the generated source without a Codex session.\n",
   };
 }
 
@@ -1180,6 +1239,30 @@ function proofStrategyBundle(program, exportIndex, source = null) {
   return { notes, features };
 }
 
+function singletonWrapperStarterPlan(proofRecipes, entryIndex) {
+  const compositions = (proofRecipes?.compositions ?? []).filter(
+    (composition) => composition.compositionVersion === 1 &&
+      composition.kind === "fixed-array-singleton-wrapper-v1" &&
+      composition.functionIndex === entryIndex);
+  if (compositions.length !== 1) return null;
+  const composition = compositions[0];
+  const summaries = [...new Set((proofRecipes?.recipes ?? [])
+    .filter((recipe) => recipe.functionIndex === composition.calleeIndex)
+    .flatMap((recipe) => recipe.supporting)
+    .map((item) => item.declaration)
+    .filter((declaration) =>
+      declaration.endsWith("_terminates_with_counter_transfer_identity")))];
+  return {
+    composition,
+    counterTransferSummary: summaries.length === 1 ? summaries[0] : null,
+  };
+}
+
+function artifactProofStarterExpectedComplete(proofRecipes, entryIndex) {
+  const plan = singletonWrapperStarterPlan(proofRecipes, entryIndex);
+  return plan !== null && plan.counterTransferSummary !== null;
+}
+
 function artifactProofStarter(
     job, entryIndex, annotated = false, proofRecipes = null,
     formalInterfaceVersion = 2) {
@@ -1401,19 +1484,10 @@ end ${job.behaviorModule}
       ["fixed-array-search-chain-v1", "fixed-array-search-tree-v1"].includes(
         composition.kind) &&
       composition.functionIndex === entryIndex);
-  const singletonWrapperCompositions = (proofRecipes?.compositions ?? []).filter(
-    (composition) => composition.compositionVersion === 1 &&
-      composition.kind === "fixed-array-singleton-wrapper-v1" &&
-      composition.functionIndex === entryIndex);
-  if (annotated && singletonWrapperCompositions.length === 1) {
-    const composition = singletonWrapperCompositions[0];
-    const counterTransferSummaries = [...new Set((proofRecipes?.recipes ?? [])
-      .filter((recipe) => recipe.functionIndex === composition.calleeIndex)
-      .flatMap((recipe) => recipe.supporting)
-      .map((item) => item.declaration)
-      .filter((declaration) =>
-        declaration.endsWith("_terminates_with_counter_transfer_identity")))];
-    const completeStarter = counterTransferSummaries.length === 1
+  const singletonWrapperPlan = singletonWrapperStarterPlan(proofRecipes, entryIndex);
+  if (annotated && singletonWrapperPlan !== null) {
+    const { composition, counterTransferSummary } = singletonWrapperPlan;
+    const completeStarter = counterTransferSummary !== null
       ? `  apply FixedArraySingletonWrapper.wrapperProgram_spec
     (callee := ${composition.calleeIndex}) (transform := fun value => value)
     (expected := ${job.expectedDefinition})
@@ -1428,7 +1502,12 @@ end ${job.behaviorModule}
   · exact hFreeList
   · exact hAllocs
   · intro value
-    exact ${counterTransferSummaries[0]} env initial value
+    exact ${counterTransferSummary} env initial value
+  · intro hSize
+    simp_all [${job.expectedDefinition}]
+  · intro hSize
+    rcases Array.size_eq_one_iff.mp hSize with ⟨value, rfl⟩
+    simp [${job.expectedDefinition}]
 `
       : "";
     return `import ${job.formalSpecModule}
@@ -1893,6 +1972,10 @@ function checkProof(workspace, job, artifact, wasm, toolPins) {
   installSources(workspace, checks.sources);
   runLean(5, "artifact theorem", "60m",
     ["lake", "-d", workspace, "--no-ansi", "build", artifact.proofTarget]);
+  checkProofAfterArtifactTheorem(workspace, checks, wasm);
+}
+
+function checkProofAfterArtifactTheorem(workspace, checks, wasm) {
   runLean(5, "embedded byte checker", "15m",
     ["lake", "-d", workspace, "--no-ansi", "build", checks.fileTarget]);
   runLean(5, "embedded byte comparison", "15m", [
@@ -1902,6 +1985,82 @@ function checkProof(workspace, job, artifact, wasm, toolPins) {
   const declaration = runLean(5, "declaration audit", "15m",
     ["lake", "-d", workspace, "--no-ansi", "build", checks.declarationTarget]);
   auditAxioms(`${declaration.stdout}\n${declaration.stderr}`);
+}
+
+function tryCheckProof(workspace, job, artifact, wasm, toolPins) {
+  const checks = verificationCheckSources(job, artifact);
+  requireKernelAudit(checks.sources, toolPins);
+  installSources(workspace, checks.sources);
+  let result;
+  try {
+    result = spawnResult([
+      leanrun, "--timeout", "60m", "lake", "-d", workspace,
+      "--no-ansi", "build", artifact.proofTarget,
+    ], { cwd: repoRoot, env: process.env, maxBuffer: 64 * 1024 * 1024 });
+  } catch (error) {
+    throw new StageError(5, "deterministic starter check", error.message);
+  }
+  if (result.status === 1 && result.signal === null) return false;
+  if (result.status !== 0) {
+    throw new StageError(5, "deterministic starter check", commandFailure(result));
+  }
+  checkProofAfterArtifactTheorem(workspace, checks, wasm);
+  return true;
+}
+
+function runArtifactProof(options) {
+  const {
+    request, job, entryIndex, proofContext, proofRecipes, proofWorkspace,
+    proofTaskRoot, artifact, wasm, toolPins, telemetry, codex,
+  } = options;
+  const diagnostic = `Lean accepted ${job.behaviorTheorem} and ${artifact.artifactTheorem}.`;
+  const prepare = (source) => {
+    validateProofImports(job, [{ module: job.behaviorModule, source }]);
+    requireKernelAudit(new Map([[job.behaviorModule, source]]), toolPins);
+    installSources(proofWorkspace, new Map([[job.behaviorModule, source]]));
+  };
+  const session = {
+    task: "artifact-proof",
+    stage: 5,
+    stageName: "artifact proof",
+    sourceModule: job.behaviorModule,
+    telemetry,
+    materialize: (source) => source,
+    diagnose: (source) => {
+      prepare(source);
+      checkProof(proofWorkspace, job, artifact, wasm, toolPins);
+      return diagnostic;
+    },
+  };
+  let proof = null;
+  if (artifactProofStarterExpectedComplete(proofRecipes, entryIndex)) {
+    proof = runDeterministicTaskSession({
+      ...session,
+      outcome: deterministicArtifactProofOutcome(proofContext, job),
+      diagnose: (source) => {
+        prepare(source);
+        return tryCheckProof(proofWorkspace, job, artifact, wasm, toolPins)
+          ? diagnostic
+          : null;
+      },
+    });
+  }
+  if (proof !== null) return proof;
+  return runTaskSession({
+    ...session,
+    invoke: (prompt) => runCodexOutcome({
+      codex,
+      task: "artifact-proof",
+      stage: 5,
+      taskRoot: proofTaskRoot,
+      contextFiles: proofContext,
+      candidateFile: moduleFile(job.behaviorModule),
+      journalFile: "PROOF_JOURNAL.md",
+      timeout: artifactProofTaskTimeoutMs,
+      prompt,
+    }),
+    prompt: proofPrompt(request, job, entryIndex),
+  });
 }
 
 function shellQuote(argument) {
@@ -2396,42 +2555,19 @@ function reprove(command) {
     const proofContext = proofTaskContext(
       request, checked.job, formalSource, sourceSets.proofContext, strategies,
       formalInterfaceVersion);
-    const proof = runTaskSession({
-      task: "artifact-proof",
-      stage: 5,
-      stageName: "artifact proof",
-      sourceModule: checked.job.behaviorModule,
+    const proof = runArtifactProof({
+      request,
+      job: checked.job,
+      entryIndex,
+      proofContext,
+      proofRecipes: strategies.proofRecipes,
+      proofWorkspace,
+      proofTaskRoot,
+      artifact: checked.artifact,
+      wasm: path.join(command.packagePath, "program.wasm"),
+      toolPins,
       telemetry: stage5Telemetry,
-      invoke: (prompt) => runCodexOutcome({
-        codex,
-        task: "artifact-proof",
-        stage: 5,
-        taskRoot: proofTaskRoot,
-        contextFiles: proofContext,
-        candidateFile: moduleFile(checked.job.behaviorModule),
-        journalFile: "PROOF_JOURNAL.md",
-        timeout: artifactProofTaskTimeoutMs,
-        prompt,
-      }),
-      prompt: proofPrompt(request, checked.job, entryIndex),
-      materialize: (source) => source,
-      diagnose: (source) => {
-        validateProofImports(checked.job, [{
-          module: checked.job.behaviorModule,
-          source,
-        }]);
-        requireKernelAudit(new Map([[checked.job.behaviorModule, source]]), toolPins);
-        installSources(proofWorkspace, new Map([[checked.job.behaviorModule, source]]));
-        checkProof(
-          proofWorkspace,
-          checked.job,
-          checked.artifact,
-          path.join(command.packagePath, "program.wasm"),
-          toolPins,
-        );
-        return `Lean accepted ${checked.job.behaviorTheorem} and ` +
-          `${checked.artifact.artifactTheorem}.`;
-      },
+      codex,
     });
 
     progress(command.silent, 6, "Sample execution");
@@ -2880,33 +3016,19 @@ function generate(command) {
       proofWorkspace, job, formal.source, 5, "ProofFormalSpecCheck");
     const proofContext = proofTaskContext(
       request, job, formal.source, generated.sources, strategies);
-    const proof = runTaskSession({
-      task: "artifact-proof",
-      stage: 5,
-      stageName: "artifact proof",
-      sourceModule: job.behaviorModule,
+    const proof = runArtifactProof({
+      request,
+      job,
+      entryIndex,
+      proofContext,
+      proofRecipes: strategies.proofRecipes,
+      proofWorkspace,
+      proofTaskRoot,
+      artifact: generated.artifact,
+      wasm,
+      toolPins,
       telemetry: stage5Telemetry,
-      invoke: (prompt) => runCodexOutcome({
-        codex,
-        task: "artifact-proof",
-        stage: 5,
-        taskRoot: proofTaskRoot,
-        contextFiles: proofContext,
-        candidateFile: moduleFile(job.behaviorModule),
-        journalFile: "PROOF_JOURNAL.md",
-        timeout: artifactProofTaskTimeoutMs,
-        prompt,
-      }),
-      prompt: proofPrompt(request, job, entryIndex),
-      materialize: (source) => source,
-      diagnose: (source) => {
-        validateProofImports(job, [{ module: job.behaviorModule, source }]);
-        requireKernelAudit(new Map([[job.behaviorModule, source]]), toolPins);
-        installSources(proofWorkspace, new Map([[job.behaviorModule, source]]));
-        checkProof(proofWorkspace, job, generated.artifact, wasm, toolPins);
-        return `Lean accepted ${job.behaviorTheorem} and ` +
-          `${generated.artifact.artifactTheorem}.`;
-      },
+      codex,
     });
 
     progress(command.silent, 6, "Sample execution");
@@ -3063,6 +3185,7 @@ if (require.main === module) main();
 module.exports = {
   StageError,
   artifactProofStarter,
+  artifactProofStarterExpectedComplete,
   auditAxioms,
   codexCommandArgs,
   codexOutcomeSchema,
@@ -3087,6 +3210,7 @@ module.exports = {
   reprovePinsMatch,
   reproveSourceSets,
   runCodexOutcome,
+  runDeterministicTaskSession,
   runTaskSession,
   selectAnnotationRegions,
   stageHeading,

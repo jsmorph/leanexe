@@ -18,7 +18,7 @@ tools/leanexegen -o myprogram.wasm myprogram.txt
 | 2 | Formal specification | Ask a fresh Codex task for `expected` and `heapReserveBytes`; the task iterates with Lean, then the outer process appends the fixed `ArtifactSpec` and checks all exact declarations and types. |
 | 3 | Lean program | Give a fresh Codex task the request and frozen formal specification; the task iterates through type-check, report, and scratch-compile commands before the outer process repeats them. |
 | 4 | WASM compilation and freezing | Compile the accepted `compute` again, retain the exact bytes, check `wasm-tools`, render WAT, and remove the program task workspace. |
-| 5 | Direct artifact proof | Generate deterministic artifact support, give a fresh Codex task the frozen specification and artifact model without Source, let it iterate with Lean, and repeat the artifact check outside the task. |
+| 5 | Direct artifact proof | Generate deterministic artifact support and check any starter predicted complete.  Accept a successful full artifact check directly; otherwise give a fresh Codex task the source-free specification and artifact model, let it iterate with Lean, and repeat the artifact check outside the task. |
 | 6 | Sample execution | Allocate each input array through the Wasmtime host runner, invoke `compute`, decode the returned array, and compare every element with the expected output. |
 | 7 | Publication | Construct the content-hashed sidecar and install the sidecar and WASM through destination-local renames. |
 | 8 | Results | Print the checked sample inputs and outputs, followed by a command that runs the published WASM file. |
@@ -29,7 +29,7 @@ The publication operation prepares the complete sidecar directory and WASM file 
 
 ### Controlled reproof
 
-The `reprove` command replaces only the generated `Behavior` module.  It reads a valid proof package, preserves the request, formal specification, Source, WASM bytes, Talos `Program`, deterministic artifact modules, artifact declaration record, formal and program task reports, samples, and host assumptions, and gives Codex the same source-free artifact-proof context with the current proof catalog.  It runs stages one, five, six, seven, and eight because the frozen specification, program, compilation, and artifact model require no regeneration.
+The `reprove` command replaces only the generated `Behavior` module.  It reads a valid proof package and preserves the request, formal specification, Source, WASM bytes, Talos `Program`, deterministic artifact modules, artifact declaration record, formal and program task reports, samples, and host assumptions.  Stage five checks a predicted-complete starter directly or gives Codex the same source-free artifact-proof context with the current proof catalog, while stages two through four require no regeneration.
 
 ```sh
 tools/leanexegen reprove -o revised.wasm myprogram.proof
@@ -58,13 +58,13 @@ tools/leanexegen annotate \
 
 ## Headless Codex tasks
 
-Each stage starts one ephemeral `codex exec` session in its own temporary directory.  The invocation uses `-C`, `--sandbox workspace-write`, `--skip-git-repo-check`, `--ephemeral`, `--json`, `--output-schema`, and `-o`, with the prompt supplied on standard input.  Codex can inspect and edit files inside that stage's workspace, but it cannot write elsewhere.
+Each generative task starts at most one ephemeral `codex exec` session in its own temporary directory.  The invocation uses `-C`, `--sandbox workspace-write`, `--skip-git-repo-check`, `--ephemeral`, `--json`, `--output-schema`, and `-o`, with the prompt supplied on standard input.  Codex can inspect and edit files inside that task's workspace, but it cannot write elsewhere.
 
 The artifact-proof workspace includes `PROOF_IMPORT_CHECK.js`, generated from the same proof-kit and generated-module allowlist used by outer acceptance.  Codex runs this check before every prescribed Lean build, so an unsupported direct import becomes an in-session diagnostic rather than a publication-time rejection.  Outer acceptance repeats the import audit independently on the returned source.
 
 The outer process starts the complete Codex session through `tools/leanrun`, which holds the machine-wide Lean lock and places Codex and every child in one constrained cgroup.  A nested `tools/leanrun` invocation verifies the inherited memory and CPU limits before running Lean, Lake, or LeanExe, so it does not need another systemd scope.  The formal and proof sessions repeat one prescribed Lean build after each edit, while the program session repeats its Lean build, LeanExe report, and scratch compilation in sequence.
 
-Codex returns one schema-validated `generated`, `questions`, or `problems` object after its internal work.  For `generated`, the orchestrator reads the candidate from the isolated workspace and repeats every final Lean or compiler check in a separate outer workspace.  An outer rejection stops the stage with its diagnostic rather than starting another Codex session.
+Codex returns one schema-validated `generated`, `questions`, or `problems` object after its internal work.  For `generated`, the orchestrator reads the candidate from the isolated workspace and repeats every final Lean or compiler check in a separate outer workspace.  A deterministic artifact starter that passes the full outer check needs no Codex session; an ordinary proof failure at the first Lean target starts the usual session, while runner, byte, audit, and later acceptance failures stop the stage.
 
 | Task | Inputs visible to Codex | Required generated source |
 |------|-------------------------|---------------------------|
@@ -142,9 +142,9 @@ Current annotated packages use schema 6, which identifies the `heapReserveBytes`
 | `artifact.json` | WASM SHA-256 and length, export, invocation shape, fixed property, behavior theorem, and final artifact theorem. |
 | `program.wasm` | The exact bytes embedded and proved by the generated Lean modules. |
 | `request.txt` | The original prose request, including its original whitespace. |
-| `interpretation.json` | The accepted summary and decisions from each of the three Codex tasks. |
-| `stage-reports.json` | Per-task Codex versions, one-session bound, accepted source hashes, outer diagnostics, and a hash of each task report. |
-| `proof-journal.md` | The artifact-proof agent's prose account of its reasoning, Lean results, and changes of direction.  The journal is diagnostic evidence and does not participate in the Lean proof. |
+| `interpretation.json` | The accepted summary and decisions from each generative task or deterministic artifact-proof path. |
+| `stage-reports.json` | Per-task Codex versions, session bound, accepted source hashes, outer diagnostics, and a hash of each task report. |
+| `proof-journal.md` | The artifact-proof agent's prose account, or the direct path's acceptance record.  The journal is diagnostic evidence and does not participate in the Lean proof. |
 | `samples.json` | Input arrays, observed output arrays, and host-runner invocations used during generation. |
 | `proof-library.md` | The proof-kit catalog supplied to the artifact-proof task. |
 | `proof-strategies.md` | The optional strategy sections selected for the frozen Talos program. |
@@ -153,7 +153,7 @@ Current annotated packages use schema 6, which identifies the `heapReserveBytes`
 | `host-assumptions.json` | Host calls, store conditions, ABI expectations, or other assumptions recorded by the formal task. |
 | `proof/LeanExeGen/...` | Formal specification, Source, Talos program, Behavior, deterministic artifact proof modules, byte checker, and axiom audit. |
 
-The artifact-proof task starts with `PROOF_JOURNAL.md` containing only its heading.  Its prompt asks Codex to update the prose after each Lean check and each significant change in approach, while leaving the form and organization to Codex.  The journal names supplied recipes, theorems, tactics, and annotations that the agent tried, records their effect or reason for abandonment, and identifies missing general assistance suggested by diagnostics.  Publication renames the file to `proof-journal.md`, includes its digest in `package.json`, and excludes it from every Lean import and theorem dependency.
+An artifact-proof Codex task starts with `PROOF_JOURNAL.md` containing only its heading.  Its prompt asks Codex to update the prose after each Lean check and each significant change in approach, while leaving the form and organization to Codex.  Direct acceptance records the selected deterministic composition and successful checks instead; publication includes either journal's digest and excludes it from every Lean import and theorem dependency.
 
 Verification validates the complete file set and every digest, recomputes every task-report and accepted-source hash, checks dependency pins, and checks the fixed formal declaration identity.  It compares the packaged proof catalog with the checkout, checks the digest covering the catalog and allowed proof-kit module, and audits that module's imports and forbidden identifiers.  It then creates a fresh formal declaration checker, byte-comparison module, and declaration-audit module before rebuilding the exact artifact theorem, checking each Git dependency and the Lean binary along the way.
 
