@@ -156,5 +156,41 @@
     "editedCandidateMedian": 1,
     "editedCandidateRange": 1,
     "retained": false
+  },
+  "rejectedFocusedContextSelection": {
+    "runs": [
+      {
+        "package": "focused-context-1",
+        "acceptedSourceSha256": "d8b8f85ba834dcbb5990277872e5916e826890e6da4b0ac496772ac439eda606",
+        "totalMilliseconds": 777101.994,
+        "codexSessionMilliseconds": 618058.646,
+        "outerAcceptanceMilliseconds": 129675.656,
+        "proofLines": 123,
+        "editedCandidates": 3
+      },
+      {
+        "package": "focused-context-2",
+        "acceptedSourceSha256": "f3316e0a9ecf8181d11424b730a0a26f8ff71f609a3072e638cc1149240665cf",
+        "totalMilliseconds": 818470.062,
+        "codexSessionMilliseconds": 648933.522,
+        "outerAcceptanceMilliseconds": 114993.353,
+        "proofLines": 142,
+        "editedCandidates": 4
+      }
+    ],
+    "medianMilliseconds": 797786.028,
+    "rangeMilliseconds": 41368.068,
+    "codexMedianMilliseconds": 633496.084,
+    "codexRangeMilliseconds": 30874.876,
+    "outerAcceptanceMedianMilliseconds": 122334.505,
+    "outerAcceptanceRangeMilliseconds": 14682.303,
+    "medianIncreaseFromRetainedMilliseconds": 276971.164,
+    "medianIncreaseFromRetainedPercent": 53.18,
+    "proofLineMedian": 132.5,
+    "proofLineRange": 19,
+    "editedCandidateMedian": 3.5,
+    "editedCandidateRange": 1,
+    "stoppedAfterTwoReason": "Even an arbitrarily fast third run leaves 777101.994 milliseconds as the three-run median.",
+    "retained": false
   }
 }
