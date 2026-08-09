@@ -6768,4 +6768,14 @@ LTG review now records role, scope, and evidence status separately.  Role is che
 
 A benchmark-local accepted proof may remain as a non-importable worked example when it demonstrates a concrete proof organization, theorem application, diagnostic response, or annotation use.  Its catalog record must name the source artifact digest, intended lesson, illustrated declarations, feature tags, and derivative-exclusion group, and the proof journal must report any consultation.  The same artifact and close derivatives cannot receive the example during measured reproofs, and example use contributes no consumer evidence for its local lemmas.
 
+The retention rule now treats worked examples as the default floor for checked LTG material that proves too specific for shared selection.  Generality and recurring-motif evidence determine importability, automatic selection, and promotion, while specificity alone does not justify discarding the example.  Invalidity, staleness, unsafe same-artifact disclosure, or duplication without a distinct lesson provide reasons for removal; sparse consultation evidence affects retrieval rank instead of preservation.
+
 `CounterTransition.postTestProgram_spec` qualifies as generic, and the semantic recognizer has independent Demo 7 and Demo 8 consumers with different local layouts.  The identity-producing counter-transfer motif remains narrow and therefore retains motif status rather than standing for general loop support.  The complete composition mechanism is reusable for later checked callee summaries without incorporating either demo's formal identity equations.
+
+## 2026-08-09: Demo 8 complete-composition trial
+
+The unchanged complete-composition starter applied `FixedArraySingletonWrapper.wrapperProgram_spec` to Demo 8 and supplied `function_0_scalar_post_test_loop_0_terminates_with_counter_transfer_identity` for the wrapper's exact callee.  The proof journal reports that the initial build left only the invalid-length and singleton equations for `FormalSpec.expected`.  The first edited candidate proved those equations and passed the import check and full artifact build.
+
+Stage 5 took 477.180 seconds, including 329.821 seconds in Codex and 93.210 seconds in outer acceptance.  The earlier Demo 8 run took 313.253 seconds, making this single trial 163.927 seconds, or 52.3 percent, slower.  Its accepted proof contains 72 lines and 265 words against the earlier proof's 70 lines and 235 words, and a separate `tools/leanexegen verify -s` run accepted the package over the unchanged artifact digest.
+
+The result confirms that the checked starter transfers across the three-accumulator layout, but it does not show a proof-time gain on Demo 8.  The retained Demo 7 three-run distribution remains the timing basis for the starter.  `benchmarks/leanexegen/demo8-three-accumulator/complete-starter-1` preserves this negative timing result, accepted proof, journal, recipes, and telemetry.

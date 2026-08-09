@@ -1,0 +1,5 @@
+# Proof Journal
+
+The required initial `ArtifactResult` build failed only at the two semantic premises left by `FixedArraySingletonWrapper.wrapperProgram_spec`.  The checked scalar-loop theorem `function_0_scalar_post_test_loop_0_terminates_with_counter_transfer_identity` already discharged the callee obligation, so the scalar post-test recipe needs no further expansion.  The remaining goals state that `FormalSpec.expected input` equals `input` in the invalid-length branch and equals `#[input[0]]` when `input.size = 1`; both follow from the direct identity definition and the standard size-one array extensionality fact.
+
+I added those two equations without changing the generated wrapper proof or unfolding any artifact region.  The invalid branch reduces by reflexivity, while the singleton branch uses `Array.ext`, the supplied size equation, and the index bound to show that its only element has index zero.  `PROOF_IMPORT_CHECK.js` accepted the imports, and the prescribed `ArtifactResult` build then completed all 3,078 jobs successfully; the only messages were pre-existing linter warnings from `AnnotationMatches.lean`.
