@@ -1,0 +1,7 @@
+{
+  "hostAssumptions": [
+    "UInt64 addition wraps modulo 2^64.",
+    "The ABI represents an Array UInt64 as a 64-bit length word followed by 64-bit elements and passes array pointers as i64 values.",
+    "Result allocation consumes a 48-byte header plus eight bytes for each stored array word; the fold traversal allocates no bump-heap storage."
+  ]
+}

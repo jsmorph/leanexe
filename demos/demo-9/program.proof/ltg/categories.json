@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "categories": [
+    {
+      "id": "allocation",
+      "title": "Allocation",
+      "summary": "Allocator regions, capacity bounds, heap movement, headers, and result storage."
+    },
+    {
+      "id": "arrays",
+      "title": "Arrays",
+      "summary": "Array representations, bounded transformations, result construction, and wrapper behavior."
+    },
+    {
+      "id": "compiler-motifs",
+      "title": "Compiler motifs",
+      "summary": "Checked semantic support selected by exact compiler annotations and decoded-region equalities."
+    },
+    {
+      "id": "loops",
+      "title": "Loops",
+      "summary": "Loop descriptors, invariants, transition summaries, termination measures, and compositions."
+    },
+    {
+      "id": "memory",
+      "title": "Memory",
+      "summary": "Memory bounds, address normalization, frame properties, loads, stores, and representations."
+    },
+    {
+      "id": "proof-construction",
+      "title": "Proof construction",
+      "summary": "Proof starters, residual-goal normalization, composition order, and diagnostic methods."
+    },
+    {
+      "id": "worked-examples",
+      "title": "Worked examples",
+      "summary": "Checked examples retained for their proof organization, theorem use, and diagnostic record."
+    }
+  ]
+}
