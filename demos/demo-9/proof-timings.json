@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "metric": "stage-5-start-to-first-accepted-proof",
+  "artifactSha256": "aa263bbfa89c333f9fab497f1a2c370f476afc3419015d17b368cb7c8a6086d5",
+  "baselineRun": {
+    "package": "baseline",
+    "acceptedSourceSha256": "f50144605fd21094a37ba06fcee5cb6332c4a9cb2d41b2b7485327c07a49edf5",
+    "totalMilliseconds": 3431869.816,
+    "codexSessionMilliseconds": 3162706.6,
+    "outerAcceptanceMilliseconds": 217821.182,
+    "proofLines": 493,
+    "proofWords": 1844,
+    "proofBytes": 16312,
+    "independentlyVerified": true
+  },
+  "foldPrefixRun": {
+    "package": "fold-prefix-2",
+    "acceptedSourceSha256": "4d8b38b5bfe274c2cad8d987599c026c51a506879242fe17bb903cb8be1c8a9b",
+    "totalMilliseconds": 4055764.666,
+    "codexSessionMilliseconds": 3993088.34,
+    "outerAcceptanceMilliseconds": 43797.734,
+    "increaseFromBaselineMilliseconds": 623894.85,
+    "increaseFromBaselinePercent": 18.179,
+    "proofLines": 475,
+    "proofWords": 2123,
+    "proofBytes": 21657,
+    "lineReductionFromBaseline": 18,
+    "lineReductionFromBaselinePercent": 3.651,
+    "sharedAssets": [
+      "Project.ProofKit.ArrayFold.foldPrefix",
+      "Project.ProofKit.ArrayFold.foldPrefix_size",
+      "Project.ProofKit.ArrayFold.foldPrefix_succ",
+      "Project.ProofKit.FixedArrayLengthDispatch.leProgram_spec",
+      "Project.ProofKit.FixedArrayAllocatorWindow.region_spec_withTail",
+      "Project.ProofKit.FixedArrayPairResult.input_preserved_by_alloc"
+    ],
+    "independentlyVerified": true,
+    "timingImprovement": false,
+    "structuralImprovement": true
+  }
+}

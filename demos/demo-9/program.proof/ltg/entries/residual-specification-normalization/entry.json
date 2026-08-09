@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "residual-specification-normalization",
+  "title": "Residual singleton specification normalization",
+  "summary": "Closes singleton-wrapper result equations after checked artifact composition by reducing the generated expected function and size-one array shape.",
+  "roles": ["guidance", "proof-generation-mechanism"],
+  "categories": ["arrays", "proof-construction"],
+  "scope": "compiler-runtime-motif",
+  "evidenceStatus": "promoted",
+  "features": ["array-size", "deterministic-starter", "residual-goal", "singleton", "specification-normalization"],
+  "annotationKinds": ["leanexe.array.singleton-wrapper.v1"],
+  "modules": ["Project.ProofKit.FixedArraySingletonWrapper"],
+  "declarations": ["Array.size_eq_one_iff", "Project.ProofKit.FixedArraySingletonWrapper.wrapperProgram_spec"],
+  "premises": ["Checked singleton-wrapper composition", "Generated formal expected function", "Store-preserving scalar summary"],
+  "result": "The non-singleton and singleton equations required by the complete wrapper theorem.",
+  "consumers": ["demo-7", "demo-8"],
+  "relatedEntries": ["counter-transition", "fixed-array-singleton-wrapper"],
+  "exclusion": null
+}
