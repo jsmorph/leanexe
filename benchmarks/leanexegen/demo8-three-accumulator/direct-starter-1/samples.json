@@ -1,0 +1,33 @@
+[
+  {
+    "input": [
+      "7"
+    ],
+    "output": [
+      "7"
+    ],
+    "invocation": [
+      "/home/somebody/src/leanexe/tools/leanexegen",
+      "run",
+      "/tmp/leanexegen-demo8-combined-base.proof/program.wasm",
+      "7"
+    ]
+  },
+  {
+    "input": [
+      "1",
+      "2"
+    ],
+    "output": [
+      "1",
+      "2"
+    ],
+    "invocation": [
+      "/home/somebody/src/leanexe/tools/leanexegen",
+      "run",
+      "/tmp/leanexegen-demo8-combined-base.proof/program.wasm",
+      "1",
+      "2"
+    ]
+  }
+]

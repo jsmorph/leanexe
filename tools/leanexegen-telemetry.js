@@ -95,6 +95,12 @@ function createStage5Telemetry(options = {}) {
     measureCodexSession(action) {
       return measure(action, (value) => { codexSessionMilliseconds = value; });
     },
+    skipCodexSession() {
+      if (codexSessionMilliseconds !== null) {
+        fail("stage-5 telemetry recorded the Codex session more than once");
+      }
+      codexSessionMilliseconds = 0;
+    },
     measureOuterAcceptance(action) {
       return measure(action, (value) => { outerAcceptanceMilliseconds = value; });
     },

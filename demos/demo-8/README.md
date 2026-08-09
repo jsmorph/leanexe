@@ -6,7 +6,7 @@ This demo implements the identity function on `Array UInt64`.  A singleton passe
 
 The 1,793-byte WASM module has SHA-256 digest `932262dad153458571234372e49c4142d7a7ea82cff4d09e2f2fd5eb276e4151`.  Its scalar function has 23 locals, three accumulator coordinates, and result slot two, providing a distinct layout from Demo 7.  Independent `leanexegen verify -s` accepted the generated artifact proof.
 
-The first out-of-sample run completed Stage 5 in 313.253 seconds and produced a 70-line proof after one edited candidate.  The proof agent used the generated complete scalar theorem directly and did not reconstruct the loop invariant or audit transition.  Demo 7's three-run distribution remains the timing basis for promotion, while this run establishes structural generality under a new request, namespace, source, and artifact.
+The first out-of-sample run completed Stage 5 in 313.253 seconds and produced a 70-line proof after one edited candidate.  The current direct starter completed in 212.727 seconds and produced a 67-line proof with zero Codex time.  Demo 7's three-run distribution supplies the timing basis for promotion, while Demo 8 establishes structural generality under a new request, namespace, source, artifact, and accumulator layout.
 
 ## Program and specification
 
@@ -30,9 +30,9 @@ The [WASM module](program.wasm) is the executable covered by the theorem, and th
 
 The [compiler annotations](program.annotations.json) report a scalar post-test loop with accumulator coordinates `[4, 5, 6]`, result slot two, destination 18, and scratch start 19.  The generated [annotation equalities and transitions](annotation-matches.lean) prove the exact scalar region, compact transition equations, loop entry, complete scalar identity, and singleton wrapper.  The annotation consumer discovers remaining at coordinate five and result at coordinate six by checking their initial values and both loop transitions.
 
-The [proof recipe plan](proof-recipes.json) names the complete scalar identity theorem before the lower-level loop declarations.  The [behavioral proof](proof.lean) supplies that theorem to `FixedArraySingletonWrapper.wrapperProgram_spec` and proves the two formal identity equations.  The audit coordinate remains existential inside the generated state view, where the checked nonzero transition records its independent increment by two.
+The [proof recipe plan](proof-recipes.json) names the complete scalar identity theorem before the lower-level loop declarations.  The [behavioral proof](proof.lean) supplies that theorem to `FixedArraySingletonWrapper.wrapperProgram_spec` and reduces the two formal identity equations.  Leanexegen accepts the complete starter through the full artifact, embedded-byte, and axiom checks without starting Codex.
 
-The [selected strategy notes](proof-strategies.md) and [program feature report](proof-task-features.json) record the optional guidance and reachable artifact facts supplied to the agent.  The [proof journal](proof-journal.md) records the first-edit use of the wrapper and scalar summary.  The [proof telemetry](proof-telemetry.json), [timing record](proof-timings.json), and [stage reports](stage-reports.json) preserve monotonic proof time, source identity, and acceptance results.
+The [selected strategy notes](proof-strategies.md) and [program feature report](proof-task-features.json) record the optional guidance and reachable artifact facts available if the starter fails.  The [proof journal](proof-journal.md) records direct acceptance of the complete deterministic proof.  The [proof telemetry](proof-telemetry.json), [timing record](proof-timings.json), and [stage reports](stage-reports.json) preserve monotonic proof time, source identity, and acceptance results.
 
 ## Execution
 
@@ -56,13 +56,13 @@ Every retained file fixes a generation input, artifact, proof context, or accept
 | [Lean program](program.lean) | The generated source compiled by LeanExe. |
 | [WASM module](program.wasm) | The exact executable artifact covered by the proof. |
 | [WAT rendering](program.wat) | The textual instruction representation of the artifact. |
-| [Behavioral proof](proof.lean) | The accepted proof using the checked scalar summary and array wrapper. |
+| [Behavioral proof](proof.lean) | The complete deterministic proof using the checked scalar summary and array wrapper. |
 | [Compiler annotations](program.annotations.json) | The scalar loop, length dispatch, and direct-call regions. |
 | [Annotation equalities and transitions](annotation-matches.lean) | The exact-region, transition, entry, scalar-summary, and wrapper theorems. |
 | [Proof recipe plan](proof-recipes.json) | The complete scalar theorem and lower-level fallback declarations. |
 | [Selected strategy notes](proof-strategies.md) | The feature-selected proof guidance supplied to the agent. |
 | [Program feature report](proof-task-features.json) | The reachable functions, instructions, locals, operations, and guidance identities. |
-| [Proof journal](proof-journal.md) | The agent's chronological account of proof construction. |
+| [Proof journal](proof-journal.md) | The direct path's acceptance record. |
 | [Proof telemetry](proof-telemetry.json) | The measured Stage 5 intervals and accepted proof identity. |
-| [Timing record](proof-timings.json) | The out-of-sample proof interval and structural counts. |
+| [Timing record](proof-timings.json) | The out-of-sample proof intervals, direct acceptance, and structural counts. |
 | [Stage reports](stage-reports.json) | The accepted task reports and frozen source identities. |

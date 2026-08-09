@@ -40,6 +40,21 @@
     "editedCandidates": 0,
     "independentlyVerified": true,
     "retainedAsAutomaticStarter": false,
-    "retainedAsWorkedExample": true
+    "retainedAsWorkedExample": true,
+    "laterPromotedWithDirectAcceptance": true
+  },
+  "directStarterAcceptanceRun": {
+    "package": "direct-starter-1",
+    "acceptedSourceSha256": "825e110effe214dcc3b252675af1a949c634f0b2674c5c6386ba3ceaa7a1d543",
+    "totalMilliseconds": 212727.456,
+    "codexSessionMilliseconds": 0,
+    "outerAcceptanceMilliseconds": 185912.457,
+    "reductionFromInitialMilliseconds": 100525.71,
+    "reductionFromInitialPercent": 32.091,
+    "proofLines": 67,
+    "proofWords": 249,
+    "editedCandidates": 0,
+    "independentlyVerified": true,
+    "retained": true
   }
 }
