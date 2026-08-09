@@ -1,0 +1,11 @@
+# Proof Journal
+
+The untouched deterministic starter failed in the prescribed initial build.  After `RuntimeReady` decomposition and the entry-function setup, Lean reported one goal: `wp module AnnotationMatches.function_1_singleton_wrapper_0 (FixedArrayPairResult.publicPost (FormalSpec.expected input)) initial (FixedArraySingletonWrapper.entryFrame inputPtr) env`.  This confirms that `AnnotationMatches.function_1_singleton_wrapper_0_eq` reduced the exact decoded entry function to the complete `fixed-array-singleton-wrapper-v1` composition.
+
+I applied `Project.ProofKit.FixedArraySingletonWrapper.wrapperProgram_spec`, the direct composition named in `PROOF_RECIPES.json`.  The scalar premise uses `AnnotationMatches.function_0_scalar_post_test_loop_0_terminates_with_counter_transfer_identity`, which proves that the checked counter-transfer loop returns its input and preserves the store.  The composition keeps the checked length dispatch, input load, scalar call, allocation, result stores, and public return in one theorem application.
+
+The import check accepted the first proof edit.  The Lean build applied `FixedArraySingletonWrapper.wrapperProgram_spec`, discharged the scalar call with `function_0_scalar_post_test_loop_0_terminates_with_counter_transfer_identity`, and reduced the wrapper to the singleton semantic equation.  `Array.ext` plus `simp [hSize]` left the element equation for an arbitrary index bounded by a size-one array.  The final pointwise proof derives that index equals zero with `omega`.
+
+The second import check passed.  The next Lean build showed that `Array.ext` first creates a size equality, before the pointwise equality observed in the preceding diagnostic.  I had removed the size proof while adding the explicit pointwise proof, so `intro` ran against `input.size = #[input[0]].size`.  I restored a separate `simpa [hSize]` branch for the size equation and retained the `omega` argument for the pointwise branch.
+
+The third import check passed, and the Lean build completed `LeanExeGen.GeneratedR1b9b2027715ddee5.ArtifactResult` successfully.  The build reported only existing linter warnings in generated `AnnotationMatches.lean` and an unnecessary-`simpa` suggestion in the proof.  I retained the compiling proof and scheduled the required final import check and independent artifact build as the last validation actions.

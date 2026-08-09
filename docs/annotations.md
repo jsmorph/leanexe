@@ -547,7 +547,7 @@ Three retained runs completed in 520.815, 405.284, and 816.771 seconds.  Their m
 
 The slow journal attributed most revisions to unifying `postTestProgram_spec` with the generated scalar-entry theorem after the invariant and measure were complete.  An experimental generated theorem composed those checked boundaries and passed exact-artifact verification, but its three screens took 387.160, 558.581, and 748.263 seconds.  The 558.581-second median is 7.3 percent above the retained configuration, and median proof size rose from 135 to 140 lines, so the active generator and recipe omit that composition theorem.
 
-Demo 7 therefore retains the operation-selected arithmetic lemmas and guidance while preserving the rejected composition packages for analysis.  The counter LTG improves the primary median and the secondary proof size on a held-out loop, although the timing distribution shows that application and presentation search still dominate some sessions.  Future changes must address a boundary repeated in another artifact or another Demo 7 distribution rather than specialize the theorem interface to this proof.
+That screen retained the operation-selected arithmetic lemmas and guidance while preserving the rejected composition packages for analysis.  The counter LTG improved the primary median and the secondary proof size on a held-out loop, although the timing distribution showed that application and presentation search still dominated some sessions.  The subsequent experiments therefore targeted the repeated invariant and compact-state boundary rather than another local arithmetic helper.
 
 ### Rejected cut-point and coordinate screens
 
@@ -564,6 +564,16 @@ A deterministic task-context selector treated a complete wrapper composition as 
 Two fixed-artifact runs took 777.102 and 818.470 seconds, giving a two-run median of 797.786 seconds.  The result exceeds the retained 520.815-second median by 53.2 percent, and even an arbitrarily fast third run would leave a three-run median of 777.102 seconds.  Their accepted proofs contain 123 and 142 lines, so the shorter first proof provides secondary structural evidence but cannot retain the slower selector.
 
 Both journals used the selected wrapper composition, scalar transition recipe, and counter lemmas without consulting a fallback module.  The agents still spent several full edit-and-build cycles constructing the existential scalar invariant, normalizing compact states, and removing redundant presentation steps.  The active task therefore restores the full catalog and program-selected strategies; later retrieval work needs a checked proof skeleton or smaller elaboration unit that changes the work performed, rather than a prose reduction alone.
+
+### Promoted checked semantic summary
+
+`CounterTransition.postTestProgram_spec` now captures the reusable mathematical core of a two-counter body-first loop.  Its premises describe a state view, the initial counter pair and conserved sum, a zero-counter exit transition, and a nonzero transition from `(remaining, result)` to `(remaining - 1, result + 1)`.  The theorem derives sum preservation and strict `UInt64` measure decrease through the existing counter lemmas.
+
+The annotation consumer recognizes this semantic schema only for a one-parameter, one-result function whose checked scalar body has the required two transitions.  It also checks the `(input, 0)` loop-head values, Boolean exit outcomes, returned accumulator, empty release list, and exact store-neutral suffix.  It then emits a complete `TerminatesWith` identity theorem whose proof uses generated body and condition equations, the exact entry theorem, the decoded suffix, and the shared counter-transition theorem.
+
+The production annotation command built the generated theorem against Demo 7's unchanged 1,750-byte artifact, and separate verification accepted each proof package.  Three fixed-artifact screens completed Stage 5 in 386.828, 371.243, and 354.004 seconds, giving a 371.243-second median and a 32.824-second range.  The median is 28.7 percent below the prior retained median, while proof lines fell from a 135-line median to 68 and edited candidates fell from three to one.
+
+Every agent used the generated semantic summary directly as the scalar premise of `FixedArraySingletonWrapper.wrapperProgram_spec`.  None reconstructed the loop invariant, termination measure, hidden local frame, body transition, condition transition, or exit suffix.  The next validation should exercise the recognizer on a second compiler-generated counter-transfer function with a different local layout or public wrapper before broadening the schema.
 
 ## Completion criteria
 
