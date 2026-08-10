@@ -34,6 +34,14 @@ The [proof journal](proof-journal.md) records the successful path and each rejec
 
 The [proof telemetry](proof-telemetry.json), [timing comparison](proof-timings.json), and [stage reports](stage-reports.json) preserve time intervals and source identities.  The retained proof has 508 lines, 2,155 whitespace-delimited words, and 24,327 bytes, compared with 416 lines, 1,848 words, and 17,797 bytes in the preceding annotation run.  Its 34.7-percent time reduction accompanies a 22.1-percent line increase, so the result supports faster proof generation and better shared-boundary use while recording a proof-size cost for the next LTG iteration.
 
+## Capacity and frame comparison
+
+The [current accepted comparison package](experiments/capacity-frame-current.proof/) holds the specification, source, and WASM fixed while adding exact capacity-prefix equalities, `FixedArrayCapacity.constantProgram_spec`, and the structured LTG.  Independent verification accepted its artifact theorem under the current proof-kit identity; the [original generation package](experiments/capacity-frame.proof/) preserves the proof kit supplied during generation.  Its monotonic Stage 5 measurement was 3,070.994 seconds, 47.4 percent slower than the retained fold-structure proof, while remaining 3.7 percent faster than the earlier fold-annotation proof and 10.5 percent faster than the baseline.
+
+The comparison proof contains 642 lines, 2,524 words, and 30,858 bytes.  It uses the shared capacity theorem in both length branches and reaches the checked setup, traversal, result-placement, allocator, and result-store boundaries, but it adds local theorems for the traversal exit edge, the accumulator/index update, and two getters from the updated frame.  The exit edge and final root transfer have since become checked ProofKit theorems, and traversal guidance now names the shared combined-to-internal frame projection; the accumulator/index update remains a candidate compiler motif rather than a promoted general theorem.
+
+The telemetry's UTC timestamps span 12,764.900 seconds, while its monotonic Stage 5 measurement records 3,070.994 seconds.  The 9,693.906-second difference occurred outside the monotonic interval, and the accessible system journal did not identify its cause.  Timing comparisons therefore use the telemetry's monotonic total, while `proof-timings.json` preserves both measurements.
+
 ## Execution
 
 The first sample exercises wrapping addition in the valid branch.  The second sample exceeds the maximum length and exercises the empty-result branch.  Direct execution of the proved artifact produced these values:
@@ -67,3 +75,5 @@ Every retained root file fixes a generation input, artifact, proof context, or m
 | [Timing comparison](proof-timings.json) | The baseline and structured-LTG timing and proof-size measurements. |
 | [Stage reports](stage-reports.json) | The accepted specification, source, and artifact-proof task reports. |
 | [Verification package](program.proof/) | The self-contained package accepted by `leanexegen verify -s`. |
+| [Current capacity and frame comparison](experiments/capacity-frame-current.proof/) | The slower structural comparison re-frozen and independently accepted under the current proof kit. |
+| [Original capacity and frame generation](experiments/capacity-frame.proof/) | The same accepted proof with the proof-kit identity supplied during its measured generation. |
