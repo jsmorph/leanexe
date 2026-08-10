@@ -1570,6 +1570,7 @@ function matchArrayFoldRegion(program, function_, region) {
     typeof parameters.descriptor === "object";
   return {
     functionIndex: function_.wasmIndex,
+    frameWidth: function_.parameters + function_.locals,
     regionId: region.id,
     regionKind: region.kind,
     parameters,
@@ -1872,6 +1873,24 @@ function loopRecipe(
       }, {
         declaration: `${annotationNamespace}.${name}_continuing_loaded_frame_eq`,
         purpose: "identify the generated scalar frame after the checked indexed element load",
+      }, {
+        declaration: `${annotationNamespace}.${name}_continuing_frame_params`,
+        purpose: "expose the exact parameter list of the generated continuing frame",
+      }, {
+        declaration: `${annotationNamespace}.${name}_continuing_frame_locals_length`,
+        purpose: "expose the exact local-list length of the generated continuing frame",
+      }, {
+        declaration: `${annotationNamespace}.${name}_continuing_frame_values`,
+        purpose: "expose the empty operand stack of the generated continuing frame",
+      }, ...Array.from({ length: match.frameWidth }, (_, index) => ({
+        declaration: `${annotationNamespace}.${name}_continuing_frame_get_${index}`,
+        purpose: `read generated continuing-frame index ${index}`,
+      })), {
+        declaration: "Project.ProofKit.FixedArrayFold.resultFrame_get_result",
+        purpose: "read the value placed in a valid nonparameter result local",
+      }, {
+        declaration: "Project.ProofKit.FixedArrayFold.resultFrame_get_of_ne",
+        purpose: "preserve a distinct valid nonparameter local across result placement",
       }, {
         declaration: "Project.ProofKit.FixedArrayFoldBody.continuingGuardedProgram_spec",
         purpose: "compose the continuing traversal guard and load with the compiler-described guarded back edge",
@@ -3485,10 +3504,30 @@ function arrayFoldTraversalDeclarations(function_, region) {
   const itemLocal = region.parameters.itemLocals[0];
   const loadedArguments = variables.map((variable, index) =>
     index === itemLocal ? "value" : variable).join(" ");
+  const parameterValues = variables.slice(0, function_.parameters)
+    .map((variable) => `.i64 ${variable}`).join(", ");
+  const frameAccessors = [
+    `@[simp] theorem ${frameName}_params ${binders} :\n` +
+      `    (${frameName} ${stateArguments}).params = [${parameterValues}] := by\n` +
+      `  rfl`,
+    `@[simp] theorem ${frameName}_locals_length ${binders} :\n` +
+      `    (${frameName} ${stateArguments}).locals.length = ${function_.locals} := by\n` +
+      `  rfl`,
+    `@[simp] theorem ${frameName}_values ${binders} :\n` +
+      `    (${frameName} ${stateArguments}).values = [] := by\n` +
+      `  rfl`,
+    ...variables.map((variable, index) =>
+      `@[simp] theorem ${frameName}_get_${index} ${binders} :\n` +
+      `    (${frameName} ${stateArguments}).get ${index} = ` +
+      `some (.i64 ${variable}) := by\n` +
+      `  rfl`),
+  ].join("\n\n");
   return {
     theorem: theoremName,
     source: `def ${frameName} ${binders} : Wasm.Locals :=
   (${stateName} ${stateArguments}).toState.toLocals []
+
+${frameAccessors}
 
 theorem ${itemValidName} ${binders} :
     (${frameName} ${stateArguments}).validIndex ${itemLocal} := by

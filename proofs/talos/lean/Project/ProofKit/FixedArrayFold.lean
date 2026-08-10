@@ -245,6 +245,45 @@ theorem resultFrame_values (frame : Locals) (resultLocal : Nat)
     (value : UInt64) :
     (resultFrame frame resultLocal value).values = [] := rfl
 
+@[simp]
+theorem resultFrame_get_result (frame : Locals) (resultLocal : Nat)
+    (value : UInt64) (hResultLocal : frame.params.length ≤ resultLocal)
+    (hResultValid : frame.validIndex resultLocal) :
+    (resultFrame frame resultLocal value).get resultLocal =
+      some (.i64 value) := by
+  have hNotParam : ¬resultLocal < frame.params.length :=
+    Nat.not_lt.mpr hResultLocal
+  have hResultBound :
+      resultLocal < frame.params.length + frame.locals.length := hResultValid
+  have hResultIndex :
+      resultLocal - frame.params.length < frame.locals.length := by
+    omega
+  simp [resultFrame, Wasm.Locals.get, hNotParam, hResultBound,
+    hResultIndex]
+
+@[simp]
+theorem resultFrame_get_of_ne (frame : Locals) (resultLocal readLocal : Nat)
+    (value : UInt64) (found : Value)
+    (hResultLocal : frame.params.length ≤ resultLocal)
+    (hReadLocal : frame.params.length ≤ readLocal)
+    (hReadValid : frame.validIndex readLocal)
+    (hNe : readLocal ≠ resultLocal)
+    (hRead : frame.get readLocal = some found) :
+    (resultFrame frame resultLocal value).get readLocal = some found := by
+  have hReadNotParam : ¬readLocal < frame.params.length :=
+    Nat.not_lt.mpr hReadLocal
+  have hReadBound :
+      readLocal < frame.params.length + frame.locals.length := hReadValid
+  have hIndexNe :
+      readLocal - frame.params.length ≠
+        resultLocal - frame.params.length := by
+    omega
+  simp only [resultFrame, Wasm.Locals.get, List.length_set,
+    hReadNotParam, hReadBound, if_false, if_true]
+  rw [List.getElem?_set]
+  simp only [hIndexNe.symm, if_false]
+  simpa [Wasm.Locals.get, hReadNotParam, hReadBound] using hRead
+
 set_option maxHeartbeats 1000000 in
 set_option Elab.async false in
 theorem resultProgram_spec
