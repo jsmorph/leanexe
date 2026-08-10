@@ -1,0 +1,7 @@
+# Descriptor-guided guarded back edge
+
+Use `guardedBackEdgeProgram_spec` when a generated recipe supplies an exact step-region equality and compiler-derived scalar transition equations.  The theorem executes an arbitrary body descriptor and Boolean condition, then follows either the conditional exit or an arbitrary scalar continuing statement and back edge.  Its statement names compact scalar states and an arbitrary postcondition without repeating the enclosing loop, decoded artifact function, allocator, or public specification.
+
+For `leanexe.array.fold.v1`, the annotation matcher constructs the continuing descriptor as an increment of the represented index local.  Generated body and condition evaluator theorems describe the compiler IR through `ScalarTransition`, while the generated region equality checks that the frozen instructions equal `guardedBackEdgeProgram`.  The artifact proof supplies the mathematical loop invariant, the initial scalar state, and the two control-flow postconditions.
+
+This entry addresses elaboration cost caused by reducing a short instruction tail under a large loop continuation.  It does not prove the complete fold or connect source semantics to the artifact theorem.  Current evidence comes from the wrapping-sum fold in Demo 9, so a second fold operation must test whether the boundary applies beyond that artifact before promotion.

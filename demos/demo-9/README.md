@@ -50,6 +50,16 @@ Stage 5 took 2,297.877 seconds, including 2,251.334 seconds in Codex and 35.168 
 
 The experiment establishes that a compact semantic endpoint can prevent heartbeat exhaustion and complete the proof.  It does not establish a proof-time or proof-size improvement over the retained primary proof, so the retained package remains primary.  [Opacity and elaboration boundaries in artifact proofs](../../docs/opacity-proof-boundaries.md) records the mechanism, evidence limits, and planned compiled and out-of-sample tests.
 
+## Compiler-described guarded-back-edge comparison
+
+The [guarded-back-edge package](experiments/guarded-back-edge.proof/) replaces the artifact-local update theorem with a generic compiled ProofKit theorem.  The compiler annotation supplies a versioned scalar descriptor for the fold body and done condition, while the annotation consumer proves that nested loop instructions 16 through 37 equal the generic guarded-back-edge program.  The generated recipe and structured LTG expose that equality, the body and condition evaluator theorems, and `ScalarTransition.guardedBackEdgeProgram_spec` to the proving agent.
+
+The fresh agent selected `guarded-back-edge` on its first structural search and applied the theorem after the checked traversal prefix.  The theorem discharged the wrapping-add body, done condition, successor prefix invariant, and strict remaining-input measure without reducing the WAT update beneath the outer loop postcondition.  Generic evaluation of the continuing index assignment exceeded the simplifier step limit, after which `Stmt.eval_toState` and a finite `U64State` reduction closed the remaining descriptor obligation.
+
+Stage 5 took 1,972.223 seconds, including 1,872.127 seconds in Codex and 79.123 seconds in outer acceptance.  The run is 5.3 percent faster than the retained 2,082.889-second primary and 14.2 percent faster than the local compact-boundary experiment.  Its 589-line, 2,208-word, 31,148-byte proof is 15.9 percent longer than the primary but 10.1 percent shorter than the local compact-boundary proof, and a separate `leanexegen verify -s` run accepted the package.
+
+This single measurement supports theorem applicability, structured retrieval, and a modest proof-time reduction.  A different fold operation will test whether the descriptor boundary transfers without wrapping-sum-specific support, and the generator will first add a compact continuing-transition equation.  The retained root package remains the shorter primary until the out-of-sample result and further timing evidence justify replacement.
+
 ## Execution
 
 The first sample exercises wrapping addition in the valid branch.  The second sample exceeds the maximum length and exercises the empty-result branch.  Direct execution of the proved artifact produced these values:
@@ -86,3 +96,4 @@ Every retained root file fixes a generation input, artifact, proof context, or m
 | [Current capacity and frame comparison](experiments/capacity-frame-current.proof/) | The slower structural comparison re-frozen and independently accepted under the current proof kit. |
 | [Original capacity and frame generation](experiments/capacity-frame.proof/) | The same accepted proof with the proof-kit identity supplied during its measured generation. |
 | [Compact fold-boundary comparison](experiments/compact-fold-boundary.proof/) | The accepted fixed-artifact proof that isolates the post-load update behind a compact continuation-generic theorem. |
+| [Compiler-described guarded-back-edge comparison](experiments/guarded-back-edge.proof/) | The accepted fixed-artifact proof that uses the generic guarded-back-edge theorem with compiler-generated transition evidence. |

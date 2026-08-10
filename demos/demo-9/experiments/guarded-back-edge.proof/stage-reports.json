@@ -1,0 +1,73 @@
+{
+  "schemaVersion": 1,
+  "codexVersion": "codex-cli 0.147.0",
+  "maximumAttempts": 1,
+  "tasks": {
+    "formalSpecification": {
+      "task": "formal-specification",
+      "sourceModule": "LeanExeGen.GeneratedR23fa7efc3fb0298b.FormalSpec",
+      "sourceSha256": "634cda68655729ddcd738309bccd7f7cdaba008f4646e6a09bbf70ddc73a6bc0",
+      "reportSha256": "0e195aba91a8bbdeb9172af551389560f0ebac655b8e38a8f2332c37f39e32f9",
+      "report": {
+        "summary": "Defined and verified the requested wrapping fold specification and conservative branch-specific heap bounds.",
+        "decisions": [
+          "The successful branch uses Array.foldl from a zero UInt64 accumulator.",
+          "heapReserveBytes is 64 for a singleton result and 56 for a fresh empty result."
+        ],
+        "attempts": [
+          {
+            "number": 1,
+            "outcome": "accepted",
+            "sourceSha256": "634cda68655729ddcd738309bccd7f7cdaba008f4646e6a09bbf70ddc73a6bc0",
+            "diagnosticSha256": "491c50c33071ed2a5627538edc125d65fbe1b3b505a9f221d9d2d50d38e06ed4",
+            "diagnostic": "Lean accepted LeanExeGen.GeneratedR23fa7efc3fb0298b.FormalSpec.expected : Array UInt64 → Array UInt64 and LeanExeGen.GeneratedR23fa7efc3fb0298b.FormalSpec.heapReserveBytes : Array UInt64 → Nat and LeanExeGen.GeneratedR23fa7efc3fb0298b.FormalSpec.ArtifactSpec : Wasm.Module → Prop."
+          }
+        ]
+      }
+    },
+    "leanProgram": {
+      "task": "lean-program",
+      "sourceModule": "LeanExeGen.GeneratedR23fa7efc3fb0298b.Source",
+      "sourceSha256": "25271fc879b8cdb8e1caa6d69103e455d5898bc617941b778b065e37f2be9680",
+      "reportSha256": "d1cada75d54641c4bd5f20a2ae4b26ded4f20ef692bec010e9737b5e9262bd7b",
+      "report": {
+        "summary": "Implemented the guarded wrapping UInt64 sum with Array.foldl. The source check, compiler report, and WebAssembly compilation all succeeded.",
+        "decisions": [
+          "Inputs of at most eight elements produce a singleton array containing the wrapping sum.",
+          "Longer inputs produce an empty array."
+        ],
+        "attempts": [
+          {
+            "number": 1,
+            "outcome": "accepted",
+            "sourceSha256": "25271fc879b8cdb8e1caa6d69103e455d5898bc617941b778b065e37f2be9680",
+            "diagnosticSha256": "9af8a900979f8016582cb147bef3999886779f0faceaccc2c8af3dc5141ec847",
+            "diagnostic": "Lean and LeanExe accepted and compiled LeanExeGen.GeneratedR23fa7efc3fb0298b.Source.compute : Array UInt64 → Array UInt64."
+          }
+        ]
+      }
+    },
+    "artifactProof": {
+      "task": "artifact-proof",
+      "sourceModule": "LeanExeGen.GeneratedR23fa7efc3fb0298b.Behavior",
+      "sourceSha256": "f985f87c5c3ec9f8983082cfe031e3e3ef7bb4b0932ee380237b9ca3501d1d4b",
+      "reportSha256": "2df66a036e6a59c372a4d273fcc4a7a0439a1f016935864608245f8288037f69",
+      "report": {
+        "summary": "Proved artifact_behavior. The import check and ArtifactResult build succeeded.",
+        "decisions": [
+          "Used an ArrayFold prefix-sum invariant and a loop-carried UInt64 accumulator.",
+          "Verified both the at-most-eight singleton-result branch and the over-eight empty-result branch."
+        ],
+        "attempts": [
+          {
+            "number": 1,
+            "outcome": "accepted",
+            "sourceSha256": "f985f87c5c3ec9f8983082cfe031e3e3ef7bb4b0932ee380237b9ca3501d1d4b",
+            "diagnosticSha256": "3b8a0f14b92d7877f5aded7ff8455c78bc137410fb141157213cc5a46bf8c45e",
+            "diagnostic": "Lean accepted LeanExeGen.GeneratedR23fa7efc3fb0298b.Behavior.artifact_behavior and LeanExeGen.GeneratedR23fa7efc3fb0298b.Artifact.artifact_correct."
+          }
+        ]
+      }
+    }
+  }
+}

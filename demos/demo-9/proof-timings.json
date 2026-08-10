@@ -225,5 +225,72 @@
     "structuralImprovement": true,
     "proofSizeImprovement": false,
     "retainedAsPrimary": false
+  },
+  "guardedBackEdgeRun": {
+    "package": "experiments/guarded-back-edge.proof",
+    "acceptedSourceSha256": "f985f87c5c3ec9f8983082cfe031e3e3ef7bb4b0932ee380237b9ca3501d1d4b",
+    "totalMilliseconds": 1972223.412,
+    "codexSessionMilliseconds": 1872127.056,
+    "outerAcceptanceMilliseconds": 79122.919,
+    "reductionFromFoldStructureMilliseconds": 110665.432,
+    "reductionFromFoldStructurePercent": 5.313,
+    "reductionFromCompactFoldBoundaryMilliseconds": 325653.221,
+    "reductionFromCompactFoldBoundaryPercent": 14.172,
+    "reductionFromBaselineMilliseconds": 1459646.404,
+    "reductionFromBaselinePercent": 42.532,
+    "proofLines": 589,
+    "proofWords": 2208,
+    "proofBytes": 31148,
+    "lineIncreaseFromFoldStructure": 81,
+    "lineIncreaseFromFoldStructurePercent": 15.945,
+    "lineReductionFromCompactFoldBoundary": 66,
+    "lineReductionFromCompactFoldBoundaryPercent": 10.076,
+    "sharedAssets": [
+      "Project.ProofKit.ArrayFold.foldPrefix",
+      "Project.ProofKit.ArrayFold.foldPrefix_size",
+      "Project.ProofKit.ArrayFold.foldPrefix_succ",
+      "Project.ProofKit.FixedArrayCapacity.constantProgram_spec",
+      "Project.ProofKit.FixedArrayLengthDispatch.leProgram_spec",
+      "Project.ProofKit.FixedArrayAllocatorWindow.region_spec_withTail",
+      "Project.ProofKit.FixedArrayFold.forwardSetupProgram_spec",
+      "Project.ProofKit.FixedArrayFold.resultProgram_spec",
+      "Project.ProofKit.FixedArrayTraversalInput.continuingProgram_spec",
+      "Project.ProofKit.FixedArrayTraversalInput.continuingProgram_exit_spec",
+      "Project.ProofKit.FixedArrayResult.lengthStore_spec",
+      "Project.ProofKit.FixedArrayResult.payloadStore_spec",
+      "Project.ProofKit.FixedArrayResult.finishProgram_spec",
+      "Project.ProofKit.FixedArrayResult.singletonStore_at",
+      "Project.ProofKit.FixedArrayResult.emptyStore_at",
+      "Project.ProofKit.ScalarTransition.guardedBackEdgeProgram_spec",
+      "Project.ProofKit.ScalarTransition.Stmt.eval_toState"
+    ],
+    "compilerDerivedEvidence": [
+      "LeanExeGen.GeneratedR23fa7efc3fb0298b.AnnotationMatches.function_0_length_dispatch_0_valid_capacity_eq",
+      "LeanExeGen.GeneratedR23fa7efc3fb0298b.AnnotationMatches.function_0_length_dispatch_0_invalid_capacity_eq",
+      "LeanExeGen.GeneratedR23fa7efc3fb0298b.AnnotationMatches.function_0_array_fold_0_setup_eq",
+      "LeanExeGen.GeneratedR23fa7efc3fb0298b.AnnotationMatches.function_0_array_fold_0_continuing_eq",
+      "LeanExeGen.GeneratedR23fa7efc3fb0298b.AnnotationMatches.function_0_array_fold_0_step_eq",
+      "LeanExeGen.GeneratedR23fa7efc3fb0298b.AnnotationMatches.function_0_array_fold_0_body_eval",
+      "LeanExeGen.GeneratedR23fa7efc3fb0298b.AnnotationMatches.function_0_array_fold_0_condition_eval",
+      "LeanExeGen.GeneratedR23fa7efc3fb0298b.AnnotationMatches.function_0_array_fold_0_result_eq"
+    ],
+    "localScaffolding": [
+      "sumPrefix",
+      "FoldInv",
+      "foldMeasure",
+      "input_preserved_by_alloc"
+    ],
+    "journalFindings": [
+      "Generate a continuing-statement transition theorem beside the body and condition transitions.",
+      "Advertise the existing allocator input-preservation theorem in structured LTG.",
+      "Provide a stable named application form for the dependent traversal theorem.",
+      "Frequent prose entries restored the exact proof boundary after agent-context compaction."
+    ],
+    "independentlyVerified": true,
+    "timingImprovementFromFoldStructure": true,
+    "timingImprovementFromCompactFoldBoundary": true,
+    "structuralImprovement": true,
+    "proofSizeImprovementFromFoldStructure": false,
+    "retainedAsPrimary": false
   }
 }

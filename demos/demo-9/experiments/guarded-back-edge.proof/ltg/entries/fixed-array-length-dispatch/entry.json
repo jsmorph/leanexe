@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "fixed-array-length-dispatch",
+  "title": "Fixed-array length dispatch",
+  "summary": "Converts public function execution to weakest preconditions, checks the represented input length, and exposes exact-size or bounded-size branch obligations.",
+  "roles": ["annotation-support", "checked-proof-asset", "guidance"],
+  "categories": ["arrays", "compiler-motifs", "proof-construction"],
+  "scope": "compiler-runtime-motif",
+  "evidenceStatus": "promoted",
+  "features": ["array", "bounded-length", "entry-conversion", "length-dispatch"],
+  "annotationKinds": ["leanexe.array.length-dispatch.v1"],
+  "modules": ["Project.ProofKit.FixedArrayLengthDispatch"],
+  "declarations": ["Project.ProofKit.FixedArrayLengthDispatch.eqProgram_spec", "Project.ProofKit.FixedArrayLengthDispatch.leProgram_spec", "Project.ProofKit.FixedArrayLengthDispatch.program_spec", "Wasm.TerminatesWith.of_wp_entry_for"],
+  "premises": ["A public TerminatesWith goal or body-level wp goal", "An exact length-dispatch recipe", "A represented input array", "The generated function definition and local-frame bounds"],
+  "result": "Separate valid and invalid branch weakest-precondition obligations after the checked input-length load and comparison.",
+  "consumers": ["demo-1", "demo-2", "demo-3", "demo-4", "demo-5", "demo-9"],
+  "relatedEntries": ["array-fold-prefix", "fixed-array-capacity", "fixed-array-filter-lt", "fixed-array-map-add"],
+  "exclusion": null
+}
