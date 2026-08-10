@@ -714,6 +714,8 @@ A proof that wraps the generated frame in a semantic abbreviation should use `si
 
 The fixed Demo 9 substitution removed ten local projection declarations from the accepted fold-body proof and passed independent package verification over the unchanged artifact.  Its source decreased from 588 to 555 lines and from 2,484 to 2,084 whitespace-delimited words; bytes decreased from 29,973 to 29,291 because the generated names are long.  This manual experiment measures proof structure rather than generation time, while Demo 10 independently checks the accessor family on a different fold artifact.
 
+A fresh fixed-artifact Demo 9 run selected the frame-accessor entry, used the generated frame-shape and combined-local getter theorems, and applied both shared result-frame getters.  Its accepted 616-line proof contains no proof-local frame-projection theorem, and separate package verification accepted the unchanged artifact digest.  Stage 5 took 2,230.869 seconds, 7.6 percent longer than the preceding fold-body reproof, so the experiment establishes automatic retrieval and structural use without a proof-time or source-size improvement.
+
 ## Completion criteria
 
 The first complete increment emits a validated sidecar for every ordinary library-mode compilation requested by `leanexegen`.  Demos 1, 2, and 3 prove the same specifications over the same WASM bytes through an annotation-driven deterministic proof plan.  The retained evidence records proof-generation timings, annotation validation, region coverage, and independent Lean acceptance.
