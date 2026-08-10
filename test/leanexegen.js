@@ -1039,7 +1039,8 @@ function testLengthDispatchAnnotationRecipes() {
       source.includes(`Project.ProofKit.FixedArrayLengthDispatch.${
         bounded ? "leProgram" : equality ? "eqProgram" : "program"}`) &&
       source.includes("theorem function_0_length_dispatch_0_dispatch_eq") &&
-      source.includes("theorem function_0_length_dispatch_0_function_eq"),
+      source.includes("theorem function_0_length_dispatch_0_function_eq") &&
+      !source.split("\n").some((line) => /[ \t]+$/.test(line)),
     `${encoding} did not generate the entry dispatch package`);
     const legacyPlan = structuredClone(plan);
     legacyPlan.recipes[0].direct.tactic = expectedTactic.replace("_from", "");
@@ -1790,6 +1791,10 @@ def func0Def : Wasm.Function :=
     arrayFoldPlan.recipes[0].supporting.some((entry) => entry.declaration ===
       "Project.AnnotationMatches.function_0_array_fold_0_continuing_spec") &&
     arrayFoldPlan.recipes[0].supporting.some((entry) => entry.declaration ===
+      "Project.AnnotationMatches.function_0_array_fold_0_continuing_loaded_frame_eq") &&
+    arrayFoldPlan.recipes[0].supporting.some((entry) => entry.declaration ===
+      "Project.ProofKit.FixedArrayFoldBody.continuingGuardedProgram_spec") &&
+    arrayFoldPlan.recipes[0].supporting.some((entry) => entry.declaration ===
       "Project.ProofKit.FixedArrayTraversalInput.continuingProgram_exit_spec") &&
     arrayFoldPlan.recipes[0].supporting.some((entry) => entry.declaration ===
       "Project.ProofKit.Frame.internal_getElem_of_get") &&
@@ -1838,6 +1843,8 @@ def func0Def : Wasm.Function :=
       "def function_0_array_fold_0_continuing_frame") &&
     arrayFoldMatches.source.includes(
       "theorem function_0_array_fold_0_continuing_item_valid") &&
+    arrayFoldMatches.source.includes(
+      "theorem function_0_array_fold_0_continuing_loaded_frame_eq") &&
     arrayFoldMatches.source.includes(
       "theorem function_0_array_fold_0_continuing_spec") &&
     arrayFoldMatches.source.includes(
@@ -2491,6 +2498,7 @@ function testArtifactPackage(job, formalSource) {
     proofContext.get("PROOF_KIT_SOURCE/README.md")
       .includes("mirrors every allowed `Project.ProofKit` module") &&
     proofContext.has("PROOF_KIT_SOURCE/Project/ProofKit/Array.lean") &&
+    proofContext.has("PROOF_KIT_SOURCE/Project/ProofKit/FixedArrayFoldBody.lean") &&
     proofContext.get("PROOF_STRATEGIES.md").includes("strategy.core") &&
     proofContext.get("PROOF_STRATEGIES.md").includes("strategy.arrays") &&
     proofContext.get("PROOF_IMPORT_CHECK.js").includes("unsupported proof dependency") &&
