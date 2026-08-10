@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "fixed-array-capacity",
+  "title": "Constant fixed-array capacity",
+  "summary": "Executes the compiler's constant result-length capacity normalization and reaches a named frame for the following allocator region.",
+  "roles": ["annotation-support", "checked-proof-asset", "guidance"],
+  "categories": ["allocation", "arrays", "compiler-motifs", "proof-construction"],
+  "scope": "compiler-runtime-motif",
+  "evidenceStatus": "provisional",
+  "features": ["allocation", "array", "frame", "local-set", "result-construction", "word-address"],
+  "annotationKinds": ["leanexe.array.length-dispatch.v1"],
+  "modules": ["Project.ProofKit.FixedArrayCapacity"],
+  "declarations": ["Project.ProofKit.FixedArrayCapacity.capacityFrame", "Project.ProofKit.FixedArrayCapacity.constantProgram_spec", "Project.ProofKit.FixedArrayCapacity.normalizedCapacity"],
+  "premises": ["An exact generated constant-capacity prefix equality", "An empty operand stack", "A valid capacity local outside the parameter range", "A continuation from the named capacity frame"],
+  "result": "The matched capacity prefix writes its aligned, minimum-eight-byte result to the selected local and continues from capacityFrame.",
+  "consumers": ["demo-10", "demo-2", "demo-3", "demo-9"],
+  "relatedEntries": ["fixed-array-allocation", "fixed-array-fold-structure", "fixed-array-length-dispatch", "fixed-array-result"],
+  "exclusion": null
+}

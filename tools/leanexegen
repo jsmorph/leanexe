@@ -709,7 +709,11 @@ function proofPrompt(request, job, entryIndex) {
     `Program, and artifact-support modules for exact definitions and locals.  ` +
     `After each edit, run these exact commands in order:\n\n${importCheck}\n${check}\n\n` +
     `Do not invoke Lean or Lake by another route, and do not run checks concurrently.  Inspect ` +
-    `diagnostics, revise ${candidate}, and continue until both commands succeed.  After the final ` +
+    `diagnostics, revise ${candidate}, and continue until both commands succeed.  If the Lean ` +
+    `check reaches its timeout or memory limit, or ends without a diagnostic and target artifact, ` +
+    `do not run the unchanged candidate again.  Record the failed boundary in the journal, then ` +
+    `divide the proof into a smaller theorem or module, or add a checked reusable lemma, before ` +
+    `the next check.  After the final ` +
     `edit, run both commands once more, and do not edit the candidate after success.  Append one ` +
     `final journal entry recording acceptance, the shared declarations used, and that no residual ` +
     `goal remains.  Return only the JSON object required by the output schema, set ` +

@@ -662,6 +662,14 @@ The modified proof contains 578 lines, 1,951 words, and 31,087 bytes, compared w
 
 The same generator compiled and passed independent package verification on Demo 7's normalized-equality dispatch and nonempty suffix.  That second artifact checks the alternate dispatch constructor, function-prefix composition, and suffix rendering without testing an irreducible proof.  A fresh fixed-artifact reproof is still required to determine whether a proving agent retrieves this interface and uses it without expanding the named branch bodies.
 
+### Compact suffix theorem boundary
+
+The fresh Demo 10 reproof received the generated function and branch equalities but selected the ordinary length-dispatch tactic.  Its journal contains no use of `function_0_length_dispatch_0_function_eq` or local irreducibility, so the run supplies no fresh-agent evidence for the entry-opacity interface.  The checked package remains useful for manual opacity and exact branch access, while automatic selection requires another experiment or a stronger recipe.
+
+The run exposed a reusable proof-construction boundary after the checked fold setup.  Four related builds ended without a diagnostic while `Wasm.wp_loop_cons` carried the result-placement suffix and public artifact continuation, and three recorded the six-gibibyte child-memory ceiling.  An inline `Wasm.wp.conseq` with a compact loop postcondition retained the failure, while moving the suffix into a separate `productSuffix_spec` declaration restored ordinary diagnostics and allowed proof construction to continue.
+
+The final proof passed independent verification over the unchanged 1,979-byte artifact.  Stage 5 took 2,331.276 seconds, and the accepted source contains 687 lines, compared with 1,596.295 seconds and 572 lines for the retained proof.  Structured LTG now records the separate-declaration method as provisional completion guidance, and the proof prompt prohibits an unchanged retry after timeout, memory-limit, or silent target failure.
+
 ## Completion criteria
 
 The first complete increment emits a validated sidecar for every ordinary library-mode compilation requested by `leanexegen`.  Demos 1, 2, and 3 prove the same specifications over the same WASM bytes through an annotation-driven deterministic proof plan.  The retained evidence records proof-generation timings, annotation validation, region coverage, and independent Lean acceptance.
