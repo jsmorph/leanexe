@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "local-frame-projection",
+  "title": "Combined-to-internal local projection",
+  "summary": "Converts semantic Locals.get invariant facts into optional or indexed facts over the frame's internal local list.",
+  "roles": ["checked-proof-asset", "guidance"],
+  "categories": ["compiler-motifs", "loops", "proof-construction"],
+  "scope": "generic-semantics",
+  "evidenceStatus": "provisional",
+  "features": ["frame", "invariant", "local-get", "loop", "residual-goal"],
+  "annotationKinds": ["leanexe.array.fold.v1", "leanexe.loop.scalar-post-test.v1", "leanexe.loop.while.v1"],
+  "modules": ["Project.ProofKit.Frame"],
+  "declarations": ["Project.ProofKit.Frame.internal_getElem?_of_get", "Project.ProofKit.Frame.internal_getElem_of_get"],
+  "premises": ["The frame parameter count", "A valid internal-local index", "A Locals.get equation at parameterCount plus that index"],
+  "result": "The corresponding internal local has the same optional or indexed value.",
+  "consumers": ["demo-2", "demo-3", "demo-5", "demo-9"],
+  "relatedEntries": ["array-fold-prefix", "counter-transition", "residual-specification-normalization", "scalar-post-test-loop"],
+  "exclusion": null
+}
