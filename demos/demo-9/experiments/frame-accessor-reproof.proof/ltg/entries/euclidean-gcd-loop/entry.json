@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "euclidean-gcd-loop",
+  "title": "Euclidean UInt64 GCD loop",
+  "summary": "Supplies the invariant and arithmetic facts for a UInt64 Euclidean remainder loop after checked scalar-loop execution has exposed its transitions.",
+  "roles": ["guidance"],
+  "categories": ["loops", "proof-construction"],
+  "scope": "generic-semantics",
+  "evidenceStatus": "provisional",
+  "features": ["euclidean", "gcd", "invariant", "measure", "remainder", "uint64"],
+  "annotationKinds": ["leanexe.loop.scalar-post-test.v1"],
+  "modules": ["Project.ProofKit.ScalarTransitionU64"],
+  "declarations": ["Nat.gcd_comm", "Nat.gcd_rec", "Nat.mod_lt", "UInt64.toNat_mod"],
+  "premises": ["Two UInt64 accumulators implementing Euclidean remainder steps", "A checked body and condition transition", "A nonzero divisor in the continuing branch"],
+  "result": "A GCD-preserving loop invariant and strict divisor measure for the zero and nonzero Euclidean branches.",
+  "consumers": ["demo-6"],
+  "relatedEntries": ["fixed-array-singleton-wrapper", "scalar-post-test-loop"],
+  "exclusion": null
+}
