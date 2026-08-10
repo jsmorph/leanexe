@@ -22,11 +22,11 @@ Every `leanexegen` artifact-proof task receives this catalog and may import the 
 | `Project.ProofKit.FixedArrayLtNode` | One key-first indexed array load, unsigned less-than comparison, and two-way branch for an unrolled search tree. |
 | `Project.ProofKit.FixedArrayMapAdd` | A bounded one-word fixed-array map with wrapping addition, allocation, loop, and empty-result semantics. |
 | `Project.ProofKit.FixedArrayPairResult` | Complete allocation and two-word result semantics for the emitted twenty-four-local wrapper. |
-| `Project.ProofKit.FixedArrayResult` | Continuation-generic length and payload stores plus singleton and pair representation theorems. |
+| `Project.ProofKit.FixedArrayResult` | Continuation-generic length, payload, and final root-transfer programs plus singleton and pair representation theorems. |
 | `Project.ProofKit.FixedArraySearch` | Nested search-branch composition for standard pair results. |
 | `Project.ProofKit.FixedArraySingleton` | Complete allocation and singleton `Array UInt64` result semantics for the emitted one-parameter array-wrapper layout. |
 | `Project.ProofKit.FixedArraySingletonWrapper` | Complete singleton-array public wrapper semantics parameterized by a store-preserving scalar callee. |
-| `Project.ProofKit.FixedArrayTraversalInput` | The checked indexed loader that leaves a traversal value on the operand stack. |
+| `Project.ProofKit.FixedArrayTraversalInput` | Both edges of the traversal guard and the checked indexed loader on its continuing edge. |
 | `Project.ProofKit.Control` | Function entry, block-wrapped loop entry, and one-call wrapper tactics. |
 
 ## Scalar transitions
@@ -394,6 +394,8 @@ Import `Project.ProofKit.FixedArrayResult` for the standard fixed-array length s
 
 `singletonStore_at` and `pairStore_at` reconstruct the public `UInt64Array.At` representation from those named memory transformers.  Their premises require the complete result region to fit in 32-bit address space and current memory.  The theorems cover arrays of one and two `UInt64` values without fixing an allocator layout or an application function.
 
+`finishProgram_spec` covers the final four instructions that copy the result root through a destination local and the function's return local.  It accepts arbitrary valid nonparameter local operands and passes the exact `finishFrame` to an arbitrary continuation.  Apply it after constructing the array representation so the public continuation does not reduce another nested local-update chain.
+
 ```lean
 import Project.ProofKit.FixedArrayResult
 
@@ -408,6 +410,10 @@ apply Project.ProofKit.FixedArrayResult.payloadStore_spec
 
 have hResult := Project.ProofKit.FixedArrayResult.pairStore_at
   st root first second hFit32 hFitMemory
+
+apply Project.ProofKit.FixedArrayResult.finishProgram_spec
+  module_ env _ _ root rootLocal destinationLocal returnLocal
+  hValues hRoot hDestinationLower hDestinationValid hReturnLower hReturnValid
 ```
 
 ## Complete singleton-array result region
@@ -472,6 +478,8 @@ have hAccumulatorInternal : frame.locals[0] = .i64 accumulator :=
   Project.ProofKit.Frame.internal_getElem_of_get
     frame 1 0 (.i64 accumulator) hParams hLocal hAccumulator
 ```
+
+`FixedArrayTraversalInput.continuingProgram_exit_spec` covers the true edge of the standard `index ≥ effectiveStop` guard.  Equal index and stop getters produce `Break 1` without reducing the loader or the caller's result suffix.  Use it beside `continuingProgram_spec`, which covers the false guard edge and dynamic element load.
 
 Import `Project.ProofKit.Control` when a theorem proves `Wasm.TerminatesWith` for a generated function definition that is definitionally equal to the selected module function.  The tactic `wp_entry functionDef as initial'` applies `Wasm.TerminatesWith.of_wp_entry` with `rfl` and introduces the initial local frame under the supplied name.  It leaves the function-body weakest-precondition goal visible.
 

@@ -44,12 +44,14 @@ import Project.ProofKit.ScalarTransitionU64
 #check Project.ProofKit.FixedArrayMapAdd.wrapperProgram_spec
 #check Project.ProofKit.FixedArrayPairResult.input_preserved_by_alloc
 #check Project.ProofKit.FixedArrayResult.emptyStore_at
+#check Project.ProofKit.FixedArrayResult.finishProgram_spec
 #check Project.ProofKit.FixedArrayResult.lengthStore_spec
 #check Project.ProofKit.FixedArrayResult.pairStore_at
 #check Project.ProofKit.FixedArrayResult.payloadStore_spec
 #check Project.ProofKit.FixedArrayResult.singletonStore_at
 #check Project.ProofKit.FixedArraySingletonWrapper.wrapperProgram
 #check Project.ProofKit.FixedArraySingletonWrapper.wrapperProgram_spec
+#check Project.ProofKit.FixedArrayTraversalInput.continuingProgram_exit_spec
 #check Project.ProofKit.FixedArrayTraversalInput.continuingProgram_spec
 #check Project.ProofKit.FixedArrayTraversalInput.dynamicProgram_spec
 #check Project.ProofKit.FixedArrayTraversalInput.program_spec
