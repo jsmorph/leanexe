@@ -62,7 +62,13 @@ The proof reached the six-gibibyte memory ceiling while applying the loop rule u
 
 The independently verified [compact suffix package](experiments/compact-suffix-boundary.proof/) preserves the unchanged artifact, generated package, proof, journal, and telemetry.  Stage 5 took 2,331.276 seconds, and the proof contains 687 lines, 2,347 words, and 35,160 bytes.  The run is 46.0 percent slower and 115 lines longer than the retained proof, but it establishes that a separate compact theorem can turn a silent elaboration failure into a checkable proof boundary.
 
-The follow-up [singleton-result suffix package](experiments/singleton-result-suffix.proof/) adds a generic `FixedArrayFold.singletonResultProgram_spec` theorem and a generated exact equality for the complete emitted suffix.  The theorem parameterizes all five local roles and the fold value, while its endpoint records the returned root and represented singleton array.  Production annotation generation and independent package verification accepted this interface over the same artifact; a fresh proof-generation run remains necessary to measure use.
+The follow-up [singleton-result suffix package](experiments/singleton-result-suffix.proof/) adds a generic `FixedArrayFold.singletonResultProgram_spec` theorem and a generated exact equality for the complete emitted suffix.  The theorem parameterizes all five local roles and the fold value, while its endpoint records the returned root and represented singleton array.  Production annotation generation and independent package verification accepted this interface over the same artifact.
+
+The [fresh singleton-result reproof](experiments/singleton-result-suffix-reproof.proof/) retrieved the structured LTG entry and used the shared theorem inside a local adapter to the public postcondition.  Independent verification accepted the complete artifact theorem over the unchanged WASM digest.  This supplies automatic-selection and structural-use evidence, while the timing and line measurements are adverse.
+
+Stage 5 took 2,998.613 seconds, including 2,875.208 seconds in Codex and 110.879 seconds in outer acceptance.  The accepted proof contains 707 lines, 3,072 whitespace-delimited words, and 34,081 bytes.  It is 28.6 percent slower and twenty lines longer than the earlier compact-suffix proof, although its semantic suffix body applies one shared theorem instead of composing three lower-level instruction theorems.
+
+The journal records a second useful boundary.  The enclosing loop reached the one-million-heartbeat limit until the proof introduced an exact generated-frame equality, then required a continuation-generic local theorem to compose the traversal, compiler-derived scalar transitions, guarded back edge, invariant, and measure.  This composition is the next candidate for shared ProofKit and annotation support, with Demo 9 available as an out-of-sample sum-fold consumer.
 
 ## Execution
 
@@ -106,3 +112,4 @@ The root files provide readable views of each generation and proof stage.  The [
 | [Irreducible dispatch proof](experiments/irreducible-dispatch-proof.lean) | The checked primary proof with a local decoded-body opacity boundary. |
 | [Compact suffix package](experiments/compact-suffix-boundary.proof/) | The independently verified reproof whose separate suffix theorem removed the loop-rule memory failure. |
 | [Singleton-result suffix package](experiments/singleton-result-suffix.proof/) | The independently verified generic suffix theorem and exact decoded-region equality. |
+| [Fresh singleton-result reproof](experiments/singleton-result-suffix-reproof.proof/) | The independently verified fixed-artifact run that selected the generic suffix theorem and exposed the next fold-body composition boundary. |
