@@ -1,5 +1,6 @@
 import Project.ProofKit.Allocation
 import Project.ProofKit.Array
+import Project.ProofKit.Control
 import Project.ProofKit.FixedArrayAllocator
 import Project.ProofKit.FixedArrayAllocatorWindow
 import Project.ProofKit.FixedArrayCapacity
@@ -69,3 +70,5 @@ import Project.ProofKit.ScalarTransitionU64
 #check Project.ProofKit.UInt64Array.At.write64After
 #check UInt64.toNat_mod
 #check Wasm.TerminatesWith.of_wp_entry_for
+#check Wasm.wp.conseq
+#check Wasm.wp_loop_cons

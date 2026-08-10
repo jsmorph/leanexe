@@ -1,0 +1,178 @@
+{
+  "artifact": {
+    "byteLength": 1979
+  },
+  "functions": [
+    {
+      "definedFunction": 0,
+      "exports": [
+        "compute"
+      ],
+      "locals": 20,
+      "parameters": 1,
+      "regions": [
+        {
+          "generatedBy": [
+            "LeanExe.Wasm.Binary.CoreWasm.emitArrayFoldMultiSlot",
+            "LeanExe.Wasm.Binary.CoreWasm.emitArrayLiteralSlots",
+            "LeanExe.Wasm.Binary.CoreWasm.emitStmtAnnotated"
+          ],
+          "id": "function-0.array-fold-0",
+          "kind": "leanexe.array.fold.v1",
+          "location": {
+            "endIndex": 65,
+            "listPath": [
+              {
+                "field": "then",
+                "instructionIndex": 7
+              }
+            ],
+            "startIndex": 39
+          },
+          "parameters": {
+            "accumulatorLocals": [
+              1
+            ],
+            "accumulatorStart": 1,
+            "array": "LeanExe.IR.Expr.local 0",
+            "arrayLocal": 11,
+            "bodyLets": [
+              "LeanExe.IR.LocalLet.slots\n  [3]\n  [LeanExe.IR.Expr.u64Bin (LeanExe.IR.U64Op.mul) (LeanExe.IR.Expr.local 1) (LeanExe.IR.Expr.local 2)]"
+            ],
+            "bodyValues": [
+              "LeanExe.IR.Expr.local 3"
+            ],
+            "continuation": "fallthrough",
+            "descriptor": {
+              "body": {
+                "first": {
+                  "first": {
+                    "first": {
+                      "first": {
+                        "index": 3,
+                        "kind": "assign",
+                        "value": {
+                          "kind": "bin",
+                          "left": {
+                            "index": 1,
+                            "kind": "get"
+                          },
+                          "operation": "mul",
+                          "right": {
+                            "index": 2,
+                            "kind": "get"
+                          }
+                        }
+                      },
+                      "kind": "seq",
+                      "second": {
+                        "index": 17,
+                        "kind": "assign",
+                        "value": {
+                          "index": 3,
+                          "kind": "get"
+                        }
+                      }
+                    },
+                    "kind": "seq",
+                    "second": {
+                      "index": 16,
+                      "kind": "assign",
+                      "value": {
+                        "kind": "const",
+                        "value": "0"
+                      }
+                    }
+                  },
+                  "kind": "seq",
+                  "second": {
+                    "index": 1,
+                    "kind": "assign",
+                    "value": {
+                      "index": 17,
+                      "kind": "get"
+                    }
+                  }
+                },
+                "kind": "seq",
+                "second": {
+                  "index": 18,
+                  "kind": "assign",
+                  "value": {
+                    "kind": "const",
+                    "value": "1"
+                  }
+                }
+              },
+              "condition": {
+                "kind": "ne",
+                "left": {
+                  "index": 16,
+                  "kind": "get"
+                },
+                "right": {
+                  "kind": "const",
+                  "value": "0"
+                }
+              }
+            },
+            "descriptorVersion": 1,
+            "doneLocal": 16,
+            "doneValue": "LeanExe.IR.Expr.u64 0",
+            "effectiveStopLocal": 15,
+            "indexLocal": 13,
+            "initialValues": [
+              "LeanExe.IR.Expr.u64 1"
+            ],
+            "itemLocals": [
+              2
+            ],
+            "itemStart": 2,
+            "lengthLocal": 12,
+            "releaseOffsets": [],
+            "releaseReadyLocal": 18,
+            "resultLocals": [
+              10
+            ],
+            "resultSlots": [
+              0
+            ],
+            "resultWidth": 1,
+            "reverse": false,
+            "scratchStart": 11,
+            "sourceWidth": 1,
+            "stagedValueStart": 17,
+            "start": "LeanExe.IR.Expr.u64 0",
+            "stop": "LeanExe.IR.Expr.arraySize (LeanExe.IR.Expr.local 0)",
+            "stopLocal": 14
+          }
+        },
+        {
+          "generatedBy": [
+            "LeanExe.Wasm.Binary.CoreWasm.emitCondWithRelease",
+            "LeanExe.Wasm.Binary.CoreWasm.emitStmtAnnotated"
+          ],
+          "id": "function-0.length-dispatch-0",
+          "kind": "leanexe.array.length-dispatch.v1",
+          "location": {
+            "endIndex": 8,
+            "listPath": [],
+            "startIndex": 0
+          },
+          "parameters": {
+            "continuation": "fallthrough",
+            "encoding": "le-unsigned-v1",
+            "expectedSize": 8,
+            "inputLocal": 7,
+            "invalidBranch": "else",
+            "validBranch": "then"
+          }
+        }
+      ],
+      "results": 1,
+      "sourceName": "LeanExeGen.GeneratedRa8e90ffc5781d113.Source.compute",
+      "wasmIndex": 0
+    }
+  ],
+  "schemaVersion": 1
+}

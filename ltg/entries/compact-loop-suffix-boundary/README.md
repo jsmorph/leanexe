@@ -1,0 +1,7 @@
+# Compact loop-suffix theorem boundary
+
+Use this method when applying `Wasm.wp_loop_cons` under the complete artifact postcondition reaches the memory limit, times out, or ends without a diagnostic.  First give the loop a compact completion assertion through `Wasm.wp.conseq`.  If proving that consequence inside the public theorem retains the same large context, move the suffix proof into a separate theorem declaration before checking the loop again.
+
+The separate theorem should begin at the completed semantic frame and end at a small named assertion.  Its statement should contain the suffix program, store relation, required frame values, and output representation facts without mentioning the enclosing loop invariant or public entry decomposition.  Prove the suffix with the applicable checked store, result-construction, call, or control theorems, then apply the compiled declaration from the loop-completion consequence.
+
+Demo 10 supplies provisional evidence for this method.  Four related builds ended without a diagnostic while the fold loop carried its complete result suffix, and three of those builds recorded the six-gibibyte child-memory ceiling; moving the result placement, payload store, singleton reconstruction, and final root transfer into `productSuffix_spec` restored ordinary diagnostics and enabled an independently verified proof.  The resulting run was slower and larger than the retained proof, so the entry records a completion and diagnostic boundary rather than a proof-time improvement.
