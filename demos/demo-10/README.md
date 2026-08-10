@@ -54,6 +54,14 @@ The follow-up [entry-dispatch package](experiments/entry-dispatch.proof/) names 
 
 The modified proof contains 578 lines, 1,951 words, and 31,087 bytes, six lines and 510 bytes more than the primary proof.  One warm build took 8.2 seconds for `Behavior` and 2.1 seconds for `ArtifactResult`, compared with 9.0 and 2.3 seconds for a reducible build in a copied workspace.  These single acceptance measurements are descriptive, while successful checking establishes that a compact generated accessor can make the previously rejected opacity boundary usable.
 
+## Compact suffix-boundary experiment
+
+A fresh fixed-artifact reproof received the entry-dispatch package but selected the ordinary length-dispatch tactic.  It did not apply the generated function equality or mark the decoded function irreducible.  This run therefore leaves automatic use of the entry-opacity interface unestablished.
+
+The proof reached the six-gibibyte memory ceiling while applying the loop rule under the complete result suffix and public continuation.  A compact consequence inside the public theorem retained the failure, while moving result placement, payload storage, singleton reconstruction, and root transfer into a preceding `productSuffix_spec` theorem restored ordinary diagnostics.  The agent then completed both length branches and the exact artifact theorem.
+
+The independently verified [compact suffix package](experiments/compact-suffix-boundary.proof/) preserves the unchanged artifact, generated package, proof, journal, and telemetry.  Stage 5 took 2,331.276 seconds, and the proof contains 687 lines, 2,347 words, and 35,160 bytes.  The run is 46.0 percent slower and 115 lines longer than the retained proof, but it establishes that a separate compact theorem can turn a silent elaboration failure into a checkable proof boundary.
+
 ## Execution
 
 The empty input checks the multiplicative identity, the second sample checks the traversal loop, and the third checks the oversized branch.  Direct execution of the proved artifact produced these results.  Each result agrees with the formal specification.
@@ -94,3 +102,4 @@ The root files provide readable views of each generation and proof stage.  The [
 | [Local-irreducibility screen](experiments/irreducibility-screen.md) | The two focused failure diagnostics and the required compact-accessor boundary. |
 | [Entry-dispatch package](experiments/entry-dispatch.proof/) | The independently verified named branch, dispatch, suffix, and function equalities. |
 | [Irreducible dispatch proof](experiments/irreducible-dispatch-proof.lean) | The checked primary proof with a local decoded-body opacity boundary. |
+| [Compact suffix package](experiments/compact-suffix-boundary.proof/) | The independently verified reproof whose separate suffix theorem removed the loop-rule memory failure. |
