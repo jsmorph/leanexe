@@ -7,13 +7,13 @@
   "categories": ["allocation", "arrays", "memory", "proof-construction"],
   "scope": "generic-semantics",
   "evidenceStatus": "provisional",
-  "features": ["array", "disjoint-write", "frame", "memory", "representation-preservation"],
+  "features": ["array", "disjoint-write", "frame", "indexed-element-load", "memory", "representation-preservation"],
   "annotationKinds": ["leanexe.array.allocator-window.v1", "leanexe.array.allocator.v1"],
   "modules": ["Project.ProofKit.Array", "Project.ProofKit.FixedArrayPairResult"],
-  "declarations": ["Project.ProofKit.FixedArrayPairResult.input_preserved_by_alloc", "Project.ProofKit.UInt64Array.At.frameBefore", "Project.ProofKit.UInt64Array.At.write64After"],
+  "declarations": ["Project.ProofKit.FixedArrayPairResult.input_preserved_by_alloc", "Project.ProofKit.UInt64Array.At.frameBefore", "Project.ProofKit.UInt64Array.At.generatedElement", "Project.ProofKit.UInt64Array.At.write64After"],
   "premises": ["A represented input array", "A cutoff above the complete input representation", "Unchanged pages and bytes below the cutoff, or the checked fixed-array allocator premises", "A later store whose address begins at or above the cutoff"],
   "result": "The original input representation, including its length and indexed element reads, remains valid in the modified store.",
   "consumers": ["demo-4", "demo-5", "demo-9"],
-  "relatedEntries": ["array-fold-prefix", "fixed-array-allocation", "fixed-array-filter-lt", "fixed-array-map-add"],
+  "relatedEntries": ["array-fold-prefix", "fixed-array-allocation", "fixed-array-filter-lt", "fixed-array-map-add", "fixed-array-result", "fixed-array-traversal-input"],
   "exclusion": null
 }

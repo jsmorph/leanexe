@@ -10,7 +10,7 @@
     "invocation": [
       "tools/leanexegen",
       "run",
-      "$TMPDIR/demo9-array-fold-annotated-3.proof/program.wasm",
+      "$TMPDIR/demo9-fold-structure-annotated-2.proof/program.wasm",
       "18446744073709551615",
       "1"
     ]
@@ -31,7 +31,7 @@
     "invocation": [
       "tools/leanexegen",
       "run",
-      "$TMPDIR/demo9-array-fold-annotated-3.proof/program.wasm",
+      "$TMPDIR/demo9-fold-structure-annotated-2.proof/program.wasm",
       "1",
       "2",
       "3",
