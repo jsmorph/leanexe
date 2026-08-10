@@ -14,6 +14,6 @@
   "premises": ["A represented UInt64 input array", "Frame getters for the input pointer and encoded traversal index", "An in-bounds logical index and a valid item destination local", "For the guarded form, an encoded effective stop greater than the current index"],
   "result": "The exact emitted guard and indexed loader reach an arbitrary continuation with the selected array element in the item local.",
   "consumers": ["demo-2", "demo-3", "demo-9"],
-  "relatedEntries": ["array-fold-prefix", "array-memory-framing", "fixed-array-filter-lt", "fixed-array-map-add"],
+  "relatedEntries": ["array-fold-prefix", "array-memory-framing", "fixed-array-filter-lt", "fixed-array-map-add", "fixed-array-result"],
   "exclusion": null
 }

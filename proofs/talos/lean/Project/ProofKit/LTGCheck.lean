@@ -6,6 +6,7 @@ import Project.ProofKit.FixedArrayFilterLt
 import Project.ProofKit.FixedArrayLengthDispatch
 import Project.ProofKit.FixedArrayMapAdd
 import Project.ProofKit.FixedArrayPairResult
+import Project.ProofKit.FixedArrayResult
 import Project.ProofKit.FixedArraySingletonWrapper
 import Project.ProofKit.FixedArrayTraversalInput
 import Project.ProofKit.ScalarTransition
@@ -32,6 +33,10 @@ import Project.ProofKit.ScalarTransitionU64
 #check Project.ProofKit.FixedArrayMapAdd.wrapperProgram
 #check Project.ProofKit.FixedArrayMapAdd.wrapperProgram_spec
 #check Project.ProofKit.FixedArrayPairResult.input_preserved_by_alloc
+#check Project.ProofKit.FixedArrayResult.lengthStore_spec
+#check Project.ProofKit.FixedArrayResult.pairStore_at
+#check Project.ProofKit.FixedArrayResult.payloadStore_spec
+#check Project.ProofKit.FixedArrayResult.singletonStore_at
 #check Project.ProofKit.FixedArraySingletonWrapper.wrapperProgram
 #check Project.ProofKit.FixedArraySingletonWrapper.wrapperProgram_spec
 #check Project.ProofKit.FixedArrayTraversalInput.continuingProgram_spec

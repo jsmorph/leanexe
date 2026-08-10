@@ -1,0 +1,7 @@
+# Exact traversal-prefix censored run
+
+This directory preserves a controlled reproof started at `2026-08-09T22:23:58.144Z`.  The owned session was interrupted after approximately 4,285 seconds because it had exceeded every retained Demo 9 result and had produced no journal entry, candidate edit, Lean diagnostic, API error, or usage-limit message for about twenty-two minutes.  The run produced no accepted proof and no package telemetry, so its duration is a right-censored lower bound derived from the driver interval.
+
+The journal records successful retrieval and use of the exact traversal-prefix support.  `FixedArrayTraversalInput.continuingProgram_spec` discharged every premise for the sixteen-instruction guard-and-load prefix, after which the agent closed the wrapping-accumulator update, fold-prefix successor equation, unchanged-local facts, encoded-index update, and decreasing measure.  The remaining work began at the completed loop branch, payload store, and singleton output representation.
+
+`candidate.lean` is the unfinished source at the last edit and does not compile.  `annotation-matches.lean` preserves the checked generated equality used by the candidate, while the JSON and Markdown task files preserve the annotation, LTG digest, recipes, selected strategies, and supplied proof library.  `proof-journal.md` is the primary record of theorem selection, failed normalization attempts, successful proof boundaries, and the final stall.

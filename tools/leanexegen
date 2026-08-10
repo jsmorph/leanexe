@@ -691,8 +691,9 @@ function proofPrompt(request, job, entryIndex) {
     `Interpreter, Std, Init, or Mathlib.  The import check enforces this boundary.  ` +
     `Keep PROOF_JOURNAL.md as frequent, natural Markdown prose.  Update it after each Lean check ` +
     `and significant change of approach, including the current reasoning, the diagnostic, and ` +
-    `missing general annotation, lemma, tactic, guidance, or catalog metadata.  The journal does ` +
-    `not participate in the proof.  ` +
+    `missing general annotation, lemma, tactic, guidance, or catalog metadata.  Before an ` +
+    `extended proof construction or elaboration attempt, record the intended change and the ` +
+    `residual goal that would count as progress.  The journal does not participate in the proof.  ` +
     `Do not import Source, inspect source code, invoke the compiler, add axioms, or use sorry.  ` +
     `Leave samples and hostAssumptions empty.  ArtifactSpec resolves ${job.exportName} to function ` +
     `${entryIndex}, then quantifies over env, initial, inputPtr, and input under RuntimeReady.  ` +
