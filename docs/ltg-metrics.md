@@ -30,7 +30,7 @@ Canonical entry content consists of the 42 files below `ltg/entries`, while the 
 
 ## Snapshot: 2026-08-10
 
-This snapshot uses LTG and proof-kit content at repository revision `cf78c09f8edb3b9bdf6a5a62140a490938829a96`.  Its complete task-bundle digest is `d454ef532e62b3665c9d5bc5f210ebdd813bc88196a8ad2a4a296ae88eebb011`, which identifies the exact catalog files presented to an unfiltered proof task.  Later reports can compare the dated revision, bundle digest, and schema version before comparing counts.
+This snapshot uses LTG and proof-kit content at repository revision `d5713eb2f9e732d4a2e5d651f5883b168fc44ab1`.  Its complete task-bundle digest is `590f4f11944149311f414e19dd0b47155fd1562a7f95025cf29fb434fd463125`, which identifies the exact catalog files presented to an unfiltered proof task.  Later reports can compare the dated revision, bundle digest, and schema version before comparing counts.
 
 | Catalog measure | Value |
 |-----------------|------:|
@@ -63,7 +63,7 @@ The `arrays`, `compiler-motifs`, and `proof-construction` categories each contai
 | Entries naming a local proof-kit declaration | 20 |
 | Entries importing a tactic-bearing module | 5 |
 
-The catalog contains 57 unique feature strings across 119 assignments and 12 unique annotation kinds across 30 assignments.  Every entry names at least one annotation kind, while the scalar post-test and array-fold annotations each bind 6 entries.  The catalog records 58 consumer assignments across Demos 1 through 10, and every entry has at least one recorded consumer.
+The catalog contains 58 unique feature strings across 120 assignments and 12 unique annotation kinds across 30 assignments.  Every entry names at least one annotation kind, while the scalar post-test and array-fold annotations each bind 6 entries.  The catalog records 60 consumer assignments across Demos 1 through 10, and every entry has at least one recorded consumer.
 
 | Lean-support measure | Indexed by entries | Complete supplied proof kit |
 |----------------------|-------------------:|----------------------------:|
@@ -86,19 +86,19 @@ Tactic coverage currently has a metadata limitation.  The proof kit defines 29 t
 
 | Content measure | Files | Bytes |
 |-----------------|------:|------:|
-| Canonical entry content | 42 | 61,086 |
-| Canonical catalog | 44 | 63,892 |
-| Catalog Markdown | 22 | 32,932 |
-| Metadata JSON | 22 | 30,960 |
-| Generated category indexes | 7 | 93,675 |
-| Physical catalog | 51 | 157,567 |
-| Complete unfiltered task bundle | 51 | 157,567 |
+| Canonical entry content | 42 | 62,118 |
+| Canonical catalog | 44 | 64,924 |
+| Catalog Markdown | 22 | 33,921 |
+| Metadata JSON | 22 | 31,003 |
+| Generated category indexes | 7 | 93,807 |
+| Physical catalog | 51 | 158,731 |
+| Complete unfiltered task bundle | 51 | 158,731 |
 | Proof-kit Lean sources | 27 | 321,696 |
 | Proof-kit README | 1 | 42,472 |
 | Generated declaration check | 1 | 3,735 |
-| Combined physical knowledge | 79 | 521,735 |
+| Combined physical knowledge | 79 | 522,899 |
 
-Generated indexes account for 93,675 of the physical catalog's 157,567 logical bytes.  This duplication buys search locality and does not increase the 61,086-byte canonical entry inventory.  The combined total counts each physical task-catalog and proof-kit file once and excludes the generated declaration check, whose size appears on its own row.
+Generated indexes account for 93,807 of the physical catalog's 158,731 logical bytes.  This duplication buys search locality and does not increase the 62,118-byte canonical entry inventory.  The combined total counts each physical task-catalog and proof-kit file once and excludes the generated declaration check, whose size appears on its own row.
 
 The relation graph contains 84 directed related-entry links, including 29 reciprocal pairs and 26 asymmetric links, with no entry isolated from the graph.  Four worked examples carry exclusions covering four exact artifact digests and three derivative groups.  Catalog validation found no dangling category, allowed-module, or related-entry reference, and the local source inventory found no missing `Project.ProofKit` declaration name.
 
