@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "id": "demo8-counter-transfer-example",
+  "title": "Demo 8 independent counter-transfer layout",
+  "summary": "Shows the counter-transfer composition over a different three-accumulator scalar layout and exact WASM artifact.",
+  "roles": ["worked-example"],
+  "categories": ["arrays", "compiler-motifs", "loops", "proof-construction", "worked-examples"],
+  "scope": "benchmark-local",
+  "evidenceStatus": "provisional",
+  "features": ["counter", "deterministic-starter", "direct-acceptance", "multiple-accumulators", "singleton"],
+  "annotationKinds": ["leanexe.array.singleton-wrapper.v1", "leanexe.loop.scalar-post-test.v1"],
+  "modules": ["Project.ProofKit.FixedArraySingletonWrapper", "Project.ProofKit.ScalarTransitionU64"],
+  "declarations": ["Project.ProofKit.FixedArraySingletonWrapper.wrapperProgram_spec", "Project.ProofKit.ScalarTransition.CounterTransition.postTestProgram_spec"],
+  "premises": ["Unique remaining and result counters among three accumulators", "Generated scalar identity summary", "Checked singleton-wrapper composition"],
+  "result": "A 67-line complete artifact proof demonstrating that the composition does not depend on Demo 7's local layout.",
+  "consumers": ["demo-8"],
+  "relatedEntries": ["counter-transition", "demo7-counter-transfer-example", "fixed-array-singleton-wrapper", "residual-specification-normalization"],
+  "exclusion": {
+    "artifactSha256": ["932262dad153458571234372e49c4142d7a7ea82cff4d09e2f2fd5eb276e4151"],
+    "derivativeGroup": "counter-transfer-singleton"
+  }
+}

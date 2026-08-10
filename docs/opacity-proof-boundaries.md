@@ -19,7 +19,7 @@ The technique ledger distinguishes a checked mechanism from a proposed use and f
 | `OPA-007` | Named compact endpoint equality | Generated traversal program, frame, item-validity proof, and continuation theorem | Accepted on Demo 10 in both a manual substitution and a fresh fixed-artifact reproof.  The manual substitution shortened the existing proof, while the fresh proof expanded the generated frame throughout its invariant and was slower and larger. |
 | `OPA-008` | Named proposition bridged by consequence | Public artifact postcondition after fixed-store entry conversion | Accepted in the fresh Demo 10 reproof.  Direct `change` failed even when the named definition repeated the generated expressions, while `Wasm.wp.conseq` established the implication and kept the compact name through both length branches. |
 | `OPA-009` | Separate compact suffix theorem | Completed fold frame before result placement and the public continuation | Accepted and independently verified on Demo 10.  An inline compact consequence retained the six-gibibyte elaboration failure; a preceding theorem declaration restored diagnostics, and a fresh agent later retrieved and used the generic ProofKit theorem for the same emitted suffix. |
-| `OPA-010` | Exact frame equality followed by a continuation-generic helper | Generated traversal and guarded back edge under the complete loop assertion | The artifact-local helper was accepted and independently verified on Demo 10.  `FixedArrayFoldBody.continuingGuardedProgram_spec` now captures its operation-independent composition, and a manual Demo 10 substitution passed the complete artifact target. |
+| `OPA-010` | Exact frame equality followed by a continuation-generic helper | Generated traversal and guarded back edge under the complete loop assertion | The artifact-local helper, extracted shared theorem, manual substitution, and fresh fixed-artifact use all passed on Demo 10.  The fresh reproof was faster and shorter than the preceding composition-heavy run; Demo 9 transfer remains open. |
 
 For each measured run, the notebook records monotonic Stage 5 time separately from Codex time and outer Lean acceptance time.  Proof-size analysis counts lines and explicit scaffolding while treating descriptive declaration names as evidence of shared theorem use rather than complexity.  The proof journal supplies qualitative evidence about retrieval, failed reductions, context compaction, missing lemmas, and the exact residual goals that consumed agent time.
 
@@ -139,6 +139,12 @@ The production Demo 10 annotation package passed independent verification with t
 
 This manual result establishes that the theorem type fits the observed proof boundary and reduces repeated semantic composition.  It does not supply proof-generation-time evidence or fresh-agent retrieval evidence.  A fixed-artifact Demo 10 reproof and a Demo 9 transfer screen remain necessary before promoting the entry beyond provisional support.
 
+The fresh Demo 10 reproof supplied the missing selection and generation evidence.  The agent found `fixed-array-fold-body` on its second structured query, inspected its entry, and applied `continuingGuardedProgram_spec` to the exact concatenation of the generated traversal and guarded-step programs.  Independent verification accepted the package over the unchanged artifact digest.
+
+Stage 5 completed in 1,913.092 seconds, 36.2 percent below the preceding 2,998.613-second singleton-suffix reproof and 19.8 percent above the 1,596.295-second primary proof.  The source fell from 707 to 650 lines and from 3,072 to 2,102 whitespace-delimited words relative to the preceding reproof.  The byte count rose from 34,081 to 36,253 because the proof names generated and shared declarations explicitly; identifier length does not count as proof complexity.
+
+The journal records three avoidable iterations in the new theorem application.  Dependent inference postponed the item-validity and logical-index premises, shifting positional bullets into the loaded-frame and evaluator goals.  The LTG guidance now requires every structural and dependent premise by name and recommends direct rewriting with the generated continuing evaluator, leaving Demo 9 to test whether that correction transfers.
+
 ## Fixed-artifact compiled-boundary result
 
 The controlled reproof retained Demo 9's formal specification, source, 1,979-byte WASM module, and artifact digest.  Its first structured query selected `guarded-back-edge` with the fold, traversal, frame, dispatch, capacity, allocation, and result entries.  The agent inspected the entry, retained it because its annotation kind and recipe declarations matched the frozen artifact, and imported the checked module without searching outside the isolated task.
@@ -211,7 +217,7 @@ The fifth experiment applied local irreducibility to the generated function defi
 
 The sixth experiment gave the complete suffix package and LTG guidance to a fresh fixed-artifact proving agent.  The agent selected the singleton-result theorem but retained the ordinary reducible entry-dispatch tactic, so automatic suffix selection succeeded while automatic use of the function-opacity equality remained absent.  The accepted and independently verified proof was slower and slightly longer than the earlier compact-suffix proof.
 
-The seventh experiment extracted the recurring traversal-plus-guarded-back-edge composition from `productLoopBody_spec`.  Its shared interface accepts arbitrary scalar descriptors, compact states, postcondition callbacks, and exact compiler-generated traversal and scalar-transition evidence.  The manual Demo 10 substitution passed, while a fresh Demo 10 screen and the out-of-sample Demo 9 sum fold remain open.
+The seventh experiment extracted the recurring traversal-plus-guarded-back-edge composition from `productLoopBody_spec`.  Its shared interface accepts arbitrary scalar descriptors, compact states, postcondition callbacks, and exact compiler-generated traversal and scalar-transition evidence.  Both the manual and fresh Demo 10 screens passed, while the out-of-sample Demo 9 sum fold remains open.
 
 ## Evidence rules
 
