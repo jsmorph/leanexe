@@ -62,6 +62,8 @@ The proof reached the six-gibibyte memory ceiling while applying the loop rule u
 
 The independently verified [compact suffix package](experiments/compact-suffix-boundary.proof/) preserves the unchanged artifact, generated package, proof, journal, and telemetry.  Stage 5 took 2,331.276 seconds, and the proof contains 687 lines, 2,347 words, and 35,160 bytes.  The run is 46.0 percent slower and 115 lines longer than the retained proof, but it establishes that a separate compact theorem can turn a silent elaboration failure into a checkable proof boundary.
 
+The follow-up [singleton-result suffix package](experiments/singleton-result-suffix.proof/) adds a generic `FixedArrayFold.singletonResultProgram_spec` theorem and a generated exact equality for the complete emitted suffix.  The theorem parameterizes all five local roles and the fold value, while its endpoint records the returned root and represented singleton array.  Production annotation generation and independent package verification accepted this interface over the same artifact; a fresh proof-generation run remains necessary to measure use.
+
 ## Execution
 
 The empty input checks the multiplicative identity, the second sample checks the traversal loop, and the third checks the oversized branch.  Direct execution of the proved artifact produced these results.  Each result agrees with the formal specification.
@@ -103,3 +105,4 @@ The root files provide readable views of each generation and proof stage.  The [
 | [Entry-dispatch package](experiments/entry-dispatch.proof/) | The independently verified named branch, dispatch, suffix, and function equalities. |
 | [Irreducible dispatch proof](experiments/irreducible-dispatch-proof.lean) | The checked primary proof with a local decoded-body opacity boundary. |
 | [Compact suffix package](experiments/compact-suffix-boundary.proof/) | The independently verified reproof whose separate suffix theorem removed the loop-rule memory failure. |
+| [Singleton-result suffix package](experiments/singleton-result-suffix.proof/) | The independently verified generic suffix theorem and exact decoded-region equality. |

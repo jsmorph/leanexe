@@ -38,6 +38,9 @@ import Project.ProofKit.ScalarTransitionU64
 #check Project.ProofKit.FixedArrayFold.forwardSetupProgram_spec
 #check Project.ProofKit.FixedArrayFold.resultFrame
 #check Project.ProofKit.FixedArrayFold.resultProgram_spec
+#check Project.ProofKit.FixedArrayFold.singletonResultPost
+#check Project.ProofKit.FixedArrayFold.singletonResultProgram
+#check Project.ProofKit.FixedArrayFold.singletonResultProgram_spec
 #check Project.ProofKit.FixedArrayLengthDispatch.eqProgram_spec
 #check Project.ProofKit.FixedArrayLengthDispatch.leProgram_spec
 #check Project.ProofKit.FixedArrayLengthDispatch.program_spec
