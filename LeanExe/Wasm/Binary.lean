@@ -3261,6 +3261,9 @@ def fixedArrayFolds
           (bodyValues.foldl (fun n value => max n (exprScratch value)) 0)
     let doneLocal := foldScratch + 5 + bodyScratch
     let stagedValueStart := doneLocal + 1
+    let releaseReadyLocal := stagedValueStart + resultWidth
+    let descriptor := ScalarDescriptor.PostTest.ofIR accStart doneLocal
+      stagedValueStart releaseReadyLocal bodyValues bodyLets bodyDone
     { listPath := #[]
       startIndex
       endIndex
@@ -3279,6 +3282,8 @@ def fixedArrayFolds
       bodyLets := bodyLets.map reprStr |>.toArray
       doneValue := reprStr bodyDone
       releaseOffsets := releaseOffsets.toArray
+      descriptorVersion := 1
+      descriptor
       scratchStart := foldScratch
       arrayLocal := foldScratch
       lengthLocal := foldScratch + 1
@@ -3287,7 +3292,7 @@ def fixedArrayFolds
       effectiveStopLocal := foldScratch + 4
       doneLocal
       stagedValueStart
-      releaseReadyLocal := stagedValueStart + resultWidth
+      releaseReadyLocal
       resultSlots
       resultLocals
       continuation := "fallthrough"
@@ -4200,6 +4205,8 @@ def annotationDocument (module_ : Module) (bytes : ByteArray) : Annotations.Docu
                 bodyLets := fold.bodyLets
                 doneValue := fold.doneValue
                 releaseOffsets := fold.releaseOffsets
+                descriptorVersion := fold.descriptorVersion
+                descriptor := fold.descriptor
                 scratchStart := fold.scratchStart
                 arrayLocal := fold.arrayLocal
                 lengthLocal := fold.lengthLocal

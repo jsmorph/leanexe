@@ -10,6 +10,26 @@ Module boundaries can make those endpoints reusable across artifact proofs.  A s
 
 Inferred proposition types may avoid a second elaboration of a large weakest-precondition expression.  Generated accessors and local `have` bindings can carry the checked proposition without restating its full type, provided that the final public theorem remains explicit and compact.  Local irreducibility may also prevent accidental reduction of a decoded function after entry decomposition, but an experiment must establish that it preserves the explicit reductions required for dispatch and local-frame facts.
 
+## Candidate shared boundary
+
+Leanexe already translates compiler IR expressions and statements into `Project.ProofKit.ScalarTransition` descriptors.  The checked descriptor semantics cover wrapping arithmetic, bitwise operations, shifts, guarded division and remainder, comparisons, conditionals, scratch locals, and assignments.  Reusing this language avoids a new enumeration of fold operations and gives the compiler a structured description of the code it emitted.
+
+The proposed ProofKit interface describes one guarded back edge rather than an entire array fold.  It executes an arbitrary scalar body and Boolean condition, returns `Break 1` when the condition holds, and otherwise executes an arbitrary scalar continuation statement before returning `Break 0`.  Its theorem type refers to `ScalarTransition.State`, the three descriptors, their evaluator results, and an arbitrary postcondition; it does not contain the enclosing array traversal, allocator, result construction, or public specification.
+
+The compiler will add its existing post-test scalar descriptor to an array-fold annotation when `ScalarDescriptor.PostTest.ofIR` accepts the body.  The annotation consumer will identify the exact loop-tail interval and emit a Lean equality between those decoded instructions and the generic guarded-back-edge program, using the index increment as the continuation statement for a forward fold.  Older annotation documents will remain valid without the optional descriptor fields, and recipes will advertise the theorem only after the exact interval equality succeeds.
+
+This boundary turns a compiler theorem into direct artifact-proof support.  The compiler-derived descriptor states what the IR body computes, the generated region equality checks what the selected WAT instructions are, and the generic semantic theorem connects the descriptor program to weakest-precondition execution.  The artifact proof still supplies and proves the mathematical loop invariant, so the path does not assume whole-compiler correctness or transport a source theorem.
+
+## Descriptor package check
+
+The first implementation added `ScalarTransition.guardedBackEdgeProgram_spec` in its own compiled ProofKit module.  The theorem accepts arbitrary scalar body, condition, and continuing descriptors, as well as arbitrary compact states, store, following program, and postcondition.  A focused module build and the generated `Project.ProofKit.LTGCheck` target accepted the theorem and both declarations advertised by the new provisional LTG entry.
+
+The first real annotation-package attempt reached the generated Lean declarations but failed because `Project.ProofKit.GuardedBackEdge` was absent from the canonical proof-kit source and import inventory.  Adding the module to that inventory made the proof source available to the isolated task and covered it with the proof-kit source digest.  This failure concerned package authority rather than the semantic theorem or exact WAT equality, and the preserved diagnostic identifies the distinction.
+
+The second annotation-package attempt used Demo 9's unchanged artifact digest `aa263bbfa89c333f9fab497f1a2c370f476afc3419015d17b368cb7c8a6086d5`.  Lean accepted an equality between nested loop instructions 16 through 37 and `guardedBackEdgeProgram` with scratch start 11, the compiler-derived wrapping-add body, the done condition, and an index-increment continuation.  A separate silent `leanexegen verify` run accepted the complete package, establishing exact artifact linkage before any proof-generation measurement.
+
+The generated recipe names the exact step equality, compact step program, body evaluator equation, condition evaluator equation, and generic semantic theorem.  Its body transition updates the accumulator by wrapping addition, stages the result, clears the done flag, and records release readiness, while its condition tests the done local against zero.  The next fixed-artifact reproof will show whether a fresh agent retrieves and applies this boundary, and its journal will record any remaining state-conversion or postcondition cost.
+
 ## Demo 9: continuing fold edge
 
 The controlled run reproved Demo 9 against its unchanged 1,979-byte WebAssembly artifact with SHA-256 digest `aa263bbfa89c333f9fab497f1a2c370f476afc3419015d17b368cb7c8a6086d5`.  The generated program computes a wrapping `UInt64` sum over a bounded input array and returns a singleton array, or an empty array when the input exceeds the bound.  Earlier checked boundaries cover public entry, length dispatch, capacity calculation, allocation, result stores, fold setup, the indexed-load prefix, loop exit, result placement, and final root transfer.
