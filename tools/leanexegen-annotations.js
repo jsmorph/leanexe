@@ -923,8 +923,9 @@ function resolveInstructionIntervalSource(body, listPath, startIndex, endIndex) 
 }
 
 function leanProgramLiteral(source) {
-  if (source === "") return "[]";
-  return `[\n${source.split("\n").map((line) => `  ${line}`).join("\n")}\n]`;
+  const trimmed = source.trimEnd();
+  if (trimmed === "") return "[]";
+  return `[\n${trimmed.split("\n").map((line) => `  ${line}`).join("\n")}\n]`;
 }
 
 function matchDirectCallRegion(program, function_, region) {
@@ -1868,6 +1869,12 @@ function loopRecipe(
       }, ...(match.guardedBackEdgeEligible ? [{
         declaration: `${annotationNamespace}.${name}_continuing_spec`,
         purpose: "execute the prefix from the generated scalar frame with only semantic input, index, and continuation premises",
+      }, {
+        declaration: `${annotationNamespace}.${name}_continuing_loaded_frame_eq`,
+        purpose: "identify the generated scalar frame after the checked indexed element load",
+      }, {
+        declaration: "Project.ProofKit.FixedArrayFoldBody.continuingGuardedProgram_spec",
+        purpose: "compose the continuing traversal guard and load with the compiler-described guarded back edge",
       }] : []), {
         declaration: "Project.ProofKit.FixedArrayTraversalInput.continuingProgram_exit_spec",
         purpose: "execute the same checked guard through Break 1 when the index equals the effective stop",
@@ -3470,11 +3477,14 @@ function arrayFoldTraversalDeclarations(function_, region) {
   const stateName = `${base}_state`;
   const frameName = `${base}_continuing_frame`;
   const itemValidName = `${base}_continuing_item_valid`;
+  const loadedFrameName = `${base}_continuing_loaded_frame_eq`;
   const theoremName = `${base}_continuing_spec`;
   const arrayLocal = region.parameters.arrayLocal;
   const indexLocal = region.parameters.indexLocal;
   const stopLocal = region.parameters.effectiveStopLocal;
   const itemLocal = region.parameters.itemLocals[0];
+  const loadedArguments = variables.map((variable, index) =>
+    index === itemLocal ? "value" : variable).join(" ");
   return {
     theorem: theoremName,
     source: `def ${frameName} ${binders} : Wasm.Locals :=
@@ -3484,6 +3494,15 @@ theorem ${itemValidName} ${binders} :
     (${frameName} ${stateArguments}).validIndex ${itemLocal} := by
   norm_num [Wasm.Locals.validIndex, ${frameName}, ${stateName},
     Project.ProofKit.ScalarTransition.U64State.toState]
+
+theorem ${loadedFrameName} ${binders} (value : UInt64) :
+    Project.ProofKit.FixedArrayTraversalInput.dynamicResultFrame
+      (${frameName} ${stateArguments}) ${itemLocal} value
+      (${itemValidName} ${stateArguments}) =
+        ${frameName} ${loadedArguments} := by
+  simp [Project.ProofKit.FixedArrayTraversalInput.dynamicResultFrame,
+    ${frameName}, ${stateName},
+    Project.ProofKit.ScalarTransition.U64State.toState, Wasm.Locals.set]
 
 theorem ${theoremName} ${binders}
     (module_ : Wasm.Module) (env : Wasm.HostEnv Unit) (st : Wasm.Store Unit)

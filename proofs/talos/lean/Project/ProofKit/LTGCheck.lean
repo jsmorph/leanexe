@@ -6,6 +6,7 @@ import Project.ProofKit.FixedArrayAllocatorWindow
 import Project.ProofKit.FixedArrayCapacity
 import Project.ProofKit.FixedArrayFilterLt
 import Project.ProofKit.FixedArrayFold
+import Project.ProofKit.FixedArrayFoldBody
 import Project.ProofKit.FixedArrayLengthDispatch
 import Project.ProofKit.FixedArrayMapAdd
 import Project.ProofKit.FixedArrayPairResult
@@ -41,6 +42,7 @@ import Project.ProofKit.ScalarTransitionU64
 #check Project.ProofKit.FixedArrayFold.singletonResultPost
 #check Project.ProofKit.FixedArrayFold.singletonResultProgram
 #check Project.ProofKit.FixedArrayFold.singletonResultProgram_spec
+#check Project.ProofKit.FixedArrayFoldBody.continuingGuardedProgram_spec
 #check Project.ProofKit.FixedArrayLengthDispatch.eqProgram_spec
 #check Project.ProofKit.FixedArrayLengthDispatch.leProgram_spec
 #check Project.ProofKit.FixedArrayLengthDispatch.program_spec

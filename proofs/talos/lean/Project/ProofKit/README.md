@@ -18,6 +18,7 @@ Every `leanexegen` artifact-proof task receives this catalog and may import the 
 | `Project.ProofKit.FixedArrayEqNode` | One indexed array load, equality normalization, and two-way branch for an unrolled search. |
 | `Project.ProofKit.FixedArrayFilterLt` | A bounded stable filter by an unsigned threshold, including allocation, conditional stores, dynamic length, and empty-result semantics. |
 | `Project.ProofKit.FixedArrayFold` | Forward full-array fold setup, accumulator result placement, and complete singleton-result suffix semantics selected by exact subregion equalities. |
+| `Project.ProofKit.FixedArrayFoldBody` | Composition of the continuing traversal guard and indexed load with a compiler-described scalar body, condition, continuation, and guarded back edge. |
 | `Project.ProofKit.FixedArrayInput` | The standard length-guarded indexed input loader parameterized by a uniform local-window shift. |
 | `Project.ProofKit.FixedArrayLengthDispatch` | The standard fixed-array length comparison, Boolean normalization, and valid or invalid branch. |
 | `Project.ProofKit.FixedArrayLtNode` | One key-first indexed array load, unsigned less-than comparison, and two-way branch for an unrolled search tree. |
@@ -53,6 +54,8 @@ An artifact proof still needs an exact equality between the decoded instruction 
 `Project.ProofKit.FixedArrayFold.forwardSetupProgram_spec` covers the compiler's common forward, one-word, one-accumulator setup over the complete input array.  It performs both represented-length loads, initializes the loop locals, selects the effective stop, and passes the exact `forwardSetupFrame` to an arbitrary continuation.  The annotation matcher supplies a subregion equality only after the frozen instructions match `forwardSetupProgram` exactly.
 
 `FixedArrayFold.resultProgram_spec` covers the two-instruction suffix that copies one selected accumulator local to its result local.  The theorem passes `resultFrame` to an arbitrary continuation and preserves every other local.  These structural theorems leave the accumulator's mathematical meaning to `ArrayFold.foldPrefix` and the application step relation.
+
+`FixedArrayFoldBody.continuingGuardedProgram_spec` composes the active traversal edge with `guardedBackEdgeProgram_spec`.  It accepts arbitrary scalar descriptors, states, postconditions, and control-flow callbacks, together with a generated equality identifying the loaded item frame with the descriptor's initial state.  The theorem leaves traversal completion, the application invariant, accumulator mathematics, and measure decrease to its caller.
 
 ```lean
 import Project.ProofKit.Array
