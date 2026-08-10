@@ -84,6 +84,12 @@ Stage 5 took 1,913.092 seconds, including 1,778.739 seconds in Codex and 97.743 
 
 The journal records twelve accepted import-check edits and three iterations caused by dependent premise inference in the new theorem application.  Naming `hItem`, `hInput`, and `hIndex` stabilized that application; the LTG entry now directs the prover to name every structural and dependent premise from the start.  The journal also recommends direct rewriting with the generated increment evaluator and local unfolding of the generated continuing frame, which will be tested on Demo 9.
 
+## Generated frame-accessor capability
+
+The [frame-accessor package](experiments/frame-accessors.proof/) regenerates the annotations and proof recipe for the unchanged Demo 10 artifact.  Its annotation module proves the continuing frame's parameter list, internal-local length, empty operand stack, and getter at each of the 21 combined parameter-and-local indices.  The recipe also names the shared result-frame getter and preservation theorems used by the Demo 9 substitution.
+
+Independent `leanexegen verify -s` accepted the retained behavioral proof and exact artifact theorem with these declarations present.  The proof predates the accessors and therefore establishes annotation generation, Lean checking, recipe publication, and package compatibility rather than agent use.  Demo 9 supplies the separate accepted manual proof that uses the same generated interface and removes local projection declarations.
+
 ## Execution
 
 The empty input checks the multiplicative identity, the second sample checks the traversal loop, and the third checks the oversized branch.  Direct execution of the proved artifact produced these results.  Each result agrees with the formal specification.
@@ -130,3 +136,4 @@ The root files provide readable views of each generation and proof stage.  The [
 | [Fold-body capability package](experiments/fold-body-composition.proof/) | The independently verified generated loaded-frame equality, shared-theorem recipe, and unchanged artifact. |
 | [Manual fold-body adapter](experiments/manual-fold-body-adapter.lean) | The checked singleton-suffix proof modified to use the shared traversal and guarded-step composition theorem. |
 | [Fresh fold-body reproof](experiments/fold-body-reproof.proof/) | The independently verified fixed-artifact run that retrieved and used the shared fold-body theorem. |
+| [Generated frame-accessor capability](experiments/frame-accessors.proof/) | The independently verified current annotation and recipe package containing exact accessors for all 21 continuing-frame slots. |

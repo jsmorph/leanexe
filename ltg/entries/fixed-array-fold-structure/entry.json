@@ -10,10 +10,10 @@
   "features": ["accumulator", "array", "array-size", "fold", "frame", "loop", "result-construction", "traversal"],
   "annotationKinds": ["leanexe.array.fold.v1"],
   "modules": ["Project.ProofKit.FixedArrayFold"],
-  "declarations": ["Project.ProofKit.FixedArrayFold.forwardSetupFrame", "Project.ProofKit.FixedArrayFold.forwardSetupProgram_spec", "Project.ProofKit.FixedArrayFold.resultFrame", "Project.ProofKit.FixedArrayFold.resultProgram_spec", "Project.ProofKit.FixedArrayFold.singletonResultPost", "Project.ProofKit.FixedArrayFold.singletonResultProgram", "Project.ProofKit.FixedArrayFold.singletonResultProgram_spec"],
+  "declarations": ["Project.ProofKit.FixedArrayFold.forwardSetupFrame", "Project.ProofKit.FixedArrayFold.forwardSetupProgram_spec", "Project.ProofKit.FixedArrayFold.resultFrame", "Project.ProofKit.FixedArrayFold.resultFrame_get_of_ne", "Project.ProofKit.FixedArrayFold.resultFrame_get_result", "Project.ProofKit.FixedArrayFold.resultProgram_spec", "Project.ProofKit.FixedArrayFold.singletonResultPost", "Project.ProofKit.FixedArrayFold.singletonResultProgram", "Project.ProofKit.FixedArrayFold.singletonResultProgram_spec"],
   "premises": ["A represented UInt64 input array in the one-parameter wrapper frame", "Distinct valid local destinations for setup", "An exact generated setup or result-placement equality", "For result placement, the selected accumulator getter"],
   "result": "The matched setup reaches the named initialized loop-entry frame, the result-placement prefix copies the selected accumulator, or the complete singleton suffix reaches a compact represented-output assertion.",
   "consumers": ["demo-10", "demo-9"],
-  "relatedEntries": ["array-fold-prefix", "compact-loop-suffix-boundary", "fixed-array-capacity", "fixed-array-fold-body", "fixed-array-length-dispatch", "fixed-array-result", "fixed-array-traversal-input", "local-frame-projection"],
+  "relatedEntries": ["annotated-fold-frame-accessors", "array-fold-prefix", "compact-loop-suffix-boundary", "fixed-array-capacity", "fixed-array-fold-body", "fixed-array-length-dispatch", "fixed-array-result", "fixed-array-traversal-input", "local-frame-projection"],
   "exclusion": null
 }
