@@ -1712,6 +1712,10 @@ def func0Def : Wasm.Function :=
     arrayFoldPlan.recipes[0].supporting.some((entry) => entry.declaration ===
       "Project.ProofKit.FixedArrayTraversalInput.continuingProgram_spec") &&
     arrayFoldPlan.recipes[0].supporting.some((entry) => entry.declaration ===
+      "Project.ProofKit.FixedArrayTraversalInput.continuingProgram_exit_spec") &&
+    arrayFoldPlan.recipes[0].supporting.some((entry) => entry.declaration ===
+      "Project.ProofKit.Frame.internal_getElem_of_get") &&
+    arrayFoldPlan.recipes[0].supporting.some((entry) => entry.declaration ===
       "Project.ProofKit.FixedArrayFold.forwardSetupProgram_spec") &&
     arrayFoldPlan.recipes[0].supporting.some((entry) => entry.declaration ===
       "Project.ProofKit.FixedArrayFold.resultProgram_spec") &&

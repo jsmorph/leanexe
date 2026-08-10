@@ -300,22 +300,22 @@
     },
     {
       "path": "proof-library.md",
-      "sha256": "490c1b645c03e180987985e844745f936c5288c5e181f1c34c474ccf0f455666",
-      "byteLength": 38495
+      "sha256": "153e495f8552b180e837df0c5ddf39babe40ee706fb269b1a8f37d8c2bd1658e",
+      "byteLength": 41806
     },
     {
       "path": "proof-recipes.json",
-      "sha256": "03ba519dd2680366e490cb3f5fa404d76d8ac38bf234d6ba8997b99bf587a708",
-      "byteLength": 6042
+      "sha256": "d52c579464c64db976df95808126909249d72aec9e137a6990cb020995532419",
+      "byteLength": 8714
     },
     {
       "path": "proof-strategies.md",
-      "sha256": "44dfed215ae26f76f6c40e55676886d102a3d7ed7427cda1fa419da8fc479c2a",
-      "byteLength": 39019
+      "sha256": "12a89f2af83e62f8aab1d85f9e934d3d39d9a70bee4d9bb77949336009a63a68",
+      "byteLength": 40174
     },
     {
       "path": "proof-task-features.json",
-      "sha256": "6733af28470903ac1d39c4175d7bee69e8c0dca7d76b132db484624a5400c07e",
+      "sha256": "d84eade71680d71f3233e4a8545bda4c1c437aed0cc5858d4367d9e0b0534bb1",
       "byteLength": 1589
     },
     {
@@ -325,8 +325,8 @@
     },
     {
       "path": "proof/LeanExeGen/GeneratedR23fa7efc3fb0298b/AnnotationMatches.lean",
-      "sha256": "17826f457dc2dd2ba2a4f6f3738d54abc96c08b691a80bd7c53def05ef4faca5",
-      "byteLength": 2134
+      "sha256": "6b37baf166b05491935a0f0077c6ad00a2befa222e6883b946afa96d4ea873b7",
+      "byteLength": 3022
     },
     {
       "path": "proof/LeanExeGen/GeneratedR23fa7efc3fb0298b/ArtifactBytes.lean",
@@ -415,7 +415,7 @@
     },
     {
       "path": "tool-pins.json",
-      "sha256": "7444a76a1df22e81e5aaf346736392fc9b3d561cbe64843b8e6a6e61cb49718f",
+      "sha256": "18be5a1fe99b06975275429f032a56d3499ac16440fd251d0d7ffc81c8d238ad",
       "byteLength": 870
     }
   ]
