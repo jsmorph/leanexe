@@ -325,8 +325,8 @@
     },
     {
       "path": "proof-recipes.json",
-      "sha256": "243d148490139a58b5dc1e726acc4e04be6055748da6cd9d64e027f92f903383",
-      "byteLength": 8095
+      "sha256": "d52c579464c64db976df95808126909249d72aec9e137a6990cb020995532419",
+      "byteLength": 8714
     },
     {
       "path": "proof-strategies.md",
