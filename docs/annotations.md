@@ -682,6 +682,16 @@ Stage 5 took 2,998.613 seconds, including 2,875.208 seconds in Codex and 110.879
 
 The journal identified the next compiler-motif boundary after the shared suffix succeeded.  Applying the loop rule under the generated scalar frame exhausted one million heartbeats, while an exact frame equality removed that failure and a continuation-generic `productLoopBody_spec` composed the traversal exit, generated continuing traversal, compiler-derived scalar transitions, guarded back edge, invariant callback, and decreasing-measure callback.  That helper remains artifact-local because its invariant and multiplication fold coordinate occur in its type, but the repeated composition shape motivates a parameterized checked fold-body theorem whose callbacks carry the application mathematics.
 
+### Checked continuing fold-body composition
+
+`Project.ProofKit.FixedArrayFoldBody.continuingGuardedProgram_spec` implements the parameterized boundary without naming an accumulator operation, fold invariant, termination measure, or formal specification.  It executes the active traversal guard, loads the represented input element, identifies the loaded frame with a compact scalar state, and applies the compiler-described body, condition, continuing statement, and guarded back edge.  Its two callbacks expose `Break 1` and `Break 0` to the caller, where the artifact proof reconstructs application semantics and the strict measure.
+
+The annotation consumer now emits `<region>_continuing_loaded_frame_eq` beside the existing continuing frame, item-validity theorem, and scalar evaluator equations.  The fold recipe advertises that equality and `FixedArrayFoldBody.continuingGuardedProgram_spec` only after the decoded traversal and guarded-step regions satisfy the structural matcher.  The structured LTG entry indexes the theorem under arrays, loops, compiler motifs, and proof construction, with Demo 9 and Demo 10 recorded as prospective consumers.
+
+A production Demo 10 annotation package compiled the generated loaded-frame equality over the unchanged artifact and passed separate package verification.  A manual substitution in the fresh singleton-suffix proof passed the complete `ArtifactResult` target, replacing one artifact-local loaded-frame theorem and the separate traversal and guarded-back-edge composition.  The modified source contains 704 lines, 3,065 whitespace-delimited words, and 34,043 bytes, compared with 707 lines, 3,072 words, and 34,081 bytes for the accepted source from which it was derived.
+
+The manual result establishes interface fit and a small reduction in local scaffolding.  It does not establish automatic selection or a proof-generation-time improvement because no fresh proving session produced that source.  The next fixed-artifact screen will supply the generated recipe and structured LTG entry to Demo 10, followed by Demo 9 as the cross-operation transfer test.
+
 ## Completion criteria
 
 The first complete increment emits a validated sidecar for every ordinary library-mode compilation requested by `leanexegen`.  Demos 1, 2, and 3 prove the same specifications over the same WASM bytes through an annotation-driven deterministic proof plan.  The retained evidence records proof-generation timings, annotation validation, region coverage, and independent Lean acceptance.

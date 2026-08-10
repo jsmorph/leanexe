@@ -70,6 +70,14 @@ Stage 5 took 2,998.613 seconds, including 2,875.208 seconds in Codex and 110.879
 
 The journal records a second useful boundary.  The enclosing loop reached the one-million-heartbeat limit until the proof introduced an exact generated-frame equality, then required a continuation-generic local theorem to compose the traversal, compiler-derived scalar transitions, guarded back edge, invariant, and measure.  This composition is the next candidate for shared ProofKit and annotation support, with Demo 9 available as an out-of-sample sum-fold consumer.
 
+## Shared fold-body composition experiment
+
+`FixedArrayFoldBody.continuingGuardedProgram_spec` now composes the active traversal guard and indexed load with an arbitrary compiler-described scalar body, condition, continuation, and guarded back edge.  Its callbacks leave the fold invariant, operation, successor equation, measure, and public postcondition to the artifact proof.  The annotation generator supplies `function_0_array_fold_0_continuing_loaded_frame_eq`, which identifies the checked loader result with the generated scalar frame consumed by the evaluator theorems.
+
+The [capability package](experiments/fold-body-composition.proof/) contains the exact generated equality and recipe declaration over the unchanged 1,979-byte artifact.  A separate `leanexegen verify -s` run accepted that package.  Its retained behavioral proof predates the new theorem, so the package establishes exact linkage and theorem availability rather than use by a proving agent.
+
+The [manual fold-body adapter](experiments/manual-fold-body-adapter.lean) replaces the local loaded-frame theorem and the separate traversal and guarded-back-edge applications in the fresh singleton-suffix proof.  The complete `ArtifactResult` target passed, and the source changed from 707 lines, 3,072 words, and 34,081 bytes to 704 lines, 3,065 words, and 34,043 bytes.  This small structural reduction establishes that the shared interface fits the artifact proof; a fresh fixed-artifact reproof must test retrieval, automatic use, and proof-generation time.
+
 ## Execution
 
 The empty input checks the multiplicative identity, the second sample checks the traversal loop, and the third checks the oversized branch.  Direct execution of the proved artifact produced these results.  Each result agrees with the formal specification.
@@ -113,3 +121,5 @@ The root files provide readable views of each generation and proof stage.  The [
 | [Compact suffix package](experiments/compact-suffix-boundary.proof/) | The independently verified reproof whose separate suffix theorem removed the loop-rule memory failure. |
 | [Singleton-result suffix package](experiments/singleton-result-suffix.proof/) | The independently verified generic suffix theorem and exact decoded-region equality. |
 | [Fresh singleton-result reproof](experiments/singleton-result-suffix-reproof.proof/) | The independently verified fixed-artifact run that selected the generic suffix theorem and exposed the next fold-body composition boundary. |
+| [Fold-body capability package](experiments/fold-body-composition.proof/) | The independently verified generated loaded-frame equality, shared-theorem recipe, and unchanged artifact. |
+| [Manual fold-body adapter](experiments/manual-fold-body-adapter.lean) | The checked singleton-suffix proof modified to use the shared traversal and guarded-step composition theorem. |
