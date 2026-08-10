@@ -6966,3 +6966,9 @@ The annotation generator now emits a continuing frame, its item-local validity t
 A fresh fixed-artifact reproof found the adapter through structured LTG, applied it at the continuing edge, completed the artifact theorem, and passed separate package verification.  Stage 5 took 1,906.536 seconds against the primary run's 1,596.295 seconds, while the proof grew to 669 lines, 2,435 words, and 35,871 bytes.  The run therefore establishes retrieval and applicability but supplies negative time and size evidence.
 
 The fresh agent rebuilt its loop invariant around the generated 21-value frame and referred to that frame seventeen times.  The smaller manual proof kept its existing semantic fold frame and let the adapter infer the generated local values at one boundary.  Traversal LTG guidance now recommends that form, while [the opacity research record](docs/opacity-proof-boundaries.md) preserves the artifact identity, both proof forms, telemetry, journal observations, and the separate named-postcondition experiment for a later marXiv note.
+
+## 2026-08-10: Local-irreducibility screen
+
+The first focused screen marked Demo 10's `func0Def` locally irreducible in the unchanged primary proof.  The `Behavior` target failed after 4.3 seconds at the first length-dispatch tactic because its `change` still needed the function body, parameter count, result count, and initial locals.  Marking only `func0` produced the same diagnostic after 5.2 seconds because the tactic still needed to reduce that program to `leProgram`.
+
+These source diagnostics reject local irreducibility as a standalone setting for the present artifact-proof API.  The proof needs a checked entry/dispatch package that names the complete body, valid branch, and invalid branch, with accessor equalities for the existing capacity and fold regions.  [The experiment record](demos/demo-10/experiments/irreducibility-screen.md) preserves the commands, timings, reduced diagnostic, and fixed inputs.
