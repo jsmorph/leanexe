@@ -30,7 +30,7 @@ Canonical entry content consists of the 34 files below `ltg/entries`, while the 
 
 ## Snapshot: 2026-08-09
 
-This snapshot uses LTG and proof-kit content at repository revision `b0da32283a4346ce1dbd3f123ccb89587a74c5bf`.  Its complete task-bundle digest is `ba335e9c036025d57e5581adaa0aff8b91732f910e08c7bd491f9d03e9d2983e`, which identifies the exact catalog files presented to an unfiltered proof task.  Later reports can compare the dated revision, bundle digest, and schema version before comparing counts.
+This snapshot uses LTG and proof-kit content at repository revision `79d4375c59556914b9b6f132640919aebdc2317c`.  Its complete task-bundle digest is `cefdccc1d6ef77f98e92ca2618e033563233b56b76bd1450c917d2b79e6c654c`, which identifies the exact catalog files presented to an unfiltered proof task.  Later reports can compare the dated revision, bundle digest, and schema version before comparing counts.
 
 | Catalog measure | Value |
 |-----------------|------:|
@@ -68,9 +68,9 @@ The catalog contains 48 unique feature strings across 90 assignments and 11 uniq
 | Lean-support measure | Indexed by entries | Complete supplied proof kit |
 |----------------------|-------------------:|----------------------------:|
 | Module references | 23 assignments, 13 unique | 23 modules |
-| Declaration references | 47 assignments, 39 unique | 338 source headers |
-| Public named local declarations | 33 indexed | 289 available |
-| Theorem headers | 27 indexed | 158 total |
+| Declaration references | 48 assignments, 40 unique | 339 source headers |
+| Public named local declarations | 34 indexed | 290 available |
+| Theorem headers | 28 indexed | 159 total |
 | Lemma headers | 0 indexed | 0 total |
 | Definition headers | 6 indexed | 138 total |
 | Other source headers | 0 indexed | 42 total |
@@ -78,27 +78,27 @@ The catalog contains 48 unique feature strings across 90 assignments and 11 uniq
 | Distinct tactic commands | No structured entry field | 27 commands |
 | Tactic-bearing modules | 5 entries import one | 11 modules |
 
-Entries mention 13 of the 23 supplied proof-kit modules, a module coverage ratio of 0.565.  Their declaration arrays expose 33 of 289 public named local source declarations, a lexical discoverability ratio of 0.114, and reference 6 additional imported declarations whose kinds this command does not infer.  The remaining proof-kit source is usable through imports but absent from structured declaration retrieval, which identifies a substantial indexing backlog rather than missing Lean implementation.
+Entries mention 13 of the 23 supplied proof-kit modules, a module coverage ratio of 0.565.  Their declaration arrays expose 34 of 290 public named local source declarations, a lexical discoverability ratio of 0.117, and reference 6 additional imported declarations whose kinds this command does not infer.  The remaining proof-kit source is usable through imports but absent from structured declaration retrieval, which identifies a substantial indexing backlog rather than missing Lean implementation.
 
-The complete proof kit has 338 recognized source headers: 158 `theorem`, 138 `def`, 29 `macro`, 7 `inductive`, 5 `structure`, and 1 `abbrev`.  Of these headers, 318 are public and 20 are private.  The source contains no recognized `lemma`, `class`, `instance`, `opaque`, or `elab` header at this revision.
+The complete proof kit has 339 recognized source headers: 159 `theorem`, 138 `def`, 29 `macro`, 7 `inductive`, 5 `structure`, and 1 `abbrev`.  Of these headers, 319 are public and 20 are private.  The source contains no recognized `lemma`, `class`, `instance`, `opaque`, or `elab` header at this revision.
 
 Tactic coverage currently has a metadata limitation.  The proof kit defines 29 tactic macros representing 27 distinct command tokens, but `entry.json` has no structured tactic-name field, so the metrics can only report that 5 entries import at least one of the 11 tactic-bearing modules.  Adding an explicit tactic inventory to a later entry schema would permit direct retrieval coverage, use tracking, and stale-name validation without inferring relationships from prose.
 
 | Content measure | Files | Bytes |
 |-----------------|------:|------:|
-| Canonical entry content | 34 | 45,809 |
-| Canonical catalog | 36 | 48,615 |
-| Catalog Markdown | 18 | 24,476 |
-| Metadata JSON | 18 | 24,139 |
-| Generated category indexes | 7 | 73,683 |
-| Physical catalog | 43 | 122,298 |
-| Complete unfiltered task bundle | 43 | 122,298 |
-| Proof-kit Lean sources | 23 | 298,726 |
+| Canonical entry content | 34 | 46,185 |
+| Canonical catalog | 36 | 48,991 |
+| Catalog Markdown | 18 | 24,801 |
+| Metadata JSON | 18 | 24,190 |
+| Generated category indexes | 7 | 74,183 |
+| Physical catalog | 43 | 123,174 |
+| Complete unfiltered task bundle | 43 | 123,174 |
+| Proof-kit Lean sources | 23 | 299,195 |
 | Proof-kit README | 1 | 37,519 |
-| Generated declaration check | 1 | 2,736 |
-| Combined physical knowledge | 67 | 458,543 |
+| Generated declaration check | 1 | 2,791 |
+| Combined physical knowledge | 67 | 459,888 |
 
-Generated indexes account for 73,683 of the physical catalog's 122,298 logical bytes.  This duplication buys search locality and does not increase the 45,809-byte canonical entry inventory.  The combined total counts each physical task-catalog and proof-kit file once and excludes the generated declaration check, whose size appears on its own row.
+Generated indexes account for 74,183 of the physical catalog's 123,174 logical bytes.  This duplication buys search locality and does not increase the 46,185-byte canonical entry inventory.  The combined total counts each physical task-catalog and proof-kit file once and excludes the generated declaration check, whose size appears on its own row.
 
 The relation graph contains 54 directed related-entry links, including 17 reciprocal pairs and 20 asymmetric links, with no entry isolated from the graph.  Four worked examples carry exclusions covering four exact artifact digests and three derivative groups.  Catalog validation found no dangling category, allowed-module, or related-entry reference, and the local source inventory found no missing `Project.ProofKit` declaration name.
 
