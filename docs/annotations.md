@@ -692,6 +692,12 @@ A production Demo 10 annotation package compiled the generated loaded-frame equa
 
 The manual result establishes interface fit and a small reduction in local scaffolding.  It does not establish automatic selection or a proof-generation-time improvement because no fresh proving session produced that source.  The next fixed-artifact screen will supply the generated recipe and structured LTG entry to Demo 10, followed by Demo 9 as the cross-operation transfer test.
 
+The fresh fixed-artifact screen retrieved `fixed-array-fold-body` on its second structured query and used `continuingGuardedProgram_spec` on the strict-index branch.  The accepted proof passes the generated loaded-frame, multiplication-body, false-condition, and index-increment equations to the shared theorem, then proves the product-prefix successor and decreasing measure in its continuation callback.  A separate `leanexegen verify -s` run accepted the complete package over the unchanged 1,979-byte artifact and digest.
+
+Stage 5 took 1,913.092 seconds, which is 36.2 percent below the preceding 2,998.613-second singleton-suffix reproof and 19.8 percent above the retained 1,596.295-second primary proof.  The source contains 650 lines and 2,102 whitespace-delimited words, compared with 707 lines and 3,072 words for the preceding reproof.  The new boundary therefore improved the directly preceding composition-heavy run in both time and source structure, while the primary proof remains faster and shorter.
+
+The journal identified a correctable interface-use cost.  Lean inferred the dependent `hItem` and `hIndex` premises from later arguments, shifting positional tactic bullets and causing three avoidable edit-and-check cycles.  The structured LTG entry now requires named structural and dependent premises, local unfolding only at the loaded-frame equality, and direct use of the generated continuing evaluator rather than broad simplification.
+
 ## Completion criteria
 
 The first complete increment emits a validated sidecar for every ordinary library-mode compilation requested by `leanexegen`.  Demos 1, 2, and 3 prove the same specifications over the same WASM bytes through an annotation-driven deterministic proof plan.  The retained evidence records proof-generation timings, annotation validation, region coverage, and independent Lean acceptance.
