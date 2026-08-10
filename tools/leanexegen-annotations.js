@@ -535,15 +535,34 @@ function validateArrayFold(region, description) {
   string(region.id, `${description}.id`);
   if (region.kind !== "leanexe.array.fold.v1") fail(`${description}.kind is unsupported`);
   validateRegionLocation(region, description);
-  exactKeys(region.parameters, [
+  const parameters = region.parameters;
+  const hasDescriptor = Object.hasOwn(parameters, "descriptor") ||
+    Object.hasOwn(parameters, "descriptorVersion");
+  exactKeys(parameters, [
     "accumulatorLocals", "accumulatorStart", "array", "arrayLocal", "bodyLets",
     "bodyValues", "continuation", "doneLocal", "doneValue", "effectiveStopLocal",
     "indexLocal", "initialValues", "itemLocals", "itemStart", "lengthLocal",
     "releaseOffsets", "releaseReadyLocal", "resultLocals", "resultSlots", "resultWidth",
     "reverse", "scratchStart", "sourceWidth", "stagedValueStart", "start", "stop",
-    "stopLocal",
+    "stopLocal", ...(hasDescriptor ? ["descriptor", "descriptorVersion"] : []),
   ], `${description}.parameters`);
-  const parameters = region.parameters;
+  if (hasDescriptor && (!Object.hasOwn(parameters, "descriptor") ||
+      !Object.hasOwn(parameters, "descriptorVersion"))) {
+    fail(`${description}.parameters descriptor fields must appear together`);
+  }
+  if (hasDescriptor) {
+    if (parameters.descriptorVersion !== 1) {
+      fail(`${description}.parameters.descriptorVersion is unsupported`);
+    }
+    if (parameters.descriptor !== null) {
+      exactKeys(parameters.descriptor, ["body", "condition"],
+        `${description}.parameters.descriptor`);
+      validateScalarCond(parameters.descriptor.condition,
+        `${description}.parameters.descriptor.condition`);
+      validateScalarStmt(parameters.descriptor.body,
+        `${description}.parameters.descriptor.body`);
+    }
+  }
   natural(parameters.sourceWidth, `${description}.parameters.sourceWidth`);
   natural(parameters.resultWidth, `${description}.parameters.resultWidth`);
   if (parameters.sourceWidth === 0 || parameters.resultWidth === 0) {
@@ -1477,6 +1496,9 @@ function matchArrayFoldRegion(program, function_, region) {
     JSON.stringify(forwardSetupElse) ===
       JSON.stringify([`.localGet ${parameters.lengthLocal}`]);
   const resultPlacementEligible = parameters.resultSlots.length === 1;
+  const guardedBackEdgeEligible = dynamicTraversalEligible && !parameters.reverse &&
+    parameters.descriptorVersion === 1 && parameters.descriptor !== null &&
+    typeof parameters.descriptor === "object";
   return {
     functionIndex: function_.wasmIndex,
     regionId: region.id,
@@ -1484,6 +1506,7 @@ function matchArrayFoldRegion(program, function_, region) {
     parameters,
     dynamicTraversalEligible,
     forwardSetupEligible,
+    guardedBackEdgeEligible,
     resultPlacementEligible,
     ...(dynamicTraversalEligible ? {
       continuingEndIndex: expectedGuard.length + dynamicPrefix.length,
@@ -1492,6 +1515,10 @@ function matchArrayFoldRegion(program, function_, region) {
     ...(forwardSetupEligible ? {
       setupEndIndex: region.location.startIndex + blockIndex,
       setupInitialValue: setupInitial[1],
+    } : {}),
+    ...(guardedBackEdgeEligible ? {
+      stepEndIndex: loop.length,
+      stepStartIndex: expectedGuard.length + dynamicPrefix.length,
     } : {}),
     ...(resultPlacementEligible ? {
       resultAccumulatorLocal:
@@ -1763,6 +1790,21 @@ function loopRecipe(
       }, {
         declaration: "Project.ProofKit.Frame.internal_getElem_of_get",
         purpose: "project an invariant getter to a bounded internal local value",
+      }] : []), ...(match.guardedBackEdgeEligible ? [{
+        declaration: `${annotationNamespace}.${name}_step_eq`,
+        purpose: "rewrite the exact scalar fold update, conditional exit, index increment, and back edge",
+      }, {
+        declaration: `${annotationNamespace}.${name}_step_program`,
+        purpose: "name the compiler-matched guarded back-edge interval",
+      }, {
+        declaration: `${annotationNamespace}.${name}_body_eval`,
+        purpose: "use the compiler-derived scalar body transition in the loop invariant step",
+      }, {
+        declaration: `${annotationNamespace}.${name}_condition_eval`,
+        purpose: "use the compiler-derived done-condition transition after the scalar body",
+      }, {
+        declaration: "Project.ProofKit.ScalarTransition.guardedBackEdgeProgram_spec",
+        purpose: "execute the descriptor body and condition through exit or the indexed back edge",
       }] : [])] : []),
       {
         declaration: "Project.ProofKit.wp_block_loop",
@@ -1848,6 +1890,10 @@ function fixedArrayLengthDispatchRecipe(
             `${match.parameters.inputLocal}, ${match.parameters.expectedSize}`,
     },
     supporting: [
+      {
+        declaration: "Wasm.TerminatesWith.of_wp_entry_for",
+        purpose: "specialize public entry execution to the represented input store before invoking the region tactic",
+      },
       {
         declaration: "Project.ProofKit.UInt64Array.At.lengthRead",
         purpose: "identify the represented input length",
@@ -3728,12 +3774,38 @@ theorem ${name}_result_eq :
       ${leanAnnotationPath(region.location.listPath)} ${match.resultStartIndex}
       ${match.resultEndIndex} = some ${name}_result_program := by
   rfl` : "";
+        const guardedBackEdge = match?.guardedBackEdgeEligible ? `
+
+def ${name}_condition : Project.ProofKit.ScalarTransition.Expr .bool :=
+  ${scalarCondLean(region.parameters.descriptor.condition)}
+
+def ${name}_body : Project.ProofKit.ScalarTransition.Stmt :=
+  ${scalarStmtLean(region.parameters.descriptor.body)}
+
+def ${name}_step_continuing : Project.ProofKit.ScalarTransition.Stmt :=
+  .assign ${region.parameters.indexLocal}
+    (.bin .add (.get ${region.parameters.indexLocal}) (.const 1))
+
+def ${name}_step_program : Wasm.Program :=
+  Project.ProofKit.ScalarTransition.guardedBackEdgeProgram
+    ${region.parameters.scratchStart} ${name}_body ${name}_condition
+    ${name}_step_continuing
+
+theorem ${name}_step_eq :
+    Project.ProofKit.Annotation.region ${job.namespace}.func${function_.wasmIndex}
+      ${leanAnnotationPath(match.loopPath)} ${match.stepStartIndex}
+      ${match.stepEndIndex} = some ${name}_step_program := by
+  rfl` : "";
+        const transitions = match?.guardedBackEdgeEligible
+          ? scalarTransitionDeclarations(function_, region).source : "";
         declarations.push(`def ${name}_program : Wasm.Program :=
   (${selected}).getD []
 
 theorem ${name}_eq :
     ${selected} = some ${name}_program := by
-  rfl${setup}${continuing}${result}`);
+  rfl${setup}${continuing}${guardedBackEdge}${result}
+
+${transitions}`);
         continue;
       }
       if (region.kind !== "leanexe.array.pair-result.v1") continue;
@@ -3792,10 +3864,16 @@ theorem ${composition.name}_eq :
 import Project.ProofKit.Annotation
 import Project.ProofKit.FixedArrayPairResult
 ${document.functions.some((function_) => function_.regions.some((region) =>
-    ["leanexe.loop.while.v1", "leanexe.loop.scalar-post-test.v1"].includes(region.kind) &&
-      region.parameters.descriptor !== null))
+    (["leanexe.loop.while.v1", "leanexe.loop.scalar-post-test.v1"].includes(region.kind) &&
+      region.parameters.descriptor !== null) ||
+    (program !== null && region.kind === "leanexe.array.fold.v1" &&
+      matchArrayFoldRegion(program, function_, region).guardedBackEdgeEligible)))
     ? "import Project.ProofKit.ScalarTransition\n" +
       "import Project.ProofKit.ScalarTransitionU64\n" : ""}
+${program !== null && document.functions.some((function_) => function_.regions.some((region) =>
+    region.kind === "leanexe.array.fold.v1" &&
+      matchArrayFoldRegion(program, function_, region).guardedBackEdgeEligible))
+    ? "import Project.ProofKit.GuardedBackEdge\n" : ""}
 ${document.functions.some((function_) => function_.regions.some((region) =>
     region.kind === "leanexe.array.map-add.v1"))
     ? "import Project.ProofKit.FixedArrayMapAdd\n" : ""}

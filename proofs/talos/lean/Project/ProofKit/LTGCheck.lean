@@ -12,6 +12,7 @@ import Project.ProofKit.FixedArrayResult
 import Project.ProofKit.FixedArraySingletonWrapper
 import Project.ProofKit.FixedArrayTraversalInput
 import Project.ProofKit.Frame
+import Project.ProofKit.GuardedBackEdge
 import Project.ProofKit.ScalarTransition
 import Project.ProofKit.ScalarTransitionU64
 
@@ -60,6 +61,8 @@ import Project.ProofKit.ScalarTransitionU64
 #check Project.ProofKit.ScalarTransition.CounterTransition.decrement_add_increment
 #check Project.ProofKit.ScalarTransition.CounterTransition.decrement_toNat_lt
 #check Project.ProofKit.ScalarTransition.CounterTransition.postTestProgram_spec
+#check Project.ProofKit.ScalarTransition.guardedBackEdgeProgram
+#check Project.ProofKit.ScalarTransition.guardedBackEdgeProgram_spec
 #check Project.ProofKit.ScalarTransition.postTestProgram_spec
 #check Project.ProofKit.UInt64Array.At.frameBefore
 #check Project.ProofKit.UInt64Array.At.generatedElement
