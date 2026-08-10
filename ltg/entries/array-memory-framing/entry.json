@@ -14,6 +14,6 @@
   "premises": ["A represented input array", "A cutoff above the complete input representation", "Unchanged pages and bytes below the cutoff, or the checked fixed-array allocator premises", "A later store whose address begins at or above the cutoff"],
   "result": "The original input representation, including its length and indexed element reads, remains valid in the modified store.",
   "consumers": ["demo-4", "demo-5", "demo-9"],
-  "relatedEntries": ["array-fold-prefix", "fixed-array-allocation", "fixed-array-filter-lt", "fixed-array-map-add", "fixed-array-traversal-input"],
+  "relatedEntries": ["array-fold-prefix", "fixed-array-allocation", "fixed-array-filter-lt", "fixed-array-map-add", "fixed-array-result", "fixed-array-traversal-input"],
   "exclusion": null
 }
