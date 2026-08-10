@@ -1768,6 +1768,8 @@ def func0Def : Wasm.Function :=
       "Project.AnnotationMatches.function_0_array_fold_0_step_eq") &&
     arrayFoldPlan.recipes[0].supporting.some((entry) => entry.declaration ===
       "Project.ProofKit.ScalarTransition.guardedBackEdgeProgram_spec") &&
+    arrayFoldPlan.recipes[0].supporting.some((entry) => entry.declaration.endsWith(
+      "function_0_array_fold_0_step_continuing_eval")) &&
     JSON.stringify(arrayFoldPlan.recipes[0].guidance) ===
       JSON.stringify(["strategy.arrays", "strategy.loops"]),
   "array-fold annotation did not select prefix-fold support and array-loop guidance");
@@ -1791,6 +1793,10 @@ def func0Def : Wasm.Function :=
       "def function_0_array_fold_0_step_program") &&
     arrayFoldMatches.source.includes(
       "theorem function_0_array_fold_0_body_eval") &&
+    arrayFoldMatches.source.includes(
+      "theorem function_0_array_fold_0_step_continuing_eval") &&
+    arrayFoldMatches.source.includes(
+      "def function_0_array_fold_0_step_continuingTransition") &&
     arrayFoldMatches.source.includes(
       "Project.ProofKit.ScalarTransition.guardedBackEdgeProgram") &&
     arrayFoldMatches.source.includes(

@@ -59,6 +59,8 @@ The journal survived a prover-context compaction and restored the exact last acc
 
 The generated `AnnotationMatches` module contains 148 lines, 936 words, and 9,180 bytes, with an 848-character maximum line in the explicit scalar transition theorems.  Those theorems quantify over 21 `UInt64` values, making inferred internal proposition aliases and a compact transition-specification package plausible later experiments.  The out-of-sample fold and generated continuing-transition theorem take precedence because the current package compiled and applied successfully.
 
+The follow-up generator now emits `step_continuingTransition`, its checked `evalU64` theorem, and a typed `step_continuing_eval` theorem from the annotation-selected index local.  Demo 9's unchanged artifact accepted the generated theorem, added it to the fold recipe, and passed separate package verification.  This removes the exact generic-state simplification that failed during the measured run, while its effect on agent behavior and time remains unmeasured.
+
 ## Demo 9: continuing fold edge
 
 The controlled run reproved Demo 9 against its unchanged 1,979-byte WebAssembly artifact with SHA-256 digest `aa263bbfa89c333f9fab497f1a2c370f476afc3419015d17b368cb7c8a6086d5`.  The generated program computes a wrapping `UInt64` sum over a bounded input array and returns a singleton array, or an empty array when the input exceeds the bound.  Earlier checked boundaries cover public entry, length dispatch, capacity calculation, allocation, result stores, fold setup, the indexed-load prefix, loop exit, result placement, and final root transfer.
