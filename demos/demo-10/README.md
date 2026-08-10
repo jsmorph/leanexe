@@ -78,6 +78,12 @@ The [capability package](experiments/fold-body-composition.proof/) contains the 
 
 The [manual fold-body adapter](experiments/manual-fold-body-adapter.lean) replaces the local loaded-frame theorem and the separate traversal and guarded-back-edge applications in the fresh singleton-suffix proof.  The complete `ArtifactResult` target passed, and the source changed from 707 lines, 3,072 words, and 34,081 bytes to 704 lines, 3,065 words, and 34,043 bytes.  This small structural reduction establishes that the shared interface fits the artifact proof; a fresh fixed-artifact reproof must test retrieval, automatic use, and proof-generation time.
 
+The [fresh fold-body reproof](experiments/fold-body-reproof.proof/) retrieved the new LTG entry on its second structural query and applied `continuingGuardedProgram_spec` at the strict-index loop edge.  Its callbacks prove the wrapping-product prefix successor, reconstruct the invariant at `index + 1`, and establish the smaller remaining-input measure, while the shared theorem consumes the generated loaded-frame, multiplication, condition, and increment equations.  Independent verification accepted the complete package over the unchanged artifact digest.
+
+Stage 5 took 1,913.092 seconds, including 1,778.739 seconds in Codex and 97.743 seconds in outer acceptance.  This is 1,085.521 seconds, or 36.2 percent, below the preceding 2,998.613-second singleton-suffix reproof, while the accepted source fell from 707 to 650 lines and from 3,072 to 2,102 whitespace-delimited words.  It remains 316.797 seconds, or 19.8 percent, slower than the 1,596.295-second primary Demo 10 proof and contains 78 more lines, so the result supports the shared composition without establishing a new primary configuration.
+
+The journal records twelve accepted import-check edits and three iterations caused by dependent premise inference in the new theorem application.  Naming `hItem`, `hInput`, and `hIndex` stabilized that application; the LTG entry now directs the prover to name every structural and dependent premise from the start.  The journal also recommends direct rewriting with the generated increment evaluator and local unfolding of the generated continuing frame, which will be tested on Demo 9.
+
 ## Execution
 
 The empty input checks the multiplicative identity, the second sample checks the traversal loop, and the third checks the oversized branch.  Direct execution of the proved artifact produced these results.  Each result agrees with the formal specification.
@@ -123,3 +129,4 @@ The root files provide readable views of each generation and proof stage.  The [
 | [Fresh singleton-result reproof](experiments/singleton-result-suffix-reproof.proof/) | The independently verified fixed-artifact run that selected the generic suffix theorem and exposed the next fold-body composition boundary. |
 | [Fold-body capability package](experiments/fold-body-composition.proof/) | The independently verified generated loaded-frame equality, shared-theorem recipe, and unchanged artifact. |
 | [Manual fold-body adapter](experiments/manual-fold-body-adapter.lean) | The checked singleton-suffix proof modified to use the shared traversal and guarded-step composition theorem. |
+| [Fresh fold-body reproof](experiments/fold-body-reproof.proof/) | The independently verified fixed-artifact run that retrieved and used the shared fold-body theorem. |
