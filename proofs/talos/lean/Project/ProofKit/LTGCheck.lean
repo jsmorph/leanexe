@@ -2,6 +2,7 @@ import Project.ProofKit.Allocation
 import Project.ProofKit.Array
 import Project.ProofKit.FixedArrayAllocator
 import Project.ProofKit.FixedArrayAllocatorWindow
+import Project.ProofKit.FixedArrayCapacity
 import Project.ProofKit.FixedArrayFilterLt
 import Project.ProofKit.FixedArrayFold
 import Project.ProofKit.FixedArrayLengthDispatch
@@ -10,6 +11,7 @@ import Project.ProofKit.FixedArrayPairResult
 import Project.ProofKit.FixedArrayResult
 import Project.ProofKit.FixedArraySingletonWrapper
 import Project.ProofKit.FixedArrayTraversalInput
+import Project.ProofKit.Frame
 import Project.ProofKit.ScalarTransition
 import Project.ProofKit.ScalarTransitionU64
 
@@ -24,6 +26,9 @@ import Project.ProofKit.ScalarTransitionU64
 #check Project.ProofKit.FixedArrayAllocator.region_spec
 #check Project.ProofKit.FixedArrayAllocatorWindow.region_spec
 #check Project.ProofKit.FixedArrayAllocatorWindow.region_spec_withTail
+#check Project.ProofKit.FixedArrayCapacity.capacityFrame
+#check Project.ProofKit.FixedArrayCapacity.constantProgram_spec
+#check Project.ProofKit.FixedArrayCapacity.normalizedCapacity
 #check Project.ProofKit.FixedArrayFilterLt.heapReserveBytes
 #check Project.ProofKit.FixedArrayFilterLt.wrapperProgram
 #check Project.ProofKit.FixedArrayFilterLt.wrapperProgram_spec
@@ -48,6 +53,8 @@ import Project.ProofKit.ScalarTransitionU64
 #check Project.ProofKit.FixedArrayTraversalInput.continuingProgram_spec
 #check Project.ProofKit.FixedArrayTraversalInput.dynamicProgram_spec
 #check Project.ProofKit.FixedArrayTraversalInput.program_spec
+#check Project.ProofKit.Frame.internal_getElem?_of_get
+#check Project.ProofKit.Frame.internal_getElem_of_get
 #check Project.ProofKit.ScalarTransition.CounterTransition.decrement_add_increment
 #check Project.ProofKit.ScalarTransition.CounterTransition.decrement_toNat_lt
 #check Project.ProofKit.ScalarTransition.CounterTransition.postTestProgram_spec

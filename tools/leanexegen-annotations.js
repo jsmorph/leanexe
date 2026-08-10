@@ -854,6 +854,11 @@ function resolveInstructionList(body, listPath) {
     for (let index = parent + 1; index < end; index += 1) {
       if (indentation(lines[index]) === level && lines[index].trimStart().startsWith("]")) {
         delimiters.push(index);
+        if ((step.field === "then" || step.field === "else") &&
+            /^\]\s+\[\],?$/.test(lines[index].trim())) {
+          delimiters.push(index);
+          break;
+        }
         if (step.field === "block" || step.field === "loop" || delimiters.length === 2) break;
       }
     }
@@ -910,6 +915,56 @@ function matchDirectCallRegion(program, function_, region) {
 function normalizeInstructions(instructions) {
   return instructions.map((instruction) =>
     instruction.endsWith(",") ? instruction.slice(0, -1) : instruction);
+}
+
+function matchFixedArrayConstantCapacity(body, listPath) {
+  const instructions = normalizeInstructions(resolveInstructionList(body, listPath));
+  if (instructions.length < 18) return null;
+  const length = instructions[1]?.match(/^\.constI64 \(([0-9]+) : UInt64\)$/);
+  const stride = instructions[2]?.match(/^\.constI64 \(([0-9]+) : UInt64\)$/);
+  const capacitySet = instructions[13]?.match(/^\.localSet ([0-9]+)$/);
+  const capacityGet = instructions[14]?.match(/^\.localGet ([0-9]+)$/);
+  if (length === null || stride === null || capacitySet === null ||
+      capacityGet === null || capacitySet[1] !== capacityGet[1]) return null;
+  const expected = [
+    ".constI64 (8 : UInt64)",
+    `.constI64 (${length[1]} : UInt64)`,
+    `.constI64 (${stride[1]} : UInt64)`,
+    ".mulI64",
+    ".constI64 (8 : UInt64)",
+    ".mulI64",
+    ".addI64",
+    ".constI64 (7 : UInt64)",
+    ".addI64",
+    ".constI64 (8 : UInt64)",
+    ".divUI64",
+    ".constI64 (8 : UInt64)",
+    ".mulI64",
+    `.localSet ${capacitySet[1]}`,
+    `.localGet ${capacitySet[1]}`,
+    ".constI64 (8 : UInt64)",
+    ".ltUI64",
+    ".iff 0 0 [",
+  ];
+  if (JSON.stringify(instructions.slice(0, expected.length)) !==
+      JSON.stringify(expected)) return null;
+  const thenBranch = normalizeInstructions(resolveInstructionList(body, [
+    ...listPath, { instructionIndex: 17, field: "then" },
+  ]));
+  const elseBranch = normalizeInstructions(resolveInstructionList(body, [
+    ...listPath, { instructionIndex: 17, field: "else" },
+  ]));
+  if (JSON.stringify(thenBranch) !== JSON.stringify([
+    ".constI64 (8 : UInt64)", `.localSet ${capacitySet[1]}`,
+  ]) || elseBranch.length !== 0) return null;
+  return {
+    capacityLocal: Number(capacitySet[1]),
+    endIndex: expected.length,
+    length: length[1],
+    listPath,
+    startIndex: 0,
+    stride: stride[1],
+  };
 }
 
 function matchFixedArrayLengthDispatchRegion(program, function_, region) {
@@ -978,11 +1033,23 @@ function matchFixedArrayLengthDispatchRegion(program, function_, region) {
       }
     }
   }
+  const dispatchIndex = region.location.startIndex + selected.length - 1;
+  const capacityPrefixes = [];
+  for (const role of ["valid", "invalid"]) {
+    const branch = parameters[`${role}Branch`];
+    const listPath = [
+      ...region.location.listPath,
+      { instructionIndex: dispatchIndex, field: branch },
+    ];
+    const capacity = matchFixedArrayConstantCapacity(body, listPath);
+    if (capacity !== null) capacityPrefixes.push({ ...capacity, branch, role });
+  }
   return {
     functionIndex: function_.wasmIndex,
     regionId: region.id,
     regionKind: region.kind,
     parameters,
+    capacityPrefixes,
   };
 }
 
@@ -1740,7 +1807,8 @@ function directCallRecipe(match, selectedSections = [], tacticEligible = false) 
   };
 }
 
-function fixedArrayLengthDispatchRecipe(match, selectedSections = []) {
+function fixedArrayLengthDispatchRecipe(
+    match, selectedSections = [], annotationNamespace = "Project.AnnotationMatches") {
   const equality = match.parameters.encoding === "eq-normalized-v1";
   const bounded = match.parameters.encoding === "le-unsigned-v1";
   return {
@@ -1783,9 +1851,29 @@ function fixedArrayLengthDispatchRecipe(match, selectedSections = []) {
         declaration: "Project.ProofKit.FixedArrayEqNode.branchPost",
         purpose: "preserve the enclosing branch continuation",
       },
+      ...match.capacityPrefixes.flatMap((capacity) => {
+        const name = match.regionId.replace(/[^A-Za-z0-9_]/g, "_");
+        const prefix = `${name}_${capacity.role}_capacity`;
+        return [{
+          declaration: `${annotationNamespace}.${prefix}_eq`,
+          purpose: `rewrite the exact ${capacity.role}-branch capacity prefix`,
+        }, {
+          declaration: `${annotationNamespace}.${prefix}_program`,
+          purpose: `name the compiler-matched ${capacity.role}-branch capacity prefix`,
+        }, {
+          declaration: "Project.ProofKit.FixedArrayCapacity.constantProgram_spec",
+          purpose: "execute constant result-capacity normalization into its destination local",
+        }, {
+          declaration: "Project.ProofKit.FixedArrayCapacity.normalizedCapacity",
+          purpose: "name the computed aligned capacity passed to allocation",
+        }, {
+          declaration: "Project.ProofKit.FixedArrayCapacity.capacityFrame",
+          purpose: "state the exact post-capacity local frame",
+        }];
+      }),
     ],
     expectedPostcondition: "valid and invalid input-size branch obligations",
-    guidance: ["strategy.arrays", "strategy.frames"]
+    guidance: ["strategy.arrays", "strategy.allocation", "strategy.frames"]
       .filter((section) => selectedSections.includes(section)),
   };
 }
@@ -2064,7 +2152,7 @@ function proofRecipePlan(
           matches.get(region.id), selectedSections, tacticEligible));
       } else if (region.kind === "leanexe.array.length-dispatch.v1") {
         recipes.push(fixedArrayLengthDispatchRecipe(
-          matches.get(region.id), selectedSections));
+          matches.get(region.id), selectedSections, annotationNamespace));
       } else if (region.kind === "leanexe.array.search-key.v1") {
         recipes.push(fixedArraySearchKeyRecipe(
           matches.get(region.id), selectedSections));
@@ -3512,6 +3600,24 @@ function annotationMatchesSource(document, job, program = null) {
   const declarations = [];
   for (const function_ of document.functions) {
     for (const region of function_.regions) {
+      if (region.kind === "leanexe.array.length-dispatch.v1") {
+        const match = program === null
+          ? null : matchFixedArrayLengthDispatchRegion(program, function_, region);
+        const name = region.id.replace(/[^A-Za-z0-9_]/g, "_");
+        for (const capacity of match?.capacityPrefixes ?? []) {
+          const prefix = `${name}_${capacity.role}_capacity`;
+          declarations.push(`def ${prefix}_program : Wasm.Program :=
+  Project.ProofKit.FixedArrayCapacity.constantProgram
+    ${capacity.length} ${capacity.stride} ${capacity.capacityLocal}
+
+theorem ${prefix}_eq :
+    Project.ProofKit.Annotation.region ${job.namespace}.func${function_.wasmIndex}
+      ${leanAnnotationPath(capacity.listPath)} ${capacity.startIndex}
+      ${capacity.endIndex} = some ${prefix}_program := by
+  rfl`);
+        }
+        continue;
+      }
       if ([
         "leanexe.loop.while.v1", "leanexe.loop.scalar-post-test.v1",
       ].includes(region.kind) && region.parameters.descriptor !== null) {
@@ -3687,6 +3793,11 @@ ${document.functions.some((function_) => function_.regions.some((region) =>
 ${document.functions.some((function_) => function_.regions.some((region) =>
     region.kind === "leanexe.array.filter-lt.v1"))
     ? "import Project.ProofKit.FixedArrayFilterLt\n" : ""}
+${program !== null && document.functions.some((function_) => function_.regions.some((region) =>
+    region.kind === "leanexe.array.length-dispatch.v1" &&
+      matchFixedArrayLengthDispatchRegion(program, function_, region)
+        .capacityPrefixes.length > 0))
+    ? "import Project.ProofKit.FixedArrayCapacity\n" : ""}
 ${program !== null && document.functions.some((function_) => function_.regions.some((region) =>
     region.kind === "leanexe.array.fold.v1" &&
       matchArrayFoldRegion(program, function_, region).dynamicTraversalEligible))

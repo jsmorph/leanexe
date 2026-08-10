@@ -1,5 +1,22 @@
 # Development Journal
 
+## 2026-08-09: Constant capacity and frame projection
+
+`Project.ProofKit.FixedArrayCapacity.constantProgram_spec` executes the compiler's constant result-length capacity prefix for arbitrary `UInt64` length and stride, destination local, local-frame dimensions, store, continuation, and postcondition.  The named `normalizedCapacity` computes the aligned minimum-eight-byte capacity, while `capacityFrame` records its destination without constraining other locals.  This replaces the zero- and one-element local capacity theorems that the latest Demo 9 proof had to construct before each allocator application.
+
+The length-dispatch consumer checks the full capacity prefix independently in its valid and invalid branches.  It requires the header, length, stride, multiplication, alignment, destination getter and setter, minimum test, replacement branch, and empty alternative to match the decoded Program.  Demo 9 produces checked branch equalities for lengths one and zero, while a test mutation of the alignment constant removes support only from the changed branch.
+
+`Project.ProofKit.Frame.internal_getElem?_of_get` and `internal_getElem_of_get` convert a combined `Locals.get` invariant equation to the corresponding internal-list optional or indexed getter.  Demos 2, 3, 5, and 9 repeat the unfolded conversion, and the new theorem has no array, local-count, or value-type dependency.  Structured LTG now contains 20 entries, including separate capacity and frame-projection retrieval units with reciprocal links to their allocator, fold, loop, and proof-construction neighbors.
+
+Checks run:
+
+- [x] `tools/leanrun --timeout 15m lake -d proofs/talos/lean --no-ansi build Project.ProofKit.LTGCheck` accepted all 49 indexed declaration names, including the new capacity and frame theorems.
+- [x] `tools/ltg check` accepted 7 categories and 20 entries.
+- [x] `node test/ltg.js` passed catalog, index, exclusion, digest, and 10,000-record search tests.
+- [x] `node test/leanexegen.js` passed the annotation, recipe, protocol, package, publication, and exit tests.
+- [x] `tools/leanexegen annotate -o /tmp/demo9-capacity-annotated.proof demos/demo-9/program.proof` checked both capacity equalities against the unchanged artifact.
+- [x] `tools/leanexegen verify -s /tmp/demo9-capacity-annotated.proof` independently accepted the annotated package.
+
 ## 2026-08-09: Demo 9 fold-boundary reproof
 
 The controlled Demo 9 reproof retained the formal specification, generated source, 1,979-byte WASM module, artifact digest, and compiler annotations.  Its task-specific LTG view contained 18 entries, including the new `fixed-array-fold-structure` entry, while artifact-specific Demo 9 material remained excluded.  Codex retrieved the generic length-dispatch, fold, traversal, allocation, memory-framing, and result entries before editing the proof.
