@@ -9,6 +9,7 @@ Every `leanexegen` artifact-proof task receives this catalog and may import the 
 | `Project.ProofKit.Frame` | Conversion from combined `Locals.get` invariant facts to internal-local optional and indexed getter facts. |
 | `Project.ProofKit.ScalarTransition` | Typed scalar expression and statement evaluation, exact Talos instruction generation, weakest-precondition composition, and scratch-local preservation. |
 | `Project.ProofKit.ScalarTransitionU64` | Compact `UInt64` state evaluation and checked correspondence with the typed scalar evaluator. |
+| `Project.ProofKit.GuardedBackEdge` | One scalar body and condition followed by either loop exit or a scalar continuation and back edge. |
 | `Project.ProofKit.Array` | The public `Array UInt64` representation, encoded-size and address normalization, load bounds, region preservation, and singleton or pair output construction. |
 | `Project.ProofKit.Allocation` | Fixed-array bump-allocation addresses, header offsets, overflow exclusion, and the no-growth branch. |
 | `Project.ProofKit.FixedArrayCapacity` | Constant result-length capacity normalization into an arbitrary valid local with a named post-prefix frame. |
@@ -38,6 +39,8 @@ The expression language covers local reads, `UInt64` constants, wrapping arithme
 Import `Project.ProofKit.ScalarTransitionU64` when generated annotation support provides named condition and body transitions.  `Expr.evalU64` and `Stmt.evalU64` evaluate the same descriptor over lists of `UInt64`, avoiding repeated reductions through `Wasm.Value` conversions and combined-local access.  `Expr.eval_toState` and `Stmt.eval_toState` lift each compact result to the typed scalar evaluator, so an artifact proof can use the generated transition equations without reducing each intermediate scratch-local update.  After rewriting a generated transition equation, unfold `U64Op.apply` in the focused arithmetic step when the remaining expression still contains descriptor operations.
 
 `State.localU64ToNat` defines a natural-number measure from an `i64` local without requiring a partial `Wasm.Value` pattern in the proof.  `CounterTransition.decrement_add_increment` proves preservation of a wrapping sum when one counter decreases and another increases, while `CounterTransition.decrement_toNat_lt` proves strict natural-number decrease for a nonzero `UInt64` counter.  These declarations apply to scalar counter loops independently of a generated function, local-frame layout, or public result.
+
+Import `Project.ProofKit.GuardedBackEdge` when a checked instruction interval contains one scalar body and condition followed by a conditional exit, a scalar continuing statement, and a back edge.  `guardedBackEdgeProgram_spec` executes the body and condition through their descriptor evaluators, returns `Break 1` when the condition holds, and otherwise executes the continuing descriptor before returning `Break 0`.  Its compact theorem type omits the enclosing loop, artifact function, and public postcondition structure.
 
 An artifact proof still needs an exact equality between the decoded instruction region and `Expr.program` or `Stmt.program`.  The descriptor and semantic theorem do not trust an annotation or compiler claim.  The generated region equality derives this fact from the exact decoded instructions before either semantic theorem applies.
 

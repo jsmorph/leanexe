@@ -1021,6 +1021,8 @@ function testLengthDispatchAnnotationRecipes() {
       plan.recipes[0].direct.theorem.endsWith(expectedTheorem) &&
       plan.recipes[0].direct.tactic === expectedTactic &&
       plan.recipes[0].direct.invocation.includes("_from hArray at") &&
+      plan.recipes[0].supporting[0].declaration ===
+        "Wasm.TerminatesWith.of_wp_entry_for" &&
       JSON.stringify(plan.recipes[0].guidance) ===
         JSON.stringify(["strategy.arrays", "strategy.frames"]),
     `${encoding} did not select its exact length-dispatch recipe`);
@@ -1679,6 +1681,49 @@ def func0Def : Wasm.Function :=
           bodyLets: [],
           doneValue: "Expr.u64 0",
           releaseOffsets: [],
+          descriptorVersion: 1,
+          descriptor: {
+            body: {
+              kind: "seq",
+              first: {
+                kind: "seq",
+                first: {
+                  kind: "seq",
+                  first: {
+                    kind: "seq",
+                    first: { kind: "skip" },
+                    second: {
+                      kind: "assign",
+                      index: 10,
+                      value: {
+                        kind: "bin",
+                        operation: "add",
+                        left: { kind: "get", index: 1 },
+                        right: { kind: "get", index: 3 },
+                      },
+                    },
+                  },
+                  second: {
+                    kind: "assign", index: 9,
+                    value: { kind: "const", value: "0" },
+                  },
+                },
+                second: {
+                  kind: "assign", index: 1,
+                  value: { kind: "get", index: 10 },
+                },
+              },
+              second: {
+                kind: "assign", index: 11,
+                value: { kind: "const", value: "1" },
+              },
+            },
+            condition: {
+              kind: "ne",
+              left: { kind: "get", index: 9 },
+              right: { kind: "const", value: "0" },
+            },
+          },
           scratchStart: 4,
           arrayLocal: 4,
           lengthLocal: 5,
@@ -1719,6 +1764,10 @@ def func0Def : Wasm.Function :=
       "Project.ProofKit.FixedArrayFold.forwardSetupProgram_spec") &&
     arrayFoldPlan.recipes[0].supporting.some((entry) => entry.declaration ===
       "Project.ProofKit.FixedArrayFold.resultProgram_spec") &&
+    arrayFoldPlan.recipes[0].supporting.some((entry) => entry.declaration ===
+      "Project.AnnotationMatches.function_0_array_fold_0_step_eq") &&
+    arrayFoldPlan.recipes[0].supporting.some((entry) => entry.declaration ===
+      "Project.ProofKit.ScalarTransition.guardedBackEdgeProgram_spec") &&
     JSON.stringify(arrayFoldPlan.recipes[0].guidance) ===
       JSON.stringify(["strategy.arrays", "strategy.loops"]),
   "array-fold annotation did not select prefix-fold support and array-loop guidance");
@@ -1737,6 +1786,14 @@ def func0Def : Wasm.Function :=
     arrayFoldMatches.source.includes(
       "theorem function_0_array_fold_0_result_eq") &&
     arrayFoldMatches.source.includes(
+      "theorem function_0_array_fold_0_step_eq") &&
+    arrayFoldMatches.source.includes(
+      "def function_0_array_fold_0_step_program") &&
+    arrayFoldMatches.source.includes(
+      "theorem function_0_array_fold_0_body_eval") &&
+    arrayFoldMatches.source.includes(
+      "Project.ProofKit.ScalarTransition.guardedBackEdgeProgram") &&
+    arrayFoldMatches.source.includes(
       "Project.ProofKit.FixedArrayFold.forwardSetupProgram\n    4 5\n    6 9\n    7 1\n    11 8\n    0") &&
     arrayFoldMatches.source.includes(
       "Project.ProofKit.FixedArrayFold.resultProgram\n    1 2") &&
@@ -1748,8 +1805,13 @@ def func0Def : Wasm.Function :=
       "{ instructionIndex := 0, field := .thenBranch }, " +
       "{ instructionIndex := 23, field := .block }, " +
       "{ instructionIndex := 0, field := .loop }") &&
-    arrayFoldMatches.source.includes("] 0 16 ="),
+    arrayFoldMatches.source.includes("] 0 16 =") &&
+    arrayFoldMatches.source.includes("] 16\n      35 ="),
   "array-fold annotation did not produce its checked region program and equality");
+  const oldArrayFoldDocument = structuredClone(arrayFoldDocument);
+  delete oldArrayFoldDocument.functions[0].regions[0].parameters.descriptor;
+  delete oldArrayFoldDocument.functions[0].regions[0].parameters.descriptorVersion;
+  validateAnnotationDocument(oldArrayFoldDocument, wasm);
   const legacyArrayFoldPlan = structuredClone(arrayFoldPlan);
   legacyArrayFoldPlan.recipes[0].applicability = "exact decoded instruction match";
   delete legacyArrayFoldPlan.recipes[0].direct.regionEquality;

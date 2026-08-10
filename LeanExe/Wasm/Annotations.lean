@@ -116,6 +116,8 @@ structure ArrayFoldParameters where
   bodyLets : Array String
   doneValue : String
   releaseOffsets : Array Nat
+  descriptorVersion : Nat
+  descriptor : Option ScalarDescriptor.PostTest
   scratchStart : Nat
   arrayLocal : Nat
   lengthLocal : Nat
@@ -311,6 +313,8 @@ structure RelativeArrayFold where
   bodyLets : Array String
   doneValue : String
   releaseOffsets : Array Nat
+  descriptorVersion : Nat
+  descriptor : Option ScalarDescriptor.PostTest
   scratchStart : Nat
   arrayLocal : Nat
   lengthLocal : Nat
