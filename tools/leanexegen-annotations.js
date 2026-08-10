@@ -1667,18 +1667,18 @@ function fixedArrayLengthDispatchRecipe(match, selectedSections = []) {
           ? "Project.ProofKit.FixedArrayLengthDispatch.eqProgram_spec"
           : "Project.ProofKit.FixedArrayLengthDispatch.program_spec",
       tactic: bounded
-        ? "wp_fixed_array_length_le_dispatch"
+        ? "wp_fixed_array_length_le_dispatch_from"
         : equality
-          ? "wp_fixed_array_length_eq_dispatch"
-          : "wp_fixed_array_length_dispatch",
+          ? "wp_fixed_array_length_eq_dispatch_from"
+          : "wp_fixed_array_length_dispatch_from",
       invocation: bounded
-        ? `wp_fixed_array_length_le_dispatch ${match.parameters.inputLocal}, ` +
-          `${match.parameters.expectedSize}`
+        ? `wp_fixed_array_length_le_dispatch_from hArray at ` +
+          `${match.parameters.inputLocal}, ${match.parameters.expectedSize}`
         : equality
-          ? `wp_fixed_array_length_eq_dispatch ${match.parameters.inputLocal}, ` +
-            `${match.parameters.expectedSize}`
-          : `wp_fixed_array_length_dispatch ${match.parameters.inputLocal}, ` +
-            `${match.parameters.expectedSize}`,
+          ? `wp_fixed_array_length_eq_dispatch_from hArray at ` +
+            `${match.parameters.inputLocal}, ${match.parameters.expectedSize}`
+          : `wp_fixed_array_length_dispatch_from hArray at ` +
+            `${match.parameters.inputLocal}, ${match.parameters.expectedSize}`,
     },
     supporting: [
       {
@@ -2246,10 +2246,10 @@ function validateProofRecipePlan(plan, document) {
           ? "Project.ProofKit.FixedArrayLengthDispatch.eqProgram_spec"
           : "Project.ProofKit.FixedArrayLengthDispatch.program_spec";
       const tactic = bounded
-        ? "wp_fixed_array_length_le_dispatch"
+        ? "wp_fixed_array_length_le_dispatch_from"
         : equality
-          ? "wp_fixed_array_length_eq_dispatch"
-          : "wp_fixed_array_length_dispatch";
+          ? "wp_fixed_array_length_eq_dispatch_from"
+          : "wp_fixed_array_length_dispatch_from";
       if (recipe.direct.module !== "Project.ProofKit.FixedArrayLengthDispatch" ||
           recipe.direct.theorem !== theorem || recipe.direct.tactic !== tactic ||
           typeof recipe.direct.invocation !== "string") {

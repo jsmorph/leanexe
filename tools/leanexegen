@@ -684,9 +684,13 @@ function proofPrompt(request, job, entryIndex) {
     `Do not search for or read artifact proofs outside this working directory, including demos, ` +
     `benchmarks, archived packages, or another generated namespace.  The task-specific LTG view ` +
     `omits worked examples excluded for this exact artifact, and external proof searches would ` +
-    `invalidate proof-generation measurement.  Read dependency source outside the working ` +
-    `directory only to confirm a declaration named by a selected LTG entry, PROOF_STRATEGIES.md, ` +
-    `or PROOF_RECIPES.json.  You may import ${job.formalSpecModule}, ${job.programModule}, ` +
+    `invalidate proof-generation measurement.  PROOF_KIT_SOURCE mirrors every allowed ` +
+    `Project.ProofKit module inside the working directory.  Inspect Project.ProofKit ` +
+    `declarations there, and never search a dependency checkout or another path outside the ` +
+    `working directory.  For CodeLib, Interpreter, Std, Init, or Mathlib, read an external source ` +
+    `file only when its exact path is already known and a selected LTG entry, PROOF_STRATEGIES.md, ` +
+    `or PROOF_RECIPES.json names the declaration; never run rg or find outside the working ` +
+    `directory.  You may import ${job.formalSpecModule}, ${job.programModule}, ` +
     `generated artifact-support modules, checked Project.ProofKit modules named by LTG, CodeLib, ` +
     `Interpreter, Std, Init, or Mathlib.  The import check enforces this boundary.  ` +
     `Keep PROOF_JOURNAL.md as frequent, natural Markdown prose.  Update it after each Lean check ` +
@@ -1509,6 +1513,13 @@ function proofTaskContext(
   context.set("PROOF_TASK_FEATURES.json", `${JSON.stringify(bundle.features, null, 2)}\n`);
   context.set("PROOF_LIBRARY.md",
     suppliedProofLibrary ?? fs.readFileSync(proofKitCatalogPath, "utf8"));
+  context.set("PROOF_KIT_SOURCE/README.md", `# Checked Proof-Kit Source
+
+This directory mirrors every allowed \`Project.ProofKit\` module supplied to the proof task.  Each file has the same content covered by the proof-kit source identity in the tool pins.  Search this directory when a selected LTG entry or proof recipe names a proof-kit declaration.
+`);
+  for (const [moduleName, source] of proofKitSources()) {
+    context.set(`PROOF_KIT_SOURCE/${moduleFile(moduleName)}`, source);
+  }
   if ((bundle.compilerAnnotations === undefined) !== (bundle.proofRecipes === undefined)) {
     throw new StageError(5, "artifact proof", "annotation and recipe context must appear together");
   }

@@ -62,6 +62,17 @@ theorem writePayload_pages (st : Store Unit) (root : UInt64) (index : Nat)
     (writePayload st root index value).mem.pages = st.mem.pages := by
   simp [writePayload, Mem.write64_pages]
 
+theorem emptyStore_at (st : Store Unit) (root : UInt64)
+    (hFit32 : root.toNat + 8 ≤ 4294967296)
+    (hFitMemory : root.toNat + 8 ≤ st.mem.pages * 65536) :
+    UInt64Array.At (writeLength st root 0) root #[] := by
+  refine ⟨by simpa using hFit32, ?_, ?_, ?_⟩
+  · simpa [writeLength, Mem.write64_pages] using hFitMemory
+  · change (st.mem.write64 root.toUInt32 0).read64 root.toUInt32 = 0
+    exact Mem.read64_write64_same ..
+  · intro i hi
+    simp at hi
+
 theorem singletonStore_at (st : Store Unit) (root value : UInt64)
     (hFit32 : root.toNat + 16 ≤ 4294967296)
     (hFitMemory : root.toNat + 16 ≤ st.mem.pages * 65536) :
