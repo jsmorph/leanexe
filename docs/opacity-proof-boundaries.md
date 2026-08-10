@@ -15,7 +15,7 @@ The technique ledger distinguishes a checked mechanism from a proposed use and f
 | `OPA-003` | Module split at the expensive semantic boundary | `Project.ProofKit.GuardedBackEdge` and generated `AnnotationMatches` | Accepted on Demo 9.  The first package failed because the module was missing from the canonical proof-kit inventory; the corrected package and independent verifier passed. |
 | `OPA-004` | Cross-operation reuse of the same compact package | Demo 10 bounded multiplication fold | Accepted and independently verified on the 1,979-byte artifact with digest `a981c788...d4baa`.  The fresh agent selected the guarded-back-edge entry and applied the generated multiplication, condition, and continuing evaluator equations. |
 | `OPA-005` | Inferred internal proposition type | Generated scalar transition accessors | Proposed.  Current explicit accessors quantify over 21 `UInt64` values and produce an 848-character declaration line, but no controlled comparison has tested an inferred alias. |
-| `OPA-006` | Local irreducibility | Decoded function after public-entry conversion | Proposed.  The experiment must retain the explicit reductions used by length dispatch and frame facts while preventing unification from reopening the complete function. |
+| `OPA-006` | Local irreducibility | Decoded function and decoded body at public entry | Rejected as a standalone setting.  Marking either `func0Def` or `func0` locally irreducible blocks the first length-dispatch `change`; compact entry and branch accessors must precede any narrower retry. |
 | `OPA-007` | Named compact endpoint equality | Generated traversal program, frame, item-validity proof, and continuation theorem | Accepted on Demo 10 in both a manual substitution and a fresh fixed-artifact reproof.  The manual substitution shortened the existing proof, while the fresh proof expanded the generated frame throughout its invariant and was slower and larger. |
 | `OPA-008` | Named proposition bridged by consequence | Public artifact postcondition after fixed-store entry conversion | Accepted in the fresh Demo 10 reproof.  Direct `change` failed even when the named definition repeated the generated expressions, while `Wasm.wp.conseq` established the implication and kept the compact name through both length branches. |
 
@@ -80,6 +80,16 @@ The fresh proof used the adapter but defined its loop invariant and intermediate
 The same journal found a separate proposition boundary at public entry.  A local `artifactPost` definition matched the generated result cases and formulas propositionally, but direct `change` did not establish definitional equality.  One `Wasm.wp.conseq` application proved the implication by simplification and let both length branches use the named postcondition, providing accepted `OPA-008` evidence without attributing the run's aggregate timing to that step.
 
 The retained experiment package under `demos/demo-10/experiments/traversal-adapter.proof` contains the fixed artifact, generated declarations, fresh proof, journal, filtered LTG, recipes, and telemetry.  `demos/demo-10/experiments/manual-traversal-adapter.lean` preserves the smaller manual substitution.  Together they distinguish theorem applicability, concise expert use, and fresh-agent behavior rather than collapsing those questions into one measurement.
+
+## Local-irreducibility screen
+
+The first `OPA-006` screen added `attribute [local irreducible] ...func0Def` to the otherwise unchanged primary Demo 10 proof.  Lean reached the first `wp_fixed_array_length_le_dispatch_from` invocation and rejected its internal `change` after 4.3 seconds in the `Behavior` target.  The target still contained `func0Def.body`, `func0Def.results.length`, `func0Def.numParams`, and `func0Def.toLocals`, so the attribute hid every projection needed to establish the initial instruction and frame shape.
+
+The second screen marked only the decoded body `func0` irreducible.  The same `change` failed after 5.2 seconds because `func0Def.body` reduces to the now-irreducible program name but cannot reduce further to `FixedArrayLengthDispatch.leProgram 7 8 validBranch invalidBranch`.  Both runs used the standard runner limits, stopped on a source diagnostic, and changed no theorem or artifact input.
+
+These failures reject local irreducibility as an isolated proof setting under the current entry API.  A later test requires a checked package constructed before the opacity boundary: a compact public-entry theorem, an equality from `func0` to the named dispatch program, named valid and invalid branch programs, and checked subregion equalities used by each branch proof.  This design follows the VQ package technique because consumers use accessors and laws instead of unfolding the opaque decoded program.
+
+The package must keep the branch proof usable without restating the complete WAT lists in theorem types.  Existing generated capacity, fold, traversal, guarded-step, and result equalities cover internal regions, but no current declaration composes them into named branch programs at the top-level dispatch.  The next PoC will add the smallest entry-to-branch composition needed for Demo 10, then judge whether the interface describes the common fixed-array wrapper motif before extending it.
 
 ## Fixed-artifact compiled-boundary result
 
@@ -149,7 +159,7 @@ The third experiment used Demo 10's multiplication fold with the same emitted tr
 
 The fourth experiment generated a complete continuing-edge adapter and tested it through a manual substitution and a fresh fixed-artifact reproof.  Both proofs passed, but the fresh agent expanded the generated frame through its invariant and produced a slower, larger proof.  The next adapter experiment will test an inferred internal proposition or a smaller frame-view interface that permits local values to infer from the caller's existing invariant.
 
-The fifth experiment will apply local irreducibility to the generated function definition after public-entry conversion.  The test will record whether routine unification stops reopening the decoded function while explicit `simp [func0Def]` calls still discharge the few frame-shape obligations that require reduction.  A silent timeout, recursion-depth failure, or slower accepted proof will reject this setting for automatic use while preserving the result as evidence.
+The fifth experiment applied local irreducibility to the generated function definition and then to the decoded body alone.  Both variants failed at the first length-dispatch `change`, before either branch proof, because the current entry API depends on definitional reduction of the decoded program.  A retry now depends on generated entry, dispatch, and branch accessors rather than a broader attribute or a larger resource limit.
 
 ## Evidence rules
 

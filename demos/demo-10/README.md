@@ -48,6 +48,8 @@ A fresh fixed-artifact reproof found and applied the same generated theorem thro
 
 The fresh run took 1,906.536 seconds in Stage 5, which is 310.241 seconds, or 19.4 percent, slower than the primary run.  Its proof grew to 669 lines, 2,435 words, and 35,871 bytes because the agent rebuilt much of its invariant around the generated 21-value frame, referring to that frame seventeen times.  The manual result shows a compact use of the theorem, while the fresh result directs LTG guidance to preserve the caller's semantic frame and let generated local values infer at the single traversal boundary.
 
+The [local-irreducibility screen](experiments/irreducibility-screen.md) tested the VQ technique against the primary proof without changing its artifact or theorem.  Marking either the complete function definition or its decoded body irreducible blocked the first length-dispatch `change` within 5.2 seconds of target work.  The result records a required predecessor: generated entry, dispatch, and named-branch accessors must expose the proof interface before any decoded-program opacity boundary can work.
+
 ## Execution
 
 The empty input checks the multiplicative identity, the second sample checks the traversal loop, and the third checks the oversized branch.  Direct execution of the proved artifact produced these results.  Each result agrees with the formal specification.
@@ -85,3 +87,4 @@ The root files provide readable views of each generation and proof stage.  The [
 | [Verification package](program.proof/) | The self-contained package accepted by `leanexegen verify -s`. |
 | [Manual traversal-adapter proof](experiments/manual-traversal-adapter.lean) | A checked substitution that shortens the primary proof's dependent traversal application. |
 | [Fresh traversal-adapter package](experiments/traversal-adapter.proof/) | The independently verified fixed-artifact reproof, journal, LTG snapshot, and telemetry. |
+| [Local-irreducibility screen](experiments/irreducibility-screen.md) | The two focused failure diagnostics and the required compact-accessor boundary. |
