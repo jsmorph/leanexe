@@ -64,6 +64,14 @@ This single measurement supports theorem applicability, structured retrieval, an
 
 The [fold-body composition package](experiments/fold-body-composition.proof/) applies the current annotation generator and proof kit to the unchanged Demo 9 artifact.  Its generated recipe supplies the checked continuing-loaded-frame equality and `FixedArrayFoldBody.continuingGuardedProgram_spec`, and independent package verification accepts the exact artifact theorem.  The archived behavioral proof predates the composition theorem, so this package establishes annotation recognition, theorem availability, and package integrity rather than proof-agent retrieval or use; the fresh fixed-artifact reproof measures those claims separately.
 
+## Fold-body composition reproof
+
+The [fresh fold-body reproof](experiments/fold-body-reproof.proof/) selected `fixed-array-fold-body` in its first annotation-driven catalog query and applied `FixedArrayFoldBody.continuingGuardedProgram_spec` to the wrapping-add loop.  The theorem consumed the checked indexed load, generated loaded-frame equality, wrapping-add body evaluator, false done condition, index-increment evaluator, and guarded back edge.  The artifact proof retained the sum-prefix successor equation, invariant reconstruction, and decreasing measure, and a separate `leanexegen verify -s` run accepted the complete package over the unchanged digest.
+
+Stage 5 took 2,074.169 seconds, including 1,984.791 seconds in Codex and 69.416 seconds in outer acceptance.  The run was 8.720 seconds, or 0.4 percent, faster than the 2,082.889-second retained fold-structure proof, 101.946 seconds, or 5.2 percent, slower than the guarded-back-edge screen, and 223.708 seconds, or 9.7 percent, faster than the local compact-boundary screen.  These results establish no proof-time improvement over the theorem's immediate component, but they establish fresh selection and accepted use across wrapping addition and multiplication.
+
+The proof contains 588 lines, 2,484 whitespace-delimited words, and 29,973 bytes.  Compared with the guarded-back-edge proof, it has one fewer line, 276 more words, and 1,175 fewer bytes, so the proof-size evidence is mixed.  The journal also records repeated proof-local frame projections before the singleton suffix and the need to fix the theorem's module, environment, store, and frame arguments when callback inference generalizes them; the structured guidance records both findings, while the shorter root proof remains primary.
+
 ## Execution
 
 The first sample exercises wrapping addition in the valid branch.  The second sample exceeds the maximum length and exercises the empty-result branch.  Direct execution of the proved artifact produced these values:
@@ -102,3 +110,4 @@ Every retained root file fixes a generation input, artifact, proof context, or m
 | [Compact fold-boundary comparison](experiments/compact-fold-boundary.proof/) | The accepted fixed-artifact proof that isolates the post-load update behind a compact continuation-generic theorem. |
 | [Compiler-described guarded-back-edge comparison](experiments/guarded-back-edge.proof/) | The accepted fixed-artifact proof that uses the generic guarded-back-edge theorem with compiler-generated transition evidence. |
 | [Fold-body composition capability](experiments/fold-body-composition.proof/) | The current annotations, proof kit, and accepted archived proof for the unchanged artifact; its behavioral proof predates the fold-body theorem. |
+| [Fresh fold-body composition reproof](experiments/fold-body-reproof.proof/) | The independently verified fixed-artifact proof that retrieved and used the shared composition theorem for wrapping addition. |
