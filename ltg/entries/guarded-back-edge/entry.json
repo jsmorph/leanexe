@@ -6,14 +6,14 @@
   "roles": ["annotation-support", "checked-proof-asset", "guidance"],
   "categories": ["compiler-motifs", "loops", "proof-construction"],
   "scope": "compiler-runtime-motif",
-  "evidenceStatus": "provisional",
+  "evidenceStatus": "promoted",
   "features": ["compact-elaboration-boundary", "descriptor", "guarded-back-edge", "loop-body", "scalar-state"],
   "annotationKinds": ["leanexe.array.fold.v1"],
   "modules": ["Project.ProofKit.GuardedBackEdge"],
   "declarations": ["Project.ProofKit.ScalarTransition.guardedBackEdgeProgram", "Project.ProofKit.ScalarTransition.guardedBackEdgeProgram_spec"],
   "premises": ["An exact generated equality for the selected instruction interval", "Compiler-derived body and condition evaluator equations", "A compact initial scalar state", "An exit postcondition and a continuing-statement transition"],
   "result": "A weakest-precondition result that returns Break 1 after a true condition or executes the continuing descriptor and returns Break 0 after a false condition.",
-  "consumers": ["demo-9"],
+  "consumers": ["demo-10", "demo-9"],
   "relatedEntries": ["fixed-array-fold-structure", "fixed-array-traversal-input", "local-frame-projection", "scalar-post-test-loop"],
   "exclusion": null
 }

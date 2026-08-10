@@ -13,7 +13,7 @@
   "declarations": ["Project.ProofKit.FixedArrayFold.forwardSetupFrame", "Project.ProofKit.FixedArrayFold.forwardSetupProgram_spec", "Project.ProofKit.FixedArrayFold.resultFrame", "Project.ProofKit.FixedArrayFold.resultProgram_spec"],
   "premises": ["A represented UInt64 input array in the one-parameter wrapper frame", "Distinct valid local destinations for setup", "An exact generated setup or result-placement equality", "For result placement, the selected accumulator getter"],
   "result": "The matched setup reaches the named initialized loop-entry frame, or the matched result suffix reaches the named frame with the selected accumulator copied to its destination.",
-  "consumers": ["demo-9"],
+  "consumers": ["demo-10", "demo-9"],
   "relatedEntries": ["array-fold-prefix", "fixed-array-capacity", "fixed-array-length-dispatch", "fixed-array-result", "fixed-array-traversal-input", "local-frame-projection"],
   "exclusion": null
 }

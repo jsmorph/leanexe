@@ -13,7 +13,7 @@
   "declarations": ["Project.ProofKit.FixedArrayCapacity.capacityFrame", "Project.ProofKit.FixedArrayCapacity.constantProgram_spec", "Project.ProofKit.FixedArrayCapacity.normalizedCapacity"],
   "premises": ["An exact generated constant-capacity prefix equality", "An empty operand stack", "A valid capacity local outside the parameter range", "A continuation from the named capacity frame"],
   "result": "The matched capacity prefix writes its aligned, minimum-eight-byte result to the selected local and continues from capacityFrame.",
-  "consumers": ["demo-2", "demo-3", "demo-9"],
+  "consumers": ["demo-10", "demo-2", "demo-3", "demo-9"],
   "relatedEntries": ["fixed-array-allocation", "fixed-array-fold-structure", "fixed-array-length-dispatch", "fixed-array-result"],
   "exclusion": null
 }
