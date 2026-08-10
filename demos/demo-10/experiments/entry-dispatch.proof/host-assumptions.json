@@ -1,0 +1,7 @@
+{
+  "hostAssumptions": [
+    "`UInt64` multiplication wraps modulo 2^64.",
+    "`Array.foldl` traverses elements from left to right.",
+    "The LeanExe array ABI uses a 48-byte allocation header, an 8-byte length word, and 8 bytes per `UInt64` element."
+  ]
+}

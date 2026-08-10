@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "fixed-array-fold-structure",
+  "title": "Checked fixed-array fold structure",
+  "summary": "Executes exact compiler-matched forward full-array fold setup and accumulator result placement through named frames and arbitrary continuations.",
+  "roles": ["annotation-support", "checked-proof-asset", "guidance"],
+  "categories": ["arrays", "compiler-motifs", "loops", "proof-construction"],
+  "scope": "compiler-runtime-motif",
+  "evidenceStatus": "provisional",
+  "features": ["accumulator", "array", "array-size", "fold", "frame", "loop", "result-construction", "traversal"],
+  "annotationKinds": ["leanexe.array.fold.v1"],
+  "modules": ["Project.ProofKit.FixedArrayFold"],
+  "declarations": ["Project.ProofKit.FixedArrayFold.forwardSetupFrame", "Project.ProofKit.FixedArrayFold.forwardSetupProgram_spec", "Project.ProofKit.FixedArrayFold.resultFrame", "Project.ProofKit.FixedArrayFold.resultProgram_spec"],
+  "premises": ["A represented UInt64 input array in the one-parameter wrapper frame", "Distinct valid local destinations for setup", "An exact generated setup or result-placement equality", "For result placement, the selected accumulator getter"],
+  "result": "The matched setup reaches the named initialized loop-entry frame, or the matched result suffix reaches the named frame with the selected accumulator copied to its destination.",
+  "consumers": ["demo-9"],
+  "relatedEntries": ["array-fold-prefix", "fixed-array-capacity", "fixed-array-length-dispatch", "fixed-array-result", "fixed-array-traversal-input", "local-frame-projection"],
+  "exclusion": null
+}
