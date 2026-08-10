@@ -17,8 +17,8 @@
       "direct": {
         "module": "Project.ProofKit.FixedArrayLengthDispatch",
         "theorem": "Project.ProofKit.FixedArrayLengthDispatch.leProgram_spec",
-        "tactic": "wp_fixed_array_length_le_dispatch",
-        "invocation": "wp_fixed_array_length_le_dispatch 7, 8"
+        "tactic": "wp_fixed_array_length_le_dispatch_from",
+        "invocation": "wp_fixed_array_length_le_dispatch_from hArray at 7, 8"
       },
       "supporting": [
         {
@@ -60,6 +60,38 @@
         {
           "declaration": "LeanExeGen.GeneratedR23fa7efc3fb0298b.AnnotationMatches.function_0_array_fold_0_program",
           "purpose": "name the complete checked fold interval, including initialization and result placement"
+        },
+        {
+          "declaration": "LeanExeGen.GeneratedR23fa7efc3fb0298b.AnnotationMatches.function_0_array_fold_0_setup_eq",
+          "purpose": "rewrite the exact forward full-array setup interval"
+        },
+        {
+          "declaration": "LeanExeGen.GeneratedR23fa7efc3fb0298b.AnnotationMatches.function_0_array_fold_0_setup_program",
+          "purpose": "name the compiler-matched setup through effective-stop selection"
+        },
+        {
+          "declaration": "Project.ProofKit.FixedArrayFold.forwardSetupProgram_spec",
+          "purpose": "execute the checked length loads and fold-local initialization"
+        },
+        {
+          "declaration": "Project.ProofKit.FixedArrayFold.forwardSetupFrame",
+          "purpose": "state the exact initialized frame at loop entry"
+        },
+        {
+          "declaration": "LeanExeGen.GeneratedR23fa7efc3fb0298b.AnnotationMatches.function_0_array_fold_0_result_eq",
+          "purpose": "rewrite the exact accumulator result-placement interval"
+        },
+        {
+          "declaration": "LeanExeGen.GeneratedR23fa7efc3fb0298b.AnnotationMatches.function_0_array_fold_0_result_program",
+          "purpose": "name the compiler-matched accumulator-to-result transfer"
+        },
+        {
+          "declaration": "Project.ProofKit.FixedArrayFold.resultProgram_spec",
+          "purpose": "execute result placement from one accumulator getter"
+        },
+        {
+          "declaration": "Project.ProofKit.FixedArrayFold.resultFrame",
+          "purpose": "state the exact result-placement frame"
         },
         {
           "declaration": "Project.ProofKit.ArrayFold.foldPrefix",

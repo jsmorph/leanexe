@@ -14,10 +14,10 @@
     ]
   },
   "artifactProof": {
-    "summary": "Proved artifact_behavior. The import check and ArtifactResult build succeed.",
+    "summary": "Proved the exact compiled artifact behavior. The import check and ArtifactResult build succeeded.",
     "decisions": [
-      "Used a loop invariant based on ArrayFold.foldPrefix with a decreasing input-index measure.",
-      "Proved both the empty invalid result and singleton wrapping-sum representation."
+      "Used the exact length-dispatch recipe and a loop invariant with a loop-carried fold-prefix sum.",
+      "Used checked result-placement and singleton-store theorems."
     ]
   }
 }

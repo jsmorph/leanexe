@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "fixed-array-traversal-input",
+  "title": "Checked dynamic array traversal input",
+  "summary": "Executes the standard UInt64 traversal guard and indexed element load from annotation-selected locals, preserving an arbitrary continuation.",
+  "roles": ["checked-proof-asset", "guidance"],
+  "categories": ["arrays", "compiler-motifs", "loops", "memory", "proof-construction"],
+  "scope": "compiler-runtime-motif",
+  "evidenceStatus": "provisional",
+  "features": ["array", "indexed-element-load", "local-window", "loop", "memory", "traversal"],
+  "annotationKinds": ["leanexe.array.fold.v1"],
+  "modules": ["Project.ProofKit.FixedArrayTraversalInput"],
+  "declarations": ["Project.ProofKit.FixedArrayTraversalInput.continuingProgram_spec", "Project.ProofKit.FixedArrayTraversalInput.dynamicProgram_spec", "Project.ProofKit.FixedArrayTraversalInput.program_spec"],
+  "premises": ["A represented UInt64 input array", "Frame getters for the input pointer and encoded traversal index", "An in-bounds logical index and a valid item destination local", "For the guarded form, an encoded effective stop greater than the current index"],
+  "result": "The exact emitted guard and indexed loader reach an arbitrary continuation with the selected array element in the item local.",
+  "consumers": ["demo-2", "demo-3", "demo-9"],
+  "relatedEntries": ["array-fold-prefix", "array-memory-framing", "fixed-array-filter-lt", "fixed-array-fold-structure", "fixed-array-map-add", "fixed-array-result"],
+  "exclusion": null
+}
