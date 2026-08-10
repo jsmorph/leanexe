@@ -670,6 +670,12 @@ The run exposed a reusable proof-construction boundary after the checked fold se
 
 The final proof passed independent verification over the unchanged 1,979-byte artifact.  Stage 5 took 2,331.276 seconds, and the accepted source contains 687 lines, compared with 1,596.295 seconds and 572 lines for the retained proof.  Structured LTG now records the separate-declaration method as provisional completion guidance, and the proof prompt prohibits an unchanged retry after timeout, memory-limit, or silent target failure.
 
+`FixedArrayFold.singletonResultProgram_spec` now distills the artifact-local suffix theorem into checked ProofKit support.  It parameterizes the accumulator, result, root, destination, and return locals, accepts the caller's frame and represented singleton result, and reaches `singletonResultPost` without naming a fold operation or formal specification.  `finishFrame_return_get` supplies the final getter fact from the ordinary validity premises.
+
+The annotation consumer recognizes this composition only when every instruction after the annotated fold result placement is the standard singleton payload store and root transfer.  It extracts the five local roles, emits a named `singletonResultProgram`, and proves an exact decoded-region equality from result placement through the end of the enclosing branch.  The recipe advertises the equality, program, semantic theorem, and compact endpoint together.
+
+A production annotation run built these declarations over Demo 10's unchanged artifact, and independent package verification accepted the generated equality, retained behavior theorem, and final artifact theorem.  The preserved package records capability without claiming use because its retained proof predates the theorem.  A fresh fixed-artifact reproof will determine whether the proving agent selects the complete suffix boundary and avoids an artifact-local suffix declaration.
+
 ## Completion criteria
 
 The first complete increment emits a validated sidecar for every ordinary library-mode compilation requested by `leanexegen`.  Demos 1, 2, and 3 prove the same specifications over the same WASM bytes through an annotation-driven deterministic proof plan.  The retained evidence records proof-generation timings, annotation validation, region coverage, and independent Lean acceptance.

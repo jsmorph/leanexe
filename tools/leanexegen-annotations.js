@@ -1538,6 +1538,32 @@ function matchArrayFoldRegion(program, function_, region) {
     JSON.stringify(forwardSetupElse) ===
       JSON.stringify([`.localGet ${parameters.lengthLocal}`]);
   const resultPlacementEligible = parameters.resultSlots.length === 1;
+  const resultTail = normalizeInstructions(
+    instructions.slice(region.location.endIndex));
+  const resultRoot = resultTail[0]?.match(/^\.localGet ([0-9]+)$/);
+  const resultValue = resultTail[10]?.match(/^\.localGet ([0-9]+)$/);
+  const finishRoot = resultTail[12]?.match(/^\.localGet ([0-9]+)$/);
+  const finishDestination = resultTail[13]?.match(/^\.localSet ([0-9]+)$/);
+  const finishDestinationGet = resultTail[14]?.match(/^\.localGet ([0-9]+)$/);
+  const finishReturn = resultTail[15]?.match(/^\.localSet ([0-9]+)$/);
+  const singletonResultEligible = resultPlacementEligible &&
+    resultTail.length === 16 && resultRoot !== null && resultValue !== null &&
+    finishRoot !== null && finishDestination !== null &&
+    finishDestinationGet !== null && finishReturn !== null &&
+    resultValue[1] === `${parameters.resultLocals[0]}` &&
+    finishRoot[1] === resultRoot[1] &&
+    finishDestinationGet[1] === finishDestination[1] &&
+    JSON.stringify(resultTail.slice(1, 10)) === JSON.stringify([
+      ".constI64 (0 : UInt64)",
+      ".constI64 (1 : UInt64)",
+      ".mulI64",
+      ".constI64 (1 : UInt64)",
+      ".addI64",
+      ".constI64 (8 : UInt64)",
+      ".mulI64",
+      ".addI64",
+      ".wrapI64",
+    ]) && resultTail[11] === ".store64 (0 : UInt32)";
   const guardedBackEdgeEligible = dynamicTraversalEligible && !parameters.reverse &&
     parameters.descriptorVersion === 1 && parameters.descriptor !== null &&
     typeof parameters.descriptor === "object";
@@ -1550,6 +1576,7 @@ function matchArrayFoldRegion(program, function_, region) {
     forwardSetupEligible,
     guardedBackEdgeEligible,
     resultPlacementEligible,
+    singletonResultEligible,
     ...(dynamicTraversalEligible ? {
       continuingEndIndex: expectedGuard.length + dynamicPrefix.length,
       loopPath,
@@ -1568,6 +1595,12 @@ function matchArrayFoldRegion(program, function_, region) {
       resultEndIndex: region.location.endIndex,
       resultLocal: parameters.resultLocals[0],
       resultStartIndex: region.location.startIndex + blockIndex + 1,
+    } : {}),
+    ...(singletonResultEligible ? {
+      singletonResultDestinationLocal: Number(finishDestination[1]),
+      singletonResultEndIndex: instructions.length,
+      singletonResultReturnLocal: Number(finishReturn[1]),
+      singletonResultRootLocal: Number(resultRoot[1]),
     } : {}),
   };
 }
@@ -1802,6 +1835,18 @@ function loopRecipe(
       }, {
         declaration: "Project.ProofKit.FixedArrayFold.resultFrame",
         purpose: "state the exact result-placement frame",
+      }] : []), ...(match.singletonResultEligible ? [{
+        declaration: `${annotationNamespace}.${name}_singleton_result_eq`,
+        purpose: "rewrite the complete accumulator-placement, singleton payload-store, and root-transfer suffix",
+      }, {
+        declaration: `${annotationNamespace}.${name}_singleton_result_program`,
+        purpose: "name the compiler-matched complete singleton fold-result suffix",
+      }, {
+        declaration: "Project.ProofKit.FixedArrayFold.singletonResultProgram_spec",
+        purpose: "execute the complete singleton fold-result suffix to a compact represented-output assertion",
+      }, {
+        declaration: "Project.ProofKit.FixedArrayFold.singletonResultPost",
+        purpose: "state the compact represented singleton result and return-local endpoint",
       }] : []), {
         declaration: "Project.ProofKit.ArrayFold.foldPrefix",
         purpose: "state the loop invariant as the fold over the consumed input prefix",
@@ -3953,6 +3998,20 @@ theorem ${name}_result_eq :
       ${leanAnnotationPath(region.location.listPath)} ${match.resultStartIndex}
       ${match.resultEndIndex} = some ${name}_result_program := by
   rfl` : "";
+        const singletonResult = match?.singletonResultEligible ? `
+
+def ${name}_singleton_result_program : Wasm.Program :=
+  Project.ProofKit.FixedArrayFold.singletonResultProgram
+    ${match.resultAccumulatorLocal} ${match.resultLocal}
+    ${match.singletonResultRootLocal} ${match.singletonResultDestinationLocal}
+    ${match.singletonResultReturnLocal}
+
+theorem ${name}_singleton_result_eq :
+    Project.ProofKit.Annotation.region ${job.namespace}.func${function_.wasmIndex}
+      ${leanAnnotationPath(region.location.listPath)} ${match.resultStartIndex}
+      ${match.singletonResultEndIndex} = some
+        ${name}_singleton_result_program := by
+  rfl` : "";
         const continuingStatement = match?.guardedBackEdgeEligible ? {
           kind: "assign",
           index: region.parameters.indexLocal,
@@ -3998,7 +4057,7 @@ theorem ${name}_step_eq :
 
 theorem ${name}_eq :
     ${selected} = some ${name}_program := by
-  rfl${setup}${continuing}${guardedBackEdge}${result}
+  rfl${setup}${continuing}${guardedBackEdge}${result}${singletonResult}
 
 ${transitions}
 
