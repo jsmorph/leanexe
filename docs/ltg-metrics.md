@@ -30,7 +30,7 @@ Canonical entry content consists of the 42 files below `ltg/entries`, while the 
 
 ## Snapshot: 2026-08-10
 
-This snapshot uses LTG and proof-kit content at repository revision `11b94c70473ae2241ae867fb01a0e1ef6b0de93b`.  Its complete task-bundle digest is `01b2f0fbe1cddf1818007d2ef272802b8992f43d04bfee8c57637f992691fc2c`, which identifies the exact catalog files presented to an unfiltered proof task.  Later reports can compare the dated revision, bundle digest, and schema version before comparing counts.
+This snapshot uses LTG and proof-kit content at repository revision `cf78c09f8edb3b9bdf6a5a62140a490938829a96`.  Its complete task-bundle digest is `d454ef532e62b3665c9d5bc5f210ebdd813bc88196a8ad2a4a296ae88eebb011`, which identifies the exact catalog files presented to an unfiltered proof task.  Later reports can compare the dated revision, bundle digest, and schema version before comparing counts.
 
 | Catalog measure | Value |
 |-----------------|------:|
@@ -86,19 +86,19 @@ Tactic coverage currently has a metadata limitation.  The proof kit defines 29 t
 
 | Content measure | Files | Bytes |
 |-----------------|------:|------:|
-| Canonical entry content | 42 | 59,938 |
-| Canonical catalog | 44 | 62,744 |
-| Catalog Markdown | 22 | 31,784 |
+| Canonical entry content | 42 | 61,086 |
+| Canonical catalog | 44 | 63,892 |
+| Catalog Markdown | 22 | 32,932 |
 | Metadata JSON | 22 | 30,960 |
 | Generated category indexes | 7 | 93,675 |
-| Physical catalog | 51 | 156,419 |
-| Complete unfiltered task bundle | 51 | 156,419 |
+| Physical catalog | 51 | 157,567 |
+| Complete unfiltered task bundle | 51 | 157,567 |
 | Proof-kit Lean sources | 27 | 321,696 |
 | Proof-kit README | 1 | 42,472 |
 | Generated declaration check | 1 | 3,735 |
-| Combined physical knowledge | 79 | 520,587 |
+| Combined physical knowledge | 79 | 521,735 |
 
-Generated indexes account for 93,675 of the physical catalog's 156,419 logical bytes.  This duplication buys search locality and does not increase the 59,938-byte canonical entry inventory.  The combined total counts each physical task-catalog and proof-kit file once and excludes the generated declaration check, whose size appears on its own row.
+Generated indexes account for 93,675 of the physical catalog's 157,567 logical bytes.  This duplication buys search locality and does not increase the 61,086-byte canonical entry inventory.  The combined total counts each physical task-catalog and proof-kit file once and excludes the generated declaration check, whose size appears on its own row.
 
 The relation graph contains 84 directed related-entry links, including 29 reciprocal pairs and 26 asymmetric links, with no entry isolated from the graph.  Four worked examples carry exclusions covering four exact artifact digests and three derivative groups.  Catalog validation found no dangling category, allowed-module, or related-entry reference, and the local source inventory found no missing `Project.ProofKit` declaration name.
 
