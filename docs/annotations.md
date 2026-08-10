@@ -704,6 +704,16 @@ Stage 5 took 2,074.169 seconds, 0.4 percent less than the retained fold-structur
 
 The Demo 9 journal confirms that named dependent premises prevented the bullet shifting seen in Demo 10.  It also shows that the application should fix `module_`, `env`, `st`, and `frame` when callback inference generalizes the weakest-precondition context, and that a proof-local invariant frame should acquire named parameter, length, value-stack, and getter facts before suffix composition.  The structured LTG entry records these instructions and advances to promoted compiler-motif evidence on cross-operation applicability rather than a proof-time claim.
 
+### Generated continuing-frame accessors
+
+The annotation consumer now emits exact frame-shape and getter theorems beside every compiler-described continuing fold frame.  The declarations state the parameter list, internal-local length, empty operand stack, and `Locals.get` result at every combined parameter-and-local index.  Each theorem checks by reduction against the scalar state generated from the decoded function's parameter and local counts.
+
+The fold recipe lists every generated accessor with `FixedArrayFold.resultFrame_get_result` and `resultFrame_get_of_ne`.  The first shared theorem reads the accumulator value written to a valid nonparameter result local, while the second preserves a distinct valid nonparameter getter across that write.  An artifact proof can therefore cross both the continuing-frame and result-placement boundaries without declaring frame-specific `rfl` theorems.
+
+A proof that wraps the generated frame in a semantic abbreviation should use `simp only [<semantic-frame>, <generated-accessor>]`.  Unrestricted simplification can unfold `Wasm.Locals.get` into parameter and internal-list branches before the exact accessor matches, recreating the representation proof.  The restricted form keeps the compiler-derived equality intact and exposes only the requested frame fact.
+
+The fixed Demo 9 substitution removed ten local projection declarations from the accepted fold-body proof and passed independent package verification over the unchanged artifact.  Its source decreased from 588 to 555 lines and from 2,484 to 2,084 whitespace-delimited words; bytes decreased from 29,973 to 29,291 because the generated names are long.  This manual experiment measures proof structure rather than generation time, while Demo 10 independently checks the accessor family on a different fold artifact.
+
 ## Completion criteria
 
 The first complete increment emits a validated sidecar for every ordinary library-mode compilation requested by `leanexegen`.  Demos 1, 2, and 3 prove the same specifications over the same WASM bytes through an annotation-driven deterministic proof plan.  The retained evidence records proof-generation timings, annotation validation, region coverage, and independent Lean acceptance.
