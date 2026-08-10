@@ -1793,6 +1793,16 @@ def func0Def : Wasm.Function :=
     arrayFoldPlan.recipes[0].supporting.some((entry) => entry.declaration ===
       "Project.AnnotationMatches.function_0_array_fold_0_continuing_loaded_frame_eq") &&
     arrayFoldPlan.recipes[0].supporting.some((entry) => entry.declaration ===
+      "Project.AnnotationMatches.function_0_array_fold_0_continuing_frame_params") &&
+    arrayFoldPlan.recipes[0].supporting.some((entry) => entry.declaration ===
+      "Project.AnnotationMatches.function_0_array_fold_0_continuing_frame_get_0") &&
+    arrayFoldPlan.recipes[0].supporting.some((entry) => entry.declaration ===
+      "Project.AnnotationMatches.function_0_array_fold_0_continuing_frame_get_12") &&
+    arrayFoldPlan.recipes[0].supporting.some((entry) => entry.declaration ===
+      "Project.ProofKit.FixedArrayFold.resultFrame_get_result") &&
+    arrayFoldPlan.recipes[0].supporting.some((entry) => entry.declaration ===
+      "Project.ProofKit.FixedArrayFold.resultFrame_get_of_ne") &&
+    arrayFoldPlan.recipes[0].supporting.some((entry) => entry.declaration ===
       "Project.ProofKit.FixedArrayFoldBody.continuingGuardedProgram_spec") &&
     arrayFoldPlan.recipes[0].supporting.some((entry) => entry.declaration ===
       "Project.ProofKit.FixedArrayTraversalInput.continuingProgram_exit_spec") &&
@@ -1841,6 +1851,16 @@ def func0Def : Wasm.Function :=
       "theorem function_0_array_fold_0_step_continuing_eval") &&
     arrayFoldMatches.source.includes(
       "def function_0_array_fold_0_continuing_frame") &&
+    arrayFoldMatches.source.includes(
+      "theorem function_0_array_fold_0_continuing_frame_params") &&
+    arrayFoldMatches.source.includes(
+      "theorem function_0_array_fold_0_continuing_frame_locals_length") &&
+    arrayFoldMatches.source.includes(
+      "theorem function_0_array_fold_0_continuing_frame_values") &&
+    arrayFoldMatches.source.includes(
+      "theorem function_0_array_fold_0_continuing_frame_get_0") &&
+    arrayFoldMatches.source.includes(
+      "theorem function_0_array_fold_0_continuing_frame_get_12") &&
     arrayFoldMatches.source.includes(
       "theorem function_0_array_fold_0_continuing_item_valid") &&
     arrayFoldMatches.source.includes(
