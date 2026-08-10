@@ -1024,9 +1024,23 @@ function testLengthDispatchAnnotationRecipes() {
       plan.recipes[0].direct.invocation.includes("_from hArray at") &&
       plan.recipes[0].supporting[0].declaration ===
         "Wasm.TerminatesWith.of_wp_entry_for" &&
+      plan.recipes[0].supporting.some((entry) =>
+        entry.declaration.endsWith("function_0_length_dispatch_0_function_eq")) &&
       JSON.stringify(plan.recipes[0].guidance) ===
         JSON.stringify(["strategy.arrays", "strategy.frames"]),
     `${encoding} did not select its exact length-dispatch recipe`);
+    const source = annotationMatchesSource(document, {
+      namespace: "Example.Generated",
+      programModule: "Example.Generated.Program",
+    }, program).source;
+    assert(source.includes("import Project.ProofKit.FixedArrayLengthDispatch") &&
+      source.includes("def function_0_length_dispatch_0_valid_branch_program") &&
+      source.includes("def function_0_length_dispatch_0_invalid_branch_program") &&
+      source.includes(`Project.ProofKit.FixedArrayLengthDispatch.${
+        bounded ? "leProgram" : equality ? "eqProgram" : "program"}`) &&
+      source.includes("theorem function_0_length_dispatch_0_dispatch_eq") &&
+      source.includes("theorem function_0_length_dispatch_0_function_eq"),
+    `${encoding} did not generate the entry dispatch package`);
     const legacyPlan = structuredClone(plan);
     legacyPlan.recipes[0].direct.tactic = expectedTactic.replace("_from", "");
     legacyPlan.recipes[0].direct.invocation =

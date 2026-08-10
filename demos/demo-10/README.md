@@ -50,6 +50,10 @@ The fresh run took 1,906.536 seconds in Stage 5, which is 310.241 seconds, or 19
 
 The [local-irreducibility screen](experiments/irreducibility-screen.md) tested the VQ technique against the primary proof without changing its artifact or theorem.  Marking either the complete function definition or its decoded body irreducible blocked the first length-dispatch `change` within 5.2 seconds of target work.  The result records a required predecessor: generated entry, dispatch, and named-branch accessors must expose the proof interface before any decoded-program opacity boundary can work.
 
+The follow-up [entry-dispatch package](experiments/entry-dispatch.proof/) names the exact valid branch, invalid branch, dispatch program, and trailing program, then proves that their composition equals the decoded function.  Independent verification accepted the package over the unchanged artifact, and the [irreducible dispatch proof](experiments/irreducible-dispatch-proof.lean) passed `ArtifactResult` after rewriting through that equality.  This proof keeps `func0` irreducible while leaving both named branches available to the existing capacity, allocator, fold, and result theorems.
+
+The modified proof contains 578 lines, 1,951 words, and 31,087 bytes, six lines and 510 bytes more than the primary proof.  One warm build took 8.2 seconds for `Behavior` and 2.1 seconds for `ArtifactResult`, compared with 9.0 and 2.3 seconds for a reducible build in a copied workspace.  These single acceptance measurements are descriptive, while successful checking establishes that a compact generated accessor can make the previously rejected opacity boundary usable.
+
 ## Execution
 
 The empty input checks the multiplicative identity, the second sample checks the traversal loop, and the third checks the oversized branch.  Direct execution of the proved artifact produced these results.  Each result agrees with the formal specification.
@@ -88,3 +92,5 @@ The root files provide readable views of each generation and proof stage.  The [
 | [Manual traversal-adapter proof](experiments/manual-traversal-adapter.lean) | A checked substitution that shortens the primary proof's dependent traversal application. |
 | [Fresh traversal-adapter package](experiments/traversal-adapter.proof/) | The independently verified fixed-artifact reproof, journal, LTG snapshot, and telemetry. |
 | [Local-irreducibility screen](experiments/irreducibility-screen.md) | The two focused failure diagnostics and the required compact-accessor boundary. |
+| [Entry-dispatch package](experiments/entry-dispatch.proof/) | The independently verified named branch, dispatch, suffix, and function equalities. |
+| [Irreducible dispatch proof](experiments/irreducible-dispatch-proof.lean) | The checked primary proof with a local decoded-body opacity boundary. |

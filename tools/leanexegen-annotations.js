@@ -850,7 +850,7 @@ function instructionPositions(lines, start, end, level) {
   return positions;
 }
 
-function resolveInstructionList(body, listPath) {
+function resolveInstructionSelection(body, listPath) {
   const lines = body.split("\n");
   const allInstructions = lines.filter((line) => /^\s+\./.test(line));
   if (allInstructions.length === 0) fail("Talos function body has no instructions");
@@ -900,7 +900,31 @@ function resolveInstructionList(body, listPath) {
     }
     level += 2;
   }
+  return { lines, start, end, level };
+}
+
+function resolveInstructionList(body, listPath) {
+  const { lines, start, end, level } = resolveInstructionSelection(body, listPath);
   return instructionPositions(lines, start, end, level).map((index) => lines[index].trim());
+}
+
+function resolveInstructionIntervalSource(body, listPath, startIndex, endIndex) {
+  const selection = resolveInstructionSelection(body, listPath);
+  const positions = instructionPositions(
+    selection.lines, selection.start, selection.end, selection.level);
+  if (startIndex > endIndex || endIndex > positions.length) {
+    fail("instruction source interval exceeds the selected list");
+  }
+  if (startIndex === endIndex) return "";
+  const lineStart = positions[startIndex];
+  const lineEnd = endIndex === positions.length ? selection.end : positions[endIndex];
+  return selection.lines.slice(lineStart, lineEnd)
+    .map((line) => line.slice(selection.level)).join("\n");
+}
+
+function leanProgramLiteral(source) {
+  if (source === "") return "[]";
+  return `[\n${source.split("\n").map((line) => `  ${line}`).join("\n")}\n]`;
 }
 
 function matchDirectCallRegion(program, function_, region) {
@@ -1054,21 +1078,39 @@ function matchFixedArrayLengthDispatchRegion(program, function_, region) {
   }
   const dispatchIndex = region.location.startIndex + selected.length - 1;
   const capacityPrefixes = [];
+  const branchPrograms = [];
   for (const role of ["valid", "invalid"]) {
     const branch = parameters[`${role}Branch`];
     const listPath = [
       ...region.location.listPath,
       { instructionIndex: dispatchIndex, field: branch },
     ];
+    const branchInstructions = resolveInstructionList(body, listPath);
+    branchPrograms.push({
+      branch,
+      listPath,
+      role,
+      source: resolveInstructionIntervalSource(
+        body, listPath, 0, branchInstructions.length),
+    });
     const capacity = matchFixedArrayConstantCapacity(body, listPath);
     if (capacity !== null) capacityPrefixes.push({ ...capacity, branch, role });
   }
+  const topLevelInstructions = resolveInstructionList(body, []);
+  const functionPrefixEligible = region.location.listPath.length === 0 &&
+    region.location.startIndex === 0;
   return {
     functionIndex: function_.wasmIndex,
     regionId: region.id,
     regionKind: region.kind,
     parameters,
     capacityPrefixes,
+    branchPrograms,
+    functionPrefixEligible,
+    suffixSource: functionPrefixEligible
+      ? resolveInstructionIntervalSource(
+        body, [], region.location.endIndex, topLevelInstructions.length)
+      : null,
   };
 }
 
@@ -1912,6 +1954,18 @@ function fixedArrayLengthDispatchRecipe(
         declaration: "Project.ProofKit.FixedArrayEqNode.branchPost",
         purpose: "preserve the enclosing branch continuation",
       },
+      ...(match.functionPrefixEligible ? [
+        {
+          declaration: `${annotationNamespace}.${match.regionId.replace(
+            /[^A-Za-z0-9_]/g, "_")}_function_eq`,
+          purpose: "rewrite the decoded function to the named dispatch and suffix programs",
+        },
+        {
+          declaration: `${annotationNamespace}.${match.regionId.replace(
+            /[^A-Za-z0-9_]/g, "_")}_dispatch_eq`,
+          purpose: "check the named dispatch program against the exact decoded prefix",
+        },
+      ] : []),
       ...match.capacityPrefixes.flatMap((capacity) => {
         const name = match.regionId.replace(/[^A-Za-z0-9_]/g, "_");
         const prefix = `${name}_${capacity.role}_capacity`;
@@ -3754,6 +3808,36 @@ function annotationMatchesSource(document, job, program = null) {
         const match = program === null
           ? null : matchFixedArrayLengthDispatchRegion(program, function_, region);
         const name = region.id.replace(/[^A-Za-z0-9_]/g, "_");
+        if (match?.functionPrefixEligible) {
+          for (const branch of match.branchPrograms) {
+            declarations.push(`def ${name}_${branch.role}_branch_program : Wasm.Program :=
+  ${leanProgramLiteral(branch.source)}`);
+          }
+          const constructor = match.parameters.encoding === "le-unsigned-v1"
+            ? "leProgram" : match.parameters.encoding === "eq-normalized-v1"
+              ? "eqProgram" : "program";
+          const branchArguments = match.parameters.encoding === "le-unsigned-v1"
+            ? `${name}_valid_branch_program ${name}_invalid_branch_program`
+            : `${name}_invalid_branch_program ${name}_valid_branch_program`;
+          declarations.push(`def ${name}_dispatch_program : Wasm.Program :=
+  Project.ProofKit.FixedArrayLengthDispatch.${constructor}
+    ${match.parameters.inputLocal} ${match.parameters.expectedSize}
+    ${branchArguments}
+
+def ${name}_suffix_program : Wasm.Program :=
+  ${leanProgramLiteral(match.suffixSource)}
+
+theorem ${name}_dispatch_eq :
+    Project.ProofKit.Annotation.region ${job.namespace}.func${function_.wasmIndex}
+      ${leanAnnotationPath(region.location.listPath)} ${region.location.startIndex}
+      ${region.location.endIndex} = some ${name}_dispatch_program := by
+  rfl
+
+theorem ${name}_function_eq :
+    ${job.namespace}.func${function_.wasmIndex} =
+      ${name}_dispatch_program ++ ${name}_suffix_program := by
+  rfl`);
+        }
         for (const capacity of match?.capacityPrefixes ?? []) {
           const prefix = `${name}_${capacity.role}_capacity`;
           declarations.push(`def ${prefix}_program : Wasm.Program :=
@@ -3995,6 +4079,10 @@ ${document.functions.some((function_) => function_.regions.some((region) =>
 ${document.functions.some((function_) => function_.regions.some((region) =>
     region.kind === "leanexe.array.filter-lt.v1"))
     ? "import Project.ProofKit.FixedArrayFilterLt\n" : ""}
+${program !== null && document.functions.some((function_) => function_.regions.some((region) =>
+    region.kind === "leanexe.array.length-dispatch.v1" &&
+      matchFixedArrayLengthDispatchRegion(program, function_, region).functionPrefixEligible))
+    ? "import Project.ProofKit.FixedArrayLengthDispatch\n" : ""}
 ${program !== null && document.functions.some((function_) => function_.regions.some((region) =>
     region.kind === "leanexe.array.length-dispatch.v1" &&
       matchFixedArrayLengthDispatchRegion(program, function_, region)

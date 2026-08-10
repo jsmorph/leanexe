@@ -650,6 +650,18 @@ The journal records a monotonic Stage 5 duration of 3,070.994 seconds, 47.4 perc
 
 `FixedArrayTraversalInput.continuingProgram_exit_spec` now proves the equal-index guard edge through `Break 1`, while `FixedArrayResult.finishProgram_spec` proves the final root-to-destination-to-return transfer.  The array-fold recipe advertises the exit theorem and both frame-projection declarations beside the exact continuing-prefix equality, and the traversal LTG entry links directly to the frame entry.  The wrapping-add accumulator/index update remains local evidence until another compiler output or demo establishes a recurring shape or motivates a checked descriptor for fold-step code.
 
+### Entry-dispatch opacity package
+
+A local irreducibility screen showed that the ordinary length-dispatch tactic still depends on unfolding the complete decoded function body.  Marking `func0Def` irreducible hid required function-record projections, while marking only `func0` hid the reduction from the program name to `FixedArrayLengthDispatch.leProgram`.  Both variants failed at the first body-level `change` before reaching either branch.
+
+The length-dispatch consumer now emits named valid-branch, invalid-branch, dispatch, and suffix programs when the checked region begins at the function's first top-level instruction.  It also emits an exact region equality and a function equality from the decoded body to the named dispatch followed by the named suffix.  The branch definitions contain the exact decoded Lean instruction lists, so the equality checks artifact structure without relying on the source compiler or a theorem about source lowering.
+
+Demo 10's complete annotation package compiled these declarations and passed independent verification over the unchanged 1,979-byte artifact.  With `func0` locally irreducible, the primary proof changed the body-level goal to the named program, rewrote it through the generated equality, and then used its existing dispatch and branch proofs.  Lean accepted `ArtifactResult` after two explicit reductions of the empty named suffix.
+
+The modified proof contains 578 lines, 1,951 words, and 31,087 bytes, compared with 572 lines, 1,931 words, and 30,577 bytes for the primary proof.  Its warm `Behavior` and `ArtifactResult` targets took 8.2 and 2.1 seconds, while one corresponding reducible build took 9.0 and 2.3 seconds; these single cached builds do not establish a timing improvement.  The generated annotation module grew from 11,597 to 24,930 bytes because the package names concrete branch bodies, which records a distribution and checking cost that later package representations should reduce.
+
+The same generator compiled and passed independent package verification on Demo 7's normalized-equality dispatch and nonempty suffix.  That second artifact checks the alternate dispatch constructor, function-prefix composition, and suffix rendering without testing an irreducible proof.  A fresh fixed-artifact reproof is still required to determine whether a proving agent retrieves this interface and uses it without expanding the named branch bodies.
+
 ## Completion criteria
 
 The first complete increment emits a validated sidecar for every ordinary library-mode compilation requested by `leanexegen`.  Demos 1, 2, and 3 prove the same specifications over the same WASM bytes through an annotation-driven deterministic proof plan.  The retained evidence records proof-generation timings, annotation validation, region coverage, and independent Lean acceptance.
