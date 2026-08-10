@@ -1,4 +1,5 @@
 import Project.ProofKit.Array
+import Project.ProofKit.FixedArrayResult
 
 namespace Project.ProofKit.FixedArrayFold
 
@@ -266,5 +267,71 @@ theorem resultProgram_spec
   simp only [List.cons_append, List.nil_append, wp_simp, hValues,
     hAccumulator]
   simpa [Wasm.Locals.set?, hNotParam, hResultBound, resultFrame] using hNext
+
+def singletonResultProgram (accumulatorLocal resultLocal rootLocal
+    destinationLocal returnLocal : Nat) : Wasm.Program :=
+  resultProgram accumulatorLocal resultLocal ++
+    FixedArrayResult.payloadStoreProgram rootLocal resultLocal 0 ++
+    FixedArrayResult.finishProgram rootLocal destinationLocal returnLocal
+
+def singletonResultPost (returnLocal : Nat) (root value : UInt64) :
+    Assertion Unit :=
+  fun continuation => match continuation with
+  | .Fallthrough st frame =>
+      frame.get returnLocal = some (.i64 root) ∧
+        UInt64Array.At st root #[value]
+  | _ => False
+
+set_option maxHeartbeats 1000000 in
+set_option Elab.async false in
+theorem singletonResultProgram_spec
+    (accumulatorLocal resultLocal rootLocal destinationLocal returnLocal : Nat)
+    (module_ : Wasm.Module) (env : HostEnv Unit) (st : Store Unit)
+    (frame : Locals) (root value : UInt64)
+    (hValues : frame.values = [])
+    (hAccumulator : frame.get accumulatorLocal = some (.i64 value))
+    (hResultLocal : frame.params.length ≤ resultLocal)
+    (hResultValid : frame.validIndex resultLocal)
+    (hRoot : (resultFrame frame resultLocal value).get rootLocal =
+      some (.i64 root))
+    (hResult : (resultFrame frame resultLocal value).get resultLocal =
+      some (.i64 value))
+    (hPayloadBound :
+      (FixedArrayResult.payloadAddress root 0).toUInt32.toNat + 8 ≤
+        st.mem.pages * 65536)
+    (hDestinationLower :
+      (resultFrame frame resultLocal value).params.length ≤ destinationLocal)
+    (hDestinationValid :
+      (resultFrame frame resultLocal value).validIndex destinationLocal)
+    (hReturnLower :
+      (resultFrame frame resultLocal value).params.length ≤ returnLocal)
+    (hReturnValid :
+      (resultFrame frame resultLocal value).validIndex returnLocal)
+    (hOutput : UInt64Array.At
+      (FixedArrayResult.writePayload st root 0 value) root #[value]) :
+    wp module_
+      (singletonResultProgram accumulatorLocal resultLocal rootLocal
+        destinationLocal returnLocal)
+      (singletonResultPost returnLocal root value) st frame env := by
+  rw [singletonResultProgram, List.append_assoc]
+  apply resultProgram_spec
+  · exact hValues
+  · exact hAccumulator
+  · exact hResultLocal
+  · exact hResultValid
+  · apply FixedArrayResult.payloadStore_spec
+    · exact hRoot
+    · exact hResult
+    · exact hPayloadBound
+    · apply FixedArrayResult.finishProgram_spec
+      · rfl
+      · exact hRoot
+      · exact hDestinationLower
+      · exact hDestinationValid
+      · exact hReturnLower
+      · exact hReturnValid
+      · simp only [Wasm.wp_nil, singletonResultPost]
+        exact ⟨FixedArrayResult.finishFrame_return_get _ _ _ _
+          hReturnLower hReturnValid, hOutput⟩
 
 end Project.ProofKit.FixedArrayFold

@@ -48,6 +48,22 @@ def finishFrame (frame : Locals) (destinationLocal returnLocal : Nat)
       (returnLocal - frame.params.length) (.i64 root)
     values := [] }
 
+theorem finishFrame_return_get (frame : Locals)
+    (destinationLocal returnLocal : Nat) (root : UInt64)
+    (hReturnLower : frame.params.length ≤ returnLocal)
+    (hReturnValid : frame.validIndex returnLocal) :
+    (finishFrame frame destinationLocal returnLocal root).get returnLocal =
+      some (.i64 root) := by
+  have hReturnNotParam : ¬returnLocal < frame.params.length :=
+    Nat.not_lt.mpr hReturnLower
+  have hReturnBound :
+      returnLocal < frame.params.length + frame.locals.length := hReturnValid
+  have hReturnIndex :
+      returnLocal - frame.params.length < frame.locals.length := by
+    omega
+  simp [finishFrame, Wasm.Locals.get, hReturnNotParam, hReturnBound,
+    hReturnIndex]
+
 def writeLength (st : Store Unit) (root length : UInt64) : Store Unit :=
   { st with mem := st.mem.write64 root.toUInt32 length }
 

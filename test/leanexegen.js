@@ -1651,7 +1651,23 @@ def func0Def : Wasm.Function :=
       ]
     ],
     .localGet 1,
-    .localSet 2
+    .localSet 2,
+    .localGet 4,
+    .constI64 (0 : UInt64),
+    .constI64 (1 : UInt64),
+    .mulI64,
+    .constI64 (1 : UInt64),
+    .addI64,
+    .constI64 (8 : UInt64),
+    .mulI64,
+    .addI64,
+    .wrapI64,
+    .localGet 2,
+    .store64 (0 : UInt32),
+    .localGet 4,
+    .localSet 5,
+    .localGet 5,
+    .localSet 6
   ] [
   ],
   .localGet 2
@@ -1782,6 +1798,10 @@ def func0Def : Wasm.Function :=
     arrayFoldPlan.recipes[0].supporting.some((entry) => entry.declaration ===
       "Project.ProofKit.FixedArrayFold.resultProgram_spec") &&
     arrayFoldPlan.recipes[0].supporting.some((entry) => entry.declaration ===
+      "Project.AnnotationMatches.function_0_array_fold_0_singleton_result_eq") &&
+    arrayFoldPlan.recipes[0].supporting.some((entry) => entry.declaration ===
+      "Project.ProofKit.FixedArrayFold.singletonResultProgram_spec") &&
+    arrayFoldPlan.recipes[0].supporting.some((entry) => entry.declaration ===
       "Project.AnnotationMatches.function_0_array_fold_0_step_eq") &&
     arrayFoldPlan.recipes[0].supporting.some((entry) => entry.declaration ===
       "Project.ProofKit.ScalarTransition.guardedBackEdgeProgram_spec") &&
@@ -1805,6 +1825,8 @@ def func0Def : Wasm.Function :=
     arrayFoldMatches.source.includes(
       "theorem function_0_array_fold_0_result_eq") &&
     arrayFoldMatches.source.includes(
+      "theorem function_0_array_fold_0_singleton_result_eq") &&
+    arrayFoldMatches.source.includes(
       "theorem function_0_array_fold_0_step_eq") &&
     arrayFoldMatches.source.includes(
       "def function_0_array_fold_0_step_program") &&
@@ -1826,6 +1848,8 @@ def func0Def : Wasm.Function :=
       "Project.ProofKit.FixedArrayFold.forwardSetupProgram\n    4 5\n    6 9\n    7 1\n    11 8\n    0") &&
     arrayFoldMatches.source.includes(
       "Project.ProofKit.FixedArrayFold.resultProgram\n    1 2") &&
+    arrayFoldMatches.source.includes(
+      "Project.ProofKit.FixedArrayFold.singletonResultProgram\n    1 2\n    4 5\n    6") &&
     arrayFoldMatches.source.includes(
       "Project.ProofKit.FixedArrayTraversalInput.continuingProgram\n    4 6\n    8 3") &&
     arrayFoldMatches.source.includes("Project.ProofKit.Annotation.region") &&
