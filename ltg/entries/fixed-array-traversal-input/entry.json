@@ -13,7 +13,7 @@
   "declarations": ["Project.ProofKit.FixedArrayTraversalInput.continuingProgram_exit_spec", "Project.ProofKit.FixedArrayTraversalInput.continuingProgram_spec", "Project.ProofKit.FixedArrayTraversalInput.dynamicProgram_spec", "Project.ProofKit.FixedArrayTraversalInput.program_spec", "Project.ProofKit.Frame.internal_getElem?_of_get", "Project.ProofKit.Frame.internal_getElem_of_get"],
   "premises": ["A represented UInt64 input array for a continuing edge", "Frame getters for the input pointer and encoded traversal index", "An in-bounds logical index and a valid item destination local for a continuing edge", "An effective stop greater than the current index for a continuing edge, or equal index and stop values for an exit edge"],
   "result": "The exact emitted guard reaches Break 1 on the exit edge or loads the selected element and reaches an arbitrary continuation on the continuing edge.",
-  "consumers": ["demo-2", "demo-3", "demo-9"],
+  "consumers": ["demo-10", "demo-2", "demo-3", "demo-9"],
   "relatedEntries": ["array-fold-prefix", "array-memory-framing", "fixed-array-filter-lt", "fixed-array-fold-structure", "fixed-array-map-add", "fixed-array-result", "local-frame-projection"],
   "exclusion": null
 }

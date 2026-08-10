@@ -6950,3 +6950,11 @@ The annotation generator now emits a compact `step_continuing_eval` theorem for 
 ## 2026-08-10: Opacity research record
 
 The artifact-proof opacity notebook now assigns stable identifiers to the compact-theorem, specification-package, module-split, cross-operation, inferred-proposition, irreducibility, and named-endpoint investigations.  Each experiment will retain its artifact identity, generated evidence, proof journal, diagnostics, timing, proof structure, and independent verification result, including failed or adverse measurements.  This record will provide the evidence and chronology for a later marXiv research note.
+
+## 2026-08-10: Demo 10 multiplication fold
+
+Demo 10 generated a bounded wrapping-product specification, source program, 1,979-byte WASM artifact, annotations, and direct artifact proof from prose.  The artifact has SHA-256 digest `a981c7882a51a0660e6dd1e17956b958f7b2e25cbc30618d12458601ef2d4baa`, and a separate silent `leanexegen verify -s` run accepted its retained package.  Stage 5 took 1,596.295 seconds, including 1,539.659 seconds in Codex and 43.451 seconds in outer acceptance, while the proof contains 572 lines, 1,931 words, and 30,577 bytes.
+
+The proving agent found the same guarded-back-edge support used for Demo 9 and applied compiler-generated evaluator equations for multiplication, the done condition, and the index increment.  It also retrieved the allocator input-preservation theorem added after the Demo 9 journal exposed that omission.  These two consumers support promotion of `guarded-back-edge` from provisional to promoted compiler-motif evidence.
+
+The journal records repeated dependent-premise shifts until every semantic argument to `FixedArrayTraversalInput.continuingProgram_spec` was supplied by name.  It also records a broad simplification step-limit failure around the fold-prefix successor and measure, which explicit rewrites and a compact `change` resolved.  The next interface iteration should generate a traversal adapter or tactic that enforces named premises and leaves only the dependent continuation goal.

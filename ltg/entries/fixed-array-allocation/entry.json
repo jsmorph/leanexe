@@ -13,7 +13,7 @@
   "declarations": ["Project.ProofKit.Allocation.bumpFacts", "Project.ProofKit.FixedArrayAllocator.region_spec", "Project.ProofKit.FixedArrayAllocatorWindow.region_spec", "Project.ProofKit.FixedArrayAllocatorWindow.region_spec_withTail", "Project.ProofKit.FixedArrayPairResult.input_preserved_by_alloc"],
   "premises": ["Exact allocator-region equality", "Existing-memory fit", "Page bound", "Allocator globals", "Capacity-local value", "For input preservation, a represented input below the allocation base"],
   "result": "A continuation from the checked allocation store and local frame, with heap and allocation globals updated, or preservation of an input array below the allocation base.",
-  "consumers": ["demo-1", "demo-2", "demo-3", "demo-4", "demo-5", "demo-9"],
+  "consumers": ["demo-1", "demo-10", "demo-2", "demo-3", "demo-4", "demo-5", "demo-9"],
   "relatedEntries": ["array-memory-framing", "fixed-array-capacity", "fixed-array-filter-lt", "fixed-array-map-add", "fixed-array-result", "fixed-array-singleton-wrapper"],
   "exclusion": null
 }

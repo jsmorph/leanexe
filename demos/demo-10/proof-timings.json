@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "demo": "demo-10",
+  "artifact": {
+    "sha256": "a981c7882a51a0660e6dd1e17956b958f7b2e25cbc30618d12458601ef2d4baa",
+    "byteLength": 1979
+  },
+  "measurement": {
+    "stage5Milliseconds": 1596294.799,
+    "codexSessionMilliseconds": 1539658.86,
+    "outerAcceptanceMilliseconds": 43451.221,
+    "proofLines": 572,
+    "proofWords": 1931,
+    "proofBytes": 30577
+  },
+  "descriptiveComparison": {
+    "name": "demo-9-guarded-back-edge",
+    "stage5Milliseconds": 1972223.412,
+    "proofLines": 589,
+    "proofWords": 2208,
+    "proofBytes": 31148,
+    "stage5DeltaMilliseconds": -375928.613,
+    "stage5Percent": -19.061,
+    "proofLineDelta": -17,
+    "proofWordDelta": -277,
+    "proofByteDelta": -571,
+    "controlledPair": false
+  }
+}
