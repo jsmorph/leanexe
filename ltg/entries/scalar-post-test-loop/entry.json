@@ -14,6 +14,6 @@
   "premises": ["Exact descriptor-region equality", "Initial compact state", "Body transition", "Condition transition", "Invariant and decreasing measure or a specialized semantic view"],
   "result": "A weakest-precondition result for the complete body-first scalar loop and its following program.",
   "consumers": ["demo-1", "demo-6", "demo-7", "demo-8"],
-  "relatedEntries": ["counter-transition", "fixed-array-singleton-wrapper"],
+  "relatedEntries": ["counter-transition", "fixed-array-singleton-wrapper", "local-frame-projection"],
   "exclusion": null
 }

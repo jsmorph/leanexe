@@ -1051,6 +1051,55 @@ function testLengthDispatchAnnotationRecipes() {
     /encoding is unsupported/);
 }
 
+function testConstantCapacityAnnotationRecipes() {
+  const demoRoot = path.join(repoRoot, "demos", "demo-9");
+  const wasm = fs.readFileSync(path.join(demoRoot, "program.wasm"));
+  const document = JSON.parse(fs.readFileSync(
+    path.join(demoRoot, "program.annotations.json"), "utf8"));
+  const program = fs.readFileSync(path.join(demoRoot, "program.proof", "proof",
+    "LeanExeGen", "GeneratedR23fa7efc3fb0298b", "Program.lean"), "utf8");
+  validateAnnotationDocument(document, wasm);
+  const namespace = "Example.Generated.AnnotationMatches";
+  const plan = proofRecipePlan(document, program,
+    ["strategy.arrays", "strategy.allocation", "strategy.frames"], namespace);
+  validateProofRecipePlan(plan, document);
+  const dispatch = plan.recipes.find((recipe) =>
+    recipe.regionKind === "leanexe.array.length-dispatch.v1");
+  assert(dispatch.supporting.some((entry) => entry.declaration ===
+      `${namespace}.function_0_length_dispatch_0_valid_capacity_eq`) &&
+    dispatch.supporting.some((entry) => entry.declaration ===
+      `${namespace}.function_0_length_dispatch_0_invalid_capacity_eq`) &&
+    dispatch.supporting.some((entry) => entry.declaration ===
+      "Project.ProofKit.FixedArrayCapacity.constantProgram_spec") &&
+    JSON.stringify(dispatch.guidance) === JSON.stringify([
+      "strategy.arrays", "strategy.allocation", "strategy.frames",
+    ]),
+  "constant capacity prefixes did not enrich the length-dispatch recipe");
+  const source = annotationMatchesSource(document, {
+    namespace: "Example.Generated",
+    programModule: "Example.Generated.Program",
+  }, program).source;
+  assert(source.includes("import Project.ProofKit.FixedArrayCapacity") &&
+    source.includes("def function_0_length_dispatch_0_valid_capacity_program") &&
+    source.includes("theorem function_0_length_dispatch_0_valid_capacity_eq") &&
+    source.includes("Project.ProofKit.FixedArrayCapacity.constantProgram\n    1 1 11") &&
+    source.includes("def function_0_length_dispatch_0_invalid_capacity_program") &&
+    source.includes("theorem function_0_length_dispatch_0_invalid_capacity_eq") &&
+    source.includes("Project.ProofKit.FixedArrayCapacity.constantProgram\n    0 1 11"),
+  "constant capacity prefixes did not produce checked region equalities");
+  const changed = program.replace(".constI64 (7 : UInt64),",
+    ".constI64 (6 : UInt64),");
+  const changedPlan = proofRecipePlan(document, changed,
+    ["strategy.arrays", "strategy.allocation", "strategy.frames"], namespace);
+  const changedDispatch = changedPlan.recipes.find((recipe) =>
+    recipe.regionKind === "leanexe.array.length-dispatch.v1");
+  assert(!changedDispatch.supporting.some((entry) => entry.declaration ===
+      `${namespace}.function_0_length_dispatch_0_valid_capacity_eq`) &&
+    changedDispatch.supporting.some((entry) => entry.declaration ===
+      `${namespace}.function_0_length_dispatch_0_invalid_capacity_eq`),
+  "constant capacity support did not reject the changed branch alone");
+}
+
 function testMapAddAnnotationRecipe() {
   const wasm = fs.readFileSync(path.join(repoRoot, "demos/demo-4/program.wasm"));
   const program = `def func0 : Wasm.Program :=
@@ -2694,6 +2743,7 @@ try {
   testFixedArrayEqNodeFeatures();
   testAnnotationRecipePlan();
   testLengthDispatchAnnotationRecipes();
+  testConstantCapacityAnnotationRecipes();
   testMapAddAnnotationRecipe();
   testFilterLtAnnotationRecipe();
   testLoopAnnotationRecipes();

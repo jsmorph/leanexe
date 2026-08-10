@@ -14,6 +14,6 @@
   "premises": ["A public TerminatesWith goal or body-level wp goal", "An exact length-dispatch recipe", "A represented input array", "The generated function definition and local-frame bounds"],
   "result": "Separate valid and invalid branch weakest-precondition obligations after the checked input-length load and comparison.",
   "consumers": ["demo-1", "demo-2", "demo-3", "demo-4", "demo-5", "demo-9"],
-  "relatedEntries": ["array-fold-prefix", "fixed-array-filter-lt", "fixed-array-map-add"],
+  "relatedEntries": ["array-fold-prefix", "fixed-array-capacity", "fixed-array-filter-lt", "fixed-array-map-add"],
   "exclusion": null
 }
