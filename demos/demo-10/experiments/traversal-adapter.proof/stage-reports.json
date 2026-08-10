@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 1,
+  "codexVersion": "codex-cli 0.147.0",
+  "maximumAttempts": 1,
+  "tasks": {
+    "formalSpecification": {
+      "task": "formal-specification",
+      "sourceModule": "LeanExeGen.GeneratedRa8e90ffc5781d113.FormalSpec",
+      "sourceSha256": "1d5fd69efa4b0098f8d874a6752e09d9dad06baab3f01165471e1566e9f5ef58",
+      "reportSha256": "1db000f6957af50a86daac0c210fb2a4e27d153810a964e5ce5aa1427a38af3c",
+      "report": {
+        "summary": "Defined the bounded wrapping-product fold and conservative branch-specific heap reserves. The required Lean build succeeds.",
+        "decisions": [
+          "Use `Array.foldl` with product accumulator `1`.",
+          "Reserve 64 bytes for the singleton result and 56 bytes for the empty result."
+        ],
+        "attempts": [
+          {
+            "number": 1,
+            "outcome": "accepted",
+            "sourceSha256": "1d5fd69efa4b0098f8d874a6752e09d9dad06baab3f01165471e1566e9f5ef58",
+            "diagnosticSha256": "9f29632ecf13bdc9eae88c8d68b42255df8ddc1ef38af6eb86fd9f144d01e613",
+            "diagnostic": "Lean accepted LeanExeGen.GeneratedRa8e90ffc5781d113.FormalSpec.expected : Array UInt64 → Array UInt64 and LeanExeGen.GeneratedRa8e90ffc5781d113.FormalSpec.heapReserveBytes : Array UInt64 → Nat and LeanExeGen.GeneratedRa8e90ffc5781d113.FormalSpec.ArtifactSpec : Wasm.Module → Prop."
+          }
+        ]
+      }
+    },
+    "leanProgram": {
+      "task": "lean-program",
+      "sourceModule": "LeanExeGen.GeneratedRa8e90ffc5781d113.Source",
+      "sourceSha256": "e3d03a8cfda23ae653dbce69a44c9a19065577076c45107f2418b257334c58c4",
+      "reportSha256": "dba701612ac2124a0b38f9a91b427d2ea9c92aefe03eb6dbfff63cc0111c5bee",
+      "report": {
+        "summary": "Implemented and compiled the guarded wrapping UInt64 product using Array.foldl. All required final commands succeeded.",
+        "decisions": [
+          "Used a fold initialized to one with a loop-carried UInt64 product accumulator.",
+          "Returned an empty array when the input size exceeds eight."
+        ],
+        "attempts": [
+          {
+            "number": 1,
+            "outcome": "accepted",
+            "sourceSha256": "e3d03a8cfda23ae653dbce69a44c9a19065577076c45107f2418b257334c58c4",
+            "diagnosticSha256": "9981c56842cea215d6a63492a2a068030d252e4b2e35f06520d0c47f3c05ab72",
+            "diagnostic": "Lean and LeanExe accepted and compiled LeanExeGen.GeneratedRa8e90ffc5781d113.Source.compute : Array UInt64 → Array UInt64."
+          }
+        ]
+      }
+    },
+    "artifactProof": {
+      "task": "artifact-proof",
+      "sourceModule": "LeanExeGen.GeneratedRa8e90ffc5781d113.Behavior",
+      "sourceSha256": "d27f1fb85db074cfcbc8eec8b30c6857e679ea918883b780c7298cab579caf7f",
+      "reportSha256": "08827e3358e3ec57c3e41ac0f9babc411dd425644029800a30b8d66708b4cd75",
+      "report": {
+        "summary": "Proved the exact compiled artifact behavior. The prescribed import check and ArtifactResult build both succeed.",
+        "decisions": [],
+        "attempts": [
+          {
+            "number": 1,
+            "outcome": "accepted",
+            "sourceSha256": "d27f1fb85db074cfcbc8eec8b30c6857e679ea918883b780c7298cab579caf7f",
+            "diagnosticSha256": "86ae9ee9eaf5a6bac62b9578e7998df3b9d7e3d3c757d91d24b50e509a49da04",
+            "diagnostic": "Lean accepted LeanExeGen.GeneratedRa8e90ffc5781d113.Behavior.artifact_behavior and LeanExeGen.GeneratedRa8e90ffc5781d113.Artifact.artifact_correct."
+          }
+        ]
+      }
+    }
+  }
+}
