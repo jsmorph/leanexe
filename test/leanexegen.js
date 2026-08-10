@@ -355,6 +355,7 @@ function testCodexProtocol() {
     artifactPrompt.includes("PROOF_KIT_SOURCE mirrors every allowed") &&
     artifactPrompt.includes("never run rg or find outside the working directory") &&
     artifactPrompt.includes("Keep PROOF_JOURNAL.md as frequent, natural Markdown prose") &&
+    artifactPrompt.includes("Append one final journal entry recording acceptance") &&
     artifactPrompt.includes("after each Lean check") &&
     artifactPrompt.includes("Before an extended proof construction or elaboration attempt") &&
     artifactPrompt.includes("missing general annotation, lemma, tactic, guidance") &&

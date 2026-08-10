@@ -710,8 +710,9 @@ function proofPrompt(request, job, entryIndex) {
     `After each edit, run these exact commands in order:\n\n${importCheck}\n${check}\n\n` +
     `Do not invoke Lean or Lake by another route, and do not run checks concurrently.  Inspect ` +
     `diagnostics, revise ${candidate}, and continue until both commands succeed.  After the final ` +
-    `edit, run both commands once more as your last actions before returning JSON, and do not edit ` +
-    `the candidate after success.  Return only the JSON object required by the output schema, set ` +
+    `edit, run both commands once more, and do not edit the candidate after success.  Append one ` +
+    `final journal entry recording acceptance, the shared declarations used, and that no residual ` +
+    `goal remains.  Return only the JSON object required by the output schema, set ` +
     `task to \"artifact-proof\" and outcome to \"generated\", and leave source empty because ` +
     `the orchestrator reads ${candidate}.`;
 }
