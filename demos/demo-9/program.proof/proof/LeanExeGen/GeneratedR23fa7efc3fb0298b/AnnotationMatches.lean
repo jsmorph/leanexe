@@ -4,6 +4,8 @@ import Project.ProofKit.FixedArrayPairResult
 
 
 
+import Project.ProofKit.FixedArrayCapacity
+
 import Project.ProofKit.FixedArrayTraversalInput
 
 import Project.ProofKit.FixedArrayFold
@@ -56,6 +58,26 @@ theorem function_0_array_fold_0_result_eq :
     Project.ProofKit.Annotation.region LeanExeGen.GeneratedR23fa7efc3fb0298b.func0
       [{ instructionIndex := 7, field := .thenBranch }] 63
       65 = some function_0_array_fold_0_result_program := by
+  rfl
+
+def function_0_length_dispatch_0_valid_capacity_program : Wasm.Program :=
+  Project.ProofKit.FixedArrayCapacity.constantProgram
+    1 1 11
+
+theorem function_0_length_dispatch_0_valid_capacity_eq :
+    Project.ProofKit.Annotation.region LeanExeGen.GeneratedR23fa7efc3fb0298b.func0
+      [{ instructionIndex := 7, field := .thenBranch }] 0
+      18 = some function_0_length_dispatch_0_valid_capacity_program := by
+  rfl
+
+def function_0_length_dispatch_0_invalid_capacity_program : Wasm.Program :=
+  Project.ProofKit.FixedArrayCapacity.constantProgram
+    0 1 11
+
+theorem function_0_length_dispatch_0_invalid_capacity_eq :
+    Project.ProofKit.Annotation.region LeanExeGen.GeneratedR23fa7efc3fb0298b.func0
+      [{ instructionIndex := 7, field := .elseBranch }] 0
+      18 = some function_0_length_dispatch_0_invalid_capacity_program := by
   rfl
 
 end LeanExeGen.GeneratedR23fa7efc3fb0298b.AnnotationMatches

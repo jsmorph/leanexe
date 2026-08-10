@@ -32,11 +32,52 @@
         {
           "declaration": "Project.ProofKit.FixedArrayEqNode.branchPost",
           "purpose": "preserve the enclosing branch continuation"
+        },
+        {
+          "declaration": "LeanExeGen.GeneratedR23fa7efc3fb0298b.AnnotationMatches.function_0_length_dispatch_0_valid_capacity_eq",
+          "purpose": "rewrite the exact valid-branch capacity prefix"
+        },
+        {
+          "declaration": "LeanExeGen.GeneratedR23fa7efc3fb0298b.AnnotationMatches.function_0_length_dispatch_0_valid_capacity_program",
+          "purpose": "name the compiler-matched valid-branch capacity prefix"
+        },
+        {
+          "declaration": "Project.ProofKit.FixedArrayCapacity.constantProgram_spec",
+          "purpose": "execute constant result-capacity normalization into its destination local"
+        },
+        {
+          "declaration": "Project.ProofKit.FixedArrayCapacity.normalizedCapacity",
+          "purpose": "name the computed aligned capacity passed to allocation"
+        },
+        {
+          "declaration": "Project.ProofKit.FixedArrayCapacity.capacityFrame",
+          "purpose": "state the exact post-capacity local frame"
+        },
+        {
+          "declaration": "LeanExeGen.GeneratedR23fa7efc3fb0298b.AnnotationMatches.function_0_length_dispatch_0_invalid_capacity_eq",
+          "purpose": "rewrite the exact invalid-branch capacity prefix"
+        },
+        {
+          "declaration": "LeanExeGen.GeneratedR23fa7efc3fb0298b.AnnotationMatches.function_0_length_dispatch_0_invalid_capacity_program",
+          "purpose": "name the compiler-matched invalid-branch capacity prefix"
+        },
+        {
+          "declaration": "Project.ProofKit.FixedArrayCapacity.constantProgram_spec",
+          "purpose": "execute constant result-capacity normalization into its destination local"
+        },
+        {
+          "declaration": "Project.ProofKit.FixedArrayCapacity.normalizedCapacity",
+          "purpose": "name the computed aligned capacity passed to allocation"
+        },
+        {
+          "declaration": "Project.ProofKit.FixedArrayCapacity.capacityFrame",
+          "purpose": "state the exact post-capacity local frame"
         }
       ],
       "expectedPostcondition": "valid and invalid input-size branch obligations",
       "guidance": [
         "strategy.arrays",
+        "strategy.allocation",
         "strategy.frames"
       ]
     },
@@ -118,8 +159,20 @@
           "purpose": "execute the continuing guard and indexed element load from the annotated local roles"
         },
         {
+          "declaration": "Project.ProofKit.FixedArrayTraversalInput.continuingProgram_exit_spec",
+          "purpose": "execute the same checked guard through Break 1 when the index equals the effective stop"
+        },
+        {
           "declaration": "Project.ProofKit.FixedArrayTraversalInput.dynamicProgram_spec",
           "purpose": "execute an indexed element load after a separate loop-guard reduction"
+        },
+        {
+          "declaration": "Project.ProofKit.Frame.internal_getElem?_of_get",
+          "purpose": "project an invariant getter to the internal local list used by a dependent continuation"
+        },
+        {
+          "declaration": "Project.ProofKit.Frame.internal_getElem_of_get",
+          "purpose": "project an invariant getter to a bounded internal local value"
         },
         {
           "declaration": "Project.ProofKit.wp_block_loop",
