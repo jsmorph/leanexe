@@ -40,6 +40,14 @@ Demo 10 completed Stage 5 375.929 seconds, or 19.1 percent, faster than the Demo
 
 The [stage reports](stage-reports.json) record the accepted formal specification, generated source, and artifact-proof source identities.  Both specification and source passed on their first candidates.  The artifact proof passed after fourteen recorded import-check iterations and one final definitional result-store normalization.
 
+## Traversal-adapter experiment
+
+The annotation generator later added a complete theorem for the checked continuing traversal prefix.  A manual substitution in the retained proof replaced the direct dependent application of `FixedArrayTraversalInput.continuingProgram_spec` with the generated theorem.  The [manual adapter proof](experiments/manual-traversal-adapter.lean) passed the complete `ArtifactResult` build and decreased the source from 572 to 565 lines, from 1,931 to 1,896 words, and from 30,577 to 30,173 bytes.
+
+A fresh fixed-artifact reproof found and applied the same generated theorem through structured LTG and the annotation recipe.  The independently verified [adapter experiment package](experiments/traversal-adapter.proof/) preserves its proof, journal, generated declarations, telemetry, and fixed WASM artifact.  The artifact digest and all program inputs remain unchanged.
+
+The fresh run took 1,906.536 seconds in Stage 5, which is 310.241 seconds, or 19.4 percent, slower than the primary run.  Its proof grew to 669 lines, 2,435 words, and 35,871 bytes because the agent rebuilt much of its invariant around the generated 21-value frame, referring to that frame seventeen times.  The manual result shows a compact use of the theorem, while the fresh result directs LTG guidance to preserve the caller's semantic frame and let generated local values infer at the single traversal boundary.
+
 ## Execution
 
 The empty input checks the multiplicative identity, the second sample checks the traversal loop, and the third checks the oversized branch.  Direct execution of the proved artifact produced these results.  Each result agrees with the formal specification.
@@ -75,3 +83,5 @@ The root files provide readable views of each generation and proof stage.  The [
 | [Timing comparison](proof-timings.json) | The Demo 10 measurement and descriptive Demo 9 comparison. |
 | [Stage reports](stage-reports.json) | The accepted specification, source, and artifact-proof reports. |
 | [Verification package](program.proof/) | The self-contained package accepted by `leanexegen verify -s`. |
+| [Manual traversal-adapter proof](experiments/manual-traversal-adapter.lean) | A checked substitution that shortens the primary proof's dependent traversal application. |
+| [Fresh traversal-adapter package](experiments/traversal-adapter.proof/) | The independently verified fixed-artifact reproof, journal, LTG snapshot, and telemetry. |

@@ -13,6 +13,21 @@
     "proofWords": 1931,
     "proofBytes": 30577
   },
+  "fixedArtifactTraversalAdapter": {
+    "stage5Milliseconds": 1906536.27,
+    "codexSessionMilliseconds": 1852448.496,
+    "outerAcceptanceMilliseconds": 43049.121,
+    "proofLines": 669,
+    "proofWords": 2435,
+    "proofBytes": 35871,
+    "stage5DeltaMilliseconds": 310241.471,
+    "stage5Percent": 19.435,
+    "proofLineDelta": 97,
+    "proofWordDelta": 504,
+    "proofByteDelta": 5294,
+    "controlledPair": true,
+    "independentlyVerified": true
+  },
   "descriptiveComparison": {
     "name": "demo-9-guarded-back-edge",
     "stage5Milliseconds": 1972223.412,
