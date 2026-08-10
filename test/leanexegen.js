@@ -354,6 +354,7 @@ function testCodexProtocol() {
     artifactPrompt.includes("omits worked examples excluded for this exact artifact") &&
     artifactPrompt.includes("Keep PROOF_JOURNAL.md as frequent, natural Markdown prose") &&
     artifactPrompt.includes("after each Lean check") &&
+    artifactPrompt.includes("Before an extended proof construction or elaboration attempt") &&
     artifactPrompt.includes("missing general annotation, lemma, tactic, guidance") &&
     artifactPrompt.includes("node PROOF_IMPORT_CHECK.js") &&
     artifactPrompt.includes("deterministic theorem starter") &&
