@@ -1024,6 +1024,11 @@ function testLengthDispatchAnnotationRecipes() {
       JSON.stringify(plan.recipes[0].guidance) ===
         JSON.stringify(["strategy.arrays", "strategy.frames"]),
     `${encoding} did not select its exact length-dispatch recipe`);
+    const legacyPlan = structuredClone(plan);
+    legacyPlan.recipes[0].direct.tactic = expectedTactic.replace("_from", "");
+    legacyPlan.recipes[0].direct.invocation =
+      legacyPlan.recipes[0].direct.invocation.replace("_from hArray at ", " ");
+    validateProofRecipePlan(legacyPlan, document);
 
     const wrongSize = structuredClone(document);
     wrongSize.functions[0].regions[0].parameters.expectedSize = 15;
@@ -1521,7 +1526,11 @@ def func0Def : Wasm.Function :=
     .localSet 5,
     .constI64 (0 : UInt64),
     .localSet 6,
-    .constI64 (10 : UInt64),
+    .localGet 0,
+    .localSet 9,
+    .localGet 9,
+    .wrapI64,
+    .load64 (0 : UInt32),
     .localSet 7,
     .constI64 (0 : UInt64),
     .localSet 1,
@@ -1603,7 +1612,7 @@ def func0Def : Wasm.Function :=
         location: {
           listPath: [{ instructionIndex: 0, field: "then" }],
           startIndex: 0,
-          endIndex: 22,
+          endIndex: 26,
         },
         parameters: {
           sourceWidth: 1,
@@ -1611,7 +1620,7 @@ def func0Def : Wasm.Function :=
           reverse: false,
           array: "Expr.local 0",
           start: "Expr.u64 0",
-          stop: "Expr.u64 10",
+          stop: "Expr.arraySize (Expr.local 0)",
           accumulatorStart: 1,
           accumulatorLocals: [1],
           itemStart: 3,
@@ -1653,6 +1662,10 @@ def func0Def : Wasm.Function :=
       "Project.AnnotationMatches.function_0_array_fold_0_continuing_eq") &&
     arrayFoldPlan.recipes[0].supporting.some((entry) => entry.declaration ===
       "Project.ProofKit.FixedArrayTraversalInput.continuingProgram_spec") &&
+    arrayFoldPlan.recipes[0].supporting.some((entry) => entry.declaration ===
+      "Project.ProofKit.FixedArrayFold.forwardSetupProgram_spec") &&
+    arrayFoldPlan.recipes[0].supporting.some((entry) => entry.declaration ===
+      "Project.ProofKit.FixedArrayFold.resultProgram_spec") &&
     JSON.stringify(arrayFoldPlan.recipes[0].guidance) ===
       JSON.stringify(["strategy.arrays", "strategy.loops"]),
   "array-fold annotation did not select prefix-fold support and array-loop guidance");
@@ -1667,12 +1680,20 @@ def func0Def : Wasm.Function :=
     arrayFoldMatches.source.includes(
       "theorem function_0_array_fold_0_continuing_eq") &&
     arrayFoldMatches.source.includes(
+      "theorem function_0_array_fold_0_setup_eq") &&
+    arrayFoldMatches.source.includes(
+      "theorem function_0_array_fold_0_result_eq") &&
+    arrayFoldMatches.source.includes(
+      "Project.ProofKit.FixedArrayFold.forwardSetupProgram\n    4 5\n    6 9\n    7 1\n    11 8\n    0") &&
+    arrayFoldMatches.source.includes(
+      "Project.ProofKit.FixedArrayFold.resultProgram\n    1 2") &&
+    arrayFoldMatches.source.includes(
       "Project.ProofKit.FixedArrayTraversalInput.continuingProgram\n    4 6\n    8 3") &&
     arrayFoldMatches.source.includes("Project.ProofKit.Annotation.region") &&
     arrayFoldMatches.source.includes("{ instructionIndex := 0, field := .thenBranch }") &&
     arrayFoldMatches.source.includes(
       "{ instructionIndex := 0, field := .thenBranch }, " +
-      "{ instructionIndex := 19, field := .block }, " +
+      "{ instructionIndex := 23, field := .block }, " +
       "{ instructionIndex := 0, field := .loop }") &&
     arrayFoldMatches.source.includes("] 0 16 ="),
   "array-fold annotation did not produce its checked region program and equality");

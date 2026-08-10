@@ -472,6 +472,12 @@ The journal identifies three remaining general boundaries.  The advertised lengt
 
 The search violation also exposed an isolation defect in the proof task.  Artifact-proof workspaces now mirror every allowed `Project.ProofKit` source under `PROOF_KIT_SOURCE/`, and the prompt restricts proof-kit searches to that bounded tree.  The mirror lets an agent inspect selected declarations without searching dependency checkouts that contain demos, benchmarks, and archived proofs.
 
+The fold matcher now checks two additional subregions against generic programs.  A forward, one-word, one-accumulator fold over the complete input array receives `<region>_setup_eq`, which identifies the 23-instruction setup as `FixedArrayFold.forwardSetupProgram`; a single selected result slot receives `<region>_result_eq`, which identifies its two-instruction accumulator transfer as `FixedArrayFold.resultProgram`.  Both equalities reduce against the decoded Demo 9 artifact in the generated `AnnotationMatches` module.
+
+`forwardSetupProgram_spec` executes both represented-length loads, all loop-local initialization, and the effective-stop selection before passing `forwardSetupFrame` to an arbitrary continuation.  `resultProgram_spec` copies the completed accumulator to its selected result local and passes `resultFrame` to an arbitrary continuation.  These theorems depend on the matched compiler shape and array representation while leaving the fold step, invariant, measure, and public output specification to separate proofs.
+
+An annotation-only rebuild accepted the unchanged 1,979-byte Demo 9 artifact and checked both new subregion equalities in Lean.  Independent package verification then accepted those equalities, the retained behavior theorem, and the artifact theorem under the expanded proof kit.  A controlled reproof remains necessary to measure retrieval, use, proof structure, and proving time.
+
 ## Scalar-loop annotations
 
 The compiler now emits `leanexe.loop.while.v1` for every extracted `Stmt.while` region and `leanexe.loop.fold.v1` for a top-level `loopFoldMultiSlotAssign`.  A while annotation contains the IR condition, IR body statement, scratch-local start, structured instruction location, continuation, and generator chain.  A loop-fold annotation adds accumulator locals, initial and staged next-state expressions, body lets, done expression, release offsets, staging locals, and result targets.
