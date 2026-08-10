@@ -1803,6 +1803,9 @@ function loopRecipe(
         declaration: `${annotationNamespace}.${name}_condition_eval`,
         purpose: "use the compiler-derived done-condition transition after the scalar body",
       }, {
+        declaration: `${annotationNamespace}.${name}_step_continuing_eval`,
+        purpose: "use the generated compact transition for the continuing index update",
+      }, {
         declaration: "Project.ProofKit.ScalarTransition.guardedBackEdgeProgram_spec",
         purpose: "execute the descriptor body and condition through exit or the indexed back edge",
       }] : [])] : []),
@@ -3316,6 +3319,46 @@ theorem ${base}_body_eval ${binders} :
   };
 }
 
+function scalarStatementTransitionDeclarations(function_, region, suffix, statement) {
+  const count = function_.parameters + function_.locals;
+  const variables = Array.from({ length: count }, (_, index) => `v${index}`);
+  const base = region.id.replace(/[^A-Za-z0-9_]/g, "_");
+  const stateName = `${base}_state`;
+  const statementName = `${base}_${suffix}`;
+  const transitionName = `${statementName}Transition`;
+  const transition = scalarStatementTransition(
+    statement, region.parameters.scratchStart, [...variables]);
+  const stateTerm = (state) => scalarStateTerm(stateName, state);
+  const transitionTerm = scalarTransitionTerm(
+    transition, (state) => `some (${stateTerm(state)})`);
+  const binders = `(${variables.join(" ")} : UInt64)`;
+  const stateArguments = variables.join(" ");
+  const simpDeclarations = scalarTransitionSimpDeclarations(
+    base, transitionName, statement, true);
+  simpDeclarations[0] = statementName;
+  const proof = scalarTransitionProof(transition, simpDeclarations);
+  return {
+    theorem: `${statementName}_eval`,
+    source: `def ${transitionName} ${binders} :
+    Option Project.ProofKit.ScalarTransition.U64State :=
+  ${transitionTerm}
+
+set_option linter.unusedSimpArgs false in
+theorem ${statementName}_evalU64 ${binders} :
+    ${statementName}.evalU64 ${region.parameters.scratchStart}
+      (${stateName} ${stateArguments}) = ${transitionName} ${stateArguments} := by
+  ${proof.replaceAll("\n", "\n  ")}
+
+theorem ${statementName}_eval ${binders} :
+    ${statementName}.eval ${region.parameters.scratchStart}
+      (${stateName} ${stateArguments}).toState =
+        (${transitionName} ${stateArguments}).map
+          Project.ProofKit.ScalarTransition.U64State.toState := by
+  rw [Project.ProofKit.ScalarTransition.Stmt.eval_toState,
+    ${statementName}_evalU64]`,
+  };
+}
+
 function programFunctionDefinition(program, functionIndex) {
   const marker = `def func${functionIndex}Def : Wasm.Function :=\n`;
   const start = program.indexOf(marker);
@@ -3774,6 +3817,16 @@ theorem ${name}_result_eq :
       ${leanAnnotationPath(region.location.listPath)} ${match.resultStartIndex}
       ${match.resultEndIndex} = some ${name}_result_program := by
   rfl` : "";
+        const continuingStatement = match?.guardedBackEdgeEligible ? {
+          kind: "assign",
+          index: region.parameters.indexLocal,
+          value: {
+            kind: "bin",
+            operation: "add",
+            left: { kind: "get", index: region.parameters.indexLocal },
+            right: { kind: "const", value: "1" },
+          },
+        } : null;
         const guardedBackEdge = match?.guardedBackEdgeEligible ? `
 
 def ${name}_condition : Project.ProofKit.ScalarTransition.Expr .bool :=
@@ -3783,8 +3836,7 @@ def ${name}_body : Project.ProofKit.ScalarTransition.Stmt :=
   ${scalarStmtLean(region.parameters.descriptor.body)}
 
 def ${name}_step_continuing : Project.ProofKit.ScalarTransition.Stmt :=
-  .assign ${region.parameters.indexLocal}
-    (.bin .add (.get ${region.parameters.indexLocal}) (.const 1))
+  ${scalarStmtLean(continuingStatement)}
 
 def ${name}_step_program : Wasm.Program :=
   Project.ProofKit.ScalarTransition.guardedBackEdgeProgram
@@ -3798,6 +3850,10 @@ theorem ${name}_step_eq :
   rfl` : "";
         const transitions = match?.guardedBackEdgeEligible
           ? scalarTransitionDeclarations(function_, region).source : "";
+        const continuingTransition = match?.guardedBackEdgeEligible
+          ? scalarStatementTransitionDeclarations(
+            function_, region, "step_continuing", continuingStatement).source
+          : "";
         declarations.push(`def ${name}_program : Wasm.Program :=
   (${selected}).getD []
 
@@ -3805,7 +3861,9 @@ theorem ${name}_eq :
     ${selected} = some ${name}_program := by
   rfl${setup}${continuing}${guardedBackEdge}${result}
 
-${transitions}`);
+${transitions}
+
+${continuingTransition}`);
         continue;
       }
       if (region.kind !== "leanexe.array.pair-result.v1") continue;
