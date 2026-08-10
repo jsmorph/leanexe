@@ -3,6 +3,7 @@ import Project.ProofKit.Array
 import Project.ProofKit.FixedArrayAllocator
 import Project.ProofKit.FixedArrayAllocatorWindow
 import Project.ProofKit.FixedArrayFilterLt
+import Project.ProofKit.FixedArrayFold
 import Project.ProofKit.FixedArrayLengthDispatch
 import Project.ProofKit.FixedArrayMapAdd
 import Project.ProofKit.FixedArrayPairResult
@@ -26,6 +27,10 @@ import Project.ProofKit.ScalarTransitionU64
 #check Project.ProofKit.FixedArrayFilterLt.heapReserveBytes
 #check Project.ProofKit.FixedArrayFilterLt.wrapperProgram
 #check Project.ProofKit.FixedArrayFilterLt.wrapperProgram_spec
+#check Project.ProofKit.FixedArrayFold.forwardSetupFrame
+#check Project.ProofKit.FixedArrayFold.forwardSetupProgram_spec
+#check Project.ProofKit.FixedArrayFold.resultFrame
+#check Project.ProofKit.FixedArrayFold.resultProgram_spec
 #check Project.ProofKit.FixedArrayLengthDispatch.eqProgram_spec
 #check Project.ProofKit.FixedArrayLengthDispatch.leProgram_spec
 #check Project.ProofKit.FixedArrayLengthDispatch.program_spec

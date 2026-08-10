@@ -1357,15 +1357,81 @@ function matchArrayFoldRegion(program, function_, region) {
       JSON.stringify(transitionSuffix)) {
     fail(`${region.id}: decoded array-fold transition does not match`);
   }
+  const setupInitial = normalized[14]?.match(/^\.constI64 \(([0-9]+) : UInt64\)$/);
+  const forwardSetupCandidate = parameters.resultWidth === 1 &&
+    parameters.accumulatorLocals.length === 1 && !parameters.reverse &&
+    blockIndex === 23 && normalized[21] === ".iff 0 1 [";
+  const forwardSetupExpected = forwardSetupCandidate ? [
+      ".localGet 0",
+      `.localSet ${parameters.arrayLocal}`,
+      `.localGet ${parameters.arrayLocal}`,
+      ".wrapI64",
+      ".load64 (0 : UInt32)",
+      `.localSet ${parameters.lengthLocal}`,
+      ".constI64 (0 : UInt64)",
+      `.localSet ${parameters.indexLocal}`,
+      ".localGet 0",
+      `.localSet ${parameters.doneLocal}`,
+      `.localGet ${parameters.doneLocal}`,
+      ".wrapI64",
+      ".load64 (0 : UInt32)",
+      `.localSet ${parameters.stopLocal}`,
+      setupInitial === null ? "" : `.constI64 (${setupInitial[1]} : UInt64)`,
+      `.localSet ${parameters.accumulatorLocals[0]}`,
+      ".constI64 (0 : UInt64)",
+      `.localSet ${parameters.releaseReadyLocal}`,
+      `.localGet ${parameters.stopLocal}`,
+      `.localGet ${parameters.lengthLocal}`,
+      ".ltUI64",
+      ".iff 0 1 [",
+      `.localSet ${parameters.effectiveStopLocal}`,
+    ] : [];
+  const forwardSetupThen = forwardSetupCandidate
+    ? normalizeInstructions(resolveInstructionList(body, [
+      ...region.location.listPath,
+      {
+        instructionIndex: region.location.startIndex + 21,
+        field: "then",
+      },
+    ])) : [];
+  const forwardSetupElse = forwardSetupCandidate
+    ? normalizeInstructions(resolveInstructionList(body, [
+      ...region.location.listPath,
+      {
+        instructionIndex: region.location.startIndex + 21,
+        field: "else",
+      },
+    ])) : [];
+  const forwardSetupEligible = forwardSetupCandidate && setupInitial !== null &&
+    JSON.stringify(normalized.slice(0, blockIndex)) ===
+      JSON.stringify(forwardSetupExpected) &&
+    JSON.stringify(forwardSetupThen) ===
+      JSON.stringify([`.localGet ${parameters.stopLocal}`]) &&
+    JSON.stringify(forwardSetupElse) ===
+      JSON.stringify([`.localGet ${parameters.lengthLocal}`]);
+  const resultPlacementEligible = parameters.resultSlots.length === 1;
   return {
     functionIndex: function_.wasmIndex,
     regionId: region.id,
     regionKind: region.kind,
     parameters,
     dynamicTraversalEligible,
+    forwardSetupEligible,
+    resultPlacementEligible,
     ...(dynamicTraversalEligible ? {
       continuingEndIndex: expectedGuard.length + dynamicPrefix.length,
       loopPath,
+    } : {}),
+    ...(forwardSetupEligible ? {
+      setupEndIndex: region.location.startIndex + blockIndex,
+      setupInitialValue: setupInitial[1],
+    } : {}),
+    ...(resultPlacementEligible ? {
+      resultAccumulatorLocal:
+        parameters.accumulatorStart + parameters.resultSlots[0],
+      resultEndIndex: region.location.endIndex,
+      resultLocal: parameters.resultLocals[0],
+      resultStartIndex: region.location.startIndex + blockIndex + 1,
     } : {}),
   };
 }
@@ -1576,7 +1642,31 @@ function loopRecipe(
       }, {
         declaration: `${annotationNamespace}.${name}_program`,
         purpose: "name the complete checked fold interval, including initialization and result placement",
+      }, ...(match.forwardSetupEligible ? [{
+        declaration: `${annotationNamespace}.${name}_setup_eq`,
+        purpose: "rewrite the exact forward full-array setup interval",
       }, {
+        declaration: `${annotationNamespace}.${name}_setup_program`,
+        purpose: "name the compiler-matched setup through effective-stop selection",
+      }, {
+        declaration: "Project.ProofKit.FixedArrayFold.forwardSetupProgram_spec",
+        purpose: "execute the checked length loads and fold-local initialization",
+      }, {
+        declaration: "Project.ProofKit.FixedArrayFold.forwardSetupFrame",
+        purpose: "state the exact initialized frame at loop entry",
+      }] : []), ...(match.resultPlacementEligible ? [{
+        declaration: `${annotationNamespace}.${name}_result_eq`,
+        purpose: "rewrite the exact accumulator result-placement interval",
+      }, {
+        declaration: `${annotationNamespace}.${name}_result_program`,
+        purpose: "name the compiler-matched accumulator-to-result transfer",
+      }, {
+        declaration: "Project.ProofKit.FixedArrayFold.resultProgram_spec",
+        purpose: "execute result placement from one accumulator getter",
+      }, {
+        declaration: "Project.ProofKit.FixedArrayFold.resultFrame",
+        purpose: "state the exact result-placement frame",
+      }] : []), {
         declaration: "Project.ProofKit.ArrayFold.foldPrefix",
         purpose: "state the loop invariant as the fold over the consumed input prefix",
       }, {
@@ -2245,13 +2335,17 @@ function validateProofRecipePlan(plan, document) {
         : equality
           ? "Project.ProofKit.FixedArrayLengthDispatch.eqProgram_spec"
           : "Project.ProofKit.FixedArrayLengthDispatch.program_spec";
-      const tactic = bounded
-        ? "wp_fixed_array_length_le_dispatch_from"
+      const tactics = bounded
+        ? ["wp_fixed_array_length_le_dispatch_from",
+          "wp_fixed_array_length_le_dispatch"]
         : equality
-          ? "wp_fixed_array_length_eq_dispatch_from"
-          : "wp_fixed_array_length_dispatch_from";
+          ? ["wp_fixed_array_length_eq_dispatch_from",
+            "wp_fixed_array_length_eq_dispatch"]
+          : ["wp_fixed_array_length_dispatch_from",
+            "wp_fixed_array_length_dispatch"];
       if (recipe.direct.module !== "Project.ProofKit.FixedArrayLengthDispatch" ||
-          recipe.direct.theorem !== theorem || recipe.direct.tactic !== tactic ||
+          recipe.direct.theorem !== theorem ||
+          !tactics.includes(recipe.direct.tactic) ||
           typeof recipe.direct.invocation !== "string") {
         fail(`${description}.direct is unsupported`);
       }
@@ -3493,12 +3587,38 @@ theorem ${name}_continuing_eq :
       ${leanAnnotationPath(match.loopPath)} 0 ${match.continuingEndIndex} =
         some ${name}_continuing_program := by
   rfl` : "";
+        const setup = match?.forwardSetupEligible ? `
+
+def ${name}_setup_program : Wasm.Program :=
+  Project.ProofKit.FixedArrayFold.forwardSetupProgram
+    ${region.parameters.arrayLocal} ${region.parameters.lengthLocal}
+    ${region.parameters.indexLocal} ${region.parameters.doneLocal}
+    ${region.parameters.stopLocal} ${region.parameters.accumulatorLocals[0]}
+    ${region.parameters.releaseReadyLocal} ${region.parameters.effectiveStopLocal}
+    ${match.setupInitialValue}
+
+theorem ${name}_setup_eq :
+    Project.ProofKit.Annotation.region ${job.namespace}.func${function_.wasmIndex}
+      ${leanAnnotationPath(region.location.listPath)} ${region.location.startIndex}
+      ${match.setupEndIndex} = some ${name}_setup_program := by
+  rfl` : "";
+        const result = match?.resultPlacementEligible ? `
+
+def ${name}_result_program : Wasm.Program :=
+  Project.ProofKit.FixedArrayFold.resultProgram
+    ${match.resultAccumulatorLocal} ${match.resultLocal}
+
+theorem ${name}_result_eq :
+    Project.ProofKit.Annotation.region ${job.namespace}.func${function_.wasmIndex}
+      ${leanAnnotationPath(region.location.listPath)} ${match.resultStartIndex}
+      ${match.resultEndIndex} = some ${name}_result_program := by
+  rfl` : "";
         declarations.push(`def ${name}_program : Wasm.Program :=
   (${selected}).getD []
 
 theorem ${name}_eq :
     ${selected} = some ${name}_program := by
-  rfl${continuing}`);
+  rfl${setup}${continuing}${result}`);
         continue;
       }
       if (region.kind !== "leanexe.array.pair-result.v1") continue;
@@ -3571,6 +3691,11 @@ ${program !== null && document.functions.some((function_) => function_.regions.s
     region.kind === "leanexe.array.fold.v1" &&
       matchArrayFoldRegion(program, function_, region).dynamicTraversalEligible))
     ? "import Project.ProofKit.FixedArrayTraversalInput\n" : ""}
+${program !== null && document.functions.some((function_) => function_.regions.some((region) => {
+    if (region.kind !== "leanexe.array.fold.v1") return false;
+    const match = matchArrayFoldRegion(program, function_, region);
+    return match.forwardSetupEligible || match.resultPlacementEligible;
+  })) ? "import Project.ProofKit.FixedArrayFold\n" : ""}
 ${chainCompositions.length > 0 ? "import Project.ProofKit.FixedArraySearchChain\n" : ""}
 ${treeCompositions.length > 0 ? "import Project.ProofKit.FixedArraySearchTree\n" : ""}
 ${singletonCompositions.length > 0
