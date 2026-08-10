@@ -476,7 +476,13 @@ The fold matcher now checks two additional subregions against generic programs. 
 
 `forwardSetupProgram_spec` executes both represented-length loads, all loop-local initialization, and the effective-stop selection before passing `forwardSetupFrame` to an arbitrary continuation.  `resultProgram_spec` copies the completed accumulator to its selected result local and passes `resultFrame` to an arbitrary continuation.  These theorems depend on the matched compiler shape and array representation while leaving the fold step, invariant, measure, and public output specification to separate proofs.
 
-An annotation-only rebuild accepted the unchanged 1,979-byte Demo 9 artifact and checked both new subregion equalities in Lean.  Independent package verification then accepted those equalities, the retained behavior theorem, and the artifact theorem under the expanded proof kit.  A controlled reproof remains necessary to measure retrieval, use, proof structure, and proving time.
+An annotation-only rebuild accepted the unchanged 1,979-byte Demo 9 artifact and checked both new subregion equalities in Lean.  Independent package verification then accepted those equalities, the retained behavior theorem, and the artifact theorem under the expanded proof kit.  These checks established the input to a controlled fixed-artifact reproof.
+
+The controlled reproof selected `fixed-array-fold-structure` and applied `forwardSetupProgram_spec`, `continuingProgram_spec`, and `resultProgram_spec` in its first Codex session.  Stage 5 completed in 2,082.889 seconds, compared with 3,188.251 seconds for the preceding retained run, a reduction of 1,105.362 seconds or 34.7 percent.  The proof grew from 416 to 508 lines because it stated two capacity-prefix theorems locally and used explicit shared-theorem applications at the recognized boundaries.
+
+The journal exposed two repeated representation gaps after the new fold boundaries succeeded.  `FixedArrayCapacity.constantProgram_spec` now proves the compiler's constant result-length capacity calculation for arbitrary length, stride, destination local, frame, and continuation, while `Frame.internal_getElem?_of_get` and `internal_getElem_of_get` convert combined-local invariants into internal-list facts.  Both declarations are indexed in structured LTG with evidence from Demos 2, 3, 5, and 9.
+
+The length-dispatch consumer now scans each decoded valid and invalid branch for the complete constant-capacity prefix.  A match produces branch-specific `AnnotationMatches` equalities and adds the capacity theorem, normalized value, and post-prefix frame to the length recipe, while any changed arithmetic instruction removes support for that branch.  A fresh Demo 9 package checked equalities for lengths one and zero against the unchanged artifact and passed independent verification.
 
 ## Scalar-loop annotations
 

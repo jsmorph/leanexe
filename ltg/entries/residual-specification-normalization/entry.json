@@ -14,6 +14,6 @@
   "premises": ["Checked singleton-wrapper composition", "Generated formal expected function", "Store-preserving scalar summary"],
   "result": "The non-singleton and singleton equations required by the complete wrapper theorem.",
   "consumers": ["demo-7", "demo-8"],
-  "relatedEntries": ["counter-transition", "fixed-array-singleton-wrapper"],
+  "relatedEntries": ["counter-transition", "fixed-array-singleton-wrapper", "local-frame-projection"],
   "exclusion": null
 }

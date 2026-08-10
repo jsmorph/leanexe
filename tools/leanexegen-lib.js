@@ -22,8 +22,10 @@ const uint64Maximum = 18446744073709551615n;
 const proofKitModules = Object.freeze([
   "Project.ProofKit.Annotation",
   "Project.ProofKit.Memory",
+  "Project.ProofKit.Frame",
   "Project.ProofKit.Array",
   "Project.ProofKit.Allocation",
+  "Project.ProofKit.FixedArrayCapacity",
   "Project.ProofKit.FixedArrayAllocator",
   "Project.ProofKit.FixedArrayAllocatorWindow",
   "Project.ProofKit.FixedArrayEqNode",
@@ -48,8 +50,10 @@ const proofKitModules = Object.freeze([
 const proofKitRelativeFiles = Object.freeze([
   "proofs/talos/lean/Project/ProofKit/Annotation.lean",
   "proofs/talos/lean/Project/ProofKit/Memory.lean",
+  "proofs/talos/lean/Project/ProofKit/Frame.lean",
   "proofs/talos/lean/Project/ProofKit/Array.lean",
   "proofs/talos/lean/Project/ProofKit/Allocation.lean",
+  "proofs/talos/lean/Project/ProofKit/FixedArrayCapacity.lean",
   "proofs/talos/lean/Project/ProofKit/FixedArrayAllocator.lean",
   "proofs/talos/lean/Project/ProofKit/FixedArrayAllocatorWindow.lean",
   "proofs/talos/lean/Project/ProofKit/FixedArrayEqNode.lean",
