@@ -42,6 +42,14 @@ The comparison proof contains 642 lines, 2,524 words, and 30,858 bytes.  It uses
 
 The telemetry's UTC timestamps span 12,764.900 seconds, while its monotonic Stage 5 measurement records 3,070.994 seconds.  The 9,693.906-second difference occurred outside the monotonic interval, and the accessible system journal did not identify its cause.  Timing comparisons therefore use the telemetry's monotonic total, while `proof-timings.json` preserves both measurements.
 
+## Compact fold-boundary comparison
+
+The [compact-boundary package](experiments/compact-fold-boundary.proof/) tests the shared traversal-exit and final-transfer theorems together with an artifact-local, continuation-generic theorem for the post-load accumulator and index update.  Direct simplification of that update under the complete loop continuation exhausted one million heartbeats, while the compact theorem checked the instruction tail against a named frame and let the outer proof establish its invariant separately.  Independent package verification accepted the exact artifact theorem.
+
+Stage 5 took 2,297.877 seconds, including 2,251.334 seconds in Codex and 35.168 seconds in outer acceptance.  The result is 10.3 percent slower than the retained fold-structure proof, 25.2 percent faster than the capacity-and-frame screen, and 33.0 percent faster than baseline.  Its 655-line, 2,472-word, 32,143-byte proof is 147 lines longer than the retained proof because the update boundary and three frame getters remain artifact-local.
+
+The experiment establishes that a compact semantic endpoint can prevent heartbeat exhaustion and complete the proof.  It does not establish a proof-time or proof-size improvement over the retained primary proof, so the retained package remains primary.  [Opacity and elaboration boundaries in artifact proofs](../../docs/opacity-proof-boundaries.md) records the mechanism, evidence limits, and planned compiled and out-of-sample tests.
+
 ## Execution
 
 The first sample exercises wrapping addition in the valid branch.  The second sample exceeds the maximum length and exercises the empty-result branch.  Direct execution of the proved artifact produced these values:
@@ -77,3 +85,4 @@ Every retained root file fixes a generation input, artifact, proof context, or m
 | [Verification package](program.proof/) | The self-contained package accepted by `leanexegen verify -s`. |
 | [Current capacity and frame comparison](experiments/capacity-frame-current.proof/) | The slower structural comparison re-frozen and independently accepted under the current proof kit. |
 | [Original capacity and frame generation](experiments/capacity-frame.proof/) | The same accepted proof with the proof-kit identity supplied during its measured generation. |
+| [Compact fold-boundary comparison](experiments/compact-fold-boundary.proof/) | The accepted fixed-artifact proof that isolates the post-load update behind a compact continuation-generic theorem. |
