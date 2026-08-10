@@ -110,5 +110,60 @@
     "timingImprovement": true,
     "structuralImprovement": true,
     "proofSizeImprovement": false
+  },
+  "capacityFrameRun": {
+    "package": "experiments/capacity-frame-current.proof",
+    "generationPackage": "experiments/capacity-frame.proof",
+    "acceptedSourceSha256": "700160d898cbf40af6120e7f78daedae5b47faa878bd2f036f9bb55f627b1d4a",
+    "totalMilliseconds": 3070994.205,
+    "codexSessionMilliseconds": 3022868.093,
+    "outerAcceptanceMilliseconds": 30919.858,
+    "utcIntervalMilliseconds": 12764900,
+    "utcMinusMonotonicMilliseconds": 9693905.795,
+    "increaseFromFoldStructureMilliseconds": 988105.361,
+    "increaseFromFoldStructurePercent": 47.439,
+    "reductionFromArrayFoldAnnotationMilliseconds": 117256.795,
+    "reductionFromArrayFoldAnnotationPercent": 3.678,
+    "reductionFromBaselineMilliseconds": 360875.611,
+    "reductionFromBaselinePercent": 10.515,
+    "proofLines": 642,
+    "proofWords": 2524,
+    "proofBytes": 30858,
+    "lineIncreaseFromFoldStructure": 134,
+    "lineIncreaseFromFoldStructurePercent": 26.378,
+    "sharedAssets": [
+      "Project.ProofKit.ArrayFold.foldPrefix",
+      "Project.ProofKit.ArrayFold.foldPrefix_size",
+      "Project.ProofKit.ArrayFold.foldPrefix_succ",
+      "Project.ProofKit.FixedArrayCapacity.constantProgram_spec",
+      "Project.ProofKit.FixedArrayLengthDispatch.leProgram_spec",
+      "Project.ProofKit.FixedArrayAllocatorWindow.region_spec_withTail",
+      "Project.ProofKit.FixedArrayPairResult.input_preserved_by_alloc",
+      "Project.ProofKit.FixedArrayFold.forwardSetupProgram_spec",
+      "Project.ProofKit.FixedArrayFold.resultProgram_spec",
+      "Project.ProofKit.FixedArrayTraversalInput.continuingProgram_spec",
+      "Project.ProofKit.FixedArrayResult.lengthStore_spec",
+      "Project.ProofKit.FixedArrayResult.payloadStore_spec",
+      "Project.ProofKit.FixedArrayResult.singletonStore_at",
+      "Project.ProofKit.FixedArrayResult.emptyStore_at"
+    ],
+    "compilerDerivedEvidence": [
+      "LeanExeGen.GeneratedR23fa7efc3fb0298b.AnnotationMatches.function_0_length_dispatch_0_valid_capacity_eq",
+      "LeanExeGen.GeneratedR23fa7efc3fb0298b.AnnotationMatches.function_0_length_dispatch_0_invalid_capacity_eq",
+      "LeanExeGen.GeneratedR23fa7efc3fb0298b.AnnotationMatches.function_0_array_fold_0_setup_eq",
+      "LeanExeGen.GeneratedR23fa7efc3fb0298b.AnnotationMatches.function_0_array_fold_0_continuing_eq",
+      "LeanExeGen.GeneratedR23fa7efc3fb0298b.AnnotationMatches.function_0_array_fold_0_result_eq"
+    ],
+    "localScaffolding": [
+      "sumExitProgram_spec",
+      "sumContinueProgram_spec",
+      "sumContinueFrame_get_index",
+      "sumContinueFrame_get_accumulator"
+    ],
+    "independentlyVerified": true,
+    "timingImprovementFromFoldStructure": false,
+    "structuralImprovement": true,
+    "proofSizeImprovement": false,
+    "retainedAsPrimary": false
   }
 }
