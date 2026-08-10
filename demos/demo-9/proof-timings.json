@@ -364,5 +364,50 @@
     "structuralImprovement": true,
     "proofSizeImprovementFromGuardedBackEdge": false,
     "retainedAsPrimary": false
+  },
+  "frameAccessorSubstitution": {
+    "package": "experiments/frame-accessors.proof",
+    "artifactSha256": "aa263bbfa89c333f9fab497f1a2c370f476afc3419015d17b368cb7c8a6086d5",
+    "acceptedSourceSha256": "0e4a18776095a90f28bccbd810c1cf4a39d2d98d0b70e9653409ed0e9f398651",
+    "measuredGeneration": false,
+    "proofLines": 555,
+    "proofWords": 2084,
+    "proofBytes": 29291,
+    "lineReductionFromFoldBody": 33,
+    "lineReductionFromFoldBodyPercent": 5.612,
+    "wordReductionFromFoldBody": 400,
+    "wordReductionFromFoldBodyPercent": 16.103,
+    "byteReductionFromFoldBody": 682,
+    "byteReductionFromFoldBodyPercent": 2.276,
+    "sharedAssets": [
+      "Project.ProofKit.FixedArrayFold.resultFrame_get_of_ne",
+      "Project.ProofKit.FixedArrayFold.resultFrame_get_result"
+    ],
+    "compilerDerivedEvidence": [
+      "LeanExeGen.GeneratedR23fa7efc3fb0298b.AnnotationMatches.function_0_array_fold_0_continuing_frame_params",
+      "LeanExeGen.GeneratedR23fa7efc3fb0298b.AnnotationMatches.function_0_array_fold_0_continuing_frame_locals_length",
+      "LeanExeGen.GeneratedR23fa7efc3fb0298b.AnnotationMatches.function_0_array_fold_0_continuing_frame_values",
+      "LeanExeGen.GeneratedR23fa7efc3fb0298b.AnnotationMatches.function_0_array_fold_0_continuing_frame_get_1",
+      "LeanExeGen.GeneratedR23fa7efc3fb0298b.AnnotationMatches.function_0_array_fold_0_continuing_frame_get_7",
+      "LeanExeGen.GeneratedR23fa7efc3fb0298b.AnnotationMatches.function_0_array_fold_0_continuing_frame_get_11",
+      "LeanExeGen.GeneratedR23fa7efc3fb0298b.AnnotationMatches.function_0_array_fold_0_continuing_frame_get_13",
+      "LeanExeGen.GeneratedR23fa7efc3fb0298b.AnnotationMatches.function_0_array_fold_0_continuing_frame_get_15"
+    ],
+    "localScaffoldingRemoved": [
+      "foldFrame_params",
+      "foldFrame_locals_length",
+      "foldFrame_values",
+      "foldFrame_get_accumulator",
+      "foldFrame_get_root",
+      "foldFrame_get_input",
+      "foldFrame_get_index",
+      "foldFrame_get_stop",
+      "foldResultFrame_get_root",
+      "foldResultFrame_get_result"
+    ],
+    "independentlyVerified": true,
+    "structuralImprovement": true,
+    "proofSizeImprovement": true,
+    "retainedAsPrimary": false
   }
 }

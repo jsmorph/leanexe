@@ -14,6 +14,6 @@
   "premises": ["A represented UInt64 input array and in-bounds logical index", "Frame getters for the input pointer, encoded index, and effective stop", "A generated equality from the loaded item frame to the scalar descriptor state", "Compiler-derived body, condition, and continuing evaluator equations", "Break 1 and Break 0 callbacks for the caller's invariant and measure"],
   "result": "The active traversal edge loads the indexed element and executes the compiler-described scalar step through either Break 1 or the continuing back edge.",
   "consumers": ["demo-10", "demo-9"],
-  "relatedEntries": ["array-fold-prefix", "fixed-array-fold-structure", "fixed-array-traversal-input", "guarded-back-edge", "local-frame-projection"],
+  "relatedEntries": ["annotated-fold-frame-accessors", "array-fold-prefix", "fixed-array-fold-structure", "fixed-array-traversal-input", "guarded-back-edge", "local-frame-projection"],
   "exclusion": null
 }

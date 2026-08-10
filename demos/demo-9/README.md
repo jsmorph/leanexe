@@ -72,6 +72,14 @@ Stage 5 took 2,074.169 seconds, including 1,984.791 seconds in Codex and 69.416 
 
 The proof contains 588 lines, 2,484 whitespace-delimited words, and 29,973 bytes.  Compared with the guarded-back-edge proof, it has one fewer line, 276 more words, and 1,175 fewer bytes, so the proof-size evidence is mixed.  The journal also records repeated proof-local frame projections before the singleton suffix and the need to fix the theorem's module, environment, store, and frame arguments when callback inference generalizes them; the structured guidance records both findings, while the shorter root proof remains primary.
 
+## Generated frame-accessor substitution
+
+The [frame-accessor package](experiments/frame-accessors.proof/) applies a current annotation pass to the unchanged Demo 9 artifact.  The annotation module proves the continuing frame's exact parameter list, internal-local length, empty operand stack, and value at every combined parameter-and-local index.  Its recipe advertises those declarations together with the shared `FixedArrayFold.resultFrame_get_result` and `resultFrame_get_of_ne` theorems.
+
+The manual substitution removed ten proof-local `rfl` projection theorems from the fresh fold-body proof.  At each traversal or suffix boundary, restricted simplification unfolds the semantic `foldFrame` abbreviation and applies one generated accessor, while the shared result-frame theorems establish the written result and preserved root.  A separate `leanexegen verify -s` run accepted the complete artifact theorem over digest `aa263bbfa89c333f9fab497f1a2c370f476afc3419015d17b368cb7c8a6086d5`.
+
+The proof decreased from 588 to 555 lines, from 2,484 to 2,084 whitespace-delimited words, and from 29,973 to 29,291 bytes.  The compiler-generated annotation module grew because it contains one exact theorem per frame slot, and the proof uses long declaration names, so line and word reductions better describe the removed local reasoning than raw bytes.  This manual substitution has no proof-generation timing and makes no time claim; a fresh fixed-artifact run would measure agent retrieval and construction separately.
+
 ## Execution
 
 The first sample exercises wrapping addition in the valid branch.  The second sample exceeds the maximum length and exercises the empty-result branch.  Direct execution of the proved artifact produced these values:
@@ -111,3 +119,4 @@ Every retained root file fixes a generation input, artifact, proof context, or m
 | [Compiler-described guarded-back-edge comparison](experiments/guarded-back-edge.proof/) | The accepted fixed-artifact proof that uses the generic guarded-back-edge theorem with compiler-generated transition evidence. |
 | [Fold-body composition capability](experiments/fold-body-composition.proof/) | The current annotations, proof kit, and accepted archived proof for the unchanged artifact; its behavioral proof predates the fold-body theorem. |
 | [Fresh fold-body composition reproof](experiments/fold-body-reproof.proof/) | The independently verified fixed-artifact proof that retrieved and used the shared composition theorem for wrapping addition. |
+| [Generated frame-accessor substitution](experiments/frame-accessors.proof/) | The independently verified manual proof that replaces ten local frame projections with exact generated accessors and shared result-frame getters. |

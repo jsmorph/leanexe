@@ -6,6 +6,8 @@ Prove the setup theorem's writable-local premise from the generated frame length
 
 Use `FixedArrayFold.resultProgram_spec` when the same recipe supplies `<region>_result_eq`.  It copies one selected accumulator local to one result local and reaches `resultFrame`, preserving parameters, all other locals, and the empty value stack.  Apply it after `ArrayFold.foldPrefix_size` has rewritten the completed accumulator to the specification's `Array.foldl` value.
 
+Use `resultFrame_get_result` to read the written result local and `resultFrame_get_of_ne` to preserve any distinct valid nonparameter local.  The generated continuing-frame parameter, local-length, and getter theorems discharge their frame premises without reducing the scalar state.  The `annotated-fold-frame-accessors` entry gives the restricted simplification form and the checked Demo 9 substitution evidence.
+
 Use `FixedArrayFold.singletonResultProgram_spec` when the recipe also supplies `<region>_singleton_result_eq`.  The theorem composes accumulator placement, the standard singleton payload store, and final root transfer, then reaches `singletonResultPost` with the returned root and represented singleton value.  Its local indices and frame facts remain parameters, so the checked program applies across fold operations and wrapper layouts that emit the same suffix.
 
 If `Wasm.wp_loop_cons` retains the result program and complete public postcondition until elaboration reaches the memory limit, consult `compact-loop-suffix-boundary`.  A nested `Wasm.wp.conseq` may suffice when its implication remains small.  Apply the complete singleton theorem or place another suffix theorem in a preceding declaration when the implication still elaborates inside the large public theorem.
