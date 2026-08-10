@@ -60,6 +60,10 @@ Stage 5 took 1,972.223 seconds, including 1,872.127 seconds in Codex and 79.123 
 
 This single measurement supports theorem applicability, structured retrieval, and a modest proof-time reduction.  A different fold operation will test whether the descriptor boundary transfers without wrapping-sum-specific support, and the generator will first add a compact continuing-transition equation.  The retained root package remains the shorter primary until the out-of-sample result and further timing evidence justify replacement.
 
+## Fold-body composition capability
+
+The [fold-body composition package](experiments/fold-body-composition.proof/) applies the current annotation generator and proof kit to the unchanged Demo 9 artifact.  Its generated recipe supplies the checked continuing-loaded-frame equality and `FixedArrayFoldBody.continuingGuardedProgram_spec`, and independent package verification accepts the exact artifact theorem.  The archived behavioral proof predates the composition theorem, so this package establishes annotation recognition, theorem availability, and package integrity rather than proof-agent retrieval or use; the fresh fixed-artifact reproof measures those claims separately.
+
 ## Execution
 
 The first sample exercises wrapping addition in the valid branch.  The second sample exceeds the maximum length and exercises the empty-result branch.  Direct execution of the proved artifact produced these values:
@@ -97,3 +101,4 @@ Every retained root file fixes a generation input, artifact, proof context, or m
 | [Original capacity and frame generation](experiments/capacity-frame.proof/) | The same accepted proof with the proof-kit identity supplied during its measured generation. |
 | [Compact fold-boundary comparison](experiments/compact-fold-boundary.proof/) | The accepted fixed-artifact proof that isolates the post-load update behind a compact continuation-generic theorem. |
 | [Compiler-described guarded-back-edge comparison](experiments/guarded-back-edge.proof/) | The accepted fixed-artifact proof that uses the generic guarded-back-edge theorem with compiler-generated transition evidence. |
+| [Fold-body composition capability](experiments/fold-body-composition.proof/) | The current annotations, proof kit, and accepted archived proof for the unchanged artifact; its behavioral proof predates the fold-body theorem. |

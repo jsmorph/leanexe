@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "scalar-post-test-loop",
+  "title": "Scalar post-test loop",
+  "summary": "Executes a checked scalar loop descriptor whose body runs before its exit condition and exposes compact transition equations.",
+  "roles": ["annotation-support", "checked-proof-asset", "guidance"],
+  "categories": ["compiler-motifs", "loops", "proof-construction"],
+  "scope": "generic-semantics",
+  "evidenceStatus": "promoted",
+  "features": ["accumulator", "descriptor", "loop", "post-test", "scalar-state", "termination"],
+  "annotationKinds": ["leanexe.loop.scalar-post-test.v1"],
+  "modules": ["Project.ProofKit.ScalarTransition", "Project.ProofKit.ScalarTransitionU64"],
+  "declarations": ["Project.ProofKit.ScalarTransition.CounterTransition.postTestProgram_spec", "Project.ProofKit.ScalarTransition.postTestProgram_spec"],
+  "premises": ["Exact descriptor-region equality", "Initial compact state", "Body transition", "Condition transition", "Invariant and decreasing measure or a specialized semantic view"],
+  "result": "A weakest-precondition result for the complete body-first scalar loop and its following program.",
+  "consumers": ["demo-1", "demo-6", "demo-7", "demo-8"],
+  "relatedEntries": ["counter-transition", "fixed-array-singleton-wrapper"],
+  "exclusion": null
+}
