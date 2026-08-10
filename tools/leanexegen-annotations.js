@@ -1778,7 +1778,10 @@ function loopRecipe(
       }, {
         declaration: "Project.ProofKit.FixedArrayTraversalInput.continuingProgram_spec",
         purpose: "execute the continuing guard and indexed element load from the annotated local roles",
-      }, {
+      }, ...(match.guardedBackEdgeEligible ? [{
+        declaration: `${annotationNamespace}.${name}_continuing_spec`,
+        purpose: "execute the prefix from the generated scalar frame with only semantic input, index, and continuation premises",
+      }] : []), {
         declaration: "Project.ProofKit.FixedArrayTraversalInput.continuingProgram_exit_spec",
         purpose: "execute the same checked guard through Break 1 when the index equals the effective stop",
       }, {
@@ -3359,6 +3362,55 @@ theorem ${statementName}_eval ${binders} :
   };
 }
 
+function arrayFoldTraversalDeclarations(function_, region) {
+  const count = function_.parameters + function_.locals;
+  const variables = Array.from({ length: count }, (_, index) => `v${index}`);
+  const binders = `(${variables.join(" ")} : UInt64)`;
+  const stateArguments = variables.join(" ");
+  const base = region.id.replace(/[^A-Za-z0-9_]/g, "_");
+  const stateName = `${base}_state`;
+  const frameName = `${base}_continuing_frame`;
+  const itemValidName = `${base}_continuing_item_valid`;
+  const theoremName = `${base}_continuing_spec`;
+  const arrayLocal = region.parameters.arrayLocal;
+  const indexLocal = region.parameters.indexLocal;
+  const stopLocal = region.parameters.effectiveStopLocal;
+  const itemLocal = region.parameters.itemLocals[0];
+  return {
+    theorem: theoremName,
+    source: `def ${frameName} ${binders} : Wasm.Locals :=
+  (${stateName} ${stateArguments}).toState.toLocals []
+
+theorem ${itemValidName} ${binders} :
+    (${frameName} ${stateArguments}).validIndex ${itemLocal} := by
+  norm_num [Wasm.Locals.validIndex, ${frameName}, ${stateName},
+    Project.ProofKit.ScalarTransition.U64State.toState]
+
+theorem ${theoremName} ${binders}
+    (module_ : Wasm.Module) (env : Wasm.HostEnv Unit) (st : Wasm.Store Unit)
+    (input : Array UInt64) (index : Nat)
+    (hIndexValue : v${indexLocal} = UInt64.ofNat index)
+    (hContinue : v${indexLocal} < v${stopLocal})
+    (hInput : Project.ProofKit.UInt64Array.At st v${arrayLocal} input)
+    (hIndex : index < input.size)
+    (Q : Wasm.Assertion Unit) (rest : Wasm.Program)
+    (hNext : Wasm.wp module_ rest Q st
+      (Project.ProofKit.FixedArrayTraversalInput.dynamicResultFrame
+        (${frameName} ${stateArguments}) ${itemLocal} input[index]
+        (${itemValidName} ${stateArguments})) env) :
+    Wasm.wp module_ (${base}_continuing_program ++ rest) Q st
+      (${frameName} ${stateArguments}) env := by
+  apply Project.ProofKit.FixedArrayTraversalInput.continuingProgram_spec
+    (inputPtr := v${arrayLocal}) (indexValue := v${indexLocal})
+    (stopValue := v${stopLocal}) (input := input) (index := index)
+    (hValues := rfl) (hArrayLocal := rfl) (hIndexLocal := rfl)
+    (hStopLocal := rfl) (hIndexValue := hIndexValue)
+    (hContinue := hContinue) (hItem := ${itemValidName} ${stateArguments})
+    (hInput := hInput) (hIndex := hIndex)
+  exact hNext`,
+  };
+}
+
 function programFunctionDefinition(program, functionIndex) {
   const marker = `def func${functionIndex}Def : Wasm.Function :=\n`;
   const start = program.indexOf(marker);
@@ -3854,6 +3906,9 @@ theorem ${name}_step_eq :
           ? scalarStatementTransitionDeclarations(
             function_, region, "step_continuing", continuingStatement).source
           : "";
+        const traversal = match?.guardedBackEdgeEligible
+          ? arrayFoldTraversalDeclarations(function_, region).source
+          : "";
         declarations.push(`def ${name}_program : Wasm.Program :=
   (${selected}).getD []
 
@@ -3863,7 +3918,9 @@ theorem ${name}_eq :
 
 ${transitions}
 
-${continuingTransition}`);
+${continuingTransition}
+
+${traversal}`);
         continue;
       }
       if (region.kind !== "leanexe.array.pair-result.v1") continue;

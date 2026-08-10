@@ -1757,6 +1757,8 @@ def func0Def : Wasm.Function :=
     arrayFoldPlan.recipes[0].supporting.some((entry) => entry.declaration ===
       "Project.ProofKit.FixedArrayTraversalInput.continuingProgram_spec") &&
     arrayFoldPlan.recipes[0].supporting.some((entry) => entry.declaration ===
+      "Project.AnnotationMatches.function_0_array_fold_0_continuing_spec") &&
+    arrayFoldPlan.recipes[0].supporting.some((entry) => entry.declaration ===
       "Project.ProofKit.FixedArrayTraversalInput.continuingProgram_exit_spec") &&
     arrayFoldPlan.recipes[0].supporting.some((entry) => entry.declaration ===
       "Project.ProofKit.Frame.internal_getElem_of_get") &&
@@ -1795,6 +1797,12 @@ def func0Def : Wasm.Function :=
       "theorem function_0_array_fold_0_body_eval") &&
     arrayFoldMatches.source.includes(
       "theorem function_0_array_fold_0_step_continuing_eval") &&
+    arrayFoldMatches.source.includes(
+      "def function_0_array_fold_0_continuing_frame") &&
+    arrayFoldMatches.source.includes(
+      "theorem function_0_array_fold_0_continuing_item_valid") &&
+    arrayFoldMatches.source.includes(
+      "theorem function_0_array_fold_0_continuing_spec") &&
     arrayFoldMatches.source.includes(
       "def function_0_array_fold_0_step_continuingTransition") &&
     arrayFoldMatches.source.includes(
