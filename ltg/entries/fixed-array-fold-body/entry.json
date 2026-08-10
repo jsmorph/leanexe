@@ -6,7 +6,7 @@
   "roles": ["annotation-support", "checked-proof-asset", "guidance"],
   "categories": ["arrays", "compiler-motifs", "loops", "proof-construction"],
   "scope": "compiler-runtime-motif",
-  "evidenceStatus": "provisional",
+  "evidenceStatus": "promoted",
   "features": ["compact-elaboration-boundary", "fold", "guarded-back-edge", "indexed-element-load", "loop-body", "scalar-state", "traversal"],
   "annotationKinds": ["leanexe.array.fold.v1"],
   "modules": ["Project.ProofKit.FixedArrayFoldBody"],
