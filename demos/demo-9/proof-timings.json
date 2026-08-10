@@ -409,5 +409,56 @@
     "structuralImprovement": true,
     "proofSizeImprovement": true,
     "retainedAsPrimary": false
+  },
+  "frameAccessorReproofRun": {
+    "package": "experiments/frame-accessor-reproof.proof",
+    "artifactSha256": "aa263bbfa89c333f9fab497f1a2c370f476afc3419015d17b368cb7c8a6086d5",
+    "acceptedSourceSha256": "d9cca89f61a3e9ce80ba09eff3e204051e39994fb3d6f03e6bfb63ec5fdc91e1",
+    "totalMilliseconds": 2230869.436,
+    "codexSessionMilliseconds": 2173263.991,
+    "outerAcceptanceMilliseconds": 39701.927,
+    "utcIntervalMilliseconds": 4843670,
+    "utcMinusMonotonicMilliseconds": 2612800.564,
+    "increaseFromFoldBodyMilliseconds": 156700.317,
+    "increaseFromFoldBodyPercent": 7.555,
+    "increaseFromGuardedBackEdgeMilliseconds": 258646.024,
+    "increaseFromGuardedBackEdgePercent": 13.114,
+    "increaseFromFoldStructureMilliseconds": 147980.592,
+    "increaseFromFoldStructurePercent": 7.105,
+    "proofLines": 616,
+    "proofWords": 2541,
+    "proofBytes": 30901,
+    "lineIncreaseFromFoldBody": 28,
+    "wordIncreaseFromFoldBody": 57,
+    "byteIncreaseFromFoldBody": 928,
+    "journaledEditedCandidates": 17,
+    "sharedAssets": [
+      "Project.ProofKit.FixedArrayFold.resultFrame_get_of_ne",
+      "Project.ProofKit.FixedArrayFold.resultFrame_get_result",
+      "Project.ProofKit.FixedArrayFoldBody.continuingGuardedProgram_spec",
+      "Project.ProofKit.FixedArrayFold.singletonResultProgram_spec"
+    ],
+    "compilerDerivedEvidence": [
+      "LeanExeGen.GeneratedR23fa7efc3fb0298b.AnnotationMatches.function_0_array_fold_0_continuing_frame_params",
+      "LeanExeGen.GeneratedR23fa7efc3fb0298b.AnnotationMatches.function_0_array_fold_0_continuing_frame_locals_length",
+      "LeanExeGen.GeneratedR23fa7efc3fb0298b.AnnotationMatches.function_0_array_fold_0_continuing_frame_values",
+      "LeanExeGen.GeneratedR23fa7efc3fb0298b.AnnotationMatches.function_0_array_fold_0_continuing_frame_get_1",
+      "LeanExeGen.GeneratedR23fa7efc3fb0298b.AnnotationMatches.function_0_array_fold_0_continuing_frame_get_7",
+      "LeanExeGen.GeneratedR23fa7efc3fb0298b.AnnotationMatches.function_0_array_fold_0_continuing_frame_get_11",
+      "LeanExeGen.GeneratedR23fa7efc3fb0298b.AnnotationMatches.function_0_array_fold_0_continuing_frame_get_13",
+      "LeanExeGen.GeneratedR23fa7efc3fb0298b.AnnotationMatches.function_0_array_fold_0_continuing_frame_get_15"
+    ],
+    "localProjectionDeclarations": 0,
+    "journalFindings": [
+      "The agent found the accessor entry on its second annotation-directed index query and used the generated accessors.",
+      "The proof used both shared result-frame getter theorems and declared no local frame-projection theorem.",
+      "Most revisions concerned dispatch, allocation, loop initialization, dependent composition, and result construction rather than frame projection."
+    ],
+    "independentlyVerified": true,
+    "timingImprovementFromFoldBody": false,
+    "timingImprovementFromGuardedBackEdge": false,
+    "structuralImprovement": true,
+    "proofSizeImprovementFromFoldBody": false,
+    "retainedAsPrimary": false
   }
 }
