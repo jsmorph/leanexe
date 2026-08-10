@@ -40,6 +40,14 @@ def finishProgram (rootLocal destinationLocal returnLocal : Nat) : Wasm.Program 
   .localSet returnLocal
   ]
 
+def finishFrame (frame : Locals) (destinationLocal returnLocal : Nat)
+    (root : UInt64) : Locals :=
+  { frame with
+    locals := (frame.locals.set
+      (destinationLocal - frame.params.length) (.i64 root)).set
+      (returnLocal - frame.params.length) (.i64 root)
+    values := [] }
+
 def writeLength (st : Store Unit) (root length : UInt64) : Store Unit :=
   { st with mem := st.mem.write64 root.toUInt32 length }
 
@@ -211,5 +219,43 @@ theorem payloadStore_spec
     simpa [payloadAddress] using hBound
   rw [if_neg (Nat.not_lt.mpr hPayloadBound)]
   simpa [writePayload, payloadAddress] using hNext
+
+set_option maxHeartbeats 1000000 in
+set_option Elab.async false in
+theorem finishProgram_spec
+    (module_ : Wasm.Module) (env : HostEnv Unit) (st : Store Unit)
+    (frame : Locals) (root : UInt64)
+    (rootLocal destinationLocal returnLocal : Nat)
+    (hValues : frame.values = [])
+    (hRoot : frame.get rootLocal = some (.i64 root))
+    (hDestinationLower : frame.params.length ≤ destinationLocal)
+    (hDestinationValid : frame.validIndex destinationLocal)
+    (hReturnLower : frame.params.length ≤ returnLocal)
+    (hReturnValid : frame.validIndex returnLocal)
+    (Q : Assertion Unit) (rest : Wasm.Program)
+    (hNext : wp module_ rest Q st
+      (finishFrame frame destinationLocal returnLocal root) env) :
+    wp module_ (finishProgram rootLocal destinationLocal returnLocal ++ rest)
+      Q st frame env := by
+  have hDestinationNotParam : ¬destinationLocal < frame.params.length :=
+    Nat.not_lt.mpr hDestinationLower
+  have hDestinationBound :
+      destinationLocal < frame.params.length + frame.locals.length :=
+    hDestinationValid
+  have hDestinationIndex :
+      destinationLocal - frame.params.length < frame.locals.length := by
+    omega
+  have hReturnNotParam : ¬returnLocal < frame.params.length :=
+    Nat.not_lt.mpr hReturnLower
+  have hReturnBound :
+      returnLocal < frame.params.length + frame.locals.length := hReturnValid
+  have hReturnIndex :
+      returnLocal - frame.params.length < frame.locals.length := by
+    omega
+  unfold finishProgram
+  simp only [List.cons_append, List.nil_append, wp_simp, hValues, hRoot]
+  simpa [Wasm.Locals.get, Wasm.Locals.set?, hDestinationNotParam,
+    hDestinationBound, hDestinationIndex, hReturnNotParam, hReturnBound,
+    hReturnIndex, List.getElem?_set, finishFrame] using hNext
 
 end Project.ProofKit.FixedArrayResult

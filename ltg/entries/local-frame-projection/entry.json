@@ -14,6 +14,6 @@
   "premises": ["The frame parameter count", "A valid internal-local index", "A Locals.get equation at parameterCount plus that index"],
   "result": "The corresponding internal local has the same optional or indexed value.",
   "consumers": ["demo-2", "demo-3", "demo-5", "demo-9"],
-  "relatedEntries": ["array-fold-prefix", "counter-transition", "residual-specification-normalization", "scalar-post-test-loop"],
+  "relatedEntries": ["array-fold-prefix", "counter-transition", "fixed-array-traversal-input", "residual-specification-normalization", "scalar-post-test-loop"],
   "exclusion": null
 }

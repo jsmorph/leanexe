@@ -1,4 +1,5 @@
 import Project.ProofKit.Array
+import Project.ProofKit.Frame
 
 namespace Project.ProofKit.FixedArrayTraversalInput
 
@@ -70,6 +71,30 @@ def continuingProgram (arrayLocal indexLocal stopLocal itemLocal : Nat) :
   .geUI64,
   .br_if 1
   ] ++ dynamicProgram arrayLocal indexLocal itemLocal
+
+set_option maxHeartbeats 1000000 in
+set_option Elab.async false in
+theorem continuingProgram_exit_spec
+    (arrayLocal indexLocal stopLocal itemLocal : Nat)
+    (module_ : Wasm.Module) (env : HostEnv Unit) (st : Store Unit)
+    (frame : Locals) (index : UInt64)
+    (hValues : frame.values = [])
+    (hIndex : frame.get indexLocal = some (.i64 index))
+    (hStop : frame.get stopLocal = some (.i64 index))
+    (Q : Assertion Unit) (rest : Wasm.Program)
+    (hNext : Q (.Break 1 st { frame with values := [] })) :
+    wp module_ (continuingProgram arrayLocal indexLocal stopLocal itemLocal ++
+      rest) Q st frame env := by
+  have hStopAfter (values : List Value) :
+      ({ frame with values := values } : Locals).get stopLocal =
+        some (.i64 index) := by
+    simpa only [Wasm.Locals.get] using hStop
+  unfold continuingProgram
+  rw [List.append_assoc]
+  simp only [List.cons_append, List.nil_append, wp_simp, hValues, hIndex,
+    hStopAfter]
+  rw [if_pos (by simp)]
+  simpa [hValues] using hNext
 
 def dynamicResultFrame (frame : Locals) (itemLocal : Nat) (value : UInt64)
     (hItem : frame.validIndex itemLocal) : Locals :=
