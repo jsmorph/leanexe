@@ -2,6 +2,24 @@
 
 This file records experiments on reducing Lean elaboration cost in direct WebAssembly proofs.  The immediate source is [Opacity Boundaries for Large Lean Proofs](../../vq/docs/notes/research/lean-opacity-practical.md), which distinguishes checked opacity from compact interfaces and reports cases where generic specification packages removed expensive concrete comparisons.  Each Leanexe experiment records the fixed artifact, the expensive term, the proposed boundary, and the observed result so that a later research note can separate measured results from design hypotheses.
 
+## Research record
+
+Each experiment has a stable identifier and retains enough evidence to reconstruct the comparison.  The record includes the artifact digest and size, generated annotation package, selected LTG entries, initial and final proof, proof journal, Lean diagnostics, Stage 5 telemetry, proof structure and size, and independent package-verification result.  A timeout or rejected design remains part of the record because it identifies the elaboration boundary and prevents a later account from selecting only successful measurements.
+
+The technique ledger distinguishes a checked mechanism from a proposed use and from measured evidence.  A mechanism can improve proof structure while producing an inconclusive or adverse timing result, and one artifact does not establish cross-program reuse.  Promotion into automatically selected LTG support therefore requires exact artifact linkage, an accepted theorem, and evidence from more than one program or a compelling argument that the interface describes a compiler motif rather than application mathematics.
+
+| ID | Technique from the VQ investigation | Leanexe boundary | Evidence and present status |
+|---|---|---|---|
+| `OPA-001` | Compact opaque theorem with an arbitrary continuation | Demo 9 post-load fold update | Accepted and independently verified.  The theorem removed a heartbeat failure, but the complete run was slower and larger than the retained proof. |
+| `OPA-002` | Specification package plus a small semantic accessor | Compiler-described scalar body, condition, and continuing transition | Accepted on Demo 9.  The generated exact WAT-region equality and `guardedBackEdgeProgram_spec` kept the decoded instruction tail outside the loop invariant proof. |
+| `OPA-003` | Module split at the expensive semantic boundary | `Project.ProofKit.GuardedBackEdge` and generated `AnnotationMatches` | Accepted on Demo 9.  The first package failed because the module was missing from the canonical proof-kit inventory; the corrected package and independent verifier passed. |
+| `OPA-004` | Cross-operation reuse of the same compact package | Demo 10 bounded multiplication fold | In progress on the frozen 1,979-byte artifact with digest `a981c788...d4baa`.  The fresh agent selected the guarded-back-edge entry and identified the compiler-generated multiplication descriptor before constructing the proof. |
+| `OPA-005` | Inferred internal proposition type | Generated scalar transition accessors | Proposed.  Current explicit accessors quantify over 21 `UInt64` values and produce an 848-character declaration line, but no controlled comparison has tested an inferred alias. |
+| `OPA-006` | Local irreducibility | Decoded function after public-entry conversion | Proposed.  The experiment must retain the explicit reductions used by length dispatch and frame facts while preventing unification from reopening the complete function. |
+| `OPA-007` | Named compact endpoint equality | Fold setup, traversal, guarded step, and result frames | Partly accepted across Demo 9 boundaries.  The next comparison will determine whether a generated complete entry adapter can compose these endpoints without restating the large weakest-precondition term. |
+
+For each measured run, the notebook records monotonic Stage 5 time separately from Codex time and outer Lean acceptance time.  Proof-size analysis counts lines and explicit scaffolding while treating descriptive declaration names as evidence of shared theorem use rather than complexity.  The proof journal supplies qualitative evidence about retrieval, failed reductions, context compaction, missing lemmas, and the exact residual goals that consumed agent time.
+
 ## Technique map
 
 An opaque theorem helps only when its type omits the expanded term that caused the cost.  A theorem whose body is opaque but whose statement repeats a large decoded program, continuation, or concrete local frame still makes every consumer elaborate that expression.  Leanexe therefore needs small semantic endpoints: a named instruction region, a compact post-state description, and an arbitrary continuation or postcondition.
