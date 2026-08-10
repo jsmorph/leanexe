@@ -352,6 +352,8 @@ function testCodexProtocol() {
     artifactPrompt.includes("Attempt an exact direct recipe or complete composition") &&
     artifactPrompt.includes("Do not search for or read artifact proofs outside") &&
     artifactPrompt.includes("omits worked examples excluded for this exact artifact") &&
+    artifactPrompt.includes("PROOF_KIT_SOURCE mirrors every allowed") &&
+    artifactPrompt.includes("never run rg or find outside the working directory") &&
     artifactPrompt.includes("Keep PROOF_JOURNAL.md as frequent, natural Markdown prose") &&
     artifactPrompt.includes("after each Lean check") &&
     artifactPrompt.includes("Before an extended proof construction or elaboration attempt") &&
@@ -1012,11 +1014,13 @@ function testLengthDispatchAnnotationRecipes() {
     const bounded = encoding === "le-unsigned-v1";
     const expectedTheorem = bounded ? "leProgram_spec" :
       equality ? "eqProgram_spec" : "program_spec";
-    const expectedTactic = bounded ? "wp_fixed_array_length_le_dispatch" :
-      equality ? "wp_fixed_array_length_eq_dispatch" : "wp_fixed_array_length_dispatch";
+    const expectedTactic = bounded ? "wp_fixed_array_length_le_dispatch_from" :
+      equality ? "wp_fixed_array_length_eq_dispatch_from" :
+        "wp_fixed_array_length_dispatch_from";
     assert(plan.recipes.length === 1 &&
       plan.recipes[0].direct.theorem.endsWith(expectedTheorem) &&
       plan.recipes[0].direct.tactic === expectedTactic &&
+      plan.recipes[0].direct.invocation.includes("_from hArray at") &&
       JSON.stringify(plan.recipes[0].guidance) ===
         JSON.stringify(["strategy.arrays", "strategy.frames"]),
     `${encoding} did not select its exact length-dispatch recipe`);
@@ -2295,6 +2299,9 @@ function testArtifactPackage(job, formalSource) {
     JSON.parse(proofContext.get("LTG_TASK.json")).entries ===
       completeLtgTask.manifest.entries &&
     proofContext.get("PROOF_LIBRARY.md").startsWith("# Artifact Proof Kit\n") &&
+    proofContext.get("PROOF_KIT_SOURCE/README.md")
+      .includes("mirrors every allowed `Project.ProofKit` module") &&
+    proofContext.has("PROOF_KIT_SOURCE/Project/ProofKit/Array.lean") &&
     proofContext.get("PROOF_STRATEGIES.md").includes("strategy.core") &&
     proofContext.get("PROOF_STRATEGIES.md").includes("strategy.arrays") &&
     proofContext.get("PROOF_IMPORT_CHECK.js").includes("unsupported proof dependency") &&

@@ -10,7 +10,7 @@
   "features": ["array", "memory-store", "payload", "result-construction", "singleton", "word-address"],
   "annotationKinds": ["leanexe.array.fold.v1", "leanexe.array.pair-result.v1"],
   "modules": ["Project.ProofKit.FixedArrayResult"],
-  "declarations": ["Project.ProofKit.FixedArrayResult.lengthStore_spec", "Project.ProofKit.FixedArrayResult.pairStore_at", "Project.ProofKit.FixedArrayResult.payloadStore_spec", "Project.ProofKit.FixedArrayResult.singletonStore_at"],
+  "declarations": ["Project.ProofKit.FixedArrayResult.emptyStore_at", "Project.ProofKit.FixedArrayResult.lengthStore_spec", "Project.ProofKit.FixedArrayResult.pairStore_at", "Project.ProofKit.FixedArrayResult.payloadStore_spec", "Project.ProofKit.FixedArrayResult.singletonStore_at"],
   "premises": ["Frame getters for the result root and stored value", "Current-memory bounds for the selected result words", "A continuation from the named length or payload store", "For representation theorems, complete 32-bit and current-memory fit for the result array"],
   "result": "The emitted result store reaches an arbitrary continuation, or the named result memory satisfies the singleton or pair UInt64 array representation.",
   "consumers": ["demo-2", "demo-3", "demo-9"],

@@ -33,6 +33,7 @@ import Project.ProofKit.ScalarTransitionU64
 #check Project.ProofKit.FixedArrayMapAdd.wrapperProgram
 #check Project.ProofKit.FixedArrayMapAdd.wrapperProgram_spec
 #check Project.ProofKit.FixedArrayPairResult.input_preserved_by_alloc
+#check Project.ProofKit.FixedArrayResult.emptyStore_at
 #check Project.ProofKit.FixedArrayResult.lengthStore_spec
 #check Project.ProofKit.FixedArrayResult.pairStore_at
 #check Project.ProofKit.FixedArrayResult.payloadStore_spec
