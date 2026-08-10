@@ -50,19 +50,19 @@
     "artifactProof": {
       "task": "artifact-proof",
       "sourceModule": "LeanExeGen.GeneratedR23fa7efc3fb0298b.Behavior",
-      "sourceSha256": "9fa35c5b520bf0ab7246cf215924fbb3d7d836ca2e330ffd47327c4b7ade2e0a",
-      "reportSha256": "469e92ae5d7c382e962577447b06b4f22f99bba1c99d817175bbc59f65e9ffed",
+      "sourceSha256": "e5d600ea088c72c2445dccafead72bce323cba4773e189da34473d59543c0217",
+      "reportSha256": "ecaf7f0726c0c324c7008187385f127ee4aa52e8230ca51cd36a1f08f3e60475",
       "report": {
-        "summary": "Proved artifact_behavior. The import check and ArtifactResult build succeed.",
+        "summary": "Proved the exact compiled artifact behavior. The import check and ArtifactResult build succeeded.",
         "decisions": [
-          "Used a loop invariant based on ArrayFold.foldPrefix with a decreasing input-index measure.",
-          "Proved both the empty invalid result and singleton wrapping-sum representation."
+          "Used the exact length-dispatch recipe and a loop invariant with a loop-carried fold-prefix sum.",
+          "Used checked result-placement and singleton-store theorems."
         ],
         "attempts": [
           {
             "number": 1,
             "outcome": "accepted",
-            "sourceSha256": "9fa35c5b520bf0ab7246cf215924fbb3d7d836ca2e330ffd47327c4b7ade2e0a",
+            "sourceSha256": "e5d600ea088c72c2445dccafead72bce323cba4773e189da34473d59543c0217",
             "diagnosticSha256": "3b8a0f14b92d7877f5aded7ff8455c78bc137410fb141157213cc5a46bf8c45e",
             "diagnostic": "Lean accepted LeanExeGen.GeneratedR23fa7efc3fb0298b.Behavior.artifact_behavior and LeanExeGen.GeneratedR23fa7efc3fb0298b.Artifact.artifact_correct."
           }

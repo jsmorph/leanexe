@@ -14,6 +14,7 @@ Every `leanexegen` artifact-proof task receives this catalog and may import the 
 | `Project.ProofKit.FixedArrayAllocatorWindow` | The fixed-array allocator semantics parameterized by a uniform shift of its combined-local operands. |
 | `Project.ProofKit.FixedArrayEqNode` | One indexed array load, equality normalization, and two-way branch for an unrolled search. |
 | `Project.ProofKit.FixedArrayFilterLt` | A bounded stable filter by an unsigned threshold, including allocation, conditional stores, dynamic length, and empty-result semantics. |
+| `Project.ProofKit.FixedArrayFold` | Forward full-array fold setup and accumulator result-placement semantics selected by exact subregion equalities. |
 | `Project.ProofKit.FixedArrayInput` | The standard length-guarded indexed input loader parameterized by a uniform local-window shift. |
 | `Project.ProofKit.FixedArrayLengthDispatch` | The standard fixed-array length comparison, Boolean normalization, and valid or invalid branch. |
 | `Project.ProofKit.FixedArrayLtNode` | One key-first indexed array load, unsigned less-than comparison, and two-way branch for an unrolled search tree. |
@@ -43,6 +44,10 @@ An artifact proof still needs an exact equality between the decoded instruction 
 `Project.ProofKit.UInt64Array.At` has the same definition as the generated `FormalSpec.UInt64ArrayAt` predicate.  A proof can change either a hypothesis or a goal to the shared predicate without adding an assumption.  Its projection lemmas expose the header read, an indexed element read, and the corresponding WebAssembly load bounds.
 
 `Project.ProofKit.ArrayFold.foldPrefix` defines the mathematical accumulator after consuming an array prefix.  `foldPrefix_succ` reduces one continuing traversal step to the indexed element, and `foldPrefix_size` identifies the completed prefix with `Array.foldl`.  The declarations carry no WebAssembly frame or arithmetic assumption, so an artifact proof can combine them with the checked traversal, memory, and loop rules appropriate to its emitted program.
+
+`Project.ProofKit.FixedArrayFold.forwardSetupProgram_spec` covers the compiler's common forward, one-word, one-accumulator setup over the complete input array.  It performs both represented-length loads, initializes the loop locals, selects the effective stop, and passes the exact `forwardSetupFrame` to an arbitrary continuation.  The annotation matcher supplies a subregion equality only after the frozen instructions match `forwardSetupProgram` exactly.
+
+`FixedArrayFold.resultProgram_spec` covers the two-instruction suffix that copies one selected accumulator local to its result local.  The theorem passes `resultFrame` to an arbitrary continuation and preserves every other local.  These structural theorems leave the accumulator's mathematical meaning to `ArrayFold.foldPrefix` and the application step relation.
 
 ```lean
 import Project.ProofKit.Array

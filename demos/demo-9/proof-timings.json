@@ -69,5 +69,46 @@
     "independentlyVerified": true,
     "timingImprovement": true,
     "structuralImprovement": true
+  },
+  "foldStructureRun": {
+    "package": "fold-structure-ltg-1",
+    "acceptedSourceSha256": "e5d600ea088c72c2445dccafead72bce323cba4773e189da34473d59543c0217",
+    "totalMilliseconds": 2082888.844,
+    "codexSessionMilliseconds": 2018069.175,
+    "outerAcceptanceMilliseconds": 44583.259,
+    "reductionFromBaselineMilliseconds": 1348980.972,
+    "reductionFromBaselinePercent": 39.307,
+    "reductionFromArrayFoldAnnotationMilliseconds": 1105362.156,
+    "reductionFromArrayFoldAnnotationPercent": 34.670,
+    "proofLines": 508,
+    "proofWords": 2155,
+    "proofBytes": 24327,
+    "lineIncreaseFromArrayFoldAnnotation": 92,
+    "lineIncreaseFromArrayFoldAnnotationPercent": 22.115,
+    "sharedAssets": [
+      "Project.ProofKit.ArrayFold.foldPrefix",
+      "Project.ProofKit.ArrayFold.foldPrefix_size",
+      "Project.ProofKit.ArrayFold.foldPrefix_succ",
+      "Project.ProofKit.FixedArrayLengthDispatch.leProgram_spec",
+      "Project.ProofKit.FixedArrayAllocatorWindow.region_spec_withTail",
+      "Project.ProofKit.FixedArrayPairResult.input_preserved_by_alloc",
+      "Project.ProofKit.FixedArrayFold.forwardSetupProgram_spec",
+      "Project.ProofKit.FixedArrayFold.resultProgram_spec",
+      "Project.ProofKit.FixedArrayTraversalInput.continuingProgram_spec",
+      "Project.ProofKit.FixedArrayResult.lengthStore_spec",
+      "Project.ProofKit.FixedArrayResult.payloadStore_spec",
+      "Project.ProofKit.FixedArrayResult.singletonStore_at",
+      "Project.ProofKit.FixedArrayResult.emptyStore_at"
+    ],
+    "compilerDerivedEvidence": [
+      "LeanExeGen.GeneratedR23fa7efc3fb0298b.AnnotationMatches.function_0_array_fold_0_eq",
+      "LeanExeGen.GeneratedR23fa7efc3fb0298b.AnnotationMatches.function_0_array_fold_0_setup_eq",
+      "LeanExeGen.GeneratedR23fa7efc3fb0298b.AnnotationMatches.function_0_array_fold_0_continuing_eq",
+      "LeanExeGen.GeneratedR23fa7efc3fb0298b.AnnotationMatches.function_0_array_fold_0_result_eq"
+    ],
+    "independentlyVerified": true,
+    "timingImprovement": true,
+    "structuralImprovement": true,
+    "proofSizeImprovement": false
   }
 }

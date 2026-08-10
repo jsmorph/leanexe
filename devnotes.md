@@ -1,5 +1,19 @@
 # Development Journal
 
+## 2026-08-09: Demo 9 fold-boundary reproof
+
+The controlled Demo 9 reproof retained the formal specification, generated source, 1,979-byte WASM module, artifact digest, and compiler annotations.  Its task-specific LTG view contained 18 entries, including the new `fixed-array-fold-structure` entry, while artifact-specific Demo 9 material remained excluded.  Codex retrieved the generic length-dispatch, fold, traversal, allocation, memory-framing, and result entries before editing the proof.
+
+Lean accepted the proof in the first Codex session after 2,082.889 seconds, and independent package verification passed.  The preceding annotation run took 3,188.251 seconds, so the new run reduced Stage 5 time by 1,105.362 seconds, or 34.7 percent.  The accepted proof grew from 416 to 508 lines because it states two capacity-prefix theorems locally and uses explicit shared-theorem applications at the setup, traversal, result-placement, allocator, and result-store boundaries.
+
+The journal identifies two generic follow-up targets.  A parameterized theorem and compiler-matched recipe should cover the emitted result-capacity calculation that currently requires local zero- and one-element specializations.  A frame-projection lemma or tactic should turn `Locals.get` invariant facts into internal `List.getElem?` and `getElem` facts, a repeated pattern in the proof kit and the Demo 9 loop proof.
+
+Checks run:
+
+- [x] `tools/leanexegen reprove -o /tmp/demo9-fold-structure-ltg-1.wasm /tmp/demo9-fold-structure-annotated-2.proof` accepted the artifact theorem and both sample executions.
+- [x] `tools/leanexegen verify -s /tmp/demo9-fold-structure-ltg-1.proof` independently accepted the published package.
+- [x] The published artifact retained SHA-256 `aa263bbfa89c333f9fab497f1a2c370f476afc3419015d17b368cb7c8a6086d5`.
+
 ## 2026-08-07: Bounded Filter Composition
 
 The [Demo 5 baseline](demos/demo-5/README.md) took 1,635.679 seconds in Stage 5 and produced a 969-line direct proof after fourteen edited checks.  Its only checked compiler region was the bounded-length dispatch, leaving Codex to derive the input-capacity allocator, filtered-prefix loop invariant, conditional output store, dynamic result length, and empty branch.  The proof journal supplied the exact emitted program decomposition and invariant used to define the shared theorem.
