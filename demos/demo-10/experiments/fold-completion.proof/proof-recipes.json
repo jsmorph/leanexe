@@ -1,0 +1,371 @@
+{
+  "schemaVersion": 1,
+  "attemptOrder": [
+    "direct",
+    "composition",
+    "tactic",
+    "focused-guidance"
+  ],
+  "compositions": [],
+  "recipes": [
+    {
+      "recipeVersion": 1,
+      "functionIndex": 0,
+      "regionId": "function-0.length-dispatch-0",
+      "regionKind": "leanexe.array.length-dispatch.v1",
+      "applicability": "exact decoded instruction match",
+      "direct": {
+        "module": "Project.ProofKit.FixedArrayLengthDispatch",
+        "theorem": "Project.ProofKit.FixedArrayLengthDispatch.leProgram_spec",
+        "tactic": "wp_fixed_array_length_le_dispatch_from",
+        "invocation": "wp_fixed_array_length_le_dispatch_from hArray at 7, 8"
+      },
+      "supporting": [
+        {
+          "declaration": "Wasm.TerminatesWith.of_wp_entry_for",
+          "purpose": "specialize public entry execution to the represented input store before invoking the region tactic"
+        },
+        {
+          "declaration": "Project.ProofKit.UInt64Array.At.lengthRead",
+          "purpose": "identify the represented input length"
+        },
+        {
+          "declaration": "Project.ProofKit.UInt64Array.At.encodedSize_eq",
+          "purpose": "relate the encoded length word to the fixed logical size"
+        },
+        {
+          "declaration": "Project.ProofKit.FixedArrayEqNode.branchPost",
+          "purpose": "preserve the enclosing branch continuation"
+        },
+        {
+          "declaration": "LeanExeGen.GeneratedRa8e90ffc5781d113.AnnotationMatches.function_0_length_dispatch_0_function_eq",
+          "purpose": "rewrite the decoded function to the named dispatch and suffix programs"
+        },
+        {
+          "declaration": "LeanExeGen.GeneratedRa8e90ffc5781d113.AnnotationMatches.function_0_length_dispatch_0_dispatch_eq",
+          "purpose": "check the named dispatch program against the exact decoded prefix"
+        },
+        {
+          "declaration": "LeanExeGen.GeneratedRa8e90ffc5781d113.AnnotationMatches.function_0_length_dispatch_0_valid_capacity_eq",
+          "purpose": "rewrite the exact valid-branch capacity prefix"
+        },
+        {
+          "declaration": "LeanExeGen.GeneratedRa8e90ffc5781d113.AnnotationMatches.function_0_length_dispatch_0_valid_capacity_program",
+          "purpose": "name the compiler-matched valid-branch capacity prefix"
+        },
+        {
+          "declaration": "Project.ProofKit.FixedArrayCapacity.constantProgram_spec",
+          "purpose": "execute constant result-capacity normalization into its destination local"
+        },
+        {
+          "declaration": "Project.ProofKit.FixedArrayCapacity.normalizedCapacity",
+          "purpose": "name the computed aligned capacity passed to allocation"
+        },
+        {
+          "declaration": "Project.ProofKit.FixedArrayCapacity.capacityFrame",
+          "purpose": "state the exact post-capacity local frame"
+        },
+        {
+          "declaration": "LeanExeGen.GeneratedRa8e90ffc5781d113.AnnotationMatches.function_0_length_dispatch_0_invalid_capacity_eq",
+          "purpose": "rewrite the exact invalid-branch capacity prefix"
+        },
+        {
+          "declaration": "LeanExeGen.GeneratedRa8e90ffc5781d113.AnnotationMatches.function_0_length_dispatch_0_invalid_capacity_program",
+          "purpose": "name the compiler-matched invalid-branch capacity prefix"
+        },
+        {
+          "declaration": "Project.ProofKit.FixedArrayCapacity.constantProgram_spec",
+          "purpose": "execute constant result-capacity normalization into its destination local"
+        },
+        {
+          "declaration": "Project.ProofKit.FixedArrayCapacity.normalizedCapacity",
+          "purpose": "name the computed aligned capacity passed to allocation"
+        },
+        {
+          "declaration": "Project.ProofKit.FixedArrayCapacity.capacityFrame",
+          "purpose": "state the exact post-capacity local frame"
+        }
+      ],
+      "expectedPostcondition": "valid and invalid input-size branch obligations",
+      "guidance": [
+        "strategy.arrays",
+        "strategy.allocation",
+        "strategy.frames"
+      ]
+    },
+    {
+      "recipeVersion": 1,
+      "functionIndex": 0,
+      "regionId": "function-0.array-fold-0",
+      "regionKind": "leanexe.array.fold.v1",
+      "applicability": "Lean-checked equality over the decoded instruction region",
+      "direct": {
+        "module": "Project.ProofKit.Control",
+        "theorem": "Wasm.wp_loop_cons",
+        "regionEquality": "LeanExeGen.GeneratedRa8e90ffc5781d113.AnnotationMatches.function_0_array_fold_0_eq",
+        "program": "LeanExeGen.GeneratedRa8e90ffc5781d113.AnnotationMatches.function_0_array_fold_0_program"
+      },
+      "supporting": [
+        {
+          "declaration": "LeanExeGen.GeneratedRa8e90ffc5781d113.AnnotationMatches.function_0_array_fold_0_eq",
+          "purpose": "rewrite the selected decoded interval to its named exact program"
+        },
+        {
+          "declaration": "LeanExeGen.GeneratedRa8e90ffc5781d113.AnnotationMatches.function_0_array_fold_0_program",
+          "purpose": "name the complete checked fold interval, including initialization and result placement"
+        },
+        {
+          "declaration": "LeanExeGen.GeneratedRa8e90ffc5781d113.AnnotationMatches.function_0_array_fold_0_setup_eq",
+          "purpose": "rewrite the exact forward full-array setup interval"
+        },
+        {
+          "declaration": "LeanExeGen.GeneratedRa8e90ffc5781d113.AnnotationMatches.function_0_array_fold_0_setup_program",
+          "purpose": "name the compiler-matched setup through effective-stop selection"
+        },
+        {
+          "declaration": "Project.ProofKit.FixedArrayFold.forwardSetupProgram_spec",
+          "purpose": "execute the checked length loads and fold-local initialization"
+        },
+        {
+          "declaration": "Project.ProofKit.FixedArrayFold.forwardSetupFrame",
+          "purpose": "state the exact initialized frame at loop entry"
+        },
+        {
+          "declaration": "LeanExeGen.GeneratedRa8e90ffc5781d113.AnnotationMatches.function_0_array_fold_0_result_eq",
+          "purpose": "rewrite the exact accumulator result-placement interval"
+        },
+        {
+          "declaration": "LeanExeGen.GeneratedRa8e90ffc5781d113.AnnotationMatches.function_0_array_fold_0_result_program",
+          "purpose": "name the compiler-matched accumulator-to-result transfer"
+        },
+        {
+          "declaration": "Project.ProofKit.FixedArrayFold.resultProgram_spec",
+          "purpose": "execute result placement from one accumulator getter"
+        },
+        {
+          "declaration": "Project.ProofKit.FixedArrayFold.resultFrame",
+          "purpose": "state the exact result-placement frame"
+        },
+        {
+          "declaration": "LeanExeGen.GeneratedRa8e90ffc5781d113.AnnotationMatches.function_0_array_fold_0_singleton_result_eq",
+          "purpose": "rewrite the complete accumulator-placement, singleton payload-store, and root-transfer suffix"
+        },
+        {
+          "declaration": "LeanExeGen.GeneratedRa8e90ffc5781d113.AnnotationMatches.function_0_array_fold_0_singleton_result_program",
+          "purpose": "name the compiler-matched complete singleton fold-result suffix"
+        },
+        {
+          "declaration": "LeanExeGen.GeneratedRa8e90ffc5781d113.AnnotationMatches.function_0_array_fold_0_singleton_result_spec",
+          "purpose": "execute the exact singleton fold-result suffix to a caller-supplied postcondition"
+        },
+        {
+          "declaration": "Project.ProofKit.FixedArrayFold.singletonResultProgram_spec_to",
+          "purpose": "execute a singleton fold-result suffix to an arbitrary exact final-state postcondition"
+        },
+        {
+          "declaration": "Project.ProofKit.FixedArrayFold.singletonResultProgram_spec",
+          "purpose": "execute the complete singleton fold-result suffix to a compact represented-output assertion"
+        },
+        {
+          "declaration": "Project.ProofKit.FixedArrayFold.singletonResultPost",
+          "purpose": "state the compact represented singleton result and return-local endpoint"
+        },
+        {
+          "declaration": "Project.ProofKit.ArrayFold.foldPrefix",
+          "purpose": "state the loop invariant as the fold over the consumed input prefix"
+        },
+        {
+          "declaration": "Project.ProofKit.ArrayFold.foldPrefix_succ",
+          "purpose": "rewrite the continuing branch as one fold step at the current element"
+        },
+        {
+          "declaration": "Project.ProofKit.ArrayFold.foldPrefix_size",
+          "purpose": "rewrite the exit accumulator as the complete Array.foldl result"
+        },
+        {
+          "declaration": "LeanExeGen.GeneratedRa8e90ffc5781d113.AnnotationMatches.function_0_array_fold_0_continuing_eq",
+          "purpose": "rewrite the exact continuing guard and indexed element-load prefix"
+        },
+        {
+          "declaration": "LeanExeGen.GeneratedRa8e90ffc5781d113.AnnotationMatches.function_0_array_fold_0_continuing_program",
+          "purpose": "name the compiler-matched continuing guard and indexed element-load prefix"
+        },
+        {
+          "declaration": "Project.ProofKit.FixedArrayTraversalInput.continuingProgram_spec",
+          "purpose": "execute the continuing guard and indexed element load from the annotated local roles"
+        },
+        {
+          "declaration": "LeanExeGen.GeneratedRa8e90ffc5781d113.AnnotationMatches.function_0_array_fold_0_continuing_spec",
+          "purpose": "execute the prefix from the generated scalar frame with only semantic input, index, and continuation premises"
+        },
+        {
+          "declaration": "LeanExeGen.GeneratedRa8e90ffc5781d113.AnnotationMatches.function_0_array_fold_0_continuing_loaded_frame_eq",
+          "purpose": "identify the generated scalar frame after the checked indexed element load"
+        },
+        {
+          "declaration": "LeanExeGen.GeneratedRa8e90ffc5781d113.AnnotationMatches.function_0_array_fold_0_continuing_frame_params",
+          "purpose": "expose the exact parameter list of the generated continuing frame"
+        },
+        {
+          "declaration": "LeanExeGen.GeneratedRa8e90ffc5781d113.AnnotationMatches.function_0_array_fold_0_continuing_frame_locals_length",
+          "purpose": "expose the exact local-list length of the generated continuing frame"
+        },
+        {
+          "declaration": "LeanExeGen.GeneratedRa8e90ffc5781d113.AnnotationMatches.function_0_array_fold_0_continuing_frame_values",
+          "purpose": "expose the empty operand stack of the generated continuing frame"
+        },
+        {
+          "declaration": "LeanExeGen.GeneratedRa8e90ffc5781d113.AnnotationMatches.function_0_array_fold_0_continuing_frame_get_0",
+          "purpose": "read generated continuing-frame index 0"
+        },
+        {
+          "declaration": "LeanExeGen.GeneratedRa8e90ffc5781d113.AnnotationMatches.function_0_array_fold_0_continuing_frame_get_1",
+          "purpose": "read generated continuing-frame index 1"
+        },
+        {
+          "declaration": "LeanExeGen.GeneratedRa8e90ffc5781d113.AnnotationMatches.function_0_array_fold_0_continuing_frame_get_2",
+          "purpose": "read generated continuing-frame index 2"
+        },
+        {
+          "declaration": "LeanExeGen.GeneratedRa8e90ffc5781d113.AnnotationMatches.function_0_array_fold_0_continuing_frame_get_3",
+          "purpose": "read generated continuing-frame index 3"
+        },
+        {
+          "declaration": "LeanExeGen.GeneratedRa8e90ffc5781d113.AnnotationMatches.function_0_array_fold_0_continuing_frame_get_4",
+          "purpose": "read generated continuing-frame index 4"
+        },
+        {
+          "declaration": "LeanExeGen.GeneratedRa8e90ffc5781d113.AnnotationMatches.function_0_array_fold_0_continuing_frame_get_5",
+          "purpose": "read generated continuing-frame index 5"
+        },
+        {
+          "declaration": "LeanExeGen.GeneratedRa8e90ffc5781d113.AnnotationMatches.function_0_array_fold_0_continuing_frame_get_6",
+          "purpose": "read generated continuing-frame index 6"
+        },
+        {
+          "declaration": "LeanExeGen.GeneratedRa8e90ffc5781d113.AnnotationMatches.function_0_array_fold_0_continuing_frame_get_7",
+          "purpose": "read generated continuing-frame index 7"
+        },
+        {
+          "declaration": "LeanExeGen.GeneratedRa8e90ffc5781d113.AnnotationMatches.function_0_array_fold_0_continuing_frame_get_8",
+          "purpose": "read generated continuing-frame index 8"
+        },
+        {
+          "declaration": "LeanExeGen.GeneratedRa8e90ffc5781d113.AnnotationMatches.function_0_array_fold_0_continuing_frame_get_9",
+          "purpose": "read generated continuing-frame index 9"
+        },
+        {
+          "declaration": "LeanExeGen.GeneratedRa8e90ffc5781d113.AnnotationMatches.function_0_array_fold_0_continuing_frame_get_10",
+          "purpose": "read generated continuing-frame index 10"
+        },
+        {
+          "declaration": "LeanExeGen.GeneratedRa8e90ffc5781d113.AnnotationMatches.function_0_array_fold_0_continuing_frame_get_11",
+          "purpose": "read generated continuing-frame index 11"
+        },
+        {
+          "declaration": "LeanExeGen.GeneratedRa8e90ffc5781d113.AnnotationMatches.function_0_array_fold_0_continuing_frame_get_12",
+          "purpose": "read generated continuing-frame index 12"
+        },
+        {
+          "declaration": "LeanExeGen.GeneratedRa8e90ffc5781d113.AnnotationMatches.function_0_array_fold_0_continuing_frame_get_13",
+          "purpose": "read generated continuing-frame index 13"
+        },
+        {
+          "declaration": "LeanExeGen.GeneratedRa8e90ffc5781d113.AnnotationMatches.function_0_array_fold_0_continuing_frame_get_14",
+          "purpose": "read generated continuing-frame index 14"
+        },
+        {
+          "declaration": "LeanExeGen.GeneratedRa8e90ffc5781d113.AnnotationMatches.function_0_array_fold_0_continuing_frame_get_15",
+          "purpose": "read generated continuing-frame index 15"
+        },
+        {
+          "declaration": "LeanExeGen.GeneratedRa8e90ffc5781d113.AnnotationMatches.function_0_array_fold_0_continuing_frame_get_16",
+          "purpose": "read generated continuing-frame index 16"
+        },
+        {
+          "declaration": "LeanExeGen.GeneratedRa8e90ffc5781d113.AnnotationMatches.function_0_array_fold_0_continuing_frame_get_17",
+          "purpose": "read generated continuing-frame index 17"
+        },
+        {
+          "declaration": "LeanExeGen.GeneratedRa8e90ffc5781d113.AnnotationMatches.function_0_array_fold_0_continuing_frame_get_18",
+          "purpose": "read generated continuing-frame index 18"
+        },
+        {
+          "declaration": "LeanExeGen.GeneratedRa8e90ffc5781d113.AnnotationMatches.function_0_array_fold_0_continuing_frame_get_19",
+          "purpose": "read generated continuing-frame index 19"
+        },
+        {
+          "declaration": "LeanExeGen.GeneratedRa8e90ffc5781d113.AnnotationMatches.function_0_array_fold_0_continuing_frame_get_20",
+          "purpose": "read generated continuing-frame index 20"
+        },
+        {
+          "declaration": "Project.ProofKit.FixedArrayFold.resultFrame_get_result",
+          "purpose": "read the value placed in a valid nonparameter result local"
+        },
+        {
+          "declaration": "Project.ProofKit.FixedArrayFold.resultFrame_get_of_ne",
+          "purpose": "preserve a distinct valid nonparameter local across result placement"
+        },
+        {
+          "declaration": "Project.ProofKit.FixedArrayFoldBody.continuingGuardedProgram_spec",
+          "purpose": "compose the continuing traversal guard and load with the compiler-described guarded back edge"
+        },
+        {
+          "declaration": "Project.ProofKit.FixedArrayTraversalInput.continuingProgram_exit_spec",
+          "purpose": "execute the same checked guard through Break 1 when the index equals the effective stop"
+        },
+        {
+          "declaration": "Project.ProofKit.FixedArrayTraversalInput.dynamicProgram_spec",
+          "purpose": "execute an indexed element load after a separate loop-guard reduction"
+        },
+        {
+          "declaration": "Project.ProofKit.Frame.internal_getElem?_of_get",
+          "purpose": "project an invariant getter to the internal local list used by a dependent continuation"
+        },
+        {
+          "declaration": "Project.ProofKit.Frame.internal_getElem_of_get",
+          "purpose": "project an invariant getter to a bounded internal local value"
+        },
+        {
+          "declaration": "LeanExeGen.GeneratedRa8e90ffc5781d113.AnnotationMatches.function_0_array_fold_0_step_eq",
+          "purpose": "rewrite the exact scalar fold update, conditional exit, index increment, and back edge"
+        },
+        {
+          "declaration": "LeanExeGen.GeneratedRa8e90ffc5781d113.AnnotationMatches.function_0_array_fold_0_step_program",
+          "purpose": "name the compiler-matched guarded back-edge interval"
+        },
+        {
+          "declaration": "LeanExeGen.GeneratedRa8e90ffc5781d113.AnnotationMatches.function_0_array_fold_0_body_eval",
+          "purpose": "use the compiler-derived scalar body transition in the loop invariant step"
+        },
+        {
+          "declaration": "LeanExeGen.GeneratedRa8e90ffc5781d113.AnnotationMatches.function_0_array_fold_0_condition_eval",
+          "purpose": "use the compiler-derived done-condition transition after the scalar body"
+        },
+        {
+          "declaration": "LeanExeGen.GeneratedRa8e90ffc5781d113.AnnotationMatches.function_0_array_fold_0_step_continuing_eval",
+          "purpose": "use the generated compact transition for the continuing index update"
+        },
+        {
+          "declaration": "Project.ProofKit.ScalarTransition.guardedBackEdgeProgram_spec",
+          "purpose": "execute the descriptor body and condition through exit or the indexed back edge"
+        },
+        {
+          "declaration": "Project.ProofKit.wp_block_loop",
+          "purpose": "apply the block and loop rules after reaching the annotated region"
+        },
+        {
+          "declaration": "Project.ProofKit.wp_entry_to_loop",
+          "purpose": "reach a block-wrapped loop from a matching function entry"
+        }
+      ],
+      "expectedPostcondition": "an invariant-preserving transition with a decreasing measure",
+      "guidance": [
+        "strategy.arrays",
+        "strategy.loops",
+        "strategy.frames",
+        "strategy.arithmetic"
+      ]
+    }
+  ]
+}

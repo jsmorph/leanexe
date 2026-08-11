@@ -100,6 +100,14 @@ Stage 5 took 2,099.237 seconds, including 2,031.417 seconds in Codex and 50.156 
 
 The telemetry's UTC timestamps span 5,546.712 seconds, exceeding the monotonic Stage 5 measurement by 3,447.475 seconds.  Timing comparisons use the monotonic metric and preserve both timestamp forms in the package.  The proof prompt now treats each new residual goal class as another LTG retrieval checkpoint and requires an accessor search before proving a frame projection by reduction or a new local fact.
 
+## Fold-completion adapter experiment
+
+The [fold-completion package](experiments/fold-completion.proof/) checks the generated `function_0_array_fold_0_singleton_result_spec` theorem against the unchanged wrapping-product artifact.  The [manual proof](experiments/manual-fold-completion.lean) applies that theorem directly to the public valid-branch postcondition, replacing its proof-local result-frame facts and postcondition consequence.  The product-prefix invariant, heap-address argument, and represented singleton result remain in the artifact proof.
+
+Independent `leanexegen verify -s` accepted the complete package and exact artifact digest.  The proof decreased from 600 to 553 lines, from 2,371 to 2,162 whitespace-delimited words, and from 30,568 to 28,254 bytes.  Demo 9 and Demo 11 apply the same operation-independent interface to wrapping addition and bitwise XOR.
+
+This manual substitution provides no proof-generation-time measurement.  The package omits the predecessor proof's telemetry because those timings belong to a different source.  A fresh fixed-artifact reproof will measure structured retrieval and proof construction separately.
+
 ## Execution
 
 The empty input checks the multiplicative identity, the second sample checks the traversal loop, and the third checks the oversized branch.  Direct execution of the proved artifact produced these results.  Each result agrees with the formal specification.
@@ -148,3 +156,5 @@ The root files provide readable views of each generation and proof stage.  The [
 | [Fresh fold-body reproof](experiments/fold-body-reproof.proof/) | The independently verified fixed-artifact run that retrieved and used the shared fold-body theorem. |
 | [Generated frame-accessor capability](experiments/frame-accessors.proof/) | The independently verified current annotation and recipe package containing exact accessors for all 21 continuing-frame slots. |
 | [Fresh frame-accessor reproof](experiments/frame-accessor-reproof.proof/) | The independently verified fixed-artifact proof that used part of the accessor family and exposed a residual-goal retrieval defect. |
+| [Fold-completion package](experiments/fold-completion.proof/) | The independently verified manual proof using the generated exact singleton-result adapter. |
+| [Manual fold-completion proof](experiments/manual-fold-completion.lean) | The readable behavioral proof retained by the fold-completion package. |

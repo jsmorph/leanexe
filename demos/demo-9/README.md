@@ -92,6 +92,14 @@ The journal records seventeen edited import-check candidates inside one accepted
 
 Independent `leanexegen verify -s` accepted the preserved package over digest `aa263bbfa89c333f9fab497f1a2c370f476afc3419015d17b368cb7c8a6086d5`.  The earlier manual substitution remains the smaller source comparison, and the retained root package remains the primary timing and size reference.  The next frame-accessor screen should use Demo 10 or a new fold artifact rather than tuning this interface to Demo 9.
 
+## Fold-completion adapter experiment
+
+The [fold-completion package](experiments/fold-completion.proof/) checks the generated `function_0_array_fold_0_singleton_result_spec` theorem against the unchanged wrapping-sum artifact.  The [manual proof](experiments/manual-fold-completion.lean) applies that theorem to the compact singleton-result postcondition, replacing the explicit local-layout, accumulator-transfer, root-preservation, result-placement, and final-local validity obligations.  The sum-prefix invariant and represented singleton result remain in the artifact proof.
+
+Independent `leanexegen verify -s` accepted the complete package and exact artifact digest.  The proof decreased from 616 to 569 lines, from 2,541 to 2,404 whitespace-delimited words, and from 30,901 to 28,245 bytes.  Demo 11 applies the same operation-independent interface directly to a public XOR-branch postcondition.
+
+This manual substitution provides no proof-generation-time measurement.  The package omits the predecessor proof's telemetry because those timings belong to a different source.  A fresh fixed-artifact reproof will measure structured retrieval and proof construction separately.
+
 ## Execution
 
 The first sample exercises wrapping addition in the valid branch.  The second sample exceeds the maximum length and exercises the empty-result branch.  Direct execution of the proved artifact produced these values:
@@ -133,3 +141,5 @@ Every retained root file fixes a generation input, artifact, proof context, or m
 | [Fresh fold-body composition reproof](experiments/fold-body-reproof.proof/) | The independently verified fixed-artifact proof that retrieved and used the shared composition theorem for wrapping addition. |
 | [Generated frame-accessor substitution](experiments/frame-accessors.proof/) | The independently verified manual proof that replaces ten local frame projections with exact generated accessors and shared result-frame getters. |
 | [Fresh frame-accessor reproof](experiments/frame-accessor-reproof.proof/) | The independently verified fixed-artifact proof whose agent retrieved and used the generated accessors and shared result-frame getters. |
+| [Fold-completion package](experiments/fold-completion.proof/) | The independently verified manual proof using the generated exact singleton-result adapter. |
+| [Manual fold-completion proof](experiments/manual-fold-completion.lean) | The readable behavioral proof retained by the fold-completion package. |
