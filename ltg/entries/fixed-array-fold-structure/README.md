@@ -4,6 +4,8 @@ Use `FixedArrayFold.forwardSetupProgram_spec` when a `leanexe.array.fold.v1` rec
 
 Prove the setup theorem's writable-local premise from the generated frame length, and prove its `setupLocals` list has no duplicates by reduction.  The named frame retains every unrelated local because it changes only the eight listed destinations.  State the loop invariant on that frame and apply the block and loop rules without reducing the setup instructions or the nested local-update chain.
 
+The structured `wp_block_loop` tactic record identifies a block-wrapped `Wasm.wp` loop goal and requires an explicit invariant and natural-number measure.  The command applies the block and loop rules together, while `Wasm.wp_loop_cons` remains its indexed fallback for proofs that need direct control over either rule.  The record is restricted to the array-fold annotation kind in this entry.
+
 Use `FixedArrayFold.resultProgram_spec` when the same recipe supplies `<region>_result_eq`.  It copies one selected accumulator local to one result local and reaches `resultFrame`, preserving parameters, all other locals, and the empty value stack.  Apply it after `ArrayFold.foldPrefix_size` has rewritten the completed accumulator to the specification's `Array.foldl` value.
 
 Use `resultFrame_get_result` to read the written result local and `resultFrame_get_of_ne` to preserve any distinct valid nonparameter local.  The generated continuing-frame parameter, local-length, and getter theorems discharge their frame premises without reducing the scalar state.  The `annotated-fold-frame-accessors` entry gives the restricted simplification form and the checked Demo 9 substitution evidence.

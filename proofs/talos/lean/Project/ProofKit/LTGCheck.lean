@@ -15,6 +15,7 @@ import Project.ProofKit.FixedArraySingletonWrapper
 import Project.ProofKit.FixedArrayTraversalInput
 import Project.ProofKit.Frame
 import Project.ProofKit.GuardedBackEdge
+import Project.ProofKit.Memory
 import Project.ProofKit.ScalarTransition
 import Project.ProofKit.ScalarTransitionU64
 
@@ -81,6 +82,7 @@ import Project.ProofKit.ScalarTransitionU64
 #check Project.ProofKit.Frame.withValues_locals
 #check Project.ProofKit.Frame.withValues_params
 #check Project.ProofKit.Frame.withValues_values
+#check Project.ProofKit.Memory.read64_write64_disjoint
 #check Project.ProofKit.ScalarTransition.CounterTransition.decrement_add_increment
 #check Project.ProofKit.ScalarTransition.CounterTransition.decrement_toNat_lt
 #check Project.ProofKit.ScalarTransition.CounterTransition.postTestProgram_spec
@@ -90,6 +92,8 @@ import Project.ProofKit.ScalarTransitionU64
 #check Project.ProofKit.UInt64Array.At.frameBefore
 #check Project.ProofKit.UInt64Array.At.generatedElement
 #check Project.ProofKit.UInt64Array.At.write64After
+#check Project.ProofKit.UInt64Array.pair
+#check Project.ProofKit.UInt64Array.singleton
 #check UInt64.toNat_mod
 #check Wasm.TerminatesWith.of_wp_entry_for
 #check Wasm.wp.conseq

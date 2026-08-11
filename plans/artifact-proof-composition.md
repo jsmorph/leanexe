@@ -71,11 +71,13 @@ The LTG schema will gain an explicit tactic inventory after Phases 1 and 2 settl
 
 Category indexes will include tactic names and goal-shape aliases so an agent can find a tactic from a residual goal without loading every proof-kit module.  Proof telemetry and journals will distinguish tactic retrieval, tactic invocation, fallback theorem use, and direct reduction.  The metrics report will add indexed tactic definitions, distinct indexed commands, total supplied commands, and tactic discoverability coverage.
 
-- [ ] Define the tactic metadata schema and validation rules.
-- [ ] Index the existing stable array, memory, control, and loop tactics.
-- [ ] Generate tactic checks and category-index fields.
-- [ ] Extend `tools/ltg metrics` with tactic discoverability measures.
+- [x] Define the tactic metadata schema and validation rules.
+- [x] Index the existing stable array, memory, control, and loop tactics.
+- [x] Generate tactic checks and category-index fields.
+- [x] Extend `tools/ltg metrics` with tactic discoverability measures.
 - [ ] Test goal-directed tactic retrieval on the fixed fold packages.
+
+Schema 2 indexes five commands across four entries.  Each record names its command, defining module, residual goal shape, premises, applicable annotation kinds, and checked fallback declaration.  Catalog validation checks command existence in the named ProofKit source and rejects references outside the entry's declared modules, annotations, or declarations.
 
 ## Decisions and stopping conditions
 
