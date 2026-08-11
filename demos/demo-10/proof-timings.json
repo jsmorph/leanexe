@@ -28,6 +28,42 @@
     "controlledPair": true,
     "independentlyVerified": true
   },
+  "fixedArtifactFrameAccessor": {
+    "package": "experiments/frame-accessor-reproof.proof",
+    "stage5Milliseconds": 2099237.257,
+    "codexSessionMilliseconds": 2031417.385,
+    "outerAcceptanceMilliseconds": 50155.81,
+    "utcIntervalMilliseconds": 5546712,
+    "utcMinusMonotonicMilliseconds": 3447474.743,
+    "proofLines": 600,
+    "proofWords": 2371,
+    "proofBytes": 30568,
+    "stage5DeltaFromPrimaryMilliseconds": 502942.458,
+    "stage5DeltaFromPrimaryPercent": 31.507,
+    "proofLineDeltaFromPrimary": 28,
+    "proofWordDeltaFromPrimary": 440,
+    "proofByteDeltaFromPrimary": -9,
+    "stage5DeltaFromFoldBodyMilliseconds": 186145.733,
+    "stage5DeltaFromFoldBodyPercent": 9.73,
+    "proofLineDeltaFromFoldBody": -50,
+    "proofWordDeltaFromFoldBody": 269,
+    "proofByteDeltaFromFoldBody": -5685,
+    "accessorEntryRetrieved": false,
+    "generatedAccessorsUsed": [
+      "LeanExeGen.GeneratedRa8e90ffc5781d113.AnnotationMatches.function_0_array_fold_0_continuing_frame_values",
+      "LeanExeGen.GeneratedRa8e90ffc5781d113.AnnotationMatches.function_0_array_fold_0_continuing_frame_get_13"
+    ],
+    "sharedAssetsUsed": [
+      "Project.ProofKit.FixedArrayFold.resultFrame_get_of_ne",
+      "Project.ProofKit.FixedArrayFold.resultFrame_get_result",
+      "Project.ProofKit.FixedArrayFoldBody.continuingGuardedProgram_spec",
+      "Project.ProofKit.FixedArrayFold.singletonResultProgram_spec"
+    ],
+    "frameFactsDischargedByReduction": 11,
+    "journaledEditedCandidates": 15,
+    "controlledPair": true,
+    "independentlyVerified": true
+  },
   "descriptiveComparison": {
     "name": "demo-9-guarded-back-edge",
     "stage5Milliseconds": 1972223.412,
