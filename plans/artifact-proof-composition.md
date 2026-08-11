@@ -33,7 +33,7 @@ The first evaluation will edit copies of the accepted Demo 9 and Demo 11 proofs.
 
 - [x] Add `Project.ProofKit.Frame.ext` and values-replacement projection theorems.
 - [x] Build `Project.ProofKit.Frame` and its generated LTG declaration check.
-- [ ] Update the local-frame LTG entry, ProofKit documentation, tests, and metrics.  The entry, documentation, and tests are complete; the metrics snapshot remains.
+- [x] Update the local-frame LTG entry, ProofKit documentation, tests, and metrics.
 - [x] Apply the declarations in fixed Demo 9 and Demo 11 proof copies.
 - [x] Record theorem use, source-structure changes, and remaining frame goals.
 
@@ -60,7 +60,7 @@ One fresh Demo 9 reproof will then expose the frame equality and completion entr
 Demo 10 will test transfer after the Demo 9 interface is fixed.  The later frozen demo will use a fold body with a different scalar-control form or accumulator layout, rather than another binary operation with the same state transition.  No result from a different artifact will be described as a controlled timing comparison.
 
 - [x] Verify manual substitutions for all three existing folds.
-- [ ] Run one fixed-artifact Demo 9 proof screen and review its journal, proof, and telemetry together.
+- [x] Run one fixed-artifact Demo 9 proof screen and review its journal, proof, and telemetry together.
 - [ ] Correct only general retrieval or theorem-interface defects identified by that review.
 - [ ] Test the corrected interface on Demo 10.
 - [ ] Freeze and prove a structurally different fold demo before promoting the completion adapter.

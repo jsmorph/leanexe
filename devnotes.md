@@ -27,6 +27,14 @@ The same generated adapter passed in a fixed Demo 9 wrapping-sum proof.  The com
 
 A fixed Demo 10 wrapping-product proof applies the same adapter directly to its public valid-branch postcondition.  The complete proof decreased from 600 to 553 lines, from 2,371 to 2,162 words, and from 30,568 to 28,254 bytes, while retaining artifact digest `a981c7882a51a0660e6dd1e17956b958f7b2e25cbc30618d12458601ef2d4baa`.  Independent package verification accepted the edited source and exact artifact theorem.
 
+## 2026-08-11: Fresh fold-completion screen
+
+A fresh Demo 9 proof task received the structured LTG, exact annotations, generic fold-completion theorem, and generated singleton-result adapter.  Its first catalog search selected the completion entry, and the accepted proof applies `function_0_array_fold_0_singleton_result_spec` directly to the public result.  Separate package verification accepted the proof over the unchanged 1,979-byte artifact and digest `aa263bbfa89c333f9fab497f1a2c370f476afc3419015d17b368cb7c8a6086d5`.
+
+Stage 5 took 1,992.546 seconds, including 1,922.343 seconds in Codex and 54.378 seconds in outer acceptance.  The measurement is 10.7 percent below the prior frame-accessor screen, 4.3 percent below the retained fold-structure proof, and 1.0 percent above the best guarded-back-edge screen.  The 526-line, 2,039-word proof removes 90 lines and 502 words from the frame-accessor proof and 43 lines and 365 words from the manual fold-completion substitution.
+
+The journal records fourteen successful diagnostic cycles.  The completion adapter closed the loop-exit suffix without a proof-local theorem, while capacity and allocator projections still required reductions, and the strict loop body required the invariant to carry annotation local 18, `releaseReadyLocal`.  The next interface review will consider generic capacity-frame, allocator-root, and annotation-selected loop-local accessors before a Demo 10 transfer screen.
+
 ## 2026-08-09: Constant capacity and frame projection
 
 `Project.ProofKit.FixedArrayCapacity.constantProgram_spec` executes the compiler's constant result-length capacity prefix for arbitrary `UInt64` length and stride, destination local, local-frame dimensions, store, continuation, and postcondition.  The named `normalizedCapacity` computes the aligned minimum-eight-byte capacity, while `capacityFrame` records its destination without constraining other locals.  This replaces the zero- and one-element local capacity theorems that the latest Demo 9 proof had to construct before each allocator application.

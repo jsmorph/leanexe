@@ -732,7 +732,11 @@ The Demo 11 annotation package checked this adapter against the unchanged 1,979-
 
 The same adapter passed manual substitutions in Demo 9's unchanged wrapping-sum artifact and Demo 10's unchanged wrapping-product artifact.  The addition proof decreased from 616 to 569 lines, from 2,541 to 2,404 words, and from 30,901 to 28,245 bytes.  The multiplication proof decreased from 600 to 553 lines, from 2,371 to 2,162 words, and from 30,568 to 28,254 bytes.
 
-The accepted addition, multiplication, and XOR uses establish transfer across accumulator operations without putting any operation in the shared theorem or generated adapter.  These manual substitutions measure interface fit and proof structure, but supply no proof-generation-time result because an agent did not generate the edited proofs from fresh tasks.  The next controlled screen exposes the same declarations through structured LTG and records retrieval, journal observations, edited Lean checks, Stage 5 time, and independent package verification.
+The accepted addition, multiplication, and XOR uses establish transfer across accumulator operations without putting any operation in the shared theorem or generated adapter.  These manual substitutions measure interface fit and proof structure, but supply no proof-generation-time result because an agent did not generate the edited proofs from fresh tasks.  A controlled screen was therefore required to record retrieval, journal observations, edited Lean checks, Stage 5 time, and independent package verification.
+
+The fresh Demo 9 screen selected the completion entry during its first annotation-directed search and applied the generated adapter directly to the public valid-branch postcondition.  Independent verification accepted the resulting 526-line proof over the unchanged artifact digest.  Stage 5 took 1,992.546 seconds, 10.7 percent less than the preceding frame-accessor screen and 1.0 percent more than the best guarded-back-edge screen, while the proof removed 90 lines and 502 words from the frame-accessor proof.
+
+The journal separates successful suffix composition from the work that remains.  The adapter closed accumulator placement, payload storage, root transfer, representation, and the public result without a proof-local suffix theorem.  Capacity-frame getters, the allocator's returned-root getter, and the annotated `releaseReadyLocal` still required representation reduction or a larger invariant because the current sidecar names those values without generating the corresponding frame interface.
 
 ## Completion criteria
 
