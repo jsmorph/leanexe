@@ -47,6 +47,19 @@ Stage 5 took 1,979.854 seconds, including 1,912.675 seconds in Codex and 59.059 
 
 The proof contains 684 lines, 2,875 words, and 36,126 bytes, which exceeds both the 600-line frame-accessor proof and the 553-line manual fold-completion proof.  Its fourteen diagnostic cycles include parser conflicts over two local names, a positional dependent-premise attempt despite existing guidance, and an unrestricted simplifier failure at a generated next-frame equality.  The interface transfer succeeds, while the size and iteration evidence supports structured tactic retrieval and tighter construction guidance rather than another fold-specific semantic theorem.
 
+## 2026-08-11: Structured tactic indexing
+
+LTG schema 2 adds a `tactics` array whose records identify the command, defining module, goal shape, premises, annotation kinds, and fallback declaration.  Validation reads the named ProofKit source and rejects an undefined command, an unlisted module or fallback, an annotation kind outside the entry, duplicate commands, or unsorted records.  Schema-1 entries remain valid and receive an empty tactic inventory during catalog loading.
+
+The initial index covers `wp_fixed_array_length_le_dispatch_from`, `wp_block_loop`, `uint64_array_pair`, `uint64_array_singleton`, and `word_reads`.  Category JSONL records carry the structured data, while search terms include each command, module, and fallback declaration.  Metrics now distinguish five indexed commands from the twenty-seven distinct tactic commands supplied by the complete ProofKit.
+
+Checks run:
+
+- [x] `tools/ltg check` accepted the regenerated canonical catalog, category indexes, and declaration check.
+- [x] `node test/ltg.js` accepted positive records, generated-index retrieval, metrics, and rejection of a missing tactic command.
+- [x] `node test/leanexegen.js` accepted the annotation, recipe, protocol, package, publication, and exit tests.
+- [x] `tools/leanrun --timeout 15m lake -d proofs/talos/lean --no-ansi build Project.ProofKit.LTGCheck` completed 3,025 jobs and accepted every indexed declaration.
+
 ## 2026-08-09: Constant capacity and frame projection
 
 `Project.ProofKit.FixedArrayCapacity.constantProgram_spec` executes the compiler's constant result-length capacity prefix for arbitrary `UInt64` length and stride, destination local, local-frame dimensions, store, continuation, and postcondition.  The named `normalizedCapacity` computes the aligned minimum-eight-byte capacity, while `capacityFrame` records its destination without constraining other locals.  This replaces the zero- and one-element local capacity theorems that the latest Demo 9 proof had to construct before each allocator application.

@@ -6,4 +6,6 @@ Use `FixedArrayPairResult.input_preserved_by_alloc` for LeanExe's checked fixed-
 
 Apply `UInt64Array.At.write64After` to preserve the resulting fact across a later result-length or payload store at or above the cutoff.  Normalize the store address with the allocator's shared `Allocation.bumpFacts` value, then reuse the preserved representation for length bounds, length reads, and indexed element loads.  `UInt64Array.At.generatedElement index hIndex` returns the exact modulo-address bound and memory read emitted for an in-bounds element, which avoids reconstructing the loader's address arithmetic inside a traversal loop.
 
+The structured `word_reads` tactic record applies to `read64` goals over nested `write64` updates.  It rewrites equal-address reads and uses arithmetic to prove eight-byte disjointness for other writes.  `Memory.read64_write64_disjoint` remains the indexed fallback when the proof needs to supply the address separation explicitly.
+
 Keep application-specific loop invariants and output equations outside this entry.  The represented-array facts describe memory and indexing, while a fold, map, filter, search, or tree entry supplies the semantic transition.  Demo 9 combines `generatedElement` with the generic fold-prefix invariant after preserving the input through result allocation and its length store.

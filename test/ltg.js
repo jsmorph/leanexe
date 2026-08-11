@@ -41,6 +41,16 @@ function main() {
   assert(mapAdd !== undefined && mapAdd.categories.includes("arrays") &&
     mapAdd.categories.includes("loops") && mapAdd.categories.includes("compiler-motifs"),
   "map-add entry did not appear in overlapping semantic categories");
+  const lengthDispatch = catalog.entries.find(
+    (entry) => entry.id === "fixed-array-length-dispatch");
+  const arrayResult = catalog.entries.find((entry) => entry.id === "fixed-array-result");
+  assert(lengthDispatch.tactics.some((tactic) =>
+      tactic.command === "wp_fixed_array_length_le_dispatch_from" &&
+      tactic.fallbackDeclaration ===
+        "Project.ProofKit.FixedArrayLengthDispatch.leProgram_spec") &&
+    arrayResult.tactics.map((tactic) => tactic.command).join(",") ===
+      "uint64_array_pair,uint64_array_singleton",
+  "LTG catalog omitted a structured tactic or its fallback theorem");
 
   const complete = taskCatalogFiles();
   assert(complete.entryIds.length === catalog.entries.length &&
@@ -48,7 +58,11 @@ function main() {
     complete.files.has("entries/fixed-array-map-add/entry.json") &&
     categoryRecords(complete, "arrays").some((entry) =>
       entry.id === "fixed-array-map-add" && entry.path ===
-        "../../entries/fixed-array-map-add"),
+        "../../entries/fixed-array-map-add") &&
+    categoryRecords(complete, "arrays").some((entry) =>
+      entry.id === "fixed-array-length-dispatch" &&
+      entry.tactics.some((tactic) =>
+        tactic.command === "wp_fixed_array_length_le_dispatch_from")),
   "complete task catalog omitted a canonical entry or category reference");
   const initialSingletonQuery =
     /singleton_wrapper|FixedArrayPairResult|publicPost|entryFrame|function_1/;
@@ -97,7 +111,11 @@ function main() {
     metrics.graphAndExclusions.structurallyDanglingCategoryModuleOrEntryReferences === 0,
   "LTG metrics found a missing local declaration or structural reference");
   assert(metrics.leanSupport.tacticDefinitions > 0 &&
-    metrics.coverage.entriesImportingTacticModules > 0,
+    metrics.coverage.entriesImportingTacticModules > 0 &&
+    metrics.coverage.entriesWithIndexedTactics === 4 &&
+    metrics.tacticInventory.records === 5 &&
+    metrics.tacticInventory.distinctCommands === 5 &&
+    metrics.tacticInventory.coverageOfSuppliedTacticCommands > 0,
   "LTG metrics omitted proof-kit tactic support");
 
   const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), "leanexe-ltg-test-"));
@@ -110,6 +128,12 @@ function main() {
     expectFailure(() => checkCatalog(copyRoot), /is stale/);
     assert(loadCatalog(copyRoot).entries.length === catalog.entries.length,
       "stale generated index changed canonical entry validation");
+    const tacticEntryPath = path.join(
+      copyRoot, "entries", "fixed-array-length-dispatch", "entry.json");
+    const tacticEntry = JSON.parse(fs.readFileSync(tacticEntryPath, "utf8"));
+    tacticEntry.tactics[0].command = "missing_tactic";
+    fs.writeFileSync(tacticEntryPath, `${JSON.stringify(tacticEntry, null, 2)}\n`);
+    expectFailure(() => loadCatalog(copyRoot), /command is not defined/);
 
     const loopRecords = categoryRecords(complete, "loops");
     const scalarLoop = loopRecords.find((entry) => entry.id === "scalar-post-test-loop");

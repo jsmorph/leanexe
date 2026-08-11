@@ -4,6 +4,8 @@ Use `FixedArrayResult.lengthStore_spec` or `payloadStore_spec` when the residual
 
 Use `singletonStore_at` after one length word and one payload word have been written through `FixedArrayResult.singletonStore`.  Its two premises state that the sixteen-byte representation fits in 32-bit address space and current memory.  `pairStore_at` provides the corresponding twenty-four-byte theorem for two payload words.
 
+The structured tactic records index `uint64_array_singleton` and `uint64_array_pair` for direct `UInt64Array.At` goals of those exact sizes.  Each command applies the corresponding generic representation theorem and leaves address bounds and memory-read equations as explicit goals.  The fallback declarations `UInt64Array.singleton` and `UInt64Array.pair` provide the same boundary without tactic syntax.
+
 Use `emptyStore_at` after writing a zero length for an invalid or oversized-input branch.  It constructs the complete `UInt64Array.At` fact for `#[]` from the eight-byte address-space and current-memory bounds.  This avoids unfolding the representation and rebuilding its vacuous indexed-element case in each wrapper proof.
 
 For a completed fold, first rewrite the accumulator with `ArrayFold.foldPrefix_size`, establish its concrete result-local getter, and apply `payloadStore_spec` to the output store.  Refold the resulting memory as `singletonStore` before applying `singletonStore_at`, then apply `finishProgram_spec` to the final four instructions that copy the result root through the destination and return locals.  This sequence gives loop completion, emitted store execution, array representation, and root transfer separate checked boundaries.
