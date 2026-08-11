@@ -39,6 +39,14 @@ The journal records fourteen successful diagnostic cycles.  The completion adapt
 
 The existing fold annotation already generated a checked getter for local 18, so another semantic theorem would have duplicated available evidence.  The recipe generator now labels continuing-frame getter purposes with compiler roles, making `releaseReadyLocal` searchable by name.  A regenerated Demo 9 annotation package names `function_0_array_fold_0_continuing_frame_get_18` for that role and passes independent package verification.
 
+## 2026-08-11: Demo 10 projection transfer
+
+The controlled Demo 10 run retained the specification, source, 1,979-byte WASM module, digest, toolchain, and model configuration.  Its first allocation-boundary search selected the new capacity and allocator-root projections, and the accepted proof uses both declarations in the valid and invalid branches.  It also applies the generated fold-completion adapter, shared fold-body theorem, exact loaded-frame equality, and compiler-generated multiplication transitions.
+
+Stage 5 took 1,979.854 seconds, including 1,912.675 seconds in Codex and 59.059 seconds in outer acceptance.  This is 5.7 percent below the frame-accessor screen, 3.5 percent above the fold-body screen, and 24.0 percent above the retained primary proof.  Independent verification accepted the package and confirmed artifact digest `a981c7882a51a0660e6dd1e17956b958f7b2e25cbc30618d12458601ef2d4baa`.
+
+The proof contains 684 lines, 2,875 words, and 36,126 bytes, which exceeds both the 600-line frame-accessor proof and the 553-line manual fold-completion proof.  Its fourteen diagnostic cycles include parser conflicts over two local names, a positional dependent-premise attempt despite existing guidance, and an unrestricted simplifier failure at a generated next-frame equality.  The interface transfer succeeds, while the size and iteration evidence supports structured tactic retrieval and tighter construction guidance rather than another fold-specific semantic theorem.
+
 ## 2026-08-09: Constant capacity and frame projection
 
 `Project.ProofKit.FixedArrayCapacity.constantProgram_spec` executes the compiler's constant result-length capacity prefix for arbitrary `UInt64` length and stride, destination local, local-frame dimensions, store, continuation, and postcondition.  The named `normalizedCapacity` computes the aligned minimum-eight-byte capacity, while `capacityFrame` records its destination without constraining other locals.  This replaces the zero- and one-element local capacity theorems that the latest Demo 9 proof had to construct before each allocator application.

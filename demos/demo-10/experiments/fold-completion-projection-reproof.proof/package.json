@@ -1,0 +1,482 @@
+{
+  "schemaVersion": 7,
+  "requestSha256": "a8e90ffc5781d113645ca016540f905f63f2d7eeb7d898d4d5922320336137ee",
+  "case": "generated_ra8e90ffc5781d113",
+  "leanModule": "GeneratedRa8e90ffc5781d113",
+  "sourceModule": "LeanExeGen.GeneratedRa8e90ffc5781d113.Source",
+  "formalSpecModule": "LeanExeGen.GeneratedRa8e90ffc5781d113.FormalSpec",
+  "formalSpecification": {
+    "module": "LeanExeGen.GeneratedRa8e90ffc5781d113.FormalSpec",
+    "definition": "LeanExeGen.GeneratedRa8e90ffc5781d113.FormalSpec.ArtifactSpec",
+    "type": "Wasm.Module → Prop"
+  },
+  "artifact": {
+    "sha256": "a981c7882a51a0660e6dd1e17956b958f7b2e25cbc30618d12458601ef2d4baa",
+    "byteLength": 1979,
+    "artifactBytesDefinition": "LeanExeGen.GeneratedRa8e90ffc5781d113.Artifact.artifactBytes",
+    "rawModuleDefinition": "LeanExeGen.GeneratedRa8e90ffc5781d113.Artifact.Cache.raw",
+    "programDefinition": "LeanExeGen.GeneratedRa8e90ffc5781d113.module",
+    "property": "LeanExeGen.GeneratedRa8e90ffc5781d113.FormalSpec.ArtifactSpec",
+    "behaviorTheorem": "LeanExeGen.GeneratedRa8e90ffc5781d113.Behavior.artifact_behavior",
+    "artifactTheorem": "LeanExeGen.GeneratedRa8e90ffc5781d113.Artifact.artifact_correct",
+    "proofTarget": "LeanExeGen.GeneratedRa8e90ffc5781d113.ArtifactResult",
+    "checkFileTarget": "LeanExeGen.GeneratedRa8e90ffc5781d113.CheckFile",
+    "declarationTarget": "LeanExeGen.GeneratedRa8e90ffc5781d113.CheckDeclarations",
+    "export": "compute",
+    "invocation": [
+      "/home/somebody/src/leanexe/tools/leanexegen",
+      "run",
+      "<program.wasm>",
+      "<UInt64>..."
+    ]
+  },
+  "warnings": [
+    "The formal specification is a generated interpretation of the prose request.",
+    "No theorem connects the generated Lean source to the formal specification.",
+    "The artifact theorem applies to one exact SHA-256 digest under the pinned Lean and Talos semantics.",
+    "Codex generation and the LeanExe compiler are outside the trusted artifact proof."
+  ],
+  "verificationCommand": "tools/leanexegen verify <proof-package>",
+  "files": [
+    {
+      "path": "artifact.json",
+      "sha256": "127a2e3083c3a5a909281e6fa8e45618767716c7dec97e980537e8b69ac5b287",
+      "byteLength": 985
+    },
+    {
+      "path": "host-assumptions.json",
+      "sha256": "ad20a90004544232f6e0a0762dbc16e8e635f53f28d191987af74fd2659f439d",
+      "byteLength": 260
+    },
+    {
+      "path": "interpretation.json",
+      "sha256": "10835aa82d301a9f52792bbec022185e0573de1b77f74670199203d4c65696d0",
+      "byteLength": 807
+    },
+    {
+      "path": "ltg-task.json",
+      "sha256": "a984f97cca1a129ca68925cdbc1917148478db89583844b5a2375289db9fd68e",
+      "byteLength": 1064
+    },
+    {
+      "path": "ltg/README.md",
+      "sha256": "ffd9abbe77f1c397f3b32ea9ceda9646b2c78826888a04fa66e42b82f8c6806f",
+      "byteLength": 1510
+    },
+    {
+      "path": "ltg/categories.json",
+      "sha256": "c67da70ace909965484d85ad69d4e22bc498fb49101de1b1f22da2b3efd9c150",
+      "byteLength": 1296
+    },
+    {
+      "path": "ltg/categories/allocation/tools.jsonl",
+      "sha256": "b2fc5e774011c59bef8be096ef8a69f5b7bfcbbd56229d0d2e3ea4b3ee1f8fdf",
+      "byteLength": 9981
+    },
+    {
+      "path": "ltg/categories/arrays/tools.jsonl",
+      "sha256": "a1f7072fd02a2fdd0121f29978ff55819465e1529a70d7c0d70bd965d7ea2816",
+      "byteLength": 22991
+    },
+    {
+      "path": "ltg/categories/compiler-motifs/tools.jsonl",
+      "sha256": "9cd22423e627b018418c3deb5e5208f9cf04d3f8f93333a6bfad30bfeca2a8ad",
+      "byteLength": 24754
+    },
+    {
+      "path": "ltg/categories/loops/tools.jsonl",
+      "sha256": "c6bb5f4a249fb945c7b99f7a4ec20a67d5730362eb2970d386208994cd218f4e",
+      "byteLength": 19970
+    },
+    {
+      "path": "ltg/categories/memory/tools.jsonl",
+      "sha256": "6b8f8168a008d645d1e1f4db5a1d1f76fabe55a16dbc7d6b06b4a0e0400595a4",
+      "byteLength": 9816
+    },
+    {
+      "path": "ltg/categories/proof-construction/tools.jsonl",
+      "sha256": "316c18fa29af83a9989025fa2eecf96f94fad0605a2568a03a313d31c1a3da40",
+      "byteLength": 24442
+    },
+    {
+      "path": "ltg/categories/worked-examples/tools.jsonl",
+      "sha256": "8c1d3803afa3ac546f42654ca2b5c0214e40101c81af485af316840f1245ca26",
+      "byteLength": 4025
+    },
+    {
+      "path": "ltg/entries/annotated-fold-frame-accessors/README.md",
+      "sha256": "f8bc6db31de62824f3f4602d3d40d0853d4ec8ba070159334764844de24d37cd",
+      "byteLength": 4195
+    },
+    {
+      "path": "ltg/entries/annotated-fold-frame-accessors/entry.json",
+      "sha256": "f267219c30e74990d06017d92874d945ce4c538f4ac8febb34cb04617dd92c17",
+      "byteLength": 1443
+    },
+    {
+      "path": "ltg/entries/array-fold-prefix/README.md",
+      "sha256": "95293a72055b509869dd70e6fd4041345d942889d1a4ab014ca878f63eb03058",
+      "byteLength": 1949
+    },
+    {
+      "path": "ltg/entries/array-fold-prefix/entry.json",
+      "sha256": "cf39c600fd2510f1ae3b97fd6af3c812e2ba25e836a1dc113f8aaeec5a1085b3",
+      "byteLength": 1367
+    },
+    {
+      "path": "ltg/entries/array-memory-framing/README.md",
+      "sha256": "3bc1a85343d3104e3eeb9197c0ea52e25ecca103d548e272fd6fa470e689f52a",
+      "byteLength": 1663
+    },
+    {
+      "path": "ltg/entries/array-memory-framing/entry.json",
+      "sha256": "25f4494960b8867aa374c3f1dc886900d6c0794a86db748482517c5aa47719c8",
+      "byteLength": 1616
+    },
+    {
+      "path": "ltg/entries/compact-loop-suffix-boundary/README.md",
+      "sha256": "e6218f18404ebaaf1dfd09056f15e75ffde17143026b5486ea58e21da4285ccd",
+      "byteLength": 2515
+    },
+    {
+      "path": "ltg/entries/compact-loop-suffix-boundary/entry.json",
+      "sha256": "e0ee0876806cfb37b377fb05346f89b636e47e069769757b638fd4772f6ff80d",
+      "byteLength": 1804
+    },
+    {
+      "path": "ltg/entries/counter-transition/README.md",
+      "sha256": "23a5fbc167b01f2358af0b88d6c525034a1746ebcb2d5732af5d157f22242877",
+      "byteLength": 1093
+    },
+    {
+      "path": "ltg/entries/counter-transition/entry.json",
+      "sha256": "a63d85f6c400e630d61835a4e1618261a9e58babebc0a8e844199808d929ca05",
+      "byteLength": 1329
+    },
+    {
+      "path": "ltg/entries/demo4-map-proof-example/README.md",
+      "sha256": "804c84dd359039f2d4bfd640e7d4e68376690aad7ca89f1492e7fa0ea54af8c6",
+      "byteLength": 1058
+    },
+    {
+      "path": "ltg/entries/demo4-map-proof-example/entry.json",
+      "sha256": "cf80052166bcb86e6922c00ceaf31e4d434ba0ac38fa7e883e336cb4a296d830",
+      "byteLength": 1076
+    },
+    {
+      "path": "ltg/entries/demo5-filter-proof-example/README.md",
+      "sha256": "b2a0de982a36c0ca183aaeac15cf908f7a89e93800be6f3e2f89c9dc370d416f",
+      "byteLength": 1047
+    },
+    {
+      "path": "ltg/entries/demo5-filter-proof-example/entry.json",
+      "sha256": "971cab0ef4f2772c8c8bd387d93807ae39cac289f5e20e4e81f291cae53372ce",
+      "byteLength": 1101
+    },
+    {
+      "path": "ltg/entries/demo7-counter-transfer-example/README.md",
+      "sha256": "f370ccc70b60ddbc482c655b78f60648e9f3f55082e2abf0dd0d14c9f48122ae",
+      "byteLength": 1068
+    },
+    {
+      "path": "ltg/entries/demo7-counter-transfer-example/entry.json",
+      "sha256": "384deae3f18f444b6e0c8670b1559f3be4ec825d13ed0baa5d5572b51bef149e",
+      "byteLength": 1482
+    },
+    {
+      "path": "ltg/entries/demo8-counter-transfer-example/README.md",
+      "sha256": "908fde782a76cb21295ded1089ecd327827023f12c49770be202ae8d98d95426",
+      "byteLength": 1157
+    },
+    {
+      "path": "ltg/entries/demo8-counter-transfer-example/entry.json",
+      "sha256": "c3885a0033b7a8e387c254e1283a9b4a082f7bb394fc7e2d5920755cc770e7b3",
+      "byteLength": 1548
+    },
+    {
+      "path": "ltg/entries/euclidean-gcd-loop/README.md",
+      "sha256": "da72a735842a12f8549504c3df61fe61733f2eb0753ebb94d0fd140976e1a51c",
+      "byteLength": 1079
+    },
+    {
+      "path": "ltg/entries/euclidean-gcd-loop/entry.json",
+      "sha256": "603fc1ac34bc900a09008fe05cff7adef07dfd71c036836885dd4376d2a078e7",
+      "byteLength": 1099
+    },
+    {
+      "path": "ltg/entries/fixed-array-allocation/README.md",
+      "sha256": "df37420f95a782e4ad588923b102e8b0517d739445d68443b1414d31bd1793a5",
+      "byteLength": 2715
+    },
+    {
+      "path": "ltg/entries/fixed-array-allocation/entry.json",
+      "sha256": "03c1ac01d309bd72adfea461f6bfb791cc3edc0a10e3cd3ccea8b41f9689c231",
+      "byteLength": 2039
+    },
+    {
+      "path": "ltg/entries/fixed-array-capacity/README.md",
+      "sha256": "0ee1f31c581963b7c5d5a37aaed2ed07523cc3ee6ca291ce61ebb577c0ce6407",
+      "byteLength": 1823
+    },
+    {
+      "path": "ltg/entries/fixed-array-capacity/entry.json",
+      "sha256": "6e4e616697c605b16854f8df08e9f0a1b09a18f02147fe9d1f7a25fd69ab829e",
+      "byteLength": 1761
+    },
+    {
+      "path": "ltg/entries/fixed-array-filter-lt/README.md",
+      "sha256": "a67578ec1a81cfba6f4e54e0ccf2334d020d3b4252b42df10694abee8583a986",
+      "byteLength": 1197
+    },
+    {
+      "path": "ltg/entries/fixed-array-filter-lt/entry.json",
+      "sha256": "4c83171f8c8dda087f69ac7e2c01ade964981c049c4b123d3f0406ba942ac5e1",
+      "byteLength": 1215
+    },
+    {
+      "path": "ltg/entries/fixed-array-fold-body/README.md",
+      "sha256": "aac5c9a6ea0f0bd0408561adca584c9469bee155e46afaa2a37e234a632a9fa8",
+      "byteLength": 3112
+    },
+    {
+      "path": "ltg/entries/fixed-array-fold-body/entry.json",
+      "sha256": "473415ae74e923a7d95c413701a7314b6b63d0dbe1e9b50fe04c47cdfcf4c38e",
+      "byteLength": 1611
+    },
+    {
+      "path": "ltg/entries/fixed-array-fold-structure/README.md",
+      "sha256": "df6fcc4ed2b4efe6135520c8b6256a80862f26b1f977c24c71aa5a7e4cd0d69f",
+      "byteLength": 3436
+    },
+    {
+      "path": "ltg/entries/fixed-array-fold-structure/entry.json",
+      "sha256": "da17a26bc34ab0fdfa88bb55a9b17a32762cd2fa8b0f41d1c2fba3fe888c8f5c",
+      "byteLength": 2106
+    },
+    {
+      "path": "ltg/entries/fixed-array-length-dispatch/README.md",
+      "sha256": "8fe6d8073e62af4ba6eff8e03f0417d16a3142f5e485c812bb268ebdb245d76f",
+      "byteLength": 2728
+    },
+    {
+      "path": "ltg/entries/fixed-array-length-dispatch/entry.json",
+      "sha256": "1e8dba8af7a1b581918acffa943c38f742077a3699dab18d07ece4bdbe243617",
+      "byteLength": 1520
+    },
+    {
+      "path": "ltg/entries/fixed-array-map-add/README.md",
+      "sha256": "a0b46e811103ce21520c372507ffd9e2109c6ef6ab21df86162147300732b918",
+      "byteLength": 1148
+    },
+    {
+      "path": "ltg/entries/fixed-array-map-add/entry.json",
+      "sha256": "b685a419c2ac5cbd3694a2c43f07b73531d6295259a6c0db5bfdc8211bd638ff",
+      "byteLength": 1200
+    },
+    {
+      "path": "ltg/entries/fixed-array-result/README.md",
+      "sha256": "ca3be82f73d7623ddb8b41e01669b8c154975463ab44599c194b015a0928986d",
+      "byteLength": 2589
+    },
+    {
+      "path": "ltg/entries/fixed-array-result/entry.json",
+      "sha256": "5284de18227e176cfc4f2a738254e5003c51ad891d34b3e41a9efec560bd689e",
+      "byteLength": 1864
+    },
+    {
+      "path": "ltg/entries/fixed-array-singleton-wrapper/README.md",
+      "sha256": "591c00568941e786f2fa4148e2dfafe71354a84d3ff7c1107a98c71cd8fcf644",
+      "byteLength": 1080
+    },
+    {
+      "path": "ltg/entries/fixed-array-singleton-wrapper/entry.json",
+      "sha256": "5d76e3fdada3f3eecc087f3fd73cdb151c2f579d5a4418d40c8ad51660cdac56",
+      "byteLength": 1436
+    },
+    {
+      "path": "ltg/entries/fixed-array-traversal-input/README.md",
+      "sha256": "fab73ed2c9faf804915b4ce4b80c18fb772fe237cf3f797fc27f1efeed2eb164",
+      "byteLength": 3566
+    },
+    {
+      "path": "ltg/entries/fixed-array-traversal-input/entry.json",
+      "sha256": "1ecc348dfc2be2a520545f568207a1cf813e8ec6af59fa3bf5270282d40ce591",
+      "byteLength": 1940
+    },
+    {
+      "path": "ltg/entries/guarded-back-edge/README.md",
+      "sha256": "f90ce8f51204c67c75fb75fec8d37f0efbd47e466710e3cb7e1e82b6ff015630",
+      "byteLength": 1411
+    },
+    {
+      "path": "ltg/entries/guarded-back-edge/entry.json",
+      "sha256": "d6a366d6e355f66533c11554c1c65cce7644c6a49941686bd7bd85bdf1bf4f25",
+      "byteLength": 1433
+    },
+    {
+      "path": "ltg/entries/local-frame-projection/README.md",
+      "sha256": "7a1d5cafb85c85673ee150f043501e21db443f962d9855bc7129766b2d12be1d",
+      "byteLength": 2546
+    },
+    {
+      "path": "ltg/entries/local-frame-projection/entry.json",
+      "sha256": "d3948b6a889f7f97b0ce195cb0cdfe12456cae07738d35f7cf1c0d5dd23676eb",
+      "byteLength": 1780
+    },
+    {
+      "path": "ltg/entries/residual-specification-normalization/README.md",
+      "sha256": "a82fc8d4d3ce48289b7f2871a50788e448d4e14786650fc4940aa51b0ded2ce0",
+      "byteLength": 1088
+    },
+    {
+      "path": "ltg/entries/residual-specification-normalization/entry.json",
+      "sha256": "19f4aade6098295d4aba855f6dc1524b0b30815dba09d408b218a6256183e21c",
+      "byteLength": 1212
+    },
+    {
+      "path": "ltg/entries/scalar-post-test-loop/README.md",
+      "sha256": "c245525a72beec46433bec14cd1f91a00916e1c976a4c1d2bbbaa6627eab453b",
+      "byteLength": 1166
+    },
+    {
+      "path": "ltg/entries/scalar-post-test-loop/entry.json",
+      "sha256": "26e930907a8faa963912b41e5940f0368140fac307a9d4e6b0193192182b996b",
+      "byteLength": 1320
+    },
+    {
+      "path": "program.annotations.json",
+      "sha256": "49d6a2aef39a19314e72ffbe819c8b2dd2745aaf82dea5c5e111ed63ec4dfaf8",
+      "byteLength": 5284
+    },
+    {
+      "path": "program.wasm",
+      "sha256": "a981c7882a51a0660e6dd1e17956b958f7b2e25cbc30618d12458601ef2d4baa",
+      "byteLength": 1979
+    },
+    {
+      "path": "proof-journal.md",
+      "sha256": "2601fbfa035ec4807db1eee1368bb58e6bc111c69aa7b46e163e3b52d945c2c6",
+      "byteLength": 19853
+    },
+    {
+      "path": "proof-library.md",
+      "sha256": "3ba27019ecccdbc9aa5703c359a4e2ab1d03d406c7664a2855a4be3d7247204e",
+      "byteLength": 44618
+    },
+    {
+      "path": "proof-recipes.json",
+      "sha256": "ca2df550a508811c0ec91ff0b8a77df5cb5c4f5b6807e955a5ab991d5daa7d4e",
+      "byteLength": 19632
+    },
+    {
+      "path": "proof-strategies.md",
+      "sha256": "d219a9f5299a0b030a1be9b3c8f4214e23c367b0efa2b37ad5248a47e7eee16e",
+      "byteLength": 42255
+    },
+    {
+      "path": "proof-task-features.json",
+      "sha256": "17472126326f8cc7fc1df2ccee31db77942299c7d6f78d4f553287656648fd9d",
+      "byteLength": 1589
+    },
+    {
+      "path": "proof-telemetry.json",
+      "sha256": "e1a7d91d825ae05138a802ad6c22178d8e3026c81d9329e0920113013487f049",
+      "byteLength": 444
+    },
+    {
+      "path": "proof/LeanExeGen/GeneratedRa8e90ffc5781d113/AnnotationMatches.lean",
+      "sha256": "a5b60d0f3d239965ebdfb361bacd0bf0e22c12faae7de293601da79b11be44ee",
+      "byteLength": 37045
+    },
+    {
+      "path": "proof/LeanExeGen/GeneratedRa8e90ffc5781d113/ArtifactBytes.lean",
+      "sha256": "77aae7db4772c0fd6dad76d55fc2e815d33fa19e417739f88d5de5b84e695fbc",
+      "byteLength": 8478
+    },
+    {
+      "path": "proof/LeanExeGen/GeneratedRa8e90ffc5781d113/ArtifactCache.lean",
+      "sha256": "ead21d565ab0d8b4e37972f1ddf1986dab4f2ae254b5c578c4ec88f298852635",
+      "byteLength": 61653
+    },
+    {
+      "path": "proof/LeanExeGen/GeneratedRa8e90ffc5781d113/ArtifactDecode.lean",
+      "sha256": "7d1538a91c7e6f228e037d5d5befa926eb404a9bd0169bab7de80aeb193695f5",
+      "byteLength": 370
+    },
+    {
+      "path": "proof/LeanExeGen/GeneratedRa8e90ffc5781d113/ArtifactDecoded.lean",
+      "sha256": "97f65a20c08ca9a5ea64fd11ac150de1bc8da6db1ccbafc18edbacaf7a1ed3ca",
+      "byteLength": 843
+    },
+    {
+      "path": "proof/LeanExeGen/GeneratedRa8e90ffc5781d113/ArtifactRawCache.lean",
+      "sha256": "d3fa579a98815f47c307b63f7a3b22903bc450e72cbc90acf61ede1704d1cdd6",
+      "byteLength": 584
+    },
+    {
+      "path": "proof/LeanExeGen/GeneratedRa8e90ffc5781d113/ArtifactResult.lean",
+      "sha256": "f48953b0e55db7c8802f3a5d671231470cff2f8057e7882fe768ed855d77bb82",
+      "byteLength": 736
+    },
+    {
+      "path": "proof/LeanExeGen/GeneratedRa8e90ffc5781d113/ArtifactTranslation.lean",
+      "sha256": "b76016b7f958feb8aafb54dc61f76f7f18957481d596b9567cce9914840720c2",
+      "byteLength": 3135
+    },
+    {
+      "path": "proof/LeanExeGen/GeneratedRa8e90ffc5781d113/ArtifactValidation.lean",
+      "sha256": "c710601d7d1de43bdd784f3b54036d515f2c3a0dfdbc92d89fee8c96ff196a74",
+      "byteLength": 548
+    },
+    {
+      "path": "proof/LeanExeGen/GeneratedRa8e90ffc5781d113/Behavior.lean",
+      "sha256": "8386b898b61aba28a7c0ee4c1a1684305c6e63b263f5ea70d49f2a659ed46296",
+      "byteLength": 36126
+    },
+    {
+      "path": "proof/LeanExeGen/GeneratedRa8e90ffc5781d113/CheckDeclarations.lean",
+      "sha256": "25df0477473ee72fc17679ac9f2fe6a1768e0f5c39a3d748487a73eea7129ad1",
+      "byteLength": 1437
+    },
+    {
+      "path": "proof/LeanExeGen/GeneratedRa8e90ffc5781d113/CheckFile.lean",
+      "sha256": "e861bbac415b9b5307e0efc529ecc3cd5b90ae87344bcdfe82f5e46cecf1e3f6",
+      "byteLength": 449
+    },
+    {
+      "path": "proof/LeanExeGen/GeneratedRa8e90ffc5781d113/FormalSpec.lean",
+      "sha256": "1d5fd69efa4b0098f8d874a6752e09d9dad06baab3f01165471e1566e9f5ef58",
+      "byteLength": 2104
+    },
+    {
+      "path": "proof/LeanExeGen/GeneratedRa8e90ffc5781d113/Program.lean",
+      "sha256": "71b8513596e636c02d7593f31106667ae4438a7ff4c4eb837979cfcc33a815ac",
+      "byteLength": 22231
+    },
+    {
+      "path": "proof/LeanExeGen/GeneratedRa8e90ffc5781d113/Source.lean",
+      "sha256": "e3d03a8cfda23ae653dbce69a44c9a19065577076c45107f2418b257334c58c4",
+      "byteLength": 265
+    },
+    {
+      "path": "request.txt",
+      "sha256": "a8e90ffc5781d113645ca016540f905f63f2d7eeb7d898d4d5922320336137ee",
+      "byteLength": 577
+    },
+    {
+      "path": "samples.json",
+      "sha256": "0fab77bced24b86a885a93cbc2283eec00e43019774ece5b5c384bedee8302bd",
+      "byteLength": 912
+    },
+    {
+      "path": "stage-reports.json",
+      "sha256": "ffc4f53a46892556f9eeee5d0d88f3d119134e9c24394ae2003b1dc0a7a0ef81",
+      "byteLength": 3486
+    },
+    {
+      "path": "tool-pins.json",
+      "sha256": "627f9ce42abbfbbf3124a28f37f5aeb0880ef633883bcce4c37052b980fe0dce",
+      "byteLength": 870
+    }
+  ]
+}

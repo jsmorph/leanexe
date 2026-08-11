@@ -108,6 +108,16 @@ Independent `leanexegen verify -s` accepted the complete package and exact artif
 
 This manual substitution provides no proof-generation-time measurement.  The package omits the predecessor proof's telemetry because those timings belong to a different source.  A fresh fixed-artifact reproof will measure structured retrieval and proof construction separately.
 
+## Fold-completion and frame-projection transfer
+
+The [fresh transfer package](experiments/fold-completion-projection-reproof.proof/) received the generic capacity and allocator frame projections, role-labelled continuing-frame recipe, fold-completion adapter, and structured LTG.  The agent selected `capacityFrame_internal_get_capacity` and `allocFrame_get_root` at its first allocation-boundary search and used both in the accepted invalid and valid branches.  It also selected and applied the generated singleton-result adapter, shared fold-body theorem, exact loaded-frame equality, and compiler-generated multiplication evaluator equations.
+
+Stage 5 took 1,979.854 seconds, including 1,912.675 seconds in Codex and 59.059 seconds in outer acceptance.  The run was 119.383 seconds, or 5.7 percent, faster than the 2,099.237-second frame-accessor screen, but 66.762 seconds, or 3.5 percent, slower than the 1,913.092-second fold-body screen.  It remained 383.559 seconds, or 24.0 percent, slower than the 1,596.295-second primary proof, so the transfer supplies no new best timing result.
+
+The accepted source contains 684 lines, 2,875 whitespace-delimited words, and 36,126 bytes.  It is 84 lines and 504 words larger than the frame-accessor proof and 131 lines and 713 words larger than the manual fold-completion proof.  The journal records fourteen successful import-and-build cycles, including two parser-name conflicts, one positional dependent-premise failure before the agent followed the named-premise guidance, and one unrestricted simplifier step-limit failure.
+
+The experiment establishes that the new projections and completion adapter transfer from wrapping addition to wrapping multiplication.  The role-labelled recipe names `releaseReadyLocal` and its exact getter, although this proof represented the complete generated frame and did not invoke that getter directly.  Separate `leanexegen verify -s` accepted the package over the unchanged digest `a981c7882a51a0660e6dd1e17956b958f7b2e25cbc30618d12458601ef2d4baa`.
+
 ## Execution
 
 The empty input checks the multiplicative identity, the second sample checks the traversal loop, and the third checks the oversized branch.  Direct execution of the proved artifact produced these results.  Each result agrees with the formal specification.
@@ -157,4 +167,5 @@ The root files provide readable views of each generation and proof stage.  The [
 | [Generated frame-accessor capability](experiments/frame-accessors.proof/) | The independently verified current annotation and recipe package containing exact accessors for all 21 continuing-frame slots. |
 | [Fresh frame-accessor reproof](experiments/frame-accessor-reproof.proof/) | The independently verified fixed-artifact proof that used part of the accessor family and exposed a residual-goal retrieval defect. |
 | [Fold-completion package](experiments/fold-completion.proof/) | The independently verified manual proof using the generated exact singleton-result adapter. |
+| [Fresh fold-completion and projection transfer](experiments/fold-completion-projection-reproof.proof/) | The independently verified proof that retrieved and used the new capacity, allocator-root, fold-body, and completion interfaces. |
 | [Manual fold-completion proof](experiments/manual-fold-completion.lean) | The readable behavioral proof retained by the fold-completion package. |
