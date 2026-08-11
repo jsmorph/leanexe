@@ -75,11 +75,14 @@ Category indexes will include tactic names and goal-shape aliases so an agent ca
 - [x] Index the existing stable array, memory, control, and loop tactics.
 - [x] Generate tactic checks and category-index fields.
 - [x] Extend `tools/ltg metrics` with tactic discoverability measures.
-- [ ] Test goal-directed tactic retrieval on the fixed fold packages.
+- [x] Run fixed Demo 9 screens and preserve positive and negative tactic-retrieval evidence.
+- [ ] Obtain an independently accepted fixed-fold proof that reaches the corrected continuation-frame guidance.
 
 Schema 2 indexes five commands across four entries.  Each record names its command, defining module, residual goal shape, premises, applicable annotation kinds, and checked fallback declaration.  Catalog validation checks command existence in the named ProofKit source and rejects references outside the entry's declared modules, annotations, or declarations.
 
 The first Demo 9 screen followed the retrieval rule and used both the bounded-length and block-loop tactics without their fallbacks.  Its independent outer check rejected a later continuation-frame proof, and a complete manual repair identified normalized successor construction and explicit callback-frame normalization as general fold-body guidance.  The fixed-package phase remains open until a fresh agent produces an independently accepted proof under that corrected guidance.
+
+The corrected task again found and used the bounded-length tactic, then stopped changing during elaboration of the constant-capacity boundary before reaching the annotated fold.  The session was interrupted after about twenty-two minutes without a candidate or journal update, and the unfinished task is preserved as censored evidence.  Another fixed-fold run requires a divided capacity-to-allocation proof boundary or a checked composition theorem rather than an unchanged repetition.
 
 ## Decisions and stopping conditions
 

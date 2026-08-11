@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "extractorVersion": 5,
+  "sourceSha256": "c119e0d51fd599c905730b119d871764b57b1bf653f699a63a0383bf012b6e3d",
+  "exportIndex": 0,
+  "reachableFunctions": [
+    {
+      "index": 0,
+      "instructionCount": 489,
+      "localCount": 20,
+      "calls": [],
+      "loopCount": 3,
+      "hasMemory": true,
+      "hasArithmetic": true,
+      "hasAllocation": true,
+      "fixedArrayEqNodes": [],
+      "fixedArraySearchKeys": [],
+      "fixedArrayLengthDispatches": []
+    }
+  ],
+  "selectedSections": [
+    {
+      "id": "strategy.core",
+      "reason": "selected for every artifact proof"
+    },
+    {
+      "id": "strategy.loops",
+      "reason": "an export-reachable function contains a loop"
+    },
+    {
+      "id": "strategy.frames",
+      "reason": "a reachable function contains a loop or at least 16 locals"
+    },
+    {
+      "id": "strategy.arrays",
+      "reason": "selected for the fixed Array UInt64 public interface"
+    },
+    {
+      "id": "strategy.arithmetic",
+      "reason": "an export-reachable function contains machine arithmetic"
+    },
+    {
+      "id": "strategy.memory",
+      "reason": "an export-reachable function contains a load or store"
+    },
+    {
+      "id": "strategy.allocation",
+      "reason": "an export-reachable function contains allocator operations"
+    },
+    {
+      "id": "strategy.elaboration",
+      "reason": "a reachable function exceeds 200 instructions, has at least 32 locals, or has multiple loops"
+    },
+    {
+      "id": "strategy.diagnostics",
+      "reason": "selected for every artifact proof"
+    }
+  ]
+}
