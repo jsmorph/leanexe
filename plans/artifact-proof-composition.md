@@ -76,13 +76,19 @@ Category indexes will include tactic names and goal-shape aliases so an agent ca
 - [x] Generate tactic checks and category-index fields.
 - [x] Extend `tools/ltg metrics` with tactic discoverability measures.
 - [x] Run fixed Demo 9 screens and preserve positive and negative tactic-retrieval evidence.
-- [ ] Obtain an independently accepted fixed-fold proof that reaches the corrected continuation-frame guidance.
+- [x] Obtain an independently accepted fixed-fold proof that reaches the corrected continuation-frame guidance.
 
 Schema 2 indexes five commands across four entries.  Each record names its command, defining module, residual goal shape, premises, applicable annotation kinds, and checked fallback declaration.  Catalog validation checks command existence in the named ProofKit source and rejects references outside the entry's declared modules, annotations, or declarations.
 
 The first Demo 9 screen followed the retrieval rule and used both the bounded-length and block-loop tactics without their fallbacks.  Its independent outer check rejected a later continuation-frame proof, and a complete manual repair identified normalized successor construction and explicit callback-frame normalization as general fold-body guidance.  The fixed-package phase remains open until a fresh agent produces an independently accepted proof under that corrected guidance.
 
 The corrected task again found and used the bounded-length tactic, then stopped changing during elaboration of the constant-capacity boundary before reaching the annotated fold.  The session was interrupted after about twenty-two minutes without a candidate or journal update, and the unfinished task is preserved as censored evidence.  Another fixed-fold run requires a divided capacity-to-allocation proof boundary or a checked composition theorem rather than an unchanged repetition.
+
+`FixedArrayAllocatorWindow.constantCapacityRegion_spec_withTail` supplied that composition boundary.  A manual Demo 9 substitution applied it in both branches and reduced the existing fold-completion proof from 526 to 498 lines while preserving complete `ArtifactResult` acceptance.  The theorem remains generic over constant result length, stride, frame dimensions, allocator offset, memory state, following program, and post-allocation continuation.
+
+A fresh Demo 9 task retrieved and applied the theorem in both branches, then selected the indexed length-dispatch and block-loop tactics.  It reached the corrected continuation-frame guidance, reconstructed the callback from `afterContinue.toState.toLocals []`, and completed the successor invariant, strict measure, loop exit, and singleton-result suffix.  Outer acceptance and separate package verification accepted its 584-line proof in 1,759.087 seconds of Stage 5 work.
+
+This run completes Phase 4's acceptance gate and supplies the fastest retained Demo 9 proof-generation observation.  Its source is 58 lines larger than the preceding fresh fold-completion proof, while the manual composition was 28 lines smaller, so the result separates checked interface fit from the agent's remaining construction choices.  Transfer to another constant-result array artifact remains necessary before automatic selection or broader promotion of the composed boundary.
 
 ## Decisions and stopping conditions
 

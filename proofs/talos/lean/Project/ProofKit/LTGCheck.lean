@@ -52,6 +52,9 @@ import Project.ProofKit.ScalarTransitionU64
 #check Project.ProofKit.FixedArrayFold.resultFrame
 #check Project.ProofKit.FixedArrayFold.resultFrame_get_of_ne
 #check Project.ProofKit.FixedArrayFold.resultFrame_get_result
+#check Project.ProofKit.FixedArrayFold.resultFrame_locals_length
+#check Project.ProofKit.FixedArrayFold.resultFrame_params
+#check Project.ProofKit.FixedArrayFold.resultFrame_values
 #check Project.ProofKit.FixedArrayFold.resultProgram_spec
 #check Project.ProofKit.FixedArrayFold.singletonResultPost
 #check Project.ProofKit.FixedArrayFold.singletonResultProgram

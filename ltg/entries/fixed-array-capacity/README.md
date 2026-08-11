@@ -8,4 +8,6 @@ Use `capacityFrame_get_capacity` when the next theorem expects a combined-local 
 
 `normalizedCapacity_toNat_ge_eight` derives the allocator's minimum-capacity premise for every length and stride.  `FixedArrayAllocatorWindow.constantCapacityRegion_spec_withTail` composes the capacity prefix with the standard shifted allocator when the capacity destination is `offset + 9`.  Apply the composed theorem only when the residual program has that complete prefix followed immediately by `FixedArrayAllocatorWindow.region offset stride`.
 
+When a concrete `UInt64` equality identifies `normalizedCapacity length stride`, apply `congrArg UInt64.toNat` to obtain the natural-number equality used by memory bounds.  Name that equality before rewriting allocator or payload inequalities.  This avoids unfolding the conditional capacity expression in each later store premise.
+
 The theorem covers both sides of a bounded-length branch when each result has a constant array length.  Demo 9 instantiates lengths one and zero in the valid and invalid branches, while Demos 2 and 3 contain the same fixed pair-result calculation for length two.  A capacity derived from a runtime input length, dynamic filtered count, non-eight-byte element width, or a different minimum policy requires another exact program theorem.
