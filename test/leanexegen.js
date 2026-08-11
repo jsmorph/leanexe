@@ -2,7 +2,6 @@
 "use strict";
 
 const fs = require("node:fs");
-const os = require("node:os");
 const path = require("node:path");
 const { spawnSync } = require("node:child_process");
 const {
@@ -24,6 +23,7 @@ const {
   validateProofImports,
   validateStageReports,
 } = require("../tools/leanexegen-lib");
+const { makeTemporaryDirectory } = require("../tools/temp-directory");
 const {
   StageError,
   artifactProofStarter,
@@ -77,7 +77,7 @@ const {
 const { catalogDigest } = require("../tools/ltg-lib");
 
 const repoRoot = path.resolve(__dirname, "..");
-const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), "leanexegen-test-"));
+const temporaryRoot = makeTemporaryDirectory("leanexegen-test-");
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -1098,6 +1098,10 @@ function testConstantCapacityAnnotationRecipes() {
       "Project.ProofKit.FixedArrayCapacity.capacityFrame_get_capacity") &&
     dispatch.supporting.some((entry) => entry.declaration ===
       "Project.ProofKit.FixedArrayCapacity.capacityFrame_internal_get_capacity") &&
+    dispatch.supporting.some((entry) => entry.declaration ===
+      "Project.ProofKit.FixedArrayCapacity.normalizedCapacity_toNat_ge_eight") &&
+    dispatch.supporting.some((entry) => entry.declaration ===
+      "Project.ProofKit.FixedArrayAllocatorWindow.constantCapacityRegion_spec_withTail") &&
     JSON.stringify(dispatch.guidance) === JSON.stringify([
       "strategy.arrays", "strategy.allocation", "strategy.frames",
     ]),

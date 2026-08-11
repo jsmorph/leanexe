@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 
 const fs = require("node:fs");
-const os = require("node:os");
 const path = require("path");
 const {
   guardedInvocation,
   runChecked,
   runCheckedAsync,
 } = require("../tools/run-process");
+const { makeTemporaryDirectory } = require("../tools/temp-directory");
 
 function expectFailure(args, expected) {
   try {
@@ -53,7 +53,7 @@ async function checkAsyncOutput() {
 }
 
 async function checkSignalForwarding() {
-  const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), "leanexe-process-"));
+  const temporaryRoot = makeTemporaryDirectory("leanexe-process-");
   const readyPath = path.join(temporaryRoot, "ready");
   const signalPath = path.join(temporaryRoot, "signal");
   const grandchild = [

@@ -1,4 +1,5 @@
 import Project.ProofKit.FixedArrayAllocator
+import Project.ProofKit.FixedArrayCapacity
 
 namespace Project.ProofKit.FixedArrayAllocatorWindow
 
@@ -502,5 +503,70 @@ theorem region_spec
   exact region_spec_withTail offset 0 module_ env st frame heapTop capacity stride allocs
     hParams (by simpa using hLocals) hValues hCapacityLocal hCapacity hFitMemory hPages
     hMemory32 hHeapTop hFreeList hAllocs Q rest hNext
+
+set_option maxHeartbeats 1000000 in
+set_option Elab.async false in
+theorem constantCapacityRegion_spec_withTail
+    (length stride : UInt64) (offset tail : Nat)
+    (module_ : Wasm.Module) (env : HostEnv Unit) (st : Store Unit)
+    (frame : Locals) (heapTop allocs : UInt64)
+    (hParams : frame.params.length = 1)
+    (hLocals : frame.locals.length = offset + 14 + tail)
+    (hValues : frame.values = [])
+    (hFitMemory : heapTop.toNat + 48 +
+      (FixedArrayCapacity.normalizedCapacity length stride).toNat ≤
+        st.mem.pages * 65536)
+    (hPages : st.mem.pages ≤ 65536)
+    (hMemory32 : module_.memIs64 = false)
+    (hHeapTop : st.globals.globals[0]? = some (.i64 heapTop))
+    (hFreeList : st.globals.globals[1]? = some (.i64 0))
+    (hAllocs : st.globals.globals[2]? = some (.i64 allocs))
+    (Q : Assertion Unit) (rest : Wasm.Program)
+    (hNext : wp module_ rest Q
+      (FixedArrayAllocator.allocStore st heapTop
+        (FixedArrayCapacity.normalizedCapacity length stride) stride allocs)
+      (allocFrame offset
+        (FixedArrayCapacity.capacityFrame frame (offset + 9)
+          (FixedArrayCapacity.normalizedCapacity length stride))
+        heapTop (FixedArrayCapacity.normalizedCapacity length stride)) env) :
+    wp module_
+      (FixedArrayCapacity.constantProgram length stride (offset + 9) ++
+        (region offset stride ++ rest)) Q st frame env := by
+  have hCapacityLocal : frame.params.length ≤ offset + 9 := by
+    omega
+  have hCapacityValid : frame.validIndex (offset + 9) := by
+    simp only [Wasm.Locals.validIndex, hParams, hLocals]
+    omega
+  apply FixedArrayCapacity.constantProgram_spec
+      (length := length) (stride := stride) (capacityLocal := offset + 9)
+      (module_ := module_) (env := env) (st := st) (frame := frame)
+      (Q := Q) (rest := region offset stride ++ rest)
+  · exact hValues
+  · exact hCapacityLocal
+  · exact hCapacityValid
+  · apply region_spec_withTail
+        (offset := offset) (tail := tail) (module_ := module_) (env := env)
+        (st := st)
+        (frame := FixedArrayCapacity.capacityFrame frame (offset + 9)
+          (FixedArrayCapacity.normalizedCapacity length stride))
+        (heapTop := heapTop)
+        (capacity := FixedArrayCapacity.normalizedCapacity length stride)
+        (stride := stride) (allocs := allocs) (Q := Q) (rest := rest)
+    · simpa only [FixedArrayCapacity.capacityFrame_params] using hParams
+    · simpa only [FixedArrayCapacity.capacityFrame_locals_length] using hLocals
+    · exact FixedArrayCapacity.capacityFrame_values _ _ _
+    · have hGet := FixedArrayCapacity.capacityFrame_internal_get_capacity
+          frame (offset + 9)
+          (FixedArrayCapacity.normalizedCapacity length stride)
+          hCapacityLocal hCapacityValid
+      simpa [hParams] using hGet
+    · exact FixedArrayCapacity.normalizedCapacity_toNat_ge_eight length stride
+    · exact hFitMemory
+    · exact hPages
+    · exact hMemory32
+    · exact hHeapTop
+    · exact hFreeList
+    · exact hAllocs
+    · exact hNext
 
 end Project.ProofKit.FixedArrayAllocatorWindow

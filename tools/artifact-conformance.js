@@ -11,6 +11,7 @@ const {
 const { collectReleaseInputs } = require("./artifact-identity");
 const { sha256 } = require("./artifact-manifest");
 const { currentLocalDate } = require("./date");
+const { makeTemporaryDirectory } = require("./temp-directory");
 
 const repoRoot = path.resolve(__dirname, "..");
 const configPath = path.join(repoRoot, "proofs", "talos", "conformance.json");
@@ -383,7 +384,7 @@ async function buildTestsuite() {
 }
 
 async function checkArtifactValidator(config, wasmTools) {
-  const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), "leanexe-validator-"));
+  const temporaryRoot = makeTemporaryDirectory("leanexe-validator-");
   try {
     const groups = new Map();
     for (const item of config.validatorCases) {
@@ -465,7 +466,7 @@ async function runTalos(item, wasmTools) {
     ...process.env,
     PATH: `${path.dirname(wasmTools)}${path.delimiter}${process.env.PATH || ""}`,
   };
-  const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), "leanexe-wast-"));
+  const temporaryRoot = makeTemporaryDirectory("leanexe-wast-");
   const stagedTestsuite = path.join(temporaryRoot, "vendor", "testsuite");
   fs.mkdirSync(stagedTestsuite, { recursive: true });
   fs.copyFileSync(

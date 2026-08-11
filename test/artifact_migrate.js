@@ -2,15 +2,15 @@
 "use strict";
 
 const fs = require("node:fs");
-const os = require("node:os");
 const path = require("node:path");
 const {
   applyOutputs,
   binaryOutput,
   textOutput,
 } = require("../tools/artifact-migrate");
+const { makeTemporaryDirectory } = require("../tools/temp-directory");
 
-const root = fs.mkdtempSync(path.join(os.tmpdir(), "leanexe-migrate-test-"));
+const root = makeTemporaryDirectory("leanexe-migrate-test-");
 try {
   const existing = path.join(root, "existing.txt");
   const created = path.join(root, "nested", "created.txt");
