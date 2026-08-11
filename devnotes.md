@@ -62,6 +62,14 @@ Checks run:
 - [x] `node test/leanexegen.js` accepted the annotation, recipe, protocol, package, publication, and exit tests.
 - [x] `tools/leanrun --timeout 15m lake -d proofs/talos/lean --no-ansi build Project.ProofKit.LTGCheck` completed 3,025 jobs and accepted every indexed declaration.
 
+## 2026-08-11: Corrected tactic-guidance screen
+
+A fresh Demo 9 task received the corrected fold-body guidance while retaining the specification, source, 1,979-byte WASM artifact, decoded program, and digest `aa263bbfa89c333f9fab497f1a2c370f476afc3419015d17b368cb7c8a6086d5`.  Its category-index search selected `wp_fixed_array_length_le_dispatch_from` after matching the branch-level goal shape, represented-array premise, and length-dispatch annotation.  The accepted first edit used that command to expose both branches without applying its fallback theorem.
+
+The candidate then decomposed both branches and applied `FixedArrayCapacity.constantProgram_spec`.  Its next Lean check produced no diagnostic and neither the candidate nor journal changed for about twenty-two minutes, so the owned session was interrupted after approximately forty-eight minutes.  The task had not reached allocation, the annotated fold, loop induction, result construction, or the revised continuation-frame guidance.
+
+`benchmarks/leanexegen/demo9-fold-sum/structured-tactic-guidance-censored-1` preserves the unfinished candidate, journal, generated annotation equality, frozen LTG task, recipes, selected strategies, task features, proof-library summary, and request.  This observation confirms repeated selection of the indexed dispatch tactic but supplies no evidence about the corrected fold guidance, independent acceptance, or proof-generation time.  Another unchanged run would repeat the same elaboration boundary, so the next proof experiment must divide the capacity-to-allocation composition or provide a checked reusable interface before another Lean check.
+
 ## 2026-08-09: Constant capacity and frame projection
 
 `Project.ProofKit.FixedArrayCapacity.constantProgram_spec` executes the compiler's constant result-length capacity prefix for arbitrary `UInt64` length and stride, destination local, local-frame dimensions, store, continuation, and postcondition.  The named `normalizedCapacity` computes the aligned minimum-eight-byte capacity, while `capacityFrame` records its destination without constraining other locals.  This replaces the zero- and one-element local capacity theorems that the latest Demo 9 proof had to construct before each allocator application.
