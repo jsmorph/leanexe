@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 1,
+  "codexVersion": "codex-cli 0.147.0",
+  "maximumAttempts": 1,
+  "tasks": {
+    "formalSpecification": {
+      "task": "formal-specification",
+      "sourceModule": "LeanExeGen.GeneratedR40ee67377869b401.FormalSpec",
+      "sourceSha256": "988ac96db51a911d47371332af392b831b1091f64da8736b4d85d7a1bf224248",
+      "reportSha256": "4f7aa87d239afa09fe0b46befd1201c8db15b7aff0560df1dbd32fb02830e298",
+      "report": {
+        "summary": "Defined the requested bounded left-to-right UInt64 XOR fold and a branch-sensitive heap reserve. The prescribed Lean build succeeded.",
+        "decisions": [
+          "The successful branch uses `Array.foldl UInt64.xor 0`.",
+          "The heap reserve is 64 bytes for a singleton result and 56 bytes for an empty result."
+        ],
+        "attempts": [
+          {
+            "number": 1,
+            "outcome": "accepted",
+            "sourceSha256": "988ac96db51a911d47371332af392b831b1091f64da8736b4d85d7a1bf224248",
+            "diagnosticSha256": "2f50399023f318d7e71512f3334990255bae19d59bdef9544b75645cd684553f",
+            "diagnostic": "Lean accepted LeanExeGen.GeneratedR40ee67377869b401.FormalSpec.expected : Array UInt64 → Array UInt64 and LeanExeGen.GeneratedR40ee67377869b401.FormalSpec.heapReserveBytes : Array UInt64 → Nat and LeanExeGen.GeneratedR40ee67377869b401.FormalSpec.ArtifactSpec : Wasm.Module → Prop."
+          }
+        ]
+      }
+    },
+    "leanProgram": {
+      "task": "lean-program",
+      "sourceModule": "LeanExeGen.GeneratedR40ee67377869b401.Source",
+      "sourceSha256": "343fb4b98b2d3e20502b87302c314279010ddc445118aad7f15b87e840687949",
+      "reportSha256": "1e17e2742ebfeafbf44a32b4f1adb2731217fe3a72a28338cab299083ce935bf",
+      "report": {
+        "summary": "Candidate passed the Lean build, compiler report, and WebAssembly compilation.",
+        "decisions": [
+          "Implemented the successful case with Array.foldl and a loop-carried UInt64 XOR accumulator."
+        ],
+        "attempts": [
+          {
+            "number": 1,
+            "outcome": "accepted",
+            "sourceSha256": "343fb4b98b2d3e20502b87302c314279010ddc445118aad7f15b87e840687949",
+            "diagnosticSha256": "045fa68dc195ff096aca3085f9c8812c6049d669c0034dd0fe51aa0146e44f92",
+            "diagnostic": "Lean and LeanExe accepted and compiled LeanExeGen.GeneratedR40ee67377869b401.Source.compute : Array UInt64 → Array UInt64."
+          }
+        ]
+      }
+    },
+    "artifactProof": {
+      "task": "artifact-proof",
+      "sourceModule": "LeanExeGen.GeneratedR40ee67377869b401.Behavior",
+      "sourceSha256": "0dfcdf18ec81211f5488bf7b127eae54cc47af7ce1a749113ff20fd354bbec7d",
+      "reportSha256": "3d1b8a32aa45371869af76f02ce713046831b92b6fbde564298f6fa2429b1ab5",
+      "report": {
+        "summary": "The manual fold-completion substitution and exact artifact theorem succeeded.",
+        "decisions": [
+          "Applied the generated singleton-result adapter directly to the public branch postcondition."
+        ],
+        "attempts": [
+          {
+            "number": 1,
+            "outcome": "accepted",
+            "sourceSha256": "0dfcdf18ec81211f5488bf7b127eae54cc47af7ce1a749113ff20fd354bbec7d",
+            "diagnosticSha256": "9cf467d3c1ea124470fb8d09d045d36235fb1338a9a01a8fb966bb78a47207bc",
+            "diagnostic": "Lean accepted LeanExeGen.GeneratedR40ee67377869b401.Behavior.artifact_behavior and LeanExeGen.GeneratedR40ee67377869b401.Artifact.artifact_correct."
+          }
+        ]
+      }
+    }
+  }
+}

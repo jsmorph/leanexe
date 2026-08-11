@@ -42,6 +42,14 @@ The proof is 76 lines and 4,080 bytes larger than the Demo 10 accessor proof.  I
 
 The first end-to-end invocation ended before a Lean target ran because the independent formal-specification check timed out waiting for the machine-wide Lean slot.  A second invocation acquired the slot and produced the retained package.  The Stage 5 measurement belongs only to that successful invocation.
 
+## Fold-completion adapter experiment
+
+The [fold-completion package](experiments/fold-completion.proof/) preserves an independently verified substitution, and its [manual proof](experiments/manual-fold-completion.lean) applies the annotation-generated `function_0_array_fold_0_singleton_result_spec` theorem directly to the public valid-branch postcondition.  The generated theorem checks the exact singleton-result instruction suffix and supplies the local-layout, result-placement, root-preservation, and destination-validity facts required by the generic `FixedArrayFold.singletonResultProgram_spec_to`.  `Project.ProofKit.Frame.ext` identifies the values-cleared traversal frame with the equivalent exit frame.
+
+The complete artifact theorem passed against the unchanged WASM digest.  The proof decreased from 676 to 580 lines, from 2,798 to 2,350 whitespace-delimited words, and from 34,648 to 30,182 bytes.  It removes the proof-local `xorSingleton_spec` and its separate postcondition consequence while retaining the XOR-prefix equation and represented-singleton proof.
+
+This manual substitution establishes that the generated boundary fits an independently accepted artifact proof.  It contains no fresh proof-generation timing because an agent did not generate the edited source from the proving task.  A controlled reproof will measure whether structured retrieval and the smaller semantic interface reduce construction work.
+
 ## Execution
 
 The first sample exercises all four input elements and produces the XOR value 15.  The second sample exceeds the length bound and produces the empty result.  Direct execution of the proved artifact returned these arrays.
@@ -75,3 +83,5 @@ The root files provide readable views of each generation and proof stage.  The [
 | [Timing record](proof-timings.json) | The held-out measurement and descriptive comparisons. |
 | [Stage reports](stage-reports.json) | The accepted specification, source, and artifact-proof reports. |
 | [Verification package](program.proof/) | The self-contained package accepted by `leanexegen verify -s`. |
+| [Fold-completion package](experiments/fold-completion.proof/) | The independently verified manual proof using the generated exact singleton-result adapter. |
+| [Manual fold-completion proof](experiments/manual-fold-completion.lean) | The checked substitution using the generated exact suffix adapter and general local-frame equality theorem. |

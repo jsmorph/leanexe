@@ -6,7 +6,7 @@ Every `leanexegen` artifact-proof task receives this catalog and may import the 
 |---|---|
 | `Project.ProofKit.Annotation` | Structured instruction-path resolution and exact half-open regions over a decoded Talos program. |
 | `Project.ProofKit.Memory` | Fixed-width subtraction normalization, word-read congruence, disjoint read-over-write facts, and the `word_reads` tactic for nested `write64` expressions. |
-| `Project.ProofKit.Frame` | Conversion from combined `Locals.get` invariant facts to internal-local optional and indexed getter facts. |
+| `Project.ProofKit.Frame` | Local-frame extensionality, operand-stack replacement projections, and conversion from combined `Locals.get` facts to internal-local optional and indexed getters. |
 | `Project.ProofKit.ScalarTransition` | Typed scalar expression and statement evaluation, exact Talos instruction generation, weakest-precondition composition, and scratch-local preservation. |
 | `Project.ProofKit.ScalarTransitionU64` | Compact `UInt64` state evaluation and checked correspondence with the typed scalar evaluator. |
 | `Project.ProofKit.GuardedBackEdge` | One scalar body and condition followed by either loop exit or a scalar continuation and back edge. |
@@ -54,6 +54,8 @@ An artifact proof still needs an exact equality between the decoded instruction 
 `Project.ProofKit.FixedArrayFold.forwardSetupProgram_spec` covers the compiler's common forward, one-word, one-accumulator setup over the complete input array.  It performs both represented-length loads, initializes the loop locals, selects the effective stop, and passes the exact `forwardSetupFrame` to an arbitrary continuation.  The annotation matcher supplies a subregion equality only after the frozen instructions match `forwardSetupProgram` exactly.
 
 `FixedArrayFold.resultProgram_spec` covers the two-instruction suffix that copies one selected accumulator local to its result local.  The theorem passes `resultFrame` to an arbitrary continuation and preserves every other local.  These structural theorems leave the accumulator's mathematical meaning to `ArrayFold.foldPrefix` and the application step relation.
+
+`FixedArrayFold.singletonResultProgram_spec_to` composes accumulator placement, the singleton payload store, and root transfer into an arbitrary assertion over the exact final store and frame.  `singletonResultProgram_spec` retains the smaller fixed `singletonResultPost` endpoint for proofs that need an elaboration boundary.  A matched fold annotation can generate an adapter that discharges frame-layout premises through exact accessors before applying the arbitrary-postcondition theorem.
 
 `FixedArrayFoldBody.continuingGuardedProgram_spec` composes the active traversal edge with `guardedBackEdgeProgram_spec`.  It accepts arbitrary scalar descriptors, states, postconditions, and control-flow callbacks, together with a generated equality identifying the loaded item frame with the descriptor's initial state.  The theorem leaves traversal completion, the application invariant, accumulator mathematics, and measure decrease to its caller.
 
