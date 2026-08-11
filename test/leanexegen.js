@@ -1091,6 +1091,10 @@ function testConstantCapacityAnnotationRecipes() {
       `${namespace}.function_0_length_dispatch_0_invalid_capacity_eq`) &&
     dispatch.supporting.some((entry) => entry.declaration ===
       "Project.ProofKit.FixedArrayCapacity.constantProgram_spec") &&
+    dispatch.supporting.some((entry) => entry.declaration ===
+      "Project.ProofKit.FixedArrayCapacity.capacityFrame_get_capacity") &&
+    dispatch.supporting.some((entry) => entry.declaration ===
+      "Project.ProofKit.FixedArrayCapacity.capacityFrame_internal_get_capacity") &&
     JSON.stringify(dispatch.guidance) === JSON.stringify([
       "strategy.arrays", "strategy.allocation", "strategy.frames",
     ]),
@@ -1800,6 +1804,10 @@ def func0Def : Wasm.Function :=
       "Project.AnnotationMatches.function_0_array_fold_0_continuing_frame_get_0") &&
     arrayFoldPlan.recipes[0].supporting.some((entry) => entry.declaration ===
       "Project.AnnotationMatches.function_0_array_fold_0_continuing_frame_get_12") &&
+    arrayFoldPlan.recipes[0].supporting.some((entry) =>
+      entry.declaration ===
+        "Project.AnnotationMatches.function_0_array_fold_0_continuing_frame_get_11" &&
+      entry.purpose.includes("releaseReadyLocal")) &&
     arrayFoldPlan.recipes[0].supporting.some((entry) => entry.declaration ===
       "Project.ProofKit.FixedArrayFold.resultFrame_get_result") &&
     arrayFoldPlan.recipes[0].supporting.some((entry) => entry.declaration ===

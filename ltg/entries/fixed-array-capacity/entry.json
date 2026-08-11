@@ -10,7 +10,7 @@
   "features": ["allocation", "array", "frame", "local-set", "result-construction", "word-address"],
   "annotationKinds": ["leanexe.array.length-dispatch.v1"],
   "modules": ["Project.ProofKit.FixedArrayCapacity"],
-  "declarations": ["Project.ProofKit.FixedArrayCapacity.capacityFrame", "Project.ProofKit.FixedArrayCapacity.constantProgram_spec", "Project.ProofKit.FixedArrayCapacity.normalizedCapacity"],
+  "declarations": ["Project.ProofKit.FixedArrayCapacity.capacityFrame", "Project.ProofKit.FixedArrayCapacity.capacityFrame_get_capacity", "Project.ProofKit.FixedArrayCapacity.capacityFrame_internal_get_capacity", "Project.ProofKit.FixedArrayCapacity.capacityFrame_locals_length", "Project.ProofKit.FixedArrayCapacity.capacityFrame_params", "Project.ProofKit.FixedArrayCapacity.capacityFrame_values", "Project.ProofKit.FixedArrayCapacity.constantProgram_spec", "Project.ProofKit.FixedArrayCapacity.normalizedCapacity"],
   "premises": ["An exact generated constant-capacity prefix equality", "An empty operand stack", "A valid capacity local outside the parameter range", "A continuation from the named capacity frame"],
   "result": "The matched capacity prefix writes its aligned, minimum-eight-byte result to the selected local and continues from capacityFrame.",
   "consumers": ["demo-10", "demo-2", "demo-3", "demo-9"],

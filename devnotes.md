@@ -35,6 +35,10 @@ Stage 5 took 1,992.546 seconds, including 1,922.343 seconds in Codex and 54.378 
 
 The journal records fourteen successful diagnostic cycles.  The completion adapter closed the loop-exit suffix without a proof-local theorem, while capacity and allocator projections still required reductions, and the strict loop body required the invariant to carry annotation local 18, `releaseReadyLocal`.  The next interface review will consider generic capacity-frame, allocator-root, and annotation-selected loop-local accessors before a Demo 10 transfer screen.
 
+`FixedArrayCapacity` now supplies combined and internal getters for the written normalized capacity.  `FixedArrayAllocatorWindow` supplies parameter, local-length, and operand-stack projections together with a returned-root getter for any offset and trailing-local count.  Lean accepted both modules and the generated declaration check, and structured LTG exposes each new declaration through the capacity or allocation entry.
+
+The existing fold annotation already generated a checked getter for local 18, so another semantic theorem would have duplicated available evidence.  The recipe generator now labels continuing-frame getter purposes with compiler roles, making `releaseReadyLocal` searchable by name.  A regenerated Demo 9 annotation package names `function_0_array_fold_0_continuing_frame_get_18` for that role and passes independent package verification.
+
 ## 2026-08-09: Constant capacity and frame projection
 
 `Project.ProofKit.FixedArrayCapacity.constantProgram_spec` executes the compiler's constant result-length capacity prefix for arbitrary `UInt64` length and stride, destination local, local-frame dimensions, store, continuation, and postcondition.  The named `normalizedCapacity` computes the aligned minimum-eight-byte capacity, while `capacityFrame` records its destination without constraining other locals.  This replaces the zero- and one-element local capacity theorems that the latest Demo 9 proof had to construct before each allocator application.

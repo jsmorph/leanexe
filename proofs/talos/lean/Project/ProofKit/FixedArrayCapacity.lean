@@ -56,6 +56,39 @@ theorem capacityFrame_values (frame : Locals) (capacityLocal : Nat)
     (capacity : UInt64) :
     (capacityFrame frame capacityLocal capacity).values = [] := rfl
 
+@[simp]
+theorem capacityFrame_get_capacity (frame : Locals) (capacityLocal : Nat)
+    (capacity : UInt64)
+    (hCapacityLocal : frame.params.length ≤ capacityLocal)
+    (hCapacityValid : frame.validIndex capacityLocal) :
+    (capacityFrame frame capacityLocal capacity).get capacityLocal =
+      some (.i64 capacity) := by
+  have hNotParam : ¬capacityLocal < frame.params.length :=
+    Nat.not_lt.mpr hCapacityLocal
+  have hCapacityBound :
+      capacityLocal < frame.params.length + frame.locals.length :=
+    hCapacityValid
+  have hCapacityIndex :
+      capacityLocal - frame.params.length < frame.locals.length := by
+    omega
+  simp [capacityFrame, Wasm.Locals.get, hNotParam, hCapacityBound,
+    hCapacityIndex]
+
+@[simp]
+theorem capacityFrame_internal_get_capacity
+    (frame : Locals) (capacityLocal : Nat) (capacity : UInt64)
+    (hCapacityLocal : frame.params.length ≤ capacityLocal)
+    (hCapacityValid : frame.validIndex capacityLocal) :
+    (capacityFrame frame capacityLocal capacity).locals[
+      capacityLocal - frame.params.length]? = some (.i64 capacity) := by
+  have hCapacityIndex :
+      capacityLocal - frame.params.length < frame.locals.length := by
+    have hCapacityBound :
+        capacityLocal < frame.params.length + frame.locals.length :=
+      hCapacityValid
+    omega
+  simp [capacityFrame, hCapacityIndex]
+
 set_option maxHeartbeats 1000000 in
 set_option Elab.async false in
 theorem constantProgram_spec
