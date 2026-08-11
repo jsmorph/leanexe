@@ -1,5 +1,32 @@
 # Development Journal
 
+## 2026-08-11: Fold-composition work begins
+
+The [artifact-proof composition plan](plans/artifact-proof-composition.md) separates two obligations recorded across the addition, multiplication, and XOR fold journals.  The first experiment adds a general equality interface for `Wasm.Locals`, including operand-stack replacement projections.  The second experiment will add a generic arbitrary-postcondition singleton-result theorem and an exact annotation-generated adapter only after the frame interface passes fixed-proof checks.
+
+A focused Lean probe confirmed that the pinned Talos `Wasm.Locals` structure exposes `Wasm.Locals.mk.injEq` but no named `Wasm.Locals.ext` theorem.  Demo 11's journal records failed attempts to use record syntax and the `ext` tactic before `convert` and reflexivity closed an exit-frame equality.  This evidence justifies a small generic theorem whose statement depends only on the three fields of `Wasm.Locals`.
+
+The evaluation holds every artifact and mathematical theorem fixed during manual substitutions.  A later fresh proof screen will measure retrieval, edited checks, theorem use, proof structure, and Stage 5 time together, while an independently verified exact-artifact theorem remains mandatory.  Tactic indexing and a new held-out fold follow only after the two semantic interfaces stabilize.
+
+Checks run:
+
+- [x] `tools/leanrun --timeout 5m lake -d proofs/talos/lean env lean /tmp/leanexe-locals-probe.lean` confirmed the missing extensionality theorem and accepted the proposed three-field proof shape.
+- [x] `tools/leanrun --timeout 10m lake -d proofs/talos/lean --no-ansi build Project.ProofKit.Frame` accepted `Frame.ext` and the four `withValues` projection theorems.
+- [x] `tools/leanrun --timeout 15m lake -d proofs/talos/lean --no-ansi build Project.ProofKit.LTGCheck` accepted every indexed declaration, including the new frame interface.
+- [x] Verify fixed Demo 9 and Demo 11 proof substitutions.
+
+## 2026-08-11: Exact singleton-result adapter
+
+`FixedArrayFold.singletonResultProgram_spec_to` executes the result-local write, singleton payload store, and final root transfer for an arbitrary exact postcondition.  The annotation consumer generates `<fold>_singleton_result_spec` only when the complete singleton-result suffix and guarded loop edge match the decoded program.  The generated theorem discharges local-layout, result-placement, root-preservation, and destination-validity premises through the exact continuing-frame accessors.
+
+A regenerated Demo 11 annotation package checked the adapter against the unchanged 1,979-byte WASM module and digest `4f56fd45fe246f3199dc81169235aa0673659b3b2e82e4beeb4c1d910501bd64`.  A manual proof substitution applies the generated theorem directly to the public branch postcondition and closes the equivalent exit frame with `Frame.ext`.  The complete `ArtifactResult` target passed under the repository Lean limits.
+
+The manual proof decreased from 676 to 580 lines, from 2,798 to 2,350 whitespace-delimited words, and from 34,648 to 30,182 bytes.  It removes the proof-local singleton-result theorem and postcondition consequence theorem while retaining the XOR fold equation and represented-array proof.  The experiment establishes checked applicability and a smaller proof structure, but it provides no proof-generation-time measurement.
+
+The same generated adapter passed in a fixed Demo 9 wrapping-sum proof.  The complete proof decreased from 616 to 569 lines, from 2,541 to 2,404 words, and from 30,901 to 28,245 bytes, while retaining artifact digest `aa263bbfa89c333f9fab497f1a2c370f476afc3419015d17b368cb7c8a6086d5`.  Independently verified packages now preserve both manual substitutions without carrying the telemetry from their predecessor proofs.
+
+A fixed Demo 10 wrapping-product proof applies the same adapter directly to its public valid-branch postcondition.  The complete proof decreased from 600 to 553 lines, from 2,371 to 2,162 words, and from 30,568 to 28,254 bytes, while retaining artifact digest `a981c7882a51a0660e6dd1e17956b958f7b2e25cbc30618d12458601ef2d4baa`.  Independent package verification accepted the edited source and exact artifact theorem.
+
 ## 2026-08-09: Constant capacity and frame projection
 
 `Project.ProofKit.FixedArrayCapacity.constantProgram_spec` executes the compiler's constant result-length capacity prefix for arbitrary `UInt64` length and stride, destination local, local-frame dimensions, store, continuation, and postcondition.  The named `normalizedCapacity` computes the aligned minimum-eight-byte capacity, while `capacityFrame` records its destination without constraining other locals.  This replaces the zero- and one-element local capacity theorems that the latest Demo 9 proof had to construct before each allocator application.

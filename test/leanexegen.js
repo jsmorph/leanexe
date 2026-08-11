@@ -1817,6 +1817,10 @@ def func0Def : Wasm.Function :=
     arrayFoldPlan.recipes[0].supporting.some((entry) => entry.declaration ===
       "Project.AnnotationMatches.function_0_array_fold_0_singleton_result_eq") &&
     arrayFoldPlan.recipes[0].supporting.some((entry) => entry.declaration ===
+      "Project.AnnotationMatches.function_0_array_fold_0_singleton_result_spec") &&
+    arrayFoldPlan.recipes[0].supporting.some((entry) => entry.declaration ===
+      "Project.ProofKit.FixedArrayFold.singletonResultProgram_spec_to") &&
+    arrayFoldPlan.recipes[0].supporting.some((entry) => entry.declaration ===
       "Project.ProofKit.FixedArrayFold.singletonResultProgram_spec") &&
     arrayFoldPlan.recipes[0].supporting.some((entry) => entry.declaration ===
       "Project.AnnotationMatches.function_0_array_fold_0_step_eq") &&
@@ -1843,6 +1847,10 @@ def func0Def : Wasm.Function :=
       "theorem function_0_array_fold_0_result_eq") &&
     arrayFoldMatches.source.includes(
       "theorem function_0_array_fold_0_singleton_result_eq") &&
+    arrayFoldMatches.source.includes(
+      "theorem function_0_array_fold_0_singleton_result_spec") &&
+    arrayFoldMatches.source.includes(
+      "Project.ProofKit.FixedArrayFold.singletonResultProgram_spec_to") &&
     arrayFoldMatches.source.includes(
       "theorem function_0_array_fold_0_step_eq") &&
     arrayFoldMatches.source.includes(
@@ -1927,6 +1935,29 @@ def func0Def : Wasm.Function :=
   assert(!arrayFoldWithoutDynamicMatches.source.includes("_continuing_") &&
     !arrayFoldWithoutDynamicMatches.source.includes("FixedArrayTraversalInput"),
   "array-fold annotation generated a traversal equality without an exact prefix");
+  const arrayFoldWithoutSingletonSuffix = arrayFoldProgram.replace(
+    `    .localGet 4,
+    .localSet 5,
+    .localGet 5,
+    .localSet 6
+`, `    .localGet 4,
+    .localSet 5,
+    .localGet 4,
+    .localSet 6
+`);
+  const arrayFoldWithoutSingletonPlan = proofRecipePlan(
+    arrayFoldDocument, arrayFoldWithoutSingletonSuffix, ["strategy.arrays"]);
+  assert(!arrayFoldWithoutSingletonPlan.recipes[0].supporting.some((entry) =>
+    entry.declaration.includes("singleton_result_spec") ||
+    entry.declaration.endsWith("singletonResultProgram_spec_to")),
+  "array-fold recipe advertised fold completion after a root-transfer mutation");
+  const arrayFoldWithoutSingletonMatches = annotationMatchesSource(arrayFoldDocument, {
+    namespace: "Example.Generated",
+    programModule: "Example.Generated.Artifact",
+  }, arrayFoldWithoutSingletonSuffix);
+  assert(!arrayFoldWithoutSingletonMatches.source.includes("_singleton_result_spec") &&
+    !arrayFoldWithoutSingletonMatches.source.includes("singletonResultProgram_spec_to"),
+  "array-fold annotation generated a fold-completion adapter after a root-transfer mutation");
   expectFailure(() => proofRecipePlan(arrayFoldDocument,
     arrayFoldProgram.replace("        .localGet 8,", "        .localGet 7,")), /guard/);
   const wrongArrayFoldScratch = structuredClone(arrayFoldDocument);

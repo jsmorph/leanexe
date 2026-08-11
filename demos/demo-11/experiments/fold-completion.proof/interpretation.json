@@ -1,0 +1,19 @@
+{
+  "formalSpecification": {
+    "summary": "Defined the requested bounded left-to-right UInt64 XOR fold and a branch-sensitive heap reserve. The prescribed Lean build succeeded.",
+    "decisions": [
+      "The successful branch uses `Array.foldl UInt64.xor 0`.",
+      "The heap reserve is 64 bytes for a singleton result and 56 bytes for an empty result."
+    ]
+  },
+  "leanProgram": {
+    "summary": "Candidate passed the Lean build, compiler report, and WebAssembly compilation.",
+    "decisions": [
+      "Implemented the successful case with Array.foldl and a loop-carried UInt64 XOR accumulator."
+    ]
+  },
+  "artifactProof": {
+    "summary": "The exact artifact behavior theorem and ArtifactResult build succeeded.",
+    "decisions": []
+  }
+}

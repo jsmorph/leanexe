@@ -44,6 +44,7 @@ import Project.ProofKit.ScalarTransitionU64
 #check Project.ProofKit.FixedArrayFold.singletonResultPost
 #check Project.ProofKit.FixedArrayFold.singletonResultProgram
 #check Project.ProofKit.FixedArrayFold.singletonResultProgram_spec
+#check Project.ProofKit.FixedArrayFold.singletonResultProgram_spec_to
 #check Project.ProofKit.FixedArrayFoldBody.continuingGuardedProgram_spec
 #check Project.ProofKit.FixedArrayLengthDispatch.eqProgram_spec
 #check Project.ProofKit.FixedArrayLengthDispatch.leProgram_spec
@@ -64,8 +65,13 @@ import Project.ProofKit.ScalarTransitionU64
 #check Project.ProofKit.FixedArrayTraversalInput.continuingProgram_spec
 #check Project.ProofKit.FixedArrayTraversalInput.dynamicProgram_spec
 #check Project.ProofKit.FixedArrayTraversalInput.program_spec
+#check Project.ProofKit.Frame.ext
 #check Project.ProofKit.Frame.internal_getElem?_of_get
 #check Project.ProofKit.Frame.internal_getElem_of_get
+#check Project.ProofKit.Frame.withValues_get
+#check Project.ProofKit.Frame.withValues_locals
+#check Project.ProofKit.Frame.withValues_params
+#check Project.ProofKit.Frame.withValues_values
 #check Project.ProofKit.ScalarTransition.CounterTransition.decrement_add_increment
 #check Project.ProofKit.ScalarTransition.CounterTransition.decrement_toNat_lt
 #check Project.ProofKit.ScalarTransition.CounterTransition.postTestProgram_spec

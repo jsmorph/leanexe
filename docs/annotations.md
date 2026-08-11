@@ -722,6 +722,18 @@ Held-out Demo 11 tested that retrieval checkpoint on a bitwise-XOR fold.  The jo
 
 The accessor entry now has accepted consumers for addition, multiplication, and bitwise XOR and advances to promoted compiler-motif support.  The XOR proof still needed local declarations around the public postcondition and singleton suffix because the complete loop assertion remained expensive.  A compact generated completion adapter or a general `Locals` equality theorem constitutes the next hypothesis, while the current checkpoint adds neither without another controlled screen.
 
+### Generated fold-completion adapters
+
+`Project.ProofKit.Frame.ext` proves equality of two `Wasm.Locals` values from equality of their parameter lists, internal-local lists, and operand stacks.  The same module supplies projection theorems for replacing an operand stack, including preservation of every combined-local getter.  These declarations address equivalent-frame goals without exposing the representation of `Wasm.Locals` throughout an artifact proof.
+
+`FixedArrayFold.singletonResultProgram_spec_to` executes the compiler's completed-fold suffix against an arbitrary postcondition over its exact final store and frame.  For every matched singleton-result suffix, the annotation consumer now generates `<fold>_singleton_result_spec`, which applies the generic theorem with the decoded local roles and the exact continuing-frame accessors.  The artifact proof retains the accumulator's mathematical meaning, its payload bound, the represented singleton result, and the final public-postcondition argument.
+
+The Demo 11 annotation package checked this adapter against the unchanged 1,979-byte XOR artifact with digest `4f56fd45fe246f3199dc81169235aa0673659b3b2e82e4beeb4c1d910501bd64`.  A manual substitution removed the proof-local singleton-result theorem and postcondition bridge, applied the generated adapter directly, and used `Frame.ext` for the equivalent exit frame.  The complete artifact theorem passed, while the proof decreased from 676 to 580 lines, from 2,798 to 2,350 whitespace-delimited words, and from 34,648 to 30,182 bytes.
+
+The same adapter passed manual substitutions in Demo 9's unchanged wrapping-sum artifact and Demo 10's unchanged wrapping-product artifact.  The addition proof decreased from 616 to 569 lines, from 2,541 to 2,404 words, and from 30,901 to 28,245 bytes.  The multiplication proof decreased from 600 to 553 lines, from 2,371 to 2,162 words, and from 30,568 to 28,254 bytes.
+
+The accepted addition, multiplication, and XOR uses establish transfer across accumulator operations without putting any operation in the shared theorem or generated adapter.  These manual substitutions measure interface fit and proof structure, but supply no proof-generation-time result because an agent did not generate the edited proofs from fresh tasks.  The next controlled screen exposes the same declarations through structured LTG and records retrieval, journal observations, edited Lean checks, Stage 5 time, and independent package verification.
+
 ## Completion criteria
 
 The first complete increment emits a validated sidecar for every ordinary library-mode compilation requested by `leanexegen`.  Demos 1, 2, and 3 prove the same specifications over the same WASM bytes through an annotation-driven deterministic proof plan.  The retained evidence records proof-generation timings, annotation validation, region coverage, and independent Lean acceptance.

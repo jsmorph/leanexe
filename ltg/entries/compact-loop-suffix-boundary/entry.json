@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "compact-loop-suffix-boundary",
   "title": "Compact loop-suffix theorem boundary",
-  "summary": "Moves a large post-loop continuation into a separate theorem when elaborating the loop rule under the public artifact postcondition exhausts memory or produces no diagnostic.",
+  "summary": "Executes a checked post-loop suffix directly to a caller-supplied postcondition or moves another large continuation into a separate theorem boundary.",
   "roles": ["checked-proof-asset", "guidance", "proof-generation-mechanism"],
   "categories": ["compiler-motifs", "loops", "proof-construction"],
   "scope": "compiler-runtime-motif",
@@ -10,10 +10,10 @@
   "features": ["compact-elaboration-boundary", "continuation", "declaration-split", "loop", "memory-limit", "postcondition", "suffix"],
   "annotationKinds": ["leanexe.array.fold.v1", "leanexe.loop.scalar-post-test.v1", "leanexe.loop.while.v1"],
   "modules": ["Project.ProofKit.Control", "Project.ProofKit.FixedArrayFold"],
-  "declarations": ["Project.ProofKit.FixedArrayFold.singletonResultPost", "Project.ProofKit.FixedArrayFold.singletonResultProgram", "Project.ProofKit.FixedArrayFold.singletonResultProgram_spec", "Wasm.wp.conseq", "Wasm.wp_loop_cons"],
+  "declarations": ["Project.ProofKit.FixedArrayFold.singletonResultPost", "Project.ProofKit.FixedArrayFold.singletonResultProgram", "Project.ProofKit.FixedArrayFold.singletonResultProgram_spec", "Project.ProofKit.FixedArrayFold.singletonResultProgram_spec_to", "Wasm.wp.conseq", "Wasm.wp_loop_cons"],
   "premises": ["A loop weakest-precondition goal whose completion continuation is substantially larger than the loop invariant endpoint", "A compact assertion describing the completed loop state", "Checked semantic theorems for the result or control-flow suffix"],
-  "result": "A separately checked suffix theorem whose compact type lets the enclosing loop rule elaborate without retaining the complete public continuation.",
-  "consumers": ["demo-10"],
+  "result": "A checked singleton suffix reaches an arbitrary exact final-state postcondition, or a separately checked suffix theorem keeps the enclosing loop boundary compact.",
+  "consumers": ["demo-10", "demo-11", "demo-9"],
   "relatedEntries": ["array-fold-prefix", "fixed-array-fold-structure", "fixed-array-result", "guarded-back-edge", "local-frame-projection", "scalar-post-test-loop"],
   "exclusion": null
 }

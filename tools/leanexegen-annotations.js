@@ -1843,6 +1843,12 @@ function loopRecipe(
       }, {
         declaration: `${annotationNamespace}.${name}_singleton_result_program`,
         purpose: "name the compiler-matched complete singleton fold-result suffix",
+      }, ...(match.guardedBackEdgeEligible ? [{
+        declaration: `${annotationNamespace}.${name}_singleton_result_spec`,
+        purpose: "execute the exact singleton fold-result suffix to a caller-supplied postcondition",
+      }] : []), {
+        declaration: "Project.ProofKit.FixedArrayFold.singletonResultProgram_spec_to",
+        purpose: "execute a singleton fold-result suffix to an arbitrary exact final-state postcondition",
       }, {
         declaration: "Project.ProofKit.FixedArrayFold.singletonResultProgram_spec",
         purpose: "execute the complete singleton fold-result suffix to a compact represented-output assertion",
@@ -3568,6 +3574,85 @@ theorem ${theoremName} ${binders}
   };
 }
 
+function arrayFoldSingletonResultDeclarations(function_, region, match) {
+  if (!match.singletonResultEligible || !match.guardedBackEdgeEligible) {
+    return null;
+  }
+  const count = function_.parameters + function_.locals;
+  const variables = Array.from({ length: count }, (_, index) => `v${index}`);
+  const binders = `(${variables.join(" ")} : UInt64)`;
+  const stateArguments = variables.join(" ");
+  const base = region.id.replace(/[^A-Za-z0-9_]/g, "_");
+  const frameName = `${base}_continuing_frame`;
+  const theoremName = `${base}_singleton_result_spec`;
+  const accumulatorLocal = match.resultAccumulatorLocal;
+  const resultLocal = match.resultLocal;
+  const rootLocal = match.singletonResultRootLocal;
+  const destinationLocal = match.singletonResultDestinationLocal;
+  const returnLocal = match.singletonResultReturnLocal;
+  const value = variables[accumulatorLocal];
+  const root = variables[rootLocal];
+  return {
+    theorem: theoremName,
+    source: `theorem ${theoremName} ${binders}
+    (module_ : Wasm.Module) (env : Wasm.HostEnv Unit) (st : Wasm.Store Unit)
+    (hPayloadBound :
+      (Project.ProofKit.FixedArrayResult.payloadAddress ${root} 0).toUInt32.toNat + 8 ≤
+        st.mem.pages * 65536)
+    (Q : Wasm.Assertion Unit)
+    (hNext : Q (.Fallthrough
+      (Project.ProofKit.FixedArrayResult.writePayload st ${root} 0 ${value})
+      (Project.ProofKit.FixedArrayResult.finishFrame
+        (Project.ProofKit.FixedArrayFold.resultFrame
+          (${frameName} ${stateArguments}) ${resultLocal} ${value})
+        ${destinationLocal} ${returnLocal} ${root}))) :
+    Wasm.wp module_ ${base}_singleton_result_program Q st
+      (${frameName} ${stateArguments}) env := by
+  change Wasm.wp module_
+    (Project.ProofKit.FixedArrayFold.singletonResultProgram
+      ${accumulatorLocal} ${resultLocal} ${rootLocal} ${destinationLocal}
+      ${returnLocal}) Q st (${frameName} ${stateArguments}) env
+  apply Project.ProofKit.FixedArrayFold.singletonResultProgram_spec_to
+    (root := ${root}) (value := ${value})
+  · exact ${frameName}_values ${stateArguments}
+  · exact ${frameName}_get_${accumulatorLocal} ${stateArguments}
+  · simp only [${frameName}_params]
+    norm_num
+  · simp [Wasm.Locals.validIndex, ${frameName}_params,
+      ${frameName}_locals_length]
+  · apply Project.ProofKit.FixedArrayFold.resultFrame_get_of_ne
+    · simp only [${frameName}_params]
+      norm_num
+    · simp only [${frameName}_params]
+      norm_num
+    · simp [Wasm.Locals.validIndex, ${frameName}_params,
+        ${frameName}_locals_length]
+    · norm_num
+    · exact ${frameName}_get_${rootLocal} ${stateArguments}
+  · apply Project.ProofKit.FixedArrayFold.resultFrame_get_result
+    · simp only [${frameName}_params]
+      norm_num
+    · simp [Wasm.Locals.validIndex, ${frameName}_params,
+        ${frameName}_locals_length]
+  · exact hPayloadBound
+  · simp only [Project.ProofKit.FixedArrayFold.resultFrame_params,
+      ${frameName}_params]
+    norm_num
+  · simp [Wasm.Locals.validIndex,
+      Project.ProofKit.FixedArrayFold.resultFrame_params,
+      Project.ProofKit.FixedArrayFold.resultFrame_locals_length,
+      ${frameName}_params, ${frameName}_locals_length]
+  · simp only [Project.ProofKit.FixedArrayFold.resultFrame_params,
+      ${frameName}_params]
+    norm_num
+  · simp [Wasm.Locals.validIndex,
+      Project.ProofKit.FixedArrayFold.resultFrame_params,
+      Project.ProofKit.FixedArrayFold.resultFrame_locals_length,
+      ${frameName}_params, ${frameName}_locals_length]
+  · exact hNext`,
+  };
+}
+
 function programFunctionDefinition(program, functionIndex) {
   const marker = `def func${functionIndex}Def : Wasm.Function :=\n`;
   const start = program.indexOf(marker);
@@ -4110,6 +4195,10 @@ theorem ${name}_step_eq :
         const traversal = match?.guardedBackEdgeEligible
           ? arrayFoldTraversalDeclarations(function_, region).source
           : "";
+        const singletonResultSpec = match?.singletonResultEligible &&
+            match?.guardedBackEdgeEligible
+          ? arrayFoldSingletonResultDeclarations(function_, region, match).source
+          : "";
         declarations.push(`def ${name}_program : Wasm.Program :=
   (${selected}).getD []
 
@@ -4121,7 +4210,9 @@ ${transitions}
 
 ${continuingTransition}
 
-${traversal}`);
+${traversal}
+
+${singletonResultSpec}`);
         continue;
       }
       if (region.kind !== "leanexe.array.pair-result.v1") continue;

@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "fixed-array-map-add",
+  "title": "Bounded wrapping-add UInt64 map",
+  "summary": "Proves the complete bounded wrapping-add map wrapper selected by an exact whole-function annotation.",
+  "roles": ["annotation-support", "checked-proof-asset", "guidance"],
+  "categories": ["allocation", "arrays", "compiler-motifs", "loops", "memory"],
+  "scope": "compiler-runtime-motif",
+  "evidenceStatus": "provisional",
+  "features": ["allocator", "array", "bounded-input", "loop", "map", "wrapping-arithmetic"],
+  "annotationKinds": ["leanexe.array.map-add.v1"],
+  "modules": ["Project.ProofKit.FixedArrayMapAdd"],
+  "declarations": ["Project.ProofKit.FixedArrayMapAdd.expected", "Project.ProofKit.FixedArrayMapAdd.wrapperProgram", "Project.ProofKit.FixedArrayMapAdd.wrapperProgram_spec"],
+  "premises": ["Whole-function region equality", "Bounded input size", "Input representation", "Result-region fit", "Allocator globals"],
+  "result": "The public array postcondition for a wrapping addition over every input element or the empty invalid-size result.",
+  "consumers": ["demo-4"],
+  "relatedEntries": ["fixed-array-allocation", "fixed-array-filter-lt"],
+  "exclusion": null
+}

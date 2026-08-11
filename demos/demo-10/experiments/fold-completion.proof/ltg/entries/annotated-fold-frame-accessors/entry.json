@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "annotated-fold-frame-accessors",
+  "title": "Generated fold-frame accessors",
+  "summary": "Uses compiler-generated frame shape and getter theorems together with shared result-frame getters to avoid proof-local projection lemmas.",
+  "roles": ["annotation-support", "checked-proof-asset", "guidance"],
+  "categories": ["arrays", "compiler-motifs", "loops", "proof-construction"],
+  "scope": "compiler-runtime-motif",
+  "evidenceStatus": "provisional",
+  "features": ["compiler-derived-evidence", "exact-local-get", "fold", "frame", "local-get", "result-placement", "scalar-state"],
+  "annotationKinds": ["leanexe.array.fold.v1"],
+  "modules": ["Project.ProofKit.FixedArrayFold"],
+  "declarations": ["Project.ProofKit.FixedArrayFold.resultFrame_get_of_ne", "Project.ProofKit.FixedArrayFold.resultFrame_get_result"],
+  "premises": ["An exact matched array-fold region with a generated continuing frame", "For result placement, a valid nonparameter result local", "For preservation, a distinct valid nonparameter read local and its getter"],
+  "result": "The proof reads exact continuing-frame slots from compiler-generated theorems and reads or preserves result-frame slots through shared semantic theorems.",
+  "consumers": ["demo-10", "demo-9"],
+  "relatedEntries": ["fixed-array-fold-body", "fixed-array-fold-structure", "fixed-array-traversal-input", "local-frame-projection"],
+  "exclusion": null
+}

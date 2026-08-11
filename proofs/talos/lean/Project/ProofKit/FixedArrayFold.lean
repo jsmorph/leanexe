@@ -323,6 +323,59 @@ def singletonResultPost (returnLocal : Nat) (root value : UInt64) :
 
 set_option maxHeartbeats 1000000 in
 set_option Elab.async false in
+theorem singletonResultProgram_spec_to
+    (accumulatorLocal resultLocal rootLocal destinationLocal returnLocal : Nat)
+    (module_ : Wasm.Module) (env : HostEnv Unit) (st : Store Unit)
+    (frame : Locals) (root value : UInt64)
+    (hValues : frame.values = [])
+    (hAccumulator : frame.get accumulatorLocal = some (.i64 value))
+    (hResultLocal : frame.params.length ≤ resultLocal)
+    (hResultValid : frame.validIndex resultLocal)
+    (hRoot : (resultFrame frame resultLocal value).get rootLocal =
+      some (.i64 root))
+    (hResult : (resultFrame frame resultLocal value).get resultLocal =
+      some (.i64 value))
+    (hPayloadBound :
+      (FixedArrayResult.payloadAddress root 0).toUInt32.toNat + 8 ≤
+        st.mem.pages * 65536)
+    (hDestinationLower :
+      (resultFrame frame resultLocal value).params.length ≤ destinationLocal)
+    (hDestinationValid :
+      (resultFrame frame resultLocal value).validIndex destinationLocal)
+    (hReturnLower :
+      (resultFrame frame resultLocal value).params.length ≤ returnLocal)
+    (hReturnValid :
+      (resultFrame frame resultLocal value).validIndex returnLocal)
+    (Q : Assertion Unit)
+    (hNext : Q (.Fallthrough
+      (FixedArrayResult.writePayload st root 0 value)
+      (FixedArrayResult.finishFrame (resultFrame frame resultLocal value)
+        destinationLocal returnLocal root))) :
+    wp module_
+      (singletonResultProgram accumulatorLocal resultLocal rootLocal
+        destinationLocal returnLocal)
+      Q st frame env := by
+  rw [singletonResultProgram, List.append_assoc]
+  apply resultProgram_spec
+  · exact hValues
+  · exact hAccumulator
+  · exact hResultLocal
+  · exact hResultValid
+  · apply FixedArrayResult.payloadStore_spec
+    · exact hRoot
+    · exact hResult
+    · exact hPayloadBound
+    · apply FixedArrayResult.finishProgram_spec
+      · rfl
+      · exact hRoot
+      · exact hDestinationLower
+      · exact hDestinationValid
+      · exact hReturnLower
+      · exact hReturnValid
+      · simpa only [Wasm.wp_nil] using hNext
+
+set_option maxHeartbeats 1000000 in
+set_option Elab.async false in
 theorem singletonResultProgram_spec
     (accumulatorLocal resultLocal rootLocal destinationLocal returnLocal : Nat)
     (module_ : Wasm.Module) (env : HostEnv Unit) (st : Store Unit)
@@ -352,25 +405,20 @@ theorem singletonResultProgram_spec
       (singletonResultProgram accumulatorLocal resultLocal rootLocal
         destinationLocal returnLocal)
       (singletonResultPost returnLocal root value) st frame env := by
-  rw [singletonResultProgram, List.append_assoc]
-  apply resultProgram_spec
+  apply singletonResultProgram_spec_to
   · exact hValues
   · exact hAccumulator
   · exact hResultLocal
   · exact hResultValid
-  · apply FixedArrayResult.payloadStore_spec
-    · exact hRoot
-    · exact hResult
-    · exact hPayloadBound
-    · apply FixedArrayResult.finishProgram_spec
-      · rfl
-      · exact hRoot
-      · exact hDestinationLower
-      · exact hDestinationValid
-      · exact hReturnLower
-      · exact hReturnValid
-      · simp only [Wasm.wp_nil, singletonResultPost]
-        exact ⟨FixedArrayResult.finishFrame_return_get _ _ _ _
-          hReturnLower hReturnValid, hOutput⟩
+  · exact hRoot
+  · exact hResult
+  · exact hPayloadBound
+  · exact hDestinationLower
+  · exact hDestinationValid
+  · exact hReturnLower
+  · exact hReturnValid
+  · simp only [singletonResultPost]
+    exact ⟨FixedArrayResult.finishFrame_return_get _ _ _ _
+      hReturnLower hReturnValid, hOutput⟩
 
 end Project.ProofKit.FixedArrayFold

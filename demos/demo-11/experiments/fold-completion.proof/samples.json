@@ -1,0 +1,50 @@
+[
+  {
+    "input": [
+      "1",
+      "2",
+      "4",
+      "8"
+    ],
+    "output": [
+      "15"
+    ],
+    "invocation": [
+      "/home/somebody/src/leanexe/tools/leanexegen",
+      "run",
+      "/tmp/leanexegen-ojiGvt/frozen-artifact/program.wasm",
+      "1",
+      "2",
+      "4",
+      "8"
+    ]
+  },
+  {
+    "input": [
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6",
+      "7",
+      "8",
+      "9"
+    ],
+    "output": [],
+    "invocation": [
+      "/home/somebody/src/leanexe/tools/leanexegen",
+      "run",
+      "/tmp/leanexegen-ojiGvt/frozen-artifact/program.wasm",
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6",
+      "7",
+      "8",
+      "9"
+    ]
+  }
+]
