@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "fixed-array-filter-lt",
+  "title": "Bounded stable UInt64 filter",
+  "summary": "Proves the complete bounded stable-filter wrapper selected by an exact whole-function annotation.",
+  "roles": ["annotation-support", "checked-proof-asset", "guidance"],
+  "categories": ["allocation", "arrays", "compiler-motifs", "loops", "memory"],
+  "scope": "compiler-runtime-motif",
+  "evidenceStatus": "provisional",
+  "features": ["allocator", "array", "bounded-input", "conditional-store", "filter", "loop"],
+  "annotationKinds": ["leanexe.array.filter-lt.v1"],
+  "modules": ["Project.ProofKit.FixedArrayFilterLt"],
+  "declarations": ["Project.ProofKit.FixedArrayFilterLt.heapReserveBytes", "Project.ProofKit.FixedArrayFilterLt.wrapperProgram", "Project.ProofKit.FixedArrayFilterLt.wrapperProgram_spec"],
+  "premises": ["Whole-function region equality", "Bounded input size", "Input representation", "Branch-sensitive heap reserve", "Allocator globals"],
+  "result": "The public array postcondition for a stable unsigned-threshold filter or the empty invalid-size result.",
+  "consumers": ["demo-5"],
+  "relatedEntries": ["fixed-array-allocation", "fixed-array-map-add"],
+  "exclusion": null
+}
