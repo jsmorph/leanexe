@@ -742,6 +742,10 @@ The follow-up adds generic capacity and allocator frame projections.  `capacityF
 
 The generated continuing frame already had a checked accessor for `releaseReadyLocal`, but the recipe described it only by its numeric slot.  Fold recipes now attach compiler role names to every generated frame getter, so a search for `releaseReadyLocal` identifies the exact accessor declaration.  A regenerated Demo 9 annotation package contains the role-labelled recipe, and independent verification accepts that package over the unchanged artifact.
 
+A fresh Demo 10 transfer selected and used the capacity getter, allocator-root getter, generated singleton-result adapter, shared fold-body theorem, generated loaded-frame equality, and compiler-derived multiplication transitions.  Independent verification accepted its 684-line proof over the unchanged artifact in 1,979.854 seconds.  The run was 5.7 percent faster than the preceding frame-accessor screen but produced 84 more lines and remained 24.0 percent slower than the retained primary proof.
+
+The journal attributes the larger proof to complete branch and loop reconstruction rather than failure of the new interfaces.  The invalid branch used both new frame projections directly, and the completed-loop branch used the exact suffix adapter directly.  Two parser conflicts, one positional dependent-premise attempt, and one broad simplifier failure also consumed iterations that structured tactic metadata and stronger proof-construction guidance can address.
+
 ## Completion criteria
 
 The first complete increment emits a validated sidecar for every ordinary library-mode compilation requested by `leanexegen`.  Demos 1, 2, and 3 prove the same specifications over the same WASM bytes through an annotation-driven deterministic proof plan.  The retained evidence records proof-generation timings, annotation validation, region coverage, and independent Lean acceptance.
