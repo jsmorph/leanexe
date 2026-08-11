@@ -90,6 +90,16 @@ The [frame-accessor package](experiments/frame-accessors.proof/) regenerates the
 
 Independent `leanexegen verify -s` accepted the retained behavioral proof and exact artifact theorem with these declarations present.  The proof predates the accessors and therefore establishes annotation generation, Lean checking, recipe publication, and package compatibility rather than agent use.  Demo 9 supplies the separate accepted manual proof that uses the same generated interface and removes local projection declarations.
 
+## Fresh frame-accessor reproof
+
+The [fresh frame-accessor reproof](experiments/frame-accessor-reproof.proof/) held the specification, source, 1,979-byte WASM artifact, and digest fixed.  The accepted proof used the generated continuing-frame value-stack and index getters and both shared result-frame getter theorems.  Independent `leanexegen verify -s` accepted the preserved package.
+
+The agent did not retrieve `annotated-fold-frame-accessors` by name, although the task contained that entry, the selected strategy notes described its use, and the recipe listed every generated accessor.  After the completed fold exposed frame-projection goals, the agent introduced local parameter-length, local-length, accumulator, and root facts by reduction and discharged several traversal premises with `rfl`.  The journal therefore identifies a retrieval checkpoint defect rather than missing annotation or ProofKit support.
+
+Stage 5 took 2,099.237 seconds, including 2,031.417 seconds in Codex and 50.156 seconds in outer acceptance.  This was 186.146 seconds, or 9.7 percent, slower than the preceding fold-body reproof and 502.942 seconds, or 31.5 percent, slower than the primary proof.  The source decreased from 650 to 600 lines and from 36,253 to 30,568 bytes relative to the fold-body reproof, while its whitespace-delimited word count increased from 2,102 to 2,371.
+
+The telemetry's UTC timestamps span 5,546.712 seconds, exceeding the monotonic Stage 5 measurement by 3,447.475 seconds.  Timing comparisons use the monotonic metric and preserve both timestamp forms in the package.  The proof prompt now treats each new residual goal class as another LTG retrieval checkpoint and requires an accessor search before proving a frame projection by reduction or a new local fact.
+
 ## Execution
 
 The empty input checks the multiplicative identity, the second sample checks the traversal loop, and the third checks the oversized branch.  Direct execution of the proved artifact produced these results.  Each result agrees with the formal specification.
@@ -137,3 +147,4 @@ The root files provide readable views of each generation and proof stage.  The [
 | [Manual fold-body adapter](experiments/manual-fold-body-adapter.lean) | The checked singleton-suffix proof modified to use the shared traversal and guarded-step composition theorem. |
 | [Fresh fold-body reproof](experiments/fold-body-reproof.proof/) | The independently verified fixed-artifact run that retrieved and used the shared fold-body theorem. |
 | [Generated frame-accessor capability](experiments/frame-accessors.proof/) | The independently verified current annotation and recipe package containing exact accessors for all 21 continuing-frame slots. |
+| [Fresh frame-accessor reproof](experiments/frame-accessor-reproof.proof/) | The independently verified fixed-artifact proof that used part of the accessor family and exposed a residual-goal retrieval defect. |
