@@ -718,6 +718,10 @@ A fresh fixed-artifact Demo 9 run selected the frame-accessor entry, used the ge
 
 The Demo 10 transfer used the generated value-stack and index accessors and both result-frame theorems, but its journal never selected the accessor LTG entry.  It discharged eleven frame facts by reduction despite receiving the entry, strategy paragraph, and complete accessor recipe, then completed an independently verified 600-line proof in 2,099.237 seconds.  The proof prompt now treats a new residual goal class as a retrieval checkpoint and requires an accessor search before reducing frame projections or introducing local frame facts.
 
+Held-out Demo 11 tested that retrieval checkpoint on a bitwise-XOR fold.  The journal searched the recipe and catalog before a capacity-frame reduction, recorded the absence of an exact capacity accessor, and later used the generated parameter, local-length, operand-stack, accumulator, root, index, and stop accessors at the fold boundaries.  Independent verification accepted the 676-line proof in 2,452.384 seconds, so the result establishes goal-directed retrieval and cross-operation use while supplying negative time and size evidence.
+
+The accessor entry now has accepted consumers for addition, multiplication, and bitwise XOR and advances to promoted compiler-motif support.  The XOR proof still needed local declarations around the public postcondition and singleton suffix because the complete loop assertion remained expensive.  A compact generated completion adapter or a general `Locals` equality theorem constitutes the next hypothesis, while the current checkpoint adds neither without another controlled screen.
+
 ## Completion criteria
 
 The first complete increment emits a validated sidecar for every ordinary library-mode compilation requested by `leanexegen`.  Demos 1, 2, and 3 prove the same specifications over the same WASM bytes through an annotation-driven deterministic proof plan.  The retained evidence records proof-generation timings, annotation validation, region coverage, and independent Lean acceptance.
