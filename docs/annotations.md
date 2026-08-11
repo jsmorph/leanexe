@@ -752,6 +752,16 @@ Schema-2 LTG entries can now index tactics as checked retrieval records.  A reco
 
 The first inventory contains five commands across four entries: bounded length dispatch, block-wrapped loop reasoning, singleton and pair `UInt64` array reconstruction, and disjoint word reads.  Generated category indexes include the complete records and their command, module, and fallback names in searchable terms.  The proof task compares a selected record's goal shape, premises, and annotations with each new residual goal before choosing its command or fallback theorem.  A fixed-artifact proof screen must still determine whether an agent follows that retrieval rule and whether the selection changes proof construction.
 
+### First structured-tactic proof screen
+
+The first controlled Demo 9 task preserved the specification, source, 1,979-byte WASM artifact, decoded Program, and artifact digest used by the earlier fold screens.  The agent selected `wp_fixed_array_length_le_dispatch_from` for the bounded-length dispatch and `wp_block_loop` for the block-wrapped fold, and it used neither fallback declaration.  Its journal rejected the indexed result, singleton-wrapper, and word-read tactics after comparing their goal shapes and premises with the current residual goals.
+
+The independent outer Lean check rejected the generated candidate despite the agent's reported successful check.  One broad simplification exceeded the configured step limit, `omega` lacked the represented input array's size bound when proving the successor index fit in `UInt64`, and the measure rewrite encountered a callback frame whose parameter and local projections had advanced while its operand-stack projection remained attached to the predecessor.  The failure supplies tactic-retrieval evidence, but it supplies no accepted artifact proof or proof-generation time.
+
+A focused repair constructed the semantic successor as `UInt64.ofNat (index + 1)` and used `UInt64.ofNat_add` only to discharge the compiler-generated evaluator equation.  It then changed the loop callback frame to `afterContinue.toState.toLocals []`, normalized the operand stack with the generated continuing-frame accessor, and used the represented array's size theorem for the fixed-width bound.  The complete `ArtifactResult` target accepted the repaired candidate under the standard Lean runner limits.
+
+The structured LTG fold-body entry now records those two proof-construction rules.  The rejected candidate, full outer diagnostic, frequent prose journal, task inputs, and separately checked repair are retained under the Demo 9 benchmark.  A corrected fresh task will test whether another agent follows the guidance and obtains independent acceptance over the same artifact.
+
 ## Completion criteria
 
 The first complete increment emits a validated sidecar for every ordinary library-mode compilation requested by `leanexegen`.  Demos 1, 2, and 3 prove the same specifications over the same WASM bytes through an annotation-driven deterministic proof plan.  The retained evidence records proof-generation timings, annotation validation, region coverage, and independent Lean acceptance.

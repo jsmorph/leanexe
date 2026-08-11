@@ -79,6 +79,8 @@ Category indexes will include tactic names and goal-shape aliases so an agent ca
 
 Schema 2 indexes five commands across four entries.  Each record names its command, defining module, residual goal shape, premises, applicable annotation kinds, and checked fallback declaration.  Catalog validation checks command existence in the named ProofKit source and rejects references outside the entry's declared modules, annotations, or declarations.
 
+The first Demo 9 screen followed the retrieval rule and used both the bounded-length and block-loop tactics without their fallbacks.  Its independent outer check rejected a later continuation-frame proof, and a complete manual repair identified normalized successor construction and explicit callback-frame normalization as general fold-body guidance.  The fixed-package phase remains open until a fresh agent produces an independently accepted proof under that corrected guidance.
+
 ## Decisions and stopping conditions
 
 Frame equality and fold completion remain separate experiments because combining them would obscure which interface changed the proof.  A generated adapter that embeds application-specific fold mathematics fails the design even if it shortens one demo.  A theorem that applies only to one generated namespace remains a checked worked example until its statement can be expressed through a recurring annotation schema.
