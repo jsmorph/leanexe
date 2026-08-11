@@ -351,6 +351,9 @@ function testCodexProtocol() {
     artifactPrompt.includes("PROOF_RECIPES.json") &&
     artifactPrompt.includes("Attempt an exact direct recipe or complete composition") &&
     artifactPrompt.includes("Treat each new residual goal class as another retrieval checkpoint") &&
+    artifactPrompt.includes("with a structured tactics field") &&
+    artifactPrompt.includes("Attempt a matching command before reconstructing") &&
+    artifactPrompt.includes("fallbackDeclaration") &&
     artifactPrompt.includes("Before discharging a frame's parameters") &&
     artifactPrompt.includes("Do not search for or read artifact proofs outside") &&
     artifactPrompt.includes("omits worked examples excluded for this exact artifact") &&

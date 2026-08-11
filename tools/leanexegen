@@ -681,8 +681,12 @@ function proofPrompt(request, job, entryIndex) {
     `postconditions, and complete compositions.  Attempt an exact direct recipe or complete ` +
     `composition before reducing its internal instructions.  If its shape fails or its residual ` +
     `goals worsen the proof boundary, record the result and search LTG for the remaining goal.  ` +
-    `Treat each new residual goal class as another retrieval checkpoint.  Before discharging a ` +
-    `frame's parameters, local length, operand values, or getter projection by reduction or a new ` +
+    `Treat each new residual goal class as another retrieval checkpoint.  For a selected entry ` +
+    `with a structured tactics field, compare each tactic's goalShape, premises, and ` +
+    `annotationKinds with the residual goal.  Attempt a matching command before reconstructing ` +
+    `its fallbackDeclaration, and record the command's effect or exact reason for rejection.  ` +
+    `Before discharging a frame's parameters, local length, operand values, or getter projection ` +
+    `by reduction or a new ` +
     `local fact, search PROOF_RECIPES.json and the relevant LTG indexes for an exact accessor, then ` +
     `record its use or why it does not apply.  ` +
     `Do not search for or read artifact proofs outside this working directory, including demos, ` +
