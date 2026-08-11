@@ -4,4 +4,6 @@ Use `FixedArrayCapacity.constantProgram_spec` when a length-dispatch recipe supp
 
 Apply the exact generated equality or refold the current branch prefix to `constantProgram length stride capacityLocal`.  Prove that the operand stack is empty and that the capacity destination is a valid non-parameter local.  The continuation receives `capacityFrame frame capacityLocal (normalizedCapacity length stride)`, which supplies the capacity-local premise for a following allocator theorem.
 
+Use `capacityFrame_get_capacity` when the next theorem expects a combined-local getter.  Use `capacityFrame_internal_get_capacity` when a shifted allocator expects the corresponding internal-list lookup, and use the three frame-shape declarations for parameter, local-length, and operand-stack premises.  These declarations preserve the capacity frame as a named boundary and avoid reducing its list update inside the allocator continuation.
+
 The theorem covers both sides of a bounded-length branch when each result has a constant array length.  Demo 9 instantiates lengths one and zero in the valid and invalid branches, while Demos 2 and 3 contain the same fixed pair-result calculation for length two.  A capacity derived from a runtime input length, dynamic filtered count, non-eight-byte element width, or a different minimum policy requires another exact program theorem.

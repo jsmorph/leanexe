@@ -61,7 +61,7 @@ Demo 10 will test transfer after the Demo 9 interface is fixed.  The later froze
 
 - [x] Verify manual substitutions for all three existing folds.
 - [x] Run one fixed-artifact Demo 9 proof screen and review its journal, proof, and telemetry together.
-- [ ] Correct only general retrieval or theorem-interface defects identified by that review.
+- [x] Correct only general retrieval or theorem-interface defects identified by that review.
 - [ ] Test the corrected interface on Demo 10.
 - [ ] Freeze and prove a structurally different fold demo before promoting the completion adapter.
 
