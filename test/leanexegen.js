@@ -350,6 +350,8 @@ function testCodexProtocol() {
     artifactPrompt.includes("PROGRAM_ANNOTATIONS.json") &&
     artifactPrompt.includes("PROOF_RECIPES.json") &&
     artifactPrompt.includes("Attempt an exact direct recipe or complete composition") &&
+    artifactPrompt.includes("Treat each new residual goal class as another retrieval checkpoint") &&
+    artifactPrompt.includes("Before discharging a frame's parameters") &&
     artifactPrompt.includes("Do not search for or read artifact proofs outside") &&
     artifactPrompt.includes("omits worked examples excluded for this exact artifact") &&
     artifactPrompt.includes("PROOF_KIT_SOURCE mirrors every allowed") &&

@@ -716,6 +716,8 @@ The fixed Demo 9 substitution removed ten local projection declarations from the
 
 A fresh fixed-artifact Demo 9 run selected the frame-accessor entry, used the generated frame-shape and combined-local getter theorems, and applied both shared result-frame getters.  Its accepted 616-line proof contains no proof-local frame-projection theorem, and separate package verification accepted the unchanged artifact digest.  Stage 5 took 2,230.869 seconds, 7.6 percent longer than the preceding fold-body reproof, so the experiment establishes automatic retrieval and structural use without a proof-time or source-size improvement.
 
+The Demo 10 transfer used the generated value-stack and index accessors and both result-frame theorems, but its journal never selected the accessor LTG entry.  It discharged eleven frame facts by reduction despite receiving the entry, strategy paragraph, and complete accessor recipe, then completed an independently verified 600-line proof in 2,099.237 seconds.  The proof prompt now treats a new residual goal class as a retrieval checkpoint and requires an accessor search before reducing frame projections or introducing local frame facts.
+
 ## Completion criteria
 
 The first complete increment emits a validated sidecar for every ordinary library-mode compilation requested by `leanexegen`.  Demos 1, 2, and 3 prove the same specifications over the same WASM bytes through an annotation-driven deterministic proof plan.  The retained evidence records proof-generation timings, annotation validation, region coverage, and independent Lean acceptance.
