@@ -100,6 +100,16 @@ Independent `leanexegen verify -s` accepted the complete package and exact artif
 
 This manual substitution provides no proof-generation-time measurement.  The package omits the predecessor proof's telemetry because those timings belong to a different source.  A fresh fixed-artifact reproof will measure structured retrieval and proof construction separately.
 
+## Fresh fold-completion reproof
+
+The [fresh fold-completion reproof](experiments/fold-completion-reproof.proof/) began from the unchanged specification, Lean source, annotations, and 1,979-byte WASM artifact.  Its first structured searches selected `compact-loop-suffix-boundary`, `fixed-array-fold-body`, the fold-frame accessors, and the related generic fold entries.  The accepted proof applies the generated `function_0_array_fold_0_singleton_result_spec` theorem directly, with no proof-local singleton-result theorem or postcondition bridge.
+
+Stage 5 took 1,992.546 seconds, including 1,922.343 seconds in Codex and 54.378 seconds in outer acceptance.  The run was 238.323 seconds, or 10.7 percent, faster than the 2,230.869-second frame-accessor screen and 90.343 seconds, or 4.3 percent, faster than the retained 2,082.889-second fold-structure proof.  It was 20.323 seconds, or 1.0 percent, slower than the 1,972.223-second guarded-back-edge screen, so the timing evidence does not establish a new best result.
+
+The proof contains 526 lines, 2,039 whitespace-delimited words, and 28,132 bytes.  Relative to the frame-accessor screen, it removes 90 lines and 502 words; relative to the manual fold-completion proof, it removes 43 lines and 365 words.  Separate `leanexegen verify -s` accepted the package over the unchanged artifact digest `aa263bbfa89c333f9fab497f1a2c370f476afc3419015d17b368cb7c8a6086d5`.
+
+The journal records fourteen successful import-check and Lean-build cycles from the starter through final acceptance.  The completion adapter closed the complete loop-exit suffix on its first application, while most remaining work concerned capacity and allocator frame projections, loop-invariant construction, and the strict-index body.  The annotations identified local 18 as `releaseReadyLocal`, which let the agent repair the final invariant, but they supply no generated accessor for that loop-carried value and no capacity-frame or allocator-root getter family.  Those gaps define the next general interface review.
+
 ## Execution
 
 The first sample exercises wrapping addition in the valid branch.  The second sample exceeds the maximum length and exercises the empty-result branch.  Direct execution of the proved artifact produced these values:
@@ -142,4 +152,5 @@ Every retained root file fixes a generation input, artifact, proof context, or m
 | [Generated frame-accessor substitution](experiments/frame-accessors.proof/) | The independently verified manual proof that replaces ten local frame projections with exact generated accessors and shared result-frame getters. |
 | [Fresh frame-accessor reproof](experiments/frame-accessor-reproof.proof/) | The independently verified fixed-artifact proof whose agent retrieved and used the generated accessors and shared result-frame getters. |
 | [Fold-completion package](experiments/fold-completion.proof/) | The independently verified manual proof using the generated exact singleton-result adapter. |
+| [Fresh fold-completion reproof](experiments/fold-completion-reproof.proof/) | The independently verified fixed-artifact proof that retrieved and applied the generated completion adapter. |
 | [Manual fold-completion proof](experiments/manual-fold-completion.lean) | The readable behavioral proof retained by the fold-completion package. |
