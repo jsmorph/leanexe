@@ -1,0 +1,157 @@
+\documentclass[10pt]{article}
+
+\usepackage{cmap}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[margin=0.9in]{geometry}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{url}
+\usepackage[hidelinks]{hyperref}
+\usepackage[numbers,sort&compress]{natbib}
+
+\hypersetup{
+  pdftitle={Goal-Shape Tactic Retrieval for Exact WebAssembly Artifact Proofs},
+  pdfauthor={Anonymous manuscript},
+  pdfsubject={Checked tactic retrieval for direct Lean proofs of WebAssembly artifacts},
+  pdfkeywords={Lean, WebAssembly, artifact verification, tactic retrieval, proof agents}
+}
+
+\newcommand{\code}[1]{\texttt{#1}}
+
+\title{Goal-Shape Tactic Retrieval for Exact WebAssembly Artifact Proofs}
+\author{Anonymous manuscript}
+\date{11 August 2026}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+A coding agent constructing a direct Lean proof about WebAssembly needs to find proof support from the semantic shape of a residual goal.  LeanExe extends its structured catalog of lemmas, tactics, and guidance with checked tactic records that name a command, its defining module, applicable goal shape, required premises, compiler-annotation kinds, and a fallback theorem.  The reported catalog contains 24 entries, 79 unique declaration names, and five indexed tactics drawn from 27 commands in the supplied proof kit.  A controlled proof task held the specification, source, WebAssembly binary, decoded program, and artifact digest fixed.  The agent selected and used tactics for bounded array-length dispatch and block-wrapped loop induction, rejected three tactics whose recorded shapes did not match later goals, and used neither fallback theorem.  An independent outer Lean check rejected the candidate at a later continuation-frame proof, while Lean accepted a focused manual repair of the complete exact-artifact proof.  The result establishes selective tactic retrieval and shows how the retained journal and outer check expose missing general guidance.  The experiment supplies no accepted autonomous proof or proof-generation-time improvement.
+\end{abstract}
+
+\section{Residual goals require shapes, premises, and compiler evidence}
+
+LeanExe proves functional properties directly about the instructions decoded from a frozen WebAssembly binary.  It embeds the binary bytes, decodes and validates the supported binary profile, translates the module into the Talos execution model, and proves a behavioral theorem about that exact module~\cite{Haas2017WebAssembly,Watt2018Mechanising,TalosSoftware,LeanExeSoftware}.  Talos states instruction behavior with \code{Wasm.wp}, a weakest-precondition relation over a program, store, local frame, and postcondition.  The compiler and annotation generator may propose structural facts, but Lean checks every generated declaration and the final artifact theorem.
+
+The proof kit contains recurring semantic theorems and tactics for array representation, allocation, control flow, memory, scalar transitions, and result construction.  Its predicate \code{UInt64Array.At store pointer values} states that a Talos store represents the specified \code{UInt64} array at a memory address.  A coding agent cannot load every current and future proof asset into its prompt, and a tactic name alone does not say when the command will apply.  The useful retrieval unit must connect the residual goal to the command's required premises and to the compiler evidence available for the decoded instruction region.
+
+Earlier LeanExe work organized a structured catalog of lemmas, tactics, and guidance, abbreviated LTG, with canonical entries, overlapping JSON Lines indexes, artifact-specific exclusions, and frozen task views~\cite{LeanExeStructuredLTG}.  Compiler-generated frame accessors then showed that exact layout facts can cross three fold operations, although fresh proof-generation times did not improve~\cite{LeanExeFrameAccessors}.  The present increment adds an explicit tactic layer and evaluates whether a fresh agent uses its semantic fields during one fixed-artifact proof.
+
+Checked tactic records make a small tactic inventory selectively discoverable, and a journal distinguishes successful selection from later proof failure.  The reported screen evaluates those properties on one artifact.  One rejected end-to-end run cannot establish a speed improvement, autonomous proof success, or retrieval quality for a large catalog.
+
+\section{Tactic records describe an application boundary}
+
+Each canonical LTG entry stores machine-readable metadata in \code{entry.json} and application guidance in a neighboring Markdown file.  Version 2 of the catalog metadata schema permits a \code{tactics} array whose records have the six fields shown in Figure~\ref{fig:record}.  The command and fallback identify executable proof support, while the other four fields describe the circumstances under which the agent should try the command.
+
+\begin{figure}[t]
+\centering
+\begin{minipage}{0.89\linewidth}
+\begin{verbatim}
+{
+  "command": "wp_block_loop",
+  "module": "Project.ProofKit.Control",
+  "goalShape": "A block-wrapped Wasm.wp loop goal",
+  "premises": ["An explicit invariant", "A Nat-valued measure"],
+  "annotationKinds": ["leanexe.array.fold.v1"],
+  "fallbackDeclaration": "Wasm.wp_loop_cons"
+}
+\end{verbatim}
+\end{minipage}
+\caption{Schematic structured record for the block-and-loop tactic.}
+\label{fig:record}
+\end{figure}
+
+Catalog validation requires the command to occur in the named allowed ProofKit module.  It also requires the module, annotation kind, and fallback declaration to belong to the same canonical entry, and the generated Lean audit resolves every advertised declaration with \code{\#check}.  These checks detect stale names and references to declarations outside the entry's allowed modules before a proof task receives the catalog.
+
+The category generator copies each tactic record into every applicable JSONL index and derives search terms from the command, module, fallback, goal shape, premises, and annotation kinds.  An agent can search for a residual \code{Wasm.wp} loop, a generated \code{leanexe.array.fold.v1} annotation, or the fallback theorem without reading all entry bodies.  The task package freezes the filtered indexes, selected guidance, and a digest of every visible LTG file, allowing later analysis to reconstruct the retrieval input.
+
+The proof prompt requires a comparison before invocation.  For each new residual-goal class, the agent searches the compiler-generated recipe and relevant LTG indexes, compares a selected record's goal shape, premises, and annotation kinds with the current goal, and tries the command before its fallback.  Its prose journal records the query, the selected entry, the comparison, the invocation result, and the reason for rejecting a nearby tactic.
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.45\linewidth} r}
+\toprule
+Catalog measure & Value \\
+\midrule
+Categories & 7 \\
+Canonical entries & 24 \\
+Unique indexed declaration names & 79 \\
+ProofKit public named declarations & 337 \\
+Indexed tactic records and commands & 5 \\
+ProofKit tactic commands & 27 \\
+\bottomrule
+\end{tabular}
+\caption{Structured LTG snapshot used for the reported task.  Counts are deterministic source inventories rather than counts of environment-generated Lean declarations.}
+\label{tab:inventory}
+\end{table}
+
+Table~\ref{tab:inventory} reports the complete catalog after adding guidance derived from the rejected Demo 9 task described in Sections 4 and 5.  Four entries index five commands: bounded array-length dispatch, block-wrapped loop induction, singleton and pair array reconstruction, and disjoint word reads.  The other 22 ProofKit tactic commands do not yet have structured records.
+
+\section{Compiler annotations constrain tactic search}
+
+The compiler emits a versioned sidecar that identifies recurring instruction regions and their semantic roles.  An independent consumer resolves each region against the frozen decoded program, checks its instruction shape, and generates exact Lean equalities and evaluator theorems.  The final artifact theorem depends on those checked declarations rather than trusting the sidecar as an axiom.
+
+Array-fold annotations identify the length dispatch, setup, traversal guard, indexed load, scalar body, condition, continuing transition, guarded back edge, result placement, and singleton-result suffix.  The consumer also emits frame parameters, local-list length, operand-stack value, and combined-local getters for the continuing state.  The proof recipe names these artifact-specific declarations beside shared ProofKit theorems and tactics that match the same region.
+
+Annotation kinds therefore restrict retrieval without asserting semantic correctness by themselves.  A \code{wp\_block\_loop} record indexed under \code{leanexe.array.fold.v1} tells the agent that the decoded region contains the block-wrapped loop shape expected by the tactic, while the separately checked region equality establishes that fact in Lean.  The tactic still requires an application invariant, initial proof, step proof, and decreasing natural-number measure.
+
+This division keeps compiler-derived evidence useful at the target level.  It does not require a source-to-Wasm lowering theorem or compiler correctness premise in the artifact theorem.  The direct proof remains a theorem about the frozen bytes as interpreted by Talos, and the compiler's role is to generate candidate structure that the kernel checks against those bytes.
+
+\section{A fixed-artifact screen selected two tactics}
+
+The controlled task used Demo 9, whose exported function accepts an array of at most eight \code{UInt64} values and returns a singleton containing their wrapping sum.  It returns an empty array when the input exceeds the bound.  The run preserved the formal specification, source, WebAssembly module, decoded program, and artifact digest \code{aa263bbfa89c333f9fab497f1a2c370f476afc3419015d17b368cb7c8a6086d5}.
+
+The agent's initial index search selected the bounded length-dispatch entry.  It checked that the goal concerned the decoded unsigned-length branch, that a represented input-array hypothesis was available, and that the annotation recipe named the same region.  It then invoked \code{wp\_fixed\_array\_length\_le\_dispatch\_from} and did not use the indexed \code{FixedArrayLengthDispatch.leProgram\_spec} fallback.
+
+At the fold, the agent selected the structured record for \code{wp\_block\_loop}.  It had already defined an invariant over the semantic array prefix and a measure equal to the remaining number of input elements, and the annotation identified a block-wrapped array-fold loop.  The command established the expected loop proof boundary, and the proof did not apply the \code{Wasm.wp\_loop\_cons} fallback.
+
+The journal also records negative selections.  The singleton and pair reconstruction tactics did not match while the goal concerned loop control rather than a final \code{UInt64Array.At} proposition, and the word-read tactic did not match a whole-array preservation goal.  Those entries remained unopened or unused after the agent compared their indexed shapes and premises with the current goal.
+
+The generated candidate later applied shared theorems for constant capacity, shifted bump allocation, represented-input preservation, fold setup, indexed traversal, the compiler-described scalar step, fold-prefix mathematics, singleton result construction, and public return.  The selected tactics addressed the entry branch and loop rule, while the candidate used ordinary theorem applications for the scalar body and memory obligations.  This separation shows that tactic retrieval covered two recurring control boundaries rather than the program's full specification.
+
+\section{The outer check rejected a later frame proof}
+
+The in-session agent reported that its complete candidate passed, but LeanExe performs another build in a separate acceptance step.  That outer build rejected the proof at the continuing-loop callback.  The retained failure manifest binds the candidate, journal, annotations, recipes, selected guidance, and task features to SHA-256 digests and records the full Lean diagnostic.
+
+The first diagnostic came from a broad \code{simp} call that exceeded its step limit while proving equality between the compiler-generated continuing state and the semantic fold frame.  A later \code{omega} call lacked the represented array's size bound when proving that the successor natural-number index fits in \code{UInt64}.  The final rewrite failed because the callback state combined advanced parameter and local projections with the predecessor frame's operand-stack projection, so the expected \code{UInt64.ofNat (index + 1)} term did not occur in the measure goal.
+
+A focused manual repair changed two proof-construction choices.  It constructed the semantic successor local as \code{UInt64.ofNat (index + 1)} and used \code{UInt64.ofNat\_add} only when proving the generated evaluator equation, rather than carrying the emitted addition expression into the invariant.  It then used \code{change} to expose \code{afterContinue.toState.toLocals []}, normalized the empty operand stack with the generated frame accessor, and brought the represented array's size theorem into the fixed-width bound.
+
+\code{ArtifactResult} is the outer Lean module that imports the frozen bytes, their checked decoding and validation, and the behavioral theorem.  Lean accepted the repaired \code{ArtifactResult} under the repository's six-gibibyte memory maximum, one-core quota, and Lean 4.31.0 toolchain.  The repaired source remains separate from the digest-bound failed candidate, preserving both the observed failure and the tested correction.  The canonical fold-body guidance now states the normalized-successor and callback-frame rules without naming wrapping addition, Demo 9, or its generated namespace.
+
+\section{The result separates retrieval from acceptance}
+
+The agent found and used two tactics from structured records.  Its journal justified three negative selections, and the independent check caught a failure after both tactic applications had succeeded.  These observations distinguish tactic retrieval from completion of the artifact theorem.
+
+The failure also shows why a journal and outer acceptance check provide different evidence.  The proof source identifies the exact tactics and theorems used, while the journal records the agent's interpretation of each residual goal and its rejected alternatives.  The outer check remains authoritative about acceptance and exposed a mismatch between two presentations of the continuing loop frame that neither the final agent message nor the journal had diagnosed.
+
+The correction has a plausible scope beyond one operation.  Addition, multiplication, and bitwise-XOR folds use the same continuing index transition and loop callback shape, and previous exact-artifact proofs used the shared fold-body theorem across those operations.  The evaluation needs a fresh independently accepted run and a structurally different loop before it can claim that the revised guidance applies more broadly.
+
+A second fresh task received the revised guidance and again selected the bounded-length tactic from its structured record.  Its next Lean check stopped changing while applying the constant-capacity theorem, before the task reached allocation or the annotated fold, and the evaluator interrupted the session after about twenty-two minutes without a candidate or journal update.  This censored observation adds repeated dispatch-retrieval evidence but does not test whether an agent can apply the corrected continuation-frame guidance.
+
+LeanExe's Stage 5 consists of agent proof construction followed by the independent acceptance build.  The rejected run produced neither an accepted package nor complete Stage 5 measurements, and the manual repair shows that the revised instructions match the proof obligation without measuring agent generation.  The evaluation needs repeated accepted runs to compare proof time, proof size, revision count, tactic selection, fallback use, and later residual work.
+
+The current tactic inventory is small.  Five indexed commands cover less than one fifth of the supplied commands, and the agent tried only two commands in the reported task.  Growth should follow residual-goal evidence from diverse artifacts, while each record should retain a checked module, annotation scope, fallback declaration, and explicit application boundary.
+
+\section{Relation to proof automation and WebAssembly verification}
+
+Lean tactics such as Aesop organize proof search around rule application, while retrieval-augmented theorem provers select premises or examples before interacting with Lean~\cite{Limperg2023Aesop,Yang2023LeanDojo,Thakur2024COPRA}.  The structured records reported here retrieve named tactics from goal shapes, compiler annotations, and premises rather than selecting arbitrary proof-library text.  Their execution remains ordinary Lean tactic elaboration, and the kernel checks the resulting proof term.
+
+Watt mechanizes the WebAssembly specification, while Wasm Logic and Iris-Wasm provide sound program logics for WebAssembly programs~\cite{Watt2018Mechanising,Watt2019WasmLogic,Rao2023IrisWasm}.  LeanExe proves a closed module in the pinned Talos model and separately establishes the link from frozen bytes to the decoded Talos program.  The reported tactic metadata concerns construction of that target-level proof and does not establish equivalence between Talos and the normative WebAssembly semantics.
+
+Verified compilation and translation validation relate source and target semantics or validate one compilation result~\cite{Leroy2009CompCert,Pnueli1998TranslationValidation}.  Self-certifying WebAssembly compilation generates checkable target evidence~\cite{Namjoshi2021SelfCertifying}.  LeanExe's annotations and generated declarations provide narrower target-structure evidence that assists a direct artifact proof without making compiler correctness a premise.
+
+\section{Conclusion}
+
+Structured tactic records add executable proof support to a catalog previously organized around declarations and prose guidance.  The schema connects each command to a goal shape, premises, annotation kinds, defining module, and fallback theorem, while catalog checks and a generated Lean audit reject stale or unauthorized references.  Frozen task views and journals preserve what the agent could retrieve and why it selected or rejected a command.
+
+The agent in the fixed Demo 9 screen applied both relevant control tactics without fallbacks.  The independent check then rejected a later continuation-frame proof.  A complete manual repair converted that failure into two general fold-body instructions, and Lean accepted the repaired exact-artifact proof.  The evidence establishes selective tactic retrieval and a journal-driven guidance correction, while autonomous acceptance, proof-time improvement, and large-catalog evaluation remain open.
+
+\renewcommand{\bibfont}{\footnotesize}
+\bibliographystyle{plainnat}
+\bibliography{references}
+
+\end{document}
