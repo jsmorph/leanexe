@@ -762,6 +762,10 @@ A focused repair constructed the semantic successor as `UInt64.ofNat (index + 1)
 
 The structured LTG fold-body entry now records those two proof-construction rules.  The rejected candidate, full outer diagnostic, frequent prose journal, task inputs, and separately checked repair are retained under the Demo 9 benchmark.  A corrected fresh task will test whether another agent follows the guidance and obtains independent acceptance over the same artifact.
 
+The corrected fresh task again selected and applied `wp_fixed_array_length_le_dispatch_from` after comparing its indexed goal shape, premise, and annotation kind with the entry boundary.  Its candidate then entered `FixedArrayCapacity.constantProgram_spec` in both branches, where one Lean check remained silent and the candidate and journal stopped changing for about twenty-two minutes.  The owned session was interrupted after approximately forty-eight minutes without reaching allocation, fold induction, result construction, or the revised continuation-frame rules.
+
+The censored run therefore adds repeated dispatch-retrieval evidence while leaving the fold-guidance correction untested by a fresh accepted proof.  Its preserved journal rejects the indexed `word_reads` tactic at the branch-level `Wasm.wp` goal, demonstrating another shape-based negative selection.  Further work at this boundary requires a smaller capacity-to-allocation elaboration boundary or a checked composition theorem before another fixed-artifact run.
+
 ## Completion criteria
 
 The first complete increment emits a validated sidecar for every ordinary library-mode compilation requested by `leanexegen`.  Demos 1, 2, and 3 prove the same specifications over the same WASM bytes through an annotation-driven deterministic proof plan.  The retained evidence records proof-generation timings, annotation validation, region coverage, and independent Lean acceptance.

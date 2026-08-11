@@ -1,0 +1,25 @@
+# Proof Journal
+
+## 2026-08-11: Initial check
+
+The unchanged candidate failed after completing the RuntimeReady decomposition and deriving the input-array and allocator accessors.  The residual goal is `TerminatesWith env module 0 initial [Value.i64 inputPtr]` with the expected-array representation as its postcondition.  No proof command has yet addressed execution, and no candidate source has been edited.
+
+The next intended change must establish the function-body execution through its length dispatch, traversal loop, allocation, and result-array writes.  Progress means replacing the single `TerminatesWith` goal with branch-specific execution goals or closing it through a complete recipe.  Retrieval starts at `LTG/categories.json`, as required, before any theorem edit.
+
+## 2026-08-11: Initial retrieval
+
+I read `LTG/categories.json`, then queried the `proof-construction`, `arrays`, `loops`, and `compiler-motifs` indexes for `TerminatesWith`, `length-dispatch`, `array.fold`, `foldPrefix`, `singletonResult`, `RuntimeReady`, `of_wp_entry_for`, and `wp_fixed_array_length_le_dispatch_from`.  The query returned the fixed-array length-dispatch entry for the present `TerminatesWith` boundary and the exact `leanexe.array.length-dispatch.v1` annotation.  It also returned fold-prefix, fold-structure, fold-body, traversal-input, result, frame-accessor, and guarded-back-edge entries for later branch goals; I have not inspected those entries yet.
+
+I inspected only `LTG/entries/fixed-array-length-dispatch/entry.json` and its `README.md`.  I selected this entry because its structured tactic has the required body-level `Wasm.wp` goal shape, represented-input premise, and exact annotation kind, while its fallback declaration is `Project.ProofKit.FixedArrayLengthDispatch.leProgram_spec`.  The entry rejects direct use at the current public goal and requires `Wasm.TerminatesWith.of_wp_entry_for` first, so the intended proof attempt is that conversion followed by the recipe command `wp_fixed_array_length_le_dispatch_from hArray at 7, 8`; progress means two branch-level weakest-precondition goals.
+
+`PROOF_RECIPES.json` contains no complete composition.  Its first direct recipe names the same dispatch tactic, and its second recipe begins at the nested annotated fold rather than the public entry.  I also read the frozen FormalSpec, Program, task features, compiler annotations, and relevant generated annotation declarations, confirming a 20-local function, an unsigned maximum-length dispatch at body index 7, and a forward fold region inside the valid branch.
+
+## 2026-08-11: Dispatch recipe result
+
+The import check accepted the first candidate edit.  The Lean build showed that `Wasm.TerminatesWith.of_wp_entry_for` and `wp_fixed_array_length_le_dispatch_from hArray at 7, 8` match the exact function and annotation: the public goal became five elementary entry-frame premises plus valid and invalid branch `wp` goals.  This is the expected improvement from the recipe, so I retain the command rather than replacing it with `leProgram_spec`.
+
+Before reducing the entry-frame parameters, operand values, local length, and numeric bounds, I queried `PROOF_RECIPES.json` and the `proof-construction`, `compiler-motifs`, and `loops` indexes for `toLocals`, `numParams`, `branchFrame_params`, `branchFrame_locals_length`, `frame params`, `locals.length`, `hParams`, and `hInputLocal`.  The recipe contains generated accessors only for the later annotated fold frame.  The local-frame-projection entry concerns `withValues` and combined/internal getters, while the capacity entry concerns a later `capacityFrame`; neither states the current `func0Def.toLocals` facts, so the generated function definition and the `Function.toLocals`, `Function.numParams`, and `ValueType.zero` declarations named by the length-dispatch README are the exact reduction path.
+
+The new branch goals begin with compiler-matched constant-capacity prefixes and a shifted fixed-array allocator.  I inspected `fixed-array-capacity`, `fixed-array-allocation`, and `fixed-array-result`, each through its canonical `entry.json` and `README.md`, after their declarations appeared in the earlier index query and the recipes.  I selected their continuation-generic theorems because the branch has capacity local 11, allocator offset 2 with four trailing locals, result root local 7, and stride 1; progress means reaching the post-allocation store and named allocation frame without reducing allocator instructions.
+
+I then queried the `memory`, `arrays`, and `proof-construction` indexes for `frameBefore`, `writeLength`, `input preserved`, `array-memory-framing`, and `writePayload`.  I inspected and selected `array-memory-framing`, whose `FixedArrayPairResult.input_preserved_by_alloc` and `UInt64Array.At.write64After` declarations preserve the input first through allocation and then through the result-length store.  Its structured `word_reads` tactic does not match the present branch-level `wp` goals, so I reject that command unless a later residual goal is a read equation over nested writes.
