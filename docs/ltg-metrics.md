@@ -30,7 +30,7 @@ Canonical entry content consists of the 48 files below `ltg/entries`, while the 
 
 ## Snapshot: 2026-08-10
 
-This snapshot uses LTG and proof-kit content at repository revision `f392964bab0b199c03f58fa385518231ed48cfc1`.  Its complete task-bundle digest is `714cb54ea7bbae63b588018eebe3c6f3bbd5cc2b97e3c646fc70fea4099c21b4`, which identifies the exact catalog files presented to an unfiltered proof task.  Later reports can compare the dated revision, bundle digest, and schema version before comparing counts.
+This snapshot uses LTG and proof-kit content at repository revision `42cbbb1fd60958912b7b7ac38a027885ab508009`.  Its complete task-bundle digest is `a28f29dc005065d33fb6dfe03919fc54636cda6e4b41881a2eff3664ab552b1b`, which identifies the exact catalog files presented to an unfiltered proof task.  Later reports can compare the dated revision, bundle digest, and schema version before comparing counts.
 
 | Catalog measure | Value |
 |-----------------|------:|
@@ -44,8 +44,8 @@ This snapshot uses LTG and proof-kit content at repository revision `f392964bab0
 | Generic-semantics entries | 6 |
 | Compiler-runtime-motif entries | 14 |
 | Benchmark-local entries | 4 |
-| Promoted entries | 9 |
-| Provisional entries | 15 |
+| Promoted entries | 10 |
+| Provisional entries | 14 |
 | Rejected entries | 0 |
 
 The `compiler-motifs` and `proof-construction` categories each contain 19 entries, `arrays` contains 18, and `loops` contains 17.  The `allocation` and `memory` categories each contain 7 entries, while `worked-examples` contains 4.  The JSON output also reports all 19 nonzero pair intersections, including 15 entries shared by `arrays` and `compiler-motifs`, so category growth can be assessed without treating repeated index records as new knowledge.
@@ -63,7 +63,7 @@ The `compiler-motifs` and `proof-construction` categories each contain 19 entrie
 | Entries naming a local proof-kit declaration | 23 |
 | Entries importing a tactic-bearing module | 6 |
 
-The catalog contains 66 unique feature strings across 141 assignments and 12 unique annotation kinds across 35 assignments.  Every entry names at least one annotation kind, while the array-fold annotation binds 9 entries and the scalar post-test annotation binds 7.  The catalog records 65 consumer assignments across Demos 1 through 10, and every entry has at least one recorded consumer.
+The catalog contains 66 unique feature strings across 141 assignments and 12 unique annotation kinds across 35 assignments.  Every entry names at least one annotation kind, while the array-fold annotation binds 9 entries and the scalar post-test annotation binds 7.  The catalog records 66 consumer assignments across Demos 1 through 11, and every entry has at least one recorded consumer.
 
 | Lean-support measure | Indexed by entries | Complete supplied proof kit |
 |----------------------|-------------------:|----------------------------:|
@@ -86,19 +86,19 @@ Tactic coverage currently has a metadata limitation.  The proof kit defines 29 t
 
 | Content measure | Files | Bytes |
 |-----------------|------:|------:|
-| Canonical entry content | 48 | 77,272 |
-| Canonical catalog | 50 | 80,078 |
-| Catalog Markdown | 25 | 43,758 |
-| Metadata JSON | 25 | 36,320 |
-| Generated category indexes | 7 | 108,948 |
-| Physical catalog | 57 | 189,026 |
-| Complete unfiltered task bundle | 57 | 189,026 |
+| Canonical entry content | 48 | 78,179 |
+| Canonical catalog | 50 | 80,985 |
+| Catalog Markdown | 25 | 44,657 |
+| Metadata JSON | 25 | 36,328 |
+| Generated category indexes | 7 | 108,936 |
+| Physical catalog | 57 | 189,921 |
+| Complete unfiltered task bundle | 57 | 189,921 |
 | Proof-kit Lean sources | 28 | 329,911 |
 | Proof-kit README | 1 | 43,154 |
 | Generated declaration check | 1 | 4,241 |
-| Combined physical knowledge | 86 | 562,091 |
+| Combined physical knowledge | 86 | 562,986 |
 
-Generated indexes account for 108,948 of the physical catalog's 189,026 logical bytes.  This duplication buys search locality and does not increase the 77,272-byte canonical entry inventory.  The combined total counts each physical task-catalog and proof-kit file once and excludes the generated declaration check, whose size appears on its own row.
+Generated indexes account for 108,936 of the physical catalog's 189,921 logical bytes.  This duplication buys search locality and does not increase the 78,179-byte canonical entry inventory.  The combined total counts each physical task-catalog and proof-kit file once and excludes the generated declaration check, whose size appears on its own row.
 
 The relation graph contains 108 directed related-entry links, including 38 reciprocal pairs and 32 asymmetric links, with no entry isolated from the graph.  Four worked examples carry exclusions covering four exact artifact digests and three derivative groups.  Catalog validation found no dangling category, allowed-module, or related-entry reference, and the local source inventory found no missing `Project.ProofKit` declaration name.
 
