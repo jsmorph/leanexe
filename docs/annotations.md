@@ -750,7 +750,7 @@ The journal attributes the larger proof to complete branch and loop reconstructi
 
 Schema-2 LTG entries can now index tactics as checked retrieval records.  A record names the command, defining ProofKit module, residual goal shape, required premises, applicable annotation kinds, and fallback theorem.  Catalog validation confirms that the command occurs in the named module and that its module, annotations, and fallback already belong to the canonical entry.
 
-The first inventory contains five commands across four entries: bounded length dispatch, block-wrapped loop reasoning, singleton and pair `UInt64` array reconstruction, and disjoint word reads.  Generated category indexes include the complete records and their command, module, and fallback names in searchable terms.  This establishes bounded tactic discovery and stale-name detection.  A fixed-artifact proof screen must still determine whether an agent selects a relevant tactic from a residual goal and whether the selection changes proof construction.
+The first inventory contains five commands across four entries: bounded length dispatch, block-wrapped loop reasoning, singleton and pair `UInt64` array reconstruction, and disjoint word reads.  Generated category indexes include the complete records and their command, module, and fallback names in searchable terms.  The proof task compares a selected record's goal shape, premises, and annotations with each new residual goal before choosing its command or fallback theorem.  A fixed-artifact proof screen must still determine whether an agent follows that retrieval rule and whether the selection changes proof construction.
 
 ## Completion criteria
 
