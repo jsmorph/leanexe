@@ -2,6 +2,7 @@
 /.lake/
 **/.lake/
 /build/
+/tmp/
 /LeanExe/StandardCompare/
 /proofs/talos/.generated/
 *.olean

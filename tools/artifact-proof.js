@@ -2,7 +2,6 @@
 "use strict";
 
 const fs = require("node:fs");
-const os = require("node:os");
 const path = require("node:path");
 const { runCheckedAsync, spawnResultAsync } = require("./run-process");
 const {
@@ -12,6 +11,7 @@ const {
 } = require("./artifact-manifest");
 const { collectReleaseInputs } = require("./artifact-identity");
 const { currentLocalDate } = require("./date");
+const { makeTemporaryDirectory } = require("./temp-directory");
 
 const repoRoot = path.resolve(__dirname, "..");
 const artifactRoot = path.join(repoRoot, "proofs", "artifacts");
@@ -125,7 +125,7 @@ async function checkDeclarations(items) {
     "Project.Artifact.Binary.Proof.Decode",
     "Project.Artifact.Binary.Proof.Validate",
   ]);
-  const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), "leanexe-artifact-"));
+  const temporaryRoot = makeTemporaryDirectory("leanexe-artifact-");
   const source = path.join(temporaryRoot, "CheckDeclarations.lean");
   const modules = new Set([
     "Project.Artifact.Binary.Proof.Decode",

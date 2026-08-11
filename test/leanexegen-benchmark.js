@@ -2,14 +2,14 @@
 "use strict";
 
 const fs = require("node:fs");
-const os = require("node:os");
 const path = require("node:path");
 const { checkBenchmark } = require("../tools/leanexegen-benchmark");
+const { makeTemporaryDirectory } = require("../tools/temp-directory");
 
 const repoRoot = path.resolve(__dirname, "..");
 const benchmarkRoot = path.join(
   repoRoot, "benchmarks", "leanexegen", "demo1-array");
-const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), "leanexegen-benchmark-test-"));
+const temporaryRoot = makeTemporaryDirectory("leanexegen-benchmark-test-");
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);

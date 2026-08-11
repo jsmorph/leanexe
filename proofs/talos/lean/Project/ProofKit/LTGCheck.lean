@@ -32,6 +32,7 @@ import Project.ProofKit.ScalarTransitionU64
 #check Project.ProofKit.FixedArrayAllocatorWindow.allocFrame_locals_length
 #check Project.ProofKit.FixedArrayAllocatorWindow.allocFrame_params
 #check Project.ProofKit.FixedArrayAllocatorWindow.allocFrame_values
+#check Project.ProofKit.FixedArrayAllocatorWindow.constantCapacityRegion_spec_withTail
 #check Project.ProofKit.FixedArrayAllocatorWindow.region_spec
 #check Project.ProofKit.FixedArrayAllocatorWindow.region_spec_withTail
 #check Project.ProofKit.FixedArrayCapacity.capacityFrame
@@ -42,6 +43,7 @@ import Project.ProofKit.ScalarTransitionU64
 #check Project.ProofKit.FixedArrayCapacity.capacityFrame_values
 #check Project.ProofKit.FixedArrayCapacity.constantProgram_spec
 #check Project.ProofKit.FixedArrayCapacity.normalizedCapacity
+#check Project.ProofKit.FixedArrayCapacity.normalizedCapacity_toNat_ge_eight
 #check Project.ProofKit.FixedArrayFilterLt.heapReserveBytes
 #check Project.ProofKit.FixedArrayFilterLt.wrapperProgram
 #check Project.ProofKit.FixedArrayFilterLt.wrapperProgram_spec

@@ -12,9 +12,9 @@ Every `leanexegen` artifact-proof task receives this catalog and may import the 
 | `Project.ProofKit.GuardedBackEdge` | One scalar body and condition followed by either loop exit or a scalar continuation and back edge. |
 | `Project.ProofKit.Array` | The public `Array UInt64` representation, encoded-size and address normalization, load bounds, region preservation, and singleton or pair output construction. |
 | `Project.ProofKit.Allocation` | Fixed-array bump-allocation addresses, header offsets, overflow exclusion, and the no-growth branch. |
-| `Project.ProofKit.FixedArrayCapacity` | Constant result-length capacity normalization into an arbitrary valid local with a named post-prefix frame and capacity getters. |
+| `Project.ProofKit.FixedArrayCapacity` | Constant result-length capacity normalization into an arbitrary valid local, a minimum-capacity theorem, and a named post-prefix frame with capacity getters. |
 | `Project.ProofKit.FixedArrayAllocator` | Complete empty-list search and bump-allocation semantics for the emitted one-parameter array-wrapper layout. |
-| `Project.ProofKit.FixedArrayAllocatorWindow` | The fixed-array allocator semantics parameterized by a uniform shift of its combined-local operands, with post-allocation frame projections. |
+| `Project.ProofKit.FixedArrayAllocatorWindow` | Shifted fixed-array allocator semantics, post-allocation frame projections, and composition with an immediately preceding constant-capacity prefix. |
 | `Project.ProofKit.FixedArrayEqNode` | One indexed array load, equality normalization, and two-way branch for an unrolled search. |
 | `Project.ProofKit.FixedArrayFilterLt` | A bounded stable filter by an unsigned threshold, including allocation, conditional stores, dynamic length, and empty-result semantics. |
 | `Project.ProofKit.FixedArrayFold` | Forward full-array fold setup, accumulator result placement, and complete singleton-result suffix semantics selected by exact subregion equalities. |
@@ -138,6 +138,8 @@ The length-dispatch annotation consumer recognizes this prefix independently in 
 
 `capacityFrame_get_capacity` exposes the written value through a combined-local getter, while `capacityFrame_internal_get_capacity` supplies the internal-list form required by shifted allocator regions.  `capacityFrame_params`, `capacityFrame_locals_length`, and `capacityFrame_values` expose the other frame components without reducing the list update.  Both capacity getters require the same non-parameter and valid-index premises as `constantProgram_spec`.
 
+`normalizedCapacity_toNat_ge_eight` proves that the selected capacity meets the allocator's eight-byte minimum for every length and stride.  The proof follows the compiler's normalization branch rather than requiring a concrete-capacity calculation.  A following allocator theorem can therefore consume the normalized capacity without a branch-local arithmetic lemma.
+
 ```lean
 import Project.ProofKit.FixedArrayCapacity
 
@@ -185,6 +187,8 @@ Import `Project.ProofKit.FixedArrayAllocatorWindow` when the same allocator inst
 Both theorems produce `FixedArrayAllocator.allocStore` and `FixedArrayAllocatorWindow.allocFrame`, preserving the semantic memory and global-state definitions used by the canonical allocator theorem.  The caller proves an exact instruction-suffix equality before applying the appropriate theorem and supplies the shifted capacity-local fact.  The continuation receives the state after the allocator-global updates and the shifted returned-root assignment.
 
 `allocFrame_get_root` reads the returned pointer at combined local `offset + 5` from the named post-allocation frame.  Its premises use the one-parameter layout and the `offset + 14 + tail` internal-local length already supplied to `region_spec_withTail`.  The parameter, internal-local-length, and operand-stack projections retain the corresponding components of the allocator input frame.
+
+`constantCapacityRegion_spec_withTail` composes `FixedArrayCapacity.constantProgram` with `region` when the prefix writes the allocator's capacity local at `offset + 9`.  It derives the intermediate local validity, frame projections, capacity getter, and eight-byte minimum internally.  The caller supplies the original frame dimensions, memory and global premises, and a continuation from the post-allocation store and frame.
 
 ```lean
 import Project.ProofKit.FixedArrayAllocatorWindow
