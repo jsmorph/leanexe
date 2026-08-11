@@ -53,6 +53,8 @@ LTG schema 2 adds a `tactics` array whose records identify the command, defining
 
 The initial index covers `wp_fixed_array_length_le_dispatch_from`, `wp_block_loop`, `uint64_array_pair`, `uint64_array_singleton`, and `word_reads`.  Category JSONL records carry the structured data, while search terms include each command, module, and fallback declaration.  Metrics now distinguish five indexed commands from the twenty-seven distinct tactic commands supplied by the complete ProofKit.
 
+The artifact-proof task now treats each indexed tactic as a choice between a command and its fallback theorem.  It compares the record's goal shape, premises, and annotation kinds with the current residual goal before attempting the command.  The journal must record the command's effect or the precise shape mismatch that caused rejection.
+
 Checks run:
 
 - [x] `tools/ltg check` accepted the regenerated canonical catalog, category indexes, and declaration check.
