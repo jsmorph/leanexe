@@ -1,0 +1,147 @@
+\documentclass[10pt]{article}
+
+\usepackage{cmap}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[margin=0.9in]{geometry}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{url}
+\usepackage[hidelinks]{hyperref}
+\usepackage[numbers,sort&compress]{natbib}
+
+\hypersetup{
+  pdftitle={Compiler-Generated Frame Accessors in Exact WebAssembly Proofs},
+  pdfauthor={Anonymous manuscript},
+  pdfsubject={Compiler-generated Lean interfaces for direct WebAssembly artifact proofs},
+  pdfkeywords={Lean, WebAssembly, artifact verification, compiler annotations, proof generation}
+}
+
+\newcommand{\leanexe}{\textsc{LeanExe}}
+\newcommand{\talos}{\textsc{Talos}}
+\newcommand{\code}[1]{\texttt{#1}}
+
+\title{Compiler-Generated Frame Accessors in Exact WebAssembly Proofs}
+\author{Anonymous manuscript}
+\date{10 August 2026}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+Direct proofs about decoded WebAssembly must establish how compiler-created local frames encode mathematical loop state.  LeanExe now emits Lean theorems for the parameter list, local-list length, operand stack, and every index in the parameter-plus-local sequence of each recognized array-fold continuation frame.  It places these declarations and two shared theorems for reading locals after result placement in a structured library retrieved by a coding agent.  A manual substitution within a proof of the same binary removed ten proof-local projection declarations and reduced proof source from 588 to 555 lines.  Three separate ephemeral coding-agent sessions then proved the behavior of frozen WebAssembly binaries for bounded addition, multiplication, and bitwise-XOR folds, and a separate verifier accepted all three.  The direct artifact-proof stages took 2231, 2099, and 2452 seconds.  The addition and multiplication runs were slower than their same-binary predecessors, while the held-out XOR run was slower than both earlier runs using the accessors.  The results establish a checked compiler-to-proof interface across three accumulator operations but supply no evidence of lower proof-generation time.  The agents' journals identify proof obligations that connect loop completion to the public postcondition and prove equality between WebAssembly local frames.
+\end{abstract}
+
+\section{Artifact proofs repeatedly reconstruct local frames}
+
+An exact-artifact proof concerns the instructions decoded from one frozen WebAssembly binary rather than the source program or an asserted compiler result.  LeanExe embeds the binary bytes, runs a proved-sound decoder and validator for the binary profile accepted by LeanExe, translates the validated module to the Talos execution model, and proves a behavioral theorem about that model~\cite{Haas2017WebAssembly,Watt2018Mechanising,TalosSoftware,LeanExeSoftware}.  The compiler and its annotations may generate candidate Lean declarations, but Lean checks every declaration used by the final theorem.
+
+Generated array folds carry their source-level state through WebAssembly parameters, internal locals, and the operand stack.  A loop proof needs facts such as the current accumulator, memory address of the input array, loop index, traversal limit selected from the input length, local-list length, and empty operand stack before it can apply a traversal theorem or reconstruct the invariant.  Earlier proofs established these facts with artifact-local theorems closed by reduction, which repeated compiler-layout knowledge inside each behavioral proof.
+
+This work asks whether the compiler's structural knowledge can produce a checked proof interface for those facts.  The interface does not state semantic preservation from Lean source to WebAssembly, and it does not add compiler correctness as a premise.  It generates exact statements about a frame definition derived from the decoded artifact, then relies on the Lean kernel to check each statement and every later use.
+
+Translation validation and self-certifying compilation also move compiler obligations into checks on a particular output~\cite{Pnueli1998TranslationValidation,Namjoshi2021SelfCertifying}.  The present interface has a narrower purpose: it exposes recurring target-level structure to an existing direct behavioral proof.  Its value therefore depends on theorem applicability, agent retrieval, proof structure, and proof-generation time rather than on a new end-to-end source theorem.
+
+\section{Annotations generate checked accessor families}
+
+The LeanExe compiler emits a versioned annotation for each recognized array-fold region.  An independent consumer resolves the annotation against the frozen decoded program, checks instruction shape and local roles, and generates exact region equalities and Lean theorems that evaluate each scalar operation and control transition.  For a fold with a recognized guarded back edge, the same consumer now generates the accessor family shown schematically in Figure~\ref{fig:interface}.
+
+\begin{figure}[t]
+\centering
+\fbox{\parbox{0.87\linewidth}{
+\code{<region>\_continuing\_frame\_params}\\
+\code{<region>\_continuing\_frame\_locals\_length}\\
+\code{<region>\_continuing\_frame\_values}\\
+\code{<region>\_continuing\_frame\_get\_<index>} for every index in parameters followed by locals\\[2pt]
+\code{FixedArrayFold.resultFrame\_get\_result}\\
+\code{FixedArrayFold.resultFrame\_get\_of\_ne}
+}}
+\caption{The generated continuing-frame declarations and shared result-frame declarations exposed to an artifact proof.}
+\label{fig:interface}
+\end{figure}
+
+The first three generated theorems state the frame's parameter list, internal-local length, and empty operand stack.  A \code{Wasm.Locals} index enumerates parameters first and internal locals second, and one further theorem states the result of \code{Wasm.Locals.get} at each valid index in that sequence.  Lean closes these artifact-specific theorems by reduction against the generated continuing-frame definition.
+
+The result-placement frame belongs to a shared semantic definition rather than one compiler annotation.  The theorem \code{resultFrame\_get\_result} reads the value written to a valid nonparameter result local, while \code{resultFrame\_get\_of\_ne} preserves a distinct valid nonparameter getter across the write.  Together, the generated and shared theorems supply projection facts for the continuing-frame and result-placement states without an artifact-local projection lemma.
+
+An application can define a semantic abbreviation such as \code{foldFrame} around the generated frame.  The reliable use form is \code{simp only [foldFrame, generated\_accessor]}, which unfolds the abbreviation and applies the exact theorem.  This restricted call prevents \code{Wasm.Locals.get} from reducing into parameter and internal-list branches before the generated theorem matches, so the proof does not repeat that representation case analysis.
+
+\section{Structured retrieval connects residual goals to accessors}
+
+The generated \code{PROOF\_RECIPES.json} file lists every applicable declaration and explains the purpose of each one.  LeanExe also adds a canonical entry to its structured catalog of lemmas, tactics, and guidance (LTG), with overlapping indexes for arrays, compiler motifs, loops, and proof construction.  Each catalog entry has an evidence status: provisional entries remain under evaluation, while promoted entries receive retrieval preference after accepted proofs establish recurring use.  The orchestrator gives a coding agent a filtered catalog snapshot, and the agent searches its JSON Lines indexes before opening selected entry bodies.  The earlier structured-LTG study evaluates this selective-discovery procedure~\cite{Yang2023LeanDojo,LeanExeStructuredLTG}.
+
+The first addition-fold agent retrieved the accessor entry on its second annotation-directed query.  The multiplication-fold agent received the same entry and selected strategy paragraph, while \code{PROOF\_RECIPES.json} listed every exact accessor, but the agent did not retrieve the entry by name when frame projections appeared later in the proof.  It used two generated getters and both shared result-frame theorems while proving eleven other frame facts by direct reduction.
+
+Our review of the multiplication journal distinguished a retrieval failure from missing proof support.  We therefore changed the proof prompt to treat each new residual-goal class as another retrieval checkpoint.  Before reducing a frame parameter, local length, operand value, or getter projection, the agent now searches \code{PROOF\_RECIPES.json} and the relevant catalog indexes for an exact accessor and records either its use or the reason it does not apply.
+
+We tested the revised instruction in the held-out XOR run.  The capacity frame records the WebAssembly locals after a length branch computes the allocation capacity, while the generated accessor family covers the later array-fold continuation frame.  The agent recorded that no exact capacity accessor existed before reducing that projection, then used the generated parameter, local-length, operand-stack, accumulator, input-address, loop-index, and traversal-limit accessors when proving the fold-state projections together with both result-frame theorems.
+
+Natural-language proof journals record queries, chosen declarations, failed applications, residual goals, and missing abstractions during construction.  The accepted Lean source shows what the proof used, while telemetry records edits and elapsed time.  Reading the journal, accepted Lean source, and telemetry after each run connected the multiplication retrieval failure to the prompt change and identified two reusable theorem candidates in the XOR proof.
+
+Leanexegen divides generation into eight reported stages, and Stage 5 is the direct artifact-proof stage.  Its elapsed measurement starts when proof generation begins and ends at the first accepted proof, including coding-agent work, the agent's Lean checks, orchestration, and an outer acceptance check.  Table~\ref{tab:results} reports this monotonic Stage 5 measurement.
+
+\section{Three exact-artifact runs establish applicability}
+
+The experiments use bounded folds over \code{Array UInt64}.  Each program returns a singleton containing the left fold for an input of at most eight elements and returns an empty array for a longer input.  Demo 9 uses wrapping addition with zero, Demo 10 uses wrapping multiplication with one, and the held-out Demo 11 uses bitwise XOR with zero.
+
+Each fresh run preserved its formal specification, generated source, WebAssembly binary, decoded Talos program, toolchain, annotation package, and allowed proof library for the duration of that run.  A later invocation of the independent package verifier rebuilt all three exact-byte theorems without invoking the coding agent or compiler.  The retained verification packages contain the binary bytes, generated declarations, accepted proof, library snapshot, journal, telemetry, and files that identify the artifact and tool versions used for this check.
+
+The three proof tasks ran as separate ephemeral sessions under \code{codex-cli 0.147.0}.  The retained packages do not record the served model or reasoning setting inherited by the command, so the elapsed times constitute development observations rather than reproducible model-performance measurements.  The same-binary comparisons record whether the session using the interface took more or less time than its predecessor, while broader performance claims require repeated runs with complete model and host identities.
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{l l r r r}
+\toprule
+Artifact & Operation & Direct proof (s) & Lines & Words \\
+\midrule
+Demo 9 & addition & 2231 & 616 & 2541 \\
+Demo 10 & multiplication & 2099 & 600 & 2371 \\
+Demo 11 & bitwise XOR & 2452 & 676 & 2798 \\
+\bottomrule
+\end{tabular}
+\caption{Fresh proof-generation runs.  Times are rounded measurements of the direct artifact-proof stage, and word counts are whitespace-delimited source tokens.}
+\label{tab:results}
+\end{table}
+
+The same-binary baselines come from the retained Demo 9 and Demo 10 packages named \path{experiments/fold-body-reproof.proof} under their respective demo directories in the cited software snapshot~\cite{LeanExeSoftware}.  Each package's \code{proof-telemetry.json} records the predecessor time, and \code{proof-timings.json} records the source measurements used in the comparison.  Demo 9's predecessor took 2074 seconds and contained 588 lines, while Demo 10's predecessor took 1913 seconds and contained 650 lines.
+
+The addition proof used generated parameter, local-length, and operand-stack theorems together with generated getter theorems.  It also used both shared result-frame theorems and declared no proof-local frame-projection theorem.  Compared with the preceding fold-body reproof over the same artifact, Stage 5 was 7.6 percent slower and the source was 28 lines longer.
+
+The multiplication proof used generated operand-stack and index getters and both result-frame theorems.  Its journal also exposed the missed retrieval checkpoint described in Section~3.  Compared with the preceding fold-body reproof, Stage 5 was 9.7 percent slower, the source was 50 lines shorter, and its whitespace-delimited word count increased by 269.
+
+We tested the revised retrieval rule in the XOR run on an artifact that had not motivated the accessor interface or prompt edit.  The agent used each generated frame-shape class needed for the loop-continuation and result-placement states and used both shared result-frame theorems.  The run took more time and produced more proof lines than both preceding accessor runs, although their different accumulator operations and proof histories make those comparisons descriptive.
+
+A separate manual substitution isolates proof structure from agent search.  Replacing ten artifact-local projection declarations in the accepted Demo 9 fold-body proof with generated accessors and shared result-frame getters reduced the source from 588 to 555 lines and from 2484 to 2084 whitespace-delimited words.  Independent verification accepted the changed proof over the same artifact, but the substitution has no proof-generation-time measurement.
+
+\section{The results separate applicability from speed}
+
+The accepted addition, multiplication, and XOR proofs establish that one generated accessor schema applies across three scalar operations.  The generated theorems remove repeated statements of compiler frame layout, and the manual substitution provides direct evidence that they remove proof-local declarations.  The catalog now marks the accessor entry as promoted, which makes retrieval favor it because accepted proofs use it across three operations.  This status records recurring applicability rather than a performance claim.
+
+The fresh runs provide no evidence of lower proof-generation time.  The same-binary addition and multiplication runs exceeded their immediate predecessors, and the held-out XOR run produced the longest time and largest proof of the three accessor runs.  After the agents resolved the accessor goals, their journals record further proof work on length dispatch, allocation, loop initialization, dependent theorem composition, singleton construction, and the public postcondition.
+
+The measurements do not support causal comparisons across operations.  Coding-agent search varies.  Each operation has a separate artifact and proof history, and one fresh run per configuration cannot estimate a distribution.  Line and word counts describe source structure only imperfectly.
+
+Two residual proof obligations recur in the accepted XOR proof.  A compact generated theorem could connect the completed loop state to the public singleton-result postcondition without expanding every instruction and postcondition obligation after the loop.  A general extensionality or equality principle for \code{Wasm.Locals} could replace the reductions that equate parameter lists, internal-local lists, and operand stacks at loop exit and after result placement.
+
+The next experiment should add one candidate theorem at a time and test it first on a fixed artifact, then on a held-out fold.  The journal should record whether the agent retrieves the new declaration at the residual goal, whether it avoids new proof-local declarations, and which proof obligations remain.  A decision to retain or promote the new theorem and guidance should consider accepted theorem use, retrieval, revisions, proof structure, and time together, because the same-binary addition and multiplication runs show that accepted use of a checked interface can accompany longer total generation time.
+
+\section{Relation to WebAssembly and proof automation}
+
+Watt mechanizes the WebAssembly specification, while Wasm Logic and Iris-Wasm prove sound program logics for classes of WebAssembly programs~\cite{Watt2018Mechanising,Watt2019WasmLogic,Rao2023IrisWasm}.  LeanExe instead proves closed-module behavior in the pinned Talos semantics and separately connects frozen bytes to the Talos module used by the proof.  The frame accessors support construction of the Talos behavioral proof and do not establish equivalence between Talos and the normative WebAssembly semantics.
+
+Verified compilation proves a relation between source and target semantics, while translation validation checks a particular compilation result~\cite{Leroy2009CompCert,Pnueli1998TranslationValidation}.  Self-certifying WebAssembly compilation can produce checkable witnesses for target properties~\cite{Namjoshi2021SelfCertifying}.  LeanExe's generated accessors state only target-frame representation facts, and the artifact proof uses them indirectly to prove a separate target-level functional theorem.
+
+Lean automation and retrieval systems search established theorem libraries or interact with a prover during construction~\cite{Limperg2023Aesop,Yang2023LeanDojo}.  In the reported proof procedure, the agent now repeats retrieval when Lean exposes a new residual-goal class, and the natural-language journal records whether a missed declaration was absent, undiscovered, or misapplied.  The held-out XOR run supplies one successful test of that revised instruction, while its elapsed time shows that successful retrieval alone does not determine total proof cost.
+
+\section{Conclusion}
+
+Compiler-generated frame accessors turn exact fold-layout knowledge into Lean declarations checked against a decoded WebAssembly artifact.  Shared result-frame theorems extend the interface across accumulator placement, and structured retrieval makes the declarations available when a proof reaches a projection goal.  Independent verification accepted addition, multiplication, and held-out XOR proofs that used this interface.
+
+The manual substitution removed ten local declarations and reduced proof source, while the fresh runs supplied no evidence of lower proof-generation time.  Journals recorded later composition obligations and exposed one retrieval failure that led to a successful held-out prompt test.  The next controlled runs concern a compact theorem from loop completion to the public postcondition and a general equality principle for WebAssembly local frames.
+
+\bibliographystyle{plainnat}
+\bibliography{references}
+
+\end{document}
