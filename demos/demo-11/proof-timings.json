@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "demo": "demo-11",
+  "artifact": {
+    "sha256": "4f56fd45fe246f3199dc81169235aa0673659b3b2e82e4beeb4c1d910501bd64",
+    "byteLength": 1979
+  },
+  "measurement": {
+    "stage5Milliseconds": 2452384.403,
+    "codexSessionMilliseconds": 2362386.17,
+    "outerAcceptanceMilliseconds": 77909.526,
+    "proofLines": 676,
+    "proofWords": 2798,
+    "proofBytes": 34648,
+    "independentlyVerified": true
+  },
+  "retrieval": {
+    "residualGoalCheckpointUsed": true,
+    "capacityAccessorFound": false,
+    "generatedFoldAccessorsUsed": true,
+    "sharedResultFrameGettersUsed": true,
+    "combinedFoldBodyTheoremUsed": true,
+    "localProjectionTheorems": 0
+  },
+  "descriptiveComparisons": {
+    "demo10FrameAccessor": {
+      "stage5Milliseconds": 2099237.257,
+      "stage5DeltaMilliseconds": 353147.146,
+      "stage5DeltaPercent": 16.823,
+      "proofLineDelta": 76,
+      "proofWordDelta": 427,
+      "proofByteDelta": 4080,
+      "controlledPair": false
+    },
+    "demo9FrameAccessor": {
+      "stage5Milliseconds": 2230869.436,
+      "stage5DeltaMilliseconds": 221514.967,
+      "stage5DeltaPercent": 9.93,
+      "proofLineDelta": 60,
+      "proofWordDelta": 257,
+      "proofByteDelta": 3747,
+      "controlledPair": false
+    }
+  }
+}
