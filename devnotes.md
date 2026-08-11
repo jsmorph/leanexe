@@ -7050,3 +7050,13 @@ The fixed Demo 10 reproof used the generated continuing-frame value-stack and in
 Stage 5 took 2,099.237 seconds, including 2,031.417 seconds in Codex and 50.156 seconds in outer acceptance.  The UTC timestamps span 5,546.712 seconds, leaving a 3,447.475-second difference from the monotonic metric.  The run was 9.7 percent slower than the preceding fold-body proof, while its source decreased from 650 to 600 lines and from 36,253 to 30,568 bytes and increased from 2,102 to 2,371 whitespace-delimited words.
 
 The journal shows that the agent introduced four named exit-frame facts by reduction and discharged seven other frame premises with `rfl` after the residual goal changed to frame projections.  This behavior distinguishes a retrieval checkpoint failure from absent support.  The proof prompt now requires another recipe and LTG query for each new residual goal class and specifically before reducing a frame projection or adding a local frame fact.
+
+## 2026-08-10: Held-out XOR fold
+
+Demo 11 generated a bounded bitwise-XOR specification, Lean program, 1,979-byte WASM artifact, annotations, and direct artifact proof from a new prose request.  The artifact has SHA-256 digest `4f56fd45fe246f3199dc81169235aa0673659b3b2e82e4beeb4c1d910501bd64`.  A separate `leanexegen verify -s` run accepted the preserved package, and direct execution returned `[15]` for `[1, 2, 4, 8]` and `[]` for a nine-element input.
+
+The first end-to-end invocation timed out waiting for the machine-wide Lean slot before the formal-specification target ran.  The retry completed Stage 5 in 2,452.384 seconds, including 2,362.386 seconds in Codex and 77.910 seconds in outer acceptance.  The accepted proof contains 676 lines, 2,798 whitespace-delimited words, and 34,648 bytes.
+
+The journal applied the new residual-goal retrieval checkpoint.  It searched the recipe and catalog before reducing a capacity projection, recorded that no exact accessor existed, then used the generated fold-frame shape and getter declarations with both shared result-frame theorems in the singleton suffix and loop measure.  The proof was slower and larger than the Demo 9 and Demo 10 accessor runs, so the evidence supports retrieval and cross-operation applicability without a performance claim.
+
+The accessor LTG entry now records accepted use across addition, multiplication, and bitwise XOR and advances from provisional to promoted.  The XOR journal identifies the next general boundaries as a compact completion adapter from the loop exit to the public postcondition and a general equality principle for `Wasm.Locals`.  The stopping checkpoint records those hypotheses without implementing them because another controlled proof screen would be required to assess either change.
