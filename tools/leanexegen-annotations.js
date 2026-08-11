@@ -1864,6 +1864,15 @@ function loopRecipe(
       }, {
         declaration: "Project.ProofKit.FixedArrayFold.resultFrame",
         purpose: "state the exact result-placement frame",
+      }, {
+        declaration: "Project.ProofKit.FixedArrayFold.resultFrame_params",
+        purpose: "preserve parameters across result placement",
+      }, {
+        declaration: "Project.ProofKit.FixedArrayFold.resultFrame_locals_length",
+        purpose: "preserve the internal-local length across result placement",
+      }, {
+        declaration: "Project.ProofKit.FixedArrayFold.resultFrame_values",
+        purpose: "preserve the operand-stack projection across result placement",
       }] : []), ...(match.singletonResultEligible ? [{
         declaration: `${annotationNamespace}.${name}_singleton_result_eq`,
         purpose: "rewrite the complete accumulator-placement, singleton payload-store, and root-transfer suffix",

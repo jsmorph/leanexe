@@ -238,6 +238,12 @@ Demo 11 supplied that held-out screen with a bitwise-XOR accumulator and a new a
 
 The proof contains 676 lines and 34,648 bytes, compared with 600 lines and 30,568 bytes for the Demo 10 accessor proof.  It also took 16.8 percent longer than Demo 10 and 9.9 percent longer than Demo 9, although the artifacts differ and these timing comparisons remain descriptive.  The result supports promotion by recurring applicability and rejects a proof-time or proof-size improvement claim.
 
+The ninth experiment introduced a checked composition between the constant-capacity prefix and the standard shifted allocator window.  A manual Demo 9 substitution used the theorem in both dispatch branches and reduced the fresh fold-completion proof from 526 to 498 lines, establishing a smaller call boundary without changing the artifact theorem.  The complete target passed under the standard runner profile before the theorem entered a measured task.
+
+A fresh agent then retrieved the composition theorem from structured LTG and applied it twice.  The theorem crossed the capacity elaboration boundary that had censored the preceding run, after which the agent reached and followed the corrected continuation-frame guidance.  Outer acceptance and separate package verification accepted the resulting proof in 1,759.087 seconds, the lowest retained Demo 9 Stage 5 observation.
+
+The fresh proof contains 584 lines, compared with 526 lines for the preceding fold-completion proof and 498 lines for the manual composition.  The favorable timing and successful retrieval support compact checked composition boundaries, while the larger generated proof and single measured consumer limit the performance claim.  Another constant-result array artifact should test the theorem before the catalog treats it as an automatically preferred boundary.
+
 ## Evidence rules
 
 An accepted artifact theorem and independent package verification remain mandatory for every positive result.  A lower proof-generation time is useful evidence, but proof structure, the number of agent revisions, retrieval behavior, and applicability to a different artifact also determine whether a boundary belongs in shared LTG.  Increased heartbeat or memory limits do not establish an abstraction improvement.

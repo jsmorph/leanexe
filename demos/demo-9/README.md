@@ -6,7 +6,7 @@ This demo accepts an `Array UInt64`.  An input containing at most eight elements
 
 The 1,979-byte WASM module has SHA-256 digest `aa263bbfa89c333f9fab497f1a2c370f476afc3419015d17b368cb7c8a6086d5`.  Its valid branch allocates a singleton result and traverses the input with an emitted loop, while its invalid branch allocates an empty result.  Independent `leanexegen verify -s` accepted the complete package and exact artifact theorem.
 
-The retained fold-structure proof completed Stage 5 in 2,082.889 seconds and contained 508 lines.  It reduced measured time by 34.7 percent from the preceding annotation run and by 39.3 percent from the baseline.  The proof added 92 lines relative to the preceding run because it states two missing capacity-prefix lemmas locally and applies the shared setup, traversal, result-placement, and result-store boundaries explicitly.
+The retained root proof completed Stage 5 in 2,082.889 seconds and contained 508 lines.  The fastest retained experiment now completes Stage 5 in 1,759.087 seconds after composing each constant-capacity prefix with its following allocator.  That fresh proof is larger than the root proof, so the demo retains both results and reports time, source structure, retrieval, and theorem use separately.
 
 ## Program and specification
 
@@ -110,6 +110,16 @@ The proof contains 526 lines, 2,039 whitespace-delimited words, and 28,132 bytes
 
 The journal records fourteen successful import-check and Lean-build cycles from the starter through final acceptance.  The completion adapter closed the complete loop-exit suffix on its first application, while most remaining work concerned capacity and allocator frame projections, loop-invariant construction, and the strict-index body.  The annotations identified local 18 as `releaseReadyLocal`, which let the agent repair the final invariant, but they supply no generated accessor for that loop-carried value and no capacity-frame or allocator-root getter family.  Those gaps define the next general interface review.
 
+## Capacity-to-allocation composition reproof
+
+The [capacity-to-allocation reproof](experiments/capacity-allocation-reproof.proof/) preserves the specification, source, annotations, 1,979-byte WASM artifact, and artifact digest from the earlier controlled runs.  Its structured LTG search selected `FixedArrayAllocatorWindow.constantCapacityRegion_spec_withTail`, then applied the theorem to the length-one valid branch and the length-zero invalid branch.  The theorem executes each constant-capacity prefix together with the immediately following shifted allocator and supplies the normalized minimum-capacity fact needed by the allocator proof.
+
+The agent again selected `wp_fixed_array_length_le_dispatch_from` and `wp_block_loop` from their structured tactic records.  It reached the fold continuation that the preceding corrected screen never reached, used `afterContinue.toState.toLocals []` as the callback frame, and closed the successor invariant and decreasing measure.  It also used the generated singleton-result adapter, exact frame accessors, scalar evaluator equations, and shared fold-prefix theorems before the outer checker and a separate `leanexegen verify -s` run accepted the complete package.
+
+Stage 5 took 1,759.087 seconds, including 1,686.337 seconds in Codex and 45.688 seconds in outer acceptance.  The result is 233.459 seconds, or 11.7 percent, faster than the fresh fold-completion reproof and 213.136 seconds, or 10.8 percent, faster than the guarded-back-edge screen.  This is the fastest retained Demo 9 proof-generation run, although one run cannot isolate the composition theorem from ordinary agent and machine variation.
+
+The accepted source contains 584 lines, 2,269 whitespace-delimited words, and 30,369 bytes, compared with 526 lines, 2,039 words, and 28,132 bytes for the fresh fold-completion proof.  A manual substitution of the same theorem had reduced that predecessor to 498 lines, 1,975 words, and 26,131 bytes.  The contrast shows that the theorem presents a compact checked interface, while the fresh agent's full branch and loop construction still determines the resulting proof size.
+
 ## Execution
 
 The first sample exercises wrapping addition in the valid branch.  The second sample exceeds the maximum length and exercises the empty-result branch.  Direct execution of the proved artifact produced these values:
@@ -153,4 +163,5 @@ Every retained root file fixes a generation input, artifact, proof context, or m
 | [Fresh frame-accessor reproof](experiments/frame-accessor-reproof.proof/) | The independently verified fixed-artifact proof whose agent retrieved and used the generated accessors and shared result-frame getters. |
 | [Fold-completion package](experiments/fold-completion.proof/) | The independently verified manual proof using the generated exact singleton-result adapter. |
 | [Fresh fold-completion reproof](experiments/fold-completion-reproof.proof/) | The independently verified fixed-artifact proof that retrieved and applied the generated completion adapter. |
+| [Capacity-to-allocation reproof](experiments/capacity-allocation-reproof.proof/) | The independently verified fixed-artifact proof that retrieved and applied the capacity-plus-allocator composition in both branches. |
 | [Manual fold-completion proof](experiments/manual-fold-completion.lean) | The readable behavioral proof retained by the fold-completion package. |
