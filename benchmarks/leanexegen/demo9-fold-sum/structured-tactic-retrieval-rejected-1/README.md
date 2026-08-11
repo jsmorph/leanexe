@@ -1,0 +1,9 @@
+# Structured tactic retrieval rejected by the outer check
+
+This directory preserves the first controlled Demo 9 proof run with structured tactic records.  The run kept the formal specification, source, 1,979-byte WASM artifact, and SHA-256 artifact digest `aa263bbfa89c333f9fab497f1a2c370f476afc3419015d17b368cb7c8a6086d5` fixed.  The independent outer Lean check rejected `candidate.lean`, whose SHA-256 digest `f73e0c00e8b62c967da36b8106023fb677ebb1d9d17beeb80931e48380b372ba` matches `failure.json`.
+
+The journal records goal-directed retrieval and successful use of `wp_fixed_array_length_le_dispatch_from` and `wp_block_loop`.  It also records why result-shape, singleton-wrapper, and nested-read tactics did not match the residual goals, and the proof used neither indexed fallback theorem.  This run therefore supplies evidence about tactic discovery and selection while supplying no accepted artifact proof or proof-generation time.
+
+The outer check found a broad simplification that exceeded its step limit, an unproved fixed-width successor bound, and a measure rewrite blocked by the callback frame's retained operand-stack projection.  `repaired.lean` constructs the successor state as `UInt64.ofNat (index + 1)`, confines `UInt64.ofNat_add` to the generated evaluator equation, and changes the callback frame to `afterContinue.toState.toLocals []` before rewriting the invariant and measure.  A complete `ArtifactResult` build accepted that repaired source in a temporary copy of the proof workspace.
+
+The failed package preserves the candidate, journal, diagnostic, annotation package, proof recipes, selected guidance, and task features.  `failure.json` binds every generated input to a SHA-256 digest and records the full independent-check diagnostic.  The repaired source remains separate from the failed evidence so the rejection and the tested correction can be examined together.
