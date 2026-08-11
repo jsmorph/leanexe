@@ -31,7 +31,7 @@ Canonical entry content consists of the 48 files below `ltg/entries`, while the 
 
 ## Snapshot: 2026-08-11
 
-This snapshot uses the LTG and proof-kit changes at repository revision `0d71711c73d57c74ab5f387e7e9dcb744ab5666c`.  Its complete task-bundle digest is `866a977bcd24629b4d4a7e6655f969a06674e637f698bdea40f2c297cf14c6a4`, which identifies the exact catalog files presented to an unfiltered proof task.  Later reports can compare the dated base revision, bundle digest, and schema version before comparing counts.
+This snapshot uses the LTG and proof-kit changes at repository revision `3a75442ccae437597066c3d31f7015ca64631e99`.  Its complete task-bundle digest is `7726d73854b33f4167543f605fe525df59b7ba6244b5246b069a6295ef67bde6`, which identifies the exact catalog files presented to an unfiltered proof task.  Later reports can compare the dated base revision, bundle digest, and schema version before comparing counts.
 
 | Catalog measure | Value |
 |-----------------|------:|
@@ -62,45 +62,45 @@ The `compiler-motifs` and `proof-construction` categories each contain 19 entrie
 | Entries with an executable role | 19 |
 | Entries naming Lean modules and declarations | 24 |
 | Entries naming a local proof-kit declaration | 23 |
-| Entries importing a tactic-bearing module | 8 |
+| Entries importing a tactic-bearing module | 9 |
 | Entries with indexed tactics | 4 |
 
 The catalog contains 68 unique feature strings across 143 assignments and 12 unique annotation kinds across 35 assignments.  Every entry names at least one annotation kind, while the array-fold annotation binds 9 entries and the scalar post-test annotation binds 7.  The catalog records 70 consumer assignments across Demos 1 through 11, and every entry has at least one recorded consumer.
 
 | Lean-support measure | Indexed by entries | Complete supplied proof kit |
 |----------------------|-------------------:|----------------------------:|
-| Module references | 36 assignments, 20 unique | 28 modules |
-| Declaration references | 97 assignments, 79 unique | 386 source headers |
-| Public named local declarations | 71 indexed | 337 available |
-| Theorem headers | 58 indexed | 193 total |
+| Module references | 37 assignments, 20 unique | 28 modules |
+| Declaration references | 103 assignments, 84 unique | 388 source headers |
+| Public named local declarations | 76 indexed | 339 available |
+| Theorem headers | 63 indexed | 195 total |
 | Lemma headers | 0 indexed | 0 total |
 | Definition headers | 13 indexed | 151 total |
 | Other source headers | 0 indexed | 42 total |
 | Tactic definitions | 5 structured records | 29 macro definitions |
 | Distinct tactic commands | 5 indexed | 27 commands |
-| Tactic-bearing modules | 8 entries import one | 11 modules |
+| Tactic-bearing modules | 9 entries import one | 11 modules |
 
-Entries mention 20 of the 28 supplied proof-kit modules, a module coverage ratio of 0.714.  Their declaration arrays expose 71 of 337 public named local source declarations, a lexical discoverability ratio of 0.211, and reference 8 additional imported declarations whose kinds this command does not infer.  The remaining proof-kit source is usable through imports but absent from structured declaration retrieval, which identifies a substantial indexing backlog rather than missing Lean implementation.
+Entries mention 20 of the 28 supplied proof-kit modules, a module coverage ratio of 0.714.  Their declaration arrays expose 76 of 339 public named local source declarations, a lexical discoverability ratio of 0.224, and reference 8 additional imported declarations whose kinds this command does not infer.  The remaining proof-kit source is usable through imports but absent from structured declaration retrieval, which identifies a substantial indexing backlog rather than missing Lean implementation.
 
-The complete proof kit has 386 recognized source headers: 193 `theorem`, 151 `def`, 29 `macro`, 7 `inductive`, 5 `structure`, and 1 `abbrev`.  Of these headers, 366 are public and 20 are private.  The source contains no recognized `lemma`, `class`, `instance`, `opaque`, or `elab` header at this revision.
+The complete proof kit has 388 recognized source headers: 195 `theorem`, 151 `def`, 29 `macro`, 7 `inductive`, 5 `structure`, and 1 `abbrev`.  Of these headers, 368 are public and 20 are private.  The source contains no recognized `lemma`, `class`, `instance`, `opaque`, or `elab` header at this revision.
 
 Four schema-2 entries contain five tactic records representing five distinct commands, or 18.5 percent of the twenty-seven commands supplied by ProofKit.  Each record names the command, module, residual goal shape, premises, annotation kinds, and fallback theorem.  Catalog validation confirms that the command occurs in the named ProofKit module and that its module, annotations, and fallback belong to the entry, providing direct retrieval and stale-name detection without inferring tactic relationships from prose.
 
 | Content measure | Files | Bytes |
 |-----------------|------:|------:|
-| Canonical entry content | 48 | 87,281 |
-| Canonical catalog | 50 | 90,437 |
-| Catalog Markdown | 25 | 50,586 |
-| Metadata JSON | 25 | 39,851 |
-| Generated category indexes | 7 | 127,756 |
-| Physical catalog | 57 | 218,193 |
-| Complete unfiltered task bundle | 57 | 218,193 |
-| Proof-kit Lean sources | 28 | 335,182 |
-| Proof-kit README | 1 | 44,618 |
-| Generated declaration check | 1 | 5,336 |
-| Combined physical knowledge | 86 | 597,993 |
+| Canonical entry content | 48 | 89,594 |
+| Canonical catalog | 50 | 92,750 |
+| Catalog Markdown | 25 | 52,158 |
+| Metadata JSON | 25 | 40,592 |
+| Generated category indexes | 7 | 131,332 |
+| Physical catalog | 57 | 224,082 |
+| Complete unfiltered task bundle | 57 | 224,082 |
+| Proof-kit Lean sources | 28 | 338,599 |
+| Proof-kit README | 1 | 45,451 |
+| Generated declaration check | 1 | 5,681 |
+| Combined physical knowledge | 86 | 608,132 |
 
-Generated indexes account for 127,756 of the physical catalog's 218,193 logical bytes.  This duplication buys search locality and does not increase the 87,281-byte canonical entry inventory.  The combined total counts each physical task-catalog and proof-kit file once and excludes the generated declaration check, whose size appears on its own row.
+Generated indexes account for 131,332 of the physical catalog's 224,082 logical bytes.  This duplication buys search locality and does not increase the 89,594-byte canonical entry inventory.  The combined total counts each physical task-catalog and proof-kit file once and excludes the generated declaration check, whose size appears on its own row.
 
 The relation graph contains 108 directed related-entry links, including 38 reciprocal pairs and 32 asymmetric links, with no entry isolated from the graph.  Four worked examples carry exclusions covering four exact artifact digests and three derivative groups.  Catalog validation found no dangling category, allowed-module, or related-entry reference, and the local source inventory found no missing `Project.ProofKit` declaration name.
 
