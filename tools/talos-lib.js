@@ -4,6 +4,7 @@ const childProcess = require("node:child_process");
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
+const { makeTemporaryDirectory } = require("./temp-directory");
 
 const repoRoot = path.resolve(__dirname, "..");
 const talosRoot = path.join(repoRoot, "proofs", "talos");
@@ -315,7 +316,7 @@ function installProgramCache(item, generated, mode, root = proofRoot) {
 
 function prepareCase(item, wasmTools, programMode) {
   console.log(`Preparing Talos artifact: ${item.name}`);
-  const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), "leanexe-talos-"));
+  const temporaryRoot = makeTemporaryDirectory("leanexe-talos-");
   let operationError = null;
   try {
     const stageRoot = path.join(temporaryRoot, "stage");

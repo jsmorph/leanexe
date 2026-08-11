@@ -12,6 +12,15 @@ def normalizedCapacity (length stride : UInt64) : UInt64 :=
   if unnormalizedCapacity length stride < 8 then 8
   else unnormalizedCapacity length stride
 
+theorem normalizedCapacity_toNat_ge_eight (length stride : UInt64) :
+    8 ≤ (normalizedCapacity length stride).toNat := by
+  unfold normalizedCapacity
+  split <;> rename_i hSmall
+  · decide
+  · rw [UInt64.lt_iff_toNat_lt] at hSmall
+    change (8 : UInt64).toNat ≤ (unnormalizedCapacity length stride).toNat
+    exact Nat.le_of_not_lt hSmall
+
 def constantProgram (length stride : UInt64)
     (capacityLocal : Nat) : Wasm.Program :=
   [

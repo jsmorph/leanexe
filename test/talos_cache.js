@@ -2,11 +2,11 @@
 "use strict";
 
 const fs = require("node:fs");
-const os = require("node:os");
 const path = require("node:path");
 const { installProgramCache } = require("../tools/talos-lib");
+const { makeTemporaryDirectory } = require("../tools/temp-directory");
 
-const root = fs.mkdtempSync(path.join(os.tmpdir(), "leanexe-talos-cache-"));
+const root = makeTemporaryDirectory("leanexe-talos-cache-");
 const item = { name: "example", leanModule: "Example" };
 const destination = path.join(root, "Project", "Example", "Program.lean");
 const generated = path.join(root, "generated.lean");

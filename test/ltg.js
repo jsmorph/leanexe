@@ -3,7 +3,6 @@
 
 const assert = require("node:assert");
 const fs = require("node:fs");
-const os = require("node:os");
 const path = require("node:path");
 const { spawnSync } = require("node:child_process");
 const {
@@ -14,6 +13,7 @@ const {
   loadCatalog,
   taskCatalogFiles,
 } = require("../tools/ltg-lib");
+const { makeTemporaryDirectory } = require("../tools/temp-directory");
 
 function expectFailure(action, pattern) {
   let error = null;
@@ -118,7 +118,7 @@ function main() {
     metrics.tacticInventory.coverageOfSuppliedTacticCommands > 0,
   "LTG metrics omitted proof-kit tactic support");
 
-  const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), "leanexe-ltg-test-"));
+  const temporaryRoot = makeTemporaryDirectory("leanexe-ltg-test-");
   let scaleSearchMilliseconds;
   try {
     const copyRoot = path.join(temporaryRoot, "ltg");

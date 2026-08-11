@@ -3,7 +3,6 @@
 
 const crypto = require("node:crypto");
 const fs = require("node:fs");
-const os = require("node:os");
 const path = require("node:path");
 const { runCheckedAsync, spawnResultAsync } = require("./run-process");
 const { collectReleaseInputs, compareReleaseInputs } = require("./artifact-identity");
@@ -13,6 +12,7 @@ const {
 } = require("./artifact-manifest");
 const { currentLocalDate } = require("./date");
 const { leanSourcesUnder } = require("./artifact-source");
+const { makeTemporaryDirectory } = require("./temp-directory");
 
 const repoRoot = path.resolve(__dirname, "..");
 const artifactRoot = path.join(repoRoot, "proofs", "artifacts");
@@ -617,7 +617,7 @@ async function checkCold(revision, evidence) {
   )) {
     fail("the selected Lean toolchain has no accepted kernel-defect disposition");
   }
-  const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), "leanexe-release-"));
+  const temporaryRoot = makeTemporaryDirectory("leanexe-release-");
   const checkout = path.join(temporaryRoot, "source");
   const expectedInputs = collectReleaseInputs(repoRoot);
   try {
@@ -691,7 +691,7 @@ async function checkKernel(toolchain, evidence) {
     fail("kernel reproduction identity mismatch");
   }
 
-  const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), "leanexe-kernel-"));
+  const temporaryRoot = makeTemporaryDirectory("leanexe-kernel-");
   const source = path.join(temporaryRoot, "KernelUnsoundness.lean");
   try {
     fs.writeFileSync(source, reproduction.stdout);

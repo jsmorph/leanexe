@@ -41,6 +41,7 @@ const {
   defaultBenchmark,
 } = require("./leanexegen-benchmark");
 const { spawnResult } = require("./run-process");
+const { makeTemporaryDirectory } = require("./temp-directory");
 
 const repoRoot = path.resolve(__dirname, "..");
 const proofRoot = path.join(repoRoot, "proofs", "talos", "lean");
@@ -2330,7 +2331,7 @@ function verify(command) {
     if (error instanceof StageError) throw error;
     throw new StageError(5, "artifact proof", error.message);
   }
-  const workspace = fs.mkdtempSync(path.join(os.tmpdir(), "leanexegen-verify-"));
+  const workspace = makeTemporaryDirectory("leanexegen-verify-");
   let operationError = null;
   try {
     createWorkspace(workspace);
@@ -2440,7 +2441,7 @@ function reprove(command) {
     throw new StageError(1, "job setup", error.message);
   }
 
-  const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), "leanexegen-reprove-"));
+  const temporaryRoot = makeTemporaryDirectory("leanexegen-reprove-");
   let operationError = null;
   let proofTaskRoot = null;
   try {
@@ -2643,7 +2644,7 @@ function annotatePackage(command) {
     throw new StageError(4, "WASM annotations", error.message);
   }
 
-  const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), "leanexegen-annotate-"));
+  const temporaryRoot = makeTemporaryDirectory("leanexegen-annotate-");
   let stagedOutput = null;
   let installed = false;
   let operationError = null;
@@ -2830,7 +2831,7 @@ function generate(command) {
   validateProofImports(job, [...kitSources].map(([module, source]) => ({ module, source })));
   requireKernelAudit(kitSources, toolPins);
 
-  const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), "leanexegen-"));
+  const temporaryRoot = makeTemporaryDirectory("leanexegen-");
   let operationError = null;
   try {
     progress(command.silent, 2, "Formal specification");

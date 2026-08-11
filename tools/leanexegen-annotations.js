@@ -2098,6 +2098,12 @@ function fixedArrayLengthDispatchRecipe(
         }, {
           declaration: "Project.ProofKit.FixedArrayCapacity.capacityFrame_internal_get_capacity",
           purpose: "supply the normalized capacity to an allocator's internal-local premise",
+        }, {
+          declaration: "Project.ProofKit.FixedArrayCapacity.normalizedCapacity_toNat_ge_eight",
+          purpose: "derive the allocator's minimum-capacity premise from normalization",
+        }, {
+          declaration: "Project.ProofKit.FixedArrayAllocatorWindow.constantCapacityRegion_spec_withTail",
+          purpose: "compose this prefix with an immediately following standard shifted allocator when its capacity local is offset plus nine",
         }];
       }),
     ],
