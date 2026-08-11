@@ -1695,6 +1695,31 @@ function scalarDescriptorHasBinaryOperation(value) {
   return Object.values(value).some(scalarDescriptorHasBinaryOperation);
 }
 
+function arrayFoldFrameRoleLabels(parameters) {
+  const labels = new Map();
+  const add = (local, label) => {
+    if (!labels.has(local)) labels.set(local, []);
+    labels.get(local).push(label);
+  };
+  add(parameters.arrayLocal, "arrayLocal");
+  add(parameters.lengthLocal, "lengthLocal");
+  add(parameters.indexLocal, "indexLocal");
+  add(parameters.stopLocal, "stopLocal");
+  add(parameters.effectiveStopLocal, "effectiveStopLocal");
+  add(parameters.doneLocal, "doneLocal");
+  add(parameters.releaseReadyLocal, "releaseReadyLocal");
+  parameters.accumulatorLocals.forEach((local, index) =>
+    add(local, `accumulatorLocals[${index}]`));
+  parameters.itemLocals.forEach((local, index) =>
+    add(local, `itemLocals[${index}]`));
+  parameters.resultLocals.forEach((local, index) =>
+    add(local, `resultLocals[${index}]`));
+  for (let index = 0; index < parameters.resultWidth; index += 1) {
+    add(parameters.stagedValueStart + index, `stagedValueStart+${index}`);
+  }
+  return labels;
+}
+
 function loopRecipe(
     match, selectedSections = [], annotationNamespace = "Project.AnnotationMatches") {
   const checkedScalarLoop = [
@@ -1789,6 +1814,8 @@ function loopRecipe(
     };
   }
   const arrayFold = match.regionKind === "leanexe.array.fold.v1";
+  const frameRoleLabels = arrayFold
+    ? arrayFoldFrameRoleLabels(match.parameters) : new Map();
   const name = match.regionId.replace(/[^A-Za-z0-9_]/g, "_");
   return {
     recipeVersion: 1,
@@ -1888,10 +1915,14 @@ function loopRecipe(
       }, {
         declaration: `${annotationNamespace}.${name}_continuing_frame_values`,
         purpose: "expose the empty operand stack of the generated continuing frame",
-      }, ...Array.from({ length: match.frameWidth }, (_, index) => ({
-        declaration: `${annotationNamespace}.${name}_continuing_frame_get_${index}`,
-        purpose: `read generated continuing-frame index ${index}`,
-      })), {
+      }, ...Array.from({ length: match.frameWidth }, (_, index) => {
+        const roles = frameRoleLabels.get(index);
+        return {
+          declaration: `${annotationNamespace}.${name}_continuing_frame_get_${index}`,
+          purpose: `read generated continuing-frame index ${index}` +
+            (roles === undefined ? "" : ` (${roles.join(", ")})`),
+        };
+      }), {
         declaration: "Project.ProofKit.FixedArrayFold.resultFrame_get_result",
         purpose: "read the value placed in a valid nonparameter result local",
       }, {
@@ -2061,6 +2092,12 @@ function fixedArrayLengthDispatchRecipe(
         }, {
           declaration: "Project.ProofKit.FixedArrayCapacity.capacityFrame",
           purpose: "state the exact post-capacity local frame",
+        }, {
+          declaration: "Project.ProofKit.FixedArrayCapacity.capacityFrame_get_capacity",
+          purpose: "read the normalized capacity through the selected combined local",
+        }, {
+          declaration: "Project.ProofKit.FixedArrayCapacity.capacityFrame_internal_get_capacity",
+          purpose: "supply the normalized capacity to an allocator's internal-local premise",
         }];
       }),
     ],

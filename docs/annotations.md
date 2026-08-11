@@ -738,6 +738,10 @@ The fresh Demo 9 screen selected the completion entry during its first annotatio
 
 The journal separates successful suffix composition from the work that remains.  The adapter closed accumulator placement, payload storage, root transfer, representation, and the public result without a proof-local suffix theorem.  Capacity-frame getters, the allocator's returned-root getter, and the annotated `releaseReadyLocal` still required representation reduction or a larger invariant because the current sidecar names those values without generating the corresponding frame interface.
 
+The follow-up adds generic capacity and allocator frame projections.  `capacityFrame_get_capacity` and `capacityFrame_internal_get_capacity` expose the normalized capacity in the coordinate systems used by later theorems, while `allocFrame_get_root` exposes the returned array pointer from any shifted allocator window.  Their statements depend on frame bounds and allocator offsets rather than an artifact function or fold operation.
+
+The generated continuing frame already had a checked accessor for `releaseReadyLocal`, but the recipe described it only by its numeric slot.  Fold recipes now attach compiler role names to every generated frame getter, so a search for `releaseReadyLocal` identifies the exact accessor declaration.  A regenerated Demo 9 annotation package contains the role-labelled recipe, and independent verification accepts that package over the unchanged artifact.
+
 ## Completion criteria
 
 The first complete increment emits a validated sidecar for every ordinary library-mode compilation requested by `leanexegen`.  Demos 1, 2, and 3 prove the same specifications over the same WASM bytes through an annotation-driven deterministic proof plan.  The retained evidence records proof-generation timings, annotation validation, region coverage, and independent Lean acceptance.

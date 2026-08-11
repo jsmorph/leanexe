@@ -248,6 +248,36 @@ def allocFrame (offset : Nat) (base : Locals)
       (offset + 13) (.i64 (heapTop + 48))).set
       (offset + 4) (.i64 (heapTop + 48)) }
 
+theorem allocFrame_params (offset : Nat) (base : Locals)
+    (heapTop capacity : UInt64) :
+    (allocFrame offset base heapTop capacity).params = base.params := rfl
+
+theorem allocFrame_locals_length (offset : Nat) (base : Locals)
+    (heapTop capacity : UInt64) :
+    (allocFrame offset base heapTop capacity).locals.length =
+      base.locals.length := by
+  simp [allocFrame]
+
+theorem allocFrame_values (offset : Nat) (base : Locals)
+    (heapTop capacity : UInt64) :
+    (allocFrame offset base heapTop capacity).values = base.values := rfl
+
+@[simp]
+theorem allocFrame_get_root
+    (offset tail : Nat) (base : Locals) (heapTop capacity : UInt64)
+    (hParams : base.params.length = 1)
+    (hLocals : base.locals.length = offset + 14 + tail) :
+    (allocFrame offset base heapTop capacity).get (offset + 5) =
+      some (.i64 (heapTop + 48)) := by
+  have hRootIndex : offset + 4 < base.locals.length := by
+    rw [hLocals]
+    omega
+  have hCombinedIndex : offset + 5 - 1 = offset + 4 := by omega
+  simp only [allocFrame, Wasm.Locals.get, hParams, List.length_set]
+  rw [if_neg (by omega), if_pos (by omega), hCombinedIndex]
+  apply List.getElem?_set_self
+  simpa using hRootIndex
+
 set_option maxHeartbeats 1000000 in
 set_option Elab.async false in
 theorem region_spec_withTail
