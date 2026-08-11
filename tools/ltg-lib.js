@@ -28,6 +28,7 @@ const scopes = new Set([
   "generic-semantics",
 ]);
 const evidenceStatuses = new Set(["promoted", "provisional", "rejected"]);
+const tacticCommandPattern = /^[A-Za-z][A-Za-z0-9_]*$/;
 const leanDeclarationKinds = [
   "abbrev", "class", "def", "elab", "inductive", "instance", "lemma", "macro",
   "opaque", "structure", "theorem",
@@ -127,16 +128,74 @@ function validateExclusion(value, description) {
   };
 }
 
+function validateTactics(value, description, entry) {
+  if (!Array.isArray(value)) fail(`${description} must be an array`);
+  const result = value.map((tactic, index) => {
+    const tacticDescription = `${description}[${index}]`;
+    exactKeys(tactic, [
+      "command", "module", "goalShape", "premises", "annotationKinds",
+      "fallbackDeclaration",
+    ], tacticDescription);
+    const command = text(tactic.command, `${tacticDescription}.command`);
+    if (!tacticCommandPattern.test(command)) {
+      fail(`${tacticDescription}.command is not a tactic command token`);
+    }
+    const moduleName = text(tactic.module, `${tacticDescription}.module`);
+    if (!entry.modules.includes(moduleName)) {
+      fail(`${tacticDescription}.module is not listed by its entry`);
+    }
+    const annotationKinds = stringArray(
+      tactic.annotationKinds, `${tacticDescription}.annotationKinds`, { sorted: true });
+    if (annotationKinds.some((kind) => !entry.annotationKinds.includes(kind))) {
+      fail(`${tacticDescription}.annotationKinds is not a subset of its entry`);
+    }
+    const fallbackDeclaration = text(
+      tactic.fallbackDeclaration, `${tacticDescription}.fallbackDeclaration`);
+    if (!entry.declarations.includes(fallbackDeclaration)) {
+      fail(`${tacticDescription}.fallbackDeclaration is not listed by its entry`);
+    }
+    const source = readRegularFile(
+      proofKitModulePath(moduleName), `${moduleName} proof-kit source`);
+    const commands = new Set(leanSourceDeclarations(moduleName, source)
+      .filter((declaration) => declaration.tactic)
+      .map((declaration) => declaration.tacticCommand));
+    if (!commands.has(command)) {
+      fail(`${tacticDescription}.command is not defined by ${moduleName}`);
+    }
+    return {
+      command,
+      module: moduleName,
+      goalShape: text(tactic.goalShape, `${tacticDescription}.goalShape`),
+      premises: stringArray(
+        tactic.premises, `${tacticDescription}.premises`, { nonempty: true }),
+      annotationKinds,
+      fallbackDeclaration,
+    };
+  });
+  if (new Set(result.map((tactic) => tactic.command)).size !== result.length) {
+    fail(`${description} contains duplicate commands`);
+  }
+  if (result.some((tactic, index) =>
+    index > 0 && result[index - 1].command > tactic.command)) {
+    fail(`${description} must be sorted by command`);
+  }
+  return result;
+}
+
 function validateEntry(root, directory, categoryIds) {
   id(directory, `entry directory ${directory}`);
   const entryRoot = path.join(root, "entries", directory);
   const value = readJson(path.join(entryRoot, "entry.json"), `${directory}/entry.json`);
-  exactKeys(value, [
+  const entryKeys = [
     "schemaVersion", "id", "title", "summary", "roles", "categories", "scope",
     "evidenceStatus", "features", "annotationKinds", "modules", "declarations",
     "premises", "result", "consumers", "relatedEntries", "exclusion",
-  ], `${directory}/entry.json`);
-  if (value.schemaVersion !== 1) fail(`${directory}/entry.json has an unsupported schema`);
+  ];
+  if (value.schemaVersion === 2) entryKeys.push("tactics");
+  exactKeys(value, entryKeys, `${directory}/entry.json`);
+  if (![1, 2].includes(value.schemaVersion)) {
+    fail(`${directory}/entry.json has an unsupported schema`);
+  }
   const entryId = id(value.id, `${directory}.id`);
   if (entryId !== directory) fail(`${directory}/entry.json id differs from its directory`);
   const entryRoles = stringArray(value.roles, `${directory}.roles`, {
@@ -164,8 +223,8 @@ function validateEntry(root, directory, categoryIds) {
   const readme = readRegularFile(path.join(entryRoot, "README.md"), `${directory}/README.md`);
   if (readme.trim().length === 0) fail(`${directory}/README.md is empty`);
   collectFiles(entryRoot);
-  return {
-    schemaVersion: 1,
+  const entry = {
+    schemaVersion: value.schemaVersion,
     id: entryId,
     title: text(value.title, `${directory}.title`),
     summary: text(value.summary, `${directory}.summary`),
@@ -192,6 +251,9 @@ function validateEntry(root, directory, categoryIds) {
     exclusion: validateExclusion(value.exclusion, `${directory}.exclusion`),
     root: entryRoot,
   };
+  entry.tactics = validateTactics(
+    value.schemaVersion === 2 ? value.tactics : [], `${directory}.tactics`, entry);
+  return entry;
 }
 
 function loadCatalog(root = defaultRoot) {
@@ -222,6 +284,11 @@ function indexRecord(entry) {
     ...entry.annotationKinds.map((kind) => kind.replaceAll("-", "_")),
     ...entry.modules,
     ...entry.declarations,
+    ...entry.tactics.flatMap((tactic) => [
+      tactic.command,
+      tactic.module,
+      tactic.fallbackDeclaration,
+    ]),
   ])].sort();
   return {
     id: entry.id,
@@ -234,6 +301,7 @@ function indexRecord(entry) {
     annotationKinds: entry.annotationKinds,
     modules: entry.modules,
     declarations: entry.declarations,
+    tactics: entry.tactics,
     searchTerms,
     path: `../../entries/${entry.id}`,
   };
@@ -444,6 +512,7 @@ function catalogMetrics(catalog = checkCatalog()) {
   const declarationReferences = catalog.entries.flatMap((entry) => entry.declarations);
   const featureAssignments = catalog.entries.flatMap((entry) => entry.features);
   const consumerAssignments = catalog.entries.flatMap((entry) => entry.consumers);
+  const indexedTactics = catalog.entries.flatMap((entry) => entry.tactics);
   const membershipCounts = catalog.entries.map((entry) => entry.categories.length);
   const categoryPairs = [];
   for (const entry of catalog.entries) {
@@ -567,6 +636,8 @@ function catalogMetrics(catalog = checkCatalog()) {
         entry.declarations.some((name) => proofKitByName.has(name))).length,
       entriesImportingTacticModules: catalog.entries.filter((entry) =>
         entry.modules.some((moduleName) => tacticModules.has(moduleName))).length,
+      entriesWithIndexedTactics: catalog.entries.filter((entry) =>
+        entry.tactics.length > 0).length,
     },
     retrievalVocabulary: {
       uniqueFeatures: new Set(featureAssignments).size,
@@ -617,6 +688,22 @@ function catalogMetrics(catalog = checkCatalog()) {
         .map((declaration) => declaration.tacticCommand)
         .filter((name) => name !== null)).size,
       tacticBearingModules: tacticModules.size,
+    },
+    tacticInventory: {
+      records: indexedTactics.length,
+      distinctCommands: new Set(indexedTactics.map((tactic) => tactic.command)).size,
+      definingModules: new Set(indexedTactics.map((tactic) => tactic.module)).size,
+      fallbackDeclarations: new Set(
+        indexedTactics.map((tactic) => tactic.fallbackDeclaration)).size,
+      annotationAssignments: indexedTactics.flatMap(
+        (tactic) => tactic.annotationKinds).length,
+      commands: counts(indexedTactics.map((tactic) => tactic.command)),
+      coverageOfSuppliedTacticCommands: Number((
+        new Set(indexedTactics.map((tactic) => tactic.command)).size /
+          new Set(tacticDeclarations
+            .map((declaration) => declaration.tacticCommand)
+            .filter((name) => name !== null)).size
+      ).toFixed(3)),
     },
     graphAndExclusions: {
       relatedEntryLinks: relatedLinks.length,

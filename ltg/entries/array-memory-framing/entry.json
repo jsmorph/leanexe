@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "id": "array-memory-framing",
   "title": "Array representation across disjoint writes",
   "summary": "Preserves a represented UInt64 array across allocator writes and later stores above the input region without re-proving its length and element reads.",
@@ -9,8 +9,9 @@
   "evidenceStatus": "provisional",
   "features": ["array", "disjoint-write", "frame", "indexed-element-load", "memory", "representation-preservation"],
   "annotationKinds": ["leanexe.array.allocator-window.v1", "leanexe.array.allocator.v1"],
-  "modules": ["Project.ProofKit.Array", "Project.ProofKit.FixedArrayPairResult"],
-  "declarations": ["Project.ProofKit.FixedArrayPairResult.input_preserved_by_alloc", "Project.ProofKit.UInt64Array.At.frameBefore", "Project.ProofKit.UInt64Array.At.generatedElement", "Project.ProofKit.UInt64Array.At.write64After"],
+  "modules": ["Project.ProofKit.Array", "Project.ProofKit.FixedArrayPairResult", "Project.ProofKit.Memory"],
+  "declarations": ["Project.ProofKit.FixedArrayPairResult.input_preserved_by_alloc", "Project.ProofKit.Memory.read64_write64_disjoint", "Project.ProofKit.UInt64Array.At.frameBefore", "Project.ProofKit.UInt64Array.At.generatedElement", "Project.ProofKit.UInt64Array.At.write64After"],
+  "tactics": [{"command":"word_reads","module":"Project.ProofKit.Memory","goalShape":"A read64 equation over one or more nested write64 updates at equal or arithmetically disjoint addresses.","premises":["Address equality or eight-byte disjointness provable by arithmetic"],"annotationKinds":[],"fallbackDeclaration":"Project.ProofKit.Memory.read64_write64_disjoint"}],
   "premises": ["A represented input array", "A cutoff above the complete input representation", "Unchanged pages and bytes below the cutoff, or the checked fixed-array allocator premises", "A later store whose address begins at or above the cutoff"],
   "result": "The original input representation, including its length and indexed element reads, remains valid in the modified store.",
   "consumers": ["demo-4", "demo-5", "demo-9"],
