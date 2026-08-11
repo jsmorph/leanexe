@@ -766,6 +766,16 @@ The corrected fresh task again selected and applied `wp_fixed_array_length_le_di
 
 The censored run therefore adds repeated dispatch-retrieval evidence while leaving the fold-guidance correction untested by a fresh accepted proof.  Its preserved journal rejects the indexed `word_reads` tactic at the branch-level `Wasm.wp` goal, demonstrating another shape-based negative selection.  Further work at this boundary requires a smaller capacity-to-allocation elaboration boundary or a checked composition theorem before another fixed-artifact run.
 
+### Capacity-to-allocation composition and accepted tactic screen
+
+`FixedArrayAllocatorWindow.constantCapacityRegion_spec_withTail` supplies the checked boundary identified by the censored run.  It composes `FixedArrayCapacity.constantProgram` with the immediately following `FixedArrayAllocatorWindow.region`, deriving capacity-local validity, frame projections, and the normalized eight-byte minimum before invoking the existing allocator theorem.  Its parameters retain the source frame dimensions, memory fit, memory mode, allocator globals, following program, and post-allocation continuation, so the statement describes the compiler's constant-result-array allocation motif rather than Demo 9's sum.
+
+A manual substitution applied the theorem to both branches of the unchanged Demo 9 artifact.  The complete `ArtifactResult` target passed, and the proof decreased from 526 to 498 lines, from 2,039 to 1,975 whitespace-delimited words, and from 28,132 to 26,131 bytes.  This check established interface fit before another proof-generation task used the theorem through structured retrieval.
+
+The fresh task selected the composed theorem for both length branches and reached the fold after the preceding corrected task had stopped within capacity elaboration.  It selected and used the indexed length-dispatch and block-loop tactics, normalized the callback frame as `afterContinue.toState.toLocals []`, and closed the successor invariant and decreasing measure.  Outer acceptance and a separate package-verification run accepted the artifact theorem over digest `aa263bbfa89c333f9fab497f1a2c370f476afc3419015d17b368cb7c8a6086d5`.
+
+Stage 5 took 1,759.087 seconds, 11.7 percent less than the 1,992.546-second fresh fold-completion run and 10.8 percent less than the 1,972.223-second guarded-back-edge run.  The accepted source grew to 584 lines, 2,269 words, and 30,369 bytes, so the favorable time observation accompanies adverse proof-size evidence relative to the fold-completion proof.  The journal also identified two general retrieval improvements: convert a concrete normalized-capacity equality with `congrArg UInt64.toNat` before memory arithmetic, and use the shared result-frame shape theorems before generated completion-frame declarations.
+
 ## Completion criteria
 
 The first complete increment emits a validated sidecar for every ordinary library-mode compilation requested by `leanexegen`.  Demos 1, 2, and 3 prove the same specifications over the same WASM bytes through an annotation-driven deterministic proof plan.  The retained evidence records proof-generation timings, annotation validation, region coverage, and independent Lean acceptance.

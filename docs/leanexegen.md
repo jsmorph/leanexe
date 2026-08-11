@@ -58,7 +58,7 @@ tools/leanexegen annotate \
 
 ## Headless Codex tasks
 
-Each generative task starts at most one ephemeral `codex exec` session in its own temporary directory.  The invocation uses `-C`, `--sandbox workspace-write`, `--skip-git-repo-check`, `--ephemeral`, `--json`, `--output-schema`, and `-o`, with the prompt supplied on standard input.  Codex can inspect and edit files inside that task's workspace, but it cannot write elsewhere.
+Each generative task starts at most one ephemeral `codex exec` session in its own directory below the repository's ignored `tmp/` root.  The invocation uses `-C`, `--sandbox workspace-write`, `--skip-git-repo-check`, `--ephemeral`, `--json`, `--output-schema`, and `-o`, with the prompt supplied on standard input.  Codex can inspect and edit files inside that task's workspace, but it cannot write elsewhere.
 
 The artifact-proof workspace includes `PROOF_IMPORT_CHECK.js`, generated from the same proof-kit and generated-module allowlist used by outer acceptance.  Codex runs this check before every prescribed Lean build, so an unsupported direct import becomes an in-session diagnostic rather than a publication-time rejection.  Outer acceptance repeats the import audit independently on the returned source.
 
