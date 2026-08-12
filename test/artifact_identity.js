@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 "use strict";
 
+const fs = require("node:fs");
 const path = require("node:path");
 const {
   collectReleaseInputs,
@@ -12,6 +13,7 @@ const {
   verificationDriverInputs,
 } = require("../tools/artifact-identity");
 const { currentLocalDate } = require("../tools/date");
+const { leanImports, specificationInputs } = require("../tools/artifact-proof");
 const {
   leanSourcesUnder,
   verifierRelativeSources,
@@ -92,6 +94,54 @@ if (JSON.stringify(localImports) !== JSON.stringify(expectedLocalImports)) {
 }
 for (const imported of localImports) {
   if (!releasePaths.has(imported)) throw new Error(`release identity omits ${imported}`);
+}
+
+const parsedImports = leanImports(`
+/- import Hidden.One
+   /- import Hidden.Two -/
+-/
+prelude
+import Example.One Example.Two -- trailing comment
+import Example.Three
+namespace Example
+def text := "an apparent /- comment -/ and -- line comment"
+`);
+if (JSON.stringify(parsedImports) !== JSON.stringify([
+  "Example.One",
+  "Example.Two",
+  "Example.Three",
+])) {
+  throw new Error("Lean import parsing failed its comment and multi-import test vector");
+}
+
+const specificationModule = "Project.ClobLimit.Spec";
+const specificationClosure = specificationInputs(specificationModule);
+const specificationPositions = new Map(
+  specificationClosure.map((moduleName, index) => [moduleName, index]),
+);
+if (specificationPositions.has(specificationModule)) {
+  throw new Error("behavioral specification input closure contains its root");
+}
+const specificationRoot = path.join(repoRoot, "proofs", "talos", "lean");
+for (const [moduleName, index] of specificationPositions) {
+  const source = path.join(
+    specificationRoot,
+    `${moduleName.replaceAll(".", path.sep)}.lean`,
+  );
+  for (const imported of leanImports(fs.readFileSync(source, "utf8"))) {
+    const importedIndex = specificationPositions.get(imported);
+    if (importedIndex !== undefined && importedIndex >= index) {
+      throw new Error(`behavioral specification input order places ${imported} after ${moduleName}`);
+    }
+  }
+}
+for (const imported of leanImports(fs.readFileSync(path.join(
+  specificationRoot,
+  `${specificationModule.replaceAll(".", path.sep)}.lean`,
+), "utf8"))) {
+  if (!specificationPositions.has(imported)) {
+    throw new Error(`behavioral specification input closure omits ${imported}`);
+  }
 }
 
 const proofMutation = releaseInputs.files.map((file) => ({
