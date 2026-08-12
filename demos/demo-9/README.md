@@ -118,7 +118,7 @@ The agent again selected `wp_fixed_array_length_le_dispatch_from` and `wp_block_
 
 Stage 5 took 1,759.087 seconds, including 1,686.337 seconds in Codex and 45.688 seconds in outer acceptance.  The result is 233.459 seconds, or 11.7 percent, faster than the fresh fold-completion reproof and 213.136 seconds, or 10.8 percent, faster than the guarded-back-edge screen.  This is the fastest retained Demo 9 proof-generation run, although one run cannot isolate the composition theorem from ordinary agent and machine variation.
 
-The accepted source contains 584 lines, 2,269 whitespace-delimited words, and 30,369 bytes, compared with 526 lines, 2,039 words, and 28,132 bytes for the fresh fold-completion proof.  A manual substitution of the same theorem had reduced that predecessor to 498 lines, 1,975 words, and 26,131 bytes.  The contrast shows that the theorem presents a compact checked interface, while the fresh agent's full branch and loop construction still determines the resulting proof size.
+The accepted source contains 584 lines, 2,269 whitespace-delimited words, and 30,369 bytes, compared with 526 lines, 2,039 words, and 28,132 bytes for the fresh fold-completion proof.  The [manual capacity-to-allocation proof](experiments/manual-capacity-allocation.lean) applies the same theorem to that predecessor and contains 498 lines, 1,975 words, and 26,131 bytes.  The contrast shows that the theorem presents a compact checked interface, while the fresh agent's full branch and loop construction still determines the resulting proof size.
 
 ## Execution
 
@@ -164,4 +164,5 @@ Every retained root file fixes a generation input, artifact, proof context, or m
 | [Fold-completion package](experiments/fold-completion.proof/) | The independently verified manual proof using the generated exact singleton-result adapter. |
 | [Fresh fold-completion reproof](experiments/fold-completion-reproof.proof/) | The independently verified fixed-artifact proof that retrieved and applied the generated completion adapter. |
 | [Capacity-to-allocation reproof](experiments/capacity-allocation-reproof.proof/) | The independently verified fixed-artifact proof that retrieved and applied the capacity-plus-allocator composition in both branches. |
+| [Manual capacity-to-allocation proof](experiments/manual-capacity-allocation.lean) | The checked source substitution that establishes the composed theorem's smaller proof interface without a generation-time measurement. |
 | [Manual fold-completion proof](experiments/manual-fold-completion.lean) | The readable behavioral proof retained by the fold-completion package. |

@@ -2,6 +2,10 @@
 
 LeanExe compiles a restricted, first-order subset of Lean 4 to standalone WebAssembly.  Lean serves as the source language, type checker, and proof environment.  The compiler loads a checked declaration from a built Lake module, classifies its reachable call graph against the accepted subset, lowers it through a small typed IR, and emits a WASM module with an arena allocator and reference-counted heap but no Lean runtime.  The compiler and Talos proof workspaces both pin Lean 4.31.0.  This document describes architecture; [Developing LeanExe](../DEVELOPING.md) owns development procedure, and the [Development Plan](../plan.md) owns current work.
 
+The diagram summarizes the development and verification flow from a prose description through a Lean specification, accepted source, emitted WAT, annotations, and an exact-artifact proof.  It also shows how compiler theorems, the LTG lemma and tactic library, and the proving journal inform proof construction.  The formal boundaries and implemented status of each connection appear in the verification and compiler-theorem documents rather than in the diagram.
+
+![LeanExe compilation and artifact-proof architecture](leanexe.png)
+
 ## Compilation Pipeline
 
 Compilation begins in `LeanExe/Extract/Env.lean`, which imports the requested module from `.lake/build/lib/lean` and resolves the entry declaration.  `LeanExe/Extract/Core.lean` collects every reachable declaration from the entry, restricted to the entry's root namespace, and distinguishes three roles established in `LeanExe/Extract/Types.lean`: entry functions with public ABI signatures, internal functions with internal layouts, and inline-only helpers that specialize away at call sites.  A scan over collected bodies discovers synthetic functions for Lean's generated recursion machinery, such as `brecOn` structural recursion, `WellFounded.fix` shapes, and closed structural folds, recognized by `LeanExe/Extract/StructuralRec.lean` and `LeanExe/Extract/Patterns.lean`.

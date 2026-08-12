@@ -11,6 +11,8 @@ Demo 9 accepts an array of at most eight `UInt64` values and returns a singleton
 | Fold annotation and structured LTG | Accepted | 3,188.251 s |
 | Exact traversal-prefix theorem | Censored without an accepted proof | at least 4,285 s |
 | Result-store LTG | Accepted; timing censored | 3,149.420 s |
+| First structured-tactic screen | Rejected by the independent outer check | no accepted measurement |
+| Corrected structured-tactic guidance | Censored before reaching the fold | approximately 2,880 s |
 
 The exact traversal-prefix run selected the new `fixed-array-traversal-input` entry through structured LTG and applied `FixedArrayTraversalInput.continuingProgram_spec` to the generated region equality.  That composition discharged the loop guard, indexed address, memory bound, represented-element read, and item-local update for the continuing branch.  The agent then proved the accumulator update and measure decrease, but it stalled while constructing the completed branch and final singleton result.
 
@@ -21,3 +23,7 @@ The result-store run received the new `fixed-array-result` entry and selected it
 The result-store time is excluded from timing comparisons because the journal records two broad searches of the dependency repository whose path results included external demo and benchmark proofs.  The agent reports that it opened only selected proof-kit source files and used none of the external proof paths, but the searches violated the experiment boundary.  The run remains valid evidence that structured retrieval found the result-store support and that its declarations compose with the artifact proof.
 
 `baseline`, `fold-prefix-2`, `array-fold-annotation-1`, and `result-ltg-search-censored-1` contain independently verifiable proof packages.  `traversal-prefix-censored-1` preserves the incomplete candidate, journal, generated annotation equality, recipes, and exact task inputs from the interrupted run.  The latter directory is diagnostic evidence rather than a proof package and therefore cannot pass `tools/leanexegen verify`.
+
+`structured-tactic-retrieval-rejected-1` preserves the first tactic-index screen, its outer-check diagnostic, and a separately checked repair.  Its agent selected and used the bounded-length and block-loop tactics, but the returned candidate failed at successor arithmetic and callback-frame normalization.  The repair established the general continuation guidance later used by an accepted proof.
+
+`structured-tactic-guidance-censored-1` preserves the corrected fresh task that selected the bounded-length tactic and then stopped changing while elaborating the two constant-capacity branches.  The run was interrupted after approximately forty-eight minutes, including about twenty-two minutes without a candidate, journal, or diagnostic update.  Its capacity bottleneck motivated the checked capacity-to-allocation composition later accepted in the [Demo 9 experiment archive](../../../demos/demo-9/README.md).

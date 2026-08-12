@@ -46,6 +46,11 @@ The [headless Codex orchestrator reference](docs/leanexegen.md) defines all eigh
 | `LeanExe/Examples` | Example Lean programs that exercise the supported subset. |
 | `test` | Node and Lean tests that compare Lean execution with generated WASM behavior. |
 | `proofs/talos` | Talos proof workspace: twenty completed artifact proofs, the binary verifier, the runtime lemma library, and the generic teardown theorem. |
+| [Demonstrations](demos/README.md) | Eleven end-to-end programs and their retained exact-artifact proof experiments. |
+| [Benchmark evidence](benchmarks/README.md) | Accepted, rejected, and censored proof-generation runs with journals and telemetry. |
+| [Structured LTG](ltg/README.md) | Categorized lemma, tactic, guidance, and worked-example retrieval catalog. |
+| [Plans](plans/README.md) | Verification and proof-generation plans with current status. |
+| [Research papers](paper/README.md) | LaTeX sources, reviewed PDFs, bibliographies, and publication records. |
 | `DEVELOPING.md` | Developer setup, diagnostics, test gates, proof artifacts, and troubleshooting. |
 | [Documentation](docs/README.md) | User, reference, verification, design, project-status, and historical documentation. |
 | `docs/verifying.md` | End-to-end recipe for verifying a new program. |

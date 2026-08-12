@@ -6423,7 +6423,7 @@ A controlled `leanexegen reprove` held the formal specification, Source, WASM, e
 
 One reproof demonstrates that the interface can reduce generation time but does not estimate a stable distribution.  The accepted proof grew by twelve lines while generation became faster, confirming that proof length serves only as a diagnostic measure.  Repeated fixed-artifact runs need internal telemetry for candidate writes, Lean commands, diagnostics, and outer checks before attributing the reduction among model search, proof organization, and elaboration.
 
-[Faster Direct WASM Proof Generation](better-wasm-proving.md) and the [implementation plan](better-wasm-proving-plan.md) record the next structural work.  The plan prioritizes an artifact-derived structural map, split proof checkpoints, complete allocator and array-wrapper theorems, source-derived semantic hints and capsules, and a proof-producing target verification-condition generator.  The `dev` host can add a concurrent Lean-checking lane after installation of Lean 4.31.0 and a semaphore-aware leanexe checkout, while fixed timing comparisons remain on one declared machine profile.
+[Faster Direct WASM Proof Generation](docs/better-wasm-proving.md) and the [implementation plan](plans/better-wasm-proving.md) record the next structural work.  The plan prioritizes an artifact-derived structural map, split proof checkpoints, complete allocator and array-wrapper theorems, source-derived semantic hints and capsules, and a proof-producing target verification-condition generator.  The `dev` host can add a concurrent Lean-checking lane after installation of Lean 4.31.0 and a semaphore-aware leanexe checkout, while fixed timing comparisons remain on one declared machine profile.
 
 ## 2026-08-05: Fixed-Artifact Timing Distributions
 
@@ -7158,3 +7158,15 @@ The proof reconstructs the callback from `afterContinue.toState.toLocals []`, ap
 Stage 5 took 1,759.087 seconds, including 1,686.337 seconds in Codex and 45.688 seconds in outer acceptance.  The accepted source contains 584 lines, 2,269 whitespace-delimited words, and 30,369 bytes, making it faster but larger than the 1,992.546-second, 526-line fresh fold-completion proof.  The retained package is `demos/demo-9/experiments/capacity-allocation-reproof.proof`.
 
 The journal led to two general guidance changes.  Capacity guidance now recommends applying `congrArg UInt64.toNat` to a concrete normalized-capacity equality before memory-bound rewrites, while fold guidance names `resultFrame_params`, `resultFrame_locals_length`, and `resultFrame_values` before generated completion-frame declarations.  The annotation recipe publishes those three shape theorems, and the structured fold entry indexes them for residual-goal retrieval.
+
+## 2026-08-11: Repository organization and scratch cleanup
+
+The cleanup retained the checked 498-line manual capacity-to-allocation proof at `demos/demo-9/experiments/manual-capacity-allocation.lean`.  Its SHA-256 digest, `2da4e3bf8e230ed74a8e8da1fea9c579a23d6b2c927b52e1413386a8b9e2580b`, matches the proof in the former generated workspace, and the complete `ArtifactResult` target passed before that workspace was removed.  The repository now tracks the 960-by-540 architecture diagram at `docs/leanexe.png`, with its role documented in the summary and document index.
+
+Git-aware moves placed historical root notes under `docs/history/`, the proof analysis under `docs/`, and its plan under `plans/`.  New indexes describe all demos, benchmark series, plans, papers, and principal documents.  The status document now covers work through 2026-08-11 and distinguishes completed gates, active composition work, and deferred theorem transport.
+
+The evidence inventory found 65 tracked benchmark-run directories and 23 tracked demo experiment packages.  Every directory in each inventory has a distinct Git tree object, so the repository contains no byte-identical tracked package duplicates in those sets.  The cleanup retained every tracked benchmark run and demo experiment.
+
+The removed material comprised the repository-local `tmp/` and `.tmp/` scratch trees, three editor backup files, one empty untracked benchmark directory, and the nested `leanclob/` clone.  The nested clone was clean at `f210b46e59f0770826d643370edfbf512b884311`, had the same remote and tracked tree as `../leanclob`, and remains available through that sibling checkout and the remote repository.  The root build cache and the 16-gibibyte Talos Lean package and build caches remain in place.
+
+The changed-document link check and `git diff --check` passed.  `tools/ltg check`, `node test/ltg.js`, and `node test/leanexegen.js` passed, including the 10,000-record LTG search test.  The final `Project.ProofKit.LTGCheck` build completed all 3,025 jobs through `tools/leanrun`.

@@ -2,6 +2,7 @@
 
 | Field | Value |
 |---|---|
+| Status | Reference roadmap and experiment record.  Later annotation, structured-LTG, and composition work supersedes parts of the unchecked queue. |
 | Date | 2026-08-05; evaluation policy revised 2026-08-09 |
 | Correctness gates | Accepted artifact theorem and independent package verification |
 | Evaluation dimensions | LTG retrieval, agent revisions, proof structure and size, shared abstraction use, compiler-derived evidence use, applicability, and Stage 5 time |
@@ -11,7 +12,7 @@
 
 Accepted artifact theorems and independent package verification are mandatory gates.  Each accepted iteration receives a scorecard covering LTG search and selection, agent revisions, proof structure and size, shared theorem or tactic use, compiler-derived evidence use, applicability beyond the measured program, and Stage 5 time.  No single scorecard dimension determines retention or promotion.  Line count, explicit syntax, local scaffolding, repeated derivations, and shared theorem use describe proof complexity; raw byte count, word length, and identifier length do not.  A long declaration name can indicate that the proof reused a checked abstraction instead of rebuilding its argument.
 
-The [technical analysis](better-wasm-proving.md) describes the available mechanisms and their logical boundaries.  This plan begins with measurement and complete semantic regions rather than additional leaf arithmetic because those changes affect several scorecard dimensions.  Every controlled comparison must concern the same frozen formal specification, `Program`, WASM, Codex identity, model settings, toolchain, machine profile, and cache policy.
+The [technical analysis](../docs/better-wasm-proving.md) describes the available mechanisms and their logical boundaries.  This plan begins with measurement and complete semantic regions rather than additional leaf arithmetic because those changes affect several scorecard dimensions.  Every controlled comparison must concern the same frozen formal specification, `Program`, WASM, Codex identity, model settings, toolchain, machine profile, and cache policy.
 
 ## Evidence and target
 
@@ -27,7 +28,7 @@ Three proofs using `Project.ProofKit.FixedArraySingleton.region_result_spec` too
 
 The final artifact-only theorem must continue to mention the exact Talos module derived from the embedded WASM bytes.  Proof generators, source proofs, compiler traces, structural maps, retrieval tools, and language models may propose evidence.  Lean must check every retained target claim against the exact `Program` and the existing decoded-byte equality.
 
-The artifact-only proof closure may contain `FormalSpec`, neutral mathematics, a source-free semantic capsule, the exact `Program`, checked structural declarations, proof-kit modules, target certificates, and artifact-support modules.  It must exclude Source, source theorem declarations, compiler IR, extraction declarations, emitter declarations, compiler traces, and lowering theorems.  Direct composition with a source theorem and checked lowering remains the separate theorem-transport result described in [Theorem Transport](plans/theorem-transport.md).
+The artifact-only proof closure may contain `FormalSpec`, neutral mathematics, a source-free semantic capsule, the exact `Program`, checked structural declarations, proof-kit modules, target certificates, and artifact-support modules.  It must exclude Source, source theorem declarations, compiler IR, extraction declarations, emitter declarations, compiler traces, and lowering theorems.  Direct composition with a source theorem and checked lowering remains the separate theorem-transport result described in [Theorem Transport](theorem-transport.md).
 
 Each machine serializes Lean commands through its own runner and semaphore.  One local Lean command and one `dev` Lean command may run concurrently because the locks and cgroups belong to separate machines.  Timing comparisons must remain on one fixed lane because the local and remote architectures, CPU quotas, memory limits, and caches differ.
 
@@ -48,7 +49,7 @@ The measurement stream owns `tools/leanexegen` and `tools/leanexegen-lib.js` whi
 
 Compiler theorems can reduce WAT proof work without entering the retained artifact theorem.  The compiler proves that a supported IR fragment emits a canonical neutral descriptor, while the artifact package independently proves that the descriptor program equals an exact interval of the decoded Talos `Program`.  The artifact proof then applies semantics proved for the neutral descriptor, retaining its independence from Source, extraction, compiler IR, and emitter declarations.
 
-The [compiler-theorem analysis](docs/compiler-theorem-bridge.md) defines the first restricted theorem boundary and records the current compiler inventory.  Its scalar reification increment now covers Demo 1's guard and complete loop body, proves production emission agreement, emits versioned descriptor data, and generates an exact decoded-region equality.  The remaining experiments add semantic information only when a neutral artifact-side checker or theorem can verify the same information against the descriptor and exact WAT-derived program.
+The [compiler-theorem analysis](../docs/compiler-theorem-bridge.md) defines the first restricted theorem boundary and records the current compiler inventory.  Its scalar reification increment now covers Demo 1's guard and complete loop body, proves production emission agreement, emits versioned descriptor data, and generates an exact decoded-region equality.  The remaining experiments add semantic information only when a neutral artifact-side checker or theorem can verify the same information against the descriptor and exact WAT-derived program.
 
 | Experiment | Compiler theorem or analysis | Artifact-side result | Proof work removed | Acceptance test |
 |---|---|---|---|---|
