@@ -20,9 +20,9 @@ The [Talos proof inventory](../proofs/talos/README.md) names each source-driven 
 
 ## Release state
 
-`proofs/artifacts/release.json` is a draft record for the current release-input digest, `e175bf46d1d2102da862d57464d1a8db5c64a681da1c084653386331292e7651`.  Refreshing the record on 2026-08-11 removed the source revision and warm receipts associated with the older input set.  `tools/artifact-release.js inspect` now accepts the record and reports four unresolved conditions.
+`proofs/artifacts/release.json` is a draft record for the current release-input digest, `e175bf46d1d2102da862d57464d1a8db5c64a681da1c084653386331292e7651`.  The aggregate artifact proof passed all twenty packages on 2026-08-11, and the conformance gate passed with the configured imported-memory warning after 3,853 Talos passes, six known failures, 627 skips, and twenty-five Wasmtime file passes.  `tools/artifact-release.js inspect` accepts both receipts and reports two unresolved conditions: the immutable source revision and its cold-checkout result.
 
-The artifact and conformance gates must run against the refreshed identity.  A subsequent commit will supply the immutable revision for the cold-checkout gate.  `tools/artifact-release.js check-ready` determines whether the resulting record has any unresolved condition.
+The next commit will supply the immutable revision for the cold-checkout gate.  That gate will repeat both release checks in a detached repository-local checkout and write the final receipt.  `tools/artifact-release.js check-ready` determines whether the resulting record has any unresolved condition.
 
 Lean 4.31.0 accepts the archived kernel-unsoundness reproduction referenced by the release record.  The owner accepted that toolchain defect for this project after the recorded narrow lexical audit of the artifact proof sources and two local LeanExe imports.  The audit does not repair the kernel or cover transitive dependencies.
 
