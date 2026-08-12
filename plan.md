@@ -4,13 +4,13 @@ This file is the only active project work queue.  The compiler, execution suite,
 
 ## 1. Reconcile current documentation and release evidence
 
-The documentation must describe one implementation and assign each changing fact to one source of truth.  The current release record predates later repository changes, so `tools/artifact-release.js inspect` rejects its input identity.  Documentation consolidation therefore precedes release-record refresh and release-gate execution.
+The documentation now describes one implementation and assigns each changing fact to one source of truth.  The release record carries the current input identity and no longer consumes receipts from the older input set.  The remaining work in this phase consists of warm-gate execution, immutable revision selection, and the cold-checkout gate.
 
 - [x] Consolidate navigation, language, compiler, artifact-proof, annotation, and proof-guidance documents.
 - [x] Remove superseded plans and experiment reports after migrating current facts and links.
 - [x] Standardize demo documentation and replace workspace examples that use `/tmp` with repository-local `./tmp` paths.
 - [x] Run local-link, stale-reference, command-example, and whitespace checks over the maintained documentation.
-- [ ] Refresh `proofs/artifacts/release.json` against the settled release inputs.
+- [x] Refresh `proofs/artifacts/release.json` against the settled release inputs.
 - [ ] Run the warm artifact-proof and semantic-conformance gates for the refreshed identity.
 - [ ] Record an immutable source revision and complete the cold-checkout gate.
 - [ ] Require `tools/artifact-release.js check-ready` to pass before describing the release as ready.

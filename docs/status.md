@@ -20,9 +20,9 @@ The [Talos proof inventory](../proofs/talos/README.md) names each source-driven 
 
 ## Release state
 
-`proofs/artifacts/release.json` is a draft record for an older release-input identity.  On 2026-08-11, `tools/artifact-release.js inspect` rejected that record because the current release-input digest differs from the recorded digest.  The older record contains successful warm artifact and conformance receipts plus a source revision, but those receipts do not describe the current tree.
+`proofs/artifacts/release.json` is a draft record for the current release-input digest, `e175bf46d1d2102da862d57464d1a8db5c64a681da1c084653386331292e7651`.  Refreshing the record on 2026-08-11 removed the source revision and warm receipts associated with the older input set.  `tools/artifact-release.js inspect` now accepts the record and reports four unresolved conditions.
 
-The release record must be refreshed after the documentation tree stabilizes.  The artifact and conformance gates must then run against the refreshed identity, followed by a cold-checkout gate at an immutable revision.  `tools/artifact-release.js check-ready` determines whether the resulting record has any unresolved condition.
+The artifact and conformance gates must run against the refreshed identity.  A subsequent commit will supply the immutable revision for the cold-checkout gate.  `tools/artifact-release.js check-ready` determines whether the resulting record has any unresolved condition.
 
 Lean 4.31.0 accepts the archived kernel-unsoundness reproduction referenced by the release record.  The owner accepted that toolchain defect for this project after the recorded narrow lexical audit of the artifact proof sources and two local LeanExe imports.  The audit does not repair the kernel or cover transitive dependencies.
 

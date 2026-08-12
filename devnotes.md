@@ -14,7 +14,7 @@ Checks run:
 - [x] `tools/check-docs.js` accepted 77 maintained Markdown files.
 - [x] `node --check tools/check-docs.js` accepted the documentation checker.
 - [x] Repository tool usage output matched the documented current command forms.
-- [ ] Refresh the release-input identity after committing the settled documentation.
+- [x] `tools/artifact-release.js refresh` recorded input digest `e175bf46d1d2102da862d57464d1a8db5c64a681da1c084653386331292e7651` and cleared stale gate receipts.
 
 ## 2026-08-11: Fold-composition work begins
 
