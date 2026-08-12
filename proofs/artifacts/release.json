@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "status": "draft",
-  "recordedDate": "2026-08-11",
+  "recordedDate": "2026-08-12",
   "sourceRevision": null,
   "releaseInputSha256": "6db591ec2d359cdab4bfd51b1f99b7e4477da338956e7e2ede2c9a861e725d1c",
   "artifactRegistry": {
@@ -328,30 +328,32 @@
   },
   "artifactProof": {
     "command": "tools/artifact-proof.js check-all",
-    "date": null,
-    "result": "pending",
+    "date": "2026-08-12",
+    "result": "passed",
     "artifactCount": 20,
-    "releaseInputSha256": null
+    "releaseInputSha256": "6db591ec2d359cdab4bfd51b1f99b7e4477da338956e7e2ede2c9a861e725d1c"
   },
   "semanticConformance": {
     "command": "tools/artifact-conformance.js check",
     "configSha256": "eb909480a3c04357f59aeb6e4c685bee88032a673003572990fb969bcf7524cf",
-    "releaseInputSha256": null,
-    "date": null,
-    "result": "pending",
+    "releaseInputSha256": "6db591ec2d359cdab4bfd51b1f99b7e4477da338956e7e2ede2c9a861e725d1c",
+    "date": "2026-08-12",
+    "result": "passed-with-warning",
     "officialFileCount": 25,
     "officialValidatorCases": 15,
     "talos": {
-      "pass": 0,
-      "fail": 0,
-      "skip": 0,
+      "pass": 3853,
+      "fail": 6,
+      "skip": 627,
       "cascade": 0,
       "decodeError": 0,
       "interpreterError": 0,
       "outOfFuel": 0
     },
-    "wasmtimeFilesPassed": 0,
-    "warnings": []
+    "wasmtimeFilesPassed": 25,
+    "warnings": [
+      "talos-imported-memory-instance"
+    ]
   },
   "coldCheckout": {
     "status": "pending",
@@ -362,8 +364,6 @@
   },
   "blockers": [
     "No immutable source revision records the current proof implementation.",
-    "The aggregate artifact proof has not passed under the selected toolchain.",
-    "The conformance gate has not passed under the selected toolchain.",
     "The release gates have not passed from a cold checkout of the recorded source revision."
   ]
 }
