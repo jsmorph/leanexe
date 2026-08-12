@@ -1,6 +1,6 @@
-# Current CLOB Work
+# Archived CLOB Completion Snapshot
 
-This note records where the CLOB proof work stopped and how to resume it.  The [Development Plan](plan.md) remains the authoritative work queue, while the [Development Status](docs/status.md) gives the detailed progress report and the [Proof Engineering Notes](docs/plan-notes.md) catalog reusable lemmas and proof patterns.  Read those documents when a statement here conflicts with newer committed work.
+This archived note records the CLOB proof state at commit `8dd82fc`.  The [Development Plan](../../plan.md) remains the authoritative work queue, while the [Development Status](../status.md) and [Proof Engineering Notes](../plan-notes.md) describe later work.  The snapshot remains available for its exact pickup instructions and historical proof inventory.
 
 ## Snapshot
 
@@ -36,14 +36,14 @@ Every direct `lean`, `lake`, or `lean-wasm` command must run inside the resource
 
 ## After the Gates
 
-The consolidation phase retains the planned divisions for the recorded no-diagnostic timeouts in `Project.Validate.Spec`, `Project.SharedPair.Spec`, `Project.LebU32.Iter`, and `Project.LebU32.NegIter`, the copy-loop and fresh-array library generalization, and release-tree generalization.  `leanclob/` is a separate nested repository and stays outside this work.  This `current.md` file stays untracked.
+The consolidation phase retains the planned divisions for the recorded no-diagnostic timeouts in `Project.Validate.Spec`, `Project.SharedPair.Spec`, `Project.LebU32.Iter`, and `Project.LebU32.NegIter`, the copy-loop and fresh-array library generalization, and release-tree generalization.  At the time of this snapshot, `leanclob/` was a separate nested repository outside the LeanExe work.  The repository later tracked this note and archived it here when the stated pickup point became historical.
 
 ## Reference Map
 
 | Document | Role |
 |----------|------|
-| [Development Plan](plan.md) | Required results, order, gates, and completion criteria. |
-| [Development Status](docs/status.md) | Detailed current proof state, measured progress, known failures, and resource policy. |
-| [Proof Engineering Notes](docs/plan-notes.md) | Reusable lemmas, close examples, failed approaches, and elaboration guidance. |
-| [Talos Proofs](proofs/talos/README.md) | Completed theorem inventory, proof architecture, and trusted-base boundary. |
-| [Development Journal](devnotes.md) | Dated rationale, focused build results, and historical proof increments. |
+| [Development Plan](../../plan.md) | Required results, order, gates, and completion criteria. |
+| [Development Status](../status.md) | Detailed current proof state, measured progress, known failures, and resource policy. |
+| [Proof Engineering Notes](../plan-notes.md) | Reusable lemmas, close examples, failed approaches, and elaboration guidance. |
+| [Talos Proofs](../../proofs/talos/README.md) | Completed theorem inventory, proof architecture, and trusted-base boundary. |
+| [Development Journal](../../devnotes.md) | Dated rationale, focused build results, and historical proof increments. |

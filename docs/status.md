@@ -1,12 +1,14 @@
 # Development Status
 
-This report records the repository state on 2026-08-03.  The source-driven Talos proof set covers all twenty registered artifacts, while the artifact verifier checks their exact binary WebAssembly files through decoding, validation, Talos translation, and behavior.  The [development plan](../plan.md), [artifact-verification plan](../plans/artifact-verification.md), and [development journal](../devnotes.md) record the remaining work and the evidence for completed checks.
+This report records the repository state through 2026-08-11.  The source-driven Talos proof set covers all twenty registered artifacts, while the artifact verifier checks their exact binary WebAssembly files through decoding, validation, Talos translation, and behavior.  The [development plan](../plan.md), [plan registry](../plans/README.md), and [development journal](../devnotes.md) record the remaining work and the evidence for completed checks.
 
 ## Summary
 
 LeanExe has completed the runtime-ownership, single-evaluation, and CLOB proof phases of the source-driven plan.  Input-generic Talos proofs cover `quote`, `cancel`, `findBest`, `postOnly`, `matchFuel`, `limit`, `market`, and `depth`, in addition to the earlier artifacts.  `ClobDepth.Func7.func7_terminates` proves that the exported depth function terminates for every represented order book under the stated allocator budget and returns two owned level arrays representing the exact source `depthL` bids and asks.
 
 The artifact verifier has a faithful raw syntax, bounded binary parser, LEB128 and primitive decoders, a restricted Core 3.0 module decoder, a profile validator, and translation to the Talos module representation.  Theorems prove decoder soundness against the independent binary grammar and validator soundness against the independent `CoreValid` judgment.  All twenty registered binaries now have frozen packages, exact embedded bytes, checked translations to their Talos execution models, and artifact-level correctness theorems that reuse their existing behavioral specifications.
+
+`leanexegen` now generates and independently verifies direct artifact proofs for eleven demonstration programs using a fixed `Array UInt64 → Array UInt64` public interface.  Compiler annotations identify checked instruction regions and publish proof recipes, while the structured LTG catalogs reusable lemmas, tactics, guidance, and worked examples for bounded retrieval.  The fastest retained Demo 9 fold proof applies a checked constant-capacity-plus-allocator composition in both branches and completed Stage 5 in 1,759.087 seconds.
 
 ## Artifact Verifier
 
@@ -40,7 +42,10 @@ Each artifact target proves successful decoding and validation of its embedded b
 | Semantic conformance | Twenty-five selected official files pass with one known upstream warning | Talos produced 3,853 passes, six configured assertion failures, and 627 skips; Wasmtime passed every selected file. |
 | Decoder and validator conformance | Fifteen official invalid modules match | Each pinned file, assertion kind, line, classification stage, and error constructor matched on 2026-08-03. |
 | Lean toolchain | Lean 4.31.0 pinned in both workspaces | The selected release accepts the archived reproduction; the local audit covers literal `addDecl` and `inductDecl` references in the artifact proof tree and its two local `LeanExe` imports. |
-| Release evidence | Draft with matching warm gate receipts | The immutable source revision and matching cold-checkout receipt remain unavailable until this implementation is committed. |
+| Release evidence | Draft with matching warm gate receipts | A final immutable release revision and its matching cold-checkout receipt remain pending. |
+| `leanexegen` demonstrations | Eleven exact-artifact programs | Every demo has a retained request, specification, source, WASM artifact, and direct proof.  Later demos include controlled fixed-artifact experiments. |
+| Structured LTG | 24 entries in 7 categories | The catalog indexes 84 unique declarations and 5 tactic commands; generated indexes and declaration checks pass. |
+| Fold composition | Structured-tactic acceptance gate complete | Demo 9 retrieved both indexed tactics and the capacity-to-allocation theorem.  A structurally different fold remains before broader promotion. |
 
 ## Depth Proof Structure
 
@@ -71,7 +76,7 @@ tools/leanrun --timeout <duration> <lean-or-lake-command>
 The focused proof command starts from `proofs/talos/lean` because its `lakefile.toml` owns the Talos project.  Repository-level scripts start from the repository root, while the Talos and artifact entry points call the runner for each child.  Signal-aware process-group execution ensures that interrupting a Node driver terminates its active runner and descendants.
 
 ```sh
-cd /media/hd2/src/leanexe
+cd /home/somebody/src/leanexe
 tools/talos-proof.js check clob_depth
 tools/talos-proof.js check --all
 ```
@@ -83,3 +88,7 @@ Do not substitute `ulimit -v`, `prlimit --as`, a background process, or an unbou
 The official-corpus gate now pins CodeLib, the WebAssembly testsuite, `wasm-tools`, and Wasmtime, then runs twenty-five exact `.wast` files through Talos and Wasmtime.  Talos reports 3,853 passes, six configured assertion failures, and 627 skips without cascades, decoder errors, interpreter errors, or fuel exhaustion, while Wasmtime passes every selected file.  The gate accepts the exact imported-memory discrepancy as an upstream warning, removes the warning when it disappears, and rejects every changed or additional failure; the [Talos imported-memory defect report](telos-bug.md) records its provenance and scope.
 
 The selected corpus now covers the accepted integer, control, call, local, memory, conversion, and expression forms, with `global.wast` recorded as a profile-coverage gap because that file mixes local globals with imported globals and a table form.  Fifteen separately pinned official invalid modules reach the artifact decoder or validator and match exact error constructors.  The draft release record binds all artifact identities, theorem names, pins, input digests, and observed results; completion requires an immutable revision and its matching cold-checkout receipt.
+
+Direct artifact-proof work now concentrates on transfer across program structure rather than another Demo 9 timing iteration.  The next controlled screen should freeze a fold with a different control or accumulator layout and test the shared annotations, composition theorems, indexed tactics, and residual-goal guidance without program-specific additions.  The [artifact-proof composition plan](../plans/artifact-proof-composition.md) owns that acceptance gate.
+
+Source-theorem transport remains a separate deferred roadmap.  Compiler theorems may continue to generate checked annotations and exact region equalities that help construct direct WAT-level proofs without entering their trusted closure.  The [source-theorem transport plan](../plans/theorem-transport.md) defines the stronger source-dependent theorem and its additional proof obligations.
