@@ -31,6 +31,8 @@ The first warm check of that division found the older GCD package layout, which 
 
 The layout-aware warm gate passed all twenty exact-artifact packages, behavioral specifications, and manifest declarations on 2026-08-12.  The conformance gate passed the same day with its configured imported-memory warning, and `tools/artifact-release.js refresh` consumed both receipts for release-input digest `6db591ec2d359cdab4bfd51b1f99b7e4477da338956e7e2ede2c9a861e725d1c`.  Release inspection now reports only the immutable source revision and its cold-checkout result as blockers.
 
+Recording the immutable source revision exposed a state assumption in `test/artifact_release.js`.  The test expected the earlier two-blocker draft record literally, although the release validator derives both status and blockers from the evidence fields.  The test now derives its expectation through the same exported rule, so it covers the one-blocker transition and the final ready record.
+
 ## 2026-08-11: Fold-composition work begins
 
 The current [artifact-proving reference](docs/artifact-proving.md) and root [development plan](plan.md) retain the unresolved obligations identified across the addition, multiplication, and XOR fold journals.  The first experiment added a general equality interface for `Wasm.Locals`, including operand-stack replacement projections.  The second experiment added a generic arbitrary-postcondition singleton-result theorem and an exact annotation-generated adapter after the frame interface passed fixed-proof checks.

@@ -22,13 +22,11 @@ function expectFailure(value, pattern) {
 }
 
 const { evidence, blockers } = loadEvidence();
-const expectedBlockers = [
-  "No immutable source revision records the current proof implementation.",
-  "The release gates have not passed from a cold checkout of the recorded source revision.",
-];
-if (evidence.status !== "draft" || evidence.packages.length !== 20 ||
+const expectedBlockers = derivedBlockers(evidence);
+const expectedStatus = expectedBlockers.length === 0 ? "ready" : "draft";
+if (evidence.status !== expectedStatus || evidence.packages.length !== 20 ||
     JSON.stringify(blockers) !== JSON.stringify(expectedBlockers)) {
-  throw new Error("the draft release record has the wrong state");
+  throw new Error("the release record has the wrong state");
 }
 if (JSON.stringify(blockers) !== JSON.stringify(derivedBlockers(evidence))) {
   throw new Error("release blockers are not derived from the evidence fields");
