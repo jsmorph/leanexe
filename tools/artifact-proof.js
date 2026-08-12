@@ -109,6 +109,20 @@ async function checkEmbedded(packages) {
 }
 
 async function buildArtifact(item) {
+  const artifactPrefix = item.manifest.artifactBytesModule.replace(/\.ArtifactBytes$/u, "");
+  const inputs = [
+    item.manifest.cachedProgramModule,
+    `${artifactPrefix}.ArtifactDecoded`,
+    `${artifactPrefix}.ArtifactRawCache`,
+    `${artifactPrefix}.ArtifactDecode`,
+    `${artifactPrefix}.ArtifactValidation`,
+  ];
+  for (const target of inputs) {
+    await run(`artifact proof input ${target}`, [
+      "--timeout", "30m",
+      "lake", "-d", proofRoot, "build", target,
+    ]);
+  }
   await run("artifact proof", [
     "--timeout", "15m",
     "lake", "-d", proofRoot, "build", item.entry.proofTarget,
