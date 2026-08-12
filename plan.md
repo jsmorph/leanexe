@@ -4,7 +4,7 @@ This file is the only active project work queue.  The compiler, execution suite,
 
 ## 1. Reconcile current documentation and release evidence
 
-The documentation now describes one implementation and assigns each changing fact to one source of truth.  The release record carries the current input identity and successful warm-gate receipts dated 2026-08-11.  The remaining work in this phase consists of immutable revision selection and the cold-checkout gate.
+The documentation now describes one implementation and assigns each changing fact to one source of truth.  The release record carries the current input identity and successful warm-gate receipts dated 2026-08-12.  The remaining work in this phase consists of immutable revision selection and the cold-checkout gate.
 
 - [x] Consolidate navigation, language, compiler, artifact-proof, annotation, and proof-guidance documents.
 - [x] Remove superseded plans and experiment reports after migrating current facts and links.

@@ -12,7 +12,7 @@ LeanExe owns the assurance consequence because this repository pins Talos, treat
 
 ## Reproduction
 
-The repository command verifies the CodeLib and official testsuite revisions, checks `wasm-tools` 1.251.0 and Wasmtime 44.0.0, builds the Talos testsuite executable, and runs twenty-five exact official files.  The 2026-08-11 run produced 3,853 Talos passes, six known assertion failures, and 627 skipped commands, with no cascades, decoder errors, interpreter errors, or fuel exhaustion.  Wasmtime passed all twenty-five files with `function-references=y`.
+The repository command verifies the CodeLib and official testsuite revisions, checks `wasm-tools` 1.251.0 and Wasmtime 44.0.0, builds the Talos testsuite executable, and runs twenty-five exact official files.  The 2026-08-12 run produced 3,853 Talos passes, six known assertion failures, and 627 skipped commands, with no cascades, decoder errors, interpreter errors, or fuel exhaustion.  Wasmtime passed all twenty-five files with `function-references=y`.
 
 ```sh
 tools/artifact-conformance.js check

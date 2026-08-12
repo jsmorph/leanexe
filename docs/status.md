@@ -1,6 +1,6 @@
 # Development Status
 
-This report describes the repository state on 2026-08-11.  Checked registries contain twenty source-driven Talos cases and twenty exact-artifact packages, while the demonstration index contains ten current array-interface programs and the original scalar example.  The root [Development Plan](../plan.md) owns remaining work, while repository tools and registries own changing counts and release identities.
+This report describes the repository state on 2026-08-12.  Checked registries contain twenty source-driven Talos cases and twenty exact-artifact packages, while the demonstration index contains ten current array-interface programs and the original scalar example.  The root [Development Plan](../plan.md) owns remaining work, while repository tools and registries own changing counts and release identities.
 
 ## Current capabilities
 
@@ -20,7 +20,7 @@ The [Talos proof inventory](../proofs/talos/README.md) names each source-driven 
 
 ## Release state
 
-`proofs/artifacts/release.json` is a draft record for the current release-input digest, `23b34f98bc9da1c9c6e3801af0c20303380f3beacf45d0e1c3c2c678ddadef35`.  The aggregate artifact proof passed all twenty packages on 2026-08-11, and the conformance gate passed with the configured imported-memory warning after 3,853 Talos passes, six known failures, 627 skips, and twenty-five Wasmtime file passes.  `tools/artifact-release.js inspect` accepts both receipts and reports two unresolved conditions: the immutable source revision and its cold-checkout result.
+`proofs/artifacts/release.json` is a draft record for the current release-input digest, `6db591ec2d359cdab4bfd51b1f99b7e4477da338956e7e2ede2c9a861e725d1c`.  The aggregate artifact proof passed all twenty packages on 2026-08-12, and the conformance gate passed with the configured imported-memory warning after 3,853 Talos passes, six known failures, 627 skips, and twenty-five Wasmtime file passes.  `tools/artifact-release.js inspect` accepts both receipts and reports two unresolved conditions: the immutable source revision and its cold-checkout result.
 
 The next commit will supply the immutable revision for the cold-checkout gate.  That gate will repeat both release checks in a detached repository-local checkout and write the final receipt.  `tools/artifact-release.js check-ready` determines whether the resulting record has any unresolved condition.
 
@@ -40,4 +40,4 @@ Lean 4.31.0 accepts the archived kernel-unsoundness reproduction referenced by t
 
 ## Immediate work
 
-The release record must now be refreshed and its warm gates rerun against the settled documentation tree.  The next proof-engineering experiment should freeze a fold with a structurally different control or accumulator shape before receiving current annotation and LTG support.  The compiler-theorem work should then test one narrow theorem-directed artifact-proof boundary whose checked evidence remains useful without assuming complete compiler correctness.
+The release record now needs an immutable source revision and a matching cold-checkout receipt.  The next proof-engineering experiment should freeze a fold with a structurally different control or accumulator shape before receiving current annotation and LTG support.  The compiler-theorem work should then test one narrow theorem-directed artifact-proof boundary whose checked evidence remains useful without assuming complete compiler correctness.
