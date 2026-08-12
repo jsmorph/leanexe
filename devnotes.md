@@ -27,6 +27,8 @@ The revised warm artifact gate passed after the first separated byte-module targ
 
 The next cold attempt passed the complete divided byte phase, then exposed the same shape inside `Project.AssocList.ArtifactTranslation`.  Its generated program, decoded module, raw-cache equality, decode theorem, and validation module each completed, but their sequential work exhausted the encompassing 15-minute artifact-target limit before the final translation module.  The driver now builds those five manifest-derived inputs as separate 30-minute targets for every package before applying the unchanged 15-minute limit to the final artifact theorem.
 
+The first warm check of that division found the older GCD package layout, which uses `Project.Gcd.Artifact` in place of the separate `ArtifactValidation` module used by the other nineteen packages.  The driver now includes only prerequisite modules that exist for the registered package and includes either layout without special-casing a case name.  The manifest-defined program module remains mandatory for every package.
+
 ## 2026-08-11: Fold-composition work begins
 
 The current [artifact-proving reference](docs/artifact-proving.md) and root [development plan](plan.md) retain the unresolved obligations identified across the addition, multiplication, and XOR fold journals.  The first experiment added a general equality interface for `Wasm.Locals`, including operand-stack replacement projections.  The second experiment added a generic arbitrary-postcondition singleton-result theorem and an exact annotation-generated adapter after the frame interface passed fixed-proof checks.
