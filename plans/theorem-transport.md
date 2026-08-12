@@ -1,6 +1,6 @@
 # Source-Theorem Transport Plan
 
-**Status:** Proposed; the formal artifact-verification dependency passed on 2026-08-03, with immutable revision and cold-checkout evidence still pending.
+**Status:** Deferred.  Exact-artifact decoding, validation, translation, and behavioral proof are implemented for twenty artifacts.  The current project plan first tests smaller compiler-theorem-directed regions before committing to this general refinement boundary.
 
 ## Goal
 
@@ -128,7 +128,7 @@ Arithmetic theorems must state the selected fixed-width behavior.  The `UInt64` 
 
 ### Exact Artifact Link
 
-The [Artifact-Level Verification Plan](artifact-verification.md) supplies embedded bytes, a sound decoder, complete validation for the accepted profile, and translation to Talos.  Each transport package must prove that the translated validated module equals `lowerScalar` applied to the frozen IR and ABI metadata.  Full-module equality covers helper functions, indices, exports, globals, memory declarations, and function bodies, avoiding an unchecked correspondence between entry points.
+The [Artifact Verification Format](../docs/artifact-format.md) supplies embedded bytes, a sound decoder, complete validation for the accepted profile, and translation to Talos.  Each transport package must prove that the translated validated module equals `lowerScalar` applied to the frozen IR and ABI metadata.  Full-module equality covers helper functions, indices, exports, globals, memory declarations, and function bodies, avoiding an unchecked correspondence between entry points.
 
 ```lean
 theorem artifact_equals_lowering :
@@ -221,12 +221,12 @@ Record certificate size, elaboration time, peak memory, and equality-check time 
 
 ## Relationship to Existing Plans
 
-The [Artifact-Level Verification Plan](artifact-verification.md) owns byte identity, decoding, validation, and the Talos translation.  This plan consumes those results and adds the source certificate, verified scalar lowering, exact equality to that lowering, and theorem transport.  Artifact-only proofs therefore remain independent of source and compiler claims.
+The [Artifact Verification Format](../docs/artifact-format.md) owns byte identity, decoding, validation, and the Talos translation.  This plan consumes those results and adds the source certificate, verified scalar lowering, exact equality to that lowering, and theorem transport.  Artifact-only proofs therefore remain independent of source and compiler claims.
 
-The [Compiler Verification Plan](../proofs/talos/compiler-verification.md) covers a broader compiler-correctness program, including heap representations and later ownership properties.  This plan takes a narrower translation-validation path for scalar functions: every artifact carries checked evidence that its frozen IR computes the source function and that its decoded module equals a proved lowering of that IR.  The scalar back-end theorems can later become components of the broader compiler proof.
+The [Compiler Architecture](../docs/compiler.md) records the present extraction, IR, emitter, annotation, and scalar-certificate boundaries.  This plan takes a translation-validation path for scalar functions: every artifact carries checked evidence that its frozen IR computes the source function and that its decoded module equals a proved lowering of that IR.  The scalar backend theorems can later become components of a broader compiler proof.
 
-The [Emitter Restructuring Plan](../docs/emitter.md) provides the structured module boundary needed by `lowerScalar` and full-module equality.  Its serializer theorems can generate equality evidence more efficiently, but this plan continues to check equality against independently decoded bytes.  The exact artifact remains the subject of the transported theorem regardless of how the emitter produced it.
+The compiler already lowers function bodies through `LeanExe.Wasm.Instr`, and `LeanExe.Wasm.ScalarCertificate` proves selected descriptor-emitter equalities.  This plan still requires a proof-grade module lowering and a connection from that lowering to independently decoded bytes.  The exact artifact remains the subject of the transported theorem regardless of how the emitter produced its candidate certificate.
 
 ## References
 
-Repository context appears in the [Artifact-Level Verification Plan](artifact-verification.md), [Compiler Verification Plan](../proofs/talos/compiler-verification.md), [Emitter Restructuring](../docs/emitter.md), [Verifying a Program](../docs/verifying.md), and [Talos Proofs](../proofs/talos/README.md).  The scalar IR definitions and evaluator live in `LeanExe/IR/Core.lean`, while scalar extraction and execution support live in `LeanExe/Extract/Eval.lean`.  Decisions, failed certificate approaches, and completed acceptance gates belong in `devnotes.md` as implementation proceeds.
+Repository context appears in [Artifact Proving](../docs/artifact-proving.md), [Compiler Architecture](../docs/compiler.md), [Verifying a Program](../docs/verifying.md), and [Talos Proofs](../proofs/talos/README.md).  The scalar IR definitions and evaluator live in `LeanExe/IR/Core.lean`, while scalar extraction and execution support live in `LeanExe/Extract/Eval.lean`.  Decisions, failed certificate approaches, and completed acceptance gates belong in `devnotes.md` as implementation proceeds.

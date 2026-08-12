@@ -48,7 +48,7 @@ The [compact-boundary package](experiments/compact-fold-boundary.proof/) tests t
 
 Stage 5 took 2,297.877 seconds, including 2,251.334 seconds in Codex and 35.168 seconds in outer acceptance.  The result is 10.3 percent slower than the retained fold-structure proof, 25.2 percent faster than the capacity-and-frame screen, and 33.0 percent faster than baseline.  Its 655-line, 2,472-word, 32,143-byte proof is 147 lines longer than the retained proof because the update boundary and three frame getters remain artifact-local.
 
-The experiment establishes that a compact semantic endpoint can prevent heartbeat exhaustion and complete the proof.  It does not establish a proof-time or proof-size improvement over the retained primary proof, so the retained package remains primary.  [Opacity and elaboration boundaries in artifact proofs](../../docs/opacity-proof-boundaries.md) records the mechanism, evidence limits, and planned compiled and out-of-sample tests.
+The experiment establishes that a compact semantic endpoint can prevent heartbeat exhaustion and complete the proof.  It does not establish a proof-time or proof-size improvement over the retained primary proof, so the retained package remains primary.  [Artifact Proving](../../docs/artifact-proving.md) records the current abstraction, measurement, and evidence rules.
 
 ## Compiler-described guarded-back-edge comparison
 
