@@ -33,6 +33,12 @@ The layout-aware warm gate passed all twenty exact-artifact packages, behavioral
 
 Recording the immutable source revision exposed a state assumption in `test/artifact_release.js`.  The test expected the earlier two-blocker draft record literally, although the release validator derives both status and blockers from the evidence fields.  The test now derives its expectation through the same exported rule, so it covers the one-blocker transition and the final ready record.
 
+The cold gate at source revision `c956e6bd2d359774a0c2b40da21dde75c43397d2` reached the 30-minute limit for `Project.Gcd.ArtifactBytes` after completing 2,996 shared jobs.  The byte module produced no diagnostic; its import of the artifact translator pulled in the `CodeLib` umbrella, which in turn compiled the complete Talos interpreter and weakest-precondition library inside the first package boundary.  The driver now builds `CodeLib` once under a separate 60-minute shared-library boundary before the artifact translator or any package target.
+
+A narrower `Interpreter.Wasm.Syntax` import suffices to compile the translator, but `Translate.lean` belongs to the normative verifier-source digest recorded by every immutable package.  Adopting that source change would require reissuing the twenty package manifests.  The release work therefore preserves the packaged verifier source and changes only the proof driver's build boundaries.
+
+The explicit shared-library target completed 3,001 jobs under its 60-minute boundary.  The renewed warm artifact gate then passed all twenty packages, behavioral specifications, and declaration checks, while the matching conformance gate repeated its accepted corpus result.  Refresh consumed both receipts for release-input digest `7c5b330b33d365959427ba60c1fa0f5ebbc5ee3b4d959b0b5c454953167cc1fd` and restored the two expected pre-cold blockers.
+
 ## 2026-08-11: Fold-composition work begins
 
 The current [artifact-proving reference](docs/artifact-proving.md) and root [development plan](plan.md) retain the unresolved obligations identified across the addition, multiplication, and XOR fold journals.  The first experiment added a general equality interface for `Wasm.Locals`, including operand-stack replacement projections.  The second experiment added a generic arbitrary-postcondition singleton-result theorem and an exact annotation-generated adapter after the frame interface passed fixed-proof checks.
