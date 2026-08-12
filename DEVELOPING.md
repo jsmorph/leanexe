@@ -100,7 +100,7 @@ Run the smallest relevant test during development, then run every gate required 
 
 ## Proof Artifacts
 
-The proof workspace has twenty registered source entries and twenty completed specifications, including all eight CLOB exports through `depth`.  `proofs/talos/cases.json` maps each source entry to its generated module and handwritten specification target, while `proofs/artifacts/registry.json` maps each frozen package to its exact-artifact proof target.  `tools/artifact-proof.js check-all` passed every frozen artifact theorem, behavioral specification, and manifest declaration on 2026-08-03.
+The proof workspace has twenty registered source entries and twenty completed specifications, including all eight CLOB exports through `depth`.  `proofs/talos/cases.json` maps each source entry to its generated module and handwritten specification target, while `proofs/artifacts/registry.json` maps each frozen package to its exact-artifact proof target.  `tools/artifact-proof.js check-all` passed every frozen artifact theorem, behavioral specification, and manifest declaration on 2026-08-03 for the release-input identity recorded by that run; current release status comes from `tools/artifact-release.js inspect`.
 
 `tools/talos-artifact.js prepare <case>` builds the source and compiler, emits ignored WASM and WAT, and asks the pinned Talos verifier to refresh the tracked `Project/<Case>/Program.lean` proof cache.  The tool gives Talos a disposable `rust/<case>/Cargo.toml` and artifact tree under the repository's ignored `tmp/` directory.  It replaces the three outputs only after generation succeeds, leaves a byte-identical cache untouched, and never edits handwritten proof modules.
 
@@ -128,7 +128,7 @@ The same command extracts fifteen exact `assert_invalid` and `assert_malformed` 
 
 `proofs/artifacts/release.json` binds the artifact registry, each package manifest, every recorded theorem name, the tool pins, and the artifact and conformance results.  `tools/artifact-release.js inspect` validates those identities and derives the unresolved release conditions from the record.  `check-ready` fails while any condition remains.
 
-`tools/artifact-release.js check-cold <revision>` clones the recorded source revision below the repository's ignored `tmp/` directory, compares its release inputs byte-for-byte with the recorded input identity, checks the external tools and exact Lean commit, fetches the pinned proof dependencies, initializes the official testsuite, and runs both release gates.  It rejects tracked changes after dependency setup or either gate, rechecks the input identity, and writes a machine-readable receipt after success.  The command requires an immutable source revision and the recorded owner acceptance of the Lean 4.31.0 kernel defect, so the current draft cannot run it until this implementation has a commit.
+`tools/artifact-release.js check-cold <revision>` clones the recorded source revision below the repository's ignored `tmp/` directory, compares its release inputs byte-for-byte with the recorded input identity, checks the external tools and exact Lean commit, fetches the pinned proof dependencies, initializes the official testsuite, and runs both release gates.  It rejects tracked changes after dependency setup or either gate, rechecks the input identity, and writes a machine-readable receipt after success.  The command requires a refreshed release identity, an immutable source revision containing that identity, and the recorded owner acceptance of the Lean 4.31.0 kernel defect.
 
 ## Generated Files and Dependencies
 
@@ -168,6 +168,6 @@ Failure messages should identify the command, module, entry, declaration, and re
 
 ## Documentation Maintenance
 
-Each document has one role.  The repository overview provides setup and a user-facing introduction; this guide owns development workflow and gates; the manual owns source patterns and diagnostics; the specification owns semantics and rejection boundaries; the Talos README owns the current proof inventory; the verification guide owns proof procedure; the development plan owns future work; and the journal owns history and rationale.  The technical summary explains architecture without serving as a second roadmap.
+Each document has one role.  The repository overview provides a short introduction; this guide owns setup, development workflow, and gates; the manual owns source patterns and diagnostics; the specification owns semantics and rejection boundaries; the compiler reference owns implementation architecture; the Talos README owns the proof inventory; the verification guide owns proof procedure; the development plan owns future work; and the journal owns rationale and test evidence.  Update the authoritative document in the same change as the behavior it describes.
 
 Update the authoritative document in the same change as the behavior it describes.  Keep volatile counts in one inventory and link to it elsewhere when the number adds no value.  Mark historical experiments and superseded plans at the top so a reader cannot mistake them for current procedure.

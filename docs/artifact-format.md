@@ -1,6 +1,6 @@
 # Artifact Verification Format
 
-**Status:** Implemented for twenty registered artifacts.  The schema-three aggregate gate passed on 2026-08-03, and the conformance gate passed with the configured Talos imported-memory warning.  The release record remains a draft until an immutable source revision and its cold-checkout receipt exist.
+**Status:** Implemented for twenty registered artifacts.  The last recorded warm aggregate and conformance gates passed on 2026-08-03 for their recorded release-input identity.  The current tree has a different identity, so the draft release record requires refreshed warm receipts, an immutable source revision, and a matching cold-checkout receipt.
 
 ## Formal Subject and Claim
 
@@ -73,7 +73,7 @@ The pinned twenty-five-file official execution slice produced 3,853 Talos passes
 
 The same gate checks fifteen official invalid modules against exact artifact decoder or validator error constructors.  The cases cover malformed headers and sections, integer overflow, invalid memory limits and alignments, stack underflow, and unused stack results.  This corpus tests the executable classifier independently of the twenty accepted artifacts, while `decode_sound` and `validate_sound` remain the formal evidence for successful results.
 
-The draft release record binds all twenty artifact and package identities, every theorem name, the verifier source digest, the release-input digest, and the tool pins.  Lean 4.31.0 accepts the archived kernel reproduction, and the owner accepts that defect after the recorded local lexical audit; this qualification does not repair the kernel.  The artifact and conformance receipts now bind the expanded 565-file release-input digest; an immutable source revision and a matching cold-checkout receipt remain absent.
+The draft release record binds all twenty artifact and package identities, every theorem name, the verifier source digest, the release-input digest, and the tool pins.  Lean 4.31.0 accepts the archived kernel reproduction, and the owner accepts that defect after the recorded local lexical audit; this qualification does not repair the kernel.  On 2026-08-11, `tools/artifact-release.js inspect` reported that the current release-input identity differs from the record, so the recorded receipts and source revision describe the older input set.
 
 ## Trusted Base and Evidence
 
@@ -83,4 +83,4 @@ LeanExe, its source language, its compiler passes, `wasm-tools`, the WAT decoder
 
 ## Normative References
 
-The format definition uses the WebAssembly Core 3.0 [binary module grammar](https://webassembly.github.io/spec/core/binary/modules.html), [binary values](https://webassembly.github.io/spec/core/binary/values.html), [binary instructions](https://webassembly.github.io/spec/core/binary/instructions.html), and [binary conventions](https://webassembly.github.io/spec/core/binary/conventions.html).  Validation follows the specification's [module rules](https://webassembly.github.io/spec/core/valid/modules.html), [validation conventions](https://webassembly.github.io/spec/core/valid/conventions.html), and [validation algorithm](https://webassembly.github.io/spec/core/appendix/algorithm.html).  The [artifact-level verification plan](../plans/artifact-verification.md) defines the implementation order and acceptance gates.
+The format definition uses the WebAssembly Core 3.0 [binary module grammar](https://webassembly.github.io/spec/core/binary/modules.html), [binary values](https://webassembly.github.io/spec/core/binary/values.html), [binary instructions](https://webassembly.github.io/spec/core/binary/instructions.html), and [binary conventions](https://webassembly.github.io/spec/core/binary/conventions.html).  Validation follows the specification's [module rules](https://webassembly.github.io/spec/core/valid/modules.html), [validation conventions](https://webassembly.github.io/spec/core/valid/conventions.html), and [validation algorithm](https://webassembly.github.io/spec/core/appendix/algorithm.html).  [Artifact Proving](artifact-proving.md) describes how the implemented format supports behavioral proof construction, while the root [Development Plan](../plan.md) owns release completion.

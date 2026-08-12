@@ -2,7 +2,7 @@
 
 ## 2026-08-11: Fold-composition work begins
 
-The [artifact-proof composition plan](plans/artifact-proof-composition.md) separates two obligations recorded across the addition, multiplication, and XOR fold journals.  The first experiment adds a general equality interface for `Wasm.Locals`, including operand-stack replacement projections.  The second experiment will add a generic arbitrary-postcondition singleton-result theorem and an exact annotation-generated adapter only after the frame interface passes fixed-proof checks.
+The current [artifact-proving reference](docs/artifact-proving.md) and root [development plan](plan.md) retain the unresolved obligations identified across the addition, multiplication, and XOR fold journals.  The first experiment added a general equality interface for `Wasm.Locals`, including operand-stack replacement projections.  The second experiment added a generic arbitrary-postcondition singleton-result theorem and an exact annotation-generated adapter after the frame interface passed fixed-proof checks.
 
 A focused Lean probe confirmed that the pinned Talos `Wasm.Locals` structure exposes `Wasm.Locals.mk.injEq` but no named `Wasm.Locals.ext` theorem.  Demo 11's journal records failed attempts to use record syntax and the `ext` tactic before `convert` and reflexivity closed an exit-frame equality.  This evidence justifies a small generic theorem whose statement depends only on the three fields of `Wasm.Locals`.
 
@@ -119,7 +119,7 @@ Proof-package schema 6 records the expanded formal interface, while verification
 
 ## 2026-08-03: Reusable WASM Proof Library Plan
 
-The [WASM proof library plan](docs/wasm-proofs.md) inventories the shared arithmetic, memory, control-flow, runtime, and function-portability support already used by the artifact proofs.  It records the current `leanexegen` access gap: generated proof sessions cannot import repository-owned shared modules and receive no checked declaration catalog.  The ordered work adds a stable facade, dependency and identity audits, a checked catalog, feature-directed Pi context, scalar-loop and memory-runtime pilots, and an ongoing two-consumer distillation rule.
+The current [artifact-proving reference](docs/artifact-proving.md) and [ProofKit reference](proofs/talos/lean/Project/ProofKit/README.md) describe the shared arithmetic, memory, control-flow, runtime, and function-portability support used by artifact proofs.  The original plan recorded that generated proof sessions could not import repository-owned shared modules and received no checked declaration catalog.  The completed work added an allowed ProofKit, dependency and identity audits, a checked catalog, feature-directed context, scalar-loop and memory-runtime pilots, and continuing evidence-based distillation.
 
 ## 2026-08-03: `leanexegen` Headless Codex Orchestration
 
@@ -4706,7 +4706,7 @@ The repository review covered the tracked source, extraction pipeline, IR interp
 
 The replacement plan starts with two concrete compiler issues.  Source-level `LeanExe.Runtime.release` still relies on an unchecked ownership precondition, and CLOB `cancel` repeats one `findIdx?` scan three times while flattening its result.  The work order checks explicit-release ownership, evaluates matched values once, regenerates and proves complete `cancel`, then proves `postOnly`, `limit`, and `market` while extracting shared proof lemmas only from repeated cases.
 
-The review also found documentation and tool gaps.  [Repository Overview](README.md), [Talos Proofs](proofs/talos/README.md), [Technical Summary](docs/summary.md), and [Development Agenda](docs/history/agenda.md) describe eleven artifacts, while the aggregate script now checks fourteen; CLI help omits `dump-ir` and `compile-wat` and retains a prototype-era scope sentence.  The root workspace pins Lean 4.29.1, the proof workspace pins Lean 4.31.0 and Talos commit `bb3277e21c9786e3133d5c1601e34ebdc0bea4df`, and Wasmtime defaults to 44.0.0, while `wasm-tools` and Node have no recorded versions and the Wasmtime download script does not verify archive checksums.  The plan schedules version checks and archive verification after the active semantic work.
+The review also found documentation and tool gaps.  The repository overview, Talos proof inventory, technical summary, and development agenda then described eleven artifacts, while the aggregate script checked fourteen; CLI help omitted `dump-ir` and `compile-wat` and retained a prototype-era scope sentence.  The root workspace pinned Lean 4.29.1, the proof workspace pinned Lean 4.31.0 and Talos commit `bb3277e21c9786e3133d5c1601e34ebdc0bea4df`, and Wasmtime defaulted to 44.0.0, while `wasm-tools` and Node had no recorded versions and the Wasmtime download script did not verify archive checksums.  The plan scheduled version checks and archive verification after the active semantic work.
 
 The ordinary execution gate passed.  `node test/run_all.js` reported 114 classification cases, 8 ownership-report cases, 784 accepted cases, 34 rejections, 13 traps, 38 reference-counting cases, 70 byte-array allocation cases, 23 ASCII-string cases, 4 integer-map cases, 48 JSON cases, 35 WASI cases with 2 traps, 7 rejections, and 19 compile-only checks, 63 self-emitted LEB128 cases, 301 standard-Lean comparison cases, 58 IR-interpreter comparison cases, and 56 fuzz cases.  One leak-accounting fixture intentionally retains blocks, while the other six reported leak-free behavior.
 
@@ -6423,7 +6423,7 @@ A controlled `leanexegen reprove` held the formal specification, Source, WASM, e
 
 One reproof demonstrates that the interface can reduce generation time but does not estimate a stable distribution.  The accepted proof grew by twelve lines while generation became faster, confirming that proof length serves only as a diagnostic measure.  Repeated fixed-artifact runs need internal telemetry for candidate writes, Lean commands, diagnostics, and outer checks before attributing the reduction among model search, proof organization, and elaboration.
 
-[Faster Direct WASM Proof Generation](docs/better-wasm-proving.md) and the [implementation plan](plans/better-wasm-proving.md) record the next structural work.  The plan prioritizes an artifact-derived structural map, split proof checkpoints, complete allocator and array-wrapper theorems, source-derived semantic hints and capsules, and a proof-producing target verification-condition generator.  The `dev` host can add a concurrent Lean-checking lane after installation of Lean 4.31.0 and a semaphore-aware leanexe checkout, while fixed timing comparisons remain on one declared machine profile.
+The current [artifact-proving reference](docs/artifact-proving.md) records the structural work distilled from the earlier direct-WASM proof plan.  That work prioritized an artifact-derived structural map, split proof checkpoints, complete allocator and array-wrapper theorems, source-derived semantic hints and capsules, and a proof-producing target verification-condition generator.  The `dev` host could add a concurrent Lean-checking lane after installation of Lean 4.31.0 and a semaphore-aware leanexe checkout, while fixed timing comparisons remained on one declared machine profile.
 
 ## 2026-08-05: Fixed-Artifact Timing Distributions
 
@@ -6991,7 +6991,7 @@ The journal confirms that the capacity theorem removed both local capacity deriv
 
 ## 2026-08-10: Artifact-proof opacity investigation
 
-The VQ note on opacity boundaries prompted a controlled investigation of compact theorem interfaces, recorded in [Artifact-proof opacity investigation](docs/opacity-proof-boundaries.md).  During the current fixed Demo 9 run, direct simplification of the continuing fold edge exhausted one million heartbeats because the full outer loop continuation remained in every weakest-precondition reduction.  A continuation-generic local theorem with a compact frame endpoint checked after projecting combined-local hypotheses through the shared `Frame` declarations.
+The VQ note on opacity boundaries prompted a controlled investigation of compact theorem interfaces, retained in the [Demo 9 experiments](demos/demo-9/README.md).  During the fixed Demo 9 run, direct simplification of the continuing fold edge exhausted one million heartbeats because the full outer loop continuation remained in every weakest-precondition reduction.  A continuation-generic local theorem with a compact frame endpoint checked after projecting combined-local hypotheses through the shared `Frame` declarations.
 
 The accepted proof completed Stage 5 in 2,297.877 seconds and passed independent package verification.  This is 10.3 percent slower than the retained fold-structure proof, 25.2 percent faster than the capacity-and-frame screen, and 33.0 percent faster than baseline; its 655 lines are 28.9 percent more than the retained proof.  The compact theorem removed the heartbeat failure and enabled completion, but these measurements do not establish a time or size improvement.
 
@@ -7035,7 +7035,7 @@ The annotation generator now emits a continuing frame, its item-local validity t
 
 A fresh fixed-artifact reproof found the adapter through structured LTG, applied it at the continuing edge, completed the artifact theorem, and passed separate package verification.  Stage 5 took 1,906.536 seconds against the primary run's 1,596.295 seconds, while the proof grew to 669 lines, 2,435 words, and 35,871 bytes.  The run therefore establishes retrieval and applicability but supplies negative time and size evidence.
 
-The fresh agent rebuilt its loop invariant around the generated 21-value frame and referred to that frame seventeen times.  The smaller manual proof kept its existing semantic fold frame and let the adapter infer the generated local values at one boundary.  Traversal LTG guidance now recommends that form, while [the opacity research record](docs/opacity-proof-boundaries.md) preserves the artifact identity, both proof forms, telemetry, journal observations, and the separate named-postcondition experiment for a later marXiv note.
+The fresh agent rebuilt its loop invariant around the generated 21-value frame and referred to that frame seventeen times.  The smaller manual proof kept its existing semantic fold frame and let the adapter infer the generated local values at one boundary.  Traversal LTG guidance now recommends that form, while the [Demo 9 experiment packages](demos/demo-9/README.md) preserve the artifact identity, proof forms, telemetry, journal observations, and separate named-postcondition experiment.
 
 ## 2026-08-10: Local-irreducibility screen
 
