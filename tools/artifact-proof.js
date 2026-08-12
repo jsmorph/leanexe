@@ -110,13 +110,17 @@ async function checkEmbedded(packages) {
 
 async function buildArtifact(item) {
   const artifactPrefix = item.manifest.artifactBytesModule.replace(/\.ArtifactBytes$/u, "");
-  const inputs = [
+  const candidates = [
     item.manifest.cachedProgramModule,
     `${artifactPrefix}.ArtifactDecoded`,
     `${artifactPrefix}.ArtifactRawCache`,
     `${artifactPrefix}.ArtifactDecode`,
     `${artifactPrefix}.ArtifactValidation`,
+    `${artifactPrefix}.Artifact`,
   ];
+  const inputs = candidates.filter((target) => fs.existsSync(
+    path.join(proofRoot, `${target.replaceAll(".", path.sep)}.lean`),
+  ));
   for (const target of inputs) {
     await run(`artifact proof input ${target}`, [
       "--timeout", "30m",
