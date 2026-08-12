@@ -33,6 +33,7 @@ const allowedAxioms = new Set([
 ]);
 const generatedDecisionAxiom =
   /^[A-Za-z0-9_.]+\._native\.(?:native_decide|bv_decide)\.ax_[0-9_]+$/;
+const builtSpecificationInputs = new Set();
 
 function fail(message) {
   throw new Error(message);
@@ -142,7 +143,99 @@ async function buildArtifact(item) {
   console.log(`Artifact theorem passed: ${item.entry.case} ${item.entry.proofTarget}`);
 }
 
+function stripLeanComments(source) {
+  let result = "";
+  let depth = 0;
+  for (let index = 0; index < source.length;) {
+    if (depth === 0 && source[index] === "\"") {
+      result += source[index];
+      index += 1;
+      while (index < source.length) {
+        const character = source[index];
+        result += character;
+        index += 1;
+        if (character === "\\" && index < source.length) {
+          result += source[index];
+          index += 1;
+        } else if (character === "\"") {
+          break;
+        }
+      }
+    } else if (depth === 0 && source.startsWith("--", index)) {
+      index += 2;
+      while (index < source.length && source[index] !== "\n") index += 1;
+    } else if (source.startsWith("/-", index)) {
+      depth += 1;
+      index += 2;
+    } else if (depth > 0 && source.startsWith("-/", index)) {
+      depth -= 1;
+      index += 2;
+    } else {
+      const character = source[index];
+      if (depth === 0 || character === "\n") result += character;
+      index += 1;
+    }
+  }
+  if (depth !== 0) fail("unterminated Lean block comment");
+  return result;
+}
+
+function leanImports(source) {
+  const imports = [];
+  for (const line of stripLeanComments(source).split("\n")) {
+    const code = line.trim();
+    if (code === "" || code === "prelude") continue;
+    const match = /^import\s+(.+)$/u.exec(code);
+    if (!match) break;
+    imports.push(...match[1].trim().split(/\s+/u));
+  }
+  return imports;
+}
+
+function localModuleSource(moduleName) {
+  if (!/^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*$/u.test(moduleName)) {
+    return null;
+  }
+  const source = path.join(proofRoot, `${moduleName.replaceAll(".", path.sep)}.lean`);
+  if (!fs.existsSync(source)) return null;
+  const stat = fs.lstatSync(source);
+  if (!stat.isFile() || stat.isSymbolicLink()) {
+    fail(`invalid local Lean module source: ${source}`);
+  }
+  return source;
+}
+
+function specificationInputs(moduleName) {
+  const ordered = [];
+  const visited = new Set();
+  const visiting = new Set();
+  function visit(target) {
+    if (visited.has(target)) return;
+    if (visiting.has(target)) fail(`cyclic local Lean imports at ${target}`);
+    const source = localModuleSource(target);
+    if (source === null) return;
+    visiting.add(target);
+    for (const imported of leanImports(fs.readFileSync(source, "utf8"))) visit(imported);
+    visiting.delete(target);
+    visited.add(target);
+    if (target !== moduleName) ordered.push(target);
+  }
+  if (localModuleSource(moduleName) === null) {
+    fail(`missing behavioral specification module: ${moduleName}`);
+  }
+  visit(moduleName);
+  return ordered;
+}
+
 async function buildSpecification(item) {
+  for (const target of specificationInputs(item.manifest.specModule)) {
+    if (builtSpecificationInputs.has(target)) continue;
+    await run(`behavioral specification input ${target}`, [
+      "--timeout", "30m",
+      "lake", "-d", proofRoot, "build", target,
+    ]);
+    builtSpecificationInputs.add(target);
+  }
   await run("behavioral specification", [
     "--timeout", "60m",
     "lake", "-d", proofRoot, "build", item.manifest.specModule,
@@ -298,7 +391,14 @@ async function main() {
   await checkDeclarations([item]);
 }
 
-main().catch((error) => {
-  console.error(`artifact-proof.js: ${error.message}`);
-  process.exitCode = 1;
-});
+if (require.main === module) {
+  main().catch((error) => {
+    console.error(`artifact-proof.js: ${error.message}`);
+    process.exitCode = 1;
+  });
+}
+
+module.exports = {
+  leanImports,
+  specificationInputs,
+};
