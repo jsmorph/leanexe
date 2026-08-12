@@ -19,6 +19,10 @@ Checks run:
 - [x] `tools/artifact-conformance.js check` passed twenty-five execution files and fifteen invalid modules with the one configured Talos imported-memory warning.
 - [x] A second `tools/artifact-release.js refresh` consumed both matching warm-gate receipts and reduced the blocker count from four to two.
 
+The first cold-checkout attempt reached `Project.ClobLimit.ArtifactBytes` before the aggregate `Project.Artifact.Binary.CheckFile` target exhausted its 15-minute limit.  The target imports all twenty embedded-byte modules, so a clean checkout charged the complete shared Talos build and every large byte-literal elaboration to one timeout boundary.  No theorem or byte comparison failed.
+
+The artifact driver now builds each manifest-declared embedded-byte module as a separate 30-minute target before building the aggregate checker.  This division preserves the exact byte-comparison program and gives the initial shared dependency build and each large literal an independent limit.  Because `tools/artifact-proof.js` belongs to the release-input identity, the changed driver requires new warm receipts, a new immutable revision, and another cold run.
+
 ## 2026-08-11: Fold-composition work begins
 
 The current [artifact-proving reference](docs/artifact-proving.md) and root [development plan](plan.md) retain the unresolved obligations identified across the addition, multiplication, and XOR fold journals.  The first experiment added a general equality interface for `Wasm.Locals`, including operand-stack replacement projections.  The second experiment added a generic arbitrary-postcondition singleton-result theorem and an exact annotation-generated adapter after the frame interface passed fixed-proof checks.
