@@ -1,69 +1,27 @@
 # LeanExe
 
-LeanExe compiles a restricted Lean 4 program to a standalone WebAssembly module.  Lean remains the type checker and source language; the compiler loads a checked declaration from a Lean module and emits WASM for the executable subset described in [Language Specification](docs/spec.md).  The supported subset covers first-order pure programs over scalar values, byte arrays, fixed-width arrays, structures, inductive values, bounded recursion, and internal recursive data structures.
+LeanExe compiles a checked declaration from a restricted Lean 4 program to a standalone WebAssembly module.  The accepted language consists of pure, monomorphic, first-order programs over supported scalar and heap representations, including bounded arrays and internal recursive data.  The [language specification](docs/spec.md) defines that language, while the [user manual](docs/manual.md) explains how to write programs within it.
 
-The default generated module exports a plain WASM function for the selected Lean declaration.  Scalar programs can run directly with Wasmtime.  Programs that pass or return byte arrays, structures, variants, or arrays use the ABI described below, so a host program must provide flattened values or memory values in the expected form.  WASI command modes provide stdout output, bounded stdin input, and an error-aware byte transform without compiling Lean `IO`.
+LeanExe also supports direct verification of an exact WASM artifact.  Its artifact path embeds the binary bytes in Lean, decodes and validates them with checked functions, connects the decoded module to the Talos execution model, and proves a behavioral theorem about that module.  This theorem does not depend on the source program or a compiler-correctness assumption.
+
+![LeanExe architecture](docs/leanexe.png)
 
 ## Requirements
 
-This repository uses Lean through `elan` and Lake.  The compiler and Talos proof workspaces pin Lean 4.31.0 at commit `68218e876d2a38b1985b8590fff244a83c321783`, which accepts the archived kernel-unsoundness reproduction recorded by the release evidence.  The project owner accepts that known defect after a checked lexical audit found neither `addDecl` nor `inductDecl` in the artifact proof tree or its two local `LeanExe` source imports; the audit does not cover dependencies or repair the kernel.  Wasmtime runs generated modules, and a small C host runner handles library-mode ABI tests that need memory writes and inspection.  Run every direct Lean or Lake command through the [machine-serialized runner](DEVELOPING.md#lean-process-limits).
+The compiler and Talos proof workspaces pin Lean 4.31.0 at commit `68218e876d2a38b1985b8590fff244a83c321783`.  The complete execution suite requires Node.js 24.13.0, Wasmtime 44.0.0, a C11 compiler, and `wasm-tools` 1.251.0.  [Developing LeanExe](DEVELOPING.md) defines the setup, process limits, version checks, and required tests.
+
+Run every direct Lean or Lake command through `tools/leanrun`.  The runner serializes Lean work with the neighboring VQ repository and applies the repository's CPU, memory, swap, and thread limits.  Repository drivers that invoke Lean already use this runner for their child processes.
 
 ```sh
 tools/download-wasmtime.sh
 tools/leanrun lake build
 tools/build-wasmtime-host.sh
-```
-
-`tools/download-wasmtime.sh` supports Linux `x86_64` and `aarch64`, downloads the Wasmtime CLI and matching C API package into `build/tools/wasmtime`, and verifies the published SHA-256 hashes for Wasmtime 44.0.0 before extraction.  The test suite requires Node.js 24.13.0, a C11 compiler available as `cc`, and the system tools used by the setup scripts; WAT and proof checks require `wasm-tools` 1.251.0.  [Developing LeanExe](DEVELOPING.md) records the version checks, environment overrides, proof setup, and troubleshooting procedures.
-
-```sh
 node test/run_all.js
 ```
 
-## Prose-to-artifact proof orchestration
+## Compile and run
 
-`tools/leanexegen` invokes the installed Codex CLI in headless mode to generate a formal specification, a Lean program, and an exact-artifact behavioral proof in three fresh tasks.  Each task runs as one ephemeral session that edits its candidate and repeats real Lean or compiler checks until they pass.  The entire session runs inside one `tools/leanrun` scope and machine-wide lock, while the outer process repeats the final checks independently.  The proof task receives the frozen formal specification and deterministic artifact model but receives neither Source nor the compiler.
-
-```sh
-tools/leanexegen -o myprogram.wasm myprogram.txt
-
-tools/leanexegen reprove -o revised.wasm myprogram.proof
-
-tools/leanexegen verify myprogram.proof
-
-tools/leanexegen run myprogram.wasm 10 20 30
-```
-
-The [headless Codex orchestrator reference](docs/leanexegen.md) defines all eight stages, the fixed `Array UInt64 → Array UInt64` interface, controlled reproof mode, structured task outcomes, sidecar reports, warnings, dependency pins, and current limitations.  The [structured LTG catalog](docs/ltg.md) organizes checked proof assets, compiler-motif support, guidance, and worked examples for file-based proof-agent retrieval.  The orchestrator fixes `FormalSpec.ArtifactSpec : Wasm.Module → Prop`, including the array-memory representation and allocator precondition, and uses that exact declaration in the final artifact theorem.  An existing sidecar can be verified without Codex or the LeanExe compiler.
-
-## Repository Layout
-
-| Path | Purpose |
-|------|---------|
-| `LeanExe/Extract` | Checked-declaration extraction, dependency reporting, ABI lowering, and IR generation. |
-| `LeanExe/IR` | The first-order core IR used before WASM emission. |
-| `LeanExe/Wasm` | WASM module model, binary encoder, WAT printer, and interpreter support used by tests. |
-| `LeanExe/Examples` | Example Lean programs that exercise the supported subset. |
-| `test` | Node and Lean tests that compare Lean execution with generated WASM behavior. |
-| `proofs/talos` | Talos proof workspace: twenty completed artifact proofs, the binary verifier, the runtime lemma library, and the generic teardown theorem. |
-| [Demonstrations](demos/README.md) | Eleven end-to-end programs and their retained exact-artifact proof experiments. |
-| [Benchmark evidence](benchmarks/README.md) | Accepted, rejected, and censored proof-generation runs with journals and telemetry. |
-| [Structured LTG](ltg/README.md) | Categorized lemma, tactic, guidance, and worked-example retrieval catalog. |
-| [Plans](plans/README.md) | Verification and proof-generation plans with current status. |
-| [Research papers](paper/README.md) | LaTeX sources, reviewed PDFs, bibliographies, and publication records. |
-| `DEVELOPING.md` | Developer setup, diagnostics, test gates, proof artifacts, and troubleshooting. |
-| [Documentation](docs/README.md) | User, reference, verification, design, project-status, and historical documentation. |
-| `docs/verifying.md` | End-to-end recipe for verifying a new program. |
-| `docs/manual.md` | Practical guide to writing Lean source that LeanExe can compile. |
-| `docs/spec.md` | The accepted Lean subset, ABI, semantics, and known unsupported features. |
-| `plan.md` | Development plan for expanding the compiler. |
-| `devnotes.md` | Development notes and references. |
-
-## Write a Program
-
-Write ordinary Lean definitions inside a Lake module.  The selected entry declaration must be pure, monomorphically specialized at runtime, first-order, and accepted by the subset in [Language Specification](docs/spec.md).  Use [LeanExe User Manual](docs/manual.md) for source templates and practical authoring rules.  Use concrete types such as `UInt64`, `Nat`, `Bool`, `ByteArray`, arrays, structures, and inductives; parametric structures and inductives may appear at concrete supported instantiations.  Simple polymorphic helpers and type-class-constrained helpers can be useful when each call site fixes concrete supported types and evidence specializes away, while runtime dictionaries, function values, `IO`, `unsafe`, and `partial` remain outside the accepted subset.
-
-This scalar example compiles to an exported WASM function that Wasmtime can call directly:
+This declaration compiles to a scalar WASM export.  Lean remains responsible for parsing, elaboration, type checking, and declaration loading.  LeanExe accepts the checked declaration only when every reachable runtime term lies in the supported subset.
 
 ```lean
 namespace LeanExe.Examples.ReadmeDemo
@@ -74,368 +32,57 @@ def choose (flag x y : UInt64) : UInt64 :=
 end LeanExe.Examples.ReadmeDemo
 ```
 
-Store the file at `LeanExe/Examples/ReadmeDemo.lean`, then build the module:
+Build the containing Lean module, compile the selected declaration, and invoke the exported function with Wasmtime:
 
 ```sh
 tools/leanrun lake build LeanExe.Examples.ReadmeDemo
-```
 
-The compiler input is the checked Lean declaration loaded from the built module.  The command names the module and the fully qualified entry declaration, and the compiler rejects declarations outside the supported subset.  A rejected program should be treated as outside the language accepted by LeanExe, even if Lean itself can evaluate it.
-
-Use explicit `Nat` fuel for loops and recursive algorithms.  The recursive helper should take fuel as its first argument, return a supported value, and make the recursive call in tail position.  This pattern compiles to a WASM loop instead of relying on Lean's full recursion machinery.
-
-Pure `Id.run do` blocks are accepted for local mutable-state code that Lean elaborates to first-order terms.  Mutable locals may hold scalars, structures, byte arrays, arrays, `Option`, `Except`, products, supported tagged values, and internal recursive pointers when their types satisfy the normal layout rules.  State records may contain heap fields such as `ByteArray` and internal `Array` values.  Nested conditional, `match`, and `if let` assignments compile through Lean's generated local continuations when those continuations remain local and first-order.  Sparse generated matches from `if let` and catch-all arms are accepted for `Option` and nonrecursive user inductives.  Parser-style loops may combine mutable cursors, indexed `ByteArray` reads, mutable byte-array output, mutable arrays, and explicit status values.
-
-`Option` and `Except` do-notation is accepted when Lean elaborates it to first-order `Pure.pure`, `Bind.bind`, and `ForIn.forIn` applications.  `Except` bind chains may call helpers that use accepted loops and may return structured, tagged, array, or byte-array payloads.  Error results short-circuit later binds and later monadic loop iterations, matching standard Lean behavior.
-
-Loops are accepted for scans over `ByteArray`, fixed-width arrays, ranges such as `[start:stop]` or `[start:stop:step]`, and source `while` loops that Lean elaborates through `Lean.Loop`, when the checked monad is `Id`, `Option`, or `Except ε`.  The loop state may be a scalar, `ByteArray`, an array pointer, a product, a structure, a nonrecursive tagged value, or a recursive-inductive pointer value.  Loop bodies may update multiple mutable locals, use nested accepted loops, use `continue` to skip the rest of the current iteration, or use `break` to return the current loop state.  Direct `Array.foldl`, `Array.foldr`, and `ByteArray.foldl` use the same accumulator layout for supported direct-lambda folders, including byte-producing accumulators.
-
-```lean
-namespace LeanExe.Examples.ReadmeLoop
-
-def sumToFuel : Nat -> UInt64 -> UInt64 -> UInt64
-  | 0, _, acc => acc
-  | fuel + 1, n, acc =>
-      if n == 0 then
-        acc
-      else
-        sumToFuel fuel (n - 1) (acc + n)
-
-def sumTo (n : UInt64) : UInt64 :=
-  sumToFuel n.toNat n 0
-
-end LeanExe.Examples.ReadmeLoop
-```
-
-User-defined structures and nonrecursive inductives are accepted when every runtime type argument has a concrete supported type and all runtime fields use supported types after substitution.  Structures flatten by field order at the ABI boundary, and inductives flatten to a constructor tag plus payload slots.  Recursive inductives can be used inside compiled programs, including inside internal arrays, but they cannot be entry parameters or entry results.  Public arrays may contain `ByteArray`, nested arrays, `Option`, `Except`, and fixed-width structures or tagged values with heap-reference fields, provided the flattened element layout contains no recursive inductive value.  Public entry structures and tagged values may also contain heap-bearing array fields under the same nonrecursive limit.  Internal arrays may also contain products, recursive-inductive pointers, and fixed-width structures or tagged values that contain recursive pointer fields.  Mutual recursive inductive families are supported as internal data: constructors may refer to another member of the same specialized family directly or through fixed-width arrays.  Ordinary mutual structural traversals over recursive-family members are accepted for Lean's generated nested `PSum` well-founded helper shape.  Monomorphic recursive instances such as `List α` are also accepted internally when `α` has a supported internal layout, including scalar values, products such as `UInt64 × UInt64`, structures, nonrecursive tagged values, `ByteArray`, and tagged values such as `Option UInt64`, `Option ByteArray`, and `Except ByteArray UInt64` in the comparison suite.  Supported list operations include construction, matching, helper calls, source-defined traversals that return list values, direct structural recursion, source patterns that destructure product fields in constructor arms, direct `List.concat`, closed structural folds and predicates, heap-bearing `List.foldl` and `List.foldr` result values in the tested shapes, direct `List.any` and `List.all` over the tested element layouts, and branching tree or AST traversals.  Closed `List.foldl` examples include byte-array, structure, `Option ByteArray`, and `Except ByteArray ByteArray` accumulators when the direct callback specializes to first-order code.  Recursive tree traversals through an `Array` child field are accepted for the generated `WellFounded.fix` shape described in the specification.
-
-```lean
-namespace LeanExe.Examples.ReadmeData
-
-structure Point where
-  x : UInt64
-  y : UInt64
-
-inductive Status where
-  | ok
-  | retry (code : UInt64)
-  | fail
-
-def move (p : Point) : Point :=
-  { p with x := p.x + 1 }
-
-def statusCode : Status -> UInt64
-  | .ok => 0
-  | .retry code => code
-  | .fail => 999
-
-end LeanExe.Examples.ReadmeData
-```
-
-## Compile
-
-Use `compile` to write a WASM binary.  The exported entry name is the final component of the Lean declaration name, so `LeanExe.Examples.ReadmeDemo.choose` exports `choose`.  The module also exports `memory`, `alloc`, `reset`, `retain`, `release`, and `free` for host-side allocation, repeated execution, and reference-counted result lifetime, plus the runtime counter globals `allocCount`, `retainCount`, `releaseCount`, and `freeCount` for host-side leak accounting.
-
-```sh
 tools/leanrun .lake/build/bin/lean-wasm compile \
   --module LeanExe.Examples.ReadmeDemo \
   --entry LeanExe.Examples.ReadmeDemo.choose \
   --out build/choose.wasm
+
+build/tools/wasmtime/current/wasmtime run \
+  --invoke choose build/choose.wasm 0 41 99
 ```
 
-Inspect a generated module as WAT with `compile-wat`, which serializes the same lowering as `compile` from the same structured instructions; `tools/check-wat.sh` verifies that `wasm-tools parse` of the text reproduces the compiled binary byte for byte.  Printing the compiled binary with `wasm-tools print` remains an independent view of the module that ships.  Use `report` to classify the entry and its dependencies, `dump-ir` to inspect accepted lowering, and `ownership-report` to inspect result owners, fresh-result summaries, emitted releases, returned owners, fold accumulator releases, and explicit source-level releases.
+Scalar parameters and results use WASM `i64`.  Arrays, byte arrays, structures, and tagged values use the memory layouts and ownership rules specified in the ABI.  WASI command modes provide bounded stdin, argv, stdout, stderr, and explicit error results while keeping the selected Lean entry pure.
+
+## Generate and verify an artifact proof
+
+`tools/leanexegen` uses separate headless Codex tasks to generate a formal specification, a Lean program, and a proof about the compiled artifact.  Each task may iterate with Lean, while the outer tool independently checks its result.  The proof task receives the frozen specification and exact artifact model but does not receive the source program or compiler implementation.
 
 ```sh
-tools/leanrun .lake/build/bin/lean-wasm compile-wat \
-  --module LeanExe.Examples.Arithmetic \
-  --entry LeanExe.Examples.Arithmetic.choose \
-  --out build/choose.wat
-
-tools/leanrun .lake/build/bin/lean-wasm report \
-  --module LeanExe.Examples.ReadmeDemo \
-  --entry LeanExe.Examples.ReadmeDemo.choose
-
-tools/leanrun .lake/build/bin/lean-wasm dump-ir \
-  --module LeanExe.Examples.ReadmeDemo \
-  --entry LeanExe.Examples.ReadmeDemo.choose
-
-tools/leanrun .lake/build/bin/lean-wasm ownership-report \
-  --module LeanExe.Examples.ReadmeDemo \
-  --entry LeanExe.Examples.ReadmeDemo.choose
+tools/leanexegen -o myprogram.wasm myprogram.txt
+tools/leanexegen verify myprogram.proof
+tools/leanexegen run myprogram.wasm 10 20 30
 ```
 
-Use `compile-wasi` for a command-style module whose selected entry takes no parameters and returns `ByteArray`.  The generated module imports WASI Preview 1 `fd_write`, exports `_start`, and writes the returned bytes to stdout.  This mode does not compile Lean `IO`; the Lean entry remains a pure function.
+The public interface for this workflow is `Array UInt64 -> Array UInt64`.  The proof package records the exact binary, decoded model, formal specification, theorem, annotations, selected LTG material, journal, and verification results.  The [`leanexegen` reference](docs/leanexegen.md) defines the package schema and commands, and [Verifying a Program](docs/verifying.md) explains the proof boundary.
 
-```sh
-tools/leanrun .lake/build/bin/lean-wasm compile-wasi \
-  --module LeanExe.Examples.Correctness \
-  --entry LeanExe.Examples.Correctness.byteArrayStringConstReturn \
-  --out build/stdout.wasm
-```
+## Verification boundaries
 
-Use `compile-wasi-stdin` for a bounded stdin-to-stdout transform.  The selected entry must have type `ByteArray -> ByteArray`.  The generated `_start` reads stdin through WASI `fd_read` until EOF, traps if input exceeds `--max-input-bytes`, calls the pure Lean entry, and writes the returned bytes to stdout.
+The source-driven Talos workspace contains twenty registered compiler outputs with input-generic behavioral proofs.  The independent artifact registry contains the same twenty WASM binaries, each with exact-byte identity, decoder and validator results, Talos translation equality, and a behavioral theorem.  [Talos Proofs](proofs/talos/README.md) owns the theorem inventory, while [Development Status](docs/status.md) records the current aggregate state and release blockers.
 
-```sh
-tools/leanrun .lake/build/bin/lean-wasm compile-wasi-stdin \
-  --max-input-bytes 65536 \
-  --module LeanExe.Examples.ByteArrayPrograms \
-  --entry LeanExe.Examples.ByteArrayPrograms.appendBang \
-  --out build/stdin-stdout.wasm
-```
+The structured LTG catalog supplies checked lemmas, tactics, guidance, and worked examples to proof-generation tasks.  Compiler annotations identify instruction regions and select relevant LTG material, but every generated theorem must still check against the decoded artifact.  [Artifact Proving](docs/artifact-proving.md), [WebAssembly Annotations](docs/annotations.md), and [Structured LTG](docs/ltg.md) describe these components.
 
-Use `compile-wasi-stdin-except` when the pure entry reports failure explicitly.  The selected entry must have type `ByteArray -> Except ByteArray ByteArray`.  The generated `_start` reads bounded stdin, calls the Lean entry, writes `Except.ok` bytes to stdout with exit status `0`, and writes `Except.error` bytes to stderr before calling WASI `proc_exit 1`.
+## Repository map
 
-```sh
-tools/leanrun .lake/build/bin/lean-wasm compile-wasi-stdin-except \
-  --max-input-bytes 65536 \
-  --module LeanExe.Examples.Correctness \
-  --entry LeanExe.Examples.Correctness.byteArrayExceptBangOrError \
-  --out build/stdin-except.wasm
-```
+| Path | Purpose |
+|------|---------|
+| `LeanExe/Extract` | Checked-declaration extraction, specialization, ownership analysis, ABI lowering, and IR generation. |
+| `LeanExe/IR` | First-order intermediate representation and reference evaluation. |
+| `LeanExe/Wasm` | Structured WASM model, emitter, binary encoder, WAT printer, annotations, and compiler-side certificate theorems. |
+| `LeanExe/Examples` | Checked source examples used by compiler and execution tests. |
+| `test` | Node and Lean tests comparing source, IR, emitted WASM, and runtime behavior. |
+| [Talos proofs](proofs/talos/README.md) | Source-driven behavioral proofs, exact-artifact verifier, and shared proof library. |
+| [Demonstrations](demos/README.md) | End-to-end generated programs and retained artifact-proof experiments. |
+| [Benchmarks](benchmarks/README.md) | Accepted, rejected, and censored proof-generation runs with journals and telemetry. |
+| [Structured LTG](ltg/README.md) | Canonical retrieval catalog for proof assets and guidance. |
+| [Documentation](docs/README.md) | Current user, compiler, verification, proof, and status references. |
+| [Plans](plans/README.md) | Detailed plans for unfinished work governed by the root roadmap. |
+| [Research papers](paper/README.md) | LaTeX sources, reviewed PDFs, bibliographies, and publication records. |
 
-Use `compile-wasi-argv-except` for command arguments.  The selected entry must have type `Array ByteArray -> Except ByteArray ByteArray`.  The generated `_start` reads WASI arguments through `args_sizes_get` and `args_get`, skips `argv[0]`, builds an internal `Array ByteArray` containing the user arguments, and applies the same stdout, stderr, and exit-status rules as `compile-wasi-stdin-except`.  `--max-args` limits user arguments.  `--max-argv-bytes` limits the WASI argument buffer, including `argv[0]` and NUL terminators.
+## Current work
 
-```sh
-tools/leanrun .lake/build/bin/lean-wasm compile-wasi-argv-except \
-  --max-args 16 \
-  --max-argv-bytes 4096 \
-  --module LeanExe.Examples.ByteArrayPrograms \
-  --entry LeanExe.Examples.ByteArrayPrograms.argvFirstLast \
-  --out build/argv-except.wasm
-```
-
-Use `compile-wasi-stdin-argv-except` when a command needs both stdin and arguments.  The selected entry must have type `ByteArray -> Array ByteArray -> Except ByteArray ByteArray`.  The generated `_start` reads bounded stdin, reads bounded WASI argv, skips `argv[0]`, and applies the same stdout, stderr, and exit-status rules as `compile-wasi-stdin-except`.  The stdin bound and argv bounds reserve fixed memory regions before the Lean entry runs.
-
-```sh
-tools/leanrun .lake/build/bin/lean-wasm compile-wasi-stdin-argv-except \
-  --max-input-bytes 8192 \
-  --max-args 8 \
-  --max-argv-bytes 256 \
-  --module LeanExe.Examples.JsonTreeCommand \
-  --entry LeanExe.Examples.JsonTreeCommand.searchTree \
-  --out build/search-tree.wasm
-```
-
-## Run
-
-Scalar parameters and scalar results use WASM `i64`.  `Bool` uses `0` for false and `1` for true.  `Nat` values must fit in the compiler's bounded `i64` representation.
-
-```sh
-wasmtime run --invoke choose build/choose.wasm 0 41 99
-```
-
-The expected output is:
-
-```text
-41
-```
-
-The repository examples can be compiled the same way.  `LeanExe.Examples.Collatz.steps` accepts one `UInt64` and returns the number of Collatz steps.  `LeanExe.Examples.Prime.next` accepts one `UInt64` and returns the smallest prime number greater than the input.
-
-```sh
-tools/leanrun .lake/build/bin/lean-wasm compile \
-  --module LeanExe.Examples.Collatz \
-  --entry LeanExe.Examples.Collatz.steps \
-  --out build/collatz.wasm
-
-wasmtime run --invoke steps build/collatz.wasm 27
-```
-
-A WASI command module runs through Wasmtime without `--invoke`.  The stdout modes make byte-producing programs observable as command programs, and the `Except` mode also exposes stderr and a nonzero exit status for source-level errors.
-
-```sh
-wasmtime run build/stdout.wasm
-printf AB | wasmtime run build/stdin-stdout.wasm
-printf AB | wasmtime run build/stdin-except.wasm
-wasmtime run build/argv-except.wasm alpha omega
-```
-
-`LeanExe.Examples.JsonTreeCommand` demonstrates a two-command JSON pipeline.  `makeTree` reads a JSON array from stdin, parses it through the ASCII JSON AST parser, and writes a binary-search tree as JSON.  `searchTree` reads that JSON tree from stdin, parses it through the same AST parser, decodes it into the source-level `Tree` type, reads the search key from argv, and writes a JSON boolean result.
-
-`LeanExe.Examples.JsonTypedDecode` demonstrates typed JSON decoding over the AST.  It decodes a JSON object into a source-defined `Request` structure, rejects missing, duplicate, unknown, and mistyped fields, computes checked aggregate values, and returns JSON through the WASI `Except` adapter.
-
-`LeanExe.Examples.JsonObjectArrayDecode` extends the typed decoder style to arrays of source-defined structures.  It decodes a request whose `items` field contains objects with `id` and `weight` fields, computes a scaled weighted sum, rejects malformed nested values, and returns compact JSON through the WASI `Except` adapter.
-
-`LeanExe.Examples.JsonMergeTreeCommand` records the next ownership case for that pipeline.  `makeMergedTree` builds two source trees, copies their values into a third tree, and then releases the source roots.  The source validator currently rejects the release because the first root was passed into the heap-valued merged result, so the pipeline remains deferred pending a retained-handoff proof.
-
-`LeanExe.Examples.JsonGcTreeRewrite` records a field-sensitive ownership case.  It builds a balanced tree, rewrites whole generations, and releases loop-carried and final roots.  The source validator rejects the loop-carried `RunState.tree` release until field provenance and transfer have a compiler justification.
-
-```sh
-printf '%s' '[1,6,4,100,33,5,5,20]' \
-  | wasmtime run build/make-tree.wasm \
-  | wasmtime run build/search-tree.wasm 4
-```
-
-## Compare With Standard Lean
-
-Use `tools/compare-standard.js` to compare accepted entries against standard Lean execution.  The tool generates a temporary Lean runner under `.lake/build/standard-compare`, runs it with `lake env lean --run`, compiles the same entry through LeanExe, runs the generated WASM with Wasmtime, and compares the observed results.  Command modes compare exit status, stdout, and stderr byte-for-byte for `ByteArray`, `ByteArray -> ByteArray`, `ByteArray -> Except ByteArray ByteArray`, `Array ByteArray -> Except ByteArray ByteArray`, and `ByteArray -> Array ByteArray -> Except ByteArray ByteArray` entries.
-
-Pure mode compares scalar library exports invoked through `wasmtime --invoke`; the caller supplies the standard Lean call expression when flattened WASM parameters differ from the Lean source call, and supplies a result-slot expression of type `Array UInt64` for the flattened return value.  Pure-ABI mode compares library exports through the Wasmtime C host runner and decodes heap-backed public ABI results from exported memory using a JSON layout descriptor.  The standard Lean side serializes the same value to JSON through `--serializer`, so this mode can compare public structures, tagged values, byte arrays, and arrays without compiling a generated WASI wrapper.  Pure-bytes mode compares a concrete pure call by serializing its result to `ByteArray`, compiling a generated wrapper through `compile-wasi`, and comparing the bytes written by standard Lean with the bytes written by the generated WASM command.
-
-`--abi-layout` accepts JSON descriptors for public ABI values: scalar names such as `"UInt64"` and `"Nat"`, `"ByteArray"`, `{"array": ...}`, `{"struct": [["field", ...], ...]}`, and `{"tagged": [[...], ...]}`.  `--abi-arg` supplies heap-bearing host arguments in the same descriptor-value shape when scalar `--arg` values are insufficient.  The generated standard Lean runner defines small JSON serializer helpers such as `__leanexeJsonUInt64`, `__leanexeJsonArray`, and `__leanexeJsonByteArray` for comparison expressions.
-
-```sh
-node tools/compare-standard.js \
-  --mode stdin-except \
-  --module LeanExe.Examples.JsonGcd \
-  --entry transform \
-  --stdin '[48,18,30]'
-```
-
-```sh
-node tools/compare-standard.js \
-  --mode pure \
-  --module LeanExe.Examples.Correctness \
-  --entry structureReturn \
-  --arg 4 \
-  --result-slots '#[__leanexeValue.x, __leanexeValue.y]'
-```
-
-```sh
-node tools/compare-standard.js \
-  --mode pure-bytes \
-  --module LeanExe.Examples.Correctness \
-  --entry byteArrayReturnABC \
-  --serializer '__leanexeValue'
-```
-
-```sh
-node tools/compare-standard.js \
-  --mode pure-abi \
-  --module LeanExe.Examples.Correctness \
-  --entry publicByteArrayArrayReturn \
-  --abi-layout '{"array":"ByteArray"}' \
-  --serializer '__leanexeJsonArray __leanexeValue __leanexeJsonByteArray'
-```
-
-```sh
-node tools/compare-standard.js \
-  --mode pure-abi \
-  --module LeanExe.Examples.Correctness \
-  --entry publicByteArrayArrayOpsReturn \
-  --abi-layout '{"array":"ByteArray"}' \
-  --abi-arg '{"layout":{"array":"ByteArray"},"value":[[65],[66,67],[68,69,70]]}' \
-  --standard-call 'LeanExe.Examples.Correctness.publicByteArrayArrayOpsReturn #["A".toUTF8, "BC".toUTF8, "DEF".toUTF8]' \
-  --serializer '__leanexeJsonArray __leanexeValue __leanexeJsonByteArray'
-```
-
-Pure mode adds a third executable semantics.  The `eval-ir` command compiles the entry to the core IR and evaluates it with the reference interpreter in `LeanExe/IR/Core.lean`, so the harness can compare standard Lean, the IR interpreter, and Wasmtime on the same inputs.  A mismatch then localizes to extraction (standard Lean versus IR) or emission (IR versus WASM).  The interpreter covers the scalar IR fragment only; when the compiled module contains heap constructs, `eval-ir` exits with status 3 and the harness skips the comparison.
-
-```sh
-tools/leanrun .lake/build/bin/lean-wasm eval-ir \
-  --module LeanExe.Examples.Collatz \
-  --entry LeanExe.Examples.Collatz.steps 27
-```
-
-Run the built-in comparison cases with:
-
-```sh
-node tools/compare-standard.js --self-test
-```
-
-## Verification With Talos
-
-The standard comparison suite checks generated WASM against standard Lean execution over selected inputs.  The source-driven Talos gate emits WASM, renders it as WAT, decodes the WAT into a Talos model, and rebuilds the handwritten specification.  The artifact gate instead starts from a frozen binary and proves byte identity, decoding, WebAssembly-profile validity, exact Talos translation, and the same behavioral specification without reading source or invoking the compiler.
-
-The completed artifacts live in [Talos Proofs](proofs/talos/README.md), which holds the authoritative theorem inventory.  They cover scalar algorithms, recursive data, byte processing and allocation, the compiler's unsigned LEB128 encoder, CLOB operations, and exact runtime accounting.  The workspace proves shared runtime behavior once and uses a generic teardown theorem for recursive ownership trees.
-
-Four tools cover the source-driven proof, exact-artifact proof, and semantic comparison paths.  `talos-artifact.js` generates ignored WASM and WAT and updates the tracked `Program.lean` proof cache, while `talos-proof.js` regenerates a temporary candidate, requires byte equality with the tracked cache, and checks one handwritten specification or the complete proof library.  `artifact-proof.js` checks one content-addressed binary package or the aggregate exact-artifact registry, while `artifact-conformance.js` runs a pinned official WebAssembly corpus slice through Talos and Wasmtime.
-
-```sh
-tools/talos-artifact.js prepare gcd
-tools/talos-proof.js check gcd
-tools/talos-proof.js check --all
-tools/artifact-proof.js check-artifacts
-tools/artifact-proof.js check-all
-tools/artifact-conformance.js check
-tools/artifact-release.js inspect
-```
-
-All five tools send every Lean-based child through the repository's machine-wide lock and resource policy.  The complete artifact proof gate passed all twenty registered packages on 2026-08-03.  The conformance gate classified fifteen pinned official invalid modules at their exact decoder or validator errors and passed twenty-five selected execution files with one warning for the six imported-memory assertions documented in `docs/telos-bug.md`.  Wasmtime passed every selected execution file.  Both receipts bind the same expanded release-input digest, and the release remains blocked on an immutable source revision and a cold run of those gates from that revision.
-
-A clean source-driven checkout needs the pinned `wasm-tools`, while artifact verification needs the frozen packages, proof workspace, and pinned Lean and Talos dependencies.  Semantic conformance also needs the pinned official testsuite submodule and Wasmtime.  [Verifying a Program](docs/verifying.md) defines all three paths, and the [Artifact Verification Format](docs/artifact-format.md) defines the exact-binary path.
-
-The broader compiler-correctness theorem remains a target in the [Development Plan](plan.md).  [Developing LeanExe](DEVELOPING.md) defines the local gates and artifact-update rules.  The old development agenda is archived because the plan now owns the current work queue.
-
-## Host Memory Values
-
-`ByteArray` and arrays use the module memory.  The module exports `alloc(len : i64) : i64`; a host calls `alloc`, writes bytes into the exported memory, and passes the returned pointer plus a length when the entry expects a `ByteArray`.  The allocator grows WASM memory when no free block and no current heap range can satisfy a request.  Returned byte arrays use a pointer and length result pair at the public ABI, while compiled code carries an internal owner slot so stored byte-array slices can keep their allocation root alive.  The module also exports `retain(ptr : i64) : i64`, `release(ptr : i64)`, and `free(ptr : i64)` for reference-counted heap objects.
-
-```sh
-tools/leanrun .lake/build/bin/lean-wasm compile \
-  --module LeanExe.Examples.AsciiDigits \
-  --entry LeanExe.Examples.AsciiDigits.validateGeneric \
-  --out build/bytes.wasm
-```
-
-```sh
-tools/build-wasmtime-host.sh
-build/tools/leanexe-wasmtime-host call build/bytes.wasm validateGeneric i64 bytes:3132333435
-```
-
-The expected output is:
-
-```text
-1
-```
-
-When a library-mode result points into module memory, read or copy the result before calling `release` or `reset`.  `release` decrements the object's reference count and returns the block to the runtime free list when the count reaches zero.  Public `ByteArray` results expose only pointer and length, so a returned slice may not be a releasable root pointer; use `reset` at a call boundary or release only when the program's result protocol guarantees a root pointer.  `reset` rewinds the whole heap and invalidates every old pointer, regardless of reference count.
-
-The compiler emits `release` for local heap temporaries only when the released owner is nonrecursive, currently `ByteArray` or `Array`, and the owner comes from a visible fresh allocation or helper-call result.  This lets scalar-result helpers reclaim internal arrays and byte arrays before returning, and it lets heap-result functions release fresh nonrecursive owners after result materialization when those owners are absent from returned heap roots and borrowed root expressions.  Ordinary recursive heap temporaries remain conservative: the compiler may leak them, but it must not release them unless an explicit source-level ownership boundary or a supported accumulator-replacement rule applies.  Recursive heap allocation retains borrowed child pointers and transfers child pointers proven fresh by the same ownership summaries.  `Array.foldl`, `Array.foldr`, `ByteArray.foldl`, and accepted loops release replaced heap-valued accumulator owner slots after the first iteration when the replacement is proven fresh and the loop body has not already released the old slot.  The compiler skips the initial accumulator value for this rule because ordinary Lean aliases can still refer to that value after the loop.  It keeps heap-pointer helper results that may borrow from heap arguments conservative: hosts remain responsible for releasing returned arrays and byte arrays after reading them.
-
-Compiled Lean code can read runtime counters with `LeanExe.Runtime.allocCount`, `retainCount`, `releaseCount`, and `freeCount`.  Source code can call `LeanExe.Runtime.release value` for a monomorphic recursive-inductive root or an array value when the program transfers one owned root reference at its final use.  Array and recursive-value release follows recursive-inductive child pointers, `ByteArray` owner slots, and nested `Array` owner slots in fixed-width layouts, while a statically borrowed array owner of `0` makes the call a no-op.  The compiler rejects releases whose root provenance, final use, or lack of escape cannot be established by the direct-handoff checker.
-
-Ordinary Lean and the reference IR interpreter evaluate these intrinsics as zero-valued stubs.  Generated WASM implements allocator counters and recursive release, so intrinsic-observing entries use the extended semantics in [Language Specification](docs/spec.md) and Wasmtime execution rather than ordinary Lean equivalence.  The regenerated Talos runtime models and their theorems cover the emitted retain and release implementation.
-
-Fixed-width arrays use the compiler's heap layout.  Scalar values occupy one slot, `ByteArray` elements occupy owner, pointer, and length slots, nested `Array` elements occupy owner and pointer slots, products and fixed-width structures or tagged values occupy their flattened slot count, and recursive inductive values occupy one pointer slot.  Public entry arrays use the same fixed-width layout for scalar elements, byte arrays, nested arrays, structures, and tagged values, but they exclude recursive inductive values.  Structure values flatten field-by-field at the ABI boundary, while nonrecursive inductive values flatten to a constructor tag followed by payload slots.  Recursive inductive values are supported as internal values, including recursive pointer fields inside internal fixed-width structures and tagged values, mutual-family pointers, monomorphic `List` construction, matching, direct traversal over one or more direct recursive fields, product element layouts such as `List (UInt64 × UInt64)`, product destructuring in constructor arms, mutual structural traversal over recursive-family members, source-defined list builders such as append and reverse, generated array-child traversal, explicit-accumulator `List.foldl` helpers, top-level closed `List.foldl` bodies with one hidden accumulator, closed structural predicates such as direct `List.any` and `List.all`, direct expression-position `List.length`, list append notation through `++`, `List.concat`, `List.reverse`, `List.map`, `List.filter`, and `List.foldr` with closed direct-lambda callbacks, expression-position structural recursion that captures supported first-order surrounding values, and limited direct-lambda helper calls to `List.map`, `List.filter`, `List.find?`, `List.foldl`, `List.any`, and `List.all`, but entry parameters and entry results cannot expose recursive data through the host ABI.
-
-## Supported Lean
-
-The supported subset is practical but restricted.  Programs should use concrete, first-order definitions with no runtime-polymorphic functions or unresolved type-class evidence at the entry boundary.  Helper definitions may be separate Lean declarations as long as the compiler can classify every reachable dependency.
-
-Supported values include `Unit`, `Bool`, `UInt8`, `UInt32`, `UInt64`, bounded `Nat`, `ByteArray`, `LeanExe.AsciiString`, `Array`, products, internal `PSum`, user-defined structures, user-defined inductives, `Option`, `Except`, monomorphic self-recursive inductives, mutual recursive inductive families, and monomorphic recursive instances such as `List α` when `α` has a supported internal layout.  `UInt8` and `UInt32` may appear at the public entry boundary as one-slot scalar values, where inputs and outputs are reduced modulo their fixed width.  Public arrays may store byte arrays, nested arrays, and fixed-width structures or tagged values containing those heap fields.  Internal arrays may also store products, recursive-inductive pointer fields, and fixed-width structures or tagged values containing those pointers.  Equality through `==`, `!=`, and decided equality propositions supports scalars, byte arrays, fixed-width arrays whose element type supports equality, products, structures, internal sums, `Option`, `Except`, and nonrecursive tagged values when every runtime field supports equality.  Recursive-inductive equality remains unsupported.  `LeanExe.AsciiString` is a one-field structure over `ByteArray` with explicit validation helpers for the ASCII invariant.  Restricted compile-time ASCII `String` expressions may be converted to bytes with `.toUTF8`, measured with `.length`, tested with `.isEmpty`, and compared with `==` or `!=`.
-
-Supported control flow includes `let`, direct calls, `if`, pattern matching, pure `do` notation with local mutable assignments, pure `for` and `while` loops with supported accumulator values, bounded recursion over an explicit `Nat` fuel argument, direct structural recursion over recursive inductives, mutual structural recursion over recursive-family members, expression-position structural recursion with supported first-order post-arguments and supported captured values, a top-level closed `List.foldl` shape with one hidden accumulator, closed structural predicates for direct `List.any` and `List.all`, generated `Array`-child recursion, inline-specialized first-order polymorphic helpers, statically specialized type-class evidence, and selected direct-lambda library calls that specialize to first-order code.  Type-class evidence may appear in helpers when Lean resolves the instance and extraction specializes the methods away; accepted examples include class methods inside `Array.foldl`, `Array.any`, and `Array.find?` direct-lambda callbacks, plus generic helpers whose specialized bodies call `List.foldl` or `List.find?`.  Fuel-recursive functions may branch through nested `if` and supported inductive matches when tail calls remain in the accepted loop shape, and recursive-descent helpers may use non-tail self-calls when they consume decremented fuel and then inspect the returned value.  Pure `do` assignments may elaborate through local continuation lambdas, flattened generated matchers over nested single-constructor accumulator structures, and `PUnit`; those checked forms compile when the continuations normalize away to first-order values.  Unsupported features include shared generic runtime functions, runtime class dictionaries, unspecialized type-class evidence, higher-order functions, closures that survive normalization, full `IO`, runtime `String`, runtime `Char`, arbitrary Lean and Std library functions, hidden carried arguments outside the accepted expression-position, unsupported structural-recursion shapes, mutual recursion outside the nested `PSum` shapes described in the specification, `unsafe`, `partial`, unbounded natural-number arithmetic, course-of-values recursion, exported recursive data structures, and public arrays of recursive values.  These features remain outside the accepted language even when Lean accepts the source file.
-
-## ABI Summary
-
-| Lean type | WASM ABI |
-|-----------|----------|
-| `Bool` | One `i64`, with `0` or `1`. |
-| `UInt8` | One `i64`, reduced modulo `2^8`. |
-| `UInt32` | One `i64`, reduced modulo `2^32`. |
-| `UInt64` | One `i64`, interpreted modulo `2^64`. |
-| `Nat` | One nonnegative `i64` within the supported bound. |
-| `ByteArray` parameter | Pointer and length, both `i64`. |
-| `ByteArray` result | Pointer and length, both `i64`. |
-| `Array α` | Pointer to a heap array whose elements have fixed-width slots. |
-| Structure | Field values flattened in declaration order. |
-| Nonrecursive inductive | Constructor tag followed by payload slots. |
-| Recursive inductive | Internal heap value only. |
-
-The entry declaration name must not collide with runtime exports such as `memory`, `alloc`, `reset`, `retain`, `release`, `free`, or the counter globals `allocCount`, `retainCount`, `releaseCount`, and `freeCount`.  The host may call `release()` for individual returned heap objects or `reset()` when no old pointer remains live.  Integer overflow and invalid memory access trap according to the semantics in [Language Specification](docs/spec.md).
-
-## Examples
-
-The examples directory contains small programs that exercise the user-facing subset:
-
-| Module | Entry | Description |
-|--------|-------|-------------|
-| `LeanExe.Examples.Collatz` | `steps` | Counts Collatz steps for a `UInt64` input. |
-| `LeanExe.Examples.Prime` | `next` | Computes the smallest prime greater than a `UInt64` input. |
-| `LeanExe.Examples.IntMap` | `checksum`, `query` | Uses a small structure-backed integer map written in the subset. |
-| `LeanExe.Examples.ByteArrayPrograms` | Several entries | Validates and transforms `ByteArray` inputs. |
-| `LeanExe.Examples.AsciiStringPrograms` | Several entries | Validates and transforms ASCII byte strings. |
-| `LeanExe.Examples.JsonDouble` | `transform` | Parses a small ASCII JSON request and returns JSON bytes. |
-| `LeanExe.Examples.JsonAdd` | `transform` | Parses two decimal JSON fields and returns their checked sum. |
-| `LeanExe.Examples.JsonCollatzLength` | `transform` | Parses a decimal Collatz request and returns the sequence length. |
-| `LeanExe.Examples.JsonGcd` | `transform` | Reads a JSON array from stdin and writes a JSON GCD result through WASI. |
-| `LeanExe.Examples.JsonTypedDecode` | `transform` | Decodes a JSON object into a source-defined request structure and writes checked aggregate results through WASI. |
-| `LeanExe.Examples.JsonObjectArrayDecode` | `transform` | Decodes a JSON object containing an array of source-defined item structures through WASI. |
-| `LeanExe.Examples.JsonTreeCommand` | `makeTree`, `searchTree` | Builds a simple JSON binary-search tree and searches it through a WASI pipeline. |
-| `LeanExe.Examples.JsonMergeTreeCommand` | Deferred | Requires proof that source roots retained through a heap-valued merge result may be released. |
-| `LeanExe.Examples.JsonGcTreeRewrite` | Deferred | Requires field-sensitive ownership for loop-carried and final tree roots. |
-| `LeanExe.Examples.JsonTools` | `transform`, `lookup` | Exercises limited JSON field lookup and object generation helpers. |
-| `LeanExe.Examples.Correctness` | Many entries | Exercises structures, inductives, arrays, recursion, and edge cases. |
-
-Use the examples as templates for new programs.  Start with a scalar entry when possible, then add memory values once the scalar logic compiles and tests pass.  Keep helper functions concrete and first-order so the dependency classifier can prove that the whole call graph belongs to the accepted subset.
+The current repository has twenty completed source-driven and exact-artifact proof cases and eleven `leanexegen` demonstrations.  The active work concerns release-record reconciliation, broader validation of annotation-directed LTG retrieval, and incremental use of compiler theorems to reduce exact-artifact proof construction.  [Development Plan](plan.md) is the sole work queue, and `devnotes.md` records decisions and test evidence.
