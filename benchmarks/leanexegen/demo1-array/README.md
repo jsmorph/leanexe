@@ -75,5 +75,5 @@ tools/leanexegen-benchmark compare <proof-package>
 The benchmark subcommand reproves the `timing-2` package, validates the frozen identity, and invokes package verification after Stage 5 timing has stopped.  It creates the requested WASM file and adjacent proof package, and it refuses an output path that already exists.  All Lean work remains under the `tools/leanexegen` and `tools/leanrun` execution boundary.
 
 ```text
-tools/leanexegen benchmark -o /tmp/demo1-measured.wasm
+tools/leanexegen benchmark -o ./tmp/demo1-measured.wasm
 ```

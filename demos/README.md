@@ -1,10 +1,10 @@
 # Demonstrations
 
-The demonstrations are independently inspectable examples of prose-to-Lean-to-WebAssembly generation and exact-artifact verification.  Each directory retains its request, formal specification, generated source, executable artifact, direct artifact proof, samples, and an account of the result.  Later demos also retain controlled proof-generation experiments over fixed artifacts.
+The demonstrations are independently inspectable examples of prose-to-Lean-to-WebAssembly generation and exact-artifact verification.  Demos 2–11 use the current `Array UInt64 -> Array UInt64` interface, while Demo 1 preserves the earlier scalar proof and links to its modern array benchmark packages.  Each current directory retains its request, formal specification, generated source, executable artifact, direct artifact proof, samples, and relevant fixed-artifact experiments.
 
 | Demo | Program | Verification role |
 |------|---------|-------------------|
-| [Demo 1](demo-1/README.md) | Count prime factors with multiplicity for one input value. | Original end-to-end walkthrough and early proof-kit experiments. |
+| [Demo 1](demo-1/README.md) | Count prime factors with multiplicity for one input value. | Original scalar artifact, early ProofKit evidence, and link to current array-form benchmark packages. |
 | [Demo 2](demo-2/README.md) | Search ten fixed key-value pairs for the first matching key. | Fixed-size scan and two-word result baseline. |
 | [Demo 3](demo-3/README.md) | Follow a search path through a fixed seven-node binary tree. | Nested comparison-tree and structured-input proof. |
 | [Demo 4](demo-4/README.md) | Add one to every element of an array of at most eight words. | Held-out array-map and whole-wrapper composition test. |
