@@ -90,6 +90,12 @@ function checkBytes(entry, manifest, manifestPath, inputPath) {
 }
 
 async function checkEmbedded(packages) {
+  for (const item of packages) {
+    await run(`embedded byte module ${item.entry.case}`, [
+      "--timeout", "30m",
+      "lake", "-d", proofRoot, "build", item.manifest.artifactBytesModule,
+    ]);
+  }
   await run("embedded byte checker", [
     "--timeout", "15m",
     "lake", "-d", proofRoot, "build", "Project.Artifact.Binary.CheckFile",
