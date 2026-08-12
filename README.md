@@ -85,4 +85,4 @@ The structured LTG catalog supplies checked lemmas, tactics, guidance, and worke
 
 ## Current work
 
-The current repository has twenty completed source-driven and exact-artifact proof cases and eleven `leanexegen` demonstrations.  The active work concerns release-record reconciliation, broader validation of annotation-directed LTG retrieval, and incremental use of compiler theorems to reduce exact-artifact proof construction.  [Development Plan](plan.md) is the sole work queue, and `devnotes.md` records decisions and test evidence.
+The current repository has twenty completed source-driven and exact-artifact proof cases, ten current-interface `leanexegen` demonstrations, and the original scalar demonstration.  The active work concerns release-record reconciliation, broader validation of annotation-directed LTG retrieval, and incremental use of compiler theorems to reduce exact-artifact proof construction.  [Development Plan](plan.md) is the sole work queue, and `devnotes.md` records decisions and test evidence.

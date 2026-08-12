@@ -42,7 +42,7 @@ The first compile command selects the stdin-to-`Except` adapter because `makeTre
 Set `WASMTIME` to the Wasmtime binary in this repository, or replace it with `wasmtime` if Wasmtime is on `PATH`.  The example input inserts the numbers in array order, so the produced tree is deterministic.  Duplicate values go into the right branch because `insert` uses a strict less-than test for the left branch.
 
 ```sh
-WASMTIME=build/tools/wasmtime/wasmtime-v44.0.0-aarch64-linux/wasmtime
+WASMTIME=build/tools/wasmtime/current/wasmtime
 
 printf '%s' '[1,6,4,100,33,5,5,20]' \
   | "$WASMTIME" run build/demo/make-tree.wasm

@@ -23,7 +23,7 @@ The second variant changed the attribute target from `func0Def` to `func0`.  It 
 
 ```text
 tools/leanrun --timeout 15m lake \
-  -d /tmp/demo10-irreducible-workspace --no-ansi build \
+  -d ./tmp/demo10-irreducible-workspace --no-ansi build \
   LeanExeGen.GeneratedRa8e90ffc5781d113.ArtifactResult
 ```
 
