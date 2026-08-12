@@ -1,6 +1,6 @@
 # Artifact Verification Format
 
-**Status:** Implemented for twenty registered artifacts.  The last recorded warm aggregate and conformance gates passed on 2026-08-03 for their recorded release-input identity.  The current tree has a different identity, so the draft release record requires refreshed warm receipts, an immutable source revision, and a matching cold-checkout receipt.
+**Status:** Implemented for twenty registered artifacts.  The draft release record now carries the current input identity, while its warm-gate results remain pending.  Release readiness also requires an immutable source revision and a matching cold-checkout receipt.
 
 ## Formal Subject and Claim
 
@@ -73,7 +73,7 @@ The pinned twenty-five-file official execution slice produced 3,853 Talos passes
 
 The same gate checks fifteen official invalid modules against exact artifact decoder or validator error constructors.  The cases cover malformed headers and sections, integer overflow, invalid memory limits and alignments, stack underflow, and unused stack results.  This corpus tests the executable classifier independently of the twenty accepted artifacts, while `decode_sound` and `validate_sound` remain the formal evidence for successful results.
 
-The draft release record binds all twenty artifact and package identities, every theorem name, the verifier source digest, the release-input digest, and the tool pins.  Lean 4.31.0 accepts the archived kernel reproduction, and the owner accepts that defect after the recorded local lexical audit; this qualification does not repair the kernel.  On 2026-08-11, `tools/artifact-release.js inspect` reported that the current release-input identity differs from the record, so the recorded receipts and source revision describe the older input set.
+The draft release record binds all twenty artifact and package identities, every theorem name, the verifier source digest, the release-input digest, and the tool pins.  Lean 4.31.0 accepts the archived kernel reproduction, and the owner accepts that defect after the recorded local lexical audit; this qualification does not repair the kernel.  On 2026-08-11, `tools/artifact-release.js refresh` recorded the current input identity and cleared the receipts and source revision that described the older input set.
 
 ## Trusted Base and Evidence
 

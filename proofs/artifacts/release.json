@@ -1,9 +1,9 @@
 {
   "schemaVersion": 2,
   "status": "draft",
-  "recordedDate": "2026-08-03",
-  "sourceRevision": "febed96d02f7654a522fc15dc0e6e256f95a782a",
-  "releaseInputSha256": "3c10b4bef4505c12ab20d9aed037e288940861f45077bf6340d7a8b79f350c4c",
+  "recordedDate": "2026-08-11",
+  "sourceRevision": null,
+  "releaseInputSha256": "e175bf46d1d2102da862d57464d1a8db5c64a681da1c084653386331292e7651",
   "artifactRegistry": {
     "path": "proofs/artifacts/registry.json",
     "sha256": "8fbfb1d21bb5ad4cd433eedb0acbba622a2e40373fe7b8c520cfa81f8141c584",
@@ -328,41 +328,42 @@
   },
   "artifactProof": {
     "command": "tools/artifact-proof.js check-all",
-    "date": "2026-08-03",
-    "result": "passed",
+    "date": null,
+    "result": "pending",
     "artifactCount": 20,
-    "releaseInputSha256": "3c10b4bef4505c12ab20d9aed037e288940861f45077bf6340d7a8b79f350c4c"
+    "releaseInputSha256": null
   },
   "semanticConformance": {
     "command": "tools/artifact-conformance.js check",
     "configSha256": "eb909480a3c04357f59aeb6e4c685bee88032a673003572990fb969bcf7524cf",
-    "releaseInputSha256": "3c10b4bef4505c12ab20d9aed037e288940861f45077bf6340d7a8b79f350c4c",
-    "date": "2026-08-03",
-    "result": "passed-with-warning",
+    "releaseInputSha256": null,
+    "date": null,
+    "result": "pending",
     "officialFileCount": 25,
     "officialValidatorCases": 15,
     "talos": {
-      "pass": 3853,
-      "fail": 6,
-      "skip": 627,
+      "pass": 0,
+      "fail": 0,
+      "skip": 0,
       "cascade": 0,
       "decodeError": 0,
       "interpreterError": 0,
       "outOfFuel": 0
     },
-    "wasmtimeFilesPassed": 25,
-    "warnings": [
-      "talos-imported-memory-instance"
-    ]
+    "wasmtimeFilesPassed": 0,
+    "warnings": []
   },
   "coldCheckout": {
     "status": "pending",
-    "sourceRevision": "febed96d02f7654a522fc15dc0e6e256f95a782a",
+    "sourceRevision": null,
     "releaseInputSha256": null,
     "date": null,
     "command": "tools/artifact-release.js check-cold <revision>"
   },
   "blockers": [
+    "No immutable source revision records the current proof implementation.",
+    "The aggregate artifact proof has not passed under the selected toolchain.",
+    "The conformance gate has not passed under the selected toolchain.",
     "The release gates have not passed from a cold checkout of the recorded source revision."
   ]
 }
