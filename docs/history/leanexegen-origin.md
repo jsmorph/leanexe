@@ -1,3 +1,7 @@
+# Original `leanexegen` Request
+
+This note preserves the initial prose request that led to the `leanexegen` orchestrator and prime-factor demonstration.  It predates the fixed array ABI, exact-artifact package format, structured LTG, annotations, and independent verification workflow.  The maintained interface appears in the [`leanexegen` reference](../leanexegen.md).
+
 I want a tool like this:
 
 ```Shell
@@ -40,4 +44,3 @@ with `uv`.
 The two generations (for the formal spec and the Lean program itself)
 can be non-trivial and require iteration.  Let's try using codex
 headless.
-

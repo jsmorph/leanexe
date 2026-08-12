@@ -2,6 +2,7 @@
 
 | Field | Value |
 |---|---|
+| Status | Technical analysis snapshot.  Current implementation evidence appears in the annotation, LTG, and composition records. |
 | Date | 2026-08-05 |
 | Primary metric | Wall-clock time to generate an accepted artifact proof |
 | Required result | A theorem over the exact module decoded from the frozen WASM bytes |
@@ -29,15 +30,15 @@ Two unchanged word-address reproofs took 360.144 and 2,249.443 seconds.  Togethe
 
 `Project.ProofKit.FixedArraySingleton.region_result_spec` composes that allocator theorem with the emitted singleton-result suffix.  It proves the length and payload stores, result-local assignments, address bounds, and final `UInt64Array.At` predicate for an arbitrary scalar value, leaving the artifact proof to connect that value to the formal specification.  Three accepted uses took 680.396, 436.403, and 489.993 seconds, giving a 489.993-second median and a 243.993-second range.
 
-The [current proof kit](proofs/talos/lean/Project/ProofKit/README.md) removes repeated leaf obligations and two complete runtime regions.  `Project.ProofKit.Array` supplies the public array representation and load facts, `Project.ProofKit.Allocation` supplies bump-allocation arithmetic, `Project.ProofKit.Memory` supplies read-over-write facts, `Project.ProofKit.FixedArrayAllocator` proves the emitted allocator region, `Project.ProofKit.FixedArraySingleton` proves the singleton allocation and result region, and `Project.ProofKit.Control` supplies entry and wrapper tactics.  The accepted proofs still discover the scalar loop invariant, prove the application lemmas, symbolically execute the scalar loop branches, and process the input-array wrapper.
+The [current proof kit](../proofs/talos/lean/Project/ProofKit/README.md) removes repeated leaf obligations and two complete runtime regions.  `Project.ProofKit.Array` supplies the public array representation and load facts, `Project.ProofKit.Allocation` supplies bump-allocation arithmetic, `Project.ProofKit.Memory` supplies read-over-write facts, `Project.ProofKit.FixedArrayAllocator` proves the emitted allocator region, `Project.ProofKit.FixedArraySingleton` proves the singleton allocation and result region, and `Project.ProofKit.Control` supplies entry and wrapper tactics.  The accepted proofs still discover the scalar loop invariant, prove the application lemmas, symbolically execute the scalar loop branches, and process the input-array wrapper.
 
 The current `Project.ProofKit.Allocation` exposes `BumpFacts.wordAddress` and `wordAddress_toNat`, which replaced the proof's local root and payload address derivations in the faster controlled reproof.  The run reached its first complete candidate about eight minutes earlier than the retained baseline.  These theorems still leave the search for a function summary, loop invariant, branch semantics, and allocator control-flow proof.
 
 Earlier control-tactic experiments establish an important negative result.  The first proof-kit run reduced the behavior proof from 329 to 321 lines while stage 5 increased from 238.557 to 253.925 seconds, and the later loop-tactic reproof reduced it to 316 lines while stage 5 increased to 390.849 seconds.  These runs had different artifacts from the current array case, but they show that fewer lines and faster generation are independent measurements.
 
-One result in the [proof-engineering notes](docs/plan-notes.md) shows where abstraction can change elaboration cost.  `Project.WpScaffold.wp_run_folded` and generated frame facts reduced `Project.Validate.Loop` from 1,560 seconds to 15 seconds by preventing repeated reduction of a large literal local frame.  This result concerns Lean elaboration rather than model search, but repeated Lean checks form part of proof-generation time and can dominate an iterative session.
+One result in the [proof-engineering notes](plan-notes.md) shows where abstraction can change elaboration cost.  `Project.WpScaffold.wp_run_folded` and generated frame facts reduced `Project.Validate.Loop` from 1,560 seconds to 15 seconds by preventing repeated reduction of a large literal local frame.  This result concerns Lean elaboration rather than model search, but repeated Lean checks form part of proof-generation time and can dominate an iterative session.
 
-The current proof task receives a 24,862-byte selection from the [strategy guide](docs/proof-strategies.md) and a 5,961-byte proof-library catalog.  Demo-1's coarse feature classifier selects all ten strategy sections because its three reachable functions contain calls, loops, arithmetic, memory, allocation, and a function longer than 200 instructions.  The guide describes useful proof shapes, but it does not identify exact regions, local meanings, runtime templates, or theorem applications for this `Program`.
+The current proof task receives a 24,862-byte selection from the [strategy guide](proof-strategies.md) and a 5,961-byte proof-library catalog.  Demo-1's coarse feature classifier selects all ten strategy sections because its three reachable functions contain calls, loops, arithmetic, memory, allocation, and a function longer than 200 instructions.  The guide describes useful proof shapes, but it does not identify exact regions, local meanings, runtime templates, or theorem applications for this `Program`.
 
 ## Where stage 5 spends effort
 
@@ -172,7 +173,7 @@ Certificate checking should use small declarative records rather than generated 
 
 ### Direct theorem transport
 
-The existing [source-theorem transport plan](plans/theorem-transport.md) proves a source-to-IR certificate, a generic IR lowering theorem, and full equality between the lowering and the exact decoded artifact.  It can eliminate handwritten target proofs for an accepted source and compiler profile.  Its final result depends on source semantics and proved lowering, so it complements the direct artifact-proof line rather than replacing it.
+The existing [source-theorem transport plan](../plans/theorem-transport.md) proves a source-to-IR certificate, a generic IR lowering theorem, and full equality between the lowering and the exact decoded artifact.  It can eliminate handwritten target proofs for an accepted source and compiler profile.  Its final result depends on source semantics and proved lowering, so it complements the direct artifact-proof line rather than replacing it.
 
 The verified lowering can still improve the direct line without becoming a final dependency.  Its proof architecture can define the target certificate language and generate candidate annotations, while the artifact-only checker replays those annotations against the target.  Erasing source dependencies requires generating a new target proof; proof irrelevance or runtime erasure does not remove imported constants from Lean's logical dependency graph.
 
