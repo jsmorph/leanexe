@@ -328,30 +328,32 @@
   },
   "artifactProof": {
     "command": "tools/artifact-proof.js check-all",
-    "date": null,
-    "result": "pending",
+    "date": "2026-08-11",
+    "result": "passed",
     "artifactCount": 20,
-    "releaseInputSha256": null
+    "releaseInputSha256": "e175bf46d1d2102da862d57464d1a8db5c64a681da1c084653386331292e7651"
   },
   "semanticConformance": {
     "command": "tools/artifact-conformance.js check",
     "configSha256": "eb909480a3c04357f59aeb6e4c685bee88032a673003572990fb969bcf7524cf",
-    "releaseInputSha256": null,
-    "date": null,
-    "result": "pending",
+    "releaseInputSha256": "e175bf46d1d2102da862d57464d1a8db5c64a681da1c084653386331292e7651",
+    "date": "2026-08-11",
+    "result": "passed-with-warning",
     "officialFileCount": 25,
     "officialValidatorCases": 15,
     "talos": {
-      "pass": 0,
-      "fail": 0,
-      "skip": 0,
+      "pass": 3853,
+      "fail": 6,
+      "skip": 627,
       "cascade": 0,
       "decodeError": 0,
       "interpreterError": 0,
       "outOfFuel": 0
     },
-    "wasmtimeFilesPassed": 0,
-    "warnings": []
+    "wasmtimeFilesPassed": 25,
+    "warnings": [
+      "talos-imported-memory-instance"
+    ]
   },
   "coldCheckout": {
     "status": "pending",
@@ -362,8 +364,6 @@
   },
   "blockers": [
     "No immutable source revision records the current proof implementation.",
-    "The aggregate artifact proof has not passed under the selected toolchain.",
-    "The conformance gate has not passed under the selected toolchain.",
     "The release gates have not passed from a cold checkout of the recorded source revision."
   ]
 }
