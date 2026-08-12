@@ -90,6 +90,14 @@ function checkBytes(entry, manifest, manifestPath, inputPath) {
 }
 
 async function checkEmbedded(packages) {
+  await run("shared Talos library", [
+    "--timeout", "60m",
+    "lake", "-d", proofRoot, "build", "CodeLib",
+  ]);
+  await run("artifact translator", [
+    "--timeout", "30m",
+    "lake", "-d", proofRoot, "build", "Project.Artifact.Binary.Translate",
+  ]);
   for (const item of packages) {
     await run(`embedded byte module ${item.entry.case}`, [
       "--timeout", "30m",

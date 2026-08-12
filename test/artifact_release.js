@@ -6,6 +6,7 @@ const {
   loadEvidence,
   validateEvidence,
 } = require("../tools/artifact-release");
+const conformance = require("../proofs/talos/conformance.json");
 
 function copy(value) {
   return JSON.parse(JSON.stringify(value));
@@ -59,6 +60,20 @@ expectFailure(staleConformance, /semantic conformance release input identity/);
 
 const ready = copy(evidence);
 ready.sourceRevision = "1".repeat(40);
+ready.artifactProof.date = ready.recordedDate;
+ready.artifactProof.result = "passed";
+ready.artifactProof.releaseInputSha256 = ready.releaseInputSha256;
+ready.semanticConformance.date = ready.recordedDate;
+ready.semanticConformance.result = conformance.knownIssues.length === 0
+  ? "passed"
+  : "passed-with-warning";
+ready.semanticConformance.releaseInputSha256 = ready.releaseInputSha256;
+ready.semanticConformance.talos.fail = conformance.knownIssues.reduce(
+  (total, issue) => total + issue.failures.length,
+  0,
+);
+ready.semanticConformance.wasmtimeFilesPassed = conformance.files.length;
+ready.semanticConformance.warnings = conformance.knownIssues.map((issue) => issue.id);
 ready.coldCheckout = {
   status: "passed",
   sourceRevision: ready.sourceRevision,

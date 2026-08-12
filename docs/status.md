@@ -20,7 +20,7 @@ The [Talos proof inventory](../proofs/talos/README.md) names each source-driven 
 
 ## Release state
 
-`proofs/artifacts/release.json` is a draft record for the current release-input digest, `6db591ec2d359cdab4bfd51b1f99b7e4477da338956e7e2ede2c9a861e725d1c`.  The aggregate artifact proof passed all twenty packages on 2026-08-12, and the conformance gate passed with the configured imported-memory warning after 3,853 Talos passes, six known failures, 627 skips, and twenty-five Wasmtime file passes.  `tools/artifact-release.js inspect` accepts both receipts and reports two unresolved conditions: the immutable source revision and its cold-checkout result.
+`proofs/artifacts/release.json` is a draft record for the current release-input digest, `7c5b330b33d365959427ba60c1fa0f5ebbc5ee3b4d959b0b5c454953167cc1fd`.  The aggregate artifact proof passed all twenty packages on 2026-08-12, and the conformance gate passed with the configured imported-memory warning after 3,853 Talos passes, six known failures, 627 skips, and twenty-five Wasmtime file passes.  `tools/artifact-release.js inspect` accepts both receipts and reports two unresolved conditions: the immutable source revision and its cold-checkout result.
 
 The next commit will supply the immutable revision for the cold-checkout gate.  That gate will repeat both release checks in a detached repository-local checkout and write the final receipt.  `tools/artifact-release.js check-ready` determines whether the resulting record has any unresolved condition.
 
