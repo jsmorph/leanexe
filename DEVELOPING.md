@@ -88,7 +88,7 @@ Run the smallest relevant test during development, then run every gate required 
 
 | Change | Required checks |
 |--------|-----------------|
-| Documentation only | `git diff --check`, local-link review, and command review for every changed example. |
+| Documentation only | `git diff --check`, `tools/check-docs.js`, and command review for every changed example. |
 | Source example | Targeted `lake build`, the relevant Node test, and a standard-Lean comparison when the entry has an observable reference result. |
 | Extraction, IR, ownership, ABI, or WASM emission | Targeted fixture, `node test/run_all.js`, `tools/check-wat.sh`, and `tools/talos-proof.js check --all`. |
 | Source-driven proof | `tools/talos-proof.js check <case>`, `tools/talos-proof.js check --all`, and the execution test for the source entry. |
@@ -122,7 +122,7 @@ git -C proofs/talos/lean/.lake/packages/CodeLib submodule update --init vendor/t
 tools/artifact-conformance.js check
 ```
 
-The current conformance command reports 3,853 Talos passes, six known assertion failures, and 627 skipped commands across twenty-five files.  Wasmtime passes all twenty-five selected files, while Talos's six failures come from imported-memory limit handling in `memory_grow.wast`.  The command accepts only the six configured rows as an upstream warning; no rows remove the warning, and any changed or additional failure stops the gate.
+The recorded 2026-08-03 conformance run reported 3,853 Talos passes, six known assertion failures, and 627 skipped commands across twenty-five files.  Wasmtime passed all twenty-five selected files, while Talos's six failures came from imported-memory limit handling in `memory_grow.wast`.  The command accepts only the six configured rows as an upstream warning; no rows remove the warning, and any changed or additional failure stops the gate.
 
 The same command extracts fifteen exact `assert_invalid` and `assert_malformed` modules from the pinned official corpus and checks their precise artifact decoder or validator errors.  It removes custom sections that `wasm-tools` adds while encoding text-origin `assert_invalid` modules because the accepted artifact profile rejects custom sections before reaching the intended validation rule.  It preserves raw `assert_malformed` binary modules byte-for-byte, and any missing command, changed line, changed classification stage, or changed error constructor stops the gate.
 

@@ -6,10 +6,10 @@ This file is the only active project work queue.  The compiler, execution suite,
 
 The documentation must describe one implementation and assign each changing fact to one source of truth.  The current release record predates later repository changes, so `tools/artifact-release.js inspect` rejects its input identity.  Documentation consolidation therefore precedes release-record refresh and release-gate execution.
 
-- [ ] Consolidate navigation, language, compiler, artifact-proof, annotation, and proof-guidance documents.
-- [ ] Remove superseded plans and experiment reports after migrating current facts and links.
-- [ ] Standardize demo documentation and replace workspace examples that use `/tmp` with repository-local `./tmp` paths.
-- [ ] Run local-link, stale-reference, command-example, and whitespace checks over the maintained documentation.
+- [x] Consolidate navigation, language, compiler, artifact-proof, annotation, and proof-guidance documents.
+- [x] Remove superseded plans and experiment reports after migrating current facts and links.
+- [x] Standardize demo documentation and replace workspace examples that use `/tmp` with repository-local `./tmp` paths.
+- [x] Run local-link, stale-reference, command-example, and whitespace checks over the maintained documentation.
 - [ ] Refresh `proofs/artifacts/release.json` against the settled release inputs.
 - [ ] Run the warm artifact-proof and semantic-conformance gates for the refreshed identity.
 - [ ] Record an immutable source revision and complete the cold-checkout gate.
@@ -62,7 +62,7 @@ Current candidates include broader explicit-release analysis, shared interior ow
 
 | Change | Required evidence |
 |--------|-------------------|
-| Documentation only | `git diff --check`, maintained local-link check, stale-reference scan, and command review. |
+| Documentation only | `git diff --check`, `tools/check-docs.js`, and command review. |
 | Source language or compiler | Focused Lean build through `tools/leanrun`, targeted execution comparisons, `node test/run_all.js`, WAT round trip, and all affected Talos proofs. |
 | Exact-artifact verifier | Focused artifact package, `tools/artifact-proof.js check-all`, decoder and validator tests, and conformance checks when semantics change. |
 | ProofKit, annotations, or LTG | Focused Lean modules, generated declaration checks, `tools/ltg check`, fixed-artifact package verification, and journal plus telemetry review. |

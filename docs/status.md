@@ -1,6 +1,6 @@
 # Development Status
 
-This report describes the repository state on 2026-08-11.  Checked registries contain twenty source-driven Talos cases and twenty exact-artifact packages, and the demonstration index contains eleven `leanexegen` programs.  The root [Development Plan](../plan.md) owns remaining work, while repository tools and registries own changing counts and release identities.
+This report describes the repository state on 2026-08-11.  Checked registries contain twenty source-driven Talos cases and twenty exact-artifact packages, while the demonstration index contains ten current array-interface programs and the original scalar example.  The root [Development Plan](../plan.md) owns remaining work, while repository tools and registries own changing counts and release identities.
 
 ## Current capabilities
 
@@ -40,4 +40,4 @@ Lean 4.31.0 accepts the archived kernel-unsoundness reproduction referenced by t
 
 ## Immediate work
 
-The documentation consolidation must finish before release evidence is refreshed.  The next proof-engineering experiment should freeze a fold with a structurally different control or accumulator shape before receiving current annotation and LTG support.  The compiler-theorem work should then test one narrow theorem-directed artifact-proof boundary whose checked evidence remains useful without assuming complete compiler correctness.
+The release record must now be refreshed and its warm gates rerun against the settled documentation tree.  The next proof-engineering experiment should freeze a fold with a structurally different control or accumulator shape before receiving current annotation and LTG support.  The compiler-theorem work should then test one narrow theorem-directed artifact-proof boundary whose checked evidence remains useful without assuming complete compiler correctness.

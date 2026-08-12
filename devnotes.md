@@ -1,5 +1,21 @@
 # Development Journal
 
+## 2026-08-11: Documentation consolidation
+
+The maintained documentation now assigns current language behavior, compiler architecture, artifact proving, annotation semantics, status, and active work to separate authority documents.  The consolidation removed superseded design reports and historical work queues after migrating their current facts.  Demo 1 now identifies its scalar ABI as the predecessor of the current array interface, while Demos 2 through 11 remain the current-interface examples.
+
+The review corrected three substantive claims.  The `leanexegen` verifier accepts package schemas 3 through 7, the current release record describes an older input identity, and the repository has selected compiler-emitter equalities rather than a general compiler-correctness theorem.  The Talos proof inventory and release documentation now distinguish dated successful gate evidence from the current tree.
+
+`tools/check-docs.js` defines the maintained Markdown set, verifies local links, rejects references to removed documents, and rejects absolute `/tmp` workspace examples while allowing the machine-wide Lean lock path.  It excludes frozen proof-task copies and journals because those files record the context and observations of earlier runs.  Current command examples use repository-local `./tmp` workspaces.
+
+Checks run:
+
+- [x] `git diff --check` accepted the consolidated documentation.
+- [x] `tools/check-docs.js` accepted 77 maintained Markdown files.
+- [x] `node --check tools/check-docs.js` accepted the documentation checker.
+- [x] Repository tool usage output matched the documented current command forms.
+- [ ] Refresh the release-input identity after committing the settled documentation.
+
 ## 2026-08-11: Fold-composition work begins
 
 The current [artifact-proving reference](docs/artifact-proving.md) and root [development plan](plan.md) retain the unresolved obligations identified across the addition, multiplication, and XOR fold journals.  The first experiment added a general equality interface for `Wasm.Locals`, including operand-stack replacement projections.  The second experiment added a generic arbitrary-postcondition singleton-result theorem and an exact annotation-generated adapter after the frame interface passed fixed-proof checks.

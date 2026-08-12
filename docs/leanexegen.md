@@ -136,7 +136,7 @@ tools/leanexegen run myprogram.wasm 10 20 30
 
 A successful command publishes `myprogram.wasm` and `myprogram.proof/`.  The sidecar contains its own `program.wasm`, the request, all three generated sources, deterministic artifact support, samples, host assumptions, tool pins, task reports, and a content index.  The generated Source appears for inspection and provenance, while the verification command builds only the formal specification, Talos program, artifact modules, behavioral proof, embedded-byte checker, and declaration audit.
 
-Current generation and reproof of schema-6 packages publish schema 7, which archives the artifact-filtered structured LTG view supplied to the proof task.  Schema 6 introduced the `heapReserveBytes` formal interface and its expanded `RuntimeReady` fields without the LTG archive, while the verifier continues to accept schemas 3 through 6.  Controlled reproof of a schema-3 through schema-5 package uses structured LTG during generation but retains its earlier formal interface and package schema, so that output lacks the schema-7 LTG archive.
+Current generation and reproof of schema-6 packages publish schema 7, which archives the artifact-filtered structured LTG view supplied to the proof task.  Schema 6 introduced the `heapReserveBytes` formal interface and its expanded `RuntimeReady` fields without the LTG archive, while the verifier accepts schemas 3 through 7.  Controlled reproof of a schema-3 through schema-5 package uses structured LTG during generation but retains its earlier formal interface and package schema, so that output lacks the schema-7 LTG archive.
 
 | Path | Contents |
 |------|----------|
