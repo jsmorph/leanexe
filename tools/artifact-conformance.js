@@ -28,6 +28,14 @@ const codeLibRoot = path.join(
 const interpreterRoot = path.join(codeLibRoot, "interpreter");
 const testsuiteRoot = path.join(codeLibRoot, "vendor", "testsuite");
 const testsuiteExe = path.join(interpreterRoot, ".lake", "build", "bin", "testsuite");
+const mathlibTacticSource = path.join(
+  codeLibRoot,
+  ".lake",
+  "packages",
+  "mathlib",
+  "Mathlib",
+  "Tactic.lean",
+);
 const leanrun = path.join(repoRoot, "tools", "leanrun");
 const classifyFile = path.join(
   repoRoot,
@@ -55,6 +63,31 @@ function writeReceipt(file, value) {
 function outputText(value) {
   if (value === undefined || value === null) return "";
   return Buffer.isBuffer(value) ? value.toString("utf8") : String(value);
+}
+
+function leanPublicImports(source) {
+  const imports = [];
+  let blockDepth = 0;
+  for (const original of source.split("\n")) {
+    let line = "";
+    for (let index = 0; index < original.length;) {
+      if (blockDepth === 0 && original.startsWith("--", index)) break;
+      if (original.startsWith("/-", index)) {
+        blockDepth += 1;
+        index += 2;
+      } else if (blockDepth > 0 && original.startsWith("-/", index)) {
+        blockDepth -= 1;
+        index += 2;
+      } else {
+        if (blockDepth === 0) line += original[index];
+        index += 1;
+      }
+    }
+    const match = /^\s*public\s+import\s+(.+?)\s*$/u.exec(line);
+    if (match) imports.push(...match[1].split(/\s+/u));
+  }
+  if (blockDepth !== 0) fail("unterminated Lean block comment in import source");
+  return imports;
 }
 
 function exactKeys(value, expected, description) {
@@ -376,9 +409,27 @@ async function checkPrerequisites(config) {
 }
 
 async function buildTestsuite() {
+  const tacticImports = leanPublicImports(fs.readFileSync(mathlibTacticSource, "utf8"));
+  if (tacticImports.length === 0 || new Set(tacticImports).size !== tacticImports.length) {
+    fail(`${mathlibTacticSource}: expected distinct public imports`);
+  }
+  const chunkSize = 16;
+  for (let index = 0; index < tacticImports.length; index += chunkSize) {
+    await runCheckedAsync([
+      leanrun,
+      "--timeout", "30m",
+      "lake", "-d", interpreterRoot, "build",
+      ...tacticImports.slice(index, index + chunkSize),
+    ], { cwd: repoRoot, env: process.env, stdio: "inherit" });
+  }
   await runCheckedAsync([
     leanrun,
-    "--timeout", "90m",
+    "--timeout", "30m",
+    "lake", "-d", interpreterRoot, "build", "Interpreter.Testsuite.Exec",
+  ], { cwd: repoRoot, env: process.env, stdio: "inherit" });
+  await runCheckedAsync([
+    leanrun,
+    "--timeout", "30m",
     "lake", "-d", interpreterRoot, "build", "testsuite",
   ], { cwd: repoRoot, env: process.env, stdio: "inherit" });
 }
@@ -606,6 +657,7 @@ if (require.main === module) {
 
 module.exports = {
   classifyKnownIssues,
+  leanPublicImports,
   parseTalosCounts,
   parseTalosFailures,
   parseClassifierOutput,

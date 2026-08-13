@@ -122,6 +122,8 @@ git -C proofs/talos/lean/.lake/packages/CodeLib submodule update --init vendor/t
 tools/artifact-conformance.js check
 ```
 
+A cold conformance run builds the direct imports of Mathlib's pinned `Mathlib.Tactic` umbrella in fixed-size groups, then builds the testsuite library and executable as separate targets.  Each group has its own process limit, so the initial dependency compilation does not share one timeout with the complete import graph and final executable link.  The conformance driver reads this target list from the checked-out pinned Mathlib source rather than maintaining another dependency inventory.
+
 The recorded 2026-08-12 conformance run reported 3,853 Talos passes, six known assertion failures, and 627 skipped commands across twenty-five files.  Wasmtime passed all twenty-five selected files, while Talos's six failures came from imported-memory limit handling in `memory_grow.wast`.  The command accepts only the six configured rows as an upstream warning; no rows remove the warning, and any changed or additional failure stops the gate.
 
 The same command extracts fifteen exact `assert_invalid` and `assert_malformed` modules from the pinned official corpus and checks their precise artifact decoder or validator errors.  It removes custom sections that `wasm-tools` adds while encoding text-origin `assert_invalid` modules because the accepted artifact profile rejects custom sections before reaching the intended validation rule.  It preserves raw `assert_malformed` binary modules byte-for-byte, and any missing command, changed line, changed classification stage, or changed error constructor stops the gate.
