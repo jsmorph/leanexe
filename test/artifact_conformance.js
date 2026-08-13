@@ -4,12 +4,21 @@
 const {
   classifyKnownIssues,
   leanPublicImports,
+  mathlibTacticSource,
   parseClassifierOutput,
   parseTalosCounts,
   parseTalosFailures,
   requireExactFile,
   selectValidatorCommand,
 } = require("../tools/artifact-conformance");
+
+const expectedMathlibTacticSuffix = [
+  "proofs", "talos", "lean", ".lake", "packages", "mathlib", "Mathlib", "Tactic.lean",
+].join(require("node:path").sep);
+if (!mathlibTacticSource.endsWith(expectedMathlibTacticSuffix) ||
+    mathlibTacticSource.includes(`${require("node:path").sep}CodeLib${require("node:path").sep}`)) {
+  throw new Error("conformance uses a dependency cache outside the proof workspace");
+}
 
 const publicImports = leanPublicImports(`
 module
