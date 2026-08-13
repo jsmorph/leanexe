@@ -29,7 +29,7 @@ const interpreterRoot = path.join(codeLibRoot, "interpreter");
 const testsuiteRoot = path.join(codeLibRoot, "vendor", "testsuite");
 const testsuiteExe = path.join(interpreterRoot, ".lake", "build", "bin", "testsuite");
 const mathlibTacticSource = path.join(
-  codeLibRoot,
+  proofRoot,
   ".lake",
   "packages",
   "mathlib",
@@ -656,6 +656,7 @@ if (require.main === module) {
 }
 
 module.exports = {
+  mathlibTacticSource,
   classifyKnownIssues,
   leanPublicImports,
   parseTalosCounts,
