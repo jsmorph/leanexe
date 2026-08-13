@@ -1,6 +1,6 @@
 # Development Status
 
-This report describes the repository state on 2026-08-12.  Checked registries contain twenty source-driven Talos cases and twenty exact-artifact packages, while the demonstration index contains ten current array-interface programs and the original scalar example.  The root [Development Plan](../plan.md) owns remaining work, while repository tools and registries own changing counts and release identities.
+This report describes the repository state on 2026-08-13.  Checked registries contain twenty source-driven Talos cases and twenty exact-artifact packages, while the demonstration index contains ten current array-interface programs and the original scalar example.  The root [Development Plan](../plan.md) owns remaining work, while repository tools and registries own changing counts and release identities.
 
 ## Current capabilities
 
@@ -20,9 +20,9 @@ The [Talos proof inventory](../proofs/talos/README.md) names each source-driven 
 
 ## Release state
 
-`proofs/artifacts/release.json` is a draft record for the current release-input digest, `7c5b330b33d365959427ba60c1fa0f5ebbc5ee3b4d959b0b5c454953167cc1fd`.  The aggregate artifact proof passed all twenty packages on 2026-08-12, and the conformance gate passed with the configured imported-memory warning after 3,853 Talos passes, six known failures, 627 skips, and twenty-five Wasmtime file passes.  `tools/artifact-release.js inspect` accepts both receipts and reports two unresolved conditions: the immutable source revision and its cold-checkout result.
+`proofs/artifacts/release.json` is a draft record for release-input digest `612fbab1fa3c91e7a977799a9f46cd151a0de1d898abcfa314927c691cdf2ef5` at source revision `0b09cf0ee3e2f11decd64815130677ca147542e8`.  The aggregate artifact proof passed all twenty packages on 2026-08-13, and the conformance gate passed with the configured imported-memory warning after 3,853 Talos passes, six known failures, 627 skips, and twenty-five Wasmtime file passes.  `tools/artifact-release.js inspect` accepts both receipts and reports one unresolved condition: the cold-checkout result.
 
-The next commit will supply the immutable revision for the cold-checkout gate.  That gate will repeat both release checks in a detached repository-local checkout and write the final receipt.  `tools/artifact-release.js check-ready` determines whether the resulting record has any unresolved condition.
+Cold verification is deferred and does not form part of the current work.  The draft therefore makes no release-readiness claim, and `tools/artifact-release.js check-ready` continues to fail as designed.  A future cold-checkout run must repeat both release checks at the recorded revision before the record can become ready.
 
 Lean 4.31.0 accepts the archived kernel-unsoundness reproduction referenced by the release record.  The owner accepted that toolchain defect for this project after the recorded narrow lexical audit of the artifact proof sources and two local LeanExe imports.  The audit does not repair the kernel or cover transitive dependencies.
 
@@ -40,4 +40,4 @@ Lean 4.31.0 accepts the archived kernel-unsoundness reproduction referenced by t
 
 ## Immediate work
 
-The release record now needs an immutable source revision and a matching cold-checkout receipt.  The next proof-engineering experiment should freeze a fold with a structurally different control or accumulator shape before receiving current annotation and LTG support.  The compiler-theorem work should then test one narrow theorem-directed artifact-proof boundary whose checked evidence remains useful without assuming complete compiler correctness.
+The next proof-engineering experiment should freeze a fold with a structurally different control or accumulator shape before receiving current annotation and LTG support.  The compiler-theorem work should test one narrow theorem-directed artifact-proof boundary whose checked evidence remains useful without assuming complete compiler correctness.  Release work remains limited to preserving the accepted warm evidence and accurate draft status while cold verification is deferred.
