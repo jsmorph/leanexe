@@ -82,7 +82,7 @@ The [fresh fold-body reproof](experiments/fold-body-reproof.proof/) retrieved th
 
 Stage 5 took 1,913.092 seconds, including 1,778.739 seconds in Codex and 97.743 seconds in outer acceptance.  This is 1,085.521 seconds, or 36.2 percent, below the preceding 2,998.613-second singleton-suffix reproof, while the accepted source fell from 707 to 650 lines and from 3,072 to 2,102 whitespace-delimited words.  It remains 316.797 seconds, or 19.8 percent, slower than the 1,596.295-second primary Demo 10 proof and contains 78 more lines, so the result supports the shared composition without establishing a new primary configuration.
 
-The journal records twelve accepted import-check edits and three iterations caused by dependent premise inference in the new theorem application.  Naming `hItem`, `hInput`, and `hIndex` stabilized that application; the LTG entry now directs the prover to name every structural and dependent premise from the start.  The journal also recommends direct rewriting with the generated increment evaluator and local unfolding of the generated continuing frame, which will be tested on Demo 9.
+The journal records twelve accepted import-check edits and three iterations caused by dependent premise inference in the new theorem application.  Naming `hItem`, `hInput`, and `hIndex` stabilized that application; the LTG entry now directs the prover to name every structural and dependent premise from the start.  The subsequent Demo 9 fold-body reproof used the generated increment evaluator and local unfolding of the generated continuing frame, then recorded the remaining frame-projection work.
 
 ## Generated frame-accessor capability
 
@@ -106,7 +106,7 @@ The [fold-completion package](experiments/fold-completion.proof/) checks the gen
 
 Independent `leanexegen verify -s` accepted the complete package and exact artifact digest.  The proof decreased from 600 to 553 lines, from 2,371 to 2,162 whitespace-delimited words, and from 30,568 to 28,254 bytes.  Demo 9 and Demo 11 apply the same operation-independent interface to wrapping addition and bitwise XOR.
 
-This manual substitution provides no proof-generation-time measurement.  The package omits the predecessor proof's telemetry because those timings belong to a different source.  A fresh fixed-artifact reproof will measure structured retrieval and proof construction separately.
+This manual substitution provides no proof-generation-time measurement.  The package omits the predecessor proof's telemetry because those timings belong to a different source.  The fresh transfer package below records the corresponding structured retrieval and proof-construction measurement together with the added frame projections.
 
 ## Fold-completion and frame-projection transfer
 
