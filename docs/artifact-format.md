@@ -1,6 +1,6 @@
 # Artifact Verification Format
 
-**Status:** Implemented for twenty registered artifacts.  The draft release record carries the current input identity and successful warm-gate receipts dated 2026-08-12.  Release readiness still requires an immutable source revision and a matching cold-checkout receipt.
+**Status:** Implemented for twenty registered artifacts.  The draft release record carries the current input identity, source revision, and successful warm-gate receipts dated 2026-08-13.  Release readiness still requires the deferred cold-checkout receipt.
 
 ## Formal Subject and Claim
 
@@ -67,13 +67,13 @@ tools/artifact-proof.js check \
 
 ## Implementation Status
 
-All twenty registered packages pass the byte-identity, embedded-byte, decoder, validator, exact Talos translation, behavioral-specification, and manifest-declaration boundaries.  `tools/artifact-proof.js check-all` completed under the constrained proof toolchain for the current release-input identity on 2026-08-12.  The result establishes the implemented artifact boundary under the pinned Talos semantics.
+All twenty registered packages pass the byte-identity, embedded-byte, decoder, validator, exact Talos translation, behavioral-specification, and manifest-declaration boundaries.  `tools/artifact-proof.js check-all` completed under the constrained proof toolchain for the current release-input identity on 2026-08-13.  The result establishes the implemented artifact boundary under the pinned Talos semantics.
 
 The pinned twenty-five-file official execution slice produced 3,853 Talos passes, six known assertion failures, and 627 skipped commands, while Wasmtime 44.0.0 passed every selected file.  The six failures concern imported memory in `memory_grow.wast`: Talos uses the importing declaration's maximum instead of the exported memory instance's maximum.  The gate records their exact rows as an upstream warning outside the accepted no-import profile and treats every changed or additional failure as fatal.
 
 The same gate checks fifteen official invalid modules against exact artifact decoder or validator error constructors.  The cases cover malformed headers and sections, integer overflow, invalid memory limits and alignments, stack underflow, and unused stack results.  This corpus tests the executable classifier independently of the twenty accepted artifacts, while `decode_sound` and `validate_sound` remain the formal evidence for successful results.
 
-The draft release record binds all twenty artifact and package identities, every theorem name, the verifier source digest, the release-input digest, and the tool pins.  Lean 4.31.0 accepts the archived kernel reproduction, and the owner accepts that defect after the recorded local lexical audit; this qualification does not repair the kernel.  On 2026-08-12, `tools/artifact-release.js refresh` recorded the current input identity and consumed matching aggregate artifact-proof and semantic-conformance receipts.
+The draft release record binds all twenty artifact and package identities, every theorem name, the verifier source digest, the release-input digest, and the tool pins.  Lean 4.31.0 accepts the archived kernel reproduction, and the owner accepts that defect after the recorded local lexical audit; this qualification does not repair the kernel.  On 2026-08-13, `tools/artifact-release.js refresh` recorded input digest `612fbab1fa3c91e7a977799a9f46cd151a0de1d898abcfa314927c691cdf2ef5` at source revision `0b09cf0ee3e2f11decd64815130677ca147542e8` and consumed matching aggregate artifact-proof and semantic-conformance receipts.  Cold verification remains deferred, so the record retains one blocker and makes no release-readiness claim.
 
 ## Trusted Base and Evidence
 

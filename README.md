@@ -21,29 +21,29 @@ node test/run_all.js
 
 ## Compile and run
 
-This declaration compiles to a scalar WASM export.  Lean remains responsible for parsing, elaboration, type checking, and declaration loading.  LeanExe accepts the checked declaration only when every reachable runtime term lies in the supported subset.
+The checked [`LeanExe.Examples.Arithmetic.choose`](LeanExe/Examples/Arithmetic.lean) declaration compiles to a scalar WASM export.  Lean remains responsible for parsing, elaboration, type checking, and declaration loading.  LeanExe accepts the declaration only when every reachable runtime term lies in the supported subset.
 
 ```lean
-namespace LeanExe.Examples.ReadmeDemo
+namespace LeanExe.Examples.Arithmetic
 
-def choose (flag x y : UInt64) : UInt64 :=
-  if flag == 0 then x else y
+def choose (x y : UInt64) : UInt64 :=
+  if x == 0 then y + 1 else x + y
 
-end LeanExe.Examples.ReadmeDemo
+end LeanExe.Examples.Arithmetic
 ```
 
-Build the containing Lean module, compile the selected declaration, and invoke the exported function with Wasmtime:
+Build the module, compile the selected declaration, and invoke the exported function with Wasmtime:
 
 ```sh
-tools/leanrun lake build LeanExe.Examples.ReadmeDemo
+tools/leanrun lake build LeanExe.Examples.Arithmetic
 
 tools/leanrun .lake/build/bin/lean-wasm compile \
-  --module LeanExe.Examples.ReadmeDemo \
-  --entry LeanExe.Examples.ReadmeDemo.choose \
+  --module LeanExe.Examples.Arithmetic \
+  --entry LeanExe.Examples.Arithmetic.choose \
   --out build/choose.wasm
 
 build/tools/wasmtime/current/wasmtime run \
-  --invoke choose build/choose.wasm 0 41 99
+  --invoke choose build/choose.wasm 0 41
 ```
 
 Scalar parameters and results use WASM `i64`.  Arrays, byte arrays, structures, and tagged values use the memory layouts and ownership rules specified in the ABI.  WASI command modes provide bounded stdin, argv, stdout, stderr, and explicit error results while keeping the selected Lean entry pure.
@@ -62,7 +62,7 @@ The public interface for this workflow is `Array UInt64 -> Array UInt64`.  The p
 
 ## Verification boundaries
 
-The source-driven Talos workspace contains twenty registered compiler outputs with input-generic behavioral proofs.  The independent artifact registry contains the same twenty WASM binaries, each with exact-byte identity, decoder and validator results, Talos translation equality, and a behavioral theorem.  [Talos Proofs](proofs/talos/README.md) owns the theorem inventory, while [Development Status](docs/status.md) records the current aggregate state and release blockers.
+The source-driven Talos workspace contains twenty registered compiler outputs with input-generic behavioral proofs.  The independent artifact registry contains the same twenty WASM binaries, each with exact-byte identity, decoder and validator results, Talos translation equality, and a behavioral theorem.  [Artifact Verification Format](docs/artifact-format.md) defines the binary packages and release record, [Talos Proofs](proofs/talos/README.md) owns the theorem inventory, and [Development Status](docs/status.md) records the current aggregate state and release blockers.
 
 The structured LTG catalog supplies checked lemmas, tactics, guidance, and worked examples to proof-generation tasks.  Compiler annotations identify instruction regions and select relevant LTG material, but every generated theorem must still check against the decoded artifact.  [Artifact Proving](docs/artifact-proving.md), [WebAssembly Annotations](docs/annotations.md), and [Structured LTG](docs/ltg.md) describe these components.
 
@@ -85,4 +85,4 @@ The structured LTG catalog supplies checked lemmas, tactics, guidance, and worke
 
 ## Current work
 
-The current repository has twenty completed source-driven and exact-artifact proof cases, ten current-interface `leanexegen` demonstrations, and the original scalar demonstration.  The active work concerns release-record reconciliation, broader validation of annotation-directed LTG retrieval, and incremental use of compiler theorems to reduce exact-artifact proof construction.  [Development Plan](plan.md) is the sole work queue, and `devnotes.md` records decisions and test evidence.
+The current repository has twenty completed source-driven and exact-artifact proof cases, ten current-interface `leanexegen` demonstrations, and the original scalar demonstration.  The release record identifies the source revision and successful warm gates, while its cold-checkout receipt remains deferred.  `tools/artifact-release.js check-ready` will continue to reject that draft record until the deferred receipt exists.  The remaining work concerns broader validation of annotation-directed LTG retrieval and incremental use of compiler theorems to reduce exact-artifact proof construction.  [Development Plan](plan.md) is the sole work queue, and `devnotes.md` records decisions and test evidence.

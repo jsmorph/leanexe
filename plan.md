@@ -4,7 +4,7 @@ This file is the only active project work queue.  The compiler, execution suite,
 
 ## 1. Reconcile current documentation and release evidence
 
-The documentation now describes one implementation and assigns each changing fact to one source of truth.  The release record carries the current input identity and successful warm-gate receipts dated 2026-08-12.  The remaining work in this phase consists of immutable revision selection and the cold-checkout gate.
+The documentation describes one implementation and assigns each changing fact to one source of truth.  The release record carries the current input identity, source revision, and successful warm-gate receipts dated 2026-08-13.  Cold verification remains deferred and does not form part of the current work.
 
 - [x] Consolidate navigation, language, compiler, artifact-proof, annotation, and proof-guidance documents.
 - [x] Remove superseded plans and experiment reports after migrating current facts and links.
@@ -12,7 +12,8 @@ The documentation now describes one implementation and assigns each changing fac
 - [x] Run local-link, stale-reference, command-example, and whitespace checks over the maintained documentation.
 - [x] Refresh `proofs/artifacts/release.json` against the settled release inputs.
 - [x] Run the warm artifact-proof and semantic-conformance gates for the refreshed identity.
-- [ ] Record an immutable source revision and complete the cold-checkout gate.
+- [x] Record an immutable source revision for the current release inputs.
+- [ ] Complete the cold-checkout gate when cold verification resumes.
 - [ ] Require `tools/artifact-release.js check-ready` to pass before describing the release as ready.
 
 ## 2. Validate annotation-directed proof support on a new shape
@@ -70,4 +71,4 @@ Current candidates include broader explicit-release analysis, shared interior ow
 
 ## Completion conditions
 
-The next stable point requires current and nonduplicative documentation, a release record that passes identity inspection, successful warm and cold release gates, and one accepted structurally different fold demonstration using the maintained annotation and LTG path.  It also requires one evaluated compiler-theorem-directed artifact-proof increment with an explicit trust boundary and held-out evidence.  Repository status, registries, proof inventories, metrics, plans, and release records must agree at that revision.
+The next stable point requires current and nonduplicative documentation, a release record that passes identity inspection, and one accepted structurally different fold demonstration using the maintained annotation and LTG path.  It also requires one evaluated compiler-theorem-directed artifact-proof increment with an explicit trust boundary and held-out evidence.  Repository status, registries, proof inventories, metrics, plans, and release records must agree at that revision.  A later release-ready state will also require the deferred cold-checkout receipt and a successful `check-ready` result.
