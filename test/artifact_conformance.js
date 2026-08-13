@@ -3,12 +3,30 @@
 
 const {
   classifyKnownIssues,
+  leanPublicImports,
   parseClassifierOutput,
   parseTalosCounts,
   parseTalosFailures,
   requireExactFile,
   selectValidatorCommand,
 } = require("../tools/artifact-conformance");
+
+const publicImports = leanPublicImports(`
+module
+/- public import Hidden.One
+  /- public import Hidden.Two -/
+-/
+public import Example.One Example.Two -- trailing comment
+public import Example.Three
+private import Example.Private
+`);
+if (JSON.stringify(publicImports) !== JSON.stringify([
+  "Example.One",
+  "Example.Two",
+  "Example.Three",
+])) {
+  throw new Error("public Lean import parsing returned incorrect modules");
+}
 
 const counts = parseTalosCounts(
   "Totals: 45 pass  6 fail  0 skip  0 cascade  0 decode-err  0 interp-err  0 out-of-fuel",
