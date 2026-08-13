@@ -58,7 +58,7 @@ The fresh agent selected `guarded-back-edge` on its first structural search and 
 
 Stage 5 took 1,972.223 seconds, including 1,872.127 seconds in Codex and 79.123 seconds in outer acceptance.  The run is 5.3 percent faster than the retained 2,082.889-second primary and 14.2 percent faster than the local compact-boundary experiment.  Its 589-line, 2,208-word, 31,148-byte proof is 15.9 percent longer than the primary but 10.1 percent shorter than the local compact-boundary proof, and a separate `leanexegen verify -s` run accepted the package.
 
-This single measurement supports theorem applicability, structured retrieval, and a modest proof-time reduction.  A different fold operation will test whether the descriptor boundary transfers without wrapping-sum-specific support, and the generator will first add a compact continuing-transition equation.  The retained root package remains the shorter primary until the out-of-sample result and further timing evidence justify replacement.
+This single measurement supports theorem applicability, structured retrieval, and a modest proof-time reduction.  Demo 10 later applied the descriptor boundary to wrapping multiplication without multiplication-specific ProofKit support, while Demo 11 applied the resulting fold-body interface to bitwise XOR.  The retained root package remains the shorter primary because those cross-operation results establish applicability without producing a smaller Demo 9 proof.
 
 ## Fold-body composition capability
 
@@ -90,7 +90,7 @@ The telemetry's UTC timestamps span 4,843.670 seconds, which exceeds the monoton
 
 The journal records seventeen edited import-check candidates inside one accepted Codex task.  The generated accessors removed the recurring task of proving exact frame projections, but the agent spent most revisions composing dispatch, allocation, loop initialization, result construction, and dependent fold-body premises.  The result supplies fresh retrieval and theorem-use evidence while recording adverse proof-time and source-size measurements.
 
-Independent `leanexegen verify -s` accepted the preserved package over digest `aa263bbfa89c333f9fab497f1a2c370f476afc3419015d17b368cb7c8a6086d5`.  The earlier manual substitution remains the smaller source comparison, and the retained root package remains the primary timing and size reference.  The next frame-accessor screen should use Demo 10 or a new fold artifact rather than tuning this interface to Demo 9.
+Independent `leanexegen verify -s` accepted the preserved package over digest `aa263bbfa89c333f9fab497f1a2c370f476afc3419015d17b368cb7c8a6086d5`.  The earlier manual substitution remains the smaller source comparison, and the retained root package remains the primary timing and size reference.  Demo 10 subsequently tested the same accessor interface on wrapping multiplication, and Demo 11 used it on bitwise XOR.
 
 ## Fold-completion adapter experiment
 
@@ -98,7 +98,7 @@ The [fold-completion package](experiments/fold-completion.proof/) checks the gen
 
 Independent `leanexegen verify -s` accepted the complete package and exact artifact digest.  The proof decreased from 616 to 569 lines, from 2,541 to 2,404 whitespace-delimited words, and from 30,901 to 28,245 bytes.  Demo 11 applies the same operation-independent interface directly to a public XOR-branch postcondition.
 
-This manual substitution provides no proof-generation-time measurement.  The package omits the predecessor proof's telemetry because those timings belong to a different source.  A fresh fixed-artifact reproof will measure structured retrieval and proof construction separately.
+This manual substitution provides no proof-generation-time measurement.  The package omits the predecessor proof's telemetry because those timings belong to a different source.  The fresh fold-completion reproof below records the corresponding structured retrieval and proof-construction measurement.
 
 ## Fresh fold-completion reproof
 
