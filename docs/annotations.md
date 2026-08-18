@@ -93,7 +93,7 @@ The consumer currently generates support for these recurring boundaries:
 | Search trees | Key-load, equality-node, less-than-node, and result-construction equalities used by chain and tree theorems. |
 | Map and filter | Whole-function equality to neutral bounded-wrapper programs. |
 | Scalar loops | Exact descriptor-program equality, evaluated transition equations, read and write sets, and frame preservation. |
-| Array folds | Setup, traversal, continuing body, exit, frame accessor, allocation, result suffix, and completion adapters where their structural matchers succeed. |
+| Array folds | Setup, traversal, continuing body, exit, frame accessor, allocation, result suffix, and completion adapters where their structural matchers succeed.  A matched forward fold also receives a checked equality from `FixedArrayFold.forwardSetupFrame` over its generated continuing frame to the initialized continuing frame. |
 | Results | Singleton or pair representation support, result-local placement, stores, and public return. |
 
 A recipe records optional help rather than a mandatory script.  A proof agent may select the direct semantic theorem, a lower-level generated equality, a tactic, or ordinary Talos reasoning according to the residual goal.  Independent acceptance checks the imports and theorem result regardless of the route taken.
@@ -121,7 +121,7 @@ The command does not regenerate the source or WASM.  It fails when the input pac
 
 ## Retrieval and evidence
 
-Every validated region contributes task features and candidate annotation kinds to knowledge retrieval.  The task snapshot includes each selected package's entries after exact-artifact exclusions, while category indexes, features, maturity, consumers, and annotation kinds guide the agent's file search.  Proof recipes name declarations and tactics so the agent can retrieve detailed guidance after inspecting its residual goal.
+Every validated region contributes task features and candidate annotation kinds to knowledge retrieval.  Extractor version six records fixed-array length dispatches emitted in the equality-normalized, inequality-normalized, and unsigned-bound forms, including the input local, expected size, and encoding.  The task snapshot includes each selected package's entries after exact-artifact exclusions, while category indexes, features, maturity, consumers, and annotation kinds guide the agent's file search.  Proof recipes name declarations and tactics so the agent can retrieve detailed guidance after inspecting its residual goal.
 
 The demonstrations retain fixed-artifact experiments showing successful and failed uses of annotation support.  Evidence includes proof-generation time, outer-check time, journal observations, retrieval, revisions, proof structure, shared theorem use, and transfer across programs.  [Artifact Proving](artifact-proving.md) defines this evaluation, while the [benchmark index](../benchmarks/README.md) and demo experiment directories preserve individual runs.
 

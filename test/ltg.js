@@ -43,14 +43,20 @@ function main() {
   "map-add entry did not appear in overlapping semantic categories");
   const lengthDispatch = catalog.entries.find(
     (entry) => entry.id === "fixed-array-length-dispatch");
+  const capacity = catalog.entries.find((entry) => entry.id === "fixed-array-capacity");
+  const allocation = catalog.entries.find((entry) => entry.id === "fixed-array-allocation");
   const arrayResult = catalog.entries.find((entry) => entry.id === "fixed-array-result");
+  const capacityAndAllocationTheorem =
+    "Project.ProofKit.FixedArrayAllocatorWindow.constantCapacityRegion_spec_withTail";
   assert(lengthDispatch.tactics.some((tactic) =>
       tactic.command === "wp_fixed_array_length_le_dispatch_from" &&
       tactic.fallbackDeclaration ===
         "Project.ProofKit.FixedArrayLengthDispatch.leProgram_spec") &&
+    capacity.declarations.includes(capacityAndAllocationTheorem) &&
+    allocation.declarations.includes(capacityAndAllocationTheorem) &&
     arrayResult.tactics.map((tactic) => tactic.command).join(",") ===
       "uint64_array_pair,uint64_array_singleton",
-  "LTG catalog omitted a structured tactic or its fallback theorem");
+  "LTG catalog omitted required tactic or capacity-allocation metadata");
 
   const complete = taskCatalogFiles();
   assert(complete.entryIds.length === catalog.entries.length &&
@@ -62,7 +68,13 @@ function main() {
     categoryRecords(complete, "arrays").some((entry) =>
       entry.id === "fixed-array-length-dispatch" &&
       entry.tactics.some((tactic) =>
-        tactic.command === "wp_fixed_array_length_le_dispatch_from")),
+        tactic.command === "wp_fixed_array_length_le_dispatch_from")) &&
+    categoryRecords(complete, "allocation").some((entry) =>
+      entry.id === "fixed-array-capacity" &&
+      entry.declarations.includes(capacityAndAllocationTheorem)) &&
+    categoryRecords(complete, "allocation").some((entry) =>
+      entry.id === "fixed-array-allocation" &&
+      entry.declarations.includes(capacityAndAllocationTheorem)),
   "complete task catalog omitted a canonical entry or category reference");
   const initialSingletonQuery =
     /singleton_wrapper|FixedArrayPairResult|publicPost|entryFrame|function_1/;

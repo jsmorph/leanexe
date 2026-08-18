@@ -1852,7 +1852,10 @@ function loopRecipe(
       }, {
         declaration: "Project.ProofKit.FixedArrayFold.forwardSetupFrame",
         purpose: "state the exact initialized frame at loop entry",
-      }] : []), ...(match.resultPlacementEligible ? [{
+      }, ...(match.dynamicTraversalEligible ? [{
+        declaration: `${annotationNamespace}.${name}_setup_frame_eq`,
+        purpose: "normalize setup into the generated continuing-frame representation",
+      }] : [])] : []), ...(match.resultPlacementEligible ? [{
         declaration: `${annotationNamespace}.${name}_result_eq`,
         purpose: "rewrite the exact accumulator result-placement interval",
       }, {
@@ -3545,7 +3548,7 @@ theorem ${statementName}_eval ${binders} :
   };
 }
 
-function arrayFoldTraversalDeclarations(function_, region) {
+function arrayFoldTraversalDeclarations(function_, region, match) {
   const count = function_.parameters + function_.locals;
   const variables = Array.from({ length: count }, (_, index) => `v${index}`);
   const binders = `(${variables.join(" ")} : UInt64)`;
@@ -3564,6 +3567,13 @@ function arrayFoldTraversalDeclarations(function_, region) {
     index === itemLocal ? "value" : variable).join(" ");
   const parameterValues = variables.slice(0, function_.parameters)
     .map((variable) => `.i64 ${variable}`).join(", ");
+  const stateDeclaration = match.guardedBackEdgeEligible ? "" :
+    `def ${stateName} ${binders} :
+    Project.ProofKit.ScalarTransition.U64State :=
+  { params := [${variables.slice(0, function_.parameters).join(", ")}],
+    locals := [${variables.slice(function_.parameters).join(", ")}] }
+
+`;
   const frameAccessors = [
     `@[simp] theorem ${frameName}_params ${binders} :\n` +
       `    (${frameName} ${stateArguments}).params = [${parameterValues}] := by\n` +
@@ -3580,12 +3590,39 @@ function arrayFoldTraversalDeclarations(function_, region) {
       `some (.i64 ${variable}) := by\n` +
       `  rfl`),
   ].join("\n\n");
+  const setupValues = new Map([
+    [region.parameters.arrayLocal, variables[0]],
+    [region.parameters.lengthLocal, "(UInt64.ofNat inputSize)"],
+    [region.parameters.indexLocal, "0"],
+    [region.parameters.doneLocal, variables[0]],
+    [region.parameters.stopLocal, "(UInt64.ofNat inputSize)"],
+    [region.parameters.accumulatorLocals[0], `${match.setupInitialValue}`],
+    [region.parameters.releaseReadyLocal, "0"],
+    [region.parameters.effectiveStopLocal, "(UInt64.ofNat inputSize)"],
+  ]);
+  const setupArguments = variables.map(
+    (variable, index) => setupValues.get(index) ?? variable).join(" ");
+  const setupFrameEquality = match.forwardSetupEligible ? `
+
+theorem ${base}_setup_frame_eq ${binders} (inputSize : Nat) :
+    Project.ProofKit.FixedArrayFold.forwardSetupFrame
+      (${frameName} ${stateArguments}) ${variables[0]} inputSize
+      ${region.parameters.arrayLocal} ${region.parameters.lengthLocal}
+      ${region.parameters.indexLocal} ${region.parameters.doneLocal}
+      ${region.parameters.stopLocal} ${region.parameters.accumulatorLocals[0]}
+      ${region.parameters.releaseReadyLocal} ${region.parameters.effectiveStopLocal}
+      ${match.setupInitialValue} =
+        ${frameName} ${setupArguments} := by
+  simp [Project.ProofKit.FixedArrayFold.forwardSetupFrame,
+    ${frameName}, ${stateName},
+    Project.ProofKit.ScalarTransition.U64State.toState]` : "";
   return {
     theorem: theoremName,
-    source: `def ${frameName} ${binders} : Wasm.Locals :=
+    source: `${stateDeclaration}def ${frameName} ${binders} : Wasm.Locals :=
   (${stateName} ${stateArguments}).toState.toLocals []
 
 ${frameAccessors}
+${setupFrameEquality}
 
 theorem ${itemValidName} ${binders} :
     (${frameName} ${stateArguments}).validIndex ${itemLocal} := by
@@ -4244,8 +4281,8 @@ theorem ${name}_step_eq :
           ? scalarStatementTransitionDeclarations(
             function_, region, "step_continuing", continuingStatement).source
           : "";
-        const traversal = match?.guardedBackEdgeEligible
-          ? arrayFoldTraversalDeclarations(function_, region).source
+        const traversal = match?.dynamicTraversalEligible
+          ? arrayFoldTraversalDeclarations(function_, region, match).source
           : "";
         const singletonResultSpec = match?.singletonResultEligible &&
             match?.guardedBackEdgeEligible
@@ -4317,18 +4354,21 @@ theorem ${composition.name}_eq :
     ${job.namespace}.func${composition.functionIndex} = ${composition.name} := by
   rfl`);
   }
+  const needsScalarTransition = document.functions.some((function_) =>
+    function_.regions.some((region) => {
+      if (["leanexe.loop.while.v1", "leanexe.loop.scalar-post-test.v1"].includes(
+        region.kind) && region.parameters.descriptor !== null) return true;
+      if (program === null || region.kind !== "leanexe.array.fold.v1") return false;
+      const match = matchArrayFoldRegion(program, function_, region);
+      return match.guardedBackEdgeEligible || match.dynamicTraversalEligible;
+    }));
   return {
     module: `${job.namespace}.AnnotationMatches`,
     source: `import ${job.programModule}
 import Project.ProofKit.Annotation
 import Project.ProofKit.FixedArrayPairResult
-${document.functions.some((function_) => function_.regions.some((region) =>
-    (["leanexe.loop.while.v1", "leanexe.loop.scalar-post-test.v1"].includes(region.kind) &&
-      region.parameters.descriptor !== null) ||
-    (program !== null && region.kind === "leanexe.array.fold.v1" &&
-      matchArrayFoldRegion(program, function_, region).guardedBackEdgeEligible)))
-    ? "import Project.ProofKit.ScalarTransition\n" +
-      "import Project.ProofKit.ScalarTransitionU64\n" : ""}
+${needsScalarTransition ? "import Project.ProofKit.ScalarTransition\n" +
+  "import Project.ProofKit.ScalarTransitionU64\n" : ""}
 ${program !== null && document.functions.some((function_) => function_.regions.some((region) =>
     region.kind === "leanexe.array.fold.v1" &&
       matchArrayFoldRegion(program, function_, region).guardedBackEdgeEligible))
