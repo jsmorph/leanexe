@@ -32,6 +32,7 @@ LeanExe assigns one subject to each maintained document.  The repository [README
 | Document | Authority |
 |----------|-----------|
 | [Development Status](status.md) | Current checked capabilities, known limitations, and release state. |
+| [LTG and CLOB Retrospective](retro-1.md) | Measured LTG results, structured-retrieval limits, CLOB findings, and the relationship between them. |
 | [Development Plan](../plan.md) | Ordered active work and completion conditions. |
 | [Detailed Plans](../plans/README.md) | Technical plans for unfinished work referenced by the root roadmap. |
 | [Talos Proof Inventory](../proofs/talos/README.md) | Registered source-driven and exact-artifact theorem inventory. |
