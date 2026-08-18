@@ -6,10 +6,12 @@ The proof boundary starts from the compiled WASM bytes.  The Talos emitter const
 
 ## Command and stages
 
-The generation command accepts one request file and derives the sidecar name from the output name.  Each progress heading records the stage's UTC start time in ISO 8601 format.  `-s` suppresses all standard output, including progress headings, sample results, the final invocation, and verification success; errors and warnings remain on standard error.  Existing output or sidecar paths cause stage seven to fail instead of replacing either path.
+The generation command accepts one request file and derives the sidecar name from the output name.  `--knowledge` selects a versioned knowledge forest, with `knowledge/forest.json` as the default.  Each progress heading records the stage's UTC start time in ISO 8601 format.  `-s` suppresses all standard output, including progress headings, sample results, the final invocation, and verification success; errors and warnings remain on standard error.  Existing output or sidecar paths cause stage seven to fail instead of replacing either path.
 
 ```sh
 tools/leanexegen -o myprogram.wasm myprogram.txt
+tools/leanexegen --knowledge snapshots/accepted/forest.json \
+  -o myprogram.wasm myprogram.txt
 ```
 
 | Status | Stage | Checked operation |
@@ -23,7 +25,7 @@ tools/leanexegen -o myprogram.wasm myprogram.txt
 | 7 | Publication | Construct the content-hashed sidecar and install the sidecar and WASM through destination-local renames. |
 | 8 | Results | Print the checked sample inputs and outputs, followed by a command that runs the published WASM file. |
 
-Usage errors return 64, and unexpected orchestrator defects return 70.  A stage error prints one message to standard error in the form `leanexegen: stage N (name): detail`.  A Codex `questions` or `problems` outcome stops at its task's stage because this version has no interactive question loop.
+Usage errors return 64, and unexpected orchestrator defects return 70.  A generation-stage error prints `leanexegen: stage N (name): detail`, while a learning failure prints `leanexegen: learn <mode>: detail` and returns one.  A Codex `questions` or `problems` outcome stops at its task's stage because this version has no interactive question loop.
 
 The publication operation prepares the complete sidecar directory and WASM file before either destination becomes visible.  Each destination rename is atomic, and a caught publication failure removes both newly installed outputs.  POSIX filesystems do not provide one atomic rename for two sibling paths, so a process or machine failure between the two renames can leave the sidecar without the requested sibling WASM file; the sidecar retains its own verified `program.wasm` copy.
 
@@ -56,6 +58,26 @@ tools/leanexegen annotate \
   -o scalar-only.proof myprogram.proof
 ```
 
+### Stateful knowledge composition
+
+The learning commands place mutable state outside the proof run.  `record` turns an accepted proof package into an experimental knowledge package containing the accepted proof, journal, annotations, recipes, task features, telemetry, and prior knowledge identity.  Its catalog entry excludes the motivating artifact, so a later measured reproof cannot retrieve its own accepted proof.  The package remains outside every selected forest until promotion.
+
+`propose` gives the same run evidence and archived knowledge snapshot to a separate headless Codex task.  The task writes a learning journal and proposes one guidance entry, worked example, checked lemma, or checked tactic; checked Lean source must pass the prescribed Lean build during the task and an outer build afterward.  The resulting package remains experimental and retains the source run, proposal, and learning journal as entry-bound evidence.  The proposer changes neither the source proof package nor its archived knowledge snapshot.
+
+`promote` takes an experimental package and a selected forest, creates a new promoted package version, checks the resulting forest, builds every package-local Lean module, and asks Lean to resolve every advertised declaration.  It copies every selected package into a self-contained snapshot directory and leaves both the input forest and experimental package unchanged.  This gate covers package consistency and Lean source checks, while cross-artifact evaluation remains an explicit preceding review.  A later generation or reproof selects the new state through `--knowledge`.
+
+```sh
+tools/leanexegen learn record \
+  -o knowledge-runs/demo-12 myprogram.proof
+tools/leanexegen learn propose \
+  -o knowledge-candidates/demo-12 myprogram.proof
+tools/leanexegen learn promote \
+  --forest knowledge/forest.json \
+  -o knowledge-snapshots/demo-12 knowledge-candidates/demo-12
+tools/leanexegen --knowledge knowledge-snapshots/demo-12/forest.json \
+  -o next.wasm next.txt
+```
+
 ## Headless Codex tasks
 
 Each generative task starts at most one ephemeral `codex exec` session in its own directory below the repository's ignored `tmp/` root.  The invocation uses `-C`, `--sandbox workspace-write`, `--skip-git-repo-check`, `--ephemeral`, `--json`, `--output-schema`, and `-o`, with the prompt supplied on standard input.  Codex can inspect and edit files inside that task's workspace, but it cannot write elsewhere.
@@ -70,13 +92,13 @@ Codex returns one schema-validated `generated`, `questions`, or `problems` objec
 |------|-------------------------|---------------------------|
 | Formal specification | Request | A complete `FormalSpec` module defining `expected : Array UInt64 → Array UInt64` and `heapReserveBytes : Array UInt64 → Nat`; the orchestrator appends the representation and artifact predicates. |
 | Lean program | Request and frozen `FormalSpec` | A complete `Source` module defining `compute : Array UInt64 → Array UInt64`, plus input-array and expected-output samples. |
-| Artifact proof | Request, frozen `FormalSpec`, generated Talos `Program`, deterministic artifact-support modules, selected `PROOF_STRATEGIES.md`, structural `PROOF_TASK_FEATURES.json`, the task-filtered `LTG/` catalog, the human `PROOF_LIBRARY.md` reference, and a source mirror of every allowed proof-kit module | A complete `Behavior` module proving `artifact_behavior`; Source and the compiler are absent. |
+| Artifact proof | Request, frozen `FormalSpec`, generated Talos `Program`, deterministic artifact-support modules, selected `PROOF_STRATEGIES.md`, structural `PROOF_TASK_FEATURES.json`, the task-filtered `KNOWLEDGE/` forest, the human `PROOF_LIBRARY.md` reference, and source mirrors for allowed proof modules | A complete `Behavior` module proving `artifact_behavior`; Source and the compiler are absent. |
 
 The program task uses the formal file as specification context but does not import it into Source.  After compilation, the orchestrator copies the WASM and WAT into a frozen-artifact directory and removes the complete program workspace and every program-task outcome.  The artifact-proof task therefore receives no source file, source build object, or compiler output other than the frozen artifact model.
 
-The [structured LTG catalog](ltg.md) advertises checked proof assets, compiler-motif support, guidance, proof-generation methods, and worked examples through category JSONL indexes and canonical entries.  Every proof task receives an artifact-filtered catalog view and the selected strategy guide, while import validation continues to reject repository-owned `Project` modules outside the proof-kit allowlist.  The verifier hashes and audits the complete proof kit, while schema-7 packages preserve the exact LTG view available during proof generation.
+The [knowledge forest](ltg.md) contains separately versioned packages of checked proof assets, compiler-motif support, guidance, proof-generation methods, and worked examples.  Each package retains its own category JSONL indexes and canonical entries, while the forest selects the packages available to one run.  Every proof task receives an artifact-filtered forest view and the selected strategy guide, and schema-8 packages preserve the exact forest, package versions, package-local Lean sources, exclusions, and content digests used during proof generation.
 
-`PROOF_KIT_SOURCE/` mirrors the allowed proof-kit modules inside the isolated task workspace.  The proving agent searches that bounded tree when a selected LTG entry names a declaration, avoiding searches across dependency checkouts that also contain demos and archived proofs.  The mirror adds no import authority, and the proof-kit source digest in `tool-pins.json` continues to identify the checked implementation used by generation and verification.
+`PROOF_KIT_SOURCE/` mirrors the allowed proof-kit modules inside the isolated task workspace.  The proving agent searches that bounded directory when a selected knowledge entry names a ProofKit declaration, while package-local modules appear at their Lean module paths and under the archived package.  The proof-kit source digest identifies the shared implementation, and the knowledge-task digest identifies every selected package-local source.
 
 The [artifact-proof strategy notes](proof-strategies.md) describe proof structures distilled from accepted Talos proofs.  Leanexegen computes the export-reachable call graph from the frozen `Program`, records per-function instruction, local, loop, memory, arithmetic, and allocation features, and supplies only the matching marked sections.  The notes grant no imports and discharge no theorem; the generated `Behavior` module must contain every checked proof term used by the artifact theorem.
 
@@ -136,7 +158,7 @@ tools/leanexegen run myprogram.wasm 10 20 30
 
 A successful command publishes `myprogram.wasm` and `myprogram.proof/`.  The sidecar contains its own `program.wasm`, the request, all three generated sources, deterministic artifact support, samples, host assumptions, tool pins, task reports, and a content index.  The generated Source appears for inspection and provenance, while the verification command builds only the formal specification, Talos program, artifact modules, behavioral proof, embedded-byte checker, and declaration audit.
 
-Current generation and reproof of schema-6 packages publish schema 7, which archives the artifact-filtered structured LTG view supplied to the proof task.  Schema 6 introduced the `heapReserveBytes` formal interface and its expanded `RuntimeReady` fields without the LTG archive, while the verifier accepts schemas 3 through 7.  Controlled reproof of a schema-3 through schema-5 package uses structured LTG during generation but retains its earlier formal interface and package schema, so that output lacks the schema-7 LTG archive.
+Current generation and current-interface reproof publish schema 8, which archives the artifact-filtered knowledge forest supplied to the proof task.  Schema 7 archived one structured LTG catalog, and schema 6 introduced the `heapReserveBytes` formal interface without a catalog archive.  The verifier accepts schemas 3 through 8, preserving the recorded boundary of each historical package.
 
 | Path | Contents |
 |------|----------|
@@ -151,15 +173,16 @@ Current generation and reproof of schema-6 packages publish schema 7, which arch
 | `proof-library.md` | Human proof-kit documentation retained as part of the checked proof-kit source identity. |
 | `proof-strategies.md` | The optional strategy sections selected for the frozen Talos program. |
 | `proof-task-features.json` | The reachable call graph, structural features, selection reasons, extractor version, and strategy-source digest. |
-| `ltg-task.json` | Artifact and derivative filters, included and excluded entry IDs, counts, and the digest of the archived LTG view. |
-| `ltg/` | The category indexes and canonical entries available to the artifact-proof task. |
+| `knowledge-task.json` | Selected package versions, dependencies, artifact and derivative filters, entry exclusions, package-local Lean modules, and forest and package digests. |
+| `knowledge/` | The task forest and each selected package's filtered catalog, retained evidence, manifest, and required Lean sources. |
+| `ltg-task.json` and `ltg/` | The single-catalog task record retained by schema-7 packages. |
 | `tool-pins.json` | Lean, Talos, proof-workspace, proof-kit-source, verifier-source, Node, `wasm-tools`, Wasmtime, and kernel-review identities. |
 | `host-assumptions.json` | Host calls, store conditions, ABI expectations, or other assumptions recorded by the formal task. |
 | `proof/LeanExeGen/...` | Formal specification, Source, Talos program, Behavior, deterministic artifact proof modules, byte checker, and axiom audit. |
 
 An artifact-proof Codex task starts with `PROOF_JOURNAL.md` containing only its heading.  Its prompt asks Codex to update the prose after each Lean check and each significant change in approach, while leaving the form and organization to Codex.  Before an extended construction or elaboration attempt, the agent records the intended change and the residual goal that would demonstrate progress, which leaves useful evidence if the task later stalls.  Direct acceptance records the selected deterministic composition and successful checks instead; publication includes either journal's digest and excludes it from every Lean import and theorem dependency.
 
-Verification validates the complete file set and every digest, recomputes every task-report and accepted-source hash, checks dependency pins, and checks the fixed formal declaration identity.  It checks the archived LTG's digest, category references, included bodies, and exclusions, then compares the proof-kit documentation and source identity with the checkout and audits the allowed modules.  It creates a fresh formal declaration checker, byte-comparison module, and declaration-audit module before rebuilding the exact artifact theorem, checking each Git dependency and the Lean binary along the way.
+Verification validates the complete file set and every digest, recomputes every task-report and accepted-source hash, checks dependency pins, and checks the fixed formal declaration identity.  It checks the archived forest and package digests, category references, included entries, exclusions, evidence selection, module paths, and source imports, then installs the archived package-local Lean sources.  It creates a fresh formal declaration checker, byte-comparison module, and declaration-audit module before rebuilding the exact artifact theorem, checking each Git dependency and the Lean binary along the way.
 
 ```sh
 tools/leanexegen verify myprogram.proof
@@ -181,4 +204,4 @@ The final theorem states the fixed formal property of the validated Talos transl
 
 Every successful generation prints four warnings: Codex interpreted the prose, no theorem connects Source to the formal specification, the theorem covers one exact digest under pinned semantics, and Codex generation and compilation remain outside the artifact proof.  These warnings also appear in `package.json`.  `-s` suppresses standard output but does not suppress warnings on standard error.
 
-The current interface handles flat arrays of unsigned 64-bit words.  Richer element types, multiple exports, interactive question resolution, and source certificates remain future work.  Generation can stop on Codex authentication, schema, stage timeout, compiler acceptance, internal check, outer check, or proof failures; independent verification of an existing sidecar has no Codex or compiler dependency.
+The current interface handles flat arrays of unsigned 64-bit words.  Richer element types, multiple exports, interactive question resolution, and source certificates remain future work.  Learning input is a validated successful proof package, while preserved failure records remain diagnostic files.  Automatic proposals currently produce standalone packages; manually composed packages may declare dependencies that forest and promotion checks enforce.  Generation can stop on Codex authentication, schema, stage timeout, compiler acceptance, internal check, outer check, or proof failures; independent verification of an existing sidecar has no Codex or compiler dependency.

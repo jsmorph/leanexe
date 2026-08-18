@@ -2,6 +2,8 @@
 
 The structured LTG is a versioned knowledge artifact whose retrieval units are canonical entries.  An entry may combine guidance, checked declarations, annotation support, a proof-generation mechanism, and worked-example evidence, so those inventories overlap.  The metrics therefore report 24 entries and several orthogonal inventories rather than adding lemmas, tactics, and guidance into a misleading total.
 
+This dated snapshot measures the `leanexe-core` package before the repository introduced the knowledge forest.  `tools/knowledge stats` now reports aggregate package, catalog, package-local Lean-source, evidence-file, task-file, byte, and digest counts for a selected forest.  Per-catalog declaration, tactic, relationship, and role detail remains under `tools/ltg metrics`.
+
 ## Counting model
 
 `tools/ltg metrics` validates the catalog before producing deterministic JSON.  The command reads canonical entry metadata and guidance, generated category indexes, and every Lean module in the proof-kit allowlist.  It neither invokes Lean nor changes generated files, which keeps routine measurement independent of the machine-wide Lean execution lane.
@@ -112,7 +114,10 @@ Run the metrics command from the repository root after rebuilding and checking a
 tools/ltg rebuild
 tools/ltg check
 tools/ltg metrics
+tools/knowledge check
+tools/knowledge stats
 node test/ltg.js
+node test/knowledge.js
 tools/leanrun --timeout 15m lake -d proofs/talos/lean --no-ansi build Project.ProofKit.LTGCheck
 ```
 

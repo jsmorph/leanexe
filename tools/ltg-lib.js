@@ -128,7 +128,7 @@ function validateExclusion(value, description) {
   };
 }
 
-function validateTactics(value, description, entry) {
+function validateTactics(value, description, entry, options) {
   if (!Array.isArray(value)) fail(`${description} must be an array`);
   const result = value.map((tactic, index) => {
     const tacticDescription = `${description}[${index}]`;
@@ -154,8 +154,10 @@ function validateTactics(value, description, entry) {
     if (!entry.declarations.includes(fallbackDeclaration)) {
       fail(`${tacticDescription}.fallbackDeclaration is not listed by its entry`);
     }
-    const source = readRegularFile(
-      proofKitModulePath(moduleName), `${moduleName} proof-kit source`);
+    const source = options.moduleSource(moduleName);
+    if (typeof source !== "string") {
+      fail(`${tacticDescription}.module has no checked source`);
+    }
     const commands = new Set(leanSourceDeclarations(moduleName, source)
       .filter((declaration) => declaration.tactic)
       .map((declaration) => declaration.tacticCommand));
@@ -182,7 +184,7 @@ function validateTactics(value, description, entry) {
   return result;
 }
 
-function validateEntry(root, directory, categoryIds) {
+function validateEntry(root, directory, categoryIds, options) {
   id(directory, `entry directory ${directory}`);
   const entryRoot = path.join(root, "entries", directory);
   const value = readJson(path.join(entryRoot, "entry.json"), `${directory}/entry.json`);
@@ -191,9 +193,9 @@ function validateEntry(root, directory, categoryIds) {
     "evidenceStatus", "features", "annotationKinds", "modules", "declarations",
     "premises", "result", "consumers", "relatedEntries", "exclusion",
   ];
-  if (value.schemaVersion === 2) entryKeys.push("tactics");
+  if (value.schemaVersion >= 2) entryKeys.push("tactics");
   exactKeys(value, entryKeys, `${directory}/entry.json`);
-  if (![1, 2].includes(value.schemaVersion)) {
+  if (![1, 2, 3].includes(value.schemaVersion)) {
     fail(`${directory}/entry.json has an unsupported schema`);
   }
   const entryId = id(value.id, `${directory}.id`);
@@ -214,11 +216,13 @@ function validateEntry(root, directory, categoryIds) {
   if (!evidenceStatuses.has(evidenceStatus)) {
     fail(`${directory}.evidenceStatus is unsupported`);
   }
+  const executable = entryRoles.some((role) =>
+    role === "checked-proof-asset" || role === "proof-generation-mechanism");
   const modules = stringArray(value.modules, `${directory}.modules`, {
-    nonempty: true, sorted: true,
+    nonempty: value.schemaVersion < 3 || executable, sorted: true,
   });
-  if (modules.some((moduleName) => !proofKitModules.includes(moduleName))) {
-    fail(`${directory}.modules refers to a module outside the checked proof kit`);
+  if (modules.some((moduleName) => !options.allowedModules.has(moduleName))) {
+    fail(`${directory}.modules refers to a module outside its knowledge dependencies`);
   }
   const readme = readRegularFile(path.join(entryRoot, "README.md"), `${directory}/README.md`);
   if (readme.trim().length === 0) fail(`${directory}/README.md is empty`);
@@ -240,7 +244,7 @@ function validateEntry(root, directory, categoryIds) {
     }),
     modules,
     declarations: stringArray(value.declarations, `${directory}.declarations`, {
-      nonempty: true, sorted: true,
+      nonempty: value.schemaVersion < 3 || executable, sorted: true,
     }),
     premises: stringArray(value.premises, `${directory}.premises`, { nonempty: true }),
     result: text(value.result, `${directory}.result`),
@@ -252,11 +256,20 @@ function validateEntry(root, directory, categoryIds) {
     root: entryRoot,
   };
   entry.tactics = validateTactics(
-    value.schemaVersion === 2 ? value.tactics : [], `${directory}.tactics`, entry);
+    value.schemaVersion >= 2 ? value.tactics : [], `${directory}.tactics`, entry, options);
   return entry;
 }
 
-function loadCatalog(root = defaultRoot) {
+function loadCatalog(root = defaultRoot, suppliedOptions = {}) {
+  const options = {
+    allowedModules: suppliedOptions.allowedModules ?? new Set(proofKitModules),
+    moduleSource: suppliedOptions.moduleSource ?? ((moduleName) =>
+      readRegularFile(proofKitModulePath(moduleName), `${moduleName} proof-kit source`)),
+  };
+  if (!(options.allowedModules instanceof Set) ||
+      typeof options.moduleSource !== "function") {
+    fail("catalog module validation options are invalid");
+  }
   readRegularFile(path.join(root, "README.md"), "LTG README.md");
   const categories = validateCategories(root);
   const categoryIds = new Set(categories.map((category) => category.id));
@@ -266,7 +279,7 @@ function loadCatalog(root = defaultRoot) {
     fail("LTG entries must contain only ordinary directories");
   }
   const names = directories.map((entry) => entry.name).sort();
-  const entries = names.map((name) => validateEntry(root, name, categoryIds));
+  const entries = names.map((name) => validateEntry(root, name, categoryIds, options));
   const entryIds = new Set(entries.map((entry) => entry.id));
   for (const entry of entries) {
     for (const related of entry.relatedEntries) {
@@ -555,6 +568,12 @@ function catalogMetrics(catalog = checkCatalog()) {
   const entryFiles = new Map();
   const markdownFiles = new Map([["README.md", canonicalFiles.get("README.md")]]);
   const metadataFiles = new Map([["categories.json", canonicalFiles.get("categories.json")]]);
+  const knowledgePackagePath = path.join(catalog.root, "knowledge-package.json");
+  if (fs.existsSync(knowledgePackagePath)) {
+    const source = readRegularFile(knowledgePackagePath, "knowledge-package.json");
+    canonicalFiles.set("knowledge-package.json", source);
+    metadataFiles.set("knowledge-package.json", source);
+  }
   for (const entry of catalog.entries) {
     for (const relative of collectFiles(entry.root)) {
       const name = `entries/${entry.id}/${relative}`;
@@ -750,6 +769,7 @@ module.exports = {
   checkCatalog,
   defaultRoot,
   loadCatalog,
+  leanSourceDeclarations,
   rebuildCatalog,
   renderCategoryIndex,
   renderLeanCheck,

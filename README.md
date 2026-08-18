@@ -54,17 +54,18 @@ Scalar parameters and results use WASM `i64`.  Arrays, byte arrays, structures, 
 
 ```sh
 tools/leanexegen -o myprogram.wasm myprogram.txt
+tools/leanexegen --knowledge knowledge/forest.json -o myprogram.wasm myprogram.txt
 tools/leanexegen verify myprogram.proof
 tools/leanexegen run myprogram.wasm 10 20 30
 ```
 
-The public interface for this workflow is `Array UInt64 -> Array UInt64`.  The proof package records the exact binary, decoded model, formal specification, theorem, annotations, selected LTG material, journal, and verification results.  The [`leanexegen` reference](docs/leanexegen.md) defines the package schema and commands, and [Verifying a Program](docs/verifying.md) explains the proof boundary.
+The public interface for this workflow is `Array UInt64 -> Array UInt64`.  The proof package records the exact binary, decoded model, formal specification, theorem, annotations, selected knowledge packages, journal, and verification results.  The [`leanexegen` reference](docs/leanexegen.md) defines generation, verification, and the optional record, propose, and promote learning phases, while [Verifying a Program](docs/verifying.md) explains the proof boundary.
 
 ## Verification boundaries
 
 The source-driven Talos workspace contains twenty registered compiler outputs with input-generic behavioral proofs.  The independent artifact registry contains the same twenty WASM binaries, each with exact-byte identity, decoder and validator results, Talos translation equality, and a behavioral theorem.  [Artifact Verification Format](docs/artifact-format.md) defines the binary packages and release record, [Talos Proofs](proofs/talos/README.md) owns the theorem inventory, and [Development Status](docs/status.md) records the current aggregate state and release blockers.
 
-The structured LTG catalog supplies checked lemmas, tactics, guidance, and worked examples to proof-generation tasks.  Compiler annotations identify instruction regions and select relevant LTG material, but every generated theorem must still check against the decoded artifact.  [Artifact Proving](docs/artifact-proving.md), [WebAssembly Annotations](docs/annotations.md), and [Structured LTG](docs/ltg.md) describe these components.
+The knowledge forest selects versioned LTG packages containing checked lemmas, tactics, guidance, and worked examples.  Compiler annotations identify instruction regions and guide entry retrieval, while every generated theorem still checks against the decoded artifact.  [Artifact Proving](docs/artifact-proving.md), [WebAssembly Annotations](docs/annotations.md), and [Knowledge Forest and Structured LTG](docs/ltg.md) describe these components.
 
 ## Repository map
 
@@ -78,7 +79,8 @@ The structured LTG catalog supplies checked lemmas, tactics, guidance, and worke
 | [Talos proofs](proofs/talos/README.md) | Source-driven behavioral proofs, exact-artifact verifier, and shared proof library. |
 | [Demonstrations](demos/README.md) | End-to-end generated programs and retained artifact-proof experiments. |
 | [Benchmarks](benchmarks/README.md) | Accepted, rejected, and censored proof-generation runs with journals and telemetry. |
-| [Structured LTG](ltg/README.md) | Canonical retrieval catalog for proof assets and guidance. |
+| [Core LTG Package](ltg/README.md) | Default versioned retrieval package for proof assets and guidance. |
+| [Default Knowledge Forest](knowledge/forest.json) | Default set of knowledge packages selected for proof generation. |
 | [Documentation](docs/README.md) | Current user, compiler, verification, proof, and status references. |
 | [Plans](plans/README.md) | Detailed plans for unfinished work governed by the root roadmap. |
 | [Research papers](paper/README.md) | LaTeX sources, reviewed PDFs, bibliographies, and publication records. |

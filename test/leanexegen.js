@@ -18,6 +18,7 @@ const {
   stageReportCodexVersions,
   validateCodexTaskOutcome,
   validateLtgTask,
+  validateKnowledgeTask,
   validatePackage,
   validateProgramImports,
   validateProofImports,
@@ -37,11 +38,14 @@ const {
   formalSpecificationSource,
   formalTaskContext,
   generationResult,
+  knowledgeTaskBundle,
   ltgTaskBundle,
   parseProofStrategySections,
   parseArgs,
   preserveReproveFailure,
+  promoteKnowledge,
   proofPackagePath,
+  proposeKnowledge,
   proofStrategyBundle,
   proofTaskContext,
   readPackageSources,
@@ -53,6 +57,7 @@ const {
   programTaskContext,
   proofPrompt,
   publish,
+  recordKnowledge,
   runCodexOutcome,
   runDeterministicTaskSession,
   runTaskSession,
@@ -75,6 +80,7 @@ const {
   validateProofRecipePlan,
 } = require("../tools/leanexegen-annotations");
 const { catalogDigest } = require("../tools/ltg-lib");
+const { loadForest } = require("../tools/knowledge-lib");
 
 const repoRoot = path.resolve(__dirname, "..");
 const temporaryRoot = makeTemporaryDirectory("leanexegen-test-");
@@ -137,6 +143,11 @@ function testArguments() {
   ]);
   assert(generated.command === "generate" && generated.silent,
     "generation arguments were parsed incorrectly");
+  const selectedKnowledge = parseArgs([
+    "--knowledge", "knowledge/forest.json", "-o", "x.wasm", "request.txt",
+  ]);
+  assert(selectedKnowledge.knowledgePath.endsWith("/knowledge/forest.json"),
+    "generation did not retain its selected knowledge forest");
   const verified = parseArgs(["verify", "-s", "x.proof"]);
   assert(verified.command === "verify" && verified.silent,
     "verification arguments were parsed incorrectly");
@@ -183,6 +194,16 @@ function testArguments() {
     benchmark.outputPath.endsWith("/measured.wasm") &&
     benchmark.benchmarkRoot.endsWith("/benchmarks/example"),
   "benchmark arguments were parsed incorrectly");
+  const recorded = parseArgs(["learn", "record", "-o", "record", "x.proof"]);
+  const proposed = parseArgs(["learn", "propose", "-o", "proposal", "x.proof"]);
+  const promoted = parseArgs([
+    "learn", "promote", "--forest", "knowledge/forest.json",
+    "-o", "snapshot", "proposal",
+  ]);
+  assert(recorded.command === "learn" && recorded.mode === "record" &&
+    proposed.mode === "propose" && promoted.mode === "promote" &&
+    promoted.forestPath.endsWith("/knowledge/forest.json"),
+  "learning lifecycle arguments were parsed incorrectly");
   assert(proofPackagePath("/tmp/x.wasm") === "/tmp/x.proof",
     "proof package path was derived incorrectly");
   expectFailure(() => parseArgs(["-o", "x.wasm"]), /usage:/);
@@ -340,11 +361,12 @@ function testCodexProtocol() {
   const artifactPrompt = proofPrompt("request\n", job, 3);
   assert(artifactPrompt.includes("refine ⟨3, rfl, ?_⟩") &&
     artifactPrompt.includes("intro env initial inputPtr input hInput") &&
-    artifactPrompt.includes("LTG/categories.json") &&
+    artifactPrompt.includes("KNOWLEDGE/forest.json") &&
+    artifactPrompt.includes("KNOWLEDGE/packages/<package>/catalog/categories") &&
     artifactPrompt.includes("tools.jsonl files with rg") &&
     artifactPrompt.includes("Open only the entry.json and README.md") &&
-    artifactPrompt.includes("do not read the complete LTG tree") &&
-    artifactPrompt.includes("Record each search query, entry inspected, entry used") &&
+    artifactPrompt.includes("do not read every package") &&
+    artifactPrompt.includes("Record each search query, package and entry inspected") &&
     artifactPrompt.includes("PROOF_STRATEGIES.md contains optional guidance") &&
     artifactPrompt.includes("PROOF_TASK_FEATURES.json") &&
     artifactPrompt.includes("PROGRAM_ANNOTATIONS.json") &&
@@ -370,7 +392,7 @@ function testCodexProtocol() {
     !artifactPrompt.includes("PROOF_LIBRARY.md") &&
     !artifactPrompt.includes("bumpFacts") &&
     Buffer.byteLength(artifactPrompt) < 9000,
-  "artifact-proof task did not receive the compact LTG retrieval protocol");
+  "artifact-proof task did not receive the compact knowledge retrieval protocol");
   const wrapperStarter = artifactProofStarter(job, 3, true, {
     schemaVersion: 1,
     attemptOrder: ["direct", "composition", "tactic", "focused-guidance"],
@@ -2584,9 +2606,11 @@ function testArtifactPackage(job, formalSource) {
   const excludedExampleContext = proofTaskContext(
     "request\n", job, formalSource, generated.sources, null, 2,
     "c538d40936b426ba875b3dae1913e62ff00a44b34adff2adcd70922e5a4c95ff");
-  assert(!excludedExampleContext.has("LTG/entries/demo4-map-proof-example/entry.json") &&
-    excludedExampleContext.has("LTG/entries/fixed-array-map-add/entry.json") &&
-    JSON.parse(excludedExampleContext.get("LTG_TASK.json")).excludedEntries === 1,
+  assert(!excludedExampleContext.has(
+      "KNOWLEDGE/packages/leanexe-core/catalog/entries/demo4-map-proof-example/entry.json") &&
+    excludedExampleContext.has(
+      "KNOWLEDGE/packages/leanexe-core/catalog/entries/fixed-array-map-add/entry.json") &&
+    JSON.parse(excludedExampleContext.get("KNOWLEDGE_TASK.json")).excludedEntries === 1,
   "proof task context exposed an exact-artifact example or removed canonical support");
   const demo4Artifact =
     "c538d40936b426ba875b3dae1913e62ff00a44b34adff2adcd70922e5a4c95ff";
@@ -2783,6 +2807,108 @@ function testArtifactPackage(job, formalSource) {
   assert(fs.readFileSync(path.join(packageRoot, "proof-journal.md"), "utf8") ===
     checked.proofJournal,
   "proof package did not archive the proving-agent journal");
+  const forestPackageRoot = path.join(temporaryRoot, "forest-package");
+  const knowledgeTask = knowledgeTaskBundle(undefined, artifact.sha256);
+  createPackage(forestPackageRoot, {
+    request: "compute one unsigned integer array\n",
+    interpretation: {
+      formalSpecification: { summary: "spec", decisions: [] },
+      leanProgram: { summary: "program", decisions: [] },
+      artifactProof: { summary: "proof", decisions: [] },
+    },
+    artifact,
+    samples: [{ input: ["7"], output: ["7"], invocation: [] }],
+    hostAssumptions: ["The module imports no host functions."],
+    stageReports,
+    proofTelemetry,
+    proofJournal: "# Proof journal\n\nI reduced the artifact theorem with the checked array lemmas.\n",
+    toolPins: currentToolPins(repoRoot),
+    proofLibraryCatalog: fs.readFileSync(
+      path.join(repoRoot, "proofs", "talos", "lean", "Project", "ProofKit", "README.md"),
+      "utf8"),
+    proofStrategies: strategyBundle.notes,
+    proofTaskFeatures: strategyBundle.features,
+    knowledgeTask,
+    compilerAnnotations,
+    proofRecipes,
+    wasmBytes: wasm,
+    sources,
+    job,
+    formalSpecification: {
+      module: job.formalSpecModule,
+      definition: job.formalSpecDefinition,
+      type: job.formalSpecType,
+    },
+    warnings,
+  });
+  const checkedForestPackage = validatePackage(forestPackageRoot);
+  assert(checkedForestPackage.manifest.schemaVersion === 8 &&
+    checkedForestPackage.knowledgeTask.manifest.sha256 === knowledgeTask.manifest.sha256 &&
+    fs.existsSync(path.join(forestPackageRoot, "knowledge", "forest.json")) &&
+    !fs.existsSync(path.join(forestPackageRoot, "ltg-task.json")),
+  "schema-8 package omitted or changed its knowledge-forest snapshot");
+  const recordedKnowledgeRoot = path.join(temporaryRoot, "recorded-knowledge");
+  recordKnowledge({
+    mode: "record",
+    inputPath: packageRoot,
+    outputPath: recordedKnowledgeRoot,
+  });
+  const recordedManifest = JSON.parse(fs.readFileSync(
+    path.join(recordedKnowledgeRoot, "knowledge-package.json"), "utf8"));
+  assert(recordedManifest.maturity === "experimental" &&
+    recordedManifest.evidence.some((record) => record.path === "evidence/run.json") &&
+    fs.existsSync(path.join(recordedKnowledgeRoot, "evidence", "accepted-proof.lean")),
+  "record mode omitted its immutable run evidence");
+  const proposedKnowledgeRoot = path.join(temporaryRoot, "proposed-knowledge");
+  proposeKnowledge({
+    mode: "propose",
+    inputPath: packageRoot,
+    outputPath: proposedKnowledgeRoot,
+    codex: "codex-test",
+    execute: (args, options) => {
+      const outcomePath = args[args.indexOf("-o") + 1];
+      fs.writeFileSync(outcomePath, `${JSON.stringify({
+        schemaVersion: 1,
+        kind: "guidance",
+        summary: "Preserve a compact residual-goal record after each failed abstraction.",
+        entryId: "residual-goal-journal-guidance",
+        title: "Residual-goal journal guidance",
+        entrySummary: "Records the exact residual goal before changing proof approach.",
+        scope: "generic-semantics",
+        categories: ["proof-construction"],
+        features: ["diagnostics", "journal"],
+        annotationKinds: [],
+        premises: ["A Lean check produced a residual goal."],
+        result: "The next retrieval query uses terms from the retained goal.",
+        guidance: "Record the complete residual goal after a failed abstraction.  Search the selected knowledge indexes with its declarations and annotation kinds.  Retain the rejection reason before changing approach.",
+        declarations: [],
+        tactics: [],
+      }, null, 2)}\n`);
+      fs.writeFileSync(path.join(options.cwd, "LEARNING_JOURNAL.md"),
+        "# Learning Journal\n\nThe accepted run repeatedly used residual goals to choose another catalog query.  The observation applies across theorem families because it depends on the proof state rather than the program.  A guidance entry captures the method without claiming a new checked theorem.\n");
+    },
+  });
+  const proposedManifest = JSON.parse(fs.readFileSync(
+    path.join(proposedKnowledgeRoot, "knowledge-package.json"), "utf8"));
+  assert(proposedManifest.maturity === "experimental" &&
+    fs.existsSync(path.join(proposedKnowledgeRoot, "evidence", "proposal.json")) &&
+    fs.existsSync(path.join(proposedKnowledgeRoot, "evidence", "learning-journal.md")) &&
+    fs.existsSync(path.join(proposedKnowledgeRoot, "catalog", "entries",
+      "residual-goal-journal-guidance", "entry.json")),
+  "propose mode omitted its catalog entry, proposal, or learning journal");
+  const promotedSnapshotRoot = path.join(temporaryRoot, "promoted-snapshot");
+  promoteKnowledge({
+    mode: "promote",
+    forestPath: path.join(repoRoot, "knowledge", "forest.json"),
+    inputPath: proposedKnowledgeRoot,
+    outputPath: promotedSnapshotRoot,
+  });
+  const promotedForest = loadForest(path.join(promotedSnapshotRoot, "forest.json"));
+  const promotedPackage = promotedForest.packages.find(
+    (package_) => package_.id === proposedManifest.id);
+  assert(promotedPackage !== undefined && promotedPackage.maturity === "promoted" &&
+    promotedPackage.version === proposedManifest.version + 1,
+  "promote mode omitted or failed to version the selected knowledge package");
   const schema4Root = path.join(temporaryRoot, "schema-4-package");
   fs.cpSync(packageRoot, schema4Root, { recursive: true });
   fs.unlinkSync(path.join(schema4Root, "program.annotations.json"));
