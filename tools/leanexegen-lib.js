@@ -1676,7 +1676,7 @@ function validatePackage(packageRoot) {
       "selectedSections",
     ], "proof-task-features.json");
     if (features.schemaVersion !== 1 ||
-        ![1, 2, 3, 4, 5, 6].includes(features.extractorVersion) ||
+        ![1, 2, 3, 4, 5, 6, 7].includes(features.extractorVersion) ||
         !/^[0-9a-f]{64}$/.test(features.sourceSha256) ||
         features.exportIndex !== programExportIndex(fs.readFileSync(
           path.join(packageRoot, "proof", moduleFile(job.programModule)), "utf8"),

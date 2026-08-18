@@ -247,12 +247,78 @@ function main() {
       evidence: new Map(),
       dependencyForestPath,
     });
+    const consumerForestPath = path.join(root, "consumer-forest.json");
+    fs.writeFileSync(consumerForestPath, `${JSON.stringify({
+      schemaVersion: 1,
+      packages: [
+        { id: "consumer-package", path: "consumer-package" },
+        { id: "dependency-package", path: "dependency-package" },
+      ],
+    }, null, 2)}\n`);
+    const transitiveRoot = path.join(root, "transitive-package");
+    const transitiveModule = "LeanExeGen.Knowledge.TransitivePackage.Use";
+    const transitiveDescriptor = createKnowledgePackage(transitiveRoot, {
+      manifest: {
+        schemaVersion: 1,
+        id: "transitive-package",
+        version: 1,
+        title: "Transitive package",
+        summary: "Imports a theorem whose package has its own dependency.",
+        maturity: "experimental",
+        dependencies: ["consumer-package"],
+        catalogRoot: "catalog",
+        leanSources: [],
+        evidence: [],
+      },
+      catalogReadme: "# Transitive knowledge\n\nThis package imports a theorem from its direct dependency.  Package validation also mounts that dependency's transitive closure.\n",
+      categories: {
+        schemaVersion: 1,
+        categories: [{
+          id: "proof-construction",
+          title: "Proof construction",
+          summary: "Checked proof construction support.",
+        }],
+      },
+      entries: [{
+        metadata: {
+          schemaVersion: 3,
+          id: "transitive-true",
+          title: "Transitive truth",
+          summary: "Uses a theorem from a package with its own dependency.",
+          roles: ["checked-proof-asset"],
+          categories: ["proof-construction"],
+          scope: "generic-semantics",
+          evidenceStatus: "promoted",
+          features: ["dependency-test"],
+          annotationKinds: [],
+          modules: [transitiveModule],
+          declarations: [`${transitiveModule}.transitive_true`],
+          premises: ["True"],
+          result: "True",
+          consumers: [],
+          relatedEntries: [],
+          exclusion: null,
+          tactics: [],
+        },
+        readme: "# Transitive truth\n\nThe theorem uses a declaration from its direct dependency.  That package uses a declaration from its own dependency.\n",
+      }],
+      leanSources: new Map([[transitiveModule,
+        `import ${consumerModule}\n\nnamespace ${transitiveModule}\n\n` +
+        `theorem transitive_true : True := ${consumerModule}.consumer_true\n\n` +
+        `end ${transitiveModule}\n`]]),
+      evidence: new Map(),
+      dependencyForestPath: consumerForestPath,
+    });
+    assert(JSON.stringify(transitiveDescriptor.dependencies) ===
+      JSON.stringify(["consumer-package"]),
+    "package creation changed direct dependencies to their transitive closure");
     const combinedForestPath = path.join(root, "combined-forest.json");
     fs.writeFileSync(combinedForestPath, `${JSON.stringify({
       schemaVersion: 1,
       packages: [
         { id: "consumer-package", path: "consumer-package" },
         { id: "dependency-package", path: "dependency-package" },
+        { id: "transitive-package", path: "transitive-package" },
       ],
     }, null, 2)}\n`);
     const dependencyTask = taskKnowledgeFiles({ forestPath: combinedForestPath });

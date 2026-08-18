@@ -19,7 +19,7 @@ The strongest time reductions occur when a recurring compiler shape receives a c
 | [Demo 6: Euclidean GCD loop](../benchmarks/leanexegen/demo6-gcd42/README.md) | 1,056.072 s | 510.885 s median | 51.6% | 191 to 157 median | Three retained runs over one fixed artifact. |
 | [Demo 7: counter transfer](../benchmarks/leanexegen/demo7-counter-transfer/README.md) | 577.039 s | 125.103 s median | 78.3% | 171 to 67 | Three direct-starter runs over one fixed artifact. |
 | [Demo 8: three counters](../benchmarks/leanexegen/demo8-three-accumulator/README.md) | 313.253 s | 212.727 s | 32.1% | 70 to 67 | One out-of-sample direct-starter run. |
-| [Demo 9: wrapping-sum fold](../demos/demo-9/README.md) | 3,431.870 s | 1,759.087 s | 48.7% | 493 to 584 | One fastest retained run among several fixed-artifact screens. |
+| [Demo 9: wrapping-sum fold](../demos/demo-9/README.md) | 3,431.870 s | 1,638.250 s | 52.3% | 493 to 650 | Later accepted stateful run; its learned theorem was inspected and rejected. |
 
 The earlier [Demo 1 benchmark](../benchmarks/leanexegen/demo1-array/README.md) provides another controlled progression over one 1,938-byte artifact.  Its initial proof-kit run took 3,516.775 seconds, while the combined fixed-array allocator and singleton-result theorem produced a 489.993-second median, a reduction of about 86 percent.  Later Demo 1 experiments used another Codex series and isolate scalar annotations, so the benchmark reports those comparisons separately.
 
@@ -27,7 +27,7 @@ Demo 4 and Demo 5 provide the largest reductions because their final theorems co
 
 Demo 6 supplies stronger evidence for a recurring loop motif.  Its scalar post-test annotation and generated entry adapter reduced the three-run median by 51.6 percent, removed one raw loop rule and seventeen explicit instruction-cons steps, and reduced edited candidates from nine to a median of two.  Demo 7 and Demo 8 then transferred related scalar summaries and complete wrapper compositions to different accumulator layouts, although the final zero-Codex results also depend on direct acceptance of a complete generated starter.
 
-Demo 9 shows the remaining difficulty of structured array loops.  Its fastest retained run is 48.7 percent faster than baseline, but the accepted proof grew from 493 to 584 lines and still took about twenty-nine minutes.  Demo 10 and Demo 11 establish transfer across wrapping addition, wrapping multiplication, and bitwise XOR, while several new traversal, suffix, frame-accessor, and composition experiments increased proof time or proof size.
+Demo 9 shows the remaining difficulty of structured array loops.  Its fastest retained run is 52.3 percent faster than baseline, but the accepted proof grew from 493 to 650 lines and still took more than twenty-seven minutes.  The proving agent rejected the learned theorem in that run, so the result does not measure a learning benefit.  Demo 10 and Demo 11 establish transfer across wrapping addition, wrapping multiplication, and bitwise XOR, while several traversal, suffix, frame-accessor, and composition experiments increased proof time or proof size.
 
 ## Structured catalog results
 

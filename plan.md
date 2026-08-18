@@ -41,19 +41,25 @@ This phase promotes an annotation recipe or LTG entry only when its statement de
 
 The source theorem and compiler remain optional proof-construction inputs.  Independent artifact verification must continue to work when the source is unavailable or when no complete compiler-correctness theorem exists.  [Source-Theorem Transport](plans/theorem-transport.md) describes the larger refinement theorem that may follow successful narrow experiments.
 
-## 4. Maintain the proof knowledge base as an artifact
+## 4. Develop cumulative proof knowledge
 
-The knowledge forest contains separately versioned LTG packages rather than prompt text copied into every task.  Package categories, metadata, declarations, tactics, worked examples, evidence, exclusions, generated indexes, task snapshots, and metrics must remain internally consistent.  Every proof iteration must use journals and telemetry to inform annotations, shared lemmas, tactics, guidance, retrieval instructions, and journal instructions.
+The next increment tests whether one accepted proof can make a later artifact proof easier.  The implementation should remain small while this claim is unsettled.  Independent artifact verification remains the authority, while the catalog, forest, and learning commands organize proof inputs and evidence.
 
-- [ ] Run `tools/ltg check` whenever catalog metadata or indexed Lean support changes.
-- [ ] Run `tools/knowledge check` whenever forest membership, package metadata, package-local Lean source, or evidence binding changes.
-- [ ] Evaluate run-derived packages on another artifact before selecting them for the default forest.
-- [ ] Update the dated metrics snapshot when the catalog or ProofKit inventory changes materially.
-- [ ] Expand categories and entries in response to recurring proof shapes rather than demo names.
-- [ ] Preserve accepted, rejected, and censored proof-generation evidence with fixed-artifact identities.
-- [ ] Add out-of-sample demonstrations when existing examples cannot distinguish transfer from specialization.
+- [x] Derive compiler-motif task features from validated annotations instead of separate instruction matchers.
+- [x] Give the learning task the generated annotation equalities, exact adapters, accepted proof, selected knowledge, journal, and telemetry.
+- [x] Give each learning attempt an explicit identity so repeated attempts over one proof remain separate artifacts.
+- [x] Allow proposed checked knowledge to import selected package-local modules and record its direct package dependencies.
+- [x] Add an axiom report to the existing Lean check for promoted declarations.
+- [ ] Run one cross-artifact exercise and record whether the later proving agent selects, uses, or rejects the learned entry.
+- [ ] Evaluate the generated setup-frame equality on a fixed artifact using proof time, proof structure, and the agent journal.
+- [ ] Test the resulting support on one structurally different artifact, preferably a small allocating or ownership-sensitive program.
+- [x] Correct current LTG measurements and keep historical experiments in benchmark records and the retrospective.
 
-Proof-generation time remains the primary optimization measure, while proof structure and size remain material.  Counts should distinguish substantive local scaffolding from references to shared declarations, because longer shared theorem names do not make a proof more complex.  Retrieval success, revisions, independent acceptance, and cross-demo applicability remain part of every evaluation.
+Routine checks cover catalog generation and consistency, forest composition and filtering, and Lean checking of promoted declarations.  The artifact verifier remains the final proof gate.  Synthetic scale searches and malformed-input cases belong in experiments unless they expose a recurring development failure.
+
+Digest hardening, strict archive validation, file-level exclusion policy, content-addressed dependency identities, category sharding, forest-wide indexes, and archived-package migration remain deferred.  Current scale does not require those mechanisms.  They become active work when package sources, catalog size, or observed failures require them.
+
+Proof-generation time remains the primary optimization measure, while proof structure and size remain material.  Counts should distinguish local scaffolding from references to shared declarations, because longer shared theorem names do not make a proof more complex.  Retrieval success, revisions, independent acceptance, and cross-artifact use remain part of every evaluation.
 
 ## 5. Extend compiler and runtime semantics when programs require it
 
