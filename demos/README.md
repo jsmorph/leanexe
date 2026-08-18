@@ -1,6 +1,6 @@
 # Demonstrations
 
-The demonstrations are independently inspectable examples of prose-to-Lean-to-WebAssembly generation and exact-artifact verification.  Demos 2–11 use the current `Array UInt64 -> Array UInt64` interface, while Demo 1 preserves the earlier scalar proof and links to its modern array benchmark packages.  Each current directory retains its request, formal specification, generated source, executable artifact, direct artifact proof, samples, and relevant fixed-artifact experiments.
+The demonstrations are independently inspectable examples of prose-to-Lean-to-WebAssembly generation and exact-artifact verification.  Demos 2–12 use the current `Array UInt64 -> Array UInt64` interface, while Demo 1 preserves the earlier scalar proof and links to its modern array benchmark packages.  Each current directory retains its request, formal specification, generated source, executable artifact, direct artifact proof, samples, and relevant fixed-artifact experiments.
 
 | Demo | Program | Verification role |
 |------|---------|-------------------|
@@ -15,6 +15,7 @@ The demonstrations are independently inspectable examples of prose-to-Lean-to-We
 | [Demo 9](demo-9/README.md) | Fold a bounded array with wrapping addition. | Array-fold annotations, structured tactics, and composition boundaries. |
 | [Demo 10](demo-10/README.md) | Fold a bounded array with wrapping multiplication. | Cross-operation and stateful worked-example transfer for fold support. |
 | [Demo 11](demo-11/README.md) | Fold a bounded array with bitwise XOR. | Held-out residual-goal retrieval and frame-accessor test. |
+| [Demo 12](demo-12/README.md) | Remove the first zero from a bounded array while preserving order. | Dynamic early-exit search, variable-size allocation, and prefix-plus-shifted-suffix copy test. |
 
 The root proof package in a demo records the representative end-to-end result, while an `experiments/` directory preserves later fixed-artifact comparisons.  An experiment package may retain a slower proof because its journal establishes retrieval, transfer, or a useful failure boundary.  Each demo README identifies its primary result and explains every retained experiment stored beside it.
 

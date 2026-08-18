@@ -1,0 +1,93 @@
+{
+  "schemaVersion": 1,
+  "attemptOrder": [
+    "direct",
+    "composition",
+    "tactic",
+    "focused-guidance"
+  ],
+  "compositions": [],
+  "recipes": [
+    {
+      "recipeVersion": 1,
+      "functionIndex": 0,
+      "regionId": "function-0.length-dispatch-0",
+      "regionKind": "leanexe.array.length-dispatch.v1",
+      "applicability": "exact decoded instruction match",
+      "direct": {
+        "module": "Project.ProofKit.FixedArrayLengthDispatch",
+        "theorem": "Project.ProofKit.FixedArrayLengthDispatch.leProgram_spec",
+        "tactic": "wp_fixed_array_length_le_dispatch_from",
+        "invocation": "wp_fixed_array_length_le_dispatch_from hArray at 8, 8"
+      },
+      "supporting": [
+        {
+          "declaration": "Wasm.TerminatesWith.of_wp_entry_for",
+          "purpose": "specialize public entry execution to the represented input store before invoking the region tactic"
+        },
+        {
+          "declaration": "Project.ProofKit.UInt64Array.At.lengthRead",
+          "purpose": "identify the represented input length"
+        },
+        {
+          "declaration": "Project.ProofKit.UInt64Array.At.encodedSize_eq",
+          "purpose": "relate the encoded length word to the fixed logical size"
+        },
+        {
+          "declaration": "Project.ProofKit.FixedArrayEqNode.branchPost",
+          "purpose": "preserve the enclosing branch continuation"
+        },
+        {
+          "declaration": "LeanExeGen.GeneratedRb9ad29e25c8033e5.AnnotationMatches.function_0_length_dispatch_0_function_eq",
+          "purpose": "rewrite the decoded function to the named dispatch and suffix programs"
+        },
+        {
+          "declaration": "LeanExeGen.GeneratedRb9ad29e25c8033e5.AnnotationMatches.function_0_length_dispatch_0_dispatch_eq",
+          "purpose": "check the named dispatch program against the exact decoded prefix"
+        },
+        {
+          "declaration": "LeanExeGen.GeneratedRb9ad29e25c8033e5.AnnotationMatches.function_0_length_dispatch_0_invalid_capacity_eq",
+          "purpose": "rewrite the exact invalid-branch capacity prefix"
+        },
+        {
+          "declaration": "LeanExeGen.GeneratedRb9ad29e25c8033e5.AnnotationMatches.function_0_length_dispatch_0_invalid_capacity_program",
+          "purpose": "name the compiler-matched invalid-branch capacity prefix"
+        },
+        {
+          "declaration": "Project.ProofKit.FixedArrayCapacity.constantProgram_spec",
+          "purpose": "execute constant result-capacity normalization into its destination local"
+        },
+        {
+          "declaration": "Project.ProofKit.FixedArrayCapacity.normalizedCapacity",
+          "purpose": "name the computed aligned capacity passed to allocation"
+        },
+        {
+          "declaration": "Project.ProofKit.FixedArrayCapacity.capacityFrame",
+          "purpose": "state the exact post-capacity local frame"
+        },
+        {
+          "declaration": "Project.ProofKit.FixedArrayCapacity.capacityFrame_get_capacity",
+          "purpose": "read the normalized capacity through the selected combined local"
+        },
+        {
+          "declaration": "Project.ProofKit.FixedArrayCapacity.capacityFrame_internal_get_capacity",
+          "purpose": "supply the normalized capacity to an allocator's internal-local premise"
+        },
+        {
+          "declaration": "Project.ProofKit.FixedArrayCapacity.normalizedCapacity_toNat_ge_eight",
+          "purpose": "derive the allocator's minimum-capacity premise from normalization"
+        },
+        {
+          "declaration": "Project.ProofKit.FixedArrayAllocatorWindow.constantCapacityRegion_spec_withTail",
+          "purpose": "compose this prefix with an immediately following standard shifted allocator when its capacity local is offset plus nine"
+        }
+      ],
+      "expectedPostcondition": "valid and invalid input-size branch obligations",
+      "guidance": [
+        "strategy.arrays",
+        "strategy.allocation",
+        "strategy.frames"
+      ]
+    }
+  ]
+}

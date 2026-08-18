@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 1,
+  "extractorVersion": 7,
+  "sourceSha256": "2e1936a9278301e6b5bbed98a0d1beea9e7b85b397382f64a647e5ebb92a2fd1",
+  "exportIndex": 0,
+  "reachableFunctions": [
+    {
+      "index": 0,
+      "instructionCount": 597,
+      "localCount": 23,
+      "calls": [],
+      "loopCount": 5,
+      "hasMemory": true,
+      "hasArithmetic": true,
+      "hasAllocation": true,
+      "fixedArrayEqNodes": [],
+      "fixedArraySearchKeys": [],
+      "fixedArrayLengthDispatches": [
+        {
+          "inputLocal": 8,
+          "expectedSize": 8,
+          "encoding": "le-unsigned-v1"
+        }
+      ]
+    }
+  ],
+  "selectedSections": [
+    {
+      "id": "strategy.core",
+      "reason": "selected for every artifact proof"
+    },
+    {
+      "id": "strategy.loops",
+      "reason": "an export-reachable function contains a loop"
+    },
+    {
+      "id": "strategy.frames",
+      "reason": "a reachable function contains a loop or at least 16 locals"
+    },
+    {
+      "id": "strategy.arrays",
+      "reason": "selected for the fixed Array UInt64 public interface"
+    },
+    {
+      "id": "strategy.arithmetic",
+      "reason": "an export-reachable function contains machine arithmetic"
+    },
+    {
+      "id": "strategy.memory",
+      "reason": "an export-reachable function contains a load or store"
+    },
+    {
+      "id": "strategy.allocation",
+      "reason": "an export-reachable function contains allocator operations"
+    },
+    {
+      "id": "strategy.elaboration",
+      "reason": "a reachable function exceeds 200 instructions, has at least 32 locals, or has multiple loops"
+    },
+    {
+      "id": "strategy.diagnostics",
+      "reason": "selected for every artifact proof"
+    }
+  ]
+}
