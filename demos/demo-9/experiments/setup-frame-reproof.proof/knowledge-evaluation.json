@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 1,
+  "artifactSha256": "aa263bbfa89c333f9fab497f1a2c370f476afc3419015d17b368cb7c8a6086d5",
+  "knowledgeTaskSha256": "9408fdd9c6458c86fcc9c274f373a5d3871e0eec22674a0fe88cd0d4418d9f52",
+  "status": "accepted",
+  "entries": [
+    {
+      "package": "leanexe-core",
+      "entry": "annotated-fold-frame-accessors",
+      "outcome": "used",
+      "reason": "The generated frame getters discharged the fold local-role projections."
+    },
+    {
+      "package": "leanexe-core",
+      "entry": "array-fold-prefix",
+      "outcome": "used",
+      "reason": "foldPrefix_succ maintained the accumulator invariant and foldPrefix_size identified the final foldl result."
+    },
+    {
+      "package": "leanexe-core",
+      "entry": "array-memory-framing",
+      "outcome": "used",
+      "reason": "Input preservation across allocation and the result-length write maintained the represented input."
+    },
+    {
+      "package": "leanexe-core",
+      "entry": "fixed-array-allocation",
+      "outcome": "used",
+      "reason": "The allocator-window composition established the exact post-allocation store and frame in both branches."
+    },
+    {
+      "package": "leanexe-core",
+      "entry": "fixed-array-capacity",
+      "outcome": "used",
+      "reason": "The constant-capacity prefix and capacity arithmetic matched the valid and invalid result allocations."
+    },
+    {
+      "package": "leanexe-core",
+      "entry": "fixed-array-fold-body",
+      "outcome": "used",
+      "reason": "continuingGuardedProgram_spec composed the indexed load with the generated body, condition, and back edge."
+    },
+    {
+      "package": "leanexe-core",
+      "entry": "fixed-array-fold-structure",
+      "outcome": "used",
+      "reason": "The setup theorem and loop invariant structure proved the artifact's input-traversal loop."
+    },
+    {
+      "package": "leanexe-core",
+      "entry": "fixed-array-length-dispatch",
+      "outcome": "used",
+      "reason": "The structured dispatch command split execution at the checked input-length comparison."
+    },
+    {
+      "package": "leanexe-core",
+      "entry": "fixed-array-result",
+      "outcome": "used",
+      "reason": "Length, payload, root-transfer, and return theorems proved both exact result representations."
+    },
+    {
+      "package": "leanexe-core",
+      "entry": "fixed-array-traversal-input",
+      "outcome": "used",
+      "reason": "The traversal prefix semantics supplied the bounded indexed input element to each fold iteration."
+    },
+    {
+      "package": "proposal-4f56fd45fe24-d4f7d73b3648",
+      "entry": "fixed-array-singleton-result-from-frame",
+      "outcome": "used",
+      "reason": "The proposal theorem proved the generated singleton-result suffix from the completed fold frame."
+    }
+  ],
+  "proof": {
+    "sourceSha256": "6ed3450604a240e019b28f0bafcc27760b8fbdf7196a5e973abd17e9731b99ee",
+    "byteLength": 29074,
+    "lineCount": 543,
+    "stage5Milliseconds": 1780162.24
+  }
+}

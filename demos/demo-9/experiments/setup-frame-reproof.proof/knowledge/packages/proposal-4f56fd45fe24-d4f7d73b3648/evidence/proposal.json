@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "kind": "checked-lemma",
+  "summary": "The run repeats the same result-frame getter composition used by two archived fold proofs. The proposed lemma checks that composition once and builds successfully.",
+  "entryId": "fixed-array-singleton-result-from-frame",
+  "title": "Singleton fold result from source frame",
+  "entrySummary": "Executes the standard singleton fold-result suffix from source-frame accumulator and root facts, deriving the updated-frame getters required by the existing suffix theorem.",
+  "scope": "compiler-runtime-motif",
+  "categories": [
+    "arrays",
+    "compiler-motifs",
+    "memory",
+    "proof-construction"
+  ],
+  "features": [
+    "accumulator",
+    "arbitrary-postcondition",
+    "fold",
+    "frame",
+    "local-get",
+    "result-construction",
+    "singleton",
+    "suffix"
+  ],
+  "annotationKinds": [
+    "leanexe.array.fold.v1"
+  ],
+  "premises": [
+    "An exact generated singleton-result program equality",
+    "An empty operand stack",
+    "Accumulator and root getters on the source frame",
+    "Valid nonparameter result, root, destination, and return locals",
+    "Distinct result and root locals",
+    "A payload-store memory bound",
+    "A target assertion for the final fallthrough state"
+  ],
+  "result": "The shared singleton-result program reaches an arbitrary target assertion after result placement, payload storage, and final root transfer.",
+  "guidance": "Rewrite the compiler-matched suffix to FixedArrayFold.singletonResultProgram, then apply singletonResultProgram_spec_to_fromFrame with generated source-frame accessors and local bounds. The theorem derives the result getter and preserved root getter on FixedArrayFold.resultFrame.",
+  "declarations": [
+    "LeanExeGen.Knowledge.Proposal4f56fd45fe24D4f7d73b3648.Proposed.singletonResultProgram_spec_to_fromFrame"
+  ],
+  "tactics": []
+}

@@ -6,7 +6,7 @@ This demo accepts an `Array UInt64`.  An input containing at most eight elements
 
 The 1,979-byte WASM module has SHA-256 digest `aa263bbfa89c333f9fab497f1a2c370f476afc3419015d17b368cb7c8a6086d5`.  Its valid branch allocates a singleton result and traverses the input with an emitted loop, while its invalid branch allocates an empty result.  Independent `leanexegen verify -s` accepted the complete package and exact artifact theorem.
 
-The retained root proof completed Stage 5 in 2,082.889 seconds and contained 508 lines.  The fastest retained experiment now completes Stage 5 in 1,759.087 seconds after composing each constant-capacity prefix with its following allocator.  That fresh proof is larger than the root proof, so the demo retains both results and reports time, source structure, retrieval, and theorem use separately.
+The retained root proof completed Stage 5 in 2,082.889 seconds and contained 508 lines.  The fastest retained run completed Stage 5 in 1,638.250 seconds, but its agent rejected the learned theorem supplied by that run's forest.  The later setup-frame reproof took 1,780.162240 seconds and produced a 543-line proof, so the demo reports time, source structure, retrieval, and theorem use separately.
 
 ## Program and specification
 
@@ -116,9 +116,17 @@ The [capacity-to-allocation reproof](experiments/capacity-allocation-reproof.pro
 
 The agent again selected `wp_fixed_array_length_le_dispatch_from` and `wp_block_loop` from their structured tactic records.  It reached the fold continuation that the preceding corrected screen never reached, used `afterContinue.toState.toLocals []` as the callback frame, and closed the successor invariant and decreasing measure.  It also used the generated singleton-result adapter, exact frame accessors, scalar evaluator equations, and shared fold-prefix theorems before the outer checker and a separate `leanexegen verify -s` run accepted the complete package.
 
-Stage 5 took 1,759.087 seconds, including 1,686.337 seconds in Codex and 45.688 seconds in outer acceptance.  The result is 233.459 seconds, or 11.7 percent, faster than the fresh fold-completion reproof and 213.136 seconds, or 10.8 percent, faster than the guarded-back-edge screen.  This is the fastest retained Demo 9 proof-generation run, although one run cannot isolate the composition theorem from ordinary agent and machine variation.
+Stage 5 took 1,759.087 seconds, including 1,686.337 seconds in Codex and 45.688 seconds in outer acceptance.  The result is 233.459 seconds, or 11.7 percent, faster than the fresh fold-completion reproof and 213.136 seconds, or 10.8 percent, faster than the guarded-back-edge screen.  A later stateful run took 1,638.250 seconds but rejected its learned theorem, so neither single measurement isolates the capacity-to-allocation composition theorem from agent and machine variation.
 
 The accepted source contains 584 lines, 2,269 whitespace-delimited words, and 30,369 bytes, compared with 526 lines, 2,039 words, and 28,132 bytes for the fresh fold-completion proof.  The [manual capacity-to-allocation proof](experiments/manual-capacity-allocation.lean) applies the same theorem to that predecessor and contains 498 lines, 1,975 words, and 26,131 bytes.  The contrast shows that the theorem presents a compact checked interface, while the fresh agent's full branch and loop construction still determines the resulting proof size.
+
+## Generated setup-frame reproof
+
+The [setup-frame reproof](experiments/setup-frame-reproof.proof/) preserves the specification, source, and WASM digest `aa263bbfa89c333f9fab497f1a2c370f476afc3419015d17b368cb7c8a6086d5`.  Its archived forest contains `leanexe-core` and `proposal-4f56fd45fe24-d4f7d73b3648`.  The agent found `function_0_array_fold_0_setup_frame_eq` in the generated recipe and applied it at line 200 of `Behavior.lean`.
+
+The equality normalized `FixedArrayFold.forwardSetupFrame` to the generated continuing frame, after which Lean reached the folded loop without reducing the complete local-update chain.  The accepted proof records eleven used entries, including the proposal package's singleton-result theorem.  Independent `leanexegen verify -s` completed with exit status zero.
+
+Stage 5 took 1,780.162240 seconds, including 1,648.772899 seconds in Codex and 95.521525 seconds in outer acceptance.  The 543-line, 2,320-word, 29,074-byte source has SHA-256 digest `6ed3450604a240e019b28f0bafcc27760b8fbdf7196a5e973abd17e9731b99ee`.  This run took 141.912 seconds longer but used 107 fewer lines than the 1,638.250-second, 650-line stateful run, and it took 21.075 seconds longer but used 41 fewer lines than the 1,759.087-second, 584-line capacity-to-allocation run.  These single-run comparisons do not isolate the effect of the setup-frame equality.
 
 ## Execution
 
@@ -164,5 +172,6 @@ Every retained root file fixes a generation input, artifact, proof context, or m
 | [Fold-completion package](experiments/fold-completion.proof/) | The independently verified manual proof using the generated exact singleton-result adapter. |
 | [Fresh fold-completion reproof](experiments/fold-completion-reproof.proof/) | The independently verified fixed-artifact proof that retrieved and applied the generated completion adapter. |
 | [Capacity-to-allocation reproof](experiments/capacity-allocation-reproof.proof/) | The independently verified fixed-artifact proof that retrieved and applied the capacity-plus-allocator composition in both branches. |
+| [Generated setup-frame reproof](experiments/setup-frame-reproof.proof/) | The independently verified fixed-artifact proof that retrieved and used the generated setup-frame equality and the selected proposal theorem. |
 | [Manual capacity-to-allocation proof](experiments/manual-capacity-allocation.lean) | The checked source substitution that establishes the composed theorem's smaller proof interface without a generation-time measurement. |
 | [Manual fold-completion proof](experiments/manual-fold-completion.lean) | The readable behavioral proof retained by the fold-completion package. |
