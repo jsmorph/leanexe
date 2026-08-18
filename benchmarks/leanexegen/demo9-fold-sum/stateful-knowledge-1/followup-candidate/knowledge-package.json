@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 1,
+  "id": "proposal-aa263bbfa89c-6b4877ec130b",
+  "version": 1,
+  "title": "Bounded UInt64 sum fold composition",
+  "summary": "The run supports a benchmark-local worked example. Existing checked entries cover each semantic boundary; the distinct evidence is their complete branch composition and the isolated setup-frame equality that prevents loop-initialization timeout.",
+  "maturity": "experimental",
+  "dependencies": [],
+  "catalogRoot": "catalog",
+  "leanSources": [],
+  "evidence": [
+    {
+      "path": "evidence/accepted-proof.lean",
+      "entries": [
+        "bounded-uint64-sum-fold-composition"
+      ]
+    },
+    {
+      "path": "evidence/knowledge-evaluation.json",
+      "entries": [
+        "bounded-uint64-sum-fold-composition"
+      ]
+    },
+    {
+      "path": "evidence/knowledge-task.json",
+      "entries": [
+        "bounded-uint64-sum-fold-composition"
+      ]
+    },
+    {
+      "path": "evidence/learning-journal.md",
+      "entries": [
+        "bounded-uint64-sum-fold-composition"
+      ]
+    },
+    {
+      "path": "evidence/program.annotations.json",
+      "entries": [
+        "bounded-uint64-sum-fold-composition"
+      ]
+    },
+    {
+      "path": "evidence/proof-journal.md",
+      "entries": [
+        "bounded-uint64-sum-fold-composition"
+      ]
+    },
+    {
+      "path": "evidence/proof-recipes.json",
+      "entries": [
+        "bounded-uint64-sum-fold-composition"
+      ]
+    },
+    {
+      "path": "evidence/proof-task-features.json",
+      "entries": [
+        "bounded-uint64-sum-fold-composition"
+      ]
+    },
+    {
+      "path": "evidence/proof-telemetry.json",
+      "entries": [
+        "bounded-uint64-sum-fold-composition"
+      ]
+    },
+    {
+      "path": "evidence/proposal.json",
+      "entries": [
+        "bounded-uint64-sum-fold-composition"
+      ]
+    },
+    {
+      "path": "evidence/run.json",
+      "entries": [
+        "bounded-uint64-sum-fold-composition"
+      ]
+    }
+  ]
+}

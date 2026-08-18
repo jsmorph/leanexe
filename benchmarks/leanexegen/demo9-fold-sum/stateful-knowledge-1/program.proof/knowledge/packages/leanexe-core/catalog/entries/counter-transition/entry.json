@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "counter-transition",
+  "title": "Decrement-and-increment counter transition",
+  "summary": "Proves sum preservation, strict natural-number decrease, and post-test-loop semantics for a pair of wrapping UInt64 counters.",
+  "roles": ["checked-proof-asset", "guidance"],
+  "categories": ["loops", "proof-construction"],
+  "scope": "generic-semantics",
+  "evidenceStatus": "promoted",
+  "features": ["counter", "loop-invariant", "measure", "post-test", "wrapping-arithmetic"],
+  "annotationKinds": ["leanexe.loop.scalar-post-test.v1"],
+  "modules": ["Project.ProofKit.ScalarTransitionU64"],
+  "declarations": ["Project.ProofKit.ScalarTransition.CounterTransition.decrement_add_increment", "Project.ProofKit.ScalarTransition.CounterTransition.decrement_toNat_lt", "Project.ProofKit.ScalarTransition.CounterTransition.postTestProgram_spec"],
+  "premises": ["A view relating compact state to remaining and result counters", "Checked body and condition evaluations", "Initial sum equation", "Exit continuation"],
+  "result": "The complete post-test loop preserves the expected sum and terminates when the remaining counter reaches zero.",
+  "consumers": ["demo-7", "demo-8"],
+  "relatedEntries": ["fixed-array-singleton-wrapper", "local-frame-projection", "scalar-post-test-loop"],
+  "exclusion": null
+}

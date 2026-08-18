@@ -1,0 +1,3 @@
+# Bounded UInt64 sum fold composition
+
+Apply the checked length-dispatch tactic, then compose constant-capacity allocation in each branch. In the valid branch, preserve the input across allocation and the result-length store, prove the setup-frame equality in a separate declaration before `wp_block_loop`, apply `continuingGuardedProgram_spec` with the generated evaluator equations, and use the generated singleton-result adapter on exit. In the invalid branch, use the checked empty-array store and finish-program theorems. Keep the sum equation, local numbers, heap arithmetic, and generated-frame reconstruction local to the artifact.
