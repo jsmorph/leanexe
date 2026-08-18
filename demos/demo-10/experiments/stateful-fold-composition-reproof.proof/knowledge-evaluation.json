@@ -1,0 +1,74 @@
+{
+  "schemaVersion": 1,
+  "artifactSha256": "a981c7882a51a0660e6dd1e17956b958f7b2e25cbc30618d12458601ef2d4baa",
+  "knowledgeTaskSha256": "eae96993a0ee35dba4027347d63d3e8e9bab4677043e2c6dd07c9762acd59e08",
+  "status": "accepted",
+  "entries": [
+    {
+      "package": "leanexe-core",
+      "entry": "annotated-fold-frame-accessors",
+      "outcome": "used",
+      "reason": "Used generated frame values and getters for the fold invariant, traversal, measure, and result suffix."
+    },
+    {
+      "package": "leanexe-core",
+      "entry": "array-fold-prefix",
+      "outcome": "used",
+      "reason": "Used foldPrefix, foldPrefix_succ, and foldPrefix_size for the loop-carried product."
+    },
+    {
+      "package": "leanexe-core",
+      "entry": "fixed-array-allocation",
+      "outcome": "used",
+      "reason": "Used composed shifted allocation, root access, bump facts, and input preservation."
+    },
+    {
+      "package": "leanexe-core",
+      "entry": "fixed-array-capacity",
+      "outcome": "used",
+      "reason": "Used constant capacity normalization composed with both branch allocators."
+    },
+    {
+      "package": "leanexe-core",
+      "entry": "fixed-array-fold-body",
+      "outcome": "used",
+      "reason": "Used the guarded fold-body theorem with named generated evaluator and frame premises."
+    },
+    {
+      "package": "leanexe-core",
+      "entry": "fixed-array-fold-structure",
+      "outcome": "used",
+      "reason": "Used the checked setup, block-loop rule, and generated singleton-result adapter."
+    },
+    {
+      "package": "leanexe-core",
+      "entry": "fixed-array-length-dispatch",
+      "outcome": "used",
+      "reason": "Used entry conversion and the bounded length-dispatch tactic."
+    },
+    {
+      "package": "leanexe-core",
+      "entry": "fixed-array-result",
+      "outcome": "used",
+      "reason": "Used length, singleton, empty, payload, and final root-transfer result theorems."
+    },
+    {
+      "package": "leanexe-core",
+      "entry": "fixed-array-traversal-input",
+      "outcome": "used",
+      "reason": "Used the checked indexed continuing path and loop-exit path."
+    },
+    {
+      "package": "proposal-aa263bbfa89c-6b4877ec130b",
+      "entry": "bounded-uint64-sum-fold-composition",
+      "outcome": "used",
+      "reason": "Used its branch composition order for the analogous bounded multiplication fold."
+    }
+  ],
+  "proof": {
+    "sourceSha256": "d2d1bee9019c0149701962edfdf75421c10f7e0f997c7ef6beb4c7165788ae0b",
+    "byteLength": 33451,
+    "lineCount": 571,
+    "stage5Milliseconds": 1454473.119
+  }
+}

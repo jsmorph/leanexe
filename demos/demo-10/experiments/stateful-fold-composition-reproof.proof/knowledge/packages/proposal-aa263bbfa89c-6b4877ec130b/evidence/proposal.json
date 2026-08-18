@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "kind": "worked-example",
+  "summary": "The run supports a benchmark-local worked example. Existing checked entries cover each semantic boundary; the distinct evidence is their complete branch composition and the isolated setup-frame equality that prevents loop-initialization timeout.",
+  "entryId": "bounded-uint64-sum-fold-composition",
+  "title": "Bounded UInt64 sum fold composition",
+  "entrySummary": "Records the accepted composition of length dispatch, branch-specific allocation, a generated addition fold, singleton output, and empty fallback.",
+  "scope": "benchmark-local",
+  "categories": [
+    "allocation",
+    "arrays",
+    "compiler-motifs",
+    "loops",
+    "memory",
+    "proof-construction",
+    "worked-examples"
+  ],
+  "features": [
+    "array",
+    "sum",
+    "fold",
+    "length-dispatch",
+    "allocation",
+    "loop-invariant",
+    "generated-scalar-evaluators",
+    "compact-elaboration-boundary",
+    "singleton-result",
+    "empty-result"
+  ],
+  "annotationKinds": [
+    "leanexe.array.length-dispatch.v1",
+    "leanexe.array.fold.v1"
+  ],
+  "premises": [
+    "Exact length-dispatch and array-fold recipe equalities",
+    "A represented UInt64 input array and allocator runtime facts",
+    "Generated continuing-frame accessors, loaded-frame equality, and scalar evaluator equations",
+    "Memory bounds for empty and singleton result construction"
+  ],
+  "result": "A checked 650-line artifact proof composing the valid singleton-sum branch and invalid empty-result branch.",
+  "guidance": "Apply the checked length-dispatch tactic, then compose constant-capacity allocation in each branch. In the valid branch, preserve the input across allocation and the result-length store, prove the setup-frame equality in a separate declaration before `wp_block_loop`, apply `continuingGuardedProgram_spec` with the generated evaluator equations, and use the generated singleton-result adapter on exit. In the invalid branch, use the checked empty-array store and finish-program theorems. Keep the sum equation, local numbers, heap arithmetic, and generated-frame reconstruction local to the artifact.",
+  "declarations": [],
+  "tactics": []
+}
