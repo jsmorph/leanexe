@@ -67,6 +67,8 @@ The completed CLOB work established input-generic theorems for `quote`, `cancel`
 
 Current candidates include broader explicit-release analysis, shared interior ownership, recursive array-node teardown, and source forms that require a new specialization boundary.  Each candidate needs a reduced source fixture, source comparison, generated-WASM execution test, ownership report where applicable, and the relevant aggregate proof gates.  A feature does not enter the accepted language until the specification, manual, diagnostics, and tests agree with its implementation.
 
+[Proof-Grade `f64` Artifact Semantics](plans/f64-artifact-semantics.md) records a deferred extension for exact binary64 execution, integer bit-pattern ABI transport, finite-result kernel theorems, and checked numerical error certificates.  Its first vertical slice requires an explicit design review before implementation.  A later root-plan decision will activate this work.
+
 ## Required gates
 
 | Change | Required evidence |
