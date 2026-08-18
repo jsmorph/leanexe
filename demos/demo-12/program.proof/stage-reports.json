@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 1,
+  "codexVersion": "codex-cli 0.147.0",
+  "maximumAttempts": 1,
+  "tasks": {
+    "formalSpecification": {
+      "task": "formal-specification",
+      "sourceModule": "LeanExeGen.GeneratedRb9ad29e25c8033e5.FormalSpec",
+      "sourceSha256": "4324fda4531f1c5c118e455bc5358d7d00dc7acef6775cd38f801b2098cfecee",
+      "reportSha256": "55c2a40b8cd9d8b8c6582db89cf64cefc97a3ea51e9fe034dc840b78455a60a3",
+      "report": {
+        "summary": "Defined and verified the requested formal specification.",
+        "decisions": [
+          "The bounded branch uses Array.findIdx? and Array.eraseIdx!.",
+          "The heap bound is branch-sensitive: 48 + 8 * input.size when removal occurs, zero when the input is returned, and 56 for the oversized empty result."
+        ],
+        "attempts": [
+          {
+            "number": 1,
+            "outcome": "accepted",
+            "sourceSha256": "4324fda4531f1c5c118e455bc5358d7d00dc7acef6775cd38f801b2098cfecee",
+            "diagnosticSha256": "1333988eab183af46568035dbbef1cbd32b416a67f9a771b40c01e3c97bdb179",
+            "diagnostic": "Lean accepted LeanExeGen.GeneratedRb9ad29e25c8033e5.FormalSpec.expected : Array UInt64 → Array UInt64 and LeanExeGen.GeneratedRb9ad29e25c8033e5.FormalSpec.heapReserveBytes : Array UInt64 → Nat and LeanExeGen.GeneratedRb9ad29e25c8033e5.FormalSpec.ArtifactSpec : Wasm.Module → Prop."
+          }
+        ]
+      }
+    },
+    "leanProgram": {
+      "task": "lean-program",
+      "sourceModule": "LeanExeGen.GeneratedRb9ad29e25c8033e5.Source",
+      "sourceSha256": "45f387a2030306ef428c471e00f614a83e356e760ad9ebbce0aedd12f6f43dc9",
+      "reportSha256": "e3249b03946cdaf8fb6f9a2effd867d220c2d45ace3741b08feea08a27871a9a",
+      "report": {
+        "summary": "Candidate passed the Lean build, compiler report, and WebAssembly compilation.",
+        "decisions": [
+          "Used Array.findIdx? for the first zero and Array.eraseIdx! for removal."
+        ],
+        "attempts": [
+          {
+            "number": 1,
+            "outcome": "accepted",
+            "sourceSha256": "45f387a2030306ef428c471e00f614a83e356e760ad9ebbce0aedd12f6f43dc9",
+            "diagnosticSha256": "6760d3d2646b3b6cb307354bc9c9f66556528c6df8e3943f2993b68046b648ee",
+            "diagnostic": "Lean and LeanExe accepted and compiled LeanExeGen.GeneratedRb9ad29e25c8033e5.Source.compute : Array UInt64 → Array UInt64."
+          }
+        ]
+      }
+    },
+    "artifactProof": {
+      "task": "artifact-proof",
+      "sourceModule": "LeanExeGen.GeneratedRb9ad29e25c8033e5.Behavior",
+      "sourceSha256": "43d56ee204a10bf2b11c6914b3c8e881a42a3bf17b9025c6048516b786fe01a2",
+      "reportSha256": "e2b50f9f2092a30649e401bf30d10c79dac8cd868042cbe6ddda48ccfa3df20c",
+      "report": {
+        "summary": "Proved the exact compiled artifact. Import validation and ArtifactResult build succeeded.",
+        "decisions": [],
+        "attempts": [
+          {
+            "number": 1,
+            "outcome": "accepted",
+            "sourceSha256": "43d56ee204a10bf2b11c6914b3c8e881a42a3bf17b9025c6048516b786fe01a2",
+            "diagnosticSha256": "a972e45b517c4cff5e4c9f6c33491ec2f25d968ede2c0415bf1dcd723c54d32b",
+            "diagnostic": "Lean accepted LeanExeGen.GeneratedRb9ad29e25c8033e5.Behavior.artifact_behavior and LeanExeGen.GeneratedRb9ad29e25c8033e5.Artifact.artifact_correct."
+          }
+        ]
+      }
+    }
+  }
+}

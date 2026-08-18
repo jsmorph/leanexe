@@ -1,6 +1,6 @@
 # Development Plan
 
-This file is the only active project work queue.  The compiler, execution suite, twenty source-driven Talos proofs, twenty exact-artifact packages, annotation generator, ProofKit, structured LTG, and eleven demonstrations already exist.  Detailed plans under `plans/` support unfinished items listed here and do not define separate priorities.
+This file is the only active project work queue.  The compiler, execution suite, twenty source-driven Talos proofs, twenty exact-artifact packages, annotation generator, ProofKit, structured LTG, and twelve demonstrations already exist.  Detailed plans under `plans/` support unfinished items listed here and do not define separate priorities.
 
 ## 1. Reconcile current documentation and release evidence
 
@@ -18,11 +18,11 @@ The documentation describes one implementation and assigns each changing fact to
 
 ## 2. Validate annotation-directed proof support on a new shape
 
-The existing fold demonstrations use addition, multiplication, and XOR over closely related generated control flow.  Demo 12 instead searches a bounded array for its first zero, returns the input when no zero exists, and otherwise allocates a result through the emitted copy-and-shift path.  Its frozen request requires `Array.findIdx?` and `Array.eraseIdx!`, providing an early-exit search and a value-dependent result shape for the current annotation, ProofKit, LTG, and journaling path.
+The existing fold demonstrations use addition, multiplication, and XOR over closely related generated control flow.  Demo 12 instead searches a bounded array for its first zero, returns the input when no zero exists, and otherwise allocates a result through the emitted copy-and-shift path.  Its frozen request requires `Array.findIdx?` and `Array.eraseIdx!`, providing an early-exit search and a value-dependent result shape for the current annotation, ProofKit, LTG, and journaling path.  Independent verification accepted its exact 2,183-byte artifact proof after 3,907.231 seconds of Stage 5 work.
 
 - [x] Select the bounded first-zero removal program as the structurally different evaluation.
-- [ ] Generate and independently accept a direct artifact proof without changing the frozen WASM.
-- [ ] Review the journal, proof, telemetry, retrieved LTG entries, annotations, and agent revisions together.
+- [x] Generate and independently accept a direct artifact proof without changing the frozen WASM.
+- [x] Review the journal, proof, telemetry, retrieved LTG entries, annotations, and agent revisions together.
 - [ ] Retain general or credible recurring abstractions, while classifying narrow material as checked worked examples.
 - [ ] Compare proof-generation time and proof structure with the relevant retained evidence without imposing a single timing threshold.
 
@@ -52,7 +52,7 @@ The next increment tests whether one accepted proof can make a later artifact pr
 - [x] Add an axiom report to the existing Lean check for promoted declarations.
 - [x] Run one cross-artifact exercise and record whether the later proving agent selects, uses, or rejects the learned entry.
 - [x] Evaluate the generated setup-frame equality on a fixed artifact using proof time, proof structure, and the agent journal.
-- [ ] Test the resulting support on one structurally different artifact, preferably a small allocating or ownership-sensitive program.
+- [x] Test cumulative proof support on Demo 12's structurally different allocating and copy-shift artifact.
 - [x] Correct current LTG measurements and keep historical experiments in benchmark records and the retrospective.
 
 Routine checks cover catalog generation and consistency, forest composition and filtering, and Lean checking of promoted declarations.  The artifact verifier remains the final proof gate.  Synthetic scale searches and malformed-input cases belong in experiments unless they expose a recurring development failure.
@@ -79,4 +79,4 @@ Current candidates include broader explicit-release analysis, shared interior ow
 
 ## Completion conditions
 
-The next stable point requires current and nonduplicative documentation, a release record that passes identity inspection, and one accepted structurally different array-control-flow demonstration using the maintained annotation and LTG path.  It also requires one evaluated compiler-theorem-directed artifact-proof increment with an explicit trust boundary and held-out evidence.  Repository status, registries, proof inventories, metrics, plans, and release records must agree at that revision.  A later release-ready state will also require the deferred cold-checkout receipt and a successful `check-ready` result.
+The next stable point requires current and nonduplicative documentation, a release record that passes identity inspection, and one accepted structurally different array-control-flow demonstration using the maintained annotation and LTG path.  Demo 12 satisfies the demonstration condition.  The stable point also requires one evaluated compiler-theorem-directed artifact-proof increment with an explicit trust boundary and held-out evidence, while repository status, registries, proof inventories, metrics, plans, and release records must agree at that revision.  A later release-ready state will also require the deferred cold-checkout receipt and a successful `check-ready` result.

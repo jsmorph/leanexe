@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 2,
+  "artifactSha256": "7cdd8adba75d4f076d0a142f824a19a0d34d6a5cedd1a810a417a7fc5789f7b6",
+  "packages": [
+    {
+      "id": "leanexe-core",
+      "version": 1,
+      "maturity": "promoted",
+      "dependencies": [],
+      "entries": 24,
+      "entryIds": [
+        "annotated-fold-frame-accessors",
+        "array-fold-prefix",
+        "array-memory-framing",
+        "compact-loop-suffix-boundary",
+        "counter-transition",
+        "demo4-map-proof-example",
+        "demo5-filter-proof-example",
+        "demo7-counter-transfer-example",
+        "demo8-counter-transfer-example",
+        "euclidean-gcd-loop",
+        "fixed-array-allocation",
+        "fixed-array-capacity",
+        "fixed-array-filter-lt",
+        "fixed-array-fold-body",
+        "fixed-array-fold-structure",
+        "fixed-array-length-dispatch",
+        "fixed-array-map-add",
+        "fixed-array-result",
+        "fixed-array-singleton-wrapper",
+        "fixed-array-traversal-input",
+        "guarded-back-edge",
+        "local-frame-projection",
+        "residual-specification-normalization",
+        "scalar-post-test-loop"
+      ],
+      "excludedEntries": 0,
+      "excludedEntryIds": [],
+      "leanModules": [],
+      "sha256": "d722676be53c7713af3fcda98f9632ba8cbeaca67badb945733654ed53649a05"
+    }
+  ],
+  "entries": 24,
+  "excludedEntries": 0,
+  "sha256": "cd8ce0cfb0928c95524399917f107a0a7c32ca518cc01c93782c79b9c4fd3a11"
+}

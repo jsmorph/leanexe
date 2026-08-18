@@ -36,7 +36,7 @@ LeanExe assigns one subject to each maintained document.  The repository [README
 | [Development Plan](../plan.md) | Ordered active work and completion conditions. |
 | [Detailed Plans](../plans/README.md) | Technical plans for unfinished work referenced by the root roadmap. |
 | [Talos Proof Inventory](../proofs/talos/README.md) | Registered source-driven and exact-artifact theorem inventory. |
-| [Demonstrations](../demos/README.md) | Eleven end-to-end programs and their retained proof packages. |
+| [Demonstrations](../demos/README.md) | Twelve end-to-end programs and their retained proof packages. |
 | [Benchmark Evidence](../benchmarks/README.md) | Proof-generation runs, journals, telemetry, and acceptance results. |
 | [Research Papers](../paper/README.md) | Publication sources, PDFs, and marXiv records. |
 

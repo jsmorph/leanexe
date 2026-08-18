@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "artifactSha256": "7cdd8adba75d4f076d0a142f824a19a0d34d6a5cedd1a810a417a7fc5789f7b6",
+  "knowledgeTaskSha256": "cd8ce0cfb0928c95524399917f107a0a7c32ca518cc01c93782c79b9c4fd3a11",
+  "status": "accepted",
+  "entries": [
+    {
+      "package": "leanexe-core",
+      "entry": "fixed-array-allocation",
+      "outcome": "used",
+      "reason": "Supplied the shifted allocator theorem and input-preservation facts for the result region."
+    },
+    {
+      "package": "leanexe-core",
+      "entry": "fixed-array-capacity",
+      "outcome": "used",
+      "reason": "Supplied the constant-capacity branch used for oversized inputs."
+    },
+    {
+      "package": "leanexe-core",
+      "entry": "fixed-array-filter-lt",
+      "outcome": "rejected",
+      "reason": "Its annotation and conditional-store program do not match the search-and-shift artifact."
+    },
+    {
+      "package": "leanexe-core",
+      "entry": "fixed-array-length-dispatch",
+      "outcome": "used",
+      "reason": "Its exact tactic discharged the bounded-versus-oversized length dispatch."
+    },
+    {
+      "package": "leanexe-core",
+      "entry": "fixed-array-map-add",
+      "outcome": "used",
+      "reason": "Its checked loop proof supplied the invariant and disjoint-store pattern adapted to both copy loops."
+    },
+    {
+      "package": "leanexe-core",
+      "entry": "fixed-array-result",
+      "outcome": "used",
+      "reason": "Supplied the length-store, finish-program, and empty-array representation declarations."
+    }
+  ],
+  "proof": {
+    "sourceSha256": "43d56ee204a10bf2b11c6914b3c8e881a42a3bf17b9025c6048516b786fe01a2",
+    "byteLength": 39249,
+    "lineCount": 860,
+    "stage5Milliseconds": 3907231.311
+  }
+}

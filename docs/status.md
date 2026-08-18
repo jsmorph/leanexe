@@ -1,6 +1,6 @@
 # Development Status
 
-This report describes the repository state on 2026-08-18.  Checked registries contain twenty source-driven Talos cases and twenty exact-artifact packages, while the demonstration index contains ten current array-interface programs and the original scalar example.  The root [Development Plan](../plan.md) owns remaining work, while repository tools and registries own changing counts and release identities.
+This report describes the repository state on 2026-08-18.  Checked registries contain twenty source-driven Talos cases and twenty exact-artifact packages, while the demonstration index contains eleven current array-interface programs and the original scalar example.  The root [Development Plan](../plan.md) owns remaining work, while repository tools and registries own changing counts and release identities.
 
 ## Current capabilities
 
@@ -12,7 +12,7 @@ This report describes the repository state on 2026-08-18.  Checked registries co
 | Exact-artifact proofs | `proofs/artifacts/registry.json` registers twenty frozen WASM packages.  Each package embeds exact bytes, decodes and validates them, proves translation equality with its Talos execution module, and connects that module to a behavioral theorem. |
 | Artifact decoder | Checked decoder soundness connects successful complete-file decoding to an independent declarative grammar for the accepted Core 3.0 binary profile. |
 | Artifact validator | Checked validator soundness connects accepted modules to the independent `CoreValid` judgment for the supported sections and instructions. |
-| Proof generation | `leanexegen` generates a specification, source program, WASM artifact, annotations, and direct artifact proof for a fixed `Array UInt64 -> Array UInt64` interface. |
+| Proof generation | `leanexegen` generates a specification, source program, WASM artifact, annotations, and direct artifact proof for a fixed `Array UInt64 -> Array UInt64` interface.  Demo 12 independently verifies a bounded first-zero search whose found branch allocates and copies an array with one element removed. |
 | Proof support | The compiler emits annotation schema 1, ProofKit supplies checked semantic lemmas and tactics, and the knowledge forest selects filtered entries from versioned LTG packages. |
 | Stateful proving | `leanexegen` records accepted runs with distinct attempt identities and exact generated proof adapters.  A separate Codex task can compose selected package-local modules into one candidate, promotion checks its declarations and axioms, and a later run selects the resulting forest.  Live proving receives catalogs and checked sources without archived proof evidence; an accepted Demo 10 run used a Demo 9 worked example through this boundary. |
 | Compiler theorems | Compiler-side scalar-certificate theorems prove agreement between selected IR emitters and the structured WASM instruction sequences used by annotation checks.  A general source-to-WASM correctness theorem does not yet exist. |
@@ -41,4 +41,4 @@ Lean 4.31.0 accepts the archived kernel-unsoundness reproduction referenced by t
 
 ## Immediate work
 
-The next proof-engineering experiment should freeze a fold with a structurally different control or accumulator shape before receiving current annotation and knowledge support.  A run-derived candidate should receive cross-artifact evaluation before selection for the default forest, and the compiler-theorem work should test one narrow theorem-directed artifact-proof boundary.  Release work remains limited to preserving the accepted warm evidence and accurate draft status while cold verification is deferred.
+Demo 12 supplies the accepted structurally different artifact: its five loops implement early-exit search, allocation, prefix copy, and shifted-suffix copy.  Its outer length annotation and existing LTG support applied, while its inner search and erase regions required proof-local invariants and reconstruction.  The next proof iteration should distill general encoded first-match and in-bounds erase interfaces, evaluate them against the frozen artifact, and continue one narrow compiler-theorem-directed experiment.  Release work remains limited to preserving the accepted warm evidence and accurate draft status while cold verification is deferred.
