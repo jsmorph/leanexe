@@ -2588,6 +2588,22 @@ function testArtifactPackage(job, formalSource) {
     JSON.parse(excludedExampleContext.get("KNOWLEDGE_USE.json")).entries.length === 0 &&
     JSON.parse(excludedExampleContext.get("KNOWLEDGE_TASK.json")).excludedEntries === 1,
   "proof task context exposed an exact-artifact example or removed canonical support");
+  const boundedKnowledgeContext = proofTaskContext(
+    "request\n", job, formalSource, generated.sources, null, 2, null, null, null, {
+      files: new Map([
+        ["forest.json", Buffer.from("{}\n")],
+        ["packages/test/catalog/entries/example/README.md", Buffer.from("# Example\n")],
+        ["packages/test/evidence/accepted-proof.lean", Buffer.from("theorem hidden : True := by trivial\n")],
+      ]),
+      leanSources: new Map(),
+      manifest: { schemaVersion: 2, packages: [] },
+      allowedModules: new Set(),
+    });
+  assert(boundedKnowledgeContext.has(
+      "KNOWLEDGE/packages/test/catalog/entries/example/README.md") &&
+    !boundedKnowledgeContext.has(
+      "KNOWLEDGE/packages/test/evidence/accepted-proof.lean"),
+  "proof task context exposed package evidence");
   const demo4Artifact =
     "c538d40936b426ba875b3dae1913e62ff00a44b34adff2adcd70922e5a4c95ff";
   const filteredLtg = ltgTaskBundle(demo4Artifact);

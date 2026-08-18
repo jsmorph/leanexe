@@ -1,0 +1,24 @@
+{
+  "formalSpecification": {
+    "summary": "Defined the bounded wrapping-product fold and conservative branch-specific heap reserves. The required Lean build succeeds.",
+    "decisions": [
+      "Use `Array.foldl` with product accumulator `1`.",
+      "Reserve 64 bytes for the singleton result and 56 bytes for the empty result."
+    ]
+  },
+  "leanProgram": {
+    "summary": "Implemented and compiled the guarded wrapping UInt64 product using Array.foldl. All required final commands succeeded.",
+    "decisions": [
+      "Used a fold initialized to one with a loop-carried UInt64 product accumulator.",
+      "Returned an empty array when the input size exceeds eight."
+    ]
+  },
+  "artifactProof": {
+    "summary": "Proved the exact compiled artifact. Import checking and the ArtifactResult build succeeded.",
+    "decisions": [
+      "Used the checked length dispatch, allocation, fold-loop, traversal, and result theorems.",
+      "Recorded all inspected knowledge entries in sorted KNOWLEDGE_USE.json records.",
+      "Recorded final acceptance with no residual goals in PROOF_JOURNAL.md."
+    ]
+  }
+}

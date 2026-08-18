@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "fixed-array-fold-body",
+  "title": "Checked continuing array-fold body",
+  "summary": "Composes the active array traversal guard and indexed load with a compiler-described scalar body, condition, continuation, and guarded back edge.",
+  "roles": ["annotation-support", "checked-proof-asset", "guidance"],
+  "categories": ["arrays", "compiler-motifs", "loops", "proof-construction"],
+  "scope": "compiler-runtime-motif",
+  "evidenceStatus": "promoted",
+  "features": ["compact-elaboration-boundary", "fold", "guarded-back-edge", "indexed-element-load", "loop-body", "scalar-state", "traversal"],
+  "annotationKinds": ["leanexe.array.fold.v1"],
+  "modules": ["Project.ProofKit.FixedArrayFoldBody"],
+  "declarations": ["Project.ProofKit.FixedArrayFoldBody.continuingGuardedProgram_spec"],
+  "premises": ["A represented UInt64 input array and in-bounds logical index", "Frame getters for the input pointer, encoded index, and effective stop", "A generated equality from the loaded item frame to the scalar descriptor state", "Compiler-derived body, condition, and continuing evaluator equations", "Break 1 and Break 0 callbacks for the caller's invariant and measure"],
+  "result": "The active traversal edge loads the indexed element and executes the compiler-described scalar step through either Break 1 or the continuing back edge.",
+  "consumers": ["demo-10", "demo-9"],
+  "relatedEntries": ["annotated-fold-frame-accessors", "array-fold-prefix", "fixed-array-fold-structure", "fixed-array-traversal-input", "guarded-back-edge", "local-frame-projection"],
+  "exclusion": null
+}
