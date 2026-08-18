@@ -49,7 +49,7 @@ The knowledge forest selects versioned packages whose LTG catalogs index checked
 
 `tools/knowledge check` validates package identities, dependencies, catalog structure, package-local source paths and imports, evidence bindings, and the selected forest.  Promotion asks Lean to build package-local modules and resolve advertised declarations.  `tools/ltg check` and `tools/ltg metrics` retain the detailed catalog and ProofKit checks for the core package, while [Knowledge Forest and Structured LTG](ltg.md) defines retrieval and lifecycle operations.
 
-Narrow material remains in the catalog when it forms a checked worked example with a distinct lesson.  Promotion to shared automatic selection requires recurring use or a reason that the entry describes a common compiler or WASM motif.  Artifact-specific exclusions keep a measured task from retrieving its own proof or a derivative example.
+Narrow material remains in the catalog when it forms a checked worked example with a distinct lesson.  Promotion to shared automatic selection requires recurring use or a reason that the entry describes a common compiler or WASM motif.  Exact-artifact exclusions keep a measured task from retrieving its own proof, while separate forest selections control broader evaluation families.
 
 A completed artifact proof can produce a knowledge package for later proof construction.  That package may retain checked Lean support, guidance, or a worked example, and promotion places the reviewed package in a selectable forest snapshot.  Later proofs still establish their own exact-artifact theorem, while any imported package-local theorem appears in the checked Lean dependency graph.
 
