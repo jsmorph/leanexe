@@ -850,7 +850,9 @@ function proofPrompt(request, job, entryIndex, recordsKnowledgeUse = true) {
     `final journal entry recording acceptance, the shared declarations used, and that no residual ` +
     `goal remains.  Return only the JSON object required by the output schema, set ` +
     `task to \"artifact-proof\" and outcome to \"generated\", and leave source empty because ` +
-    `the orchestrator reads ${candidate}.`;
+    `the orchestrator reads ${candidate}.  Leave questions and problems empty for a generated ` +
+    `outcome.  If an instruction violation invalidates the run, return a problems outcome with ` +
+    `source and questions empty and record the reason in problems.`;
 }
 
 function proofImportCheckSource(job, additionalModules = new Set()) {
@@ -1550,6 +1552,7 @@ This directory mirrors every allowed \`Project.ProofKit\` module supplied to the
     : null);
   if (taskKnowledge !== null) {
     for (const [relative, source] of taskKnowledge.files) {
+      if (/^packages\/[^/]+\/evidence\//.test(relative)) continue;
       context.set(`KNOWLEDGE/${relative}`,
         Buffer.isBuffer(source) ? source.toString("utf8") : source);
     }

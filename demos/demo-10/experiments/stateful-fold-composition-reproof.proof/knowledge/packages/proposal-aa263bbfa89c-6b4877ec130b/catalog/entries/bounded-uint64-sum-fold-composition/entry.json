@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 4,
+  "id": "bounded-uint64-sum-fold-composition",
+  "title": "Bounded UInt64 sum fold composition",
+  "summary": "Records the accepted composition of length dispatch, branch-specific allocation, a generated addition fold, singleton output, and empty fallback.",
+  "roles": [
+    "worked-example"
+  ],
+  "categories": [
+    "allocation",
+    "arrays",
+    "compiler-motifs",
+    "loops",
+    "memory",
+    "proof-construction",
+    "worked-examples"
+  ],
+  "scope": "benchmark-local",
+  "evidenceStatus": "provisional",
+  "features": [
+    "allocation",
+    "array",
+    "compact-elaboration-boundary",
+    "empty-result",
+    "fold",
+    "generated-scalar-evaluators",
+    "length-dispatch",
+    "loop-invariant",
+    "singleton-result",
+    "sum"
+  ],
+  "annotationKinds": [
+    "leanexe.array.fold.v1",
+    "leanexe.array.length-dispatch.v1"
+  ],
+  "modules": [],
+  "declarations": [],
+  "premises": [
+    "Exact length-dispatch and array-fold recipe equalities",
+    "A represented UInt64 input array and allocator runtime facts",
+    "Generated continuing-frame accessors, loaded-frame equality, and scalar evaluator equations",
+    "Memory bounds for empty and singleton result construction"
+  ],
+  "result": "A checked 650-line artifact proof composing the valid singleton-sum branch and invalid empty-result branch.",
+  "consumers": [],
+  "relatedEntries": [],
+  "exclusion": {
+    "artifactSha256": [
+      "aa263bbfa89c333f9fab497f1a2c370f476afc3419015d17b368cb7c8a6086d5"
+    ]
+  },
+  "tactics": []
+}

@@ -13,7 +13,7 @@ The demonstrations are independently inspectable examples of prose-to-Lean-to-We
 | [Demo 7](demo-7/README.md) | Preserve a singleton by transferring a decrementing counter into an incrementing counter. | Checked scalar summary and deterministic-starter series. |
 | [Demo 8](demo-8/README.md) | Preserve a singleton through a three-accumulator counter loop. | Out-of-sample scalar-layout transfer test. |
 | [Demo 9](demo-9/README.md) | Fold a bounded array with wrapping addition. | Array-fold annotations, structured tactics, and composition boundaries. |
-| [Demo 10](demo-10/README.md) | Fold a bounded array with wrapping multiplication. | Cross-operation transfer for fold support. |
+| [Demo 10](demo-10/README.md) | Fold a bounded array with wrapping multiplication. | Cross-operation and stateful worked-example transfer for fold support. |
 | [Demo 11](demo-11/README.md) | Fold a bounded array with bitwise XOR. | Held-out residual-goal retrieval and frame-accessor test. |
 
 The root proof package in a demo records the representative end-to-end result, while an `experiments/` directory preserves later fixed-artifact comparisons.  An experiment package may retain a slower proof because its journal establishes retrieval, transfer, or a useful failure boundary.  Each demo README identifies its primary result and explains every retained experiment stored beside it.

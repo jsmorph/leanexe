@@ -50,7 +50,7 @@ The next increment tests whether one accepted proof can make a later artifact pr
 - [x] Give each learning attempt an explicit identity so repeated attempts over one proof remain separate artifacts.
 - [x] Allow proposed checked knowledge to import selected package-local modules and record its direct package dependencies.
 - [x] Add an axiom report to the existing Lean check for promoted declarations.
-- [ ] Run one cross-artifact exercise and record whether the later proving agent selects, uses, or rejects the learned entry.
+- [x] Run one cross-artifact exercise and record whether the later proving agent selects, uses, or rejects the learned entry.
 - [ ] Evaluate the generated setup-frame equality on a fixed artifact using proof time, proof structure, and the agent journal.
 - [ ] Test the resulting support on one structurally different artifact, preferably a small allocating or ownership-sensitive program.
 - [x] Correct current LTG measurements and keep historical experiments in benchmark records and the retrospective.

@@ -1,0 +1,86 @@
+{
+  "schemaVersion": 1,
+  "artifactSha256": "aa263bbfa89c333f9fab497f1a2c370f476afc3419015d17b368cb7c8a6086d5",
+  "knowledgeTaskSha256": "9408fdd9c6458c86fcc9c274f373a5d3871e0eec22674a0fe88cd0d4418d9f52",
+  "status": "accepted",
+  "entries": [
+    {
+      "package": "leanexe-core",
+      "entry": "annotated-fold-frame-accessors",
+      "outcome": "used",
+      "reason": "Generated value, getter, validity, and loaded-frame declarations discharged the annotated loop-frame projections."
+    },
+    {
+      "package": "leanexe-core",
+      "entry": "array-fold-prefix",
+      "outcome": "used",
+      "reason": "foldPrefix_succ established the loop-carried accumulator after each input element."
+    },
+    {
+      "package": "leanexe-core",
+      "entry": "array-memory-framing",
+      "outcome": "used",
+      "reason": "The allocation-preservation and write64After facts preserved the represented input through result allocation and length storage."
+    },
+    {
+      "package": "leanexe-core",
+      "entry": "compact-loop-suffix-boundary",
+      "outcome": "used",
+      "reason": "Its loop-boundary guidance supported the wp_block_loop invariant and Break callbacks."
+    },
+    {
+      "package": "leanexe-core",
+      "entry": "fixed-array-allocation",
+      "outcome": "used",
+      "reason": "constantCapacityRegion_spec_withTail and allocation frame facts proved both exact allocator branches."
+    },
+    {
+      "package": "leanexe-core",
+      "entry": "fixed-array-capacity",
+      "outcome": "used",
+      "reason": "Normalized-capacity declarations discharged capacity values and memory bounds for empty and singleton results."
+    },
+    {
+      "package": "leanexe-core",
+      "entry": "fixed-array-fold-body",
+      "outcome": "used",
+      "reason": "continuingGuardedProgram_spec composed traversal, the generated accumulator body, its condition, and the back edge."
+    },
+    {
+      "package": "leanexe-core",
+      "entry": "fixed-array-fold-structure",
+      "outcome": "used",
+      "reason": "forwardSetupProgram_spec and fold result-frame declarations connected allocation to the input-traversal loop and suffix."
+    },
+    {
+      "package": "leanexe-core",
+      "entry": "fixed-array-length-dispatch",
+      "outcome": "used",
+      "reason": "wp_fixed_array_length_le_dispatch_from split the artifact at the checked eight-element bound."
+    },
+    {
+      "package": "leanexe-core",
+      "entry": "fixed-array-result",
+      "outcome": "used",
+      "reason": "Length, payload, empty-array, singleton-array, finish-frame, and final-root declarations proved both outputs."
+    },
+    {
+      "package": "leanexe-core",
+      "entry": "fixed-array-traversal-input",
+      "outcome": "used",
+      "reason": "continuingProgram_exit_spec proved loop termination at the input length; the body composition used its dynamic load model."
+    },
+    {
+      "package": "proposal-4f56fd45fe24-d4f7d73b3648",
+      "entry": "fixed-array-singleton-result-from-frame",
+      "outcome": "rejected",
+      "reason": "The artifact-generated singleton_result_spec matched the exact frame and suffix more directly than the generic adapter."
+    }
+  ],
+  "proof": {
+    "sourceSha256": "6b4877ec130bb388d829568e5164948a1e1b6e137e26dafa4a11d359c24acca4",
+    "byteLength": 31897,
+    "lineCount": 650,
+    "stage5Milliseconds": 1638250.109
+  }
+}

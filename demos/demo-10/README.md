@@ -118,6 +118,14 @@ The accepted source contains 684 lines, 2,875 whitespace-delimited words, and 36
 
 The experiment establishes that the new projections and completion adapter transfer from wrapping addition to wrapping multiplication.  The role-labelled recipe names `releaseReadyLocal` and its exact getter, although this proof represented the complete generated frame and did not invoke that getter directly.  Separate `leanexegen verify -s` accepted the package over the unchanged digest `a981c7882a51a0660e6dd1e17956b958f7b2e25cbc30618d12458601ef2d4baa`.
 
+## Stateful fold-composition transfer
+
+The Demo 9 follow-up package records a bounded wrapping-sum proof as a structured worked example with an exact-artifact exclusion.  Promotion placed that package beside the core knowledge package, and a fresh Demo 10 reproof selected its catalog entry for the fixed wrapping-product artifact.  The live task supplied the entry metadata and prose without exposing the package's accepted proof, journal, or other evidence files.
+
+An earlier trial found the same entry and produced a Lean-accepted proof, but a broad local search printed excerpts from the package evidence.  The agent reported the retrieval-boundary violation, and the outer protocol rejected the result before publication.  The retained failure record led the live task view to omit package evidence while the proof package continues to archive the complete filtered knowledge task.
+
+The independently verified [stateful transfer package](experiments/stateful-fold-composition-reproof.proof/) completed Stage 5 in 1,454.473 seconds and contains 571 lines, 2,491 whitespace-delimited words, and 33,451 bytes.  Its knowledge evaluation records the learned Demo 9 entry as used for the valid and invalid branch order, while checked core declarations and compiler-generated multiplication equations discharge the proof.  Compared with the preceding 1,979.854-second, 684-line fixed-artifact transfer, this run took 525.381 seconds less and used 113 fewer lines, although agent variation and the changed live-task boundary prevent assigning those differences to the learned entry alone.
+
 ## Execution
 
 The empty input checks the multiplicative identity, the second sample checks the traversal loop, and the third checks the oversized branch.  Direct execution of the proved artifact produced these results.  Each result agrees with the formal specification.
@@ -168,4 +176,5 @@ The root files provide readable views of each generation and proof stage.  The [
 | [Fresh frame-accessor reproof](experiments/frame-accessor-reproof.proof/) | The independently verified fixed-artifact proof that used part of the accessor family and exposed a residual-goal retrieval defect. |
 | [Fold-completion package](experiments/fold-completion.proof/) | The independently verified manual proof using the generated exact singleton-result adapter. |
 | [Fresh fold-completion and projection transfer](experiments/fold-completion-projection-reproof.proof/) | The independently verified proof that retrieved and used the new capacity, allocator-root, fold-body, and completion interfaces. |
+| [Stateful fold-composition transfer](experiments/stateful-fold-composition-reproof.proof/) | The independently verified proof that used a Demo 9 worked example through a bounded live knowledge view. |
 | [Manual fold-completion proof](experiments/manual-fold-completion.lean) | The readable behavioral proof retained by the fold-completion package. |
