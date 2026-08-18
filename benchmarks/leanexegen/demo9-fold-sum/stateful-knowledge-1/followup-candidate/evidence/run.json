@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "mode": "propose",
+  "artifactSha256": "aa263bbfa89c333f9fab497f1a2c370f476afc3419015d17b368cb7c8a6086d5",
+  "requestSha256": "23fa7efc3fb0298b1a892be452db3e3069162cb3b9067cfb740463a69c1c665c",
+  "behaviorTheorem": "LeanExeGen.GeneratedR23fa7efc3fb0298b.Behavior.artifact_behavior",
+  "proofSourceSha256": "6b4877ec130bb388d829568e5164948a1e1b6e137e26dafa4a11d359c24acca4",
+  "firstAcceptedAt": "2026-08-18T18:32:46.833Z",
+  "stage5Milliseconds": 1638250.109,
+  "knowledgeSnapshot": {
+    "kind": "forest",
+    "sha256": "9408fdd9c6458c86fcc9c274f373a5d3871e0eec22674a0fe88cd0d4418d9f52",
+    "packages": [
+      {
+        "id": "leanexe-core",
+        "version": 1,
+        "sha256": "d722676be53c7713af3fcda98f9632ba8cbeaca67badb945733654ed53649a05"
+      },
+      {
+        "id": "proposal-4f56fd45fe24-d4f7d73b3648",
+        "version": 2,
+        "sha256": "fb24725873eba32d2c3a20007ec6432e4740dcbfb7627e2db2c5c6b84fc47c2c"
+      }
+    ]
+  }
+}

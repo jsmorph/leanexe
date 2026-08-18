@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "packages": [
+    {
+      "id": "leanexe-core",
+      "path": "packages/leanexe-core"
+    },
+    {
+      "id": "proposal-4f56fd45fe24-d4f7d73b3648",
+      "path": "packages/proposal-4f56fd45fe24-d4f7d73b3648"
+    }
+  ]
+}

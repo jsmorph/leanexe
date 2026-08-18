@@ -9,6 +9,7 @@ Demo 9 accepts an array of at most eight `UInt64` values and returns a singleton
 | Baseline | Accepted | 3,431.870 s |
 | Fold-prefix support | Accepted | 4,055.765 s |
 | Fold annotation and structured LTG | Accepted | 3,188.251 s |
+| Stateful knowledge evaluation | Accepted | 1,638.250 s |
 | Exact traversal-prefix theorem | Censored without an accepted proof | at least 4,285 s |
 | Result-store LTG | Accepted; timing censored | 3,149.420 s |
 | First structured-tactic screen | Rejected by the independent outer check | no accepted measurement |
@@ -27,3 +28,5 @@ The result-store time is excluded from timing comparisons because the journal re
 `structured-tactic-retrieval-rejected-1` preserves the first tactic-index screen, its outer-check diagnostic, and a separately checked repair.  Its agent selected and used the bounded-length and block-loop tactics, but the returned candidate failed at successor arithmetic and callback-frame normalization.  The repair established the general continuation guidance later used by an accepted proof.
 
 `structured-tactic-guidance-censored-1` preserves the corrected fresh task that selected the bounded-length tactic and then stopped changing while elaborating the two constant-capacity branches.  The run was interrupted after approximately forty-eight minutes, including about twenty-two minutes without a candidate, journal, or diagnostic update.  Its capacity bottleneck motivated the checked capacity-to-allocation composition later accepted in the [Demo 9 experiment archive](../../../demos/demo-9/README.md).
+
+The [stateful knowledge exercise](stateful-knowledge-1/) starts from a checked theorem proposed from Demo 11, promotes it into an isolated two-package forest, and supplies that forest to a fresh Demo 9 proof.  The accepted schema-nine package records eleven core entries as used and the learned theorem as rejected because the compiler-generated exact singleton adapter fit the artifact more closely.  The exercise establishes proposal, promotion, cross-artifact selection, checked package-local source, recorded rejection, publication, and independent verification, while the proof-time measurement describes the combined configuration.
