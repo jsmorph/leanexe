@@ -69,7 +69,7 @@ const verifier = path.join(verifierRoot, ".lake", "build", "bin", "verifier");
 const dumpRaw = path.join(projectRoot, "Artifact", "Binary", "DumpRaw.lean");
 const proofKitCatalogPath = path.join(projectRoot, "ProofKit", "README.md");
 const proofStrategiesPath = path.join(repoRoot, "docs", "proof-strategies.md");
-const strategyExtractorVersion = 5;
+const strategyExtractorVersion = 6;
 const artifactProofTaskTimeoutMs = 4 * 60 * 60 * 1000;
 const maximumTaskSessions = 1;
 const allowedAxioms = new Set([
@@ -1034,17 +1034,43 @@ function fixedArrayEqNodeFeatures(body) {
 function fixedArrayLengthDispatchFeatures(body) {
   const lines = body.split("\n").map((line) => line.trim());
   const dispatches = [];
-  for (let start = 0; start + 31 < lines.length; start += 1) {
+  const matchesAt = (start, expected) => expected.every(
+    ([offset, text]) => lines[start + offset] === text);
+  for (let start = 0; start + 7 < lines.length; start += 1) {
     if (lines[start] !== ".localGet 0,") continue;
     const localMatch = lines[start + 1].match(/^\.localSet ([0-9]+),$/);
     const sizeMatch = lines[start + 5].match(
       /^\.constI64 \(([0-9]+) : UInt64\),$/);
     if (localMatch === null || sizeMatch === null) continue;
     const inputLocal = Number(localMatch[1]);
-    const expected = [
+    const prefix = [
       [2, `.localGet ${inputLocal},`],
       [3, ".wrapI64,"],
       [4, ".load64 (0 : UInt32),"],
+    ];
+    if (!matchesAt(start, prefix)) continue;
+    const encodings = [["le-unsigned-v1", [
+      [6, ".leUI64,"],
+      [7, ".iff 0 0 ["],
+    ]], ["eq-normalized-v1", [
+      [6, ".eqI64,"],
+      [7, ".iff 0 1 ["],
+      [8, ".constI64 (1 : UInt64)"],
+      [9, "] ["],
+      [10, ".constI64 (0 : UInt64)"],
+      [11, "],"],
+      [12, ".constI64 (1 : UInt64),"],
+      [13, ".eqI64,"],
+      [14, ".iff 0 1 ["],
+      [15, ".constI64 (1 : UInt64)"],
+      [16, "] ["],
+      [17, ".constI64 (0 : UInt64)"],
+      [18, "],"],
+      [19, ".constI64 (0 : UInt64),"],
+      [20, ".eqI64,"],
+      [21, ".eqz,"],
+      [22, ".iff 0 0 ["],
+    ]], ["ne-normalized-v1", [
       [6, ".eqI64,"],
       [7, ".iff 0 1 ["],
       [8, ".constI64 (1 : UInt64)"],
@@ -1071,9 +1097,14 @@ function fixedArrayLengthDispatchFeatures(body) {
       [29, ".eqI64,"],
       [30, ".eqz,"],
       [31, ".iff 0 0 ["],
-    ];
-    if (expected.some(([offset, text]) => lines[start + offset] !== text)) continue;
-    dispatches.push({ inputLocal, expectedSize: Number(sizeMatch[1]) });
+    ]]];
+    const encoding = encodings.find(([, expected]) => matchesAt(start, expected))?.[0];
+    if (encoding === undefined) continue;
+    dispatches.push({
+      inputLocal,
+      expectedSize: Number(sizeMatch[1]),
+      encoding,
+    });
   }
   return dispatches;
 }
