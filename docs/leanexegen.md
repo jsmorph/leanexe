@@ -60,11 +60,15 @@ tools/leanexegen annotate \
 
 ### Stateful knowledge composition
 
-The learning commands place mutable state outside the proof run.  `record` turns an accepted proof package into an experimental knowledge package containing the accepted proof, journal, annotations, recipes, task features, telemetry, and prior knowledge identity.  Its catalog entry excludes the motivating artifact, so a later measured reproof cannot retrieve its own accepted proof.  The package remains outside every selected forest until promotion.
+Leanexegen represents accumulated proof knowledge as files with checked identities.  A completed proof package can yield an experimental knowledge package, which review can promote into a forest snapshot for later selection through `--knowledge`.  Each proof package archives the filtered snapshot used by its proving agent, so the sequence of work remains reproducible.
+
+`record` turns an accepted proof package into an experimental knowledge package containing the accepted proof, journal, annotations, recipes, task features, telemetry, and prior knowledge identity.  Its catalog entry excludes the motivating artifact, so a later measured reproof cannot retrieve its own accepted proof.  The package remains outside every selected forest until promotion.
 
 `propose` gives the same run evidence and archived knowledge snapshot to a separate headless Codex task.  The task writes a learning journal and proposes one guidance entry, worked example, checked lemma, or checked tactic; checked Lean source must pass the prescribed Lean build during the task and an outer build afterward.  The resulting package remains experimental and retains the source run, proposal, and learning journal as entry-bound evidence.  The proposer changes neither the source proof package nor its archived knowledge snapshot.
 
 `promote` takes an experimental package and a selected forest, creates a new promoted package version, checks the resulting forest, builds every package-local Lean module, and asks Lean to resolve every advertised declaration.  It copies every selected package into a self-contained snapshot directory and leaves both the input forest and experimental package unchanged.  This gate covers package consistency and Lean source checks, while cross-artifact evaluation remains an explicit preceding review.  A later generation or reproof selects the new state through `--knowledge`.
+
+The derived package may contain a checked lemma or tactic, prose guidance, or a worked proof example.  Checked Lean support becomes a theorem dependency when a later proof imports it, while guidance and examples influence proof construction without becoming premises of the artifact theorem.  Separate forest snapshots support independent project, experiment, and release histories from the same package collection.
 
 ```sh
 tools/leanexegen learn record \
