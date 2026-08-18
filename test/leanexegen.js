@@ -2866,6 +2866,9 @@ function testArtifactPackage(job, formalSource) {
     outputPath: proposedKnowledgeRoot,
     codex: "codex-test",
     execute: (args, options) => {
+      const schemaPath = args[args.indexOf("--output-schema") + 1];
+      assert(!fs.readFileSync(schemaPath, "utf8").includes('"uniqueItems"'),
+        "knowledge proposal schema used an unsupported Codex response-schema keyword");
       const outcomePath = args[args.indexOf("-o") + 1];
       fs.writeFileSync(outcomePath, `${JSON.stringify({
         schemaVersion: 1,
