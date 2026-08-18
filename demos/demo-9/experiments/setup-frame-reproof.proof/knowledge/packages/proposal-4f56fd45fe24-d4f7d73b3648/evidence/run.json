@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "mode": "propose",
+  "artifactSha256": "4f56fd45fe246f3199dc81169235aa0673659b3b2e82e4beeb4c1d910501bd64",
+  "requestSha256": "40ee67377869b4011d4a728366df2956bb5b1b907c72043430fda9eee3b9b167",
+  "behaviorTheorem": "LeanExeGen.GeneratedR40ee67377869b401.Behavior.artifact_behavior",
+  "proofSourceSha256": "d4f7d73b364874a343cf15d9f618e61de6d9cdb6f55c545c9ace2a1af7c5368d",
+  "firstAcceptedAt": "2026-08-11T03:32:29.341Z",
+  "stage5Milliseconds": 2452384.403,
+  "knowledgeSnapshot": {
+    "kind": "ltg",
+    "sha256": "714cb54ea7bbae63b588018eebe3c6f3bbd5cc2b97e3c646fc70fea4099c21b4"
+  }
+}

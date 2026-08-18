@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 4,
+  "id": "fixed-array-singleton-result-from-frame",
+  "title": "Singleton fold result from source frame",
+  "summary": "Executes the standard singleton fold-result suffix from source-frame accumulator and root facts, deriving the updated-frame getters required by the existing suffix theorem.",
+  "roles": [
+    "checked-proof-asset",
+    "guidance"
+  ],
+  "categories": [
+    "arrays",
+    "compiler-motifs",
+    "memory",
+    "proof-construction"
+  ],
+  "scope": "compiler-runtime-motif",
+  "evidenceStatus": "provisional",
+  "features": [
+    "accumulator",
+    "arbitrary-postcondition",
+    "fold",
+    "frame",
+    "local-get",
+    "result-construction",
+    "singleton",
+    "suffix"
+  ],
+  "annotationKinds": [
+    "leanexe.array.fold.v1"
+  ],
+  "modules": [
+    "LeanExeGen.Knowledge.Proposal4f56fd45fe24D4f7d73b3648.Proposed"
+  ],
+  "declarations": [
+    "LeanExeGen.Knowledge.Proposal4f56fd45fe24D4f7d73b3648.Proposed.singletonResultProgram_spec_to_fromFrame"
+  ],
+  "premises": [
+    "An exact generated singleton-result program equality",
+    "An empty operand stack",
+    "Accumulator and root getters on the source frame",
+    "Valid nonparameter result, root, destination, and return locals",
+    "Distinct result and root locals",
+    "A payload-store memory bound",
+    "A target assertion for the final fallthrough state"
+  ],
+  "result": "The shared singleton-result program reaches an arbitrary target assertion after result placement, payload storage, and final root transfer.",
+  "consumers": [],
+  "relatedEntries": [],
+  "exclusion": {
+    "artifactSha256": [
+      "4f56fd45fe246f3199dc81169235aa0673659b3b2e82e4beeb4c1d910501bd64"
+    ]
+  },
+  "tactics": []
+}

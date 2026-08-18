@@ -18,9 +18,9 @@ The documentation describes one implementation and assigns each changing fact to
 
 ## 2. Validate annotation-directed proof support on a new shape
 
-The existing fold demonstrations use addition, multiplication, and XOR over closely related generated control flow.  Their evidence supports shared frame, allocation, traversal, and result-construction interfaces, but it does not establish transfer to a different fold structure.  The next demonstration must freeze its request, specification, source, and WASM before receiving current annotation, ProofKit, LTG, and journaling support.
+The existing fold demonstrations use addition, multiplication, and XOR over closely related generated control flow.  Demo 12 instead searches a bounded array for its first zero, returns the input when no zero exists, and otherwise allocates a result through the emitted copy-and-shift path.  Its frozen request requires `Array.findIdx?` and `Array.eraseIdx!`, providing an early-exit search and a value-dependent result shape for the current annotation, ProofKit, LTG, and journaling path.
 
-- [ ] Select a fold whose accumulator layout or scalar control differs structurally from Demos 9–11.
+- [x] Select the bounded first-zero removal program as the structurally different evaluation.
 - [ ] Generate and independently accept a direct artifact proof without changing the frozen WASM.
 - [ ] Review the journal, proof, telemetry, retrieved LTG entries, annotations, and agent revisions together.
 - [ ] Retain general or credible recurring abstractions, while classifying narrow material as checked worked examples.
@@ -51,7 +51,7 @@ The next increment tests whether one accepted proof can make a later artifact pr
 - [x] Allow proposed checked knowledge to import selected package-local modules and record its direct package dependencies.
 - [x] Add an axiom report to the existing Lean check for promoted declarations.
 - [x] Run one cross-artifact exercise and record whether the later proving agent selects, uses, or rejects the learned entry.
-- [ ] Evaluate the generated setup-frame equality on a fixed artifact using proof time, proof structure, and the agent journal.
+- [x] Evaluate the generated setup-frame equality on a fixed artifact using proof time, proof structure, and the agent journal.
 - [ ] Test the resulting support on one structurally different artifact, preferably a small allocating or ownership-sensitive program.
 - [x] Correct current LTG measurements and keep historical experiments in benchmark records and the retrospective.
 
@@ -79,4 +79,4 @@ Current candidates include broader explicit-release analysis, shared interior ow
 
 ## Completion conditions
 
-The next stable point requires current and nonduplicative documentation, a release record that passes identity inspection, and one accepted structurally different fold demonstration using the maintained annotation and LTG path.  It also requires one evaluated compiler-theorem-directed artifact-proof increment with an explicit trust boundary and held-out evidence.  Repository status, registries, proof inventories, metrics, plans, and release records must agree at that revision.  A later release-ready state will also require the deferred cold-checkout receipt and a successful `check-ready` result.
+The next stable point requires current and nonduplicative documentation, a release record that passes identity inspection, and one accepted structurally different array-control-flow demonstration using the maintained annotation and LTG path.  It also requires one evaluated compiler-theorem-directed artifact-proof increment with an explicit trust boundary and held-out evidence.  Repository status, registries, proof inventories, metrics, plans, and release records must agree at that revision.  A later release-ready state will also require the deferred cold-checkout receipt and a successful `check-ready` result.
