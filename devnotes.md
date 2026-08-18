@@ -7235,3 +7235,7 @@ The renewed warm artifact and conformance gates passed for release-input digest 
 ## 2026-08-13: Repository consistency review
 
 The repository review checked the maintained documentation index, local links, top-level navigation, current commands, registry counts, demo inventories, LTG metrics, release status, ignored output, and working-tree state.  Five demo paragraphs described completed cross-operation and reproof experiments as future work, so their conclusions now identify the retained Demo 9, Demo 10, and Demo 11 evidence.  The review leaves historical journals, benchmark packages, ignored build output, and empty ignored directories unchanged because they are either retained evidence, reproducible output, or harmless local state.
+
+## 2026-08-18: LTG and CLOB retrospective
+
+`docs/retro-1.md` separates the measured effect of the combined LTG system from the structured catalog's narrower retrieval evidence.  It records the fixed-artifact timing and proof-size comparisons, negative screens, catalog coverage, eight completed CLOB theorem scopes, CLOB proof architecture, and the remaining gap between demo proof generation and CLOB-scale automation.  The documentation index links the retrospective as an evidence report rather than a source of current release status.
