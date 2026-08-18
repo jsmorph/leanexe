@@ -57,11 +57,23 @@ The checked `Behavior.lean` theorem remains the authority for verification.  Kno
 
 ## Stateful learning
 
+Stateful learning turns completed proof work into explicit input artifacts for later work.  An accepted proof package can produce an experimental knowledge package, and promotion can add that package to a self-contained forest snapshot.  A later generation or reproof selects the snapshot by path and archives its filtered contents in the resulting proof package.
+
+| Operation | Produced artifact | Use in subsequent work |
+|-----------|-------------------|------------------------|
+| Proof generation or reproof | Accepted schema-8 proof package | Supplies the checked proof, journal, annotations, task features, recipes, telemetry, and prior knowledge identity. |
+| `learn record` | Experimental worked-example package | Preserves the run for retrieval, comparison, and later analysis. |
+| `learn propose` | Experimental candidate package | Distills one guidance entry, worked example, checked lemma, or checked tactic from the run and its archived knowledge context. |
+| Review and `learn promote` | Promoted package inside a new forest snapshot | Makes the selected candidate available to later runs through `--knowledge`. |
+| Later generation or reproof | New proof package | Records which promoted packages and filtered entries were available and which checked modules the proof used. |
+
 `leanexegen learn record` converts an accepted proof package into an experimental knowledge package.  The package contains one worked-example entry and preserves its proof journal, accepted proof, annotations, recipes, task features, telemetry, and prior knowledge identity.  The entry carries an exact-artifact exclusion and binds every evidence file to that entry.
 
 `leanexegen learn propose` runs a separate headless Codex task over the same evidence.  The task keeps a learning journal and produces one guidance entry, worked example, checked lemma, or checked tactic; checked Lean source receives a package namespace and passes both in-session and outer Lean builds.  The proposal remains an experimental package until an explicit promotion.
 
 `leanexegen learn promote` copies every selected package into a self-contained forest snapshot and adds a new promoted version of the candidate package.  Promotion validates the complete resulting forest, builds every package-local Lean module in the candidate, and asks Lean to resolve every declaration advertised by its catalog.  Generation and reproof select that snapshot through `--knowledge`, while prior snapshots and candidate packages retain their original bytes.
+
+Knowledge packages can improve later work in several ways.  A checked lemma or tactic can shorten a derivation, guidance can direct theorem selection or proof decomposition, and a worked example can show a useful proof structure.  Exact-artifact and derivative exclusions control reuse in measured tasks, while separate forests allow different package selections without editing package contents.
 
 ## Fixed-artifact evidence
 

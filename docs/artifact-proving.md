@@ -51,6 +51,8 @@ The knowledge forest selects versioned packages whose LTG catalogs index checked
 
 Narrow material remains in the catalog when it forms a checked worked example with a distinct lesson.  Promotion to shared automatic selection requires recurring use or a reason that the entry describes a common compiler or WASM motif.  Artifact-specific exclusions keep a measured task from retrieving its own proof or a derivative example.
 
+A completed artifact proof can produce a knowledge package for later proof construction.  That package may retain checked Lean support, guidance, or a worked example, and promotion places the reviewed package in a selectable forest snapshot.  Later proofs still establish their own exact-artifact theorem, while any imported package-local theorem appears in the checked Lean dependency graph.
+
 ## Agent and checker boundary
 
 `tools/leanexegen` gives a proof-generation task the frozen formal specification, exact Talos program, selected annotations, ProofKit, a filtered knowledge-forest snapshot, and explicit instructions to iterate with Lean.  The source-generation task and proof-generation task are separate, and the proof task does not receive the source.  The outer process then runs package validation, import checks, artifact identity checks, and independent Lean verification.
