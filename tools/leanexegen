@@ -3092,25 +3092,24 @@ function knowledgeProposalSchema(categories) {
       categories: {
         type: "array",
         minItems: 1,
-        uniqueItems: true,
         items: { type: "string", enum: categories },
       },
       features: {
-        type: "array", minItems: 1, uniqueItems: true,
+        type: "array", minItems: 1,
         items: { type: "string", minLength: 1 },
       },
       annotationKinds: {
-        type: "array", uniqueItems: true,
+        type: "array",
         items: { type: "string", minLength: 1 },
       },
       premises: {
-        type: "array", minItems: 1, uniqueItems: true,
+        type: "array", minItems: 1,
         items: { type: "string", minLength: 1 },
       },
       result: { type: "string", minLength: 1 },
       guidance: { type: "string", minLength: 1 },
       declarations: {
-        type: "array", uniqueItems: true,
+        type: "array",
         items: { type: "string", minLength: 1 },
       },
       tactics: {
@@ -3130,7 +3129,7 @@ function knowledgeProposalSchema(categories) {
               items: { type: "string", minLength: 1 },
             },
             annotationKinds: {
-              type: "array", uniqueItems: true,
+              type: "array",
               items: { type: "string", minLength: 1 },
             },
             fallbackDeclaration: { type: "string", minLength: 1 },
@@ -3180,14 +3179,27 @@ function validateKnowledgeProposal(value, categoryIds, moduleName) {
       value.declarations.some((declaration) => !declaration.startsWith(`${moduleName}.`))) {
     throw new Error("knowledge proposal declarations disagree with its kind or module");
   }
+  const tacticCommands = new Set();
   for (const tactic of value.tactics) {
     exactKeys(tactic, [
       "command", "goalShape", "premises", "annotationKinds", "fallbackDeclaration",
     ], "knowledge proposal tactic");
     if (!/^[A-Za-z][A-Za-z0-9_]*$/.test(tactic.command) ||
+        tacticCommands.has(tactic.command) ||
+        typeof tactic.goalShape !== "string" ||
+        tactic.goalShape.trim().length === 0 ||
+        !Array.isArray(tactic.premises) || tactic.premises.length === 0 ||
+        new Set(tactic.premises).size !== tactic.premises.length ||
+        tactic.premises.some((premise) =>
+          typeof premise !== "string" || premise.trim().length === 0) ||
+        !Array.isArray(tactic.annotationKinds) ||
+        new Set(tactic.annotationKinds).size !== tactic.annotationKinds.length ||
+        tactic.annotationKinds.some((kind) =>
+          typeof kind !== "string" || !value.annotationKinds.includes(kind)) ||
         !value.declarations.includes(tactic.fallbackDeclaration)) {
-      throw new Error("knowledge proposal tactic has an invalid command or fallback");
+      throw new Error("knowledge proposal tactic metadata is invalid");
     }
+    tacticCommands.add(tactic.command);
   }
   return value;
 }
