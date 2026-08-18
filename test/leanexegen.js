@@ -1059,6 +1059,14 @@ function testLengthDispatchAnnotationRecipes() {
   ]) {
     const document = lengthDispatchDocument(wasm, encoding);
     const program = lengthDispatchProgram(encoding);
+    const strategyProgram = `${program}\n\ndef «module» : Wasm.Module := {}`;
+    const extractedDispatches = proofStrategyBundle(strategyProgram, 0).features
+      .reachableFunctions[0].fixedArrayLengthDispatches;
+    assert(JSON.stringify(extractedDispatches) === JSON.stringify([{
+      inputLocal: 10,
+      expectedSize: 21,
+      encoding,
+    }]), `${encoding} was absent from the proof-task feature report`);
     validateAnnotationDocument(document, wasm);
     const plan = proofRecipePlan(document, program, ["strategy.arrays", "strategy.frames"]);
     validateProofRecipePlan(plan, document);
@@ -1127,6 +1135,13 @@ function testConstantCapacityAnnotationRecipes() {
     path.join(demoRoot, "program.annotations.json"), "utf8"));
   const program = fs.readFileSync(path.join(demoRoot, "program.proof", "proof",
     "LeanExeGen", "GeneratedR23fa7efc3fb0298b", "Program.lean"), "utf8");
+  const demoFeatures = proofStrategyBundle(program, 0).features.reachableFunctions
+    .find((function_) => function_.index === 0);
+  assert(JSON.stringify(demoFeatures.fixedArrayLengthDispatches) === JSON.stringify([{
+    inputLocal: 7,
+    expectedSize: 8,
+    encoding: "le-unsigned-v1",
+  }]), "Demo 9 proof-task features omitted its checked length dispatch");
   validateAnnotationDocument(document, wasm);
   const namespace = "Example.Generated.AnnotationMatches";
   const plan = proofRecipePlan(document, program,
@@ -1134,6 +1149,8 @@ function testConstantCapacityAnnotationRecipes() {
   validateProofRecipePlan(plan, document);
   const dispatch = plan.recipes.find((recipe) =>
     recipe.regionKind === "leanexe.array.length-dispatch.v1");
+  const fold = plan.recipes.find((recipe) =>
+    recipe.regionKind === "leanexe.array.fold.v1");
   assert(dispatch.supporting.some((entry) => entry.declaration ===
       `${namespace}.function_0_length_dispatch_0_valid_capacity_eq`) &&
     dispatch.supporting.some((entry) => entry.declaration ===
@@ -1152,6 +1169,9 @@ function testConstantCapacityAnnotationRecipes() {
       "strategy.arrays", "strategy.allocation", "strategy.frames",
     ]),
   "constant capacity prefixes did not enrich the length-dispatch recipe");
+  assert(fold.supporting.some((entry) => entry.declaration ===
+    `${namespace}.function_0_array_fold_0_setup_frame_eq`),
+  "Demo 9 fold recipe omitted its generated setup-frame equality");
   const source = annotationMatchesSource(document, {
     namespace: "Example.Generated",
     programModule: "Example.Generated.Program",
@@ -1162,7 +1182,9 @@ function testConstantCapacityAnnotationRecipes() {
     source.includes("Project.ProofKit.FixedArrayCapacity.constantProgram\n    1 1 11") &&
     source.includes("def function_0_length_dispatch_0_invalid_capacity_program") &&
     source.includes("theorem function_0_length_dispatch_0_invalid_capacity_eq") &&
-    source.includes("Project.ProofKit.FixedArrayCapacity.constantProgram\n    0 1 11"),
+    source.includes("Project.ProofKit.FixedArrayCapacity.constantProgram\n    0 1 11") &&
+    source.includes("theorem function_0_array_fold_0_setup_frame_eq") &&
+    source.includes("v0 0 v2 v3 v4 v5 v6 v7 v8 v9 v10 v0"),
   "constant capacity prefixes did not produce checked region equalities");
   const changed = program.replace(".constI64 (7 : UInt64),",
     ".constI64 (6 : UInt64),");
@@ -1874,6 +1896,8 @@ def func0Def : Wasm.Function :=
     arrayFoldPlan.recipes[0].supporting.some((entry) => entry.declaration ===
       "Project.ProofKit.FixedArrayFold.forwardSetupProgram_spec") &&
     arrayFoldPlan.recipes[0].supporting.some((entry) => entry.declaration ===
+      "Project.AnnotationMatches.function_0_array_fold_0_setup_frame_eq") &&
+    arrayFoldPlan.recipes[0].supporting.some((entry) => entry.declaration ===
       "Project.ProofKit.FixedArrayFold.resultProgram_spec") &&
     arrayFoldPlan.recipes[0].supporting.some((entry) => entry.declaration ===
       "Project.ProofKit.FixedArrayFold.resultFrame_params") &&
@@ -1910,6 +1934,10 @@ def func0Def : Wasm.Function :=
       "theorem function_0_array_fold_0_continuing_eq") &&
     arrayFoldMatches.source.includes(
       "theorem function_0_array_fold_0_setup_eq") &&
+    arrayFoldMatches.source.includes(
+      "theorem function_0_array_fold_0_setup_frame_eq") &&
+    arrayFoldMatches.source.includes(
+      "function_0_array_fold_0_continuing_frame v0 0 v2 v3") &&
     arrayFoldMatches.source.includes(
       "theorem function_0_array_fold_0_result_eq") &&
     arrayFoldMatches.source.includes(

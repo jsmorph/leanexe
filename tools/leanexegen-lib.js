@@ -1676,7 +1676,7 @@ function validatePackage(packageRoot) {
       "selectedSections",
     ], "proof-task-features.json");
     if (features.schemaVersion !== 1 ||
-        ![1, 2, 3, 4, 5].includes(features.extractorVersion) ||
+        ![1, 2, 3, 4, 5, 6].includes(features.extractorVersion) ||
         !/^[0-9a-f]{64}$/.test(features.sourceSha256) ||
         features.exportIndex !== programExportIndex(fs.readFileSync(
           path.join(packageRoot, "proof", moduleFile(job.programModule)), "utf8"),
@@ -1732,10 +1732,15 @@ function validatePackage(packageRoot) {
           }
           for (const [dispatchIndex, dispatch] of
             function_.fixedArrayLengthDispatches.entries()) {
-            exactKeys(dispatch, ["inputLocal", "expectedSize"],
+            exactKeys(dispatch, features.extractorVersion >= 6
+              ? ["inputLocal", "expectedSize", "encoding"]
+              : ["inputLocal", "expectedSize"],
               `proof-task-features.json length dispatch ${functionIndex}:${dispatchIndex}`);
             if (![dispatch.inputLocal, dispatch.expectedSize].every(
-              (value) => Number.isSafeInteger(value) && value >= 0)) {
+              (value) => Number.isSafeInteger(value) && value >= 0) ||
+                (features.extractorVersion >= 6 && ![
+                  "eq-normalized-v1", "ne-normalized-v1", "le-unsigned-v1",
+                ].includes(dispatch.encoding))) {
               fail(`proof-task-features.json length dispatch ${functionIndex}:${dispatchIndex} is invalid`);
             }
           }
