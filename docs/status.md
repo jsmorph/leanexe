@@ -1,6 +1,6 @@
 # Development Status
 
-This report describes the repository state on 2026-08-13.  Checked registries contain twenty source-driven Talos cases and twenty exact-artifact packages, while the demonstration index contains ten current array-interface programs and the original scalar example.  The root [Development Plan](../plan.md) owns remaining work, while repository tools and registries own changing counts and release identities.
+This report describes the repository state on 2026-08-18.  Checked registries contain twenty source-driven Talos cases and twenty exact-artifact packages, while the demonstration index contains ten current array-interface programs and the original scalar example.  The root [Development Plan](../plan.md) owns remaining work, while repository tools and registries own changing counts and release identities.
 
 ## Current capabilities
 
@@ -13,7 +13,8 @@ This report describes the repository state on 2026-08-13.  Checked registries co
 | Artifact decoder | Checked decoder soundness connects successful complete-file decoding to an independent declarative grammar for the accepted Core 3.0 binary profile. |
 | Artifact validator | Checked validator soundness connects accepted modules to the independent `CoreValid` judgment for the supported sections and instructions. |
 | Proof generation | `leanexegen` generates a specification, source program, WASM artifact, annotations, and direct artifact proof for a fixed `Array UInt64 -> Array UInt64` interface. |
-| Proof support | The compiler emits annotation schema 1, ProofKit supplies checked semantic lemmas and tactics, and structured LTG selects bounded task material from a categorized catalog. |
+| Proof support | The compiler emits annotation schema 1, ProofKit supplies checked semantic lemmas and tactics, and the knowledge forest selects filtered entries from versioned LTG packages. |
+| Stateful proving | `leanexegen` can record accepted runs as experimental packages, ask a separate headless Codex task for one candidate, check proposed Lean support, promote the candidate into a new snapshot, and select that snapshot for a later run. |
 | Compiler theorems | Compiler-side scalar-certificate theorems prove agreement between selected IR emitters and the structured WASM instruction sequences used by annotation checks.  A general source-to-WASM correctness theorem does not yet exist. |
 
 The [Talos proof inventory](../proofs/talos/README.md) names each source-driven and artifact theorem.  [Artifact Proving](artifact-proving.md) explains how the exact binary remains the subject of the final theorem when annotations and compiler-derived evidence help construct the proof.  The proof packages can be checked without LeanExe, Codex, source code, or a compiler-correctness premise.
@@ -40,4 +41,4 @@ Lean 4.31.0 accepts the archived kernel-unsoundness reproduction referenced by t
 
 ## Immediate work
 
-The next proof-engineering experiment should freeze a fold with a structurally different control or accumulator shape before receiving current annotation and LTG support.  The compiler-theorem work should test one narrow theorem-directed artifact-proof boundary whose checked evidence remains useful without assuming complete compiler correctness.  Release work remains limited to preserving the accepted warm evidence and accurate draft status while cold verification is deferred.
+The next proof-engineering experiment should freeze a fold with a structurally different control or accumulator shape before receiving current annotation and knowledge support.  A run-derived candidate should receive cross-artifact evaluation before selection for the default forest, and the compiler-theorem work should test one narrow theorem-directed artifact-proof boundary.  Release work remains limited to preserving the accepted warm evidence and accurate draft status while cold verification is deferred.

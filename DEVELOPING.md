@@ -93,6 +93,7 @@ Run the smallest relevant test during development, then run every gate required 
 | Extraction, IR, ownership, ABI, or WASM emission | Targeted fixture, `node test/run_all.js`, `tools/check-wat.sh`, and `tools/talos-proof.js check --all`. |
 | Source-driven proof | `tools/talos-proof.js check <case>`, `tools/talos-proof.js check --all`, and the execution test for the source entry. |
 | Exact-artifact proof | `tools/artifact-proof.js check <binary> <target>` and `tools/artifact-proof.js check-all`. |
+| Proof knowledge package or forest | `tools/ltg check`, `tools/knowledge check`, `node test/ltg.js`, `node test/knowledge.js`, and `node test/leanexegen.js`; package-local Lean source also requires `tools/leanrun --timeout 20m node test/knowledge.js --lean`. |
 | Talos semantics or conformance configuration | `node test/artifact_conformance.js` and `tools/artifact-conformance.js check`. |
 | Toolchain or artifact-producing tool | Full execution and proof gates, artifact-byte review, version and checksum documentation, and trusted-base review. |
 

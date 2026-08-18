@@ -13,10 +13,11 @@ const {
 const { validateStage5Telemetry } = require("./leanexegen-telemetry");
 
 const codexTaskSchemaVersion = 2;
-const packageSchemaVersion = 7;
-const supportedPackageSchemaVersions = new Set([3, 4, 5, 6, packageSchemaVersion]);
+const packageSchemaVersion = 8;
+const supportedPackageSchemaVersions = new Set([3, 4, 5, 6, 7, packageSchemaVersion]);
 const caseNamePattern = /^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$/;
 const ltgIdPattern = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
+const knowledgeModulePattern = /^LeanExeGen\.Knowledge\.[A-Z][A-Za-z0-9_]*(?:\.[A-Z][A-Za-z0-9_]*)+$/;
 const decimalPattern = /^(?:0|[1-9][0-9]*)$/;
 const uint64Maximum = 18446744073709551615n;
 const proofKitModules = Object.freeze([
@@ -102,6 +103,19 @@ function ltgFilesDigest(files) {
   return hash.digest("hex");
 }
 
+function knowledgeFilesDigest(files) {
+  const hash = crypto.createHash("sha256");
+  hash.update("leanexe-knowledge-task-v1\0");
+  for (const [relative, source] of [...files].sort(([left], [right]) =>
+    left.localeCompare(right))) {
+    hash.update(relative);
+    hash.update("\0");
+    hash.update(source);
+    hash.update("\0");
+  }
+  return hash.digest("hex");
+}
+
 function exactKeys(value, keys, description) {
   if (value === null || typeof value !== "object" || Array.isArray(value)) {
     fail(`${description} must be an object`);
@@ -154,6 +168,11 @@ function snakeToPascal(name) {
     `${part[0].toUpperCase()}${part.slice(1)}`).join("");
 }
 
+function knowledgePackagePascal(name) {
+  return name.split("-").map((part) =>
+    `${part[0].toUpperCase()}${part.slice(1)}`).join("");
+}
+
 function makeJob(request) {
   const requestSha256 = sha256(Buffer.from(request));
   const caseName = `generated_r${requestSha256.slice(0, 16)}`;
@@ -188,7 +207,7 @@ function imports(source) {
     .map((match) => match[1]);
 }
 
-function validateProofImports(job, modules) {
+function validateProofImports(job, modules, additionalModules = new Set()) {
   const generatedPrefix = `${job.namespace}.`;
   for (const item of modules) {
     for (const imported of imports(item.source)) {
@@ -199,7 +218,7 @@ function validateProofImports(job, modules) {
         imported.startsWith("Mathlib.") ||
         imported === "Interpreter" ||
         imported.startsWith("Interpreter.");
-      const allowedProofKit = proofKitModules.includes(imported);
+      const allowedProofKit = proofKitModules.includes(imported) || additionalModules.has(imported);
       const allowedGenerated = imported.startsWith(generatedPrefix) &&
         imported !== job.sourceModule;
       if (!allowedDependency && !allowedProofKit && !allowedGenerated) {
@@ -951,6 +970,364 @@ function validateLtgTask(document, files, artifactSha256) {
   return { manifest: structuredClone(document), files: new Map(files) };
 }
 
+function validateKnowledgeTask(document, files, artifactSha256) {
+  exactKeys(document, [
+    "schemaVersion", "artifactSha256", "derivativeGroups", "packages", "entries",
+    "excludedEntries", "sha256",
+  ], "knowledge-task.json");
+  if (document.schemaVersion !== 1 || document.artifactSha256 !== artifactSha256) {
+    fail("knowledge-task.json has an invalid schema or artifact identity");
+  }
+  const derivativeGroups = requireStringArray(
+    document.derivativeGroups, "knowledge-task.json.derivativeGroups");
+  if (derivativeGroups.some((value) => !ltgIdPattern.test(value)) ||
+      derivativeGroups.some((value, index) => index > 0 && derivativeGroups[index - 1] > value)) {
+    fail("knowledge-task.json.derivativeGroups must contain sorted identifiers");
+  }
+  if (!(files instanceof Map) || !files.has("forest.json")) {
+    fail("archived knowledge must contain forest.json");
+  }
+  for (const relative of files.keys()) {
+    if (typeof relative !== "string" || relative.length === 0 || path.isAbsolute(relative) ||
+        relative.includes("\\") || path.posix.normalize(relative) !== relative ||
+        relative.startsWith("../")) {
+      fail(`archived knowledge has an invalid path: ${JSON.stringify(relative)}`);
+    }
+  }
+  if (!/^[0-9a-f]{64}$/.test(document.sha256) ||
+      document.sha256 !== knowledgeFilesDigest(files)) {
+    fail("knowledge-task.json digest differs from the archived knowledge");
+  }
+  if (!Array.isArray(document.packages) || document.packages.length === 0) {
+    fail("knowledge-task.json.packages must be a nonempty array");
+  }
+  let taskForest;
+  try {
+    taskForest = JSON.parse(files.get("forest.json").toString("utf8"));
+  } catch (error) {
+    fail(`archived knowledge forest is invalid: ${error.message}`);
+  }
+  exactKeys(taskForest, ["schemaVersion", "packages"], "archived knowledge forest");
+  if (taskForest.schemaVersion !== 1 || !Array.isArray(taskForest.packages)) {
+    fail("archived knowledge forest has an unsupported schema");
+  }
+  const packageIds = new Set();
+  const entryIds = new Set();
+  const leanSources = new Map();
+  const packageSources = new Map();
+  let entries = 0;
+  let excludedEntries = 0;
+  for (const [index, record] of document.packages.entries()) {
+    exactKeys(record, [
+      "id", "version", "maturity", "dependencies", "entries", "entryIds",
+      "excludedEntries", "excludedEntryIds", "leanModules", "sha256",
+    ], `knowledge-task.json.packages[${index}]`);
+    const packageId = requireString(record.id, `knowledge package ${index} id`);
+    if (!ltgIdPattern.test(packageId) || packageIds.has(packageId) ||
+        (index > 0 && document.packages[index - 1].id > packageId)) {
+      fail("knowledge-task.json packages must have unique sorted identifiers");
+    }
+    packageIds.add(packageId);
+    if (!Number.isSafeInteger(record.version) || record.version < 1 ||
+        !["experimental", "promoted"].includes(record.maturity)) {
+      fail(`knowledge package ${packageId} has an invalid version or maturity`);
+    }
+    const dependencies = requireStringArray(
+      record.dependencies, `knowledge package ${packageId} dependencies`);
+    const included = requireStringArray(record.entryIds,
+      `knowledge package ${packageId} entryIds`);
+    const excluded = requireStringArray(record.excludedEntryIds,
+      `knowledge package ${packageId} excludedEntryIds`);
+    const leanModules = requireStringArray(record.leanModules,
+      `knowledge package ${packageId} leanModules`);
+    for (const [description, values] of [
+      ["dependencies", dependencies], ["entryIds", included],
+      ["excludedEntryIds", excluded], ["leanModules", leanModules],
+    ]) {
+      if (values.some((value, itemIndex) => itemIndex > 0 && values[itemIndex - 1] > value)) {
+        fail(`knowledge package ${packageId} ${description} must be sorted`);
+      }
+    }
+    if (dependencies.some((dependency) =>
+      !ltgIdPattern.test(dependency) || dependency === packageId) ||
+        included.some((entryId) => !ltgIdPattern.test(entryId)) ||
+        excluded.some((entryId) => !ltgIdPattern.test(entryId)) ||
+        leanModules.some((moduleName) => !knowledgeModulePattern.test(moduleName))) {
+      fail(`knowledge package ${packageId} contains an invalid identifier`);
+    }
+    if (!Number.isSafeInteger(record.entries) || record.entries !== included.length ||
+        !Number.isSafeInteger(record.excludedEntries) ||
+        record.excludedEntries !== excluded.length ||
+        included.some((entryId) => excluded.includes(entryId))) {
+      fail(`knowledge package ${packageId} has inconsistent entry counts`);
+    }
+    for (const entryId of included) {
+      if (entryIds.has(entryId)) fail(`duplicate archived knowledge entry ${entryId}`);
+      entryIds.add(entryId);
+    }
+    entries += included.length;
+    excludedEntries += excluded.length;
+    const prefix = `packages/${packageId}/`;
+    const packageFiles = new Map([...files]
+      .filter(([relative]) => relative.startsWith(prefix))
+      .map(([relative, source]) => [relative.slice(prefix.length), source]));
+    if (!packageFiles.has("knowledge-package.json") ||
+        !packageFiles.has("catalog/README.md") ||
+        !packageFiles.has("catalog/categories.json") ||
+        !/^[0-9a-f]{64}$/.test(record.sha256) ||
+        record.sha256 !== knowledgeFilesDigest(packageFiles)) {
+      fail(`knowledge package ${packageId} has an incomplete archive or wrong digest`);
+    }
+    let packageManifest;
+    try {
+      packageManifest = JSON.parse(packageFiles.get("knowledge-package.json").toString("utf8"));
+    } catch (error) {
+      fail(`knowledge package ${packageId} manifest is invalid: ${error.message}`);
+    }
+    exactKeys(packageManifest, [
+      "schemaVersion", "id", "version", "title", "summary", "maturity",
+      "dependencies", "catalogRoot", "leanSources", "evidence",
+    ], `knowledge package ${packageId} manifest`);
+    if (packageManifest.schemaVersion !== 1 || packageManifest.id !== packageId ||
+        packageManifest.version !== record.version ||
+        packageManifest.maturity !== record.maturity ||
+        JSON.stringify(packageManifest.dependencies) !== JSON.stringify(dependencies) ||
+        packageManifest.catalogRoot !== "catalog" ||
+        !Array.isArray(packageManifest.leanSources) ||
+        !Array.isArray(packageManifest.evidence)) {
+      fail(`knowledge package ${packageId} manifest disagrees with the task record`);
+    }
+    requireString(packageManifest.title, `knowledge package ${packageId} title`);
+    requireString(packageManifest.summary, `knowledge package ${packageId} summary`);
+    const declaredSources = new Map();
+    const expectedModulePrefix =
+      `LeanExeGen.Knowledge.${knowledgePackagePascal(packageId)}.`;
+    for (const [sourceIndex, sourceRecord] of packageManifest.leanSources.entries()) {
+      exactKeys(sourceRecord, ["module", "path"],
+        `knowledge package ${packageId} source ${sourceIndex}`);
+      requireString(sourceRecord.module,
+        `knowledge package ${packageId} source ${sourceIndex} module`);
+      requireString(sourceRecord.path,
+        `knowledge package ${packageId} source ${sourceIndex} path`);
+      if (!knowledgeModulePattern.test(sourceRecord.module) ||
+          !sourceRecord.module.startsWith(expectedModulePrefix) ||
+          sourceRecord.path !== `lean/${moduleFile(sourceRecord.module)}` ||
+          declaredSources.has(sourceRecord.module)) {
+        fail(`knowledge package ${packageId} has an invalid source record`);
+      }
+      declaredSources.set(sourceRecord.module, sourceRecord.path);
+    }
+    if (declaredSources.size !== leanModules.length ||
+        [...declaredSources.keys()].some((moduleName, sourceIndex) =>
+          moduleName !== leanModules[sourceIndex])) {
+      fail(`knowledge package ${packageId} source manifest differs from its task record`);
+    }
+    const selectedPackageSources = new Map();
+    for (const moduleName of leanModules) {
+      const sourcePath = declaredSources.get(moduleName);
+      if (sourcePath === undefined || !packageFiles.has(sourcePath) ||
+          leanSources.has(moduleName)) {
+        fail(`knowledge package ${packageId} is missing source module ${moduleName}`);
+      }
+      const source = packageFiles.get(sourcePath).toString("utf8");
+      leanSources.set(moduleName, source);
+      selectedPackageSources.set(moduleName, source);
+    }
+    packageSources.set(packageId, selectedPackageSources);
+    const includedSourcePaths = new Set(leanModules.map((moduleName) =>
+      declaredSources.get(moduleName)));
+    const declaredEvidence = new Map();
+    for (const [evidenceIndex, evidenceRecord] of packageManifest.evidence.entries()) {
+      exactKeys(evidenceRecord, ["path", "entries"],
+        `knowledge package ${packageId} evidence ${evidenceIndex}`);
+      requireString(evidenceRecord.path,
+        `knowledge package ${packageId} evidence ${evidenceIndex} path`);
+      const boundEntries = requireStringArray(evidenceRecord.entries,
+        `knowledge package ${packageId} evidence ${evidenceIndex} entries`, false);
+      if (!evidenceRecord.path.startsWith("evidence/") ||
+          path.posix.normalize(evidenceRecord.path) !== evidenceRecord.path ||
+          declaredEvidence.has(evidenceRecord.path) ||
+          boundEntries.some((entryId) => !included.includes(entryId)) ||
+          !packageFiles.has(evidenceRecord.path)) {
+        fail(`knowledge package ${packageId} has an invalid evidence record`);
+      }
+      declaredEvidence.set(evidenceRecord.path, boundEntries);
+    }
+    for (const relative of packageFiles.keys()) {
+      if (relative === "knowledge-package.json" || relative === "catalog/README.md" ||
+          relative === "catalog/categories.json" ||
+          /^catalog\/categories\/[^/]+\/tools\.jsonl$/.test(relative) ||
+          /^catalog\/entries\/[^/]+\/.+$/.test(relative)) {
+        continue;
+      }
+      if (relative.startsWith("lean/") && includedSourcePaths.has(relative)) continue;
+      if (relative.startsWith("evidence/") && declaredEvidence.has(relative) &&
+          declaredEvidence.get(relative).some((entryId) => included.includes(entryId))) {
+        continue;
+      }
+      fail(`knowledge package ${packageId} contains unselected path ${relative}`);
+    }
+    let categories;
+    try {
+      categories = JSON.parse(packageFiles.get("catalog/categories.json").toString("utf8"));
+    } catch (error) {
+      fail(`knowledge package ${packageId} categories are invalid: ${error.message}`);
+    }
+    exactKeys(categories, ["schemaVersion", "categories"],
+      `knowledge package ${packageId} categories`);
+    if (categories.schemaVersion !== 1 || !Array.isArray(categories.categories) ||
+        categories.categories.length === 0) {
+      fail(`knowledge package ${packageId} has no valid categories`);
+    }
+    const indexed = new Set();
+    const categoryIds = new Set();
+    const categoryMembers = new Map();
+    for (const [categoryIndex, category] of categories.categories.entries()) {
+      exactKeys(category, ["id", "title", "summary"],
+        `knowledge package ${packageId} category ${categoryIndex}`);
+      requireString(category.title,
+        `knowledge package ${packageId} category ${categoryIndex} title`);
+      requireString(category.summary,
+        `knowledge package ${packageId} category ${categoryIndex} summary`);
+      if (!ltgIdPattern.test(category.id) || categoryIds.has(category.id) ||
+          (categoryIndex > 0 && categories.categories[categoryIndex - 1].id > category.id)) {
+        fail(`knowledge package ${packageId} has an invalid category identifier`);
+      }
+      categoryIds.add(category.id);
+      categoryMembers.set(category.id, new Set());
+      const indexPath = `catalog/categories/${category.id}/tools.jsonl`;
+      if (!packageFiles.has(indexPath)) {
+        fail(`knowledge package ${packageId} is missing ${indexPath}`);
+      }
+      const lines = packageFiles.get(indexPath).toString("utf8").split("\n").filter(Boolean);
+      const categoryEntries = new Set();
+      for (const [lineIndex, line] of lines.entries()) {
+        let item;
+        try {
+          item = JSON.parse(line);
+        } catch (error) {
+          fail(`${packageId}/${indexPath}:${lineIndex + 1} is invalid: ${error.message}`);
+        }
+        if (item === null || typeof item !== "object" || !included.includes(item.id) ||
+            item.path !== `../../entries/${item.id}` || categoryEntries.has(item.id)) {
+          fail(`${packageId}/${indexPath}:${lineIndex + 1} has an invalid entry reference`);
+        }
+        categoryEntries.add(item.id);
+        categoryMembers.get(category.id).add(item.id);
+        indexed.add(item.id);
+      }
+    }
+    for (const entryId of included) {
+      if (!indexed.has(entryId) ||
+          !packageFiles.has(`catalog/entries/${entryId}/entry.json`) ||
+          !packageFiles.has(`catalog/entries/${entryId}/README.md`)) {
+        fail(`knowledge package ${packageId} entry ${entryId} is incomplete or unindexed`);
+      }
+      let entry;
+      try {
+        entry = JSON.parse(packageFiles.get(
+          `catalog/entries/${entryId}/entry.json`).toString("utf8"));
+      } catch (error) {
+        fail(`knowledge package ${packageId} entry ${entryId} is invalid: ${error.message}`);
+      }
+      if (entry === null || typeof entry !== "object" || Array.isArray(entry) ||
+          entry.id !== entryId) {
+        fail(`knowledge package ${packageId} entry ${entryId} has the wrong identity`);
+      }
+      const entryCategories = requireStringArray(
+        entry.categories, `knowledge package ${packageId} entry ${entryId} categories`, false);
+      if (entryCategories.some((category, categoryIndex) =>
+        !categoryIds.has(category) ||
+        (categoryIndex > 0 && entryCategories[categoryIndex - 1] > category) ||
+        !categoryMembers.get(category).has(entryId)) ||
+          [...categoryMembers].some(([category, members]) =>
+            members.has(entryId) && !entryCategories.includes(category))) {
+        fail(`knowledge package ${packageId} entry ${entryId} has stale category indexes`);
+      }
+    }
+    for (const entryId of excluded) {
+      if ([...packageFiles.keys()].some((relative) =>
+        relative.startsWith(`catalog/entries/${entryId}/`))) {
+        fail(`knowledge package ${packageId} contains excluded entry ${entryId}`);
+      }
+    }
+    for (const relative of packageFiles.keys()) {
+      const categoryMatch = /^catalog\/categories\/([^/]+)\/tools\.jsonl$/.exec(relative);
+      if (categoryMatch !== null && !categoryIds.has(categoryMatch[1])) {
+        fail(`knowledge package ${packageId} contains unknown category ${categoryMatch[1]}`);
+      }
+      const entryMatch = /^catalog\/entries\/([^/]+)\/.+$/.exec(relative);
+      if (entryMatch !== null && !included.includes(entryMatch[1])) {
+        fail(`knowledge package ${packageId} contains unknown entry ${entryMatch[1]}`);
+      }
+    }
+  }
+  if (entries !== document.entries || excludedEntries !== document.excludedEntries) {
+    fail("knowledge-task.json aggregate entry counts are inconsistent");
+  }
+  for (const package_ of document.packages) {
+    if (package_.dependencies.some((dependency) => !packageIds.has(dependency))) {
+      fail(`knowledge package ${package_.id} depends on an absent package`);
+    }
+  }
+  const dependencyClosure = (packageId, visiting = new Set(), found = new Set()) => {
+    if (found.has(packageId)) return found;
+    if (visiting.has(packageId)) {
+      fail(`archived knowledge dependency cycle includes ${packageId}`);
+    }
+    visiting.add(packageId);
+    const record = document.packages.find((package_) => package_.id === packageId);
+    for (const dependency of record.dependencies) {
+      dependencyClosure(dependency, visiting, found);
+    }
+    visiting.delete(packageId);
+    found.add(packageId);
+    return found;
+  };
+  if (taskForest.packages.length !== document.packages.length) {
+    fail("archived knowledge forest package count differs from the task manifest");
+  }
+  for (const relative of files.keys()) {
+    if (relative === "forest.json") continue;
+    const match = /^packages\/([^/]+)\/.+$/.exec(relative);
+    if (match === null || !packageIds.has(match[1])) {
+      fail(`archived knowledge contains an unmounted path: ${relative}`);
+    }
+  }
+  for (const [index, mount] of taskForest.packages.entries()) {
+    exactKeys(mount, ["id", "path"], `archived knowledge forest package ${index}`);
+    if (mount.id !== document.packages[index].id || mount.path !== `packages/${mount.id}`) {
+      fail("archived knowledge forest differs from the task package order");
+    }
+  }
+  for (const package_ of document.packages) {
+    const packageAllowedModules = new Set(proofKitModules);
+    for (const dependencyId of dependencyClosure(package_.id)) {
+      for (const moduleName of packageSources.get(dependencyId).keys()) {
+        packageAllowedModules.add(moduleName);
+      }
+    }
+    for (const [moduleName, source] of packageSources.get(package_.id)) {
+      for (const imported of imports(source)) {
+        const dependency = imported === "CodeLib" || imported.startsWith("CodeLib.") ||
+          imported.startsWith("Init.") || imported.startsWith("Std.") ||
+          imported.startsWith("Mathlib.") || imported === "Interpreter" ||
+          imported.startsWith("Interpreter.");
+        if (!dependency && !packageAllowedModules.has(imported)) {
+          fail(`${moduleName} imports unsupported archived knowledge dependency ${imported}`);
+        }
+      }
+    }
+  }
+  const allowedModules = new Set([...proofKitModules, ...leanSources.keys()]);
+  return {
+    manifest: structuredClone(document),
+    files: new Map(files),
+    leanSources,
+    allowedModules,
+  };
+}
+
 function createPackage(stageRoot, values) {
   fs.mkdirSync(stageRoot, { recursive: true });
   writeAtomic(path.join(stageRoot, "request.txt"), Buffer.from(values.request));
@@ -986,6 +1363,19 @@ function createPackage(stageRoot, values) {
       writeAtomic(path.join(stageRoot, "ltg", ...relative.split("/")), Buffer.from(source));
     }
   }
+  if (values.knowledgeTask !== undefined) {
+    if (values.ltgTask !== undefined) {
+      fail("proof package cannot archive both LTG and knowledge-forest tasks");
+    }
+    const knowledgeTask = validateKnowledgeTask(
+      values.knowledgeTask.manifest, values.knowledgeTask.files, values.artifact.sha256);
+    writeAtomic(path.join(stageRoot, "knowledge-task.json"),
+      jsonBytes(knowledgeTask.manifest));
+    for (const [relative, source] of knowledgeTask.files) {
+      writeAtomic(path.join(stageRoot, "knowledge", ...relative.split("/")),
+        Buffer.from(source));
+    }
+  }
   if ((values.compilerAnnotations === undefined) !== (values.proofRecipes === undefined)) {
     fail("compiler annotations and proof recipes must appear together");
   }
@@ -1000,6 +1390,9 @@ function createPackage(stageRoot, values) {
   if (values.ltgTask !== undefined && (!annotated || formalInterfaceVersion !== 2)) {
     fail("structured LTG archival requires the annotated formal interface");
   }
+  if (values.knowledgeTask !== undefined && (!annotated || formalInterfaceVersion !== 2)) {
+    fail("knowledge-forest archival requires the annotated formal interface");
+  }
   if (annotated) {
     writeAtomic(path.join(stageRoot, "program.annotations.json"),
       jsonBytes(values.compilerAnnotations));
@@ -1009,9 +1402,10 @@ function createPackage(stageRoot, values) {
   writeAtomic(path.join(stageRoot, "program.wasm"), values.wasmBytes);
   installSources(path.join(stageRoot, "proof"), values.sources);
   const manifest = {
-    schemaVersion: values.ltgTask !== undefined
+    schemaVersion: values.knowledgeTask !== undefined
       ? packageSchemaVersion
-      : annotated ? (formalInterfaceVersion === 2 ? 6 : 5) : 4,
+      : values.ltgTask !== undefined ? 7
+        : annotated ? (formalInterfaceVersion === 2 ? 6 : 5) : 4,
     requestSha256: sha256(Buffer.from(values.request)),
     case: values.job.caseName,
     leanModule: values.job.leanModule,
@@ -1304,7 +1698,7 @@ function validatePackage(packageRoot) {
       path.join(packageRoot, "proof-recipes.json"), "utf8")), compilerAnnotations);
   }
   let ltgTask = null;
-  if (manifest.schemaVersion >= 7) {
+  if (manifest.schemaVersion === 7) {
     requiredFiles.push("ltg-task.json", "ltg/README.md", "ltg/categories.json");
     const ltgRoot = path.join(packageRoot, "ltg");
     const ltgFiles = new Map(collectFiles(ltgRoot).map((relative) => [
@@ -1313,6 +1707,18 @@ function validatePackage(packageRoot) {
     ]));
     ltgTask = validateLtgTask(JSON.parse(fs.readFileSync(
       path.join(packageRoot, "ltg-task.json"), "utf8")), ltgFiles, artifact.sha256);
+  }
+  let knowledgeTask = null;
+  if (manifest.schemaVersion >= 8) {
+    requiredFiles.push("knowledge-task.json", "knowledge/forest.json");
+    const knowledgeRoot = path.join(packageRoot, "knowledge");
+    const knowledgeFiles = new Map(collectFiles(knowledgeRoot).map((relative) => [
+      relative,
+      fs.readFileSync(path.join(knowledgeRoot, ...relative.split("/"))),
+    ]));
+    knowledgeTask = validateKnowledgeTask(JSON.parse(fs.readFileSync(
+      path.join(packageRoot, "knowledge-task.json"), "utf8")),
+    knowledgeFiles, artifact.sha256);
   }
   for (const required of requiredFiles) {
     if (!seen.has(required)) fail(`package is missing ${required}`);
@@ -1331,7 +1737,8 @@ function validatePackage(packageRoot) {
         imported.startsWith("Mathlib.") ||
         imported.startsWith("Interpreter.") ||
         imported.startsWith("Project.Artifact.Binary.");
-      const allowedProofKit = proofKitModules.includes(imported);
+      const allowedProofKit = proofKitModules.includes(imported) ||
+        (knowledgeTask !== null && knowledgeTask.allowedModules.has(imported));
       const allowedGenerated = imported.startsWith(`${job.namespace}.`) &&
         imported !== job.sourceModule;
       if (!allowedDependency && !allowedProofKit && !allowedGenerated) {
@@ -1350,6 +1757,7 @@ function validatePackage(packageRoot) {
     compilerAnnotations,
     proofRecipes,
     ltgTask,
+    knowledgeTask,
   };
 }
 
@@ -1374,6 +1782,7 @@ module.exports = {
   stageReportCodexVersions,
   validateCodexTaskOutcome,
   validateLtgTask,
+  validateKnowledgeTask,
   validatePackage,
   validateProofJournal,
   validateProgramImports,

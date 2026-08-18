@@ -1,51 +1,67 @@
-# Structured LTG catalog
+# Knowledge forest and structured LTG catalogs
 
-The structured LTG catalog is the proof agent's canonical directory of Lean lemmas, tactics, compiler-motif support, proof methods, and worked examples.  It stores each entry once and generates overlapping category indexes for file-based retrieval.  A proof agent searches those indexes with ordinary tools and opens only entries relevant to the current artifact and proof state.
+The knowledge forest selects separately versioned packages of Lean lemmas, tactics, compiler-motif support, proof methods, and worked examples.  Each package owns a structured LTG catalog that stores each entry once and generates overlapping category indexes for file-based retrieval.  A proof agent starts from the forest, searches selected package indexes with ordinary tools, and opens entries relevant to the current artifact and proof state.
 
 ## Repository structure
 
 | Path | Contents |
 |------|----------|
+| `knowledge/forest.json` | Default package selection for generation and reproof. |
+| `<package>/knowledge-package.json` | Package identity, version, maturity, dependencies, catalog root, Lean sources, and entry-bound evidence. |
 | `ltg/categories.json` | Root category list with a title and search scope for each category. |
 | `ltg/categories/<category>/tools.jsonl` | Generated one-record-per-entry index containing summaries, features, annotation kinds, modules, declarations, and search aliases. |
 | `ltg/entries/<entry>/entry.json` | Canonical machine-readable identity, classification, premises, result, consumers, relations, and exclusions. |
 | `ltg/entries/<entry>/README.md` | Proof guidance, application order, limitations, and interpretation for one entry. |
 | `proofs/talos/lean/Project/ProofKit/LTGCheck.lean` | Generated imports and `#check` commands for every declaration advertised by the catalog. |
 | `tools/ltg` | Catalog rebuild, consistency check, and size report. |
+| `tools/knowledge` | Forest validation, aggregate statistics, and task-snapshot inspection. |
 
-An entry may appear in several category indexes, while its canonical metadata and prose remain under `ltg/entries`.  Index records include exact declaration names and derived search terms because proof agents often begin with a generated annotation kind, a residual Lean declaration, or a theorem name rather than a catalog title.  `tools/ltg rebuild` derives every index and the Lean declaration audit from the canonical entries, avoiding independent copies that can disagree.
+The existing `ltg/` directory is package `leanexe-core`, version one, in the default forest.  An entry may appear in several category indexes, while its canonical metadata and prose remain under one package's `entries/` directory.  Different forest manifests can select combinations of core, project, compiler, experimental, or run-derived packages without merging their catalogs.  Index records include exact declaration names and derived search terms because proof agents often begin with a generated annotation kind, a residual Lean declaration, or a theorem name rather than a catalog title.
 
 Each entry separates role, scope, and evidence status.  Role distinguishes checked proof assets, annotation support, guidance, proof-generation mechanisms, and worked examples; scope distinguishes generic semantics, compiler or runtime motifs, and benchmark-local material.  Evidence status informs retrieval and promotion, while narrow checked material remains available as an example unless invalidity, staleness, unsafe disclosure, or duplication provides a specific reason to remove it.
 
-## Proof-agent retrieval
+## Package selection and retrieval
 
-Each artifact-proof workspace contains `LTG/categories.json`, the category indexes, the included canonical entries, and `LTG_TASK.json`.  The prompt directs the agent to start at the category list, search likely indexes with `rg`, inspect summaries before opening entry bodies, and follow `relatedEntries` only when the proof state supports the relation.  The journal records exact queries, entries opened, entries used, entries rejected, and missing catalog support.
+Each artifact-proof workspace contains `KNOWLEDGE/forest.json`, selected package directories, and `KNOWLEDGE_TASK.json`.  The prompt directs the agent to inspect the forest, search likely package indexes with `rg`, inspect summaries before opening entry bodies, and follow `relatedEntries` only when the proof state supports the relation.  The journal records exact queries, packages and entries opened, entries used, entries rejected, and missing catalog support.
 
 ```text
-rg -n 'scalar-post-test|postTestProgram_spec|gcd|remainder' LTG/categories
-sed -n '1,220p' LTG/entries/scalar-post-test-loop/entry.json
-sed -n '1,240p' LTG/entries/euclidean-gcd-loop/README.md
+rg -n 'scalar-post-test|postTestProgram_spec|gcd|remainder' \
+  KNOWLEDGE/packages/leanexe-core/catalog/categories
+sed -n '1,220p' \
+  KNOWLEDGE/packages/leanexe-core/catalog/entries/scalar-post-test-loop/entry.json
+sed -n '1,240p' \
+  KNOWLEDGE/packages/leanexe-core/catalog/entries/euclidean-gcd-loop/README.md
 ```
 
-This protocol keeps catalog size separate from prompt size.  The agent initially receives a short retrieval instruction, the root category file, and access to the file tree; it does not receive every entry's prose in its language-model context.  Searchable JSONL records support local filtering before the agent spends context on a full entry.
+This protocol keeps forest size separate from prompt size.  The agent initially receives a short retrieval instruction, the forest and package manifests, and access to the file tree.  Searchable JSONL records support local filtering before the agent spends context on a full entry.
 
-`LTG_TASK.json` binds the visible catalog view to the task.  It records the exact artifact digest used for exclusion, derivative groups supplied by the orchestrator, sorted included and excluded entry identifiers, their counts, and a digest over every visible LTG file.  An exact-artifact worked example therefore cannot enter a measured proof workspace through another category index.
+`KNOWLEDGE_TASK.json` binds the visible forest view to the task.  It records each package's identity, version, maturity, dependencies, included and excluded entries, required Lean modules, package digest, and the digest over the complete visible forest.  Exact-artifact filtering removes an excluded entry together with its bound evidence and unreferenced package-local Lean sources.
 
-The current orchestrator supplies the artifact digest automatically.  The catalog library also implements derivative-group exclusion, although automatic artifact-to-derivative classification does not yet exist.  Until that classification exists, an evaluation that covers close derivatives must pass the relevant group explicitly or review the packaged exclusion record.
+The orchestrator supplies the artifact digest and selected forest to every current proof run.  The package library also implements derivative-group exclusion, while automatic artifact-to-derivative classification remains absent.  An evaluation covering close derivatives therefore passes the relevant group explicitly or reviews the packaged exclusion record.
 
 ## Validation and package identity
 
-Catalog checks reject malformed metadata, unsupported proof-kit imports, unknown categories or related entries, stale generated indexes, and stale Lean declaration checks.  The generated `LTGCheck.lean` imports the advertised proof modules and asks Lean to resolve every declaration, which catches misspelled names and removed theorems before a proof session.  The repository checks are:
+Catalog checks reject malformed metadata, unsupported imports, unknown categories or related entries, stale generated indexes, and stale Lean declaration checks.  Forest checks add package identity, dependency, global entry identity, package-local module namespace, source import, evidence binding, and complete file-set validation.  The generated `LTGCheck.lean` imports the core package's advertised proof modules and asks Lean to resolve every declaration.
 
 ```text
 tools/ltg check
+tools/knowledge check
 node test/ltg.js
+node test/knowledge.js
 tools/leanrun --timeout 15m lake -d proofs/talos/lean --no-ansi build Project.ProofKit.LTGCheck
 ```
 
-Schema-7 proof packages archive the exact filtered view under `ltg/` and its manifest as `ltg-task.json`.  Package validation recomputes the catalog digest, checks category index references, requires every included entry to be indexed and present, and rejects an archived body for any excluded entry.  This archive reconstructs the proof agent's available LTG context without requiring the current repository catalog to match historical guidance.
+Schema-8 proof packages archive the exact filtered forest under `knowledge/` and its manifest as `knowledge-task.json`.  Package validation recomputes forest and package digests, checks package and category references, validates included entries and sources, and rejects excluded entry bodies or evidence.  Schema-7 packages retain their single-catalog `ltg/` archive and validator.
 
-The checked `Behavior.lean` theorem remains the authority for verification.  LTG metadata and prose grant no imports and discharge no proof obligations; Lean checks imported declarations, generated region equalities connect compiler motifs to exact decoded instructions, and the package verifier rebuilds the artifact theorem.  The proof-kit README remains an available human reference and part of the checked proof-kit source identity, while the proof prompt names the structured LTG tree as the canonical discovery path.
+The checked `Behavior.lean` theorem remains the authority for verification.  Knowledge metadata and prose discharge no proof obligations, while package manifests grant import authority only to archived package-local sources whose paths, imports, and digests pass validation.  Lean checks those sources and the final proof, generated region equalities connect compiler motifs to exact decoded instructions, and the package verifier rebuilds the artifact theorem.
+
+## Stateful learning
+
+`leanexegen learn record` converts an accepted proof package into an experimental knowledge package.  The package contains one worked-example entry and preserves its proof journal, accepted proof, annotations, recipes, task features, telemetry, and prior knowledge identity.  The entry carries an exact-artifact exclusion and binds every evidence file to that entry.
+
+`leanexegen learn propose` runs a separate headless Codex task over the same evidence.  The task keeps a learning journal and produces one guidance entry, worked example, checked lemma, or checked tactic; checked Lean source receives a package namespace and passes both in-session and outer Lean builds.  The proposal remains an experimental package until an explicit promotion.
+
+`leanexegen learn promote` copies every selected package into a self-contained forest snapshot and adds a new promoted version of the candidate package.  Promotion validates the complete resulting forest, builds every package-local Lean module in the candidate, and asks Lean to resolve every declaration advertised by its catalog.  Generation and reproof select that snapshot through `--knowledge`, while prior snapshots and candidate packages retain their original bytes.
 
 ## Fixed-artifact evidence
 

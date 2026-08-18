@@ -22,7 +22,7 @@ LeanExe assigns one subject to each maintained document.  The repository [README
 | [Artifact Proving](artifact-proving.md) | Relationship among Talos, ProofKit, compiler annotations, LTG retrieval, generated proof work, and independent checking. |
 | [`leanexegen` Reference](leanexegen.md) | CLI stages, task isolation, fixed public interface, proof packages, verification, and reproving. |
 | [WebAssembly Annotations](annotations.md) | Implemented sidecar schema, recognized regions, generated checked declarations, and recipe selection. |
-| [Structured LTG](ltg.md) | Catalog schema, category indexes, filtering, checked declarations, exclusions, and task bundles. |
+| [Knowledge Forest and Structured LTG](ltg.md) | Package and catalog schemas, forest selection, filtering, checked declarations, learning phases, exclusions, and task snapshots. |
 | [LTG Metrics](ltg-metrics.md) | Reproducible measurements of catalog structure, declarations, tactics, coverage, and content size. |
 | [Artifact-Proof Strategies](proof-strategies.md) | General proof-construction and diagnosis guidance that applies across artifact families. |
 | [Talos Imported-Memory Defect](telos-bug.md) | Reproduction, semantic cause, conformance warning, artifact-profile effect, and upstream repair boundary. |
