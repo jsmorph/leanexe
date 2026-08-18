@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "fixed-array-singleton-wrapper",
+  "title": "Singleton array around a scalar callee",
+  "summary": "Composes singleton-length dispatch, checked input loading, a store-preserving scalar call, allocation, stores, and public return.",
+  "roles": ["annotation-support", "checked-proof-asset", "guidance"],
+  "categories": ["allocation", "arrays", "compiler-motifs", "memory", "proof-construction"],
+  "scope": "compiler-runtime-motif",
+  "evidenceStatus": "promoted",
+  "features": ["allocator", "array", "direct-call", "singleton", "wrapper"],
+  "annotationKinds": ["leanexe.array.singleton-wrapper.v1", "leanexe.call.direct.v1"],
+  "modules": ["Project.ProofKit.FixedArraySingletonWrapper"],
+  "declarations": ["Project.ProofKit.FixedArraySingletonWrapper.wrapperProgram", "Project.ProofKit.FixedArraySingletonWrapper.wrapperProgram_spec"],
+  "premises": ["Whole-wrapper region equality", "Singleton input representation", "Store-preserving scalar-callee theorem", "Result-region fit", "Two formal-result equations"],
+  "result": "The public array postcondition for a singleton transformed by the supplied scalar function, with non-singleton inputs preserved by the formal result equation.",
+  "consumers": ["demo-1", "demo-6", "demo-7", "demo-8"],
+  "relatedEntries": ["counter-transition", "fixed-array-allocation", "residual-specification-normalization", "scalar-post-test-loop"],
+  "exclusion": null
+}
