@@ -33,7 +33,6 @@ const {
   auditAxioms,
   codexCommandArgs,
   codexOutcomeSchema,
-  fixedArrayEqNodeFeatures,
   parseCodexVersion,
   formalSpecificationCheckSources,
   formalSpecificationSource,
@@ -741,86 +740,6 @@ function testMockedCodex(job) {
   }), /independent outer check rejected.*unknown declaration bad/s);
 }
 
-function testFixedArrayEqNodeFeatures() {
-  const body = `
-    .localGet 0,
-    .localSet 15,
-    .constI64 (3 : UInt64),
-    .localSet 16,
-    .localGet 16,
-    .localGet 15,
-    .wrapI64,
-    .load64 (0 : UInt32),
-    .ltUI64,
-    .iff 0 1 [
-      .localGet 15,
-      .localGet 16,
-      .constI64 (1 : UInt64),
-      .mulI64,
-      .constI64 (1 : UInt64),
-      .addI64,
-      .constI64 (8 : UInt64),
-      .mulI64,
-      .addI64,
-      .wrapI64,
-      .load64 (0 : UInt32)
-    ] [
-      .unreachable
-    ],
-    .localGet 2,
-    .eqI64,
-    .iff 0 1 [
-      .constI64 (1 : UInt64)
-    ] [
-      .constI64 (0 : UInt64)
-    ],
-    .constI64 (0 : UInt64),
-    .eqI64,
-    .eqz,
-    .iff 0 0 [
-      .localGet 2,
-      .localGet 0,
-      .localSet 15,
-      .constI64 (5 : UInt64),
-      .localSet 16,
-      .localGet 16,
-      .localGet 15,
-      .wrapI64,
-      .load64 (0 : UInt32),
-      .ltUI64,
-      .iff 0 1 [
-        .localGet 15,
-        .localGet 16,
-        .constI64 (1 : UInt64),
-        .mulI64,
-        .constI64 (1 : UInt64),
-        .addI64,
-        .constI64 (8 : UInt64),
-        .mulI64,
-        .addI64,
-        .wrapI64,
-        .load64 (0 : UInt32)
-      ] [
-        .unreachable
-      ],
-      .eqI64,
-      .iff 0 1 [
-        .constI64 (1 : UInt64)
-      ] [
-        .constI64 (0 : UInt64)
-      ],
-      .constI64 (0 : UInt64),
-      .eqI64,
-      .eqz,
-      .iff 0 0 [
-  `;
-  const nodes = fixedArrayEqNodeFeatures(body);
-  assert(JSON.stringify(nodes) === JSON.stringify([
-    { offset: 10, index: 3, keyLocal: 2, order: "loaded-first" },
-    { offset: 10, index: 5, keyLocal: 2, order: "key-first" },
-  ]), "fixed-array equality-node extraction lost an exact emitted node");
-}
-
 function testAnnotationRecipePlan() {
   const wasm = Buffer.from([0, 97, 115, 109, 1, 0, 0, 0]);
   const document = {
@@ -1060,7 +979,9 @@ function testLengthDispatchAnnotationRecipes() {
     const document = lengthDispatchDocument(wasm, encoding);
     const program = lengthDispatchProgram(encoding);
     const strategyProgram = `${program}\n\ndef «module» : Wasm.Module := {}`;
-    const extractedDispatches = proofStrategyBundle(strategyProgram, 0).features
+    const extractedDispatches = proofStrategyBundle(strategyProgram, 0, {
+      annotations: document,
+    }).features
       .reachableFunctions[0].fixedArrayLengthDispatches;
     assert(JSON.stringify(extractedDispatches) === JSON.stringify([{
       inputLocal: 10,
@@ -1135,7 +1056,9 @@ function testConstantCapacityAnnotationRecipes() {
     path.join(demoRoot, "program.annotations.json"), "utf8"));
   const program = fs.readFileSync(path.join(demoRoot, "program.proof", "proof",
     "LeanExeGen", "GeneratedR23fa7efc3fb0298b", "Program.lean"), "utf8");
-  const demoFeatures = proofStrategyBundle(program, 0).features.reachableFunctions
+  const demoFeatures = proofStrategyBundle(program, 0, {
+    annotations: document,
+  }).features.reachableFunctions
     .find((function_) => function_.index === 0);
   assert(JSON.stringify(demoFeatures.fixedArrayLengthDispatches) === JSON.stringify([{
     inputLocal: 7,
@@ -2759,6 +2682,8 @@ function testArtifactPackage(job, formalSource) {
     [job.formalSpecModule, formalSource],
     [job.sourceModule, programSource],
     [job.behaviorModule, behaviorSource],
+    [`${job.namespace}.AnnotationMatches`,
+      annotatedContext.get(moduleFile(`${job.namespace}.AnnotationMatches`))],
     ...generated.sources,
   ]);
   const artifact = {
@@ -2962,18 +2887,26 @@ function testArtifactPackage(job, formalSource) {
     mode: "record",
     inputPath: packageRoot,
     outputPath: recordedKnowledgeRoot,
+    attemptId: "record-test",
   });
   const recordedManifest = JSON.parse(fs.readFileSync(
     path.join(recordedKnowledgeRoot, "knowledge-package.json"), "utf8"));
+  const recordedRun = JSON.parse(fs.readFileSync(
+    path.join(recordedKnowledgeRoot, "evidence", "run.json"), "utf8"));
   assert(recordedManifest.maturity === "experimental" &&
+    recordedManifest.id.endsWith("-record-test") &&
+    recordedRun.knowledgeId === recordedManifest.id &&
     recordedManifest.evidence.some((record) => record.path === "evidence/run.json") &&
-    fs.existsSync(path.join(recordedKnowledgeRoot, "evidence", "accepted-proof.lean")),
+    fs.existsSync(path.join(recordedKnowledgeRoot, "evidence", "accepted-proof.lean")) &&
+    fs.existsSync(path.join(recordedKnowledgeRoot, "evidence", "talos-program.lean")) &&
+    fs.existsSync(path.join(recordedKnowledgeRoot, "evidence", "annotation-matches.lean")),
   "record mode omitted its immutable run evidence");
   const proposedKnowledgeRoot = path.join(temporaryRoot, "proposed-knowledge");
   proposeKnowledge({
     mode: "propose",
     inputPath: packageRoot,
     outputPath: proposedKnowledgeRoot,
+    attemptId: "proposal-test",
     codex: "codex-test",
     execute: (args, options) => {
       const schemaPath = args[args.indexOf("--output-schema") + 1];
@@ -3004,6 +2937,7 @@ function testArtifactPackage(job, formalSource) {
   const proposedManifest = JSON.parse(fs.readFileSync(
     path.join(proposedKnowledgeRoot, "knowledge-package.json"), "utf8"));
   assert(proposedManifest.maturity === "experimental" &&
+    proposedManifest.id.endsWith("-proposal-test") &&
     fs.existsSync(path.join(proposedKnowledgeRoot, "evidence", "proposal.json")) &&
     fs.existsSync(path.join(proposedKnowledgeRoot, "evidence", "learning-journal.md")) &&
     fs.existsSync(path.join(proposedKnowledgeRoot, "catalog", "entries",
@@ -3014,6 +2948,7 @@ function testArtifactPackage(job, formalSource) {
     mode: "propose",
     inputPath: packageRoot,
     outputPath: declinedKnowledgeRoot,
+    attemptId: "declined-test",
     codex: "codex-test",
     execute: (args, options) => {
       const outcomePath = args[args.indexOf("-o") + 1];
@@ -3041,6 +2976,7 @@ function testArtifactPackage(job, formalSource) {
   const declinedReport = JSON.parse(fs.readFileSync(
     path.join(declinedKnowledgeRoot, "learning-report.json"), "utf8"));
   assert(declinedReport.outcome === "no-entry" &&
+    declinedReport.proposalId.endsWith("-declined-test") &&
     declinedReport.artifactSha256 === artifact.sha256 &&
     fs.existsSync(path.join(declinedKnowledgeRoot, "learning-journal.md")) &&
     !fs.existsSync(path.join(declinedKnowledgeRoot, "knowledge-package.json")),
@@ -3198,6 +3134,7 @@ function testAxiomAudit() {
   const clean = Array.from({ length: 7 }, (_, index) =>
     `theorem${index} does not depend on any axioms`).join("\n");
   auditAxioms(clean);
+  auditAxioms("first does not depend on any axioms\nsecond does not depend on any axioms", 2);
   expectFailure(() => auditAxioms(`${clean}\n'bad' depends on axioms: [sorryAx]`), /sorryAx/);
 }
 
@@ -3216,7 +3153,6 @@ function testKernelAudit() {
 try {
   testArguments();
   testStage5Telemetry();
-  testFixedArrayEqNodeFeatures();
   testAnnotationRecipePlan();
   testLengthDispatchAnnotationRecipes();
   testConstantCapacityAnnotationRecipes();

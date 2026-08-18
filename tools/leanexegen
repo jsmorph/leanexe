@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 "use strict";
 
+const crypto = require("node:crypto");
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
@@ -41,6 +42,7 @@ const {
 } = require("./knowledge-lib");
 const {
   annotationMatchesSource,
+  matchAnnotationDocument,
   proofRecipePlan,
   validateAnnotationDocument,
 } = require("./leanexegen-annotations");
@@ -69,7 +71,7 @@ const verifier = path.join(verifierRoot, ".lake", "build", "bin", "verifier");
 const dumpRaw = path.join(projectRoot, "Artifact", "Binary", "DumpRaw.lean");
 const proofKitCatalogPath = path.join(projectRoot, "ProofKit", "README.md");
 const proofStrategiesPath = path.join(repoRoot, "docs", "proof-strategies.md");
-const strategyExtractorVersion = 6;
+const strategyExtractorVersion = 7;
 const artifactProofTaskTimeoutMs = 4 * 60 * 60 * 1000;
 const maximumTaskSessions = 1;
 const allowedAxioms = new Set([
@@ -934,182 +936,7 @@ function parseProofStrategySections(source) {
   return sections;
 }
 
-function fixedArraySearchFeatures(body) {
-  const lines = body.split("\n").map((line) => line.trim());
-  const nodes = [];
-  const searchKeys = [];
-  const local = (line, instruction) => {
-    if (typeof line !== "string") return null;
-    const match = line.match(new RegExp(`^\\.${instruction} ([0-9]+),$`));
-    return match === null ? null : Number(match[1]);
-  };
-  const constant = (line) => {
-    if (typeof line !== "string") return null;
-    const match = line.match(/^\.constI64 \(([0-9]+) : UInt64\),$/);
-    return match === null ? null : Number(match[1]);
-  };
-  const loaderAt = (start) => {
-    if (lines[start] !== ".localGet 0,") return null;
-    const pointerLocal = local(lines[start + 1], "localSet");
-    const index = constant(lines[start + 2]);
-    const indexLocal = local(lines[start + 3], "localSet");
-    if (pointerLocal === null || index === null || indexLocal === null ||
-        pointerLocal < 5 || indexLocal !== pointerLocal + 1) return null;
-    const expected = [
-      [4, `.localGet ${indexLocal},`],
-      [5, `.localGet ${pointerLocal},`],
-      [6, ".wrapI64,"],
-      [7, ".load64 (0 : UInt32),"],
-      [8, ".ltUI64,"],
-      [9, ".iff 0 1 ["],
-      [10, `.localGet ${pointerLocal},`],
-      [11, `.localGet ${indexLocal},`],
-      [12, ".constI64 (1 : UInt64),"],
-      [13, ".mulI64,"],
-      [14, ".constI64 (1 : UInt64),"],
-      [15, ".addI64,"],
-      [16, ".constI64 (8 : UInt64),"],
-      [17, ".mulI64,"],
-      [18, ".addI64,"],
-      [19, ".wrapI64,"],
-      [20, ".load64 (0 : UInt32)"],
-      [21, "] ["],
-      [22, ".unreachable"],
-      [23, "],"],
-    ];
-    if (expected.some(([offset, text]) => lines[start + offset] !== text)) return null;
-    return { offset: pointerLocal - 5, index, after: start + 24 };
-  };
-  const normalizationAt = (start) => [
-    ".eqI64,",
-    ".iff 0 1 [",
-    ".constI64 (1 : UInt64)",
-    "] [",
-    ".constI64 (0 : UInt64)",
-    "],",
-    ".constI64 (0 : UInt64),",
-    ".eqI64,",
-    ".eqz,",
-    ".iff 0 0 [",
-  ].every((text, offset) => lines[start + offset] === text);
-  for (let start = 0; start < lines.length; start += 1) {
-    const loadedFirst = loaderAt(start);
-    if (loadedFirst !== null) {
-      const destination = local(lines[loadedFirst.after], "localSet");
-      if (destination !== null) {
-        searchKeys.push({
-          offset: loadedFirst.offset,
-          index: loadedFirst.index,
-          keyLocal: destination,
-        });
-      }
-      const keyLocal = local(lines[loadedFirst.after], "localGet");
-      if (keyLocal !== null && normalizationAt(loadedFirst.after + 1)) {
-        nodes.push({
-          offset: loadedFirst.offset,
-          index: loadedFirst.index,
-          keyLocal,
-          order: "loaded-first",
-        });
-      }
-    }
-    const keyLocal = local(lines[start], "localGet");
-    const keyFirst = loaderAt(start + 1);
-    if (keyLocal !== null && keyFirst !== null && normalizationAt(keyFirst.after)) {
-      nodes.push({
-        offset: keyFirst.offset,
-        index: keyFirst.index,
-        keyLocal,
-        order: "key-first",
-      });
-    }
-  }
-  return { nodes, searchKeys };
-}
-
-function fixedArrayEqNodeFeatures(body) {
-  return fixedArraySearchFeatures(body).nodes;
-}
-
-function fixedArrayLengthDispatchFeatures(body) {
-  const lines = body.split("\n").map((line) => line.trim());
-  const dispatches = [];
-  const matchesAt = (start, expected) => expected.every(
-    ([offset, text]) => lines[start + offset] === text);
-  for (let start = 0; start + 7 < lines.length; start += 1) {
-    if (lines[start] !== ".localGet 0,") continue;
-    const localMatch = lines[start + 1].match(/^\.localSet ([0-9]+),$/);
-    const sizeMatch = lines[start + 5].match(
-      /^\.constI64 \(([0-9]+) : UInt64\),$/);
-    if (localMatch === null || sizeMatch === null) continue;
-    const inputLocal = Number(localMatch[1]);
-    const prefix = [
-      [2, `.localGet ${inputLocal},`],
-      [3, ".wrapI64,"],
-      [4, ".load64 (0 : UInt32),"],
-    ];
-    if (!matchesAt(start, prefix)) continue;
-    const encodings = [["le-unsigned-v1", [
-      [6, ".leUI64,"],
-      [7, ".iff 0 0 ["],
-    ]], ["eq-normalized-v1", [
-      [6, ".eqI64,"],
-      [7, ".iff 0 1 ["],
-      [8, ".constI64 (1 : UInt64)"],
-      [9, "] ["],
-      [10, ".constI64 (0 : UInt64)"],
-      [11, "],"],
-      [12, ".constI64 (1 : UInt64),"],
-      [13, ".eqI64,"],
-      [14, ".iff 0 1 ["],
-      [15, ".constI64 (1 : UInt64)"],
-      [16, "] ["],
-      [17, ".constI64 (0 : UInt64)"],
-      [18, "],"],
-      [19, ".constI64 (0 : UInt64),"],
-      [20, ".eqI64,"],
-      [21, ".eqz,"],
-      [22, ".iff 0 0 ["],
-    ]], ["ne-normalized-v1", [
-      [6, ".eqI64,"],
-      [7, ".iff 0 1 ["],
-      [8, ".constI64 (1 : UInt64)"],
-      [9, "] ["],
-      [10, ".constI64 (0 : UInt64)"],
-      [11, "],"],
-      [12, ".constI64 (0 : UInt64),"],
-      [13, ".eqI64,"],
-      [14, ".eqz,"],
-      [15, ".eqz,"],
-      [16, ".iff 0 1 ["],
-      [17, ".constI64 (1 : UInt64)"],
-      [18, "] ["],
-      [19, ".constI64 (0 : UInt64)"],
-      [20, "],"],
-      [21, ".constI64 (1 : UInt64),"],
-      [22, ".eqI64,"],
-      [23, ".iff 0 1 ["],
-      [24, ".constI64 (1 : UInt64)"],
-      [25, "] ["],
-      [26, ".constI64 (0 : UInt64)"],
-      [27, "],"],
-      [28, ".constI64 (0 : UInt64),"],
-      [29, ".eqI64,"],
-      [30, ".eqz,"],
-      [31, ".iff 0 0 ["],
-    ]]];
-    const encoding = encodings.find(([, expected]) => matchesAt(start, expected))?.[0];
-    if (encoding === undefined) continue;
-    dispatches.push({
-      inputLocal,
-      expectedSize: Number(sizeMatch[1]),
-      encoding,
-    });
-  }
-  return dispatches;
-}
-
-function programFunctionFeatures(program) {
+function programFunctionFeatures(program, annotationMatches = []) {
   const starts = [...program.matchAll(/^def func([0-9]+) : Wasm\.Program :=\n/gm)];
   if (starts.length === 0) throw new Error("Talos program has no instruction bodies");
   const functions = [];
@@ -1140,7 +967,7 @@ function programFunctionFeatures(program) {
       .test(body);
     const hasAllocation = /\.(?:memorySize|memoryGrow)\b/.test(body) ||
       (/\.globalGet\s+0\b/.test(body) && /^\s+\.store64\b/m.test(body));
-    const fixedArraySearch = fixedArraySearchFeatures(body);
+    const functionMatches = annotationMatches.filter((item) => item.functionIndex === index);
     functions.push({
       index,
       instructionCount,
@@ -1150,20 +977,40 @@ function programFunctionFeatures(program) {
       hasMemory,
       hasArithmetic,
       hasAllocation,
-      fixedArrayEqNodes: fixedArraySearch.nodes.filter(
-        (node) => node.offset + 14 === localCount),
-      fixedArraySearchKeys: fixedArraySearch.searchKeys.filter(
-        (key) => key.offset + 14 === localCount),
-      fixedArrayLengthDispatches: fixedArrayLengthDispatchFeatures(body),
+      fixedArrayEqNodes: functionMatches
+        .filter((item) => item.regionKind === "leanexe.array.eq-node.v1")
+        .map((item) => ({
+          offset: item.parameters.offset,
+          index: item.parameters.index,
+          keyLocal: item.parameters.keyLocal,
+          order: item.parameters.operandOrder,
+        })),
+      fixedArraySearchKeys: functionMatches
+        .filter((item) => item.regionKind === "leanexe.array.search-key.v1")
+        .map((item) => ({
+          offset: item.parameters.offset,
+          index: item.parameters.index,
+          keyLocal: item.parameters.keyLocal,
+        })),
+      fixedArrayLengthDispatches: functionMatches
+        .filter((item) => item.regionKind === "leanexe.array.length-dispatch.v1")
+        .map((item) => ({
+          inputLocal: item.parameters.inputLocal,
+          expectedSize: item.parameters.expectedSize,
+          encoding: item.parameters.encoding,
+        })),
     });
   }
   return functions;
 }
 
-function proofStrategyBundle(program, exportIndex, source = null) {
-  const guide = source ?? fs.readFileSync(proofStrategiesPath, "utf8");
+function proofStrategyBundle(program, exportIndex, options = {}) {
+  if (typeof options === "string") options = { guide: options };
+  const guide = options.guide ?? fs.readFileSync(proofStrategiesPath, "utf8");
   const sections = parseProofStrategySections(guide);
-  const functions = programFunctionFeatures(program);
+  const annotationMatches = options.annotations === undefined ? [] :
+    matchAnnotationDocument(options.annotations, program);
+  const functions = programFunctionFeatures(program, annotationMatches);
   if (!functions.some((item) => item.index === exportIndex)) {
     throw new Error(`proof-strategy export index ${exportIndex} has no function body`);
   }
@@ -1926,9 +1773,13 @@ function dumpRawModule(wasm) {
   return raw;
 }
 
-function auditAxioms(output) {
+function auditAxioms(output, expectedReports = 7, makeError = (message) =>
+    new StageError(5, "artifact proof", message)) {
+  const failAudit = (message) => {
+    throw makeError(message);
+  };
   if (/\bsorryAx\b/.test(output)) {
-    throw new StageError(5, "artifact proof", "declaration audit found sorryAx");
+    failAudit("declaration audit found sorryAx");
   }
   const unexpected = new Set();
   for (const report of output.matchAll(/depends on axioms:\s*\[([^\]]*)\]/g)) {
@@ -1940,20 +1791,12 @@ function auditAxioms(output) {
     }
   }
   if (unexpected.size > 0) {
-    throw new StageError(
-      5,
-      "artifact proof",
-      `declaration audit found unsupported axioms: ${[...unexpected].join(", ")}`,
-    );
+    failAudit(`declaration audit found unsupported axioms: ${[...unexpected].join(", ")}`);
   }
   const reports = (output.match(/(?:depends on axioms|does not depend on any axioms)/g) || [])
     .length;
-  if (reports !== 7) {
-    throw new StageError(
-      5,
-      "artifact proof",
-      `declaration audit produced ${reports} axiom reports; expected 7`,
-    );
+  if (reports !== expectedReports) {
+    failAudit(`declaration audit produced ${reports} axiom reports; expected ${expectedReports}`);
   }
 }
 
@@ -2686,7 +2529,11 @@ function reprove(command) {
       proofWorkspace, checked.job, formalSource, 5, "ReproveFormalSpecCheck",
       formalInterfaceVersion >= 2);
     const entryIndex = programExportIndex(programSource, checked.job.exportName);
-    const strategies = proofStrategyBundle(programSource, entryIndex);
+    const strategies = proofStrategyBundle(programSource, entryIndex, {
+      ...(checked.compilerAnnotations === null ? {} : {
+        annotations: checked.compilerAnnotations,
+      }),
+    });
     if (checked.compilerAnnotations !== null) {
       strategies.compilerAnnotations = checked.compilerAnnotations;
       strategies.proofRecipes = proofRecipePlan(
@@ -2917,7 +2764,9 @@ function annotatePackage(command) {
       completeAnnotations, command.selectedRegions);
     validateAnnotationDocument(compilerAnnotations, checked.wasm);
     const entryIndex = programExportIndex(program, checked.job.exportName);
-    const strategies = proofStrategyBundle(program, entryIndex);
+    const strategies = proofStrategyBundle(program, entryIndex, {
+      annotations: compilerAnnotations,
+    });
     const proofRecipes = proofRecipePlan(
       compilerAnnotations,
       program,
@@ -3034,9 +2883,13 @@ function coreKnowledgeCategories() {
   return JSON.parse(fs.readFileSync(path.join(repoRoot, "ltg", "categories.json"), "utf8"));
 }
 
-function learningEntryId(checked, prefix) {
+function learningEntryId(checked, prefix, attemptId = null) {
   const proofSha256 = checked.stageReports.tasks.artifactProof.sourceSha256;
-  return `${prefix}-${checked.artifact.sha256.slice(0, 12)}-${proofSha256.slice(0, 12)}`;
+  const attempt = attemptId ?? crypto.randomBytes(6).toString("hex");
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(attempt)) {
+    throw new Error("learning attempt identity must be a lowercase kebab-case identifier");
+  }
+  return `${prefix}-${checked.artifact.sha256.slice(0, 12)}-${proofSha256.slice(0, 12)}-${attempt}`;
 }
 
 function learningEvidence(packagePath, checked, entryId, mode, extra = new Map()) {
@@ -3062,12 +2915,16 @@ function learningEvidence(packagePath, checked, entryId, mode, extra = new Map()
     ["knowledge-task.json", "knowledge-task.json"],
     ["knowledge-evaluation.json", "knowledge-evaluation.json"],
     ["ltg-task.json", "ltg-task.json"],
+    [path.join("proof", moduleFile(checked.job.programModule)), "talos-program.lean"],
+    [path.join("proof", moduleFile(annotationMatchesModule(checked.job))),
+      "annotation-matches.lean"],
   ]) addPackageFile(source, destination);
   const behaviorRelative = path.join(
     "proof", ...moduleFile(checked.job.behaviorModule).split("/"));
   addPackageFile(behaviorRelative, "accepted-proof.lean");
   const record = {
     schemaVersion: 1,
+    knowledgeId: entryId,
     mode,
     artifactSha256: checked.artifact.sha256,
     requestSha256: checked.manifest.requestSha256,
@@ -3118,7 +2975,7 @@ function learningFeatures(packagePath, checked) {
 
 function recordKnowledge(command) {
   const checked = validatePackage(command.inputPath);
-  const entryId = learningEntryId(checked, "run");
+  const entryId = learningEntryId(checked, "run", command.attemptId);
   const elapsed = checked.proofTelemetry === null
     ? "The proof package contains no Stage 5 telemetry."
     : `Stage 5 completed in ${Math.round(checked.proofTelemetry.totalMilliseconds)} milliseconds.`;
@@ -3342,7 +3199,7 @@ function validateKnowledgeProposal(value, categoryIds, moduleName) {
   return value;
 }
 
-function createDeclinedKnowledgeReport(outputPath, checked, proposal, journal) {
+function createDeclinedKnowledgeReport(outputPath, checked, proposalId, proposal, journal) {
   if (fs.existsSync(outputPath)) throw new Error(`${outputPath} exists`);
   fs.mkdirSync(path.dirname(outputPath), { recursive: true });
   const staged = path.join(path.dirname(outputPath),
@@ -3356,6 +3213,7 @@ function createDeclinedKnowledgeReport(outputPath, checked, proposal, journal) {
     writeAtomic(path.join(staged, "learning-report.json"), Buffer.from(`${JSON.stringify({
       schemaVersion: 1,
       outcome: "no-entry",
+      proposalId,
       summary: proposal.summary.trim(),
       artifactSha256: checked.artifact.sha256,
       proofSourceSha256: checked.stageReports.tasks.artifactProof.sourceSha256,
@@ -3387,13 +3245,17 @@ function createDeclinedKnowledgeReport(outputPath, checked, proposal, journal) {
 
 function proposeKnowledge(command) {
   const checked = validatePackage(command.inputPath);
-  const packageId = learningEntryId(checked, "proposal");
+  const packageId = learningEntryId(checked, "proposal", command.attemptId);
   const moduleName = `LeanExeGen.Knowledge.${packagePascalName(packageId)}.Proposed`;
   const candidate = moduleFile(moduleName);
   const temporaryRoot = makeTemporaryDirectory("leanexegen-learn-");
   let operationError = null;
   try {
     createWorkspace(temporaryRoot);
+    const availableKnowledgeModules = checked.knowledgeTask?.allowedModules ?? new Set();
+    if (checked.knowledgeTask?.leanSources !== undefined) {
+      installSources(temporaryRoot, checked.knowledgeTask.leanSources);
+    }
     const evidence = learningEvidence(
       command.inputPath, checked, packageId, "propose");
     for (const [relative, record] of evidence) {
@@ -3444,8 +3306,10 @@ function proposeKnowledge(command) {
       `guidance or a worked example when the evidence supports prose only.  Choose checked-lemma ` +
       `or checked-tactic when a small general Lean result follows from the supplied ProofKit.  For ` +
       `checked Lean, write the complete module ${candidate}, declare namespace ${moduleName}, ` +
-      `inspect proof sources only under PROOF_KIT_SOURCE, and run this command after each edit:\n\n` +
-      `${build}\n\nUse only ProofKit, CodeLib, Interpreter, Init, Std, or Mathlib imports.  A ` +
+      `inspect shared proof sources under PROOF_KIT_SOURCE and selected package sources under ` +
+      `RUN/knowledge, and run this command after each edit:\n\n` +
+      `${build}\n\nUse ProofKit, CodeLib, Interpreter, Init, Std, Mathlib, or a selected ` +
+      `package-local module listed in RUN/evidence/knowledge-task.json.  A ` +
       `checked tactic must include a checked fallback declaration in the same module.  Update the ` +
       `journal after every Lean result and before changing approach.  Return one JSON object ` +
       `matching the output schema.  Put fully qualified declarations under ${moduleName}; leave ` +
@@ -3464,7 +3328,7 @@ function proposeKnowledge(command) {
       fs.readFileSync(path.join(temporaryRoot, "LEARNING_JOURNAL.md"), "utf8"),
       "LEARNING_JOURNAL.md");
     if (proposal.kind === "none") {
-      createDeclinedKnowledgeReport(command.outputPath, checked, proposal, journal);
+      createDeclinedKnowledgeReport(command.outputPath, checked, packageId, proposal, journal);
       process.stdout.write(`Recorded no-entry assessment in ${command.outputPath}\n`);
     } else {
       const checkedSource = proposal.kind === "checked-lemma" ||
@@ -3479,13 +3343,20 @@ function proposeKnowledge(command) {
         const source = fs.readFileSync(sourcePath, "utf8");
         validateProofImports({ namespace: moduleName, sourceModule: "" }, [
           { module: moduleName, source },
-        ]);
+        ], availableKnowledgeModules);
         requireKernelAudit(new Map([[moduleName, source]]), currentToolPins(repoRoot));
         runLean(9, "knowledge proposal Lean check", "15m", [
           "lake", "-d", temporaryRoot, "--no-ansi", "build", moduleName,
         ]);
         leanSources.set(moduleName, source);
       }
+      const packageByModule = new Map((checked.knowledgeTask?.manifest.packages ?? [])
+        .flatMap((package_) => package_.leanModules.map((module) => [module, package_.id])));
+      const dependencies = checkedSource ? [...new Set(
+        imports(leanSources.get(moduleName))
+          .map((imported) => packageByModule.get(imported))
+          .filter((packageId) => packageId !== undefined),
+      )].sort() : [];
       const roles = proposal.kind === "checked-tactic"
         ? ["checked-proof-asset", "guidance", "proof-generation-mechanism"]
         : proposal.kind === "checked-lemma"
@@ -3537,7 +3408,7 @@ function proposeKnowledge(command) {
           title: proposal.title,
           summary: proposal.summary,
           maturity: "experimental",
-          dependencies: [],
+          dependencies,
           catalogRoot: "catalog",
           leanSources: [],
           evidence: [],
@@ -3553,7 +3424,8 @@ function proposeKnowledge(command) {
         }],
         leanSources,
         evidence,
-        dependencyForestPath: null,
+        dependencyForestPath: dependencies.length === 0 ? null :
+          path.join(command.inputPath, "knowledge", "forest.json"),
       });
       process.stdout.write(`Proposed ${metadata.id} in ${command.outputPath}\n`);
     }
@@ -3589,7 +3461,8 @@ function checkPromotedKnowledgeSources(forest, packageId) {
     }
     sources.set(checkModule,
       `${modules.map((moduleName) => `import ${moduleName}`).join("\n")}\n\n` +
-      `${declarations.map((declaration) => `#check ${declaration}`).join("\n")}\n`);
+      `${declarations.map((declaration) =>
+        `#check ${declaration}\n#print axioms ${declaration}`).join("\n")}\n`);
     requireKernelAudit(sources, currentToolPins(repoRoot));
     installSources(workspace, sources);
     for (const moduleName of promoted.sourceModules.keys()) {
@@ -3597,9 +3470,11 @@ function checkPromotedKnowledgeSources(forest, packageId) {
         "lake", "-d", workspace, "--no-ansi", "build", moduleName,
       ]);
     }
-    runLean(9, `promoted knowledge catalog ${packageId}`, "15m", [
+    const catalogCheck = runLean(9, `promoted knowledge catalog ${packageId}`, "15m", [
       "lake", "-d", workspace, "--no-ansi", "build", checkModule,
     ]);
+    auditAxioms(`${catalogCheck.stdout}\n${catalogCheck.stderr}`, declarations.length,
+      (message) => new Error(message));
   } catch (error) {
     operationError = error;
   }
@@ -3827,7 +3702,9 @@ function generate(command) {
     createWorkspace(proofWorkspace);
     const talosProgram = emitTalosProgram(job, wasm, wat, talosRoot);
     const entryIndex = programExportIndex(talosProgram, job.exportName);
-    const strategies = proofStrategyBundle(talosProgram, entryIndex);
+    const strategies = proofStrategyBundle(talosProgram, entryIndex, {
+      annotations: compilerAnnotations,
+    });
     strategies.compilerAnnotations = compilerAnnotations;
     strategies.proofRecipes = proofRecipePlan(
       compilerAnnotations,
@@ -4038,7 +3915,6 @@ module.exports = {
   auditAxioms,
   codexCommandArgs,
   codexOutcomeSchema,
-  fixedArrayEqNodeFeatures,
   parseCodexVersion,
   formalSpecificationCheckSources,
   formalSpecificationSource,

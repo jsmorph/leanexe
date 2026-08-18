@@ -601,16 +601,20 @@ function createKnowledgePackage(outputRoot, definition) {
     const dependencyForest = definition.dependencyForestPath === null
       ? { packages: [] }
       : loadForest(definition.dependencyForestPath || defaultForestPath);
-    const dependencyIds = new Set(manifest.dependencies);
+    const directDependencyIds = new Set(manifest.dependencies);
+    const directDependencies = dependencyForest.packages.filter((package_) =>
+      directDependencyIds.has(package_.id));
+    if (directDependencies.length !== directDependencyIds.size) {
+      fail(`${manifest.id} dependencies are absent from its validation forest`);
+    }
+    const dependencyIds = new Set(directDependencies.flatMap((package_) =>
+      [...package_.dependencyClosure]));
     const mounts = dependencyForest.packages.filter((package_) =>
       dependencyIds.has(package_.id)).map((package_) => ({
       id: package_.id,
       path: path.relative(path.dirname(validationForestPath), package_.root)
         .split(path.sep).join("/"),
     }));
-    if (mounts.length !== dependencyIds.size) {
-      fail(`${manifest.id} dependencies are absent from its validation forest`);
-    }
     mounts.push({
       id: manifest.id,
       path: path.relative(path.dirname(validationForestPath), staged).split(path.sep).join("/"),
