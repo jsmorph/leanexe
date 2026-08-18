@@ -61,6 +61,8 @@ tools/leanexegen run myprogram.wasm 10 20 30
 
 The public interface for this workflow is `Array UInt64 -> Array UInt64`.  The proof package records the exact binary, decoded model, formal specification, theorem, annotations, selected knowledge packages, journal, and verification results.  The [`leanexegen` reference](docs/leanexegen.md) defines generation, verification, and the optional record, propose, and promote learning phases, while [Verifying a Program](docs/verifying.md) explains the proof boundary.
 
+Completed proof work can produce knowledge artifacts for subsequent work.  `record` preserves a run as a worked example, `propose` derives guidance or checked Lean support from its evidence, and `promote` creates a self-contained forest snapshot after review.  A later generation or reproof selects that snapshot explicitly, and its proof package records the exact filtered knowledge view that the agent received.
+
 ## Verification boundaries
 
 The source-driven Talos workspace contains twenty registered compiler outputs with input-generic behavioral proofs.  The independent artifact registry contains the same twenty WASM binaries, each with exact-byte identity, decoder and validator results, Talos translation equality, and a behavioral theorem.  [Artifact Verification Format](docs/artifact-format.md) defines the binary packages and release record, [Talos Proofs](proofs/talos/README.md) owns the theorem inventory, and [Development Status](docs/status.md) records the current aggregate state and release blockers.
