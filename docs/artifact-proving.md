@@ -43,19 +43,19 @@ The artifact package checks the descriptor again against the exact decoded regio
 
 A complete source-to-WASM correctness theorem would support a second result with a larger stated dependency set.  That theorem would connect source semantics, IR semantics, lowering, byte identity, and modeled WASM execution, allowing a source theorem to transport to the artifact.  The current artifact-only path does not require that theorem, and the [Source-Theorem Transport Plan](../plans/theorem-transport.md) keeps the two claims distinct.
 
-## Structured LTG retrieval
+## Knowledge-forest retrieval
 
-The LTG catalog indexes checked proof assets, tactics, guidance, annotation support, and worked examples.  A proof task starts with the category index and artifact-derived features, then retrieves selected entry metadata and content instead of receiving the complete knowledge base in its initial context.  Category memberships, feature terms, annotation kinds, consumer evidence, exclusions, related entries, declaration names, and tactic records support this selection.
+The knowledge forest selects versioned packages whose LTG catalogs index checked proof assets, tactics, guidance, annotation support, and worked examples.  A proof task starts with the forest, package category indexes, and artifact-derived features, then retrieves selected entry metadata and content as needed.  Category memberships, feature terms, annotation kinds, consumer evidence, exclusions, related entries, declaration names, and tactic records support this selection.
 
-`tools/ltg check` validates catalog structure, generated category indexes, Lean declaration references, tactic commands, exclusions, and task-bundle identity.  `tools/ltg metrics` measures categories, entries, memberships, declaration coverage, tactic coverage, consumers, relationships, and bytes without treating those counts as proof quality.  [Structured LTG](ltg.md) defines retrieval and validation, while [LTG Metrics](ltg-metrics.md) records a reproducible dated inventory.
+`tools/knowledge check` validates package identities, dependencies, catalog structure, package-local source paths and imports, evidence bindings, and the selected forest.  Promotion asks Lean to build package-local modules and resolve advertised declarations.  `tools/ltg check` and `tools/ltg metrics` retain the detailed catalog and ProofKit checks for the core package, while [Knowledge Forest and Structured LTG](ltg.md) defines retrieval and lifecycle operations.
 
 Narrow material remains in the catalog when it forms a checked worked example with a distinct lesson.  Promotion to shared automatic selection requires recurring use or a reason that the entry describes a common compiler or WASM motif.  Artifact-specific exclusions keep a measured task from retrieving its own proof or a derivative example.
 
 ## Agent and checker boundary
 
-`tools/leanexegen` gives a proof-generation task the frozen formal specification, exact Talos program, selected annotations, ProofKit, a bounded LTG task bundle, and explicit instructions to iterate with Lean.  The source-generation task and proof-generation task are separate, and the proof task does not receive the source.  The outer process then runs package validation, import checks, artifact identity checks, and independent Lean verification.
+`tools/leanexegen` gives a proof-generation task the frozen formal specification, exact Talos program, selected annotations, ProofKit, a filtered knowledge-forest snapshot, and explicit instructions to iterate with Lean.  The source-generation task and proof-generation task are separate, and the proof task does not receive the source.  The outer process then runs package validation, import checks, artifact identity checks, and independent Lean verification.
 
-The agent may ignore an annotation, LTG entry, theorem, tactic, or suggested approach when it does not fit the goal.  Acceptance depends on the resulting Lean theorem and package checks rather than on following a prescribed proof script.  Reproof mode freezes the specification, source, and WASM so an experiment can change proof support without changing the subject.
+The agent may ignore an annotation, knowledge entry, theorem, tactic, or suggested approach when it does not fit the goal.  Acceptance depends on the resulting Lean theorem and package checks rather than on following a prescribed proof script.  Reproof mode freezes the specification, source, and WASM so an experiment can change the selected forest without changing the subject.
 
 ## Evaluation
 

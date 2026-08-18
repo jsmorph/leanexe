@@ -43,9 +43,11 @@ The source theorem and compiler remain optional proof-construction inputs.  Inde
 
 ## 4. Maintain the proof knowledge base as an artifact
 
-Structured LTG is a checked, versioned knowledge base rather than prompt text copied into every task.  Its categories, metadata, declarations, tactics, worked examples, exclusions, generated indexes, task bundle, and metrics must remain internally consistent.  Every proof iteration must use journals and telemetry to inform annotations, shared lemmas, tactics, guidance, retrieval instructions, and journal instructions.
+The knowledge forest contains separately versioned LTG packages rather than prompt text copied into every task.  Package categories, metadata, declarations, tactics, worked examples, evidence, exclusions, generated indexes, task snapshots, and metrics must remain internally consistent.  Every proof iteration must use journals and telemetry to inform annotations, shared lemmas, tactics, guidance, retrieval instructions, and journal instructions.
 
 - [ ] Run `tools/ltg check` whenever catalog metadata or indexed Lean support changes.
+- [ ] Run `tools/knowledge check` whenever forest membership, package metadata, package-local Lean source, or evidence binding changes.
+- [ ] Evaluate run-derived packages on another artifact before selecting them for the default forest.
 - [ ] Update the dated metrics snapshot when the catalog or ProofKit inventory changes materially.
 - [ ] Expand categories and entries in response to recurring proof shapes rather than demo names.
 - [ ] Preserve accepted, rejected, and censored proof-generation evidence with fixed-artifact identities.

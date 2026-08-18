@@ -10,6 +10,7 @@ const {
   collectFiles,
   createPackage,
   currentToolPins,
+  exactKeys,
   installSources,
   imports,
   kernelAuditFindings,
@@ -30,6 +31,14 @@ const {
 } = require("./leanexegen-lib");
 const { createStage5Telemetry } = require("./leanexegen-telemetry");
 const { catalogDigest, taskCatalogFiles } = require("./ltg-lib");
+const {
+  createKnowledgePackage,
+  defaultForestPath,
+  loadForest,
+  packagePascalName,
+  readPackageDescriptor,
+  taskKnowledgeFiles,
+} = require("./knowledge-lib");
 const {
   annotationMatchesSource,
   proofRecipePlan,
@@ -88,19 +97,32 @@ class StageError extends Error {
   }
 }
 
+class LearningError extends Error {
+  constructor(mode, message) {
+    super(message);
+    this.mode = mode;
+  }
+}
+
 function usage() {
   return [
-    "usage: leanexegen [-s] -o <program.wasm> <request.txt>",
-    "       leanexegen reprove [-s] [--new-codex-series] -o <program.wasm> <proof-package>",
+    "usage: leanexegen [-s] [--knowledge <forest.json>] -o <program.wasm> <request.txt>",
+    "       leanexegen reprove [-s] [--new-codex-series] " +
+      "[--knowledge <forest.json>] -o <program.wasm> <proof-package>",
     "       leanexegen annotate [--only-region <region-id>]... " +
       "-o <annotated-proof-package> <proof-package>",
     "       leanexegen verify [-s] <proof-package>",
     "       leanexegen benchmark -o <program.wasm> [benchmark-directory]",
     "       leanexegen run <program.wasm> [UInt64 ...]",
+    "       leanexegen learn record -o <knowledge-package> <proof-package>",
+    "       leanexegen learn propose -o <knowledge-package> <proof-package>",
+    "       leanexegen learn promote --forest <forest.json> " +
+      "-o <snapshot-directory> <knowledge-package>",
   ].join("\n");
 }
 
 function parseArgs(args) {
+  if (args[0] === "learn") return parseLearnArgs(args.slice(1));
   if (args[0] === "annotate") {
     let output = null;
     const selectedRegions = [];
@@ -175,6 +197,8 @@ function parseArgs(args) {
   const reprove = args[0] === "reprove";
   let silent = false;
   let newCodexSeries = false;
+  let knowledgePath = defaultForestPath;
+  let knowledgeSelected = false;
   let output = null;
   const positional = [];
   for (let index = reprove ? 1 : 0; index < args.length; index += 1) {
@@ -183,6 +207,11 @@ function parseArgs(args) {
       silent = true;
     } else if (argument === "--new-codex-series" && reprove && !newCodexSeries) {
       newCodexSeries = true;
+    } else if (argument === "--knowledge" && !knowledgeSelected) {
+      index += 1;
+      if (index >= args.length || args[index].startsWith("-")) throw new Error(usage());
+      knowledgePath = path.resolve(args[index]);
+      knowledgeSelected = true;
     } else if (argument === "-o") {
       index += 1;
       if (index >= args.length || output !== null) throw new Error(usage());
@@ -198,8 +227,43 @@ function parseArgs(args) {
     command: reprove ? "reprove" : "generate",
     silent,
     ...(reprove ? { newCodexSeries } : {}),
+    knowledgePath,
     outputPath: path.resolve(output),
     [reprove ? "packagePath" : "requestPath"]: path.resolve(positional[0]),
+  };
+}
+
+function parseLearnArgs(args) {
+  const mode = args[0];
+  if (!["record", "propose", "promote"].includes(mode)) throw new Error(usage());
+  let output = null;
+  let forestPath = defaultForestPath;
+  let forestSelected = false;
+  const positional = [];
+  for (let index = 1; index < args.length; index += 1) {
+    const argument = args[index];
+    if (argument === "-o") {
+      index += 1;
+      if (index >= args.length || output !== null) throw new Error(usage());
+      output = path.resolve(args[index]);
+    } else if (argument === "--forest" && mode === "promote" && !forestSelected) {
+      index += 1;
+      if (index >= args.length || args[index].startsWith("-")) throw new Error(usage());
+      forestPath = path.resolve(args[index]);
+      forestSelected = true;
+    } else if (argument.startsWith("-")) {
+      throw new Error(usage());
+    } else {
+      positional.push(argument);
+    }
+  }
+  if (output === null || positional.length !== 1) throw new Error(usage());
+  return {
+    command: "learn",
+    mode,
+    outputPath: output,
+    forestPath,
+    inputPath: path.resolve(positional[0]),
   };
 }
 
@@ -667,13 +731,15 @@ function proofPrompt(request, job, entryIndex) {
     `unchanged, record the result in PROOF_JOURNAL.md, and return without repeating the check; ` +
     `outer acceptance rebuilds it independently.  Otherwise prove exactly ` +
     `${job.behaviorTheorem} : ${job.formalSpecDefinition} ${job.namespace}.«module».  ` +
-    `Start LTG retrieval at LTG/categories.json.  Search relevant ` +
-    `LTG/categories/<category>/tools.jsonl files with rg using annotation kinds, structural ` +
-    `features, declarations, or terms from the current goal.  Open only the entry.json and ` +
-    `README.md files for entries that appear relevant; do not read the complete LTG tree.  An ` +
-    `entry may appear in several category indexes but has one canonical directory under ` +
-    `LTG/entries.  The metadata and prose provide guidance, while Lean checks every imported ` +
-    `declaration.  Record each search query, entry inspected, entry used, and entry rejected in ` +
+    `Start knowledge retrieval at KNOWLEDGE/forest.json.  It names the selected, versioned ` +
+    `packages under KNOWLEDGE/packages.  Search relevant ` +
+    `KNOWLEDGE/packages/<package>/catalog/categories/<category>/tools.jsonl files with rg using ` +
+    `annotation kinds, structural features, declarations, or terms from the current goal.  Open ` +
+    `only the entry.json and README.md files for entries that appear relevant; do not read every ` +
+    `package.  An entry may appear in several category indexes but has one canonical directory ` +
+    `under its package catalog.  The metadata and prose provide guidance, while Lean checks every ` +
+    `imported declaration.  Record each search query, package and entry inspected, entry used, and ` +
+    `entry rejected in ` +
     `PROOF_JOURNAL.md while the work occurs.  ` +
     `PROOF_STRATEGIES.md contains optional guidance selected from the frozen Program, and ` +
     `PROOF_TASK_FEATURES.json records the facts behind that selection.  When present, ` +
@@ -681,26 +747,30 @@ function proofPrompt(request, job, entryIndex) {
     `PROOF_RECIPES.json names direct theorems, tactics, supporting declarations, expected ` +
     `postconditions, and complete compositions.  Attempt an exact direct recipe or complete ` +
     `composition before reducing its internal instructions.  If its shape fails or its residual ` +
-    `goals worsen the proof boundary, record the result and search LTG for the remaining goal.  ` +
+    `goals worsen the proof boundary, record the result and search the knowledge packages for the ` +
+    `remaining goal.  ` +
     `Treat each new residual goal class as another retrieval checkpoint.  For a selected entry ` +
     `with a structured tactics field, compare each tactic's goalShape, premises, and ` +
     `annotationKinds with the residual goal.  Attempt a matching command before reconstructing ` +
     `its fallbackDeclaration, and record the command's effect or exact reason for rejection.  ` +
     `Before discharging a frame's parameters, local length, operand values, or getter projection ` +
     `by reduction or a new ` +
-    `local fact, search PROOF_RECIPES.json and the relevant LTG indexes for an exact accessor, then ` +
+    `local fact, search PROOF_RECIPES.json and the relevant knowledge indexes for an exact ` +
+    `accessor, then ` +
     `record its use or why it does not apply.  ` +
     `Do not search for or read artifact proofs outside this working directory, including demos, ` +
-    `benchmarks, archived packages, or another generated namespace.  The task-specific LTG view ` +
-    `omits worked examples excluded for this exact artifact, and external proof searches would ` +
+    `benchmarks, archived packages, or another generated namespace.  The task-specific knowledge ` +
+    `view omits worked examples excluded for this exact artifact, and external proof searches would ` +
     `invalidate proof-generation measurement.  PROOF_KIT_SOURCE mirrors every allowed ` +
     `Project.ProofKit module inside the working directory.  Inspect Project.ProofKit ` +
     `declarations there, and never search a dependency checkout or another path outside the ` +
     `working directory.  For CodeLib, Interpreter, Std, Init, or Mathlib, read an external source ` +
-    `file only when its exact path is already known and a selected LTG entry, PROOF_STRATEGIES.md, ` +
+    `file only when its exact path is already known and a selected knowledge entry, ` +
+    `PROOF_STRATEGIES.md, ` +
     `or PROOF_RECIPES.json names the declaration; never run rg or find outside the working ` +
     `directory.  You may import ${job.formalSpecModule}, ${job.programModule}, ` +
-    `generated artifact-support modules, checked Project.ProofKit modules named by LTG, CodeLib, ` +
+    `generated artifact-support modules, checked modules named by the selected knowledge packages, ` +
+    `CodeLib, ` +
     `Interpreter, Std, Init, or Mathlib.  The import check enforces this boundary.  ` +
     `Keep PROOF_JOURNAL.md as frequent, natural Markdown prose.  Update it after each Lean check ` +
     `and significant change of approach, including the current reasoning, the diagnostic, and ` +
@@ -730,11 +800,13 @@ function proofPrompt(request, job, entryIndex) {
     `the orchestrator reads ${candidate}.`;
 }
 
-function proofImportCheckSource(job) {
+function proofImportCheckSource(job, additionalModules = new Set()) {
   return `"use strict";
 
 const fs = require("node:fs");
-const proofKitModules = new Set(${JSON.stringify(proofKitModules)});
+const proofKitModules = new Set(${JSON.stringify([
+    ...new Set([...proofKitModules, ...additionalModules]),
+  ].sort())});
 const generatedPrefix = ${JSON.stringify(`${job.namespace}.`)};
 const sourceModule = ${JSON.stringify(job.sourceModule)};
 const file = process.argv[2];
@@ -1511,7 +1583,7 @@ end ${job.behaviorModule}
 function proofTaskContext(
     request, job, formalSource, generatedSources, strategies = null,
     formalInterfaceVersion = 2, artifactSha256 = null, suppliedLtgTask = null,
-    suppliedProofLibrary = null) {
+    suppliedProofLibrary = null, suppliedKnowledgeTask = null) {
   const context = new Map([
     ["request.txt", request],
     [moduleFile(job.formalSpecModule), formalSource],
@@ -1529,7 +1601,7 @@ function proofTaskContext(
     suppliedProofLibrary ?? fs.readFileSync(proofKitCatalogPath, "utf8"));
   context.set("PROOF_KIT_SOURCE/README.md", `# Checked Proof-Kit Source
 
-This directory mirrors every allowed \`Project.ProofKit\` module supplied to the proof task.  Each file has the same content covered by the proof-kit source identity in the tool pins.  Search this directory when a selected LTG entry or proof recipe names a proof-kit declaration.
+This directory mirrors every allowed \`Project.ProofKit\` module supplied to the proof task.  Each file has the same content covered by the proof-kit source identity in the tool pins.  Search this directory when a selected knowledge entry or proof recipe names a proof-kit declaration.
 `);
   for (const [moduleName, source] of proofKitSources()) {
     context.set(`PROOF_KIT_SOURCE/${moduleFile(moduleName)}`, source);
@@ -1544,12 +1616,29 @@ This directory mirrors every allowed \`Project.ProofKit\` module supplied to the
       `${JSON.stringify(bundle.compilerAnnotations, null, 2)}\n`);
     context.set("PROOF_RECIPES.json", `${JSON.stringify(bundle.proofRecipes, null, 2)}\n`);
   }
-  const taskLtg = suppliedLtgTask ?? ltgTaskBundle(artifactSha256);
-  for (const [relative, source] of taskLtg.files) {
-    context.set(`LTG/${relative}`, Buffer.isBuffer(source) ? source.toString("utf8") : source);
+  const taskKnowledge = suppliedKnowledgeTask ?? (suppliedLtgTask === null
+    ? knowledgeTaskBundle(defaultForestPath, artifactSha256)
+    : null);
+  if (taskKnowledge !== null) {
+    for (const [relative, source] of taskKnowledge.files) {
+      context.set(`KNOWLEDGE/${relative}`,
+        Buffer.isBuffer(source) ? source.toString("utf8") : source);
+    }
+    for (const [moduleName, source] of taskKnowledge.leanSources) {
+      context.set(moduleFile(moduleName), source);
+    }
+    context.set("KNOWLEDGE_TASK.json",
+      `${JSON.stringify(taskKnowledge.manifest, null, 2)}\n`);
+  } else {
+    const taskLtg = suppliedLtgTask;
+    for (const [relative, source] of taskLtg.files) {
+      context.set(`LTG/${relative}`,
+        Buffer.isBuffer(source) ? source.toString("utf8") : source);
+    }
+    context.set("LTG_TASK.json", `${JSON.stringify(taskLtg.manifest, null, 2)}\n`);
   }
-  context.set("LTG_TASK.json", `${JSON.stringify(taskLtg.manifest, null, 2)}\n`);
-  context.set("PROOF_IMPORT_CHECK.js", proofImportCheckSource(job));
+  context.set("PROOF_IMPORT_CHECK.js", proofImportCheckSource(
+    job, taskKnowledge?.allowedModules ?? new Set()));
   context.set("PROOF_JOURNAL.md", "# Proof Journal\n\n");
   context.set(moduleFile(job.behaviorModule),
     artifactProofStarter(
@@ -1559,6 +1648,15 @@ This directory mirrors every allowed \`Project.ProofKit\` module supplied to the
     throw new StageError(5, "artifact proof", "proof task context contains Source");
   }
   return context;
+}
+
+function knowledgeTaskBundle(
+    forestPath = defaultForestPath, artifactSha256 = null, excludedDerivativeGroups = []) {
+  return taskKnowledgeFiles({
+    forestPath,
+    artifactSha256,
+    excludedDerivativeGroups: [...excludedDerivativeGroups].sort(),
+  });
 }
 
 function ltgTaskBundle(artifactSha256 = null, excludedDerivativeGroups = []) {
@@ -1876,10 +1974,12 @@ function runArtifactProof(options) {
   const {
     request, job, entryIndex, proofContext, proofRecipes, proofWorkspace,
     proofTaskRoot, artifact, wasm, toolPins, telemetry, codex,
+    allowedKnowledgeModules = new Set(),
   } = options;
   const diagnostic = `Lean accepted ${job.behaviorTheorem} and ${artifact.artifactTheorem}.`;
   const prepare = (source) => {
-    validateProofImports(job, [{ module: job.behaviorModule, source }]);
+    validateProofImports(
+      job, [{ module: job.behaviorModule, source }], allowedKnowledgeModules);
     requireKernelAudit(new Map([[job.behaviorModule, source]]), toolPins);
     installSources(proofWorkspace, new Map([[job.behaviorModule, source]]));
   };
@@ -2064,6 +2164,7 @@ function preserveReproveFailure(packagePath, proofTaskRoot, job, error) {
     ["PROOF_JOURNAL.md", "proof-journal.md"],
     [".leanexegen-outcome.json", "outcome.json"],
     ["LTG_TASK.json", "ltg-task.json"],
+    ["KNOWLEDGE_TASK.json", "knowledge-task.json"],
     ["PROGRAM_ANNOTATIONS.json", "program.annotations.json"],
     ["PROOF_RECIPES.json", "proof-recipes.json"],
     ["PROOF_STRATEGIES.md", "proof-strategies.md"],
@@ -2321,6 +2422,9 @@ function verify(command) {
     toolPins = requirePins(command.packagePath);
     const packageSources = readPackageSources(command.packagePath);
     requireKernelAudit(packageSources, toolPins);
+    if (checked.knowledgeTask !== null) {
+      requireKernelAudit(checked.knowledgeTask.leanSources, toolPins);
+    }
     const kitSources = proofKitSources();
     validateProofImports(checked.job, [...kitSources].map(([module, source]) => ({
       module,
@@ -2336,6 +2440,9 @@ function verify(command) {
   try {
     createWorkspace(workspace);
     copyPackageProof(command.packagePath, workspace);
+    if (checked.knowledgeTask !== null) {
+      installSources(workspace, checked.knowledgeTask.leanSources);
+    }
     checkFormalSpecification(
       workspace,
       checked.job,
@@ -2482,11 +2589,21 @@ function reprove(command) {
       installSources(proofWorkspace,
         new Map([[annotationMatches.module, annotationMatches.source]]));
     }
-    const proofLtgTask = ltgTaskBundle(checked.artifact.sha256);
+    const proofKnowledgeTask = formalInterfaceVersion === 2
+      ? knowledgeTaskBundle(
+        command.knowledgePath || defaultForestPath, checked.artifact.sha256)
+      : null;
+    const proofLtgTask = formalInterfaceVersion === 2
+      ? null
+      : ltgTaskBundle(checked.artifact.sha256);
+    if (proofKnowledgeTask !== null) {
+      requireKernelAudit(proofKnowledgeTask.leanSources, toolPins);
+      installSources(proofWorkspace, proofKnowledgeTask.leanSources);
+    }
     const proofContext = proofTaskContext(
       request, checked.job, formalSource, sourceSets.proofContext, strategies,
       formalInterfaceVersion, checked.artifact.sha256, proofLtgTask,
-      proofLibraryCatalog);
+      proofLibraryCatalog, proofKnowledgeTask);
     const proof = runArtifactProof({
       request,
       job: checked.job,
@@ -2500,6 +2617,7 @@ function reprove(command) {
       toolPins,
       telemetry: stage5Telemetry,
       codex,
+      allowedKnowledgeModules: proofKnowledgeTask?.allowedModules ?? new Set(),
     });
 
     progress(command.silent, 6, "Sample execution");
@@ -2567,7 +2685,7 @@ function reprove(command) {
         proofLibraryCatalog,
         proofStrategies: strategies.notes,
         proofTaskFeatures: strategies.features,
-        ltgTask: formalInterfaceVersion === 2 ? proofLtgTask : undefined,
+        knowledgeTask: proofKnowledgeTask ?? undefined,
         compilerAnnotations: strategies.compilerAnnotations,
         proofRecipes: strategies.proofRecipes,
         wasmBytes,
@@ -2728,7 +2846,8 @@ function annotatePackage(command) {
       proofLibraryCatalog,
       proofStrategies: strategies.notes,
       proofTaskFeatures: strategies.features,
-      ltgTask: checked.ltgTask ?? undefined,
+      ltgTask: checked.knowledgeTask === null ? checked.ltgTask ?? undefined : undefined,
+      knowledgeTask: checked.knowledgeTask ?? undefined,
       compilerAnnotations,
       proofRecipes,
       wasmBytes: checked.wasm,
@@ -2794,6 +2913,567 @@ function selectAnnotationRegions(document, selectedRegions) {
     function_.regions = function_.regions.filter((region) => selected.has(region.id));
   }
   return result;
+}
+
+function coreKnowledgeCategories() {
+  return JSON.parse(fs.readFileSync(path.join(repoRoot, "ltg", "categories.json"), "utf8"));
+}
+
+function learningEntryId(checked, prefix) {
+  const proofSha256 = checked.stageReports.tasks.artifactProof.sourceSha256;
+  return `${prefix}-${checked.artifact.sha256.slice(0, 12)}-${proofSha256.slice(0, 12)}`;
+}
+
+function learningEvidence(packagePath, checked, entryId, mode, extra = new Map()) {
+  const evidence = new Map();
+  const addPackageFile = (sourceName, destinationName) => {
+    const source = path.join(packagePath, sourceName);
+    if (!fs.existsSync(source)) return;
+    const stat = fs.lstatSync(source);
+    if (!stat.isFile() || stat.isSymbolicLink()) {
+      throw new Error(`${sourceName} is not a regular proof-package file`);
+    }
+    evidence.set(`evidence/${destinationName}`, {
+      source: fs.readFileSync(source),
+      entries: [entryId],
+    });
+  };
+  for (const [source, destination] of [
+    ["proof-journal.md", "proof-journal.md"],
+    ["proof-telemetry.json", "proof-telemetry.json"],
+    ["proof-task-features.json", "proof-task-features.json"],
+    ["program.annotations.json", "program.annotations.json"],
+    ["proof-recipes.json", "proof-recipes.json"],
+    ["knowledge-task.json", "knowledge-task.json"],
+    ["ltg-task.json", "ltg-task.json"],
+  ]) addPackageFile(source, destination);
+  const behaviorRelative = path.join(
+    "proof", ...moduleFile(checked.job.behaviorModule).split("/"));
+  addPackageFile(behaviorRelative, "accepted-proof.lean");
+  const record = {
+    schemaVersion: 1,
+    mode,
+    artifactSha256: checked.artifact.sha256,
+    requestSha256: checked.manifest.requestSha256,
+    behaviorTheorem: checked.artifact.behaviorTheorem,
+    proofSourceSha256: checked.stageReports.tasks.artifactProof.sourceSha256,
+    firstAcceptedAt: checked.proofTelemetry?.firstAcceptedAt ?? null,
+    stage5Milliseconds: checked.proofTelemetry?.totalMilliseconds ?? null,
+    knowledgeSnapshot: checked.knowledgeTask === null ?
+      checked.ltgTask === null ? null : {
+        kind: "ltg",
+        sha256: checked.ltgTask.manifest.sha256,
+      } : {
+        kind: "forest",
+        sha256: checked.knowledgeTask.manifest.sha256,
+        packages: checked.knowledgeTask.manifest.packages.map((package_) => ({
+          id: package_.id,
+          version: package_.version,
+          sha256: package_.sha256,
+        })),
+      },
+  };
+  evidence.set("evidence/run.json", {
+    source: Buffer.from(`${JSON.stringify(record, null, 2)}\n`),
+    entries: [entryId],
+  });
+  for (const [relative, source] of extra) {
+    evidence.set(relative, { source: Buffer.from(source), entries: [entryId] });
+  }
+  return evidence;
+}
+
+function learningFeatures(packagePath, checked) {
+  const features = new Set(["accepted-artifact-proof", "run-derived"]);
+  const featurePath = path.join(packagePath, "proof-task-features.json");
+  if (fs.existsSync(featurePath)) {
+    const document = JSON.parse(fs.readFileSync(featurePath, "utf8"));
+    for (const section of document.selectedSections || []) {
+      if (typeof section.id === "string") features.add(section.id.replaceAll(".", "-"));
+    }
+  }
+  if (checked.compilerAnnotations !== null) {
+    for (const function_ of checked.compilerAnnotations.functions) {
+      for (const region of function_.regions) features.add(region.kind);
+    }
+  }
+  return [...features].sort();
+}
+
+function recordKnowledge(command) {
+  const checked = validatePackage(command.inputPath);
+  const entryId = learningEntryId(checked, "run");
+  const elapsed = checked.proofTelemetry === null
+    ? "The proof package contains no Stage 5 telemetry."
+    : `Stage 5 completed in ${Math.round(checked.proofTelemetry.totalMilliseconds)} milliseconds.`;
+  const entry = {
+    schemaVersion: 3,
+    id: entryId,
+    title: `Artifact-proof run ${checked.artifact.sha256.slice(0, 12)}`,
+    summary: "Records one independently accepted artifact proof, its journal, selected knowledge, annotations, recipes, and telemetry.",
+    roles: ["worked-example"],
+    categories: ["worked-examples"],
+    scope: "benchmark-local",
+    evidenceStatus: "provisional",
+    features: learningFeatures(command.inputPath, checked),
+    annotationKinds: checked.compilerAnnotations === null ? [] : [...new Set(
+      checked.compilerAnnotations.functions.flatMap((function_) =>
+        function_.regions.map((region) => region.kind)))].sort(),
+    modules: [],
+    declarations: [],
+    premises: [
+      "The outer artifact check accepted the recorded behavior theorem.",
+      "The run record preserves the exact artifact and proof-source digests.",
+      "The journal and task inputs retain the agent's retrieval and proof-construction evidence.",
+    ],
+    result: elapsed,
+    consumers: [],
+    relatedEntries: [],
+    exclusion: {
+      artifactSha256: [checked.artifact.sha256],
+      derivativeGroup: `artifact-${checked.artifact.sha256.slice(0, 16)}`,
+    },
+    tactics: [],
+  };
+  createKnowledgePackage(command.outputPath, {
+    manifest: {
+      schemaVersion: 1,
+      id: entryId,
+      version: 1,
+      title: entry.title,
+      summary: entry.summary,
+      maturity: "experimental",
+      dependencies: [],
+      catalogRoot: "catalog",
+      leanSources: [],
+      evidence: [],
+    },
+    catalogReadme: `# Run-derived proof knowledge\n\n` +
+      `This package records one accepted artifact-proof run.  Its entry summarizes the result, ` +
+      `while the evidence directory preserves the journal, accepted proof, and task inputs.  ` +
+      `The exact-artifact exclusion keeps this worked example out of a reproof of its source artifact.\n`,
+    categories: coreKnowledgeCategories(),
+    entries: [{
+      metadata: entry,
+      readme: `# ${entry.title}\n\n` +
+        `${entry.summary}  ${elapsed}  The evidence files identify every retained input by the ` +
+        `package manifest and its recorded digests.\n`,
+    }],
+    leanSources: new Map(),
+    evidence: learningEvidence(command.inputPath, checked, entryId, "record"),
+    dependencyForestPath: null,
+  });
+  process.stdout.write(`Recorded ${entryId} in ${command.outputPath}\n`);
+}
+
+function knowledgeProposalSchema(categories) {
+  return {
+    type: "object",
+    additionalProperties: false,
+    required: [
+      "schemaVersion", "kind", "summary", "entryId", "title", "entrySummary",
+      "scope", "categories", "features", "annotationKinds", "premises", "result",
+      "guidance", "declarations", "tactics",
+    ],
+    properties: {
+      schemaVersion: { type: "integer", enum: [1] },
+      kind: {
+        type: "string",
+        enum: ["guidance", "checked-lemma", "checked-tactic", "worked-example"],
+      },
+      summary: { type: "string", minLength: 1 },
+      entryId: { type: "string", pattern: "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$" },
+      title: { type: "string", minLength: 1 },
+      entrySummary: { type: "string", minLength: 1 },
+      scope: {
+        type: "string",
+        enum: ["benchmark-local", "compiler-runtime-motif", "generic-semantics"],
+      },
+      categories: {
+        type: "array",
+        minItems: 1,
+        uniqueItems: true,
+        items: { type: "string", enum: categories },
+      },
+      features: {
+        type: "array", minItems: 1, uniqueItems: true,
+        items: { type: "string", minLength: 1 },
+      },
+      annotationKinds: {
+        type: "array", uniqueItems: true,
+        items: { type: "string", minLength: 1 },
+      },
+      premises: {
+        type: "array", minItems: 1, uniqueItems: true,
+        items: { type: "string", minLength: 1 },
+      },
+      result: { type: "string", minLength: 1 },
+      guidance: { type: "string", minLength: 1 },
+      declarations: {
+        type: "array", uniqueItems: true,
+        items: { type: "string", minLength: 1 },
+      },
+      tactics: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: [
+            "command", "goalShape", "premises", "annotationKinds",
+            "fallbackDeclaration",
+          ],
+          properties: {
+            command: { type: "string", pattern: "^[A-Za-z][A-Za-z0-9_]*$" },
+            goalShape: { type: "string", minLength: 1 },
+            premises: {
+              type: "array", minItems: 1,
+              items: { type: "string", minLength: 1 },
+            },
+            annotationKinds: {
+              type: "array", uniqueItems: true,
+              items: { type: "string", minLength: 1 },
+            },
+            fallbackDeclaration: { type: "string", minLength: 1 },
+          },
+        },
+      },
+    },
+  };
+}
+
+function validateKnowledgeProposal(value, categoryIds, moduleName) {
+  exactKeys(value, [
+    "schemaVersion", "kind", "summary", "entryId", "title", "entrySummary",
+    "scope", "categories", "features", "annotationKinds", "premises", "result",
+    "guidance", "declarations", "tactics",
+  ], "knowledge proposal");
+  if (value.schemaVersion !== 1 ||
+      !["guidance", "checked-lemma", "checked-tactic", "worked-example"].includes(value.kind) ||
+      !/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/.test(value.entryId)) {
+    throw new Error("knowledge proposal has an invalid schema, kind, or entry identifier");
+  }
+  for (const field of ["summary", "title", "entrySummary", "result", "guidance"]) {
+    if (typeof value[field] !== "string" || value[field].trim().length === 0) {
+      throw new Error(`knowledge proposal ${field} is empty`);
+    }
+  }
+  if (!["benchmark-local", "compiler-runtime-motif", "generic-semantics"]
+      .includes(value.scope)) {
+    throw new Error("knowledge proposal scope is invalid");
+  }
+  const arrays = ["categories", "features", "annotationKinds", "premises", "declarations"];
+  for (const field of arrays) {
+    if (!Array.isArray(value[field]) || new Set(value[field]).size !== value[field].length ||
+        value[field].some((item) => typeof item !== "string" || item.trim().length === 0)) {
+      throw new Error(`knowledge proposal ${field} is invalid`);
+    }
+  }
+  if (value.categories.length === 0 ||
+      value.categories.some((category) => !categoryIds.has(category)) ||
+      value.features.length === 0 || value.premises.length === 0 ||
+      !Array.isArray(value.tactics)) {
+    throw new Error("knowledge proposal has incomplete retrieval metadata");
+  }
+  const checked = value.kind === "checked-lemma" || value.kind === "checked-tactic";
+  if (checked !== (value.declarations.length > 0) ||
+      (value.kind === "checked-tactic") !== (value.tactics.length > 0) ||
+      value.declarations.some((declaration) => !declaration.startsWith(`${moduleName}.`))) {
+    throw new Error("knowledge proposal declarations disagree with its kind or module");
+  }
+  for (const tactic of value.tactics) {
+    exactKeys(tactic, [
+      "command", "goalShape", "premises", "annotationKinds", "fallbackDeclaration",
+    ], "knowledge proposal tactic");
+    if (!/^[A-Za-z][A-Za-z0-9_]*$/.test(tactic.command) ||
+        !value.declarations.includes(tactic.fallbackDeclaration)) {
+      throw new Error("knowledge proposal tactic has an invalid command or fallback");
+    }
+  }
+  return value;
+}
+
+function proposeKnowledge(command) {
+  const checked = validatePackage(command.inputPath);
+  const packageId = learningEntryId(checked, "proposal");
+  const moduleName = `LeanExeGen.Knowledge.${packagePascalName(packageId)}.Proposed`;
+  const candidate = moduleFile(moduleName);
+  const temporaryRoot = makeTemporaryDirectory("leanexegen-learn-");
+  let operationError = null;
+  try {
+    createWorkspace(temporaryRoot);
+    const evidence = learningEvidence(
+      command.inputPath, checked, packageId, "propose");
+    for (const [relative, record] of evidence) {
+      writeAtomic(path.join(temporaryRoot, "RUN", ...relative.split("/")),
+        Buffer.from(record.source));
+    }
+    for (const directory of ["knowledge", "ltg"]) {
+      const sourceRoot = path.join(command.inputPath, directory);
+      if (!fs.existsSync(sourceRoot)) continue;
+      for (const relative of collectFiles(sourceRoot)) {
+        writeAtomic(path.join(temporaryRoot, "RUN", directory, ...relative.split("/")),
+          fs.readFileSync(path.join(sourceRoot, ...relative.split("/"))));
+      }
+    }
+    for (const [proofModule, source] of proofKitSources()) {
+      writeAtomic(path.join(temporaryRoot, "PROOF_KIT_SOURCE", moduleFile(proofModule)),
+        Buffer.from(source));
+    }
+    writeAtomic(path.join(temporaryRoot, "LEARNING_JOURNAL.md"),
+      Buffer.from("# Learning Journal\n\n"));
+    const categories = coreKnowledgeCategories();
+    const categoryIds = categories.categories.map((category) => category.id);
+    const schemaPath = path.join(temporaryRoot, ".leanexegen-learning-schema.json");
+    const outputPath = path.join(temporaryRoot, ".leanexegen-learning-outcome.json");
+    writeAtomic(schemaPath,
+      Buffer.from(`${JSON.stringify(knowledgeProposalSchema(categoryIds), null, 2)}\n`));
+    const codex = command.codex || findCodex();
+    const commandArgs = [
+      leanrun, "--timeout", "90m",
+      ...codexCommandArgs(codex, temporaryRoot, schemaPath, outputPath),
+    ];
+    const build = formatCommand([
+      leanrun, "--timeout", "15m", "lake", "-d", ".", "--no-ansi", "build", moduleName,
+    ]);
+    const prompt = `Study the accepted artifact-proof run under RUN and propose one knowledge ` +
+      `entry that can help a later artifact proof.  Read the proof journal, accepted proof, ` +
+      `annotations, recipes, telemetry, and task features that are present.  Keep ` +
+      `LEARNING_JOURNAL.md as frequent prose recording what you examined, what appears general, ` +
+      `what appears artifact-specific, and why you selected or rejected each candidate.  Choose ` +
+      `guidance or a worked example when the evidence supports prose only.  Choose checked-lemma ` +
+      `or checked-tactic when a small general Lean result follows from the supplied ProofKit.  For ` +
+      `checked Lean, write the complete module ${candidate}, declare namespace ${moduleName}, ` +
+      `inspect proof sources only under PROOF_KIT_SOURCE, and run this command after each edit:\n\n` +
+      `${build}\n\nUse only ProofKit, CodeLib, Interpreter, Init, Std, or Mathlib imports.  A ` +
+      `checked tactic must include a checked fallback declaration in the same module.  Update the ` +
+      `journal after every Lean result and before changing approach.  Return one JSON object ` +
+      `matching the output schema.  Put fully qualified declarations under ${moduleName}; leave ` +
+      `declarations and tactics empty for prose-only entries.`;
+    const execute = command.execute || ((args, options) =>
+      run(9, "knowledge proposal Codex task", args, options));
+    execute(commandArgs, {
+      cwd: temporaryRoot,
+      input: prompt,
+      timeout: 91 * 60 * 1000,
+      maxBuffer: 64 * 1024 * 1024,
+    });
+    const proposal = validateKnowledgeProposal(
+      JSON.parse(fs.readFileSync(outputPath, "utf8")), new Set(categoryIds), moduleName);
+    const journal = validateProofJournal(
+      fs.readFileSync(path.join(temporaryRoot, "LEARNING_JOURNAL.md"), "utf8"),
+      "LEARNING_JOURNAL.md");
+    const checkedSource = proposal.kind === "checked-lemma" ||
+      proposal.kind === "checked-tactic";
+    const leanSources = new Map();
+    if (checkedSource) {
+      const sourcePath = path.join(temporaryRoot, candidate);
+      const stat = fs.lstatSync(sourcePath);
+      if (!stat.isFile() || stat.isSymbolicLink()) {
+        throw new Error(`${candidate} is not a regular file`);
+      }
+      const source = fs.readFileSync(sourcePath, "utf8");
+      validateProofImports({ namespace: moduleName, sourceModule: "" }, [
+        { module: moduleName, source },
+      ]);
+      requireKernelAudit(new Map([[moduleName, source]]), currentToolPins(repoRoot));
+      runLean(9, "knowledge proposal Lean check", "15m", [
+        "lake", "-d", temporaryRoot, "--no-ansi", "build", moduleName,
+      ]);
+      leanSources.set(moduleName, source);
+    }
+    const roles = proposal.kind === "checked-tactic"
+      ? ["checked-proof-asset", "guidance", "proof-generation-mechanism"]
+      : proposal.kind === "checked-lemma"
+        ? ["checked-proof-asset", "guidance"]
+        : proposal.kind === "worked-example" ? ["worked-example"] : ["guidance"];
+    const metadata = {
+      schemaVersion: 3,
+      id: proposal.entryId,
+      title: proposal.title,
+      summary: proposal.entrySummary,
+      roles,
+      categories: [...proposal.categories].sort(),
+      scope: proposal.scope,
+      evidenceStatus: "provisional",
+      features: [...proposal.features].sort(),
+      annotationKinds: [...proposal.annotationKinds].sort(),
+      modules: checkedSource ? [moduleName] : [],
+      declarations: [...proposal.declarations].sort(),
+      premises: proposal.premises,
+      result: proposal.result,
+      consumers: [],
+      relatedEntries: [],
+      exclusion: {
+        artifactSha256: [checked.artifact.sha256],
+        derivativeGroup: `artifact-${checked.artifact.sha256.slice(0, 16)}`,
+      },
+      tactics: proposal.tactics.map((tactic) => ({
+        command: tactic.command,
+        module: moduleName,
+        goalShape: tactic.goalShape,
+        premises: tactic.premises,
+        annotationKinds: [...tactic.annotationKinds].sort(),
+        fallbackDeclaration: tactic.fallbackDeclaration,
+      })).sort((left, right) => left.command.localeCompare(right.command)),
+    };
+    for (const record of evidence.values()) record.entries = [metadata.id];
+    evidence.set("evidence/proposal.json", {
+      source: Buffer.from(`${JSON.stringify(proposal, null, 2)}\n`),
+      entries: [metadata.id],
+    });
+    evidence.set("evidence/learning-journal.md", {
+      source: Buffer.from(journal),
+      entries: [metadata.id],
+    });
+    createKnowledgePackage(command.outputPath, {
+      manifest: {
+        schemaVersion: 1,
+        id: packageId,
+        version: 1,
+        title: proposal.title,
+        summary: proposal.summary,
+        maturity: "experimental",
+        dependencies: [],
+        catalogRoot: "catalog",
+        leanSources: [],
+        evidence: [],
+      },
+      catalogReadme: `# Proposed proof knowledge\n\n` +
+        `This package contains one run-derived proposal.  Its catalog entry records the proposed ` +
+        `use and its evidence directory preserves the source run and learning journal.  ` +
+        `The package remains experimental until an explicit promotion creates a new snapshot.\n`,
+      categories,
+      entries: [{
+        metadata,
+        readme: `# ${proposal.title}\n\n${proposal.guidance.trim()}\n`,
+      }],
+      leanSources,
+      evidence,
+      dependencyForestPath: null,
+    });
+    process.stdout.write(`Proposed ${metadata.id} in ${command.outputPath}\n`);
+  } catch (error) {
+    operationError = error;
+  }
+  try {
+    fs.rmSync(temporaryRoot, { recursive: true });
+  } catch (cleanupError) {
+    operationError = operationError === null ? cleanupError :
+      new AggregateError([operationError, cleanupError], "learning cleanup failed");
+  }
+  if (operationError !== null) throw operationError;
+}
+
+function checkPromotedKnowledgeSources(forest, packageId) {
+  const promoted = forest.packages.find((package_) => package_.id === packageId);
+  const modules = [...new Set(promoted.catalog.entries.flatMap((entry) =>
+    entry.modules))].sort();
+  const declarations = [...new Set(promoted.catalog.entries.flatMap((entry) =>
+    entry.declarations))].sort();
+  if (promoted.sourceModules.size === 0 && declarations.length === 0) return;
+  const workspace = makeTemporaryDirectory("leanexegen-promote-");
+  let operationError = null;
+  try {
+    createWorkspace(workspace);
+    const sources = new Map(forest.packages.flatMap((package_) =>
+      [...package_.sourceModules]));
+    const checkModule =
+      `LeanExeGen.Knowledge.${packagePascalName(packageId)}.CatalogCheck`;
+    if (sources.has(checkModule)) {
+      throw new Error(`${packageId} reserves ${checkModule} for its promotion check`);
+    }
+    sources.set(checkModule,
+      `${modules.map((moduleName) => `import ${moduleName}`).join("\n")}\n\n` +
+      `${declarations.map((declaration) => `#check ${declaration}`).join("\n")}\n`);
+    requireKernelAudit(sources, currentToolPins(repoRoot));
+    installSources(workspace, sources);
+    for (const moduleName of promoted.sourceModules.keys()) {
+      runLean(9, `promoted knowledge module ${moduleName}`, "15m", [
+        "lake", "-d", workspace, "--no-ansi", "build", moduleName,
+      ]);
+    }
+    runLean(9, `promoted knowledge catalog ${packageId}`, "15m", [
+      "lake", "-d", workspace, "--no-ansi", "build", checkModule,
+    ]);
+  } catch (error) {
+    operationError = error;
+  }
+  try {
+    fs.rmSync(workspace, { recursive: true });
+  } catch (cleanupError) {
+    operationError = operationError === null ? cleanupError :
+      new AggregateError([operationError, cleanupError], "promotion check cleanup failed");
+  }
+  if (operationError !== null) throw operationError;
+}
+
+function promoteKnowledge(command) {
+  if (fs.existsSync(command.outputPath)) throw new Error(`${command.outputPath} exists`);
+  const forest = loadForest(command.forestPath);
+  const candidate = readPackageDescriptor(command.inputPath);
+  if (candidate.maturity !== "experimental") {
+    throw new Error(`${candidate.id} is not an experimental knowledge package`);
+  }
+  if (forest.packages.some((package_) => package_.id === candidate.id)) {
+    throw new Error(`knowledge forest already contains ${candidate.id}`);
+  }
+  const available = new Set(forest.packages.map((package_) => package_.id));
+  if (candidate.dependencies.some((dependency) => !available.has(dependency))) {
+    throw new Error(`${candidate.id} has a dependency absent from the selected forest`);
+  }
+  fs.mkdirSync(path.dirname(command.outputPath), { recursive: true });
+  const staged = path.join(path.dirname(command.outputPath),
+    `.${path.basename(command.outputPath)}.${process.pid}-${Date.now()}`);
+  try {
+    fs.mkdirSync(path.join(staged, "packages"), { recursive: true });
+    for (const package_ of forest.packages) {
+      fs.cpSync(package_.root, path.join(staged, "packages", package_.id), {
+        recursive: true,
+        errorOnExist: true,
+      });
+    }
+    const promotedRoot = path.join(staged, "packages", candidate.id);
+    fs.cpSync(command.inputPath, promotedRoot, { recursive: true, errorOnExist: true });
+    const promotedManifestPath = path.join(promotedRoot, "knowledge-package.json");
+    const promotedManifest = JSON.parse(fs.readFileSync(promotedManifestPath, "utf8"));
+    promotedManifest.version += 1;
+    promotedManifest.maturity = "promoted";
+    writeAtomic(promotedManifestPath,
+      Buffer.from(`${JSON.stringify(promotedManifest, null, 2)}\n`));
+    const mounts = forest.packages.map((package_) => ({
+      id: package_.id,
+      path: `packages/${package_.id}`,
+    }));
+    mounts.push({ id: candidate.id, path: `packages/${candidate.id}` });
+    mounts.sort((left, right) => left.id.localeCompare(right.id));
+    writeAtomic(path.join(staged, "forest.json"), Buffer.from(`${JSON.stringify({
+      schemaVersion: 1,
+      packages: mounts,
+    }, null, 2)}\n`));
+    const promotedForest = loadForest(path.join(staged, "forest.json"));
+    checkPromotedKnowledgeSources(promotedForest, candidate.id);
+    fs.renameSync(staged, command.outputPath);
+  } catch (error) {
+    try {
+      fs.rmSync(staged, { recursive: true, force: true });
+    } catch (cleanupError) {
+      throw new AggregateError([error, cleanupError], "knowledge promotion failed");
+    }
+    throw error;
+  }
+  process.stdout.write(
+    `Promoted ${candidate.id} in ${path.join(command.outputPath, "forest.json")}\n`,
+  );
+}
+
+function learn(command) {
+  try {
+    if (command.mode === "record") recordKnowledge(command);
+    else if (command.mode === "propose") proposeKnowledge(command);
+    else promoteKnowledge(command);
+  } catch (error) {
+    throw new LearningError(command.mode, formatError(error));
+  }
 }
 
 function benchmark(command) {
@@ -2961,10 +3641,13 @@ function generate(command) {
     ]));
     checkFormalSpecification(
       proofWorkspace, job, formal.source, 5, "ProofFormalSpecCheck");
-    const proofLtgTask = ltgTaskBundle(generated.artifact.sha256);
+    const proofKnowledgeTask = knowledgeTaskBundle(
+      command.knowledgePath || defaultForestPath, generated.artifact.sha256);
+    requireKernelAudit(proofKnowledgeTask.leanSources, toolPins);
+    installSources(proofWorkspace, proofKnowledgeTask.leanSources);
     const proofContext = proofTaskContext(
       request, job, formal.source, generated.sources, strategies, 2,
-      generated.artifact.sha256, proofLtgTask, proofLibraryCatalog);
+      generated.artifact.sha256, null, proofLibraryCatalog, proofKnowledgeTask);
     const proof = runArtifactProof({
       request,
       job,
@@ -2978,6 +3661,7 @@ function generate(command) {
       toolPins,
       telemetry: stage5Telemetry,
       codex,
+      allowedKnowledgeModules: proofKnowledgeTask.allowedModules,
     });
 
     progress(command.silent, 6, "Sample execution");
@@ -3037,7 +3721,7 @@ function generate(command) {
         proofLibraryCatalog,
         proofStrategies: strategies.notes,
         proofTaskFeatures: strategies.features,
-        ltgTask: proofLtgTask,
+        knowledgeTask: proofKnowledgeTask,
         compilerAnnotations: strategies.compilerAnnotations,
         proofRecipes: strategies.proofRecipes,
         wasmBytes,
@@ -3112,12 +3796,19 @@ function main() {
   try {
     if (command.command === "benchmark") {
       benchmark(command);
+    } else if (command.command === "learn") {
+      learn(command);
     } else if (command.command === "run") runArtifact(command);
     else if (command.command === "verify") verify(command);
     else if (command.command === "reprove") reprove(command);
     else if (command.command === "annotate") annotatePackage(command);
     else generate(command);
   } catch (error) {
+    if (error instanceof LearningError) {
+      process.stderr.write(`leanexegen: learn ${error.mode}: ${error.message}\n`);
+      process.exitCode = 1;
+      return;
+    }
     if (error instanceof StageError) {
       process.stderr.write(
         `leanexegen: stage ${error.stage} (${error.stageName}): ${error.message}\n`,
@@ -3134,6 +3825,7 @@ if (require.main === module) main();
 
 module.exports = {
   StageError,
+  LearningError,
   artifactProofStarter,
   artifactProofStarterExpectedComplete,
   auditAxioms,
@@ -3146,17 +3838,23 @@ module.exports = {
   formalTaskContext,
   formatCommand,
   generationResult,
+  knowledgeTaskBundle,
+  learningEntryId,
   ltgTaskBundle,
   parseArgs,
+  parseLearnArgs,
+  promoteKnowledge,
   publish,
   programPrompt,
   programTaskContext,
   proofPrompt,
   proofPackagePath,
+  proposeKnowledge,
   preserveReproveFailure,
   requirePublicationTargetsAvailable,
   proofStrategyBundle,
   proofTaskContext,
+  recordKnowledge,
   readPackageSources,
   requireFrozenProofKitIsolation,
   reprovePinsMatch,

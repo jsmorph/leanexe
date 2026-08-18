@@ -7239,3 +7239,9 @@ The repository review checked the maintained documentation index, local links, t
 ## 2026-08-18: LTG and CLOB retrospective
 
 `docs/retro-1.md` separates the measured effect of the combined LTG system from the structured catalog's narrower retrieval evidence.  It records the fixed-artifact timing and proof-size comparisons, negative screens, catalog coverage, eight completed CLOB theorem scopes, CLOB proof architecture, and the remaining gap between demo proof generation and CLOB-scale automation.  The documentation index links the retrospective as an evidence report rather than a source of current release status.
+
+## 2026-08-18: Stateful knowledge forests
+
+The proof knowledge base now consists of a forest manifest selecting separately versioned packages.  Each package records its identity, maturity, dependencies, structured catalog, package-local Lean sources, and evidence files bound to catalog entries.  Schema-8 proof packages archive the filtered forest, package and forest digests, exclusions, selected evidence, and required Lean sources, while schema-7 validation retains the earlier single-catalog format.
+
+`leanexegen learn record` creates an experimental worked-example package from an accepted proof, `propose` runs a separate journaled Codex task that may produce guidance or checked Lean support, and `promote` creates a new package version and forest snapshot.  Generation and reproof select a forest through `--knowledge`, and verification installs archived package-local sources before rebuilding the artifact theorem.  The focused tests passed catalog, forest, exclusion, evidence, archive, record, proposal, promotion, and legacy-package checks, and constrained Lean promotions built standalone and dependent package-local theorems and resolved their advertised declarations through the repository runner.

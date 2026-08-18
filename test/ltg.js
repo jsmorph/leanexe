@@ -105,7 +105,8 @@ function main() {
   "LTG metrics disagree with canonical catalog structure");
   assert(metrics.content.canonicalCatalogBytes +
       metrics.content.generatedCategoryIndexBytes === metrics.content.physicalCatalogBytes &&
-    metrics.content.physicalCatalogBytes === metrics.content.taskBundleBytes,
+    metrics.content.physicalCatalogBytes - metrics.content.taskBundleBytes ===
+      fs.statSync(path.join(defaultRoot, "knowledge-package.json")).size,
   "LTG metrics mix canonical content with generated index duplication");
   assert(metrics.leanSupport.missingLocalCatalogDeclarationNames.length === 0 &&
     metrics.graphAndExclusions.structurallyDanglingCategoryModuleOrEntryReferences === 0,

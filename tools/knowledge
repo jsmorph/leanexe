@@ -1,0 +1,48 @@
+#!/usr/bin/env node
+"use strict";
+
+const path = require("node:path");
+const {
+  defaultForestPath,
+  forestMetrics,
+  loadForest,
+  taskKnowledgeFiles,
+} = require("./knowledge-lib");
+
+function usage() {
+  return "usage: tools/knowledge <check|stats|task> [forest.json]\n";
+}
+
+function main(args) {
+  if (args.length < 1 || args.length > 2 ||
+      !["check", "stats", "task"].includes(args[0])) {
+    process.stderr.write(usage());
+    process.exitCode = 2;
+    return;
+  }
+  const command = args[0];
+  const forestPath = args[1] === undefined
+    ? defaultForestPath
+    : path.resolve(args[1]);
+  if (command === "stats") {
+    process.stdout.write(`${JSON.stringify(forestMetrics(forestPath), null, 2)}\n`);
+    return;
+  }
+  if (command === "task") {
+    process.stdout.write(`${JSON.stringify(taskKnowledgeFiles({ forestPath }).manifest, null, 2)}\n`);
+    return;
+  }
+  const forest = loadForest(forestPath);
+  const entries = forest.packages.reduce(
+    (total, package_) => total + package_.catalog.entries.length, 0);
+  process.stdout.write(
+    `Knowledge forest accepted: ${forest.packages.length} packages, ${entries} entries\n`,
+  );
+}
+
+try {
+  main(process.argv.slice(2));
+} catch (error) {
+  process.stderr.write(`knowledge: ${error.message}\n`);
+  process.exitCode = 1;
+}
