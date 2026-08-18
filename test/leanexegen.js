@@ -17,6 +17,7 @@ const {
   stageReportCodexVersion,
   stageReportCodexVersions,
   validateCodexTaskOutcome,
+  validateKnowledgeEvaluation,
   validateLtgTask,
   validateKnowledgeTask,
   validatePackage,
@@ -381,6 +382,7 @@ function testCodexProtocol() {
     artifactPrompt.includes("omits worked examples excluded for this exact artifact") &&
     artifactPrompt.includes("PROOF_KIT_SOURCE mirrors every allowed") &&
     artifactPrompt.includes("never run rg or find outside the working directory") &&
+    artifactPrompt.includes("KNOWLEDGE_USE.json records the final result") &&
     artifactPrompt.includes("Keep PROOF_JOURNAL.md as frequent, natural Markdown prose") &&
     artifactPrompt.includes("Append one final journal entry recording acceptance") &&
     artifactPrompt.includes("after each Lean check") &&
@@ -393,6 +395,8 @@ function testCodexProtocol() {
     !artifactPrompt.includes("bumpFacts") &&
     Buffer.byteLength(artifactPrompt) < 9000,
   "artifact-proof task did not receive the compact knowledge retrieval protocol");
+  assert(!proofPrompt("request\n", job, 3, false).includes("KNOWLEDGE_USE.json"),
+    "legacy artifact-proof task received a forest knowledge-use instruction");
   const wrapperStarter = artifactProofStarter(job, 3, true, {
     schemaVersion: 1,
     attemptOrder: ["direct", "composition", "tactic", "focused-guidance"],
@@ -590,14 +594,23 @@ function testMockedCodex(job) {
   const proofTaskRoot = path.join(temporaryRoot, "mock-proof-journal");
   fs.mkdirSync(proofTaskRoot);
   const proofSource = `namespace ${job.namespace}.Behavior\n\ntheorem placeholder : True := by trivial\n`;
+  const proofKnowledgeTask = {
+    manifest: {
+      packages: [{ id: "test-package", entryIds: ["test-entry"] }],
+    },
+  };
   const proofResponse = runCodexOutcome({
     codex: "/usr/bin/codex",
     task: "artifact-proof",
     stage: 5,
     taskRoot: proofTaskRoot,
-    contextFiles: new Map([["PROOF_JOURNAL.md", "# Proof Journal\n\n"]]),
+    contextFiles: new Map([
+      ["PROOF_JOURNAL.md", "# Proof Journal\n\n"],
+      ["KNOWLEDGE_USE.json", '{"schemaVersion":1,"entries":[]}\n'],
+    ]),
     candidateFile: moduleFile(job.behaviorModule),
     journalFile: "PROOF_JOURNAL.md",
+    knowledgeUse: proofKnowledgeTask,
     timeout: 1000,
     prompt: "mock proof prompt",
     execute: (args) => {
@@ -606,13 +619,24 @@ function testMockedCodex(job) {
       fs.writeFileSync(candidate, proofSource);
       fs.writeFileSync(path.join(proofTaskRoot, "PROOF_JOURNAL.md"),
         "# Proof Journal\n\nLean accepted the direct region theorem.\n");
+      fs.writeFileSync(path.join(proofTaskRoot, "KNOWLEDGE_USE.json"),
+        `${JSON.stringify({
+          schemaVersion: 1,
+          entries: [{
+            package: "test-package",
+            entry: "test-entry",
+            outcome: "used",
+            reason: "The proof applied its checked declaration.",
+          }],
+        })}\n`);
       const output = args[args.indexOf("-o") + 1];
       fs.writeFileSync(output, `${JSON.stringify(outcome("artifact-proof", ""))}\n`);
       return { stdout: "", stderr: "" };
     },
   });
   assert(proofResponse.source === proofSource &&
-    proofResponse.proofJournal.includes("direct region theorem"),
+    proofResponse.proofJournal.includes("direct region theorem") &&
+    proofResponse.knowledgeUse.entries[0].outcome === "used",
   "mocked artifact-proof task did not return its journal");
 
   let invocations = 0;
@@ -2610,6 +2634,7 @@ function testArtifactPackage(job, formalSource) {
       "KNOWLEDGE/packages/leanexe-core/catalog/entries/demo4-map-proof-example/entry.json") &&
     excludedExampleContext.has(
       "KNOWLEDGE/packages/leanexe-core/catalog/entries/fixed-array-map-add/entry.json") &&
+    JSON.parse(excludedExampleContext.get("KNOWLEDGE_USE.json")).entries.length === 0 &&
     JSON.parse(excludedExampleContext.get("KNOWLEDGE_TASK.json")).excludedEntries === 1,
   "proof task context exposed an exact-artifact example or removed canonical support");
   const demo4Artifact =
@@ -2809,6 +2834,25 @@ function testArtifactPackage(job, formalSource) {
   "proof package did not archive the proving-agent journal");
   const forestPackageRoot = path.join(temporaryRoot, "forest-package");
   const knowledgeTask = knowledgeTaskBundle(undefined, artifact.sha256);
+  const evaluatedPackage = knowledgeTask.manifest.packages[0];
+  const knowledgeEvaluation = {
+    schemaVersion: 1,
+    artifactSha256: artifact.sha256,
+    knowledgeTaskSha256: knowledgeTask.manifest.sha256,
+    status: "accepted",
+    entries: [{
+      package: evaluatedPackage.id,
+      entry: evaluatedPackage.entryIds[0],
+      outcome: "used",
+      reason: "The accepted proof used one selected knowledge entry.",
+    }],
+    proof: {
+      sourceSha256: stageReports.tasks.artifactProof.sourceSha256,
+      byteLength: Buffer.byteLength(behaviorSource),
+      lineCount: behaviorSource.split("\n").length - 1,
+      stage5Milliseconds: proofTelemetry.totalMilliseconds,
+    },
+  };
   createPackage(forestPackageRoot, {
     request: "compute one unsigned integer array\n",
     interpretation: {
@@ -2822,6 +2866,7 @@ function testArtifactPackage(job, formalSource) {
     stageReports,
     proofTelemetry,
     proofJournal: "# Proof journal\n\nI reduced the artifact theorem with the checked array lemmas.\n",
+    knowledgeEvaluation,
     toolPins: currentToolPins(repoRoot),
     proofLibraryCatalog: fs.readFileSync(
       path.join(repoRoot, "proofs", "talos", "lean", "Project", "ProofKit", "README.md"),
@@ -2842,11 +2887,48 @@ function testArtifactPackage(job, formalSource) {
     warnings,
   });
   const checkedForestPackage = validatePackage(forestPackageRoot);
-  assert(checkedForestPackage.manifest.schemaVersion === 8 &&
+  assert(checkedForestPackage.manifest.schemaVersion === 9 &&
+    checkedForestPackage.knowledgeTask.manifest.schemaVersion === 2 &&
+    checkedForestPackage.knowledgeEvaluation.entries[0].outcome === "used" &&
     checkedForestPackage.knowledgeTask.manifest.sha256 === knowledgeTask.manifest.sha256 &&
+    fs.existsSync(path.join(forestPackageRoot, "knowledge-evaluation.json")) &&
     fs.existsSync(path.join(forestPackageRoot, "knowledge", "forest.json")) &&
     !fs.existsSync(path.join(forestPackageRoot, "ltg-task.json")),
-  "schema-8 package omitted or changed its knowledge-forest snapshot");
+  "schema-nine package omitted or changed its knowledge-forest snapshot");
+  const invalidKnowledgeEvaluation = structuredClone(knowledgeEvaluation);
+  invalidKnowledgeEvaluation.entries[0].entry = "absent-entry";
+  expectFailure(() => validateKnowledgeEvaluation(
+    invalidKnowledgeEvaluation,
+    checkedForestPackage.knowledgeTask,
+    artifact.sha256,
+    stageReports.tasks.artifactProof.sourceSha256,
+    proofTelemetry,
+    behaviorSource,
+  ), /entries\[0\] is invalid/);
+  const schema8ForestPackageRoot = path.join(temporaryRoot, "schema-8-forest-package");
+  fs.cpSync(forestPackageRoot, schema8ForestPackageRoot, { recursive: true });
+  fs.unlinkSync(path.join(schema8ForestPackageRoot, "knowledge-evaluation.json"));
+  const schema8ManifestPath = path.join(schema8ForestPackageRoot, "package.json");
+  const schema8Manifest = JSON.parse(fs.readFileSync(schema8ManifestPath, "utf8"));
+  schema8Manifest.schemaVersion = 8;
+  schema8Manifest.files = schema8Manifest.files.filter(
+    (record) => record.path !== "knowledge-evaluation.json");
+  fs.writeFileSync(schema8ManifestPath, `${JSON.stringify(schema8Manifest, null, 2)}\n`);
+  assert(validatePackage(schema8ForestPackageRoot).knowledgeEvaluation === null,
+  "schema-eight validation required a later knowledge evaluation");
+  fs.copyFileSync(path.join(forestPackageRoot, "knowledge-evaluation.json"),
+    path.join(schema8ForestPackageRoot, "knowledge-evaluation.json"));
+  const invalidSchema8Manifest = JSON.parse(fs.readFileSync(schema8ManifestPath, "utf8"));
+  const evaluationBytes = fs.readFileSync(
+    path.join(schema8ForestPackageRoot, "knowledge-evaluation.json"));
+  invalidSchema8Manifest.files.push({
+    path: "knowledge-evaluation.json",
+    sha256: sha256(evaluationBytes),
+    byteLength: evaluationBytes.length,
+  });
+  fs.writeFileSync(schema8ManifestPath, `${JSON.stringify(invalidSchema8Manifest, null, 2)}\n`);
+  expectFailure(() => validatePackage(schema8ForestPackageRoot),
+    /schema-eight package cannot contain knowledge-evaluation.json/);
   const recordedKnowledgeRoot = path.join(temporaryRoot, "recorded-knowledge");
   recordKnowledge({
     mode: "record",
@@ -2899,6 +2981,42 @@ function testArtifactPackage(job, formalSource) {
     fs.existsSync(path.join(proposedKnowledgeRoot, "catalog", "entries",
       "residual-goal-journal-guidance", "entry.json")),
   "propose mode omitted its catalog entry, proposal, or learning journal");
+  const declinedKnowledgeRoot = path.join(temporaryRoot, "declined-knowledge");
+  proposeKnowledge({
+    mode: "propose",
+    inputPath: packageRoot,
+    outputPath: declinedKnowledgeRoot,
+    codex: "codex-test",
+    execute: (args, options) => {
+      const outcomePath = args[args.indexOf("-o") + 1];
+      fs.writeFileSync(outcomePath, `${JSON.stringify({
+        schemaVersion: 1,
+        kind: "none",
+        summary: "Existing checked support covers every repeated boundary in this run.",
+        entryId: "",
+        title: "",
+        entrySummary: "",
+        scope: "benchmark-local",
+        categories: [],
+        features: [],
+        annotationKinds: [],
+        premises: [],
+        result: "",
+        guidance: "",
+        declarations: [],
+        tactics: [],
+      }, null, 2)}\n`);
+      fs.writeFileSync(path.join(options.cwd, "LEARNING_JOURNAL.md"),
+        "# Learning Journal\n\nThe run uses existing checked support at every repeated boundary.  I found no missing composition shared with another artifact.  No knowledge entry is proposed.\n");
+    },
+  });
+  const declinedReport = JSON.parse(fs.readFileSync(
+    path.join(declinedKnowledgeRoot, "learning-report.json"), "utf8"));
+  assert(declinedReport.outcome === "no-entry" &&
+    declinedReport.artifactSha256 === artifact.sha256 &&
+    fs.existsSync(path.join(declinedKnowledgeRoot, "learning-journal.md")) &&
+    !fs.existsSync(path.join(declinedKnowledgeRoot, "knowledge-package.json")),
+  "declined proposal did not preserve its journaled assessment");
   const promotedSnapshotRoot = path.join(temporaryRoot, "promoted-snapshot");
   promoteKnowledge({
     mode: "promote",

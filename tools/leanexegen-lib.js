@@ -13,8 +13,8 @@ const {
 const { validateStage5Telemetry } = require("./leanexegen-telemetry");
 
 const codexTaskSchemaVersion = 2;
-const packageSchemaVersion = 8;
-const supportedPackageSchemaVersions = new Set([3, 4, 5, 6, 7, packageSchemaVersion]);
+const packageSchemaVersion = 9;
+const supportedPackageSchemaVersions = new Set([3, 4, 5, 6, 7, 8, packageSchemaVersion]);
 const caseNamePattern = /^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$/;
 const ltgIdPattern = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
 const knowledgeModulePattern = /^LeanExeGen\.Knowledge\.[A-Z][A-Za-z0-9_]*(?:\.[A-Z][A-Za-z0-9_]*)+$/;
@@ -971,18 +971,27 @@ function validateLtgTask(document, files, artifactSha256) {
 }
 
 function validateKnowledgeTask(document, files, artifactSha256) {
-  exactKeys(document, [
+  if (document === null || typeof document !== "object" ||
+      ![1, 2].includes(document.schemaVersion)) {
+    fail("knowledge-task.json has an unsupported schema");
+  }
+  exactKeys(document, document.schemaVersion === 1 ? [
     "schemaVersion", "artifactSha256", "derivativeGroups", "packages", "entries",
     "excludedEntries", "sha256",
+  ] : [
+    "schemaVersion", "artifactSha256", "packages", "entries", "excludedEntries", "sha256",
   ], "knowledge-task.json");
-  if (document.schemaVersion !== 1 || document.artifactSha256 !== artifactSha256) {
+  if (document.artifactSha256 !== artifactSha256) {
     fail("knowledge-task.json has an invalid schema or artifact identity");
   }
-  const derivativeGroups = requireStringArray(
-    document.derivativeGroups, "knowledge-task.json.derivativeGroups");
-  if (derivativeGroups.some((value) => !ltgIdPattern.test(value)) ||
-      derivativeGroups.some((value, index) => index > 0 && derivativeGroups[index - 1] > value)) {
-    fail("knowledge-task.json.derivativeGroups must contain sorted identifiers");
+  if (document.schemaVersion === 1) {
+    const derivativeGroups = requireStringArray(
+      document.derivativeGroups, "knowledge-task.json.derivativeGroups");
+    if (derivativeGroups.some((value) => !ltgIdPattern.test(value)) ||
+        derivativeGroups.some((value, index) =>
+          index > 0 && derivativeGroups[index - 1] > value)) {
+      fail("knowledge-task.json.derivativeGroups must contain sorted identifiers");
+    }
   }
   if (!(files instanceof Map) || !files.has("forest.json")) {
     fail("archived knowledge must contain forest.json");
@@ -1328,6 +1337,55 @@ function validateKnowledgeTask(document, files, artifactSha256) {
   };
 }
 
+function validateKnowledgeEvaluation(
+    document, knowledgeTask, artifactSha256, proofSourceSha256, proofTelemetry, proofSource) {
+  exactKeys(document, [
+    "schemaVersion", "artifactSha256", "knowledgeTaskSha256", "status", "entries", "proof",
+  ], "knowledge-evaluation.json");
+  if (document.schemaVersion !== 1 || document.artifactSha256 !== artifactSha256 ||
+      document.knowledgeTaskSha256 !== knowledgeTask.manifest.sha256 ||
+      document.status !== "accepted" || !Array.isArray(document.entries)) {
+    fail("knowledge-evaluation.json has an invalid identity or status");
+  }
+  const allowed = new Map(knowledgeTask.manifest.packages.map((package_) => [
+    package_.id, new Set(package_.entryIds),
+  ]));
+  const seen = new Set();
+  for (const [index, entry] of document.entries.entries()) {
+    exactKeys(entry, ["package", "entry", "outcome", "reason"],
+      `knowledge-evaluation.json.entries[${index}]`);
+    const key = `${entry.package}\0${entry.entry}`;
+    if (typeof entry.package !== "string" || typeof entry.entry !== "string" ||
+        !allowed.get(entry.package)?.has(entry.entry) || seen.has(key) ||
+        !["used", "rejected"].includes(entry.outcome) ||
+        typeof entry.reason !== "string" || entry.reason.trim().length === 0 ||
+        entry.reason !== entry.reason.trim()) {
+      fail(`knowledge-evaluation.json.entries[${index}] is invalid`);
+    }
+    if (index > 0) {
+      const previous = document.entries[index - 1];
+      if (`${previous.package}\0${previous.entry}` > key) {
+        fail("knowledge-evaluation.json entries must be sorted by package and entry");
+      }
+    }
+    seen.add(key);
+  }
+  exactKeys(document.proof, [
+    "sourceSha256", "byteLength", "lineCount", "stage5Milliseconds",
+  ], "knowledge-evaluation.json.proof");
+  const proofBytes = Buffer.from(proofSource);
+  const proofLines = proofSource === "" ? 0 :
+    proofSource.split("\n").length - (proofSource.endsWith("\n") ? 1 : 0);
+  if (document.proof.sourceSha256 !== proofSourceSha256 ||
+      document.proof.byteLength !== proofBytes.length ||
+      document.proof.lineCount !== proofLines ||
+      proofTelemetry === null ||
+      document.proof.stage5Milliseconds !== proofTelemetry.totalMilliseconds) {
+    fail("knowledge-evaluation.json proof metrics disagree with the accepted proof");
+  }
+  return structuredClone(document);
+}
+
 function createPackage(stageRoot, values) {
   fs.mkdirSync(stageRoot, { recursive: true });
   writeAtomic(path.join(stageRoot, "request.txt"), Buffer.from(values.request));
@@ -1375,6 +1433,19 @@ function createPackage(stageRoot, values) {
       writeAtomic(path.join(stageRoot, "knowledge", ...relative.split("/")),
         Buffer.from(source));
     }
+    if (values.knowledgeEvaluation !== undefined) {
+      const evaluation = validateKnowledgeEvaluation(
+        values.knowledgeEvaluation,
+        knowledgeTask,
+        values.artifact.sha256,
+        values.stageReports.tasks.artifactProof.sourceSha256,
+        values.proofTelemetry ?? null,
+        values.sources.get(values.job.behaviorModule),
+      );
+      writeAtomic(path.join(stageRoot, "knowledge-evaluation.json"), jsonBytes(evaluation));
+    }
+  } else if (values.knowledgeEvaluation !== undefined) {
+    fail("knowledge evaluation requires a knowledge task");
   }
   if ((values.compilerAnnotations === undefined) !== (values.proofRecipes === undefined)) {
     fail("compiler annotations and proof recipes must appear together");
@@ -1403,7 +1474,7 @@ function createPackage(stageRoot, values) {
   installSources(path.join(stageRoot, "proof"), values.sources);
   const manifest = {
     schemaVersion: values.knowledgeTask !== undefined
-      ? packageSchemaVersion
+      ? (values.knowledgeEvaluation === undefined ? 8 : packageSchemaVersion)
       : values.ltgTask !== undefined ? 7
         : annotated ? (formalInterfaceVersion === 2 ? 6 : 5) : 4,
     requestSha256: sha256(Buffer.from(values.request)),
@@ -1709,6 +1780,7 @@ function validatePackage(packageRoot) {
       path.join(packageRoot, "ltg-task.json"), "utf8")), ltgFiles, artifact.sha256);
   }
   let knowledgeTask = null;
+  let knowledgeEvaluation = null;
   if (manifest.schemaVersion >= 8) {
     requiredFiles.push("knowledge-task.json", "knowledge/forest.json");
     const knowledgeRoot = path.join(packageRoot, "knowledge");
@@ -1719,6 +1791,18 @@ function validatePackage(packageRoot) {
     knowledgeTask = validateKnowledgeTask(JSON.parse(fs.readFileSync(
       path.join(packageRoot, "knowledge-task.json"), "utf8")),
     knowledgeFiles, artifact.sha256);
+    if (manifest.schemaVersion >= 9) {
+      requiredFiles.push("knowledge-evaluation.json");
+    } else if (seen.has("knowledge-evaluation.json")) {
+      fail("schema-eight package cannot contain knowledge-evaluation.json");
+    }
+    if (seen.has("knowledge-evaluation.json")) {
+      knowledgeEvaluation = validateKnowledgeEvaluation(JSON.parse(fs.readFileSync(
+        path.join(packageRoot, "knowledge-evaluation.json"), "utf8")),
+      knowledgeTask, artifact.sha256, stageReports.tasks.artifactProof.sourceSha256,
+      proofTelemetry, fs.readFileSync(
+        path.join(packageRoot, "proof", moduleFile(job.behaviorModule)), "utf8"));
+    }
   }
   for (const required of requiredFiles) {
     if (!seen.has(required)) fail(`package is missing ${required}`);
@@ -1758,6 +1842,7 @@ function validatePackage(packageRoot) {
     proofRecipes,
     ltgTask,
     knowledgeTask,
+    knowledgeEvaluation,
   };
 }
 
@@ -1785,6 +1870,7 @@ module.exports = {
   validateKnowledgeTask,
   validatePackage,
   validateProofJournal,
+  validateKnowledgeEvaluation,
   validateProgramImports,
   validateProofImports,
   validateStageReports,

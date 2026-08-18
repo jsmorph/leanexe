@@ -121,7 +121,7 @@ The command does not regenerate the source or WASM.  It fails when the input pac
 
 ## Retrieval and evidence
 
-Every validated region contributes task features and candidate annotation kinds to knowledge retrieval.  The task snapshot includes each selected package's entries after artifact and derivative exclusions, while category indexes, features, maturity, consumers, and annotation kinds guide the agent's file search.  Proof recipes name declarations and tactics so the agent can retrieve detailed guidance after inspecting its residual goal.
+Every validated region contributes task features and candidate annotation kinds to knowledge retrieval.  The task snapshot includes each selected package's entries after exact-artifact exclusions, while category indexes, features, maturity, consumers, and annotation kinds guide the agent's file search.  Proof recipes name declarations and tactics so the agent can retrieve detailed guidance after inspecting its residual goal.
 
 The demonstrations retain fixed-artifact experiments showing successful and failed uses of annotation support.  Evidence includes proof-generation time, outer-check time, journal observations, retrieval, revisions, proof structure, shared theorem use, and transfer across programs.  [Artifact Proving](artifact-proving.md) defines this evaluation, while the [benchmark index](../benchmarks/README.md) and demo experiment directories preserve individual runs.
 

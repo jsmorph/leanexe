@@ -61,7 +61,7 @@ function main() {
       },
       entries: [{
         metadata: {
-          schemaVersion: 3,
+          schemaVersion: 4,
           id: entryId,
           title: "Test memory frame",
           summary: "Checks package-local declarations and filtered evidence.",
@@ -79,7 +79,6 @@ function main() {
           relatedEntries: [],
           exclusion: {
             artifactSha256: [artifactSha256],
-            derivativeGroup: "test-artifact",
           },
           tactics: [],
         },
@@ -102,7 +101,9 @@ function main() {
       forest.packages[0].catalog.entries[0].id === entryId,
     "knowledge forest omitted its package or entry");
     const complete = taskKnowledgeFiles({ forestPath });
-    assert(complete.manifest.entries === 1 &&
+    assert(complete.manifest.schemaVersion === 2 &&
+      !("derivativeGroups" in complete.manifest) &&
+      complete.manifest.entries === 1 &&
       complete.leanSources.get(moduleName) === source &&
       complete.files.has(`packages/${packageId}/evidence/result.md`) &&
       complete.files.has(`packages/${packageId}/lean/${moduleName.replaceAll(".", "/")}.lean`),
@@ -111,11 +112,24 @@ function main() {
       complete.manifest, complete.files, complete.manifest.artifactSha256);
     assert(checked.leanSources.get(moduleName) === source,
       "archived knowledge validation omitted its Lean source");
+    const legacyManifest = {
+      ...structuredClone(complete.manifest),
+      schemaVersion: 1,
+      derivativeGroups: [],
+    };
+    assert(validateKnowledgeTask(
+      legacyManifest, complete.files, complete.manifest.artifactSha256)
+      .leanSources.get(moduleName) === source,
+    "knowledge validation rejected a schema-1 archive");
     const excluded = taskKnowledgeFiles({ forestPath, artifactSha256 });
     assert(excluded.manifest.entries === 0 && excluded.manifest.excludedEntries === 1 &&
       excluded.leanSources.size === 0 &&
       !excluded.files.has(`packages/${packageId}/evidence/result.md`),
     "knowledge task retained excluded entry source or evidence");
+    expectFailure(() => taskKnowledgeFiles({
+      forestPath,
+      excludedDerivativeGroups: ["test-artifact"],
+    }), /exact artifact exclusions only/);
     const changed = structuredClone(complete.manifest);
     changed.sha256 = "0".repeat(64);
     expectFailure(() => validateKnowledgeTask(
