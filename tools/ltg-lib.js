@@ -114,9 +114,11 @@ function validateCategories(root) {
   return result;
 }
 
-function validateExclusion(value, description) {
+function validateExclusion(value, description, schemaVersion) {
   if (value === null) return null;
-  exactKeys(value, ["artifactSha256", "derivativeGroup"], description);
+  exactKeys(value, schemaVersion >= 4
+    ? ["artifactSha256"]
+    : ["artifactSha256", "derivativeGroup"], description);
   const artifactSha256 = stringArray(
     value.artifactSha256, `${description}.artifactSha256`, { nonempty: true, sorted: true });
   if (artifactSha256.some((digest) => !digestPattern.test(digest))) {
@@ -124,7 +126,9 @@ function validateExclusion(value, description) {
   }
   return {
     artifactSha256,
-    derivativeGroup: id(value.derivativeGroup, `${description}.derivativeGroup`),
+    ...(schemaVersion < 4 ? {
+      derivativeGroup: id(value.derivativeGroup, `${description}.derivativeGroup`),
+    } : {}),
   };
 }
 
@@ -195,7 +199,7 @@ function validateEntry(root, directory, categoryIds, options) {
   ];
   if (value.schemaVersion >= 2) entryKeys.push("tactics");
   exactKeys(value, entryKeys, `${directory}/entry.json`);
-  if (![1, 2, 3].includes(value.schemaVersion)) {
+  if (![1, 2, 3, 4].includes(value.schemaVersion)) {
     fail(`${directory}/entry.json has an unsupported schema`);
   }
   const entryId = id(value.id, `${directory}.id`);
@@ -252,7 +256,8 @@ function validateEntry(root, directory, categoryIds, options) {
     relatedEntries: stringArray(value.relatedEntries, `${directory}.relatedEntries`, {
       sorted: true,
     }),
-    exclusion: validateExclusion(value.exclusion, `${directory}.exclusion`),
+    exclusion: validateExclusion(
+      value.exclusion, `${directory}.exclusion`, value.schemaVersion),
     root: entryRoot,
   };
   entry.tactics = validateTactics(
@@ -733,8 +738,9 @@ function catalogMetrics(catalog = checkCatalog()) {
       excludedEntries: excludedEntries.length,
       excludedArtifactDigests: new Set(excludedEntries.flatMap((entry) =>
         entry.exclusion.artifactSha256)).size,
-      excludedDerivativeGroups: new Set(excludedEntries.map((entry) =>
-        entry.exclusion.derivativeGroup)).size,
+      excludedDerivativeGroups: new Set(excludedEntries.flatMap((entry) =>
+        entry.exclusion.derivativeGroup === undefined
+          ? [] : [entry.exclusion.derivativeGroup])).size,
       structurallyDanglingCategoryModuleOrEntryReferences: 0,
     },
     content: {

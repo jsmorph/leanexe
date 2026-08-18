@@ -368,15 +368,14 @@ function loadForest(forestPath = defaultForestPath) {
   };
 }
 
-function entryIncluded(entry, artifactSha256, excludedDerivativeGroups) {
+function entryIncluded(entry, artifactSha256) {
   return entry.exclusion === null ||
-    (!entry.exclusion.artifactSha256.includes(artifactSha256) &&
-      !excludedDerivativeGroups.has(entry.exclusion.derivativeGroup));
+    !entry.exclusion.artifactSha256.includes(artifactSha256);
 }
 
-function taskCatalog(package_, artifactSha256, excludedDerivativeGroups) {
+function taskCatalog(package_, artifactSha256) {
   const included = package_.catalog.entries.filter((entry) =>
-    entryIncluded(entry, artifactSha256, excludedDerivativeGroups));
+    entryIncluded(entry, artifactSha256));
   const includedIds = new Set(included.map((entry) => entry.id));
   const files = new Map([
     ["README.md", readRegularFile(path.join(package_.catalogRoot, "README.md"),
@@ -417,20 +416,17 @@ function knowledgeDigest(files) {
 }
 
 function taskKnowledgeFiles(options = {}) {
+  if (Object.hasOwn(options, "excludedDerivativeGroups")) {
+    fail("knowledge tasks support exact artifact exclusions only");
+  }
   const forest = loadForest(options.forestPath || defaultForestPath);
   const artifactSha256 = options.artifactSha256 ?? null;
   if (artifactSha256 !== null && !digestPattern.test(artifactSha256)) {
     fail("knowledge task artifactSha256 is invalid");
   }
-  const derivativeGroups = stringArray(
-    options.excludedDerivativeGroups || [], "knowledge task derivative groups", { sorted: true });
-  if (derivativeGroups.some((group) => !idPattern.test(group))) {
-    fail("knowledge task derivative groups contain an invalid identifier");
-  }
-  const excludedDerivativeGroups = new Set(derivativeGroups);
   const selections = forest.packages.map((package_) => ({
     package_,
-    catalog: taskCatalog(package_, artifactSha256, excludedDerivativeGroups),
+    catalog: taskCatalog(package_, artifactSha256),
   }));
   const referencedModules = new Set(selections.flatMap(({ catalog }) =>
     catalog.included.flatMap((entry) => entry.modules)));
@@ -524,9 +520,8 @@ function taskKnowledgeFiles(options = {}) {
     leanSources,
     allowedModules: new Set([...proofKitModules, ...leanSources.keys()]),
     manifest: {
-      schemaVersion: 1,
+      schemaVersion: 2,
       artifactSha256,
-      derivativeGroups,
       packages: packageRecords,
       entries: totalEntries,
       excludedEntries: totalExcludedEntries,

@@ -22,7 +22,7 @@ Each entry separates role, scope, and evidence status.  Role distinguishes check
 
 ## Package selection and retrieval
 
-Each artifact-proof workspace contains `KNOWLEDGE/forest.json`, selected package directories, and `KNOWLEDGE_TASK.json`.  The prompt directs the agent to inspect the forest, search likely package indexes with `rg`, inspect summaries before opening entry bodies, and follow `relatedEntries` only when the proof state supports the relation.  The journal records exact queries, packages and entries opened, entries used, entries rejected, and missing catalog support.
+Each artifact-proof workspace contains `KNOWLEDGE/forest.json`, selected package directories, `KNOWLEDGE_TASK.json`, and `KNOWLEDGE_USE.json`.  The prompt directs the agent to inspect the forest, search likely package indexes with `rg`, inspect summaries before opening entry bodies, and follow `relatedEntries` only when the proof state supports the relation.  The journal records exact queries and reasoning, while `KNOWLEDGE_USE.json` records one used or rejected result and reason for each entry the agent inspected.
 
 ```text
 rg -n 'scalar-post-test|postTestProgram_spec|gcd|remainder' \
@@ -35,9 +35,9 @@ sed -n '1,240p' \
 
 This protocol keeps forest size separate from prompt size.  The agent initially receives a short retrieval instruction, the forest and package manifests, and access to the file tree.  Searchable JSONL records support local filtering before the agent spends context on a full entry.
 
-`KNOWLEDGE_TASK.json` binds the visible forest view to the task.  It records each package's identity, version, maturity, dependencies, included and excluded entries, required Lean modules, package digest, and the digest over the complete visible forest.  Exact-artifact filtering removes an excluded entry together with its bound evidence and unreferenced package-local Lean sources.
+`KNOWLEDGE_TASK.json` binds the visible forest view to the task.  It records each package's identity, version, maturity, dependencies, included and excluded entries, required Lean modules, package digest, and the digest over the complete visible forest.  Exact-artifact filtering removes an excluded entry together with its bound evidence and unreferenced package-local Lean sources.  After outer proof acceptance, the proof package records the agent's final use decisions as `knowledge-evaluation.json`, together with the task digest, proof digest, source size, line count, and Stage 5 time.
 
-The orchestrator supplies the artifact digest and selected forest to every current proof run.  The package library also implements derivative-group exclusion, while automatic artifact-to-derivative classification remains absent.  An evaluation covering close derivatives therefore passes the relevant group explicitly or reviews the packaged exclusion record.
+The orchestrator supplies the artifact digest and selected forest to every current proof run.  Current entry schema four and knowledge-task schema two use exact artifact digests.  Validation retains older entry and task schemas containing derivative-group fields so existing proof packages remain readable, but current forest selection does not claim derivative classification.
 
 ## Validation and package identity
 
@@ -51,7 +51,7 @@ node test/knowledge.js
 tools/leanrun --timeout 15m lake -d proofs/talos/lean --no-ansi build Project.ProofKit.LTGCheck
 ```
 
-Schema-8 proof packages archive the exact filtered forest under `knowledge/` and its manifest as `knowledge-task.json`.  Package validation recomputes forest and package digests, checks package and category references, validates included entries and sources, and rejects excluded entry bodies or evidence.  Schema-7 packages retain their single-catalog `ltg/` archive and validator.
+Schema-nine proof packages archive the exact filtered forest under `knowledge/`, its manifest as `knowledge-task.json`, and the accepted knowledge evaluation.  Package validation recomputes forest and package digests, checks package and category references, validates included entries and sources, and rejects excluded entry bodies or evidence.  Schema-eight packages retain the same forest archive without an evaluation, while schema-seven packages retain their single-catalog `ltg/` archive and validator.
 
 The checked `Behavior.lean` theorem remains the authority for verification.  Knowledge metadata and prose discharge no proof obligations, while package manifests grant import authority only to archived package-local sources whose paths, imports, and digests pass validation.  Lean checks those sources and the final proof, generated region equalities connect compiler motifs to exact decoded instructions, and the package verifier rebuilds the artifact theorem.
 
@@ -61,19 +61,19 @@ Stateful learning turns completed proof work into explicit input artifacts for l
 
 | Operation | Produced artifact | Use in subsequent work |
 |-----------|-------------------|------------------------|
-| Proof generation or reproof | Accepted schema-8 proof package | Supplies the checked proof, journal, annotations, task features, recipes, telemetry, and prior knowledge identity. |
+| Proof generation or reproof | Accepted schema-nine proof package | Supplies the checked proof, journal, annotations, task features, recipes, telemetry, knowledge evaluation, and prior knowledge identity. |
 | `learn record` | Experimental worked-example package | Preserves the run for retrieval, comparison, and later analysis. |
-| `learn propose` | Experimental candidate package | Distills one guidance entry, worked example, checked lemma, or checked tactic from the run and its archived knowledge context. |
+| `learn propose` | Experimental candidate package or no-entry assessment | Distills one useful entry from the run, or preserves the journaled conclusion that existing support covers the observed boundaries. |
 | Review and `learn promote` | Promoted package inside a new forest snapshot | Makes the selected candidate available to later runs through `--knowledge`. |
 | Later generation or reproof | New proof package | Records which promoted packages and filtered entries were available and which checked modules the proof used. |
 
 `leanexegen learn record` converts an accepted proof package into an experimental knowledge package.  The package contains one worked-example entry and preserves its proof journal, accepted proof, annotations, recipes, task features, telemetry, and prior knowledge identity.  The entry carries an exact-artifact exclusion and binds every evidence file to that entry.
 
-`leanexegen learn propose` runs a separate headless Codex task over the same evidence.  The task keeps a learning journal and produces one guidance entry, worked example, checked lemma, or checked tactic; checked Lean source receives a package namespace and passes both in-session and outer Lean builds.  The proposal remains an experimental package until an explicit promotion.
+`leanexegen learn propose` runs a separate headless Codex task over the same evidence.  The task first searches the archived forest, compiler recipes, and checked ProofKit source, then compares each candidate with the closest existing support.  It produces one guidance entry, worked example, checked lemma, or checked tactic only when the run identifies a useful missing boundary.  A no-entry result preserves `learning-report.json`, `proposal.json`, and `learning-journal.md` without creating a catalog package.
 
 `leanexegen learn promote` copies every selected package into a self-contained forest snapshot and adds a new promoted version of the candidate package.  Promotion validates the complete resulting forest, builds every package-local Lean module in the candidate, and asks Lean to resolve every declaration advertised by its catalog.  Generation and reproof select that snapshot through `--knowledge`, while prior snapshots and candidate packages retain their original bytes.
 
-Knowledge packages can improve later work in several ways.  A checked lemma or tactic can shorten a derivation, guidance can direct theorem selection or proof decomposition, and a worked example can show a useful proof structure.  Exact-artifact and derivative exclusions control reuse in measured tasks, while separate forests allow different package selections without editing package contents.
+Knowledge packages can improve later work in several ways.  A checked lemma or tactic can shorten a derivation, guidance can direct theorem selection or proof decomposition, and a worked example can show a useful proof structure.  Exact-artifact exclusions control reuse in measured tasks, while separate forests compose different package selections without editing package contents.
 
 ## Fixed-artifact evidence
 
@@ -87,8 +87,8 @@ These runs establish selective discovery, exclusion, related-entry use, and succ
 
 Catalog growth should preserve small root files, bounded index records, canonical entry bodies, and overlapping categories.  Large categories can split into subcategories or shard JSONL indexes without changing entry identity; the root category description should tell the agent which shard to search.  Search aliases should come from declarations, modules, annotation kinds, features, and terms observed in journals rather than from copied proof prose.
 
-Every artifact-proof iteration should review the journal, accepted proof, and telemetry together.  Journal searches reveal missing aliases, irrelevant ranking, unhelpful related links, absent abstractions, and guidance that does not match the checked theorem boundary.  Evaluation should include fixed-artifact repeats, diverse demos, held-out artifacts, and synthetic large-catalog retrieval tests.  The scorecard covers retrieval quality, files and context consulted, revisions, proof structure and size, shared abstraction use, compiler-derived evidence use, applicability, and proving time.
+Every artifact-proof iteration should review the journal, accepted proof, knowledge evaluation, and telemetry together.  The evaluation identifies which inspected entries the agent used or rejected and records each reason, while the journal retains the proof-state details behind those decisions.  Fixed-artifact repeats, diverse demos, held-out artifacts, and synthetic large-catalog retrieval tests remain useful comparisons.  The scorecard covers retrieval quality, proof structure and size, shared abstraction use, compiler-derived evidence use, applicability, and proving time.
 
-Promotion requires evidence appropriate to an entry's role.  A checked theorem can remain provisional after one consumer, while a worked example may remain searchable because its proof organization teaches a useful method.  Automatic selection should favor generic or recurring checked support, but file-based retrieval may retain narrow examples with exact-artifact and derivative exclusions.
+Promotion requires evidence appropriate to an entry's role.  A checked theorem can remain provisional after one consumer, while a worked example may remain searchable because its proof organization teaches a useful method.  File-based retrieval may retain narrow examples with exact-artifact exclusions, while explicit forest composition controls which packages a proof task receives.
 
 The repository test places the real scalar-loop and Euclidean entries among 9,998 synthetic records in one JSONL category index.  The Demo 6 query returned only those two records and less than 10 KB of output; observed local searches completed in tens of milliseconds, although the test imposes no timing bound.  This test covers file-level selectivity rather than agent judgment, so later held-out proofs and larger real catalogs must still measure files opened, context consumed, and time before the first useful theorem application.
