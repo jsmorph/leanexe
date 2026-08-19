@@ -1,0 +1,8 @@
+{
+  "hostAssumptions": [
+    "Array.findIdx? returns the first index whose predicate is true.",
+    "Array.eraseIdx! removes an in-bounds element and preserves the order of the remaining elements.",
+    "The compiled array ABI uses a 48-byte allocation header followed by an 8-byte length and 8 bytes per UInt64 element.",
+    "Returning the input unchanged may reuse its existing array allocation; the initial heap top already lies above the input representation."
+  ]
+}

@@ -13,6 +13,14 @@ def lengthStoreProgram (rootLocal : Nat) (length : UInt64) : Wasm.Program :=
   .store64 0
   ]
 
+def lengthStoreLocalProgram (rootLocal lengthLocal : Nat) : Wasm.Program :=
+  [
+  .localGet rootLocal,
+  .wrapI64,
+  .localGet lengthLocal,
+  .store64 0
+  ]
+
 def payloadAddress (root : UInt64) (index : Nat) : UInt64 :=
   root + (UInt64.ofNat index * 1 + 1) * 8
 
@@ -202,6 +210,31 @@ theorem lengthStore_spec
   have hTwo32 : 2 ^ 32 = 4294967296 := by norm_num
   rw [hTwo32]
   rw [← Memory.toUInt32_eq_ofNat]
+  simp only [UInt32.toNat_zero, add_zero]
+  rw [if_neg (Nat.not_lt.mpr hBound)]
+  cases frame
+  simp_all [writeLength]
+
+theorem lengthStoreLocal_spec
+    (module_ : Wasm.Module) (env : HostEnv Unit) (st : Store Unit)
+    (frame : Locals) (root length : UInt64)
+    (rootLocal lengthLocal : Nat)
+    (hRoot : frame.get rootLocal = some (.i64 root))
+    (hLength : frame.get lengthLocal = some (.i64 length))
+    (hBound : root.toUInt32.toNat + 8 ≤ st.mem.pages * 65536)
+    (Q : Assertion Unit) (rest : Wasm.Program)
+    (hNext : wp module_ rest Q (writeLength st root length) frame env) :
+    wp module_ (lengthStoreLocalProgram rootLocal lengthLocal ++ rest)
+      Q st frame env := by
+  have hLengthAfter (values : List Value) :
+      ({ frame with values := values } : Locals).get lengthLocal =
+        some (.i64 length) := by
+    simpa only [Wasm.Locals.get] using hLength
+  simp only [lengthStoreLocalProgram, List.cons_append, List.nil_append]
+  simp only [wp_localGet_cons, hRoot, wp_wrapI64_cons, hLengthAfter,
+    wp_store64_cons]
+  have hTwo32 : 2 ^ 32 = 4294967296 := by norm_num
+  rw [hTwo32, ← Memory.toUInt32_eq_ofNat]
   simp only [UInt32.toNat_zero, add_zero]
   rw [if_neg (Nat.not_lt.mpr hBound)]
   cases frame
