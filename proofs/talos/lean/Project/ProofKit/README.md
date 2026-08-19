@@ -263,9 +263,11 @@ apply Project.ProofKit.FixedArrayTraversalInput.program_spec
 
 ## First-match equality scan
 
-Import `Project.ProofKit.FixedArrayFindIdxEq` when a checked annotation identifies the compiler's flat, one-word `Array.findIdx?` loop for `element == key`.  `program_spec` executes setup and the block-wrapped scan from index zero, preserving the store and represented input while returning zero for no match or `index + 1` for the first match.  Its continuation callbacks receive the exact `Array.findIdx?` equation and final frame, and the successful callback also receives the bound on the matched index.
+Import `Project.ProofKit.FixedArrayFindIdxEq` when a checked annotation identifies the compiler's flat, one-word `Array.findIdx?` loop for `element == key`.  `program_spec` executes setup and the block-wrapped scan from index zero, preserving the store and represented input while returning zero for no match or `encodedIndex index` for the first match.  Its continuation callbacks receive the exact `Array.findIdx?` equation and final frame, and the successful callback also receives the bound on the matched index.
 
 The first version matches the compiler layout with the input pointer in combined local zero, the loaded item in combined local one, a configurable scratch start of at least two, and arbitrary trailing locals.  The key may be any literal `UInt64`, while wider elements, dynamic keys, different local roles, and other predicates require a separate theorem or the ordinary `Array.findIdx?.loop` invariant.  A generated `leanexe.array.find-idx-eq.v1` equality establishes that the decoded artifact region has exactly the program consumed by this theorem.
+
+Keep `someFrame` folded while reducing its continuation.  The `someFrame_params`, `someFrame_locals_length`, and `someFrame_values` projections expose its shape, while `encodedIndex_eq_ofNat_succ`, `encodedIndex_ne_zero`, and `encodedIndex_sub_one` normalize and decode the successful result.  Use these facts to establish the producer frame, execute scalar instructions until the next structured-control boundary, and then apply that boundary's theorem.  Broad `wp_simp` across the nested frame definitions and a large continuation repeats the frame and modular-arithmetic reductions.
 
 ## Fixed-length dispatch
 
