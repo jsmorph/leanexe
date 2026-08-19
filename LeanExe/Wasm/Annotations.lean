@@ -33,6 +33,16 @@ structure FixedArrayLengthDispatchParameters where
   continuation : String
   deriving Repr, Lean.ToJson
 
+structure FixedArrayFindIdxEqParameters where
+  scratchStart : Nat
+  sourceWidth : Nat
+  inputLocal : Nat
+  itemLocal : Nat
+  key : String
+  resultEncoding : String
+  continuation : String
+  deriving Repr, Lean.ToJson
+
 structure FixedArraySearchKeyParameters where
   offset : Nat
   index : Nat
@@ -158,6 +168,7 @@ structure ScalarPostTestLoopParameters where
 inductive RegionParameters where
   | directCall (parameters : DirectCallParameters)
   | fixedArrayLengthDispatch (parameters : FixedArrayLengthDispatchParameters)
+  | fixedArrayFindIdxEq (parameters : FixedArrayFindIdxEqParameters)
   | fixedArraySearchKey (parameters : FixedArraySearchKeyParameters)
   | fixedArrayEqNode (parameters : FixedArrayEqNodeParameters)
   | fixedArrayLtNode (parameters : FixedArrayLtNodeParameters)
@@ -174,6 +185,7 @@ instance : Lean.ToJson RegionParameters where
   toJson
     | .directCall parameters => Lean.toJson parameters
     | .fixedArrayLengthDispatch parameters => Lean.toJson parameters
+    | .fixedArrayFindIdxEq parameters => Lean.toJson parameters
     | .fixedArraySearchKey parameters => Lean.toJson parameters
     | .fixedArrayEqNode parameters => Lean.toJson parameters
     | .fixedArrayLtNode parameters => Lean.toJson parameters
@@ -236,6 +248,20 @@ structure RelativeFixedArrayLengthDispatch where
   encoding : String
   invalidBranch : String
   validBranch : String
+  continuation : String
+  generatedBy : Array String
+  deriving Repr
+
+structure RelativeFixedArrayFindIdxEq where
+  listPath : Array PathStep
+  startIndex : Nat
+  endIndex : Nat
+  scratchStart : Nat
+  sourceWidth : Nat
+  inputLocal : Nat
+  itemLocal : Nat
+  key : String
+  resultEncoding : String
   continuation : String
   generatedBy : Array String
   deriving Repr
@@ -347,6 +373,7 @@ structure Emitted where
   code : List LeanExe.Wasm.Instr
   directCalls : Array RelativeDirectCall
   lengthDispatches : Array RelativeFixedArrayLengthDispatch
+  findIdxEqs : Array RelativeFixedArrayFindIdxEq
   pairResults : Array RelativeFixedArrayPairResult
   arrayFolds : Array RelativeArrayFold
   whileLoops : Array RelativeWhileLoop
@@ -356,6 +383,7 @@ def Emitted.ofCode (code : List LeanExe.Wasm.Instr) : Emitted :=
   { code
     directCalls := #[]
     lengthDispatches := #[]
+    findIdxEqs := #[]
     pairResults := #[]
     arrayFolds := #[]
     whileLoops := #[] }
@@ -383,6 +411,16 @@ def Emitted.append (left right : Emitted) : Emitted :=
         let step := dispatch.listPath[0]
         { dispatch with
           listPath := dispatch.listPath.set 0
+            { step with instructionIndex := offset + step.instructionIndex } }
+    findIdxEqs := left.findIdxEqs ++ right.findIdxEqs.map fun findIdx =>
+      if h : findIdx.listPath.size = 0 then
+        { findIdx with
+          startIndex := offset + findIdx.startIndex
+          endIndex := offset + findIdx.endIndex }
+      else
+        let step := findIdx.listPath[0]
+        { findIdx with
+          listPath := findIdx.listPath.set 0
             { step with instructionIndex := offset + step.instructionIndex } }
     pairResults := left.pairResults ++ right.pairResults.map fun result =>
       if h : result.listPath.size = 0 then

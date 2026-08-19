@@ -1,6 +1,6 @@
 # LTG metrics
 
-The structured LTG is a versioned knowledge artifact whose retrieval units are canonical entries.  An entry may combine guidance, checked declarations, annotation support, a proof-generation mechanism, and worked-example evidence, so those inventories overlap.  The metrics therefore report 24 entries and several orthogonal inventories rather than adding lemmas, tactics, and guidance into a misleading total.
+The structured LTG is a versioned knowledge artifact whose retrieval units are canonical entries.  An entry may combine guidance, checked declarations, annotation support, a proof-generation mechanism, and worked-example evidence, so those inventories overlap.  The dated snapshot below reports 24 entries and several orthogonal inventories rather than adding lemmas, tactics, and guidance into a misleading total.
 
 This dated snapshot measures the `leanexe-core` package before the repository introduced the knowledge forest.  `tools/knowledge stats` now reports aggregate package, catalog, package-local Lean-source, evidence-file, task-file, byte, and digest counts for a selected forest.  Per-catalog declaration, tactic, relationship, and role detail remains under `tools/ltg metrics`.
 
