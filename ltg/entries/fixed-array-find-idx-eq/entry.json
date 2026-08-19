@@ -14,6 +14,6 @@
   "premises": ["A checked leanexe.array.find-idx-eq.v1 equality with program scratch key", "The compiler layout with combined input local 0, item local 1, scratch at least 2, and an arbitrary trailing-local count", "A flat one-word Array UInt64 at the input pointer", "The literal predicate element == key, a scan starting at zero, the zero-or-index-plus-one result encoding, and fallthrough", "Continuation proofs for the none case and every possible first-match index"],
   "result": "The exact emitted setup and early-exit loop reaches an arbitrary continuation with zero for none or encodedIndex index for the first matching index, together with the corresponding noneFrame or someFrame and folded frame projections.",
   "consumers": ["demo-12"],
-  "relatedEntries": ["array-memory-framing", "fixed-array-erase-reconstruction", "fixed-array-length-dispatch", "fixed-array-traversal-input", "local-frame-projection"],
+  "relatedEntries": ["array-memory-framing", "fixed-array-erase-copy", "fixed-array-erase-reconstruction", "fixed-array-length-dispatch", "fixed-array-traversal-input", "local-frame-projection"],
   "exclusion": null
 }
