@@ -33,6 +33,7 @@ Lean 4.31.0 accepts the archived kernel-unsoundness reproduction referenced by t
 |------|---------------|
 | Source language | Programs must remain in the pure, monomorphic, first-order subset.  Public ABI values exclude recursive inductives and function values. |
 | Arithmetic | `UInt64` follows wrapping arithmetic.  `Nat` is bounded by the compiler's runtime representation where it crosses executable code. |
+| Floating point | Talos can execute `f64` instructions through native `Float`, but the exact-artifact profile and LeanExe source subset do not admit proof-grade floating-point programs.  The deferred [Proof-Grade `f64` Artifact Semantics](../plans/f64-artifact-semantics.md) plan defines the required binary64 semantics, artifact checks, and numerical-refinement layer. |
 | Strings | Lean `String` is not a supported runtime value.  `LeanExe.AsciiString` and `ByteArray` provide the supported textual representations. |
 | Heap updates | Generated programs may mutate freshly allocated or uniquely owned heap objects internally.  Public array inputs are borrowed, so an operation returning a changed array allocates a distinct result rather than overwriting the caller's array. |
 | Compiler correctness | Exact-artifact proofs establish behavior directly from bytes.  Compiler theorems currently support selected emitted regions and proof-generation evidence rather than a complete source-to-artifact refinement theorem. |
