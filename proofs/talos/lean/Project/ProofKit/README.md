@@ -15,6 +15,7 @@ Every `leanexegen` artifact-proof task receives this catalog and may import the 
 | `Project.ProofKit.FixedArrayCapacity` | Constant result-length capacity normalization into an arbitrary valid local, a minimum-capacity theorem, and a named post-prefix frame with capacity getters. |
 | `Project.ProofKit.FixedArrayAllocator` | Complete empty-list search and bump-allocation semantics for the emitted one-parameter array-wrapper layout. |
 | `Project.ProofKit.FixedArrayAllocatorWindow` | Shifted fixed-array allocator semantics, post-allocation frame projections, and composition with an immediately preceding constant-capacity prefix. |
+| `Project.ProofKit.FixedArrayCopy` | Complete block-wrapped raw-cell prefix and shifted-suffix copy loops with symmetric region separation and a one-word erase adapter. |
 | `Project.ProofKit.FixedArrayEqNode` | One indexed array load, equality normalization, and two-way branch for an unrolled search. |
 | `Project.ProofKit.FixedArrayFilterLt` | A bounded stable filter by an unsigned threshold, including allocation, conditional stores, dynamic length, and empty-result semantics. |
 | `Project.ProofKit.FixedArrayFindIdxEq` | The compiler's one-word, literal-key first-match scan with zero-or-index-plus-one result encoding and continuation-generic none and some exits. |
@@ -268,6 +269,14 @@ Import `Project.ProofKit.FixedArrayFindIdxEq` when a checked annotation identifi
 The first version matches the compiler layout with the input pointer in combined local zero, the loaded item in combined local one, a configurable scratch start of at least two, and arbitrary trailing locals.  The key may be any literal `UInt64`, while wider elements, dynamic keys, different local roles, and other predicates require a separate theorem or the ordinary `Array.findIdx?.loop` invariant.  A generated `leanexe.array.find-idx-eq.v1` equality establishes that the decoded artifact region has exactly the program consumed by this theorem.
 
 Keep `someFrame` folded while reducing its continuation.  The `someFrame_params`, `someFrame_locals_length`, and `someFrame_values` projections expose its shape, while `encodedIndex_eq_ofNat_succ`, `encodedIndex_ne_zero`, and `encodedIndex_sub_one` normalize and decode the successful result.  Use these facts to establish the producer frame, execute scalar instructions until the next structured-control boundary, and then apply that boundary's theorem.  Broad `wp_simp` across the nested frame definitions and a large continuation repeats the frame and modular-arithmetic reductions.
+
+## Prefix and shifted-suffix copy
+
+Import `Project.ProofKit.FixedArrayCopy` when a checked `leanexe.array.erase-copy.v1` annotation identifies the compiler's complete block-wrapped prefix and shifted-suffix loops.  `prefixProgram_spec`, `suffixProgram_spec`, and `program_spec` execute the exact raw-cell programs for any positive source width recorded as `skipCells`.  The combined theorem accepts either ordering of nonoverlapping source and target regions and preserves memory pages, the target header, and all source-cell reads while establishing both target intervals.
+
+The theorem reads the source pointer, target pointer, prefix count, suffix count, and counter from named combined locals.  Its bounds cover the complete source and target regions in both the 32-bit address range and current memory, and `counterFrame` plus its getters describes the final local state.  The region equality, bounds, local facts, and continuation remain application obligations.
+
+`eraseIdxProgram_spec` specializes the combined theorem to width one and applies `UInt64Array.At.eraseIdx!_of_reads`.  It accepts a represented source, an in-bounds erase index, an already-written target length, and the bump-allocation ordering in which the source precedes the target.  Allocation, the header write, search, result transfer, globals, and stronger ownership or outside-region framing remain separate proof boundaries.
 
 ## Fixed-length dispatch
 

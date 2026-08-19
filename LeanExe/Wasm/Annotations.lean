@@ -43,6 +43,16 @@ structure FixedArrayFindIdxEqParameters where
   continuation : String
   deriving Repr, Lean.ToJson
 
+structure FixedArrayEraseCopyParameters where
+  sourceWidth : Nat
+  sourceLocal : Nat
+  targetLocal : Nat
+  prefixCellsLocal : Nat
+  suffixCellsLocal : Nat
+  counterLocal : Nat
+  continuation : String
+  deriving Repr, Lean.ToJson
+
 structure FixedArraySearchKeyParameters where
   offset : Nat
   index : Nat
@@ -169,6 +179,7 @@ inductive RegionParameters where
   | directCall (parameters : DirectCallParameters)
   | fixedArrayLengthDispatch (parameters : FixedArrayLengthDispatchParameters)
   | fixedArrayFindIdxEq (parameters : FixedArrayFindIdxEqParameters)
+  | fixedArrayEraseCopy (parameters : FixedArrayEraseCopyParameters)
   | fixedArraySearchKey (parameters : FixedArraySearchKeyParameters)
   | fixedArrayEqNode (parameters : FixedArrayEqNodeParameters)
   | fixedArrayLtNode (parameters : FixedArrayLtNodeParameters)
@@ -186,6 +197,7 @@ instance : Lean.ToJson RegionParameters where
     | .directCall parameters => Lean.toJson parameters
     | .fixedArrayLengthDispatch parameters => Lean.toJson parameters
     | .fixedArrayFindIdxEq parameters => Lean.toJson parameters
+    | .fixedArrayEraseCopy parameters => Lean.toJson parameters
     | .fixedArraySearchKey parameters => Lean.toJson parameters
     | .fixedArrayEqNode parameters => Lean.toJson parameters
     | .fixedArrayLtNode parameters => Lean.toJson parameters
@@ -262,6 +274,20 @@ structure RelativeFixedArrayFindIdxEq where
   itemLocal : Nat
   key : String
   resultEncoding : String
+  continuation : String
+  generatedBy : Array String
+  deriving Repr
+
+structure RelativeFixedArrayEraseCopy where
+  listPath : Array PathStep
+  startIndex : Nat
+  endIndex : Nat
+  sourceWidth : Nat
+  sourceLocal : Nat
+  targetLocal : Nat
+  prefixCellsLocal : Nat
+  suffixCellsLocal : Nat
+  counterLocal : Nat
   continuation : String
   generatedBy : Array String
   deriving Repr
@@ -374,6 +400,7 @@ structure Emitted where
   directCalls : Array RelativeDirectCall
   lengthDispatches : Array RelativeFixedArrayLengthDispatch
   findIdxEqs : Array RelativeFixedArrayFindIdxEq
+  eraseCopies : Array RelativeFixedArrayEraseCopy
   pairResults : Array RelativeFixedArrayPairResult
   arrayFolds : Array RelativeArrayFold
   whileLoops : Array RelativeWhileLoop
@@ -384,6 +411,7 @@ def Emitted.ofCode (code : List LeanExe.Wasm.Instr) : Emitted :=
     directCalls := #[]
     lengthDispatches := #[]
     findIdxEqs := #[]
+    eraseCopies := #[]
     pairResults := #[]
     arrayFolds := #[]
     whileLoops := #[] }
@@ -421,6 +449,16 @@ def Emitted.append (left right : Emitted) : Emitted :=
         let step := findIdx.listPath[0]
         { findIdx with
           listPath := findIdx.listPath.set 0
+            { step with instructionIndex := offset + step.instructionIndex } }
+    eraseCopies := left.eraseCopies ++ right.eraseCopies.map fun copy =>
+      if h : copy.listPath.size = 0 then
+        { copy with
+          startIndex := offset + copy.startIndex
+          endIndex := offset + copy.endIndex }
+      else
+        let step := copy.listPath[0]
+        { copy with
+          listPath := copy.listPath.set 0
             { step with instructionIndex := offset + step.instructionIndex } }
     pairResults := left.pairResults ++ right.pairResults.map fun result =>
       if h : result.listPath.size = 0 then

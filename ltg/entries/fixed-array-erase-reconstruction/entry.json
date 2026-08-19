@@ -14,6 +14,6 @@
   "premises": ["An erase index below the source array size", "A represented source Array UInt64", "Thirty-two-bit and current-memory bounds for the target length word and payload", "A target length read equal to the source size minus one", "Target prefix reads equal to source reads at the same indices below the erase index", "Target suffix reads equal to source reads one element later from the erase index through the result end"],
   "result": "The target pointer represents input.eraseIdx! erase as an Array UInt64.",
   "consumers": ["demo-12"],
-  "relatedEntries": ["array-memory-framing", "fixed-array-allocation", "fixed-array-find-idx-eq", "fixed-array-result", "fixed-array-traversal-input"],
+  "relatedEntries": ["array-memory-framing", "fixed-array-allocation", "fixed-array-erase-copy", "fixed-array-find-idx-eq", "fixed-array-result", "fixed-array-traversal-input"],
   "exclusion": null
 }
