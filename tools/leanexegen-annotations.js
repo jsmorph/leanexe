@@ -2293,8 +2293,36 @@ function fixedArrayFindIdxEqRecipe(
         declaration: "Project.ProofKit.FixedArrayFindIdxEq.someFrame",
         purpose: "describe the encoded first matching index and continuation frame",
       },
+      {
+        declaration: "Project.ProofKit.FixedArrayFindIdxEq.encodedIndex",
+        purpose: "name the compiler's index-plus-one result encoding",
+      },
+      {
+        declaration: "Project.ProofKit.FixedArrayFindIdxEq.encodedIndex_eq_ofNat_succ",
+        purpose: "normalize the emitted index-plus-one word under its checked UInt64 bound",
+      },
+      {
+        declaration: "Project.ProofKit.FixedArrayFindIdxEq.encodedIndex_ne_zero",
+        purpose: "select the successful option branch without reducing modular arithmetic",
+      },
+      {
+        declaration: "Project.ProofKit.FixedArrayFindIdxEq.encodedIndex_sub_one",
+        purpose: "decode the successful result word back to the represented index",
+      },
+      {
+        declaration: "Project.ProofKit.FixedArrayFindIdxEq.someFrame_params",
+        purpose: "project the unchanged parameters without unfolding the search frames",
+      },
+      {
+        declaration: "Project.ProofKit.FixedArrayFindIdxEq.someFrame_locals_length",
+        purpose: "project the unchanged local-list length without unfolding the search frames",
+      },
+      {
+        declaration: "Project.ProofKit.FixedArrayFindIdxEq.someFrame_values",
+        purpose: "project the encoded result operand without unfolding the search frames",
+      },
     ],
-    expectedPostcondition: "none encoded as zero or the first matching index encoded as index plus one",
+    expectedPostcondition: "none encoded as zero or the first matching index encoded by encodedIndex",
     guidance: ["strategy.arrays", "strategy.loops", "strategy.frames"]
       .filter((section) => selectedSections.includes(section)),
   };
