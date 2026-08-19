@@ -205,6 +205,54 @@ theorem At.write64After {store : Store Unit} {ptr : UInt64}
   · intro index hIndex
     exact write64_bytes_before store.mem address value hIndex
 
+theorem At.eraseIdx!_of_reads
+    {source target : Store Unit} {sourcePtr targetPtr : UInt64}
+    {input : Array UInt64} {erase : Nat}
+    (hErase : erase < input.size)
+    (hSource : At source sourcePtr input)
+    (hFit32 :
+      targetPtr.toNat + 8 * ((input.size - 1) + 1) ≤ 4294967296)
+    (hFitMemory :
+      targetPtr.toNat + 8 * ((input.size - 1) + 1) ≤
+        target.mem.pages * 65536)
+    (hLength : target.mem.read64 targetPtr.toUInt32 =
+      UInt64.ofNat (input.size - 1))
+    (hPrefix : ∀ j, j < erase →
+      target.mem.read64
+          (targetPtr + UInt64.ofNat (8 * (j + 1))).toUInt32 =
+        source.mem.read64
+          (sourcePtr + UInt64.ofNat (8 * (j + 1))).toUInt32)
+    (hSuffix : ∀ j, erase ≤ j → j < input.size - 1 →
+      target.mem.read64
+          (targetPtr + UInt64.ofNat (8 * (j + 1))).toUInt32 =
+        source.mem.read64
+          (sourcePtr + UInt64.ofNat (8 * (j + 2))).toUInt32) :
+    At target targetPtr (input.eraseIdx! erase) := by
+  have hEraseSize : (input.eraseIdx! erase).size = input.size - 1 := by
+    simp [Array.eraseIdx!, hErase]
+  refine ⟨?_, ?_, ?_, ?_⟩
+  · rw [hEraseSize]
+    exact hFit32
+  · rw [hEraseSize]
+    exact hFitMemory
+  · rw [hEraseSize]
+    exact hLength
+  · intro j hj
+    have hjOut : j < input.size - 1 := by
+      rw [hEraseSize] at hj
+      exact hj
+    by_cases hjPrefix : j < erase
+    · simp only [Array.eraseIdx!, dif_pos hErase]
+      rw [Array.getElem_eraseIdx_of_lt hErase
+        (by simpa [Array.eraseIdx!, hErase] using hj) hjPrefix]
+      exact (hPrefix j hjPrefix).trans (hSource.elementRead j (by omega))
+    · simp only [Array.eraseIdx!, dif_pos hErase]
+      rw [Array.getElem_eraseIdx_of_ge hErase
+        (by simpa [Array.eraseIdx!, hErase] using hj)
+        (Nat.le_of_not_gt hjPrefix)]
+      exact (hSuffix j (Nat.le_of_not_gt hjPrefix) hjOut).trans
+        (by simpa [Nat.add_assoc] using hSource.elementRead (j + 1) (by omega))
+
 theorem singleton {store : Store Unit} {ptr value : UInt64}
     (hFit32 : ptr.toNat + 16 ≤ 4294967296)
     (hFitMemory : ptr.toNat + 16 ≤ store.mem.pages * 65536)
