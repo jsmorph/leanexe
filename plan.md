@@ -25,7 +25,9 @@ The existing fold demonstrations use addition, multiplication, and XOR over clos
 - [x] Review the journal, proof, telemetry, retrieved LTG entries, annotations, and agent revisions together.
 - [x] Retain general or credible recurring abstractions, while classifying narrow material as checked worked examples.
 - [x] Add checked search, erase reconstruction, and exact copy-loop interfaces with matching compiler annotations and structured LTG entries.
-- [ ] Run a clean fixed-artifact reproof against settled ProofKit inputs, then compare proof-generation time and proof structure with the retained baseline without imposing a single timing threshold.
+- [x] Run a clean fixed-artifact reproof against settled ProofKit inputs, then compare proof-generation time and proof structure with the retained baseline without imposing a single timing threshold.
+
+The clean reproof preserved artifact digest `7cdd8adba75d4f076d0a142f824a19a0d34d6a5cedd1a810a417a7fc5789f7b6`, and a separate `tools/leanexegen verify -s` invocation accepted the measured package before the follow-up ProofKit changes.  Stage 5 took 3,987.145392 seconds against the 3,907.231311-second baseline, an increase of 2.045 percent, while the accepted proof fell from 860 to 607 lines, 3,516 to 2,587 words, 39,249 to 28,874 bytes, and 47 to 38 journaled checks.  Seven LTG entries were used and none rejected, while `FixedArrayFindIdxEq.program_spec` and `FixedArrayCopy.eraseIdxProgram_spec` removed all local search, prefix-copy, and shifted-suffix loop invariants.  The journal then led to shared theorems for the dynamic local length store and encoded-index comparison with one.  Erase setup and branch-aware result transfer remain under review.
 
 This phase promotes an annotation recipe or LTG entry only when its statement describes a recurring compiler or WASM motif and transfers beyond one program.  Specific checked examples remain searchable when they teach a distinct proof technique.  Automatic selection requires stronger recurring evidence than catalog retention.
 

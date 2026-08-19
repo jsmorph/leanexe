@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "demo": "demo-12",
+  "artifact": {
+    "sha256": "7cdd8adba75d4f076d0a142f824a19a0d34d6a5cedd1a810a417a7fc5789f7b6",
+    "byteLength": 2183
+  },
+  "baseline": {
+    "package": "program.proof",
+    "acceptedSourceSha256": "43d56ee204a10bf2b11c6914b3c8e881a42a3bf17b9025c6048516b786fe01a2",
+    "stage5Milliseconds": 3907231.311,
+    "codexSessionMilliseconds": 3742213.573,
+    "outerAcceptanceMilliseconds": 140403.479,
+    "proofLines": 860,
+    "proofWords": 3516,
+    "proofBytes": 39249,
+    "journaledChecks": 47,
+    "availableLTGEntryCount": 24,
+    "retainedAsPrimary": true,
+    "independentlyVerified": true
+  },
+  "fullSupportReproof": {
+    "package": "experiments/full-support-reproof.proof",
+    "acceptedSourceSha256": "d46ad1874be99bca553546aa4687633712bd5fa79525d51d8541249a7af7ae72",
+    "stage5Milliseconds": 3987145.392,
+    "codexSessionMilliseconds": 3911236.596,
+    "outerAcceptanceMilliseconds": 58304.144,
+    "stage5DeltaFromBaselineMilliseconds": 79914.081,
+    "stage5DeltaFromBaselinePercent": 2.045,
+    "proofLines": 607,
+    "proofWords": 2587,
+    "proofBytes": 28874,
+    "proofLineDeltaFromBaseline": -253,
+    "proofLineDeltaFromBaselinePercent": -29.419,
+    "proofWordDeltaFromBaseline": -929,
+    "proofWordDeltaFromBaselinePercent": -26.422,
+    "proofByteDeltaFromBaseline": -10375,
+    "proofByteDeltaFromBaselinePercent": -26.434,
+    "journaledChecks": 38,
+    "journaledCheckDeltaFromBaseline": -9,
+    "journaledCheckDeltaFromBaselinePercent": -19.149,
+    "usedLTGEntryCount": 7,
+    "rejectedLTGEntryCount": 0,
+    "availableLTGEntryCount": 27,
+    "localSearchPrefixSuffixLoopInvariantCount": 0,
+    "timingImprovement": false,
+    "proofSizeImprovement": true,
+    "structuralImprovement": true,
+    "retainedAsPrimary": false,
+    "fixedArtifactComparison": true,
+    "independentlyVerified": true
+  }
+}

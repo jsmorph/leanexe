@@ -29,6 +29,15 @@ theorem encodedIndex_ne_zero {index : Nat}
   rw [UInt64.toNat_ofNat_of_lt' h] at hNat
   simp at hNat
 
+theorem encodedIndex_not_lt_one {index : Nat}
+    (h : index + 1 < UInt64.size) :
+    ¬ encodedIndex index < (1 : UInt64) := by
+  rw [encodedIndex_eq_ofNat_succ h, UInt64.lt_iff_toNat_lt,
+    UInt64.toNat_ofNat_of_lt' h]
+  have hOne : (1 : UInt64).toNat = 1 := rfl
+  rw [hOne]
+  omega
+
 @[simp]
 theorem encodedIndex_sub_one (index : Nat) :
     encodedIndex index - 1 = UInt64.ofNat index := by
