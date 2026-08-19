@@ -5,6 +5,7 @@ import Project.ProofKit.FixedArrayAllocator
 import Project.ProofKit.FixedArrayAllocatorWindow
 import Project.ProofKit.FixedArrayCapacity
 import Project.ProofKit.FixedArrayFilterLt
+import Project.ProofKit.FixedArrayFindIdxEq
 import Project.ProofKit.FixedArrayFold
 import Project.ProofKit.FixedArrayFoldBody
 import Project.ProofKit.FixedArrayLengthDispatch
@@ -47,6 +48,11 @@ import Project.ProofKit.ScalarTransitionU64
 #check Project.ProofKit.FixedArrayFilterLt.heapReserveBytes
 #check Project.ProofKit.FixedArrayFilterLt.wrapperProgram
 #check Project.ProofKit.FixedArrayFilterLt.wrapperProgram_spec
+#check Project.ProofKit.FixedArrayFindIdxEq.noneFrame
+#check Project.ProofKit.FixedArrayFindIdxEq.predicate
+#check Project.ProofKit.FixedArrayFindIdxEq.program
+#check Project.ProofKit.FixedArrayFindIdxEq.program_spec
+#check Project.ProofKit.FixedArrayFindIdxEq.someFrame
 #check Project.ProofKit.FixedArrayFold.forwardSetupFrame
 #check Project.ProofKit.FixedArrayFold.forwardSetupProgram_spec
 #check Project.ProofKit.FixedArrayFold.resultFrame
@@ -94,6 +100,7 @@ import Project.ProofKit.ScalarTransitionU64
 #check Project.ProofKit.ScalarTransition.guardedBackEdgeProgram
 #check Project.ProofKit.ScalarTransition.guardedBackEdgeProgram_spec
 #check Project.ProofKit.ScalarTransition.postTestProgram_spec
+#check Project.ProofKit.UInt64Array.At.eraseIdx!_of_reads
 #check Project.ProofKit.UInt64Array.At.frameBefore
 #check Project.ProofKit.UInt64Array.At.generatedElement
 #check Project.ProofKit.UInt64Array.At.write64After

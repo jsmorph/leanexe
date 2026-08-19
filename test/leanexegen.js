@@ -1049,6 +1049,152 @@ function testLengthDispatchAnnotationRecipes() {
     /encoding is unsupported/);
 }
 
+function testFindIdxEqAnnotationRecipe() {
+  const wasm = Buffer.from([0, 97, 115, 109, 1, 0, 0, 0]);
+  const document = {
+    schemaVersion: 1,
+    artifact: { byteLength: wasm.length },
+    functions: [{
+      wasmIndex: 0,
+      definedFunction: 0,
+      sourceName: "Example.compute",
+      exports: ["compute"],
+      parameters: 1,
+      results: 1,
+      locals: 11,
+      regions: [{
+        id: "function-0.find-idx-eq-0",
+        kind: "leanexe.array.find-idx-eq.v1",
+        location: {
+          listPath: [{ instructionIndex: 1, field: "then" }],
+          startIndex: 0,
+          endIndex: 12,
+        },
+        parameters: {
+          scratchStart: 8,
+          sourceWidth: 1,
+          inputLocal: 0,
+          itemLocal: 1,
+          key: "37",
+          resultEncoding: "none-zero-some-index-plus-one-v1",
+          continuation: "fallthrough",
+        },
+        generatedBy: [
+          "LeanExe.Wasm.Binary.CoreWasm.emitArrayFindIdxSlots",
+          "LeanExe.Wasm.Binary.CoreWasm.emitStmtAnnotated",
+        ],
+      }],
+    }],
+  };
+  const program = `def func0 : Wasm.Program :=
+  [
+  .constI64 (1 : UInt64),
+  .iff 0 0 [
+    .localGet 0,
+    .localSet 8,
+    .localGet 8,
+    .wrapI64,
+    .load64 (0 : UInt32),
+    .localSet 9,
+    .constI64 (0 : UInt64),
+    .localSet 10,
+    .constI64 (0 : UInt64),
+    .localSet 11,
+    .block 0 0 [
+      .loop 0 0 [
+        .localGet 10,
+        .localGet 9,
+        .geUI64,
+        .br_if 1,
+        .localGet 8,
+        .localGet 10,
+        .constI64 (1 : UInt64),
+        .mulI64,
+        .constI64 (1 : UInt64),
+        .addI64,
+        .constI64 (8 : UInt64),
+        .mulI64,
+        .addI64,
+        .wrapI64,
+        .load64 (0 : UInt32),
+        .localSet 1,
+        .localGet 1,
+        .constI64 (37 : UInt64),
+        .eqI64,
+        .iff 0 1 [
+          .constI64 (1 : UInt64)
+        ] [
+          .constI64 (0 : UInt64)
+        ],
+        .constI64 (0 : UInt64),
+        .neI64,
+        .iff 0 0 [
+          .localGet 10,
+          .constI64 (1 : UInt64),
+          .addI64,
+          .localSet 11,
+          .br 2
+        ] [
+        ],
+        .localGet 10,
+        .constI64 (1 : UInt64),
+        .addI64,
+        .localSet 10,
+        .br 0
+      ]
+    ],
+    .localGet 11,
+    .localSet 2,
+    .localGet 2
+  ] [
+    .constI64 (0 : UInt64),
+    .localSet 2
+  ],
+  .localGet 2
+  ]
+
+def func0Def : Wasm.Function :=
+  { params := [.i64], locals := [.i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64], body := func0, results := [.i64] }
+`;
+  validateAnnotationDocument(document, wasm);
+  const plan = proofRecipePlan(document, program, [
+    "strategy.arrays", "strategy.loops", "strategy.frames",
+  ]);
+  validateProofRecipePlan(plan, document);
+  const recipe = plan.recipes[0];
+  assert(plan.recipes.length === 1 &&
+    recipe.direct.theorem === "Project.ProofKit.FixedArrayFindIdxEq.program_spec" &&
+    recipe.direct.program.endsWith(".function_0_find_idx_eq_0_program") &&
+    recipe.direct.regionEquality.endsWith(".function_0_find_idx_eq_0_eq") &&
+    JSON.stringify(recipe.guidance) === JSON.stringify([
+      "strategy.arrays", "strategy.loops", "strategy.frames",
+    ]), "find-index annotation did not select its checked proof recipe");
+  const source = annotationMatchesSource(document, {
+    namespace: "Example.Generated",
+    programModule: "Example.Generated.Program",
+  }, program).source;
+  assert(source.includes("import Project.ProofKit.FixedArrayFindIdxEq") &&
+    source.includes("def function_0_find_idx_eq_0_program : Wasm.Program") &&
+    source.includes("Project.ProofKit.FixedArrayFindIdxEq.program\n    8 37") &&
+    source.includes("theorem function_0_find_idx_eq_0_eq"),
+  "find-index annotation did not generate its program equality");
+  const strategyProgram = `${program}\n\ndef «module» : Wasm.Module := {}`;
+  const features = proofStrategyBundle(strategyProgram, 0, {
+    annotations: document,
+  }).features.reachableFunctions[0];
+  assert(JSON.stringify(features.fixedArrayFindIdxEqs) === JSON.stringify([{
+    scratchStart: 8,
+    sourceWidth: 1,
+    inputLocal: 0,
+    itemLocal: 1,
+    key: "37",
+    resultEncoding: "none-zero-some-index-plus-one-v1",
+  }]), "proof-task features omitted the checked find-index expression");
+  expectFailure(() => proofRecipePlan(document,
+    program.replace(".constI64 (37 : UInt64),", ".constI64 (38 : UInt64),")),
+  /find-index loop does not match/);
+}
+
 function testConstantCapacityAnnotationRecipes() {
   const demoRoot = path.join(repoRoot, "demos", "demo-9");
   const wasm = fs.readFileSync(path.join(demoRoot, "program.wasm"));
@@ -3171,6 +3317,7 @@ try {
   testStage5Telemetry();
   testAnnotationRecipePlan();
   testLengthDispatchAnnotationRecipes();
+  testFindIdxEqAnnotationRecipe();
   testConstantCapacityAnnotationRecipes();
   testMapAddAnnotationRecipe();
   testFilterLtAnnotationRecipe();

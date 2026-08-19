@@ -71,7 +71,7 @@ const verifier = path.join(verifierRoot, ".lake", "build", "bin", "verifier");
 const dumpRaw = path.join(projectRoot, "Artifact", "Binary", "DumpRaw.lean");
 const proofKitCatalogPath = path.join(projectRoot, "ProofKit", "README.md");
 const proofStrategiesPath = path.join(repoRoot, "docs", "proof-strategies.md");
-const strategyExtractorVersion = 7;
+const strategyExtractorVersion = 8;
 const artifactProofTaskTimeoutMs = 4 * 60 * 60 * 1000;
 const maximumTaskSessions = 1;
 const allowedAxioms = new Set([
@@ -1000,6 +1000,16 @@ function programFunctionFeatures(program, annotationMatches = []) {
           inputLocal: item.parameters.inputLocal,
           expectedSize: item.parameters.expectedSize,
           encoding: item.parameters.encoding,
+        })),
+      fixedArrayFindIdxEqs: functionMatches
+        .filter((item) => item.regionKind === "leanexe.array.find-idx-eq.v1")
+        .map((item) => ({
+          scratchStart: item.parameters.scratchStart,
+          sourceWidth: item.parameters.sourceWidth,
+          inputLocal: item.parameters.inputLocal,
+          itemLocal: item.parameters.itemLocal,
+          key: item.parameters.key,
+          resultEncoding: item.parameters.resultEncoding,
         })),
     });
   }

@@ -23,7 +23,7 @@ The existing fold demonstrations use addition, multiplication, and XOR over clos
 - [x] Select the bounded first-zero removal program as the structurally different evaluation.
 - [x] Generate and independently accept a direct artifact proof without changing the frozen WASM.
 - [x] Review the journal, proof, telemetry, retrieved LTG entries, annotations, and agent revisions together.
-- [ ] Retain general or credible recurring abstractions, while classifying narrow material as checked worked examples.
+- [x] Retain general or credible recurring abstractions, while classifying narrow material as checked worked examples.
 - [ ] Compare proof-generation time and proof structure with the relevant retained evidence without imposing a single timing threshold.
 
 This phase promotes an annotation recipe or LTG entry only when its statement describes a recurring compiler or WASM motif and transfers beyond one program.  Specific checked examples remain searchable when they teach a distinct proof technique.  Automatic selection requires stronger recurring evidence than catalog retention.
