@@ -50,7 +50,7 @@ The option changes no frozen source, formal specification, compiler output, deco
 
 ### Controlled annotation
 
-The `annotate` command recompiles a frozen package's `Source` with the current compiler, requires byte-for-byte equality with the frozen WASM, validates the complete compiler sidecar against the decoded program, and generates checked region equalities.  `--only-region` then retains one named semantic region, along with every direct-call region required for complete call coverage, and may occur more than once.  An unknown, duplicate, or ambiguous region name fails package creation, while a calls-only baseline can name the required direct-call regions without selecting another semantic region.
+The `annotate` command recompiles a frozen package's `Source` with the current compiler, requires byte-for-byte equality with the frozen WASM, validates the complete compiler sidecar against the decoded program, and generates checked region equalities.  An erase-copy match generates separate prefix, shifted-suffix, and combined equalities to `Project.ProofKit.FixedArrayCopy`, while its recipe names the combined theorem and width-one erase adapter.  `--only-region` retains one named semantic region, along with every direct-call region required for complete call coverage, and may occur more than once.  An unknown, duplicate, or ambiguous region name fails package creation, while a calls-only baseline can name the required direct-call regions without selecting another semantic region.
 
 ```sh
 tools/leanexegen annotate \
@@ -104,7 +104,7 @@ The [knowledge forest](ltg.md) contains separately versioned packages of checked
 
 `PROOF_KIT_SOURCE/` mirrors the allowed proof-kit modules inside the isolated task workspace.  The proving agent searches that bounded directory when a selected knowledge entry names a ProofKit declaration, while package-local modules appear at their Lean module paths and under the archived package.  The proof-kit source digest identifies the shared implementation, and the knowledge-task digest identifies every selected package-local source.  The published `knowledge-evaluation.json` binds the agent's used and rejected entries to that task digest, the accepted proof digest, proof size, and Stage 5 time.
 
-The [artifact-proof strategy notes](proof-strategies.md) describe proof structures distilled from accepted Talos proofs.  Leanexegen computes generic control and resource features from the frozen `Program`, then derives equality-node, search-key, length-dispatch, and literal-key first-match features from the annotation matcher that checks those regions against the decoded instructions.  It supplies only the matching marked sections, and the generated `Behavior` module must contain every checked proof term used by the artifact theorem.
+The [artifact-proof strategy notes](proof-strategies.md) describe proof structures distilled from accepted Talos proofs.  Extractor version nine computes generic control and resource features from the frozen `Program`, then derives equality-node, search-key, length-dispatch, literal-key first-match, and erase-copy features from the annotation matcher that checks those regions against the decoded instructions.  The erase-copy feature records source width and the source, target, prefix-count, suffix-count, and counter locals.  Leanexegen supplies only the matching marked sections, and the generated `Behavior` module must contain every checked proof term used by the artifact theorem.
 
 ## Fixed array interface
 

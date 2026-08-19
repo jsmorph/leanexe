@@ -171,6 +171,36 @@ function validateFixedArrayFindIdxEq(region, description) {
   }
 }
 
+function validateFixedArrayEraseCopy(region, description) {
+  exactKeys(region, ["generatedBy", "id", "kind", "location", "parameters"], description);
+  string(region.id, `${description}.id`);
+  if (region.kind !== "leanexe.array.erase-copy.v1") {
+    fail(`${description}.kind is unsupported`);
+  }
+  validateRegionLocation(region, description);
+  if (region.location.endIndex - region.location.startIndex !== 6) {
+    fail(`${description}.location must contain the exact erase-copy region`);
+  }
+  exactKeys(region.parameters, [
+    "continuation", "counterLocal", "prefixCellsLocal", "sourceLocal", "sourceWidth",
+    "suffixCellsLocal", "targetLocal",
+  ], `${description}.parameters`);
+  const parameters = region.parameters;
+  for (const key of [
+    "sourceWidth", "sourceLocal", "targetLocal", "prefixCellsLocal",
+    "suffixCellsLocal", "counterLocal",
+  ]) {
+    natural(parameters[key], `${description}.parameters.${key}`);
+  }
+  if (parameters.sourceWidth === 0 || parameters.continuation !== "fallthrough") {
+    fail(`${description}.parameters has an unsupported erase-copy region`);
+  }
+  for (const [index, generator] of array(
+    region.generatedBy, `${description}.generatedBy`).entries()) {
+    string(generator, `${description}.generatedBy[${index}]`);
+  }
+}
+
 function validateFixedArraySearchKey(region, description) {
   exactKeys(region, ["generatedBy", "id", "kind", "location", "parameters"], description);
   string(region.id, `${description}.id`);
@@ -814,6 +844,8 @@ function validateAnnotationDocument(document, wasmBytes) {
         validateFixedArrayLengthDispatch(region, `${description}.regions[${regionIndex}]`);
       } else if (region?.kind === "leanexe.array.find-idx-eq.v1") {
         validateFixedArrayFindIdxEq(region, `${description}.regions[${regionIndex}]`);
+      } else if (region?.kind === "leanexe.array.erase-copy.v1") {
+        validateFixedArrayEraseCopy(region, `${description}.regions[${regionIndex}]`);
       } else if (region?.kind === "leanexe.array.search-key.v1") {
         validateFixedArraySearchKey(region, `${description}.regions[${regionIndex}]`);
       } else if (region?.kind === "leanexe.array.eq-node.v1") {
@@ -1242,6 +1274,122 @@ function matchFixedArrayFindIdxEqRegion(program, function_, region) {
     ".br 2",
   ]) || notFound.length !== 0) {
     fail(`${region.id}: find-index result branches do not match`);
+  }
+  return {
+    functionIndex: function_.wasmIndex,
+    regionId: region.id,
+    regionKind: region.kind,
+    parameters,
+  };
+}
+
+function matchFixedArrayEraseCopyRegion(program, function_, region) {
+  const body = programFunctionBody(program, function_.wasmIndex);
+  const instructions = resolveInstructionList(body, region.location.listPath);
+  const selected = normalizeInstructions(
+    instructions.slice(region.location.startIndex, region.location.endIndex));
+  const parameters = region.parameters;
+  const expected = [
+    ".constI64 (0 : UInt64)",
+    `.localSet ${parameters.counterLocal}`,
+    ".block 0 0 [",
+    ".constI64 (0 : UInt64)",
+    `.localSet ${parameters.counterLocal}`,
+    ".block 0 0 [",
+  ];
+  if (JSON.stringify(selected) !== JSON.stringify(expected)) {
+    fail(`${region.id}: decoded instructions do not match the erase-copy annotation`);
+  }
+  const prefixBlockPath = [
+    ...region.location.listPath,
+    { instructionIndex: region.location.startIndex + 2, field: "block" },
+  ];
+  const suffixBlockPath = [
+    ...region.location.listPath,
+    { instructionIndex: region.location.startIndex + 5, field: "block" },
+  ];
+  for (const [name, blockPath] of [
+    ["prefix", prefixBlockPath], ["suffix", suffixBlockPath],
+  ]) {
+    if (JSON.stringify(normalizeInstructions(resolveInstructionList(body, blockPath))) !==
+        JSON.stringify([".loop 0 0 ["])) {
+      fail(`${region.id}: decoded erase-copy ${name} block does not match`);
+    }
+  }
+  const prefixLoop = normalizeInstructions(resolveInstructionList(body, [
+    ...prefixBlockPath, { instructionIndex: 0, field: "loop" },
+  ]));
+  const suffixLoop = normalizeInstructions(resolveInstructionList(body, [
+    ...suffixBlockPath, { instructionIndex: 0, field: "loop" },
+  ]));
+  const counterStep = [
+    `.localGet ${parameters.counterLocal}`,
+    ".constI64 (1 : UInt64)",
+    ".addI64",
+    `.localSet ${parameters.counterLocal}`,
+    ".br 0",
+  ];
+  const expectedPrefixLoop = [
+    `.localGet ${parameters.counterLocal}`,
+    `.localGet ${parameters.prefixCellsLocal}`,
+    ".geUI64",
+    ".br_if 1",
+    `.localGet ${parameters.targetLocal}`,
+    `.localGet ${parameters.counterLocal}`,
+    ".constI64 (1 : UInt64)",
+    ".addI64",
+    ".constI64 (8 : UInt64)",
+    ".mulI64",
+    ".addI64",
+    ".wrapI64",
+    `.localGet ${parameters.sourceLocal}`,
+    `.localGet ${parameters.counterLocal}`,
+    ".constI64 (1 : UInt64)",
+    ".addI64",
+    ".constI64 (8 : UInt64)",
+    ".mulI64",
+    ".addI64",
+    ".wrapI64",
+    ".load64 (0 : UInt32)",
+    ".store64 (0 : UInt32)",
+    ...counterStep,
+  ];
+  const expectedSuffixLoop = [
+    `.localGet ${parameters.counterLocal}`,
+    `.localGet ${parameters.suffixCellsLocal}`,
+    ".geUI64",
+    ".br_if 1",
+    `.localGet ${parameters.targetLocal}`,
+    `.localGet ${parameters.prefixCellsLocal}`,
+    `.localGet ${parameters.counterLocal}`,
+    ".addI64",
+    ".constI64 (1 : UInt64)",
+    ".addI64",
+    ".constI64 (8 : UInt64)",
+    ".mulI64",
+    ".addI64",
+    ".wrapI64",
+    `.localGet ${parameters.sourceLocal}`,
+    `.localGet ${parameters.prefixCellsLocal}`,
+    `.constI64 (${parameters.sourceWidth} : UInt64)`,
+    ".addI64",
+    `.localGet ${parameters.counterLocal}`,
+    ".addI64",
+    ".constI64 (1 : UInt64)",
+    ".addI64",
+    ".constI64 (8 : UInt64)",
+    ".mulI64",
+    ".addI64",
+    ".wrapI64",
+    ".load64 (0 : UInt32)",
+    ".store64 (0 : UInt32)",
+    ...counterStep,
+  ];
+  if (JSON.stringify(prefixLoop) !== JSON.stringify(expectedPrefixLoop)) {
+    fail(`${region.id}: decoded erase-copy prefix loop does not match`);
+  }
+  if (JSON.stringify(suffixLoop) !== JSON.stringify(expectedSuffixLoop)) {
+    fail(`${region.id}: decoded erase-copy suffix loop does not match`);
   }
   return {
     functionIndex: function_.wasmIndex,
@@ -2328,6 +2476,65 @@ function fixedArrayFindIdxEqRecipe(
   };
 }
 
+function fixedArrayEraseCopyRecipe(
+    match, selectedSections = [], annotationNamespace = "Project.AnnotationMatches") {
+  const name = match.regionId.replace(/[^A-Za-z0-9_]/g, "_");
+  return {
+    recipeVersion: 1,
+    functionIndex: match.functionIndex,
+    regionId: match.regionId,
+    regionKind: match.regionKind,
+    applicability: "Lean-checked equality over the decoded instruction region",
+    direct: {
+      module: "Project.ProofKit.FixedArrayCopy",
+      theorem: "Project.ProofKit.FixedArrayCopy.program_spec",
+      regionEquality: `${annotationNamespace}.${name}_eq`,
+      program: `${annotationNamespace}.${name}_program`,
+    },
+    supporting: [
+      {
+        declaration: "Project.ProofKit.Annotation.region",
+        purpose: "select the two exact copy loops after allocation and the result-length store",
+      },
+      {
+        declaration: `${annotationNamespace}.${name}_prefix_eq`,
+        purpose: "check the prefix-copy half of the selected region",
+      },
+      {
+        declaration: `${annotationNamespace}.${name}_suffix_eq`,
+        purpose: "check the shifted-suffix half of the selected region",
+      },
+      {
+        declaration: "Project.ProofKit.FixedArrayCopy.prefixProgram_spec",
+        purpose: "copy the cells before the removed element",
+      },
+      {
+        declaration: "Project.ProofKit.FixedArrayCopy.suffixProgram_spec",
+        purpose: "copy later cells after skipping one source element",
+      },
+      {
+        declaration: "Project.ProofKit.FixedArrayCopy.eraseIdxProgram_spec",
+        purpose: "specialize the one-word copy pair to an in-bounds Array.eraseIdx! result",
+      },
+      {
+        declaration: "Project.ProofKit.UInt64Array.At.eraseIdx!_of_reads",
+        purpose: "reconstruct the one-word result representation from prefix and shifted-suffix reads",
+      },
+      {
+        declaration: "Project.ProofKit.FixedArrayCopy.cellRead",
+        purpose: "state source and target cell facts at the program theorem boundary",
+      },
+      {
+        declaration: "Project.ProofKit.FixedArrayCopy.counterFrame",
+        purpose: "state the loop pair's final combined-local frame",
+      },
+    ],
+    expectedPostcondition: "prefix cells copied unchanged and suffix cells shifted by sourceWidth",
+    guidance: ["strategy.arrays", "strategy.loops", "strategy.memory", "strategy.frames"]
+      .filter((section) => selectedSections.includes(section)),
+  };
+}
+
 function fixedArraySearchKeyRecipe(match, selectedSections = []) {
   return {
     recipeVersion: 1,
@@ -2606,6 +2813,9 @@ function proofRecipePlan(
       } else if (region.kind === "leanexe.array.find-idx-eq.v1") {
         recipes.push(fixedArrayFindIdxEqRecipe(
           matches.get(region.id), selectedSections, annotationNamespace));
+      } else if (region.kind === "leanexe.array.erase-copy.v1") {
+        recipes.push(fixedArrayEraseCopyRecipe(
+          matches.get(region.id), selectedSections, annotationNamespace));
       } else if (region.kind === "leanexe.array.search-key.v1") {
         recipes.push(fixedArraySearchKeyRecipe(
           matches.get(region.id), selectedSections));
@@ -2696,6 +2906,8 @@ function matchAnnotationDocument(document, program) {
         matches.push(matchFixedArrayLengthDispatchRegion(program, function_, region));
       } else if (region.kind === "leanexe.array.find-idx-eq.v1") {
         matches.push(matchFixedArrayFindIdxEqRegion(program, function_, region));
+      } else if (region.kind === "leanexe.array.erase-copy.v1") {
+        matches.push(matchFixedArrayEraseCopyRegion(program, function_, region));
       } else if (region.kind === "leanexe.array.search-key.v1") {
         matches.push(matchFixedArraySearchKeyRegion(program, function_, region));
       } else if (region.kind === "leanexe.array.eq-node.v1") {
@@ -2841,7 +3053,8 @@ function validateProofRecipePlan(plan, document) {
       recipe.direct.regionEquality !== undefined &&
       recipe.direct.program !== undefined;
     const expectedApplicability = [
-      "leanexe.array.find-idx-eq.v1", "leanexe.array.pair-result.v1",
+      "leanexe.array.find-idx-eq.v1", "leanexe.array.erase-copy.v1",
+      "leanexe.array.pair-result.v1",
       "leanexe.array.map-add.v1",
       "leanexe.array.filter-lt.v1",
     ].includes(region.kind) || checkedScalarLoop || checkedArrayFold
@@ -2897,6 +3110,14 @@ function validateProofRecipePlan(plan, document) {
       const name = recipe.regionId.replace(/[^A-Za-z0-9_]/g, "_");
       if (recipe.direct.module !== "Project.ProofKit.FixedArrayFindIdxEq" ||
           recipe.direct.theorem !== "Project.ProofKit.FixedArrayFindIdxEq.program_spec" ||
+          !recipe.direct.regionEquality.endsWith(`.${name}_eq`) ||
+          !recipe.direct.program.endsWith(`.${name}_program`)) {
+        fail(`${description}.direct is unsupported`);
+      }
+    } else if (region.kind === "leanexe.array.erase-copy.v1") {
+      const name = recipe.regionId.replace(/[^A-Za-z0-9_]/g, "_");
+      if (recipe.direct.module !== "Project.ProofKit.FixedArrayCopy" ||
+          recipe.direct.theorem !== "Project.ProofKit.FixedArrayCopy.program_spec" ||
           !recipe.direct.regionEquality.endsWith(`.${name}_eq`) ||
           !recipe.direct.program.endsWith(`.${name}_program`)) {
         fail(`${description}.direct is unsupported`);
@@ -4360,6 +4581,45 @@ theorem ${name}_eq :
   rfl`);
         continue;
       }
+      if (region.kind === "leanexe.array.erase-copy.v1") {
+        const parameters = region.parameters;
+        const name = region.id.replace(/[^A-Za-z0-9_]/g, "_");
+        declarations.push(`def ${name}_prefix_program : Wasm.Program :=
+  Project.ProofKit.FixedArrayCopy.prefixProgram
+    ${parameters.sourceLocal} ${parameters.targetLocal}
+    ${parameters.prefixCellsLocal} ${parameters.counterLocal}
+
+def ${name}_suffix_program : Wasm.Program :=
+  Project.ProofKit.FixedArrayCopy.suffixProgram
+    ${parameters.sourceWidth} ${parameters.sourceLocal} ${parameters.targetLocal}
+    ${parameters.prefixCellsLocal} ${parameters.suffixCellsLocal}
+    ${parameters.counterLocal}
+
+def ${name}_program : Wasm.Program :=
+  Project.ProofKit.FixedArrayCopy.program
+    ${parameters.sourceWidth} ${parameters.sourceLocal} ${parameters.targetLocal}
+    ${parameters.prefixCellsLocal} ${parameters.suffixCellsLocal}
+    ${parameters.counterLocal}
+
+theorem ${name}_prefix_eq :
+    Project.ProofKit.Annotation.region ${job.namespace}.func${function_.wasmIndex}
+      ${leanAnnotationPath(region.location.listPath)} ${region.location.startIndex}
+      ${region.location.startIndex + 3} = some ${name}_prefix_program := by
+  rfl
+
+theorem ${name}_suffix_eq :
+    Project.ProofKit.Annotation.region ${job.namespace}.func${function_.wasmIndex}
+      ${leanAnnotationPath(region.location.listPath)} ${region.location.startIndex + 3}
+      ${region.location.endIndex} = some ${name}_suffix_program := by
+  rfl
+
+theorem ${name}_eq :
+    Project.ProofKit.Annotation.region ${job.namespace}.func${function_.wasmIndex}
+      ${leanAnnotationPath(region.location.listPath)} ${region.location.startIndex}
+      ${region.location.endIndex} = some ${name}_program := by
+  rfl`);
+        continue;
+      }
       if ([
         "leanexe.loop.while.v1", "leanexe.loop.scalar-post-test.v1",
       ].includes(region.kind) && region.parameters.descriptor !== null) {
@@ -4601,6 +4861,9 @@ import Project.ProofKit.FixedArrayPairResult
 ${document.functions.some((function_) => function_.regions.some((region) =>
     region.kind === "leanexe.array.find-idx-eq.v1"))
     ? "import Project.ProofKit.FixedArrayFindIdxEq\n" : ""}
+${document.functions.some((function_) => function_.regions.some((region) =>
+    region.kind === "leanexe.array.erase-copy.v1"))
+    ? "import Project.ProofKit.FixedArrayCopy\n" : ""}
 ${needsScalarTransition ? "import Project.ProofKit.ScalarTransition\n" +
   "import Project.ProofKit.ScalarTransitionU64\n" : ""}
 ${program !== null && document.functions.some((function_) => function_.regions.some((region) =>
@@ -4650,6 +4913,7 @@ end ${job.namespace}.AnnotationMatches
 module.exports = {
   annotationMatchesSource,
   directCallRecipe,
+  fixedArrayEraseCopyRecipe,
   fixedArrayEqNodeRecipe,
   fixedArrayFindIdxEqRecipe,
   fixedArrayLengthDispatchRecipe,
@@ -4665,6 +4929,7 @@ module.exports = {
   matchAnnotationDocument,
   matchArrayFoldRegion,
   matchDirectCallRegion,
+  matchFixedArrayEraseCopyRegion,
   matchFixedArrayEqNodeRegion,
   matchFixedArrayFindIdxEqRegion,
   matchFixedArrayLengthDispatchRegion,

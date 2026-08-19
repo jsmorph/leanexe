@@ -1195,6 +1195,217 @@ def func0Def : Wasm.Function :=
   /find-index loop does not match/);
 }
 
+function eraseCopyProgram(sourceWidth, suffixSkip = sourceWidth) {
+  return `def func0 : Wasm.Program :=
+  [
+  .localGet 0,
+  .localSet 3,
+  .constI64 (1 : UInt64),
+  .localSet 4,
+  .localGet 4,
+  .localGet 3,
+  .wrapI64,
+  .load64 (0 : UInt32),
+  .ltUI64,
+  .iff 0 1 [
+    .localGet 3,
+    .localSet 8,
+    .localGet 4,
+    .localSet 9,
+    .localGet 8,
+    .wrapI64,
+    .load64 (0 : UInt32),
+    .localSet 10,
+    .localGet 9,
+    .localGet 10,
+    .ltUI64,
+    .iff 0 1 [
+      .localGet 14,
+      .wrapI64,
+      .localGet 13,
+      .store64 (0 : UInt32),
+      .constI64 (0 : UInt64),
+      .localSet 15,
+      .block 0 0 [
+        .loop 0 0 [
+          .localGet 15,
+          .localGet 11,
+          .geUI64,
+          .br_if 1,
+          .localGet 14,
+          .localGet 15,
+          .constI64 (1 : UInt64),
+          .addI64,
+          .constI64 (8 : UInt64),
+          .mulI64,
+          .addI64,
+          .wrapI64,
+          .localGet 8,
+          .localGet 15,
+          .constI64 (1 : UInt64),
+          .addI64,
+          .constI64 (8 : UInt64),
+          .mulI64,
+          .addI64,
+          .wrapI64,
+          .load64 (0 : UInt32),
+          .store64 (0 : UInt32),
+          .localGet 15,
+          .constI64 (1 : UInt64),
+          .addI64,
+          .localSet 15,
+          .br 0
+        ]
+      ],
+      .constI64 (0 : UInt64),
+      .localSet 15,
+      .block 0 0 [
+        .loop 0 0 [
+          .localGet 15,
+          .localGet 12,
+          .geUI64,
+          .br_if 1,
+          .localGet 14,
+          .localGet 11,
+          .localGet 15,
+          .addI64,
+          .constI64 (1 : UInt64),
+          .addI64,
+          .constI64 (8 : UInt64),
+          .mulI64,
+          .addI64,
+          .wrapI64,
+          .localGet 8,
+          .localGet 11,
+          .constI64 (${suffixSkip} : UInt64),
+          .addI64,
+          .localGet 15,
+          .addI64,
+          .constI64 (1 : UInt64),
+          .addI64,
+          .constI64 (8 : UInt64),
+          .mulI64,
+          .addI64,
+          .wrapI64,
+          .load64 (0 : UInt32),
+          .store64 (0 : UInt32),
+          .localGet 15,
+          .constI64 (1 : UInt64),
+          .addI64,
+          .localSet 15,
+          .br 0
+        ]
+      ],
+      .localGet 14
+    ] [
+      .localGet 8
+    ]
+  ] [
+    .unreachable
+  ],
+  .localSet 5,
+  .localGet 5
+  ]
+
+def func0Def : Wasm.Function :=
+  { params := [.i64], locals := [.i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64], body := func0, results := [.i64] }
+`;
+}
+
+function eraseCopyDocument(wasm, sourceWidth) {
+  return {
+    schemaVersion: 1,
+    artifact: { byteLength: wasm.length },
+    functions: [{
+      wasmIndex: 0,
+      definedFunction: 0,
+      sourceName: "Example.compute",
+      exports: ["compute"],
+      parameters: 1,
+      results: 1,
+      locals: 16,
+      regions: [{
+        id: "function-0.erase-copy-0",
+        kind: "leanexe.array.erase-copy.v1",
+        location: {
+          listPath: [
+            { instructionIndex: 9, field: "then" },
+            { instructionIndex: 11, field: "then" },
+          ],
+          startIndex: 4,
+          endIndex: 10,
+        },
+        parameters: {
+          sourceWidth,
+          sourceLocal: 8,
+          targetLocal: 14,
+          prefixCellsLocal: 11,
+          suffixCellsLocal: 12,
+          counterLocal: 15,
+          continuation: "fallthrough",
+        },
+        generatedBy: [
+          "LeanExe.Wasm.Binary.CoreWasm.emitCopyLoop",
+          "LeanExe.Wasm.Binary.CoreWasm.emitRangeCopyLoop",
+          "LeanExe.Wasm.Binary.CoreWasm.emitArrayEraseIfInBoundsSlots",
+          "LeanExe.Wasm.Binary.CoreWasm.emitStmtAnnotated",
+        ],
+      }],
+    }],
+  };
+}
+
+function testEraseCopyAnnotationRecipe() {
+  const wasm = Buffer.from([0, 97, 115, 109, 1, 0, 0, 0]);
+  for (const sourceWidth of [1, 5]) {
+    const document = eraseCopyDocument(wasm, sourceWidth);
+    const program = eraseCopyProgram(sourceWidth);
+    validateAnnotationDocument(document, wasm);
+    const plan = proofRecipePlan(document, program, [
+      "strategy.arrays", "strategy.loops", "strategy.memory", "strategy.frames",
+    ], "Example.Generated.AnnotationMatches");
+    validateProofRecipePlan(plan, document);
+    const recipe = plan.recipes[0];
+    assert(plan.recipes.length === 1 &&
+      recipe.direct.module === "Project.ProofKit.FixedArrayCopy" &&
+      recipe.direct.theorem === "Project.ProofKit.FixedArrayCopy.program_spec" &&
+      recipe.direct.program.endsWith(".function_0_erase_copy_0_program") &&
+      recipe.direct.regionEquality.endsWith(".function_0_erase_copy_0_eq") &&
+      recipe.supporting.some((item) =>
+        item.declaration === "Project.ProofKit.FixedArrayCopy.prefixProgram_spec") &&
+      recipe.supporting.some((item) =>
+        item.declaration === "Project.ProofKit.FixedArrayCopy.suffixProgram_spec") &&
+      recipe.supporting.some((item) =>
+        item.declaration === "Project.ProofKit.FixedArrayCopy.eraseIdxProgram_spec"),
+    `width-${sourceWidth} erase-copy annotation omitted its checked proof support`);
+    const source = annotationMatchesSource(document, {
+      namespace: "Example.Generated",
+      programModule: "Example.Generated.Program",
+    }, program).source;
+    assert(source.includes("import Project.ProofKit.FixedArrayCopy") &&
+      source.includes("def function_0_erase_copy_0_prefix_program") &&
+      source.includes("def function_0_erase_copy_0_suffix_program") &&
+      source.includes(`Project.ProofKit.FixedArrayCopy.program\n    ${sourceWidth} 8 14`) &&
+      source.includes("theorem function_0_erase_copy_0_eq"),
+    `width-${sourceWidth} erase-copy annotation omitted its Lean equality`);
+    const strategyProgram = `${program}\n\ndef «module» : Wasm.Module := {}`;
+    const features = proofStrategyBundle(strategyProgram, 0, {
+      annotations: document,
+    }).features.reachableFunctions[0].fixedArrayEraseCopies;
+    assert(JSON.stringify(features) === JSON.stringify([{
+      sourceWidth,
+      sourceLocal: 8,
+      targetLocal: 14,
+      prefixCellsLocal: 11,
+      suffixCellsLocal: 12,
+      counterLocal: 15,
+    }]), `width-${sourceWidth} erase-copy feature extraction changed`);
+  }
+  const document = eraseCopyDocument(wasm, 5);
+  expectFailure(() => proofRecipePlan(document, eraseCopyProgram(5, 4)),
+    /erase-copy suffix loop does not match/);
+}
+
 function testConstantCapacityAnnotationRecipes() {
   const demoRoot = path.join(repoRoot, "demos", "demo-9");
   const wasm = fs.readFileSync(path.join(demoRoot, "program.wasm"));
@@ -3318,6 +3529,7 @@ try {
   testAnnotationRecipePlan();
   testLengthDispatchAnnotationRecipes();
   testFindIdxEqAnnotationRecipe();
+  testEraseCopyAnnotationRecipe();
   testConstantCapacityAnnotationRecipes();
   testMapAddAnnotationRecipe();
   testFilterLtAnnotationRecipe();

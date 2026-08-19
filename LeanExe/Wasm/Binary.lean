@@ -3197,6 +3197,7 @@ def emitResultAnnotated (releaseIndex scratch : Nat) (result : Expr) : Annotatio
     directCalls
     lengthDispatches := #[]
     findIdxEqs := #[]
+    eraseCopies := #[]
     pairResults := #[]
     arrayFolds := #[]
     whileLoops := #[] }
@@ -3284,6 +3285,93 @@ def fixedArrayFindIdxEq?
           | _ => none
       | _, _ => none
   | _ => none
+
+def shiftFixedArrayEraseCopy
+    (offset : Nat) (copy : Annotations.RelativeFixedArrayEraseCopy) :
+    Annotations.RelativeFixedArrayEraseCopy :=
+  if h : copy.listPath.size = 0 then
+    { copy with
+      startIndex := offset + copy.startIndex
+      endIndex := offset + copy.endIndex }
+  else
+    let step := copy.listPath[0]
+    { copy with
+      listPath := copy.listPath.set 0
+        { step with instructionIndex := offset + step.instructionIndex } }
+
+partial def fixedArrayEraseCopiesInExpr
+    (scratch : Nat) : Expr → Array Annotations.RelativeFixedArrayEraseCopy
+  | .arrayEraseIfInBoundsSlots sourceWidth childMask array index =>
+      let sourceLocal := scratch
+      let indexLocal := scratch + 1
+      let lengthLocal := scratch + 2
+      let prefixCellsLocal := scratch + 3
+      let suffixCellsLocal := scratch + 4
+      let newLengthLocal := scratch + 5
+      let targetLocal := scratch + 6
+      let counterLocal := scratch + 7
+      let childScratch := scratch + 10
+      let expressionPrefix :=
+        emitExpr childScratch array ++ localSet sourceLocal ++
+          emitExpr childScratch index ++ localSet indexLocal ++
+          localGet sourceLocal ++ i32WrapI64 ++ i64Load ++ localSet lengthLocal ++
+          localGet indexLocal ++ localGet lengthLocal ++ i64LtU
+      let branchPrefix :=
+        localGet lengthLocal ++ i64Const 1 ++ [Instr.subI64] ++
+          localSet newLengthLocal ++
+          localGet indexLocal ++ i64Const sourceWidth ++ [Instr.mulI64] ++
+          localSet prefixCellsLocal ++
+          localGet newLengthLocal ++ localGet indexLocal ++ [Instr.subI64] ++
+          i64Const sourceWidth ++ [Instr.mulI64] ++ localSet suffixCellsLocal ++
+          rcAllocArrayObject childScratch sourceWidth childMask
+            (localGet newLengthLocal) ++ localSet targetLocal ++
+          localGet targetLocal ++ i32WrapI64 ++ localGet newLengthLocal ++ i64Store
+      let prefixProgram :=
+        emitCopyLoop sourceLocal targetLocal prefixCellsLocal counterLocal
+      let suffixProgram :=
+        emitRangeCopyLoop sourceLocal targetLocal
+          (localGet prefixCellsLocal ++ i64Const sourceWidth ++ [Instr.addI64])
+          (localGet prefixCellsLocal) suffixCellsLocal counterLocal
+      #[
+        { listPath := #[{ instructionIndex := expressionPrefix.length, field := "then" }]
+          startIndex := branchPrefix.length
+          endIndex := branchPrefix.length + prefixProgram.length + suffixProgram.length
+          sourceWidth
+          sourceLocal
+          targetLocal
+          prefixCellsLocal
+          suffixCellsLocal
+          counterLocal
+          continuation := "fallthrough"
+          generatedBy := #[
+            "LeanExe.Wasm.Binary.CoreWasm.emitCopyLoop",
+            "LeanExe.Wasm.Binary.CoreWasm.emitRangeCopyLoop",
+            "LeanExe.Wasm.Binary.CoreWasm.emitArrayEraseIfInBoundsSlots",
+            "LeanExe.Wasm.Binary.CoreWasm.emitStmtAnnotated"
+          ] }]
+  | .letE slot value body =>
+      fixedArrayEraseCopiesInExpr scratch value ++
+        (fixedArrayEraseCopiesInExpr scratch body).map
+          (shiftFixedArrayEraseCopy
+            ((emitExpr scratch value ++ localSet slot).length))
+  | .ite cond thenValue elseValue =>
+      let branchIndex := (emitCond scratch cond).length
+      (fixedArrayEraseCopiesInExpr scratch thenValue).map (fun copy =>
+          { copy with
+            listPath := #[{ instructionIndex := branchIndex, field := "then" }] ++
+              copy.listPath }) ++
+        (fixedArrayEraseCopiesInExpr scratch elseValue).map fun copy =>
+            { copy with
+              listPath := #[{ instructionIndex := branchIndex, field := "else" }] ++
+                copy.listPath }
+  | _ => #[]
+
+def fixedArrayEraseCopies
+    (scratch : Nat) (stmt : Stmt) :
+    Array Annotations.RelativeFixedArrayEraseCopy :=
+  match stmt with
+  | .assign _ expression => fixedArrayEraseCopiesInExpr scratch expression
+  | _ => #[]
 
 def fixedArrayFolds
     (scratch : Nat) (stmt : Stmt) (code : List Instr) :
@@ -3440,6 +3528,7 @@ partial def emitStmtAnnotated
         ]
         lengthDispatches := #[]
         findIdxEqs := #[]
+        eraseCopies := #[]
         pairResults := #[]
         arrayFolds := #[]
         whileLoops := #[] }
@@ -3469,6 +3558,11 @@ partial def emitStmtAnnotated
           Annotations.RelativeFixedArrayFindIdxEq :=
         { findIdx with
           listPath := #[{ instructionIndex := branchIndex, field }] ++ findIdx.listPath }
+      let prefixEraseCopy
+          (field : String) (copy : Annotations.RelativeFixedArrayEraseCopy) :
+          Annotations.RelativeFixedArrayEraseCopy :=
+        { copy with
+          listPath := #[{ instructionIndex := branchIndex, field }] ++ copy.listPath }
       let prefixPairResult
           (field : String) (result : Annotations.RelativeFixedArrayPairResult) :
           Annotations.RelativeFixedArrayPairResult :=
@@ -3497,6 +3591,8 @@ partial def emitStmtAnnotated
             elseEmission.lengthDispatches.map (prefixDispatch "else")
         findIdxEqs := thenEmission.findIdxEqs.map (prefixFindIdxEq "then") ++
           elseEmission.findIdxEqs.map (prefixFindIdxEq "else")
+        eraseCopies := thenEmission.eraseCopies.map (prefixEraseCopy "then") ++
+          elseEmission.eraseCopies.map (prefixEraseCopy "else")
         pairResults := thenEmission.pairResults.map (prefixPairResult "then") ++
           elseEmission.pairResults.map (prefixPairResult "else")
         arrayFolds := thenEmission.arrayFolds.map (prefixArrayFold "then") ++
@@ -3540,6 +3636,11 @@ partial def emitStmtAnnotated
             listPath := prefixPath findIdx.listPath
             startIndex := shiftStart findIdx.listPath findIdx.startIndex
             endIndex := shiftEnd findIdx.listPath findIdx.endIndex }
+        eraseCopies := bodyEmission.eraseCopies.map fun copy =>
+          { copy with
+            listPath := prefixPath copy.listPath
+            startIndex := shiftStart copy.listPath copy.startIndex
+            endIndex := shiftEnd copy.listPath copy.endIndex }
         pairResults := bodyEmission.pairResults.map fun result =>
           { result with
             listPath := prefixPath result.listPath
@@ -3577,6 +3678,7 @@ partial def emitStmtAnnotated
           match fixedArrayFindIdxEq? scratch stmt code with
           | some findIdx => #[findIdx]
           | none => #[]
+        eraseCopies := fixedArrayEraseCopies scratch stmt
         arrayFolds := fixedArrayFolds scratch stmt code }
 
 def emitFuncAnnotated (releaseIndex : Nat) (func : Func) : Annotations.Emitted :=
@@ -4350,6 +4452,25 @@ def annotationDocument (module_ : Module) (bytes : ByteArray) : Annotations.Docu
                 resultEncoding := findIdx.resultEncoding
                 continuation := findIdx.continuation }
             generatedBy := findIdx.generatedBy }
+      let eraseCopyRegions : List Annotations.Region :=
+        (enumerate emitted.eraseCopies.toList).map fun regionItem =>
+          let regionIndex := regionItem.fst
+          let copy := regionItem.snd
+          { id := s!"function-{functionIndex}.erase-copy-{regionIndex}"
+            kind := "leanexe.array.erase-copy.v1"
+            location :=
+              { listPath := copy.listPath
+                startIndex := copy.startIndex
+                endIndex := copy.endIndex }
+            parameters := .fixedArrayEraseCopy
+              { sourceWidth := copy.sourceWidth
+                sourceLocal := copy.sourceLocal
+                targetLocal := copy.targetLocal
+                prefixCellsLocal := copy.prefixCellsLocal
+                suffixCellsLocal := copy.suffixCellsLocal
+                counterLocal := copy.counterLocal
+                continuation := copy.continuation }
+            generatedBy := copy.generatedBy }
       let searchKeyRegions : List Annotations.Region :=
         (enumerate searchKeys.toList).map
           fun regionItem =>
@@ -4439,7 +4560,7 @@ def annotationDocument (module_ : Module) (bytes : ByteArray) : Annotations.Docu
         locals := combinedLocals
         regions := (mapAddRegions ++ filterLtRegions ++ loopFoldRegions ++ arrayFoldRegions ++
           whileLoopRegions ++ scalarPostTestLoopRegions ++ lengthRegions ++ findIdxEqRegions ++
-          searchKeyRegions ++ eqNodeRegions ++ ltNodeRegions ++ pairResultRegions ++
+          eraseCopyRegions ++ searchKeyRegions ++ eqNodeRegions ++ ltNodeRegions ++ pairResultRegions ++
           directCallRegions).toArray }
   { schemaVersion := 1
     artifact := { byteLength := bytes.size }
