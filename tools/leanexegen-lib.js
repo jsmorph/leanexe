@@ -31,6 +31,7 @@ const proofKitModules = Object.freeze([
   "Project.ProofKit.FixedArrayAllocatorWindow",
   "Project.ProofKit.FixedArrayEqNode",
   "Project.ProofKit.FixedArrayFilterLt",
+  "Project.ProofKit.FixedArrayFindIdxEq",
   "Project.ProofKit.FixedArrayFold",
   "Project.ProofKit.FixedArrayFoldBody",
   "Project.ProofKit.FixedArrayInput",
@@ -61,6 +62,7 @@ const proofKitRelativeFiles = Object.freeze([
   "proofs/talos/lean/Project/ProofKit/FixedArrayAllocatorWindow.lean",
   "proofs/talos/lean/Project/ProofKit/FixedArrayEqNode.lean",
   "proofs/talos/lean/Project/ProofKit/FixedArrayFilterLt.lean",
+  "proofs/talos/lean/Project/ProofKit/FixedArrayFindIdxEq.lean",
   "proofs/talos/lean/Project/ProofKit/FixedArrayFold.lean",
   "proofs/talos/lean/Project/ProofKit/FixedArrayFoldBody.lean",
   "proofs/talos/lean/Project/ProofKit/FixedArrayInput.lean",
@@ -1676,7 +1678,7 @@ function validatePackage(packageRoot) {
       "selectedSections",
     ], "proof-task-features.json");
     if (features.schemaVersion !== 1 ||
-        ![1, 2, 3, 4, 5, 6, 7].includes(features.extractorVersion) ||
+        ![1, 2, 3, 4, 5, 6, 7, 8].includes(features.extractorVersion) ||
         !/^[0-9a-f]{64}$/.test(features.sourceSha256) ||
         features.exportIndex !== programExportIndex(fs.readFileSync(
           path.join(packageRoot, "proof", moduleFile(job.programModule)), "utf8"),
@@ -1696,6 +1698,7 @@ function validatePackage(packageRoot) {
         ];
         if (features.extractorVersion >= 4) functionKeys.push("fixedArraySearchKeys");
         if (features.extractorVersion >= 5) functionKeys.push("fixedArrayLengthDispatches");
+        if (features.extractorVersion >= 8) functionKeys.push("fixedArrayFindIdxEqs");
         exactKeys(function_, functionKeys,
           `proof-task-features.json.reachableFunctions[${functionIndex}]`);
         if (!Array.isArray(function_.fixedArrayEqNodes)) {
@@ -1742,6 +1745,26 @@ function validatePackage(packageRoot) {
                   "eq-normalized-v1", "ne-normalized-v1", "le-unsigned-v1",
                 ].includes(dispatch.encoding))) {
               fail(`proof-task-features.json length dispatch ${functionIndex}:${dispatchIndex} is invalid`);
+            }
+          }
+        }
+        if (features.extractorVersion >= 8) {
+          if (!Array.isArray(function_.fixedArrayFindIdxEqs)) {
+            fail(`proof-task-features.json function ${functionIndex} has invalid find-index expressions`);
+          }
+          for (const [findIndex, findIdx] of function_.fixedArrayFindIdxEqs.entries()) {
+            exactKeys(findIdx, [
+              "inputLocal", "itemLocal", "key", "resultEncoding", "scratchStart",
+              "sourceWidth",
+            ], `proof-task-features.json find-index expression ${functionIndex}:${findIndex}`);
+            if (![findIdx.scratchStart, findIdx.sourceWidth, findIdx.inputLocal,
+              findIdx.itemLocal].every((value) => Number.isSafeInteger(value) && value >= 0) ||
+                findIdx.scratchStart < 2 || findIdx.sourceWidth !== 1 ||
+                findIdx.inputLocal !== 0 || findIdx.itemLocal !== 1 ||
+                typeof findIdx.key !== "string" || !decimalPattern.test(findIdx.key) ||
+                BigInt(findIdx.key) > uint64Maximum ||
+                findIdx.resultEncoding !== "none-zero-some-index-plus-one-v1") {
+              fail(`proof-task-features.json find-index expression ${functionIndex}:${findIndex} is invalid`);
             }
           }
         }

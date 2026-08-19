@@ -3196,6 +3196,7 @@ def emitResultAnnotated (releaseIndex scratch : Nat) (result : Expr) : Annotatio
   { code
     directCalls
     lengthDispatches := #[]
+    findIdxEqs := #[]
     pairResults := #[]
     arrayFolds := #[]
     whileLoops := #[] }
@@ -3243,6 +3244,46 @@ def fixedArrayPairResult?
         else
           none
     | _ => none
+
+def fixedArrayFindIdxEqKey? (itemLocal : Nat) : Expr → Option Nat
+  | .ite (.eqU64 (.local foundItemLocal) (.u64 key)) (.u64 1) (.u64 0) =>
+      if foundItemLocal = itemLocal then some key else none
+  | _ => none
+
+def fixedArrayFindIdxEq?
+    (scratch : Nat) (stmt : Stmt) (code : List Instr) :
+    Option Annotations.RelativeFixedArrayFindIdxEq :=
+  match stmt with
+  | .assign destination
+      (.arrayFindIdxSlots sourceWidth array itemLocal predicate returnPayload) =>
+      match array, fixedArrayFindIdxEqKey? itemLocal predicate with
+      | .local inputLocal, some key =>
+          let expressionCode :=
+            emitArrayFindIdxSlots scratch sourceWidth array itemLocal predicate returnPayload
+          match code.drop expressionCode.length with
+          | [.localSet foundDestination] =>
+              if sourceWidth = 1 ∧ inputLocal = 0 ∧ itemLocal = 1 ∧
+                  returnPayload = true ∧ 2 ≤ scratch ∧ foundDestination = destination then
+                some
+                  { listPath := #[]
+                    startIndex := 0
+                    endIndex := expressionCode.length
+                    scratchStart := scratch
+                    sourceWidth
+                    inputLocal
+                    itemLocal
+                    key := toString (UInt64.ofNat key)
+                    resultEncoding := "none-zero-some-index-plus-one-v1"
+                    continuation := "fallthrough"
+                    generatedBy := #[
+                      "LeanExe.Wasm.Binary.CoreWasm.emitArrayFindIdxSlots",
+                      "LeanExe.Wasm.Binary.CoreWasm.emitStmtAnnotated"
+                    ] }
+              else
+                none
+          | _ => none
+      | _, _ => none
+  | _ => none
 
 def fixedArrayFolds
     (scratch : Nat) (stmt : Stmt) (code : List Instr) :
@@ -3398,6 +3439,7 @@ partial def emitStmtAnnotated
             ] }
         ]
         lengthDispatches := #[]
+        findIdxEqs := #[]
         pairResults := #[]
         arrayFolds := #[]
         whileLoops := #[] }
@@ -3422,6 +3464,11 @@ partial def emitStmtAnnotated
           Annotations.RelativeFixedArrayLengthDispatch :=
         { dispatch with
           listPath := #[{ instructionIndex := branchIndex, field }] ++ dispatch.listPath }
+      let prefixFindIdxEq
+          (field : String) (findIdx : Annotations.RelativeFixedArrayFindIdxEq) :
+          Annotations.RelativeFixedArrayFindIdxEq :=
+        { findIdx with
+          listPath := #[{ instructionIndex := branchIndex, field }] ++ findIdx.listPath }
       let prefixPairResult
           (field : String) (result : Annotations.RelativeFixedArrayPairResult) :
           Annotations.RelativeFixedArrayPairResult :=
@@ -3448,6 +3495,8 @@ partial def emitStmtAnnotated
         lengthDispatches := currentDispatches ++
           thenEmission.lengthDispatches.map (prefixDispatch "then") ++
             elseEmission.lengthDispatches.map (prefixDispatch "else")
+        findIdxEqs := thenEmission.findIdxEqs.map (prefixFindIdxEq "then") ++
+          elseEmission.findIdxEqs.map (prefixFindIdxEq "else")
         pairResults := thenEmission.pairResults.map (prefixPairResult "then") ++
           elseEmission.pairResults.map (prefixPairResult "else")
         arrayFolds := thenEmission.arrayFolds.map (prefixArrayFold "then") ++
@@ -3486,6 +3535,11 @@ partial def emitStmtAnnotated
             listPath := prefixPath dispatch.listPath
             startIndex := shiftStart dispatch.listPath dispatch.startIndex
             endIndex := shiftEnd dispatch.listPath dispatch.endIndex }
+        findIdxEqs := bodyEmission.findIdxEqs.map fun findIdx =>
+          { findIdx with
+            listPath := prefixPath findIdx.listPath
+            startIndex := shiftStart findIdx.listPath findIdx.startIndex
+            endIndex := shiftEnd findIdx.listPath findIdx.endIndex }
         pairResults := bodyEmission.pairResults.map fun result =>
           { result with
             listPath := prefixPath result.listPath
@@ -3518,7 +3572,12 @@ partial def emitStmtAnnotated
   | _ =>
       let code := emitStmt releaseIndex scratch stmt
       let emitted := Annotations.Emitted.ofCode code
-      { emitted with arrayFolds := fixedArrayFolds scratch stmt code }
+      { emitted with
+        findIdxEqs :=
+          match fixedArrayFindIdxEq? scratch stmt code with
+          | some findIdx => #[findIdx]
+          | none => #[]
+        arrayFolds := fixedArrayFolds scratch stmt code }
 
 def emitFuncAnnotated (releaseIndex : Nat) (func : Func) : Annotations.Emitted :=
   let initial := emitStmtAnnotated releaseIndex func.locals func.body
@@ -4272,6 +4331,25 @@ def annotationDocument (module_ : Module) (bytes : ByteArray) : Annotations.Docu
                 validBranch := dispatch.validBranch
                 continuation := dispatch.continuation }
             generatedBy := dispatch.generatedBy }
+      let findIdxEqRegions : List Annotations.Region :=
+        (enumerate emitted.findIdxEqs.toList).map fun regionItem =>
+          let regionIndex := regionItem.fst
+          let findIdx := regionItem.snd
+          { id := s!"function-{functionIndex}.find-idx-eq-{regionIndex}"
+            kind := "leanexe.array.find-idx-eq.v1"
+            location :=
+              { listPath := findIdx.listPath
+                startIndex := findIdx.startIndex
+                endIndex := findIdx.endIndex }
+            parameters := .fixedArrayFindIdxEq
+              { scratchStart := findIdx.scratchStart
+                sourceWidth := findIdx.sourceWidth
+                inputLocal := findIdx.inputLocal
+                itemLocal := findIdx.itemLocal
+                key := findIdx.key
+                resultEncoding := findIdx.resultEncoding
+                continuation := findIdx.continuation }
+            generatedBy := findIdx.generatedBy }
       let searchKeyRegions : List Annotations.Region :=
         (enumerate searchKeys.toList).map
           fun regionItem =>
@@ -4360,8 +4438,9 @@ def annotationDocument (module_ : Module) (bytes : ByteArray) : Annotations.Docu
         results := func.results.length
         locals := combinedLocals
         regions := (mapAddRegions ++ filterLtRegions ++ loopFoldRegions ++ arrayFoldRegions ++
-          whileLoopRegions ++ scalarPostTestLoopRegions ++ lengthRegions ++ searchKeyRegions ++
-          eqNodeRegions ++ ltNodeRegions ++ pairResultRegions ++ directCallRegions).toArray }
+          whileLoopRegions ++ scalarPostTestLoopRegions ++ lengthRegions ++ findIdxEqRegions ++
+          searchKeyRegions ++ eqNodeRegions ++ ltNodeRegions ++ pairResultRegions ++
+          directCallRegions).toArray }
   { schemaVersion := 1
     artifact := { byteLength := bytes.size }
     functions := functions.toArray }

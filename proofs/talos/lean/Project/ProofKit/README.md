@@ -17,6 +17,7 @@ Every `leanexegen` artifact-proof task receives this catalog and may import the 
 | `Project.ProofKit.FixedArrayAllocatorWindow` | Shifted fixed-array allocator semantics, post-allocation frame projections, and composition with an immediately preceding constant-capacity prefix. |
 | `Project.ProofKit.FixedArrayEqNode` | One indexed array load, equality normalization, and two-way branch for an unrolled search. |
 | `Project.ProofKit.FixedArrayFilterLt` | A bounded stable filter by an unsigned threshold, including allocation, conditional stores, dynamic length, and empty-result semantics. |
+| `Project.ProofKit.FixedArrayFindIdxEq` | The compiler's one-word, literal-key first-match scan with zero-or-index-plus-one result encoding and continuation-generic none and some exits. |
 | `Project.ProofKit.FixedArrayFold` | Forward full-array fold setup, accumulator result placement, and complete singleton-result suffix semantics selected by exact subregion equalities. |
 | `Project.ProofKit.FixedArrayFoldBody` | Composition of the continuing traversal guard and indexed load with a compiler-described scalar body, condition, continuation, and guarded back edge. |
 | `Project.ProofKit.FixedArrayInput` | The standard length-guarded indexed input loader parameterized by a uniform local-window shift. |
@@ -259,6 +260,12 @@ apply Project.ProofKit.FixedArrayTraversalInput.program_spec
 · exact hIndex
 · exact hNext
 ```
+
+## First-match equality scan
+
+Import `Project.ProofKit.FixedArrayFindIdxEq` when a checked annotation identifies the compiler's flat, one-word `Array.findIdx?` loop for `element == key`.  `program_spec` executes setup and the block-wrapped scan from index zero, preserving the store and represented input while returning zero for no match or `index + 1` for the first match.  Its continuation callbacks receive the exact `Array.findIdx?` equation and final frame, and the successful callback also receives the bound on the matched index.
+
+The first version matches the compiler layout with the input pointer in combined local zero, the loaded item in combined local one, a configurable scratch start of at least two, and arbitrary trailing locals.  The key may be any literal `UInt64`, while wider elements, dynamic keys, different local roles, and other predicates require a separate theorem or the ordinary `Array.findIdx?.loop` invariant.  A generated `leanexe.array.find-idx-eq.v1` equality establishes that the decoded artifact region has exactly the program consumed by this theorem.
 
 ## Fixed-length dispatch
 

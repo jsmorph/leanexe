@@ -53,7 +53,7 @@ Region identifiers are unique within a document and stable for a fixed emitted s
 
 ## Compiler-emitted region kinds
 
-The current compiler emits twelve region kinds.  The parameter object differs by kind and records only data required for validation, semantic adapters, or proof retrieval.  Human labels and source expressions may guide a proof agent, but numeric and structural fields determine generated checks.
+The current compiler emits thirteen region kinds.  The parameter object differs by kind and records only data required for validation, semantic adapters, or proof retrieval.  Human labels and source expressions may guide a proof agent, but numeric and structural fields determine generated checks.
 
 | Region kind | Described structure |
 |-------------|---------------------|
@@ -65,6 +65,7 @@ The current compiler emits twelve region kinds.  The parameter object differs by
 | `leanexe.loop.while.v1` | A source while loop whose condition and body reify into a supported scalar descriptor. |
 | `leanexe.loop.scalar-post-test.v1` | A post-test scalar loop produced from a multi-slot fold or counter-transfer shape. |
 | `leanexe.array.length-dispatch.v1` | A fixed-size or bounded-length public input check and its valid and invalid branches. |
+| `leanexe.array.find-idx-eq.v1` | A one-word forward `Array.findIdx?` scan that compares each element with a literal `UInt64` key and encodes the first match as index plus one. |
 | `leanexe.array.search-key.v1` | One indexed key load within a fixed-array search. |
 | `leanexe.array.eq-node.v1` | One equality decision node with operand order and branch roles. |
 | `leanexe.array.lt-node.v1` | One unsigned comparison node with operand order and branch roles. |
@@ -90,6 +91,7 @@ The consumer currently generates support for these recurring boundaries:
 |----------|-------------------|
 | Direct calls | Exact selected-program equality plus argument and result placement data. |
 | Length dispatch | Exact valid and invalid branch equality, fixed or bounded input facts, and compatible dispatch tactics. |
+| First-match equality scan | Exact search-program equality, literal key, local roles, option encoding, and the continuation-generic `FixedArrayFindIdxEq.program_spec` theorem. |
 | Search trees | Key-load, equality-node, less-than-node, and result-construction equalities used by chain and tree theorems. |
 | Map and filter | Whole-function equality to neutral bounded-wrapper programs. |
 | Scalar loops | Exact descriptor-program equality, evaluated transition equations, read and write sets, and frame preservation. |
@@ -121,12 +123,12 @@ The command does not regenerate the source or WASM.  It fails when the input pac
 
 ## Retrieval and evidence
 
-Every validated region contributes task features and candidate annotation kinds to knowledge retrieval.  Extractor version six records fixed-array length dispatches emitted in the equality-normalized, inequality-normalized, and unsigned-bound forms, including the input local, expected size, and encoding.  The task snapshot includes each selected package's entries after exact-artifact exclusions, while category indexes, features, maturity, consumers, and annotation kinds guide the agent's file search.  Proof recipes name declarations and tactics so the agent can retrieve detailed guidance after inspecting its residual goal.
+Every validated region contributes task features and candidate annotation kinds to knowledge retrieval.  Extractor version eight records fixed-array length dispatches and the checked one-word, literal-key `findIdx?` expression, including its scratch start, source width, input and item locals, key, and result encoding.  The task snapshot includes each selected package's entries after exact-artifact exclusions, while category indexes, features, maturity, consumers, and annotation kinds guide the agent's file search.  Proof recipes name declarations and tactics so the agent can retrieve detailed guidance after inspecting its residual goal.
 
 The demonstrations retain fixed-artifact experiments showing successful and failed uses of annotation support.  Evidence includes proof-generation time, outer-check time, journal observations, retrieval, revisions, proof structure, shared theorem use, and transfer across programs.  [Artifact Proving](artifact-proving.md) defines this evaluation, while the [benchmark index](../benchmarks/README.md) and demo experiment directories preserve individual runs.
 
 ## Extension rules
 
-A new region kind begins with a recurring emitted motif and a structural matcher over `LeanExe.Wasm.Instr`.  Its schema must identify every local role, bound, continuation, and descriptor field required by the proposed proof theorem.  The change must include compiler JSON tests, strict consumer validation, positive artifact matches, opcode and coordinate mutations, generated Lean checks, LTG metadata, and at least one independently accepted proof package.
+A new region kind begins with a recurring emitted motif and a structural matcher over `LeanExe.Wasm.Instr`.  Its schema must identify every local role, bound, continuation, and descriptor field required by the proposed proof theorem.  The change requires a focused compiler and consumer test, a positive artifact match, generated Lean checks, LTG metadata, and an independently accepted proof package before promotion.
 
 A matcher must reject ambiguous or partial structures rather than issue a broad recipe.  Generated semantic theorems must remain neutral with respect to one source function, and application-specific mathematics belongs in the artifact proof or a checked worked example.  Promotion and automatic selection require transfer evidence according to the root [Development Plan](../plan.md).
