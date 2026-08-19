@@ -67,6 +67,7 @@ import Project.ProofKit.ScalarTransitionU64
 #check Project.ProofKit.FixedArrayFindIdxEq.encodedIndex
 #check Project.ProofKit.FixedArrayFindIdxEq.encodedIndex_eq_ofNat_succ
 #check Project.ProofKit.FixedArrayFindIdxEq.encodedIndex_ne_zero
+#check Project.ProofKit.FixedArrayFindIdxEq.encodedIndex_not_lt_one
 #check Project.ProofKit.FixedArrayFindIdxEq.encodedIndex_sub_one
 #check Project.ProofKit.FixedArrayFindIdxEq.noneFrame
 #check Project.ProofKit.FixedArrayFindIdxEq.predicate
@@ -99,6 +100,8 @@ import Project.ProofKit.ScalarTransitionU64
 #check Project.ProofKit.FixedArrayPairResult.input_preserved_by_alloc
 #check Project.ProofKit.FixedArrayResult.emptyStore_at
 #check Project.ProofKit.FixedArrayResult.finishProgram_spec
+#check Project.ProofKit.FixedArrayResult.lengthStoreLocalProgram
+#check Project.ProofKit.FixedArrayResult.lengthStoreLocal_spec
 #check Project.ProofKit.FixedArrayResult.lengthStore_spec
 #check Project.ProofKit.FixedArrayResult.pairStore_at
 #check Project.ProofKit.FixedArrayResult.payloadStore_spec

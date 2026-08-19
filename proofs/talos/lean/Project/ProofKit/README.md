@@ -268,7 +268,7 @@ Import `Project.ProofKit.FixedArrayFindIdxEq` when a checked annotation identifi
 
 The first version matches the compiler layout with the input pointer in combined local zero, the loaded item in combined local one, a configurable scratch start of at least two, and arbitrary trailing locals.  The key may be any literal `UInt64`, while wider elements, dynamic keys, different local roles, and other predicates require a separate theorem or the ordinary `Array.findIdx?.loop` invariant.  A generated `leanexe.array.find-idx-eq.v1` equality establishes that the decoded artifact region has exactly the program consumed by this theorem.
 
-Keep `someFrame` folded while reducing its continuation.  The `someFrame_params`, `someFrame_locals_length`, and `someFrame_values` projections expose its shape, while `encodedIndex_eq_ofNat_succ`, `encodedIndex_ne_zero`, and `encodedIndex_sub_one` normalize and decode the successful result.  Use these facts to establish the producer frame, execute scalar instructions until the next structured-control boundary, and then apply that boundary's theorem.  Broad `wp_simp` across the nested frame definitions and a large continuation repeats the frame and modular-arithmetic reductions.
+Keep `someFrame` folded while reducing its continuation.  The `someFrame_params`, `someFrame_locals_length`, and `someFrame_values` projections expose its shape, while `encodedIndex_eq_ofNat_succ`, `encodedIndex_ne_zero`, `encodedIndex_not_lt_one`, and `encodedIndex_sub_one` establish the option tag, its unsigned lower bound, and its payload.  Use these facts to establish the producer frame, execute scalar instructions until the next structured-control boundary, and then apply that boundary's theorem.  Broad `wp_simp` across the nested frame definitions and a large continuation repeats the frame and modular-arithmetic reductions.
 
 ## Prefix and shifted-suffix copy
 
@@ -428,7 +428,7 @@ exact Project.ProofKit.FixedArrayPairResult.inputResultProgram_result_spec
 
 ## Fixed-array result stores
 
-Import `Project.ProofKit.FixedArrayResult` for the standard fixed-array length store and payload-address sequence.  `lengthStore_spec` and `payloadStore_spec` accept arbitrary combined-local indices, remaining programs, and postconditions, which lets an artifact proof place application-specific value computation between shared store proofs.  The definitions `writeLength` and `writePayload` name the resulting stores so later obligations do not expand a nested byte-write term.
+Import `Project.ProofKit.FixedArrayResult` for the standard fixed-array length store and payload-address sequence.  `lengthStore_spec` embeds a constant length, while `lengthStoreLocal_spec` reads the length from a combined local and preserves an arbitrary operand stack.  Both length theorems and `payloadStore_spec` accept arbitrary combined-local indices, remaining programs, and postconditions, which lets an artifact proof place application-specific value computation between shared store proofs.  The definitions `writeLength` and `writePayload` name the resulting stores so later obligations do not expand a nested byte-write term.
 
 `singletonStore_at` and `pairStore_at` reconstruct the public `UInt64Array.At` representation from those named memory transformers.  Their premises require the complete result region to fit in 32-bit address space and current memory.  The theorems cover arrays of one and two `UInt64` values without fixing an allocator layout or an application function.
 

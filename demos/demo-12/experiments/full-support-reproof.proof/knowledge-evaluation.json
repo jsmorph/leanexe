@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "artifactSha256": "7cdd8adba75d4f076d0a142f824a19a0d34d6a5cedd1a810a417a7fc5789f7b6",
+  "knowledgeTaskSha256": "2e49ac5d362e29eac45e6fe498af4034e4c1066a9b2ceccbfe5c1353480ed2d5",
+  "status": "accepted",
+  "entries": [
+    {
+      "package": "leanexe-core",
+      "entry": "fixed-array-allocation",
+      "outcome": "used",
+      "reason": "Supplied the shifted allocator-window theorem and stable post-allocation frame projections."
+    },
+    {
+      "package": "leanexe-core",
+      "entry": "fixed-array-capacity",
+      "outcome": "used",
+      "reason": "Supplied the checked constant-capacity region and the capacity representation used at allocation."
+    },
+    {
+      "package": "leanexe-core",
+      "entry": "fixed-array-erase-copy",
+      "outcome": "used",
+      "reason": "Supplied eraseIdxProgram_spec for the exact prefix and shifted-suffix copy loops."
+    },
+    {
+      "package": "leanexe-core",
+      "entry": "fixed-array-erase-reconstruction",
+      "outcome": "used",
+      "reason": "Guided reconstruction of the eraseIdx! array representation from the checked copy reads."
+    },
+    {
+      "package": "leanexe-core",
+      "entry": "fixed-array-find-idx-eq",
+      "outcome": "used",
+      "reason": "Supplied the early-exit find-index program theorem, encoded-index facts, and continuation frames."
+    },
+    {
+      "package": "leanexe-core",
+      "entry": "fixed-array-length-dispatch",
+      "outcome": "used",
+      "reason": "Supplied the annotated bounded-length dispatch tactic and branch-frame projections."
+    },
+    {
+      "package": "leanexe-core",
+      "entry": "fixed-array-result",
+      "outcome": "used",
+      "reason": "Supplied result-header stores, finish-frame accessors, and empty-array representation facts."
+    }
+  ],
+  "proof": {
+    "sourceSha256": "d46ad1874be99bca553546aa4687633712bd5fa79525d51d8541249a7af7ae72",
+    "byteLength": 28874,
+    "lineCount": 607,
+    "stage5Milliseconds": 3987145.392
+  }
+}
