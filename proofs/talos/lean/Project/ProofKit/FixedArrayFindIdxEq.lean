@@ -9,6 +9,31 @@ open Wasm
 def predicate (key element : UInt64) : Bool :=
   element == key
 
+def encodedIndex (index : Nat) : UInt64 :=
+  UInt64.ofNat index + 1
+
+theorem encodedIndex_eq_ofNat_succ {index : Nat}
+    (h : index + 1 < UInt64.size) :
+    encodedIndex index = UInt64.ofNat (index + 1) := by
+  apply UInt64.toNat.inj
+  rw [encodedIndex, UInt64.toNat_add,
+    UInt64.toNat_ofNat_of_lt' (lt_trans (Nat.lt_succ_self index) h)]
+  have hOne : (1 : UInt64).toNat = 1 := rfl
+  rw [hOne, UInt64.toNat_ofNat_of_lt' h, Nat.mod_eq_of_lt h]
+
+theorem encodedIndex_ne_zero {index : Nat}
+    (h : index + 1 < UInt64.size) : encodedIndex index ≠ 0 := by
+  rw [encodedIndex_eq_ofNat_succ h]
+  intro hZero
+  have hNat := congrArg UInt64.toNat hZero
+  rw [UInt64.toNat_ofNat_of_lt' h] at hNat
+  simp at hNat
+
+@[simp]
+theorem encodedIndex_sub_one (index : Nat) :
+    encodedIndex index - 1 = UInt64.ofNat index := by
+  exact UInt64.add_sub_cancel (UInt64.ofNat index) 1
+
 def setupProgram (scratch : Nat) : Wasm.Program :=
   [
   .localGet 0,
@@ -80,8 +105,26 @@ def someFrame (scratch : Nat) (frame : Locals) (inputPtr : UInt64)
   { loopFrame scratch frame inputPtr input.size (.i64 input[index]!) index with
     locals := (loopFrame scratch frame inputPtr input.size
       (.i64 input[index]!) index).locals.set
-        (scratch + 2) (.i64 (UInt64.ofNat index + 1))
-    values := [.i64 (UInt64.ofNat index + 1)] }
+        (scratch + 2) (.i64 (encodedIndex index))
+    values := [.i64 (encodedIndex index)] }
+
+@[simp]
+theorem someFrame_params (scratch : Nat) (frame : Locals)
+    (inputPtr : UInt64) (input : Array UInt64) (index : Nat) :
+    (someFrame scratch frame inputPtr input index).params = frame.params := rfl
+
+@[simp]
+theorem someFrame_locals_length (scratch : Nat) (frame : Locals)
+    (inputPtr : UInt64) (input : Array UInt64) (index : Nat) :
+    (someFrame scratch frame inputPtr input index).locals.length =
+      frame.locals.length := by
+  simp [someFrame, loopFrame, setupFrame]
+
+@[simp]
+theorem someFrame_values (scratch : Nat) (frame : Locals)
+    (inputPtr : UInt64) (input : Array UInt64) (index : Nat) :
+    (someFrame scratch frame inputPtr input index).values =
+      [.i64 (encodedIndex index)] := rfl
 
 def searchMeasure (scratch : Nat) (input : Array UInt64)
     (_ : Store Unit) (frame : Locals) : Nat :=
@@ -344,7 +387,7 @@ theorem program_spec
               input.findIdx? (predicate key) = some index := by
             rw [← hLoop, Array.findIdx?.loop.eq_def, dif_pos hIndexLt]
             simp [predicate, hMatch]
-          simpa [someFrame, loopFrame, setupFrame, Wasm.Locals.get,
+          simpa [someFrame, encodedIndex, loopFrame, setupFrame, Wasm.Locals.get,
             Wasm.Locals.set?, hParams, hLocals, hScratch,
             getElem!_pos input index hIndexLt, List.set_set] using
               hSome index hIndexLt hFindSome
