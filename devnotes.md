@@ -7415,7 +7415,9 @@ The frame review found repeated general obligations in Demo 12, ClobDepth, and a
 
 The JavaScript test checks recipe-version selection, legacy acceptance, wrong and missing tail fields, nested instruction paths, and nonzero region starts.  A current `tools/leanexegen annotate` run generated Demo 12 tail theorems for its nested find-index, encoded-index, and erase-copy regions while preserving artifact digest `7cdd8adba75d4f076d0a142f824a19a0d34d6a5cedd1a810a417a7fc5789f7b6`.  `tools/leanexegen verify -s` independently accepted that package, and focused Lean checks accepted both changed ProofKit modules.
 
+An API review found that the decoder preservation theorem had the equality conclusion of `FixedArrayCopy.counterFrame_get_ne` but the restricted name and read premises of `FixedArrayFold.resultFrame_get_of_ne`.  The replacement `EncodedIndexDecoder.resultFrame_get_ne` preserves parameter, valid internal-local, and out-of-range getters outside the scratch pair and destination.  Its Lean check remains pending while the fixed-artifact reproof owns the machine-wide runner lock.
+
 - [x] Replace declaration-name suffix detection with `direct.tailEquality`.
-- [x] Generate checked tail equations for every current direct semantic recipe.
+- [x] Generate checked tail equations for every current version-two direct semantic recipe.
 - [x] Add the four cross-program frame declarations and LTG metadata.
 - [ ] Evaluate use, proof structure, and proof time on fixed development and cross-program artifacts.

@@ -3266,10 +3266,23 @@ function validateProofRecipePlan(plan, document) {
       fail(`${description}.direct has unsupported fields`);
     }
     if (recipe.recipeVersion === 2) {
-      string(recipe.direct.tailEquality, `${description}.direct.tailEquality`);
+      const regionEquality = string(
+        recipe.direct.regionEquality, `${description}.direct.regionEquality`);
+      const program = string(recipe.direct.program, `${description}.direct.program`);
+      const tailEquality = string(
+        recipe.direct.tailEquality, `${description}.direct.tailEquality`);
       const name = recipe.regionId.replace(/[^A-Za-z0-9_]/g, "_");
-      if (!recipe.direct.tailEquality.endsWith(`.${name}_tail_eq`)) {
+      if (!regionEquality.endsWith(`.${name}_eq`) ||
+          tailEquality !== `${regionEquality.slice(0, -3)}_tail_eq`) {
         fail(`${description}.direct.tailEquality is unsupported`);
+      }
+      if ([
+        "leanexe.array.find-idx-eq.v1", "leanexe.option.encoded-index.v1",
+        "leanexe.array.erase-copy.v1", "leanexe.array.fold.v1",
+        "leanexe.loop.while.v1", "leanexe.loop.scalar-post-test.v1",
+      ].includes(region.kind) &&
+          program !== `${regionEquality.slice(0, -3)}_program`) {
+        fail(`${description}.direct.program is unsupported`);
       }
     }
     if (region.kind === "leanexe.call.direct.v1") {
@@ -3398,15 +3411,23 @@ function validateProofRecipePlan(plan, document) {
           arrayFoldDirectInvalid) {
         fail(`${description}.direct is unsupported`);
       }
-    } else if (recipe.direct.module !== "Project.ProofKit.FixedArrayPairResult" ||
-        ![
-          "Project.ProofKit.FixedArrayPairResult.constResultProgram_spec",
-          "Project.ProofKit.FixedArrayPairResult.inputResultProgram_spec",
-        ].includes(recipe.direct.theorem) ||
+    } else {
+      const constants = region.parameters.mode === "constants-v1";
+      const expectedTheorem = constants
+        ? "Project.ProofKit.FixedArrayPairResult.constResultProgram_spec"
+        : "Project.ProofKit.FixedArrayPairResult.inputResultProgram_spec";
+      const expectedProgram = exactRecipeProgram({
+        regionId: recipe.regionId,
+        regionKind: region.kind,
+        parameters: region.parameters,
+      });
+      if (recipe.direct.module !== "Project.ProofKit.FixedArrayPairResult" ||
+        recipe.direct.theorem !== expectedTheorem ||
         !recipe.direct.regionEquality.endsWith(
           `.${recipe.regionId.replace(/[^A-Za-z0-9_]/g, "_")}_eq`) ||
-        typeof recipe.direct.program !== "string") {
-      fail(`${description}.direct is unsupported`);
+        recipe.direct.program !== expectedProgram) {
+        fail(`${description}.direct is unsupported`);
+      }
     }
     for (const [supportingIndex, supporting] of array(
       recipe.supporting, `${description}.supporting`).entries()) {
