@@ -799,10 +799,9 @@ function proofPrompt(request, job, entryIndex, recordsKnowledgeUse = true) {
     `PROGRAM_ANNOTATIONS.json reports compiler regions checked against the artifact, and ` +
     `PROOF_RECIPES.json names direct theorems, tactics, supporting declarations, expected ` +
     `postconditions, and complete compositions.  Attempt an exact direct recipe or complete ` +
-    `composition before reducing its internal instructions.  When a recipe's supporting ` +
-    `declarations include a generated declaration ending in _tail_eq, change the residual ` +
-    `program to that resolved ` +
-    `artifact tail and rewrite with the declaration before reducing the selected region.  ` +
+    `composition before reducing its internal instructions.  When a recipe's direct object has ` +
+    `a tailEquality field, change the residual program to that resolved artifact tail and rewrite ` +
+    `with the named declaration before reducing the selected region.  ` +
     `If its shape fails or its residual ` +
     `goals worsen the proof boundary, record the result and search the knowledge packages for the ` +
     `remaining goal.  ` +

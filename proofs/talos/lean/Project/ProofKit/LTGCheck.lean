@@ -34,13 +34,17 @@ import Project.ProofKit.ScalarTransitionU64
 #check Project.ProofKit.EncodedIndexDecoder.program_spec
 #check Project.ProofKit.EncodedIndexDecoder.resultFrame
 #check Project.ProofKit.EncodedIndexDecoder.resultFrame_decoded
+#check Project.ProofKit.EncodedIndexDecoder.resultFrame_get_of_ne
 #check Project.ProofKit.EncodedIndexDecoder.resultFrame_locals_length
 #check Project.ProofKit.EncodedIndexDecoder.resultFrame_params
+#check Project.ProofKit.EncodedIndexDecoder.resultFrame_validIndex
 #check Project.ProofKit.EncodedIndexDecoder.resultFrame_values
 #check Project.ProofKit.FixedArrayAllocator.region_spec
 #check Project.ProofKit.FixedArrayAllocatorWindow.allocFrame_get_root
 #check Project.ProofKit.FixedArrayAllocatorWindow.allocFrame_locals_length
 #check Project.ProofKit.FixedArrayAllocatorWindow.allocFrame_params
+#check Project.ProofKit.FixedArrayAllocatorWindow.allocFrame_shape
+#check Project.ProofKit.FixedArrayAllocatorWindow.allocFrame_validIndex
 #check Project.ProofKit.FixedArrayAllocatorWindow.allocFrame_values
 #check Project.ProofKit.FixedArrayAllocatorWindow.constantCapacityRegion_spec_withTail
 #check Project.ProofKit.FixedArrayAllocatorWindow.region_spec

@@ -2112,7 +2112,7 @@ function loopRecipe(
     const hasBinaryOperation = scalarDescriptorHasBinaryOperation(
       match.parameters.descriptor.body);
     return {
-      recipeVersion: 1,
+      recipeVersion: 2,
       functionIndex: match.functionIndex,
       regionId: match.regionId,
       regionKind: match.regionKind,
@@ -2123,7 +2123,8 @@ function loopRecipe(
           ? "Project.ProofKit.ScalarTransition.postTestProgram_spec"
           : "Project.ProofKit.ScalarTransition.whileProgram_spec",
         regionEquality: annotationMatchTheoremName(match.regionId, annotationNamespace),
-        program: `${annotationNamespace}.${name}_program`,
+        tailEquality: annotationTailTheoremName(match.regionId, annotationNamespace),
+        program: exactRecipeProgram(match, annotationNamespace),
       },
       supporting: [
         ...(match.counterTransferIdentityEligible ? [{
@@ -2195,7 +2196,7 @@ function loopRecipe(
     ? arrayFoldFrameRoleLabels(match.parameters) : new Map();
   const name = match.regionId.replace(/[^A-Za-z0-9_]/g, "_");
   return {
-    recipeVersion: 1,
+    recipeVersion: arrayFold ? 2 : 1,
     functionIndex: match.functionIndex,
     regionId: match.regionId,
     regionKind: match.regionKind,
@@ -2207,7 +2208,8 @@ function loopRecipe(
       theorem: "Wasm.wp_loop_cons",
       ...(arrayFold ? {
         regionEquality: annotationMatchTheoremName(match.regionId, annotationNamespace),
-        program: `${annotationNamespace}.${name}_program`,
+        tailEquality: annotationTailTheoremName(match.regionId, annotationNamespace),
+        program: exactRecipeProgram(match, annotationNamespace),
       } : {}),
     },
     supporting: [
@@ -2506,7 +2508,7 @@ function fixedArrayFindIdxEqRecipe(
     match, selectedSections = [], annotationNamespace = "Project.AnnotationMatches") {
   const name = match.regionId.replace(/[^A-Za-z0-9_]/g, "_");
   return {
-    recipeVersion: 1,
+    recipeVersion: 2,
     functionIndex: match.functionIndex,
     regionId: match.regionId,
     regionKind: match.regionKind,
@@ -2515,7 +2517,8 @@ function fixedArrayFindIdxEqRecipe(
       module: "Project.ProofKit.FixedArrayFindIdxEq",
       theorem: "Project.ProofKit.FixedArrayFindIdxEq.program_spec",
       regionEquality: `${annotationNamespace}.${name}_eq`,
-      program: `${annotationNamespace}.${name}_program`,
+      tailEquality: annotationTailTheoremName(match.regionId, annotationNamespace),
+      program: exactRecipeProgram(match, annotationNamespace),
     },
     supporting: [
       {
@@ -2573,7 +2576,7 @@ function fixedArrayEraseCopyRecipe(
     match, selectedSections = [], annotationNamespace = "Project.AnnotationMatches") {
   const name = match.regionId.replace(/[^A-Za-z0-9_]/g, "_");
   return {
-    recipeVersion: 1,
+    recipeVersion: 2,
     functionIndex: match.functionIndex,
     regionId: match.regionId,
     regionKind: match.regionKind,
@@ -2582,7 +2585,8 @@ function fixedArrayEraseCopyRecipe(
       module: "Project.ProofKit.FixedArrayCopy",
       theorem: "Project.ProofKit.FixedArrayCopy.program_spec",
       regionEquality: `${annotationNamespace}.${name}_eq`,
-      program: `${annotationNamespace}.${name}_program`,
+      tailEquality: annotationTailTheoremName(match.regionId, annotationNamespace),
+      program: exactRecipeProgram(match, annotationNamespace),
     },
     supporting: [
       {
@@ -2632,7 +2636,7 @@ function encodedIndexDecoderRecipe(
     match, selectedSections = [], annotationNamespace = "Project.AnnotationMatches") {
   const name = match.regionId.replace(/[^A-Za-z0-9_]/g, "_");
   return {
-    recipeVersion: 1,
+    recipeVersion: 2,
     functionIndex: match.functionIndex,
     regionId: match.regionId,
     regionKind: match.regionKind,
@@ -2641,13 +2645,10 @@ function encodedIndexDecoderRecipe(
       module: "Project.ProofKit.EncodedIndexDecoder",
       theorem: "Project.ProofKit.EncodedIndexDecoder.program_spec",
       regionEquality: `${annotationNamespace}.${name}_eq`,
-      program: `${annotationNamespace}.${name}_program`,
+      tailEquality: annotationTailTheoremName(match.regionId, annotationNamespace),
+      program: exactRecipeProgram(match, annotationNamespace),
     },
     supporting: [
-      {
-        declaration: `${annotationNamespace}.${name}_tail_eq`,
-        purpose: "split the resolved artifact tail at the exact decoder boundary",
-      },
       {
         declaration: "Project.ProofKit.Annotation.region",
         purpose: "select the exact encoded-index decoder and destination-local update",
@@ -2794,20 +2795,47 @@ function annotationMatchTheoremName(
   return `${annotationNamespace}.${regionId.replace(/[^A-Za-z0-9_]/g, "_")}_eq`;
 }
 
+function annotationTailTheoremName(
+    regionId, annotationNamespace = "Project.AnnotationMatches") {
+  return `${annotationNamespace}.` +
+    `${regionId.replace(/[^A-Za-z0-9_]/g, "_")}_tail_eq`;
+}
+
+function exactRecipeProgram(
+    match, annotationNamespace = "Project.AnnotationMatches") {
+  const name = match.regionId.replace(/[^A-Za-z0-9_]/g, "_");
+  if ([
+    "leanexe.array.find-idx-eq.v1", "leanexe.option.encoded-index.v1",
+    "leanexe.array.erase-copy.v1", "leanexe.array.fold.v1",
+    "leanexe.loop.while.v1", "leanexe.loop.scalar-post-test.v1",
+  ].includes(match.regionKind)) return `${annotationNamespace}.${name}_program`;
+  if (match.regionKind === "leanexe.array.pair-result.v1") {
+    return match.parameters.mode === "constants-v1"
+      ? `Project.ProofKit.FixedArrayPairResult.constResultProgram ` +
+        `${match.parameters.firstValue} ${match.parameters.secondValue} ` +
+        `${match.parameters.destination}`
+      : `Project.ProofKit.FixedArrayPairResult.inputResultProgram ` +
+        `${match.parameters.inputIndex} ${match.parameters.destination}`;
+  }
+  if (match.regionKind === "leanexe.array.map-add.v1") {
+    return `Project.ProofKit.FixedArrayMapAdd.wrapperProgram ` +
+      `${match.parameters.maximumSize} ${match.parameters.addend}`;
+  }
+  if (match.regionKind === "leanexe.array.filter-lt.v1") {
+    return `Project.ProofKit.FixedArrayFilterLt.wrapperProgram ` +
+      `${match.parameters.maximumSize} ${match.parameters.threshold}`;
+  }
+  fail(`${match.regionId}: no exact semantic recipe program`);
+}
+
 function fixedArrayPairResultRecipe(
     match, selectedSections = [], annotationNamespace = "Project.AnnotationMatches") {
   const constants = match.parameters.mode === "constants-v1";
   const theorem = constants
     ? "Project.ProofKit.FixedArrayPairResult.constResultProgram_spec"
     : "Project.ProofKit.FixedArrayPairResult.inputResultProgram_spec";
-  const program = constants
-    ? `Project.ProofKit.FixedArrayPairResult.constResultProgram ` +
-      `${match.parameters.firstValue} ${match.parameters.secondValue} ` +
-      `${match.parameters.destination}`
-    : `Project.ProofKit.FixedArrayPairResult.inputResultProgram ` +
-      `${match.parameters.inputIndex} ${match.parameters.destination}`;
   return {
-    recipeVersion: 1,
+    recipeVersion: 2,
     functionIndex: match.functionIndex,
     regionId: match.regionId,
     regionKind: match.regionKind,
@@ -2816,7 +2844,8 @@ function fixedArrayPairResultRecipe(
       module: "Project.ProofKit.FixedArrayPairResult",
       theorem,
       regionEquality: annotationMatchTheoremName(match.regionId, annotationNamespace),
-      program,
+      tailEquality: annotationTailTheoremName(match.regionId, annotationNamespace),
+      program: exactRecipeProgram(match, annotationNamespace),
     },
     supporting: [
       {
@@ -2837,7 +2866,7 @@ function fixedArrayPairResultRecipe(
 function fixedArrayMapAddRecipe(
     match, selectedSections = [], annotationNamespace = "Project.AnnotationMatches") {
   return {
-    recipeVersion: 1,
+    recipeVersion: 2,
     functionIndex: match.functionIndex,
     regionId: match.regionId,
     regionKind: match.regionKind,
@@ -2846,8 +2875,8 @@ function fixedArrayMapAddRecipe(
       module: "Project.ProofKit.FixedArrayMapAdd",
       theorem: "Project.ProofKit.FixedArrayMapAdd.wrapperProgram_spec",
       regionEquality: annotationMatchTheoremName(match.regionId, annotationNamespace),
-      program: `Project.ProofKit.FixedArrayMapAdd.wrapperProgram ` +
-        `${match.parameters.maximumSize} ${match.parameters.addend}`,
+      tailEquality: annotationTailTheoremName(match.regionId, annotationNamespace),
+      program: exactRecipeProgram(match, annotationNamespace),
     },
     supporting: [
       {
@@ -2872,7 +2901,7 @@ function fixedArrayMapAddRecipe(
 function fixedArrayFilterLtRecipe(
     match, selectedSections = [], annotationNamespace = "Project.AnnotationMatches") {
   return {
-    recipeVersion: 1,
+    recipeVersion: 2,
     functionIndex: match.functionIndex,
     regionId: match.regionId,
     regionKind: match.regionKind,
@@ -2881,8 +2910,8 @@ function fixedArrayFilterLtRecipe(
       module: "Project.ProofKit.FixedArrayFilterLt",
       theorem: "Project.ProofKit.FixedArrayFilterLt.wrapperProgram_spec",
       regionEquality: annotationMatchTheoremName(match.regionId, annotationNamespace),
-      program: `Project.ProofKit.FixedArrayFilterLt.wrapperProgram ` +
-        `${match.parameters.maximumSize} ${match.parameters.threshold}`,
+      tailEquality: annotationTailTheoremName(match.regionId, annotationNamespace),
+      program: exactRecipeProgram(match, annotationNamespace),
     },
     supporting: [
       {
@@ -3188,7 +3217,7 @@ function validateProofRecipePlan(plan, document) {
       "recipeVersion", "regionId", "regionKind", "supporting",
     ], description);
     natural(recipe.functionIndex, `${description}.functionIndex`);
-    if (recipe.recipeVersion !== 1 ||
+    if (![1, 2].includes(recipe.recipeVersion) ||
         !regions.has(recipe.regionId) || found.has(recipe.regionId) ||
         recipe.functionIndex !== regions.get(recipe.regionId).functionIndex ||
         recipe.regionKind !== regions.get(recipe.regionId).kind) {
@@ -3201,17 +3230,21 @@ function validateProofRecipePlan(plan, document) {
     const checkedArrayFold = region.kind === "leanexe.array.fold.v1" &&
       recipe.direct.regionEquality !== undefined &&
       recipe.direct.program !== undefined;
-    const expectedApplicability = [
+    const exactSemanticRecipe = [
       "leanexe.array.find-idx-eq.v1", "leanexe.array.erase-copy.v1",
       "leanexe.option.encoded-index.v1",
       "leanexe.array.pair-result.v1",
       "leanexe.array.map-add.v1",
       "leanexe.array.filter-lt.v1",
-    ].includes(region.kind) || checkedScalarLoop || checkedArrayFold
+    ].includes(region.kind) || checkedScalarLoop || checkedArrayFold;
+    const expectedApplicability = exactSemanticRecipe
       ? "Lean-checked equality over the decoded instruction region"
       : "exact decoded instruction match";
     if (recipe.applicability !== expectedApplicability) {
       fail(`${description} has an invalid applicability check`);
+    }
+    if (recipe.recipeVersion === 2 && !exactSemanticRecipe) {
+      fail(`${description} has an unsupported recipe version`);
     }
     found.add(recipe.regionId);
     if (recipe.direct === null || typeof recipe.direct !== "object" ||
@@ -3219,12 +3252,25 @@ function validateProofRecipePlan(plan, document) {
       fail(`${description}.direct must be an object`);
     }
     const directKeys = Object.keys(recipe.direct).sort();
-    if (JSON.stringify(directKeys) !== JSON.stringify(["module", "theorem"]) &&
-        JSON.stringify(directKeys) !==
-          JSON.stringify(["invocation", "module", "tactic", "theorem"]) &&
-        JSON.stringify(directKeys) !==
-          JSON.stringify(["module", "program", "regionEquality", "theorem"])) {
+    const legacyDirect =
+      JSON.stringify(directKeys) === JSON.stringify(["module", "theorem"]) ||
+      JSON.stringify(directKeys) ===
+        JSON.stringify(["invocation", "module", "tactic", "theorem"]) ||
+      JSON.stringify(directKeys) ===
+        JSON.stringify(["module", "program", "regionEquality", "theorem"]);
+    const exactDirect = JSON.stringify(directKeys) === JSON.stringify([
+      "module", "program", "regionEquality", "tailEquality", "theorem",
+    ]);
+    if ((recipe.recipeVersion === 1 && !legacyDirect) ||
+        (recipe.recipeVersion === 2 && !exactDirect)) {
       fail(`${description}.direct has unsupported fields`);
+    }
+    if (recipe.recipeVersion === 2) {
+      string(recipe.direct.tailEquality, `${description}.direct.tailEquality`);
+      const name = recipe.regionId.replace(/[^A-Za-z0-9_]/g, "_");
+      if (!recipe.direct.tailEquality.endsWith(`.${name}_tail_eq`)) {
+        fail(`${description}.direct.tailEquality is unsupported`);
+      }
     }
     if (region.kind === "leanexe.call.direct.v1") {
       if (recipe.direct.module !== "Project.ProofKit.Control" ||
@@ -4673,6 +4719,25 @@ theorem ${base}_terminates_with_of_loop {α : Type}
   };
 }
 
+function exactRecipeTailEqualitySource(function_, region, job) {
+  const annotationNamespace = `${job.namespace}.AnnotationMatches`;
+  const program = exactRecipeProgram({
+    regionId: region.id,
+    regionKind: region.kind,
+    parameters: region.parameters,
+  }, annotationNamespace);
+  const name = region.id.replace(/[^A-Za-z0-9_]/g, "_");
+  const resolved = `(Project.ProofKit.Annotation.resolve ` +
+    `${job.namespace}.func${function_.wasmIndex} ` +
+    `${leanAnnotationPath(region.location.listPath)}).getD []`;
+  return `
+
+theorem ${name}_tail_eq :
+    (${resolved}).drop ${region.location.startIndex} =
+      ${program} ++ (${resolved}).drop ${region.location.endIndex} := by
+  rfl`;
+}
+
 function annotationMatchesSource(document, job, program = null) {
   const declarations = [];
   for (const function_ of document.functions) {
@@ -4736,15 +4801,12 @@ theorem ${name}_eq :
     Project.ProofKit.Annotation.region ${job.namespace}.func${function_.wasmIndex}
       ${leanAnnotationPath(region.location.listPath)} ${region.location.startIndex}
       ${region.location.endIndex} = some ${name}_program := by
-  rfl`);
+  rfl${exactRecipeTailEqualitySource(function_, region, job)}`);
         continue;
       }
       if (region.kind === "leanexe.option.encoded-index.v1") {
         const parameters = region.parameters;
         const name = region.id.replace(/[^A-Za-z0-9_]/g, "_");
-        const resolved = `(Project.ProofKit.Annotation.resolve ` +
-          `${job.namespace}.func${function_.wasmIndex} ` +
-          `${leanAnnotationPath(region.location.listPath)}).getD []`;
         declarations.push(`def ${name}_program : Wasm.Program :=
   Project.ProofKit.EncodedIndexDecoder.program
     ${parameters.encodedLocal} ${parameters.scratchStart} ${parameters.decodedLocal}
@@ -4753,12 +4815,7 @@ theorem ${name}_eq :
     Project.ProofKit.Annotation.region ${job.namespace}.func${function_.wasmIndex}
       ${leanAnnotationPath(region.location.listPath)} ${region.location.startIndex}
       ${region.location.endIndex} = some ${name}_program := by
-  rfl
-
-theorem ${name}_tail_eq :
-    (${resolved}).drop ${region.location.startIndex} =
-      ${name}_program ++ (${resolved}).drop ${region.location.endIndex} := by
-  rfl`);
+  rfl${exactRecipeTailEqualitySource(function_, region, job)}`);
         continue;
       }
       if (region.kind === "leanexe.array.erase-copy.v1") {
@@ -4797,7 +4854,7 @@ theorem ${name}_eq :
     Project.ProofKit.Annotation.region ${job.namespace}.func${function_.wasmIndex}
       ${leanAnnotationPath(region.location.listPath)} ${region.location.startIndex}
       ${region.location.endIndex} = some ${name}_program := by
-  rfl`);
+  rfl${exactRecipeTailEqualitySource(function_, region, job)}`);
         continue;
       }
       if ([
@@ -4823,7 +4880,7 @@ theorem ${name}_eq :
     Project.ProofKit.Annotation.region ${job.namespace}.func${function_.wasmIndex}
       ${leanAnnotationPath(region.location.listPath)} ${region.location.startIndex}
       ${region.location.endIndex} = some ${name}_program := by
-  rfl`);
+  rfl${exactRecipeTailEqualitySource(function_, region, job)}`);
         const transitions = scalarTransitionDeclarations(function_, region);
         declarations.push(transitions.source);
         const entry = scalarEntryDeclaration(function_, region, job, program);
@@ -4841,7 +4898,7 @@ theorem ${name}_eq :
       ${region.location.endIndex} = some
         (Project.ProofKit.FixedArrayMapAdd.wrapperProgram
           ${parameters.maximumSize} ${parameters.addend}) := by
-  rfl`);
+  rfl${exactRecipeTailEqualitySource(function_, region, job)}`);
         continue;
       }
       if (region.kind === "leanexe.array.filter-lt.v1") {
@@ -4852,7 +4909,7 @@ theorem ${name}_eq :
       ${region.location.endIndex} = some
         (Project.ProofKit.FixedArrayFilterLt.wrapperProgram
           ${parameters.maximumSize} ${parameters.threshold}) := by
-  rfl`);
+  rfl${exactRecipeTailEqualitySource(function_, region, job)}`);
         continue;
       }
       if (region.kind === "leanexe.array.fold.v1") {
@@ -4964,7 +5021,7 @@ theorem ${name}_step_eq :
 
 theorem ${name}_eq :
     ${selected} = some ${name}_program := by
-  rfl${setup}${continuing}${guardedBackEdge}${result}${singletonResult}
+  rfl${exactRecipeTailEqualitySource(function_, region, job)}${setup}${continuing}${guardedBackEdge}${result}${singletonResult}
 
 ${transitions}
 
@@ -4986,7 +5043,7 @@ ${singletonResultSpec}`);
     Project.ProofKit.Annotation.region ${job.namespace}.func${function_.wasmIndex}
       ${leanAnnotationPath(region.location.listPath)} ${region.location.startIndex}
       ${region.location.endIndex} = some (${expected}) := by
-  rfl`);
+  rfl${exactRecipeTailEqualitySource(function_, region, job)}`);
     }
   }
   const treeCompositions = fixedArraySearchTreeCompositions(document);

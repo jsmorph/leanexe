@@ -6,7 +6,7 @@ Match the exact instruction region before applying a semantic theorem.  `FixedAr
 
 Use `constantCapacityRegion_spec_withTail` when a checked constant-capacity prefix occurs immediately before the shifted allocator and writes combined local `offset + 9`.  The theorem derives the capacity-local value, minimum capacity, and intermediate frame projections before applying `region_spec_withTail`.  Its remaining premises describe memory fit, memory mode, allocator globals, and the post-allocation continuation.
 
-After a shifted-window theorem, `allocFrame_get_root` exposes the returned array pointer at combined local `offset + 5`.  `allocFrame_params`, `allocFrame_locals_length`, and `allocFrame_values` expose the frame shape inherited from the allocator input.  Apply these declarations before unfolding the nested local-list updates in `allocFrame`.
+After a shifted-window theorem, `allocFrame_get_root` exposes the returned array pointer at combined local `offset + 5`.  `allocFrame_shape` bundles the inherited parameter length, local length, and operand stack, while `allocFrame_validIndex` transports index validity through the allocator frame.  The separate `allocFrame_params`, `allocFrame_locals_length`, and `allocFrame_values` declarations remain available when a goal needs one projection rather than the complete shape.
 
 Derive one `bumpFacts` value and reuse its projections for every capacity, address, and memory-bound obligation.  `wordAddress` and `wordAddress_toNat` match the generated result-length and payload addresses.  A failed exact-region match should remain in the journal because it may identify another allocator layout worth adding as a separate motif.
 
