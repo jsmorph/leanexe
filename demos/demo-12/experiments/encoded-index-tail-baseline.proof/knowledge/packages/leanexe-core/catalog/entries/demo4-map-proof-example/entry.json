@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "id": "demo4-map-proof-example",
+  "title": "Demo 4 complete map starter",
+  "summary": "Shows an unchanged deterministic starter applying a whole-function bounded wrapping-add map theorem.",
+  "roles": ["worked-example"],
+  "categories": ["arrays", "compiler-motifs", "loops", "worked-examples"],
+  "scope": "benchmark-local",
+  "evidenceStatus": "provisional",
+  "features": ["array", "deterministic-starter", "map", "zero-edit"],
+  "annotationKinds": ["leanexe.array.map-add.v1"],
+  "modules": ["Project.ProofKit.FixedArrayMapAdd"],
+  "declarations": ["Project.ProofKit.FixedArrayMapAdd.wrapperProgram_spec"],
+  "premises": ["Exact map-add whole-function annotation", "Generated expected-function equality"],
+  "result": "A 67-line complete artifact behavior proof accepted without editing the deterministic starter.",
+  "consumers": ["demo-4"],
+  "relatedEntries": ["fixed-array-map-add"],
+  "exclusion": {
+    "artifactSha256": ["c538d40936b426ba875b3dae1913e62ff00a44b34adff2adcd70922e5a4c95ff"],
+    "derivativeGroup": "bounded-map-add"
+  }
+}

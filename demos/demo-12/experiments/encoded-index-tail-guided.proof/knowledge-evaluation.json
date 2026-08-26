@@ -1,0 +1,74 @@
+{
+  "schemaVersion": 1,
+  "artifactSha256": "7cdd8adba75d4f076d0a142f824a19a0d34d6a5cedd1a810a417a7fc5789f7b6",
+  "knowledgeTaskSha256": "ee5c4754dfe027f3d2b90aa47d62fdd0663620e4dcce9ee2d6a768a8164e20e6",
+  "status": "accepted",
+  "entries": [
+    {
+      "package": "leanexe-core",
+      "entry": "array-memory-framing",
+      "outcome": "used",
+      "reason": "Preserved the represented input across allocation and the result-length write."
+    },
+    {
+      "package": "leanexe-core",
+      "entry": "encoded-index-decoder",
+      "outcome": "used",
+      "reason": "Decoded the generated successful search result and supplied exact frame accessors."
+    },
+    {
+      "package": "leanexe-core",
+      "entry": "fixed-array-allocation",
+      "outcome": "used",
+      "reason": "Proved the runtime-capacity allocation and the constant-capacity invalid branch."
+    },
+    {
+      "package": "leanexe-core",
+      "entry": "fixed-array-capacity",
+      "outcome": "used",
+      "reason": "Matched the checked zero-capacity normalization in the invalid branch."
+    },
+    {
+      "package": "leanexe-core",
+      "entry": "fixed-array-erase-copy",
+      "outcome": "used",
+      "reason": "Proved the prefix-and-suffix copy loops and their continuation frame."
+    },
+    {
+      "package": "leanexe-core",
+      "entry": "fixed-array-erase-reconstruction",
+      "outcome": "used",
+      "reason": "Identified the copied prefix and suffix as the ordered `eraseIdx!` result."
+    },
+    {
+      "package": "leanexe-core",
+      "entry": "fixed-array-find-idx-eq",
+      "outcome": "used",
+      "reason": "Proved the early-exit zero search and split its none and first-match callbacks."
+    },
+    {
+      "package": "leanexe-core",
+      "entry": "fixed-array-length-dispatch",
+      "outcome": "used",
+      "reason": "Proved the at-most-eight dispatch and exposed bounded and invalid callbacks."
+    },
+    {
+      "package": "leanexe-core",
+      "entry": "fixed-array-result",
+      "outcome": "used",
+      "reason": "Proved result-length stores, root transfers, frame getters, and the empty result."
+    },
+    {
+      "package": "leanexe-core",
+      "entry": "local-frame-projection",
+      "outcome": "rejected",
+      "reason": "Its existing-frame projections did not establish the generated function's initial frame."
+    }
+  ],
+  "proof": {
+    "sourceSha256": "6cdec3065a8966a95a0e5503e4a0e2d5a4081ffce2c60a92ccf94f0a0f2fcd89",
+    "byteLength": 35906,
+    "lineCount": 735,
+    "stage5Milliseconds": 3371682.385
+  }
+}

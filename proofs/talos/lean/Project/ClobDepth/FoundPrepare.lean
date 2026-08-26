@@ -11,7 +11,7 @@ incoming quantity, reloads the level count, and checks the index bound.
 namespace Project.ClobDepth.FoundPrepare
 
 open Wasm Project.Common Project.ClobDepth Project.ClobDepth.Model
-  Project.ClobDepth.Properties Project.ClobDepth.Representation
+  Project.ClobDepth.Properties Project.ClobDepth.Representation Project.ProofKit
 
 def branchFrame (owner source price qty : UInt64) (levels : List LevelL)
     (i : Nat) : Locals :=
@@ -60,45 +60,41 @@ theorem foundPrepareProg_spec
     exact hi
   have hQtyRead := (hLevels.2 i hi).2.1
   have hQtyBound := (hLevels.2 i hi).2.2
-  have hProgram :
-      Entry.foundPrepareProg =
-        [.localGet 1, .localSet 9] ++
-        Project.ProofKit.EncodedIndexDecoder.program 6 14 10 ++
-        [.localGet 9, .localSet 14,
-          .localGet 10, .localSet 15,
-          .localGet 2, .localSet 20,
-          .localGet 1, .localSet 24] ++
-        Project.ProofKit.EncodedIndexDecoder.program 6 26 25 ++
-        Entry.foundPrepareProg.drop 22 := by
-    rfl
-  rw [hProgram]
-  generalize hFirstDecoder :
-    Project.ProofKit.EncodedIndexDecoder.program 6 14 10 = firstDecoder
-  generalize hSecondDecoder :
-    Project.ProofKit.EncodedIndexDecoder.program 6 26 25 = secondDecoder
+  have hFirstDecoderTail : Entry.foundPrepareProg.drop 2 =
+      EncodedIndexDecoder.program 6 14 10 ++ Entry.foundPrepareProg.drop 8 := by rfl
+  have hSecondDecoderTail : Entry.foundPrepareProg.drop 16 =
+      EncodedIndexDecoder.program 6 26 25 ++ Entry.foundPrepareProg.drop 22 := by rfl
+  change wp «module»
+    ([.localGet 1, .localSet 9] ++ Entry.foundPrepareProg.drop 2 ++ rest)
+    Q st (branchFrame owner source price qty levels i) env
+  rw [hFirstDecoderTail]
   simp only [List.append_assoc]
   simp [branchFrame, Scan.outcomeFrame]
-  rw [← hFirstDecoder]
-  apply Project.ProofKit.EncodedIndexDecoder.program_spec
+  apply EncodedIndexDecoder.program_spec
       (encoded := UInt64.ofNat i + 1)
   · simp [Wasm.Locals.get]
   · simp
   · simp
   · simp
   · simp
-  · simp (config := { maxSteps := 10000000 }) (discharger := omega)
-      [Project.ProofKit.EncodedIndexDecoder.resultFrame, hEncoded,
+  · change wp «module»
+      ([.localGet 9, .localSet 14,
+        .localGet 10, .localSet 15,
+        .localGet 2, .localSet 20,
+        .localGet 1, .localSet 24] ++
+        Entry.foundPrepareProg.drop 16 ++ rest) Q st _ env
+    rw [hSecondDecoderTail]
+    simp (config := { maxSteps := 10000000 }) (discharger := omega)
+      [EncodedIndexDecoder.resultFrame, hEncoded,
         wp_simp, Wasm.Locals.get, Wasm.Locals.set?]
-    rw [← hSecondDecoder]
-    apply Project.ProofKit.EncodedIndexDecoder.program_spec
+    apply EncodedIndexDecoder.program_spec
         (encoded := UInt64.ofNat i + 1)
     · simp [Wasm.Locals.get]
     · simp
     · simp
     · simp
     · simp
-    · simp only [Project.ProofKit.EncodedIndexDecoder.resultFrame,
-          if_neg hEncoded]
+    · simp only [EncodedIndexDecoder.resultFrame, if_neg hEncoded]
       simp only [Entry.foundPrepareProg, List.drop]
       wp_run
       try simp

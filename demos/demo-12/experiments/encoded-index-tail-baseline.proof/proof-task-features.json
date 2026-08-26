@@ -1,0 +1,93 @@
+{
+  "schemaVersion": 1,
+  "extractorVersion": 10,
+  "sourceSha256": "3b5ba54846e8a8ef26b3ab5dc46f99dfac767f13ae9cedad59ba1bdbf74f7091",
+  "exportIndex": 0,
+  "reachableFunctions": [
+    {
+      "index": 0,
+      "instructionCount": 597,
+      "localCount": 23,
+      "calls": [],
+      "loopCount": 5,
+      "hasMemory": true,
+      "hasArithmetic": true,
+      "hasAllocation": true,
+      "fixedArrayEqNodes": [],
+      "fixedArraySearchKeys": [],
+      "fixedArrayLengthDispatches": [
+        {
+          "inputLocal": 8,
+          "expectedSize": 8,
+          "encoding": "le-unsigned-v1"
+        }
+      ],
+      "fixedArrayFindIdxEqs": [
+        {
+          "scratchStart": 8,
+          "sourceWidth": 1,
+          "inputLocal": 0,
+          "itemLocal": 1,
+          "key": "0",
+          "resultEncoding": "none-zero-some-index-plus-one-v1"
+        }
+      ],
+      "fixedArrayEraseCopies": [
+        {
+          "sourceWidth": 1,
+          "sourceLocal": 8,
+          "targetLocal": 14,
+          "prefixCellsLocal": 11,
+          "suffixCellsLocal": 12,
+          "counterLocal": 15
+        }
+      ],
+      "encodedIndexDecoders": [
+        {
+          "encodedLocal": 2,
+          "scratchStart": 8,
+          "decodedLocal": 4,
+          "encoding": "none-zero-some-index-plus-one-v1"
+        }
+      ]
+    }
+  ],
+  "selectedSections": [
+    {
+      "id": "strategy.core",
+      "reason": "selected for every artifact proof"
+    },
+    {
+      "id": "strategy.loops",
+      "reason": "an export-reachable function contains a loop"
+    },
+    {
+      "id": "strategy.frames",
+      "reason": "a reachable function contains a loop or at least 16 locals"
+    },
+    {
+      "id": "strategy.arrays",
+      "reason": "selected for the fixed Array UInt64 public interface"
+    },
+    {
+      "id": "strategy.arithmetic",
+      "reason": "an export-reachable function contains machine arithmetic"
+    },
+    {
+      "id": "strategy.memory",
+      "reason": "an export-reachable function contains a load or store"
+    },
+    {
+      "id": "strategy.allocation",
+      "reason": "an export-reachable function contains allocator operations"
+    },
+    {
+      "id": "strategy.elaboration",
+      "reason": "a reachable function exceeds 200 instructions, has at least 32 locals, or has multiple loops"
+    },
+    {
+      "id": "strategy.diagnostics",
+      "reason": "selected for every artifact proof"
+    }
+  ]
+}

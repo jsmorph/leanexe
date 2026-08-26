@@ -373,6 +373,8 @@ function testCodexProtocol() {
     artifactPrompt.includes("PROGRAM_ANNOTATIONS.json") &&
     artifactPrompt.includes("PROOF_RECIPES.json") &&
     artifactPrompt.includes("Attempt an exact direct recipe or complete composition") &&
+    artifactPrompt.includes("supporting declarations include a generated declaration ending in _tail_eq") &&
+    artifactPrompt.includes("change the residual program to that resolved artifact tail") &&
     artifactPrompt.includes("Treat each new residual goal class as another retrieval checkpoint") &&
     artifactPrompt.includes("with a structured tactics field") &&
     artifactPrompt.includes("Attempt a matching command before reconstructing") &&
@@ -1268,7 +1270,9 @@ def func0Def : Wasm.Function :=
     recipe.direct.module === "Project.ProofKit.EncodedIndexDecoder" &&
     recipe.direct.theorem === "Project.ProofKit.EncodedIndexDecoder.program_spec" &&
     recipe.direct.program.endsWith(".function_0_encoded_index_0_program") &&
-    recipe.direct.regionEquality.endsWith(".function_0_encoded_index_0_eq"),
+    recipe.direct.regionEquality.endsWith(".function_0_encoded_index_0_eq") &&
+    recipe.supporting.some((item) =>
+      item.declaration.endsWith(".function_0_encoded_index_0_tail_eq")),
   "encoded-index annotation did not select its checked proof recipe");
   const source = annotationMatchesSource(document, {
     namespace: "Example.Generated",
@@ -1276,7 +1280,10 @@ def func0Def : Wasm.Function :=
   }, program).source;
   assert(source.includes("import Project.ProofKit.EncodedIndexDecoder") &&
     source.includes("Project.ProofKit.EncodedIndexDecoder.program\n    2 8 4") &&
-    source.includes("theorem function_0_encoded_index_0_eq"),
+    source.includes("theorem function_0_encoded_index_0_eq") &&
+    source.includes("theorem function_0_encoded_index_0_tail_eq") &&
+    source.includes(".drop 0 =\n      function_0_encoded_index_0_program ++") &&
+    source.includes(".drop 6 := by"),
   "encoded-index annotation did not generate its program equality");
   const features = proofStrategyBundle(`${program}\n\ndef «module» : Wasm.Module := {}`, 0, {
     annotations: document,
