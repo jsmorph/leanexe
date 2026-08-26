@@ -1,4 +1,5 @@
 import Project.ClobDepth.MissingBranch
+import Project.ProofKit.EncodedIndexDecoder
 
 /-!
 # Found-price preparation
@@ -59,37 +60,57 @@ theorem foundPrepareProg_spec
     exact hi
   have hQtyRead := (hLevels.2 i hi).2.1
   have hQtyBound := (hLevels.2 i hi).2.2
-  simp only [Entry.foundPrepareProg, List.cons_append, List.nil_append]
+  have hProgram :
+      Entry.foundPrepareProg =
+        [.localGet 1, .localSet 9] ++
+        Project.ProofKit.EncodedIndexDecoder.program 6 14 10 ++
+        [.localGet 9, .localSet 14,
+          .localGet 10, .localSet 15,
+          .localGet 2, .localSet 20,
+          .localGet 1, .localSet 24] ++
+        Project.ProofKit.EncodedIndexDecoder.program 6 26 25 ++
+        Entry.foundPrepareProg.drop 22 := by
+    rfl
+  rw [hProgram]
+  generalize hFirstDecoder :
+    Project.ProofKit.EncodedIndexDecoder.program 6 14 10 = firstDecoder
+  generalize hSecondDecoder :
+    Project.ProofKit.EncodedIndexDecoder.program 6 26 25 = secondDecoder
+  simp only [List.append_assoc]
   simp [branchFrame, Scan.outcomeFrame]
-  rw [if_neg hEncoded]
-  refine wp_iff_cons rfl ?_
-  rw [if_pos (by simp)]
-  wp_run
-  try simp
-  refine wp_iff_cons rfl ?_
-  rw [if_neg hEncoded]
-  rw [if_neg (by simp)]
-  wp_run
-  try simp
-  rw [if_neg hEncoded]
-  refine wp_iff_cons rfl ?_
-  rw [if_pos (by simp)]
-  wp_run
-  try simp
-  refine wp_iff_cons rfl ?_
-  rw [if_neg hEncoded]
-  rw [if_neg (by simp)]
-  wp_run
-  try simp
-  rw [if_neg (Nat.not_lt.mpr hLevels.1.2), hLevels.1.1]
-  rw [if_pos hIndexLt]
-  refine wp_iff_cons rfl ?_
-  rw [if_pos (by simp)]
-  wp_run
-  try simp
-  rw [if_neg (Nat.not_lt.mpr hQtyBound), hQtyRead]
-  rw [if_neg (Nat.not_lt.mpr hLevels.1.2), hLevels.1.1]
-  rw [if_pos hIndexLt]
-  simpa [prepareFrame] using hNext
+  rw [← hFirstDecoder]
+  apply Project.ProofKit.EncodedIndexDecoder.program_spec
+      (encoded := UInt64.ofNat i + 1)
+  · simp [Wasm.Locals.get]
+  · simp
+  · simp
+  · simp
+  · simp
+  · simp (config := { maxSteps := 10000000 }) (discharger := omega)
+      [Project.ProofKit.EncodedIndexDecoder.resultFrame, hEncoded,
+        wp_simp, Wasm.Locals.get, Wasm.Locals.set?]
+    rw [← hSecondDecoder]
+    apply Project.ProofKit.EncodedIndexDecoder.program_spec
+        (encoded := UInt64.ofNat i + 1)
+    · simp [Wasm.Locals.get]
+    · simp
+    · simp
+    · simp
+    · simp
+    · simp only [Project.ProofKit.EncodedIndexDecoder.resultFrame,
+          if_neg hEncoded]
+      simp only [Entry.foundPrepareProg, List.drop]
+      wp_run
+      try simp
+      rw [if_neg (Nat.not_lt.mpr hLevels.1.2), hLevels.1.1]
+      rw [if_pos hIndexLt]
+      refine wp_iff_cons rfl ?_
+      rw [if_pos (by simp)]
+      wp_run
+      try simp
+      rw [if_neg (Nat.not_lt.mpr hQtyBound), hQtyRead]
+      rw [if_neg (Nat.not_lt.mpr hLevels.1.2), hLevels.1.1]
+      rw [if_pos hIndexLt]
+      simpa [prepareFrame, getElem!_pos levels i hi] using hNext
 
 end Project.ClobDepth.FoundPrepare

@@ -29,7 +29,7 @@ Generated proof packages preserve a frequent prose journal.  The journal records
 
 ## Annotation-directed support
 
-Compiler annotations describe selected regions of the structured instruction output.  A region names its kind, exact structured location, parameters, and generating compiler functions.  The current vocabulary covers direct calls, length dispatches, array searches and comparison nodes, map and filter wrappers, array folds, scalar loops, pair results, and related composition boundaries.
+Compiler annotations describe selected regions of the structured instruction output.  A region names its kind, exact structured location, parameters, and generating compiler functions.  The current vocabulary covers direct calls, length dispatches, array searches and comparison nodes, encoded optional-index decoders, map and filter wrappers, array folds, scalar loops, pair results, and related composition boundaries.
 
 The sidecar does not establish a fact about the distributed binary by itself.  The annotation consumer validates the document, selects the corresponding region from the decoded artifact, and generates a Lean declaration whose equality or semantic adapter checks against that exact region.  Any mismatch in artifact identity, path, interval, opcode, local index, constant, descriptor, or expected continuation prevents the declaration from checking.
 
@@ -37,9 +37,17 @@ Proof recipes name the generated equality, the compatible ProofKit theorem, its 
 
 ## Compiler theorem use
 
-Compiler theorems currently help one part of annotation production.  `LeanExe.Wasm.ScalarCertificate` proves that successful reification of supported scalar IR expressions, conditions, statements, and loops agrees with the backend's structured instruction emitter.  The compiler can therefore reject descriptor drift at the emitter boundary and issue a descriptor that follows from its own lowering definitions.
+Compiler theorems currently help one part of annotation production.  `LeanExe.Wasm.ScalarCertificate` proves that successful reification of supported scalar IR expressions, conditions, statements, loops, and encoded optional-index assignments agrees with the backend's structured instruction emitter.  The compiler can therefore reject descriptor drift at the emitter boundary and issue a descriptor that follows from its own lowering definitions.
 
-The artifact package checks the descriptor again against the exact decoded region.  Its retained proof imports neutral scalar-descriptor semantics and the checked region equality rather than importing `LeanExe.IR`, the emitter, or `ScalarCertificate`.  This gives compiler theorems an indirect role in proof construction while preserving the independent exact-artifact theorem boundary.
+The encoded-index increment covers one recurring six-top-level-instruction decoder.  The compiler recognizes an assignment from the zero-or-index-plus-one representation and proves its descriptor emission equal to backend emission.  A separate structural scanner selects matching emitted regions and records their local roles without claiming that the IR recognizer produced them.
+
+The artifact package checks the descriptor again against the exact decoded region.  Its JavaScript matcher checks every decoder opcode, branch body, constant, and local role, and generated Lean proves equality between the selected interval and `EncodedIndexDecoder.program`.  A generated proof can import that equality and the neutral `EncodedIndexDecoder.program_spec` frame theorem without importing `LeanExe.IR`, the emitter, or `ScalarCertificate`.
+
+The decoder theorem assumes the source word's zero-or-index-plus-one meaning.  A search theorem or application fact must still connect the word to an optional result and establish any index bound needed later.  The compiler-derived support therefore removes local decoder execution while keeping search correctness in the artifact proof.
+
+The Demo 12 annotation pass preserved the frozen 2,183-byte artifact and generated a checked equality for the decoder at path `then@7/else@20`, interval `[2,8)`.  Separate package verification accepted the current package, but the package retained its existing behavior proof and therefore supplies no proof-generation or LTG-retrieval result.  This run checks byte preservation, region matching, generated Lean equality, and compatibility with the current proof package.
+
+The ClobDepth compiler run preserved its registered 3,602-byte artifact and found two decoder regions with distinct local layouts.  The source-driven proof applies the neutral theorem twice, removing four decoder-specific branch selections and four associated scalar reductions, while explicit decomposition and premise setup increase the file by 21 lines.  The complete Talos proof gate passed, but the refactor supplies no comparative proof-generation-time result and does not consume the generated annotation equality.
 
 A complete source-to-WASM correctness theorem would support a second result with a larger stated dependency set.  That theorem would connect source semantics, IR semantics, lowering, byte identity, and modeled WASM execution, allowing a source theorem to transport to the artifact.  The current artifact-only path does not require that theorem, and the [Source-Theorem Transport Plan](../plans/theorem-transport.md) keeps the two claims distinct.
 

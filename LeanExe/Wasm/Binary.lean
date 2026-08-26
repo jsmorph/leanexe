@@ -3063,7 +3063,10 @@ def emitStmt (releaseIndex scratch : Nat) (statement : Stmt) : List Instr :=
   | none =>
       match ScalarDescriptor.Stmt.ofIR statement with
       | some descriptor => descriptor.emit scratch
-      | none => emitStmtFallback releaseIndex scratch statement
+      | none =>
+          match ScalarDescriptor.EncodedIndex.ofIR statement with
+          | some descriptor => descriptor.emit scratch
+          | none => emitStmtFallback releaseIndex scratch statement
 
 def localDecls (func : Func) : List UInt8 :=
   let extra := func.locals - func.params + funcScratch func
@@ -3920,6 +3923,43 @@ def mergeDirectCallAnnotations
         candidate.endIndex = call.endIndex &&
         candidate.calleeIndex = call.calleeIndex).getD call
 
+partial def annotateEncodedIndicesInList
+    (listPath : Array Annotations.PathStep) (code : List Instr) :
+    Array Annotations.RelativeEncodedIndex :=
+  (enumerate code).foldl (init := #[]) fun regions item =>
+    let instructionIndex := item.fst
+    let instruction := item.snd
+    let regions :=
+      match ScalarDescriptor.EncodedIndex.ofProgramPrefix
+          (code.drop instructionIndex) with
+      | some (descriptor, scratchStart) =>
+          regions.push
+            { listPath
+              startIndex := instructionIndex
+              endIndex := instructionIndex + (descriptor.emit scratchStart).length
+              encodedLocal := descriptor.encodedLocal
+              scratchStart
+              decodedLocal := descriptor.decodedLocal
+              encoding := "none-zero-some-index-plus-one-v1"
+              generatedBy := #[
+                "LeanExe.Wasm.ScalarDescriptor.EncodedIndex.ofProgramPrefix",
+                "LeanExe.Wasm.Binary.CoreWasm.annotateEncodedIndicesInList",
+                "LeanExe.Wasm.Binary.CoreWasm.emitFuncInstrs"
+              ] }
+      | none => regions
+    let nested (field : String) (body : List Instr) :=
+      annotateEncodedIndicesInList
+        (listPath.push { instructionIndex, field }) body
+    match instruction with
+    | .block body => regions ++ nested "block" body
+    | .loop body => regions ++ nested "loop" body
+    | .iff _ thenBody elseBody | .iffI32 thenBody elseBody =>
+        let withThen := regions ++ nested "then" thenBody
+        match elseBody with
+        | some body => withThen ++ nested "else" body
+        | none => withThen
+    | _ => regions
+
 def fixedArrayTraversalLoader? (code : List Instr) : Option (Nat × Nat) :=
   match code with
   | .localGet 0 :: .localSet pointerLocal :: .constI64 index ::
@@ -4275,6 +4315,7 @@ def annotationDocument (module_ : Module) (bytes : ByteArray) : Annotations.Docu
               node.keyLocal = searchKey.keyLocal) ||
             (ltNodes.any fun node => node.offset = searchKey.offset &&
               node.keyLocal = searchKey.keyLocal)
+      let encodedIndices := annotateEncodedIndicesInList #[] emitted.code
       let directCallRegions : List Annotations.Region :=
         (enumerate directCalls.toList).map fun regionItem =>
           let regionIndex := regionItem.fst
@@ -4415,6 +4456,22 @@ def annotationDocument (module_ : Module) (bytes : ByteArray) : Annotations.Docu
                "LeanExe.Wasm.Binary.CoreWasm.scalarPostTestLoopInStmt?",
                "LeanExe.Wasm.Binary.CoreWasm.annotationDocument"
              ] }]
+      let encodedIndexRegions : List Annotations.Region :=
+        (enumerate encodedIndices.toList).map fun regionItem =>
+          let regionIndex := regionItem.fst
+          let decoder := regionItem.snd
+          { id := s!"function-{functionIndex}.encoded-index-{regionIndex}"
+            kind := "leanexe.option.encoded-index.v1"
+            location :=
+              { listPath := decoder.listPath
+                startIndex := decoder.startIndex
+                endIndex := decoder.endIndex }
+            parameters := .encodedIndex
+              { encodedLocal := decoder.encodedLocal
+                scratchStart := decoder.scratchStart
+                decodedLocal := decoder.decodedLocal
+                encoding := decoder.encoding }
+            generatedBy := decoder.generatedBy }
       let lengthRegions : List Annotations.Region :=
         (enumerate emitted.lengthDispatches.toList).map fun regionItem =>
           let regionIndex := regionItem.fst
@@ -4559,7 +4616,8 @@ def annotationDocument (module_ : Module) (bytes : ByteArray) : Annotations.Docu
         results := func.results.length
         locals := combinedLocals
         regions := (mapAddRegions ++ filterLtRegions ++ loopFoldRegions ++ arrayFoldRegions ++
-          whileLoopRegions ++ scalarPostTestLoopRegions ++ lengthRegions ++ findIdxEqRegions ++
+          whileLoopRegions ++ scalarPostTestLoopRegions ++ encodedIndexRegions ++
+          lengthRegions ++ findIdxEqRegions ++
           eraseCopyRegions ++ searchKeyRegions ++ eqNodeRegions ++ ltNodeRegions ++ pairResultRegions ++
           directCallRegions).toArray }
   { schemaVersion := 1

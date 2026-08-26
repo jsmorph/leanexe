@@ -49,4 +49,41 @@ theorem While.ofIR_emit
   unfold Binary.CoreWasm.emitStmt
   rw [hReify]
 
+theorem EncodedIndex.ofIR_emit
+    (releaseIndex scratch : Nat) (statement : LeanExe.IR.Stmt)
+    (descriptor : EncodedIndex)
+    (hReify : EncodedIndex.ofIR statement = some descriptor) :
+    Binary.CoreWasm.emitStmt releaseIndex scratch statement =
+      descriptor.emit scratch := by
+  have hAssign : ∃ decodedLocal expression,
+      statement = .assign decodedLocal expression := by
+    cases statement <;> simp_all [EncodedIndex.ofIR]
+  obtain ⟨decodedLocal, expression, rfl⟩ := hAssign
+  unfold EncodedIndex.ofIR EncodedIndex.ofExpr at hReify
+  split at hReify
+  · rename_i _ decodedLocal' expression' hStatement
+    injection hStatement with hDecoded hExpression
+    subst decodedLocal'
+    subst expression'
+    split at hReify
+    · split at hReify
+      · simp at hReify
+        subst_vars
+        unfold Binary.CoreWasm.emitStmt
+        simp [While.ofIR, Stmt.ofIR, Expr.ofIR, Cond.ofIR, U64Op.ofIR,
+          EncodedIndex.ofIR, EncodedIndex.ofExpr]
+      · cases hReify
+    · cases hReify
+  · rename_i _ hNoAssignment
+    exact False.elim (hNoAssignment decodedLocal expression rfl)
+
+theorem EncodedIndex.ofProgramPrefix_emit
+    (program : List Instr) (descriptor : EncodedIndex) (scratch : Nat)
+    (hRecognize : EncodedIndex.ofProgramPrefix program = some (descriptor, scratch)) :
+    ∃ suffix, program = descriptor.emit scratch ++ suffix := by
+  cases descriptor
+  unfold EncodedIndex.ofProgramPrefix at hRecognize
+  split at hRecognize <;>
+    simp_all [EncodedIndex.emit, EncodedIndex.emitValue, Bool.and_eq_true]
+
 end LeanExe.Wasm.ScalarDescriptor

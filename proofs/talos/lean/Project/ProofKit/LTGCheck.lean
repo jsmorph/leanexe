@@ -1,6 +1,7 @@
 import Project.ProofKit.Allocation
 import Project.ProofKit.Array
 import Project.ProofKit.Control
+import Project.ProofKit.EncodedIndexDecoder
 import Project.ProofKit.FixedArrayAllocator
 import Project.ProofKit.FixedArrayAllocatorWindow
 import Project.ProofKit.FixedArrayCapacity
@@ -29,6 +30,13 @@ import Project.ProofKit.ScalarTransitionU64
 #check Project.ProofKit.ArrayFold.foldPrefix
 #check Project.ProofKit.ArrayFold.foldPrefix_size
 #check Project.ProofKit.ArrayFold.foldPrefix_succ
+#check Project.ProofKit.EncodedIndexDecoder.program
+#check Project.ProofKit.EncodedIndexDecoder.program_spec
+#check Project.ProofKit.EncodedIndexDecoder.resultFrame
+#check Project.ProofKit.EncodedIndexDecoder.resultFrame_decoded
+#check Project.ProofKit.EncodedIndexDecoder.resultFrame_locals_length
+#check Project.ProofKit.EncodedIndexDecoder.resultFrame_params
+#check Project.ProofKit.EncodedIndexDecoder.resultFrame_values
 #check Project.ProofKit.FixedArrayAllocator.region_spec
 #check Project.ProofKit.FixedArrayAllocatorWindow.allocFrame_get_root
 #check Project.ProofKit.FixedArrayAllocatorWindow.allocFrame_locals_length
