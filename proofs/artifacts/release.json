@@ -2,7 +2,7 @@
   "schemaVersion": 2,
   "status": "draft",
   "recordedDate": "2026-08-26",
-  "sourceRevision": null,
+  "sourceRevision": "0e0d752904fc90dee3ef3511ffab91f3d358c1ed",
   "releaseInputSha256": "5de9678970b1a9b74d50c1407457423a7fa6eabd3f430f56cfdc0e407af2b7e5",
   "artifactRegistry": {
     "path": "proofs/artifacts/registry.json",
@@ -357,13 +357,12 @@
   },
   "coldCheckout": {
     "status": "pending",
-    "sourceRevision": null,
+    "sourceRevision": "0e0d752904fc90dee3ef3511ffab91f3d358c1ed",
     "releaseInputSha256": null,
     "date": null,
     "command": "tools/artifact-release.js check-cold <revision>"
   },
   "blockers": [
-    "No immutable source revision records the current proof implementation.",
     "The release gates have not passed from a cold checkout of the recorded source revision."
   ]
 }

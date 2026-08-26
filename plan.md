@@ -4,7 +4,7 @@ This file is the only active project work queue.  The compiler, execution suite,
 
 ## 1. Reconcile current documentation and release evidence
 
-The documentation describes one implementation and assigns each changing fact to one source of truth.  The release record carries input digest `5de9678970b1a9b74d50c1407457423a7fa6eabd3f430f56cfdc0e407af2b7e5` and successful warm-gate receipts dated 2026-08-26, while its source revision remains unset.  Cold verification remains deferred and does not form part of the current work.
+The documentation describes one implementation and assigns each changing fact to one source of truth.  The release record carries input digest `5de9678970b1a9b74d50c1407457423a7fa6eabd3f430f56cfdc0e407af2b7e5`, source revision `0e0d752904fc90dee3ef3511ffab91f3d358c1ed`, and successful warm-gate receipts dated 2026-08-26.  Cold verification remains deferred and does not form part of the current work.
 
 - [x] Consolidate navigation, language, compiler, artifact-proof, annotation, and proof-guidance documents.
 - [x] Remove superseded plans and experiment reports after migrating current facts and links.
@@ -12,7 +12,7 @@ The documentation describes one implementation and assigns each changing fact to
 - [x] Run local-link, stale-reference, command-example, and whitespace checks over the maintained documentation.
 - [x] Refresh `proofs/artifacts/release.json` against the settled release inputs.
 - [x] Run the warm artifact-proof and semantic-conformance gates for the refreshed identity.
-- [ ] Record an immutable source revision for the current release inputs.
+- [x] Record an immutable source revision for the current release inputs.
 - [ ] Complete the cold-checkout gate when cold verification resumes.
 - [ ] Require `tools/artifact-release.js check-ready` to pass before describing the release as ready.
 
