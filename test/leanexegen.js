@@ -75,6 +75,7 @@ const {
   fixedArraySingletonWrapperCompositions,
   fixedArraySearchChainCompositions,
   fixedArraySearchTreeCompositions,
+  matchArrayFoldRegion,
   proofRecipePlan,
   validateAnnotationDocument,
   validateProofRecipePlan,
@@ -468,6 +469,10 @@ function testCodexProtocol() {
   validateProofImports(job, [{
     module: job.behaviorModule,
     source: "import Project.ProofKit.Control\n",
+  }]);
+  validateProofImports(job, [{
+    module: job.behaviorModule,
+    source: "import Project.ProofKit.EncodedIndexDecoder\n",
   }]);
   validateProofImports(job, [{
     module: job.behaviorModule,
@@ -1193,6 +1198,108 @@ def func0Def : Wasm.Function :=
   expectFailure(() => proofRecipePlan(document,
     program.replace(".constI64 (37 : UInt64),", ".constI64 (38 : UInt64),")),
   /find-index loop does not match/);
+}
+
+function testEncodedIndexDecoderAnnotationRecipe() {
+  const wasm = Buffer.from([0, 97, 115, 109, 1, 0, 0, 0]);
+  const document = {
+    schemaVersion: 1,
+    artifact: { byteLength: wasm.length },
+    functions: [{
+      wasmIndex: 0,
+      definedFunction: 0,
+      sourceName: "Example.compute",
+      exports: ["compute"],
+      parameters: 1,
+      results: 1,
+      locals: 10,
+      regions: [{
+        id: "function-0.encoded-index-0",
+        kind: "leanexe.option.encoded-index.v1",
+        location: { listPath: [], startIndex: 0, endIndex: 6 },
+        parameters: {
+          encodedLocal: 2,
+          scratchStart: 8,
+          decodedLocal: 4,
+          encoding: "none-zero-some-index-plus-one-v1",
+        },
+        generatedBy: ["LeanExe.Wasm.Binary.CoreWasm.annotateEncodedIndicesInList"],
+      }],
+    }],
+  };
+  const program = `def func0 : Wasm.Program :=
+  [
+  .localGet 2,
+  .constI64 (0 : UInt64),
+  .eqI64,
+  .eqz,
+  .iff 0 1 [
+    .localGet 2,
+    .localSet 8,
+    .constI64 (1 : UInt64),
+    .localSet 9,
+    .localGet 8,
+    .localGet 9,
+    .ltUI64,
+    .iff 0 1 [
+      .constI64 (0 : UInt64)
+    ] [
+      .localGet 8,
+      .localGet 9,
+      .subI64
+    ]
+  ] [
+    .constI64 (0 : UInt64)
+  ],
+  .localSet 4,
+  .localGet 4
+  ]
+
+def func0Def : Wasm.Function :=
+  { params := [.i64], locals := [.i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64], body := func0, results := [.i64] }
+`;
+  validateAnnotationDocument(document, wasm);
+  const plan = proofRecipePlan(document, program,
+    ["strategy.arithmetic", "strategy.frames"],
+    "Example.Generated.AnnotationMatches");
+  validateProofRecipePlan(plan, document);
+  const recipe = plan.recipes[0];
+  assert(plan.recipes.length === 1 &&
+    recipe.direct.module === "Project.ProofKit.EncodedIndexDecoder" &&
+    recipe.direct.theorem === "Project.ProofKit.EncodedIndexDecoder.program_spec" &&
+    recipe.direct.program.endsWith(".function_0_encoded_index_0_program") &&
+    recipe.direct.regionEquality.endsWith(".function_0_encoded_index_0_eq"),
+  "encoded-index annotation did not select its checked proof recipe");
+  const source = annotationMatchesSource(document, {
+    namespace: "Example.Generated",
+    programModule: "Example.Generated.Program",
+  }, program).source;
+  assert(source.includes("import Project.ProofKit.EncodedIndexDecoder") &&
+    source.includes("Project.ProofKit.EncodedIndexDecoder.program\n    2 8 4") &&
+    source.includes("theorem function_0_encoded_index_0_eq"),
+  "encoded-index annotation did not generate its program equality");
+  const features = proofStrategyBundle(`${program}\n\ndef «module» : Wasm.Module := {}`, 0, {
+    annotations: document,
+  }).features;
+  assert(features.extractorVersion === 10 &&
+    JSON.stringify(features.reachableFunctions[0].encodedIndexDecoders) ===
+      JSON.stringify([{
+        encodedLocal: 2,
+        scratchStart: 8,
+        decodedLocal: 4,
+        encoding: "none-zero-some-index-plus-one-v1",
+      }]), "proof-task features omitted the checked encoded-index decoder");
+
+  const invalidSchema = structuredClone(document);
+  invalidSchema.functions[0].regions[0].parameters.encoding = "unknown";
+  expectFailure(() => validateAnnotationDocument(invalidSchema, wasm),
+    /unsupported encoded-index decoder/);
+  expectFailure(() => proofRecipePlan(document,
+    program.replace(".constI64 (0 : UInt64)\n    ] [", ".constI64 (2 : UInt64)\n    ] [")),
+  /subtraction branch does not match/);
+  expectFailure(() => proofRecipePlan(document,
+    program.replace(".localSet 4,", ".localSet 5,")),
+  /decoded instructions do not match/);
 }
 
 function eraseCopyProgram(sourceWidth, suffixSkip = sourceWidth) {
@@ -2135,6 +2242,21 @@ def func0Def : Wasm.Function :=
     }],
   };
   validateAnnotationDocument(arrayFoldDocument, wasm);
+  const arrayFoldWithAllocatorBlock = arrayFoldProgram.replace(
+    `    .localGet 7,
+    .localGet 5,`,
+    `    .block 0 0 [],
+    .localGet 7,
+    .localGet 5,`);
+  const arrayFoldWithAllocatorDocument = structuredClone(arrayFoldDocument);
+  arrayFoldWithAllocatorDocument.functions[0].regions[0].location.endIndex = 27;
+  const arrayFoldWithAllocatorMatch = matchArrayFoldRegion(
+    arrayFoldWithAllocatorBlock,
+    arrayFoldWithAllocatorDocument.functions[0],
+    arrayFoldWithAllocatorDocument.functions[0].regions[0]);
+  assert(arrayFoldWithAllocatorMatch.loopPath.at(-2).instructionIndex === 24 &&
+    arrayFoldWithAllocatorMatch.resultStartIndex === 25,
+  "array-fold matcher selected an allocator block before the effective-stop boundary");
   const arrayFoldPlan = proofRecipePlan(
     arrayFoldDocument, arrayFoldProgram, ["strategy.arrays", "strategy.loops"]);
   validateProofRecipePlan(arrayFoldPlan, arrayFoldDocument);
@@ -3529,6 +3651,7 @@ try {
   testAnnotationRecipePlan();
   testLengthDispatchAnnotationRecipes();
   testFindIdxEqAnnotationRecipe();
+  testEncodedIndexDecoderAnnotationRecipe();
   testEraseCopyAnnotationRecipe();
   testConstantCapacityAnnotationRecipes();
   testMapAddAnnotationRecipe();

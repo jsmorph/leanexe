@@ -1,9 +1,9 @@
 {
   "schemaVersion": 2,
   "status": "draft",
-  "recordedDate": "2026-08-13",
-  "sourceRevision": "0b09cf0ee3e2f11decd64815130677ca147542e8",
-  "releaseInputSha256": "612fbab1fa3c91e7a977799a9f46cd151a0de1d898abcfa314927c691cdf2ef5",
+  "recordedDate": "2026-08-26",
+  "sourceRevision": null,
+  "releaseInputSha256": "5de9678970b1a9b74d50c1407457423a7fa6eabd3f430f56cfdc0e407af2b7e5",
   "artifactRegistry": {
     "path": "proofs/artifacts/registry.json",
     "sha256": "8fbfb1d21bb5ad4cd433eedb0acbba622a2e40373fe7b8c520cfa81f8141c584",
@@ -328,16 +328,16 @@
   },
   "artifactProof": {
     "command": "tools/artifact-proof.js check-all",
-    "date": "2026-08-13",
+    "date": "2026-08-26",
     "result": "passed",
     "artifactCount": 20,
-    "releaseInputSha256": "612fbab1fa3c91e7a977799a9f46cd151a0de1d898abcfa314927c691cdf2ef5"
+    "releaseInputSha256": "5de9678970b1a9b74d50c1407457423a7fa6eabd3f430f56cfdc0e407af2b7e5"
   },
   "semanticConformance": {
     "command": "tools/artifact-conformance.js check",
     "configSha256": "eb909480a3c04357f59aeb6e4c685bee88032a673003572990fb969bcf7524cf",
-    "releaseInputSha256": "612fbab1fa3c91e7a977799a9f46cd151a0de1d898abcfa314927c691cdf2ef5",
-    "date": "2026-08-13",
+    "releaseInputSha256": "5de9678970b1a9b74d50c1407457423a7fa6eabd3f430f56cfdc0e407af2b7e5",
+    "date": "2026-08-26",
     "result": "passed-with-warning",
     "officialFileCount": 25,
     "officialValidatorCases": 15,
@@ -357,12 +357,13 @@
   },
   "coldCheckout": {
     "status": "pending",
-    "sourceRevision": "0b09cf0ee3e2f11decd64815130677ca147542e8",
+    "sourceRevision": null,
     "releaseInputSha256": null,
     "date": null,
     "command": "tools/artifact-release.js check-cold <revision>"
   },
   "blockers": [
+    "No immutable source revision records the current proof implementation.",
     "The release gates have not passed from a cold checkout of the recorded source revision."
   ]
 }

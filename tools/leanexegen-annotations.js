@@ -171,6 +171,33 @@ function validateFixedArrayFindIdxEq(region, description) {
   }
 }
 
+function validateEncodedIndexDecoder(region, description) {
+  exactKeys(region, ["generatedBy", "id", "kind", "location", "parameters"], description);
+  string(region.id, `${description}.id`);
+  if (region.kind !== "leanexe.option.encoded-index.v1") {
+    fail(`${description}.kind is unsupported`);
+  }
+  validateRegionLocation(region, description);
+  if (region.location.endIndex - region.location.startIndex !== 6) {
+    fail(`${description}.location must contain the exact encoded-index decoder region`);
+  }
+  exactKeys(region.parameters, [
+    "decodedLocal", "encodedLocal", "encoding", "scratchStart",
+  ], `${description}.parameters`);
+  const parameters = region.parameters;
+  natural(parameters.encodedLocal, `${description}.parameters.encodedLocal`);
+  natural(parameters.scratchStart, `${description}.parameters.scratchStart`);
+  natural(parameters.decodedLocal, `${description}.parameters.decodedLocal`);
+  if (parameters.scratchStart === Number.MAX_SAFE_INTEGER ||
+      parameters.encoding !== "none-zero-some-index-plus-one-v1") {
+    fail(`${description}.parameters has an unsupported encoded-index decoder`);
+  }
+  for (const [index, generator] of array(
+    region.generatedBy, `${description}.generatedBy`).entries()) {
+    string(generator, `${description}.generatedBy[${index}]`);
+  }
+}
+
 function validateFixedArrayEraseCopy(region, description) {
   exactKeys(region, ["generatedBy", "id", "kind", "location", "parameters"], description);
   string(region.id, `${description}.id`);
@@ -844,6 +871,8 @@ function validateAnnotationDocument(document, wasmBytes) {
         validateFixedArrayLengthDispatch(region, `${description}.regions[${regionIndex}]`);
       } else if (region?.kind === "leanexe.array.find-idx-eq.v1") {
         validateFixedArrayFindIdxEq(region, `${description}.regions[${regionIndex}]`);
+      } else if (region?.kind === "leanexe.option.encoded-index.v1") {
+        validateEncodedIndexDecoder(region, `${description}.regions[${regionIndex}]`);
       } else if (region?.kind === "leanexe.array.erase-copy.v1") {
         validateFixedArrayEraseCopy(region, `${description}.regions[${regionIndex}]`);
       } else if (region?.kind === "leanexe.array.search-key.v1") {
@@ -1283,6 +1312,69 @@ function matchFixedArrayFindIdxEqRegion(program, function_, region) {
   };
 }
 
+function matchEncodedIndexDecoderRegion(program, function_, region) {
+  const body = programFunctionBody(program, function_.wasmIndex);
+  const instructions = resolveInstructionList(body, region.location.listPath);
+  const selected = normalizeInstructions(
+    instructions.slice(region.location.startIndex, region.location.endIndex));
+  const parameters = region.parameters;
+  const expected = [
+    `.localGet ${parameters.encodedLocal}`,
+    ".constI64 (0 : UInt64)",
+    ".eqI64",
+    ".eqz",
+    ".iff 0 1 [",
+    `.localSet ${parameters.decodedLocal}`,
+  ];
+  if (JSON.stringify(selected) !== JSON.stringify(expected)) {
+    fail(`${region.id}: decoded instructions do not match the encoded-index annotation`);
+  }
+  const outerPath = [
+    ...region.location.listPath,
+    { instructionIndex: region.location.startIndex + 4, field: "then" },
+  ];
+  const scratch = parameters.scratchStart;
+  const outerThen = normalizeInstructions(resolveInstructionList(body, outerPath));
+  const expectedThen = [
+    `.localGet ${parameters.encodedLocal}`,
+    `.localSet ${scratch}`,
+    ".constI64 (1 : UInt64)",
+    `.localSet ${scratch + 1}`,
+    `.localGet ${scratch}`,
+    `.localGet ${scratch + 1}`,
+    ".ltUI64",
+    ".iff 0 1 [",
+  ];
+  if (JSON.stringify(outerThen) !== JSON.stringify(expectedThen)) {
+    fail(`${region.id}: encoded-index nonzero branch does not match`);
+  }
+  const outerElse = normalizeInstructions(resolveInstructionList(body, [
+    ...region.location.listPath,
+    { instructionIndex: region.location.startIndex + 4, field: "else" },
+  ]));
+  if (JSON.stringify(outerElse) !== JSON.stringify([".constI64 (0 : UInt64)"])) {
+    fail(`${region.id}: encoded-index zero branch does not match`);
+  }
+  const innerThen = normalizeInstructions(resolveInstructionList(body, [
+    ...outerPath, { instructionIndex: 7, field: "then" },
+  ]));
+  const innerElse = normalizeInstructions(resolveInstructionList(body, [
+    ...outerPath, { instructionIndex: 7, field: "else" },
+  ]));
+  if (JSON.stringify(innerThen) !== JSON.stringify([".constI64 (0 : UInt64)"]) ||
+      JSON.stringify(innerElse) !== JSON.stringify([
+        `.localGet ${scratch}`, `.localGet ${scratch + 1}`, ".subI64",
+      ])) {
+    fail(`${region.id}: encoded-index subtraction branch does not match`);
+  }
+  return {
+    functionIndex: function_.wasmIndex,
+    regionId: region.id,
+    regionKind: region.kind,
+    parameters,
+  };
+}
+
 function matchFixedArrayEraseCopyRegion(program, function_, region) {
   const body = programFunctionBody(program, function_.wasmIndex);
   const instructions = resolveInstructionList(body, region.location.listPath);
@@ -1668,14 +1760,15 @@ function matchArrayFoldRegion(program, function_, region) {
   }
   const parameters = region.parameters;
   const normalized = normalizeInstructions(selected);
-  const blockIndex = normalized.findIndex((instruction) => instruction.startsWith(".block "));
+  const boundaryLocal = parameters.reverse
+    ? parameters.indexLocal : parameters.effectiveStopLocal;
+  const blockIndex = normalized.findIndex((instruction, index) =>
+    instruction.startsWith(".block ") &&
+      normalized[index - 1] === `.localSet ${boundaryLocal}`);
   const releaseInitialization = normalized.findIndex((instruction, index) =>
     instruction === ".constI64 (0 : UInt64)" &&
       normalized[index + 1] === `.localSet ${parameters.releaseReadyLocal}`);
-  const boundaryLocal = parameters.reverse
-    ? parameters.indexLocal : parameters.effectiveStopLocal;
-  if (blockIndex < 2 || releaseInitialization < 0 ||
-      normalized[blockIndex - 1] !== `.localSet ${boundaryLocal}`) {
+  if (blockIndex < 2 || releaseInitialization < 0) {
     fail(`${region.id}: decoded array-fold initialization boundary does not match`);
   }
   const initializedLocals = [
@@ -2535,6 +2628,53 @@ function fixedArrayEraseCopyRecipe(
   };
 }
 
+function encodedIndexDecoderRecipe(
+    match, selectedSections = [], annotationNamespace = "Project.AnnotationMatches") {
+  const name = match.regionId.replace(/[^A-Za-z0-9_]/g, "_");
+  return {
+    recipeVersion: 1,
+    functionIndex: match.functionIndex,
+    regionId: match.regionId,
+    regionKind: match.regionKind,
+    applicability: "Lean-checked equality over the decoded instruction region",
+    direct: {
+      module: "Project.ProofKit.EncodedIndexDecoder",
+      theorem: "Project.ProofKit.EncodedIndexDecoder.program_spec",
+      regionEquality: `${annotationNamespace}.${name}_eq`,
+      program: `${annotationNamespace}.${name}_program`,
+    },
+    supporting: [
+      {
+        declaration: "Project.ProofKit.Annotation.region",
+        purpose: "select the exact encoded-index decoder and destination-local update",
+      },
+      {
+        declaration: "Project.ProofKit.EncodedIndexDecoder.resultFrame",
+        purpose: "name the decoder's exact local frame",
+      },
+      {
+        declaration: "Project.ProofKit.EncodedIndexDecoder.resultFrame_decoded",
+        purpose: "read zero or the decoded predecessor through the destination local",
+      },
+      {
+        declaration: "Project.ProofKit.EncodedIndexDecoder.resultFrame_params",
+        purpose: "preserve the parameter list at the decoder boundary",
+      },
+      {
+        declaration: "Project.ProofKit.EncodedIndexDecoder.resultFrame_locals_length",
+        purpose: "preserve the combined-local bound at the decoder boundary",
+      },
+      {
+        declaration: "Project.ProofKit.EncodedIndexDecoder.resultFrame_values",
+        purpose: "preserve the operand stack at the decoder boundary",
+      },
+    ],
+    expectedPostcondition: "zero when the encoded word is zero, otherwise the encoded word minus one",
+    guidance: ["strategy.arithmetic", "strategy.frames"]
+      .filter((section) => selectedSections.includes(section)),
+  };
+}
+
 function fixedArraySearchKeyRecipe(match, selectedSections = []) {
   return {
     recipeVersion: 1,
@@ -2813,6 +2953,9 @@ function proofRecipePlan(
       } else if (region.kind === "leanexe.array.find-idx-eq.v1") {
         recipes.push(fixedArrayFindIdxEqRecipe(
           matches.get(region.id), selectedSections, annotationNamespace));
+      } else if (region.kind === "leanexe.option.encoded-index.v1") {
+        recipes.push(encodedIndexDecoderRecipe(
+          matches.get(region.id), selectedSections, annotationNamespace));
       } else if (region.kind === "leanexe.array.erase-copy.v1") {
         recipes.push(fixedArrayEraseCopyRecipe(
           matches.get(region.id), selectedSections, annotationNamespace));
@@ -2906,6 +3049,8 @@ function matchAnnotationDocument(document, program) {
         matches.push(matchFixedArrayLengthDispatchRegion(program, function_, region));
       } else if (region.kind === "leanexe.array.find-idx-eq.v1") {
         matches.push(matchFixedArrayFindIdxEqRegion(program, function_, region));
+      } else if (region.kind === "leanexe.option.encoded-index.v1") {
+        matches.push(matchEncodedIndexDecoderRegion(program, function_, region));
       } else if (region.kind === "leanexe.array.erase-copy.v1") {
         matches.push(matchFixedArrayEraseCopyRegion(program, function_, region));
       } else if (region.kind === "leanexe.array.search-key.v1") {
@@ -3054,6 +3199,7 @@ function validateProofRecipePlan(plan, document) {
       recipe.direct.program !== undefined;
     const expectedApplicability = [
       "leanexe.array.find-idx-eq.v1", "leanexe.array.erase-copy.v1",
+      "leanexe.option.encoded-index.v1",
       "leanexe.array.pair-result.v1",
       "leanexe.array.map-add.v1",
       "leanexe.array.filter-lt.v1",
@@ -3110,6 +3256,14 @@ function validateProofRecipePlan(plan, document) {
       const name = recipe.regionId.replace(/[^A-Za-z0-9_]/g, "_");
       if (recipe.direct.module !== "Project.ProofKit.FixedArrayFindIdxEq" ||
           recipe.direct.theorem !== "Project.ProofKit.FixedArrayFindIdxEq.program_spec" ||
+          !recipe.direct.regionEquality.endsWith(`.${name}_eq`) ||
+          !recipe.direct.program.endsWith(`.${name}_program`)) {
+        fail(`${description}.direct is unsupported`);
+      }
+    } else if (region.kind === "leanexe.option.encoded-index.v1") {
+      const name = recipe.regionId.replace(/[^A-Za-z0-9_]/g, "_");
+      if (recipe.direct.module !== "Project.ProofKit.EncodedIndexDecoder" ||
+          recipe.direct.theorem !== "Project.ProofKit.EncodedIndexDecoder.program_spec" ||
           !recipe.direct.regionEquality.endsWith(`.${name}_eq`) ||
           !recipe.direct.program.endsWith(`.${name}_program`)) {
         fail(`${description}.direct is unsupported`);
@@ -4581,6 +4735,20 @@ theorem ${name}_eq :
   rfl`);
         continue;
       }
+      if (region.kind === "leanexe.option.encoded-index.v1") {
+        const parameters = region.parameters;
+        const name = region.id.replace(/[^A-Za-z0-9_]/g, "_");
+        declarations.push(`def ${name}_program : Wasm.Program :=
+  Project.ProofKit.EncodedIndexDecoder.program
+    ${parameters.encodedLocal} ${parameters.scratchStart} ${parameters.decodedLocal}
+
+theorem ${name}_eq :
+    Project.ProofKit.Annotation.region ${job.namespace}.func${function_.wasmIndex}
+      ${leanAnnotationPath(region.location.listPath)} ${region.location.startIndex}
+      ${region.location.endIndex} = some ${name}_program := by
+  rfl`);
+        continue;
+      }
       if (region.kind === "leanexe.array.erase-copy.v1") {
         const parameters = region.parameters;
         const name = region.id.replace(/[^A-Za-z0-9_]/g, "_");
@@ -4862,6 +5030,9 @@ ${document.functions.some((function_) => function_.regions.some((region) =>
     region.kind === "leanexe.array.find-idx-eq.v1"))
     ? "import Project.ProofKit.FixedArrayFindIdxEq\n" : ""}
 ${document.functions.some((function_) => function_.regions.some((region) =>
+    region.kind === "leanexe.option.encoded-index.v1"))
+    ? "import Project.ProofKit.EncodedIndexDecoder\n" : ""}
+${document.functions.some((function_) => function_.regions.some((region) =>
     region.kind === "leanexe.array.erase-copy.v1"))
     ? "import Project.ProofKit.FixedArrayCopy\n" : ""}
 ${needsScalarTransition ? "import Project.ProofKit.ScalarTransition\n" +
@@ -4913,6 +5084,7 @@ end ${job.namespace}.AnnotationMatches
 module.exports = {
   annotationMatchesSource,
   directCallRecipe,
+  encodedIndexDecoderRecipe,
   fixedArrayEraseCopyRecipe,
   fixedArrayEqNodeRecipe,
   fixedArrayFindIdxEqRecipe,
@@ -4929,6 +5101,7 @@ module.exports = {
   matchAnnotationDocument,
   matchArrayFoldRegion,
   matchDirectCallRegion,
+  matchEncodedIndexDecoderRegion,
   matchFixedArrayEraseCopyRegion,
   matchFixedArrayEqNodeRegion,
   matchFixedArrayFindIdxEqRegion,

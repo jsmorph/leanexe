@@ -48,6 +48,7 @@ const proofKitModules = Object.freeze([
   "Project.ProofKit.FixedArraySingletonWrapper",
   "Project.ProofKit.FixedArrayTraversalInput",
   "Project.ProofKit.Control",
+  "Project.ProofKit.EncodedIndexDecoder",
   "Project.ProofKit.GuardedBackEdge",
   "Project.ProofKit.ScalarTransition",
   "Project.ProofKit.ScalarTransitionU64",
@@ -80,6 +81,7 @@ const proofKitRelativeFiles = Object.freeze([
   "proofs/talos/lean/Project/ProofKit/FixedArraySingletonWrapper.lean",
   "proofs/talos/lean/Project/ProofKit/FixedArrayTraversalInput.lean",
   "proofs/talos/lean/Project/ProofKit/Control.lean",
+  "proofs/talos/lean/Project/ProofKit/EncodedIndexDecoder.lean",
   "proofs/talos/lean/Project/ProofKit/GuardedBackEdge.lean",
   "proofs/talos/lean/Project/ProofKit/ScalarTransition.lean",
   "proofs/talos/lean/Project/ProofKit/ScalarTransitionU64.lean",
@@ -1680,7 +1682,7 @@ function validatePackage(packageRoot) {
       "selectedSections",
     ], "proof-task-features.json");
     if (features.schemaVersion !== 1 ||
-        ![1, 2, 3, 4, 5, 6, 7, 8, 9].includes(features.extractorVersion) ||
+        ![1, 2, 3, 4, 5, 6, 7, 8, 9, 10].includes(features.extractorVersion) ||
         !/^[0-9a-f]{64}$/.test(features.sourceSha256) ||
         features.exportIndex !== programExportIndex(fs.readFileSync(
           path.join(packageRoot, "proof", moduleFile(job.programModule)), "utf8"),
@@ -1702,6 +1704,7 @@ function validatePackage(packageRoot) {
         if (features.extractorVersion >= 5) functionKeys.push("fixedArrayLengthDispatches");
         if (features.extractorVersion >= 8) functionKeys.push("fixedArrayFindIdxEqs");
         if (features.extractorVersion >= 9) functionKeys.push("fixedArrayEraseCopies");
+        if (features.extractorVersion >= 10) functionKeys.push("encodedIndexDecoders");
         exactKeys(function_, functionKeys,
           `proof-task-features.json.reachableFunctions[${functionIndex}]`);
         if (!Array.isArray(function_.fixedArrayEqNodes)) {
@@ -1785,6 +1788,22 @@ function validatePackage(packageRoot) {
               (value) => Number.isSafeInteger(value) && value >= 0) ||
                 copy.sourceWidth === 0) {
               fail(`proof-task-features.json erase copy ${functionIndex}:${copyIndex} is invalid`);
+            }
+          }
+        }
+        if (features.extractorVersion >= 10) {
+          if (!Array.isArray(function_.encodedIndexDecoders)) {
+            fail(`proof-task-features.json function ${functionIndex} has invalid encoded-index decoders`);
+          }
+          for (const [decoderIndex, decoder] of function_.encodedIndexDecoders.entries()) {
+            exactKeys(decoder, [
+              "decodedLocal", "encodedLocal", "encoding", "scratchStart",
+            ], `proof-task-features.json encoded-index decoder ${functionIndex}:${decoderIndex}`);
+            if (![decoder.encodedLocal, decoder.scratchStart, decoder.decodedLocal].every(
+              (value) => Number.isSafeInteger(value) && value >= 0) ||
+                decoder.scratchStart === Number.MAX_SAFE_INTEGER ||
+                decoder.encoding !== "none-zero-some-index-plus-one-v1") {
+              fail(`proof-task-features.json encoded-index decoder ${functionIndex}:${decoderIndex} is invalid`);
             }
           }
         }

@@ -82,6 +82,11 @@ structure PostTest where
   body : Stmt
   deriving Repr, BEq
 
+structure EncodedIndex where
+  encodedLocal : Nat
+  decodedLocal : Nat
+  deriving Repr, BEq
+
 mutual
 
   def Expr.reads : Expr → List Nat
@@ -203,6 +208,22 @@ def While.ofIR : LeanExe.IR.Stmt → Option While
   | .while condition body => return ⟨← Cond.ofIR condition, ← Stmt.ofIR body⟩
   | _ => none
 
+def EncodedIndex.ofExpr
+    (decodedLocal : Nat) : LeanExe.IR.Expr → Option EncodedIndex
+  | .ite
+      (.not (.eqU64 (.local encodedLocal) (.u64 0)))
+      (.u64Bin .natSub (.local predecessorLocal) (.u64 1))
+      (.u64 0) =>
+      if encodedLocal = predecessorLocal then
+        some { encodedLocal, decodedLocal }
+      else
+        none
+  | _ => none
+
+def EncodedIndex.ofIR : LeanExe.IR.Stmt → Option EncodedIndex
+  | .assign decodedLocal expression => EncodedIndex.ofExpr decodedLocal expression
+  | _ => none
+
 def Stmt.seqList : List Stmt → Stmt
   | [] => .skip
   | statement :: statements => statements.foldl Stmt.seq statement
@@ -291,6 +312,51 @@ def While.emit (descriptor : While) (scratch : Nat) : List Instr :=
   [.block [.loop
     (descriptor.condition.emit scratch ++ [.eqzI32, .brIf 1] ++
       descriptor.body.emit scratch ++ [.br 0])]]
+
+def EncodedIndex.emitValue (encodedLocal scratch : Nat) : List Instr :=
+  [.localGet encodedLocal,
+   .constI64 0,
+   .eqI64,
+   .eqzI32,
+   .iff true
+     [.localGet encodedLocal,
+      .localSet scratch,
+      .constI64 1,
+      .localSet (scratch + 1),
+      .localGet scratch,
+      .localGet (scratch + 1),
+      .ltUI64,
+      .iff true [.constI64 0]
+        (some [.localGet scratch, .localGet (scratch + 1), .subI64])]
+     (some [.constI64 0])]
+
+def EncodedIndex.emit (descriptor : EncodedIndex) (scratch : Nat) : List Instr :=
+  EncodedIndex.emitValue descriptor.encodedLocal scratch ++
+    [.localSet descriptor.decodedLocal]
+
+def EncodedIndex.ofProgramPrefix : List Instr → Option (EncodedIndex × Nat)
+  | .localGet encodedLocal :: .constI64 0 :: .eqI64 :: .eqzI32 ::
+      .iff true
+        [.localGet thenEncodedLocal,
+         .localSet scratch,
+         .constI64 1,
+         .localSet scratchNext,
+         .localGet scratchRead,
+         .localGet scratchNextRead,
+         .ltUI64,
+         .iff true [.constI64 0]
+           (some [.localGet subtractLeft, .localGet subtractRight, .subI64])]
+        (some [.constI64 0]) :: .localSet decodedLocal :: _ =>
+      if thenEncodedLocal = encodedLocal &&
+          scratchNext = scratch + 1 &&
+          scratchRead = scratch &&
+          scratchNextRead = scratch + 1 &&
+          subtractLeft = scratch &&
+          subtractRight = scratch + 1 then
+        some (⟨encodedLocal, decodedLocal⟩, scratch)
+      else
+        none
+  | _ => none
 
 def U64Op.toJson : U64Op → Lean.Json
   | .add => "add"

@@ -10,6 +10,7 @@ Every `leanexegen` artifact-proof task receives this catalog and may import the 
 | `Project.ProofKit.ScalarTransition` | Typed scalar expression and statement evaluation, exact Talos instruction generation, weakest-precondition composition, and scratch-local preservation. |
 | `Project.ProofKit.ScalarTransitionU64` | Compact `UInt64` state evaluation and checked correspondence with the typed scalar evaluator. |
 | `Project.ProofKit.GuardedBackEdge` | One scalar body and condition followed by either loop exit or a scalar continuation and back edge. |
+| `Project.ProofKit.EncodedIndexDecoder` | The compiler's zero-or-index-plus-one decoder with exact scratch and destination-local frame semantics. |
 | `Project.ProofKit.Array` | The public `Array UInt64` representation, encoded-size and address normalization, load bounds, region preservation, and singleton or pair output construction. |
 | `Project.ProofKit.Allocation` | Fixed-array bump-allocation addresses, header offsets, overflow exclusion, and the no-growth branch. |
 | `Project.ProofKit.FixedArrayCapacity` | Constant result-length capacity normalization into an arbitrary valid local, a minimum-capacity theorem, and a named post-prefix frame with capacity getters. |
@@ -269,6 +270,14 @@ Import `Project.ProofKit.FixedArrayFindIdxEq` when a checked annotation identifi
 The first version matches the compiler layout with the input pointer in combined local zero, the loaded item in combined local one, a configurable scratch start of at least two, and arbitrary trailing locals.  The key may be any literal `UInt64`, while wider elements, dynamic keys, different local roles, and other predicates require a separate theorem or the ordinary `Array.findIdx?.loop` invariant.  A generated `leanexe.array.find-idx-eq.v1` equality establishes that the decoded artifact region has exactly the program consumed by this theorem.
 
 Keep `someFrame` folded while reducing its continuation.  The `someFrame_params`, `someFrame_locals_length`, and `someFrame_values` projections expose its shape, while `encodedIndex_eq_ofNat_succ`, `encodedIndex_ne_zero`, `encodedIndex_not_lt_one`, and `encodedIndex_sub_one` establish the option tag, its unsigned lower bound, and its payload.  Use these facts to establish the producer frame, execute scalar instructions until the next structured-control boundary, and then apply that boundary's theorem.  Broad `wp_simp` across the nested frame definitions and a large continuation repeats the frame and modular-arithmetic reductions.
+
+## Encoded optional-index decoder
+
+Import `Project.ProofKit.EncodedIndexDecoder` when a checked `leanexe.option.encoded-index.v1` annotation selects the compiler's complete zero-or-index-plus-one decoder.  `program encodedLocal scratch decodedLocal` includes the outer encoded-zero test, the nonzero saturating-predecessor sequence through scratch locals `scratch` and `scratch + 1`, and the final destination-local write.  `program_spec` executes that exact region before an arbitrary continuation and postcondition.
+
+The theorem requires the encoded source getter, two consecutive valid internal scratch locals, and one valid internal destination local.  Its `resultFrame` preserves the parameter list, local-list length, and operand stack while recording every compiler scratch write and the destination value.  The frame projections expose those properties, and `resultFrame_decoded` reads zero for encoded zero or `encoded - 1` for a nonzero word.
+
+The generated region equality checks the six top-level instructions, both outer branches, and the nested unsigned-subtraction branch against the decoded artifact.  The theorem assumes the source word's zero-or-index-plus-one meaning, so a preceding search or other producer must supply that semantic fact.  Apply the decoder after the producer theorem and before reasoning about the decoded local as an array index.
 
 ## Prefix and shifted-suffix copy
 

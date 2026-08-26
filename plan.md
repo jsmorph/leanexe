@@ -4,7 +4,7 @@ This file is the only active project work queue.  The compiler, execution suite,
 
 ## 1. Reconcile current documentation and release evidence
 
-The documentation describes one implementation and assigns each changing fact to one source of truth.  The release record carries the current input identity, source revision, and successful warm-gate receipts dated 2026-08-13.  Cold verification remains deferred and does not form part of the current work.
+The documentation describes one implementation and assigns each changing fact to one source of truth.  The release record carries input digest `5de9678970b1a9b74d50c1407457423a7fa6eabd3f430f56cfdc0e407af2b7e5` and successful warm-gate receipts dated 2026-08-26, while its source revision remains unset.  Cold verification remains deferred and does not form part of the current work.
 
 - [x] Consolidate navigation, language, compiler, artifact-proof, annotation, and proof-guidance documents.
 - [x] Remove superseded plans and experiment reports after migrating current facts and links.
@@ -12,9 +12,11 @@ The documentation describes one implementation and assigns each changing fact to
 - [x] Run local-link, stale-reference, command-example, and whitespace checks over the maintained documentation.
 - [x] Refresh `proofs/artifacts/release.json` against the settled release inputs.
 - [x] Run the warm artifact-proof and semantic-conformance gates for the refreshed identity.
-- [x] Record an immutable source revision for the current release inputs.
+- [ ] Record an immutable source revision for the current release inputs.
 - [ ] Complete the cold-checkout gate when cold verification resumes.
 - [ ] Require `tools/artifact-release.js check-ready` to pass before describing the release as ready.
+
+The 2026-08-26 warm artifact gate passed all twenty packages.  The conformance gate matched fifteen expected invalid-module classifications, produced 3,853 Talos passes, six configured failures, 627 skips, no cascades, decoder errors, interpreter errors, or fuel exhaustion, and passed all twenty-five files under Wasmtime.  The separate source-driven aggregate also passed all twenty registered cases.
 
 ## 2. Validate annotation-directed proof support on a new shape
 
@@ -35,12 +37,16 @@ This phase promotes an annotation recipe or LTG entry only when its statement de
 
 `LeanExe.Wasm.ScalarCertificate` already proves selected equalities between IR emission and structured WASM instruction sequences.  Annotation generation uses those equalities indirectly when it emits checked region declarations and proof recipes.  The next increment should determine whether a modest compiler theorem can remove or select a meaningful WAT-level proof step while the final theorem continues to concern exact decoded bytes.
 
-- [ ] Inventory the current scalar-certificate and emitter-agreement theorems against emitted annotation kinds.
-- [ ] Choose one recurring region whose proof still reconstructs facts already known during compilation.
-- [ ] Emit a compact certificate or checked equality for that region and verify it against the decoded artifact.
-- [ ] Add the resulting theorem, tactic, or guidance to structured LTG with its precise applicability conditions.
-- [ ] Test the addition on one development demo and one held-out demo.
-- [ ] Record whether the theorem reduces search, explicit scaffolding, Lean checking time, or repeated derivation.
+- [x] Inventory the current scalar-certificate and emitter-agreement theorems against emitted annotation kinds.
+- [x] Choose the recurring zero-or-index-plus-one decoder, which appears in Demo 12, ClobCancel, and twice in ClobDepth.
+- [x] Emit a compact certificate or checked equality for that region and verify it against the decoded artifact.
+- [x] Add the resulting theorem and guidance to structured LTG with its precise applicability conditions.
+- [x] Test the addition on Demo 12 and the distinct ClobDepth proof.
+- [x] Record its effect on explicit control reasoning, proof source, Lean checking, and available timing evidence.
+
+The Demo 12 annotation pass preserved the 2,183-byte artifact and digest `7cdd8adba75d4f076d0a142f824a19a0d34d6a5cedd1a810a417a7fc5789f7b6`, generated the exact region equality, and passed separate package verification.  It reused the accepted behavior proof, so it provides no fresh retrieval or proof-generation measurement.  The compiler certificate, neutral ProofKit theorem, and generated LTG declaration check also passed independently.
+
+The ClobDepth compiler run preserved its registered 3,602-byte artifact and digest `d6fe056853750dd985e3d0cd03e6ec488ae98a9791d7b5d53baac95bd352b68f`, while the complete sidecar matched the cached Talos program.  Its proof now applies `EncodedIndexDecoder.program_spec` at two different local layouts, removing four decoder-specific `wp_iff_cons` applications and four associated `wp_run` calls.  The source grew by 21 lines because it supplies region decomposition and theorem premises without a generated annotation adapter, and no comparable proof-generation timing exists.  `tools/talos-proof.js check clob_depth` accepted the complete source-driven proof.
 
 The source theorem and compiler remain optional proof-construction inputs.  Independent artifact verification must continue to work when the source is unavailable or when no complete compiler-correctness theorem exists.  [Source-Theorem Transport](plans/theorem-transport.md) describes the larger refinement theorem that may follow successful narrow experiments.
 
@@ -84,4 +90,4 @@ Current candidates include broader explicit-release analysis, shared interior ow
 
 ## Completion conditions
 
-The next stable point requires current and nonduplicative documentation, a release record that passes identity inspection, and one accepted structurally different array-control-flow demonstration using the maintained annotation and LTG path.  Demo 12 satisfies the demonstration condition.  The stable point also requires one evaluated compiler-theorem-directed artifact-proof increment with an explicit trust boundary and held-out evidence, while repository status, registries, proof inventories, metrics, plans, and release records must agree at that revision.  A later release-ready state will also require the deferred cold-checkout receipt and a successful `check-ready` result.
+The next stable point requires current and nonduplicative documentation, a release record that passes identity inspection, and one accepted structurally different array-control-flow demonstration using the maintained annotation and LTG path.  Demo 12 satisfies the demonstration condition.  The stable point also requires one evaluated compiler-theorem-directed artifact-proof increment with an explicit trust boundary and cross-program evidence, while repository status, registries, proof inventories, metrics, plans, and release records must agree at that revision.  A later release-ready state will also require the deferred cold-checkout receipt and a successful `check-ready` result.
