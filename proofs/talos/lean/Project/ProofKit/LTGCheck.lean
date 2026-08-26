@@ -34,7 +34,7 @@ import Project.ProofKit.ScalarTransitionU64
 #check Project.ProofKit.EncodedIndexDecoder.program_spec
 #check Project.ProofKit.EncodedIndexDecoder.resultFrame
 #check Project.ProofKit.EncodedIndexDecoder.resultFrame_decoded
-#check Project.ProofKit.EncodedIndexDecoder.resultFrame_get_of_ne
+#check Project.ProofKit.EncodedIndexDecoder.resultFrame_get_ne
 #check Project.ProofKit.EncodedIndexDecoder.resultFrame_locals_length
 #check Project.ProofKit.EncodedIndexDecoder.resultFrame_params
 #check Project.ProofKit.EncodedIndexDecoder.resultFrame_validIndex

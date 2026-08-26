@@ -1293,6 +1293,16 @@ def func0Def : Wasm.Function :=
     "Example.Generated.AnnotationMatches.wrong_tail_eq";
   expectFailure(() => validateProofRecipePlan(wrongTail, document),
     /tailEquality is unsupported/);
+  const wrongTailNamespace = structuredClone(plan);
+  wrongTailNamespace.recipes[0].direct.tailEquality =
+    "Other.AnnotationMatches.function_0_encoded_index_0_tail_eq";
+  expectFailure(() => validateProofRecipePlan(wrongTailNamespace, document),
+    /tailEquality is unsupported/);
+  const wrongProgramNamespace = structuredClone(plan);
+  wrongProgramNamespace.recipes[0].direct.program =
+    "Other.AnnotationMatches.function_0_encoded_index_0_program";
+  expectFailure(() => validateProofRecipePlan(wrongProgramNamespace, document),
+    /direct.program is unsupported/);
   const missingTail = structuredClone(plan);
   delete missingTail.recipes[0].direct.tailEquality;
   expectFailure(() => validateProofRecipePlan(missingTail, document),
@@ -2866,6 +2876,8 @@ def func0Def : Wasm.Function :=
   assert(plan.recipes[0].recipeVersion === 2 &&
     plan.recipes[0].direct.theorem ===
       "Project.ProofKit.FixedArrayPairResult.constResultProgram_spec" &&
+    plan.recipes[0].direct.program ===
+      "Project.ProofKit.FixedArrayPairResult.constResultProgram 0 0 3" &&
     plan.recipes[0].direct.regionEquality ===
       `${namespace}.function_0_pair_result_0_eq` &&
     plan.recipes[0].direct.tailEquality ===
@@ -2882,6 +2894,17 @@ def func0Def : Wasm.Function :=
     matches.source.includes("function_0_pair_result_0_tail_eq") &&
     matches.source.includes("  rfl"),
   "pair-result annotation did not generate its checked Lean equality");
+
+  const wrongTheorem = structuredClone(plan);
+  wrongTheorem.recipes[0].direct.theorem =
+    "Project.ProofKit.FixedArrayPairResult.inputResultProgram_spec";
+  expectFailure(() => validateProofRecipePlan(wrongTheorem, document),
+    /direct is unsupported/);
+  const wrongProgram = structuredClone(plan);
+  wrongProgram.recipes[0].direct.program =
+    "Project.ProofKit.FixedArrayPairResult.inputResultProgram 0 3";
+  expectFailure(() => validateProofRecipePlan(wrongProgram, document),
+    /direct is unsupported/);
 
   const invalid = structuredClone(document);
   invalid.functions[0].regions[0].parameters.firstValue = null;

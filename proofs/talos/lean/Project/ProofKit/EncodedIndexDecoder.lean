@@ -65,37 +65,41 @@ theorem resultFrame_values (frame : Locals) (scratch decodedLocal : Nat)
   by_cases hZero : encoded = 0 <;> simp [resultFrame, hZero]
 
 @[simp]
-theorem resultFrame_get_of_ne
+theorem resultFrame_get_ne
     (frame : Locals) (scratch decodedLocal readLocal : Nat) (encoded : UInt64)
     (hScratchLower : frame.params.length ≤ scratch)
     (hDecodedLower : frame.params.length ≤ decodedLocal)
-    (hReadLower : frame.params.length ≤ readLocal)
-    (hReadValid : frame.validIndex readLocal)
     (hReadScratch : readLocal ≠ scratch)
     (hReadScratchNext : readLocal ≠ scratch + 1)
     (hReadDecoded : readLocal ≠ decodedLocal) :
     (resultFrame frame scratch decodedLocal encoded).get readLocal =
       frame.get readLocal := by
-  have hReadNotParam : ¬readLocal < frame.params.length := by omega
-  have hReadBound :
-      readLocal < frame.params.length + frame.locals.length := hReadValid
-  have hReadScratchIndex :
-      readLocal - frame.params.length ≠ scratch - frame.params.length := by
-    omega
-  have hReadScratchNextIndex :
-      readLocal - frame.params.length ≠
-        scratch + 1 - frame.params.length := by
-    omega
-  have hReadDecodedIndex :
-      readLocal - frame.params.length ≠
-        decodedLocal - frame.params.length := by
-    omega
-  by_cases hZero : encoded = 0
-  · simp [resultFrame, hZero, Wasm.Locals.get, hReadNotParam,
-      hReadBound, hReadDecodedIndex.symm]
-  · simp [resultFrame, hZero, Wasm.Locals.get, hReadNotParam,
-      hReadBound, hReadScratchIndex.symm,
-      hReadScratchNextIndex.symm, hReadDecodedIndex.symm]
+  by_cases hReadParam : readLocal < frame.params.length
+  · by_cases hZero : encoded = 0 <;>
+      simp [resultFrame, hZero, Wasm.Locals.get, hReadParam]
+  · by_cases hReadValid :
+        readLocal < frame.params.length + frame.locals.length
+    · have hReadScratchIndex :
+          readLocal - frame.params.length ≠
+            scratch - frame.params.length := by
+        omega
+      have hReadScratchNextIndex :
+          readLocal - frame.params.length ≠
+            scratch + 1 - frame.params.length := by
+        omega
+      have hReadDecodedIndex :
+          readLocal - frame.params.length ≠
+            decodedLocal - frame.params.length := by
+        omega
+      by_cases hZero : encoded = 0
+      · simp [resultFrame, hZero, Wasm.Locals.get, hReadParam,
+          hReadValid, hReadDecodedIndex.symm]
+      · simp [resultFrame, hZero, Wasm.Locals.get, hReadParam,
+          hReadValid, hReadScratchIndex.symm,
+          hReadScratchNextIndex.symm, hReadDecodedIndex.symm]
+    · by_cases hZero : encoded = 0 <;>
+        simp [resultFrame, hZero, Wasm.Locals.get, hReadParam,
+          hReadValid]
 
 @[simp]
 theorem resultFrame_validIndex
