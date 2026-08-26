@@ -1,6 +1,6 @@
 # Artifact Verification Format
 
-**Status:** Implemented for twenty registered artifacts.  The draft release record carries input digest `5de9678970b1a9b74d50c1407457423a7fa6eabd3f430f56cfdc0e407af2b7e5` and successful warm-gate receipts dated 2026-08-26.  Release readiness still requires an immutable source revision and the deferred cold-checkout receipt.
+**Status:** Implemented for twenty registered artifacts.  The draft release record carries input digest `5de9678970b1a9b74d50c1407457423a7fa6eabd3f430f56cfdc0e407af2b7e5`, source revision `0e0d752904fc90dee3ef3511ffab91f3d358c1ed`, and successful warm-gate receipts dated 2026-08-26.  Release readiness still requires the deferred cold-checkout receipt.
 
 ## Formal Subject and Claim
 
@@ -73,7 +73,7 @@ The pinned twenty-five-file official execution slice produced 3,853 Talos passes
 
 The same gate matched fifteen official invalid modules against exact artifact decoder or validator error constructors on 2026-08-26.  The cases cover malformed headers and sections, integer overflow, invalid memory limits and alignments, stack underflow, and unused stack results.  This corpus tests the executable classifier independently of the twenty accepted artifacts, while `decode_sound` and `validate_sound` remain the formal evidence for successful results.
 
-The draft release record binds all twenty artifact and package identities, every theorem name, the verifier source digest, the release-input digest, and the tool pins.  Lean 4.31.0 accepts the archived kernel reproduction, and the owner accepts that defect after the recorded local lexical audit; this qualification does not repair the kernel.  On 2026-08-26, `tools/artifact-release.js refresh` recorded input digest `5de9678970b1a9b74d50c1407457423a7fa6eabd3f430f56cfdc0e407af2b7e5` and consumed matching aggregate artifact-proof and semantic-conformance receipts, while `tools/talos-proof.js check --all` passed all twenty source-driven cases.  The source revision and cold-checkout result remain unresolved, so the record retains two blockers and makes no release-readiness claim.
+The draft release record binds all twenty artifact and package identities, every theorem name, the verifier source digest, the release-input digest, and the tool pins.  Lean 4.31.0 accepts the archived kernel reproduction, and the owner accepts that defect after the recorded local lexical audit; this qualification does not repair the kernel.  On 2026-08-26, `tools/artifact-release.js refresh` recorded input digest `5de9678970b1a9b74d50c1407457423a7fa6eabd3f430f56cfdc0e407af2b7e5` and consumed matching aggregate artifact-proof and semantic-conformance receipts, while `tools/talos-proof.js check --all` passed all twenty source-driven cases.  Source revision `0e0d752904fc90dee3ef3511ffab91f3d358c1ed` records those inputs, leaving the deferred cold-checkout result as the sole blocker and no release-readiness claim.
 
 ## Trusted Base and Evidence
 

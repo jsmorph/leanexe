@@ -118,7 +118,7 @@ tools/artifact-release.js check-ready
 tools/artifact-release.js check-cold <revision>
 ```
 
-`inspect` validates the draft without claiming release readiness, while `refresh` reconstructs package records and consumes matching receipts from `build/evidence`.  `check-ready` returns a failure until every derived condition holds.  `check-cold` compares the current and cloned release inputs before setup, checks the exact Lean and dependency revisions, rejects tracked mutations after setup or either gate, reruns both gates, and writes the cold receipt before removing its temporary checkout.  The current record carries input digest `5de9678970b1a9b74d50c1407457423a7fa6eabd3f430f56cfdc0e407af2b7e5` and both 2026-08-26 warm receipts, while an immutable source revision and the deferred cold operation remain unresolved.
+`inspect` validates the draft without claiming release readiness, while `refresh` reconstructs package records and consumes matching receipts from `build/evidence`.  `check-ready` returns a failure until every derived condition holds.  `check-cold` compares the current and cloned release inputs before setup, checks the exact Lean and dependency revisions, rejects tracked mutations after setup or either gate, reruns both gates, and writes the cold receipt before removing its temporary checkout.  The current record carries input digest `5de9678970b1a9b74d50c1407457423a7fa6eabd3f430f56cfdc0e407af2b7e5`, source revision `0e0d752904fc90dee3ef3511ffab91f3d358c1ed`, and both 2026-08-26 warm receipts, while the deferred cold operation remains unresolved.
 
 ## Committed Files
 
