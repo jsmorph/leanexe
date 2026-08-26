@@ -263,6 +263,26 @@ theorem allocFrame_values (offset : Nat) (base : Locals)
     (heapTop capacity : UInt64) :
     (allocFrame offset base heapTop capacity).values = base.values := rfl
 
+theorem allocFrame_shape (offset : Nat) (base : Locals)
+    (heapTop capacity : UInt64) :
+    (allocFrame offset base heapTop capacity).params.length =
+        base.params.length ∧
+    (allocFrame offset base heapTop capacity).locals.length =
+        base.locals.length ∧
+    (allocFrame offset base heapTop capacity).values = base.values := by
+  exact ⟨congrArg List.length (allocFrame_params offset base heapTop capacity),
+    allocFrame_locals_length offset base heapTop capacity,
+    allocFrame_values offset base heapTop capacity⟩
+
+@[simp]
+theorem allocFrame_validIndex
+    (offset : Nat) (base : Locals) (heapTop capacity : UInt64)
+    (index : Nat) :
+    (allocFrame offset base heapTop capacity).validIndex index ↔
+      base.validIndex index := by
+  simp [Wasm.Locals.validIndex, allocFrame_params,
+    allocFrame_locals_length]
+
 @[simp]
 theorem allocFrame_get_root
     (offset tail : Nat) (base : Locals) (heapTop capacity : UInt64)

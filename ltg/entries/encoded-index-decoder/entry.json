@@ -10,7 +10,7 @@
   "features": ["branch-selection", "compiler-derived-evidence", "encoded-option", "local-frame", "unsigned-subtraction"],
   "annotationKinds": ["leanexe.option.encoded-index.v1"],
   "modules": ["Project.ProofKit.EncodedIndexDecoder"],
-  "declarations": ["Project.ProofKit.EncodedIndexDecoder.program", "Project.ProofKit.EncodedIndexDecoder.program_spec", "Project.ProofKit.EncodedIndexDecoder.resultFrame", "Project.ProofKit.EncodedIndexDecoder.resultFrame_decoded", "Project.ProofKit.EncodedIndexDecoder.resultFrame_locals_length", "Project.ProofKit.EncodedIndexDecoder.resultFrame_params", "Project.ProofKit.EncodedIndexDecoder.resultFrame_values"],
+  "declarations": ["Project.ProofKit.EncodedIndexDecoder.program", "Project.ProofKit.EncodedIndexDecoder.program_spec", "Project.ProofKit.EncodedIndexDecoder.resultFrame", "Project.ProofKit.EncodedIndexDecoder.resultFrame_decoded", "Project.ProofKit.EncodedIndexDecoder.resultFrame_get_of_ne", "Project.ProofKit.EncodedIndexDecoder.resultFrame_locals_length", "Project.ProofKit.EncodedIndexDecoder.resultFrame_params", "Project.ProofKit.EncodedIndexDecoder.resultFrame_validIndex", "Project.ProofKit.EncodedIndexDecoder.resultFrame_values"],
   "premises": ["A checked leanexe.option.encoded-index.v1 equality for the complete six-top-level-instruction decoder region", "A source local containing the encoded UInt64 word", "Two consecutive valid scratch locals and one valid destination local, all in the internal-local portion of the frame", "An arbitrary continuation from resultFrame"],
   "result": "The exact decoder reaches resultFrame with the destination local equal to zero when the encoded value is zero and equal to the encoded value minus one otherwise.",
   "consumers": [],
