@@ -4,7 +4,7 @@ LeanExe emits a JSON sidecar that describes selected regions of its structured W
 
 ## Files and trust boundary
 
-The compiler writes `program.annotations.json` beside the compiled WASM when the caller requests annotations.  `tools/leanexegen annotate` validates that document, checks its regions against the proof package's decoded Talos module, writes `proof-recipes.json`, and generates `AnnotationMatches.lean` inside the proof workspace.  The generated Lean module contains the equalities, descriptor equations, frame facts, and adapters selected for that artifact.
+The compiler writes `program.annotations.json` beside the compiled WASM when the caller requests annotations.  `tools/leanexegen annotate` validates that document, checks its regions against the proof package's decoded Talos module, writes `proof-recipes.json`, and generates `AnnotationMatches.lean` inside the proof workspace.  The generated Lean module contains the equalities, descriptor equations, frame facts, and adapters selected for that artifact.  The recipe format versions each region recipe independently so current packages can add fields while archived packages remain readable.
 
 The JSON sidecar is untrusted input to the artifact proof.  Its byte length, function indexes, structured paths, instruction intervals, parameters, and descriptor contents must agree with the frozen package and decoded program.  A stale or fabricated annotation cannot establish a theorem because its generated Lean equality fails against the exact artifact region.
 
@@ -93,7 +93,7 @@ The consumer currently generates support for these recurring boundaries:
 
 | Boundary | Generated support |
 |----------|-------------------|
-| Direct calls | Exact selected-program equality plus argument and result placement data. |
+| Direct calls | Decoded callee identity, argument and result placement data, and compatible call support. |
 | Length dispatch | Exact valid and invalid branch equality, fixed or bounded input facts, and compatible dispatch tactics. |
 | First-match equality scan | Exact search-program equality, literal key, local roles, option encoding, and the continuation-generic `FixedArrayFindIdxEq.program_spec` theorem. |
 | Encoded optional index | Exact six-top-level-instruction decoder equality, an exact resolved-tail decomposition, three local roles, encoding name, named result frame, and the continuation-generic `EncodedIndexDecoder.program_spec` theorem. |
@@ -103,6 +103,8 @@ The consumer currently generates support for these recurring boundaries:
 | Scalar loops | Exact descriptor-program equality, evaluated transition equations, read and write sets, and frame preservation. |
 | Array folds | Setup, traversal, continuing body, exit, frame accessor, allocation, result suffix, and completion adapters where their structural matchers succeed.  A matched forward fold also receives a checked equality from `FixedArrayFold.forwardSetupFrame` over its generated continuing frame to the initialized continuing frame. |
 | Results | Singleton or pair representation support, result-local placement, stores, and public return. |
+
+Version-two direct semantic recipes record `direct.tailEquality` beside `direct.program` and `direct.regionEquality`.  The named Lean theorem decomposes the resolved instruction list at the region start into the exact semantic program followed by the resolved suffix at the region end.  Current generation provides this field for checked first-match scans, encoded-index decoders, erase copies, scalar loops, array folds, map and filter wrappers, and pair results, while validation continues to accept archived version-one recipes.
 
 A recipe records optional help rather than a mandatory script.  A proof agent may select the direct semantic theorem, a lower-level generated equality, a tactic, or ordinary Talos reasoning according to the residual goal.  Independent acceptance checks the imports and theorem result regardless of the route taken.
 

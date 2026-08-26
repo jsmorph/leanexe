@@ -373,7 +373,7 @@ function testCodexProtocol() {
     artifactPrompt.includes("PROGRAM_ANNOTATIONS.json") &&
     artifactPrompt.includes("PROOF_RECIPES.json") &&
     artifactPrompt.includes("Attempt an exact direct recipe or complete composition") &&
-    artifactPrompt.includes("supporting declarations include a generated declaration ending in _tail_eq") &&
+    artifactPrompt.includes("direct object has a tailEquality field") &&
     artifactPrompt.includes("change the residual program to that resolved artifact tail") &&
     artifactPrompt.includes("Treat each new residual goal class as another retrieval checkpoint") &&
     artifactPrompt.includes("with a structured tactics field") &&
@@ -1170,9 +1170,11 @@ def func0Def : Wasm.Function :=
   validateProofRecipePlan(plan, document);
   const recipe = plan.recipes[0];
   assert(plan.recipes.length === 1 &&
+    recipe.recipeVersion === 2 &&
     recipe.direct.theorem === "Project.ProofKit.FixedArrayFindIdxEq.program_spec" &&
     recipe.direct.program.endsWith(".function_0_find_idx_eq_0_program") &&
     recipe.direct.regionEquality.endsWith(".function_0_find_idx_eq_0_eq") &&
+    recipe.direct.tailEquality.endsWith(".function_0_find_idx_eq_0_tail_eq") &&
     JSON.stringify(recipe.guidance) === JSON.stringify([
       "strategy.arrays", "strategy.loops", "strategy.frames",
     ]), "find-index annotation did not select its checked proof recipe");
@@ -1183,7 +1185,8 @@ def func0Def : Wasm.Function :=
   assert(source.includes("import Project.ProofKit.FixedArrayFindIdxEq") &&
     source.includes("def function_0_find_idx_eq_0_program : Wasm.Program") &&
     source.includes("Project.ProofKit.FixedArrayFindIdxEq.program\n    8 37") &&
-    source.includes("theorem function_0_find_idx_eq_0_eq"),
+    source.includes("theorem function_0_find_idx_eq_0_eq") &&
+    source.includes("theorem function_0_find_idx_eq_0_tail_eq"),
   "find-index annotation did not generate its program equality");
   const strategyProgram = `${program}\n\ndef «module» : Wasm.Module := {}`;
   const features = proofStrategyBundle(strategyProgram, 0, {
@@ -1267,12 +1270,12 @@ def func0Def : Wasm.Function :=
   validateProofRecipePlan(plan, document);
   const recipe = plan.recipes[0];
   assert(plan.recipes.length === 1 &&
+    recipe.recipeVersion === 2 &&
     recipe.direct.module === "Project.ProofKit.EncodedIndexDecoder" &&
     recipe.direct.theorem === "Project.ProofKit.EncodedIndexDecoder.program_spec" &&
     recipe.direct.program.endsWith(".function_0_encoded_index_0_program") &&
     recipe.direct.regionEquality.endsWith(".function_0_encoded_index_0_eq") &&
-    recipe.supporting.some((item) =>
-      item.declaration.endsWith(".function_0_encoded_index_0_tail_eq")),
+    recipe.direct.tailEquality.endsWith(".function_0_encoded_index_0_tail_eq"),
   "encoded-index annotation did not select its checked proof recipe");
   const source = annotationMatchesSource(document, {
     namespace: "Example.Generated",
@@ -1282,9 +1285,22 @@ def func0Def : Wasm.Function :=
     source.includes("Project.ProofKit.EncodedIndexDecoder.program\n    2 8 4") &&
     source.includes("theorem function_0_encoded_index_0_eq") &&
     source.includes("theorem function_0_encoded_index_0_tail_eq") &&
-    source.includes(".drop 0 =\n      function_0_encoded_index_0_program ++") &&
+    source.includes(".drop 0 =\n      Example.Generated.AnnotationMatches.function_0_encoded_index_0_program ++") &&
     source.includes(".drop 6 := by"),
   "encoded-index annotation did not generate its program equality");
+  const wrongTail = structuredClone(plan);
+  wrongTail.recipes[0].direct.tailEquality =
+    "Example.Generated.AnnotationMatches.wrong_tail_eq";
+  expectFailure(() => validateProofRecipePlan(wrongTail, document),
+    /tailEquality is unsupported/);
+  const missingTail = structuredClone(plan);
+  delete missingTail.recipes[0].direct.tailEquality;
+  expectFailure(() => validateProofRecipePlan(missingTail, document),
+    /direct has unsupported fields/);
+  const legacyPlan = structuredClone(plan);
+  legacyPlan.recipes[0].recipeVersion = 1;
+  delete legacyPlan.recipes[0].direct.tailEquality;
+  validateProofRecipePlan(legacyPlan, document);
   const features = proofStrategyBundle(`${program}\n\ndef «module» : Wasm.Module := {}`, 0, {
     annotations: document,
   }).features;
@@ -1481,10 +1497,12 @@ function testEraseCopyAnnotationRecipe() {
     validateProofRecipePlan(plan, document);
     const recipe = plan.recipes[0];
     assert(plan.recipes.length === 1 &&
+      recipe.recipeVersion === 2 &&
       recipe.direct.module === "Project.ProofKit.FixedArrayCopy" &&
       recipe.direct.theorem === "Project.ProofKit.FixedArrayCopy.program_spec" &&
       recipe.direct.program.endsWith(".function_0_erase_copy_0_program") &&
       recipe.direct.regionEquality.endsWith(".function_0_erase_copy_0_eq") &&
+      recipe.direct.tailEquality.endsWith(".function_0_erase_copy_0_tail_eq") &&
       recipe.supporting.some((item) =>
         item.declaration === "Project.ProofKit.FixedArrayCopy.prefixProgram_spec") &&
       recipe.supporting.some((item) =>
@@ -1500,7 +1518,8 @@ function testEraseCopyAnnotationRecipe() {
       source.includes("def function_0_erase_copy_0_prefix_program") &&
       source.includes("def function_0_erase_copy_0_suffix_program") &&
       source.includes(`Project.ProofKit.FixedArrayCopy.program\n    ${sourceWidth} 8 14`) &&
-      source.includes("theorem function_0_erase_copy_0_eq"),
+      source.includes("theorem function_0_erase_copy_0_eq") &&
+      source.includes("theorem function_0_erase_copy_0_tail_eq"),
     `width-${sourceWidth} erase-copy annotation omitted its Lean equality`);
     const strategyProgram = `${program}\n\ndef «module» : Wasm.Module := {}`;
     const features = proofStrategyBundle(strategyProgram, 0, {
@@ -1635,8 +1654,11 @@ def func0Def : Wasm.Function :=
   ], "Example.Generated.AnnotationMatches");
   validateProofRecipePlan(plan, document);
   assert(plan.recipes.length === 1 &&
+    plan.recipes[0].recipeVersion === 2 &&
     plan.recipes[0].direct.module === "Project.ProofKit.FixedArrayMapAdd" &&
     plan.recipes[0].direct.theorem.endsWith("wrapperProgram_spec") &&
+    plan.recipes[0].direct.tailEquality.endsWith(
+      ".function_0_map_add_0_tail_eq") &&
     plan.recipes[0].direct.program.endsWith("wrapperProgram 8 1"),
   "map-add annotation did not select the complete wrapper theorem");
   const source = annotationMatchesSource(document, {
@@ -1644,7 +1666,8 @@ def func0Def : Wasm.Function :=
     programModule: "Example.Generated.Program",
   }).source;
   assert(source.includes("import Project.ProofKit.FixedArrayMapAdd") &&
-    source.includes("FixedArrayMapAdd.wrapperProgram\n          8 1"),
+    source.includes("FixedArrayMapAdd.wrapperProgram\n          8 1") &&
+    source.includes("theorem function_0_map_add_0_tail_eq"),
   "annotation matches omitted the checked map-add wrapper equality");
   const starter = artifactProofStarter(makeJob("bounded wrapping map\n"), 0, true, plan);
   assert(starter.includes("FixedArrayMapAdd.wrapperProgram_spec 8 1") &&
@@ -1703,8 +1726,11 @@ def func0Def : Wasm.Function :=
   ], "Example.Generated.AnnotationMatches");
   validateProofRecipePlan(plan, document);
   assert(plan.recipes.length === 1 &&
+    plan.recipes[0].recipeVersion === 2 &&
     plan.recipes[0].direct.module === "Project.ProofKit.FixedArrayFilterLt" &&
     plan.recipes[0].direct.theorem.endsWith("wrapperProgram_spec") &&
+    plan.recipes[0].direct.tailEquality.endsWith(
+      ".function_0_filter_lt_0_tail_eq") &&
     plan.recipes[0].direct.program.endsWith("wrapperProgram 8 100"),
   "filter-lt annotation did not select the complete wrapper theorem");
   const source = annotationMatchesSource(document, {
@@ -1712,7 +1738,8 @@ def func0Def : Wasm.Function :=
     programModule: "Example.Generated.Program",
   }).source;
   assert(source.includes("import Project.ProofKit.FixedArrayFilterLt") &&
-    source.includes("FixedArrayFilterLt.wrapperProgram\n          8 100"),
+    source.includes("FixedArrayFilterLt.wrapperProgram\n          8 100") &&
+    source.includes("theorem function_0_filter_lt_0_tail_eq"),
   "annotation matches omitted the checked filter-lt wrapper equality");
   const job = makeJob("bounded stable filter\n");
   const starter = artifactProofStarter(job, 0, true, plan);
@@ -1811,10 +1838,13 @@ def func0Def : Wasm.Function :=
   ]);
   validateProofRecipePlan(whilePlan, whileDocument);
   assert(whilePlan.recipes.length === 1 &&
+    whilePlan.recipes[0].recipeVersion === 2 &&
     whilePlan.recipes[0].direct.theorem ===
       "Project.ProofKit.ScalarTransition.whileProgram_spec" &&
     whilePlan.recipes[0].direct.regionEquality ===
       "Project.AnnotationMatches.function_0_while_loop_0_eq" &&
+    whilePlan.recipes[0].direct.tailEquality ===
+      "Project.AnnotationMatches.function_0_while_loop_0_tail_eq" &&
     whilePlan.recipes[0].supporting.some((entry) => entry.declaration ===
       "Project.AnnotationMatches.function_0_while_loop_0_terminates_with_of_loop") &&
     whilePlan.recipes[0].supporting.some((entry) => entry.declaration ===
@@ -1839,7 +1869,10 @@ def func0Def : Wasm.Function :=
     whileMatches.source.includes("initial [.i64 v0] P") &&
     whileMatches.source.includes("function_0_while_loop_0_state (v0) ((0 : UInt64))") &&
     whileMatches.source.includes("    4 function_0_while_loop_0_condition") &&
-    whileMatches.source.includes("theorem function_0_while_loop_0_eq"),
+    whileMatches.source.includes("theorem function_0_while_loop_0_eq") &&
+    whileMatches.source.includes("theorem function_0_while_loop_0_tail_eq") &&
+    whileMatches.source.includes(".drop 2 =") &&
+    whileMatches.source.includes(".drop 3 := by"),
   "while descriptor did not produce the checked region equality");
   expectFailure(() => proofRecipePlan(
     whileDocument, whileProgram.replace("      .br 0", "      .br 1")), /back edge/);
@@ -2268,8 +2301,11 @@ def func0Def : Wasm.Function :=
     arrayFoldDocument, arrayFoldProgram, ["strategy.arrays", "strategy.loops"]);
   validateProofRecipePlan(arrayFoldPlan, arrayFoldDocument);
   assert(arrayFoldPlan.recipes.length === 1 &&
+    arrayFoldPlan.recipes[0].recipeVersion === 2 &&
     arrayFoldPlan.recipes[0].direct.regionEquality ===
       "Project.AnnotationMatches.function_0_array_fold_0_eq" &&
+    arrayFoldPlan.recipes[0].direct.tailEquality ===
+      "Project.AnnotationMatches.function_0_array_fold_0_tail_eq" &&
     arrayFoldPlan.recipes[0].direct.program ===
       "Project.AnnotationMatches.function_0_array_fold_0_program" &&
     arrayFoldPlan.recipes[0].supporting.some((entry) => entry.declaration ===
@@ -2337,6 +2373,7 @@ def func0Def : Wasm.Function :=
   }, arrayFoldProgram);
   assert(arrayFoldMatches.source.includes("def function_0_array_fold_0_program") &&
     arrayFoldMatches.source.includes("theorem function_0_array_fold_0_eq") &&
+    arrayFoldMatches.source.includes("theorem function_0_array_fold_0_tail_eq") &&
     arrayFoldMatches.source.includes(
       "def function_0_array_fold_0_continuing_program") &&
     arrayFoldMatches.source.includes(
@@ -2407,8 +2444,10 @@ def func0Def : Wasm.Function :=
   delete oldArrayFoldDocument.functions[0].regions[0].parameters.descriptorVersion;
   validateAnnotationDocument(oldArrayFoldDocument, wasm);
   const legacyArrayFoldPlan = structuredClone(arrayFoldPlan);
+  legacyArrayFoldPlan.recipes[0].recipeVersion = 1;
   legacyArrayFoldPlan.recipes[0].applicability = "exact decoded instruction match";
   delete legacyArrayFoldPlan.recipes[0].direct.regionEquality;
+  delete legacyArrayFoldPlan.recipes[0].direct.tailEquality;
   delete legacyArrayFoldPlan.recipes[0].direct.program;
   legacyArrayFoldPlan.recipes[0].supporting =
     legacyArrayFoldPlan.recipes[0].supporting.slice(2);
@@ -2824,10 +2863,13 @@ def func0Def : Wasm.Function :=
   const plan = proofRecipePlan(
     document, program, ["strategy.arrays", "strategy.frames"], namespace);
   validateProofRecipePlan(plan, document);
-  assert(plan.recipes[0].direct.theorem ===
+  assert(plan.recipes[0].recipeVersion === 2 &&
+    plan.recipes[0].direct.theorem ===
       "Project.ProofKit.FixedArrayPairResult.constResultProgram_spec" &&
     plan.recipes[0].direct.regionEquality ===
-      `${namespace}.function_0_pair_result_0_eq`,
+      `${namespace}.function_0_pair_result_0_eq` &&
+    plan.recipes[0].direct.tailEquality ===
+      `${namespace}.function_0_pair_result_0_tail_eq`,
   "pair-result annotation did not select its checked theorem and region equality");
   const job = {
     namespace: "LeanExeGen.GeneratedTest",
@@ -2837,6 +2879,7 @@ def func0Def : Wasm.Function :=
   assert(matches.module === namespace &&
     matches.source.includes("constResultProgram 0 0 3") &&
     matches.source.includes("function_0_pair_result_0_eq") &&
+    matches.source.includes("function_0_pair_result_0_tail_eq") &&
     matches.source.includes("  rfl"),
   "pair-result annotation did not generate its checked Lean equality");
 
