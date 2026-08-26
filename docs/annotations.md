@@ -96,7 +96,7 @@ The consumer currently generates support for these recurring boundaries:
 | Direct calls | Exact selected-program equality plus argument and result placement data. |
 | Length dispatch | Exact valid and invalid branch equality, fixed or bounded input facts, and compatible dispatch tactics. |
 | First-match equality scan | Exact search-program equality, literal key, local roles, option encoding, and the continuation-generic `FixedArrayFindIdxEq.program_spec` theorem. |
-| Encoded optional index | Exact six-top-level-instruction decoder equality, three local roles, encoding name, named result frame, and the continuation-generic `EncodedIndexDecoder.program_spec` theorem. |
+| Encoded optional index | Exact six-top-level-instruction decoder equality, an exact resolved-tail decomposition, three local roles, encoding name, named result frame, and the continuation-generic `EncodedIndexDecoder.program_spec` theorem. |
 | Erase copy | Exact combined, prefix, and shifted-suffix program equalities with source width and five local roles, plus the direct `FixedArrayCopy.program_spec` theorem and width-one `eraseIdxProgram_spec` adapter. |
 | Search trees | Key-load, equality-node, less-than-node, and result-construction equalities used by chain and tree theorems. |
 | Map and filter | Whole-function equality to neutral bounded-wrapper programs. |

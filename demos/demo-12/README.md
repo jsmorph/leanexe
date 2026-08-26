@@ -34,6 +34,8 @@ Two semantic loop invariants describe the removal copy.  The first preserves the
 
 The [full-support reproof package](experiments/full-support-reproof.proof/) instead applies `FixedArrayFindIdxEq.program_spec` and `FixedArrayCopy.eraseIdxProgram_spec`.  Those two checked boundaries remove all artifact-local search, prefix-copy, and shifted-suffix loop invariants from the accepted proof.  Its journal exposed four possible general interfaces, after which ProofKit added the dynamic local length-store theorem and encoded-index comparison fact.  Erase setup and branch-aware result transfer remain under review.
 
+The [encoded-index baseline](experiments/encoded-index-tail-baseline.proof/) and [guided reproof](experiments/encoded-index-tail-guided.proof/) evaluate a generated resolved-tail equality for the compiler's zero-or-index-plus-one decoder.  The baseline applied the generic decoder theorem without using the generated equality, while the guided proof rewrote the exact nested artifact tail before applying the same theorem.  Both packages retain the same specification, source, WASM digest, annotations, ProofKit and LTG snapshots, and Codex version.
+
 The [compiler annotations](program.proof/program.annotations.json) contain one `leanexe.array.length-dispatch.v1` region.  The [generated annotation equalities](annotation-matches.lean) and [proof recipe](program.proof/proof-recipes.json) establish the exact dispatch match and expose the checked invocation `wp_fixed_array_length_le_dispatch_from hArray at 8, 8`.  No generated annotation summarizes the dynamic first-match search, prefix copy, shifted suffix, or complete erase path.
 
 The baseline [knowledge evaluation](program.proof/knowledge-evaluation.json) records five used LTG entries: allocation, capacity, length dispatch, map-add, and result construction.  The map-add entry supplied a checked indexed-copy invariant pattern rather than a matching whole-function theorem, while the filter entry was rejected because its conditional-store program did not match the search-and-shift artifact.  The reproof evaluation records seven used LTG entries and no rejected entries.  Its find-index and erase-copy entries supplied the two loop-level boundaries used by the accepted proof.
@@ -45,6 +47,8 @@ The [proof journal](program.proof/proof-journal.md) records each retrieval and r
 The baseline [proof telemetry](program.proof/proof-telemetry.json) records 3,907.231311 seconds from the start of Stage 5 to the first accepted proof.  The Codex session used 3,742.213573 seconds, and outer acceptance used 140.403479 seconds.  The accepted proof contains 860 lines, 3,516 whitespace-delimited words, and 39,249 bytes.
 
 The [timing comparison](proof-timings.json) records 3,987.145392 seconds for the full-support reproof, an increase of 2.045 percent over the baseline.  Its 607 lines, 2,587 words, and 28,874 bytes reduce the corresponding baseline counts by 29.419, 26.422, and 26.434 percent.  The proof journal records 38 accepted checks instead of 47, a reduction of 19.149 percent.
+
+The encoded-index baseline took 5,604.715205 seconds and produced a 542-line, 25,612-byte proof without using the generated tail equality.  The guided run used that equality, took 3,371.682385 seconds, and produced a 735-line, 35,906-byte proof.  The measured time decreased by 39.842 percent and import-check paragraphs decreased from 74 to 36, while source size increased by 40.192 percent; these two generative runs establish one measured tradeoff rather than a general effect.
 
 The [stage reports](program.proof/stage-reports.json) record one accepted attempt for the formal specification, Lean program, and artifact proof.  Both retained packages cover the unchanged SHA-256 digest `7cdd8adba75d4f076d0a142f824a19a0d34d6a5cedd1a810a417a7fc5789f7b6`.  A separate `tools/leanexegen verify -s` invocation accepted the full-support package before the follow-up ProofKit changes.
 
@@ -78,4 +82,6 @@ The root files provide readable views of the request, generation result, artifac
 | [Annotation equalities](annotation-matches.lean) | The exact generated length-dispatch program and matching theorems. |
 | [Verification package](program.proof/) | The complete package accepted by `leanexegen verify -s`. |
 | [Full-support reproof](experiments/full-support-reproof.proof/) | The clean fixed-artifact package using the checked search and erase-copy boundaries. |
+| [Encoded-index baseline](experiments/encoded-index-tail-baseline.proof/) | The accepted fixed-artifact reproof that used decoder semantics without the generated tail equality. |
+| [Encoded-index guided reproof](experiments/encoded-index-tail-guided.proof/) | The independently verified matched reproof that used the generated resolved-tail equality. |
 | [Timing comparison](proof-timings.json) | The exact baseline and full-support timing, proof-size, journal, and retrieval measurements. |
