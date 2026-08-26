@@ -51,11 +51,15 @@ The backend still assembles module sections directly into bytes rather than cons
 
 ## Compiler annotations
 
-The compiler emits annotation schema 1 beside a WASM artifact.  Each region contains a stable kind, a structured instruction location, region-specific parameters, and the compiler functions that generated it.  Region recognition operates on the structured instruction tree and records direct calls, array wrappers and traversals, scalar and array loops, length dispatches, comparison nodes, and result construction.
+The compiler emits annotation schema 1 beside a WASM artifact.  Each region contains a stable kind, a structured instruction location, region-specific parameters, and the compiler functions that generated it.  Region recognition operates on the structured instruction tree and records direct calls, array wrappers and traversals, scalar and array loops, length dispatches, encoded optional-index decoders, comparison nodes, and result construction.
 
 Annotations remain untrusted proof inputs until the artifact package checks them against the decoded program.  `tools/leanexegen-annotations.js` validates the JSON schema, selects the named instruction interval from the exact Talos module, and generates Lean equalities and semantic adapters.  A stale location, opcode, local index, constant, or descriptor makes annotation generation or the generated Lean checks fail.
 
-The scalar descriptor path also has a compiler-side theorem.  If `ScalarDescriptor.Expr.ofIR`, `Cond.ofIR`, `Stmt.ofIR`, or `While.ofIR` succeeds, the corresponding theorem in `ScalarCertificate` proves equality between descriptor emission and the backend's public emitter.  The retained artifact proof uses the separately checked decoded-region equality and neutral ProofKit semantics, so it does not import the compiler theorem.
+The scalar descriptor path also has compiler-side theorems.  If `ScalarDescriptor.Expr.ofIR`, `Cond.ofIR`, `Stmt.ofIR`, `While.ofIR`, or `EncodedIndex.ofIR` succeeds, the corresponding theorem in `ScalarCertificate` proves equality between descriptor emission and the backend's public emitter.  `EncodedIndex.ofProgramPrefix` then finds that exact decoder shape in the emitted instruction tree and records its source, two-slot scratch window, destination, and encoding.
+
+The artifact consumer checks the complete decoder again against the decoded binary, including both outer branches and the nested unsigned-subtraction branch.  It generates a Lean equality to `Project.ProofKit.EncodedIndexDecoder.program`, whose neutral semantic theorem executes the local-frame update.  A generated artifact proof can use those declarations without importing the IR descriptor or compiler certificate.
+
+Development validation preserved the exact Demo 12 and ClobDepth binaries while generating decoder regions at three distinct local layouts.  Demo 12 passed generated-equality and package verification, while the ClobDepth source proof applies the neutral theorem at both of its decoder sites and passes the complete Talos proof gate.  These results establish emitter-byte preservation, exact region recognition, and cross-program semantic reuse without establishing a proof-generation-time reduction.
 
 ## Assurance boundaries
 
@@ -65,7 +69,7 @@ The scalar descriptor path also has a compiler-side theorem.  If `ScalarDescript
 | Source lies in the supported executable subset | Extraction and reporting reject unsupported types, dependencies, terms, recursion forms, effects, and surviving higher-order values. |
 | Explicit release satisfies the implemented direct-handoff rule | `ReleaseCheck` validates every reachable explicit release before module extraction succeeds. |
 | WAT and binary serializers receive the same function instruction trees | Both consume `LeanExe.Wasm.Instr`; the byte round-trip test checks the complete module output. |
-| Selected scalar descriptors agree with compiler emission | `LeanExe.Wasm.ScalarCertificate` proves successful reification equalities. |
+| Selected scalar descriptors and encoded-index decoders agree with compiler emission | `LeanExe.Wasm.ScalarCertificate` proves successful reification equalities. |
 | A distributed binary satisfies a behavioral theorem | The exact-artifact path independently embeds, decodes, validates, translates, and proves the registered bytes. |
 | All accepted Lean programs compile correctly | No general extraction, IR, ownership, lowering, or serializer correctness theorem exists. |
 

@@ -73,7 +73,7 @@ The focused gate regenerates the artifact and model before building the register
 tools/talos-proof.js check fold_sum
 ```
 
-After the theorem is complete, set `complete` to `true` and import `Project.<Case>.Spec` from [`Project.lean`](../proofs/talos/lean/Project.lean).  The aggregate gate verifies that completed registry entries match the specification imports and that every registered case appears in the runtime checks.  It then regenerates all registered cases serially and builds the complete `Project` target.
+After the theorem is complete, set `complete` to `true` and import `Project.<Case>.Spec` from [`Project.lean`](../proofs/talos/lean/Project.lean).  The aggregate gate verifies that completed registry entries match the specification imports and that every registered case appears in the runtime checks.  It then regenerates all registered cases serially and builds the complete `Project` target; the 2026-08-26 run passed all twenty cases.
 
 ```sh
 tools/talos-proof.js check --all
@@ -103,9 +103,9 @@ The conformance configuration pins the CodeLib and official WebAssembly testsuit
 tools/artifact-conformance.js check
 ```
 
-The invalid-module stage extracts each configured official module and requires the exact decoder or validator error constructor recorded in the configuration.  `wasm-tools` adds custom name sections when encoding text-origin `assert_invalid` modules, so the command strips custom sections from those cases before classification.  It preserves raw `assert_malformed` binary modules byte-for-byte, and the 2026-08-13 run matched all fifteen classifications, including truncation, version, section, integer-width, alignment, stack, and memory-limit failures.
+The invalid-module stage extracts each configured official module and requires the exact decoder or validator error constructor recorded in the configuration.  `wasm-tools` adds custom name sections when encoding text-origin `assert_invalid` modules, so the command strips custom sections from those cases before classification.  It preserves raw `assert_malformed` binary modules byte-for-byte, and the 2026-08-26 run matched all fifteen classifications, including truncation, version, section, integer-width, alignment, stack, and memory-limit failures.
 
-Talos executes supported assertions and reports unsupported command kinds as skips, so the invalid-module stage supplies separate evidence for the artifact decoder and validator.  The 2026-08-13 execution run produced 3,853 passes, six known assertion failures, and 627 skips in Talos, while Wasmtime passed all twenty-five files with `function-references=y`.  The command warns only when the failures exactly match the six imported-memory rows recorded for `memory_grow.wast`; an upstream repair removes the warning, while any changed or additional failure stops the gate.
+Talos executes supported assertions and reports unsupported command kinds as skips, so the invalid-module stage supplies separate evidence for the artifact decoder and validator.  The 2026-08-26 execution run produced 3,853 passes, six known assertion failures, 627 skips, and no cascades, decoder errors, interpreter errors, or fuel exhaustion in Talos, while Wasmtime passed all twenty-five files with `function-references=y`.  The command warns only when the failures exactly match the six imported-memory rows recorded for `memory_grow.wast`; an upstream repair removes the warning, while any changed or additional failure stops the gate.
 
 ## Release Evidence Tool
 
@@ -118,7 +118,7 @@ tools/artifact-release.js check-ready
 tools/artifact-release.js check-cold <revision>
 ```
 
-`inspect` validates the draft without claiming release readiness, while `refresh` reconstructs package records and consumes matching receipts from `build/evidence`.  `check-ready` returns a failure until every derived condition holds.  `check-cold` compares the current and cloned release inputs before setup, checks the exact Lean and dependency revisions, rejects tracked mutations after setup or either gate, reruns both gates, and writes the cold receipt before removing its temporary checkout.  The current release defers this cold operation and retains the derived blocker.
+`inspect` validates the draft without claiming release readiness, while `refresh` reconstructs package records and consumes matching receipts from `build/evidence`.  `check-ready` returns a failure until every derived condition holds.  `check-cold` compares the current and cloned release inputs before setup, checks the exact Lean and dependency revisions, rejects tracked mutations after setup or either gate, reruns both gates, and writes the cold receipt before removing its temporary checkout.  The current record carries input digest `5de9678970b1a9b74d50c1407457423a7fa6eabd3f430f56cfdc0e407af2b7e5` and both 2026-08-26 warm receipts, while an immutable source revision and the deferred cold operation remain unresolved.
 
 ## Committed Files
 

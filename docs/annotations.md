@@ -53,7 +53,7 @@ Region identifiers are unique within a document and stable for a fixed emitted s
 
 ## Compiler-emitted region kinds
 
-The current compiler emits fourteen region kinds.  The parameter object differs by kind and records only data required for validation, semantic adapters, or proof retrieval.  Human labels and source expressions may guide a proof agent, but numeric and structural fields determine generated checks.
+The current compiler emits fifteen region kinds.  The parameter object differs by kind and records only data required for validation, semantic adapters, or proof retrieval.  Human labels and source expressions may guide a proof agent, but numeric and structural fields determine generated checks.
 
 | Region kind | Described structure |
 |-------------|---------------------|
@@ -67,6 +67,7 @@ The current compiler emits fourteen region kinds.  The parameter object differs 
 | `leanexe.array.length-dispatch.v1` | A fixed-size or bounded-length public input check and its valid and invalid branches. |
 | `leanexe.array.find-idx-eq.v1` | A one-word forward `Array.findIdx?` scan that compares each element with a literal `UInt64` key and encodes the first match as index plus one. |
 | `leanexe.array.erase-copy.v1` | The complete raw-cell prefix and shifted-suffix copy loops emitted by an in-bounds fixed-array erase path. |
+| `leanexe.option.encoded-index.v1` | A zero-or-index-plus-one decoder, including its source, two scratch locals, destination, and encoding. |
 | `leanexe.array.search-key.v1` | One indexed key load within a fixed-array search. |
 | `leanexe.array.eq-node.v1` | One equality decision node with operand order and branch roles. |
 | `leanexe.array.lt-node.v1` | One unsigned comparison node with operand order and branch roles. |
@@ -78,7 +79,9 @@ Structured LTG also uses semantic labels such as `leanexe.array.allocator.v1`, `
 
 Scalar loop and array-fold regions may carry a versioned descriptor for their expressions, conditions, statements, and post-test control.  Constants use decimal strings so JSON number limits cannot change `UInt64` values.  The descriptor also identifies scratch-local boundaries and the accumulator or result locals needed to state frame preservation.
 
-`LeanExe.Wasm.ScalarDescriptor` defines the descriptor syntax and structured instruction emission.  `LeanExe.Wasm.ScalarCertificate` proves that successful reification from supported IR expressions, conditions, statements, and loops agrees with the compiler emitter.  These theorems detect drift inside annotation production, while the artifact package separately proves equality between the descriptor program and the decoded instruction region.
+`LeanExe.Wasm.ScalarDescriptor` defines the descriptor syntax and structured instruction emission.  `LeanExe.Wasm.ScalarCertificate` proves that successful reification from supported IR expressions, conditions, statements, loops, and encoded optional-index assignments agrees with the compiler emitter.  These theorems detect drift inside annotation production, while the artifact package separately proves equality between the descriptor program and the decoded instruction region.
+
+The encoded-index scanner recognizes the descriptor's exact six-top-level-instruction program after emission and records `encodedLocal`, `scratchStart`, `decodedLocal`, and the `none-zero-some-index-plus-one-v1` encoding.  The compiler certificate connects a successfully recognized IR assignment to that instruction program, while the sidecar records only the resulting location and roles.  The scanner makes no claim about which earlier operation produced the encoded word.
 
 The proof consumer evaluates a descriptor over a compact `UInt64` state and generates named condition and body equations.  Neutral ProofKit theorems connect those equations to Talos locals and weakest-precondition execution.  The application proof supplies the invariant, measure, representation facts, and terminal mathematics.
 
@@ -93,6 +96,7 @@ The consumer currently generates support for these recurring boundaries:
 | Direct calls | Exact selected-program equality plus argument and result placement data. |
 | Length dispatch | Exact valid and invalid branch equality, fixed or bounded input facts, and compatible dispatch tactics. |
 | First-match equality scan | Exact search-program equality, literal key, local roles, option encoding, and the continuation-generic `FixedArrayFindIdxEq.program_spec` theorem. |
+| Encoded optional index | Exact six-top-level-instruction decoder equality, three local roles, encoding name, named result frame, and the continuation-generic `EncodedIndexDecoder.program_spec` theorem. |
 | Erase copy | Exact combined, prefix, and shifted-suffix program equalities with source width and five local roles, plus the direct `FixedArrayCopy.program_spec` theorem and width-one `eraseIdxProgram_spec` adapter. |
 | Search trees | Key-load, equality-node, less-than-node, and result-construction equalities used by chain and tree theorems. |
 | Map and filter | Whole-function equality to neutral bounded-wrapper programs. |
@@ -125,7 +129,7 @@ The command does not regenerate the source or WASM.  It fails when the input pac
 
 ## Retrieval and evidence
 
-Every validated region contributes task features and candidate annotation kinds to knowledge retrieval.  Extractor version nine records fixed-array length dispatches, the checked one-word literal-key `findIdx?` expression, and erase-copy regions with their source width, source and target locals, prefix and suffix count locals, and counter local.  The task snapshot includes each selected package's entries after exact-artifact exclusions, while category indexes, features, maturity, consumers, and annotation kinds guide the agent's file search.  Proof recipes name declarations and tactics so the agent can retrieve detailed guidance after inspecting its residual goal.
+Every validated region contributes task features and candidate annotation kinds to knowledge retrieval.  Extractor version ten records fixed-array length dispatches, the checked one-word literal-key `findIdx?` expression, erase-copy roles, and encoded-index decoders.  Each decoder feature contains its encoded, scratch-start, and destination locals together with the encoding name.  The task snapshot includes each selected package's entries after exact-artifact exclusions, while category indexes, features, maturity, consumers, and annotation kinds guide the agent's file search.  Proof recipes name declarations and tactics so the agent can retrieve detailed guidance after inspecting its residual goal.
 
 The demonstrations retain fixed-artifact experiments showing successful and failed uses of annotation support.  Evidence includes proof-generation time, outer-check time, journal observations, retrieval, revisions, proof structure, shared theorem use, and transfer across programs.  [Artifact Proving](artifact-proving.md) defines this evaluation, while the [benchmark index](../benchmarks/README.md) and demo experiment directories preserve individual runs.
 

@@ -175,6 +175,13 @@ structure ScalarPostTestLoopParameters where
   continuation : String
   deriving Repr, Lean.ToJson
 
+structure EncodedIndexParameters where
+  encodedLocal : Nat
+  scratchStart : Nat
+  decodedLocal : Nat
+  encoding : String
+  deriving Repr, Lean.ToJson
+
 inductive RegionParameters where
   | directCall (parameters : DirectCallParameters)
   | fixedArrayLengthDispatch (parameters : FixedArrayLengthDispatchParameters)
@@ -190,6 +197,7 @@ inductive RegionParameters where
   | arrayFold (parameters : ArrayFoldParameters)
   | whileLoop (parameters : WhileLoopParameters)
   | scalarPostTestLoop (parameters : ScalarPostTestLoopParameters)
+  | encodedIndex (parameters : EncodedIndexParameters)
   deriving Repr
 
 instance : Lean.ToJson RegionParameters where
@@ -208,6 +216,7 @@ instance : Lean.ToJson RegionParameters where
     | .arrayFold parameters => Lean.toJson parameters
     | .whileLoop parameters => Lean.toJson parameters
     | .scalarPostTestLoop parameters => Lean.toJson parameters
+    | .encodedIndex parameters => Lean.toJson parameters
 
 structure Region where
   id : String
@@ -392,6 +401,17 @@ structure RelativeWhileLoop where
   descriptor : Option ScalarDescriptor.While
   scratchStart : Nat
   continuation : String
+  generatedBy : Array String
+  deriving Repr
+
+structure RelativeEncodedIndex where
+  listPath : Array PathStep
+  startIndex : Nat
+  endIndex : Nat
+  encodedLocal : Nat
+  scratchStart : Nat
+  decodedLocal : Nat
+  encoding : String
   generatedBy : Array String
   deriving Repr
 
