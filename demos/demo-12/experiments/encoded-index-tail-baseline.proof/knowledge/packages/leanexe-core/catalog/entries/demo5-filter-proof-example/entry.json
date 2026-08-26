@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "id": "demo5-filter-proof-example",
+  "title": "Demo 5 complete filter starter",
+  "summary": "Shows an unchanged deterministic starter applying a whole-function bounded stable-filter theorem.",
+  "roles": ["worked-example"],
+  "categories": ["arrays", "compiler-motifs", "loops", "worked-examples"],
+  "scope": "benchmark-local",
+  "evidenceStatus": "provisional",
+  "features": ["array", "deterministic-starter", "filter", "zero-edit"],
+  "annotationKinds": ["leanexe.array.filter-lt.v1"],
+  "modules": ["Project.ProofKit.FixedArrayFilterLt"],
+  "declarations": ["Project.ProofKit.FixedArrayFilterLt.wrapperProgram_spec"],
+  "premises": ["Exact filter whole-function annotation", "Generated expected and heap-reserve equalities"],
+  "result": "A 70-line complete artifact behavior proof accepted without editing the deterministic starter.",
+  "consumers": ["demo-5"],
+  "relatedEntries": ["fixed-array-filter-lt"],
+  "exclusion": {
+    "artifactSha256": ["7c05b423d0cb42b5e8b92fecbefdfc408a2314f2dea7f74bfcbc1674ff96b8de"],
+    "derivativeGroup": "bounded-filter-lt"
+  }
+}

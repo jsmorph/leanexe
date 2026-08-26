@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "id": "demo7-counter-transfer-example",
+  "title": "Demo 7 counter-transfer composition",
+  "summary": "Shows a complete singleton-wrapper composition supplied with a generated counter-transfer identity summary and residual specification normalization.",
+  "roles": ["worked-example"],
+  "categories": ["arrays", "compiler-motifs", "loops", "proof-construction", "worked-examples"],
+  "scope": "benchmark-local",
+  "evidenceStatus": "promoted",
+  "features": ["counter", "deterministic-starter", "direct-acceptance", "singleton", "wrapper"],
+  "annotationKinds": ["leanexe.array.singleton-wrapper.v1", "leanexe.loop.scalar-post-test.v1"],
+  "modules": ["Project.ProofKit.FixedArraySingletonWrapper", "Project.ProofKit.ScalarTransitionU64"],
+  "declarations": ["Project.ProofKit.FixedArraySingletonWrapper.wrapperProgram_spec", "Project.ProofKit.ScalarTransition.CounterTransition.postTestProgram_spec"],
+  "premises": ["Generated scalar identity summary", "Checked singleton-wrapper composition", "Definitional formal-result equations"],
+  "result": "A 67-line complete artifact proof accepted directly without a Codex artifact-proof session.",
+  "consumers": ["demo-7"],
+  "relatedEntries": ["counter-transition", "fixed-array-singleton-wrapper", "residual-specification-normalization"],
+  "exclusion": {
+    "artifactSha256": ["f437ebc16e352391ff05ff79d957eb7ef5652424d6d28c3f279e782980eeb7a5"],
+    "derivativeGroup": "counter-transfer-singleton"
+  }
+}

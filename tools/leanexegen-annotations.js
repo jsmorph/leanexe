@@ -2645,6 +2645,10 @@ function encodedIndexDecoderRecipe(
     },
     supporting: [
       {
+        declaration: `${annotationNamespace}.${name}_tail_eq`,
+        purpose: "split the resolved artifact tail at the exact decoder boundary",
+      },
+      {
         declaration: "Project.ProofKit.Annotation.region",
         purpose: "select the exact encoded-index decoder and destination-local update",
       },
@@ -4738,6 +4742,9 @@ theorem ${name}_eq :
       if (region.kind === "leanexe.option.encoded-index.v1") {
         const parameters = region.parameters;
         const name = region.id.replace(/[^A-Za-z0-9_]/g, "_");
+        const resolved = `(Project.ProofKit.Annotation.resolve ` +
+          `${job.namespace}.func${function_.wasmIndex} ` +
+          `${leanAnnotationPath(region.location.listPath)}).getD []`;
         declarations.push(`def ${name}_program : Wasm.Program :=
   Project.ProofKit.EncodedIndexDecoder.program
     ${parameters.encodedLocal} ${parameters.scratchStart} ${parameters.decodedLocal}
@@ -4746,6 +4753,11 @@ theorem ${name}_eq :
     Project.ProofKit.Annotation.region ${job.namespace}.func${function_.wasmIndex}
       ${leanAnnotationPath(region.location.listPath)} ${region.location.startIndex}
       ${region.location.endIndex} = some ${name}_program := by
+  rfl
+
+theorem ${name}_tail_eq :
+    (${resolved}).drop ${region.location.startIndex} =
+      ${name}_program ++ (${resolved}).drop ${region.location.endIndex} := by
   rfl`);
         continue;
       }
