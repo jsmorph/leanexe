@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "artifactSha256": "7cdd8adba75d4f076d0a142f824a19a0d34d6a5cedd1a810a417a7fc5789f7b6",
+  "knowledgeTaskSha256": "367bcde1b168d2e9924e89fce1089418f6a6f90151961be2376b6900d41aee1a",
+  "status": "accepted",
+  "entries": [
+    {
+      "package": "leanexe-core",
+      "entry": "encoded-index-decoder",
+      "outcome": "used",
+      "reason": "Applied the direct decoder specification and its result-frame accessors."
+    },
+    {
+      "package": "leanexe-core",
+      "entry": "fixed-array-allocation",
+      "outcome": "used",
+      "reason": "Applied allocator-region composition and allocator frame, root, and memory facts."
+    },
+    {
+      "package": "leanexe-core",
+      "entry": "fixed-array-capacity",
+      "outcome": "used",
+      "reason": "Applied normalized-capacity facts and capacity-frame projections in both branches."
+    },
+    {
+      "package": "leanexe-core",
+      "entry": "fixed-array-erase-copy",
+      "outcome": "used",
+      "reason": "Applied the direct erase-copy program specification and counter-frame projections."
+    },
+    {
+      "package": "leanexe-core",
+      "entry": "fixed-array-erase-reconstruction",
+      "outcome": "used",
+      "reason": "Used its representation guidance through the erase-copy specification that composes the reconstruction theorem."
+    },
+    {
+      "package": "leanexe-core",
+      "entry": "fixed-array-find-idx-eq",
+      "outcome": "used",
+      "reason": "Applied the direct early-exit search specification and its some- and none-frame facts."
+    },
+    {
+      "package": "leanexe-core",
+      "entry": "fixed-array-length-dispatch",
+      "outcome": "used",
+      "reason": "Applied the bounded length-dispatch tactic and branch-frame projections."
+    },
+    {
+      "package": "leanexe-core",
+      "entry": "fixed-array-result",
+      "outcome": "used",
+      "reason": "Applied length-store, empty-array reconstruction, and finish-program declarations."
+    },
+    {
+      "package": "leanexe-core",
+      "entry": "local-frame-projection",
+      "outcome": "used",
+      "reason": "Applied Frame.withValues_get to preserve local getters across operand-stack replacement."
+    }
+  ],
+  "proof": {
+    "sourceSha256": "d3578f6b35db8487f88e99a87145bacb3549c039e4c9895716948eaf84bb9e2f",
+    "byteLength": 50046,
+    "lineCount": 1059,
+    "stage5Milliseconds": 5903365.887
+  }
+}
