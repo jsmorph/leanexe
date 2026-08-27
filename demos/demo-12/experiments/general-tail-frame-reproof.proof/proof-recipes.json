@@ -1,0 +1,263 @@
+{
+  "schemaVersion": 1,
+  "attemptOrder": [
+    "direct",
+    "composition",
+    "tactic",
+    "focused-guidance"
+  ],
+  "compositions": [],
+  "recipes": [
+    {
+      "recipeVersion": 1,
+      "functionIndex": 0,
+      "regionId": "function-0.length-dispatch-0",
+      "regionKind": "leanexe.array.length-dispatch.v1",
+      "applicability": "exact decoded instruction match",
+      "direct": {
+        "module": "Project.ProofKit.FixedArrayLengthDispatch",
+        "theorem": "Project.ProofKit.FixedArrayLengthDispatch.leProgram_spec",
+        "tactic": "wp_fixed_array_length_le_dispatch_from",
+        "invocation": "wp_fixed_array_length_le_dispatch_from hArray at 8, 8"
+      },
+      "supporting": [
+        {
+          "declaration": "Wasm.TerminatesWith.of_wp_entry_for",
+          "purpose": "specialize public entry execution to the represented input store before invoking the region tactic"
+        },
+        {
+          "declaration": "Project.ProofKit.UInt64Array.At.lengthRead",
+          "purpose": "identify the represented input length"
+        },
+        {
+          "declaration": "Project.ProofKit.UInt64Array.At.encodedSize_eq",
+          "purpose": "relate the encoded length word to the fixed logical size"
+        },
+        {
+          "declaration": "Project.ProofKit.FixedArrayEqNode.branchPost",
+          "purpose": "preserve the enclosing branch continuation"
+        },
+        {
+          "declaration": "LeanExeGen.GeneratedRb9ad29e25c8033e5.AnnotationMatches.function_0_length_dispatch_0_function_eq",
+          "purpose": "rewrite the decoded function to the named dispatch and suffix programs"
+        },
+        {
+          "declaration": "LeanExeGen.GeneratedRb9ad29e25c8033e5.AnnotationMatches.function_0_length_dispatch_0_dispatch_eq",
+          "purpose": "check the named dispatch program against the exact decoded prefix"
+        },
+        {
+          "declaration": "LeanExeGen.GeneratedRb9ad29e25c8033e5.AnnotationMatches.function_0_length_dispatch_0_invalid_capacity_eq",
+          "purpose": "rewrite the exact invalid-branch capacity prefix"
+        },
+        {
+          "declaration": "LeanExeGen.GeneratedRb9ad29e25c8033e5.AnnotationMatches.function_0_length_dispatch_0_invalid_capacity_program",
+          "purpose": "name the compiler-matched invalid-branch capacity prefix"
+        },
+        {
+          "declaration": "Project.ProofKit.FixedArrayCapacity.constantProgram_spec",
+          "purpose": "execute constant result-capacity normalization into its destination local"
+        },
+        {
+          "declaration": "Project.ProofKit.FixedArrayCapacity.normalizedCapacity",
+          "purpose": "name the computed aligned capacity passed to allocation"
+        },
+        {
+          "declaration": "Project.ProofKit.FixedArrayCapacity.capacityFrame",
+          "purpose": "state the exact post-capacity local frame"
+        },
+        {
+          "declaration": "Project.ProofKit.FixedArrayCapacity.capacityFrame_get_capacity",
+          "purpose": "read the normalized capacity through the selected combined local"
+        },
+        {
+          "declaration": "Project.ProofKit.FixedArrayCapacity.capacityFrame_internal_get_capacity",
+          "purpose": "supply the normalized capacity to an allocator's internal-local premise"
+        },
+        {
+          "declaration": "Project.ProofKit.FixedArrayCapacity.normalizedCapacity_toNat_ge_eight",
+          "purpose": "derive the allocator's minimum-capacity premise from normalization"
+        },
+        {
+          "declaration": "Project.ProofKit.FixedArrayAllocatorWindow.constantCapacityRegion_spec_withTail",
+          "purpose": "compose this prefix with an immediately following standard shifted allocator when its capacity local is offset plus nine"
+        }
+      ],
+      "expectedPostcondition": "valid and invalid input-size branch obligations",
+      "guidance": [
+        "strategy.arrays",
+        "strategy.allocation",
+        "strategy.frames"
+      ]
+    },
+    {
+      "recipeVersion": 2,
+      "functionIndex": 0,
+      "regionId": "function-0.find-idx-eq-0",
+      "regionKind": "leanexe.array.find-idx-eq.v1",
+      "applicability": "Lean-checked equality over the decoded instruction region",
+      "direct": {
+        "module": "Project.ProofKit.FixedArrayFindIdxEq",
+        "theorem": "Project.ProofKit.FixedArrayFindIdxEq.program_spec",
+        "regionEquality": "LeanExeGen.GeneratedRb9ad29e25c8033e5.AnnotationMatches.function_0_find_idx_eq_0_eq",
+        "tailEquality": "LeanExeGen.GeneratedRb9ad29e25c8033e5.AnnotationMatches.function_0_find_idx_eq_0_tail_eq",
+        "program": "LeanExeGen.GeneratedRb9ad29e25c8033e5.AnnotationMatches.function_0_find_idx_eq_0_program"
+      },
+      "supporting": [
+        {
+          "declaration": "Project.ProofKit.Annotation.region",
+          "purpose": "select the exact array search expression without its destination local update"
+        },
+        {
+          "declaration": "Project.ProofKit.FixedArrayFindIdxEq.predicate",
+          "purpose": "state the first-match predicate for the annotated constant key"
+        },
+        {
+          "declaration": "Project.ProofKit.FixedArrayFindIdxEq.noneFrame",
+          "purpose": "describe the encoded none result and continuation frame"
+        },
+        {
+          "declaration": "Project.ProofKit.FixedArrayFindIdxEq.someFrame",
+          "purpose": "describe the encoded first matching index and continuation frame"
+        },
+        {
+          "declaration": "Project.ProofKit.FixedArrayFindIdxEq.encodedIndex",
+          "purpose": "name the compiler's index-plus-one result encoding"
+        },
+        {
+          "declaration": "Project.ProofKit.FixedArrayFindIdxEq.encodedIndex_eq_ofNat_succ",
+          "purpose": "normalize the emitted index-plus-one word under its checked UInt64 bound"
+        },
+        {
+          "declaration": "Project.ProofKit.FixedArrayFindIdxEq.encodedIndex_ne_zero",
+          "purpose": "select the successful option branch without reducing modular arithmetic"
+        },
+        {
+          "declaration": "Project.ProofKit.FixedArrayFindIdxEq.encodedIndex_sub_one",
+          "purpose": "decode the successful result word back to the represented index"
+        },
+        {
+          "declaration": "Project.ProofKit.FixedArrayFindIdxEq.someFrame_params",
+          "purpose": "project the unchanged parameters without unfolding the search frames"
+        },
+        {
+          "declaration": "Project.ProofKit.FixedArrayFindIdxEq.someFrame_locals_length",
+          "purpose": "project the unchanged local-list length without unfolding the search frames"
+        },
+        {
+          "declaration": "Project.ProofKit.FixedArrayFindIdxEq.someFrame_values",
+          "purpose": "project the encoded result operand without unfolding the search frames"
+        }
+      ],
+      "expectedPostcondition": "none encoded as zero or the first matching index encoded by encodedIndex",
+      "guidance": [
+        "strategy.arrays",
+        "strategy.loops",
+        "strategy.frames"
+      ]
+    },
+    {
+      "recipeVersion": 2,
+      "functionIndex": 0,
+      "regionId": "function-0.encoded-index-0",
+      "regionKind": "leanexe.option.encoded-index.v1",
+      "applicability": "Lean-checked equality over the decoded instruction region",
+      "direct": {
+        "module": "Project.ProofKit.EncodedIndexDecoder",
+        "theorem": "Project.ProofKit.EncodedIndexDecoder.program_spec",
+        "regionEquality": "LeanExeGen.GeneratedRb9ad29e25c8033e5.AnnotationMatches.function_0_encoded_index_0_eq",
+        "tailEquality": "LeanExeGen.GeneratedRb9ad29e25c8033e5.AnnotationMatches.function_0_encoded_index_0_tail_eq",
+        "program": "LeanExeGen.GeneratedRb9ad29e25c8033e5.AnnotationMatches.function_0_encoded_index_0_program"
+      },
+      "supporting": [
+        {
+          "declaration": "Project.ProofKit.Annotation.region",
+          "purpose": "select the exact encoded-index decoder and destination-local update"
+        },
+        {
+          "declaration": "Project.ProofKit.EncodedIndexDecoder.resultFrame",
+          "purpose": "name the decoder's exact local frame"
+        },
+        {
+          "declaration": "Project.ProofKit.EncodedIndexDecoder.resultFrame_decoded",
+          "purpose": "read zero or the decoded predecessor through the destination local"
+        },
+        {
+          "declaration": "Project.ProofKit.EncodedIndexDecoder.resultFrame_params",
+          "purpose": "preserve the parameter list at the decoder boundary"
+        },
+        {
+          "declaration": "Project.ProofKit.EncodedIndexDecoder.resultFrame_locals_length",
+          "purpose": "preserve the combined-local bound at the decoder boundary"
+        },
+        {
+          "declaration": "Project.ProofKit.EncodedIndexDecoder.resultFrame_values",
+          "purpose": "preserve the operand stack at the decoder boundary"
+        }
+      ],
+      "expectedPostcondition": "zero when the encoded word is zero, otherwise the encoded word minus one",
+      "guidance": [
+        "strategy.arithmetic",
+        "strategy.frames"
+      ]
+    },
+    {
+      "recipeVersion": 2,
+      "functionIndex": 0,
+      "regionId": "function-0.erase-copy-0",
+      "regionKind": "leanexe.array.erase-copy.v1",
+      "applicability": "Lean-checked equality over the decoded instruction region",
+      "direct": {
+        "module": "Project.ProofKit.FixedArrayCopy",
+        "theorem": "Project.ProofKit.FixedArrayCopy.program_spec",
+        "regionEquality": "LeanExeGen.GeneratedRb9ad29e25c8033e5.AnnotationMatches.function_0_erase_copy_0_eq",
+        "tailEquality": "LeanExeGen.GeneratedRb9ad29e25c8033e5.AnnotationMatches.function_0_erase_copy_0_tail_eq",
+        "program": "LeanExeGen.GeneratedRb9ad29e25c8033e5.AnnotationMatches.function_0_erase_copy_0_program"
+      },
+      "supporting": [
+        {
+          "declaration": "Project.ProofKit.Annotation.region",
+          "purpose": "select the two exact copy loops after allocation and the result-length store"
+        },
+        {
+          "declaration": "LeanExeGen.GeneratedRb9ad29e25c8033e5.AnnotationMatches.function_0_erase_copy_0_prefix_eq",
+          "purpose": "check the prefix-copy half of the selected region"
+        },
+        {
+          "declaration": "LeanExeGen.GeneratedRb9ad29e25c8033e5.AnnotationMatches.function_0_erase_copy_0_suffix_eq",
+          "purpose": "check the shifted-suffix half of the selected region"
+        },
+        {
+          "declaration": "Project.ProofKit.FixedArrayCopy.prefixProgram_spec",
+          "purpose": "copy the cells before the removed element"
+        },
+        {
+          "declaration": "Project.ProofKit.FixedArrayCopy.suffixProgram_spec",
+          "purpose": "copy later cells after skipping one source element"
+        },
+        {
+          "declaration": "Project.ProofKit.FixedArrayCopy.eraseIdxProgram_spec",
+          "purpose": "specialize the one-word copy pair to an in-bounds Array.eraseIdx! result"
+        },
+        {
+          "declaration": "Project.ProofKit.UInt64Array.At.eraseIdx!_of_reads",
+          "purpose": "reconstruct the one-word result representation from prefix and shifted-suffix reads"
+        },
+        {
+          "declaration": "Project.ProofKit.FixedArrayCopy.cellRead",
+          "purpose": "state source and target cell facts at the program theorem boundary"
+        },
+        {
+          "declaration": "Project.ProofKit.FixedArrayCopy.counterFrame",
+          "purpose": "state the loop pair's final combined-local frame"
+        }
+      ],
+      "expectedPostcondition": "prefix cells copied unchanged and suffix cells shifted by sourceWidth",
+      "guidance": [
+        "strategy.arrays",
+        "strategy.loops",
+        "strategy.memory",
+        "strategy.frames"
+      ]
+    }
+  ]
+}
