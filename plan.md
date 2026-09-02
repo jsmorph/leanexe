@@ -82,7 +82,7 @@ Current candidates include broader explicit-release analysis, shared interior ow
 
 The first self-hosting increment moves only final WebAssembly binary serialization into a LeanExe-compiled module.  A canonical module image records the already-lowered library-mode functions, locals, exports, globals, memory, and structured instruction streams.  A pure emitter compiled by the existing native compiler consumes that image as bytes and returns the exact WebAssembly bytes.  [Self-Hosted WebAssembly Emitter](plans/self-hosted-emitter.md) defines the boundary and bootstrap gates.
 
-- [ ] Define and validate a canonical versioned module-image format at the final structured-instruction boundary.
+- [x] Define and validate a canonical versioned module-image format at the final structured-instruction boundary.
 - [ ] Refactor native library-mode emission through that image without changing any registered artifact bytes.
 - [ ] Implement a pure `ByteArray -> Except ByteArray ByteArray` image emitter inside the accepted LeanExe subset.
 - [ ] Compile the emitter to WebAssembly and require it to reproduce its own complete module byte for byte.

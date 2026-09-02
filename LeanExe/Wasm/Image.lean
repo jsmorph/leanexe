@@ -110,6 +110,30 @@ def errorExportKind : ByteArray :=
 def errorExportName : ByteArray :=
   "leanexe-image: non-ascii export name".toUTF8
 
+def errorMemory : ByteArray :=
+  "leanexe-image: invalid memory minimum".toUTF8
+
+def errorDuplicateExport : ByteArray :=
+  "leanexe-image: duplicate export name".toUTF8
+
+def errorExportIndex : ByteArray :=
+  "leanexe-image: invalid export index".toUTF8
+
+def errorLocalIndex : ByteArray :=
+  "leanexe-image: invalid local index".toUTF8
+
+def errorGlobalIndex : ByteArray :=
+  "leanexe-image: invalid global index".toUTF8
+
+def errorImmutableGlobal : ByteArray :=
+  "leanexe-image: write to immutable global".toUTF8
+
+def errorFunctionIndex : ByteArray :=
+  "leanexe-image: invalid function index".toUTF8
+
+def errorBranchDepth : ByteArray :=
+  "leanexe-image: invalid branch depth".toUTF8
+
 def errorTrailing : ByteArray :=
   "leanexe-image: trailing bytes".toUTF8
 
@@ -444,6 +468,98 @@ def decodeExports : Nat → Cursor → Array Export →
         let (index, next) ← readNat afterKind
         decodeExports count next (exports.push { name, kind, index })
 
+def containsExportName (name : ByteArray) : List Export → Bool
+  | [] => false
+  | export_ :: rest => export_.name == name || containsExportName name rest
+
+def hasDuplicateExportName : List Export → Bool
+  | [] => false
+  | export_ :: rest =>
+      containsExportName export_.name rest || hasDuplicateExportName rest
+
+def validExportIndex (module_ : Module) (export_ : Export) : Bool :=
+  match export_.kind with
+  | .func => export_.index < module_.functions.size
+  | .memory => export_.index == 0
+  | .global => export_.index < module_.globals.size
+
+def validateExports (module_ : Module) : List Export → Except ByteArray Unit
+  | [] => Except.ok ()
+  | export_ :: rest => do
+      if export_.name.size > maxExportNameBytes then
+        Except.error errorLimit
+      else if !isAscii export_.name then
+        Except.error errorExportName
+      else if !validExportIndex module_ export_ then
+        Except.error errorExportIndex
+      else
+        validateExports module_ rest
+
+mutual
+  def validateInstr (functionCount : Nat) (globals : Array Global)
+      (localCount controlDepth : Nat) : Instr → Except ByteArray Unit
+    | .localGet index | .localSet index | .localTee index =>
+        if index < localCount then Except.ok () else Except.error errorLocalIndex
+    | .globalGet index =>
+        if index < globals.size then Except.ok () else Except.error errorGlobalIndex
+    | .globalSet index =>
+        if index >= globals.size then
+          Except.error errorGlobalIndex
+        else if globals[index]!.mutable_ then
+          Except.ok ()
+        else
+          Except.error errorImmutableGlobal
+    | .call index =>
+        if index < functionCount then Except.ok () else Except.error errorFunctionIndex
+    | .block body | .loop body =>
+        validateInstrList functionCount globals localCount (controlDepth + 1) body
+    | .iff _ thn els | .iffI32 thn els => do
+        validateInstrList functionCount globals localCount (controlDepth + 1) thn
+        match els with
+        | some body =>
+            validateInstrList functionCount globals localCount (controlDepth + 1) body
+        | none => Except.ok ()
+    | .br branchDepth | .brIf branchDepth =>
+        if branchDepth < controlDepth then Except.ok () else Except.error errorBranchDepth
+    | _ => Except.ok ()
+
+  def validateInstrItems (functionCount : Nat) (globals : Array Global)
+      (localCount controlDepth : Nat) : List Instr → Except ByteArray Unit
+    | [] => Except.ok ()
+    | instr :: rest => do
+        validateInstr functionCount globals localCount controlDepth instr
+        validateInstrItems functionCount globals localCount controlDepth rest
+
+  def validateInstrList (functionCount : Nat) (globals : Array Global)
+      (localCount controlDepth : Nat) (body : List Instr) : Except ByteArray Unit := do
+    if body.length > maxInstructionsPerList || controlDepth > maxNestingDepth then
+      Except.error errorLimit
+    else
+      validateInstrItems functionCount globals localCount controlDepth body
+end
+
+def validateFunctions (functionCount : Nat) (globals : Array Global) :
+    List Function → Except ByteArray Unit
+  | [] => Except.ok ()
+  | func :: rest => do
+      if func.params > maxParams || func.results > maxResults || func.locals > maxLocals then
+        Except.error errorLimit
+      else
+        validateInstrList functionCount globals (func.params + func.locals) 0 func.body
+        validateFunctions functionCount globals rest
+
+def validateModule (module_ : Module) : Except ByteArray Unit := do
+  if module_.memoryMinPages == 0 || module_.memoryMinPages > 65536 then
+    Except.error errorMemory
+  else if module_.globals.size > maxGlobals || module_.functions.size > maxFunctions ||
+      module_.exports.size > maxExports then
+    Except.error errorLimit
+  else if hasDuplicateExportName module_.exports.toList then
+    Except.error errorDuplicateExport
+  else
+    validateFunctions module_.functions.size module_.globals module_.functions.toList
+    validateExports module_ module_.exports.toList
+
 def encodeModule (module_ : Module) : ByteArray :=
   magic ++ encodeU64 schemaVersion ++ encodeU64 libraryProfile ++
     encodeNat module_.memoryMinPages ++ encodeGlobals module_.globals ++
@@ -486,6 +602,8 @@ def decodeModule (input : ByteArray) : Except ByteArray Module := do
                 if finalCursor.offset != input.size then
                   Except.error errorTrailing
                 else
-                  Except.ok { memoryMinPages, globals, functions, exports }
+                  let module_ : Module := { memoryMinPages, globals, functions, exports }
+                  validateModule module_
+                  Except.ok module_
 
 end LeanExe.Wasm.Image
