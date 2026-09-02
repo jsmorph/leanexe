@@ -4291,7 +4291,7 @@ def codeSection (module_ : Module) : List UInt8 :=
     module_.funcs.toList.map (emitFuncBody releaseIndex) ++
       [coreAllocBody, coreResetBody, coreRetainBody, coreReleaseBody releaseIndex])
 
-def moduleBytes (module_ : Module) : ByteArray :=
+def legacyModuleBytes (module_ : Module) : ByteArray :=
   ByteArray.mk <| (ofNats [0, 97, 115, 109, 1, 0, 0, 0]
     ++ typeSection module_
     ++ functionSection module_
@@ -4299,6 +4299,9 @@ def moduleBytes (module_ : Module) : ByteArray :=
     ++ coreGlobalSection
     ++ exportSection module_
     ++ codeSection module_).toArray
+
+def moduleBytes (module_ : Module) : ByteArray :=
+  moduleBytesFromImage module_
 
 def annotationDocument (module_ : Module) (bytes : ByteArray) : Annotations.Document :=
   let releaseIndex := module_.funcs.size + 3

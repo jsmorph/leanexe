@@ -29,7 +29,10 @@ def nestedModule : Module :=
           results := [.local 1] }] }
 
 def imageBytesAgree (module_ : Module) : Bool :=
-  Binary.CoreWasm.moduleBytes module_ == Binary.CoreWasm.moduleBytesFromImage module_
+  Binary.CoreWasm.legacyModuleBytes module_ == Binary.CoreWasm.moduleBytesFromImage module_
+
+def publicRouteAgrees (module_ : Module) : Bool :=
+  Binary.CoreWasm.moduleBytes module_ == Binary.CoreWasm.legacyModuleBytes module_
 
 def imageRoundTrips (module_ : Module) : Bool :=
   let image := Binary.CoreWasm.moduleImage module_
@@ -40,12 +43,16 @@ def imageRoundTrips (module_ : Module) : Bool :=
 def publicEmitterAgrees (module_ : Module) : Bool :=
   let image := Binary.CoreWasm.moduleImage module_
   match Image.emitImage (Image.encodeModule image) with
-  | Except.ok bytes => bytes == Binary.CoreWasm.moduleBytes module_
+  | Except.ok bytes => bytes == Binary.CoreWasm.legacyModuleBytes module_
   | Except.error _ => false
 
 #guard imageBytesAgree emptyModule
 #guard imageBytesAgree identityModule
 #guard imageBytesAgree nestedModule
+
+#guard publicRouteAgrees emptyModule
+#guard publicRouteAgrees identityModule
+#guard publicRouteAgrees nestedModule
 
 #guard imageRoundTrips emptyModule
 #guard imageRoundTrips identityModule
