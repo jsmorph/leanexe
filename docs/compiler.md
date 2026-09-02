@@ -40,6 +40,8 @@ The compiler inserts releases for supported fresh nonrecursive temporaries and r
 |--------|----------------|
 | `LeanExe/Wasm/Instr.lean` | Structured instructions used by both serializers and annotation analysis. |
 | `LeanExe/Wasm/Binary.lean` | IR lowering, runtime functions, section assembly, binary encoding, WASI adapters, and annotation collection. |
+| `LeanExe/Wasm/Image.lean` | Canonical versioned final-module image, codec, profile limits, and semantic validation. |
+| `LeanExe/Wasm/Image/Emit.lean` | Pure accepted-subset decoder and WebAssembly binary emitter for the library image profile. |
 | `LeanExe/Wasm/Wat.lean` | WAT serialization from structured instructions. |
 | `LeanExe/Wasm/Leb.lean` | Unsigned and signed LEB128 plus section and vector encodings. |
 | `LeanExe/Wasm/LebTheorems.lean` | Checked properties of the compiler's LEB128 implementation. |
@@ -48,6 +50,8 @@ The compiler inserts releases for supported fresh nonrecursive temporaries and r
 | `LeanExe/Wasm/ScalarCertificate.lean` | Theorems connecting successful scalar reification to emitted structured instructions. |
 
 The backend still assembles module sections directly into bytes rather than constructing the Talos module type.  Exact-artifact verification handles this boundary independently by decoding the emitted binary with the proof workspace's checked binary decoder and translating the validated result to Talos.  WAT and the external Talos generator remain useful for source-driven proof-cache production and cross-checking, but the exact-artifact theorem does not obtain its module from either tool.
+
+`compile-image --module M --entry M.entry --out module.image` writes the canonical schema-version-2 image after extraction, lowering, runtime selection, and numeric index resolution.  `emitImage : ByteArray -> Except ByteArray ByteArray` decodes that image and emits the complete library-mode module from code that LeanExe itself accepts.  The bootstrap test requires the Wasmtime-hosted Stage 1 emitter and JavaScript-hosted Stage 2 emitter to reproduce the Stage 1 artifact byte for byte.  This is a self-hosted binary-emitter boundary; Lean and the native compiler still perform all earlier compiler stages.
 
 ## Compiler annotations
 

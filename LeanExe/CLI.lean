@@ -25,6 +25,7 @@ def usage : String :=
     "  lean-wasm eval-ir --module <module> --entry <name> [arg ...]",
     "  lean-wasm compile --module <module> --entry <name> --out <path>",
     "  lean-wasm compile --module <module> --entry <name> --out <path> --annotations <path>",
+    "  lean-wasm compile-image --module <module> --entry <name> --out <path>",
     "  lean-wasm compile-wat --module <module> --entry <name> --out <path>",
     "  lean-wasm compile-wasi --module <module> --entry <name> --out <path>",
     "  lean-wasm compile-wasi-stdin --max-input-bytes <n> --module <module> --entry <name> --out <path>",
@@ -325,6 +326,15 @@ def dispatch : List String → IO UInt32
             ("annotations", annotationsOut)])
         out annotationsOut
         (LeanExe.Extract.Core.compile moduleName entryName)
+  | ["compile-image", "--module", moduleName, "--entry", entryName, "--out", out] =>
+      compileBytesResult
+        (commandContext "compile-image"
+          [("module", moduleName), ("entry", entryName), ("output", out)])
+        out
+        (LeanExe.Extract.Core.compile moduleName entryName)
+        (fun module_ => .ok <|
+          LeanExe.Wasm.Image.encodeModule <|
+            LeanExe.Wasm.Binary.CoreWasm.moduleImage module_)
   | ["compile-wat", "--module", moduleName, "--entry", entryName, "--out", out] =>
       sourceWriteTextResult
         (commandContext "compile-wat"
