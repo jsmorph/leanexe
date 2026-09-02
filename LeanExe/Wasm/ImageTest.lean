@@ -13,8 +13,8 @@ def allInstructions : List Instr :=
    .localSet 1,
    .localTee 2,
    .globalGet 0,
-   .globalSet 1,
-   .call 3,
+   .globalSet 0,
+   .call 0,
    .addI64,
    .subI64,
    .mulI64,
@@ -51,14 +51,12 @@ def allInstructions : List Instr :=
    .loop [.brIf 0, .br 0],
    .iff true [.constI64 2] (some [.constI64 3]),
    .iff false [] none,
-   .iffI32 [.constI32 4] (some [.constI32NegOne]),
-   .br 1,
-   .brIf 2]
+   .iffI32 [.constI32 4] (some [.constI32NegOne])]
 
 def sample : Module :=
   { memoryMinPages := 16
     globals := #[{ mutable_ := true, initial := 4096 },
-      { mutable_ := false, initial := 18446744073709551615 }]
+      { mutable_ := true, initial := 18446744073709551615 }]
     functions := #[{ params := 3, results := 2, locals := 8, body := allInstructions }]
     exports := #[{ name := "memory".toUTF8, kind := .memory, index := 0 },
       { name := "run".toUTF8, kind := .func, index := 0 },
@@ -119,5 +117,44 @@ def badExportName : Module :=
     exports := #[{ name := ByteArray.empty.push 255, kind := .memory, index := 0 }] }
 
 #guard isError errorExportName (decodeModule (encodeModule badExportName))
+
+def zeroMemory : Module :=
+  { sample with memoryMinPages := 0 }
+
+#guard isError errorMemory (decodeModule (encodeModule zeroMemory))
+
+def duplicateExport : Module :=
+  { sample with
+    exports := #[{ name := "run".toUTF8, kind := .func, index := 0 },
+      { name := "run".toUTF8, kind := .func, index := 0 }] }
+
+#guard isError errorDuplicateExport (decodeModule (encodeModule duplicateExport))
+
+def badExportIndex : Module :=
+  { sample with exports := #[{ name := "bad".toUTF8, kind := .func, index := 1 }] }
+
+#guard isError errorExportIndex (decodeModule (encodeModule badExportIndex))
+
+def withBody (body : List Instr) : Module :=
+  { memoryMinPages := 1
+    globals := #[{ mutable_ := true, initial := 0 }]
+    functions := #[{ params := 1, results := 0, locals := 0, body }]
+    exports := #[] }
+
+#guard isError errorLocalIndex (decodeModule (encodeModule (withBody [.localGet 1])))
+
+#guard isError errorGlobalIndex (decodeModule (encodeModule (withBody [.globalGet 1])))
+
+def immutableWrite : Module :=
+  { (withBody [.globalSet 0]) with globals := #[{ mutable_ := false, initial := 0 }] }
+
+#guard isError errorImmutableGlobal (decodeModule (encodeModule immutableWrite))
+
+#guard isError errorFunctionIndex (decodeModule (encodeModule (withBody [.call 1])))
+
+#guard isError errorBranchDepth (decodeModule (encodeModule (withBody [.br 0])))
+
+#guard isOkModule (withBody [.block [.br 0]])
+  (decodeModule (encodeModule (withBody [.block [.br 0]])))
 
 end LeanExe.Wasm.ImageTest
