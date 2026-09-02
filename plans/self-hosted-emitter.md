@@ -99,13 +99,14 @@ The comparison operates on complete artifact bytes.  Normalizing or ignoring cus
 
 ## Implementation progress
 
-- [x] Define the version 1 library-profile data model and canonical unsigned-LEB wire encoding.
-- [x] Round-trip every structured instruction record, including nested block, loop, i64-result if, i32-result if, and optional else bodies.
+- [x] Define the version 2 library-profile data model and canonical unsigned-LEB wire encoding.
+- [x] Validate and emit every linear instruction record, including nested block, loop, i64-result if, i32-result if, optional else bodies, and explicit end delimiters.
 - [x] Reject truncated fields, noncanonical or overflowing integers, unsupported versions and profiles, unknown instruction and export tags, non-ASCII export names, profile-limit violations, and trailing bytes with stable byte diagnostics.
 - [x] Add module-level semantic validation for indices, duplicate exports, memory bounds, branch depth, and function-local references.
 - [x] Construct complete images from lowered modules, including the four runtime functions and runtime exports.
 - [x] Implement the pure section and instruction emitter and prove byte equality on reduced runtime-only, identity, and nested-control modules.
-- [ ] Emit exact WebAssembly from decoded images and route native library emission through that path.
+- [x] Compile `emitImage` with Stage 0 inside the accepted LeanExe subset; the schema-version-2 artifact is 536,200 bytes with SHA-256 `c049dad6c8bda7269666dbe766368ef94f86cd44b86a88f5b33e6d9c8f211b64`.
+- [ ] Route native library emission through the image path and preserve the registered corpus bytes.
 
 The first three items are covered by `LeanExe.Wasm.ImageTest`, built directly with the pinned Lean 4.31.0 toolchain under the explicit session exception for the repository runner.
 
