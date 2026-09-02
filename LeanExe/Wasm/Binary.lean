@@ -1,6 +1,7 @@
 import LeanExe.Core
 import LeanExe.IR.Core
 import LeanExe.Wasm.Annotations
+import LeanExe.Wasm.Image.Emit
 import LeanExe.Wasm.Instr
 import LeanExe.Wasm.Leb
 import LeanExe.Wasm.ScalarDescriptor
@@ -200,66 +201,10 @@ abbrev Module := LeanExe.IR.Module
 abbrev Instr := LeanExe.Wasm.Instr
 
 mutual
-  /-- Serialize one structured instruction to the exact byte form the fused
-  emitter produced.  This is the only place instruction opcodes live. -/
+  /-- Compatibility wrapper over the image emitter's authoritative opcode
+  encoding for byte-list consumers that have not yet moved to `ByteArray`. -/
   def encodeInstr : Instr → List UInt8
-    | .constI64 n => LeanExe.Wasm.Binary.i64Const n
-    | .constI32 n => LeanExe.Wasm.Binary.i32Const n
-    | .constI32NegOne => ofNats [65, 127]
-    | .localGet n => LeanExe.Wasm.Binary.localGet n
-    | .localSet n => LeanExe.Wasm.Binary.localSet n
-    | .localTee n => LeanExe.Wasm.Binary.localTee n
-    | .globalGet n => LeanExe.Wasm.Binary.globalGet n
-    | .globalSet n => LeanExe.Wasm.Binary.globalSet n
-    | .call n => LeanExe.Wasm.Binary.call n
-    | .addI64 => ofNats [124]
-    | .subI64 => ofNats [125]
-    | .mulI64 => ofNats [126]
-    | .divUI64 => ofNats [128]
-    | .remUI64 => ofNats [130]
-    | .andI64 => ofNats [131]
-    | .orI64 => ofNats [132]
-    | .xorI64 => ofNats [133]
-    | .shlI64 => ofNats [134]
-    | .shrUI64 => ofNats [136]
-    | .eqI64 => ofNats [81]
-    | .neI64 => ofNats [82]
-    | .ltUI64 => ofNats [84]
-    | .leUI64 => ofNats [88]
-    | .geUI64 => ofNats [90]
-    | .eqzI64 => ofNats [80]
-    | .eqI32 => ofNats [70]
-    | .eqzI32 => ofNats [69]
-    | .andI32 => ofNats [113]
-    | .wrapI64 => ofNats [167]
-    | .extendUI32 => ofNats [173]
-    | .load64 => ofNats [41, 3, 0]
-    | .load32 => ofNats [40, 2, 0]
-    | .load8U => ofNats [45, 0, 0]
-    | .store64 => ofNats [55, 3, 0]
-    | .store32 => ofNats [54, 2, 0]
-    | .store8 => ofNats [58, 0, 0]
-    | .memorySize => ofNats [63, 0]
-    | .memoryGrow => ofNats [64, 0]
-    | .unreachable => ofNats [0]
-    | .ret => ofNats [15]
-    | .drop => ofNats [26]
-    | .block body => ofNats [2, 64] ++ encodeInstrs body ++ ofNats [11]
-    | .loop body => ofNats [3, 64] ++ encodeInstrs body ++ ofNats [11]
-    | .iff resultI64 thn els =>
-        ofNats [4, if resultI64 then 126 else 64] ++ encodeInstrs thn ++
-          (match els with
-           | some elseBody => ofNats [5] ++ encodeInstrs elseBody
-           | none => []) ++
-          ofNats [11]
-    | .iffI32 thn els =>
-        ofNats [4, 127] ++ encodeInstrs thn ++
-          (match els with
-           | some elseBody => ofNats [5] ++ encodeInstrs elseBody
-           | none => []) ++
-          ofNats [11]
-    | .br depth => ofNats [12] ++ u32leb depth
-    | .brIf depth => ofNats [13] ++ u32leb depth
+    | instr => LeanExe.Wasm.Image.emitInstr instr |>.toList
 
   def encodeInstrs : List Instr → List UInt8
     | [] => []
@@ -4272,6 +4217,64 @@ def coreReleaseInstrs (releaseIndex : Nat) : List Instr :=
       localGet kindLocal ++ i64Const rcKindArray ++ i64Eq ++
         ([Instr.iff false (arrayReleaseLoop) none]) ++
       freeCurrent)
+
+def imageUserFunction (releaseIndex : Nat) (func : Func) : LeanExe.Wasm.Image.Function :=
+  { params := func.params
+    results := func.results.length
+    locals := func.locals - func.params + funcScratch func
+    body := emitFuncInstrs releaseIndex func }
+
+def imageRuntimeFunctions (releaseIndex : Nat) : Array LeanExe.Wasm.Image.Function :=
+  #[{ params := 1, results := 1, locals := 6, body := coreAllocInstrs },
+    { params := 0, results := 0, locals := 0, body := coreResetInstrs },
+    { params := 1, results := 1, locals := 1, body := coreRetainInstrs },
+    { params := 1, results := 0, locals := 8, body := coreReleaseInstrs releaseIndex }]
+
+def imageGlobals : Array LeanExe.Wasm.Image.Global :=
+  #[{ mutable_ := true, initial := 4096 },
+    { mutable_ := true, initial := 0 },
+    { mutable_ := true, initial := 0 },
+    { mutable_ := true, initial := 0 },
+    { mutable_ := true, initial := 0 },
+    { mutable_ := true, initial := 0 }]
+
+def imageExports (module_ : Module) : Array LeanExe.Wasm.Image.Export :=
+  let count := module_.funcs.size
+  let userExports := (module_.funcs.toList.zipIdx.filterMap fun (func, index) =>
+    func.exportName.map fun exportName =>
+      { name := exportName.toUTF8, kind := LeanExe.Wasm.Image.ExportKind.func,
+        index := index }).toArray
+  #[{ name := "memory".toUTF8, kind := LeanExe.Wasm.Image.ExportKind.memory, index := 0 }] ++
+    userExports ++
+    #[{ name := "alloc".toUTF8, kind := LeanExe.Wasm.Image.ExportKind.func, index := count },
+      { name := "reset".toUTF8, kind := LeanExe.Wasm.Image.ExportKind.func,
+        index := count + 1 },
+      { name := "retain".toUTF8, kind := LeanExe.Wasm.Image.ExportKind.func,
+        index := count + 2 },
+      { name := "release".toUTF8, kind := LeanExe.Wasm.Image.ExportKind.func,
+        index := count + 3 },
+      { name := "free".toUTF8, kind := LeanExe.Wasm.Image.ExportKind.func,
+        index := count + 3 },
+      { name := "allocCount".toUTF8, kind := LeanExe.Wasm.Image.ExportKind.global,
+        index := runtimeStatGlobal .allocs },
+      { name := "retainCount".toUTF8, kind := LeanExe.Wasm.Image.ExportKind.global,
+        index := runtimeStatGlobal .retains },
+      { name := "releaseCount".toUTF8, kind := LeanExe.Wasm.Image.ExportKind.global,
+        index := runtimeStatGlobal .releases },
+      { name := "freeCount".toUTF8, kind := LeanExe.Wasm.Image.ExportKind.global,
+        index := runtimeStatGlobal .frees }]
+
+/-- Freeze a lowered library module after instruction lowering and runtime selection. -/
+def moduleImage (module_ : Module) : LeanExe.Wasm.Image.Module :=
+  let releaseIndex := module_.funcs.size + 3
+  { memoryMinPages := 16
+    globals := imageGlobals
+    functions := module_.funcs.map (imageUserFunction releaseIndex) ++
+      imageRuntimeFunctions releaseIndex
+    exports := imageExports module_ }
+
+def moduleBytesFromImage (module_ : Module) : ByteArray :=
+  LeanExe.Wasm.Image.emitModuleUnchecked (moduleImage module_)
 
 def coreReleaseBody (releaseIndex : Nat) : List UInt8 :=
   bodyI (ofNats [1, 8, 126]) (coreReleaseInstrs releaseIndex)

@@ -24,6 +24,8 @@ function main() {
   run(["lake", "build", "LeanExe"]);
   run(["lake", "build", "LeanExe.Examples.Correctness"]);
   run(["lake", "build", "LeanExe.Examples.ClobTest"]);
+  run(["lake", "build", "LeanExe.Wasm.ImageTest"]);
+  run(["lake", "build", "LeanExe.Wasm.ImageIntegrationTest"]);
   for (const target of [
     "LeanExe.Examples.ByteArrayPrograms",
     "LeanExe.Examples.JsonGcTreeRewrite",
