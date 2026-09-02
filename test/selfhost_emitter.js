@@ -145,7 +145,7 @@ function checkRegisteredCorpus() {
     if (stage2.tag === 0) {
       throw new Error(`${testCase.name} Stage 2 error: ${stage2.bytes.toString("utf8")}`);
     }
-    expectBytes(`${testCase.name} JavaScript Stage 2`, stage2.bytes, expected);
+    expectBytes(`${testCase.name} Wasmtime Stage 2`, stage2.bytes, expected);
   }
 }
 
