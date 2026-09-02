@@ -78,12 +78,26 @@ Current candidates include broader explicit-release analysis, shared interior ow
 
 [Proof-Grade `f64` Artifact Semantics](plans/f64-artifact-semantics.md) records a deferred extension for exact binary64 execution, integer bit-pattern ABI transport, finite-result kernel theorems, and checked numerical error certificates.  Its first vertical slice requires an explicit design review before implementation.  A later root-plan decision will activate this work.
 
+## 6. Establish a self-hosted WebAssembly emitter
+
+The first self-hosting increment moves only final WebAssembly binary serialization into a LeanExe-compiled module.  A canonical module image records the already-lowered library-mode functions, locals, exports, globals, memory, and structured instruction streams.  A pure emitter compiled by the existing native compiler consumes that image as bytes and returns the exact WebAssembly bytes.  [Self-Hosted WebAssembly Emitter](plans/self-hosted-emitter.md) defines the boundary and bootstrap gates.
+
+- [ ] Define and validate a canonical versioned module-image format at the final structured-instruction boundary.
+- [ ] Refactor native library-mode emission through that image without changing any registered artifact bytes.
+- [ ] Implement a pure `ByteArray -> Except ByteArray ByteArray` image emitter inside the accepted LeanExe subset.
+- [ ] Compile the emitter to WebAssembly and require it to reproduce its own complete module byte for byte.
+- [ ] Require native and WebAssembly emission to agree on every registered compiler case and on malformed-image rejection tests.
+- [ ] Record the exact bootstrap revisions, image identity, artifact digests, host assumptions, and verification receipts.
+
+This phase establishes a self-hosted binary emitter, not a source- or IR-self-hosted compiler.  Lean remains responsible for parsing, elaboration, checking, extraction, ownership analysis, and lowering.  A fixed point is an engineering bootstrap result rather than a compiler-correctness theorem, and independent exact-artifact verification remains authoritative for behavioral claims.
+
 ## Required gates
 
 | Change | Required evidence |
 |--------|-------------------|
 | Documentation only | `git diff --check`, `tools/check-docs.js`, and command review. |
 | Source language or compiler | Focused Lean build through `tools/leanrun`, targeted execution comparisons, `node test/run_all.js`, WAT round trip, and all affected Talos proofs. |
+| Self-hosted emitter | Native/image byte equality, Stage 1/Stage 2 self-reproduction, registered-corpus equality, malformed-image tests, two-host execution, and all source-language/compiler gates. |
 | Exact-artifact verifier | Focused artifact package, `tools/artifact-proof.js check-all`, decoder and validator tests, and conformance checks when semantics change. |
 | ProofKit, annotations, or LTG | Focused Lean modules, generated declaration checks, `tools/ltg check`, fixed-artifact package verification, and journal plus telemetry review. |
 | Release evidence | Refreshed input identity, warm artifact and conformance receipts, immutable revision, cold-checkout receipt, and `check-ready`. |

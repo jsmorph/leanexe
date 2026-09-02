@@ -4,6 +4,7 @@ The root [Development Plan](../plan.md) is the only active work queue.  This dir
 
 | Plan | Status | Scope |
 |------|--------|-------|
+| [Self-Hosted WebAssembly Emitter](self-hosted-emitter.md) | Active; expands phase 6 of the root plan | Move canonical final-module serialization into a LeanExe-compiled WASM component and establish exact self-reproduction. |
 | [Source-Theorem Transport](theorem-transport.md) | Deferred pending smaller compiler-theorem experiments | Connect a Lean source theorem through proof-grade IR semantics and verified lowering to a theorem about exact artifact bytes. |
 | [Proof-Grade `f64` Artifact Semantics](f64-artifact-semantics.md) | Deferred | Add exact binary64 semantics, floating-point artifact decoding and validation, finite-result kernel proofs, and checked numerical refinement. |
 
