@@ -152,16 +152,40 @@ mutual
     | instr :: rest => emitInstr instr ++ emitInstrs rest
 end
 
-def indexedOpcodes : Array Nat :=
-  #[32, 33, 34, 35, 36, 16]
+def indexedOpcode (tag : Nat) : Nat :=
+  if tag == 3 then 32
+  else if tag == 4 then 33
+  else if tag == 5 then 34
+  else if tag == 6 then 35
+  else if tag == 7 then 36
+  else 16
 
-def scalarOpcodes : Array Nat :=
-  #[124, 125, 126, 128, 130, 131, 132, 133, 134, 136, 81, 82, 84, 88, 90,
-    80, 70, 69, 113, 167, 173]
+def scalarOpcode (tag : Nat) : Nat :=
+  if tag == 9 then 124
+  else if tag == 10 then 125
+  else if tag == 11 then 126
+  else if tag == 12 then 128
+  else if tag == 13 then 130
+  else if tag == 14 then 131
+  else if tag == 15 then 132
+  else if tag == 16 then 133
+  else if tag == 17 then 134
+  else if tag == 18 then 136
+  else if tag == 19 then 81
+  else if tag == 20 then 82
+  else if tag == 21 then 84
+  else if tag == 22 then 88
+  else if tag == 23 then 90
+  else if tag == 24 then 80
+  else if tag == 25 then 70
+  else if tag == 26 then 69
+  else if tag == 27 then 113
+  else if tag == 28 then 167
+  else 173
 
 def simpleInstructionBytes (tag : Nat) : ByteArray :=
   if tag <= 29 then
-    byte scalarOpcodes[tag - 9]!
+    byte (scalarOpcode tag)
   else if tag == 30 then bytes3 41 3 0
   else if tag == 31 then bytes3 40 2 0
   else if tag == 32 then bytes3 45 0 0
@@ -174,96 +198,118 @@ def simpleInstructionBytes (tag : Nat) : ByteArray :=
   else if tag == 39 then byte 15
   else byte 26
 
-def emitInstrStreamFuel : Nat → ByteArray → Nat → Array UInt64 → ByteArray →
-    Except ByteArray (Nat × ByteArray)
-  | 0, _, _, _, _ => Except.error errorLimit
-  | fuel + 1, input, offset, stack, output => do
-      if offset == input.size then
-        if stack.size == 0 then
-          Except.ok (offset, output)
-        else
-          Except.error errorInstructionNesting
-      else
-        let cursor : Cursor := { input, offset }
-        let (tag, next) ← readNat cursor
-        if tag == 0 then
-          let (value, rest) ← readNat next
-          let nextOutput := output ++ byte 66 ++
-            LeanExe.Wasm.Leb.s64lebU64 (UInt64.ofNat value)
-          emitInstrStreamFuel fuel input rest.offset stack nextOutput
-        else if tag == 1 then
-          let (value, rest) ← readNat next
-          let nextOutput := output ++ byte 65 ++ encodeNat value
-          emitInstrStreamFuel fuel input rest.offset stack nextOutput
-        else if tag == 2 then
-          let nextOutput := output ++ bytes2 65 127
-          emitInstrStreamFuel fuel input next.offset stack nextOutput
-        else if tag >= 3 && tag <= 8 then
-          let (index, rest) ← readNat next
-          let opcode := indexedOpcodes[tag - 3]!
-          let nextOutput := output ++ byte opcode ++ encodeNat index
-          emitInstrStreamFuel fuel input rest.offset stack nextOutput
-        else if tag >= 9 && tag <= 40 then
-          let instructionBytes := simpleInstructionBytes tag
-          let nextOutput := output ++ instructionBytes
-          emitInstrStreamFuel fuel input next.offset stack nextOutput
-        else if tag == 41 then
-          if stack.size >= maxNestingDepth then
-            Except.error errorLimit
-          else
-            let nextStack := stack.push 0
-            let nextOutput := output ++ bytes2 2 64
-            emitInstrStreamFuel fuel input next.offset nextStack nextOutput
-        else if tag == 42 then
-          if stack.size >= maxNestingDepth then
-            Except.error errorLimit
-          else
-            let nextStack := stack.push 0
-            let nextOutput := output ++ bytes2 3 64
-            emitInstrStreamFuel fuel input next.offset nextStack nextOutput
-        else if tag == 43 then
-          let (resultI64, rest) ← readBool next
-          if stack.size >= maxNestingDepth then
-            Except.error errorLimit
-          else
-            let nextStack := stack.push 1
-            let nextOutput := output ++ bytes2 4 (if resultI64 then 126 else 64)
-            emitInstrStreamFuel fuel input rest.offset nextStack nextOutput
-        else if tag == 44 then
-          if stack.size >= maxNestingDepth then
-            Except.error errorLimit
-          else
-            let nextStack := stack.push 1
-            let nextOutput := output ++ bytes2 4 127
-            emitInstrStreamFuel fuel input next.offset nextStack nextOutput
-        else if tag == 45 then
-          let (branchDepth, rest) ← readNat next
-          let nextOutput := output ++ byte 12 ++ encodeNat branchDepth
-          emitInstrStreamFuel fuel input rest.offset stack nextOutput
-        else if tag == 46 then
-          let (branchDepth, rest) ← readNat next
-          let nextOutput := output ++ byte 13 ++ encodeNat branchDepth
-          emitInstrStreamFuel fuel input rest.offset stack nextOutput
-        else if tag == 47 then
-          if stack.size == 0 || stack[stack.size - 1]! != 1 then
-            Except.error errorInstructionNesting
-          else
-            let nextStack := stack.set! (stack.size - 1) 2
-            let nextOutput := output ++ byte 5
-            emitInstrStreamFuel fuel input next.offset nextStack nextOutput
-        else if tag == 48 then
-          if stack.size == 0 then
-            Except.error errorInstructionNesting
-          else
-            let nextStack := stack.pop
-            let nextOutput := output ++ byte 11
-            emitInstrStreamFuel fuel input next.offset nextStack nextOutput
-        else
-          Except.error errorInstructionTag
+structure EmitCursorState where
+  offset : Nat
+  stack : Array UInt64
+  output : ByteArray
+  chunk : ByteArray
+
+def instructionChunkBytes : Nat := 512
+
+def appendInstructionBytes (offset : Nat) (stack : Array UInt64)
+    (output chunk bytes : ByteArray) : EmitCursorState :=
+  if chunk.size + bytes.size > instructionChunkBytes then
+    EmitCursorState.mk offset stack (output ++ chunk) bytes
+  else
+    EmitCursorState.mk offset stack output (chunk ++ bytes)
+
+def emitInstrStep (input : ByteArray) (offset : Nat) (stack : Array UInt64)
+    (output chunk : ByteArray) : Except ByteArray EmitCursorState := do
+  let cursor : Cursor := { input, offset }
+  let (tag, next) ← readNat cursor
+  if tag == 0 then
+    let (value, rest) ← readNat next
+    Except.ok (appendInstructionBytes rest.offset stack output chunk
+      (byte 66 ++ LeanExe.Wasm.Leb.s64lebU64 (UInt64.ofNat value)))
+  else if tag == 1 then
+    let (value, rest) ← readNat next
+    Except.ok (appendInstructionBytes rest.offset stack output chunk
+      (byte 65 ++ encodeNat value))
+  else if tag == 2 then
+    Except.ok (appendInstructionBytes next.offset stack output chunk (bytes2 65 127))
+  else if tag >= 3 && tag <= 8 then
+    let (index, rest) ← readNat next
+    let opcode := indexedOpcode tag
+    Except.ok (appendInstructionBytes rest.offset stack output chunk
+      (byte opcode ++ encodeNat index))
+  else if tag >= 9 && tag <= 40 then
+    let instructionBytes := simpleInstructionBytes tag
+    Except.ok (appendInstructionBytes next.offset stack output chunk instructionBytes)
+  else if tag == 41 then
+    if stack.size >= maxNestingDepth then
+      Except.error errorLimit
+    else
+      Except.ok (appendInstructionBytes next.offset (stack.push 0) output chunk (bytes2 2 64))
+  else if tag == 42 then
+    if stack.size >= maxNestingDepth then
+      Except.error errorLimit
+    else
+      Except.ok (appendInstructionBytes next.offset (stack.push 0) output chunk (bytes2 3 64))
+  else if tag == 43 then
+    let (resultI64, rest) ← readBool next
+    if stack.size >= maxNestingDepth then
+      Except.error errorLimit
+    else
+      Except.ok (appendInstructionBytes rest.offset (stack.push 1) output chunk
+        (bytes2 4 (if resultI64 then 126 else 64)))
+  else if tag == 44 then
+    if stack.size >= maxNestingDepth then
+      Except.error errorLimit
+    else
+      Except.ok (appendInstructionBytes next.offset (stack.push 1) output chunk (bytes2 4 127))
+  else if tag == 45 then
+    let (branchDepth, rest) ← readNat next
+    Except.ok (appendInstructionBytes rest.offset stack output chunk
+      (byte 12 ++ encodeNat branchDepth))
+  else if tag == 46 then
+    let (branchDepth, rest) ← readNat next
+    Except.ok (appendInstructionBytes rest.offset stack output chunk
+      (byte 13 ++ encodeNat branchDepth))
+  else if tag == 47 then
+    if stack.size == 0 || stack[stack.size - 1]! != 1 then
+      Except.error errorInstructionNesting
+    else
+      Except.ok (appendInstructionBytes next.offset (stack.set! (stack.size - 1) 2)
+        output chunk (byte 5))
+  else if tag == 48 then
+    if stack.size == 0 then
+      Except.error errorInstructionNesting
+    else
+      Except.ok (appendInstructionBytes next.offset stack.pop output chunk (byte 11))
+  else
+    Except.error errorInstructionTag
+
+def emitInstrStream (input : ByteArray) : Except ByteArray (Nat × ByteArray) := Id.run do
+  let mut offset := 0
+  let mut stack : Array UInt64 := #[]
+  let mut output := ByteArray.empty
+  let mut chunk := ByteArray.empty
+  let mut remaining := min input.size maxInstructionsPerList
+  let mut running := true
+  let mut result : Except ByteArray (Nat × ByteArray) := Except.error errorLimit
+  while running do
+    if offset == input.size then
+      result := if stack.size == 0 then Except.ok (offset, output ++ chunk)
+        else Except.error errorInstructionNesting
+      running := false
+    else if remaining == 0 then
+      result := Except.error errorLimit
+      running := false
+    else
+      match emitInstrStep input offset stack output chunk with
+      | Except.error error =>
+          result := Except.error error
+          running := false
+      | Except.ok state =>
+          offset := state.offset
+          stack := state.stack
+          output := state.output
+          chunk := state.chunk
+          remaining := remaining - 1
+  return result
 
 def emitFunctionInstructions (func : Function) : Except ByteArray ByteArray := do
-  let fuel := min (func.body.size + 1) (maxInstructionsPerList + 1)
-  let (finalOffset, output) ← emitInstrStreamFuel fuel func.body 0 #[] ByteArray.empty
+  let (finalOffset, output) ← emitInstrStream func.body
   if finalOffset == func.body.size then
     Except.ok output
   else

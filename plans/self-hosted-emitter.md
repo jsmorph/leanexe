@@ -105,10 +105,13 @@ The comparison operates on complete artifact bytes.  Normalizing or ignoring cus
 - [x] Add module-level semantic validation for indices, duplicate exports, memory bounds, branch depth, and function-local references.
 - [x] Construct complete images from lowered modules, including the four runtime functions and runtime exports.
 - [x] Implement the pure section and instruction emitter and prove byte equality on reduced runtime-only, identity, and nested-control modules.
-- [x] Compile `emitImage` with Stage 0 inside the accepted LeanExe subset; the schema-version-2 artifact is 536,200 bytes with SHA-256 `c049dad6c8bda7269666dbe766368ef94f86cd44b86a88f5b33e6d9c8f211b64`.
+- [x] Add `compile-image` as the native diagnostic that writes the canonical image for an accepted module and entry.
+- [x] Compile `emitImage` with Stage 0 inside the accepted LeanExe subset using iterative stream walkers and bounded 512-byte output chunks.
+- [x] Establish the complete fixed point under two hosts: Wasmtime Stage 1 and JavaScript Stage 2 both reproduce the 568,484-byte artifact with SHA-256 `b2b511025d4f56f5b2fb8e106072fe149cfe0d1c39c83405659020223d0f0d69` from the 519,107-byte self image with SHA-256 `6e9144427e9bc74b32cd16c018812239b421b7790a7f0bb0c6f9246cbd1b8215`.
+- [x] Reject malformed magic through the self-hosted public `Except ByteArray ByteArray` ABI with the stable byte diagnostic.
 - [ ] Route native library emission through the image path and preserve the registered corpus bytes.
 
-The first three items are covered by `LeanExe.Wasm.ImageTest`, built directly with the pinned Lean 4.31.0 toolchain under the explicit session exception for the repository runner.
+The image codec items are covered by `LeanExe.Wasm.ImageTest`; reduced native/image byte equality is covered by `LeanExe.Wasm.ImageIntegrationTest`; and `test/selfhost_emitter.js` retains the complete two-host fixed-point and public-error checks.  During this implementation session, focused Lean builds ran directly with the pinned Lean 4.31.0 toolchain under the user's explicit exception for the repository runner.
 
 ## Work sequence
 
