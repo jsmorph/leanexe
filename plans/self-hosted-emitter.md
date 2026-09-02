@@ -115,6 +115,8 @@ The comparison operates on complete artifact bytes.  Normalizing or ignoring cus
 
 The image codec items are covered by `LeanExe.Wasm.ImageTest`; reduced native/image byte equality is covered by `LeanExe.Wasm.ImageIntegrationTest`; and `test/selfhost_emitter.js` retains the complete two-host fixed-point and public-error checks.  During this implementation session, focused Lean builds ran directly with the pinned Lean 4.31.0 toolchain under the user's explicit exception for the repository runner.
 
+The direct verification pass also completed the core execution, WASI, reference-counting, `ByteArray`, `AsciiString`, `IntMap`, JSON, self-emission, and source-process suites; 340 standard Lean comparisons, 62 IR comparisons, and 56 validator fuzz cases passed.  The refreshed release record binds the resulting source revision and preserves all twenty artifact identities.  Pinned WAT, aggregate artifact-proof, semantic-conformance, and cold-checkout release gates remain separate pending work; this environment does not provide the pinned `wasm-tools` or Node versions, and this session intentionally does not invoke `tools/leanrun`.
+
 ## Work sequence
 
 ### 1. Freeze the boundary

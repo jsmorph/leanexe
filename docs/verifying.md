@@ -118,7 +118,7 @@ tools/artifact-release.js check-ready
 tools/artifact-release.js check-cold <revision>
 ```
 
-`inspect` validates the draft without claiming release readiness, while `refresh` reconstructs package records and consumes matching receipts from `build/evidence`.  `check-ready` returns a failure until every derived condition holds.  `check-cold` compares the current and cloned release inputs before setup, checks the exact Lean and dependency revisions, rejects tracked mutations after setup or either gate, reruns both gates, and writes the cold receipt before removing its temporary checkout.  The current record carries input digest `5de9678970b1a9b74d50c1407457423a7fa6eabd3f430f56cfdc0e407af2b7e5`, source revision `0e0d752904fc90dee3ef3511ffab91f3d358c1ed`, and both 2026-08-26 warm receipts, while the deferred cold operation remains unresolved.
+`inspect` validates the draft without claiming release readiness, while `refresh` reconstructs package records and consumes matching receipts from `build/evidence`.  `check-ready` returns a failure until every derived condition holds.  `check-cold` compares the current and cloned release inputs before setup, checks the exact Lean and dependency revisions, rejects tracked mutations after setup or either gate, reruns both gates, and writes the cold receipt before removing its temporary checkout.  The current record carries input digest `f57e509b9e4967329d7c0dd63e2f4041926a66877af6b9c98e5c4c99ad562589` at source revision `08bdaa78a3efa2badc5922a0250cc4c9710a8a29`.  Its aggregate proof, semantic-conformance, and cold-checkout receipts are pending because the self-hosted-emitter implementation changed the release inputs; the accepted 2026-08-26 receipts bind only the previous digest.
 
 ## Committed Files
 
