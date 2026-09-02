@@ -81,7 +81,7 @@ The first bootstrap uses the existing library ABI and the Node/Wasmtime host har
 
 This avoids changing the bounded WASI stdin adapter during the initial experiment.  A WASI stdin-to-stdout compiler wrapper is a follow-on only after self-reproduction succeeds and image sizes, memory growth, output lifetime, and error transport are measured.  Browser execution can use the same library ABI without waiting for that wrapper.
 
-At least two independent WebAssembly hosts run the final corpus.  The initial choices are Wasmtime and the JavaScript `WebAssembly` implementation used by the test harness.
+Stage 1 and Stage 2 run in fresh instances through the repository's pinned Wasmtime C host.  The Wasmtime CLI also validates the generated artifact.  Repository policy forbids replacing Wasmtime execution with JavaScript WebAssembly execution; a browser adapter remains follow-on work outside this milestone.
 
 ## Bootstrap sequence
 
@@ -107,10 +107,10 @@ The comparison operates on complete artifact bytes.  Normalizing or ignoring cus
 - [x] Implement the pure section and instruction emitter and prove byte equality on reduced runtime-only, identity, and nested-control modules.
 - [x] Add `compile-image` as the native diagnostic that writes the canonical image for an accepted module and entry.
 - [x] Compile `emitImage` with Stage 0 inside the accepted LeanExe subset using iterative stream walkers and bounded 512-byte output chunks.
-- [x] Establish the complete fixed point under two hosts: Wasmtime Stage 1 and JavaScript Stage 2 both reproduce the 568,484-byte artifact with SHA-256 `b2b511025d4f56f5b2fb8e106072fe149cfe0d1c39c83405659020223d0f0d69` from the 519,107-byte self image with SHA-256 `6e9144427e9bc74b32cd16c018812239b421b7790a7f0bb0c6f9246cbd1b8215`.
+- [x] Establish the complete fixed point in fresh Wasmtime instances: Stage 1 and Stage 2 both reproduce the 568,484-byte artifact with SHA-256 `b2b511025d4f56f5b2fb8e106072fe149cfe0d1c39c83405659020223d0f0d69` from the 519,107-byte self image with SHA-256 `6e9144427e9bc74b32cd16c018812239b421b7790a7f0bb0c6f9246cbd1b8215`.
 - [x] Reject malformed magic through the self-hosted public `Except ByteArray ByteArray` ABI with the stable byte diagnostic.
 - [x] Route native library emission through the image path while retaining the legacy serializer as a differential oracle; all 20 registered artifact SHA-256 identities remain unchanged.
-- [x] Match all 20 registered artifacts across routed native emission, Wasmtime Stage 1, and JavaScript Stage 2; also match five stable malformed-image diagnostics across both WebAssembly hosts.
+- [x] Match all 20 registered artifacts across routed native emission and Wasmtime Stage 1 and Stage 2; also match five stable malformed-image diagnostics across both WebAssembly stages.
 - [x] Publish the schema, compatibility policy, host ABI, capability boundary, and exact bootstrap receipt in `docs/self-hosted-emitter.md`.
 
 The image codec items are covered by `LeanExe.Wasm.ImageTest`; reduced native/image byte equality is covered by `LeanExe.Wasm.ImageIntegrationTest`; and `test/selfhost_emitter.js` retains the complete two-host fixed-point and public-error checks.  During this implementation session, focused Lean builds ran directly with the pinned Lean 4.31.0 toolchain under the user's explicit exception for the repository runner.
@@ -136,7 +136,7 @@ The image codec items are covered by `LeanExe.Wasm.ImageTest`; reduced native/im
 
 - Generate the Stage 1 self image from the exact artifact-producing revision.
 - Require complete Stage 1/Stage 2 byte equality and a stable Stage 2 repeat.
-- Run the fixed-point check through both required hosts.
+- Run both fixed-point stages in fresh Wasmtime instances and validate the artifact with the Wasmtime CLI.
 - Preserve failure-stage, exit-status, digest, and resource measurements.
 
 ### 4. Cover the repository corpus
@@ -163,7 +163,7 @@ During implementation, the repository's normal source-language and compiler gate
 - unchanged registered artifact bytes before the bootstrap is attempted;
 - Stage 1/Stage 2 complete byte equality and stable repeat;
 - registered-corpus equality across native, Stage 1, and Stage 2 emission;
-- successful execution under Wasmtime and the JavaScript host;
+- successful Stage 1 and Stage 2 execution under Wasmtime;
 - the full execution suite and WAT byte round trip;
 - all affected source-driven and exact-artifact proof gates;
 - recorded input, output, revision, tool, host, and digest identities.
@@ -177,7 +177,7 @@ This phase is complete when one checked-in schema and implementation satisfy all
 - native library-mode emission delegates through the canonical final module image;
 - the emitter source compiles under the documented LeanExe subset;
 - the WebAssembly emitter reproduces its own complete artifact byte for byte;
-- the fixed point repeats under two WebAssembly hosts;
+- the fixed point repeats in a fresh Wasmtime instance;
 - every registered compiler case is byte-identical across native and both self-hosted stages;
 - malformed images reject deterministically without unclassified traps;
 - maintained documentation states the resulting capability and nonclaims;
