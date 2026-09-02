@@ -14,6 +14,12 @@ const reproduced = path.join(outDir, "emitter-stage2.wasm");
 const moduleName = "LeanExe.Wasm.Image.Emit";
 const sourceEntry = "LeanExe.Wasm.Image.emitImage";
 const exportEntry = "emitImage";
+const corpusDir = path.join(outDir, "corpus");
+const corpusCases = JSON.parse(fs.readFileSync(path.join("proofs", "talos", "cases.json"))).cases;
+const artifactRegistry = JSON.parse(
+  fs.readFileSync(path.join("proofs", "artifacts", "registry.json")),
+).artifacts;
+const registeredArtifacts = new Map(artifactRegistry.map((item) => [item.case, item]));
 
 function compileInputs() {
   fs.mkdirSync(outDir, { recursive: true });
@@ -37,6 +43,32 @@ function compileInputs() {
     "--out",
     image,
   ], { encoding: "utf8", stdio: "inherit" });
+
+  fs.mkdirSync(corpusDir, { recursive: true });
+  for (const testCase of corpusCases) {
+    const wasmOut = path.join(corpusDir, `${testCase.name}.wasm`);
+    const imageOut = path.join(corpusDir, `${testCase.name}.image`);
+    runChecked([
+      leanExe,
+      "compile",
+      "--module",
+      testCase.module,
+      "--entry",
+      testCase.entry,
+      "--out",
+      wasmOut,
+    ], { encoding: "utf8", stdio: "inherit" });
+    runChecked([
+      leanExe,
+      "compile-image",
+      "--module",
+      testCase.module,
+      "--entry",
+      testCase.entry,
+      "--out",
+      imageOut,
+    ], { encoding: "utf8", stdio: "inherit" });
+  }
 }
 
 function callExceptBytes(input) {
@@ -100,6 +132,65 @@ function firstDifference(left, right) {
   return left.length === right.length ? -1 : limit;
 }
 
+function expectBytes(label, actual, expected) {
+  const difference = firstDifference(actual, expected);
+  if (difference !== -1) {
+    throw new Error(
+      `${label}: mismatch at byte ${difference}; got ${actual.length} bytes, ` +
+        `expected ${expected.length} bytes`,
+    );
+  }
+}
+
+function registeredArtifactBytes(testCase) {
+  const registered = registeredArtifacts.get(testCase.name);
+  if (!registered) throw new Error(`unregistered self-host corpus case ${testCase.name}`);
+  return fs.readFileSync(path.join("proofs", "artifacts", path.dirname(registered.manifest), "program.wasm"));
+}
+
+function checkRegisteredCorpus(stage2Bytes) {
+  for (const testCase of corpusCases) {
+    const expected = registeredArtifactBytes(testCase);
+    const native = fs.readFileSync(path.join(corpusDir, `${testCase.name}.wasm`));
+    const caseImage = fs.readFileSync(path.join(corpusDir, `${testCase.name}.image`));
+    expectBytes(`${testCase.name} native image route`, native, expected);
+
+    const stage1 = callExceptBytes(caseImage);
+    if (stage1.tag === 0) {
+      throw new Error(`${testCase.name} Stage 1 error: ${stage1.bytes.toString("utf8")}`);
+    }
+    expectBytes(`${testCase.name} Wasmtime Stage 1`, stage1.bytes, expected);
+
+    const stage2 = callExceptBytesJavaScript(stage2Bytes, caseImage);
+    if (stage2.tag === 0) {
+      throw new Error(`${testCase.name} Stage 2 error: ${stage2.bytes.toString("utf8")}`);
+    }
+    expectBytes(`${testCase.name} JavaScript Stage 2`, stage2.bytes, expected);
+  }
+}
+
+function checkMalformedImages(stage2Bytes) {
+  const magic = Buffer.from("LXEIMG", "ascii");
+  const cases = [
+    ["invalid magic", Buffer.from("bad image", "utf8"), "leanexe-image: invalid magic"],
+    ["truncated profile", Buffer.concat([magic, Buffer.from([2])]), "leanexe-image: truncated field"],
+    ["unsupported version", Buffer.concat([magic, Buffer.from([99])]), "leanexe-image: unsupported version"],
+    ["unsupported profile", Buffer.concat([magic, Buffer.from([2, 99])]), "leanexe-image: unsupported profile"],
+    ["noncanonical version", Buffer.concat([magic, Buffer.from([0x82, 0])]), "leanexe-image: noncanonical integer"],
+  ];
+  for (const [name, input, expected] of cases) {
+    for (const [hostName, result] of [
+      ["Wasmtime Stage 1", callExceptBytes(input)],
+      ["JavaScript Stage 2", callExceptBytesJavaScript(stage2Bytes, input)],
+    ]) {
+      if (result.tag !== 0 || result.bytes.toString("utf8") !== expected) {
+        throw new Error(`${name} ${hostName}: tag ${result.tag}, bytes ${result.bytes}`);
+      }
+    }
+  }
+  return cases.length;
+}
+
 function main() {
   if (!process.argv.includes("--use-existing")) {
     compileInputs();
@@ -114,33 +205,25 @@ function main() {
     throw new Error(`emitImage rejected its self image: ${result.bytes.toString("utf8")}`);
   }
   fs.writeFileSync(reproduced, result.bytes);
-  const difference = firstDifference(expected, result.bytes);
-  if (difference !== -1) {
-    throw new Error(
-      `self-host mismatch at byte ${difference}: Stage 1 is ${expected.length} bytes, ` +
-        `Stage 2 is ${result.bytes.length} bytes`,
-    );
-  }
+  expectBytes("self-host Stage 1", result.bytes, expected);
 
   const repeated = callExceptBytesJavaScript(result.bytes, fs.readFileSync(image));
   if (repeated.tag === 0) {
     throw new Error(`Stage 2 rejected its self image: ${repeated.bytes.toString("utf8")}`);
   }
-  const repeatedDifference = firstDifference(result.bytes, repeated.bytes);
-  if (repeatedDifference !== -1) {
-    throw new Error(`Stage 2 fixed-point mismatch at byte ${repeatedDifference}`);
-  }
+  expectBytes("Stage 2 fixed point", repeated.bytes, result.bytes);
 
-  const malformed = callExceptBytes(Buffer.from("bad image", "utf8"));
-  if (malformed.tag !== 0 || malformed.bytes.toString("utf8") !== "leanexe-image: invalid magic") {
-    throw new Error(`unexpected malformed-image result: tag ${malformed.tag}, bytes ${malformed.bytes}`);
-  }
+  checkRegisteredCorpus(result.bytes);
+  const malformedCount = checkMalformedImages(result.bytes);
 
   process.stdout.write(
     `Wasmtime Stage 1 and JavaScript Stage 2 reproduced ${expected.length} bytes; ` +
       `SHA-256 ${digest(expected)}\n`,
   );
   process.stdout.write(`self image is ${fs.statSync(image).size} bytes; SHA-256 ${digest(fs.readFileSync(image))}\n`);
+  process.stdout.write(
+    `matched ${corpusCases.length} registered artifacts and ${malformedCount} malformed-image cases\n`,
+  );
 }
 
 try {

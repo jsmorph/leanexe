@@ -86,7 +86,7 @@ The first self-hosting increment moves only final WebAssembly binary serializati
 - [x] Refactor native library-mode emission through that image without changing any registered artifact bytes.
 - [x] Implement a pure `ByteArray -> Except ByteArray ByteArray` image emitter inside the accepted LeanExe subset.
 - [x] Compile the emitter to WebAssembly and require it to reproduce its own complete module byte for byte.
-- [ ] Require native and WebAssembly emission to agree on every registered compiler case and on malformed-image rejection tests.
+- [x] Require native and WebAssembly emission to agree on every registered compiler case and on malformed-image rejection tests.
 - [ ] Record the exact bootstrap revisions, image identity, artifact digests, host assumptions, and verification receipts.
 
 This phase establishes a self-hosted binary emitter, not a source- or IR-self-hosted compiler.  Lean remains responsible for parsing, elaboration, checking, extraction, ownership analysis, and lowering.  A fixed point is an engineering bootstrap result rather than a compiler-correctness theorem, and independent exact-artifact verification remains authoritative for behavioral claims.
