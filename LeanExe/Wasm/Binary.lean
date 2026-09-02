@@ -4222,13 +4222,17 @@ def imageUserFunction (releaseIndex : Nat) (func : Func) : LeanExe.Wasm.Image.Fu
   { params := func.params
     results := func.results.length
     locals := func.locals - func.params + funcScratch func
-    body := emitFuncInstrs releaseIndex func }
+    body := LeanExe.Wasm.Image.encodeInstrList (emitFuncInstrs releaseIndex func) }
 
 def imageRuntimeFunctions (releaseIndex : Nat) : Array LeanExe.Wasm.Image.Function :=
-  #[{ params := 1, results := 1, locals := 6, body := coreAllocInstrs },
-    { params := 0, results := 0, locals := 0, body := coreResetInstrs },
-    { params := 1, results := 1, locals := 1, body := coreRetainInstrs },
-    { params := 1, results := 0, locals := 8, body := coreReleaseInstrs releaseIndex }]
+  #[{ params := 1, results := 1, locals := 6,
+      body := LeanExe.Wasm.Image.encodeInstrList coreAllocInstrs },
+    { params := 0, results := 0, locals := 0,
+      body := LeanExe.Wasm.Image.encodeInstrList coreResetInstrs },
+    { params := 1, results := 1, locals := 1,
+      body := LeanExe.Wasm.Image.encodeInstrList coreRetainInstrs },
+    { params := 1, results := 0, locals := 8,
+      body := LeanExe.Wasm.Image.encodeInstrList (coreReleaseInstrs releaseIndex) }]
 
 def imageGlobals : Array LeanExe.Wasm.Image.Global :=
   #[{ mutable_ := true, initial := 4096 },
@@ -4274,7 +4278,9 @@ def moduleImage (module_ : Module) : LeanExe.Wasm.Image.Module :=
     exports := imageExports module_ }
 
 def moduleBytesFromImage (module_ : Module) : ByteArray :=
-  LeanExe.Wasm.Image.emitModuleUnchecked (moduleImage module_)
+  match LeanExe.Wasm.Image.emitModule (moduleImage module_) with
+  | Except.ok bytes => bytes
+  | Except.error _ => ByteArray.empty
 
 def coreReleaseBody (releaseIndex : Nat) : List UInt8 :=
   bodyI (ofNats [1, 8, 126]) (coreReleaseInstrs releaseIndex)

@@ -20,13 +20,13 @@ def errorOutputLimit : ByteArray :=
   "leanexe-image: output limit exceeded".toUTF8
 
 def byte (value : Nat) : ByteArray :=
-  ByteArray.empty.push value.toUInt8
+  ByteArray.empty.push (UInt8.ofNat value)
 
 def bytes2 (first second : Nat) : ByteArray :=
-  (byte first).push second.toUInt8
+  (byte first).push (UInt8.ofNat second)
 
 def bytes3 (first second third : Nat) : ByteArray :=
-  (bytes2 first second).push third.toUInt8
+  (bytes2 first second).push (UInt8.ofNat third)
 
 def vectorPrefix (count : Nat) : ByteArray :=
   LeanExe.Wasm.Leb.u32lebU64 (UInt64.ofNat count)
@@ -152,38 +152,171 @@ mutual
     | instr :: rest => emitInstr instr ++ emitInstrs rest
 end
 
+def indexedOpcodes : Array Nat :=
+  #[32, 33, 34, 35, 36, 16]
+
+def scalarOpcodes : Array Nat :=
+  #[124, 125, 126, 128, 130, 131, 132, 133, 134, 136, 81, 82, 84, 88, 90,
+    80, 70, 69, 113, 167, 173]
+
+def simpleInstructionBytes (tag : Nat) : ByteArray :=
+  if tag <= 29 then
+    byte scalarOpcodes[tag - 9]!
+  else if tag == 30 then bytes3 41 3 0
+  else if tag == 31 then bytes3 40 2 0
+  else if tag == 32 then bytes3 45 0 0
+  else if tag == 33 then bytes3 55 3 0
+  else if tag == 34 then bytes3 54 2 0
+  else if tag == 35 then bytes3 58 0 0
+  else if tag == 36 then bytes2 63 0
+  else if tag == 37 then bytes2 64 0
+  else if tag == 38 then byte 0
+  else if tag == 39 then byte 15
+  else byte 26
+
+def emitInstrStreamFuel : Nat → ByteArray → Nat → Array UInt64 → ByteArray →
+    Except ByteArray (Nat × ByteArray)
+  | 0, _, _, _, _ => Except.error errorLimit
+  | fuel + 1, input, offset, stack, output => do
+      if offset == input.size then
+        if stack.size == 0 then
+          Except.ok (offset, output)
+        else
+          Except.error errorInstructionNesting
+      else
+        let cursor : Cursor := { input, offset }
+        let (tag, next) ← readNat cursor
+        if tag == 0 then
+          let (value, rest) ← readNat next
+          let nextOutput := output ++ byte 66 ++
+            LeanExe.Wasm.Leb.s64lebU64 (UInt64.ofNat value)
+          emitInstrStreamFuel fuel input rest.offset stack nextOutput
+        else if tag == 1 then
+          let (value, rest) ← readNat next
+          let nextOutput := output ++ byte 65 ++ encodeNat value
+          emitInstrStreamFuel fuel input rest.offset stack nextOutput
+        else if tag == 2 then
+          let nextOutput := output ++ bytes2 65 127
+          emitInstrStreamFuel fuel input next.offset stack nextOutput
+        else if tag >= 3 && tag <= 8 then
+          let (index, rest) ← readNat next
+          let opcode := indexedOpcodes[tag - 3]!
+          let nextOutput := output ++ byte opcode ++ encodeNat index
+          emitInstrStreamFuel fuel input rest.offset stack nextOutput
+        else if tag >= 9 && tag <= 40 then
+          let instructionBytes := simpleInstructionBytes tag
+          let nextOutput := output ++ instructionBytes
+          emitInstrStreamFuel fuel input next.offset stack nextOutput
+        else if tag == 41 then
+          if stack.size >= maxNestingDepth then
+            Except.error errorLimit
+          else
+            let nextStack := stack.push 0
+            let nextOutput := output ++ bytes2 2 64
+            emitInstrStreamFuel fuel input next.offset nextStack nextOutput
+        else if tag == 42 then
+          if stack.size >= maxNestingDepth then
+            Except.error errorLimit
+          else
+            let nextStack := stack.push 0
+            let nextOutput := output ++ bytes2 3 64
+            emitInstrStreamFuel fuel input next.offset nextStack nextOutput
+        else if tag == 43 then
+          let (resultI64, rest) ← readBool next
+          if stack.size >= maxNestingDepth then
+            Except.error errorLimit
+          else
+            let nextStack := stack.push 1
+            let nextOutput := output ++ bytes2 4 (if resultI64 then 126 else 64)
+            emitInstrStreamFuel fuel input rest.offset nextStack nextOutput
+        else if tag == 44 then
+          if stack.size >= maxNestingDepth then
+            Except.error errorLimit
+          else
+            let nextStack := stack.push 1
+            let nextOutput := output ++ bytes2 4 127
+            emitInstrStreamFuel fuel input next.offset nextStack nextOutput
+        else if tag == 45 then
+          let (branchDepth, rest) ← readNat next
+          let nextOutput := output ++ byte 12 ++ encodeNat branchDepth
+          emitInstrStreamFuel fuel input rest.offset stack nextOutput
+        else if tag == 46 then
+          let (branchDepth, rest) ← readNat next
+          let nextOutput := output ++ byte 13 ++ encodeNat branchDepth
+          emitInstrStreamFuel fuel input rest.offset stack nextOutput
+        else if tag == 47 then
+          if stack.size == 0 || stack[stack.size - 1]! != 1 then
+            Except.error errorInstructionNesting
+          else
+            let nextStack := stack.set! (stack.size - 1) 2
+            let nextOutput := output ++ byte 5
+            emitInstrStreamFuel fuel input next.offset nextStack nextOutput
+        else if tag == 48 then
+          if stack.size == 0 then
+            Except.error errorInstructionNesting
+          else
+            let nextStack := stack.pop
+            let nextOutput := output ++ byte 11
+            emitInstrStreamFuel fuel input next.offset nextStack nextOutput
+        else
+          Except.error errorInstructionTag
+
+def emitFunctionInstructions (func : Function) : Except ByteArray ByteArray := do
+  let fuel := min (func.body.size + 1) (maxInstructionsPerList + 1)
+  let (finalOffset, output) ← emitInstrStreamFuel fuel func.body 0 #[] ByteArray.empty
+  if finalOffset == func.body.size then
+    Except.ok output
+  else
+    Except.error errorInstructionTrailing
+
 def localDeclarations (func : Function) : ByteArray :=
   if func.locals == 0 then
     byte 0
   else
     vectorPrefix 1 ++ encodeNat func.locals ++ byte 126
 
-def functionBody (func : Function) : ByteArray :=
-  let body := localDeclarations func ++ emitInstrs func.body ++ byte 11
-  encodeNat body.size ++ body
+def functionBody (func : Function) : Except ByteArray ByteArray := do
+  let instructions ← emitFunctionInstructions func
+  let body := localDeclarations func ++ instructions ++ byte 11
+  Except.ok (encodeNat body.size ++ body)
 
-def codeSection (module_ : Module) : ByteArray :=
-  let payload := module_.functions.foldl
-    (fun out func => out ++ functionBody func)
+def appendFunctionBodiesFuel : Nat → Array Function → Nat → ByteArray →
+    Except ByteArray ByteArray
+  | 0, functions, index, output =>
+      if index >= functions.size then Except.ok output else Except.error errorLimit
+  | fuel + 1, functions, index, output => do
+      if index >= functions.size then
+        Except.ok output
+      else
+        let func := functions[index]!
+        let emitted ← functionBody func
+        let nextOutput := output ++ emitted
+        appendFunctionBodiesFuel fuel functions (index + 1) nextOutput
+
+def appendFunctionBodies (functions : Array Function) (output : ByteArray) :
+    Except ByteArray ByteArray :=
+  appendFunctionBodiesFuel functions.size functions 0 output
+
+def codeSection (module_ : Module) : Except ByteArray ByteArray := do
+  let payload ← appendFunctionBodies module_.functions
     (vectorPrefix module_.functions.size)
-  sectionBytes 10 payload
-
-def emitModuleUnchecked (module_ : Module) : ByteArray :=
-  wasmMagic ++ typeSection module_ ++ functionSection module_ ++
-    memorySection module_ ++ globalSection module_ ++ exportSection module_ ++
-    codeSection module_
+  Except.ok (sectionBytes 10 payload)
 
 def emitModule (module_ : Module) : Except ByteArray ByteArray := do
   validateModule module_
-  let output := emitModuleUnchecked module_
+  let code ← codeSection module_
+  let output := wasmMagic ++ typeSection module_ ++ functionSection module_ ++
+    memorySection module_ ++ globalSection module_ ++ exportSection module_ ++ code
   if output.size > maxOutputBytes then
     Except.error errorOutputLimit
   else
     Except.ok output
 
 /-- Public self-hosted emitter entry. -/
-def emitImage (input : ByteArray) : Except ByteArray ByteArray := do
-  let module_ ← decodeModule input
-  emitModule module_
+def emitImage (input : ByteArray) : Except ByteArray ByteArray :=
+  Except.casesOn (motive := fun _ => Except ByteArray ByteArray)
+    (decodeModule input)
+    (fun error => Except.error error)
+    (fun module_ => emitModule module_)
 
 end LeanExe.Wasm.Image

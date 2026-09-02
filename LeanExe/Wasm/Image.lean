@@ -8,7 +8,7 @@ This is the byte boundary consumed by the self-hosted binary emitter.  It is
 deliberately smaller than `LeanExe.IR.Module`: lowering and runtime selection
 have already happened, and all references are resolved numeric indices.
 
-Version 1 of the wire format is:
+Version 2 of the wire format is:
 
 * ASCII magic `LXEIMG`, canonical unsigned-LEB schema version, and profile;
 * memory minimum in pages;
@@ -17,10 +17,10 @@ Version 1 of the wire format is:
   structured instruction vector);
 * a vector of exports (ASCII name bytes, kind, resolved index).
 
-Every vector and byte string has a canonical unsigned-LEB length.  Instruction
-records have canonical unsigned-LEB tags and operands.  Nested instruction
-vectors carry their own counts.  No Lean runtime object representation crosses
-this boundary.
+Every vector and byte string has a canonical unsigned-LEB length.  Function
+bodies are bounded byte strings containing linear instruction records with
+explicit structured-control delimiters.  No Lean runtime object representation
+crosses this boundary.
 -/
 
 namespace LeanExe.Wasm.Image
@@ -38,12 +38,13 @@ structure Global where
   initial : UInt64
   deriving BEq, Inhabited
 
-/-- `locals` counts i64 locals in addition to the parameters. -/
+  /-- `locals` counts i64 locals in addition to the parameters.  `body` is one
+  canonical linear instruction stream with explicit control delimiters. -/
 structure Function where
   params : Nat
   results : Nat
   locals : Nat
-  body : List Instr
+  body : ByteArray
   deriving BEq, Inhabited
 
 structure Export where
@@ -62,7 +63,7 @@ structure Module where
 def magic : ByteArray :=
   "LXEIMG".toUTF8
 
-def schemaVersion : UInt64 := 1
+def schemaVersion : UInt64 := 2
 
 def libraryProfile : UInt64 := 1
 
@@ -73,6 +74,7 @@ def maxExports : Nat := 65536
 def maxParams : Nat := 65536
 def maxResults : Nat := 65536
 def maxLocals : Nat := 1048576
+def maxFunctionBodyBytes : Nat := 32 * 1024 * 1024
 def maxInstructionsPerList : Nat := 1048576
 def maxNestingDepth : Nat := 256
 def maxExportNameBytes : Nat := 4096
@@ -133,6 +135,12 @@ def errorFunctionIndex : ByteArray :=
 
 def errorBranchDepth : ByteArray :=
   "leanexe-image: invalid branch depth".toUTF8
+
+def errorInstructionTrailing : ByteArray :=
+  "leanexe-image: trailing instruction bytes".toUTF8
+
+def errorInstructionNesting : ByteArray :=
+  "leanexe-image: invalid instruction nesting".toUTF8
 
 def errorTrailing : ByteArray :=
   "leanexe-image: trailing bytes".toUTF8
@@ -257,18 +265,20 @@ mutual
     | .unreachable => encodeNat 38
     | .ret => encodeNat 39
     | .drop => encodeNat 40
-    | .block body => encodeNat 41 ++ encodeInstrList body
-    | .loop body => encodeNat 42 ++ encodeInstrList body
+    | .block body => encodeNat 41 ++ encodeInstrItems body ++ encodeNat 48
+    | .loop body => encodeNat 42 ++ encodeInstrItems body ++ encodeNat 48
     | .iff resultI64 thn els =>
-        encodeNat 43 ++ encodeBool resultI64 ++ encodeInstrList thn ++
+        encodeNat 43 ++ encodeBool resultI64 ++ encodeInstrItems thn ++
           (match els with
-           | some body => encodeBool true ++ encodeInstrList body
-           | none => encodeBool false)
+           | some body => encodeNat 47 ++ encodeInstrItems body
+           | none => ByteArray.empty) ++
+          encodeNat 48
     | .iffI32 thn els =>
-        encodeNat 44 ++ encodeInstrList thn ++
+        encodeNat 44 ++ encodeInstrItems thn ++
           (match els with
-           | some body => encodeBool true ++ encodeInstrList body
-           | none => encodeBool false)
+           | some body => encodeNat 47 ++ encodeInstrItems body
+           | none => ByteArray.empty) ++
+          encodeNat 48
     | .br depth => encodeNat 45 ++ encodeNat depth
     | .brIf depth => encodeNat 46 ++ encodeNat depth
 
@@ -276,124 +286,11 @@ mutual
     | [] => ByteArray.empty
     | instr :: rest => encodeInstr instr ++ encodeInstrItems rest
 
-  def encodeInstrList (body : List Instr) : ByteArray :=
-    encodeNat body.length ++ encodeInstrItems body
 end
 
-mutual
-  def decodeInstr : Nat → Nat → Cursor → Except ByteArray (Instr × Cursor)
-    | 0, _, _ => Except.error errorLimit
-    | fuel + 1, depth, cursor => do
-        if depth > maxNestingDepth then
-          Except.error errorLimit
-        else
-          let (tag, next) ← readNat cursor
-          match tag with
-          | 0 =>
-              let (value, rest) ← readNat next
-              Except.ok (.constI64 value, rest)
-          | 1 =>
-              let (value, rest) ← readNat next
-              Except.ok (.constI32 value, rest)
-          | 2 => Except.ok (.constI32NegOne, next)
-          | 3 =>
-              let (index, rest) ← readNat next
-              Except.ok (.localGet index, rest)
-          | 4 =>
-              let (index, rest) ← readNat next
-              Except.ok (.localSet index, rest)
-          | 5 =>
-              let (index, rest) ← readNat next
-              Except.ok (.localTee index, rest)
-          | 6 =>
-              let (index, rest) ← readNat next
-              Except.ok (.globalGet index, rest)
-          | 7 =>
-              let (index, rest) ← readNat next
-              Except.ok (.globalSet index, rest)
-          | 8 =>
-              let (index, rest) ← readNat next
-              Except.ok (.call index, rest)
-          | 9 => Except.ok (.addI64, next)
-          | 10 => Except.ok (.subI64, next)
-          | 11 => Except.ok (.mulI64, next)
-          | 12 => Except.ok (.divUI64, next)
-          | 13 => Except.ok (.remUI64, next)
-          | 14 => Except.ok (.andI64, next)
-          | 15 => Except.ok (.orI64, next)
-          | 16 => Except.ok (.xorI64, next)
-          | 17 => Except.ok (.shlI64, next)
-          | 18 => Except.ok (.shrUI64, next)
-          | 19 => Except.ok (.eqI64, next)
-          | 20 => Except.ok (.neI64, next)
-          | 21 => Except.ok (.ltUI64, next)
-          | 22 => Except.ok (.leUI64, next)
-          | 23 => Except.ok (.geUI64, next)
-          | 24 => Except.ok (.eqzI64, next)
-          | 25 => Except.ok (.eqI32, next)
-          | 26 => Except.ok (.eqzI32, next)
-          | 27 => Except.ok (.andI32, next)
-          | 28 => Except.ok (.wrapI64, next)
-          | 29 => Except.ok (.extendUI32, next)
-          | 30 => Except.ok (.load64, next)
-          | 31 => Except.ok (.load32, next)
-          | 32 => Except.ok (.load8U, next)
-          | 33 => Except.ok (.store64, next)
-          | 34 => Except.ok (.store32, next)
-          | 35 => Except.ok (.store8, next)
-          | 36 => Except.ok (.memorySize, next)
-          | 37 => Except.ok (.memoryGrow, next)
-          | 38 => Except.ok (.unreachable, next)
-          | 39 => Except.ok (.ret, next)
-          | 40 => Except.ok (.drop, next)
-          | 41 =>
-              let (body, rest) ← decodeInstrList fuel (depth + 1) next
-              Except.ok (.block body, rest)
-          | 42 =>
-              let (body, rest) ← decodeInstrList fuel (depth + 1) next
-              Except.ok (.loop body, rest)
-          | 43 =>
-              let (resultI64, afterResult) ← readBool next
-              let (thn, afterThen) ← decodeInstrList fuel (depth + 1) afterResult
-              let (hasElse, afterFlag) ← readBool afterThen
-              if hasElse then
-                let (els, rest) ← decodeInstrList fuel (depth + 1) afterFlag
-                Except.ok (.iff resultI64 thn (some els), rest)
-              else
-                Except.ok (.iff resultI64 thn none, afterFlag)
-          | 44 =>
-              let (thn, afterThen) ← decodeInstrList fuel (depth + 1) next
-              let (hasElse, afterFlag) ← readBool afterThen
-              if hasElse then
-                let (els, rest) ← decodeInstrList fuel (depth + 1) afterFlag
-                Except.ok (.iffI32 thn (some els), rest)
-              else
-                Except.ok (.iffI32 thn none, afterFlag)
-          | 45 =>
-              let (depth, rest) ← readNat next
-              Except.ok (.br depth, rest)
-          | 46 =>
-              let (depth, rest) ← readNat next
-              Except.ok (.brIf depth, rest)
-          | _ => Except.error errorInstructionTag
+def encodeInstrList (body : List Instr) : ByteArray :=
+  encodeInstrItems body
 
-  def decodeInstrItems : Nat → Nat → Nat → Cursor → List Instr →
-      Except ByteArray (List Instr × Cursor)
-    | 0, _, _, _, _ => Except.error errorLimit
-    | _ + 1, _, 0, cursor, reversed => Except.ok (reversed.reverse, cursor)
-    | fuel + 1, depth, count + 1, cursor, reversed => do
-        let (instr, next) ← decodeInstr fuel depth cursor
-        decodeInstrItems fuel depth count next (instr :: reversed)
-
-  def decodeInstrList : Nat → Nat → Cursor → Except ByteArray (List Instr × Cursor)
-    | 0, _, _ => Except.error errorLimit
-    | fuel + 1, depth, cursor => do
-        let (count, next) ← readNat cursor
-        if count > maxInstructionsPerList then
-          Except.error errorLimit
-        else
-          decodeInstrItems fuel depth count next []
-end
 
 def encodeGlobal (global : Global) : ByteArray :=
   encodeBool global.mutable_ ++ encodeU64 global.initial
@@ -411,12 +308,12 @@ def decodeGlobals : Nat → Cursor → Array Global →
 
 def encodeFunction (func : Function) : ByteArray :=
   encodeNat func.params ++ encodeNat func.results ++ encodeNat func.locals ++
-    encodeInstrList func.body
+    encodeBytes func.body
 
 def encodeFunctions (functions : Array Function) : ByteArray :=
   functions.foldl (fun out func => out ++ encodeFunction func) (encodeNat functions.size)
 
-def decodeFunction (fuel : Nat) (cursor : Cursor) :
+def decodeFunction (cursor : Cursor) :
     Except ByteArray (Function × Cursor) := do
   let (params, afterParams) ← readNat cursor
   let (results, afterResults) ← readNat afterParams
@@ -424,15 +321,15 @@ def decodeFunction (fuel : Nat) (cursor : Cursor) :
   if params > maxParams || results > maxResults || locals > maxLocals then
     Except.error errorLimit
   else
-    let (body, next) ← decodeInstrList fuel 0 afterLocals
+    let (body, next) ← readBytes maxFunctionBodyBytes afterLocals
     Except.ok ({ params, results, locals, body }, next)
 
-def decodeFunctions (fuel : Nat) : Nat → Cursor → Array Function →
+def decodeFunctions : Nat → Cursor → Array Function →
     Except ByteArray (Array Function × Cursor)
   | 0, cursor, functions => Except.ok (functions, cursor)
   | count + 1, cursor, functions => do
-      let (func, next) ← decodeFunction fuel cursor
-      decodeFunctions fuel count next (functions.push func)
+      let (func, next) ← decodeFunction cursor
+      decodeFunctions count next (functions.push func)
 
 def exportKindTag : ExportKind → UInt64
   | .func => 0
@@ -450,11 +347,14 @@ def isAscii (bytes : ByteArray) : Bool :=
 
 def decodeExportKind (cursor : Cursor) : Except ByteArray (ExportKind × Cursor) := do
   let (tag, next) ← readU64 cursor
-  match tag with
-  | 0 => Except.ok (.func, next)
-  | 1 => Except.ok (.memory, next)
-  | 2 => Except.ok (.global, next)
-  | _ => Except.error errorExportKind
+  if tag == 0 then
+    Except.ok (.func, next)
+  else if tag == 1 then
+    Except.ok (.memory, next)
+  else if tag == 2 then
+    Except.ok (.global, next)
+  else
+    Except.error errorExportKind
 
 def decodeExports : Nat → Cursor → Array Export →
     Except ByteArray (Array Export × Cursor)
@@ -468,85 +368,170 @@ def decodeExports : Nat → Cursor → Array Export →
         let (index, next) ← readNat afterKind
         decodeExports count next (exports.push { name, kind, index })
 
-def containsExportName (name : ByteArray) : List Export → Bool
-  | [] => false
-  | export_ :: rest => export_.name == name || containsExportName name rest
+def containsExportNameFuel : Nat → ByteArray → Array Export → Nat → Bool
+  | 0, _, _, _ => false
+  | fuel + 1, name, exports, index =>
+      if index >= exports.size then
+        false
+      else
+        let export_ := exports[index]!
+        export_.name == name || containsExportNameFuel fuel name exports (index + 1)
 
-def hasDuplicateExportName : List Export → Bool
-  | [] => false
-  | export_ :: rest =>
-      containsExportName export_.name rest || hasDuplicateExportName rest
+def hasDuplicateExportNameFuel : Nat → Array Export → Nat → Bool
+  | 0, _, _ => false
+  | fuel + 1, exports, index =>
+      if index >= exports.size then
+        false
+      else
+        let export_ := exports[index]!
+        containsExportNameFuel (exports.size - index - 1) export_.name exports (index + 1) ||
+          hasDuplicateExportNameFuel fuel exports (index + 1)
 
-def validExportIndex (module_ : Module) (export_ : Export) : Bool :=
+def hasDuplicateExportName (exports : Array Export) : Bool :=
+  hasDuplicateExportNameFuel exports.size exports 0
+
+def validExportIndex (functionCount globalCount : Nat) (export_ : Export) : Bool :=
   match export_.kind with
-  | .func => export_.index < module_.functions.size
+  | .func => export_.index < functionCount
   | .memory => export_.index == 0
-  | .global => export_.index < module_.globals.size
+  | .global => export_.index < globalCount
 
-def validateExports (module_ : Module) : List Export → Except ByteArray Unit
-  | [] => Except.ok ()
-  | export_ :: rest => do
-      if export_.name.size > maxExportNameBytes then
-        Except.error errorLimit
-      else if !isAscii export_.name then
-        Except.error errorExportName
-      else if !validExportIndex module_ export_ then
-        Except.error errorExportIndex
+def validateExportsFuel : Nat → Nat → Nat → Array Export → Nat → Except ByteArray Unit
+  | 0, _, _, exports, index =>
+      if index >= exports.size then Except.ok () else Except.error errorLimit
+  | fuel + 1, functionCount, globalCount, exports, index => do
+      if index >= exports.size then
+        Except.ok ()
       else
-        validateExports module_ rest
-
-mutual
-  def validateInstr (functionCount : Nat) (globals : Array Global)
-      (localCount controlDepth : Nat) : Instr → Except ByteArray Unit
-    | .localGet index | .localSet index | .localTee index =>
-        if index < localCount then Except.ok () else Except.error errorLocalIndex
-    | .globalGet index =>
-        if index < globals.size then Except.ok () else Except.error errorGlobalIndex
-    | .globalSet index =>
-        if index >= globals.size then
-          Except.error errorGlobalIndex
-        else if globals[index]!.mutable_ then
-          Except.ok ()
+        let export_ := exports[index]!
+        if export_.name.size > maxExportNameBytes then
+          Except.error errorLimit
+        else if !isAscii export_.name then
+          Except.error errorExportName
+        else if !validExportIndex functionCount globalCount export_ then
+          Except.error errorExportIndex
         else
-          Except.error errorImmutableGlobal
-    | .call index =>
-        if index < functionCount then Except.ok () else Except.error errorFunctionIndex
-    | .block body | .loop body =>
-        validateInstrList functionCount globals localCount (controlDepth + 1) body
-    | .iff _ thn els | .iffI32 thn els => do
-        validateInstrList functionCount globals localCount (controlDepth + 1) thn
-        match els with
-        | some body =>
-            validateInstrList functionCount globals localCount (controlDepth + 1) body
-        | none => Except.ok ()
-    | .br branchDepth | .brIf branchDepth =>
-        if branchDepth < controlDepth then Except.ok () else Except.error errorBranchDepth
-    | _ => Except.ok ()
+          validateExportsFuel fuel functionCount globalCount exports (index + 1)
 
-  def validateInstrItems (functionCount : Nat) (globals : Array Global)
-      (localCount controlDepth : Nat) : List Instr → Except ByteArray Unit
-    | [] => Except.ok ()
-    | instr :: rest => do
-        validateInstr functionCount globals localCount controlDepth instr
-        validateInstrItems functionCount globals localCount controlDepth rest
+def validateExports (functionCount globalCount : Nat) (exports : Array Export) :
+    Except ByteArray Unit :=
+  validateExportsFuel exports.size functionCount globalCount exports 0
 
-  def validateInstrList (functionCount : Nat) (globals : Array Global)
-      (localCount controlDepth : Nat) (body : List Instr) : Except ByteArray Unit := do
-    if body.length > maxInstructionsPerList || controlDepth > maxNestingDepth then
-      Except.error errorLimit
-    else
-      validateInstrItems functionCount globals localCount controlDepth body
-end
-
-def validateFunctions (functionCount : Nat) (globals : Array Global) :
-    List Function → Except ByteArray Unit
-  | [] => Except.ok ()
-  | func :: rest => do
-      if func.params > maxParams || func.results > maxResults || func.locals > maxLocals then
-        Except.error errorLimit
+def validateInstrStreamFuel : Nat → Nat → Array Global → Nat → ByteArray → Nat →
+    Array UInt64 → Except ByteArray Nat
+  | 0, _, _, _, _, _, _ => Except.error errorLimit
+  | fuel + 1, functionCount, globals, localCount, input, offset, stack => do
+      if offset == input.size then
+        if stack.size == 0 then Except.ok offset else Except.error errorInstructionNesting
       else
-        validateInstrList functionCount globals (func.params + func.locals) 0 func.body
-        validateFunctions functionCount globals rest
+        let cursor : Cursor := { input, offset }
+        let (tag, next) ← readNat cursor
+        if tag <= 1 then
+          let (_, rest) ← readNat next
+          validateInstrStreamFuel fuel functionCount globals localCount input rest.offset stack
+        else if tag == 2 then
+          validateInstrStreamFuel fuel functionCount globals localCount input next.offset stack
+        else if tag >= 3 && tag <= 5 then
+          let (index, rest) ← readNat next
+          if index < localCount then
+            validateInstrStreamFuel fuel functionCount globals localCount input rest.offset stack
+          else
+            Except.error errorLocalIndex
+        else if tag == 6 then
+          let (index, rest) ← readNat next
+          if index < globals.size then
+            validateInstrStreamFuel fuel functionCount globals localCount input rest.offset stack
+          else
+            Except.error errorGlobalIndex
+        else if tag == 7 then
+          let (index, rest) ← readNat next
+          if index >= globals.size then
+            Except.error errorGlobalIndex
+          else if globals[index]!.mutable_ then
+            validateInstrStreamFuel fuel functionCount globals localCount input rest.offset stack
+          else
+            Except.error errorImmutableGlobal
+        else if tag == 8 then
+          let (index, rest) ← readNat next
+          if index < functionCount then
+            validateInstrStreamFuel fuel functionCount globals localCount input rest.offset stack
+          else
+            Except.error errorFunctionIndex
+        else if tag >= 9 && tag <= 40 then
+          validateInstrStreamFuel fuel functionCount globals localCount input next.offset stack
+        else if tag == 41 || tag == 42 then
+          if stack.size >= maxNestingDepth then
+            Except.error errorLimit
+          else
+            let nextStack := stack.push 0
+            validateInstrStreamFuel fuel functionCount globals localCount input next.offset nextStack
+        else if tag == 43 then
+          let (_, rest) ← readBool next
+          if stack.size >= maxNestingDepth then
+            Except.error errorLimit
+          else
+            let nextStack := stack.push 1
+            validateInstrStreamFuel fuel functionCount globals localCount input rest.offset nextStack
+        else if tag == 44 then
+          if stack.size >= maxNestingDepth then
+            Except.error errorLimit
+          else
+            let nextStack := stack.push 1
+            validateInstrStreamFuel fuel functionCount globals localCount input next.offset nextStack
+        else if tag == 45 || tag == 46 then
+          let (branchDepth, rest) ← readNat next
+          if branchDepth < stack.size then
+            validateInstrStreamFuel fuel functionCount globals localCount input rest.offset stack
+          else
+            Except.error errorBranchDepth
+        else if tag == 47 then
+          if stack.size == 0 then
+            Except.error errorInstructionNesting
+          else if stack[stack.size - 1]! != 1 then
+            Except.error errorInstructionNesting
+          else
+            let nextStack := stack.set! (stack.size - 1) 2
+            validateInstrStreamFuel fuel functionCount globals localCount input next.offset nextStack
+        else if tag == 48 then
+          if stack.size == 0 then
+            Except.error errorInstructionNesting
+          else
+            let nextStack := stack.pop
+            validateInstrStreamFuel fuel functionCount globals localCount input next.offset nextStack
+        else
+          Except.error errorInstructionTag
+
+def validateFunctionBody (functionCount : Nat) (globals : Array Global)
+    (func : Function) : Except ByteArray Unit := do
+  if func.body.size > maxFunctionBodyBytes then
+    Except.error errorLimit
+  else
+    let fuel := min (func.body.size + 1) (maxInstructionsPerList + 1)
+    let finalOffset ← validateInstrStreamFuel fuel functionCount globals
+      (func.params + func.locals) func.body 0 #[]
+    if finalOffset == func.body.size then
+      Except.ok ()
+    else
+      Except.error errorInstructionTrailing
+
+def validateFunctionsFuel : Nat → Nat → Array Global → Array Function → Nat →
+    Except ByteArray Unit
+  | 0, _, _, functions, index =>
+      if index >= functions.size then Except.ok () else Except.error errorLimit
+  | fuel + 1, functionCount, globals, functions, index => do
+      if index >= functions.size then
+        Except.ok ()
+      else
+        let func := functions[index]!
+        if func.params > maxParams || func.results > maxResults || func.locals > maxLocals then
+          Except.error errorLimit
+        else
+          validateFunctionBody functionCount globals func
+          validateFunctionsFuel fuel functionCount globals functions (index + 1)
+
+def validateFunctions (functionCount : Nat) (globals : Array Global)
+    (functions : Array Function) : Except ByteArray Unit :=
+  validateFunctionsFuel functions.size functionCount globals functions 0
 
 def validateModule (module_ : Module) : Except ByteArray Unit := do
   if module_.memoryMinPages == 0 || module_.memoryMinPages > 65536 then
@@ -554,11 +539,11 @@ def validateModule (module_ : Module) : Except ByteArray Unit := do
   else if module_.globals.size > maxGlobals || module_.functions.size > maxFunctions ||
       module_.exports.size > maxExports then
     Except.error errorLimit
-  else if hasDuplicateExportName module_.exports.toList then
+  else if hasDuplicateExportName module_.exports then
     Except.error errorDuplicateExport
   else
-    validateFunctions module_.functions.size module_.globals module_.functions.toList
-    validateExports module_ module_.exports.toList
+    validateFunctions module_.functions.size module_.globals module_.functions
+    validateExports module_.functions.size module_.globals.size module_.exports
 
 def encodeModule (module_ : Module) : ByteArray :=
   magic ++ encodeU64 schemaVersion ++ encodeU64 libraryProfile ++
@@ -593,7 +578,7 @@ def decodeModule (input : ByteArray) : Except ByteArray Module := do
               Except.error errorLimit
             else
               let (functions, afterFunctions) ←
-                decodeFunctions (input.size + 1) functionCount afterFunctionCount #[]
+                decodeFunctions functionCount afterFunctionCount #[]
               let (exportCount, afterExportCount) ← readNat afterFunctions
               if exportCount > maxExports then
                 Except.error errorLimit
