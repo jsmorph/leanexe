@@ -4,6 +4,8 @@ LeanExe compiles a checked declaration from a restricted Lean 4 program to a sta
 
 LeanExe also supports direct verification of an exact WASM artifact.  Its artifact path embeds the binary bytes in Lean, decodes and validates them with checked functions, connects the decoded module to the Talos execution model, and proves a behavioral theorem about that module.  This theorem does not depend on the source program or a compiler-correctness assumption.
 
+Ordinary library-mode binary serialization can run through LeanExe's [self-hosted WebAssembly emitter](docs/self-hosted-emitter.md).  The native compiler performs every earlier stage and supplies a canonical final-module image; the LeanExe-compiled emitter validates that image and reproduces its own complete artifact byte for byte.
+
 ![LeanExe architecture](docs/leanexe.png)
 
 ## Requirements
