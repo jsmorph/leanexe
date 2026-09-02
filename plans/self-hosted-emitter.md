@@ -111,6 +111,7 @@ The comparison operates on complete artifact bytes.  Normalizing or ignoring cus
 - [x] Reject malformed magic through the self-hosted public `Except ByteArray ByteArray` ABI with the stable byte diagnostic.
 - [x] Route native library emission through the image path while retaining the legacy serializer as a differential oracle; all 20 registered artifact SHA-256 identities remain unchanged.
 - [x] Match all 20 registered artifacts across routed native emission, Wasmtime Stage 1, and JavaScript Stage 2; also match five stable malformed-image diagnostics across both WebAssembly hosts.
+- [x] Publish the schema, compatibility policy, host ABI, capability boundary, and exact bootstrap receipt in `docs/self-hosted-emitter.md`.
 
 The image codec items are covered by `LeanExe.Wasm.ImageTest`; reduced native/image byte equality is covered by `LeanExe.Wasm.ImageIntegrationTest`; and `test/selfhost_emitter.js` retains the complete two-host fixed-point and public-error checks.  During this implementation session, focused Lean builds ran directly with the pinned Lean 4.31.0 toolchain under the user's explicit exception for the repository runner.
 
