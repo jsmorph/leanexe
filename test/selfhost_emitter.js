@@ -71,7 +71,7 @@ function compileInputs() {
   }
 }
 
-function callExceptBytes(input) {
+function callExceptBytes(input, modulePath = wasm) {
   const commands = [`alloc 1 ${input.length}`];
   const chunkSize = 4096;
   for (let offset = 0; offset < input.length; offset += chunkSize) {
@@ -79,7 +79,7 @@ function callExceptBytes(input) {
     commands.push(`write-bytes 1 ${offset} ${chunk.toString("hex")}`);
   }
   commands.push("arg-ptr 1", `arg-u64 ${input.length}`);
-  const result = host.script(wasm, commands, exportEntry, 5, [
+  const result = host.script(modulePath, commands, exportEntry, 5, [
     "read-memory result:1 result:2",
     "read-memory result:3 result:4",
   ]);
@@ -98,26 +98,6 @@ function callExceptBytes(input) {
     throw new Error(`emitImage result memory ${ptr}+${length} was not returned by the host`);
   }
   return { tag, bytes: Buffer.from(chunk.bytes) };
-}
-
-function callExceptBytesJavaScript(moduleBytes, input) {
-  const instance = new WebAssembly.Instance(new WebAssembly.Module(moduleBytes), {});
-  const exports = instance.exports;
-  exports.reset();
-  const inputPtr = Number(exports.alloc(BigInt(input.length)));
-  new Uint8Array(exports.memory.buffer, inputPtr, input.length).set(input);
-  const slots = exports[exportEntry](BigInt(inputPtr), BigInt(input.length));
-  const tag = Number(slots[0]);
-  if (tag !== 0 && tag !== 1) {
-    throw new Error(`JavaScript host received invalid Except tag ${tag}`);
-  }
-  const ptrIndex = tag === 0 ? 1 : 3;
-  const ptr = Number(slots[ptrIndex]);
-  const length = Number(slots[ptrIndex + 1]);
-  return {
-    tag,
-    bytes: Buffer.from(new Uint8Array(exports.memory.buffer, ptr, length)),
-  };
 }
 
 function digest(bytes) {
@@ -148,7 +128,7 @@ function registeredArtifactBytes(testCase) {
   return fs.readFileSync(path.join("proofs", "artifacts", path.dirname(registered.manifest), "program.wasm"));
 }
 
-function checkRegisteredCorpus(stage2Bytes) {
+function checkRegisteredCorpus() {
   for (const testCase of corpusCases) {
     const expected = registeredArtifactBytes(testCase);
     const native = fs.readFileSync(path.join(corpusDir, `${testCase.name}.wasm`));
@@ -161,7 +141,7 @@ function checkRegisteredCorpus(stage2Bytes) {
     }
     expectBytes(`${testCase.name} Wasmtime Stage 1`, stage1.bytes, expected);
 
-    const stage2 = callExceptBytesJavaScript(stage2Bytes, caseImage);
+    const stage2 = callExceptBytes(caseImage, reproduced);
     if (stage2.tag === 0) {
       throw new Error(`${testCase.name} Stage 2 error: ${stage2.bytes.toString("utf8")}`);
     }
@@ -169,7 +149,7 @@ function checkRegisteredCorpus(stage2Bytes) {
   }
 }
 
-function checkMalformedImages(stage2Bytes) {
+function checkMalformedImages() {
   const magic = Buffer.from("LXEIMG", "ascii");
   const cases = [
     ["invalid magic", Buffer.from("bad image", "utf8"), "leanexe-image: invalid magic"],
@@ -181,7 +161,7 @@ function checkMalformedImages(stage2Bytes) {
   for (const [name, input, expected] of cases) {
     for (const [hostName, result] of [
       ["Wasmtime Stage 1", callExceptBytes(input)],
-      ["JavaScript Stage 2", callExceptBytesJavaScript(stage2Bytes, input)],
+      ["Wasmtime Stage 2", callExceptBytes(input, reproduced)],
     ]) {
       if (result.tag !== 0 || result.bytes.toString("utf8") !== expected) {
         throw new Error(`${name} ${hostName}: tag ${result.tag}, bytes ${result.bytes}`);
@@ -207,17 +187,17 @@ function main() {
   fs.writeFileSync(reproduced, result.bytes);
   expectBytes("self-host Stage 1", result.bytes, expected);
 
-  const repeated = callExceptBytesJavaScript(result.bytes, fs.readFileSync(image));
+  const repeated = callExceptBytes(fs.readFileSync(image), reproduced);
   if (repeated.tag === 0) {
     throw new Error(`Stage 2 rejected its self image: ${repeated.bytes.toString("utf8")}`);
   }
   expectBytes("Stage 2 fixed point", repeated.bytes, result.bytes);
 
-  checkRegisteredCorpus(result.bytes);
-  const malformedCount = checkMalformedImages(result.bytes);
+  checkRegisteredCorpus();
+  const malformedCount = checkMalformedImages();
 
   process.stdout.write(
-    `Wasmtime Stage 1 and JavaScript Stage 2 reproduced ${expected.length} bytes; ` +
+    `Wasmtime Stage 1 and Stage 2 reproduced ${expected.length} bytes; ` +
       `SHA-256 ${digest(expected)}\n`,
   );
   process.stdout.write(`self image is ${fs.statSync(image).size} bytes; SHA-256 ${digest(fs.readFileSync(image))}\n`);

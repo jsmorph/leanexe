@@ -36,7 +36,7 @@ tools/leanrun .lake/build/bin/lean-wasm compile-image \
 
 The exported entry has source type `ByteArray -> Except ByteArray ByteArray`.  Its library ABI takes the input pointer and length in two `i64` parameters.  The flattened result has five `i64` slots: tag, error pointer and length, then success pointer and length.  Tag 0 selects the error bytes and tag 1 selects the emitted module.  A host obtains input storage through `alloc`, calls `emitImage`, and copies the selected result before calling `reset` or discarding the instance.
 
-The module has no imports.  Hosts must provide standard WebAssembly multi-value results, `i64`, linear-memory growth, and enough memory for the configured image and output limits.  The bootstrap harness uses the repository's Wasmtime C host and Node's native `WebAssembly` implementation independently.
+The module has no imports.  Hosts must provide standard WebAssembly multi-value results, `i64`, linear-memory growth, and enough memory for the configured image and output limits.  The bootstrap harness uses the repository's Wasmtime C host.  Direct JavaScript WebAssembly execution remains outside repository tests; a browser adapter is follow-on work rather than evidence for this milestone.
 
 ## Bootstrap receipt
 
@@ -48,11 +48,12 @@ The retained 2026-09-02 receipt was rebuilt from `selfhost` commit `f44474a45c00
 | Stage 1 and Stage 2 | 568,484 bytes; SHA-256 `b2b511025d4f56f5b2fb8e106072fe149cfe0d1c39c83405659020223d0f0d69`. |
 | Canonical self image | 519,107 bytes; SHA-256 `6e9144427e9bc74b32cd16c018812239b421b7790a7f0bb0c6f9246cbd1b8215`. |
 | Stage 1 host | Wasmtime 44.0.0, build `af382d7d9`, x86_64 Linux C API. |
-| Stage 2 host | Node.js v24.19.0 native `WebAssembly` implementation. |
+| Stage 2 host | A fresh instance under the same Wasmtime 44.0.0 C host. |
+| Harness | Node.js v24.19.0 orchestrates files and the external host without executing WebAssembly itself. |
 | Registered corpus | 20 of 20 native, Stage 1, and Stage 2 outputs match the frozen artifact bytes. |
 | Error corpus | Five malformed images return the pinned diagnostics under both WebAssembly hosts. |
 
-Stage 0 compiles `emitImage` to Stage 1 and separately writes the canonical image of that complete module.  Wasmtime invokes Stage 1 on the image to produce Stage 2.  Node then invokes Stage 2 on the same image.  Both outputs are compared without normalization and have the Stage 1 length and digest above.  The same two stages emit every case in `proofs/talos/cases.json`; each output is compared with the exact binary selected by `proofs/artifacts/registry.json`.
+Stage 0 compiles `emitImage` to Stage 1 and separately writes the canonical image of that complete module.  Wasmtime invokes Stage 1 on the image to produce Stage 2, then invokes Stage 2 in a fresh instance on the same image.  Both outputs are compared without normalization and have the Stage 1 length and digest above.  The same two stages emit every case in `proofs/talos/cases.json`; each output is compared with the exact binary selected by `proofs/artifacts/registry.json`.
 
 `test/selfhost_emitter.js` owns this receipt as an executable gate.  Running it without arguments rebuilds the self image, both compiler outputs for every registered case, and all comparisons.  `--use-existing` reruns the hosts and byte comparisons against artifacts already present under `.lake/build/selfhost`.
 

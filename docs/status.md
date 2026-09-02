@@ -7,7 +7,7 @@ This report describes the repository state on 2026-09-02.  Checked registries co
 | Boundary | Current evidence |
 |----------|------------------|
 | Source compilation | LeanExe loads checked Lean declarations, accepts the subset in the [language specification](spec.md), and emits standalone WASM or one of the bounded WASI adapters. |
-| Self-hosted binary emission | The ordinary library path freezes lowered modules as canonical images and uses the same pure emitter compiled into WebAssembly.  Wasmtime Stage 1 and JavaScript Stage 2 reproduce the complete emitter artifact and all twenty registered compiler artifacts byte for byte. |
+| Self-hosted binary emission | The ordinary library path freezes lowered modules as canonical images and uses the same pure emitter compiled into WebAssembly.  Wasmtime Stage 1 and Stage 2 reproduce the complete emitter artifact and all twenty registered compiler artifacts byte for byte. |
 | Execution | The execution suite compares accepted programs with ordinary Lean or the IR evaluator where those references apply, and runs generated modules with Wasmtime. |
 | Source-driven proofs | `proofs/talos/cases.json` registers twenty cases.  Every case has a completed input-generic behavioral theorem, including all eight CLOB exports through `depth`, and the aggregate source-driven gate passed all twenty cases on 2026-08-26. |
 | Exact-artifact proofs | `proofs/artifacts/registry.json` registers twenty frozen WASM packages.  Each package embeds exact bytes, decodes and validates them, proves translation equality with its Talos execution module, and connects that module to a behavioral theorem. |
