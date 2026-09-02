@@ -57,7 +57,11 @@ def sample : Module :=
   { memoryMinPages := 16
     globals := #[{ mutable_ := true, initial := 4096 },
       { mutable_ := true, initial := 18446744073709551615 }]
-    functions := #[{ params := 3, results := 2, locals := 8, body := allInstructions }]
+    functions := #[{
+      params := 3
+      results := 2
+      locals := 8
+      body := encodeInstrList allInstructions }]
     exports := #[{ name := "memory".toUTF8, kind := .memory, index := 0 },
       { name := "run".toUTF8, kind := .func, index := 0 },
       { name := "counter".toUTF8, kind := .global, index := 1 }] }
@@ -77,7 +81,7 @@ def isError (expected : ByteArray) : Except ByteArray Module → Bool
 #guard isError errorTrailing (decodeModule (encodeModule sample |>.push 0))
 
 def badVersion : ByteArray :=
-  magic ++ encodeU64 2
+  magic ++ encodeU64 99
 
 #guard isError errorVersion (decodeModule badVersion)
 
@@ -105,7 +109,8 @@ def tooManyGlobals : ByteArray :=
 def badTag : ByteArray :=
   magic ++ encodeU64 schemaVersion ++ encodeU64 libraryProfile ++
     encodeNat 16 ++ encodeNat 0 ++ encodeNat 1 ++
-    encodeNat 0 ++ encodeNat 0 ++ encodeNat 0 ++ encodeNat 1 ++ encodeNat 99 ++
+    encodeNat 0 ++ encodeNat 0 ++ encodeNat 0 ++
+      encodeBytes (encodeNat 99) ++
     encodeNat 0
 
 #guard isError errorInstructionTag (decodeModule badTag)
@@ -135,11 +140,18 @@ def badExportIndex : Module :=
 
 #guard isError errorExportIndex (decodeModule (encodeModule badExportIndex))
 
-def withBody (body : List Instr) : Module :=
+def withEncodedBody (body : ByteArray) : Module :=
   { memoryMinPages := 1
     globals := #[{ mutable_ := true, initial := 0 }]
-    functions := #[{ params := 1, results := 0, locals := 0, body }]
+    functions := #[{
+      params := 1
+      results := 0
+      locals := 0
+      body }]
     exports := #[] }
+
+def withBody (body : List Instr) : Module :=
+  withEncodedBody (encodeInstrList body)
 
 #guard isError errorLocalIndex (decodeModule (encodeModule (withBody [.localGet 1])))
 
@@ -156,5 +168,11 @@ def immutableWrite : Module :=
 
 #guard isOkModule (withBody [.block [.br 0]])
   (decodeModule (encodeModule (withBody [.block [.br 0]])))
+
+#guard isError errorInstructionNesting
+  (decodeModule (encodeModule (withEncodedBody (encodeNat 47))))
+
+#guard isError errorInstructionNesting
+  (decodeModule (encodeModule (withEncodedBody (encodeNat 41))))
 
 end LeanExe.Wasm.ImageTest
