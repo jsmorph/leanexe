@@ -102,7 +102,7 @@ The comparison operates on complete artifact bytes.  Normalizing or ignoring cus
 - [x] Define the version 1 library-profile data model and canonical unsigned-LEB wire encoding.
 - [x] Round-trip every structured instruction record, including nested block, loop, i64-result if, i32-result if, and optional else bodies.
 - [x] Reject truncated fields, noncanonical or overflowing integers, unsupported versions and profiles, unknown instruction and export tags, non-ASCII export names, profile-limit violations, and trailing bytes with stable byte diagnostics.
-- [ ] Add module-level semantic validation for indices, duplicate exports, memory bounds, branch depth, and function-local references.
+- [x] Add module-level semantic validation for indices, duplicate exports, memory bounds, branch depth, and function-local references.
 - [ ] Construct complete images from lowered modules, including the four runtime functions and runtime exports.
 - [ ] Emit exact WebAssembly from decoded images and route native library emission through that path.
 
