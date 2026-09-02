@@ -40,7 +40,7 @@ The module has no imports.  Hosts must provide standard WebAssembly multi-value 
 
 ## Bootstrap receipt
 
-The retained 2026-09-02 receipt was rebuilt from `selfhost` commit `f44474a45c002ef4765a71824f57ca35cb0d7781`, tree `d149e9f080dd9df61501608a90802957082bc801`.
+The retained 2026-09-02 receipt was rechecked from tracked `selfhost` commit `9036991f812ddd0212f0d905056eb2481b100a37`, tree `69f96946e75bd2ed5208d8acc338fd92ef32a409`.
 
 | Item | Identity |
 |------|----------|
@@ -49,7 +49,7 @@ The retained 2026-09-02 receipt was rebuilt from `selfhost` commit `f44474a45c00
 | Canonical self image | 519,107 bytes; SHA-256 `6e9144427e9bc74b32cd16c018812239b421b7790a7f0bb0c6f9246cbd1b8215`. |
 | Stage 1 host | Wasmtime 44.0.0, build `af382d7d9`, x86_64 Linux C API. |
 | Stage 2 host | A fresh instance under the same Wasmtime 44.0.0 C host. |
-| Harness | Node.js v24.19.0 orchestrates files and the external host without executing WebAssembly itself. |
+| Harness | Pinned Node.js v24.13.0 orchestrates files and the external host without executing WebAssembly itself. |
 | Registered corpus | 20 of 20 native, Stage 1, and Stage 2 outputs match the frozen artifact bytes. |
 | Error corpus | Five malformed images return the pinned diagnostics under both WebAssembly stages. |
 
@@ -57,4 +57,4 @@ Stage 0 compiles `emitImage` to Stage 1 and separately writes the canonical imag
 
 `test/selfhost_emitter.js` owns this receipt as an executable gate.  Running it without arguments rebuilds the self image, both compiler outputs for every registered case, and all comparisons.  `--use-existing` reruns the hosts and byte comparisons against artifacts already present under `.lake/build/selfhost`.
 
-The recorded work-mode run used the user's explicit direct-Lean exception instead of `tools/leanrun`; a local process-path compatibility shim was required only to start Lean in that container and is not an emitter or runtime dependency.  The JavaScript host version in this receipt is newer than the repository's complete-suite Node 24.13.0 pin, so the normal pinned full-suite gate remains separate from this bootstrap identity.
+The recorded work-mode run used the user's explicit direct-Lean exception instead of `tools/leanrun`; a local process-path compatibility shim was required only to start Lean in that container and is not an emitter or runtime dependency.  The repository's Node 24.13.0 and `wasm-tools` 1.251.0 version checks passed, and direct execution of the nine-case WAT round-trip gate matched every binary.  The aggregate artifact-proof, semantic-conformance, and cold-checkout release gates remain separate because this session intentionally does not invoke `tools/leanrun`.
