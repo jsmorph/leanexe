@@ -417,98 +417,116 @@ def validateExports (functionCount globalCount : Nat) (exports : Array Export) :
     Except ByteArray Unit :=
   validateExportsFuel exports.size functionCount globalCount exports 0
 
-def validateInstrStreamFuel : Nat → Nat → Array Global → Nat → ByteArray → Nat →
-    Array UInt64 → Except ByteArray Nat
-  | 0, _, _, _, _, _, _ => Except.error errorLimit
-  | fuel + 1, functionCount, globals, localCount, input, offset, stack => do
-      if offset == input.size then
-        if stack.size == 0 then Except.ok offset else Except.error errorInstructionNesting
-      else
-        let cursor : Cursor := { input, offset }
-        let (tag, next) ← readNat cursor
-        if tag <= 1 then
-          let (_, rest) ← readNat next
-          validateInstrStreamFuel fuel functionCount globals localCount input rest.offset stack
-        else if tag == 2 then
-          validateInstrStreamFuel fuel functionCount globals localCount input next.offset stack
-        else if tag >= 3 && tag <= 5 then
-          let (index, rest) ← readNat next
-          if index < localCount then
-            validateInstrStreamFuel fuel functionCount globals localCount input rest.offset stack
-          else
-            Except.error errorLocalIndex
-        else if tag == 6 then
-          let (index, rest) ← readNat next
-          if index < globals.size then
-            validateInstrStreamFuel fuel functionCount globals localCount input rest.offset stack
-          else
-            Except.error errorGlobalIndex
-        else if tag == 7 then
-          let (index, rest) ← readNat next
-          if index >= globals.size then
-            Except.error errorGlobalIndex
-          else if globals[index]!.mutable_ then
-            validateInstrStreamFuel fuel functionCount globals localCount input rest.offset stack
-          else
-            Except.error errorImmutableGlobal
-        else if tag == 8 then
-          let (index, rest) ← readNat next
-          if index < functionCount then
-            validateInstrStreamFuel fuel functionCount globals localCount input rest.offset stack
-          else
-            Except.error errorFunctionIndex
-        else if tag >= 9 && tag <= 40 then
-          validateInstrStreamFuel fuel functionCount globals localCount input next.offset stack
-        else if tag == 41 || tag == 42 then
-          if stack.size >= maxNestingDepth then
-            Except.error errorLimit
-          else
-            let nextStack := stack.push 0
-            validateInstrStreamFuel fuel functionCount globals localCount input next.offset nextStack
-        else if tag == 43 then
-          let (_, rest) ← readBool next
-          if stack.size >= maxNestingDepth then
-            Except.error errorLimit
-          else
-            let nextStack := stack.push 1
-            validateInstrStreamFuel fuel functionCount globals localCount input rest.offset nextStack
-        else if tag == 44 then
-          if stack.size >= maxNestingDepth then
-            Except.error errorLimit
-          else
-            let nextStack := stack.push 1
-            validateInstrStreamFuel fuel functionCount globals localCount input next.offset nextStack
-        else if tag == 45 || tag == 46 then
-          let (branchDepth, rest) ← readNat next
-          if branchDepth < stack.size then
-            validateInstrStreamFuel fuel functionCount globals localCount input rest.offset stack
-          else
-            Except.error errorBranchDepth
-        else if tag == 47 then
-          if stack.size == 0 then
-            Except.error errorInstructionNesting
-          else if stack[stack.size - 1]! != 1 then
-            Except.error errorInstructionNesting
-          else
-            let nextStack := stack.set! (stack.size - 1) 2
-            validateInstrStreamFuel fuel functionCount globals localCount input next.offset nextStack
-        else if tag == 48 then
-          if stack.size == 0 then
-            Except.error errorInstructionNesting
-          else
-            let nextStack := stack.pop
-            validateInstrStreamFuel fuel functionCount globals localCount input next.offset nextStack
-        else
-          Except.error errorInstructionTag
+structure InstrCursorState where
+  offset : Nat
+  stack : Array UInt64
+
+def validateInstrStep (functionCount : Nat) (globals : Array Global)
+    (localCount : Nat) (input : ByteArray) (offset : Nat) (stack : Array UInt64) :
+    Except ByteArray InstrCursorState := do
+  let cursor : Cursor := { input, offset }
+  let (tag, next) ← readNat cursor
+  if tag <= 1 then
+    let (_, rest) ← readNat next
+    Except.ok { offset := rest.offset, stack }
+  else if tag == 2 then
+    Except.ok { offset := next.offset, stack }
+  else if tag >= 3 && tag <= 5 then
+    let (index, rest) ← readNat next
+    if index < localCount then
+      Except.ok { offset := rest.offset, stack }
+    else
+      Except.error errorLocalIndex
+  else if tag == 6 then
+    let (index, rest) ← readNat next
+    if index < globals.size then
+      Except.ok { offset := rest.offset, stack }
+    else
+      Except.error errorGlobalIndex
+  else if tag == 7 then
+    let (index, rest) ← readNat next
+    if index >= globals.size then
+      Except.error errorGlobalIndex
+    else if globals[index]!.mutable_ then
+      Except.ok { offset := rest.offset, stack }
+    else
+      Except.error errorImmutableGlobal
+  else if tag == 8 then
+    let (index, rest) ← readNat next
+    if index < functionCount then
+      Except.ok { offset := rest.offset, stack }
+    else
+      Except.error errorFunctionIndex
+  else if tag >= 9 && tag <= 40 then
+    Except.ok { offset := next.offset, stack }
+  else if tag == 41 || tag == 42 then
+    if stack.size >= maxNestingDepth then
+      Except.error errorLimit
+    else
+      Except.ok { offset := next.offset, stack := stack.push 0 }
+  else if tag == 43 then
+    let (_, rest) ← readBool next
+    if stack.size >= maxNestingDepth then
+      Except.error errorLimit
+    else
+      Except.ok { offset := rest.offset, stack := stack.push 1 }
+  else if tag == 44 then
+    if stack.size >= maxNestingDepth then
+      Except.error errorLimit
+    else
+      Except.ok { offset := next.offset, stack := stack.push 1 }
+  else if tag == 45 || tag == 46 then
+    let (branchDepth, rest) ← readNat next
+    if branchDepth < stack.size then
+      Except.ok { offset := rest.offset, stack }
+    else
+      Except.error errorBranchDepth
+  else if tag == 47 then
+    if stack.size == 0 || stack[stack.size - 1]! != 1 then
+      Except.error errorInstructionNesting
+    else
+      Except.ok { offset := next.offset, stack := stack.set! (stack.size - 1) 2 }
+  else if tag == 48 then
+    if stack.size == 0 then
+      Except.error errorInstructionNesting
+    else
+      Except.ok { offset := next.offset, stack := stack.pop }
+  else
+    Except.error errorInstructionTag
+
+def validateInstrStream (functionCount : Nat) (globals : Array Global)
+    (localCount : Nat) (input : ByteArray) : Except ByteArray Nat := Id.run do
+  let mut offset := 0
+  let mut stack : Array UInt64 := #[]
+  let mut remaining := min input.size maxInstructionsPerList
+  let mut running := true
+  let mut result : Except ByteArray Nat := Except.error errorLimit
+  while running do
+    if offset == input.size then
+      result := if stack.size == 0 then Except.ok offset
+        else Except.error errorInstructionNesting
+      running := false
+    else if remaining == 0 then
+      result := Except.error errorLimit
+      running := false
+    else
+      match validateInstrStep functionCount globals localCount input offset stack with
+      | Except.error error =>
+          result := Except.error error
+          running := false
+      | Except.ok state =>
+          offset := state.offset
+          stack := state.stack
+          remaining := remaining - 1
+  return result
 
 def validateFunctionBody (functionCount : Nat) (globals : Array Global)
     (func : Function) : Except ByteArray Unit := do
   if func.body.size > maxFunctionBodyBytes then
     Except.error errorLimit
   else
-    let fuel := min (func.body.size + 1) (maxInstructionsPerList + 1)
-    let finalOffset ← validateInstrStreamFuel fuel functionCount globals
-      (func.params + func.locals) func.body 0 #[]
+    let finalOffset ← validateInstrStream functionCount globals
+      (func.params + func.locals) func.body
     if finalOffset == func.body.size then
       Except.ok ()
     else

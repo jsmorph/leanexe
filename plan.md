@@ -85,7 +85,7 @@ The first self-hosting increment moves only final WebAssembly binary serializati
 - [x] Define and validate a canonical versioned module-image format at the final structured-instruction boundary.
 - [ ] Refactor native library-mode emission through that image without changing any registered artifact bytes.
 - [x] Implement a pure `ByteArray -> Except ByteArray ByteArray` image emitter inside the accepted LeanExe subset.
-- [ ] Compile the emitter to WebAssembly and require it to reproduce its own complete module byte for byte.
+- [x] Compile the emitter to WebAssembly and require it to reproduce its own complete module byte for byte.
 - [ ] Require native and WebAssembly emission to agree on every registered compiler case and on malformed-image rejection tests.
 - [ ] Record the exact bootstrap revisions, image identity, artifact digests, host assumptions, and verification receipts.
 
