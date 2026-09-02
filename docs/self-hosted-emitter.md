@@ -51,7 +51,7 @@ The retained 2026-09-02 receipt was rebuilt from `selfhost` commit `f44474a45c00
 | Stage 2 host | A fresh instance under the same Wasmtime 44.0.0 C host. |
 | Harness | Node.js v24.19.0 orchestrates files and the external host without executing WebAssembly itself. |
 | Registered corpus | 20 of 20 native, Stage 1, and Stage 2 outputs match the frozen artifact bytes. |
-| Error corpus | Five malformed images return the pinned diagnostics under both WebAssembly hosts. |
+| Error corpus | Five malformed images return the pinned diagnostics under both WebAssembly stages. |
 
 Stage 0 compiles `emitImage` to Stage 1 and separately writes the canonical image of that complete module.  Wasmtime invokes Stage 1 on the image to produce Stage 2, then invokes Stage 2 in a fresh instance on the same image.  Both outputs are compared without normalization and have the Stage 1 length and digest above.  The same two stages emit every case in `proofs/talos/cases.json`; each output is compared with the exact binary selected by `proofs/artifacts/registry.json`.
 
