@@ -23,4 +23,5 @@ import LeanExe.Examples.JsonTools
 import LeanExe.Examples.Let
 import LeanExe.Examples.Prime
 import LeanExe.Wasm.Binary
+import LeanExe.Wasm.Image
 import LeanExe.Wasm.ScalarCertificate
