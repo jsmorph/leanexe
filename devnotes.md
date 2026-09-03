@@ -7671,3 +7671,19 @@ has the expected six i64-to-f64 reinterpretations, three f64-to-i64
 reinterpretations, two `f64.mul` instructions, and one `f64.add`.  The next
 checkpoint proves both branches and attaches the accumulated `3 * 2^-52`
 success-path error theorem.
+
+## 2026-09-03: Generated guarded-dot WAT checkpoint
+
+The artifact preparation path compiled `dot2CheckedBits` and translated its
+actual emitted WebAssembly into `Project.F64Dot2CheckedBits.Program`.  The
+entry retains four public i64 bit-pattern parameters and returns two i64 words.
+Its accepted branch contains two binary64 multiplications followed by one
+binary64 addition; its rejected branch returns status one and zero bits without
+executing those operations.  The generated helper implements the sign-cleared
+one-half check used by all four inputs.
+
+The focused exact-Lean-4.34.0-rc2 build
+`lake -d proofs/talos/lean build Project.F64Dot2CheckedBits.Program` passed
+3,341 jobs.  This checkpoint freezes the proof input; the reusable raw-bit
+guard lemma and the fuel-independent numerical execution theorem are the next
+proof obligations.
