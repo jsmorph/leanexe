@@ -121,7 +121,7 @@ and acceptance gates.
 - [x] Prove a quantitative theorem for the LeanExe `mulBits` program, then the same finite-result and real-error theorem for its generated WAT execution, with an explicit fuel-independent trace and store preservation.
 - [x] Follow the scalar multiplication proof with a guarded two-term dot artifact.
 - [x] Prove a generated runtime-length dot artifact with absolute, gamma-times-mass, and condition-number contracts.
-- [ ] Prove a generated affine or Horner artifact and retain reusable ProofKit, annotation, certificate, and LTG support justified by both kernels.
+- [ ] Prove a guarded generated f64 quadratic Horner artifact with a finite-result and `3 * 2^-52` error theorem, retaining reusable ProofKit, annotation, certificate, and LTG support justified by the numerical kernels.
 - [ ] Expand the admitted operations to representative division, square root, and f32 uses; update maintained documentation and active release evidence.
 
 Native floating-point execution and Wasmtime remain regression tools.  Accepted
@@ -160,8 +160,9 @@ nonempty-loop invariant and measure all pass.  The total WAT theorem combines
 those paths for arbitrary valid logical arrays, and three public WAT theorems
 transfer the source primitive-absolute, gamma-times-mass, and conditioned
 relative-error conclusions to that execution.  Their axiom audits contain
-only the standard logical axioms.  The generated affine or Horner artifact is
-the next implementation checkpoint.
+only the standard logical axioms.  The next implementation checkpoint is a guarded generated f64 quadratic
+Horner evaluation, `(c₂*x + c₁)*x + c₀`, with the same finite-result and sharp
+`3 * 2^-52` theorem at both the source-model and decoded-WAT layers.
 
 Hash, manifest, release-receipt, and self-host bookkeeping are not gates for
 this branch's floating-point implementation.  Exact program bytes remain part
@@ -183,7 +184,7 @@ of each artifact theorem because they are the semantic input being proved.
 The next floating-point stable point requires exact Lean 4.34.0-rc2, preservation
 of the prior native compiler, integer proof, and artifact identities or an
 explicit review of each deliberate change, and independently accepted scalar,
-guarded fixed-kernel, runtime-length dot, and affine or Horner artifact proofs.
+guarded fixed-kernel, runtime-length dot, and quadratic Horner artifact proofs.
 Their public numerical theorems must expose every domain and overflow-exclusion
 assumption, pass axiom audits, and depend only on pure modeled semantics.  The
 repository status, registries, proof inventories, plans, documentation, active
