@@ -7770,3 +7770,26 @@ focused execution and shape check.
 `Project.F64DotCheckedBits/README.md` records the example's goal, source and
 ABI approach, planned pure-model and WAT proof layers, current result, explicit
 future numerical hypotheses, and native-floating-point trust boundary.
+
+## 2026-09-03: Runtime-length dot source numerical contracts
+
+`Project.F64DotCheckedBits.Numerical` represents the two logical array views as
+lists and pairs them with `List.zip`.  Its total model returns status one and
+zero bits for unequal lengths; equal lengths return status zero and exactly
+Talos's `dot64List`, including positive zero for the empty case.
+
+Three source-facing theorems now pass.  The absolute theorem returns a finite
+word within `dot64ListErrorBudget`.  The gamma theorem bounds forward error by
+`gamma (2*n - 1) unitRoundoff64 * dot64AbsMass`.  The conditioned theorem
+bounds relative error by the same gamma factor times
+`dot64ListConditionNumber`.  Their premises separately expose unit-bounded
+finite inputs, aggregate no-overflow headroom, normal-or-zero exact products,
+the strict gamma-pole inequality, and a nonzero exact sum where required.
+
+The exact-Lean-4.34.0-rc2 build
+`lake -d proofs/talos/lean build Project.F64DotCheckedBits.Numerical` passed
+3,066 jobs.  `#print axioms` reports only `propext`, `Classical.choice`, and
+`Quot.sound` for the public numerical theorems; native floating-point
+evaluation is absent.  The executable `Array`-to-list refinement remains an
+obligation of the generated-WAT execution layer rather than an assertion of
+the metadata association.

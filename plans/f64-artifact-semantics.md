@@ -232,7 +232,11 @@ is the runtime-length dot artifact.  Its two-array LeanExe source entry now
 builds and passes focused runtime, extracted-IR, and generated-WAT checks.  The
 empty branch is positive zero, unequal lengths return status one and zero bits,
 and the nonempty loop is seeded by the first product so it matches Talos's
-`2*n - 1` dot model.  The source-facing numerical theorem is next.
+`2*n - 1` dot model.  Its source-facing layer now passes all three planned
+contracts—primitive absolute error, gamma times exact product mass, and
+conditioned relative error—with total exact mismatch behavior and
+standard-only axiom reports.
+Artifact preparation and the fuel-independent generated-loop proof are next.
 
 - [x] Migrate the native compiler to exact Lean 4.34.0-rc2 and preserve every
       registered artifact byte.  The scoped legacy `do` option on the frozen GCD
