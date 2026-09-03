@@ -225,7 +225,9 @@ theorems.  The guarded two-term dot source entry now compiles to a two-word
 status/result ABI and executes both accepted and rejected inputs under
 Wasmtime.  Its actual emitted WAT is now frozen in
 `Project.F64Dot2CheckedBits.Program` and passes a focused exact-toolchain build;
-the guard bridge, branch proof, and accumulated-error corollary are in progress.
+the raw-bit guard bridge now passes and exposes finiteness plus the real
+half-magnitude bound.  The branch proof and accumulated-error corollary are in
+progress.
 
 - [x] Migrate the native compiler to exact Lean 4.34.0-rc2 and preserve every
       registered artifact byte.  The scoped legacy `do` option on the frozen GCD
