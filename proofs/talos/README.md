@@ -79,7 +79,12 @@ tools/artifact-conformance.js check
 
 ## Requirements
 
-The proof and compiler workspaces pin Lean 4.31.0 in their respective `lean-toolchain` files.  The proof Lake manifest pins Talos and its transitive dependencies.  The source artifact tool fetches that pinned dependency and builds its verifier under the resource limits when a local verifier is absent.
+During the staged `talosfp` migration, the compiler root pins exact Lean
+4.34.0-rc2 while this proof workspace temporarily retains Lean 4.31.0.  The next
+checkpoint moves the proof workspace and its pinned Talos dependency to 4.34.
+The proof Lake manifest pins Talos and its transitive dependencies.  The source
+artifact tool fetches that pinned dependency and builds its verifier under the
+resource limits when a local verifier is absent.
 
 The conformance gate uses the official WebAssembly testsuite submodule already pinned by CodeLib.  After Lake fetches CodeLib, initialize that nested submodule with `git -C proofs/talos/lean/.lake/packages/CodeLib submodule update --init vendor/testsuite`.  The gate verifies both repository revisions and stops on a mismatch rather than fetching or changing either checkout.
 
@@ -104,7 +109,7 @@ The official execution slice covers twenty-five exact files and produced 3,853 T
 
 The same gate extracts fifteen pinned official `assert_invalid` and `assert_malformed` modules and checks their exact artifact decoder or validator errors.  Text-origin invalid modules have encoder-added custom sections removed before classification, while raw malformed binary modules remain unchanged.  All fifteen cases matched in the recorded 2026-08-26 run, covering malformed headers and sections, integer overflow, alignment, stack effects, and memory limits.
 
-The draft release record at `proofs/artifacts/release.json` binds every artifact package, theorem name, tool pin, release-input digest, and recorded result.  Both workspaces pin Lean 4.31.0 at commit `68218e876d2a38b1985b8590fff244a83c321783`; the archived kernel reproduction succeeds, and the release records the owner's acceptance after a narrow lexical audit of the project sources for the exploit's declaration-construction identifiers.  The record carries input digest `5de9678970b1a9b74d50c1407457423a7fa6eabd3f430f56cfdc0e407af2b7e5`, source revision `0e0d752904fc90dee3ef3511ffab91f3d358c1ed`, and both 2026-08-26 warm-gate receipts.  Its sole remaining blocker is the deferred cold-checkout result.
+The draft release record at `proofs/artifacts/release.json` binds every artifact package, theorem name, tool pin, release-input digest, and recorded result.  That historical record binds both workspaces to Lean 4.31.0 at commit `68218e876d2a38b1985b8590fff244a83c321783`; the archived kernel reproduction succeeds, and the record preserves the owner's acceptance after a narrow lexical audit of the project sources for the exploit's declaration-construction identifiers.  It carries input digest `5de9678970b1a9b74d50c1407457423a7fa6eabd3f430f56cfdc0e407af2b7e5`, source revision `0e0d752904fc90dee3ef3511ffab91f3d358c1ed`, and both 2026-08-26 warm-gate receipts.  The current staged toolchain migration changes those release inputs, so aggregate proof, conformance, refreshed warm receipts, and the deferred cold-checkout gate must all pass before a new record can become ready.
 
 A future general compiler-correctness theorem would connect accepted Lean source, extracted IR, lowered WASM, and modeled WASM execution in one source-to-WASM result.  [Compiler and Generated Evidence](../../docs/compiler.md) distinguishes the checked compiler theorems available now from that longer-term result.  The runtime lemma library already reduces per-program work by replacing repeated instruction proofs with applications of shared theorems.
 

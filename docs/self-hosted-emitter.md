@@ -1,6 +1,6 @@
 # Self-Hosted WebAssembly Emitter
 
-LeanExe has a self-hosted binary-emitter boundary for ordinary library modules.  The native compiler still loads and checks Lean modules, extracts the accepted subset, performs ownership analysis, lowers to structured WebAssembly instructions, selects the runtime, and resolves indices.  It then freezes that result as a canonical byte image.  `emitImage`, compiled by LeanExe itself, validates the image and emits the complete WebAssembly binary.
+LeanExe has an experimental self-hosted binary-emitter boundary for ordinary library modules.  The native compiler remains the production path: it loads and checks Lean modules, extracts the accepted subset, performs ownership analysis, lowers to structured WebAssembly instructions, selects the runtime, and resolves indices.  It can then freeze that result as a canonical byte image.  `emitImage`, compiled by LeanExe itself, validates the image and emits the complete WebAssembly binary.
 
 This supports the specific claim that LeanExe has a self-hosted WebAssembly binary emitter.  It does not make LeanExe a source-self-hosted or IR-self-hosted compiler, remove Lean or native Stage 0 from the trust boundary, or prove compiler correctness.
 
@@ -23,7 +23,11 @@ The library profile limits inputs to 64 MiB, one function body to 32 MiB, output
 
 ## Native and host boundaries
 
-`LeanExe.Wasm.Binary.CoreWasm.moduleBytes` constructs a final module image and invokes the same pure emitter used by the self-hosted entry.  `legacyModuleBytes` remains an internal differential oracle.  WASI command adapters retain their dedicated native assembly paths and are not part of this self-hosted profile.
+`LeanExe.Wasm.Binary.CoreWasm.moduleBytes` uses the direct native serializer.
+`moduleBytesFromImage` constructs a final module image and invokes the pure emitter
+used by the self-hosted entry, providing an independently callable differential
+oracle.  WASI command adapters retain their dedicated native assembly paths and
+are not part of this self-hosted profile.
 
 The diagnostic command writes an image without exposing Lean runtime representation:
 
@@ -55,6 +59,14 @@ The retained 2026-09-02 receipt was rechecked from tracked `selfhost` commit `90
 
 Stage 0 compiles `emitImage` to Stage 1 and separately writes the canonical image of that complete module.  Wasmtime invokes Stage 1 on the image to produce Stage 2, then invokes Stage 2 in a fresh instance on the same image.  Both outputs are compared without normalization and have the Stage 1 length and digest above.  The same two stages emit every case in `proofs/talos/cases.json`; each output is compared with the exact binary selected by `proofs/artifacts/registry.json`.
 
-`test/selfhost_emitter.js` owns this receipt as an executable gate.  Running it without arguments rebuilds the self image, both compiler outputs for every registered case, and all comparisons.  `--use-existing` reruns the hosts and byte comparisons against artifacts already present under `.lake/build/selfhost`.
+`test/selfhost_emitter.js` owns this receipt as an optional executable regression check.  Running it without arguments rebuilds the self image, both compiler outputs for every registered case, and all comparisons.  `--use-existing` reruns the hosts and byte comparisons against artifacts already present under `.lake/build/selfhost`.  This experiment does not block native compiler or floating-point development unless a change explicitly targets the image boundary.
+
+An optional 2026-09-03 migration run under Lean 4.34.0-rc2 reproduced a
+570,300-byte Stage 1/Stage 2 artifact with SHA-256
+`9a4934f9268dc9574f1ec84bf94370ba95ba80d4556adba4fc2fd66b7e448d76`
+from a 520,923-byte image with SHA-256
+`2344bc92929c1918a78c9f07e6ebf388fa6788747dddec10afcd9564b96f1a2d`.
+All twenty registered artifacts and five malformed-image cases still matched.
+These values supplement rather than replace the retained 4.31 receipt.
 
 The recorded work-mode run used the user's explicit direct-Lean exception instead of `tools/leanrun`; a local process-path compatibility shim was required only to start Lean in that container and is not an emitter or runtime dependency.  The repository's Node 24.13.0 and `wasm-tools` 1.251.0 version checks passed, and direct execution of the nine-case WAT round-trip gate matched every binary.  The aggregate artifact-proof, semantic-conformance, and cold-checkout release gates remain separate because this session intentionally does not invoke `tools/leanrun`.

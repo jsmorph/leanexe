@@ -183,6 +183,11 @@ def knownExternal? (name : Name) : Option Classification :=
     some { status := "implemented", reason := "internal Option values in the generic compiler fragment" }
   else if name == ``Prod then
     some { status := "implemented", reason := "internal product values in the generic compiler fragment" }
+  else if name == ``PProd then
+    some {
+      status := "implemented"
+      reason := "dependent products consumed by supported Nat and structural-recursion projections"
+    }
   else if name == ``Except then
     some { status := "implemented", reason := "internal Except values in the generic compiler fragment" }
   else if name == ``String then
