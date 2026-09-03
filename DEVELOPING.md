@@ -9,7 +9,7 @@ LeanExe develops and tests on Linux.  The Wasmtime download script supports `x86
 | Tool | Repository requirement |
 |------|------------------------|
 | Lean and Lake | Install through `elan`.  The compiler root pins exact Lean 4.34.0-rc2 at commit `6a10ac8c22beadecabdbb0919c2b50214762f91d`. |
-| Proof Lean and Lake | The proof workspace records its pin in `proofs/talos/lean/lean-toolchain`.  It temporarily remains on Lean 4.31.0 during the first staged `talosfp` checkpoint and moves to 4.34.0-rc2 with the Talos dependency before aggregate proof gates resume. |
+| Proof Lean and Lake | The proof workspace records its exact Lean 4.34.0-rc2 pin in `proofs/talos/lean/lean-toolchain`; its Lake files pin the pre-floating-point Talos revision `fda69ca67a81ea4f1fa4e376bdc5861d9fe5479a`. |
 | Wasmtime | `tools/download-wasmtime.sh` installs the default 44.0.0 CLI and C API under `build/tools/wasmtime` after checking the published SHA-256 hashes. |
 | C compiler | A C11 compiler available as `cc` builds the Wasmtime host runner. |
 | Node.js | Node 24.13.0 runs the test drivers.  `.node-version` records the exact version, and the complete runner checks it before building. |
@@ -133,7 +133,16 @@ The recorded 2026-08-26 conformance run reported 3,853 Talos passes, six known a
 
 The same command extracts fifteen exact `assert_invalid` and `assert_malformed` modules from the pinned official corpus and checks their precise artifact decoder or validator errors.  It removes custom sections that `wasm-tools` adds while encoding text-origin `assert_invalid` modules because the accepted artifact profile rejects custom sections before reaching the intended validation rule.  All fifteen cases matched on 2026-08-26.  The tool preserves raw `assert_malformed` binary modules byte-for-byte, and any missing command, changed line, changed classification stage, or changed error constructor stops the gate.
 
-`proofs/artifacts/release.json` binds the artifact registry, each package manifest, every recorded theorem name, the tool pins, and the artifact and conformance results.  `tools/artifact-release.js inspect` validates those identities and derives the unresolved release conditions from the record.  The current draft records source revision `0e0d752904fc90dee3ef3511ffab91f3d358c1ed` and lacks a cold-checkout result, so `check-ready` fails with that one condition.
+`proofs/artifacts/release.json` binds the artifact registry, each package manifest,
+every recorded theorem name, the tool pins, and the artifact and conformance
+results.  `tools/artifact-release.js inspect` validates those identities and
+derives the unresolved release conditions from the record.  The checked-in
+draft now records the Lean 4.34.0-rc2 and Talos
+`fda69ca67a81ea4f1fa4e376bdc5861d9fe5479a` pins and the migrated release-input
+identity.  Its aggregate artifact-proof and conformance receipts remain pending,
+and `sourceRevision` is null.  The successful 2026-08-26 receipts belong to the
+earlier input digest; after the migrated warm gates pass, an immutable source
+revision and the cold-checkout result remain separate blockers.
 
 `tools/artifact-release.js check-cold <revision>` clones the recorded source revision below the repository's ignored `tmp/` directory, compares its release inputs byte-for-byte with the recorded input identity, checks the external tools and exact Lean commit, fetches the pinned proof dependencies, initializes the official testsuite, and runs both release gates.  The artifact gate builds the shared Talos library and artifact translator before building each embedded-byte module and each package's generated program, decoded cache, raw cache, decode equality, and validation result as separate targets.  It also computes each behavioral specification's repository-local import closure, builds that closure in dependency order with a separate limit for every module, and then builds the specification root.  These divisions keep each cold elaboration boundary within its target limit, while the command rejects tracked changes after setup or either gate, rechecks the input identity, and writes a receipt after success.
 

@@ -122,10 +122,10 @@ def fullBranchProg : Wasm.Program :=
       .localSet 70
     ] ++ FullBookUpdate.fullBookUpdateProg) [
       .localGet 66
-    ]
+    ] [] [.i64]
   ] [
     .unreachable
-  ]
+  ] [] [.i64]
   ] ++ FullTradeUpdate.fullTradeUpdateProg ++
     FullReleaseTransition.fullReleaseTransitionProg
 
@@ -310,14 +310,14 @@ def dispatchProg : Wasm.Program :=
     .constI64 1
   ] [
     .constI64 0
-  ],
+  ] [] [.i64],
   .constI64 1,
   .eqI64,
   .iff 0 1 [
     .constI64 1
   ] [
     .constI64 0
-  ],
+  ] [] [.i64],
   .constI64 0,
   .eqI64,
   .eqz,
@@ -373,7 +373,7 @@ def dispatchProg : Wasm.Program :=
         .load64 0
       ] [
         .unreachable
-      ],
+      ] [] [.i64],
       .localGet 18,
       .leUI64,
       .iff 0 0 fullBranchProg

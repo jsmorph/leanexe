@@ -15,7 +15,7 @@ open Project.Clob Project.ClobPostOnly.Model Project.ClobLimit.Model
 
 def unlimitedTakerL (order : OrderL) : OrderL :=
   if order.oside = 0 then
-    { order with oprice := (0xFFFFFFFFFFFFFFFF : UInt64) }
+    { order with oprice := (-1 : UInt64) }
   else
     { order with oprice := 0 }
 
@@ -29,7 +29,7 @@ def marketL (book : List OrderL) (order : OrderL) : OpResultL :=
 @[simp]
 theorem unlimitedTakerL_bid (order : OrderL) (hSide : order.oside = 0) :
     unlimitedTakerL order =
-      { order with oprice := (0xFFFFFFFFFFFFFFFF : UInt64) } := by
+      { order with oprice := (-1 : UInt64) } := by
   simp [unlimitedTakerL, hSide]
 
 @[simp]

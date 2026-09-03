@@ -193,7 +193,9 @@ private def freePre (slots : List RelSlot) (k : Nat) : Nat :=
 set_option maxHeartbeats 4000000 in
 private theorem release_tree_fuel (env : HostEnv Unit) (m : Module)
     (id : Nat)
-    (hf : m.funcs[id - m.imports.length]? = some (releaseFuncDef id))
+    {typeIdx : Option Nat}
+    (hf : m.funcs[id - m.imports.length]? =
+      some { releaseFuncDef id with typeIdx := typeIdx })
     (hImp : m.imports[id]? = none) :
     ∀ n : Nat, ∀ (st : Store Unit) (t : RelTree) (g1 g4 g5 : UInt64),
       sizeOf t ≤ n →
@@ -783,7 +785,9 @@ frees every owned node in traversal order, decrements every shared leaf,
 and leaves the free list at the root, with the counters exact. -/
 theorem release_frees_tree (env : HostEnv Unit) (m : Module) (id : Nat)
     (st : Store Unit) (t : RelTree) (g1 g4 g5 : UInt64)
-    (hf : m.funcs[id - m.imports.length]? = some (releaseFuncDef id))
+    {typeIdx : Option Nat}
+    (hf : m.funcs[id - m.imports.length]? =
+      some { releaseFuncDef id with typeIdx := typeIdx })
     (hImp : m.imports[id]? = none)
     (ht : TreeAt st.mem t)
     (hok : footprintOk t.footprint)

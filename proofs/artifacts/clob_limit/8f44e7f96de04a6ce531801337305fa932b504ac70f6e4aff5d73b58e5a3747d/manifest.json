@@ -20,8 +20,8 @@
   "behaviorTheorems": [
     "Project.ClobLimit.LimitCorrect.func21_correct"
   ],
-  "leanToolchain": "leanprover/lean4:v4.31.0",
-  "talosRevision": "bb3277e21c9786e3133d5c1601e34ebdc0bea4df",
-  "verifierSourceSha256": "25aeb7d50d9ce4768b855e78d8ffb94606d02647386de9ca7b75fa026c34d802",
+  "leanToolchain": "leanprover/lean4:v4.34.0-rc2",
+  "talosRevision": "fda69ca67a81ea4f1fa4e376bdc5861d9fe5479a",
+  "verifierSourceSha256": "d0672a6abc1d32a745d87fdaf2811912af9900c8d1818060daf73c122f2c269a",
   "hostAssumptions": []
 }

@@ -57,8 +57,8 @@ def fullTransitionProg : Wasm.Program :=
       .localGet 44
     ] [
       .constI64 0
-    ]
-  ],
+    ] [] [.i64]
+  ] [] [.i64],
   .localSet 59,
   .localGet 46,
   .localSet 60,

@@ -48,7 +48,7 @@ expectFailure(wrongResult, /semantic conformance result/);
 
 const wrongKernel = copy(evidence);
 wrongKernel.kernelReview.candidateToolchain = "leanprover/lean4:v0.0.0";
-expectFailure(wrongKernel, /audited affected toolchain/);
+expectFailure(wrongKernel, /selected fixed kernel/);
 
 const staleArtifactProof = copy(evidence);
 staleArtifactProof.artifactProof.releaseInputSha256 = "0".repeat(64);

@@ -115,14 +115,14 @@ def dispatchProg (fullBranch partialBranch : Wasm.Program) : Wasm.Program :=
     .constI64 1
   ] [
     .constI64 0
-  ],
+  ] [] [.i64],
   .constI64 1,
   .eqI64,
   .iff 0 1 [
     .constI64 1
   ] [
     .constI64 0
-  ],
+  ] [] [.i64],
   .constI64 0,
   .eqI64,
   .eqz,
@@ -178,7 +178,7 @@ def dispatchProg (fullBranch partialBranch : Wasm.Program) : Wasm.Program :=
         .load64 0
       ] [
         .unreachable
-      ],
+      ] [] [.i64],
       .localGet 10,
       .leUI64,
       .iff 0 0 fullBranch partialBranch

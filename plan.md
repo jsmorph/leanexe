@@ -4,15 +4,27 @@ This file is the only active project work queue.  The compiler, execution suite,
 
 ## 1. Reconcile current documentation and release evidence
 
-The documentation describes one implementation and assigns each changing fact to one source of truth.  The release record carries input digest `5de9678970b1a9b74d50c1407457423a7fa6eabd3f430f56cfdc0e407af2b7e5`, source revision `0e0d752904fc90dee3ef3511ffab91f3d358c1ed`, and successful warm-gate receipts dated 2026-08-26.  Cold verification remains deferred and does not form part of the current work.
+The documentation describes one implementation and assigns each changing fact
+to one source of truth.  The last accepted warm evidence, now historical,
+carried input digest
+`5de9678970b1a9b74d50c1407457423a7fa6eabd3f430f56cfdc0e407af2b7e5`, source
+revision `0e0d752904fc90dee3ef3511ffab91f3d358c1ed`, and successful receipts dated
+2026-08-26.  The current draft release record identifies the Lean 4.34.0-rc2 and
+Talos `fda69ca67a81ea4f1fa4e376bdc5861d9fe5479a` inputs, but its warm receipts are
+pending and `sourceRevision` is null.  Cold verification remains deferred and
+does not form part of the current work.
 
 - [x] Consolidate navigation, language, compiler, artifact-proof, annotation, and proof-guidance documents.
 - [x] Remove superseded plans and experiment reports after migrating current facts and links.
 - [x] Standardize demo documentation and replace workspace examples that use `/tmp` with repository-local `./tmp` paths.
 - [x] Run local-link, stale-reference, command-example, and whitespace checks over the maintained documentation.
-- [x] Refresh `proofs/artifacts/release.json` against the settled release inputs.
-- [x] Run the warm artifact-proof and semantic-conformance gates for the refreshed identity.
-- [x] Record an immutable source revision for the current release inputs.
+- [x] Refresh the prior `proofs/artifacts/release.json` identity and preserve its
+      2026-08-26 evidence as historical provenance.
+- [x] Run the prior warm artifact-proof and semantic-conformance gates.
+- [x] Record immutable source revision
+      `0e0d752904fc90dee3ef3511ffab91f3d358c1ed` for those historical inputs.
+- [ ] Record migrated warm receipts and an immutable source revision after the
+      pre-FP `fda69ca` compatibility gates pass.
 - [ ] Complete the cold-checkout gate when cold verification resumes.
 - [ ] Require `tools/artifact-release.js check-ready` to pass before describing the release as ready.
 
@@ -118,14 +130,17 @@ LeanExe artifact path, and Talos's pure modeled semantics.
 As of 2026-09-03, the pre-FP `fda69ca` migration is in progress locally.  The
 dependency pin, typed control metadata, function type-index handling,
 `local.tee` support, regenerated program caches, and the compatibility repairs
-found so far are implemented, and their focused checks pass.  The final
-source-driven aggregate was stopped after 3,403 of 3,674 jobs without an
-observed failure, so this checkpoint is not yet accepted.  Its remaining
-aggregate, exact-artifact, conformance, identity, and axiom gates must pass
-before the row below is checked.  No floating-point opcode or intrinsic work
-has started.  The next commits separate plan evidence, pre-FP compatibility,
-regenerated artifacts, and final migration receipts so each passing state is
-pushed promptly.
+found so far are implemented.  Every large application proof root now passes
+under exact Lean 4.34.0-rc2.  A subsequent standalone-module sweep exposed
+compatibility failures in `Project.ProofKit.FixedArrayEqNode` and
+`Project.ProofKit.FixedArrayAllocator`; both have been repaired and pass their
+focused builds.  `Project.ProofKit.LTGCheck`, `Project.PairFree.Probe`, the
+translator metadata tests, and the complete 3,674-job `Project` aggregate now
+pass as well.  The source-compatibility checkpoint is ready to record; the
+exact-artifact, conformance, identity, and axiom gates remain before the pre-FP
+migration row can be checked.  No floating-point opcode or intrinsic work has
+started.  The next commits record this compatibility state and the final
+migration receipts separately so each passing state is pushed promptly.
 
 ## Required gates
 

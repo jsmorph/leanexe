@@ -25,15 +25,14 @@ def prepareProg : Wasm.Program :=
   .localGet 29,
   .localGet 30,
   .addI64,
-  .localSet 31,
-  .localGet 31,
+  .localTee 31,
   .localGet 29,
   .ltUI64,
   .iff 0 1 [
     .unreachable
   ] [
     .localGet 31
-  ],
+  ] [] [.i64],
   .localSet 7,
   .localGet 2,
   .localSet 8,

@@ -106,11 +106,12 @@ theorem negIterAllocWp (env : HostEnv Unit) (st st1 : Store Unit)
       (Instruction.block 0 0 [Instruction.loop 0 0 copyBody] ::
         negAllocTail)
       POST
-      { globals :=
+      { st1 with
+        globals :=
           { globals :=
               (st1.globals.globals.set 0
                 (.i64 (g0 + 56 * UInt64.ofNat k + 48 + 8))).set 2
-                (.i64 (g2 + UInt64.ofNat k + 1)) },
+                (.i64 (g2 + UInt64.ofNat k + 1)) }
         mem :=
           (((((st1.mem.write64
             (UInt32.ofNat ((g0.toNat + 56 * k) % 4294967296))
@@ -124,10 +125,7 @@ theorem negIterAllocWp (env : HostEnv Unit) (st st1 : Store Unit)
             (UInt32.ofNat ((g0 + 56 * UInt64.ofNat k + 48 - 16).toNat %
               4294967296)) 0).write64
             (UInt32.ofNat ((g0 + 56 * UInt64.ofNat k + 48 - 8).toNat %
-              4294967296)) 0,
-        extraMems := st1.extraMems, dataSegments := st1.dataSegments,
-        tables := st1.tables, elementSegments := st1.elementSegments,
-        exns := st1.exns, gcHeap := st1.gcHeap, host := st1.host }
+              4294967296)) 0 }
       (lFrameFlat (UInt64.ofNat (10 - k)) v (bufPtr g0 k) (bufPtr g0 k)
         (UInt64.ofNat k) 0 0 0 0 (e 9) (e 10) (e 11) (e 12) (v / 128)
         (v % 128 + 128 &&& 255) (bufPtr g0 k) (UInt64.ofNat k) (e 17)

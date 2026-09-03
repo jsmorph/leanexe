@@ -157,7 +157,7 @@ def posProg : Wasm.Program :=
           .localGet 25,
           .localGet 26,
           .remUI64
-        ],
+        ] [] [.i64],
         .constI64 (255 : UInt64),
         .andI64,
         .localSet 9,
@@ -292,8 +292,7 @@ def posProg : Wasm.Program :=
           .addI64,
           .localGet 31,
           .addI64,
-          .localSet 34,
-          .localGet 34,
+          .localTee 34,
           .globalGet 0,
           .ltUI64,
           .iff 0 0 [
@@ -318,7 +317,7 @@ def posProg : Wasm.Program :=
             .subI64,
             .wrapI64,
             .memoryGrow,
-            .const (4294967295 : UInt32),
+            .const (-1),
             .eq,
             .iff 0 0 [
               .unreachable
@@ -434,7 +433,7 @@ def negProg : Wasm.Program :=
           .localGet 25,
           .localGet 26,
           .divUI64
-        ],
+        ] [] [.i64],
         .localSet 13,
         .localGet 1,
         .localSet 25,
@@ -449,7 +448,7 @@ def negProg : Wasm.Program :=
           .localGet 25,
           .localGet 26,
           .remUI64
-        ],
+        ] [] [.i64],
         .constI64 (128 : UInt64),
         .addI64,
         .constI64 (255 : UInt64),
@@ -586,8 +585,7 @@ def negProg : Wasm.Program :=
           .addI64,
           .localGet 31,
           .addI64,
-          .localSet 34,
-          .localGet 34,
+          .localTee 34,
           .globalGet 0,
           .ltUI64,
           .iff 0 0 [
@@ -612,7 +610,7 @@ def negProg : Wasm.Program :=
             .subI64,
             .wrapI64,
             .memoryGrow,
-            .const (4294967295 : UInt32),
+            .const (-1),
             .eq,
             .iff 0 0 [
               .unreachable

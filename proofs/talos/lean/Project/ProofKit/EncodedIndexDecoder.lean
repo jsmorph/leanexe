@@ -1,4 +1,5 @@
 import Interpreter.Wasm.Wp.Tactic
+import Project.TalosCompat
 
 namespace Project.ProofKit.EncodedIndexDecoder
 
@@ -24,10 +25,10 @@ def program (encodedLocal scratch decodedLocal : Nat) : Wasm.Program :=
       .localGet scratch,
       .localGet (scratch + 1),
       .subI64
-    ]
+    ] [] [.i64]
   ] [
     .constI64 0
-  ],
+  ] [] [.i64],
   .localSet decodedLocal
   ]
 
@@ -173,7 +174,7 @@ theorem program_spec {α : Type}
   · subst encoded
     simp only [program, List.cons_append, List.nil_append,
       wp_localGet_cons, hEncoded, wp_constI64_cons, wp_eqI64_cons,
-      wp_eqz_cons]
+      wp_eqz_cons, Wasm.wp_iff_control_types]
     refine wp_iff_cons rfl ?_
     simpa (discharger := omega)
       [resultFrame, wp_simp, Wasm.Locals.get, Wasm.Locals.set?,
@@ -189,7 +190,7 @@ theorem program_spec {α : Type}
       omega
     simp only [program, List.cons_append, List.nil_append,
       wp_localGet_cons, hEncoded, wp_constI64_cons, wp_eqI64_cons,
-      wp_eqz_cons]
+      wp_eqz_cons, Wasm.wp_iff_control_types]
     refine wp_iff_cons rfl ?_
     rw [if_pos (by simp [hZero])]
     simp only [wp_localGet_cons, hEncoded, wp_localSet_cons]

@@ -48,6 +48,7 @@ private theorem noReturnCall_aux : ∀ fuel,
         cases hPortable with
         | localGet => no_return_call_atomic
         | localSet => no_return_call_atomic
+        | localTee => no_return_call_atomic
         | globalGet => no_return_call_atomic
         | globalSet => no_return_call_atomic
         | const32 => no_return_call_atomic
@@ -72,7 +73,7 @@ private theorem noReturnCall_aux : ∀ fuel,
         | unreachable => no_return_call_atomic
         | br => no_return_call_atomic
         | brIf => no_return_call_atomic
-        | block params results body hBody =>
+        | block params results body paramTypes resultTypes hBody =>
             simp only [execOne.eq_def]
             have hNoReturn := ihExec m env st s body hBody
             cases hResult : exec fuel m st s body env <;>
@@ -82,7 +83,7 @@ private theorem noReturnCall_aux : ∀ fuel,
             case ReturnCall =>
               rw [hResult] at hNoReturn
               exact hNoReturn
-        | loop params results body hBody =>
+        | loop params results body paramTypes resultTypes hBody =>
             simp only [execOne_loop_succ]
             have hNoReturn := ihExec m env st s body hBody
             cases hResult : exec fuel m st s body env <;>
@@ -93,12 +94,13 @@ private theorem noReturnCall_aux : ∀ fuel,
                   exact ihOne m env bodyStore
                     { bodyLocals with
                       values := bodyLocals.values.take params ++ s.values.drop params }
-                    (.loop params results body) (.loop params results body hBody)
+                    (.loop params results body paramTypes resultTypes)
+                    (.loop params results body paramTypes resultTypes hBody)
               | succ label => trivial
             case ReturnCall =>
               rw [hResult] at hNoReturn
               exact hNoReturn
-        | branch params results thenBody elseBody hThen hElse =>
+        | branch params results thenBody elseBody paramTypes resultTypes hThen hElse =>
             simp only [execOne.eq_def]
             cases hValues : s.values with
             | nil => trivial

@@ -181,7 +181,7 @@ theorem scanIndex_spec {env : HostEnv Unit} {st : Store Unit}
         .constI64 (1 : UInt64)
       ] [
         .constI64 (0 : UInt64)
-      ],
+      ] [] [.i64],
       .constI64 (0 : UInt64),
       .neI64,
       .iff 0 0 [

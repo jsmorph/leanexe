@@ -18,11 +18,11 @@ set_option maxRecDepth 1048576
 
 def pairAllocationBody : Wasm.Program :=
   match pairBuildTail.drop 3 with
-  | .iff _ _ body _ :: _ => body
+  | .iff _ _ body _ _ _ :: _ => body
   | _ => []
 
 def pairHeaderWrites : Wasm.Program :=
-  pairAllocationBody.drop 29
+  pairAllocationBody.drop 28
 
 def pairAllocationPrelude : Wasm.Program :=
   pairAllocationBody
@@ -173,7 +173,7 @@ theorem pairAllocationPrelude_correct (env : HostEnv Unit)
         ((g0 + 48 + allocSizeU (UInt64.ofNat bytes.length) - 1) / 65536 + 1)
       0) env := by
   rw [show pairAllocationPrelude =
-      pairAllocationBody.take 29 ++ pairHeaderWrites from by
+      pairAllocationBody.take 28 ++ pairHeaderWrites from by
     simp only [pairAllocationPrelude, pairHeaderWrites,
       List.take_append_drop]]
   simp only [pairAllocationBody, pairBuildTail,

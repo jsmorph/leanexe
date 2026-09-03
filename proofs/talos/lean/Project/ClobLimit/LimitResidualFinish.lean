@@ -57,6 +57,7 @@ theorem resultFrame_resultLocals
     book := by simp [resultFrame, copyLoopFrame, hLocals]
     trades := by simp [resultFrame, copyLoopFrame, hLocals] }
 
+set_option maxHeartbeats 8000000 in
 set_option Elab.async false in
 theorem residualFinishProg_spec
     (env : HostEnv Unit) (st0 st1 : Store Unit) (base : Locals)

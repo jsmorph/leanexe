@@ -29,7 +29,7 @@ def releaseOldValuesProg : Wasm.Program :=
     .eqz
   ] [
     .const 0
-  ],
+  ] [] [.i32],
   .iff 0 1 [
     .localGet 19,
     .localGet 46,
@@ -37,7 +37,7 @@ def releaseOldValuesProg : Wasm.Program :=
     .eqz
   ] [
     .const 0
-  ],
+  ] [] [.i32],
   .iff 0 0 [
     .localGet 19,
     .call 18
@@ -53,7 +53,7 @@ def releaseOldValuesProg : Wasm.Program :=
     .eqz
   ] [
     .const 0
-  ],
+  ] [] [.i32],
   .iff 0 1 [
     .localGet 20,
     .localGet 44,
@@ -61,7 +61,7 @@ def releaseOldValuesProg : Wasm.Program :=
     .eqz
   ] [
     .const 0
-  ],
+  ] [] [.i32],
   .iff 0 1 [
     .localGet 20,
     .localGet 46,
@@ -69,7 +69,7 @@ def releaseOldValuesProg : Wasm.Program :=
     .eqz
   ] [
     .const 0
-  ],
+  ] [] [.i32],
   .iff 0 0 [
     .localGet 20,
     .call 18

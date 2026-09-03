@@ -300,6 +300,7 @@ theorem allocFrame_get_root
   simpa using hRootIndex
 
 set_option maxHeartbeats 1000000 in
+set_option maxRecDepth 1048576 in
 set_option Elab.async false in
 theorem region_spec_withTail
     (offset tail : Nat)

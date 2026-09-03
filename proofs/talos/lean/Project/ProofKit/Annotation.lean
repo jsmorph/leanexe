@@ -19,10 +19,10 @@ structure Step where
 def descend (program : Program) (step : Step) : Option Program := do
   let instruction ← program[step.instructionIndex]?
   match step.field, instruction with
-  | .block, .block _ _ body => some body
-  | .loop, .loop _ _ body => some body
-  | .thenBranch, .iff _ _ thenBody _ => some thenBody
-  | .elseBranch, .iff _ _ _ elseBody => some elseBody
+  | .block, .block _ _ body _ _ => some body
+  | .loop, .loop _ _ body _ _ => some body
+  | .thenBranch, .iff _ _ thenBody _ _ _ => some thenBody
+  | .elseBranch, .iff _ _ _ elseBody _ _ => some elseBody
   | _, _ => none
 
 def resolve : Program → List Step → Option Program

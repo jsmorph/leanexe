@@ -51,7 +51,7 @@ def fullTradePrepareProg : Wasm.Program :=
     .load64 0
   ] [
     .unreachable
-  ],
+  ] [] [.i64],
   .localSet 73,
   .localGet 15,
   .localSet 78,
@@ -76,7 +76,7 @@ def fullTradePrepareProg : Wasm.Program :=
     .load64 0
   ] [
     .unreachable
-  ],
+  ] [] [.i64],
   .localSet 74,
   .localGet 15,
   .localSet 78,
@@ -101,7 +101,7 @@ def fullTradePrepareProg : Wasm.Program :=
     .load64 0
   ] [
     .unreachable
-  ],
+  ] [] [.i64],
   .localSet 75,
   .localGet 66,
   .wrapI64,

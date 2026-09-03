@@ -15,7 +15,9 @@ array without reading or releasing its element words. -/
 theorem release_frees_fixed_array_zero_mask
     (env : HostEnv Unit) (m : Module) (id : Nat) (st : Store Unit)
     (p g1 g4 g5 : UInt64) (len stride : Nat)
-    (hf : m.funcs[id - m.imports.length]? = some (releaseFuncDef id))
+    {typeIdx : Option Nat}
+    (hf : m.funcs[id - m.imports.length]? =
+      some { releaseFuncDef id with typeIdx := typeIdx })
     (hImp : m.imports[id]? = none)
     (hlen32 : len < 4294967296)
     (hstride32 : stride < 4294967296)

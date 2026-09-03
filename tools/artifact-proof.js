@@ -25,6 +25,7 @@ const checkFile = path.join(
   "CheckFile.lean",
 );
 const receiptPath = path.join(repoRoot, "build", "evidence", "artifact-proof.json");
+const talosBoundaryTarget = "Project.TalosPrelude";
 const allowedAxioms = new Set([
   "propext",
   "Classical.choice",
@@ -91,9 +92,9 @@ function checkBytes(entry, manifest, manifestPath, inputPath) {
 }
 
 async function checkEmbedded(packages) {
-  await run("shared Talos library", [
+  await run("LeanExe Talos boundary", [
     "--timeout", "60m",
-    "lake", "-d", proofRoot, "build", "CodeLib",
+    "lake", "-d", proofRoot, "build", talosBoundaryTarget,
   ]);
   await run("artifact translator", [
     "--timeout", "30m",
@@ -401,4 +402,5 @@ if (require.main === module) {
 module.exports = {
   leanImports,
   specificationInputs,
+  talosBoundaryTarget,
 };

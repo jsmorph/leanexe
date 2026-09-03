@@ -52,7 +52,7 @@ def partialBookPrefixProg : Wasm.Program :=
     .load64 0
   ] [
     .unreachable
-  ],
+  ] [] [.i64],
   .localSet 62,
   .localGet 7,
   .localSet 69,
@@ -77,7 +77,7 @@ def partialBookPrefixProg : Wasm.Program :=
     .load64 0
   ] [
     .unreachable
-  ],
+  ] [] [.i64],
   .localSet 63,
   .localGet 7,
   .localSet 69,
@@ -102,7 +102,7 @@ def partialBookPrefixProg : Wasm.Program :=
     .load64 0
   ] [
     .unreachable
-  ],
+  ] [] [.i64],
   .localSet 64,
   .localGet 7,
   .localSet 69,
@@ -127,7 +127,7 @@ def partialBookPrefixProg : Wasm.Program :=
     .load64 0
   ] [
     .unreachable
-  ],
+  ] [] [.i64],
   .localSet 65,
   .localGet 7,
   .localSet 69,
@@ -152,7 +152,7 @@ def partialBookPrefixProg : Wasm.Program :=
     .load64 0
   ] [
     .unreachable
-  ],
+  ] [] [.i64],
   .localGet 10,
   .subI64,
   .localSet 66,
