@@ -196,6 +196,18 @@
         "Project.F64MulBits.Spec.mulBits_wat_real_error"
       ],
       "complete": true
+    },
+    {
+      "name": "f64_dot2_checked_bits",
+      "module": "LeanExe.Examples.Float64Bits",
+      "entry": "LeanExe.Examples.Float64Bits.dot2CheckedBits",
+      "leanModule": "F64Dot2CheckedBits",
+      "specTarget": "Project.F64Dot2CheckedBits.Spec",
+      "behaviorTheorems": [
+        "Project.F64Dot2CheckedBits.Spec.dot2CheckedBits_source_real_error",
+        "Project.F64Dot2CheckedBits.Spec.dot2CheckedBits_wat_real_error"
+      ],
+      "complete": false
     }
   ]
 }
