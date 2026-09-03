@@ -7810,3 +7810,20 @@ Project.F64DotCheckedBits.Program Project.Runtime.Checks` passed 3,365 jobs.
 The case remains incomplete in the registry while the fuel-independent
 array-loop execution theorem and its absolute, gamma-times-mass, and
 conditioned-relative-error consequences are proved.
+
+## 2026-09-03: Reusable checked array-load theorem
+
+`Project.ProofKit.CheckedArrayGet.checkedGetCore_spec` proves the exact
+bounds-check and 64-bit element-load sequence emitted after an array pointer
+and runtime index have been staged in locals.  It is independent of a
+particular function layout: callers supply the two local indices, an arbitrary
+frame, and an arbitrary operand-stack tail.  A valid `UInt64Array.At` view and
+an in-range natural index yield the corresponding array word on top of that
+tail while preserving the complete store.
+
+Under exact Lean 4.34.0-rc2, the focused
+`Project.ProofKit.CheckedArrayGet` build passed 3,346 jobs and the complete
+`Project.ProofKit.LTGCheck` API inventory passed 3,369 jobs.  The generated
+runtime dot proof can therefore reuse one checked-load theorem for the seed
+loads and both per-iteration operand loads instead of duplicating memory-bound
+and address-normalization reasoning.

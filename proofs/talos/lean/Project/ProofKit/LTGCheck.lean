@@ -1,5 +1,6 @@
 import Project.ProofKit.Allocation
 import Project.ProofKit.Array
+import Project.ProofKit.CheckedArrayGet
 import Project.ProofKit.Control
 import Project.ProofKit.EncodedIndexDecoder
 import Project.ProofKit.FixedArrayAllocator
@@ -30,6 +31,8 @@ import Project.ProofKit.ScalarTransitionU64
 #check Project.ProofKit.ArrayFold.foldPrefix
 #check Project.ProofKit.ArrayFold.foldPrefix_size
 #check Project.ProofKit.ArrayFold.foldPrefix_succ
+#check Project.ProofKit.CheckedArrayGet.checkedGetCore
+#check Project.ProofKit.CheckedArrayGet.checkedGetCore_spec
 #check Project.ProofKit.EncodedIndexDecoder.program
 #check Project.ProofKit.EncodedIndexDecoder.program_spec
 #check Project.ProofKit.EncodedIndexDecoder.resultFrame
