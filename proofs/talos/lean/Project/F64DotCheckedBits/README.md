@@ -49,11 +49,14 @@ gamma-pole, and nonzero-exact-result assumptions explicitly.  Their axiom
 reports contain only `propext`, `Classical.choice`, and `Quot.sound`.  The
 compiler-generated WAT is now frozen as
 `Project.F64DotCheckedBits.Program`, and its entry and four runtime helpers
-build against the exact decoded Talos module.  The fuel-independent array-loop
-execution proof now reuses
-`Project.ProofKit.CheckedArrayGet.checkedGetCore_spec` for both operand loads
-at every index.  Completing that loop theorem and transferring these three
-numerical contracts are the active next checkpoint.
+build against the exact decoded Talos module.  The execution layer now proves
+fuel-independent, store-preserving behavior for both completed guard paths:
+unequal lengths return zero bits with status one, and equal empty arrays return
+zero bits with status zero.  It also proves the array-pair length and indexing
+bridges, the nonempty-prefix multiply-add recurrence, and states the generated
+loop's invariant and decreasing measure.  Completing the nonempty loop with
+the reusable checked-load theorem, then transferring the three numerical
+contracts, is the active next checkpoint.
 
 Native floating-point execution is used only for regression tests.  Accepted
 theorems use Talos's pure IEEE-754 model and WebAssembly semantics.

@@ -152,9 +152,13 @@ Talos model now proves the primitive absolute, gamma-times-mass, and
 condition-number contracts with only the standard logical axioms.  The actual
 generated WAT is now frozen and its runtime helpers are pinned to the shared
 definitions.  A reusable ProofKit theorem now proves the compiler's checked
-`Array UInt64` element-load fragment for arbitrary frames and stack tails.
-Proving the surrounding fuel-independent dot loop and transferring the three
-numerical contracts is next.
+`Array UInt64` element-load fragment for arbitrary frames and stack tails.  The
+generated entry's unequal-length and equal-empty paths now have exact,
+fuel-independent, store-preserving execution theorems.  Array-pair
+length/index bridges, the prefix multiply-add recurrence, and an explicit
+nonempty-loop invariant and measure also pass.  Proving that remaining loop
+with the checked-load theorem and transferring the three numerical contracts
+is next.
 
 Hash, manifest, release-receipt, and self-host bookkeeping are not gates for
 this branch's floating-point implementation.  Exact program bytes remain part
