@@ -149,8 +149,10 @@ zero for empty inputs, and otherwise seeds the accumulator with the first
 modeled product before a runtime multiply-add loop.  Focused Wasmtime, IR, and
 WAT checks cover its behavior and exact `2*n - 1` operation shape.  Its pure
 Talos model now proves the primitive absolute, gamma-times-mass, and
-condition-number contracts with only the standard logical axioms.  Freezing
-the actual generated WAT and proving its array-loop execution is next.
+condition-number contracts with only the standard logical axioms.  The actual
+generated WAT is now frozen and its runtime helpers are pinned to the shared
+definitions.  Proving its fuel-independent array-loop execution and
+transferring the three numerical contracts is next.
 
 Hash, manifest, release-receipt, and self-host bookkeeping are not gates for
 this branch's floating-point implementation.  Exact program bytes remain part

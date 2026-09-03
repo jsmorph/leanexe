@@ -208,6 +208,22 @@
         "Project.F64Dot2CheckedBits.Spec.dot2CheckedBits_wat_real_error"
       ],
       "complete": true
+    },
+    {
+      "name": "f64_dot_checked_bits",
+      "module": "LeanExe.Examples.Float64Bits",
+      "entry": "LeanExe.Examples.Float64Bits.dotCheckedBits",
+      "leanModule": "F64DotCheckedBits",
+      "specTarget": "Project.F64DotCheckedBits.Spec",
+      "behaviorTheorems": [
+        "Project.F64DotCheckedBits.Spec.dotCheckedBits_source_absolute_error",
+        "Project.F64DotCheckedBits.Spec.dotCheckedBits_source_gamma_error",
+        "Project.F64DotCheckedBits.Spec.dotCheckedBits_source_conditioned_relative_error",
+        "Project.F64DotCheckedBits.Spec.dotCheckedBits_wat_absolute_error",
+        "Project.F64DotCheckedBits.Spec.dotCheckedBits_wat_gamma_error",
+        "Project.F64DotCheckedBits.Spec.dotCheckedBits_wat_conditioned_relative_error"
+      ],
+      "complete": false
     }
   ]
 }

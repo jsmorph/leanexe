@@ -47,7 +47,11 @@ are:
 They state all finiteness, unit-bound, aggregate-headroom, normal-or-zero,
 gamma-pole, and nonzero-exact-result assumptions explicitly.  Their axiom
 reports contain only `propext`, `Classical.choice`, and `Quot.sound`.  The
-generated-WAT execution theorem is the active next checkpoint.
+compiler-generated WAT is now frozen as
+`Project.F64DotCheckedBits.Program`, and its entry and four runtime helpers
+build against the exact decoded Talos module.  The fuel-independent array-loop
+execution theorem and its transfer of these three numerical contracts are the
+active next checkpoint.
 
 Native floating-point execution is used only for regression tests.  Accepted
 theorems use Talos's pure IEEE-754 model and WebAssembly semantics.

@@ -7793,3 +7793,20 @@ The exact-Lean-4.34.0-rc2 build
 evaluation is absent.  The executable `Array`-to-list refinement remains an
 obligation of the generated-WAT execution layer rather than an assertion of
 the metadata association.
+
+## 2026-09-03: Runtime-length dot generated-WAT checkpoint
+
+The artifact preparation path compiled the runtime-length `dotCheckedBits`
+entry and translated its actual emitted WebAssembly into
+`Project.F64DotCheckedBits.Program`.  Function zero takes the two public array
+pointers, returns result bits and status as two i64 words, and contains the
+expected guarded length/empty cases plus the multiply-add loop.  Functions one
+through four are definitionally pinned to the shared allocation, reset,
+retain, and release implementations.
+
+Exact Lean 4.34.0-rc2 was confirmed immediately before the focused build.
+`lake -d proofs/talos/lean --no-ansi build
+Project.F64DotCheckedBits.Program Project.Runtime.Checks` passed 3,365 jobs.
+The case remains incomplete in the registry while the fuel-independent
+array-loop execution theorem and its absolute, gamma-times-mass, and
+conditioned-relative-error consequences are proved.
