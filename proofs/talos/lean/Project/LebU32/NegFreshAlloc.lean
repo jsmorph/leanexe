@@ -16,10 +16,10 @@ open Wasm Project.Common Project.Runtime
 
 def negFreshAllocationBody : Program :=
   match negProg.drop 58 with
-  | .iff _ _ body _ :: _ => body
+  | .iff _ _ body _ _ _ :: _ => body
   | _ => []
 
-def negFreshHeaderWrites : Program := negFreshAllocationBody.drop 29
+def negFreshHeaderWrites : Program := negFreshAllocationBody.drop 28
 
 def negFreshAllocationPrelude : Program := negFreshAllocationBody
 
@@ -137,7 +137,7 @@ theorem negFreshAllocationPreludeWp (env : HostEnv Unit)
     wp «module» negFreshAllocationPrelude Q st0
       (negFreshEntryFrame g0 v k e) env := by
   rw [show negFreshAllocationPrelude =
-      negFreshAllocationBody.take 29 ++ negFreshHeaderWrites from by
+      negFreshAllocationBody.take 28 ++ negFreshHeaderWrites from by
     simp only [negFreshAllocationPrelude, negFreshHeaderWrites,
       List.take_append_drop]]
   simp only [negFreshAllocationBody, negProg, List.drop, List.take,

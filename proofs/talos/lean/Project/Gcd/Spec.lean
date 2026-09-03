@@ -61,12 +61,9 @@ set_option maxHeartbeats 8000000 in
 @[proves Project.Gcd.Spec.GcdSpec]
 theorem gcd_correct : GcdSpec := by
   intro env initial a b
-  apply TerminatesWith.of_wp_entry
-    (f := ⟨[.i64, .i64],
-      [.i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64,
-       .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64],
-      func0, [.i64]⟩) rfl
+  apply TerminatesWith.of_wp_entry (f := func0Def) rfl
   intro initial'
+  unfold func0Def
   unfold func0
   wp_run
   apply wp_block_cons

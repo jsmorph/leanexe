@@ -7499,3 +7499,55 @@ twenty native artifacts.  This also lets the initial floating-point instruction
 profile advance without extending schema v2, provided the shared instruction
 datatype is decoupled from the frozen image codec or unsupported instructions are
 rejected explicitly before that datatype grows.
+
+## 2026-09-03: Pre-FP Talos `fda69ca` compatibility checkpoint in progress
+
+The proof workspace now pins exact Lean 4.34.0-rc2 at compiler commit
+`6a10ac8c22beadecabdbb0919c2b50214762f91d` and pre-floating-point Talos revision
+`fda69ca67a81ea4f1fa4e376bdc5861d9fe5479a`.  This migration remains an integer
+compatibility checkpoint.  No floating-point opcode, source intrinsic, artifact,
+execution proof, or numerical-error theorem has yet been implemented in LeanExe.
+
+The compatibility work transports Talos's typed `block`, `loop`, and `if`
+metadata through the existing weakest-precondition proofs, preserves function
+type indices, handles `local.tee` distinctly through the artifact translator,
+and regenerates the twenty tracked program caches against the new syntax.
+Exact-shape proofs were adjusted at changed instruction boundaries and normalized
+sentinel forms.  Large allocation paths were divided into staged `Func6Alloc`
+and memory-write lemmas, expensive proof limits were scoped locally, and common
+bit-vector discharge was centralized rather than duplicated across application
+proofs.
+
+Every large application proof root now passes under exact Lean 4.34.0-rc2.  The
+divided checks included `Project.ClobFindBest.Loop`; the group
+`Project.OrderBook.Spec`, `Project.Validate.Spec`, `Project.PushTwice.Spec`,
+`Project.SharedPair.Spec`, `Project.LebU32.Spec`, and `Project.Runtime.Checks`;
+the group `Project.ClobCancel.Spec`, `Project.ClobFindBest.Spec`, and
+`Project.ClobPostOnly.Spec`; and the `Project.ClobMatchFuel` boundaries
+`PartialBookAllocSearch`, `PartialBookControl`, `PartialBranch`, `FullBranch`,
+`Loop`, and `Spec`.  Separate builds of `Project.ClobLimit.Spec`,
+`Project.ClobMarket.Spec`, and `Project.ClobDepth.Spec` also pass.
+
+A following standalone-module sweep exposed two compatibility failures outside
+those application roots.  `Project.ProofKit.FixedArrayEqNode` was repaired and
+passed a 3,344-job focused build, and `Project.ProofKit.FixedArrayAllocator` was
+repaired and passed a 3,342-job focused build.  Its dependent
+`Project.ProofKit.FixedArrayAllocatorWindow` needed the same theorem-local
+recursion-depth scope and then passed a 3,345-job build.  The standalone
+`Project.ProofKit.LTGCheck` inventory passed with 3,366 jobs, the sharp Talos
+prelude/compatibility/translator-test group passed with 3,347 jobs, and
+`Project.PairFree.Probe` passed with 3,346 jobs after 605 seconds.  A final
+cache-complete `lake build Project` passed all 3,674 jobs.  The exact-artifact,
+semantic-conformance, identity, axiom, and release gates have not yet been
+claimed for this migration.
+
+All Lean and Lake checks in this compatibility pass were invoked through the
+repository's `tools/leanrun` entry point, serially with `LEAN_NUM_THREADS=1` and
+explicit timeouts.  This container could not create the runner's required user
+scope, and the user explicitly authorized direct Lean for the session.  An
+external untracked `systemd-run` shim and an external `LD_PRELOAD` process-path
+compatibility library allowed the repository command path to run; the required
+cgroup resource properties were therefore not established.  Neither helper is
+part of the repository, and no repository runner edit or bypass is part of this
+checkpoint.  No experimental self-hosted-emitter check was run during this
+migration work.

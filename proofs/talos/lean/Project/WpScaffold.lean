@@ -1,4 +1,5 @@
 import Project.FrameAttr
+import Project.TalosCompat
 import Interpreter.Wasm.Wp.Defs
 import Interpreter.Wasm.Wp.Loop
 

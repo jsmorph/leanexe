@@ -1,4 +1,4 @@
-import Interpreter.Wasm.Wp.Tactic
+import Project.TalosCompat
 
 /-!
 # Structured branch continuations
@@ -44,10 +44,12 @@ def doubleResultIffPost (m : Wasm.Module) (env : HostEnv Unit)
 
 theorem trueOneResultIff (m : Wasm.Module) (env : HostEnv Unit)
     (st : Store Unit) (guard : Locals) (body els rest : Wasm.Program)
+    {paramTypes resultTypes : List ValueType}
     (Q : Assertion Unit) (hValues : guard.values = [.i32 1])
     (hBody : wp m body (oneResultIffPost m env rest Q) st
       { guard with values := [] } env) :
-    wp m (.iff 0 1 body els :: rest) Q st guard env := by
+    wp m (.iff 0 1 body els paramTypes resultTypes :: rest) Q st guard env := by
+  rw [wp_iff_control_types]
   apply wp_iff_cons hValues
   rw [if_pos (by decide)]
   refine wp.imp hBody ?_

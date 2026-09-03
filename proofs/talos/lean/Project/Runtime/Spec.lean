@@ -20,7 +20,9 @@ increments it in place, advances the retain counter, and returns the
 pointer unchanged. -/
 theorem retain_spec (env : HostEnv Unit) (m : Module) (id : Nat)
     (st4 : Store Unit) (p c r3 : UInt64)
-    (hf : m.funcs[id - m.imports.length]? = some retainFuncDef)
+    {typeIdx : Option Nat}
+    (hf : m.funcs[id - m.imports.length]? =
+      some { retainFuncDef with typeIdx := typeIdx })
     (hImp : m.imports[id]? = none)
     (hp48 : 48 ≤ p.toNat)
     (hp32 : p.toNat < 4294967296)
@@ -107,7 +109,9 @@ theorem retain_spec (env : HostEnv Unit) (m : Module) (id : Nat)
 /-- Releasing the null pointer returns immediately and changes nothing. -/
 theorem release_null (env : HostEnv Unit) (m : Module) (id : Nat)
     (st4 : Store Unit)
-    (hf : m.funcs[id - m.imports.length]? = some (releaseFuncDef id))
+    {typeIdx : Option Nat}
+    (hf : m.funcs[id - m.imports.length]? =
+      some { releaseFuncDef id with typeIdx := typeIdx })
     (hImp : m.imports[id]? = none) :
     TerminatesWith (m := m) (id := id) (initial := st4) (env := env)
       [.i64 0]
@@ -131,7 +135,9 @@ in place and advances the release counter; nothing is freed. -/
 theorem release_decrements (env : HostEnv Unit) (m : Module) (id : Nat)
     (st4 : Store Unit)
     (p c c4 : UInt64)
-    (hf : m.funcs[id - m.imports.length]? = some (releaseFuncDef id))
+    {typeIdx : Option Nat}
+    (hf : m.funcs[id - m.imports.length]? =
+      some { releaseFuncDef id with typeIdx := typeIdx })
     (hImp : m.imports[id]? = none)
     (hp48 : 48 ≤ p.toNat)
     (hp32 : p.toNat < 4294967296)
@@ -233,7 +239,9 @@ counters advance. -/
 theorem release_frees_fresh_raw (env : HostEnv Unit) (m : Module) (id : Nat)
     (st4 : Store Unit)
     (p g1v c4 c5 : UInt64)
-    (hf : m.funcs[id - m.imports.length]? = some (releaseFuncDef id))
+    {typeIdx : Option Nat}
+    (hf : m.funcs[id - m.imports.length]? =
+      some { releaseFuncDef id with typeIdx := typeIdx })
     (hImp : m.imports[id]? = none)
     (hp48 : 48 ≤ p.toNat)
     (hp32 : p.toNat < 4294967296)

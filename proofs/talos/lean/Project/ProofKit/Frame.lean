@@ -1,4 +1,5 @@
 import Interpreter.Wasm.Locals
+import Project.TalosCompat
 
 namespace Project.ProofKit.Frame
 

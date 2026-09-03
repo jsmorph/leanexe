@@ -21,13 +21,13 @@ def entryFrame (book : UInt64) (order : Project.Clob.OrderL) : Locals :=
 
 private def outerBranch (takeValid : Bool) : Wasm.Program :=
   match (func21[30]? : Option Wasm.Instruction) with
-  | some (Wasm.Instruction.iff _ _ valid invalid) =>
+  | some (Wasm.Instruction.iff _ _ valid invalid _ _) =>
       if takeValid then valid else invalid
   | _ => []
 
 private def validResultBranch (takeFilled : Bool) : Wasm.Program :=
   match ((outerBranch true)[43]? : Option Wasm.Instruction) with
-  | some (Wasm.Instruction.iff _ _ filled residual) =>
+  | some (Wasm.Instruction.iff _ _ filled residual _ _) =>
       if takeFilled then filled else residual
   | _ => []
 
@@ -77,7 +77,7 @@ def entryProg : Wasm.Program :=
   .localGet 13,
   .constI64 1,
   .eqI64,
-  .iff 0 1 [.constI64 1] [.constI64 0],
+  .iff 0 1 [.constI64 1] [.constI64 0] [] [.i64],
   .constI64 0,
   .eqI64,
   .eqz
@@ -129,10 +129,10 @@ def validConditionProg : Wasm.Program :=
   .localGet 30,
   .constI64 0,
   .eqI64,
-  .iff 0 1 [.constI64 1] [.constI64 0],
+  .iff 0 1 [.constI64 1] [.constI64 0] [] [.i64],
   .constI64 1,
   .eqI64,
-  .iff 0 1 [.constI64 1] [.constI64 0],
+  .iff 0 1 [.constI64 1] [.constI64 0] [] [.i64],
   .constI64 0,
   .eqI64,
   .eqz
@@ -347,8 +347,7 @@ def residualAllocBumpProg : Wasm.Program :=
     .addI64,
     .localGet 53,
     .addI64,
-    .localSet 56,
-    .localGet 56,
+    .localTee 56,
     .globalGet 0,
     .ltUI64,
     .iff 0 0 [

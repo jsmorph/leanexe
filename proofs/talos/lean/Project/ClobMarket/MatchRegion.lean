@@ -19,7 +19,7 @@ def MatchDomain (id : Nat) : Prop :=
 
 set_option maxRecDepth 1048576 in
 theorem matchShift : Shift Project.ClobLimit.«module»
-    Project.ClobMarket.«module» id MatchDomain := by
+    Project.ClobMarket.«module» id id MatchDomain := by
   refine
     { sourceImports := rfl
       targetImports := rfl

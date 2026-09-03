@@ -1,4 +1,4 @@
-import CodeLib
+import Project.TalosPrelude
 import Project.Artifact.Binary.Validate
 
 namespace Wasm.Binary
@@ -13,9 +13,12 @@ def FuncType.toTalos (type : FuncType) : Wasm.FuncType :=
 
 namespace Translation
 
+def resultTypes : BlockType → List Wasm.ValueType
+  | .empty => []
+  | .value type => [type.toTalos]
+
 def resultArity : BlockType → Nat
-  | .empty => 0
-  | .value _ => 1
+  | type => (resultTypes type).length
 
 end Translation
 
@@ -23,21 +26,26 @@ mutual
   def Instr.toTalos : Instr → List Wasm.Instruction
     | .unreachable => [.unreachable]
     | .drop => [.drop]
-    | .block type body => [.block 0 (Translation.resultArity type) (Instr.listToTalos body)]
-    | .loop type body => [.loop 0 (Translation.resultArity type) (Instr.listToTalos body)]
+    | .block type body =>
+        [.block 0 (Translation.resultArity type) (Instr.listToTalos body)
+          [] (Translation.resultTypes type)]
+    | .loop type body =>
+        [.loop 0 (Translation.resultArity type) (Instr.listToTalos body)
+          [] (Translation.resultTypes type)]
     | .iff type thenBody elseBody =>
         let translatedElse :=
           match elseBody with
           | none => []
           | some body => Instr.listToTalos body
-        [.iff 0 (Translation.resultArity type) (Instr.listToTalos thenBody) translatedElse]
+        [.iff 0 (Translation.resultArity type) (Instr.listToTalos thenBody) translatedElse
+          [] (Translation.resultTypes type)]
     | .br depth => [.br depth.toNat]
     | .brIf depth => [.br_if depth.toNat]
     | .ret => [.ret]
     | .call index => [.call index.toNat]
     | .localGet index => [.localGet index.toNat]
     | .localSet index => [.localSet index.toNat]
-    | .localTee index => [.localSet index.toNat, .localGet index.toNat]
+    | .localTee index => [.localTee index.toNat]
     | .globalGet index => [.globalGet index.toNat]
     | .globalSet index => [.globalSet index.toNat]
     | .i32Const value => [.const (UInt32.ofInt value)]
@@ -94,7 +102,8 @@ def functionToTalos (raw : RawModule) (typeIndex : UInt32)
   { params := type.params.map ValType.toTalos
     locals := expandLocals code.locals
     body := Instr.listToTalos code.body
-    results := type.results.map ValType.toTalos }
+    results := type.results.map ValType.toTalos
+    typeIdx := some typeIndex.toNat }
 
 def functions (raw : RawModule) : List Wasm.Function :=
   (raw.functionTypeIndices.zip raw.codes).map fun pair =>

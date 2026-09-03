@@ -226,7 +226,8 @@ function dependencyClosure(packageId, descriptors, visiting = new Set(), found =
 function validateSourceImports(descriptor, allowedModules) {
   for (const [moduleName, source] of descriptor.sourceModules) {
     for (const imported of imports(source)) {
-      const dependency = imported === "CodeLib" || imported.startsWith("CodeLib.") ||
+      const dependency = imported === "Project.TalosPrelude" ||
+        imported === "Project.TalosCompat" || imported.startsWith("CodeLib.") ||
         imported.startsWith("Init.") || imported.startsWith("Std.") ||
         imported.startsWith("Mathlib.") || imported === "Interpreter" ||
         imported.startsWith("Interpreter.");

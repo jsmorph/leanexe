@@ -24,7 +24,7 @@ def partialBookSuccessProg (updateProg : Wasm.Program) : Wasm.Program :=
 
 def partialBookBranchProg (updateProg : Wasm.Program) : Wasm.Program :=
   InternalPartialBookPrepare.partialBookPrefixProg ++
-    [.iff 0 1 (partialBookSuccessProg updateProg) [.unreachable]]
+    [.iff 0 1 (partialBookSuccessProg updateProg) [.unreachable] [] [.i64]]
 
 theorem partialBookSuccessProg_spec
     (env : HostEnv Unit) (st : Store Unit) (base : Locals)
@@ -94,7 +94,8 @@ theorem partialBookBranchProg_spec
   apply InternalPartialBookPrepare.partialBookPrefixProg_spec env st base book
     remaining os i hParams hLocals hValues hBookLocal hIndexLocal
     hRemainingLocal hi hOrdersLength64 hOrders Q
-      (.iff 0 1 (partialBookSuccessProg updateProg) [.unreachable] :: rest)
+      (.iff 0 1 (partialBookSuccessProg updateProg) [.unreachable] [] [.i64] ::
+        rest)
   apply Project.BranchPost.trueOneResultIff «module» env st
   · rfl
   apply partialBookSuccessProg_spec env st base book remaining os i hParams

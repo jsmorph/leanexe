@@ -136,8 +136,7 @@ def partialBookBumpProg : Wasm.Program :=
     .addI64,
     .localGet 69,
     .addI64,
-    .localSet 72,
-    .localGet 72,
+    .localTee 72,
     .globalGet 0,
     .ltUI64,
     .iff 0 0 [
@@ -162,7 +161,7 @@ def partialBookBumpProg : Wasm.Program :=
       .subI64,
       .wrapI64,
       .memoryGrow,
-      .const 4294967295,
+      .const (-1),
       .eq,
       .iff 0 0 [
         .unreachable

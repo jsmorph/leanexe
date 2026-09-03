@@ -186,6 +186,7 @@ theorem foundProg_spec
   apply FoundPrepare.foundPrepareProg_spec env st owner source price qty
     levels i hLength hIndex hOwned.2
   simp only [FoundPrepare.prepareFrame, List.cons_append, List.nil_append]
+  rw [wp_iff_control_types]
   refine wp_iff_cons rfl ?_
   rw [if_pos (by simp)]
   rw [Entry.foundAllocProg_decomposition]

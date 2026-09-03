@@ -590,8 +590,7 @@ private def boxPhase2 : Wasm.Program :=
     .addI64,
     .localGet 11,
     .addI64,
-    .localSet 14,
-    .localGet 14,
+    .localTee 14,
     .globalGet 0,
     .ltUI64,
     .iff 0 0 [
@@ -1056,8 +1055,10 @@ private theorem boxPhase2_spec (env : HostEnv Unit) (st1 : Store Unit)
       simp [List.getElem?_set]
       exact hg3
     rw [h6g5, h6g4]
-    have hs4 : (g4 + 1 + 1 - g4 : UInt64) = 2 := by bv_decide
-    have hs5 : (g5 + 1 + 1 - g5 : UInt64) = 2 := by bv_decide
+    have hs4 : (g4 + 1 + 1 - g4 : UInt64) = 2 :=
+      u64_add_two_sub_self g4
+    have hs5 : (g5 + 1 + 1 - g5 : UInt64) = 2 :=
+      u64_add_two_sub_self g5
     try simp only [hs4, hs5]
     try simp only [h6g1, h6g2, h6g3, h6g4, h6g5]
     refine ⟨?_, trivial, trivial, trivial, trivial, trivial⟩

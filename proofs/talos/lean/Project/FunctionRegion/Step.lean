@@ -35,6 +35,7 @@ theorem execOne_succ
   cases hPortable with
   | localGet => simp only [renameInstruction, execOne.eq_def]
   | localSet => simp only [renameInstruction, execOne.eq_def]
+  | localTee => simp only [renameInstruction, execOne.eq_def]
   | globalGet => simp only [renameInstruction, execOne.eq_def]
   | globalSet => simp only [renameInstruction, execOne.eq_def]
   | const32 => simp only [renameInstruction, execOne.eq_def]
@@ -58,15 +59,17 @@ theorem execOne_succ
       simp only [renameInstruction, execOne.eq_def, Module.memIs64]
       rw [hMemory]
   | memoryGrow =>
-      simp only [renameInstruction, execOne.eq_def, Module.memoryCap]
-      rw [hMemory]
+      have hCap : st.memoryCap target 0 = st.memoryCap source 0 := by
+        simp [Store.memoryCap, Module.memoryCap, hMemory]
+      simp only [renameInstruction, execOne.eq_def]
+      rw [hCap]
   | unreachable => simp only [renameInstruction, execOne.eq_def]
   | br => simp only [renameInstruction, execOne.eq_def]
   | brIf => simp only [renameInstruction, execOne.eq_def]
-  | block params results body hBody =>
+  | block params results body paramTypes resultTypes hBody =>
       simp only [renameInstruction, execOne.eq_def]
       rw [hExec env st s body hBody]
-  | loop params results body hBody =>
+  | loop params results body paramTypes resultTypes hBody =>
       simp only [renameInstruction, execOne_loop_succ]
       rw [hExec env st s body hBody]
       generalize hResult : exec fuel source st s body env = result
@@ -77,10 +80,11 @@ theorem execOne_succ
               exact hOne env st'
                 { s' with
                   values := s'.values.take params ++ s.values.drop params }
-                (.loop params results body) (.loop params results body hBody)
+                (.loop params results body paramTypes resultTypes)
+                (.loop params results body paramTypes resultTypes hBody)
           | succ label => rfl
       | _ => rfl
-  | branch params results thenBody elseBody hThen hElse =>
+  | branch params results thenBody elseBody paramTypes resultTypes hThen hElse =>
       simp only [renameInstruction, execOne.eq_def]
       cases hValues : s.values with
       | nil => rfl

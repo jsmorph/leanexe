@@ -30,7 +30,7 @@ theorem trueOneResultIff (env : HostEnv Unit) (st : Store Unit)
     (hValues : guard.values = [.i32 1])
     (hBody : wp «module» body (oneResultIffPost env rest Q) st
       { guard with values := [] } env) :
-    wp «module» (.iff 0 1 body els :: rest) Q st guard env :=
+    wp «module» (.iff 0 1 body els [] [.i64] :: rest) Q st guard env :=
   Project.BranchPost.trueOneResultIff «module» env st guard body els rest Q
     hValues hBody
 

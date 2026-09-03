@@ -21,8 +21,7 @@ def bookAllocBumpProg : Wasm.Program :=
     .addI64,
     .localGet 76,
     .addI64,
-    .localSet 79,
-    .localGet 79,
+    .localTee 79,
     .globalGet 0,
     .ltUI64,
     .iff 0 0 [
@@ -47,7 +46,7 @@ def bookAllocBumpProg : Wasm.Program :=
       .subI64,
       .wrapI64,
       .memoryGrow,
-      .const (4294967295 : UInt32),
+      .const (-1),
       .eq,
       .iff 0 0 [
         .unreachable

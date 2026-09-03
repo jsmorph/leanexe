@@ -77,12 +77,8 @@ private theorem buildsPhase2 (env : HostEnv Unit) (st1 st2 : Store Unit)
     (sP : Locals)
     (hsP : sP = { vFrame 0 ptr (UInt64.ofNat bytes.length) 33 ptr (UInt64.ofNat bytes.length) 0 (g0 + 48) (g0 + 48) (UInt64.ofNat bytes.length + 1) 0 0 0 ptr (UInt64.ofNat bytes.length) 33 (g0 + 48) (UInt64.ofNat bytes.length + 1) (UInt64.ofNat bytes.length) 56 0 0 (g0 + 48 + allocSizeU (UInt64.ofNat bytes.length)) ((g0 + 48 + allocSizeU (UInt64.ofNat bytes.length) - 1) / 65536 + 1) (g0 + 48) with values := [Value.i32 0] }) :
     wp «module» pairAfterProg POST
-      { globals := st2.globals,
-        mem := st2.mem.write8
-          (UInt32.ofNat ((g0.toNat + 48 + bytes.length) % 4294967296)) 33,
-        extraMems := st2.extraMems, dataSegments := st2.dataSegments,
-        tables := st2.tables, elementSegments := st2.elementSegments,
-        exns := st2.exns, gcHeap := st2.gcHeap, host := st2.host }
+      { st2 with mem := (st2.mem.write8
+          (UInt32.ofNat ((g0.toNat + 48 + bytes.length) % 4294967296)) 33) }
       sP env := by
   subst hsP
   rw [pairAfter_split]

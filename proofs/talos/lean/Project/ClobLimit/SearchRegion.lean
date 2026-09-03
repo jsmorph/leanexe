@@ -26,8 +26,12 @@ def searchRename : Nat → Nat
   | 9 => 14
   | id => id
 
+/-- The reused functions' nominal types occupy the corresponding embedded
+positions in the target module's distinct type-index space. -/
+def searchTypeRename : Nat → Nat := searchRename
+
 theorem searchShift : Shift Project.ClobMatchFuel.«module»
-    Project.ClobLimit.«module» searchRename SearchDomain := by
+    Project.ClobLimit.«module» searchRename searchTypeRename SearchDomain := by
   refine
     { sourceImports := rfl
       targetImports := rfl

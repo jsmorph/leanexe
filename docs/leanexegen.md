@@ -193,7 +193,7 @@ Verification validates the complete file set and every digest, recomputes every 
 tools/leanexegen verify myprogram.proof
 ```
 
-Transient proof packages depend on the pinned repository package at `proofs/talos/lean`.  They set Lake 4.31.0's root-workspace `packagesDir` layout option to that proof workspace's existing `.lake/packages`, which reuses the pinned dependency checkouts.  A diagnostic transient package used this directory and completed a 3,014-job build through `tools/leanrun`; an earlier incomplete clone without the setting consumed 5.5 GB before removal.
+Transient proof packages depend on the pinned repository package at `proofs/talos/lean`.  They set Lake's root-workspace `packagesDir` layout option to that proof workspace's existing `.lake/packages`, which reuses the pinned dependency checkouts.  The current workspace uses exact Lean 4.34.0-rc2 and pre-floating-point Talos revision `fda69ca67a81ea4f1fa4e376bdc5861d9fe5479a`.  A historical diagnostic transient package used this directory and completed a 3,014-job build through `tools/leanrun`; an earlier incomplete clone without the setting consumed 5.5 GB before removal.
 
 ## Acceptance evidence
 
@@ -205,7 +205,7 @@ The controlled prime-factor reproof on 2026-08-03 retained the 1,348-byte artifa
 
 ## Trust boundary and limitations
 
-The final theorem states the fixed formal property of the validated Talos translation of one embedded WASM byte sequence.  The sidecar binds that sequence to SHA-256, byte length, theorem names, task-source hashes, task reports, Lean 4.31.0, the Talos revision, the proof-workspace manifest, and the verifier-source digest.  The declaration audit rejects `sorryAx` and axioms outside the artifact gate's configured allowance.
+The final theorem states the fixed formal property of the validated Talos translation of one embedded WASM byte sequence.  A newly generated sidecar binds that sequence to SHA-256, byte length, theorem names, task-source hashes, task reports, exact Lean 4.34.0-rc2, Talos revision `fda69ca67a81ea4f1fa4e376bdc5861d9fe5479a`, the proof-workspace manifest, and the verifier-source digest; historical sidecars retain their recorded tool pins.  The declaration audit rejects `sorryAx` and axioms outside the artifact gate's configured allowance.
 
 Every successful generation prints four warnings: Codex interpreted the prose, no theorem connects Source to the formal specification, the theorem covers one exact digest under pinned semantics, and Codex generation and compilation remain outside the artifact proof.  These warnings also appear in `package.json`.  `-s` suppresses standard output but does not suppress warnings on standard error.
 

@@ -36,7 +36,7 @@ private theorem exec_eq_of_one
             exact restIH nextStore nextLocals hRest
 
 private theorem run_eq_of_exec
-    (hShift : Shift source target rename domain)
+    (hShift : Shift source target rename typeRename domain)
     (hExec : ∀ (env : HostEnv α) st s program,
       PortableProgram domain program →
       exec fuel target st s (renameProgram rename program) env =
@@ -66,7 +66,8 @@ private theorem run_eq_of_exec
     exact (portableProgram_noReturnCall hPortable callId callStore callValues
       hResult).elim
 
-private theorem semantics_eq_aux (hShift : Shift source target rename domain) :
+private theorem semantics_eq_aux
+    (hShift : Shift source target rename typeRename domain) :
     ∀ fuel,
       (∀ (env : HostEnv α) st s inst,
         PortableInstruction domain inst →
@@ -97,14 +98,14 @@ private theorem semantics_eq_aux (hShift : Shift source target rename domain) :
       have hExec := exec_eq_of_one hOne
       exact ⟨hOne, hExec, run_eq_of_exec hShift hExec⟩
 
-theorem run_eq (hShift : Shift source target rename domain) (id : Nat)
+theorem run_eq (hShift : Shift source target rename typeRename domain) (id : Nat)
     (hDomain : domain id) :
     run fuel target (rename id) st args env =
       run fuel source id st args env :=
   (semantics_eq_aux hShift fuel).2.2 env st args id hDomain
 
 theorem terminatesWith
-    (hShift : Shift source target rename domain) (id : Nat)
+    (hShift : Shift source target rename typeRename domain) (id : Nat)
     (hDomain : domain id)
     (hSource : TerminatesWith env source id st args post) :
     TerminatesWith env target (rename id) st args post := by

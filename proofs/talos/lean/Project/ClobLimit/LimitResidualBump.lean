@@ -59,6 +59,7 @@ theorem residualAllocSearchProg_empty
     rw [hFrame]
     exact hNext
 
+set_option maxHeartbeats 8000000 in
 set_option Elab.async false in
 theorem residualAllocBumpProg_spec
     (env : HostEnv Unit) (st : Store Unit) (base : Locals)

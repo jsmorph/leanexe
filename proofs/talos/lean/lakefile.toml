@@ -6,7 +6,7 @@ defaultTargets = ["Project"]
 name = "CodeLib"
 git = "https://github.com/cajal-technologies/talos"
 subDir = "codelib"
-rev = "bb3277e21c9786e3133d5c1601e34ebdc0bea4df"
+rev = "fda69ca67a81ea4f1fa4e376bdc5861d9fe5479a"
 
 [[require]]
 name = "leanexe"

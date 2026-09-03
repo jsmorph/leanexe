@@ -22,17 +22,28 @@ The [Talos proof inventory](../proofs/talos/README.md) names each source-driven 
 
 ## Release state
 
-`proofs/artifacts/release.json` is a draft record for release-input digest `f57e509b9e4967329d7c0dd63e2f4041926a66877af6b9c98e5c4c99ad562589` at source revision `08bdaa78a3efa2badc5922a0250cc4c9710a8a29`.  The self-hosted-emitter changes preserve all twenty registered artifact identities, but they change the release inputs.  The 2026-08-26 aggregate artifact-proof and semantic-conformance receipts therefore remain historical evidence for the previous digest rather than current release receipts.  The refreshed record correctly leaves both warm gates and the cold-checkout gate pending.
+The proof workspace and `proofs/artifacts/release.json` now record exact Lean
+4.34.0-rc2, pre-floating-point Talos revision
+`fda69ca67a81ea4f1fa4e376bdc5861d9fe5479a`, and the migrated release-input
+identity.  The release record remains a draft: its aggregate artifact-proof and
+semantic-conformance receipts are pending, and `sourceRevision` is still null.
+The successful 2026-08-26 receipts remain historical evidence for their earlier
+digest rather than current release receipts.
 
-The draft makes no release-readiness claim, and `tools/artifact-release.js check-ready` continues to fail as designed.  The aggregate proof and conformance gates must first produce receipts for the current digest; a later cold-checkout run must repeat both at the recorded revision before the record can become ready.
+The draft makes no release-readiness claim, and
+`tools/artifact-release.js check-ready` continues to fail as designed.  The
+aggregate proof and conformance
+gates must first produce receipts for the migrated inputs; an immutable source
+revision must then be recorded, and a later cold-checkout run must repeat both at
+that revision before the record can become ready.
 
-Lean 4.31.0 accepts the archived kernel-unsoundness reproduction referenced by the
-historical release record.  The proof workspace temporarily retains that pin while
-the `talosfp` compiler root uses exact Lean 4.34.0-rc2; this mixed state is not new
-proof or release evidence.  The owner accepted the older toolchain defect after
-the recorded narrow lexical audit of the artifact proof sources and two local
-LeanExe imports.  The audit does not repair the kernel or cover transitive
-dependencies.
+Lean 4.31.0 accepts the archived kernel-unsoundness reproduction preserved by
+the release record.  The owner accepted that older toolchain defect after the
+recorded narrow lexical audit of the artifact proof sources and two local
+LeanExe imports.  The audit does not repair the historical kernel or cover
+transitive dependencies.  The current record separately identifies exact Lean
+4.34.0-rc2 and records that the reproduction is rejected there; the current
+aggregate proof receipts are nevertheless still pending.
 
 ## Known limits
 
@@ -44,7 +55,7 @@ dependencies.
 | Strings | Lean `String` is not a supported runtime value.  `LeanExe.AsciiString` and `ByteArray` provide the supported textual representations. |
 | Heap updates | Generated programs may mutate freshly allocated or uniquely owned heap objects internally.  Public array inputs are borrowed, so an operation returning a changed array allocates a distinct result rather than overwriting the caller's array. |
 | Compiler correctness | Exact-artifact proofs establish behavior directly from bytes.  Compiler theorems currently support selected emitted regions and proof-generation evidence rather than a complete source-to-artifact refinement theorem. |
-| Talos conformance | The pinned Talos interpreter has six known failures for imported-memory limit handling in `memory_grow.wast`.  The artifact profile forbids imports, and the conformance gate reports the exact rows as an upstream warning. |
+| Talos conformance | The last accepted receipt has six known failures for imported-memory limit handling in `memory_grow.wast`.  The artifact profile forbids imports, and the historical conformance gate reports the exact rows as an upstream warning.  The migrated `fda69ca` receipt is pending. |
 | Proof generation | Generation time remains variable and can exceed thirty minutes for structured loops.  Proof size, retrieval, revisions, checked abstraction use, and transfer across demos remain relevant measurements. |
 
 ## Immediate work

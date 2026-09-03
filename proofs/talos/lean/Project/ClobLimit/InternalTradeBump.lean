@@ -137,8 +137,7 @@ def tradeBumpProg : Wasm.Program :=
     .addI64,
     .localGet 68,
     .addI64,
-    .localSet 71,
-    .localGet 71,
+    .localTee 71,
     .globalGet 0,
     .ltUI64,
     .iff 0 0 [
@@ -163,7 +162,7 @@ def tradeBumpProg : Wasm.Program :=
       .subI64,
       .wrapI64,
       .memoryGrow,
-      .const 4294967295,
+      .const (-1),
       .eq,
       .iff 0 0 [
         .unreachable

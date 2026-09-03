@@ -23,7 +23,7 @@ def entryFrame (book : UInt64) (order : OrderL) : Locals :=
 
 def outerBranch (takeValid : Bool) : Wasm.Program :=
   match (func21[30]? : Option Wasm.Instruction) with
-  | some (Wasm.Instruction.iff _ _ valid invalid) =>
+  | some (Wasm.Instruction.iff _ _ valid invalid _ _) =>
       if takeValid then valid else invalid
   | _ => []
 
@@ -78,7 +78,7 @@ def entryProg : Wasm.Program :=
   .localGet 13,
   .constI64 1,
   .eqI64,
-  .iff 0 1 [.constI64 1] [.constI64 0],
+  .iff 0 1 [.constI64 1] [.constI64 0] [] [.i64],
   .constI64 0,
   .eqI64,
   .eqz
@@ -92,7 +92,7 @@ def bidPriceProg : Wasm.Program :=
   .localSet 15,
   .localGet 3,
   .localSet 16,
-  .constI64 0xFFFFFFFFFFFFFFFF,
+  .constI64 (-1),
   .localSet 17,
   .localGet 5,
   .localSet 18
@@ -117,10 +117,10 @@ def priceProg : Wasm.Program :=
   .localGet 3,
   .constI64 0,
   .eqI64,
-  .iff 0 1 [.constI64 1] [.constI64 0],
+  .iff 0 1 [.constI64 1] [.constI64 0] [] [.i64],
   .constI64 1,
   .eqI64,
-  .iff 0 1 [.constI64 1] [.constI64 0],
+  .iff 0 1 [.constI64 1] [.constI64 0] [] [.i64],
   .constI64 0,
   .eqI64,
   .eqz,
