@@ -223,7 +223,7 @@
         "Project.F64DotCheckedBits.Spec.dotCheckedBits_wat_gamma_error",
         "Project.F64DotCheckedBits.Spec.dotCheckedBits_wat_conditioned_relative_error"
       ],
-      "complete": false
+      "complete": true
     }
   ]
 }
