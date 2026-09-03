@@ -227,7 +227,8 @@ Wasmtime.  Its actual emitted WAT is now frozen in
 `Project.F64Dot2CheckedBits.Program` and passes a focused exact-toolchain build;
 the raw-bit guard bridge now passes and exposes finiteness plus the real
 half-magnitude bound.  The branch proof and accumulated-error corollary are in
-progress.
+progress; the source-facing total contract already proves the accepted
+`3 * 2^-52` result and the exact rejected status/zero result.
 
 - [x] Migrate the native compiler to exact Lean 4.34.0-rc2 and preserve every
       registered artifact byte.  The scoped legacy `do` option on the frozen GCD
