@@ -328,30 +328,32 @@
   },
   "artifactProof": {
     "command": "tools/artifact-proof.js check-all",
-    "date": null,
-    "result": "pending",
+    "date": "2026-09-02",
+    "result": "passed",
     "artifactCount": 20,
-    "releaseInputSha256": null
+    "releaseInputSha256": "f57e509b9e4967329d7c0dd63e2f4041926a66877af6b9c98e5c4c99ad562589"
   },
   "semanticConformance": {
     "command": "tools/artifact-conformance.js check",
     "configSha256": "eb909480a3c04357f59aeb6e4c685bee88032a673003572990fb969bcf7524cf",
-    "releaseInputSha256": null,
-    "date": null,
-    "result": "pending",
+    "releaseInputSha256": "f57e509b9e4967329d7c0dd63e2f4041926a66877af6b9c98e5c4c99ad562589",
+    "date": "2026-09-02",
+    "result": "passed-with-warning",
     "officialFileCount": 25,
     "officialValidatorCases": 15,
     "talos": {
-      "pass": 0,
-      "fail": 0,
-      "skip": 0,
+      "pass": 3853,
+      "fail": 6,
+      "skip": 627,
       "cascade": 0,
       "decodeError": 0,
       "interpreterError": 0,
       "outOfFuel": 0
     },
-    "wasmtimeFilesPassed": 0,
-    "warnings": []
+    "wasmtimeFilesPassed": 25,
+    "warnings": [
+      "talos-imported-memory-instance"
+    ]
   },
   "coldCheckout": {
     "status": "pending",
@@ -361,8 +363,6 @@
     "command": "tools/artifact-release.js check-cold <revision>"
   },
   "blockers": [
-    "The aggregate artifact proof has not passed under the selected toolchain.",
-    "The conformance gate has not passed under the selected toolchain.",
     "The release gates have not passed from a cold checkout of the recorded source revision."
   ]
 }

@@ -7431,3 +7431,11 @@ The next measured increment has two general interfaces.  Each version-two semant
 - [x] Generate checked tail equations for every current version-two direct semantic recipe.
 - [x] Add the four cross-program frame declarations and LTG metadata.
 - [x] Evaluate use, proof structure, and proof time on fixed development and cross-program artifacts.
+
+## 2026-09-02: Self-host warm release gates
+
+The aggregate exact-artifact driver passed all twenty registered identities, embedded-byte comparisons, translation theorem packages, behavioral specifications, axiom audits, and the aggregate declaration check.  Its receipt binds release-input digest `f57e509b9e4967329d7c0dd63e2f4041926a66877af6b9c98e5c4c99ad562589` and records twenty accepted artifacts.
+
+The matching semantic-conformance driver classified all fifteen configured invalid or malformed modules exactly.  Talos recorded 3,853 passes, the six documented `memory_grow.wast` imported-memory failures, 627 skips, and no cascade, decoder, interpreter, or fuel failures; Wasmtime passed all twenty-five selected execution files.  The resulting receipt has status `passed-with-warning` and names only `talos-imported-memory-instance`.
+
+Both maintained JavaScript drivers launched their Lean and Lake children directly under the owner's explicit session-only exception instead of using the repository's normal `tools/leanrun` resource scope.  Refresh consumed the matching content receipts and reduced `proofs/artifacts/release.json` to the single cold-checkout blocker.  No cold run was attempted because it must exercise the canonical runner policy that this session excludes.
