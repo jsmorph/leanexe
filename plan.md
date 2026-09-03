@@ -4,7 +4,7 @@ This file is the only active project work queue.  The compiler, execution suite,
 
 ## 1. Reconcile current documentation and release evidence
 
-The documentation describes one implementation and assigns each changing fact to one source of truth.  The release record carries input digest `5de9678970b1a9b74d50c1407457423a7fa6eabd3f430f56cfdc0e407af2b7e5`, source revision `0e0d752904fc90dee3ef3511ffab91f3d358c1ed`, and successful warm-gate receipts dated 2026-08-26.  Cold verification remains deferred and does not form part of the current work.
+The documentation describes one implementation and assigns each changing fact to one source of truth.  The release record carries input digest `f57e509b9e4967329d7c0dd63e2f4041926a66877af6b9c98e5c4c99ad562589`, source revision `08bdaa78a3efa2badc5922a0250cc4c9710a8a29`, and successful warm-gate receipts dated 2026-09-02.  Cold verification remains deferred and does not form part of the current work.
 
 - [x] Consolidate navigation, language, compiler, artifact-proof, annotation, and proof-guidance documents.
 - [x] Remove superseded plans and experiment reports after migrating current facts and links.
@@ -16,7 +16,7 @@ The documentation describes one implementation and assigns each changing fact to
 - [ ] Complete the cold-checkout gate when cold verification resumes.
 - [ ] Require `tools/artifact-release.js check-ready` to pass before describing the release as ready.
 
-The 2026-08-26 warm artifact gate passed all twenty packages.  The conformance gate matched fifteen expected invalid-module classifications, produced 3,853 Talos passes, six configured failures, 627 skips, no cascades, decoder errors, interpreter errors, or fuel exhaustion, and passed all twenty-five files under Wasmtime.  The separate source-driven aggregate also passed all twenty registered cases.
+The 2026-09-02 warm artifact gate passed all twenty packages for the self-hosted-emitter release inputs.  The matching conformance gate classified fifteen invalid modules exactly, produced 3,853 Talos passes, six configured imported-memory failures, 627 skips, no cascades, decoder errors, interpreter errors, or fuel exhaustion, and passed all twenty-five files under Wasmtime.  These warm gates used the maintained drivers with direct Lean child execution under the owner's session-only exception; the cold gate still requires a normal policy-conforming run.  The separate source-driven aggregate last passed all twenty registered cases on 2026-08-26, and the self-host corpus check preserved every registered artifact byte.
 
 ## 2. Validate annotation-directed proof support on a new shape
 
