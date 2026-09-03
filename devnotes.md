@@ -7627,3 +7627,29 @@ The axiom audit reports only `propext`, `Classical.choice`, and `Quot.sound` for
 `sorry`, `admit`, axiom declaration, or native floating-point dependency was
 added to the accepted verifier proofs.  The next checkpoint is the exact scalar
 multiplication artifact theorem and its finite-input binary64 error corollary.
+
+## 2026-09-03: Quantitative `mulBits` source contract and generated-WAT theorem
+
+`Project.F64MulBits` is generated from the actual WAT emitted for
+`LeanExe.Examples.Float64Bits.mulBits`.  Function zero retains the public i64
+bit-pattern ABI and executes `f64.reinterpret_i64` twice, `f64.mul`,
+`i64.reinterpret_f64`, and the compiler's local-result epilogue.  The source
+name is associated with a proof-visible contract whose result is
+`Wasm.IEEE64.mul`; native Lean `Float` evaluation is not used by the theorem.
+
+`mulBits_source_real_error` proves that finite inputs with real magnitudes at
+most one produce a finite modeled result whose absolute error from the exact
+real product is at most `CodeLib.IEEE64.multiplicationEpsilon = 2^-52`.
+`mulBits_exact` proves the generated WAT returns those exact modeled bits and
+preserves an arbitrary initial store.  `mulBits_wat_real_error` carries the
+same finite-result and real-error conclusion through that fuel-independent WAT
+execution.  A separate nine-transition `SmallStep.Steps` derivation exposes
+both reinterpretations, multiplication, local epilogue, and finish transition;
+its `SmallStep.TerminatesWith` corollary carries the same numerical contract.
+
+The focused exact-Lean-4.34.0-rc2 build
+`lake -d proofs/talos/lean build Project.F64MulBits.Spec` passed 3,355 jobs.
+All six public axiom reports contain only `propext`, `Classical.choice`, and
+`Quot.sound`; none depends on native floating-point evaluation.  Aggregate
+integration adds the case to `Project.lean` and pins its unchanged allocator,
+reset, retain, and release runtime functions in `Project.Runtime.Checks`.

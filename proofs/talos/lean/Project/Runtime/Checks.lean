@@ -18,6 +18,7 @@ import Project.ClobMatchFuel.Program
 import Project.ClobPostOnly.Program
 import Project.ClobQuote.Program
 import Project.FoldSum.Program
+import Project.F64MulBits.Program
 import Project.Gcd.Program
 import Project.LebU32.Program
 import Project.OrderBook.Program
@@ -48,6 +49,11 @@ example : eraseTypeIdx Project.FoldSum.func1Def = eraseTypeIdx allocFuncDef := r
 example : eraseTypeIdx Project.FoldSum.func2Def = eraseTypeIdx resetFuncDef := rfl
 example : eraseTypeIdx Project.FoldSum.func3Def = eraseTypeIdx retainFuncDef := rfl
 example : eraseTypeIdx Project.FoldSum.func4Def = eraseTypeIdx (releaseFuncDef 4) := rfl
+
+example : eraseTypeIdx Project.F64MulBits.func1Def = eraseTypeIdx allocFuncDef := rfl
+example : eraseTypeIdx Project.F64MulBits.func2Def = eraseTypeIdx resetFuncDef := rfl
+example : eraseTypeIdx Project.F64MulBits.func3Def = eraseTypeIdx retainFuncDef := rfl
+example : eraseTypeIdx Project.F64MulBits.func4Def = eraseTypeIdx (releaseFuncDef 4) := rfl
 
 example : eraseTypeIdx Project.Gcd.func1Def = eraseTypeIdx allocFuncDef := rfl
 example : eraseTypeIdx Project.Gcd.func2Def = eraseTypeIdx resetFuncDef := rfl

@@ -184,6 +184,18 @@
       "specTarget": "Project.ClobDepth.Spec",
       "behaviorTheorems": ["Project.ClobDepth.Func7.func7_terminates"],
       "complete": true
+    },
+    {
+      "name": "f64_mul_bits",
+      "module": "LeanExe.Examples.Float64Bits",
+      "entry": "LeanExe.Examples.Float64Bits.mulBits",
+      "leanModule": "F64MulBits",
+      "specTarget": "Project.F64MulBits.Spec",
+      "behaviorTheorems": [
+        "Project.F64MulBits.Spec.mulBits_source_real_error",
+        "Project.F64MulBits.Spec.mulBits_wat_real_error"
+      ],
+      "complete": true
     }
   ]
 }
