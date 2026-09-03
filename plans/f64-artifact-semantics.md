@@ -223,12 +223,12 @@ validator-soundness, translation, and equality layers.  The generated scalar
 multiplication WAT also has exact modeled execution and quantitative binary64
 theorems.  The guarded two-term dot source entry now compiles to a two-word
 status/result ABI and executes both accepted and rejected inputs under
-Wasmtime.  Its actual emitted WAT is now frozen in
-`Project.F64Dot2CheckedBits.Program` and passes a focused exact-toolchain build;
-the raw-bit guard bridge now passes and exposes finiteness plus the real
-half-magnitude bound.  The branch proof and accumulated-error corollary are in
-progress; the source-facing total contract already proves the accepted
-`3 * 2^-52` result and the exact rejected status/zero result.
+Wasmtime.  Its actual emitted WAT is frozen in
+`Project.F64Dot2CheckedBits.Program`; the raw-bit guard bridge, total
+source-facing theorem, all five generated-WAT execution paths, store
+preservation, and fuel-independent `3 * 2^-52` accumulated-error theorem now
+pass.  Rejection is exact status one plus positive-zero bits.  The next kernel
+is the runtime-length dot artifact.
 
 - [x] Migrate the native compiler to exact Lean 4.34.0-rc2 and preserve every
       registered artifact byte.  The scoped legacy `do` option on the frozen GCD
@@ -248,7 +248,7 @@ progress; the source-facing total contract already proves the accepted
       theorem, then prove the same conclusion for its generated WAT execution,
       including exact result bits, store preservation, an explicit small-step
       trace, fuel independence, and axiom audits.
-- [ ] Freeze and prove `dot2CheckedBits`, including its rejected path, guard
+- [x] Freeze and prove `dot2CheckedBits`, including its rejected path, guard
       bridge, finite result, `3 * 2^-52` error theorem, corrupt-certificate
       tests, and independent package verification.
 - [ ] Compile and prove a runtime-length dot artifact with absolute,

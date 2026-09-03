@@ -7719,3 +7719,26 @@ The exact-Lean-4.34.0-rc2 build
 3,067 jobs.  Its public axiom report contains only `propext`,
 `Classical.choice`, and `Quot.sound`.  Native `Float` remains a regression
 oracle and is not a dependency of this theorem.
+
+## 2026-09-03: Guarded dot generated-WAT theorem
+
+`Project.F64Dot2CheckedBits.Spec.dot2CheckedBits_exact` follows the four helper
+calls and all five paths through the actual compiler-generated WAT.  It proves
+fuel-independent termination, preservation of the complete WebAssembly store,
+and the exact top-first result stack `[bits, status]`.  Each first-failing guard
+reaches the rejection result, while the all-accepted path executes the two
+modeled multiplications and final modeled addition.
+
+`dot2CheckedBits_wat_real_error` transfers the already checked total source
+contract to that exact execution.  Consequently accepted WAT runs return a
+finite binary64 value within `3 * 2^-52` of the exact real two-term dot product;
+rejected runs return status one and positive-zero bits.  A local typed-control
+WP rule makes the generated `if` result annotations proof-visible while using
+the interpreter's unchanged execution semantics.
+
+The exact-Lean-4.34.0-rc2 build
+`lake -d proofs/talos/lean build Project.F64Dot2CheckedBits.Spec Project.Runtime.Checks`
+passed 3,388 jobs.  Axiom reports for the helper, exact WAT theorem, and WAT
+numerical theorem contain only `propext`, `Classical.choice`, and `Quot.sound`.
+`node tools/talos-proof.js check f64_dot2_checked_bits` then independently
+regenerated the compiler artifact and passed the registered proof case.
