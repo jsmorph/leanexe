@@ -7653,3 +7653,21 @@ All six public axiom reports contain only `propext`, `Classical.choice`, and
 `Quot.sound`; none depends on native floating-point evaluation.  Aggregate
 integration adds the case to `Project.lean` and pins its unchanged allocator,
 reset, retain, and release runtime functions in `Project.Runtime.Checks`.
+
+## 2026-09-03: Guarded two-term f64 dot source checkpoint
+
+`LeanExe.Examples.Float64Bits.dot2CheckedBits` accepts four binary64 bit
+patterns and clears each sign bit before comparing the encoding with binary64
+one half.  The accepted branch evaluates two `mulBits` operations followed by
+one `addBits`; the rejected branch performs no floating-point operation.  Its
+public structure lowers to two i64 results: status zero plus result bits on
+success, or status one plus zero on rejection.
+
+Exact Lean 4.34.0-rc2 builds of `LeanExe.Examples.Float64Bits` and `lean-wasm`
+passed.  `node test/f64_bits.js` then compiled the new entry, checked one exact
+positive result, exact cancellation, and rejection, and confirmed that its IR
+contains exactly two f64 multiplications and one f64 addition.  The emitted WAT
+has the expected six i64-to-f64 reinterpretations, three f64-to-i64
+reinterpretations, two `f64.mul` instructions, and one `f64.add`.  The next
+checkpoint proves both branches and attaches the accumulated `3 * 2^-52`
+success-path error theorem.

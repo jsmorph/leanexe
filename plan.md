@@ -137,7 +137,9 @@ proves sound, and translates the four new instructions into Talos.  The
 compiler-generated `mulBits` WAT now has exact-result, store-preservation,
 explicit small-step, fuel-independent termination, finite-result, and
 `2^-52` absolute-error theorems.  The next checkpoint is the guarded two-term
-dot program and its accumulated-error theorem.
+dot program and its accumulated-error theorem.  Its LeanExe source entry and
+native/Wasm regression coverage now pass; the generated-program proof remains
+in progress.
 
 Hash, manifest, release-receipt, and self-host bookkeeping are not gates for
 this branch's floating-point implementation.  Exact program bytes remain part
