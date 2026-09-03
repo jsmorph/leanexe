@@ -7896,3 +7896,22 @@ Project.F64DotCheckedBits.Spec` passed 3,372 jobs.  `#print axioms` reports only
 all three public WAT numerical theorems.  Native floating-point evaluation is
 not a proof dependency.  The case is now complete; the next numerical artifact
 is a generated affine or Horner evaluation.
+
+## 2026-09-03: Guarded quadratic Horner milestone selected
+
+The next generated numerical artifact is
+`horner2CheckedBits x c₂ c₁ c₀`, computing
+`(c₂*x + c₁)*x + c₀` over the existing raw-`UInt64` binary64 ABI.  The
+entry will reuse the established sign-cleared half-magnitude guard for all four
+inputs and the two-word checked result: status zero plus computed bits on
+acceptance, or status one plus positive-zero bits on rejection.
+
+The public source-model and decoded-WAT theorems will both prove a finite result
+and absolute real error at most `3 * 2^-52`.  Each Horner stage contributes a
+two-unit primitive error budget, while `|x| ≤ 1/2` attenuates the first-stage
+error, so `CodeLib.Numerical.horner_two_step` gives
+`2ε + 2ε * (1/2) = 3ε`.  The half-domain also supplies exact headroom for
+every rounded intermediate, avoiding hidden overflow assumptions.  The
+artifact will include exact store-preserving execution, an explicit small-step
+trace, fuel-independent termination, a Goal/Approach/Result README, and public
+axiom audits.
