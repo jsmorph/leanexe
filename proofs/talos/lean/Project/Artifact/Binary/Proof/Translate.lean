@@ -10,12 +10,12 @@ theorem toTalos_fields (validated : ValidatedModule) :
     translated.memory = Translation.memory raw ∧
     translated.globals = Translation.globals raw ∧
     translated.types = raw.types.map FuncType.toTalos ∧
-    translated.globalExports = [] ∧
-    translated.memoryExports = [] ∧
+    translated.globalExports = Translation.globalExports raw ∧
+    translated.memoryExports = Translation.memoryExports raw ∧
     translated.extraMemories = [] ∧
     translated.imports = [] ∧
     translated.startFunc = none ∧
-    translated.gcTypes = [] ∧
+    translated.gcTypes = Translation.gcTypes raw ∧
     translated.tables = [] ∧
     translated.elements = [] ∧
     translated.importedGlobals = [] ∧
