@@ -7827,3 +7827,24 @@ Under exact Lean 4.34.0-rc2, the focused
 runtime dot proof can therefore reuse one checked-load theorem for the seed
 loads and both per-iteration operand loads instead of duplicating memory-bound
 and address-normalization reasoning.
+
+## 2026-09-03: Runtime-length dot execution base cases
+
+`Project.F64DotCheckedBits.Execution` now proves the first exact execution
+slice of the generated entry.  `unequal_lengths_exact` proves that mismatched
+arrays terminate with zero result bits and status one.  `equal_empty_exact`
+proves that equal empty arrays terminate with zero result bits and status zero.
+Both theorems are fuel-independent and preserve the complete input store.
+
+The same module proves the logical-array bridges
+`arrayPairTerms_length_of_eq` and `arrayPairTerms_getElem?_of_eq`, plus
+`dot64List_take_succ`, which identifies one generated multiply-add with the
+next nonempty modeled prefix.  The remaining loop obligation is stated by an
+explicit prefix invariant and a decreasing unconsumed-pair measure.
+
+Under exact Lean 4.34.0-rc2,
+`lake -d proofs/talos/lean --no-ansi build
+Project.F64DotCheckedBits.Execution` passed 3,368 jobs.  The public theorem
+axiom reports contain only `propext`, `Classical.choice`, and `Quot.sound`.
+The next checkpoint is the nonempty generated loop, reusing the checked array
+load theorem for the seed and per-iteration operand reads.
