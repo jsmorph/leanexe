@@ -7551,3 +7551,15 @@ cgroup resource properties were therefore not established.  Neither helper is
 part of the repository, and no repository runner edit or bypass is part of this
 checkpoint.  No experimental self-hosted-emitter check was run during this
 migration work.
+
+The first `tools/artifact-proof.js check-all` run reached the raw-byte
+translation equality after independently rebuilding the registered artifact
+packages, then failed at `Project.Gcd.ArtifactTranslation`: the regenerated
+Talos module retained metadata which the independent binary translation still
+discarded.  The shared translation now preserves function-only `gcTypes`,
+global and memory exports, and each global's declared type, mutability, and
+source initializer program.  `Project.Artifact.Binary.TranslateTests` contains
+an immutable-global and non-function-export regression.  Focused builds of that
+test and `Project.Gcd.ArtifactTranslation` pass under exact Lean 4.34.0-rc2.
+The all-artifact gate must still be rerun from the repaired translator; no
+artifact-proof receipt is claimed from the failed run.

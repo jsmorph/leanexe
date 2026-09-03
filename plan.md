@@ -127,7 +127,7 @@ Native floating-point execution and Wasmtime remain regression tools.  Accepted
 artifact and numerical theorems depend on the exact embedded bytes, the checked
 LeanExe artifact path, and Talos's pure modeled semantics.
 
-As of 2026-09-03, the pre-FP `fda69ca` migration is in progress locally.  The
+As of 2026-09-03, the pre-FP `fda69ca` migration is in progress.  The
 dependency pin, typed control metadata, function type-index handling,
 `local.tee` support, regenerated program caches, and the compatibility repairs
 found so far are implemented.  Every large application proof root now passes
@@ -136,11 +136,14 @@ compatibility failures in `Project.ProofKit.FixedArrayEqNode` and
 `Project.ProofKit.FixedArrayAllocator`; both have been repaired and pass their
 focused builds.  `Project.ProofKit.LTGCheck`, `Project.PairFree.Probe`, the
 translator metadata tests, and the complete 3,674-job `Project` aggregate now
-pass as well.  The source-compatibility checkpoint is ready to record; the
-exact-artifact, conformance, identity, and axiom gates remain before the pre-FP
-migration row can be checked.  No floating-point opcode or intrinsic work has
-started.  The next commits record this compatibility state and the final
-migration receipts separately so each passing state is pushed promptly.
+pass as well.  The first full exact-artifact run exposed one omitted migration
+boundary: raw-byte translation did not preserve the regenerated module's GC
+function-type mirror, non-function exports, or proof-visible global metadata.
+The shared translator now preserves those fields; a focused metadata regression
+and `Project.Gcd.ArtifactTranslation` pass.  The next checkpoint reruns all
+twenty exact-artifact packages, followed separately by conformance, runtime,
+identity, and axiom gates before the pre-FP migration row is checked.  No
+floating-point opcode or intrinsic work has started.
 
 ## Required gates
 
