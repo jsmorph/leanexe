@@ -120,7 +120,7 @@ and acceptance gates.
 - [x] Add restricted `UInt64` bit-pattern intrinsics and exact structured lowering while retaining the public integer ABI.
 - [x] Prove a quantitative theorem for the LeanExe `mulBits` program, then the same finite-result and real-error theorem for its generated WAT execution, with an explicit fuel-independent trace and store preservation.
 - [x] Follow the scalar multiplication proof with a guarded two-term dot artifact.
-- [ ] Prove a generated runtime-length dot artifact with absolute, gamma-times-mass, and condition-number contracts.
+- [x] Prove a generated runtime-length dot artifact with absolute, gamma-times-mass, and condition-number contracts.
 - [ ] Prove a generated affine or Horner artifact and retain reusable ProofKit, annotation, certificate, and LTG support justified by both kernels.
 - [ ] Expand the admitted operations to representative division, square root, and f32 uses; update maintained documentation and active release evidence.
 
@@ -153,15 +153,15 @@ condition-number contracts with only the standard logical axioms.  The actual
 generated WAT is now frozen and its runtime helpers are pinned to the shared
 definitions.  A reusable ProofKit theorem now proves the compiler's checked
 `Array UInt64` element-load fragment for arbitrary frames and stack tails.  The
-generated entry's unequal-length and equal-empty paths now have exact,
-fuel-independent, store-preserving execution theorems.  Array-pair
+generated entry's unequal-length, equal-empty, and equal-nonempty paths now
+have exact, fuel-independent, store-preserving execution theorems.  Array-pair
 length/index bridges, the prefix multiply-add recurrence, and an explicit
-nonempty-loop invariant and measure also pass.  The nonempty generated loop is
-now closed for arbitrary equal-sized arrays: its seed and per-iteration loads
-use the reusable checked-load theorem, its accumulator is exactly `dot64List`,
-its increment cannot wrap, and its measure strictly decreases.  Combining all
-three paths into the public WAT execution theorem and transferring the three
-numerical contracts is next.
+nonempty-loop invariant and measure all pass.  The total WAT theorem combines
+those paths for arbitrary valid logical arrays, and three public WAT theorems
+transfer the source primitive-absolute, gamma-times-mass, and conditioned
+relative-error conclusions to that execution.  Their axiom audits contain
+only the standard logical axioms.  The generated affine or Horner artifact is
+the next implementation checkpoint.
 
 Hash, manifest, release-receipt, and self-host bookkeeping are not gates for
 this branch's floating-point implementation.  Exact program bytes remain part
