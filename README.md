@@ -4,13 +4,13 @@ LeanExe compiles a checked declaration from a restricted Lean 4 program to a sta
 
 LeanExe also supports direct verification of an exact WASM artifact.  Its artifact path embeds the binary bytes in Lean, decodes and validates them with checked functions, connects the decoded module to the Talos execution model, and proves a behavioral theorem about that module.  This theorem does not depend on the source program or a compiler-correctness assumption.
 
-Ordinary library-mode binary serialization can run through LeanExe's [self-hosted WebAssembly emitter](docs/self-hosted-emitter.md).  The native compiler performs every earlier stage and supplies a canonical final-module image; the LeanExe-compiled emitter validates that image and reproduces its own complete artifact byte for byte.
+Ordinary library-mode binary serialization can also run through LeanExe's experimental [self-hosted WebAssembly emitter](docs/self-hosted-emitter.md).  The native compiler remains the production path; the LeanExe-compiled emitter is a non-blocking deterministic regression experiment.
 
 ![LeanExe architecture](docs/leanexe.png)
 
 ## Requirements
 
-The compiler and Talos proof workspaces pin Lean 4.31.0 at commit `68218e876d2a38b1985b8590fff244a83c321783`.  The complete execution suite requires Node.js 24.13.0, Wasmtime 44.0.0, a C11 compiler, and `wasm-tools` 1.251.0.  [Developing LeanExe](DEVELOPING.md) defines the setup, process limits, version checks, and required tests.
+The compiler pins exact Lean 4.34.0-rc2 at commit `6a10ac8c22beadecabdbb0919c2b50214762f91d`.  During the staged `talosfp` migration, the existing proof workspace temporarily retains Lean 4.31.0 until its Talos dependency moves in the next checkpoint.  The complete execution suite requires Node.js 24.13.0, Wasmtime 44.0.0, a C11 compiler, and `wasm-tools` 1.251.0.  [Developing LeanExe](DEVELOPING.md) defines the setup, process limits, version checks, and required tests.
 
 Run every direct Lean or Lake command through `tools/leanrun`.  The runner serializes Lean work with the neighboring VQ repository and applies the repository's CPU, memory, swap, and thread limits.  Repository drivers that invoke Lean already use this runner for their child processes.
 
@@ -20,6 +20,9 @@ tools/leanrun lake build
 tools/build-wasmtime-host.sh
 node test/run_all.js
 ```
+
+The self-hosted-emitter experiment is not part of `run_all.js`.  Run
+`node test/selfhost_emitter.js` separately only when changing its image boundary.
 
 ## Compile and run
 

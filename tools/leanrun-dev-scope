@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-expected_toolchain="/mnt/vq/elan/toolchains/leanprover--lean4---v4.31.0"
+expected_toolchain="/mnt/vq/elan/toolchains/leanprover--lean4---v4.34.0-rc2"
 cgroup_path="$(sed -n 's/^0:://p' /proc/self/cgroup)"
 cgroup_dir="/sys/fs/cgroup$cgroup_path"
 
