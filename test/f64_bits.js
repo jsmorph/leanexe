@@ -102,6 +102,15 @@ function expectBits(wasm, entry, args, expected) {
   }
 }
 
+function expectSlots(wasm, entry, args, expected) {
+  const output = host.call(wasm, entry, `slots:${expected.length}`, args.map(host.i64));
+  const actual = output.split(/\s+/).filter(Boolean).map((value) =>
+    BigInt.asUintN(64, BigInt(value)));
+  if (actual.length !== expected.length || actual.some((value, index) => value !== expected[index])) {
+    throw new Error(`${entry}: expected slots ${expected}, got ${actual}`);
+  }
+}
+
 function exportedFunctionBody(wat, exportName) {
   const exportMatch = wat.match(new RegExp(`\\(export "${exportName}" \\(func (\\d+)\\)\\)`));
   if (!exportMatch) {
@@ -212,6 +221,7 @@ function main() {
   const mulWasm = compile("mulBits");
   const mulThenAddWasm = compile("mulThenAddBits");
   const addMulWasm = compile("addMulBits");
+  const dot2Wasm = compile("dot2CheckedBits");
 
   for (const [left, right, expected] of [
     [0x3ff8000000000000n, 0x4002000000000000n, 0x400e000000000000n],
@@ -232,6 +242,27 @@ function main() {
     [0x3ff8000000000000n, 0x4000000000000000n, 0x3fe8000000000000n],
     0x400e000000000000n,
   );
+  expectSlots(
+    dot2Wasm,
+    "dot2CheckedBits",
+    [0x3fe0000000000000n, 0x3fe0000000000000n,
+      0x3fd0000000000000n, 0x3fe0000000000000n],
+    [0n, 0x3fd8000000000000n],
+  );
+  expectSlots(
+    dot2Wasm,
+    "dot2CheckedBits",
+    [0x3fe0000000000000n, 0x3fe0000000000000n,
+      0xbfe0000000000000n, 0x3fe0000000000000n],
+    [0n, 0n],
+  );
+  expectSlots(
+    dot2Wasm,
+    "dot2CheckedBits",
+    [0x3ff0000000000000n, 0x3fe0000000000000n,
+      0n, 0n],
+    [1n, 0n],
+  );
   expectBits(
     addMulWasm,
     "addMulBits",
@@ -251,11 +282,15 @@ function main() {
   const rightNestedIr = dumpIr("addMulBits");
   expectOccurrences("addMulBits IR", rightNestedIr, "f64AddBits", 1);
   expectOccurrences("addMulBits IR", rightNestedIr, "f64MulBits", 1);
+  const dot2Ir = dumpIr("dot2CheckedBits");
+  expectOccurrences("dot2CheckedBits IR", dot2Ir, "f64AddBits", 1);
+  expectOccurrences("dot2CheckedBits IR", dot2Ir, "f64MulBits", 2);
   for (const [entry, ir] of [
     ["addBits", addIr],
     ["mulBits", mulIr],
     ["mulThenAddBits", nestedIr],
     ["addMulBits", rightNestedIr],
+    ["dot2CheckedBits", dot2Ir],
   ]) {
     if (ir.includes("LeanExe.Float64.addBits") || ir.includes("LeanExe.Float64.mulBits")) {
       throw new Error(`${entry}: intrinsic call survived in the lowered IR`);
@@ -327,6 +362,11 @@ function main() {
     "local.set 3",
     "local.get 3",
   ]);
+  const dot2Wat = exportedFunctionBody(compileWat("dot2CheckedBits"), "dot2CheckedBits");
+  expectOccurrences("dot2CheckedBits WAT", dot2Wat, "f64.mul", 2);
+  expectOccurrences("dot2CheckedBits WAT", dot2Wat, "f64.add", 1);
+  expectOccurrences("dot2CheckedBits WAT", dot2Wat, "f64.reinterpret_i64", 6);
+  expectOccurrences("dot2CheckedBits WAT", dot2Wat, "i64.reinterpret_f64", 3);
 
   expectByteSequence("addBits", addWasm, [
     0x20, 0x00, 0xbf, 0x20, 0x01, 0xbf, 0xa0, 0xbd, 0x21, 0x02, 0x20, 0x02, 0x0b,

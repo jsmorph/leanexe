@@ -221,7 +221,9 @@ the four-instruction internal profile, execute under Wasmtime, and cross the
 decoder, grammar, decoder-soundness, validator, declarative-validity,
 validator-soundness, translation, and equality layers.  The generated scalar
 multiplication WAT also has exact modeled execution and quantitative binary64
-theorems; the guarded dot kernel is next.
+theorems.  The guarded two-term dot source entry now compiles to a two-word
+status/result ABI and executes both accepted and rejected inputs under
+Wasmtime; its generated-WAT and accumulated-error proofs are in progress.
 
 - [x] Migrate the native compiler to exact Lean 4.34.0-rc2 and preserve every
       registered artifact byte.  The scoped legacy `do` option on the frozen GCD
