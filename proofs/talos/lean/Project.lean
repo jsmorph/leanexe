@@ -9,6 +9,7 @@ import Project.SharedPair.Spec
 import Project.PairFree.Spec
 import Project.BoxFree.Spec
 import Project.FoldSum.Spec
+import Project.F64MulBits.Spec
 import Project.LebU32.Spec
 import Project.ClobQuote.Spec
 import Project.ClobCancel.Spec
