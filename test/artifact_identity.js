@@ -51,7 +51,7 @@ const repoRoot = path.resolve(__dirname, "..");
 if (talosBoundaryTarget !== "Project.TalosPrelude") {
   throw new Error("the artifact proof gate no longer uses LeanExe's focused Talos boundary");
 }
-const expectedVerifierDigest = "d0672a6abc1d32a745d87fdaf2811912af9900c8d1818060daf73c122f2c269a";
+const expectedVerifierDigest = "2b59dec86b72be48a2bb63b5fc1efabbf2e61397a7042907823d0a4e6d5fcb01";
 if (verifierSourceSha256(repoRoot) !== expectedVerifierDigest) {
   throw new Error("the normative verifier source digest changed without updating its test vector");
 }

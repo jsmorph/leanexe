@@ -7563,3 +7563,13 @@ an immutable-global and non-function-export regression.  Focused builds of that
 test and `Project.Gcd.ArtifactTranslation` pass under exact Lean 4.34.0-rc2.
 The all-artifact gate must still be rerun from the repaired translator; no
 artifact-proof receipt is claimed from the failed run.
+
+The repaired translator changes the normative verifier-source identity from
+`d0672a6abc1d32a745d87fdaf2811912af9900c8d1818060daf73c122f2c269a` to
+`2b59dec86b72be48a2bb63b5fc1efabbf2e61397a7042907823d0a4e6d5fcb01`.
+The canonical artifact migration refreshed all nineteen generated manifests,
+and the hand-maintained GCD manifest was updated to the same digest; every
+frozen `program.wasm` path and content digest remains unchanged.  The artifact
+migration, verifier/release identity, Talos-cache, and release-record tests now
+pass.  Release refresh intentionally reports four blockers: immutable source
+revision, aggregate artifact proof, conformance, and cold-checkout evidence.
