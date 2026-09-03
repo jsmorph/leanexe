@@ -7573,3 +7573,20 @@ frozen `program.wasm` path and content digest remains unchanged.  The artifact
 migration, verifier/release identity, Talos-cache, and release-record tests now
 pass.  Release refresh intentionally reports four blockers: immutable source
 revision, aggregate artifact proof, conformance, and cold-checkout evidence.
+
+## 2026-09-03: Immutable FP Talos dependency
+
+The proof workspace now consumes `jsmorph/talos` revision
+`87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47`, the reviewed floating-point
+foundation.  `Project.TalosPrelude` builds all 3,340 required jobs under exact
+Lean 4.34.0-rc2.  Existing WebAssembly syntax is unchanged; f64 execution now
+delegates to Talos's pure integer IEEE64 model, while quantitative modules
+remain narrow explicit imports for later artifact theorems.
+
+The target verifier emits `import CodeLib.GeneratedCore`.  Cache normalization
+now recognizes that exact header before replacement, retains the legacy
+`CodeLib.Generated` form, and rejects suffix lookalikes so it cannot accidentally
+produce `Project.TalosPreludeCore`.  `node test/talos_cache.js` passes.  No
+self-hosted-emitter path was invoked.  The next implementation checkpoint is the
+four-instruction internal f64 profile: add, multiply, and the two i64/f64
+reinterpretations.
