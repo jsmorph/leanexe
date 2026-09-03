@@ -7702,3 +7702,20 @@ The exact-Lean-4.34.0-rc2 build
 3,065 jobs.  The public axiom report contains only `propext`,
 `Classical.choice`, and `Quot.sound`.  This lemma is the reusable input to the
 two-term accumulated-error theorem and to the accepted WAT branch.
+
+## 2026-09-03: Guarded dot source numerical contract
+
+`Project.F64Dot2CheckedBits.Spec.dot2CheckedBits_source_real_error` gives the
+LeanExe entry a total pure-model contract.  When all four raw-bit guards pass,
+the result is exactly two modeled IEEE64 multiplications followed by one
+modeled addition; it is finite and its absolute error from the exact two-term
+real dot product is at most `3 * 2^-52`.  If any guard fails, the contract
+returns status one and positive-zero bits.  The proof instantiates CodeLib's
+uniform-envelope list dot theorem at operand bounds of one half, so the error
+constant is an explicit composition of the three primitive roundings.
+
+The exact-Lean-4.34.0-rc2 build
+`lake -d proofs/talos/lean build Project.F64Dot2CheckedBits.Numerical` passed
+3,067 jobs.  Its public axiom report contains only `propext`,
+`Classical.choice`, and `Quot.sound`.  Native `Float` remains a regression
+oracle and is not a dependency of this theorem.
