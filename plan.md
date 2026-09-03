@@ -141,9 +141,13 @@ boundary: raw-byte translation did not preserve the regenerated module's GC
 function-type mirror, non-function exports, or proof-visible global metadata.
 The shared translator now preserves those fields; a focused metadata regression
 and `Project.Gcd.ArtifactTranslation` pass.  The next checkpoint reruns all
-twenty exact-artifact packages, followed separately by conformance, runtime,
-identity, and axiom gates before the pre-FP migration row is checked.  No
-floating-point opcode or intrinsic work has started.
+twenty exact-artifact packages.  All twenty manifests and the verifier test
+vector now carry the repaired translator's new normative source digest; frozen
+WASM identities did not change, and the refreshed release record accurately
+lists artifact proof, conformance, immutable-source, and cold-checkout evidence
+as pending.  Conformance, runtime, identity, and axiom gates follow before the
+pre-FP migration row is checked.  No floating-point opcode or intrinsic work
+has started.
 
 ## Required gates
 
