@@ -227,16 +227,16 @@ Wasmtime.  Its actual emitted WAT is frozen in
 `Project.F64Dot2CheckedBits.Program`; the raw-bit guard bridge, total
 source-facing theorem, all five generated-WAT execution paths, store
 preservation, and fuel-independent `3 * 2^-52` accumulated-error theorem now
-pass.  Rejection is exact status one plus positive-zero bits.  The next kernel
-is the runtime-length dot artifact.  Its two-array LeanExe source entry now
-builds and passes focused runtime, extracted-IR, and generated-WAT checks.  The
-empty branch is positive zero, unequal lengths return status one and zero bits,
-and the nonempty loop is seeded by the first product so it matches Talos's
-`2*n - 1` dot model.  Its source-facing layer now passes all three planned
-contracts—primitive absolute error, gamma times exact product mass, and
-conditioned relative error—with total exact mismatch behavior and
-standard-only axiom reports.
-Artifact preparation and the fuel-independent generated-loop proof are next.
+pass.  Rejection is exact status one plus positive-zero bits.  The
+runtime-length dot artifact now passes as well.  Its two-array LeanExe source
+entry, runtime checks, extracted IR, generated WAT, and pure Talos source
+contracts are complete.  The decoded generated entry has a total,
+store-preserving, fuel-independent theorem covering unequal lengths, the empty
+case, and arbitrary equal nonempty arrays with an explicit decreasing loop
+measure.  Three WAT theorems carry the primitive absolute-error,
+gamma-times-exact-mass, and conditioned relative-error conclusions with every
+domain and headroom assumption explicit and standard-only axiom reports.  The
+next kernel is the generated affine or Horner artifact.
 
 - [x] Migrate the native compiler to exact Lean 4.34.0-rc2 and preserve every
       registered artifact byte.  The scoped legacy `do` option on the frozen GCD
@@ -259,7 +259,7 @@ Artifact preparation and the fuel-independent generated-loop proof are next.
 - [x] Freeze and prove `dot2CheckedBits`, including its rejected path, guard
       bridge, finite result, `3 * 2^-52` error theorem, corrupt-certificate
       tests, and independent package verification.
-- [ ] Compile and prove a runtime-length dot artifact with absolute,
+- [x] Compile and prove a runtime-length dot artifact with absolute,
       gamma-times-mass, and conditioned relative-error contracts.
 - [ ] Compile and prove a representative affine or Horner artifact and extract
       reusable floating ProofKit, annotation, and LTG support from both kernels.
