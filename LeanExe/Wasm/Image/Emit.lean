@@ -130,6 +130,10 @@ mutual
     | .unreachable => byte 0
     | .ret => byte 15
     | .drop => byte 26
+    | .addF64 => byte 160
+    | .mulF64 => byte 162
+    | .i64ReinterpretF64 => byte 189
+    | .f64ReinterpretI64 => byte 191
     | .block body => bytes2 2 64 ++ emitInstrs body ++ byte 11
     | .loop body => bytes2 3 64 ++ emitInstrs body ++ byte 11
     | .iff resultI64 thn els =>

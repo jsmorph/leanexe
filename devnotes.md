@@ -7590,3 +7590,40 @@ produce `Project.TalosPreludeCore`.  `node test/talos_cache.js` passes.  No
 self-hosted-emitter path was invoked.  The next implementation checkpoint is the
 four-instruction internal f64 profile: add, multiply, and the two i64/f64
 reinterpretations.
+
+## 2026-09-03: First executable f64 compiler and verifier slice
+
+LeanExe now exposes `LeanExe.Float64.addBits` and `mulBits` as deliberately
+restricted `UInt64` bit-pattern intrinsics.  Their native Lean bodies are only
+source-side comparison oracles.  Extraction stops at the named intrinsic,
+records an f64 IR operation, and structured lowering emits
+`f64.reinterpret_i64`, the arithmetic instruction, and
+`i64.reinterpret_f64`.  The public ABI, parameters, results, and locals remain
+i64 words.  A nested multiply-then-add example confirms that both operations
+survive extraction independently and compose without falling back to the native
+`Float` implementation.
+
+The direct binary and WAT emitters now support `f64.add`, `f64.mul`, and the two
+reinterpretations.  The frozen experimental image format rejects these
+instructions explicitly rather than producing an empty or corrupt module.
+The independent Talos artifact layer gained an internal f64 stack type and the
+same four instructions across syntax, executable decoding, grammar,
+decoder soundness, executable validation, declarative validity, validator
+soundness, translation, and structural equality.  Wire f64 function types and
+`f64.const` remain outside this initial integer-ABI profile and have rejection
+tests.
+
+All checks used exact Lean 4.34.0-rc2 and serial repository-runner invocations.
+The following passed:
+
+- `lake build lean-wasm` (58 jobs).
+- `lake build LeanExe LeanExe.Examples.Float64Bits LeanExe.Wasm.ImageTest LeanExe.Wasm.ImageIntegrationTest` (52 jobs).
+- `lake -d proofs/talos/lean build Project.Artifact.Binary.DecodeTests Project.Artifact.Binary.ValidateTests Project.Artifact.Binary.TranslateTests Project.Artifact.Binary.Equality Project.Artifact.Binary.Proof.Decode Project.Artifact.Binary.Proof.Validate` (3,358 jobs).
+- `node test/f64_bits.js`, covering extraction, reports, exact WAT instruction order, emitted opcode sequences, Wasmtime results, annotations, and explicit image rejection.
+- `tools/check-wat.sh`, including the new nested f64 program's WAT/binary equivalence check.
+
+The axiom audit reports only `propext`, `Classical.choice`, and `Quot.sound` for
+`Wasm.Binary.Proof.decode_sound` and `Wasm.Binary.Proof.validate_sound`.  No
+`sorry`, `admit`, axiom declaration, or native floating-point dependency was
+added to the accepted verifier proofs.  The next checkpoint is the exact scalar
+multiplication artifact theorem and its finite-input binary64 error corollary.

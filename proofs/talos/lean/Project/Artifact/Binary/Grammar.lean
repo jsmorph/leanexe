@@ -214,8 +214,12 @@ mutual
     | i64Xor : Instr [byte 133] .i64Xor
     | i64Shl : Instr [byte 134] .i64Shl
     | i64ShrU : Instr [byte 136] .i64ShrU
+    | f64Add : Instr [byte 160] .f64Add
+    | f64Mul : Instr [byte 162] .f64Mul
     | i32WrapI64 : Instr [byte 167] .i32WrapI64
     | i64ExtendI32U : Instr [byte 173] .i64ExtendI32U
+    | i64ReinterpretF64 : Instr [byte 189] .i64ReinterpretF64
+    | f64ReinterpretI64 : Instr [byte 191] .f64ReinterpretI64
 
   inductive Instrs : List UInt8 → List Binary.Instr → Prop
     | nil : Instrs [] []

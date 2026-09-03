@@ -6,6 +6,7 @@ namespace Wasm.Binary
 def ValType.toTalos : ValType → Wasm.ValueType
   | .i32 => .i32
   | .i64 => .i64
+  | .f64 => .f64
 
 def Mutability.toTalos : Mutability → Bool
   | .immutable => false
@@ -77,8 +78,12 @@ mutual
     | .i64Xor => [.xorI64]
     | .i64Shl => [.shlI64]
     | .i64ShrU => [.shrUI64]
+    | .f64Add => [.f64Add]
+    | .f64Mul => [.f64Mul]
     | .i32WrapI64 => [.wrapI64]
     | .i64ExtendI32U => [.extendUI32]
+    | .i64ReinterpretF64 => [.i64ReinterpretF64]
+    | .f64ReinterpretI64 => [.f64ReinterpretI64]
     | .i64Load arg => [.load64 arg.offset]
     | .i32Load arg => [.load32 arg.offset]
     | .i32Load8U arg => [.load8U arg.offset]

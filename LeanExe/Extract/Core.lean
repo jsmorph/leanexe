@@ -2959,7 +2959,8 @@ mutual
                                             | some normalized =>
                                                 extractValueFrom ctx locals nextLocal normalized
                                             | none =>
-                                                if name == ``LeanExe.Runtime.release ||
+                                                if compilerPrimitiveName name ||
+                                                    name == ``LeanExe.Runtime.release ||
                                                     (args.isEmpty && (runtimeStatPrimitive? name).isSome) then
                                                   let exprResult ←
                                                     extractPrimitiveApplicationFrom ctx locals nextLocal name args
@@ -3440,6 +3441,8 @@ mutual
       (name : Name)
       (args : List Expr) :
       Except String (Option (ExtractedValue × Nat)) := do
+    if compilerPrimitiveName name then
+      return none
     if name.getRoot != ctx.root then
       return none
     if ctx.inlineStack.contains name then
@@ -4729,7 +4732,19 @@ mutual
       (primitive : Name)
       (args : List Expr) :
       Except String (IRExpr × Nat) := do
-    if primitive == ``LeanExe.Runtime.release then
+    if compilerPrimitiveName primitive then
+      match args with
+      | [left, right] =>
+          let leftResult ← extractExprFrom ctx locals nextLocal left
+          let rightResult ← extractExprFrom ctx locals leftResult.snd right
+          let op :=
+            if primitive == ``LeanExe.Float64.addBits then
+              LeanExe.IR.U64Op.f64AddBits
+            else
+              LeanExe.IR.U64Op.f64MulBits
+          .ok (.u64Bin op leftResult.fst rightResult.fst, rightResult.snd)
+      | _ => .error s!"floating-point bit intrinsic requires exactly two arguments: {primitive}"
+    else if primitive == ``LeanExe.Runtime.release then
       match args.reverse with
       | value :: typeExpr :: _ =>
           let ty ←
@@ -7078,7 +7093,8 @@ def inlineSpecializedValueForSynthetics?
     (info : ConstantInfo)
     (args : List Expr) :
     Option (Signature × Expr) := do
-  if name.getRoot != root || containsConstant ``Nat.brecOn info || containsConstant name info then
+  if compilerPrimitiveName name || name.getRoot != root ||
+      containsConstant ``Nat.brecOn info || containsConstant name info then
     none
   else
     let specialization ← specializedInlineCall? env info args

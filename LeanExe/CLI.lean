@@ -332,9 +332,9 @@ def dispatch : List String → IO UInt32
           [("module", moduleName), ("entry", entryName), ("output", out)])
         out
         (LeanExe.Extract.Core.compile moduleName entryName)
-        (fun module_ => .ok <|
-          LeanExe.Wasm.Image.encodeModule <|
-            LeanExe.Wasm.Binary.CoreWasm.moduleImage module_)
+        (fun module_ => do
+          let image ← LeanExe.Wasm.Binary.CoreWasm.moduleImage module_
+          .ok (LeanExe.Wasm.Image.encodeModule image))
   | ["compile-wat", "--module", moduleName, "--entry", entryName, "--out", out] =>
       sourceWriteTextResult
         (commandContext "compile-wat"

@@ -1322,6 +1322,11 @@ def usedValueConstantsOf (info : ConstantInfo) : Array Name :=
 def containsConstant (name : Name) (info : ConstantInfo) : Bool :=
   info.value? |>.any (fun value => value.getUsedConstants.contains name)
 
+/-- Compiler-recognized source operations whose executable Lean bodies are
+native comparison oracles, not part of the extracted program. -/
+def compilerPrimitiveName (name : Name) : Bool :=
+  [``LeanExe.Float64.addBits, ``LeanExe.Float64.mulBits].contains name
+
 def hasDirectLambdaArg (args : List Expr) : Bool :=
   args.any isDirectLambda
 
@@ -1431,7 +1436,7 @@ partial def collectReachable
     | some _ => usedConstantsOf info
     | none => usedValueConstantsOf info
   for dep in dependencies do
-    if dep.getRoot == root then
+    if dep.getRoot == root && !compilerPrimitiveName dep then
       match env.find? dep with
       | some depInfo =>
           if dep != entry &&
@@ -1467,7 +1472,7 @@ def functionSignature? (ctx : Context) (name : Name) : Option Signature :=
       | none => none
 
 def localInlineFunction? (ctx : Context) (name : Name) : Bool :=
-  name.getRoot == ctx.root &&
+  !compilerPrimitiveName name && name.getRoot == ctx.root &&
     match ctx.env.find? name with
     | some info => (supportedInlineFunction? ctx.env info).isSome
     | none => false

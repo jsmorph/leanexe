@@ -70,12 +70,10 @@ The migration will be divided so failures remain attributable:
    `87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47` and repeat the complete integer
    proof and conformance gates before LeanExe emits any floating-point opcode.
 
-Active manifests, conformance configuration, release identity, kernel review,
-and warm receipts must follow the new pins.  Historical demo, benchmark, and
-bootstrap records retain their original 4.31 pins and results as provenance.
-The working dependency may use a local path during development, but every
-pushed checkpoint uses an immutable Git revision.  A canonical upstream Talos
-revision may replace the fork pin only after it contains the identical tree.
+The working dependency may use a local path during development, but pushed
+checkpoints use the reviewed Talos revision.  Hash, manifest, release-receipt,
+and self-host bookkeeping are outside this implementation path; they do not
+delay executable floating-point or proof checkpoints.
 
 ## Bit-pattern ABI and restricted source profile
 
@@ -213,42 +211,35 @@ kernels pass.
 ## Ordered checkpoints
 
 Each checked row is a separately committed and pushed passing state.  The plan
-and `devnotes.md` record exact commands, tool pins, axiom reports, artifact
-digests, and any deliberate byte changes.
+and `devnotes.md` record exact commands, tool pins, axiom reports, and deliberate
+semantic changes.
 
-Migration status on 2026-09-03: the proof workspace now pins immutable FP Talos
-revision `87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47`.  The preceding `fda69ca`
-compatibility work passed focused builds for typed control metadata, function
-type-index transport, `local.tee`, exact generated-program
-boundaries, staged memory-write proofs, and every large application proof root
-under exact Lean 4.34.0-rc2.  A subsequent standalone-module sweep exposed
-failures in `Project.ProofKit.FixedArrayEqNode` and
-`Project.ProofKit.FixedArrayAllocator`; both have been repaired and pass their
-focused builds.  `Project.ProofKit.LTGCheck`, `Project.PairFree.Probe`, the
-translator metadata tests, and the complete 3,674-job `Project` aggregate also
-passed.  At the FP revision, the 3,340-job `Project.TalosPrelude` boundary
-passes, and cache normalization accepts the verifier's exact
-`CodeLib.GeneratedCore` header while retaining its legacy-header regression.
-The complete exact-artifact and conformance gates will run once over the FP
-revision rather than duplicate that work at the immediately preceding pin.  No
-floating-point opcode or intrinsic has yet been added to LeanExe.
+Migration status on 2026-09-03: the proof workspace pins the immutable FP Talos
+revision under exact Lean 4.34.0-rc2.  The first f64 compiler and independent
+binary-verifier slice now passes: `UInt64` bit-pattern add and multiply lower to
+the four-instruction internal profile, execute under Wasmtime, and cross the
+decoder, grammar, decoder-soundness, validator, declarative-validity,
+validator-soundness, translation, and equality layers.  Scalar artifact
+semantics is next.
 
 - [x] Migrate the native compiler to exact Lean 4.34.0-rc2 and preserve every
       registered artifact byte.  The scoped legacy `do` option on the frozen GCD
       fixture compensates for the 4.34 elaborator default change.
 - [x] Move the proof workspace through pre-FP Talos `fda69ca67a81ea4f1fa4e376bdc5861d9fe5479a`;
       repair the existing integer proof corpus and aggregate source-proof gate.
-- [ ] Advance the immutable Talos dependency to FP revision `87e3aa5`; repeat
-      all existing integer proof, conformance, and identity gates.
-- [ ] Add the internal f64 binary syntax, decoder, grammar, and decoder proofs
+- [x] Advance the immutable Talos dependency to FP revision `87e3aa5` under
+      exact Lean 4.34.0-rc2.
+- [x] Add the internal f64 binary syntax, decoder, grammar, and decoder proofs
       for add, multiply, and the reinterpret pair.
-- [ ] Add executable validation, declarative validity, translation, equality,
+- [x] Add executable validation, declarative validity, translation, equality,
       successful fixtures, and boundary/mutation rejection tests.
-- [ ] Add `addBits` and `mulBits` source intrinsics, IR operations, structured
+- [x] Add `addBits` and `mulBits` source intrinsics, IR operations, structured
       emission, binary and WAT encoding, reports, annotations, and focused
       compiler tests.
-- [ ] Freeze and prove the scalar multiplication artifact, including exact
-      execution, store preservation, finite-domain error, and axiom audit.
+- [ ] Prove the LeanExe `mulBits` program's finite-domain multiplication error
+      theorem, then prove the same conclusion for its exact decoded WAT
+      execution, including store preservation, fuel independence, and axiom
+      audits.
 - [ ] Freeze and prove `dot2CheckedBits`, including its rejected path, guard
       bridge, finite result, `3 * 2^-52` error theorem, corrupt-certificate
       tests, and independent package verification.
@@ -270,12 +261,11 @@ and axiom declarations in changed Lean files, and records `git status --short`.
 Every public theorem receives a `#print axioms` check whose result contains only
 standard Lean logical axioms already admitted by the project.
 
-Compiler changes require focused builds, extraction/report/IR/ownership checks,
-the complete execution suite, WAT round trips, registered-corpus equality, and
-all affected Talos proofs.  The experimental self-host checks are required only
-when its image boundary is deliberately changed.  Exact-artifact changes additionally
-require focused decoder and validator targets, mutation tests, all source-driven
-proofs, all exact-artifact packages, and semantic conformance.
+Compiler changes require focused builds, extraction/report/IR checks, targeted
+execution, WAT inspection, and all affected Talos proofs.  Exact-artifact
+changes additionally require focused decoder and validator targets, mutation
+tests, execution semantics, and numerical theorem checks.  Self-host, manifest,
+hash, and release-receipt work is not part of these gates.
 
 All Lean and Lake processes use the repository runner serially with explicit
 timeouts.  A timed-out unchanged target is divided before retry.  A checkpoint
@@ -287,10 +277,9 @@ that the remote commit and tree equal the validated local `HEAD` and tree.
 This phase completes only when exact Lean 4.34.0-rc2 builds the compiler and
 proof workspace, every prior integer gate still passes,
 the scalar and representative multi-operation artifacts have exact byte proofs,
-the fixed and runtime-length numerical theorems pass their axiom audits, active
-release evidence names the new immutable dependencies, maintained documentation
-describes the implemented subset, and the remote `talosfp` tree equals the
-validated local tree.
+the fixed and runtime-length numerical theorems pass their axiom audits,
+maintained documentation describes the implemented subset, and the pushed
+`talosfp` branch contains every passing checkpoint.
 
 Completion does not claim support for arbitrary Lean `Float`, the entire
 WebAssembly floating-point instruction set, every permitted NaN result, compiler

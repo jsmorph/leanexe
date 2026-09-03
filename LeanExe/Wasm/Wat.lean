@@ -63,6 +63,10 @@ mutual
     | .unreachable => [s!"{pad indent}unreachable"]
     | .ret => [s!"{pad indent}return"]
     | .drop => [s!"{pad indent}drop"]
+    | .addF64 => [s!"{pad indent}f64.add"]
+    | .mulF64 => [s!"{pad indent}f64.mul"]
+    | .i64ReinterpretF64 => [s!"{pad indent}i64.reinterpret_f64"]
+    | .f64ReinterpretI64 => [s!"{pad indent}f64.reinterpret_i64"]
     | .block body =>
         [s!"{pad indent}block"] ++ instrListLines (indent + 1) body ++
           [s!"{pad indent}end"]

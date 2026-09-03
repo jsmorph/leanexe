@@ -115,10 +115,10 @@ bit-pattern ABI, migration sequence, exact-binary profile, first guarded kernel,
 and acceptance gates.
 
 - [x] Migrate and validate the native compiler under exact Lean 4.34.0-rc2 while preserving all twenty registered artifact bytes.
-- [ ] Move the existing proof corpus through pre-FP Talos `fda69ca`, then immutable FP revision `87e3aa5`, without regressing integer artifacts.
-- [ ] Extend the independent binary decoder, validator, validity proof, and Talos translation with internal f64 add, multiply, and reinterpretation.
-- [ ] Add restricted `UInt64` bit-pattern intrinsics and exact structured lowering while retaining the public integer ABI.
-- [ ] Prove an exact scalar multiplication artifact and a guarded two-term dot artifact with a finite result and explicit accumulated real-error bound.
+- [x] Move the existing proof corpus through pre-FP Talos `fda69ca`, then immutable FP revision `87e3aa5`, with the compiler and proof workspace on exact Lean 4.34.0-rc2.
+- [x] Extend the independent binary decoder, validator, validity proof, and Talos translation with internal f64 add, multiply, and reinterpretation.
+- [x] Add restricted `UInt64` bit-pattern intrinsics and exact structured lowering while retaining the public integer ABI.
+- [ ] Prove a quantitative theorem for the LeanExe `mulBits` program, then the same finite-result and real-error theorem for its exact decoded WAT execution; follow with a guarded two-term dot artifact.
 - [ ] Prove a generated runtime-length dot artifact with absolute, gamma-times-mass, and condition-number contracts.
 - [ ] Prove a generated affine or Horner artifact and retain reusable ProofKit, annotation, certificate, and LTG support justified by both kernels.
 - [ ] Expand the admitted operations to representative division, square root, and f32 uses; update maintained documentation and active release evidence.
@@ -127,29 +127,18 @@ Native floating-point execution and Wasmtime remain regression tools.  Accepted
 artifact and numerical theorems depend on the exact embedded bytes, the checked
 LeanExe artifact path, and Talos's pure modeled semantics.
 
-As of 2026-09-03, the proof workspace has advanced through pre-FP `fda69ca` to
-immutable FP Talos revision `87e3aa5`.  The typed control metadata, function
-type-index handling, `local.tee` support, regenerated program caches, and the
-compatibility repairs
-found so far are implemented.  Every large application proof root now passes
-under exact Lean 4.34.0-rc2.  A subsequent standalone-module sweep exposed
-compatibility failures in `Project.ProofKit.FixedArrayEqNode` and
-`Project.ProofKit.FixedArrayAllocator`; both have been repaired and pass their
-focused builds.  `Project.ProofKit.LTGCheck`, `Project.PairFree.Probe`, the
-translator metadata tests, and the complete 3,674-job `Project` aggregate now
-pass as well.  The first full exact-artifact run exposed one omitted migration
-boundary: raw-byte translation did not preserve the regenerated module's GC
-function-type mirror, non-function exports, or proof-visible global metadata.
-The shared translator now preserves those fields; a focused metadata regression
-and `Project.Gcd.ArtifactTranslation` pass.  The next checkpoint reruns all
-twenty exact-artifact packages.  All twenty manifests and the verifier test
-vector now carry the repaired translator's new normative source digest; frozen
-WASM identities did not change, and the refreshed release record accurately
-lists artifact proof, conformance, immutable-source, and cold-checkout evidence
-as pending.  The FP revision's 3,340-job Talos boundary and exact generated-core
-header regression pass.  The complete integer artifact/conformance acceptance
-will run once at this final dependency pin, followed by the new f64 slices.  No
-floating-point opcode or intrinsic work has started.
+As of 2026-09-03, the proof workspace is on the immutable FP Talos revision and
+the first executable f64 slice passes.  LeanExe recognizes `addBits` and
+`mulBits`, lowers the `UInt64` operands through the two reinterpretations, emits
+real `f64.add` and `f64.mul` instructions, and executes both primitive and nested
+expressions under Wasmtime.  The independent binary layer decodes, validates,
+proves sound, and translates the four new instructions into Talos.  The next
+checkpoint freezes the generated scalar multiplication program and proves its
+fuel-independent modeled result and quantitative binary64 error theorem.
+
+Hash, manifest, release-receipt, and self-host bookkeeping are not gates for
+this branch's floating-point implementation.  Exact program bytes remain part
+of each artifact theorem because they are the semantic input being proved.
 
 ## Required gates
 

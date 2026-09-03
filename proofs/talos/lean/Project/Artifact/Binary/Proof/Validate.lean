@@ -549,6 +549,16 @@ mutual
         rw [hfinish]
         exact Validity.InstrValid.binary .i64ShrU .i64 .i64 start.toValidity
           first second Validity.BinaryOp.i64ShrU hfirst hsecond
+    | f64Add =>
+        rcases binary_sound h with ⟨first, second, hfirst, hsecond, hfinish⟩
+        rw [hfinish]
+        exact Validity.InstrValid.binary .f64Add .f64 .f64 start.toValidity
+          first second Validity.BinaryOp.f64Add hfirst hsecond
+    | f64Mul =>
+        rcases binary_sound h with ⟨first, second, hfirst, hsecond, hfinish⟩
+        rw [hfinish]
+        exact Validity.InstrValid.binary .f64Mul .f64 .f64 start.toValidity
+          first second Validity.BinaryOp.f64Mul hfirst hsecond
     | i32WrapI64 =>
         rcases unary_sound h with ⟨popped, heffect, hfinish⟩
         rw [hfinish]
@@ -559,6 +569,16 @@ mutual
         rw [hfinish]
         exact Validity.InstrValid.unary .i64ExtendI32U .i32 .i64 start.toValidity
           popped Validity.UnaryOp.i64ExtendI32U heffect
+    | i64ReinterpretF64 =>
+        rcases unary_sound h with ⟨popped, heffect, hfinish⟩
+        rw [hfinish]
+        exact Validity.InstrValid.unary .i64ReinterpretF64 .f64 .i64
+          start.toValidity popped Validity.UnaryOp.i64ReinterpretF64 heffect
+    | f64ReinterpretI64 =>
+        rcases unary_sound h with ⟨popped, heffect, hfinish⟩
+        rw [hfinish]
+        exact Validity.InstrValid.unary .f64ReinterpretI64 .i64 .f64
+          start.toValidity popped Validity.UnaryOp.f64ReinterpretI64 heffect
     | i64Load arg =>
         unfold Validator.validateInstr at h
         dsimp [Bind.bind, Monad.toBind, Except.bind] at h

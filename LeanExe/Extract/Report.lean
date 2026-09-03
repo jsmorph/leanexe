@@ -163,6 +163,11 @@ def knownExternal? (name : Name) : Option Classification :=
   let root := rootString name
   if effectRoots.contains root then
     some { status := "rejected", reason := "unsupported effect dependency" }
+  else if LeanExe.Extract.Core.compilerPrimitiveName name then
+    some {
+      status := "implemented"
+      reason := "compiler-recognized UInt64 bit-pattern floating-point intrinsic"
+    }
   else if [``Bool, ``UInt8, ``UInt32, ``UInt64, ``ByteArray, ``Unit, ``PUnit].contains name then
     some { status := "implemented", reason := "primitive or erased unit type in the intended subset" }
   else if name == ``Id then
@@ -275,7 +280,12 @@ def knownExternal? (name : Name) : Option Classification :=
     none
 
 def classifyLocal (env : Environment) (entryName : Name) (info : ConstantInfo) : Classification :=
-  if validatorImplementedNames.contains info.name then
+  if LeanExe.Extract.Core.compilerPrimitiveName info.name then
+    {
+      status := "implemented"
+      reason := "compiler-recognized UInt64 bit-pattern floating-point intrinsic"
+    }
+  else if validatorImplementedNames.contains info.name then
     { status := "implemented", reason := "accepted by the validator demo compiler path" }
   else if LeanExe.Extract.Core.supportedFunction? env info |>.isSome then
     {
@@ -364,7 +374,9 @@ def classifyExternal (name : Name) : Classification :=
     { status := "rejected", reason := "external dependency has no LeanExe primitive" }
 
 def shouldExpand (moduleName entryName name : Name) : Bool :=
-  name == entryName || rootName name == rootName moduleName
+  name == entryName ||
+    (rootName name == rootName moduleName &&
+      !LeanExe.Extract.Core.compilerPrimitiveName name)
 
 def runtimeDepsOf (info : ConstantInfo) : Array Name :=
   match info with
@@ -393,7 +405,11 @@ partial def visit (env : Environment) (moduleName entryName name : Name) :
       addFrontier name { status := "rejected", reason := "constant not found in imported environment" }
   | some info =>
       if shouldExpand moduleName entryName name then
-        let deps := runtimeDepsOf info |>.filter (fun dep => dep != name)
+        let deps :=
+          if LeanExe.Extract.Core.compilerPrimitiveName name then
+            #[]
+          else
+            runtimeDepsOf info |>.filter (fun dep => dep != name)
         modify fun state =>
           { state with
             nodes := state.nodes.push {
