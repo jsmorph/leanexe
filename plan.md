@@ -119,7 +119,7 @@ and acceptance gates.
 - [x] Extend the independent binary decoder, validator, validity proof, and Talos translation with internal f64 add, multiply, and reinterpretation.
 - [x] Add restricted `UInt64` bit-pattern intrinsics and exact structured lowering while retaining the public integer ABI.
 - [x] Prove a quantitative theorem for the LeanExe `mulBits` program, then the same finite-result and real-error theorem for its generated WAT execution, with an explicit fuel-independent trace and store preservation.
-- [ ] Follow the scalar multiplication proof with a guarded two-term dot artifact.
+- [x] Follow the scalar multiplication proof with a guarded two-term dot artifact.
 - [ ] Prove a generated runtime-length dot artifact with absolute, gamma-times-mass, and condition-number contracts.
 - [ ] Prove a generated affine or Horner artifact and retain reusable ProofKit, annotation, certificate, and LTG support justified by both kernels.
 - [ ] Expand the admitted operations to representative division, square root, and f32 uses; update maintained documentation and active release evidence.
@@ -137,13 +137,13 @@ proves sound, and translates the four new instructions into Talos.  The
 compiler-generated `mulBits` WAT now has exact-result, store-preservation,
 explicit small-step, fuel-independent termination, finite-result, and
 `2^-52` absolute-error theorems.  The next checkpoint is the guarded two-term
-dot program and its accumulated-error theorem.  Its LeanExe source entry and
-native/Wasm regression coverage now pass.  The actual emitted two-result WAT
-is frozen as `Project.F64Dot2CheckedBits.Program` and builds under the pinned
-toolchain.  Its raw-bit half-range guard now has an axiom-audited theorem
-yielding finiteness and `|value| ≤ 1/2`; the branch and accumulated-error proof
-for the source-facing pure model now passes with the `3 * 2^-52` bound.  The
-matching generated-WAT branch proof remains in progress.
+dot program and its accumulated-error theorem.  Its source entry, regression
+coverage, raw-bit half-range bridge, pure-model theorem, generated WAT, all
+five execution paths, store preservation, and fuel-independent WAT theorem now
+pass.  Both source-facing and WAT contracts state the same finite-result and
+`3 * 2^-52` absolute-error result on accepted inputs, with exact status-one and
+zero-bit behavior on rejection.  The next numerical artifact is the
+runtime-length dot product.
 
 Hash, manifest, release-receipt, and self-host bookkeeping are not gates for
 this branch's floating-point implementation.  Exact program bytes remain part

@@ -66,14 +66,17 @@ two-`i64` result.  The source/runtime regression checkpoint also confirms exact
 positive output, exact cancellation, rejection, and the intended instruction
 counts.
 
-`dot2CheckedBits_source_real_error` now checks the total source-facing pure
-model contract: it proves the exact rejected result and, on accepted inputs,
-the finite-result and `3 * 2^-52` numerical bound.  Its axiom report contains
-only `propext`, `Classical.choice`, and `Quot.sound`.
+The checked public theorems establish:
 
-The matching WAT execution theorem is still in progress.  Until it passes, the
-generated instruction shape is checked but the numerical statement above is
-claimed only for the source-facing Talos model, not yet for WAT execution.
+- `dot2CheckedBits_source_real_error`: the total source-facing pure-model
+  contract, including exact rejection and the accepted finite/error result;
+- `dot2CheckedBits_exact`: fuel-independent execution of all five generated
+  WAT paths with exact result words and full store preservation; and
+- `dot2CheckedBits_wat_real_error`: that exact WAT execution carries the same
+  `3 * 2^-52` numerical contract as the source-facing model.
+
+The public axiom reports contain only `propext`, `Classical.choice`, and
+`Quot.sound`.
 
 ## Proof boundary
 
@@ -81,7 +84,7 @@ As in the multiplication example, the source-facing contract uses Talos's pure
 binary64 model.  It does not identify Lean's native `Float` evaluator with that
 model.  Native floating-point execution is a regression oracle only.
 
-The completed WAT theorem will concern the decoded WAT freshly generated from
+The completed WAT theorem concerns the decoded WAT freshly generated from
 the registered LeanExe entry and will use Talos's WebAssembly and IEEE-754
 semantics directly.  The half-magnitude guard keeps every arithmetic event in
 the finite domain, so the numerical theorem does not depend on native
@@ -89,7 +92,7 @@ floating-point evaluation or on a choice of NaN payload.
 
 ## Check
 
-Once the specification is complete, run from the repository root:
+Run from the repository root:
 
 ```sh
 tools/talos-proof.js check f64_dot2_checked_bits

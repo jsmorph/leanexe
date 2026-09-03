@@ -207,7 +207,7 @@
         "Project.F64Dot2CheckedBits.Spec.dot2CheckedBits_source_real_error",
         "Project.F64Dot2CheckedBits.Spec.dot2CheckedBits_wat_real_error"
       ],
-      "complete": false
+      "complete": true
     }
   ]
 }
