@@ -1,100 +1,278 @@
-# Proof-Grade `f64` Artifact Semantics
+# Proof-Grade Floating-Point Artifact Semantics
 
-**Status:** Deferred pending an implementation design review.  The current exact-artifact profile covers integer programs, while Talos executes floating-point instructions through opaque native `Float` operations.  This plan defines the proof boundary, implementation order, acceptance gates, cost, and risks for proof-grade binary64 support on Lean 4.31.0.
+**Status:** Active on branch `talosfp`.  This document expands phase 7 of the
+root [Development Plan](../plan.md).
 
-## Scope and theorem boundary
+## Decision and current foundation
 
-LeanExe will preserve its exact-artifact boundary: embed the `.wasm` bytes, decode and validate them inside Lean, translate the validated module into Talos, and prove the behavior of that artifact.  The public ABI will carry binary64 inputs and outputs as `i64` bit patterns, with `f64.reinterpret_i64` and `i64.reinterpret_f64` inside the artifact.  Host-language numeric conversion will play no part in input transport, output transport, or the artifact theorem.
+LeanExe will consume Talos's proof-visible IEEE-754 support through its existing
+Lake dependency and exact-artifact proof boundary.  It will not copy the
+floating-point model, make native `Float` part of the trusted result, or require
+general Lean `Float` source support.
 
-The proof has three layers.  The artifact-execution theorem states that the decoded WASM implements a specified binary64 algorithm under WebAssembly semantics, while a safety theorem states that every successful execution satisfies its domain conditions and produces finite values.  A numerical-refinement theorem interprets those finite binary64 values mathematically and proves an enclosure, approximation, or error bound for the corresponding real-valued computation.
+The branch starts from `selfhost` revision
+`bc0f619c83d3a10e34fefce219ad17483a4cd6fe`.  This preserves the canonical
+module-image codec and self-hosted binary emitter while the compiler and proof
+workspace move together to exact Lean `4.34.0-rc2`.
 
-The semantic reference is the WebAssembly 3.0 [numeric semantics](https://webassembly.github.io/spec/core/exec/numerics.html), together with its [instruction execution](https://webassembly.github.io/spec/core/exec/instructions.html), [validation](https://webassembly.github.io/spec/core/valid/instructions.html), and [binary encoding](https://webassembly.github.io/spec/core/binary/instructions.html).  The initial profile covers `f64` values, constants, the listed scalar operations, integer conversions, and reinterpretation.  Separate profiles will cover `f32`, SIMD, transcendental functions, and floating-point memory instructions, while the first artifact uses integer loads, stores, parameters, and results around internal reinterpretations.
+The validated Talos floating-point foundation is fork revision
+`87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47`.  It provides pure bit-pattern
+IEEE32 and IEEE64 execution, finite real-value interpretations, shared integer
+rounding, f64 addition, subtraction, multiplication, division, and square-root
+error theorems, reusable perturbation and relative-error composition, fixed
+Horner and dot kernels, and a runtime-length generated f64 dot-product proof.
+The arithmetic foundation, shared rounding proof, and representative numerical
+kernels therefore belong to Talos and are prerequisites rather than LeanExe
+implementation milestones.
 
-## Existing system and missing proof boundary
+LeanExe's missing layer is exact artifact closure and compiler access: its
+independent binary syntax currently admits integer values and instructions, and
+its source IR and structured emitter currently expose integer operations only.
 
-Talos represents an `f64` value by its exact `UInt64` bits and defines arithmetic, square root, comparisons, conversions, and reinterpretation in `Interpreter/Wasm/Float.lean`.  Arithmetic and comparisons currently decode those bits through Lean's opaque native `Float`, execute a host operation, and encode the result, while a common function selects a canonical NaN.  These definitions execute programs but do not expose kernel-checked proofs of round-to-nearest-even, subnormal behavior, overflow, signed zero, or WebAssembly's permitted NaN results.
+## Ownership and trust boundary
 
-The exact-artifact profile under `proofs/talos/lean/Project/Artifact/Binary` currently accepts integer value types and instructions.  Supporting `f64` crosses syntax, grammar, decoding, decoder soundness, validation, validity proofs, Talos translation, structural equality, fixtures, and aggregate artifact checks.  Each admitted floating-point opcode needs both a successful exact-byte path and a mutation case that fails at the expected decoder, validator, translation, semantic, or refinement boundary.
+| Layer | Owner | Checked responsibility |
+|-------|-------|------------------------|
+| IEEE execution and numerical algebra | Talos | Pure bit-level operations, finite real interpretation, primitive error theorems, composition, and kernel bounds. |
+| Restricted source profile | LeanExe compiler | Recognize named bit-pattern intrinsics and reject unsupported floating-point source forms. |
+| Structured lowering | LeanExe compiler | Emit an exact reinterpret/arithmetic/reinterpret instruction sequence while preserving the integer public ABI. |
+| Exact binary boundary | LeanExe artifact verifier | Decode embedded bytes, prove grammar agreement, validate, translate into Talos, and reject malformed or out-of-profile modules. |
+| Artifact behavior | LeanExe proof package | Prove fuel-independent execution of the exact translated module and preserve its complete store contract. |
+| Numerical refinement | Talos plus artifact specification | State explicit finite, magnitude, headroom, normality, and denominator assumptions and derive the advertised real bound. |
+| Annotations and certificates | Untrusted producer, checked consumer | Suggest regions, guards, and numerical facts whose exact statements Lean verifies against frozen bytes and sound lemmas. |
 
-LeanExe currently rejects floating-point source types.  A narrow compiler profile can expose binary64 intrinsics over `UInt64` bit patterns, emit internal `f64` instructions and reinterpretations, and retain the current `Array UInt64 -> Array UInt64` generation interface.  General Lean `Float` source support requires a separate source-semantics decision and does not block the narrow artifact profile.
+The Lean kernel checks every accepted theorem.  LeanExe, the self-hosted emitter,
+the annotation and certificate generators, Codex, native `Float`, Wasmtime, and
+the source program remain untrusted producers or regression oracles.  Exact
+artifact theorems continue not to assume compiler correctness.
 
-## Scalar semantic model
+## Toolchain and dependency migration
 
-The logical value remains a `UInt64` bit pattern.  A proof-visible decoder will expose the sign bit, eleven-bit exponent, fifty-two-bit fraction, and classification as zero, subnormal, normal, infinity, or NaN.  Finite values will receive an exact integer or rational interpretation derived from the decoded exponent and significand.
+The compiler root, proof workspace, generated proof packages, and active tool
+checks will pin:
 
-One integer-based round-to-nearest-even function will serve every operation that rounds a real result to binary64.  Its theorems must cover normal and subnormal results, exact halfway cases, underflow to signed zero, overflow to infinity, and a significand carry into a new exponent.  Addition, subtraction, multiplication, division, and integer-to-float conversion will reduce their rounding arguments to this common result.
+```text
+leanprover/lean4:v4.34.0-rc2
+```
 
-WebAssembly arithmetic will use an allowed-result relation over input and output bit patterns.  The relation will express the permitted NaN outcomes and the unique non-NaN result, including signed zero, while a proof-visible canonical selector will provide executable Talos behavior and carry a theorem that it satisfies the relation.  Native `Float` execution may remain as a development oracle, but no accepted artifact, safety, or refinement theorem will depend on it.
+The migration will be divided so failures remain attributable:
 
-| Operation family | Required semantic result |
-|------------------|--------------------------|
-| Classification and reinterpretation | Exact bit decomposition, reconstruction, classification disjointness, and bit-identical `i64`/`f64` reinterpretation. |
-| `abs` | Direct sign-bit clearing with payload, infinity, subnormal, and signed-zero facts. |
-| Comparisons | Ordered WebAssembly results for finite values, infinities, signed zero, and unordered NaN inputs. |
-| `min` and `max` | Exact signed-zero choice and the permitted result set for NaN inputs. |
-| `add`, `sub`, `mul`, and `div` | Exceptional-case classification, exact finite operation, shared round-to-nearest-even, overflow, underflow, and allowed NaNs. |
-| `sqrt` | Exceptional cases plus an integer-root or equivalent exact bound that determines the correctly rounded binary64 result. |
-| Integer conversions | Signed and unsigned `i32`/`i64` to `f64`, trapping `f64` truncation, and saturating truncation, with exact range and rounding rules. |
+1. Move the LeanExe compiler and self-hosted emitter from Lean 4.31.0 to exact
+   4.34.0-rc2 without changing the Talos proof dependency.  Recheck extraction,
+   IR, ownership, native and self-hosted emission, and every registered byte
+   identity.
+2. Move the proof workspace to Talos revision
+   `fda69ca67a81ea4f1fa4e376bdc5861d9fe5479a`, the closest useful pre-FP 4.34
+   baseline, and make all existing source-driven and exact-artifact proofs pass.
+3. Advance only the immutable Talos pin to
+   `87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47` and repeat the complete integer
+   proof and conformance gates before LeanExe emits any floating-point opcode.
 
-The first executable semantics can choose one permitted NaN result deterministically and prove that choice sound.  A complete WebAssembly relation must account for a permitted result at each dynamic floating-point event, without tying the choice to the fuel used by Talos execution or weakest-precondition proofs.  Numerical kernels will avoid that complexity in their final result theorem by proving that every successful path excludes NaN and infinity before an affected operation can produce a non-unique result.
+Active manifests, conformance configuration, release identity, kernel review,
+and warm receipts must follow the new pins.  Historical demo, benchmark, and
+bootstrap records retain their original 4.31 pins and results as provenance.
+The working dependency may use a local path during development, but every
+pushed checkpoint uses an immutable Git revision.  A canonical upstream Talos
+revision may replace the fork pin only after it contains the identical tree.
 
-## Numerical obligations and failure
+## Bit-pattern ABI and restricted source profile
 
-Verified kernels will return an explicit tagged result such as `ok bits` or `domainError`.  Under the current array interface, a fixed two-word output can carry the tag and payload, while a later direct scalar interface can use the same logical result type.  The design review will assign the concrete tag values and the payload rule for an error result before compiler work begins.
+The first profile exposes compiler-recognized operations over raw words, for
+example:
 
-The proof generator may produce certificates for intermediate ranges, finiteness, nonzero divisors, valid square-root arguments, accumulated rounding error, and branch stability.  Rational intervals with outward rounding provide a small certificate language in which each step names input intervals, an operation, and an enclosing output interval.  Lean will check every certificate step against a soundness theorem, leaving an external interval or numerical tool outside the trusted base.
+```lean
+LeanExe.Float64.addBits : UInt64 -> UInt64 -> UInt64
+LeanExe.Float64.mulBits : UInt64 -> UInt64 -> UInt64
+```
 
-A comparison whose proved intervals overlap its decision boundary lacks a branch-stability certificate.  The initial kernel will return `domainError` for that input region, and its central theorem will state that each `ok` execution returns finite bits within the required mathematical bound.  A certified higher-precision fallback adds another arithmetic semantics, compiler path, and refinement proof, so it remains a later project after rejection semantics work end to end.
+The public values remain `UInt64`; reinterpretation happens inside the emitted
+artifact.  A multiplication has the semantic instruction shape:
 
-## Implementation sequence
+```wat
+local.get 0
+f64.reinterpret_i64
+local.get 1
+f64.reinterpret_i64
+f64.mul
+i64.reinterpret_f64
+```
 
-The work is divided into narrow checked increments.  Each milestone leaves the integer artifact profile unchanged and adds one independently reviewable semantic or artifact layer.  A milestone completes only after its Lean proofs, exact-artifact checks, conformance cases, and relevant mutations pass.
+The compiler may provide executable native definitions for source comparison,
+but artifact and numerical theorems depend only on the emitted bytes and Talos's
+pure operations.  The extractor accepts only the documented intrinsic names and
+exact signatures.  General `Float`, implicit coercions, f32/f64 promotion and
+demotion, and native floating evaluation remain outside the initial language.
 
-| Milestone | Work | Completion evidence |
-|-----------|------|---------------------|
-| 0. Design record | Fix the first arithmetic operation, tagged-result ABI, allowed-NaN relation, certificate endpoint representation, initial conversion set, and Talos execution API. | Reviewed definitions and theorem statements, with no implementation dependency added. |
-| 1. Binary64 foundation | Add bit decomposition, classification, exact finite interpretation, reconstruction, and direct `abs` and reinterpretation semantics. | Exhaustive classification partitions, round-trip theorems, boundary examples, and checked sign-bit operations. |
-| 2. Exact-artifact closure | Add `f64` types, constants, selected scalar opcodes, conversions, and reinterpretations to the binary syntax, grammar, decoder, soundness proof, validator, validity proof, translation, and equality layers. | One exact artifact decodes, validates, translates, and rejects opcode, immediate, type, and translation mutations. |
-| 3. Deterministic scalar base | Add comparisons, `min`, `max`, exceptional-case classification, the allowed-result relation, and a canonical selector proved allowed. | WebAssembly conformance cases cover NaNs, infinities, subnormals, and both zeros.  WP rules expose the proved semantics. |
-| 4. Shared rounding and one arithmetic operation | Prove the common round-to-nearest-even kernel and use it for either addition or multiplication. | Normal, subnormal, halfway, underflow, overflow, and carry-boundary theorems.  Selector membership in the allowed-result relation. |
-| 5. Vertical artifact kernel | Compile one guarded kernel through the `i64` bit ABI, generate one narrow interval certificate, and prove execution, safety, and numerical refinement. | Exact bytes, direct artifact theorem, finite `ok` result, explicit `domainError`, checked enclosure, independent package verification, and mutation failures. |
-| 6. Complete scalar profile | Add the remaining arithmetic operations, division side conditions, correctly rounded square root, and the complete integer-conversion set. | Per-operation semantic theorems, WP rules, conformance corpus, and a whole-program result independent of permitted NaN selection on finite-success paths. |
-| 7. Reusable numerical certificates | Generalize the vertical certificate into a checked format for ranges, finiteness, domains, accumulated error, and branch stability. | Certificate parser and checker, soundness theorem per step, generator documentation, accepted certificates, and rejected corrupt certificates. |
-| 8. Narrow LeanExe compiler profile | Add explicit bit-pattern intrinsics, internal `f64` emission, domain guards, annotations, and certificate output. | Source rejection outside the profile, source/execution comparisons, byte-stable artifacts, annotation checks, and end-to-end `leanexegen` proof generation. |
+The first implementation can keep each intrinsic result represented as an i64
+word in IR and locals.  Nested arithmetic may consequently contain adjacent
+reinterpretations.  Their exact presence is part of the frozen artifact until a
+separately reviewed typed-float IR optimization proves and tests a byte change.
 
-The first vertical slice ends at milestone 5 and supplies the earliest evidence about feasibility, proof-checking cost, and the usefulness of generated certificates.  Work on the complete operator set follows only after that artifact passes independent verification and its numerical-refinement proof remains tractable.  Square root begins after the shared rounding theorem because it forms the longest serial proof dependency.
+## Minimal exact-binary profile
 
-## Effort and risks
+The first artifact increment admits an internal f64 validation-stack type and
+only these arithmetic instructions:
 
-The estimates assume Lean 4.31.0, one experienced Lean developer, and no new floating-point dependency.  Decoder, validator, and conformance work can proceed alongside the semantic foundation, while the common rounding theorem and square-root proof remain sequential.  Any move to another Lean version or a third-party arithmetic library requires a separate toolchain or dependency review.
+| Instruction | Opcode |
+|-------------|--------|
+| `f64.add` | `0xa0` |
+| `f64.mul` | `0xa2` |
+| `i64.reinterpret_f64` | `0xbd` |
+| `f64.reinterpret_i64` | `0xbf` |
 
-| Result | Estimated effort |
-|--------|------------------|
-| Vertical artifact slice through milestone 5 | 4–8 engineer-weeks. |
-| Complete scalar Talos and exact-artifact path through milestone 6 | 6–10 engineer-months in total. |
-| Reusable checked certificate system in milestone 7 | 2–4 additional engineer-months. |
-| Narrow LeanExe compiler profile in milestone 8 | 1–3 additional engineer-months after the semantic API stabilizes. |
+Function parameters, results, storage, and public locals remain i64.  This
+avoids f64 constants, parameters, results, locals, loads, and stores in the
+first closure.  The new cases must cross binary syntax, grammar, executable
+decoding, decoder soundness, executable validation, declarative validity,
+validator soundness, Talos translation, structural equality, fixtures, and
+mutation tests.  Talos's WAT decoder is an auxiliary source-driven check and
+does not replace this independent `.wasm` byte boundary.
 
-| Risk | Assessment | Control |
-|------|------------|---------|
-| Correctly rounded square root | High: exact root bounds, tie handling, subnormals, and classification boundaries interact. | Start after common rounding.  Divide the proof into exact bounds, rounding decision, and encoding.  Check every exponent boundary. |
-| Shared rounding theorem | High: every arithmetic operation depends on it. | Use one small integer kernel and separate normal, subnormal, halfway, underflow, overflow, and carry proofs. |
-| Permitted NaN behavior | High: WebAssembly permits several results for some operations, while Talos currently chooses one. | Separate the relation from the selector, prove selector membership once, and prove finite-success paths choice-independent. |
-| Lean checking cost | Medium-high: exact integer and rational normalization may dominate artifact proofs. | Keep checked arithmetic theorems opaque, use small certificate steps, and measure each milestone before broadening the operator set. |
-| Numerical-certificate soundness | Medium: every kernel refinement depends on the checker. | Keep the certificate language small, use rational endpoints, and prove one soundness theorem for each certificate operation. |
-| Artifact decoder and validator extension | Medium: the change crosses many checked modules. | Add instruction families in stages and preserve decoder, validator, translation, conformance, and mutation gates at each stage. |
-| Public bit-pattern ABI | Low-medium: transport is exact, while the tagged result needs a stable encoding. | Fix the encoding in milestone 0 and keep reinterpretation inside the proved artifact. |
+The self-hosted emitter's module-image schema v2 is frozen.  The four new
+structured instruction records therefore enter a documented schema/profile v3,
+with v2 decoding retained for historical images and deterministic rejection of
+unknown tags and versions.  Native emission and both WebAssembly bootstrap
+stages must agree on v3.  Existing registered program bytes remain unchanged;
+the self-hosted emitter artifact and image digests may change only as recorded
+consequences of the new schema and instruction cases.
 
-## Trust boundary and acceptance
+## First accepted kernel
 
-The Lean kernel will check the binary64 definitions, WebAssembly allowed-result relation, Talos execution rules, artifact theorem, safety theorem, interval-certificate soundness, and numerical-refinement theorem.  The compiler, headless proving agent, certificate generator, Wasmtime, native `Float` evaluator, and source program remain untrusted producers or comparison tools.  Exact bytes, generated certificates, and suggested proofs enter the trusted result only through their Lean checks.
+The plumbing artifact is a raw two-operand multiplication.  It proves that
+embedded bytes decode, validate, and translate; execution terminates
+independently of fuel; the complete store frame is preserved; and the returned
+i64 word equals `Wasm.IEEE64.mul` on the two input words.  A corollary supplies
+finiteness and the Talos real-error bound under explicit finite and magnitude
+hypotheses.
 
-The first acceptance artifact will take binary64 inputs as `i64` bit patterns, reinterpret them internally, execute one proved arithmetic operation behind explicit domain guards, and return a tagged integer result after `i64.reinterpret_f64`.  Lean must prove the exact artifact execution, finite successful result, domain rejection, and one numerical enclosure, while the independent package verifier must reconstruct that theorem from the frozen bytes.  Mutating the opcode, rounding result, domain guard, output tag, or certificate must make the corresponding artifact, semantic, safety, or refinement check fail.
+The first numerically meaningful artifact is a guarded two-term dot product:
 
-Full scalar completion requires checked semantics and artifact coverage for every operation family in the table, including subnormals, infinities, signed zero, and permitted NaN results.  At least one multi-operation kernel must prove a cumulative error bound and stable control flow, and at least one boundary case must return `domainError`.  Performance measurements must report kernel checking time, artifact-proof checking time, certificate checking time, and the largest proof reduction boundary before compiler support expands.
+```lean
+dot2CheckedBits a0 b0 a1 b1
+```
 
-## Decisions before implementation
+For each operand the generated program checks the raw-bit predicate
 
-Milestone 0 must select addition or multiplication for the vertical slice, define the tagged output encoding, and fix the initial certificate endpoints.  It must also define how the deterministic Talos selector relates to the full WebAssembly allowed-result relation and which integer conversions enter the first artifact.  These decisions determine the public theorem statements and require review before code changes.
+```text
+(bits & 0x7fff_ffff_ffff_ffff) <= 0x3fe0_0000_0000_0000
+```
 
-The plan keeps Lean 4.31.0 and adds no dependency by default.  A later Lean release may offer useful logical floating-point components, but a toolchain comparison must account for WebAssembly's NaN relation, exact artifact integration, and certificate checking rather than arithmetic definitions alone.  A third-party floating-point library or higher-precision runtime requires a separate review of maintenance, licensing, proof assumptions, and the trusted boundary.
+which denotes a finite binary64 value with absolute value at most one half.
+The accepted branch evaluates two multiplications and one addition.  The public
+result uses two i64 words: tag zero and the result bits on success, tag one and
+payload zero on domain rejection.
+
+The exact artifact theorem proves both branches terminate.  Rejection reaches
+no floating-point operation.  Success returns exactly the Talos modeled dot
+result, preserves the required store and memory frame, produces a finite word,
+and proves
+
+```text
+|value(result) - (value(a0) * value(b0) + value(a1) * value(b1))|
+  <= 3 * 2^-52.
+```
+
+The finite half-domain excludes overflow, infinity, and NaN at every arithmetic
+event.  The theorem is therefore independent of WebAssembly's permitted choice
+of NaN payload.  A complete allowed-NaN relation remains a later scalar-profile
+task rather than a prerequisite for finite numerical kernels.
+
+The first certificate is deliberately fixed and small: it records the half
+guard, the two multiplication edges, the addition edge, and the claimed error
+budget.  Lean checks the guard-to-range bridge and instantiates Talos's existing
+dot theorem.  A general interval language begins only after this fixed exact
+artifact passes.
+
+## Runtime-length and follow-on kernels
+
+After the fixed kernel, LeanExe will compile a runtime-length dot product over
+its existing `Array UInt64` representation.  The artifact specification fixes
+the vector layout and defines the empty dot product as positive zero.  The
+artifact proof must establish LeanExe's emitted allocation, array-header, loop,
+load, and result behavior; the hand-written Talos `F64Dot` proof is a structural
+reference, not a substitute for the generated artifact proof.
+
+The numerical conclusion reuses Talos's list-shaped dot theorem.  Its public
+hypotheses state finite and bounded inputs, aggregate exact headroom, normal or
+zero exact products where the relative model requires it, and
+`(2*n - 1) * 2^-53 < 1`.  It proves a finite result and
+
+```text
+|computed - exact| <= gamma (2*n - 1) 2^-53 * sum |x_i * y_i|.
+```
+
+For a nonzero exact result, a corollary states the corresponding condition-number
+relative bound.  A guarded affine or Horner artifact then exercises sequential
+composition.  Division, square root, f32 arithmetic, comparisons, conversions,
+and broader certificate automation enter only after these representative f64
+kernels pass.
+
+## Ordered checkpoints
+
+Each checked row is a separately committed and pushed passing state.  The plan
+and `devnotes.md` record exact commands, tool pins, axiom reports, artifact
+digests, and any deliberate byte changes.
+
+- [ ] Migrate the compiler and self-hosted emitter to exact Lean 4.34.0-rc2;
+      preserve or explicitly review every registered artifact byte.
+- [ ] Move the proof workspace to pre-FP Talos `fda69ca67a81ea4f1fa4e376bdc5861d9fe5479a`;
+      repair compatibility and pass every existing integer source and
+      exact-artifact gate.
+- [ ] Advance the immutable Talos dependency to FP revision `87e3aa5`; repeat
+      all existing integer proof, conformance, and identity gates.
+- [ ] Add the internal f64 binary syntax, decoder, grammar, and decoder proofs
+      for add, multiply, and the reinterpret pair.
+- [ ] Add executable validation, declarative validity, translation, equality,
+      successful fixtures, and boundary/mutation rejection tests.
+- [ ] Add `addBits` and `mulBits` source intrinsics, IR operations, structured
+      emission, binary and WAT encoding, self-hosted image schema v3, reports,
+      annotations, and focused compiler tests.
+- [ ] Freeze and prove the scalar multiplication artifact, including exact
+      execution, store preservation, finite-domain error, and axiom audit.
+- [ ] Freeze and prove `dot2CheckedBits`, including its rejected path, guard
+      bridge, finite result, `3 * 2^-52` error theorem, corrupt-certificate
+      tests, and independent package verification.
+- [ ] Compile and prove a runtime-length dot artifact with absolute,
+      gamma-times-mass, and conditioned relative-error contracts.
+- [ ] Compile and prove a representative affine or Horner artifact and extract
+      reusable floating ProofKit, annotation, and LTG support from both kernels.
+- [ ] Extend the exact profile and compiler intrinsics to subtraction, division,
+      square root, and representative f32 operations as demanded by accepted
+      kernels.
+- [ ] Refresh maintained language, compiler, ABI, artifact, numerical, status,
+      and trust-boundary documentation; refresh active release evidence and
+      verify the pushed branch tree.
+
+## Verification gates
+
+Every source checkpoint runs `git diff --check`, rejects new `sorry`, `admit`,
+and axiom declarations in changed Lean files, and records `git status --short`.
+Every public theorem receives a `#print axioms` check whose result contains only
+standard Lean logical axioms already admitted by the project.
+
+Compiler changes require focused builds, extraction/report/IR/ownership checks,
+the complete execution suite, WAT round trips, native/image byte equality, the
+self-hosted Stage 1/Stage 2 fixed point, registered-corpus equality, malformed
+image tests, and all affected Talos proofs.  Exact-artifact changes additionally
+require focused decoder and validator targets, mutation tests, all source-driven
+proofs, all exact-artifact packages, and semantic conformance.
+
+All Lean and Lake processes use the repository runner serially with explicit
+timeouts.  A timed-out unchanged target is divided before retry.  A checkpoint
+is pushed only after its required gates pass; after each push, a fetch must show
+that the remote commit and tree equal the validated local `HEAD` and tree.
+
+## Completion and nonclaims
+
+This phase completes only when exact Lean 4.34.0-rc2 builds the compiler and
+proof workspace, every prior integer and self-hosted-emitter gate still passes,
+the scalar and representative multi-operation artifacts have exact byte proofs,
+the fixed and runtime-length numerical theorems pass their axiom audits, active
+release evidence names the new immutable dependencies, maintained documentation
+describes the implemented subset, and the remote `talosfp` tree equals the
+validated local tree.
+
+Completion does not claim support for arbitrary Lean `Float`, the entire
+WebAssembly floating-point instruction set, every permitted NaN result, compiler
+correctness, a verified certificate generator, transcendental functions, SIMD,
+or proof-grade f32/f64 promotion and demotion.
