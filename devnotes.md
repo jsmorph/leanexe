@@ -7848,3 +7848,27 @@ Project.F64DotCheckedBits.Execution` passed 3,368 jobs.  The public theorem
 axiom reports contain only `propext`, `Classical.choice`, and `Quot.sound`.
 The next checkpoint is the nonempty generated loop, reusing the checked array
 load theorem for the seed and per-iteration operand reads.
+
+## 2026-09-03: Runtime-length dot nonempty WAT loop
+
+`Project.F64DotCheckedBits.Spec.equal_nonempty_exact` now proves the complete
+equal, nonempty path of the compiler-generated entry.  Its initial accumulator
+is exactly the first Talos-modeled binary64 product.  Every subsequent
+iteration reads the next two words through
+`Project.ProofKit.CheckedArrayGet.checkedGetCore_spec`, performs exactly the
+modeled multiplication and addition, and reestablishes the `dot64List` prefix
+invariant.
+
+The proof explicitly excludes 64-bit loop-counter wraparound from the array
+size bound.  Its unconsumed-pair measure strictly decreases on each back edge,
+so `equal_nonempty_exact` is fuel-independent.  The generated program leaves
+the complete input store unchanged and returns the pure modeled dot-product
+word with status zero for every equal nonempty pair of logical arrays.
+
+Under exact Lean 4.34.0-rc2,
+`lake -d proofs/talos/lean --no-ansi build
+Project.F64DotCheckedBits.Execution` passed 3,371 jobs.  `#print axioms
+equal_nonempty_exact` reports only `propext`, `Classical.choice`, and
+`Quot.sound`.  The next checkpoint combines the mismatch, empty, and nonempty
+paths and transfers the existing absolute, gamma-times-mass, and conditioned
+relative-error source theorems to exact WAT execution.
