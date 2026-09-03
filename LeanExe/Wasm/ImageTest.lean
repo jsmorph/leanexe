@@ -53,6 +53,21 @@ def allInstructions : List Instr :=
    .iff false [] none,
    .iffI32 [.constI32 4] (some [.constI32NegOne])]
 
+def supportedInstructionBytes (body : List Instr) : ByteArray :=
+  match encodeInstrList body with
+  | Except.ok bytes => bytes
+  | Except.error _ => ByteArray.empty
+
+def isEncodingError (expected : String) : Except String ByteArray → Bool
+  | Except.error actual => actual == expected
+  | Except.ok _ => false
+
+#guard match encodeInstrList allInstructions with
+  | Except.ok bytes => !bytes.isEmpty
+  | Except.error _ => false
+
+#guard isEncodingError errorUnsupportedInstructionV2 (encodeInstrList [.mulF64])
+
 def sample : Module :=
   { memoryMinPages := 16
     globals := #[{ mutable_ := true, initial := 4096 },
@@ -61,7 +76,7 @@ def sample : Module :=
       params := 3
       results := 2
       locals := 8
-      body := encodeInstrList allInstructions }]
+      body := supportedInstructionBytes allInstructions }]
     exports := #[{ name := "memory".toUTF8, kind := .memory, index := 0 },
       { name := "run".toUTF8, kind := .func, index := 0 },
       { name := "counter".toUTF8, kind := .global, index := 1 }] }
@@ -151,7 +166,7 @@ def withEncodedBody (body : ByteArray) : Module :=
     exports := #[] }
 
 def withBody (body : List Instr) : Module :=
-  withEncodedBody (encodeInstrList body)
+  withEncodedBody (supportedInstructionBytes body)
 
 #guard isError errorLocalIndex (decodeModule (encodeModule (withBody [.localGet 1])))
 

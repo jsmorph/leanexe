@@ -141,7 +141,6 @@ theorem readByte_sound :
       omega
     rw [ByteArray.extract_add_one (by omega)]
     simp [ByteArray.getElem_eq_getElem_data]
-    rfl
   · unfold readByte at hrun
     rw [if_neg hposLimitStrict] at hrun
     contradiction
@@ -233,16 +232,16 @@ theorem expectByte_sound (expected : UInt8) :
     · contradiction
     · rename_i parsedByte bytePair hbyteRun
       rcases bytePair with ⟨byte, afterByte⟩
-      split at hrun
-      · rename_i hequal
+      dsimp at hrun
+      by_cases hequal : byte = expected
+      · have hbyteSound := readByte_sound start byte afterByte hstart hbyteRun
+        simp [hequal] at hrun
         cases hrun
-        rcases readByte_sound start byte afterByte
-            hstart hbyteRun with
+        rcases hbyteSound with
           ⟨bytes, hconsumed, hbytes⟩
-        simp at hequal
         rw [hbytes, hequal] at hconsumed
         exact ⟨[expected], hconsumed, rfl⟩
-      · contradiction
+      · simp [hequal] at hrun
 
 theorem expectBytes_sound (expected : List UInt8) :
     Sound (expectBytes expected) (fun bytes _ => bytes = expected) := by

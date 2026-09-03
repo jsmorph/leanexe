@@ -1,4 +1,5 @@
 import Lean
+import LeanExe.Float64
 
 namespace LeanExe.IR
 
@@ -32,6 +33,8 @@ inductive U64Op where
   | bitXor
   | shiftLeft
   | shiftRight
+  | f64AddBits
+  | f64MulBits
   deriving BEq, Repr
 
 inductive RuntimeStat where
@@ -222,6 +225,8 @@ mutual
         | .bitXor => UInt64.xor leftValue rightValue
         | .shiftLeft => UInt64.shiftLeft leftValue rightValue
         | .shiftRight => UInt64.shiftRight leftValue rightValue
+        | .f64AddBits => LeanExe.Float64.addBits leftValue rightValue
+        | .f64MulBits => LeanExe.Float64.mulBits leftValue rightValue
     | .ite cond thenValue elseValue =>
         if cond.eval module_ store then
           thenValue.eval module_ store

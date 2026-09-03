@@ -36,6 +36,7 @@ cases=(
   "LeanExe.Examples.ByteArrayPrograms LeanExe.Examples.ByteArrayPrograms.pushBangSize"
   "LeanExe.Examples.Collatz LeanExe.Examples.Collatz.steps"
   "LeanExe.Examples.Correctness LeanExe.Examples.Correctness.arrayFoldByteArrayAccumulatorReleaseStats"
+  "LeanExe.Examples.Float64Bits LeanExe.Examples.Float64Bits.mulThenAddBits"
   "LeanExe.Examples.JsonTypedDecode LeanExe.Examples.JsonTypedDecode.transform"
 )
 

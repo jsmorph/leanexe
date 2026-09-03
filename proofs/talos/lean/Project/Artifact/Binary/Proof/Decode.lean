@@ -208,9 +208,8 @@ theorem limits_sound :
   · contradiction
   · rename_i parsedFlags flagsPair hflagsRun
     rcases flagsPair with ⟨flags, afterFlags⟩
-    split at hrun
-    · rename_i hminOnly
-      dsimp only at hrun
+    by_cases hminOnly : flags = 0
+    · simp [hminOnly] at hrun
       split at hrun
       · contradiction
       · rename_i parsedMin minPair hminRun
@@ -221,13 +220,12 @@ theorem limits_sound :
         rcases Leb.Proof.u32_sound afterFlags min tail
             (hflagConsumed.finish_wellFormed hstart) hminRun with
           ⟨minBytes, hminConsumed, hminEncoding⟩
-        simp at hminOnly
         rw [hflagBytes, hminOnly] at hflagConsumed
         exact ⟨0 :: minBytes, hflagConsumed.trans hminConsumed,
           Grammar.Limits.min minBytes min hminEncoding⟩
-    · split at hrun
-      · rename_i hminMax
-        dsimp only at hrun
+    · simp [hminOnly] at hrun
+      by_cases hminMax : flags = 1
+      · simp [hminMax] at hrun
         split at hrun
         · contradiction
         · rename_i parsedMin minPair hminRun
@@ -246,13 +244,13 @@ theorem limits_sound :
                 (hminConsumed.finish_wellFormed
                   (hflagConsumed.finish_wellFormed hstart)) hmaxRun with
               ⟨maxBytes, hmaxConsumed, hmaxEncoding⟩
-            simp at hminMax
             rw [hflagBytes, hminMax] at hflagConsumed
             exact ⟨0x01 :: (minBytes ++ maxBytes),
               hflagConsumed.trans (hminConsumed.trans hmaxConsumed),
               Grammar.Limits.minMax minBytes maxBytes min max
                 hminEncoding hmaxEncoding⟩
-      · contradiction
+      · simp [hminMax] at hrun
+        contradiction
 
 theorem memoryType_sound :
     Sound memoryType Grammar.MemoryType := by
@@ -277,9 +275,8 @@ theorem constExpr_sound :
   · contradiction
   · rename_i parsedOpcode opcodePair hopcodeRun
     rcases opcodePair with ⟨opcode, afterOpcode⟩
-    split at hrun
-    · rename_i hi32
-      dsimp only at hrun
+    by_cases hi32 : opcode = 65
+    · simp [hi32] at hrun
       split at hrun
       · contradiction
       · rename_i parsedValue valuePair hvalueRun
@@ -298,16 +295,15 @@ theorem constExpr_sound :
               (hvalueConsumed.finish_wellFormed
                 (hopcodeConsumed.finish_wellFormed hstart)) hendRun with
             ⟨endBytes, hendConsumed, hendBytes⟩
-          simp at hi32
           rw [hopcodeBytes, hi32] at hopcodeConsumed
           rw [hendBytes] at hendConsumed
           refine ⟨65 :: (valueBytes ++ [11]), ?_, ?_⟩
           · simpa using hopcodeConsumed.trans
               (hvalueConsumed.trans hendConsumed)
           · exact Grammar.ConstExpr.i32 valueBytes integer hvalueEncoding
-    · split at hrun
-      · rename_i hi64
-        dsimp only at hrun
+    · simp [hi32] at hrun
+      by_cases hi64 : opcode = 66
+      · simp [hi64] at hrun
         split at hrun
         · contradiction
         · rename_i parsedValue valuePair hvalueRun
@@ -326,14 +322,14 @@ theorem constExpr_sound :
                 (hvalueConsumed.finish_wellFormed
                   (hopcodeConsumed.finish_wellFormed hstart)) hendRun with
               ⟨endBytes, hendConsumed, hendBytes⟩
-            simp at hi64
             rw [hopcodeBytes, hi64] at hopcodeConsumed
             rw [hendBytes] at hendConsumed
             refine ⟨66 :: (valueBytes ++ [11]), ?_, ?_⟩
             · simpa using hopcodeConsumed.trans
                 (hvalueConsumed.trans hendConsumed)
             · exact Grammar.ConstExpr.i64 valueBytes integer hvalueEncoding
-      · contradiction
+      · simp [hi64] at hrun
+        contradiction
 
 theorem global_sound :
     Sound global Grammar.Global := by
@@ -367,9 +363,8 @@ theorem exportDesc_sound :
   · contradiction
   · rename_i parsedKind kindPair hkindRun
     rcases kindPair with ⟨kind, afterKind⟩
-    split at hrun
-    · rename_i hfunc
-      dsimp only at hrun
+    by_cases hfunc : kind = 0
+    · simp [hfunc] at hrun
       split at hrun
       · contradiction
       · rename_i parsedIndex indexPair hindexRun
@@ -380,13 +375,12 @@ theorem exportDesc_sound :
         rcases Leb.Proof.u32_sound afterKind index tail
             (hkindConsumed.finish_wellFormed hstart) hindexRun with
           ⟨indexBytes, hindexConsumed, hindexEncoding⟩
-        simp at hfunc
         rw [hkindBytes, hfunc] at hkindConsumed
         exact ⟨0 :: indexBytes, hkindConsumed.trans hindexConsumed,
           Grammar.ExportDesc.func indexBytes index hindexEncoding⟩
-    · split at hrun
-      · rename_i hmemory
-        dsimp only at hrun
+    · simp [hfunc] at hrun
+      by_cases hmemory : kind = 2
+      · simp [hmemory] at hrun
         split at hrun
         · contradiction
         · rename_i parsedIndex indexPair hindexRun
@@ -397,13 +391,12 @@ theorem exportDesc_sound :
           rcases Leb.Proof.u32_sound afterKind index tail
               (hkindConsumed.finish_wellFormed hstart) hindexRun with
             ⟨indexBytes, hindexConsumed, hindexEncoding⟩
-          simp at hmemory
           rw [hkindBytes, hmemory] at hkindConsumed
           exact ⟨2 :: indexBytes, hkindConsumed.trans hindexConsumed,
             Grammar.ExportDesc.memory indexBytes index hindexEncoding⟩
-      · split at hrun
-        · rename_i hglobal
-          dsimp only at hrun
+      · simp [hmemory] at hrun
+        by_cases hglobal : kind = 3
+        · simp [hglobal] at hrun
           split at hrun
           · contradiction
           · rename_i parsedIndex indexPair hindexRun
@@ -414,11 +407,11 @@ theorem exportDesc_sound :
             rcases Leb.Proof.u32_sound afterKind index tail
                 (hkindConsumed.finish_wellFormed hstart) hindexRun with
               ⟨indexBytes, hindexConsumed, hindexEncoding⟩
-            simp at hglobal
             rw [hkindBytes, hglobal] at hkindConsumed
             exact ⟨3 :: indexBytes, hkindConsumed.trans hindexConsumed,
               Grammar.ExportDesc.global indexBytes index hindexEncoding⟩
-        · contradiction
+        · simp [hglobal] at hrun
+          contradiction
 
 theorem exportEntry_sound :
     Sound exportEntry Grammar.Export := by
@@ -823,12 +816,24 @@ theorem instructionPair_sound (fuel : Nat) :
             | i64ShrU =>
                 exact plainInstruction_sound hstart hread hclassify hrun
                   Grammar.Instr.i64ShrU
+            | f64Add =>
+                exact plainInstruction_sound hstart hread hclassify hrun
+                  Grammar.Instr.f64Add
+            | f64Mul =>
+                exact plainInstruction_sound hstart hread hclassify hrun
+                  Grammar.Instr.f64Mul
             | i32WrapI64 =>
                 exact plainInstruction_sound hstart hread hclassify hrun
                   Grammar.Instr.i32WrapI64
             | i64ExtendI32U =>
                 exact plainInstruction_sound hstart hread hclassify hrun
                   Grammar.Instr.i64ExtendI32U
+            | i64ReinterpretF64 =>
+                exact plainInstruction_sound hstart hread hclassify hrun
+                  Grammar.Instr.i64ReinterpretF64
+            | f64ReinterpretI64 =>
+                exact plainInstruction_sound hstart hread hclassify hrun
+                  Grammar.Instr.f64ReinterpretI64
       · intro allowElse start value finish hstart hrun
         unfold instructionSequence at hrun
         dsimp [Bind.bind, Monad.toBind, Parser.instMonad, Except.bind] at hrun
@@ -836,9 +841,8 @@ theorem instructionPair_sound (fuel : Nat) :
         · contradiction
         · rename_i parsedNext nextPair hpeek
           rcases nextPair with ⟨next, afterPeek⟩
-          split at hrun
-          · rename_i hend
-            dsimp only at hrun
+          by_cases hend : next = 11
+          · simp [hend] at hrun
             split at hrun
             · contradiction
             · rename_i parsedEnd endPair hread
@@ -849,14 +853,13 @@ theorem instructionPair_sound (fuel : Nat) :
               subst afterPeek
               rcases readByte_sound start read tail hstart hread with
                 ⟨bytes, hconsumed, hbytes⟩
-              simp at hend
               rw [hbytes, hreadValue, hend] at hconsumed
               exact ⟨[11], hconsumed, [], rfl, Grammar.Instrs.nil⟩
-          · split at hrun
-            · rename_i helse
-              split at hrun
-              · rename_i hallowed
-                dsimp only at hrun
+          · simp [hend] at hrun
+            by_cases helse : next = 5
+            · simp [helse] at hrun
+              by_cases hallowed : allowElse = true
+              · simp [hallowed] at hrun
                 split at hrun
                 · contradiction
                 · rename_i parsedElse elsePair hread
@@ -867,11 +870,11 @@ theorem instructionPair_sound (fuel : Nat) :
                   subst afterPeek
                   rcases readByte_sound start read tail hstart hread with
                     ⟨bytes, hconsumed, hbytes⟩
-                  simp at helse hallowed
                   rw [hbytes, hreadValue, helse] at hconsumed
                   exact ⟨[5], hconsumed, hallowed, [], rfl, Grammar.Instrs.nil⟩
-              · contradiction
-            · dsimp only at hrun
+              · simp [hallowed] at hrun
+                contradiction
+            · simp [helse] at hrun
               split at hrun
               · contradiction
               · rename_i parsedFirst firstPair hfirstRun
@@ -1236,9 +1239,10 @@ theorem sectionLoop_sound (fuel lastRank : Nat) (before : RawModule) :
               split at hrun
               · contradiction
               · rename_i hidFresh
-                split at hrun
-                · contradiction
-                · rename_i hrank
+                by_cases hrank : rank ≤ lastRank
+                · simp [hrank] at hrun
+                  contradiction
+                · simp [hrank] at hrun
                   cases hsectionRun : parseSection id before afterRaw with
                   | error error =>
                       simp only [hsectionRun] at hrun

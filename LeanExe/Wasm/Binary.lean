@@ -459,6 +459,8 @@ def emitU64Op : LeanExe.IR.U64Op → List Instr
   | .bitXor => [Instr.xorI64]
   | .shiftLeft => [Instr.shlI64]
   | .shiftRight => [Instr.shrUI64]
+  | .f64AddBits => [Instr.addF64]
+  | .f64MulBits => [Instr.mulF64]
 
 def coreGlobalSection : List UInt8 :=
   wasmSection 6 <| vec [
@@ -2582,6 +2584,14 @@ mutual
     | .u64Bin .natMul left right => emitNatMul scratch left right
     | .u64Bin .divU left right => emitCheckedDivMod scratch .divU left right
     | .u64Bin .modU left right => emitCheckedDivMod scratch .modU left right
+    | .u64Bin .f64AddBits left right =>
+        emitExpr scratch left ++ [Instr.f64ReinterpretI64] ++
+          emitExpr scratch right ++ [Instr.f64ReinterpretI64, Instr.addF64,
+            Instr.i64ReinterpretF64]
+    | .u64Bin .f64MulBits left right =>
+        emitExpr scratch left ++ [Instr.f64ReinterpretI64] ++
+          emitExpr scratch right ++ [Instr.f64ReinterpretI64, Instr.mulF64,
+            Instr.i64ReinterpretF64]
     | .u64Bin op left right => emitExpr scratch left ++ emitExpr scratch right ++ emitU64Op op
     | .ite cond thenValue elseValue =>
         emitCond scratch cond ++ ([Instr.iff true (emitExpr scratch thenValue) (some (emitExpr scratch elseValue))])
@@ -2768,6 +2778,14 @@ partial def emitExprWithReleaseFallback (releaseIndex scratch : Nat) : Expr → 
       emitCheckedDivModWithRelease releaseIndex scratch .divU left right
   | .u64Bin .modU left right =>
       emitCheckedDivModWithRelease releaseIndex scratch .modU left right
+  | .u64Bin .f64AddBits left right =>
+      emitExprWithReleaseFallback releaseIndex scratch left ++ [Instr.f64ReinterpretI64] ++
+        emitExprWithReleaseFallback releaseIndex scratch right ++
+          [Instr.f64ReinterpretI64, Instr.addF64, Instr.i64ReinterpretF64]
+  | .u64Bin .f64MulBits left right =>
+      emitExprWithReleaseFallback releaseIndex scratch left ++ [Instr.f64ReinterpretI64] ++
+        emitExprWithReleaseFallback releaseIndex scratch right ++
+          [Instr.f64ReinterpretI64, Instr.mulF64, Instr.i64ReinterpretF64]
   | .u64Bin op left right =>
       emitExprWithReleaseFallback releaseIndex scratch left ++
         emitExprWithReleaseFallback releaseIndex scratch right ++ emitU64Op op
@@ -4218,21 +4236,26 @@ def coreReleaseInstrs (releaseIndex : Nat) : List Instr :=
         ([Instr.iff false (arrayReleaseLoop) none]) ++
       freeCurrent)
 
-def imageUserFunction (releaseIndex : Nat) (func : Func) : LeanExe.Wasm.Image.Function :=
-  { params := func.params
+def imageUserFunction (releaseIndex : Nat) (func : Func) :
+    Except String LeanExe.Wasm.Image.Function := do
+  let body ← LeanExe.Wasm.Image.encodeInstrList (emitFuncInstrs releaseIndex func)
+  return {
+    params := func.params
     results := func.results.length
     locals := func.locals - func.params + funcScratch func
-    body := LeanExe.Wasm.Image.encodeInstrList (emitFuncInstrs releaseIndex func) }
+    body
+  }
 
-def imageRuntimeFunctions (releaseIndex : Nat) : Array LeanExe.Wasm.Image.Function :=
-  #[{ params := 1, results := 1, locals := 6,
-      body := LeanExe.Wasm.Image.encodeInstrList coreAllocInstrs },
-    { params := 0, results := 0, locals := 0,
-      body := LeanExe.Wasm.Image.encodeInstrList coreResetInstrs },
-    { params := 1, results := 1, locals := 1,
-      body := LeanExe.Wasm.Image.encodeInstrList coreRetainInstrs },
-    { params := 1, results := 0, locals := 8,
-      body := LeanExe.Wasm.Image.encodeInstrList (coreReleaseInstrs releaseIndex) }]
+def imageRuntimeFunctions (releaseIndex : Nat) :
+    Except String (Array LeanExe.Wasm.Image.Function) := do
+  let allocBody ← LeanExe.Wasm.Image.encodeInstrList coreAllocInstrs
+  let resetBody ← LeanExe.Wasm.Image.encodeInstrList coreResetInstrs
+  let retainBody ← LeanExe.Wasm.Image.encodeInstrList coreRetainInstrs
+  let releaseBody ← LeanExe.Wasm.Image.encodeInstrList (coreReleaseInstrs releaseIndex)
+  .ok #[{ params := 1, results := 1, locals := 6, body := allocBody },
+    { params := 0, results := 0, locals := 0, body := resetBody },
+    { params := 1, results := 1, locals := 1, body := retainBody },
+    { params := 1, results := 0, locals := 8, body := releaseBody }]
 
 def imageGlobals : Array LeanExe.Wasm.Image.Global :=
   #[{ mutable_ := true, initial := 4096 },
@@ -4269,18 +4292,21 @@ def imageExports (module_ : Module) : Array LeanExe.Wasm.Image.Export :=
         index := runtimeStatGlobal .frees }]
 
 /-- Freeze a lowered library module after instruction lowering and runtime selection. -/
-def moduleImage (module_ : Module) : LeanExe.Wasm.Image.Module :=
+def moduleImage (module_ : Module) : Except String LeanExe.Wasm.Image.Module := do
   let releaseIndex := module_.funcs.size + 3
-  { memoryMinPages := 16
+  let userFunctions ← module_.funcs.toList.mapM (imageUserFunction releaseIndex)
+  let runtimeFunctions ← imageRuntimeFunctions releaseIndex
+  return {
+    memoryMinPages := 16
     globals := imageGlobals
-    functions := module_.funcs.map (imageUserFunction releaseIndex) ++
-      imageRuntimeFunctions releaseIndex
+    functions := userFunctions.toArray ++ runtimeFunctions
     exports := imageExports module_ }
 
-def moduleBytesFromImage (module_ : Module) : ByteArray :=
-  match LeanExe.Wasm.Image.emitModule (moduleImage module_) with
-  | Except.ok bytes => bytes
-  | Except.error _ => ByteArray.empty
+def moduleBytesFromImage (module_ : Module) : Except String ByteArray := do
+  let image ← moduleImage module_
+  match LeanExe.Wasm.Image.emitModule image with
+  | Except.ok bytes => .ok bytes
+  | Except.error _ => .error "leanexe-image: generated module failed validation"
 
 def coreReleaseBody (releaseIndex : Nat) : List UInt8 :=
   bodyI (ofNats [1, 8, 126]) (coreReleaseInstrs releaseIndex)

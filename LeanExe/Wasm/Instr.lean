@@ -48,6 +48,10 @@ inductive Instr where
   | unreachable
   | ret
   | drop
+  | addF64
+  | mulF64
+  | i64ReinterpretF64
+  | f64ReinterpretI64
   | block (body : List Instr)
   | loop (body : List Instr)
   | iff (resultI64 : Bool) (thn : List Instr) (els : Option (List Instr))
