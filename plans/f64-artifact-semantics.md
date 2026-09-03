@@ -203,8 +203,11 @@ zero exact products where the relative model requires it, and
 ```
 
 For a nonzero exact result, a corollary states the corresponding condition-number
-relative bound.  A guarded affine or Horner artifact then exercises sequential
-composition.  Division, square root, f32 arithmetic, comparisons, conversions,
+relative bound.  A guarded quadratic Horner artifact then exercises sequential composition.
+For `(c₂*x + c₁)*x + c₀`, raw half-magnitude guards on `x`, `c₂`, `c₁`, and
+`c₀` imply every intermediate finite/headroom premise.  The first stage costs
+`2 * 2^-52`; the second costs the same, while `|x| ≤ 1/2` attenuates the first
+stage error, yielding the sharp total bound `3 * 2^-52`.  Division, square root, f32 arithmetic, comparisons, conversions,
 and broader certificate automation enter only after these representative f64
 kernels pass.
 
@@ -235,8 +238,7 @@ store-preserving, fuel-independent theorem covering unequal lengths, the empty
 case, and arbitrary equal nonempty arrays with an explicit decreasing loop
 measure.  Three WAT theorems carry the primitive absolute-error,
 gamma-times-exact-mass, and conditioned relative-error conclusions with every
-domain and headroom assumption explicit and standard-only axiom reports.  The
-next kernel is the generated affine or Horner artifact.
+domain and headroom assumption explicit and standard-only axiom reports.  The next kernel is the guarded generated quadratic Horner artifact.
 
 - [x] Migrate the native compiler to exact Lean 4.34.0-rc2 and preserve every
       registered artifact byte.  The scoped legacy `do` option on the frozen GCD
@@ -261,8 +263,10 @@ next kernel is the generated affine or Horner artifact.
       tests, and independent package verification.
 - [x] Compile and prove a runtime-length dot artifact with absolute,
       gamma-times-mass, and conditioned relative-error contracts.
-- [ ] Compile and prove a representative affine or Horner artifact and extract
-      reusable floating ProofKit, annotation, and LTG support from both kernels.
+- [ ] Compile and prove the guarded two-stage f64 Horner artifact, including
+      identical source-model and decoded-WAT finite-result and `3 * 2^-52`
+      error theorems, and extract reusable floating ProofKit, annotation, and
+      LTG support from the numerical kernels.
 - [ ] Extend the exact profile and compiler intrinsics to subtraction, division,
       square root, and representative f32 operations as demanded by accepted
       kernels.
