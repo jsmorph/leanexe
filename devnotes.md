@@ -7872,3 +7872,27 @@ equal_nonempty_exact` reports only `propext`, `Classical.choice`, and
 `Quot.sound`.  The next checkpoint combines the mismatch, empty, and nonempty
 paths and transfers the existing absolute, gamma-times-mass, and conditioned
 relative-error source theorems to exact WAT execution.
+
+## 2026-09-03: Runtime-length dot public WAT error theorems
+
+`Project.F64DotCheckedBits.Spec.dotCheckedBits_exact` combines all three
+generated entry paths into one total, fuel-independent refinement theorem for
+arbitrary valid logical `Array UInt64` views.  Unequal lengths return zero bits
+and status one; equal empty arrays return positive zero and status zero; equal
+nonempty arrays return exactly Talos's pure `dot64List` result and status zero.
+Every path preserves the complete WebAssembly store.
+
+`Project.F64DotCheckedBits.Spec` transfers the three already-proved source
+contracts across that exact execution.  The public WAT results provide the
+primitive absolute-error budget, the `2*n - 1` operation-count
+gamma-times-mass bound, and the condition-number relative-error bound.  Their
+accepted-input hypotheses explicitly retain unit-bounded finite inputs,
+aggregate headroom, normal-or-zero exact products, the strict gamma-pole
+condition, and a nonzero exact sum where required.
+
+Under exact Lean 4.34.0-rc2, `lake -d proofs/talos/lean --no-ansi build
+Project.F64DotCheckedBits.Spec` passed 3,372 jobs.  `#print axioms` reports only
+`propext`, `Classical.choice`, and `Quot.sound` for the total exact theorem and
+all three public WAT numerical theorems.  Native floating-point evaluation is
+not a proof dependency.  The case is now complete; the next numerical artifact
+is a generated affine or Horner evaluation.
