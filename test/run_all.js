@@ -41,6 +41,7 @@ function main() {
   run([process.execPath, path.join("test", "cli_errors.js")]);
   run([process.execPath, path.join("test", "core_correctness.js")]);
   run([process.execPath, path.join("test", "f64_bits.js")]);
+  run([process.execPath, path.join("test", "f64_dot.js")]);
   run([process.execPath, path.join("test", "matched_values.js")]);
   run([process.execPath, path.join("test", "refcount.js")]);
   run([process.execPath, path.join("test", "bytearray_alloc.js")]);

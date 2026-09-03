@@ -37,4 +37,22 @@ def dot2CheckedBits (a₀ b₀ a₁ b₁ : UInt64) : CheckedBits :=
   else
     { status := 1, bits := 0 }
 
+/-- Runtime-length binary64 dot product over raw-bit arrays.  Unequal lengths
+are rejected.  The numerical theorem states the finite-domain and headroom
+requirements explicitly rather than relying on native floating-point checks. -/
+def dotCheckedBits (left right : Array UInt64) : CheckedBits :=
+  if left.size != right.size then
+    { status := 1, bits := 0 }
+  else if left.isEmpty then
+    { status := 0, bits := 0 }
+  else
+    Id.run do
+      let mut index := 1
+      let mut bits := LeanExe.Float64.mulBits left[0]! right[0]!
+      while index < left.size do
+        bits := LeanExe.Float64.addBits bits
+          (LeanExe.Float64.mulBits left[index]! right[index]!)
+        index := index + 1
+      return { status := 0, bits }
+
 end LeanExe.Examples.Float64Bits

@@ -136,14 +136,19 @@ expressions under Wasmtime.  The independent binary layer decodes, validates,
 proves sound, and translates the four new instructions into Talos.  The
 compiler-generated `mulBits` WAT now has exact-result, store-preservation,
 explicit small-step, fuel-independent termination, finite-result, and
-`2^-52` absolute-error theorems.  The next checkpoint is the guarded two-term
-dot program and its accumulated-error theorem.  Its source entry, regression
-coverage, raw-bit half-range bridge, pure-model theorem, generated WAT, all
-five execution paths, store preservation, and fuel-independent WAT theorem now
-pass.  Both source-facing and WAT contracts state the same finite-result and
-`3 * 2^-52` absolute-error result on accepted inputs, with exact status-one and
-zero-bit behavior on rejection.  The next numerical artifact is the
-runtime-length dot product.
+`2^-52` absolute-error theorems.  The guarded two-term dot source entry,
+regression coverage, raw-bit half-range bridge, pure-model theorem, generated
+WAT, all five execution paths, store preservation, and fuel-independent WAT
+theorem now pass.  Both source-facing and WAT contracts state the same
+finite-result and `3 * 2^-52` absolute-error result on accepted inputs, with
+exact status-one and zero-bit behavior on rejection.
+
+The runtime-length `dotCheckedBits` source checkpoint now also passes.  It
+accepts two `Array UInt64` values, rejects unequal lengths, returns positive
+zero for empty inputs, and otherwise seeds the accumulator with the first
+modeled product before a runtime multiply-add loop.  Focused Wasmtime, IR, and
+WAT checks cover its behavior and exact `2*n - 1` operation shape.  Its pure
+Talos numerical theorem is the next checkpoint.
 
 Hash, manifest, release-receipt, and self-host bookkeeping are not gates for
 this branch's floating-point implementation.  Exact program bytes remain part
