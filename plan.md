@@ -140,7 +140,9 @@ explicit small-step, fuel-independent termination, finite-result, and
 dot program and its accumulated-error theorem.  Its LeanExe source entry and
 native/Wasm regression coverage now pass.  The actual emitted two-result WAT
 is frozen as `Project.F64Dot2CheckedBits.Program` and builds under the pinned
-toolchain; the branch and quantitative proof remain in progress.
+toolchain.  Its raw-bit half-range guard now has an axiom-audited theorem
+yielding finiteness and `|value| ≤ 1/2`; the branch and accumulated-error proof
+remain in progress.
 
 Hash, manifest, release-receipt, and self-host bookkeeping are not gates for
 this branch's floating-point implementation.  Exact program bytes remain part

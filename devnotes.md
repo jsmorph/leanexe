@@ -7687,3 +7687,18 @@ The focused exact-Lean-4.34.0-rc2 build
 3,341 jobs.  This checkpoint freezes the proof input; the reusable raw-bit
 guard lemma and the fuel-independent numerical execution theorem are the next
 proof obligations.
+
+## 2026-09-03: Checked binary64 half-range guard
+
+`Project.F64Dot2CheckedBits.Bounds.boundedByHalf_spec` connects the exact raw
+guard used by the LeanExe program to the mathematical domain used by Talos.  It
+clears the sign bit, decomposes the remaining word into exponent and fraction,
+and proves that acceptance excludes nonfinite encodings and bounds the pure
+modeled real value by one half.  The proof is entirely over integers and the
+pure IEEE64 interpretation; native floating-point evaluation is absent.
+
+The exact-Lean-4.34.0-rc2 build
+`lake -d proofs/talos/lean build Project.F64Dot2CheckedBits.Bounds` passed
+3,065 jobs.  The public axiom report contains only `propext`,
+`Classical.choice`, and `Quot.sound`.  This lemma is the reusable input to the
+two-term accumulated-error theorem and to the accepted WAT branch.
