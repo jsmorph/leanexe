@@ -142,7 +142,8 @@ native/Wasm regression coverage now pass.  The actual emitted two-result WAT
 is frozen as `Project.F64Dot2CheckedBits.Program` and builds under the pinned
 toolchain.  Its raw-bit half-range guard now has an axiom-audited theorem
 yielding finiteness and `|value| ≤ 1/2`; the branch and accumulated-error proof
-remain in progress.
+for the source-facing pure model now passes with the `3 * 2^-52` bound.  The
+matching generated-WAT branch proof remains in progress.
 
 Hash, manifest, release-receipt, and self-host bookkeeping are not gates for
 this branch's floating-point implementation.  Exact program bytes remain part

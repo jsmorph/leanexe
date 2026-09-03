@@ -66,10 +66,14 @@ two-`i64` result.  The source/runtime regression checkpoint also confirms exact
 positive output, exact cancellation, rejection, and the intended instruction
 counts.
 
-The formal source and WAT numerical theorems are currently in progress.  This
-section should be updated to name the checked theorems and their axiom reports
-when that checkpoint passes; until then, the `3 * 2^-52` statement above is a
-proof target rather than a claimed result.
+`dot2CheckedBits_source_real_error` now checks the total source-facing pure
+model contract: it proves the exact rejected result and, on accepted inputs,
+the finite-result and `3 * 2^-52` numerical bound.  Its axiom report contains
+only `propext`, `Classical.choice`, and `Quot.sound`.
+
+The matching WAT execution theorem is still in progress.  Until it passes, the
+generated instruction shape is checked but the numerical statement above is
+claimed only for the source-facing Talos model, not yet for WAT execution.
 
 ## Proof boundary
 
