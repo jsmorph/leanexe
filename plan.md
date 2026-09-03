@@ -156,9 +156,12 @@ definitions.  A reusable ProofKit theorem now proves the compiler's checked
 generated entry's unequal-length and equal-empty paths now have exact,
 fuel-independent, store-preserving execution theorems.  Array-pair
 length/index bridges, the prefix multiply-add recurrence, and an explicit
-nonempty-loop invariant and measure also pass.  Proving that remaining loop
-with the checked-load theorem and transferring the three numerical contracts
-is next.
+nonempty-loop invariant and measure also pass.  The nonempty generated loop is
+now closed for arbitrary equal-sized arrays: its seed and per-iteration loads
+use the reusable checked-load theorem, its accumulator is exactly `dot64List`,
+its increment cannot wrap, and its measure strictly decreases.  Combining all
+three paths into the public WAT execution theorem and transferring the three
+numerical contracts is next.
 
 Hash, manifest, release-receipt, and self-host bookkeeping are not gates for
 this branch's floating-point implementation.  Exact program bytes remain part

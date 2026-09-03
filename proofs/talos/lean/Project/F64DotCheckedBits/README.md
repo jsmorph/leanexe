@@ -52,11 +52,13 @@ compiler-generated WAT is now frozen as
 build against the exact decoded Talos module.  The execution layer now proves
 fuel-independent, store-preserving behavior for both completed guard paths:
 unequal lengths return zero bits with status one, and equal empty arrays return
-zero bits with status zero.  It also proves the array-pair length and indexing
-bridges, the nonempty-prefix multiply-add recurrence, and states the generated
-loop's invariant and decreasing measure.  Completing the nonempty loop with
-the reusable checked-load theorem, then transferring the three numerical
-contracts, is the active next checkpoint.
+zero bits with status zero.  The equal nonempty path is now proved as well: it
+uses the reusable checked-load theorem for both seed reads and both reads in
+every iteration, follows the pure `dot64List` multiply-add recurrence, excludes
+counter wraparound, preserves the complete store, and terminates independently
+of fuel by an explicit decreasing measure.  Combining the three execution
+paths and transferring the three numerical contracts is the active next
+checkpoint.
 
 Native floating-point execution is used only for regression tests.  Accepted
 theorems use Talos's pure IEEE-754 model and WebAssembly semantics.
