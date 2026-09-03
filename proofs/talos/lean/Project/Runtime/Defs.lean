@@ -4,16 +4,25 @@
   streams, shared verbatim by every generated module; release takes its own
   function index as a parameter because its recursion calls itself.
   `Checks.lean` pins each generated module's runtime functions to these
-  definitions by `rfl`.
+  definitions after erasing only the module-local nominal type index.
 -/
 
-import CodeLib
+import Project.TalosPrelude
 
 set_option maxRecDepth 1048576
 
 namespace Project.Runtime
 
 open Wasm
+
+/-- Forget only the nominal function-type index recorded by the decoder.
+
+Runtime functions are emitted into different positions in each module's type
+section, so their `typeIdx` fields are intentionally module-local.  Erasing
+that one field lets `Checks.lean` compare every semantic part of the decoded
+function (`params`, `locals`, `body`, and `results`) definitionally. -/
+def eraseTypeIdx (f : Wasm.Function) : Wasm.Function :=
+  { f with typeIdx := none }
 
 def allocBody : Wasm.Program :=
   [
@@ -134,8 +143,7 @@ def allocBody : Wasm.Program :=
     .addI64,
     .localGet 1,
     .addI64,
-    .localSet 4,
-    .localGet 4,
+    .localTee 4,
     .globalGet 0,
     .ltUI64,
     .iff 0 0 [

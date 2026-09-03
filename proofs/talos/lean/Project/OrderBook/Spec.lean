@@ -1,4 +1,5 @@
 import Project.OrderBook.Program
+import Project.TalosCompat
 import Interpreter.Wasm.Wp.Tactic
 import Interpreter.Wasm.Wp.Call
 

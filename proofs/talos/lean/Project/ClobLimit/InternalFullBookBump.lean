@@ -137,8 +137,7 @@ def fullBookBumpProg : Wasm.Program :=
     .addI64,
     .localGet 66,
     .addI64,
-    .localSet 69,
-    .localGet 69,
+    .localTee 69,
     .globalGet 0,
     .ltUI64,
     .iff 0 0 [
@@ -163,7 +162,7 @@ def fullBookBumpProg : Wasm.Program :=
       .subI64,
       .wrapI64,
       .memoryGrow,
-      .const 4294967295,
+      .const (-1),
       .eq,
       .iff 0 0 [
         .unreachable

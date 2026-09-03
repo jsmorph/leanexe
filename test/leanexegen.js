@@ -20,6 +20,7 @@ const {
   validateKnowledgeEvaluation,
   validateLtgTask,
   validateKnowledgeTask,
+  validateFrozenPackage,
   validatePackage,
   validateProgramImports,
   validateProofImports,
@@ -280,7 +281,13 @@ function testCodexProtocol() {
     job.sourceEntry === `${job.namespace}.Source.compute` && job.exportName === "compute",
   "job did not fix the array formal and program interfaces");
 
-  const formalRaw = `import CodeLib\n\nnamespace ${job.namespace}.FormalSpec\n\n` +
+  const frozenArchiveRoot = path.join(repoRoot, "demos", "demo-12", "program.proof");
+  expectFailure(() => validatePackage(frozenArchiveRoot),
+    /unsupported proof dependency CodeLib/);
+  assert(validateFrozenPackage(frozenArchiveRoot).manifest.schemaVersion === 9,
+    "the explicit frozen-package reader rejected a historical CodeLib umbrella import");
+
+  const formalRaw = `import Project.TalosPrelude\n\nnamespace ${job.namespace}.FormalSpec\n\n` +
     `def expected (values : Array UInt64) : Array UInt64 := values\n\n` +
     `def heapReserveBytes (values : Array UInt64) : Nat :=\n` +
     `  48 + 8 * (values.size + 1)\n\n` +
@@ -391,6 +398,7 @@ function testCodexProtocol() {
     artifactPrompt.includes("Before an extended proof construction or elaboration attempt") &&
     artifactPrompt.includes("missing general annotation, lemma, tactic, guidance") &&
     artifactPrompt.includes("node PROOF_IMPORT_CHECK.js") &&
+    artifactPrompt.includes("Project.TalosPrelude, specific CodeLib modules") &&
     artifactPrompt.includes("deterministic theorem starter") &&
     artifactPrompt.includes("Use read-only commands to inspect FormalSpec") &&
     !artifactPrompt.includes("PROOF_LIBRARY.md") &&
@@ -463,6 +471,22 @@ function testCodexProtocol() {
   expectFailure(() => validateProofImports(job, [{
     module: job.behaviorModule,
     source: behaviorSource,
+  }]), /unsupported proof dependency/);
+  validateProofImports(job, [{
+    module: job.behaviorModule,
+    source: "import Project.TalosPrelude\n",
+  }]);
+  validateProofImports(job, [{
+    module: job.behaviorModule,
+    source: "import Project.TalosCompat\n",
+  }]);
+  validateProofImports(job, [{
+    module: job.behaviorModule,
+    source: "import CodeLib.Entry\n",
+  }]);
+  expectFailure(() => validateProofImports(job, [{
+    module: job.behaviorModule,
+    source: "import CodeLib\n",
   }]), /unsupported proof dependency/);
   validateProofImports(job, [{
     module: job.behaviorModule,
@@ -3089,7 +3113,8 @@ function testThreeAccumulatorCounterTransferSummary() {
 
 function testArtifactPackage(job, formalSource) {
   const raw = "{ functionTypeIndices := [0] }";
-  const emitted = `namespace Project.${job.leanModule}\n\n` +
+  const emitted = `import Project.TalosPrelude\n\n` +
+    `namespace Project.${job.leanModule}\n\n` +
     `def func0 : Wasm.Program :=\n  [.localGet 0]\n\n` +
     `def func0Def : Wasm.Function :=\n` +
     `  { params := [.i64], locals := [], body := func0, results := [.i64] }\n\n` +
@@ -3173,6 +3198,31 @@ function testArtifactPackage(job, formalSource) {
   const importCheckFile = path.join(importCheckRoot, "PROOF_IMPORT_CHECK.js");
   const importCandidate = path.join(importCheckRoot, "Behavior.lean");
   fs.writeFileSync(importCheckFile, proofContext.get("PROOF_IMPORT_CHECK.js"));
+  fs.writeFileSync(importCandidate, "import Project.TalosPrelude\n");
+  const acceptedPreludeImport = spawnSync(process.execPath, [importCheckFile, importCandidate], {
+    encoding: "utf8",
+  });
+  assert(acceptedPreludeImport.status === 0,
+    "proof-task import check rejected the focused Talos prelude");
+  fs.writeFileSync(importCandidate, "import Project.TalosCompat\n");
+  const acceptedCompatImport = spawnSync(process.execPath, [importCheckFile, importCandidate], {
+    encoding: "utf8",
+  });
+  assert(acceptedCompatImport.status === 0,
+    "proof-task import check rejected the project-local Talos compatibility layer");
+  fs.writeFileSync(importCandidate, "import CodeLib.Entry\n");
+  const acceptedSpecificCodeLibImport = spawnSync(
+    process.execPath, [importCheckFile, importCandidate], { encoding: "utf8" });
+  assert(acceptedSpecificCodeLibImport.status === 0,
+    "proof-task import check rejected a specific CodeLib module");
+  fs.writeFileSync(importCandidate, "import CodeLib\n");
+  const rejectedUmbrellaImport = spawnSync(
+    process.execPath, [importCheckFile, importCandidate], { encoding: "utf8" });
+  assert(rejectedUmbrellaImport.status === 1 &&
+    rejectedUmbrellaImport.stderr.includes("unsupported proof dependency: CodeLib"),
+  `proof-task import check accepted the CodeLib umbrella: ` +
+    `status ${rejectedUmbrellaImport.status}, ` +
+    `stderr ${JSON.stringify(rejectedUmbrellaImport.stderr)}`);
   fs.writeFileSync(importCandidate, "import Project.ProofKit.Control\n");
   const acceptedImports = spawnSync(process.execPath, [importCheckFile, importCandidate], {
     encoding: "utf8",
@@ -3477,6 +3527,8 @@ function testArtifactPackage(job, formalSource) {
     attemptId: "proposal-test",
     codex: "codex-test",
     execute: (args, options) => {
+      assert(options.input.includes("Project.TalosPrelude, specific CodeLib modules"),
+        "knowledge proposal prompt omitted the focused Talos import boundary");
       const schemaPath = args[args.indexOf("--output-schema") + 1];
       assert(!fs.readFileSync(schemaPath, "utf8").includes('"uniqueItems"'),
         "knowledge proposal schema used an unsupported Codex response-schema keyword");

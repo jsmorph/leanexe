@@ -119,11 +119,12 @@ theorem posIterAllocWp (env : HostEnv Unit) (st st1 : Store Unit)
         Instruction.constI64 1, Instruction.addI64, Instruction.localSet 7,
         Instruction.constI64 1, Instruction.localSet 8]
       (posPOST st n g0 g2 m0 POST)
-      { globals :=
+      { st1 with
+        globals :=
           { globals :=
               (st1.globals.globals.set 0
                 (.i64 (g0 + 56 * UInt64.ofNat k + 48 + 8))).set 2
-                (.i64 (g2 + UInt64.ofNat k + 1)) },
+                (.i64 (g2 + UInt64.ofNat k + 1)) }
         mem :=
           (((((st1.mem.write64
             (UInt32.ofNat ((g0.toNat + 56 * k) % 4294967296))
@@ -137,10 +138,7 @@ theorem posIterAllocWp (env : HostEnv Unit) (st st1 : Store Unit)
             (UInt32.ofNat ((g0 + 56 * UInt64.ofNat k + 48 - 16).toNat %
               4294967296)) 0).write64
             (UInt32.ofNat ((g0 + 56 * UInt64.ofNat k + 48 - 8).toNat %
-              4294967296)) 0,
-        extraMems := st1.extraMems, dataSegments := st1.dataSegments,
-        tables := st1.tables, elementSegments := st1.elementSegments,
-        exns := st1.exns, gcHeap := st1.gcHeap, host := st1.host }
+              4294967296)) 0 }
       (lFrameFlat (UInt64.ofNat (10 - k)) v (bufPtr g0 k) (bufPtr g0 k)
         (UInt64.ofNat k) 0 0 0 0 (v % 128 &&& 255) (bufPtr g0 k)
         (UInt64.ofNat k) (e 12) (e 13) (e 14) (e 15) (e 16) (e 17)

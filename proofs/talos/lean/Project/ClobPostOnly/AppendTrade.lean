@@ -122,8 +122,7 @@ def appendTradeProg : Wasm.Program :=
     .addI64,
     .localGet 41,
     .addI64,
-    .localSet 44,
-    .localGet 44,
+    .localTee 44,
     .globalGet 0,
     .ltUI64,
     .iff 0 0 [
@@ -148,7 +147,7 @@ def appendTradeProg : Wasm.Program :=
       .subI64,
       .wrapI64,
       .memoryGrow,
-      .const (4294967295 : UInt32),
+      .const (-1),
       .eq,
       .iff 0 0 [
         .unreachable

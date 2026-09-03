@@ -46,7 +46,7 @@ def fullTradeFinishProg : Wasm.Program :=
     .load64 0
   ] [
     .unreachable
-  ],
+  ] [] [.i64],
   .subI64,
   .localSet 48
   ]

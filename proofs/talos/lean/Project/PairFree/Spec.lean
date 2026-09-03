@@ -160,8 +160,10 @@ theorem sharedPairFreeStats_correct : PairFreeSpec := by
     try simp only [hg4'']
     try wp_run
     try simp
-    have hsub3 : (g4 + 1 + 1 + 1 - g4 : UInt64) = 3 := by bv_decide
-    have hsub2 : (g5 + 1 + 1 - g5 : UInt64) = 2 := by bv_decide
+    have hsub3 : (g4 + 1 + 1 + 1 - g4 : UInt64) = 3 :=
+      u64_add_three_sub_self g4
+    have hsub2 : (g5 + 1 + 1 - g5 : UInt64) = 2 :=
+      u64_add_two_sub_self g5
     refine ⟨?_, hg1'', ?_, ?_⟩
     · simp [func3Def, hsub3, hsub2]
     · rw [hg2'']

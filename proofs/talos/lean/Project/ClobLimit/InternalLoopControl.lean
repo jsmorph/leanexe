@@ -26,7 +26,7 @@ def loopGuardProg : Wasm.Program :=
     .eqI64
   ] [
     .const 0
-  ],
+  ] [] [.i32],
   .eqz,
   .br_if 1
   ]

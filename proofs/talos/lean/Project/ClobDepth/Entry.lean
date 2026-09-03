@@ -15,7 +15,7 @@ open Wasm Project.ClobDepth
 def branchAt (program : Wasm.Program) (index : Nat)
     (takeThen : Bool) : Wasm.Program :=
   match (program[index]? : Option Wasm.Instruction) with
-  | some (Wasm.Instruction.iff _ _ thenProg elseProg) =>
+  | some (Wasm.Instruction.iff _ _ thenProg elseProg _ _) =>
       if takeThen then thenProg else elseProg
   | _ => []
 
@@ -253,8 +253,7 @@ def missingBumpBranchProg : Wasm.Program :=
   .addI64,
   .localGet 24,
   .addI64,
-  .localSet 27,
-  .localGet 27,
+  .localTee 27,
   .globalGet 0,
   .ltUI64,
   .iff 0 0 [.unreachable] [],
@@ -277,7 +276,7 @@ def missingBumpBranchProg : Wasm.Program :=
     .subI64,
     .wrapI64,
     .memoryGrow,
-    .const 4294967295,
+    .const (-1),
     .eq,
     .iff 0 0 [.unreachable] []
   ] [],
@@ -448,8 +447,8 @@ def foundPrepareProg : Wasm.Program :=
       .localGet 14,
       .localGet 15,
       .subI64
-    ]
-  ] [.constI64 0],
+    ] [] [.i64]
+  ] [.constI64 0] [] [.i64],
   .localSet 10,
   .localGet 9,
   .localSet 14,
@@ -475,8 +474,8 @@ def foundPrepareProg : Wasm.Program :=
       .localGet 26,
       .localGet 27,
       .subI64
-    ]
-  ] [.constI64 0],
+    ] [] [.i64]
+  ] [.constI64 0] [] [.i64],
   .localSet 25,
   .localGet 25,
   .localGet 24,
@@ -495,7 +494,7 @@ def foundPrepareProg : Wasm.Program :=
     .addI64,
     .wrapI64,
     .load64 0
-  ] [.unreachable],
+  ] [.unreachable] [] [.i64],
   .localGet 3,
   .addI64,
   .localSet 21,
@@ -523,7 +522,8 @@ def foundResultProg : Wasm.Program :=
 set_option maxRecDepth 1048576 in
 theorem foundProg_decomposition :
     foundProg = foundPrepareProg ++
-      [.iff 0 1 foundAllocProg [.unreachable]] ++ foundResultProg := by
+      [.iff 0 1 foundAllocProg [.unreachable] [] [.i64]] ++
+      foundResultProg := by
   unfold foundPrepareProg foundAllocProg foundResultProg foundProg
     branchAt func3
   rfl
@@ -799,8 +799,7 @@ def func6AllocProg : Wasm.Program :=
     .addI64,
     .localGet 31,
     .addI64,
-    .localSet 34,
-    .localGet 34,
+    .localTee 34,
     .globalGet 0,
     .ltUI64,
     .iff 0 0 [
@@ -825,7 +824,7 @@ def func6AllocProg : Wasm.Program :=
       .subI64,
       .wrapI64,
       .memoryGrow,
-      .const 4294967295,
+      .const (-1),
       .eq,
       .iff 0 0 [
         .unreachable
@@ -900,7 +899,7 @@ def func6MinProg : Wasm.Program :=
     .localGet 24
   ] [
     .localGet 22
-  ],
+  ] [] [.i64],
   .localSet 25
 ]
 
@@ -977,14 +976,14 @@ def func6BodyProg : Wasm.Program :=
   .constI64 1
 ] [
   .constI64 0
-],
+] [] [.i64],
 .constI64 1,
 .eqI64,
 .iff 0 1 [
   .constI64 1
 ] [
   .constI64 0
-],
+] [] [.i64],
 .constI64 0,
 .eqI64,
 .eqz,

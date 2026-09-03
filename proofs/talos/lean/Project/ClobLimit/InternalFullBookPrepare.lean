@@ -49,7 +49,7 @@ def fullBookSuccessProg (updateProg : Wasm.Program) : Wasm.Program :=
     .localSet 60
   ] ++ updateProg) [
     .localGet 56
-  ]
+  ] [] [.i64]
   ]
 
 def fullBookBranchProg (updateProg : Wasm.Program) : Wasm.Program :=
@@ -77,7 +77,7 @@ def fullBookBranchProg (updateProg : Wasm.Program) : Wasm.Program :=
   .ltUI64,
   .iff 0 1 (fullBookSuccessProg updateProg) [
     .unreachable
-  ]
+  ] [] [.i64]
   ]
 
 def fullBookPrepareLocals (base : Locals) (book : UInt64) (taker : OrderL)

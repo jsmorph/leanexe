@@ -1,6 +1,12 @@
 # Artifact Verification Format
 
-**Status:** Implemented for twenty registered artifacts.  The draft release record carries input digest `5de9678970b1a9b74d50c1407457423a7fa6eabd3f430f56cfdc0e407af2b7e5`, source revision `0e0d752904fc90dee3ef3511ffab91f3d358c1ed`, and successful warm-gate receipts dated 2026-08-26.  Release readiness still requires the deferred cold-checkout receipt.
+**Status:** Implemented for twenty registered artifacts.  The proof workspace and
+checked-in draft release record now identify exact Lean 4.34.0-rc2,
+pre-floating-point Talos revision
+`fda69ca67a81ea4f1fa4e376bdc5861d9fe5479a`, and the migrated release inputs.
+The draft's aggregate proof and conformance receipts are pending and its
+`sourceRevision` is null.  The successful 2026-08-26 warm-gate receipts describe
+the earlier input digest and remain historical evidence only.
 
 ## Formal Subject and Claim
 
@@ -43,7 +49,7 @@ Signed constant instructions contain mathematical integers within the signed wid
 
 `CoreValid raw` states the WebAssembly typing and structural rules for the restricted profile.  The executable validator checks function and code agreement, index bounds, local and global types, global mutability, memory requirements, export uniqueness, branch depths, block results, calls, and operand-stack typing.  `validate_sound` connects every successful validation result to `CoreValid` without treating a test corpus as proof.
 
-`ValidatedModule` exposes translation only after validation.  Translation preserves functions, memory, globals, and instruction meanings required by the behavioral specifications; the Talos execution representation omits export lookup data that its semantics never reads.  `local.tee i` translates to the Talos instruction sequence that writes local `i` and reads it again because the current Talos syntax has no separate tee constructor.
+`ValidatedModule` exposes translation only after validation.  Translation preserves functions, declared function type indices, memory, globals, and instruction meanings required by the behavioral specifications; the Talos execution representation omits export lookup data that its semantics never reads.  `local.tee i` remains Talos's distinct `localTee i` instruction rather than being expanded into a write-and-read sequence.
 
 ## Artifact Package and Manifest
 
@@ -67,13 +73,27 @@ tools/artifact-proof.js check \
 
 ## Implementation Status
 
-All twenty registered packages pass the byte-identity, embedded-byte, decoder, validator, exact Talos translation, behavioral-specification, and manifest-declaration boundaries.  `tools/artifact-proof.js check-all` completed under the constrained proof toolchain for the current release-input identity on 2026-08-26.  The result establishes the implemented artifact boundary under the pinned Talos semantics.
+All twenty registered packages passed the byte-identity, embedded-byte, decoder, validator, exact Talos translation, behavioral-specification, and manifest-declaration boundaries for the recorded 2026-08-26 release-input identity.  That result establishes the implemented artifact boundary under its historical pinned Talos semantics.  The current Lean 4.34.0-rc2 and Talos `fda69ca67a81ea4f1fa4e376bdc5861d9fe5479a` inputs require a refreshed `tools/artifact-proof.js check-all` result before they support the same claim.
 
 The pinned twenty-five-file official execution slice produced 3,853 Talos passes, six known assertion failures, 627 skipped commands, and no cascades, decoder errors, interpreter errors, or fuel exhaustion, while Wasmtime 44.0.0 passed every selected file.  The six failures concern imported memory in `memory_grow.wast`: Talos uses the importing declaration's maximum instead of the exported memory instance's maximum.  The gate records their exact rows as an upstream warning outside the accepted no-import profile and treats every changed or additional failure as fatal.
 
 The same gate matched fifteen official invalid modules against exact artifact decoder or validator error constructors on 2026-08-26.  The cases cover malformed headers and sections, integer overflow, invalid memory limits and alignments, stack underflow, and unused stack results.  This corpus tests the executable classifier independently of the twenty accepted artifacts, while `decode_sound` and `validate_sound` remain the formal evidence for successful results.
 
-The draft release record binds all twenty artifact and package identities, every theorem name, the verifier source digest, the release-input digest, and the tool pins.  Lean 4.31.0 accepts the archived kernel reproduction, and the owner accepts that defect after the recorded local lexical audit; this qualification does not repair the kernel.  On 2026-08-26, `tools/artifact-release.js refresh` recorded input digest `5de9678970b1a9b74d50c1407457423a7fa6eabd3f430f56cfdc0e407af2b7e5` and consumed matching aggregate artifact-proof and semantic-conformance receipts, while `tools/talos-proof.js check --all` passed all twenty source-driven cases.  Source revision `0e0d752904fc90dee3ef3511ffab91f3d358c1ed` records those inputs, leaving the deferred cold-checkout result as the sole blocker and no release-readiness claim.
+The draft release record binds all twenty artifact and package identities, every
+theorem name, the verifier source digest, the migrated release-input digest, and
+the Lean 4.34.0-rc2 and Talos `fda69ca67a81ea4f1fa4e376bdc5861d9fe5479a`
+tool pins.  Its aggregate artifact-proof and semantic-conformance result fields
+are pending and its `sourceRevision` is null.  Lean 4.31.0 accepts the archived
+kernel reproduction, and the owner accepted that defect for the historical
+inputs after the recorded local lexical audit; this qualification does not
+repair that kernel.  On 2026-08-26, the previous draft recorded input digest
+`5de9678970b1a9b74d50c1407457423a7fa6eabd3f430f56cfdc0e407af2b7e5` and
+consumed matching aggregate artifact-proof and semantic-conformance receipts,
+while `tools/talos-proof.js check --all` passed all twenty source-driven cases.
+Source revision `0e0d752904fc90dee3ef3511ffab91f3d358c1ed` records those
+historical inputs.  The migrated aggregate gates must now produce matching warm
+receipts, after which an immutable source revision and the deferred cold-checkout
+gate remain before the new record can become ready.
 
 ## Trusted Base and Evidence
 

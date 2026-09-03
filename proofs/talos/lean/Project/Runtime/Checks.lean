@@ -1,7 +1,8 @@
 /-
   Pins every generated module's runtime functions to the shared definitions
-  in `Defs.lean`.  A compiler change that diverges the runtime suite in any
-  module breaks the corresponding `rfl` here.
+  in `Defs.lean`.  Nominal type indices are local to each generated module, so
+  the comparisons erase only that field.  A compiler change that diverges any
+  parameter, local, instruction, or result breaks the corresponding `rfl`.
 -/
 
 import Project.Runtime.Defs
@@ -28,104 +29,104 @@ import Project.Validate.Program
 
 namespace Project.Runtime
 
-example : Project.AppendBang.func1Def = allocFuncDef := rfl
-example : Project.AppendBang.func2Def = resetFuncDef := rfl
-example : Project.AppendBang.func3Def = retainFuncDef := rfl
-example : Project.AppendBang.func4Def = releaseFuncDef 4 := rfl
+example : eraseTypeIdx Project.AppendBang.func1Def = eraseTypeIdx allocFuncDef := rfl
+example : eraseTypeIdx Project.AppendBang.func2Def = eraseTypeIdx resetFuncDef := rfl
+example : eraseTypeIdx Project.AppendBang.func3Def = eraseTypeIdx retainFuncDef := rfl
+example : eraseTypeIdx Project.AppendBang.func4Def = eraseTypeIdx (releaseFuncDef 4) := rfl
 
-example : Project.AssocList.func4Def = allocFuncDef := rfl
-example : Project.AssocList.func5Def = resetFuncDef := rfl
-example : Project.AssocList.func6Def = retainFuncDef := rfl
-example : Project.AssocList.func7Def = releaseFuncDef 7 := rfl
+example : eraseTypeIdx Project.AssocList.func4Def = eraseTypeIdx allocFuncDef := rfl
+example : eraseTypeIdx Project.AssocList.func5Def = eraseTypeIdx resetFuncDef := rfl
+example : eraseTypeIdx Project.AssocList.func6Def = eraseTypeIdx retainFuncDef := rfl
+example : eraseTypeIdx Project.AssocList.func7Def = eraseTypeIdx (releaseFuncDef 7) := rfl
 
-example : Project.BoxFree.func3Def = allocFuncDef := rfl
-example : Project.BoxFree.func4Def = resetFuncDef := rfl
-example : Project.BoxFree.func5Def = retainFuncDef := rfl
-example : Project.BoxFree.func6Def = releaseFuncDef 6 := rfl
+example : eraseTypeIdx Project.BoxFree.func3Def = eraseTypeIdx allocFuncDef := rfl
+example : eraseTypeIdx Project.BoxFree.func4Def = eraseTypeIdx resetFuncDef := rfl
+example : eraseTypeIdx Project.BoxFree.func5Def = eraseTypeIdx retainFuncDef := rfl
+example : eraseTypeIdx Project.BoxFree.func6Def = eraseTypeIdx (releaseFuncDef 6) := rfl
 
-example : Project.FoldSum.func1Def = allocFuncDef := rfl
-example : Project.FoldSum.func2Def = resetFuncDef := rfl
-example : Project.FoldSum.func3Def = retainFuncDef := rfl
-example : Project.FoldSum.func4Def = releaseFuncDef 4 := rfl
+example : eraseTypeIdx Project.FoldSum.func1Def = eraseTypeIdx allocFuncDef := rfl
+example : eraseTypeIdx Project.FoldSum.func2Def = eraseTypeIdx resetFuncDef := rfl
+example : eraseTypeIdx Project.FoldSum.func3Def = eraseTypeIdx retainFuncDef := rfl
+example : eraseTypeIdx Project.FoldSum.func4Def = eraseTypeIdx (releaseFuncDef 4) := rfl
 
-example : Project.Gcd.func1Def = allocFuncDef := rfl
-example : Project.Gcd.func2Def = resetFuncDef := rfl
-example : Project.Gcd.func3Def = retainFuncDef := rfl
-example : Project.Gcd.func4Def = releaseFuncDef 4 := rfl
+example : eraseTypeIdx Project.Gcd.func1Def = eraseTypeIdx allocFuncDef := rfl
+example : eraseTypeIdx Project.Gcd.func2Def = eraseTypeIdx resetFuncDef := rfl
+example : eraseTypeIdx Project.Gcd.func3Def = eraseTypeIdx retainFuncDef := rfl
+example : eraseTypeIdx Project.Gcd.func4Def = eraseTypeIdx (releaseFuncDef 4) := rfl
 
-example : Project.LebU32.func2Def = allocFuncDef := rfl
-example : Project.LebU32.func3Def = resetFuncDef := rfl
-example : Project.LebU32.func4Def = retainFuncDef := rfl
-example : Project.LebU32.func5Def = releaseFuncDef 5 := rfl
+example : eraseTypeIdx Project.LebU32.func2Def = eraseTypeIdx allocFuncDef := rfl
+example : eraseTypeIdx Project.LebU32.func3Def = eraseTypeIdx resetFuncDef := rfl
+example : eraseTypeIdx Project.LebU32.func4Def = eraseTypeIdx retainFuncDef := rfl
+example : eraseTypeIdx Project.LebU32.func5Def = eraseTypeIdx (releaseFuncDef 5) := rfl
 
-example : Project.OrderBook.func2Def = allocFuncDef := rfl
-example : Project.OrderBook.func3Def = resetFuncDef := rfl
-example : Project.OrderBook.func4Def = retainFuncDef := rfl
-example : Project.OrderBook.func5Def = releaseFuncDef 5 := rfl
+example : eraseTypeIdx Project.OrderBook.func2Def = eraseTypeIdx allocFuncDef := rfl
+example : eraseTypeIdx Project.OrderBook.func3Def = eraseTypeIdx resetFuncDef := rfl
+example : eraseTypeIdx Project.OrderBook.func4Def = eraseTypeIdx retainFuncDef := rfl
+example : eraseTypeIdx Project.OrderBook.func5Def = eraseTypeIdx (releaseFuncDef 5) := rfl
 
-example : Project.PairFree.func4Def = allocFuncDef := rfl
-example : Project.PairFree.func5Def = resetFuncDef := rfl
-example : Project.PairFree.func6Def = retainFuncDef := rfl
-example : Project.PairFree.func7Def = releaseFuncDef 7 := rfl
+example : eraseTypeIdx Project.PairFree.func4Def = eraseTypeIdx allocFuncDef := rfl
+example : eraseTypeIdx Project.PairFree.func5Def = eraseTypeIdx resetFuncDef := rfl
+example : eraseTypeIdx Project.PairFree.func6Def = eraseTypeIdx retainFuncDef := rfl
+example : eraseTypeIdx Project.PairFree.func7Def = eraseTypeIdx (releaseFuncDef 7) := rfl
 
-example : Project.PushSize.func1Def = allocFuncDef := rfl
-example : Project.PushSize.func2Def = resetFuncDef := rfl
-example : Project.PushSize.func3Def = retainFuncDef := rfl
-example : Project.PushSize.func4Def = releaseFuncDef 4 := rfl
+example : eraseTypeIdx Project.PushSize.func1Def = eraseTypeIdx allocFuncDef := rfl
+example : eraseTypeIdx Project.PushSize.func2Def = eraseTypeIdx resetFuncDef := rfl
+example : eraseTypeIdx Project.PushSize.func3Def = eraseTypeIdx retainFuncDef := rfl
+example : eraseTypeIdx Project.PushSize.func4Def = eraseTypeIdx (releaseFuncDef 4) := rfl
 
-example : Project.PushTwice.func2Def = allocFuncDef := rfl
-example : Project.PushTwice.func3Def = resetFuncDef := rfl
-example : Project.PushTwice.func4Def = retainFuncDef := rfl
-example : Project.PushTwice.func5Def = releaseFuncDef 5 := rfl
+example : eraseTypeIdx Project.PushTwice.func2Def = eraseTypeIdx allocFuncDef := rfl
+example : eraseTypeIdx Project.PushTwice.func3Def = eraseTypeIdx resetFuncDef := rfl
+example : eraseTypeIdx Project.PushTwice.func4Def = eraseTypeIdx retainFuncDef := rfl
+example : eraseTypeIdx Project.PushTwice.func5Def = eraseTypeIdx (releaseFuncDef 5) := rfl
 
-example : Project.SharedPair.func1Def = allocFuncDef := rfl
-example : Project.SharedPair.func2Def = resetFuncDef := rfl
-example : Project.SharedPair.func3Def = retainFuncDef := rfl
-example : Project.SharedPair.func4Def = releaseFuncDef 4 := rfl
+example : eraseTypeIdx Project.SharedPair.func1Def = eraseTypeIdx allocFuncDef := rfl
+example : eraseTypeIdx Project.SharedPair.func2Def = eraseTypeIdx resetFuncDef := rfl
+example : eraseTypeIdx Project.SharedPair.func3Def = eraseTypeIdx retainFuncDef := rfl
+example : eraseTypeIdx Project.SharedPair.func4Def = eraseTypeIdx (releaseFuncDef 4) := rfl
 
-example : Project.Validate.func4Def = allocFuncDef := rfl
-example : Project.Validate.func5Def = resetFuncDef := rfl
-example : Project.Validate.func6Def = retainFuncDef := rfl
-example : Project.Validate.func7Def = releaseFuncDef 7 := rfl
+example : eraseTypeIdx Project.Validate.func4Def = eraseTypeIdx allocFuncDef := rfl
+example : eraseTypeIdx Project.Validate.func5Def = eraseTypeIdx resetFuncDef := rfl
+example : eraseTypeIdx Project.Validate.func6Def = eraseTypeIdx retainFuncDef := rfl
+example : eraseTypeIdx Project.Validate.func7Def = eraseTypeIdx (releaseFuncDef 7) := rfl
 
-example : Project.ClobCancel.func4Def = allocFuncDef := rfl
-example : Project.ClobCancel.func5Def = resetFuncDef := rfl
-example : Project.ClobCancel.func6Def = retainFuncDef := rfl
-example : Project.ClobCancel.func7Def = releaseFuncDef 7 := rfl
+example : eraseTypeIdx Project.ClobCancel.func4Def = eraseTypeIdx allocFuncDef := rfl
+example : eraseTypeIdx Project.ClobCancel.func5Def = eraseTypeIdx resetFuncDef := rfl
+example : eraseTypeIdx Project.ClobCancel.func6Def = eraseTypeIdx retainFuncDef := rfl
+example : eraseTypeIdx Project.ClobCancel.func7Def = eraseTypeIdx (releaseFuncDef 7) := rfl
 
-example : Project.ClobDepth.func8Def = allocFuncDef := rfl
-example : Project.ClobDepth.func9Def = resetFuncDef := rfl
-example : Project.ClobDepth.func10Def = retainFuncDef := rfl
-example : Project.ClobDepth.func11Def = releaseFuncDef 11 := rfl
+example : eraseTypeIdx Project.ClobDepth.func8Def = eraseTypeIdx allocFuncDef := rfl
+example : eraseTypeIdx Project.ClobDepth.func9Def = eraseTypeIdx resetFuncDef := rfl
+example : eraseTypeIdx Project.ClobDepth.func10Def = eraseTypeIdx retainFuncDef := rfl
+example : eraseTypeIdx Project.ClobDepth.func11Def = eraseTypeIdx (releaseFuncDef 11) := rfl
 
-example : Project.ClobQuote.func11Def = allocFuncDef := rfl
-example : Project.ClobQuote.func12Def = resetFuncDef := rfl
-example : Project.ClobQuote.func13Def = retainFuncDef := rfl
-example : Project.ClobQuote.func14Def = releaseFuncDef 14 := rfl
+example : eraseTypeIdx Project.ClobQuote.func11Def = eraseTypeIdx allocFuncDef := rfl
+example : eraseTypeIdx Project.ClobQuote.func12Def = eraseTypeIdx resetFuncDef := rfl
+example : eraseTypeIdx Project.ClobQuote.func13Def = eraseTypeIdx retainFuncDef := rfl
+example : eraseTypeIdx Project.ClobQuote.func14Def = eraseTypeIdx (releaseFuncDef 14) := rfl
 
-example : Project.ClobFindBest.func9Def = allocFuncDef := rfl
-example : Project.ClobFindBest.func10Def = resetFuncDef := rfl
-example : Project.ClobFindBest.func11Def = retainFuncDef := rfl
-example : Project.ClobFindBest.func12Def = releaseFuncDef 12 := rfl
+example : eraseTypeIdx Project.ClobFindBest.func9Def = eraseTypeIdx allocFuncDef := rfl
+example : eraseTypeIdx Project.ClobFindBest.func10Def = eraseTypeIdx resetFuncDef := rfl
+example : eraseTypeIdx Project.ClobFindBest.func11Def = eraseTypeIdx retainFuncDef := rfl
+example : eraseTypeIdx Project.ClobFindBest.func12Def = eraseTypeIdx (releaseFuncDef 12) := rfl
 
-example : Project.ClobLimit.func22Def = allocFuncDef := rfl
-example : Project.ClobLimit.func23Def = resetFuncDef := rfl
-example : Project.ClobLimit.func24Def = retainFuncDef := rfl
-example : Project.ClobLimit.func25Def = releaseFuncDef 25 := rfl
+example : eraseTypeIdx Project.ClobLimit.func22Def = eraseTypeIdx allocFuncDef := rfl
+example : eraseTypeIdx Project.ClobLimit.func23Def = eraseTypeIdx resetFuncDef := rfl
+example : eraseTypeIdx Project.ClobLimit.func24Def = eraseTypeIdx retainFuncDef := rfl
+example : eraseTypeIdx Project.ClobLimit.func25Def = eraseTypeIdx (releaseFuncDef 25) := rfl
 
-example : Project.ClobMarket.func22Def = allocFuncDef := rfl
-example : Project.ClobMarket.func23Def = resetFuncDef := rfl
-example : Project.ClobMarket.func24Def = retainFuncDef := rfl
-example : Project.ClobMarket.func25Def = releaseFuncDef 25 := rfl
+example : eraseTypeIdx Project.ClobMarket.func22Def = eraseTypeIdx allocFuncDef := rfl
+example : eraseTypeIdx Project.ClobMarket.func23Def = eraseTypeIdx resetFuncDef := rfl
+example : eraseTypeIdx Project.ClobMarket.func24Def = eraseTypeIdx retainFuncDef := rfl
+example : eraseTypeIdx Project.ClobMarket.func25Def = eraseTypeIdx (releaseFuncDef 25) := rfl
 
-example : Project.ClobMatchFuel.func15Def = allocFuncDef := rfl
-example : Project.ClobMatchFuel.func16Def = resetFuncDef := rfl
-example : Project.ClobMatchFuel.func17Def = retainFuncDef := rfl
-example : Project.ClobMatchFuel.func18Def = releaseFuncDef 18 := rfl
+example : eraseTypeIdx Project.ClobMatchFuel.func15Def = eraseTypeIdx allocFuncDef := rfl
+example : eraseTypeIdx Project.ClobMatchFuel.func16Def = eraseTypeIdx resetFuncDef := rfl
+example : eraseTypeIdx Project.ClobMatchFuel.func17Def = eraseTypeIdx retainFuncDef := rfl
+example : eraseTypeIdx Project.ClobMatchFuel.func18Def = eraseTypeIdx (releaseFuncDef 18) := rfl
 
-example : Project.ClobPostOnly.func18Def = allocFuncDef := rfl
-example : Project.ClobPostOnly.func19Def = resetFuncDef := rfl
-example : Project.ClobPostOnly.func20Def = retainFuncDef := rfl
-example : Project.ClobPostOnly.func21Def = releaseFuncDef 21 := rfl
+example : eraseTypeIdx Project.ClobPostOnly.func18Def = eraseTypeIdx allocFuncDef := rfl
+example : eraseTypeIdx Project.ClobPostOnly.func19Def = eraseTypeIdx resetFuncDef := rfl
+example : eraseTypeIdx Project.ClobPostOnly.func20Def = eraseTypeIdx retainFuncDef := rfl
+example : eraseTypeIdx Project.ClobPostOnly.func21Def = eraseTypeIdx (releaseFuncDef 21) := rfl
 
 end Project.Runtime

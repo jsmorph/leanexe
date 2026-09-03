@@ -19,7 +19,7 @@ def ExportDomain (id : Nat) : Prop :=
 
 set_option maxRecDepth 1048576 in
 theorem exportShift : Shift Project.ClobLimit.«module»
-    Project.ClobMarket.«module» id ExportDomain := by
+    Project.ClobMarket.«module» id id ExportDomain := by
   refine
     { sourceImports := rfl
       targetImports := rfl

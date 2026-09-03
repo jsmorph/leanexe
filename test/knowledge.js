@@ -33,11 +33,13 @@ function main() {
     const moduleName = "LeanExeGen.Knowledge.TestPackage.Proposed";
     const artifactSha256 = "1".repeat(64);
     const entryId = "test-memory-frame";
-    const source = `import Project.ProofKit.Control\n\n` +
+    const source = `import Project.TalosPrelude\nimport Project.TalosCompat\n` +
+      `import CodeLib.Entry\n` +
+      `import Project.ProofKit.Control\n\n` +
       `namespace ${moduleName}\n\n` +
       `theorem true_intro : True := by trivial\n\n` +
       `end ${moduleName}\n`;
-    createKnowledgePackage(packageRoot, {
+    const packageDefinition = {
       manifest: {
         schemaVersion: 1,
         id: packageId,
@@ -90,7 +92,15 @@ function main() {
         entries: [entryId],
       }]]),
       dependencyForestPath: null,
-    });
+    };
+    createKnowledgePackage(packageRoot, packageDefinition);
+    expectFailure(() => createKnowledgePackage(path.join(root, "umbrella-package"), {
+      ...packageDefinition,
+      leanSources: new Map([[
+        moduleName,
+        source.replace("import Project.TalosPrelude", "import CodeLib"),
+      ]]),
+    }), /unsupported knowledge dependency CodeLib/);
     const forestPath = path.join(root, "forest.json");
     fs.writeFileSync(forestPath, `${JSON.stringify({
       schemaVersion: 1,
@@ -112,6 +122,26 @@ function main() {
       complete.manifest, complete.files, complete.manifest.artifactSha256);
     assert(checked.leanSources.get(moduleName) === source,
       "archived knowledge validation omitted its Lean source");
+    const umbrellaArchiveFiles = new Map(complete.files);
+    const packagePrefix = `packages/${packageId}/`;
+    const archivedSourcePath = `${packagePrefix}lean/${moduleName.replaceAll(".", "/")}.lean`;
+    umbrellaArchiveFiles.set(archivedSourcePath,
+      Buffer.from(source.replace("import Project.TalosPrelude", "import CodeLib")));
+    const umbrellaArchiveManifest = structuredClone(complete.manifest);
+    umbrellaArchiveManifest.packages[0].sha256 = knowledgeDigest(new Map(
+      [...umbrellaArchiveFiles]
+        .filter(([relative]) => relative.startsWith(packagePrefix))
+        .map(([relative, bytes]) => [relative.slice(packagePrefix.length), bytes]),
+    ));
+    umbrellaArchiveManifest.sha256 = knowledgeDigest(umbrellaArchiveFiles);
+    expectFailure(() => validateKnowledgeTask(
+      umbrellaArchiveManifest, umbrellaArchiveFiles,
+      umbrellaArchiveManifest.artifactSha256), /unsupported archived knowledge dependency CodeLib/);
+    assert(validateKnowledgeTask(
+      umbrellaArchiveManifest, umbrellaArchiveFiles,
+      umbrellaArchiveManifest.artifactSha256, { frozenArchive: true })
+      .leanSources.get(moduleName).startsWith("import CodeLib\n"),
+    "the explicit frozen-knowledge reader rejected a historical CodeLib umbrella import");
     const legacyManifest = {
       ...structuredClone(complete.manifest),
       schemaVersion: 1,

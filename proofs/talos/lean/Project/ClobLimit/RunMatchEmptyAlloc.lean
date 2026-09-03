@@ -19,6 +19,20 @@ open Wasm Project.Common Project.Clob Project.ClobLimit
 set_option maxHeartbeats 8000000
 set_option maxRecDepth 1048576
 
+/-- Execute the allocator's straight-line prefix only as far as the next
+`store64`.  Keeping each store guard separate avoids asking `simp` to reduce
+all seven nested memory-write branches in one expression. -/
+macro "wp_run_to_store" "[" ts:Lean.Parser.Tactic.simpLemma,* "]" : tactic =>
+  `(tactic|
+    simp (config := { maxSteps := 10000000 }) (discharger := omega) only [
+      wp_globalGet_cons, wp_globalSet_cons,
+      wp_localGet_cons, wp_localSet_cons,
+      wp_constI64_cons, wp_addI64_cons, wp_subI64_cons, wp_wrapI64_cons,
+      Wasm.Locals.get, Wasm.Locals.set?, Wasm.Locals.validIndex,
+      List.length_set, List.getElem?_set, Nat.reduceAdd, Nat.reduceLT,
+      Nat.reduceLeDiff, Nat.reduceSub, Nat.add_left_cancel_iff,
+      Nat.add_lt_add_iff_left, Nat.reduceEqDiff, if_true, if_false, $ts,*])
+
 
 def prepareProg : Wasm.Program :=
   [
@@ -152,8 +166,7 @@ def bumpProg : Wasm.Program :=
     .addI64,
     .localGet 36,
     .addI64,
-    .localSet 39,
-    .localGet 39,
+    .localTee 39,
     .globalGet 0,
     .ltUI64,
     .iff 0 0 [
@@ -178,7 +191,7 @@ def bumpProg : Wasm.Program :=
       .subI64,
       .wrapI64,
       .memoryGrow,
-      .const 4294967295,
+      .const (-1),
       .eq,
       .iff 0 0 [
         .unreachable
@@ -421,10 +434,8 @@ theorem allocProg_spec
       (by simpa using hTop) (by simpa using hFit) hPages
     refine wp_iff_cons rfl ?_
     rw [if_neg (by simpa using hNoGrow)]
-    wp_run_with [hParams, hLocals, hValues]
-    simp only [hg0]
-    try wp_run_with [hParams, hLocals, hValues]
-    try simp
+    rw [wp_nil]
+    simp only [List.take_zero, List.drop_zero, List.nil_append]
     have hRoot : (g0 + 48).toNat = g0.toNat + 48 :=
       fixedArrayBumpRoot_toNat g0 (by
         have hSize : UInt64.size = 18446744073709551616 := rfl
@@ -469,23 +480,68 @@ theorem allocProg_spec
         st.mem.pages * 65536 := by
       rw [hsub8, Nat.mod_eq_of_lt (by omega)]
       omega
-    rw [if_neg (Nat.not_lt.mpr hBaseBound),
-      if_neg (Nat.not_lt.mpr hBase8Bound),
-      if_neg (Nat.not_lt.mpr hBase16Bound),
-      if_neg (Nat.not_lt.mpr hBase24Bound),
-      if_neg (Nat.not_lt.mpr hBase32Bound),
-      if_neg (Nat.not_lt.mpr hBase40Bound)]
-    simp only [hg2]
-    have hRootBound : ¬st.mem.pages * 65536 <
-        (g0.toNat + 48) % 4294967296 + 8 := by
+    have hRootBound : (g0.toNat + 48) % 4294967296 + 8 ≤
+        st.mem.pages * 65536 := by
       rw [Nat.mod_eq_of_lt (by omega)]
       omega
-    rw [if_neg hRootBound]
-    have hTopValue : g0 + 48 + 8 = g0 + 56 := by
-      rw [UInt64.add_assoc]
-      rw [show (48 : UInt64) + 8 = 56 by decide]
-    simpa only [allocStore, allocFrame, emptyFixedArrayMem, fixedArrayMem,
-      fixedArrayHeaderMem, toUInt32_eq_ofNat, hsub48, hsub40, hsub32,
-      hsub24, hsub16, hsub8, hTopValue, hValues] using hNext
+    have hTwo32 : 2 ^ 32 = 4294967296 := by norm_num
+    have hBaseBound32 :
+        (UInt32.ofNat (g0.toNat % 4294967296)).toNat + 8 ≤
+          st.mem.pages * 65536 := by
+      simpa using hBaseBound
+    have hBase8Bound32 :
+        (UInt32.ofNat ((g0.toNat + 8) % 4294967296)).toNat + 8 ≤
+          st.mem.pages * 65536 := by
+      simpa [hsub40] using hBase8Bound
+    have hBase16Bound32 :
+        (UInt32.ofNat ((g0.toNat + 16) % 4294967296)).toNat + 8 ≤
+          st.mem.pages * 65536 := by
+      simpa [hsub32] using hBase16Bound
+    have hBase24Bound32 :
+        (UInt32.ofNat ((g0.toNat + 24) % 4294967296)).toNat + 8 ≤
+          st.mem.pages * 65536 := by
+      simpa [hsub24] using hBase24Bound
+    have hBase32Bound32 :
+        (UInt32.ofNat ((g0.toNat + 32) % 4294967296)).toNat + 8 ≤
+          st.mem.pages * 65536 := by
+      simpa [hsub16] using hBase32Bound
+    have hBase40Bound32 :
+        (UInt32.ofNat ((g0.toNat + 40) % 4294967296)).toNat + 8 ≤
+          st.mem.pages * 65536 := by
+      simpa [hsub8] using hBase40Bound
+    wp_run_to_store [hg0, hParams, hLocals, hValues, hsub48]
+    simp only [wp_store64_cons, hTwo32, UInt32.toNat_zero, Nat.add_zero]
+    rw [if_neg (Nat.not_lt.mpr hBaseBound32)]
+    wp_run_to_store [hParams, hLocals, hValues, hsub40]
+    simp only [wp_store64_cons, hTwo32, UInt32.toNat_zero, Nat.add_zero,
+      Mem.write64_pages]
+    rw [if_neg (Nat.not_lt.mpr hBase8Bound32)]
+    wp_run_to_store [hParams, hLocals, hValues, hsub32]
+    simp only [wp_store64_cons, hTwo32, UInt32.toNat_zero, Nat.add_zero,
+      Mem.write64_pages]
+    rw [if_neg (Nat.not_lt.mpr hBase16Bound32)]
+    wp_run_to_store [hParams, hLocals, hValues, hsub24]
+    simp only [wp_store64_cons, hTwo32, UInt32.toNat_zero, Nat.add_zero,
+      Mem.write64_pages]
+    rw [if_neg (Nat.not_lt.mpr hBase24Bound32)]
+    wp_run_to_store [hParams, hLocals, hValues, hsub16]
+    simp only [wp_store64_cons, hTwo32, UInt32.toNat_zero, Nat.add_zero,
+      Mem.write64_pages]
+    rw [if_neg (Nat.not_lt.mpr hBase32Bound32)]
+    wp_run_to_store [hParams, hLocals, hValues, hsub8]
+    simp only [wp_store64_cons, hTwo32, UInt32.toNat_zero, Nat.add_zero,
+      Mem.write64_pages]
+    rw [if_neg (Nat.not_lt.mpr hBase40Bound32)]
+    rw [wp_nil]
+    simp only [List.take_zero, List.drop_zero, List.nil_append]
+    wp_run_to_store [hg2, hParams, hLocals, hValues, hRoot]
+    split_ifs with hOut
+    · exact False.elim ((Nat.not_lt.mpr hRootBound) hOut)
+    · have hTopValue : g0 + 48 + 8 = g0 + 56 := by
+        rw [UInt64.add_assoc]
+        rw [show (48 : UInt64) + 8 = 56 by decide]
+      simpa only [allocStore, allocFrame, emptyFixedArrayMem, fixedArrayMem,
+        fixedArrayHeaderMem, toUInt32_eq_ofNat, hsub48, hsub40, hsub32,
+        hsub24, hsub16, hsub8, hTopValue, hValues, UInt32.add_zero] using hNext
 
 end Project.ClobLimit.RunMatchEmptyAlloc

@@ -178,9 +178,11 @@ theorem SearchFrame.branch
   rcases h with ⟨hParams, hLocals, hValues, hKey⟩
   refine ⟨hParams, ?_, rfl, ?_⟩
   · simpa [branchFrame, FixedArrayTraversalInput.resultFrame] using hLocals
-  · simpa [branchFrame] using
-      (SearchFrame.afterLoad
-        ⟨hParams, hLocals, hValues, hKey⟩ hKeyPositive hKeyBeforeScratch)
+  · change
+      (FixedArrayTraversalInput.resultFrame offset frame inputPtr index value).get
+          keyLocal = some (.i64 key)
+    exact SearchFrame.afterLoad
+      ⟨hParams, hLocals, hValues, hKey⟩ hKeyPositive hKeyBeforeScratch
 
 def branchN (module_ : Wasm.Module) (env : HostEnv Unit) :
     Nat → Assertion Unit → Assertion Unit

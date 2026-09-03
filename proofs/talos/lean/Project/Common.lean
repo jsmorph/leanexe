@@ -1,5 +1,7 @@
-import CodeLib
+import Project.TalosPrelude
+import Project.TalosCompat
 import Project.Attr
+import Std.Tactic.BVDecide
 
 /-!
 # Shared lemmas for artifact proofs
@@ -25,6 +27,18 @@ theorem u64_eq_iff {a b : UInt64} : a = b ↔ a.toNat = b.toNat :=
 
 theorem u32_eq_iff {a b : UInt32} : a = b ↔ a.toNat = b.toNat :=
   ⟨congrArg UInt32.toNat, UInt32.toNat.inj⟩
+
+/-- Adding two modulo-`UInt64` increments and subtracting the original value
+leaves two, including across wraparound. -/
+theorem u64_add_two_sub_self (x : UInt64) :
+    x + 1 + 1 - x = 2 := by
+  bv_decide
+
+/-- Adding three modulo-`UInt64` increments and subtracting the original value
+leaves three, including across wraparound. -/
+theorem u64_add_three_sub_self (x : UInt64) :
+    x + 1 + 1 + 1 - x = 3 := by
+  bv_decide
 
 /-- Close a `UInt64` equality or inequality goal, including negated
 forms, by moving to `toNat` form and calling `omega`.  Bounds needed to

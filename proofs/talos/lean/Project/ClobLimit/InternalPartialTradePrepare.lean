@@ -50,7 +50,7 @@ def partialTradePrepareProg : Wasm.Program :=
     .load64 0
   ] [
     .unreachable
-  ],
+  ] [] [.i64],
   .localSet 63,
   .localGet 7,
   .localSet 68,
@@ -75,7 +75,7 @@ def partialTradePrepareProg : Wasm.Program :=
     .load64 0
   ] [
     .unreachable
-  ],
+  ] [] [.i64],
   .localSet 64,
   .localGet 10,
   .localSet 65,

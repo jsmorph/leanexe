@@ -1,10 +1,23 @@
 # Talos Imported-Memory Instance Defect
 
-This report records the defect first observed on 2026-08-02 and reproduced by the release gate on 2026-08-03.  The defect remains open in the pinned Talos dependency.  The current no-import artifact profile does not exercise it.
+This report records the defect first observed on 2026-08-02 and reproduced under
+the then-pinned Talos revision by the release gate on 2026-08-03.  The current
+workspace pins pre-floating-point Talos revision
+`fda69ca67a81ea4f1fa4e376bdc5861d9fe5479a`; its migrated conformance receipt is
+still pending, so this historical report does not claim a current rerun.  The
+no-import artifact profile does not exercise the defect.
 
 ## Finding and Ownership
 
-The implementation defect belongs to the pinned Talos repository, not to LeanExe's compiler, binary decoder, validator, artifact packages, or proof driver.  LeanExe obtains `CodeLib` from `https://github.com/cajal-technologies/talos` at revision `bb3277e21c9786e3133d5c1601e34ebdc0bea4df`, as recorded by the [Talos dependency declaration](../proofs/talos/lean/lakefile.toml) and [conformance configuration](../proofs/talos/conformance.json).  The local dependency checkout is clean, so no LeanExe working-tree edit introduced the behavior.
+The implementation defect found by that run belongs to the historical Talos
+dependency, not to LeanExe's compiler, binary decoder, validator, artifact
+packages, or proof driver.  The 2026-08-26 receipt used `CodeLib` from
+`https://github.com/cajal-technologies/talos` at revision
+`bb3277e21c9786e3133d5c1601e34ebdc0bea4df`; the dependency checkout used for the
+reproduction was clean, so no LeanExe working-tree edit introduced the behavior.
+The current [Talos dependency declaration](../proofs/talos/lean/lakefile.toml) and
+[conformance configuration](../proofs/talos/conformance.json) instead pin
+`fda69ca67a81ea4f1fa4e376bdc5861d9fe5479a`.
 
 Talos upstream commit [`07fe17b`](https://github.com/cajal-technologies/talos/commit/07fe17bba53861e7f21459d8eff325c4ab1037c9) added cross-module imports using snapshot semantics.  The commit and source state that imported globals, tables, and memories are copied into the importing instance, while imported functions close over an exporting-store snapshot.  The source also states that mutations through an import remain local and identifies shared-state linking as unsupported.
 
@@ -39,7 +52,9 @@ The [WebAssembly matching rules](https://webassembly.github.io/spec/core/valid/m
 
 ## Talos Execution Path
 
-Talos represents `Mem` with only `pages : Nat` and `bytes : Nat → UInt8`.  [`Mem.empty`](https://github.com/cajal-technologies/talos/blob/bb3277e21c9786e3133d5c1601e34ebdc0bea4df/interpreter/Interpreter/Wasm/Mem.lean#L22-L35) records neither the memory's maximum nor its runtime identity.  [`Mem.grow`](https://github.com/cajal-technologies/talos/blob/bb3277e21c9786e3133d5c1601e34ebdc0bea4df/interpreter/Interpreter/Wasm/Mem.lean#L141-L149) consequently accepts a separate `cap` argument.
+In the historical `bb3277` reproduction state, Talos represents `Mem` with only
+`pages : Nat` and `bytes : Nat → UInt8`.  The source links in this section
+intentionally identify that inspected revision.  [`Mem.empty`](https://github.com/cajal-technologies/talos/blob/bb3277e21c9786e3133d5c1601e34ebdc0bea4df/interpreter/Interpreter/Wasm/Mem.lean#L22-L35) records neither the memory's maximum nor its runtime identity.  [`Mem.grow`](https://github.com/cajal-technologies/talos/blob/bb3277e21c9786e3133d5c1601e34ebdc0bea4df/interpreter/Interpreter/Wasm/Mem.lean#L141-L149) consequently accepts a separate `cap` argument.
 
 At instantiation, the Talos testsuite harness copies the exporting module's `Mem` value into the importing module's local store.  The copy carries the current page count and byte function but cannot carry the exported five-page maximum because `Mem` has no such field.  The importer retains its static `1 6` declaration in its own `Module` value.
 

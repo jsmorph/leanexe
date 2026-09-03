@@ -54,6 +54,8 @@ const proofKitModules = Object.freeze([
   "Project.ProofKit.ScalarTransitionU64",
 ]);
 const proofKitRelativeFiles = Object.freeze([
+  "proofs/talos/lean/Project/TalosPrelude.lean",
+  "proofs/talos/lean/Project/TalosCompat.lean",
   "proofs/talos/lean/Project/ProofKit/Annotation.lean",
   "proofs/talos/lean/Project/ProofKit/Memory.lean",
   "proofs/talos/lean/Project/ProofKit/Frame.lean",
@@ -213,17 +215,29 @@ function imports(source) {
     .map((match) => match[1]);
 }
 
+function isGeneratedProofDependency(imported) {
+  return imported === "Project.TalosPrelude" ||
+    imported === "Project.TalosCompat" ||
+    imported.startsWith("CodeLib.") ||
+    imported.startsWith("Init.") ||
+    imported.startsWith("Std.") ||
+    imported.startsWith("Mathlib.") ||
+    imported === "Interpreter" ||
+    imported.startsWith("Interpreter.");
+}
+
+// Frozen proof packages predate Project.TalosPrelude and therefore contain
+// `import CodeLib`. Keep that historical reader separate from every validator
+// used on newly generated proof and knowledge candidates.
+function isFrozenArchiveProofDependency(imported) {
+  return imported === "CodeLib" || isGeneratedProofDependency(imported);
+}
+
 function validateProofImports(job, modules, additionalModules = new Set()) {
   const generatedPrefix = `${job.namespace}.`;
   for (const item of modules) {
     for (const imported of imports(item.source)) {
-      const allowedDependency = imported === "CodeLib" ||
-        imported.startsWith("CodeLib.") ||
-        imported.startsWith("Init.") ||
-        imported.startsWith("Std.") ||
-        imported.startsWith("Mathlib.") ||
-        imported === "Interpreter" ||
-        imported.startsWith("Interpreter.");
+      const allowedDependency = isGeneratedProofDependency(imported);
       const allowedProofKit = proofKitModules.includes(imported) || additionalModules.has(imported);
       const allowedGenerated = imported.startsWith(generatedPrefix) &&
         imported !== job.sourceModule;
@@ -976,7 +990,8 @@ function validateLtgTask(document, files, artifactSha256) {
   return { manifest: structuredClone(document), files: new Map(files) };
 }
 
-function validateKnowledgeTask(document, files, artifactSha256) {
+function validateKnowledgeTask(
+    document, files, artifactSha256, { frozenArchive = false } = {}) {
   if (document === null || typeof document !== "object" ||
       ![1, 2].includes(document.schemaVersion)) {
     fail("knowledge-task.json has an unsupported schema");
@@ -1324,10 +1339,9 @@ function validateKnowledgeTask(document, files, artifactSha256) {
     }
     for (const [moduleName, source] of packageSources.get(package_.id)) {
       for (const imported of imports(source)) {
-        const dependency = imported === "CodeLib" || imported.startsWith("CodeLib.") ||
-          imported.startsWith("Init.") || imported.startsWith("Std.") ||
-          imported.startsWith("Mathlib.") || imported === "Interpreter" ||
-          imported.startsWith("Interpreter.");
+        const dependency = frozenArchive
+          ? isFrozenArchiveProofDependency(imported)
+          : isGeneratedProofDependency(imported);
         if (!dependency && !packageAllowedModules.has(imported)) {
           fail(`${moduleName} imports unsupported archived knowledge dependency ${imported}`);
         }
@@ -1510,7 +1524,7 @@ function safePackagePath(root, relative) {
   return path.join(root, ...relative.split("/"));
 }
 
-function validatePackage(packageRoot) {
+function validatePackage(packageRoot, { frozenArchive = false } = {}) {
   const manifestPath = path.join(packageRoot, "package.json");
   const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
   exactKeys(manifest, [
@@ -1857,7 +1871,7 @@ function validatePackage(packageRoot) {
     ]));
     knowledgeTask = validateKnowledgeTask(JSON.parse(fs.readFileSync(
       path.join(packageRoot, "knowledge-task.json"), "utf8")),
-    knowledgeFiles, artifact.sha256);
+    knowledgeFiles, artifact.sha256, { frozenArchive });
     if (manifest.schemaVersion >= 9) {
       requiredFiles.push("knowledge-evaluation.json");
     } else if (seen.has("knowledge-evaluation.json")) {
@@ -1881,12 +1895,9 @@ function validatePackage(packageRoot) {
     if (moduleName === job.sourceModule) continue;
     const source = fs.readFileSync(path.join(proofRoot, ...relative.split("/")), "utf8");
     for (const imported of imports(source)) {
-      const allowedDependency = imported === "CodeLib" ||
-        imported.startsWith("CodeLib.") ||
-        imported.startsWith("Init.") ||
-        imported.startsWith("Std.") ||
-        imported.startsWith("Mathlib.") ||
-        imported.startsWith("Interpreter.") ||
+      const allowedDependency = (frozenArchive
+        ? isFrozenArchiveProofDependency(imported)
+        : isGeneratedProofDependency(imported)) ||
         imported.startsWith("Project.Artifact.Binary.");
       const allowedProofKit = proofKitModules.includes(imported) ||
         (knowledgeTask !== null && knowledgeTask.allowedModules.has(imported));
@@ -1911,6 +1922,10 @@ function validatePackage(packageRoot) {
     knowledgeTask,
     knowledgeEvaluation,
   };
+}
+
+function validateFrozenPackage(packageRoot) {
+  return validatePackage(packageRoot, { frozenArchive: true });
 }
 
 module.exports = {
@@ -1938,6 +1953,7 @@ module.exports = {
   validatePackage,
   validateProofJournal,
   validateKnowledgeEvaluation,
+  validateFrozenPackage,
   validateProgramImports,
   validateProofImports,
   validateStageReports,

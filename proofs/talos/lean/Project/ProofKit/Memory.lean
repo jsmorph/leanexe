@@ -1,4 +1,5 @@
-import CodeLib
+import Project.TalosPrelude
+import Project.TalosCompat
 
 namespace Project.ProofKit.Memory
 

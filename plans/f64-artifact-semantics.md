@@ -217,14 +217,17 @@ and `devnotes.md` record exact commands, tool pins, axiom reports, artifact
 digests, and any deliberate byte changes.
 
 Migration status on 2026-09-03: the `fda69ca` pin and compatibility changes are
-present in the local working tree.  Focused builds pass for every failure found
-so far, including typed control metadata, function type-index transport,
-`local.tee`, exact generated-program boundaries, and staged memory-write
-proofs.  A final aggregate reached 3,403 of 3,674 jobs without an observed
-failure before it was deliberately stopped; the remaining jobs and the
-artifact, conformance, identity, and axiom gates are still outstanding.  This
-is not a completed checkpoint, and no floating-point syntax, execution, or
-numerical theorem has yet been added to LeanExe.
+present in the local working tree.  Focused builds pass for typed control
+metadata, function type-index transport, `local.tee`, exact generated-program
+boundaries, staged memory-write proofs, and every large application proof root
+under exact Lean 4.34.0-rc2.  A subsequent standalone-module sweep exposed
+failures in `Project.ProofKit.FixedArrayEqNode` and
+`Project.ProofKit.FixedArrayAllocator`; both have been repaired and pass their
+focused builds.  `Project.ProofKit.LTGCheck`, `Project.PairFree.Probe`, the
+translator metadata tests, and the complete 3,674-job `Project` aggregate also
+pass.  The exact-artifact, conformance, identity, and axiom gates are still
+outstanding, so the pre-FP migration is not complete.  No floating-point syntax,
+execution, or numerical theorem has yet been added to LeanExe.
 
 - [x] Migrate the native compiler to exact Lean 4.34.0-rc2 and preserve every
       registered artifact byte.  The scoped legacy `do` option on the frozen GCD

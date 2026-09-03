@@ -24,6 +24,7 @@ const {
   stageReportCodexVersion,
   stageReportCodexVersions,
   validateCodexTaskOutcome,
+  validateFrozenPackage,
   validatePackage,
   validateProofJournal,
   validateProgramImports,
@@ -53,6 +54,7 @@ const {
 } = require("./leanexegen-benchmark");
 const { spawnResult } = require("./run-process");
 const { makeTemporaryDirectory } = require("./temp-directory");
+const { normalizeExpandedProgram } = require("./talos-lib");
 
 const repoRoot = path.resolve(__dirname, "..");
 const proofRoot = path.join(repoRoot, "proofs", "talos", "lean");
@@ -699,7 +701,7 @@ function formalPrompt(request, job) {
   return `You are performing independent task 1 of 3 for leanexegen.  Produce the formal ` +
     `specification for this request:\n\n${request}\n\n` +
     `Work in this session until the candidate passes real Lean.  Write the complete candidate ` +
-    `module to ${candidate}; it must import CodeLib and define ` +
+    `module to ${candidate}; it must import Project.TalosPrelude and define ` +
     `${job.expectedDefinition} : Array UInt64 → Array UInt64 and ` +
     `${job.heapReserveDefinition} : Array UInt64 → Nat.  heapReserveBytes input must conservatively ` +
     `bound all bump-heap bytes consumed above the initial heap top while computing that input, ` +
@@ -820,13 +822,15 @@ function proofPrompt(request, job, entryIndex, recordsKnowledgeUse = true) {
     `invalidate proof-generation measurement.  PROOF_KIT_SOURCE mirrors every allowed ` +
     `Project.ProofKit module inside the working directory.  Inspect Project.ProofKit ` +
     `declarations there, and never search a dependency checkout or another path outside the ` +
-    `working directory.  For CodeLib, Interpreter, Std, Init, or Mathlib, read an external source ` +
+    `working directory.  For Project.TalosPrelude, specific CodeLib modules, Interpreter, Std, ` +
+    `Init, or Mathlib, ` +
+    `read an external source ` +
     `file only when its exact path is already known and a selected knowledge entry, ` +
     `PROOF_STRATEGIES.md, ` +
     `or PROOF_RECIPES.json names the declaration; never run rg or find outside the working ` +
     `directory.  You may import ${job.formalSpecModule}, ${job.programModule}, ` +
     `generated artifact-support modules, checked modules named by the selected knowledge packages, ` +
-    `CodeLib, ` +
+    `Project.TalosPrelude, specific CodeLib modules, ` +
     `Interpreter, Std, Init, or Mathlib.  The import check enforces this boundary.  ` +
     `Keep PROOF_JOURNAL.md as frequent, natural Markdown prose.  Update it after each Lean check ` +
     `and significant change of approach, including the current reasoning, the diagnostic, and ` +
@@ -879,7 +883,8 @@ const imports = [...source.matchAll(
   /^import[ \\t]+([A-Za-z_][A-Za-z0-9_.]*)[ \\t]*(?:--.*)?$/gm,
 )].map((match) => match[1]);
 const unsupported = imports.filter((imported) => {
-  const dependency = imported === "CodeLib" || imported.startsWith("CodeLib.") ||
+  const dependency = imported === "Project.TalosPrelude" ||
+    imported === "Project.TalosCompat" || imported.startsWith("CodeLib.") ||
     imported.startsWith("Init.") || imported.startsWith("Std.") ||
     imported.startsWith("Mathlib.") || imported === "Interpreter" ||
     imported.startsWith("Interpreter.");
@@ -1751,12 +1756,6 @@ function findWasmtime() {
 }
 
 function ensureVerifier() {
-  try {
-    fs.accessSync(verifier, fs.constants.X_OK);
-    return;
-  } catch (error) {
-    if (!["ENOENT", "ENOTDIR", "EACCES"].includes(error.code)) throw error;
-  }
   if (!fs.existsSync(path.join(verifierRoot, "lakefile.toml"))) {
     runLean(5, "Talos dependency update", "15m",
       ["lake", "-d", proofRoot, "--no-ansi", "update"]);
@@ -1786,14 +1785,19 @@ function emitTalosProgram(job, wasm, wat, temporaryRoot) {
   ensureVerifier();
   buildCrateInput(temporaryRoot, job, wasm, wat);
   runLean(5, "Talos model generation", "10m",
-    [verifier, "emit", "--force-emit", job.caseName], { cwd: temporaryRoot });
+    [verifier, "emit", "--force-emit", "--expanded", job.caseName],
+    { cwd: temporaryRoot });
   const generated = path.join(
     temporaryRoot, "lean", "Project", job.leanModule, "Program.lean",
   );
   if (!fs.existsSync(generated)) {
     throw new StageError(5, "artifact proof", `Talos did not generate ${generated}`);
   }
-  return rewriteProgramNamespace(fs.readFileSync(generated, "utf8"), job);
+  const expanded = normalizeExpandedProgram(
+    fs.readFileSync(generated, "utf8"),
+    job.caseName,
+  );
+  return rewriteProgramNamespace(expanded, job);
 }
 
 function dumpRawModule(wasm) {
@@ -2407,7 +2411,7 @@ function verify(command) {
   let checked;
   let toolPins;
   try {
-    checked = validatePackage(command.packagePath);
+    checked = validateFrozenPackage(command.packagePath);
     toolPins = requirePins(command.packagePath);
     const packageSources = readPackageSources(command.packagePath);
     requireKernelAudit(packageSources, toolPins);
@@ -2489,7 +2493,7 @@ function reprove(command) {
   let formalInterfaceVersion;
   let proofLibraryCatalog;
   try {
-    checked = validatePackage(command.packagePath);
+    checked = validateFrozenPackage(command.packagePath);
     formalInterfaceVersion = checked.manifest.schemaVersion >= 6 ? 2 : 1;
     request = fs.readFileSync(path.join(command.packagePath, "request.txt"), "utf8");
     interpretation = JSON.parse(fs.readFileSync(
@@ -2690,7 +2694,7 @@ function reprove(command) {
         formalSpecification: checked.manifest.formalSpecification,
         warnings,
       });
-      const published = validatePackage(stageRoot);
+      const published = validateFrozenPackage(stageRoot);
       if (!published.wasm.equals(checked.wasm) ||
           JSON.stringify(published.artifact) !== JSON.stringify(checked.artifact)) {
         throw new Error("reproof changed the frozen artifact");
@@ -2749,7 +2753,7 @@ function annotatePackage(command) {
   let packageSources;
   let toolPins;
   try {
-    checked = validatePackage(command.packagePath);
+    checked = validateFrozenPackage(command.packagePath);
     packageSources = readPackageSources(command.packagePath);
     toolPins = requireReprovePins(command.packagePath);
   } catch (error) {
@@ -2855,7 +2859,7 @@ function annotatePackage(command) {
       formalSpecification: checked.manifest.formalSpecification,
       warnings: checked.manifest.warnings,
     });
-    validatePackage(stagedOutput);
+    validateFrozenPackage(stagedOutput);
     fs.renameSync(stagedOutput, command.outputPath);
     installed = true;
     process.stdout.write(
@@ -3008,7 +3012,7 @@ function learningFeatures(packagePath, checked) {
 }
 
 function recordKnowledge(command) {
-  const checked = validatePackage(command.inputPath);
+  const checked = validateFrozenPackage(command.inputPath);
   const entryId = learningEntryId(checked, "run", command.attemptId);
   const elapsed = checked.proofTelemetry === null
     ? "The proof package contains no Stage 5 telemetry."
@@ -3278,7 +3282,7 @@ function createDeclinedKnowledgeReport(outputPath, checked, proposalId, proposal
 }
 
 function proposeKnowledge(command) {
-  const checked = validatePackage(command.inputPath);
+  const checked = validateFrozenPackage(command.inputPath);
   const packageId = learningEntryId(checked, "proposal", command.attemptId);
   const moduleName = `LeanExeGen.Knowledge.${packagePascalName(packageId)}.Proposed`;
   const candidate = moduleFile(moduleName);
@@ -3342,8 +3346,9 @@ function proposeKnowledge(command) {
       `checked Lean, write the complete module ${candidate}, declare namespace ${moduleName}, ` +
       `inspect shared proof sources under PROOF_KIT_SOURCE and selected package sources under ` +
       `RUN/knowledge, and run this command after each edit:\n\n` +
-      `${build}\n\nUse ProofKit, CodeLib, Interpreter, Init, Std, Mathlib, or a selected ` +
-      `package-local module listed in RUN/evidence/knowledge-task.json.  A ` +
+      `${build}\n\nUse ProofKit, Project.TalosPrelude, specific CodeLib modules, Interpreter, ` +
+      `Init, Std, Mathlib, or a selected package-local module listed in ` +
+      `RUN/evidence/knowledge-task.json.  A ` +
       `checked tactic must include a checked fallback declaration in the same module.  Update the ` +
       `journal after every Lean result and before changing approach.  Return one JSON object ` +
       `matching the output schema.  Put fully qualified declarations under ${moduleName}; leave ` +
@@ -3852,6 +3857,7 @@ function generate(command) {
         },
         warnings,
       });
+      validatePackage(stageRoot);
     });
     const invocation = [...sampleResult.samples[0].invocation];
     invocation[2] = command.outputPath;

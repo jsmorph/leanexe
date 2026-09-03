@@ -13,7 +13,11 @@ const {
   verificationDriverInputs,
 } = require("../tools/artifact-identity");
 const { currentLocalDate } = require("../tools/date");
-const { leanImports, specificationInputs } = require("../tools/artifact-proof");
+const {
+  leanImports,
+  specificationInputs,
+  talosBoundaryTarget,
+} = require("../tools/artifact-proof");
 const {
   leanSourcesUnder,
   verifierRelativeSources,
@@ -44,7 +48,10 @@ if (JSON.stringify(verifierRelativeSources) !== JSON.stringify(expectedSources))
 }
 
 const repoRoot = path.resolve(__dirname, "..");
-const expectedVerifierDigest = "25aeb7d50d9ce4768b855e78d8ffb94606d02647386de9ca7b75fa026c34d802";
+if (talosBoundaryTarget !== "Project.TalosPrelude") {
+  throw new Error("the artifact proof gate no longer uses LeanExe's focused Talos boundary");
+}
+const expectedVerifierDigest = "d0672a6abc1d32a745d87fdaf2811912af9900c8d1818060daf73c122f2c269a";
 if (verifierSourceSha256(repoRoot) !== expectedVerifierDigest) {
   throw new Error("the normative verifier source digest changed without updating its test vector");
 }
