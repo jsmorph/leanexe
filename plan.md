@@ -151,8 +151,10 @@ WAT checks cover its behavior and exact `2*n - 1` operation shape.  Its pure
 Talos model now proves the primitive absolute, gamma-times-mass, and
 condition-number contracts with only the standard logical axioms.  The actual
 generated WAT is now frozen and its runtime helpers are pinned to the shared
-definitions.  Proving its fuel-independent array-loop execution and
-transferring the three numerical contracts is next.
+definitions.  A reusable ProofKit theorem now proves the compiler's checked
+`Array UInt64` element-load fragment for arbitrary frames and stack tails.
+Proving the surrounding fuel-independent dot loop and transferring the three
+numerical contracts is next.
 
 Hash, manifest, release-receipt, and self-host bookkeeping are not gates for
 this branch's floating-point implementation.  Exact program bytes remain part
