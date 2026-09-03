@@ -47,18 +47,21 @@ are:
 They state all finiteness, unit-bound, aggregate-headroom, normal-or-zero,
 gamma-pole, and nonzero-exact-result assumptions explicitly.  Their axiom
 reports contain only `propext`, `Classical.choice`, and `Quot.sound`.  The
-compiler-generated WAT is now frozen as
-`Project.F64DotCheckedBits.Program`, and its entry and four runtime helpers
-build against the exact decoded Talos module.  The execution layer now proves
-fuel-independent, store-preserving behavior for both completed guard paths:
-unequal lengths return zero bits with status one, and equal empty arrays return
-zero bits with status zero.  The equal nonempty path is now proved as well: it
-uses the reusable checked-load theorem for both seed reads and both reads in
-every iteration, follows the pure `dot64List` multiply-add recurrence, excludes
-counter wraparound, preserves the complete store, and terminates independently
-of fuel by an explicit decreasing measure.  Combining the three execution
-paths and transferring the three numerical contracts is the active next
-checkpoint.
+compiler-generated WAT is frozen as `Project.F64DotCheckedBits.Program`, and
+its entry and four runtime helpers build against the exact decoded Talos
+module.  The execution layer proves fuel-independent, store-preserving
+behavior for every path: unequal lengths reject, equal empty arrays return
+positive zero, and equal nonempty arrays execute the modeled `dot64List`
+multiply-add recurrence.  Both seed reads and both reads in every iteration
+use the reusable checked-load theorem; counter wraparound is excluded and an
+explicit decreasing measure proves termination.
+
+The public WAT theorems now carry all three source numerical conclusions over
+that exact execution: the primitive absolute budget, the operation-count
+gamma-times-mass bound, and the conditioned relative-error bound.  Thus the
+same finite/error statements are proved first for the LeanExe source model and
+then for the decoded compiler-generated WAT.  Their axiom reports contain only
+`propext`, `Classical.choice`, and `Quot.sound`.
 
 Native floating-point execution is used only for regression tests.  Accepted
 theorems use Talos's pure IEEE-754 model and WebAssembly semantics.
