@@ -50,8 +50,10 @@ reports contain only `propext`, `Classical.choice`, and `Quot.sound`.  The
 compiler-generated WAT is now frozen as
 `Project.F64DotCheckedBits.Program`, and its entry and four runtime helpers
 build against the exact decoded Talos module.  The fuel-independent array-loop
-execution theorem and its transfer of these three numerical contracts are the
-active next checkpoint.
+execution proof now reuses
+`Project.ProofKit.CheckedArrayGet.checkedGetCore_spec` for both operand loads
+at every index.  Completing that loop theorem and transferring these three
+numerical contracts are the active next checkpoint.
 
 Native floating-point execution is used only for regression tests.  Accepted
 theorems use Talos's pure IEEE-754 model and WebAssembly semantics.
