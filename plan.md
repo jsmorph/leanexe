@@ -95,8 +95,9 @@ This phase establishes a self-hosted binary emitter, not a source- or IR-self-ho
 
 The `talosfp` branch starts from the `selfhost` branch tip and moves the native
 compiler and proof workspace to exact Lean 4.34.0-rc2.  The self-hosted emitter
-is experimental: its checks may be recorded as additional regression evidence,
-but they do not block floating-point work.  The detailed
+is experimental and is not part of this implementation or its validation
+path.  Its checks may be run separately when work explicitly targets that
+experiment, but they do not block floating-point work.  The detailed
 [floating-point plan](plans/f64-artifact-semantics.md) fixes the ownership,
 bit-pattern ABI, migration sequence, exact-binary profile, first guarded kernel,
 and acceptance gates.
@@ -113,6 +114,18 @@ and acceptance gates.
 Native floating-point execution and Wasmtime remain regression tools.  Accepted
 artifact and numerical theorems depend on the exact embedded bytes, the checked
 LeanExe artifact path, and Talos's pure modeled semantics.
+
+As of 2026-09-03, the pre-FP `fda69ca` migration is in progress locally.  The
+dependency pin, typed control metadata, function type-index handling,
+`local.tee` support, regenerated program caches, and the compatibility repairs
+found so far are implemented, and their focused checks pass.  The final
+source-driven aggregate was stopped after 3,403 of 3,674 jobs without an
+observed failure, so this checkpoint is not yet accepted.  Its remaining
+aggregate, exact-artifact, conformance, identity, and axiom gates must pass
+before the row below is checked.  No floating-point opcode or intrinsic work
+has started.  The next commits separate plan evidence, pre-FP compatibility,
+regenerated artifacts, and final migration receipts so each passing state is
+pushed promptly.
 
 ## Required gates
 

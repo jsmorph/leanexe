@@ -14,7 +14,8 @@ The branch starts from `selfhost` revision
 `bc0f619c83d3a10e34fefce219ad17483a4cd6fe`.  That base retains the canonical
 module-image experiment, but floating-point development uses the native
 compiler and independent exact-artifact boundary.  The self-hosted emitter is
-optional regression evidence and does not block this phase.
+outside this phase's implementation and validation path; it is run separately
+only when work explicitly targets that experiment.
 
 The validated Talos floating-point foundation is fork revision
 `87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47`.  It provides pure bit-pattern
@@ -60,8 +61,8 @@ The migration will be divided so failures remain attributable:
 
 1. Move the native LeanExe compiler from Lean 4.31.0 to exact 4.34.0-rc2 without
    changing the Talos proof dependency.  Recheck extraction, IR, ownership,
-   native emission, and every registered byte identity.  A self-host run may be
-   recorded but is not an acceptance gate.
+   native emission, and every registered byte identity.  Do not invoke the
+   experimental self-host path as part of this migration.
 2. Move the proof workspace to Talos revision
    `fda69ca67a81ea4f1fa4e376bdc5861d9fe5479a`, the closest useful pre-FP 4.34
    baseline, and make all existing source-driven and exact-artifact proofs pass.
@@ -214,6 +215,16 @@ kernels pass.
 Each checked row is a separately committed and pushed passing state.  The plan
 and `devnotes.md` record exact commands, tool pins, axiom reports, artifact
 digests, and any deliberate byte changes.
+
+Migration status on 2026-09-03: the `fda69ca` pin and compatibility changes are
+present in the local working tree.  Focused builds pass for every failure found
+so far, including typed control metadata, function type-index transport,
+`local.tee`, exact generated-program boundaries, and staged memory-write
+proofs.  A final aggregate reached 3,403 of 3,674 jobs without an observed
+failure before it was deliberately stopped; the remaining jobs and the
+artifact, conformance, identity, and axiom gates are still outstanding.  This
+is not a completed checkpoint, and no floating-point syntax, execution, or
+numerical theorem has yet been added to LeanExe.
 
 - [x] Migrate the native compiler to exact Lean 4.34.0-rc2 and preserve every
       registered artifact byte.  The scoped legacy `do` option on the frozen GCD
