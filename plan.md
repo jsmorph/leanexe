@@ -76,7 +76,7 @@ The completed CLOB work established input-generic theorems for `quote`, `cancel`
 
 Current candidates include broader explicit-release analysis, shared interior ownership, recursive array-node teardown, and source forms that require a new specialization boundary.  Each candidate needs a reduced source fixture, source comparison, generated-WASM execution test, ownership report where applicable, and the relevant aggregate proof gates.  A feature does not enter the accepted language until the specification, manual, diagnostics, and tests agree with its implementation.
 
-[Proof-Grade `f64` Artifact Semantics](plans/f64-artifact-semantics.md) records a deferred extension for exact binary64 execution, integer bit-pattern ABI transport, finite-result kernel theorems, and checked numerical error certificates.  Its first vertical slice requires an explicit design review before implementation.  A later root-plan decision will activate this work.
+[Proof-Grade Floating-Point Artifact Semantics](plans/f64-artifact-semantics.md) records the active `talosfp` work described in phase 7.  It reuses Talos's proof-visible IEEE32 and IEEE64 arithmetic while preserving LeanExe's independent exact-byte boundary and integer bit-pattern ABI.
 
 ## 6. Establish a self-hosted WebAssembly emitter
 
@@ -91,6 +91,27 @@ The first self-hosting increment moves only final WebAssembly binary serializati
 
 This phase establishes a self-hosted binary emitter, not a source- or IR-self-hosted compiler.  Lean remains responsible for parsing, elaboration, checking, extraction, ownership analysis, and lowering.  A fixed point is an engineering bootstrap result rather than a compiler-correctness theorem, and independent exact-artifact verification remains authoritative for behavioral claims.
 
+## 7. Bring proof-grade Talos floating point to LeanExe
+
+The `talosfp` branch starts from the completed self-hosted emitter and moves the
+compiler and proof workspace to exact Lean 4.34.0-rc2.  The detailed
+[floating-point plan](plans/f64-artifact-semantics.md) fixes the ownership,
+bit-pattern ABI, migration sequence, exact-binary profile, first guarded kernel,
+and acceptance gates.
+
+- [ ] Migrate and validate the compiler and self-hosted emitter under exact Lean 4.34.0-rc2.
+- [ ] Move the existing proof corpus through pre-FP Talos `fda69ca`, then immutable FP revision `87e3aa5`, without regressing integer artifacts.
+- [ ] Extend the independent binary decoder, validator, validity proof, and Talos translation with internal f64 add, multiply, and reinterpretation.
+- [ ] Add restricted `UInt64` bit-pattern intrinsics and exact structured lowering while retaining the public integer ABI.
+- [ ] Prove an exact scalar multiplication artifact and a guarded two-term dot artifact with a finite result and explicit accumulated real-error bound.
+- [ ] Prove a generated runtime-length dot artifact with absolute, gamma-times-mass, and condition-number contracts.
+- [ ] Prove a generated affine or Horner artifact and retain reusable ProofKit, annotation, certificate, and LTG support justified by both kernels.
+- [ ] Expand the admitted operations to representative division, square root, and f32 uses; update maintained documentation and active release evidence.
+
+Native floating-point execution and Wasmtime remain regression tools.  Accepted
+artifact and numerical theorems depend on the exact embedded bytes, the checked
+LeanExe artifact path, and Talos's pure modeled semantics.
+
 ## Required gates
 
 | Change | Required evidence |
@@ -104,4 +125,13 @@ This phase establishes a self-hosted binary emitter, not a source- or IR-self-ho
 
 ## Completion conditions
 
-The next stable point requires current and nonduplicative documentation, a release record that passes identity inspection, and one accepted structurally different array-control-flow demonstration using the maintained annotation and LTG path.  Demo 12 satisfies the demonstration condition.  The stable point also requires one evaluated compiler-theorem-directed artifact-proof increment with an explicit trust boundary and cross-program evidence, while repository status, registries, proof inventories, metrics, plans, and release records must agree at that revision.  A later release-ready state will also require the deferred cold-checkout receipt and a successful `check-ready` result.
+The next floating-point stable point requires exact Lean 4.34.0-rc2, preservation
+of the prior compiler, self-hosting, integer proof, and artifact identities or an
+explicit review of each deliberate change, and independently accepted scalar,
+guarded fixed-kernel, runtime-length dot, and affine or Horner artifact proofs.
+Their public numerical theorems must expose every domain and overflow-exclusion
+assumption, pass axiom audits, and depend only on pure modeled semantics.  The
+repository status, registries, proof inventories, plans, documentation, active
+release evidence, and pushed `talosfp` tree must agree at that revision.  A
+release-ready state still additionally requires the deferred cold-checkout
+receipt and a successful `check-ready` result.
