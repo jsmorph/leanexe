@@ -32,11 +32,22 @@ The proof is organized in three layers:
 
 ## Result
 
-The source program is implemented.  Runtime regression cases cover empty,
-singleton, multi-element, unequal-length, and rejected-operand inputs.  The
-quantitative source and generated-WAT theorems are the active next proof
-checkpoints.  They will state all finiteness, unit-bound, aggregate-headroom,
-normal-or-zero, gamma-pole, and nonzero-exact-result assumptions explicitly.
+The source program and its pure Talos numerical contract are implemented.
+Runtime regression cases cover empty, singleton, multi-element,
+unequal-length, and out-of-theorem-domain inputs.  The checked source theorems
+are:
+
+- `dotCheckedBits_source_absolute_error`, with the full primitive absolute
+  budget;
+- `dotCheckedBits_source_gamma_error`, with the operation-count
+  gamma-times-exact-mass bound; and
+- `dotCheckedBits_source_conditioned_relative_error`, with the corresponding
+  condition-number bound for a nonzero exact result.
+
+They state all finiteness, unit-bound, aggregate-headroom, normal-or-zero,
+gamma-pole, and nonzero-exact-result assumptions explicitly.  Their axiom
+reports contain only `propext`, `Classical.choice`, and `Quot.sound`.  The
+generated-WAT execution theorem is the active next checkpoint.
 
 Native floating-point execution is used only for regression tests.  Accepted
 theorems use Talos's pure IEEE-754 model and WebAssembly semantics.

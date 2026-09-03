@@ -148,7 +148,9 @@ accepts two `Array UInt64` values, rejects unequal lengths, returns positive
 zero for empty inputs, and otherwise seeds the accumulator with the first
 modeled product before a runtime multiply-add loop.  Focused Wasmtime, IR, and
 WAT checks cover its behavior and exact `2*n - 1` operation shape.  Its pure
-Talos numerical theorem is the next checkpoint.
+Talos model now proves the primitive absolute, gamma-times-mass, and
+condition-number contracts with only the standard logical axioms.  Freezing
+the actual generated WAT and proving its array-loop execution is next.
 
 Hash, manifest, release-receipt, and self-host bookkeeping are not gates for
 this branch's floating-point implementation.  Exact program bytes remain part
