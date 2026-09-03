@@ -228,7 +228,11 @@ Wasmtime.  Its actual emitted WAT is frozen in
 source-facing theorem, all five generated-WAT execution paths, store
 preservation, and fuel-independent `3 * 2^-52` accumulated-error theorem now
 pass.  Rejection is exact status one plus positive-zero bits.  The next kernel
-is the runtime-length dot artifact.
+is the runtime-length dot artifact.  Its two-array LeanExe source entry now
+builds and passes focused runtime, extracted-IR, and generated-WAT checks.  The
+empty branch is positive zero, unequal lengths return status one and zero bits,
+and the nonempty loop is seeded by the first product so it matches Talos's
+`2*n - 1` dot model.  The source-facing numerical theorem is next.
 
 - [x] Migrate the native compiler to exact Lean 4.34.0-rc2 and preserve every
       registered artifact byte.  The scoped legacy `do` option on the frozen GCD

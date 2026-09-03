@@ -7742,3 +7742,31 @@ passed 3,388 jobs.  Axiom reports for the helper, exact WAT theorem, and WAT
 numerical theorem contain only `propext`, `Classical.choice`, and `Quot.sound`.
 `node tools/talos-proof.js check f64_dot2_checked_bits` then independently
 regenerated the compiler artifact and passed the registered proof case.
+
+## 2026-09-03: Runtime-length binary64 dot source
+
+`LeanExe.Examples.Float64Bits.dotCheckedBits` accepts two public
+`Array UInt64` values and returns the existing two-word `CheckedBits` ABI.
+Unequal lengths return status one and zero bits; equal empty arrays return
+status zero and positive-zero bits.  A nonempty input performs the first
+modeled multiplication before entering a runtime loop, then performs one
+multiplication and one addition for every remaining pair.  This deliberately
+matches Talos's `dot64List` shape and its `2*n - 1` primitive-operation count.
+
+The exact-Lean-4.34.0-rc2 build
+`lake build LeanExe.Examples.Float64Bits` passed 3 jobs.  A focused
+`lean-wasm compile` succeeded, and direct Wasmtime calls passed empty,
+singleton, three-term, unequal-length, and out-of-theorem-domain regression
+cases.  Separate `lean-wasm dump-ir` and `compile-wat` checks found two
+multiplication sites, one addition site, six `f64.reinterpret_i64` sites, and
+three `i64.reinterpret_f64` sites, with no surviving source intrinsic calls.
+The earlier aggregate JavaScript test was too coarse for this environment and
+was not accepted as a gate; `test/f64_dot.js` now isolates these checks without
+invoking the experimental image/self-host path.
+After producing its WASM, IR, and WAT inputs through three serial `leanrun`
+commands, `LEANEXE_F64_DOT_PREBUILT=1 node test/f64_dot.js` passed the complete
+focused execution and shape check.
+
+`Project.F64DotCheckedBits/README.md` records the example's goal, source and
+ABI approach, planned pure-model and WAT proof layers, current result, explicit
+future numerical hypotheses, and native-floating-point trust boundary.
