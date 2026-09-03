@@ -118,7 +118,8 @@ and acceptance gates.
 - [x] Move the existing proof corpus through pre-FP Talos `fda69ca`, then immutable FP revision `87e3aa5`, with the compiler and proof workspace on exact Lean 4.34.0-rc2.
 - [x] Extend the independent binary decoder, validator, validity proof, and Talos translation with internal f64 add, multiply, and reinterpretation.
 - [x] Add restricted `UInt64` bit-pattern intrinsics and exact structured lowering while retaining the public integer ABI.
-- [ ] Prove a quantitative theorem for the LeanExe `mulBits` program, then the same finite-result and real-error theorem for its exact decoded WAT execution; follow with a guarded two-term dot artifact.
+- [x] Prove a quantitative theorem for the LeanExe `mulBits` program, then the same finite-result and real-error theorem for its generated WAT execution, with an explicit fuel-independent trace and store preservation.
+- [ ] Follow the scalar multiplication proof with a guarded two-term dot artifact.
 - [ ] Prove a generated runtime-length dot artifact with absolute, gamma-times-mass, and condition-number contracts.
 - [ ] Prove a generated affine or Horner artifact and retain reusable ProofKit, annotation, certificate, and LTG support justified by both kernels.
 - [ ] Expand the admitted operations to representative division, square root, and f32 uses; update maintained documentation and active release evidence.
@@ -132,9 +133,11 @@ the first executable f64 slice passes.  LeanExe recognizes `addBits` and
 `mulBits`, lowers the `UInt64` operands through the two reinterpretations, emits
 real `f64.add` and `f64.mul` instructions, and executes both primitive and nested
 expressions under Wasmtime.  The independent binary layer decodes, validates,
-proves sound, and translates the four new instructions into Talos.  The next
-checkpoint freezes the generated scalar multiplication program and proves its
-fuel-independent modeled result and quantitative binary64 error theorem.
+proves sound, and translates the four new instructions into Talos.  The
+compiler-generated `mulBits` WAT now has exact-result, store-preservation,
+explicit small-step, fuel-independent termination, finite-result, and
+`2^-52` absolute-error theorems.  The next checkpoint is the guarded two-term
+dot program and its accumulated-error theorem.
 
 Hash, manifest, release-receipt, and self-host bookkeeping are not gates for
 this branch's floating-point implementation.  Exact program bytes remain part

@@ -219,8 +219,9 @@ revision under exact Lean 4.34.0-rc2.  The first f64 compiler and independent
 binary-verifier slice now passes: `UInt64` bit-pattern add and multiply lower to
 the four-instruction internal profile, execute under Wasmtime, and cross the
 decoder, grammar, decoder-soundness, validator, declarative-validity,
-validator-soundness, translation, and equality layers.  Scalar artifact
-semantics is next.
+validator-soundness, translation, and equality layers.  The generated scalar
+multiplication WAT also has exact modeled execution and quantitative binary64
+theorems; the guarded dot kernel is next.
 
 - [x] Migrate the native compiler to exact Lean 4.34.0-rc2 and preserve every
       registered artifact byte.  The scoped legacy `do` option on the frozen GCD
@@ -236,10 +237,10 @@ semantics is next.
 - [x] Add `addBits` and `mulBits` source intrinsics, IR operations, structured
       emission, binary and WAT encoding, reports, annotations, and focused
       compiler tests.
-- [ ] Prove the LeanExe `mulBits` program's finite-domain multiplication error
-      theorem, then prove the same conclusion for its exact decoded WAT
-      execution, including store preservation, fuel independence, and axiom
-      audits.
+- [x] Prove the LeanExe `mulBits` contract's finite-domain multiplication error
+      theorem, then prove the same conclusion for its generated WAT execution,
+      including exact result bits, store preservation, an explicit small-step
+      trace, fuel independence, and axiom audits.
 - [ ] Freeze and prove `dot2CheckedBits`, including its rejected path, guard
       bridge, finite result, `3 * 2^-52` error theorem, corrupt-certificate
       tests, and independent package verification.
