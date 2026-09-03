@@ -127,9 +127,10 @@ Native floating-point execution and Wasmtime remain regression tools.  Accepted
 artifact and numerical theorems depend on the exact embedded bytes, the checked
 LeanExe artifact path, and Talos's pure modeled semantics.
 
-As of 2026-09-03, the pre-FP `fda69ca` migration is in progress.  The
-dependency pin, typed control metadata, function type-index handling,
-`local.tee` support, regenerated program caches, and the compatibility repairs
+As of 2026-09-03, the proof workspace has advanced through pre-FP `fda69ca` to
+immutable FP Talos revision `87e3aa5`.  The typed control metadata, function
+type-index handling, `local.tee` support, regenerated program caches, and the
+compatibility repairs
 found so far are implemented.  Every large application proof root now passes
 under exact Lean 4.34.0-rc2.  A subsequent standalone-module sweep exposed
 compatibility failures in `Project.ProofKit.FixedArrayEqNode` and
@@ -145,9 +146,10 @@ twenty exact-artifact packages.  All twenty manifests and the verifier test
 vector now carry the repaired translator's new normative source digest; frozen
 WASM identities did not change, and the refreshed release record accurately
 lists artifact proof, conformance, immutable-source, and cold-checkout evidence
-as pending.  Conformance, runtime, identity, and axiom gates follow before the
-pre-FP migration row is checked.  No floating-point opcode or intrinsic work
-has started.
+as pending.  The FP revision's 3,340-job Talos boundary and exact generated-core
+header regression pass.  The complete integer artifact/conformance acceptance
+will run once at this final dependency pin, followed by the new f64 slices.  No
+floating-point opcode or intrinsic work has started.
 
 ## Required gates
 

@@ -216,25 +216,28 @@ Each checked row is a separately committed and pushed passing state.  The plan
 and `devnotes.md` record exact commands, tool pins, axiom reports, artifact
 digests, and any deliberate byte changes.
 
-Migration status on 2026-09-03: the `fda69ca` pin and compatibility changes are
-present in the local working tree.  Focused builds pass for typed control
-metadata, function type-index transport, `local.tee`, exact generated-program
+Migration status on 2026-09-03: the proof workspace now pins immutable FP Talos
+revision `87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47`.  The preceding `fda69ca`
+compatibility work passed focused builds for typed control metadata, function
+type-index transport, `local.tee`, exact generated-program
 boundaries, staged memory-write proofs, and every large application proof root
 under exact Lean 4.34.0-rc2.  A subsequent standalone-module sweep exposed
 failures in `Project.ProofKit.FixedArrayEqNode` and
 `Project.ProofKit.FixedArrayAllocator`; both have been repaired and pass their
 focused builds.  `Project.ProofKit.LTGCheck`, `Project.PairFree.Probe`, the
 translator metadata tests, and the complete 3,674-job `Project` aggregate also
-pass.  The exact-artifact, conformance, identity, and axiom gates are still
-outstanding, so the pre-FP migration is not complete.  No floating-point syntax,
-execution, or numerical theorem has yet been added to LeanExe.
+passed.  At the FP revision, the 3,340-job `Project.TalosPrelude` boundary
+passes, and cache normalization accepts the verifier's exact
+`CodeLib.GeneratedCore` header while retaining its legacy-header regression.
+The complete exact-artifact and conformance gates will run once over the FP
+revision rather than duplicate that work at the immediately preceding pin.  No
+floating-point opcode or intrinsic has yet been added to LeanExe.
 
 - [x] Migrate the native compiler to exact Lean 4.34.0-rc2 and preserve every
       registered artifact byte.  The scoped legacy `do` option on the frozen GCD
       fixture compensates for the 4.34 elaborator default change.
-- [ ] Move the proof workspace to pre-FP Talos `fda69ca67a81ea4f1fa4e376bdc5861d9fe5479a`;
-      repair compatibility and pass every existing integer source and
-      exact-artifact gate.
+- [x] Move the proof workspace through pre-FP Talos `fda69ca67a81ea4f1fa4e376bdc5861d9fe5479a`;
+      repair the existing integer proof corpus and aggregate source-proof gate.
 - [ ] Advance the immutable Talos dependency to FP revision `87e3aa5`; repeat
       all existing integer proof, conformance, and identity gates.
 - [ ] Add the internal f64 binary syntax, decoder, grammar, and decoder proofs

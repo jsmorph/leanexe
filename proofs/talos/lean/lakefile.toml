@@ -4,9 +4,9 @@ defaultTargets = ["Project"]
 
 [[require]]
 name = "CodeLib"
-git = "https://github.com/cajal-technologies/talos"
+git = "https://github.com/jsmorph/talos"
 subDir = "codelib"
-rev = "fda69ca67a81ea4f1fa4e376bdc5861d9fe5479a"
+rev = "87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47"
 
 [[require]]
 name = "leanexe"
