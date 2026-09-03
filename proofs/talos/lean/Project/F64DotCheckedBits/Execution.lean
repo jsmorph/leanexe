@@ -635,6 +635,45 @@ theorem equal_nonempty_exact
         · simp [loopMeasure, Locals.get, hkSuccToNat, hkAddToNat, hkToNat]
           omega
 
+/-- Total fuel-independent behavior of the generated entry for two valid
+logical `Array UInt64` views. -/
+def ExactSpecFor (module_ : Wasm.Module) : Prop :=
+  ∀ (env : HostEnv Unit) (initial : Store Unit)
+    (leftPtr rightPtr : UInt64) (left right : Array UInt64),
+    Project.ProofKit.UInt64Array.At initial leftPtr left →
+    Project.ProofKit.UInt64Array.At initial rightPtr right →
+    TerminatesWith env module_ 0 initial [.i64 rightPtr, .i64 leftPtr]
+      (fun final values =>
+        final = initial ∧
+          values =
+            [.i64 (dotResultBitsModel left.toList right.toList),
+             .i64 (dotStatusModel left.toList right.toList)])
+
+/-- The decoded compiler-generated WAT exactly refines the total pure model:
+length mismatches reject, equal empty arrays return positive zero, and equal
+nonempty arrays return `dot64List`. -/
+theorem dotCheckedBits_exact :
+    ExactSpecFor Project.F64DotCheckedBits.«module» := by
+  intro env initial leftPtr rightPtr left right hLeft hRight
+  by_cases hLength : left.size = right.size
+  · by_cases hEmpty : left.size = 0
+    · have hLeftEmpty : left = #[] :=
+        Array.eq_empty_of_size_eq_zero hEmpty
+      have hRightEmpty : right = #[] :=
+        Array.eq_empty_of_size_eq_zero (by omega)
+      simpa [dotResultBitsModel, dotStatusModel, arrayPairTerms, pairTerms,
+        CodeLib.Numerical.Kernels.dot64List, hLength, hLeftEmpty,
+        hRightEmpty] using
+        equal_empty_exact env initial leftPtr rightPtr left right hLeft hRight
+          hLength hEmpty
+    · have hNonempty : 0 < left.size := Nat.pos_of_ne_zero hEmpty
+      simpa [dotResultBitsModel, dotStatusModel, arrayPairTerms, hLength] using
+        equal_nonempty_exact env initial leftPtr rightPtr left right hLeft
+          hRight hLength hNonempty
+  · simpa [dotResultBitsModel, dotStatusModel, arrayPairTerms, hLength] using
+      unequal_lengths_exact env initial leftPtr rightPtr left right hLeft hRight
+        hLength
+
 #print axioms arrayPairTerms_length_of_eq
 #print axioms arrayPairTerms_getElem?_of_eq
 #print axioms dot64List_take_succ
@@ -642,5 +681,6 @@ theorem equal_nonempty_exact
 #print axioms unequal_lengths_exact
 #print axioms equal_empty_exact
 #print axioms equal_nonempty_exact
+#print axioms dotCheckedBits_exact
 
 end Project.F64DotCheckedBits.Spec
