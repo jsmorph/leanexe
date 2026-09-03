@@ -1,6 +1,8 @@
 namespace LeanExe
 namespace Examples.TalosGcd
 
+-- Preserve the audited artifact across Lean 4.34's `do` elaborator transition.
+set_option backward.do.legacy true in
 def gcd (a b : UInt64) : UInt64 := Id.run do
   let mut x := a
   let mut y := b

@@ -599,4 +599,17 @@ for (const testCase of cases) {
   }
 }
 
+const structuralReport = runReport(
+  "LeanExe.Examples.AsciiStringPrograms",
+  "LeanExe.Examples.AsciiStringPrograms.validAscii",
+);
+if (!structuralReport.includes([
+  "- PProd",
+  "  kind: external",
+  "  status: implemented",
+  "  reason: dependent products consumed by supported Nat and structural-recursion projections",
+].join("\n"))) {
+  throw new Error("structural recursion report does not classify PProd as implemented");
+}
+
 process.stdout.write(`checked ${cases.length} report classification cases\n`);

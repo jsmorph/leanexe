@@ -11,9 +11,10 @@ floating-point model, make native `Float` part of the trusted result, or require
 general Lean `Float` source support.
 
 The branch starts from `selfhost` revision
-`bc0f619c83d3a10e34fefce219ad17483a4cd6fe`.  This preserves the canonical
-module-image codec and self-hosted binary emitter while the compiler and proof
-workspace move together to exact Lean `4.34.0-rc2`.
+`bc0f619c83d3a10e34fefce219ad17483a4cd6fe`.  That base retains the canonical
+module-image experiment, but floating-point development uses the native
+compiler and independent exact-artifact boundary.  The self-hosted emitter is
+optional regression evidence and does not block this phase.
 
 The validated Talos floating-point foundation is fork revision
 `87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47`.  It provides pure bit-pattern
@@ -57,10 +58,10 @@ leanprover/lean4:v4.34.0-rc2
 
 The migration will be divided so failures remain attributable:
 
-1. Move the LeanExe compiler and self-hosted emitter from Lean 4.31.0 to exact
-   4.34.0-rc2 without changing the Talos proof dependency.  Recheck extraction,
-   IR, ownership, native and self-hosted emission, and every registered byte
-   identity.
+1. Move the native LeanExe compiler from Lean 4.31.0 to exact 4.34.0-rc2 without
+   changing the Talos proof dependency.  Recheck extraction, IR, ownership,
+   native emission, and every registered byte identity.  A self-host run may be
+   recorded but is not an acceptance gate.
 2. Move the proof workspace to Talos revision
    `fda69ca67a81ea4f1fa4e376bdc5861d9fe5479a`, the closest useful pre-FP 4.34
    baseline, and make all existing source-driven and exact-artifact proofs pass.
@@ -128,13 +129,14 @@ validator soundness, Talos translation, structural equality, fixtures, and
 mutation tests.  Talos's WAT decoder is an auxiliary source-driven check and
 does not replace this independent `.wasm` byte boundary.
 
-The self-hosted emitter's module-image schema v2 is frozen.  The four new
-structured instruction records therefore enter a documented schema/profile v3,
-with v2 decoding retained for historical images and deterministic rejection of
-unknown tags and versions.  Native emission and both WebAssembly bootstrap
-stages must agree on v3.  Existing registered program bytes remain unchanged;
-the self-hosted emitter artifact and image digests may change only as recorded
-consequences of the new schema and instruction cases.
+The experimental self-hosted emitter's module-image schema v2 remains frozen.
+The production `moduleBytes` route uses the direct native serializer, so the
+initial floating-point profile is native-only: `compile-image` does not need to
+encode the new instructions, and extending that experimental wire format is a
+separate follow-on decision.  Before the shared instruction datatype grows, the
+frozen v2 image implementation must be decoupled from it or convert unsupported
+instructions to an explicit `compile-image` error; it must never silently emit an
+empty or corrupt artifact.  Existing registered program bytes remain unchanged.
 
 ## First accepted kernel
 
@@ -213,8 +215,9 @@ Each checked row is a separately committed and pushed passing state.  The plan
 and `devnotes.md` record exact commands, tool pins, axiom reports, artifact
 digests, and any deliberate byte changes.
 
-- [ ] Migrate the compiler and self-hosted emitter to exact Lean 4.34.0-rc2;
-      preserve or explicitly review every registered artifact byte.
+- [x] Migrate the native compiler to exact Lean 4.34.0-rc2 and preserve every
+      registered artifact byte.  The scoped legacy `do` option on the frozen GCD
+      fixture compensates for the 4.34 elaborator default change.
 - [ ] Move the proof workspace to pre-FP Talos `fda69ca67a81ea4f1fa4e376bdc5861d9fe5479a`;
       repair compatibility and pass every existing integer source and
       exact-artifact gate.
@@ -225,8 +228,8 @@ digests, and any deliberate byte changes.
 - [ ] Add executable validation, declarative validity, translation, equality,
       successful fixtures, and boundary/mutation rejection tests.
 - [ ] Add `addBits` and `mulBits` source intrinsics, IR operations, structured
-      emission, binary and WAT encoding, self-hosted image schema v3, reports,
-      annotations, and focused compiler tests.
+      emission, binary and WAT encoding, reports, annotations, and focused
+      compiler tests.
 - [ ] Freeze and prove the scalar multiplication artifact, including exact
       execution, store preservation, finite-domain error, and axiom audit.
 - [ ] Freeze and prove `dot2CheckedBits`, including its rejected path, guard
@@ -251,9 +254,9 @@ Every public theorem receives a `#print axioms` check whose result contains only
 standard Lean logical axioms already admitted by the project.
 
 Compiler changes require focused builds, extraction/report/IR/ownership checks,
-the complete execution suite, WAT round trips, native/image byte equality, the
-self-hosted Stage 1/Stage 2 fixed point, registered-corpus equality, malformed
-image tests, and all affected Talos proofs.  Exact-artifact changes additionally
+the complete execution suite, WAT round trips, registered-corpus equality, and
+all affected Talos proofs.  The experimental self-host checks are required only
+when its image boundary is deliberately changed.  Exact-artifact changes additionally
 require focused decoder and validator targets, mutation tests, all source-driven
 proofs, all exact-artifact packages, and semantic conformance.
 
@@ -265,7 +268,7 @@ that the remote commit and tree equal the validated local `HEAD` and tree.
 ## Completion and nonclaims
 
 This phase completes only when exact Lean 4.34.0-rc2 builds the compiler and
-proof workspace, every prior integer and self-hosted-emitter gate still passes,
+proof workspace, every prior integer gate still passes,
 the scalar and representative multi-operation artifacts have exact byte proofs,
 the fixed and runtime-length numerical theorems pass their axiom audits, active
 release evidence names the new immutable dependencies, maintained documentation

@@ -93,13 +93,15 @@ This phase establishes a self-hosted binary emitter, not a source- or IR-self-ho
 
 ## 7. Bring proof-grade Talos floating point to LeanExe
 
-The `talosfp` branch starts from the completed self-hosted emitter and moves the
-compiler and proof workspace to exact Lean 4.34.0-rc2.  The detailed
+The `talosfp` branch starts from the `selfhost` branch tip and moves the native
+compiler and proof workspace to exact Lean 4.34.0-rc2.  The self-hosted emitter
+is experimental: its checks may be recorded as additional regression evidence,
+but they do not block floating-point work.  The detailed
 [floating-point plan](plans/f64-artifact-semantics.md) fixes the ownership,
 bit-pattern ABI, migration sequence, exact-binary profile, first guarded kernel,
 and acceptance gates.
 
-- [ ] Migrate and validate the compiler and self-hosted emitter under exact Lean 4.34.0-rc2.
+- [x] Migrate and validate the native compiler under exact Lean 4.34.0-rc2 while preserving all twenty registered artifact bytes.
 - [ ] Move the existing proof corpus through pre-FP Talos `fda69ca`, then immutable FP revision `87e3aa5`, without regressing integer artifacts.
 - [ ] Extend the independent binary decoder, validator, validity proof, and Talos translation with internal f64 add, multiply, and reinterpretation.
 - [ ] Add restricted `UInt64` bit-pattern intrinsics and exact structured lowering while retaining the public integer ABI.
@@ -126,7 +128,7 @@ LeanExe artifact path, and Talos's pure modeled semantics.
 ## Completion conditions
 
 The next floating-point stable point requires exact Lean 4.34.0-rc2, preservation
-of the prior compiler, self-hosting, integer proof, and artifact identities or an
+of the prior native compiler, integer proof, and artifact identities or an
 explicit review of each deliberate change, and independently accepted scalar,
 guarded fixed-kernel, runtime-length dot, and affine or Horner artifact proofs.
 Their public numerical theorems must expose every domain and overflow-exclusion

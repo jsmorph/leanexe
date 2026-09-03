@@ -8,8 +8,8 @@ LeanExe develops and tests on Linux.  The Wasmtime download script supports `x86
 
 | Tool | Repository requirement |
 |------|------------------------|
-| Lean and Lake | Install through `elan`.  Both workspaces pin Lean 4.31.0 at commit `68218e876d2a38b1985b8590fff244a83c321783`. |
-| Proof Lean and Lake | The proof workspace records its matching pin in `proofs/talos/lean/lean-toolchain`.  `elan` selects it after entering that directory. |
+| Lean and Lake | Install through `elan`.  The compiler root pins exact Lean 4.34.0-rc2 at commit `6a10ac8c22beadecabdbb0919c2b50214762f91d`. |
+| Proof Lean and Lake | The proof workspace records its pin in `proofs/talos/lean/lean-toolchain`.  It temporarily remains on Lean 4.31.0 during the first staged `talosfp` checkpoint and moves to 4.34.0-rc2 with the Talos dependency before aggregate proof gates resume. |
 | Wasmtime | `tools/download-wasmtime.sh` installs the default 44.0.0 CLI and C API under `build/tools/wasmtime` after checking the published SHA-256 hashes. |
 | C compiler | A C11 compiler available as `cc` builds the Wasmtime host runner. |
 | Node.js | Node 24.13.0 runs the test drivers.  `.node-version` records the exact version, and the complete runner checks it before building. |
@@ -99,6 +99,10 @@ Run the smallest relevant test during development, then run every gate required 
 
 `node test/run_all.js` is the full execution gate.  It covers report classification, ownership reports, Wasmtime-only execution, core semantics, reference counting, allocation, ASCII strings, integer maps, JSON, WASI adapters, self-emission, standard Lean comparisons, IR comparisons, and fuzz cases.  `tools/check-wat.sh` checks that parsing compiler-emitted WAT produces the same bytes as direct binary emission.
 
+The experimental self-hosted emitter is deliberately outside the aggregate gate.
+Run `node test/selfhost_emitter.js` separately only for a change to the module-image
+codec, emitter, or bootstrap boundary; it does not block native compiler work.
+
 ## Proof Artifacts
 
 The proof workspace has twenty registered source entries and twenty completed specifications, including all eight CLOB exports through `depth`.  `proofs/talos/cases.json` maps each source entry to its generated module and handwritten specification target, while `proofs/artifacts/registry.json` maps each frozen package to its exact-artifact proof target.  On 2026-08-26, `tools/talos-proof.js check --all` passed all twenty source-driven cases, and `tools/artifact-proof.js check-all` passed every frozen artifact theorem, behavioral specification, and manifest declaration for release-input digest `5de9678970b1a9b74d50c1407457423a7fa6eabd3f430f56cfdc0e407af2b7e5`.  Current release status comes from `tools/artifact-release.js inspect`.
@@ -166,7 +170,7 @@ Handled failures do not print Lean's `uncaught exception` prefix.  The CLI emits
 | Talos rejects generated WAT | Inspect the named decoder error and generated WAT, then reduce the unsupported emitted instruction or update the pinned Talos dependency through a separate reviewed change. |
 | The Talos verifier is missing | Run either Talos tool with network access.  The artifact stage fetches the pinned dependency and builds the verifier under the required limits. |
 | The aggregate Talos gate reports a proof error | Build the named specification or helper through the focused resource-limited boundary, then divide a no-diagnostic timeout before another attempt. |
-| A proof build is unexpectedly large | Confirm that the process uses Lean 4.31.0 under the required limits.  A cold dependency build compiles thousands of jobs, while a long unchanged theorem requires a smaller elaboration boundary. |
+| A proof build is unexpectedly large | Confirm that the process uses the exact toolchain pinned by its workspace under the required limits.  A cold dependency build compiles thousands of jobs, while a long unchanged theorem requires a smaller elaboration boundary. |
 | A generated model builds but a theorem fails | Treat the new instruction stream as the proof subject and repair `Spec.lean`; do not edit `Program.lean`. |
 
 Failure messages should identify the command, module, entry, declaration, and rejected construct whenever those values exist.  Repository commands reserve stdout for requested reports and artifacts and stderr for failures.  A new CLI failure path must select one documented category and add a process-level status and stderr assertion.

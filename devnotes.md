@@ -7431,3 +7431,71 @@ The next measured increment has two general interfaces.  Each version-two semant
 - [x] Generate checked tail equations for every current version-two direct semantic recipe.
 - [x] Add the four cross-program frame declarations and LTG metadata.
 - [x] Evaluate use, proof structure, and proof time on fixed development and cross-program artifacts.
+
+## 2026-09-03: `talosfp` native compiler migration to Lean 4.34.0-rc2
+
+The native compiler root now pins exact Lean 4.34.0-rc2 at commit
+`6a10ac8c22beadecabdbb0919c2b50214762f91d`.  The proof workspace deliberately
+remains on 4.31.0 for this first staged checkpoint; artifact identity, release,
+and aggregate proof gates require equal root and proof pins and therefore resume
+only after the next pre-FP Talos migration.  This mixed state is compiler
+evidence, not new proof evidence.
+
+Lean 4.34 exposes `PProd` in the external dependency frontier of the existing
+`validAscii` structural-recursion example.  The extractor already consumes
+`PProd` projections for supported Nat and structural recursion.  The report now
+classifies that narrow use as implemented, and the 114-case report test requires
+the precise classification instead of merely accepting any non-rejected status.
+
+Nineteen of the twenty registered compiler artifacts were immediately
+byte-identical.  GCD alone grew from 1,249 to 1,253 bytes because Lean 4.34
+changes the default `do` elaborator: the loop state changes from `MProd` plus a
+final matcher to `Prod` plus a projected scalar binding, producing one redundant
+result alias and shifting scratch locals.  Lean 4.34 retains the old elaborator
+as `backward.do.legacy`; scoping that option only to the grandfathered GCD
+definition restores the exact registered SHA-256
+`51801200954786e42d28caf3ba8806d613ab31ec4abe9b5d4b672e28d953b3ae`.
+New source, including floating-point kernels, continues to use the current
+elaborator.
+
+Direct Lean execution was explicitly authorized for this session after the
+repository runner could not create its required resource scope.  A local
+process-path compatibility preload was needed only to start Lean in this
+container, and a local uncommitted runner bypass allowed Node tests to invoke
+the directly authorized compiler; neither is a repository dependency or part
+of this checkpoint.  All Lean and compiler processes ran serially with
+`LEAN_NUM_THREADS=1`.
+
+The following native 4.34 checks passed: the root and focused Lake builds;
+process routing; conformance-parser, artifact-migration, and Talos-cache unit
+tests; 114 report cases; ten ownership-report cases; the JavaScript execution
+guard; nine CLI-error cases; 791 accepted, 45 rejected, and 14 trapped compiler
+cases; four matched-value IR cases and one WAT scan; 41 reference-count cases;
+70 byte-array allocation cases; 23 ASCII-string cases; four `IntMap` cases; 48
+JSON cases; 33 WASI cases with two traps, nine rejections, and sixteen compiles;
+63 self-emitted LEB128 cases; 340 standard-Lean comparisons; 62 IR comparisons;
+56 validator fuzz cases; all nine binary/WAT round trips under `wasm-tools`
+1.251.0; and the maintained-document check over 89 Markdown files.
+
+Self-hosting is an experimental, non-blocking path for this work.  An optional
+Wasmtime 44 regression run nevertheless reproduced a 570,300-byte Stage 1 and
+Stage 2 emitter with SHA-256
+`9a4934f9268dc9574f1ec84bf94370ba95ba80d4556adba4fc2fd66b7e448d76`
+from a 520,923-byte image with SHA-256
+`2344bc92929c1918a78c9f07e6ebf388fa6788747dddec10afcd9564b96f1a2d`.
+It matched all twenty frozen artifacts and five malformed-image diagnostics.
+This supplemental result does not block or define the Talos floating-point
+acceptance path.
+
+Final review found that the production `moduleBytes` alias and aggregate Node
+driver still made that experimental path operationally blocking.  Production
+library and annotated compilation now use the direct native serializer;
+`compile-image` and `moduleBytesFromImage` retain the explicit experimental
+boundary.  `test/run_all.js` no longer launches the self-hosted bootstrap, whose
+driver remains separately runnable only for image-boundary changes.  The focused
+`LeanExe` and `LeanExe.Wasm.ImageIntegrationTest` build passed after the route
+change, and direct compilation reproduced the registered SHA-256 digest for all
+twenty native artifacts.  This also lets the initial floating-point instruction
+profile advance without extending schema v2, provided the shared instruction
+datatype is decoupled from the frozen image codec or unsupported instructions are
+rejected explicitly before that datatype grows.

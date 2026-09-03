@@ -1,6 +1,8 @@
 # Self-Hosted WebAssembly Emitter
 
-Status: active.  This document expands phase 6 of the root [Development Plan](../plan.md).
+Status: completed experimental milestone.  Its regression checks are optional
+for later native compiler work unless a change explicitly modifies the image
+boundary.  This document records phase 6 of the root [Development Plan](../plan.md).
 
 ## Decision and scope
 
@@ -63,7 +65,12 @@ The native compiler first gains an internal final-module-image type and two path
 1. construct the image from the current lowered module and runtime definitions;
 2. serialize the image through the same pure emitter used by the self-hosted entry.
 
-The ordinary `CoreWasm.moduleBytes` API remains stable while its implementation delegates through the image boundary.  A diagnostic command writes the canonical image for a selected module and entry.  This command is development infrastructure, not a new accepted source-language feature.
+The ordinary `CoreWasm.moduleBytes` API remained stable while this experiment
+demonstrated delegation through the image boundary.  Later native compiler work
+restored its direct serializer so the frozen experimental schema would not block
+new instruction support.  A diagnostic command still writes the canonical image
+for a selected module and entry.  This command is development infrastructure,
+not a new accepted source-language feature.
 
 Before compiling the emitter to WebAssembly, the refactor must preserve the exact bytes of every registered compiler artifact.  A byte change blocks the phase unless separately reviewed as an intentional compiler change with the normal artifact and proof workflow.
 
@@ -109,7 +116,10 @@ The comparison operates on complete artifact bytes.  Normalizing or ignoring cus
 - [x] Compile `emitImage` with Stage 0 inside the accepted LeanExe subset using iterative stream walkers and bounded 512-byte output chunks.
 - [x] Establish the complete fixed point in fresh Wasmtime instances: Stage 1 and Stage 2 both reproduce the 568,484-byte artifact with SHA-256 `b2b511025d4f56f5b2fb8e106072fe149cfe0d1c39c83405659020223d0f0d69` from the 519,107-byte self image with SHA-256 `6e9144427e9bc74b32cd16c018812239b421b7790a7f0bb0c6f9246cbd1b8215`.
 - [x] Reject malformed magic through the self-hosted public `Except ByteArray ByteArray` ABI with the stable byte diagnostic.
-- [x] Route native library emission through the image path while retaining the legacy serializer as a differential oracle; all 20 registered artifact SHA-256 identities remain unchanged.
+- [x] Demonstrate native library emission through the image path while retaining
+      the direct serializer as a differential oracle; all 20 registered artifact
+      SHA-256 identities remained unchanged.  Production later returned to the
+      direct serializer while the image path stayed available explicitly.
 - [x] Match all 20 registered artifacts across routed native emission and Wasmtime Stage 1 and Stage 2; also match five stable malformed-image diagnostics across both WebAssembly stages.
 - [x] Publish the schema, compatibility policy, host ABI, capability boundary, and exact bootstrap receipt in `docs/self-hosted-emitter.md`.
 
@@ -174,9 +184,13 @@ No gate may silently refresh expected artifacts.  A mismatch retains both candid
 
 ## Completion conditions
 
-This phase is complete when one checked-in schema and implementation satisfy all of the following:
+The retained experimental checkpoint satisfied all of the following.  Native
+production emission later returned to the direct serializer so this experimental
+boundary would not constrain new instructions; the fixed-point receipt remains
+valid for the recorded revision.
 
-- native library-mode emission delegates through the canonical final module image;
+- native library-mode emission delegated through the canonical final module image
+  at the recorded checkpoint;
 - the emitter source compiles under the documented LeanExe subset;
 - the WebAssembly emitter reproduces its own complete artifact byte for byte;
 - the fixed point repeats in a fresh Wasmtime instance;

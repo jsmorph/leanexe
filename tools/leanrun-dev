@@ -38,7 +38,7 @@ sync_tree() {
 }
 
 toolchain_name="$(sed -n '1p' "$repo_root/lean-toolchain")"
-if [ "$toolchain_name" != "leanprover/lean4:v4.31.0" ]; then
+if [ "$toolchain_name" != "leanprover/lean4:v4.34.0-rc2" ]; then
   echo "leanrun-dev: unsupported toolchain $toolchain_name" >&2
   exit 2
 fi

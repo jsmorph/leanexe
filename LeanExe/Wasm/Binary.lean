@@ -4300,8 +4300,10 @@ def legacyModuleBytes (module_ : Module) : ByteArray :=
     ++ exportSection module_
     ++ codeSection module_).toArray
 
+/-- Production native serialization.  The image emitter remains an experimental,
+independently callable regression path. -/
 def moduleBytes (module_ : Module) : ByteArray :=
-  moduleBytesFromImage module_
+  legacyModuleBytes module_
 
 def annotationDocument (module_ : Module) (bytes : ByteArray) : Annotations.Document :=
   let releaseIndex := module_.funcs.size + 3

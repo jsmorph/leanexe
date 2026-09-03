@@ -49,7 +49,15 @@ The compiler inserts releases for supported fresh nonrecursive temporaries and r
 | `LeanExe/Wasm/ScalarDescriptor.lean` | Neutral scalar expression, condition, statement, and loop descriptors. |
 | `LeanExe/Wasm/ScalarCertificate.lean` | Theorems connecting successful scalar reification to emitted structured instructions. |
 
-The ordinary library backend freezes its lowered module as the canonical final-module image and emits through the pure image serializer.  The previous direct serializer remains an internal differential oracle, and the WASI adapters still use their dedicated direct assembly paths.  Exact-artifact verification handles the binary boundary independently by decoding the emitted binary with the proof workspace's checked binary decoder and translating the validated result to Talos.  WAT and the external Talos generator remain useful for source-driven proof-cache production and cross-checking, but the exact-artifact theorem does not obtain its module from either tool.
+The ordinary library backend emits its lowered module through the direct native
+serializer.  The experimental module-image path remains available through
+`compile-image` and as an explicit differential regression, but it is not on the
+production compiler path.  WASI adapters retain their dedicated direct assembly
+paths.  Exact-artifact verification handles the binary boundary independently by
+decoding the emitted binary with the proof workspace's checked binary decoder and
+translating the validated result to Talos.  WAT and the external Talos generator
+remain useful for source-driven proof-cache production and cross-checking, but the
+exact-artifact theorem does not obtain its module from either tool.
 
 `compile-image --module M --entry M.entry --out module.image` writes the canonical schema-version-2 image after extraction, lowering, runtime selection, and numeric index resolution.  `emitImage : ByteArray -> Except ByteArray ByteArray` decodes that image and emits the complete library-mode module from code that LeanExe itself accepts.  The bootstrap test requires Wasmtime-hosted Stage 1 and Stage 2 emitters in fresh instances to reproduce the Stage 1 artifact byte for byte.  This is a self-hosted binary-emitter boundary; Lean and the native compiler still perform all earlier compiler stages.
 
