@@ -22,9 +22,9 @@ The [Talos proof inventory](../proofs/talos/README.md) names each source-driven 
 
 ## Release state
 
-`proofs/artifacts/release.json` is a draft record for release-input digest `f57e509b9e4967329d7c0dd63e2f4041926a66877af6b9c98e5c4c99ad562589` at source revision `08bdaa78a3efa2badc5922a0250cc4c9710a8a29`.  The self-hosted-emitter changes preserve all twenty registered artifact identities, but they change the release inputs.  The 2026-08-26 aggregate artifact-proof and semantic-conformance receipts therefore remain historical evidence for the previous digest rather than current release receipts.  The refreshed record correctly leaves both warm gates and the cold-checkout gate pending.
+`proofs/artifacts/release.json` is a draft record for release-input digest `f57e509b9e4967329d7c0dd63e2f4041926a66877af6b9c98e5c4c99ad562589` at source revision `08bdaa78a3efa2badc5922a0250cc4c9710a8a29`.  The self-hosted-emitter changes preserve all twenty registered artifact identities while changing the release inputs.  Matching receipts dated 2026-09-02 now record a successful aggregate artifact proof and semantic conformance with the one configured imported-memory warning.  The refreshed record leaves only the cold-checkout gate pending.
 
-The draft makes no release-readiness claim, and `tools/artifact-release.js check-ready` continues to fail as designed.  The aggregate proof and conformance gates must first produce receipts for the current digest; a later cold-checkout run must repeat both at the recorded revision before the record can become ready.
+The draft makes no release-readiness claim, and `tools/artifact-release.js check-ready` continues to fail as designed.  The warm gates were run through the maintained drivers with direct Lean child execution under the owner's session-only exception rather than the repository's normal `tools/leanrun` resource wrapper.  A later policy-conforming cold checkout must repeat both gates at the recorded revision before the record can become ready.
 
 Lean 4.31.0 accepts the archived kernel-unsoundness reproduction referenced by the release record.  The owner accepted that toolchain defect for this project after the recorded narrow lexical audit of the artifact proof sources and two local LeanExe imports.  The audit does not repair the kernel or cover transitive dependencies.
 
