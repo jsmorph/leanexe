@@ -7,6 +7,14 @@ def ValType.toTalos : ValType → Wasm.ValueType
   | .i32 => .i32
   | .i64 => .i64
 
+def Mutability.toTalos : Mutability → Bool
+  | .immutable => false
+  | .mutable => true
+
+def ConstExpr.toTalos : ConstExpr → Wasm.Program
+  | .i32Const value => [.const (UInt32.ofInt value)]
+  | .i64Const value => [.constI64 (UInt64.ofInt value)]
+
 def FuncType.toTalos (type : FuncType) : Wasm.FuncType :=
   { params := type.params.map ValType.toTalos
     results := type.results.map ValType.toTalos }
@@ -133,14 +141,24 @@ def memory (raw : RawModule) : Option Wasm.MemDecl :=
 
 def globals (raw : RawModule) : List Wasm.GlobalDecl :=
   raw.globals.map fun global =>
-    { init := globalValue global.init }
+    { init := globalValue global.init
+      declaredType := some global.type.type.toTalos
+      isMut := global.type.mutability.toTalos
+      sourceInit := some global.init.toTalos }
+
+def gcTypes (raw : RawModule) : List Wasm.GcTypeDef :=
+  raw.types.map fun type =>
+    { comp := .func type.toTalos }
 
 def module (raw : RawModule) : Wasm.Module :=
   { funcs := functions raw
     exports := functionExports raw
     memory := memory raw
     globals := globals raw
-    types := raw.types.map FuncType.toTalos }
+    types := raw.types.map FuncType.toTalos
+    gcTypes := gcTypes raw
+    globalExports := globalExports raw
+    memoryExports := memoryExports raw }
 
 end Translation
 
