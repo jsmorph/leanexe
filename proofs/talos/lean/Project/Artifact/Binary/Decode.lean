@@ -122,6 +122,10 @@ inductive Op where
   | i64ShrU
   | i32WrapI64
   | i64ExtendI32U
+  | f64Add
+  | f64Mul
+  | i64ReinterpretF64
+  | f64ReinterpretI64
   deriving DecidableEq
 
 def Op.opcode : Op → UInt8
@@ -168,8 +172,12 @@ def Op.opcode : Op → UInt8
   | .i64Xor => 133
   | .i64Shl => 134
   | .i64ShrU => 136
+  | .f64Add => 160
+  | .f64Mul => 162
   | .i32WrapI64 => 167
   | .i64ExtendI32U => 173
+  | .i64ReinterpretF64 => 189
+  | .f64ReinterpretI64 => 191
 
 def Op.all : List Op :=
   [.unreachable, .block, .loop, .iff, .br, .brIf, .ret, .call, .drop,
@@ -178,7 +186,8 @@ def Op.all : List Op :=
     .memoryGrow, .i32Const, .i64Const, .i32Eqz, .i32Eq, .i64Eqz, .i64Eq,
     .i64Ne, .i64LtU, .i64LeU, .i64GeU, .i32And, .i64Add, .i64Sub,
     .i64Mul, .i64DivU, .i64RemU, .i64And, .i64Or, .i64Xor, .i64Shl,
-    .i64ShrU, .i32WrapI64, .i64ExtendI32U]
+    .i64ShrU, .f64Add, .f64Mul, .i32WrapI64, .i64ExtendI32U,
+    .i64ReinterpretF64, .f64ReinterpretI64]
 
 def classifyLoop (byte : UInt8) : List Op → Option Op
   | [] => none
@@ -263,8 +272,12 @@ mutual
           | .i64Xor => pure .i64Xor
           | .i64Shl => pure .i64Shl
           | .i64ShrU => pure .i64ShrU
+          | .f64Add => pure .f64Add
+          | .f64Mul => pure .f64Mul
           | .i32WrapI64 => pure .i32WrapI64
           | .i64ExtendI32U => pure .i64ExtendI32U
+          | .i64ReinterpretF64 => pure .i64ReinterpretF64
+          | .f64ReinterpretI64 => pure .f64ReinterpretI64
 
   def instructionSequence : Nat → Bool → Parser (List Instr × Terminator)
     | 0, _ => fail (.malformed "unterminated instruction sequence")

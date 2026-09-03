@@ -35,8 +35,12 @@ inductive InstrAtom where
   | i64Xor
   | i64Shl
   | i64ShrU
+  | f64Add
+  | f64Mul
   | i32WrapI64
   | i64ExtendI32U
+  | i64ReinterpretF64
+  | f64ReinterpretI64
   | i64Load (arg : MemArg)
   | i32Load (arg : MemArg)
   | i32Load8U (arg : MemArg)
@@ -89,8 +93,12 @@ def instrView : Instr → InstrView
   | .i64Xor => .atom .i64Xor
   | .i64Shl => .atom .i64Shl
   | .i64ShrU => .atom .i64ShrU
+  | .f64Add => .atom .f64Add
+  | .f64Mul => .atom .f64Mul
   | .i32WrapI64 => .atom .i32WrapI64
   | .i64ExtendI32U => .atom .i64ExtendI32U
+  | .i64ReinterpretF64 => .atom .i64ReinterpretF64
+  | .f64ReinterpretI64 => .atom .f64ReinterpretI64
   | .i64Load arg => .atom (.i64Load arg)
   | .i32Load arg => .atom (.i32Load arg)
   | .i32Load8U arg => .atom (.i32Load8U arg)
@@ -133,8 +141,12 @@ def InstrAtom.toInstr : InstrAtom → Instr
   | .i64Xor => .i64Xor
   | .i64Shl => .i64Shl
   | .i64ShrU => .i64ShrU
+  | .f64Add => .f64Add
+  | .f64Mul => .f64Mul
   | .i32WrapI64 => .i32WrapI64
   | .i64ExtendI32U => .i64ExtendI32U
+  | .i64ReinterpretF64 => .i64ReinterpretF64
+  | .f64ReinterpretI64 => .f64ReinterpretI64
   | .i64Load arg => .i64Load arg
   | .i32Load arg => .i32Load arg
   | .i32Load8U arg => .i32Load8U arg

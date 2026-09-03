@@ -2,20 +2,38 @@ import Project.Artifact.Binary.Translate
 
 namespace Wasm.Binary.Tests
 
+example : ValType.toTalos .f64 = .f64 := by
+  simp [ValType.toTalos]
+
 example : Instr.toTalos (.block (.value .i64) []) =
     [.block 0 1 [] [] [.i64]] := by
-  rfl
+  simp [Instr.toTalos, Instr.listToTalos, Translation.resultArity,
+    Translation.resultTypes, ValType.toTalos]
 
 example : Instr.toTalos (.loop .empty []) =
     [.loop 0 0 [] [] []] := by
-  rfl
+  simp [Instr.toTalos, Instr.listToTalos, Translation.resultArity,
+    Translation.resultTypes]
 
 example : Instr.toTalos (.iff (.value .i32) [] none) =
     [.iff 0 1 [] [] [] [.i32]] := by
-  rfl
+  simp [Instr.toTalos, Instr.listToTalos, Translation.resultArity,
+    Translation.resultTypes, ValType.toTalos]
 
 example : Instr.toTalos (.localTee 7) = [.localTee 7] := by
-  rfl
+  simp [Instr.toTalos]
+
+example : Instr.toTalos .f64Add = [.f64Add] := by
+  simp [Instr.toTalos]
+
+example : Instr.toTalos .f64Mul = [.f64Mul] := by
+  simp [Instr.toTalos]
+
+example : Instr.toTalos .i64ReinterpretF64 = [.i64ReinterpretF64] := by
+  simp [Instr.toTalos]
+
+example : Instr.toTalos .f64ReinterpretI64 = [.f64ReinterpretI64] := by
+  simp [Instr.toTalos]
 
 private def typedRaw : RawModule :=
   { sections := []
@@ -49,10 +67,10 @@ example :
       [{ comp := .func { params := [.i32], results := [.i64] } }] ∧
     (Translation.module metadataRaw).globalExports = [("counter", 0)] ∧
     (Translation.module metadataRaw).memoryExports = [("memory", 0)] := by
-  constructor
-  · rfl
-  constructor
-  · rfl
-  constructor <;> rfl
+  simp [Translation.module, Translation.globals, Translation.gcTypes,
+    Translation.globalExports, Translation.memoryExports, metadataRaw, typedRaw,
+    Translation.globalValue, Mutability.toTalos, ConstExpr.toTalos,
+    FuncType.toTalos, ValType.toTalos]
+  decide
 
 end Wasm.Binary.Tests

@@ -278,8 +278,12 @@ mutual
     | .i64Xor => binary context path base .i64 .i64 state
     | .i64Shl => binary context path base .i64 .i64 state
     | .i64ShrU => binary context path base .i64 .i64 state
+    | .f64Add => binary context path base .f64 .f64 state
+    | .f64Mul => binary context path base .f64 .f64 state
     | .i32WrapI64 => unary context path base .i64 .i32 state
     | .i64ExtendI32U => unary context path base .i32 .i64 state
+    | .i64ReinterpretF64 => unary context path base .f64 .i64 state
+    | .f64ReinterpretI64 => unary context path base .i64 .f64 state
     | .i64Load arg => do
         checkMemory context path
         checkAlignment context path arg 3

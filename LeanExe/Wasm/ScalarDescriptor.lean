@@ -28,7 +28,7 @@ def U64Op.ofIR : LeanExe.IR.U64Op → Option U64Op
   | .bitXor => some .bitXor
   | .shiftLeft => some .shiftLeft
   | .shiftRight => some .shiftRight
-  | .natAdd | .natSub | .natMul => none
+  | .natAdd | .natSub | .natMul | .f64AddBits | .f64MulBits => none
 
 def U64Op.instruction : U64Op → Instr
   | .add => .addI64

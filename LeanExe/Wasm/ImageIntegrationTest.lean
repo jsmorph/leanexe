@@ -28,23 +28,43 @@ def nestedModule : Module :=
             (.assign 1 (.u64 9))
           results := [.local 1] }] }
 
+def f64Module : Module :=
+  { funcs :=
+      #[{ sourceName := `f64Mul
+          exportName := some "f64Mul"
+          params := 2
+          locals := 2
+          body := .skip
+          results := [.u64Bin .f64MulBits (.local 0) (.local 1)] }] }
+
 def imageBytesAgree (module_ : Module) : Bool :=
-  Binary.CoreWasm.legacyModuleBytes module_ == Binary.CoreWasm.moduleBytesFromImage module_
+  match Binary.CoreWasm.moduleBytesFromImage module_ with
+  | Except.ok bytes => Binary.CoreWasm.legacyModuleBytes module_ == bytes
+  | Except.error _ => false
 
 def publicRouteAgrees (module_ : Module) : Bool :=
   Binary.CoreWasm.moduleBytes module_ == Binary.CoreWasm.legacyModuleBytes module_
 
 def imageRoundTrips (module_ : Module) : Bool :=
-  let image := Binary.CoreWasm.moduleImage module_
-  match Image.decodeModule (Image.encodeModule image) with
-  | Except.ok decoded => decoded == image
+  match Binary.CoreWasm.moduleImage module_ with
   | Except.error _ => false
+  | Except.ok image =>
+    match Image.decodeModule (Image.encodeModule image) with
+    | Except.ok decoded => decoded == image
+    | Except.error _ => false
+
+def imageRejectsF64 (module_ : Module) : Bool :=
+  match Binary.CoreWasm.moduleImage module_ with
+  | Except.error error => error == Image.errorUnsupportedInstructionV2
+  | Except.ok _ => false
 
 def publicEmitterAgrees (module_ : Module) : Bool :=
-  let image := Binary.CoreWasm.moduleImage module_
-  match Image.emitImage (Image.encodeModule image) with
-  | Except.ok bytes => bytes == Binary.CoreWasm.legacyModuleBytes module_
+  match Binary.CoreWasm.moduleImage module_ with
   | Except.error _ => false
+  | Except.ok image =>
+    match Image.emitImage (Image.encodeModule image) with
+    | Except.ok bytes => bytes == Binary.CoreWasm.legacyModuleBytes module_
+    | Except.error _ => false
 
 #guard imageBytesAgree emptyModule
 #guard imageBytesAgree identityModule
@@ -57,6 +77,8 @@ def publicEmitterAgrees (module_ : Module) : Bool :=
 #guard imageRoundTrips emptyModule
 #guard imageRoundTrips identityModule
 #guard imageRoundTrips nestedModule
+
+#guard imageRejectsF64 f64Module
 
 #guard publicEmitterAgrees emptyModule
 #guard publicEmitterAgrees identityModule

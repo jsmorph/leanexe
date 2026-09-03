@@ -49,4 +49,21 @@ example : resultEq (Parser.runAll expression (bytes [255, 11]))
     (.error { offset := 1, kind := .unsupportedOpcode 255 }) = true := by
   native_decide
 
+example : resultEq
+    (Parser.runAll expression (bytes [160, 162, 189, 191, 11]))
+    (.ok [.f64Add, .f64Mul, .i64ReinterpretF64, .f64ReinterpretI64]) = true := by
+  native_decide
+
+example : resultEq (Parser.runAll valType (bytes [124]))
+    (.error { offset := 1, kind := .unsupportedType 124 }) = true := by
+  native_decide
+
+example : resultEq (Parser.runAll blockType (bytes [124]))
+    (.error { offset := 1, kind := .unsupportedType 124 }) = true := by
+  native_decide
+
+example : resultEq (Parser.runAll expression (bytes [68, 11]))
+    (.error { offset := 1, kind := .unsupportedOpcode 68 }) = true := by
+  native_decide
+
 end Wasm.Binary.Tests

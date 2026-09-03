@@ -28,7 +28,8 @@ def SectionId.rank : SectionId → Nat
 inductive ValType where
   | i32
   | i64
-  deriving Repr, Inhabited, DecidableEq
+  | f64
+  deriving Repr, Inhabited, DecidableEq, BEq
 
 structure FuncType where
   params : List ValType
@@ -67,7 +68,7 @@ structure Global where
 inductive BlockType where
   | empty
   | value (type : ValType)
-  deriving Repr, Inhabited, DecidableEq
+  deriving Repr, Inhabited, DecidableEq, BEq
 
 structure MemArg where
   align : UInt32
@@ -112,6 +113,10 @@ inductive Instr where
   | i64ShrU
   | i32WrapI64
   | i64ExtendI32U
+  | f64Add
+  | f64Mul
+  | i64ReinterpretF64
+  | f64ReinterpretI64
   | i64Load (arg : MemArg)
   | i32Load (arg : MemArg)
   | i32Load8U (arg : MemArg)

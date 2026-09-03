@@ -106,6 +106,9 @@ def errorBoolean : ByteArray :=
 def errorInstructionTag : ByteArray :=
   "leanexe-image: unknown instruction tag".toUTF8
 
+def errorUnsupportedInstructionV2 : String :=
+  "leanexe-image: image schema v2 does not support f64 instructions"
+
 def errorExportKind : ByteArray :=
   "leanexe-image: unknown export kind".toUTF8
 
@@ -223,72 +226,87 @@ def encodeBytes (value : ByteArray) : ByteArray :=
   encodeNat value.size ++ value
 
 mutual
-  def encodeInstr : Instr → ByteArray
-    | .constI64 value => encodeNat 0 ++ encodeNat value
-    | .constI32 value => encodeNat 1 ++ encodeNat value
-    | .constI32NegOne => encodeNat 2
-    | .localGet index => encodeNat 3 ++ encodeNat index
-    | .localSet index => encodeNat 4 ++ encodeNat index
-    | .localTee index => encodeNat 5 ++ encodeNat index
-    | .globalGet index => encodeNat 6 ++ encodeNat index
-    | .globalSet index => encodeNat 7 ++ encodeNat index
-    | .call index => encodeNat 8 ++ encodeNat index
-    | .addI64 => encodeNat 9
-    | .subI64 => encodeNat 10
-    | .mulI64 => encodeNat 11
-    | .divUI64 => encodeNat 12
-    | .remUI64 => encodeNat 13
-    | .andI64 => encodeNat 14
-    | .orI64 => encodeNat 15
-    | .xorI64 => encodeNat 16
-    | .shlI64 => encodeNat 17
-    | .shrUI64 => encodeNat 18
-    | .eqI64 => encodeNat 19
-    | .neI64 => encodeNat 20
-    | .ltUI64 => encodeNat 21
-    | .leUI64 => encodeNat 22
-    | .geUI64 => encodeNat 23
-    | .eqzI64 => encodeNat 24
-    | .eqI32 => encodeNat 25
-    | .eqzI32 => encodeNat 26
-    | .andI32 => encodeNat 27
-    | .wrapI64 => encodeNat 28
-    | .extendUI32 => encodeNat 29
-    | .load64 => encodeNat 30
-    | .load32 => encodeNat 31
-    | .load8U => encodeNat 32
-    | .store64 => encodeNat 33
-    | .store32 => encodeNat 34
-    | .store8 => encodeNat 35
-    | .memorySize => encodeNat 36
-    | .memoryGrow => encodeNat 37
-    | .unreachable => encodeNat 38
-    | .ret => encodeNat 39
-    | .drop => encodeNat 40
-    | .block body => encodeNat 41 ++ encodeInstrItems body ++ encodeNat 48
-    | .loop body => encodeNat 42 ++ encodeInstrItems body ++ encodeNat 48
-    | .iff resultI64 thn els =>
-        encodeNat 43 ++ encodeBool resultI64 ++ encodeInstrItems thn ++
-          (match els with
-           | some body => encodeNat 47 ++ encodeInstrItems body
-           | none => ByteArray.empty) ++
-          encodeNat 48
-    | .iffI32 thn els =>
-        encodeNat 44 ++ encodeInstrItems thn ++
-          (match els with
-           | some body => encodeNat 47 ++ encodeInstrItems body
-           | none => ByteArray.empty) ++
-          encodeNat 48
-    | .br depth => encodeNat 45 ++ encodeNat depth
-    | .brIf depth => encodeNat 46 ++ encodeNat depth
+  def encodeInstr : Instr → Except String ByteArray
+    | .constI64 value => .ok (encodeNat 0 ++ encodeNat value)
+    | .constI32 value => .ok (encodeNat 1 ++ encodeNat value)
+    | .constI32NegOne => .ok (encodeNat 2)
+    | .localGet index => .ok (encodeNat 3 ++ encodeNat index)
+    | .localSet index => .ok (encodeNat 4 ++ encodeNat index)
+    | .localTee index => .ok (encodeNat 5 ++ encodeNat index)
+    | .globalGet index => .ok (encodeNat 6 ++ encodeNat index)
+    | .globalSet index => .ok (encodeNat 7 ++ encodeNat index)
+    | .call index => .ok (encodeNat 8 ++ encodeNat index)
+    | .addI64 => .ok (encodeNat 9)
+    | .subI64 => .ok (encodeNat 10)
+    | .mulI64 => .ok (encodeNat 11)
+    | .divUI64 => .ok (encodeNat 12)
+    | .remUI64 => .ok (encodeNat 13)
+    | .andI64 => .ok (encodeNat 14)
+    | .orI64 => .ok (encodeNat 15)
+    | .xorI64 => .ok (encodeNat 16)
+    | .shlI64 => .ok (encodeNat 17)
+    | .shrUI64 => .ok (encodeNat 18)
+    | .eqI64 => .ok (encodeNat 19)
+    | .neI64 => .ok (encodeNat 20)
+    | .ltUI64 => .ok (encodeNat 21)
+    | .leUI64 => .ok (encodeNat 22)
+    | .geUI64 => .ok (encodeNat 23)
+    | .eqzI64 => .ok (encodeNat 24)
+    | .eqI32 => .ok (encodeNat 25)
+    | .eqzI32 => .ok (encodeNat 26)
+    | .andI32 => .ok (encodeNat 27)
+    | .wrapI64 => .ok (encodeNat 28)
+    | .extendUI32 => .ok (encodeNat 29)
+    | .load64 => .ok (encodeNat 30)
+    | .load32 => .ok (encodeNat 31)
+    | .load8U => .ok (encodeNat 32)
+    | .store64 => .ok (encodeNat 33)
+    | .store32 => .ok (encodeNat 34)
+    | .store8 => .ok (encodeNat 35)
+    | .memorySize => .ok (encodeNat 36)
+    | .memoryGrow => .ok (encodeNat 37)
+    | .unreachable => .ok (encodeNat 38)
+    | .ret => .ok (encodeNat 39)
+    | .drop => .ok (encodeNat 40)
+    | .addF64 | .mulF64 | .i64ReinterpretF64 | .f64ReinterpretI64 =>
+        .error errorUnsupportedInstructionV2
+    | .block body => do
+        let bodyBytes ← encodeInstrItems body
+        .ok (encodeNat 41 ++ bodyBytes ++ encodeNat 48)
+    | .loop body => do
+        let bodyBytes ← encodeInstrItems body
+        .ok (encodeNat 42 ++ bodyBytes ++ encodeNat 48)
+    | .iff resultI64 thn els => do
+        let thenBytes ← encodeInstrItems thn
+        let elseBytes ←
+          match els with
+          | some body => do
+              let bodyBytes ← encodeInstrItems body
+              .ok (encodeNat 47 ++ bodyBytes)
+          | none => .ok ByteArray.empty
+        .ok (encodeNat 43 ++ encodeBool resultI64 ++ thenBytes ++ elseBytes ++ encodeNat 48)
+    | .iffI32 thn els => do
+        let thenBytes ← encodeInstrItems thn
+        let elseBytes ←
+          match els with
+          | some body => do
+              let bodyBytes ← encodeInstrItems body
+              .ok (encodeNat 47 ++ bodyBytes)
+          | none => .ok ByteArray.empty
+        .ok (encodeNat 44 ++ thenBytes ++ elseBytes ++ encodeNat 48)
+    | .br depth => .ok (encodeNat 45 ++ encodeNat depth)
+    | .brIf depth => .ok (encodeNat 46 ++ encodeNat depth)
 
-  def encodeInstrItems : List Instr → ByteArray
-    | [] => ByteArray.empty
-    | instr :: rest => encodeInstr instr ++ encodeInstrItems rest
+  def encodeInstrItems : List Instr → Except String ByteArray
+    | [] => .ok ByteArray.empty
+    | instr :: rest => do
+        let instrBytes ← encodeInstr instr
+        let restBytes ← encodeInstrItems rest
+        .ok (instrBytes ++ restBytes)
 
 end
 
-def encodeInstrList (body : List Instr) : ByteArray :=
+def encodeInstrList (body : List Instr) : Except String ByteArray :=
   encodeInstrItems body
 
 
