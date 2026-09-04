@@ -37,6 +37,23 @@ def dot2CheckedBits (a₀ b₀ a₁ b₁ : UInt64) : CheckedBits :=
   else
     { status := 1, bits := 0 }
 
+/-- Guarded quadratic Horner evaluation over raw binary64 bit patterns.
+The accepted path computes `(c₂ * x + c₁) * x + c₀` with two rounded
+multiplications and two rounded additions. -/
+def horner2CheckedBits (x c₂ c₁ c₀ : UInt64) : CheckedBits :=
+  if boundedByHalf x && boundedByHalf c₂ &&
+      boundedByHalf c₁ && boundedByHalf c₀ then
+    { status := 0
+      bits := LeanExe.Float64.addBits
+        (LeanExe.Float64.mulBits
+          (LeanExe.Float64.addBits
+            (LeanExe.Float64.mulBits c₂ x)
+            c₁)
+          x)
+        c₀ }
+  else
+    { status := 1, bits := 0 }
+
 /-- Runtime-length binary64 dot product over raw-bit arrays.  Unequal lengths
 are rejected.  The numerical theorem states the finite-domain and headroom
 requirements explicitly rather than relying on native floating-point checks. -/
