@@ -977,3 +977,43 @@ rule, the identical aggregate target will not be repeated against unchanged
 dependency state.  The remaining cold specification boundary will be split
 and built through focused local targets first; only the resulting materially
 warmed cache permits one later aggregate retry.
+
+## 2026-09-04: Focused F64Dot2 integration repair
+
+The aggregate-timeout record was published as
+`0da4a31ae0aac4e697b55e6b8da880f7f1c8b0f2`, with identical local and remote
+tree `1887610e3694672b87c4eb5bec7b7f48c40e3eaf`.  The first missing numerical
+boundary was then built separately rather than repeating the aggregate:
+
+```text
+tools/leanrun --timeout 15m lake -d proofs/talos/lean --no-ansi build \
+  Project.F64Dot2CheckedBits.Spec
+```
+
+That focused build reached `F64Dot2CheckedBits.Execution` and exposed a real
+integration regression.  The earlier shared-bounds refactor changed the
+case-local `Bounds.f64AbsBits` and `Bounds.boundedByHalfBits` definitions into
+one-layer `abbrev` compatibility aliases.  The execution proof's old simp
+sets still named those aliases.  Elaboration had already reduced them to the
+canonical `Project.ProofKit.F64Bounds` constants, so the generated raw mask
+expression and Boolean guard were not unfolded.  Lean reported two direct
+type mismatches followed by four unsolved branch endpoints.  This first run is
+a proof failure, not a pass.
+
+The repair changes only those seven simp-set references to name the canonical
+ProofKit definitions: two `f64AbsBits` uses in the generated helper proof and
+five `boundedByHalfBits` uses closing the accepted/rejected entry paths.  It
+does not change a theorem statement, generated program, modeled arithmetic,
+or branch structure.  An independent read-only audit reached the same patch.
+Because the proof source materially changed, the focused target was rebuilt:
+
+```text
+Build completed successfully (3366 jobs).
+```
+
+The passing run took approximately 11 seconds, with 5.7 seconds on the repaired
+execution module and 2.5 seconds on the public specification.  Axiom reports
+for `func0_exact`, `dot2CheckedBits_exact`, and
+`dot2CheckedBits_wat_real_error` contain exactly `propext`,
+`Classical.choice`, and `Quot.sound`; the transient failed build's `sorryAx`
+reports are gone.  Only existing deprecation and linter warnings remain.
