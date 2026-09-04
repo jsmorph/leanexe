@@ -1684,3 +1684,101 @@ maintained Markdown files.  The intended commit contains only `plan.md`,
 required for this notes-only change.  The next action after remote publication
 and tree verification is a read-only review followed by serialized focused
 builds of the preserved proof drafts.
+
+## 2026-09-04: Euler guard, signal, and scaled-roundoff foundations passed
+
+The canonical operating-notes checkpoint was published as
+`154d32095104449fcd150a0ebfcbe236fa567151`.  The non-forced remote update was
+fetched, and both local and `origin/talosfp-euler` resolved to complete tree
+`524d6faf4abb948276f69b98638a7734c6d2a7c0`.  Ref reconciliation changed only
+the local Git reference after tree equality was established.  The two
+untracked proof drafts remained intact.
+
+Two delegated agents had created only
+`Project/EulerRusanov/Bounds.lean` and
+`Project/EulerRusanov/ScaledRoundoff.lean`; neither agent ran Lean or edited
+another file.  Two separate agents then performed read-only reviews.  They
+found the statements mathematically sound and identified casts, large powers,
+and sign-bit normalization as the likely elaboration boundaries.  All actual
+Lean checks below ran through the one serialized local slot.
+
+The first `Project.EulerRusanov.Bounds` build reached the new target and failed
+in 3.8 seconds with explicit diagnostics, not a timeout.  Lean exposed five
+local proof-shape problems: the ten-condition executable guard had not been
+regrouped into the two three-part state guards; the positive sign proof left a
+literal `2^63` inequality; the equal-exponent monotonicity branch had not
+rewritten the right exponent; the velocity proof needed an explicit equality
+between the two definitionally identical mask guards; and the namespaced
+`StateBounds.signalSpeed_le_alpha` method resolved its unqualified helper name
+as a recursive call.  The transient axiom reports consequently contained
+`sorryAx` and were not accepted.
+
+The repair expanded the Boolean definitions at the guard bridge, converted the
+sign goal with `decide_eq_false_iff_not`, rewrote the equal exponent, named the
+velocity-guard equality, and fully qualified the real signal-speed theorem.
+The materially changed target then passed:
+
+```text
+Project.EulerRusanov.Bounds
+Build completed successfully (3067 jobs).
+new target: 4.1 seconds
+complete command: approximately 6.5 seconds
+```
+
+The checked module now proves positive-normal raw-word finiteness and value
+bounds, monotonicity of real binary64 values under unsigned word order on the
+guarded interval, the complete left/right `StateBounds`, and
+
+```text
+abs velocity + sqrt ((7 / 5) * pressure / density) <= 7 / 4.
+```
+
+The first `Project.EulerRusanov.ScaledRoundoff` build also failed explicitly,
+in 3.6 seconds.  Its diagnostics were proof elaboration issues: a `ring` ran
+after `field_simp` had already closed a goal; a generic strict-multiplication
+lemma selected the wrong typeclass interface; raw XOR normalization did not
+reduce the sign-mask literal; the bit-vector sign-XOR endpoint remained; an
+unqualified `Finite` was ambiguous; and the final real division needed an
+explicit algebraic normalization.  Those repairs reduced the next build to
+two concrete constant-folding goals for `UInt64.toNat 0x8000000000000000`.
+The second failed target took 3.5 seconds and again was not accepted.
+
+The final repair proves the sign-mask word identity through
+`UInt64.toNat_ofNat_of_lt` and reuses it for the most-significant-bit fact.
+After that material change the focused target passed:
+
+```text
+Project.EulerRusanov.ScaledRoundoff
+Build completed successfully (3059 jobs).
+new target: 3.7 seconds
+complete command: approximately 6.0 seconds
+```
+
+Its public layer supplies finite-result and absolute-error theorems for an
+addition whose exact sum has magnitude below four and a multiplication whose
+exact product has magnitude below two.  Both bounds are `2^-52`.  It also
+proves that integer XOR with the binary64 sign mask preserves exponent,
+fraction, magnitude, and finiteness while negating the scaled integer and real
+values exactly, including the signed-zero encodings.
+
+`Project.EulerRusanov.Spec` now imports both foundations.  Its first combined
+build passed all 3,366 jobs; the final ScaledRoundoff rebuild took 3.6 seconds,
+the Spec root took 3.2 seconds, and the command took approximately 9.4 seconds.
+That replay exposed two non-failing `unnecessarySeqFocus` warnings in Bounds.
+They were removed by replacing the broad tactic sequencing with explicit
+`all_goals` blocks.  The materially changed combined target passed again with
+Bounds at 3.0 seconds, the Spec root at 3.2 seconds, and approximately 9.7
+seconds for the command.  The advertised Bounds and ScaledRoundoff theorems
+report exactly `propext`, `Classical.choice`, and `Quot.sound`; no accepted
+report contains `sorryAx`, and the final output contains only existing
+dependency warnings.  No `dev` host, cleanup, deletion, reset, stash,
+maintenance, concurrent Lean process, or worktree rewrite was used.
+
+This checkpoint completes the raw guard and characteristic-speed row in the
+Euler plan.  It does not claim the full componentwise Euler error theorem: the
+next numerical layer must propagate these primitive bounds through all 49
+rounded operations and retain strict `< 4` headroom for the largest correlated
+energy-flux sum.  Exact generated-WAT execution remains independently open.
+The intended commit is `Prove Euler guard and scaled roundoff foundations` and
+contains the two checked proof modules, their Spec imports, the completed plan
+row, and these journal/devnotes records.
