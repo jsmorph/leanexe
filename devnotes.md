@@ -8066,3 +8066,23 @@ Rusanov components, models total checked result words and reversed Talos stack
 values, and separately defines the decoded primitive, conservative state,
 physical Euler flux, and fixed-speed real Rusanov target.  It imports no
 generated program and evaluates no native Lean `Float`.
+
+## 2026-09-04: Euler domain and scale-aware roundoff foundations
+
+`Project.EulerRusanov.Bounds` proves the raw density, pressure, and velocity
+guards imply finite decoded states with density in `[1/8,1]`, pressure in
+`[1/16,density]`, and velocity magnitude at most one half.  Its positive-normal
+word-order theorem justifies the raw `p <= rho` comparison, and its real
+certificate proves the fixed `alpha = 7/4` bounds
+`|velocity| + sqrt ((7/5) * pressure / density)` throughout the admitted
+domain.
+
+`Project.EulerRusanov.ScaledRoundoff` wraps the pinned integer rounders with
+finite-result and `2^-52` absolute-error theorems for exact addition results
+below magnitude four and exact multiplication results below magnitude two.
+It also proves that the generated integer sign XOR exactly negates every finite
+modeled real while preserving its exponent, fraction, magnitude, and
+finiteness.  Focused targets passed 3,067 and 3,059 jobs respectively, and the
+combined incomplete Euler Spec passed all 3,366 jobs.  Public axiom reports
+contain only `propext`, `Classical.choice`, and `Quot.sound`; the detailed
+failed diagnostics and repair chronology are retained in `journal.md`.
