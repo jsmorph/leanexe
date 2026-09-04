@@ -3455,3 +3455,103 @@ is a module/function-index-parametric execution theorem specialized both to the
 current standalone scalar artifact and to the future embedded helper.  This
 design audit performed no edit, build, Git operation, native numerical run, or
 remote-host action.
+
+## 2026-09-04: decoded assembled-step admissibility checkpoint
+
+Work resumed from published commit
+`2a591bbc7d3bcc472bd9bdabcbdd66dd6a96c2dd` with exactly the three expected
+in-progress proof paths: modified `Project.lean`, modified
+`StencilNumerical.lean`, and untracked `StencilAdmissibility.lean`.  Their
+contents were preserved.  Before every subsequent file mutation,
+`git status --short --branch` was re-read.  No cleanup, maintenance,
+reclamation, deletion, truncation, cache invalidation, reset, stash,
+checkout-overwrite, worktree rewrite, or `dev`-host probe occurred.  No
+unrelated path was edited.  Delegated work was read-only; the root serialized
+every local Lean invocation under the exact pinned operating envelope.
+
+The numerical module now exposes the quarter-step component budgets exactly as
+
+```text
+[5*epsilon, 7*epsilon, (25/2)*epsilon]
+```
+
+and gives a named quarter-step boundary-only balance theorem.  The new
+`Project.EulerRusanov.StencilAdmissibility` module then composes those flux
+budgets with the proved decimal-word representation error
+`delta = epsilon/40`.  Against the rational `p = 1/10` reference step, both
+assembled cells satisfy the deliberately coarse common component bounds
+
+```text
+density  <= 5*epsilon
+momentum <= 8*epsilon
+energy   <= 13*epsilon.
+```
+
+Those bounds imply the explicit open-set margins `rho > 5/16`,
+`|momentum| < 1/8`, and `E > 1/2`.  Hence the kinetic term is below `1/40`,
+internal energy is above `19/40`, pressure is above `19/100`, and both cells
+are Euler-admissible.  An independent read-only arithmetic review rechecked
+all correction coefficients and inequalities and found no mathematical or
+scope defect.
+
+The first focused build followed a known earlier diagnostic in
+`sodQuarterErrorBudget_exact`: its three remaining scalar goals needed ring
+normalization.  Adding that normalization allowed `StencilNumerical` to build
+and exposed seven local proof-shape errors in the new module: two uses of the
+three-point `abs_sub_le` lemma had the wrong arity, four additions needed an
+orientation-independent `add_le_add` plus explicit vector-index reduction,
+and the standalone momentum margin had the same addition-orientation issue.
+The build exited nonzero after about 12.1 seconds; the new numerical module
+itself built in 5.2 seconds.  Its printed accepted theorems already reported
+only the standard axioms.  The failed downstream axiom prints contained
+`sorryAx` solely because Lean reports unresolved goals that way; there was no
+source `sorry`, `admit`, or axiom declaration.
+
+The second focused build used explicit `hmain` inequalities and
+`abs_add_le`.  It left only two syntactic parsing mismatches between
+`(-delta) / 8` and `-(delta / 8)` in the triangle-inequality witnesses, then
+exited nonzero after about 7.2 seconds.  Parenthesizing the intended negated
+quotient changed no theorem or bound.  This was a materially changed proof on
+each retry; no unchanged failing command was repeated.
+
+The third focused local invocation passed all 3,394 jobs in about 7.4 seconds,
+with a 4.7-second build of `StencilAdmissibility`.  Its four printed public
+audits—common rational error, left margins, right margins, and joint
+admissibility—depend only on `propext`, `Classical.choice`, and `Quot.sound`.
+The integrated `Project` target then passed all 3,807 jobs in about 6.3
+seconds, rebuilding the root in 3.3 seconds.  The large integrated output was
+existing replayed deprecation and linter output; the new focused module emitted
+no warning.
+
+This checkpoint still makes no claim that the update operations execute in
+WebAssembly.  It proves admissibility of the exact-real assembly of the three
+already frozen artifact flux rows.  Direct IEEE update execution remains the
+separate fixed `EulerRusanovStep` artifact checkpoint.
+
+The operating-contract audit found the repository-wide record complete in the
+earlier local-only contract entry and concise notes.  To make the detailed plan
+self-contained too, its verification gates now reproduce the full local Lean
+command envelope, say “one global Lean/Lake/compiler process,” enumerate
+`.git`, dependencies, build products, caches, evidence receipts, and partial
+work as persistent user-owned state, require `git status` before every
+mutation and explicit-path staging, and spell out the exact non-forced GitHub
+Git-data publication and fetched-tree verification protocol.  Thus no reader
+has to infer an operational rule from another file.
+
+Refreshing the draft release record after the completed proof and umbrella
+import produced release-input SHA-256
+`5188ca2230e2670aa2e4d2c3ee9129c970181a428e9bb72b939ae45d3cd7f264`.
+The record contains twenty-one packages and exactly the same four honest
+blockers: no immutable source revision for the changed tree, no aggregate
+artifact-proof receipt for that tree, pending semantic conformance, and no
+cold-checkout receipt.  No earlier receipt is presented as current.
+
+Final non-Lean gates passed concurrently: `git diff --check` was silent;
+`node tools/check-docs.js` checked all 90 maintained Markdown files;
+`node test/artifact_release.js` checked release identities, receipts, pins,
+results, and blockers; `node tools/artifact-release.js audit-kernel-scope`
+passed all three recorded roots; release inspection reproduced twenty-one
+packages and four blockers; and the targeted changed-source scan found no
+`sorry`, `admit`, or axiom declaration.  The next mutation is explicit staging
+of only the seven reviewed paths, followed by exact non-forced Git-data
+publication and local/remote tree verification.
