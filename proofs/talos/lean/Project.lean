@@ -16,6 +16,7 @@ import Project.F64Horner2CheckedBits.Spec
 import Project.EulerRusanov.Spec
 import Project.EulerRusanov.RealMathematics
 import Project.EulerRusanov.StencilNumerical
+import Project.EulerRusanov.StencilAdmissibility
 import Project.LebU32.Spec
 import Project.ClobQuote.Spec
 import Project.ClobCancel.Spec

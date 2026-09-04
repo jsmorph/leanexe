@@ -387,6 +387,20 @@ theorem decodedTransmissiveStep_balance_residual_le
 noncomputable def sodQuarterErrorBudget : Vec3 :=
   fun i => fluxErrorBudgetVec i / 2
 
+/-- Explicit quarter-step budgets inherited from the three scalar flux
+contracts. -/
+theorem sodQuarterErrorBudget_exact :
+    sodQuarterErrorBudget =
+      ![5 * CodeLib.Numerical.Kernels.f64Epsilon,
+        7 * CodeLib.Numerical.Kernels.f64Epsilon,
+        (25 / 2 : ℝ) * CodeLib.Numerical.Kernels.f64Epsilon] := by
+  funext i
+  fin_cases i <;>
+    norm_num [sodQuarterErrorBudget, fluxErrorBudgetVec,
+      Numerical.massErrorBudget, Numerical.momentumErrorBudget,
+      Numerical.energyErrorBudget] <;>
+    ring
+
 theorem decodedQuarterStep_error :
     ComponentwiseError
         (decodedTransmissiveStep (1 / 4)).1
@@ -404,6 +418,26 @@ theorem decodedQuarterStep_error :
     ring
   rw [← hbudget]
   exact decodedTransmissiveStep_error (1 / 4)
+
+/-- Quarter-step balance residual with the same explicit boundary-only
+budget. -/
+theorem decodedQuarterStep_balance_residual_le (i : Fin 3) :
+    |((decodedTransmissiveStep (1 / 4)).1 i +
+        (decodedTransmissiveStep (1 / 4)).2 i) -
+      (primitiveToConservative decodedSodLeft i +
+        primitiveToConservative decodedSodRight i -
+        (1 / 4) *
+          (rusanovFluxVec decodedSodRight decodedSodRight i -
+            rusanovFluxVec decodedSodLeft decodedSodLeft i))| ≤
+      sodQuarterErrorBudget i := by
+  have hbudget :
+      updateErrorBudget (1 / 4) fluxErrorBudgetVec fluxErrorBudgetVec =
+        sodQuarterErrorBudget := by
+    funext j
+    simp [updateErrorBudget, sodQuarterErrorBudget]
+    ring
+  rw [← hbudget]
+  exact decodedTransmissiveStep_balance_residual_le (1 / 4) i
 
 /-- The exact decoded-input quarter-step, exposing only the input
 representation bias relative to the rational reference in `RealStencil`. -/
@@ -435,6 +469,7 @@ theorem decodedExactQuarterStep_exact :
 #print axioms value_sod_pressure
 #print axioms decodedTransmissiveStep_error
 #print axioms decodedTransmissiveStep_balance_residual_le
+#print axioms decodedQuarterStep_balance_residual_le
 #print axioms decodedExactQuarterStep_exact
 
 end Project.EulerRusanov.StencilNumerical
