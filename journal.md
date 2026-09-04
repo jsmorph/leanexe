@@ -173,3 +173,107 @@ work will be identified explicitly rather than silently presented as proved.
 5. Mark Horner complete, update this journal and the plans, commit, and push.
 6. Add the separate guarded Euler/Rusanov source module and focused Wasm tests.
 
+## 2026-09-04: Local-only Lean execution restored
+
+The user clarified that this environment has no `dev` host and that every
+Lean-related command must run locally.  This is now an explicit project rule:
+
+- do not invoke or probe `tools/leanrun-dev`;
+- do not claim that a remote runner is available;
+- run Lean, Lake, `lean-wasm`, Node regressions, and Wasmtime locally;
+- use GitHub only to publish the requested branch checkpoints.
+
+A brief attempted `tools/leanrun-dev` invocation before that clarification
+failed at DNS resolution and produced no repository change.  It will not be
+retried.
+
+The direct Lean/Lake failure was traced to the executor's nested PID namespace.
+The process sees its namespace PID from `getpid()`, while the mounted `/proc`
+belongs to the parent namespace.  Lean 4.34 resolves its executable using a
+path of the form `/proc/<getpid()>/exe`; that path does not exist here even
+though `/proc/self/exe` does.  This explains both earlier direct-run errors:
+
+```text
+Lean: failed to locate application
+Lake: could not detect the configuration of the Lake installation
+```
+
+For this scratch session only, a small local `LD_PRELOAD` shim intercepts a
+failed `readlink("/proc/<pid>/exe", ...)` and retries
+`readlink("/proc/self/exe", ...)`.  The shim and the wrapper scripts live
+under `/tmp`, are not project source, and are not part of the trusted result.
+They only make the pinned local executable discover its own installation.
+
+The repaired local toolchain reports:
+
+```text
+Lean (version 4.34.0-rc2, x86_64-unknown-linux-gnu,
+commit 6a10ac8c22beadecabdbb0919c2b50214762f91d)
+```
+
+All Lean-family runs remain serialized with `LEAN_NUM_THREADS=1` and explicit
+timeouts.  With the local shim active, the focused source build succeeded:
+
+```text
+lake build LeanExe.Examples.Float64Bits
+Build completed successfully (3 jobs).
+```
+
+The full local compiler build also succeeded:
+
+```text
+lake build lean-wasm
+Build completed successfully (58 jobs).
+```
+
+Only pre-existing deprecation warnings were emitted by that build.
+
+## 2026-09-04: Local Horner Wasm regression passes
+
+The restored scratch checkout did not initially contain the ignored Wasmtime
+tools.  `tools/download-wasmtime.sh` downloaded the pinned Wasmtime 44.0.0
+archives and verified their repository-recorded SHA-256 digests.  The first
+extraction encountered an ownership-change error in this container; rerunning
+with `TAR_OPTIONS=--no-same-owner` completed the local installation.  These
+downloaded tools remain ignored scratch build products.
+
+`tools/run-process.js` routes executables whose basename is `lean`, `lake`, or
+`lean-wasm` through `tools/leanrun`.  To exercise the unmodified regression
+locally under the user's direct-run authorization, the test was given a
+temporary `/tmp` symlink to the locally built `lean-wasm` with a different
+basename.  A temporary PATH wrapper applies the same local `/proc/self/exe`
+shim when `lean-wasm` starts its Lean subprocess.  No repository test harness
+or runner policy was changed.
+
+Static inspection subsequently established the cleaner setting for future
+runs.  `Lean.findSysroot` checks `LEAN_SYSROOT` before falling back to a
+literal `lean --print-prefix` subprocess.  Setting
+
+```text
+LEAN_SYSROOT=/root/.elan/toolchains/leanprover--lean4---v4.34.0-rc2
+```
+
+therefore avoids that subprocess entirely; the temporary PATH wrapper is not
+needed when `LEAN_SYSROOT` is present.  The outer `lean-wasm` still needs a
+non-guarded temporary basename because `tools/run-process.js` otherwise sends
+it through the unavailable systemd runner.  `test/wasmtime_host.js` locates
+the local host through `LEANEXE_WASMTIME_HOST` or its checked default under
+`build/tools`; it does not consume a `WASMTIME` environment variable.
+
+The complete focused regression then passed locally:
+
+```text
+node test/f64_bits.js
+checked Float64 bit-pattern execution, lowering, emission, annotations, and image rejection
+```
+
+This exercises `horner2CheckedBits` through source compilation, lowering,
+binary and text Wasm emission, Wasmtime execution, annotation checks, expected
+instruction counts, guard rejection, and the expected `compile-image`
+rejection for unsupported f64 image instructions.  It establishes a tested
+source/Wasm checkpoint, but it is still not the Talos exact-code theorem or
+the numerical error proof.
+
+The next implementation step is the reusable binary64 half-bound/Horner
+numerical lemma layer, followed by Talos case registration and generated
+program proofs.
