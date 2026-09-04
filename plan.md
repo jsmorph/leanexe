@@ -1,6 +1,6 @@
 # Development Plan
 
-This file is the only active project work queue.  The compiler, execution suite, twenty-five completed source-driven Talos proofs plus one registered incomplete Euler-step case, twenty-one exact-artifact packages, annotation generator, ProofKit, structured LTG, and twelve demonstrations already exist.  Detailed plans under `plans/` support unfinished items listed here and do not define separate priorities.
+This file is the only active project work queue.  The compiler, execution suite, twenty-six completed source-driven Talos proofs, twenty-one exact-artifact packages, annotation generator, ProofKit, structured LTG, and twelve demonstrations already exist.  The newly completed fixed Euler-step source proof still needs its separate exact-byte package and verified data publication.  Detailed plans under `plans/` support unfinished items listed here and do not define separate priorities.
 
 ## 1. Reconcile current documentation and release evidence
 
@@ -10,12 +10,13 @@ carried input digest
 `5de9678970b1a9b74d50c1407457423a7fa6eabd3f430f56cfdc0e407af2b7e5`, source
 revision `0e0d752904fc90dee3ef3511ffab91f3d358c1ed`, and successful receipts dated
 2026-08-26.  The current draft release record identifies the Lean 4.34.0-rc2 and
-Talos `87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47` inputs.  Its 2026-09-04
-aggregate artifact receipt passes all twenty-one packages for release-input
-digest `bbc645be04edcae73d6d36958a01b85bfa0a24f7660fc0ccb801ac6e133711a3`;
-semantic conformance remains pending after a cache-warming timeout, and
-`sourceRevision` is null.  Cold verification remains deferred and does not form
-part of the current work.
+Talos `87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47` inputs.  After the fixed-step
+proof, its current release-input digest is
+`de4761fc0d3b129d99dfdb239f0cec042df3962fbbf5de133c8ef11592fb1717`.
+The preceding 2026-09-04 aggregate artifact receipt is historical for an older
+input identity; aggregate artifact proof, semantic conformance, immutable
+source revision, and cold checkout are the four current blockers.  Cold
+verification remains deferred and does not form part of the current work.
 
 - [x] Consolidate navigation, language, compiler, artifact-proof, annotation, and proof-guidance documents.
 - [x] Remove superseded plans and experiment reports after migrating current facts and links.
@@ -26,8 +27,10 @@ part of the current work.
 - [x] Run the prior warm artifact-proof and semantic-conformance gates.
 - [x] Record immutable source revision
       `0e0d752904fc90dee3ef3511ffab91f3d358c1ed` for those historical inputs.
-- [x] Record the current twenty-one-package aggregate artifact receipt under the
-      FP `87e3aa5` inputs.
+- [x] Record the prior twenty-one-package aggregate artifact receipt under its
+      exact FP `87e3aa5` input identity.
+- [ ] Record a matching aggregate artifact receipt for the final current input
+      after the fixed-step numerical, exact-byte, and data checkpoints settle.
 - [ ] Complete current semantic conformance, then record its receipt and an
       immutable source revision.
 - [ ] Resume conformance from the preserved local cache.  A command-line target
@@ -219,8 +222,10 @@ acceptance gates, and nonclaims.
 - [x] Compile and register the fixed seven-word Sod step, generate its Talos
       cache and pure IEEE64 model, prove the fixed model output, pin its
       runtime helpers, and check its exact Wasmtime/WAT operation shape.
-- [ ] Prove exact generated-WAT execution of the fixed step and transfer its
-      decoded-real admissibility and balance bounds.
+- [x] Prove exact generated-WAT execution of the fixed step by composing all
+      three flux calls and six update calls through the generated status gate.
+- [ ] Transfer the executed words to decoded-real admissibility and balance
+      bounds for the actual rounded fixed-step output.
 - [ ] Freeze the proved step bytes and publish the verified raw state data.
 - [ ] Extend the checked FP profile and implement the guarded 100-cell Sod
       runner only after the fixed artifact passes.

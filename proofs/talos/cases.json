@@ -258,7 +258,7 @@
       "behaviorTheorems": [
         "Project.EulerRusanovStep.Spec.sodQuarterStepCheckedBits_exact"
       ],
-      "complete": false
+      "complete": true
     }
   ]
 }

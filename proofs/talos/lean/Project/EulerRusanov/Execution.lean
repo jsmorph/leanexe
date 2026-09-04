@@ -456,17 +456,20 @@ def ExactSpecFor (m : Wasm.Module) : Prop :=
         final = initial ∧
           values = Model.resultValues rhoL uL pL rhoR uR pR)
 
-/-- Every input takes one of eleven semantic paths: the first failing raw-word
-guard rejects without floating-point evaluation, or all ten guards pass and
-the explicitly rounded Euler--Rusanov operation graph executes.  All paths
-preserve the complete WebAssembly store. -/
-theorem rusanovFluxCheckedBits_exact :
-    ExactSpecFor Project.EulerRusanov.«module» := by
+/-- Every input takes one of eleven semantic paths in any module whose function
+zero is the generated guarded flux entry: the first failing raw-word guard
+rejects without floating-point evaluation, or all ten guards pass and the
+explicitly rounded Euler--Rusanov operation graph executes.  All paths preserve
+the complete WebAssembly store. -/
+theorem rusanovFluxCheckedBits_exact_in_module {m : Wasm.Module}
+    (hFunc : m.funcs[0 - m.imports.length]? =
+      some Project.EulerRusanov.func0Def)
+    (hNoImport : m.imports[0]? = none) :
+    ExactSpecFor m := by
   intro env initial rhoL uL pL rhoR uR pR
-  apply TerminatesWith.of_wp_entry_for
-    (f := Project.EulerRusanov.func0Def)
-  · simp [Project.EulerRusanov.«module»]
-  · change wp Project.EulerRusanov.«module»
+  refine TerminatesWith.of_wp_entry_for
+    (f := Project.EulerRusanov.func0Def) hFunc ?_ hNoImport
+  · change wp m
       Project.EulerRusanov.func0 _ initial
       { params := [.i64 rhoL, .i64 uL, .i64 pL,
           .i64 rhoR, .i64 uR, .i64 pR],
@@ -557,7 +560,7 @@ theorem rusanovFluxCheckedBits_exact :
                             work2, work1, work0]
                           exact completedWork_resultValues
                             rhoL uL pL rhoR uR pR hGuard
-                        change wp Project.EulerRusanov.«module»
+                        change wp m
                           acceptedProgram _ initial
                           (acceptedFrame rhoL uL pL rhoR uR pR work0) env
                         unfold acceptedProgram
@@ -575,7 +578,7 @@ theorem rusanovFluxCheckedBits_exact :
                           rhoL uL pL rhoR uR pR work5 ?_
                         refine wp_finishProgram
                           rhoL uL pL rhoR uR pR work6 ?_
-                        change wp Project.EulerRusanov.«module» [] _ initial
+                        change wp m [] _ initial
                           (acceptedFrame rhoL uL pL rhoR uR pR work7) env
                         wp_run [acceptedFrame]
                         simp [Project.EulerRusanov.func0Def, hValues,
@@ -709,6 +712,14 @@ theorem rusanovFluxCheckedBits_exact :
       simp [Project.EulerRusanov.func0Def,
         Model.resultValues, Model.checkedFluxBitsModel, hGuard]
 
+/-- Exact behavior of the standalone compiler artifact, retained as the public
+specialization of the module-polymorphic execution theorem. -/
+theorem rusanovFluxCheckedBits_exact :
+    ExactSpecFor Project.EulerRusanov.«module» :=
+  rusanovFluxCheckedBits_exact_in_module
+    (m := Project.EulerRusanov.«module») (by rfl) (by rfl)
+
+#print axioms rusanovFluxCheckedBits_exact_in_module
 #print axioms rusanovFluxCheckedBits_exact
 
 end Project.EulerRusanov.Spec

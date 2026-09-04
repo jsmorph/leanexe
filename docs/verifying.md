@@ -17,7 +17,7 @@ The compiler remains outside both proofs' trusted base.  The source-driven gate 
 
 The source artifact stage creates a fresh uniquely named `tmp/leanexe-talos-*` directory and places Talos's required `rust/<case>/Cargo.toml` and `rust/build/<case>/` layout below it.  It removes only that same task-owned staging directory after Talos emits `Program.lean`; pre-existing `tmp/` entries are not cleanup targets, and a failure to remove the new staging directory makes the command fail.  The requested ignored WASM and WAT outputs and the tracked Lean model remain persistent proof inputs after a successful `prepare` operation.
 
-The persistent source-driven case consists of the source program, its tests, one registry entry, runtime pins, an aggregate import after completion, the generated `Program.lean` cache, and handwritten proof modules.  A case may divide its proof among many files, with `Spec.lean` importing the final theorem.  Either source-driven tool can regenerate the cache, and a byte change marks a changed proof subject that must pass its source-driven behavioral gate and, when the case is also registered as a frozen package, the exact-artifact equality and behavioral gates.  The source registry has twenty-six cases and the proof tree tracks twenty-six corresponding `Program.lean` caches; twenty-five cases are complete, twenty-one have registered exact-artifact packages, and the sixth restricted binary64 registration is the incomplete fixed Euler step.
+The persistent source-driven case consists of the source program, its tests, one registry entry, runtime pins, an aggregate import after completion, the generated `Program.lean` cache, and handwritten proof modules.  A case may divide its proof among many files, with `Spec.lean` importing the final theorem.  Either source-driven tool can regenerate the cache, and a byte change marks a changed proof subject that must pass its source-driven behavioral gate and, when the case is also registered as a frozen package, the exact-artifact equality and behavioral gates.  The source registry has twenty-six complete cases and the proof tree tracks twenty-six corresponding `Program.lean` caches; twenty-one currently have registered exact-artifact packages.  The sixth restricted binary64 registration is the completed fixed Euler step, whose separate frozen package remains pending.
 
 ## Resource Policy
 
@@ -83,7 +83,7 @@ tools/talos-proof.js check fold_sum
 
 After the theorem is complete, set `complete` to `true` and import `Project.<Case>.Spec` from [`Project.lean`](../proofs/talos/lean/Project.lean).  The aggregate gate verifies that completed registry entries match the specification imports and that every registered case appears in the runtime checks.  It then regenerates all registered cases serially and builds the complete `Project` target; the 2026-08-26 run passed all twenty cases.
 
-That twenty-case result is historical.  The current aggregate, which regenerates twenty-six registered cases and builds twenty-five completed specifications, remains pending.
+That twenty-case result is historical.  The current aggregate regenerates all twenty-six registered cases and builds all twenty-six completed specifications; the 2026-09-04 local gate passes.
 
 ```sh
 tools/talos-proof.js check --all
@@ -103,7 +103,7 @@ tools/artifact-proof.js check \
   Project.FoldSum.ArtifactTranslation
 ```
 
-`check-artifacts` performs the identity, embedded-byte, and exact-artifact theorem stages for all twenty-one packages.  `check-all` adds every behavioral specification and the aggregate manifest-declaration check.  Neither aggregate mode invokes LeanExe, reads a source program, or invokes `wasm-tools`.  The 2026-09-04 receipt passes the current twenty-one-package aggregate for release-input digest `bbc645be04edcae73d6d36958a01b85bfa0a24f7660fc0ccb801ac6e133711a3`; the accepted 2026-08-26 receipt covers the twenty packages registered at that time.
+`check-artifacts` performs the identity, embedded-byte, and exact-artifact theorem stages for all twenty-one packages.  `check-all` adds every behavioral specification and the aggregate manifest-declaration check.  Neither aggregate mode invokes LeanExe, reads a source program, or invokes `wasm-tools`.  The 2026-09-04 twenty-one-package receipt belongs to its recorded earlier input; after the fixed-step source proof, the current digest is `de4761fc0d3b129d99dfdb239f0cec042df3962fbbf5de133c8ef11592fb1717` and its aggregate receipt is pending.  The accepted 2026-08-26 receipt covers the twenty packages registered at that time.
 
 ## Semantic Conformance Tool
 
@@ -128,7 +128,7 @@ tools/artifact-release.js check-ready
 tools/artifact-release.js check-cold <revision>
 ```
 
-`inspect` validates the draft without claiming release readiness, while `refresh` reconstructs package records and consumes matching receipts from `build/evidence`.  `check-ready` returns a failure until every derived condition holds.  `check-cold` compares the current and cloned release inputs before setup, checks the exact Lean and dependency revisions, rejects tracked mutations after setup or either gate, reruns both gates, and writes the cold receipt before removing its temporary checkout.  The current draft now binds twenty-one packages under Lean 4.34.0-rc2 and Talos `87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47`; its current aggregate artifact receipt passes, while semantic-conformance and cold-checkout receipts are pending and its `sourceRevision` remains null.  The accepted 2026-08-26 receipts bind only their earlier twenty-package input digest.
+`inspect` validates the draft without claiming release readiness, while `refresh` reconstructs package records and consumes matching receipts from `build/evidence`.  `check-ready` returns a failure until every derived condition holds.  `check-cold` compares the current and cloned release inputs before setup, checks the exact Lean and dependency revisions, rejects tracked mutations after setup or either gate, reruns both gates, and writes the cold receipt before removing its temporary checkout.  The current draft binds twenty-one packages under Lean 4.34.0-rc2 and Talos `87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47`; matching aggregate-artifact, semantic-conformance, source-revision, and cold-checkout evidence are pending.  The accepted 2026-08-26 receipts bind only their earlier twenty-package input digest.
 
 ## Committed Files
 

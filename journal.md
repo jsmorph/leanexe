@@ -3913,3 +3913,165 @@ worktree-versus-index comparisons were clean.  Only then did compare-and-swap
 status was clean and local `HEAD` equaled `origin/talosfp-euler`.  No checkout,
 reset, merge, stash, cleanup, file replacement, cache invalidation, temporary
 path removal, or worktree rewrite was used.
+
+## 2026-09-04: exact generated-WAT execution of the fixed Euler step
+
+Implementation resumed from the clean, synchronized documentation receipt
+`021a890559c64ffea3e208b6a756929b1fbeb79f` on branch `talosfp-euler`.
+`git status --short --branch` was reviewed before each top-level mutation or
+build boundary.  The only source changes in this checkpoint are the scalar
+flux theorem generalization, two new fixed-step execution modules, the
+registered Spec wrapper, the registry/aggregate wiring, current inventory
+documentation, and these append-only notes.  No pre-existing generated file,
+ignored file, cache, dependency, evidence path, temporary directory, or
+partial work was deleted, moved, truncated, invalidated, or replaced as
+maintenance.
+
+The existing 335-instruction scalar-flux proof was generalized to
+`rusanovFluxCheckedBits_exact_in_module`.  It accepts hypotheses identifying
+function zero with `Project.EulerRusanov.func0Def` and excluding an import at
+that index, while retaining the old standalone
+`rusanovFluxCheckedBits_exact` theorem as an exact specialization.  This is a
+semantic reuse theorem about the actual generated body, not a source-level
+substitution.  Its first focused build did not pass: the initial `refine`
+conversion omitted the tactic bullet before `change`, so Lean reported a
+layout/application failure and the incomplete diagnostic exposed `sorryAx`.
+No result from that failed elaboration was accepted.  Adding the missing `·`
+was the only repair.  The rerun completed 3,357 jobs; both printed axiom audits
+then contained exactly `propext`, `Classical.choice`, and `Quot.sound`.
+
+`Project.EulerRusanovStep.Spec.func2_exact` proves the generated function-two
+update helper for arbitrary host environment, initial store, and three raw
+`UInt64` words.  It consumes the Talos top-first stack
+`[fluxRight, fluxLeft, state]`, returns the singleton pure value
+`quarterUpdateComponentBits state fluxLeft fluxRight`, and preserves the
+complete store.  Its focused build completed 3,393 jobs and passed.  No native
+floating-point evaluator, `native_decide`, admission, or new axiom is used.
+
+`Project.EulerRusanovStep.Spec.func0_exact` instantiates the generalized scalar
+theorem inside the larger generated module.  Private LL, LR, and RR wrappers
+specialize its fixed call stacks to the three pure model flux rows.  Their
+accepted status facts are derived from the already proved public interface
+data.  `func6_exact` then enters the actual generated function-six body,
+composes the three function-zero calls with `wp_call_tw`, follows all eight
+generated accepted-status `iff` decisions, composes the six function-two
+calls, and proves the final top-first seven-word stack equals
+`Model.resultValues`.  Every callee and the exported entry preserve the exact
+initial store.  The proof was statically checked against all 85 generated
+locals and the six update argument orders before its first Lean run.
+
+The first focused `Project.EulerRusanovStep.Execution` run passed without a
+proof repair: 3,394 jobs, 13 seconds reported for the target and 19.8 seconds
+wall time.  Its public `func0_exact` and `func6_exact` axiom reports contain
+only `propext`, `Classical.choice`, and `Quot.sound`.  Lean emitted the existing
+`if_pos` deprecation warnings and one unused final simp argument; the latter
+was removed before the final gate.  No semantic warning or placeholder was
+present.
+
+`Project.EulerRusanovStep.Spec.sodQuarterStepCheckedBits_exact` exposes the
+registered fuel-independent contract at function index six.  The registry
+flag changed from `complete: false` to `complete: true`, and `Project.lean` now
+imports the Spec.  A direct local `Project` build completed all 3,812 jobs;
+the final target took 3.1 seconds and the complete command 23.4 seconds wall
+time.  The focused source-driven gate then regenerated the fixed-step WASM,
+WAT, and Talos model in a fresh repository-local staging directory, required
+the generated cache to match, rebuilt the 3,395-job Spec target, and reported
+`Talos proof passed: euler_rusanov_step` in 6.7 seconds wall time.
+
+The aggregate source-driven gate was invoked directly, not outer-wrapped in
+`tools/leanrun`, under the pinned local environment.  It regenerated all 26
+registered cases serially, checked their Program caches, verified the registry
+against runtime pins and Spec imports, rebuilt the full 3,812-job `Project`
+target, and reported `Talos proof library passed: 26 completed case(s)` in
+15.7 seconds wall time.  Each driver removed only the fresh staging directory
+it had created.  The two pre-existing directories
+`tmp/leanexe-talos-WauTHs` and `tmp/leanexe-talos-x9h6ML` remained present and
+untouched after both gates.
+
+The exact output remains the seven already modeled words:
+
+```text
+0000000000000000
+3fe9e00000000000 3fbccccccccccccc 4000100000000000
+3fd4400000000000 3fbcccccccccccce 3fe7c00000000000
+```
+
+This completes the source-driven exact generated-WAT boundary, not the whole
+publication.  The next theorem must decode these actual rounded output words,
+prove both emitted cells finite and admissible, and connect their signed error
+and balance residual to the existing decoded-input stencil theorem.  Only
+after that public behavior theorem is fixed should the stable 2,551-byte WASM
+be migrated into an exact-artifact package, because the artifact manifest must
+copy the final behavior-theorem list exactly.  Verified CSV/raw-word data and
+its formal interface theorem remain a separate following checkpoint.
+
+All Lean, compiler, verifier, and gate execution in this checkpoint was local,
+globally serialized, and one-threaded.  No `dev` host was assumed, contacted,
+or probed.  No cleanup, reclamation, destructive Git command, checkout, reset,
+stash, worktree rewrite, or deletion of pre-existing state occurred.
+
+After removing the unused final simp argument, the focused registered Spec was
+rebuilt: 3,395 jobs passed, with 13 seconds for `Execution`, 3.1 seconds for
+`Spec`, and 19.4 seconds wall time.  `node test/euler_rusanov_step.js` then
+passed in 5.8 seconds, checking the exact Wasmtime words, IR operation graph,
+and WAT call shape.  The source proof therefore has both formal execution and
+the intended regression boundary at this checkpoint.
+
+The release-input inventory test still carried a hard-coded count of 25 Talos
+`Program.lean` caches even though the registered step had already introduced
+the twenty-sixth cache at the preceding source/model checkpoint.  Its count was
+corrected to 26; `node test/artifact_identity.js` passed.  This proof change
+invalidated the prior draft release-input identity as expected.  A deliberate
+`tools/artifact-release.js inspect` first rejected the stale release record,
+then `tools/artifact-release.js refresh` wrote current digest
+`432fc417d53cbf1a42519b313cc19eaca72abea4295f60996657079fc6261853`.
+It did not consume prior receipts for different inputs and reports exactly four
+honest blockers: no immutable source revision, no matching aggregate artifact
+proof, no matching semantic conformance receipt, and no cold-checkout receipt.
+
+The 91-file maintained-document check, release identity/receipt/pin/result/
+blocker test, release inspection, whitespace check, and stale-current-count
+search all pass.  Historical journal entries and their old digests remain
+unchanged; current-facing documentation now distinguishes the passing 26-case
+source gate from the still-pending twenty-one-package artifact receipt for the
+new release input.
+
+The optional final-review hardening added `#print axioms func2_exact`.  Its
+focused rebuild completed 3,395 jobs in 6.8 seconds wall time and printed
+exactly `propext`, `Classical.choice`, and `Quot.sound` for the helper; the
+registered and composed theorem audits remained the same.  Because this was a
+proof-source change, the preceding `432fc417...` refresh was an intermediate
+identity, not a publishable final one.  A second refresh correctly produced
+`de4761fc0d3b129d99dfdb239f0cec042df3962fbbf5de133c8ef11592fb1717`
+with the same four blockers.  The correction is appended rather than rewriting
+the chronological intermediate result.
+
+Independent final review also found two maintained files outside the first
+inventory list, plus a later Developing paragraph, that still called the
+`bbc645...` receipt current.  They now label that receipt historical for its
+exact earlier input and identify the current aggregate receipt as pending.
+No proof or artifact claim changed; this repairs only current/historical
+documentation consistency.
+
+The root work queue carried the same combined execution/transfer item after
+the detailed plan had split it.  Final review split the root item too: exact
+generated-WAT execution is checked, while decoded-real transfer for the actual
+rounded output remains unchecked.  This changes no implementation claim and
+keeps `plan.md` authoritative about the next boundary.
+
+A final repo-wide current/pass phrase scan found one additional stale sentence
+in `docs/typetheory.md`.  It now treats the preceding aggregate artifact result
+as historical and names all four current release requirements.  The scan still
+distinguishes the genuinely passing 26-case source-driven aggregate from the
+pending artifact-release aggregate.
+
+Final pre-publication checks now pass with release input fixed at
+`de4761fc0d3b129d99dfdb239f0cec042df3962fbbf5de133c8ef11592fb1717`:
+whitespace, all 91 maintained Markdown files, release-input membership and
+canonical hashing, release identities/receipts/pins/results/blockers, the three
+recorded kernel-scope roots, exact 26-registered/26-complete/26-cache counts,
+JavaScript syntax for the changed inventory test, and changed/new Lean scans
+for `sorry`, `admit`, axiom declarations, `native_decide`, and `sorryAx`.
+Release inspection reports the expected 21 packages and four blockers.  The
+independent read-only checkpoint review found no remaining semantic,
+integration, inventory, documentation, or publication blocker.
