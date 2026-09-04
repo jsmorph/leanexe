@@ -1117,3 +1117,70 @@ remote executor, concurrent Lean process, maintenance action, deletion, reset,
 or worktree rewrite was used.  The next proof action must continue splitting
 the still-cold higher-level MatchFuel chains before any retry of its unchanged
 root specification.
+
+## 2026-09-04: MatchFuel behavioral specification fully warmed and passed
+
+The operating-contract checkpoint was published as
+`3abe93b48b33be460caf31929b9d0c284fecded9`, with identical local and remote
+tree `7b56fb79f5730405b3554406c399c88f1fb9eecc` and a clean worktree.  The
+remaining `Project.ClobMatchFuel.Spec` import closure was then built as a
+sequence of focused local targets.  A read-only import and `.olean` frontier
+audit confirmed that the separate `Artifact*` modules are not behavioral
+`Spec` dependencies, so no exact-artifact work was charged to this recovery.
+
+The partial-fill composition closed first:
+
+- `PartialTradePrepare` passed 3,381 jobs in approximately 10 seconds on its
+  target; `PartialFinish` then passed 3,382 jobs in 3.4 seconds.
+- A focused `MemoryFrame` build passed `ReleaseFrame` in 3.8 seconds and
+  `MemoryFrame` in 3.0 seconds, completing 3,358 jobs.
+- `PartialTradeUpdate` passed 3,385 jobs in approximately 31 seconds.
+- `BranchPost` passed 3,344 jobs in 3.3 seconds and `PartialBookControl` passed
+  3,373 jobs in 5.2 seconds.
+- With those exact prerequisites current, `PartialBranch` passed all 3,389
+  jobs in approximately 31 seconds.
+
+The full-fill path was divided at its independent leaves before joining them:
+
+- `BookEraseSuffix` passed 3,357 jobs in approximately 12 seconds.
+  `BookAllocErase` then took 14 seconds and `FullBookUpdate` 23 seconds in a
+  successful 3,362-job build.
+- `FullTradePrepare` passed 3,373 jobs in 10 seconds.  The independent
+  `ReleaseOld` target passed 3,358 jobs in 8.5 seconds, after which
+  `FullTradeFinish` passed 3,376 jobs in 5.4 seconds.
+- The focused `FullStep` build passed all 3,389 jobs.  Its remaining material
+  boundaries were `FullTransition` at 77 seconds, `FullTradeUpdate` at 54
+  seconds, `FullBranch` at 62 seconds, `FullReleaseTransition` at 4.1 seconds,
+  and `FullStep` itself at 58 seconds.
+
+The recursive loop closure was then warmed from the leaves upward:
+
+- `Budget` passed 3,350 jobs in 3.7 seconds; `LoopControl` passed 3,386 jobs in
+  9.4 seconds; `Iteration` passed 3,407 jobs in 32 seconds;
+  `Initialization` passed 3,408 jobs in 4.8 seconds; and `LoopInvariant` passed
+  3,410 jobs in 5.5 seconds.
+- A focused `Loop` build passed all 3,417 jobs.  The newly built boundaries
+  were `LoopBounds` at 5.9 seconds, `LoopProgress` at 3.6,
+  `LoopCompletion` at 5.7, `LoopAdvance` at 6.2, `LoopBranches` at 6.2,
+  `LoopIteration` at 3.0, and `Loop` at 3.8 seconds.
+- `Correct` then passed all 3,421 jobs, building `LoopInitial` in 6.1 seconds,
+  `LoopResult` in 4.1, `Entry` in 3.2, and `Correct` in 6.2 seconds.
+- The independent source-model `Properties` leaf passed 3,347 jobs in 3.9
+  seconds.
+
+At that point every behavioral import was current, materially changing the
+dependency state since the earlier timeout.  The permitted retry completed:
+
+```text
+tools/leanrun --timeout 15m lake -d proofs/talos/lean --no-ansi build \
+  Project.ClobMatchFuel.Spec
+Build completed successfully (3424 jobs).
+```
+
+The final root took approximately 3.1 seconds.  Every run used the pinned
+local-only envelope with one Lean process.  Output contained existing
+deprecation warnings but no theorem diagnostic, new warning class, remote
+execution, cleanup, deletion, reset, or worktree rewrite.  The cold root was
+not repeated until its entire import closure had been divided and passed.
+The remaining aggregate recovery frontier is `ClobLimit`, `ClobMarket`, and
+`ClobDepth`, followed by one materially warmed aggregate retry.
