@@ -7953,3 +7953,27 @@ the twenty-fourth completed source-driven Talos entry and is imported by
 This completion follows the existing f64 generated-WAT boundary; it does not
 add a frozen exact-byte registry package.  The Euler flux remains the planned
 first f64 exact-byte artifact, as required by `plans/euler-rusanov.md`.
+
+## 2026-09-04: Local-only recovery discipline and focused aggregate warming
+
+After an external scratch-workspace maintenance event removed the first
+checkout, the Euler plan and detailed journal now make the operating contract
+explicit.  Repository files are user-owned: no maintenance, cleanup,
+reclamation, pruning, deletion, destructive reset, checkout-overwrite, stash,
+or equivalent worktree rewrite is permitted.  There is no `dev` host and it is
+never invoked or probed.  Lean and every related build or execution tool run
+locally, serially, with the pinned sysroot, `LEANRUN_LOCAL=1`, one Lean thread,
+the repository lock and priority controls, and explicit timeouts.  Each
+coherent checkpoint is committed, pushed, fetched, and verified by matching
+local and remote trees; `journal.md` is the detailed command and outcome
+ledger.
+
+The first 24-case aggregate build had timed out during a cold 3,719-job
+dependency graph without a theorem diagnostic.  Focused targets have since
+passed F64Dot, LebU32, ClobQuote, ClobCancel, and ClobFindBest.  A cold
+ClobPostOnly root timeout was divided at `Append`, after which its warmed root
+passed.  A cold ClobMatchFuel root timeout was divided further; `BookAlloc`,
+`BookReplaceFinish`, `PartialBookPrepare`, and `TradeAllocAppend` now pass.
+The full timings, job counts, warnings, and timeout classifications are in
+`journal.md`.  Higher-level MatchFuel chains remain to be warmed before its
+root can be retried.
