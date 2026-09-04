@@ -1451,3 +1451,29 @@ diagnostic; no source repair was required.  No `dev` host, cleanup, deletion,
 reset, stash, maintenance, or worktree rewrite was used.  All focused cases
 that were selected to recover the behavioral aggregate are now current.  The
 next and only aggregate action is one materially warmed `Project` retry.
+
+## 2026-09-04: warmed Talos aggregate passed
+
+The completed ClobDepth recovery ledger was published as
+`89d7cdd3a84923cb5461fc8bb7ae270c710f1ad1`; local and remote refs and tree
+`860a80140b6b392943d6773502131ba055b50af5` matched, with a clean tracked
+worktree, before the aggregate attempt.
+
+The one planned materially warmed aggregate command was then run under the
+same pinned, serialized, local-only envelope:
+
+```text
+tools/leanrun --timeout 15m lake -d proofs/talos/lean --no-ansi build Project
+Build completed successfully (3719 jobs).
+```
+
+The `Project` aggregate target itself took 3.4 seconds and the complete command
+took approximately 6.1 seconds wall time.  It replayed the warmed dependency
+closure and emitted only the repository's existing deprecation/linter
+warnings.  There was no theorem diagnostic, timeout, or source repair.  This
+resolves the earlier cold aggregate timeout at 3,442 of 3,719 jobs: it was a
+resource/cache-warming problem, not evidence of a failing theorem.
+
+No second aggregate retry was made.  No `dev` host, cleanup, deletion, reset,
+stash, maintenance, or worktree rewrite was used.  The existing TalosFP proof
+baseline is now demonstrated green immediately before Euler implementation.
