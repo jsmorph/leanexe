@@ -222,6 +222,7 @@ function main() {
   const mulThenAddWasm = compile("mulThenAddBits");
   const addMulWasm = compile("addMulBits");
   const dot2Wasm = compile("dot2CheckedBits");
+  const horner2Wasm = compile("horner2CheckedBits");
 
   for (const [left, right, expected] of [
     [0x3ff8000000000000n, 0x4002000000000000n, 0x400e000000000000n],
@@ -263,6 +264,28 @@ function main() {
       0n, 0n],
     [1n, 0n],
   );
+  expectSlots(
+    horner2Wasm,
+    "horner2CheckedBits",
+    [0x3fe0000000000000n, 0x3fe0000000000000n,
+      0x3fd0000000000000n, 0xbfe0000000000000n],
+    [0n, 0xbfd0000000000000n],
+  );
+  expectSlots(
+    horner2Wasm,
+    "horner2CheckedBits",
+    [0xbfe0000000000000n, 0x3fe0000000000000n,
+      0x3fe0000000000000n, 0x3fe0000000000000n],
+    [0n, 0x3fd8000000000000n],
+  );
+  for (const args of [
+    [0x3fe0000000000001n, 0n, 0n, 0n],
+    [0n, 0xbfe0000000000001n, 0n, 0n],
+    [0n, 0n, 0x7ff8000000000000n, 0n],
+    [0n, 0n, 0n, 0x7ff0000000000000n],
+  ]) {
+    expectSlots(horner2Wasm, "horner2CheckedBits", args, [1n, 0n]);
+  }
   expectBits(
     addMulWasm,
     "addMulBits",
@@ -285,12 +308,16 @@ function main() {
   const dot2Ir = dumpIr("dot2CheckedBits");
   expectOccurrences("dot2CheckedBits IR", dot2Ir, "f64AddBits", 1);
   expectOccurrences("dot2CheckedBits IR", dot2Ir, "f64MulBits", 2);
+  const horner2Ir = dumpIr("horner2CheckedBits");
+  expectOccurrences("horner2CheckedBits IR", horner2Ir, "f64AddBits", 2);
+  expectOccurrences("horner2CheckedBits IR", horner2Ir, "f64MulBits", 2);
   for (const [entry, ir] of [
     ["addBits", addIr],
     ["mulBits", mulIr],
     ["mulThenAddBits", nestedIr],
     ["addMulBits", rightNestedIr],
     ["dot2CheckedBits", dot2Ir],
+    ["horner2CheckedBits", horner2Ir],
   ]) {
     if (ir.includes("LeanExe.Float64.addBits") || ir.includes("LeanExe.Float64.mulBits")) {
       throw new Error(`${entry}: intrinsic call survived in the lowered IR`);
@@ -367,6 +394,11 @@ function main() {
   expectOccurrences("dot2CheckedBits WAT", dot2Wat, "f64.add", 1);
   expectOccurrences("dot2CheckedBits WAT", dot2Wat, "f64.reinterpret_i64", 6);
   expectOccurrences("dot2CheckedBits WAT", dot2Wat, "i64.reinterpret_f64", 3);
+  const horner2Wat = exportedFunctionBody(compileWat("horner2CheckedBits"), "horner2CheckedBits");
+  expectOccurrences("horner2CheckedBits WAT", horner2Wat, "f64.mul", 2);
+  expectOccurrences("horner2CheckedBits WAT", horner2Wat, "f64.add", 2);
+  expectOccurrences("horner2CheckedBits WAT", horner2Wat, "f64.reinterpret_i64", 8);
+  expectOccurrences("horner2CheckedBits WAT", horner2Wat, "i64.reinterpret_f64", 4);
 
   expectByteSequence("addBits", addWasm, [
     0x20, 0x00, 0xbf, 0x20, 0x01, 0xbf, 0xa0, 0xbd, 0x21, 0x02, 0x20, 0x02, 0x0b,
