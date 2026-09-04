@@ -2795,3 +2795,108 @@ passed the recorded project and two local LeanExe import roots, and a final
 `node tools/artifact-release.js inspect` reproduced the exact twenty-one-package,
 three-blocker draft above.  A targeted stale-wording search found no maintained
 claim that the current twenty-one-package artifact aggregate remains pending.
+
+## 2026-09-04: conservative Jacobian implementation checkpoint
+
+Work resumed from published commit
+`c0c9627ec8ac3985ea357440e79b3de101f32f72`, whose complete tree is
+`029a0a06742bfc724d0cdb8b43a6c4b3ce991953`.  A status inspection showed that
+the branch and its GitHub tracking ref were aligned and the only worktree
+changes were the three new, initially untracked Euler theorem modules described
+below.  No cleanup, deletion, cache invalidation, stash, destructive reset,
+checkout overwrite, worktree rewrite, remote-host probe, or parallel Lean job
+was performed.  A process-list check inherited the already documented
+Lean-specific `/proc` compatibility preload and returned `fatal library error,
+lookup self`; it was not retried.  This diagnostic made no mutation and did not
+contact any host.
+
+All compiler invocations in this checkpoint used one serialized local process
+and the exact standing envelope:
+
+```sh
+env LEANRUN_LOCAL=1 \
+  LEAN_SYSROOT=/root/.elan/toolchains/leanprover--lean4---v4.34.0-rc2 \
+  LD_PRELOAD=/tmp/leanexe-proc-self-readlink.so \
+  LEAN_NUM_THREADS=1 \
+  WASM_TOOLS=/workspace/scratch/9df984ece5a1/leanexe/build/tools/wasm-tools-1.251.0-x86_64-linux/wasm-tools \
+  tools/leanrun --timeout 15m lake -d proofs/talos/lean --no-ansi build TARGET
+```
+
+`RealConservative.lean` introduces the independent exact-real conservative
+state `Vec3 = Fin 3 -> Real`, density, momentum, total energy, velocity,
+internal energy, pressure, specific enthalpy, squared sound speed, the
+primitive-to-conservative map, and the expanded conservative Euler flux for
+`gamma = 7/5`.  It proves coordinate bridges to the existing independent
+primitive `Model`, exact pressure and flux identities, the open admissible set,
+and the enthalpy/sound-speed relation used by the eigensystem.  The first
+focused build passed in 5.8 seconds over 3,059 jobs but reported two local
+linter findings: a density-nonzero argument was unnecessary for the internal
+energy identity, and a trailing `ring` after the flux-vector `simp` was
+unreachable.  The identity was strengthened by removing the unnecessary
+hypothesis from both internal-energy and pressure bridge theorems, and the
+unreachable tactic was removed.
+
+The first rebuild after that strengthening exited nonzero because one caller in
+`primitiveToConservative_admissible` still supplied the removed argument:
+
+```text
+Project/EulerRusanov/RealConservative.lean:206:8:
+Function expected at pressure_primitiveToConservative q
+```
+
+That exact call site was corrected.  The next focused build passed in 5.8
+seconds over 3,059 jobs with no local source warning.  The failed build deleted
+nothing and its completed cache state was retained.
+
+`RealMatrices.lean` introduces the displayed three-by-three conservative flux
+Jacobian in coordinates `(rho,m,E)`, the denominator-free reduced matrix in
+terms of velocity `u` and specific total enthalpy `H`, and proves their equality
+when density is nonzero.  Its first focused local build passed in 7.1 seconds
+over 3,060 jobs.
+
+`RealJacobian.lean` gives the matrix a semantic calculus meaning.  It turns the
+matrix into a continuous linear map, constructs the three component
+derivatives from coordinate, reciprocal, product, and power rules, proves the
+row map equals matrix multiplication, and exports:
+
+- `hasFDerivAt_conservativeFlux`;
+- `fderiv_conservativeFlux`;
+- `fderiv_conservativeFlux_apply`.
+
+The first derivative build populated previously uncached Mathlib calculus and
+analytic dependencies for about five minutes, then exited with two parser
+errors at the scoped matrix-vector notation and two local linter observations
+in the row-map simplification.  The completed dependency objects were
+preserved.  Adding `open scoped Matrix`, removing the unused
+`Matrix.mulVecLin_apply` simplifier, and removing the unreachable `ring` were
+the complete repair.  The warm rerun passed in 7.6 seconds over 3,146 jobs.
+
+Explicit `#print axioms` audits were then added for the central bridge,
+admissibility, thermodynamic, reduced-matrix, derivative, and derivative-action
+theorems.  A final serialized build of the derivative target passed in 14.8
+seconds over 3,146 jobs.  Each audited theorem depends only on Lean's expected
+logical infrastructure `propext`, `Classical.choice`, and `Quot.sound`; no
+project axiom, `sorry`, or `admit` appears in the checkpoint.
+
+The checkpoint intentionally proves the Jacobian of the exact conservative
+flux, rather than differentiating the existing primitive-coordinate helper or
+using native/C output as proof.  It changes no WAT, WASM, artifact bytes,
+release manifest, dependency pin, or generated evidence.  Adding these project
+sources changes the aggregate release-input digest, so the previously passing
+aggregate receipt must not be represented as current after this commit; the
+release record will be refreshed before publication and will honestly restore
+the aggregate-proof blocker for the new source tree.
+
+The release record was then refreshed locally.  Its new release-input SHA-256
+is `fd356f40d91ab595660cc307745e0e2f7f390ced16f43ead9bf5cc9140525104`.
+Inspection reports twenty-one packages and exactly four blockers: immutable
+source revision, aggregate artifact proof for this new input, semantic
+conformance, and the cold-checkout gate.  This is the expected honest
+transition from the prior three-blocker record; no old receipt was reused for
+the changed source digest.
+
+Pre-publication checks passed: `git diff --check`; the 90-file maintained
+documentation check; release identity, receipt, pin, result, and blocker tests;
+the recorded kernel-scope audit; and final release inspection reproducing the
+twenty-one-package, four-blocker draft.  A targeted scan of the three new
+modules found no `sorry`, `admit`, or axiom declaration.
