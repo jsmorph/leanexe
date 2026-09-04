@@ -347,7 +347,7 @@ Every checked row ends in a passing commit, an update to this plan and
 - [x] Prove the pure IEEE64 finite-result and componentwise real-error contract.
 - [x] Prove exact, fuel-independent execution of every accepted and rejected
       path in the current generated WAT.
-- [ ] Transfer the numerical contract to generated-WAT execution and audit its
+- [x] Transfer the numerical contract to generated-WAT execution and audit its
       axioms.
 - [ ] Freeze the generated WAT, register its exact binary artifact, and prove
       decoded/validated/translated module identity.
