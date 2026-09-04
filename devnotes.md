@@ -8204,3 +8204,8 @@ and is covered by the no-JavaScript-WASM policy test.  Focused syntax, data,
 Talos, Euler Spec, and full 3,748-job `Project` aggregate gates passed locally.
 Detailed row identities, proof boundaries, commands, timings, and the
 pre-commit direct-JavaScript design correction are in `journal.md`.
+
+The verified dataset checkpoint is published as
+`847d780fed9d2b89cf670eb18b0893e54c861212`; local and remote trees both equal
+`4107838828a0c75d3f24082e4040980bda52d48c`.  Publication was a non-forced
+fast-forward, and the worktree was clean after local-ref alignment.
