@@ -3884,3 +3884,32 @@ successfully uploaded staged `devnotes.md` as
 when this correction was appended and remains only an unreferenced Git object.
 No plan blob, tree, commit, branch update, filesystem mutation, or deletion
 occurred in that attempt.
+
+### Publication of the canonical operating-notes checkpoint
+
+With `iflag=fullblock` in place, every 3,072-byte plan interval had its exact
+expected base64 length.  GitHub returned the staged local blob identities for
+the current journal (`e00e268da13712be8647b0c418d5a057728bd4dc`), root plan
+(`83a524719bdf231d4855fba3d6b712d6349db495`), and detailed Euler plan
+(`91c123e806822c7ceb43479a246e7d9452220d9a`).  Those joined the already exact
+devnotes (`5ceabf8062674de4e435afb996cf55be41d8279d`) and operating-contract
+(`e02f1b3fd5f8d7aeeb18f4710f528d478a5ad9dd`) blobs.
+
+The five explicitly staged paths formed local tree
+`2064098493bc9ab61db089dbb114207ae06423dc`.  GitHub created the same tree from
+remote-parent tree `3a6282eb1c6fd4ffc1c0357c59aef9d711ef4577`, then created
+commit `8ca721c351cd0847f1694b67205492ea5898548f`, message
+`Consolidate TalosFP Euler operating notes`, with sole parent
+`4a36794f9ca4fee9a4539d8c8c814ca680d07969`.  A final parent-race check still
+found the remote branch at that parent, and `refs/heads/talosfp-euler` accepted
+the new commit with `force: false`.
+
+The commit was fetched through the ordinary Git read path.  Its SHA, parent,
+message, and tree matched the requested values; the tracking ref named the same
+commit; the fetched tree and local index were both
+`2064098493bc9ab61db089dbb114207ae06423dc`; and both index-versus-fetch and
+worktree-versus-index comparisons were clean.  Only then did compare-and-swap
+`git update-ref` move the local branch from `4a36794` to `8ca721c`.  Final
+status was clean and local `HEAD` equaled `origin/talosfp-euler`.  No checkout,
+reset, merge, stash, cleanup, file replacement, cache invalidation, temporary
+path removal, or worktree rewrite was used.
