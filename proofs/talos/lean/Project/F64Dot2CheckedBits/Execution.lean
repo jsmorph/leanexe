@@ -135,7 +135,7 @@ theorem func0_exact
     apply wp_iff_typed_cons <;> try rfl
     by_cases hguard :
         Bounds.f64AbsBits bits ≤ (0x3FE0000000000000 : UInt64)
-    · rw [if_pos (by simpa [Bounds.f64AbsBits] using hguard)]
+    · rw [if_pos (by simpa [Project.ProofKit.F64Bounds.f64AbsBits] using hguard)]
       wp_run
       simp [Project.F64Dot2CheckedBits.func0Def, guardResultModel, hguard]
     · rw [if_neg (by
@@ -148,7 +148,7 @@ theorem func0_exact
         have hlt :
             (0x3FE0000000000000 : UInt64) < Bounds.f64AbsBits bits :=
           UInt64.lt_iff_toNat_lt.mpr hnat
-        simpa [Bounds.f64AbsBits] using hlt)]
+        simpa [Project.ProofKit.F64Bounds.f64AbsBits] using hlt)]
       wp_run
       simp [Project.F64Dot2CheckedBits.func0Def, guardResultModel, hguard]
 
@@ -243,7 +243,8 @@ theorem dot2CheckedBits_exact :
             wp_run
             simp [Project.F64Dot2CheckedBits.func1Def,
               dot2ResultBitsModel, dot2StatusModel, dot2Guard,
-              Bounds.boundedByHalfBits, dot2BitsModel, Wasm.f64Mul,
+              Project.ProofKit.F64Bounds.boundedByHalfBits,
+              dot2BitsModel, Wasm.f64Mul,
               Wasm.f64Add, ha₀, hb₀, ha₁, hb₁]
           · rw [if_neg (by simp [guardResultModel, hb₁])]
             wp_run
@@ -255,7 +256,7 @@ theorem dot2CheckedBits_exact :
             wp_run
             simp [Project.F64Dot2CheckedBits.func1Def,
               dot2ResultBitsModel, dot2StatusModel, dot2Guard,
-              Bounds.boundedByHalfBits, hb₁]
+              Project.ProofKit.F64Bounds.boundedByHalfBits, hb₁]
         · rw [if_neg (by simp [guardResultModel, ha₁])]
           wp_run
           refine wp_iff_typed_cons rfl ?_
@@ -269,7 +270,7 @@ theorem dot2CheckedBits_exact :
           wp_run
           simp [Project.F64Dot2CheckedBits.func1Def,
             dot2ResultBitsModel, dot2StatusModel, dot2Guard,
-            Bounds.boundedByHalfBits, ha₁]
+            Project.ProofKit.F64Bounds.boundedByHalfBits, ha₁]
       · rw [if_neg (by simp [guardResultModel, hb₀])]
         wp_run
         refine wp_iff_typed_cons rfl ?_
@@ -286,7 +287,7 @@ theorem dot2CheckedBits_exact :
         wp_run
         simp [Project.F64Dot2CheckedBits.func1Def,
           dot2ResultBitsModel, dot2StatusModel, dot2Guard,
-          Bounds.boundedByHalfBits, hb₀]
+          Project.ProofKit.F64Bounds.boundedByHalfBits, hb₀]
     · rw [if_neg (by simp [guardResultModel, ha₀])]
       wp_run
       refine wp_iff_typed_cons rfl ?_
@@ -306,7 +307,7 @@ theorem dot2CheckedBits_exact :
       wp_run
       simp [Project.F64Dot2CheckedBits.func1Def,
         dot2ResultBitsModel, dot2StatusModel, dot2Guard,
-        Bounds.boundedByHalfBits, ha₀]
+        Project.ProofKit.F64Bounds.boundedByHalfBits, ha₀]
 
 /-- The decoded compiler-generated WAT has exactly the source contract on all
 inputs, independently of interpreter fuel. -/
