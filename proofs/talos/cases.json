@@ -235,7 +235,7 @@
         "Project.F64Horner2CheckedBits.Spec.horner2CheckedBits_source_real_error",
         "Project.F64Horner2CheckedBits.Spec.horner2CheckedBits_wat_real_error"
       ],
-      "complete": false
+      "complete": true
     }
   ]
 }

@@ -280,7 +280,7 @@ theorems.
 Every checked row ends in a passing commit, an update to this plan and
 `devnotes.md`, and a push to `origin/talosfp-euler`.
 
-- [ ] Complete the phase-7 guarded quadratic Horner source, WAT, and numerical
+- [x] Complete the phase-7 guarded quadratic Horner source, WAT, and numerical
       theorem checkpoint.
 - [ ] Add the guarded scalar Euler source entry, ABI, extraction/IR/WAT checks,
       and Wasmtime regression cases.
