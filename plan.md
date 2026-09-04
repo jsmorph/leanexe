@@ -1,6 +1,6 @@
 # Development Plan
 
-This file is the only active project work queue.  The compiler, execution suite, twenty-six completed source-driven Talos proofs, twenty-one exact-artifact packages, annotation generator, ProofKit, structured LTG, and twelve demonstrations already exist.  The newly completed fixed Euler-step source proof still needs its separate exact-byte package and verified data publication.  Detailed plans under `plans/` support unfinished items listed here and do not define separate priorities.
+This file is the only active project work queue.  The compiler, execution suite, twenty-six completed source-driven Talos proofs, twenty-one exact-artifact packages, annotation generator, ProofKit, structured LTG, and twelve demonstrations already exist.  The fixed Euler-step source proof and decoded-real numerical certificate are complete; the step still needs its separate exact-byte package and verified data publication.  Detailed plans under `plans/` support unfinished items listed here and do not define separate priorities.
 
 ## 1. Reconcile current documentation and release evidence
 
@@ -12,7 +12,7 @@ revision `0e0d752904fc90dee3ef3511ffab91f3d358c1ed`, and successful receipts dat
 2026-08-26.  The current draft release record identifies the Lean 4.34.0-rc2 and
 Talos `87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47` inputs.  After the fixed-step
 proof, its current release-input digest is
-`de4761fc0d3b129d99dfdb239f0cec042df3962fbbf5de133c8ef11592fb1717`.
+`dfad5b82317c9ca0a67e6692ecb872457e6d6406cd9d6bad90e1333a29c1ec11`.
 The preceding 2026-09-04 aggregate artifact receipt is historical for an older
 input identity; aggregate artifact proof, semantic conformance, immutable
 source revision, and cold checkout are the four current blockers.  Cold
@@ -30,7 +30,7 @@ verification remains deferred and does not form part of the current work.
 - [x] Record the prior twenty-one-package aggregate artifact receipt under its
       exact FP `87e3aa5` input identity.
 - [ ] Record a matching aggregate artifact receipt for the final current input
-      after the fixed-step numerical, exact-byte, and data checkpoints settle.
+      after the remaining fixed-step exact-byte and data checkpoints settle.
 - [ ] Complete current semantic conformance, then record its receipt and an
       immutable source revision.
 - [ ] Resume conformance from the preserved local cache.  A command-line target
@@ -224,11 +224,25 @@ acceptance gates, and nonclaims.
       runtime helpers, and check its exact Wasmtime/WAT operation shape.
 - [x] Prove exact generated-WAT execution of the fixed step by composing all
       three flux calls and six update calls through the generated status gate.
-- [ ] Transfer the executed words to decoded-real admissibility and balance
-      bounds for the actual rounded fixed-step output.
+- [x] Transfer the executed words to decoded-real admissibility and exact
+      signed cell and balance errors for the actual rounded fixed-step output.
 - [ ] Freeze the proved step bytes and publish the verified raw state data.
 - [ ] Extend the checked FP profile and implement the guarded 100-cell Sod
       runner only after the fixed artifact passes.
+
+For `epsilon = 2^-52`, the public generated-WAT theorem
+`sodQuarterStepCheckedBits_wat_real` now certifies status zero and six finite
+decoded outputs: left `[207/256, 9/80 - epsilon/20, 257/128]` and right
+`[81/256, 9/80 + 3*epsilon/40, 95/128]`.  Both cells are admissible.  Their
+signed errors against the decoded-input exact stencil are respectively
+`[0, -3*epsilon/64, -7*epsilon/512]` and
+`[0, 5*epsilon/64, -25*epsilon/512]`, while the physical mass, momentum, and
+energy balance error is `[0, epsilon/32, -epsilon/16]`.  This is a certificate
+for the one fixed Sod quarter step, not a general stability, invariant-domain,
+or convergence result.  Source status remains twenty-six registered cases,
+twenty-six complete cases, and twenty-six generated `Program.lean` caches; the
+exact-artifact registry remains at twenty-one packages until the step bytes are
+frozen.
 
 The accepted claim concerns exact IEEE-754 execution and explicit safety and
 roundoff properties.  PDE convergence, entropy-solution correctness,

@@ -256,7 +256,8 @@
       "leanModule": "EulerRusanovStep",
       "specTarget": "Project.EulerRusanovStep.Spec",
       "behaviorTheorems": [
-        "Project.EulerRusanovStep.Spec.sodQuarterStepCheckedBits_exact"
+        "Project.EulerRusanovStep.Spec.sodQuarterStepCheckedBits_exact",
+        "Project.EulerRusanovStep.Spec.sodQuarterStepCheckedBits_wat_real"
       ],
       "complete": true
     }

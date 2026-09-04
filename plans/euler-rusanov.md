@@ -353,8 +353,8 @@ alpha        7/4
 dt / dx      1/4
 ```
 
-The future artifact theorem interprets `binary64(1/10)` as the exact dyadic
-encoded by the input word; it never silently replaces that value by the
+The future exact-byte artifact theorem interprets `binary64(1/10)` as the exact
+dyadic encoded by the input word; it never silently replaces that value by the
 rational `1/10`.  The exact-real reference stencil deliberately uses rational
 `1/10`.  `StencilNumerical` now proves the separate bridge: the encoded value
 is exactly `1/10 + 1/180143985094819840`, and that representation bias remains
@@ -417,11 +417,10 @@ against the dyadic-input stencil are momentum `+epsilon/32` and energy
 `-epsilon/16`.  The publishable conservation certificate is therefore the
 Lean theorem over decoded reals, never the zero residual bits alone.
 
-Compiler lowering already supports repeated direct calls, multi-result calls,
-and seven result slots.  The medium-risk proof task is to expose the existing
-call-free Rusanov execution theorem in a module/function-index-parametric form
-so both the current scalar artifact and the embedded helper can instantiate
-it without duplicating the 335-instruction proof.
+Compiler lowering supports repeated direct calls, multi-result calls, and
+seven result slots.  The call-free Rusanov execution theorem is now exposed in
+a module/function-index-parametric form, so both the scalar artifact and the
+embedded helper instantiate it without duplicating the 335-instruction proof.
 
 The source-driven fixed-step checkpoint is complete.  The source, no-argument
 ABI, three flux calls, six update calls, generated `Program.lean`, runtime
@@ -433,6 +432,24 @@ termination, complete store preservation, and the seven pure-model words.  The
 registry marks all twenty-six cases complete, the `Project` aggregate imports
 the step specification, and the full source-driven gate passes.  No exact-byte
 step package or publishable raw step data is claimed at this checkpoint.
+
+The decoded-real transfer for those executed words is also complete.  Write
+`epsilon = 2^-52`.  The public theorem
+`sodQuarterStepCheckedBits_wat_real` certifies status zero, finiteness of all
+six numeric payload words, and decoded cells
+`[207/256, 9/80 - epsilon/20, 257/128]` and
+`[81/256, 9/80 + 3*epsilon/40, 95/128]`.  Both cells are admissible: they have
+positive density and pressure/internal energy.  Their exact signed errors
+against the decoded-input reference stencil are
+`[0, -3*epsilon/64, -7*epsilon/512]` on the left and
+`[0, 5*epsilon/64, -25*epsilon/512]` on the right.  The physical balance error
+is `[0, epsilon/32, -epsilon/16]`, so the separately rounded zero residual words
+are not used as exact-real conservation evidence.  This certificate concerns
+only the selected fixed Sod quarter step; it establishes no general stability,
+invariant-domain, convergence, or entropy-solution theorem.  Source status
+remains twenty-six registered cases, twenty-six complete cases, and twenty-six
+generated `Program.lean` caches.  Exact-artifact status remains twenty-one
+packages until this step receives its frozen-byte proof.
 
 ## Follow-on full shock-tube generator
 
@@ -500,8 +517,9 @@ Every checked row ends in a passing commit, an update to this plan,
       runtime helpers, and check its exact Wasmtime/WAT operation shape.
 - [x] Prove exact generated-WAT execution of the fixed step by composing all
       three flux calls and six update calls through the generated status gate.
-- [ ] Transfer the executed words to the decoded-real admissibility and balance
-      bounds already proved for the assembled fixed step.
+- [x] Transfer the executed words to decoded-real admissibility and exact
+      signed cell and balance errors through the public
+      `sodQuarterStepCheckedBits_wat_real` theorem.
 - [ ] Freeze the proved step bytes and publish the verified raw state data.
 - [ ] Add host CSV/plot presentation and independent numerical comparisons.
 - [ ] Extend subtraction, division, square root, classification, and safe
@@ -595,11 +613,10 @@ an exact-artifact theorem is claimed.
 
 The guarded scalar kernel, its real-domain and generated-WAT proofs, and the
 first f64 exact-byte package are complete.  Fixed-step compilation, pure-model
-evaluation, runtime pinning, and Wasmtime/WAT regression are also complete.
-The remaining medium-risk work is composition of three exact embedded flux
-calls and six straight-line update calls in the generated-WAT theorem,
-followed by exact-byte closure and raw-data publication.  No missing compiler
-or floating-point semantic feature blocks that work.
+evaluation, runtime pinning, generated-WAT composition, decoded-real transfer,
+and Wasmtime/WAT regression are also complete.  The remaining fixed-step work
+is exact-byte closure and raw-data publication.  No missing compiler or
+floating-point semantic feature blocks that work.
 
 The full checked grid step is a larger but compatible extension.  Its main cost
 is proof structure for two array buffers, boundary conditions, nested loops,
