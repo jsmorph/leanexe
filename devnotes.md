@@ -8658,3 +8658,22 @@ current digest is
 `de4761fc0d3b129d99dfdb239f0cec042df3962fbbf5de133c8ef11592fb1717`
 with the same four blockers.  Remaining current-facing references now label the
 older `bbc645...` aggregate receipt historical rather than current.
+
+## 2026-09-04: fixed Euler-step publication receipt
+
+The reviewed 21-path checkpoint was explicitly staged with no blanket add and
+no unstaged remainder.  Local tree
+`ef132bf74241ae6fbb7547af4e4ea92e8dfcb93e` was reproduced exactly through
+GitHub's Git-data API: all blobs matched their index SHAs, the commit has sole
+parent `021a890559c64ffea3e208b6a756929b1fbeb79f`, and the branch update was
+non-forcing.  Fetch-side verification checked parent, message, tree, index, and
+worktree before the local compare-and-swap ref move.  The published checkpoint
+is `889560e9528302e2a98ab6c6716f9bbc77305f2c`, `Prove exact fixed Euler step
+execution`; final status was clean and synchronized.
+
+One parallel verification attempt saw a transient Git index lock.  Nothing was
+deleted or repaired: status remained exact and a sequential tree write passed.
+All work was local, with no `dev` probe and no cleanup, maintenance, deletion,
+move, truncation, reset, checkout, stash, or invalidation of pre-existing
+workspace state.  This is the checkpoint's sole finite receipt follow-on; its
+own resulting commit SHA is reported externally after publication.
