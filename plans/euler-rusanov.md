@@ -423,15 +423,16 @@ call-free Rusanov execution theorem in a module/function-index-parametric form
 so both the current scalar artifact and the embedded helper can instantiate
 it without duplicating the 335-instruction proof.
 
-The first implementation checkpoint now exists but remains deliberately
-incomplete.  The source, no-argument ABI, three flux calls, six update calls,
-generated `Program.lean`, runtime pins, and regression test are present.  The
-pure `Wasm.IEEE64` model proves the seven expected output words, while
-`Project.EulerRusanovStep.Spec.ExactSpecFor` fixes the future total execution
-contract at generated function index 6.  The registry entry remains
-`complete: false`, and the completed `Project` aggregate does not import that
-Spec until `sodQuarterStepCheckedBits_exact` is proved.  No exact-byte package
-or publishable raw step data is claimed at this intermediate checkpoint.
+The source-driven fixed-step checkpoint is complete.  The source, no-argument
+ABI, three flux calls, six update calls, generated `Program.lean`, runtime
+pins, regression test, and pure `Wasm.IEEE64` model are present.  The scalar
+flux theorem is module-polymorphic, the update helper is proved for arbitrary
+raw words, and `sodQuarterStepCheckedBits_exact` composes all nine calls through
+the actual generated function-6 status gate.  It proves fuel-independent
+termination, complete store preservation, and the seven pure-model words.  The
+registry marks all twenty-six cases complete, the `Project` aggregate imports
+the step specification, and the full source-driven gate passes.  No exact-byte
+step package or publishable raw step data is claimed at this checkpoint.
 
 ## Follow-on full shock-tube generator
 
@@ -497,8 +498,10 @@ Every checked row ends in a passing commit, an update to this plan,
 - [x] Compile and register the fixed seven-word Sod step, generate its Talos
       cache and pure IEEE64 model, prove the fixed model output, pin its
       runtime helpers, and check its exact Wasmtime/WAT operation shape.
-- [ ] Prove exact generated-WAT execution of the fixed step and transfer its
-      decoded-real admissibility and balance bounds.
+- [x] Prove exact generated-WAT execution of the fixed step by composing all
+      three flux calls and six update calls through the generated status gate.
+- [ ] Transfer the executed words to the decoded-real admissibility and balance
+      bounds already proved for the assembled fixed step.
 - [ ] Freeze the proved step bytes and publish the verified raw state data.
 - [ ] Add host CSV/plot presentation and independent numerical comparisons.
 - [ ] Extend subtraction, division, square root, classification, and safe
