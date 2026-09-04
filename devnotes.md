@@ -8247,3 +8247,47 @@ The planned Jacobian checkpoint is explicitly conservative-coordinate work:
 differentiate independent `F(rho,m,E)` for `rho != 0`, bridge it to primitive
 states, and prove `A * R = R * Lambda` plus `det R != 0`.  Eigenvector `H` is
 specific total enthalpy `(E+p)/rho`, not the existing rounded density `E+p`.
+
+## 2026-09-04: FP artifact pin and operational checkpoint
+
+The standing operating contract is explicit and durable.  The entire active
+checkout, including `.git`, tracked, untracked, generated, ignored, dependency,
+cache, and build state, is persistent user-owned data.  No maintenance,
+cleanup, reclamation, pruning, deletion, `git clean`, destructive reset,
+checkout overwrite, stash, cache invalidation, or worktree rewrite is
+authorized.  There is no `dev` host and it is never invoked or probed.  All
+Lean/Lake/compiler/Node/C/Wasmtime work runs locally; direct Lean is authorized
+but globally serialized to one process with the pinned Lean 4.34.0-rc2 sysroot,
+`LEANRUN_LOCAL=1`, `LEAN_NUM_THREADS=1`, explicit timeouts, and the local
+`/proc/self/exe` compatibility preload.  No-diagnostic timeouts are censored
+timings, not theorem results.  `journal.md` retains the complete command and
+outcome ledger, this file retains concise durable notes, and both are committed
+and pushed at each coherent checkpoint.  Publication uses a non-forced GitHub
+Git-data fast-forward and requires complete local/remote tree equality without
+rewriting the worktree.
+
+Registering Euler exposed stale verifier metadata in the twenty legacy exact
+packages.  Each legacy manifest changes only Talos
+`fda69ca67a81ea4f1fa4e376bdc5861d9fe5479a` to
+`87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47` and verifier-source SHA-256
+`2b59dec86b72be48a2bb63b5fc1efabbf2e61397a7042907823d0a4e6d5fcb01`
+to `bf03d3f47fb11563c947224601a21afa95c62fc88df81f493de821e69de9d1e7`.
+Euler's manifest and every WAT/WASM byte remain unchanged; all twenty-one WASM
+hashes equal their content-addressed directory names.  The bulk migration tool
+was not run.  The actual inventory is twenty-five source cases and tracked
+`Program.lean` caches versus twenty-one frozen packages.
+
+The regenerated release draft binds release-input SHA-256
+`bbc645be04edcae73d6d36958a01b85bfa0a24f7660fc0ccb801ac6e133711a3`,
+artifact-registry SHA-256
+`3bcc91129e242bf7ed0576ba3c9f8c15f2b715ff4e251d93d04fd2b452031bec`,
+and conformance-config SHA-256
+`b96c3386c340a6bd55762bcee3a077deda03a7dced2cbe3bc62440a6b9a93d16`.
+Before current receipts it has four blockers: source revision, aggregate
+artifact proof, conformance, and cold checkout.  The migrated GCD exact gate,
+artifact identity/migration/conformance/release driver tests, documentation
+checker, and diff checker pass.  A replacement 21-package aggregate is running
+as the sole local Lean-family process after an earlier run was superseded only
+because a final release-input edit made its eventual receipt stale; no proof
+failure occurred.  The detailed manifest digest table, command chronology,
+audit corrections, and process status are in `journal.md`.

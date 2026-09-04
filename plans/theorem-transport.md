@@ -1,6 +1,6 @@
 # Source-Theorem Transport Plan
 
-**Status:** Deferred.  Exact-artifact decoding, validation, translation, and behavioral proof are implemented for twenty artifacts.  The current project plan first tests smaller compiler-theorem-directed regions before committing to this general refinement boundary.
+**Status:** Deferred.  Exact-artifact decoding, validation, translation, and behavioral proof are implemented for twenty-one artifacts.  The current project plan first tests smaller compiler-theorem-directed regions before committing to this general refinement boundary.
 
 ## Goal
 
@@ -193,7 +193,7 @@ The manifest should record the source module, declaration, theorem, ABI profile,
 | 10. Multi-argument extension | Generalize scalar tuples and transport the existing `gcd` source theorem to its exact artifact. | The `gcd` package uses the same back-end and transport theorems with no handwritten instruction proof. | Phase 9 |
 | 11. Aggregate gate | Register transport packages, check manifests, and run the source, IR, artifact, equality, refinement, and transported theorem targets serially. | A clean checkout reproduces every registered theorem under the repository resource policy. | Artifact plan phase 7 and phase 10 |
 
-The artifact plan now supplies exact-byte identity, sound decoding, sound validation, Talos translation, and an aggregate checker for all twenty registered binaries.  Phases 0 through 6 of this plan may start without further artifact-verifier work, while Phase 7 can use the completed artifact boundary directly.  The first end-to-end transport claim still requires the source certificate and verified scalar-lowering lines to meet at full-module equality.
+The artifact plan now supplies exact-byte identity, sound decoding, sound validation, Talos translation, and an aggregate checker for all twenty-one registered binaries.  The refreshed twenty-one-package aggregate result remains pending.  Phases 0 through 6 of this plan may start without further artifact-verifier work, while Phase 7 can use the implemented artifact boundary directly.  The first end-to-end transport claim still requires the source certificate and verified scalar-lowering lines to meet at full-module equality.
 
 ## Pilot Sequence
 

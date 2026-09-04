@@ -57,7 +57,7 @@
       "feature": "global.get and global.set",
       "officialFile": "global.wast",
       "reason": "The official file combines local globals with imported spectest globals and a later table form, so its failures do not isolate the no-import artifact profile.",
-      "otherEvidence": "All twenty exact artifact translations and their differential execution tests cover the compiler's mutable scalar runtime globals."
+      "otherEvidence": "All twenty-one exact artifact translations and their differential execution tests cover the compiler's mutable scalar runtime globals."
     }
   ],
   "validatorCases": [

@@ -1,16 +1,16 @@
 # Development Status
 
-This report describes the repository state on 2026-09-04.  The source-driven registry contains twenty-four completed Talos cases, while the separate historical exact-artifact registry contains twenty frozen packages.  The demonstration index contains eleven current array-interface programs and the original scalar example.  The root [Development Plan](../plan.md) owns remaining work, while repository tools and registries own changing counts and release identities.
+This report describes the repository state on 2026-09-04.  The source-driven registry contains twenty-five completed Talos cases, while the separate exact-artifact registry contains twenty-one frozen packages.  The source-driven proof tree tracks one untrusted `Program.lean` execution cache for each of its twenty-five cases.  The demonstration index contains eleven current array-interface programs and the original scalar example.  The root [Development Plan](../plan.md) owns remaining work, while repository tools and registries own changing counts and release identities.
 
 ## Current capabilities
 
 | Boundary | Current evidence |
 |----------|------------------|
 | Source compilation | LeanExe loads checked Lean declarations, accepts the subset in the [language specification](spec.md), and emits standalone WASM or one of the bounded WASI adapters. |
-| Self-hosted binary emission | The experimental image path can freeze lowered modules and invoke the pure emitter compiled into WebAssembly.  Its retained Wasmtime Stage 1 and Stage 2 receipt reproduces the complete emitter artifact and all twenty registered compiler artifacts byte for byte.  Production compilation uses the direct native serializer, and self-hosting is not an aggregate gate. |
+| Self-hosted binary emission | The experimental image path can freeze lowered modules and invoke the pure emitter compiled into WebAssembly.  Its retained Wasmtime Stage 1 and Stage 2 receipt reproduces the complete emitter artifact and all twenty compiler artifacts registered when that receipt was recorded, byte for byte.  Production compilation uses the direct native serializer, and self-hosting is not an aggregate gate. |
 | Execution | The execution suite compares accepted programs with ordinary Lean or the IR evaluator where those references apply, and runs generated modules with Wasmtime. |
-| Source-driven proofs | `proofs/talos/cases.json` registers twenty-four completed cases.  The four added floating-point entries culminate in guarded quadratic Horner with source, generated-WAT, big-step, and explicit small-step numerical theorems.  Its focused gate passed on 2026-09-04; the refreshed twenty-four-case aggregate is pending. |
-| Exact-artifact proofs | `proofs/artifacts/registry.json` registers twenty frozen WASM packages.  Each package embeds exact bytes, decodes and validates them, proves translation equality with its Talos execution module, and connects that module to a behavioral theorem. |
+| Source-driven proofs | `proofs/talos/cases.json` registers twenty-five completed cases and the proof tree tracks twenty-five corresponding `Program.lean` caches.  The five floating-point entries culminate in the guarded Euler Rusanov flux, with source, generated-WAT, big-step, explicit small-step, and numerical theorems at the applicable layers.  Euler's focused gate passed on 2026-09-04; the refreshed twenty-five-case aggregate is pending. |
+| Exact-artifact proofs | `proofs/artifacts/registry.json` registers twenty-one frozen WASM packages.  Each package embeds exact bytes, decodes and validates them, proves translation equality with its Talos execution module, and connects that module to a behavioral theorem.  Euler is the first registered exact artifact to use the restricted binary64 profile. |
 | Artifact decoder | Checked decoder soundness connects successful complete-file decoding to an independent declarative grammar for the accepted Core 3.0 binary profile. |
 | Artifact validator | Checked validator soundness connects accepted modules to the independent `CoreValid` judgment for the supported sections and instructions. |
 | Proof generation | `leanexegen` generates a specification, source program, WASM artifact, annotations, and direct artifact proof for a fixed `Array UInt64 -> Array UInt64` interface.  Demo 12 independently verifies a bounded first-zero search whose found branch allocates and copies an array with one element removed. |
@@ -23,8 +23,8 @@ The [Talos proof inventory](../proofs/talos/README.md) names each source-driven 
 ## Release state
 
 The proof workspace and `proofs/artifacts/release.json` now record exact Lean
-4.34.0-rc2, pre-floating-point Talos revision
-`fda69ca67a81ea4f1fa4e376bdc5861d9fe5479a`, and the migrated release-input
+4.34.0-rc2, Talos revision
+`87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47`, and the migrated release-input
 identity.  The release record remains a draft: its aggregate artifact-proof and
 semantic-conformance receipts are pending, and `sourceRevision` is still null.
 The successful 2026-08-26 receipts remain historical evidence for their earlier
@@ -51,11 +51,11 @@ aggregate proof receipts are nevertheless still pending.
 |------|---------------|
 | Source language | Programs must remain in the pure, monomorphic, first-order subset.  Public ABI values exclude recursive inductives and function values. |
 | Arithmetic | `UInt64` follows wrapping arithmetic.  `Nat` is bounded by the compiler's runtime representation where it crosses executable code. |
-| Floating point | Talos can execute `f64` instructions through native `Float`, but the exact-artifact profile and LeanExe source subset do not admit proof-grade floating-point programs.  The deferred [Proof-Grade `f64` Artifact Semantics](../plans/f64-artifact-semantics.md) plan defines the required binary64 semantics, artifact checks, and numerical-refinement layer. |
+| Floating point | Selected `UInt64` bit-pattern intrinsics lower to `f64.add`, `f64.mul`, and the two i64/f64 reinterpretations.  Their source-driven cases, and Euler's exact frozen artifact, have proof-grade Talos execution and numerical theorems.  General Lean `Float`, `f32`, binary64 division, square root, classification, and comparisons remain unsupported by the LeanExe and exact-artifact profiles. |
 | Strings | Lean `String` is not a supported runtime value.  `LeanExe.AsciiString` and `ByteArray` provide the supported textual representations. |
 | Heap updates | Generated programs may mutate freshly allocated or uniquely owned heap objects internally.  Public array inputs are borrowed, so an operation returning a changed array allocates a distinct result rather than overwriting the caller's array. |
 | Compiler correctness | Exact-artifact proofs establish behavior directly from bytes.  Compiler theorems currently support selected emitted regions and proof-generation evidence rather than a complete source-to-artifact refinement theorem. |
-| Talos conformance | The last accepted receipt has six known failures for imported-memory limit handling in `memory_grow.wast`.  The artifact profile forbids imports, and the historical conformance gate reports the exact rows as an upstream warning.  The migrated `fda69ca` receipt is pending. |
+| Talos conformance | The last accepted receipt has six known failures for imported-memory limit handling in `memory_grow.wast`.  The artifact profile forbids imports, and the historical conformance gate reports the exact rows as an upstream warning.  A receipt for the current `87e3aa5` inputs is pending. |
 | Proof generation | Generation time remains variable and can exceed thirty minutes for structured loops.  Proof size, retrieval, revisions, checked abstraction use, and transfer across demos remain relevant measurements. |
 
 ## Immediate work

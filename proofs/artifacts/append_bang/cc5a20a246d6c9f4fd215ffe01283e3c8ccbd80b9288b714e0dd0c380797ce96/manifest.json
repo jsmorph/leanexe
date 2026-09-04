@@ -21,7 +21,7 @@
     "Project.AppendBang.Spec.appendBang_correct"
   ],
   "leanToolchain": "leanprover/lean4:v4.34.0-rc2",
-  "talosRevision": "fda69ca67a81ea4f1fa4e376bdc5861d9fe5479a",
-  "verifierSourceSha256": "2b59dec86b72be48a2bb63b5fc1efabbf2e61397a7042907823d0a4e6d5fcb01",
+  "talosRevision": "87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47",
+  "verifierSourceSha256": "bf03d3f47fb11563c947224601a21afa95c62fc88df81f493de821e69de9d1e7",
   "hostAssumptions": []
 }

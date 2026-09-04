@@ -9,7 +9,7 @@ LeanExe develops and tests on Linux.  The Wasmtime download script supports `x86
 | Tool | Repository requirement |
 |------|------------------------|
 | Lean and Lake | Install through `elan`.  The compiler root pins exact Lean 4.34.0-rc2 at commit `6a10ac8c22beadecabdbb0919c2b50214762f91d`. |
-| Proof Lean and Lake | The proof workspace records its exact Lean 4.34.0-rc2 pin in `proofs/talos/lean/lean-toolchain`; its Lake files pin the pre-floating-point Talos revision `fda69ca67a81ea4f1fa4e376bdc5861d9fe5479a`. |
+| Proof Lean and Lake | The proof workspace records its exact Lean 4.34.0-rc2 pin in `proofs/talos/lean/lean-toolchain`; its Lake files pin Talos revision `87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47`. |
 | Wasmtime | `tools/download-wasmtime.sh` installs the default 44.0.0 CLI and C API under `build/tools/wasmtime` after checking the published SHA-256 hashes. |
 | C compiler | A C11 compiler available as `cc` builds the Wasmtime host runner. |
 | Node.js | Node 24.13.0 runs the test drivers.  `.node-version` records the exact version, and the complete runner checks it before building. |
@@ -115,7 +115,7 @@ codec, emitter, or bootstrap boundary; it does not block native compiler work.
 
 ## Proof Artifacts
 
-The proof workspace has twenty-four registered source entries and completed specifications, including all eight CLOB exports and four floating-point kernels through guarded quadratic Horner.  `proofs/talos/cases.json` maps each source entry to its generated module and handwritten specification target, while the separate twenty-entry `proofs/artifacts/registry.json` maps each historical frozen package to its exact-artifact proof target.  On 2026-08-26, `tools/talos-proof.js check --all` passed the then-current twenty source-driven cases, and `tools/artifact-proof.js check-all` passed every frozen artifact theorem, behavioral specification, and manifest declaration for release-input digest `5de9678970b1a9b74d50c1407457423a7fa6eabd3f430f56cfdc0e407af2b7e5`.  The guarded Horner focused source-driven gate passed on 2026-09-04; the refreshed twenty-four-case aggregate remains pending.  Current release status comes from `tools/artifact-release.js inspect`.
+The proof workspace has twenty-five registered source entries and completed specifications, including all eight CLOB exports and five raw-bit floating-point kernels culminating in the guarded Euler Rusanov flux.  `proofs/talos/cases.json` maps each source entry to its generated module and handwritten specification target, while the separate twenty-one-entry `proofs/artifacts/registry.json` maps each frozen package to its exact-artifact proof target.  These floating-point entries expose binary64 encodings as `UInt64` and call compiler-recognized `LeanExe.Float64` intrinsics; ordinary Lean `Float` source and agreement with Lean's native `Float` evaluator remain outside the proof claim.  On 2026-08-26, `tools/talos-proof.js check --all` passed the then-current twenty source-driven cases, and `tools/artifact-proof.js check-all` passed every then-registered frozen artifact theorem, behavioral specification, and manifest declaration for release-input digest `5de9678970b1a9b74d50c1407457423a7fa6eabd3f430f56cfdc0e407af2b7e5`.  The current Euler case adds total exact generated-WAT execution, accepted-input componentwise real-error bounds, exact closure over its 1,808-byte artifact, and a formal eight-row interface-data theorem; its host and C comparisons remain regression-only.  Current release status comes from `tools/artifact-release.js inspect`.
 
 `tools/talos-artifact.js prepare <case>` builds the source and compiler, emits ignored WASM and WAT, and asks the pinned Talos verifier to refresh the tracked `Project/<Case>/Program.lean` proof cache.  The tool gives Talos a disposable `rust/<case>/Cargo.toml` and artifact tree under the repository's ignored `tmp/` directory.  It replaces the three outputs only after generation succeeds, leaves a byte-identical cache untouched, and never edits handwritten proof modules.
 
@@ -148,11 +148,11 @@ every recorded theorem name, the tool pins, and the artifact and conformance
 results.  `tools/artifact-release.js inspect` validates those identities and
 derives the unresolved release conditions from the record.  The checked-in
 draft now records the Lean 4.34.0-rc2 and Talos
-`fda69ca67a81ea4f1fa4e376bdc5861d9fe5479a` pins and the migrated release-input
-identity.  Its aggregate artifact-proof and conformance receipts remain pending,
-and `sourceRevision` is null.  The successful 2026-08-26 receipts belong to the
-earlier input digest; after the migrated warm gates pass, an immutable source
-revision and the cold-checkout result remain separate blockers.
+`87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47` pins and the migrated release-input
+identity.  `tools/artifact-release.js inspect` is authoritative for its current
+warm-receipt state, and `sourceRevision` remains null.  The successful 2026-08-26
+receipts belong to the earlier input digest; matching warm receipts, an immutable
+source revision, and the cold-checkout result remain separate release conditions.
 
 `tools/artifact-release.js check-cold <revision>` clones the recorded source revision below the repository's ignored `tmp/` directory, compares its release inputs byte-for-byte with the recorded input identity, checks the external tools and exact Lean commit, fetches the pinned proof dependencies, initializes the official testsuite, and runs both release gates.  The artifact gate builds the shared Talos library and artifact translator before building each embedded-byte module and each package's generated program, decoded cache, raw cache, decode equality, and validation result as separate targets.  It also computes each behavioral specification's repository-local import closure, builds that closure in dependency order with a separate limit for every module, and then builds the specification root.  These divisions keep each cold elaboration boundary within its target limit, while the command rejects tracked changes after setup or either gate, rechecks the input identity, and writes a receipt after success.
 
@@ -160,7 +160,7 @@ The current release record leaves cold verification deferred.  No current test o
 
 ## Generated Files and Dependencies
 
-Root `.lake`, nested `.lake`, `build`, and `proofs/talos/.generated` contain ignored local output.  The repository tracks the twenty generated `Project/<Case>/Program.lean` proof caches because artifact-only verification and cold checkouts require the execution modules used by the behavioral theorems; Lean proves each cache equal to the translation of the decoded binary.  The nested official testsuite checkout lives below CodeLib's ignored `.lake` dependency tree, while `proofs/talos/conformance.json` records its required revision.  A Talos proof commit contains the source, tests, registry entry, runtime pins, aggregate import, generated program cache, and handwritten proof modules.  Inspect `git status` before and after generation: a changed `Program.lean` records a changed proof subject and requires artifact and proof review.
+Root `.lake`, nested `.lake`, `build`, and `proofs/talos/.generated` contain ignored local output.  The repository tracks the twenty-five generated `Project/<Case>/Program.lean` proof caches because source-driven verification and cold checkouts require the execution modules used by the behavioral theorems; for each exact-artifact package, Lean additionally proves its cache equal to the translation of the decoded frozen binary.  The nested official testsuite checkout lives below CodeLib's ignored `.lake` dependency tree, while `proofs/talos/conformance.json` records its required revision.  A Talos proof commit contains the source, tests, registry entry, runtime pins, aggregate import, generated program cache, and handwritten proof modules.  Inspect `git status` before and after generation: a changed `Program.lean` records a changed proof subject and requires artifact and proof review.
 
 Keep third-party dependencies to a minimum and discuss a new dependency before adding it.  Pin a dependency or artifact-producing tool to an immutable version, record its purpose and trusted-base effect, and add the required gate.  An update to Talos, Lean, Wasmtime, or `wasm-tools` requires review of generated bytes and proof assumptions.
 
