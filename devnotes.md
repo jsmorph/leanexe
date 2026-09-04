@@ -8209,3 +8209,41 @@ The verified dataset checkpoint is published as
 `847d780fed9d2b89cf670eb18b0893e54c861212`; local and remote trees both equal
 `4107838828a0c75d3f24082e4040980bda52d48c`.  Publication was a non-forced
 fast-forward, and the worktree was clean after local-ref alignment.
+
+## 2026-09-04: pinned Euler C regression comparison
+
+The verified eight-row interface dataset now has a separate regression-only C
+comparison.  A strict fixed-`7/4` C mirror reproduces the raw guard and exact
+22-multiply/27-add/three-sign-XOR graph and matches 8/8 rows bit-for-bit.  A
+second driver includes Lanyon's unmodified 1D source at commit
+`a736aa5f8b17efd225c4692404e2442361d06729`, converts the seven accepted rows
+with `verified-dyadic-conservative-v1`, and reports its dynamic speed plus both
+independently rounded flux reconstructions.  The NaN row is not evaluated by
+Lanyon and a direct refusal test covers that boundary.
+
+The vendored 27,229-byte source is exact Git blob
+`fbd70a9407d02ce2e49b6d6f37152c70ca679de4`, SHA-256
+`f1f284f550d790c88f293e1d67a91434dc9b8c6187f88caed0f776c5039cf756`;
+its 1,070-byte MIT license is exact blob
+`16b2ed3f9bee8eeb7bd7291ea6dfef76675b7e32`, SHA-256
+`cfa90e3adf9a116fe3959a57353acdf5b6a783d3442d0e5a0834627990370116`.
+Generation validates those bytes, recomputes their Git blob identities, and
+pins upstream tree `373f81b54f06e4bca04d06999e95882e42428ad7`.  The unusual upstream source is
+marked `-text -whitespace`, preserving its exact trailing whitespace and
+missing final newline.
+
+The 4,119-byte CSV has SHA-256
+`21a95065f98f8f3e88962f7545af27b7e7fe8dca9084dfefba048e2d40e78a7e`;
+the 11,629-byte manifest has SHA-256
+`617371152767fab7b6b96a0ba8b23c3f74a704617d590ebb4ae9037a05c2b58c`.
+The manifest sets `formalProof` and the Lanyon equality claim to null.  It
+distinguishes exact real `7/5` from Lanyon's checked binary64 word
+`3ff6666666666666`, records the strict C flags and supported binary64/RNE
+checks, and labels the compiler/libm-sensitive Lanyon values a supported-host
+snapshot.  Focused generator, C, source-interface, no-JavaScript-WASM, docs,
+and staged-diff gates pass locally; detailed diagnostics are in `journal.md`.
+
+The planned Jacobian checkpoint is explicitly conservative-coordinate work:
+differentiate independent `F(rho,m,E)` for `rho != 0`, bridge it to primitive
+states, and prove `A * R = R * Lambda` plus `det R != 0`.  Eigenvector `H` is
+specific total enthalpy `(E+p)/rho`, not the existing rounded density `E+p`.
