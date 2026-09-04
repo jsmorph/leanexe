@@ -2,3 +2,13 @@
 /data/euler-rusanov-interface-v1/manifest.json text eol=lf
 /tools/euler-rusanov-interface.js text eol=lf
 /tools/wasmtime-host.js text eol=lf
+/data/euler-rusanov-interface-v1/regression/c-comparison-v1.csv text eol=lf
+/data/euler-rusanov-interface-v1/regression/manifest.json text eol=lf
+/test/euler_rusanov_c.js text eol=lf
+/test/fixtures/euler-rusanov-c/README.md text eol=lf
+/test/fixtures/euler-rusanov-c/fixed-alpha-mirror.c text eol=lf
+/test/fixtures/euler-rusanov-c/lanyon-driver.c text eol=lf
+/test/fixtures/euler-rusanov-c/lanyon/a736aa5f8b17efd225c4692404e2442361d06729/LICENSE text eol=lf
+/test/fixtures/euler-rusanov-c/lanyon/a736aa5f8b17efd225c4692404e2442361d06729/upstream.json text eol=lf
+/test/fixtures/euler-rusanov-c/lanyon/a736aa5f8b17efd225c4692404e2442361d06729/compressible_euler_1d.c -text -whitespace
+/tools/euler-rusanov-c-compare.js text eol=lf

@@ -2269,3 +2269,137 @@ to the published commit `847d780fed9d2b89cf670eb18b0893e54c861212`
 remote tree, after which only the local branch reference was aligned from the
 equivalent local commit; the worktree was not rewritten.  Local and remote
 commits and trees then matched exactly, and `git status` was clean.
+
+## 2026-09-04: pinned Euler C regression comparison
+
+This checkpoint adds only regression tooling around the already proved
+`euler-rusanov-interface-v1` data.  It does not change a Lean definition,
+theorem, generated WAT, exact WASM byte, or artifact proof.  The authoritative
+claim remains `Project.EulerRusanov.InterfaceData.artifact_interfaceV1`; every
+C result described here is explicitly classified as regression-only.
+
+The first comparison program,
+`test/fixtures/euler-rusanov-c/fixed-alpha-mirror.c`, reproduces the verified
+kernel's raw unsigned-word guard and its exact accepted arithmetic graph.  It
+performs 22 binary64 multiplications, 27 binary64 additions, and three exact
+sign-word XORs in the source/WAT order.  Its add and multiply helpers
+materialize every result through `volatile double`.  With the declared
+conservative flags it matched all eight frozen rows exactly, including status
+one and three zero payloads for the raw-guard-rejected NaN row.
+
+The second program, `test/fixtures/euler-rusanov-c/lanyon-driver.c`, includes
+the unmodified public 1D source in the same translation unit after renaming
+its placeholder `main`.  The upstream repository is pinned at commit
+`a736aa5f8b17efd225c4692404e2442361d06729`, tree
+`373f81b54f06e4bca04d06999e95882e42428ad7`.  The vendored source is 27,229
+bytes, Git blob `fbd70a9407d02ce2e49b6d6f37152c70ca679de4`, and SHA-256
+`f1f284f550d790c88f293e1d67a91434dc9b8c6187f88caed0f776c5039cf756`.
+The 1,070-byte MIT license is Git blob
+`16b2ed3f9bee8eeb7bd7291ea6dfef76675b7e32` with SHA-256
+`cfa90e3adf9a116fe3959a57353acdf5b6a783d3442d0e5a0834627990370116`.
+`upstream.json` records those identities and their GitHub paths.  The
+generator now independently recomputes the Git blob SHA-1 framing as well as
+the byte lengths and SHA-256 values and checks the pinned commit tree.
+
+The exact upstream C source contains trailing whitespace and lacks a final
+newline.  During initial untracked preparation, the file-writing patch added
+one extra final newline to both fetched upstream files.  That was immediately
+detected by their authoritative byte lengths and corrected only at those two
+known byte boundaries before staging.  The final staged source and license
+have the exact upstream Git blob identities above.  A narrow `.gitattributes`
+rule marks the source `-text -whitespace`: this prevents checkout-time line
+normalization and lets `git diff --check` ignore the upstream whitespace
+without weakening checks for other files.
+
+The adapter named `verified-dyadic-conservative-v1` converts each accepted
+primitive tuple to `(rho, momentum, totalEnergy)` in the verified dyadic
+operation order, then calls Lanyon's physical-flux, dynamic-speed, and left
+and right fluctuation functions.  It publishes both reconstructions,
+`F_L + D^-` and `F_R - D^+`; it never averages or selects between them.
+They are algebraically the same flux, but Lanyon independently recomputes and
+rounds the paths.  The two paths differ by one or two ulps in components of
+the guard-extreme rows, which the focused test requires to remain visible.
+
+Lanyon is not executing the verified algorithm.  It recovers pressure from a
+rounded conservative state and computes a dynamic speed with division,
+square root, `fabs`, and nested `fmax`, whereas the verified artifact uses the
+globally certified fixed speed `7/4` and only its admitted add/multiply graph.
+Lanyon's parameter expression is C `7.0 / 5.0`; the driver checks that its
+supported-host value is raw binary64 word `3ff6666666666666`.  That is an
+approximation to, not equality with, the exact real rational `7/5` in the
+proof.  The compiler and system `libm` are intentionally not proof inputs, so
+the exact Lanyon words are labeled a supported-host snapshot rather than
+portable numerical truth.  There is no Lanyon equality gate or formal-proof
+field.  The rejected NaN row is not passed to upstream C at all; the generator
+emits thirteen empty fields and the test separately confirms that a direct
+driver call exits two, emits no standard output, and names the adapter in its
+diagnostic.
+
+Both fixtures compile as C11 with `cc`, `-O0`, `-Wall`, `-Wextra`,
+`-Wpedantic`, `-Werror`, `-fno-fast-math`, `-ffp-contract=off`,
+`-frounding-math`, `-fno-associative-math`, `-fno-reciprocal-math`,
+`-fno-finite-math-only`, `-fno-unsafe-math-optimizations`,
+`-fexcess-precision=standard`, and `-lm`.  Runtime checks require an advertised
+IEC 60559 environment, eight-bit bytes, 64-bit `uint64_t` and `double`, the
+binary64 exponent and significand dimensions, `FLT_EVAL_METHOD == 0`, the
+expected word layout for `1.0`, and confirmed `FE_TONEAREST`.  These checks
+make the local snapshot explicit but do not turn C execution into proof
+evidence.
+
+`tools/euler-rusanov-c-compare.js` first rebuilds and validates the already
+published exact-WASM interface dataset through its external Wasmtime host.
+It then compiles the two C programs under `build/tests/euler-rusanov-c`, calls
+the mirror exactly eight times, and calls Lanyon exactly seven times.  Its
+default command is read-only `check`; `write` is explicit and installs only
+changed CSV/manifest files by an exclusive temporary file and same-directory
+atomic rename.  JavaScript does not execute WebAssembly.  The regression CSV
+has 31 columns and eight rows: verified input/output words, exact-mirror
+words, an explicit mirror relation, a Lanyon evaluation marker, six adapted
+conservative-state words, dynamic alpha, and both three-component Lanyon flux
+reconstructions.  It is 4,119 bytes with SHA-256
+`21a95065f98f8f3e88962f7545af27b7e7fe8dca9084dfefba048e2d40e78a7e`.
+The final 11,629-byte manifest has SHA-256
+`617371152767fab7b6b96a0ba8b23c3f74a704617d590ebb4ae9037a05c2b58c`.
+
+The first no-JavaScript-WASM policy run found an identifier in the new test's
+own regular-expression literal.  The test was not executing WebAssembly, but
+the repository policy correctly rejects that code identifier everywhere
+except its policy checker.  The test now constructs the probe identifier from
+two string fragments, the unchanged generator contains no direct API call,
+and the policy gate passes.  Pre-commit review also caught and corrected the
+initial ambiguous `gamma = 7/5` wording, the README's singular `build/test`
+path and incomplete flag list, commit-tree/blob validation, and the need for
+the narrow `-text` vendor rule.  No incorrect version was committed.
+
+The focused local commands that passed are:
+
+```text
+node --check tools/euler-rusanov-c-compare.js
+node --check test/euler_rusanov_c.js
+node tools/euler-rusanov-c-compare.js write
+node tools/euler-rusanov-c-compare.js check
+node tools/euler-rusanov-c-compare.js
+node test/euler_rusanov_c.js
+node test/euler_rusanov_interface.js
+node test/no_js_wasm_execution.js
+node tools/check-docs.js
+git diff --cached --check
+```
+
+An independent read-only review repeated the syntax, generator, focused test,
+no-JavaScript-WASM, and diff checks and found no remaining blocker.  Direct
+Lean was not needed for this checkpoint because no Lean or artifact theorem
+changed.  All execution was local.  No `dev` host or other remote executor
+was invoked or probed.  No cleanup, maintenance, reclamation, pruning,
+deletion, cache invalidation, reset, stash, checkout overwrite, worktree
+rewrite, or concurrent Lean process occurred.  Generated and ignored build
+outputs remain preserved in the active checkout.
+
+The next theorem checkpoint will state the Euler derivative in conservative
+coordinates `U = (rho, momentum, totalEnergy)`.  The standard eigenbasis is
+not the eigensystem of the current primitive-coordinate helper.  The plan now
+requires an independent conservative flux, its derivative for `rho != 0`, an
+agreement bridge at primitive-derived states, `A * R = R * Lambda`, and
+`det R != 0`.  Its `H` is specific total enthalpy `(E + p) / rho`, not the
+existing IEEE-side field named `enthalpy`, which represents the density
+`E + p`.
