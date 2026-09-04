@@ -8329,3 +8329,35 @@ compiled one-step artifact exists.
 The release test, kernel-scope audit, 90-file documentation checker, diff
 checker, final three-blocker inspector, and targeted stale-current-wording scan
 all passed before publication.
+
+## 2026-09-04: conservative Jacobian checkpoint
+
+The first exact-real conservative layer now compiles locally.  It defines the
+independent `(rho,m,E)` state, primitive bridge, physical flux, admissibility,
+specific enthalpy, sound speed, explicit conservative Jacobian, and reduced
+`(u,H)` matrix.  `RealJacobian.lean` proves that displayed matrix is the actual
+Fréchet derivative for nonzero density and exports its pointwise matrix-vector
+action.  Focused builds passed with 3,059, 3,060, and 3,146 jobs respectively.
+
+One strengthened pressure identity initially left a stale caller, and the
+derivative module initially lacked `open scoped Matrix`; both were compiler-
+diagnosed and repaired without deleting or invalidating any cache.  The final
+axiom audits report only `propext`, `Classical.choice`, and `Quot.sound`.  No
+`sorry`, `admit`, new axiom, WAT/WASM change, dependency change, remote host, or
+parallel Lean process was used.  `journal.md` contains the exact command
+envelope, timing, diagnostic text, and repair chronology.
+
+The next layer is the explicit complete eigenbasis (`u-c`, `u`, `u+c`) and its
+strict ordering.  These new project sources intentionally stale the prior
+aggregate artifact receipt; refresh the release draft before publishing this
+checkpoint and do not claim current aggregate proof until it is rerun against
+the new source digest.
+
+The refreshed release-input digest is
+`fd356f40d91ab595660cc307745e0e2f7f390ced16f43ead9bf5cc9140525104`; the draft
+now has the expected four blockers, including aggregate proof for this changed
+input.
+
+The diff checker, 90-file docs checker, release tests, kernel-scope audit,
+four-blocker inspector, and targeted no-`sorry`/no-`admit`/no-axiom scan pass
+before publication.
