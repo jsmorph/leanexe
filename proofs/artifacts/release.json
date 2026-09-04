@@ -3,7 +3,7 @@
   "status": "draft",
   "recordedDate": "2026-09-04",
   "sourceRevision": null,
-  "releaseInputSha256": "bbc645be04edcae73d6d36958a01b85bfa0a24f7660fc0ccb801ac6e133711a3",
+  "releaseInputSha256": "fd356f40d91ab595660cc307745e0e2f7f390ced16f43ead9bf5cc9140525104",
   "artifactRegistry": {
     "path": "proofs/artifacts/registry.json",
     "sha256": "3bcc91129e242bf7ed0576ba3c9f8c15f2b715ff4e251d93d04fd2b452031bec",
@@ -343,10 +343,10 @@
   },
   "artifactProof": {
     "command": "tools/artifact-proof.js check-all",
-    "date": "2026-09-04",
-    "result": "passed",
+    "date": null,
+    "result": "pending",
     "artifactCount": 21,
-    "releaseInputSha256": "bbc645be04edcae73d6d36958a01b85bfa0a24f7660fc0ccb801ac6e133711a3"
+    "releaseInputSha256": null
   },
   "semanticConformance": {
     "command": "tools/artifact-conformance.js check",
@@ -377,6 +377,7 @@
   },
   "blockers": [
     "No immutable source revision records the current proof implementation.",
+    "The aggregate artifact proof has not passed under the selected toolchain.",
     "The conformance gate has not passed under the selected toolchain.",
     "The release gates have not passed from a cold checkout of the recorded source revision."
   ]
