@@ -18,6 +18,7 @@ import Project.ClobMatchFuel.ArtifactBytes
 import Project.ClobLimit.ArtifactBytes
 import Project.ClobMarket.ArtifactBytes
 import Project.ClobDepth.ArtifactBytes
+import Project.EulerRusanov.ArtifactBytes
 
 private def artifactBytes : String → Option ByteArray
   | "gcd" => some Project.Gcd.Artifact.artifactBytes
@@ -40,6 +41,7 @@ private def artifactBytes : String → Option ByteArray
   | "clob_limit" => some Project.ClobLimit.Artifact.artifactBytes
   | "clob_market" => some Project.ClobMarket.Artifact.artifactBytes
   | "clob_depth" => some Project.ClobDepth.Artifact.artifactBytes
+  | "euler_rusanov" => some Project.EulerRusanov.Artifact.artifactBytes
   | _ => none
 
 def main (args : List String) : IO UInt32 := do

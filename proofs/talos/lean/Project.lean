@@ -13,6 +13,7 @@ import Project.F64MulBits.Spec
 import Project.F64Dot2CheckedBits.Spec
 import Project.F64DotCheckedBits.Spec
 import Project.F64Horner2CheckedBits.Spec
+import Project.EulerRusanov.Spec
 import Project.LebU32.Spec
 import Project.ClobQuote.Spec
 import Project.ClobCancel.Spec

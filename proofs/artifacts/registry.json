@@ -120,6 +120,12 @@
       "sha256": "d6fe056853750dd985e3d0cd03e6ec488ae98a9791d7b5d53baac95bd352b68f",
       "manifest": "clob_depth/d6fe056853750dd985e3d0cd03e6ec488ae98a9791d7b5d53baac95bd352b68f/manifest.json",
       "proofTarget": "Project.ClobDepth.ArtifactTranslation"
+    },
+    {
+      "case": "euler_rusanov",
+      "sha256": "145230bc0f956df81283fb37227c303de2c92e68842d38b985325dca467f6546",
+      "manifest": "euler_rusanov/145230bc0f956df81283fb37227c303de2c92e68842d38b985325dca467f6546/manifest.json",
+      "proofTarget": "Project.EulerRusanov.ArtifactTranslation"
     }
   ]
 }
