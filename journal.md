@@ -1948,3 +1948,66 @@ parameter with a leading underscore, removing the only new-file linter warning.
 The required materially changed rerun again passed all 3,069 jobs, with 8.0
 seconds in the target and approximately 11.4 seconds in the complete local
 command; the same three-axiom reports were reproduced.
+
+## 2026-09-04: exact generated-WAT execution completed
+
+After the numerical checkpoint was published and local/remote tree equality
+was verified, the preserved `Project/EulerRusanov/Execution.lean` draft was
+handed off from its editing agent and inspected.  It contains no admission,
+axiom declaration, unsafe definition, or native decision.  The accepted path
+is factored into seven private weakest-precondition lemmas for constant setup,
+left state, right state, mass, momentum, energy, and output assembly.  Each
+lemma takes an opaque continuation so normalization cannot enter the remaining
+instruction tail.  The stages cover generated locals 6 through 47 and the
+source bodies contain exactly 8, 77, 77, 55, 55, 55, and 8 instructions.
+
+The first build of this staged repair reached all 3,357 jobs and failed
+explicitly after 18 target seconds and approximately 21.4 command seconds.
+Unlike the earlier 481-second monolithic attempt, it reached every small stage
+and exposed only proof-normalization omissions: the restricted stage simp sets
+did not reduce concrete natural additions/comparisons/subtractions and list
+updates, the accepted endpoint retained the trivial four-result length goal,
+and the accumulated rejection finalizers reached the default 200,000 heartbeat
+limit.  This was diagnostic output, not a pass.
+
+The next material change added the established concrete-frame reducers
+`List.set`, `reduceIte`, `Nat.reduceAdd`, `Nat.reduceLT`, and `Nat.reduceSub` to
+each bounded stage; expanded the accepted endpoint only enough to discharge
+the four-result length; and raised this proof module's heartbeat allowance to
+one million.  That second staged build again reached all 3,357 jobs in 18
+target seconds and approximately 21.4 command seconds.  Constant setup,
+accepted completion, and every rejection path now closed.  The remaining
+stage errors were literal-list reads such as `[...][29]?`, because `simp only`
+did not include the `getElem?` recursion rules.
+
+Adding exactly `List.getElem?_cons_zero`, `List.getElem?_cons_succ`, and
+`List.getElem?_nil` to each stage was the final semantic-neutral repair.  The
+focused exact-execution target then passed:
+
+```text
+Project.EulerRusanov.Execution
+Build completed successfully (3357 jobs).
+new target: 19 seconds
+complete command: approximately 21.9 seconds
+```
+
+The theorem `Project.EulerRusanov.Spec.rusanovFluxCheckedBits_exact` quantifies
+over arbitrary `HostEnv Unit`, initial store, and all six raw binary64 input
+words.  It proves fuel-independent termination of generated function zero,
+equality of the final and initial complete stores, and exact top-first result
+stack equality with `Model.resultValues`.  Thus it covers all ten first-failed
+guard paths plus the fully accepted 49-operation path; rejection reaches no
+floating-point instruction, while acceptance matches the pure IEEE64 graph
+operation for operation.
+
+A final mechanical edit replaced deprecated local aliases with their current
+names (`ite_eq_left`, `ite_eq_right`, `ite_true`, and `ite_false`) and imported
+both `Numerical` and `Execution` from the Euler Spec root.  The materially
+changed combined build passed all 3,369 jobs: Execution took 19 seconds, the
+Spec root took 2.0 seconds, and the complete local command took approximately
+25.0 seconds.  The exact-execution theorem reports only `propext`,
+`Classical.choice`, and `Quot.sound`; there is no `sorryAx` or native-decision
+axiom.  Output warnings are inherited from dependencies, not the new execution
+file.  No workspace cleanup, deletion, maintenance, reset, stash, checkout
+overwrite, remote host, `dev` probe, concurrent Lean process, or worktree
+rewrite occurred.

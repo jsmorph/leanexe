@@ -345,11 +345,12 @@ Every checked row ends in a passing commit, an update to this plan and
       and Wasmtime regression cases.
 - [x] Prove the raw-bit guard and real characteristic-speed bound.
 - [x] Prove the pure IEEE64 finite-result and componentwise real-error contract.
-- [ ] Freeze the generated WAT and prove exact, fuel-independent execution of
-      every accepted and rejected path.
+- [x] Prove exact, fuel-independent execution of every accepted and rejected
+      path in the current generated WAT.
 - [ ] Transfer the numerical contract to generated-WAT execution and audit its
       axioms.
-- [ ] Register and prove the exact binary artifact.
+- [ ] Freeze the generated WAT, register its exact binary artifact, and prove
+      decoded/validated/translated module identity.
 - [ ] Generate and prove the frozen `euler-rusanov-interface-v1` raw-word
       dataset, then add regression-only CSV and pinned C comparison tooling.
 - [ ] Prove the independent Jacobian derivative and complete eigendecomposition.
