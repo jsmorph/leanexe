@@ -880,3 +880,62 @@ Build completed successfully (3368 jobs).
 That integration command took 5.74 seconds, including approximately 3.2
 seconds on the target.  Exact-byte closure is now the only remaining Horner
 case-completion gate; the registry intentionally remains `complete: false`.
+
+## 2026-09-04: Horner completion boundary corrected and focused gate passed
+
+The explicit-trace checkpoint was published as
+`5379c580236d093946a54c06742219466430ae0a`, with identical local and remote
+tree `e5061cb147b8a6ca4bd8d0800125897d9cbfe3e1` and a clean worktree.
+
+Before creating a frozen Horner package, the exact-artifact registry, all three
+previous completed f64 cases, the migration generator, and the checked-in Euler
+plan were audited together.  That audit corrected the final sentence of the
+preceding entry: Horner's established completion boundary is source-driven
+generated-WAT semantics, exactly like `F64MulBits`, `F64Dot2CheckedBits`, and
+`F64DotCheckedBits`.  None of those cases has an `Artifact*.lean` package or an
+entry in `proofs/artifacts/registry.json`.  `plans/euler-rusanov.md` explicitly
+reserves the first f64 exact-byte package for the Euler flux so that the actual
+deliverable, rather than the phase-7 calibration kernel, exercises the full
+decoder/validator/translation path.
+
+`tools/artifact-migrate.js migrate f64_horner2_checked_bits` was therefore not
+run.  A preliminary manual package draft was stopped before it changed the
+shared checkout.  This avoids both silently moving the planned exact-byte
+milestone and falsely suggesting that the current twenty-package aggregate is
+ready under the new FP Talos pin: those historical manifests still describe
+the pre-FP verifier inputs and require a separate migration if their aggregate
+gate is revived.  No cleanup, deletion, reset, or worktree rewrite was used.
+
+Horner was instead marked complete in `proofs/talos/cases.json` and its public
+`Spec` was added to `Project.lean` in the same change.  JSON parsing and the
+static aggregate-import check passed, with 24 completed source-driven cases.
+The case README and phase plans now distinguish this regenerated-WAT theorem
+from the first frozen f64 package still required for Euler.
+
+The focused source-driven gate was invoked directly so that its child runner
+could take the single local lock:
+
+```text
+LEANRUN_LOCAL=1 \
+LEAN_SYSROOT=/root/.elan/toolchains/leanprover--lean4---v4.34.0-rc2 \
+LD_PRELOAD=/tmp/leanexe-proc-self-readlink.so \
+WASM_TOOLS=build/tools/wasm-tools-1.251.0-x86_64-linux/wasm-tools \
+tools/talos-proof.js check f64_horner2_checked_bits
+```
+
+It accepted official `wasm-tools` 1.251.0, rebuilt 52 cached verifier jobs and
+59 compiler/source jobs, regenerated the 1,237-byte WASM and WAT in
+transactional staging, required the emitted `Program.lean` to equal the
+tracked generated cache, and rebuilt the 3,368-job public specification.  It
+finished with:
+
+```text
+Build completed successfully (3368 jobs).
+Talos proof passed: f64_horner2_checked_bits
+```
+
+The tracked program did not change, so the audited WASM digest remains
+`8c665a1634643065c35e3ed7a81bf8538e4a8e264cb240fcc1ad3494b41757bd`.
+Only existing deprecation/linter warnings were replayed.  The 24-case aggregate
+source-driven gate remains to be run after this focused completion checkpoint
+is published; no aggregate pass is claimed yet.

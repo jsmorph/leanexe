@@ -263,7 +263,7 @@ domain and headroom assumption explicit and standard-only axiom reports.  The ne
       tests, and independent package verification.
 - [x] Compile and prove a runtime-length dot artifact with absolute,
       gamma-times-mass, and conditioned relative-error contracts.
-- [ ] Compile and prove the guarded two-stage f64 Horner artifact, including
+- [x] Compile and prove the guarded two-stage f64 Horner artifact, including
       identical source-model and decoded-WAT finite-result and `3 * 2^-52`
       error theorems, and extract reusable floating ProofKit, annotation, and
       LTG support from the numerical kernels.

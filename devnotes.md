@@ -7933,3 +7933,23 @@ release bookkeeping.  Division, square root, a checked conservative-state
 step, and the 100-cell run remain ordered follow-ons after the fixed artifact
 passes.  [Verified Euler Rusanov Data](plans/euler-rusanov.md) records the full
 scope, gates, feasibility assessment, and nonclaims.
+
+## 2026-09-04: Guarded quadratic Horner completed
+
+`f64_horner2_checked_bits` now has matching source-model and generated-WAT
+finite-result and `3 * 2^-52` real-error theorems.  The generated entry proves
+all five guard paths, exact result words, fuel-independent termination, and
+complete store preservation.  An independent relational proof enumerates 47,
+64, 81, 98, or 118 transitions according to the first failing guard or full
+acceptance.  All public axiom reports contain only `propext`,
+`Classical.choice`, and `Quot.sound`.
+
+The focused `tools/talos-proof.js check f64_horner2_checked_bits` gate rebuilt
+the compiler and verifier inputs, regenerated the 1,237-byte artifact, matched
+the tracked Program cache, rebuilt 3,368 proof jobs, and passed.  The case is
+the twenty-fourth completed source-driven Talos entry and is imported by
+`Project.lean`.
+
+This completion follows the existing f64 generated-WAT boundary; it does not
+add a frozen exact-byte registry package.  The Euler flux remains the planned
+first f64 exact-byte artifact, as required by `plans/euler-rusanov.md`.

@@ -1,6 +1,6 @@
 # Development Status
 
-This report describes the repository state on 2026-09-03.  Checked registries contain twenty source-driven Talos cases and twenty exact-artifact packages, while the demonstration index contains eleven current array-interface programs and the original scalar example.  The root [Development Plan](../plan.md) owns remaining work, while repository tools and registries own changing counts and release identities.
+This report describes the repository state on 2026-09-04.  The source-driven registry contains twenty-four completed Talos cases, while the separate historical exact-artifact registry contains twenty frozen packages.  The demonstration index contains eleven current array-interface programs and the original scalar example.  The root [Development Plan](../plan.md) owns remaining work, while repository tools and registries own changing counts and release identities.
 
 ## Current capabilities
 
@@ -9,7 +9,7 @@ This report describes the repository state on 2026-09-03.  Checked registries co
 | Source compilation | LeanExe loads checked Lean declarations, accepts the subset in the [language specification](spec.md), and emits standalone WASM or one of the bounded WASI adapters. |
 | Self-hosted binary emission | The experimental image path can freeze lowered modules and invoke the pure emitter compiled into WebAssembly.  Its retained Wasmtime Stage 1 and Stage 2 receipt reproduces the complete emitter artifact and all twenty registered compiler artifacts byte for byte.  Production compilation uses the direct native serializer, and self-hosting is not an aggregate gate. |
 | Execution | The execution suite compares accepted programs with ordinary Lean or the IR evaluator where those references apply, and runs generated modules with Wasmtime. |
-| Source-driven proofs | `proofs/talos/cases.json` registers twenty cases.  Every case has a completed input-generic behavioral theorem, including all eight CLOB exports through `depth`, and the aggregate source-driven gate passed all twenty cases on 2026-08-26. |
+| Source-driven proofs | `proofs/talos/cases.json` registers twenty-four completed cases.  The four added floating-point entries culminate in guarded quadratic Horner with source, generated-WAT, big-step, and explicit small-step numerical theorems.  Its focused gate passed on 2026-09-04; the refreshed twenty-four-case aggregate is pending. |
 | Exact-artifact proofs | `proofs/artifacts/registry.json` registers twenty frozen WASM packages.  Each package embeds exact bytes, decodes and validates them, proves translation equality with its Talos execution module, and connects that module to a behavioral theorem. |
 | Artifact decoder | Checked decoder soundness connects successful complete-file decoding to an independent declarative grammar for the accepted Core 3.0 binary profile. |
 | Artifact validator | Checked validator soundness connects accepted modules to the independent `CoreValid` judgment for the supported sections and instructions. |
