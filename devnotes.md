@@ -8175,3 +8175,32 @@ spawn, signal, and exit failures, relays both output streams, and allows a
 64-MiB raw-module representation.  Its focused unit test and an idempotent real
 Euler migration passed; the latter changed no artifact output.  Full command
 chronology and timings are retained in `journal.md`.
+
+## 2026-09-04: verified Euler interface data
+
+`euler-rusanov-interface-v1` freezes eight exact raw-word calls to the
+registered 1,808-byte Euler artifact.  The 1,444-byte LF CSV has SHA-256
+`65ff256da20d19544366083596f20b53c4fb37798209c1e7e16c2cfcee4d3808`.
+Its adjacent manifest pins the artifact, schema, row order, encodings,
+parameters, rounding mode, formal theorem, CSV identity, and a composite digest
+covering both host-generator sources.
+
+`Project.EulerRusanov.InterfaceData.artifact_interfaceV1` transfers all eight
+rows through exact byte decoding, validation, `CoreValid`, and Talos
+translation.  Seven rows return the exact frozen tuple while preserving the
+store and carry state bounds, both fixed-speed signal certificates, finiteness,
+and the existing `10/14/25 * 2^-52` componentwise real-error budgets.  The NaN
+row proves exact guard rejection and zero payload.  Every closed IEEE row was
+kernel-checked with `decide`, not `native_decide`; the generated-module
+aggregate has only the standard three logical axioms.  Exact artifact transfer
+adds only the package's previously audited closed decode/cache/validation
+certificates.
+
+The generator validates the shared artifact manifest and makes exactly eight
+external calls through `leanexe-wasmtime-host`; JavaScript does not execute
+WebAssembly.  It defaults to read-only checking, requires explicit generation,
+uses write-if-changed atomic installation, validates full UInt64 host output,
+and is covered by the no-JavaScript-WASM policy test.  Focused syntax, data,
+Talos, Euler Spec, and full 3,748-job `Project` aggregate gates passed locally.
+Detailed row identities, proof boundaries, commands, timings, and the
+pre-commit direct-JavaScript design correction are in `journal.md`.

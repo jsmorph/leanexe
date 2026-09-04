@@ -1,0 +1,4 @@
+/data/euler-rusanov-interface-v1/euler-rusanov-interface-v1.csv text eol=lf
+/data/euler-rusanov-interface-v1/manifest.json text eol=lf
+/tools/euler-rusanov-interface.js text eol=lf
+/tools/wasmtime-host.js text eol=lf
