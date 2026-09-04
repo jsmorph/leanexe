@@ -939,3 +939,41 @@ The tracked program did not change, so the audited WASM digest remains
 Only existing deprecation/linter warnings were replayed.  The 24-case aggregate
 source-driven gate remains to be run after this focused completion checkpoint
 is published; no aggregate pass is claimed yet.
+
+## 2026-09-04: First 24-case aggregate attempt split at its time boundary
+
+The Horner completion checkpoint was published as
+`0b8aa0a50bb7be3d495f225bde787b4cd9705df7`, with identical local and remote
+tree `dcaacc7cb8219656f25281a9c3d02565d3cf0ab0` and a clean worktree.  The
+24-case source-driven aggregate was then started locally with the pinned
+toolchain, corrected PID-namespace preload, official `wasm-tools` 1.251.0,
+`LEANRUN_LOCAL=1`, and the driver-managed single Lean slot:
+
+```text
+LEANRUN_LOCAL=1 \
+LEAN_SYSROOT=/root/.elan/toolchains/leanprover--lean4---v4.34.0-rc2 \
+LD_PRELOAD=/tmp/leanexe-proc-self-readlink.so \
+WASM_TOOLS=build/tools/wasm-tools-1.251.0-x86_64-linux/wasm-tools \
+tools/talos-proof.js check --all
+```
+
+All twenty-four registered cases were compiled and regenerated serially.  Each
+candidate `Program.lean` was required to equal its tracked generated cache, and
+all twenty-four comparisons passed before the aggregate proof build began.
+The cold `Project` build then progressed without a theorem diagnostic through
+3,442 of an eventually discovered 3,719 jobs.  Its last completed target was
+`Project.ClobQuote.Epilogue`; Lake then stopped because the aggregate driver's
+declared 20-minute `tools/leanrun` limit expired:
+
+```text
+talos-proof.js: aggregate Talos proof build: tools/leanrun failed with exit status 124
+```
+
+This is a timeout, not a proof failure and not an aggregate pass.  The only
+diagnostics before it were existing deprecation and linter warnings.  The
+worktree remained clean; no cleanup, maintenance, deletion, reset, or
+checkout-overwrite was performed.  In accordance with the standing operating
+rule, the identical aggregate target will not be repeated against unchanged
+dependency state.  The remaining cold specification boundary will be split
+and built through focused local targets first; only the resulting materially
+warmed cache permits one later aggregate retry.
