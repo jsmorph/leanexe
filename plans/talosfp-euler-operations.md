@@ -9,6 +9,30 @@ context compaction, checkout recovery, or agent handoff.  It is the
 branch-specific authority when a generic instruction suggests remote
 execution, cleanup, or another action prohibited here.
 
+## Immediate non-negotiable summary
+
+- Work on this branch is always local.  There is no `dev` host: do not invoke,
+  probe, discover, or fall back to one.  Direct local Lean is authorized.
+- Run at most one Lean-family process at a time, with one Lean thread, the
+  pinned local toolchain and compatibility preload, and an explicit timeout.
+- Never perform generic workspace maintenance.  Do not delete, move,
+  truncate, replace, invalidate, prune, reset, stash, or otherwise discard any
+  pre-existing tracked, untracked, generated, ignored, cached, build,
+  dependency, evidence, temporary-looking, or partial state.  A dirty
+  worktree is state to preserve, not a problem to clean up.
+- Inspect status before every mutation, name the exact bounded paths, review
+  the resulting diff, and stage only an explicit reviewed path list.  Keep
+  unrelated and in-progress files out of a checkpoint without altering them.
+- Keep `journal.md` append-only and detailed.  Record commands, failures,
+  corrections, proof results, hashes, mutations, staged paths, commit/tree
+  identities, and remote verification; keep `devnotes.md` as the concise
+  checkpoint record.
+- Keep checkpoints small and coherent; commit and publish each promptly and
+  frequently.  Publication is an exact, non-forced GitHub fast-forward
+  followed by fetch and local
+  content/tree verification; it never grants cleanup or worktree-rewrite
+  authority.
+
 ## Persistent checkout state
 
 - Treat the complete active checkout as persistent, user-owned project data.
@@ -184,7 +208,8 @@ missing required tool instead of silently substituting another approach.
 ## Non-forced GitHub publication
 
 Ordinary HTTPS push authentication is unavailable in this environment.  Use
-the authenticated GitHub Git-data API without altering the worktree:
+the selected authenticated GitHub connector's Git-data API without altering
+the worktree:
 
 1. Recheck status and review the exact staged path list and staged diff.
 2. Upload exact blobs for every changed path.

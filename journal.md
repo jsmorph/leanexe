@@ -4117,3 +4117,58 @@ evidence, temporary, or partial file was deleted, moved, truncated, or
 invalidated.  This append-only publication record is the one finite receipt
 follow-on for the checkpoint; its own commit SHA is intentionally reported
 after publication instead of creating a self-referential receipt chain.
+
+## 2026-09-04: operating contract explicitly reaffirmed
+
+At 2026-09-04T14:46:08Z the user explicitly required all operational notes to
+be written down, committed, and pushed before further implementation.  The
+canonical contract remains `plans/talosfp-euler-operations.md`; an immediate
+non-negotiable summary was added near its beginning so the rules do not depend
+on reconstructing earlier conversation or reading the chronological ledger.
+
+The reaffirmed rules are: all work always runs locally; there is no `dev` host
+and it must never be invoked, probed, discovered, assumed, or used as a
+fallback; direct local Lean is authorized only through the pinned one-thread,
+one-process, timeout-bounded envelope; no generic workspace maintenance is
+authorized; and no pre-existing tracked, untracked, generated, ignored,
+cached, build, dependency, evidence, temporary-looking, or partial state may
+be deleted, moved, truncated, replaced, invalidated, pruned, reset, stashed,
+or discarded.  Status precedes every mutation, changes are path-bounded,
+diffs are reviewed, staging names exact paths, `journal.md` remains detailed
+and append-only, `devnotes.md` remains the concise checkpoint, and coherent
+checkpoints are committed and published frequently through a non-forced
+GitHub fast-forward with fetched tree/content verification.
+
+The status inspected before this notes-only mutation was synchronized at
+commit `ada055bc0b9c2168b01a6b1023d3c3a3b25fb1ef` and contained exactly the
+ongoing numerical implementation paths
+`proofs/talos/cases.json`,
+`proofs/talos/lean/Project/EulerRusanovStep/Spec.lean`, and the untracked
+`proofs/talos/lean/Project/EulerRusanovStep/Numerical.lean`.  Those three
+paths are preserved in place and are deliberately excluded from this
+operational-notes checkpoint.  No Lean, Lake, compiler, generator, verifier,
+test, cleanup, deletion, file move, cache invalidation, reset, checkout,
+stash, or worktree rewrite is part of this checkpoint.
+
+One read-only search command incorrectly put Markdown backticks inside a
+double-quoted shell argument.  The local shell therefore attempted command
+substitution for the literal word `dev` and printed
+`/bin/bash: line 1: dev: command not found`.  It did not invoke or probe a
+remote host, did not run any repository tool, and made no filesystem or Git
+mutation.  The failure is recorded here rather than hidden, and shell search
+patterns containing backticks will use non-interpolating quoting going
+forward.
+
+The exact intended staged paths for publication are
+`plans/talosfp-euler-operations.md`, `journal.md`, and `devnotes.md` only.
+Their whitespace, staged diff, blob identities, local tree, remote parent,
+non-forced ref update, fetched commit, and final worktree/index equality must
+be checked before the checkpoint is reported complete.
+
+An independent read-only audit found every substantive standing rule already
+present in the canonical contract, plans, journal, and developer notes.  It
+identified two useful literal hardenings, which were applied: the publication
+section now names the selected authenticated GitHub connector explicitly, and
+the checkpoint rule now says checkpoints stay small as well as coherent,
+prompt, and frequent.  The auditor changed no file, ran no build, and made no
+Git mutation.
