@@ -8086,3 +8086,22 @@ finiteness.  Focused targets passed 3,067 and 3,059 jobs respectively, and the
 combined incomplete Euler Spec passed all 3,366 jobs.  Public axiom reports
 contain only `propext`, `Classical.choice`, and `Quot.sound`; the detailed
 failed diagnostics and repair chronology are retained in `journal.md`.
+
+## 2026-09-04: Euler execution and data checkpoint in progress
+
+The exact generated-WAT execution proof has a complete eleven-path draft.  All
+ten rejection paths now elaborate, but the monolithic accepted 49-operation
+tail reached the explicit 8,000,000-heartbeat boundary after 481 seconds.  It
+is being split at local-frame boundaries; this is capacity evidence, not a
+theorem failure or pass, and the unchanged target will not be retried.
+
+The numerical audit found strict headroom for every primitive.  Its essential
+correlated energy argument bounds the final exact expression plus accumulated
+operand error by `3721/1024 < 4`; audited final error coefficients are 12, 15,
+and 26 multiples of `2^-52`.  The unbuilt numerical draft and exact-execution
+repair remain preserved for serialized local checking.
+
+The plan now includes `euler-rusanov-interface-v1`: eight frozen scalar-WASM
+input/output rows with formally proved raw numerical tuples, followed by
+regression-only CSV formatting, plotting, and pinned C comparisons.  This is a
+small publishable verified-data milestone before the finite-volume stencil.

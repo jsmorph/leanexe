@@ -1782,3 +1782,98 @@ energy-flux sum.  Exact generated-WAT execution remains independently open.
 The intended commit is `Prove Euler guard and scaled roundoff foundations` and
 contains the two checked proof modules, their Spec imports, the completed plan
 row, and these journal/devnotes records.
+
+## 2026-09-04: exact Euler execution and proof-to-data work in progress
+
+Before further mutation, the local branch and fetched publication ref were
+checked again.  Both `talosfp-euler` and `origin/talosfp-euler` resolved to
+`b270b0e85ea201feb0f95da25da858831caa53d1`, and both complete trees resolved
+to `07d0fc323b4f961daf429c2af6c86c523723c451`; the worktree was then clean.
+The already published operating contract remains in force.  No workspace
+maintenance, cleanup, deletion, reset, stash, checkout overwrite, remote
+executor, or `dev` host was used.
+
+A read-only audit of generated `EulerRusanov.func0` established the exact ABI
+and proof shape.  The exported function is index zero, has six i64 parameters
+and 42 i64 locals, returns four i64 words, and has no calls, memory accesses, or
+global accesses.  Talos's top-first input stack is
+`[pR, uR, rhoR, pL, uL, rhoL]`; the returned stack is
+`[energy, momentum, mass, status]`, exactly `Model.resultValues`.  Ten ordered
+raw-word predicates form eleven semantic paths: the first failed predicate
+short-circuits through the common rejection tail, or all ten pass and 49
+floating-point operations execute.  Two compiler Boolean-bookkeeping
+conditionals sit between the guard ladder and final accepted/rejected selector.
+
+A delegated draft of `Project/EulerRusanov/Execution.lean` was handed back
+without being built by the delegate.  It states fuel-independent termination
+for arbitrary host environment and initial store, complete store preservation,
+and exact equality with the pure model on all accepted and rejected inputs.
+All actual Lean invocations were then serialized through the single local slot
+with `LEANRUN_LOCAL=1`, the pinned rc2 sysroot, the readlink preload,
+`LEAN_NUM_THREADS=1`, the pinned `wasm-tools`, and a 15-minute wall timeout.
+
+The first focused `Project.EulerRusanov.Execution` build reached the new target
+and failed explicitly in 3.2 seconds, approximately 5.6 seconds for the full
+command.  Its sole proof diagnostic was the default recursion limit during the
+initial 42-local `wp_run`.  Raising this module's `maxRecDepth` to 8192 was a
+material proof-state change; the transient axiom report contained `sorryAx`
+and was not accepted.
+
+The second focused build reached the new target in 18 seconds, approximately
+21.1 seconds for the full command.  It exposed two concrete issues: the
+accepted 49-operation tail exhausted the default simplifier step budget, and
+the rejection finalizers had unfolded the model guard without retaining an
+explicit false equality.  Several outer tactic frames then exhausted the
+default 200,000 heartbeat allowance.  The repair constructed a local
+`eulerGuard = false` fact in every first-failure branch, used that fact without
+expanding the guard in the final model reduction, and supplied an explicit
+larger heartbeat allowance.  This was another diagnostic failure, not a
+timeout or accepted theorem.
+
+The third focused build reached the new target in 26 seconds, approximately
+29.6 seconds for the command.  Every rejection path now closed; the only
+remaining diagnostic was the default step limit inside the accepted tail's
+ordinary `wp_run`.  The next material change replaced only that call with the
+repository's fixed WP rewrite set and a ten-million-step simplifier budget.
+
+That monolithic accepted-path attempt then ran for 481 seconds and ended on the
+explicit 8,000,000-heartbeat limit while reducing weak-head normal form.  It
+produced no semantic counterexample and did not reach an accepted axiom report,
+but it is deterministic capacity evidence and is not counted as a pass.  The
+unchanged target will not be repeated.  The active repair is to factor the
+accepted arithmetic tail at named local-frame boundaries so each portion is
+separately elaborated and cached.  The complete draft and diagnostics remain
+preserved in the checkout.
+
+In parallel, a source-order numerical audit resolved the only serious range
+question.  Write `delta = 2^-52`, ideal energy
+`E = (5/2) p + (1/2) rho u^2`, and ideal energy flux
+`G = ((7/2) p + (1/2) rho u^2) u`.  The guard gives
+`0 <= E <= 21/8` and `|G| <= E`.  Independent triangle bounds for the final
+energy addition are unusable because `29/16 + 147/64 = 263/64 > 4`.
+Regrouping the exact result as
+
+```text
+((1/2) G_L + (7/8) E_L) + ((1/2) G_R - (7/8) E_R)
+```
+
+instead bounds its exact magnitude by `231/64`.  Including the audited mean
+and dissipation errors gives `231/64 + 25 delta <= 3721/1024 < 4`, leaving
+`375/1024` strict headroom for the final checked addition.  The audit derives
+component budgets of 12, 15, and 26 multiples of `delta` for mass, momentum,
+and energy; a uniform `32 delta` theorem is therefore conservative.  A local
+continuous optimization sanity check, explicitly not formal proof evidence,
+found extrema approximately `+/-3.111328125`, consistent with the analytic
+headroom.  A delegated `Numerical.lean` draft is preserved unbuilt pending
+handoff and serialized local checking.
+
+The plan now also inserts an early `euler-rusanov-interface-v1` dataset after
+exact-byte registration and before the finite-volume stencil.  It will invoke
+the registered scalar WASM on eight frozen raw-word cases and emit a stable CSV
+covering Sod interfaces, consistency, guard extremes, and rejection.  Exact
+returned tuples will be Lean theorem instances.  Host looping, serialization,
+plots, native/Wasmtime checks, digests as identity plumbing, and C comparisons
+remain regression-only.  A same-operation-order fixed-alpha C mirror may be
+required to agree bitwise; Lanyon's pinned dynamic-speed C is reported
+side-by-side without an equality requirement because it computes a different
+dissipation speed with division, square root, and `fmax`.

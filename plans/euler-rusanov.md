@@ -225,7 +225,52 @@ A changed byte sequence requires regeneration and re-verification.  Registry
 membership, hashes, and manifests are identity aids rather than substitutes for
 the behavior theorem.
 
-## First verified data artifact
+## Early verified interface dataset
+
+Publish `euler-rusanov-interface-v1` immediately after the exact binary is
+registered.  This is a deliberately small proof-to-data milestone before the
+finite-volume stencil: a host driver invokes the registered scalar WASM once
+per frozen row and writes the returned raw words.  The numerical computation
+must occur in WASM; the host only iterates, checks artifact identity, and
+formats data.
+
+The authoritative CSV schema is:
+
+```text
+case,rho_l_bits,u_l_bits,p_l_bits,rho_r_bits,u_r_bits,p_r_bits,status_u64,mass_bits,momentum_bits,energy_bits
+```
+
+Every binary64 word is lowercase fixed-width 16-digit hexadecimal without
+`0x`, rows have a stable order, and the file uses LF endings.  The frozen cases
+cover equal left and right Sod states, both Sod interface orientations, a
+moving equal-state consistency check, both admitted guard extremes, and a NaN
+rejection.  In particular the Sod right pressure word is
+`3fb999999999999a`, interpreted as its exact dyadic value rather than silently
+as the rational `1/10`.
+
+An adjacent manifest records the schema version, registry entry and exact WASM
+SHA-256, exported function, `gamma = 7/5`, `alpha = 7/4`, round-to-nearest-even
+semantics, generator revision, and CSV digest.  A concrete Lean theorem
+specializes the universal exact-artifact and numerical theorems to every row.
+Thus the returned tuples, termination, store preservation, accepted finiteness,
+signal bound, real-error bounds, and exact rejection payload are formal claims.
+Host iteration, CSV serialization, decimal rendering, plotting, Wasmtime/native
+agreement, hashes as identity plumbing, and C comparisons remain explicitly
+regression-only unless separately formalized.
+
+Two C comparisons keep unlike methods separate.  First, a tiny C mirror uses
+the same fixed `alpha` and operation order and should agree bit-for-bit under
+conservative compiler flags.  Second, a driver pins Lanyon's public 1D C at
+commit `a736aa5f8b17efd225c4692404e2442361d06729` and reports its dynamic-speed
+Lax flux side by side without requiring equality: that code uses division,
+square root, and `fmax`, whereas this kernel uses the globally certified fixed
+speed `7/4`.  The comparison must not claim reproduction of Lanyon's displayed
+100-cell run, whose `uL = 0.75` lies outside the current `|u| <= 1/2` guard.
+The published conservative-state cancellation and one-sided-NaN cases remain
+targets for the later dynamic conservative-state solver, not for this guarded
+primitive-state kernel.
+
+## First verified finite-volume data artifact
 
 Instantiate the universal kernel in a small first-order finite-volume program
 using the canonical Sod initial states:
@@ -305,6 +350,8 @@ Every checked row ends in a passing commit, an update to this plan and
 - [ ] Transfer the numerical contract to generated-WAT execution and audit its
       axioms.
 - [ ] Register and prove the exact binary artifact.
+- [ ] Generate and prove the frozen `euler-rusanov-interface-v1` raw-word
+      dataset, then add regression-only CSV and pinned C comparison tooling.
 - [ ] Prove the independent Jacobian derivative and complete eigendecomposition.
 - [ ] Add the generic one-step stencil and its exact-real positivity theorem.
 - [ ] Compile and prove the fixed Sod one-step artifact and emit its raw data.
