@@ -398,3 +398,113 @@ git diff --check
 `plan.md` now records this verified intermediate state without marking the
 quadratic Horner artifact complete; generated-program execution, the explicit
 trace, and exact-byte closure are still outstanding.
+
+## 2026-09-04: Standing operating protocol
+
+The following rules consolidate the user's operational directions and remain
+in force for all subsequent `talosfp-euler` work:
+
+- The work happens in the local checkout on branch `talosfp-euler`, which was
+  created from `talosfp`.  There is no `dev` host.  Do not invoke, probe, or
+  imply the availability of `tools/leanrun-dev` or any other remote executor.
+- Run Lean, Lake, `lean-wasm`, Node regressions, Wasmtime, artifact generation,
+  and proof checking locally.  Lean-family processes must be serialized, use
+  `LEAN_NUM_THREADS=1`, and have explicit timeouts; do not launch concurrent
+  Lean builds.
+- The existing `tools/leanrun` cannot create its required systemd user scope
+  in this container.  The user explicitly authorized direct local Lean.  Use
+  the exact pinned Lean 4.34.0-rc2 binaries and `LEAN_SYSROOT`, together with
+  the session-local executable-discovery shim when required.  Do not silently
+  pretend that unavailable cgroup limits were applied.  Any repository runner
+  adaptation must be an explicit, documented local-only mode that preserves
+  locking, timeouts, `nice`, and `ionice` where possible.
+- GitHub is a publication boundary, not a compute host.  Because ordinary
+  HTTPS Git credentials are unavailable in this checkout, publish local
+  commits through the authenticated GitHub Git-data API using non-forced
+  fast-forward ref updates.  After each publication, fetch the remote branch,
+  reconcile the local commit, compare complete Git tree identities, and check
+  that the worktree is clean.
+- Treat the scratch workspace as disposable.  External workspace maintenance
+  already deleted the first checkout, including `.git`; it was not initiated
+  by the user or by a repository command.  Do not run workspace cleanup or
+  delete, reset, or overwrite user files.  Inspect repository status before
+  mutations, preserve unrelated changes, and commit and push every coherent
+  checkpoint promptly so another external prune cannot erase accepted work.
+- Keep this journal detailed and append-only.  Record decisions, relevant
+  commands and environment workarounds, timings or timeouts, warnings,
+  failures, proof boundaries, axiom reports, commit identifiers, remote tree
+  verification, and the precise next incomplete step.  Never promote a native
+  or Wasmtime regression result into proof evidence.
+- The experimental self-hosted emitter is outside this branch's validation
+  path.  Hash, manifest, release-receipt, and self-host bookkeeping are not
+  gates here.  Exact generated program bytes remain proof inputs whenever an
+  exact-artifact theorem is claimed.
+
+These rules supersede the generic runner wording in repository documentation
+where that wording assumes a working systemd user bus.  They do not weaken the
+mathematical, generated-WAT, exact-byte, no-`sorry`, or axiom-audit gates.
+
+## 2026-09-04: Guarded Horner source-model contract
+
+Registered `f64_horner2_checked_bits` as an incomplete Talos case and added its
+source-facing contract under `Project.F64Horner2CheckedBits`.  The accepted
+branch fixes status zero, the two-stage pure IEEE64 Horner result, finiteness,
+and the sharp `3 * 2^-52` real absolute-error bound.  The rejected branch fixes
+status one and positive-zero result bits.  Registration remains incomplete so
+the absent generated-WAT theorem cannot be mistaken for finished evidence.
+
+The focused local build used the pinned toolchain directly, with
+`LEAN_SYSROOT`, the session-local `/proc/self/exe` shim,
+`LEAN_NUM_THREADS=1`, and a 300-second timeout:
+
+```text
+lake build Project.F64Horner2CheckedBits.Numerical
+Build completed successfully (3068 jobs).
+
+lake build Project.F64Horner2CheckedBits.Spec
+Build completed successfully (3069 jobs).
+```
+
+The targets themselves built in 3.2 and 2.9 seconds after replaying cached
+dependencies.  The public theorem reports only `propext`, `Classical.choice`, and
+`Quot.sound`; no `sorryAx` appears.  `Program.lean`, generated-WAT execution,
+the explicit trace, store preservation, and exact-byte closure remain pending.
+
+The durable checkpoints published after the original Horner source commit
+were:
+
+- `5f2987d`: `Add TalosFP Euler engineering journal`;
+- `e592f25`: `Journal local Lean execution and Horner regression`;
+- `da6f3a3`: `Add reusable f64 Horner numerical proofs`.
+
+The current published baseline before this checkpoint is
+`da6f3a3cc1dc7b9a8365e5228444508cb65ca2b7`, whose complete local and remote
+tree is `db4587db2dc08ef2f76a6d36d1adaa68943ab1f7`.
+
+`tools/talos-artifact.js` currently reaches `tools/leanrun` through
+`tools/talos-lib.js`.  That path fails before Lean because this container has
+no systemd user bus.  Before preparing the Horner artifact, add or use an
+explicit opt-in local execution route that retains serialization,
+`LEAN_NUM_THREADS=1`, explicit timeouts, and the available lock, `nice`, and
+`ionice` controls.  Do not use a remote runner and do not impersonate a
+successful systemd scope.  The exact route and its checks must be recorded
+before claiming artifact preparation passed.
+
+Registration before program generation deliberately leaves several aggregate
+checks open: runtime checks cannot import and pin the absent generated
+`Program.lean`, artifact identity has no tracked program yet, and the declared
+WAT behavior theorem does not exist.  The self-host corpus also expects a
+registry artifact for every case, but self-host validation is excluded from
+this branch.  None of these open gates is being reported as a pass; they close
+only after local artifact generation and the execution proof.
+
+Current next actions are:
+
+1. Publish this registered, locally checked source-contract checkpoint and its
+   consolidated operating rules.
+2. Resolve the local artifact-runner path explicitly and generate, rather than
+   handwrite, `F64Horner2CheckedBits/Program.lean`.
+3. Prove all five generated-WAT paths, exact results, store preservation, the
+   transferred `3 * 2^-52` result, and an explicit small-step trace.
+4. Close the exact-byte package and only then mark the Horner case complete.
+5. Begin the separately registered Euler/Rusanov source and Wasm regression.

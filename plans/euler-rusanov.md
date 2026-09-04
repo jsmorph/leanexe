@@ -306,8 +306,13 @@ Every checked row ends in a passing commit, an update to this plan and
 Every checkpoint follows the repository gates relevant to its files.  In
 addition:
 
-- run every Lean command serially through `tools/leanrun` with an explicit
-  timeout;
+- run every Lean command locally and serially with `LEAN_NUM_THREADS=1` and an
+  explicit timeout; in this container the user-authorized direct pinned
+  toolchain path replaces `tools/leanrun`, whose required systemd user scope is
+  unavailable;
+- never invoke or probe `tools/leanrun-dev` or any other remote executor;
+- treat the scratch checkout as disposable, avoid cleanup or file deletion,
+  and commit and push every coherent checkpoint promptly;
 - reject new `sorry`, `admit`, and axiom declarations in changed Lean files;
 - require public numerical and execution theorems to report only the project's
   accepted standard logical axioms;
@@ -345,4 +350,3 @@ The following are explicit non-goals of this phase:
 - general Lean `Float` compilation or a complete WebAssembly FP profile; and
 - claiming general verified compilation without the separate source-theorem
   transport chain.
-
