@@ -563,3 +563,56 @@ The environment also supplied the exact `LEAN_SYSROOT` and the session-local
 `/proc/self/exe` compatibility shim described earlier.  The next action is to
 invoke `tools/talos-artifact.js prepare f64_horner2_checked_bits` directly with
 this local mode, inspect the exact emitted program, and add its runtime pins.
+
+## 2026-09-04: Official `wasm-tools` version compatibility
+
+The first local Horner artifact preparation attempt stopped before any build
+or output replacement because the restored scratch checkout had no
+`wasm-tools` executable.  No tracked or generated artifact was changed:
+
+```text
+talos-artifact.js: wasm-tools 1.251.0 was not found; install it or set WASM_TOOLS
+```
+
+Downloaded the upstream Bytecode Alliance
+`wasm-tools-1.251.0-x86_64-linux.tar.gz` release into temporary/local ignored
+tool storage.  Its SHA-256 matched the digest published on the immutable
+GitHub release:
+
+```text
+08d523676ec71d9afbae05aa4255041ce91bf2d325d87b7e722d190d558be689
+```
+
+The official executable reports:
+
+```text
+wasm-tools 1.251.0 (a1a178a02 2026-05-28)
+```
+
+That exposed a repository checker bug: the configured version was correct,
+but `tools/check-wasm-tools-version.sh` and the conformance driver accepted
+only the shorter `wasm-tools 1.251.0` spelling.  Updated both checks to accept
+either that exact compact line or the official release's strictly shaped
+lowercase commit-hash/date suffix.  The numeric version must still equal the
+repository pin; arbitrary suffixes, multiple lines, and wrong versions remain
+rejected.
+
+Added `test/wasm_tools_version.js` and extended the conformance parser test.
+They cover the compact form, the actual official metadata form, a wrong
+version, and malformed trailing data.  The focused checks pass:
+
+```text
+node test/wasm_tools_version.js
+checked wasm-tools exact and official release versions plus wrong and malformed rejection
+
+node test/artifact_conformance.js
+checked conformance parsing, known issues, official validator cases, and file selection
+
+WASM_TOOLS=build/tools/wasm-tools-1.251.0-x86_64-linux/wasm-tools \
+  tools/check-wasm-tools-version.sh
+checked wasm-tools 1.251.0
+```
+
+The downloaded archive and extracted executable are ignored local scratch
+products, not repository sources or proof evidence.  Artifact preparation is
+ready to retry after this compatibility checkpoint is published.

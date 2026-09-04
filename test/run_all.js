@@ -12,6 +12,7 @@ function run(args) {
 
 function main() {
   run([process.execPath, path.join("tools", "check-node-version.js")]);
+  run([process.execPath, path.join("test", "wasm_tools_version.js")]);
   run([process.execPath, path.join("test", "run_process.js")]);
   run([process.execPath, path.join("test", "leanrun_local.js")]);
   run([process.execPath, path.join("test", "artifact_conformance.js")]);

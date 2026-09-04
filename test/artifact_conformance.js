@@ -3,6 +3,7 @@
 
 const {
   classifyKnownIssues,
+  isExpectedWasmToolsVersion,
   leanPublicImports,
   mathlibTacticSource,
   parseClassifierOutput,
@@ -11,6 +12,16 @@ const {
   requireExactFile,
   selectValidatorCommand,
 } = require("../tools/artifact-conformance");
+
+if (!isExpectedWasmToolsVersion("wasm-tools 1.251.0", "1.251.0") ||
+    !isExpectedWasmToolsVersion(
+      "wasm-tools 1.251.0 (a1a178a02 2026-05-28)",
+      "1.251.0",
+    ) ||
+    isExpectedWasmToolsVersion("wasm-tools 1.250.0", "1.251.0") ||
+    isExpectedWasmToolsVersion("wasm-tools 1.251.0 (untrusted)", "1.251.0")) {
+  throw new Error("wasm-tools version recognition accepted the wrong forms");
+}
 
 const expectedMathlibTacticSuffix = [
   "proofs", "talos", "lean", ".lake", "packages", "mathlib", "Mathlib", "Tactic.lean",
