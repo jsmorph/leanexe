@@ -8105,3 +8105,19 @@ The plan now includes `euler-rusanov-interface-v1`: eight frozen scalar-WASM
 input/output rows with formally proved raw numerical tuples, followed by
 regression-only CSV formatting, plotting, and pinned C comparisons.  This is a
 small publishable verified-data milestone before the finite-volume stencil.
+
+## 2026-09-04: Euler pure numerical theorem
+
+`Project.EulerRusanov.Numerical` now proves the pure IEEE64 Rusanov result
+finite with absolute error budgets `10`, `14`, and `25` times `2^-52` for
+mass, momentum, and energy.  The energy proof uses the state correlation
+`|G| <= (7/10) E` to retain strict `< 4` headroom at the last modeled add.
+The final focused build passed all 3,069 jobs, and its three public theorem
+reports contain only `propext`, `Classical.choice`, and `Quot.sound`.
+
+The detailed chronology in `journal.md` records four diagnostic builds before
+the pass, including the final exact-literal repair through `encodeFinite` and
+the proved scaled-value theorem.  Neither native floating-point evaluation nor
+native decision is proof evidence.  The generated-WAT execution proof remains
+the next serialized target; its preserved staged draft was not included in
+this numerical checkpoint.
