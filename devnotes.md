@@ -8574,3 +8574,10 @@ JavaScript syntax; the exact 26-registered/25-complete inventory; and the
 changed-Lean no-`sorry`/no-`admit`/no-axiom scan.  Publication stages only the
 explicit reviewed paths and leaves all ignored build/generated/cache and
 pre-existing temporary state intact.
+
+The source/model checkpoint was published as
+`cb56446a6d3588f2933710d0d6cc3439cd8e322e`, tree
+`ae000775b0f8985bc2691794ff64ff2838987ba4`, by a non-forced GitHub Git-data
+fast-forward.  Fetched commit/tree identity, local index, and worktree content
+matched before the local ref advanced by compare-and-swap; final status was
+clean and synchronized.
