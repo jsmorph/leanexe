@@ -8291,3 +8291,41 @@ as the sole local Lean-family process after an earlier run was superseded only
 because a final release-input edit made its eventual receipt stale; no proof
 failure occurred.  The detailed manifest digest table, command chronology,
 audit corrections, and process status are in `journal.md`.
+
+## 2026-09-04: aggregate artifact receipt and conformance warm-up
+
+The current `tools/artifact-proof.js check-all` run passed all twenty-one exact
+packages under Lean 4.34.0-rc2 and Talos `87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47`.
+Its receipt binds release-input SHA-256
+`bbc645be04edcae73d6d36958a01b85bfa0a24f7660fc0ccb801ac6e133711a3`.
+After `artifact-release.js refresh`, the tracked draft has exactly three
+blockers: immutable source revision, semantic conformance, and cold checkout.
+
+The first current conformance attempt exposed an uninitialized pinned
+`vendor/testsuite` gitlink.  It was initialized in place at exact WebAssembly
+testsuite revision `9233a0a8d5920a8d32358ee915a3662ff3385029`; no state was
+deleted or replaced.  The rerun matched all fifteen exact invalid-module
+classifications, then its first broad Mathlib prewarm chunk timed out with
+status `124` after thirty minutes and emitted no conformance receipt.  The
+completed cache remains preserved.  The current runner's roughly 3,000-module
+closure comes from `Interpreter.Testsuite.Exec` importing the
+`Interpreter.Wasm` umbrella; changing the Lake target is not a narrowing.
+Future completion either resumes from the materially warmed cache or uses a
+reviewed pinned CodeLib import cleanup followed by identical suite evidence.
+
+A read-only `ps` diagnostic inherited the Lean `/proc` preload and returned
+`fatal library error, lookup self`; it made no change and was not repeated.
+There is no `dev` host and none was invoked or probed.  The full local command
+envelope, submodule diagnosis, build-graph analysis, receipt, blockers, and
+implementation architecture are recorded in `journal.md`.
+
+The next proof checkpoint implements conservative real Euler variables, the
+physical flux bridge, explicit Jacobian/Fréchet derivative, and a complete
+strictly ordered eigenbasis.  A following layer transports existing guard facts
+and proves an exact-real two-cell Sod update plus decoded artifact-data error
+bounds.  It will not claim that stencil arithmetic ran in WASM until a separate
+compiled one-step artifact exists.
+
+The release test, kernel-scope audit, 90-file documentation checker, diff
+checker, final three-blocker inspector, and targeted stale-current-wording scan
+all passed before publication.

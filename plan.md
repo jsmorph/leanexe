@@ -10,9 +10,12 @@ carried input digest
 `5de9678970b1a9b74d50c1407457423a7fa6eabd3f430f56cfdc0e407af2b7e5`, source
 revision `0e0d752904fc90dee3ef3511ffab91f3d358c1ed`, and successful receipts dated
 2026-08-26.  The current draft release record identifies the Lean 4.34.0-rc2 and
-Talos `87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47` inputs, but its warm receipts are
-pending and `sourceRevision` is null.  Cold verification remains deferred and
-does not form part of the current work.
+Talos `87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47` inputs.  Its 2026-09-04
+aggregate artifact receipt passes all twenty-one packages for release-input
+digest `bbc645be04edcae73d6d36958a01b85bfa0a24f7660fc0ccb801ac6e133711a3`;
+semantic conformance remains pending after a cache-warming timeout, and
+`sourceRevision` is null.  Cold verification remains deferred and does not form
+part of the current work.
 
 - [x] Consolidate navigation, language, compiler, artifact-proof, annotation, and proof-guidance documents.
 - [x] Remove superseded plans and experiment reports after migrating current facts and links.
@@ -23,8 +26,14 @@ does not form part of the current work.
 - [x] Run the prior warm artifact-proof and semantic-conformance gates.
 - [x] Record immutable source revision
       `0e0d752904fc90dee3ef3511ffab91f3d358c1ed` for those historical inputs.
-- [ ] Record current warm receipts and an immutable source revision after the
-      FP `87e3aa5` compatibility gates pass.
+- [x] Record the current twenty-one-package aggregate artifact receipt under the
+      FP `87e3aa5` inputs.
+- [ ] Complete current semantic conformance, then record its receipt and an
+      immutable source revision.
+- [ ] Resume conformance from the preserved local cache.  A command-line target
+      change cannot narrow the roughly 3,000-module import closure; any genuine
+      narrowing must be an independently reviewed and pinned CodeLib import
+      cleanup with identical suite results.
 - [ ] Complete the cold-checkout gate when cold verification resumes.
 - [ ] Require `tools/artifact-release.js check-ready` to pass before describing the release as ready.
 
@@ -200,6 +209,10 @@ acceptance gates, and nonclaims.
 - [x] Add the first registered f64 exact-byte artifact and transfer the WAT
       theorem through checked decode, validation, and Talos translation.
 - [ ] Prove a genuine flux-Jacobian derivative and complete eigenbasis theorem.
+- [ ] Prove the exact-real two-cell Sod update and propagate the three certified
+      `sodLL`/`sodLR`/`sodRR` flux-error budgets through decoded-real update and
+      balance theorems.  Do not call this a WASM stencil: the current artifact
+      executes the interface fluxes, not the update arithmetic.
 - [ ] Compile and prove a fixed first-order Sod step that emits raw binary64
       state, flux, admissibility, and balance data.
 - [ ] Extend the checked FP profile and implement the guarded 100-cell Sod

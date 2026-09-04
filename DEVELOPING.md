@@ -150,9 +150,11 @@ derives the unresolved release conditions from the record.  The checked-in
 draft now records the Lean 4.34.0-rc2 and Talos
 `87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47` pins and the migrated release-input
 identity.  `tools/artifact-release.js inspect` is authoritative for its current
-warm-receipt state, and `sourceRevision` remains null.  The successful 2026-08-26
-receipts belong to the earlier input digest; matching warm receipts, an immutable
-source revision, and the cold-checkout result remain separate release conditions.
+warm-receipt state, and `sourceRevision` remains null.  The 2026-09-04 aggregate
+artifact receipt passes all twenty-one packages for the migrated input digest.
+Semantic conformance, an immutable source revision, and the cold-checkout result
+remain separate release conditions; the successful 2026-08-26 receipts belong
+to the earlier input digest.
 
 `tools/artifact-release.js check-cold <revision>` clones the recorded source revision below the repository's ignored `tmp/` directory, compares its release inputs byte-for-byte with the recorded input identity, checks the external tools and exact Lean commit, fetches the pinned proof dependencies, initializes the official testsuite, and runs both release gates.  The artifact gate builds the shared Talos library and artifact translator before building each embedded-byte module and each package's generated program, decoded cache, raw cache, decode equality, and validation result as separate targets.  It also computes each behavioral specification's repository-local import closure, builds that closure in dependency order with a separate limit for every module, and then builds the specification root.  These divisions keep each cold elaboration boundary within its target limit, while the command rejects tracked changes after setup or either gate, rechecks the input identity, and writes a receipt after success.
 
