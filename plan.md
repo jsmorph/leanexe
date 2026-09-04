@@ -205,12 +205,39 @@ roundoff properties.  PDE convergence, entropy-solution correctness,
 high-order reconstruction, and multidimensional flow remain outside this
 phase.
 
+### Operational discipline for `talosfp-euler`
+
+- Treat the scratch checkout and ignored build/dependency caches as
+  disposable.  Automated workspace maintenance already removed one complete
+  checkout, including `.git`; do not run cleanup or maintenance against the
+  active checkout.  Journal, commit, and publish every coherent checkpoint
+  promptly, and label unchecked work explicitly.
+- This environment has no `dev` host.  Never invoke or probe
+  `tools/leanrun-dev`; run Lean, Lake, `lean-wasm`, Node regressions, Wasmtime,
+  artifact preparation, and proof checks locally.  GitHub is used only to
+  publish and recover branch checkpoints.
+- The user explicitly authorized direct local Lean execution because
+  `tools/leanrun` cannot create its systemd user scope here.  Keep all
+  Lean-family work serialized with `LEAN_NUM_THREADS=1`, the exact pinned
+  toolchain, and explicit timeouts.  Do not use the self-hosted emitter or its
+  gates.
+- The ordinary HTTPS remote has no usable credential helper.  Publish with the
+  authenticated GitHub Git-data API as a non-forced fast-forward: upload
+  complete changed-file blobs, create a tree from the current remote tree,
+  create a commit whose parent is the current remote branch tip, update
+  `talosfp-euler` with `force: false`, compare the complete remote and local Git
+  tree identities, then fetch and reconcile the local checkout.
+- Before each published checkpoint, update `journal.md` with commands,
+  results, failures, unresolved proof boundaries, and exact commit intent.
+  Hash, manifest, release-receipt, and self-host bookkeeping is not a phase
+  gate; exact program bytes remain the theorem input.
+
 ## Required gates
 
 | Change | Required evidence |
 |--------|-------------------|
 | Documentation only | `git diff --check`, `tools/check-docs.js`, and command review. |
-| Source language or compiler | Focused Lean build through `tools/leanrun`, targeted execution comparisons, `node test/run_all.js`, WAT round trip, and all affected Talos proofs. |
+| Source language or compiler | Focused serialized local Lean build under the branch-specific direct-run authorization, targeted execution comparisons, `node test/run_all.js`, WAT round trip, and all affected Talos proofs. |
 | Self-hosted emitter | Native/image byte equality, Stage 1/Stage 2 self-reproduction, registered-corpus equality, malformed-image tests, two-host execution, and all source-language/compiler gates. |
 | Exact-artifact verifier | Focused artifact package, `tools/artifact-proof.js check-all`, decoder and validator tests, and conformance checks when semantics change. |
 | ProofKit, annotations, or LTG | Focused Lean modules, generated declaration checks, `tools/ltg check`, fixed-artifact package verification, and journal plus telemetry review. |
@@ -225,6 +252,6 @@ guarded fixed-kernel, runtime-length dot, and quadratic Horner artifact proofs.
 Their public numerical theorems must expose every domain and overflow-exclusion
 assumption, pass axiom audits, and depend only on pure modeled semantics.  The
 repository status, registries, proof inventories, plans, documentation, active
-release evidence, and pushed `talosfp` tree must agree at that revision.  A
+release evidence, and pushed `talosfp-euler` tree must agree at that revision.  A
 release-ready state still additionally requires the deferred cold-checkout
 receipt and a successful `check-ready` result.

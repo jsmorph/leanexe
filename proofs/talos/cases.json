@@ -224,6 +224,18 @@
         "Project.F64DotCheckedBits.Spec.dotCheckedBits_wat_conditioned_relative_error"
       ],
       "complete": true
+    },
+    {
+      "name": "f64_horner2_checked_bits",
+      "module": "LeanExe.Examples.Float64Bits",
+      "entry": "LeanExe.Examples.Float64Bits.horner2CheckedBits",
+      "leanModule": "F64Horner2CheckedBits",
+      "specTarget": "Project.F64Horner2CheckedBits.Spec",
+      "behaviorTheorems": [
+        "Project.F64Horner2CheckedBits.Spec.horner2CheckedBits_source_real_error",
+        "Project.F64Horner2CheckedBits.Spec.horner2CheckedBits_wat_real_error"
+      ],
+      "complete": false
     }
   ]
 }
