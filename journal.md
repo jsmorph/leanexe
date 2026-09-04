@@ -818,3 +818,65 @@ reuse exactly `allocFuncDef`, `resetFuncDef`, `retainFuncDef`, and
 `releaseFuncDef 5` at function indices two through five, after erasing only the
 module-local type index.  This closes the generated-runtime-helper boundary;
 the explicit small-step trace and exact-byte gate remain open.
+
+## 2026-09-04: Explicit Horner small-step trace
+
+The runtime-helper checkpoint was published as
+`68b0020ab424040c0c206d04b9b556417453aeaf`, with identical local and remote
+tree `bd3bf322345ba8ac1d5366afaef4a10f5dc672aa`.
+
+Added an independent 801-line relational trace for the generated Horner entry.
+It does not reuse the big-step/WP execution result.  A generalized private
+helper proves the exact twelve transitions of each call to the generated
+raw-bit guard across arbitrary caller continuations, value tails, control
+frames, and call frames.  The public trace then enumerates every generated
+instruction and administrative transition on all five semantic paths:
+
+| Path | Exact transitions |
+| --- | ---: |
+| reject `x` | 47 |
+| reject `c₂` | 64 |
+| reject `c₁` | 81 |
+| reject `c₀` | 98 |
+| accept | 118 |
+
+The accepted path visibly contains all four helper calls and all 24 arithmetic
+body instructions; its floating steps use Talos's modeled scalar unary and
+binary transitions.  The rejection paths visibly short-circuit the remaining
+guards and execute no floating arithmetic.  Every path finishes with the
+modeled `[bits, status]` stack and the complete initial machine store.
+
+The first focused build reached `Trace.lean` in 6.5 seconds and failed after
+9.1 seconds total because the dependent `.call` step had not fixed its callee
+to the exact generated `func0Def`, and the generalized helper's caller state
+was not inferable at its composed call sites.  Making those caller arguments
+implicit and instantiating the exact helper function removed all entry-path
+composition errors.  The second focused build failed after 12.4 seconds only
+inside the helper: its `leUI64` result needed an explicit raw-bit guard
+comparison, and return needed explicit normalization of the one-parameter
+`List.drop`.  Those two local normalizations produced the passing build while
+leaving every trace definition and path length unchanged:
+
+```text
+lake -d proofs/talos/lean --no-ansi build \
+  Project.F64Horner2CheckedBits.Trace
+Build completed successfully (3365 jobs).
+```
+
+The passing command took 12.8 seconds, including approximately 10 seconds on
+the target.  `horner2CheckedBits_steps`,
+`horner2CheckedBits_smallStep_exact`, and
+`horner2CheckedBits_smallStep_real_error` each report only `propext`,
+`Classical.choice`, and `Quot.sound`; no `sorryAx` occurs.  The public proof
+root now imports both the big-step execution proof and this trace, and its
+focused integration build also passes:
+
+```text
+lake -d proofs/talos/lean --no-ansi build \
+  Project.F64Horner2CheckedBits.Spec
+Build completed successfully (3368 jobs).
+```
+
+That integration command took 5.74 seconds, including approximately 3.2
+seconds on the target.  Exact-byte closure is now the only remaining Horner
+case-completion gate; the registry intentionally remains `complete: false`.

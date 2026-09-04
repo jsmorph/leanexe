@@ -37,8 +37,8 @@ identity:
 
 `program.wasm` and `program.wat` are generated compiler artifacts;
 `Program.lean` is generated from that WAT by the Talos verifier.  They are
-not handwritten proof inputs.  `Numerical.lean`, `Execution.lean`, and the
-public proof root are the handwritten layer.
+not handwritten proof inputs.  `Numerical.lean`, `Execution.lean`,
+`Trace.lean`, and the public proof root are the handwritten layer.
 
 The decoded module assigns function index 0 to the raw-bit guard, index 1 to
 the exported `horner2CheckedBits` entry, and indices 2 through 5 to `alloc`,
@@ -63,9 +63,12 @@ bits.
 The generated-WAT big-step proof now covers all five guard paths, exact
 results, total termination, store preservation, and the transferred
 `3 * 2^-52` real-error contract.  Its axiom reports contain only the standard
-logical axioms.
+logical axioms.  The independent relational proof enumerates every generated
+instruction and administrative transition: rejection at `x`, `c₂`, `c₁`, or
+`c₀` takes 47, 64, 81, or 98 steps respectively, and acceptance takes 118
+steps.  Its exact-result, termination, and numerical theorems have the same
+standard-only axiom report.
 
 The case remains registered with `complete: false`.  Completion still
-requires explicit small-step trace closure and the exact-program-byte gate.
-Release manifests, receipts, and self-host packaging remain outside this
-branch's completion gate.
+requires the exact-program-byte gate.  Release manifests, receipts, and
+self-host packaging remain outside this branch's completion gate.
