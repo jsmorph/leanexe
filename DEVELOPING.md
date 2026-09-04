@@ -14,7 +14,7 @@ LeanExe develops and tests on Linux.  The Wasmtime download script supports `x86
 | C compiler | A C11 compiler available as `cc` builds the Wasmtime host runner. |
 | Node.js | Node 24.13.0 runs the test drivers.  `.node-version` records the exact version, and the complete runner checks it before building. |
 | `wasm-tools` | Version 1.251.0 renders WAT for round-trip and Talos checks.  `.wasm-tools-version` records the exact version, and the source artifact and conformance gates check the selected executable. |
-| System tools | The repository uses Bash or POSIX `sh`, `curl`, `sha256sum`, `tar`, `flock`, `systemd-run`, `nice`, `ionice`, `timeout`, and ordinary Unix file tools. |
+| System tools | The repository uses Bash or POSIX `sh`, `curl`, `sha256sum`, `tar`, `flock`, `nice`, `ionice`, `timeout`, and ordinary Unix file tools.  Standard runner mode also requires `systemd-run`. |
 
 The Talos revision is pinned in `proofs/talos/lean/lakefile.toml`, and its transitive Lean dependencies are pinned in the adjacent manifest.  `tools/check-node-version.js` enforces the Node pin, while `tools/check-wasm-tools-version.sh` enforces the `wasm-tools` pin selected through `WASM_TOOLS`, `PATH`, or `$HOME/.cargo/bin`.  The Wasmtime downloader checks both cached and downloaded archives before extraction and replaces a cached file only after its downloaded replacement passes verification.
 
@@ -34,18 +34,28 @@ These environment variables configure local executables and the Wasmtime downloa
 | `tools/leanrun --timeout` | Time limit for one Lean, Lake, compiler, or verifier process.  The default is 900 seconds. |
 | `tools/leanrun --lock-timeout` | Time limit in seconds for acquiring the machine-wide Lean slot.  The default is 900. |
 | `LEANRUN_TOOLCHAIN` | Explicit Lean toolchain directory.  The default comes from the root `lean-toolchain` pin. |
+| `LEANRUN_LOCAL=1` | Explicitly user-authorized fallback when no systemd user scope exists.  It retains serialization, the pinned toolchain, one Lean thread, priority settings, and timeout, but not memory, swap, or CPU cgroup enforcement. |
 | `WASM_TOOLS` | `wasm-tools` executable used by WAT and Talos checks. |
 | `LEANEXE_FUZZ_CASES` | Case count for the ASCII validator fuzz test.  The default is 50. |
 
 ## Lean Process Limits
 
-Lean and Lake can consume enough memory and CPU to make a workstation unresponsive, especially during a cold Mathlib build.  `tools/leanrun` places every direct `lean`, `lake`, `lean-wasm`, and Talos verifier command in the required user scope.  It also acquires the default `../vq` lock at `/tmp/vq-leanrun.<uid>/1`, which serializes Lean work across both repositories.
+Lean and Lake can consume enough memory and CPU to make a workstation unresponsive, especially during a cold Mathlib build.  In standard mode `tools/leanrun` places every direct `lean`, `lake`, `lean-wasm`, and Talos verifier command in the required user scope.  It always acquires the default `../vq` lock at `/tmp/vq-leanrun.<uid>/1`, which serializes Lean work across both repositories.
 
 ```sh
 tools/leanrun --timeout <duration> <lean-or-lake-command>
 ```
 
-The runner enforces `MemoryHigh=4G`, `MemoryMax=6G`, `MemorySwapMax=1G`, `CPUQuota=100%`, `nice -n 10`, `ionice -c 3`, and `LEAN_NUM_THREADS=1`.  `--timeout` bounds execution after lock acquisition, while `--lock-timeout` bounds the queue wait in seconds.  The corresponding `LEANRUN_TIMEOUT` and `LEANRUN_LOCK_TIMEOUT` environment variables remain available to repository drivers, but interactive commands use flags so `tools/leanrun` remains the stable approved prefix.  Stop if the user scope, lock, pinned toolchain, or required cgroup properties are unavailable, because another limit does not provide the same process boundary.
+Standard mode enforces `MemoryHigh=4G`, `MemoryMax=6G`, `MemorySwapMax=1G`, `CPUQuota=100%`, `nice -n 10`, `ionice -c 3`, and `LEAN_NUM_THREADS=1`.  `--timeout` bounds execution after lock acquisition, while `--lock-timeout` bounds the queue wait in seconds.  The corresponding `LEANRUN_TIMEOUT` and `LEANRUN_LOCK_TIMEOUT` environment variables remain available to repository drivers, but interactive commands use flags so `tools/leanrun` remains the stable approved prefix.  Stop if the user scope, lock, pinned toolchain, or required cgroup properties are unavailable.  Only after the user explicitly authorizes execution without the systemd cgroup may `LEANRUN_LOCAL=1` be used; it retains the lock, pinned toolchain, timeout, `LEAN_NUM_THREADS=1`, `nice`, and `ionice`, while clearly warning that the cgroup limits are absent.
+
+Set `LEANRUN_LOCAL=1` on a runner-calling repository driver and invoke that
+driver directly.  Do not place the driver beneath `tools/leanrun` or invoke
+`tools/leanrun` recursively in local mode: the outer process holds the same
+non-reentrant lock required by the child, and the runner rejects this nesting.
+
+```sh
+LEANRUN_LOCAL=1 tools/talos-artifact.js prepare <case>
+```
 
 Repository Node drivers route Lean commands through `tools/leanrun`, and the Talos tools use the same runner for every Lean-based child.  Invoke `tools/talos-artifact.js`, `tools/talos-proof.js`, and `node test/run_all.js` directly because their children acquire the machine-wide slot.  A direct Lean or Lake command must name `tools/leanrun` as shown above.
 

@@ -508,3 +508,58 @@ Current next actions are:
    transferred `3 * 2^-52` result, and an explicit small-step trace.
 4. Close the exact-byte package and only then mark the Horner case complete.
 5. Begin the separately registered Euler/Rusanov source and Wasm regression.
+
+## 2026-09-04: Explicit local `leanrun` mode
+
+The source-contract and operating-rules checkpoint was published as
+`570d7eb1b517ed0a27b3123ac4b7d0e99eeea4b2`.  The remote and reconciled local
+trees both equal `a2cf08a555eb0c7d02c0b00981131d2b3ad230a6`, and the worktree was
+clean after fetch and rebase.
+
+Added an explicit `LEANRUN_LOCAL=1` mode to `tools/leanrun` for the user's
+authorized local-only execution environment.  Standard behavior is unchanged
+and still fails closed through `systemd-run`.  The local mode validates its
+opt-in value, selects the pinned toolchain, exports `LEAN_NUM_THREADS=1`, takes
+the existing machine-wide `flock`, and runs under the requested timeout,
+`nice -n 10`, and `ionice -c 3`.  It prints a conspicuous warning that the
+unavailable cgroup CPU, memory, and swap limits are not enforced; it never
+activates automatically.
+
+The local child receives an internal marker.  If it invokes `tools/leanrun`
+again, the nested runner fails immediately with an explanatory error instead
+of waiting on the parent's non-reentrant lock.  Runner-calling repository
+drivers must therefore be invoked directly with `LEANRUN_LOCAL=1` in their
+environment.  `tools/talos-lib.js` already forwards the environment to each
+sequential child, so the artifact driver requires no special-case code.  This
+mode does not use or inspect `tools/leanrun-dev`.
+
+Added `test/leanrun_local.js` with a temporary fake toolchain and a fake
+`systemd-run` sentinel.  Without running Lean, it proves that explicit local
+mode reaches the requested command, exports the one-thread and cache settings,
+does not call `systemd-run`, rejects an invalid mode with status two, enforces
+the child timeout with status 124, preserves the standard-mode `systemd-run`
+path, and rejects nesting with status one.  It is
+registered in `test/run_all.js` immediately after the existing runner-routing
+test.  The focused checks pass:
+
+```text
+sh -n tools/leanrun
+node --check test/leanrun_local.js
+node test/leanrun_local.js
+checked leanrun opt-in local execution, standard-mode preservation, validation, timeout enforcement, and nesting rejection
+```
+
+The first real proof check through the new route also passed locally:
+
+```text
+LEANRUN_LOCAL=1 tools/leanrun --timeout 120s \
+  lake -d proofs/talos/lean --no-ansi build \
+  Project.F64Horner2CheckedBits.Spec
+leanrun: LEANRUN_LOCAL=1; cgroup CPU, memory, and swap limits are not enforced
+Build completed successfully (3069 jobs).
+```
+
+The environment also supplied the exact `LEAN_SYSROOT` and the session-local
+`/proc/self/exe` compatibility shim described earlier.  The next action is to
+invoke `tools/talos-artifact.js prepare f64_horner2_checked_bits` directly with
+this local mode, inspect the exact emitted program, and add its runtime pins.

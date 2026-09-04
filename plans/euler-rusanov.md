@@ -307,9 +307,10 @@ Every checkpoint follows the repository gates relevant to its files.  In
 addition:
 
 - run every Lean command locally and serially with `LEAN_NUM_THREADS=1` and an
-  explicit timeout; in this container the user-authorized direct pinned
-  toolchain path replaces `tools/leanrun`, whose required systemd user scope is
-  unavailable;
+  explicit timeout; in this container use the user-authorized
+  `LEANRUN_LOCAL=1` mode of `tools/leanrun`, which preserves the shared lock,
+  pinned toolchain, and priority controls while warning that its unavailable
+  systemd cgroup limits are not enforced;
 - never invoke or probe `tools/leanrun-dev` or any other remote executor;
 - treat the scratch checkout as disposable, avoid cleanup or file deletion,
   and commit and push every coherent checkpoint promptly;

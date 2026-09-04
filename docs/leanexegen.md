@@ -90,6 +90,10 @@ The artifact-proof workspace includes `PROOF_IMPORT_CHECK.js`, generated from th
 
 The outer process starts the complete Codex session through `tools/leanrun`, which holds the machine-wide Lean lock and places Codex and every child in one constrained cgroup.  A nested `tools/leanrun` invocation verifies the inherited memory and CPU limits before running Lean, Lake, or LeanExe, so it does not need another systemd scope.  The formal and proof sessions repeat one prescribed Lean build after each edit, while the program session repeats its Lean build, LeanExe report, and scratch compilation in sequence.
 
+`LEANRUN_LOCAL=1` is not supported for this headless workflow.  The workflow
+depends on a validated inherited cgroup and deliberately invokes nested
+runners, while local mode has no inherited cgroup and rejects nesting.
+
 Codex returns one schema-validated `generated`, `questions`, or `problems` object after its internal work.  For `generated`, the orchestrator reads the candidate from the isolated workspace and repeats every final Lean or compiler check in a separate outer workspace.  A deterministic artifact starter that passes the full outer check needs no Codex session; an ordinary proof failure at the first Lean target starts the usual session, while runner, byte, audit, and later acceptance failures stop the stage.
 
 | Task | Inputs visible to Codex | Required generated source |
