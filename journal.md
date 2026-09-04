@@ -2251,3 +2251,21 @@ outputs remain part of the preserved active checkout.  The next independent
 checkpoint is regression-only C comparison tooling; it will keep a bit-exact
 same-operation-order mirror separate from Lanyon's dynamic-speed flux and will
 not be represented as formal evidence.
+
+Publication used the authenticated GitHub Git-data API because ordinary HTTPS
+push credentials are not configured.  Every uploaded blob except the first
+`devnotes.md` attempt immediately matched the local Git blob identity.  That
+first attempt incorrectly used the decoded Unicode character count as a byte
+offset while reconstructing the append-only file, producing an unreferenced
+blob `1b3cb15d1361ee3ef1f5acbc2a9923cd98ed7feb`.  No tree or ref referenced it.
+Using `git cat-file -s` for the exact 1,086,591-byte parent boundary produced
+the required local blob `0c38e91b84469538a764b8fbfd447353f5ab5987`.
+
+The API-created tree exactly matched the checked local tree
+`4107838828a0c75d3f24082e4040980bda52d48c`.  A non-forced fast-forward moved
+`origin/talosfp-euler` from `87b47d0f8f56107d9cc54150330d45bc401e8102`
+to the published commit `847d780fed9d2b89cf670eb18b0893e54c861212`
+(`Publish verified Euler interface data`).  A subsequent fetch confirmed the
+remote tree, after which only the local branch reference was aligned from the
+equivalent local commit; the worktree was not rewritten.  Local and remote
+commits and trees then matched exactly, and `git status` was clean.
