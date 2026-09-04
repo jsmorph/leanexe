@@ -236,6 +236,18 @@
         "Project.F64Horner2CheckedBits.Spec.horner2CheckedBits_wat_real_error"
       ],
       "complete": true
+    },
+    {
+      "name": "euler_rusanov",
+      "module": "LeanExe.Examples.EulerRusanov",
+      "entry": "LeanExe.Examples.EulerRusanov.rusanovFluxCheckedBits",
+      "leanModule": "EulerRusanov",
+      "specTarget": "Project.EulerRusanov.Spec",
+      "behaviorTheorems": [
+        "Project.EulerRusanov.Spec.rusanovFluxCheckedBits_exact",
+        "Project.EulerRusanov.Spec.rusanovFluxCheckedBits_wat_real_error"
+      ],
+      "complete": false
     }
   ]
 }
