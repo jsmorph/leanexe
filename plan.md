@@ -189,7 +189,7 @@ generated-WAT proof, exact-byte closure, data format, follow-on checked solver,
 acceptance gates, and nonclaims.
 
 - [x] Complete the already selected guarded quadratic Horner checkpoint.
-- [ ] Compile a guarded `gamma = 7/5` primitive-state Rusanov flux using the
+- [x] Compile a guarded `gamma = 7/5` primitive-state Rusanov flux using the
       admitted binary64 add/multiply profile and exact sign-bit negation.
 - [ ] Prove physical admissibility, the characteristic-speed bound, finite
       IEEE execution, and explicit componentwise real-error bounds.

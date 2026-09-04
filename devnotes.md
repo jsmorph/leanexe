@@ -8006,3 +8006,37 @@ No source repair was needed.  One misspelled nonexistent target was rejected
 immediately and is recorded with the complete target/timing ledger in
 `journal.md`.  ClobDepth is the last focused behavioral case before the single
 warmed aggregate retry.
+
+ClobDepth recovery and the inherited Talos aggregate are now complete.  Both
+missing- and found-level allocation/copy/store branches passed, followed by the
+`Func3`, `Func6`, loop, and `Func7` spine.  The fully warmed
+`Project.ClobDepth.Spec` passed 3,380 jobs, and the single planned aggregate
+retry then passed all 3,719 jobs.  The earlier cold aggregate timeout was a
+cache/resource boundary rather than a theorem failure; no proof source repair
+was required.  Exact job counts and timings are retained in `journal.md`.
+
+## 2026-09-04: guarded Euler Rusanov source and WASM regression
+
+`LeanExe.Examples.EulerRusanov.rusanovFluxCheckedBits` now accepts six raw
+binary64 words for left and right `(rho, velocity, pressure)` states and
+returns four raw words `(status, mass, momentum, energy)`.  Its integer-only
+guard admits `1/8 <= rho <= 1`, `1/16 <= pressure <= rho`, and
+`|velocity| <= 1/2`; rejection returns status one and three zero payloads
+before the floating-point branch.
+
+The accepted branch implements the `gamma = 7/5`, `alpha = 7/4` Rusanov flux
+using a deliberately dyadic operation graph.  Pressure factors `5/2` and
+`7/2` are constructed from additions and multiplication by one half.  The
+dissipation coefficient `alpha/2 = 7/8` is constructed as separately rounded
+one-half, one-quarter, and one-eighth multiples of each state jump.  This
+preserves the exact-real formula while keeping exact products below two and
+exact sums below four, so the proof can wrap the pinned CodeLib rounders rather
+than extend their scale theory.
+
+The focused Wasmtime regression pins canonical Sod, reverse-Sod, equal-state,
+midpoint, and extreme guarded-boundary outputs.  It accepts signed zero,
+rejects adjacent encodings outside every raw range and representative NaNs,
+and checks exact zero payloads on rejection.  The extracted IR contains 22
+f64 multiplies, 27 f64 additions, and three sign XORs with no surviving source
+intrinsic call.  The exported WAT body has the same arithmetic counts plus 98
+`f64.reinterpret_i64` and 49 `i64.reinterpret_f64` instructions.
