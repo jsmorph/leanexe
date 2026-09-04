@@ -3009,3 +3009,118 @@ the 90-file maintained documentation check; release identity, receipt, pin,
 result, and blocker tests; kernel-scope audit; final four-blocker inspection;
 and a targeted source scan finding no `sorry`, `admit`, or axiom declaration in
 the eigenbasis or umbrella modules.
+
+## 2026-09-04: local-only and no-maintenance contract restated
+
+The user required every operational constraint to be written down and
+published before implementation continues.  This is a documentation-only
+checkpoint.  Its intended commit message is
+`Restate local-only workspace operating contract`.
+
+The starting state was inspected before mutation.  Local `HEAD` and
+`origin/talosfp-euler` were both
+`c4243339b7db0dfc21c0146f911136587715a0e1`, with complete tree
+`867d1ea797ed60bb1537017c8ba2ddb0835f2866`.  The worktree contained exactly
+two untracked implementation drafts:
+
+- `proofs/talos/lean/Project/EulerRusanov/RealGuardBridge.lean`;
+- `proofs/talos/lean/Project/EulerRusanov/RealStencil.lean`.
+
+They are persistent project data.  Neither draft is edited, staged, moved,
+discarded, or otherwise changed by this checkpoint.  Only `plan.md`,
+`journal.md`, and `devnotes.md` are eligible for its explicit staging set.
+
+The complete current operating contract is:
+
+1. The checkout is persistent user-owned data, not disposable scratch space.
+   This protection includes `.git`, tracked files, untracked drafts, generated
+   outputs, ignored files, submodules and dependency trees, compiler products,
+   build directories, caches, evidence receipts, and partially completed work.
+   The earlier automated removal of a complete checkout was data loss, not a
+   valid maintenance operation and not precedent for deleting this checkout.
+2. No assistant, delegated agent, automation, or generic workspace facility is
+   authorized to perform cleanup, maintenance, reclamation, pruning, deletion,
+   truncation, cache invalidation, `git clean`, destructive reset, checkout
+   overwrite, stash, worktree replacement, recursive removal, or an equivalent
+   rewrite.  Calling an action "maintenance", "cleanup", "repair", or
+   "reproducible" does not authorize it.  Any operation that might delete,
+   replace, invalidate, move, or rewrite project state must stop for a fresh
+   user instruction that names the exact target.  No broad path, glob, or
+   unresolved environment variable may stand in for that target.
+3. Inspect `git status` before every mutation.  Preserve all unrelated and
+   in-progress changes.  Stage only explicitly reviewed paths.  A failed build,
+   timeout, stale receipt, or reproducible dependency is never permission to
+   discard a file or cache.  Retain useful partial build state and diagnose in
+   place.
+4. There is no `dev` host.  Never invoke it, probe it, test for it, or fall back
+   to it.  Lean, Lake, the LeanExe compiler, Talos proof checks, artifact
+   preparation, Node tests, C regression programs, Wasmtime, wasm-tools, and
+   conformance execution all run locally.  GitHub is used only as the branch
+   publication and recovery boundary.
+5. Direct local Lean execution is explicitly authorized.  Only one
+   Lean/Lake/compiler process may run at a time across the whole task, including
+   delegated work.  The standard command envelope is:
+
+   ```sh
+   env LEANRUN_LOCAL=1 \
+     LEAN_SYSROOT=/root/.elan/toolchains/leanprover--lean4---v4.34.0-rc2 \
+     LD_PRELOAD=/tmp/leanexe-proc-self-readlink.so \
+     LEAN_NUM_THREADS=1 \
+     WASM_TOOLS=/workspace/scratch/9df984ece5a1/leanexe/build/tools/wasm-tools-1.251.0-x86_64-linux/wasm-tools \
+     tools/leanrun --timeout 15m lake -d proofs/talos/lean --no-ansi build TARGET
+   ```
+
+   Use the same local envelope for proof-driving tools that spawn Lean.  The
+   runner provides the shared lock, pinned toolchain, one-thread setting,
+   priority controls, and explicit timeout; its warning that cgroup resource
+   limits are unavailable is accurate and must remain visible.  Do not nest
+   `tools/leanrun` and do not use the self-hosted emitter or its gates.
+6. The session-local preload is only a nested-PID-namespace compatibility
+   workaround.  It redirects numeric `/proc/<pid>/exe` reads made by Lean to
+   `/proc/self/exe`; it is not repository source or theorem evidence.  Do not
+   inherit it into unrelated diagnostics.  A previous read-only `ps` command
+   under the preload returned `fatal library error, lookup self`, changed
+   nothing, and is not to be retried in that environment.
+7. A timeout without a Lean diagnostic is censored timing evidence, neither a
+   success nor a theorem failure.  Record it and do not rerun the unchanged
+   target.  Retry only after a material proof change, a reviewed dependency
+   split, or materially changed preserved cache state.  Compiler diagnostics,
+   failed attempts, warnings, timings, and repairs belong in this journal.
+8. `journal.md` is the detailed append-only chronological ledger.  It records
+   commands, environment, results, failures, proof boundaries, axiom audits,
+   byte and manifest identities, commit intent, publication identities, and
+   next work.  `devnotes.md` is the concise durable checkpoint summary.
+   `plan.md` retains the scope, gates, and operating rules.  Update, commit, and
+   publish these records at every coherent checkpoint.
+9. Commit and push coherent work frequently.  Because ordinary HTTPS write
+   credentials are not assumed, publish through the authenticated GitHub
+   Git-data API: upload exact staged blobs; build on the current remote parent
+   tree; require the API tree to equal the complete staged local tree; create a
+   commit with the current remote tip as its sole parent; move
+   `talosfp-euler` with `force: false`; fetch it; require commit, parent, and
+   full-tree equality; and only then align the local ref.  Publication must not
+   reset, check out, merge, stash, clean, or rewrite the worktree.
+10. Formal claims require exact reviewed Lean/Talos/WAT/WASM evidence at their
+    stated boundary.  Native, C, and Wasmtime outputs remain regression
+    evidence.  No `sorry`, `admit`, or new axiom is accepted.  The current
+    1,808-byte artifact proves three interface-flux calls only; an exact-real or
+    decoded finite-volume update must not be described as an executed WASM
+    stencil until a separate compiled one-step artifact exists.
+
+After this documentation checkpoint is published and independently fetched,
+implementation resumes locally with the two preserved drafts.  Their first
+Lean checks remain serialized; failures will be journaled and no build or
+dependency state will be cleaned in response.
+
+A separate read-only audit checked the canonical journal contract and the
+shorter plan and development-note summaries.  It found the collective record
+complete and identified two phrases that were only implicit in the shorter
+summaries: inspect `git status` before every mutation, and explicitly preserve
+dependency, build, cache, and evidence-receipt state.  Both summaries now state
+those requirements literally.  The audit ran no Lean, Git mutation, cleanup,
+or file edit.
+
+Pre-publication validation passed: `git diff --check` emitted no diagnostic and
+`node tools/check-docs.js` accepted all 90 maintained Markdown files.  A fresh
+status inspection still showed only the three intended modified documentation
+paths and the same two untouched untracked drafts.
