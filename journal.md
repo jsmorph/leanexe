@@ -1401,3 +1401,53 @@ deprecation warnings and no theorem diagnostic.  No `dev` host, cleanup,
 deletion, reset, stash, maintenance, or worktree rewrite was used.  The next
 frontier is the found-level branch, followed by `Func3`, the `Func6` loop,
 `Func7`, and the public ClobDepth root.
+
+## 2026-09-04: ClobDepth behavioral specification fully warmed and passed
+
+The missing-level checkpoint was published as
+`7c59cac4aace13299a84fa9dd4bea7754197f296`; local and remote refs and tree
+`bf7eb44a3a758bce817a78ff7c52ac59a0f63d57` matched before the found-level
+branch began.
+
+The found-level memory path passed leaf by leaf:
+
+- `FoundFinish` passed 3,357 jobs in 4.8 seconds;
+  `FoundCopyInvariant` passed 3,360 jobs in 3.7 seconds; and `FoundCopy`
+  passed 3,361 jobs in 5.8 seconds.
+- `FoundStoreFacts` passed 3,364 jobs in 6.0 seconds and `FoundStore` passed
+  3,365 jobs in 14 seconds.
+- `FoundBranchFacts` passed 3,366 jobs in 3.6 seconds.
+- `FoundPrepare` passed its 3,365-job closure.  Its exact target timing scrolled
+  beyond the deliberately short captured output tail; this is recorded rather
+  than reconstructed.  `FoundAllocPrepare` then passed 3,366 jobs in 3.9
+  seconds and `FoundBranch` passed 3,373 jobs in 9.2 seconds.
+
+The exported function spine then closed:
+
+- `Func3` passed 3,374 jobs in 6.9 seconds.
+- The first `Func6Alloc` invocation crossed the command runner's 30-second
+  output yield, so no other Lean process was started.  A read-only process
+  check showed that exact local target still running; it completed at roughly
+  40 seconds wall time.  An immediate serialized replay confirmed its
+  3,375-job closure.  This runner-output bookkeeping event did not alter the
+  worktree or proof state.
+- `Func6Fold` passed its 3,376-job closure.  As with `FoundPrepare`, the exact
+  target timing was outside the retained short output tail and is not guessed.
+- `Func6Loop` passed 3,377 jobs in 21 seconds; `Func6` passed 3,378 jobs in
+  6.9 seconds; and `Func7` passed 3,379 jobs in 5.8 seconds.
+
+The public root then completed:
+
+```text
+tools/leanrun --timeout 15m lake -d proofs/talos/lean --no-ansi build \
+  Project.ClobDepth.Spec
+Build completed successfully (3380 jobs).
+```
+
+`Project.ClobDepth.Spec` itself took 3.1 seconds.  Every successful target used
+the documented pinned local-only envelope with one Lean process at a time.
+Output contained only existing deprecation/linter warnings and no theorem
+diagnostic; no source repair was required.  No `dev` host, cleanup, deletion,
+reset, stash, maintenance, or worktree rewrite was used.  All focused cases
+that were selected to recover the behavioral aggregate are now current.  The
+next and only aggregate action is one materially warmed `Project` retry.
