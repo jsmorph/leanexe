@@ -4172,3 +4172,151 @@ section now names the selected authenticated GitHub connector explicitly, and
 the checkpoint rule now says checkpoints stay small as well as coherent,
 prompt, and frequent.  The auditor changed no file, ran no build, and made no
 Git mutation.
+
+## 2026-09-04: operating-contract publication and fixed-step numerical certificate
+
+The preceding operating-contract reaffirmation was published before further
+implementation as commit
+`0725a0cac73945528d3b723c2580827ce1f8bb53`, message
+`Reaffirm TalosFP Euler operating contract`, tree
+`eaecb95cc5982465644233329026177273262176`, with sole parent
+`ada055bc0b9c2168b01a6b1023d3c3a3b25fb1ef`.  Only `devnotes.md`,
+`journal.md`, and `plans/talosfp-euler-operations.md` were staged; the two
+modified numerical implementation paths and new `Numerical.lean` remained
+unstaged and in place.  All three final GitHub blob SHAs equaled the local
+index, the API-created tree equaled `git write-tree`, the branch update used
+`force: false`, an ordinary fetch retrieved the same parent/tree/message, and
+the local branch moved through compare-and-swap only after the fetched tree
+equaled the index and the three published worktree paths.  Local and remote
+refs then both named `0725a0c` while the intended numerical work remained
+dirty.
+
+Two rejected publication attempts are part of that record.  The first
+orchestration script stopped before any blob upload because its V8 isolate did
+not define `atob`.  A later reconstruction of the 1,117,665-byte
+`devnotes.md` from a connector raw-file response produced unmatched,
+unreachable blob `e1a851e6b708dc67464139ad0ed054b5d248dc67`; no tree referred to it.
+The complete local staged file was then read without a temporary file as 47
+24,000-byte-or-smaller chunks, Base64-concatenated at three-byte boundaries,
+and uploaded as blob `7bac101a0dc6b46a07ef871e7a238165242ce3c2`, exactly matching the index.
+Nothing was deleted, repaired, reset, checked out, stashed, or rewritten in
+response to either rejection.
+
+`Project.EulerRusanovStep.Numerical` now decodes the actual six fixed result
+words through the pure IEEE64 semantics and does not evaluate native Lean
+`Float`.  With `epsilon = 2^-52`, it proves the exact emitted cells
+
+```text
+left  = [207/256, 9/80 - epsilon/20, 257/128]
+right = [81/256, 9/80 + 3*epsilon/40, 95/128]
+```
+
+and proves all six words finite.  Against
+`StencilNumerical.decodedExactTransmissiveStep (1/4)`, the exact signed errors
+are
+
+```text
+left  = [0, -3*epsilon/64,  -7*epsilon/512]
+right = [0,  5*epsilon/64, -25*epsilon/512]
+```
+
+The physical boundary-flux balance theorem, obtained through
+`transmissiveTwoCellStep_balance` rather than by reading rounded residual
+words, has exact residual `[0, epsilon/32, -epsilon/16]`.  Direct fixed-value
+pressure calculations prove both decoded cells `Admissible`.  The bundled
+`RealCertificate` records status zero, six finiteness facts, both exact cells,
+the six signed cell identities, all three physical balance identities, and
+both admissibility facts.  Its principal pure theorem is
+`sodQuarterStepCheckedBitsModel_real`.
+
+The numerical proof was developed through three explicit diagnostic stages.
+Its first focused build left two pressure goals because the momentum and total
+energy projection wrappers were not unfolded; the incomplete diagnostic
+therefore displayed `sorryAx`, and no theorem result from that run was
+accepted.  After exposing those wrappers, the next run still left the vector
+index-two projections folded.  Replacing that fragile reduction with explicit
+fixed rational `change` goals made the following 3,395-job build pass.  The
+first `Spec` build then failed only because a qualified numerical theorem name
+had been split before its dot.  Joining the identifier was the complete
+repair; the next 3,399-job build passed.  These are theorem elaboration
+failures and corrections, not timeouts or accepted partial proofs.
+
+`Project.EulerRusanovStep.Spec.RealSpecFor` and registered theorem
+`sodQuarterStepCheckedBits_wat_real` use `TerminatesWith.mono` on the already
+proved exact function-six execution.  They therefore attach the certificate
+to the same `Model.resultValues` returned by the actual generated WAT while
+retaining complete store preservation.  `proofs/talos/cases.json` now lists
+that theorem after `sodQuarterStepCheckedBits_exact`.  The source inventory is
+26 registered cases, 26 complete, 26 `Program.lean` caches, and 38 behavior
+theorem names.  The separate exact-artifact inventory deliberately remains 21
+packages; no step manifest, artifact registry entry, embedded-byte proof, or
+binary package was created in this checkpoint.
+
+Two independent read-only reviews recomputed every encoding and exact value,
+both error vectors, the physical balance target and residual, and the two
+pressure inequalities.  They found no semantic or arithmetic defect.  One
+review noted that the end-to-end error includes both nested scalar-flux and
+final update arithmetic, so the module prose was tightened from “update
+operations” to “complete generated fixed-step computation.”  The other noted
+that positive internal energy is already derivable from the bundled
+`Admissible` facts and need not be duplicated.  A separate read-only registry
+audit confirmed the 37-to-38 behavior-name change and the unchanged
+26/26/26/21 inventory boundary.
+
+At the final source wording, the direct pinned local numerical build passed
+3,395 jobs in 6.675 seconds wall time and the registered Spec build passed
+3,399 jobs in 6.031 seconds.  Direct axiom prints for the new public numerical
+theorems and `sodQuarterStepCheckedBits_wat_real` report exactly `propext`,
+`Classical.choice`, and `Quot.sound`.  The focused runner-owning source gate,
+invoked directly under the same environment, regenerated the step and passed
+in 6.509 seconds.  The aggregate regenerated all 26 cases, built the full
+3,813-job `Project`, and reported
+`Talos proof library passed: 26 completed case(s)` in 17.491 seconds.  The
+generated step WASM, WAT, and `Program.lean` remained unchanged.  Each driver
+removed only its own fresh staging directory; the pre-existing directories
+`tmp/leanexe-talos-S1boEy`, `tmp/leanexe-talos-WauTHs`, and
+`tmp/leanexe-talos-x9h6ML` all remained present afterward.
+
+The first `node test/euler_rusanov_step.js` invocation omitted
+`LEANRUN_LOCAL=1`; its internal compiler runner was rejected immediately with
+`Failed to connect to bus: No medium found`.  That invocation supplies no test
+result and is recorded as an environment error, not a theorem or runtime
+failure.  Reinvocation under the pinned local environment passed in 5.693
+seconds, checking the exact Wasmtime words, compiler IR operation graph, and
+generated WAT call shape.
+
+As expected after the source and behavior-registry change, an explicit
+pre-refresh `node tools/artifact-release.js inspect` rejected the old release
+record with `release input identity mismatch`.  After source stabilization,
+the bounded `refresh` mutation changed only the release-input identity to
+`dfad5b82317c9ca0a67e6692ecb872457e6d6406cd9d6bad90e1333a29c1ec11`.
+It retains 21 packages and the same four blockers: aggregate artifact proof,
+semantic conformance, immutable source revision, and cold checkout.  No stale
+receipt was reused.  Current-facing documentation now carries this digest;
+historical journal and developer-note identities remain unchanged.
+
+All compiler, Lean, Talos, and Wasmtime work in this checkpoint ran locally,
+serially, and with one Lean thread.  No `dev` host was invoked or probed.  No
+pre-existing tracked, untracked, generated, ignored, build, cache, dependency,
+evidence, temporary, or partial path was deleted, moved, truncated, replaced,
+invalidated, cleaned, or reclaimed.
+
+Final pre-staging consistency gates passed.  `test/artifact_identity.js`
+accepted verifier-source membership and canonical hashes;
+`test/artifact_release.js` accepted release identities, receipts, pins,
+results, and blockers; the kernel-scope audit accepted its three recorded
+roots; release inspection reported exactly 21 packages and the four expected
+blockers; all 91 maintained Markdown files passed the documentation checker;
+and `git diff --check` passed.  The explicit source-policy scan found no
+`sorry`, `admit`, axiom declaration, `sorryAx`, or `native_decide` in the new
+or modified step theorem files.  Counts independently read 26 cases, 26
+complete cases, 38 behavior names, 26 generated program caches, and 21 frozen
+packages.
+
+The final read-only pre-staging audit independently recomputed the 652-input
+release digest, verified the exact 15-path dirty set and empty index, found no
+duplicate case/spec/behavior names, and confirmed that no fixed-step artifact
+package or registry entry had been added prematurely.  It found no substantive
+defect.  Its sole wording suggestion was adopted: four documents now say
+“six numeric payload words,” distinguishing them from the seventh ABI word,
+the status code.

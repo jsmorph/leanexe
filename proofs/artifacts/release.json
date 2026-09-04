@@ -3,7 +3,7 @@
   "status": "draft",
   "recordedDate": "2026-09-04",
   "sourceRevision": null,
-  "releaseInputSha256": "de4761fc0d3b129d99dfdb239f0cec042df3962fbbf5de133c8ef11592fb1717",
+  "releaseInputSha256": "dfad5b82317c9ca0a67e6692ecb872457e6d6406cd9d6bad90e1333a29c1ec11",
   "artifactRegistry": {
     "path": "proofs/artifacts/registry.json",
     "sha256": "3bcc91129e242bf7ed0576ba3c9f8c15f2b715ff4e251d93d04fd2b452031bec",

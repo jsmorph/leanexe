@@ -8701,3 +8701,38 @@ and correction are in `journal.md`.
 Independent read-only audit found no missing substantive rule.  The canonical
 wording now also names the selected authenticated GitHub connector and
 requires checkpoints to remain small as well as coherent and frequent.
+
+## 2026-09-04: fixed-step decoded-real certificate
+
+The operating contract was first published as
+`0725a0cac73945528d3b723c2580827ce1f8bb53`, with exact tree
+`eaecb95cc5982465644233329026177273262176` and a non-forced GitHub
+fast-forward.  The ongoing numerical files remained unstaged and intact.
+
+`EulerRusanovStep.Numerical` proves all six fixed result words finite and
+decodes them exactly to left `[207/256, 9/80 - epsilon/20, 257/128]` and right
+`[81/256, 9/80 + 3*epsilon/40, 95/128]`, where `epsilon = 2^-52`.  Both cells
+are admissible.  Signed errors against the decoded-input exact quarter step
+are left `[0, -3*epsilon/64, -7*epsilon/512]` and right
+`[0, 5*epsilon/64, -25*epsilon/512]`; the exact physical balance residual is
+`[0, epsilon/32, -epsilon/16]`.
+
+`sodQuarterStepCheckedBits_wat_real` transfers that bundled certificate to the
+actual generated-WAT result and is the second registered step behavior
+theorem.  Independent static arithmetic and design reviews found no defect.
+Focused 3,395- and 3,399-job builds, the focused regenerating source gate, the
+3,813-job 26-case aggregate, and the pinned fixed-step runtime/IR/WAT regression
+pass locally.  New public theorem axiom reports contain only `propext`,
+`Classical.choice`, and `Quot.sound`.
+
+Inventory is 26 registered, 26 complete, 38 behavior theorem names, 26
+`Program.lean` caches, and 21 frozen artifacts.  Exact-byte step migration and
+verified raw-data publication remain next.  Release refresh produced current
+input digest `dfad5b82317c9ca0a67e6692ecb872457e6d6406cd9d6bad90e1333a29c1ec11`
+with the same four blockers and no reused stale receipt.  Detailed failed
+proof/test invocations and corrections are preserved in `journal.md`; no
+pre-existing state was deleted, moved, truncated, or invalidated.
+
+Final identity, release, kernel-scope, release-inspection, 91-file
+documentation, whitespace, source-policy, and inventory checks pass.  Release
+inspection reports exactly 21 packages and the four expected blockers.

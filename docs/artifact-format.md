@@ -5,7 +5,7 @@ checked-in draft release record now identify exact Lean 4.34.0-rc2,
 Talos revision
 `87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47`, and the migrated release inputs.
 The current release-input digest is
-`de4761fc0d3b129d99dfdb239f0cec042df3962fbbf5de133c8ef11592fb1717`.
+`dfad5b82317c9ca0a67e6692ecb872457e6d6406cd9d6bad90e1333a29c1ec11`.
 The 2026-09-04 twenty-one-package aggregate artifact receipt belongs to its
 earlier exact input and is not reused.  Matching aggregate artifact proof,
 semantic conformance, immutable source revision, and cold-checkout evidence are
