@@ -109,7 +109,7 @@ Artifact generation stages a complete case before replacement.  A generation fai
 
 The source-driven proof gate establishes properties of selected generated WASM artifacts after Talos decodes the generated WAT.  Its scope is the model freshly derived from the current source and compiler during that gate, under Talos's WASM semantics.  The current registry contains twenty-five completed cases, including five raw-bit floating-point kernels culminating in Euler.  `tools/talos-proof.js check --all` passed the then-current twenty registered cases on 2026-08-26.  The current twenty-five-case source-driven aggregate remains pending and its status comes from the gate itself; `tools/artifact-release.js inspect` instead reports the separate exact-artifact and conformance receipts.
 
-The artifact path starts from exact bytes and implements the restricted binary decoder, executable validator, declarative grammar, independent validity judgment, soundness proofs, and validated Talos translation under `Project.Artifact.Binary`.  All twenty-one packages have frozen binaries and manifests, and Lean proves exact equality between each translated decoded module and the Talos execution model used by its behavioral proof.  The recorded `tools/artifact-proof.js check-all` run on 2026-08-26 passed all twenty packages then registered—their exact artifact targets, behavioral specifications, and manifest declarations—without reading source or invoking LeanExe or `wasm-tools`.  The current twenty-first package is the 1,808-byte Euler artifact described above; current aggregate status comes from the gate receipt and release inspector.
+The artifact path starts from exact bytes and implements the restricted binary decoder, executable validator, declarative grammar, independent validity judgment, soundness proofs, and validated Talos translation under `Project.Artifact.Binary`.  All twenty-one packages have frozen binaries and manifests, and Lean proves exact equality between each translated decoded module and the Talos execution model used by its behavioral proof.  The recorded `tools/artifact-proof.js check-all` run on 2026-08-26 passed all twenty packages then registered—their exact artifact targets, behavioral specifications, and manifest declarations—without reading source or invoking LeanExe or `wasm-tools`.  The 2026-09-04 receipt passes the current twenty-one-package aggregate, including the 1,808-byte Euler artifact, for release-input digest `bbc645be04edcae73d6d36958a01b85bfa0a24f7660fc0ccb801ac6e133711a3`.
 
 `tools/artifact-proof.js check` checks one external binary against a registered package and proof target.  `check-all` also rebuilds every behavioral specification and checks every theorem name recorded by the manifests.  Both forms route Lean through `tools/leanrun` and forward driver termination signals to the active process group, so they share the same-user `leanexe`/`vq` lock and the standard cgroup limits, or the retained lock, thread, priority, and timeout controls in explicitly authorized local mode, with the source-driven tools.
 
@@ -130,9 +130,9 @@ of the project sources for the exploit's declaration-construction identifiers.
 That historical evidence carried input digest
 `5de9678970b1a9b74d50c1407457423a7fa6eabd3f430f56cfdc0e407af2b7e5`, source
 revision `0e0d752904fc90dee3ef3511ffab91f3d358c1ed`, and both warm-gate receipts.
-Matching aggregate proof and conformance receipts, an immutable source revision,
-and the deferred cold-checkout gate must all be present before the current record
-can become ready.
+The matching aggregate artifact receipt is now present.  A conformance receipt,
+an immutable source revision, and the deferred cold-checkout gate must still be
+present before the current record can become ready.
 
 A future general compiler-correctness theorem would connect accepted Lean source, extracted IR, lowered WASM, and modeled WASM execution in one source-to-WASM result.  [Compiler and Generated Evidence](../../docs/compiler.md) distinguishes the checked compiler theorems available now from that longer-term result.  The runtime lemma library already reduces per-program work by replacing repeated instruction proofs with applications of shared theorems.
 
