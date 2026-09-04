@@ -786,3 +786,35 @@ the passing execution proof, its public import, and the generated-program audit
 are ready to publish together.  Runtime-pin aggregate checking, the separately
 drafted explicit small-step trace, and exact-byte closure remain pending, so
 the registry remains `complete: false`.
+
+## 2026-09-04: Horner runtime-helper pins
+
+The generated-program and big-step/WP execution checkpoint was published as
+`fd1ed79b2fb26ed211aeb4470f9b9c9a11e5a300`.  Its complete local and remote
+Git tree is `c2d1b2e412d3f6ea5933f55d356188cabc163c30`.
+
+The earlier cold `Project.Runtime.Checks` timeout was not repeated unchanged.
+After the Horner execution dependencies had been built, the runtime definition
+boundary was checked first under the same serialized local runner:
+
+```text
+lake -d proofs/talos/lean --no-ansi build Project.Runtime.Defs
+Build completed successfully (3341 jobs).
+```
+
+The target took approximately 3.6 seconds and the full command approximately
+6.2 seconds; only existing deprecation warnings were replayed.  The aggregate
+was then retried once against that materially warmed dependency state:
+
+```text
+lake -d proofs/talos/lean --no-ansi build Project.Runtime.Checks
+Build completed successfully (3366 jobs).
+```
+
+The aggregate spent approximately 96 seconds compiling its pinned generated
+Program dependencies, then checked its target in approximately 3.3 seconds.
+There were no pin or proof errors.  The Horner module is therefore checked to
+reuse exactly `allocFuncDef`, `resetFuncDef`, `retainFuncDef`, and
+`releaseFuncDef 5` at function indices two through five, after erasing only the
+module-local type index.  This closes the generated-runtime-helper boundary;
+the explicit small-step trace and exact-byte gate remain open.

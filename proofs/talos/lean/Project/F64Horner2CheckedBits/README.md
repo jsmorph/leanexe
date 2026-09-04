@@ -42,7 +42,7 @@ public proof root are the handwritten layer.
 
 The decoded module assigns function index 0 to the raw-bit guard, index 1 to
 the exported `horner2CheckedBits` entry, and indices 2 through 5 to `alloc`,
-`reset`, `retain`, and `release`/`free`.  The shared runtime checks must pin
+`reset`, `retain`, and `release`/`free`.  The passing shared runtime check pins
 `func2Def` to `allocFuncDef`, `func3Def` to `resetFuncDef`, `func4Def` to
 `retainFuncDef`, and `func5Def` to `releaseFuncDef 5`, erasing only the
 module-local type index.
