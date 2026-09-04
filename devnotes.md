@@ -7977,3 +7977,12 @@ passed.  A cold ClobMatchFuel root timeout was divided further; `BookAlloc`,
 The full timings, job counts, warnings, and timeout classifications are in
 `journal.md`.  Higher-level MatchFuel chains remain to be warmed before its
 root can be retried.
+
+The MatchFuel recovery is now complete.  The partial-fill, full-fill, memory
+frame, recursive-loop, entry, correctness, and source-property chains were
+built as focused local targets; the materially warmed
+`Project.ClobMatchFuel.Spec` then passed all 3,424 jobs, with 3.1 seconds on
+the root.  No source repair was required.  Only existing deprecation warnings
+were replayed, and the exact command ledger and per-boundary timings are in
+`journal.md`.  ClobLimit, ClobMarket, and ClobDepth remain before the single
+warmed aggregate retry.
