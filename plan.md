@@ -232,6 +232,11 @@ phase.
 
 ### Operational discipline for `talosfp-euler`
 
+The canonical, consolidated contract is
+[TalosFP Euler operating contract](plans/talosfp-euler-operations.md).  The
+summary below remains part of the implementation plan; the canonical document
+controls if this summary is less specific.
+
 - Treat the active checkout, including `.git`, tracked, untracked, generated,
   and ignored files, dependency trees, build products, caches, and evidence
   receipts, as user-owned persistent project state.  It is not a

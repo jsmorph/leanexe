@@ -3781,3 +3781,106 @@ compare-and-swap `git update-ref` advance the local branch from `70aae447` to
 `cb56446`.  Final status was clean and local `HEAD`, the tracking ref, and the
 GitHub branch all named `cb56446`.  No checkout, reset, merge, stash, cleanup,
 file replacement, or worktree rewrite was used in publication.
+
+## 2026-09-04: canonical operating-notes checkpoint
+
+The user again required every operational note to be written down, committed,
+and pushed.  Although the constraints were already present across the root
+plan, detailed Euler plan, workflow documentation, journal, and development
+notes, their distribution made a complete audit unnecessarily difficult.
+This checkpoint therefore adds `plans/talosfp-euler-operations.md` as the
+canonical consolidated contract and links both active plans to it.
+
+The contract records the full checkout as persistent user-owned state,
+including `.git`, tracked and untracked sources, generated and ignored files,
+submodules, dependencies, build products, caches, exact artifacts, evidence,
+temporary-looking paths, and partial work.  It records that the earlier
+automated workspace-maintenance deletion was data loss.  Generic maintenance,
+cleanup, repair, reclamation, invalidation, pruning, truncation, movement,
+recursive deletion, `git clean`, destructive reset, checkout-overwrite, stash,
+and worktree rewriting are prohibited.  Any destructive action against
+pre-existing state requires fresh authorization naming its exact target.
+
+It also centralizes status-before-mutation, preservation of unrelated state,
+explicit reviewed staging, local-only execution with no `dev` host or probe,
+direct Lean authorization through the pinned `LEANRUN_LOCAL=1` envelope, one
+global Lean-family process and one Lean thread, timeout handling, preload
+scope, direct invocation of runner-owning Node drivers, exact repository-local
+artifact staging behavior, no self-hosted-emitter work, formal claim and axiom
+discipline, detailed append-only journaling, concise development checkpoints,
+frequent commits, and the exact non-forced GitHub Git-data publication and
+fetched-tree verification protocol.
+
+Before this documentation mutation, `git status --short --branch` reported a
+clean `talosfp-euler` synchronized with `origin/talosfp-euler` at
+`4a36794f9ca4fee9a4539d8c8c814ca680d07969`.  Only the new canonical document,
+the two plan links, this append-only journal entry, and the corresponding
+concise `devnotes.md` checkpoint are intended for the documentation commit.
+No Lean process, remote executor, `dev` probe, artifact driver, cleanup,
+deletion, cache operation, dependency operation, or worktree rewrite is part
+of this checkpoint.
+
+The first documentation gates passed: `git diff --check` was silent and
+`node tools/check-docs.js` checked all 91 maintained Markdown files, including
+the new canonical contract.  Command review confirmed that the pinned Lean
+example is local, serialized, one-threaded, explicitly timed, and does not
+outer-wrap a runner-owning Node driver.  The intended commit is
+`Consolidate TalosFP Euler operating notes` and its explicit path set is
+`journal.md`, `devnotes.md`, `plan.md`, `plans/euler-rusanov.md`, and
+`plans/talosfp-euler-operations.md`.
+
+An independent read-only audit made no edit, Git mutation, or Lean invocation.
+It confirmed the core contract and identified edge conditions now stated
+explicitly: one top-level command per status review; read-only delegation by
+default; progress updates during long operations; censored-timeout semantics;
+dependency and trusted-base authority; path/hash validation after recovery;
+the narrow same-invocation staging-directory exception; the distinction
+between an authorized atomic deliverable update and cleanup; and a terminating
+publication-receipt rule.  The audit also prompted `journal.md` to be named in
+the detailed plan's per-checkpoint record requirement.
+
+Publication preparation first uploaded the new 12,002-byte operating-contract
+blob and required GitHub's returned SHA
+`e02f1b3fd5f8d7aeeb18f4710f528d478a5ad9dd` to equal the staged local blob.
+The following batched read of the four larger staged files detected that a
+requested 49,152-byte base64 chunk had been truncated by the command-output
+transport (`21,848` characters returned where `40,392` were required for the
+complete detailed-plan blob).  The length check stopped the operation before
+any of those four blobs, a tree, a commit, or a ref update was requested.  The
+exact operating-contract blob remains as an unreferenced Git object, which is
+harmless and will be reused if its staged identity remains unchanged.  The
+reader will use smaller 12,288-byte chunks and require every chunk length,
+complete reconstructed length, and returned GitHub blob SHA to match before
+tree creation.  No repository file, cache, dependency, artifact, temporary
+path, index entry, local ref, or remote ref was deleted or rewritten by the
+failed preparation attempt.
+
+A second read-only reconstruction attempt reduced the shell chunk to 12,288
+bytes, but its explicit length guard found another transport truncation in
+`devnotes.md`: chunk five returned `5,464` base64 characters instead of the
+required `16,384`.  It likewise stopped before invoking any additional GitHub
+write.  The safer established route is now used for the two append-only notes:
+fetch each exact parent blob through the authenticated GitHub read API, append
+the small staged byte tail, upload the reconstructed UTF-8 value, and require
+the returned blob SHA to equal the staged local blob.  The two roughly 30 KiB
+plans will use 3,072-byte base64 chunks with an exact length check, below the
+observed output boundary.  This second failed read created no blob, tree,
+commit, ref update, filesystem mutation, or deletion.
+
+The subsequent small-chunk attempt established that both preceding diagnoses
+of “transport truncation” were wrong.  GNU `dd` was consuming a pipe without
+`iflag=fullblock`; a single requested input block may therefore be a short
+pipe read, so `skip=N` did not identify fixed byte intervals.  On the plan's
+sixth requested 3,072-byte interval, the explicit guard received 1,026 bytes
+(`1,368` base64 characters) rather than 3,072 bytes (`4,096` characters) and
+stopped.  The correction is appended here instead of rewriting the historical
+diagnostic.  Future chunk reads add `iflag=fullblock`, and every interval and
+complete blob still requires an exact length and SHA match.
+
+Before that guard fired, reconstruction from the exact remote-parent prefixes
+successfully uploaded staged `devnotes.md` as
+`5ceabf8062674de4e435afb996cf55be41d8279d` and the then-staged `journal.md` as
+`97fe1149d5a4600b79bc421127f1d41cf406bb66`.  The journal blob became obsolete
+when this correction was appended and remains only an unreferenced Git object.
+No plan blob, tree, commit, branch update, filesystem mutation, or deletion
+occurred in that attempt.
