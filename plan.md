@@ -164,6 +164,14 @@ only the standard logical axioms.  The next implementation checkpoint is a guard
 Horner evaluation, `(c₂*x + c₁)*x + c₀`, with the same finite-result and sharp
 `3 * 2^-52` theorem at both the source-model and decoded-WAT layers.
 
+On `talosfp-euler`, the guarded Horner source and its complete local Wasmtime,
+IR, WAT, annotation, and rejection regression now pass.  The reusable raw-bit
+half-unit theorem has been extracted into ProofKit, and the pure IEEE64
+multiply-then-add stage and two-stage `3 * 2^-52` theorems compile with only
+the standard logical axioms.  Talos case registration, generated-program
+execution, exact small-step tracing, and exact-byte closure are still pending,
+so the checklist item remains open.
+
 Hash, manifest, release-receipt, and self-host bookkeeping are not gates for
 this branch's floating-point implementation.  Exact program bytes remain part
 of each artifact theorem because they are the semantic input being proved.
