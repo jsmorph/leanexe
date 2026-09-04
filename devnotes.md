@@ -8394,3 +8394,32 @@ arithmetic in WebAssembly.
 
 Whitespace, maintained docs, release tests, kernel scope, release inspection,
 and targeted no-placeholder/no-axiom gates pass before publication.
+
+## 2026-09-04: local-only operating contract republished
+
+The operational rules are hard project requirements.  The entire checkout,
+including `.git`, tracked and untracked sources, generated and ignored files,
+submodules, dependencies, build products, caches, evidence receipts, and
+partial work, is persistent user-owned data.  No generic "workspace
+maintenance", cleanup, repair, reclamation, reproducibility claim, or
+delegated action authorizes deletion, truncation, cache invalidation, pruning,
+reset, checkout overwrite, stash, movement, or worktree rewriting.  Any such
+operation requires fresh user authorization for an exact named target.  Inspect
+`git status` before every mutation, preserve unrelated and in-progress state,
+and stage only reviewed paths.
+
+There is no `dev` host and it must not be invoked or probed.  All Lean, Lake,
+compiler, Talos, artifact, Node, C, Wasmtime, wasm-tools, and conformance work
+runs locally.  Direct Lean is authorized through the pinned
+`LEANRUN_LOCAL=1` envelope, with one global Lean-family process,
+`LEAN_NUM_THREADS=1`, the local compatibility preload, and explicit timeouts.
+Do not pass the preload to unrelated process inspection; the prior failing
+read-only `ps` attempt is recorded in `journal.md` and will not be repeated.
+No-diagnostic timeouts are recorded, not retried unchanged.
+
+Detailed chronology remains append-only in `journal.md`; this file remains the
+concise checkpoint record and `plan.md` retains the scope and gates.  Coherent
+checkpoints are committed and pushed frequently through an exact non-forced
+GitHub Git-data fast-forward, followed by fetched full-tree equality, without
+rewriting the worktree.  This documentation-only checkpoint explicitly leaves
+the untracked `RealGuardBridge.lean` and `RealStencil.lean` drafts untouched.

@@ -225,8 +225,9 @@ phase.
 
 ### Operational discipline for `talosfp-euler`
 
-- Treat the active checkout, including tracked, untracked, generated, and
-  ignored files, as user-owned persistent project state.  It is not a
+- Treat the active checkout, including `.git`, tracked, untracked, generated,
+  and ignored files, dependency trees, build products, caches, and evidence
+  receipts, as user-owned persistent project state.  It is not a
   disposable workspace and is not eligible for automated maintenance or
   reclamation.  Automated workspace maintenance already removed one complete
   checkout, including `.git`; that was data loss, not an authorized project
@@ -239,6 +240,14 @@ phase.
   coherent checkpoint promptly, and label unchecked work explicitly so the
   remote branch is a recovery boundary rather than an excuse to discard local
   state.
+- These protections are hard project requirements.  A generic instruction,
+  facility, or label such as "workspace maintenance", "cleanup", "cache
+  repair", or "reclamation" never overrides them.  If an operation might
+  delete, replace, invalidate, truncate, move, or rewrite any checkout state,
+  stop and obtain fresh user authorization naming the exact target before
+  doing it.  Inspect `git status` before every mutation.  Documentation-only
+  checkpoints must stage their explicit paths and leave implementation drafts
+  and every unrelated path untouched.
 - This environment has no `dev` host.  Never invoke or probe
   `tools/leanrun-dev`; run Lean, Lake, `lean-wasm`, Node regressions, Wasmtime,
   artifact preparation, and proof checks locally.  GitHub is used only to
@@ -259,7 +268,10 @@ phase.
   the current process to `/proc/self/exe`; an `ENOENT`-only fallback is
   insufficient because a colliding outer-namespace PID can resolve to the
   wrong executable.  Keep this environment workaround outside the repository,
-  record its use, and never present it as proof evidence.
+  record its use, and never present it as proof evidence.  Do not pass this
+  preload to unrelated process-inspection commands: a read-only `ps` attempt
+  failed with `fatal library error, lookup self`, made no change, and must not
+  be repeated under that environment.
 - The ordinary HTTPS remote has no usable credential helper.  Publish with the
   authenticated GitHub Git-data API as a non-forced fast-forward: upload
   complete changed-file blobs, create a tree from the current remote tree,
