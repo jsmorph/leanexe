@@ -8457,3 +8457,37 @@ the twenty-one-package draft honestly retains four blockers.  The next layer
 propagates the three already certified interface-flux error budgets through a
 decoded finite-volume update, while reserving the phrase "WASM stencil" for a
 separate compiled and proved one-step artifact.
+
+## 2026-09-04: decoded two-cell stencil error
+
+`StencilNumerical.lean` now converts the frozen `sodLL`, `sodLR`, and `sodRR`
+flux words to exact-real vectors and propagates their certified componentwise
+budgets through the two-cell update.  Generic signed identities show that each
+cell pays only for its two interfaces, while the shared interior-flux error
+cancels from the two-cell balance residual.  At `dt/dx = 1/4`, both cells and
+the balance residual use half of the scalar flux budget in each component.
+
+The binary64 pressure word `3fb999999999999a` is proved to decode to
+`1/10 + 1/180143985094819840`; this input representation bias is kept separate
+from artifact flux roundoff.  The decoded-input exact quarter-step is stated
+coordinate by coordinate.  `decodedTransmissiveStep` assembles already proved
+artifact flux words using mathematical real arithmetic and is explicitly not
+a claim that update arithmetic executed in WebAssembly.
+
+Two focused diagnostic builds exposed only implicit perturbation-argument
+ordering and small pinned-API normalization details.  The repaired focused
+target passes 3,393 jobs, and the integrated `Project` target passes 3,806.
+Six new axiom audits report only `propext`, `Classical.choice`, and
+`Quot.sound`.  The release-input digest is
+`9805d168c1d68a8fb3a5f69a1143f4256d6697c7f3ceca4aada040f802a507f9`,
+with the same twenty-one packages and four honest draft blockers.  Next are a
+separate admissibility-margin theorem and the exact-artifact three-call
+wrapper; direct compiled update arithmetic remains after both.
+
+The selected compiled follow-on is a fixed no-argument seven-word
+`EulerRusanovStep` artifact.  It performs three checked flux calls and six
+updates in the frozen `round(FR-FL)`, multiply by binary64 `1/4`, then subtract
+order.  The expected output words are recorded in the detailed plan.  Exact
+decoded-real balance, not an all-zero rounded residual tuple, is the required
+certificate; the latter conceals nonzero `+epsilon/32` momentum and
+`-epsilon/16` energy balance errors.

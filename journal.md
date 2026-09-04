@@ -3297,3 +3297,161 @@ four blockers; and the targeted Lean-source scan returned no placeholder or
 axiom declaration.  The next action is explicit staging of only the two new
 Lean modules, their umbrella, the two plan files, the two note ledgers, and the
 refreshed release record, followed by exact Git-data publication.
+
+## 2026-09-04: decoded numerical stencil checkpoint
+
+Work resumed from the clean published checkpoint
+`6a26a76fe9c47026981a17e7c9d1ad44eb1b6902` on `talosfp-euler`.  The opening
+`git status --short --branch` contained only the branch header and confirmed
+that the local and tracking refs agreed.  No workspace cleanup, maintenance,
+deletion, reset, stash, cache invalidation, worktree rewrite, or `dev`-host
+probe was performed.  All delegates were restricted to read-only API or
+mathematical audits; none ran Lean, Lake, Git, or a remote host.  The sole Lean
+process at each build step ran locally under the pinned `LEANRUN_LOCAL=1`,
+Lean 4.34.0-rc2, compatibility-preload, one-thread, explicit-wasm-tools, and
+fifteen-minute-timeout envelope recorded in the operating contract.
+
+The mathematical audit fixed the intended error accounting before source was
+written.  If `e_AB = approximate_AB - exact_AB`, the left cell error is
+`lambda * (e_LL - e_LR)`, the right cell error is
+`lambda * (e_LR - e_RR)`, and the total-state residual against the exact
+boundary balance is `lambda * (e_LL - e_RR)`.  Consequently the respective
+absolute bounds are `|lambda|` times the sums of the applicable two budgets,
+and the interior-interface error cancels completely from the balance
+residual.  This is an exact-real assembly statement; a compiled update will
+need its own rounding terms.
+
+The input-representation audit separately derived the frozen right-pressure
+value
+
+```text
+value(0x3fb999999999999a)
+  = 3602879701896397 / 36028797018963968
+  = 1/10 + 1/180143985094819840
+  = 1/10 + f64Epsilon/40.
+```
+
+For the exact Rusanov target, that pressure bias changes the middle flux by
+`[0, delta/2, -35*delta/16]`, the right boundary flux by `[0, delta, 0]`, and
+the right conservative input energy by `5*delta/2`.  At `lambda = 1/4`, the
+decoded-input exact step is therefore
+
+```text
+left  = [207/256, 9/80 - delta/8, 257/128 + 35*delta/64]
+right = [ 81/256, 9/80 - delta/8,  95/128 + 125*delta/64].
+```
+
+These identities are deliberately distinct from both the rational
+`RealStencil.sodQuarterStep` and the frozen artifact-flux assembly.
+
+`Project.EulerRusanov.StencilNumerical` was added as a new module.  Its generic
+layer defines exact decoded flux vectors, pointwise vector errors, update
+budgets, a subtraction perturbation theorem, the signed one-cell identity,
+two-cell componentwise propagation, and the boundary-only balance residual.
+Its bridge turns the existing `Numerical.FluxRealError` record into a vector
+theorem and specializes the already proved `sodLL`, `sodLR`, and `sodRR`
+guard/model facts.  Its concrete layer defines decoded left and right Sod
+states, proves the exact pressure decoding above, distinguishes the
+decoded-input exact stencil from the exact-real assembly of the three frozen
+flux rows, proves the general-ratio error theorem, specializes it to the
+quarter-step half-budget, and proves the exact decoded-input quarter-step.
+
+The first focused build reached the new module after 3,392 dependencies and
+exited nonzero after 7.3 seconds wall time, with 4.8 seconds in the module.  It
+reported six local proof-shape issues: two Lean metavariables inferred the
+wrong ordering for `difference_perturbations`; the zero-word encoding needed
+an explicit `rfl`; `PrimitiveReal` has no generated `.ext` theorem; and the
+quarter-step vector budget needed an explicit function equality.  The two
+large facts of interest—the exact binary64 pressure decoder and the exact
+decoded quarter-step arithmetic—already elaborated.  The temporary `sorryAx`
+lines in that failed build were unresolved-goal reporting only; the source
+contained no placeholder or axiom declaration.
+
+The repair supplied all perturbation arguments explicitly, completed the
+zero-word equality with `rfl`, let simplification close the two record
+equalities directly, and proved the budget equality by function extensionality
+and ring normalization.  The second focused build again reached the module in
+4.8 seconds and left only two algebraic presentation mismatches: Lean needed
+the signed errors rewritten from `(a-a0)-(b-b0)` to
+`(a-b)-(a0-b0)`, and the balance proof needed the two error budgets commuted.
+Those exact rewrites were added; no unchanged failing command was repeated.
+
+The third focused invocation passed all 3,393 jobs in 7.9 seconds wall time,
+with a 4.0-second module build.  Its six printed axiom audits—for generic
+two-cell error, boundary-only balance error, exact decimal-word decoding,
+decoded-stencil error, decoded balance error, and the exact decoded quarter
+step—each contain only `propext`, `Classical.choice`, and `Quot.sound`.
+There is no `sorry`, `admit`, or new axiom.
+
+`Project.lean` now imports the numerical stencil module.  The complete local
+`Project` build then passed all 3,806 jobs in 6.1 seconds wall time, with a
+3.3-second root build.  Its long output consists of existing replayed warnings;
+the new focused module emitted no warning in its successful build.
+
+The plan checkbox for decoded flux-error propagation is complete, and the
+detailed Euler plan now states the proved semantic boundary.  It does not call
+`decodedTransmissiveStep` a WebAssembly stencil: the current frozen artifact
+executes three scalar flux calls, while their state-update assembly here is in
+Lean's mathematical reals.  The next two small proof checkpoints are (1)
+transfer of the concrete `5*epsilon`, `8*epsilon`, and `13*epsilon` coarse
+bounds to positive density and internal energy for both assembled cells, and
+(2) a wrapper exposing the three exact decoded-artifact executions beside the
+pure assembled-step theorem.  Only a later separately compiled artifact may
+claim that update arithmetic itself ran in WebAssembly.
+
+Refreshing the draft release record after the new proof source and imports
+produced release-input SHA-256
+`9805d168c1d68a8fb3a5f69a1143f4256d6697c7f3ceca4aada040f802a507f9`.
+The record still contains exactly twenty-one artifact packages and the same
+four honest blockers: immutable source revision, aggregate artifact proof for
+this input, semantic conformance, and cold-checkout verification.  No stale
+receipt is presented as current.  Pre-publication checks passed:
+`git diff --check`; the 90-file maintained-document checker; release identity,
+receipt, pin, result, and blocker tests; kernel-scope audit over its three
+recorded roots; and inspection reproducing twenty-one packages and four
+blockers.  The final source-placeholder scan and post-note documentation check
+are repeated below before explicit staging and exact non-forced Git-data
+publication.
+
+An independent read-only review rechecked every sign and constant in the new
+module.  It confirmed the two cell-error formulas, the boundary-only balance
+formula, the half-budget quarter specialization, the exact binary64 pressure
+bias, and all four decoded-step correction terms.  It found one documentation
+inconsistency: the detailed-plan milestone checklist still marked decoded
+propagation incomplete after the root plan, header, prose, and notes marked it
+complete.  That checkbox was corrected before publication.  The reviewer
+reported no remaining mathematical, API, or scope blocker and ran no build,
+Git mutation, or file edit.
+
+In parallel, a read-only audit selected the smallest direct compiled follow-on.
+The compiler already supports repeated direct calls, flattened multi-result
+calls, and at least seven `i64` result slots, so compiler expressiveness is not
+the blocker.  A separate `EulerRusanovStep` case should expose a no-argument
+`sodQuarterStepCheckedBits` returning status plus six conservative output
+words.  It should invoke the current checked flux kernel for `LL`, `LR`, and
+`RR`, require all three statuses to be zero, and update each component in the
+fixed operation order `round(FR-FL)`, `round((1/4)*difference)`, then
+`round(U-scaled)`.  With the frozen flux words, the expected result is:
+
+```text
+status 0000000000000000
+left   3fe9e00000000000 3fbccccccccccccc 4000100000000000
+right  3fd4400000000000 3fbcccccccccccce 3fe7c00000000000
+```
+
+The exact decoded-output errors against the dyadic-input ideal stencil are
+`[0,-3*epsilon/64,-7*epsilon/512]` on the left and
+`[0,+5*epsilon/64,-25*epsilon/512]` on the right.  Their exact decoded-real
+balance error is `[0,+epsilon/32,-epsilon/16]`.  A natural binary64 residual
+calculation returns positive-zero words in all three components, so publishing
+those bits alone would conceal actual real rounding error.  The plan now
+requires conservation evidence as a Lean exact-real theorem and permits any
+runtime residual only under an explicit `roundedResidualBits` label.
+
+The fixed artifact is high-feasibility.  Its principal medium-risk proof task
+is not the new update arithmetic but reuse of the existing 335-instruction
+call-free flux proof inside a different generated module.  The intended repair
+is a module/function-index-parametric execution theorem specialized both to the
+current standalone scalar artifact and to the future embedded helper.  This
+design audit performed no edit, build, Git operation, native numerical run, or
+remote-host action.
