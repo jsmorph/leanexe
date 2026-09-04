@@ -8121,3 +8121,19 @@ the proved scaled-value theorem.  Neither native floating-point evaluation nor
 native decision is proof evidence.  The generated-WAT execution proof remains
 the next serialized target; its preserved staged draft was not included in
 this numerical checkpoint.
+
+## 2026-09-04: Euler exact generated-WAT execution
+
+`Project.EulerRusanov.Spec.rusanovFluxCheckedBits_exact` now proves generated
+function zero terminates for every raw input, arbitrary host environment, and
+arbitrary initial store; preserves that entire store; and returns exactly
+`Model.resultValues`.  Seven opaque-continuation WP stages replace the failed
+monolithic accepted-tail normalization and cover setup, both states, all three
+components, and output assembly.
+
+The focused target passed all 3,357 jobs in 19 target seconds.  The combined
+Spec root, now importing both the numerical and execution layers, passed all
+3,369 jobs.  The public execution theorem reports only `propext`,
+`Classical.choice`, and `Quot.sound`.  Detailed staged-build diagnostics and
+the exact local-list reducer repairs are recorded in `journal.md`.  WAT-level
+numerical transfer and exact-byte registration remain separate checkpoints.
