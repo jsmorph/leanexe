@@ -616,3 +616,118 @@ checked wasm-tools 1.251.0
 The downloaded archive and extracted executable are ignored local scratch
 products, not repository sources or proof evidence.  Artifact preparation is
 ready to retry after this compatibility checkpoint is published.
+
+## 2026-09-04: Local-only operating record and first generated Horner program
+
+The following rules are standing instructions for all remaining work on
+`talosfp-euler`, not optional preferences:
+
+1. The active checkout must not be subjected to cleanup, workspace
+   maintenance, pruning, reset, checkout-overwrite, or recursive deletion by
+   the assistant.  One prior scratch checkout, including its `.git` directory,
+   was already removed by external workspace maintenance.  Scratch and ignored
+   caches are therefore treated as disposable, while every coherent source or
+   proof checkpoint is journaled, committed, and pushed promptly.  Unrelated
+   user changes are preserved.
+2. There is no `dev` host.  Do not invoke or probe `tools/leanrun-dev`.  Lean,
+   Lake, `lean-wasm`, Node, Wasmtime, artifact preparation, and proof checking
+   run locally.  GitHub is only the publication and recovery boundary.
+3. The user explicitly authorized direct local Lean.  Use the opt-in
+   `LEANRUN_LOCAL=1` path with the pinned sysroot, shared `flock`,
+   `LEAN_NUM_THREADS=1`, `nice`, `ionice`, and an explicit timeout.  Its warning
+   that systemd cgroup CPU, memory, and swap limits are unavailable is factual
+   and must not be hidden.  Never nest `tools/leanrun` under a local runner.
+4. Only one Lean/Lake process may run at once.  Delegated proof tasks share the
+   same serialized slot.  After a timeout, do not rerun the unchanged target;
+   first split or build a dependency boundary and record what changed.
+5. Self-host validation, hashes, manifests, and release receipts are not phase
+   gates.  Exact program bytes remain theorem inputs whenever exact-artifact
+   behavior is claimed.
+
+The local commands in this environment use the following essential shape:
+
+```text
+env LEANRUN_LOCAL=1 \
+  LEAN_SYSROOT=/root/.elan/toolchains/leanprover--lean4---v4.34.0-rc2 \
+  LD_PRELOAD=/tmp/leanexe-proc-self-readlink.so \
+  tools/leanrun --timeout <seconds>s lake ...
+```
+
+The session-local preload is required because Lean 4.34.0-rc2 discovers its
+executable through `/proc/<getpid()>/exe`, while this container is inside a
+nested PID namespace.  The first shim redirected that path only when the raw
+`readlink` returned `ENOENT`.  That was insufficient: if the same numeric PID
+existed in the outer namespace, the lookup succeeded but named the wrong
+executable, producing intermittent `failed to locate application` errors.
+The corrected temporary shim always maps numeric `/proc/<digits>/exe` requests
+to `/proc/self/exe`.  Both `lean --version` and `lake --version` then passed.
+The shim is an untracked environment workaround, not repository source or
+proof evidence.
+
+The official upstream `wasm-tools` release used for artifact generation is
+version `1.251.0`; its executable reports
+`wasm-tools 1.251.0 (a1a178a02 2026-05-28)`.  The downloaded archive matched
+the official SHA-256
+`08d523676ec71d9afbae05aa4255041ce91bf2d325d87b7e722d190d558be689`.
+The extracted ignored executable is
+`build/tools/wasm-tools-1.251.0-x86_64-linux/wasm-tools`.  It passes the fixed
+strict version checker committed in `416b0fa`.
+
+The first Horner artifact-generation attempt with that tool completed the
+pinned Talos verifier's cold build.  The verifier completed 53 jobs; compiling
+`Verifier.Emit:c.o` alone took approximately 440 seconds.  The subsequent root
+source/compiler build stopped once with
+`could not detect the configuration of the Lake installation`, so the
+transactional staging directory did not replace any generated artifact.  The
+exact root build command was then isolated under the same local runner and
+environment and passed in 0.7 seconds.  One full artifact-generation retry was
+therefore made; its verifier build completed 52 cached jobs, its root build
+completed 59 jobs, and preparation passed for the single registered Horner
+case.  It generated, rather than hand-authored:
+
+```text
+proofs/talos/lean/Project/F64Horner2CheckedBits/Program.lean
+proofs/talos/.generated/f64_horner2_checked_bits/program.wasm
+proofs/talos/.generated/f64_horner2_checked_bits/program.wat
+```
+
+The latter two paths are ignored working products.  Independent inspection
+gave these identities:
+
+```text
+program.wasm  1237 bytes  sha256 8c665a1634643065c35e3ed7a81bf8538e4a8e264cb240fcc1ad3494b41757bd
+program.wat  11383 bytes  sha256 df55f1f5370319078cfa07ce9b2a78b515fb9ed770ba0a33164e878390c0712d
+Program.lean 11369 bytes  sha256 1c88282f23c425b18972901cefbfdebd8ab3774993a409b2a08ac9d82fdea9c8
+```
+
+`wasm-tools validate` accepted the binary, and `wasm-tools print` reproduced
+the retained WAT text exactly.  The module has no imports, table, start, data,
+elements, or custom sections.  Function zero is the one-local finite-and-half-
+unit guard; function one is the four-argument/two-result Horner entry; functions
+two through five are the existing allocation, reset, retain, and release/free
+runtime helpers.  Runtime pins now name those exact definitions.
+
+The source parameter order is `(x, c₂, c₁, c₀)` and the host result order is
+`(status, bits)`.  Talos receives the top-first stack `[c₀, c₁, c₂, x]` and
+returns `[bits, status]`.  Four guard calls short-circuit in that order.  The
+guard accepts exactly when
+`(bits & 0x7fff_ffff_ffff_ffff) <=ᵤ 0x3fe0_0000_0000_0000`.
+The accepted body contains exactly two `f64.mul`, two `f64.add`, eight
+`f64.reinterpret_i64`, and four `i64.reinterpret_f64` instructions and computes
+the staged DAG `(c₂*x+c₁)*x+c₀`, with a raw-bit round trip after every
+operation.  No fused multiply-add or reassociation occurs.  Every rejection
+returns status one and positive-zero bits.
+
+The first aggregate `Project.Runtime.Checks` build exposed the intermittent
+wrong-executable behavior of the original preload shim.  After correcting the
+shim, a fresh 300-second run progressed through roughly 2,490 cold Mathlib
+modules with no runtime-pin or theorem diagnostic, then reached its declared
+timeout.  This is recorded as a timeout, not a pass.  In accordance with the
+no-unchanged-retry rule, the next runtime check will first build a smaller
+dependency boundary before revisiting the aggregate.
+
+At this documentation checkpoint, the generated program and runtime pins are
+present locally, and a draft big-step/WP execution proof is undergoing its
+first focused serialized build.  No execution-proof pass is claimed here.
+The case remains registered with `complete: false`; the explicit small-step
+trace and exact-byte package remain open after the big-step proof.
