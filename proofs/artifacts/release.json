@@ -1,19 +1,19 @@
 {
   "schemaVersion": 2,
   "status": "draft",
-  "recordedDate": "2026-09-03",
+  "recordedDate": "2026-09-04",
   "sourceRevision": null,
-  "releaseInputSha256": "e4311dd9877be62b2a9b9a378824784e92e9fe894a4e441b916ea838e1250c09",
+  "releaseInputSha256": "bbc645be04edcae73d6d36958a01b85bfa0a24f7660fc0ccb801ac6e133711a3",
   "artifactRegistry": {
     "path": "proofs/artifacts/registry.json",
-    "sha256": "8fbfb1d21bb5ad4cd433eedb0acbba622a2e40373fe7b8c520cfa81f8141c584",
-    "artifactCount": 20
+    "sha256": "3bcc91129e242bf7ed0576ba3c9f8c15f2b715ff4e251d93d04fd2b452031bec",
+    "artifactCount": 21
   },
   "packages": [
     {
       "case": "gcd",
       "sha256": "51801200954786e42d28caf3ba8806d613ab31ec4abe9b5d4b672e28d953b3ae",
-      "manifestSha256": "38c54dfa929072671ffb81495d0942b8ade19e61614412fa51cd4c99cea21fda",
+      "manifestSha256": "2bf285395d50f29e928ab720987a5188f5c3ca9436ff7f055f2670e3bc9e120d",
       "proofTarget": "Project.Gcd.ArtifactTranslation",
       "identityTheorem": "Project.Gcd.Artifact.decode_eq_cache",
       "decodeTheorem": "Wasm.Binary.Proof.decode_sound",
@@ -27,7 +27,7 @@
     {
       "case": "assoc_list",
       "sha256": "6b356640062b5977acaf5459a6d3f8c3f1184c1a3e442b963c54e7a1d3a5a1de",
-      "manifestSha256": "d62034e5c89f563c6062cb6dc5961bbf5aface5042773d657be8fc7eda3a95ae",
+      "manifestSha256": "256b23c0efed4cb362d45e3c7b738940184f36b9c6206e699eb98d5fc40dd617",
       "proofTarget": "Project.AssocList.ArtifactTranslation",
       "identityTheorem": "Project.AssocList.Artifact.decode_eq_cache",
       "decodeTheorem": "Wasm.Binary.Proof.decode_sound",
@@ -41,7 +41,7 @@
     {
       "case": "order_book",
       "sha256": "6faa6ae292bd217814d66e31ee241687974acfed74403543e8482540cfc95558",
-      "manifestSha256": "c22f0617c716f5195433bea2fcae74d39e49203082b1dda6283edaf9a618f9d8",
+      "manifestSha256": "b62252f15d8e9ed85561d60dc3482aa07191c3d3aefd27423d2d12cc812637c4",
       "proofTarget": "Project.OrderBook.ArtifactTranslation",
       "identityTheorem": "Project.OrderBook.Artifact.decode_eq_cache",
       "decodeTheorem": "Wasm.Binary.Proof.decode_sound",
@@ -55,7 +55,7 @@
     {
       "case": "validate",
       "sha256": "d408c2db3af861b170cda77077ce4f5ba3d9137008db5a21c6acc433d1398c7a",
-      "manifestSha256": "4e8a7e4231607fe0c8631d44f81249cef7e4c84b7c9b8e7ddbbadbb74f4879c2",
+      "manifestSha256": "437927d34b0d0c487fe887e5edf001f8148a392b1e647b7a55a5413e794301bf",
       "proofTarget": "Project.Validate.ArtifactTranslation",
       "identityTheorem": "Project.Validate.Artifact.decode_eq_cache",
       "decodeTheorem": "Wasm.Binary.Proof.decode_sound",
@@ -69,7 +69,7 @@
     {
       "case": "append_bang",
       "sha256": "cc5a20a246d6c9f4fd215ffe01283e3c8ccbd80b9288b714e0dd0c380797ce96",
-      "manifestSha256": "2df9b8034dbcdc4ea0c580aee5280ec0938597b1e7f79a60ac94176c43002a5d",
+      "manifestSha256": "9c59d472abfda776ad3399b121ecd764a680a81a200aa827634f6e1b06c34c0c",
       "proofTarget": "Project.AppendBang.ArtifactTranslation",
       "identityTheorem": "Project.AppendBang.Artifact.decode_eq_cache",
       "decodeTheorem": "Wasm.Binary.Proof.decode_sound",
@@ -83,7 +83,7 @@
     {
       "case": "push_size",
       "sha256": "6a6a5e4e9dba3d8daa4fc4becf0a335fef6eea1cd9130ed1b2867f1c21da22fb",
-      "manifestSha256": "c880864c93b9828c73b31d97b8d7c30ed62ac68ad1afa1db9b98efb676caa581",
+      "manifestSha256": "04d909a7ca2b75e4cd70ef36c9d5565440563ab46d75b6538293e1b77afba789",
       "proofTarget": "Project.PushSize.ArtifactTranslation",
       "identityTheorem": "Project.PushSize.Artifact.decode_eq_cache",
       "decodeTheorem": "Wasm.Binary.Proof.decode_sound",
@@ -97,7 +97,7 @@
     {
       "case": "push_twice",
       "sha256": "d62f015137837e6e4bd6c2cffda2d082b3e3268dc18f9ca2e4da52b07984af81",
-      "manifestSha256": "cd95e4e8d6ddc5089dc0361450e3d1769189114786a9458eb048e3e3e27d9d3f",
+      "manifestSha256": "db0312ddb0a7556854c42210dbc0b029d7c7f68d7941eb7477fc8eeeb8cb2fbf",
       "proofTarget": "Project.PushTwice.ArtifactTranslation",
       "identityTheorem": "Project.PushTwice.Artifact.decode_eq_cache",
       "decodeTheorem": "Wasm.Binary.Proof.decode_sound",
@@ -111,7 +111,7 @@
     {
       "case": "shared_pair",
       "sha256": "f1cf88bd4fbad114cab41ed10a1f1f43ac1fa49e2ed2e9e13f8d7df6872c741f",
-      "manifestSha256": "f9551e6e2d6739325ec5e8c7e87e19bdbc8076fa4be22ef58fa69040babcf4eb",
+      "manifestSha256": "101437e85f5bf4b95feabaa12e271163941dd66f2c895e8635fbb6fe2d3aaa66",
       "proofTarget": "Project.SharedPair.ArtifactTranslation",
       "identityTheorem": "Project.SharedPair.Artifact.decode_eq_cache",
       "decodeTheorem": "Wasm.Binary.Proof.decode_sound",
@@ -125,7 +125,7 @@
     {
       "case": "pair_free",
       "sha256": "e3809e304f3572d4674192de101ef74fcc22c3b1ea3c1651c18d7512cdfd8135",
-      "manifestSha256": "b6b8a8bbd6e22c9808fd49878109e9abdc39294a3d5dfd8829f753d9743a4c43",
+      "manifestSha256": "f8cd613742633bb53e44e3419facaf0436cc029036ac131e0c83e107c4be62ba",
       "proofTarget": "Project.PairFree.ArtifactTranslation",
       "identityTheorem": "Project.PairFree.Artifact.decode_eq_cache",
       "decodeTheorem": "Wasm.Binary.Proof.decode_sound",
@@ -139,7 +139,7 @@
     {
       "case": "box_free",
       "sha256": "d2701846048e1079da8416f5c2fefeaec39f749b7e1567b8b9c0e7ae175590f5",
-      "manifestSha256": "27090da0af462b2de708289ee23899001846822d7dc76274011adb1f6aad8c2d",
+      "manifestSha256": "09314433c9423d72373cc345b90bc643d10889565adfdb7d3da771eb52f29db8",
       "proofTarget": "Project.BoxFree.ArtifactTranslation",
       "identityTheorem": "Project.BoxFree.Artifact.decode_eq_cache",
       "decodeTheorem": "Wasm.Binary.Proof.decode_sound",
@@ -153,7 +153,7 @@
     {
       "case": "fold_sum",
       "sha256": "b599860eb8fe3937148455c27c8cfca5473f967001e563530b4790c43017e3b5",
-      "manifestSha256": "c33bc88b0cfd910c7b65c6d20f5aedf2c9790f3171f1aa424c347f7bfada47ee",
+      "manifestSha256": "f9d7438bcfa759e956c342ada739a15a44a1a26c0b76b1114f5c051e5c78cfdf",
       "proofTarget": "Project.FoldSum.ArtifactTranslation",
       "identityTheorem": "Project.FoldSum.Artifact.decode_eq_cache",
       "decodeTheorem": "Wasm.Binary.Proof.decode_sound",
@@ -167,7 +167,7 @@
     {
       "case": "leb_u32",
       "sha256": "02780df586732a25fdfe827892ca18b278ab02c3893e2c516f1a253d640c327a",
-      "manifestSha256": "5d178b1b02b8a6f9cb46777465ccf819781a4db254cbc62065f4cb608e290dbc",
+      "manifestSha256": "de84ec5028a577e4819276115bafc10602e0220900821653892db8729e951dd9",
       "proofTarget": "Project.LebU32.ArtifactTranslation",
       "identityTheorem": "Project.LebU32.Artifact.decode_eq_cache",
       "decodeTheorem": "Wasm.Binary.Proof.decode_sound",
@@ -181,7 +181,7 @@
     {
       "case": "clob_quote",
       "sha256": "5e3d45cba560f8a49c5cd9aedcc33698d57fed2c27034c10da4ac26362e5d522",
-      "manifestSha256": "06c5973ed61e4317cd8e8605f857e109d150dd30048dff9fef9d05fc33eb509f",
+      "manifestSha256": "6472e3ff494eba89bd8fe9a3c045557a29f4f0be3cefde9f3d8498c88d3d131e",
       "proofTarget": "Project.ClobQuote.ArtifactTranslation",
       "identityTheorem": "Project.ClobQuote.Artifact.decode_eq_cache",
       "decodeTheorem": "Wasm.Binary.Proof.decode_sound",
@@ -195,7 +195,7 @@
     {
       "case": "clob_cancel",
       "sha256": "b9e304af59b8511a24be491d5e17e0c47f8d0f4a8d89b7471a9b49751ac9cf7e",
-      "manifestSha256": "0c0b9ef4faa1c95130ef35de4d07801bafbbc9f21f28295a077a3f7fc25e86e7",
+      "manifestSha256": "d64f41f86cd431b45aa2cb85debcb7b518f62ab4fcb220ffc1d8c63bffb89592",
       "proofTarget": "Project.ClobCancel.ArtifactTranslation",
       "identityTheorem": "Project.ClobCancel.Artifact.decode_eq_cache",
       "decodeTheorem": "Wasm.Binary.Proof.decode_sound",
@@ -209,7 +209,7 @@
     {
       "case": "clob_find_best",
       "sha256": "b66424e00789f14e8e4f2256f99682725f856a18efd9ce6064a588295bc0c536",
-      "manifestSha256": "647b5a584b04ab16757d51923c0a75aa6087601998f199e3c2db2e4dc2b95b7d",
+      "manifestSha256": "ad4be889530bbd24fdfb3a3a9415a34a71bdefd28d7109318f65f54ec8b7896c",
       "proofTarget": "Project.ClobFindBest.ArtifactTranslation",
       "identityTheorem": "Project.ClobFindBest.Artifact.decode_eq_cache",
       "decodeTheorem": "Wasm.Binary.Proof.decode_sound",
@@ -223,7 +223,7 @@
     {
       "case": "clob_post_only",
       "sha256": "0407b872a87be0337399c414affdd82400fae45ac00a1ca3928e5db20489cf1b",
-      "manifestSha256": "068d0d6499c49536d4344ad444331b4db5c4f2f67b4a64985bf946f3779a5ee7",
+      "manifestSha256": "ddb5e993fb59ccd9f1330d9aea19665dbc4c7bc02f31d04c4ff8b45b791d3934",
       "proofTarget": "Project.ClobPostOnly.ArtifactTranslation",
       "identityTheorem": "Project.ClobPostOnly.Artifact.decode_eq_cache",
       "decodeTheorem": "Wasm.Binary.Proof.decode_sound",
@@ -239,7 +239,7 @@
     {
       "case": "clob_match_fuel",
       "sha256": "971deb775adf62fb4db34ffe353053b8660b4460a13c870341eba84626410e8a",
-      "manifestSha256": "5c55c946f276c5cadc35a5a2c3ec74131ce324888689988b8ec7db0766523e41",
+      "manifestSha256": "082274c350142506d03ec3d2e1c3f5e6f08382b82cf17847239bf80085bbe9e1",
       "proofTarget": "Project.ClobMatchFuel.ArtifactTranslation",
       "identityTheorem": "Project.ClobMatchFuel.Artifact.decode_eq_cache",
       "decodeTheorem": "Wasm.Binary.Proof.decode_sound",
@@ -253,7 +253,7 @@
     {
       "case": "clob_limit",
       "sha256": "8f44e7f96de04a6ce531801337305fa932b504ac70f6e4aff5d73b58e5a3747d",
-      "manifestSha256": "599d1289b54ef1f3db09fa842c8ed279e193a58d8d0dc308a4d834efdaadfa79",
+      "manifestSha256": "142c54f1420a9d5bc6c6c963ab7b6ac353eb607c5e935e5ba77039ec8f7b736f",
       "proofTarget": "Project.ClobLimit.ArtifactTranslation",
       "identityTheorem": "Project.ClobLimit.Artifact.decode_eq_cache",
       "decodeTheorem": "Wasm.Binary.Proof.decode_sound",
@@ -267,7 +267,7 @@
     {
       "case": "clob_market",
       "sha256": "1b7349307d6e19e7690331173d81d17cfba8f36b9e25f0ba2f16f2fc6d168ffc",
-      "manifestSha256": "cbf078f8396e9c9684144e72232690d6e848e18de3bf1be1282adca1f56ae419",
+      "manifestSha256": "fa8d9eb0ba483bce4b6b0e41be2962d374450861750ae2bed547fd4e6dad06c9",
       "proofTarget": "Project.ClobMarket.ArtifactTranslation",
       "identityTheorem": "Project.ClobMarket.Artifact.decode_eq_cache",
       "decodeTheorem": "Wasm.Binary.Proof.decode_sound",
@@ -281,7 +281,7 @@
     {
       "case": "clob_depth",
       "sha256": "d6fe056853750dd985e3d0cd03e6ec488ae98a9791d7b5d53baac95bd352b68f",
-      "manifestSha256": "cb04aac4abda2f06a3b55da1b1212e242cace9070aab193ff05b5d1134093a1f",
+      "manifestSha256": "a5a0598c99d152928933513ea35eff4110841215467a24632544e93c00554cc2",
       "proofTarget": "Project.ClobDepth.ArtifactTranslation",
       "identityTheorem": "Project.ClobDepth.Artifact.decode_eq_cache",
       "decodeTheorem": "Wasm.Binary.Proof.decode_sound",
@@ -291,13 +291,28 @@
       "behaviorTheorems": [
         "Project.ClobDepth.Func7.func7_terminates"
       ]
+    },
+    {
+      "case": "euler_rusanov",
+      "sha256": "145230bc0f956df81283fb37227c303de2c92e68842d38b985325dca467f6546",
+      "manifestSha256": "f4462bb0f6bf7e9c6f33062772ac9e899dea825168352a75aee3632ba729475a",
+      "proofTarget": "Project.EulerRusanov.ArtifactTranslation",
+      "identityTheorem": "Project.EulerRusanov.Artifact.decode_eq_cache",
+      "decodeTheorem": "Wasm.Binary.Proof.decode_sound",
+      "validationTheorem": "Wasm.Binary.Proof.validate_sound",
+      "cacheEqualityTheorem": "Project.EulerRusanov.Artifact.translation_cache_eq",
+      "artifactCorrectnessTheorem": "Project.EulerRusanov.Artifact.artifact_module_eq_cache",
+      "behaviorTheorems": [
+        "Project.EulerRusanov.Spec.rusanovFluxCheckedBits_exact",
+        "Project.EulerRusanov.Spec.rusanovFluxCheckedBits_wat_real_error"
+      ]
     }
   ],
   "tools": {
     "node": "24.13.0",
     "wasmTools": "1.251.0",
     "lean": "leanprover/lean4:v4.34.0-rc2",
-    "talosRevision": "fda69ca67a81ea4f1fa4e376bdc5861d9fe5479a",
+    "talosRevision": "87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47",
     "testsuiteRevision": "9233a0a8d5920a8d32358ee915a3662ff3385029",
     "wasmtime": "44.0.0"
   },
@@ -330,12 +345,12 @@
     "command": "tools/artifact-proof.js check-all",
     "date": null,
     "result": "pending",
-    "artifactCount": 20,
+    "artifactCount": 21,
     "releaseInputSha256": null
   },
   "semanticConformance": {
     "command": "tools/artifact-conformance.js check",
-    "configSha256": "c301550c4d880d1418205085d9581d2014eef7c6928b1de6bf8693e190121835",
+    "configSha256": "b96c3386c340a6bd55762bcee3a077deda03a7dced2cbe3bc62440a6b9a93d16",
     "releaseInputSha256": null,
     "date": null,
     "result": "pending",

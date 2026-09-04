@@ -2,8 +2,8 @@
 
 This report records the defect first observed on 2026-08-02 and reproduced under
 the then-pinned Talos revision by the release gate on 2026-08-03.  The current
-workspace pins pre-floating-point Talos revision
-`fda69ca67a81ea4f1fa4e376bdc5861d9fe5479a`; its migrated conformance receipt is
+workspace pins Talos revision
+`87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47`; its migrated conformance receipt is
 still pending, so this historical report does not claim a current rerun.  The
 no-import artifact profile does not exercise the defect.
 
@@ -17,7 +17,7 @@ packages, or proof driver.  The 2026-08-26 receipt used `CodeLib` from
 reproduction was clean, so no LeanExe working-tree edit introduced the behavior.
 The current [Talos dependency declaration](../proofs/talos/lean/lakefile.toml) and
 [conformance configuration](../proofs/talos/conformance.json) instead pin
-`fda69ca67a81ea4f1fa4e376bdc5861d9fe5479a`.
+`87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47`.
 
 Talos upstream commit [`07fe17b`](https://github.com/cajal-technologies/talos/commit/07fe17bba53861e7f21459d8eff325c4ab1037c9) added cross-module imports using snapshot semantics.  The commit and source state that imported globals, tables, and memories are copied into the importing instance, while imported functions close over an exporting-store snapshot.  The source also states that mutations through an import remain local and identifies shared-state linking as unsupported.
 
@@ -70,7 +70,7 @@ The selected test exposes only the lost memory maximum.  Adding a maximum to `Me
 
 ## Effect on LeanExe Artifact Verification
 
-The current artifact profile rejects imports, tables, and multiple memories.  Each of the twenty frozen artifacts executes as one closed module whose static memory declaration and runtime memory correspond directly.  Under those conditions, Talos obtains the same limit from the module declaration that a memory-instance field would contain.
+The current artifact profile rejects imports, tables, and multiple memories.  Each of the twenty-one frozen artifacts executes as one closed module whose static memory declaration and runtime memory correspond directly.  Under those conditions, Talos obtains the same limit from the module declaration that a memory-instance field would contain.
 
 The defect therefore does not change the byte-identity, decoder-soundness, validator-soundness, exact-translation, or behavioral theorems already proved for those artifacts.  Those theorems continue to state behavior under the pinned Talos semantics, and their subjects contain no imported entity that can trigger the defect.  The failure limits the empirical evidence that connects Talos to general WebAssembly execution and blocks artifact claims for modules with imports.
 
@@ -82,7 +82,7 @@ A narrow repair adds the effective maximum to each `Mem` instance, initializes i
 
 A complete repair introduces a shared runtime store containing addressable function, table, memory, and global instances.  A module instance maps its local indices to addresses in that store, imports reuse exported addresses, and invocation threads changes through the shared store.  This design follows the WebAssembly runtime structure and covers memory identity, mutation visibility, imported-function state, and the analogous table and global cases.
 
-The existing twenty proofs can retain a compact closed-module interface if Talos supplies an embedding of closed modules into the shared runtime and proves an execution-equivalence theorem for modules without imports.  That separation preserves the current proof investment while giving conformance tests and future imported artifacts the general semantics.  Implementing the shared model in a maintained fork would require a new immutable Talos revision, proof updates, a complete artifact-gate rerun, and broader official linking tests before release.
+The existing twenty-one proofs can retain a compact closed-module interface if Talos supplies an embedding of closed modules into the shared runtime and proves an execution-equivalence theorem for modules without imports.  That separation preserves the current proof investment while giving conformance tests and future imported artifacts the general semantics.  Implementing the shared model in a maintained fork would require a new immutable Talos revision, proof updates, a complete artifact-gate rerun, and broader official linking tests before release.
 
 ## Disposition
 
