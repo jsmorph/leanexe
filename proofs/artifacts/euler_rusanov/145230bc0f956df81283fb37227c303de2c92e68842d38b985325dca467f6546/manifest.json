@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 3,
+  "case": "euler_rusanov",
+  "sha256": "145230bc0f956df81283fb37227c303de2c92e68842d38b985325dca467f6546",
+  "byteLength": 1808,
+  "binaryFormatVersion": 1,
+  "validationProfile": "leanexe-core-v1",
+  "artifactBytesModule": "Project.EulerRusanov.ArtifactBytes",
+  "artifactBytesDefinition": "Project.EulerRusanov.Artifact.artifactBytes",
+  "rawModuleDefinition": "Project.EulerRusanov.Artifact.Cache.raw",
+  "cachedProgramModule": "Project.EulerRusanov.Program",
+  "cachedProgramDefinition": "Project.EulerRusanov.module",
+  "specModule": "Project.EulerRusanov.Spec",
+  "proofTarget": "Project.EulerRusanov.ArtifactTranslation",
+  "identityTheorem": "Project.EulerRusanov.Artifact.decode_eq_cache",
+  "decodeTheorem": "Wasm.Binary.Proof.decode_sound",
+  "validationTheorem": "Wasm.Binary.Proof.validate_sound",
+  "cacheEqualityTheorem": "Project.EulerRusanov.Artifact.translation_cache_eq",
+  "artifactCorrectnessTheorem": "Project.EulerRusanov.Artifact.artifact_module_eq_cache",
+  "behaviorTheorems": [
+    "Project.EulerRusanov.Spec.rusanovFluxCheckedBits_exact",
+    "Project.EulerRusanov.Spec.rusanovFluxCheckedBits_wat_real_error"
+  ],
+  "leanToolchain": "leanprover/lean4:v4.34.0-rc2",
+  "talosRevision": "87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47",
+  "verifierSourceSha256": "bf03d3f47fb11563c947224601a21afa95c62fc88df81f493de821e69de9d1e7",
+  "hostAssumptions": []
+}

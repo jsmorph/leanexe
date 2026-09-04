@@ -8150,3 +8150,26 @@ The combined Spec target passed all 3,370 jobs on the first attempt; the new
 composition module took 3.3 seconds and its public axiom report is exactly
 `propext`, `Classical.choice`, and `Quot.sound`.  Exact-byte generation,
 decode/validation/translation identity, and manifest registration are next.
+
+## 2026-09-04: Euler exact artifact
+
+Euler is now the first registered f64 exact-byte artifact.  The focused source
+gate passed all 3,370 jobs, and regeneration preserved the 1,808-byte SHA-256
+identity `145230bc0f956df81283fb37227c303de2c92e68842d38b985325dca467f6546`.
+The schema-three package records no host assumptions and names the total exact
+execution and accepted-input real-error theorems.
+
+The focused independent artifact gate matched the external and embedded bytes,
+proved checked decode, validation, `CoreValid`, and exact translation to the
+five-function Talos cache, accepted both behavioral theorems, and passed its
+axiom audit.  The behavior theorems depend only on `propext`,
+`Classical.choice`, and `Quot.sound`; closed byte decoding and validation use
+only the artifact format's permitted theorem-local decision certificates.
+
+The first migration attempt exposed a cold-cache driver defect rather than a
+WASM rejection: `DumpRaw.lean` was run before its imported decoder object had
+been built.  Building the focused decoder closure unblocked the named Euler
+migration without any cleanup.  The migration driver must now build the leaf
+`Project.Artifact.Binary.DumpRaw` target once before running it so a fresh
+checkout does not depend on accidental cache warmth.  Full command chronology
+and timings are retained in `journal.md`.

@@ -1,6 +1,6 @@
 # Development Plan
 
-This file is the only active project work queue.  The compiler, execution suite, twenty-four source-driven Talos proofs, twenty exact-artifact packages, annotation generator, ProofKit, structured LTG, and twelve demonstrations already exist.  Detailed plans under `plans/` support unfinished items listed here and do not define separate priorities.
+This file is the only active project work queue.  The compiler, execution suite, twenty-five source-driven Talos proofs, twenty-one exact-artifact packages, annotation generator, ProofKit, structured LTG, and twelve demonstrations already exist.  Detailed plans under `plans/` support unfinished items listed here and do not define separate priorities.
 
 ## 1. Reconcile current documentation and release evidence
 
@@ -172,8 +172,10 @@ the standard logical axioms.  The generated-program proof now covers every
 guard path with exact results, store preservation, fuel-independent big-step
 execution, and an independent 47/64/81/98/118-transition small-step trace.
 Horner follows the established f64 source-driven completion boundary and does
-not claim a frozen exact-byte package; the Euler flux remains the planned first
-f64 entry in the independent exact-artifact registry.
+not claim a frozen exact-byte package.  The Euler flux is now the first f64
+entry in the independent exact-artifact registry: its 1,808 frozen bytes pass
+checked decoding, validation, exact Talos translation, total execution, and
+the accepted-input componentwise real-error contract.
 
 Hash, manifest, release-receipt, and self-host bookkeeping are not gates for
 this branch's floating-point implementation.  Exact program bytes remain part
@@ -191,11 +193,11 @@ acceptance gates, and nonclaims.
 - [x] Complete the already selected guarded quadratic Horner checkpoint.
 - [x] Compile a guarded `gamma = 7/5` primitive-state Rusanov flux using the
       admitted binary64 add/multiply profile and exact sign-bit negation.
-- [ ] Prove physical admissibility, the characteristic-speed bound, finite
+- [x] Prove physical admissibility, the characteristic-speed bound, finite
       IEEE execution, and explicit componentwise real-error bounds.
-- [ ] Prove the same numerical contract for total, store-preserving execution
+- [x] Prove the same numerical contract for total, store-preserving execution
       of the generated WAT.
-- [ ] Add the first registered f64 exact-byte artifact and transfer the WAT
+- [x] Add the first registered f64 exact-byte artifact and transfer the WAT
       theorem through checked decode, validation, and Talos translation.
 - [ ] Prove a genuine flux-Jacobian derivative and complete eigenbasis theorem.
 - [ ] Compile and prove a fixed first-order Sod step that emits raw binary64

@@ -2048,3 +2048,69 @@ covered by the total exact-execution theorem rather than making a physical
 error claim about rejected payloads.  No cleanup, deletion, maintenance,
 remote execution, `dev` access, concurrent Lean invocation, or worktree
 rewrite occurred.
+
+## 2026-09-04: first exact-byte f64 artifact registered
+
+The completed Euler case was promoted through a deliberately focused path.
+`proofs/talos/cases.json` changed only `euler_rusanov.complete` from false to
+true, and the aggregate `Project.lean` gained only
+`Project.EulerRusanov.Spec`.  The local command
+`node tools/talos-proof.js check euler_rusanov` regenerated only that case and
+passed all 3,370 Lean jobs.  It accepted both
+`rusanovFluxCheckedBits_exact` and `rusanovFluxCheckedBits_wat_real_error`,
+whose axiom reports remain exactly `propext`, `Classical.choice`, and
+`Quot.sound`.
+
+The separate focused preparation command completed successfully and reproduced
+an exact 1,808-byte module with SHA-256
+`145230bc0f956df81283fb37227c303de2c92e68842d38b985325dca467f6546`.
+No bulk preparation or migration command was used.  The first invocation of
+`node tools/artifact-migrate.js migrate euler_rusanov` exited before writing
+any migration output.  A direct diagnostic of `DumpRaw.lean` showed that the
+failure was not a binary-decoder rejection: `lean --run` could not find the
+unbuilt `Project.Artifact.Binary.Decode.olean`.  Git status confirmed that the
+failed migration left only the two intentional registration edits.
+
+The prerequisite was then built locally and serially:
+
+```text
+Project.Artifact.Binary.Syntax
+Project.Artifact.Binary.Cursor
+Project.Artifact.Binary.Leb
+Project.Artifact.Binary.Primitives
+Project.Artifact.Binary.Decode
+Build completed successfully (6 jobs, approximately 4.2 seconds).
+```
+
+With that materially changed build state, the same named migration completed
+and wrote only the Euler schema-three package, registry row, embedded bytes,
+raw cache, decoded cache, decode equality, validation evidence, translation
+equality, and external-file lookup.  The packaged `program.wasm` again measured
+1,808 bytes and matched the same digest.  Its manifest records exact Lean
+4.34.0-rc2, Talos revision `87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47`,
+the two concrete behavior theorems, and an empty host-assumption list.
+
+The independent focused command
+`node tools/artifact-proof.js check <frozen-program.wasm>
+Project.EulerRusanov.ArtifactTranslation` then passed in approximately 197
+seconds.  It checked the package identity, matched all 1,808 external bytes to
+the embedded Lean byte array, proved executable decoding and raw-cache
+equality, proved validation and `CoreValid`, and proved that translation of the
+validated module equals the five-function Talos execution cache.  It then
+rebuilt and accepted the complete Euler behavioral specification.
+
+The final declaration audit reported only the standard logical axioms for both
+Euler behavior theorems.  The closed artifact identity uses the artifact
+format's permitted theorem-local `native_decide` certificates for byte-array
+decoding, raw-cache equality, and validation; it contains no `sorryAx` and no
+unlisted axiom.  Thus the exact frozen bytes, rather than compiler trust or a
+host floating-point run, now carry the total execution and quantitative
+real-error claims.  No workspace cleanup, deletion, reclamation, maintenance,
+reset, stash, checkout overwrite, worktree rewrite, remote execution, `dev`
+probe, or concurrent Lean process occurred.
+
+The cold-cache diagnostic exposed a real driver defect: artifact migration
+assumed that an unrelated earlier build had already produced the source
+runner's imported object files.  A separate focused follow-up will make the
+migration driver build its own `Project.Artifact.Binary.DumpRaw` target once
+before decoding, without deleting or invalidating any active-workspace cache.
