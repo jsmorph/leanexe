@@ -7997,3 +7997,12 @@ without source repair or theorem diagnostics.  The detailed dependency and
 timing ledger is in `journal.md`; `Artifact*` modules are intentionally outside
 this behavioral-spec recovery.  ClobMarket and ClobDepth remain before the
 single warmed aggregate retry.
+
+ClobMarket recovery is complete.  Its shared execution spine and both the
+valid- and invalid-order branches were built locally as focused targets.  The
+only material cold boundary was `InvalidBump` at 90 seconds; the fully warmed
+`Project.ClobMarket.Spec` passed all 3,461 jobs with 3.3 seconds on the root.
+No source repair was needed.  One misspelled nonexistent target was rejected
+immediately and is recorded with the complete target/timing ledger in
+`journal.md`.  ClobDepth is the last focused behavioral case before the single
+warmed aggregate retry.

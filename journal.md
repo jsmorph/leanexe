@@ -1308,3 +1308,59 @@ completed without a theorem diagnostic or source repair; output was limited to
 the repository's existing deprecation and linter warnings.  The remaining
 aggregate recovery frontier is now `ClobMarket` and `ClobDepth`, followed by
 one materially warmed aggregate retry.
+
+## 2026-09-04: ClobMarket behavioral specification fully warmed and passed
+
+The ClobLimit recovery ledger was published as
+`5249e0cd72a4a0d58f65cadf879c6271b6bfcd94`.  The local and remote refs and
+tree `a21c323e91e7032242c2ad78f44f5013ae70cbf0` matched, and the worktree was
+clean before ClobMarket recovery began.  The read-only import audit had found
+a 135-module behavioral closure with no `Artifact*` dependency.
+
+The shared execution spine passed first:
+
+- `Project.ClobMarket.Model` passed 3,350 jobs in 3.3 seconds.
+- `MatchRegion` and `ExportRegion` each passed 3,347 jobs, taking 20 and 4.5
+  seconds respectively.
+- `RunMatch` passed 3,437 jobs in 4.3 seconds, using the already current
+  `Project.ClobLimit.RunMatchCorrect` chain.
+- `Helpers` passed 3,361 jobs in 3.4 seconds and `Entry` passed 3,444 jobs in
+  3.7 seconds.
+
+The valid-order branch passed as a sequence of focused targets:
+
+- `ValidEntry` passed 3,445 jobs in 3.9 seconds.
+- An attempted `Project.ClobMarket.ValidPrice` target was rejected immediately
+  by Lake at 2 of 2 jobs because no such source file exists.  This was a target
+  naming error, not a theorem diagnostic; it changed no source or proof state.
+  A directory listing confirmed that the actual module is
+  `Project.ClobMarket.Price`.
+- `Price` passed 3,447 jobs in 4.7 seconds; `Call` passed 3,448 jobs in 3.7
+  seconds; `ValidResult` passed 3,449 jobs in 4.1 seconds; and `Valid` passed
+  3,450 jobs in 4.4 seconds.
+
+The invalid-order branch was then warmed from its leaves upward:
+
+- `InvalidEntry`, `InvalidPrepare`, and `InvalidSearch` passed 3,445, 3,446,
+  and 3,447 jobs in 3.9, 5.4, and 4.1 seconds respectively.
+- The focused `InvalidBump` memory proof passed all 3,448 jobs in 90 seconds.
+- `InvalidFinish` passed 3,449 jobs in 3.9 seconds; `InvalidPost` passed 3,450
+  jobs in 3.7 seconds; `InvalidProgram` passed 3,451 jobs in 4.6 seconds;
+  `InvalidResult` passed 3,452 jobs in 3.6 seconds; and `Invalid` passed 3,453
+  jobs in 5.3 seconds.
+
+With both branches current, `Project.ClobMarket.Correct` passed all 3,460 jobs
+in 4.9 seconds.  The public root then completed:
+
+```text
+tools/leanrun --timeout 15m lake -d proofs/talos/lean --no-ansi build \
+  Project.ClobMarket.Spec
+Build completed successfully (3461 jobs).
+```
+
+The `Spec` target took approximately 3.3 seconds.  All successful builds used
+the serialized pinned local-only envelope.  No `dev` host, cleanup, deletion,
+reset, stash, maintenance, or worktree rewrite was used.  Apart from the
+explicit nonexistent-target invocation above, output contained only existing
+deprecation warnings and no theorem diagnostic.  `ClobDepth` is now the sole
+remaining focused case before one materially warmed aggregate retry.
