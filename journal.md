@@ -2011,3 +2011,40 @@ axiom.  Output warnings are inherited from dependencies, not the new execution
 file.  No workspace cleanup, deletion, maintenance, reset, stash, checkout
 overwrite, remote host, `dev` probe, concurrent Lean process, or worktree
 rewrite occurred.
+
+## 2026-09-04: WAT-level Euler numerical transfer completed
+
+`Project/EulerRusanov/WasmNumerical.lean` now defines the accepted-input
+`RealErrorSpecFor` boundary expected by the artifact manifest.  It quantifies
+over arbitrary host environment, complete initial store, and all six raw
+binary64 interface words.  Given the exact raw-word guard, its termination
+postcondition combines complete store preservation and exact
+`Model.resultValues` stack equality with status zero and
+`Numerical.FluxRealError` for the three returned payload words.
+
+The proof is deliberately only a composition boundary.  It applies
+`TerminatesWith.mono` to `rusanovFluxCheckedBits_exact`, substitutes the exact
+final store and result stack, and supplies
+`checkedFluxBitsModel_real_error_of_guard`.  It does not rerun, approximate, or
+trust host floating-point arithmetic and adds no operation-specific axiom.
+
+The new file was imported by the Euler Spec root and passed on its first local
+serialized build:
+
+```text
+Project.EulerRusanov.WasmNumerical: 3.3 seconds
+Project.EulerRusanov.Spec: 2.0 seconds
+Build completed successfully (3370 jobs).
+complete command: approximately 8.8 seconds
+```
+
+`Project.EulerRusanov.Spec.rusanovFluxCheckedBits_wat_real_error` reports
+exactly `propext`, `Classical.choice`, and `Quot.sound`.  Together with exact
+execution, it proves that every accepted generated-WAT call returns the exact
+modeled words, all three are finite, and their absolute errors against the
+independently defined real fixed-speed Euler--Rusanov flux are bounded by
+`10 * 2^-52`, `14 * 2^-52`, and `25 * 2^-52`.  Rejection behavior remains
+covered by the total exact-execution theorem rather than making a physical
+error claim about rejected payloads.  No cleanup, deletion, maintenance,
+remote execution, `dev` access, concurrent Lean invocation, or worktree
+rewrite occurred.
