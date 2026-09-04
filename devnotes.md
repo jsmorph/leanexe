@@ -7986,3 +7986,14 @@ the root.  No source repair was required.  Only existing deprecation warnings
 were replayed, and the exact command ledger and per-boundary timings are in
 `journal.md`.  ClobLimit, ClobMarket, and ClobDepth remain before the single
 warmed aggregate retry.
+
+The ClobLimit recovery is now complete as well.  Its validity, search,
+partial-fill, full-fill, loop, run-match, filled-order, and residual-order
+chains were built as focused local targets.  The two principal cold residual
+boundaries were `LimitResidualBump` at 92 seconds and
+`LimitResidualFinish` at 39 seconds.  The fully warmed
+`Project.ClobLimit.Spec` passed all 3,466 jobs with 3.3 seconds on the root,
+without source repair or theorem diagnostics.  The detailed dependency and
+timing ledger is in `journal.md`; `Artifact*` modules are intentionally outside
+this behavioral-spec recovery.  ClobMarket and ClobDepth remain before the
+single warmed aggregate retry.
