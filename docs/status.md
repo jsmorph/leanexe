@@ -25,17 +25,18 @@ The [Talos proof inventory](../proofs/talos/README.md) names each source-driven 
 The proof workspace and `proofs/artifacts/release.json` now record exact Lean
 4.34.0-rc2, Talos revision
 `87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47`, and the migrated release-input
-identity.  The release record remains a draft: its aggregate artifact-proof and
-semantic-conformance receipts are pending, and `sourceRevision` is still null.
-The successful 2026-08-26 receipts remain historical evidence for their earlier
+identity.  The release record remains a draft: its 2026-09-04 aggregate
+artifact receipt passes all twenty-one packages for release-input digest
+`bbc645be04edcae73d6d36958a01b85bfa0a24f7660fc0ccb801ac6e133711a3`;
+semantic conformance is pending, and `sourceRevision` is still null.  The
+successful 2026-08-26 receipts remain historical evidence for their earlier
 digest rather than current release receipts.
 
 The draft makes no release-readiness claim, and
 `tools/artifact-release.js check-ready` continues to fail as designed.  The
-aggregate proof and conformance
-gates must first produce receipts for the migrated inputs; an immutable source
-revision must then be recorded, and a later cold-checkout run must repeat both at
-that revision before the record can become ready.
+conformance gate must still produce a receipt for the migrated inputs; an
+immutable source revision must then be recorded, and a later cold-checkout run
+must repeat both warm gates at that revision before the record can become ready.
 
 Lean 4.31.0 accepts the archived kernel-unsoundness reproduction preserved by
 the release record.  The owner accepted that older toolchain defect after the
@@ -43,7 +44,7 @@ recorded narrow lexical audit of the artifact proof sources and two local
 LeanExe imports.  The audit does not repair the historical kernel or cover
 transitive dependencies.  The current record separately identifies exact Lean
 4.34.0-rc2 and records that the reproduction is rejected there; the current
-aggregate proof receipts are nevertheless still pending.
+aggregate artifact receipt passes independently of that historical record.
 
 ## Known limits
 
@@ -55,7 +56,7 @@ aggregate proof receipts are nevertheless still pending.
 | Strings | Lean `String` is not a supported runtime value.  `LeanExe.AsciiString` and `ByteArray` provide the supported textual representations. |
 | Heap updates | Generated programs may mutate freshly allocated or uniquely owned heap objects internally.  Public array inputs are borrowed, so an operation returning a changed array allocates a distinct result rather than overwriting the caller's array. |
 | Compiler correctness | Exact-artifact proofs establish behavior directly from bytes.  Compiler theorems currently support selected emitted regions and proof-generation evidence rather than a complete source-to-artifact refinement theorem. |
-| Talos conformance | The last accepted receipt has six known failures for imported-memory limit handling in `memory_grow.wast`.  The artifact profile forbids imports, and the historical conformance gate reports the exact rows as an upstream warning.  A receipt for the current `87e3aa5` inputs is pending. |
+| Talos conformance | The last accepted receipt has six known failures for imported-memory limit handling in `memory_grow.wast`.  The artifact profile forbids imports, and the historical conformance gate reports the exact rows as an upstream warning.  The 2026-09-04 current-input attempt matched all fifteen exact invalid-module classifications, then timed out while warming the pinned runner's broad Mathlib import closure; it emitted no conformance receipt. |
 | Proof generation | Generation time remains variable and can exceed thirty minutes for structured loops.  Proof size, retrieval, revisions, checked abstraction use, and transfer across demos remain relevant measurements. |
 
 ## Immediate work

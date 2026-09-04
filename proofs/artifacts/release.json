@@ -343,10 +343,10 @@
   },
   "artifactProof": {
     "command": "tools/artifact-proof.js check-all",
-    "date": null,
-    "result": "pending",
+    "date": "2026-09-04",
+    "result": "passed",
     "artifactCount": 21,
-    "releaseInputSha256": null
+    "releaseInputSha256": "bbc645be04edcae73d6d36958a01b85bfa0a24f7660fc0ccb801ac6e133711a3"
   },
   "semanticConformance": {
     "command": "tools/artifact-conformance.js check",
@@ -377,7 +377,6 @@
   },
   "blockers": [
     "No immutable source revision records the current proof implementation.",
-    "The aggregate artifact proof has not passed under the selected toolchain.",
     "The conformance gate has not passed under the selected toolchain.",
     "The release gates have not passed from a cold checkout of the recorded source revision."
   ]

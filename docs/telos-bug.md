@@ -3,9 +3,11 @@
 This report records the defect first observed on 2026-08-02 and reproduced under
 the then-pinned Talos revision by the release gate on 2026-08-03.  The current
 workspace pins Talos revision
-`87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47`; its migrated conformance receipt is
-still pending, so this historical report does not claim a current rerun.  The
-no-import artifact profile does not exercise the defect.
+`87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47`.  A 2026-09-04 migrated-input
+attempt matched all fifteen exact invalid-module classifications, then timed
+out while warming the pinned runner's broad Mathlib import closure.  It emitted
+no conformance receipt, so this historical report does not claim a completed
+current rerun.  The no-import artifact profile does not exercise the defect.
 
 ## Finding and Ownership
 

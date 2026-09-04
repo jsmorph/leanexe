@@ -2582,3 +2582,216 @@ active, reports the refreshed draft rather than a pre-migration draft, and
 keeps the source-driven 25-case aggregate separate from release inspector
 receipts.  Historical twenty-package and self-host measurements remain dated
 and unchanged.
+
+## 2026-09-04: current aggregate receipt and conformance cache warm-up
+
+This checkpoint began from published commit
+`d71a24110869d23348f87a164fd8c8836093dfa1`, whose complete tree is
+`7bd896dc8f54ff3de0532943d785741b934eeea3`.  Local `HEAD` and
+`origin/talosfp-euler` agreed and `git status --short --branch` was clean before
+the evidence commands.  The standing operating contract did not change:
+
+- the complete checkout, `.git` database, untracked and ignored dependencies,
+  compiler caches, generated evidence, and partial build products are
+  persistent user-owned state;
+- no cleanup, maintenance, reclamation, pruning, cache invalidation, stash,
+  destructive reset, checkout overwrite, worktree rewrite, or deletion is
+  authorized;
+- there is no `dev` host, and no command may invoke or probe one;
+- all compiler, Lean, Lake, Node, C, Wasmtime, and artifact work is local;
+- only one Lean/Lake/compiler process may run at a time;
+- a timeout without a semantic diagnostic is neither a pass nor a failure, and
+  an unchanged timed-out boundary is not repeated;
+- `journal.md` is the detailed command ledger, `devnotes.md` is the concise
+  durable checkpoint, and both travel in each coherent commit and push.
+
+The local driver envelope remained:
+
+```sh
+env LEANRUN_LOCAL=1 \
+  LEAN_SYSROOT=/root/.elan/toolchains/leanprover--lean4---v4.34.0-rc2 \
+  LD_PRELOAD=/tmp/leanexe-proc-self-readlink.so \
+  LEAN_NUM_THREADS=1 \
+  WASM_TOOLS=/workspace/scratch/9df984ece5a1/leanexe/build/tools/wasm-tools-1.251.0-x86_64-linux/wasm-tools \
+  <local command>
+```
+
+The preload maps numeric `/proc/<pid>/exe` reads made by Lean in the nested PID
+namespace to `/proc/self/exe`.  It is an environment workaround, not proof
+evidence.  Direct local Lean remains explicitly authorized; no self-hosted
+emitter or remote execution path was used.
+
+### Twenty-one-package aggregate result
+
+The serialized replacement `node tools/artifact-proof.js check-all` completed
+with exit status zero.  It passed all twenty-one packages through exact package
+identity, embedded-byte equality, decoder evidence, validator evidence, Talos
+translation equality, behavioral specifications, manifest declarations, and
+the final declaration/axiom audit.  The emitted receipt is exactly:
+
+```json
+{
+  "schemaVersion": 1,
+  "date": "2026-09-04",
+  "result": "passed",
+  "artifactCount": 21,
+  "releaseInputSha256": "bbc645be04edcae73d6d36958a01b85bfa0a24f7660fc0ccb801ac6e133711a3"
+}
+```
+
+The audit reported the expected standard logical axioms and the artifact
+format's accepted theorem-local `native_decide` or `bv_decide` certificates for
+closed artifact facts.  It found no `sorryAx`, `sorry`, `admit`, or newly
+introduced axiom.  The ignored receipt at
+`build/evidence/artifact-proof.json` is machine evidence; the refreshed tracked
+release record is its durable binding.
+
+### Pinned testsuite initialization
+
+The first serialized `node tools/artifact-conformance.js check` attempt exited
+before execution with:
+
+```text
+WebAssembly testsuite revision mismatch: expected
+9233a0a8d5920a8d32358ee915a3662ff3385029, found
+87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47
+```
+
+This was not a Talos or WebAssembly result.  The read-only submodule status
+showed `-9233a0a8d5920a8d32358ee915a3662ff3385029 vendor/testsuite`: the pinned
+gitlink existed but its checkout was uninitialized, so revision discovery from
+that directory escaped to the parent CodeLib repository.  The missing pinned
+data checkout was initialized in place with:
+
+```sh
+git -C proofs/talos/lean/.lake/packages/CodeLib \
+  submodule update --init vendor/testsuite
+```
+
+Git cloned the configured WebAssembly testsuite submodule and checked out exact
+revision `9233a0a8d5920a8d32358ee915a3662ff3385029`.  Parent CodeLib remained at
+`87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47`.  No existing checkout, cache, or
+file was removed, replaced, reset, or cleaned.  The initialized dependency is
+ignored project state and remains preserved in the active checkout.
+
+### Current conformance attempt
+
+The conformance command was rerun under the same serialized local envelope.
+`Project.Artifact.Binary.ClassifyFile` built, and all fifteen selected official
+`assert_invalid` and `assert_malformed` modules matched their configured exact
+decoder or validator classification.  This partial observation is not a
+conformance receipt.
+
+The next stage began building the pinned Talos testsuite runner.  The driver
+reads 366 `public import` declarations from the checked-out
+`Mathlib/Tactic.lean` and prewarms them in twenty-three serial chunks: twenty-two
+chunks of sixteen targets and one chunk of fourteen, each through
+`tools/leanrun --timeout 30m`.  It then builds the exact
+`Interpreter.Testsuite.Exec` and `testsuite` targets separately.  The displayed
+Lake graph advanced through approximately 2,005 jobs during the first broad
+cache-warm boundary, without an emitted Lean error, before that boundary exited
+with status `124` at its configured thirty-minute limit.  The outer conformance
+driver consequently exited nonzero and wrote no
+`build/evidence/artifact-conformance.json` receipt.
+
+The broad closure is expected under the current pin and is not caused by the
+WAST data submodule or the Euler source.  `Interpreter.Testsuite.Exec` imports
+the `Interpreter.Wasm` umbrella, which imports twenty runtime, proof, and host
+modules; `Wasm.Wp.Defs` reaches `Mathlib.Tactic`, and the random host reaches
+Mathlib probability and numerical tactics.  Static read-only inspection
+estimated roughly 2,930 non-core modules below `Mathlib.Tactic` and roughly
+3,235 package modules below the current executable.  The command already names
+the narrow executable target, so changing only the Lake target cannot prune
+source imports.
+
+Every completed object and dependency cache from the timed-out attempt remains
+in place.  The no-repeat rule means the cold boundary will not simply be rerun
+as though nothing changed.  A later resume is materially different because it
+can consume the preserved cache.  A genuinely narrower permanent runner would
+require a reviewed immutable CodeLib change removing only the redundant
+`import Interpreter.Wasm` umbrella from `Interpreter/Testsuite/Exec.lean` while
+retaining its explicit `Wasm.SmallStep`, `Wasm.Decoder.Wat`, `Wasm.Validate`,
+and `Lean.Data.Json` imports, followed by identical suite results under the new
+pin.  No local dirty dependency edit was made in this checkpoint.
+
+During the long run, one read-only process-list diagnostic was attempted:
+
+```sh
+ps -eo pid,etimes,args | rg 'artifact-conformance|leanrun|lake' | rg -v 'rg '
+```
+
+Because that diagnostic inherited the process-path compatibility preload, it
+returned `fatal library error, lookup self`.  It performed no mutation and was
+not retried while the conformance process was active.  This is recorded both as
+a diagnostic incident and as a reminder to remove the Lean-specific preload
+from unrelated `/proc` inspection.  It did not invoke or probe any host.
+
+### Refreshed release state
+
+After the timed-out process had exited, and only after another status
+inspection, the tracked release record was regenerated and inspected:
+
+```text
+Artifact release evidence refreshed: 21 packages, 3 blockers
+Artifact release record is draft: 21 packages, 3 blockers
+blocker: No immutable source revision records the current proof implementation.
+blocker: The conformance gate has not passed under the selected toolchain.
+blocker: The release gates have not passed from a cold checkout of the recorded source revision.
+```
+
+`proofs/artifacts/release.json` now records the passing 2026-09-04 aggregate
+artifact receipt and its exact release-input digest.  Its conformance fields
+remain pending and zero-valued because no receipt exists; the record does not
+invent or copy the fifteen classifier observations into a full-suite result.
+The blocker count decreased honestly from four to three.  The release is still
+a draft and no readiness claim is made.
+
+### Reviewed mathematical implementation boundary
+
+Four concurrent reviews were deliberately read-only: they made no checkout or
+Git change and ran no Lean/Lake process.  They converged on the following module
+sequence for the next implementation checkpoints:
+
+1. `RealConservative.lean` defines conservative state vectors, density,
+   momentum, total energy, pressure, velocity, specific enthalpy, physical
+   flux, admissibility, and exact bridges to the existing primitive `Model`.
+2. `RealMatrices.lean` defines the explicit conservative flux Jacobian and its
+   denominator-free reduced `(u,H)` form.
+3. `RealJacobian.lean` proves `HasFDerivAt physicalFlux (jacobianCLM U) U` when
+   density is nonzero, then exposes the matrix action as the derivative.
+4. `RealEigenbasis.lean` constructs characteristic values `u-c`, `u`, `u+c`,
+   all three right eigenvectors, the matrix equation `A * R = R * Lambda`, a
+   nonzero positive determinant, strict ordering, and an actual `Basis` of
+   Mathlib `HasEigenvector` certificates for admissible states.
+5. `RealGuardBridge.lean` transports existing raw-word `StateBounds` and guard
+   facts to real admissibility and a strict spectral-radius bound below the
+   fixed `7/4` Rusanov speed.
+6. `RealStencil.lean` proves an exact-real three-cell update, a transmissive
+   two-cell Sod specialization, admissibility under strict CFL, and exact total
+   balance with the correct physical boundary-flux term.
+7. `StencilNumerical.lean` and `StencilArtifact.lean` propagate the already
+   certified componentwise errors for exact artifact rows `sodLL`, `sodLR`, and
+   `sodRR` through a decoded-real update and balance theorem.
+
+The scope distinction is mandatory.  The present 1,808-byte artifact executes
+the three interface-flux calls.  Lean may assemble their certified decoded
+values over the reals and bound the resulting cell update, but that does not
+prove the update subtraction and scaling executed in WebAssembly.  The name
+`decodedTransmissiveStep` will mark this intermediate layer.  A claim called a
+WASM stencil is reserved for the later compiled one-step artifact and its own
+IEEE operation graph.  Native, Wasmtime, and C comparisons remain regression
+evidence only.
+
+This checkpoint commits the refreshed three-blocker release record, maintained
+status prose, plan split, and both note ledgers before any new mathematical
+source is introduced.  The next mutation begins with the small
+`RealConservative.lean` boundary and a focused serialized local build.
+
+The pre-publication non-Lean gates all passed: `git diff --check` was silent,
+`node tools/check-docs.js` checked 90 maintained Markdown files,
+`node test/artifact_release.js` checked release identities, receipts, pins,
+results, and blockers, `node tools/artifact-release.js audit-kernel-scope`
+passed the recorded project and two local LeanExe import roots, and a final
+`node tools/artifact-release.js inspect` reproduced the exact twenty-one-package,
+three-blocker draft above.  A targeted stale-wording search found no maintained
+claim that the current twenty-one-package artifact aggregate remains pending.

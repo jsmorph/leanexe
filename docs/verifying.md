@@ -103,7 +103,7 @@ tools/artifact-proof.js check \
   Project.FoldSum.ArtifactTranslation
 ```
 
-`check-artifacts` performs the identity, embedded-byte, and exact-artifact theorem stages for all twenty-one packages.  `check-all` adds every behavioral specification and the aggregate manifest-declaration check.  Neither aggregate mode invokes LeanExe, reads a source program, or invokes `wasm-tools`.  The current twenty-one-package aggregate is pending; the accepted 2026-08-26 receipt covers the twenty packages registered at that time.
+`check-artifacts` performs the identity, embedded-byte, and exact-artifact theorem stages for all twenty-one packages.  `check-all` adds every behavioral specification and the aggregate manifest-declaration check.  Neither aggregate mode invokes LeanExe, reads a source program, or invokes `wasm-tools`.  The 2026-09-04 receipt passes the current twenty-one-package aggregate for release-input digest `bbc645be04edcae73d6d36958a01b85bfa0a24f7660fc0ccb801ac6e133711a3`; the accepted 2026-08-26 receipt covers the twenty packages registered at that time.
 
 ## Semantic Conformance Tool
 
@@ -128,7 +128,7 @@ tools/artifact-release.js check-ready
 tools/artifact-release.js check-cold <revision>
 ```
 
-`inspect` validates the draft without claiming release readiness, while `refresh` reconstructs package records and consumes matching receipts from `build/evidence`.  `check-ready` returns a failure until every derived condition holds.  `check-cold` compares the current and cloned release inputs before setup, checks the exact Lean and dependency revisions, rejects tracked mutations after setup or either gate, reruns both gates, and writes the cold receipt before removing its temporary checkout.  The current draft now binds twenty-one packages under Lean 4.34.0-rc2 and Talos `87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47`; its current aggregate proof, semantic-conformance, and cold-checkout receipts are pending and its `sourceRevision` remains null.  The accepted 2026-08-26 receipts bind only their earlier twenty-package input digest.
+`inspect` validates the draft without claiming release readiness, while `refresh` reconstructs package records and consumes matching receipts from `build/evidence`.  `check-ready` returns a failure until every derived condition holds.  `check-cold` compares the current and cloned release inputs before setup, checks the exact Lean and dependency revisions, rejects tracked mutations after setup or either gate, reruns both gates, and writes the cold receipt before removing its temporary checkout.  The current draft now binds twenty-one packages under Lean 4.34.0-rc2 and Talos `87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47`; its current aggregate artifact receipt passes, while semantic-conformance and cold-checkout receipts are pending and its `sourceRevision` remains null.  The accepted 2026-08-26 receipts bind only their earlier twenty-package input digest.
 
 ## Committed Files
 
