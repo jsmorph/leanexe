@@ -8491,3 +8491,33 @@ order.  The expected output words are recorded in the detailed plan.  Exact
 decoded-real balance, not an all-zero rounded residual tuple, is the required
 certificate; the latter conceals nonzero `+epsilon/32` momentum and
 `-epsilon/16` energy balance errors.
+
+## 2026-09-04: decoded assembled-step admissibility
+
+`StencilAdmissibility.lean` composes the certified quarter-step flux budget
+`[5ε,7ε,25ε/2]` with the exact binary64 `0.1` bias.  Both assembled cells are
+within the common rational-reference budget `[5ε,8ε,13ε]` and satisfy
+`rho>5/16`, `|m|<1/8`, `E>1/2`, internal energy `>19/40`, and pressure
+`>19/100`; both are therefore admissible.  The focused target passes 3,394
+jobs and the full `Project` target passes 3,807.  All four new public axiom
+audits report only `propext`, `Classical.choice`, and `Quot.sound`.
+
+Two diagnostic iterations repaired only triangle-inequality API shape,
+addition orientation, vector-index normalization, and explicit negation
+parentheses; the detailed chronology is in `journal.md`.  No source
+placeholder, axiom, remote executor, parallel Lean process, cleanup, deletion,
+or worktree rewrite was used.  This remains exact-real assembly of frozen flux
+words, not executed WebAssembly update arithmetic.
+
+The detailed plan now carries the complete operating contract directly: the
+exact local command envelope, one global Lean/Lake/compiler process, no `dev`
+host, whole-checkout persistence including `.git`/dependencies/build/cache/
+evidence/partial work, no maintenance or destructive action, status before
+every mutation, explicit reviewed staging, frequent checkpoints, and exact
+non-forced GitHub Git-data publication followed by full fetched-tree equality.
+
+The refreshed release-input digest is
+`5188ca2230e2670aa2e4d2c3ee9129c970181a428e9bb72b939ae45d3cd7f264`;
+the 21-package draft retains four honest blockers.  Whitespace, 90-file docs,
+release consistency, kernel scope, four-blocker inspection, and targeted
+no-placeholder/no-axiom checks pass before publication.

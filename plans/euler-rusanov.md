@@ -476,7 +476,9 @@ Every checked row ends in a passing commit, an update to this plan and
 - [x] Add the generic two-cell/three-interface balance theorem and prove the
       concrete rational Sod quarter-step values and admissibility.
 - [x] Propagate the three certified interface-flux budgets through the
-      decoded-real update and balance theorem.
+      decoded-real update and balance theorem, compose them with the exact
+      input-representation bias, and prove robust admissibility of both
+      assembled quarter-step cells.
 - [ ] Add a symbolic CFL/invariant-domain theorem only if a later claim needs
       generic positivity beyond the proved fixed step.
 - [ ] Compile and prove the fixed Sod one-step artifact and emit its raw data.
@@ -492,11 +494,24 @@ Every checked row ends in a passing commit, an update to this plan and
 Every checkpoint follows the repository gates relevant to its files.  In
 addition:
 
-- run every Lean command directly on the local host, one Lean process at a
-  time, with `LEAN_NUM_THREADS=1`, an explicit timeout, the pinned local
-  sysroot, and the user-authorized `LEANRUN_LOCAL=1` mode of `tools/leanrun`;
-  this preserves the shared lock and priority controls while warning that its
-  unavailable systemd cgroup limits are not enforced;
+- run every Lean command directly on the local host with exactly one global
+  Lean/Lake/compiler process at a time; direct Lean is user-authorized through
+  this pinned envelope (substitute only the focused `TARGET`):
+
+  ```sh
+  env LEANRUN_LOCAL=1 \
+    LEAN_SYSROOT=/root/.elan/toolchains/leanprover--lean4---v4.34.0-rc2 \
+    LD_PRELOAD=/tmp/leanexe-proc-self-readlink.so \
+    LEAN_NUM_THREADS=1 \
+    WASM_TOOLS=/workspace/scratch/9df984ece5a1/leanexe/build/tools/wasm-tools-1.251.0-x86_64-linux/wasm-tools \
+    tools/leanrun --timeout 15m lake -d proofs/talos/lean --no-ansi build TARGET
+  ```
+
+  The wrapper preserves the shared lock and priority controls while warning
+  that unavailable systemd cgroup limits are not enforced.  The compatibility
+  preload maps numeric `/proc/<pid>/exe` reads to `/proc/self/exe`; never pass
+  it to unrelated process inspection.  The prior read-only `ps` failure from
+  doing so is recorded in `journal.md` and is not to be repeated;
 - never invoke, probe, or assume the existence of `tools/leanrun-dev`, a
   `dev` host, or any other remote executor; GitHub is only the publication and
   recovery remote for this work;
@@ -504,16 +519,26 @@ addition:
   against unchanged dependencies: identify a smaller missing dependency,
   build that boundary under its own timeout, and retry the parent only after
   the proof state or cache has materially changed;
-- treat the active checkout, including tracked, untracked, generated, and
-  ignored files, as user-owned persistent project state, not a disposable
-  workspace or a maintenance target; never run workspace maintenance,
-  cleanup, reclamation, pruning, deletion, `git clean`, destructive reset,
-  checkout-overwrite, stash, or an equivalent worktree rewrite; even a
-  reproducible cache is not deleted without explicit authorization for the
-  exact target;
-- inspect the branch and worktree before every edit, preserve unrelated and
-  pre-existing changes, commit each coherent checkpoint, push it promptly,
-  and verify that the remote and local commit trees are identical;
+- treat the entire active checkout—including `.git`, tracked and untracked
+  sources, generated and ignored files, submodules, dependencies, build
+  products, caches, evidence receipts, and partial work—as user-owned
+  persistent project state, never as a disposable workspace or a maintenance
+  target; no generic “workspace maintenance”, repair, reclamation, or
+  reproducibility rationale authorizes cleanup, truncation, movement,
+  invalidation, pruning, deletion, `git clean`, destructive reset,
+  checkout-overwrite, stash, or an equivalent worktree rewrite; any deletion
+  or destructive operation requires fresh user authorization for the exact
+  named target;
+- inspect `git status` before every mutation, preserve unrelated and
+  pre-existing changes, and stage only explicitly reviewed paths; commit each
+  coherent checkpoint and push it promptly;
+- because ordinary HTTPS write authentication is unavailable in this
+  environment, publish through the GitHub Git-data API without altering the
+  worktree: create exact blobs, create a tree based on the current remote
+  parent, require that API tree to equal the staged local tree, create a commit
+  with that exact remote parent, update `refs/heads/talosfp-euler` with
+  `force: false`, fetch the published commit, and require full fetched-tree,
+  local-index, and worktree equality before advancing the local ref;
 - record commands, elapsed boundaries, proof failures, timeouts, warnings,
   axiom audits, commit identities, and publication verification in
   `journal.md`, retain a concise durable checkpoint in `devnotes.md`, and
