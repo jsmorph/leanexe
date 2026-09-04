@@ -3124,3 +3124,176 @@ Pre-publication validation passed: `git diff --check` emitted no diagnostic and
 `node tools/check-docs.js` accepted all 90 maintained Markdown files.  A fresh
 status inspection still showed only the three intended modified documentation
 paths and the same two untouched untracked drafts.
+
+## 2026-09-04: exact-real transmissive stencil passes
+
+After publication of the operating-contract checkpoint as
+`d72d25be352412dccb53713cc3f2e406acf7c220`, complete tree
+`301d3e80cd18e35acef7b650472e3766eeec8d9b`, local and tracking refs were
+identical.  The only worktree paths were the two preserved untracked Lean
+drafts.  The first implementation target was
+`Project.EulerRusanov.RealStencil`.
+
+The pre-checkpoint diagnostic build of the original draft exited nonzero after
+about 6.6 seconds over a 3,060-job target.  It gave four precise source
+diagnostics:
+
+1. `sodRight` used real division in a computable definition;
+2. left-cell pressure positivity reduced to
+   `9 / 1150 < ![207 / 256, 9 / 80, 257 / 128] 2`;
+3. right-cell pressure positivity reduced to
+   `1 / 50 < ![81 / 256, 9 / 80, 95 / 128] 2`;
+4. the total-energy equality retained both third-coordinate vector
+   projections instead of reducing them.
+
+Those were elaboration and normalization failures, not accepted claims.  The
+temporary axiom output containing `sorryAx` came solely from the open goals in
+that failed compilation; no source `sorry`, `admit`, or axiom declaration was
+present.  No generated object, dependency, or cache was removed or invalidated.
+
+The repair changed `sodRight` to `noncomputable def` and inserted explicit
+`change` statements for the two rational pressure expressions and the final
+energy sum before `norm_num`.  It did not alter any value or theorem statement.
+A separate static audit independently proposed the same minimal patch and ran
+no Lean, Git mutation, or file edit.
+
+The exact serialized local command was:
+
+```sh
+env LEANRUN_LOCAL=1 \
+  LEAN_SYSROOT=/root/.elan/toolchains/leanprover--lean4---v4.34.0-rc2 \
+  LD_PRELOAD=/tmp/leanexe-proc-self-readlink.so \
+  LEAN_NUM_THREADS=1 \
+  WASM_TOOLS=/workspace/scratch/9df984ece5a1/leanexe/build/tools/wasm-tools-1.251.0-x86_64-linux/wasm-tools \
+  tools/leanrun --timeout 15m lake -d proofs/talos/lean --no-ansi build \
+    Project.EulerRusanov.RealStencil
+```
+
+It passed in 6.6 seconds wall time, reporting 3,060 completed jobs and a
+4.3-second focused module build.  The replayed dependency warnings were the
+existing deprecation and linter output.  The new module emitted no local
+warning.  Its five printed audits—for generic balance, transmissive balance,
+the exact quarter-step, and both cell-admissibility theorems—each depend only
+on `propext`, `Classical.choice`, and `Quot.sound`.
+
+The accepted result remains exact-real mathematics.  It proves the three
+exact Sod interface fluxes, the two updated conservative vectors, open-set
+admissibility of both cells, and exact total density, momentum, and energy
+identities.  It makes no claim that update arithmetic executed in the current
+WebAssembly artifact.
+
+## 2026-09-04: decoded guards imply real hyperbolicity bounds
+
+The next serialized target was
+`Project.EulerRusanov.RealGuardBridge`.  A read-only API audit first confirmed
+that `Bounds.StateBounds`, `Bounds.stateGuard_spec`,
+`Bounds.eulerGuard_spec`, and `StateBounds.signalSpeed_le_alpha` match usage in
+already compiled sibling modules.  It also checked the signatures of the
+primitive velocity, pressure, and sound-speed bridges and recommended no
+speculative edit.
+
+The first local build exited nonzero after 5.3 seconds at the final module of a
+3,073-job target.  All decoded positivity, admissibility, sound-speed, and
+guard APIs elaborated.  The only failures were five `linarith` calls inside
+`abs_eigenvalues_le_signalSpeed`: after `fin_cases`, the three goals still
+displayed `eigenvalues u c` rather than `u-c`, `u`, and `u+c`.  Lean also
+reported the attempted `eigenvalues_zero`, `eigenvalues_one`, and
+`eigenvalues_two` `simp only` arguments as unused.  The downstream two axiom
+prints consequently showed `sorryAx` only because this failed build retained
+open goals; no source placeholder or axiom declaration exists.
+
+The repair replaced those three brittle simplifier calls with explicit
+definitionally equal `change` statements.  The original `abs_le` and linear
+arithmetic proof then applied unchanged.  The warm rerun under the same exact
+local command envelope passed in 5.3 seconds wall time, with a 2.9-second
+focused build and all 3,073 jobs complete.  Its four audits—decoded
+admissibility, the direct state-guard bridge, the per-characteristic fixed
+`alpha` bound, and the two-sided Euler-guard spectral bound—depend only on
+`propext`, `Classical.choice`, and `Quot.sound`.
+
+The accepted theorem chain is now explicit: a successful raw guard proves
+strictly positive decoded density and pressure; primitive-to-conservative
+conversion is admissible; the exact conservative Jacobian has its three
+characteristic values; and each absolute value is bounded by the artifact's
+certified fixed `alphaReal = 7/4`.  The square root is part of the exact-real
+eigensystem only.  The executable still evaluates no square root and continues
+to use the already proved fixed signal-speed bound.
+
+`RealMathematics.lean` now imports both this guard bridge and `RealStencil` in
+addition to the derivative and eigenbasis modules.  Its documentation keeps
+the execution boundary explicit.  The plan separates the completed exact-real
+stencil from the still-open decoded numerical-error propagation task.
+
+The integrated `Project.EulerRusanov.RealMathematics` target passed under the
+same serialized local envelope in 5.3 seconds wall time, with a 2.7-second
+focused build and 3,161 jobs complete.  The full `Project` root then passed in
+6.3 seconds wall time, with a 3.4-second root build and 3,805 jobs complete.
+The large root output was replayed existing deprecation and linter output; the
+two new focused modules have no local warning in their passing builds.
+
+A targeted source scan found no `sorry`, `admit`, or axiom declaration in
+`RealGuardBridge.lean`, `RealStencil.lean`, or the amended umbrella.  No native,
+C, Wasmtime, or remote-host result is used as formal evidence for these
+theorems.
+
+Refreshing the release record for the changed proof source produced
+release-input SHA-256
+`cc19497c194554bdddc6b8f4fc952a0a67ae2e374e11eba50f8fa89d8fbc9882`.
+The draft still contains twenty-one exact packages and the expected four
+blockers: immutable source revision, aggregate artifact proof for this new
+input, semantic conformance, and the cold-checkout gate.  No stale receipt is
+represented as current.  The intended coherent checkpoint commit message is
+`Prove guarded exact-real Euler stencil`.
+
+A final independent read-only mathematical and scope review found no theorem
+blocker.  It rechecked the exact Sod fluxes, update vectors, totals, the bound
+direction `|lambda_i| <= alpha`, the umbrella imports, and every WASM nonclaim.
+It did identify stale prospective wording in `plans/euler-rusanov.md` and an
+earlier journal design note.  That wording had promised a generic three-cell
+stencil, a strict spectral bound, and generic admissibility under a symbolic
+CFL condition.  The accepted checkpoint instead proves a generic two-cell,
+three-interface balance, the non-strict bound `|lambda_i| <= alpha`, and
+admissibility for the concrete rational quarter-step.  This entry corrects the
+earlier journal wording without rewriting the chronological record, and the
+detailed plan now states the implemented scope exactly.  A symbolic
+CFL/invariant-domain result remains a separate unchecked follow-on only if a
+future claim needs it.
+
+The review also required the input distinction to remain visible:
+`RealStencil.sodRight` uses mathematical rational `1/10`, whereas the future
+compiled artifact must use the exact dyadic decoded from binary64 `0.1`.
+`RealStencil.lean`, the detailed plan, and the concise notes now state that the
+decoded bridge is pending.  The review ran no Lean, Git mutation, or file edit.
+
+The pre-publication non-Lean gates passed before that wording repair:
+`git diff --check`; `node tools/check-docs.js` over 90 maintained Markdown
+files; `node test/artifact_release.js` over release identities, receipts, pins,
+results, and blockers; `node tools/artifact-release.js audit-kernel-scope`;
+final four-blocker release inspection; and the targeted no-placeholder/no-axiom
+source scan.  Because the scope repair changes maintained documentation and a
+Lean doc comment, the affected focused/root and documentation/release checks
+are rerun below before staging.
+
+The scope-corrected `RealStencil` target passed again in 6.7 seconds wall time
+over 3,060 jobs, with a 4.4-second focused build.  The integrated mathematics
+umbrella passed again in 5.3 seconds over 3,161 jobs, and the complete
+`Project` root passed again in 6.2 seconds over 3,805 jobs.  All printed audits
+remained standard-axiom-only, and the edited source comment introduced no
+local warning.  Existing replayed dependency/project warnings remain unchanged.
+
+Because even documentation inside a proof source is part of the frozen source
+input, the release record was refreshed once more after that comment change.
+The final checkpoint release-input SHA-256 is
+`3d4778e8bcf2ca10731c14045af4cdfb9d389ac5603b9e1b93a74331b2beff7e`.
+It supersedes the intermediate `cc19497c...` identity recorded above and keeps
+the same twenty-one packages and four blockers.
+
+Final non-Lean validation after the scope correction and final refresh passed:
+`git diff --check` was silent; `node tools/check-docs.js` checked 90 maintained
+Markdown files; `node test/artifact_release.js` checked release identities,
+receipts, pins, results, and blockers; the kernel-scope audit passed its three
+recorded roots; release inspection reproduced exactly twenty-one packages and
+four blockers; and the targeted Lean-source scan returned no placeholder or
+axiom declaration.  The next action is explicit staging of only the two new
+Lean modules, their umbrella, the two plan files, the two note ledgers, and the
+refreshed release record, followed by exact Git-data publication.

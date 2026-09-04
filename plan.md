@@ -209,10 +209,12 @@ acceptance gates, and nonclaims.
 - [x] Add the first registered f64 exact-byte artifact and transfer the WAT
       theorem through checked decode, validation, and Talos translation.
 - [x] Prove a genuine flux-Jacobian derivative and complete eigenbasis theorem.
-- [ ] Prove the exact-real two-cell Sod update and propagate the three certified
-      `sodLL`/`sodLR`/`sodRR` flux-error budgets through decoded-real update and
-      balance theorems.  Do not call this a WASM stencil: the current artifact
-      executes the interface fluxes, not the update arithmetic.
+- [x] Prove the exact-real two-cell Sod update, its three exact interface
+      fluxes, admissibility of both updated cells, and exact conservative
+      balance.  This is deliberately not called a WASM stencil: the current
+      artifact executes the interface fluxes, not the update arithmetic.
+- [ ] Propagate the certified `sodLL`/`sodLR`/`sodRR` flux-error budgets through
+      decoded-real update and balance theorems.
 - [ ] Compile and prove a fixed first-order Sod step that emits raw binary64
       state, flux, admissibility, and balance data.
 - [ ] Extend the checked FP profile and implement the guarded 100-cell Sod
