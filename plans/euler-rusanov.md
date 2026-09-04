@@ -344,7 +344,7 @@ Every checked row ends in a passing commit, an update to this plan and
 - [x] Add the guarded scalar Euler source entry, ABI, extraction/IR/WAT checks,
       and Wasmtime regression cases.
 - [x] Prove the raw-bit guard and real characteristic-speed bound.
-- [ ] Prove the pure IEEE64 finite-result and componentwise real-error contract.
+- [x] Prove the pure IEEE64 finite-result and componentwise real-error contract.
 - [ ] Freeze the generated WAT and prove exact, fuel-independent execution of
       every accepted and rejected path.
 - [ ] Transfer the numerical contract to generated-WAT execution and audit its

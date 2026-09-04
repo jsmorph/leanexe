@@ -1877,3 +1877,74 @@ remain regression-only.  A same-operation-order fixed-alpha C mirror may be
 required to agree bitwise; Lanyon's pinned dynamic-speed C is reported
 side-by-side without an equality requirement because it computes a different
 dissipation speed with division, square root, and `fmax`.
+
+## 2026-09-04: pure Euler IEEE64 numerical contract completed
+
+The delegated `Project/EulerRusanov/Numerical.lean` draft was inspected and
+then checked only through the serialized local Lean slot.  It introduces a
+small internal `Approx` record carrying finiteness, absolute approximation
+error, rounded-value magnitude, and independent exact-target magnitude.  Its
+addition and multiplication combinators call the proved scale-aware wrappers
+from `ScaledRoundoff`; negation uses the exact sign-XOR theorem.  Per-state
+certificates then follow the source operation graph exactly through conserved
+state, physical flux, jumps, dyadic `7/8` dissipation, and the three final
+Rusanov components.
+
+The first focused build reached all 3,069 jobs and failed with explicit
+elaboration diagnostics after approximately 10.8 seconds.  Broad algebraic
+`convert` blocks had left reflexive rational inequalities, one sequencing
+step made no progress, and the public mass target needed an explicit rewrite.
+There was no timeout and this was not accepted proof evidence.  The repair
+used named equalities, `ring_nf`, and direct public-target rewrites.
+
+The second focused build again reached all 3,069 jobs in approximately 11.0
+seconds.  It reduced every substantive goal to reflexive inequalities that
+`ring_nf` normalized but did not close.  Each such endpoint was changed to an
+explicit `le_rfl`; this was a material proof-script change before the next
+run.  The third build reached all 3,069 jobs, spent approximately 8.1 seconds
+in the target and 10.6 seconds in the complete command, and left only the
+three exact literal certificates for one half, one quarter, and one eighth.
+
+An initial literal repair unfolded the binary64 fields directly.  Its focused
+build reached all 3,069 jobs but failed after 7.9 target seconds and about 10.3
+command seconds because `norm_num` stopped at the three word equalities
+`n = UInt64.ofNat n`.  The final repair identifies each literal as
+`Wasm.IEEE64.encodeFinite false e 0` for `e = 1022, 1021, 1020`, closes the
+word identity by definitional reduction, obtains finiteness from
+`CodeLib.IEEE64.finite_encodeFinite`, obtains the scaled integer from
+`scaledValue_encodeFinite`, and normalizes the dyadic real quotient.  This
+avoids trusting native floating-point evaluation or a native decision axiom.
+
+After that change the focused target passed:
+
+```text
+Project.EulerRusanov.Numerical
+Build completed successfully (3069 jobs).
+new target: 8.4 seconds
+complete command: approximately 10.8 seconds
+```
+
+The public contract proves all three output words finite and bounds their
+absolute errors against the independently defined exact-real fixed-speed
+Rusanov flux by `10 * 2^-52`, `14 * 2^-52`, and `25 * 2^-52` for mass,
+momentum, and energy.  These implementation proofs sharpen the earlier
+source-order audit's conservative coefficients `12`, `15`, and `26`.  For the
+energy endpoint they prove the tighter correlation `|G| <= (7/10) E`, giving
+an exact final-expression bound `1029/320`; accumulated operand error still
+leaves the strict `< 4` premise needed by the last addition theorem.
+
+The three advertised theorems
+`rusanovBits_real_error_of_stateBounds`,
+`rusanovBits_real_error_of_guard`, and
+`checkedFluxBitsModel_real_error_of_guard` report exactly `propext`,
+`Classical.choice`, and `Quot.sound`.  No accepted theorem contains `sorryAx`,
+an admission, or a native-decision axiom.  No `dev` host, cleanup, deletion,
+maintenance action, reset, stash, checkout overwrite, concurrent Lean process,
+or worktree rewrite was used.  The exact-execution draft remained untracked
+and untouched by this numerical checkpoint.
+
+One non-semantic follow-up renamed the intentionally unused dissipation-bound
+parameter with a leading underscore, removing the only new-file linter warning.
+The required materially changed rerun again passed all 3,069 jobs, with 8.0
+seconds in the target and approximately 11.4 seconds in the complete local
+command; the same three-axiom reports were reproduced.
