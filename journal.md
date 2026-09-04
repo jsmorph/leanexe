@@ -4075,3 +4075,45 @@ for `sorry`, `admit`, axiom declarations, `native_decide`, and `sorryAx`.
 Release inspection reports the expected 21 packages and four blockers.  The
 independent read-only checkpoint review found no remaining semantic,
 integration, inventory, documentation, or publication blocker.
+
+## 2026-09-04: fixed Euler-step checkpoint publication
+
+At 2026-09-04T14:29:53Z the exact generated-WAT execution checkpoint was
+published.  Pre-staging status contained only the reviewed 19 modified paths
+and two new Lean proof paths.  `git add --` named those 21 paths explicitly;
+no blanket add, cleanup, stash, reset, checkout, file move, file removal, or
+workspace-maintenance operation was used.  The staged diff had no whitespace
+errors and no unstaged remainder.  Its local Git tree was
+`ef132bf74241ae6fbb7547af4e4ea92e8dfcb93e`.
+
+The first parallel post-staging verification briefly made `git write-tree`
+report an existing index lock while another Git query was active.  No lock or
+other file was removed.  A subsequent status check showed the intended index
+unchanged, and the sequential `git write-tree` retry produced the tree above.
+This was transient local command contention, not a workspace repair or loss of
+state.
+
+Publication used the GitHub Git-data API.  Each of the 21 staged blobs was
+uploaded and required to reproduce its local index blob SHA.  For the large
+append-only journals, the remote parent blob plus the exact local appended tail
+was used; the tail read used full-block semantics and the resulting GitHub blob
+SHA was still required to match the local index.  A tree based on parent tree
+`aaca7d5a686b5aee74cbf288e9aac663c611d4f2` reproduced the local tree SHA
+exactly.  Immediately before commit and ref mutations, status was re-read and
+the remote branch was required to remain at
+`021a890559c64ffea3e208b6a756929b1fbeb79f`.
+
+GitHub created commit `889560e9528302e2a98ab6c6716f9bbc77305f2c`,
+`Prove exact fixed Euler step execution`, with the expected tree and sole
+parent.  The `talosfp-euler` ref update was explicitly non-forcing.  An ordinary
+local fetch then retrieved the commit.  Local Git verified the fetched sole
+parent, message, tree, exact index equality, and exact worktree equality before
+the local branch ref was compare-and-swapped from `021a890...` to `889560e...`.
+Final status was clean and synchronized with `origin/talosfp-euler`.
+
+Every operation ran locally.  No `dev` host was assumed, contacted, or probed;
+no pre-existing tracked, untracked, ignored, generated, cached, dependency,
+evidence, temporary, or partial file was deleted, moved, truncated, or
+invalidated.  This append-only publication record is the one finite receipt
+follow-on for the checkpoint; its own commit SHA is intentionally reported
+after publication instead of creating a self-referential receipt chain.
