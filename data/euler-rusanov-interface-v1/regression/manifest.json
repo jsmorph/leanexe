@@ -1,0 +1,320 @@
+{
+  "schemaVersion": 1,
+  "dataset": "euler-rusanov-c-comparison-v1",
+  "evidenceClassification": "regression-only",
+  "formalProof": null,
+  "csvSchema": [
+    "case",
+    "rho_l_bits",
+    "u_l_bits",
+    "p_l_bits",
+    "rho_r_bits",
+    "u_r_bits",
+    "p_r_bits",
+    "verified_wasm_status_u64",
+    "verified_wasm_mass_bits",
+    "verified_wasm_momentum_bits",
+    "verified_wasm_energy_bits",
+    "mirror_status_u64",
+    "mirror_mass_bits",
+    "mirror_momentum_bits",
+    "mirror_energy_bits",
+    "mirror_relation",
+    "lanyon_evaluation",
+    "lanyon_rho_l_bits",
+    "lanyon_mom_l_bits",
+    "lanyon_energy_l_bits",
+    "lanyon_rho_r_bits",
+    "lanyon_mom_r_bits",
+    "lanyon_energy_r_bits",
+    "lanyon_dynamic_alpha_bits",
+    "lanyon_flux_from_left_mass_bits",
+    "lanyon_flux_from_left_momentum_bits",
+    "lanyon_flux_from_left_energy_bits",
+    "lanyon_flux_from_right_mass_bits",
+    "lanyon_flux_from_right_momentum_bits",
+    "lanyon_flux_from_right_energy_bits"
+  ],
+  "rowCount": 8,
+  "rowOrder": [
+    "sod_ll",
+    "sod_rr",
+    "sod_lr",
+    "sod_rl",
+    "moving_consistency",
+    "guard_min_to_max",
+    "guard_max_to_min",
+    "nan_rejected"
+  ],
+  "sourceInterfaceDataset": {
+    "dataset": "euler-rusanov-interface-v1",
+    "csvFile": "data/euler-rusanov-interface-v1/euler-rusanov-interface-v1.csv",
+    "csvByteLength": 1444,
+    "csvSha256": "65ff256da20d19544366083596f20b53c4fb37798209c1e7e16c2cfcee4d3808",
+    "manifestFile": "data/euler-rusanov-interface-v1/manifest.json",
+    "manifestByteLength": 2408,
+    "manifestSha256": "fa39e7314a5c0709c7e8636df63731cd1649709f7e97c5ee700f9ef89d624118",
+    "registryEntry": "euler_rusanov",
+    "wasmSha256": "145230bc0f956df81283fb37227c303de2c92e68842d38b985325dca467f6546",
+    "wasmByteLength": 1808,
+    "exportedFunction": "rusanovFluxCheckedBits",
+    "executionMethod": "external Wasmtime CLI through the source interface generator; no JavaScript WebAssembly API",
+    "formalProofModule": "Project.EulerRusanov.InterfaceData",
+    "formalProofTheorem": "Project.EulerRusanov.InterfaceData.artifact_interfaceV1"
+  },
+  "wordEncoding": {
+    "columns": [
+      "rho_l_bits",
+      "u_l_bits",
+      "p_l_bits",
+      "rho_r_bits",
+      "u_r_bits",
+      "p_r_bits",
+      "verified_wasm_mass_bits",
+      "verified_wasm_momentum_bits",
+      "verified_wasm_energy_bits",
+      "mirror_mass_bits",
+      "mirror_momentum_bits",
+      "mirror_energy_bits",
+      "lanyon_rho_l_bits",
+      "lanyon_mom_l_bits",
+      "lanyon_energy_l_bits",
+      "lanyon_rho_r_bits",
+      "lanyon_mom_r_bits",
+      "lanyon_energy_r_bits",
+      "lanyon_dynamic_alpha_bits",
+      "lanyon_flux_from_left_mass_bits",
+      "lanyon_flux_from_left_momentum_bits",
+      "lanyon_flux_from_left_energy_bits",
+      "lanyon_flux_from_right_mass_bits",
+      "lanyon_flux_from_right_momentum_bits",
+      "lanyon_flux_from_right_energy_bits"
+    ],
+    "format": "lowercase fixed-width 16-digit hexadecimal without 0x",
+    "semantics": "raw IEEE 754 binary64 word",
+    "missing": "empty field only for a deliberately unevaluated Lanyon row"
+  },
+  "statusEncoding": {
+    "columns": [
+      "verified_wasm_status_u64",
+      "mirror_status_u64"
+    ],
+    "format": "minimal unsigned base-10 UInt64",
+    "accepted": "0",
+    "rejected": "1"
+  },
+  "comparisonPolicy": {
+    "fixedAlphaMirror": {
+      "classification": "regression-only",
+      "method": "same fixed alpha 7/4 and same explicitly rounded operation order",
+      "requiredRelation": "bit_exact",
+      "evaluatedRows": 8
+    },
+    "lanyon": {
+      "classification": "regression-only",
+      "portability": "supported-host regression snapshot; not portable numerical truth",
+      "method": "pinned dynamic-speed Lax-Friedrichs implementation using division, sqrt, fabs, and fmax",
+      "equalityClaim": null,
+      "evaluatedMarker": "evaluated",
+      "notEvaluatedMarker": "not_evaluated_guard_rejected",
+      "missingValueEncoding": "thirteen empty CSV fields",
+      "evaluatedRows": 7,
+      "notEvaluatedRows": [
+        "nan_rejected"
+      ],
+      "outputPolicy": "report both reconstructed numerical fluxes; do not average, select, or require equality",
+      "finiteWordsRequiredForEvaluatedRows": true
+    }
+  },
+  "parameters": {
+    "verifiedRealGamma": "7/5 (exact)",
+    "fixedAlpha": "7/4 (exact real and exactly representable binary64)",
+    "lanyonGasGamma": {
+      "cExpression": "7.0 / 5.0",
+      "binary64Bits": "3ff6666666666666",
+      "relationToVerifiedRealGamma": "binary64 approximation; not the exact rational 7/5"
+    },
+    "lanyonAlpha": "dynamic per interface"
+  },
+  "compilerContract": {
+    "executable": "cc",
+    "language": "C11",
+    "flags": [
+      "-std=c11",
+      "-O0",
+      "-Wall",
+      "-Wextra",
+      "-Wpedantic",
+      "-Werror",
+      "-fno-fast-math",
+      "-ffp-contract=off",
+      "-frounding-math",
+      "-fno-associative-math",
+      "-fno-reciprocal-math",
+      "-fno-finite-math-only",
+      "-fno-unsafe-math-optimizations",
+      "-fexcess-precision=standard"
+    ],
+    "mirrorLinkFlags": [
+      "-lm"
+    ],
+    "lanyonLinkFlags": [
+      "-lm"
+    ],
+    "floatingPointEnvironment": "IEC 60559 binary64, FE_TONEAREST",
+    "platformChecks": [
+      "__STDC_IEC_559__ is defined",
+      "CHAR_BIT == 8 and uint64_t/double are 8 bytes",
+      "FLT_RADIX == 2 and binary64 exponent/significand limits match",
+      "FLT_EVAL_METHOD == 0",
+      "double word layout maps 1.0 to 3ff0000000000000",
+      "fesetround(FE_TONEAREST) succeeds and fegetround confirms it"
+    ],
+    "compilerBinaryIdentity": null,
+    "compilerBinaryIdentityReason": "host compiler is not a repository input; source identities, flags, and exact output words are pinned"
+  },
+  "cSources": {
+    "fixedAlphaMirror": {
+      "path": "test/fixtures/euler-rusanov-c/fixed-alpha-mirror.c",
+      "byteLength": 8269,
+      "sha256": "05299ed73f677833f1047bf5160c5f05da2b2d785f81d39a93db23516e57f252"
+    },
+    "lanyonDriver": {
+      "path": "test/fixtures/euler-rusanov-c/lanyon-driver.c",
+      "byteLength": 7996,
+      "sha256": "8b75570129c8e823b19f36ffe4b50579e149c19243121b2824a8d088508a12ac"
+    },
+    "fixtureReadme": {
+      "path": "test/fixtures/euler-rusanov-c/README.md",
+      "byteLength": 6222,
+      "sha256": "dad5f92add6058028d9a326de9222c9cc2060d01012ef9bcbeae770a5c47cc46"
+    },
+    "lanyonUpstream": {
+      "repository": "https://github.com/lanyonai/CompressibleEuler",
+      "commit": "a736aa5f8b17efd225c4692404e2442361d06729",
+      "source": {
+        "path": "test/fixtures/euler-rusanov-c/lanyon/a736aa5f8b17efd225c4692404e2442361d06729/compressible_euler_1d.c",
+        "byteLength": 27229,
+        "sha256": "f1f284f550d790c88f293e1d67a91434dc9b8c6187f88caed0f776c5039cf756",
+        "gitBlobSha1": "fbd70a9407d02ce2e49b6d6f37152c70ca679de4"
+      },
+      "license": {
+        "path": "test/fixtures/euler-rusanov-c/lanyon/a736aa5f8b17efd225c4692404e2442361d06729/LICENSE",
+        "byteLength": 1070,
+        "sha256": "cfa90e3adf9a116fe3959a57353acdf5b6a783d3442d0e5a0834627990370116",
+        "gitBlobSha1": "16b2ed3f9bee8eeb7bd7291ea6dfef76675b7e32"
+      },
+      "metadata": {
+        "path": "test/fixtures/euler-rusanov-c/lanyon/a736aa5f8b17efd225c4692404e2442361d06729/upstream.json",
+        "byteLength": 867,
+        "sha256": "668d8562a7845f6a967b0694dc2e86514fc5f9fc85a0afa28898f62ba77acf95"
+      },
+      "metadataValue": {
+        "schemaVersion": 1,
+        "repository": "lanyonai/CompressibleEuler",
+        "repositoryUrl": "https://github.com/lanyonai/CompressibleEuler",
+        "commit": "a736aa5f8b17efd225c4692404e2442361d06729",
+        "commitTree": "373f81b54f06e4bca04d06999e95882e42428ad7",
+        "retrievedFrom": "GitHub Git data and contents APIs",
+        "files": [
+          {
+            "path": "compressible_euler_1d.c",
+            "upstreamPath": "implementations/compressible_euler_1d.c",
+            "byteLength": 27229,
+            "gitBlobSha1": "fbd70a9407d02ce2e49b6d6f37152c70ca679de4",
+            "sha256": "f1f284f550d790c88f293e1d67a91434dc9b8c6187f88caed0f776c5039cf756"
+          },
+          {
+            "path": "LICENSE",
+            "upstreamPath": "LICENSE",
+            "byteLength": 1070,
+            "gitBlobSha1": "16b2ed3f9bee8eeb7bd7291ea6dfef76675b7e32",
+            "sha256": "cfa90e3adf9a116fe3959a57353acdf5b6a783d3442d0e5a0834627990370116"
+          }
+        ]
+      }
+    }
+  },
+  "lanyonOutputColumns": [
+    "lanyon_rho_l_bits",
+    "lanyon_mom_l_bits",
+    "lanyon_energy_l_bits",
+    "lanyon_rho_r_bits",
+    "lanyon_mom_r_bits",
+    "lanyon_energy_r_bits",
+    "lanyon_dynamic_alpha_bits",
+    "lanyon_flux_from_left_mass_bits",
+    "lanyon_flux_from_left_momentum_bits",
+    "lanyon_flux_from_left_energy_bits",
+    "lanyon_flux_from_right_mass_bits",
+    "lanyon_flux_from_right_momentum_bits",
+    "lanyon_flux_from_right_energy_bits"
+  ],
+  "generatorIdentity": {
+    "scheme": "leanexe-euler-rusanov-c-comparison-generator-v1",
+    "sources": [
+      {
+        "path": "test/fixtures/euler-rusanov-c/README.md",
+        "byteLength": 6222,
+        "sha256": "dad5f92add6058028d9a326de9222c9cc2060d01012ef9bcbeae770a5c47cc46"
+      },
+      {
+        "path": "test/fixtures/euler-rusanov-c/fixed-alpha-mirror.c",
+        "byteLength": 8269,
+        "sha256": "05299ed73f677833f1047bf5160c5f05da2b2d785f81d39a93db23516e57f252"
+      },
+      {
+        "path": "test/fixtures/euler-rusanov-c/lanyon-driver.c",
+        "byteLength": 7996,
+        "sha256": "8b75570129c8e823b19f36ffe4b50579e149c19243121b2824a8d088508a12ac"
+      },
+      {
+        "path": "test/fixtures/euler-rusanov-c/lanyon/a736aa5f8b17efd225c4692404e2442361d06729/LICENSE",
+        "byteLength": 1070,
+        "sha256": "cfa90e3adf9a116fe3959a57353acdf5b6a783d3442d0e5a0834627990370116"
+      },
+      {
+        "path": "test/fixtures/euler-rusanov-c/lanyon/a736aa5f8b17efd225c4692404e2442361d06729/compressible_euler_1d.c",
+        "byteLength": 27229,
+        "sha256": "f1f284f550d790c88f293e1d67a91434dc9b8c6187f88caed0f776c5039cf756"
+      },
+      {
+        "path": "test/fixtures/euler-rusanov-c/lanyon/a736aa5f8b17efd225c4692404e2442361d06729/upstream.json",
+        "byteLength": 867,
+        "sha256": "668d8562a7845f6a967b0694dc2e86514fc5f9fc85a0afa28898f62ba77acf95"
+      },
+      {
+        "path": "tools/artifact-manifest.js",
+        "byteLength": 10390,
+        "sha256": "eb45f6b633fae795caec46e64e0406bb6902a2927b7da9ad8f79de7353e60cb8"
+      },
+      {
+        "path": "tools/euler-rusanov-c-compare.js",
+        "byteLength": 20859,
+        "sha256": "14a4b643883347353720e040c7ecc657e536b738a3e137ded5fa2db5148beff8"
+      },
+      {
+        "path": "tools/euler-rusanov-interface.js",
+        "byteLength": 10125,
+        "sha256": "14d388f5962e944e3b123df790c7b3ff2d871490cba4c85151770408edbb3821"
+      },
+      {
+        "path": "tools/run-process.js",
+        "byteLength": 4388,
+        "sha256": "cca86fdac9851c3e7a9a3f826735f96d28e44754442749ad66388abf85f5b5f4"
+      },
+      {
+        "path": "tools/wasmtime-host.js",
+        "byteLength": 2342,
+        "sha256": "8e49c5b75d582f13104bd895edacbe87f41919806186f3df43bc2588b87e83b6"
+      }
+    ],
+    "sha256": "7b734eabb0b4e2fe03feb2097679d6b6cd9296dcd049a42bfe98e80f5ce72895"
+  },
+  "generatorRevision": "sha256:7b734eabb0b4e2fe03feb2097679d6b6cd9296dcd049a42bfe98e80f5ce72895",
+  "csvFile": "c-comparison-v1.csv",
+  "csvByteLength": 4119,
+  "csvSha256": "21a95065f98f8f3e88962f7545af27b7e7fe8dca9084dfefba048e2d40e78a7e",
+  "encoding": "UTF-8",
+  "lineEndings": "LF"
+}

@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "repository": "lanyonai/CompressibleEuler",
+  "repositoryUrl": "https://github.com/lanyonai/CompressibleEuler",
+  "commit": "a736aa5f8b17efd225c4692404e2442361d06729",
+  "commitTree": "373f81b54f06e4bca04d06999e95882e42428ad7",
+  "retrievedFrom": "GitHub Git data and contents APIs",
+  "files": [
+    {
+      "path": "compressible_euler_1d.c",
+      "upstreamPath": "implementations/compressible_euler_1d.c",
+      "byteLength": 27229,
+      "gitBlobSha1": "fbd70a9407d02ce2e49b6d6f37152c70ca679de4",
+      "sha256": "f1f284f550d790c88f293e1d67a91434dc9b8c6187f88caed0f776c5039cf756"
+    },
+    {
+      "path": "LICENSE",
+      "upstreamPath": "LICENSE",
+      "byteLength": 1070,
+      "gitBlobSha1": "16b2ed3f9bee8eeb7bd7291ea6dfef76675b7e32",
+      "sha256": "cfa90e3adf9a116fe3959a57353acdf5b6a783d3442d0e5a0834627990370116"
+    }
+  ]
+}
