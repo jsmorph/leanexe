@@ -277,3 +277,124 @@ the numerical error proof.
 The next implementation step is the reusable binary64 half-bound/Horner
 numerical lemma layer, followed by Talos case registration and generated
 program proofs.
+
+## 2026-09-04: Local Talos proof environment restoration
+
+The replacement scratch checkout had no ignored
+`proofs/talos/lean/.lake/packages` directory.  A local `lake update` checked
+out the exact revisions already pinned by `lake-manifest.json`, including
+Talos/CodeLib `87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47`, Iris, Mathlib, Batteries,
+Qq, Plausible, LeanSearchClient, ImportGraph, ProofWidgets, Aesop, and Cli.
+It then failed in Mathlib's post-update cache hook with:
+
+```text
+leantar not found in Lean sysroot
+```
+
+The binary was present in the pinned toolchain.  The cache hook itself runs a
+literal `lean --print-prefix`, so this was another consequence of the local
+`/proc/<pid>/exe` problem, not an absent `leantar`.  Placing the temporary
+local Lean wrapper first in `PATH` fixed that discovery step.
+
+An unqualified rerun of the post-update hook requested 8,747 Mathlib cache
+files.  It was interrupted after 149 files because that was needlessly broad
+for this checkpoint.  The focused local command
+
+```text
+lake exe cache get Mathlib.Tactic
+```
+
+downloaded and decompressed the 2,959 files in the actual transitive import
+set in 334.107 seconds.  Dependency sources and cache products are ignored
+local build state; the manifest did not change.
+
+The first combined build of the two new modules and compatibility layer
+reached its 300-second limit after compiling interpreter dependencies through
+`Interpreter.Wasm.Semantics`, without reaching the new sources.  Following
+the repository's timeout guidance, the unchanged target was not repeated.
+The build was divided at reusable module boundaries:
+
+- `CodeLib.Numerical.ErrorComposition` completed in 3.2 seconds;
+- `CodeLib.IEEE64.Operations` first reached a 300-second limit below that
+  module, still without a source diagnostic;
+- the isolated `CodeLib.IEEE64.Roundoff` target revealed and completed the
+  cold bottleneck: `Interpreter.Wasm.SmallStep` took 350 seconds, followed by
+  IEEE32 and IEEE64 roundoff in 6.2 and 5.3 seconds;
+- the direct IEEE64 rounders and Float64 example dependencies then completed
+  in 17.1 seconds;
+- `CodeLib.IEEE64.Operations` completed in 5.4 seconds;
+- `CodeLib.Numerical.Kernels` completed in 4.9 seconds.
+
+All of those commands ran locally and serially with the pinned toolchain,
+`LEAN_NUM_THREADS=1`, the local executable-discovery shim, and explicit
+timeouts.  The only dependency warnings were pre-existing deprecations and
+linters.
+
+## 2026-09-04: Reusable binary64 Horner numerical proofs
+
+Added `Project.ProofKit.F64Bounds`.  It owns the raw sign-bit-clearing
+half-unit guard and proves that every accepted word is finite with modeled
+real magnitude at most `1/2`.  The proof is the existing integer IEEE-754
+argument extracted from the dot-product case; it does not evaluate native
+floating point.  `Project.F64Dot2CheckedBits.Bounds` now provides thin
+compatibility aliases, and rebuilding the existing dot numerical theorem
+confirms that the extraction did not break that accepted source proof.
+
+Added `Project.ProofKit.F64Numerical` with:
+
+- `hornerStepBits`, the modeled binary64 multiply-then-add stage;
+- `horner2Bits`, two explicitly rounded stages;
+- `horner64_step_real_error`, proving a finite result and a local `2ε`
+  absolute-error bound from finite unit-bounded operands and product;
+- `horner2_real_error_of_half`, proving the guarded quadratic result finite
+  and within `3ε` of `(c₂*x + c₁)*x + c₀`.
+
+The quadratic proof reserves explicit headroom at every operation.  The first
+exact product is at most `1/4`; its rounded product remains within one.  The
+first exact multiply-add target is at most `3/4`; its rounded result remains
+within one.  Multiplying that rounded accumulator by `|x| ≤ 1/2` gives the
+second product headroom.  Finally, `CodeLib.Numerical.horner_two_step`
+attenuates the first `2ε` stage error by `1/2` before adding the second `2ε`,
+which yields the sharp `3ε` bound.  This is why a generic unit-interval
+argument, which would only yield `4ε`, was not used.
+
+The first elaboration found three addition-orientation mismatches in proof
+terms using `add_le_add_right`.  Replacing those with componentwise
+`add_le_add` fixed the proof; no statement or numerical budget changed.
+
+Focused local builds now pass for:
+
+```text
+Project.ProofKit.F64Bounds
+Project.ProofKit.F64Numerical
+Project.F64Dot2CheckedBits.Numerical
+```
+
+The two new public numerical theorems and the extracted guard theorem report
+only the standard logical axioms `propext`, `Classical.choice`, and
+`Quot.sound`.  No `sorryAx` appears.  This checkpoint supplies the pure-model
+numerical layer; the guarded source contract and generated-WAT execution proof
+remain the next work.
+
+Both modules were added to the canonical `leanexegen` ProofKit allowlist and
+source-identity list, and their supported interfaces were documented in the
+ProofKit catalog.  This makes them available to an exact-artifact proving task
+without granting unrestricted imports; the generated proof still has to match
+the frozen decoded program independently.
+
+The ProofKit/tooling and maintained-document checks passed:
+
+```text
+node test/leanexegen.js
+leanexegen Codex protocol, package, publication, and exit tests passed
+
+node tools/check-docs.js
+Checked 90 maintained Markdown files
+
+node --check tools/leanexegen-lib.js
+git diff --check
+```
+
+`plan.md` now records this verified intermediate state without marking the
+quadratic Horner artifact complete; generated-program execution, the explicit
+trace, and exact-byte closure are still outstanding.
