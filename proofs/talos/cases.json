@@ -247,7 +247,7 @@
         "Project.EulerRusanov.Spec.rusanovFluxCheckedBits_exact",
         "Project.EulerRusanov.Spec.rusanovFluxCheckedBits_wat_real_error"
       ],
-      "complete": false
+      "complete": true
     }
   ]
 }
