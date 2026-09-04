@@ -1,10 +1,12 @@
 import Project.EulerRusanov.Program
 import Project.EulerRusanov.Model
+import Project.EulerRusanov.Bounds
+import Project.EulerRusanov.ScaledRoundoff
 
 /-!
 # Guarded Euler Rusanov artifact
 
-This intentionally minimal root keeps the newly generated program buildable
-while the case is registered as incomplete.  Exact execution and quantitative
-numerical theorems are added here only after their dependency layers pass.
+This incomplete root keeps the generated program and the checked mathematical
+foundation buildable together.  Exact execution and the componentwise Euler
+roundoff theorem are added only after their dependency layers pass.
 -/

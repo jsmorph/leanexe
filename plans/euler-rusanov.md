@@ -298,7 +298,7 @@ Every checked row ends in a passing commit, an update to this plan and
       theorem checkpoint.
 - [x] Add the guarded scalar Euler source entry, ABI, extraction/IR/WAT checks,
       and Wasmtime regression cases.
-- [ ] Prove the raw-bit guard and real characteristic-speed bound.
+- [x] Prove the raw-bit guard and real characteristic-speed bound.
 - [ ] Prove the pure IEEE64 finite-result and componentwise real-error contract.
 - [ ] Freeze the generated WAT and prove exact, fuel-independent execution of
       every accepted and rejected path.
