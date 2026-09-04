@@ -1364,3 +1364,40 @@ reset, stash, maintenance, or worktree rewrite was used.  Apart from the
 explicit nonexistent-target invocation above, output contained only existing
 deprecation warnings and no theorem diagnostic.  `ClobDepth` is now the sole
 remaining focused case before one materially warmed aggregate retry.
+
+## 2026-09-04: ClobDepth missing-level branch passed
+
+The ClobMarket recovery ledger was published as
+`7377cdfc7ed6fa533ff709f7ecec915c5040624d`; the local and remote refs and
+tree `49e4ee0a7bed5746df408e8d6a46387bc99f4455` matched, and the worktree was
+clean before the serialized ClobDepth builds began.  This checkpoint was made
+without any source or proof edit: it records the exact local build evidence
+accumulated in the existing Lake cache.
+
+The shared depth model and scan spine passed first:
+
+- `Project.ClobDepth.Model` passed 3,345 jobs in 3.3 seconds.
+- `Properties`, `Representation`, and `LevelCopyInvariant` passed 3,346,
+  3,346, and 3,347 jobs in 4.0, 4.3, and 3.5 seconds respectively.
+- `Entry` passed 3,342 jobs in 5.4 seconds and `Scan` passed 3,350 jobs in
+  7.0 seconds.
+
+The missing-level branch was then warmed strictly from its leaves upward:
+
+- `MissingFields`, `MissingPrepare`, and `MissingSearch` passed 3,351, 3,352,
+  and 3,353 jobs in 3.8, 3.9, and 3.8 seconds respectively.
+- The focused `MissingBump` memory proof passed all 3,355 jobs in 91 seconds.
+- `MissingFinish` passed 3,356 jobs in 4.9 seconds;
+  `MissingCopyInvariant` passed 3,358 jobs in 3.7 seconds; and `MissingCopy`
+  passed 3,359 jobs in 6.2 seconds.
+- `MissingStoreFacts` passed 3,360 jobs in 6.4 seconds and `MissingStore`
+  passed 3,361 jobs in 15 seconds.
+- `MissingBranchFacts` passed 3,362 jobs in 3.7 seconds and `MissingBranch`
+  passed 3,363 jobs in 7.4 seconds.
+
+Every command used the documented pinned local-only Lean envelope, with one
+Lean process at a time.  Output contained only the repository's existing
+deprecation warnings and no theorem diagnostic.  No `dev` host, cleanup,
+deletion, reset, stash, maintenance, or worktree rewrite was used.  The next
+frontier is the found-level branch, followed by `Func3`, the `Func6` loop,
+`Func7`, and the public ClobDepth root.
