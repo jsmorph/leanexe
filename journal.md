@@ -1528,3 +1528,51 @@ All commands ran locally; no `dev` host, maintenance, cleanup, deletion,
 reset, stash, or worktree rewrite was used.  Generated `.lake/build` products
 remain ignored.  The next checkpoint registers this source as an initially
 incomplete Talos case and generates its proof-visible program.
+
+## 2026-09-04: Euler Talos program registered and pinned
+
+The guarded source checkpoint was published as
+`99fcfa1f51d5b2346c8cac11fc74ed6a2aea11dc`; local and remote refs and tree
+`de4b75aee7b0cfc96af67bc8a8a3284fcd4e486f` matched, with a clean tracked
+worktree, before registration.
+
+`proofs/talos/cases.json` now registers `euler_rusanov` with source module
+`LeanExe.Examples.EulerRusanov`, the fully qualified scalar entry, Lean proof
+module `EulerRusanov`, and the intended exact-execution and WAT-error theorem
+names.  It is explicitly `complete: false`; consequently `Project.lean` does
+not import the new Spec and no completed-proof claim is made.
+
+The pinned local command
+
+```text
+node tools/talos-artifact.js prepare euler_rusanov
+```
+
+built the verifier and compiler inputs, compiled the source, translated it,
+and emitted `Project/EulerRusanov/Program.lean`.  The generated source is 996
+lines and 17,720 bytes.  Its input WASM is 1,808 bytes with SHA-256
+`145230bc0f956df81283fb37227c303de2c92e68842d38b985325dca467f6546`.
+The ignored generated WASM is not yet the frozen exact-artifact package; that
+separate identity boundary follows the behavioral theorem.
+
+Inspection of the generated program established the actual indices rather
+than assuming them: the six-argument, four-result Euler entry is `func0`, and
+`func1`, `func2`, `func3`, and `func4` are respectively alloc, reset, retain,
+and release.  `Project.Runtime.Checks` now imports the Euler Program and pins
+all four helpers to the shared runtime definitions.  The focused builds passed:
+
+- `Project.Runtime.Checks` passed 3,367 jobs, building the new Program in 3.0
+  seconds and the runtime-check root in 3.3 seconds.
+- The deliberately minimal `Project.EulerRusanov.Spec` root passed 3,342 jobs
+  in 3.1 seconds.
+- `node tools/talos-proof.js check euler_rusanov` regenerated and matched the
+  tracked Program, rebuilt the same 3,342-job target, and reported
+  `Talos incomplete case target built: euler_rusanov`.
+- A direct registry/import-set check confirmed that `Project.Runtime.Checks`
+  imports every registered Program while `Project.lean` imports exactly the
+  24 completed Specs and excludes the incomplete Euler root.
+
+Output was limited to existing deprecation warnings.  No `dev` host,
+maintenance, cleanup of the active checkout, deletion of user files, reset,
+stash, or worktree rewrite was used.  The next proof boundary is the pure
+IEEE64 Euler model and the raw-bit guard/domain bridge.
