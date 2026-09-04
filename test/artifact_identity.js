@@ -51,7 +51,7 @@ const repoRoot = path.resolve(__dirname, "..");
 if (talosBoundaryTarget !== "Project.TalosPrelude") {
   throw new Error("the artifact proof gate no longer uses LeanExe's focused Talos boundary");
 }
-const expectedVerifierDigest = "2b59dec86b72be48a2bb63b5fc1efabbf2e61397a7042907823d0a4e6d5fcb01";
+const expectedVerifierDigest = "bf03d3f47fb11563c947224601a21afa95c62fc88df81f493de821e69de9d1e7";
 if (verifierSourceSha256(repoRoot) !== expectedVerifierDigest) {
   throw new Error("the normative verifier source digest changed without updating its test vector");
 }
@@ -85,7 +85,7 @@ for (const source of proofSources) {
   }
 }
 const programSources = proofSources.filter((source) => source.relative.endsWith("/Program.lean"));
-if (programSources.length !== 20) {
+if (programSources.length !== 25) {
   throw new Error(`release identity found ${programSources.length} cached Talos programs`);
 }
 const localImports = localLeanImportClosure(repoRoot, [

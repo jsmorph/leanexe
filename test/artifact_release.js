@@ -25,7 +25,7 @@ function expectFailure(value, pattern) {
 const { evidence, blockers } = loadEvidence();
 const expectedBlockers = derivedBlockers(evidence);
 const expectedStatus = expectedBlockers.length === 0 ? "ready" : "draft";
-if (evidence.status !== expectedStatus || evidence.packages.length !== 20 ||
+if (evidence.status !== expectedStatus || evidence.packages.length !== 21 ||
     JSON.stringify(blockers) !== JSON.stringify(expectedBlockers)) {
   throw new Error("the release record has the wrong state");
 }

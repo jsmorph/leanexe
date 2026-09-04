@@ -1,9 +1,9 @@
 # Artifact Verification Format
 
-**Status:** Implemented for twenty registered artifacts.  The proof workspace and
+**Status:** Implemented for twenty-one registered artifacts.  The proof workspace and
 checked-in draft release record now identify exact Lean 4.34.0-rc2,
-pre-floating-point Talos revision
-`fda69ca67a81ea4f1fa4e376bdc5861d9fe5479a`, and the migrated release inputs.
+Talos revision
+`87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47`, and the migrated release inputs.
 The draft's aggregate proof and conformance receipts are pending and its
 `sourceRevision` is null.  The successful 2026-08-26 warm-gate receipts describe
 the earlier input digest and remain historical evidence only.
@@ -27,13 +27,13 @@ theorem artifact_module_eq_cache :
 
 The binary grammar follows the WebAssembly Core 3.0 specification and binary format version 1.  The initial profile accepts the type, function, memory, global, export, and code sections with section identifiers 1, 3, 5, 6, 7, and 10.  An accepted module contains each present section at most once and in the order prescribed by the WebAssembly binary grammar, and each section parser consumes exactly its declared payload.
 
-The type section accepts function types whose parameters and results contain `i32` and `i64`.  The function section retains every type index, while the code section retains every local declaration group and structured instruction body.  Validation later checks all type indices, the agreement between function and code counts, the accepted function-result arity, and the expanded local count.
+The type section accepts function types whose parameters and results contain `i32`, `i64`, and `f64`.  The function section retains every type index, while the code section retains every local declaration group and structured instruction body.  Validation later checks all type indices, the agreement between function and code counts, the accepted function-result arity, and the expanded local count.
 
 The memory section accepts 32-bit limits encoded with flag 0 or 1.  The raw representation retains every declared memory and both bounds, while the initial validator requires exactly one memory and checks its bounds against the WebAssembly page limit.  Imports, shared memory, memory64, and multiple memories lie outside the initial profile.
 
 The global section accepts immutable or mutable `i32` and `i64` globals initialized by a matching scalar constant expression.  The export section accepts function, memory, and global descriptors and retains each UTF-8 name as both bytes and decoded text.  Validation checks initializer types, export-name uniqueness, descriptor indices, and the one-memory restriction.
 
-The code profile consists of `unreachable`, `drop`, structured `block`, `loop`, and `if`, direct branches, `return`, direct calls, local and global access, scalar constants, the integer operations emitted by LeanExe, six memory operations, and memory size or growth.  Structured control accepts empty, `i32`, or `i64` block results.  Memory instructions retain alignment and offset immediates, and memory size or growth retains the memory index that validation restricts to zero.
+The code profile consists of `unreachable`, `drop`, structured `block`, `loop`, and `if`, direct branches, `return`, direct calls, local and global access, integer scalar constants, the integer operations emitted by LeanExe, `f64.add`, `f64.mul`, `i64.reinterpret_f64`, `f64.reinterpret_i64`, six memory operations, and memory size or growth.  Structured control accepts empty, `i32`, `i64`, or `f64` block results.  The restricted binary64 subset has no `f64.const`; current artifacts introduce binary64 values from raw `i64` words through reinterpretation.  Memory instructions retain alignment and offset immediates, and memory size or growth retains the memory index that validation restricts to zero.
 
 The decoder rejects custom sections, imports, tables, start functions, elements, data, data counts, tags, unsupported value types, reference types, SIMD, atomics, exception handling, GC types, unsupported opcodes, and every reserved or malformed encoding.  Rejection defines the boundary of the first profile and does not imply that the rejected input violates the full WebAssembly specification.  Extending the profile requires syntax, decoding, validation, translation, soundness proofs, and semantic coverage for each added form.
 
@@ -59,7 +59,7 @@ Manifest schema three records the package identity and validation profile, the i
 
 `verifierSourceSha256` covers seventeen named normative files: binary syntax, cursor, LEB parser, primitives, decoder, grammar, validity predicate, validator, translator, equality and evidence support, and their six proof modules.  The hash starts with `leanexe-verifier-source-v1` followed by a NUL byte, then consumes each repository-relative path in code-unit order, a NUL byte, its byte length, another NUL byte, and its raw contents.  Utilities, generated package certificates, tests, and cached modules remain outside this digest and enter the release identity or source revision through separate fields.
 
-The release-input digest covers every Lean source under `proofs/talos/lean/Project`, the aggregate module, the recursive local `LeanExe` import closure used by those proofs, both Lake workspaces, toolchain and runtime pins, every registered manifest and binary, conformance configuration, and the exact proof, conformance, identity, and cold-checkout drivers.  The twenty tracked `Program.lean` files enter this digest as untrusted execution caches, while the closed equality theorem prevents their contents from replacing the module decoded from the artifact bytes.  The source revision remains a separate identity for the complete checked repository state, and the cold command requires the selected inputs to match byte-for-byte across the current tree and detached checkout.
+The release-input digest covers every Lean source under `proofs/talos/lean/Project`, the aggregate module, the recursive local `LeanExe` import closure used by those proofs, both Lake workspaces, toolchain and runtime pins, every registered manifest and binary, conformance configuration, and the exact proof, conformance, identity, and cold-checkout drivers.  The twenty-five tracked `Program.lean` files enter this digest as untrusted execution caches, while the closed equality theorem prevents their contents from replacing the module decoded from the artifact bytes.  The source revision remains a separate identity for the complete checked repository state, and the cold command requires the selected inputs to match byte-for-byte across the current tree and detached checkout.
 
 The artifact-only command accepts one frozen binary and one registered proof target.  It compares the file with the embedded bytes, verifies the digest and manifest, builds decoding and validation evidence, checks cached-model equality, and checks the behavioral theorem.  The command reports the first failed boundary and runs every Lean child through `tools/leanrun`.
 
@@ -73,15 +73,15 @@ tools/artifact-proof.js check \
 
 ## Implementation Status
 
-All twenty registered packages passed the byte-identity, embedded-byte, decoder, validator, exact Talos translation, behavioral-specification, and manifest-declaration boundaries for the recorded 2026-08-26 release-input identity.  That result establishes the implemented artifact boundary under its historical pinned Talos semantics.  The current Lean 4.34.0-rc2 and Talos `fda69ca67a81ea4f1fa4e376bdc5861d9fe5479a` inputs require a refreshed `tools/artifact-proof.js check-all` result before they support the same claim.
+All twenty registered packages passed the byte-identity, embedded-byte, decoder, validator, exact Talos translation, behavioral-specification, and manifest-declaration boundaries for the recorded 2026-08-26 release-input identity.  That result establishes the implemented artifact boundary under its historical pinned Talos semantics.  The current twenty-one-package inputs under Lean 4.34.0-rc2 and Talos `87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47` require a refreshed `tools/artifact-proof.js check-all` result before they support the same aggregate claim.
 
 The pinned twenty-five-file official execution slice produced 3,853 Talos passes, six known assertion failures, 627 skipped commands, and no cascades, decoder errors, interpreter errors, or fuel exhaustion, while Wasmtime 44.0.0 passed every selected file.  The six failures concern imported memory in `memory_grow.wast`: Talos uses the importing declaration's maximum instead of the exported memory instance's maximum.  The gate records their exact rows as an upstream warning outside the accepted no-import profile and treats every changed or additional failure as fatal.
 
 The same gate matched fifteen official invalid modules against exact artifact decoder or validator error constructors on 2026-08-26.  The cases cover malformed headers and sections, integer overflow, invalid memory limits and alignments, stack underflow, and unused stack results.  This corpus tests the executable classifier independently of the twenty accepted artifacts, while `decode_sound` and `validate_sound` remain the formal evidence for successful results.
 
-The draft release record binds all twenty artifact and package identities, every
+The draft release record now binds all twenty-one artifact and package identities, every
 theorem name, the verifier source digest, the migrated release-input digest, and
-the Lean 4.34.0-rc2 and Talos `fda69ca67a81ea4f1fa4e376bdc5861d9fe5479a`
+the Lean 4.34.0-rc2 and Talos `87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47`
 tool pins.  Its aggregate artifact-proof and semantic-conformance result fields
 are pending and its `sourceRevision` is null.  Lean 4.31.0 accepts the archived
 kernel reproduction, and the owner accepted that defect for the historical

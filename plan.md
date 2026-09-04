@@ -10,7 +10,7 @@ carried input digest
 `5de9678970b1a9b74d50c1407457423a7fa6eabd3f430f56cfdc0e407af2b7e5`, source
 revision `0e0d752904fc90dee3ef3511ffab91f3d358c1ed`, and successful receipts dated
 2026-08-26.  The current draft release record identifies the Lean 4.34.0-rc2 and
-Talos `fda69ca67a81ea4f1fa4e376bdc5861d9fe5479a` inputs, but its warm receipts are
+Talos `87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47` inputs, but its warm receipts are
 pending and `sourceRevision` is null.  Cold verification remains deferred and
 does not form part of the current work.
 
@@ -23,8 +23,8 @@ does not form part of the current work.
 - [x] Run the prior warm artifact-proof and semantic-conformance gates.
 - [x] Record immutable source revision
       `0e0d752904fc90dee3ef3511ffab91f3d358c1ed` for those historical inputs.
-- [ ] Record migrated warm receipts and an immutable source revision after the
-      pre-FP `fda69ca` compatibility gates pass.
+- [ ] Record current warm receipts and an immutable source revision after the
+      FP `87e3aa5` compatibility gates pass.
 - [ ] Complete the cold-checkout gate when cold verification resumes.
 - [ ] Require `tools/artifact-release.js check-ready` to pass before describing the release as ready.
 
@@ -114,7 +114,7 @@ experiment, but they do not block floating-point work.  The detailed
 bit-pattern ABI, migration sequence, exact-binary profile, first guarded kernel,
 and acceptance gates.
 
-- [x] Migrate and validate the native compiler under exact Lean 4.34.0-rc2 while preserving all twenty registered artifact bytes.
+- [x] Migrate and validate the native compiler under exact Lean 4.34.0-rc2 while preserving all twenty artifact bytes registered at that migration checkpoint.
 - [x] Move the existing proof corpus through pre-FP Talos `fda69ca`, then immutable FP revision `87e3aa5`, with the compiler and proof workspace on exact Lean 4.34.0-rc2.
 - [x] Extend the independent binary decoder, validator, validity proof, and Talos translation with internal f64 add, multiply, and reinterpretation.
 - [x] Add restricted `UInt64` bit-pattern intrinsics and exact structured lowering while retaining the public integer ABI.
@@ -258,7 +258,7 @@ phase.
   Keep `journal.md` as the detailed chronological record and `devnotes.md` as
   the durable concise checkpoint record.  Commit and push both whenever they
   change.
-  Hash, manifest, release-receipt, and self-host bookkeeping is not a phase
+- Hash, manifest, release-receipt, and self-host bookkeeping is not a phase
   gate; exact program bytes remain the theorem input.
 
 ## Required gates

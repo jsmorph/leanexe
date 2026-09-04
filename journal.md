@@ -2403,3 +2403,182 @@ agreement bridge at primitive-derived states, `A * R = R * Lambda`, and
 `det R != 0`.  Its `H` is specific total enthalpy `(E + p) / rho`, not the
 existing IEEE-side field named `enthalpy`, which represents the density
 `E + p`.
+
+## 2026-09-04: Artifact inventory, FP verifier pins, and operating contract
+
+This checkpoint restates the complete operating contract at the user's
+request and records the artifact-inventory repair discovered after registering
+Euler.  It begins from synchronized local and remote commit
+`f92983d15b8a3b0a5908b4b01c75532a0ec60683`, tree
+`7493cb77f23844e2ce4bd355269902f7da8d0f55`, on branch
+`talosfp-euler`.  The intended checkpoint commit message is
+`Reconcile FP artifact release inputs`.
+
+### Non-negotiable checkout and execution rules
+
+1. The active checkout is persistent user-owned project state.  This includes
+   `.git`, tracked and untracked sources, generated outputs, ignored files,
+   dependency trees, compiler products, caches, and evidence receipts.  No
+   cleanup, workspace maintenance, reclamation, pruning, deletion,
+   cache invalidation, `git clean`, destructive reset, checkout overwrite,
+   stash, worktree replacement, or equivalent rewrite is authorized.  A file
+   being reproducible does not authorize its removal.  Any deletion requires a
+   new user instruction naming the exact target.
+2. `git status` is inspected before mutation.  Existing and unrelated changes
+   are preserved.  Agents may edit only their assigned files and may not run
+   Git mutation, Lean, cleanup, or maintenance unless the root task explicitly
+   delegates that exact operation.  No worktree repair may discard a draft.
+3. There is no `dev` host.  It is never invoked or probed, and no remote
+   compute substitute is assumed.  Lean, Lake, the compiler, artifact tools,
+   Node, C compilation, Wasmtime, and conformance execution all run locally.
+   GitHub is only the branch publication and recovery remote.
+4. The user authorizes direct local Lean.  Lean-family work is nevertheless
+   globally serialized to one process.  The exact local command envelope is:
+
+   ```sh
+   env LEANRUN_LOCAL=1 \
+     LEAN_SYSROOT=/root/.elan/toolchains/leanprover--lean4---v4.34.0-rc2 \
+     LD_PRELOAD=/tmp/leanexe-proc-self-readlink.so \
+     LEAN_NUM_THREADS=1 \
+     WASM_TOOLS=/workspace/scratch/9df984ece5a1/leanexe/build/tools/wasm-tools-1.251.0-x86_64-linux/wasm-tools \
+     tools/leanrun --timeout 15m lake -d proofs/talos/lean --no-ansi build TARGET
+   ```
+
+   The same environment is supplied to Node drivers that spawn Lean.  The
+   preload maps numeric `/proc/<pid>/exe` reads to `/proc/self/exe` in the
+   nested PID namespace.  It is a local execution workaround, not theorem
+   evidence.  `tools/leanrun` retains the shared lock and priority controls;
+   its warning correctly says that unavailable cgroup CPU, memory, and swap
+   limits are not enforced.
+5. A timeout with no Lean diagnostic is neither pass nor theorem failure.  It
+   is recorded as censored timing evidence and is not repeated unchanged.
+   Work proceeds by warming or splitting an identified target boundary, or by
+   making a reviewed material proof change.  Failed diagnostics and drafts are
+   retained.
+6. `journal.md` is the detailed chronological ledger.  It records exact
+   commands, environment constraints, warnings, elapsed boundaries, failures,
+   passes, axiom reports, byte identities, release receipts, commit intent,
+   publication identities, and the next open boundary.  `devnotes.md` is the
+   concise durable checkpoint record.  Both are committed and pushed whenever
+   changed.
+7. Coherent checkpoints are committed and published frequently.  Ordinary
+   HTTPS credentials are unavailable, so publication uses the authenticated
+   GitHub Git-data API.  Each changed local Git blob is uploaded exactly, a
+   tree is created over the current remote tree, its identity must equal the
+   complete local tree, a commit is created with the current remote tip as its
+   parent, and `talosfp-euler` is advanced with `force: false`.  The ref is
+   fetched and the complete remote and local trees are compared.  Only after
+   equality may the local ref be aligned; the worktree is never reset or
+   rewritten.
+8. Native, Wasmtime, and C outputs are regression evidence only.  Formal
+   claims come from the pure Talos model, checked generated-WAT execution,
+   explicit numerical theorems, accepted axiom audits, and exact frozen bytes
+   where an artifact claim is made.  No `sorry`, `admit`, or new axiom is
+   accepted.
+
+A read-only documentation search during this checkpoint accidentally placed a
+Markdown backtick inside a double-quoted shell argument.  The local shell tried
+to execute a command literally named `dev`, returned `command not found`, and
+continued the search.  It did not contact or probe any host and made no file or
+Git change.  Subsequent shell arguments avoid interpolated backticks.  This is
+recorded because the local-only rule includes command-construction hygiene.
+
+### Inventory and pin reconciliation
+
+Adding Euler exposed a metadata inconsistency rather than a binary change.
+The twenty pre-Euler frozen manifests still named pre-FP Talos revision
+`fda69ca67a81ea4f1fa4e376bdc5861d9fe5479a` and verifier-source SHA-256
+`2b59dec86b72be48a2bb63b5fc1efabbf2e61397a7042907823d0a4e6d5fcb01`.
+The current exact verifier uses immutable FP Talos revision
+`87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47` and verifier-source SHA-256
+`bf03d3f47fb11563c947224601a21afa95c62fc88df81f493de821e69de9d1e7`.
+Each of the twenty manifests changes exactly those two fields.  Euler's
+manifest is unchanged.  No `.wasm`, `.wat`, generated Talos `Program.lean`,
+embedded byte module, source case, artifact-registry entry, or handwritten Lean
+theorem changes in this checkpoint.  The bulk migration command was not run,
+because it would regenerate or add unrelated packages.
+
+The exact post-repair manifest SHA-256 identities are:
+
+| Package | Manifest SHA-256 |
+|---|---|
+| `append_bang` | `9c59d472abfda776ad3399b121ecd764a680a81a200aa827634f6e1b06c34c0c` |
+| `assoc_list` | `256b23c0efed4cb362d45e3c7b738940184f36b9c6206e699eb98d5fc40dd617` |
+| `box_free` | `09314433c9423d72373cc345b90bc643d10889565adfdb7d3da771eb52f29db8` |
+| `clob_cancel` | `d64f41f86cd431b45aa2cb85debcb7b518f62ab4fcb220ffc1d8c63bffb89592` |
+| `clob_depth` | `a5a0598c99d152928933513ea35eff4110841215467a24632544e93c00554cc2` |
+| `clob_find_best` | `ad4be889530bbd24fdfb3a3a9415a34a71bdefd28d7109318f65f54ec8b7896c` |
+| `clob_limit` | `142c54f1420a9d5bc6c963ab7b6ac353eb607c5e935e5ba77039ec8f7b736f` |
+| `clob_market` | `fa8d9eb0ba483bce4b6b0e41be2962d374450861750ae2bed547fd4e6dad06c9` |
+| `clob_match_fuel` | `082274c350142506d03ec3d2e1c3f5e6f08382b82cf17847239bf80085bbe9e1` |
+| `clob_post_only` | `ddb5e993fb59ccd9f1330d9aea19665dbc4c7bc02f31d04c4ff8b45b791d3934` |
+| `clob_quote` | `6472e3ff494eba89bd8fe9a3c045557a29f4f0be3cefde9f3d8498c88d3d131e` |
+| `fold_sum` | `f9d7438bcfa759e956c342ada739a15a44a1a26c0b76b1114f5c051e5c78cfdf` |
+| `gcd` | `2bf285395d50f29e928ab720987a5188f5c3ca9436ff7f055f2670e3bc9e120d` |
+| `leb_u32` | `de84ec5028a577e4819276115bafc10602e0220900821653892db8729e951dd9` |
+| `order_book` | `b62252f15d8e9ed85561d60dc3482aa07191c3d3aefd27423d2d12cc812637c4` |
+| `pair_free` | `f8cd613742633bb53e44e3419facaf0436cc029036ac131e0c83e107c4be62ba` |
+| `push_size` | `04d909a7ca2b75e4cd70ef36c9d5565440563ab46d75b6538293e1b77afba789` |
+| `push_twice` | `db0312ddb0a7556854c42210dbc0b029d7c7f68d7941eb7477fc8eeeb8cb2fbf` |
+| `shared_pair` | `101437e85f5bf4b95feabaa12e271163941dd66f2c895e8635fbb6fe2d3aaa66` |
+| `validate` | `437927d34b0d0c487fe887e5edf001f8148a392b1e647b7a55a5413e794301bf` |
+
+The inventory has three deliberately different counts: twenty-five
+source-driven cases, twenty-five tracked `Program.lean` caches, and twenty-one
+registered frozen exact-artifact packages.  Four floating-point source cases
+remain source-driven only; Euler is the first floating-point exact package.
+All twenty-one `program.wasm` hashes still equal their content-addressed
+directory names.  Euler remains exactly 1,808 bytes at SHA-256
+`145230bc0f956df81283fb37227c303de2c92e68842d38b985325dca467f6546`.
+
+`proofs/artifacts/release.json` was regenerated from, rather than hand-edited
+against, these inputs.  Before current warm receipts it correctly validates as
+a twenty-one-package draft with release-input SHA-256
+`bbc645be04edcae73d6d36958a01b85bfa0a24f7660fc0ccb801ac6e133711a3`,
+artifact-registry SHA-256
+`3bcc91129e242bf7ed0576ba3c9f8c15f2b715ff4e251d93d04fd2b452031bec`,
+and conformance-config SHA-256
+`b96c3386c340a6bd55762bcee3a077deda03a7dced2cbe3bc62440a6b9a93d16`.
+It has four honest blockers: immutable source revision, current aggregate
+artifact-proof receipt, current semantic-conformance receipt, and cold-checkout
+receipt.  `sourceRevision` remains null and the draft is not release-ready.
+
+The focused migrated GCD exact-artifact gate passed every identity, decode,
+validation, translation, behavior, manifest-declaration, and axiom check.
+Behavioral declarations reported only `propext`, `Classical.choice`, and
+`Quot.sound`; closed artifact certificates used only the format's accepted
+theorem-local decision certificates.  These non-Lean checks also passed before
+this notes cut:
+
+```text
+node --check test/artifact_identity.js
+node --check test/artifact_release.js
+node test/artifact_identity.js
+node test/artifact_migrate.js
+node test/artifact_conformance.js
+node test/artifact_release.js
+node tools/check-docs.js
+git diff --check
+```
+
+An initial aggregate `artifact-proof.js check-all` process was deliberately
+interrupted after the final `conformance.json` wording change altered the
+derived release input while it was still near the beginning of the package
+list.  The interruption superseded a now-stale receipt; it was not a proof
+failure and changed no tracked file.  One replacement aggregate then began
+under the exact serialized local envelope above.  At the 10:26 UTC notes cut,
+it had passed every emitted target so far, including Euler artifact translation
+and multiple later behavioral specifications, with only inherited deprecation
+warnings.  It remained the sole Lean-family process.  Its final result and
+receipt will be recorded in a separate immediate checkpoint, followed by the
+serialized conformance gate, release refresh, and the two remaining release
+blockers.  Committing these notes while the check runs changes Git metadata
+only; it does not alter any source or proof input seen by that process.
+
+The documentation audit corrected current-versus-historical wording without
+rewriting dated 2026-08-26 evidence.  Current prose now distinguishes the 25
+source caches from the 21 exact packages, marks the restricted binary64 plan
+active, reports the refreshed draft rather than a pre-migration draft, and
+keeps the source-driven 25-case aggregate separate from release inspector
+receipts.  Historical twenty-package and self-host measurements remain dated
+and unchanged.
