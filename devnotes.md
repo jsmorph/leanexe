@@ -7968,6 +7968,16 @@ coherent checkpoint is committed, pushed, fetched, and verified by matching
 local and remote trees; `journal.md` is the detailed command and outcome
 ledger.
 
+The canonical 2026-09-04 operational checkpoint removes the ambiguous earlier
+description of the active checkout as disposable.  The checkout, including
+tracked, untracked, generated, ignored, dependency, and build files, is
+user-owned persistent project state and is not a maintenance or reclamation
+target.  No cleanup or deletion is authorized without a fresh user direction
+naming the exact target.  Work remains local with no `dev` host, direct Lean is
+authorized, Lean-family processes are serialized, `journal.md` retains the
+detailed ledger, and both the journal and these notes are committed and pushed
+at each coherent checkpoint.
+
 The first 24-case aggregate build had timed out during a cold 3,719-job
 dependency graph without a theorem diagnostic.  Focused targets have since
 passed F64Dot, LebU32, ClobQuote, ClobCancel, and ClobFindBest.  A cold

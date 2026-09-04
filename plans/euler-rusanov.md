@@ -332,16 +332,21 @@ addition:
   against unchanged dependencies: identify a smaller missing dependency,
   build that boundary under its own timeout, and retry the parent only after
   the proof state or cache has materially changed;
-- treat the scratch checkout as disposable but its contents as user-owned:
-  never run workspace maintenance, cleanup, reclamation, pruning, deletion,
-  `git clean`, destructive reset, checkout-overwrite, or an equivalent
-  worktree rewrite;
+- treat the active checkout, including tracked, untracked, generated, and
+  ignored files, as user-owned persistent project state, not a disposable
+  workspace or a maintenance target; never run workspace maintenance,
+  cleanup, reclamation, pruning, deletion, `git clean`, destructive reset,
+  checkout-overwrite, stash, or an equivalent worktree rewrite; even a
+  reproducible cache is not deleted without explicit authorization for the
+  exact target;
 - inspect the branch and worktree before every edit, preserve unrelated and
   pre-existing changes, commit each coherent checkpoint, push it promptly,
   and verify that the remote and local commit trees are identical;
 - record commands, elapsed boundaries, proof failures, timeouts, warnings,
   axiom audits, commit identities, and publication verification in
-  `journal.md`; a timeout is never recorded as a theorem failure or pass;
+  `journal.md`, retain a concise durable checkpoint in `devnotes.md`, and
+  commit and push both when changed; a timeout is never recorded as a theorem
+  failure or pass;
 - reject new `sorry`, `admit`, and axiom declarations in changed Lean files;
 - require public numerical and execution theorems to report only the project's
   accepted standard logical axioms;

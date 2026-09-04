@@ -424,12 +424,13 @@ in force for all subsequent `talosfp-euler` work:
   fast-forward ref updates.  After each publication, fetch the remote branch,
   reconcile the local commit, compare complete Git tree identities, and check
   that the worktree is clean.
-- Treat the scratch workspace as disposable.  External workspace maintenance
-  already deleted the first checkout, including `.git`; it was not initiated
-  by the user or by a repository command.  Do not run workspace cleanup or
-  delete, reset, or overwrite user files.  Inspect repository status before
-  mutations, preserve unrelated changes, and commit and push every coherent
-  checkpoint promptly so another external prune cannot erase accepted work.
+- Treat the active checkout as persistent, user-owned project state.  External
+  workspace maintenance already deleted the first checkout, including `.git`;
+  it was not initiated by the user or by a repository command.  Do not run
+  workspace cleanup or delete, reset, or overwrite user files.  Inspect
+  repository status before mutations, preserve unrelated changes, and commit
+  and push every coherent checkpoint promptly so another external prune cannot
+  erase accepted work.
 - Keep this journal detailed and append-only.  Record decisions, relevant
   commands and environment workarounds, timings or timeouts, warnings,
   failures, proof boundaries, axiom reports, commit identifiers, remote tree
@@ -625,10 +626,10 @@ The following rules are standing instructions for all remaining work on
 1. The active checkout must not be subjected to cleanup, workspace
    maintenance, pruning, reset, checkout-overwrite, or recursive deletion by
    the assistant.  One prior scratch checkout, including its `.git` directory,
-   was already removed by external workspace maintenance.  Scratch and ignored
-   caches are therefore treated as disposable, while every coherent source or
-   proof checkpoint is journaled, committed, and pushed promptly.  Unrelated
-   user changes are preserved.
+   was already removed by external workspace maintenance.  That event does not
+   authorize deletion of this checkout, including its ignored caches.  Every
+   coherent source or proof checkpoint is journaled, committed, and pushed
+   promptly.  Unrelated user changes are preserved.
 2. There is no `dev` host.  Do not invoke or probe `tools/leanrun-dev`.  Lean,
    Lake, `lean-wasm`, Node, Wasmtime, artifact preparation, and proof checking
    run locally.  GitHub is only the publication and recovery boundary.
@@ -1023,8 +1024,9 @@ reports are gone.  Only existing deprecation and linter warnings remain.
 An earlier scratch checkout disappeared during workspace maintenance outside
 the repository workflow.  That event deleted files and is not an authorized
 part of this project.  The recovered `talosfp-euler` checkout and every file in
-it are treated as user-owned even though the enclosing scratch filesystem is
-disposable.  No workspace maintenance, cleanup, reclamation, pruning, file
+it are treated as user-owned persistent project state.  The active checkout is
+not disposable even if an enclosing service labels its filesystem as scratch.
+No workspace maintenance, cleanup, reclamation, pruning, file
 deletion, `git clean`, destructive reset, checkout-overwrite, stash, or other
 worktree-rewriting shortcut may be used.  Existing and unrelated changes must
 be inspected and preserved.  If a conflict cannot be worked around safely,
@@ -1609,3 +1611,76 @@ passed all 3,058 jobs, with 3.2 seconds on the new target and approximately
 the standard accepted CodeLib axiom reports.  No `sorry`, `admit`, or new axiom
 declaration is present.  No `dev` host, active-checkout cleanup, deletion,
 reset, stash, maintenance, or worktree rewrite was used.
+
+## 2026-09-04: Canonical operational notes checkpoint
+
+This section consolidates the user's standing directions.  If an older entry
+calls the checkout or workspace disposable, this section supersedes that
+wording.  The rules are part of the project record rather than transient chat
+context.
+
+1. The active `talosfp-euler` checkout is persistent, user-owned project state.
+   That includes `.git`, tracked sources, untracked drafts, generated files,
+   ignored artifacts, dependency trees, and build products.  No agent,
+   subagent, workspace service, or helper is authorized to perform maintenance,
+   cleanup, reclamation, pruning, deletion, `git clean`, destructive reset,
+   checkout-overwrite, stash, or any other worktree rewrite.  Reproducibility
+   does not make a local file eligible for deletion.  Deleting any exact target
+   requires fresh, explicit user authorization.
+2. Inspect `git status` before mutations and preserve all pre-existing,
+   unrelated, and in-progress work.  If a safe edit cannot avoid a conflict,
+   stop for user direction; never resolve it by discarding files.  The current
+   untracked `Bounds.lean` and `ScaledRoundoff.lean` files are delegated proof
+   drafts and must remain intact until reviewed and checked.
+3. There is no `dev` host.  Do not invoke it, probe for it, mention it as an
+   available executor, or substitute any other remote compute service.  Lean,
+   Lake, `lean-wasm`, Node, Wasmtime, artifact generation, and proof checking
+   all run locally.  GitHub is only the branch-publication and recovery remote.
+4. The user explicitly authorized direct local Lean execution.  Lean-family
+   commands remain serialized globally: exactly one Lean/Lake/compiler process
+   at a time, including work delegated to subagents.  Use the pinned Lean
+   4.34.0-rc2 sysroot, `LEAN_NUM_THREADS=1`, an explicit timeout, and the local
+   PID-namespace compatibility preload.  The current preferred repository
+   envelope is `LEANRUN_LOCAL=1 tools/leanrun`, which retains the machine lock,
+   `nice`, and `ionice`; direct invocation of the pinned local binary is also
+   authorized when a focused diagnostic requires it.  Never claim unavailable
+   systemd cgroup limits were applied.
+5. A timeout without a Lean diagnostic is neither a theorem failure nor a
+   pass.  Record it as censored timing evidence.  Do not repeat the identical
+   target against unchanged proof and dependency state; first check a smaller
+   boundary or make a material, reviewed change.  Preserve failed drafts and
+   diagnostics.
+6. Keep `journal.md` as the detailed chronological ledger.  Record material
+   decisions, exact command shapes and environment workarounds, elapsed times,
+   job counts, warnings, failures, successful checks, axiom audits, artifact
+   identities, commit identities, remote publication checks, and the next open
+   boundary.  Keep `devnotes.md` as the concise durable checkpoint record.
+   Both files are committed and pushed whenever changed.
+7. Commit coherent checkpoints frequently and push them promptly.  A publish
+   is complete only after a non-forced fast-forward update of
+   `origin/talosfp-euler`, a fetch of that ref, and equality of the complete
+   local and remote Git trees.  The authenticated GitHub Git-data API is used
+   because the checkout lacks ordinary HTTPS credentials.  Ref alignment may
+   update only Git references after tree equality is established; it must not
+   reset, clean, overwrite, or otherwise rewrite the worktree.
+8. Native Lean evaluation and Wasmtime tests are regression evidence, not
+   formal proof evidence.  Public claims require the pure Talos IEEE model,
+   generated-WAT execution theorem, quantitative numerical theorem, accepted
+   axiom audit, and eventually the frozen exact-byte artifact boundary stated
+   in this plan.  No `sorry`, `admit`, or new axiom may be hidden in a checked
+   milestone.
+9. The experimental self-hosted emitter, release receipts, and unrelated hash
+   or manifest bookkeeping are outside this branch's validation path.  Do not
+   invoke them as gates.  Exact program bytes remain theorem inputs whenever
+   exact-artifact behavior is claimed.
+
+This is a documentation-only checkpoint.  The two newly delivered proof
+drafts are deliberately excluded from this commit until each has been reviewed
+and passed through the single local Lean slot.
+
+`git diff --check` passed, and `node tools/check-docs.js` checked all 90
+maintained Markdown files.  The intended commit contains only `plan.md`,
+`plans/euler-rusanov.md`, `journal.md`, and `devnotes.md`; no Lean build is
+required for this notes-only change.  The next action after remote publication
+and tree verification is a read-only review followed by serialized focused
+builds of the preserved proof drafts.

@@ -210,13 +210,20 @@ phase.
 
 ### Operational discipline for `talosfp-euler`
 
-- Treat the scratch checkout and ignored build/dependency caches as
-  disposable.  Automated workspace maintenance already removed one complete
-  checkout, including `.git`.  No assistant action may run cleanup,
-  maintenance, pruning, reset, checkout-overwrite, or recursive deletion
-  against the active checkout.  Preserve unrelated user changes.  Journal,
-  commit, and publish every coherent checkpoint promptly, and label unchecked
-  work explicitly so the remote branch is the recovery boundary.
+- Treat the active checkout, including tracked, untracked, generated, and
+  ignored files, as user-owned persistent project state.  It is not a
+  disposable workspace and is not eligible for automated maintenance or
+  reclamation.  Automated workspace maintenance already removed one complete
+  checkout, including `.git`; that was data loss, not an authorized project
+  operation.  No assistant action may run cleanup, maintenance, reclamation,
+  pruning, `git clean`, destructive reset, checkout-overwrite, stash, worktree
+  rewriting, or recursive deletion against it.  A reproducible cache may be
+  described as replaceable, but it still must not be deleted during this work
+  without the user's explicit authorization for the exact target.  Preserve
+  unrelated and in-progress changes.  Journal, commit, and publish every
+  coherent checkpoint promptly, and label unchecked work explicitly so the
+  remote branch is a recovery boundary rather than an excuse to discard local
+  state.
 - This environment has no `dev` host.  Never invoke or probe
   `tools/leanrun-dev`; run Lean, Lake, `lean-wasm`, Node regressions, Wasmtime,
   artifact preparation, and proof checks locally.  GitHub is used only to
@@ -246,6 +253,9 @@ phase.
   tree identities, then fetch and reconcile the local checkout.
 - Before each published checkpoint, update `journal.md` with commands,
   results, failures, unresolved proof boundaries, and exact commit intent.
+  Keep `journal.md` as the detailed chronological record and `devnotes.md` as
+  the durable concise checkpoint record.  Commit and push both whenever they
+  change.
   Hash, manifest, release-receipt, and self-host bookkeeping is not a phase
   gate; exact program bytes remain the theorem input.
 
