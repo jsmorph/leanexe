@@ -3761,3 +3761,23 @@ operational documentation, plan/journal/devnotes, and refreshed release record
 will be staged.  Ignored generated WASM/WAT, `.lake` products, pre-existing
 temporary directories, dependencies, caches, and unrelated checkout state
 remain untouched by Git staging and publication.
+
+### Publication of the fixed-step source/model checkpoint
+
+The 21 explicitly staged paths formed local tree
+`ae000775b0f8985bc2691794ff64ff2838987ba4`.  Every GitHub-created blob was
+required to equal its staged local blob identity, including reconstruction of
+the append-only `journal.md` and `devnotes.md` values from their fetched remote
+parents plus the exact staged tails.  GitHub created commit
+`cb56446a6d3588f2933710d0d6cc3439cd8e322e`, message
+`Add fixed Euler step compiler case`, with parent
+`70aae44702a970506ff1a71fee4c6f698a314060` and that exact tree.  The
+`talosfp-euler` ref accepted a non-forced fast-forward.
+
+The published commit was fetched through the ordinary read path.  Its commit,
+parent, tree, and message matched the requested values; the fetched tree, local
+index tree, and worktree contents were identical.  Only then did an exact
+compare-and-swap `git update-ref` advance the local branch from `70aae447` to
+`cb56446`.  Final status was clean and local `HEAD`, the tracking ref, and the
+GitHub branch all named `cb56446`.  No checkout, reset, merge, stash, cleanup,
+file replacement, or worktree rewrite was used in publication.
