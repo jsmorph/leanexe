@@ -8677,3 +8677,27 @@ All work was local, with no `dev` probe and no cleanup, maintenance, deletion,
 move, truncation, reset, checkout, stash, or invalidation of pre-existing
 workspace state.  This is the checkpoint's sole finite receipt follow-on; its
 own resulting commit SHA is reported externally after publication.
+
+## 2026-09-04: operating contract reaffirmed before implementation
+
+The user explicitly reaffirmed the branch rules.  All work is local; there is
+no `dev` host and none may be invoked or probed; direct Lean uses the pinned
+one-process, one-thread, timeout-bounded envelope.  Generic workspace
+maintenance and deletion, movement, truncation, replacement, invalidation,
+pruning, reset, stash, or discard of any pre-existing tracked, untracked,
+generated, ignored, cached, build, dependency, evidence, temporary-looking,
+or partial state are prohibited.  Status, exact path bounds, diff review, and
+explicit staging precede publication.  `journal.md` remains detailed and
+append-only, and coherent checkpoints are committed and published frequently
+through a verified non-forced GitHub fast-forward.
+
+This notes-only checkpoint preserves and excludes the ongoing changes to
+`proofs/talos/cases.json`, `Project/EulerRusanovStep/Spec.lean`, and the new
+`Project/EulerRusanovStep/Numerical.lean`.  A read-only shell search suffered
+a quoted-backtick command-substitution mistake for the literal word `dev`; it
+failed locally, contacted no host, and changed no state.  The detailed record
+and correction are in `journal.md`.
+
+Independent read-only audit found no missing substantive rule.  The canonical
+wording now also names the selected authenticated GitHub connector and
+requires checkpoints to remain small as well as coherent and frequent.
