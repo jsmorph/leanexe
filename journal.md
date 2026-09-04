@@ -2143,3 +2143,111 @@ completed in approximately 2.5 seconds.  Git status afterward contained only
 the driver and test edits: the registered Euler bytes, manifest, registry,
 cache, and proof modules were unchanged byte-for-byte.  No cache was deleted
 or invalidated to simulate a cold checkout.
+
+## 2026-09-04: frozen verified Euler interface dataset
+
+The first public data product is now `euler-rusanov-interface-v1`.  Its CSV has
+the frozen source-order columns
+`rho_l_bits,u_l_bits,p_l_bits,rho_r_bits,u_r_bits,p_r_bits`, followed by a
+decimal status and the three raw output words.  The eight stable rows are equal
+left Sod, equal right Sod, both Sod interface orientations, a moving equal
+state, both guard extremes, and a quiet-NaN rejection in `rhoL`.  Binary64
+words are lowercase fixed-width hexadecimal without `0x`; the Sod right
+pressure is the exact word `3fb999999999999a`, not an implicit rational
+replacement for one tenth.
+
+`Project.EulerRusanov.InterfaceData` defines those same eight rows as literal
+`UInt64` words.  One named model theorem per row is checked with kernel
+`decide`; none uses `native_decide`.  The seven accepted rows also have closed
+guard theorems, and the NaN row has a closed false-guard theorem.  The first
+expanded closed-model build passed all 3,390 jobs in 9.3 target seconds.  It
+reported only reduction-threshold warnings for exponents 2,092 through 2,096,
+so the module threshold was raised from 2,048 to 4,096 before the public
+contract was added; this was a successful but intentionally superseded
+warning-bearing check, not a failure.
+
+The public `AcceptedSpecFor` packages the concrete true guard, zero expected
+status, left and right `StateBounds`, both proved characteristic-signal bounds,
+and fuel-independent execution preserving the complete store and returning the
+exact frozen top-first Talos tuple together with `FluxRealError` for those
+same three payload words.  `RejectedSpecFor` packages the false NaN guard and
+exact store-preserving rejection tuple.  `InterfaceV1SpecFor` contains all
+seven accepted rows and the one rejected row.  Its proof reuses the universal
+generated-WAT real-error and exact-execution theorems, weakening their
+postconditions only after rewriting by each kernel-checked closed model result.
+
+`artifact_interfaceV1` applies `Artifact.artifact_correct_of` to that complete
+eight-row property.  It therefore states that the same exact embedded
+1,808-byte artifact decodes, validates, satisfies `CoreValid`, translates, and
+realizes every frozen row.  The completed focused build passed all 3,390 jobs
+in 9.4 target seconds.  `interfaceV1_generated` reports exactly `propext`,
+`Classical.choice`, and `Quot.sound`.  `artifact_interfaceV1` adds only the
+three already permitted theorem-local native-decision certificates used by the
+artifact package for closed byte decoding, raw-cache equality, and validation;
+the row computations themselves add no native-decision axiom.  Importing the
+new module from the Euler Spec root passed all 3,391 jobs, and the warmed full
+Talos `Project` aggregate passed all 3,748 jobs with 3.3 seconds reported for
+the root target.  Warnings were inherited deprecations and lints in existing
+dependencies.
+
+The host generator initially used Node's direct `WebAssembly` API.  A
+pre-commit repository-policy audit caught that design, and the untracked draft
+was revised before publication.  The final JavaScript performs no module
+execution.  `tools/wasmtime-host.js` invokes the existing external
+`leanexe-wasmtime-host` C runner with four result slots; the generator makes
+exactly one such call per frozen row.  Host iteration and CSV serialization
+remain regression plumbing, while the Lean theorem supplies the semantic
+claim.  The helper validates unsigned decimal results, rejects values above
+`2^64 - 1`, and never silently wraps malformed host output.
+
+Before invoking the artifact, the generator uses the repository's shared
+registry loader and schema-three manifest validator, then pins the Euler case,
+digest, 1,808-byte length, and empty host assumptions.  `check` is the default
+and is read-only; `write` must be explicit.  Changed dataset files are written
+to unique same-directory exclusive temporary files and installed by atomic
+rename, while byte-identical files are left untouched.  Narrow `.gitattributes`
+rules pin LF for the exact CSV, data manifest, generator, and host helper.
+
+The CSV is 1,444 bytes with SHA-256
+`65ff256da20d19544366083596f20b53c4fb37798209c1e7e16c2cfcee4d3808`.
+The manifest records its schema and byte length, row order, word and status
+encodings, artifact identity, `gamma = 7/5`, `alpha = 7/4`, rounding mode,
+formal module and theorem, and a domain-separated identity covering both
+generator sources.  That composite generator digest is
+`d47e334f8eb8f63bbbc4af87266e6d2465535ad5a51fa81c439d84ffdf43261d`;
+the resulting 2,408-byte manifest has SHA-256
+`fa39e7314a5c0709c7e8636df63731cd1649709f7e97c5ee700f9ef89d624118`.
+
+The following focused gates passed locally:
+
+```text
+node --check tools/wasmtime-host.js
+node --check tools/euler-rusanov-interface.js
+node --check test/euler_rusanov_interface.js
+node tools/euler-rusanov-interface.js check
+node test/euler_rusanov_interface.js
+node test/no_js_wasm_execution.js
+node tools/talos-proof.js check euler_rusanov
+node tools/check-docs.js
+lake -d proofs/talos/lean build Project.EulerRusanov.InterfaceData
+lake -d proofs/talos/lean build Project.EulerRusanov.Spec
+lake -d proofs/talos/lean build Project
+git diff --check
+```
+
+The dataset test is registered immediately after the existing Euler source
+regression in `test/run_all.js`.  It checks exact CSV bytes, field counts, row
+order, unique encodings, statuses, payloads, manifest identities, and the host
+parser's upper boundary.  The focused Talos gate regenerated the program in a
+task-local workspace, rebuilt all 3,391 proof jobs, reproduced the axiom
+reports above, and passed.  No `sorry`, `admit`, or new axiom declaration is
+present.  The maintained-documentation checker accepted all 90 files.
+
+All commands used the serialized local-only execution contract.  No `dev`
+host or other remote executor was invoked or probed.  No cleanup, maintenance,
+reclamation, pruning, deletion, cache invalidation, reset, stash,
+checkout-overwrite, or worktree rewrite was performed.  Generated and ignored
+outputs remain part of the preserved active checkout.  The next independent
+checkpoint is regression-only C comparison tooling; it will keep a bit-exact
+same-operation-order mirror separate from Lanyon's dynamic-speed flux and will
+not be represented as formal evidence.
